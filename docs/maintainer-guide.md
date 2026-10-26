@@ -193,6 +193,22 @@ EHP 的 Calcs 字段直接读取计算保留的同一份 `EhpTerms`：五种类�
 
 精魄保留按当前计算的武器组计：绑定到另一组的技能（包括它的辅助宝石追加的保留量）不保留，游戏 stat `display_skill_reserves_in_all_weapon_sets` 明确要求在所有武器组保留的技能除外，例如 Blink、Convalescence 和 Eternal Rage。Svalinn 授予的 Cast on Block 本身没有基础保留量，Direstrike II 与 Herbalism II 的 40 和 30 精魄只在拿着该盾的武器组计入，再应用保留效率。tuned Titan His Scattering Calamity 的主技能在第一组，其他常驻技能绑定到平时持有的第二组，因此计算第一组时保留为 0；构筑码参考值按另一组保留，与当前钉定 PoB2 不同。这里只改变保留量：绑定到另一组的常驻技能的 buff、光环仍按生效计算，与 PoB2 和构筑码参考值一致；游戏里切换武器组后这类 buff 是否保持，没有找到说明，也没有游戏内实测。
 
+Runic Ward absorbs damage after Life reaches 1. Life-loss prevention (Grasping Wounds, `life_loss_prevented_%`) applies only to the Life share, not damage absorbed by Ward. In `pool_damage::reduce_pools`, spend the Ward share before the Life-only overkill cap: with 1000 Life, 500 Ward, 25% prevention and a 1500-damage hit, 1332 damage brings Life to 1 (333 deferred), and 168 consumes Ward, leaving 332. Previously, PoBR and pinned PoB2 discarded damage as overkill before spending Ward; at 1 Life a large hit could consume only 1 Ward. Frozen Blood Mage ranks 01/02/04/05/07/08 all combine Ward and 25% prevention, so agreement with PoB2 did not establish correctness. Source: Runic Ward game text (damage taken from Ward before Life while at 1 Life), Grasping Wounds node 56162. The interaction is tested arithmetically, **not in game**; deferred-loss timing remains governed by the existing simulator assumptions.
+
+Equipment conditions use the selected weapon set. Dance with Death requires an empty off hand and a one-handed martial weapon in the main hand; caster weapons, unarmed, and originally two-handed weapons held through Giant's Blood do not qualify. Helmet Armour/Evasion comparisons use the item's final local ratings with strict inequality, before character-wide scaling; ties grant neither conditional immunity.
+
+Mark Effect (`mark_effect_+%`, “increased Effect of your Mark Skills”) scales the enemy-side Mark effect and the damage-as-extra buff granted by Freezing/Voltaic Mark. The latter retains the existing assumption that the Mark's buff is active; no activation rate or uptime is inferred. Mark self-buffs now use `CurseBuff` specs, so duplicate copies do not stack and the existing buff truncation applies (30% becomes 33% at 12% increased effect, 36% at 21%). Party exports retain the caster's Mark Effect for shared enemy debuffs. This text rule is `exporter: "absent"`: the pinned exporter parses it as `LocalEffect` without a reader. This is based on the game stat and skill payloads, **not an in-game measurement**.
+
+Doryani's Prototype (`enemies_in_presence_lightning_resist_equal_to_yours`, `UniqueNearbyEnemyLightningResistanceEqual1`) sets nearby enemies' Lightning Resistance from the player's final resistance after buffs, charges and resource-derived modifiers. The shared enemy override replaces its own resistance and curse/exposure reductions, so minions, damage over time and Sacred Flame's lowest-resistance rule consume the same value. An explicit `EnemyInPresence = false` disables it. Existing explicit enemy overrides and the enemy's maximum resistance retain their priority; the positive-resistance interaction (player 80%, enemy capped at 75%) is a conservative assumption without an in-game measurement. Frozen `chronomancer-10` has −184% player Lightning Resistance, where that upper-cap question does not affect the result.
+
+Summon counts include the active skill's native game stat: Raise Zombie's `base_number_of_zombies_allowed` is 10 before temporary-minion bonuses (15 with the frozen Chronomancer's +5). Wolf Pack's `skill_wolf_pack_size` is 6 at the frozen Acolyte's level 19, plus one from quality; its limit stays 7 even though the pinned PoB2 reports 0. Supports compatible with a summoned minion's skills also contribute their cost multiplier once to the summoning skill. Minion Splash requires both a minion source and a melee strike; this combined eligibility does not bypass explicit minion exclusions or give the support's offensive payload to the player.
+
+Presence item auras reach minions through `ExtraAura`; “You and Allies” additionally gives the player one copy. Ally modifiers on a weapon are not its numeric local attack-speed lines. Offering buff-effect queries use the Offering's own skill types, so generic Offering-effect passives apply even when another skill is selected. In frozen `chronomancer-07`, two 15% passives scale Pain Offering's damage/speed bonuses from 83/35 to 107/45 with the existing integer rounding. Danse Macabre's extra-skeleton-consumption condition and the player's `HitRecently` remain inactive without an explicit applicable snapshot; they are not enabled to match PoB2.
+
+The Coming Calamity's enemy resistance overrides retain the normalized `EnemyInPresence` condition, including inside nested modifier payloads; an already prefixed name must not become `EnemyEnemyInPresence`. Legacy of Northpaw's 7% weapon base critical chance replaces the locally modified weapon base before added critical chance and global increases. It applies independently to each actual weapon source; unarmed attacks, shields, spells and attacks with their own skill-defined base critical chance retain their own bases.
+
+Frozen `amazon-02` illustrates the existing Blind-effect difference: 8993 Evasion against level-82 enemy Accuracy 2114, with the strongest Blind II's single 20% increased effect, gives 24% less enemy accuracy and 55% rounded evade chance (16% Deflect). The pinned PoB2 counts three copies from Pounce's three active effects, giving 32% less accuracy and 58% evade (18% Deflect). Only those evade/deflect rows are classified as explained by Blind. The separate Energy Shield/Recovery Cap error was fixed by resolving Discipline's requirements against its own weapon-set tree; explaining Blind alone does not establish TotalEHP correctness.
+
 `SpiritReserved` reports the total reservation requested by the enabled skills,
 even when it exceeds the Spirit pool; `SpiritUnreserved = Spirit - SpiritReserved`
 can be negative, and the calculator does not disable skills to fit the pool.
@@ -792,6 +808,7 @@ more damage, while the displayed `ArchonNature` template uses
   - 同一个诅咒由两个技能组施加时，敌人身上只有最强的那一份（“Debuffs of the same type do not stack, and only the copy with the strongest effect applies”，[Curse](https://www.poe2wiki.net/wiki/Curse)），比较的是各份自身与其辅助宝石的诅咒效果（`skill_env::buff_specs::curse_strength`）。PoB2 按自己的优先级表挑，光环来源优先：tuned 组的 Acolyte of Chayula（Decompose）有 Doedre's Undoing 组和 Blasphemy 组两份 Despair，PoB2 用后者（敌人混沌抗性 −31），PoBR 用更强的前者（−58）。
   - 尸体爆炸的伤害类型取自游戏 stat：`corpse_explosion_monster_life_permillage_<类型>` 与 `corpse_explosion_monster_life_%_<类型>` 写明类型；不带类型的 `corpse_explosion_monster_life_%`（Fiery Death）按它的文本 “Explosion deals base Fire Damage equal to {0}% of the Corpse's Maximum Life” 是火焰伤害（`skill_stats::corpse_explosion_damage`），PoB2 按物理计。
   - Doedre's Undoing 的 Witchtoad 每 0.25 秒生成一只，PoB2 把这个间隔乘以施法时间，施法越快爆炸越多且没有上限；PoBR 按“区域数 × 1000 / 间隔”计算，与施法速度无关（见 `skill_stats::granted_skill_modifiers`）。Dark Consequences 自带魔力消耗为 0，但 Archmage 的“Non-Channelling Spells cost an additional … of your maximum Mana”仍给它本身增加消耗；这不是继承诅咒的消耗。tuned 组 Blood Mage 的 5.7% 最大魔力经 Atalui 转成生命、Efficiency II 减少 40% 后为每次爆炸 199 生命，两区域每秒 8 次为 1592。PoB2 的每秒生命消耗却用它的施法速率 2.14/s，得到 425.86；PoBR 保留按爆炸频率支付，伤害计算不变。
+  - The frozen Forbidden Rites 2026-10-26 rank files `blood-mage-03/04/06/08/10` and `chronomancer-04` select Dark Consequences, despite their Impending Doom titles. The same Witchtoad interval gives 8/s; after dividing out the oracle's cast-speed-dependent rate, the five Blood Mage TotalDPS differences are below 1.5%. Chronomancer also differs in Hindered state, so only its rate rows are classified as explained. New known-difference entries bind the decoded XML SHA-256 as well as the short rank name, preventing reuse against another snapshot.
   - Instruments of Power 的 “50% reduced bonuses gained from Equipped Focus” 让 focus 上的 stat 按一半给予，“+# to Level of all X Skills” 不低于 1（[Instruments of Power](https://www.poe2wiki.net/wiki/Instruments_of_Power)）：focus 的 +2 法术等级计 +1，+1 仍为 +1（`skill::resolve::scale_slot_gem_property_bonuses`）。PoB2 减半 focus 的其他词条，宝石等级不减半：demo 语料的 Disciple of Varashta（Comet）的法术比参考值低一级，TotalDPS 0.86×，`ninja_parity` 的进攻与持续伤害基线各降 1 / 2 格。
   - Bonestorm（“Channel to conjure a swarm of bone spikes in the air, then release to fire them at enemies and explode”，“Can fire up to 20 Projectiles”，[Bonestorm](https://poe2db.tw/us/Bonestorm)）引导时每次施法召出一根骨刺，释放时全部射出：PoBR 按每根骨刺命中一次计，每秒命中数即施法速率；一次引导最多 20 根（`base_number_of_allowed_bone_storm_projectiles`），不改变每秒的骨刺数。PoB2 的引导层数（`Multiplier:BonestormStage`）没有配置时为 0，按最短引导时间 0.3 秒（`base_minimum_channel_time_ms`）命中一次：tuned 组的 Abyssal Lich（Bonestorm）PoB2 每秒 3.33 次，PoBR 11.96 次。**没有游戏内实测**：假设每根骨刺都命中目标。
   - “Minions have 10% chance to inflict Withered on Hit” 在没有召唤物的构筑上，PoB2 把这条词条当作玩家自己能施加 Withered，并按配置的层数给敌人加混沌承伤；PoBR 把它交给召唤物，角色自己的技能、Presence 或已有的召唤物能施加 Withered 时才计入配置的层数（`calc/withered.rs`），所以这类构筑会比参考值低。每层 5%、最多 10 层两边一致。
@@ -1499,3 +1516,387 @@ uses the existing strongest-`ArmourDefense` convention rather than multiplying
 several “defend with” percentages; this stacking interaction has no in-game
 measurement here. The current pinned exporter has no projectile-specific rule,
 so that source is exporter-absent. No new condition, event or display is added.
+
+### Selected equipment, resources and hit snapshots
+
+Imported magic item names remain unchanged. Base lookup first accepts an exact
+catalog name, then the longest complete base between a prefix and optional
+` of ...` suffix. The base itself may contain `of` (Fists of Stone); a base
+mentioned only inside a suffix is not a match. Local defence and weapon readers
+share this lookup, so an imported defence display is not counted again as a
+base when the game base is known. Grand Spectrum counts selected socketed jewels
+across implicit, explicit and enchant text; corruption can move its identifying
+line into the implicit section.
+
+Skills bound to another weapon set resolve attributes, granted levels, quality
+and socket effects against that set's passive allocation as well as its weapons.
+Only the group explicitly identified as an item grant is exempt from ordinary
+gem requirements. A listed grant keeps its supports and enabled state instead
+of acquiring a second enabled source copy. Minion-compatible supports can count
+for the summoning gem's support-based levels and reservation, using the same
+eligibility and no-type-borrowing restrictions as summon costs.
+
+Selected minion hits can establish the `Damage` capability required by a
+support even when their raw game skill types omit it, as with Fire Djinn's
+Brand. This uses that selected effect's intrinsic damage payload; it does not
+add raw types or borrow damage from a sibling skill. Non-damaging effects and
+otherwise incompatible supports remain ineligible.
+
+Selected warcries use `WarcrySpeed` for both action rate and its breakdown.
+Generic Skill Speed already feeds that bucket and is counted once; Cast Speed
+does not apply. Game cast time, action speed, cooldown recovery and explicit
+Ignore Warcry Cooldowns retain their existing roles. Frozen Warbringer05 has
+an 800 ms base and 868% applied increased speed, giving 12.1 uses per second
+with its cooldown explicitly removed.
+
+Blackened Heart scales Unholy Might buffs the character grants from the
+character's completed maximum Mana, once per full 100 Mana. Necromantic
+Conduit's ally grant expands that named buff after it reaches the minion;
+the minion's Mana does not determine the caster's granted magnitude. Recipient
+buff effect remains separate, duplicate flags establish one buff, and the
+player's own buff condition is not inherited by every minion. Low Mana,
+inactive grants, zero Presence count and blocked ally auras preserve their
+gates. The derived ally magnitude retains the caster's passive origin.
+
+Enemy `<Element>Resistance` and `<Element>Resist` modifiers are aliases in
+mitigation and its source breakdown. Xoph's Presence reduction therefore
+combines with Exposure; an explicit winning resistance override still
+bypasses those base modifiers. Hits, damage over time, minions and Sacred
+Flame use the same resolved resistance.
+
+Blackflame Covenant (game passive 42680,
+`keystone_fire_spells_become_chaos_spells`) applies only when the selected skill
+has both the Spell and Fire types. Its three retained game lines convert Fire
+to Chaos, include Chaos hit damage in the existing Ignite source calculation,
+and make that Ignite deal Chaos damage. The last operation changes enemy
+resistance and damage-taken queries, not the ailment's source, magnitude,
+duration or chance; damage increases are not applied a second time and
+penetration still does not affect damage over time. The type-changing passive
+remains an ancestor of the Ignite trace. This is a static rule, with no new
+combat state or inferred trigger history. The [game text](https://poe2db.tw/us/Blackflame_Covenant)
+and retained passive agree; PoB2 is a cross-check.
+
+Skin of the Loyal's four uncapped-resistance flags add the corresponding final
+uncapped resistance as an increased Armour, Evasion, Energy Shield or Ailment
+Threshold modifier. These are ordinary increases, not multipliers. They read
+the buff/charge resource snapshot before defence conversion, avoiding a
+self-referential conversion loop. Companion-in-Presence defaults on only when
+an enabled companion skill exists; explicit true/false remains a selected
+condition. Hinder applied by an active curse also supplies EnemyHindered.
+Enemy modifiers gated by an applied mark or curse are forwarded again after
+curse-slot selection. This enables Marked for Sickness only when a mark takes
+effect, without duplicating modifiers already active before the buff pass.
+
+Direct total Energy Shield, such as Discipline, converts into a direct Life or
+Mana total after the destination's increases/multipliers. It is not a new base
+pool and is not fed back into the defence conversion matrix. Converted totals
+retain their source attribution. Damage sharing is bounded to the incoming
+damage and the companion's finite pool. Life prevention consumes an exactly
+exhausted boundary as dead, rather than retaining a floating-point residue;
+legitimate positive sublethal Life is preserved. Incoming critical damage uses
+the incoming Hit context, independently of the player's selected skill.
+
+Remaining-chain modifiers apply to the selected hit: available chains minus
+the explicitly selected number already used, bounded to zero and capacity.
+They do not multiply DPS by a hypothetical number of targets. Twisted Empyrean's
+Mana-based added Cold damage uses the item's hand and the final maximum Mana;
+the existing PercentStat convention rounds each endpoint up before damage
+effectiveness. Its current `with Mace Skills` Fire-to-Cold conversion wording
+uses the ordinary conversion matrix and normalizes totals above 100%. The
+pinned exporter only recognizes the older `of ... skills` wording, so this
+conversion rule is exporter-absent.
+
+The frozen 2026-10-26 corpus also exposes reference differences that are not
+engine targets. Spell Totem's retained game-level cap reaches three (and its
+cast time is 0.5 seconds); the pinned exporter's hidden support overrides the
+cap to two and uses a 0.6-second placement fallback. Mortar Cannon's retained
+cast time is one second. A selected non-totem has no selected-totem capacity,
+and capacity alone does not establish a summoned-count snapshot. Runic
+Tempering's conditional reduction requires held Runic Plates; an enabled skill
+without that snapshot does not activate it. Frozen socket modifier text remains
+an input even when the current rune definition changes (for example Zalatl's
+3% versus 5% Mana). Blind comparisons must distinguish the strongest applicable
+effect from duplicate copies; explaining Evade/Deflect does not by itself
+explain TotalEHP. The Blood Mage03 pinned-oracle EHP has a separately traced
+positive-Life floating residue after lethal damage; its recursive batched-hit
+result is not a valid numerical target.
+
+Frozen Lich02's Storm Mage reaches gem level 38 / monster level 76 after the
+named +3 level bonus is recognized. Its base Life 4729 and 213% increased Life
+give 14801.77. The pinned exporter additionally deducts the monster's 15%
+Energy Shield share, producing approximately 12582 Life. The retained
+`energyShield` field and the native schema's conversion comment come from the
+vendor extraction path; they do not independently establish whether the game
+deducts Life or grants additional Energy Shield. Keep this row unresolved,
+without changing the formula or classifying it as a known reference error.
+
+Storm Mage's separate quality stat
+`minion_maximum_life_%_to_gain_as_maximum_energy_shield` grants extra ES from
+that minion's completed Life. Its retained handler uses `EnergyShield BASE`
+with `PercentStat(Life)`, not the base-resource gain-as matrix channel. The
+existing PercentStat convention rounds this contribution upward before normal
+ES scaling; this rounding has no in-game measurement. Resolve the recipient's
+Life after its buffs, before offence and defence, and use the same snapshot
+for its source queries and ES formula. Player Life and unrelated minions do
+not supply this value. This quality grant does not deduct Life or resolve the
+intrinsic 15% question above.
+
+The frozen top-ten corpus has 23 remaining attribute-requirement differences
+whose reference is exactly the nominal requirement of an exported amulet grant
+(Eternal Rage, Wolf Pack, Trinity, Cast on Critical or Cast on Elemental
+Ailment). An ordinary exported listing matched to that grant is the same skill,
+not a second equipped gem. Keep its nominal requirement out of `ReqStr`,
+`ReqDex` and `ReqInt`; the granted skill's usable level is checked separately.
+An independent genuine gem still contributes its requirement. The bounded
+regression covers ten grant/level combinations and the Gemling's 8% reduction;
+the evidence is in `fix-round-3/requirements-evidence.json`.
+
+Undying Hate's explicit "Conquered Small Passive Skills also grant ..." lines
+are independent of its seed-specific notable transformations. Attach a fully
+parsed payload to each reconstructed non-attribute small passive in the
+conquered radius; allocation and small-passive effect scaling then follow the
+ordinary tree path. Attribute passives have their own category and do not
+receive this addition. Unknown payloads and unknown notable replacements
+remain diagnostic. Frozen Titan06 has twelve allocated small passives with
+6% Elemental Damage each; Hulking Form raises each to 9%, adding 108% in total.
+The retained game stat is
+`local_historic_abyss_jewel_conquered_small_passives_grant_elemental_damage_+%`;
+its imported roll is preserved instead of rebuilding it from a current range.
+The separate "Conquered Attribute Passive Skills also grant ..." directive
+attaches only to attribute nodes under the same radius, allocation and weapon-set
+gates. It retains the imported roll and source, and does not receive Hulking
+Form's small-passive amplification. Reduced frozen regressions cover Ritualist09's
+two +6 Intelligence grants (147 to 160 final Intelligence) and Smith06's three
++5 Strength grants (271 to 287 final Strength); these checks do not reconstruct
+seed-specific notable replacements.
+
+Frozen Witchhunter10's Megalomaniac grants Leather Bound Gauntlets (51446):
+1323 equipped-glove Armour adds 1323 base Evasion. This affects Armour/Evasion,
+Sorcery Ward and the downstream defence panels; the pinned exporter omits the
+granted passive. Frozen Infernalist03 instead differs at its Runeseeker rune:
+the imported line is 45% less Life, whereas PoB2 rebuilds two MORE modifiers
+and rounds their product. Preserve the frozen line. Six defence rows across
+four Warbringer builds use the existing selected-totem count instead of assuming
+an additional totem. Exact affected rows and arithmetic are in
+`fix-round-3/static-defence-attribution.json`.
+
+The five frozen Pathfinder examples already report their finite flask recovery
+in `Flask1RecoveryPerSecond` and `Flask1EnergyShieldRecoveryPerSecond`. The
+reference adds those rates to regeneration. PoBR keeps the per-use output
+separate; selecting an active flask does not establish continuous charge supply
+or repeated-use uptime. No extra state or sustained-regeneration contribution
+is introduced for these comparisons.
+
+Jewel and passive-effect scaling reaches numeric payloads inside
+`MinionModifier` lists as well as top-level modifiers. The Adorned still uses
+the jewel's corruption, rarity and socket eligibility; Hulking Form still uses
+the allocated small passive. Preserve the wrapper's scope and source, and add
+only the effect delta once. Flags and MORE modifiers do not acquire a numeric
+passive-effect delta.
+
+The companion Presence rune pair uses its retained game stats
+`companions_in_presence_non_skill_base_all_damage_%_to_gain_as_random_element`
+and `companions_in_presence_base_resist_all_elements_%`. Both effects follow
+the existing ally aura path, restricted by the summoning skill's Companion
+type. Explicit zero Presence, hidden recipients and blocked ally auras suppress
+both the benefit and the resistance penalty. Random elemental gain uses the
+existing equal three-element average; positive Presence counts do not assign
+individual actor positions. Recipient aura/buff scaling follows the current
+ExtraAura convention, without an in-game effect/range measurement.
+
+PoB item text's `Implicits: N` is a serialized line boundary, including enchant
+and rune lines inside that span. Their destination remains `enchant_texts`,
+but they consume the count before the following explicit lines are classified.
+Otherwise a wrapped Adorned modifier can be split between implicit and explicit
+sections and lose its effect even though neither raw line was dropped. The
+earlier whole-corpus structural import audit checks retention and identifiers;
+it does not prove correct section assignment or downstream modifier application.
+
+Flame Wall's existing `FlameWallAddedDamage` selection supplies only the named
+projectile stat set's flat Fire damage. Resolve the enabled source's effective
+level, then apply the recipient projectile's ordinary effectiveness and damage
+pipeline. Duplicate local and party copies use the existing strongest-effect
+merge. The selection does not infer passage, lingering Ignite, infusion or
+uptime, and no additional configuration state is introduced.
+
+Some monster generic attacks retain both Melee and Projectile skill types as
+capabilities. Their actual projectile hit flag uses retained weapon context
+when the selected attack can fire arrows or wand projectiles; an explicit
+`base_is_projectile` takes precedence. Known unarmed recipients do not receive
+weapon-projectile bonuses. Missing context remains unknown, and raw types stay
+available for support compatibility rather than being rewritten globally.
+
+Enabled ordinary buff copies must reach the existing strongest-modifier merge
+before deduplication. A first-copy filter can discard a stronger later quality
+bonus: the frozen Gemling08 has Cast on Critical copies with 22% and 50%
+increased critical chance. Keep the larger contribution and its origin once;
+disabled groups or gems do not supply a candidate. Ordinary persistent buffs
+retain their existing alternate-weapon behavior; the frozen corpus has no
+explicit false `enableGlobal1/2` flags and does not validate that legacy state.
+This does not invent additional buff uptime or change frozen item rolls to
+match an exporter.
+For those same named buffs, matching `ExtraAura` lists merge their numeric
+children after effect scaling instead of stacking duplicate Offering payloads.
+Each child first inherits its own wrapper's source when needed. Keep surviving
+children inside their original source-bearing wrappers, removing displaced
+children and empty wrappers; both minion details and the outer-modifier line
+ledger must retain the winning sources. Other LIST kinds retain their existing
+append behavior.
+
+Frozen Shaman08's configured Flame Wall supplies 18–26 Fire damage at level 15;
+its recipient Spark can therefore ignite under the existing ailment model.
+The pinned exporter's zero stack potential reads only the BASE totem limit
+while the skill supplies an OVERRIDE. This zero is not evidence that added
+Fire damage cannot ignite. The exact steady-state value with a chosen number
+of simultaneous totems remains unverified, so the two affected rows stay in
+the diagnostic queue rather than being declared fully explained.
+
+### Static support costs, recovery and grant identity
+
+Mystic Harvest (`life_leech_also_recovers_based_on_elemental_damage_types`)
+extends the damage funding an existing Life-leech percentage to elemental
+damage; it grants no percentage and does not remove attack/spell restrictions.
+Essentia's `convert_all_life_leech_to_energy_shield_leech` keeps that damage
+eligibility while redirecting the base leech to ES. The game's
+[Stat Conversion](https://poe2db.tw/us/Stat_Conversion) wording applies
+destination modifiers: ES amount, speed, recovery, instant share and restrictions,
+not Life modifiers. Life on hit is separate and remains Life recovery.
+The panel and sustained recovery share typed damage eligibility and the existing
+whole-hit damage ceiling. The panel remains a raw average-hit single-instance
+view; it need not equal sustained, recovery-rate-scaled or instant recovery.
+
+`LifeRegenAppliesToManaRegen` and `ManaRegenAppliesToRageRegen` share only
+increases/reductions of the source regeneration rate. Source BASE, MORE and
+recovery modifiers do not transfer. Detail groups retain the original sources
+and conditions and include only those INC contributions.
+
+Eldritch Will's `maximum_life_mana_and_energy_shield_+%` uses the resource
+names consumed by the pool calculation: `MaximumLife`, `MaximumMana` and
+`EnergyShield`. The shorter `Life` and `Mana` INC aliases are not pool inputs.
+`MovementSpeedAppliesToEnergyShieldRecharge` similarly shares only MovementSpeed
+INC into recharge rate, preserving source conditions and the same detail rows.
+It does not transfer base speed, MORE factors, action speed or movement penalties,
+and does not establish recharge uptime.
+
+`chance_for_extra_damage_roll_with_lightning_damage_%` supplies
+`LightningLuckyHitsChance`, not flat Lightning damage. Preserve the imported
+roll and use the existing per-type hit-luck calculation; generic hit luck and
+Lightning hit luck combine only for Lightning hits. This rule does not change
+the separate ailment damage-roll convention.
+
+[Derange](https://poe2db.tw/us/Derange) adds an ES cost equal to final
+Intelligence (`gain_energy_shield_cost_equal_to_intelligence`). Its compatible,
+selected support supplies `ESCostNoMult` through the existing cost path.
+Support multipliers of a skill's base cost do not multiply this additional
+cost; ordinary applicable cost modifiers still do. Culling Strike I/II's native
+rare/unique grant requires the Effective context as well as the selected enemy
+rarity. Config visibility recognizes the conditional grant before it is active,
+so users can expose the existing rarity checkbox without enabling it implicitly.
+
+Native `base_skill_is_ballistified` / `is_ranged_attack_totem` establish the
+selected Ballista identity. A Mortar Cannon's socketed attack receives its
+Ballista damage and speed modifiers. Capacity queries include
+`ActiveBallistaLimit` and the host's `TotemsAreBallistae` category alongside
+generic totem additions; raw support-compatibility types remain unchanged.
+Capacity is not evidence of how many totems are present.
+Frozen Warbringer08's selected Ballista capacity is 1 base + 1 ascendancy +
+2 crossbow + 1 passive = 5, with no override and a neutral MORE factor. Pinned
+PoB2 returns 2 because its capacity query misses the Ballista additions when
+the selected attack lacks its host's type. Only this capacity row is explained;
+the remaining damage difference is separate.
+
+Unique item grants use the game's `ModGrantedSkills` attachment relationship,
+not display-name collision order. The current catalog records Coming Calamity's
+three `UniqueHeraldOf*Player` variants and Sands of Silk's `BlinkSandPlayer`.
+Only proven attached calculation groups are canonicalized; imported identities
+and independent gems remain intact. Zero base Spirit reservation does not exempt
+additive support reservation. Armour grants retain their group's activation set,
+and changing an effect list must preserve the selected effect's meaning.
+The native variants also have zero attribute shares. In the worked Oracle Grim
+Pillars `0a7cf6c82619`, Sands' grant no longer supplies ordinary Blink 20's
+157 Intelligence requirement; independent Mana Tempest 19 and Temporal Chains 19
+retain the correct maximum of 147. This deliberately loses one saved-reference
+match. Frozen Deadeye01 similarly needs 80 Strength from sixteen red supports,
+above its equipment requirements, after the attached native Heralds replace
+ordinary Herald of Ash's nominal 157. The other sixteen skill records are
+unchanged; only this exact requirement row is registered as explained.
+
+Mana Remnants' permanent regeneration buff is distinct from its collected
+Remnants. `RemnantEffect` does not scale that permanent buff; ordinary BuffEffect
+and the existing qualifying-skill convention still apply. Clarity II's possible
+use of separate minion effects to satisfy `Persistent AND Buff` remains
+unverified and is not enabled merely to match the exporter. Melting Maelstrom's
+finite per-use recovery remains in the existing flask utility output, without
+assuming permanent flask uptime. Time of Need and Ghost Dance's repeat intervals
+remain separate from activation cooldowns; no event history is inferred.
+
+Watch How I Do It supplies recipient-local `MainHandDamageToAllies` through the
+existing ally aura path. Only the main-hand weapon's own damage components feed
+attacking recipients; player or ring-added damage does not. Companion-only
+sharing remains separate, and existing aura, hidden-recipient and Presence gates
+still apply. Damage per different Companion counts distinct resolved companion
+identities with positive populations in enabled, active-set groups, not capacity
+or duplicate copies. Existing explicit false/zero Presence snapshots suppress it;
+a positive aggregate does not locate individual companions.
+Companion membership is independent of damageability: Manifest Weapon counts
+as a Companion and obeys Presence exclusions, but its undamageable body does
+not add to `TotalCompanionLife`. Shared weapon-damage contributions retain each
+grant's original source and raw text; Watch How I Do It and Catha remain distinct
+in minion detail rows instead of becoming one anonymous derived modifier.
+
+Resistance per equipped item with a Lightning resistance modifier counts each
+current ordinary equipment slot once. Direct all-element and negative modifiers
+qualify; cancelling modifiers or an inactive condition do not erase the item's
+modifier. Nested ally/minion grants and separately stored jewels/flasks/charms
+do not count. This follows the existing equipment-count boundary; eligibility of
+Transcendent limbs and maximum-resistance-only modifiers is not client-verified.
+
+Loreweave's combined rarity/exclusion stat retains only its own rarity source,
+not every rarity modifier on the same item. The exact adjacent pair is joined
+within its section before parsing and diagnostic collection; imported text stays
+unchanged. Native and reference-basis modes retain the allowed 84% (factor 1.84),
+whereas pinned PoB2 also applies a 15% charm (1.99). This partial support is
+`exporter: "differs"`, so comparison does not discard the supported numeric part.
+
+Crimson Assault replaces Bleeding's base duration with one second before the
+existing duration INC/MORE and faster-damage modifiers. Instance damage, retained
+terms and source views use the same resolved base. Shattering Spite's native
+`active_skill_damaging_ailment_effect_+%_final` applies its -50% through damaging
+ailment effect; it does not infer Bloodstone Lance counts or conditional leech.
+The pinned exporter omits this stat, so it is disabled only for reference-basis
+comparison. Neither change explains every remaining saved BleedDPS difference.
+
+Oisin's `mana_leech_from_elemental_instead` uses the existing elemental Mana-leech
+eligibility and excludes Physical damage from that resource's leech. It grants no
+percentage, keeps source attack/spell restrictions, and preserves independently
+eligible Chaos leech. The whole-hit ceiling still includes all damage before
+eligibility weighting. Life/ES conversion and the panel's existing conventions
+are unchanged.
+
+Brutality's native no-elemental/no-chaos stats admit the existing `DealNo*` flags
+through the shared player/minion mapper. The existing post-conversion damage
+gates remove those components while retaining physical MORE and support scope.
+Damaging ailments also respect the restriction on their actual dealt type:
+Physical hits cannot fund Poison when Chaos damage is prohibited. A blocked
+ailment has no damage or stack terms and keeps the restricting source in its
+trace. Covenant's scoped Ignite uses Chaos here; ordinary Ignite uses Fire.
+The separate chance to ignore physical reduction remains diagnostic; this batch
+does not infer a missing mitigation contribution or add a probabilistic model.
+Second Wind's double-use capability remains unsupported, but the only selected
+groups in this cohort select Convalescence's ineligible reservation effect;
+the active effect is not silently substituted.
+
+War Banner's native `base_skill_buff_banner_attack_speed_+%_to_apply` supplies
+increased Attack Speed through the existing planted aura. It uses the selected
+`BannerPlanted` snapshot and normal aura scaling for player and allied attacks;
+it does not infer Glory generation, placement frequency or uptime. The pinned
+exporter omits this speed stat, so reference-basis comparison excludes only this
+contribution and retains the existing damage and accuracy contributions.
+
+The frozen Tactician06 comparison illustrates why agreement alone is insufficient:
+pinned PoB2 already includes Watch How I Do It's weapon share, but omits the
+planted Banner damage on the selected wolf. The imported `bannerPlanted=true`
+supports the native active-aura snapshot. Earlier agreement came from cancelling
+differences. The [isolated evidence](../examples/reference-builds/ninja-top10-2026-10-26/reports/fix-round-5/evidence/tactician-06-s04/evidence.json)
+retains a qualified residual rather than registering the whole DPS row as known;
+the subsequent Banner speed repair is measured separately in default mode.

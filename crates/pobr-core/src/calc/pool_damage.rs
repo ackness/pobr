@@ -294,7 +294,10 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
             if (ally.damage_type.is_none() || ally.damage_type == Some(dtype))
                 && ally.remaining > 0.0
             {
-                let temp = (rem * ally.mitigation_pct / 100.0).min(ally.remaining);
+                // Several companions can supply more than 100% in total,
+                // but they cannot take more damage than this hit contains.
+                let temp =
+                    (rem * ally.mitigation_pct.clamp(0.0, 100.0) / 100.0).min(ally.remaining);
                 ally.remaining -= temp;
                 rem -= temp;
                 if temp > 0.0 {
@@ -415,9 +418,28 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
             // (this feeds into the `:659` hit pool remainder sum).
             mom_pool_remaining = 0.0;
         }
+        // Runic Ward absorbs damage after Life reaches 1. Reserve the damage
+        // needed to reach that point, then spend Ward before the Life-only
+        // loss-prevention/overkill calculation. Otherwise that calculation
+        // discards lethal excess while Ward still has damage left to absorb.
+        // Grasping Wounds prevents Life loss, not damage absorbed by Ward.
+        if ward_applies && ward > 0.0 && life > 0.0 && life_hit_pool.is_finite() {
+            let last_life_hit_pool = life_hit_pool_with_loss_prevention(
+                life.min(1.0),
+                ctx.max_life,
+                ctx.prevented_life_loss,
+                ctx.life_loss_below_half_prevented,
+            );
+            let damage_before_ward = (life_hit_pool - last_life_hit_pool).max(0.0);
+            let ward_damage = (rem - damage_before_ward).clamp(0.0, ward);
+            ward -= ward_damage;
+            rem -= ward_damage;
+            lose(&mut resources_lost, dtype, "ward", ward_damage);
+        }
         // :611-651 loss-prevention (gate = preventedLifeLossTotal > 0,
         // derived per :2670: prev>0 or belowHalf's effective value >0).
         let below_half_eff = ctx.prevented_life_loss_below_half_effective();
+        let mut exhausts_life = false;
         if ctx.prevented_life_loss > 0.0 || below_half_eff > 0.0 {
             let half_life = ctx.max_life * 0.5;
             let life_over_half = (life - half_life).max(0.0);
@@ -430,6 +452,8 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
                 + life.min(half_life).max(0.0)
                     / (1.0 - prevent_below_half_pct)
                     / (1.0 - prevent_pct);
+            exhausts_life = damage_that_life_can_still_take.is_finite()
+                && rem >= damage_that_life_can_still_take;
             if damage_that_life_can_still_take < rem {
                 overkill += rem - damage_that_life_can_still_take;
                 rem = damage_that_life_can_still_take;
@@ -439,11 +463,20 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
                 // the above-half-life pool's share, then folds the rest
                 // through two steps -- "non-specific below-half prevention → specific below-half prevention".
                 let damage_to_split = rem.min(pool_above_low);
-                let lost_life = damage_to_split * (1.0 - prevent_pct);
-                let prevented_loss = damage_to_split * prevent_pct;
+                let reaches_half_life = rem >= pool_above_low;
+                let lost_life = if reaches_half_life {
+                    life_over_half
+                } else {
+                    damage_to_split * (1.0 - prevent_pct)
+                };
+                let prevented_loss = damage_to_split - lost_life;
                 rem -= damage_to_split;
                 life_loss_lost_over_time += prevented_loss;
-                life -= lost_life;
+                life = if reaches_half_life {
+                    life.min(half_life)
+                } else {
+                    life - lost_life
+                };
                 lose(&mut resources_lost, dtype, "life", lost_life);
                 let mut prevented_total_this_type = prevented_loss;
                 if life <= half_life {
@@ -469,24 +502,15 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
                 lose(&mut resources_lost, dtype, "life_loss_prevented", temp);
             }
         }
-        // :659-676 life down to 1, then Runic Ward, then the last point of life.
+        // Ward's share has already been removed; the rest consumes Life.
         if life > 0.0 {
-            let temp = rem.min(life - 1.0);
+            // Once the finite hit pool is exhausted, consume Life exactly.
+            // Reversing the prevention division can otherwise leave a tiny
+            // positive remainder, allowing an extra hit or recovery on block.
+            let temp = if exhausts_life { life } else { rem.min(life) };
             life -= temp;
-            rem -= temp;
+            rem = (rem - temp).max(0.0);
             lose(&mut resources_lost, dtype, "life", temp);
-            if ward > 0.0 && ward_applies {
-                let temp = rem.min(ward);
-                ward -= temp;
-                rem -= temp;
-                lose(&mut resources_lost, dtype, "ward", temp);
-            }
-            if rem > 0.0 {
-                let temp = rem.min(life);
-                life -= temp;
-                rem -= temp;
-                lose(&mut resources_lost, dtype, "life", temp);
-            }
         }
         // :656-657 overkill.
         overkill += rem;
@@ -693,13 +717,17 @@ pub fn extend_total_hit_pool(
             pool = apply_protected_layer(pool, protected, 1.0 - guard_rate / 100.0);
         }
     }
-    // allies (:3567-3595): each layer is folded in via poolProtected in turn
-    // (when mitigation is 0, protected=∞ and the formula naturally degenerates to the original pool).
+    // A fully absorbing ally contributes its finite pool, just like a
+    // fully absorbing guard. Partial shares use the protected-pool formula.
     for ally in &pools.allies {
         if ally.remaining > 0.0 && (ally.damage_type.is_none() || ally.damage_type == Some(dtype)) {
-            let rate = ally.mitigation_pct / 100.0;
-            let protected = pool_protected(ally.remaining, rate);
-            pool = apply_protected_layer(pool, protected, 1.0 - rate);
+            let rate = ally.mitigation_pct.clamp(0.0, 100.0) / 100.0;
+            if rate >= 1.0 {
+                pool += ally.remaining;
+            } else {
+                let protected = pool_protected(ally.remaining, rate);
+                pool = apply_protected_layer(pool, protected, 1.0 - rate);
+            }
         }
     }
     pool

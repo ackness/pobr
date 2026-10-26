@@ -1,0 +1,40 @@
+{
+  "name": "amazon-07",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%E5%9C%A8%E9%9B%BE%E9%87%8C%E5%91%8A%E7%99%BD-1907/%E9%9B%BE%E9%87%8C%E5%91%8A%E7%99%BD",
+    "account": "在雾里告白-1907",
+    "character": "雾里告白",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:35+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=%E5%9C%A8%E9%9B%BE%E9%87%8C%E5%91%8A%E7%99%BD-1907&name=%E9%9B%BE%E9%87%8C%E5%91%8A%E7%99%BD&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Amazon",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 7,
+    "index_sha256": "d02a718c55fd5605947bb438dec47faa4ce6d241f076360e4494bf9a36333793",
+    "character_response_sha256": "6466ad2bfa0ace4f686a21f2f003de32193b2458e84586f1746b53ecf0581d10",
+    "upstream_updated_utc": "2026-10-15T20:11:24.631173Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-24T12:17:08.940602Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Amazon",
+    "level": 99,
+    "main_skill": "Lightning Spear"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 12,
+    "code_sha256": "a494df93ab956199a206a5716022649c979696f1b9ffb4bf3d294619ce862039",
+    "code_chars": 13536,
+    "decoded_bytes": 55146
+  }
+}

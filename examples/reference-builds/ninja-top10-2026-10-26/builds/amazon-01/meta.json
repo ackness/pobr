@@ -1,0 +1,40 @@
+{
+  "name": "amazon-01",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Muni-1104/Munifr",
+    "account": "Muni-1104",
+    "character": "Munifr",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:32+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Muni-1104&name=Munifr&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Amazon",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 1,
+    "index_sha256": "d02a718c55fd5605947bb438dec47faa4ce6d241f076360e4494bf9a36333793",
+    "character_response_sha256": "607e771612582ebfab9a2e19896272b061e8c19dcaf4b76d6852baec43a84c35",
+    "upstream_updated_utc": "2026-10-22T13:42:56.054107Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:22.009687Z",
+    "upstream_last_checked_utc": "2026-10-25T08:43:28.003781Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Amazon",
+    "level": 100,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "0a4bcd31eae3331c0acd76fb7731c0e1e50f4a690c80be98401d057f3b93bc7e",
+    "code_chars": 13376,
+    "decoded_bytes": 49765
+  }
+}

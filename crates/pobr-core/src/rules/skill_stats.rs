@@ -18,6 +18,8 @@ fn exporter_rule(stat: &str) -> Option<std::sync::Arc<pobr_data::source::Exporte
         std::sync::LazyLock::new(|| {
             [
                 "base_spell_mana_cost_efficiency_+%",
+                "active_skill_damaging_ailment_effect_+%_final",
+                "base_skill_buff_banner_attack_speed_+%_to_apply",
                 // The per-hit Armour Break, debuff uptime, curse delay and
                 // remnant views (`calc::effect_views`).
                 "armour_break_physical_damage_%_dealt_as_armour_break",
@@ -168,17 +170,19 @@ pub fn corpse_explosion_damage(stat: &str, value: f64) -> Option<(DamageType, f6
     }
 }
 
-/// The stats that say how many minions a summoning skill creates, of each
-/// kind of minion it summons.
-const SUMMONED_MINION_COUNTS: [&str; 2] = [
+/// The stats that set the count or limit used for a summoning skill's
+/// minion snapshot, for each kind of minion it summons.
+const SUMMONED_MINION_COUNTS: [&str; 3] = [
     // Cackling Companions: "Summons {0} Hyenas".
     "skill_hyena_cackle_size",
     // Wolf Pack: pack size grows from 3 at gem level 1 to 6 at level 20.
     "skill_wolf_pack_size",
+    // Raise Zombie: the skill's base limit, before temporary-minion bonuses.
+    "base_number_of_zombies_allowed",
 ];
 
-/// Whether the stat `stat` of a summoning skill is the number of minions it
-/// creates. They are counted where the skill creates them
+/// Whether the stat `stat` supplies the count or limit of a summoning
+/// skill's minion snapshot. It is read where the skill creates them
 /// (`skill_env::spawn_minions`); the stat grants the skill nothing.
 pub fn is_summoned_minion_count(stat: &str) -> bool {
     SUMMONED_MINION_COUNTS.contains(&stat)
@@ -220,6 +224,17 @@ fn minion_modifiers_impl(
         // Damage".
         "feeding_frenzy_minion_damage_taken_+%_final" => {
             Modifier::number("DamageTaken", ModType::More, value)
+        }
+        // Storm Mage quality: "Minions gain {0}% of their maximum Life as
+        // Extra maximum Energy Shield". The retained handler is flat ES
+        // with PercentStat(Life), using the minion's completed Life pool;
+        // it is not the base-resource LifeGainAsEnergyShield matrix channel.
+        "minion_maximum_life_%_to_gain_as_maximum_energy_shield" => {
+            Modifier::number("EnergyShield", ModType::Base, value)
+                .with_tag(ModTag::PercentStat {
+                    stat: "Life".into(),
+                    percent: Some(1.0),
+                })
         }
         // "Supported Skills have {0}% increased Minion Attack Speed".
         "minion_attack_speed_+%" => Modifier::number("AttackSpeed", ModType::Inc, value),
@@ -378,7 +393,23 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
                 Modifier::number(name, ModType::Base, value / 100.0).with_flags(ModFlags::ATTACK),
             ])
         }
+        // Derange adds a cost equal to the character's Intelligence. Like
+        // Archmage's added cost, support cost multipliers scale the skill's
+        // own cost, not this additional resource cost.
+        "gain_energy_shield_cost_equal_to_intelligence" => Some(vec![
+            Modifier::number("ESCostNoMult", ModType::Base, value).with_tag(ModTag::PercentStat {
+                stat: "Intelligence".into(),
+                percent: Some(100.0),
+            }),
+        ]),
         "skill_disabled_unless_cloned" => Some(vec![Modifier::flag("MirageSkill")]),
+        // Native Ballista hosts and the support half that makes a socketed
+        // attack Ballista-used. This is skill identity, not a combat toggle.
+        "base_skill_is_ballistified" | "is_ranged_attack_totem" => Some(if value != 0.0 {
+            vec![Modifier::flag("Condition:BallistaSkill")]
+        } else {
+            Vec::new()
+        }),
         "pin_almost_pinned_enemies" => Some(vec![Modifier::flag("PinOnPrimed")]),
         "pin_duration_+%" => Some(vec![Modifier::number(
             "EnemyPinDuration",
@@ -482,6 +513,13 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         // The selected effect deals no damage; secondary explosions have
         // their own stat sets without this stat.
         "base_deal_no_damage" => Some(vec![Modifier::flag("DealNoDamage")]),
+        // Shattering Spite: "50% less Magnitude of Damaging Ailments
+        // inflicted". This scales damaging ailments, not hits or Shock/Chill.
+        "active_skill_damaging_ailment_effect_+%_final" => Some(vec![Modifier::number(
+            "AilmentEffect",
+            ModType::More,
+            value,
+        )]),
         // Explosive Demise detonates an allied minion below this life
         // threshold. With no minion present there is nothing to detonate.
         "command_minion_target_ally_below_x_life" => {
@@ -642,6 +680,18 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         ]),
         // Reap: "Culling Strike" (`calc::skill_dot::cull_multiplier`).
         "kill_enemy_on_hit_if_under_10%_life" => Some(vec![Modifier::flag("CanCull")]),
+        // Culling Strike I/II: "Supported Skills have Culling Strike
+        // against Rare or Unique Enemies". Boss presets use the bare rarity
+        // condition; explicit enemy configuration uses the prefixed one.
+        // No previous cull is required for this grant.
+        "support_culling_strike_vs_rare_or_unique_enemy" => Some(vec![
+            Modifier::flag("CanCull")
+                .with_tag(ModTag::condition("Effective", false))
+                .with_tag(ModTag::ConditionAnyOf {
+                    vars: vec!["RareOrUnique".into(), "EnemyRareOrUnique".into()],
+                    negated: false,
+                }),
+        ]),
         // Detonate Living: "Your Spells have Culling Strike".
         "spells_have_culling_strike" => {
             Some(vec![Modifier::flag("CanCull").with_flags(ModFlags::SPELL)])
@@ -975,6 +1025,13 @@ pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option
 
 fn player_buff_modifiers_impl(stat: &str, value: f64, skill: BuffSkill) -> Option<Vec<Modifier>> {
     match stat {
+        // War Banner's planted aura grants attack speed to you and nearby
+        // allies. The aura pass handles magnitude and recipient forwarding,
+        // just as for its attack damage and accuracy grants.
+        "base_skill_buff_banner_attack_speed_+%_to_apply" => Some(vec![
+            Modifier::number("AttackSpeed", ModType::Inc, value)
+                .with_tag(ModTag::condition("BannerPlanted", false)),
+        ]),
         // An enabled Cry is a source; only an explicitly active Cry grants
         // its buff. The shared boost state handles Strike/Slam eligibility.
         "ancestral_cry_empowered_attacks_strike_X_additional_enemies" => Some(vec![

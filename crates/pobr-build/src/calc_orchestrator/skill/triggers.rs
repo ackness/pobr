@@ -264,6 +264,7 @@ mod support_judgement_tests {
             add_minion_list: vec![],
             minion_uses: vec![],
             minion_has_item_set: false,
+            ignore_minion_types: false,
             skill_types: v(skill_types),
         }
     }

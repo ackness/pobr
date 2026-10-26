@@ -1,0 +1,40 @@
+{
+  "name": "witchhunter-06",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/JDNolen-1851/JohnGemerson",
+    "account": "JDNolen-1851",
+    "character": "JohnGemerson",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:59:15+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=JDNolen-1851&name=JohnGemerson&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Witchhunter",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 6,
+    "index_sha256": "68c825c7ede7286776caf99b559b87c95922487f52e1027b6ac2e7e7646aa393",
+    "character_response_sha256": "32004b427bcea15ca73086e6e80cefce1ac4c02824b6e6290f1a9f2fb24f8bcb",
+    "upstream_updated_utc": "2026-10-12T18:56:46.817246Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-23T07:05:33.917123Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Witchhunter",
+    "level": 99,
+    "main_skill": "Frostbolt"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 11,
+    "code_sha256": "d45195daa6d16a493e3e7be0e9b34f15f78947e48d39709abe0ba026e6a7a761",
+    "code_chars": 13348,
+    "decoded_bytes": 48839
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "blood-mage-06",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/pdtien97-3195/FR_PDT",
+    "account": "pdtien97-3195",
+    "character": "FR_PDT",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:39+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=pdtien97-3195&name=FR_PDT&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Blood+Mage",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 6,
+    "index_sha256": "67f985c6feb43317e04c08caa468fd4d93c90082d9bbc9b8aed00e69e93b2ad3",
+    "character_response_sha256": "982a701d924154447e08f2e8cadfdd281bdd401f3152a89d51f07058a417d9e0",
+    "upstream_updated_utc": "2026-10-15T11:30:20.30613Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-24T04:03:45.429199Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Blood Mage",
+    "level": 99,
+    "main_skill": "Impending Doom"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 6,
+    "code_sha256": "0eaa9dfd4f3d606ff4f857c6aca05e8faa4cd5fda8744b023c91750dff11d124",
+    "code_chars": 10668,
+    "decoded_bytes": 36240
+  }
+}

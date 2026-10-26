@@ -1,0 +1,1941 @@
+{
+  "scope": "Only ninja-top10-2026-10-26 code.txt builds with archived quality output; no holdout inspected. Config-true candidates are evidence inventory, not after-run classification.",
+  "source_data": "0.5.5.4.2/base/granted_effect_stat_sets.json / FlameWallPlayer / FlameWallProjectileBuffPlayer",
+  "game_text_url": "https://poe2db.tw/us/Flame_Wall",
+  "native_fire_by_level": {
+    "20": [
+      27,
+      41
+    ],
+    "23": [
+      34,
+      51
+    ],
+    "34": [
+      71,
+      107
+    ]
+  },
+  "candidate_count": 15,
+  "candidate_projectile_count": 8,
+  "gemling08_oracle": {
+    "path": "/root/codes/pobr/.cache/pob2-oracle/2cb238bed7e79480-8e83277f72.json",
+    "flame_wall_levels": [
+      {
+        "level": 19,
+        "quality": 45,
+        "skillId": "FlameWallPlayer"
+      },
+      {
+        "level": 34,
+        "quality": 22,
+        "skillId": "FlameWallPlayer"
+      }
+    ],
+    "summed_base": {
+      "Chaos": {
+        "SummedMaxBase": 0,
+        "SummedMinBase": 0
+      },
+      "Cold": {
+        "SummedMaxBase": 0,
+        "SummedMinBase": 0
+      },
+      "Fire": {
+        "SummedMaxBase": 107,
+        "SummedMinBase": 71
+      },
+      "Lightning": {
+        "SummedMaxBase": 10460.84,
+        "SummedMinBase": 823.36
+      },
+      "Physical": {
+        "SummedMaxBase": 0,
+        "SummedMinBase": 0
+      }
+    }
+  },
+  "candidates": [
+    {
+      "slug": "chronomancer-01",
+      "cache": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/quality-builds/chronomancer-01.json",
+      "config": {
+        "boolean": "true",
+        "name": "flameWallAddedDamage"
+      },
+      "main_skill": "CometPlayer",
+      "native_projectile_type": false,
+      "flame_wall_levels": [
+        {
+          "skill_id": "FlameWallPlayer",
+          "level": 35,
+          "quality": 20
+        }
+      ],
+      "raw_flame_wall_groups": [
+        {
+          "group": {
+            "enabled": "true",
+            "includeInFullDPS": "nil",
+            "label": "",
+            "mainActiveSkill": "3",
+            "mainActiveSkillCalcs": "3"
+          },
+          "gems": [
+            {
+              "corruptLevel": "1",
+              "corrupted": "true",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemFlameWall",
+              "level": "20",
+              "nameSpec": "Flame Wall",
+              "quality": "20",
+              "skillId": "FlameWallPlayer",
+              "variantId": "FlameWall"
+            }
+          ]
+        }
+      ],
+      "total_hit_avg_before": 34231117.73002972,
+      "damage_sources_before": [
+        {
+          "damage_type": "Cold",
+          "min": 11808.0,
+          "max": 17713.0,
+          "added_min": 11808.0,
+          "added_max": 17713.0,
+          "added_effect": 1.0,
+          "added_min_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 11808.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_minimum_base_cold_damage",
+              "slot": null
+            }
+          ],
+          "added_max_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 17713.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_maximum_base_cold_damage",
+              "slot": null
+            }
+          ],
+          "added_effect_mods": [],
+          "convert_mods": [],
+          "gain_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 10.0,
+              "active": true,
+              "source_text": "Gain 10% of Elemental Damage as Extra Cold Damage",
+              "origin_kind": "ItemAffix",
+              "origin_id": "item.weapon1.explicit",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 10.0,
+              "active": true,
+              "source_text": "Gain 10% of Elemental Damage as Extra Cold Damage",
+              "origin_kind": "ItemAffix",
+              "origin_id": "item.weapon2.explicit",
+              "slot": "weapon2"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "Gain 5% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "Gain 5% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "Gain 5% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 30.0,
+              "active": true,
+              "source_text": "Gain 30% of Damage as Extra Lightning Damage",
+              "origin_kind": "ItemImplicit",
+              "origin_id": "item.weapon1.implicit",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 14.0,
+              "active": true,
+              "source_text": "Gain 14% of Damage as Extra Cold Damage",
+              "origin_kind": "Jewel",
+              "origin_id": "jewel.1",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 18.0,
+              "active": true,
+              "source_text": "Gain 18% of Damage as Extra Fire Damage",
+              "origin_kind": "Jewel",
+              "origin_id": "jewel.1",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 180.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "buff.ArchmagePlayer.archmage_all_damage_%_to_gain_as_lightning_to_grant_to_non_channelling_spells_per_100_max_mana",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 30.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "buff.FreezingMarkPlayer.freezing_mark_damage_buff_damage_%_to_gain_as_cold",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 30.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "buff.VoltaicMarkPlayer.thaumaturgist_mark_damage_buff_damage_%_to_gain_as_lightning",
+              "slot": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "chronomancer-02",
+      "cache": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/quality-builds/chronomancer-02.json",
+      "config": {
+        "boolean": "true",
+        "name": "flameWallAddedDamage"
+      },
+      "main_skill": "CometPlayer",
+      "native_projectile_type": false,
+      "flame_wall_levels": [
+        {
+          "skill_id": "FlameWallPlayer",
+          "level": 35,
+          "quality": 28
+        }
+      ],
+      "raw_flame_wall_groups": [
+        {
+          "group": {
+            "enabled": "true",
+            "includeInFullDPS": "nil",
+            "label": "",
+            "mainActiveSkill": "1",
+            "mainActiveSkillCalcs": "1"
+          },
+          "gems": [
+            {
+              "corruptLevel": "1",
+              "corrupted": "true",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemFlameWall",
+              "level": "20",
+              "nameSpec": "Flame Wall",
+              "quality": "23",
+              "skillId": "FlameWallPlayer",
+              "variantId": "FlameWall"
+            }
+          ]
+        }
+      ],
+      "total_hit_avg_before": 20546317.438843478,
+      "damage_sources_before": [
+        {
+          "damage_type": "Cold",
+          "min": 6511.0,
+          "max": 9766.0,
+          "added_min": 6511.0,
+          "added_max": 9766.0,
+          "added_effect": 1.0,
+          "added_min_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 6511.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_minimum_base_cold_damage",
+              "slot": null
+            }
+          ],
+          "added_max_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 9766.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_maximum_base_cold_damage",
+              "slot": null
+            }
+          ],
+          "added_effect_mods": [],
+          "convert_mods": [],
+          "gain_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 15.0,
+              "active": true,
+              "source_text": "Gain 15% of Damage as Extra Cold Damage",
+              "origin_kind": "Jewel",
+              "origin_id": "jewel.5",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 15.0,
+              "active": true,
+              "source_text": "Gain 15% of Damage as Extra Fire Damage",
+              "origin_kind": "Jewel",
+              "origin_id": "jewel.5",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 300.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "buff.ArchmagePlayer.archmage_all_damage_%_to_gain_as_lightning_to_grant_to_non_channelling_spells_per_100_max_mana",
+              "slot": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "chronomancer-03",
+      "cache": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/quality-builds/chronomancer-03.json",
+      "config": {
+        "boolean": "true",
+        "name": "flameWallAddedDamage"
+      },
+      "main_skill": "CometPlayer",
+      "native_projectile_type": false,
+      "flame_wall_levels": [
+        {
+          "skill_id": "FlameWallPlayer",
+          "level": 32,
+          "quality": 25
+        }
+      ],
+      "raw_flame_wall_groups": [
+        {
+          "group": {
+            "enabled": "true",
+            "includeInFullDPS": "nil",
+            "label": "",
+            "mainActiveSkill": "1",
+            "mainActiveSkillCalcs": "1"
+          },
+          "gems": [
+            {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemFlameWall",
+              "level": "19",
+              "nameSpec": "Flame Wall",
+              "quality": "20",
+              "skillId": "FlameWallPlayer",
+              "variantId": "FlameWall"
+            }
+          ]
+        }
+      ],
+      "total_hit_avg_before": 258298.952457175,
+      "damage_sources_before": [
+        {
+          "damage_type": "Cold",
+          "min": 6511.0,
+          "max": 9766.0,
+          "added_min": 6511.0,
+          "added_max": 9766.0,
+          "added_effect": 1.0,
+          "added_min_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 6511.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_minimum_base_cold_damage",
+              "slot": null
+            }
+          ],
+          "added_max_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 9766.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_maximum_base_cold_damage",
+              "slot": null
+            }
+          ],
+          "added_effect_mods": [],
+          "convert_mods": [],
+          "gain_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 60.0,
+              "active": true,
+              "source_text": "Gain 60% of Damage as Extra Fire Damage",
+              "origin_kind": "ItemImplicit",
+              "origin_id": "item.weapon2.implicit",
+              "slot": "weapon2"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 15.0,
+              "active": true,
+              "source_text": "Gain 15% of Damage as Extra Lightning Damage",
+              "origin_kind": "Jewel",
+              "origin_id": "jewel.2",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 84.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "buff.ArchmagePlayer.archmage_all_damage_%_to_gain_as_lightning_to_grant_to_non_channelling_spells_per_100_max_mana",
+              "slot": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "disciple-of-varashta-09",
+      "cache": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/quality-builds/disciple-of-varashta-09.json",
+      "config": {
+        "boolean": "true",
+        "name": "flameWallAddedDamage"
+      },
+      "main_skill": "FrostboltPlayer",
+      "native_projectile_type": true,
+      "flame_wall_levels": [
+        {
+          "skill_id": "FlameWallPlayer",
+          "level": 21,
+          "quality": 25
+        }
+      ],
+      "raw_flame_wall_groups": [
+        {
+          "group": {
+            "enabled": "true",
+            "includeInFullDPS": "nil",
+            "label": "",
+            "mainActiveSkill": "1",
+            "mainActiveSkillCalcs": "1"
+          },
+          "gems": [
+            {
+              "corruptLevel": "1",
+              "corrupted": "true",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemFlameWall",
+              "level": "18",
+              "nameSpec": "Flame Wall",
+              "quality": "20",
+              "skillId": "FlameWallPlayer",
+              "variantId": "FlameWall"
+            }
+          ]
+        }
+      ],
+      "total_hit_avg_before": 4611.350364114,
+      "damage_sources_before": [
+        {
+          "damage_type": "Cold",
+          "min": 298.0,
+          "max": 446.0,
+          "added_min": 298.0,
+          "added_max": 446.0,
+          "added_effect": 1.0,
+          "added_min_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 298.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_minimum_base_cold_damage",
+              "slot": null
+            }
+          ],
+          "added_max_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 446.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_maximum_base_cold_damage",
+              "slot": null
+            }
+          ],
+          "added_effect_mods": [],
+          "convert_mods": [],
+          "gain_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "Gain 5% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "Gain 5% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "Gain 5% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 18.0,
+              "active": true,
+              "source_text": "Gain 18% of Damage as Extra Fire Damage",
+              "origin_kind": "Jewel",
+              "origin_id": "jewel.3",
+              "slot": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "gemling-legionnaire-08",
+      "cache": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/quality-builds/gemling-legionnaire-08.json",
+      "config": {
+        "boolean": "true",
+        "name": "flameWallAddedDamage"
+      },
+      "main_skill": "SparkPlayer",
+      "native_projectile_type": true,
+      "flame_wall_levels": [
+        {
+          "skill_id": "FlameWallPlayer",
+          "level": 19,
+          "quality": 45
+        },
+        {
+          "skill_id": "FlameWallPlayer",
+          "level": 34,
+          "quality": 22
+        }
+      ],
+      "raw_flame_wall_groups": [
+        {
+          "group": {
+            "enabled": "true",
+            "includeInFullDPS": "nil",
+            "label": "",
+            "mainActiveSkill": "4",
+            "mainActiveSkillCalcs": "4"
+          },
+          "gems": [
+            {
+              "corruptLevel": "0",
+              "corrupted": "true",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemFlameWall",
+              "level": "1",
+              "nameSpec": "Flame Wall",
+              "quality": "23",
+              "skillId": "FlameWallPlayer",
+              "variantId": "FlameWall"
+            }
+          ]
+        },
+        {
+          "group": {
+            "enabled": "true",
+            "includeInFullDPS": "nil",
+            "label": "",
+            "mainActiveSkill": "1",
+            "mainActiveSkillCalcs": "1"
+          },
+          "gems": [
+            {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemFlameWall",
+              "level": "16",
+              "nameSpec": "Flame Wall",
+              "quality": "0",
+              "skillId": "FlameWallPlayer",
+              "variantId": "FlameWall"
+            }
+          ]
+        }
+      ],
+      "total_hit_avg_before": 971393.558494543,
+      "damage_sources_before": [
+        {
+          "damage_type": "Lightning",
+          "min": 103.0,
+          "max": 1949.0,
+          "added_min": 103.0,
+          "added_max": 1949.0,
+          "added_effect": 1.0,
+          "added_min_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 103.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_minimum_base_lightning_damage",
+              "slot": null
+            }
+          ],
+          "added_max_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 1949.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_maximum_base_lightning_damage",
+              "slot": null
+            }
+          ],
+          "added_effect_mods": [],
+          "convert_mods": [],
+          "gain_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 408.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "buff.ArchmagePlayer.archmage_all_damage_%_to_gain_as_lightning_to_grant_to_non_channelling_spells_per_100_max_mana",
+              "slot": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "gemling-legionnaire-10",
+      "cache": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/quality-builds/gemling-legionnaire-10.json",
+      "config": {
+        "boolean": "true",
+        "name": "flameWallAddedDamage"
+      },
+      "main_skill": "ArcPlayer",
+      "native_projectile_type": true,
+      "flame_wall_levels": [
+        {
+          "skill_id": "FlameWallPlayer",
+          "level": 35,
+          "quality": 21
+        }
+      ],
+      "raw_flame_wall_groups": [
+        {
+          "group": {
+            "enabled": "true",
+            "includeInFullDPS": "nil",
+            "label": "",
+            "mainActiveSkill": "1",
+            "mainActiveSkillCalcs": "1"
+          },
+          "gems": [
+            {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemFlameWall",
+              "level": "18",
+              "nameSpec": "Flame Wall",
+              "quality": "0",
+              "skillId": "FlameWallPlayer",
+              "variantId": "FlameWall"
+            }
+          ]
+        }
+      ],
+      "total_hit_avg_before": 1496940.503260198,
+      "damage_sources_before": [
+        {
+          "damage_type": "Lightning",
+          "min": 272.0,
+          "max": 5175.0,
+          "added_min": 272.0,
+          "added_max": 5175.0,
+          "added_effect": 1.0,
+          "added_min_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 272.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_minimum_base_lightning_damage",
+              "slot": null
+            }
+          ],
+          "added_max_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 5175.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_maximum_base_lightning_damage",
+              "slot": null
+            }
+          ],
+          "added_effect_mods": [],
+          "convert_mods": [],
+          "gain_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 9.0,
+              "active": true,
+              "source_text": "Gain 9% of Elemental Damage as Extra Cold Damage",
+              "origin_kind": "ItemAffix",
+              "origin_id": "item.weapon2.explicit",
+              "slot": "weapon2"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 14.0,
+              "active": true,
+              "source_text": "Gain 14% of Damage as Extra Fire Damage",
+              "origin_kind": "Jewel",
+              "origin_id": "jewel.5",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 18.0,
+              "active": true,
+              "source_text": "Gain 18% of Damage as Extra Cold Damage",
+              "origin_kind": "Jewel",
+              "origin_id": "jewel.5",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 210.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "buff.ArchmagePlayer.archmage_all_damage_%_to_gain_as_lightning_to_grant_to_non_channelling_spells_per_100_max_mana",
+              "slot": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "lich-03",
+      "cache": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/quality-builds/lich-03.json",
+      "config": {
+        "boolean": "true",
+        "name": "flameWallAddedDamage"
+      },
+      "main_skill": "FlameWallPlayer",
+      "native_projectile_type": false,
+      "flame_wall_levels": [
+        {
+          "skill_id": "FlameWallPlayer",
+          "level": 9,
+          "quality": 0
+        }
+      ],
+      "raw_flame_wall_groups": [
+        {
+          "group": {
+            "enabled": "true",
+            "includeInFullDPS": "nil",
+            "label": "",
+            "mainActiveSkill": "1",
+            "mainActiveSkillCalcs": "1"
+          },
+          "gems": [
+            {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemFlameWall",
+              "level": "9",
+              "nameSpec": "Flame Wall",
+              "quality": "0",
+              "skillId": "FlameWallPlayer",
+              "variantId": "FlameWall"
+            }
+          ]
+        }
+      ],
+      "total_hit_avg_before": 107.880037584,
+      "damage_sources_before": [
+        {
+          "damage_type": "Fire",
+          "min": 35.0,
+          "max": 52.0,
+          "added_min": 35.0,
+          "added_max": 52.0,
+          "added_effect": 1.0,
+          "added_min_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 35.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_minimum_base_fire_damage",
+              "slot": null
+            }
+          ],
+          "added_max_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 52.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_maximum_base_fire_damage",
+              "slot": null
+            }
+          ],
+          "added_effect_mods": [],
+          "convert_mods": [],
+          "gain_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 42.0,
+              "active": true,
+              "source_text": "UnholyMight",
+              "origin_kind": "Buff",
+              "origin_id": "buff.UnholyMight",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 30.0,
+              "active": true,
+              "source_text": "Gain 30% of Damage as Extra Cold Damage",
+              "origin_kind": "ItemImplicit",
+              "origin_id": "item.weapon1.implicit",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 30.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "buff.VoltaicMarkPlayer.thaumaturgist_mark_damage_buff_damage_%_to_gain_as_lightning",
+              "slot": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "oracle-02",
+      "cache": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/quality-builds/oracle-02.json",
+      "config": {
+        "boolean": "true",
+        "name": "flameWallAddedDamage"
+      },
+      "main_skill": "SparkPlayer",
+      "native_projectile_type": true,
+      "flame_wall_levels": [
+        {
+          "skill_id": "FlameWallPlayer",
+          "level": 31,
+          "quality": 25
+        }
+      ],
+      "raw_flame_wall_groups": [
+        {
+          "group": {
+            "enabled": "true",
+            "includeInFullDPS": "nil",
+            "label": "",
+            "mainActiveSkill": "nil",
+            "mainActiveSkillCalcs": "nil"
+          },
+          "gems": [
+            {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemFlameWall",
+              "level": "18",
+              "nameSpec": "Flame Wall",
+              "quality": "20",
+              "skillId": "FlameWallPlayer",
+              "variantId": "FlameWall"
+            }
+          ]
+        }
+      ],
+      "total_hit_avg_before": 445325.369576589,
+      "damage_sources_before": [
+        {
+          "damage_type": "Lightning",
+          "min": 66.0,
+          "max": 1252.0,
+          "added_min": 66.0,
+          "added_max": 1252.0,
+          "added_effect": 1.0,
+          "added_min_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 66.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_minimum_base_lightning_damage",
+              "slot": null
+            }
+          ],
+          "added_max_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 1252.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_maximum_base_lightning_damage",
+              "slot": null
+            }
+          ],
+          "added_effect_mods": [],
+          "convert_mods": [],
+          "gain_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 51.0,
+              "active": true,
+              "source_text": "Gain 51% of Damage as Extra Cold Damage",
+              "origin_kind": "ItemImplicit",
+              "origin_id": "item.weapon1.implicit",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "[Spell|Spells] [Gain] 5% of Damage as extra [Chaos|Chaos] Damage",
+              "origin_kind": "PassiveNode",
+              "origin_id": "node.8957",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 240.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "buff.ArchmagePlayer.archmage_all_damage_%_to_gain_as_lightning_to_grant_to_non_channelling_spells_per_100_max_mana",
+              "slot": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "oracle-08",
+      "cache": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/quality-builds/oracle-08.json",
+      "config": {
+        "boolean": "true",
+        "name": "flameWallAddedDamage"
+      },
+      "main_skill": "CometPlayer",
+      "native_projectile_type": false,
+      "flame_wall_levels": [
+        {
+          "skill_id": "FlameWallPlayer",
+          "level": 37,
+          "quality": 25
+        }
+      ],
+      "raw_flame_wall_groups": [
+        {
+          "group": {
+            "enabled": "true",
+            "includeInFullDPS": "nil",
+            "label": "",
+            "mainActiveSkill": "1",
+            "mainActiveSkillCalcs": "1"
+          },
+          "gems": [
+            {
+              "corruptLevel": "1",
+              "corrupted": "true",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemFlameWall",
+              "level": "20",
+              "nameSpec": "Flame Wall",
+              "quality": "20",
+              "skillId": "FlameWallPlayer",
+              "variantId": "FlameWall"
+            }
+          ]
+        }
+      ],
+      "total_hit_avg_before": 1055986.774920578,
+      "damage_sources_before": [
+        {
+          "damage_type": "Cold",
+          "min": 8747.0,
+          "max": 13121.0,
+          "added_min": 8747.0,
+          "added_max": 13121.0,
+          "added_effect": 1.0,
+          "added_min_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 8747.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_minimum_base_cold_damage",
+              "slot": null
+            }
+          ],
+          "added_max_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 13121.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_maximum_base_cold_damage",
+              "slot": null
+            }
+          ],
+          "added_effect_mods": [],
+          "convert_mods": [],
+          "gain_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 11.0,
+              "active": true,
+              "source_text": "Gain 11% of Elemental Damage as Extra Cold Damage",
+              "origin_kind": "ItemAffix",
+              "origin_id": "item.weapon2.explicit",
+              "slot": "weapon2"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 15.0,
+              "active": true,
+              "source_text": "Gain 15% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 15.0,
+              "active": true,
+              "source_text": "Gain 15% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 15.0,
+              "active": true,
+              "source_text": "Gain 15% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 36.0,
+              "active": true,
+              "source_text": "Gain 36% of Damage as Extra Fire Damage",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 6.0,
+              "active": true,
+              "source_text": "[Gain] 6% of [Cold] damage as Extra [Lightning] damage",
+              "origin_kind": "PassiveNode",
+              "origin_id": "node.23907",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 11.0,
+              "active": true,
+              "source_text": "[Gain] 11% of Damage as Extra [Chaos] Damage",
+              "origin_kind": "PassiveNode",
+              "origin_id": "node.55149",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "Gain 5% of Damage as Extra Damage of a random Element",
+              "origin_kind": "PassiveNode",
+              "origin_id": "node.6898",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "[Spell|Spells] [Gain] 5% of Damage as extra [Chaos|Chaos] Damage",
+              "origin_kind": "PassiveNode",
+              "origin_id": "node.8957",
+              "slot": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "pathfinder-08",
+      "cache": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/quality-builds/pathfinder-08.json",
+      "config": {
+        "boolean": "true",
+        "name": "flameWallAddedDamage"
+      },
+      "main_skill": "FlameWallPlayer",
+      "native_projectile_type": false,
+      "flame_wall_levels": [
+        {
+          "skill_id": "FlameWallPlayer",
+          "level": 14,
+          "quality": 20
+        }
+      ],
+      "raw_flame_wall_groups": [
+        {
+          "group": {
+            "enabled": "true",
+            "includeInFullDPS": "nil",
+            "label": "",
+            "mainActiveSkill": "2",
+            "mainActiveSkillCalcs": "2"
+          },
+          "gems": [
+            {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemFlameWall",
+              "level": "14",
+              "nameSpec": "Flame Wall",
+              "quality": "20",
+              "skillId": "FlameWallPlayer",
+              "variantId": "FlameWall"
+            }
+          ]
+        }
+      ],
+      "total_hit_avg_before": 45.226065024,
+      "damage_sources_before": [
+        {
+          "damage_type": "Fire",
+          "min": 77.0,
+          "max": 115.0,
+          "added_min": 77.0,
+          "added_max": 115.0,
+          "added_effect": 1.0,
+          "added_min_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 77.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_minimum_base_fire_damage",
+              "slot": null
+            }
+          ],
+          "added_max_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 115.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_maximum_base_fire_damage",
+              "slot": null
+            }
+          ],
+          "added_effect_mods": [],
+          "convert_mods": [],
+          "gain_mods": []
+        }
+      ]
+    },
+    {
+      "slug": "shaman-01",
+      "cache": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/quality-builds/shaman-01.json",
+      "config": {
+        "boolean": "true",
+        "name": "flameWallAddedDamage"
+      },
+      "main_skill": "SparkPlayer",
+      "native_projectile_type": true,
+      "flame_wall_levels": [
+        {
+          "skill_id": "FlameWallPlayer",
+          "level": 36,
+          "quality": 20
+        }
+      ],
+      "raw_flame_wall_groups": [
+        {
+          "group": {
+            "enabled": "true",
+            "includeInFullDPS": "nil",
+            "label": "",
+            "mainActiveSkill": "1",
+            "mainActiveSkillCalcs": "1"
+          },
+          "gems": [
+            {
+              "corruptLevel": "1",
+              "corrupted": "true",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemFlameWall",
+              "level": "20",
+              "nameSpec": "Flame Wall",
+              "quality": "20",
+              "skillId": "FlameWallPlayer",
+              "variantId": "FlameWall"
+            }
+          ]
+        }
+      ],
+      "total_hit_avg_before": 1853623.915357652,
+      "damage_sources_before": [
+        {
+          "damage_type": "Lightning",
+          "min": 103.0,
+          "max": 1949.0,
+          "added_min": 103.0,
+          "added_max": 1949.0,
+          "added_effect": 1.0,
+          "added_min_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 103.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_minimum_base_lightning_damage",
+              "slot": null
+            }
+          ],
+          "added_max_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 1949.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_maximum_base_lightning_damage",
+              "slot": null
+            }
+          ],
+          "added_effect_mods": [],
+          "convert_mods": [],
+          "gain_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "Gain 5% of Damage as Extra Damage of a random Element",
+              "origin_kind": "PassiveNode",
+              "origin_id": "node.6898",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 460.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "buff.ArchmagePlayer.archmage_all_damage_%_to_gain_as_lightning_to_grant_to_non_channelling_spells_per_100_max_mana",
+              "slot": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "shaman-08",
+      "cache": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/quality-builds/shaman-08.json",
+      "config": {
+        "boolean": "true",
+        "name": "flameWallAddedDamage"
+      },
+      "main_skill": "SparkPlayer",
+      "native_projectile_type": true,
+      "flame_wall_levels": [
+        {
+          "skill_id": "FlameWallPlayer",
+          "level": 15,
+          "quality": 0
+        }
+      ],
+      "raw_flame_wall_groups": [
+        {
+          "group": {
+            "enabled": "true",
+            "includeInFullDPS": "nil",
+            "label": "",
+            "mainActiveSkill": "1",
+            "mainActiveSkillCalcs": "1"
+          },
+          "gems": [
+            {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemFlameWall",
+              "level": "2",
+              "nameSpec": "Flame Wall",
+              "quality": "0",
+              "skillId": "FlameWallPlayer",
+              "variantId": "FlameWall"
+            }
+          ]
+        }
+      ],
+      "total_hit_avg_before": 411206.234126344,
+      "damage_sources_before": [
+        {
+          "damage_type": "Lightning",
+          "min": 66.0,
+          "max": 1252.0,
+          "added_min": 66.0,
+          "added_max": 1252.0,
+          "added_effect": 1.0,
+          "added_min_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 66.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_minimum_base_lightning_damage",
+              "slot": null
+            }
+          ],
+          "added_max_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 1252.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_maximum_base_lightning_damage",
+              "slot": null
+            }
+          ],
+          "added_effect_mods": [],
+          "convert_mods": [],
+          "gain_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 396.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "buff.ArchmagePlayer.archmage_all_damage_%_to_gain_as_lightning_to_grant_to_non_channelling_spells_per_100_max_mana",
+              "slot": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "smith-of-kitava-01",
+      "cache": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/quality-builds/smith-of-kitava-01.json",
+      "config": {
+        "boolean": "true",
+        "name": "flameWallAddedDamage"
+      },
+      "main_skill": "DetonateDeadPlayer",
+      "native_projectile_type": false,
+      "flame_wall_levels": [
+        {
+          "skill_id": "FlameWallPlayer",
+          "level": 19,
+          "quality": 25
+        }
+      ],
+      "raw_flame_wall_groups": [
+        {
+          "group": {
+            "enabled": "true",
+            "includeInFullDPS": "nil",
+            "label": "",
+            "mainActiveSkill": "1",
+            "mainActiveSkillCalcs": "1"
+          },
+          "gems": [
+            {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemFlameWall",
+              "level": "19",
+              "nameSpec": "Flame Wall",
+              "quality": "20",
+              "skillId": "FlameWallPlayer",
+              "variantId": "FlameWall"
+            }
+          ]
+        }
+      ],
+      "total_hit_avg_before": 22398.392424902,
+      "damage_sources_before": [
+        {
+          "damage_type": "Physical",
+          "min": 2636.48,
+          "max": 2636.48,
+          "added_min": 2636.48,
+          "added_max": 2636.48,
+          "added_effect": 1.0,
+          "added_min_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 2636.48,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.DetonateDeadPlayer.corpseExplosion",
+              "slot": null
+            }
+          ],
+          "added_max_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 2636.48,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.DetonateDeadPlayer.corpseExplosion",
+              "slot": null
+            }
+          ],
+          "added_effect_mods": [],
+          "convert_mods": [],
+          "gain_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 13.0,
+              "active": true,
+              "source_text": "Gain 13% of Damage as Extra Chaos Damage",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "Gain 5% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "Gain 5% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "Gain 5% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 11.0,
+              "active": true,
+              "source_text": "Gain 11% of Damage as Extra Fire Damage",
+              "origin_kind": "Jewel",
+              "origin_id": "jewel.10",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "[Gain] 5% of Damage as Extra [Fire] Damage",
+              "origin_kind": "PassiveNode",
+              "origin_id": "node.11392",
+              "slot": null
+            }
+          ]
+        },
+        {
+          "damage_type": "Fire",
+          "min": 64.0,
+          "max": 95.0,
+          "added_min": 64.0,
+          "added_max": 95.0,
+          "added_effect": 1.0,
+          "added_min_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 21.0,
+              "active": false,
+              "source_text": "21 to 29 Fire Thorns damage",
+              "origin_kind": "ItemImplicit",
+              "origin_id": "item.bodyarmour.implicit",
+              "slot": "bodyarmour"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 64.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_minimum_base_fire_damage",
+              "slot": null
+            }
+          ],
+          "added_max_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 29.0,
+              "active": false,
+              "source_text": "21 to 29 Fire Thorns damage",
+              "origin_kind": "ItemImplicit",
+              "origin_id": "item.bodyarmour.implicit",
+              "slot": "bodyarmour"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 95.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_maximum_base_fire_damage",
+              "slot": null
+            }
+          ],
+          "added_effect_mods": [],
+          "convert_mods": [],
+          "gain_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 13.0,
+              "active": true,
+              "source_text": "Gain 13% of Damage as Extra Chaos Damage",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "Gain 5% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "Gain 5% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "Gain 5% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 11.0,
+              "active": true,
+              "source_text": "Gain 11% of Damage as Extra Fire Damage",
+              "origin_kind": "Jewel",
+              "origin_id": "jewel.10",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "[Gain] 5% of Damage as Extra [Fire] Damage",
+              "origin_kind": "PassiveNode",
+              "origin_id": "node.11392",
+              "slot": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "smith-of-kitava-03",
+      "cache": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/quality-builds/smith-of-kitava-03.json",
+      "config": {
+        "boolean": "true",
+        "name": "flameWallAddedDamage"
+      },
+      "main_skill": "FrostboltPlayer",
+      "native_projectile_type": true,
+      "flame_wall_levels": [
+        {
+          "skill_id": "FlameWallPlayer",
+          "level": 25,
+          "quality": 25
+        }
+      ],
+      "raw_flame_wall_groups": [
+        {
+          "group": {
+            "enabled": "true",
+            "includeInFullDPS": "nil",
+            "label": "",
+            "mainActiveSkill": "1",
+            "mainActiveSkillCalcs": "1"
+          },
+          "gems": [
+            {
+              "corruptLevel": "0",
+              "corrupted": "true",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemFlameWall",
+              "level": "19",
+              "nameSpec": "Flame Wall",
+              "quality": "20",
+              "skillId": "FlameWallPlayer",
+              "variantId": "FlameWall"
+            }
+          ]
+        }
+      ],
+      "total_hit_avg_before": 1347.57968576,
+      "damage_sources_before": [
+        {
+          "damage_type": "Cold",
+          "min": 427.0,
+          "max": 640.0,
+          "added_min": 427.0,
+          "added_max": 640.0,
+          "added_effect": 1.0,
+          "added_min_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 427.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_minimum_base_cold_damage",
+              "slot": null
+            }
+          ],
+          "added_max_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 640.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_maximum_base_cold_damage",
+              "slot": null
+            }
+          ],
+          "added_effect_mods": [],
+          "convert_mods": [],
+          "gain_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 82.0,
+              "active": false,
+              "source_text": "Spells which cost Life Gain 82% of Damage as Extra Physical Damage",
+              "origin_kind": "ItemAffix",
+              "origin_id": "item.weapon1.explicit",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 11.0,
+              "active": true,
+              "source_text": "Gain 11% of Damage as Extra Chaos Damage",
+              "origin_kind": "Jewel",
+              "origin_id": "jewel.8",
+              "slot": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "smith-of-kitava-10",
+      "cache": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/quality-builds/smith-of-kitava-10.json",
+      "config": {
+        "boolean": "true",
+        "name": "flameWallAddedDamage"
+      },
+      "main_skill": "FrostboltPlayer",
+      "native_projectile_type": true,
+      "flame_wall_levels": [
+        {
+          "skill_id": "FlameWallPlayer",
+          "level": 26,
+          "quality": 35
+        }
+      ],
+      "raw_flame_wall_groups": [
+        {
+          "group": {
+            "enabled": "true",
+            "includeInFullDPS": "nil",
+            "label": "",
+            "mainActiveSkill": "1",
+            "mainActiveSkillCalcs": "1"
+          },
+          "gems": [
+            {
+              "corruptLevel": "1",
+              "corrupted": "true",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemFlameWall",
+              "level": "20",
+              "nameSpec": "Flame Wall",
+              "quality": "20",
+              "skillId": "FlameWallPlayer",
+              "variantId": "FlameWall"
+            }
+          ]
+        }
+      ],
+      "total_hit_avg_before": 10660.431181388,
+      "damage_sources_before": [
+        {
+          "damage_type": "Cold",
+          "min": 427.0,
+          "max": 640.0,
+          "added_min": 427.0,
+          "added_max": 640.0,
+          "added_effect": 1.0,
+          "added_min_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 427.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_minimum_base_cold_damage",
+              "slot": null
+            }
+          ],
+          "added_max_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 640.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "skill.spell_maximum_base_cold_damage",
+              "slot": null
+            }
+          ],
+          "added_effect_mods": [],
+          "convert_mods": [],
+          "gain_mods": [
+            {
+              "mod_type": "BASE",
+              "value": 12.0,
+              "active": true,
+              "source_text": "Gain 12% of Damage as Extra Cold Damage with Spells",
+              "origin_kind": "ItemAffix",
+              "origin_id": "item.ring1.explicit",
+              "slot": "ring1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 12.0,
+              "active": true,
+              "source_text": "Gain 12% of Damage as Extra Cold Damage with Spells",
+              "origin_kind": "ItemAffix",
+              "origin_id": "item.ring2.explicit",
+              "slot": "ring2"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "Gain 5% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "Gain 5% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 5.0,
+              "active": true,
+              "source_text": "Gain 5% of Damage as Extra Damage of all Elements",
+              "origin_kind": "ItemEnchant",
+              "origin_id": "item.weapon1.enchant",
+              "slot": "weapon1"
+            },
+            {
+              "mod_type": "BASE",
+              "value": 16.0,
+              "active": true,
+              "source_text": "Gain 16% of Damage as Extra Cold Damage",
+              "origin_kind": "Jewel",
+              "origin_id": "jewel.9",
+              "slot": null
+            },
+            {
+              "mod_type": "BASE",
+              "value": 32.0,
+              "active": true,
+              "source_text": null,
+              "origin_kind": "SkillGem",
+              "origin_id": "buff.ArchmagePlayer.archmage_all_damage_%_to_gain_as_lightning_to_grant_to_non_channelling_spells_per_100_max_mana",
+              "slot": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

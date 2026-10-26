@@ -1,0 +1,40 @@
+{
+  "name": "spirit-walker-08",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/hongquan-0710/wangmeili",
+    "account": "hongquan-0710",
+    "character": "wangmeili",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:56:42+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=hongquan-0710&name=wangmeili&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Spirit+Walker",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 8,
+    "index_sha256": "fffcc37facc276b84d7aabd4eb971c32710d1e7b5ce08ad4847d2a88e000f01c",
+    "character_response_sha256": "229028380ea9d32b3b33484325cc62c72a00cf4f3b1897c8a7e83644191632e7",
+    "upstream_updated_utc": "2026-10-18T10:49:29.15296Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:24.4848Z",
+    "upstream_last_checked_utc": "2026-10-24T22:31:59.559626Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Spirit Walker",
+    "level": 100,
+    "main_skill": "Companion: Zekoa, the Headcrusher"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 15,
+    "code_sha256": "33408b273e91d46db63e0fd57d23e57eb4f0059fc3fe7d4af705d2118ea2c5f6",
+    "code_chars": 13336,
+    "decoded_bytes": 61457
+  }
+}

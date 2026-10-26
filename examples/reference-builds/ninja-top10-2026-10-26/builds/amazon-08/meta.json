@@ -1,0 +1,40 @@
+{
+  "name": "amazon-08",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/sunstar1992-1657/BloodmageNeverDied",
+    "account": "sunstar1992-1657",
+    "character": "BloodmageNeverDied",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:36+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=sunstar1992-1657&name=BloodmageNeverDied&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Amazon",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 8,
+    "index_sha256": "d02a718c55fd5605947bb438dec47faa4ce6d241f076360e4494bf9a36333793",
+    "character_response_sha256": "52d068c4ae0f2106db24f1ceb90053cda40cea21dad6eb82460956362530f359",
+    "upstream_updated_utc": "2026-10-21T21:00:28.701966Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-24T06:30:41.036797Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Amazon",
+    "level": 99,
+    "main_skill": "Ice Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 8,
+    "code_sha256": "c50301e23d1c0a5a052c0ff1b2f162885dffd477a377ec158310f0f0570eab67",
+    "code_chars": 12188,
+    "decoded_bytes": 41104
+  }
+}

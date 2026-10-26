@@ -1,0 +1,40 @@
+{
+  "name": "deadeye-07",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/zalacotic-1385/blahblahnownow",
+    "account": "zalacotic-1385",
+    "character": "blahblahnownow",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:50:15+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=zalacotic-1385&name=blahblahnownow&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Deadeye",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 7,
+    "index_sha256": "44dc1747546e40f5915aeb30be9db6d4645ec00832ec89032e0a1b921892e920",
+    "character_response_sha256": "bc45c9e153635ee62ed6a4f1f49590995f78fd5eb944fd63251a523c15411c47",
+    "upstream_updated_utc": "2026-10-24T13:30:55.739505Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:24.635287Z",
+    "upstream_last_checked_utc": "2026-10-25T13:34:16.93187Z"
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Deadeye",
+    "level": 100,
+    "main_skill": "Ice Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 11,
+    "code_sha256": "79484faedfa627530e582b4fa0eff2f1a4d644a33b09a17817d542dc9ec623f6",
+    "code_chars": 12768,
+    "decoded_bytes": 50785
+  }
+}

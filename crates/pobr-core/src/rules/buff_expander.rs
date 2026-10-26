@@ -295,7 +295,8 @@ pub fn expand_misc_buffs(
     out
 }
 
-fn expand_one(
+/// Expand one known active buff. The caller owns its trigger and mode gates.
+pub(crate) fn expand_one(
     state: &BuffExpandState<'_>,
     def: &BuffDef,
     registry: &HandlerRegistry,

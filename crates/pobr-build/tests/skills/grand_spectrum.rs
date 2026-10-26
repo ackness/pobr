@@ -61,3 +61,46 @@ fn each_grand_spectrum_counts_every_grand_spectrum_socketed() {
     let mixed = life(&data, &[ruby(), emerald(), emerald()]);
     assert!((mixed / none - 1.06).abs() < 1e-3, "{}", mixed / none);
 }
+
+/// Corrupted exports may put the Spectrum line in the implicit section after
+/// an enchanted corruption line. Every retained jewel still counts once.
+#[test]
+fn corrupted_grand_spectrums_count_all_modifier_sections() {
+    let data = data();
+    for (rolls, implicit) in [([6, 7, 6], [true; 3]), ([7; 3], [false, false, true])] {
+        let jewels: Vec<_> = rolls
+            .into_iter()
+            .zip(implicit)
+            .map(|(roll, implicit)| {
+                let headers = if implicit {
+                    "Implicits: 2\n{enchant}+9% to Cold Resistance\n"
+                } else {
+                    "Implicits: 0\n"
+                };
+                parse_pob_xml_item(&format!(
+                    "Rarity: UNIQUE\nGrand Spectrum\nSapphire\n{headers}+{roll}% to all Elemental Resistances per socketed Grand Spectrum\nCorrupted"
+                ))
+                .unwrap()
+            })
+            .collect();
+        for (jewel, implicit) in jewels.iter().zip(implicit) {
+            assert_eq!(!jewel.implicit_texts.is_empty(), implicit);
+        }
+        let build = Build::new().with_jewels(jewels);
+        let session =
+            calculate_with_data_session(&build, data, &DataOrchestratorOptions::default()).unwrap();
+        assert_eq!(
+            session.output().fire_resistance_total,
+            f64::from(rolls.iter().sum::<u32>() * 3)
+        );
+        assert_eq!(
+            session.output().lightning_resistance_total,
+            session.output().fire_resistance_total
+        );
+        assert_eq!(
+            session.output().cold_resistance_total,
+            session.output().fire_resistance_total
+                + 9.0 * implicit.into_iter().filter(|&value| value).count() as f64
+        );
+    }
+}

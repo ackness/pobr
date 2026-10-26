@@ -318,7 +318,10 @@ const DEFAULT_TRUE_CONDITIONS: &[(&str, &str)] = &[
 /// the same defaultState=true semantics via [`default_quest_stat_reward_texts`], so
 /// omission is already consistent between both paths and needs no false-pinning.
 pub fn default_true_condition_keys() -> impl Iterator<Item = &'static str> {
-    DEFAULT_TRUE_CONDITIONS.iter().map(|(k, _)| *k)
+    DEFAULT_TRUE_CONDITIONS
+        .iter()
+        .map(|(k, _)| *k)
+        .filter(|k| *k != "companionInPresence")
 }
 
 /// Stat-type quest reward injection for the direct-request path (no XML), matching the
@@ -651,6 +654,10 @@ fn parse_config(xml: &str) -> ParsedConfig {
 
     // PoB2 `defaultState = true`: fill in true for entries the XML omits (doesn't override entries that appeared explicitly).
     for (xml_name, cond_var) in DEFAULT_TRUE_CONDITIONS {
+        // Skill-dependent default, resolved after the enabled skills are known.
+        if *xml_name == "companionInPresence" {
+            continue;
+        }
         if !seen_names.contains(*xml_name) {
             parsed
                 .conditions
@@ -2606,12 +2613,17 @@ Iron Ring
 
     #[test]
     fn omitted_default_true_conditions_fill_to_true() {
-        // SAMPLE has no <Config> → every defaultState=true entry should be backfilled true (PoB2's "omission = default value").
+        // Unconditional defaults apply at import. The companion default
+        // waits for enabled skill resolution during calculation.
         let build = parse_build(SAMPLE).expect("parse");
         for (_, cond_var) in DEFAULT_TRUE_CONDITIONS {
             assert_eq!(
                 build.config.conditions.get(*cond_var).copied(),
-                Some(true),
+                if *cond_var == "CompanionInPresence" {
+                    None
+                } else {
+                    Some(true)
+                },
                 "an omitted defaultState=true condition {cond_var} should be backfilled true"
             );
         }
@@ -2637,11 +2649,17 @@ Iron Ring
             build.config.conditions.get("ChampionIntimidate").copied(),
             Some(false)
         );
-        // Every other defaultState=true entry that didn't appear is still backfilled true.
+        // Ordinary defaults remain true, but companion Presence is resolved
+        // later from the selected build's enabled companion skills.
         assert_eq!(
-            build.config.conditions.get("CompanionInPresence").copied(),
+            build
+                .config
+                .conditions
+                .get("TargetingBrandedEnemy")
+                .copied(),
             Some(true)
         );
+        assert!(!build.config.conditions.contains_key("CompanionInPresence"));
     }
 
     #[test]

@@ -170,6 +170,7 @@ impl CalculationSession {
             ("Condition:CanBeElusive", "CanBeElusive"),
             ("Condition:CanUseBondedModifiers", "CanUseBondedModifiers"),
             ("Condition:ArcaneSurge", "AffectedByArcaneSurge"),
+            ("Condition:BallistaSkill", "BallistaSkill"),
             ("ChaosInoculation", "FullLife"),
             // "Grants Skill: Sorcery Ward" and "Sorcery Ward's Barrier can
             // also take Physical and Chaos Damage from Hits": read by the

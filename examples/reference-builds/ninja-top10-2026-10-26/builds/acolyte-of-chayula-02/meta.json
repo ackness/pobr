@@ -1,0 +1,40 @@
+{
+  "name": "acolyte-of-chayula-02",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/xandocacm-7109/POSTEZAOLIXEIRO",
+    "account": "xandocacm-7109",
+    "character": "POSTEZAOLIXEIRO",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:29+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=xandocacm-7109&name=POSTEZAOLIXEIRO&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Acolyte+of+Chayula",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 2,
+    "index_sha256": "720a4229719289af8ed99a62f5030ac97155620a00eb46772c25d1a11fcc24e0",
+    "character_response_sha256": "71cb19673fa40023475ce99ce2a15b90025b7c763d845bc91f9bb218bc58adea",
+    "upstream_updated_utc": "2026-09-20T19:27:23.94758Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.405672Z",
+    "upstream_last_checked_utc": "2026-10-22T01:21:13.036064Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Acolyte of Chayula",
+    "level": 100,
+    "main_skill": "Wolf Pack"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "d4a68ccc33e2e50b2328c720a80435f7381ef0276cc81cd64ed9d4a50dcfab63",
+    "code_chars": 11576,
+    "decoded_bytes": 43081
+  }
+}

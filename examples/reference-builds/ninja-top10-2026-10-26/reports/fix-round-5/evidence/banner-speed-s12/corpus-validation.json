@@ -1,0 +1,147 @@
+{
+  "source_revision": "8d30bd843a29cef5a151d37e110f182f39dacf06",
+  "reference_outputs_unchanged_across": 230,
+  "default_changed_builds": [
+    {
+      "build": "amazon-04",
+      "changed_output_fields": [
+        "utility_stats",
+        "dps",
+        "ignite_dps",
+        "total_dot_dps",
+        "ignite_active_stacks",
+        "action_rate"
+      ]
+    },
+    {
+      "build": "smith-of-kitava-02",
+      "changed_output_fields": [
+        "utility_stats",
+        "dps",
+        "ignite_dps",
+        "total_dot_dps",
+        "ignite_active_stacks",
+        "action_rate"
+      ]
+    },
+    {
+      "build": "smith-of-kitava-04",
+      "changed_output_fields": [
+        "utility_stats",
+        "total_hit_avg",
+        "dps",
+        "ignite_dps",
+        "total_dot_dps",
+        "ignite_active_stacks",
+        "action_rate"
+      ]
+    },
+    {
+      "build": "smith-of-kitava-08",
+      "changed_output_fields": [
+        "utility_stats",
+        "total_hit_avg",
+        "dps",
+        "ignite_dps",
+        "total_dot_dps",
+        "ignite_active_stacks",
+        "action_rate"
+      ]
+    },
+    {
+      "build": "smith-of-kitava-09",
+      "changed_output_fields": [
+        "utility_stats",
+        "dps",
+        "ignite_dps",
+        "total_dot_dps",
+        "ignite_active_stacks",
+        "action_rate"
+      ]
+    },
+    {
+      "build": "tactician-03",
+      "changed_output_fields": [
+        "minions"
+      ]
+    },
+    {
+      "build": "tactician-06",
+      "changed_output_fields": [
+        "minions"
+      ]
+    },
+    {
+      "build": "tactician-07",
+      "changed_output_fields": [
+        "minions"
+      ]
+    },
+    {
+      "build": "tactician-08",
+      "changed_output_fields": [
+        "utility_stats",
+        "dps",
+        "ignite_dps",
+        "total_dot_dps",
+        "ignite_active_stacks",
+        "action_rate"
+      ]
+    },
+    {
+      "build": "tactician-09",
+      "changed_output_fields": [
+        "utility_stats",
+        "dps",
+        "ignite_dps",
+        "total_dot_dps",
+        "ignite_active_stacks",
+        "action_rate",
+        "firing_rate",
+        "reload_time"
+      ]
+    },
+    {
+      "build": "titan-02",
+      "changed_output_fields": [
+        "utility_stats",
+        "total_hit_avg",
+        "dps",
+        "ignite_dps",
+        "total_dot_dps",
+        "ignite_active_stacks",
+        "action_rate"
+      ]
+    },
+    {
+      "build": "titan-06",
+      "changed_output_fields": [
+        "utility_stats",
+        "dps",
+        "ignite_dps",
+        "total_dot_dps",
+        "ignite_active_stacks",
+        "action_rate"
+      ]
+    },
+    {
+      "build": "witchhunter-01",
+      "changed_output_fields": [
+        "utility_stats",
+        "dps",
+        "ignite_dps",
+        "total_dot_dps",
+        "ignite_active_stacks",
+        "action_rate",
+        "minions"
+      ]
+    }
+  ],
+  "tactician06": {
+    "native_rate": 2.3875,
+    "reference_rate": 1.4375,
+    "native_minion_dps": 4154.877055311,
+    "reference_minion_dps": 2501.627546392
+  },
+  "receipt_checks": "All230 default results bind current CLI and measurement receipt."
+}

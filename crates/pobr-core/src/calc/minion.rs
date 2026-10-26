@@ -366,10 +366,10 @@ pub struct MinionOrigin {
     /// The id of the skill that summoned it (`SummonBeastPlayer`); empty
     /// when no skill did.
     pub summoned_by: String,
-    /// Whether it is a damageable companion: the skill has
-    /// `SkillType.Companion` and not `MinionsAreUndamagable`.
-    /// `TotalCompanionLife` only sums these minions.
+    /// Whether the summoning skill has `SkillType.Companion`.
     pub is_companion: bool,
+    /// Whether the summoning skill has `MinionsAreUndamagable`.
+    pub is_undamageable: bool,
     /// The skill the minion uses, which its damage is calculated for.
     pub skill: MinionSkill,
     /// Whether it is a monster the player picked: a Spectre or a tamed beast.
@@ -388,6 +388,10 @@ pub struct MinionSkill {
     pub id: String,
     /// The skill's types (`Attack`, `Melee`, …).
     pub types: Vec<String>,
+    /// The actual hit mode of a generic weapon-capable attack. The raw types
+    /// describe both melee and ranged capabilities; absent weapon context
+    /// leaves their existing interpretation intact.
+    pub projectile_hit: Option<bool>,
     /// The skill's cast time in seconds (0 when the data gives none): how
     /// often a minion casting a spell uses it, before cast speed.
     pub cast_time: f64,
@@ -415,7 +419,12 @@ impl MinionSkill {
 
     /// The damage flags of the skill's hits.
     pub fn flags(&self) -> ModFlags {
-        crate::skill_env::skill_type_flags(&self.types)
+        let flags = crate::skill_env::skill_type_flags(&self.types);
+        match self.projectile_hit {
+            Some(true) => flags | ModFlags::PROJECTILE,
+            Some(false) => flags.without(ModFlags::PROJECTILE),
+            None => flags,
+        }
     }
 
     /// The skill's types as the bitset a calculation context carries.
@@ -712,6 +721,24 @@ pub(crate) fn bridge_count_multipliers(db: &ModDb, cfg: &mut CalcConfig) {
             cfg.stats.insert(var.into(), count);
         }
     }
+    // A positive Presence count does not locate individual actors. Keep the
+    // existing in-Presence convention for prepared companions; explicit zero
+    // counts or an absent Companion exclude their distinct-type contribution.
+    let companion_kinds = if cfg.conditions.get("CompanionInPresence") == Some(&false)
+        || ["SummonedMinion", "MinionPresenceCount"]
+            .iter()
+            .any(|name| cfg.multiplier_if_set(name).is_some_and(|n| n <= 0.0))
+    {
+        0.0
+    } else {
+        db.sum(
+            ModType::Base,
+            &scope,
+            &[ModName::from("DifferentCompanions")],
+        )
+    };
+    cfg.multipliers
+        .insert("DifferentCompanionsInPresence".into(), companion_kinds);
     // "per Summoned <kind>" uses that kind's created population, not the total.
     for var in [
         "ActiveGolemLimit",

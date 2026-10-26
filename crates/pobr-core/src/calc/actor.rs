@@ -44,11 +44,11 @@ pub struct Actor {
     pub base: ActorBaseStats,
     pub output: OutputTable,
     pub breakdown: BreakdownTable,
-    /// Whether this is a damageable companion minion (granted skill has
-    /// `SkillType.Companion` and not `MinionsAreUndamagable`, decided at spawn
-    /// time). `TotalCompanionLife` (vendor CalcPerform.lua:3364-3370) only sums
-    /// minions with this flag set; always `false` for the player actor.
+    /// Whether the summoning skill has `SkillType.Companion`.
     pub is_companion: bool,
+    /// The summoning skill's `MinionsAreUndamagable` flag. These minions
+    /// cannot contribute to the life pool provided by Loyalty.
+    pub is_undamageable: bool,
     /// A minion's catalog id and the skill that summoned it; `None` for the
     /// player and the enemy.
     pub minion: Option<MinionIdentity>,
@@ -76,6 +76,7 @@ impl Actor {
             output: OutputTable::default(),
             breakdown: BreakdownTable::default(),
             is_companion: false,
+            is_undamageable: false,
             minion: None,
         }
     }

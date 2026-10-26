@@ -1,0 +1,40 @@
+{
+  "name": "amazon-02",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/yangcy-0206/%E9%97%AA%E5%9B%9E%E8%B6%85%E8%B6%8A",
+    "account": "yangcy-0206",
+    "character": "闪回超越",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:33+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=yangcy-0206&name=%E9%97%AA%E5%9B%9E%E8%B6%85%E8%B6%8A&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Amazon",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 2,
+    "index_sha256": "d02a718c55fd5605947bb438dec47faa4ce6d241f076360e4494bf9a36333793",
+    "character_response_sha256": "6b5b763bcfd7dfbe44277578126c57215cfcca0ed3f9677a0e825ee9fd9eca64",
+    "upstream_updated_utc": "2026-10-14T12:55:56.697856Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:24.499453Z",
+    "upstream_last_checked_utc": "2026-10-24T16:31:14.189036Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Amazon",
+    "level": 100,
+    "main_skill": "Ice Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 6,
+    "code_sha256": "f96887ddf75d6ba69a5a7817fbcfc3dd2d61bddd446ae2288960c839580a28dd",
+    "code_chars": 12540,
+    "decoded_bytes": 42686
+  }
+}

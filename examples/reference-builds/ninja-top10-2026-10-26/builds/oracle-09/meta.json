@@ -1,0 +1,40 @@
+{
+  "name": "oracle-09",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/0bibea-1410/FR_obi",
+    "account": "0bibea-1410",
+    "character": "FR_obi",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:54:05+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=0bibea-1410&name=FR_obi&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Oracle",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 9,
+    "index_sha256": "e5277dadbd2cde3a7c72387529bcbcbbdb7e4e98007b75fb4935d80ef3360c47",
+    "character_response_sha256": "6c548e5b8753244837893430e99ed5686e4d77bf18db1598e1c279705d63af13",
+    "upstream_updated_utc": "2026-10-25T16:34:28.82724Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.89702Z",
+    "upstream_last_checked_utc": "2026-10-26T04:36:01.940346Z"
+  },
+  "character": {
+    "class": "Druid",
+    "ascendancy": "Oracle",
+    "level": 100,
+    "main_skill": "Lightning Bolt"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "28440ad8809599f70977dc0a22b29f266f767de81ae6e188461c5ef4b5188a81",
+    "code_chars": 13200,
+    "decoded_bytes": 50303
+  }
+}

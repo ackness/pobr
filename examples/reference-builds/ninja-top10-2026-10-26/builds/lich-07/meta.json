@@ -1,0 +1,40 @@
+{
+  "name": "lich-07",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/chuckzjj-2689/%E4%B8%89%E8%A7%92%E6%98%AF%E5%8F%AA%E5%B0%8F%E9%98%BF%E6%AF%94%E5%B7%AB%E5%A6%96%E7%8E%8B",
+    "account": "chuckzjj-2689",
+    "character": "三角是只小阿比巫妖王",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:52:55+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=chuckzjj-2689&name=%E4%B8%89%E8%A7%92%E6%98%AF%E5%8F%AA%E5%B0%8F%E9%98%BF%E6%AF%94%E5%B7%AB%E5%A6%96%E7%8E%8B&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Lich",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 7,
+    "index_sha256": "bf9399b55432e1c67fa82cfc371720d0d43a3187dbf10815aecca6c547c5738a",
+    "character_response_sha256": "4c80a7eaccc72959e0024b9e3191322a99bb158a67ef9688c86ecbf176c9d7b8",
+    "upstream_updated_utc": "2026-10-26T08:01:16.751822Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-26T08:41:44.84295Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Lich",
+    "level": 100,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 13,
+    "code_sha256": "ab78c5bf553f16ce8e31bedbac6f4d06fba570119ad5b876f8f66cc52d7ebe7b",
+    "code_chars": 15156,
+    "decoded_bytes": 61203
+  }
+}

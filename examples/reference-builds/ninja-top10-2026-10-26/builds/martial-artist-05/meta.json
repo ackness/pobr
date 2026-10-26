@@ -1,0 +1,40 @@
+{
+  "name": "martial-artist-05",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/phantasmal-4964/KungFuVibing",
+    "account": "phantasmal-4964",
+    "character": "KungFuVibing",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:53:21+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=phantasmal-4964&name=KungFuVibing&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Martial+Artist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 5,
+    "index_sha256": "02aea86a90fa6da528c053195c09e6f13ddd2745a1893a6dc6bffbf6ecf7e1a7",
+    "character_response_sha256": "4def8c94d1c2adb7922c6db88edb204a59c1999eeaf1084ac986d676110be404",
+    "upstream_updated_utc": "2026-10-07T12:32:50.395442Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.511602Z",
+    "upstream_last_checked_utc": "2026-10-25T07:32:57.73703Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Martial Artist",
+    "level": 100,
+    "main_skill": "Killing Palm"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 5,
+    "code_sha256": "ea7f15bda7caa6585f0e6cbb601315e942863dc8bf717146244c4d3cd79f21d5",
+    "code_chars": 12192,
+    "decoded_bytes": 45810
+  }
+}

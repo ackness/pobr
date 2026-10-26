@@ -124,8 +124,8 @@ impl SourceWriter {
             (ItemModSection::Enchant, &item.enchant_texts),
         ] {
             let source = holder.source(section);
-            for text in texts {
-                self.note_line(&source, text, LineFate::Parsed);
+            for text in pobr_core::item::join_loreweave_rarity(texts) {
+                self.note_line(&source, &text, LineFate::Parsed);
             }
         }
     }
@@ -222,6 +222,10 @@ impl SourceWriter {
 
     pub fn set_condition(&mut self, name: impl Into<String>, value: bool) {
         self.session.set_condition(name, value)
+    }
+
+    pub fn config(&self) -> &pobr_core::CalcConfig {
+        self.session.config()
     }
 
     pub fn set_main_skill_level(&mut self, gem_level: u32, bonus_levels: u32) {

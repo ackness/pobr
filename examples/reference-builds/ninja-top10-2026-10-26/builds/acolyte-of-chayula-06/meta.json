@@ -1,0 +1,40 @@
+{
+  "name": "acolyte-of-chayula-06",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/yydS-5950/qweqeqeqwesa",
+    "account": "yydS-5950",
+    "character": "qweqeqeqwesa",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:30+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=yydS-5950&name=qweqeqeqwesa&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Acolyte+of+Chayula",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 6,
+    "index_sha256": "720a4229719289af8ed99a62f5030ac97155620a00eb46772c25d1a11fcc24e0",
+    "character_response_sha256": "e9d4e7528a499ff9bd122d0012735fd16453bdc988bdb177cc4b4aca56400ce3",
+    "upstream_updated_utc": "2026-10-07T03:00:44.791675Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:25.30159Z",
+    "upstream_last_checked_utc": "2026-10-25T19:35:53.99761Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Acolyte of Chayula",
+    "level": 100,
+    "main_skill": "Malice"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "1fcd5beab29fde3205d36fa26716009d121cdc4c0956a841e837d9206f7d2af9",
+    "code_chars": 10632,
+    "decoded_bytes": 35260
+  }
+}

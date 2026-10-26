@@ -3,6 +3,295 @@ use pobr_core::{CalcConfig, ModDb, Modifier};
 use pobr_data::prelude::*;
 
 #[test]
+fn eldritch_will_combined_pools_use_player_names_and_retain_source() {
+    use pobr_core::calc::{Actor, ActorBaseStats, Env, perform};
+    let text = "3% increased maximum Life, Mana and [EnergyShield|Energy Shield]";
+    let parsed = crate::support::parse_mod(text).unwrap();
+    assert!(parsed.is_complete());
+    let mut env = Env::new(Actor::new(
+        90,
+        ActorBaseStats {
+            life: 4353.0,
+            mana: 894.0,
+            energy_shield: 1000.0,
+            ..Default::default()
+        },
+    ));
+    env.player.mod_db.add_list([
+        Modifier::number("MaximumLife", ModType::Inc, 73.0),
+        Modifier::number("MaximumMana", ModType::Inc, 16.0),
+    ]);
+    env.player.mod_db.add_list(parsed.mods.into_iter().map(|m| {
+        m.with_origin(
+            ModifierSource::new(SourceId::new(SourceKind::PassiveNode, "node.3894"))
+                .with_raw_text(text),
+        )
+    }));
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.life, 7661.28);
+    assert_eq!(env.player.output.mana, 1063.86);
+    assert_eq!(env.player.output.energy_shield, 1030.0);
+    for name in ["MaximumLife", "MaximumMana", "EnergyShield"] {
+        let modifier = env
+            .player
+            .mod_db
+            .named(name)
+            .find(|m| {
+                m.origin
+                    .as_ref()
+                    .is_some_and(|o| o.source_id.id == "node.3894")
+            })
+            .unwrap();
+        assert_eq!(modifier.mod_type, ModType::Inc);
+        assert_eq!(
+            modifier.origin.as_ref().unwrap().raw_text.as_deref(),
+            Some(text)
+        );
+    }
+    assert!(env.player.mod_db.named("Life").next().is_none());
+    assert!(env.player.mod_db.named("Mana").next().is_none());
+}
+
+#[test]
+fn lightning_lucky_hit_text_preserves_rolls_and_uses_only_the_lightning_range() {
+    use pobr_core::calc::{Actor, ActorBaseStats, Env, lucky_hit_chance, perform};
+    for (heart, generic, lightning_chance) in [(20, 0, 0.5), (25, 0, 0.55), (0, 20, 0.5)] {
+        for cfg in [CalcConfig::attack(), CalcConfig::spell()] {
+            let mut env = Env::new(Actor::new(
+                90,
+                ActorBaseStats {
+                    action_rate: 2.0,
+                    ..Default::default()
+                },
+            ));
+            env.cfg = cfg;
+            env.player.mod_db.add_list([
+                Modifier::number("LightningDamageMin", ModType::Base, 10.0),
+                Modifier::number("LightningDamageMax", ModType::Base, 100.0),
+                Modifier::number("FireDamageMin", ModType::Base, 10.0),
+                Modifier::number("FireDamageMax", ModType::Base, 100.0),
+                Modifier::number("LuckyHitsChance", ModType::Base, f64::from(generic)),
+                Modifier::number("CritChanceBase", ModType::Override, 0.0),
+            ]);
+            for (text, kind, id) in [
+                (
+                    format!("{heart}% chance for Lightning Damage with Hits to be Lucky"),
+                    SourceKind::Jewel,
+                    "jewel.heart",
+                ),
+                (
+                    "30% chance for [Lightning] Damage with [Hit|Hits] to be [Lucky]".into(),
+                    SourceKind::PassiveNode,
+                    "node.44566",
+                ),
+            ] {
+                let parsed = crate::support::parse_mod(&text).unwrap();
+                assert!(parsed.is_complete());
+                assert_eq!(parsed.mods.len(), 1);
+                assert_eq!(parsed.mods[0].name.as_str(), "LightningLuckyHitsChance");
+                env.player.mod_db.add_list(parsed.mods.into_iter().map(|m| {
+                    m.with_origin(
+                        ModifierSource::new(SourceId::new(kind.clone(), id)).with_raw_text(&text),
+                    )
+                }));
+            }
+            for critical in [false, true] {
+                assert_eq!(
+                    lucky_hit_chance(
+                        &env.player.mod_db,
+                        &env.cfg,
+                        DamageType::Lightning,
+                        critical
+                    ),
+                    lightning_chance
+                );
+                assert_eq!(
+                    lucky_hit_chance(&env.player.mod_db, &env.cfg, DamageType::Fire, critical),
+                    f64::from(generic) / 100.0
+                );
+            }
+            perform(&mut env).unwrap();
+            // 10..100 averages 55 normally and 70 when lucky. Typed luck
+            // adds only to Lightning; the existing generic chance covers both.
+            let expected = 110.0 + 15.0 * (lightning_chance + f64::from(generic) / 100.0);
+            assert!((env.player.output.total_hit_avg - expected).abs() < 1e-9);
+            assert!((env.player.output.dps - expected * 2.0).abs() < 1e-9);
+            let heart_mod = env
+                .player
+                .mod_db
+                .named("LightningLuckyHitsChance")
+                .find(|m| {
+                    m.origin
+                        .as_ref()
+                        .is_some_and(|o| o.source_id.id == "jewel.heart")
+                })
+                .unwrap();
+            assert_eq!(
+                heart_mod.origin.as_ref().unwrap().raw_text.as_deref(),
+                Some(
+                    format!("{heart}% chance for Lightning Damage with Hits to be Lucky").as_str()
+                )
+            );
+        }
+    }
+}
+
+#[test]
+fn blackflame_covenant_converts_only_fire_spells_and_preserves_ignite_magnitude() {
+    use pobr_core::TraceGraph;
+    use pobr_core::calc::ailment::{AilmentSource, ignite_traced};
+    use pobr_core::calc::{Actor, ActorBaseStats, Env, perform};
+
+    let fire_type = SkillTypes::from_pob2_name("Fire").unwrap();
+    let lines = [
+        "Fire Spells Convert 100% of Fire Damage to Chaos Damage",
+        "Chaos Damage from Fire Spells Contributes to Flammability and Ignite Magnitudes",
+        "Ignite inflicted with Fire Spells deals Chaos Damage instead of Fire Damage",
+    ];
+    for (types, enabled) in [
+        (SkillTypes::SPELL | fire_type, true),
+        (SkillTypes::SPELL, false),
+        (SkillTypes::ATTACK | fire_type, false),
+    ] {
+        let mut env = Env::new(Actor::new(
+            80,
+            ActorBaseStats {
+                life: 1000.0,
+                action_rate: 1.0,
+                ..Default::default()
+            },
+        ));
+        env.cfg = CalcConfig::spell()
+            .with_skill_types(types)
+            .with_mode_effective(true);
+        for line in lines {
+            let parsed = crate::support::parse_mod(line).unwrap();
+            assert!(parsed.is_complete(), "{line}: {parsed:?}");
+            env.player.mod_db.add_list(parsed.mods.into_iter().map(|m| {
+                m.with_origin(
+                    ModifierSource::new(SourceId::new(SourceKind::PassiveNode, "node.42680"))
+                        .with_raw_text(line),
+                )
+            }));
+        }
+        env.player.mod_db.add_list([
+            Modifier::number("FireDamageMin", ModType::Base, 100.0),
+            Modifier::number("FireDamageMax", ModType::Base, 100.0),
+            Modifier::number("FireDamage", ModType::Inc, 900.0),
+            Modifier::number("ChaosDamage", ModType::Inc, 100.0),
+            Modifier::number("AilmentChance", ModType::Base, 100.0),
+            Modifier::number("ChaosPenetration", ModType::Base, 20.0),
+        ]);
+        env.enemy.mod_db.add_list([
+            Modifier::number("FireResist", ModType::Base, 75.0),
+            Modifier::number("ChaosResist", ModType::Base, 20.0),
+            Modifier::number("ChaosDamageTaken", ModType::Inc, 50.0),
+        ]);
+        perform(&mut env).unwrap();
+        // Conversion uses the destination increases only. Ignite magnitude
+        // comes from that hit once; only its mitigation changes to Chaos.
+        let source = if enabled { 200.0 } else { 1000.0 };
+        let mitigation = if enabled { 1.2 } else { 0.25 };
+        assert!((env.player.output.total_hit_avg - source).abs() < 1e-9);
+        assert!((env.player.output.ignite_dps - source * 0.2 * mitigation).abs() < 1e-9);
+
+        let mut trace = TraceGraph::new();
+        let (ignite, node) = ignite_traced(
+            &AilmentSource::new(source, 1.0, 0.0, false),
+            &env.player.mod_db,
+            &env.enemy.mod_db,
+            &env.cfg,
+            1000.0,
+            &mut trace,
+        );
+        assert!((ignite.eff_mult - mitigation).abs() < 1e-9);
+        assert_eq!(
+            trace
+                .source_ancestors(node)
+                .iter()
+                .any(|s| s.id == "node.42680"),
+            enabled
+        );
+        assert_eq!(
+            trace
+                .nodes()
+                .iter()
+                .any(|n| n.label == "enemy ChaosResist BASE"),
+            enabled
+        );
+        assert_eq!(
+            trace
+                .nodes()
+                .iter()
+                .any(|n| n.label == "enemy FireResist BASE"),
+            !enabled
+        );
+        // Changing an Ignite's type alone does not change source eligibility.
+        assert_eq!(env.player.mod_db.flag(&env.cfg, "ChaosCanIgnite"), enabled);
+        let mut session =
+            pobr_core::calc::CalculationSession::new(MinimalInput::from(env.player.base))
+                .with_config(env.cfg.clone());
+        session.add_modifiers(env.player.mod_db.iter_mods().cloned());
+        session.add_enemy_modifiers(env.enemy.mod_db.iter_mods().cloned());
+        session.perform_minimal().unwrap();
+        let detail = session.derived_detail("IgniteEffMult").unwrap();
+        let input = |id: &str| detail.inputs.iter().find(|(name, _)| name == id).unwrap().1;
+        let reconstructed = (1.0 - input("AilmentEnemyResistance") / 100.0)
+            * (1.0 + input("AilmentDamageTakenIncreased") / 100.0)
+            * input("AilmentDamageTakenMore");
+        assert!((reconstructed - mitigation).abs() < 1e-9);
+        assert!(
+            (pobr_core::display_catalog::display_value(session.output(), "IgniteEffMult")
+                - reconstructed)
+                .abs()
+                < 1e-9
+        );
+    }
+}
+
+#[test]
+fn chain_remaining_trace_uses_the_selected_hits_snapshot_in_both_crit_legs() {
+    use pobr_core::ModTag;
+
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("ChainCountMax", ModType::Base, 2.0));
+    db.add_mod(
+        Modifier::number("Damage", ModType::Inc, 10.0)
+            .with_keyword_flags(KeywordFlags::HIT)
+            .with_tag(ModTag::multiplier("ChainRemaining", 1.0, None)),
+    );
+    let input = MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        base_action_rate: 1.0,
+        ..Default::default()
+    };
+    for (used, remaining) in [(None, 2.0), (Some(1.0), 1.0), (Some(7.0), 0.0)] {
+        let mut cfg = CalcConfig::attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE);
+        if let Some(used) = used {
+            cfg = cfg.with_multiplier("Chain", used);
+        }
+        // A minimal caller has not precomputed ChainRemaining or the hit keyword.
+        assert!(cfg.multiplier_if_set("ChainRemaining").is_none());
+        let traced = calculate_minimal_traced(&db, &cfg, &input);
+        let plain = calculate_minimal(&db, &cfg, &input);
+        assert_eq!(traced.output, plain);
+        assert!((plain.total_hit_avg - (100.0 + remaining * 10.0)).abs() < 1e-9);
+        assert_eq!(plain.dps, plain.total_hit_avg);
+        for leg in ["non-crit", "crit"] {
+            let label = format!("Damage INC modifier sum ({leg} pass)");
+            let sum = traced
+                .trace
+                .nodes()
+                .iter()
+                .find(|node| node.label == label)
+                .unwrap();
+            assert_eq!(sum.value, remaining * 10.0, "{leg}, used={used:?}");
+        }
+    }
+}
+
+#[test]
 fn calculates_life_resistance_hit_damage_and_dps() {
     let mut db = ModDb::new();
     db.add_mod(Modifier::number("MaximumLife", ModType::Base, 100.0));

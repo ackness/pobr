@@ -1,0 +1,40 @@
+{
+  "name": "disciple-of-varashta-02",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/morloxIC-1573/morlox_v_v",
+    "account": "morloxIC-1573",
+    "character": "morlox_v_v",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:50:31+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=morloxIC-1573&name=morlox_v_v&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Disciple+of+Varashta",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 2,
+    "index_sha256": "5bc5eaaca1e7d08f53be7032332c6b71178712ac034e484d4163c918b26bb73d",
+    "character_response_sha256": "d36870a62c909c2f19f5564e071faca74b8ee237221d8c5c1dcaa14d826529d1",
+    "upstream_updated_utc": "2026-09-13T02:47:03.928334Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.0857Z",
+    "upstream_last_checked_utc": "2026-10-21T16:19:42.441334Z"
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Disciple of Varashta",
+    "level": 100,
+    "main_skill": "Ruzhan, the Blazing Sword"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "62398b332b66ca2db4c7fc274e25679482512d9299593970406fca90c4bea9fe",
+    "code_chars": 11140,
+    "decoded_bytes": 48692
+  }
+}

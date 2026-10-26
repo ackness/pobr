@@ -1,0 +1,40 @@
+{
+  "name": "pathfinder-01",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/LegendGrinder-5890/deGradaciya_polnaya",
+    "account": "LegendGrinder-5890",
+    "character": "deGradaciya_polnaya",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:54:12+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=LegendGrinder-5890&name=deGradaciya_polnaya&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Pathfinder",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 1,
+    "index_sha256": "97e6a76625b8f5a57cb940932b16eaf3861b666a35991aad6a40c63ef82a8d03",
+    "character_response_sha256": "bc9698bf8c9affc6d192fc03bafb00fcfb6d306fefa8871d85e8001913af5b10",
+    "upstream_updated_utc": "2026-09-25T23:44:58.091334Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.365496Z",
+    "upstream_last_checked_utc": "2026-10-26T04:36:01.348843Z"
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Pathfinder",
+    "level": 100,
+    "main_skill": "Profane Ritual"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "5ca237372bf4d4400d1c35c8565a11eeabd5eaa0898e92161630f9e679ca7bb0",
+    "code_chars": 10000,
+    "decoded_bytes": 34692
+  }
+}

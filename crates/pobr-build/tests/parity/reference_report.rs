@@ -450,7 +450,16 @@ const BASELINES: [Baseline; 3] = [
         // Flask "N% of Damage taken during effect Recouped as Life" no longer adds flat Damage
         // Taken (+1 row, Abyssal Lich Twister 4028d0b52984 TotalEHP).
         // Mechanic batches expose more reference fields: +2 agreeing rows, 6 new rows.
-        agreeing_rows: 5790,
+        // Forbidden Rites input fixes: static equipment conditions, minion
+        // auras/support costs, Offering effect, and weapon/enemy overrides (+3).
+        // Skill/grant requirements also correct ReqInt in the existing Oracle
+        // Grim Pillars and Martial Artist Flicker Strike cases (+2; round 54).
+        // Native Sands of Silk identity removes ordinary Blink's 157 Int
+        // requirement in Oracle Grim Pillars 0a7cf6c82619. Mana Tempest 19
+        // and Temporal Chains 19 still require 147; the reference counts the
+        // item grant as a gem. This restores the existing known exemption
+        // (-1 row), verified against ModGrantedSkills and independent gems.
+        agreeing_rows: 5794,
     },
     // Measured, never worked on: do not diagnose these builds to choose a fix.
     //
@@ -495,12 +504,22 @@ const BASELINES: [Baseline; 3] = [
     // which moves two Ritualist regeneration rows away from the reference.
     Baseline {
         corpus: "examples/reference-builds/holdout/builds",
-        dps_builds: 18,
+        // Measured only: correcting enemy-condition normalization loses one
+        // DPS match and six rows against the saved exporter; other fixes add
+        // one row. Aggregate rollbacks isolate this to 6f9ccf3a/6c60774b,
+        // not Northpaw or the Presence-aura/Offering changes. No individual
+        // holdout was inspected. Independently, the frozen worked Deadeye and
+        // synthetic Coming Calamity test prove that EnemyInPresence must stay
+        // active rather than becoming EnemyEnemyInPresence. Keep that fix;
+        // the aggregate experiment does not identify which holdout item uses it.
+        dps_builds: 17,
         // Measured only: local flat requirements follow base conversion (+1 row).
         // Measured only: resistance truncation, Smith sharing and Idol categories (+5 rows).
         // Measured only: reference basis excludes exporter-absent rules.
         // Measured only after the mechanic batches: +1 agreeing row, 4 new rows.
-        agreeing_rows: 1913,
+        // Measured only: the static item/projectile batch raises the aggregate
+        // by four rows. No individual holdout build was inspected.
+        agreeing_rows: 1912,
     },
 ];
 

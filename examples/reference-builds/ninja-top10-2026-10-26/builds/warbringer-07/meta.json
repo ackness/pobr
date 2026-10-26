@@ -1,0 +1,40 @@
+{
+  "name": "warbringer-07",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/a1366163197-3701/tttes",
+    "account": "a1366163197-3701",
+    "character": "tttes",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:58:47+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=a1366163197-3701&name=tttes&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Warbringer",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 7,
+    "index_sha256": "258427a5d84e3e6a608fbd3c06b1a9eeeb961957587d00b5811bf9dacaf69532",
+    "character_response_sha256": "081ad1e2b0e38357939f07016da2c17e2c41d4041d9593d9d46d7ed4b0010cf1",
+    "upstream_updated_utc": "2026-10-26T06:06:12.349986Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-26T06:06:12.349986Z"
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Warbringer",
+    "level": 99,
+    "main_skill": "Earthshatter"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 15,
+    "code_sha256": "c2ee6b709dccef4db8f696264e44af9b29781616ae785ae4b8bd4de9ffe0819a",
+    "code_chars": 14344,
+    "decoded_bytes": 59080
+  }
+}

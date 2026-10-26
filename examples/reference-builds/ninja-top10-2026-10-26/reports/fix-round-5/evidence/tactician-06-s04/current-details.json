@@ -1,0 +1,846 @@
+{
+  "data_version": "0.5.5.4.2",
+  "provenance": {
+    "engine_version": "0.0.37",
+    "data_version": "0.5.5.4.2",
+    "data_sha256": "788347ed11d6f519f076c95b216a858a8d51b237f3535489643758fde165d691"
+  },
+  "unsupported_modifiers": [
+    "100% increased Glory generation",
+    "30% faster Dodge Roll",
+    "Gain Guard equal to 20% of missing Energy Shield for 4 seconds when you Dodge Roll",
+    "Maximum amount of Guard is based on maximum Energy Shield instead",
+    "Divine Flight",
+    "Every 10 seconds, gain a random non-damaging Shrine buff for 20 seconds",
+    "Tree:1200: missing timeless jewel seed data",
+    "Tree:18448: missing timeless jewel seed data",
+    "Tree:30141: missing timeless jewel seed data",
+    "18% increased Glory generation for Banner Skills",
+    "15% increased Glory generation for Banner Skills",
+    "Tree:1861: 15% increased [Glory] generation",
+    "Tree:4661: [Banner|Banners] also grant +25% to all [ElementalDamage|Elemental] [Resistances] affected targets",
+    "Tree:9863: 25% reduced [ArmourBreak|Armour Break] taken",
+    "Tree:10371: [Banner|Banners] gain 5 [Glory] per second",
+    "Tree:10371: There is no [Limit] on the number of [Banner|Banners] you can place",
+    "Tree:12821: 20% increased [Glory] generation for [Banner] Skills",
+    "Tree:13524: Skills have a 15% chance to not consume [Glory]",
+    "Tree:16385: 20% increased [Glory] generation for [Banner] Skills",
+    "Tree:43791: When a [Banner] expires, recover 15% of the [Glory] required for that Banner",
+    "Tree:48026: 20% increased [Glory] generation for [Banner] Skills",
+    "Tree:53320: 20% increased [Glory] generation for [Banner] Skills",
+    "Tree:62258: 20% increased [Glory] generation for [Banner] Skills",
+    "Tree:62455: [Banner] [Buff|Buffs] linger on you for 2 seconds after you leave the Area",
+    "Tree:63360: 20% increased [Glory] generation for [Banner] Skills"
+  ],
+  "missing_items": [],
+  "build": {
+    "level": 100,
+    "class_name": "Mercenary",
+    "ascendancy_name": "Tactician",
+    "allocated_node_count": 132,
+    "equipped_item_count": 10,
+    "socket_group_count": 18
+  },
+  "output": {
+    "archon_duration": 10.0,
+    "archon_recovery_period": 20.0,
+    "utility_stats": {
+      "BeiraIgniteDPS": 0.0,
+      "Charm1ChargeGen": 0.0,
+      "Charm1ChargesGained": 1.3,
+      "Charm1ChargesMax": 40.0,
+      "Charm1ChargesUsed": 40.0,
+      "Charm1ConsecratedGroundDuration": 0.0,
+      "Charm1ConsecratedGroundRadiusMetres": 0.0,
+      "Charm1Duration": 3.3,
+      "Charm1IgnitedGroundDuration": 0.0,
+      "Charm1IgnitedGroundIgniteDPS": 0.0,
+      "Charm1IgnitedGroundIgniteDuration": 0.0,
+      "Charm1IgnitedGroundRadiusMetres": 0.0,
+      "Charm1IgnitedGroundSourceDamage": 0.0,
+      "Charm1LifeRecoveryOnUse": 0.0,
+      "Charm1ManaRecoveryOnUse": 0.0,
+      "Charm1Uses": 1.0,
+      "Charm2ChargeGen": 0.0,
+      "Charm2ChargesGained": 1.3,
+      "Charm2ChargesMax": 40.0,
+      "Charm2ChargesUsed": 20.0,
+      "Charm2ConsecratedGroundDuration": 0.0,
+      "Charm2ConsecratedGroundRadiusMetres": 0.0,
+      "Charm2Duration": 3.3,
+      "Charm2IgnitedGroundDuration": 0.0,
+      "Charm2IgnitedGroundIgniteDPS": 0.0,
+      "Charm2IgnitedGroundIgniteDuration": 0.0,
+      "Charm2IgnitedGroundRadiusMetres": 0.0,
+      "Charm2IgnitedGroundSourceDamage": 0.0,
+      "Charm2LifeRecoveryOnUse": 0.0,
+      "Charm2ManaRecoveryOnUse": 0.0,
+      "Charm2Uses": 2.0,
+      "Charm3ChargeGen": 0.0,
+      "Charm3ChargesGained": 1.6800000000000002,
+      "Charm3ChargesMax": 40.0,
+      "Charm3ChargesUsed": 30.0,
+      "Charm3ConsecratedGroundDuration": 0.0,
+      "Charm3ConsecratedGroundRadiusMetres": 0.0,
+      "Charm3Duration": 3.9,
+      "Charm3IgnitedGroundDuration": 0.0,
+      "Charm3IgnitedGroundIgniteDPS": 0.0,
+      "Charm3IgnitedGroundIgniteDuration": 0.0,
+      "Charm3IgnitedGroundRadiusMetres": 0.0,
+      "Charm3IgnitedGroundSourceDamage": 0.0,
+      "Charm3LifeRecoveryOnUse": 0.0,
+      "Charm3ManaRecoveryOnUse": 0.0,
+      "Charm3Uses": 1.0,
+      "CombinedIgniteDPS": 0.0,
+      "CreatedRemnantDuplicateChance": -0.0,
+      "CreatedRemnantEffectGrantsPerPickup": 0.0,
+      "CreatedRemnantEffectGrantsPerSecond": 0.0,
+      "CreatedRemnantPotentialEffectGrantsPerUse": 0.0,
+      "Flask1ChargeGen": 0.17,
+      "Flask1ChargesGained": 1.0,
+      "Flask1ChargesMax": 75.0,
+      "Flask1ChargesUsed": 7.0,
+      "Flask1Duration": 3.0,
+      "Flask1EnergyShieldInstantRecovery": 0.0,
+      "Flask1EnergyShieldRecovery": 0.0,
+      "Flask1EnergyShieldRecoveryPerSecond": 0.0,
+      "Flask1GuardAfterEffect": 0.0,
+      "Flask1GuardDuration": -0.0,
+      "Flask1InstantRecovery": -0.0,
+      "Flask1LifeRemovedOnUse": 0.0,
+      "Flask1ManaRemovedOnUse": 0.0,
+      "Flask1Recovery": 920.0,
+      "Flask1RecoveryPerSecond": 306.6666666666667,
+      "Flask1Uses": 10.0,
+      "Flask2ChargeGen": 0.17,
+      "Flask2ChargesGained": 1.0,
+      "Flask2ChargesMax": 109.0,
+      "Flask2ChargesUsed": 10.0,
+      "Flask2Duration": 3.0,
+      "Flask2EnergyShieldInstantRecovery": 0.0,
+      "Flask2EnergyShieldRecovery": 0.0,
+      "Flask2EnergyShieldRecoveryPerSecond": 0.0,
+      "Flask2GuardAfterEffect": 0.0,
+      "Flask2GuardDuration": -0.0,
+      "Flask2InstantRecovery": 145.08,
+      "Flask2LifeRemovedOnUse": 0.0,
+      "Flask2ManaRemovedOnUse": 0.0,
+      "Flask2Recovery": 314.34000000000003,
+      "Flask2RecoveryPerSecond": 56.419999999999995,
+      "Flask2Uses": 10.0,
+      "FlaskChargeGen": 0.17,
+      "FlaskEffect": -0.0,
+      "LifeFlaskChargeGen": 0.17,
+      "ManaFlaskChargeGen": 0.17,
+      "RemnantManaRecoverablePerPickup": 0.0,
+      "RemnantManaRecoverablePerSecond": 0.0,
+      "RemnantManaRecoveryPercent": 0.0,
+      "UtilityFlaskChargeGen": 0.17
+    },
+    "life": 1.0,
+    "mana": 1081.08,
+    "energy_shield": 14325.0,
+    "armour": 2084.0,
+    "evasion": 1985.0,
+    "fire_resistance": 44.0,
+    "cold_resistance": 32.0,
+    "lightning_resistance": 41.0,
+    "crit_chance": 0.0,
+    "crit_multiplier": 2.0,
+    "hit_chance": 1.0,
+    "total_hit_avg": 0.0,
+    "dps": 0.0,
+    "bleed_dps": 0.0,
+    "ignite_dps": 0.0,
+    "poison_dps": 0.0,
+    "total_dot_dps": 0.0,
+    "bleed_active_stacks": 0.0,
+    "ignite_active_stacks": 0.0,
+    "poison_active_stacks": 0.0,
+    "bleed_max_stacks": 0.0,
+    "ignite_max_stacks": 0.0,
+    "poison_max_stacks": 0.0,
+    "action_rate": 1.28,
+    "firing_rate": 0.0,
+    "reload_time": 0.0,
+    "cooldown": 0.0,
+    "mana_cost": 0.0,
+    "ehp": {
+      "by_type": {
+        "Chaos": {
+          "enemy_damage": 390.7478,
+          "taken_hit": 0.0,
+          "total_hit_pool": 9311.755555555555
+        },
+        "Cold": {
+          "enemy_damage": 976.8695,
+          "taken_hit": 610.3480636,
+          "total_hit_pool": 17270.088888888888
+        },
+        "Fire": {
+          "enemy_damage": 976.8695,
+          "taken_hit": 507.1906444000001,
+          "total_hit_pool": 17270.088888888888
+        },
+        "Lightning": {
+          "enemy_damage": 976.8695,
+          "taken_hit": 532.9799992,
+          "total_hit_pool": 17270.088888888888
+        },
+        "Physical": {
+          "enemy_damage": 976.8695,
+          "taken_hit": 683.80865,
+          "total_hit_pool": 17270.088888888888
+        }
+      },
+      "damaging_hits": 7.412062385608923,
+      "damage_chance": 99.2,
+      "mitigated_hits": 7.471837082267056,
+      "not_hit_chance": 18.0,
+      "enemy_damage_in": 4246.0
+    },
+    "minions": [
+      {
+        "minion_id": "WolfMinion",
+        "summoned_by": "WolfPackPlayer",
+        "skill_id": "MeleeAtAnimationSpeedWolfCompanion",
+        "level": 38,
+        "dps": 2501.627546392,
+        "life": 1759.1,
+        "armour": 699.0,
+        "evasion": 188.0,
+        "energy_shield": 724.0,
+        "stats": {
+          "ChaosResist": 0.0,
+          "ChaosResistMax": 75.0,
+          "ChaosResistOverCap": 0.0,
+          "ColdResist": 5.0,
+          "ColdResistMax": 75.0,
+          "ColdResistOverCap": 0.0,
+          "CurseEffectOnSelf": 100.0,
+          "FireResist": 25.0,
+          "FireResistMax": 75.0,
+          "FireResistOverCap": 0.0,
+          "LifeRegen": -0.0,
+          "LightningResist": 5.0,
+          "LightningResistMax": 75.0,
+          "LightningResistOverCap": 0.0
+        }
+      }
+    ]
+  },
+  "reference": {
+    "tolerance": 0.05,
+    "at_own_rate_of_use": false,
+    "rain_hits_whenever_allowed": false,
+    "periodic_hits_assume_sustained": false,
+    "exporter_absent_rules_omitted": true,
+    "compared": 89,
+    "agreeing": 87,
+    "differing": [
+      {
+        "stat": "ActiveMinionLimit",
+        "pob_key": "ActiveMinionLimit",
+        "pobr": 7.0,
+        "reference": 0.0,
+        "ratio": null
+      },
+      {
+        "stat": "MinionTotalDPS",
+        "pob_key": "Minion:TotalDPS",
+        "pobr": 2501.627546392,
+        "reference": 1201.5931816863,
+        "ratio": 2.0819255506104395
+      }
+    ]
+  },
+  "tree_version": {
+    "build_tree_version": "0_5",
+    "unknown_node_count": 0,
+    "unknown_nodes": []
+  },
+  "reference_basis": true,
+  "breakdowns": [
+    {
+      "stat": "Minion:TotalDPS",
+      "value": 2501.627546392,
+      "pob_key": "Minion:TotalDPS",
+      "reference": 1201.5931816863,
+      "breakdown": {
+        "actor": {
+          "kind": "minion",
+          "index": 0
+        },
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "more_total": 1.0,
+        "mods": [],
+        "formula": {
+          "steps": [
+            {
+              "op": "average_hit",
+              "operand": 2211.178513246,
+              "result": 2211.178513246
+            },
+            {
+              "op": "enemy_mitigation",
+              "operand": 0.7870294643978347,
+              "result": 1740.262640968
+            },
+            {
+              "op": "uses_per_second",
+              "operand": 1.4375,
+              "result": 2501.6275463915
+            },
+            {
+              "op": "chance_to_hit",
+              "operand": 100.0,
+              "result": 2501.6275463915
+            }
+          ],
+          "value": 2501.627546392
+        }
+      }
+    },
+    {
+      "stat": "Minion:TotalHitAvg",
+      "value": null,
+      "pob_key": "Minion:TotalHitAvg",
+      "reference": null,
+      "breakdown": {
+        "actor": {
+          "kind": "minion",
+          "index": 0
+        },
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "more_total": 1.0,
+        "mods": [],
+        "formula": {
+          "steps": [
+            {
+              "op": "non_crit_hit",
+              "operand": 2051.8997919000003,
+              "result": 2051.8997919000003
+            },
+            {
+              "op": "crit_hits",
+              "operand": 6.75,
+              "result": 2211.178513246
+            }
+          ],
+          "value": 2211.178513246
+        }
+      }
+    },
+    {
+      "stat": "Minion:PhysicalDamageMin",
+      "value": null,
+      "pob_key": "Minion:PhysicalDamageMin",
+      "reference": null,
+      "breakdown": {
+        "actor": {
+          "kind": "minion",
+          "index": 0
+        },
+        "base_total": 160.416,
+        "inc_total": 0.0,
+        "more_total": 1.0,
+        "mods": [
+          {
+            "mod_type": "BASE",
+            "value": 160.416,
+            "active": true,
+            "source_text": "allies in your presence gain added attack damage equal to 25% of your main hand weapon's damage",
+            "origin_kind": "AscendancyNode",
+            "origin_id": "node.16249",
+            "slot": null
+          },
+          {
+            "mod_type": "BASE",
+            "value": 14.0,
+            "active": false,
+            "source_text": "Allies in your Presence deal 14 to 31 added Attack Physical Damage",
+            "origin_kind": "ItemAffix",
+            "origin_id": "item.weapon2.explicit",
+            "slot": "weapon2"
+          }
+        ],
+        "formula": null
+      }
+    },
+    {
+      "stat": "Minion:PhysicalDamageMax",
+      "value": null,
+      "pob_key": "Minion:PhysicalDamageMax",
+      "reference": null,
+      "breakdown": {
+        "actor": {
+          "kind": "minion",
+          "index": 0
+        },
+        "base_total": 240.62399999999997,
+        "inc_total": 0.0,
+        "more_total": 1.0,
+        "mods": [
+          {
+            "mod_type": "BASE",
+            "value": 240.62399999999997,
+            "active": true,
+            "source_text": "allies in your presence gain added attack damage equal to 25% of your main hand weapon's damage",
+            "origin_kind": "AscendancyNode",
+            "origin_id": "node.16249",
+            "slot": null
+          },
+          {
+            "mod_type": "BASE",
+            "value": 31.0,
+            "active": false,
+            "source_text": "Allies in your Presence deal 14 to 31 added Attack Physical Damage",
+            "origin_kind": "ItemAffix",
+            "origin_id": "item.weapon2.explicit",
+            "slot": "weapon2"
+          }
+        ],
+        "formula": null
+      }
+    },
+    {
+      "stat": "Minion:ColdDamageMin",
+      "value": null,
+      "pob_key": "Minion:ColdDamageMin",
+      "reference": null,
+      "breakdown": {
+        "actor": {
+          "kind": "minion",
+          "index": 0
+        },
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "more_total": 1.0,
+        "mods": [
+          {
+            "mod_type": "BASE",
+            "value": 22.0,
+            "active": false,
+            "source_text": "Allies in your Presence deal 22 to 35 added Attack Cold Damage",
+            "origin_kind": "ItemAffix",
+            "origin_id": "item.weapon2.explicit",
+            "slot": "weapon2"
+          }
+        ],
+        "formula": null
+      }
+    },
+    {
+      "stat": "Minion:ColdDamageMax",
+      "value": null,
+      "pob_key": "Minion:ColdDamageMax",
+      "reference": null,
+      "breakdown": {
+        "actor": {
+          "kind": "minion",
+          "index": 0
+        },
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "more_total": 1.0,
+        "mods": [
+          {
+            "mod_type": "BASE",
+            "value": 35.0,
+            "active": false,
+            "source_text": "Allies in your Presence deal 22 to 35 added Attack Cold Damage",
+            "origin_kind": "ItemAffix",
+            "origin_id": "item.weapon2.explicit",
+            "slot": "weapon2"
+          }
+        ],
+        "formula": null
+      }
+    },
+    {
+      "stat": "Minion:LightningDamageMin",
+      "value": null,
+      "pob_key": "Minion:LightningDamageMin",
+      "reference": null,
+      "breakdown": {
+        "actor": {
+          "kind": "minion",
+          "index": 0
+        },
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "more_total": 1.0,
+        "mods": [
+          {
+            "mod_type": "BASE",
+            "value": 1.0,
+            "active": false,
+            "source_text": "Allies in your Presence deal 1 to 40 added Attack Lightning Damage",
+            "origin_kind": "ItemEnchant",
+            "origin_id": "item.weapon2.enchant",
+            "slot": "weapon2"
+          }
+        ],
+        "formula": null
+      }
+    },
+    {
+      "stat": "Minion:LightningDamageMax",
+      "value": null,
+      "pob_key": "Minion:LightningDamageMax",
+      "reference": null,
+      "breakdown": {
+        "actor": {
+          "kind": "minion",
+          "index": 0
+        },
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "more_total": 1.0,
+        "mods": [
+          {
+            "mod_type": "BASE",
+            "value": 40.0,
+            "active": false,
+            "source_text": "Allies in your Presence deal 1 to 40 added Attack Lightning Damage",
+            "origin_kind": "ItemEnchant",
+            "origin_id": "item.weapon2.enchant",
+            "slot": "weapon2"
+          }
+        ],
+        "formula": null
+      }
+    },
+    {
+      "stat": "Minion:Damage",
+      "value": null,
+      "pob_key": "Minion:Damage",
+      "reference": null,
+      "breakdown": {
+        "actor": {
+          "kind": "minion",
+          "index": 0
+        },
+        "base_total": 0.0,
+        "inc_total": 183.0,
+        "more_total": 2.29,
+        "mods": [
+          {
+            "mod_type": "INC",
+            "value": 119.0,
+            "active": true,
+            "source_text": "Allies in your Presence deal 119% increased Damage",
+            "origin_kind": "ItemAffix",
+            "origin_id": "item.weapon2.explicit",
+            "slot": "weapon2"
+          },
+          {
+            "mod_type": "INC",
+            "value": 8.0,
+            "active": true,
+            "source_text": "[Allies|Allies] in your [Presence|Presence] deal 8% increased Damage",
+            "origin_kind": "PassiveNode",
+            "origin_id": "node.10305",
+            "slot": null
+          },
+          {
+            "mod_type": "INC",
+            "value": 40.0,
+            "active": true,
+            "source_text": "[Allies|Allies] in your [Presence|Presence] deal 40% increased Damage",
+            "origin_kind": "PassiveNode",
+            "origin_id": "node.14761",
+            "slot": null
+          },
+          {
+            "mod_type": "INC",
+            "value": 16.0,
+            "active": true,
+            "source_text": "[Allies|Allies] in your [Presence|Presence] deal 16% increased Damage",
+            "origin_kind": "PassiveNode",
+            "origin_id": "node.45586",
+            "slot": null
+          },
+          {
+            "mod_type": "MORE",
+            "value": 76.0,
+            "active": true,
+            "source_text": null,
+            "origin_kind": "SkillGem",
+            "origin_id": "buff.WarBannerPlayer.base_skill_buff_attack_damage_+%_final_to_apply",
+            "slot": null
+          },
+          {
+            "mod_type": "MORE",
+            "value": 30.0,
+            "active": true,
+            "source_text": null,
+            "origin_kind": "SupportGem",
+            "origin_id": "minion.SupportFeedingFrenzyPlayer.feeding_frenzy_minion_damage_+%_final",
+            "slot": null
+          }
+        ],
+        "formula": null
+      }
+    },
+    {
+      "stat": "Minion:AddedDamage",
+      "value": null,
+      "pob_key": "Minion:AddedDamage",
+      "reference": null,
+      "breakdown": {
+        "actor": {
+          "kind": "minion",
+          "index": 0
+        },
+        "base_total": 0.0,
+        "inc_total": 0.0,
+        "more_total": 0.7,
+        "mods": [
+          {
+            "mod_type": "MORE",
+            "value": -30.000000000000004,
+            "active": true,
+            "source_text": null,
+            "origin_kind": null,
+            "origin_id": null,
+            "slot": null
+          }
+        ],
+        "formula": null
+      }
+    },
+    {
+      "stat": "Minion:ActionRate",
+      "value": null,
+      "pob_key": "Minion:ActionRate",
+      "reference": null,
+      "breakdown": {
+        "actor": {
+          "kind": "minion",
+          "index": 0
+        },
+        "base_total": 0.0,
+        "inc_total": 15.0,
+        "more_total": 1.0,
+        "mods": [
+          {
+            "mod_type": "INC",
+            "value": 15.0,
+            "active": true,
+            "source_text": "Allies in your Presence have 15% increased Attack Speed",
+            "origin_kind": "ItemAffix",
+            "origin_id": "item.weapon2.explicit",
+            "slot": "weapon2"
+          }
+        ],
+        "formula": {
+          "steps": [
+            {
+              "op": "base",
+              "operand": 1.25,
+              "result": 1.25
+            },
+            {
+              "op": "increased",
+              "operand": 15.0,
+              "result": 1.4375
+            }
+          ],
+          "value": 1.4375
+        }
+      }
+    },
+    {
+      "stat": "Minion:CritChance",
+      "value": null,
+      "pob_key": "Minion:CritChance",
+      "reference": null,
+      "breakdown": {
+        "actor": {
+          "kind": "minion",
+          "index": 0
+        },
+        "base_total": 5.0,
+        "inc_total": 35.0,
+        "more_total": 1.0,
+        "mods": [
+          {
+            "mod_type": "BASE",
+            "value": 5.0,
+            "active": true,
+            "source_text": null,
+            "origin_kind": "GameConstant",
+            "origin_id": "minion.WolfMinion.crit_chance",
+            "slot": null
+          },
+          {
+            "mod_type": "INC",
+            "value": 35.0,
+            "active": true,
+            "source_text": "Allies in your Presence have 35% increased Critical Hit Chance",
+            "origin_kind": "ItemAffix",
+            "origin_id": "item.weapon2.explicit",
+            "slot": "weapon2"
+          }
+        ],
+        "formula": {
+          "steps": [
+            {
+              "op": "flat",
+              "operand": 5.0,
+              "result": 5.0
+            },
+            {
+              "op": "increased",
+              "operand": 35.0,
+              "result": 6.75
+            }
+          ],
+          "value": 6.75
+        }
+      }
+    },
+    {
+      "stat": "Minion:CritMultiplier",
+      "value": null,
+      "pob_key": "Minion:CritMultiplier",
+      "reference": null,
+      "breakdown": {
+        "actor": {
+          "kind": "minion",
+          "index": 0
+        },
+        "base_total": 0.0,
+        "inc_total": 15.0,
+        "more_total": 1.0,
+        "mods": [
+          {
+            "mod_type": "INC",
+            "value": 15.0,
+            "active": true,
+            "source_text": "Minions have 15% increased Critical Damage Bonus",
+            "origin_kind": "Jewel",
+            "origin_id": "jewel.3",
+            "slot": null
+          }
+        ],
+        "formula": {
+          "steps": [
+            {
+              "op": "base",
+              "operand": 100.0,
+              "result": 100.0
+            },
+            {
+              "op": "increased",
+              "operand": 15.0,
+              "result": 114.99999999999999
+            },
+            {
+              "op": "bonus_to_multiplier",
+              "operand": 100.0,
+              "result": 2.15
+            }
+          ],
+          "value": 2.15
+        }
+      }
+    },
+    {
+      "stat": "Minion:HitChance",
+      "value": null,
+      "pob_key": "Minion:HitChance",
+      "reference": null,
+      "breakdown": {
+        "actor": {
+          "kind": "minion",
+          "index": 0
+        },
+        "base_total": 0.0,
+        "inc_total": 153.0,
+        "more_total": 1.0,
+        "mods": [
+          {
+            "mod_type": "INC",
+            "value": 153.0,
+            "active": true,
+            "source_text": null,
+            "origin_kind": "SkillGem",
+            "origin_id": "buff.WarBannerPlayer.base_skill_buff_banner_accuracy_+%_to_apply",
+            "slot": null
+          }
+        ],
+        "formula": {
+          "steps": [
+            {
+              "op": "always_hits",
+              "operand": 100.0,
+              "result": 100.0
+            }
+          ],
+          "value": 100.0
+        }
+      }
+    },
+    {
+      "stat": "Minion:MainHandDamageToAllies",
+      "value": null,
+      "pob_key": "Minion:MainHandDamageToAllies",
+      "reference": null,
+      "breakdown": {
+        "actor": {
+          "kind": "minion",
+          "index": 0
+        },
+        "base_total": 25.0,
+        "inc_total": 0.0,
+        "more_total": 1.0,
+        "mods": [
+          {
+            "mod_type": "BASE",
+            "value": 25.0,
+            "active": true,
+            "source_text": "allies in your presence gain added attack damage equal to 25% of your main hand weapon's damage",
+            "origin_kind": "AscendancyNode",
+            "origin_id": "node.16249",
+            "slot": null
+          }
+        ],
+        "formula": null
+      }
+    },
+    {
+      "stat": "Minion:BuffEffectOnSelf",
+      "value": null,
+      "pob_key": "Minion:BuffEffectOnSelf",
+      "reference": null,
+      "breakdown": null
+    },
+    {
+      "stat": "Minion:AuraEffectOnSelf",
+      "value": null,
+      "pob_key": "Minion:AuraEffectOnSelf",
+      "reference": null,
+      "breakdown": null
+    }
+  ],
+  "main_skill": {
+    "group_index": 13,
+    "active_skill_index": 1,
+    "skill_id": "WolfPackPlayer",
+    "hit_damage": [
+      {
+        "damage_type": "Physical",
+        "min": 0.0,
+        "max": 0.0,
+        "avg": 0.0
+      }
+    ],
+    "hit_dps": 0.0,
+    "dot_dps": 0.0,
+    "combined_dps": 0.0
+  }
+}

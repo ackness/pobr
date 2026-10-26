@@ -1,0 +1,40 @@
+{
+  "name": "oracle-02",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/aerowalk1337-5368/PigGrunt",
+    "account": "aerowalk1337-5368",
+    "character": "PigGrunt",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:53:43+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=aerowalk1337-5368&name=PigGrunt&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Oracle",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 2,
+    "index_sha256": "e5277dadbd2cde3a7c72387529bcbcbbdb7e4e98007b75fb4935d80ef3360c47",
+    "character_response_sha256": "18c3528c011e96204b01db053bcbee8676a0c8d1177e7e06ce4ddf805184cf24",
+    "upstream_updated_utc": "2026-10-03T09:29:21.351922Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.113639Z",
+    "upstream_last_checked_utc": "2026-10-23T16:27:36.687322Z"
+  },
+  "character": {
+    "class": "Druid",
+    "ascendancy": "Oracle",
+    "level": 100,
+    "main_skill": "Spark"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "fa22f9876c0f0b782df71dee6692ba0121453235d40e534c1ec964a42ef4626f",
+    "code_chars": 12080,
+    "decoded_bytes": 46971
+  }
+}

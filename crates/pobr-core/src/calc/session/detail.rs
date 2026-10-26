@@ -268,7 +268,7 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "AuraCannotAffectSelf",
         ],
         "CurseEffectMod" => &["CurseEffect", "SelectedCurseEffect"],
-        "EffectiveLootRarityMod" => &["LootRarity"],
+        "EffectiveLootRarityMod" => &["LootRarity", "LootRarityExclusive"],
         "CadiroArrowReturn" => &["CadiroArrowReturn"],
         "CadiroArrowKillRarity" => &["CadiroArrowKillRarity"],
         "ActiveMinionLimit" => &["SelectedMinionLimit"],
@@ -501,6 +501,7 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "EnergyShieldRecharge",
             "ZealotsOath",
             "NoEnergyShieldRecharge",
+            "MovementSpeedAppliesToEnergyShieldRecharge",
         ],
         "EsRechargeDelay" => &[
             "EnergyShieldRechargeFaster",
@@ -561,6 +562,11 @@ pub fn source_names(stat: &str) -> Vec<String> {
             ]);
             for source in ["Life", "Mana", "EnergyShield", "Ward", "Rage"] {
                 names.push(format!("{source}RegenerationRecovers{resource}"));
+            }
+            match resource {
+                "Mana" => names.push("LifeRegenAppliesToManaRegen".into()),
+                "Rage" => names.push("ManaRegenAppliesToRageRegen".into()),
+                _ => {}
             }
             return names;
         }
@@ -675,7 +681,7 @@ impl CalculationSession {
             cfg.flags = pobr_data::prelude::ModFlags::NONE;
             cfg.keyword_flags = pobr_data::prelude::KeywordFlags::NONE;
         }
-        source_names(stat)
+        let mut groups: Vec<_> = source_names(stat)
             .into_iter()
             .filter(|name| {
                 !matches!(name.as_str(), "AttackSpeed" | "CastSpeed" | "SkillSpeed")
@@ -733,6 +739,27 @@ impl CalculationSession {
                 };
                 let cfg = &query_cfg;
                 let names = [ModName::from(query_name)];
+                if stat == "EffectiveLootRarityMod" && query_name == "LootRarity" {
+                    let keep = super::super::sidebar::loot_rarity_filter(db, cfg);
+                    let rarity = db.filtered(&keep);
+                    return SourceGroup {
+                        totals: (
+                            rarity.sum(ModType::Base, cfg, &names),
+                            rarity.sum(ModType::Inc, cfg, &names),
+                            rarity.more(cfg, &names),
+                        ),
+                        more_precision: rarity.more_precision_for(query_name),
+                        rows: db
+                            .evaluate_names(cfg, &names)
+                            .into_iter()
+                            .map(|mut row| {
+                                row.active &= keep(row.modifier);
+                                row
+                            })
+                            .collect(),
+                        name,
+                    };
+                }
                 SourceGroup {
                     totals: (
                         db.sum(ModType::Base, cfg, &names),
@@ -744,7 +771,31 @@ impl CalculationSession {
                     name,
                 }
             })
-            .collect()
+            .collect();
+        let regen_stat = stat.strip_suffix("Recovery").unwrap_or(stat);
+        let mut shared_increases =
+            super::super::survivability::shared_regen_increase_names(db, &cfg, regen_stat);
+        if stat == "EsRechargeRate" {
+            shared_increases.extend(
+                super::super::defence::es_recharge_increase_names(db, &cfg)
+                    .into_iter()
+                    .skip(1),
+            );
+        }
+        for name in shared_increases {
+            let names = [name.clone()];
+            groups.push(SourceGroup {
+                name: name.to_string(),
+                more_precision: None,
+                totals: (0.0, db.sum(ModType::Inc, &cfg, &names), 1.0),
+                rows: db
+                    .evaluate_names(&cfg, &names)
+                    .into_iter()
+                    .filter(|row| row.modifier.mod_type == ModType::Inc)
+                    .collect(),
+            });
+        }
+        groups
     }
 
     pub fn derived_detail(&self, stat: &str) -> Option<DerivedDetail> {

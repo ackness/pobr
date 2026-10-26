@@ -1,0 +1,40 @@
+{
+  "name": "witchhunter-01",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/AEgliid-0254/QingOfSeamen",
+    "account": "AEgliid-0254",
+    "character": "QingOfSeamen",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:58:59+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=AEgliid-0254&name=QingOfSeamen&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Witchhunter",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 1,
+    "index_sha256": "68c825c7ede7286776caf99b559b87c95922487f52e1027b6ac2e7e7646aa393",
+    "character_response_sha256": "85dd789854752870a6000f993ef3e7d5b48658f1eaff8548c8de9d26c1429049",
+    "upstream_updated_utc": "2026-10-25T04:32:35.721747Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.682218Z",
+    "upstream_last_checked_utc": "2026-10-26T04:36:01.618083Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Witchhunter",
+    "level": 100,
+    "main_skill": "Earthshatter"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "a76cc07e25f96ce3ebea36eab586c8d2f8693794556703470205ab5ac5e4d6f2",
+    "code_chars": 15376,
+    "decoded_bytes": 56679
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "blood-mage-03",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/II%20Tijolo%20II-8237/XTIJOLOX",
+    "account": "II Tijolo II-8237",
+    "character": "XTIJOLOX",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:38+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=II+Tijolo+II-8237&name=XTIJOLOX&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Blood+Mage",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 3,
+    "index_sha256": "67f985c6feb43317e04c08caa468fd4d93c90082d9bbc9b8aed00e69e93b2ad3",
+    "character_response_sha256": "3cc52db7141c05b5a79ef4f7a626d26ddb0610fc22298ff1591bc49a88896d99",
+    "upstream_updated_utc": "2026-10-25T20:32:25.367661Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-26T04:13:29.342889Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Blood Mage",
+    "level": 100,
+    "main_skill": "Impending Doom"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 7,
+    "code_sha256": "4e45c3fda8a30311acaaba2105025815447e0f8b2e708449e21a3e85aaeb1afe",
+    "code_chars": 12156,
+    "decoded_bytes": 44223
+  }
+}

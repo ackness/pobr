@@ -95,10 +95,15 @@ pub fn speed_names() -> [ModName; 3] {
 
 /// Attacks use AttackSpeed; other skills with a cast time use CastSpeed,
 /// even without the Spell type (e.g. AncientGiftsPlayer's 1000 ms cast).
-/// Warcries and proxy placement have separate timing calculations. Their
-/// non-spell actions must not acquire cast speed through this fallback.
-/// SkillSpeed shares the applicable speed's additive bucket.
+/// Warcries use WarcrySpeed, matching their separate timing calculation.
+/// Generic Skill Speed is already fanned out to that name by the parser,
+/// stat map and Mageblood; summing SkillSpeed too would count it twice.
+/// Proxy placement must not acquire cast speed through this fallback.
+/// For ordinary attacks and casts, SkillSpeed shares the additive bucket.
 pub fn speed_names_for(cfg: &CalcConfig) -> Vec<ModName> {
+    if cfg.skill_types.intersects(SkillTypes::WARCRY) {
+        return vec![ModName::from("WarcrySpeed")];
+    }
     // Attack/spell detection accepts either ModFlags (injected by the
     // orchestrator via `skill_type_flags`) or SkillTypes
     // (`CalcConfig::attack()`/`spell()` presets) — either one matching is
@@ -109,12 +114,9 @@ pub fn speed_names_for(cfg: &CalcConfig) -> Vec<ModName> {
     if is_attack {
         names.push(ModName::from(SPEED_BUCKET[0])); // AttackSpeed
     }
-    let separate_timing = cfg.skill_types.intersects(
-        SkillTypes::WARCRY
-            | SkillTypes::SUMMONS_TOTEM
-            | SkillTypes::TRAPPED
-            | SkillTypes::REMOTE_MINED,
-    );
+    let separate_timing = cfg
+        .skill_types
+        .intersects(SkillTypes::SUMMONS_TOTEM | SkillTypes::TRAPPED | SkillTypes::REMOTE_MINED);
     if is_spell || (!is_attack && !separate_timing) {
         names.push(ModName::from(SPEED_BUCKET[1])); // CastSpeed
     }

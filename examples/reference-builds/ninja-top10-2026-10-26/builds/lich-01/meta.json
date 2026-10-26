@@ -1,0 +1,40 @@
+{
+  "name": "lich-01",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/hagarfloss-9464/DayLaConMot",
+    "account": "hagarfloss-9464",
+    "character": "DayLaConMot",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:52:36+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=hagarfloss-9464&name=DayLaConMot&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Lich",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 1,
+    "index_sha256": "bf9399b55432e1c67fa82cfc371720d0d43a3187dbf10815aecca6c547c5738a",
+    "character_response_sha256": "d06d248d8cf1daa346ddce2fcb241d8296175cdac92ce5fac4c5bce4c5be48d0",
+    "upstream_updated_utc": "2026-10-26T05:40:45.960414Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.139675Z",
+    "upstream_last_checked_utc": "2026-10-26T05:40:45.960414Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Lich",
+    "level": 100,
+    "main_skill": "Profane Ritual"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 5,
+    "code_sha256": "04112462eca7d1162efe4c3aca4c56da06a413e0728751fdb12dac4f1cc2fb68",
+    "code_chars": 10936,
+    "decoded_bytes": 36727
+  }
+}

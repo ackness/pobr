@@ -1,0 +1,376 @@
+{
+  "started_at": "2026-10-26T10:04:25+00:00",
+  "git_commit": "db26811874a001e8f43cec00fbc0afcb4eb15689",
+  "data_version": "0.5.5.4.2",
+  "source_snapshot": "0757-20261026-16736",
+  "count": 51,
+  "per_ascendancy": {
+    "Abyssal Lich": 10,
+    "Acolyte of Chayula": 10,
+    "Amazon": 10,
+    "Blood Mage": 10,
+    "Chronomancer": 10,
+    "Deadeye": 1
+  },
+  "frozen_corpus": "/root/codes/pobr/.cache/ninja-top10-2026-10-26/test-initial-51/builds",
+  "command": "mise run accuracy /root/codes/pobr/.cache/ninja-top10-2026-10-26/test-initial-51/builds",
+  "builds": [
+    {
+      "name": "abyssal-lich-01",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/abyssal-lich-01/code.txt",
+      "code_sha256": "2e634b6c5f2d931f8433f2eb5badfef11d5e4d18bf799055228fc786b38bdca3",
+      "ascendancy": "Abyssal Lich",
+      "main_skill": "Comet"
+    },
+    {
+      "name": "abyssal-lich-02",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/abyssal-lich-02/code.txt",
+      "code_sha256": "723df11727dc1477b41a438d03115289607f2c855b5b9c9ebab8f63c22fb50ad",
+      "ascendancy": "Abyssal Lich",
+      "main_skill": "Essence Drain"
+    },
+    {
+      "name": "abyssal-lich-03",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/abyssal-lich-03/code.txt",
+      "code_sha256": "da5ba506e00be92780b01796ec061542955beda115778e68d53a202b200edb56",
+      "ascendancy": "Abyssal Lich",
+      "main_skill": "Twister"
+    },
+    {
+      "name": "abyssal-lich-04",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/abyssal-lich-04/code.txt",
+      "code_sha256": "86117619f5a3758ba8d4d407b76f6142f433a3a7b72f608a5b44de7930ef6997",
+      "ascendancy": "Abyssal Lich",
+      "main_skill": "Twister"
+    },
+    {
+      "name": "abyssal-lich-05",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/abyssal-lich-05/code.txt",
+      "code_sha256": "78bcaa46402d1efc6b7677c5d896c37a053370526127309dc7d627ced4589e02",
+      "ascendancy": "Abyssal Lich",
+      "main_skill": "Twister"
+    },
+    {
+      "name": "abyssal-lich-06",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/abyssal-lich-06/code.txt",
+      "code_sha256": "185ef98e6e7f8a2ed66e8680e9f59b8a607622efcc8eee5288a9719d0a6e1e16",
+      "ascendancy": "Abyssal Lich",
+      "main_skill": "Twister"
+    },
+    {
+      "name": "abyssal-lich-07",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/abyssal-lich-07/code.txt",
+      "code_sha256": "2c35023b28d7114250632bd275f775a146bc192ed583cb9b4a5d007b82ada6f6",
+      "ascendancy": "Abyssal Lich",
+      "main_skill": "Spark"
+    },
+    {
+      "name": "abyssal-lich-08",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/abyssal-lich-08/code.txt",
+      "code_sha256": "34f6bf2a62872b9c9b4c04e45d785f168247ae9e8ac3f21e3ecc19fe97bf9125",
+      "ascendancy": "Abyssal Lich",
+      "main_skill": "Twister"
+    },
+    {
+      "name": "abyssal-lich-09",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/abyssal-lich-09/code.txt",
+      "code_sha256": "c5a499601dad17f8eaa6729583aa5caf42225d939dfd96a82c71372d5e263656",
+      "ascendancy": "Abyssal Lich",
+      "main_skill": "Bone Cage"
+    },
+    {
+      "name": "abyssal-lich-10",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/abyssal-lich-10/code.txt",
+      "code_sha256": "dfe19431e3eff7612b280d07860f88e33b4895ade37d82af717cf84923172b00",
+      "ascendancy": "Abyssal Lich",
+      "main_skill": "Twister"
+    },
+    {
+      "name": "acolyte-of-chayula-01",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/acolyte-of-chayula-01/code.txt",
+      "code_sha256": "efe2d9650d40dd89ab201f067e9e99c750f9d81b4568b5f21dfd42645fb57957",
+      "ascendancy": "Acolyte of Chayula",
+      "main_skill": "Ghost Dance"
+    },
+    {
+      "name": "acolyte-of-chayula-02",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/acolyte-of-chayula-02/code.txt",
+      "code_sha256": "d4a68ccc33e2e50b2328c720a80435f7381ef0276cc81cd64ed9d4a50dcfab63",
+      "ascendancy": "Acolyte of Chayula",
+      "main_skill": "Wolf Pack"
+    },
+    {
+      "name": "acolyte-of-chayula-03",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/acolyte-of-chayula-03/code.txt",
+      "code_sha256": "6313cbe8782aa6a94d8ccd88909ec29e7b8583c3c8d69e2e1ad77b0a7148268d",
+      "ascendancy": "Acolyte of Chayula",
+      "main_skill": "Lightning Warp"
+    },
+    {
+      "name": "acolyte-of-chayula-04",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/acolyte-of-chayula-04/code.txt",
+      "code_sha256": "97a101fefb63d5dfa20250ebefd18d01da26c93a2b209cbf13f28b45a913fd69",
+      "ascendancy": "Acolyte of Chayula",
+      "main_skill": "Spiraling Conspiracy"
+    },
+    {
+      "name": "acolyte-of-chayula-05",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/acolyte-of-chayula-05/code.txt",
+      "code_sha256": "3ee6856d332f9e906153b58494eefa9ed5725635d42bfc51e88351ad9aa0cb23",
+      "ascendancy": "Acolyte of Chayula",
+      "main_skill": "Refutation"
+    },
+    {
+      "name": "acolyte-of-chayula-06",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/acolyte-of-chayula-06/code.txt",
+      "code_sha256": "1fcd5beab29fde3205d36fa26716009d121cdc4c0956a841e837d9206f7d2af9",
+      "ascendancy": "Acolyte of Chayula",
+      "main_skill": "Malice"
+    },
+    {
+      "name": "acolyte-of-chayula-07",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/acolyte-of-chayula-07/code.txt",
+      "code_sha256": "54c7a57ac7bdd5fcf1ecbea907894c89fedeab77e3c8c50da3efb6b304f1d62a",
+      "ascendancy": "Acolyte of Chayula",
+      "main_skill": "Profane Ritual"
+    },
+    {
+      "name": "acolyte-of-chayula-08",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/acolyte-of-chayula-08/code.txt",
+      "code_sha256": "e7d2c75e356d21fd31ca96403450b7ecdef57235c70af24cc96544c5407fa03e",
+      "ascendancy": "Acolyte of Chayula",
+      "main_skill": "Raise Shield"
+    },
+    {
+      "name": "acolyte-of-chayula-09",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/acolyte-of-chayula-09/code.txt",
+      "code_sha256": "2c78cea2c2a19335187371b5ba84b1e748940ebc83f10f253fc0bb8805de5ab7",
+      "ascendancy": "Acolyte of Chayula",
+      "main_skill": "Poisonburst Arrow"
+    },
+    {
+      "name": "acolyte-of-chayula-10",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/acolyte-of-chayula-10/code.txt",
+      "code_sha256": "9d7efe1dfdd9758961bebeb1de0ad869161d07faea6063a9590b4883cea77408",
+      "ascendancy": "Acolyte of Chayula",
+      "main_skill": "Into the Breach"
+    },
+    {
+      "name": "amazon-01",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/amazon-01/code.txt",
+      "code_sha256": "0a4bcd31eae3331c0acd76fb7731c0e1e50f4a690c80be98401d057f3b93bc7e",
+      "ascendancy": "Amazon",
+      "main_skill": "Twister"
+    },
+    {
+      "name": "amazon-02",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/amazon-02/code.txt",
+      "code_sha256": "f96887ddf75d6ba69a5a7817fbcfc3dd2d61bddd446ae2288960c839580a28dd",
+      "ascendancy": "Amazon",
+      "main_skill": "Ice Shot"
+    },
+    {
+      "name": "amazon-03",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/amazon-03/code.txt",
+      "code_sha256": "cd49ffe5745a920ef6cb6f789fef41112198305f550d14ef8f730b6873461da2",
+      "ascendancy": "Amazon",
+      "main_skill": "Twister"
+    },
+    {
+      "name": "amazon-04",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/amazon-04/code.txt",
+      "code_sha256": "18684dc0db69dc14ae0f1fc111a4902b3fd21f59b16fd269679726bc17d800dd",
+      "ascendancy": "Amazon",
+      "main_skill": "Twister"
+    },
+    {
+      "name": "amazon-05",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/amazon-05/code.txt",
+      "code_sha256": "1a08f4c13581d9ee4d09f777bce70fae2363c6960ab85673ccccb7887251c476",
+      "ascendancy": "Amazon",
+      "main_skill": "Ice Shot"
+    },
+    {
+      "name": "amazon-06",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/amazon-06/code.txt",
+      "code_sha256": "7d46a7441ffb1f82b7bc8c07cbc82b78bc864309ab9ac8503227a9cce121c60e",
+      "ascendancy": "Amazon",
+      "main_skill": "Lightning Spear"
+    },
+    {
+      "name": "amazon-07",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/amazon-07/code.txt",
+      "code_sha256": "a494df93ab956199a206a5716022649c979696f1b9ffb4bf3d294619ce862039",
+      "ascendancy": "Amazon",
+      "main_skill": "Lightning Spear"
+    },
+    {
+      "name": "amazon-08",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/amazon-08/code.txt",
+      "code_sha256": "c50301e23d1c0a5a052c0ff1b2f162885dffd477a377ec158310f0f0570eab67",
+      "ascendancy": "Amazon",
+      "main_skill": "Ice Shot"
+    },
+    {
+      "name": "amazon-09",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/amazon-09/code.txt",
+      "code_sha256": "9986beca98255a8492b41418f5d0b075f72c620a4251ff173e4311c6ae89426d",
+      "ascendancy": "Amazon",
+      "main_skill": "Ice Shot"
+    },
+    {
+      "name": "amazon-10",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/amazon-10/code.txt",
+      "code_sha256": "9993a1076f754e2721f09b80f9c5a1066063f00a07a5ec397362c164e71be9f2",
+      "ascendancy": "Amazon",
+      "main_skill": "Ice Shot"
+    },
+    {
+      "name": "blood-mage-01",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/blood-mage-01/code.txt",
+      "code_sha256": "c041bc6e086684f7c442f55ba3f58a241fa15b4c01d622da4114c2a07c17314c",
+      "ascendancy": "Blood Mage",
+      "main_skill": "Shattering Spite"
+    },
+    {
+      "name": "blood-mage-02",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/blood-mage-02/code.txt",
+      "code_sha256": "a6ac4c6ed07c72f79f00897fed4c98405e2c8ef95f62318c8420fc07b9a40c71",
+      "ascendancy": "Blood Mage",
+      "main_skill": "Life Remnants"
+    },
+    {
+      "name": "blood-mage-03",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/blood-mage-03/code.txt",
+      "code_sha256": "4e45c3fda8a30311acaaba2105025815447e0f8b2e708449e21a3e85aaeb1afe",
+      "ascendancy": "Blood Mage",
+      "main_skill": "Impending Doom"
+    },
+    {
+      "name": "blood-mage-04",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/blood-mage-04/code.txt",
+      "code_sha256": "81a784370ae2a176659d34dabcd981a37728781707c3b8ecd5c7aeede087deb1",
+      "ascendancy": "Blood Mage",
+      "main_skill": "Impending Doom"
+    },
+    {
+      "name": "blood-mage-05",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/blood-mage-05/code.txt",
+      "code_sha256": "4db08326621a4e215871d81f3a40d7a9efad26e104dcab03c5ec5ed9d0b0ea10",
+      "ascendancy": "Blood Mage",
+      "main_skill": "Ember Fusillade"
+    },
+    {
+      "name": "blood-mage-06",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/blood-mage-06/code.txt",
+      "code_sha256": "0eaa9dfd4f3d606ff4f857c6aca05e8faa4cd5fda8744b023c91750dff11d124",
+      "ascendancy": "Blood Mage",
+      "main_skill": "Impending Doom"
+    },
+    {
+      "name": "blood-mage-07",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/blood-mage-07/code.txt",
+      "code_sha256": "00f2bb2a258c4374cc28a1686ab8dbb061dbfb33cc09903506af4cb0f8dab8c7",
+      "ascendancy": "Blood Mage",
+      "main_skill": "Living Bomb"
+    },
+    {
+      "name": "blood-mage-08",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/blood-mage-08/code.txt",
+      "code_sha256": "ea47a52d6f27517816aa49939f4008a31b304f3ab73547e1664a10abb5aff4ce",
+      "ascendancy": "Blood Mage",
+      "main_skill": "Impending Doom"
+    },
+    {
+      "name": "blood-mage-09",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/blood-mage-09/code.txt",
+      "code_sha256": "e32dcdfd841c53734f31cc04cda6ba9f1bf2f8043b83e99ce800a35beeec54d9",
+      "ascendancy": "Blood Mage",
+      "main_skill": "Comet"
+    },
+    {
+      "name": "blood-mage-10",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/blood-mage-10/code.txt",
+      "code_sha256": "3228c27e6a7759ba72107db93b5a79e1a4428c382a5406e38b2f1e7bb11bfaee",
+      "ascendancy": "Blood Mage",
+      "main_skill": "Impending Doom"
+    },
+    {
+      "name": "chronomancer-01",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/chronomancer-01/code.txt",
+      "code_sha256": "a955625d666d3ce478411f51048cabf79d79018bcdd9f0e55569e5970d0be53e",
+      "ascendancy": "Chronomancer",
+      "main_skill": "Comet"
+    },
+    {
+      "name": "chronomancer-02",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/chronomancer-02/code.txt",
+      "code_sha256": "840a1fbdb829397a8fb87ada09177d8d41cf26afa21e6aeea4f0881d93f0fcfc",
+      "ascendancy": "Chronomancer",
+      "main_skill": "Comet"
+    },
+    {
+      "name": "chronomancer-03",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/chronomancer-03/code.txt",
+      "code_sha256": "39fbca98f71216545690532df815de88754fac4332fe22a62a76e87b5ecc7b57",
+      "ascendancy": "Chronomancer",
+      "main_skill": "Comet"
+    },
+    {
+      "name": "chronomancer-04",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/chronomancer-04/code.txt",
+      "code_sha256": "1c78b2aabb87dbe34f61ce0d68417d2c589a39f7aeb573d4940c079c2b2db9c5",
+      "ascendancy": "Chronomancer",
+      "main_skill": "Impending Doom"
+    },
+    {
+      "name": "chronomancer-05",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/chronomancer-05/code.txt",
+      "code_sha256": "a8b69b190b9c71ae16e6bddd451ecb4d34aa60ee8bbcf44124965efafd79aafb",
+      "ascendancy": "Chronomancer",
+      "main_skill": "Glacial Lance"
+    },
+    {
+      "name": "chronomancer-06",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/chronomancer-06/code.txt",
+      "code_sha256": "8d16ca13b8fe76ffe786d0234533e81e1e72f3d229c1cf4d326621a4863d43d8",
+      "ascendancy": "Chronomancer",
+      "main_skill": "Living Bomb"
+    },
+    {
+      "name": "chronomancer-07",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/chronomancer-07/code.txt",
+      "code_sha256": "da51575e2cf2b08fe1894e2b789aa75ab6ebf022490390f698b28ddeeb369f9b",
+      "ascendancy": "Chronomancer",
+      "main_skill": "Raise Zombie"
+    },
+    {
+      "name": "chronomancer-08",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/chronomancer-08/code.txt",
+      "code_sha256": "5c6e2b553836c714e00d01968e1c8ad53ff64ae4e321c712ffec68d8b73b6815",
+      "ascendancy": "Chronomancer",
+      "main_skill": "Comet"
+    },
+    {
+      "name": "chronomancer-09",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/chronomancer-09/code.txt",
+      "code_sha256": "f59b5b4c372e0b1e3e50bce6c4cbbb2b4f603aff3b96ca383d7c3bf50397087b",
+      "ascendancy": "Chronomancer",
+      "main_skill": "Ember Fusillade"
+    },
+    {
+      "name": "chronomancer-10",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/chronomancer-10/code.txt",
+      "code_sha256": "8738733c8b8ab3f8f18c454c51a6ef7e3b5440da0e3024a39e741074be2dbbcc",
+      "ascendancy": "Chronomancer",
+      "main_skill": "Thunderstorm"
+    },
+    {
+      "name": "deadeye-01",
+      "source": "examples/reference-builds/ninja-top10-2026-10-26/builds/deadeye-01/code.txt",
+      "code_sha256": "ec614732a64ecc717351cabee7a0d3211410249a3cba1a75efc3996526551af4",
+      "ascendancy": "Deadeye",
+      "main_skill": "Twister"
+    }
+  ]
+}

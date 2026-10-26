@@ -14,7 +14,9 @@ use crate::rules::skill_stats::{self, BuffSkill};
 use crate::rules::stat_map_engine;
 use crate::skill_env::buff_stat_map::map_aura_buff_stat;
 use crate::skill_env::buffs::buff_skill_name;
-use crate::skill_env::lookup::{EffectLookup, SocketGroupView, StatMapLookup, StatSetLookup};
+use crate::skill_env::lookup::{
+    EffectLookup, MinionLookup, SocketGroupView, StatMapLookup, StatSetLookup,
+};
 use crate::skill_env::mods::GemPropertyBonus;
 use crate::skill_env::mods::skill_type_bits;
 use crate::skill_env::resolve::{
@@ -28,19 +30,27 @@ use crate::skill_env::stat_map::{
 use crate::skill_env::support::{GroupSupportJudgement, SupportCandidate, judge_group_supports};
 use crate::skill_env::{EnabledGroup, GemInput};
 
+mod flame_wall;
 mod minions;
+pub use flame_wall::flame_wall_buff_specs;
 pub(super) use minions::minion_curse_specs;
 
 /// The lookup surface the buff/warcry spec builders need.
-pub trait BuffEnv: StatSetLookup + EffectLookup + StatMapLookup + GemPropertyLookup {}
-impl<T: StatSetLookup + EffectLookup + StatMapLookup + GemPropertyLookup> BuffEnv for T {}
+pub trait BuffEnv:
+    StatSetLookup + EffectLookup + StatMapLookup + GemPropertyLookup + MinionLookup
+{
+}
+impl<T: StatSetLookup + EffectLookup + StatMapLookup + GemPropertyLookup + MinionLookup> BuffEnv
+    for T
+{
+}
 
 /// Runs the group support judgement for `skill_id` over an [`EnabledGroup`]:
 /// assembles candidates from the group's gems + additional granted effects
 /// (the engine-semantics counterpart of `pobr-build`'s `judge_group_supports`).
 pub fn group_judgement<'a>(
     group: &EnabledGroup<'a>,
-    data: &'a (dyn BuffEnv + 'a),
+    data: &'a (impl EffectLookup + ?Sized),
     skill_id: &str,
 ) -> GroupSupportJudgement {
     use std::collections::HashSet;
@@ -88,7 +98,7 @@ pub fn group_judgement<'a>(
 /// any of a gem's effects modifies the gem.
 pub fn gem_judgements<'a>(
     group: &EnabledGroup<'a>,
-    data: &'a (dyn BuffEnv + 'a),
+    data: &'a (impl EffectLookup + MinionLookup + ?Sized),
     gem_skill_id: &str,
 ) -> Vec<GroupSupportJudgement> {
     let secondary = data
@@ -98,7 +108,10 @@ pub fn gem_judgements<'a>(
         .filter(|id| data.effect(id).is_some_and(|e| !e.is_support));
     std::iter::once(gem_skill_id)
         .chain(secondary)
-        .map(|id| group_judgement(group, data, id))
+        .flat_map(|id| {
+            std::iter::once(group_judgement(group, data, id))
+                .chain(super::minions::minion_support_judgements(group, data, id))
+        })
         .collect()
 }
 
@@ -171,6 +184,21 @@ fn support_modifiers_observed(
     let judgement = group_judgement(group, data, active_skill_id);
     let mut host_set_key = None;
     let mut mods = granting_support_modifiers(group, data, active_skill_id);
+    // A support on the minion's attack still changes the cost of summoning
+    // that minion. Directly compatible supports are handled below once.
+    for sup in super::minions::minion_supports_for_cost(group, data, active_skill_id) {
+        if judgement.compatible.contains(&sup) {
+            continue;
+        }
+        let gem = &group.gems[sup.gem_index];
+        if let Some(modifier) = crate::skill_env::support_mana_multiplier_modifier(
+            &sup.effect_id,
+            data.effect_level_row(&sup.effect_id, gem.gem_level)
+                .and_then(|row| row.mana_multiplier),
+        ) {
+            mods.push(modifier);
+        }
+    }
     for sup in &judgement.compatible {
         let gem = &group.gems[sup.gem_index];
         let set_index = support_stat_set_index(sup, group.gems);
@@ -371,12 +399,14 @@ pub fn buff_skill_specs(
                         set_key.as_deref(),
                         buff_skill,
                     );
-                    if (debuff_mods.is_empty() && buff_mods.is_empty())
-                        || !seen.insert(skill_id.to_string())
-                    {
+                    if debuff_mods.is_empty() && buff_mods.is_empty() {
                         continue;
                     }
-                    if !debuff_mods.is_empty() {
+                    let first_copy = seen.insert(skill_id.to_string());
+                    // Keep the existing debuff selection. Ordinary player buffs
+                    // must reach the same-name strongest-modifier merger with
+                    // every usable copy, including its value and source.
+                    if first_copy && !debuff_mods.is_empty() {
                         specs.push(BuffSpec {
                             name: buff_skill_name(data, skill_id),
                             kind: BuffKind::Debuff,
@@ -408,6 +438,12 @@ pub fn buff_skill_specs(
                                 skill_stats::REMNANT_EFFECT,
                             ]
                             .into_iter()
+                            // Mana Remnants grants its regeneration while active,
+                            // independently of the effect of a collected Remnant.
+                            .filter(|stat| {
+                                *stat != skill_stats::REMNANT_EFFECT
+                                    || skill_id != "ManaRemnantsPlayer"
+                            })
                             .map(|stat| {
                                 stat_on_skill_and_supports(&group, data, gem, skill_id, level, stat)
                             })
@@ -493,6 +529,25 @@ pub fn buff_skill_specs(
                     // the enemy db, at the effect's level.
                     let es = effect_stats(skill_id, level, gem.quality, gem.stat_set_index);
                     let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
+                    if is_mark {
+                        let mods = super::buffs::mark_self_buff_modifiers(skill_id, &es);
+                        if !mods.is_empty() {
+                            specs.push(BuffSpec {
+                                name: buff_skill_name(data, skill_id),
+                                kind: BuffKind::CurseBuff,
+                                skill_id: skill_id.to_string(),
+                                mods,
+                                magnitude: 1.0,
+                                slot: group.slot.map(str::to_string),
+                                socket_index,
+                                is_mark: true,
+                                ignore_curse_limit: false,
+                                local_effect_inc: 0.0,
+                                local_effect_more: 1.0,
+                                skill_types: skill_type_bits(&effect.skill_types),
+                            });
+                        }
+                    }
                     // Vendor's registration precondition: buffList is built purely
                     // from GlobalEffect payloads, and a curse table entry is only
                     // constructed from buffList — a skill with **no** curse payload at

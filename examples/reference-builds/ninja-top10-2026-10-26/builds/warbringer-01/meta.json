@@ -1,0 +1,40 @@
+{
+  "name": "warbringer-01",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/y01488-7457/%E7%B5%B6%E5%AF%BE%E3%81%AB%E8%A8%B1%E3%81%95%E3%81%AA%E3%81%84%E3%82%88",
+    "account": "y01488-7457",
+    "character": "絶対に許さないよ",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:58:27+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=y01488-7457&name=%E7%B5%B6%E5%AF%BE%E3%81%AB%E8%A8%B1%E3%81%95%E3%81%AA%E3%81%84%E3%82%88&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Warbringer",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 1,
+    "index_sha256": "258427a5d84e3e6a608fbd3c06b1a9eeeb961957587d00b5811bf9dacaf69532",
+    "character_response_sha256": "7874390fbc7312172ce7e2b81fd5bc284f233b6d26b8db103bc488cd0ff50f34",
+    "upstream_updated_utc": "2026-10-20T13:15:11.516501Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:22.415799Z",
+    "upstream_last_checked_utc": "2026-10-24T16:31:14.001437Z"
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Warbringer",
+    "level": 100,
+    "main_skill": "Shield Wall"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "572fbae1d1585d42328a98251e2158c148fb69d3e78d8a7dadc9dba35b88dc9f",
+    "code_chars": 12108,
+    "decoded_bytes": 43263
+  }
+}

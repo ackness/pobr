@@ -1,0 +1,40 @@
+{
+  "name": "tactician-03",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Devotika-3542/BananaProjectiles",
+    "account": "Devotika-3542",
+    "character": "BananaProjectiles",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:57:30+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Devotika-3542&name=BananaProjectiles&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Tactician",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 3,
+    "index_sha256": "165d7f878a35e33bc0ecb9545231966e2e0c96f7ec55bbd0e0afa3d8df6d717d",
+    "character_response_sha256": "fd6df846e8bb5692719bd1971d1c03cfd38122fae4816bc7973789677a30ffdc",
+    "upstream_updated_utc": "2026-09-20T15:56:43.947184Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.258851Z",
+    "upstream_last_checked_utc": "2026-10-20T19:16:23.715233Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Tactician",
+    "level": 100,
+    "main_skill": "Spark"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "a3f8f3c69fb5722077d7bc42feda0493a3f6ac2c372576407f65124c9966a1f1",
+    "code_chars": 11960,
+    "decoded_bytes": 45843
+  }
+}

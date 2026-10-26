@@ -20,6 +20,7 @@ use pobr_core::HighPrecisionRules;
 use pobr_core::rules::stat_map_engine::StatMapCatalog;
 use pobr_data::catalog::buffs::BuffDef;
 use pobr_data::catalog::curse_priority::CursePriorityDef;
+use pobr_data::catalog::item_granted_skills::ItemGrantedSkillVariant;
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
 use pobr_data::catalog::local_mods::LocalModsDef;
 use pobr_data::catalog::{
@@ -134,6 +135,8 @@ pub struct BuildData {
     /// (`overlay/item_granted_skills.json`): the Lament, Portent and Absent
     /// Amulets. Empty when a data pack lacks the file.
     pub reservation_free_grant_bases: HashSet<String>,
+    /// Proven item-specific effect identities and their exported aliases.
+    pub item_granted_skill_variants: Vec<ItemGrantedSkillVariant>,
     /// statmap data catalog (`overlay/skill_stat_map.json` → [`StatMapCatalog`], the data
     /// source for the [`crate::StatMapMode::Data`] channel once switched to default).
     /// `calculate_with_data` falls back to this when the orchestrator options don't
@@ -445,15 +448,20 @@ impl BuildData {
 
         // The same tolerance for the rules of item-granted skills: a data pack
         // without the file knows no base whose granted skills reserve nothing.
-        let reservation_free_grant_bases = match data.item_granted_skills() {
-            Ok(def) => def.reservation_free_bases.into_iter().collect(),
+        let item_granted_skills = match data.item_granted_skills() {
+            Ok(def) => def,
             Err(LoadError::Io { ref source, .. })
                 if source.kind() == std::io::ErrorKind::NotFound =>
             {
-                HashSet::new()
+                Default::default()
             }
             Err(e) => return Err(e),
         };
+        let reservation_free_grant_bases = item_granted_skills
+            .reservation_free_bases
+            .into_iter()
+            .collect();
+        let item_granted_skill_variants = item_granted_skills.variants;
 
         // statmap data catalog (the data source for the default Data channel). `None`
         // when the overlay file is missing (old data pack) — the data channel misses
@@ -589,6 +597,7 @@ impl BuildData {
             passive_jewels: data.passive_jewels()?.unwrap_or_default(),
             local_mods,
             reservation_free_grant_bases,
+            item_granted_skill_variants,
             stat_map_catalog,
             buff_definitions,
             curse_priority,
@@ -625,6 +634,7 @@ impl BuildData {
             passive_jewels: Default::default(),
             local_mods: LocalModsDef::default(),
             reservation_free_grant_bases: HashSet::new(),
+            item_granted_skill_variants: Vec::new(),
             stat_map_catalog: None,
             buff_definitions: Vec::new(),
             curse_priority: None,

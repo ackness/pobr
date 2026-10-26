@@ -4,7 +4,7 @@
 # 把"新环境从零到能跑测试 + 能查 PoB2 公式"的流程脚本化（会话 2026-06-18 实跑得出）。
 # 子命令：
 #   bootstrap  安装 luajit/构建依赖 + 克隆 vendor（钉定 commit）+ CLI build
-#   deps       仅安装系统依赖（luajit）
+#   deps       Install/cache the compatible PoB2 LuaJIT runtime
 #   vendor     仅克隆/对齐 PoB2 vendor 到钉定 commit（gitignored，永不提交）
 #   build      Build the application CLI, or forward explicit Cargo selectors.
 #   test <args> Forward targeted cargo test arguments (package, suite, filter).
@@ -37,13 +37,8 @@ vendor_commit() {
 }
 
 cmd_deps() {
-  say "系统依赖（luajit）"
-  if command -v luajit >/dev/null; then
-    echo "luajit 已装：$(luajit -v 2>&1 | head -1)"
-  else
-    sudo apt-get update -qq && sudo apt-get install -y luajit
-    luajit -v
-  fi
+  say "PoB2 LuaJIT runtime"
+  bash "$ROOT/devs/scripts/pob2-luajit.sh" install
 }
 
 cmd_vendor() {
@@ -445,7 +440,12 @@ cmd_diff() {
 
 cmd_status() {
   say "就绪态"
-  command -v luajit >/dev/null && echo "✓ luajit: $(luajit -v 2>&1 | head -1)" || echo "✗ luajit 未装（driver.sh deps）"
+  local runtime
+  if runtime="$(bash "$ROOT/devs/scripts/pob2-luajit.sh" resolve)"; then
+    echo "✓ PoB2 LuaJIT: $runtime"
+  else
+    echo "✗ compatible PoB2 LuaJIT unavailable (mise run deps)"
+  fi
   local sha; sha="$(vendor_commit)"
   if [ -f "$VENDOR_DIR/src/Modules/ModParser.lua" ]; then
     local have; have="$(git -C "$VENDOR_DIR" rev-parse HEAD 2>/dev/null)"

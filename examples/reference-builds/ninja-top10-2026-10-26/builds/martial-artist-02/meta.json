@@ -1,0 +1,40 @@
+{
+  "name": "martial-artist-02",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/l3il2DDy-5168/anotherbird",
+    "account": "l3il2DDy-5168",
+    "character": "anotherbird",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:53:11+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=l3il2DDy-5168&name=anotherbird&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Martial+Artist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 2,
+    "index_sha256": "02aea86a90fa6da528c053195c09e6f13ddd2745a1893a6dc6bffbf6ecf7e1a7",
+    "character_response_sha256": "dbe03940870639f77922e43f68a7317e31f64ab0709513194aa953712577832a",
+    "upstream_updated_utc": "2026-09-26T17:48:25.737222Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.232154Z",
+    "upstream_last_checked_utc": "2026-10-22T02:52:37.273963Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Martial Artist",
+    "level": 100,
+    "main_skill": "Quarterstaff Strike"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "9e2413cc3971bc9f5941c7c46079c3a4c78d91c6ad05390792d59435f9af08c3",
+    "code_chars": 12520,
+    "decoded_bytes": 45719
+  }
+}

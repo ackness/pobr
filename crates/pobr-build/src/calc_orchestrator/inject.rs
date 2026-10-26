@@ -40,8 +40,8 @@ use super::item::weapon::{
     parse_local_defence_inc, parse_weapon_local_crit,
 };
 use super::skill::buffs::{
-    buff_skill_specs, herald_skill_names, self_buff_offensive_modifiers,
-    spirit_reservation_modifiers, support_buff_specs, warcry_skill_specs,
+    buff_skill_specs, herald_skill_names, spirit_reservation_modifiers, support_buff_specs,
+    warcry_skill_specs,
 };
 use super::skill::mods::{
     corpse_explosion_modifiers, crossbow_reload_modifiers, dot_flag_modifiers,
@@ -229,6 +229,14 @@ pub(super) fn inject_buffs_and_heralds(
         }
         session.add_buff_skill(spec);
     }
+    for spec in pobr_core::skill_env::flame_wall_buff_specs(
+        build,
+        data,
+        &super::skill::resolve::gem_property_bonuses(build, data),
+        session.config(),
+    ) {
+        session.add_buff_skill(spec);
+    }
     // 4b'. Player-side buffs granted by supports (Precision I/II → Accuracy INC,
     //     sup_dex.lua:4181-4250) → BuffSpec(kind=Buff); buff_pass's Buff branch
     //     (CalcPerform.lua:1949-1962) applies the BuffEffect multiplier zone before merging into the player db.
@@ -337,8 +345,10 @@ pub(super) fn inject_connected_support_counts(
 /// Sapphire. Items do not keep their name, so the line identifies it.
 fn is_grand_spectrum(jewel: &pobr_data::item::Item) -> bool {
     jewel
-        .modifier_texts
+        .implicit_texts
         .iter()
+        .chain(&jewel.modifier_texts)
+        .chain(&jewel.enchant_texts)
         .any(|line| line.ends_with("per socketed Grand Spectrum"))
 }
 
@@ -406,6 +416,34 @@ pub(super) fn inject_build_multipliers(
     let corrupted = build.items.values().filter(|item| item.corrupted).count();
     session.set_multiplier("CorruptedItem", corrupted as f64);
     session.set_multiplier("NonCorruptedItem", (build.items.len() - corrupted) as f64);
+    // "with a Lightning Resistance Modifier" tests modifier presence, not
+    // the item's net resistance or whether its condition currently applies.
+    // All-element and negative modifiers qualify; two cancelling modifiers
+    // still belong to one item. Read the already-parsed current equipment,
+    // excluding nested ally/enemy grants and separate jewel/utility sources.
+    let lightning_resistance_items = ["LightningResistance", "ElementalResist"]
+        .into_iter()
+        .flat_map(|name| session.mod_db().named(name))
+        .filter(|modifier| modifier.value.as_number().is_some_and(|n| n != 0.0))
+        .filter_map(|modifier| modifier.origin.as_ref())
+        .filter(|origin| {
+            matches!(
+                origin.source_id.kind,
+                SourceKind::Item
+                    | SourceKind::ItemImplicit
+                    | SourceKind::ItemAffix
+                    | SourceKind::ItemEnchant
+                    | SourceKind::ItemQuality
+            )
+        })
+        .filter_map(|origin| origin.slot.as_deref())
+        .filter(|slot| build.items.keys().any(|equipped| equipped.id() == *slot))
+        .collect::<std::collections::BTreeSet<_>>()
+        .len();
+    session.set_multiplier(
+        "EquippedItemsWithLightningResistance",
+        lightning_resistance_items as f64,
+    );
     // "… per socketed Grand Spectrum": the Grand Spectrums among the jewels
     // in the build's sockets, whatever their base.
     let grand_spectrums = build.jewel_items().filter(|jewel| is_grand_spectrum(jewel));
@@ -478,7 +516,7 @@ pub(super) fn per_slot_attribute_requirements(
 ) -> Vec<(String, f64)> {
     let mut out = Vec::new();
     for (slot, item) in build.equipped_items() {
-        let Some(def) = data.base_items.get(&item.base.to_string()) else {
+        let Some(def) = data.base_item(&item.base.to_string()) else {
             continue;
         };
         let slot_key = slot.id();
@@ -980,8 +1018,7 @@ pub(super) fn inject_items(
         // double-count (13-G11).
         let has_spirit_base = item.rolled_defence.spirit.is_some()
             || data
-                .base_items
-                .get(&item.base.to_string())
+                .base_item(&item.base.to_string())
                 .and_then(|b| b.spirit)
                 .is_some();
         if has_spirit_base {
@@ -1112,12 +1149,8 @@ pub(super) fn inject_self_buff_exposure(
     data: &BuildData,
     main_skill_group: Option<&SocketGroup>,
 ) {
-    // 4c. The **self offensive buff** (gain-as-extra) a Mark grants the player on
-    //     activation → SkillGem-attributed modifier. Data-driven: an enabled gem's stat
-    //     includes `*_damage_buff_damage_%_to_gain_as_<type>` (Freezing Mark→Cold,
-    //     Voltaic Mark→Lightning), mapped to `DamageGainAs<Type>` BASE, injected into
-    //     the gain matrix.
-    session.add_modifiers(self_buff_offensive_modifiers(build, data));
+    // Mark self-buffs are assembled with their skill's BuffSpec, so Mark Effect
+    // can scale them after all sources have been collected.
     // 4c'. Exposure-effect supports outside the main group: the `<El>ExposureEffect`
     //     INC of compatible supports in the secondary group where the exposure source
     //     lives is injected globally. The main group's supports are already fully
@@ -1300,13 +1333,25 @@ pub(super) fn stage_inject_jewels(
             };
             session.note_line(&source, text, LineFate::Parsed);
             for mut m in parsed_mods {
+                let origin = ModifierSource::new(source.clone()).with_raw_text(text.clone());
+                m = m.with_origin(origin);
+                // Minion bonuses are nested inside a LIST modifier. Scale
+                // that payload with the existing precision rules, as radius
+                // jewel grants already do, while preserving its source/tags.
+                if let Some(scale) = scale
+                    && matches!(m.value, pobr_core::ModValue::NestedMods(_))
+                {
+                    let mut scaled = pobr_core::ModDb::new();
+                    scaled.scale_add_mod(m, scale, &ctx.data.high_precision);
+                    mods.extend(scaled.iter_mods().cloned());
+                    continue;
+                }
                 if let Some(scale) = scale
                     && let pobr_core::ModValue::Number(v) = m.value
                 {
                     m.value = pobr_core::ModValue::Number(scale_trunc_2dp(v, scale));
                 }
-                let origin = ModifierSource::new(source.clone()).with_raw_text(text.clone());
-                mods.push(m.with_origin(origin));
+                mods.push(m);
             }
         }
         session.add_modifiers(mods);

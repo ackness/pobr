@@ -1,6 +1,6 @@
 use pobr_data::prelude::*;
 
-use crate::{CalcConfig, ModDb, Modifier};
+use crate::{CalcConfig, ModDb, ModValue, Modifier};
 
 use super::ailment::{
     AilmentSource, AilmentStageTerms, AilmentTerms, HandAilmentMerge, StackConfig,
@@ -21,10 +21,9 @@ use super::trigger::{
 use super::{
     BreakdownTable, CalcError, EhpOptions, Env, LeechResource, MinimalInput, MinionOutput,
     MitigationInputs, OutputTable, ResistanceSuite, build_mitigation_ctx, calc_avoidance,
-    calc_crit_extra_reduction, calc_defence, calc_ehp_with_opts, calc_es_recharge,
-    calc_leech_from_db, calc_regen, calc_skill_use_time, calc_taken_multi_suite,
-    calculate_minimal_vs_enemy, enemy_crit_effect, es_recharge_per_second, reservation,
-    resolve_all_charges, round, taken_mult_for_type_default,
+    calc_crit_extra_reduction, calc_defence, calc_ehp_with_opts, calc_es_recharge, calc_regen,
+    calc_skill_use_time, calc_taken_multi_suite, calculate_minimal_vs_enemy, enemy_crit_effect,
+    es_recharge_per_second, reservation, resolve_all_charges, round, taken_mult_for_type_default,
 };
 use crate::{TraceGraph, TraceOperation};
 
@@ -93,24 +92,26 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // Charges have no inherent bonuses; disabled use retains only the minimum.
     env.cfg = super::survivability::charge_multipliers_panel_default(&env.player.mod_db, &env.cfg);
 
+    apply_resistance_scaled_defences(env);
+
     // Five-way defensive resource conversion matrix (PoB2 CalcDefence.lua:1301-1390): the amount
     // converted from defence sources (Armour/Evasion/ES) to non-defence targets (Life/Mana) is
-    // injected as MaximumLife/MaximumMana BASE before the minimal calculation (corresponds to
+    // injected as ExtraLife/ExtraMana BASE before the minimal calculation (corresponds to
     // PoB2's `NewMod("Extra"..name, "BASE", …)` :1383, subject to the Life/Mana global factors).
     // The old dedicated ES→Mana channel (es_to_mana_rate) has been folded into this matrix (the
     // ES-side shrinking happens inside calc_defence); with no matrix mods present, the converted
     // amount is always 0 and this block is a no-op.
     {
         let keystones = crate::rules::DefenceKeystones::from_db(&env.player.mod_db, &env.cfg);
-        let resources = super::defence::calc_defence_resources(
+        let (resources, _, converted_totals) = super::defence::defence_resource_terms_and_totals(
             &env.player.mod_db,
             &env.cfg,
             &env.player.base,
             &keystones,
         );
         let extras = [
-            ("MaximumLife", resources.extra_life),
-            ("MaximumMana", resources.extra_mana),
+            ("ExtraLife", resources.extra_life),
+            ("ExtraMana", resources.extra_mana),
             ("Ward", resources.extra_ward),
         ];
         for (name, value) in extras {
@@ -123,13 +124,15 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
                 .with_source("defence resource conversion")]);
             }
         }
+        env.player.mod_db.add_list(converted_totals);
 
         // Snapshot the defence output back into cfg.stats (vendor's calcs.defence runs before
         // offence, CalcPerform.lua:3298/:3361 — so offence and later stages' GetStat calls can
         // read the final defence values; PoBR's hand_pass runs before calc_defence, so the three
         // final defence values from the same calc_defence_resources call are backfilled early
-        // here. The later calc_defence call recomputes the same values from the same inputs
-        // (deterministic), equivalent to vendor's ordering. MaximumEnergyShield and EnergyShield
+        // here. The later calc_defence call recomputes from the original inputs:
+        // Extra* outputs are only read by pools, so they cannot feed the matrix twice.
+        // MaximumEnergyShield and EnergyShield
         // share the same value under two keys (CalcDefence.lua:1400-1401);
         // LowestOfArmourAndEvasion is at :1414.
         // Note: if a stat-self-referencing mod ever appears (e.g. PercentStat{EnergyShield}→ES
@@ -187,12 +190,57 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         }
     }
 
+    super::env_finalize::resolve_unholy_might_magnitude(env);
+
     // Exposure, after the buffs and debuffs that apply it and the defences
     // some of it scales with: every `<El>Exposure` on the enemy comes down to
     // the strongest, folded into its resistance. The sole reduction point:
     // `CalculationSession::apply_enemy_exposure` only injects (reducing
     // twice would lower the resistance twice).
     super::setup_env::reduce_enemy_exposure(&mut env.enemy.mod_db, &env.player.mod_db, &env.cfg);
+
+    // Doryani's Prototype sets the enemy's resistance to the player's final
+    // resistance, after buffs, charges and resource-dependent modifiers. An
+    // override replaces the enemy's own resistance, including curses/exposure;
+    // the shared enemy DB also makes this apply to minions and damage over time.
+    // Retain the existing priority of explicit enemy resistance overrides and
+    // the enemy's own maximum-resistance clamp in enemy_own_resist.
+    if env
+        .player
+        .mod_db
+        .flag(&env.cfg, "EnemyLightningResistEqualToYours")
+        && env
+            .enemy
+            .mod_db
+            .override_(&env.cfg, "LightningResist")
+            .is_none()
+    {
+        let resistance = super::offence::resolve_resistance(
+            &env.player.mod_db,
+            &env.cfg,
+            env.player.base.lightning_resistance,
+            "Lightning",
+            true,
+        );
+        let source = env
+            .player
+            .mod_db
+            .flag_source(&env.cfg, "EnemyLightningResistEqualToYours")
+            .cloned()
+            .unwrap_or_else(|| {
+                ModifierSource::new(SourceId::new(
+                    SourceKind::Derived,
+                    "EnemyLightningResistEqualToYours",
+                ))
+            })
+            .with_stat("LightningResist")
+            .with_mod_type(ModType::Override);
+        env.enemy.mod_db.add_mod(
+            Modifier::number("LightningResist", ModType::Override, resistance.final_value)
+                .with_source("Enemies in your Presence have Lightning Resistance equal to yours")
+                .with_origin(source),
+        );
+    }
 
     // Warcry uptime machinery (backlog #9, vendor CalcOffence.lua:3203-3256): injects the
     // uptime-scaled warcry offensive effect (Infernal's `DamageGainAsFire`) into the player db
@@ -202,6 +250,12 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // deterministic function of (db,cfg,input); injecting gain-as doesn't feed back into speed,
     // so there's no self-reference).
     super::warcry::apply_warcry_uptime(env);
+
+    super::skill_mechanics::snapshot_remaining_chains(
+        &env.player.mod_db,
+        &env.enemy.mod_db,
+        &mut env.cfg,
+    );
 
     let input = player_input(env);
     // The hand-pass entry point. When `hand_sources` is empty (non-attack skill / old entry
@@ -326,12 +380,76 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     Ok(())
 }
 
+/// Skin of the Loyal's defence increases use the total resistance before its
+/// maximum and minimum caps. Resolve after buffs and charges, before the
+/// defence conversion matrix applies increases to its destination resources.
+fn apply_resistance_scaled_defences(env: &mut Env) {
+    for (flag, target, element, base) in [
+        (
+            "ArmourIncreasedByUncappedFireRes",
+            "Armour",
+            "Fire",
+            env.player.base.fire_resistance,
+        ),
+        (
+            "EnergyShieldIncreasedByUncappedColdRes",
+            "EnergyShield",
+            "Cold",
+            env.player.base.cold_resistance,
+        ),
+        (
+            "EvasionRatingIncreasedByUncappedLightningRes",
+            "Evasion",
+            "Lightning",
+            env.player.base.lightning_resistance,
+        ),
+        (
+            "AilmentThresholdIncreasedByUncappedChaosRes",
+            "AilmentThreshold",
+            "Chaos",
+            0.0,
+        ),
+    ] {
+        if !env.player.mod_db.flag(&env.cfg, flag) {
+            continue;
+        }
+        // Resource-dependent resistance uses the post-buff pools. Conversion
+        // has not run yet; feeding converted resources back would create a cycle.
+        let mut cfg = env.cfg.clone();
+        let (life, mana) = super::session::preparation::life_mana_pools(env);
+        for (name, value) in [("Life", life), ("Mana", mana)] {
+            cfg.stats.insert(name.into(), value);
+            cfg.multipliers.insert(name.into(), value);
+        }
+        let resistance = super::offence::resolve_resistance(
+            &env.player.mod_db,
+            &cfg,
+            base,
+            element,
+            element != "Chaos",
+        );
+        let origin = env
+            .player
+            .mod_db
+            .flag_source(&env.cfg, flag)
+            .cloned()
+            .unwrap_or_else(|| ModifierSource::new(SourceId::new(SourceKind::Derived, flag)))
+            .with_stat(target)
+            .with_mod_type(ModType::Inc);
+        env.player.mod_db.add_mod(
+            Modifier::number(target, ModType::Inc, resistance.total)
+                .with_source(flag)
+                .with_origin(origin),
+        );
+    }
+}
+
 /// (#12 companion allies layer) Writes the companion total life into the db (vendor
 /// CalcPerform.lua:3364-3370): when the player has `TakenFromCompanionBeforeYou` (the Loyalty
 /// support's `companion_takes_%_damage_before_you_from_support` buff payload) and no
 /// `TotalCompanionLife` Override (config override channel), sums the life of every **damageable
-/// companion** minion (`Actor::is_companion`, determined on the spawn side by the granting
-/// skill's SkillType) and writes it into the player's `TotalCompanionLife` BASE. Consumer =
+/// companion** minion (Companion membership and damageability come from the summoning
+/// skill's types) and writes it into the player's `TotalCompanionLife` BASE. Consumer =
 /// `pool_setup::build_pool_state`'s companion pre-deduction layer (shared by EHP's reduce_pools
 /// and max-hit's extend_total_hit_pool).
 fn inject_companion_life(env: &mut Env) {
@@ -350,7 +468,7 @@ fn inject_companion_life(env: &mut Env) {
     let total: f64 = env
         .minions
         .iter()
-        .filter(|m| m.is_companion)
+        .filter(|m| m.is_companion && !m.is_undamageable)
         .map(|m| m.output.life)
         .sum();
     env.player.mod_db.add_mod(
@@ -368,6 +486,13 @@ fn inject_companion_life(env: &mut Env) {
 /// the created population twice and discard the independent Presence override.
 pub(crate) fn minion_cfg(env: &Env, minion: &super::Actor) -> CalcConfig {
     let mut cfg = env.cfg.clone();
+    // A named buff belongs to its recipient, never to every actor merely
+    // because the player has it. Ally grants install their own magnitude.
+    cfg.conditions.remove("UnholyMight");
+    cfg.multipliers.remove("UnholyMightMagnitude");
+    let magnitude = minion.mod_db.get_multiplier("UnholyMightMagnitude", &cfg);
+    cfg.multipliers
+        .insert("UnholyMightMagnitude".into(), magnitude);
     // Standing on ground is per actor. The player's state never establishes
     // the minion's position; its explicit Condition flag does.
     cfg.conditions.remove("OnConsecratedGround");
@@ -418,42 +543,111 @@ fn apply_gigantic(minion: &mut super::Actor, cfg: &CalcConfig) {
     ]);
 }
 
-/// "Companions gain added Attack damage equal to N% of your main hand
-/// Weapon's damage": a minion with `GainMainHandDmgFromParent` adds N% (the
-/// character's `MainHandDamageToAllies`) of every damage type of the
-/// character's main hand weapon to its attacks.
+/// Main-hand weapon damage shared with a minion's attacks. Companion grants
+/// use the parent's multiplier; Presence auras carry their own recipient-local
+/// share so they cannot make companion-only grants apply to other allies.
 fn apply_main_hand_share(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env) {
-    if !cfg.flags.intersects(ModFlags::ATTACK)
-        || !minion.mod_db.flag(cfg, "GainMainHandDmgFromParent")
-    {
+    if !cfg.flags.intersects(ModFlags::ATTACK) || minion.mod_db.flag(cfg, "HiddenMonster") {
         return;
     }
-    let share = env
-        .player
-        .mod_db
-        .get_multiplier("MainHandDamageToAllies", &env.cfg);
+    let gains_companion_share = minion.mod_db.flag(cfg, "GainMainHandDmgFromParent");
+    let companion_share = if gains_companion_share {
+        env.player
+            .mod_db
+            .get_multiplier("MainHandDamageToAllies", &env.cfg)
+    } else {
+        0.0
+    };
+    // The ExtraAura pass already handles blocked ally auras and recipient
+    // effect scaling. An explicit absence from Presence excludes this grant.
+    let in_presence = !env
+        .cfg
+        .multiplier_if_set("MinionPresenceCount")
+        .is_some_and(|n| n <= 0.0)
+        && (!minion.is_companion || env.cfg.conditions.get("CompanionInPresence") != Some(&false));
+    let aura_share = if in_presence {
+        minion.mod_db.sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from("MainHandDamageToAllies")],
+        )
+    } else {
+        0.0
+    };
+    let share = companion_share + aura_share;
     if share <= 0.0 {
         return;
     }
-    let origin = || {
-        ModifierSource::new(SourceId::new(SourceKind::Derived, "minion.main_hand_share"))
-            .with_raw_text(format!("{share}% of your main hand Weapon's damage"))
+    // The aggregate queries above preserve multiplier precedence and source
+    // read tracking. Keep their evaluated contributions separate for details,
+    // including their original rule, parent source and raw game text.
+    let base_sources = |db: &ModDb, scope: &CalcConfig, name: &str| {
+        db.evaluate_named(scope, &ModName::from(name))
+            .into_iter()
+            .filter(|row| row.active && row.modifier.mod_type == ModType::Base)
+            .filter_map(|row| Some((row.modifier.clone(), row.value?)))
+            .collect::<Vec<_>>()
     };
-    for &(kind, min, max) in &env.main_hand_weapon_damage {
-        minion.mod_db.add_list([
-            Modifier::number(
-                format!("{kind:?}DamageMin"),
-                ModType::Base,
-                min * share / 100.0,
-            )
-            .with_origin(origin()),
-            Modifier::number(
-                format!("{kind:?}DamageMax"),
-                ModType::Base,
-                max * share / 100.0,
-            )
-            .with_origin(origin()),
-        ]);
+    let mut sources = Vec::new();
+    if gains_companion_share {
+        let name = "Multiplier:MainHandDamageToAllies";
+        let overridden = env
+            .player
+            .mod_db
+            .evaluate_named(&env.cfg, &ModName::from(name))
+            .into_iter()
+            .rev()
+            .filter(|row| row.active && row.modifier.mod_type == ModType::Override)
+            .find_map(|row| {
+                Some((
+                    row.modifier.clone(),
+                    row.modifier.effective_number(&env.cfg)?,
+                ))
+            });
+        if let Some(source) = overridden {
+            sources.push(source);
+        } else {
+            sources.extend(base_sources(&env.player.mod_db, &env.cfg, name));
+            let configured = env.cfg.multiplier("MainHandDamageToAllies");
+            if configured != 0.0 {
+                sources.push((
+                    Modifier::number(name, ModType::Base, configured).with_origin(
+                        ModifierSource::new(SourceId::new(
+                            SourceKind::Config,
+                            "MainHandDamageToAllies",
+                        )),
+                    ),
+                    configured,
+                ));
+            }
+        }
+    }
+    if in_presence {
+        sources.extend(base_sources(&minion.mod_db, cfg, "MainHandDamageToAllies"));
+    }
+    for (source, percent) in sources {
+        if percent == 0.0 {
+            continue;
+        }
+        for &(kind, min, max) in &env.main_hand_weapon_damage {
+            for (bound, damage) in [("Min", min), ("Max", max)] {
+                let mut added = source.clone();
+                added.name = format!("{kind:?}Damage{bound}").into();
+                added.mod_type = ModType::Base;
+                added.value = ModValue::Number(damage * percent / 100.0);
+                // Eligibility and scaling were evaluated in the source's
+                // actor scope. Do not reapply them to the recipient's flat
+                // damage; the ExtraAura pass already scaled aura effect.
+                added.flags = ModFlags::NONE;
+                added.keyword_flags = KeywordFlags::NONE;
+                added.tags.clear();
+                if let Some(origin) = &mut added.origin {
+                    origin.stat_id = Some(added.name.clone());
+                    origin.mod_type = Some(ModType::Base);
+                }
+                minion.mod_db.add_mod(added);
+            }
+        }
     }
 }
 
@@ -462,24 +656,139 @@ fn apply_main_hand_share(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env)
 /// modifiers, scaled by the increased and more effect of buffs and auras on
 /// the minion itself. Not for a hidden monster, nor when the character's
 /// auras cannot affect allies.
-fn apply_extra_auras(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env) {
+fn apply_extra_auras(minion: &mut super::Actor, cfg: &mut CalcConfig, env: &Env) {
     if minion.mod_db.flag(cfg, "HiddenMonster") {
         return;
     }
-    let auras = extra_aura_mods(env);
+    let mut auras = extra_aura_mods(env);
+    // A Companion-tagged MinionModifier can grant an ExtraAura only to
+    // that summoning skill's recipients. Keep it nested until this pass so
+    // it obeys the same ally block and recipient effect scaling as the
+    // character's other Presence auras. Explicit zero excludes all minions;
+    // explicit CompanionInPresence=false excludes this companion grant.
+    // An absent condition keeps the existing in-Presence default, and a
+    // positive count does not assign individual actors a position.
+    if !env
+        .player
+        .mod_db
+        .flag(&env.cfg, "SelfAurasCannotAffectAllies")
+        && !env
+            .cfg
+            .multiplier_if_set("MinionPresenceCount")
+            .is_some_and(|n| n <= 0.0)
+        && env.cfg.conditions.get("CompanionInPresence") != Some(&false)
+    {
+        auras.extend(extra_aura_payloads(&minion.mod_db, cfg));
+    }
     if auras.is_empty() {
         return;
     }
+    let unholy_might_grant = auras
+        .iter()
+        .find(|m| {
+            m.name.as_str() == "Condition:UnholyMight"
+                && m.mod_type == ModType::Flag
+                && m.value.as_bool() == Some(true)
+                && m.matches(&env.cfg)
+        })
+        .cloned();
     let names = [
         ModName::from("BuffEffectOnSelf"),
         ModName::from("AuraEffectOnSelf"),
     ];
-    let scale = (1.0 + minion.mod_db.sum(ModType::Inc, cfg, &names) / 100.0)
-        * minion.mod_db.more(cfg, &names);
+    let scale = (1.0 + minion.mod_db.sum(ModType::Inc, &*cfg, &names) / 100.0)
+        * minion.mod_db.more(&*cfg, &names);
     for aura in auras {
         minion
             .mod_db
             .scale_add_mod(aura, scale, &env.high_precision);
+    }
+    // Necromantic Conduit's ally flag arrives after the player's misc-buff
+    // pass. Expand only this named grant, with the caster's magnitude and the
+    // recipient's buff effect. A zero Presence count explicitly excludes all
+    // minions; a positive count does not assign positions to individual actors.
+    if let Some(grant) = unholy_might_grant
+        && cfg.mode_combat
+        && !env
+            .cfg
+            .multiplier_if_set("MinionPresenceCount")
+            .is_some_and(|n| n <= 0.0)
+    {
+        expand_ally_unholy_might(minion, cfg, env, &grant);
+    }
+}
+
+fn expand_ally_unholy_might(
+    minion: &mut super::Actor,
+    cfg: &mut CalcConfig,
+    env: &Env,
+    grant: &Modifier,
+) {
+    use crate::rules::buff_expander::{self, BuffExpandState, BuffExpansion};
+
+    let Some(definition) = env
+        .buff_definitions
+        .iter()
+        .find(|def| def.id == "UnholyMight")
+    else {
+        return;
+    };
+    if minion.mod_db.iter_mods().any(|m| {
+        m.origin.as_ref().is_some_and(|o| {
+            o.source_id.kind == SourceKind::Buff && o.source_id.id == "buff.UnholyMight"
+        })
+    }) {
+        return;
+    }
+    let mut expansion = BuffExpansion::default();
+    buff_expander::expand_one(
+        &BuffExpandState {
+            db: &minion.mod_db,
+            enemy_db: Some(&env.enemy.mod_db),
+            cfg,
+            mode_combat: cfg.mode_combat,
+            main_skill: None,
+        },
+        definition,
+        &env.buff_handler_registry,
+        &mut expansion,
+    );
+    for modifier in &mut expansion.mods {
+        if let (Some(origin), Some(source)) = (&mut modifier.origin, &grant.origin) {
+            origin.parent_source_id = Some(source.source_id.clone());
+            origin.raw_text = source.raw_text.clone();
+        }
+    }
+    // Keep each Blackened Heart source, but resolve its per-Mana value on the
+    // caster before crossing actors. The definition's base magnitude is 100;
+    // each percent increase is one additional point of that magnitude.
+    for source in env.player.mod_db.named("UnholyMightGrantedMagnitude") {
+        if source.mod_type != ModType::Inc || !source.matches(&env.cfg) {
+            continue;
+        }
+        let Some(value) = source.effective_number(&env.cfg) else {
+            continue;
+        };
+        let mut modifier = source.clone();
+        modifier.name = ModName::from("Multiplier:UnholyMightMagnitude");
+        modifier.mod_type = ModType::Base;
+        modifier.value = ModValue::Number(value);
+        modifier.tags.clear();
+        if let Some(origin) = &mut modifier.origin {
+            origin.stat_id = Some(modifier.name.clone());
+            origin.mod_type = Some(modifier.mod_type);
+        }
+        expansion.mods.push(modifier);
+    }
+    minion.mod_db.add_list(expansion.mods);
+    // Start from the recipient's own table; the parent's resolved multiplier
+    // must not be inherited or added a second time.
+    cfg.multipliers.remove("UnholyMightMagnitude");
+    let magnitude = minion.mod_db.get_multiplier("UnholyMightMagnitude", cfg);
+    cfg.multipliers
+        .insert("UnholyMightMagnitude".into(), magnitude);
+    for condition in expansion.conditions_set {
+        cfg.conditions.insert(condition, true);
     }
 }
 
@@ -491,9 +800,12 @@ pub(super) fn extra_aura_mods(env: &Env) -> Vec<Modifier> {
     if player.flag(&env.cfg, "SelfAurasCannotAffectAllies") {
         return Vec::new();
     }
-    player
-        .named("ExtraAura")
-        .filter(|outer| outer.mod_type == ModType::List && outer.matches(&env.cfg))
+    extra_aura_payloads(player, &env.cfg)
+}
+
+fn extra_aura_payloads(db: &ModDb, cfg: &CalcConfig) -> Vec<Modifier> {
+    db.named("ExtraAura")
+        .filter(|outer| outer.mod_type == ModType::List && outer.matches(cfg))
         .flat_map(|outer| {
             outer
                 .value
@@ -543,8 +855,22 @@ fn perform_minions(env: &mut Env) {
         for condition in conditions {
             minion_cfg.conditions.insert(condition, true);
         }
-        apply_extra_auras(minion, &minion_cfg, env);
+        apply_extra_auras(minion, &mut minion_cfg, env);
         apply_main_hand_share(minion, &minion_cfg, env);
+        super::skill_mechanics::snapshot_remaining_chains(
+            &minion.mod_db,
+            &env.enemy.mod_db,
+            &mut minion_cfg,
+        );
+        // Snapshot this recipient's completed pool after its buffs and Life
+        // factors, before either offence or defence reads PercentStat(Life).
+        let life = super::offence::scaled_pool(
+            &minion.mod_db,
+            &minion_cfg,
+            minion.base.life,
+            "MaximumLife",
+        );
+        minion_cfg.stats.insert("Life".into(), life);
         let mut input = MinimalInput::from(minion.base);
         input.enemy_evasion = super::setup_env::enemy_evasion(&env.enemy, &minion_cfg);
 
@@ -936,7 +1262,7 @@ fn fill_mechanics(env: &mut Env) {
     )
     .seconds();
 
-    // Physical leech uses each attacking hand's post-conversion damage and
+    // Leech uses each attacking hand's post-conversion damage and
     // that hand's modifier scope. Never pair an off-hand leech affix with the
     // main hand's hit. Preserve the current single-instance panel model:
     // among hands, only the strongest recovery instance is active.
@@ -1023,24 +1349,37 @@ pub(super) fn leech_panel_terms(env: &Env) -> Vec<[super::survivability::LeechRe
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
     let leech_rates_for = |scope: &CalcConfig, components: &[super::DamageComponent]| {
-        let physical_hit = component_avg(components, DamageType::Physical);
+        let damage: Vec<_> = components
+            .iter()
+            .map(|c| (c.damage_type, c.avg()))
+            .collect();
         [
             (LeechResource::Life, env.player.output.life),
             (LeechResource::Mana, env.player.output.mana),
             (LeechResource::EnergyShield, env.player.output.energy_shield),
         ]
-        .map(|(resource, pool)| calc_leech_from_db(db, scope, pool, physical_hit, resource))
+        .map(|(resource, pool)| {
+            super::survivability::calc_leech_for_hit(db, scope, pool, &damage, resource)
+        })
     };
-    let has_leech_source = [
-        "LifeLeech",
-        "ManaLeech",
-        "EnergyShieldLeech",
-        "PhysicalDamageLifeLeech",
-        "PhysicalDamageManaLeech",
-        "PhysicalDamageEnergyShieldLeech",
-    ]
-    .iter()
-    .any(|name| db.named(name).next().is_some());
+    let has_leech_source = ["Life", "Mana", "EnergyShield"].iter().any(|resource| {
+        [
+            "",
+            "Damage",
+            "PhysicalDamage",
+            "FireDamage",
+            "ColdDamage",
+            "LightningDamage",
+            "ChaosDamage",
+            "ElementalDamage",
+        ]
+        .iter()
+        .any(|prefix| {
+            db.named(&format!("{prefix}{resource}Leech"))
+                .next()
+                .is_some()
+        })
+    });
     if !has_leech_source {
         // Most build variants have no leech: avoid cloning per-hand scopes.
         Vec::new()
@@ -1835,7 +2174,8 @@ fn damaging_ailment_for_pass(
         duration_before_rate,
         stack_potential: sp,
         hits_per_second: ctx.speed,
-        base_duration: super::ailment::ailment_base_duration(kind, cfg).unwrap_or(0.0),
+        base_duration: super::ailment::resolved_ailment_base_duration(kind, player, cfg)
+            .unwrap_or(0.0),
         enemy_duration: debuff_duration_mult(enemy, cfg),
         stacks: stack.active_stacks,
         max_stacks: stack.max_stacks as f64,
@@ -2396,14 +2736,6 @@ pub(crate) fn enemy_ailment_threshold_terms(
         increased: enemy.sum(ModType::Inc, cfg, &names),
         more: enemy.more(cfg, &names),
     }
-}
-
-/// Gets a damage type's component average hit value (returns 0 if that component is absent).
-fn component_avg(components: &[super::DamageComponent], damage_type: DamageType) -> f64 {
-    components
-        .iter()
-        .find(|component| component.damage_type == damage_type)
-        .map_or(0.0, super::DamageComponent::avg)
 }
 
 /// The flat physical damage reduction bonus (fraction), from `PhysicalDamageReduction` Base (percentage points → fraction).

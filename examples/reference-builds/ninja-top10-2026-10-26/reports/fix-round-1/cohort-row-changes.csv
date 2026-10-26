@@ -1,0 +1,364 @@
+﻿build,stat,differed_before,differs_after,before,after,embedded_reference,pinned_pob2,before_class,after_class,reason
+abyssal-lich-01,AverageBurstDamage,True,True,9878560.856802,9878560.856802,9304439.375,9304439.375,engine,engine,
+abyssal-lich-01,CombinedDPS,True,True,7572208.221762032,7572208.221762032,7132056.0749308,7132056.075,engine,engine,
+abyssal-lich-01,IgniteDPS,True,True,12558.363838303,12558.363838303,11757.398287646,11757.39829,engine,engine,
+abyssal-lich-01,SpiritUnreserved,True,True,-9.0,-9.0,-109.0,-109.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+abyssal-lich-01,SpiritUnreservedPercent,True,True,-4.326923076923077,-4.326923076923077,-52.403846153846,-52.40384615,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+abyssal-lich-01,TotalDPS,True,True,7559649.857923729,7559649.857923729,7120298.6766432,7120298.677,engine,engine,
+abyssal-lich-01,TotalDotDPS,True,True,12558.363838303,12558.363838303,11757.398287646,11757.39829,engine,engine,
+abyssal-lich-01,WithBleedDPS,True,True,7559649.857923729,7559649.857923729,7120298.6766432,7120298.677,engine,engine,
+abyssal-lich-01,WithIgniteDPS,True,True,7572208.221762032,7572208.221762032,7132056.0749308,7132056.075,engine,engine,
+abyssal-lich-01,WithPoisonDPS,True,True,7559649.857923729,7559649.857923729,7120298.6766432,7120298.677,engine,engine,
+abyssal-lich-02,ActiveTotemLimit,True,True,0.0,0.0,1.0,1.0,engine,engine,
+abyssal-lich-02,ChaosMaxHit,True,True,43192.0,43192.0,41107.0,41107.0,reference,reference,
+abyssal-lich-02,ColdMaxHit,True,True,77123.0,77123.0,73401.0,73401.0,reference,reference,
+abyssal-lich-02,CombinedDPS,True,True,289543.420404,289543.420404,305095.78619875,305095.7862,engine,engine,
+abyssal-lich-02,EnergyShield,True,True,17274.0,17274.0,16441.0,16441.0,reference,reference,
+abyssal-lich-02,EnergyShieldRecoveryCap,True,True,17274.0,17274.0,16441.0,16441.0,reference,reference,
+abyssal-lich-02,FireMaxHit,True,True,77123.0,77123.0,73401.0,73401.0,reference,reference,
+abyssal-lich-02,LifeRecoverable,True,True,1.85939985,1.85939985,1.0,1.0,engine,engine,
+abyssal-lich-02,LifeUnreserved,True,True,1.85939985,1.85939985,1.0,1.0,engine,engine,
+abyssal-lich-02,LifeUnreservedPercent,True,True,0.11,0.11,0.059171597633136,0.05917159763,engine,engine,
+abyssal-lich-02,LightningMaxHit,True,True,77123.0,77123.0,73401.0,73401.0,reference,reference,
+abyssal-lich-02,PhysicalMaxHit,True,True,21594.0,21594.0,20552.0,20552.0,reference,reference,
+abyssal-lich-02,TotalDot,True,True,289543.420404,289543.420404,305095.78619875,305095.7862,engine,engine,
+abyssal-lich-02,TotalDotDPS,True,True,289543.420404,289543.420404,305095.78619875,305095.7862,engine,engine,
+abyssal-lich-02,TotalEHP,True,True,45845.575318338,45845.575318338,43516.957493271,43516.95749,engine,engine,
+abyssal-lich-02,WithDotDPS,True,True,289543.420404,289543.420404,305095.78619875,305095.7862,engine,engine,
+abyssal-lich-03,AverageBurstDamage,True,True,1291112.39089196,1291112.39089196,1158897.5890401,1158948.189,engine,engine,
+abyssal-lich-03,AverageDamage,True,True,1291112.39089196,1291112.39089196,1158897.5890401,1158948.189,engine,engine,
+abyssal-lich-03,CombinedDPS,True,True,3735660.124521777,3735660.124521777,3354006.523472,3354149.422,engine,engine,
+abyssal-lich-03,CritMultiplier,True,True,21.05328,21.05328,19.47,19.47,engine,engine,
+abyssal-lich-03,IgniteDPS,True,True,94599.235416924,94599.235416924,85804.068210304,85804.27032,engine,engine,
+abyssal-lich-03,TotalDPS,True,True,3641060.889104853,3641060.889104853,3268202.4552617,3268345.152,engine,engine,
+abyssal-lich-03,TotalDotDPS,True,True,94599.235416924,94599.235416924,85804.068210304,85804.27032,engine,engine,
+abyssal-lich-03,WithBleedDPS,True,True,3641060.889104853,3641060.889104853,3268202.4552617,3268345.152,engine,engine,
+abyssal-lich-03,WithIgniteDPS,True,True,3735660.124521777,3735660.124521777,3354006.523472,3354149.422,engine,engine,
+abyssal-lich-03,WithPoisonDPS,True,True,3641060.889104853,3641060.889104853,3268202.4552617,3268345.152,engine,engine,
+abyssal-lich-04,AverageBurstDamage,True,True,70709.614487873,70709.614487873,61405.23499742,61820.84455,engine,engine,
+abyssal-lich-04,AverageDamage,True,True,70709.614487873,70709.614487873,61405.23499742,61820.84455,engine,engine,
+abyssal-lich-04,CombinedDPS,True,True,147826.006165404,147826.006165404,128329.78697812,129201.1623,engine,engine,
+abyssal-lich-04,CritChance,True,True,58.10427,58.10427,54.339768,54.34,engine,engine,
+abyssal-lich-04,CritMultiplier,True,True,10.975,10.975,10.1,10.1,engine,engine,
+abyssal-lich-04,FireResistOverCap,True,True,5.0,5.0,3.0,5.0,reference,reference,
+abyssal-lich-04,IgniteDPS,True,True,523.737264267,523.737264267,410.40143149805,415.9789026,engine,engine,
+abyssal-lich-04,LightningResistOverCap,True,True,24.0,24.0,12.0,24.0,reference,reference,
+abyssal-lich-04,PreEffectiveCritChance,True,True,58.10427,58.10427,54.339768,54.34,engine,engine,
+abyssal-lich-04,Spirit,True,True,173.0,173.0,150.0,173.0,reference,reference,
+abyssal-lich-04,SpiritUnreserved,True,True,59.0,59.0,-47.0,-24.0,both,both,
+abyssal-lich-04,SpiritUnreservedPercent,True,True,34.104046242774565,34.104046242774565,-31.333333333333,-13.87283237,both,both,
+abyssal-lich-04,TotalDPS,True,True,147302.268901137,147302.268901137,127919.38554663,128785.1834,engine,engine,
+abyssal-lich-04,TotalDotDPS,True,True,523.737264267,523.737264267,410.40143149805,415.9789026,engine,engine,
+abyssal-lich-04,WithBleedDPS,True,True,147302.268901137,147302.268901137,127919.38554663,128785.1834,engine,engine,
+abyssal-lich-04,WithIgniteDPS,True,True,147826.006165404,147826.006165404,128329.78697812,129201.1623,engine,engine,
+abyssal-lich-04,WithPoisonDPS,True,True,147302.268901137,147302.268901137,127919.38554663,128785.1834,engine,engine,
+abyssal-lich-05,AverageBurstDamage,True,True,66334.910383038,66334.910383038,62590.169240552,62589.09084,engine,engine,
+abyssal-lich-05,AverageDamage,True,True,66334.910383038,66334.910383038,62590.169240552,62589.09084,engine,engine,
+abyssal-lich-05,CombinedDPS,True,True,175318.989238152,175318.989238152,165252.45542383,165249.5993,engine,engine,
+abyssal-lich-05,IgniteDPS,True,True,1287.400805868,1287.400805868,1110.9883938712,1110.960307,engine,engine,
+abyssal-lich-05,TotalDPS,True,True,174031.588432284,174031.588432284,164141.46702996,164138.639,engine,engine,
+abyssal-lich-05,TotalDotDPS,True,True,1287.400805868,1287.400805868,1110.9883938712,1110.960307,engine,engine,
+abyssal-lich-05,WithBleedDPS,True,True,174031.588432284,174031.588432284,164141.46702996,164138.639,engine,engine,
+abyssal-lich-05,WithIgniteDPS,True,True,175318.98923815202,175318.98923815202,165252.45542383,165249.5993,engine,engine,
+abyssal-lich-05,WithPoisonDPS,True,True,174031.588432284,174031.588432284,164141.46702996,164138.639,engine,engine,
+abyssal-lich-06,AverageBurstDamage,True,True,130854.792765224,130854.792765224,119404.38216915,119402.0261,engine,engine,
+abyssal-lich-06,AverageDamage,True,True,130854.792765224,130854.792765224,119404.38216915,119402.0261,engine,engine,
+abyssal-lich-06,CombinedDPS,True,True,317759.824606852,317759.824606852,289518.56299402,289512.8045,engine,engine,
+abyssal-lich-06,IgniteDPS,True,True,5786.604013467,5786.604013467,4958.3379662662,4958.194378,engine,engine,
+abyssal-lich-06,RageRegenRecovery,True,True,2.9,2.9,4.6,4.6,engine,engine,
+abyssal-lich-06,ReqStr,True,True,68.0,68.0,137.0,137.0,engine,engine,
+abyssal-lich-06,SpiritUnreserved,True,True,99.0,99.0,-1.0,-1.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+abyssal-lich-06,SpiritUnreservedPercent,True,True,27.123287671232877,27.123287671232877,-0.27397260273973,-0.2739726027,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+abyssal-lich-06,TotalDPS,True,True,311973.220593385,311973.220593385,284560.22502775,284554.6101,engine,engine,
+abyssal-lich-06,TotalDotDPS,True,True,5786.604013467,5786.604013467,4958.3379662662,4958.194378,engine,engine,
+abyssal-lich-06,WithBleedDPS,True,True,311973.220593385,311973.220593385,284560.22502775,284554.6101,engine,engine,
+abyssal-lich-06,WithIgniteDPS,True,True,317759.82460685197,317759.82460685197,289518.56299402,289512.8045,engine,engine,
+abyssal-lich-06,WithPoisonDPS,True,True,311973.220593385,311973.220593385,284560.22502775,284554.6101,engine,engine,
+abyssal-lich-07,IgniteDPS,True,True,15.115172255,15.115172255,14.279593340452,15.11326558,reference,reference,
+abyssal-lich-07,LightningResistOverCap,True,True,44.0,44.0,32.0,44.0,reference,reference,
+abyssal-lich-07,SpiritUnreserved,True,True,60.0,60.0,-40.0,-38.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+abyssal-lich-07,SpiritUnreservedPercent,True,True,18.75,18.75,-12.5,-11.875,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+abyssal-lich-07,TotalDotDPS,True,True,15.115172255,15.115172255,14.279593340452,15.11326558,reference,reference,
+abyssal-lich-08,AverageBurstDamage,True,True,394381.780394575,394381.780394575,354869.104375,354869.1044,engine,engine,
+abyssal-lich-08,AverageDamage,True,True,394381.780394575,394381.780394575,354869.104375,354869.1044,engine,engine,
+abyssal-lich-08,CombinedDPS,True,True,1005301.06638671,1005301.06638671,904298.79511949,904298.7951,engine,engine,
+abyssal-lich-08,CritMultiplier,True,True,12.7056,12.7056,11.63,11.63,engine,engine,
+abyssal-lich-08,IgniteDPS,True,True,21832.79814388,21832.79814388,19363.129015969,19363.12902,engine,engine,
+abyssal-lich-08,TotalDPS,True,True,983468.26824283,983468.26824283,884935.66610352,884935.6661,engine,engine,
+abyssal-lich-08,TotalDotDPS,True,True,21832.79814388,21832.79814388,19363.129015969,19363.12902,engine,engine,
+abyssal-lich-08,WithBleedDPS,True,True,983468.26824283,983468.26824283,884935.66610352,884935.6661,engine,engine,
+abyssal-lich-08,WithIgniteDPS,True,True,1005301.0663867099,1005301.0663867099,904298.79511949,904298.7951,engine,engine,
+abyssal-lich-08,WithPoisonDPS,True,True,983468.26824283,983468.26824283,884935.66610352,884935.6661,engine,engine,
+abyssal-lich-09,AverageBurstDamage,True,True,389159.609858532,389159.609858532,370220.6562161,367031.3141,engine,engine,
+abyssal-lich-09,CombinedDPS,True,True,1315359.481321838,1315359.481321838,1225430.3720753,1214873.65,engine,engine,
+abyssal-lich-09,SpiritUnreserved,True,True,14.0,14.0,-86.0,-86.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+abyssal-lich-09,SpiritUnreservedPercent,True,True,10.76923076923077,10.76923076923077,-66.153846153846,-66.15384615,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+abyssal-lich-09,TotalDPS,True,True,1315359.481321838,1315359.481321838,1225430.3720753,1214873.65,engine,engine,
+abyssal-lich-09,WithBleedDPS,True,True,1315359.481321838,1315359.481321838,1225430.3720753,1214873.65,engine,engine,
+abyssal-lich-09,WithIgniteDPS,True,True,1315359.481321838,1315359.481321838,1225430.3720753,1214873.65,engine,engine,
+abyssal-lich-09,WithPoisonDPS,True,True,1315359.481321838,1315359.481321838,1225430.3720753,1214873.65,engine,engine,
+abyssal-lich-10,AverageBurstDamage,True,True,562890.480979387,562890.480979387,460817.28293971,463905.9274,engine,engine,
+abyssal-lich-10,AverageDamage,True,True,562890.480979387,562890.480979387,460817.28293971,463905.9274,engine,engine,
+abyssal-lich-10,CombinedDPS,True,True,1388974.621361241,1388974.621361241,1137127.9190777,1144770.316,engine,engine,
+abyssal-lich-10,CritChance,True,True,71.6607736,71.6607736,67.4573106556,67.452975,engine,engine,
+abyssal-lich-10,CritMultiplier,True,True,12.656636295,12.656636295,11.35,11.35,engine,engine,
+abyssal-lich-10,FireResistOverCap,True,True,36.0,36.0,34.0,36.0,reference,reference,
+abyssal-lich-10,IgniteDPS,True,True,24666.847115175,24666.847115175,20667.17904791,20826.45727,engine,engine,
+abyssal-lich-10,LightningResistOverCap,True,True,11.0,11.0,0.0,11.0,reference,reference,
+abyssal-lich-10,PreEffectiveCritChance,True,True,46.7654,46.7654,42.9538,42.95,engine,engine,
+abyssal-lich-10,SpiritUnreserved,True,True,360.0,360.0,262.0,262.0,engine,engine,
+abyssal-lich-10,SpiritUnreservedPercent,True,True,73.17073170731707,73.17073170731707,53.252032520325,53.25203252,engine,engine,
+abyssal-lich-10,TotalDPS,True,True,1364307.774246066,1364307.774246066,1116460.7400298,1123943.858,engine,engine,
+abyssal-lich-10,TotalDotDPS,True,True,24666.847115175,24666.847115175,20667.17904791,20826.45727,engine,engine,
+abyssal-lich-10,WithBleedDPS,True,True,1364307.774246066,1364307.774246066,1116460.7400298,1123943.858,engine,engine,
+abyssal-lich-10,WithIgniteDPS,True,True,1388974.6213612412,1388974.6213612412,1137127.9190777,1144770.316,engine,engine,
+abyssal-lich-10,WithPoisonDPS,True,True,1364307.774246066,1364307.774246066,1116460.7400298,1123943.858,engine,engine,
+acolyte-of-chayula-01,ColdResistOverCap,True,True,9.0,9.0,11.0,9.0,reference,reference,
+acolyte-of-chayula-01,Cooldown,True,True,0.0,0.0,8.019,8.019,engine,engine,
+acolyte-of-chayula-01,ReqStr,True,True,17.0,17.0,42.0,17.0,reference,reference,
+acolyte-of-chayula-02,ActiveMinionLimit,True,True,7.0,7.0,0.0,0.0,engine,known,"Frozen 2026-10-26 Forbidden Rites Wolf Pack at level 19 has native pack size 6 plus one from quality, giving 7. The pinned PoB2 omits the pack size and reports 0. See docs/maintainer-guide.md, summon counts."
+acolyte-of-chayula-02,MinionTotalDPS,True,False,153.283990234,,164.61263748013,164.6126375,engine,,
+acolyte-of-chayula-03,AverageBurstDamage,True,True,1363746.097571358,1363746.097571358,1105959.8561256,1132153.526,engine,engine,
+acolyte-of-chayula-03,CombinedAvg,True,True,1363746.097571358,1363746.097571358,1105959.8561256,1132153.526,engine,engine,
+acolyte-of-chayula-03,LifeRecoverable,True,True,45.2920545,45.2920545,23.0,45.0,reference,reference,
+acolyte-of-chayula-03,LifeUnreserved,True,True,45.2920545,45.2920545,23.0,45.0,reference,reference,
+acolyte-of-chayula-03,LifeUnreservedPercent,True,True,3.63,3.63,1.8429487179487,3.605769231,reference,reference,
+acolyte-of-chayula-03,Mana,True,True,6322.94,6322.94,6832.0,6908.0,engine,engine,
+acolyte-of-chayula-03,ManaRegenRecovery,True,True,168.4,168.4,182.0,184.0,engine,engine,
+acolyte-of-chayula-03,ManaUnreserved,True,True,6322.94,6322.94,6832.0,6908.0,engine,engine,
+acolyte-of-chayula-03,SpiritUnreserved,True,True,11.0,11.0,-86.0,-80.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+acolyte-of-chayula-03,SpiritUnreservedPercent,True,True,2.997275204359673,2.997275204359673,-23.433242506812,-21.79836512,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+acolyte-of-chayula-03,TotalDPS,True,True,6491431.424439664,6491431.424439664,5264368.9151579,5389050.784,engine,engine,
+acolyte-of-chayula-05,CritMultiplier,True,True,2.12,2.12,2.0,2.0,engine,engine,
+acolyte-of-chayula-06,ReqInt,True,True,65.0,65.0,114.0,65.0,reference,reference,
+acolyte-of-chayula-08,LightningResistOverCap,True,True,3.0,3.0,4.0,4.0,engine,engine,
+acolyte-of-chayula-09,CombinedDPS,True,True,11517368.861320535,11517368.861320535,18038360.976064,18038360.98,engine,engine,
+acolyte-of-chayula-09,PoisonDPS,True,True,9796555.723798405,9796555.723798405,16313451.268715,16313451.27,engine,engine,
+acolyte-of-chayula-09,RageRegenRecovery,True,True,2.5,2.5,4.5,4.5,engine,engine,
+acolyte-of-chayula-09,ReqStr,True,True,65.0,65.0,137.0,137.0,engine,engine,
+acolyte-of-chayula-09,SpiritUnreserved,True,True,-11.0,-11.0,-111.0,-111.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+acolyte-of-chayula-09,SpiritUnreservedPercent,True,True,-5.238095238095238,-5.238095238095238,-52.857142857143,-52.85714286,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+acolyte-of-chayula-09,TotalDotDPS,True,True,9898526.41676554,9898526.41676554,16415692.392611,16415692.39,engine,engine,
+acolyte-of-chayula-09,WithPoisonDPS,True,True,11415398.1683534,11415398.1683534,17936119.852168,17936119.85,engine,engine,
+amazon-01,SpiritUnreserved,True,True,1.0,1.0,-99.0,-99.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+amazon-01,SpiritUnreservedPercent,True,True,0.6896551724137931,0.6896551724137931,-68.275862068966,-68.27586207,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+amazon-02,AverageBurstDamage,True,False,266102.563334558,,293082.97062708,302010.202,engine,,
+amazon-02,AverageDamage,True,False,266102.563334558,,293082.97062708,302010.202,engine,,
+amazon-02,CombinedDPS,True,True,734173.644186532,831958.969197695,791875.27541038,835354.5032,both,reference,
+amazon-02,CritChance,True,False,53.15459930000001,,58.7467409631,60.536476,engine,,
+amazon-02,DeflectChance,True,True,16.0,16.0,18.0,18.0,engine,known,"Frozen 2026-10-26 Forbidden Rites Amazon has 8993 Evasion and level-82 enemy Accuracy 2114. The strongest Blind II contributes one 20% effect increase (24% less accuracy): evade 55%, deflect 16. Pinned PoB2 counts the Pounce gem effect three times (32% less accuracy): evade 58%, deflect 18. Preserve the strongest single Blind effect; Energy Shield and TotalEHP remain unclassified. See docs/maintainer-guide.md, Blind effect."
+amazon-02,EnergyShield,True,True,388.0,388.0,488.0,364.0,both,both,
+amazon-02,EnergyShieldRecoveryCap,True,True,388.0,388.0,488.0,364.0,both,both,
+amazon-02,EvadeChance,True,True,55.0,55.0,58.0,58.0,engine,known,"Frozen 2026-10-26 Forbidden Rites Amazon has 8993 Evasion and level-82 enemy Accuracy 2114. The strongest Blind II contributes one 20% effect increase (24% less accuracy): evade 55%, deflect 16. Pinned PoB2 counts the Pounce gem effect three times (32% less accuracy): evade 58%, deflect 18. Preserve the strongest single Blind effect; Energy Shield and TotalEHP remain unclassified. See docs/maintainer-guide.md, Blind effect."
+amazon-02,IgniteDPS,True,True,1378.935857471,1653.189652144,1553.5984768149,1661.380672,both,reference,
+amazon-02,MeleeEvadeChance,True,True,55.0,55.0,58.0,58.0,engine,known,"Frozen 2026-10-26 Forbidden Rites Amazon has 8993 Evasion and level-82 enemy Accuracy 2114. The strongest Blind II contributes one 20% effect increase (24% less accuracy): evade 55%, deflect 16. Pinned PoB2 counts the Pounce gem effect three times (32% less accuracy): evade 58%, deflect 18. Preserve the strongest single Blind effect; Energy Shield and TotalEHP remain unclassified. See docs/maintainer-guide.md, Blind effect."
+amazon-02,PreEffectiveCritChance,True,False,31.556299999999997,,35.7713,37.18,engine,,
+amazon-02,ProjectileEvadeChance,True,True,55.0,55.0,58.0,58.0,engine,known,"Frozen 2026-10-26 Forbidden Rites Amazon has 8993 Evasion and level-82 enemy Accuracy 2114. The strongest Blind II contributes one 20% effect increase (24% less accuracy): evade 55%, deflect 16. Pinned PoB2 counts the Pounce gem effect three times (32% less accuracy): evade 58%, deflect 18. Preserve the strongest single Blind effect; Energy Shield and TotalEHP remain unclassified. See docs/maintainer-guide.md, Blind effect."
+amazon-02,ReqInt,True,True,46.0,46.0,114.0,46.0,reference,reference,
+amazon-02,SpellEvadeChance,True,True,55.0,55.0,58.0,58.0,engine,known,"Frozen 2026-10-26 Forbidden Rites Amazon has 8993 Evasion and level-82 enemy Accuracy 2114. The strongest Blind II contributes one 20% effect increase (24% less accuracy): evade 55%, deflect 16. Pinned PoB2 counts the Pounce gem effect three times (32% less accuracy): evade 58%, deflect 18. Preserve the strongest single Blind effect; Energy Shield and TotalEHP remain unclassified. See docs/maintainer-guide.md, Blind effect."
+amazon-02,SpellProjectileEvadeChance,True,True,55.0,55.0,58.0,58.0,engine,known,"Frozen 2026-10-26 Forbidden Rites Amazon has 8993 Evasion and level-82 enemy Accuracy 2114. The strongest Blind II contributes one 20% effect increase (24% less accuracy): evade 55%, deflect 16. Pinned PoB2 counts the Pounce gem effect three times (32% less accuracy): evade 58%, deflect 18. Preserve the strongest single Blind effect; Energy Shield and TotalEHP remain unclassified. See docs/maintainer-guide.md, Blind effect."
+amazon-02,SpiritUnreserved,True,True,4.0,4.0,-34.0,4.0,reference,reference,
+amazon-02,SpiritUnreservedPercent,True,True,4.0,4.0,-34.0,4.0,reference,reference,
+amazon-02,TotalDPS,True,True,732794.708329061,830305.779545551,790321.67693357,833693.1225,both,reference,
+amazon-02,TotalDotDPS,True,True,1378.935857471,1653.189652144,1553.5984768149,1661.380672,both,reference,
+amazon-02,TotalEHP,True,True,17655.422385711,17655.422385711,19385.637852937,19010.26376,engine,engine,
+amazon-02,WithBleedDPS,True,True,732794.708329061,830305.779545551,790321.67693357,833693.1225,both,reference,
+amazon-02,WithIgniteDPS,True,True,734173.644186532,831958.969197695,791875.27541038,835354.5032,both,reference,
+amazon-02,WithPoisonDPS,True,True,732794.708329061,830305.779545551,790321.67693357,833693.1225,both,reference,
+amazon-03,ChaosMaxHit,True,True,2709.0,2709.0,2922.0,2710.0,reference,reference,
+amazon-03,ColdMaxHit,True,True,11036.0,11036.0,11700.0,11038.0,reference,reference,
+amazon-03,CombinedDPS,True,True,130871.635318267,130871.635318267,123040.83311689,130822.8544,reference,reference,
+amazon-03,FireMaxHit,True,True,12613.0,12613.0,13371.0,12614.0,reference,reference,
+amazon-03,IgniteDPS,True,True,3116.555081359,3116.555081359,2918.6299681052,3115.511536,reference,reference,
+amazon-03,LightningMaxHit,True,True,12178.0,12178.0,12910.0,12179.0,reference,reference,
+amazon-03,PhysicalMaxHit,True,True,3532.0,3532.0,3744.0,3532.0,reference,reference,
+amazon-03,TotalDPS,True,True,127755.080236908,127755.080236908,120122.20314878,127707.3428,reference,reference,
+amazon-03,TotalDotDPS,True,True,3116.555081359,3116.555081359,2918.6299681052,3115.511536,reference,reference,
+amazon-03,TotalEHP,True,True,24987.610610774,24987.610610774,26639.530116747,24991.10962,reference,reference,
+amazon-03,WithBleedDPS,True,True,127755.080236908,127755.080236908,120122.20314878,127707.3428,reference,reference,
+amazon-03,WithIgniteDPS,True,True,130871.635318267,130871.635318267,123040.83311689,130822.8544,reference,reference,
+amazon-03,WithPoisonDPS,True,True,127755.080236908,127755.080236908,120122.20314878,127707.3428,reference,reference,
+amazon-05,AverageBurstDamage,True,True,482495.955503037,482495.955503037,454859.95795141,482590.0051,reference,reference,
+amazon-05,AverageDamage,True,True,482495.955503037,482495.955503037,454859.95795141,482590.0051,reference,reference,
+amazon-05,CombinedDPS,True,True,1067707.317559377,1067707.317559377,973667.25967119,1067488.196,reference,reference,
+amazon-05,CritChance,True,True,70.341084,70.341084,66.86270775,70.341084,reference,reference,
+amazon-05,IgniteDPS,True,True,1119.019134675,1119.019134675,994.72558789785,1118.713742,reference,reference,
+amazon-05,PreEffectiveCritChance,True,True,45.540000000000006,45.540000000000006,42.435,45.54,reference,reference,
+amazon-05,TotalDPS,True,True,1066588.298424702,1066588.298424702,972672.53408329,1066369.482,reference,reference,
+amazon-05,TotalDotDPS,True,True,1119.019134675,1119.019134675,994.72558789785,1118.713742,reference,reference,
+amazon-05,WithBleedDPS,True,True,1066588.298424702,1066588.298424702,972672.53408329,1066369.482,reference,reference,
+amazon-05,WithIgniteDPS,True,True,1067707.3175593768,1067707.3175593768,973667.25967119,1067488.196,reference,reference,
+amazon-05,WithPoisonDPS,True,True,1066588.298424702,1066588.298424702,972672.53408329,1066369.482,reference,reference,
+amazon-06,EnergyShieldLeechGainRate,True,True,0.0,0.0,632.0,632.0,engine,engine,
+amazon-06,FireResistOverCap,True,True,29.0,29.0,27.0,29.0,reference,reference,
+amazon-06,LifeLeechGainRate,True,True,0.2,0.2,0.0,0.0,engine,engine,
+amazon-06,ManaLeechGainRate,True,True,82.937254133,82.937254133,117.188652,117.188652,engine,engine,
+amazon-06,SpiritUnreserved,True,True,45.0,45.0,-91.0,-90.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+amazon-06,SpiritUnreservedPercent,True,True,17.374517374517374,17.374517374517374,-35.135135135135,-34.74903475,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+amazon-07,AverageBurstDamage,True,True,552987.166221238,552987.166221238,409934.29966294,409921.9365,engine,engine,
+amazon-07,AverageDamage,True,True,552987.166221238,552987.166221238,409934.29966294,409921.9365,engine,engine,
+amazon-07,CombinedDPS,True,True,1544805.876233558,1544805.876233558,1144652.7446947,1144618.652,engine,engine,
+amazon-07,EnergyShieldLeechGainRate,True,True,0.0,0.0,614.9,614.9,engine,engine,
+amazon-07,IgniteDPS,True,True,31832.989452251,31832.989452251,23072.500816878,23072.23402,engine,engine,
+amazon-07,LifeLeechGainRate,True,True,0.2,0.2,0.0,0.0,engine,engine,
+amazon-07,SpiritUnreserved,True,True,7.0,7.0,-93.0,-93.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+amazon-07,SpiritUnreservedPercent,True,True,2.766798418972332,2.766798418972332,-36.758893280632,-36.75889328,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+amazon-07,TotalDPS,True,True,1512972.886781307,1512972.886781307,1121580.2438778,1121546.418,engine,engine,
+amazon-07,TotalDotDPS,True,True,31832.989452251,31832.989452251,23072.500816878,23072.23402,engine,engine,
+amazon-07,WithBleedDPS,True,True,1512972.886781307,1512972.886781307,1121580.2438778,1121546.418,engine,engine,
+amazon-07,WithIgniteDPS,True,True,1544805.876233558,1544805.876233558,1144652.7446947,1144618.652,engine,engine,
+amazon-07,WithPoisonDPS,True,True,1512972.886781307,1512972.886781307,1121580.2438778,1121546.418,engine,engine,
+amazon-08,RageRegenRecovery,True,True,4.0,4.0,4.5,4.5,engine,engine,
+amazon-08,ReqStr,True,True,20.0,20.0,137.0,137.0,engine,engine,
+amazon-08,SpiritUnreserved,True,True,6.0,6.0,-94.0,-94.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+amazon-08,SpiritUnreservedPercent,True,True,2.912621359223301,2.912621359223301,-45.631067961165,-45.63106796,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+amazon-09,CombinedDPS,True,True,3508248.004329933,3508248.004329933,3316485.9013041,3510339.615,reference,reference,
+amazon-09,TotalDPS,True,True,3485263.472491951,3485263.472491951,3293775.9063314,3487346.172,reference,reference,
+amazon-09,TotalEHP,True,True,66910.019114368,66910.019114368,72429.031838569,70566.60656,engine,engine,
+amazon-09,WithBleedDPS,True,True,3485263.472491951,3485263.472491951,3293775.9063314,3487346.172,reference,reference,
+amazon-09,WithIgniteDPS,True,True,3508248.0043299324,3508248.0043299324,3316485.9013041,3510339.615,reference,reference,
+amazon-09,WithPoisonDPS,True,True,3485263.472491951,3485263.472491951,3293775.9063314,3487346.172,reference,reference,
+blood-mage-01,BleedDPS,True,True,570385.412949632,570385.412949632,2451457.8849176,2482026.858,engine,engine,
+blood-mage-01,CombinedDPS,True,True,659146.959340389,659146.959340389,2540406.8495535,2572396.403,engine,engine,
+blood-mage-01,ManaLeechGainRate,True,True,10.921456126083473,10.921456126083473,18.44104020818,18.44104021,engine,engine,
+blood-mage-01,TotalDotDPS,True,True,594295.060326499,594295.060326499,2475598.6384719,2506781.131,engine,engine,
+blood-mage-01,TotalEHP,True,False,250667.469879518,,21063.292243002,250667.4699,reference,,
+blood-mage-01,WithBleedDPS,True,True,635237.311963522,635237.311963522,2516266.0959992,2547642.13,engine,engine,
+blood-mage-02,TotalEHP,True,False,117001.043209658,,52486.946887686,116991.3379,reference,,
+blood-mage-03,ActionRate,True,True,8.0,8.0,11.68,11.68,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-03,CombinedDPS,True,True,19430078.800841294,19430078.800841294,28367931.748651,28367931.75,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-03,HitSpeed,True,True,8.0,8.0,11.68,11.68,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-03,LifeLeechGainRate,True,True,630.258,630.258,705.824,705.824,engine,engine,
+blood-mage-03,TotalDPS,True,True,19430078.800841294,19430078.800841294,28367931.748651,28367931.75,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-03,TotalEHP,True,True,15885.786824401,15885.786824401,14764.999685822,14764.99969,engine,engine,
+blood-mage-03,WithBleedDPS,True,True,19430078.800841294,19430078.800841294,28367931.748651,28367931.75,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-03,WithIgniteDPS,True,True,19430078.800841294,19430078.800841294,28367931.748651,28367931.75,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-03,WithPoisonDPS,True,True,19430078.800841294,19430078.800841294,28367931.748651,28367931.75,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-04,ActionRate,True,True,8.0,8.0,6.96,6.96,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-04,CombinedDPS,True,True,10790711.231879115,10790711.231879115,9395830.5195926,9531678.603,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-04,HitSpeed,True,True,8.0,8.0,6.96,6.96,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-04,LifeLeechGainRate,True,True,510.378,510.378,571.648,571.648,engine,engine,
+blood-mage-04,LifePerSecondCost,True,True,810.322580648,810.322580648,176.24516129032,179.22,engine,engine,
+blood-mage-04,TotalDPS,True,True,10728567.363639375,10728567.363639375,9333858.8613511,9469456.416,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-04,TotalEHP,True,False,90069.50063809,,17122.146849121,90069.50064,reference,,
+blood-mage-04,WithBleedDPS,True,True,10728567.363639375,10728567.363639375,9333858.8613511,9469456.416,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-04,WithIgniteDPS,True,True,10790711.231879115,10790711.231879115,9395830.5195926,9531678.603,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-04,WithPoisonDPS,True,True,10728567.363639375,10728567.363639375,9333858.8613511,9469456.416,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-05,AverageBurstDamage,True,True,1455866.101124027,1455866.101124027,2183784.1008,2185859.941,engine,engine,
+blood-mage-05,CombinedDPS,True,True,3285845.975296066,3285845.975296066,4104433.4827098,4108335.035,engine,engine,
+blood-mage-05,ReqDex,True,True,72.0,72.0,86.0,86.0,engine,engine,
+blood-mage-05,SpiritUnreserved,True,True,-140.0,-140.0,-240.0,-240.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+blood-mage-05,SpiritUnreservedPercent,True,True,-53.03030303030303,-53.03030303030303,-90.909090909091,-90.90909091,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+blood-mage-05,TotalDPS,True,True,3217464.0834841,3217464.0834841,4035633.0182784,4039469.171,engine,engine,
+blood-mage-05,TotalEHP,True,False,216722.916666667,,16354.631703125,216722.9167,reference,,
+blood-mage-05,WithBleedDPS,True,True,3217464.0834841,3217464.0834841,4035633.0182784,4039469.171,engine,engine,
+blood-mage-05,WithIgniteDPS,True,True,3285845.975296066,3285845.975296066,4104433.4827098,4108335.035,engine,engine,
+blood-mage-05,WithPoisonDPS,True,True,3217464.0834841,3217464.0834841,4035633.0182784,4039469.171,engine,engine,
+blood-mage-06,ActionRate,True,True,8.0,8.0,8.84,8.84,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-06,CombinedDPS,True,True,3504080.702465112,3504080.702465112,3845424.2162986,3910132.027,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-06,HitSpeed,True,True,8.0,8.0,8.84,8.84,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-06,LifePerSecondCost,True,True,861.935483872,861.935483872,238.10967741935,240.89,engine,engine,
+blood-mage-06,TotalDPS,True,True,3504080.702465112,3504080.702465112,3845424.2162986,3910132.027,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-06,WithBleedDPS,True,True,3504080.702465112,3504080.702465112,3845424.2162986,3910132.027,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-06,WithIgniteDPS,True,True,3504080.702465112,3504080.702465112,3845424.2162986,3910132.027,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-06,WithPoisonDPS,True,True,3504080.702465112,3504080.702465112,3845424.2162986,3910132.027,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-07,LifeLeechGainPerHit,True,True,8960.0,8960.0,342.0,342.0,engine,engine,
+blood-mage-07,SpiritUnreserved,True,True,-87.0,-87.0,-187.0,-187.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+blood-mage-07,SpiritUnreservedPercent,True,True,-57.99999999999999,-57.99999999999999,-124.66666666667,-124.6666667,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+blood-mage-07,TotalEHP,True,False,208054.0,,9678.6265881624,208054.0,reference,,
+blood-mage-08,ActionRate,True,True,8.0,8.0,8.84,8.84,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-08,ChaosMaxHit,True,True,9221.0,9221.0,10270.0,10327.0,engine,engine,
+blood-mage-08,ColdMaxHit,True,True,12807.0,12807.0,14264.0,14343.0,engine,engine,
+blood-mage-08,CombinedDPS,True,True,11887280.45393648,11887280.45393648,12973872.901802,12973872.9,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-08,FireMaxHit,True,True,32933.0,32933.0,36680.0,36882.0,engine,engine,
+blood-mage-08,HitSpeed,True,True,8.0,8.0,8.84,8.84,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-08,LifeLeechGainRate,True,True,516.15,516.15,578.144,578.144,engine,engine,
+blood-mage-08,LifePerSecondCost,True,True,2642.58064516,2642.58064516,730.01290322581,735.93,engine,engine,
+blood-mage-08,LightningMaxHit,True,True,8089.0,8089.0,9009.0,9059.0,engine,engine,
+blood-mage-08,PhysicalMaxHit,True,True,9221.0,9221.0,10270.0,10327.0,engine,engine,
+blood-mage-08,SpiritUnreserved,True,True,-110.0,-110.0,-210.0,-210.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+blood-mage-08,SpiritUnreservedPercent,True,True,-96.49122807017544,-96.49122807017544,-184.21052631579,-184.2105263,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+blood-mage-08,TotalDPS,True,True,11887280.45393648,11887280.45393648,12973872.901802,12973872.9,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-08,TotalEHP,True,True,60049.411099448,11449.604946441,12752.346597113,60051.80245,reference,both,
+blood-mage-08,WithBleedDPS,True,True,11887280.45393648,11887280.45393648,12973872.901802,12973872.9,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-08,WithIgniteDPS,True,True,11887280.45393648,11887280.45393648,12973872.901802,12973872.9,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-08,WithPoisonDPS,True,True,11887280.45393648,11887280.45393648,12973872.901802,12973872.9,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-09,LifeLeechGainRate,True,True,641.0514000000001,641.0514000000001,221.91230769231,221.9123077,engine,engine,
+blood-mage-09,SpiritUnreserved,True,True,-135.0,-135.0,-235.0,-235.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+blood-mage-09,SpiritUnreservedPercent,True,True,-83.85093167701864,-83.85093167701864,-145.96273291925,-145.9627329,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+blood-mage-10,ActionRate,True,True,8.0,8.0,10.0,10.0,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-10,CombinedDPS,True,True,17322460.530952495,17322460.530952495,21653013.89475,21653013.89,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-10,HitSpeed,True,True,8.0,8.0,10.0,10.0,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-10,LifeLeechGainRate,True,True,667.4985,667.4985,747.488,747.488,engine,engine,
+blood-mage-10,TotalDPS,True,True,17322460.530952495,17322460.530952495,21653013.89475,21653013.89,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-10,WithBleedDPS,True,True,17322460.530952495,17322460.530952495,21653013.89475,21653013.89,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-10,WithIgniteDPS,True,True,17322460.530952495,17322460.530952495,21653013.89475,21653013.89,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+blood-mage-10,WithPoisonDPS,True,True,17322460.530952495,17322460.530952495,21653013.89475,21653013.89,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+chronomancer-01,AverageBurstDamage,True,True,51346676.59504458,51346676.59504458,59402861.120201,58612007.23,engine,engine,
+chronomancer-01,ChaosMaxHit,True,True,1775.0,1775.0,1974.0,1773.0,reference,reference,
+chronomancer-01,ColdMaxHit,True,True,1673.0,1673.0,1860.0,1670.0,reference,reference,
+chronomancer-01,CombinedDPS,True,True,36039871.8483921,36039871.8483921,41670663.770887,41115885.67,engine,engine,
+chronomancer-01,FireMaxHit,True,True,1673.0,1673.0,1860.0,1670.0,reference,reference,
+chronomancer-01,LightningMaxHit,True,True,1641.0,1641.0,1825.0,1639.0,reference,reference,
+chronomancer-01,PhysicalMaxHit,True,True,870.0,870.0,967.0,869.0,reference,reference,
+chronomancer-01,SpiritUnreserved,True,True,-164.0,-164.0,-264.0,-264.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+chronomancer-01,SpiritUnreservedPercent,True,True,-110.8108108108108,-110.8108108108108,-178.37837837838,-178.3783784,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+chronomancer-01,TotalDPS,True,True,36039871.8483921,36039871.8483921,41670663.770887,41115885.67,engine,engine,
+chronomancer-01,TotalEHP,True,True,1368.256898141,1368.256898141,1525.6051366768,1370.115101,reference,reference,
+chronomancer-01,WithBleedDPS,True,True,36039871.8483921,36039871.8483921,41670663.770887,41115885.67,engine,engine,
+chronomancer-01,WithIgniteDPS,True,True,36039871.8483921,36039871.8483921,41670663.770887,41115885.67,engine,engine,
+chronomancer-01,WithPoisonDPS,True,True,36039871.8483921,36039871.8483921,41670663.770887,41115885.67,engine,engine,
+chronomancer-02,SpiritUnreserved,True,True,4.0,4.0,-96.0,-94.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+chronomancer-02,SpiritUnreservedPercent,True,True,2.666666666666667,2.666666666666667,-64.0,-62.66666667,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+chronomancer-03,ChaosMaxHit,True,True,1147.0,1147.0,1368.0,1146.0,reference,reference,
+chronomancer-03,ColdMaxHit,True,True,2594.0,2594.0,3019.0,2593.0,reference,reference,
+chronomancer-03,FireMaxHit,True,True,2367.0,2367.0,2661.0,2366.0,reference,reference,
+chronomancer-03,LifeRecoverable,True,True,283.3404,283.3404,250.0,283.0,reference,reference,
+chronomancer-03,LifeUnreserved,True,True,283.3404,283.3404,250.0,283.0,reference,reference,
+chronomancer-03,LifeUnreservedPercent,True,True,18.949999999999996,18.949999999999996,16.722408026756,18.92976589,reference,reference,
+chronomancer-03,LightningMaxHit,True,True,950.0,950.0,1106.0,950.0,reference,reference,
+chronomancer-03,PhysicalMaxHit,True,True,1420.0,1420.0,1653.0,1420.0,reference,reference,
+chronomancer-03,SpiritUnreserved,True,True,-52.0,-52.0,-113.0,-112.0,engine,engine,
+chronomancer-03,SpiritUnreservedPercent,True,True,-16.507936507936506,-16.507936507936506,-35.873015873016,-35.55555556,engine,engine,
+chronomancer-03,TotalEHP,True,True,1483.359498615,1483.359498615,1759.9955105869,1482.730562,reference,reference,
+chronomancer-04,ActionRate,True,True,8.0,8.0,5.92,5.92,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+chronomancer-04,AverageBurstDamage,True,True,267223.1751,267223.1751,287447.22,287447.22,engine,engine,
+chronomancer-04,CombinedDPS,True,True,2137785.4008,2137785.4008,1701687.5424,1701687.542,engine,engine,
+chronomancer-04,HitSpeed,True,True,8.0,8.0,5.92,5.92,engine,known,"Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+chronomancer-04,TotalDPS,True,True,2137785.4008,2137785.4008,1701687.5424,1701687.542,engine,engine,
+chronomancer-04,WithBleedDPS,True,True,2137785.4008,2137785.4008,1701687.5424,1701687.542,engine,engine,
+chronomancer-04,WithIgniteDPS,True,True,2137785.4008,2137785.4008,1701687.5424,1701687.542,engine,engine,
+chronomancer-04,WithPoisonDPS,True,True,2137785.4008,2137785.4008,1701687.5424,1701687.542,engine,engine,
+chronomancer-05,ManaLeechGainRate,True,True,108.21177198,108.21177198,120.50658383876,120.5065838,engine,engine,
+chronomancer-05,SpiritUnreserved,True,True,92.0,92.0,62.0,62.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+chronomancer-05,SpiritUnreservedPercent,True,True,25.0,25.0,16.847826086957,16.84782609,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+chronomancer-06,SpiritUnreserved,True,True,96.0,96.0,4.0,6.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+chronomancer-06,SpiritUnreservedPercent,True,True,31.475409836065577,31.475409836065577,1.3114754098361,1.967213115,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+chronomancer-07,ActiveMinionLimit,True,False,6.0,,15.0,15.0,engine,,
+chronomancer-07,ManaCost,True,False,357.534246575,,393.15068493151,393.0,engine,,
+chronomancer-07,ManaPerSecondCost,True,False,685.273972721,,753.53881278539,753.25,engine,,
+chronomancer-07,MinionTotalDPS,True,True,17041.388103518,19756.710229428,23805.574270651,23805.57427,engine,engine,
+chronomancer-08,SpiritUnreserved,True,True,3.0,3.0,-97.0,-97.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+chronomancer-08,SpiritUnreservedPercent,True,True,1.4354066985645932,1.4354066985645932,-46.411483253589,-46.41148325,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+chronomancer-09,IgniteDPS,True,True,61643.655976108,61643.655976108,86612.725551647,85876.04826,engine,engine,
+chronomancer-09,SpiritUnreserved,True,True,1.0,1.0,-99.0,-99.0,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+chronomancer-09,SpiritUnreservedPercent,True,True,0.3703703703703704,0.3703703703703704,-36.666666666667,-36.66666667,known,known,"the skill an Absent, Lament or Portent Amulet grants reserves no Spirit (docs/maintainer-guide.md)"
+chronomancer-09,TotalDotDPS,True,True,61643.655976108,61643.655976108,86612.725551647,85876.04826,engine,engine,
+chronomancer-10,AverageBurstDamage,True,False,15.7269168,,75.766656,75.766656,engine,,
+chronomancer-10,CombinedDPS,True,False,31.455743743,,151.535830978,151.535831,engine,,
+chronomancer-10,TotalDPS,True,False,31.4538336,,151.533312,151.533312,engine,,
+chronomancer-10,WithBleedDPS,True,True,15.7269168,74.44073952,151.533312,151.533312,engine,engine,
+chronomancer-10,WithIgniteDPS,True,True,15.734557372,74.476904892,151.535830978,151.535831,engine,engine,
+chronomancer-10,WithPoisonDPS,True,True,15.7269168,74.44073952,151.533312,151.533312,engine,engine,
+deadeye-01,AverageBurstDamage,True,False,90671.097081396,,168051.78697931,168051.787,engine,,
+deadeye-01,AverageDamage,True,False,90671.097081396,,168051.78697931,168051.787,engine,,
+deadeye-01,CombinedDPS,True,False,251879.214969444,,471810.09764535,471810.0976,engine,,
+deadeye-01,IgniteDPS,True,False,3234.40423385,,6535.1981429624,6535.198143,engine,,
+deadeye-01,ReqStr,True,True,80.0,80.0,157.0,157.0,engine,engine,
+deadeye-01,SpiritUnreserved,True,True,-136.0,-136.0,-226.0,-226.0,engine,engine,
+deadeye-01,SpiritUnreservedPercent,True,True,-56.666666666666664,-56.666666666666664,-94.166666666667,-94.16666667,engine,engine,
+deadeye-01,TotalDPS,True,False,248644.810735594,,465274.89950239,465274.8995,engine,,
+deadeye-01,TotalDotDPS,True,False,3234.40423385,,6535.1981429624,6535.198143,engine,,
+deadeye-01,WithBleedDPS,True,False,248644.810735594,,465274.89950239,465274.8995,engine,,
+deadeye-01,WithIgniteDPS,True,False,251879.21496944397,,471810.09764535,471810.0976,engine,,
+deadeye-01,WithPoisonDPS,True,False,248644.810735594,,465274.89950239,465274.8995,engine,,

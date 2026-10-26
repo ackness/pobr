@@ -166,7 +166,11 @@ pub(crate) fn resolve_granted_socket_jewels(build: &Build, data: &BuildData) -> 
                 }));
         }
     }
-    resolved.granted_socket_jewels.clear();
+    // Unallocated records can belong to the other weapon set. Keep them
+    // available for that set's preparation; only active grants were consumed.
+    resolved
+        .granted_socket_jewels
+        .retain(|(node, _, _)| !granted.contains(node));
     Some(resolved)
 }
 
@@ -707,6 +711,37 @@ pub(crate) fn passive_effect_copies(
     data: &BuildData,
     passive_nodes: &[AllocatedNode],
 ) -> Result<Vec<Modifier>, BuildError> {
+    fn delta(m: Modifier, scale: f64, data: &BuildData) -> Option<Modifier> {
+        let value = match m.value {
+            pobr_core::ModValue::Number(v)
+                if matches!(m.mod_type, ModType::Base | ModType::Inc) =>
+            {
+                let extra = pobr_core::calc::buff_pass::scale_value(
+                    &data.high_precision,
+                    m.name.as_str(),
+                    m.mod_type,
+                    v,
+                    scale,
+                ) - v;
+                if extra == 0.0 {
+                    return None;
+                }
+                pobr_core::ModValue::Number(extra)
+            }
+            pobr_core::ModValue::NestedMods(nested) => {
+                let nested: Vec<_> = nested
+                    .into_iter()
+                    .filter_map(|m| delta(m, scale, data))
+                    .collect();
+                if nested.is_empty() {
+                    return None;
+                }
+                pobr_core::ModValue::NestedMods(nested)
+            }
+            _ => return None,
+        };
+        Some(Modifier { value, ..m })
+    }
     let node_effect = radius_node_effects(&radius_jewel_expansions(build, data));
     let global_small = small_passive_effect_inc(build, data);
     let tree_nodes = data.passive_nodes_for(build.tree_version.as_deref());
@@ -737,23 +772,7 @@ pub(crate) fn passive_effect_copies(
             ingest
                 .modifiers
                 .into_iter()
-                .filter(|m| matches!(m.mod_type, ModType::Base | ModType::Inc))
-                .filter_map(|m| match m.value {
-                    pobr_core::ModValue::Number(v) => {
-                        let delta = pobr_core::calc::buff_pass::scale_value(
-                            &data.high_precision,
-                            m.name.as_str(),
-                            m.mod_type,
-                            v,
-                            scale,
-                        ) - v;
-                        (delta != 0.0).then_some(Modifier {
-                            value: pobr_core::ModValue::Number(delta),
-                            ..m
-                        })
-                    }
-                    _ => None,
-                }),
+                .filter_map(|m| delta(m, scale, data)),
         );
     }
     Ok(out)
@@ -848,7 +867,13 @@ pub(crate) fn filter_item_parseable(
     for (section, texts) in item_sections_mut(&mut filtered) {
         let source = holder.source(section);
         let originals: std::collections::HashSet<String> = texts.iter().cloned().collect();
-        let (merged, dropped) = combine_wrapped(texts.clone(), ctx);
+        // Loreweave's first line already parses alone, so combine_wrapped
+        // would accept it and drop its exclusion. Keep that exact pair whole
+        // before the ordinary gates, with the same raw origin as core ingest.
+        let paired = pobr_core::item::join_loreweave_rarity(texts)
+            .map(std::borrow::Cow::into_owned)
+            .collect();
+        let (merged, dropped) = combine_wrapped(paired, ctx);
         *texts = merged;
         // Lines the merge dropped never reach the parser: ledger them here so
         // nothing silently vanishes.

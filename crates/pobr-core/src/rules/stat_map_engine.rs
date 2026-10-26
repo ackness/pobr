@@ -653,6 +653,12 @@ fn is_consumable_flag(name: &str) -> bool {
             | "CannotChill"
             | "CannotFreeze"
             | "CannotElectrocute"
+            // Brutality's native restrictions use the existing typed gate
+            // after conversion and damage gained as another type.
+            | "DealNoFire"
+            | "DealNoCold"
+            | "DealNoLightning"
+            | "DealNoChaos"
             | "LuckyHits"
             | "CritLucky"
             | "ElementalLuckHits"
@@ -671,6 +677,10 @@ fn is_consumable_flag(name: &str) -> bool {
             | "AdditionalProjectilesAddChainsInstead"
             | "AdditionalProjectilesAddBouncesInstead"
             | "AdditionalChainsAddSplitsInstead"
+
+            // Oisin's Oath changes which damage types fund mana leech.
+            | "ManaLeechBasedOnElementalDamage"
+            | "Condition:NoManaLeechFromPhysicalDamage"
 
             //  Ailment-stacking switch (Escalating Poison's
             // `number_of_additional_poison_stacks` is injected paired with
@@ -1689,6 +1699,28 @@ mod tests {
     }
 
     // flag constructor whitelist
+
+    #[test]
+    fn oisin_native_stat_keeps_both_leech_eligibility_flags() {
+        let path = crate::mod_parser::test_data_dir().join("overlay/skill_stat_map.json");
+        let catalog = catalog_json(&std::fs::read_to_string(path).unwrap());
+        let mods = expect_modifiers(map_stat(
+            &catalog,
+            "SupportOisinsOathPlayer",
+            None,
+            "mana_leech_from_elemental_instead",
+            1.0,
+        ));
+        assert_eq!(mods.len(), 2);
+        let mut db = crate::ModDb::new();
+        db.add_list(mods);
+        for flag in [
+            "ManaLeechBasedOnElementalDamage",
+            "Condition:NoManaLeechFromPhysicalDamage",
+        ] {
+            assert!(db.flag(&crate::CalcConfig::attack(), flag));
+        }
+    }
 
     /// Whitelisted flag (BifurcateCrit) + SkillType tag -> FLAG modifier +
     /// `ModTag::SkillTypes(ATTACK)` (mirrors Garukhan's

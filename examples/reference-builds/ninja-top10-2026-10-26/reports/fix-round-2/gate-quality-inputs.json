@@ -1,0 +1,10 @@
+{
+  "git_commit": "a7669664fd601a07882b752bba15d9fedb46d461",
+  "started_at": "2026-10-26T14:02:27.128130+00:00",
+  "command": "mise run gate --only fmt,regen,clippy,core,build,parity,apps,accuracy",
+  "reused_steps": [
+    "i18n",
+    "web"
+  ],
+  "reason": "Only core minion stat mapping/snapshot/detail and build regressions changed; interface and frontend unchanged."
+}

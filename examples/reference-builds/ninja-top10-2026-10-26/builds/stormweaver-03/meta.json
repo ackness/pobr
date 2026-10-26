@@ -1,0 +1,40 @@
+{
+  "name": "stormweaver-03",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/qianqi77-5717/JokerBD",
+    "account": "qianqi77-5717",
+    "character": "JokerBD",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:56:58+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=qianqi77-5717&name=JokerBD&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Stormweaver",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 3,
+    "index_sha256": "d1ef8ddee86218ab8cd37da374336c3c8a422ec9aec5efa7d663988184642b7f",
+    "character_response_sha256": "ee26e2129d311a76d9cd84af015ab6c70d1287db0061a2c16918af1fdd2f781a",
+    "upstream_updated_utc": "2026-10-11T11:16:45.41478Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.224211Z",
+    "upstream_last_checked_utc": "2026-10-26T01:35:50.932219Z"
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Stormweaver",
+    "level": 100,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 13,
+    "code_sha256": "795392e6b5b29d99b551e5fb0f2fafa73855a1ca06ca73034149dca41dee0a1d",
+    "code_chars": 13564,
+    "decoded_bytes": 55570
+  }
+}

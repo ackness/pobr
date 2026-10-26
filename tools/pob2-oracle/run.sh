@@ -9,24 +9,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-POB_SRC="$REPO_ROOT/vendor/PathOfBuilding-PoE2/src"
-RUNTIME="$REPO_ROOT/vendor/PathOfBuilding-PoE2/runtime/lua"
+VENDOR_ROOT="${POBR_VENDOR_ROOT:-$REPO_ROOT/vendor}"
+POB_SRC="$VENDOR_ROOT/PathOfBuilding-PoE2/src"
+RUNTIME="$VENDOR_ROOT/PathOfBuilding-PoE2/runtime/lua"
 # Pure-Lua shims (e.g. lua-utf8) injected ahead of the vendor runtime so the
 # headless wrapper resolves modules missing as native libs on this platform.
 SHIM="$SCRIPT_DIR/shim"
 
-# Resolve a luajit: explicit $LUAJIT, then macOS Homebrew, then PATH.
-if [[ -n "${LUAJIT:-}" && -x "${LUAJIT}" ]]; then
-	:
-elif [[ -x /opt/homebrew/bin/luajit ]]; then
-	LUAJIT=/opt/homebrew/bin/luajit
-else
-	LUAJIT="$(command -v luajit || true)"
-fi
-if [[ -z "${LUAJIT:-}" ]]; then
-	echo "run.sh: no luajit found (set LUAJIT=/path/to/luajit)" >&2
-	exit 127
-fi
+# The pinned PoB2 uses +=, which older distro/Homebrew LuaJIT cannot parse.
+LUAJIT="$(bash "$REPO_ROOT/devs/scripts/pob2-luajit.sh" resolve)"
 
 XML="${1:?usage: run.sh <decoded.xml> [out.json]}"
 OUT="${2:-}"

@@ -1,0 +1,40 @@
+{
+  "name": "invoker-07",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/void_void-5730/ElysianBlaze",
+    "account": "void_void-5730",
+    "character": "ElysianBlaze",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:52:23+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=void_void-5730&name=ElysianBlaze&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Invoker",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 7,
+    "index_sha256": "8308d5c3a58ecd7f6d385839f7db95048e43af8bd76d2e216805da613c23cea3",
+    "character_response_sha256": "5523d75bd826a6aacc3b412a12c159693a41a9fe2e09317710c29df0cda0ccda",
+    "upstream_updated_utc": "2026-10-12T20:57:18.161261Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-25T16:55:17.546142Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Invoker",
+    "level": 98,
+    "main_skill": "Quarterstaff Strike"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 1,
+    "code_sha256": "b86bd3ea46ae682ec10bec6714982e1b07c366342b5007ab89a2a42e83ed3ede",
+    "code_chars": 12440,
+    "decoded_bytes": 48997
+  }
+}

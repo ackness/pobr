@@ -1,0 +1,1002 @@
+{
+  "source_revision": "a7669664fd601a07882b752bba15d9fedb46d461",
+  "data_version": "0.5.5.4.2",
+  "corpus_size": 230,
+  "non_holdout_builds_cross_checked": 307,
+  "before": {
+    "agreed_rows": 18974,
+    "compared_rows": 20427,
+    "damage_agrees": 150,
+    "unsupported_line_occurrences": 2157,
+    "classification": {
+      "engine": 783,
+      "known": 226,
+      "reference": 350,
+      "both": 94
+    }
+  },
+  "after": {
+    "agreed_rows": 19123,
+    "compared_rows": 20427,
+    "builds_with_agreeing_damage": 159,
+    "unsupported_line_occurrences": 2148,
+    "builds_with_all_compared_rows_agreeing": 32,
+    "failed_imports_or_calculations": 0,
+    "missing_items_reported": 0,
+    "negative_typed_hit_pools": 0,
+    "classification": {
+      "engine": 552,
+      "known": 312,
+      "reference": 359,
+      "both": 81
+    }
+  },
+  "rows_newly_within_tolerance": 157,
+  "rows_newly_outside_tolerance": 8,
+  "resolved_rows": [
+    [
+      "acolyte-of-chayula-03",
+      "Mana"
+    ],
+    [
+      "acolyte-of-chayula-03",
+      "ManaRegenRecovery"
+    ],
+    [
+      "acolyte-of-chayula-03",
+      "ManaUnreserved"
+    ],
+    [
+      "chronomancer-01",
+      "AverageBurstDamage"
+    ],
+    [
+      "chronomancer-01",
+      "CombinedDPS"
+    ],
+    [
+      "chronomancer-01",
+      "TotalDPS"
+    ],
+    [
+      "chronomancer-01",
+      "WithBleedDPS"
+    ],
+    [
+      "chronomancer-01",
+      "WithIgniteDPS"
+    ],
+    [
+      "chronomancer-01",
+      "WithPoisonDPS"
+    ],
+    [
+      "chronomancer-04",
+      "AverageBurstDamage"
+    ],
+    [
+      "deadeye-01",
+      "ReqStr"
+    ],
+    [
+      "disciple-of-varashta-01",
+      "ReqInt"
+    ],
+    [
+      "disciple-of-varashta-02",
+      "MinionTotalDPS"
+    ],
+    [
+      "disciple-of-varashta-06",
+      "ChaosMaxHit"
+    ],
+    [
+      "disciple-of-varashta-06",
+      "ColdMaxHit"
+    ],
+    [
+      "disciple-of-varashta-06",
+      "DeflectionRating"
+    ],
+    [
+      "disciple-of-varashta-06",
+      "EnergyShield"
+    ],
+    [
+      "disciple-of-varashta-06",
+      "EnergyShieldRecoveryCap"
+    ],
+    [
+      "disciple-of-varashta-06",
+      "Evasion"
+    ],
+    [
+      "disciple-of-varashta-06",
+      "FireMaxHit"
+    ],
+    [
+      "disciple-of-varashta-06",
+      "LightningMaxHit"
+    ],
+    [
+      "disciple-of-varashta-06",
+      "PhysicalDamageReduction"
+    ],
+    [
+      "disciple-of-varashta-06",
+      "PhysicalMaxHit"
+    ],
+    [
+      "disciple-of-varashta-06",
+      "TotalEHP"
+    ],
+    [
+      "disciple-of-varashta-07",
+      "ColdMaxHit"
+    ],
+    [
+      "disciple-of-varashta-07",
+      "EnergyShield"
+    ],
+    [
+      "disciple-of-varashta-07",
+      "EnergyShieldRecoveryCap"
+    ],
+    [
+      "disciple-of-varashta-07",
+      "Evasion"
+    ],
+    [
+      "disciple-of-varashta-07",
+      "FireMaxHit"
+    ],
+    [
+      "disciple-of-varashta-07",
+      "LightningMaxHit"
+    ],
+    [
+      "disciple-of-varashta-07",
+      "PhysicalDamageReduction"
+    ],
+    [
+      "disciple-of-varashta-07",
+      "PhysicalMaxHit"
+    ],
+    [
+      "disciple-of-varashta-07",
+      "TotalEHP"
+    ],
+    [
+      "gemling-legionnaire-08",
+      "ActionRate"
+    ],
+    [
+      "gemling-legionnaire-08",
+      "ManaPerSecondCost"
+    ],
+    [
+      "gemling-legionnaire-09",
+      "ReqDex"
+    ],
+    [
+      "gemling-legionnaire-10",
+      "ActionRate"
+    ],
+    [
+      "gemling-legionnaire-10",
+      "ManaPerSecondCost"
+    ],
+    [
+      "lich-03",
+      "AverageBurstDamage"
+    ],
+    [
+      "lich-03",
+      "ChaosMaxHit"
+    ],
+    [
+      "lich-03",
+      "CombinedDPS"
+    ],
+    [
+      "lich-03",
+      "FireMaxHit"
+    ],
+    [
+      "lich-03",
+      "Life"
+    ],
+    [
+      "lich-03",
+      "LifeRecoverable"
+    ],
+    [
+      "lich-03",
+      "LifeRegenRecovery"
+    ],
+    [
+      "lich-03",
+      "LifeUnreserved"
+    ],
+    [
+      "lich-03",
+      "LightningMaxHit"
+    ],
+    [
+      "lich-03",
+      "ManaRegenRecovery"
+    ],
+    [
+      "lich-03",
+      "PhysicalMaxHit"
+    ],
+    [
+      "lich-03",
+      "TotalDPS"
+    ],
+    [
+      "lich-03",
+      "TotalDot"
+    ],
+    [
+      "lich-03",
+      "TotalDotDPS"
+    ],
+    [
+      "lich-03",
+      "TotalEHP"
+    ],
+    [
+      "lich-03",
+      "WithBleedDPS"
+    ],
+    [
+      "lich-03",
+      "WithDotDPS"
+    ],
+    [
+      "lich-03",
+      "WithIgniteDPS"
+    ],
+    [
+      "lich-03",
+      "WithPoisonDPS"
+    ],
+    [
+      "lich-05",
+      "MinionTotalDPS"
+    ],
+    [
+      "lich-08",
+      "MinionTotalDPS"
+    ],
+    [
+      "oracle-03",
+      "AverageBurstDamage"
+    ],
+    [
+      "oracle-03",
+      "CombinedDPS"
+    ],
+    [
+      "oracle-03",
+      "ManaRegenRecovery"
+    ],
+    [
+      "oracle-03",
+      "TotalDPS"
+    ],
+    [
+      "oracle-03",
+      "WithBleedDPS"
+    ],
+    [
+      "oracle-03",
+      "WithIgniteDPS"
+    ],
+    [
+      "oracle-03",
+      "WithPoisonDPS"
+    ],
+    [
+      "ritualist-04",
+      "ColdMaxHit"
+    ],
+    [
+      "ritualist-04",
+      "ColdResist"
+    ],
+    [
+      "ritualist-04",
+      "FireMaxHit"
+    ],
+    [
+      "ritualist-04",
+      "FireResist"
+    ],
+    [
+      "ritualist-04",
+      "LightningMaxHit"
+    ],
+    [
+      "ritualist-04",
+      "LightningResist"
+    ],
+    [
+      "ritualist-04",
+      "LightningResistOverCap"
+    ],
+    [
+      "ritualist-04",
+      "TotalEHP"
+    ],
+    [
+      "ritualist-05",
+      "ColdMaxHit"
+    ],
+    [
+      "ritualist-05",
+      "ColdResist"
+    ],
+    [
+      "ritualist-05",
+      "ColdResistOverCap"
+    ],
+    [
+      "ritualist-05",
+      "FireMaxHit"
+    ],
+    [
+      "ritualist-05",
+      "FireResist"
+    ],
+    [
+      "ritualist-05",
+      "FireResistOverCap"
+    ],
+    [
+      "ritualist-05",
+      "LightningMaxHit"
+    ],
+    [
+      "ritualist-05",
+      "LightningResist"
+    ],
+    [
+      "ritualist-05",
+      "TotalEHP"
+    ],
+    [
+      "ritualist-09",
+      "Armour"
+    ],
+    [
+      "ritualist-09",
+      "EnergyShield"
+    ],
+    [
+      "ritualist-09",
+      "EnergyShieldRecoveryCap"
+    ],
+    [
+      "ritualist-09",
+      "EvadeChance"
+    ],
+    [
+      "ritualist-09",
+      "Evasion"
+    ],
+    [
+      "ritualist-09",
+      "MeleeEvadeChance"
+    ],
+    [
+      "ritualist-09",
+      "PhysicalDamageReduction"
+    ],
+    [
+      "ritualist-09",
+      "ProjectileEvadeChance"
+    ],
+    [
+      "ritualist-09",
+      "SpellEvadeChance"
+    ],
+    [
+      "ritualist-09",
+      "SpellProjectileEvadeChance"
+    ],
+    [
+      "ritualist-09",
+      "TotalEHP"
+    ],
+    [
+      "shaman-09",
+      "ColdMaxHit"
+    ],
+    [
+      "shaman-09",
+      "ColdResist"
+    ],
+    [
+      "shaman-09",
+      "FireMaxHit"
+    ],
+    [
+      "shaman-09",
+      "FireResist"
+    ],
+    [
+      "shaman-09",
+      "LightningMaxHit"
+    ],
+    [
+      "shaman-09",
+      "LightningResist"
+    ],
+    [
+      "shaman-09",
+      "TotalEHP"
+    ],
+    [
+      "smith-of-kitava-03",
+      "Armour"
+    ],
+    [
+      "smith-of-kitava-03",
+      "ColdMaxHit"
+    ],
+    [
+      "smith-of-kitava-03",
+      "DeflectChance"
+    ],
+    [
+      "smith-of-kitava-03",
+      "DeflectionRating"
+    ],
+    [
+      "smith-of-kitava-03",
+      "EnergyShield"
+    ],
+    [
+      "smith-of-kitava-03",
+      "EnergyShieldRecoveryCap"
+    ],
+    [
+      "smith-of-kitava-03",
+      "EvadeChance"
+    ],
+    [
+      "smith-of-kitava-03",
+      "Evasion"
+    ],
+    [
+      "smith-of-kitava-03",
+      "FireMaxHit"
+    ],
+    [
+      "smith-of-kitava-03",
+      "LightningMaxHit"
+    ],
+    [
+      "smith-of-kitava-03",
+      "MeleeEvadeChance"
+    ],
+    [
+      "smith-of-kitava-03",
+      "PhysicalDamageReduction"
+    ],
+    [
+      "smith-of-kitava-03",
+      "PhysicalMaxHit"
+    ],
+    [
+      "smith-of-kitava-03",
+      "ProjectileEvadeChance"
+    ],
+    [
+      "smith-of-kitava-03",
+      "SpellEvadeChance"
+    ],
+    [
+      "smith-of-kitava-03",
+      "SpellProjectileEvadeChance"
+    ],
+    [
+      "smith-of-kitava-03",
+      "TotalEHP"
+    ],
+    [
+      "smith-of-kitava-05",
+      "MinionTotalDPS"
+    ],
+    [
+      "smith-of-kitava-06",
+      "EffectiveMovementSpeedMod"
+    ],
+    [
+      "smith-of-kitava-10",
+      "Armour"
+    ],
+    [
+      "smith-of-kitava-10",
+      "ColdMaxHit"
+    ],
+    [
+      "smith-of-kitava-10",
+      "DeflectChance"
+    ],
+    [
+      "smith-of-kitava-10",
+      "DeflectionRating"
+    ],
+    [
+      "smith-of-kitava-10",
+      "EnergyShield"
+    ],
+    [
+      "smith-of-kitava-10",
+      "EnergyShieldRecoveryCap"
+    ],
+    [
+      "smith-of-kitava-10",
+      "EvadeChance"
+    ],
+    [
+      "smith-of-kitava-10",
+      "Evasion"
+    ],
+    [
+      "smith-of-kitava-10",
+      "FireMaxHit"
+    ],
+    [
+      "smith-of-kitava-10",
+      "LightningMaxHit"
+    ],
+    [
+      "smith-of-kitava-10",
+      "MeleeEvadeChance"
+    ],
+    [
+      "smith-of-kitava-10",
+      "PhysicalDamageReduction"
+    ],
+    [
+      "smith-of-kitava-10",
+      "PhysicalMaxHit"
+    ],
+    [
+      "smith-of-kitava-10",
+      "ProjectileEvadeChance"
+    ],
+    [
+      "smith-of-kitava-10",
+      "SpellEvadeChance"
+    ],
+    [
+      "smith-of-kitava-10",
+      "SpellProjectileEvadeChance"
+    ],
+    [
+      "smith-of-kitava-10",
+      "TotalEHP"
+    ],
+    [
+      "warbringer-04",
+      "Spirit"
+    ],
+    [
+      "warbringer-04",
+      "SpiritUnreserved"
+    ],
+    [
+      "warbringer-04",
+      "SpiritUnreservedPercent"
+    ],
+    [
+      "warbringer-05",
+      "ActionRate"
+    ],
+    [
+      "warbringer-05",
+      "CombinedDPS"
+    ],
+    [
+      "warbringer-05",
+      "IgniteDPS"
+    ],
+    [
+      "warbringer-05",
+      "TotalDPS"
+    ],
+    [
+      "warbringer-05",
+      "TotalDotDPS"
+    ],
+    [
+      "warbringer-05",
+      "WithBleedDPS"
+    ],
+    [
+      "warbringer-05",
+      "WithIgniteDPS"
+    ],
+    [
+      "warbringer-05",
+      "WithPoisonDPS"
+    ],
+    [
+      "warbringer-07",
+      "AverageBurstDamage"
+    ],
+    [
+      "warbringer-07",
+      "AverageDamage"
+    ],
+    [
+      "warbringer-07",
+      "CombinedDPS"
+    ],
+    [
+      "warbringer-07",
+      "IgniteDPS"
+    ],
+    [
+      "warbringer-07",
+      "TotalDPS"
+    ],
+    [
+      "warbringer-07",
+      "TotalDotDPS"
+    ],
+    [
+      "warbringer-07",
+      "WithBleedDPS"
+    ],
+    [
+      "warbringer-07",
+      "WithIgniteDPS"
+    ],
+    [
+      "warbringer-07",
+      "WithPoisonDPS"
+    ]
+  ],
+  "newly_different_rows": [
+    [
+      "lich-02",
+      "MinionLife"
+    ],
+    [
+      "ritualist-09",
+      "ChaosMaxHit"
+    ],
+    [
+      "ritualist-09",
+      "ColdMaxHit"
+    ],
+    [
+      "ritualist-09",
+      "FireMaxHit"
+    ],
+    [
+      "ritualist-09",
+      "LightningMaxHit"
+    ],
+    [
+      "ritualist-09",
+      "PhysicalMaxHit"
+    ],
+    [
+      "spirit-walker-05",
+      "TotalEHP"
+    ],
+    [
+      "spirit-walker-08",
+      "TotalEHP"
+    ]
+  ],
+  "measured_examples": [
+    {
+      "build": "amazon-02",
+      "stat": "EnergyShield",
+      "before": 388.0,
+      "after": 364.0,
+      "final_reference_difference": {
+        "stat": "EnergyShield",
+        "pob_key": "EnergyShield",
+        "pobr": 364.0,
+        "reference": 488.0,
+        "ratio": 0.7459016393442623
+      }
+    },
+    {
+      "build": "acolyte-of-chayula-03",
+      "stat": "Mana",
+      "before": 6322.94,
+      "after": 6831.94,
+      "final_reference_difference": null
+    },
+    {
+      "build": "smith-of-kitava-05",
+      "stat": "MinionTotalDPS",
+      "before": 0.0,
+      "after": 83.077443679,
+      "final_reference_difference": null
+    },
+    {
+      "build": "blood-mage-03",
+      "stat": "TotalEHP",
+      "before": 15885.786824401,
+      "after": 15933.003750906,
+      "final_reference_difference": {
+        "stat": "TotalEHP",
+        "pob_key": "TotalEHP",
+        "pobr": 15933.003750906,
+        "reference": 14764.999685822,
+        "ratio": 1.0791062709067016
+      }
+    },
+    {
+      "build": "ritualist-04",
+      "stat": "FireResist",
+      "before": -42.0,
+      "after": 15.0,
+      "final_reference_difference": null
+    },
+    {
+      "build": "ritualist-04",
+      "stat": "ColdResist",
+      "before": -56.0,
+      "after": 1.0,
+      "final_reference_difference": null
+    },
+    {
+      "build": "ritualist-04",
+      "stat": "LightningResist",
+      "before": 19.0,
+      "after": 75.0,
+      "final_reference_difference": null
+    },
+    {
+      "build": "ritualist-09",
+      "stat": "EnergyShield",
+      "before": 4047.0,
+      "after": 3678.0,
+      "final_reference_difference": null
+    },
+    {
+      "build": "disciple-of-varashta-02",
+      "stat": "MinionTotalDPS",
+      "before": 34348.19687427,
+      "after": 130523.148122225,
+      "final_reference_difference": null
+    },
+    {
+      "build": "lich-02",
+      "stat": "MinionLife",
+      "before": 12260.21,
+      "after": 14801.77,
+      "final_reference_difference": {
+        "stat": "MinionLife",
+        "pob_key": "Minion:Life",
+        "pobr": 14801.77,
+        "reference": 12582.0,
+        "ratio": 1.1764242568749006
+      }
+    },
+    {
+      "build": "lich-02",
+      "stat": "MinionEnergyShield",
+      "before": 588.0,
+      "after": 5890.0,
+      "final_reference_difference": {
+        "stat": "MinionEnergyShield",
+        "pob_key": "Minion:EnergyShield",
+        "pobr": 5890.0,
+        "reference": 5113.0,
+        "ratio": 1.151965577938588
+      }
+    },
+    {
+      "build": "lich-03",
+      "stat": "TotalDPS",
+      "before": 82.800599143,
+      "after": 106.512845028,
+      "final_reference_difference": null
+    },
+    {
+      "build": "lich-05",
+      "stat": "MinionTotalDPS",
+      "before": 307.32166416,
+      "after": 924.008196441,
+      "final_reference_difference": null
+    },
+    {
+      "build": "lich-08",
+      "stat": "MinionTotalDPS",
+      "before": 198.151978368,
+      "after": 598.4571315,
+      "final_reference_difference": null
+    },
+    {
+      "build": "warbringer-05",
+      "stat": "ActionRate",
+      "before": 1.625,
+      "after": 12.1,
+      "final_reference_difference": null
+    },
+    {
+      "build": "warbringer-05",
+      "stat": "TotalDPS",
+      "before": 85195.674344487,
+      "after": 634380.098195872,
+      "final_reference_difference": null
+    }
+  ],
+  "commits": [
+    "bd07aac56ac00cd063a2023a913600d7050f142e fix: apply hinder from active enemy modifiers",
+    "a8a6d28097619f296c57b4de761d85c94b30d8fc fix: bound companion damage absorption to the incoming hit",
+    "fcbbe79f18140741f538869c7a21701b4929de8e fix: resolve alternate-set skills with their passive tree",
+    "d69647dc5e103b4f29f65c94de08e370e45a1b92 fix: scale defences with uncapped resistances",
+    "ec02bb053f06ca018c6dcc2d607e19c3efa54542 fix: consume life prevention boundaries exactly",
+    "d47b5e0bc8043f630fa08301e554c9945f025854 fix: resolve decorated item names against game bases",
+    "b6ab516a6e8a412727eb808fb89490e54029549c fix: count corrupted Grand Spectrum modifier sections",
+    "80f92a62efcff168b915597a582e2df8e04d7842 fix: apply conditional flask speed from Alchemists Boon",
+    "c90634a539752d55a089dc1e1b86ed41419a2318 fix: share supported minion levels with reservation",
+    "321f6488cbc81b23ee9da76a26ef368d1653f01f fix: parse attribute-gated Spirit bonuses",
+    "616a64ef44b8d5fc16a970e11f7ceb975d13a9ad fix: require a companion for implicit Presence conditions",
+    "bb29818b1cdf322cde67f6f219b7ee62921eb9e5 fix: apply incoming critical damage reductions to EHP",
+    "55e65f2306b85062ebc2875b8572147cd3fd1a64 fix: preserve direct totals when converting defences to pools",
+    "ffa4cfc5739d83d4eaf96ff5b7a7bc39a5b8b256 fix: apply remaining chain bonuses to the selected hit",
+    "ef1770ba20771db2cffa2811b972c993786bc4c0 fix: retain requirements of gems beside item grants",
+    "c63f012f86efbd1f3c0e2aaca0bb2873a0057512 fix: use the supported group for item-granted skills",
+    "6c69eae439d98cad0df90ec17d8dfeeaa2235ef2 fix: resolve decorated bases containing of",
+    "09e1eb3c72ff4648ec2d87f9dccee6add09b81ff fix: bind restricted attacks to their usable weapon set",
+    "d09393c50a61abb95baf0e7ada6361b45db4a0fb fix: match the Skeletal Storm Mage gem level bonus",
+    "e7d955d41dbd1799666c73d10b1f4739ae6f578c fix: apply Twisted Empyrean weapon damage modifiers",
+    "eae8596d9e38871a2d770e3b502f1f7144159b0d fix: share remaining chain snapshots with damage details",
+    "423a7f846418c5a72af2ab69bbc4ed210d1e86b4 fix: keep converted pools out of resource matrix inputs",
+    "6cf19666499046f53d7bcb529a249f8d8014e7bb docs: explain selected snapshots and conversion conventions",
+    "dbf903ab4bd62345b16a80af1258896b4eabcf7e test: keep companion Presence dependent on selected skills",
+    "f65c615fd2914693ca196fa940b2c8f67a7ed4c0 fix: spawn minions at their supported gem level",
+    "9045eb64deb47bdb71ca671c7c31804cd3297739 fix: match exported skill grants within their weapon set",
+    "6a6aec590973763aa8eeb606f051142676595630 fix: retain pending jewels for alternate weapon sets",
+    "2747f74f8aeb0ec40119272e2b09de4eeb46b4f7 fix: activate enemy modifiers after marks are applied",
+    "7f1968982c22f1681da20efb112dcdf9529e2433 fix: recognize selected minion hits for support eligibility",
+    "2963c36e698aac8746563cd4895b34fa7003472b fix: use warcry speed for selected warcry action rate",
+    "8a1122cf2b53dc19a6f535a1d6f0c62bbdb8f8aa docs: clarify selected hit and warcry timing conventions",
+    "669ab1de3a3d92d94f6e9a20230d81e9b6610f9d fix: preserve summoner exclusions for minion hit supports",
+    "400018846a864f73021fe4321fb997872d83b565 fix: read enemy resistance aliases consistently",
+    "ef00c7e7d777255d74726537a8beb9dfebb15845 fix: apply caster-scaled Unholy Might to allies",
+    "6f5412d33883caddca3f912a9ee485fb20955ca5 test: raise the verified tuned reference baseline",
+    "a7669664fd601a07882b752bba15d9fedb46d461 fix: apply storm mage quality energy shield"
+  ],
+  "classification_caveat": "Class counts include evidence updates, not counts of independent bugs. engine/both are unresolved diagnostic candidates; neither pinned PoB2 nor saved reference is ground truth.",
+  "measurement_caveat": [
+    "Saved exporter values and pinned PoB2 are cross-checks, not game truth.",
+    "FullDPS is not calculated; damage uses selected main minion TotalDPS when its saved reference is nonzero.",
+    "Exporter-absent rules and timing models are disabled for reference comparison; focused native regressions cover the added rules.",
+    "Runtime errors fail triage, but numerical disagreement is reported rather than treated as a test failure.",
+    "No individual holdout inspected.",
+    "Structural audit of this frozen corpus is separate; multi-set/historical/disabled/malformed import cases were not present in that corpus."
+  ],
+  "validation": {
+    "gate_inputs": {
+      "git_commit": "ef00c7e7d777255d74726537a8beb9dfebb15845",
+      "started_at": "2026-10-26T13:24:11.240588+00:00",
+      "command": "mise run gate"
+    },
+    "gate_exit": 0,
+    "steps_passed": [
+      "fmt",
+      "regen",
+      "clippy",
+      "core",
+      "build",
+      "parity",
+      "apps",
+      "i18n",
+      "web",
+      "accuracy"
+    ],
+    "aggregate_accuracy": [
+      {
+        "corpus": "examples/wasm-benchmark/builds",
+        "builds": 8,
+        "damage_agrees": 5,
+        "agreeing_rows": 661,
+        "compared_rows": 715
+      },
+      {
+        "corpus": "examples/reference-builds/tuned/builds",
+        "builds": 69,
+        "damage_agrees": 58,
+        "agreeing_rows": 5795,
+        "compared_rows": 6119
+      },
+      {
+        "corpus": "examples/reference-builds/holdout/builds",
+        "builds": 23,
+        "damage_agrees": 17,
+        "agreeing_rows": 1908,
+        "compared_rows": 2034
+      }
+    ],
+    "holdout_scope": "Aggregate measurements only; no individual holdout inspected.",
+    "earlier_gate": "Initial full gate exposed an outdated Companion assertion and manual-vs-item grant regression. Both fixed, then affected steps passed at6a6aec59. Final full gate passed on all follow-ups.",
+    "browser_scope": "Web typecheck/unit tests and Rust WASM/JSON contracts passed. No actual browser interaction or fresh browser-WASM run claimed.",
+    "raised_baseline": {
+      "corpus": "tuned",
+      "old": 5793,
+      "new": 5795,
+      "check": "cargo test -q -p pobr-build --test parity reference_agreement_does_not_regress",
+      "passed": true,
+      "tests": 1
+    },
+    "web_unit_tests": {
+      "passed": 508,
+      "skipped": 5,
+      "files_passed": 40,
+      "files_skipped": 4
+    },
+    "known_registry_checks": {
+      "tests": 2,
+      "passed": true,
+      "scope": "Triage row selection and exact XML hash binding; source registry schema checked"
+    },
+    "follow_up_gate": {
+      "inputs": {
+        "git_commit": "a7669664fd601a07882b752bba15d9fedb46d461",
+        "started_at": "2026-10-26T14:02:27.128130+00:00",
+        "command": "mise run gate --only fmt,regen,clippy,core,build,parity,apps,accuracy",
+        "reused_steps": [
+          "i18n",
+          "web"
+        ],
+        "reason": "Only core minion stat mapping/snapshot/detail and build regressions changed; interface and frontend unchanged."
+      },
+      "exit": 0,
+      "steps_passed": [
+        "fmt",
+        "regen",
+        "clippy",
+        "core",
+        "build",
+        "parity",
+        "apps",
+        "accuracy"
+      ],
+      "unchanged_steps_reused": [
+        "i18n",
+        "web"
+      ],
+      "aggregate_accuracy_unchanged": true,
+      "independent_review": "Storm Mage quality ES and recipient Life snapshot: no actionable findings."
+    }
+  },
+  "new_difference_review": {
+    "reference_rows": 7,
+    "unresolved_rows": [
+      {
+        "build": "lich-02",
+        "stat": "MinionLife",
+        "native": 14801.77,
+        "oracle": 12582,
+        "cause": "Gem level38 / monster76 reveals a 15% Life-to-ES interpretation difference. Vendor deducts Life; retained provenance does not independently establish game semantics. No formula change or known classification.",
+        "evidence": "lich-02-life-evidence.json"
+      }
+    ]
+  },
+  "remaining_limits": [
+    "Lich02 MinionLife14801.77 vs12582: same game base4729 and213% increase, but vendor deducts15% ES share. Game deduction semantics unverified; preserved as engine-class candidate.",
+    "Conditional Runic Tempering needs a held Runic Plates snapshot; Blood Mage08 still has an unverified small residual in its mitigation counterfactual.",
+    "Unleash cadence, extra consumed Offering skeletons, on-kill wolves and unspecified summoned totem counts are not invented for reference agreement.",
+    "Unique Herald/Blink variant attachment lacks an authoritative retained Mods-to-GrantedEffects link; no effect-ID rewrite based on duplicate display names.",
+    "Frozen rune text can differ from current item definitions. MORE aggregation and fractional endpoint precision can differ from the exporter; no rounding change solely for parity.",
+    "Some skill-level, reservation, recovery and damage rows remain unverified; triage.json/txt preserve their row-level engine/both classifications.",
+    "The structural audit covers this corpus only; historical trees, multiple selectable sets, disabled entries and malformed references were absent. Synthetic regressions cover selected switching and disabled-grant cases.",
+    "No individual holdout inspected; no real-browser interaction validation in this batch."
+  ]
+}

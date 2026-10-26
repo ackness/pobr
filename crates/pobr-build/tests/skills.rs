@@ -73,22 +73,32 @@ mod enemy_debuffs;
 mod energy_triggers;
 #[path = "skills/equipment_affix_effects.rs"]
 mod equipment_affix_effects;
+#[path = "skills/equipment_conditions.rs"]
+mod equipment_conditions;
 #[path = "skills/event_triggered_hits.rs"]
 mod event_triggered_hits;
+#[path = "skills/flame_wall.rs"]
+mod flame_wall;
 #[path = "skills/gem_quality.rs"]
 mod gem_quality;
 #[path = "skills/grand_spectrum.rs"]
 mod grand_spectrum;
 #[path = "skills/granted_skill_reservation.rs"]
 mod granted_skill_reservation;
+#[path = "skills/item_bases.rs"]
+mod item_bases;
 #[path = "skills/limbs.rs"]
 mod limbs;
+#[path = "skills/mark_effect.rs"]
+mod mark_effect;
 #[path = "skills/minion_curses.rs"]
 mod minion_curses;
 #[path = "skills/minions.rs"]
 mod minions;
 #[path = "skills/no_damage.rs"]
 mod no_damage;
+#[path = "skills/oisin_leech.rs"]
+mod oisin_leech;
 #[path = "skills/player_debuffs.rs"]
 mod player_debuffs;
 #[path = "skills/quarterstaff_conditions.rs"]

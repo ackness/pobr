@@ -1,0 +1,40 @@
+{
+  "name": "abyssal-lich-08",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Seboomafoo-3500/Seb_Zero",
+    "account": "Seboomafoo-3500",
+    "character": "Seb_Zero",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:27+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Seboomafoo-3500&name=Seb_Zero&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Abyssal+Lich",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 8,
+    "index_sha256": "a136a96d92db7b38ac002bf5b7b97bc0296e57b46453b6f21c321c0f81b5ef84",
+    "character_response_sha256": "8223302b9c05b96602127869018d04d7b6735c627fa571173f8ce3bc7de2bfe3",
+    "upstream_updated_utc": "2026-10-10T09:06:36.183318Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-24T09:44:35.665262Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Abyssal Lich",
+    "level": 99,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 6,
+    "code_sha256": "34f6bf2a62872b9c9b4c04e45d785f168247ae9e8ac3f21e3ecc19fe97bf9125",
+    "code_chars": 13512,
+    "decoded_bytes": 50463
+  }
+}

@@ -1,0 +1,298 @@
+[
+  {
+    "build": "abyssal-lich-06",
+    "xml_sha256": "524c25c1041d5a9e66674734f2ca4484f3149837f85ee201a6a8fd34002322bc",
+    "stats": [
+      "ReqStr"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "acolyte-of-chayula-09",
+    "xml_sha256": "5ac9eff2fa5fd157c6a1b29c58fe32be243434009cb0cf355a49dd914a066cf9",
+    "stats": [
+      "ReqStr"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "amazon-08",
+    "xml_sha256": "09a6e8d101bfc896ea125bb9306316092ed808fdab9aec85a01850eff86a9647",
+    "stats": [
+      "ReqStr"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "blood-mage-05",
+    "xml_sha256": "5ca31c6cf90bee9f36b54aa9bda0fdeba27f63c93a566ad9cadb24cff6d66880",
+    "stats": [
+      "ReqDex"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "deadeye-07",
+    "xml_sha256": "49d6189af42437088deca82030d58e16fad5ab9712234c610fcf7c1386ff7f47",
+    "stats": [
+      "ReqStr"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 126, after the recorded global reduction, equals the pinned oracle's 126; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "deadeye-08",
+    "xml_sha256": "c2c1e449cc5c2bc3877bebdf75840289b280b1339edcbab865fe8ba4a4ab4545",
+    "stats": [
+      "ReqInt"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 126, after the recorded global reduction, equals the pinned oracle's 126; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "disciple-of-varashta-03",
+    "xml_sha256": "d8e31782e8efb3dbff6af9c6b97748ffc3555c9e170742f0e93339ab1e82d85b",
+    "stats": [
+      "ReqStr"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 75, after the recorded global reduction, equals the pinned oracle's 75; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "disciple-of-varashta-10",
+    "xml_sha256": "ce4b92ade3e852b4bfd3f815dc681b39750d91d8bfd8bc5bbed7b81f84ab2464",
+    "stats": [
+      "ReqStr"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "gemling-legionnaire-06",
+    "xml_sha256": "639374da8e6229c55b2760661ba7264d69d86a08504c3d3fbc00d08bfaeb7d7c",
+    "stats": [
+      "ReqStr"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 144; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "invoker-04",
+    "xml_sha256": "8b31209aba7d4aa10eaff72a9f8d2b93cf239323b3950a26843ac4abae2057ae",
+    "stats": [
+      "ReqStr"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "invoker-05",
+    "xml_sha256": "07c1cca24f1d21c82ede4d66b49a8a2145e6b72141f9fb9cfb72357be71a66ab",
+    "stats": [
+      "ReqInt"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "invoker-07",
+    "xml_sha256": "e16304aaab75cb209d70c98ba309515c586e0af5798815af52cdc8bfb0f3ac98",
+    "stats": [
+      "ReqInt"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "invoker-08",
+    "xml_sha256": "0ffd3068eb9fcc3d56504e2ab5d45a79019fb5c5d2bdfcc6ee5a84acbf377d19",
+    "stats": [
+      "ReqDex"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "martial-artist-04",
+    "xml_sha256": "ef128b79c338f2c778dd1bcb846161fe7f6d6d4969430ec162eed1613665bce1",
+    "stats": [
+      "ReqStr"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 147, after the recorded global reduction, equals the pinned oracle's 147; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "martial-artist-08",
+    "xml_sha256": "92cb3536152c2f8f96ca45bc3c6ba44f9a36e3a7f4111c1a070ff93bd6edb9cc",
+    "stats": [
+      "ReqStr"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "martial-artist-09",
+    "xml_sha256": "058a6fea5f0aa513b0eae6b4e15d6c039ed5da2d9d7a54877329f3807e1547d6",
+    "stats": [
+      "ReqStr"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "martial-artist-10",
+    "xml_sha256": "815f61f956fe16b02cd686a384547574c1839657d7e1c40f14b8d44e982fe0bc",
+    "stats": [
+      "ReqStr"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "pathfinder-07",
+    "xml_sha256": "2dc4ac2548aaec2989683ca595c6a4bf6235a2a5e1334da91373815289178250",
+    "stats": [
+      "ReqStr"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 147, after the recorded global reduction, equals the pinned oracle's 147; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "pathfinder-10",
+    "xml_sha256": "c8a68079ed3156f2ceafea475d4fa1366022857fc7f3b998718be99cb12a1e67",
+    "stats": [
+      "ReqStr"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "shaman-03",
+    "xml_sha256": "143f455dfdb9c1cc427662f3c2b5069eeea4d921a5a6bc45541bea484a39381f",
+    "stats": [
+      "ReqDex"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "shaman-04",
+    "xml_sha256": "fb21a48bb98183bf60cb4b3306b9efa19c71f0a323a7828125e2cc468c288b03",
+    "stats": [
+      "ReqDex"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "witchhunter-03",
+    "xml_sha256": "53265632d89ee44bfe1cfeb026f3df365472297589a815234453f992a099582e",
+    "stats": [
+      "ReqStr"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "witchhunter-09",
+    "xml_sha256": "b691c122631a6d8cc9231c6cdde3f294b5160a43090beb970b8114fb2ecbe7a9",
+    "stats": [
+      "ReqStr"
+    ],
+    "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+  },
+  {
+    "build": "infernalist-03",
+    "xml_sha256": "f91257949b4ae1e516479e29b9da8bdb26686e16c9c0fbcf01e0c2668d1d6c0f",
+    "stats": [
+      "Life",
+      "LifeUnreserved",
+      "LifeRecoverable"
+    ],
+    "reason": "Frozen 2026-10-26: The frozen Runeseeker enchant explicitly has45% less Life:1528*1.05*.55=882.42. Pinned PoB2 rebuilds separate15%/30% MORE modifiers and rounds their product to.60, giving963. Preserve imported text. The corresponding unreserved/recoverable Life follows the same pool. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+  },
+  {
+    "build": "witchhunter-10",
+    "xml_sha256": "8e855a6c20a4559236f619699d1773da9e7a1c36679a2ef7d512e0695a6c01f1",
+    "stats": [
+      "Armour",
+      "Evasion",
+      "TotalEHP",
+      "PhysicalMaxHit",
+      "FireMaxHit",
+      "ColdMaxHit",
+      "LightningMaxHit",
+      "ChaosMaxHit",
+      "DeflectionRating",
+      "DeflectChance",
+      "EvadeChance",
+      "MeleeEvadeChance",
+      "ProjectileEvadeChance",
+      "SpellEvadeChance",
+      "SpellProjectileEvadeChance",
+      "PhysicalDamageReduction"
+    ],
+    "reason": "Frozen 2026-10-26: Megalomaniac grants Leather Bound Gauntlets(node51446), adding1323 Evasion from equipped glove Armour. PoB2 omits that passive. Removing exactly its contribution reconstructs the oracle Armour/Evasion, Sorcery Ward, defence chances, five max hits andTotalEHP, including endpoint precision. This is not a blanket EHP classification. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+  },
+  {
+    "build": "warbringer-02",
+    "xml_sha256": "8515588a7c3383564b8a320f7d14ac78f18cf866d94146e627a0ca538f6ac859",
+    "stats": [
+      "Evasion",
+      "DeflectionRating"
+    ],
+    "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+  },
+  {
+    "build": "warbringer-03",
+    "xml_sha256": "bb230d71a8036f966eaac699a55fda7f5c5783a1f8c0ff5334d401982c1a0dcb",
+    "stats": [
+      "Evasion"
+    ],
+    "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+  },
+  {
+    "build": "warbringer-08",
+    "xml_sha256": "7c3387177505b152c9d0eed0f77f67fbcd37c697c00e2731b94027393007b16c",
+    "stats": [
+      "Evasion"
+    ],
+    "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count1 versus pinned oracle2. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+  },
+  {
+    "build": "warbringer-10",
+    "xml_sha256": "2d62a8f8d7b4a2b040d43cd95f774c578be85ff625df1895d8758ce4add2ed48",
+    "stats": [
+      "Evasion",
+      "DeflectionRating"
+    ],
+    "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+  },
+  {
+    "build": "pathfinder-01",
+    "xml_sha256": "809d011b9e59a93da86b4556af2af37bead7d3507905a7391990048b6f30889d",
+    "stats": [
+      "LifeRegenRecovery",
+      "EnergyShieldRegenRecovery"
+    ],
+    "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+  },
+  {
+    "build": "pathfinder-02",
+    "xml_sha256": "a18cecf7d0b0a8120fb621a62e1ff3a8215068febc6db0891ea051bac6c223ad",
+    "stats": [
+      "LifeRegenRecovery",
+      "EnergyShieldRegenRecovery"
+    ],
+    "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+  },
+  {
+    "build": "pathfinder-04",
+    "xml_sha256": "b95ed07395c3da97915db00a3608e88900bc1d54d1db540a56860728aec55f53",
+    "stats": [
+      "LifeRegenRecovery",
+      "EnergyShieldRegenRecovery"
+    ],
+    "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+  },
+  {
+    "build": "pathfinder-08",
+    "xml_sha256": "6dfb667f84518612dbe01334e7d24cf9dfeea8e50929cfc931ae5414fb6c300f",
+    "stats": [
+      "LifeRegenRecovery",
+      "EnergyShieldRegenRecovery"
+    ],
+    "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+  },
+  {
+    "build": "pathfinder-09",
+    "xml_sha256": "7d4186aea812960070ceb928d3b035aee82bd2da09f9194e8fb99f4ea27b2be2",
+    "stats": [
+      "LifeRegenRecovery",
+      "EnergyShieldRegenRecovery"
+    ],
+    "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+  }
+]

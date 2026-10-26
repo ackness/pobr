@@ -17,7 +17,7 @@ pub(super) fn requirement_snapshots(build: &Build, data: &BuildData) -> Vec<(Str
         }
     };
     for (_, item) in build.equipped_items() {
-        let Some(base) = data.base_items.get(&item.base.to_string()) else {
+        let Some(base) = data.base_item(&item.base.to_string()) else {
             continue;
         };
         let mut local = ModDb::new();
@@ -135,17 +135,7 @@ pub(super) fn requirement_snapshots(build: &Build, data: &BuildData) -> Vec<(Str
                 if let Some(colour @ 1..=3) = gem.gem_colour {
                     supports[(colour - 1) as usize] += 5.0;
                 }
-            } else if group.source.is_none()
-                && !(index == 0
-                    && (group.granted_level.is_some()
-                        || build.enabled_socket_groups().any(|source| {
-                            source.source.is_some()
-                                && source.active_skill_id == group.active_skill_id
-                                && source.gem_skills.first().is_some_and(|other| {
-                                    other.skill_id == id && other.gem_level == level
-                                })
-                        })))
-            {
+            } else if group.source.is_none() && !(index == 0 && group.granted_level.is_some()) {
                 // Added skill levels change the skill, not the gem's requirements.
                 if let Some(requirements) = gem.attribute_requirements(level) {
                     maximum(

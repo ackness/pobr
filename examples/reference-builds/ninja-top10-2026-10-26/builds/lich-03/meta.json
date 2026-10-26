@@ -1,0 +1,40 @@
+{
+  "name": "lich-03",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%E9%9D%99%E5%AE%9D%E5%AE%9D-8210/wwwwxwywwwwwywyyy",
+    "account": "静宝宝-8210",
+    "character": "wwwwxwywwwwwywyyy",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:52:42+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=%E9%9D%99%E5%AE%9D%E5%AE%9D-8210&name=wwwwxwywwwwwywyyy&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Lich",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 3,
+    "index_sha256": "bf9399b55432e1c67fa82cfc371720d0d43a3187dbf10815aecca6c547c5738a",
+    "character_response_sha256": "d690f40260ef6f7377c743055b69d07a6370cac4e424b3a598e7b7d07bbf635e",
+    "upstream_updated_utc": "2026-10-13T10:35:29.165419Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:24.981923Z",
+    "upstream_last_checked_utc": "2026-10-23T22:28:39.721339Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Lich",
+    "level": 100,
+    "main_skill": "Flame Wall"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 6,
+    "code_sha256": "ef2c1ec0b9edf58a3b669535881ffc1d358281a5dad24a59bee81640a2645564",
+    "code_chars": 11776,
+    "decoded_bytes": 43233
+  }
+}

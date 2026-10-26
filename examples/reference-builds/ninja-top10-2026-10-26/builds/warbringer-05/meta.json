@@ -1,0 +1,40 @@
+{
+  "name": "warbringer-05",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Sztahet-0741/RykliwyZygfryd",
+    "account": "Sztahet-0741",
+    "character": "RykliwyZygfryd",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:58:40+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Sztahet-0741&name=RykliwyZygfryd&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Warbringer",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 5,
+    "index_sha256": "258427a5d84e3e6a608fbd3c06b1a9eeeb961957587d00b5811bf9dacaf69532",
+    "character_response_sha256": "f4f144a679281b07ca96f93d10bf1bb931f55ed5cf99327fd82820ce91fac27f",
+    "upstream_updated_utc": "2026-10-14T00:45:29.088968Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-22T18:37:59.446904Z"
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Warbringer",
+    "level": 99,
+    "main_skill": "Seismic Cry"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 10,
+    "code_sha256": "62a6c0c3608ec465cf9803d0770c636184b627fb2b32fb4b3ce33c9951e770ba",
+    "code_chars": 13520,
+    "decoded_bytes": 50991
+  }
+}

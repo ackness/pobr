@@ -174,6 +174,7 @@ pub fn spawn_minions(
     // once per group). A kind of minion another group already summons does
     // not add to how many minions the character has.
     let mut seen: BTreeSet<String> = BTreeSet::new();
+    let mut companion_kinds: BTreeSet<String> = BTreeSet::new();
     // Umbral Well: Skeletal Minions become Souls on the character instead.
     let umbral_well = session.has_flag(umbral_souls::UMBRAL_WELL);
     let facts = skill_stats::SummonedMinions {
@@ -321,15 +322,7 @@ pub fn spawn_minions(
                 .gems
                 .get(gem_index)
                 .map_or(skill_id.as_str(), |gem| gem.skill_id.as_str());
-            let judgements: Vec<_> = std::iter::once(gem_skill_id)
-                .chain(
-                    data.additional_effects(gem_skill_id)
-                        .iter()
-                        .map(String::as_str)
-                        .filter(|id| data.effect(id).is_some_and(|e| !e.is_support)),
-                )
-                .map(|id| group_judgement(&group, data, id))
-                .collect();
+            let judgements = super::buff_specs::gem_judgements(&group, data, gem_skill_id);
             let judgement = group_judgement(&group, data, &skill_id);
             let effective_gem_level = gem_level
                 .saturating_add(global_level_bonus.unwrap_or_else(|| {
@@ -352,14 +345,13 @@ pub fn spawn_minions(
                 stat_set_index,
                 session,
             );
-            // (#12 companion) Companion determination: the granted skill has
-            // `SkillType.Companion` and not `MinionsAreUndamagable` (matching vendor
-            // CalcPerform.lua:3365-3367's includeSkill predicate) → this skill's
-            // minions count toward `TotalCompanionLife`.
-            let is_companion = data.effect(&skill_id).is_some_and(|e| {
-                e.skill_types.iter().any(|t| t == "Companion")
-                    && !e.skill_types.iter().any(|t| t == "MinionsAreUndamagable")
-            });
+            // Manifest Weapon is a Companion despite being undamageable.
+            // Only the companion life pool needs the damageability exclusion.
+            let effect = data.effect(&skill_id);
+            let is_companion =
+                effect.is_some_and(|e| e.skill_types.iter().any(|t| t == "Companion"));
+            let is_undamageable =
+                effect.is_some_and(|e| e.skill_types.iter().any(|t| t == "MinionsAreUndamagable"));
             // (#12) The minion-side payload of a compatible support in the same group
             // (vendor: a support statmap's `MinionModifier LIST` is merged into the
             // supported skill's skillModList → `addMinionModifiers` injects it into
@@ -479,7 +471,7 @@ pub fn spawn_minions(
                 };
                 // The limit only affects `Multiplier:SummonedMinion` (per-minion mods +
                 // DPS aggregation count), not a single minion's life/defence.
-                let limit = if counted {
+                let created_limit = {
                     let base = own_count.unwrap_or_else(|| minion_limit(&*session, def));
                     // temporary_minion_limit_+: a minion skill with a
                     // duration summons temporary minions, unlike a
@@ -490,13 +482,21 @@ pub fn spawn_minions(
                         0
                     };
                     base.saturating_add(extra)
-                } else {
-                    0
                 };
+                if is_companion && group.active_in_weapon_set && created_limit > 0 {
+                    companion_kinds.insert(minion_id.clone());
+                }
+                let limit = if counted { created_limit } else { 0 };
                 let def = def.clone();
                 let skill = minion_skill(data, &def, chosen_skill, minion_level);
                 let mut minion_modifiers = group_minion_modifiers.clone();
-                minion_modifiers.extend(minion_skill_modifiers(&group, data, &skill, minion_level));
+                minion_modifiers.extend(minion_skill_modifiers(
+                    &group,
+                    data,
+                    &skill_id,
+                    &skill,
+                    minion_level,
+                ));
                 // `add_minion_from_def` internally maps gem level to monster level via
                 // `minion_level_from_gem_level` (the default rule at
                 // CalcActiveSkill.lua:948), so the effective gem level (including the
@@ -513,6 +513,7 @@ pub fn spawn_minions(
                         summoner: Some((group_index, gem_index)),
                         summoned_by: skill_id.clone(),
                         is_companion,
+                        is_undamageable,
                         skill,
                         picked_monster: picks_a_monster(data, &skill_id),
                         copied_weapon: copied_weapon.map(|weapon| crate::calc::WeaponBase {
@@ -541,6 +542,19 @@ pub fn spawn_minions(
             }
         }
     });
+    // Count identities, not the capacity of a pack or repeated copies of a
+    // summoning skill. Presence exclusions are resolved with the other counts.
+    session.add_player_modifiers(vec![
+        crate::Modifier::number(
+            "DifferentCompanions",
+            pobr_data::modifier::ModType::Base,
+            companion_kinds.len() as f64,
+        )
+        .with_origin(ModifierSource::new(SourceId::new(
+            SourceKind::GameConstant,
+            "minion.companion_kinds",
+        ))),
+    ]);
 }
 
 /// How many different kinds of Reviving Minion the character summons: the
@@ -627,23 +641,57 @@ fn minion_skill(
     let index = chosen.unwrap_or(1).clamp(1, skills.len().max(1) as u32) as usize - 1;
     skills
         .get(index)
-        .map(|(id, effect)| crate::calc::MinionSkill {
-            id: (*id).clone(),
-            types: effect.skill_types.clone(),
-            cast_time: effect.cast_time.map_or(0.0, |ms| f64::from(ms) / 1000.0),
-            damage_multiplier: {
-                let level = minion_skill_level(data, id, minion_level);
-                data.selected_set_level_row(id, level, None)
-                    .map(|row| row.damage_multiplier)
-                    .or_else(|| {
-                        data.effect_level_row(id, level)
-                            .and_then(|row| row.base_multiplier)
-                    })
-            },
-            command: data
-                .effect_stats(id, 1, 0, None)
-                .all()
-                .any(|stat| stat.stat == skill_stats::COMMAND_SKILL_STAT),
+        .map(|(id, effect)| {
+            let stats = data.effect_stats(id, 1, 0, None);
+            let has = |name| {
+                stats
+                    .all()
+                    .any(|stat| stat.stat == name && stat.value != 0.0)
+            };
+            // A generic basic attack lists both Melee and Projectile types.
+            // Its arrow/wand stats are capabilities; the equipped weapon
+            // determines the hit. An explicitly projectile stat set wins,
+            // and absent weapon metadata must not invent a melee weapon.
+            let arrows = has("skill_can_fire_arrows");
+            let wands = has("skill_can_fire_wand_projectiles");
+            let projectile_hit = if effect.skill_types.iter().any(|kind| kind == "Attack")
+                && (arrows || wands)
+            {
+                if has(super::STAT_IS_PROJECTILE) {
+                    Some(true)
+                } else {
+                    def.weapon_type1
+                        .as_deref()
+                        .or(def.weapon_type2.as_deref())
+                        .map(|weapon| (arrows && weapon == "Bow") || (wands && weapon == "Wand"))
+                        .or_else(|| {
+                            def.monster_tags
+                                .iter()
+                                .any(|tag| tag == "is_unarmed")
+                                .then_some(false)
+                        })
+                }
+            } else {
+                None
+            };
+            crate::calc::MinionSkill {
+                id: (*id).clone(),
+                types: effect.skill_types.clone(),
+                projectile_hit,
+                cast_time: effect.cast_time.map_or(0.0, |ms| f64::from(ms) / 1000.0),
+                damage_multiplier: {
+                    let level = minion_skill_level(data, id, minion_level);
+                    data.selected_set_level_row(id, level, None)
+                        .map(|row| row.damage_multiplier)
+                        .or_else(|| {
+                            data.effect_level_row(id, level)
+                                .and_then(|row| row.base_multiplier)
+                        })
+                },
+                command: stats
+                    .all()
+                    .any(|stat| stat.stat == skill_stats::COMMAND_SKILL_STAT),
+            }
         })
         .unwrap_or_default()
 }
@@ -677,6 +725,7 @@ pub(super) fn minion_skill_level(data: &dyn MinionEnv, skill_id: &str, minion_le
 fn minion_skill_modifiers(
     group: &crate::skill_env::EnabledGroup<'_>,
     data: &dyn MinionEnv,
+    summon_skill_id: &str,
     skill: &crate::calc::MinionSkill,
     minion_level: u32,
 ) -> Vec<MinionModifierEntry> {
@@ -725,7 +774,37 @@ fn minion_skill_modifiers(
         &skill.id,
         set_key.as_deref(),
     ));
-    let judgement = group_judgement_from(group, data, &skill.id, false);
+    // Ruzhan's Brand has spell hit damage but no raw `Damage` skill type.
+    // Derive support eligibility from this selected skill's intrinsic hit
+    // payload, before supports add damage; a sibling's hit or `Spell` alone
+    // does not make a non-damaging skill eligible.
+    let has_hit_damage = !own
+        .iter()
+        .any(|stat| stat.stat == "base_deal_no_damage" && stat.value != 0.0)
+        && own.iter().any(|stat| {
+            stat.value > 0.0
+                && matches!(
+                    stat.stat.as_str(),
+                    "spell_minimum_base_physical_damage"
+                        | "spell_maximum_base_physical_damage"
+                        | "spell_minimum_base_fire_damage"
+                        | "spell_maximum_base_fire_damage"
+                        | "spell_minimum_base_cold_damage"
+                        | "spell_maximum_base_cold_damage"
+                        | "spell_minimum_base_lightning_damage"
+                        | "spell_maximum_base_lightning_damage"
+                        | "spell_minimum_base_chaos_damage"
+                        | "spell_maximum_base_chaos_damage"
+                )
+        });
+    let judgement = group_judgement_with_hit(
+        group,
+        data,
+        &skill.id,
+        false,
+        has_hit_damage,
+        Some(summon_skill_id),
+    );
     for sup in &judgement.compatible {
         let gem = &group.gems[sup.gem_index];
         let set_index = support_stat_set_index(sup, group.gems);
@@ -754,9 +833,114 @@ fn minion_skill_modifiers(
         .collect()
 }
 
+/// Supports that apply to a summoned minion's skills also charge their cost
+/// multiplier to the summoning skill. Keep their offensive payload off the
+/// summoner. The CreatesMinion marker lets Minion Splash require both a minion
+/// source and a melee strike; other skill types belong to the minion itself.
+pub(super) fn minion_supports_for_cost(
+    group: &crate::skill_env::EnabledGroup<'_>,
+    data: &(impl MinionLookup + EffectLookup + ?Sized),
+    skill_id: &str,
+) -> Vec<crate::skill_env::CompatibleSupport> {
+    let mut seen = std::collections::HashSet::new();
+    minion_support_judgements(group, data, skill_id)
+        .into_iter()
+        .flat_map(|judgement| judgement.compatible)
+        .filter(|support| seen.insert((support.gem_index, support.effect_id.clone())))
+        .collect()
+}
+
+/// A support can modify a summoning gem through any of its minion's skills.
+/// Keep the individual judgements for gem properties too: Uhtred's support
+/// count includes Chain on a Skeletal Sniper's projectile attack.
+pub(super) fn minion_support_judgements(
+    group: &crate::skill_env::EnabledGroup<'_>,
+    data: &(impl MinionLookup + EffectLookup + ?Sized),
+    skill_id: &str,
+) -> Vec<crate::skill_env::GroupSupportJudgement> {
+    use std::collections::HashSet;
+
+    let Some(summon) = data.effect(skill_id).filter(|effect| {
+        !effect.cannot_be_supported && effect.skill_types.iter().any(|t| t == "CreatesMinion")
+    }) else {
+        return Vec::new();
+    };
+    let summon_types: HashSet<_> = summon.skill_types.iter().cloned().collect();
+    let chosen = group
+        .gems
+        .iter()
+        .find(|gem| {
+            gem.skill_id == skill_id
+                || data
+                    .additional_effects(&gem.skill_id)
+                    .iter()
+                    .any(|id| id == skill_id)
+        })
+        .and_then(|gem| gem.minion.as_deref());
+    let mut candidates: Vec<_> = group
+        .gems
+        .iter()
+        .enumerate()
+        .flat_map(|(gem_index, gem)| {
+            std::iter::once(gem.skill_id.as_str())
+                .chain(
+                    data.additional_effects(&gem.skill_id)
+                        .iter()
+                        .map(String::as_str),
+                )
+                .filter_map(move |effect_id| {
+                    data.effect(effect_id)
+                        .filter(|effect| effect.is_support)
+                        .map(|effect| SupportCandidate {
+                            gem_index,
+                            effect_id,
+                            effect,
+                        })
+                })
+        })
+        .collect();
+    // Minion types cannot bypass the support's restriction on borrowing them
+    // (Bursting Plague), explicit minion exclusion (Clash), or exclusions on
+    // undamageable summons. Direct summoner compatibility is handled separately.
+    candidates.retain(|support| can_borrow_minion_types(support, &summon_types));
+    let mut judgements = Vec::new();
+    for minion in summoned_minions(data, skill_id, chosen) {
+        let Some(def) = data.minion_def(minion) else {
+            continue;
+        };
+        for id in &def.skill_list {
+            let Some(effect) = data.effect(id) else {
+                continue;
+            };
+            let mut types: HashSet<_> = effect.skill_types.iter().cloned().collect();
+            types.insert("CreatesMinion".into());
+            judgements.push(judge_group_supports(
+                &types,
+                effect.cannot_be_supported,
+                false,
+                &candidates,
+            ));
+        }
+    }
+    judgements
+}
+
+/// Borrowing a minion's skill types, including inferred hit capability, cannot
+/// bypass exclusions on its summoning skill. Direct compatibility is separate.
+fn can_borrow_minion_types(
+    support: &SupportCandidate<'_>,
+    summon_types: &std::collections::HashSet<String>,
+) -> bool {
+    !support.effect.ignore_minion_types
+        && !crate::rules::skill_type_expr::matches(
+            &support.effect.exclude_skill_types,
+            summon_types,
+        )
+}
+
 /// Whether the skill `skill_id` makes a monster the player picks its minion:
 /// a Spectre, or a tamed beast.
-fn picks_a_monster(data: &dyn MinionEnv, skill_id: &str) -> bool {
+fn picks_a_monster(data: &(impl EffectLookup + ?Sized), skill_id: &str) -> bool {
     data.effect(skill_id).is_some_and(|effect| {
         matches!(
             effect.active_skill.as_deref(),
@@ -770,7 +954,7 @@ fn picks_a_monster(data: &dyn MinionEnv, skill_id: &str) -> bool {
 /// skillMinion>`), as does a skill with no minions of its own; any other
 /// skill summons its own minions, whichever one the player shows.
 fn summoned_minions<'a>(
-    data: &'a dyn MinionEnv,
+    data: &'a (impl MinionLookup + EffectLookup + ?Sized),
     skill_id: &str,
     chosen: Option<&'a str>,
 ) -> Vec<&'a String> {
@@ -835,12 +1019,19 @@ fn own_minion_count(
         return Some((1.0 + extra).max(0.0) as u32);
     }
     let mut count = None;
+    let mut limit_bonus = 0.0;
     for ds in data.effect_stats(skill_id, level, quality, set_index).all() {
         if skill_stats::is_summoned_minion_count(&ds.stat) {
             *count.get_or_insert(0.0) += ds.value;
+            // This stat is a base cap, unlike a pack size or spawn count.
+            // Add the completed player's named bonus once, even if both the
+            // skill and its quality contribute to the native cap.
+            if ds.stat == "base_number_of_zombies_allowed" {
+                limit_bonus = session.base_sum("ActiveZombieLimit");
+            }
         }
     }
-    count.map(|total: f64| total.max(0.0) as u32)
+    count.map(|total: f64| (total + limit_bonus).max(0.0) as u32)
 }
 
 /// How many of the minion `def` its skill creates: the player's BASE sum of
@@ -873,15 +1064,29 @@ pub(super) fn group_judgement_from(
     skill_id: &str,
     from_gem: bool,
 ) -> crate::skill_env::GroupSupportJudgement {
+    group_judgement_with_hit(group, data, skill_id, from_gem, false, None)
+}
+
+fn group_judgement_with_hit(
+    group: &crate::skill_env::EnabledGroup<'_>,
+    data: &dyn MinionEnv,
+    skill_id: &str,
+    from_gem: bool,
+    has_hit_damage: bool,
+    summon_skill_id: Option<&str>,
+) -> crate::skill_env::GroupSupportJudgement {
     use std::collections::HashSet;
 
-    let active_skill_types: HashSet<String> = data
+    let mut active_skill_types: HashSet<String> = data
         .effect(skill_id)
         .map(|e| e.skill_types.iter().cloned().collect())
         .unwrap_or_default();
+    if has_hit_damage {
+        active_skill_types.insert("Damage".into());
+    }
     let cannot_be_supported = data.effect(skill_id).is_some_and(|e| e.cannot_be_supported);
 
-    let candidates: Vec<SupportCandidate<'_>> = group
+    let mut candidates: Vec<SupportCandidate<'_>> = group
         .gems
         .iter()
         .enumerate()
@@ -903,6 +1108,10 @@ pub(super) fn group_judgement_from(
                 })
         })
         .collect();
+    if let Some(summon) = summon_skill_id.and_then(|id| data.effect(id)) {
+        let summon_types = summon.skill_types.iter().cloned().collect();
+        candidates.retain(|support| can_borrow_minion_types(support, &summon_types));
+    }
 
     judge_group_supports(
         &active_skill_types,

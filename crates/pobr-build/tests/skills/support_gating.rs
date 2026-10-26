@@ -1607,3 +1607,360 @@ fn a_support_on_a_secondary_effect_levels_the_whole_gem() {
     assert_eq!(iron_ward(&[]), 20);
     assert_eq!(iron_ward(&["SupportPhysicalMasteryPlayer"]), 21);
 }
+
+// Brutality III's game stat set grants 30% more Physical damage and forbids
+// Elemental/Chaos damage. These restrictions are applied after conversion.
+#[test]
+fn brutality_iii_restricts_selected_player_damage_and_preserves_support_gates() {
+    use pobr_build::diagnose;
+    use pobr_core::calc::OutputTable;
+    use pobr_data::prelude::{DamageType, SourceKind};
+
+    let data = load_build_data();
+    let stats = data.effect_stats("SupportBrutalityPlayerThree", 1, 0, None);
+    for (stat, value) in [
+        ("support_brutality_physical_damage_+%_final", 30.0),
+        ("deal_no_elemental_damage", 1.0),
+        ("base_deal_no_chaos_damage", 1.0),
+    ] {
+        assert!(
+            stats.all().any(|s| s.stat == stat && s.value == value),
+            "{stat}"
+        );
+    }
+    let support = |enabled| {
+        format!(r#"<Gem skillId="SupportBrutalityPlayerThree" level="1" enabled="{enabled}"/>"#)
+    };
+    let run = |skill: &str, linked: &str, other: &str, convert: bool| {
+        let build = parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="80" className="Warrior" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="{skill}" level="20" enabled="true"/>{linked}</Skill>{other}</Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Wooden Club
+Implicits: 0
+</Item><Item id="2">Rarity: NORMAL
+Splintered Tower Shield
+Armour: 1000
+Implicits: 0
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/><Slot name="Weapon 2" itemId="2"/></ItemSet></Items>
+</PathOfBuilding2>"#)).unwrap();
+        let mut options = panel_opts();
+        options.extra_modifier_texts = vec![
+            "Adds 100 to 100 Fire Damage to Attacks".into(),
+            "Adds 100 to 100 Cold Damage to Attacks".into(),
+            "Adds 100 to 100 Lightning Damage to Attacks".into(),
+            "Gain 10% of Physical Damage as Extra Chaos Damage".into(),
+            "100% chance to Poison on Hit".into(),
+            "100% chance to inflict Bleeding on Hit".into(),
+        ];
+        if convert {
+            options
+                .extra_modifier_texts
+                .push("50% of Physical Damage Converted to Fire Damage".into());
+        }
+        diagnose(&build, data, &options).unwrap().session
+    };
+    let typed = |out: &OutputTable, ty| {
+        out.damage_components
+            .iter()
+            .filter(|c| c.damage_type == ty)
+            .map(|c| c.avg())
+            .sum::<f64>()
+    };
+    let bare = run("ShieldWallPlayer", "", "", true);
+    let full_physical = run("ShieldWallPlayer", "", "", false);
+    let supported = run("ShieldWallPlayer", &support(true), "", true);
+    assert!(typed(bare.output(), DamageType::Physical) > 0.0);
+    assert!(
+        (typed(bare.output(), DamageType::Physical) * 2.0
+            - typed(full_physical.output(), DamageType::Physical))
+        .abs()
+            < 1e-6
+    );
+    assert!(
+        (typed(supported.output(), DamageType::Physical)
+            - typed(bare.output(), DamageType::Physical) * 1.3)
+            .abs()
+            < 1e-6
+    );
+    for ty in [
+        DamageType::Fire,
+        DamageType::Cold,
+        DamageType::Lightning,
+        DamageType::Chaos,
+    ] {
+        assert!(typed(bare.output(), ty) > 0.0, "{ty:?}");
+        assert_eq!(typed(supported.output(), ty), 0.0, "{ty:?}");
+    }
+    assert!(bare.output().ignite_dps > 0.0);
+    assert_eq!(supported.output().ignite_dps, 0.0);
+    assert!(bare.output().poison_dps > 0.0);
+    assert_eq!(supported.output().poison_dps, 0.0);
+    assert!(supported.output().bleed_dps > 0.0);
+    assert!(supported.ailment_stage_terms("PoisonDPS").is_none());
+    assert!(supported.ailment_stage_terms("BleedDPS").is_some());
+    for stat in [
+        "PoisonDuration",
+        "PoisonStacksMax",
+        "PoisonStackPotentialPercent",
+        "PoisonChance",
+    ] {
+        assert_eq!(
+            pobr_core::display_value(supported.output(), stat),
+            0.0,
+            "{stat}"
+        );
+    }
+    assert_eq!(
+        supported.stat_formula("TotalDPS").unwrap().value,
+        supported.output().dps
+    );
+    for name in ["DealNoFire", "DealNoCold", "DealNoLightning", "DealNoChaos"] {
+        let mods = supported.mods_named(name);
+        assert_eq!(mods.len(), 1);
+        let origin = mods[0].origin.as_ref().unwrap();
+        assert_eq!(origin.source_id.kind, SourceKind::SupportGem);
+        assert!(origin.source_id.id.contains("SupportBrutalityPlayerThree"));
+        assert!(origin.raw_text.is_some());
+    }
+    let other = format!(
+        r#"<Skill enabled="true"><Gem skillId="ShieldWallPlayer" level="20" enabled="true"/>{}</Skill>"#,
+        support(true)
+    );
+    for scoped_out in [
+        run("ShieldWallPlayer", &support(false), "", true),
+        run("ShieldWallPlayer", "", &other, true),
+    ] {
+        assert_eq!(
+            scoped_out.output().damage_components,
+            bare.output().damage_components
+        );
+        assert!(scoped_out.mods_named("DealNoFire").is_empty());
+        assert!(scoped_out.mods_named("DealNoChaos").is_empty());
+        assert_eq!(scoped_out.output().poison_dps, bare.output().poison_dps);
+    }
+    let unsupported = run("ConvalescencePlayer", &support(true), "", true);
+    let unsupported_bare = run("ConvalescencePlayer", "", "", true);
+    assert!(unsupported.mods_named("DealNoFire").is_empty());
+    assert!(unsupported.mods_named("DealNoChaos").is_empty());
+    assert_eq!(
+        unsupported.output().damage_components,
+        unsupported_bare.output().damage_components
+    );
+}
+
+#[test]
+fn brutality_iii_restricts_linked_warrior_and_reaver_minions_only() {
+    use pobr_build::diagnose;
+    use pobr_data::prelude::{DamageType, SourceKind};
+
+    let data = load_build_data();
+    let run = |enabled| {
+        let build = parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="80" className="Sorceress" ascendClassName="Disciple of Varashta" mainSocketGroup="1"/>
+<Tree activeSpec="1"><Spec nodes="30720"/></Tree>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill>
+<Skill enabled="true"><Gem skillId="SummonSkeletalWarriorsPlayer" level="20" enabled="true" skillMinion="RaisedSkeletonWarriors" skillMinionSkill="1"/><Gem skillId="SupportBrutalityPlayerThree" level="1" enabled="{enabled}"/></Skill>
+<Skill enabled="true"><Gem skillId="SummonSkeletalReaversPlayer" level="20" enabled="true" skillMinion="RaisedSkeletonReaver" skillMinionSkill="1"/><Gem skillId="SupportBrutalityPlayerThree" level="1" enabled="{enabled}"/></Skill>
+</Skills></PathOfBuilding2>"#)).unwrap();
+        let mut options = panel_opts();
+        options.extra_modifier_texts = ["Fire", "Cold", "Lightning"]
+            .map(|ty| format!("Minions gain 10% of Physical Damage as Extra {ty} Damage"))
+            .into();
+        diagnose(&build, data, &options).unwrap().session
+    };
+    let bare = run(false);
+    let supported = run(true);
+    assert_eq!(bare.minion_count(), 2);
+    assert_eq!(supported.minion_count(), 2);
+    assert_eq!(
+        supported.output().damage_components,
+        bare.output().damage_components
+    );
+    assert!(supported.mods_named("DealNoFire").is_empty());
+    assert!(supported.mods_named("DealNoChaos").is_empty());
+    for (index, summoner) in [
+        "SummonSkeletalWarriorsPlayer",
+        "SummonSkeletalReaversPlayer",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        assert_eq!(supported.output().minions[index].summoned_by, summoner);
+        assert_eq!(
+            supported.output().minions[index].skill_id,
+            "MinionMeleeStep"
+        );
+        let before = bare.minion_output(index).unwrap();
+        let after = supported.minion_output(index).unwrap();
+        let typed = |out: &pobr_core::calc::OutputTable, ty| {
+            out.damage_components
+                .iter()
+                .filter(|c| c.damage_type == ty)
+                .map(|c| c.avg())
+                .sum::<f64>()
+        };
+        let phys = typed(before, DamageType::Physical);
+        assert!(phys > 0.0);
+        assert!((typed(before, DamageType::Chaos) - phys * 0.1).abs() < 1e-6);
+        assert!((typed(after, DamageType::Physical) - phys * 1.3).abs() < 1e-6);
+        for ty in [
+            DamageType::Fire,
+            DamageType::Cold,
+            DamageType::Lightning,
+            DamageType::Chaos,
+        ] {
+            assert!(typed(before, ty) > 0.0, "{index} {ty:?}");
+            assert_eq!(typed(after, ty), 0.0, "{index} {ty:?}");
+        }
+        for name in ["DealNoFire", "DealNoCold", "DealNoLightning", "DealNoChaos"] {
+            assert!(bare.minion_stat_mods(index, name).is_empty());
+            let mods = supported.minion_stat_mods(index, name);
+            assert_eq!(mods.len(), 1);
+            assert!(mods[0].active);
+            let origin = mods[0].modifier.origin.as_ref().unwrap();
+            assert_eq!(origin.source_id.kind, SourceKind::SupportGem);
+            assert!(origin.source_id.id.contains("SupportBrutalityPlayerThree"));
+        }
+        let formula = supported.minion_stat_formula(index, "TotalDPS").unwrap();
+        assert!((formula.value - after.dps).abs() < 1e-6);
+    }
+}
+
+/// The source hit and the ailment's dealt type are independent. A prohibited
+/// destination has neither damage nor a duration/instance to pass to stacking.
+#[test]
+fn brutality_iii_ailment_destinations_preserve_scope_and_trace() {
+    use pobr_core::calc::DamageComponent;
+    use pobr_core::calc::ailment::{
+        AilmentSource, bleed_traced, cross_type_source_hit, ignite_traced, poison_traced,
+        shock_traced,
+    };
+    use pobr_core::{CalcConfig, ModDb, ModTag, Modifier, TraceGraph};
+    use pobr_data::prelude::*;
+
+    let source = AilmentSource::new(1000.0, 1.0, 0.0, false);
+    let cfg = CalcConfig::spell();
+    let enemy = ModDb::new();
+    let origin = ModifierSource::new(SourceId::new(
+        SourceKind::SupportGem,
+        "support.destination_gate",
+    ));
+    let mut base = ModDb::new();
+    base.add_mod(Modifier::number("AilmentChance", ModType::Base, 100.0));
+    let baseline_shock = shock_traced(&source, &base, &enemy, &cfg, 1000.0, &mut TraceGraph::new());
+    for (ailment, destination, other) in [
+        (AilmentType::Bleed, "DealNoPhysical", "DealNoChaos"),
+        (AilmentType::Ignite, "DealNoFire", "DealNoChaos"),
+        (AilmentType::Poison, "DealNoChaos", "DealNoPhysical"),
+    ] {
+        for (flag, blocked) in [
+            (Modifier::flag(destination), true),
+            (Modifier::flag("DealNoDamage"), true),
+            (Modifier::flag(other), false),
+            (
+                Modifier::flag(destination).with_keyword_flags(KeywordFlags::HIT),
+                false,
+            ),
+            (
+                Modifier::flag(destination).with_tag(ModTag::condition("NotEnabled", false)),
+                false,
+            ),
+        ] {
+            let mut player = base.clone();
+            player.add_mod(flag.with_origin(origin.clone()));
+            let mut trace = TraceGraph::new();
+            let (out, node) = match ailment {
+                AilmentType::Bleed => bleed_traced(&source, &player, &enemy, &cfg, &mut trace),
+                AilmentType::Ignite => {
+                    ignite_traced(&source, &player, &enemy, &cfg, 1000.0, &mut trace)
+                }
+                AilmentType::Poison => poison_traced(&source, &player, &enemy, &cfg, &mut trace),
+                _ => unreachable!(),
+            };
+            if blocked {
+                assert_eq!(out.chance, 0.0);
+                assert_eq!(out.magnitude_dps, 0.0);
+                assert_eq!(out.expected_dps, 0.0);
+                assert_eq!(out.duration_secs, 0.0);
+                assert_eq!(out.source_damage, 0.0);
+            } else {
+                assert_eq!(out.chance, 1.0);
+                assert!(out.magnitude_dps > 0.0);
+                assert!(out.duration_secs > 0.0);
+            }
+            assert_eq!(
+                trace
+                    .source_ancestors(node)
+                    .iter()
+                    .any(|s| s.id == origin.source_id.id),
+                blocked
+            );
+            let (chance, effect, shock_node) =
+                shock_traced(&source, &player, &enemy, &cfg, 1000.0, &mut trace);
+            assert_eq!((chance, effect), (baseline_shock.0, baseline_shock.1));
+            assert!(
+                !trace
+                    .source_ancestors(shock_node)
+                    .iter()
+                    .any(|s| s.id == origin.source_id.id)
+            );
+        }
+    }
+
+    // Native passive 42680 changes both source eligibility and dealt type,
+    // but only for Fire Spells. Normal Ignite remains Fire even from a
+    // separately eligible non-Fire source hit.
+    let data = load_build_data();
+    let fire = SkillTypes::from_pob2_name("Fire").unwrap();
+    for (types, covenant) in [
+        (SkillTypes::SPELL | fire, true),
+        (SkillTypes::SPELL, false),
+        (SkillTypes::ATTACK | fire, false),
+    ] {
+        let cfg = CalcConfig::default().with_skill_types(types);
+        let mut player = base.clone();
+        for text in [
+            "Chaos Damage from Fire Spells Contributes to Flammability and Ignite Magnitudes",
+            "Ignite inflicted with Fire Spells deals Chaos Damage instead of Fire Damage",
+        ] {
+            let parsed =
+                pobr_core::mod_parser::parse_mod_engine(text, data.parser_rules.as_ref().unwrap());
+            assert!(parsed.is_complete());
+            player.add_list(parsed.mods.into_iter().map(|m| {
+                m.with_origin(
+                    ModifierSource::new(SourceId::new(SourceKind::PassiveNode, "node.42680"))
+                        .with_raw_text(text),
+                )
+            }));
+        }
+        let chaos_hit = [DamageComponent::new(DamageType::Chaos, 1000.0, 1000.0)];
+        assert_eq!(
+            cross_type_source_hit(AilmentType::Ignite, &chaos_hit, &player, &cfg),
+            if covenant { 1000.0 } else { 0.0 }
+        );
+        for (flag, blocked) in [("DealNoChaos", covenant), ("DealNoFire", !covenant)] {
+            let mut restricted = player.clone();
+            restricted.add_mod(Modifier::flag(flag).with_origin(origin.clone()));
+            let mut trace = TraceGraph::new();
+            let (ignite, node) =
+                ignite_traced(&source, &restricted, &enemy, &cfg, 1000.0, &mut trace);
+            assert_eq!(ignite.expected_dps == 0.0, blocked);
+            assert_eq!(ignite.chance == 0.0, blocked);
+            assert_eq!(
+                trace
+                    .source_ancestors(node)
+                    .iter()
+                    .any(|s| s.id == origin.source_id.id),
+                blocked
+            );
+            assert_eq!(
+                trace
+                    .source_ancestors(node)
+                    .iter()
+                    .any(|s| s.id == "node.42680"),
+                covenant
+            );
+        }
+    }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "titan-02",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Darth-8911/TitanosDL",
+    "account": "Darth-8911",
+    "character": "TitanosDL",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:57:59+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Darth-8911&name=TitanosDL&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Titan",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 2,
+    "index_sha256": "fd175276306519dbf480f0c20661795a3efd0c6b5ffb68ee47f925e1aae894d7",
+    "character_response_sha256": "3ac43e39345644b320490c8983429e070ca98d9357f39d2bb56e327eff27ab1c",
+    "upstream_updated_utc": "2026-09-30T04:04:40.080776Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.633469Z",
+    "upstream_last_checked_utc": "2026-10-23T07:26:28.737254Z"
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Titan",
+    "level": 100,
+    "main_skill": "Earthshatter"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 5,
+    "code_sha256": "3ae21db67e61ebfbfdea8bd94ee76f34e87704d294567fd7893550143e92da1d",
+    "code_chars": 11912,
+    "decoded_bytes": 45524
+  }
+}

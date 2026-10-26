@@ -1,0 +1,40 @@
+{
+  "name": "gemling-legionnaire-06",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/a136681423-9651/%E4%B9%9D%E7%90%83%E5%A4%A9%E5%90%8E%E8%8E%89%E8%8E%89%E4%B8%9D",
+    "account": "a136681423-9651",
+    "character": "九球天后莉莉丝",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:51:15+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=a136681423-9651&name=%E4%B9%9D%E7%90%83%E5%A4%A9%E5%90%8E%E8%8E%89%E8%8E%89%E4%B8%9D&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Gemling+Legionnaire",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 6,
+    "index_sha256": "ad135f5c2387bc24d4bea51e0e42e8c659af8d6055c720e85af447339cf8f0f7",
+    "character_response_sha256": "cc1cc24752f72f92e05dca99de47364a7bd3876e31dfb5d3d85f3391645a884e",
+    "upstream_updated_utc": "2026-10-18T14:19:41.922019Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.243212Z",
+    "upstream_last_checked_utc": "2026-10-25T07:32:57.217971Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Gemling Legionnaire",
+    "level": 100,
+    "main_skill": "Falling Thunder"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 13,
+    "code_sha256": "1f427068d7d42ea78383ca6ff5e3d55c37d805275ab9e25534e978bf16cfa735",
+    "code_chars": 13936,
+    "decoded_bytes": 51770
+  }
+}

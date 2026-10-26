@@ -1,0 +1,40 @@
+{
+  "name": "ritualist-08",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/circleJ-9891/%E9%98%BF%E6%96%87%E7%9A%84%E6%88%92%E6%8C%87",
+    "account": "circleJ-9891",
+    "character": "阿文的戒指",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:55:06+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=circleJ-9891&name=%E9%98%BF%E6%96%87%E7%9A%84%E6%88%92%E6%8C%87&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Ritualist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 8,
+    "index_sha256": "1bf623e2612a8554cab6044ab4874665d511824502a2f6f0018f34fd81bbe141",
+    "character_response_sha256": "517388854fbe26db57b1dea81e95674be2458a1488b3b335531906b14545708f",
+    "upstream_updated_utc": "2026-09-30T03:57:54.319057Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.575621Z",
+    "upstream_last_checked_utc": "2026-10-22T13:22:46.416316Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Ritualist",
+    "level": 100,
+    "main_skill": "Time of Need"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "763cf1446cffc630d7e6bc32cde6ad0874efcc57c1d4b6851bf8ab8940c59c16",
+    "code_chars": 9840,
+    "decoded_bytes": 33870
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "spirit-walker-01",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/THCm0ke-2799/OwlnadoZ",
+    "account": "THCm0ke-2799",
+    "character": "OwlnadoZ",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:56:20+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=THCm0ke-2799&name=OwlnadoZ&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Spirit+Walker",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 1,
+    "index_sha256": "fffcc37facc276b84d7aabd4eb971c32710d1e7b5ce08ad4847d2a88e000f01c",
+    "character_response_sha256": "64fac5b44b60d24e95d53b668827e5c7533737112770902e6141352568b16c73",
+    "upstream_updated_utc": "2026-09-26T23:14:48.473105Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.333672Z",
+    "upstream_last_checked_utc": "2026-10-21T16:19:42.665561Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Spirit Walker",
+    "level": 100,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "320b7aa21918451193e89b17288657896af360652ff232e49f8b9647b5c47c91",
+    "code_chars": 14036,
+    "decoded_bytes": 56192
+  }
+}

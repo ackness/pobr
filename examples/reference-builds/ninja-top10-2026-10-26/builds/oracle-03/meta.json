@@ -1,0 +1,40 @@
+{
+  "name": "oracle-03",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Whiteyang123456-2065/%E7%9C%8B%E7%9C%8B%E6%88%91%E7%9A%84%E7%89%9B%E5%8F%AA",
+    "account": "Whiteyang123456-2065",
+    "character": "看看我的牛只",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:53:46+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Whiteyang123456-2065&name=%E7%9C%8B%E7%9C%8B%E6%88%91%E7%9A%84%E7%89%9B%E5%8F%AA&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Oracle",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 3,
+    "index_sha256": "e5277dadbd2cde3a7c72387529bcbcbbdb7e4e98007b75fb4935d80ef3360c47",
+    "character_response_sha256": "45bed58d39e013a2377f5575db9a7cd844b97f87e0f1cbb4a5257fcd58232937",
+    "upstream_updated_utc": "2026-09-26T05:45:55.159043Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.149063Z",
+    "upstream_last_checked_utc": "2026-10-25T07:32:57.099956Z"
+  },
+  "character": {
+    "class": "Druid",
+    "ascendancy": "Oracle",
+    "level": 100,
+    "main_skill": "Ember Fusillade"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "ee4a7e772103214d094e0fa7854668b299311e79ae761f786aa72166350a35c3",
+    "code_chars": 12024,
+    "decoded_bytes": 43837
+  }
+}

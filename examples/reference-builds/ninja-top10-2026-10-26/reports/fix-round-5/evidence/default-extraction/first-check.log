@@ -1,0 +1,40 @@
+25/230 checked; 0 failures
+50/230 checked; 0 failures
+75/230 checked; 0 failures
+100/230 checked; 0 failures
+125/230 checked; 0 failures
+150/230 checked; 0 failures
+175/230 checked; 0 failures
+200/230 checked; 1 failures
+225/230 checked; 1 failures
+{
+  "source_revision": "8d30bd843a29cef5a151d37e110f182f39dacf06",
+  "command": "python3 .cache/accuracy-round5-2026-10-26/check-default-calculation.py",
+  "expected_builds": 230,
+  "calculated_and_checked": 229,
+  "failures": [
+    {
+      "build": "tactician-06",
+      "error": "('tactician-06', 'Minion:ActionRate', None)"
+    }
+  ],
+  "builds_differing_from_reference_options": 225,
+  "validation": [
+    "default production options",
+    "no reported rejected items or unresolved tree nodes",
+    "finite nonnegative selected player/minion resources and damage",
+    "finite nonnegative typed hit pools",
+    "finite scoped cost/recovery/culling/capacity/reservation/ailment/rarity/resistance views; nonnegative costs/leech/culling/capacity/ailment durations",
+    "same game-data provenance as reference-mode measurement"
+  ],
+  "limits": [
+    "This is a calculation/invariant check, not proof that all game mechanics are implemented.",
+    "No FullDPS aggregate or browser interaction is exercised.",
+    "Conditional models use only the imported snapshot and existing defaults; no new states are invented."
+  ]
+}
+Traceback (most recent call last):
+  File "/root/codes/pobr/.cache/accuracy-round5-2026-10-26/check-default-calculation.py", line 85, in <module>
+    assert not failures, failures
+           ^^^^^^^^^^^^
+AssertionError: [{'build': 'tactician-06', 'error': "('tactician-06', 'Minion:ActionRate', None)"}]

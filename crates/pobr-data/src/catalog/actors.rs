@@ -218,6 +218,10 @@ pub struct GrantedEffectMinionDef {
     /// (`minionHasItemSet`).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub minion_has_item_set: bool,
+    /// Support eligibility cannot borrow a minion's skill types
+    /// (`GrantedEffects.IgnoreMinionTypes`, exported as `ignoreMinionTypes`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ignore_minion_types: bool,
 }
 
 /// Top level of `overlay/granted_effect_minions.json`.

@@ -7333,12 +7333,9 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
+          "name": "MarkEffect",
           "type": "Inc",
-          "value": 10.0,
-          "tags": [
-            "SkillTypes(SkillTypes([0, 17179869184, 0, 0, 0]))"
-          ]
+          "value": 10.0
         }
       ]
     },
@@ -10100,12 +10097,9 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
+          "name": "MarkEffect",
           "type": "Inc",
-          "value": 12.0,
-          "tags": [
-            "SkillTypes(SkillTypes([0, 17179869184, 0, 0, 0]))"
-          ]
+          "value": 12.0
         }
       ]
     },
@@ -21096,12 +21090,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Life",
+          "name": "MaximumLife",
           "type": "Inc",
           "value": 3.0
         },
         {
-          "name": "Mana",
+          "name": "MaximumMana",
           "type": "Inc",
           "value": 3.0
         },
@@ -21257,13 +21251,9 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LightningDamage",
+          "name": "LightningLuckyHitsChance",
           "type": "Base",
-          "value": 30.0,
-          "kw": 262144,
-          "tags": [
-            "DamageType(Lightning)"
-          ]
+          "value": 30.0
         }
       ]
     },
@@ -24011,11 +24001,11 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Condition:UnholyMight",
+          "name": "UnholyMightGrantedMagnitude",
           "type": "Inc",
           "value": 4.0,
           "tags": [
-            "Multiplier { var: \"Mana\", div: 100.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+            "PerStat { stat: \"Mana\", div: 100.0, limit: None, limit_var: None, actor: None }"
           ]
         }
       ]
@@ -29732,12 +29722,9 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
+          "name": "MarkEffect",
           "type": "Inc",
-          "value": 8.0,
-          "tags": [
-            "SkillTypes(SkillTypes([0, 17179869184, 0, 0, 0]))"
-          ]
+          "value": 8.0
         }
       ]
     },
@@ -36306,7 +36293,7 @@
               "type": "Base",
               "value": 20.0,
               "tags": [
-                "Condition { var: \"EnemyEnemyInPresence\", negated: false, actor: None }"
+                "Condition { var: \"EnemyInPresence\", negated: false, actor: None }"
               ]
             }
           ]
@@ -36320,7 +36307,7 @@
               "type": "Base",
               "value": 20.0,
               "tags": [
-                "Condition { var: \"EnemyEnemyInPresence\", negated: false, actor: None }"
+                "Condition { var: \"EnemyInPresence\", negated: false, actor: None }"
               ]
             }
           ]
@@ -36334,7 +36321,7 @@
               "type": "Base",
               "value": 20.0,
               "tags": [
-                "Condition { var: \"EnemyEnemyInPresence\", negated: false, actor: None }"
+                "Condition { var: \"EnemyInPresence\", negated: false, actor: None }"
               ]
             }
           ]
@@ -42671,7 +42658,20 @@
     },
     {
       "text": "[Allies] in your [Presence] gain added [Attack] Damage equal\nto 25% of your main hand Weapon's damage",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "List",
+          "value": [
+            {
+              "name": "MainHandDamageToAllies",
+              "type": "Base",
+              "value": 25.0
+            }
+          ]
+        }
+      ]
     },
     {
       "text": "[Allies] in your [Presence] have 30% increased [Glory] generation",
@@ -45825,7 +45825,14 @@
     },
     {
       "text": "[LifeLeech|Life Leech] recovers based on your [ElementalDamage|Elemental] damage as well as [Physical] damage",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeLeechBasedOnElementalDamage",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "[LifeLoss|Lose] 3% of maximum Life and [EnergyShield|Energy Shield] when you use a Chaos Skill",

@@ -1,0 +1,40 @@
+{
+  "name": "martial-artist-09",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/MusTangwow-5722/%E0%B8%A3%E0%B8%B1%E0%B8%81%E0%B9%80%E0%B8%98%E0%B8%AD%E0%B8%AB%E0%B8%A1%E0%B8%94%E0%B9%83%E0%B8%88",
+    "account": "MusTangwow-5722",
+    "character": "รักเธอหมดใจ",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:53:33+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=MusTangwow-5722&name=%E0%B8%A3%E0%B8%B1%E0%B8%81%E0%B9%80%E0%B8%98%E0%B8%AD%E0%B8%AB%E0%B8%A1%E0%B8%94%E0%B9%83%E0%B8%88&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Martial+Artist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 9,
+    "index_sha256": "02aea86a90fa6da528c053195c09e6f13ddd2745a1893a6dc6bffbf6ecf7e1a7",
+    "character_response_sha256": "99250bceb4f676fda06a29f10a9b9982e3c93ad177be5590c21f77f0cdaf897c",
+    "upstream_updated_utc": "2026-10-04T07:15:46.311103Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.917972Z",
+    "upstream_last_checked_utc": "2026-10-26T04:05:51.348498Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Martial Artist",
+    "level": 100,
+    "main_skill": "Rend"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 1,
+    "code_sha256": "e598ee65dfe78b833aa2e4b9aec9f9e7559af2c29cc5f9fc954190ee7517ec96",
+    "code_chars": 11496,
+    "decoded_bytes": 41720
+  }
+}

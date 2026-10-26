@@ -256,7 +256,7 @@ pub fn ailment_duration_terms(
     enemy: Option<&ModDb>,
     cfg: &CalcConfig,
 ) -> Option<AilmentDurationTerms> {
-    let base = ailment_base_duration(ailment, cfg)?;
+    let base = resolved_ailment_base_duration(ailment, player, cfg)?;
     let scoped = ailment_scoped_cfg(cfg, ailment);
     let names = duration_mod_names(ailment);
     let mut terms = AilmentDurationTerms {
@@ -288,6 +288,23 @@ pub fn ailment_base_duration(ailment: AilmentType, cfg: &CalcConfig) -> Option<f
     }
 }
 
+/// The game's base duration with an applicable base replacement. Crimson
+/// Assault replaces Bleeding's five-second base with one second; duration
+/// increases, more multipliers and damage rate still apply afterwards.
+pub fn resolved_ailment_base_duration(
+    ailment: AilmentType,
+    player: &ModDb,
+    cfg: &CalcConfig,
+) -> Option<f64> {
+    if ailment == AilmentType::Bleed
+        && let Some(duration) =
+            player.override_(&ailment_scoped_cfg(cfg, ailment), "BaseBleedingDuration")
+    {
+        return Some(duration);
+    }
+    ailment_base_duration(ailment, cfg)
+}
+
 fn is_elemental_ailment(ailment: AilmentType) -> bool {
     matches!(
         ailment,
@@ -317,6 +334,11 @@ pub(crate) fn duration_mod_names(ailment: AilmentType) -> Vec<ModName> {
         ModName::from("AilmentDuration"),
         ModName::from("EnemyAilmentDuration"),
     ]);
+    if ailment == AilmentType::Bleed {
+        // An OVERRIDE, not part of the INC/MORE sums. Keep the base
+        // replacement visible among the duration's attributed source rows.
+        names.push(ModName::from("BaseBleedingDuration"));
+    }
     // "Duration of Elemental Ailments on Enemies" affects Ignite, Shock and
     // Chill, not Bleeding or Poison; skill-effect duration alone affects none.
     if is_elemental_ailment(ailment) {
@@ -405,12 +427,7 @@ pub fn bleed_instance(
     // in finalize_ailment_dps (PoB2's effectMod, not double-counted).
     // Source: PoB2 CalcOffence.lua L5145-5146 / L5190.
     let magnitude_dps = scale_magnitude(base_dps, db, cfg, &[ModName::from("AilmentMagnitude")]);
-    let duration_secs = scale_duration(
-        gc.bleed_base_duration,
-        db,
-        cfg,
-        &duration_mod_names(AilmentType::Bleed),
-    );
+    let duration_secs = ailment_duration(AilmentType::Bleed, db, cfg);
     AilmentInstance {
         ailment: AilmentType::Bleed,
         magnitude_dps: round(magnitude_dps),
@@ -861,7 +878,16 @@ pub fn poison_traced(
     )
 }
 
-/// Computes the ignite panel output (chance-derived: fire hit/threshold × IgniteChanceMultiplier + AilmentChance).
+/// The resulting Ignite damage type, shared by calculation and displayed mitigation.
+pub(crate) fn ignite_damage_type(player: &ModDb, cfg: &CalcConfig) -> DamageType {
+    if player.flag(cfg, "IgniteToChaos") {
+        DamageType::Chaos
+    } else {
+        DamageType::Fire
+    }
+}
+
+/// Computes the ignite panel output (chance-derived: source hit/threshold × IgniteChanceMultiplier + AilmentChance).
 pub fn ignite_traced(
     source: &AilmentSource,
     player: &ModDb,
@@ -893,18 +919,25 @@ pub fn ignite_traced(
         threshold,
         trace,
     );
-    compute_damaging_ailment(
+    let damage_type = ignite_damage_type(player, cfg);
+    let (output, node) = compute_damaging_ailment(
         source,
         player,
         enemy,
         cfg,
         AilmentType::Ignite,
-        DamageType::Fire,
+        damage_type,
         chance_hit,
         chance_crit,
         chance_node,
         trace,
-    )
+    );
+    if damage_type == DamageType::Chaos {
+        let source = super::crit::flag_source(player, cfg, "IgniteToChaos");
+        let flag_node = trace.add_source_node("IgniteToChaos", 1.0, source);
+        trace.add_edge(flag_node, node);
+    }
+    (output, node)
 }
 
 /// Shock's chance-derived chance + effect magnitude (a non-damaging ailment), writes to the TraceGraph.
@@ -1082,6 +1115,30 @@ fn compute_damaging_ailment(
     chance_node: TraceNodeId,
     trace: &mut TraceGraph,
 ) -> (DamagingAilmentOutput, TraceNodeId) {
+    // An ailment can use one hit type and deal another: Physical hits can
+    // Poison, but Poison still deals Chaos damage. Covenant's Ignite uses
+    // its resolved Chaos type here, while ordinary Ignite deals Fire.
+    let scoped = ailment_scoped_cfg(cfg, ailment);
+    for flag in [
+        "DealNoDamage",
+        &format!("DealNo{}", type_prefix(damage_type)),
+    ] {
+        if let Some(node) =
+            prohibited_ailment_node(player, &scoped, flag, &format!("{ailment:?}DPS"), trace)
+        {
+            return (
+                DamagingAilmentOutput {
+                    chance: 0.0,
+                    eff_mult: 1.0,
+                    magnitude_dps: 0.0,
+                    duration_secs: 0.0,
+                    expected_dps: 0.0,
+                    source_damage: 0.0,
+                },
+                node,
+            );
+        }
+    }
     let (chance, base_source) = weighted_source_damage(source, chance_on_hit, chance_on_crit);
 
     // base magnitude (crit-weighted source × per-second fraction) goes through the same inc/more

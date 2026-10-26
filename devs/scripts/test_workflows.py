@@ -25,7 +25,8 @@ class WorkflowTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         scripts = ["devs/scripts/regen-check.sh", "devs/scripts/cache-report.py",
-                   "devs/scripts/driver.sh", ".claude/skills/run-pobr/driver.sh"]
+                   "devs/scripts/driver.sh", "devs/scripts/pob2-luajit.sh",
+                   ".claude/skills/run-pobr/driver.sh"]
         if (REPO / ".agents/skills/run-pobr/driver.sh").is_file():
             scripts.append(".agents/skills/run-pobr/driver.sh")
         for rel in scripts:
@@ -586,6 +587,162 @@ pathlib.Path(sys.argv[sys.argv.index("-o") + 1]).write_text("{}", encoding="utf-
         self.assertEqual((self.root / "vendor/.pob2-version.txt").read_text(encoding="utf-8"), "previous\n")
 
 
+class OracleRuntimeTests(unittest.TestCase):
+    """Exercise runtime selection and bootstrap failures without PoB2 or a compiler."""
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory(prefix="pobr oracle runtime ")
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+        for rel in ("devs/scripts/pob2-luajit.sh", "devs/scripts/driver.sh",
+                    "tools/pob2-oracle/run.sh", "tools/pob2-oracle/run-parsemod.sh"):
+            dest = self.root / rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(REPO / rel, dest)
+        # Keep macOS developer runtimes out of these isolated resolution tests.
+        resolver = self.root / "devs/scripts/pob2-luajit.sh"
+        resolver.write_text(resolver.read_text(encoding="utf-8").replace(
+            "/opt/homebrew/bin/luajit", str(self.root / "bin/homebrew-luajit")), encoding="utf-8")
+        self.vendor = self.root / "shared vendor/PathOfBuilding-PoE2/src"
+        self.vendor.mkdir(parents=True)
+        (self.root / "data").mkdir()
+        (self.root / "data/CURRENT").write_text("test\n", encoding="utf-8")
+        self.env = {**os.environ, "XDG_CACHE_HOME": str(self.root / "cache"),
+                    "POBR_VENDOR_ROOT": str(self.vendor.parent.parent),
+                    "PATH": f"{self.root / 'bin'}{os.pathsep}{os.environ['PATH']}"}
+        for key in ("LUAJIT", "POBR_LUAJIT", "POBR_DATA_ROOT", "POBR_DATA_VERSION", "ORACLE_EXIT"):
+            self.env.pop(key, None)
+        self.runtime("bin/luajit", compatible=False)
+        # Match the pinned cache path without duplicating the runtime commit in tests.
+        script = (REPO / "devs/scripts/pob2-luajit.sh").read_text(encoding="utf-8")
+        pin = next(line.split("=", 1)[1] for line in script.splitlines()
+                   if line.startswith("LUAJIT_COMMIT="))
+        self.cached = f"cache/pobr/runtimes/luajit-{pin}/src/luajit"
+
+    def runtime(self, relative, compatible=True):
+        path = self.root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text('''#!/usr/bin/env python3
+import json, os, pathlib, sys
+if sys.argv[1:2] == ["-e"]:
+    sys.exit(COMPATIBILITY)
+if sys.argv[1:2] == ["-v"]:
+    print("LuaJIT version alone is insufficient")
+    sys.exit(0)
+print(json.dumps({"runtime": str(pathlib.Path(__file__).resolve()),
+                  "args": sys.argv[1:], "cwd": os.getcwd(),
+                  "lua_path": os.environ.get("LUA_PATH"),
+                  "ci": os.environ.get("CI"), "stdin": sys.stdin.read()}))
+sys.exit(int(os.environ.get("ORACLE_EXIT", "0")))
+'''.replace("COMPATIBILITY", "0" if compatible else "17"), encoding="utf-8")
+        path.chmod(0o755)
+        return path
+
+    def run_script(self, script, *args, cwd=None, input=None):
+        return subprocess.run(["bash", str(self.root / script), *args],
+                              cwd=cwd or self.root, env=self.env, input=input,
+                              capture_output=True, text=True, timeout=10)
+
+    def test_old_runtime_is_rejected_before_dispatch_and_status_reports_it(self):
+        self.env["LUAJIT"] = str(self.root / "bin/luajit")
+        result = self.run_script("tools/pob2-oracle/run.sh", "build.xml")
+        self.assertEqual(result.returncode, 127, result.stderr)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("+=", result.stderr)
+        self.assertIn("mise run deps", result.stderr)
+        status = self.run_script("devs/scripts/driver.sh", "status")
+        self.assertIn("✗ compatible PoB2 LuaJIT unavailable", status.stdout)
+        self.assertNotIn("✓ PoB2 LuaJIT", status.stdout)
+
+    def test_cached_runtime_beats_stock_path_and_deps_reuses_it(self):
+        runtime = self.runtime(self.cached)
+        result = self.run_script("devs/scripts/pob2-luajit.sh")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), str(runtime))
+        for _ in range(2):
+            result = self.run_script("devs/scripts/driver.sh", "deps")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(str(runtime), result.stdout)
+
+    def test_explicit_override_is_authoritative_including_invalid_paths(self):
+        self.runtime(self.cached)
+        preferred = self.runtime("bin/preferred lua")
+        self.env["POBR_LUAJIT"] = str(preferred)
+        result = self.run_script("devs/scripts/pob2-luajit.sh")
+        self.assertEqual(result.stdout.strip(), str(preferred))
+        for override in ("bin/missing", "bin/luajit"):
+            self.env["LUAJIT"] = override
+            for action in ("resolve", "install"):
+                result = self.run_script("devs/scripts/pob2-luajit.sh", action)
+                self.assertEqual(result.returncode, 127, result.stderr)
+                self.assertIn("explicit LuaJIT", result.stderr)
+
+    def test_launcher_preserves_paths_environment_and_exit_status(self):
+        caller = self.root / "outside repo"
+        caller.mkdir()
+        runtime = self.runtime("outside repo/custom lua")
+        self.env["LUAJIT"] = "./custom lua"
+        self.env["ORACLE_EXIT"] = "23"
+        result = self.run_script("tools/pob2-oracle/run.sh", "build input.xml", "output result.json",
+                                 cwd=caller, input="stdin must be closed\n")
+        self.assertEqual(result.returncode, 23, result.stderr)
+        record = json.loads(result.stdout)
+        self.assertEqual(record["runtime"], str(runtime))
+        self.assertEqual(record["cwd"], str(self.vendor))
+        self.assertEqual(record["args"][1:], [str(caller / "build input.xml"),
+                                             str(caller / "output result.json")])
+        self.assertEqual(record["ci"], "true")
+        self.assertEqual(record["stdin"], "")
+        self.assertTrue(record["lua_path"].startswith(str(self.root / "tools/pob2-oracle/shim")))
+        self.assertIn(str(self.vendor.parent / "runtime/lua"), record["lua_path"])
+
+    def test_parsemod_uses_same_resolver_and_preserves_stdin(self):
+        runtime = self.runtime(self.cached)
+        result = self.run_script("tools/pob2-oracle/run-parsemod.sh", input="20% increased Fire Damage\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        record = json.loads(result.stdout)
+        self.assertEqual(record["runtime"], str(runtime))
+        self.assertEqual(record["args"][1:], ["--mode", "parsemod"])
+        self.assertEqual(record["stdin"], "20% increased Fire Damage\n")
+
+    def test_failed_install_stops_bootstrap_and_cleans_partial_cache(self):
+        # No real network or compiler work; failed Git acquisition is terminal.
+        for name in ("git", "make", "cc"):
+            path = self.root / "bin" / name
+            path.write_text("#!/usr/bin/env bash\nexit 29\n", encoding="utf-8")
+            path.chmod(0o755)
+        result = self.run_script("devs/scripts/driver.sh", "bootstrap")
+        self.assertEqual(result.returncode, 29, result.stdout + result.stderr)
+        self.assertFalse((self.root / "vendor").exists())
+        self.assertEqual(list((self.root / "cache/pobr/runtimes").iterdir()), [])
+
+    def test_install_publishes_compatible_runtime_and_is_idempotent(self):
+        seed = self.runtime("build fixture/luajit")
+        self.env["TEST_RUNTIME_SEED"] = str(seed)
+        for name in ("git", "cc"):
+            tool = self.root / "bin" / name
+            tool.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            tool.chmod(0o755)
+        make = self.root / "bin/make"
+        make.write_text('''#!/usr/bin/env python3
+import os, pathlib, shutil, sys
+dest = pathlib.Path(sys.argv[sys.argv.index("-C") + 1]) / "src/luajit"
+dest.parent.mkdir()
+shutil.copyfile(os.environ["TEST_RUNTIME_SEED"], dest)
+dest.chmod(0o755)
+print("compiled test runtime")
+''', encoding="utf-8")
+        make.chmod(0o755)
+        result = self.run_script("devs/scripts/driver.sh", "deps")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("compiled test runtime", result.stdout)
+        result = self.run_script("devs/scripts/pob2-luajit.sh")
+        self.assertEqual(result.stdout.strip(), str(self.root / self.cached))
+        result = self.run_script("devs/scripts/driver.sh", "deps")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("compiled test runtime", result.stdout)
+
+
 class ReferenceBuildSelectionTests(unittest.TestCase):
     """The selection never depends on a calculation, and never repeats a character."""
 
@@ -1023,6 +1180,43 @@ class TriageTests(unittest.TestCase):
         for entry in self.triage.load_known():
             with self.subTest(build=entry.get("build")):
                 self.assertTrue(entry["build"] and entry["stats"] and entry["reason"])
+
+    def test_known_differences_can_bind_short_rank_names_to_exact_xml(self):
+        import hashlib
+        xml = "<PathOfBuilding/>"
+        fingerprint = hashlib.sha256(xml.encode()).hexdigest()
+        known = [{"build": "blood-mage-03", "xml_sha256": fingerprint,
+                  "stats": ["HitSpeed"], "reason": "Witchtoad interval"}]
+        check = self.triage.known_reason
+        self.assertEqual(check(known, "blood-mage-03", "HitSpeed", fingerprint),
+                         "Witchtoad interval")
+        self.assertIsNone(check(known, "blood-mage-03", "HitSpeed"))
+        self.assertIsNone(check(known, "blood-mage-03", "HitSpeed", "another export"))
+        report = {"reference": {"differing": [
+            {"stat": "HitSpeed", "pob_key": "HitSpeed", "pobr": 8, "reference": 12}]}}
+        result = self.triage.analyse("blood-mage-03", "set", report, {}, xml, known)
+        self.assertEqual(result["rows"][0]["class"], "known")
+        result = self.triage.analyse("blood-mage-03", "set", report, {}, xml + "\n", known)
+        self.assertEqual(result["rows"][0]["class"], "no oracle")
+
+    def test_enemy_leads_read_current_final_mitigation_including_overrides(self):
+        entries = {"TotalDPS": {"breakdown": {"mitigation": [
+            {"damage_type": "Lightning", "resist": 40, "multiplier": 0.6},
+            {"damage_type": "Fire", "resist": 40, "multiplier": 0.6},
+            {"damage_type": "Cold", "multiplier": 0.6},
+            {"damage_type": "Physical", "multiplier": 0.5},
+        ]}}}
+        oracle = {"enemyMitigation": {"Lightning": {"resistBase": 40}},
+                  "mainOutput": {"LightningStoredHitAvg": 9.5, "LightningHitAverage": 26.98,
+                                 "FireStoredHitAvg": 14.5, "FireHitAverage": 41.18,
+                                 "ColdStoredHitAvg": 0, "ColdHitAverage": 0,
+                                 "PhysicalStoredHitAvg": 10, "PhysicalHitAverage": 10}}
+        found = self.triage.enemy_leads(entries, oracle)
+        self.assertEqual([(x["key"], x["type"]) for x in found],
+                         [("Lightning", "effective multiplier"), ("Fire", "effective multiplier")])
+        for row in found:
+            self.assertAlmostEqual(row["pob2"], 2.84)
+        self.assertEqual(self.triage.enemy_leads(entries, {}), [])
 
     def test_lines_meet_across_rolls_and_places(self):
         template = self.triage.template

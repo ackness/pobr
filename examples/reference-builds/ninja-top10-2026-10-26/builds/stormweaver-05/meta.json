@@ -1,0 +1,40 @@
+{
+  "name": "stormweaver-05",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/dubie-6783/FRDubie",
+    "account": "dubie-6783",
+    "character": "FRDubie",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:57:05+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=dubie-6783&name=FRDubie&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Stormweaver",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 5,
+    "index_sha256": "d1ef8ddee86218ab8cd37da374336c3c8a422ec9aec5efa7d663988184642b7f",
+    "character_response_sha256": "194394da5374579dabb3b0d873f43713fbb524e17d8a55c2c6c71ebaa72d16bf",
+    "upstream_updated_utc": "2026-10-07T00:31:40.144723Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:22.304633Z",
+    "upstream_last_checked_utc": "2026-10-23T01:25:23.368146Z"
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Stormweaver",
+    "level": 100,
+    "main_skill": "Living Bomb"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 5,
+    "code_sha256": "ff69c9b76a640d3cad5c89120c86a2bf37b5ca00a660e4aeda79563fc5e22a3c",
+    "code_chars": 13716,
+    "decoded_bytes": 57562
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "acolyte-of-chayula-01",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/HoangLong1101-3050/DOANXIEMm",
+    "account": "HoangLong1101-3050",
+    "character": "DOANXIEMm",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:28+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=HoangLong1101-3050&name=DOANXIEMm&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Acolyte+of+Chayula",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 1,
+    "index_sha256": "720a4229719289af8ed99a62f5030ac97155620a00eb46772c25d1a11fcc24e0",
+    "character_response_sha256": "42c943058f198ff1de8951c3890923af9c1b0704c00e204558a9fe98d919c8b0",
+    "upstream_updated_utc": "2026-10-25T10:33:37.842449Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.188801Z",
+    "upstream_last_checked_utc": "2026-10-25T22:35:24.087834Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Acolyte of Chayula",
+    "level": 100,
+    "main_skill": "Ghost Dance"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "efe2d9650d40dd89ab201f067e9e99c750f9d81b4568b5f21dfd42645fb57957",
+    "code_chars": 9964,
+    "decoded_bytes": 32145
+  }
+}

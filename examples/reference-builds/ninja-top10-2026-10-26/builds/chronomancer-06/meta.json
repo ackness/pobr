@@ -1,0 +1,40 @@
+{
+  "name": "chronomancer-06",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/ChatinhoF-9367/FischDinoFresbee",
+    "account": "ChatinhoF-9367",
+    "character": "FischDinoFresbee",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:43+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=ChatinhoF-9367&name=FischDinoFresbee&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Chronomancer",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 6,
+    "index_sha256": "979a57de6925bde9d636cd7cd38f75ac920850eac435a828767a09b910794872",
+    "character_response_sha256": "6fa2dacb72dbf4ab928c29b41c4151256c12e4dd20c5d07e4164aeb6bdcf4b12",
+    "upstream_updated_utc": "2026-10-22T22:35:25.030256Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-25T14:52:37.539433Z"
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Chronomancer",
+    "level": 100,
+    "main_skill": "Living Bomb"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "8d16ca13b8fe76ffe786d0234533e81e1e72f3d229c1cf4d326621a4863d43d8",
+    "code_chars": 13216,
+    "decoded_bytes": 51690
+  }
+}

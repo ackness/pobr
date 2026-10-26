@@ -1,0 +1,40 @@
+{
+  "name": "chronomancer-03",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/LFZL20241211-7826/MasterofTimeManagement",
+    "account": "LFZL20241211-7826",
+    "character": "MasterofTimeManagement",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:42+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=LFZL20241211-7826&name=MasterofTimeManagement&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Chronomancer",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 3,
+    "index_sha256": "979a57de6925bde9d636cd7cd38f75ac920850eac435a828767a09b910794872",
+    "character_response_sha256": "1dc97c9c3cdc95252f7ad14649f83ecb064318073ac9110bd6c37f405d6091e7",
+    "upstream_updated_utc": "2026-10-17T00:49:01.590866Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:25.169614Z",
+    "upstream_last_checked_utc": "2026-10-25T13:34:17.18035Z"
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Chronomancer",
+    "level": 100,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 17,
+    "code_sha256": "39fbca98f71216545690532df815de88754fac4332fe22a62a76e87b5ecc7b57",
+    "code_chars": 13484,
+    "decoded_bytes": 60240
+  }
+}

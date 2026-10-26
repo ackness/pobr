@@ -1,0 +1,40 @@
+{
+  "name": "gemling-legionnaire-05",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/peerbaza-5894/pebzgemling",
+    "account": "peerbaza-5894",
+    "character": "pebzgemling",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:51:12+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=peerbaza-5894&name=pebzgemling&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Gemling+Legionnaire",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 5,
+    "index_sha256": "ad135f5c2387bc24d4bea51e0e42e8c659af8d6055c720e85af447339cf8f0f7",
+    "character_response_sha256": "c2cdd4d1858487918b6ca5a8e541684f5b2e12230710e503af8cca7c597cc4bc",
+    "upstream_updated_utc": "2026-10-17T16:06:12.341533Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.175756Z",
+    "upstream_last_checked_utc": "2026-10-25T17:04:13.554866Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Gemling Legionnaire",
+    "level": 100,
+    "main_skill": "Frostbolt"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 15,
+    "code_sha256": "45e1731bfcf80c15d09c3cfaffae07c433996bbbb6ef12802f5254646a6bfeea",
+    "code_chars": 15124,
+    "decoded_bytes": 59231
+  }
+}

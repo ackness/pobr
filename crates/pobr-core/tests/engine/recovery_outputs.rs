@@ -31,6 +31,118 @@ fn value(env: &Env, name: &str, expected: f64) {
 }
 
 #[test]
+fn movement_speed_shares_only_active_increases_with_energy_shield_recharge() {
+    use pobr_core::calc::{CalculationSession, MinimalInput};
+    let text =
+        "Increases and Reductions to Movement Speed also apply to Energy Shield Recharge Rate";
+    let parsed = crate::support::parse_mod(text).unwrap();
+    assert!(parsed.is_complete());
+    let tag = |var: &str| pobr_core::ModTag::Condition {
+        var: var.into(),
+        negated: false,
+        actor: None,
+    };
+    for (sharing, moving, prohibition) in [
+        (false, false, None),
+        (true, false, None),
+        (true, true, None),
+        (true, true, Some("NoEnergyShieldRecharge")),
+        (true, true, Some("ZealotsOath")),
+    ] {
+        let mut session = CalculationSession::new(MinimalInput::default()).with_config(
+            CalcConfig::new()
+                .with_condition("ShareMovement", sharing)
+                .with_condition("Moving", moving),
+        );
+        session.add_modifiers(
+            parsed
+                .mods
+                .iter()
+                .cloned()
+                .map(|m| m.with_tag(tag("ShareMovement"))),
+        );
+        session.add_modifiers([
+            Modifier::number("EnergyShield", ModType::Base, 1000.0),
+            Modifier::number("EnergyShieldRecharge", ModType::Inc, 20.0),
+            Modifier::number("EnergyShieldRecharge", ModType::More, 50.0),
+            Modifier::number("MovementSpeed", ModType::Inc, 40.0).with_origin(
+                ModifierSource::new(SourceId::new(SourceKind::ItemAffix, "item.boots.explicit"))
+                    .with_raw_text("40% increased Movement Speed"),
+            ),
+            Modifier::number("MovementSpeed", ModType::Inc, -10.0),
+            Modifier::number("MovementSpeed", ModType::Inc, 20.0).with_tag(tag("Moving")),
+            Modifier::number("MovementSpeed", ModType::Base, 1000.0),
+            Modifier::number("MovementSpeed", ModType::More, 100.0),
+            Modifier::number("ActionSpeed", ModType::Inc, 100.0),
+            Modifier::number("MovementSpeedPenalty", ModType::Inc, -50.0),
+        ]);
+        if let Some(flag) = prohibition {
+            session.add_modifiers([Modifier::flag(flag)]);
+        }
+        let completed = session.finish().unwrap();
+        let inc = 20.0
+            + if sharing {
+                30.0 + if moving { 20.0 } else { 0.0 }
+            } else {
+                0.0
+            };
+        let expected = if prohibition.is_some() {
+            0.0
+        } else {
+            0.125 * (1.0 + inc / 100.0) * 1.5
+        };
+        assert!((display_value(completed.output(), "EsRechargeRate") - expected).abs() < 1e-9);
+        let recovered = display_value(completed.output(), "EsRechargePerSecond");
+        assert!((recovered - expected * 1000.0).abs() < 1e-9);
+        assert_eq!(
+            display_value(completed.output(), "EsRechargeDelay"),
+            if prohibition == Some("NoEnergyShieldRecharge") {
+                0.0
+            } else {
+                4.0
+            }
+        );
+        let groups = completed.detail_sources("EsRechargeRate");
+        let movement = groups.iter().find(|g| g.name == "MovementSpeed");
+        assert_eq!(movement.is_some(), sharing);
+        if let Some(group) = movement {
+            assert_eq!(group.totals, (0.0, if moving { 50.0 } else { 30.0 }, 1.0));
+            assert!(
+                group
+                    .rows
+                    .iter()
+                    .all(|r| r.modifier.mod_type == ModType::Inc)
+            );
+            assert_eq!(
+                group.rows.iter().filter(|r| !r.active).count(),
+                usize::from(!moving)
+            );
+            assert!(group.rows.iter().any(|r| {
+                r.modifier.origin.as_ref().is_some_and(|o| {
+                    o.source_id.id == "item.boots.explicit"
+                        && o.raw_text.as_deref() == Some("40% increased Movement Speed")
+                })
+            }));
+        }
+        if prohibition.is_none() {
+            let detail_inc: f64 = groups.iter().map(|g| g.totals.1).sum();
+            let detail_more: f64 = groups.iter().map(|g| g.totals.2).product();
+            assert!((0.125 * (1.0 + detail_inc / 100.0) * detail_more - expected).abs() < 1e-9);
+        }
+        let detail = completed.derived_detail("EsRechargePerSecond").unwrap();
+        assert_eq!(detail.formula, "EnergyShield * EsRechargeRate");
+        assert_eq!(
+            detail
+                .inputs
+                .iter()
+                .map(|(_, value)| value)
+                .product::<f64>(),
+            recovered
+        );
+    }
+}
+
+#[test]
 fn recovery_accounts_for_regen_recovery_drain_and_main_skill_costs() {
     // life_recovery_rate_+% applies to regeneration and other recovery.
     // life_degeneration_%_per_minute_not_in_grace is loss, not damage.
@@ -407,4 +519,321 @@ fn strongest_leech_instance_recovers_instead_of_averaging_critical_rates() {
         10.0,
     );
     value(&env, "LifeLeechGainRate", 40.0);
+}
+
+#[test]
+fn ghost_reaver_converts_base_leech_and_uses_energy_shield_modifiers() {
+    // convert_all_life_leech_to_energy_shield_leech and the game's Stat
+    // Conversion keyword: base values transfer; destination modifiers apply.
+    let mut mods = Vec::new();
+    for text in [
+        "Life Leech is Converted to Energy Shield Leech",
+        "Leech 2% of Physical Attack Damage as Life",
+    ] {
+        mods.extend(crate::support::parse_mod(text).unwrap().mods);
+    }
+    mods.extend([
+        Modifier::number("PhysicalDamageEnergyShieldLeech", ModType::Base, 1.0),
+        Modifier::number("LifeOnHit", ModType::Base, 5.0),
+        Modifier::number("EnergyShieldOnHit", ModType::Base, 4.0),
+        Modifier::number("LifeLeechAmount", ModType::Inc, 900.0),
+        Modifier::number("LifeLeechRate", ModType::Inc, 900.0),
+        Modifier::number("LifeRecoveryRate", ModType::Inc, 900.0),
+        Modifier::flag("InstantLifeLeech"),
+        Modifier::number("EnergyShieldLeechAmount", ModType::Inc, 100.0),
+        Modifier::number("EnergyShieldLeechRate", ModType::Inc, 100.0),
+        Modifier::number("MaxEnergyShieldLeechRate", ModType::Inc, 100.0),
+        Modifier::number("EnergyShieldRecoveryRate", ModType::Inc, 50.0),
+    ]);
+    let env = run(mods.clone(), 2.0);
+    // (2% converted + 1% native) * 1000 * 2 amount = 60 per instance.
+    // Recovery is 90 per hit; the ES cap is 300 * 10% * 2 = 60/s before
+    // recovery rate. Neither Life's pool nor its modifiers contribute.
+    value(&env, "LifeLeechGainPerHit", 5.0);
+    value(&env, "LifeLeechGainRate", 10.0);
+    value(&env, "EnergyShieldLeechGainPerHit", 94.0);
+    value(&env, "EnergyShieldLeechGainRate", 98.0);
+    let panel = pobr_core::calc::calc_leech_from_db(
+        &env.player.mod_db,
+        &env.cfg,
+        env.player.output.energy_shield,
+        1000.0,
+        pobr_core::calc::LeechResource::EnergyShield,
+    );
+    assert_eq!(panel.instance_total, 60.0);
+    assert_eq!(panel.rate_cap_per_second, 60.0);
+    assert_eq!(panel.display_rate_per_second, 60.0);
+
+    mods.push(Modifier::number(
+        "InstantEnergyShieldLeech",
+        ModType::Base,
+        25.0,
+    ));
+    let env = run(mods, 2.0);
+    // Instant ES recovery is 15/hit; the remaining 45 receives recovery rate.
+    value(&env, "EnergyShieldLeechGainPerHit", 86.5);
+    value(&env, "EnergyShieldLeechGainRate", 128.0);
+}
+
+#[test]
+fn ghost_reaver_retains_damage_eligibility_and_destination_restrictions() {
+    for leech_name in ["PhysicalDamageLifeLeech", "LifeLeech"] {
+        let mods = vec![
+            Modifier::number(leech_name, ModType::Base, 2.0),
+            Modifier::flag("GhostReaver"),
+            Modifier::flag("LifeLeechBasedOnElementalDamage"),
+            Modifier::number("PhysicalDamageConvertToFire", ModType::Base, 100.0),
+            // Converted recovery does not require recovering Life.
+            Modifier::flag("CannotGainLife"),
+        ];
+        let env = run(mods.clone(), 2.0);
+        value(&env, "LifeLeechGainRate", 0.0);
+        value(&env, "EnergyShieldLeechGainRate", 20.0);
+        value(&env, "EnergyShieldLeechGainPerHit", 20.0);
+        for flag in ["CannotGainEnergyShield", "CannotLeechEnergyShield"] {
+            let mut blocked = mods.clone();
+            blocked.push(Modifier::flag(flag));
+            let env = run(blocked, 2.0);
+            value(&env, "EnergyShieldLeechGainRate", 0.0);
+            let panel = pobr_core::calc::calc_leech_from_db(
+                &env.player.mod_db,
+                &env.cfg,
+                env.player.output.energy_shield,
+                1000.0,
+                pobr_core::calc::LeechResource::EnergyShield,
+            );
+            assert_eq!(panel.instance_total, 0.0);
+            assert_eq!(panel.display_rate_per_second, 0.0);
+        }
+    }
+}
+
+#[test]
+fn parsed_mystic_harvest_extends_physical_attack_leech_before_ghost_reaver() {
+    let leech = crate::support::parse_mod("Leech 2% of Physical Attack Damage as Life")
+        .unwrap()
+        .mods;
+    let harvest = crate::support::parse_mod(
+        "[LifeLeech|Life Leech] recovers based on your [ElementalDamage|Elemental] damage as well as [Physical] damage",
+    ).unwrap().mods;
+    assert!(
+        harvest
+            .iter()
+            .any(|m| m.name.as_str() == "LifeLeechBasedOnElementalDamage")
+    );
+    let ghost = crate::support::parse_mod("Life Leech is Converted to Energy Shield Leech")
+        .unwrap()
+        .mods;
+    for conversion in [50.0, 100.0] {
+        let mut mods = leech.clone();
+        mods.extend(harvest.clone());
+        mods.extend(ghost.clone());
+        mods.extend([
+            Modifier::number("PhysicalDamageConvertToFire", ModType::Base, conversion),
+            Modifier::number("ChaosDamageMin", ModType::Base, 1000.0),
+            Modifier::number("ChaosDamageMax", ModType::Base, 1000.0),
+        ]);
+        let env = run(mods.clone(), 2.0);
+        // 1000 Physical/Fire damage funds 20 ES; the extra Chaos funds none.
+        value(&env, "LifeLeechGainPerHit", 0.0);
+        value(&env, "EnergyShieldLeechGainPerHit", 20.0);
+        value(&env, "EnergyShieldLeechGainRate", 20.0);
+        let mut spell = Env::new(env.player.clone());
+        spell.cfg = CalcConfig::spell();
+        perform(&mut spell).unwrap();
+        value(&spell, "EnergyShieldLeechGainPerHit", 0.0);
+        for (cfg, expected) in [(CalcConfig::attack(), 20.0), (CalcConfig::spell(), 0.0)] {
+            let mut session =
+                pobr_core::calc::CalculationSession::new(pobr_core::calc::MinimalInput {
+                    base_life: 1000.0,
+                    base_hit_min: 1000.0,
+                    base_hit_max: 1000.0,
+                    base_action_rate: 2.0,
+                    ..Default::default()
+                })
+                .with_config(cfg);
+            session.add_modifiers(mods.clone());
+            session.add_modifiers([Modifier::number("EnergyShield", ModType::Base, 300.0)]);
+            let completed = session.finish().unwrap();
+            assert_eq!(
+                display_value(completed.output(), "EnergyShieldLeechGainRate"),
+                expected
+            );
+            assert_eq!(display_value(completed.output(), "EsLeechRate"), expected);
+            let detail = completed.derived_detail("EsLeechRate").unwrap();
+            assert_eq!(detail.formula, "max(0, PrimaryLeechInstanceRate)");
+            for (id, value) in [
+                ("PrimaryLeechedAmount", expected),
+                ("PrimaryLeechRateCap", 30.0),
+                ("PrimaryLeechInstanceRate", expected),
+            ] {
+                assert_eq!(
+                    detail.inputs.iter().find(|(key, _)| key == id).unwrap().1,
+                    value
+                );
+            }
+        }
+    }
+    for mut mods in [leech, harvest] {
+        mods.extend(ghost.clone());
+        mods.push(Modifier::number(
+            "PhysicalDamageConvertToFire",
+            ModType::Base,
+            100.0,
+        ));
+        // Conversion alone cannot extend physical eligibility, and Mystic
+        // Harvest alone cannot grant a leech percentage.
+        value(&run(mods, 2.0), "EnergyShieldLeechGainPerHit", 0.0);
+    }
+}
+
+#[test]
+fn typed_leech_panel_recognises_nonphysical_sources_and_caps_the_whole_hit() {
+    for (source, fire, chaos, expected_amount) in [
+        ("FireDamageEnergyShieldLeech", 1000.0, 1000.0, 20.0),
+        ("ElementalDamageEnergyShieldLeech", 1000.0, 1000.0, 20.0),
+        ("DamageEnergyShieldLeech", 1000.0, 1000.0, 40.0),
+        // The 80,000 total hit is scaled to 40,000; only its Fire quarter
+        // funds the typed 2% leech: 10,000 * 2% = 200, not 400.
+        ("FireDamageEnergyShieldLeech", 20000.0, 60000.0, 200.0),
+    ] {
+        let mut session = pobr_core::calc::CalculationSession::new(pobr_core::calc::MinimalInput {
+            base_hit_min: fire,
+            base_hit_max: fire,
+            base_action_rate: 2.0,
+            ..Default::default()
+        })
+        .with_config(CalcConfig::attack());
+        session.add_modifiers([
+            Modifier::number(source, ModType::Base, 2.0),
+            Modifier::number("PhysicalDamageConvertToFire", ModType::Base, 100.0),
+            Modifier::number("ChaosDamageMin", ModType::Base, chaos),
+            Modifier::number("ChaosDamageMax", ModType::Base, chaos),
+            Modifier::number("EnergyShield", ModType::Base, 300.0),
+        ]);
+        let completed = session.finish().unwrap();
+        let expected_rate = f64::min(expected_amount, 30.0);
+        assert_eq!(
+            display_value(completed.output(), "EsLeechRate"),
+            expected_rate
+        );
+        assert_eq!(
+            display_value(completed.output(), "EnergyShieldLeechGainRate"),
+            expected_rate
+        );
+        let detail = completed.derived_detail("EsLeechRate").unwrap();
+        assert_eq!(
+            detail
+                .inputs
+                .iter()
+                .find(|(id, _)| id == "PrimaryLeechedAmount")
+                .unwrap()
+                .1,
+            expected_amount
+        );
+        let rebuilt = detail
+            .inputs
+            .iter()
+            .filter(|(id, _)| id.ends_with("LeechInstanceRate"))
+            .map(|(_, value)| *value)
+            .fold(0.0_f64, f64::max);
+        assert_eq!(rebuilt, expected_rate);
+    }
+}
+
+#[test]
+fn regeneration_shares_only_increases_and_reductions_with_the_destination() {
+    // additive_modifiers_to_life_regeneration_also_apply_to_mana_regeneration_rate
+    // and mana_regeneration_rate_modifiers_apply_to_rage_regeneration.
+    for (source, destination, text) in [
+        (
+            "Life",
+            "Mana",
+            "Increases and Reductions to Life Regeneration Rate also apply to Mana Regeneration Rate",
+        ),
+        (
+            "Mana",
+            "Rage",
+            "Increases and Reductions to Mana Regeneration Rate also apply to Rage Regeneration Rate",
+        ),
+    ] {
+        let mut mods = crate::support::parse_mod(text).unwrap().mods;
+        mods.extend([
+            Modifier::number(format!("{source}Regen"), ModType::Base, 1000.0),
+            Modifier::number(format!("{source}RegenPercent"), ModType::Base, 10.0),
+            Modifier::number(format!("{source}Regen"), ModType::Inc, 50.0)
+                .with_source("recovery.shared"),
+            Modifier::number(format!("{source}Regen"), ModType::Inc, -20.0),
+            Modifier::number(format!("{source}RegenRate"), ModType::Inc, 10.0),
+            Modifier::number(format!("{source}Regen"), ModType::More, 100.0),
+            Modifier::number(format!("{source}RecoveryRate"), ModType::Inc, 100.0),
+            Modifier::number(format!("{source}Regen"), ModType::Inc, 500.0).with_tag(
+                pobr_core::ModTag::Condition {
+                    var: "UnselectedRecoveryCondition".into(),
+                    negated: false,
+                    actor: None,
+                },
+            ),
+            Modifier::number(format!("{destination}Regen"), ModType::Base, 10.0),
+            Modifier::number(format!("{destination}Regen"), ModType::Inc, 20.0),
+            Modifier::number(format!("{destination}Regen"), ModType::More, 50.0),
+        ]);
+        let env = run(mods.clone(), 0.0);
+        // 10 * (1 + (20 + 50 - 20 + 10) / 100) * 1.5 = 24.
+        value(&env, &format!("{destination}RegenRecovery"), 24.0);
+        // Query-time routing leaves the original sources and modifiers intact.
+        assert_eq!(
+            env.player.mod_db.named(&format!("{source}Regen")).count(),
+            5
+        );
+        assert_eq!(
+            env.player
+                .mod_db
+                .named(&format!("{destination}Regen"))
+                .count(),
+            3
+        );
+        let mut session = pobr_core::calc::CalculationSession::new(pobr_core::calc::MinimalInput {
+            base_life: 1000.0,
+            base_mana: 500.0,
+            ..Default::default()
+        });
+        session.add_modifiers(mods);
+        let completed = session.finish().unwrap();
+        let output = display_value(completed.output(), &format!("{destination}RegenRecovery"));
+        assert_eq!(output, 24.0);
+        for stat in [
+            format!("{destination}Regen"),
+            format!("{destination}RegenRecovery"),
+        ] {
+            let groups = completed.detail_sources(&stat);
+            let shared = groups
+                .iter()
+                .find(|g| g.name == format!("{source}Regen"))
+                .unwrap();
+            assert_eq!(shared.totals, (0.0, 30.0, 1.0));
+            assert!(
+                shared
+                    .rows
+                    .iter()
+                    .all(|r| r.modifier.mod_type == ModType::Inc)
+            );
+            assert!(
+                shared
+                    .rows
+                    .iter()
+                    .any(|r| !r.active && r.value == Some(500.0))
+            );
+            assert!(
+                shared
+                    .rows
+                    .iter()
+                    .any(|r| r.active && r.modifier.source.as_deref() == Some("recovery.shared"))
+            );
+            let base: f64 = groups.iter().map(|g| g.totals.0).sum();
+            let inc: f64 = groups.iter().map(|g| g.totals.1).sum();
+            let more: f64 = groups.iter().map(|g| g.totals.2).product();
+            assert_eq!(base * (1.0 + inc / 100.0) * more, output);
+        }
+    }
 }

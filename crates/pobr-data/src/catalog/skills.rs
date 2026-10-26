@@ -223,6 +223,12 @@ pub struct GrantedEffectDef {
     /// (`minionHasItemSet`, merged the same way).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub minion_has_item_set: bool,
+    /// Support eligibility cannot borrow the summoned minion's skill types
+    /// (`GrantedEffects.IgnoreMinionTypes`). Direct compatibility with the
+    /// summoning skill still applies. Merged from the minion sidecar, whose
+    /// extractor retains the vendor's exported `ignoreMinionTypes` value.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ignore_minion_types: bool,
 }
 
 impl GrantedEffectDef {

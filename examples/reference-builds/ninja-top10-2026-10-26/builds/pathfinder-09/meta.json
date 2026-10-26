@@ -1,0 +1,40 @@
+{
+  "name": "pathfinder-09",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/defaplayer-3684/chomame",
+    "account": "defaplayer-3684",
+    "character": "chomame",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:54:37+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=defaplayer-3684&name=chomame&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Pathfinder",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 9,
+    "index_sha256": "97e6a76625b8f5a57cb940932b16eaf3861b666a35991aad6a40c63ef82a8d03",
+    "character_response_sha256": "074707260f35e4769c9af8ac8fbafa2cab5fae92ba3663fac7b07b00134e2142",
+    "upstream_updated_utc": "2026-10-09T09:39:03.833811Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:24.715925Z",
+    "upstream_last_checked_utc": "2026-10-25T10:33:39.181885Z"
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Pathfinder",
+    "level": 100,
+    "main_skill": "Blasphemy"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 5,
+    "code_sha256": "597c61078b93fbfd23e7e5d768040e38e06e97b92b2dbb57d379488c2c97992f",
+    "code_chars": 9788,
+    "decoded_bytes": 31789
+  }
+}

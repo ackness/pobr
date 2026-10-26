@@ -1,0 +1,40 @@
+{
+  "name": "blood-mage-08",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Will-3154/nonowill",
+    "account": "Will-3154",
+    "character": "nonowill",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:40+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Will-3154&name=nonowill&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Blood+Mage",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 8,
+    "index_sha256": "67f985c6feb43317e04c08caa468fd4d93c90082d9bbc9b8aed00e69e93b2ad3",
+    "character_response_sha256": "aeba07144b0ed879f5fcf1a39b92e321be3fd77628b2c162bfae2a9bf0365ddc",
+    "upstream_updated_utc": "2026-10-02T15:37:47.428387Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-25T09:26:49.895389Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Blood Mage",
+    "level": 99,
+    "main_skill": "Impending Doom"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 11,
+    "code_sha256": "ea47a52d6f27517816aa49939f4008a31b304f3ab73547e1664a10abb5aff4ce",
+    "code_chars": 13008,
+    "decoded_bytes": 47178
+  }
+}

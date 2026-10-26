@@ -1,0 +1,249 @@
+{
+  "initial_aggregate_accuracy": [
+    {
+      "corpus": "examples/wasm-benchmark/builds",
+      "builds": 8,
+      "damage_agrees": 5,
+      "agreeing_rows": 661,
+      "compared_rows": 715
+    },
+    {
+      "corpus": "examples/reference-builds/tuned/builds",
+      "builds": 69,
+      "damage_agrees": 58,
+      "agreeing_rows": 5794,
+      "compared_rows": 6119
+    },
+    {
+      "corpus": "examples/reference-builds/holdout/builds",
+      "builds": 23,
+      "damage_agrees": 17,
+      "agreeing_rows": 1912,
+      "compared_rows": 2034
+    }
+  ],
+  "initial_failed_steps": [],
+  "targeted_rerun": {
+    "log": "gate-banner.log",
+    "aggregate_accuracy": [
+      {
+        "corpus": "examples/wasm-benchmark/builds",
+        "builds": 8,
+        "damage_agrees": 5,
+        "agreeing_rows": 661,
+        "compared_rows": 715
+      },
+      {
+        "corpus": "examples/reference-builds/tuned/builds",
+        "builds": 69,
+        "damage_agrees": 58,
+        "agreeing_rows": 5794,
+        "compared_rows": 6119
+      },
+      {
+        "corpus": "examples/reference-builds/holdout/builds",
+        "builds": 23,
+        "damage_agrees": 17,
+        "agreeing_rows": 1912,
+        "compared_rows": 2034
+      }
+    ],
+    "inputs": {
+      "git_commit": "8d30bd843a29cef5a151d37e110f182f39dacf06",
+      "started_at": "2026-10-26T19:49:13.225249+00:00",
+      "command": "mise run gate --only fmt,regen,clippy,core,build,parity,apps,accuracy",
+      "change": "S12 native planted Banner attack-speed rule; no Web/i18n changes. Prior gate runs remain archived."
+    },
+    "exit": 0,
+    "passed_steps": [
+      "fmt",
+      "regen",
+      "clippy",
+      "core",
+      "build",
+      "parity",
+      "apps",
+      "accuracy"
+    ],
+    "failed_steps": []
+  },
+  "gate_inputs": {
+    "git_commit": "9b9f9cc1ad9fee9c52ed2714cdf850b86bca400d",
+    "started_at": "2026-10-26T18:40:22.572187+00:00",
+    "command": "mise run gate"
+  },
+  "gate_exit": 0,
+  "steps_passed": [
+    "accuracy",
+    "apps",
+    "build",
+    "clippy",
+    "core",
+    "fmt",
+    "i18n",
+    "parity",
+    "regen",
+    "web"
+  ],
+  "failed_steps": [],
+  "aggregate_accuracy": [
+    {
+      "corpus": "examples/wasm-benchmark/builds",
+      "builds": 8,
+      "damage_agrees": 5,
+      "agreeing_rows": 661,
+      "compared_rows": 715
+    },
+    {
+      "corpus": "examples/reference-builds/tuned/builds",
+      "builds": 69,
+      "damage_agrees": 58,
+      "agreeing_rows": 5794,
+      "compared_rows": 6119
+    },
+    {
+      "corpus": "examples/reference-builds/holdout/builds",
+      "builds": 23,
+      "damage_agrees": 17,
+      "agreeing_rows": 1912,
+      "compared_rows": 2034
+    }
+  ],
+  "holdout_scope": "Aggregate accuracy only; no individual holdout inspected.",
+  "browser_scope": "Web typecheck/unit tests and Rust WASM/JSON contracts; 508 Web tests passed, 5 skipped (3 opt-in benchmark tests and 2 useBuildSession WASM tests). No actual browser interaction validation claimed.",
+  "independent_reviews": "See review-summary.json; focused regression execution belongs to the implementation commits.",
+  "reference_scope": "The accuracy gate covers benchmark/tuned/holdout. The separate triage measurement covers the full230 frozen cohort and77 worked builds; numerical disagreement is diagnostic.",
+  "targeted_reruns": [
+    {
+      "log": "gate-rerun.log",
+      "aggregate_accuracy": [
+        {
+          "corpus": "examples/wasm-benchmark/builds",
+          "builds": 8,
+          "damage_agrees": 5,
+          "agreeing_rows": 661,
+          "compared_rows": 715
+        },
+        {
+          "corpus": "examples/reference-builds/tuned/builds",
+          "builds": 69,
+          "damage_agrees": 58,
+          "agreeing_rows": 5794,
+          "compared_rows": 6119
+        },
+        {
+          "corpus": "examples/reference-builds/holdout/builds",
+          "builds": 23,
+          "damage_agrees": 17,
+          "agreeing_rows": 1912,
+          "compared_rows": 2034
+        }
+      ],
+      "inputs": {
+        "git_commit": "18cdb434e8061a5910edfb39d3f7815cf87d9d6f",
+        "started_at": "2026-10-26T19:09:01.464216+00:00",
+        "command": "mise run gate --only fmt,regen,clippy,core,build,parity,apps,accuracy",
+        "change": "Companion identity/source review fixes and two additional native support restrictions after initial9-cause gate; Web/i18n inputs unchanged."
+      },
+      "exit": 0,
+      "passed_steps": [
+        "fmt",
+        "regen",
+        "clippy",
+        "core",
+        "build",
+        "parity",
+        "apps",
+        "accuracy"
+      ],
+      "failed_steps": []
+    },
+    {
+      "log": "gate-final.log",
+      "aggregate_accuracy": [
+        {
+          "corpus": "examples/wasm-benchmark/builds",
+          "builds": 8,
+          "damage_agrees": 5,
+          "agreeing_rows": 661,
+          "compared_rows": 715
+        },
+        {
+          "corpus": "examples/reference-builds/tuned/builds",
+          "builds": 69,
+          "damage_agrees": 58,
+          "agreeing_rows": 5794,
+          "compared_rows": 6119
+        },
+        {
+          "corpus": "examples/reference-builds/holdout/builds",
+          "builds": 23,
+          "damage_agrees": 17,
+          "agreeing_rows": 1912,
+          "compared_rows": 2034
+        }
+      ],
+      "inputs": {
+        "git_commit": "23e013775504fb933006c50a060298728545ccb0",
+        "started_at": "2026-10-26T19:22:59.171646+00:00",
+        "command": "mise run gate --only fmt,clippy,core,build,parity,apps,accuracy",
+        "change": "Brutality dealt-type ailment review fix. Parser/catalog/generated, Web and i18n inputs unchanged; prior passing checks retained."
+      },
+      "exit": 0,
+      "passed_steps": [
+        "fmt",
+        "clippy",
+        "core",
+        "build",
+        "parity",
+        "apps",
+        "accuracy"
+      ],
+      "failed_steps": []
+    },
+    {
+      "log": "gate-banner.log",
+      "aggregate_accuracy": [
+        {
+          "corpus": "examples/wasm-benchmark/builds",
+          "builds": 8,
+          "damage_agrees": 5,
+          "agreeing_rows": 661,
+          "compared_rows": 715
+        },
+        {
+          "corpus": "examples/reference-builds/tuned/builds",
+          "builds": 69,
+          "damage_agrees": 58,
+          "agreeing_rows": 5794,
+          "compared_rows": 6119
+        },
+        {
+          "corpus": "examples/reference-builds/holdout/builds",
+          "builds": 23,
+          "damage_agrees": 17,
+          "agreeing_rows": 1912,
+          "compared_rows": 2034
+        }
+      ],
+      "inputs": {
+        "git_commit": "8d30bd843a29cef5a151d37e110f182f39dacf06",
+        "started_at": "2026-10-26T19:49:13.225249+00:00",
+        "command": "mise run gate --only fmt,regen,clippy,core,build,parity,apps,accuracy",
+        "change": "S12 native planted Banner attack-speed rule; no Web/i18n changes. Prior gate runs remain archived."
+      },
+      "exit": 0,
+      "passed_steps": [
+        "fmt",
+        "regen",
+        "clippy",
+        "core",
+        "build",
+        "parity",
+        "apps",
+        "accuracy"
+      ],
+      "failed_steps": []
+    }
+  ]
+}

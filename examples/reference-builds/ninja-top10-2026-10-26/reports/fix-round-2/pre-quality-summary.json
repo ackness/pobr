@@ -1,0 +1,258 @@
+{
+  "git_commit": "ef00c7e7d777255d74726537a8beb9dfebb15845",
+  "data_version": "0.5.5.4.2",
+  "source_snapshot": "0757-20261026-16736",
+  "builds_imported_and_calculated": 230,
+  "failed_imports_or_calculations": 0,
+  "missing_items_reported": 0,
+  "negative_typed_hit_pools": 0,
+  "agreed_rows": 19123,
+  "compared_rows": 20427,
+  "builds_with_agreeing_damage": 159,
+  "builds_with_all_compared_rows_agreeing": 32,
+  "unsupported_line_occurrences": 2148,
+  "builds_with_unsupported_lines": 228,
+  "per_ascendancy": {
+    "Abyssal Lich": {
+      "builds": 10,
+      "compared_rows": 902,
+      "agreed_rows": 788,
+      "damage_agrees": 2
+    },
+    "Acolyte of Chayula": {
+      "builds": 10,
+      "compared_rows": 868,
+      "agreed_rows": 845,
+      "damage_agrees": 9
+    },
+    "Amazon": {
+      "builds": 10,
+      "compared_rows": 915,
+      "agreed_rows": 841,
+      "damage_agrees": 5
+    },
+    "Blood Mage": {
+      "builds": 10,
+      "compared_rows": 876,
+      "agreed_rows": 805,
+      "damage_agrees": 4
+    },
+    "Chronomancer": {
+      "builds": 10,
+      "compared_rows": 885,
+      "agreed_rows": 842,
+      "damage_agrees": 8
+    },
+    "Deadeye": {
+      "builds": 10,
+      "compared_rows": 902,
+      "agreed_rows": 887,
+      "damage_agrees": 10
+    },
+    "Disciple of Varashta": {
+      "builds": 10,
+      "compared_rows": 876,
+      "agreed_rows": 844,
+      "damage_agrees": 8
+    },
+    "Gemling Legionnaire": {
+      "builds": 10,
+      "compared_rows": 894,
+      "agreed_rows": 802,
+      "damage_agrees": 5
+    },
+    "Infernalist": {
+      "builds": 10,
+      "compared_rows": 875,
+      "agreed_rows": 806,
+      "damage_agrees": 10
+    },
+    "Invoker": {
+      "builds": 10,
+      "compared_rows": 887,
+      "agreed_rows": 839,
+      "damage_agrees": 7
+    },
+    "Lich": {
+      "builds": 10,
+      "compared_rows": 875,
+      "agreed_rows": 829,
+      "damage_agrees": 6
+    },
+    "Martial Artist": {
+      "builds": 10,
+      "compared_rows": 890,
+      "agreed_rows": 777,
+      "damage_agrees": 3
+    },
+    "Oracle": {
+      "builds": 10,
+      "compared_rows": 889,
+      "agreed_rows": 843,
+      "damage_agrees": 7
+    },
+    "Pathfinder": {
+      "builds": 10,
+      "compared_rows": 877,
+      "agreed_rows": 849,
+      "damage_agrees": 10
+    },
+    "Ritualist": {
+      "builds": 10,
+      "compared_rows": 887,
+      "agreed_rows": 846,
+      "damage_agrees": 8
+    },
+    "Shaman": {
+      "builds": 10,
+      "compared_rows": 882,
+      "agreed_rows": 802,
+      "damage_agrees": 6
+    },
+    "Smith of Kitava": {
+      "builds": 10,
+      "compared_rows": 893,
+      "agreed_rows": 827,
+      "damage_agrees": 8
+    },
+    "Spirit Walker": {
+      "builds": 10,
+      "compared_rows": 899,
+      "agreed_rows": 831,
+      "damage_agrees": 5
+    },
+    "Stormweaver": {
+      "builds": 10,
+      "compared_rows": 875,
+      "agreed_rows": 846,
+      "damage_agrees": 9
+    },
+    "Tactician": {
+      "builds": 10,
+      "compared_rows": 883,
+      "agreed_rows": 825,
+      "damage_agrees": 7
+    },
+    "Titan": {
+      "builds": 10,
+      "compared_rows": 884,
+      "agreed_rows": 842,
+      "damage_agrees": 8
+    },
+    "Warbringer": {
+      "builds": 10,
+      "compared_rows": 906,
+      "agreed_rows": 834,
+      "damage_agrees": 4
+    },
+    "Witchhunter": {
+      "builds": 10,
+      "compared_rows": 907,
+      "agreed_rows": 873,
+      "damage_agrees": 10
+    }
+  },
+  "most_frequent_differences": {
+    "SpiritUnreserved": 113,
+    "SpiritUnreservedPercent": 113,
+    "TotalDPS": 63,
+    "CombinedDPS": 60,
+    "WithBleedDPS": 58,
+    "WithPoisonDPS": 58,
+    "WithIgniteDPS": 55,
+    "TotalDotDPS": 54,
+    "AverageBurstDamage": 53,
+    "IgniteDPS": 47,
+    "TotalEHP": 47,
+    "ColdMaxHit": 31,
+    "LightningMaxHit": 29,
+    "FireMaxHit": 28,
+    "AverageDamage": 28,
+    "PhysicalMaxHit": 26,
+    "ChaosMaxHit": 23,
+    "ReqStr": 22,
+    "ReqInt": 21,
+    "Spirit": 16,
+    "LifeLeechGainRate": 16,
+    "ActiveTotemLimit": 15,
+    "DeflectChance": 14,
+    "RageRegenRecovery": 13,
+    "ManaPerSecondCost": 12,
+    "LifeUnreserved": 11,
+    "LifeRecoverable": 11,
+    "ActiveMinionLimit": 11,
+    "ActionRate": 11,
+    "ManaRegenRecovery": 11,
+    "IgniteDamage": 10,
+    "LifeUnreservedPercent": 9,
+    "CritMultiplier": 9,
+    "ColdResistOverCap": 9,
+    "EvadeChance": 9,
+    "MeleeEvadeChance": 9,
+    "ProjectileEvadeChance": 9,
+    "SpellEvadeChance": 9,
+    "SpellProjectileEvadeChance": 9,
+    "LifePerSecondCost": 9,
+    "FireResistOverCap": 8,
+    "CombinedAvg": 8,
+    "MinionTotalDPS": 8,
+    "ManaLeechGainRate": 7,
+    "HitSpeed": 7,
+    "CritChance": 6,
+    "LightningResistOverCap": 6,
+    "PreEffectiveCritChance": 6,
+    "ColdResist": 6,
+    "LifeRegenRecovery": 6,
+    "ChaosResistOverCap": 5,
+    "CullingDPS": 5,
+    "EnergyShieldRegenRecovery": 5,
+    "Evasion": 5,
+    "ReqDex": 4,
+    "MinionLife": 4,
+    "EnergyShield": 3,
+    "EnergyShieldRecoveryCap": 3,
+    "PoisonDPS": 3,
+    "BleedDPS": 3,
+    "FireResist": 3,
+    "DeflectionRating": 3,
+    "Cooldown": 2,
+    "EnergyShieldLeechGainRate": 2,
+    "LifeLeechGainPerHit": 2,
+    "ChaosResist": 2,
+    "AreaOfEffectRadiusMetres": 2,
+    "TotalTotemPlacementTime": 2,
+    "LightningResist": 2,
+    "ManaCost": 2,
+    "TotalDot": 1,
+    "WithDotDPS": 1,
+    "Life": 1,
+    "MinionEnergyShield": 1,
+    "ESCost": 1,
+    "ESPerSecondCost": 1,
+    "Int": 1,
+    "RagePerSecondCost": 1,
+    "Str": 1,
+    "EffectiveMovementSpeedMod": 1,
+    "ChannelTime": 1,
+    "Armour": 1,
+    "PhysicalDamageReduction": 1
+  },
+  "tolerance": 0.05,
+  "measurement": "Native CLI --reference-basis --usage with all comparable breakdowns, through the repository triage; serialized native values. Same reference-check library as the accuracy dashboard. No second calculation run for this summary.",
+  "limits": [
+    "Saved exporter values and pinned PoB2 are cross-checks, not game truth.",
+    "FullDPS is not calculated; damage uses selected main minion TotalDPS when its saved reference is nonzero.",
+    "Exporter-absent rules and timing models are disabled for reference comparison; focused native regressions cover the added rules.",
+    "Runtime errors fail triage, but numerical disagreement is reported rather than treated as a test failure.",
+    "No individual holdout inspected.",
+    "Structural audit of this frozen corpus is separate; multi-set/historical/disabled/malformed import cases were not present in that corpus."
+  ],
+  "provenance": {
+    "engine_version": "0.0.37",
+    "data_version": "0.5.5.4.2",
+    "data_sha256": "52e449270ef56b07abaa3533c432ec07ace0875355da3dc6ff1f2a9a7bea9ae6"
+  },
+  "differing_rows": 1304,
+  "row_agreement_percent": 93.62,
+  "damage_agreement_percent": 69.13
+}

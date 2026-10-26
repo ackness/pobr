@@ -1,0 +1,40 @@
+{
+  "name": "ritualist-09",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/xiaochen-2181/stmeamam",
+    "account": "xiaochen-2181",
+    "character": "stmeamam",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:55:09+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=xiaochen-2181&name=stmeamam&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Ritualist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 9,
+    "index_sha256": "1bf623e2612a8554cab6044ab4874665d511824502a2f6f0018f34fd81bbe141",
+    "character_response_sha256": "2aa9a9e49410393163d2a92fae72172930b42b72ff1a006f4531df829231c6bd",
+    "upstream_updated_utc": "2026-10-11T07:54:41.006311Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-24T13:30:55.175832Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Ritualist",
+    "level": 100,
+    "main_skill": "Living Bomb"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 3,
+    "code_sha256": "6e71aaac2d9ecd37a6af42926d0a086f825f4c0a737cea191409e0110fb7dec0",
+    "code_chars": 13784,
+    "decoded_bytes": 54765
+  }
+}

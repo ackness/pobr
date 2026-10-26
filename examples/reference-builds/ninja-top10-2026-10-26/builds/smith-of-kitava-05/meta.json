@@ -1,0 +1,40 @@
+{
+  "name": "smith-of-kitava-05",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/%E6%8B%99%E6%AD%A2-3702/%E5%90%83%E9%A5%AD%E7%9D%A1%E8%A7%89%E6%89%93%E6%B5%81%E6%94%BE",
+    "account": "拙止-3702",
+    "character": "吃饭睡觉打流放",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:56:01+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=%E6%8B%99%E6%AD%A2-3702&name=%E5%90%83%E9%A5%AD%E7%9D%A1%E8%A7%89%E6%89%93%E6%B5%81%E6%94%BE&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Smith+of+Kitava",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 5,
+    "index_sha256": "25fdb89549deb3ba14ddfee5e837bffbe12c6440602254acfcfb352492cd7fa3",
+    "character_response_sha256": "35a26feb96381087bf75e7d1ec2233320604b66a9c3a623a961ba37f96384c51",
+    "upstream_updated_utc": "2026-10-20T16:53:19.759613Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-25T03:15:46.677722Z"
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Smith of Kitava",
+    "level": 99,
+    "main_skill": "Manifest Weapon"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "236a6253c5d13b3d005b6f1cbb687decc813207aa55fa41179bf97fd578a59b7",
+    "code_chars": 10188,
+    "decoded_bytes": 33928
+  }
+}

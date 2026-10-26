@@ -1,0 +1,40 @@
+{
+  "name": "warbringer-04",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Msaki2142-7124/PSHagesaki",
+    "account": "Msaki2142-7124",
+    "character": "PSHagesaki",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:58:37+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Msaki2142-7124&name=PSHagesaki&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Warbringer",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 4,
+    "index_sha256": "258427a5d84e3e6a608fbd3c06b1a9eeeb961957587d00b5811bf9dacaf69532",
+    "character_response_sha256": "5764370a1e1ebbddaf6595e04b76b8601e43b8b3aebffd50bed4e0b62b5415c7",
+    "upstream_updated_utc": "2026-10-05T09:54:39.288474Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-22T20:09:41.131201Z"
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Warbringer",
+    "level": 99,
+    "main_skill": "Leap Slam"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "89d161c95efea1672603c1f8262bca63a1410bf8263a80ddce0d149313013aa5",
+    "code_chars": 13496,
+    "decoded_bytes": 50714
+  }
+}

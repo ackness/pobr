@@ -1,0 +1,40 @@
+{
+  "name": "pathfinder-08",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/zzzuzaha2-3404/RanRite",
+    "account": "zzzuzaha2-3404",
+    "character": "RanRite",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:54:34+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=zzzuzaha2-3404&name=RanRite&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Pathfinder",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 8,
+    "index_sha256": "97e6a76625b8f5a57cb940932b16eaf3861b666a35991aad6a40c63ef82a8d03",
+    "character_response_sha256": "49257c9eab1cc8abb317924470186ae9c050552b3c146f4adc6a76967bb5b0b5",
+    "upstream_updated_utc": "2026-10-22T19:24:58.429501Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:22.289773Z",
+    "upstream_last_checked_utc": "2026-10-24T19:31:37.595964Z"
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Pathfinder",
+    "level": 100,
+    "main_skill": "Flame Wall"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 6,
+    "code_sha256": "241795f86a042c13d7620a8158512d2c92c21c1f0c46ea19ea556af1be8fb351",
+    "code_chars": 9876,
+    "decoded_bytes": 33569
+  }
+}

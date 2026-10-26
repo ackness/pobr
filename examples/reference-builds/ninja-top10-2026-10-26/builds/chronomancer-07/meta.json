@@ -1,0 +1,40 @@
+{
+  "name": "chronomancer-07",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/NNafk-4997/ZionKz",
+    "account": "NNafk-4997",
+    "character": "ZionKz",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:44+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=NNafk-4997&name=ZionKz&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Chronomancer",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 7,
+    "index_sha256": "979a57de6925bde9d636cd7cd38f75ac920850eac435a828767a09b910794872",
+    "character_response_sha256": "9208cd19466fdf4dc1aca9d42356e6b263bc8b16d5d7e47a7b3c103697b0bfe6",
+    "upstream_updated_utc": "2026-10-25T07:57:02.53874Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-25T23:29:21.42229Z"
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Chronomancer",
+    "level": 100,
+    "main_skill": "Raise Zombie"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "da51575e2cf2b08fe1894e2b789aa75ab6ebf022490390f698b28ddeeb369f9b",
+    "code_chars": 12044,
+    "decoded_bytes": 52792
+  }
+}

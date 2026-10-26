@@ -1,0 +1,40 @@
+{
+  "name": "blood-mage-09",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/tone-2329/MirroVip",
+    "account": "tone-2329",
+    "character": "MirroVip",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:41+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=tone-2329&name=MirroVip&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Blood+Mage",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 9,
+    "index_sha256": "67f985c6feb43317e04c08caa468fd4d93c90082d9bbc9b8aed00e69e93b2ad3",
+    "character_response_sha256": "a5ed22d378fa326717df30493f01dc8b043107e3db0d2db35c3d550704ee0566",
+    "upstream_updated_utc": "2026-10-05T13:52:12.72234Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-24T00:23:44.835122Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Blood Mage",
+    "level": 99,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 10,
+    "code_sha256": "e32dcdfd841c53734f31cc04cda6ba9f1bf2f8043b83e99ce800a35beeec54d9",
+    "code_chars": 12484,
+    "decoded_bytes": 45914
+  }
+}

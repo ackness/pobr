@@ -1,0 +1,40 @@
+{
+  "name": "blood-mage-05",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Rines_sss-4494/Rines_FR",
+    "account": "Rines_sss-4494",
+    "character": "Rines_FR",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:39+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Rines_sss-4494&name=Rines_FR&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Blood+Mage",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 5,
+    "index_sha256": "67f985c6feb43317e04c08caa468fd4d93c90082d9bbc9b8aed00e69e93b2ad3",
+    "character_response_sha256": "2145421910c9a393b3e70f742a9fd595a2a928c51f7c5fb8b54c6e76c5c31b9b",
+    "upstream_updated_utc": "2026-09-29T09:11:34.631486Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-09-29T09:11:34.631486Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Blood Mage",
+    "level": 99,
+    "main_skill": "Ember Fusillade"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 6,
+    "code_sha256": "4db08326621a4e215871d81f3a40d7a9efad26e104dcab03c5ec5ed9d0b0ea10",
+    "code_chars": 12844,
+    "decoded_bytes": 49623
+  }
+}

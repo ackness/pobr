@@ -74,6 +74,99 @@ fn opts(extra: &[&str]) -> DataOrchestratorOptions {
     }
 }
 
+#[test]
+fn mana_added_cold_and_mace_conversion_keep_their_weapon_scope() {
+    use pobr_data::constants::DamageType;
+
+    let data = load_build_data();
+    let added =
+        "Attacks with this Weapon have Added Cold Damage equal to 7% to 10% of maximum Mana";
+    let conversion = "Convert 102% of Fire Damage with Mace Skills to Cold Damage";
+    let base = dual_build(Some(weapon("Shortsword", &[])));
+    let run =
+        |build: &Build, extra: &[&str]| calculate_with_data(build, &data, &opts(extra)).unwrap();
+    let cold = |hand: &pobr_core::calc::HandOutput| {
+        hand.damage_components
+            .iter()
+            .filter(|c| c.damage_type == DamageType::Cold)
+            .fold((0.0, 0.0), |(min, max), c| (min + c.min, max + c.max))
+    };
+    let plain = run(&base, &[]);
+    let mh = base
+        .clone()
+        .set_item(EquipmentSlot::Weapon1, weapon("Wooden Club", &[added]));
+    let mh_out = run(&mh, &[]);
+    assert!(cold(mh_out.main_hand.as_ref().unwrap()).0 > 0.0);
+    assert_eq!(cold(mh_out.off_hand.as_ref().unwrap()), (0.0, 0.0));
+    let larger_pool = run(&mh, &["100% increased maximum Mana"]);
+    let ordinary = cold(mh_out.main_hand.as_ref().unwrap());
+    let larger = cold(larger_pool.main_hand.as_ref().unwrap());
+    assert!(larger.0 > ordinary.0 && larger.1 > ordinary.1);
+    for actual in [&mh_out, &larger_pool] {
+        // PercentStat settles each range endpoint before skill effectiveness.
+        let flat = format!(
+            "Adds {} to {} Cold Damage to Attacks",
+            (actual.mana * 0.07).ceil(),
+            (actual.mana * 0.10).ceil()
+        );
+        let expected = run(&base, &[&flat]);
+        assert_eq!(
+            cold(actual.main_hand.as_ref().unwrap()),
+            cold(expected.main_hand.as_ref().unwrap())
+        );
+    }
+
+    let oh = base
+        .clone()
+        .set_item(EquipmentSlot::Weapon2, weapon("Shortsword", &[added]));
+    let oh_out = run(&oh, &[]);
+    assert_eq!(cold(oh_out.main_hand.as_ref().unwrap()), (0.0, 0.0));
+    assert!(cold(oh_out.off_hand.as_ref().unwrap()).0 > 0.0);
+    assert_eq!(
+        plain.off_hand.as_ref().unwrap().average_hit,
+        mh_out.off_hand.as_ref().unwrap().average_hit
+    );
+
+    let fire = "Adds 100 to 100 Fire Damage to Attacks";
+    let original = run(&base, &[fire]);
+    let converted = run(&base, &[fire, conversion]);
+    let mh_original = original.main_hand.as_ref().unwrap();
+    let mh_converted = converted.main_hand.as_ref().unwrap();
+    let fire_total: f64 = mh_original
+        .damage_components
+        .iter()
+        .filter(|c| c.damage_type == DamageType::Fire)
+        .map(|c| c.min)
+        .sum();
+    assert!(fire_total > 0.0);
+    assert!((cold(mh_converted).0 - fire_total).abs() < 1e-9);
+    assert!(
+        mh_converted
+            .damage_components
+            .iter()
+            .all(|c| c.damage_type != DamageType::Fire || c.max == 0.0)
+    );
+    assert_eq!(
+        original.off_hand.as_ref().unwrap().damage_components,
+        converted.off_hand.as_ref().unwrap().damage_components
+    );
+
+    let mut spell = mh;
+    spell.socket_groups = vec![SocketGroup::new().with_active_skill("FireballPlayer", 1)];
+    let spell_plain = run(&spell, &[]);
+    let spell_converted = run(&spell, &[conversion]);
+    assert_eq!(
+        spell_plain.damage_components,
+        spell_converted.damage_components
+    );
+    assert!(
+        spell_plain
+            .damage_components
+            .iter()
+            .all(|c| c.damage_type != DamageType::Cold || c.max == 0.0)
+    );
+}
+
 /// Dual-wield assembly + combineStat: both MH/OH sub-tables present, combined
 /// DPS = (MH+OH)/2, Speed = harmonic mean (vendor :2541-2545 / :3026); a
 /// single-hand build has no OH sub-table.
@@ -271,6 +364,47 @@ fn dual_wield_golden_baseline() {
     near("oh.total_dps", GOLDEN_OH_DPS, oh.total_dps);
     near("oh.speed", GOLDEN_OH_SPEED, oh.speed);
     near("oh.average_hit", GOLDEN_OH_AVG_HIT, oh.average_hit);
+}
+
+/// Legacy of Northpaw replaces weapon base crit, before added crit and increases.
+#[test]
+fn weapon_base_crit_override_preserves_source_scope_and_added_crit() {
+    let data = load_build_data();
+    let attack = dual_build(Some(weapon("Shortsword", &[]))).set_item(
+        EquipmentSlot::Weapon1,
+        weapon("Wooden Club", &["50% increased Critical Hit Chance"]),
+    );
+    let modifiers = [
+        "Base Critical Hit Chance for Attacks with Weapons is 7%",
+        "+1% to Critical Hit Chance",
+        "100% increased Critical Hit Chance",
+    ];
+    let out = calculate_with_data(&attack, data, &opts(&modifiers)).unwrap();
+    // The 7% replaces both the mace's local 7.5% and the sword's 5%,
+    // before added crit and global increases: (7 + 1) * 2 = 16%.
+    for hand in [out.main_hand.unwrap(), out.off_hand.unwrap()] {
+        assert!((hand.crit_chance - 0.16).abs() < 1e-9, "{hand:?}");
+    }
+
+    let mut unarmed = dual_build(None);
+    unarmed.items.remove(&EquipmentSlot::Weapon1);
+    let spell = Build::new()
+        .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20))
+        .set_item(EquipmentSlot::Weapon1, weapon("Wooden Club", &[]));
+    let shield = Build::new()
+        .add_socket_group(SocketGroup::new().with_gem_skill("ShieldWallPlayer", 20))
+        .set_item(EquipmentSlot::Weapon1, weapon("Wooden Club", &[]))
+        .set_item(EquipmentSlot::Weapon2, weapon("Crucible Tower Shield", &[]));
+    let own_crit = Build::new()
+        .add_socket_group(SocketGroup::new().with_active_skill("AcidicConcoctionPlayer", 20))
+        .set_item(EquipmentSlot::Weapon1, weapon("Wooden Club", &[]));
+    for build in [unarmed, spell, shield, own_crit] {
+        let baseline = calculate_with_data(&build, data, &opts(&modifiers[1..])).unwrap();
+        let overridden = calculate_with_data(&build, data, &opts(&modifiers)).unwrap();
+        assert!(baseline.crit_chance > 0.0);
+        assert_eq!(overridden.crit_chance, baseline.crit_chance);
+        assert_eq!(overridden.dps, baseline.dps);
+    }
 }
 
 /// Local weapon critical chance is folded before global increases and applies

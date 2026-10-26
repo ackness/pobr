@@ -1,0 +1,766 @@
+[gate] $ bash devs/scripts/driver.sh gate
+
+[1m== gate: fmt ==[0m
+
+[1m== gate: regen ==[0m
+
+[1m== precompile-mods --report (data/0.5.5.4.2) ==[0m
+precompile-mods: corpus 4277 line(s) (deduplicated), sources C1=1723 C2=2541 SD=33 CX=0
+precompile-mods: wrote /root/codes/pobr/data/0.5.5.4.2/generated/parsed_mods.json (4277 entries)
+precompile-mods: coverage 0.8260 (parsed 3533 / unsupported 744 / err 0 / total 4277)
+--- parse coverage report ---
+total 4277 | parsed 3533 | unsupported 744 | err 0 | coverage 0.8260
+by source:
+  C1_build     parsed  1223 / total  1703  (71.8%)
+  C2_tree      parsed  2277 / total  2541  (89.6%)
+  SD_derived   parsed    33 / total    33  (100.0%)
+gaps top-40 (lexicographic order):
+  [C2_tree/unsupported] 10% chance to gain [Volatility] on Kill
+  [C2_tree/unsupported] 3% chance to gain [Volatility] on Kill
+  [C2_tree/unsupported] 5% chance to gain [Volatility] on Kill
+  [C2_tree/unsupported] 50% chance to gain [Volatility] when you are [Stun|Stunned]
+  [C1_build/unsupported] Absent Amulet
+  [C1_build/unsupported] Abundant Ultimate Mana Flask of the Endless
+  [C1_build/unsupported] Adonia&apos;s Ego
+  [C1_build/unsupported] Against the Darkness
+  [C1_build/unsupported] All Damage taken from Hits Contributes to Magnitude of Chill inflicted on you
+  [C1_build/unsupported] All Mage&apos;s Legacies have 25% increased effect per duplicate Mage&apos;s Legacy you have
+  [C1_build/unsupported] All Mage&apos;s Legacies have 27% increased effect per duplicate Mage&apos;s Legacy you have
+  [C1_build/unsupported] All Mage&apos;s Legacies have 28% increased effect per duplicate Mage&apos;s Legacy you have
+  [C1_build/unsupported] All Mage&apos;s Legacies have 35% increased effect per duplicate Mage&apos;s Legacy you have
+  [C1_build/unsupported] All Mage&apos;s Legacies have 36% increased effect per duplicate Mage&apos;s Legacy you have
+  [C1_build/unsupported] All Mage&apos;s Legacies have 40% increased effect per duplicate Mage&apos;s Legacy you have
+  [C1_build/unsupported] All Mage&apos;s Legacies have 43% increased effect per duplicate Mage&apos;s Legacy you have
+  [C1_build/unsupported] All Mage&apos;s Legacies have 46% increased effect per duplicate Mage&apos;s Legacy you have
+  [C2_tree/unsupported] All [DamageTypes|Damage] is taken from Mana before Life
+50% less Mana Recovery Rate
+  [C1_build/unsupported] Alpha&apos;s Howl
+  [C1_build/unsupported] Amber Amulet
+  [C1_build/unsupported] Amethyst Ring
+  [C1_build/unsupported] Amor Mandragora
+  [C1_build/unsupported] Analyst&apos;s Stone Charm of the Perpetual
+  [C1_build/unsupported] Ancestral Tiara
+  [C1_build/unsupported] Apocalypse Desire
+  [C1_build/unsupported] Apocalypse Hope
+  [C1_build/unsupported] Apocalypse Pelt
+  [C1_build/unsupported] Apocalypse Vessel
+  [C2_tree/unsupported] Apply [Debilitate] to Enemies 30 Metres in front of you while your [Shield] is raised
+  [C1_build/unsupported] Armageddon Caress
+  [C1_build/unsupported] Armoured Cap
+  [C2_tree/unsupported] Arrows gain [Critical|Critical Hit] Chance as they travel farther, up to
+40% increased [Critical|Critical Hit] Chance after 7 metres
+  [C1_build/unsupported] Attacks consume an Endurance Charge to Critically Hit
+  [C2_tree/unsupported] Attacks gain increased [Accuracy|Accuracy Rating] equal to their [Critical|Critical Hit Chance]
+  [C2_tree/unsupported] Attribute Passive Skills can instead grant 5% increased Damage
+Attribute Passive Skills can instead grant 5% increased [Armour], [Evasion] and [EnergyShield|Energy Shield]
+Attribute Passive Skills can instead grant 5% increased Cost [Efficiency]
+  [C1_build/unsupported] Attuned Wand
+  [C1_build/unsupported] Atziri&apos;s Disdain
+  [C1_build/unsupported] Atziri&apos;s Splendour
+  [C2_tree/unsupported] Bear Spirit gains [SpiritWalkerBearAura|Embrace of the Wild]
+  [C1_build/unsupported] Beast Core
+precompile-mods: wrote /root/codes/pobr/data/0.5.5.4.2/generated/parse-coverage.json
+
+running 14 tests
+..............
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.63s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.41s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+[1m== gate: clippy ==[0m
+    Checking pobr-core v0.0.29 (/root/codes/pobr/crates/pobr-core)
+    Checking pobr-build v0.0.29 (/root/codes/pobr/crates/pobr-build)
+    Checking sync-pob-catalog v0.0.37 (/root/codes/pobr/tools/sync-pob-catalog)
+    Checking precompile-mods v0.0.37 (/root/codes/pobr/tools/precompile-mods)
+    Checking pobr-gamedata v0.0.29 (/root/codes/pobr/crates/pobr-gamedata)
+    Checking pobr-wasm v0.0.37 (/root/codes/pobr/apps/pobr-wasm)
+    Checking pobr-cli v0.0.37 (/root/codes/pobr/apps/pobr-cli)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.79s
+
+[1m== gate: core ==[0m
+
+running 479 tests
+....................................................................................... 87/479
+....................................................................................... 174/479
+....................................................................................... 261/479
+....................................................................................... 348/479
+....................................................................................... 435/479
+............................................
+test result: ok. 479 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+
+
+running 101 tests
+....................................................................................... 87/101
+..............
+test result: ok. 101 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 79 tests
+...............................................................................
+test result: ok. 79 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 226 tests
+....................................................................................... 87/226
+....................................................................................... 174/226
+....................................................
+test result: ok. 226 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+
+running 327 tests
+....................................................................................... 87/327
+....................................................................................... 174/327
+....................................................................................... 261/327
+..................................................................
+test result: ok. 327 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s
+
+
+running 43 tests
+...........................................
+test result: ok. 43 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+
+running 206 tests
+....................................................................................... 87/206
+....................................................................................... 174/206
+................................
+test result: ok. 206 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+
+running 114 tests
+....................................................................................... 87/114
+....i......................
+test result: ok. 113 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.29s
+
+
+running 145 tests
+....................................................................................... 87/145
+..........................................................
+test result: ok. 145 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+
+running 1 test
+i
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+.....
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+all doctests ran in 0.14s; merged doctests compilation took 0.10s
+
+[1m== gate: build ==[0m
+
+running 269 tests
+....................................................................................... 87/269
+....................................................................................... 174/269
+....................................................................................... 261/269
+........
+test result: ok. 269 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.07s
+
+
+running 13 tests
+.............
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.58s
+
+
+running 4 tests
+ii..
+test result: ok. 2 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 1.21s
+
+
+running 566 tests
+....................................................................................... 87/566
+....................................................................................... 174/566
+....................................................................................... 261/566
+....................................................................................... 348/566
+....................................................................................... 435/566
+....................................................................................... 522/566
+............................................
+test result: ok. 566 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.23s
+
+
+running 3 tests
+...
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s
+
+
+[1m== gate: parity ==[0m
+
+running 60 tests
+.i...ii..i........i..i......................................
+test result: ok. 54 passed; 0 failed; 6 ignored; 0 measured; 0 filtered out; finished in 38.36s
+
+
+[1m== gate: apps ==[0m
+
+running 11 tests
+...........
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.71s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 28 tests
+............................
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.74s
+
+
+running 102 tests
+....................................................................................... 87/102
+...............
+test result: ok. 102 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+...
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+....
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 66 tests
+..................................................................
+test result: ok. 66 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+
+running 40 tests
+........................................
+test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+
+
+running 26 tests
+..........................
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+
+running 42 tests
+..........................................
+test result: ok. 42 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+
+
+running 59 tests
+...........................................................
+test result: ok. 59 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+
+running 3 tests
+...
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+...
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 15 tests
+...............
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 13 tests
+.............
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 21 tests
+.....................
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 11 tests
+...........
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 21 tests
+.....................
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 24 tests
+........................
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 18 tests
+.i................
+test result: ok. 17 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.37s
+
+
+running 7 tests
+.......
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.60s
+
+
+running 10 tests
+..........
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.56s
+
+
+running 7 tests
+.......
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.91s
+
+
+running 2 tests
+..
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.72s
+
+
+running 57 tests
+.........................................................
+test result: ok. 57 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.03s
+
+
+running 5 tests
+.....
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.70s
+
+
+running 1 test
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.64s
+
+
+running 6 tests
+......
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+..
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.74s
+
+
+running 3 tests
+...
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
+
+
+running 3 tests
+...
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 52.33s
+
+
+running 5 tests
+.....
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.38s
+
+
+running 5 tests
+.....
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.57s
+
+
+running 12 tests
+............
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.27s
+
+
+running 5 tests
+.....
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+
+
+running 11 tests
+...........
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.08s
+
+
+running 1 test
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.58s
+
+
+running 2 tests
+..
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.55s
+
+
+running 2 tests
+..
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.99s
+
+
+running 4 tests
+....
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.94s
+
+
+running 11 tests
+...........
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.02s
+
+
+running 4 tests
+....
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.62s
+
+
+running 12 tests
+i...........
+test result: ok. 11 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.18s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.13s; merged doctests compilation took 0.13s
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+[1m== gate: i18n ==[0m
+lint-i18n: canonical = en-US (858 keys)
+  zh-TW: 0 missing, 0 extra
+lint-i18n: OK (no extra keys)
+
+[1m== gate: web ==[0m
+$ tsc --noEmit
+$ vitest run
+
+ RUN  v3.2.7 /root/codes/pobr/web
+
+ ✓ src/lib/weaponSets.test.ts (6 tests) 4ms
+ ✓ src/lib/treeGeometry.test.ts (3 tests) 3ms
+ ✓ src/lib/trade.test.ts (23 tests) 13ms
+ ✓ src/lib/replacementAugments.test.ts (15 tests) 12ms
+ ✓ src/lib/tradeMarket.test.ts (5 tests) 7ms
+ ✓ src/lib/configVisibility.test.ts (21 tests) 24ms
+ ✓ src/lib/compare.test.ts (17 tests) 9ms
+ ✓ src/lib/statDisplay.test.ts (12 tests) 23ms
+ ✓ src/lib/equipmentScore.test.ts (13 tests) 11ms
+ ✓ src/lib/tradePriority.test.ts (3 tests) 15ms
+ ✓ src/lib/configDefaults.test.ts (6 tests) 8ms
+ ✓ src/lib/uniqueCatalog.test.ts (4 tests) 7ms
+ ✓ src/lib/passivePlanner.test.ts (19 tests) 66ms
+ ✓ src/lib/buildGuidance.test.ts (9 tests) 8ms
+ ✓ src/lib/itemReplacement.test.ts (23 tests) 19ms
+ ✓ src/lib/supportOptimizer.test.ts (19 tests) 70ms
+ ✓ src/lib/jewelPassivePlanner.test.ts (14 tests) 47ms
+ ✓ src/lib/nodePower.test.ts (5 tests) 36ms
+ ✓ src/lib/tradeOptimizer.test.ts (21 tests) 43ms
+ ✓ src/lib/equipmentPlanner.test.ts (17 tests) 80ms
+ ✓ src/lib/itemCrafting.test.ts (3 tests) 12ms
+ ✓ src/lib/marketAffixEditor.test.ts (20 tests) 125ms
+ ✓ src/lib/tradeCatalog.test.ts (9 tests) 167ms
+ ✓ src/lib/tradeMechanics.test.ts (2 tests) 15ms
+ ✓ src/components/shell/TopBar.test.tsx (4 tests) 21ms
+ ✓ src/api/import-links.test.ts (26 tests) 35ms
+ ✓ src/api/import.test.ts (17 tests) 15ms
+ ✓ src/lib/annotations.test.ts (3 tests) 4ms
+ ✓ src/lib/buildWorkspace.test.ts (7 tests) 10ms
+ ✓ src/lib/statDetails.test.ts (4 tests) 10ms
+ ✓ src/lib/passiveGraph.test.ts (9 tests) 7ms
+ ✓ src/lib/optimize.test.ts (4 tests) 5ms
+ ✓ src/hooks/useBuildSession.test.ts (108 tests) 23ms
+ ✓ src/lib/skillSelection.test.ts (9 tests) 7ms
+ ✓ src/lib/tradeAnalysis.test.ts (2 tests) 2ms
+ ✓ src/lib/skillNames.test.ts (3 tests) 4ms
+ ✓ src/lib/pobColors.test.ts (3 tests) 3ms
+ ✓ src/lib/gemTags.test.ts (3 tests) 3ms
+ ↓ src/lib/supportBench.test.ts (1 test | 1 skipped)
+ ↓ src/lib/passiveBench.test.ts (1 test | 1 skipped)
+ ↓ src/lib/upgradeBench.test.ts (1 test | 1 skipped)
+ ↓ src/hooks/useBuildSession.wasm.test.ts (2 tests | 2 skipped)
+ ✓ src/components/calcs/CalcsPanel.test.tsx (9 tests) 33ms
+ ✓ src/components/config/ConfigPanel.test.tsx (8 tests) 46ms
+
+ Test Files  40 passed | 4 skipped (44)
+      Tests  508 passed | 5 skipped (513)
+   Start at  19:43:44
+   Duration  1.26s (transform 3.90s, setup 0ms, collect 13.47s, tests 1.05s, environment 10ms, prepare 4.48s)
+
+
+[1m== gate: accuracy ==[0m
+
+running 1 test
+
+================ REFERENCE SUMMARY (tol 5%) ================
+set                                           builds      TotalDPS                rows
+examples/wasm-benchmark/builds                     8       5   62%        661/715   92.4%
+  beyond PoB2 (each absent rule enabled alone on reference basis; differs stays enabled):
+    additional_remnant_chance [Absent]: 4 present builds; 0 changed builds, 0 changed rows
+    archon_duration_increased [Absent]: 5 present builds; 0 changed builds, 0 changed rows
+    archon_effect_reduced [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    archon_energy_shield_recharge_start [Absent]: 5 present builds; 0 changed builds, 0 changed rows
+    archon_grants_elemental_resistance [Absent]: 5 present builds; 0 changed builds, 0 changed rows
+    archon_grants_movement_speed [Absent]: 5 present builds; 0 changed builds, 0 changed rows
+    archon_no_recovery [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    attack_blind_chance_unmodelled [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    attack_maim_chance_unmodelled [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    break_increased_armour [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    cadiro_selected_arrow [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    charm_energy_shield_recharge_starts_when_used [Absent]: 6 present builds; 0 changed builds, 0 changed rows
+    charm_guard [Absent]: 2 present builds; 2 changed builds, 11 changed rows
+    charm_spirit_cat [Absent]: 3 present builds; 3 changed builds, 51 changed rows
+    charm_spirit_owl [Absent]: 1 present builds; 1 changed builds, 16 changed rows
+    charm_spirit_stag [Absent]: 2 present builds; 2 changed builds, 31 changed rows
+    charm_spirit_wolf [Absent]: 2 present builds; 2 changed builds, 22 changed rows
+    conduit_charge_gains_to_allies [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    daze_duration_unmodelled [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    double_activation_delay_of_curses [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    doubled_totem_limit [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    energy_shield_from_equipped_focus [Differs]: 5 present builds; 0 changed builds, 0 changed rows
+    event_horizon_resource_loss [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    flask_constant_effect [Absent]: 7 present builds; 0 changed builds, 0 changed rows
+    flask_damage_taken_recouped_as_life_during_effect [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    flask_removes_life_recovery_from_mana_on_use [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    grants_onslaught_during_effect [Absent]: 4 present builds; 4 changed builds, 31 changed rows
+    hits_break_increased_armour_on_ailmented_targets [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    immune_to_chill_if_majority_blue_supports_socketed [Differs]: 3 present builds; 0 changed builds, 0 changed rows
+    immune_to_ignite_if_majority_red_supports_socketed [Differs]: 3 present builds; 0 changed builds, 0 changed rows
+    immune_to_shock_if_majority_green_supports_socketed [Differs]: 3 present builds; 0 changed builds, 0 changed rows
+    maximum_number_of_elemental_infusions [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    physical_spell_critical_pin [Differs]: 3 present builds; 0 changed builds, 0 changed rows
+    reduced_slowing_potency_on_self [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    remnant_pickup_mana_recovery [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    resonance_endurance_instead_of_power [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    resonance_frenzy_instead_of_endurance [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    resonance_power_instead_of_frenzy [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    spell_mana_cost_efficiency [Absent]: 2 present builds; 2 changed builds, 4 changed rows
+    utility_charge_on_kill [Absent]: 6 present builds; 0 changed builds, 0 changed rows
+    volatility_refresh_chance [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+test reference_report::reference_report has been running for over 60 seconds
+examples/reference-builds/tuned/builds            69      58   84%       5794/6119  94.7%
+  beyond PoB2 (each absent rule enabled alone on reference basis; differs stays enabled):
+    additional_remnant_chance [Absent]: 18 present builds; 0 changed builds, 0 changed rows
+    ancestral_cry_empowered_attacks_strike_X_additional_enemies [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    ancestral_cry_non_skill_physical_to_fire_convert_% [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    archon_duration_increased [Absent]: 16 present builds; 0 changed builds, 0 changed rows
+    archon_effect_increased [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    archon_effect_reduced [Absent]: 14 present builds; 0 changed builds, 0 changed rows
+    archon_energy_shield_recharge_start [Absent]: 15 present builds; 0 changed builds, 0 changed rows
+    archon_grants_elemental_resistance [Absent]: 18 present builds; 0 changed builds, 0 changed rows
+    archon_grants_movement_speed [Absent]: 18 present builds; 0 changed builds, 0 changed rows
+    archon_no_recovery [Absent]: 14 present builds; 0 changed builds, 0 changed rows
+    archon_recovery_faster [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    archon_recovery_slower [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    archon_undeath_on_command [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    armour_break_damage_%_dealt_as_armour_break [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    armour_break_physical_damage_%_dealt_as_armour_break [Absent]: 6 present builds; 0 changed builds, 0 changed rows
+    attack_blind_chance_unmodelled [Absent]: 4 present builds; 0 changed builds, 0 changed rows
+    attack_maim_chance_unmodelled [Absent]: 9 present builds; 0 changed builds, 0 changed rows
+    attacks_chance_to_blind_on_hit_% [Absent]: 7 present builds; 0 changed builds, 0 changed rows
+    beira_ignited_ground_on_use [Absent]: 13 present builds; 0 changed builds, 0 changed rows
+    break_armour_equal_to_damage_dealt [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    break_armour_on_crit_with_spells [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    break_increased_armour [Absent]: 5 present builds; 0 changed builds, 0 changed rows
+    buffs_on_you_expire_slower [Differs]: 6 present builds; 0 changed builds, 0 changed rows
+    cadiro_selected_arrow [Absent]: 5 present builds; 0 changed builds, 0 changed rows
+    cannot_inflict_blind [Absent]: 4 present builds; 0 changed builds, 0 changed rows
+    chance_%_to_create_additional_remnant [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    chaos_damage_%_dealt_as_armour_break [Absent]: 5 present builds; 0 changed builds, 0 changed rows
+    charm_chaos_damage_prevented_recouped_as_life_and_mana [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    charm_energy_shield_recharge_starts_when_used [Absent]: 36 present builds; 0 changed builds, 0 changed rows
+    charm_guard [Absent]: 4 present builds; 4 changed builds, 23 changed rows
+    charm_life_on_use [Absent]: 6 present builds; 0 changed builds, 0 changed rows
+    charm_mana_on_use [Absent]: 9 present builds; 0 changed builds, 0 changed rows
+    charm_spirit_bear [Absent]: 4 present builds; 4 changed builds, 40 changed rows
+    charm_spirit_boar [Absent]: 3 present builds; 3 changed builds, 43 changed rows
+    charm_spirit_cat [Absent]: 8 present builds; 8 changed builds, 163 changed rows
+    charm_spirit_owl [Absent]: 7 present builds; 7 changed builds, 89 changed rows
+    charm_spirit_ox [Absent]: 7 present builds; 7 changed builds, 50 changed rows
+    charm_spirit_primate [Absent]: 4 present builds; 3 changed builds, 23 changed rows
+    charm_spirit_stag [Absent]: 11 present builds; 11 changed builds, 189 changed rows
+    charm_spirit_wolf [Absent]: 12 present builds; 12 changed builds, 119 changed rows
+    combo_additional_gain_chance [Absent]: 6 present builds; 0 changed builds, 0 changed rows
+    combo_additional_gain_one [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    combo_generation:skill_maximum_number_of_combo_stacks [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    conduit_charge_gains_to_allies [Absent]: 6 present builds; 3 changed builds, 54 changed rows
+    created_remnant_duplicate_effects [Absent]: 5 present builds; 0 changed builds, 0 changed rows
+    daze_duration_unmodelled [Absent]: 8 present builds; 0 changed builds, 0 changed rows
+    defend_with_armour_against_projectile_attacks [Absent]: 4 present builds; 0 changed builds, 0 changed rows
+    double_activation_delay_of_curses [Absent]: 6 present builds; 0 changed builds, 0 changed rows
+    doubled_totem_limit [Absent]: 4 present builds; 4 changed builds, 4 changed rows
+    energy_shield_from_equipped_focus [Differs]: 17 present builds; 0 changed builds, 0 changed rows
+    event_horizon_resource_loss [Absent]: 5 present builds; 0 changed builds, 0 changed rows
+    flask_constant_effect [Absent]: 35 present builds; 0 changed builds, 0 changed rows
+    flask_damage_taken_recouped_as_life_during_effect [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    flask_more_recovery_if_used_on_low_life [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    flask_more_recovery_if_used_on_low_mana [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    flask_removes_life_recovery_from_mana_on_use [Absent]: 4 present builds; 0 changed builds, 0 changed rows
+    focused_thrust_projectile_damage [Absent]: 5 present builds; 0 changed builds, 0 changed rows
+    grants_onslaught_during_effect [Absent]: 30 present builds; 30 changed builds, 231 changed rows
+    hits_break_increased_armour_on_ailmented_targets [Absent]: 9 present builds; 0 changed builds, 0 changed rows
+    immune_to_chill_if_majority_blue_supports_socketed [Differs]: 14 present builds; 0 changed builds, 0 changed rows
+    immune_to_ignite_if_majority_red_supports_socketed [Differs]: 14 present builds; 0 changed builds, 0 changed rows
+    immune_to_shock_if_majority_green_supports_socketed [Differs]: 14 present builds; 0 changed builds, 0 changed rows
+    increased_blind_duration [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    increased_surrounded_area_of_effect [Absent]: 4 present builds; 0 changed builds, 0 changed rows
+    maim_on_hit_% [Absent]: 7 present builds; 0 changed builds, 0 changed rows
+    mark_skill_effect [Absent]: 1 present builds; 1 changed builds, 11 changed rows
+    maximum_elemental_infusions [Absent]: 9 present builds; 0 changed builds, 0 changed rows
+    maximum_number_of_elemental_infusions [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    olroth_guard_after_effect [Absent]: 14 present builds; 0 changed builds, 0 changed rows
+    outgoing_debuff_slow_magnitude [Absent]: 7 present builds; 0 changed builds, 0 changed rows
+    physical_damage_prevented_recouped_as_life [Absent]: 4 present builds; 0 changed builds, 0 changed rows
+    physical_spell_critical_pin [Differs]: 7 present builds; 0 changed builds, 0 changed rows
+    reduced_shock_effect_on_you [Absent]: 7 present builds; 0 changed builds, 0 changed rows
+    reduced_slowing_potency_on_self [Absent]: 19 present builds; 0 changed builds, 0 changed rows
+    remnant_pickup_mana_recovery [Absent]: 4 present builds; 0 changed builds, 0 changed rows
+    resistance_per_equipped_lightning_resistance_item [Absent]: 2 present builds; 2 changed builds, 12 changed rows
+    resonance_endurance_instead_of_power [Absent]: 7 present builds; 5 changed builds, 42 changed rows
+    resonance_frenzy_instead_of_endurance [Absent]: 7 present builds; 5 changed builds, 74 changed rows
+    resonance_power_instead_of_frenzy [Absent]: 7 present builds; 5 changed builds, 33 changed rows
+    sanguis_consecrated_ground_on_use [Absent]: 8 present builds; 0 changed builds, 0 changed rows
+    scarred_faith_no_es_regeneration [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    spell_mana_cost_efficiency [Absent]: 6 present builds; 5 changed builds, 10 changed rows
+    support_increased_armour_break_armour_break_amount_+%_final [Absent]: 5 present builds; 0 changed builds, 0 changed rows
+    thaumaturgical_dynamism [Absent]: 15 present builds; 0 changed builds, 0 changed rows
+    utility_charge_on_kill [Absent]: 48 present builds; 0 changed builds, 0 changed rows
+    volatility_maximum_override [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    volatility_refresh_chance [Absent]: 4 present builds; 0 changed builds, 0 changed rows
+    wind_ground_all_elements [Absent]: 7 present builds; 7 changed builds, 64 changed rows
+examples/reference-builds/holdout/builds          23      17   74%       1912/2034  94.0%
+  beyond PoB2 (each absent rule enabled alone on reference basis; differs stays enabled):
+    additional_remnant_chance [Absent]: 8 present builds; 0 changed builds, 0 changed rows
+    ancestral_cry_empowered_attacks_strike_X_additional_enemies [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    ancestral_cry_non_skill_physical_to_fire_convert_% [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    archon_duration_increased [Absent]: 8 present builds; 0 changed builds, 0 changed rows
+    archon_effect_increased [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    archon_effect_reduced [Absent]: 4 present builds; 0 changed builds, 0 changed rows
+    archon_energy_shield_recharge_start [Absent]: 7 present builds; 0 changed builds, 0 changed rows
+    archon_grants_elemental_resistance [Absent]: 8 present builds; 0 changed builds, 0 changed rows
+    archon_grants_movement_speed [Absent]: 8 present builds; 0 changed builds, 0 changed rows
+    archon_no_recovery [Absent]: 4 present builds; 0 changed builds, 0 changed rows
+    archon_recovery_faster [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    archon_recovery_slower [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    archon_undeath_on_command [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    armour_break_damage_%_dealt_as_armour_break [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    attack_blind_chance_unmodelled [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    attack_maim_chance_unmodelled [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    attacks_chance_to_blind_on_hit_% [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    beira_ignited_ground_on_use [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    break_armour_equal_to_damage_dealt [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    break_increased_armour [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    buffs_on_you_expire_slower [Differs]: 2 present builds; 0 changed builds, 0 changed rows
+    cadiro_selected_arrow [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    chance_%_to_create_additional_remnant [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    chaos_damage_%_dealt_as_armour_break [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    charm_energy_shield_recharge_starts_when_used [Absent]: 9 present builds; 0 changed builds, 0 changed rows
+    charm_guard [Absent]: 2 present builds; 2 changed builds, 12 changed rows
+    charm_life_on_use [Absent]: 4 present builds; 0 changed builds, 0 changed rows
+    charm_mana_on_use [Absent]: 4 present builds; 0 changed builds, 0 changed rows
+    charm_spirit_bear [Absent]: 2 present builds; 2 changed builds, 19 changed rows
+    charm_spirit_cat [Absent]: 6 present builds; 6 changed builds, 104 changed rows
+    charm_spirit_owl [Absent]: 1 present builds; 1 changed builds, 8 changed rows
+    charm_spirit_ox [Absent]: 2 present builds; 2 changed builds, 17 changed rows
+    charm_spirit_primate [Absent]: 1 present builds; 1 changed builds, 6 changed rows
+    charm_spirit_stag [Absent]: 3 present builds; 3 changed builds, 51 changed rows
+    charm_spirit_wolf [Absent]: 2 present builds; 2 changed builds, 20 changed rows
+    conduit_charge_gains_to_allies [Absent]: 3 present builds; 2 changed builds, 24 changed rows
+    created_remnant_duplicate_effects [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    daze_duration_unmodelled [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    defend_with_armour_against_projectile_attacks [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    double_activation_delay_of_curses [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    doubled_totem_limit [Absent]: 3 present builds; 3 changed builds, 3 changed rows
+    energy_shield_from_equipped_focus [Differs]: 8 present builds; 0 changed builds, 0 changed rows
+    event_horizon_resource_loss [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    flask_constant_effect [Absent]: 13 present builds; 0 changed builds, 0 changed rows
+    flask_damage_taken_recouped_as_life_during_effect [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    flask_more_recovery_if_used_on_low_life [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    flask_removes_mana_recovery_from_life_on_use [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    grants_onslaught_during_effect [Absent]: 6 present builds; 6 changed builds, 49 changed rows
+    hits_break_increased_armour_on_ailmented_targets [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    immune_to_chill_if_majority_blue_supports_socketed [Differs]: 6 present builds; 0 changed builds, 0 changed rows
+    immune_to_ignite_if_majority_red_supports_socketed [Differs]: 6 present builds; 0 changed builds, 0 changed rows
+    immune_to_shock_if_majority_green_supports_socketed [Differs]: 6 present builds; 0 changed builds, 0 changed rows
+    increased_surrounded_area_of_effect [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    maim_on_hit_% [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    maximum_elemental_infusions [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    maximum_number_of_elemental_infusions [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    olroth_guard_after_effect [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    outgoing_debuff_slow_magnitude [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    physical_spell_critical_pin [Differs]: 3 present builds; 0 changed builds, 0 changed rows
+    reduced_shock_effect_on_you [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    reduced_slowing_potency_on_self [Absent]: 6 present builds; 0 changed builds, 0 changed rows
+    remnant_pickup_mana_recovery [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    resistance_per_equipped_lightning_resistance_item [Absent]: 1 present builds; 1 changed builds, 7 changed rows
+    resonance_endurance_instead_of_power [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    resonance_frenzy_instead_of_endurance [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    resonance_power_instead_of_frenzy [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    sanguis_consecrated_ground_on_use [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    spell_mana_cost_efficiency [Absent]: 3 present builds; 3 changed builds, 6 changed rows
+    support_increased_armour_break_armour_break_amount_+%_final [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    thaumaturgical_dynamism [Absent]: 6 present builds; 0 changed builds, 0 changed rows
+    utility_charge_on_kill [Absent]: 14 present builds; 0 changed builds, 0 changed rows
+    volatility_refresh_chance [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    wind_ground_all_elements [Absent]: 1 present builds; 1 changed builds, 9 changed rows
+    wind_ground_shocked [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 59 filtered out; finished in 122.86s
+
+
+[1m== gate summary ==[0m
+  ok   fmt
+  ok   regen
+  ok   clippy
+  ok   core
+  ok   build
+  ok   parity
+  ok   apps
+  ok   i18n
+  ok   web
+  ok   accuracy

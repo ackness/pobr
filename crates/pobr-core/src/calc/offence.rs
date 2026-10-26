@@ -872,6 +872,8 @@ pub struct HitMitigationPart {
 /// displayed steps ([`HitPass::average_hit_formula`], [`HitPass::dps_formula`])
 /// read the same numbers.
 pub(crate) struct HitPass {
+    /// The resolved hand/actor snapshot used by both damage legs and their details.
+    cfg: CalcConfig,
     pub effective: Vec<super::output::HitEffectiveTerms>,
     pub action_rate: f64,
     pub hit: HitChanceTerms,
@@ -881,6 +883,16 @@ pub(crate) struct HitPass {
     pub crit_pass: super::CritPassOutput,
     pub end: super::scaled_damage::DpsEndFactors,
     pub dps: f64,
+}
+
+pub(crate) fn hit_cfg(db: &ModDb, enemy_db: &ModDb, cfg: &CalcConfig) -> CalcConfig {
+    let mut hit_cfg = cfg
+        .clone()
+        .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
+    // Resolve in this hand's scope; an off-hand chain bonus must not change
+    // the other hand, and minimal/traced callers need the same snapshot.
+    super::skill_mechanics::snapshot_remaining_chains(db, enemy_db, &mut hit_cfg);
+    hit_cfg
 }
 
 pub(crate) fn hit_pass(
@@ -916,9 +928,7 @@ pub(crate) fn hit_pass(
     // produces NONE, unchanged value-for-value); ailment scaling separately
     // strips Hit via `ailment_scoped_cfg`, and ignite/bleed etc.'s DoT base
     // is still derived from hit damage that includes Hit (matching PoB2: DoT inherits hit bonuses).
-    let hit_cfg = cfg
-        .clone()
-        .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
+    let hit_cfg = hit_cfg(db, enemy_db, cfg);
     // ScaledDamageEffect (the DD/TD factor; effect == 1.0 unchanged
     // bit-for-bit when there's no mod; crit_chance is
     // a fraction input).
@@ -966,6 +976,7 @@ pub(crate) fn hit_pass(
     );
 
     HitPass {
+        cfg: hit_cfg,
         effective,
         action_rate,
         hit: hit_terms,
@@ -980,12 +991,8 @@ pub(crate) fn hit_pass(
 impl HitPass {
     /// The per-type rows of the non-crit leg with each type's crit average.
     /// `None` when the rows cannot be matched to the stage's components.
-    pub(crate) fn damage_terms(
-        &self,
-        db: &ModDb,
-        cfg: &CalcConfig,
-        input: &MinimalInput,
-    ) -> Option<HitDamageTerms> {
+    pub(crate) fn damage_terms(&self, db: &ModDb, input: &MinimalInput) -> Option<HitDamageTerms> {
+        let cfg = &self.cfg;
         let terms =
             super::crit_pass::non_crit_terms(db, cfg, input.base_hit_min, input.base_hit_max);
         let pass = &self.crit_pass;
@@ -1034,7 +1041,6 @@ impl HitPass {
         &self,
         db: &ModDb,
         enemy_db: &ModDb,
-        cfg: &CalcConfig,
     ) -> Option<Vec<HitMitigationPart>> {
         let pass = &self.crit_pass;
         if pass.mitigated_avg.is_empty()
@@ -1043,7 +1049,7 @@ impl HitPass {
         {
             return None;
         }
-        let cfg_hit = super::crit_pass::non_crit_cfg(cfg);
+        let cfg_hit = super::crit_pass::non_crit_cfg(&self.cfg);
         Some(
             pass.stored_combined_avg
                 .iter()
@@ -1463,9 +1469,7 @@ fn total_dps_traced(
     // TODO(attribution surface): DD/TD mods have no Input node yet (missing
     // direct, falling back to marginal).
     // The hit-view cfg: adds `KeywordFlags::HIT` (shares its source with the non-traced path, see the comment there).
-    let hit_cfg = cfg
-        .clone()
-        .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
+    let hit_cfg = hit_cfg(db, enemy_db, cfg);
     let scaled = scaled_damage_effect(db, enemy_db, &hit_cfg, crit.chance);
     let crit_pass = run_crit_passes(
         db,
@@ -1486,7 +1490,7 @@ fn total_dps_traced(
         ModName::from("Damage"),
     ];
     // Non-crit leg sub-graph.
-    let cfg_hit = cfg.clone().with_condition("CriticalStrike", false);
+    let cfg_hit = hit_cfg.clone().with_condition("CriticalStrike", false);
     trace.begin_pass(crate::PassId::new(
         crate::HandTag::Single,
         crate::CritTag::NonCrit,
@@ -1526,7 +1530,7 @@ fn total_dps_traced(
     trace.end_pass();
     // Crit leg sub-graph (aggregated with the CriticalStrike=true condition;
     // its value includes ×CritMultiplier, reachable from crit mod sources via crit_node's incoming edge).
-    let cfg_crit = cfg.clone().with_condition("CriticalStrike", true);
+    let cfg_crit = hit_cfg.with_condition("CriticalStrike", true);
     trace.begin_pass(crate::PassId::new(
         crate::HandTag::Single,
         crate::CritTag::Crit,
@@ -1942,14 +1946,17 @@ fn enemy_taken_inc_only_names(type_cfg: &CalcConfig, damage_type: DamageType) ->
 }
 
 /// The names the enemy's resistance to `damage_type` is summed from. The
-/// three elements share `ElementalResist` (vendor's isElemental; chaos excluded).
+/// parser's `<Type>Resistance` and imported `<Type>Resist` name are aliases.
+/// The three elements also share `ElementalResist` (chaos excluded).
 fn enemy_resist_names(damage_type: DamageType) -> Vec<ModName> {
-    let own = ModName::from(format!("{damage_type:?}Resist"));
+    let mut names = vec![
+        ModName::from(format!("{damage_type:?}Resist")),
+        ModName::from(format!("{damage_type:?}Resistance")),
+    ];
     if damage_type.is_elemental() {
-        vec![own, ModName::from("ElementalResist")]
-    } else {
-        vec![own]
+        names.push(ModName::from("ElementalResist"));
     }
+    names
 }
 
 /// The enemy's own lines behind one damage type's [`EnemyMitigationTerms`].
@@ -1970,13 +1977,45 @@ pub(crate) fn enemy_mitigation_lines<'a>(
     damage_type: DamageType,
 ) -> EnemyMitigationLines<'a> {
     let type_cfg = cfg.clone().with_damage_type(damage_type);
-    let defence_names = if damage_type == DamageType::Physical {
-        vec![
-            ModName::from("Armour"),
-            ModName::from("PhysicalDamageReduction"),
-        ]
+    let defence = if damage_type == DamageType::Physical {
+        enemy_db.evaluate_names(
+            &type_cfg,
+            &[
+                ModName::from("Armour"),
+                ModName::from("PhysicalDamageReduction"),
+            ],
+        )
     } else {
-        enemy_resist_names(damage_type)
+        let resisting = enemy_resisting_element(enemy_db, &type_cfg, damage_type);
+        let resist_cfg = type_cfg.clone().with_damage_type(resisting);
+        let names = enemy_resist_names(resisting);
+        let mut lines = enemy_db.evaluate_names(&resist_cfg, &names);
+        // The same last matching numeric override as enemy_own_resist uses.
+        // Shared ElementalResist overrides are not part of that query.
+        // Keep the existing short-name override priority, then its alias.
+        let winning = names[..2].iter().find_map(|name| {
+            lines.iter().rposition(|line| {
+                line.active
+                    && line.modifier.name == *name
+                    && line.modifier.mod_type == ModType::Override
+                    && line.modifier.effective_number(&resist_cfg).is_some()
+            })
+        });
+        for (index, line) in lines.iter_mut().enumerate() {
+            line.active &= match winning {
+                Some(winning) => index == winning,
+                None => matches!(
+                    line.modifier.mod_type,
+                    ModType::Base | ModType::Inc | ModType::More
+                ),
+            };
+            if !line.active {
+                line.value = line.modifier.value.as_number();
+            } else if winning.is_some() {
+                line.value = line.modifier.effective_number(&resist_cfg);
+            }
+        }
+        lines
     };
     let mut taken = enemy_db.evaluate_names(&type_cfg, &enemy_taken_names(damage_type));
     taken.extend(
@@ -1988,10 +2027,7 @@ pub(crate) fn enemy_mitigation_lines<'a>(
             .into_iter()
             .filter(|line| line.modifier.mod_type == ModType::Inc),
     );
-    EnemyMitigationLines {
-        defence: enemy_db.evaluate_names(&type_cfg, &defence_names),
-        taken,
-    }
+    EnemyMitigationLines { defence, taken }
 }
 
 /// The enemy's **final resistance** for a damage type (vendor
@@ -2086,13 +2122,16 @@ fn enemy_own_resist(enemy_db: &ModDb, type_cfg: &CalcConfig, damage_type: Damage
     };
     let resist_name = ModName::from(format!("{type_prefix}Resist"));
     let max_resist = enemy_max_resist_for(enemy_db, type_cfg, type_prefix, &resist_name);
-    let resist = match enemy_db.override_(type_cfg, resist_name.as_str()) {
+    let names = enemy_resist_names(damage_type);
+    let resist = match names[..2]
+        .iter()
+        .find_map(|name| enemy_db.override_(type_cfg, name.as_str()))
+    {
         Some(value) => value,
         None => {
-            let names: &[ModName] = &enemy_resist_names(damage_type);
-            let base = enemy_db.sum(ModType::Base, type_cfg, names);
-            let scale = (1.0 + enemy_db.sum(ModType::Inc, type_cfg, names) / 100.0)
-                * enemy_db.more(type_cfg, names);
+            let base = enemy_db.sum(ModType::Base, type_cfg, &names);
+            let scale = (1.0 + enemy_db.sum(ModType::Inc, type_cfg, &names) / 100.0)
+                * enemy_db.more(type_cfg, &names);
             base * scale.max(0.0)
         }
     };
@@ -2482,6 +2521,7 @@ pub(crate) struct PoolTerms {
     converted_pct: f64,
     inc: f64,
     more: f64,
+    flat_after: f64,
     override_value: Option<f64>,
     pub(crate) value: f64,
 }
@@ -2509,6 +2549,13 @@ impl PoolTerms {
         }
         steps.increased(self.inc);
         steps.more(self.more);
+        if self.flat_after != 0.0 {
+            steps.set(
+                FormulaOp::FlatAfter,
+                self.flat_after,
+                steps.current() + self.flat_after,
+            );
+        }
         steps.finish(self.value)
     }
 }
@@ -2516,14 +2563,29 @@ impl PoolTerms {
 pub(crate) fn pool_terms(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -> PoolTerms {
     let names = [ModName::from(name)];
     let converted_pct = pool_conversion_pct(db, cfg, name);
-    let flat = db.sum(ModType::Base, cfg, &names);
+    let pool_name = name.trim_start_matches("Maximum");
+    let flat = db.sum(
+        ModType::Base,
+        cfg,
+        &[
+            ModName::from(name),
+            ModName::from(format!("Extra{pool_name}")),
+        ],
+    );
     let inc = db.sum(ModType::Inc, cfg, &names);
     let more = db.more(cfg, &names);
+    // Discipline grants total ES. Its converted share remains a total,
+    // added after the destination pool's increases and multipliers.
+    let total_names = [
+        ModName::from(format!("{pool_name}Total")),
+        ModName::from(format!("Extra{pool_name}Total")),
+    ];
+    let flat_after = db.sum(ModType::Base, cfg, &total_names) * (1.0 - converted_pct / 100.0);
     // OVERRIDE wins over everything (ChaosInoculation etc. pool clamping).
     let override_value = db.override_(cfg, name);
     // vendor CalcDefence.lua:92-95: `(base × (1 − conv/100) + extra) × (1+inc) × more`.
     let value = override_value.unwrap_or_else(|| {
-        (base + flat) * (1.0 - converted_pct / 100.0) * (1.0 + inc / 100.0) * more
+        (base + flat) * (1.0 - converted_pct / 100.0) * (1.0 + inc / 100.0) * more + flat_after
     });
     PoolTerms {
         base,
@@ -2531,6 +2593,7 @@ pub(crate) fn pool_terms(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) ->
         converted_pct,
         inc,
         more,
+        flat_after,
         override_value,
         value: round(value),
     }
@@ -2541,11 +2604,8 @@ pub(crate) fn pool_terms(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) ->
 /// Only deducts from the pool itself; the **conversion into** ES/Armour/
 /// Evasion is handled by the defence matrix against the undeducted global
 /// base (`:1364`'s `ceil(globalBase × rate/100)`, see calc_defence_resources).
-// ponytail: vendor applies conv only to the base segment, exempting
-// Extra<res> -- PoBR's matrix conversion is currently injected as
-// Maximum<res> BASE, so it gets deducted along with everything else; the
-// fixture set has no "bidirectional conversion" build, migrate the injected
-// name to the Extra<res> channel if one shows up.
+// The separate Extra<res> input prevents matrix feedback. Keep the existing
+// pool deduction order: this rate applies to the combined flat pool.
 fn pool_conversion_pct(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
     let prefix = match name {
         "MaximumLife" => "Life",
@@ -2613,7 +2673,10 @@ fn scaled_pool_traced(
     let base_mods = db.sum_traced(
         ModType::Base,
         cfg,
-        &names,
+        &[
+            ModName::from(stat_name),
+            ModName::from(format!("Extra{}", stat_name.trim_start_matches("Maximum"))),
+        ],
         trace,
         format!("{stat_name} BASE modifier sum"),
     );
@@ -2641,15 +2704,34 @@ fn scaled_pool_traced(
         more_factor,
         TraceOperation::QueryMore,
     );
-    let final_value = round(base_total * (1.0 + inc_mods.value / 100.0) * more_factor);
+    let scaled = base_total * (1.0 + inc_mods.value / 100.0) * more_factor;
+    let scaled_node = trace.add_node(
+        format!("{output_label} scaled"),
+        scaled,
+        TraceOperation::Multiply,
+    );
+    trace.add_edge(base_total_node, scaled_node);
+    trace.add_edge(inc_mods.node_id, scaled_node);
+    trace.add_edge(more_node, scaled_node);
+    let total_name = format!("{}Total", stat_name.trim_start_matches("Maximum"));
+    let total_mods = db.sum_traced(
+        ModType::Base,
+        cfg,
+        &[
+            ModName::from(total_name.as_str()),
+            ModName::from(format!("Extra{total_name}")),
+        ],
+        trace,
+        format!("{total_name} direct modifier sum"),
+    );
+    let final_value = round(scaled + total_mods.value * conv_factor);
     let final_node = trace.add_node(
         format!("{output_label} final"),
         final_value,
-        TraceOperation::Multiply,
+        TraceOperation::Add,
     );
-    trace.add_edge(base_total_node, final_node);
-    trace.add_edge(inc_mods.node_id, final_node);
-    trace.add_edge(more_node, final_node);
+    trace.add_edge(scaled_node, final_node);
+    trace.add_edge(total_mods.node_id, final_node);
 
     TracedValue {
         value: final_value,

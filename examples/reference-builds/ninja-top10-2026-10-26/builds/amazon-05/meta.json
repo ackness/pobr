@@ -1,0 +1,40 @@
+{
+  "name": "amazon-05",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/sawyer196-6413/W%C3%BCrdeohnew%C3%BCrde",
+    "account": "sawyer196-6413",
+    "character": "Würdeohnewürde",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:34+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=sawyer196-6413&name=W%C3%BCrdeohnew%C3%BCrde&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Amazon",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 5,
+    "index_sha256": "d02a718c55fd5605947bb438dec47faa4ce6d241f076360e4494bf9a36333793",
+    "character_response_sha256": "b2978eb40b490a2a0d007c3ff932843ad9718f8a94de21d5e73701d29f79c31e",
+    "upstream_updated_utc": "2026-09-30T21:28:35.427617Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-23T20:22:16.810253Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Amazon",
+    "level": 99,
+    "main_skill": "Ice Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 3,
+    "code_sha256": "1a08f4c13581d9ee4d09f777bce70fae2363c6960ab85673ccccb7887251c476",
+    "code_chars": 11892,
+    "decoded_bytes": 44146
+  }
+}

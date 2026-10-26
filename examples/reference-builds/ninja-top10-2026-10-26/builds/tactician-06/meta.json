@@ -1,0 +1,40 @@
+{
+  "name": "tactician-06",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Dragons9x1-6853/BannerAndChill",
+    "account": "Dragons9x1-6853",
+    "character": "BannerAndChill",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:57:40+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Dragons9x1-6853&name=BannerAndChill&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Tactician",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 6,
+    "index_sha256": "165d7f878a35e33bc0ecb9545231966e2e0c96f7ec55bbd0e0afa3d8df6d717d",
+    "character_response_sha256": "e59e6fb4e819a97b27a9b0d7373abc2c6ffdb2f60f5e4e2b988cab8454d843f4",
+    "upstream_updated_utc": "2026-10-04T21:24:41.709469Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.639378Z",
+    "upstream_last_checked_utc": "2026-10-20T22:16:58.63497Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Tactician",
+    "level": 100,
+    "main_skill": "Wolf Pack"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 14,
+    "code_sha256": "37191f90cb4dcad148b3e7f30f4948dd68aa93671534464e59cc929d97c6028b",
+    "code_chars": 12924,
+    "decoded_bytes": 52781
+  }
+}

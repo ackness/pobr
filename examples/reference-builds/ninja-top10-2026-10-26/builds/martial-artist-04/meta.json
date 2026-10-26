@@ -1,0 +1,40 @@
+{
+  "name": "martial-artist-04",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/DeathRhythm-0867/%E0%B8%84%E0%B8%B8%E0%B8%93%E0%B8%A5%E0%B8%B4%E0%B8%82%E0%B8%B4%E0%B8%95___",
+    "account": "DeathRhythm-0867",
+    "character": "คุณลิขิต___",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:53:18+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=DeathRhythm-0867&name=%E0%B8%84%E0%B8%B8%E0%B8%93%E0%B8%A5%E0%B8%B4%E0%B8%82%E0%B8%B4%E0%B8%95___&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Martial+Artist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 4,
+    "index_sha256": "02aea86a90fa6da528c053195c09e6f13ddd2745a1893a6dc6bffbf6ecf7e1a7",
+    "character_response_sha256": "548422065a525a11ed393d2940a90069738c55c97e18453d903066929b4a5534",
+    "upstream_updated_utc": "2026-10-16T15:50:35.649748Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.408988Z",
+    "upstream_last_checked_utc": "2026-10-24T04:29:34.647752Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Martial Artist",
+    "level": 100,
+    "main_skill": "Quarterstaff Strike"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "79deca0e4e33325f9c77c767dbdbdde260eb84d7259fe7e591d245e98fd58df1",
+    "code_chars": 13456,
+    "decoded_bytes": 51665
+  }
+}

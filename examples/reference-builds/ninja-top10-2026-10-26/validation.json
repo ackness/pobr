@@ -1,0 +1,43 @@
+{
+  "validated_at": "2026-10-26T10:59:29+00:00",
+  "valid": true,
+  "ascendancies": 23,
+  "build_codes": 230,
+  "distinct_characters": 230,
+  "distinct_code_hashes": 230,
+  "per_ascendancy": {
+    "Abyssal Lich": 10,
+    "Acolyte of Chayula": 10,
+    "Amazon": 10,
+    "Blood Mage": 10,
+    "Chronomancer": 10,
+    "Deadeye": 10,
+    "Disciple of Varashta": 10,
+    "Gemling Legionnaire": 10,
+    "Infernalist": 10,
+    "Invoker": 10,
+    "Lich": 10,
+    "Martial Artist": 10,
+    "Oracle": 10,
+    "Pathfinder": 10,
+    "Ritualist": 10,
+    "Shaman": 10,
+    "Smith of Kitava": 10,
+    "Spirit Walker": 10,
+    "Stormweaver": 10,
+    "Tactician": 10,
+    "Titan": 10,
+    "Warbringer": 10,
+    "Witchhunter": 10
+  },
+  "checks": [
+    "ten original leaderboard rows per ascendancy",
+    "pinned snapshot and league",
+    "unique character identities",
+    "base64/zlib and PathOfBuilding2 XML",
+    "XML class, ascendancy and level",
+    "equipment, tree and skill sections",
+    "SHA-256 and individual/aggregate file agreement",
+    "CSV index agreement"
+  ]
+}

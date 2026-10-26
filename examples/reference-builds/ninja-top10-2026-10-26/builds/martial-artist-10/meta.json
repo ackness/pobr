@@ -1,0 +1,40 @@
+{
+  "name": "martial-artist-10",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/YanL-7275/YanLFive",
+    "account": "YanL-7275",
+    "character": "YanLFive",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:53:37+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=YanL-7275&name=YanLFive&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Martial+Artist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 10,
+    "index_sha256": "02aea86a90fa6da528c053195c09e6f13ddd2745a1893a6dc6bffbf6ecf7e1a7",
+    "character_response_sha256": "c69057017a4542533cea15e2222e2f38d11ead7671af195128b87337bb04e142",
+    "upstream_updated_utc": "2026-10-09T09:38:58.224362Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.999357Z",
+    "upstream_last_checked_utc": "2026-10-25T10:33:38.885158Z"
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Martial Artist",
+    "level": 100,
+    "main_skill": "Devour"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 6,
+    "code_sha256": "afe00351fb7e795fb855f3477f4fef435cd54576f53de5bec25ed3e61dd7c05e",
+    "code_chars": 12648,
+    "decoded_bytes": 46343
+  }
+}

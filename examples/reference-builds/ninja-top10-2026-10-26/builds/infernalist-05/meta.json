@@ -1,0 +1,40 @@
+{
+  "name": "infernalist-05",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/napotao-3703/naposcomet",
+    "account": "napotao-3703",
+    "character": "naposcomet",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:51:44+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=napotao-3703&name=naposcomet&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Infernalist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 5,
+    "index_sha256": "c86aab7ef28b505d366d0b367ccb7201de6268eabe2288a940b8d7dc6b7a23a6",
+    "character_response_sha256": "3393eb60dd47e5c20f385761c4dc8e99cf79c07afdeec6951126ac5ffee8b739",
+    "upstream_updated_utc": "2026-10-25T15:44:52.331194Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:22.279268Z",
+    "upstream_last_checked_utc": "2026-10-26T07:08:24.664225Z"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Infernalist",
+    "level": 100,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 5,
+    "code_sha256": "e2e843896b4900ff56cd1c833c6dba995d33d5e6cc144d46fd3627d84050acf6",
+    "code_chars": 13588,
+    "decoded_bytes": 54206
+  }
+}

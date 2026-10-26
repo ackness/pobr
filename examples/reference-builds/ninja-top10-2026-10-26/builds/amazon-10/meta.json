@@ -1,0 +1,40 @@
+{
+  "name": "amazon-10",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/nbxdfdthg-0386/VenasRITA",
+    "account": "nbxdfdthg-0386",
+    "character": "VenasRITA",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T09:49:36+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=nbxdfdthg-0386&name=VenasRITA&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Amazon",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 10,
+    "index_sha256": "d02a718c55fd5605947bb438dec47faa4ce6d241f076360e4494bf9a36333793",
+    "character_response_sha256": "74af8dd65d2fec23f1100621535f07f23622e2e9396471d3f8cd9f2a229b65bf",
+    "upstream_updated_utc": "2026-10-25T19:42:50.273047Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-26T03:24:14.311759Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Amazon",
+    "level": 99,
+    "main_skill": "Ice Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 7,
+    "code_sha256": "9993a1076f754e2721f09b80f9c5a1066063f00a07a5ec397362c164e71be9f2",
+    "code_chars": 11892,
+    "decoded_bytes": 44326
+  }
+}

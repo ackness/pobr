@@ -1,0 +1,40 @@
+{
+  "name": "spirit-walker-03",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Unlimited-9551/FR_Fartsmella",
+    "account": "Unlimited-9551",
+    "character": "FR_Fartsmella",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:56:26+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Unlimited-9551&name=FR_Fartsmella&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Spirit+Walker",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 3,
+    "index_sha256": "fffcc37facc276b84d7aabd4eb971c32710d1e7b5ce08ad4847d2a88e000f01c",
+    "character_response_sha256": "6772de16dde811278c095357e7193e16c7589c68554e63cf525234101c336cac",
+    "upstream_updated_utc": "2026-09-29T12:01:27.23047Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.440788Z",
+    "upstream_last_checked_utc": "2026-10-24T13:30:54.888705Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Spirit Walker",
+    "level": 100,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 10,
+    "code_sha256": "8a5759886d53598bed9e3cb6b4e025ccae84c50c9712dae1ef28ecca402cdb37",
+    "code_chars": 12480,
+    "decoded_bytes": 47396
+  }
+}

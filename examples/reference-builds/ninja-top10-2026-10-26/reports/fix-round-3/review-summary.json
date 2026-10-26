@@ -1,0 +1,119 @@
+{
+  "rounds": [
+    {
+      "revision": "e8638f18",
+      "scope": [
+        "Blackflame Covenant",
+        "explicit conquered small passive bonuses"
+      ],
+      "findings": [
+        {
+          "issue": "IgniteEffMult detail retained Fire mitigation",
+          "fixed_in": "d5e60b0d",
+          "regression": "blackflame_covenant"
+        },
+        {
+          "issue": "Hulking Form did not scale nested minion grant deltas",
+          "fixed_in": "55f453df",
+          "regression": "explicit conquered small passive bonuses with nested MinionModifier"
+        }
+      ]
+    },
+    {
+      "revision": "55f453df",
+      "scope": [
+        "Flame Wall",
+        "The Adorned nested minion effects",
+        "previous two review fixes"
+      ],
+      "findings": [
+        {
+          "issue": "Configured Flame Wall omitted allied minion projectiles",
+          "fixed_in": "2e45c66e",
+          "regression": "flame_wall:: six focused tests; minion, party, weapon context and source assertions"
+        },
+        {
+          "issue": "Redundant Flame Wall payload condition prevented equivalent party merge",
+          "fixed_in": "2e45c66e",
+          "regression": "flame_wall:: six focused tests; minion, party, weapon context and source assertions"
+        }
+      ],
+      "prior_fixes": "No further actionable findings in Adorned, Blackflame or conquered passive follow-ups."
+    },
+    {
+      "revision": "19618ed4",
+      "scope": [
+        "companion Presence rune pair"
+      ],
+      "findings": [
+        {
+          "issue": "Explicit CompanionInPresence=false was not respected",
+          "fixed_in": "c8bc63bb",
+          "regression": "companion_presence::; explicit false with positive spawned count",
+          "root_followup": "Diff inspected: checks only explicit false, leaves absent default and minion_cfg unchanged."
+        }
+      ],
+      "other_findings": []
+    },
+    {
+      "revision": "2e45c66e",
+      "scope": [
+        "final Flame Wall and actual projectile hit context",
+        "serialized item section counter",
+        "explicit CompanionInPresence exclusion"
+      ],
+      "status": "completed",
+      "findings": [],
+      "result": "No actionable findings. Reviewed code, regression assertions and retained source evidence; unknown weapon context remains explicitly unresolved. No execution or in-game measurement performed by reviewer."
+    }
+  ],
+  "execution_limit": "Independent reviews were static; reproduction cases were source-traced. Focused execution is recorded per implementation; batch gate is separate.",
+  "root_source_review": {
+    "revision": "100c80f1",
+    "scope": "Serialized implicit span decrement and destination routing",
+    "result": "One-line counter predicate separates position consumption from enchant routing; skipped variants still consume positions. Dedicated Adorned reader regression included. Independently reviewed at2e45c66e with no actionable findings."
+  },
+  "report_audit": {
+    "result": "One wording correction; no other reporting issues found.",
+    "finding": "Six defence rows across four Warbringer builds, not four rows.",
+    "response": "Maintainer wording corrected.",
+    "verified": [
+      "230 builds and23x10 cohort",
+      "307 non-holdout comparisons",
+      "19123->19179/20427 and59within/3outside",
+      "159->169 damage",
+      "2148->2114 unsupported occurrences",
+      "1307 transition records",
+      "classification447engine/63both/368reference/370known",
+      "input/XML/CLI hashes andprovenance",
+      "selected main minion examples",
+      "58 unchanged XML-bound known rows",
+      "10 gate steps and Web skips",
+      "230/230 default checks;224different outputs",
+      "baseline test"
+    ],
+    "limits": "Read-only artifact reconciliation, no engine execution or individual holdout inspection; three new differences not automatically classified known. Later follow-up measurements require separate reconciliation.",
+    "revision": "2e45c66e"
+  },
+  "post_measurement_followup": {
+    "cause": "Ordinary Buff copies were discarded before strongest merge; frozen Gemling08 applies22 instead of50 increased critical chance.",
+    "fixed_in": "cd10983e",
+    "checks": "2 focused regressions, core/buildClippy,fmt,diff passed",
+    "scope": "Ordinary Buff candidate assembly only; Debuff/Aura/alternate-set behavior preserved.",
+    "independent_review": "r4 found duplicate nested Pain Offering ExtraAura payloads stacked after first-copy removal",
+    "final_measurement": "Completed at5a3fce67:307 non-holdout cross-checks,230 reference/default checks; followup-measurement.json records actual CoC values and unchanged outputs for the ledger correction.",
+    "nested_payload_fix": "d4814eda",
+    "nested_checks": "3 ordinary_buff_copies regressions cover CoC, Wind Dancer and equal/unequal/scaled Pain Offering copies with winning leaf origins; core/buildClippyfmt passed",
+    "final_review": "r6 completed at5a3fce67: no actionable introduced defects in cd10983e..5a3fce67; numeric nonstacking, ledger/leaf sources, gates, alternate/disabled filtering and other LIST behavior reviewed statically; no execution by reviewer.",
+    "ledger_review": "r5 found collapsed outer wrappers lost one of the Offering source rows in line_usage",
+    "ledger_fix": "5a3fce67",
+    "ledger_checks": "3 build ordinary_buff_copies tests plus1 core merger regression,core/buildClippyfmt passed; actual line_usage and partial multi-source winners covered"
+  },
+  "final_report_audit": {
+    "revision": "5a3fce6767b365b7d249e5c7e9c4efca062897e2",
+    "status": "completed",
+    "findings": [],
+    "result": "No actionable reporting findings or material overclaims. Final deltas, classifications, provenance, default-mode results and gate claims reconcile with saved evidence.",
+    "limits": "Read-only artifact audit; no execution checks, individual holdout inspection or child agents."
+  }
+}

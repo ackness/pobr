@@ -1,0 +1,40 @@
+{
+  "name": "witchhunter-02",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Tormgreen-6127/Zantippi",
+    "account": "Tormgreen-6127",
+    "character": "Zantippi",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:59:03+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Tormgreen-6127&name=Zantippi&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Witchhunter",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 2,
+    "index_sha256": "68c825c7ede7286776caf99b559b87c95922487f52e1027b6ac2e7e7646aa393",
+    "character_response_sha256": "a16df0de169d80cc73b081f8078962dd427c7487548074321252f8fc6d6b43cb",
+    "upstream_updated_utc": "2026-10-26T04:54:36.822552Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-26T04:54:36.822552Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Witchhunter",
+    "level": 100,
+    "main_skill": "Crossbow Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "8d4673f792993bfcc360dece4b3c436825a3cdfdf98f3d0c1d1ab81a76b7739b",
+    "code_chars": 13432,
+    "decoded_bytes": 51392
+  }
+}

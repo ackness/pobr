@@ -1,0 +1,40 @@
+{
+  "name": "oracle-05",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/fei1234-3030/ZAOFANLAIL",
+    "account": "fei1234-3030",
+    "character": "ZAOFANLAIL",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:53:53+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=fei1234-3030&name=ZAOFANLAIL&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Oracle",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 5,
+    "index_sha256": "e5277dadbd2cde3a7c72387529bcbcbbdb7e4e98007b75fb4935d80ef3360c47",
+    "character_response_sha256": "30d5a67dc79ae70c7e50c15c5093cd761722d943df157c27e59699220d457c94",
+    "upstream_updated_utc": "2026-10-15T11:39:53.029901Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.385232Z",
+    "upstream_last_checked_utc": "2026-10-25T16:34:28.415524Z"
+  },
+  "character": {
+    "class": "Druid",
+    "ascendancy": "Oracle",
+    "level": 100,
+    "main_skill": "Lightning Bolt"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "584971070d32df49b4066aefdfaa10519369d716164b46da26d223c824a280b8",
+    "code_chars": 12684,
+    "decoded_bytes": 49763
+  }
+}

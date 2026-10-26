@@ -1,0 +1,40 @@
+{
+  "name": "shaman-05",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/seozzii-3815/%EC%95%8C%EB%B9%A0%EB%85%B8%EC%82%AC%EC%9A%B0%EB%A3%A8%EC%8A%A4",
+    "account": "seozzii-3815",
+    "character": "알빠노사우루스",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:55:29+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=seozzii-3815&name=%EC%95%8C%EB%B9%A0%EB%85%B8%EC%82%AC%EC%9A%B0%EB%A3%A8%EC%8A%A4&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Shaman",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 5,
+    "index_sha256": "379de5bbac0249c2834fbbb8e871ab7eab47d1497078feb0678e5fe004184778",
+    "character_response_sha256": "8642dba8de326205707d72067e0fdc17581623fa30a1af903f18b8bf141f1924",
+    "upstream_updated_utc": "2026-10-01T11:09:29.149096Z",
+    "upstream_last_seen_utc": null,
+    "upstream_last_checked_utc": "2026-10-23T19:28:20.606396Z"
+  },
+  "character": {
+    "class": "Druid",
+    "ascendancy": "Shaman",
+    "level": 100,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 5,
+    "code_sha256": "f3712cd4d65194ceb2cc2ad6eb812bcab3e1f839a6931860b74321ce7abf1801",
+    "code_chars": 12876,
+    "decoded_bytes": 51901
+  }
+}

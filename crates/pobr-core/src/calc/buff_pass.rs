@@ -265,8 +265,8 @@ pub fn scale_value(
 /// sorts out its attribution: preserves the original `origin` (never dropped
 /// from the trace), falling back to `(SourceKind::Buff, fallback_source_id)`
 /// when there's no origin; the scaling multiplier is recorded in `raw_text`.
-/// Non-numeric payloads (Flag/Text/NestedMods) pass through unchanged
-/// (vendor only scales `value.mod` for table payloads; pobr buff mods are always numeric/Flag).
+/// Numeric leaves of nested payloads receive the same effect factor;
+/// flags and text pass through unchanged.
 fn scale_buff_mod(
     rules: &HighPrecisionRules,
     modifier: &Modifier,
@@ -315,17 +315,70 @@ fn scale_buff_mod(
 /// mergeBuff's same-name strongest-wins merge (vendor `CalcPerform.lua:41-63`):
 /// within the same buff-name bucket, when "the mod's params match"
 /// (name/type/flags/keyword_flags/tags) and both are numeric, takes the
-/// larger; LIST payloads are always appended (`:48`'s `mod.type ~= "LIST"`).
+/// larger. ExtraAura carries the buff's ally modifiers, which use the same
+/// comparison after effect scaling; other LIST payloads remain append-only.
 fn merge_buff(dest: &mut Vec<Modifier>, src: Vec<Modifier>) {
-    for incoming in src {
-        if incoming.mod_type != ModType::List
-            && let Some(existing) = dest.iter_mut().find(|m| {
-                m.name == incoming.name
-                    && m.mod_type == incoming.mod_type
-                    && m.flags == incoming.flags
-                    && m.keyword_flags == incoming.keyword_flags
-                    && m.tags == incoming.tags
-            })
+    let same_params = |a: &Modifier, b: &Modifier| {
+        a.name == b.name
+            && a.mod_type == b.mod_type
+            && a.flags == b.flags
+            && a.keyword_flags == b.keyword_flags
+            && a.tags == b.tags
+    };
+    for mut incoming in src {
+        let extra_aura = incoming.mod_type == ModType::List
+            && incoming.name.as_str() == "ExtraAura"
+            && incoming.value.as_nested_mods().is_some();
+        if extra_aura && let ModValue::NestedMods(nested) = &mut incoming.value {
+            // Each leaf must retain its own source when differently sourced
+            // payloads share one wrapper. Minion forwarding otherwise inherits
+            // only the first wrapper's origin after the merge.
+            for inner in nested {
+                if inner.source.is_none() {
+                    inner.source = incoming.source.clone();
+                }
+                if inner.origin.is_none() {
+                    inner.origin = incoming.origin.clone();
+                }
+            }
+        }
+        if extra_aura {
+            // Keep each source-bearing wrapper for the line ledger. Only its
+            // displaced leaves are removed; surviving leaves retain the wrapper's
+            // gates and are forwarded exactly once to the minion.
+            for existing in dest.iter_mut() {
+                if !same_params(existing, &incoming) {
+                    continue;
+                }
+                if let (ModValue::NestedMods(old), ModValue::NestedMods(new)) =
+                    (&mut existing.value, &mut incoming.value)
+                {
+                    old.retain(|leaf| {
+                        let Some(index) = new.iter().position(|candidate| {
+                            candidate.mod_type != ModType::List && same_params(leaf, candidate)
+                        }) else {
+                            return true;
+                        };
+                        if let (Some(old), Some(new)) =
+                            (leaf.value.as_number(), new[index].value.as_number())
+                            && new > old
+                        {
+                            return false;
+                        }
+                        new.remove(index);
+                        true
+                    });
+                }
+            }
+            dest.retain(|modifier| {
+                !(same_params(modifier, &incoming)
+                    && modifier.value.as_nested_mods().is_some_and(<[_]>::is_empty))
+            });
+            if incoming.value.as_nested_mods().is_some_and(<[_]>::is_empty) {
+                continue;
+            }
+        } else if incoming.mod_type != ModType::List
+            && let Some(existing) = dest.iter_mut().find(|m| same_params(m, &incoming))
         {
             if let (Some(old), Some(new)) = (existing.value.as_number(), incoming.value.as_number())
                 && new > old
@@ -345,8 +398,9 @@ fn merge_buff(dest: &mut Vec<Modifier>, src: Vec<Modifier>) {
 /// effect, added to the minion's own increased and more effect of buffs and
 /// auras on itself, and the aura's magnitude; same-named auras keep the
 /// strongest of each modifier. Returns the modifiers and the conditions they
-/// set on the minion. Nothing when buffs are off or the character's auras
-/// cannot affect allies.
+/// set on the minion. Also shares configured Flame Wall projectile damage and
+/// imported party buffs. Aura restrictions and scaling only apply to auras.
+/// Nothing when buffs are off.
 pub(crate) fn auras_on_minion(
     env: &Env,
     minion_db: &ModDb,
@@ -398,6 +452,48 @@ pub(crate) fn auras_on_minion(
         conditions.push(affected_by_condition(&spec.name));
     }
     let mut has_aura = !conditions.is_empty();
+    // Flame Wall explicitly adds damage to allied projectiles. The existing
+    // passage config selects that snapshot for projectile recipients; neither
+    // aura Presence nor a previous cast/weapon swap establishes passage.
+    if env.cfg.condition("FlameWallAddedDamage")
+        && minion_cfg.flags.intersects(ModFlags::PROJECTILE)
+    {
+        for spec in env
+            .buff_skills
+            .iter()
+            .filter(|spec| spec.kind == BuffKind::Buff && spec.skill_id == "FlameWallPlayer")
+        {
+            let buff_cfg = env
+                .cfg
+                .clone()
+                .with_skill_types(spec.skill_types)
+                .with_keyword_flags(crate::skill_env::skill_keyword_flags(spec.skill_types));
+            let effect = [ModName::from("BuffEffect")];
+            let received = [ModName::from("BuffEffectOnSelf")];
+            let inc = player.sum(ModType::Inc, &buff_cfg, &effect)
+                + minion_db.sum(ModType::Inc, minion_cfg, &received)
+                + spec.local_effect_inc;
+            let more = player.more(&buff_cfg, &effect)
+                * minion_db.more(minion_cfg, &received)
+                * spec.local_effect_more
+                * spec.magnitude;
+            let source_id = format!("buff.{}", spec.skill_id);
+            let mods = spec
+                .mods
+                .iter()
+                .map(|m| {
+                    scale_buff_mod(
+                        &env.high_precision,
+                        m,
+                        (1.0 + inc / 100.0) * more,
+                        &source_id,
+                    )
+                })
+                .collect();
+            merge_buff(buffs.entry(spec.name.clone()).or_default(), mods);
+            conditions.push(affected_by_condition(&spec.name));
+        }
+    }
     for party in &env.party_buff_skills {
         let spec = &party.spec;
         if !matches!(
@@ -571,14 +667,17 @@ pub fn buff_pass(env: &mut Env) {
                 let buff_cfg = env
                     .cfg
                     .clone()
+                    .with_skill_types(spec.skill_types)
                     .with_keyword_flags(crate::skill_env::skill_keyword_flags(spec.skill_types));
                 let mut inc = env.player.mod_db.sum(ModType::Inc, &buff_cfg, &inc_names)
                     + spec.local_effect_inc;
                 let mut more = env.player.mod_db.more(&buff_cfg, &more_names)
                     * spec.magnitude
                     * spec.local_effect_more;
-                if SkillTypes::from_pob2_name("GeneratesRemnants")
-                    .is_some_and(|remnants| spec.skill_types.contains(remnants))
+                // The persistent Mana Remnants buff is not a pickup effect.
+                if spec.skill_id != "ManaRemnantsPlayer"
+                    && SkillTypes::from_pob2_name("GeneratesRemnants")
+                        .is_some_and(|remnants| spec.skill_types.contains(remnants))
                 {
                     let names = [ModName::from("RemnantEffect")];
                     inc += env.player.mod_db.sum(ModType::Inc, &env.cfg, &names);
@@ -599,6 +698,21 @@ pub fn buff_pass(env: &mut Env) {
                     .collect();
                 merge_buff(player_buffs.entry(spec.name.clone()).or_default(), scaled);
             }
+            BuffKind::CurseBuff if spec.is_mark => {
+                // Freezing/Voltaic Mark grant a self buff when the mark activates.
+                // The existing active-buff assumption is unchanged; Mark Effect
+                // scales the mark skill's numerical benefit, not its trigger rate.
+                let names = [ModName::from("MarkEffect")];
+                let mult = (1.0 + caster.mod_db.sum(ModType::Inc, &caster_cfg, &names) / 100.0)
+                    * caster.mod_db.more(&caster_cfg, &names);
+                let source_id = format!("buff.{}", spec.skill_id);
+                let scaled = spec
+                    .mods
+                    .iter()
+                    .map(|modifier| scale_buff_mod(&rules, modifier, mult, &source_id))
+                    .collect();
+                merge_buff(player_buffs.entry(spec.name.clone()).or_default(), scaled);
+            }
             BuffKind::Curse => {
                 // vendor :2289's gate: `(mode_effective and (not Hexproof or exempt)) or mark`.
                 let hexproof = env.enemy.mod_db.flag(&env.cfg, "Hexproof");
@@ -615,7 +729,10 @@ pub fn buff_pass(env: &mut Env) {
                 // (no BuffEffect), aligned with the actual vendor source;
                 // the aura source's extra AuraEffect INC (`:2296-2298`) isn't
                 // implemented (simplification (g): no aura source modeled).
-                let curse_effect = [ModName::from("CurseEffect")];
+                let mut curse_effect = vec![ModName::from("CurseEffect")];
+                if spec.is_mark {
+                    curse_effect.push(ModName::from("MarkEffect"));
+                }
                 let curse_effect_on_self = [ModName::from("CurseEffectOnSelf")];
                 // spec.local_effect_inc/more = vendor skillModList's
                 // skill-local CurseEffect section (gem quality / in-group
@@ -937,6 +1054,8 @@ pub(super) fn party_exports(env: &Env) -> Vec<super::session::BuffSpec> {
             .with_keyword_flags(crate::skill_env::skill_keyword_flags(spec.skill_types));
         let names: Vec<ModName> = if spec.kind == BuffKind::Aura {
             vec!["AuraEffect".into(), "BuffEffect".into()]
+        } else if spec.is_mark {
+            vec!["CurseEffect".into(), "MarkEffect".into()]
         } else {
             vec!["CurseEffect".into()]
         };
@@ -1678,6 +1797,73 @@ mod tests {
                 .sum(ModType::Base, &env.cfg, &[ModName::from("EnergyShield")]),
             165.0
         );
+    }
+
+    #[test]
+    fn ordinary_buff_copies_extra_aura_keeps_partial_sources_and_matching_params() {
+        use pobr_data::modifier::{KeywordFlags, ModFlags};
+
+        let aura = |source: &str, damage, speed| {
+            Modifier::new(
+                "ExtraAura",
+                ModType::List,
+                ModValue::NestedMods(vec![
+                    Modifier::number("Damage", ModType::Inc, damage),
+                    Modifier::number("AttackSpeed", ModType::Inc, speed),
+                ]),
+            )
+            .with_origin(ModifierSource::new(SourceId::new(
+                SourceKind::SkillGem,
+                source,
+            )))
+        };
+        for reverse in [false, true] {
+            let mut copies = vec![aura("first", 10.0, 40.0), aura("second", 20.0, 30.0)];
+            if reverse {
+                copies.reverse();
+            }
+            let mut merged = Vec::new();
+            merge_buff(&mut merged, copies);
+            assert_eq!(merged.len(), 2, "both wrappers keep their winning leaf");
+            for (stat, value, source) in
+                [("Damage", 20.0, "second"), ("AttackSpeed", 40.0, "first")]
+            {
+                let wrapper = merged
+                    .iter()
+                    .find(|m| m.origin.as_ref().unwrap().source_id.id == source)
+                    .unwrap();
+                let leaves = wrapper.value.as_nested_mods().unwrap();
+                assert_eq!(leaves.len(), 1);
+                assert_eq!(leaves[0].name.as_str(), stat);
+                assert_eq!(leaves[0].value.as_number(), Some(value));
+                assert_eq!(leaves[0].origin, wrapper.origin);
+            }
+            merge_buff(&mut merged, vec![aura("strongest", 30.0, 50.0)]);
+            assert_eq!(merged.len(), 1, "fully displaced wrappers are removed");
+            assert_eq!(merged[0].origin.as_ref().unwrap().source_id.id, "strongest");
+
+            let mut distinct = aura("distinct", 100.0, 100.0);
+            distinct.value = ModValue::NestedMods(vec![
+                Modifier::number("Damage", ModType::Inc, 100.0).with_flags(ModFlags::ATTACK),
+                Modifier::number("Damage", ModType::Inc, 100.0)
+                    .with_keyword_flags(KeywordFlags::HIT),
+                Modifier::number("Damage", ModType::Inc, 100.0)
+                    .with_tag(ModTag::condition("ConditionalLeaf", false)),
+            ]);
+            merge_buff(&mut merged, vec![distinct]);
+            assert_eq!(merged.len(), 2, "different leaf parameters remain separate");
+            assert_eq!(merged[0].value.as_nested_mods().unwrap().len(), 2);
+            assert_eq!(merged[1].value.as_nested_mods().unwrap().len(), 3);
+            let gated = aura("gated", 1000.0, 1000.0)
+                .with_tag(ModTag::condition("ConditionalWrapper", false));
+            merge_buff(&mut merged, vec![gated]);
+            assert_eq!(merged.len(), 3, "different wrapper gates remain separate");
+
+            let mut unrelated = aura("unrelated", 1.0, 1.0);
+            unrelated.name = "MinionModifier".into();
+            merge_buff(&mut merged, vec![unrelated.clone(), unrelated]);
+            assert_eq!(merged.len(), 5, "other LIST kinds still append");
+        }
     }
 
     /// mergeBuff's same-name strongest-wins (vendor :41-63): two specs for the same-named aura don't stack, the larger value is taken.

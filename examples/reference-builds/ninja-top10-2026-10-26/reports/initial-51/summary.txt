@@ -1,0 +1,46 @@
+PoBR 首轮构筑导入与参考数值测试
+
+来源：Forbidden Rites，快照 0757-20261026-16736。
+代码：db26811874a001e8f43cec00fbc0afcb4eb15689；游戏数据：0.5.5.4.2。
+范围：测试开始时已下载的 51 个构筑；随后下载的构筑不计入本报告。
+
+实际导入并完成计算：51/51。导入失败、计算失败、日志报告的装备丢失均为 0。
+测试程序：1 passed，0 failed，运行 52.35 秒（不含编译）。
+数值容差内：4175/4538 项（92.0%）；差异 363 项。
+伤害指标吻合：25/51 个构筑（49.02%）。
+所有可比较数值均吻合：5/51 个构筑。
+未支持词条计数：374 次，分布于 50 个构筑；跨构筑可能重复。
+容差公式：abs(PoBR - 参考值) <= 0.05 * max(abs(参考值), 1)。
+
+各升华：
+- Abyssal Lich：10 个；数值吻合 788/902（87.36%）；伤害吻合 2/10。
+- Acolyte of Chayula：10 个；数值吻合 841/868（96.89%）；伤害吻合 8/10。
+- Amazon：10 个；数值吻合 837/915（91.48%）；伤害吻合 5/10。
+- Blood Mage：10 个；数值吻合 800/876（91.32%）；伤害吻合 4/10。
+- Chronomancer：10 个；数值吻合 829/885（93.67%）；伤害吻合 6/10。
+- Deadeye：1 个；数值吻合 80/92（86.96%）；伤害吻合 0/1。
+
+出现次数最多的差异项：
+- CombinedDPS：26 个构筑。
+- SpiritUnreserved：25 个构筑。
+- SpiritUnreservedPercent：25 个构筑。
+- WithBleedDPS：24 个构筑。
+- WithPoisonDPS：24 个构筑。
+- TotalDPS：24 个构筑。
+- WithIgniteDPS：23 个构筑。
+- AverageBurstDamage：17 个构筑。
+- TotalDotDPS：17 个构筑。
+- IgniteDPS：14 个构筑。
+
+判读范围：
+- 测试程序成功代表此次报告跑完；它不以数值全部吻合作为通过条件。
+- 对照的是构筑码自带的导出器数值，并非重新运行钉定 PoB2；差异尚未归因为引擎错误或参考值差异。
+- 计算使用 reference_conditions：按项目约定对齐参考条件，部分导出器未实现的规则不计入对照。
+- 伤害指标对主技能召唤物优先使用其非零 TotalDPS，否则使用玩家 TotalDPS；不代表 Full DPS。
+- 本轮验证原生 Rust 导入与计算，未验证浏览器交互或 WASM；未穷尽检查宝石、配置等所有导入损耗类别。
+- 不修改计算逻辑、现有基线或原始构筑码。
+
+文件：summary.json（结构化报告）、builds.csv（逐构筑结果）、differences.csv（逐项差异）、accuracy.log（完整原始日志）、inputs.json（固定样本与哈希）。
+
+重跑命令：
+mise run accuracy /root/codes/pobr/.cache/ninja-top10-2026-10-26/test-initial-51/builds

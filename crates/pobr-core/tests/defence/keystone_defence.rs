@@ -569,3 +569,189 @@ fn total_channel_follows_conversion() {
     assert_eq!(res.armour, 60.0);
     assert_eq!(res.energy_shield, 40.0);
 }
+
+/// Discipline's total ES stays a direct addition when converted by Eldritch
+/// Battery. Destination increases and more modifiers only scale converted base.
+#[test]
+fn converted_total_pools_add_after_destination_scaling() {
+    use pobr_core::calc::{FormulaOp, MinimalInput};
+
+    for target in ["Life", "Mana"] {
+        for (conversion, gain) in [(100.0, 0.0), (50.0, 0.0), (0.0, 25.0)] {
+            let mut session = crate::support::session(MinimalInput {
+                base_life: 100.0,
+                base_mana: 100.0,
+                ..Default::default()
+            });
+            let maximum = format!("Maximum{target}");
+            session.add_modifiers([
+                Modifier::number("EnergyShield", ModType::Base, 500.0),
+                Modifier::number("EnergyShield", ModType::Inc, 100.0),
+                Modifier::number("EnergyShieldTotal", ModType::Base, 509.0),
+                Modifier::number(
+                    format!("EnergyShieldConvertTo{target}"),
+                    ModType::Base,
+                    conversion,
+                ),
+                Modifier::number(format!("EnergyShieldGainAs{target}"), ModType::Base, gain),
+                Modifier::number(maximum.as_str(), ModType::Inc, 66.0),
+                Modifier::number(maximum.as_str(), ModType::More, 20.0),
+            ]);
+            session.perform_minimal().unwrap();
+            let rate = (conversion + gain) / 100.0;
+            let expected = (100.0 + 500.0 * rate) * 1.66 * 1.2 + 509.0 * rate;
+            let output = session.output();
+            let pool = if target == "Life" {
+                output.life
+            } else {
+                output.mana
+            };
+            assert!(
+                (pool - expected).abs() < 1e-9,
+                "{target}: {pool} != {expected}"
+            );
+            assert_eq!(
+                output.energy_shield,
+                (1509.0 * (1.0 - conversion / 100.0)).round()
+            );
+            let formula = session.stat_formula(target).expect("pool formula");
+            assert!((formula.value - expected).abs() < 1e-9);
+            assert!(
+                formula
+                    .steps
+                    .iter()
+                    .any(|step| step.op == FormulaOp::FlatAfter && step.operand == 509.0 * rate)
+            );
+            assert!(
+                session
+                    .stat_mod_names(target)
+                    .contains(&ModName::from(format!("{target}Total")))
+            );
+        }
+    }
+
+    // Frozen Acolyte03: (2765 Mana + 1044 converted base ES) * 1.66,
+    // then the Discipline level 23 total (439 * 1.16, truncated to 509).
+    let mut session = crate::support::session(MinimalInput {
+        base_life: 1000.0,
+        base_mana: 2765.0,
+        ..Default::default()
+    });
+    session
+        .add_modifier_texts(["Converts all Energy Shield to Mana"])
+        .unwrap();
+    session.add_modifiers([
+        Modifier::number("EnergyShield", ModType::Base, 1044.0),
+        Modifier::number("EnergyShieldTotal", ModType::Base, 509.0),
+        Modifier::number("MaximumMana", ModType::Inc, 66.0),
+        // An explicit pool override still wins over direct totals (e.g. CI).
+        Modifier::number("LifeTotal", ModType::Base, 509.0),
+        Modifier::number("MaximumLife", ModType::Override, 1.0),
+    ]);
+    session.perform_minimal().unwrap();
+    assert_eq!(session.output().mana, 6831.94);
+    assert_eq!(session.output().energy_shield, 0.0);
+    assert_eq!(session.output().life, 1.0);
+}
+
+#[test]
+fn converted_total_and_base_do_not_feed_the_matrix_twice() {
+    use pobr_core::calc::MinimalInput;
+
+    // Discipline + Eldritch Battery + Everlasting Gaze: Mana gained back as
+    // ES must use the original matrix inputs on every defence/formula query.
+    for (base_es, total_es, expected_mana, expected_es) in [
+        (0.0, 100.0, 200.0, 10.0),
+        (100.0, 100.0, 300.0, 15.0),
+        (100.0, 509.0, 709.0, 35.0),
+    ] {
+        let mut session = crate::support::session(MinimalInput {
+            base_life: 1000.0,
+            base_mana: 100.0,
+            ..Default::default()
+        });
+        session.add_modifiers([
+            Modifier::number("EnergyShield", ModType::Base, base_es),
+            Modifier::number("EnergyShieldTotal", ModType::Base, total_es),
+            Modifier::number("EnergyShieldConvertToMana", ModType::Base, 100.0),
+            Modifier::number("ManaGainAsEnergyShield", ModType::Base, 5.0),
+        ]);
+        session.perform_minimal().unwrap();
+        assert_eq!(session.output().mana, expected_mana);
+        assert_eq!(session.output().energy_shield, expected_es);
+        assert_eq!(session.config().stats["EnergyShield"], expected_es);
+        assert_eq!(session.config().stats["Mana"], expected_mana);
+        for _ in 0..2 {
+            assert_eq!(
+                session.stat_formula("EnergyShield").unwrap().value,
+                expected_es
+            );
+            assert_eq!(session.stat_formula("Mana").unwrap().value, expected_mana);
+        }
+    }
+}
+
+#[test]
+fn converted_total_preserves_aura_sources_in_pool_trace() {
+    use pobr_core::calc::{Actor, Env, MinimalInput, calculate_minimal_traced, perform};
+
+    let discipline = SourceId::new(SourceKind::Buff, "buff.Discipline");
+    let second_aura = SourceId::new(SourceKind::Buff, "buff.other_total");
+    for rate in [50.0, 100.0] {
+        let mut env = Env::new(Actor::new(
+            85,
+            ActorBaseStats {
+                life: 1000.0,
+                mana: 100.0,
+                ..Default::default()
+            },
+        ));
+        env.player.mod_db.add_list([
+            Modifier::number("EnergyShieldTotal", ModType::Base, 509.0)
+                .with_source("Discipline total Energy Shield")
+                .with_origin(ModifierSource::new(discipline.clone())),
+            Modifier::number("EnergyShieldTotal", ModType::Base, 41.0)
+                .with_source("Other total Energy Shield")
+                .with_origin(ModifierSource::new(second_aura.clone())),
+            Modifier::number("EnergyShieldTotal", ModType::Base, 999.0)
+                .with_tag(ModTag::condition("InactiveAura", false)),
+            Modifier::number("EnergyShieldConvertToMana", ModType::Base, rate),
+            Modifier::number("MaximumMana", ModType::Inc, 50.0),
+        ]);
+        perform(&mut env).unwrap();
+        let expected = 150.0 + 550.0 * rate / 100.0;
+        assert_eq!(env.player.output.mana, expected);
+        let contributions = env.player.mod_db.contributions(
+            ModType::Base,
+            &env.cfg,
+            &[ModName::from("ExtraManaTotal")],
+        );
+        assert_eq!(contributions.len(), 2);
+        for (source, value) in [(&discipline, 509.0), (&second_aura, 41.0)] {
+            let contribution = contributions
+                .iter()
+                .find(|c| c.origin.as_ref().map(|o| &o.source_id) == Some(source))
+                .unwrap();
+            assert_eq!(contribution.value, value * rate / 100.0);
+        }
+        let traced = calculate_minimal_traced(
+            &env.player.mod_db,
+            &env.cfg,
+            &MinimalInput::from(env.player.base),
+        );
+        let mana = traced.node_for(DisplayStatId::from("Mana")).unwrap();
+        assert_eq!(traced.trace.node(mana).unwrap().value, expected);
+        let sources = traced.trace.source_ancestors(mana);
+        assert!(sources.contains(&&discipline));
+        assert!(sources.contains(&&second_aura));
+        assert!(
+            traced
+                .trace
+                .nodes()
+                .iter()
+                .any(|node| node.source.as_ref() == Some(&discipline)
+                    && node.value == 509.0 * rate / 100.0
+                    && node.label == "Discipline total Energy Shield")
+        );
+    }
+}

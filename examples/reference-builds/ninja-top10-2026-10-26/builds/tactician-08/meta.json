@@ -1,0 +1,40 @@
+{
+  "name": "tactician-08",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/yehalijog-2091/Yehaldrug_Rites",
+    "account": "yehalijog-2091",
+    "character": "Yehaldrug_Rites",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:57:46+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=yehalijog-2091&name=Yehaldrug_Rites&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Tactician",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 8,
+    "index_sha256": "165d7f878a35e33bc0ecb9545231966e2e0c96f7ec55bbd0e0afa3d8df6d717d",
+    "character_response_sha256": "0b021b4cfe87b2b0e753bb619a9dfa026d62c83d2e004a08596f34661c1e2d3d",
+    "upstream_updated_utc": "2026-09-25T21:46:17.76135Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:22.037304Z",
+    "upstream_last_checked_utc": "2026-10-26T04:36:02.105947Z"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Tactician",
+    "level": 100,
+    "main_skill": "Maul"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 1,
+    "code_sha256": "0d488e311345c0c12ef329b72191851189fa023034a68359058d68aca4a89a22",
+    "code_chars": 10976,
+    "decoded_bytes": 39122
+  }
+}

@@ -236,6 +236,13 @@ pub struct MinionDef {
     /// keyword matching).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub monster_tags: Vec<String>,
+    /// The monster's equipped weapon types, retained from the catalog for
+    /// generic attacks that can use either a melee weapon or a projectile weapon.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub weapon_type1: Option<String>,
+    /// The second equipped weapon type, when the catalog supplies it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub weapon_type2: Option<String>,
     /// Skill list (Lua's `skillList`; spell-casting minions get their base
     /// skill damage through this list).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -303,6 +310,8 @@ pub fn minion_def_zombie() -> MinionDef {
         spectre_reservation: 50.0,
         companion_reservation: 30.0,
         hostile: false,
+        weapon_type1: None,
+        weapon_type2: None,
         monster_tags: vec![
             "animal_claw_weapon".into(),
             "flesh_armour".into(),
@@ -339,6 +348,8 @@ pub fn minion_def_raging_spirit() -> MinionDef {
         spectre_reservation: 50.0,
         companion_reservation: 30.0,
         hostile: false,
+        weapon_type1: None,
+        weapon_type2: None,
         monster_tags: vec![
             "bone_armour".into(),
             "construct".into(),
@@ -375,6 +386,8 @@ pub fn minion_def_skeletal_warrior() -> MinionDef {
         spectre_reservation: 50.0,
         companion_reservation: 30.0,
         hostile: false,
+        weapon_type1: None,
+        weapon_type2: None,
         monster_tags: vec![
             "bone_armour".into(),
             "bones".into(),
@@ -411,6 +424,8 @@ pub fn minion_def_skeletal_storm_mage() -> MinionDef {
         spectre_reservation: 50.0,
         companion_reservation: 30.0,
         hostile: false,
+        weapon_type1: None,
+        weapon_type2: None,
         monster_tags: vec![
             "bone_armour".into(),
             "bones".into(),
@@ -454,6 +469,8 @@ pub fn minion_def_spectre_placeholder() -> MinionDef {
         spectre_reservation: 50.0,
         companion_reservation: 30.0,
         hostile: false,
+        weapon_type1: None,
+        weapon_type2: None,
         monster_tags: vec![],
         skill_list: vec![],
         mod_list: Vec::new(),
@@ -561,6 +578,8 @@ impl MinionDef {
             companion_reservation: e.companion_reservation,
             hostile: false,
             monster_tags: e.monster_tags.clone(),
+            weapon_type1: e.weapon_type1.clone(),
+            weapon_type2: e.weapon_type2.clone(),
             skill_list: e.skill_list.clone(),
             mod_list: e.mod_list.clone(),
         }
@@ -685,6 +704,8 @@ mod tests {
             spectre_reservation: 50.0,
             companion_reservation: 30.0,
             hostile: false,
+            weapon_type1: None,
+            weapon_type2: None,
             monster_tags: vec![],
             skill_list: vec![],
             mod_list: Vec::new(),

@@ -51,6 +51,85 @@ fn calculate(
 use crate::test_data as data;
 
 #[test]
+fn derange_adds_the_final_intelligence_as_energy_shield_cost() {
+    use pobr_build::{Build, CharacterIdentity, SocketGroup, calculate_with_data_session};
+    let data = data();
+    let build = |skill: &str, enabled: bool, with_cost_support: bool| {
+        let mut group = SocketGroup::new()
+            .with_gem_skill(skill, 20)
+            .with_gem_skill("SupportDerangePlayer", 1);
+        group.gem_skills[1].enabled = enabled;
+        if with_cost_support {
+            group = group.with_gem_skill("SupportMagnifiedAreaPlayerTwo", 1);
+        }
+        Build::new()
+            .with_character(CharacterIdentity {
+                level: 80,
+                class_name: "Sorceress".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(group)
+    };
+    let options = DataOrchestratorOptions {
+        extra_modifier_texts: vec![
+            "+100 to Intelligence".into(),
+            "10% increased Intelligence".into(),
+        ],
+        ..Default::default()
+    };
+    let mut plain_mana_cost = 0.0;
+    for cost_support in [false, true] {
+        let session = calculate_with_data_session(
+            &build("ProfaneRitualPlayer", true, cost_support),
+            &data,
+            &options,
+        )
+        .unwrap();
+        let out = session.output();
+        assert_eq!(out.es_cost, out.intelligence.floor());
+        assert!(out.es_cost > 100.0);
+        if cost_support {
+            assert!(out.mana_cost > plain_mana_cost);
+        } else {
+            plain_mana_cost = out.mana_cost;
+        }
+        let sources = session.detail_sources("ESCost");
+        let row = sources
+            .iter()
+            .flat_map(|group| &group.rows)
+            .find(|row| row.modifier.name.as_str() == "ESCostNoMult")
+            .unwrap();
+        assert!(row.active);
+        assert_eq!(row.value, Some(out.intelligence));
+        assert_eq!(
+            row.modifier.origin.as_ref().unwrap().source_id.kind,
+            pobr_data::source::SourceKind::SupportGem,
+            "{:?}",
+            row.modifier.origin
+        );
+        assert_eq!(
+            row.modifier.origin.as_ref().unwrap().source_id.id,
+            "SupportDerangePlayer.gain_energy_shield_cost_equal_to_intelligence"
+        );
+    }
+    for (skill, enabled) in [("ProfaneRitualPlayer", false), ("IncineratePlayer", true)] {
+        let out = calculate_with_data(&build(skill, enabled, false), &data, &options).unwrap();
+        assert_eq!(out.es_cost, 0.0, "{skill}, Derange enabled={enabled}");
+    }
+    let separate = build("ProfaneRitualPlayer", false, false).add_socket_group(
+        SocketGroup::new()
+            .with_gem_skill("FireballPlayer", 20)
+            .with_gem_skill("SupportDerangePlayer", 1),
+    );
+    assert_eq!(
+        calculate_with_data(&separate, &data, &options)
+            .unwrap()
+            .es_cost,
+        0.0
+    );
+}
+
+#[test]
 fn supports_that_change_cost_change_what_the_skill_costs() {
     let data = data();
     let plain = calculate(&data, &[], "", &[]);

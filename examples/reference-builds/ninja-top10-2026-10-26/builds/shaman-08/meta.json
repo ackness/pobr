@@ -1,0 +1,40 @@
+{
+  "name": "shaman-08",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/sunny-8557/%E5%AE%8F%E7%A6%8F%E9%BD%90%E5%A4%A9",
+    "account": "sunny-8557",
+    "character": "宏福齐天",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:55:38+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=sunny-8557&name=%E5%AE%8F%E7%A6%8F%E9%BD%90%E5%A4%A9&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Shaman",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 8,
+    "index_sha256": "379de5bbac0249c2834fbbb8e871ab7eab47d1497078feb0678e5fe004184778",
+    "character_response_sha256": "b386418b5b883e8cbb9dd2a47601f8c6e78ca582551118bb1c50fec3d44da703",
+    "upstream_updated_utc": "2026-10-24T04:29:39.780462Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:25.55638Z",
+    "upstream_last_checked_utc": "2026-10-26T04:36:18.398149Z"
+  },
+  "character": {
+    "class": "Druid",
+    "ascendancy": "Shaman",
+    "level": 100,
+    "main_skill": "Spark"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "9ccdc21291929d05075c79b1645162f1425980893d809671e8496d159fb620af",
+    "code_chars": 11372,
+    "decoded_bytes": 39374
+  }
+}

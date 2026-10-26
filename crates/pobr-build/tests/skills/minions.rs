@@ -320,6 +320,162 @@ fn summon_zombie_life_matches_core_derivation() {
     );
 }
 
+/// Storm Mage quality grants a percentage of its own maximum Life as extra
+/// ES. The retained handler uses PercentStat (ceil the flat contribution),
+/// then the ordinary ES factors, without deducting any Life.
+#[test]
+fn storm_mage_quality_gains_es_from_its_own_life() {
+    let data = load_data();
+    const SUMMON: &str = "SummonSkeletalStormMagesPlayer";
+    const STAT: &str = "minion_maximum_life_%_to_gain_as_maximum_energy_shield";
+    let quality_stat = data.gem_quality_stats[SUMMON]
+        .iter()
+        .find(|stat| stat.stat == STAT)
+        .unwrap();
+    assert_eq!(quality_stat.per_quality_rate, 1.0);
+
+    for (life_inc, gigantic, es_inc) in [(0, false, 0), (213, false, 0), (213, true, 50)] {
+        let mut options = default_opts();
+        options.extra_modifier_texts = vec![
+            "+12345 to maximum Life".into(),
+            "+987 to maximum Energy Shield".into(),
+            format!("Minions have {life_inc}% increased maximum Life"),
+            format!("Minions have {es_inc}% increased maximum Energy Shield"),
+        ];
+        if gigantic {
+            options
+                .extra_modifier_texts
+                .push("Your Minions are Gigantic".into());
+        }
+        let calculate = |quality| {
+            let build = Build::new()
+                .with_character(CharacterIdentity {
+                    level: 90,
+                    class_name: "Witch".into(),
+                    ascendancy_name: String::new(),
+                })
+                .add_socket_group(SocketGroup::new().with_gem_skill_quality(SUMMON, 38, quality))
+                .add_socket_group(SocketGroup::new().with_gem_skill("RaiseZombiePlayer", 20));
+            pobr_build::calculate_with_data_session(&build, &data, &options).unwrap()
+        };
+        let baseline = calculate(0);
+        let expected_life =
+            4729.0 * (1.0 + f64::from(life_inc) / 100.0) * if gigantic { 1.2 } else { 1.0 };
+        for quality in [35, 0, 1, 100] {
+            let session = calculate(quality);
+            let output = session.output();
+            let (index, mage) = output
+                .minions
+                .iter()
+                .enumerate()
+                .find(|(_, minion)| minion.summoned_by == SUMMON)
+                .unwrap();
+            assert_eq!(mage.level, 76);
+            assert!((mage.life - expected_life).abs() < 1e-6);
+            let gained = (mage.life * f64::from(quality) / 100.0).ceil();
+            // Level 76: floor(8924 × 0.53) = 4729 Life; the existing
+            // intrinsic ES is 4729 × 0.15 = 709.35, rounded after ES scaling.
+            let expected_es = ((709.35 + gained) * (1.0 + f64::from(es_inc) / 100.0)).round();
+            assert_eq!(mage.energy_shield, expected_es, "quality {quality}");
+            assert_eq!(output.life, baseline.output().life);
+            assert_eq!(output.energy_shield, baseline.output().energy_shield);
+            let zombie = output
+                .minions
+                .iter()
+                .find(|minion| minion.summoned_by == "RaiseZombiePlayer")
+                .unwrap();
+            let baseline_zombie = baseline
+                .output()
+                .minions
+                .iter()
+                .find(|minion| minion.summoned_by == "RaiseZombiePlayer")
+                .unwrap();
+            assert_eq!(zombie.life, baseline_zombie.life);
+            assert_eq!(zombie.energy_shield, baseline_zombie.energy_shield);
+            assert_eq!(zombie.dps, baseline_zombie.dps);
+
+            let life_detail =
+                pobr_build::breakdown::minion_stat_breakdown(&session, index, "Life").unwrap();
+            assert_eq!(life_detail.formula.unwrap().value, mage.life);
+            let detail =
+                pobr_build::breakdown::minion_stat_breakdown(&session, index, "EnergyShield")
+                    .unwrap();
+            assert_eq!(detail.formula.unwrap().value, mage.energy_shield);
+            assert_eq!(detail.base_total, 709.35 + gained);
+            assert_eq!(detail.inc_total, f64::from(es_inc));
+            let origin = format!("minion.{SUMMON}.{STAT}");
+            let contribution = detail
+                .mods
+                .iter()
+                .find(|row| row.origin_id.as_deref() == Some(&origin));
+            if quality == 0 {
+                assert!(contribution.is_none());
+            } else {
+                let contribution =
+                    contribution.expect("quality is attributed in the selected minion's ES");
+                assert_eq!(contribution.value, Some(gained));
+                assert!(contribution.active);
+                assert_eq!(contribution.origin_kind.as_deref(), Some("SkillGem"));
+            }
+        }
+    }
+}
+
+/// The Life snapshot used by ES and details is also the one offence sees.
+/// A synthetic Life-scaled damage line detects an inherited player snapshot.
+#[test]
+fn storm_mage_quality_life_snapshot_matches_offence_details() {
+    use pobr_core::calc::{CalculationSession, MinimalInput, MinionModifierEntry, MinionOrigin};
+    use pobr_core::{ModTag, Modifier};
+    use pobr_data::modifier::ModType;
+
+    let data = load_data();
+    let calculate = |with_life_damage| {
+        let mut session = CalculationSession::new(MinimalInput {
+            base_life: 1000.0,
+            ..Default::default()
+        });
+        session.set_stat("Life", 1000.0);
+        let mut modifiers = vec![Modifier::number("MaximumLife", ModType::Inc, 213.0)];
+        if with_life_damage {
+            modifiers.push(Modifier::number("Damage", ModType::More, 1.0).with_tag(
+                ModTag::PercentStat {
+                    stat: "Life".into(),
+                    percent: Some(1.0),
+                },
+            ));
+        }
+        session.add_minion_from_def(
+            data.minion_def("RaisedSkeletonStormMage").unwrap(),
+            38,
+            1,
+            modifiers
+                .into_iter()
+                .map(|inner| MinionModifierEntry {
+                    inner,
+                    minion_type: None,
+                })
+                .collect(),
+            vec![],
+            AttributeInfusion::default(),
+            MinionOrigin::default(),
+        );
+        session.finish().unwrap()
+    };
+    let baseline = calculate(false);
+    let scaled = calculate(true);
+    let minion = &scaled.output().minions[0];
+    assert_eq!(minion.life, 14801.77);
+    assert!(baseline.output().minions[0].dps > 0.0);
+    let ratio = minion.dps / baseline.output().minions[0].dps;
+    assert!(
+        (ratio - 2.49).abs() < 1e-6,
+        "ceil(1% of 14801.77) = 149% more: {ratio}"
+    );
+    let detail = pobr_build::breakdown::minion_stat_breakdown(&scaled, 0, "TotalDPS").unwrap();
+    assert_eq!(detail.formula.unwrap().value, minion.dps);
+}
+
 // B3: MinionModifier channel -- `Minions deal X% increased Damage` reaches the minion ModDb
 
 /// Player gear with `Minions deal 50% increased Damage` (attributed to the
@@ -369,14 +525,32 @@ fn minion_increased_damage_raises_minion_dps() {
 fn minion_limit_reads_completed_player_sources() {
     let data = load_data();
     let mut options = default_opts();
-    options
-        .extra_modifier_texts
-        .push("+3 to maximum number of Raised Zombies".into());
-    let session =
-        pobr_build::calculate_with_data_session(&zombie_build(20), &data, &options).unwrap();
-    let limit = session.base_sum("ActiveZombieLimit");
-    assert!(limit >= 3.0);
-    assert_eq!(session.base_sum("Multiplier:SummonedMinion"), limit);
+    for (line, named_bonus, expected) in [
+        (None, 0.0, 10.0),
+        (Some("+3 to maximum number of Raised Zombies"), 3.0, 13.0),
+        (
+            Some("Temporary Minion Skills have +5 to Limit of Minions summoned"),
+            3.0,
+            18.0,
+        ),
+    ] {
+        options.extra_modifier_texts.extend(line.map(str::to_owned));
+        let session =
+            pobr_build::calculate_with_data_session(&zombie_build(20), &data, &options).unwrap();
+        // The native cap is read from the originating skill; the player's
+        // named stat supplies only the additional limit, not a replacement.
+        assert_eq!(session.base_sum("ActiveZombieLimit"), named_bonus);
+        assert_eq!(session.output().active_minion_limit, expected);
+        assert_eq!(session.base_sum("Multiplier:SummonedMinion"), expected);
+        assert_eq!(session.base_sum("Multiplier:MinionPresenceCount"), expected);
+    }
+
+    // These zombie/temporary bonuses do not change a persistent wolf pack.
+    let wolves =
+        Build::new().add_socket_group(SocketGroup::new().with_gem_skill("WolfPackPlayer", 20));
+    let session = pobr_build::calculate_with_data_session(&wolves, &data, &options).unwrap();
+    assert_eq!(session.output().active_minion_limit, 6.0);
+    assert_eq!(session.base_sum("Multiplier:SummonedMinion"), 6.0);
 }
 
 /// Cackling Companions: "Summons {0} Hyenas", seven at gem level 7. The
@@ -426,6 +600,147 @@ fn the_characters_minion_modifiers_reach_its_minions() {
     // "Your Minions are Gigantic": 20% more Life.
     let gigantic = zombie_life_with(&data, &["Your Minions are Gigantic"]);
     assert!((gigantic / base - 1.2).abs() < 1e-3, "{base} -> {gigantic}");
+}
+
+/// A jewel socket's effect scales the jewel's minion payload, including
+/// damage, speed and critical bonuses, just as it scales player modifiers.
+#[test]
+fn adorned_scales_nested_companion_modifiers() {
+    use pobr_build::build::JewelSocket;
+    use pobr_data::item::ItemRarity;
+
+    let data = load_data();
+    let mut group = SocketGroup::new().with_gem_skill("SummonBeastPlayer", 20);
+    group.gem_skills[0].minion = Some("Metadata/Monsters/Quadrilla/QuadrillaBossMinion2".into());
+    let base = Build::new()
+        .with_character(CharacterIdentity {
+            level: 90,
+            class_name: "Huntress".into(),
+            ascendancy_name: String::new(),
+        })
+        .add_socket_group(group);
+    let jewel = pobr_core::parse_pob_xml_item(
+        "Rarity: RARE\nFixture\nSapphire\nImplicits: 0\nMinions deal 13% increased Damage\nMinions have 6% increased Attack and Cast Speed\nMinions have 33% increased Critical Hit Chance\nMinions have 23% increased Critical Damage Bonus\n+100 to maximum Life\nCorrupted",
+    ).unwrap();
+    let run = |named: &str, effect: u32, rarity, corrupted, socket| {
+        let adorned = pobr_core::parse_pob_xml_item(&format!(
+            "Rarity: UNIQUE\nThe Adorned\nDiamond\nImplicits: 0\n{effect}% increased Effect of Jewel Socket Passive Skills\ncontaining Corrupted {named} Jewels"
+        )).unwrap();
+        let mut jewel = jewel.clone();
+        jewel.rarity = rarity;
+        jewel.corrupted = corrupted;
+        let mut build = base.clone().with_jewels(vec![adorned]);
+        build.jewels.push((socket, jewel));
+        pobr_build::calculate_with_data_session(&build, &data, &default_opts()).unwrap()
+    };
+    let plain = run("Rare", 0, ItemRarity::Rare, true, JewelSocket::Tree);
+    for (named, effect, rarity, corrupted, socket, expected) in [
+        (
+            "Rare",
+            69,
+            ItemRarity::Rare,
+            true,
+            JewelSocket::Tree,
+            [21.0, 10.0, 55.0, 38.0],
+        ),
+        (
+            "Rare",
+            50,
+            ItemRarity::Rare,
+            true,
+            JewelSocket::Tree,
+            [19.0, 9.0, 49.0, 34.0],
+        ),
+        (
+            "Magic",
+            147,
+            ItemRarity::Magic,
+            true,
+            JewelSocket::Tree,
+            [32.0, 14.0, 81.0, 56.0],
+        ),
+        (
+            "Rare",
+            69,
+            ItemRarity::Rare,
+            false,
+            JewelSocket::Tree,
+            [13.0, 6.0, 33.0, 23.0],
+        ),
+        (
+            "Rare",
+            69,
+            ItemRarity::Magic,
+            true,
+            JewelSocket::Tree,
+            [13.0, 6.0, 33.0, 23.0],
+        ),
+        (
+            "Rare",
+            69,
+            ItemRarity::Rare,
+            true,
+            JewelSocket::Granted,
+            [13.0, 6.0, 33.0, 23.0],
+        ),
+        (
+            "Rare",
+            69,
+            ItemRarity::Rare,
+            true,
+            JewelSocket::Equipment,
+            [13.0, 6.0, 33.0, 23.0],
+        ),
+    ] {
+        let session = run(named, effect, rarity, corrupted, socket);
+        let boosted = expected[0] > 13.0;
+        for (stat, expected) in ["Damage", "ActionRate", "CritChance", "CritMultiplier"]
+            .into_iter()
+            .zip(expected)
+        {
+            let rows = session.minion_stat_mods(0, stat);
+            let row = rows
+                .iter()
+                .find(|row| {
+                    row.modifier
+                        .origin
+                        .as_ref()
+                        .is_some_and(|origin| origin.source_id.id == "jewel.2")
+                })
+                .unwrap();
+            assert_eq!(row.value, Some(expected), "{named} {effect}% {stat}");
+            assert!(row.active);
+        }
+        let minion = &session.output().minions[0];
+        let detail = pobr_build::breakdown::minion_stat_breakdown(&session, 0, "TotalDPS").unwrap();
+        assert_eq!(detail.formula.unwrap().value, minion.dps);
+        assert_eq!(minion.life, plain.output().minions[0].life);
+        if boosted {
+            assert!(minion.dps > plain.output().minions[0].dps);
+        } else {
+            assert_eq!(minion.dps, plain.output().minions[0].dps);
+        }
+        // The pre-existing top-level numeric scaling still applies once.
+        let life = session.evaluated_stat_mods("Life");
+        let life = life
+            .iter()
+            .find(|row| {
+                row.modifier
+                    .origin
+                    .as_ref()
+                    .is_some_and(|origin| origin.source_id.id == "jewel.2")
+            })
+            .unwrap();
+        assert_eq!(
+            life.value,
+            Some(if boosted {
+                100.0 + f64::from(effect)
+            } else {
+                100.0
+            })
+        );
+        assert_eq!(session.output().dps, plain.output().dps);
+    }
 }
 
 const QUADRILLA: &str = "Metadata/Monsters/Quadrilla/Quadrilla";
@@ -571,6 +886,138 @@ fn a_minion_casts_its_spell_at_its_level() {
     // 1.3 times the damage, about 1.3 times as often (the cooldown is
     // rounded to the server tick).
     assert!((1.6..1.75).contains(&bidding), "{bidding}");
+}
+
+fn djinn_with_hit_supports(
+    data: &BuildData,
+    minion: &str,
+    skill: u32,
+    supports: &[&str],
+) -> pobr_core::calc::CompletedCalculationSession {
+    let supports: String = supports
+        .iter()
+        .map(|id| format!(r#"<Gem skillId="{id}" level="1" quality="0" enabled="true"/>"#))
+        .collect();
+    let xml = format!(
+        r#"<PathOfBuilding2>
+<Build level="90" className="Sorceress" ascendClassName="Disciple of Varashta"/>
+<Skills defaultGemLevel="20" activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="Summon{minion}Player" level="20" quality="0" enabled="true" skillMinion="{minion}" skillMinionSkill="{skill}"/>{supports}</Skill></SkillSet></Skills>
+</PathOfBuilding2>"#
+    );
+    let build = pobr_build::parse_build(&xml).expect("parse synthetic build");
+    pobr_build::calculate_with_data_session(
+        &build,
+        data,
+        &DataOrchestratorOptions::against_reference_enemy(),
+    )
+    .expect("calculate")
+}
+
+#[test]
+fn minion_hit_supports_use_selected_damage() {
+    use pobr_core::skill_env::EffectLookup;
+
+    let data = load_data();
+    let raw_types = &data.effect("LivingBombFireDjinn").unwrap().skill_types;
+    assert!(raw_types.iter().any(|kind| kind == "Spell"));
+    assert!(
+        !raw_types
+            .iter()
+            .any(|kind| kind == "Damage" || kind == "Attack")
+    );
+
+    let baseline = djinn_with_hit_supports(&data, "FireDjinn", 1, &[]);
+    let brand = &baseline.output().minions[0];
+    assert_eq!(brand.skill_id, "LivingBombFireDjinn");
+    assert!(brand.dps > 0.0);
+    for (supports, ratio, invert, gain) in [
+        (vec!["SupportRakiatasFlowPlayer"], 3.0, 1.0, 0.0),
+        (vec!["SupportXophsPyrePlayer"], 1.8, 0.0, 40.0),
+        (
+            vec!["SupportRakiatasFlowPlayer", "SupportXophsPyrePlayer"],
+            3.8,
+            1.0,
+            40.0,
+        ),
+        // Hit eligibility does not grant Attack: Rapid Attacks stays rejected.
+        (vec!["SupportRapidAttacksPlayer"], 1.0, 0.0, 0.0),
+    ] {
+        let supported = djinn_with_hit_supports(&data, "FireDjinn", 1, &supports);
+        let actual = &supported.output().minions[0];
+        assert_eq!(actual.skill_id, brand.skill_id);
+        assert_eq!(actual.level, brand.level);
+        // The reference enemy has 50% fire resistance and no chaos resistance.
+        // Inversion changes fire's multiplier from 0.5 to 1.5; Xoph adds 0.4
+        // times the original fire damage as chaos. Neither changes the rate.
+        assert!(
+            (actual.dps / brand.dps - ratio).abs() < 1e-8,
+            "{supports:?}: {actual:?}"
+        );
+        assert_eq!(
+            supported.minion_stat_totals(0, "HitsInvertEleResChance").0,
+            invert
+        );
+        assert_eq!(
+            supported.minion_stat_totals(0, "FireDamageGainAsChaos").0,
+            gain
+        );
+        assert_eq!(
+            supported.minion_stat_totals(0, "AttackSpeed"),
+            baseline.minion_stat_totals(0, "AttackSpeed"),
+        );
+    }
+}
+
+#[test]
+fn minion_hit_supports_reject_non_damaging_spell() {
+    let data = load_data();
+    // Navira's Well is a non-damaging Spell. Other skills on this same minion
+    // hit, so neither Spell nor the sibling skills may supply hit eligibility.
+    for supports in [
+        vec![],
+        vec!["SupportRakiatasFlowPlayer", "SupportXophsPyrePlayer"],
+    ] {
+        let session = djinn_with_hit_supports(&data, "WaterDjinn", 3, &supports);
+        let well = &session.output().minions[0];
+        assert_eq!(well.skill_id, "ESRechargeForceRestartWaterDjinn");
+        assert_eq!(well.dps, 0.0);
+        assert_eq!(
+            session.minion_stat_totals(0, "HitsInvertEleResChance").0,
+            0.0
+        );
+        assert_eq!(
+            session.minion_stat_totals(0, "FireDamageGainAsChaos").0,
+            0.0
+        );
+    }
+}
+
+#[test]
+fn minion_hit_supports_respect_summoner_exclusions() {
+    let data = load_data();
+    // Extraction excludes CreatesMinion on the summoner, even though the
+    // selected damaging spell is not itself a summoning skill. This applies
+    // to both inferred Damage (Brand) and a raw Damage type (Fracturing).
+    for (minion, skill) in [("FireDjinn", 1), ("WaterDjinn", 2)] {
+        let baseline = djinn_with_hit_supports(&data, minion, skill, &[]);
+        let extraction =
+            djinn_with_hit_supports(&data, minion, skill, &["SupportExtractionPlayer"]);
+        let ratio = extraction.output().minions[0].dps / baseline.output().minions[0].dps;
+        assert!(
+            (ratio - 1.0).abs() < 1e-9,
+            "{minion} Extraction DPS ratio: {ratio}"
+        );
+        assert_eq!(extraction.minion_stat_totals(0, "DamageGainAsChaos").0, 0.0);
+    }
+
+    // A directly compatible player spell still receives Extraction's damage.
+    let direct = Build::new().add_socket_group(
+        SocketGroup::new()
+            .with_gem_skill("FrostBombPlayer", 20)
+            .with_gem_skill("SupportExtractionPlayer", 1),
+    );
+    let session = pobr_build::calculate_with_data_session(&direct, data, &default_opts()).unwrap();
+    assert_eq!(session.stat_totals("DamageGainAsChaos").0, 35.0);
 }
 
 /// The sweep's level-20 summons, with no equipment or supports, against
@@ -798,6 +1245,736 @@ Wooden Club
                 "{summon} {kind}: {delta} vs {expected}"
             );
             assert_eq!(hit(&added, false), hit("", false));
+        }
+    }
+}
+
+#[test]
+fn manifest_companion_membership_is_independent_of_damageability() {
+    use pobr_build::calculate_with_data_session;
+    use pobr_data::passive_tree::NodeId;
+
+    let data = load_data();
+    let build = pobr_build::parse_build(
+        r#"<PathOfBuilding2>
+<Build level="90" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill><Gem skillId="FireballPlayer" level="20"/></Skill>
+<Skill><Gem skillId="ManifestWeaponPlayer" level="20"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Hardwood Spear
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#,
+    )
+    .unwrap();
+    let calc = |build: &Build| calculate_with_data_session(build, data, &default_opts()).unwrap();
+    let plain = calc(&build);
+    assert_eq!(plain.output().minions.len(), 1);
+    let mut shared = build.clone();
+    shared.tree.allocated_nodes.push(NodeId(16249));
+    let present = calc(&shared);
+    assert!(present.output().minions[0].dps > plain.output().minions[0].dps);
+    shared
+        .config
+        .conditions
+        .insert("CompanionInPresence".into(), false);
+    let absent = calc(&shared);
+
+    let loyal_wolf = SocketGroup::new()
+        .with_gem_skill("WolfPackPlayer", 20)
+        .with_gem_skill("SupportLoyaltyPlayer", 1);
+    let mixed = calc(&build.clone().add_socket_group(loyal_wolf));
+    let wolf_life = mixed
+        .output()
+        .minions
+        .iter()
+        .find(|m| m.minion_id == "WolfMinion")
+        .unwrap()
+        .life;
+    assert!(mixed.base_sum("TakenFromCompanionBeforeYou") > 0.0);
+    assert_eq!(mixed.base_sum("TotalCompanionLife"), wolf_life);
+    assert_eq!(
+        (
+            plain.config().multiplier("DifferentCompanionsInPresence"),
+            absent.output().minions[0].dps
+        ),
+        (1.0, plain.output().minions[0].dps),
+        "Manifest Weapon is a Companion for presence/counts but cannot donate life"
+    );
+    assert_eq!(
+        mixed.config().multiplier("DifferentCompanionsInPresence"),
+        2.0
+    );
+    assert_eq!(
+        absent.config().multiplier("DifferentCompanionsInPresence"),
+        0.0
+    );
+}
+
+#[test]
+fn main_hand_shares_retain_each_game_source_in_minion_details() {
+    use pobr_build::calculate_with_data_session;
+    use pobr_data::{item::EquipmentSlot, passive_tree::NodeId, prelude::*};
+
+    let data = load_data();
+    for summon in ["RaiseZombiePlayer", "SummonAzmerianWolfPlayer"] {
+        let mut build = pobr_build::parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="90" className="Mercenary" mainSocketGroup="1"/>
+<Skills><Skill><Gem skillId="FireballPlayer" level="20"/></Skill>
+<Skill><Gem skillId="{summon}" level="20"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Wooden Club
+Adds 100 to 100 Physical Damage
+</Item><Item id="2">Rarity: NORMAL
+Gold Ring
+Companions gain added Attack Damage equal to 60% of your main hand Weapon's Damage
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/><Slot name="Ring 1" itemId="2"/></ItemSet></Items>
+</PathOfBuilding2>"#)).unwrap();
+        build.tree.allocated_nodes.push(NodeId(16249));
+        let weapon = pobr_core::skill_env::weapon_item_contribution(
+            &build.items[&EquipmentSlot::Weapon1],
+            data,
+        )
+        .unwrap();
+        let session = calculate_with_data_session(&build, data, &default_opts()).unwrap();
+        let aura = session
+            .mods_named("ExtraAura")
+            .into_iter()
+            .find(|m| {
+                m.origin
+                    .as_ref()
+                    .is_some_and(|o| o.source_id.id == "node.16249")
+            })
+            .expect("Watch How I Do It aura source");
+        let legacy = session.mods_named("Multiplier:MainHandDamageToAllies");
+        assert_eq!(legacy.len(), 1);
+        let pobr_core::ModValue::NestedMods(payload) = &aura.value else {
+            panic!("Watch How I Do It must carry an ally payload");
+        };
+        let aura_text = payload
+            .iter()
+            .find(|m| m.name.as_str() == "MainHandDamageToAllies")
+            .unwrap()
+            .source
+            .as_ref()
+            .or(aura.source.as_ref());
+        assert_ne!(
+            aura.origin.as_ref().unwrap().source_id,
+            legacy[0].origin.as_ref().unwrap().source_id
+        );
+        for (stat, weapon_damage) in [
+            ("PhysicalDamageMin", weapon.phys_min),
+            ("PhysicalDamageMax", weapon.phys_max),
+        ] {
+            let rows = session.minion_stat_mods(0, stat);
+            for (source, percent, source_text) in [
+                (aura, 25.0, aura_text),
+                (legacy[0], 60.0, legacy[0].source.as_ref()),
+            ] {
+                let expected = source
+                    .origin
+                    .clone()
+                    .unwrap()
+                    .with_stat(stat)
+                    .with_mod_type(ModType::Base);
+                let actual: Vec<_> = rows
+                    .iter()
+                    .filter(|r| {
+                        r.modifier
+                            .origin
+                            .as_ref()
+                            .is_some_and(|o| o.source_id == expected.source_id)
+                    })
+                    .collect();
+                if percent == 60.0 && summon == "RaiseZombiePlayer" {
+                    assert!(
+                        actual.is_empty(),
+                        "Catha's companion grant cannot reach a zombie"
+                    );
+                    continue;
+                }
+                assert_eq!(
+                    actual.len(),
+                    1,
+                    "shared damage retains each granting source once"
+                );
+                let actual = actual[0];
+                assert!(actual.active);
+                assert_eq!(actual.value, Some(weapon_damage * percent / 100.0));
+                assert_eq!(actual.modifier.origin.as_ref(), Some(&expected));
+                assert_eq!(actual.modifier.source.as_ref(), source_text);
+                assert_eq!(actual.modifier.exporter_rule, source.exporter_rule);
+                // Also require the source text itself, not merely a matching id.
+                assert!(
+                    expected
+                        .raw_text
+                        .as_ref()
+                        .is_some_and(|text| text.to_lowercase().contains("main hand"))
+                );
+            }
+            assert!(rows.iter().all(|r| {
+                r.modifier
+                    .origin
+                    .as_ref()
+                    .is_none_or(|o| o.source_id.id != "minion.main_hand_share")
+            }));
+        }
+    }
+}
+
+#[test]
+fn main_hand_shares_evaluate_sources_once_in_their_own_actor_scope() {
+    use pobr_core::calc::{CalculationSession, MinimalInput, MinionOrigin, MinionSkill};
+    use pobr_core::{CalcConfig, ModTag, ModValue, Modifier};
+    use pobr_data::{minion::minion_def_zombie, prelude::*};
+
+    for inactive in [false, true] {
+        let source = |id: &str| {
+            ModifierSource::new(SourceId::new(SourceKind::ItemAffix, id))
+                .with_parent(SourceId::new(SourceKind::Item, "item.test"))
+                .with_slot("weapon1")
+                .with_raw_text(format!("{id}: original shared weapon damage text"))
+        };
+        let legacy = Modifier::number("Multiplier:MainHandDamageToAllies", ModType::Base, 15.0)
+            .with_flags(ModFlags::SPELL)
+            .with_tag(ModTag::multiplier("ShareUnits", 1.0, None))
+            .with_tag(ModTag::condition("ShareEnabled", false))
+            .with_source("legacy original source")
+            .with_origin(source("legacy"));
+        let aura = Modifier::new(
+            "ExtraAura",
+            ModType::List,
+            ModValue::NestedMods(vec![
+                Modifier::number("MainHandDamageToAllies", ModType::Base, 10.0)
+                    .with_flags(ModFlags::ATTACK)
+                    .with_tag(ModTag::multiplier("ShareUnits", 1.0, None))
+                    .with_tag(ModTag::condition("ShareEnabled", false)),
+            ]),
+        )
+        .with_source("aura original source")
+        .with_origin(source("aura"));
+        let mut session = CalculationSession::new(MinimalInput {
+            base_life: 1000.0,
+            base_hit_min: 100.0,
+            base_hit_max: 100.0,
+            base_action_rate: 1.0,
+            ..Default::default()
+        })
+        .with_config(
+            CalcConfig::spell()
+                .with_multiplier("ShareUnits", 2.0)
+                .with_condition("ShareEnabled", !inactive),
+        );
+        session.set_main_hand_weapon_damage_components(vec![
+            (DamageType::Physical, 100.0, 200.0),
+            (DamageType::Cold, 40.0, 80.0),
+        ]);
+        session.add_modifiers([
+            legacy.clone(),
+            aura.clone(),
+            Modifier::number("BuffEffectOnSelf", ModType::Inc, 300.0),
+        ]);
+        session.add_minion_from_def(
+            &minion_def_zombie(),
+            20,
+            1,
+            Vec::new(),
+            vec![
+                Modifier::flag("GainMainHandDmgFromParent"),
+                Modifier::number("BuffEffectOnSelf", ModType::Inc, 100.0),
+            ],
+            AttributeInfusion::default(),
+            MinionOrigin {
+                skill: MinionSkill {
+                    id: "MinionMeleeStep".into(),
+                    types: vec!["Attack".into(), "Melee".into()],
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        );
+        session.perform_minimal().unwrap();
+        for (stat, weapon_damage) in [
+            ("PhysicalDamageMin", 100.0),
+            ("PhysicalDamageMax", 200.0),
+            ("ColdDamageMin", 40.0),
+            ("ColdDamageMax", 80.0),
+        ] {
+            let rows = session.minion_stat_mods(0, stat);
+            for (source, percent) in [(&legacy, 30.0), (&aura, 40.0)] {
+                let origin = source
+                    .origin
+                    .clone()
+                    .unwrap()
+                    .with_stat(stat)
+                    .with_mod_type(ModType::Base);
+                let actual = rows.iter().find(|r| {
+                    r.modifier
+                        .origin
+                        .as_ref()
+                        .is_some_and(|o| o.source_id == origin.source_id)
+                });
+                if inactive {
+                    assert!(actual.is_none(), "inactive source must not emit damage");
+                    continue;
+                }
+                let actual = actual.expect("each source contributes independently");
+                assert!(actual.active);
+                assert_eq!(actual.value, Some(weapon_damage * percent / 100.0));
+                assert_eq!(actual.modifier.origin, Some(origin));
+                assert_eq!(actual.modifier.source, source.source);
+                assert!(
+                    actual.modifier.tags.is_empty(),
+                    "scaling is already evaluated"
+                );
+                assert!(
+                    actual.modifier.flags.is_empty(),
+                    "player spell scope must not reach the minion attack"
+                );
+            }
+        }
+        assert_eq!(
+            session.minion_stat_totals(0, "ColdDamageMin").0,
+            if inactive { 0.0 } else { 28.0 }
+        );
+    }
+}
+
+#[test]
+fn watch_how_i_do_it_shares_only_the_main_hand_weapon_with_present_attack_allies() {
+    use pobr_build::calculate_with_data_session;
+    use pobr_data::{item::EquipmentSlot, passive_tree::NodeId};
+
+    let data = load_data();
+    let make = |summon: &str, weapon: &str, ring: &str| {
+        pobr_build::parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="90" className="Mercenary" ascendClassName="Tactician" mainSocketGroup="1"/>
+<Skills><Skill><Gem skillId="FireballPlayer" level="20"/></Skill>
+<Skill><Gem skillId="{summon}" level="20"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Wooden Club
+{weapon}
+</Item><Item id="2">Rarity: NORMAL
+Gold Ring
+{ring}
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/><Slot name="Ring 1" itemId="2"/></ItemSet></Items>
+</PathOfBuilding2>"#)).unwrap()
+    };
+    let calc = |data: &BuildData, build: &Build, share: bool, lines: &[&str]| {
+        let mut build = build.clone();
+        if share {
+            build.tree.allocated_nodes.push(NodeId(16249));
+        }
+        let mut opts = default_opts();
+        opts.extra_modifier_texts = lines.iter().map(|line| (*line).to_owned()).collect();
+        let result = calculate_with_data_session(&build, data, &opts).unwrap();
+        assert!(
+            result.unsupported_modifier_texts().is_empty(),
+            "{:?}",
+            result.unsupported_modifier_texts()
+        );
+        result
+    };
+    let hit = |session: &pobr_core::calc::CompletedCalculationSession| {
+        session.minion_stat_formula(0, "TotalHitAvg").unwrap().value
+    };
+    for (summon, monster, attack_multiplier) in [
+        ("RaiseZombiePlayer", "RaisedZombie", 1.0),
+        ("SummonAzmerianWolfPlayer", "AzmerianWolf", 2.5),
+    ] {
+        let bare = make(summon, "", "");
+        let plain = calc(data, &bare, false, &[]);
+        let shared = calc(data, &bare, true, &[]);
+        assert!(hit(&shared) > hit(&plain));
+        assert_eq!(shared.output().dps, plain.output().dps);
+        for kind in ["Physical", "Fire", "Cold", "Lightning", "Chaos"] {
+            let line = format!("Adds 100 to 100 {kind} Damage");
+            let weapon = make(summon, &line, "");
+            let enhanced = calc(data, &weapon, true, &[]);
+            let effectiveness =
+                (data.minions[monster].damage * attack_multiplier * 100.0).round() / 100.0;
+            assert!(
+                (hit(&enhanced) - hit(&shared) - 25.0 * effectiveness * 1.05).abs() < 1e-6,
+                "{summon}: {kind}"
+            );
+            assert_eq!(hit(&calc(data, &weapon, false, &[])), hit(&plain));
+            assert_eq!(
+                hit(&calc(data, &make(summon, "", &line), true, &[])),
+                hit(&shared)
+            );
+        }
+        assert_eq!(
+            hit(&calc(
+                data,
+                &bare,
+                true,
+                &["Your Aura Buffs do not affect allies"]
+            )),
+            hit(&plain)
+        );
+        let mut absent = bare.clone();
+        absent
+            .config
+            .multipliers
+            .insert("MinionPresenceCount".into(), 0.0);
+        assert_eq!(hit(&calc(data, &absent, true, &[])), hit(&plain));
+        absent = bare.clone();
+        absent
+            .config
+            .conditions
+            .insert("CompanionInPresence".into(), false);
+        assert_eq!(
+            hit(&calc(data, &absent, true, &[])),
+            if summon == "RaiseZombiePlayer" {
+                hit(&shared)
+            } else {
+                hit(&plain)
+            }
+        );
+        let mut unarmed = bare;
+        unarmed.items.remove(&EquipmentSlot::Weapon1);
+        assert_eq!(
+            hit(&calc(data, &unarmed, true, &[])),
+            hit(&calc(data, &unarmed, false, &[]))
+        );
+    }
+    let mut caster = make("SummonWaterDjinnPlayer", "Adds 100 to 100 Cold Damage", "");
+    caster.socket_groups[1].gem_skills[0].minion_skill = Some(1);
+    assert_eq!(
+        hit(&calc(data, &caster, true, &[])),
+        hit(&calc(data, &caster, false, &[]))
+    );
+
+    // HiddenMonster is an actor flag, not a supported monster-table modifier.
+    // Exercise that recipient gate on prepared actors directly.
+    use pobr_core::calc::{Actor, ActorBaseStats, Env, perform};
+    use pobr_core::{CalcConfig, ModValue, Modifier};
+    use pobr_data::prelude::{DamageType, ModType};
+    let actor = Actor::new(
+        90,
+        ActorBaseStats {
+            life: 1000.0,
+            hit_min: 100.0,
+            hit_max: 100.0,
+            action_rate: 1.0,
+            ..Default::default()
+        },
+    );
+    let mut env = Env::new(actor.clone()).with_config(CalcConfig::attack());
+    env.main_hand_weapon_damage = vec![(DamageType::Physical, 100.0, 100.0)];
+    env.player.mod_db.add_mod(Modifier::new(
+        "ExtraAura",
+        ModType::List,
+        ModValue::NestedMods(vec![Modifier::number(
+            "MainHandDamageToAllies",
+            ModType::Base,
+            25.0,
+        )]),
+    ));
+    env.minions = vec![actor.clone(), actor];
+    env.minions[1]
+        .mod_db
+        .add_mod(Modifier::flag("HiddenMonster"));
+    perform(&mut env).unwrap();
+    assert!(env.minions[0].output.dps > env.minions[1].output.dps);
+    assert_eq!(env.minions[1].output.dps, env.player.output.dps);
+}
+
+#[test]
+fn minion_static_support_cost_follows_the_minions_skills() {
+    let data = load_data();
+    let opts = default_opts();
+    let bare = zombie_build(20);
+    let base = calculate_with_data(&bare, data, &opts).unwrap();
+    let mut supported = bare.clone();
+    supported.socket_groups[0]
+        .gem_skills
+        .push(pobr_build::build::GemSkillRef {
+            skill_id: "SupportMinionMeleeSplashPlayerTwo".into(),
+            gem_level: 1,
+            ..Default::default()
+        });
+    let boosted = calculate_with_data(&supported, data, &opts).unwrap();
+    // Minion Splash II requires CreatesMinion AND MeleeSingleTarget. The
+    // zombie's melee strike qualifies and the summon pays its 110% cost.
+    assert_eq!(base.mana_cost, 102.0);
+    assert_eq!(boosted.mana_cost, 112.0);
+    assert_eq!(boosted.action_rate, base.action_rate);
+    assert_eq!(boosted.minions[0].dps, base.minions[0].dps);
+
+    // Clash excludes minions by type; Bursting Plague's game description
+    // prohibits minion skills via IgnoreMinionTypes. Neither may borrow the
+    // zombie's attack types and charge its 120% multiplier to Raise Zombie.
+    for support in ["SupportClashPlayer", "SupportBurstingPlaguePlayer"] {
+        let mut excluded = bare.clone();
+        excluded.socket_groups[0]
+            .gem_skills
+            .push(pobr_build::build::GemSkillRef {
+                skill_id: support.into(),
+                gem_level: 1,
+                ..Default::default()
+            });
+        assert_eq!(
+            calculate_with_data(&excluded, data, &opts)
+                .unwrap()
+                .mana_cost,
+            base.mana_cost,
+            "{support}"
+        );
+    }
+
+    // Unearth's own damaging spell directly qualifies for Bursting Plague,
+    // even though its summoned minion's skills cannot grant compatibility.
+    let unearth =
+        Build::new().add_socket_group(SocketGroup::new().with_gem_skill("UnearthPlayer", 20));
+    let plain = calculate_with_data(&unearth, data, &opts).unwrap();
+    let mut direct = unearth;
+    direct.socket_groups[0]
+        .gem_skills
+        .push(pobr_build::build::GemSkillRef {
+            skill_id: "SupportBurstingPlaguePlayer".into(),
+            gem_level: 1,
+            ..Default::default()
+        });
+    assert!(plain.mana_cost > 0.0);
+    assert_eq!(
+        calculate_with_data(&direct, data, &opts).unwrap().mana_cost,
+        (plain.mana_cost * 1.2).floor()
+    );
+
+    // Raise Zombie's unrelated selected monster does not replace its zombie.
+    supported.socket_groups[0].gem_skills[0].minion = Some("RaisedSkeletonCleric".into());
+    assert_eq!(
+        calculate_with_data(&supported, data, &opts)
+            .unwrap()
+            .mana_cost,
+        112.0
+    );
+
+    // A player attack/spell is not a minion's strike, and another group's
+    // support never changes this summoning skill's cost.
+    for skill in ["FireballPlayer", "SummonSkeletalArsonistsPlayer"] {
+        let build = Build::new().add_socket_group(SocketGroup::new().with_gem_skill(skill, 20));
+        let plain = calculate_with_data(&build, data, &opts).unwrap();
+        let mut with_support = build;
+        with_support.socket_groups[0]
+            .gem_skills
+            .push(pobr_build::build::GemSkillRef {
+                skill_id: "SupportMinionMeleeSplashPlayerTwo".into(),
+                gem_level: 1,
+                ..Default::default()
+            });
+        assert_eq!(
+            calculate_with_data(&with_support, data, &opts)
+                .unwrap()
+                .mana_cost,
+            plain.mana_cost
+        );
+    }
+    let other_group = bare.add_socket_group(
+        SocketGroup::new()
+            .with_gem_skill("FireballPlayer", 20)
+            .with_gem_skill("SupportMinionMeleeSplashPlayerTwo", 1),
+    );
+    assert_eq!(
+        calculate_with_data(&other_group, data, &opts)
+            .unwrap()
+            .mana_cost,
+        102.0
+    );
+}
+
+#[test]
+fn minion_static_presence_auras_reach_allies_once_and_stay_off_the_weapon() {
+    use pobr_build::calculate_with_data_session;
+    use pobr_data::modifier::{ModFlags, ModName, ModType};
+
+    let data = load_data();
+    let build = |line: &str, slot: &str, base: &str| {
+        pobr_build::parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="90" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="RaiseZombiePlayer" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Aura Test
+{base}
+{line}
+</Item><ItemSet id="1"><Slot name="{slot}" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#)).unwrap()
+    };
+    let calc = |line, slot, base| {
+        calculate_with_data_session(&build(line, slot, base), data, &default_opts()).unwrap()
+    };
+    for (slot, item) in [("Ring 1", "Gold Ring"), ("Weapon 1", "Rattling Sceptre")] {
+        let bare = calc("", slot, item);
+        for (line, player_bonus) in [
+            (
+                "You and Allies in your Presence have 8% increased Attack Speed",
+                8.0,
+            ),
+            (
+                "Allies in your Presence have 8% increased Attack Speed",
+                0.0,
+            ),
+        ] {
+            let aura = calc(line, slot, item);
+            assert!(
+                (aura.output().minions[0].dps / bare.output().minions[0].dps - 1.08).abs() < 1e-8,
+                "{slot}: {line}"
+            );
+            let cfg = aura.config().clone().with_flags(ModFlags::ATTACK);
+            assert_eq!(
+                aura.mod_db()
+                    .sum(ModType::Inc, &cfg, &[ModName::from("AttackSpeed")]),
+                player_bonus
+            );
+        }
+        let resist = calc(
+            "You and Allies in your Presence have +19% to Chaos Resistance",
+            slot,
+            item,
+        );
+        assert_eq!(
+            resist.output().chaos_resistance - bare.output().chaos_resistance,
+            19.0
+        );
+        assert_eq!(
+            resist.output().minions[0].stats["ChaosResist"]
+                - bare.output().minions[0].stats["ChaosResist"],
+            19.0
+        );
+    }
+}
+
+#[test]
+fn minion_static_offering_effect_uses_the_offerings_types() {
+    use pobr_build::calculate_with_data_session;
+
+    let data = load_data();
+    let mut build = zombie_build(20)
+        .add_socket_group(SocketGroup::new().with_gem_skill("PainOfferingPlayer", 20));
+    let baseline = calculate_with_data_session(&build, data, &default_opts()).unwrap();
+    let boosted = calculate_with_data_session(
+        &build,
+        data,
+        &DataOrchestratorOptions {
+            extra_modifier_texts: vec!["Offering Skills have 30% increased Buff effect".into()],
+            ..default_opts()
+        },
+    )
+    .unwrap();
+    // Game level-20 Pain Offering: 58% damage, 29% speed. Existing buff
+    // precision truncates these to 75 and 37 after 30% increased effect.
+    assert_eq!(baseline.minion_stat_totals(0, "Damage").1, 58.0);
+    assert_eq!(boosted.minion_stat_totals(0, "Damage").1, 75.0);
+    assert_eq!(baseline.minion_stat_totals(0, "AttackSpeed").1, 29.0);
+    assert_eq!(boosted.minion_stat_totals(0, "AttackSpeed").1, 37.0);
+
+    // Changing the selected player skill must not change the Offering buff.
+    build.main_socket_group = Some(2);
+    let selected = calculate_with_data_session(
+        &build,
+        data,
+        &DataOrchestratorOptions {
+            extra_modifier_texts: vec!["Offering Skills have 30% increased Buff effect".into()],
+            ..default_opts()
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        selected.output().minions[0].dps,
+        boosted.output().minions[0].dps
+    );
+}
+
+#[test]
+fn ordinary_buff_copies_keep_strongest_pain_offering() {
+    use pobr_build::{diagnose, usage::line_usage};
+    use pobr_data::source::SourceKind;
+
+    let offering = |level| SocketGroup::new().with_gem_skill("PainOfferingPlayer", level);
+    let mut disabled_group = offering(20);
+    disabled_group.enabled = false;
+    let mut disabled_gem = offering(20);
+    disabled_gem.gem_skills[0].enabled = false;
+    for (copies, damage, speed) in [
+        (vec![offering(20)], 58.0, 29.0),
+        (vec![offering(20), offering(20)], 58.0, 29.0),
+        (vec![offering(18), offering(20)], 58.0, 29.0),
+        (vec![offering(20), offering(18)], 58.0, 29.0),
+        (vec![disabled_group, offering(18)], 54.0, 28.0),
+        (vec![offering(18), disabled_gem], 54.0, 28.0),
+    ] {
+        let mut build = zombie_build(20);
+        build.socket_groups.extend(copies);
+        for effect in [false, true] {
+            let diagnosis = diagnose(
+                &build,
+                load_data(),
+                &DataOrchestratorOptions {
+                    extra_modifier_texts: if effect {
+                        vec!["Offering Skills have 30% increased Buff effect".into()]
+                    } else {
+                        vec![]
+                    },
+                    ..default_opts()
+                },
+            )
+            .unwrap();
+            let result = &diagnosis.session;
+            let usage = line_usage(&diagnosis, &build, load_data());
+            for (stat, raw, source) in [
+                ("Damage", damage, "pain_offering_damage_+%"),
+                (
+                    "AttackSpeed",
+                    speed,
+                    "pain_offering_attack_and_cast_speed_+%",
+                ),
+            ] {
+                let expected = if effect { (raw * 1.3_f64).trunc() } else { raw };
+                assert_eq!(result.minion_stat_totals(0, stat).1, expected);
+                let rows = result.minion_stat_mods(0, stat);
+                let applied: Vec<_> = rows
+                    .iter()
+                    .filter(|row| {
+                        row.active
+                            && row.modifier.origin.as_ref().is_some_and(|origin| {
+                                origin.source_id.id == format!("buff.PainOfferingPlayer.{source}")
+                            })
+                    })
+                    .collect();
+                assert_eq!(applied.len(), 1, "one strongest {stat} leaf");
+                assert_eq!(applied[0].value, Some(expected));
+                let origin = applied[0].modifier.origin.as_ref().unwrap();
+                assert_eq!(origin.source_id.kind, SourceKind::SkillGem);
+                let note = if effect {
+                    " (buff effect ×1.3000)"
+                } else {
+                    ""
+                };
+                assert_eq!(
+                    origin.raw_text.as_deref(),
+                    Some(format!("buff PainOfferingPlayer {source} ({raw}){note}").as_str())
+                );
+                let lines: Vec<_> = usage
+                    .lines
+                    .iter()
+                    .filter(|line| {
+                        line.source_id.as_deref()
+                            == Some(format!("buff.PainOfferingPlayer.{source}").as_str())
+                    })
+                    .collect();
+                assert_eq!(lines.len(), 1, "one winning {source} ledger line");
+                assert_eq!(lines[0].source_kind.as_deref(), Some("SkillGem"));
+                assert_eq!(lines[0].text, origin.raw_text);
+                assert_eq!(lines[0].modifiers.len(), 1);
+                assert_eq!(lines[0].modifiers[0].name, "ExtraAura");
+                assert_eq!(
+                    lines[0].modifiers[0].value,
+                    pobr_build::usage::UsageValue::Text(format!(
+                        "[nested {}]",
+                        if stat == "Damage" { 1 } else { 2 }
+                    ))
+                );
+            }
         }
     }
 }

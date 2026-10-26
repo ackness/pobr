@@ -1,0 +1,40 @@
+{
+  "name": "ritualist-05",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/Pocky18BaTH-3565/IPY_myscreen",
+    "account": "Pocky18BaTH-3565",
+    "character": "IPY_myscreen",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:54:56+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=Pocky18BaTH-3565&name=IPY_myscreen&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Ritualist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 5,
+    "index_sha256": "1bf623e2612a8554cab6044ab4874665d511824502a2f6f0018f34fd81bbe141",
+    "character_response_sha256": "a91336945e3d3b74194b8e76a1203e68d3c9a2fd4e43a5624878f29e41ca0c73",
+    "upstream_updated_utc": "2026-09-23T11:23:25.94681Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.285223Z",
+    "upstream_last_checked_utc": "2026-10-23T01:04:38.939499Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Ritualist",
+    "level": 100,
+    "main_skill": "Lightning Warp"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "3ddb77d93cfed4057cf74901fa52734a60ee50d1409dcab05685b47f64afa2ff",
+    "code_chars": 12012,
+    "decoded_bytes": 43774
+  }
+}

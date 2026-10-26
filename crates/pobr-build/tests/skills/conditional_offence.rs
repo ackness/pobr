@@ -42,6 +42,37 @@ fn close(actual: f64, expected: f64) {
 }
 
 #[test]
+fn arc_remaining_chain_quality_scales_the_selected_hit() {
+    use pobr_build::calculate_with_data_session;
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+    use pobr_data::passive_tree::NodeId;
+
+    let mut build = build("ArcPlayer", "", "");
+    build.socket_groups[0].gem_skills[0].quality = 20;
+    let options = DataOrchestratorOptions::against_reference_enemy();
+    let plain = calculate_with_data_session(&build, data(), &options).unwrap();
+    let hit = plain.output().total_hit_avg;
+    let capacity = plain.output().chain_max;
+    assert!(capacity > 2.0);
+    build.tree.allocated_nodes.push(NodeId(14429));
+    for used in [0.0, 2.0, 999.0] {
+        build
+            .config
+            .raw_inputs
+            .values
+            .insert("skillChainCount".into(), ConfigInputValue::Number(used));
+        let result = calculate_with_data_session(&build, data(), &options).unwrap();
+        let remaining = (capacity - used).max(0.0);
+        assert_eq!(result.config().stat("ChainRemaining"), remaining);
+        assert_eq!(result.config().multiplier("ChainRemaining"), remaining);
+        // Arc's additional quality gives 3% more projectile hit damage per
+        // remaining chain at 20 quality. Chaining does not multiply hit rate.
+        close(result.output().total_hit_avg / hit, 1.0 + 0.03 * remaining);
+        assert_eq!(result.output().action_rate, plain.output().action_rate);
+    }
+}
+
+#[test]
 fn frozen_hit_bonus_requires_the_configured_enemy_state() {
     let data = data();
     let line = "50% increased Damage with Hits against Frozen Enemies";

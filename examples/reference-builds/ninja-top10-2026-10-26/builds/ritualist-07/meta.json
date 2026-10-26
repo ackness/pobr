@@ -1,0 +1,40 @@
+{
+  "name": "ritualist-07",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/bakhongbon123-9735/FR_IGiveDamage",
+    "account": "bakhongbon123-9735",
+    "character": "FR_IGiveDamage",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:55:03+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=bakhongbon123-9735&name=FR_IGiveDamage&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Ritualist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 7,
+    "index_sha256": "1bf623e2612a8554cab6044ab4874665d511824502a2f6f0018f34fd81bbe141",
+    "character_response_sha256": "78e206ed22ea706827f1f24fe94ca0f6745979fe90a70f3aec3d1964a883e821",
+    "upstream_updated_utc": "2026-09-24T04:39:06.109545Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.457944Z",
+    "upstream_last_checked_utc": "2026-10-25T07:32:57.6941Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Ritualist",
+    "level": 100,
+    "main_skill": "Blood Boil"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 1,
+    "code_sha256": "e8dd039a6833f4ee8bb5e47efbe3a57cb5cf3506dc219b9add05e3e0494b33f0",
+    "code_chars": 10092,
+    "decoded_bytes": 34248
+  }
+}

@@ -1,0 +1,743 @@
+{
+  "source_revision": "23e013775504fb933006c50a060298728545ccb0",
+  "data_version": "0.5.5.4.2",
+  "corpus_size": 230,
+  "non_holdout_builds_cross_checked": 307,
+  "before": {
+    "source_revision": "45a3c00a265a60ad69cf2c152395f443089abf13",
+    "agreed_rows": 19190,
+    "compared_rows": 20427,
+    "damage_agrees": 169,
+    "unsupported_line_occurrences": 2109,
+    "classification": {
+      "engine": 434,
+      "known": 372,
+      "reference": 375,
+      "both": 56
+    }
+  },
+  "after": {
+    "agreed_rows": 19201,
+    "compared_rows": 20427,
+    "builds_with_agreeing_damage": 170,
+    "unsupported_line_occurrences": 2081,
+    "builds_with_all_compared_rows_agreeing": 33,
+    "failed_imports_or_calculations": 0,
+    "missing_items_reported": 0,
+    "negative_typed_hit_pools": 0,
+    "classification": {
+      "engine": 423,
+      "known": 372,
+      "reference": 375,
+      "both": 56
+    }
+  },
+  "rows_newly_within_tolerance": 12,
+  "rows_newly_outside_tolerance": 1,
+  "resolved_rows": [
+    [
+      "invoker-03",
+      "AverageBurstDamage"
+    ],
+    [
+      "invoker-03",
+      "TotalDPS"
+    ],
+    [
+      "invoker-03",
+      "WithBleedDPS"
+    ],
+    [
+      "invoker-03",
+      "WithPoisonDPS"
+    ],
+    [
+      "warbringer-01",
+      "AverageBurstDamage"
+    ],
+    [
+      "warbringer-01",
+      "AverageDamage"
+    ],
+    [
+      "warbringer-01",
+      "CombinedDPS"
+    ],
+    [
+      "warbringer-01",
+      "TotalDPS"
+    ],
+    [
+      "warbringer-01",
+      "TotalDotDPS"
+    ],
+    [
+      "warbringer-01",
+      "WithBleedDPS"
+    ],
+    [
+      "warbringer-01",
+      "WithIgniteDPS"
+    ],
+    [
+      "warbringer-01",
+      "WithPoisonDPS"
+    ]
+  ],
+  "newly_different_rows": [
+    [
+      "tactician-06",
+      "MinionTotalDPS"
+    ]
+  ],
+  "measured_examples": [
+    {
+      "build": "acolyte-of-chayula-08",
+      "stat": "Life",
+      "before_reference_basis": 1611.96,
+      "before_value_note": null,
+      "after_reference_basis": 1658.016,
+      "remaining_reference_difference": null,
+      "before_default": 1611.96,
+      "after_default": 1658.016,
+      "before_default_note": null
+    },
+    {
+      "build": "acolyte-of-chayula-08",
+      "stat": "Mana",
+      "before_reference_basis": 817.0,
+      "before_value_note": null,
+      "after_reference_basis": 842.8,
+      "remaining_reference_difference": null,
+      "before_default": 817.0,
+      "after_default": 842.8,
+      "before_default_note": null
+    },
+    {
+      "build": "acolyte-of-chayula-08",
+      "stat": "EnergyShield",
+      "before_reference_basis": 11052.0,
+      "before_value_note": null,
+      "after_reference_basis": 11052.0,
+      "remaining_reference_difference": null,
+      "before_default": 11052.0,
+      "after_default": 11052.0,
+      "before_default_note": null
+    },
+    {
+      "build": "oracle-06",
+      "stat": "Life",
+      "before_reference_basis": 1.0,
+      "before_value_note": null,
+      "after_reference_basis": 1.0,
+      "remaining_reference_difference": null,
+      "before_default": 1.0,
+      "after_default": 1.0,
+      "before_default_note": null
+    },
+    {
+      "build": "oracle-06",
+      "stat": "Mana",
+      "before_reference_basis": 1400.7,
+      "before_value_note": null,
+      "after_reference_basis": 1440.72,
+      "remaining_reference_difference": null,
+      "before_default": 1400.7,
+      "after_default": 1440.72,
+      "before_default_note": null
+    },
+    {
+      "build": "oracle-06",
+      "stat": "EsRechargePerSecond",
+      "before_reference_basis": null,
+      "before_value_note": "not retained in old standard panels",
+      "after_reference_basis": 5992.63625,
+      "remaining_reference_difference": null,
+      "before_default": null,
+      "after_default": 6745.48,
+      "before_default_note": "not retained in old panels"
+    },
+    {
+      "build": "oracle-04",
+      "stat": "EsRechargePerSecond",
+      "before_reference_basis": null,
+      "before_value_note": "not retained in old standard panels",
+      "after_reference_basis": 2132.6325,
+      "remaining_reference_difference": null,
+      "before_default": null,
+      "after_default": 2309.37,
+      "before_default_note": "not retained in old panels"
+    },
+    {
+      "build": "shaman-07",
+      "stat": "EsRechargePerSecond",
+      "before_reference_basis": null,
+      "before_value_note": "not retained in old standard panels",
+      "after_reference_basis": 2553.6625,
+      "remaining_reference_difference": null,
+      "before_default": null,
+      "after_default": 2880.4625,
+      "before_default_note": "not retained in old panels"
+    },
+    {
+      "build": "shaman-07",
+      "stat": "TotalDPS",
+      "before_reference_basis": 465004.843763218,
+      "before_value_note": null,
+      "after_reference_basis": 465004.843763218,
+      "remaining_reference_difference": null,
+      "before_default": 729745.893472292,
+      "after_default": 796358.157592621,
+      "before_default_note": null
+    },
+    {
+      "build": "blood-mage-07",
+      "stat": "TotalHitAvg",
+      "before_reference_basis": 594793.689350366,
+      "before_value_note": null,
+      "after_reference_basis": 604066.50126813,
+      "remaining_reference_difference": null,
+      "before_default": 638849.210580933,
+      "after_default": 649922.568502146,
+      "before_default_note": null
+    },
+    {
+      "build": "blood-mage-07",
+      "stat": "TotalDPS",
+      "before_reference_basis": 1736797.573022029,
+      "before_value_note": null,
+      "after_reference_basis": 1763874.183823753,
+      "remaining_reference_difference": null,
+      "before_default": 101889.60050134,
+      "after_default": 103655.682381248,
+      "before_default_note": null
+    },
+    {
+      "build": "blood-mage-09",
+      "stat": "TotalHitAvg",
+      "before_reference_basis": 3258022.208083723,
+      "before_value_note": null,
+      "after_reference_basis": 3364715.949885659,
+      "remaining_reference_difference": null,
+      "before_default": 3436415.445861817,
+      "after_default": 3551131.273513522,
+      "before_default_note": null
+    },
+    {
+      "build": "blood-mage-09",
+      "stat": "TotalDPS",
+      "before_reference_basis": 1353332.301217912,
+      "before_value_note": null,
+      "after_reference_basis": 1397651.240100557,
+      "remaining_reference_difference": null,
+      "before_default": 2963098.309959778,
+      "after_default": 3062013.67115388,
+      "before_default_note": null
+    },
+    {
+      "build": "invoker-03",
+      "stat": "TotalHitAvg",
+      "before_reference_basis": 186956.467051646,
+      "before_value_note": null,
+      "after_reference_basis": 197633.556285792,
+      "remaining_reference_difference": null,
+      "before_default": 221697.641951339,
+      "after_default": 234358.800687614,
+      "before_default_note": null
+    },
+    {
+      "build": "invoker-03",
+      "stat": "TotalDPS",
+      "before_reference_basis": 949471.772035273,
+      "before_value_note": null,
+      "after_reference_basis": 1003696.132364687,
+      "remaining_reference_difference": null,
+      "before_default": 1232797.244660477,
+      "after_default": 1303202.330916263,
+      "before_default_note": null
+    },
+    {
+      "build": "tactician-06",
+      "stat": "MinionTotalDPS",
+      "before_reference_basis": 1202.507591479,
+      "before_value_note": null,
+      "after_reference_basis": 2501.627546392,
+      "remaining_reference_difference": {
+        "stat": "MinionTotalDPS",
+        "pob_key": "Minion:TotalDPS",
+        "pobr": 2501.627546392,
+        "reference": 1201.5931816863,
+        "ratio": 2.0819255506104395
+      },
+      "before_default": 1202.507591479,
+      "after_default": 2501.627546392,
+      "before_default_note": null
+    },
+    {
+      "build": "spirit-walker-04",
+      "stat": "FireResist",
+      "before_reference_basis": 2.0,
+      "before_value_note": null,
+      "after_reference_basis": 2.0,
+      "remaining_reference_difference": null,
+      "before_default": 2.0,
+      "after_default": 42.0,
+      "before_default_note": null
+    },
+    {
+      "build": "spirit-walker-04",
+      "stat": "ColdResist",
+      "before_reference_basis": 21.0,
+      "before_value_note": null,
+      "after_reference_basis": 21.0,
+      "remaining_reference_difference": {
+        "stat": "ColdResist",
+        "pob_key": "ColdResist",
+        "pobr": 21.0,
+        "reference": 9.0,
+        "ratio": 2.3333333333333335
+      },
+      "before_default": 21.0,
+      "after_default": 61.0,
+      "before_default_note": null
+    },
+    {
+      "build": "spirit-walker-10",
+      "stat": "FireResist",
+      "before_reference_basis": 15.0,
+      "before_value_note": null,
+      "after_reference_basis": 15.0,
+      "remaining_reference_difference": null,
+      "before_default": 15.0,
+      "after_default": 57.0,
+      "before_default_note": null
+    },
+    {
+      "build": "spirit-walker-10",
+      "stat": "ColdResist",
+      "before_reference_basis": 31.0,
+      "before_value_note": null,
+      "after_reference_basis": 31.0,
+      "remaining_reference_difference": {
+        "stat": "ColdResist",
+        "pob_key": "ColdResist",
+        "pobr": 31.0,
+        "reference": 19.0,
+        "ratio": 1.631578947368421
+      },
+      "before_default": 31.0,
+      "after_default": 73.0,
+      "before_default_note": null
+    },
+    {
+      "build": "warbringer-07",
+      "stat": "EffectiveLootRarityMod",
+      "before_reference_basis": null,
+      "before_value_note": "not retained in old standard panels",
+      "after_reference_basis": 1.8399999999999999,
+      "remaining_reference_difference": null,
+      "before_default": null,
+      "after_default": 1.8399999999999999,
+      "before_default_note": "not retained in old panels"
+    },
+    {
+      "build": "smith-of-kitava-06",
+      "stat": "BleedDuration",
+      "before_reference_basis": null,
+      "before_value_note": "not retained in old standard panels",
+      "after_reference_basis": 1.2554744525547443,
+      "remaining_reference_difference": null,
+      "before_default": null,
+      "after_default": 1.2554744525547443,
+      "before_default_note": "not retained in old panels"
+    },
+    {
+      "build": "smith-of-kitava-06",
+      "stat": "BleedDamage",
+      "before_reference_basis": null,
+      "before_value_note": "not retained in old standard panels",
+      "after_reference_basis": 88682.781255205,
+      "remaining_reference_difference": null,
+      "before_default": null,
+      "after_default": 88682.781255205,
+      "before_default_note": "not retained in old panels"
+    },
+    {
+      "build": "blood-mage-01",
+      "stat": "BleedDPS",
+      "before_reference_basis": 570385.412949632,
+      "before_value_note": null,
+      "after_reference_basis": 570385.412949632,
+      "remaining_reference_difference": {
+        "stat": "BleedDPS",
+        "pob_key": "BleedDPS",
+        "pobr": 570385.412949632,
+        "reference": 2451457.8849176,
+        "ratio": 0.2326719200272144
+      },
+      "before_default": 660104.931813916,
+      "after_default": 330052.465906958,
+      "before_default_note": null
+    },
+    {
+      "build": "blood-mage-01",
+      "stat": "IgniteDPS",
+      "before_reference_basis": 23909.647376867,
+      "before_value_note": null,
+      "after_reference_basis": 23909.647376867,
+      "remaining_reference_difference": null,
+      "before_default": 27954.031648013,
+      "after_default": 13977.015824006,
+      "before_default_note": null
+    },
+    {
+      "build": "pathfinder-06",
+      "stat": "ManaLeechGainPerHit",
+      "before_reference_basis": null,
+      "before_value_note": "not retained in old standard panels",
+      "after_reference_basis": 3281.660253038,
+      "remaining_reference_difference": null,
+      "before_default": null,
+      "after_default": 3302.85509933775,
+      "before_default_note": "not retained in old panels"
+    },
+    {
+      "build": "pathfinder-06",
+      "stat": "ManaLeechGainRate",
+      "before_reference_basis": null,
+      "before_value_note": "not retained in old standard panels",
+      "after_reference_basis": 136.92,
+      "remaining_reference_difference": null,
+      "before_default": null,
+      "after_default": 136.92,
+      "before_default_note": "not retained in old panels"
+    },
+    {
+      "build": "warbringer-01",
+      "stat": "TotalDPS",
+      "before_reference_basis": 645085.615298015,
+      "before_value_note": null,
+      "after_reference_basis": 603152.360399506,
+      "remaining_reference_difference": null,
+      "before_default": 645085.615298015,
+      "after_default": 603152.360399506,
+      "before_default_note": null
+    },
+    {
+      "build": "warbringer-01",
+      "stat": "IgniteDPS",
+      "before_reference_basis": 4989.044168218,
+      "before_value_note": null,
+      "after_reference_basis": 0.0,
+      "remaining_reference_difference": null,
+      "before_default": 4989.044168218,
+      "after_default": 0.0,
+      "before_default_note": null
+    },
+    {
+      "build": "disciple-of-varashta-02",
+      "stat": "Mana",
+      "before_reference_basis": 1113.4,
+      "before_value_note": null,
+      "after_reference_basis": 1148.56,
+      "remaining_reference_difference": null,
+      "before_default": 1113.4,
+      "after_default": 1148.56,
+      "before_default_note": null
+    },
+    {
+      "build": "disciple-of-varashta-02",
+      "stat": "MinionTotalDPS",
+      "before_reference_basis": 130523.148122225,
+      "before_value_note": null,
+      "after_reference_basis": 130523.148122225,
+      "remaining_reference_difference": null,
+      "before_default": 130523.148122225,
+      "after_default": 130523.148122225,
+      "before_default_note": null
+    }
+  ],
+  "commits": [
+    "b0127f44b529aeb3381cf7dbc6b4a2c04e815c21 docs: distinguish fixed inputs from deliberate reference differences",
+    "4f74c60e209dbba0729d57d7c98f2b7270d28480 fix: honor minion support type borrowing restrictions",
+    "a1b6d115e49bdec94fa7c67431e0f739485836d5 fix: combine native zombie cap with global limit bonuses",
+    "1af6b5937a62533ae6ad929d0af36716d808e654 fix: apply supported culling against rare and unique enemies",
+    "9ee5720bcb38f3cc876a3564c50e83c6a2bef705 fix: route converted leech to energy shield",
+    "426fa0ee7f2e546b7aa2f3ee0ea673d8e96cd4e2 fix: share regeneration increases across resources",
+    "7d6b9cbd9d0431af78c51a83454e4b7d9173425e fix: preserve typed damage in leech panels",
+    "01769763af6a009af9a36b79f4c39da06f39e04e test: preserve native granted skill requirement baseline",
+    "dc1b75a9f48da95830e96e96f3cb585ae2c6fe1c docs: explain native Ballista capacity difference",
+    "75268eaa166a9c38b83da74b2e560b1e586a5c9f fix: apply Eldritch Will to player resource pools",
+    "1b1c008b959a52117c72ae16068fc7307a252a87 fix: share movement increases with energy shield recharge",
+    "efe8256b062313b529250f00831009eb755f4432 fix: parse lightning hit luck chance",
+    "dbc99e6b2ef19c79e29f37c8642e960df2d319f9 test: record static recovery and grant accuracy batch",
+    "d4f941bdbb93b1af01ea937fe1ed118302ded75b fix: parse static ally and equipment scaling grants",
+    "4d203dc3439dfa0637ae0d7d9801977c105733e1 fix: grant allies the main hand weapon damage share",
+    "a0d5083ab9f22ae1dd94a7b783a3ca49029b9b98 fix: apply Shattering Spite damaging ailment penalty",
+    "0ba6fa6642d6a73d9b20c57af5071ca08fccaba7 fix: parse paired Loreweave rarity and Crimson Assault duration",
+    "8cb8f164df3591919e1fa5ef52cd70cf127a8719 docs: describe static resource and lightning luck inputs",
+    "030857f81d1ab8429d820997e82c767764a6169b fix: count distinct prepared companions for presence damage",
+    "de8c5ab8aa6bf1c2c07770d7d453d52a241529ce fix: honor Crimson Assault base bleeding duration",
+    "8ecc51e7e606031dacfb4763120e381d400a53bc fix: count equipped lightning resistance modifiers per item",
+    "46bd6013924486e8af34c42a1823a12df4f9129d docs: reconcile completed batch report status",
+    "dd4e589657f52692894e822decfc07e53effd050 fix: preserve Loreweave exclusive rarity source",
+    "9b9f9cc1ad9fee9c52ed2714cdf850b86bca400d docs: record static ally rarity and ailment conventions",
+    "713a6e88d37ab05776d5476b6be64b408310c9b6 fix: separate companion membership from damageability",
+    "4e4696128d096c908c297b8d07fdc8cf19df5663 fix: retain each source of shared minion weapon damage",
+    "ff27525fa5b48dbc1d400fa88662c7593e0c88bd fix: admit Oisin mana leech eligibility flags",
+    "811c37900327b00c8ce95b36287eecfbdc7fcff9 docs: distinguish companion identity and damage sharing sources",
+    "ebb6ee7f67edf68eedff963916a81dac20d6b1d4 fix: exclude physical damage from Oisin mana leech",
+    "ebc6edb7ba5922c877447723ee7a2ae284b6770c fix: retain Brutality damage restrictions in stat mapping",
+    "18cdb434e8061a5910edfb39d3f7815cf87d9d6f docs: describe native support damage and leech restrictions",
+    "a6b5c8ca3df6250db40fc6ac684ce170b08e091f fix: gate damaging ailments by dealt damage type",
+    "23e013775504fb933006c50a060298728545ccb0 docs: clarify damaging ailment type restrictions"
+  ],
+  "classification_caveat": "engine/both are diagnostic candidates, not a count of proven bugs. Saved references and pinned PoB2 are cross-checks, not game truth. Known rows retain narrow source evidence; no whole build is declared correct from numerical agreement.",
+  "measurement_limits": [
+    "Saved exporter values and pinned PoB2 are cross-checks, not game truth.",
+    "FullDPS is not calculated; damage uses selected main minion TotalDPS when its saved reference is nonzero.",
+    "Exporter-absent rules and timing models are disabled for reference comparison; focused native regressions cover the added rules.",
+    "Runtime errors fail triage, but numerical disagreement is reported rather than treated as a test failure.",
+    "No individual holdout inspected.",
+    "Structural audit of this frozen corpus is separate; multi-set/historical/disabled/malformed import cases were not present in that corpus."
+  ],
+  "validation": {
+    "initial_aggregate_accuracy": [
+      {
+        "corpus": "examples/wasm-benchmark/builds",
+        "builds": 8,
+        "damage_agrees": 5,
+        "agreeing_rows": 661,
+        "compared_rows": 715
+      },
+      {
+        "corpus": "examples/reference-builds/tuned/builds",
+        "builds": 69,
+        "damage_agrees": 58,
+        "agreeing_rows": 5794,
+        "compared_rows": 6119
+      },
+      {
+        "corpus": "examples/reference-builds/holdout/builds",
+        "builds": 23,
+        "damage_agrees": 17,
+        "agreeing_rows": 1912,
+        "compared_rows": 2034
+      }
+    ],
+    "initial_failed_steps": [],
+    "targeted_rerun": {
+      "log": "gate-final.log",
+      "aggregate_accuracy": [
+        {
+          "corpus": "examples/wasm-benchmark/builds",
+          "builds": 8,
+          "damage_agrees": 5,
+          "agreeing_rows": 661,
+          "compared_rows": 715
+        },
+        {
+          "corpus": "examples/reference-builds/tuned/builds",
+          "builds": 69,
+          "damage_agrees": 58,
+          "agreeing_rows": 5794,
+          "compared_rows": 6119
+        },
+        {
+          "corpus": "examples/reference-builds/holdout/builds",
+          "builds": 23,
+          "damage_agrees": 17,
+          "agreeing_rows": 1912,
+          "compared_rows": 2034
+        }
+      ],
+      "inputs": {
+        "git_commit": "23e013775504fb933006c50a060298728545ccb0",
+        "started_at": "2026-10-26T19:22:59.171646+00:00",
+        "command": "mise run gate --only fmt,clippy,core,build,parity,apps,accuracy",
+        "change": "Brutality dealt-type ailment review fix. Parser/catalog/generated, Web and i18n inputs unchanged; prior passing checks retained."
+      },
+      "exit": 0,
+      "passed_steps": [
+        "fmt",
+        "clippy",
+        "core",
+        "build",
+        "parity",
+        "apps",
+        "accuracy"
+      ],
+      "failed_steps": []
+    },
+    "gate_inputs": {
+      "git_commit": "9b9f9cc1ad9fee9c52ed2714cdf850b86bca400d",
+      "started_at": "2026-10-26T18:40:22.572187+00:00",
+      "command": "mise run gate"
+    },
+    "gate_exit": 0,
+    "steps_passed": [
+      "accuracy",
+      "apps",
+      "build",
+      "clippy",
+      "core",
+      "fmt",
+      "i18n",
+      "parity",
+      "regen",
+      "web"
+    ],
+    "failed_steps": [],
+    "aggregate_accuracy": [
+      {
+        "corpus": "examples/wasm-benchmark/builds",
+        "builds": 8,
+        "damage_agrees": 5,
+        "agreeing_rows": 661,
+        "compared_rows": 715
+      },
+      {
+        "corpus": "examples/reference-builds/tuned/builds",
+        "builds": 69,
+        "damage_agrees": 58,
+        "agreeing_rows": 5794,
+        "compared_rows": 6119
+      },
+      {
+        "corpus": "examples/reference-builds/holdout/builds",
+        "builds": 23,
+        "damage_agrees": 17,
+        "agreeing_rows": 1912,
+        "compared_rows": 2034
+      }
+    ],
+    "holdout_scope": "Aggregate accuracy only; no individual holdout inspected.",
+    "browser_scope": "Web typecheck/unit tests and Rust WASM/JSON contracts; 508 Web tests passed, 5 skipped (3 opt-in benchmark tests and 2 useBuildSession WASM tests). No actual browser interaction validation claimed.",
+    "independent_reviews": "See review-summary.json; focused regression execution belongs to the implementation commits.",
+    "reference_scope": "The accuracy gate covers benchmark/tuned/holdout. The separate triage measurement covers the full230 frozen cohort and77 worked builds; numerical disagreement is diagnostic.",
+    "targeted_reruns": [
+      {
+        "log": "gate-rerun.log",
+        "aggregate_accuracy": [
+          {
+            "corpus": "examples/wasm-benchmark/builds",
+            "builds": 8,
+            "damage_agrees": 5,
+            "agreeing_rows": 661,
+            "compared_rows": 715
+          },
+          {
+            "corpus": "examples/reference-builds/tuned/builds",
+            "builds": 69,
+            "damage_agrees": 58,
+            "agreeing_rows": 5794,
+            "compared_rows": 6119
+          },
+          {
+            "corpus": "examples/reference-builds/holdout/builds",
+            "builds": 23,
+            "damage_agrees": 17,
+            "agreeing_rows": 1912,
+            "compared_rows": 2034
+          }
+        ],
+        "inputs": {
+          "git_commit": "18cdb434e8061a5910edfb39d3f7815cf87d9d6f",
+          "started_at": "2026-10-26T19:09:01.464216+00:00",
+          "command": "mise run gate --only fmt,regen,clippy,core,build,parity,apps,accuracy",
+          "change": "Companion identity/source review fixes and two additional native support restrictions after initial9-cause gate; Web/i18n inputs unchanged."
+        },
+        "exit": 0,
+        "passed_steps": [
+          "fmt",
+          "regen",
+          "clippy",
+          "core",
+          "build",
+          "parity",
+          "apps",
+          "accuracy"
+        ],
+        "failed_steps": []
+      },
+      {
+        "log": "gate-final.log",
+        "aggregate_accuracy": [
+          {
+            "corpus": "examples/wasm-benchmark/builds",
+            "builds": 8,
+            "damage_agrees": 5,
+            "agreeing_rows": 661,
+            "compared_rows": 715
+          },
+          {
+            "corpus": "examples/reference-builds/tuned/builds",
+            "builds": 69,
+            "damage_agrees": 58,
+            "agreeing_rows": 5794,
+            "compared_rows": 6119
+          },
+          {
+            "corpus": "examples/reference-builds/holdout/builds",
+            "builds": 23,
+            "damage_agrees": 17,
+            "agreeing_rows": 1912,
+            "compared_rows": 2034
+          }
+        ],
+        "inputs": {
+          "git_commit": "23e013775504fb933006c50a060298728545ccb0",
+          "started_at": "2026-10-26T19:22:59.171646+00:00",
+          "command": "mise run gate --only fmt,clippy,core,build,parity,apps,accuracy",
+          "change": "Brutality dealt-type ailment review fix. Parser/catalog/generated, Web and i18n inputs unchanged; prior passing checks retained."
+        },
+        "exit": 0,
+        "passed_steps": [
+          "fmt",
+          "clippy",
+          "core",
+          "build",
+          "parity",
+          "apps",
+          "accuracy"
+        ],
+        "failed_steps": []
+      }
+    ]
+  },
+  "default_mode_validation": "default-calculation.json",
+  "independent_review": "review-summary.json",
+  "completion_status": "Current batch addresses eleven proven static causes; final review and measurements determine closure.",
+  "remaining_limits": [
+    "Unverified intrinsic minion Life-to-ES deduction, Runic Plate snapshots and several residual damage/level/reservation rows remain explicit in triage.",
+    "No inferred kill history, Offering consumption, Headhunter buffs, minion Rage or sustained flask uptime is added.",
+    "Spirit Walker09 Rage III recipient-state question remains unresolved.",
+    "Unique Herald/Blink mappings are supported by game attachment tables; the separate Oracle04 five-point Spirit pool difference remains unresolved.",
+    "Finite flask recovery is available separately; it is not automatically aggregated into permanent regeneration.",
+    "Game rounding is not changed solely for exporter agreement.",
+    "Retained enableGlobal1/2 flags contain no explicit false in this frozen corpus; legacy false-state interpretation is not validated and existing ordinary-buff alternate-set behavior is preserved.",
+    "Passing imports and calculation checks do not establish complete support for every modifier or all malformed/historical/multi-set inputs."
+  ],
+  "measured_secondary_minion_examples": [
+    {
+      "build": "disciple-of-varashta-02",
+      "output_actor_index": 2,
+      "minion_id": "RaisedSkeletonWarriors",
+      "skill_id": "MinionMeleeStep",
+      "summoned_by": "SummonSkeletalWarriorsPlayer",
+      "before_default_dps": 5396.161726274,
+      "after_default_dps": 4926.325769344,
+      "scope": "Individual retained secondary minion output; not a FullDPS aggregate or selected-main-minion comparison."
+    },
+    {
+      "build": "disciple-of-varashta-02",
+      "output_actor_index": 6,
+      "minion_id": "RaisedSkeletonReaver",
+      "skill_id": "MinionMeleeStep",
+      "summoned_by": "SummonSkeletalReaversPlayer",
+      "before_default_dps": 4549.104024104,
+      "after_default_dps": 4138.082151244,
+      "scope": "Individual retained secondary minion output; not a FullDPS aggregate or selected-main-minion comparison."
+    }
+  ]
+}

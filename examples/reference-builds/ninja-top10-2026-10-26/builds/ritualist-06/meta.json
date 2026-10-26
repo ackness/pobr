@@ -1,0 +1,40 @@
+{
+  "name": "ritualist-06",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/WOSHICHINESE-3392/Arites",
+    "account": "WOSHICHINESE-3392",
+    "character": "Arites",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-26T10:55:00+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/character?account=WOSHICHINESE-3392&name=Arites&overview=forbidden-rites",
+    "snapshot": "0757-20261026-16736",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0757-20261026-16736/search?overview=forbidden-rites&class=Ritualist",
+    "selection": "ascendancy-default-leaderboard-top10-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    },
+    "rank_within_ascendancy": 6,
+    "index_sha256": "1bf623e2612a8554cab6044ab4874665d511824502a2f6f0018f34fd81bbe141",
+    "character_response_sha256": "304d7a611f4de1e1a0a3cdfc9f650f153b14c2410398bc5fb5a09c29cee7ea52",
+    "upstream_updated_utc": "2026-10-15T08:31:46.09029Z",
+    "upstream_last_seen_utc": "2026-10-26T07:36:21.31346Z",
+    "upstream_last_checked_utc": "2026-10-23T22:28:38.30616Z"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Ritualist",
+    "level": 100,
+    "main_skill": "Twister"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "bee1a2604e91d224c0ed3f53a655e172d788329cc113c20f279cca48d5e179b1",
+    "code_chars": 12928,
+    "decoded_bytes": 47192
+  }
+}

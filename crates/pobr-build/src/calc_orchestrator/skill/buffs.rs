@@ -53,8 +53,9 @@ pub(crate) fn herald_skill_names(build: &Build, data: &BuildData) -> Vec<String>
 /// `slot` = the socket group's raw slot name (the PoB XML `slot` attr, e.g. `Weapon 1`,
 /// the same source as curse_priority.json's slot weight key); `socket_index` = the
 /// gem's ordinal in the group (1-based, matching vendor's `ipairs(gemList)` order).
-/// The same effect appearing in multiple groups is deduplicated by id (matching the
-/// existing injection semantics).
+/// Ordinary player Buff copies retain their values and sources for the strongest
+/// same-name modifier merge. Aura and Debuff copies keep first-by-id selection;
+/// curse copies are selected by the curse pass.
 pub(crate) fn buff_skill_specs(
     context: &mut CalculationContext,
     build: &Build,
@@ -109,6 +110,7 @@ pub(crate) fn support_buff_specs(
 /// (`*_damage_buff_damage_%_to_gain_as_<type>`). This buff is a **global** self-effect,
 /// so it iterates every enabled socket group's gem_skills, deduplicated by id to avoid
 /// double injection.
+#[cfg(test)]
 pub(crate) fn self_buff_offensive_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     pobr_core::skill_env::self_buff_offensive_modifiers(build, data)
 }

@@ -1087,8 +1087,17 @@ fn stage_hand_sources(session: &mut SourceWriter, ctx: &StageCtx<'_>) {
                         source.weapon.crit_chance,
                     )
                     .with_tag(pobr_core::ModTag::condition("OffHandAttack", !off_hand))
-                    .with_origin(origin),
+                    .with_origin(origin.clone()),
                 ]);
+                // Weapon-base overrides do not replace an unarmed, shield or
+                // skill-defined source, even with a weapon equipped.
+                if source.weapon.flags.intersects(ModFlags::WEAPON) {
+                    session.add_modifiers(vec![
+                        Modifier::flag("UsesWeaponBaseCritChance")
+                            .with_tag(pobr_core::ModTag::condition("OffHandAttack", !off_hand))
+                            .with_origin(origin),
+                    ]);
+                }
             }
         }
         session.set_hand_sources(sources, false);

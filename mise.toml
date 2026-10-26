@@ -166,7 +166,7 @@ description = "Report toolchain, vendor and data readiness"
 run = "bash devs/scripts/driver.sh status"
 
 [tasks.deps]
-description = "Install system dependencies (LuaJIT)"
+description = "Install/cache the compatible PoB2 LuaJIT runtime (requires Git, make and a C compiler)"
 run = "bash devs/scripts/driver.sh deps"
 
 [tasks.vendor]
