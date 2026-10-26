@@ -1876,6 +1876,10 @@ are unchanged.
 Brutality's native no-elemental/no-chaos stats admit the existing `DealNo*` flags
 through the shared player/minion mapper. The existing post-conversion damage
 gates remove those components while retaining physical MORE and support scope.
+Damaging ailments also respect the restriction on their actual dealt type:
+Physical hits cannot fund Poison when Chaos damage is prohibited. A blocked
+ailment has no damage or stack terms and keeps the restricting source in its
+trace. Covenant's scoped Ignite uses Chaos here; ordinary Ignite uses Fire.
 The separate chance to ignore physical reduction remains diagnostic; this batch
 does not infer a missing mitigation contribution or add a probabilistic model.
 Second Wind's double-use capability remains unsupported, but the only selected
