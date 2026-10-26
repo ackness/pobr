@@ -1,0 +1,1645 @@
+{
+  "schema": "pobr-static-completion-audit/v1",
+  "date": "2026-10-26",
+  "verdict": "NOT COMPLETE: nine directly evidenced selected static defects; unresolved coverage is explicitly retained. Inventory is not an implementation backlog.",
+  "scope": {
+    "cohort_full230": 230,
+    "triage_total": 307,
+    "worked_additional": 77,
+    "source_review_revision": "52a6db0b8a77834f4c5844086bcca0252be1ae05",
+    "latest_root_revision": "45a3c00a265a60ad69cf2c152395f443089abf13",
+    "latest_root_delta_review": "Only granted_skills/jewel_tree/tests/docs changed since reviewed revision; the nine cited calculation/parser paths are unchanged.",
+    "frozen_cli_revision": "5a3fce6767b365b7d249e5c7e9c4efca062897e2",
+    "frozen_report": "/root/codes/pobr/.cache/accuracy-round3-final-2026-10-26/after-classified.json",
+    "frozen_report_sha256": "ac416315244903fa09e89c34e87b1506464214a3a0d32460494dfaac4619723f",
+    "data_version": "0.5.5.4.2",
+    "basis": "Frozen outputs reference basis; usage is game-basis ledger. Predicted arithmetic is conditional replay, not a fresh current-engine result.",
+    "not_run": [
+      "source edits",
+      "tests/builds",
+      "CLI/oracle/triage/gate",
+      "new build acquisition",
+      "individual holdout inspection",
+      "child agents",
+      "web acquisition"
+    ],
+    "authorization": "Only cache audit artifacts written; root owns fixes and gate."
+  },
+  "implemented_accounted_for": [
+    "Mystic Harvest",
+    "GhostReaver and typed leech panels",
+    "Life/Mana/Rage INC-only regeneration sharing",
+    "Ballista identity/limits",
+    "Culling II Effective and visibility",
+    "Derange ES cost",
+    "UniqueHerald/Blink source variants",
+    "Mana Remnants permanent buff scaling",
+    "1da34acb grant ordinal",
+    "ef587706 armour activation sets",
+    "48d09499 conquered attributes (excluded from new defects)",
+    "45a3c00a grant API fallback"
+  ],
+  "findings": [
+    {
+      "id": "S01",
+      "title": "Eldritch Will emits unread Life/Mana aliases",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "acolyte-of-chayula-08",
+        "disciple-of-varashta-02",
+        "disciple-of-varashta-08",
+        "lich-03",
+        "lich-06",
+        "oracle-06",
+        "pathfinder-01",
+        "pathfinder-02",
+        "smith-of-kitava-05"
+      ],
+      "affected_full230_count": 9,
+      "affected_outputs": [
+        "Life (unless overridden)",
+        "Mana",
+        "dependent resource/recovery outputs"
+      ],
+      "causal_proof": "Allocated/granted node 3894 emits Life INC 3 and Mana INC 3, both unread, while ES INC 3 applies. The active generated vendor rule still has the short names; player pool_terms queries MaximumLife/MaximumMana. All nine have positive Mana with no zero override. This is below the 5% row threshold, so absence of a differing Life/Mana row does not clear it.",
+      "game_evidence": [
+        "base/passive_tree.json node 3894 Eldritch Will",
+        "overlay/stat_descriptions.json maximum_life_mana_and_energy_shield_+%",
+        "generated/special_vendor.json vnd_d_increased_maximum_life_mana_and_energy_7074e859"
+      ],
+      "smallest_existing_path": [
+        "Curated rule using MaximumLife/MaximumMana/EnergyShield (do not hand-edit generated file)",
+        "crates/pobr-core/src/calc/offence.rs pool_terms"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "example_arithmetic": {
+        "build": "lich-03",
+        "Life": "4353 * (1 + .73) = 7530.69; adding the missing .03 gives 7661.28",
+        "Mana": "894 * (1 + .16) = 1037.04; adding the missing .03 gives 1063.86"
+      },
+      "limit": "Do not force the reference integer rounding. Other resource interactions need the parent measurement."
+    },
+    {
+      "id": "S02",
+      "title": "Movement Speed increases/reductions never reach ES recharge",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "oracle-04",
+        "oracle-06",
+        "shaman-07"
+      ],
+      "affected_full230_count": 3,
+      "affected_outputs": [
+        "EnergyShieldRecharge"
+      ],
+      "causal_proof": "Each build has positive ES, an active imported sharing flag, nonzero applied MovementSpeed INC, and no active NoEnergyShieldRecharge or ZealotsOath prohibition. calc_es_recharge only sums EnergyShieldRecharge INC; no source consumer reads MovementSpeedAppliesToEnergyShieldRecharge. This existing panel is understated without any assumption about recharge uptime.",
+      "game_evidence": [
+        "overlay/stat_descriptions.json increases_and_reductions_to_move_speed_apply_to_es_recharge_rate",
+        "base/stats.json same ID",
+        "Frozen Jiquani rune text"
+      ],
+      "smallest_existing_path": [
+        "crates/pobr-core/src/calc/defence.rs:772 calc_es_recharge",
+        "crates/pobr-core/src/calc/session/detail.rs recharge source query"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "additional_worked_builds_not_fully_proved": [
+        "monk-martial-artist-flicker-strike"
+      ],
+      "limit": "Share only source INC, preserving conditions. Do not share BASE/MORE/action speed, movement penalties, or infer uptime."
+    },
+    {
+      "id": "S03",
+      "title": "Lightning hit luck chance is unparsed",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "blood-mage-07",
+        "blood-mage-09",
+        "invoker-03"
+      ],
+      "affected_full230_count": 3,
+      "affected_outputs": [
+        "AverageDamage",
+        "TotalDPS",
+        "AverageBurstDamage",
+        "hit-derived combined outputs"
+      ],
+      "causal_proof": "Heart of the Well and node 44566 lightning-luck lines are unparsed. Selected attacks/spells have nonzero Lightning ranges. Existing lucky_hit_chance already consumes LightningLuckyHitsChance but no modifier is emitted. Blood07 lacks 20+30=50 percentage points; Blood09 lacks 25+30=55; Invoker03 has 20% generic hit luck and lacks another 30% for Lightning (20 -> 50). Infernalist03 also carries the passive but its selected hit has no Lightning, so it is not an affected current-output build.",
+      "game_evidence": [
+        "overlay/stat_descriptions.json chance_for_extra_damage_roll_with_lightning_damage_%",
+        "base/mods.json UniqueHeartPrefixLuckyLightningDamageChancePercent",
+        "base/passive_tree.json node 44566",
+        "Frozen item rolls retained"
+      ],
+      "smallest_existing_path": [
+        "Curated parse rule to LightningLuckyHitsChance BASE",
+        "crates/pobr-core/src/calc/damage.rs:148 lucky_hit_chance"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "no_current_output_builds": [
+        "infernalist-03"
+      ],
+      "limit": "Preserve frozen 20/25/30 rolls. Use existing per-type hit-luck convention; do not modify ailment damage rolls merely to match the reference."
+    },
+    {
+      "id": "S04",
+      "title": "Watch How I Do It drops the ally weapon-damage grant",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "tactician-03",
+        "tactician-06",
+        "tactician-07"
+      ],
+      "affected_full230_count": 3,
+      "affected_outputs": [
+        "existing attack-minion AverageDamage/TotalDPS; selected main minion in tactician-06"
+      ],
+      "causal_proof": "Allocated node 16249 is split into two unparsed lines. These three builds actually create attacking minions and equip damaging main-hand maces; no main-hand-share modifier reaches them. Tactician06 selects Wolf Pack itself. Other frozen holders have no calculated minions in the snapshot and are not included as proven affected actors.",
+      "game_evidence": [
+        "base/passive_tree.json node 16249 Watch How I Do It",
+        "overlay/stat_descriptions.json aura_grant_%_base_main_hand_attack_damage_to_nearby_allies",
+        "Frozen main-hand Massive Greathammer/Giant Maul items"
+      ],
+      "smallest_existing_path": [
+        "Join/recognize the existing multiline passive",
+        "Existing ExtraAura recipient gating and calc/perform.rs:550 apply_main_hand_share"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "limit": "Allies is broader than Companions. Reuse the weapon-base damage path with Presence/ally-aura/hidden-recipient gates; do not add global ring damage or grant damage to the player."
+    },
+    {
+      "id": "S05",
+      "title": "Per-different-Companion damage grant is dropped",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "shaman-07"
+      ],
+      "affected_full230_count": 1,
+      "affected_outputs": [
+        "selected Grim Pillars hit damage/DPS"
+      ],
+      "causal_proof": "The active Shrine Sceptre supplies 24% increased Damage per different Companion in Presence, but the line is unparsed. The snapshot creates WolfPackPlayer/WolfMinion (one distinct companion type); skeletons are not companions. Existing companion-presence default is true, with no false/zero exclusion in the imported config. Thus at least the one-type 24% INC is missing; this requires no pickup, kill or combat history.",
+      "game_evidence": [
+        "overlay/stat_descriptions.json damage_+%_per_different_companion_in_presence",
+        "base/stats.json same ID",
+        "Frozen shaman-07 sceptre rune line"
+      ],
+      "smallest_existing_path": [
+        "Prepared enabled companion identities and existing CompanionInPresence/MinionPresenceCount exclusions",
+        "Ordinary Damage INC path"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "limit": "Count distinct companion types, not seven wolves, skeleton count, or total minion capacity. No new user configuration needed for the proven one-type case."
+    },
+    {
+      "id": "S06",
+      "title": "Per-equipped-lightning-resistance-item Fire/Cold resistance is dropped",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "spirit-walker-04",
+        "spirit-walker-10"
+      ],
+      "affected_full230_count": 2,
+      "affected_outputs": [
+        "FireResist",
+        "ColdResist",
+        "uncapped resistance and dependent defence outputs"
+      ],
+      "causal_proof": "The active item lines are unparsed (+10 in 04; two +7 lines in 10). Both characters equip items with explicit nonzero Lightning resistance: 04 helmet and boots; 10 boots and gloves. Existing Fire/Cold totals are below cap (04:2/21; 10:15/31), so even these indisputable qualifying items prove missing current resistance. Exact complete counts must also handle all-element and negative-resistance modifiers, without multiplying by a modifier count on one item.",
+      "game_evidence": [
+        "overlay/stat_descriptions.json fire_and_cold_resist_+_per_equipped_item_with_a_lightning_resistance_mod",
+        "Frozen item lines and equipped item modifier sources"
+      ],
+      "smallest_existing_path": [
+        "Existing equipment snapshot/per-stat multiplier preparation",
+        "FireResistance and ColdResistance BASE with distinct equipped-item count"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "additional_worked_builds_not_fully_proved": [
+        "huntress-spirit-walker-companion-zekoa-the-headcrusher"
+      ],
+      "limit": "Nonzero omission is proved; no exact final EHP or complete item-count claim. Do not treat jewels/flasks as ordinary equipped items without checking game semantics."
+    },
+    {
+      "id": "S07",
+      "title": "Loreweave rarity exclusivity does not exclude other rarity modifiers",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "warbringer-07"
+      ],
+      "affected_full230_count": 1,
+      "affected_outputs": [
+        "EffectiveLootRarityMod"
+      ],
+      "causal_proof": "Loreweave has the combined 84% rarity/exclude-other-rarity stat. The exclusion line is unparsed. The ledger applies both its 84% and a Golden Charm 15%; sidebar factor(LootRarity) therefore returns 1.99 instead of 1.84 under the existing enabled-charm convention. The rule affects an already supported utility output; no new loot simulation is requested.",
+      "game_evidence": [
+        "overlay/stat_descriptions.json unique_body_armour_item_rarity_only_+%",
+        "base/mods.json UniqueLoreweaveAndvarius1 variants",
+        "Frozen Loreweave raw text (84 retained)"
+      ],
+      "smallest_existing_path": [
+        "Source-aware exclusivity at existing LootRarity aggregation",
+        "crates/pobr-core/src/calc/sidebar.rs:142"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "limit": "Retain the originating combined stat/item contribution, not a blanket override that might erase the allowed value. No client loot-drop measurement."
+    },
+    {
+      "id": "S08",
+      "title": "Crimson Assault does not replace the base Bleeding duration",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "smith-of-kitava-06"
+      ],
+      "affected_full230_count": 1,
+      "affected_outputs": [
+        "BleedDuration",
+        "BleedDamage/instance duration-dependent outputs"
+      ],
+      "causal_proof": "Allocated keystone 9085 applies its Bleed magnitude and aggravation lines, but drops Base Bleeding Duration is 1 second. Selected Shield Wall has positive Bleed DPS. Both ailment_base_duration and bleed_instance still read the ordinary game constant; no per-build base-duration override is queried. This is a direct duration defect even if the sustained one-stack DPS is unchanged.",
+      "game_evidence": [
+        "base/passive_tree.json node 9085 Crimson Assault",
+        "overlay/stat_descriptions.json keystone_crimson_assault"
+      ],
+      "smallest_existing_path": [
+        "Curated base-duration override rule",
+        "crates/pobr-core/src/calc/ailment.rs:251 duration terms and :393 bleed_instance"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "limit": "Keep INC/MORE/rate modifiers after the replacement base. Do not attribute the entire stale BleedDPS discrepancy to this line; conquered Strength is now separately fixed."
+    },
+    {
+      "id": "S09",
+      "title": "Shattering Spite loses its native 50% less damaging-ailment effect",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "blood-mage-01"
+      ],
+      "affected_full230_count": 1,
+      "affected_outputs": [
+        "BleedDPS",
+        "IgniteDPS",
+        "ailment magnitude and combined outputs"
+      ],
+      "causal_proof": "The actual selected ShatteringSpitePlayer stat set contains active_skill_damaging_ailment_effect_+%_final=-50. The frozen selected-skill diagnostic reports it unknown; current source has no native handler and the saved positive Bleed/Ignite formulas contain no corresponding 0.5 multiplier. This stat is unconditional; Bloodstone Lance count and the separate conditional leech are not required to establish the omission.",
+      "game_evidence": [
+        "base/granted_effect_stat_sets.json effect_id ShatteringSpitePlayer / constant_stats active_skill_damaging_ailment_effect_+%_final = -50"
+      ],
+      "smallest_existing_path": [
+        "Native skill stat mapping into the existing damaging-ailment effect/MORE channel",
+        "Existing ailment magnitude pipeline and traced output"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "limit": "This correction can move farther from a stale exporter. No claim that it explains the full blood-mage-01 BleedDPS ratio; do not infer ten lances or its conditional leech."
+    }
+  ],
+  "distinct_proven_affected_full230_builds": [
+    "acolyte-of-chayula-08",
+    "blood-mage-01",
+    "blood-mage-07",
+    "blood-mage-09",
+    "disciple-of-varashta-02",
+    "disciple-of-varashta-08",
+    "invoker-03",
+    "lich-03",
+    "lich-06",
+    "oracle-04",
+    "oracle-06",
+    "pathfinder-01",
+    "pathfinder-02",
+    "shaman-07",
+    "smith-of-kitava-05",
+    "smith-of-kitava-06",
+    "spirit-walker-04",
+    "spirit-walker-10",
+    "tactician-03",
+    "tactician-06",
+    "tactician-07",
+    "warbringer-07"
+  ],
+  "inventory_summary": {
+    "unsupported": {
+      "unique_entries": 462,
+      "build_entry_pairs": 2368,
+      "full230_build_entry_pairs": 1909,
+      "partition": {
+        "deferred_event_history": {
+          "unique_entries": 78,
+          "distinct_builds": 208,
+          "full230_builds": 169,
+          "worked77_builds": 39
+        },
+        "implemented_since_frozen": {
+          "unique_entries": 3,
+          "distinct_builds": 4,
+          "full230_builds": 4,
+          "worked77_builds": 0
+        },
+        "no_current_selected_output": {
+          "unique_entries": 1,
+          "distinct_builds": 2,
+          "full230_builds": 2,
+          "worked77_builds": 0
+        },
+        "proven_static_defect": {
+          "unique_entries": 8,
+          "distinct_builds": 19,
+          "full230_builds": 17,
+          "worked77_builds": 2
+        },
+        "unverified_grant_diagnostic": {
+          "unique_entries": 37,
+          "distinct_builds": 135,
+          "full230_builds": 109,
+          "worked77_builds": 26
+        },
+        "unverified_seed_data": {
+          "unique_entries": 1,
+          "distinct_builds": 27,
+          "full230_builds": 18,
+          "worked77_builds": 9
+        },
+        "unverified_static_or_semantics": {
+          "unique_entries": 334,
+          "distinct_builds": 276,
+          "full230_builds": 224,
+          "worked77_builds": 52
+        }
+      }
+    },
+    "unmodelled": {
+      "unique_entries": 19,
+      "build_entry_pairs": 104,
+      "full230_build_entry_pairs": 81,
+      "partition": {
+        "deferred_event_history": {
+          "unique_entries": 3,
+          "distinct_builds": 10,
+          "full230_builds": 8,
+          "worked77_builds": 2
+        },
+        "unverified_imported_magnitude_semantics": {
+          "unique_entries": 5,
+          "distinct_builds": 24,
+          "full230_builds": 18,
+          "worked77_builds": 6
+        },
+        "unverified_structural_diagnostic": {
+          "unique_entries": 11,
+          "distinct_builds": 70,
+          "full230_builds": 55,
+          "worked77_builds": 15
+        }
+      }
+    },
+    "no_modifier": {
+      "unique_entries": 9,
+      "build_entry_pairs": 21,
+      "full230_build_entry_pairs": 19,
+      "partition": {
+        "unverified_source_gate": {
+          "unique_entries": 9,
+          "distinct_builds": 13,
+          "full230_builds": 11,
+          "worked77_builds": 2
+        }
+      }
+    },
+    "unread": {
+      "unique_entries": 192,
+      "build_entry_pairs": 3060,
+      "full230_build_entry_pairs": 2443,
+      "partition": {
+        "deferred_event_history": {
+          "unique_entries": 40,
+          "distinct_builds": 129,
+          "full230_builds": 103,
+          "worked77_builds": 26
+        },
+        "diagnostic_only_equipment_capability": {
+          "unique_entries": 5,
+          "distinct_builds": 45,
+          "full230_builds": 36,
+          "worked77_builds": 9
+        },
+        "implemented_since_frozen": {
+          "unique_entries": 4,
+          "distinct_builds": 13,
+          "full230_builds": 13,
+          "worked77_builds": 0
+        },
+        "no_current_selected_output": {
+          "unique_entries": 1,
+          "distinct_builds": 5,
+          "full230_builds": 3,
+          "worked77_builds": 2
+        },
+        "proven_static_defect": {
+          "unique_entries": 3,
+          "distinct_builds": 12,
+          "full230_builds": 11,
+          "worked77_builds": 1
+        },
+        "unverified_context_with_existing_reader": {
+          "unique_entries": 109,
+          "distinct_builds": 284,
+          "full230_builds": 230,
+          "worked77_builds": 54
+        },
+        "unverified_reader_or_output": {
+          "unique_entries": 30,
+          "distinct_builds": 91,
+          "full230_builds": 74,
+          "worked77_builds": 17
+        }
+      }
+    },
+    "conditions": {
+      "unique_entries": 6,
+      "build_entry_pairs": 311,
+      "full230_build_entry_pairs": 253,
+      "partition": {
+        "config_gated": {
+          "unique_entries": 1,
+          "distinct_builds": 6,
+          "full230_builds": 5,
+          "worked77_builds": 1
+        },
+        "deferred_event_history": {
+          "unique_entries": 1,
+          "distinct_builds": 13,
+          "full230_builds": 11,
+          "worked77_builds": 2
+        },
+        "implemented_since_frozen": {
+          "unique_entries": 1,
+          "distinct_builds": 6,
+          "full230_builds": 6,
+          "worked77_builds": 0
+        },
+        "unverified_condition_derivation": {
+          "unique_entries": 2,
+          "distinct_builds": 2,
+          "full230_builds": 1,
+          "worked77_builds": 1
+        },
+        "unverified_input_availability": {
+          "unique_entries": 1,
+          "distinct_builds": 284,
+          "full230_builds": 230,
+          "worked77_builds": 54
+        }
+      }
+    },
+    "gem_stats": {
+      "unique_entries": 244,
+      "build_entry_pairs": 1903,
+      "full230_build_entry_pairs": 1502,
+      "partition": {
+        "deferred_event_history": {
+          "unique_entries": 22,
+          "distinct_builds": 104,
+          "full230_builds": 79,
+          "worked77_builds": 25
+        },
+        "diagnostic_separate_property_path": {
+          "unique_entries": 10,
+          "distinct_builds": 54,
+          "full230_builds": 40,
+          "worked77_builds": 14
+        },
+        "implemented_since_frozen": {
+          "unique_entries": 3,
+          "distinct_builds": 5,
+          "full230_builds": 5,
+          "worked77_builds": 0
+        },
+        "unverified_native_mapping_or_output": {
+          "unique_entries": 209,
+          "distinct_builds": 272,
+          "full230_builds": 218,
+          "worked77_builds": 54
+        }
+      }
+    }
+  },
+  "supplemental_full230": {
+    "line_status_occurrences": {
+      "outside": 4883,
+      "applied": 75185,
+      "unparsed": 2012,
+      "inactive": 4206,
+      "no_effect": 6500,
+      "unread": 2814,
+      "partial": 887,
+      "unmodelled": 463,
+      "no_modifier": 21
+    },
+    "all_lines": 96971,
+    "gem_unique_status_owner_stat_reason": 761,
+    "gem_status_counts": {
+      "unknown": 536,
+      "unmapped": 225
+    },
+    "gem_audit_partition": {
+      "deferred_event_history": {
+        "unique_entries": 96,
+        "distinct_builds": 122,
+        "full230_builds": 122,
+        "worked77_builds": 0
+      },
+      "implemented_since_frozen": {
+        "unique_entries": 3,
+        "distinct_builds": 5,
+        "full230_builds": 5,
+        "worked77_builds": 0
+      },
+      "metadata_or_separate_path_unverified": {
+        "unique_entries": 26,
+        "distinct_builds": 154,
+        "full230_builds": 154,
+        "worked77_builds": 0
+      },
+      "proven_static_defect": {
+        "unique_entries": 1,
+        "distinct_builds": 1,
+        "full230_builds": 1,
+        "worked77_builds": 0
+      },
+      "unverified_native_mapping_or_output": {
+        "unique_entries": 635,
+        "distinct_builds": 230,
+        "full230_builds": 230,
+        "worked77_builds": 0
+      }
+    },
+    "unknown_unique_stat_ids": 425,
+    "unset_condition_keys_including_config": 73,
+    "unprovided_multiplier_names": 29,
+    "inactive_reason_read_gate_keys": 330
+  },
+  "frozen_row_counts": {
+    "all307": {
+      "engine": 447,
+      "known": 634,
+      "reference": 488,
+      "both": 57
+    },
+    "full230": {
+      "engine": 447,
+      "known": 370,
+      "reference": 374,
+      "both": 57
+    },
+    "note": "All 504 engine/both rows belong to full230; known/reference agreement is diagnostic, not game verification."
+  },
+  "engine_both_stat_clusters": {
+    "TotalDotDPS": {
+      "rows": 42,
+      "builds": [
+        "abyssal-lich-01",
+        "abyssal-lich-02",
+        "abyssal-lich-03",
+        "abyssal-lich-04",
+        "abyssal-lich-05",
+        "abyssal-lich-06",
+        "abyssal-lich-08",
+        "abyssal-lich-10",
+        "acolyte-of-chayula-09",
+        "amazon-07",
+        "blood-mage-01",
+        "chronomancer-09",
+        "gemling-legionnaire-02",
+        "gemling-legionnaire-04",
+        "gemling-legionnaire-09",
+        "invoker-01",
+        "invoker-03",
+        "invoker-08",
+        "lich-07",
+        "martial-artist-02",
+        "martial-artist-05",
+        "martial-artist-06",
+        "martial-artist-08",
+        "martial-artist-10",
+        "oracle-08",
+        "shaman-01",
+        "shaman-03",
+        "shaman-04",
+        "shaman-07",
+        "shaman-08",
+        "shaman-09",
+        "smith-of-kitava-02",
+        "smith-of-kitava-06",
+        "tactician-02",
+        "tactician-05",
+        "titan-02",
+        "warbringer-01",
+        "warbringer-03",
+        "warbringer-06",
+        "warbringer-08",
+        "warbringer-10",
+        "witchhunter-09"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 42
+      }
+    },
+    "TotalDPS": {
+      "rows": 38,
+      "builds": [
+        "abyssal-lich-01",
+        "abyssal-lich-03",
+        "abyssal-lich-04",
+        "abyssal-lich-05",
+        "abyssal-lich-06",
+        "abyssal-lich-08",
+        "abyssal-lich-09",
+        "abyssal-lich-10",
+        "acolyte-of-chayula-03",
+        "amazon-07",
+        "blood-mage-05",
+        "chronomancer-04",
+        "gemling-legionnaire-02",
+        "gemling-legionnaire-09",
+        "invoker-03",
+        "invoker-06",
+        "lich-06",
+        "lich-07",
+        "lich-09",
+        "martial-artist-02",
+        "martial-artist-03",
+        "martial-artist-05",
+        "martial-artist-06",
+        "martial-artist-08",
+        "martial-artist-10",
+        "oracle-01",
+        "oracle-08",
+        "ritualist-04",
+        "ritualist-05",
+        "shaman-04",
+        "stormweaver-08",
+        "tactician-05",
+        "titan-02",
+        "warbringer-01",
+        "warbringer-02",
+        "warbringer-08",
+        "warbringer-09",
+        "warbringer-10"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 38
+      }
+    },
+    "AverageBurstDamage": {
+      "rows": 36,
+      "builds": [
+        "abyssal-lich-01",
+        "abyssal-lich-03",
+        "abyssal-lich-04",
+        "abyssal-lich-05",
+        "abyssal-lich-06",
+        "abyssal-lich-08",
+        "abyssal-lich-09",
+        "abyssal-lich-10",
+        "acolyte-of-chayula-03",
+        "amazon-07",
+        "blood-mage-05",
+        "invoker-03",
+        "invoker-06",
+        "lich-06",
+        "lich-07",
+        "lich-09",
+        "martial-artist-02",
+        "martial-artist-03",
+        "martial-artist-05",
+        "martial-artist-06",
+        "martial-artist-08",
+        "martial-artist-10",
+        "oracle-01",
+        "oracle-08",
+        "ritualist-04",
+        "ritualist-05",
+        "shaman-04",
+        "stormweaver-08",
+        "tactician-05",
+        "titan-02",
+        "warbringer-01",
+        "warbringer-02",
+        "warbringer-06",
+        "warbringer-08",
+        "warbringer-09",
+        "warbringer-10"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 36
+      }
+    },
+    "CombinedDPS": {
+      "rows": 36,
+      "builds": [
+        "abyssal-lich-01",
+        "abyssal-lich-02",
+        "abyssal-lich-03",
+        "abyssal-lich-04",
+        "abyssal-lich-05",
+        "abyssal-lich-06",
+        "abyssal-lich-08",
+        "abyssal-lich-09",
+        "abyssal-lich-10",
+        "acolyte-of-chayula-09",
+        "amazon-07",
+        "blood-mage-01",
+        "blood-mage-05",
+        "chronomancer-04",
+        "gemling-legionnaire-02",
+        "gemling-legionnaire-04",
+        "gemling-legionnaire-09",
+        "invoker-06",
+        "invoker-07",
+        "lich-07",
+        "lich-09",
+        "martial-artist-02",
+        "martial-artist-03",
+        "martial-artist-06",
+        "martial-artist-10",
+        "oracle-01",
+        "oracle-08",
+        "ritualist-04",
+        "smith-of-kitava-06",
+        "tactician-05",
+        "titan-02",
+        "warbringer-01",
+        "warbringer-02",
+        "warbringer-03",
+        "warbringer-09",
+        "warbringer-10"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 36
+      }
+    },
+    "IgniteDPS": {
+      "rows": 35,
+      "builds": [
+        "abyssal-lich-01",
+        "abyssal-lich-03",
+        "abyssal-lich-04",
+        "abyssal-lich-05",
+        "abyssal-lich-06",
+        "abyssal-lich-08",
+        "abyssal-lich-10",
+        "amazon-07",
+        "chronomancer-09",
+        "gemling-legionnaire-02",
+        "gemling-legionnaire-04",
+        "gemling-legionnaire-09",
+        "invoker-01",
+        "invoker-03",
+        "invoker-08",
+        "lich-07",
+        "martial-artist-02",
+        "martial-artist-05",
+        "martial-artist-06",
+        "martial-artist-08",
+        "martial-artist-10",
+        "oracle-08",
+        "shaman-01",
+        "shaman-03",
+        "shaman-04",
+        "shaman-07",
+        "shaman-08",
+        "shaman-09",
+        "smith-of-kitava-02",
+        "tactician-05",
+        "titan-02",
+        "warbringer-03",
+        "warbringer-06",
+        "warbringer-08",
+        "warbringer-10"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 35
+      }
+    },
+    "WithBleedDPS": {
+      "rows": 34,
+      "builds": [
+        "abyssal-lich-01",
+        "abyssal-lich-03",
+        "abyssal-lich-04",
+        "abyssal-lich-05",
+        "abyssal-lich-06",
+        "abyssal-lich-08",
+        "abyssal-lich-09",
+        "abyssal-lich-10",
+        "amazon-07",
+        "blood-mage-01",
+        "blood-mage-05",
+        "chronomancer-04",
+        "chronomancer-10",
+        "gemling-legionnaire-02",
+        "gemling-legionnaire-09",
+        "invoker-03",
+        "invoker-06",
+        "lich-07",
+        "lich-09",
+        "martial-artist-02",
+        "martial-artist-03",
+        "martial-artist-06",
+        "martial-artist-10",
+        "oracle-01",
+        "oracle-08",
+        "ritualist-04",
+        "smith-of-kitava-06",
+        "stormweaver-08",
+        "tactician-05",
+        "titan-02",
+        "warbringer-01",
+        "warbringer-02",
+        "warbringer-09",
+        "warbringer-10"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 34
+      }
+    },
+    "WithPoisonDPS": {
+      "rows": 33,
+      "builds": [
+        "abyssal-lich-01",
+        "abyssal-lich-03",
+        "abyssal-lich-04",
+        "abyssal-lich-05",
+        "abyssal-lich-06",
+        "abyssal-lich-08",
+        "abyssal-lich-09",
+        "abyssal-lich-10",
+        "acolyte-of-chayula-09",
+        "amazon-07",
+        "blood-mage-05",
+        "chronomancer-04",
+        "chronomancer-10",
+        "gemling-legionnaire-02",
+        "gemling-legionnaire-09",
+        "invoker-03",
+        "invoker-06",
+        "lich-07",
+        "lich-09",
+        "martial-artist-02",
+        "martial-artist-03",
+        "martial-artist-06",
+        "martial-artist-10",
+        "oracle-01",
+        "oracle-08",
+        "ritualist-04",
+        "stormweaver-08",
+        "tactician-05",
+        "titan-02",
+        "warbringer-01",
+        "warbringer-02",
+        "warbringer-09",
+        "warbringer-10"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 33
+      }
+    },
+    "WithIgniteDPS": {
+      "rows": 32,
+      "builds": [
+        "abyssal-lich-01",
+        "abyssal-lich-03",
+        "abyssal-lich-04",
+        "abyssal-lich-05",
+        "abyssal-lich-06",
+        "abyssal-lich-08",
+        "abyssal-lich-09",
+        "abyssal-lich-10",
+        "amazon-07",
+        "blood-mage-05",
+        "chronomancer-04",
+        "chronomancer-10",
+        "gemling-legionnaire-02",
+        "gemling-legionnaire-04",
+        "gemling-legionnaire-09",
+        "invoker-06",
+        "lich-07",
+        "lich-09",
+        "martial-artist-02",
+        "martial-artist-03",
+        "martial-artist-06",
+        "martial-artist-10",
+        "oracle-01",
+        "oracle-08",
+        "ritualist-04",
+        "tactician-05",
+        "titan-02",
+        "warbringer-01",
+        "warbringer-02",
+        "warbringer-03",
+        "warbringer-09",
+        "warbringer-10"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 32
+      }
+    },
+    "AverageDamage": {
+      "rows": 23,
+      "builds": [
+        "abyssal-lich-03",
+        "abyssal-lich-04",
+        "abyssal-lich-05",
+        "abyssal-lich-06",
+        "abyssal-lich-08",
+        "abyssal-lich-10",
+        "amazon-07",
+        "invoker-06",
+        "lich-06",
+        "martial-artist-02",
+        "martial-artist-05",
+        "martial-artist-06",
+        "martial-artist-08",
+        "martial-artist-10",
+        "ritualist-04",
+        "tactician-05",
+        "titan-02",
+        "warbringer-01",
+        "warbringer-02",
+        "warbringer-06",
+        "warbringer-08",
+        "warbringer-09",
+        "warbringer-10"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 23
+      }
+    },
+    "TotalEHP": {
+      "rows": 20,
+      "builds": [
+        "abyssal-lich-02",
+        "amazon-02",
+        "amazon-09",
+        "blood-mage-08",
+        "deadeye-03",
+        "lich-08",
+        "martial-artist-01",
+        "martial-artist-02",
+        "martial-artist-04",
+        "martial-artist-05",
+        "martial-artist-06",
+        "martial-artist-08",
+        "pathfinder-07",
+        "ritualist-07",
+        "ritualist-08",
+        "stormweaver-04",
+        "tactician-03",
+        "tactician-05",
+        "tactician-07",
+        "warbringer-09"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 20
+      }
+    },
+    "LifeLeechGainRate": {
+      "rows": 15,
+      "builds": [
+        "amazon-06",
+        "amazon-07",
+        "blood-mage-03",
+        "blood-mage-04",
+        "blood-mage-08",
+        "blood-mage-09",
+        "blood-mage-10",
+        "smith-of-kitava-02",
+        "smith-of-kitava-04",
+        "smith-of-kitava-06",
+        "stormweaver-08",
+        "tactician-02",
+        "tactician-05",
+        "titan-01",
+        "titan-03"
+      ],
+      "audit_partition": {
+        "implemented_since_frozen": 2,
+        "unverified_engine_or_both_residual": 13
+      }
+    },
+    "RageRegenRecovery": {
+      "rows": 13,
+      "builds": [
+        "abyssal-lich-06",
+        "acolyte-of-chayula-09",
+        "amazon-08",
+        "deadeye-07",
+        "gemling-legionnaire-06",
+        "martial-artist-08",
+        "martial-artist-09",
+        "martial-artist-10",
+        "pathfinder-07",
+        "pathfinder-10",
+        "shaman-01",
+        "witchhunter-03",
+        "witchhunter-09"
+      ],
+      "audit_partition": {
+        "unverified_recovery_convention": 13
+      }
+    },
+    "ActiveMinionLimit": {
+      "rows": 10,
+      "builds": [
+        "lich-02",
+        "lich-05",
+        "lich-08",
+        "spirit-walker-02",
+        "spirit-walker-04",
+        "spirit-walker-05",
+        "spirit-walker-08",
+        "spirit-walker-09",
+        "spirit-walker-10",
+        "tactician-06"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 10
+      }
+    },
+    "IgniteDamage": {
+      "rows": 10,
+      "builds": [
+        "invoker-01",
+        "invoker-08",
+        "martial-artist-05",
+        "martial-artist-08",
+        "oracle-04",
+        "shaman-03",
+        "shaman-04",
+        "shaman-07",
+        "shaman-09",
+        "warbringer-08"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 10
+      }
+    },
+    "ManaPerSecondCost": {
+      "rows": 10,
+      "builds": [
+        "invoker-03",
+        "oracle-04",
+        "shaman-01",
+        "shaman-03",
+        "shaman-04",
+        "shaman-07",
+        "shaman-08",
+        "shaman-09",
+        "tactician-09",
+        "warbringer-02"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 10
+      }
+    },
+    "LifePerSecondCost": {
+      "rows": 9,
+      "builds": [
+        "blood-mage-04",
+        "blood-mage-06",
+        "blood-mage-08",
+        "shaman-01",
+        "shaman-03",
+        "shaman-04",
+        "shaman-08",
+        "shaman-09",
+        "warbringer-08"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 9
+      }
+    },
+    "ManaRegenRecovery": {
+      "rows": 9,
+      "builds": [
+        "disciple-of-varashta-01",
+        "disciple-of-varashta-05",
+        "gemling-legionnaire-02",
+        "gemling-legionnaire-04",
+        "gemling-legionnaire-05",
+        "gemling-legionnaire-06",
+        "infernalist-07",
+        "lich-05",
+        "ritualist-08"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 9
+      }
+    },
+    "CombinedAvg": {
+      "rows": 7,
+      "builds": [
+        "acolyte-of-chayula-03",
+        "invoker-01",
+        "lich-06",
+        "martial-artist-05",
+        "martial-artist-08",
+        "shaman-04",
+        "warbringer-08"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 7
+      }
+    },
+    "ManaLeechGainRate": {
+      "rows": 7,
+      "builds": [
+        "amazon-06",
+        "blood-mage-01",
+        "chronomancer-05",
+        "invoker-04",
+        "invoker-06",
+        "martial-artist-07",
+        "tactician-02"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 7
+      }
+    },
+    "ColdMaxHit": {
+      "rows": 5,
+      "builds": [
+        "blood-mage-08",
+        "lich-07",
+        "spirit-walker-04",
+        "spirit-walker-05",
+        "spirit-walker-08"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 5
+      }
+    },
+    "CullingDPS": {
+      "rows": 5,
+      "builds": [
+        "invoker-06",
+        "invoker-07",
+        "martial-artist-05",
+        "martial-artist-08",
+        "ritualist-05"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 5
+      }
+    },
+    "FireMaxHit": {
+      "rows": 4,
+      "builds": [
+        "blood-mage-08",
+        "spirit-walker-04",
+        "spirit-walker-05",
+        "spirit-walker-08"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 4
+      }
+    },
+    "LightningMaxHit": {
+      "rows": 4,
+      "builds": [
+        "blood-mage-08",
+        "spirit-walker-04",
+        "spirit-walker-05",
+        "spirit-walker-08"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 4
+      }
+    },
+    "PhysicalMaxHit": {
+      "rows": 4,
+      "builds": [
+        "blood-mage-08",
+        "spirit-walker-04",
+        "spirit-walker-05",
+        "spirit-walker-08"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 4
+      }
+    },
+    "SpiritUnreserved": {
+      "rows": 4,
+      "builds": [
+        "chronomancer-03",
+        "deadeye-01",
+        "oracle-04",
+        "stormweaver-07"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 4
+      }
+    },
+    "SpiritUnreservedPercent": {
+      "rows": 4,
+      "builds": [
+        "chronomancer-03",
+        "deadeye-01",
+        "oracle-04",
+        "stormweaver-07"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 4
+      }
+    },
+    "ActionRate": {
+      "rows": 3,
+      "builds": [
+        "martial-artist-03",
+        "ritualist-08",
+        "warbringer-06"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 3
+      }
+    },
+    "BleedDPS": {
+      "rows": 3,
+      "builds": [
+        "blood-mage-01",
+        "martial-artist-02",
+        "smith-of-kitava-06"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 3
+      }
+    },
+    "ChaosMaxHit": {
+      "rows": 3,
+      "builds": [
+        "blood-mage-08",
+        "spirit-walker-04",
+        "spirit-walker-05"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 3
+      }
+    },
+    "MinionTotalDPS": {
+      "rows": 3,
+      "builds": [
+        "chronomancer-07",
+        "lich-02",
+        "spirit-walker-09"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 3
+      }
+    },
+    "PoisonDPS": {
+      "rows": 3,
+      "builds": [
+        "acolyte-of-chayula-09",
+        "tactician-02",
+        "witchhunter-09"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 3
+      }
+    },
+    "AreaOfEffectRadiusMetres": {
+      "rows": 2,
+      "builds": [
+        "martial-artist-03",
+        "titan-02"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 2
+      }
+    },
+    "ColdResistOverCap": {
+      "rows": 2,
+      "builds": [
+        "martial-artist-04",
+        "spirit-walker-07"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 2
+      }
+    },
+    "Cooldown": {
+      "rows": 2,
+      "builds": [
+        "acolyte-of-chayula-01",
+        "ritualist-08"
+      ],
+      "audit_partition": {
+        "deferred_repeat_cadence_semantics": 2
+      }
+    },
+    "CritMultiplier": {
+      "rows": 2,
+      "builds": [
+        "acolyte-of-chayula-05",
+        "pathfinder-04"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 2
+      }
+    },
+    "EnergyShieldLeechGainRate": {
+      "rows": 2,
+      "builds": [
+        "amazon-06",
+        "amazon-07"
+      ],
+      "audit_partition": {
+        "implemented_since_frozen": 2
+      }
+    },
+    "FireResistOverCap": {
+      "rows": 2,
+      "builds": [
+        "infernalist-08",
+        "titan-01"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 2
+      }
+    },
+    "LifeLeechGainPerHit": {
+      "rows": 2,
+      "builds": [
+        "blood-mage-07",
+        "warbringer-04"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 2
+      }
+    },
+    "LifeRecoverable": {
+      "rows": 2,
+      "builds": [
+        "abyssal-lich-02",
+        "lich-07"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 2
+      }
+    },
+    "LifeUnreserved": {
+      "rows": 2,
+      "builds": [
+        "abyssal-lich-02",
+        "lich-07"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 2
+      }
+    },
+    "ManaCost": {
+      "rows": 2,
+      "builds": [
+        "tactician-09",
+        "warbringer-02"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 2
+      }
+    },
+    "MinionLife": {
+      "rows": 2,
+      "builds": [
+        "lich-02",
+        "smith-of-kitava-05"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 2
+      }
+    },
+    "ChannelTime": {
+      "rows": 1,
+      "builds": [
+        "warbringer-06"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 1
+      }
+    },
+    "ChaosResistOverCap": {
+      "rows": 1,
+      "builds": [
+        "gemling-legionnaire-04"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 1
+      }
+    },
+    "ColdResist": {
+      "rows": 1,
+      "builds": [
+        "lich-07"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 1
+      }
+    },
+    "CritChance": {
+      "rows": 1,
+      "builds": [
+        "martial-artist-03"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 1
+      }
+    },
+    "ESCost": {
+      "rows": 1,
+      "builds": [
+        "pathfinder-01"
+      ],
+      "audit_partition": {
+        "implemented_since_frozen": 1
+      }
+    },
+    "ESPerSecondCost": {
+      "rows": 1,
+      "builds": [
+        "pathfinder-01"
+      ],
+      "audit_partition": {
+        "implemented_since_frozen": 1
+      }
+    },
+    "EffectiveMovementSpeedMod": {
+      "rows": 1,
+      "builds": [
+        "tactician-05"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 1
+      }
+    },
+    "HitSpeed": {
+      "rows": 1,
+      "builds": [
+        "warbringer-06"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 1
+      }
+    },
+    "Int": {
+      "rows": 1,
+      "builds": [
+        "ritualist-09"
+      ],
+      "audit_partition": {
+        "implemented_since_frozen": 1
+      }
+    },
+    "LifeRegenRecovery": {
+      "rows": 1,
+      "builds": [
+        "ritualist-08"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 1
+      }
+    },
+    "LifeUnreservedPercent": {
+      "rows": 1,
+      "builds": [
+        "abyssal-lich-02"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 1
+      }
+    },
+    "LightningResistOverCap": {
+      "rows": 1,
+      "builds": [
+        "acolyte-of-chayula-08"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 1
+      }
+    },
+    "MinionEnergyShield": {
+      "rows": 1,
+      "builds": [
+        "lich-02"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 1
+      }
+    },
+    "PreEffectiveCritChance": {
+      "rows": 1,
+      "builds": [
+        "martial-artist-03"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 1
+      }
+    },
+    "RagePerSecondCost": {
+      "rows": 1,
+      "builds": [
+        "shaman-01"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 1
+      }
+    },
+    "Str": {
+      "rows": 1,
+      "builds": [
+        "smith-of-kitava-06"
+      ],
+      "audit_partition": {
+        "implemented_since_frozen": 1
+      }
+    },
+    "TotalDot": {
+      "rows": 1,
+      "builds": [
+        "abyssal-lich-02"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 1
+      }
+    },
+    "WithDotDPS": {
+      "rows": 1,
+      "builds": [
+        "abyssal-lich-02"
+      ],
+      "audit_partition": {
+        "unverified_engine_or_both_residual": 1
+      }
+    }
+  },
+  "deferred_and_unverified_coverage": [
+    {
+      "area": "Current batch numerical closure",
+      "reason": "Frozen CLI is 5a3fce67; root 45a3c00a gate is running per user. No current complete cohort ledger/calculation was run here."
+    },
+    {
+      "area": "Unknown/rejected gem-stat semantics",
+      "reason": "Full230 has 761 status/owner/stat/reason entries: 536 unknown and 225 unmapped; 425 distinct unknown stat IDs. All retained. S09 demonstrates that unknown is not synonymous with visual metadata. No exhaustive semantic/native-handler verification."
+    },
+    {
+      "area": "The 77 worked builds",
+      "reason": "Full307 triage aggregates and reduced ledgers available; only full230 has frozen after-builds with full usage. Unknown stats, full inactive/source details and actual nonzero impacts in the other77 are not exhaustively certified."
+    },
+    {
+      "area": "Missing timeless seeds",
+      "reason": "27 full307 carriers retained; explicit Int/Str grants now fixed, seed-specific notable transforms remain unverified against allocated nodes. No blanket no-effect classification."
+    },
+    {
+      "area": "EHP/max-hit residuals",
+      "reason": "Prior Blood08, Ritualist07/08, companion sharing and evade/block attribution have limited scopes. All remaining engine/both rows retained; explaining a resistance/Blind/finite-pool cause does not close entire EHP."
+    },
+    {
+      "area": "Minion semantics",
+      "reason": "Lich02 intrinsic 15% Life/ES convention remains unverified; selected minion DPS and life rows retained. ActiveMinionLimit zero in exporter does not prove native capacity wrong; actual actor/quantity remains separate."
+    },
+    {
+      "area": "Damage precision and references",
+      "reason": "Prior Phylactery/Mark and MORE-product arithmetic does not establish game rounding boundaries. Do not force exporter rounding or register all adjacent damage rows known."
+    },
+    {
+      "area": "Persistent buff/support qualification",
+      "reason": "Mana Remnants permanent-effect correction is integrated. Clarity II via separate minion effects remains unverified, not enabled to match exporter."
+    },
+    {
+      "area": "Selected timing/totem potential",
+      "reason": "Ghost Dance/Time of Need repeat intervals, Shaman08 steady-state Ignite/totem potential and Warbringer06 channel timing remain separate from static stat omissions."
+    },
+    {
+      "area": "Additional bounded static candidates",
+      "reason": "Oisin mana-leech type restriction, native Shattering Spite elemental leech, Brutality III rejected flags, Second Wind capacity, nearby Exposure/Slow conditions, Runic Ward grants and source-scaled imported magnitudes remain preserved but unproven current-output cases. No new assignments inferred."
+    },
+    {
+      "area": "Threshold/panel/alternate-state coverage",
+      "reason": "Triage only reports exported fields beyond 5% tolerance, not every supported panel. Current selected actors/weapon sets only; no exhaustive alternative skills/supports/sets, UI interaction or gameplay measurements."
+    }
+  ],
+  "prior_evidence_used": [
+    "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/reference-cluster-attribution/summary.txt",
+    "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/reference-cluster-attribution/attribution.json",
+    "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/ehp-investigation/attribution.json",
+    "/root/codes/pobr/.cache/accuracy-round3-2026-10-26/static-defence-attribution.json",
+    "/root/codes/pobr/.cache/accuracy-round3-2026-10-26/pobr-round3-requirements-evidence.json",
+    "/root/codes/pobr/.cache/accuracy-round4-2026-10-26/static-scope-decisions.json",
+    "/root/codes/pobr/.cache/accuracy-round4-2026-10-26/evidence/selected-skill-timing.json",
+    "/root/codes/pobr/.cache/accuracy-round4-2026-10-26/mana-regen-static-scope-correction.json"
+  ],
+  "artifact_files": {
+    "inventory": "completion-scope-inventory.json",
+    "evidence": "completion-scope-evidence.json",
+    "handoff": "completion-scope-handoff.txt"
+  },
+  "completion_boundary": "Nine proved defects need parent disposition; remaining unverified categories cannot support a universal all230-complete claim. Do not implement every retained inventory item."
+}

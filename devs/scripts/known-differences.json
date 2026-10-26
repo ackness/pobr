@@ -1394,6 +1394,22 @@
         "EnergyShieldRegenRecovery"
       ],
       "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+    },
+    {
+      "build": "deadeye-01",
+      "xml_sha256": "19f9a0a69cc0d590e1c6d4e2d6cf4c747b4a068a4b4529423b221b619c6fc713",
+      "stats": [
+        "ReqStr"
+      ],
+      "reason": "Frozen Coming Calamity groups attach through native ModGrantedSkills to UniqueHerald variants with zero attribute shares. Ordinary Herald of Ash 20 incorrectly contributes reference 157 Strength; native maximum is 16 red supports * 5 = 80, above armour 67 and selected weapons 31/17. Independent skill records are unchanged (docs/maintainer-guide.md, native item-granted variants; fix-round-4 evidence/tuned-grant-requirement.json)."
+    },
+    {
+      "build": "warbringer-08",
+      "xml_sha256": "7c3387177505b152c9d0eed0f77f67fbcd37c697c00e2731b94027393007b16c",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "Frozen native Ballista capacity is 1 base + 1 ascendancy + 2 crossbow + 1 passive = 5, with no override and MORE x1. Pinned 2 omits host-scoped Ballista additions for the selected attack. Capacity does not imply five summoned totems; no damage row is classified by this explanation (docs/maintainer-guide.md, Ballista capacity; fix-round-4 evidence/new-static-rows.json)."
     }
   ]
 }

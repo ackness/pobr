@@ -1,0 +1,3276 @@
+{
+  "findings": [
+    {
+      "id": "S01",
+      "title": "Eldritch Will emits unread Life/Mana aliases",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "acolyte-of-chayula-08",
+        "disciple-of-varashta-02",
+        "disciple-of-varashta-08",
+        "lich-03",
+        "lich-06",
+        "oracle-06",
+        "pathfinder-01",
+        "pathfinder-02",
+        "smith-of-kitava-05"
+      ],
+      "affected_full230_count": 9,
+      "affected_outputs": [
+        "Life (unless overridden)",
+        "Mana",
+        "dependent resource/recovery outputs"
+      ],
+      "causal_proof": "Allocated/granted node 3894 emits Life INC 3 and Mana INC 3, both unread, while ES INC 3 applies. The active generated vendor rule still has the short names; player pool_terms queries MaximumLife/MaximumMana. All nine have positive Mana with no zero override. This is below the 5% row threshold, so absence of a differing Life/Mana row does not clear it.",
+      "game_evidence": [
+        "base/passive_tree.json node 3894 Eldritch Will",
+        "overlay/stat_descriptions.json maximum_life_mana_and_energy_shield_+%",
+        "generated/special_vendor.json vnd_d_increased_maximum_life_mana_and_energy_7074e859"
+      ],
+      "smallest_existing_path": [
+        "Curated rule using MaximumLife/MaximumMana/EnergyShield (do not hand-edit generated file)",
+        "crates/pobr-core/src/calc/offence.rs pool_terms"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "example_arithmetic": {
+        "build": "lich-03",
+        "Life": "4353 * (1 + .73) = 7530.69; adding the missing .03 gives 7661.28",
+        "Mana": "894 * (1 + .16) = 1037.04; adding the missing .03 gives 1063.86"
+      },
+      "limit": "Do not force the reference integer rounding. Other resource interactions need the parent measurement.",
+      "per_build": {
+        "acolyte-of-chayula-08": {
+          "line": [
+            {
+              "source_kind": "PassiveNode",
+              "source_id": "node.3894",
+              "slot": null,
+              "holder": "Eldritch Will",
+              "text": "3% increased maximum Life, Mana and [EnergyShield|Energy Shield]",
+              "status": "partial",
+              "reason": null,
+              "used_in": [
+                "EnergyShield"
+              ],
+              "modifiers": [
+                {
+                  "name": "EnergyShield",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": 3.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "EnergyShield"
+                  ]
+                },
+                {
+                  "name": "Life",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                },
+                {
+                  "name": "Mana",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            }
+          ],
+          "Life": {
+            "stat": "Life",
+            "value": 1611.96,
+            "reference": 1658.0,
+            "base_total": 1616.0,
+            "inc_total": 5.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "flat",
+                  "operand": 1616.0,
+                  "result": 1616.0
+                },
+                {
+                  "op": "converted",
+                  "operand": 5.0,
+                  "result": 1535.1999999999998
+                },
+                {
+                  "op": "increased",
+                  "operand": 5.0,
+                  "result": 1611.9599999999998
+                }
+              ],
+              "value": 1611.96
+            }
+          },
+          "Mana": {
+            "stat": "Mana",
+            "value": 817.0,
+            "reference": 843.0,
+            "base_total": 860.0,
+            "inc_total": -5.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "flat",
+                  "operand": 860.0,
+                  "result": 860.0
+                },
+                {
+                  "op": "increased",
+                  "operand": -5.0,
+                  "result": 817.0
+                }
+              ],
+              "value": 817.0
+            }
+          }
+        },
+        "disciple-of-varashta-02": {
+          "line": [
+            {
+              "source_kind": "PassiveNode",
+              "source_id": "node.3894",
+              "slot": null,
+              "holder": "Eldritch Will",
+              "text": "3% increased maximum Life, Mana and [EnergyShield|Energy Shield]",
+              "status": "partial",
+              "reason": null,
+              "used_in": [
+                "EnergyShield"
+              ],
+              "modifiers": [
+                {
+                  "name": "EnergyShield",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": 3.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "EnergyShield"
+                  ]
+                },
+                {
+                  "name": "Life",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                },
+                {
+                  "name": "Mana",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            }
+          ],
+          "Life": {
+            "stat": "Life",
+            "value": 1.0,
+            "reference": 1.0,
+            "base_total": 1571.0,
+            "inc_total": 5.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "override",
+                  "operand": 1.0,
+                  "result": 1.0
+                }
+              ],
+              "value": 1.0
+            }
+          },
+          "Mana": {
+            "stat": "Mana",
+            "value": 1113.4,
+            "reference": 1149.0,
+            "base_total": 1172.0,
+            "inc_total": -5.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "flat",
+                  "operand": 1172.0,
+                  "result": 1172.0
+                },
+                {
+                  "op": "increased",
+                  "operand": -5.0,
+                  "result": 1113.3999999999999
+                }
+              ],
+              "value": 1113.4
+            }
+          }
+        },
+        "disciple-of-varashta-08": {
+          "line": [
+            {
+              "source_kind": "PassiveNode",
+              "source_id": "node.3894",
+              "slot": null,
+              "holder": "Eldritch Will",
+              "text": "3% increased maximum Life, Mana and [EnergyShield|Energy Shield]",
+              "status": "partial",
+              "reason": null,
+              "used_in": [
+                "EnergyShield"
+              ],
+              "modifiers": [
+                {
+                  "name": "EnergyShield",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": 3.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "EnergyShield"
+                  ]
+                },
+                {
+                  "name": "Life",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                },
+                {
+                  "name": "Mana",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            }
+          ],
+          "Life": {
+            "stat": "Life",
+            "value": 1.0,
+            "reference": 1.0,
+            "base_total": 1375.0,
+            "inc_total": 5.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "override",
+                  "operand": 1.0,
+                  "result": 1.0
+                }
+              ],
+              "value": 1.0
+            }
+          },
+          "Mana": {
+            "stat": "Mana",
+            "value": 1167.6,
+            "reference": 1201.0,
+            "base_total": 1112.0,
+            "inc_total": 5.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "flat",
+                  "operand": 1112.0,
+                  "result": 1112.0
+                },
+                {
+                  "op": "increased",
+                  "operand": 5.0,
+                  "result": 1167.6000000000001
+                }
+              ],
+              "value": 1167.6
+            }
+          }
+        },
+        "lich-03": {
+          "line": [
+            {
+              "source_kind": "PassiveNode",
+              "source_id": "node.3894",
+              "slot": null,
+              "holder": "Eldritch Will",
+              "text": "3% increased maximum Life, Mana and [EnergyShield|Energy Shield]",
+              "status": "partial",
+              "reason": null,
+              "used_in": [
+                "EnergyShield"
+              ],
+              "modifiers": [
+                {
+                  "name": "EnergyShield",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": 3.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "EnergyShield"
+                  ]
+                },
+                {
+                  "name": "Life",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                },
+                {
+                  "name": "Mana",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            }
+          ],
+          "Life": {
+            "stat": "Life",
+            "value": 7530.69,
+            "reference": 7661.0,
+            "base_total": 4353.0,
+            "inc_total": 73.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "flat",
+                  "operand": 4353.0,
+                  "result": 4353.0
+                },
+                {
+                  "op": "increased",
+                  "operand": 73.0,
+                  "result": 7530.69
+                }
+              ],
+              "value": 7530.69
+            }
+          },
+          "Mana": {
+            "stat": "Mana",
+            "value": 1037.04,
+            "reference": 1064.0,
+            "base_total": 894.0,
+            "inc_total": 16.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "flat",
+                  "operand": 894.0,
+                  "result": 894.0
+                },
+                {
+                  "op": "increased",
+                  "operand": 16.0,
+                  "result": 1037.04
+                }
+              ],
+              "value": 1037.04
+            }
+          }
+        },
+        "lich-06": {
+          "line": [
+            {
+              "source_kind": "PassiveNode",
+              "source_id": "node.3894",
+              "slot": null,
+              "holder": "Eldritch Will",
+              "text": "3% increased maximum Life, Mana and [EnergyShield|Energy Shield]",
+              "status": "partial",
+              "reason": null,
+              "used_in": [
+                "EnergyShield"
+              ],
+              "modifiers": [
+                {
+                  "name": "EnergyShield",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": 3.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "EnergyShield"
+                  ]
+                },
+                {
+                  "name": "Life",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                },
+                {
+                  "name": "Mana",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            }
+          ],
+          "Life": {
+            "stat": "Life",
+            "value": 1775.455,
+            "reference": 1824.0,
+            "base_total": 1699.0,
+            "inc_total": 10.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "flat",
+                  "operand": 1699.0,
+                  "result": 1699.0
+                },
+                {
+                  "op": "converted",
+                  "operand": 5.0,
+                  "result": 1614.05
+                },
+                {
+                  "op": "increased",
+                  "operand": 10.0,
+                  "result": 1775.4550000000002
+                }
+              ],
+              "value": 1775.455
+            }
+          },
+          "Mana": {
+            "stat": "Mana",
+            "value": 912.58,
+            "reference": 939.0,
+            "base_total": 886.0,
+            "inc_total": 3.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "flat",
+                  "operand": 886.0,
+                  "result": 886.0
+                },
+                {
+                  "op": "increased",
+                  "operand": 3.0,
+                  "result": 912.58
+                }
+              ],
+              "value": 912.58
+            }
+          }
+        },
+        "oracle-06": {
+          "line": [
+            {
+              "source_kind": "PassiveNode",
+              "source_id": "node.3894",
+              "slot": null,
+              "holder": "Eldritch Will",
+              "text": "3% increased maximum Life, Mana and [EnergyShield|Energy Shield]",
+              "status": "partial",
+              "reason": null,
+              "used_in": [
+                "EnergyShield"
+              ],
+              "modifiers": [
+                {
+                  "name": "EnergyShield",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": 3.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "EnergyShield"
+                  ]
+                },
+                {
+                  "name": "Life",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                },
+                {
+                  "name": "Mana",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            }
+          ],
+          "Life": {
+            "stat": "Life",
+            "value": 1.0,
+            "reference": 1.0,
+            "base_total": 1402.0,
+            "inc_total": 5.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "override",
+                  "operand": 1.0,
+                  "result": 1.0
+                }
+              ],
+              "value": 1.0
+            }
+          },
+          "Mana": {
+            "stat": "Mana",
+            "value": 1400.7,
+            "reference": 1441.0,
+            "base_total": 1334.0,
+            "inc_total": 5.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "flat",
+                  "operand": 1334.0,
+                  "result": 1334.0
+                },
+                {
+                  "op": "increased",
+                  "operand": 5.0,
+                  "result": 1400.7
+                }
+              ],
+              "value": 1400.7
+            }
+          }
+        },
+        "pathfinder-01": {
+          "line": [
+            {
+              "source_kind": "PassiveNode",
+              "source_id": "node.3894",
+              "slot": null,
+              "holder": "Eldritch Will",
+              "text": "3% increased maximum Life, Mana and [EnergyShield|Energy Shield]",
+              "status": "partial",
+              "reason": null,
+              "used_in": [
+                "EnergyShield"
+              ],
+              "modifiers": [
+                {
+                  "name": "EnergyShield",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": 3.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "EnergyShield"
+                  ]
+                },
+                {
+                  "name": "Life",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                },
+                {
+                  "name": "Mana",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            }
+          ],
+          "Life": {
+            "stat": "Life",
+            "value": 1.0,
+            "reference": 1.0,
+            "base_total": 1548.0,
+            "inc_total": 0.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "override",
+                  "operand": 1.0,
+                  "result": 1.0
+                }
+              ],
+              "value": 1.0
+            }
+          },
+          "Mana": {
+            "stat": "Mana",
+            "value": 706.8,
+            "reference": 729.0,
+            "base_total": 744.0,
+            "inc_total": -5.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "flat",
+                  "operand": 744.0,
+                  "result": 744.0
+                },
+                {
+                  "op": "increased",
+                  "operand": -5.0,
+                  "result": 706.8
+                }
+              ],
+              "value": 706.8
+            }
+          }
+        },
+        "pathfinder-02": {
+          "line": [
+            {
+              "source_kind": "PassiveNode",
+              "source_id": "node.3894",
+              "slot": null,
+              "holder": "Eldritch Will",
+              "text": "3% increased maximum Life, Mana and [EnergyShield|Energy Shield]",
+              "status": "partial",
+              "reason": null,
+              "used_in": [
+                "EnergyShield"
+              ],
+              "modifiers": [
+                {
+                  "name": "EnergyShield",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": 3.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "EnergyShield"
+                  ]
+                },
+                {
+                  "name": "Life",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                },
+                {
+                  "name": "Mana",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            }
+          ],
+          "Life": {
+            "stat": "Life",
+            "value": 1.0,
+            "reference": 1.0,
+            "base_total": 1654.0,
+            "inc_total": 0.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "override",
+                  "operand": 1.0,
+                  "result": 1.0
+                }
+              ],
+              "value": 1.0
+            }
+          },
+          "Mana": {
+            "stat": "Mana",
+            "value": 775.2,
+            "reference": 800.0,
+            "base_total": 816.0,
+            "inc_total": -5.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "flat",
+                  "operand": 816.0,
+                  "result": 816.0
+                },
+                {
+                  "op": "increased",
+                  "operand": -5.0,
+                  "result": 775.1999999999999
+                }
+              ],
+              "value": 775.2
+            }
+          }
+        },
+        "smith-of-kitava-05": {
+          "line": [
+            {
+              "source_kind": "PassiveNode",
+              "source_id": "node.3894",
+              "slot": null,
+              "holder": "Eldritch Will",
+              "text": "3% increased maximum Life, Mana and [EnergyShield|Energy Shield]",
+              "status": "partial",
+              "reason": null,
+              "used_in": [
+                "EnergyShield"
+              ],
+              "modifiers": [
+                {
+                  "name": "EnergyShield",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": 3.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "EnergyShield"
+                  ]
+                },
+                {
+                  "name": "Life",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                },
+                {
+                  "name": "Mana",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            }
+          ],
+          "Life": {
+            "stat": "Life",
+            "value": 2215.4475,
+            "reference": 2279.0,
+            "base_total": 2221.0,
+            "inc_total": 5.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "flat",
+                  "operand": 2221.0,
+                  "result": 2221.0
+                },
+                {
+                  "op": "converted",
+                  "operand": 5.0,
+                  "result": 2109.95
+                },
+                {
+                  "op": "increased",
+                  "operand": 5.0,
+                  "result": 2215.4474999999998
+                }
+              ],
+              "value": 2215.4475
+            }
+          },
+          "Mana": {
+            "stat": "Mana",
+            "value": 1006.05,
+            "reference": 1038.0,
+            "base_total": 1059.0,
+            "inc_total": -5.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "flat",
+                  "operand": 1059.0,
+                  "result": 1059.0
+                },
+                {
+                  "op": "increased",
+                  "operand": -5.0,
+                  "result": 1006.05
+                }
+              ],
+              "value": 1006.05
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "S02",
+      "title": "Movement Speed increases/reductions never reach ES recharge",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "oracle-04",
+        "oracle-06",
+        "shaman-07"
+      ],
+      "affected_full230_count": 3,
+      "affected_outputs": [
+        "EnergyShieldRecharge"
+      ],
+      "causal_proof": "Each build has positive ES, an active imported sharing flag, nonzero applied MovementSpeed INC, and no active NoEnergyShieldRecharge or ZealotsOath prohibition. calc_es_recharge only sums EnergyShieldRecharge INC; no source consumer reads MovementSpeedAppliesToEnergyShieldRecharge. This existing panel is understated without any assumption about recharge uptime.",
+      "game_evidence": [
+        "overlay/stat_descriptions.json increases_and_reductions_to_move_speed_apply_to_es_recharge_rate",
+        "base/stats.json same ID",
+        "Frozen Jiquani rune text"
+      ],
+      "smallest_existing_path": [
+        "crates/pobr-core/src/calc/defence.rs:772 calc_es_recharge",
+        "crates/pobr-core/src/calc/session/detail.rs recharge source query"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "additional_worked_builds_not_fully_proved": [
+        "monk-martial-artist-flicker-strike"
+      ],
+      "limit": "Share only source INC, preserving conditions. Do not share BASE/MORE/action speed, movement penalties, or infer uptime.",
+      "per_build": {
+        "oracle-04": {
+          "es": 9426.0,
+          "applied_movement_inc": 96.0,
+          "sharing_line": [
+            {
+              "source_kind": "ItemEnchant",
+              "source_id": "item.boots.enchant",
+              "slot": "boots",
+              "holder": "Sandsworn Sandals",
+              "text": "Increases and Reductions to Movement Speed also apply to Energy Shield Recharge Rate",
+              "status": "unread",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "MovementSpeedAppliesToEnergyShieldRecharge",
+                  "mod_type": "FLAG",
+                  "value": true,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            }
+          ],
+          "source_lines": [
+            {
+              "source_kind": "Flask",
+              "source_id": "flask.charm1",
+              "slot": "charm1",
+              "holder": "Golden Charm",
+              "text": "Possessed by Spirit Of The Stag for 18 seconds on use",
+              "status": "applied",
+              "reason": null,
+              "used_in": [
+                "TotalHitAvg",
+                "FireResist",
+                "ColdResist",
+                "LightningResist",
+                "ActionRate"
+              ],
+              "modifiers": [
+                {
+                  "name": "ColdResistance",
+                  "mod_type": "BASE",
+                  "value": 30.0,
+                  "applied": 30.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "ColdResist"
+                  ]
+                },
+                {
+                  "name": "DamageGainAsLightning",
+                  "mod_type": "BASE",
+                  "value": 20.0,
+                  "applied": 20.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "TotalHitAvg"
+                  ]
+                },
+                {
+                  "name": "FireResistance",
+                  "mod_type": "BASE",
+                  "value": 30.0,
+                  "applied": 30.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "FireResist"
+                  ]
+                },
+                {
+                  "name": "LightningResistance",
+                  "mod_type": "BASE",
+                  "value": 30.0,
+                  "applied": 30.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "LightningResist"
+                  ]
+                },
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": 15.0,
+                  "applied": 15.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                },
+                {
+                  "name": "SkillSpeed",
+                  "mod_type": "INC",
+                  "value": 30.0,
+                  "applied": 30.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "ActionRate"
+                  ]
+                },
+                {
+                  "name": "SpiritPossession:Stag",
+                  "mod_type": "FLAG",
+                  "value": 1.0,
+                  "applied": 1.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "Item",
+              "source_id": "mageblood",
+              "slot": null,
+              "holder": null,
+              "text": "Mageblood",
+              "status": "partial",
+              "reason": null,
+              "used_in": [
+                "ActionRate",
+                "CritChance"
+              ],
+              "modifiers": [
+                {
+                  "name": "CriticalStrikeChance",
+                  "mod_type": "INC",
+                  "value": 96.0,
+                  "applied": 96.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "CritChance"
+                  ]
+                },
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": 38.0,
+                  "applied": 38.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                },
+                {
+                  "name": "SkillSpeed",
+                  "mod_type": "INC",
+                  "value": 38.0,
+                  "applied": 38.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "ActionRate"
+                  ]
+                },
+                {
+                  "name": "TotemPlacementSpeed",
+                  "mod_type": "INC",
+                  "value": 38.0,
+                  "applied": 38.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                },
+                {
+                  "name": "WarcrySpeed",
+                  "mod_type": "INC",
+                  "value": 38.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.boots.explicit",
+              "slot": "boots",
+              "holder": "Sandsworn Sandals",
+              "text": "35% increased Movement Speed",
+              "status": "applied",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": 35.0,
+                  "applied": 35.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemEnchant",
+              "source_id": "item.boots.enchant",
+              "slot": "boots",
+              "holder": "Sandsworn Sandals",
+              "text": "8% increased Movement Speed",
+              "status": "applied",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": 8.0,
+                  "applied": 8.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            }
+          ]
+        },
+        "oracle-06": {
+          "es": 24091.0,
+          "applied_movement_inc": 124.0,
+          "sharing_line": [
+            {
+              "source_kind": "ItemEnchant",
+              "source_id": "item.boots.enchant",
+              "slot": "boots",
+              "holder": "Sekhema Sandals",
+              "text": "Increases and Reductions to Movement Speed also apply to Energy Shield Recharge Rate",
+              "status": "unread",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "MovementSpeedAppliesToEnergyShieldRecharge",
+                  "mod_type": "FLAG",
+                  "value": true,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            }
+          ],
+          "source_lines": [
+            {
+              "source_kind": "Buff",
+              "source_id": "buff.Onslaught",
+              "slot": null,
+              "holder": null,
+              "text": "Onslaught",
+              "status": "partial",
+              "reason": null,
+              "used_in": [
+                "ActionRate"
+              ],
+              "modifiers": [
+                {
+                  "name": "AttackSpeed",
+                  "mod_type": "INC",
+                  "value": 20.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                },
+                {
+                  "name": "CastSpeed",
+                  "mod_type": "INC",
+                  "value": 20.0,
+                  "applied": 20.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "ActionRate"
+                  ]
+                },
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": 10.0,
+                  "applied": 10.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                },
+                {
+                  "name": "WarcrySpeed",
+                  "mod_type": "INC",
+                  "value": 20.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "CampaignReward",
+              "source_id": "quest",
+              "slot": null,
+              "holder": null,
+              "text": "3% increased Movement Speed",
+              "status": "applied",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": 3.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "Flask",
+              "source_id": "flask.charm3",
+              "slot": "charm3",
+              "holder": "Golden Charm",
+              "text": "Possessed by Spirit Of The Cat for 20 seconds on use",
+              "status": "applied",
+              "reason": null,
+              "used_in": [
+                "Evasion",
+                "ActionRate",
+                "CritChance"
+              ],
+              "modifiers": [
+                {
+                  "name": "CriticalStrikeChance",
+                  "mod_type": "INC",
+                  "value": 100.0,
+                  "applied": 100.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "CritChance"
+                  ]
+                },
+                {
+                  "name": "Evasion",
+                  "mod_type": "INC",
+                  "value": 60.0,
+                  "applied": 60.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "Evasion"
+                  ]
+                },
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": 15.0,
+                  "applied": 15.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                },
+                {
+                  "name": "SkillSpeed",
+                  "mod_type": "INC",
+                  "value": 30.0,
+                  "applied": 30.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "ActionRate"
+                  ]
+                },
+                {
+                  "name": "SpiritPossession:Cat",
+                  "mod_type": "FLAG",
+                  "value": 1.0,
+                  "applied": 1.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "Item",
+              "source_id": "mageblood",
+              "slot": null,
+              "holder": null,
+              "text": "Mageblood",
+              "status": "applied",
+              "reason": null,
+              "used_in": [
+                "CritChance"
+              ],
+              "modifiers": [
+                {
+                  "name": "CriticalStrikeChance",
+                  "mod_type": "INC",
+                  "value": 108.0,
+                  "applied": 108.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "CritChance"
+                  ]
+                },
+                {
+                  "name": "LootRarity",
+                  "mod_type": "INC",
+                  "value": 65.0,
+                  "applied": 65.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                },
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": 43.0,
+                  "applied": 43.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.boots.explicit",
+              "slot": "boots",
+              "holder": "Sekhema Sandals",
+              "text": "35% increased Movement Speed",
+              "status": "applied",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": 35.0,
+                  "applied": 35.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemEnchant",
+              "source_id": "item.boots.enchant",
+              "slot": "boots",
+              "holder": "Sekhema Sandals",
+              "text": "5% increased Movement Speed",
+              "status": "applied",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": 5.0,
+                  "applied": 5.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "PassiveNode",
+              "source_id": "node.11464",
+              "slot": null,
+              "holder": "Movement Speed",
+              "text": "3% increased Movement Speed",
+              "status": "applied",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": 3.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "PassiveNode",
+              "source_id": "node.30781",
+              "slot": null,
+              "holder": "Movement Speed",
+              "text": "3% increased Movement Speed",
+              "status": "applied",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": 3.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "PassiveNode",
+              "source_id": "node.37888",
+              "slot": null,
+              "holder": "Limitless Pursuit",
+              "text": "4% increased Movement Speed",
+              "status": "applied",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": 4.0,
+                  "applied": 4.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "PassiveNode",
+              "source_id": "node.43082",
+              "slot": null,
+              "holder": "Acceleration",
+              "text": "3% increased Movement Speed",
+              "status": "applied",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": 3.0,
+                  "applied": 3.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            }
+          ]
+        },
+        "shaman-07": {
+          "es": 9502.0,
+          "applied_movement_inc": 85.0,
+          "sharing_line": [
+            {
+              "source_kind": "ItemEnchant",
+              "source_id": "item.boots.enchant",
+              "slot": "boots",
+              "holder": "Sandsworn Sandals",
+              "text": "Increases and Reductions to Movement Speed also apply to Energy Shield Recharge Rate",
+              "status": "unread",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "MovementSpeedAppliesToEnergyShieldRecharge",
+                  "mod_type": "FLAG",
+                  "value": true,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            }
+          ],
+          "source_lines": [
+            {
+              "source_kind": "CampaignReward",
+              "source_id": "quest",
+              "slot": null,
+              "holder": null,
+              "text": "3% reduced Movement Speed",
+              "status": "applied",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": -3.0,
+                  "applied": -3.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "Item",
+              "source_id": "mageblood",
+              "slot": null,
+              "holder": null,
+              "text": "Mageblood",
+              "status": "applied",
+              "reason": null,
+              "used_in": [
+                "FireResist",
+                "ColdResist",
+                "LightningResist"
+              ],
+              "modifiers": [
+                {
+                  "name": "ElementalResist",
+                  "mod_type": "BASE",
+                  "value": 67.0,
+                  "applied": 67.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "FireResist",
+                    "ColdResist",
+                    "LightningResist"
+                  ]
+                },
+                {
+                  "name": "LootRarity",
+                  "mod_type": "INC",
+                  "value": 67.0,
+                  "applied": 67.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                },
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": 45.0,
+                  "applied": 45.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.boots.explicit",
+              "slot": "boots",
+              "holder": "Sandsworn Sandals",
+              "text": "35% increased Movement Speed",
+              "status": "applied",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": 35.0,
+                  "applied": 35.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemEnchant",
+              "source_id": "item.boots.enchant",
+              "slot": "boots",
+              "holder": "Sandsworn Sandals",
+              "text": "8% increased Movement Speed",
+              "status": "applied",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "MovementSpeed",
+                  "mod_type": "INC",
+                  "value": 8.0,
+                  "applied": 8.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "S03",
+      "title": "Lightning hit luck chance is unparsed",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "blood-mage-07",
+        "blood-mage-09",
+        "invoker-03"
+      ],
+      "affected_full230_count": 3,
+      "affected_outputs": [
+        "AverageDamage",
+        "TotalDPS",
+        "AverageBurstDamage",
+        "hit-derived combined outputs"
+      ],
+      "causal_proof": "Heart of the Well and node 44566 lightning-luck lines are unparsed. Selected attacks/spells have nonzero Lightning ranges. Existing lucky_hit_chance already consumes LightningLuckyHitsChance but no modifier is emitted. Blood07 lacks 20+30=50 percentage points; Blood09 lacks 25+30=55; Invoker03 has 20% generic hit luck and lacks another 30% for Lightning (20 -> 50). Infernalist03 also carries the passive but its selected hit has no Lightning, so it is not an affected current-output build.",
+      "game_evidence": [
+        "overlay/stat_descriptions.json chance_for_extra_damage_roll_with_lightning_damage_%",
+        "base/mods.json UniqueHeartPrefixLuckyLightningDamageChancePercent",
+        "base/passive_tree.json node 44566",
+        "Frozen item rolls retained"
+      ],
+      "smallest_existing_path": [
+        "Curated parse rule to LightningLuckyHitsChance BASE",
+        "crates/pobr-core/src/calc/damage.rs:148 lucky_hit_chance"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "no_current_output_builds": [
+        "infernalist-03"
+      ],
+      "limit": "Preserve frozen 20/25/30 rolls. Use existing per-type hit-luck convention; do not modify ailment damage rolls merely to match the reference.",
+      "per_build": {
+        "blood-mage-07": {
+          "lines": [
+            {
+              "source_kind": "Jewel",
+              "source_id": "jewel.1",
+              "slot": null,
+              "holder": "Diamond",
+              "text": "20% chance for Lightning Damage with Hits to be Lucky",
+              "status": "unparsed",
+              "reason": null,
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "PassiveNode",
+              "source_id": "node.44566",
+              "slot": null,
+              "holder": "Lightning Rod",
+              "text": "30% chance for [Lightning] Damage with [Hit|Hits] to be [Lucky]",
+              "status": "unparsed",
+              "reason": null,
+              "used_in": [],
+              "modifiers": []
+            }
+          ],
+          "hit_damage": [
+            {
+              "damage_type": "Physical",
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0
+            },
+            {
+              "damage_type": "Lightning",
+              "min": 21553.789785,
+              "max": 35558.9517745,
+              "avg": 28556.37077975
+            },
+            {
+              "damage_type": "Cold",
+              "min": 15790.76109,
+              "max": 23682.94383,
+              "avg": 19736.852460000002
+            },
+            {
+              "damage_type": "Fire",
+              "min": 21256.793775,
+              "max": 31880.885925,
+              "avg": 26568.839849999997
+            }
+          ]
+        },
+        "blood-mage-09": {
+          "lines": [
+            {
+              "source_kind": "Jewel",
+              "source_id": "jewel.6",
+              "slot": null,
+              "holder": "Diamond",
+              "text": "25% chance for Lightning Damage with Hits to be Lucky",
+              "status": "unparsed",
+              "reason": null,
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "PassiveNode",
+              "source_id": "node.44566",
+              "slot": null,
+              "holder": "Lightning Rod",
+              "text": "30% chance for [Lightning] Damage with [Hit|Hits] to be [Lucky]",
+              "status": "unparsed",
+              "reason": null,
+              "used_in": [],
+              "modifiers": []
+            }
+          ],
+          "hit_damage": [
+            {
+              "damage_type": "Physical",
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0
+            },
+            {
+              "damage_type": "Lightning",
+              "min": 241506.14237568,
+              "max": 398485.134919872,
+              "avg": 319995.638647776
+            },
+            {
+              "damage_type": "Cold",
+              "min": 95529.97901538,
+              "max": 143294.96852307,
+              "avg": 119412.473769225
+            }
+          ]
+        },
+        "invoker-03": {
+          "lines": [
+            {
+              "source_kind": "Jewel",
+              "source_id": "jewel.6",
+              "slot": null,
+              "holder": "Diamond",
+              "text": "30% chance for Lightning Damage with Hits to be Lucky",
+              "status": "unparsed",
+              "reason": null,
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "PassiveNode",
+              "source_id": "node.11774",
+              "slot": null,
+              "holder": "The Spring Hare",
+              "text": "20% chance for Damage with [Hit|Hits] to be [Lucky]",
+              "status": "applied",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "LuckyHitsChance",
+                  "mod_type": "BASE",
+                  "value": 20.0,
+                  "applied": 20.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            }
+          ],
+          "hit_damage": [
+            {
+              "damage_type": "Physical",
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0
+            },
+            {
+              "damage_type": "Lightning",
+              "min": 1572.113664,
+              "max": 29801.806848,
+              "avg": 15686.960256
+            },
+            {
+              "damage_type": "Cold",
+              "min": 285.838848,
+              "max": 5418.510336,
+              "avg": 2852.1745920000003
+            },
+            {
+              "damage_type": "Fire",
+              "min": 478.7800704,
+              "max": 9076.0048128,
+              "avg": 4777.3924416
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "S04",
+      "title": "Watch How I Do It drops the ally weapon-damage grant",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "tactician-03",
+        "tactician-06",
+        "tactician-07"
+      ],
+      "affected_full230_count": 3,
+      "affected_outputs": [
+        "existing attack-minion AverageDamage/TotalDPS; selected main minion in tactician-06"
+      ],
+      "causal_proof": "Allocated node 16249 is split into two unparsed lines. These three builds actually create attacking minions and equip damaging main-hand maces; no main-hand-share modifier reaches them. Tactician06 selects Wolf Pack itself. Other frozen holders have no calculated minions in the snapshot and are not included as proven affected actors.",
+      "game_evidence": [
+        "base/passive_tree.json node 16249 Watch How I Do It",
+        "overlay/stat_descriptions.json aura_grant_%_base_main_hand_attack_damage_to_nearby_allies",
+        "Frozen main-hand Massive Greathammer/Giant Maul items"
+      ],
+      "smallest_existing_path": [
+        "Join/recognize the existing multiline passive",
+        "Existing ExtraAura recipient gating and calc/perform.rs:550 apply_main_hand_share"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "limit": "Allies is broader than Companions. Reuse the weapon-base damage path with Presence/ally-aura/hidden-recipient gates; do not add global ring damage or grant damage to the player.",
+      "per_build": {
+        "tactician-03": {
+          "source": [
+            {
+              "source_kind": "AscendancyNode",
+              "source_id": "node.16249",
+              "slot": null,
+              "holder": "Watch How I Do It",
+              "text": "[Allies] in your [Presence] gain added [Attack] Damage equal",
+              "status": "unparsed",
+              "reason": null,
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "AscendancyNode",
+              "source_id": "node.16249",
+              "slot": null,
+              "holder": "Watch How I Do It",
+              "text": "to 25% of your main hand Weapon's damage",
+              "status": "unparsed",
+              "reason": null,
+              "used_in": [],
+              "modifiers": []
+            }
+          ],
+          "minions": [
+            {
+              "minion_id": "Metadata/Monsters/GoreCharger/GoreCharger",
+              "summoned_by": "SummonBeastPlayer",
+              "skill_id": "MeleeAtAnimationSpeed",
+              "level": 30,
+              "dps": 850.380295215,
+              "life": 2670.0,
+              "armour": 114.0,
+              "evasion": 462.0,
+              "energy_shield": 0.0,
+              "stats": {
+                "ChaosResist": 0.0,
+                "ChaosResistMax": 75.0,
+                "ChaosResistOverCap": 0.0,
+                "ColdResist": 30.0,
+                "ColdResistMax": 75.0,
+                "ColdResistOverCap": 0.0,
+                "CurseEffectOnSelf": 100.0,
+                "FireResist": 0.0,
+                "FireResistMax": 75.0,
+                "FireResistOverCap": 0.0,
+                "LifeRegen": 11.8,
+                "LightningResist": 0.0,
+                "LightningResistMax": 75.0,
+                "LightningResistOverCap": 0.0
+              }
+            }
+          ],
+          "weapon_lines": [
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.weapon1.explicit",
+              "slot": "weapon1",
+              "holder": "Massive Greathammer",
+              "text": "+31 to Strength",
+              "status": "applied",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "Strength",
+                  "mod_type": "BASE",
+                  "value": 31.0,
+                  "applied": 31.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.weapon1.explicit",
+              "slot": "weapon1",
+              "holder": "Massive Greathammer",
+              "text": "149% increased Physical Damage",
+              "status": "outside",
+              "reason": "local to the weapon, in its own damage (weapon_contribution)",
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.weapon1.explicit",
+              "slot": "weapon1",
+              "holder": "Massive Greathammer",
+              "text": "70% chance for Skills to retain 40% of Glory on use",
+              "status": "unparsed",
+              "reason": null,
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.weapon1.explicit",
+              "slot": "weapon1",
+              "holder": "Massive Greathammer",
+              "text": "Adds 21 to 40 Physical Damage",
+              "status": "outside",
+              "reason": "local to the weapon, in its own damage (weapon_contribution)",
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.weapon1.explicit",
+              "slot": "weapon1",
+              "holder": "Massive Greathammer",
+              "text": "Adds 52 to 73 Cold Damage",
+              "status": "inactive",
+              "reason": "added damage local to a weapon the main skill does not hit with",
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.weapon1.explicit",
+              "slot": "weapon1",
+              "holder": "Massive Greathammer",
+              "text": "Leeches 8.75% of Physical Damage as Mana",
+              "status": "inactive",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "PhysicalDamageManaLeech",
+                  "mod_type": "BASE",
+                  "value": 8.75,
+                  "applied": null,
+                  "status": "inactive",
+                  "reason": "needs Attack",
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemEnchant",
+              "source_id": "item.weapon1.enchant",
+              "slot": "weapon1",
+              "holder": "Massive Greathammer",
+              "text": "18% increased Physical Damage",
+              "status": "outside",
+              "reason": "local to the weapon, in its own damage (weapon_contribution)",
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "ItemEnchant",
+              "source_id": "item.weapon1.enchant",
+              "slot": "weapon1",
+              "holder": "Massive Greathammer",
+              "text": "Convert 20% of Requirements to Intelligence",
+              "status": "applied",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "AttributeRequirementsConverted",
+                  "mod_type": "FLAG",
+                  "value": true,
+                  "applied": null,
+                  "status": "outside",
+                  "reason": "the item's local attribute requirements (requirement_snapshots)",
+                  "used_in": []
+                },
+                {
+                  "name": "AttributeRequirementsConvertedToIntelligence",
+                  "mod_type": "BASE",
+                  "value": 20.0,
+                  "applied": null,
+                  "status": "outside",
+                  "reason": "the item's local attribute requirements (requirement_snapshots)",
+                  "used_in": []
+                }
+              ]
+            }
+          ]
+        },
+        "tactician-06": {
+          "source": [
+            {
+              "source_kind": "AscendancyNode",
+              "source_id": "node.16249",
+              "slot": null,
+              "holder": "Watch How I Do It",
+              "text": "[Allies] in your [Presence] gain added [Attack] Damage equal",
+              "status": "unparsed",
+              "reason": null,
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "AscendancyNode",
+              "source_id": "node.16249",
+              "slot": null,
+              "holder": "Watch How I Do It",
+              "text": "to 25% of your main hand Weapon's damage",
+              "status": "unparsed",
+              "reason": null,
+              "used_in": [],
+              "modifiers": []
+            }
+          ],
+          "minions": [
+            {
+              "minion_id": "WolfMinion",
+              "summoned_by": "WolfPackPlayer",
+              "skill_id": "MeleeAtAnimationSpeedWolfCompanion",
+              "level": 38,
+              "dps": 1202.507591479,
+              "life": 1759.1,
+              "armour": 699.0,
+              "evasion": 188.0,
+              "energy_shield": 724.0,
+              "stats": {
+                "ChaosResist": 0.0,
+                "ChaosResistMax": 75.0,
+                "ChaosResistOverCap": 0.0,
+                "ColdResist": 5.0,
+                "ColdResistMax": 75.0,
+                "ColdResistOverCap": 0.0,
+                "CurseEffectOnSelf": 100.0,
+                "FireResist": 25.0,
+                "FireResistMax": 75.0,
+                "FireResistOverCap": 0.0,
+                "LifeRegen": -0.0,
+                "LightningResist": 5.0,
+                "LightningResistMax": 75.0,
+                "LightningResistOverCap": 0.0
+              }
+            }
+          ],
+          "weapon_lines": [
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.weapon1.explicit",
+              "slot": "weapon1",
+              "holder": "Giant Maul",
+              "text": "+9% to all Elemental Resistances",
+              "status": "applied",
+              "reason": null,
+              "used_in": [
+                "FireResist",
+                "ColdResist",
+                "LightningResist"
+              ],
+              "modifiers": [
+                {
+                  "name": "ColdResistance",
+                  "mod_type": "BASE",
+                  "value": 9.0,
+                  "applied": 9.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "ColdResist"
+                  ]
+                },
+                {
+                  "name": "FireResistance",
+                  "mod_type": "BASE",
+                  "value": 9.0,
+                  "applied": 9.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "FireResist"
+                  ]
+                },
+                {
+                  "name": "LightningResistance",
+                  "mod_type": "BASE",
+                  "value": 9.0,
+                  "applied": 9.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "LightningResist"
+                  ]
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.weapon1.explicit",
+              "slot": "weapon1",
+              "holder": "Giant Maul",
+              "text": "10% reduced Attack Speed",
+              "status": "outside",
+              "reason": "local to the weapon, in its own damage (weapon_contribution)",
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.weapon1.explicit",
+              "slot": "weapon1",
+              "holder": "Giant Maul",
+              "text": "397% increased Physical Damage",
+              "status": "outside",
+              "reason": "local to the weapon, in its own damage (weapon_contribution)",
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.weapon1.explicit",
+              "slot": "weapon1",
+              "holder": "Giant Maul",
+              "text": "59% increased Mana Regeneration Rate",
+              "status": "applied",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "ManaRegen",
+                  "mod_type": "INC",
+                  "value": 59.0,
+                  "applied": 59.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.weapon1.explicit",
+              "slot": "weapon1",
+              "holder": "Giant Maul",
+              "text": "Every 10 seconds, gain a random non-damaging Shrine buff for 20 seconds",
+              "status": "unparsed",
+              "reason": null,
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "ItemEnchant",
+              "source_id": "item.weapon1.enchant",
+              "slot": "weapon1",
+              "holder": "Giant Maul",
+              "text": "42% increased Elemental Damage with Attacks",
+              "status": "unread",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "ElementalDamage",
+                  "mod_type": "INC",
+                  "value": 42.0,
+                  "applied": null,
+                  "status": "unread",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemEnchant",
+              "source_id": "item.weapon1.enchant",
+              "slot": "weapon1",
+              "holder": "Giant Maul",
+              "text": "60% increased Physical Damage",
+              "status": "outside",
+              "reason": "local to the weapon, in its own damage (weapon_contribution)",
+              "used_in": [],
+              "modifiers": []
+            }
+          ]
+        },
+        "tactician-07": {
+          "source": [
+            {
+              "source_kind": "AscendancyNode",
+              "source_id": "node.16249",
+              "slot": null,
+              "holder": "Watch How I Do It",
+              "text": "[Allies] in your [Presence] gain added [Attack] Damage equal",
+              "status": "unparsed",
+              "reason": null,
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "AscendancyNode",
+              "source_id": "node.16249",
+              "slot": null,
+              "holder": "Watch How I Do It",
+              "text": "to 25% of your main hand Weapon's damage",
+              "status": "unparsed",
+              "reason": null,
+              "used_in": [],
+              "modifiers": []
+            }
+          ],
+          "minions": [
+            {
+              "minion_id": "Metadata/Monsters/RabidFeralDogMonster/RabidDogLargeFarmlandsNoName",
+              "summoned_by": "SummonBeastPlayer",
+              "skill_id": "MeleeAtAnimationSpeed",
+              "level": 44,
+              "dps": 1879.094365321,
+              "life": 3378.0,
+              "armour": 1067.0,
+              "evasion": 305.0,
+              "energy_shield": 754.0,
+              "stats": {
+                "ChaosResist": 0.0,
+                "ChaosResistMax": 75.0,
+                "ChaosResistOverCap": 0.0,
+                "ColdResist": 0.0,
+                "ColdResistMax": 75.0,
+                "ColdResistOverCap": 0.0,
+                "CurseEffectOnSelf": 100.0,
+                "FireResist": 0.0,
+                "FireResistMax": 75.0,
+                "FireResistOverCap": 0.0,
+                "LifeRegen": -0.0,
+                "LightningResist": 0.0,
+                "LightningResistMax": 75.0,
+                "LightningResistOverCap": 0.0
+              }
+            }
+          ],
+          "weapon_lines": [
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.weapon1.explicit",
+              "slot": "weapon1",
+              "holder": "Giant Maul",
+              "text": "+10% to all Elemental Resistances",
+              "status": "applied",
+              "reason": null,
+              "used_in": [
+                "FireResist",
+                "ColdResist",
+                "LightningResist"
+              ],
+              "modifiers": [
+                {
+                  "name": "ColdResistance",
+                  "mod_type": "BASE",
+                  "value": 10.0,
+                  "applied": 10.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "ColdResist"
+                  ]
+                },
+                {
+                  "name": "FireResistance",
+                  "mod_type": "BASE",
+                  "value": 10.0,
+                  "applied": 10.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "FireResist"
+                  ]
+                },
+                {
+                  "name": "LightningResistance",
+                  "mod_type": "BASE",
+                  "value": 10.0,
+                  "applied": 10.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "LightningResist"
+                  ]
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.weapon1.explicit",
+              "slot": "weapon1",
+              "holder": "Giant Maul",
+              "text": "10% reduced Attack Speed",
+              "status": "outside",
+              "reason": "local to the weapon, in its own damage (weapon_contribution)",
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.weapon1.explicit",
+              "slot": "weapon1",
+              "holder": "Giant Maul",
+              "text": "350% increased Physical Damage",
+              "status": "outside",
+              "reason": "local to the weapon, in its own damage (weapon_contribution)",
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.weapon1.explicit",
+              "slot": "weapon1",
+              "holder": "Giant Maul",
+              "text": "50% increased Mana Regeneration Rate",
+              "status": "applied",
+              "reason": null,
+              "used_in": [],
+              "modifiers": [
+                {
+                  "name": "ManaRegen",
+                  "mod_type": "INC",
+                  "value": 50.0,
+                  "applied": 50.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": []
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.weapon1.explicit",
+              "slot": "weapon1",
+              "holder": "Giant Maul",
+              "text": "Every 10 seconds, gain a random non-damaging Shrine buff for 20 seconds",
+              "status": "unparsed",
+              "reason": null,
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "ItemEnchant",
+              "source_id": "item.weapon1.enchant",
+              "slot": "weapon1",
+              "holder": "Giant Maul",
+              "text": "8% increased Attack Speed",
+              "status": "outside",
+              "reason": "local to the weapon, in its own damage (weapon_contribution)",
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "ItemEnchant",
+              "source_id": "item.weapon1.enchant",
+              "slot": "weapon1",
+              "holder": "Giant Maul",
+              "text": "80% increased Physical Damage",
+              "status": "outside",
+              "reason": "local to the weapon, in its own damage (weapon_contribution)",
+              "used_in": [],
+              "modifiers": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "S05",
+      "title": "Per-different-Companion damage grant is dropped",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "shaman-07"
+      ],
+      "affected_full230_count": 1,
+      "affected_outputs": [
+        "selected Grim Pillars hit damage/DPS"
+      ],
+      "causal_proof": "The active Shrine Sceptre supplies 24% increased Damage per different Companion in Presence, but the line is unparsed. The snapshot creates WolfPackPlayer/WolfMinion (one distinct companion type); skeletons are not companions. Existing companion-presence default is true, with no false/zero exclusion in the imported config. Thus at least the one-type 24% INC is missing; this requires no pickup, kill or combat history.",
+      "game_evidence": [
+        "overlay/stat_descriptions.json damage_+%_per_different_companion_in_presence",
+        "base/stats.json same ID",
+        "Frozen shaman-07 sceptre rune line"
+      ],
+      "smallest_existing_path": [
+        "Prepared enabled companion identities and existing CompanionInPresence/MinionPresenceCount exclusions",
+        "Ordinary Damage INC path"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "limit": "Count distinct companion types, not seven wolves, skeleton count, or total minion capacity. No new user configuration needed for the proven one-type case.",
+      "evidence": {
+        "source": [
+          {
+            "source_kind": "ItemEnchant",
+            "source_id": "item.weapon2.enchant",
+            "slot": "weapon2",
+            "holder": "Shrine Sceptre",
+            "text": "24% increased Damage per each different Companion in your Presence",
+            "status": "unparsed",
+            "reason": null,
+            "used_in": [],
+            "modifiers": []
+          }
+        ],
+        "minions": [
+          {
+            "minion_id": "RaisedSkeletonWarriors",
+            "summoned_by": "SummonSkeletalWarriorsPlayer",
+            "skill_id": "MinionMeleeStep",
+            "level": 34,
+            "dps": 25.6643625,
+            "life": 2013.6,
+            "armour": 137.0,
+            "evasion": 286.0,
+            "energy_shield": 0.0,
+            "stats": {
+              "ChaosResist": 13.0,
+              "ChaosResistMax": 75.0,
+              "ChaosResistOverCap": 0.0,
+              "ColdResist": 0.0,
+              "ColdResistMax": 75.0,
+              "ColdResistOverCap": 0.0,
+              "CurseEffectOnSelf": 100.0,
+              "FireResist": 0.0,
+              "FireResistMax": 75.0,
+              "FireResistOverCap": 0.0,
+              "LifeRegen": 60.408,
+              "LightningResist": 44.0,
+              "LightningResistMax": 75.0,
+              "LightningResistOverCap": 0.0
+            }
+          },
+          {
+            "minion_id": "WolfMinion",
+            "summoned_by": "WolfPackPlayer",
+            "skill_id": "MeleeAtAnimationSpeedWolfCompanion",
+            "level": 44,
+            "dps": 60.998399635,
+            "life": 2714.04,
+            "armour": 547.0,
+            "evasion": 117.0,
+            "energy_shield": 0.0,
+            "stats": {
+              "ChaosResist": 13.0,
+              "ChaosResistMax": 75.0,
+              "ChaosResistOverCap": 0.0,
+              "ColdResist": 0.0,
+              "ColdResistMax": 75.0,
+              "ColdResistOverCap": 0.0,
+              "CurseEffectOnSelf": 100.0,
+              "FireResist": 20.0,
+              "FireResistMax": 75.0,
+              "FireResistOverCap": 0.0,
+              "LifeRegen": 81.4212,
+              "LightningResist": 44.0,
+              "LightningResistMax": 75.0,
+              "LightningResistOverCap": 0.0
+            }
+          },
+          {
+            "minion_id": "RaisedSkeletonWarriors",
+            "summoned_by": "SummonSkeletalWarriorsPlayer",
+            "skill_id": "MinionMeleeStep",
+            "level": 34,
+            "dps": 25.6643625,
+            "life": 2013.6,
+            "armour": 137.0,
+            "evasion": 286.0,
+            "energy_shield": 0.0,
+            "stats": {
+              "ChaosResist": 13.0,
+              "ChaosResistMax": 75.0,
+              "ChaosResistOverCap": 0.0,
+              "ColdResist": 0.0,
+              "ColdResistMax": 75.0,
+              "ColdResistOverCap": 0.0,
+              "CurseEffectOnSelf": 100.0,
+              "FireResist": 0.0,
+              "FireResistMax": 75.0,
+              "FireResistOverCap": 0.0,
+              "LifeRegen": 60.408,
+              "LightningResist": 44.0,
+              "LightningResistMax": 75.0,
+              "LightningResistOverCap": 0.0
+            }
+          }
+        ],
+        "current_damage": {
+          "stat": "TotalDPS",
+          "value": 465004.843763218,
+          "reference": 461951.547135,
+          "base_total": 0.0,
+          "inc_total": 0.0,
+          "more_total": 1.0,
+          "formula": {
+            "steps": [
+              {
+                "op": "average_hit",
+                "operand": 124178.689819793,
+                "result": 124178.689819793
+              },
+              {
+                "op": "enemy_mitigation",
+                "operand": 1.500000000000004,
+                "result": 186268.03472969
+              },
+              {
+                "op": "uses_per_second",
+                "operand": 2.496428571,
+                "result": 465004.8437632184
+              },
+              {
+                "op": "chance_to_hit",
+                "operand": 100.0,
+                "result": 465004.8437632184
+              }
+            ],
+            "value": 465004.843763218
+          }
+        }
+      }
+    },
+    {
+      "id": "S06",
+      "title": "Per-equipped-lightning-resistance-item Fire/Cold resistance is dropped",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "spirit-walker-04",
+        "spirit-walker-10"
+      ],
+      "affected_full230_count": 2,
+      "affected_outputs": [
+        "FireResist",
+        "ColdResist",
+        "uncapped resistance and dependent defence outputs"
+      ],
+      "causal_proof": "The active item lines are unparsed (+10 in 04; two +7 lines in 10). Both characters equip items with explicit nonzero Lightning resistance: 04 helmet and boots; 10 boots and gloves. Existing Fire/Cold totals are below cap (04:2/21; 10:15/31), so even these indisputable qualifying items prove missing current resistance. Exact complete counts must also handle all-element and negative-resistance modifiers, without multiplying by a modifier count on one item.",
+      "game_evidence": [
+        "overlay/stat_descriptions.json fire_and_cold_resist_+_per_equipped_item_with_a_lightning_resistance_mod",
+        "Frozen item lines and equipped item modifier sources"
+      ],
+      "smallest_existing_path": [
+        "Existing equipment snapshot/per-stat multiplier preparation",
+        "FireResistance and ColdResistance BASE with distinct equipped-item count"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "additional_worked_builds_not_fully_proved": [
+        "huntress-spirit-walker-companion-zekoa-the-headcrusher"
+      ],
+      "limit": "Nonzero omission is proved; no exact final EHP or complete item-count claim. Do not treat jewels/flasks as ordinary equipped items without checking game semantics.",
+      "per_build": {
+        "spirit-walker-04": {
+          "source": [
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.ring1.explicit",
+              "slot": "ring1",
+              "holder": "Ring",
+              "text": "+10% to Fire and Cold Resistances per Equipped Item with a Lightning Resistance Modifier",
+              "status": "unparsed",
+              "reason": null,
+              "used_in": [],
+              "modifiers": []
+            }
+          ],
+          "qualified_sources": [
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.bodyarmour.explicit",
+              "slot": "bodyarmour",
+              "holder": "Grand Regalia",
+              "text": "+10% to all Elemental Resistances per Socket filled",
+              "status": "applied",
+              "reason": null,
+              "used_in": [
+                "FireResist",
+                "ColdResist",
+                "LightningResist"
+              ],
+              "modifiers": [
+                {
+                  "name": "ColdResistance",
+                  "mod_type": "BASE",
+                  "value": 10.0,
+                  "applied": 50.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "ColdResist"
+                  ]
+                },
+                {
+                  "name": "FireResistance",
+                  "mod_type": "BASE",
+                  "value": 10.0,
+                  "applied": 50.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "FireResist"
+                  ]
+                },
+                {
+                  "name": "LightningResistance",
+                  "mod_type": "BASE",
+                  "value": 10.0,
+                  "applied": 50.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "LightningResist"
+                  ]
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.boots.explicit",
+              "slot": "boots",
+              "holder": "Flax Sandals",
+              "text": "+15% to Lightning and Chaos Resistances",
+              "status": "applied",
+              "reason": null,
+              "used_in": [
+                "LightningResist",
+                "ChaosResist"
+              ],
+              "modifiers": [
+                {
+                  "name": "ChaosResistance",
+                  "mod_type": "BASE",
+                  "value": 15.0,
+                  "applied": 15.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "ChaosResist"
+                  ]
+                },
+                {
+                  "name": "LightningResistance",
+                  "mod_type": "BASE",
+                  "value": 15.0,
+                  "applied": 15.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "LightningResist"
+                  ]
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.helmet.explicit",
+              "slot": "helmet",
+              "holder": "Ancestral Tiara",
+              "text": "+36% to Lightning Resistance",
+              "status": "applied",
+              "reason": null,
+              "used_in": [
+                "LightningResist"
+              ],
+              "modifiers": [
+                {
+                  "name": "LightningResistance",
+                  "mod_type": "BASE",
+                  "value": 36.0,
+                  "applied": 36.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "LightningResist"
+                  ]
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.ring2.explicit",
+              "slot": "ring2",
+              "holder": "Gold Ring",
+              "text": "-20% to all Elemental Resistances",
+              "status": "applied",
+              "reason": null,
+              "used_in": [
+                "FireResist",
+                "ColdResist",
+                "LightningResist"
+              ],
+              "modifiers": [
+                {
+                  "name": "ColdResistance",
+                  "mod_type": "BASE",
+                  "value": -20.0,
+                  "applied": -20.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "ColdResist"
+                  ]
+                },
+                {
+                  "name": "FireResistance",
+                  "mod_type": "BASE",
+                  "value": -20.0,
+                  "applied": -20.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "FireResist"
+                  ]
+                },
+                {
+                  "name": "LightningResistance",
+                  "mod_type": "BASE",
+                  "value": -20.0,
+                  "applied": -20.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "LightningResist"
+                  ]
+                }
+              ]
+            }
+          ],
+          "FireResist": {
+            "stat": "FireResist",
+            "value": 2.0,
+            "reference": 2.0,
+            "base_total": 2.0,
+            "inc_total": 0.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "flat",
+                  "operand": 2.0,
+                  "result": 2.0
+                }
+              ],
+              "value": 2.0
+            }
+          },
+          "ColdResist": {
+            "stat": "ColdResist",
+            "value": 21.0,
+            "reference": 9.0,
+            "base_total": 21.0,
+            "inc_total": 0.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "flat",
+                  "operand": 21.0,
+                  "result": 21.0
+                }
+              ],
+              "value": 21.0
+            }
+          }
+        },
+        "spirit-walker-10": {
+          "source": [
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.ring1.explicit",
+              "slot": "ring1",
+              "holder": "Ring",
+              "text": "+7% to Fire and Cold Resistances per Equipped Item with a Lightning Resistance Modifier",
+              "status": "unparsed",
+              "reason": null,
+              "used_in": [],
+              "modifiers": []
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.ring2.explicit",
+              "slot": "ring2",
+              "holder": "Ring",
+              "text": "+7% to Fire and Cold Resistances per Equipped Item with a Lightning Resistance Modifier",
+              "status": "unparsed",
+              "reason": null,
+              "used_in": [],
+              "modifiers": []
+            }
+          ],
+          "qualified_sources": [
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.bodyarmour.explicit",
+              "slot": "bodyarmour",
+              "holder": "Grand Regalia",
+              "text": "+8% to all Elemental Resistances per Socket filled",
+              "status": "applied",
+              "reason": null,
+              "used_in": [
+                "FireResist",
+                "ColdResist",
+                "LightningResist"
+              ],
+              "modifiers": [
+                {
+                  "name": "ColdResistance",
+                  "mod_type": "BASE",
+                  "value": 8.0,
+                  "applied": 40.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "ColdResist"
+                  ]
+                },
+                {
+                  "name": "FireResistance",
+                  "mod_type": "BASE",
+                  "value": 8.0,
+                  "applied": 40.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "FireResist"
+                  ]
+                },
+                {
+                  "name": "LightningResistance",
+                  "mod_type": "BASE",
+                  "value": 8.0,
+                  "applied": 40.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "LightningResist"
+                  ]
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.boots.explicit",
+              "slot": "boots",
+              "holder": "Sekhema Sandals",
+              "text": "+38% to Lightning Resistance",
+              "status": "applied",
+              "reason": null,
+              "used_in": [
+                "LightningResist"
+              ],
+              "modifiers": [
+                {
+                  "name": "LightningResistance",
+                  "mod_type": "BASE",
+                  "value": 38.0,
+                  "applied": 38.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "LightningResist"
+                  ]
+                }
+              ]
+            },
+            {
+              "source_kind": "ItemAffix",
+              "source_id": "item.gloves.explicit",
+              "slot": "gloves",
+              "holder": "Cultist Gauntlets",
+              "text": "+38% to Lightning Resistance",
+              "status": "applied",
+              "reason": null,
+              "used_in": [
+                "LightningResist"
+              ],
+              "modifiers": [
+                {
+                  "name": "LightningResistance",
+                  "mod_type": "BASE",
+                  "value": 38.0,
+                  "applied": 38.0,
+                  "status": "applied",
+                  "reason": null,
+                  "used_in": [
+                    "LightningResist"
+                  ]
+                }
+              ]
+            }
+          ],
+          "FireResist": {
+            "stat": "FireResist",
+            "value": 15.0,
+            "reference": 15.0,
+            "base_total": 15.0,
+            "inc_total": 0.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "flat",
+                  "operand": 15.0,
+                  "result": 15.0
+                }
+              ],
+              "value": 15.0
+            }
+          },
+          "ColdResist": {
+            "stat": "ColdResist",
+            "value": 31.0,
+            "reference": 19.0,
+            "base_total": 31.0,
+            "inc_total": 0.0,
+            "more_total": 1.0,
+            "formula": {
+              "steps": [
+                {
+                  "op": "flat",
+                  "operand": 31.0,
+                  "result": 31.0
+                }
+              ],
+              "value": 31.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "S07",
+      "title": "Loreweave rarity exclusivity does not exclude other rarity modifiers",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "warbringer-07"
+      ],
+      "affected_full230_count": 1,
+      "affected_outputs": [
+        "EffectiveLootRarityMod"
+      ],
+      "causal_proof": "Loreweave has the combined 84% rarity/exclude-other-rarity stat. The exclusion line is unparsed. The ledger applies both its 84% and a Golden Charm 15%; sidebar factor(LootRarity) therefore returns 1.99 instead of 1.84 under the existing enabled-charm convention. The rule affects an already supported utility output; no new loot simulation is requested.",
+      "game_evidence": [
+        "overlay/stat_descriptions.json unique_body_armour_item_rarity_only_+%",
+        "base/mods.json UniqueLoreweaveAndvarius1 variants",
+        "Frozen Loreweave raw text (84 retained)"
+      ],
+      "smallest_existing_path": [
+        "Source-aware exclusivity at existing LootRarity aggregation",
+        "crates/pobr-core/src/calc/sidebar.rs:142"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "limit": "Retain the originating combined stat/item contribution, not a blanket override that might erase the allowed value. No client loot-drop measurement.",
+      "evidence": [
+        {
+          "source_kind": "Flask",
+          "source_id": "flask.charm3",
+          "slot": "charm3",
+          "holder": "Golden Charm",
+          "text": "15% increased Rarity of Items found",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "LootRarity",
+              "mod_type": "INC",
+              "value": 15.0,
+              "applied": 15.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "ItemAffix",
+          "source_id": "item.bodyarmour.explicit",
+          "slot": "bodyarmour",
+          "holder": "Runemastered Ornate Ringmail",
+          "text": "84% increased Rarity of Items found",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "LootRarity",
+              "mod_type": "INC",
+              "value": 84.0,
+              "applied": 84.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "ItemAffix",
+          "source_id": "item.bodyarmour.explicit",
+          "slot": "bodyarmour",
+          "holder": "Runemastered Ornate Ringmail",
+          "text": "Your other Modifiers to Rarity of Items found do not apply",
+          "status": "unparsed",
+          "reason": null,
+          "used_in": [],
+          "modifiers": []
+        }
+      ]
+    },
+    {
+      "id": "S08",
+      "title": "Crimson Assault does not replace the base Bleeding duration",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "smith-of-kitava-06"
+      ],
+      "affected_full230_count": 1,
+      "affected_outputs": [
+        "BleedDuration",
+        "BleedDamage/instance duration-dependent outputs"
+      ],
+      "causal_proof": "Allocated keystone 9085 applies its Bleed magnitude and aggravation lines, but drops Base Bleeding Duration is 1 second. Selected Shield Wall has positive Bleed DPS. Both ailment_base_duration and bleed_instance still read the ordinary game constant; no per-build base-duration override is queried. This is a direct duration defect even if the sustained one-stack DPS is unchanged.",
+      "game_evidence": [
+        "base/passive_tree.json node 9085 Crimson Assault",
+        "overlay/stat_descriptions.json keystone_crimson_assault"
+      ],
+      "smallest_existing_path": [
+        "Curated base-duration override rule",
+        "crates/pobr-core/src/calc/ailment.rs:251 duration terms and :393 bleed_instance"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "limit": "Keep INC/MORE/rate modifiers after the replacement base. Do not attribute the entire stale BleedDPS discrepancy to this line; conquered Strength is now separately fixed.",
+      "evidence": {
+        "lines": [
+          {
+            "source_kind": "PassiveNode",
+            "source_id": "node.9085",
+            "slot": null,
+            "holder": "Crimson Assault",
+            "text": "50% more [BuffMagnitude|Magnitude] of [Bleeding] you inflict",
+            "status": "applied",
+            "reason": null,
+            "used_in": [
+              "BleedDPS"
+            ],
+            "modifiers": [
+              {
+                "name": "AilmentMagnitude",
+                "mod_type": "MORE",
+                "value": 50.0,
+                "applied": null,
+                "status": "applied",
+                "reason": null,
+                "used_in": [
+                  "BleedDPS"
+                ]
+              }
+            ]
+          },
+          {
+            "source_kind": "PassiveNode",
+            "source_id": "node.9085",
+            "slot": null,
+            "holder": "Crimson Assault",
+            "text": "Base [Bleeding] Duration is 1 second",
+            "status": "unparsed",
+            "reason": null,
+            "used_in": [],
+            "modifiers": []
+          },
+          {
+            "source_kind": "PassiveNode",
+            "source_id": "node.9085",
+            "slot": null,
+            "holder": "Crimson Assault",
+            "text": "[Bleeding] you inflict is [Aggravate|Aggravated]",
+            "status": "applied",
+            "reason": null,
+            "used_in": [],
+            "modifiers": [
+              {
+                "name": "EnemyModifier",
+                "mod_type": "LIST",
+                "value": "[nested 1]",
+                "applied": null,
+                "status": "applied",
+                "reason": null,
+                "used_in": []
+              }
+            ]
+          }
+        ],
+        "BleedDPS": {
+          "stat": "BleedDPS",
+          "value": 93676.651744376,
+          "reference": 141102.92430837,
+          "base_total": 0.0,
+          "inc_total": 163.0,
+          "more_total": 1.5,
+          "formula": {
+            "steps": [
+              {
+                "op": "ailment_source",
+                "operand": 115550.685359676,
+                "result": 115550.685359676
+              },
+              {
+                "op": "per_second",
+                "operand": 15.0,
+                "result": 17332.602803951402
+              },
+              {
+                "op": "increased",
+                "operand": 163.0,
+                "result": 45584.74537439219
+              },
+              {
+                "op": "more",
+                "operand": 1.5,
+                "result": 68377.11806158828
+              },
+              {
+                "op": "active_stacks",
+                "operand": 1.0,
+                "result": 68377.11806158828
+              },
+              {
+                "op": "ailment_rate",
+                "operand": 1.37,
+                "result": 93676.65174437595
+              }
+            ],
+            "value": 93676.651744376
+          }
+        }
+      }
+    },
+    {
+      "id": "S09",
+      "title": "Shattering Spite loses its native 50% less damaging-ailment effect",
+      "status": "proven_static_defect_from_source_and_cached_inputs",
+      "affected_full230_builds": [
+        "blood-mage-01"
+      ],
+      "affected_full230_count": 1,
+      "affected_outputs": [
+        "BleedDPS",
+        "IgniteDPS",
+        "ailment magnitude and combined outputs"
+      ],
+      "causal_proof": "The actual selected ShatteringSpitePlayer stat set contains active_skill_damaging_ailment_effect_+%_final=-50. The frozen selected-skill diagnostic reports it unknown; current source has no native handler and the saved positive Bleed/Ignite formulas contain no corresponding 0.5 multiplier. This stat is unconditional; Bloodstone Lance count and the separate conditional leech are not required to establish the omission.",
+      "game_evidence": [
+        "base/granted_effect_stat_sets.json effect_id ShatteringSpitePlayer / constant_stats active_skill_damaging_ailment_effect_+%_final = -50"
+      ],
+      "smallest_existing_path": [
+        "Native skill stat mapping into the existing damaging-ailment effect/MORE channel",
+        "Existing ailment magnitude pipeline and traced output"
+      ],
+      "validation": "Read-only source and cached-input proof; no fresh calculation. Parent owns assignment and batch measurement.",
+      "limit": "This correction can move farther from a stale exporter. No claim that it explains the full blood-mage-01 BleedDPS ratio; do not infer ten lances or its conditional leech.",
+      "evidence": {
+        "diagnostic": [
+          {
+            "stat": "active_skill_damaging_ailment_effect_+%_final",
+            "owner": "skill",
+            "status": "unknown",
+            "reason": null
+          }
+        ],
+        "BleedDPS": {
+          "stat": "BleedDPS",
+          "value": 570385.412949632,
+          "reference": 2451457.8849176,
+          "base_total": 0.0,
+          "inc_total": 348.0,
+          "more_total": 2.0,
+          "formula": {
+            "steps": [
+              {
+                "op": "ailment_source",
+                "operand": 226948.614141533,
+                "result": 226948.614141533
+              },
+              {
+                "op": "per_second",
+                "operand": 15.0,
+                "result": 34042.29212122995
+              },
+              {
+                "op": "increased",
+                "operand": 348.0,
+                "result": 152509.46870311018
+              },
+              {
+                "op": "more",
+                "operand": 2.0,
+                "result": 305018.93740622036
+              },
+              {
+                "op": "active_stacks",
+                "operand": 1.0,
+                "result": 305018.93740622036
+              },
+              {
+                "op": "ailment_rate",
+                "operand": 1.87,
+                "result": 570385.4129496322
+              }
+            ],
+            "value": 570385.412949632
+          }
+        },
+        "IgniteDPS": {
+          "stat": "IgniteDPS",
+          "value": 23909.647376867,
+          "reference": 24140.753554344,
+          "base_total": 0.0,
+          "inc_total": 279.0,
+          "more_total": 1.0,
+          "formula": {
+            "steps": [
+              {
+                "op": "ailment_source",
+                "operand": 46840.648126241,
+                "result": 46840.648126241
+              },
+              {
+                "op": "per_second",
+                "operand": 20.0,
+                "result": 9368.1296252482
+              },
+              {
+                "op": "increased",
+                "operand": 279.0,
+                "result": 35505.21127969068
+              },
+              {
+                "op": "enemy_mitigation",
+                "operand": 0.5,
+                "result": 17752.605639846
+              },
+              {
+                "op": "active_stacks",
+                "operand": 0.7609178972489995,
+                "result": 13508.275354162346
+              },
+              {
+                "op": "ailment_rate",
+                "operand": 1.77,
+                "result": 23909.647376867353
+              }
+            ],
+            "value": 23909.647376867
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "schema": "pobr-static-mana-regen-fix/v1",
+  "recorded_at": "2026-10-26T17:33:59.719962+00:00",
+  "worktree": "/root/.t3/worktrees/pobr/t3-9781d989",
+  "branch": "audit-mana-recovery-differences",
+  "commit": "ffa045d96126c2c46524c4e1f7a5ac0e1d165875",
+  "merged_root_commit": "184aa7ae08f7edda9658e06f2618c18de651ca21",
+  "files": {
+    "crates/pobr-build/tests/skills/buff_stack_limits.rs": {
+      "sha256": "5a006cd9ddf88f55fc97b64cf0afc3257c4d0eddec9d559c363a5a4a0caba6bf"
+    },
+    "crates/pobr-core/src/calc/buff_pass.rs": {
+      "sha256": "dd33ebc2586c639e3e905c34a8e508f819d371d2abf711a6de1b96fa51f41238"
+    },
+    "crates/pobr-core/src/skill_env/buff_specs.rs": {
+      "sha256": "4cca95671f58ed56d60df10168e7f37d1f64792150751b73c6ce5cd31b5ec173"
+    }
+  },
+  "change": "Exclude ManaRemnantsPlayer permanent buff from local remnant_effect_+% and global RemnantEffect INC/MORE; generic BuffEffect, other buff kinds, strongest merge and attribution remain intact.",
+  "checks": [
+    {
+      "command": "cargo test -q -p pobr-build --test skills mana_remnants_persistent_regen_does_not_scale_with_remnant_effect",
+      "exit_code": 0,
+      "result": "1 passed; 0 failed; 555 filtered out; 0.50s",
+      "source_base": "184aa7ae08f7edda9658e06f2618c18de651ca21"
+    },
+    {
+      "command": "cargo clippy -q -p pobr-core --lib --tests -- -D warnings",
+      "exit_code": 0,
+      "log": "mana-regen-core-clippy.log"
+    },
+    {
+      "command": "cargo clippy -q -p pobr-build --lib --test skills -- -D warnings",
+      "exit_code": 0,
+      "log": "mana-regen-build-clippy.log"
+    },
+    {
+      "command": "cargo fmt --check",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "regression_assertions": {
+    "real_build": "Advanced Thaumaturgy + quality 41 Mana Remnants + Interlude III: final ManaRegen equals rounded(maximum Mana * 0.04 * 1.82).",
+    "permanent_source_inc": 82,
+    "local_interlude_i_and_iii": "82 INC unchanged",
+    "global_remnant_inc_60_more_100": "82 INC unchanged",
+    "generic_buff_inc_50_more_20": "147 INC, while retaining raw 82 source",
+    "strongest_copies": "Quality 50 unassisted beats quality 41 + Interlude III in either order; equal copies do not stack; one source-bearing 100 INC survives.",
+    "true_remnant": "Level 1 Into the Breach + Interlude III, global RemnantEffect INC60/MORE100 and BuffEffect INC50/MORE20: source has 42 DamageGainAsChaos per flame; explicitly configured 3 flames yield 126."
+  },
+  "initial_test_setup_corrections": [
+    "Borrow optional stat-map catalog with as_deref().",
+    "Enable mode_buffs in synthetic core session. Both corrected before final passing check."
+  ],
+  "warm_cache": {
+    "command": "mise run warm /root/codes/pobr",
+    "result": "Copy-on-write unsupported; built using own target directory."
+  },
+  "scope": {
+    "source_edits_only_approved_files": true,
+    "children": 0,
+    "cli_or_oracle_or_triage_or_gate_runs": 0,
+    "holdout_inspected": false,
+    "docs_or_known_registry_edited": false,
+    "pushes": 0,
+    "working_tree_clean": true,
+    "batch_gate": "Left to parent; no bulk numerical remeasurement performed."
+  },
+  "historical_evidence": {
+    "research": "mana-regen-static-research.json",
+    "proposal": "mana-regen-static-proposal.diff",
+    "copied_verbatim_from": "/root/codes/pobr/.cache/accuracy-round3-final-2026-10-26",
+    "round3_unchanged_verified": true,
+    "scope_correction": "mana-regen-static-scope-correction.json"
+  },
+  "unresolved_and_deferred": {
+    "clarity_ii": "Cross-effect type-union eligibility is unverified; no change.",
+    "infernalist_07": "Melting Maelstrom remains finite per-use flask utility. Do not aggregate its rate into permanent ManaRegen; finite flask uptime is explicitly deferred. This supersedes the historical research integration recommendation.",
+    "gemling_04_05": "Retain documented item-granted-skill Mote interpretation; do not force pinned matching."
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "schema": "pobr.conquered-attribute-implementation.v1",
+  "local_commit": "48d094994c666b9cf2b6110f40fcc15c05022578",
+  "branch": "investigate-frozen230-attribute-rows",
+  "parent_commit": "52a6db0b8a77834f4c5844086bcca0252be1ae05",
+  "root_merged_before_last_commit": "52a6db0b8a77834f4c5844086bcca0252be1ae05",
+  "worktree": "/root/.t3/worktrees/pobr/t3-b906847e",
+  "production_change": "Parse complete Conquered Attribute payloads alongside Small payloads, and append only to matching conquered normal-node categories. Preserve additive attribute/Tribute override.",
+  "files": [
+    {
+      "path": "/root/.t3/worktrees/pobr/t3-b906847e/crates/pobr-build/src/jewel_tree.rs",
+      "sha256": "275ec6e9c3ec450cde7187bdfc5b04131b8400171900d61536b7cd19aeb599e2",
+      "bytes": 14263
+    },
+    {
+      "path": "/root/.t3/worktrees/pobr/t3-b906847e/crates/pobr-build/tests/skills/passive_jewels.rs",
+      "sha256": "c748ccc72168f36d3de9d4bdb28071c421bfb34441928d399edbff6489e6d175",
+      "bytes": 29377
+    }
+  ],
+  "patch": {
+    "path": "/root/codes/pobr/.cache/accuracy-round4-2026-10-26/evidence/native-attributes/implemented-jewel-tree-and-tests.diff",
+    "sha256": "c1dabd6370fc9042787aa5a3095480ba72551d59529619964e22d3e744887c22",
+    "bytes": 18834
+  },
+  "checks": [
+    {
+      "command": "mise exec -- cargo test -q -p pobr-build --test skills passive_jewels::",
+      "exit_code": 0,
+      "log": {
+        "path": "/root/codes/pobr/.cache/accuracy-round4-2026-10-26/evidence/native-attributes/implementation-focused-test.log",
+        "sha256": "17738e6a6caa56501d049085e63c7fb6070e7026139ff6ed66f543f7e90a00cf",
+        "bytes": 127
+      }
+    },
+    {
+      "command": "mise exec -- cargo clippy -p pobr-build --lib --tests -- -D warnings",
+      "exit_code": 0,
+      "log": {
+        "path": "/root/codes/pobr/.cache/accuracy-round4-2026-10-26/evidence/native-attributes/implementation-clippy.log",
+        "sha256": "b0fb2bd8154c4dbfc817af18aa3570061c61ea37d41e2e39a528423843d6a7c6",
+        "bytes": 1304
+      }
+    },
+    {
+      "command": "mise exec -- cargo fmt --all --check",
+      "exit_code": 0,
+      "log": {
+        "path": "/root/codes/pobr/.cache/accuracy-round4-2026-10-26/evidence/native-attributes/implementation-fmt-check.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    }
+  ],
+  "focused_result": {
+    "passed": 10,
+    "failed": 0,
+    "filtered_out": 551
+  },
+  "regressions": {
+    "conquered_additions_keep_small_and_attribute_categories_and_effect_scaling": [
+      "mixed Small +6% elemental/minion +4% and Attribute +6 Intelligence/+5 Strength remain independent",
+      "Hulking Form scales only Small payloads, including nested minion modifiers",
+      "selected Dexterity, Tribute, node/text source attribution, unknown directives, unresolved notables, unallocated/outside-radius nodes and absent conquest are preserved"
+    ],
+    "conquered_attribute_grants_follow_imported_allocation_and_socket_gates": [
+      "XML first/second weapon sets each contribute only common and active-set attribute grants",
+      "unallocated socket, unallocated target and outside-radius target cannot grant attributes"
+    ],
+    "conquered_attribute_grants_reproduce_frozen_attribute_deltas": [
+      {
+        "build": "ritualist-09",
+        "attribute": "Intelligence",
+        "before": 147,
+        "after": 160,
+        "socket": 21984,
+        "affected": [
+          3251,
+          61403
+        ],
+        "roll": 6
+      },
+      {
+        "build": "smith-of-kitava-06",
+        "attribute": "Strength",
+        "before": 271,
+        "after": 287,
+        "socket": 54127,
+        "affected": [
+          15182,
+          54282,
+          54818
+        ],
+        "roll": 5
+      }
+    ]
+  },
+  "limits": [
+    "Frozen proof cases are reduced attribute snapshots with real selected node geometry, seeds and rolls; unrelated BASE contributions are combined. Whole frozen builds were not recalculated.",
+    "No CLI/oracle/triage/gate/holdout/children/docs/registry work.",
+    "No parser/rule changes, so regeneration was not needed.",
+    "No seed-dependent notable reconstruction or roll rewriting.",
+    "Fresh independent review and batch gate remain with parent."
+  ],
+  "research_evidence": {
+    "path": "/root/codes/pobr/.cache/accuracy-round4-2026-10-26/evidence/native-attributes/evidence.json",
+    "sha256": "7ba15aec713be2f1449bba858cd0822be669f1e4a58413d9620cb62fa2e89733",
+    "bytes": 120182
+  }
+}

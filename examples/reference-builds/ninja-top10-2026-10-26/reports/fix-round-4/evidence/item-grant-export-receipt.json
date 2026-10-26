@@ -1,0 +1,15 @@
+{
+  "schema": "official-raw-export/v1",
+  "patch": "0.5.5.4.2",
+  "config_sha256": "c6c35ebc85acbae38409d47a423c4a06f380b71946ba2c3edb1463fc1892f6bd",
+  "files": {
+    "English/Mods.json": "6dab9c635bc5a5f3fe905040f8b4cfcc6a83cf8232fc5a7e7223662761c68d11",
+    "English/GrantedEffectsPerLevel.json": "7b298272449831bec2a8cc2c0f114f8546e3d9638e7b25010677d46852004bc5",
+    "English/GrantedEffects.json": "b769ca540706db1b2fe43d60a7c2ab692204231042965ec2b1ed5378adaf3212",
+    "English/ItemInherentSkills.json": "28f0f7908468fff6f748641c695754a699cf59de979f84451d97c2a38e83d4b3",
+    "English/ModGrantedSkills.json": "85f7b552317fe85fb325d385f58f2272dad3a63cb7ca4d4ae7a4590f445668c1",
+    "English/SkillGems.json": "24ebae371cfb6920dd6724f0237f6521474298394e4bfcabe27a89606492ab46",
+    "English/GemEffects.json": "c92430b951a2223f79ad330ef4070fa058794aa4ee836d1dbec9f7e5bc041f68",
+    "English/BaseItemTypes.json": "195999da7a4446ec9beb9c803ef6d6e1bda2ca28c4f8deeab5c89722ee5f5f57"
+  }
+}

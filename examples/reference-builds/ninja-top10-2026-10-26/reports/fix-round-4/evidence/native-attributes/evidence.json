@@ -1,0 +1,4026 @@
+{
+  "schema": "pobr.bounded-native-attribute-investigation.v1",
+  "scope": [
+    "ritualist-09:Int",
+    "smith-of-kitava-06:Str"
+  ],
+  "method": "Read existing cache, decode frozen build code, inspect frozen data/current source, and sum already-recorded source contributions. No engine/oracle executions or new build calculations.",
+  "conclusion": "confirmed_current_native_bug_missing_explicit_conquered_attribute_grants",
+  "inspection_commit": "ffa045d96126c2c46524c4e1f7a5ac0e1d165875",
+  "cached_measurement_receipt": {
+    "source": {
+      "path": "/root/codes/pobr/.cache/accuracy-round3-final-2026-10-26/after-measurement-inputs.json",
+      "sha256": "c69d47ff841b4e75872ffe48afb229d345484e6dc2c729f8948a4af35a97029f",
+      "bytes": 580
+    },
+    "value": {
+      "git_commit": "5a3fce6767b365b7d249e5c7e9c4efca062897e2",
+      "started_at": "2026-10-26T16:46:49.860423+00:00",
+      "cli_sha256": "2b03b2acafe772bbe65e990d11c917473ff010b5c7735479ebec8c8a6a3f440e",
+      "vendor_commit": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+      "command": "POBR_BIN=target/debug/pobr python3 .cache/accuracy-round3-final-2026-10-26/run-triage-save-after.py examples/wasm-benchmark/builds examples/reference-builds/tuned/builds examples/reference-builds/ninja-top10-2026-10-26/builds --jobs 4 --top 60 --json .cache/accuracy-round3-final-2026-10-26/after.json"
+    }
+  },
+  "version_caveat": "Cached numeric outputs and ledgers are from 5a3fce67, not a new calculation of ffa045d9. The relevant jewel_tree/collect source is identical between those commits; attribute_total arithmetic is unchanged. Cache reference_basis is true, while usage is always native. Native row values also match the task brief.",
+  "game_data_version": "0.5.5.4.2",
+  "game_authority": "Frozen imported rolls plus retained game mod/stat IDs and selected tree geometry. PoB2 only cross-checks.",
+  "sources": [
+    {
+      "path": "/root/.t3/worktrees/pobr/t3-b906847e/AGENTS.md",
+      "sha256": "231f9820590e1d30b5482116f3654c82dd316108c4a4f7264a961e969b227265",
+      "bytes": 9311
+    },
+    {
+      "path": "/root/.t3/worktrees/pobr/t3-b906847e/docs/maintainer-guide.md",
+      "sha256": "28ef0d04889b8b4658e80ddf192ee91721d1fbbf3dca36017bead8ffbb412b1e",
+      "bytes": 286176
+    },
+    {
+      "path": "/root/.t3/worktrees/pobr/t3-b906847e/data/0.5.5.4.2/manifest.json",
+      "sha256": "bfd31a4607da98af53b139ed101f31a67a3122e4520434fd2e3fda14672fcca4",
+      "bytes": 7587,
+      "same_bytes_as_warm_checkout": true
+    },
+    {
+      "path": "/root/.t3/worktrees/pobr/t3-b906847e/data/0.5.5.4.2/base/mods.json",
+      "sha256": "a776da514ee5ce151d17b67def3429811a7f78338d68bc0d165f72ee79199b5a",
+      "bytes": 7760583,
+      "same_bytes_as_warm_checkout": true
+    },
+    {
+      "path": "/root/.t3/worktrees/pobr/t3-b906847e/data/0.5.5.4.2/base/stats.json",
+      "sha256": "c006461cf0997b96d24f4aa5112dd03979c3a377ff8a8d4c1d308adad00a8f8d",
+      "bytes": 2911521,
+      "same_bytes_as_warm_checkout": true
+    },
+    {
+      "path": "/root/.t3/worktrees/pobr/t3-b906847e/data/0.5.5.4.2/base/passive_tree.json",
+      "sha256": "7e021c17f9679b3ff4d72cacdba20ee3d17bf8d0acf7ea02311dd29886996851",
+      "bytes": 1718788,
+      "same_bytes_as_warm_checkout": true
+    },
+    {
+      "path": "/root/.t3/worktrees/pobr/t3-b906847e/data/0.5.5.4.2/base/passive_tree_meta.json",
+      "sha256": "6247ea4b7d75853f3b4947e8946ecf4c7b45450e057dab57516ebe2ec7534ce8",
+      "bytes": 3362,
+      "same_bytes_as_warm_checkout": true
+    },
+    {
+      "path": "/root/.t3/worktrees/pobr/t3-b906847e/data/0.5.5.4.2/base/jewel_radii.json",
+      "sha256": "00c1e71af6666521c2e1fc3afd7af7f5eb9cb14b1a4537dbb44e8f2de6d7d336",
+      "bytes": 1507,
+      "same_bytes_as_warm_checkout": true
+    },
+    {
+      "path": "/root/.t3/worktrees/pobr/t3-b906847e/data/0.5.5.4.2/overlay/passive_jewels.json",
+      "sha256": "a93b2729bb015f8902a909367e62a1a2abc2787cde0f6d929191222283c33690",
+      "bytes": 14663,
+      "same_bytes_as_warm_checkout": true
+    },
+    {
+      "path": "/root/.t3/worktrees/pobr/t3-b906847e/crates/pobr-build/src/jewel_tree.rs",
+      "sha256": "41fc3c25975d2819251740f7a17501bdacb4bec3c9326836fce89f3edd89a9de",
+      "bytes": 13846
+    },
+    {
+      "path": "/root/.t3/worktrees/pobr/t3-b906847e/crates/pobr-build/src/xml_build.rs",
+      "sha256": "0b2b27cccfd88083165c869eba9601e11907118fc66ff70ca8553aaaccd64177",
+      "bytes": 116386
+    },
+    {
+      "path": "/root/.t3/worktrees/pobr/t3-b906847e/crates/pobr-build/src/calc_orchestrator/collect.rs",
+      "sha256": "01889247ed08195d7997844883a6a19c7c716e0460dca8bb5dcc3923520f451f",
+      "bytes": 41807
+    },
+    {
+      "path": "/root/.t3/worktrees/pobr/t3-b906847e/crates/pobr-core/src/calc/session.rs",
+      "sha256": "b4ddb9addb5f9bdb6e0adecdf3f26c3842bca5aa52b4403f950da780ef674208",
+      "bytes": 92194
+    },
+    {
+      "path": "/root/.t3/worktrees/pobr/t3-b906847e/crates/pobr-build/tests/skills/passive_jewels.rs",
+      "sha256": "7f22c2be396f88cc57773872d6304eff0825a5ce4e993ae4437138aaa48aa3d3",
+      "bytes": 19368
+    }
+  ],
+  "builds": [
+    {
+      "build": "ritualist-09",
+      "attribute": "Intelligence",
+      "pob_key": "Int",
+      "input_sources": {
+        "code": {
+          "path": "/root/.t3/worktrees/pobr/t3-b906847e/examples/reference-builds/ninja-top10-2026-10-26/builds/ritualist-09/code.txt",
+          "sha256": "d847d2b8b8fff44882173e2b75c7ba3bbac92ee6b52cf6b8392965f74c3da775",
+          "bytes": 13785
+        },
+        "meta": {
+          "path": "/root/.t3/worktrees/pobr/t3-b906847e/examples/reference-builds/ninja-top10-2026-10-26/builds/ritualist-09/meta.json",
+          "sha256": "de0edd90ceb7a98f65dd821a22a10daebe61a7940a0f0113afca95f40cca2d03",
+          "bytes": 1572
+        },
+        "decoded_xml": {
+          "path": "/root/codes/pobr/.cache/accuracy-round4-2026-10-26/evidence/native-attributes/ritualist-09.xml",
+          "sha256": "57e835cb0addb4fb2b9fd5f5b23b43cf5d22287c7acf5c12e666cf0e0f70ad8d",
+          "bytes": 54765
+        },
+        "cached_ledger": {
+          "path": "/root/codes/pobr/.cache/accuracy-round3-final-2026-10-26/after-builds/ritualist-09.json",
+          "sha256": "3f53b7c03648a67e622a297c0330ab9b4402640ded7e61c4a4bf0bbefc7652c3",
+          "bytes": 281277
+        }
+      },
+      "ledger_provenance": {
+        "engine_version": "0.0.37",
+        "data_version": "0.5.5.4.2",
+        "data_sha256": "d2976dc01c61ab84ea4f5d0176a65a4f88610fdf32bff2b3667277e6d4965a68"
+      },
+      "ledger_reference_basis": true,
+      "cached_comparison_row": {
+        "stat": "Int",
+        "pob_key": "Int",
+        "pobr": 147.0,
+        "reference": 160.0,
+        "ratio": 0.91875
+      },
+      "class_base": {
+        "class": "Huntress",
+        "attribute": 7
+      },
+      "item": {
+        "xml_item_id": "8",
+        "raw_text": "\n\t\t\tRarity: UNIQUE\nUndying Hate\nTimeless Jewel\nUnique ID: 3c675f6043c50bc99e501cfd44db58ecba473545c02587b692bbd75fdfb09ec4\nItem Level: 83\nLevelReq: 0\nRadius: Very Large\nImplicits: 0\nGlorifying the defilement of 10913 souls in tribute to Tecrod\nPassives in radius are Conquered by the Abyssals\nDesecration makes this item unstable\nHistoric\nConquered Attribute Passive Skills also grant +6 to Intelligence\n\t\t\t",
+        "socket_node_id": 21984,
+        "raw_unique_id": "3c675f6043c50bc99e501cfd44db58ecba473545c02587b692bbd75fdfb09ec4",
+        "conqueror": "Tecrod",
+        "seed": 10913,
+        "explicit_frozen_roll": 6,
+        "mod_definition": {
+          "id": "HistoricAbyssJewelAttributesGrantExtraIntelligence",
+          "mod_type": 11760,
+          "domain": 28,
+          "generation_type": 3,
+          "level": 1,
+          "stats": [
+            {
+              "stat_id": "local_historic_abyss_jewel_conquered_attribute_passives_grant_intelligence",
+              "min": 4,
+              "max": 8
+            }
+          ],
+          "tags": [],
+          "group": "HistoricAbyssJewelAttributesGrantExtraIntelligence",
+          "spawn_weights": [
+            {
+              "tag": "historic_abyss_jewel_1",
+              "weight": 1
+            },
+            {
+              "tag": "default",
+              "weight": 0
+            }
+          ]
+        },
+        "stat_definition": {
+          "id": "local_historic_abyss_jewel_conquered_attribute_passives_grant_intelligence",
+          "is_local": true,
+          "semantic": 3
+        },
+        "roll_within_frozen_range": true
+      },
+      "radius": {
+        "xml_tree_version": "0_5",
+        "band_source_version": "0_1 (latest available <= 0_5)",
+        "label": "Very Large",
+        "band_outer": 1500,
+        "distance_multiplier": 1.2,
+        "effective_outer": 1800,
+        "socket_node": {
+          "skill": 21984,
+          "id": "jewel_slot1979",
+          "name": "[Jewel] Socket",
+          "kind": "jewel_socket",
+          "group": 1234,
+          "orbit": 1,
+          "orbit_index": 4,
+          "x": 5516.294083,
+          "y": -9521.99,
+          "connections": [
+            61403
+          ]
+        },
+        "all_attribute_nodes_in_radius": [
+          {
+            "node": {
+              "skill": 3251,
+              "id": "attributes1",
+              "name": "Attribute",
+              "kind": "normal",
+              "stats": [
+                "+5 to any [Attributes|Attribute]"
+              ],
+              "group": 1169,
+              "orbit": 0,
+              "orbit_index": 0,
+              "x": 4693.79,
+              "y": -9892.16,
+              "connections": [
+                21984,
+                33292
+              ]
+            },
+            "distance_squared": 813538.7954516707,
+            "distance": 901.9638548476711,
+            "allocated_in_xml": true,
+            "active_in_cached_ledger": true,
+            "selected_attribute": "str",
+            "explicit_addition_if_active": 6
+          },
+          {
+            "node": {
+              "skill": 4059,
+              "id": "attributes23",
+              "name": "Attribute",
+              "kind": "normal",
+              "stats": [
+                "+5 to any [Attributes|Attribute]"
+              ],
+              "group": 1170,
+              "orbit": 0,
+              "orbit_index": 0,
+              "x": 4703.02,
+              "y": -8121.08,
+              "connections": [
+                2446,
+                9510,
+                10382,
+                18744,
+                42339
+              ]
+            },
+            "distance_squared": 2623963.5621794895,
+            "distance": 1619.8652913682326,
+            "allocated_in_xml": false,
+            "active_in_cached_ledger": false,
+            "selected_attribute": null,
+            "explicit_addition_if_active": 6
+          },
+          {
+            "node": {
+              "skill": 10382,
+              "id": "attributes24",
+              "name": "Attribute",
+              "kind": "normal",
+              "stats": [
+                "+5 to any [Attributes|Attribute]"
+              ],
+              "group": 1202,
+              "orbit": 0,
+              "orbit_index": 0,
+              "x": 5026.31,
+              "y": -8702.96,
+              "connections": [
+                21984,
+                33979
+              ]
+            },
+            "distance_squared": 910894.5424933513,
+            "distance": 954.4079539134988,
+            "allocated_in_xml": false,
+            "active_in_cached_ledger": false,
+            "selected_attribute": null,
+            "explicit_addition_if_active": 6
+          },
+          {
+            "node": {
+              "skill": 61403,
+              "id": "intelligence69",
+              "name": "Attribute",
+              "kind": "normal",
+              "stats": [
+                "+5 to any [Attributes|Attribute]"
+              ],
+              "group": 1288,
+              "orbit": 0,
+              "orbit_index": 0,
+              "x": 6372.73,
+              "y": -8685.67,
+              "connections": [
+                14231,
+                17602,
+                24150,
+                45377,
+                56349
+              ]
+            },
+            "distance_squared": 1432913.62232763,
+            "distance": 1197.0437010935022,
+            "allocated_in_xml": true,
+            "active_in_cached_ledger": true,
+            "selected_attribute": "str",
+            "explicit_addition_if_active": 6
+          }
+        ],
+        "affected_active_node_ids": [
+          3251,
+          61403
+        ],
+        "existing_tribute_rows": [
+          {
+            "source_kind": "PassiveNode",
+            "source_id": "node.3251",
+            "slot": null,
+            "holder": "Attribute",
+            "text": "+3 to Tribute",
+            "status": "applied",
+            "reason": null,
+            "used_in": [],
+            "modifiers": [
+              {
+                "name": "Tribute",
+                "mod_type": "BASE",
+                "value": 3.0,
+                "applied": 3.0,
+                "status": "applied",
+                "reason": null,
+                "used_in": []
+              }
+            ]
+          },
+          {
+            "source_kind": "PassiveNode",
+            "source_id": "node.61403",
+            "slot": null,
+            "holder": "Attribute",
+            "text": "+3 to Tribute",
+            "status": "applied",
+            "reason": null,
+            "used_in": [],
+            "modifiers": [
+              {
+                "name": "Tribute",
+                "mod_type": "BASE",
+                "value": 3.0,
+                "applied": 3.0,
+                "status": "applied",
+                "reason": null,
+                "used_in": []
+              }
+            ]
+          }
+        ]
+      },
+      "attribute_terms": [
+        {
+          "source_id": "node.3223",
+          "source_kind": "AscendancyNode",
+          "holder": "Attributes",
+          "text": "3% increased [Attributes]",
+          "type": "INC",
+          "value": 3.0
+        },
+        {
+          "source_id": "item.weapon2.explicit",
+          "source_kind": "ItemAffix",
+          "holder": "Shrine Sceptre",
+          "text": "+8 to all Attributes",
+          "type": "BASE",
+          "value": 8.0
+        },
+        {
+          "source_id": "node.10131",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.11741",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.14654",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.18448",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.22419",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.28982",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.29009",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.30141",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.33722",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.38537",
+          "source_kind": "PassiveNode",
+          "holder": "Heartstopping",
+          "text": "+10 to [Intelligence]",
+          "type": "BASE",
+          "value": 10.0
+        },
+        {
+          "source_id": "node.39131",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.4140",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.45885",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.46554",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.47263",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.47931",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.48552",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.50755",
+          "source_kind": "PassiveNode",
+          "holder": "Intelligence",
+          "text": "+8 to [Intelligence]",
+          "type": "BASE",
+          "value": 8.0
+        },
+        {
+          "source_id": "node.51741",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.54521",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.57821",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.58295",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.59362",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.62677",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "type": "BASE",
+          "value": 5.0
+        }
+      ],
+      "cached_native_attribute_ledger_rows": [
+        {
+          "source_kind": "AscendancyNode",
+          "source_id": "node.3223",
+          "slot": null,
+          "holder": "Attributes",
+          "text": "3% increased [Attributes]",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Dexterity",
+              "mod_type": "INC",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            },
+            {
+              "name": "Intelligence",
+              "mod_type": "INC",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            },
+            {
+              "name": "Strength",
+              "mod_type": "INC",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "ItemAffix",
+          "source_id": "item.weapon2.explicit",
+          "slot": "weapon2",
+          "holder": "Shrine Sceptre",
+          "text": "+8 to all Attributes",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Dexterity",
+              "mod_type": "BASE",
+              "value": 8.0,
+              "applied": 8.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            },
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 8.0,
+              "applied": 8.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            },
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 8.0,
+              "applied": 8.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.10131",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.11741",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.14654",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.18448",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.22419",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.28982",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.29009",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.30141",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.33722",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.38537",
+          "slot": null,
+          "holder": "Heartstopping",
+          "text": "+10 to [Intelligence]",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 10.0,
+              "applied": 10.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.39131",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.4140",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.45885",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.46554",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.47263",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.47931",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.48552",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.50755",
+          "slot": null,
+          "holder": "Intelligence",
+          "text": "+8 to [Intelligence]",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 8.0,
+              "applied": 8.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.51741",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.54521",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.57821",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.58295",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.59362",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.62677",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Intelligence",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        }
+      ],
+      "missing_directive_ledger_rows": [
+        {
+          "source_kind": "Jewel",
+          "source_id": "jewel.7",
+          "slot": null,
+          "holder": "Timeless Jewel",
+          "text": "Conquered Attribute Passive Skills also grant +6 to Intelligence",
+          "status": "unparsed",
+          "reason": null,
+          "used_in": [],
+          "modifiers": []
+        }
+      ],
+      "arithmetic": {
+        "base_class": 7,
+        "base_item_and_tree_sum": 136.0,
+        "base_total": 143.0,
+        "increased_percent": 3.0,
+        "more_multiplier": 1,
+        "native_unrounded": 147.29,
+        "native_rounded": 147,
+        "missing_base_addition": 12,
+        "corrected_base": 155.0,
+        "corrected_unrounded": 159.65,
+        "corrected_rounded": 160,
+        "rounded_difference": 13,
+        "formula": "round((class base + sum of BASE modifiers + explicit grants on eligible allocated attribute nodes) * (1 + INC/100) * MORE)"
+      },
+      "cached_oracles": [
+        {
+          "source": {
+            "path": "/root/codes/pobr/.cache/pob2-oracle/6e71aaac2d9ecd37-3233211112.json",
+            "sha256": "85dc02b4915c651afde927a16891e06ff0911bdd839ec3763ab26975f1d13e45",
+            "bytes": 98679
+          },
+          "xml_source": {
+            "path": "/root/codes/pobr/.cache/pob2-oracle/6e71aaac2d9ecd37-3233211112.xml",
+            "sha256": "57e835cb0addb4fb2b9fd5f5b23b43cf5d22287c7acf5c12e666cf0e0f70ad8d",
+            "bytes": 54765
+          },
+          "cached_xml_matches_frozen_decoded_xml": true,
+          "main_output": 160,
+          "calcs_output": 160,
+          "attribute_source_rows": {
+            "BASE": [
+              {
+                "evalValue": 7,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 7,
+                "source": "Base",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 8,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 8,
+                "source": "Item:11:Palm of the Dreamer, Shrine Sceptre",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:10131",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:48552",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:54521",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:4140",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:59362",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:51741",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 6,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 6,
+                "source": "Tree:21984",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:30141",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:11741",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:14654",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 6,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 6,
+                "source": "Tree:21984",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 8,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 8,
+                "source": "Tree:50755",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:47263",
+                "type": "BASE"
+              },
+              {
+                "condVars": [
+                  "Condition:WeaponSet1"
+                ],
+                "conditional": true,
+                "evalValue": 10,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 10,
+                "source": "Tree:38537",
+                "tags": [
+                  "type=Condition/var=WeaponSet1"
+                ],
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:57821",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:58295",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:18448",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:22419",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:62677",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:46554",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:29009",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:47931",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:45885",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:33722",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:28982",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:39131",
+                "type": "BASE"
+              }
+            ],
+            "INC": [
+              {
+                "evalValue": 3,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 3,
+                "source": "Tree:3223",
+                "type": "INC"
+              }
+            ]
+          },
+          "base_sum": 155,
+          "inc_sum": 3
+        },
+        {
+          "source": {
+            "path": "/root/codes/pobr/.cache/pob2-oracle/6e71aaac2d9ecd37-b8de816ded.json",
+            "sha256": "85dc02b4915c651afde927a16891e06ff0911bdd839ec3763ab26975f1d13e45",
+            "bytes": 98679
+          },
+          "xml_source": {
+            "path": "/root/codes/pobr/.cache/pob2-oracle/6e71aaac2d9ecd37-b8de816ded.xml",
+            "sha256": "57e835cb0addb4fb2b9fd5f5b23b43cf5d22287c7acf5c12e666cf0e0f70ad8d",
+            "bytes": 54765
+          },
+          "cached_xml_matches_frozen_decoded_xml": true,
+          "main_output": 160,
+          "calcs_output": 160,
+          "attribute_source_rows": {
+            "BASE": [
+              {
+                "evalValue": 7,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 7,
+                "source": "Base",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 8,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 8,
+                "source": "Item:11:Palm of the Dreamer, Shrine Sceptre",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:10131",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:48552",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:54521",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:4140",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:59362",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:51741",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 6,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 6,
+                "source": "Tree:21984",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:30141",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:11741",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:14654",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 6,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 6,
+                "source": "Tree:21984",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 8,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 8,
+                "source": "Tree:50755",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:47263",
+                "type": "BASE"
+              },
+              {
+                "condVars": [
+                  "Condition:WeaponSet1"
+                ],
+                "conditional": true,
+                "evalValue": 10,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 10,
+                "source": "Tree:38537",
+                "tags": [
+                  "type=Condition/var=WeaponSet1"
+                ],
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:57821",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:58295",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:18448",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:22419",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:62677",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:46554",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:29009",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:47931",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:45885",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:33722",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:28982",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 5,
+                "source": "Tree:39131",
+                "type": "BASE"
+              }
+            ],
+            "INC": [
+              {
+                "evalValue": 3,
+                "name": "Int",
+                "queryName": "Int",
+                "rawValue": 3,
+                "source": "Tree:3223",
+                "type": "INC"
+              }
+            ]
+          },
+          "base_sum": 155,
+          "inc_sum": 3
+        }
+      ],
+      "oracle_minus_native_by_source": [
+        {
+          "type": "BASE",
+          "source_id": "Tree:21984",
+          "cached_native": 0,
+          "cached_oracle": 12,
+          "difference": 12
+        }
+      ],
+      "hypotheses": {
+        "native_bug": "confirmed: imported directive retained but current conquest path only parses Small directives",
+        "frozen_item_roll_version": "excluded for these rows: rolls 6/5 are within frozen game range 4..8 and oracle uses same exact 6/5",
+        "small_passive_or_jewel_amplification": "not the cause: exact source delta is two raw 6 or three raw 5, without effect multiplier; attribute-choice nodes are excluded from passive_effect_copies",
+        "other_attribute_input_difference": "none in cached source reconciliation after normalizing item/node origins",
+        "seed_dependent_notable_transformation": "not required to explain these two rows; remains unresolved generally"
+      },
+      "grouped_attribute_terms": [
+        {
+          "source_kind": "AscendancyNode",
+          "type": "INC",
+          "each": 3.0,
+          "count": 1,
+          "sum": 3.0,
+          "source_ids": [
+            "node.3223"
+          ]
+        },
+        {
+          "source_kind": "ItemAffix",
+          "type": "BASE",
+          "each": 8.0,
+          "count": 1,
+          "sum": 8.0,
+          "source_ids": [
+            "item.weapon2.explicit"
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "type": "BASE",
+          "each": 5.0,
+          "count": 22,
+          "sum": 110.0,
+          "source_ids": [
+            "node.10131",
+            "node.11741",
+            "node.14654",
+            "node.18448",
+            "node.22419",
+            "node.28982",
+            "node.29009",
+            "node.30141",
+            "node.33722",
+            "node.39131",
+            "node.4140",
+            "node.45885",
+            "node.46554",
+            "node.47263",
+            "node.47931",
+            "node.48552",
+            "node.51741",
+            "node.54521",
+            "node.57821",
+            "node.58295",
+            "node.59362",
+            "node.62677"
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "type": "BASE",
+          "each": 8.0,
+          "count": 1,
+          "sum": 8.0,
+          "source_ids": [
+            "node.50755"
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "type": "BASE",
+          "each": 10.0,
+          "count": 1,
+          "sum": 10.0,
+          "source_ids": [
+            "node.38537"
+          ]
+        }
+      ]
+    },
+    {
+      "build": "smith-of-kitava-06",
+      "attribute": "Strength",
+      "pob_key": "Str",
+      "input_sources": {
+        "code": {
+          "path": "/root/.t3/worktrees/pobr/t3-b906847e/examples/reference-builds/ninja-top10-2026-10-26/builds/smith-of-kitava-06/code.txt",
+          "sha256": "1e73703a37b07eaff29a4f427f79c467621c4859882ed25ada8e158eb325e27b",
+          "bytes": 12721
+        },
+        "meta": {
+          "path": "/root/.t3/worktrees/pobr/t3-b906847e/examples/reference-builds/ninja-top10-2026-10-26/builds/smith-of-kitava-06/meta.json",
+          "sha256": "a92bfd6976c7dd2799ddf8d3c0d61053a676f664e8e3a47d19722e034ee6dbd7",
+          "bytes": 1714
+        },
+        "decoded_xml": {
+          "path": "/root/codes/pobr/.cache/accuracy-round4-2026-10-26/evidence/native-attributes/smith-of-kitava-06.xml",
+          "sha256": "4563acf877d212e373129410d7450220312372a1bdca0f9fed733f1a60a2bcc1",
+          "bytes": 46718
+        },
+        "cached_ledger": {
+          "path": "/root/codes/pobr/.cache/accuracy-round3-final-2026-10-26/after-builds/smith-of-kitava-06.json",
+          "sha256": "73c769e853edb95dc5edd4e2bea88c87e363fa2a5f6d930a899d33c945c461b2",
+          "bytes": 285751
+        }
+      },
+      "ledger_provenance": {
+        "engine_version": "0.0.37",
+        "data_version": "0.5.5.4.2",
+        "data_sha256": "d2976dc01c61ab84ea4f5d0176a65a4f88610fdf32bff2b3667277e6d4965a68"
+      },
+      "ledger_reference_basis": true,
+      "cached_comparison_row": {
+        "stat": "Str",
+        "pob_key": "Str",
+        "pobr": 271.0,
+        "reference": 287.0,
+        "ratio": 0.9442508710801394
+      },
+      "class_base": {
+        "class": "Warrior",
+        "attribute": 15
+      },
+      "item": {
+        "xml_item_id": "3",
+        "raw_text": "\n\t\t\tRarity: UNIQUE\nUndying Hate\nTimeless Jewel\nUnique ID: 371822456def7179aa82b59775030fb4f118046a500d723749fc556f646e42b7\nItem Level: 86\nLevelReq: 0\nRadius: Very Large\nImplicits: 0\nGlorifying the defilement of 2788 souls in tribute to Amanamu\nPassives in radius are Conquered by the Abyssals\nDesecration makes this item unstable\nHistoric\nConquered Attribute Passive Skills also grant +5 to Strength\n\t\t\t",
+        "socket_node_id": 54127,
+        "raw_unique_id": "371822456def7179aa82b59775030fb4f118046a500d723749fc556f646e42b7",
+        "conqueror": "Amanamu",
+        "seed": 2788,
+        "explicit_frozen_roll": 5,
+        "mod_definition": {
+          "id": "HistoricAbyssJewelAttributesGrantExtraStrength",
+          "mod_type": 11758,
+          "domain": 28,
+          "generation_type": 3,
+          "level": 1,
+          "stats": [
+            {
+              "stat_id": "local_historic_abyss_jewel_conquered_attribute_passives_grant_strength",
+              "min": 4,
+              "max": 8
+            }
+          ],
+          "tags": [],
+          "group": "HistoricAbyssJewelAttributesGrantExtraStrength",
+          "spawn_weights": [
+            {
+              "tag": "historic_abyss_jewel_1",
+              "weight": 1
+            },
+            {
+              "tag": "default",
+              "weight": 0
+            }
+          ]
+        },
+        "stat_definition": {
+          "id": "local_historic_abyss_jewel_conquered_attribute_passives_grant_strength",
+          "is_local": true,
+          "semantic": 3
+        },
+        "roll_within_frozen_range": true
+      },
+      "radius": {
+        "xml_tree_version": "0_5",
+        "band_source_version": "0_1 (latest available <= 0_5)",
+        "label": "Very Large",
+        "band_outer": 1500,
+        "distance_multiplier": 1.2,
+        "effective_outer": 1800,
+        "socket_node": {
+          "skill": 54127,
+          "id": "jewel_slot1975",
+          "name": "[Jewel] Socket",
+          "kind": "jewel_socket",
+          "group": 834,
+          "orbit": 0,
+          "orbit_index": 0,
+          "x": 8.31,
+          "y": 8229.42,
+          "connections": [
+            15182,
+            54282,
+            56978
+          ]
+        },
+        "all_attribute_nodes_in_radius": [
+          {
+            "node": {
+              "skill": 15182,
+              "id": "attributes45",
+              "name": "Attribute",
+              "kind": "normal",
+              "stats": [
+                "+5 to any [Attributes|Attribute]"
+              ],
+              "group": 771,
+              "orbit": 0,
+              "orbit_index": 0,
+              "x": -593.45,
+              "y": 8229.42,
+              "connections": [
+                54818
+              ]
+            },
+            "distance_squared": 362115.0976,
+            "distance": 601.76,
+            "allocated_in_xml": true,
+            "active_in_cached_ledger": true,
+            "selected_attribute": "str",
+            "explicit_addition_if_active": 5
+          },
+          {
+            "node": {
+              "skill": 21274,
+              "id": "attributes46",
+              "name": "Attribute",
+              "kind": "normal",
+              "stats": [
+                "+5 to any [Attributes|Attribute]"
+              ],
+              "group": 904,
+              "orbit": 0,
+              "orbit_index": 0,
+              "x": 1188.06,
+              "y": 8229.3,
+              "connections": [
+                39298
+              ]
+            },
+            "distance_squared": 1391810.0769,
+            "distance": 1179.750006102988,
+            "allocated_in_xml": false,
+            "active_in_cached_ledger": false,
+            "selected_attribute": null,
+            "explicit_addition_if_active": 5
+          },
+          {
+            "node": {
+              "skill": 21755,
+              "id": "dexterity13",
+              "name": "Attribute",
+              "kind": "normal",
+              "stats": [
+                "+5 to any [Attributes|Attribute]"
+              ],
+              "group": 829,
+              "orbit": 0,
+              "orbit_index": 0,
+              "x": 1.95,
+              "y": 7013.94,
+              "connections": [
+                48635,
+                52274,
+                54127,
+                61281
+              ]
+            },
+            "distance_squared": 1477432.080000001,
+            "distance": 1215.496639238464,
+            "allocated_in_xml": false,
+            "active_in_cached_ledger": false,
+            "selected_attribute": null,
+            "explicit_addition_if_active": 5
+          },
+          {
+            "node": {
+              "skill": 54282,
+              "id": "strength82",
+              "name": "Attribute",
+              "kind": "normal",
+              "stats": [
+                "+5 to any [Attributes|Attribute]"
+              ],
+              "group": 835,
+              "orbit": 3,
+              "orbit_index": 0,
+              "x": 8.31,
+              "y": 9407.42,
+              "connections": [
+                11066,
+                52125
+              ]
+            },
+            "distance_squared": 1387684.0,
+            "distance": 1178.0,
+            "allocated_in_xml": true,
+            "active_in_cached_ledger": true,
+            "selected_attribute": "str",
+            "explicit_addition_if_active": 5
+          },
+          {
+            "node": {
+              "skill": 54818,
+              "id": "strength80",
+              "name": "Attribute",
+              "kind": "normal",
+              "stats": [
+                "+5 to any [Attributes|Attribute]"
+              ],
+              "group": 751,
+              "orbit": 0,
+              "orbit_index": 0,
+              "x": -1170.69,
+              "y": 8229.42,
+              "connections": [
+                18801
+              ]
+            },
+            "distance_squared": 1390041.0,
+            "distance": 1179.0,
+            "allocated_in_xml": true,
+            "active_in_cached_ledger": true,
+            "selected_attribute": "str",
+            "explicit_addition_if_active": 5
+          },
+          {
+            "node": {
+              "skill": 56978,
+              "id": "dexterity73",
+              "name": "Attribute",
+              "kind": "normal",
+              "stats": [
+                "+5 to any [Attributes|Attribute]"
+              ],
+              "group": 868,
+              "orbit": 0,
+              "orbit_index": 0,
+              "x": 610.22,
+              "y": 8229.3,
+              "connections": [
+                21274
+              ]
+            },
+            "distance_squared": 362295.6625000001,
+            "distance": 601.9100119619212,
+            "allocated_in_xml": false,
+            "active_in_cached_ledger": false,
+            "selected_attribute": null,
+            "explicit_addition_if_active": 5
+          }
+        ],
+        "affected_active_node_ids": [
+          15182,
+          54282,
+          54818
+        ],
+        "existing_tribute_rows": [
+          {
+            "source_kind": "PassiveNode",
+            "source_id": "node.15182",
+            "slot": null,
+            "holder": "Attribute",
+            "text": "+3 to Tribute",
+            "status": "applied",
+            "reason": null,
+            "used_in": [],
+            "modifiers": [
+              {
+                "name": "Tribute",
+                "mod_type": "BASE",
+                "value": 3.0,
+                "applied": 3.0,
+                "status": "applied",
+                "reason": null,
+                "used_in": []
+              }
+            ]
+          },
+          {
+            "source_kind": "PassiveNode",
+            "source_id": "node.54282",
+            "slot": null,
+            "holder": "Attribute",
+            "text": "+3 to Tribute",
+            "status": "applied",
+            "reason": null,
+            "used_in": [],
+            "modifiers": [
+              {
+                "name": "Tribute",
+                "mod_type": "BASE",
+                "value": 3.0,
+                "applied": 3.0,
+                "status": "applied",
+                "reason": null,
+                "used_in": []
+              }
+            ]
+          },
+          {
+            "source_kind": "PassiveNode",
+            "source_id": "node.54818",
+            "slot": null,
+            "holder": "Attribute",
+            "text": "+3 to Tribute",
+            "status": "applied",
+            "reason": null,
+            "used_in": [],
+            "modifiers": [
+              {
+                "name": "Tribute",
+                "mod_type": "BASE",
+                "value": 3.0,
+                "applied": 3.0,
+                "status": "applied",
+                "reason": null,
+                "used_in": []
+              }
+            ]
+          }
+        ]
+      },
+      "attribute_terms": [
+        {
+          "source_id": "item.amulet.explicit",
+          "source_kind": "ItemAffix",
+          "holder": "Absent Amulet",
+          "text": "+25 to Strength",
+          "type": "BASE",
+          "value": 25.0
+        },
+        {
+          "source_id": "item.ring1.explicit",
+          "source_kind": "ItemAffix",
+          "holder": "Ring",
+          "text": "+26 to Strength",
+          "type": "BASE",
+          "value": 26.0
+        },
+        {
+          "source_id": "item.ring2.explicit",
+          "source_kind": "ItemAffix",
+          "holder": "Breach Ring",
+          "text": "+26 to Strength",
+          "type": "BASE",
+          "value": 26.0
+        },
+        {
+          "source_id": "item.weapon2.explicit",
+          "source_kind": "ItemAffix",
+          "holder": "Tawhoan Tower Shield",
+          "text": "+30 to Strength",
+          "type": "BASE",
+          "value": 30.0
+        },
+        {
+          "source_id": "node.15182",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.16725",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.17702",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.18923",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.21205",
+          "source_kind": "PassiveNode",
+          "holder": "All Attributes",
+          "text": "+3 to all [Attributes|Attributes]",
+          "type": "BASE",
+          "value": 3.0
+        },
+        {
+          "source_id": "node.24922",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.27373",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.28304",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.2864",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.30141",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.34813",
+          "source_kind": "PassiveNode",
+          "holder": "All Attributes",
+          "text": "+3 to all [Attributes|Attributes]",
+          "type": "BASE",
+          "value": 3.0
+        },
+        {
+          "source_id": "node.35901",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.36629",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.42280",
+          "source_kind": "PassiveNode",
+          "holder": "All Attributes",
+          "text": "+3 to all [Attributes|Attributes]",
+          "type": "BASE",
+          "value": 3.0
+        },
+        {
+          "source_id": "node.44176",
+          "source_kind": "PassiveNode",
+          "holder": "All Attributes",
+          "text": "+3 to all [Attributes|Attributes]",
+          "type": "BASE",
+          "value": 3.0
+        },
+        {
+          "source_id": "node.44659",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.45272",
+          "source_kind": "PassiveNode",
+          "holder": "All Attributes",
+          "text": "+3 to all [Attributes|Attributes]",
+          "type": "BASE",
+          "value": 3.0
+        },
+        {
+          "source_id": "node.51048",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.52125",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.53405",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.54282",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.54811",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.54818",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.57047",
+          "source_kind": "PassiveNode",
+          "holder": "Polymathy",
+          "text": "7% increased [Attributes]",
+          "type": "INC",
+          "value": 7.0
+        },
+        {
+          "source_id": "node.60203",
+          "source_kind": "PassiveNode",
+          "holder": "Strength",
+          "text": "+8 to [Strength]",
+          "type": "BASE",
+          "value": 8.0
+        },
+        {
+          "source_id": "node.61976",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.63888",
+          "source_kind": "PassiveNode",
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "type": "BASE",
+          "value": 5.0
+        },
+        {
+          "source_id": "node.7218",
+          "source_kind": "PassiveNode",
+          "holder": "Strength",
+          "text": "+8 to [Strength]",
+          "type": "BASE",
+          "value": 8.0
+        }
+      ],
+      "cached_native_attribute_ledger_rows": [
+        {
+          "source_kind": "ItemAffix",
+          "source_id": "item.amulet.explicit",
+          "slot": "amulet",
+          "holder": "Absent Amulet",
+          "text": "+25 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 25.0,
+              "applied": 25.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "ItemAffix",
+          "source_id": "item.ring1.explicit",
+          "slot": "ring1",
+          "holder": "Ring",
+          "text": "+26 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 26.0,
+              "applied": 26.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "ItemAffix",
+          "source_id": "item.ring2.explicit",
+          "slot": "ring2",
+          "holder": "Breach Ring",
+          "text": "+26 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 26.0,
+              "applied": 26.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "ItemAffix",
+          "source_id": "item.weapon2.explicit",
+          "slot": "weapon2",
+          "holder": "Tawhoan Tower Shield",
+          "text": "+30 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 30.0,
+              "applied": 30.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.15182",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.16725",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.17702",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.18923",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.21205",
+          "slot": null,
+          "holder": "All Attributes",
+          "text": "+3 to all [Attributes|Attributes]",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Dexterity",
+              "mod_type": "BASE",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            },
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            },
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.24922",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.27373",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.28304",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.2864",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.30141",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.34813",
+          "slot": null,
+          "holder": "All Attributes",
+          "text": "+3 to all [Attributes|Attributes]",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Dexterity",
+              "mod_type": "BASE",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            },
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            },
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.35901",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.36629",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.42280",
+          "slot": null,
+          "holder": "All Attributes",
+          "text": "+3 to all [Attributes|Attributes]",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Dexterity",
+              "mod_type": "BASE",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            },
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            },
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.44176",
+          "slot": null,
+          "holder": "All Attributes",
+          "text": "+3 to all [Attributes|Attributes]",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Dexterity",
+              "mod_type": "BASE",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            },
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            },
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.44659",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.45272",
+          "slot": null,
+          "holder": "All Attributes",
+          "text": "+3 to all [Attributes|Attributes]",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Dexterity",
+              "mod_type": "BASE",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            },
+            {
+              "name": "Intelligence",
+              "mod_type": "BASE",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            },
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 3.0,
+              "applied": 3.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.51048",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.52125",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.53405",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.54282",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.54811",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.54818",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.57047",
+          "slot": null,
+          "holder": "Polymathy",
+          "text": "7% increased [Attributes]",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Dexterity",
+              "mod_type": "INC",
+              "value": 7.0,
+              "applied": 7.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            },
+            {
+              "name": "Intelligence",
+              "mod_type": "INC",
+              "value": 7.0,
+              "applied": 7.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            },
+            {
+              "name": "Strength",
+              "mod_type": "INC",
+              "value": 7.0,
+              "applied": 7.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.60203",
+          "slot": null,
+          "holder": "Strength",
+          "text": "+8 to [Strength]",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 8.0,
+              "applied": 8.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.61976",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.63888",
+          "slot": null,
+          "holder": "Attribute",
+          "text": "+5 to Strength",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 5.0,
+              "applied": 5.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.7218",
+          "slot": null,
+          "holder": "Strength",
+          "text": "+8 to [Strength]",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "Strength",
+              "mod_type": "BASE",
+              "value": 8.0,
+              "applied": 8.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        }
+      ],
+      "missing_directive_ledger_rows": [
+        {
+          "source_kind": "Jewel",
+          "source_id": "jewel.3",
+          "slot": null,
+          "holder": "Timeless Jewel",
+          "text": "Conquered Attribute Passive Skills also grant +5 to Strength",
+          "status": "unparsed",
+          "reason": null,
+          "used_in": [],
+          "modifiers": []
+        }
+      ],
+      "arithmetic": {
+        "base_class": 15,
+        "base_item_and_tree_sum": 238.0,
+        "base_total": 253.0,
+        "increased_percent": 7.0,
+        "more_multiplier": 1,
+        "native_unrounded": 270.71000000000004,
+        "native_rounded": 271,
+        "missing_base_addition": 15,
+        "corrected_base": 268.0,
+        "corrected_unrounded": 286.76,
+        "corrected_rounded": 287,
+        "rounded_difference": 16,
+        "formula": "round((class base + sum of BASE modifiers + explicit grants on eligible allocated attribute nodes) * (1 + INC/100) * MORE)"
+      },
+      "cached_oracles": [
+        {
+          "source": {
+            "path": "/root/codes/pobr/.cache/pob2-oracle/9c9d9343d882016f-186eecee5b.json",
+            "sha256": "c9c7d9fb31af4afd8551bbfd941407f4ed966dfb3f4fe28465b92d77bca04538",
+            "bytes": 75678
+          },
+          "xml_source": {
+            "path": "/root/codes/pobr/.cache/pob2-oracle/9c9d9343d882016f-186eecee5b.xml",
+            "sha256": "4563acf877d212e373129410d7450220312372a1bdca0f9fed733f1a60a2bcc1",
+            "bytes": 46718
+          },
+          "cached_xml_matches_frozen_decoded_xml": true,
+          "main_output": 287,
+          "calcs_output": 287,
+          "attribute_source_rows": {
+            "BASE": [
+              {
+                "evalValue": 15,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 15,
+                "source": "Base",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 30,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 30,
+                "source": "Item:10:Empyrean Duty, Tawhoan Tower Shield",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 25,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 25,
+                "source": "Item:18:Wrath Gorget, Absent Amulet",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 26,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 26,
+                "source": "Item:9:Kalandra's Touch, Ring",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 26,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 26,
+                "source": "Item:13:Corruption Gyre, Breach Ring",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:35901",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:28304",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:27373",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:16725",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:24922",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 8,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 8,
+                "source": "Tree:7218",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:63888",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:61976",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 3,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 3,
+                "source": "Tree:45272",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:53405",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 3,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 3,
+                "source": "Tree:21205",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:15182",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:54127",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:30141",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:51048",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 3,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 3,
+                "source": "Tree:34813",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:18923",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:54818",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:54127",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 8,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 8,
+                "source": "Tree:60203",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 3,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 3,
+                "source": "Tree:44176",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:44659",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:36629",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 3,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 3,
+                "source": "Tree:42280",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:2864",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:54811",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:17702",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:54282",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:54127",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:52125",
+                "type": "BASE"
+              }
+            ],
+            "INC": [
+              {
+                "evalValue": 7,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 7,
+                "source": "Tree:57047",
+                "type": "INC"
+              }
+            ]
+          },
+          "base_sum": 268,
+          "inc_sum": 7
+        },
+        {
+          "source": {
+            "path": "/root/codes/pobr/.cache/pob2-oracle/9c9d9343d882016f-40a74fbeae.json",
+            "sha256": "c9c7d9fb31af4afd8551bbfd941407f4ed966dfb3f4fe28465b92d77bca04538",
+            "bytes": 75678
+          },
+          "xml_source": {
+            "path": "/root/codes/pobr/.cache/pob2-oracle/9c9d9343d882016f-40a74fbeae.xml",
+            "sha256": "4563acf877d212e373129410d7450220312372a1bdca0f9fed733f1a60a2bcc1",
+            "bytes": 46718
+          },
+          "cached_xml_matches_frozen_decoded_xml": true,
+          "main_output": 287,
+          "calcs_output": 287,
+          "attribute_source_rows": {
+            "BASE": [
+              {
+                "evalValue": 15,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 15,
+                "source": "Base",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 30,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 30,
+                "source": "Item:10:Empyrean Duty, Tawhoan Tower Shield",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 25,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 25,
+                "source": "Item:18:Wrath Gorget, Absent Amulet",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 26,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 26,
+                "source": "Item:9:Kalandra's Touch, Ring",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 26,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 26,
+                "source": "Item:13:Corruption Gyre, Breach Ring",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:35901",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:28304",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:27373",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:16725",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:24922",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 8,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 8,
+                "source": "Tree:7218",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:63888",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:61976",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 3,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 3,
+                "source": "Tree:45272",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:53405",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 3,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 3,
+                "source": "Tree:21205",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:15182",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:54127",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:30141",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:51048",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 3,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 3,
+                "source": "Tree:34813",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:18923",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:54818",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:54127",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 8,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 8,
+                "source": "Tree:60203",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 3,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 3,
+                "source": "Tree:44176",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:44659",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:36629",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 3,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 3,
+                "source": "Tree:42280",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:2864",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:54811",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:17702",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:54282",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:54127",
+                "type": "BASE"
+              },
+              {
+                "evalValue": 5,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 5,
+                "source": "Tree:52125",
+                "type": "BASE"
+              }
+            ],
+            "INC": [
+              {
+                "evalValue": 7,
+                "name": "Str",
+                "queryName": "Str",
+                "rawValue": 7,
+                "source": "Tree:57047",
+                "type": "INC"
+              }
+            ]
+          },
+          "base_sum": 268,
+          "inc_sum": 7
+        }
+      ],
+      "oracle_minus_native_by_source": [
+        {
+          "type": "BASE",
+          "source_id": "Tree:54127",
+          "cached_native": 0,
+          "cached_oracle": 15,
+          "difference": 15
+        }
+      ],
+      "hypotheses": {
+        "native_bug": "confirmed: imported directive retained but current conquest path only parses Small directives",
+        "frozen_item_roll_version": "excluded for these rows: rolls 6/5 are within frozen game range 4..8 and oracle uses same exact 6/5",
+        "small_passive_or_jewel_amplification": "not the cause: exact source delta is two raw 6 or three raw 5, without effect multiplier; attribute-choice nodes are excluded from passive_effect_copies",
+        "other_attribute_input_difference": "none in cached source reconciliation after normalizing item/node origins",
+        "seed_dependent_notable_transformation": "not required to explain these two rows; remains unresolved generally"
+      },
+      "grouped_attribute_terms": [
+        {
+          "source_kind": "ItemAffix",
+          "type": "BASE",
+          "each": 25.0,
+          "count": 1,
+          "sum": 25.0,
+          "source_ids": [
+            "item.amulet.explicit"
+          ]
+        },
+        {
+          "source_kind": "ItemAffix",
+          "type": "BASE",
+          "each": 26.0,
+          "count": 2,
+          "sum": 52.0,
+          "source_ids": [
+            "item.ring1.explicit",
+            "item.ring2.explicit"
+          ]
+        },
+        {
+          "source_kind": "ItemAffix",
+          "type": "BASE",
+          "each": 30.0,
+          "count": 1,
+          "sum": 30.0,
+          "source_ids": [
+            "item.weapon2.explicit"
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "type": "BASE",
+          "each": 3.0,
+          "count": 5,
+          "sum": 15.0,
+          "source_ids": [
+            "node.21205",
+            "node.34813",
+            "node.42280",
+            "node.44176",
+            "node.45272"
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "type": "BASE",
+          "each": 5.0,
+          "count": 20,
+          "sum": 100.0,
+          "source_ids": [
+            "node.15182",
+            "node.16725",
+            "node.17702",
+            "node.18923",
+            "node.24922",
+            "node.27373",
+            "node.28304",
+            "node.2864",
+            "node.30141",
+            "node.35901",
+            "node.36629",
+            "node.44659",
+            "node.51048",
+            "node.52125",
+            "node.53405",
+            "node.54282",
+            "node.54811",
+            "node.54818",
+            "node.61976",
+            "node.63888"
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "type": "BASE",
+          "each": 8.0,
+          "count": 2,
+          "sum": 16.0,
+          "source_ids": [
+            "node.60203",
+            "node.7218"
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "type": "INC",
+          "each": 7.0,
+          "count": 1,
+          "sum": 7.0,
+          "source_ids": [
+            "node.57047"
+          ]
+        }
+      ]
+    }
+  ],
+  "not_done": [
+    "No source edits",
+    "No tests/build/CLI/oracle/triage/gate",
+    "No individual holdout",
+    "No children",
+    "No docs or known-difference registry changes",
+    "No attribute requirement or granted-level investigation"
+  ],
+  "pinned_vendor": {
+    "commit": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+    "parser_source": {
+      "path": "/root/codes/pobr/vendor/PathOfBuilding-PoE2/src/Modules/ModParser.lua",
+      "sha256": "60f9521691fda476db68eb99741ca86d18f4e3d8944838d7ef868de7befc6a5e",
+      "bytes": 680377
+    },
+    "parser_lines": [
+      7188,
+      7205
+    ],
+    "role": "cross-check only"
+  },
+  "minimal_fix_proposal": {
+    "artifact": {
+      "path": "/root/codes/pobr/.cache/accuracy-round4-2026-10-26/evidence/native-attributes/proposed-jewel-tree.diff",
+      "sha256": "8f354aeb173d1a0b9da92cad5467737041a63a8ce3b0fbc9b36946575126e314",
+      "bytes": 3054
+    },
+    "status": "unapplied and uncompiled; for parent review before edits",
+    "production_scope": [
+      "crates/pobr-build/src/jewel_tree.rs: parse explicit Attribute directive beside existing Small directive; attach only to conquered attribute node additive override, preserving +3 Tribute and selected attribute"
+    ],
+    "preserves": [
+      "Parse-completeness gate and honest unknown-payload diagnostics",
+      "Existing radius and active allocation handling",
+      "Unresolved seed-dependent notables",
+      "Original roll text and source attribution through node modifiers",
+      "Small and Attribute are distinct categories"
+    ],
+    "suggested_regression_scope": [
+      "Extend existing passive_jewels focused fixture with both Small and Attribute directives, assert no cross-category application",
+      "Assert selected attribute +5 and Tribute +3 remain alongside extra +6 Intelligence / +5 Strength",
+      "Assert no contribution for unallocated/out-of-radius/other weapon-set nodes; attribute additions get no Hulking Form multiplier",
+      "Assert added modifiers originate at affected node IDs and unknown payload remains diagnostic"
+    ],
+    "deferred_validation": "Parent: one focused passive_jewels check after implementation, then changed-crate lint/fmt under repository scope; existing batch gate later. No validation run here."
+  },
+  "source_version_comparisons": [
+    {
+      "path": "crates/pobr-build/src/jewel_tree.rs",
+      "old_commit": "5a3fce6767b365b7d249e5c7e9c4efca062897e2",
+      "current_commit": "ffa045d96126c2c46524c4e1f7a5ac0e1d165875",
+      "old_git_blob_sha256": "41fc3c25975d2819251740f7a17501bdacb4bec3c9326836fce89f3edd89a9de",
+      "current_git_blob_sha256": "41fc3c25975d2819251740f7a17501bdacb4bec3c9326836fce89f3edd89a9de",
+      "whole_file_identical": true
+    },
+    {
+      "path": "crates/pobr-build/src/calc_orchestrator/collect.rs",
+      "old_commit": "5a3fce6767b365b7d249e5c7e9c4efca062897e2",
+      "current_commit": "ffa045d96126c2c46524c4e1f7a5ac0e1d165875",
+      "old_git_blob_sha256": "01889247ed08195d7997844883a6a19c7c716e0460dca8bb5dcc3923520f451f",
+      "current_git_blob_sha256": "01889247ed08195d7997844883a6a19c7c716e0460dca8bb5dcc3923520f451f",
+      "whole_file_identical": true
+    },
+    {
+      "path": "crates/pobr-core/src/calc/session.rs",
+      "old_commit": "5a3fce6767b365b7d249e5c7e9c4efca062897e2",
+      "current_commit": "ffa045d96126c2c46524c4e1f7a5ac0e1d165875",
+      "old_git_blob_sha256": "55fd78160b37ffc20c9e2848248bfc524d3b2aa320cd2fa4aa3cb60879fc2ce8",
+      "current_git_blob_sha256": "b4ddb9addb5f9bdb6e0adecdf3f26c3842bca5aa52b4403f950da780ef674208",
+      "whole_file_identical": false,
+      "attribute_total_identical": true,
+      "attribute_total_sha256": "7d2a6d65ac8aa14938c455b51d86961e72ad2bd3d59fadd71fbc344a51cc4248"
+    }
+  ]
+}
