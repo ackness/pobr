@@ -521,7 +521,7 @@ fn parsed_mystic_harvest_extends_physical_attack_leech_before_ghost_reaver() {
             Modifier::number("ChaosDamageMin", ModType::Base, 1000.0),
             Modifier::number("ChaosDamageMax", ModType::Base, 1000.0),
         ]);
-        let env = run(mods, 2.0);
+        let env = run(mods.clone(), 2.0);
         // 1000 Physical/Fire damage funds 20 ES; the extra Chaos funds none.
         value(&env, "LifeLeechGainPerHit", 0.0);
         value(&env, "EnergyShieldLeechGainPerHit", 20.0);
@@ -530,6 +530,37 @@ fn parsed_mystic_harvest_extends_physical_attack_leech_before_ghost_reaver() {
         spell.cfg = CalcConfig::spell();
         perform(&mut spell).unwrap();
         value(&spell, "EnergyShieldLeechGainPerHit", 0.0);
+        for (cfg, expected) in [(CalcConfig::attack(), 20.0), (CalcConfig::spell(), 0.0)] {
+            let mut session =
+                pobr_core::calc::CalculationSession::new(pobr_core::calc::MinimalInput {
+                    base_life: 1000.0,
+                    base_hit_min: 1000.0,
+                    base_hit_max: 1000.0,
+                    base_action_rate: 2.0,
+                    ..Default::default()
+                })
+                .with_config(cfg);
+            session.add_modifiers(mods.clone());
+            session.add_modifiers([Modifier::number("EnergyShield", ModType::Base, 300.0)]);
+            let completed = session.finish().unwrap();
+            assert_eq!(
+                display_value(completed.output(), "EnergyShieldLeechGainRate"),
+                expected
+            );
+            assert_eq!(display_value(completed.output(), "EsLeechRate"), expected);
+            let detail = completed.derived_detail("EsLeechRate").unwrap();
+            assert_eq!(detail.formula, "max(0, PrimaryLeechInstanceRate)");
+            for (id, value) in [
+                ("PrimaryLeechedAmount", expected),
+                ("PrimaryLeechRateCap", 30.0),
+                ("PrimaryLeechInstanceRate", expected),
+            ] {
+                assert_eq!(
+                    detail.inputs.iter().find(|(key, _)| key == id).unwrap().1,
+                    value
+                );
+            }
+        }
     }
     for mut mods in [leech, harvest] {
         mods.extend(ghost.clone());
@@ -541,6 +572,60 @@ fn parsed_mystic_harvest_extends_physical_attack_leech_before_ghost_reaver() {
         // Conversion alone cannot extend physical eligibility, and Mystic
         // Harvest alone cannot grant a leech percentage.
         value(&run(mods, 2.0), "EnergyShieldLeechGainPerHit", 0.0);
+    }
+}
+
+#[test]
+fn typed_leech_panel_recognises_nonphysical_sources_and_caps_the_whole_hit() {
+    for (source, fire, chaos, expected_amount) in [
+        ("FireDamageEnergyShieldLeech", 1000.0, 1000.0, 20.0),
+        ("ElementalDamageEnergyShieldLeech", 1000.0, 1000.0, 20.0),
+        ("DamageEnergyShieldLeech", 1000.0, 1000.0, 40.0),
+        // The 80,000 total hit is scaled to 40,000; only its Fire quarter
+        // funds the typed 2% leech: 10,000 * 2% = 200, not 400.
+        ("FireDamageEnergyShieldLeech", 20000.0, 60000.0, 200.0),
+    ] {
+        let mut session = pobr_core::calc::CalculationSession::new(pobr_core::calc::MinimalInput {
+            base_hit_min: fire,
+            base_hit_max: fire,
+            base_action_rate: 2.0,
+            ..Default::default()
+        })
+        .with_config(CalcConfig::attack());
+        session.add_modifiers([
+            Modifier::number(source, ModType::Base, 2.0),
+            Modifier::number("PhysicalDamageConvertToFire", ModType::Base, 100.0),
+            Modifier::number("ChaosDamageMin", ModType::Base, chaos),
+            Modifier::number("ChaosDamageMax", ModType::Base, chaos),
+            Modifier::number("EnergyShield", ModType::Base, 300.0),
+        ]);
+        let completed = session.finish().unwrap();
+        let expected_rate = f64::min(expected_amount, 30.0);
+        assert_eq!(
+            display_value(completed.output(), "EsLeechRate"),
+            expected_rate
+        );
+        assert_eq!(
+            display_value(completed.output(), "EnergyShieldLeechGainRate"),
+            expected_rate
+        );
+        let detail = completed.derived_detail("EsLeechRate").unwrap();
+        assert_eq!(
+            detail
+                .inputs
+                .iter()
+                .find(|(id, _)| id == "PrimaryLeechedAmount")
+                .unwrap()
+                .1,
+            expected_amount
+        );
+        let rebuilt = detail
+            .inputs
+            .iter()
+            .filter(|(id, _)| id.ends_with("LeechInstanceRate"))
+            .map(|(_, value)| *value)
+            .fold(0.0_f64, f64::max);
+        assert_eq!(rebuilt, expected_rate);
     }
 }
 
