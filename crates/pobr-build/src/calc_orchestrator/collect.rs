@@ -867,7 +867,13 @@ pub(crate) fn filter_item_parseable(
     for (section, texts) in item_sections_mut(&mut filtered) {
         let source = holder.source(section);
         let originals: std::collections::HashSet<String> = texts.iter().cloned().collect();
-        let (merged, dropped) = combine_wrapped(texts.clone(), ctx);
+        // Loreweave's first line already parses alone, so combine_wrapped
+        // would accept it and drop its exclusion. Keep that exact pair whole
+        // before the ordinary gates, with the same raw origin as core ingest.
+        let paired = pobr_core::item::join_loreweave_rarity(texts)
+            .map(std::borrow::Cow::into_owned)
+            .collect();
+        let (merged, dropped) = combine_wrapped(paired, ctx);
         *texts = merged;
         // Lines the merge dropped never reach the parser: ledger them here so
         // nothing silently vanishes.

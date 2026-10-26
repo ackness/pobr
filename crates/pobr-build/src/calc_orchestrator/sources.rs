@@ -124,8 +124,8 @@ impl SourceWriter {
             (ItemModSection::Enchant, &item.enchant_texts),
         ] {
             let source = holder.source(section);
-            for text in texts {
-                self.note_line(&source, text, LineFate::Parsed);
+            for text in pobr_core::item::join_loreweave_rarity(texts) {
+                self.note_line(&source, &text, LineFate::Parsed);
             }
         }
     }

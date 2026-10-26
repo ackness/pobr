@@ -380,6 +380,122 @@ fn effective_loot_rarity_is_the_increase_and_more_factor() {
     near(env.player.output.effective_loot_rarity_mod, 1.92);
 }
 
+/// The combined Loreweave stat permits its own 84%, excluding Golden
+/// Charm's 15% and even unrelated rarity on the same body armour.
+#[test]
+fn loreweave_rarity_preserves_only_the_combined_source_in_both_modes() {
+    use pobr_core::ModTag;
+    use pobr_core::calc::MinimalInput;
+    use pobr_core::item::ingest_item_with_ctx;
+
+    let rarity = "84% increased Rarity of Items found";
+    let exclusion = "Your other Modifiers to Rarity of Items found do not apply";
+    let combined = format!("{rarity}\n{exclusion}");
+    let item = |lines: Vec<String>| Item {
+        base: ItemBaseId::from("Ornate Ringmail"),
+        rarity: ItemRarity::Unique,
+        quality: 0,
+        corrupted: false,
+        implicit_texts: vec![],
+        modifier_texts: lines,
+        enchant_texts: vec![],
+        rolled_defence: Default::default(),
+        socketed: vec![],
+        parsed_stats: vec![],
+    };
+    for split in [false, true] {
+        for native in [false, true] {
+            for enabled in [false, true] {
+                let mut lines = vec!["10% increased Rarity of Items found".to_string()];
+                lines.extend(if split {
+                    vec![rarity.into(), exclusion.into()]
+                } else {
+                    vec![combined.clone()]
+                });
+                let armour = item(lines.clone());
+                let mut ingest =
+                    ingest_item_with_ctx(EquipmentSlot::BodyArmour, &armour, crate::support::ctx())
+                        .unwrap();
+                assert!(ingest.unsupported.is_empty(), "{:?}", ingest.unsupported);
+                assert_eq!(armour.modifier_texts, lines);
+                let marker = ingest
+                    .modifiers
+                    .iter_mut()
+                    .find(|m| m.name.as_str() == "LootRarityExclusive")
+                    .unwrap();
+                marker
+                    .tags
+                    .push(ModTag::condition("ExclusiveRarity", false));
+                let marker_origin = marker.origin.as_ref().unwrap().clone();
+                let allowed = ingest
+                    .modifiers
+                    .iter()
+                    .find(|m| m.name.as_str() == "LootRarity" && m.value.as_number() == Some(84.0))
+                    .unwrap();
+                let origin = allowed.origin.as_ref().unwrap();
+                assert_eq!(origin.source_id, marker_origin.source_id);
+                assert_eq!(origin.source_id.id, "item.bodyarmour.explicit");
+                assert_eq!(origin.raw_text.as_deref(), Some(combined.as_str()));
+                assert_eq!(origin.raw_text, marker_origin.raw_text);
+                assert_ne!(origin.mod_type, marker_origin.mod_type);
+                assert_ne!(origin.stat_id, marker_origin.stat_id);
+                let mut session = crate::support::session(MinimalInput::default())
+                    .with_config(CalcConfig::attack().with_condition("ExclusiveRarity", enabled));
+                session.set_exporter_rules(native, Default::default());
+                session.add_modifiers(ingest.modifiers);
+                session.add_modifiers([Modifier::number("LootRarity", ModType::Inc, 15.0)
+                    .with_origin(
+                        ModifierSource::new(SourceId::new(SourceKind::Flask, "flask.charm3"))
+                            .with_slot("charm3")
+                            .with_raw_text("15% increased Rarity of Items found"),
+                    )]);
+                session.perform_minimal().unwrap();
+                near(
+                    session.output().effective_loot_rarity_mod,
+                    if enabled { 1.84 } else { 2.09 },
+                );
+                let groups = session.detail_sources("EffectiveLootRarityMod");
+                let group = groups.iter().find(|g| g.name == "LootRarity").unwrap();
+                near(group.totals.1, if enabled { 84.0 } else { 109.0 });
+                assert_eq!(group.rows.len(), 3);
+                for row in &group.rows {
+                    assert_eq!(row.active, !enabled || row.value == Some(84.0));
+                    assert!(row.modifier.origin.is_some());
+                }
+            }
+        }
+    }
+
+    // Only an adjacent exact pair in one section combines. Preserve a
+    // separated/conditional exclusion as unsupported instead of guessing.
+    for armour in [
+        item(vec![
+            rarity.into(),
+            "+10 to maximum Life".into(),
+            exclusion.into(),
+        ]),
+        item(vec![
+            "84% increased Rarity of Items found while on Low Life".into(),
+            exclusion.into(),
+        ]),
+        Item {
+            implicit_texts: vec![rarity.into()],
+            ..item(vec![exclusion.into()])
+        },
+    ] {
+        let ingest =
+            ingest_item_with_ctx(EquipmentSlot::BodyArmour, &armour, crate::support::ctx())
+                .unwrap();
+        assert!(
+            !ingest
+                .modifiers
+                .iter()
+                .any(|m| m.name.as_str() == "LootRarityExclusive")
+        );
+        assert!(ingest.unsupported.iter().any(|text| text == exclusion));
+    }
+}
+
 /// The skill runs at its gem's level plus the levels added to it: 20 + 3 =
 /// 23, and no skill gives 0.
 #[test]

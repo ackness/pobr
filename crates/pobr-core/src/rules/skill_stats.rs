@@ -18,6 +18,7 @@ fn exporter_rule(stat: &str) -> Option<std::sync::Arc<pobr_data::source::Exporte
         std::sync::LazyLock::new(|| {
             [
                 "base_spell_mana_cost_efficiency_+%",
+                "active_skill_damaging_ailment_effect_+%_final",
                 // The per-hit Armour Break, debuff uptime, curse delay and
                 // remnant views (`calc::effect_views`).
                 "armour_break_physical_damage_%_dealt_as_armour_break",
@@ -511,6 +512,13 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         // The selected effect deals no damage; secondary explosions have
         // their own stat sets without this stat.
         "base_deal_no_damage" => Some(vec![Modifier::flag("DealNoDamage")]),
+        // Shattering Spite: "50% less Magnitude of Damaging Ailments
+        // inflicted". This scales damaging ailments, not hits or Shock/Chill.
+        "active_skill_damaging_ailment_effect_+%_final" => Some(vec![Modifier::number(
+            "AilmentEffect",
+            ModType::More,
+            value,
+        )]),
         // Explosive Demise detonates an allied minion below this life
         // threshold. With no minion present there is nothing to detonate.
         "command_minion_target_ally_below_x_life" => {

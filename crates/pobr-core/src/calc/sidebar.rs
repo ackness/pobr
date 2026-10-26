@@ -2,13 +2,45 @@
 
 use pobr_data::prelude::*;
 
-use crate::{CalcConfig, ModDb};
+use crate::{CalcConfig, ModDb, Modifier};
 
 use super::env::Env;
 
 fn factor(db: &ModDb, cfg: &CalcConfig, names: &[&str]) -> f64 {
     let names: Vec<_> = names.iter().map(|name| ModName::from(*name)).collect();
     ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)).max(0.0)
+}
+
+/// Loreweave's rarity and exclusion are one game stat. Derived stat/type
+/// metadata differs between its numeric and flag modifiers, but their
+/// originating item section, slot and combined raw text must all agree.
+pub(super) fn loot_rarity_filter<'a>(
+    db: &'a ModDb,
+    cfg: &CalcConfig,
+) -> impl Fn(&Modifier) -> bool + 'a {
+    let origins: Vec<_> = if db.flag(cfg, "LootRarityExclusive") {
+        db.named("LootRarityExclusive")
+            .filter(|modifier| {
+                modifier.mod_type == ModType::Flag
+                    && modifier.matches(cfg)
+                    && modifier.value.as_bool().unwrap_or(false)
+            })
+            .filter_map(|modifier| modifier.origin.as_ref())
+            .collect()
+    } else {
+        Vec::new()
+    };
+    move |modifier| {
+        origins.is_empty()
+            || modifier.origin.as_ref().is_some_and(|origin| {
+                origins.iter().any(|allowed| {
+                    origin.source_id == allowed.source_id
+                        && origin.parent_source_id == allowed.parent_source_id
+                        && origin.slot == allowed.slot
+                        && origin.raw_text == allowed.raw_text
+                })
+            })
+    }
 }
 
 /// One plus the conditional probability that both critical rolls succeed,
@@ -139,7 +171,15 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     out.limit_views.action_speed_mod = action_speed;
     out.limit_views.movement_speed_mod = movement;
     out.limit_views.light_radius_mod = factor(db, &global, &["LightRadius"]);
-    out.effective_loot_rarity_mod = factor(db, &global, &["LootRarity"]);
+    out.effective_loot_rarity_mod = if db.has_name("LootRarityExclusive") {
+        factor(
+            &db.filtered(loot_rarity_filter(db, &global)),
+            &global,
+            &["LootRarity"],
+        )
+    } else {
+        factor(db, &global, &["LootRarity"])
+    };
     out.gem_level = env
         .main_skill_level
         .map_or(0.0, |(level, bonus)| f64::from(level) + f64::from(bonus));

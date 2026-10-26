@@ -268,7 +268,7 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "AuraCannotAffectSelf",
         ],
         "CurseEffectMod" => &["CurseEffect", "SelectedCurseEffect"],
-        "EffectiveLootRarityMod" => &["LootRarity"],
+        "EffectiveLootRarityMod" => &["LootRarity", "LootRarityExclusive"],
         "CadiroArrowReturn" => &["CadiroArrowReturn"],
         "CadiroArrowKillRarity" => &["CadiroArrowKillRarity"],
         "ActiveMinionLimit" => &["SelectedMinionLimit"],
@@ -739,6 +739,27 @@ impl CalculationSession {
                 };
                 let cfg = &query_cfg;
                 let names = [ModName::from(query_name)];
+                if stat == "EffectiveLootRarityMod" && query_name == "LootRarity" {
+                    let keep = super::super::sidebar::loot_rarity_filter(db, cfg);
+                    let rarity = db.filtered(&keep);
+                    return SourceGroup {
+                        totals: (
+                            rarity.sum(ModType::Base, cfg, &names),
+                            rarity.sum(ModType::Inc, cfg, &names),
+                            rarity.more(cfg, &names),
+                        ),
+                        more_precision: rarity.more_precision_for(query_name),
+                        rows: db
+                            .evaluate_names(cfg, &names)
+                            .into_iter()
+                            .map(|mut row| {
+                                row.active &= keep(row.modifier);
+                                row
+                            })
+                            .collect(),
+                        name,
+                    };
+                }
                 SourceGroup {
                     totals: (
                         db.sum(ModType::Base, cfg, &names),
