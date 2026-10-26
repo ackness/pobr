@@ -392,6 +392,13 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             ])
         }
         "skill_disabled_unless_cloned" => Some(vec![Modifier::flag("MirageSkill")]),
+        // Native Ballista hosts and the support half that makes a socketed
+        // attack Ballista-used. This is skill identity, not a combat toggle.
+        "base_skill_is_ballistified" | "is_ranged_attack_totem" => Some(if value != 0.0 {
+            vec![Modifier::flag("Condition:BallistaSkill")]
+        } else {
+            Vec::new()
+        }),
         "pin_almost_pinned_enemies" => Some(vec![Modifier::flag("PinOnPrimed")]),
         "pin_duration_+%" => Some(vec![Modifier::number(
             "EnemyPinDuration",
@@ -655,6 +662,18 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         ]),
         // Reap: "Culling Strike" (`calc::skill_dot::cull_multiplier`).
         "kill_enemy_on_hit_if_under_10%_life" => Some(vec![Modifier::flag("CanCull")]),
+        // Culling Strike I/II: "Supported Skills have Culling Strike
+        // against Rare or Unique Enemies". Boss presets use the bare rarity
+        // condition; explicit enemy configuration uses the prefixed one.
+        // No previous cull is required for this grant.
+        "support_culling_strike_vs_rare_or_unique_enemy" => {
+            Some(vec![Modifier::flag("CanCull").with_tag(
+                ModTag::ConditionAnyOf {
+                    vars: vec!["RareOrUnique".into(), "EnemyRareOrUnique".into()],
+                    negated: false,
+                },
+            )])
+        }
         // Detonate Living: "Your Spells have Culling Strike".
         "spells_have_culling_strike" => {
             Some(vec![Modifier::flag("CanCull").with_flags(ModFlags::SPELL)])
