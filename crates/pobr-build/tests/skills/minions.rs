@@ -602,6 +602,147 @@ fn the_characters_minion_modifiers_reach_its_minions() {
     assert!((gigantic / base - 1.2).abs() < 1e-3, "{base} -> {gigantic}");
 }
 
+/// A jewel socket's effect scales the jewel's minion payload, including
+/// damage, speed and critical bonuses, just as it scales player modifiers.
+#[test]
+fn adorned_scales_nested_companion_modifiers() {
+    use pobr_build::build::JewelSocket;
+    use pobr_data::item::ItemRarity;
+
+    let data = load_data();
+    let mut group = SocketGroup::new().with_gem_skill("SummonBeastPlayer", 20);
+    group.gem_skills[0].minion = Some("Metadata/Monsters/Quadrilla/QuadrillaBossMinion2".into());
+    let base = Build::new()
+        .with_character(CharacterIdentity {
+            level: 90,
+            class_name: "Huntress".into(),
+            ascendancy_name: String::new(),
+        })
+        .add_socket_group(group);
+    let jewel = pobr_core::parse_pob_xml_item(
+        "Rarity: RARE\nFixture\nSapphire\nImplicits: 0\nMinions deal 13% increased Damage\nMinions have 6% increased Attack and Cast Speed\nMinions have 33% increased Critical Hit Chance\nMinions have 23% increased Critical Damage Bonus\n+100 to maximum Life\nCorrupted",
+    ).unwrap();
+    let run = |named: &str, effect: u32, rarity, corrupted, socket| {
+        let adorned = pobr_core::parse_pob_xml_item(&format!(
+            "Rarity: UNIQUE\nThe Adorned\nDiamond\nImplicits: 0\n{effect}% increased Effect of Jewel Socket Passive Skills\ncontaining Corrupted {named} Jewels"
+        )).unwrap();
+        let mut jewel = jewel.clone();
+        jewel.rarity = rarity;
+        jewel.corrupted = corrupted;
+        let mut build = base.clone().with_jewels(vec![adorned]);
+        build.jewels.push((socket, jewel));
+        pobr_build::calculate_with_data_session(&build, &data, &default_opts()).unwrap()
+    };
+    let plain = run("Rare", 0, ItemRarity::Rare, true, JewelSocket::Tree);
+    for (named, effect, rarity, corrupted, socket, expected) in [
+        (
+            "Rare",
+            69,
+            ItemRarity::Rare,
+            true,
+            JewelSocket::Tree,
+            [21.0, 10.0, 55.0, 38.0],
+        ),
+        (
+            "Rare",
+            50,
+            ItemRarity::Rare,
+            true,
+            JewelSocket::Tree,
+            [19.0, 9.0, 49.0, 34.0],
+        ),
+        (
+            "Magic",
+            147,
+            ItemRarity::Magic,
+            true,
+            JewelSocket::Tree,
+            [32.0, 14.0, 81.0, 56.0],
+        ),
+        (
+            "Rare",
+            69,
+            ItemRarity::Rare,
+            false,
+            JewelSocket::Tree,
+            [13.0, 6.0, 33.0, 23.0],
+        ),
+        (
+            "Rare",
+            69,
+            ItemRarity::Magic,
+            true,
+            JewelSocket::Tree,
+            [13.0, 6.0, 33.0, 23.0],
+        ),
+        (
+            "Rare",
+            69,
+            ItemRarity::Rare,
+            true,
+            JewelSocket::Granted,
+            [13.0, 6.0, 33.0, 23.0],
+        ),
+        (
+            "Rare",
+            69,
+            ItemRarity::Rare,
+            true,
+            JewelSocket::Equipment,
+            [13.0, 6.0, 33.0, 23.0],
+        ),
+    ] {
+        let session = run(named, effect, rarity, corrupted, socket);
+        let boosted = expected[0] > 13.0;
+        for (stat, expected) in ["Damage", "ActionRate", "CritChance", "CritMultiplier"]
+            .into_iter()
+            .zip(expected)
+        {
+            let rows = session.minion_stat_mods(0, stat);
+            let row = rows
+                .iter()
+                .find(|row| {
+                    row.modifier
+                        .origin
+                        .as_ref()
+                        .is_some_and(|origin| origin.source_id.id == "jewel.2")
+                })
+                .unwrap();
+            assert_eq!(row.value, Some(expected), "{named} {effect}% {stat}");
+            assert!(row.active);
+        }
+        let minion = &session.output().minions[0];
+        let detail = pobr_build::breakdown::minion_stat_breakdown(&session, 0, "TotalDPS").unwrap();
+        assert_eq!(detail.formula.unwrap().value, minion.dps);
+        assert_eq!(minion.life, plain.output().minions[0].life);
+        if boosted {
+            assert!(minion.dps > plain.output().minions[0].dps);
+        } else {
+            assert_eq!(minion.dps, plain.output().minions[0].dps);
+        }
+        // The pre-existing top-level numeric scaling still applies once.
+        let life = session.evaluated_stat_mods("Life");
+        let life = life
+            .iter()
+            .find(|row| {
+                row.modifier
+                    .origin
+                    .as_ref()
+                    .is_some_and(|origin| origin.source_id.id == "jewel.2")
+            })
+            .unwrap();
+        assert_eq!(
+            life.value,
+            Some(if boosted {
+                100.0 + f64::from(effect)
+            } else {
+                100.0
+            })
+        );
+        assert_eq!(session.output().dps, plain.output().dps);
+    }
+}
+
 const QUADRILLA: &str = "Metadata/Monsters/Quadrilla/Quadrilla";
 
 /// The minions of a Huntress with one tamed beast's gem, `lines` on her

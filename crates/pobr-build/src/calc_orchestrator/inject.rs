@@ -1297,13 +1297,25 @@ pub(super) fn stage_inject_jewels(
             };
             session.note_line(&source, text, LineFate::Parsed);
             for mut m in parsed_mods {
+                let origin = ModifierSource::new(source.clone()).with_raw_text(text.clone());
+                m = m.with_origin(origin);
+                // Minion bonuses are nested inside a LIST modifier. Scale
+                // that payload with the existing precision rules, as radius
+                // jewel grants already do, while preserving its source/tags.
+                if let Some(scale) = scale
+                    && matches!(m.value, pobr_core::ModValue::NestedMods(_))
+                {
+                    let mut scaled = pobr_core::ModDb::new();
+                    scaled.scale_add_mod(m, scale, &ctx.data.high_precision);
+                    mods.extend(scaled.iter_mods().cloned());
+                    continue;
+                }
                 if let Some(scale) = scale
                     && let pobr_core::ModValue::Number(v) = m.value
                 {
                     m.value = pobr_core::ModValue::Number(scale_trunc_2dp(v, scale));
                 }
-                let origin = ModifierSource::new(source.clone()).with_raw_text(text.clone());
-                mods.push(m.with_origin(origin));
+                mods.push(m);
             }
         }
         session.add_modifiers(mods);
