@@ -1,3 +1,4 @@
+import { AppButton, AppInput, AppSelectControl } from '../shared/controls';
 import { useEffect, useMemo, useState } from 'react';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { toRequest } from '../../hooks/useBuildSession';
@@ -47,8 +48,8 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
     const next = copySection(a.saved.state, b.saved.state, section);
     setMessage(session.applyComparedStage(a, b, next) ? tt('compare.applied') : tt('compare.stale'));
   };
-  const applyButton = (section: CopySection, append = false) => <button type="button" disabled={!canApply}
-    onClick={() => apply(section)}>{tt(append ? 'compare.append' : 'compare.apply')}</button>;
+  const applyButton = (section: CopySection, append = false) => <AppButton type="button" disabled={!canApply}
+    onClick={() => apply(section)}>{tt(append ? 'compare.append' : 'compare.apply')}</AppButton>;
   const sections = [{ title: { 'en-US': t('en-US', 'sidebar.mainSkill'), 'zh-TW': t('zh-TW', 'sidebar.mainSkill'), 'zh-CN': t('zh-CN', 'sidebar.mainSkill') },
     rows: ([['MainSkillHitDPS', 'sidebar.hitDps'], ['MainSkillDotDPS', 'sidebar.dotDps'], ['MainSkillCombinedDPS', 'sidebar.combinedDps']] as const)
       .map(([id, label]) => ({ id, label: { 'en-US': t('en-US', label), 'zh-TW': t('zh-TW', label), 'zh-CN': t('zh-CN', label) }, format: 'float2' as const })),
@@ -80,13 +81,13 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
     {entries.length < 2 ? <p>{tt('compare.needStages')}</p> : <>
       <div className="compare-controls">
         {(['A', 'B'] as const).map(side => <label key={side}>{tt(side === 'A' ? 'compare.a' : 'compare.b')}
-          <select aria-label={tt(side === 'A' ? 'compare.a' : 'compare.b')} value={side === 'A' ? a.stageId : b.stageId}
+          <AppSelectControl aria-label={tt(side === 'A' ? 'compare.a' : 'compare.b')} value={side === 'A' ? a.stageId : b.stageId}
             onChange={event => { (side === 'A' ? setAId : setBId)(event.target.value); setMessage(''); }}>
             {entries.map(entry => <option key={entry.stageId} value={entry.stageId}>{entry.label}</option>)}
-          </select></label>)}
-        <label>{tt('compare.basis')}<select value={basis} onChange={event => setBasis(event.target.value as ConfigBasis)}>
+          </AppSelectControl></label>)}
+        <label>{tt('compare.basis')}<AppSelectControl value={basis} onChange={event => setBasis(event.target.value as ConfigBasis)}>
           <option value="own">{tt('compare.own')}</option><option value="a">{tt('compare.useA')}</option>
-        </select></label>
+        </AppSelectControl></label>
       </div>
       <p className="compare-hint">{tt('compare.basisHint')} · {session.dataVersion}</p>
       <div className="compare-pair compare-identities">{[a, b].map((entry, index) => <div key={index}>
@@ -99,7 +100,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
       {loading && <p role="status">{tt('compare.calculating')}</p>}
       {current?.error && <p role="alert">{current.error}</p>}
       {value && <article className="compare-summary">
-        <h3>{tt('compare.summary')}</h3><label><input type="checkbox" checked={changedOnly} onChange={event => setChangedOnly(event.target.checked)} /> {tt('compare.changed')}</label>
+        <h3>{tt('compare.summary')}</h3><label><AppInput type="checkbox" checked={changedOnly} onChange={event => setChangedOnly(event.target.checked)} /> {tt('compare.changed')}</label>
         <p className="compare-hint">{tt('compare.percentHint')}</p>
         {sections.map(section => {
           const rows = section.rows.map(def => ({ def, row: value.stats.find(row => row.id === def.id) }))

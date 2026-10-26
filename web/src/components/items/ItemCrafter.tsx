@@ -1,3 +1,4 @@
+import { AppButton, AppInput } from '../shared/controls';
 import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { BuildSession } from '../../hooks/useBuildSession';
@@ -50,16 +51,16 @@ export function ItemCrafter({ session, lang }: { session: BuildSession; lang: La
       <label>{t('rarity')}<AppSelect ariaLabel={t('rarity')} value={chosenRarity}
         options={rarities.map(value => ({ value, label: t(value) }))}
         onChange={value => { reset(); setRarity(value as typeof rarity); }} /></label>
-      <label>{t('itemLevel')}<input aria-label={t('itemLevel')} type="number" min="1" max="100" value={itemLevel}
+      <label>{t('itemLevel')}<AppInput aria-label={t('itemLevel')} type="number" min="1" max="100" value={itemLevel}
         onChange={event => { reset(); setItemLevel(Number(event.target.value)); }} /></label>
-      <label>{t('quality')}<input aria-label={t('quality')} type="number" min="0" max="20" value={quality}
+      <label>{t('quality')}<AppInput aria-label={t('quality')} type="number" min="0" max="20" value={quality}
         onChange={event => { reset(); setQuality(Number(event.target.value)); }} /></label>
     </div>
     {base && <div className="item-crafter-base"><p>{t('requirement')} {base.level}</p>{implicits.map((line, i) => <p key={i}>{line}</p>)}</div>}
     {!!catalog.missingMods && <p className="trade-notice">{t('missing')} {catalog.missingMods}</p>}
-    <button className="trade-primary" disabled={session.busy || !base || !Number.isInteger(itemLevel) || itemLevel < 1 || itemLevel > 100
+    <AppButton className="trade-primary" disabled={session.busy || !base || !Number.isInteger(itemLevel) || itemLevel < 1 || itemLevel > 100
       || !Number.isInteger(quality) || quality < 0 || quality > 20}
-      onClick={() => setCreated({ text: baseDraftText(base, chosenRarity, itemLevel, quality), id: (created?.id ?? 0) + 1 })}>{t('create')}</button>
+      onClick={() => setCreated({ text: baseDraftText(base, chosenRarity, itemLevel, quality), id: (created?.id ?? 0) + 1 })}>{t('create')}</AppButton>
     {created && base && <ItemDraftWorkbench key={created.id} initialText={created.text} base={base} catalog={catalog} session={session} lang={lang} />}
   </section>;
 }

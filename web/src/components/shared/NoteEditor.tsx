@@ -1,3 +1,4 @@
+import { AppButton, AppTextarea } from './controls';
 import { useEffect, useRef, useState } from 'react';
 import { bindT, type Lang } from '../../lib/i18n';
 
@@ -24,7 +25,7 @@ export function NoteEditor({ value, onCommit, lang }: Props) {
   if (editing) {
     return (
       <div className="note-editor">
-        <textarea
+        <AppTextarea
           ref={ref}
           className="note-editor-input"
           rows={3}
@@ -43,7 +44,7 @@ export function NoteEditor({ value, onCommit, lang }: Props) {
   }
   if (!value.trim()) {
     return (
-      <button
+      <AppButton
         className="note-add"
         onClick={() => {
           setDraft(value);
@@ -51,11 +52,11 @@ export function NoteEditor({ value, onCommit, lang }: Props) {
         }}
       >
         ✎ {tt('note.add')}
-      </button>
+      </AppButton>
     );
   }
   return (
-    <button
+    <AppButton
       type="button"
       className="note-block"
       title={tt('note.editHint')}
@@ -67,6 +68,6 @@ export function NoteEditor({ value, onCommit, lang }: Props) {
     >
       <span className="note-block-label">{tt('note.label')}</span>
       {value}
-    </button>
+    </AppButton>
   );
 }

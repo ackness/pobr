@@ -1,3 +1,4 @@
+import { AppButton, AppInput } from '../shared/controls';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { formatApiError } from '../../api/error';
 import type { AttributeChoice, CalculateBuildRequest, PassiveNode } from '../../api/types';
@@ -315,9 +316,9 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
 
   return (
     <div className="tree-planner" ref={containerRef} id="passive-upgrades">
-      <button className="tree-planner-toggle" aria-expanded={expanded} onClick={() => { if (expanded) cancel(); setExpanded(!expanded); }}>
+      <AppButton className="tree-planner-toggle" aria-expanded={expanded} onClick={() => { if (expanded) cancel(); setExpanded(!expanded); }}>
         <span aria-hidden>{expanded ? '▾' : '▸'}</span>{text.title}
-      </button>
+      </AppButton>
       {expanded && <div className="tree-planner-body">
         <p className="tree-planner-hint">{text.hint}</p>
         {applied && <p className="tree-planner-hint tree-planner-applied" role="status">
@@ -330,7 +331,7 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
           <label>{text.mode}<AppSelect value={mode} ariaLabel={text.mode} onChange={value => setMode(value as typeof mode)} options={[
             { value: 'allocate', label: text.allocate }, { value: 'reallocate', label: text.reallocate },
           ]} /></label>
-          <label>{mode === 'allocate' ? text.points : text.refundPoints}<input type="number" min={1} max={PASSIVE_POINT_LIMIT} value={points}
+          <label>{mode === 'allocate' ? text.points : text.refundPoints}<AppInput type="number" min={1} max={PASSIVE_POINT_LIMIT} value={points}
             onChange={event => { const value = Number(event.target.value); if (Number.isInteger(value) && value >= 1 && value <= PASSIVE_POINT_LIMIT) setPoints(value); }} /></label>
           <ObjectiveEditor value={goal} onChange={setGoal} lang={lang} />
           <label>{text.attribute}<AppSelect value={attribute} ariaLabel={text.attribute} onChange={value => setAttribute(value as AttributeChoice)} options={[
@@ -342,8 +343,8 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
         {mode === 'reallocate' && !context.canRefund && <p className="tree-planner-hint">{text.refundUnavailable}</p>}
         {!session.character && <p className="tree-planner-hint">{text.needsBuild}</p>}
         {context.root === null && session.character && <p className="tree-planner-hint">{text.unavailable}</p>}
-        <button className="tree-planner-run" onClick={run} disabled={session.busy || Boolean(session.calcError) || !session.calc || progress !== null || !session.character
-          || context.root === null || (mode === 'reallocate' && !context.canRefund)}>{text.run}</button>
+        <AppButton className="tree-planner-run" onClick={run} disabled={session.busy || Boolean(session.calcError) || !session.calc || progress !== null || !session.character
+          || context.root === null || (mode === 'reallocate' && !context.canRefund)}>{text.run}</AppButton>
         {tracking && !evaluated && !progress && !error && !session.calcError && context.root !== null
           && (mode === 'allocate' || context.canRefund) && <p className="tree-planner-hint" role="status">{text.waiting}</p>}
         {progress && <OptimizerProgress {...progress} lang={lang} onCancel={cancel} />}
@@ -352,7 +353,7 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
           <div className="tree-planner-summary"><span>{text.evaluated}: {evaluated.evaluated}</span>
             {evaluated.evaluated > 0 && <span>{text.baseline}: DPS {number(currentStats.TotalDPS ?? 0)} · EHP {number(currentStats.TotalEHP ?? 0)}</span>}
             <span>{text.data}: {completed!.dataVersion ?? text.unknownVersion} · {text.tree}: {completed!.treeVersion ?? text.defaultTree}</span>
-            {preview !== null && <button onClick={() => show(null)}>{text.clear}</button>}
+            {preview !== null && <AppButton onClick={() => show(null)}>{text.clear}</AppButton>}
           </div>
           {evaluated.limited && <p className="tree-planner-hint">{text.limited}</p>}
           {evaluated.unmodeled > 0 && <p className="tree-planner-hint">{text.skipped}: {evaluated.unmodeled}</p>}
@@ -391,7 +392,7 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
               </div>
               <details><summary>{text.route}</summary><p>{text.add}: {plan.allocate.map(nodeLabel).join(' · ')}</p>
                 {plan.deallocate.length > 0 && <p>{text.remove}: {plan.deallocate.map(nodeLabel).join(' · ')}</p>}</details>
-              <div className="tree-plan-actions"><button onClick={() => show(index)}>{text.preview}</button><button disabled={session.busy} onClick={() => apply(plan)}>{text.apply}</button></div>
+              <div className="tree-plan-actions"><AppButton onClick={() => show(index)}>{text.preview}</AppButton><AppButton disabled={session.busy} onClick={() => apply(plan)}>{text.apply}</AppButton></div>
             </li>)}
           </ol>
           <p className="tree-planner-hint">{text.bounded}</p>

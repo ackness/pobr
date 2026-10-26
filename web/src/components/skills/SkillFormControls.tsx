@@ -1,3 +1,4 @@
+import { AppButton, AppInput } from '../shared/controls';
 import type { GemCatalogEntry } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
@@ -26,7 +27,7 @@ export function SkillFormControls({ session, lang, groupIndex, catalog }: {
           ? { ...item, gems: item.gems.map((valueGem, indexGem) => indexGem === effect.gemIndex ? { ...valueGem, stat_set_index: Number(value) } : valueGem) } : item))} />
     </label>}
     {stage && <label>{tt('skills.stages')}
-      <input type="number" min={stage.min} max={stage.max} step={1} disabled={session.busy}
+      <AppInput type="number" min={stage.min} max={stage.max} step={1} disabled={session.busy}
         aria-label={tt('skills.stages')} value={typeof raw === 'number' ? raw : ''} placeholder={String(stage.default)}
         onChange={event => {
           const value = event.target.value;
@@ -34,7 +35,7 @@ export function SkillFormControls({ session, lang, groupIndex, catalog }: {
           else if (Number.isInteger(Number(value)) && Number(value) >= stage.min && Number(value) <= stage.max)
             session.setConfigInput(stage.config_input, Number(value));
         }} />
-      {typeof raw === 'number' && <button disabled={session.busy} onClick={() => session.setConfigInput(stage.config_input, null)}>{tt('skills.stageDefault')}</button>}
+      {typeof raw === 'number' && <AppButton disabled={session.busy} onClick={() => session.setConfigInput(stage.config_input, null)}>{tt('skills.stageDefault')}</AppButton>}
     </label>}
   </div>;
 }

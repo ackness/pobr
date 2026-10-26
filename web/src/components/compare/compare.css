@@ -42,3 +42,13 @@
 .compare-tree-inspect select { max-width: 100%; }
 .compare-node-details { margin-top: 1rem; padding: .75rem; background: #ffffff08; }
 @media (max-width: 700px) { .compare-tree-canvas { height: 380px; } }
+
+.v2-root .compare-panel { padding: 0; gap: 1.25rem; }
+.v2-root .compare-panel section, .v2-root .compare-summary, .v2-root .compare-identities { border-radius: 1.25rem; }
+.v2-root .compare-controls { padding: 1rem; border-radius: 1.25rem; background: var(--card); }
+.v2-root .compare-table-wrap { border-radius: .75rem; }
+.v2-root .compare-panel th { font-weight: 500; }
+.v2-root .compare-panel td, .v2-root .compare-panel th { padding: .75rem; }
+.v2-root .compare-tree-canvas { border-radius: 1rem; height: clamp(22rem, 55vh, 44rem); }
+.v2-root .compare-line-before { background: color-mix(in srgb, var(--destructive) 12%, transparent); color: var(--destructive); }
+.v2-root .compare-line-after { background: color-mix(in srgb, var(--color-positive) 12%, transparent); color: var(--color-positive); }

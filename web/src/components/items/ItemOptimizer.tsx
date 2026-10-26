@@ -1,3 +1,4 @@
+import { AppButton } from '../shared/controls';
 import { formatApiError } from '../../api/error';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
@@ -107,7 +108,7 @@ export function ItemOptimizer({
 
   return (
     <div className="gem-optimizer">
-      <button
+      <AppButton
         className="gem-optimizer-toggle"
         aria-expanded={expanded}
         onClick={() => setExpanded(!expanded)}
@@ -116,7 +117,7 @@ export function ItemOptimizer({
           ▸
         </span>
         {tt('opt.openItem')}
-      </button>
+      </AppButton>
       {expanded && (
         <div className="gem-optimizer-body">
           <p className="skills-hint">{tt('opt.itemHint')}</p>
@@ -125,7 +126,7 @@ export function ItemOptimizer({
           ) : (
             <div className="opt-row">
               <ObjectiveEditor value={objState} onChange={setObjState} lang={lang} />
-              <button
+              <AppButton
                 className="opt-run"
                 disabled={session.busy || progress !== null}
                 onClick={run}
@@ -133,7 +134,7 @@ export function ItemOptimizer({
                 {progress
                   ? tt('opt.running')
                   : `${tt('opt.run')}（${variantDefs.length} ${tt('opt.combos')}）`}
-              </button>
+              </AppButton>
             </div>
           )}
           {progress && (
