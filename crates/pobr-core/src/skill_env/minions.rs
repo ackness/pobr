@@ -174,6 +174,7 @@ pub fn spawn_minions(
     // once per group). A kind of minion another group already summons does
     // not add to how many minions the character has.
     let mut seen: BTreeSet<String> = BTreeSet::new();
+    let mut companion_kinds: BTreeSet<String> = BTreeSet::new();
     // Umbral Well: Skeletal Minions become Souls on the character instead.
     let umbral_well = session.has_flag(umbral_souls::UMBRAL_WELL);
     let facts = skill_stats::SummonedMinions {
@@ -471,7 +472,7 @@ pub fn spawn_minions(
                 };
                 // The limit only affects `Multiplier:SummonedMinion` (per-minion mods +
                 // DPS aggregation count), not a single minion's life/defence.
-                let limit = if counted {
+                let created_limit = {
                     let base = own_count.unwrap_or_else(|| minion_limit(&*session, def));
                     // temporary_minion_limit_+: a minion skill with a
                     // duration summons temporary minions, unlike a
@@ -482,9 +483,11 @@ pub fn spawn_minions(
                         0
                     };
                     base.saturating_add(extra)
-                } else {
-                    0
                 };
+                if is_companion && group.active_in_weapon_set && created_limit > 0 {
+                    companion_kinds.insert(minion_id.clone());
+                }
+                let limit = if counted { created_limit } else { 0 };
                 let def = def.clone();
                 let skill = minion_skill(data, &def, chosen_skill, minion_level);
                 let mut minion_modifiers = group_minion_modifiers.clone();
@@ -539,6 +542,19 @@ pub fn spawn_minions(
             }
         }
     });
+    // Count identities, not the capacity of a pack or repeated copies of a
+    // summoning skill. Presence exclusions are resolved with the other counts.
+    session.add_player_modifiers(vec![
+        crate::Modifier::number(
+            "DifferentCompanions",
+            pobr_data::modifier::ModType::Base,
+            companion_kinds.len() as f64,
+        )
+        .with_origin(ModifierSource::new(SourceId::new(
+            SourceKind::GameConstant,
+            "minion.companion_kinds",
+        ))),
+    ]);
 }
 
 /// How many different kinds of Reviving Minion the character summons: the

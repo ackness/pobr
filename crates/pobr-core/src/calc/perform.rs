@@ -543,20 +543,37 @@ fn apply_gigantic(minion: &mut super::Actor, cfg: &CalcConfig) {
     ]);
 }
 
-/// "Companions gain added Attack damage equal to N% of your main hand
-/// Weapon's damage": a minion with `GainMainHandDmgFromParent` adds N% (the
-/// character's `MainHandDamageToAllies`) of every damage type of the
-/// character's main hand weapon to its attacks.
+/// Main-hand weapon damage shared with a minion's attacks. Companion grants
+/// use the parent's multiplier; Presence auras carry their own recipient-local
+/// share so they cannot make companion-only grants apply to other allies.
 fn apply_main_hand_share(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env) {
-    if !cfg.flags.intersects(ModFlags::ATTACK)
-        || !minion.mod_db.flag(cfg, "GainMainHandDmgFromParent")
-    {
+    if !cfg.flags.intersects(ModFlags::ATTACK) || minion.mod_db.flag(cfg, "HiddenMonster") {
         return;
     }
-    let share = env
-        .player
-        .mod_db
-        .get_multiplier("MainHandDamageToAllies", &env.cfg);
+    let companion_share = if minion.mod_db.flag(cfg, "GainMainHandDmgFromParent") {
+        env.player
+            .mod_db
+            .get_multiplier("MainHandDamageToAllies", &env.cfg)
+    } else {
+        0.0
+    };
+    // The ExtraAura pass already handles blocked ally auras and recipient
+    // effect scaling. An explicit absence from Presence excludes this grant.
+    let in_presence = !env
+        .cfg
+        .multiplier_if_set("MinionPresenceCount")
+        .is_some_and(|n| n <= 0.0)
+        && (!minion.is_companion || env.cfg.conditions.get("CompanionInPresence") != Some(&false));
+    let aura_share = if in_presence {
+        minion.mod_db.sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from("MainHandDamageToAllies")],
+        )
+    } else {
+        0.0
+    };
+    let share = companion_share + aura_share;
     if share <= 0.0 {
         return;
     }
