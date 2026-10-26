@@ -653,6 +653,12 @@ fn is_consumable_flag(name: &str) -> bool {
             | "CannotChill"
             | "CannotFreeze"
             | "CannotElectrocute"
+            // Brutality's native restrictions use the existing typed gate
+            // after conversion and damage gained as another type.
+            | "DealNoFire"
+            | "DealNoCold"
+            | "DealNoLightning"
+            | "DealNoChaos"
             | "LuckyHits"
             | "CritLucky"
             | "ElementalLuckHits"
