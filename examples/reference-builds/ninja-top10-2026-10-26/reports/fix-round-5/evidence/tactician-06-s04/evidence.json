@@ -1,0 +1,461 @@
+{
+  "schema": "tactician-06-s04-causal-evidence/v1",
+  "source_commit": "23e013775504fb933006c50a060298728545ccb0",
+  "measurement_stage": "pre-S12; do not replace with post-fix numbers",
+  "classification": "leave whole row unclassified; no S04 rollback; pinned implements S04; baseline agreement was cancellation",
+  "provenance": {
+    "before": {
+      "path": "/root/codes/pobr/.cache/accuracy-round4-2026-10-26/after-builds/tactician-06.json",
+      "sha256": "28dccf856786708e6383a920e924103e536f072b8d70265fb9cc3dbdffe5a4dd"
+    },
+    "after": {
+      "path": "/root/codes/pobr/.cache/accuracy-round5-2026-10-26/pre-banner/after-builds/tactician-06.json",
+      "sha256": "dfcb35f4b7127a01a39d3bbf38cfa0c99e4e71ef38f86f167ab6c5f8d53be129"
+    },
+    "details": {
+      "path": "/root/codes/pobr/.cache/accuracy-round5-2026-10-26/evidence/tactician-06-s04/current-details.json",
+      "sha256": "dfecddd22007554f6b7efa803e7ce8ce34c9feebf4250a252507f05b3cbd7128"
+    },
+    "pinned": {
+      "path": "/root/codes/pobr/.cache/pob2-oracle/37191f90cb4dcad1-eae7b54469.json",
+      "sha256": "b71bd217efa83662ae4e4e56cd97b708f85796df89171ad4000dcd94d440e630"
+    },
+    "code": {
+      "path": "/root/codes/pobr/examples/reference-builds/ninja-top10-2026-10-26/builds/tactician-06/code.txt",
+      "sha256": "09ca767f7dc1fbde95bfd750fa162bd19db8932acdb3baff6b914d82aadc161f"
+    }
+  },
+  "cli_receipt": {
+    "calls": 1,
+    "binary": "/root/codes/pobr/target/debug/pobr",
+    "sha256": "cc2200bf2f8b3bce9c0b145c8a6a72cd3b6e72beeba0c9483a15a7f86829e1b0",
+    "reference_basis": true,
+    "build_code_changed": false,
+    "oracle_runs": 0
+  },
+  "observed": {
+    "before": 1202.507591479,
+    "after": 2501.627546392,
+    "saved": 1201.5931816863,
+    "pinned": 1201.593182,
+    "delta_after_minus_before": 1299.1199549130001,
+    "gap_after_minus_pinned": 1300.034364392,
+    "baseline_minus_pinned": 0.9144094789999144
+  },
+  "native_share_source": {
+    "node": {
+      "skill": 16249,
+      "id": "AscendancyMercenary1Notable2",
+      "name": "Watch How I Do It",
+      "kind": "notable",
+      "stats": [
+        "[Allies] in your [Presence] gain added [Attack] Damage equal\nto 25% of your main hand Weapon's damage"
+      ],
+      "group": 307,
+      "orbit": 0,
+      "orbit_index": 0,
+      "x": 2206.941488,
+      "y": 15163.039415,
+      "ascendancy_id": "Mercenary1"
+    },
+    "stat_id": "aura_grant_%_base_main_hand_attack_damage_to_nearby_allies",
+    "ledger_before": [
+      {
+        "source_kind": "AscendancyNode",
+        "source_id": "node.16249",
+        "slot": null,
+        "holder": "Watch How I Do It",
+        "text": "[Allies] in your [Presence] gain added [Attack] Damage equal",
+        "status": "unparsed",
+        "reason": null,
+        "used_in": [],
+        "modifiers": []
+      },
+      {
+        "source_kind": "AscendancyNode",
+        "source_id": "node.16249",
+        "slot": null,
+        "holder": "Watch How I Do It",
+        "text": "to 25% of your main hand Weapon's damage",
+        "status": "unparsed",
+        "reason": null,
+        "used_in": [],
+        "modifiers": []
+      }
+    ],
+    "ledger_after": [
+      {
+        "source_kind": "AscendancyNode",
+        "source_id": "node.16249",
+        "slot": null,
+        "holder": "Watch How I Do It",
+        "text": "[Allies] in your [Presence] gain added [Attack] Damage equal to 25% of your main hand Weapon's damage",
+        "status": "applied",
+        "reason": null,
+        "used_in": [],
+        "modifiers": [
+          {
+            "name": "ExtraAura",
+            "mod_type": "LIST",
+            "value": "[nested 1]",
+            "applied": null,
+            "status": "applied",
+            "reason": null,
+            "used_in": []
+          }
+        ]
+      }
+    ],
+    "weapon_item_id": 14,
+    "weapon_slot": "weapon1",
+    "active_item_set": 1,
+    "weapon_base": {
+      "id": "Metadata/Items/Weapons/TwoHandWeapons/TwoHandMaces/FourTwoHandMace13",
+      "name": "Giant Maul",
+      "item_class": "Two Hand Mace",
+      "drop_level": 65,
+      "width": 2,
+      "height": 4,
+      "tags": [],
+      "implicits": [],
+      "mod_domain": 1,
+      "weapon": {
+        "physical_min": 96,
+        "physical_max": 144,
+        "speed_ms": 909,
+        "crit_chance": 500,
+        "range": 15
+      }
+    },
+    "weapon_raw_text": "Rarity: UNIQUE\nThe Hammer of Faith\nGiant Maul\nUnique ID: 3488c1025bd00384d9e15d9134ab4df24534a4012d5e97f5ca7019ea4b59eb3f\nItem Level: 82\nQuality: 20\nSockets: S S S\nRune: Perfect Iron Rune\nRune: Perfect Iron Rune\nRune: Perfect Iron Rune\nLevelReq: 65\nImplicits: 3\n{enchant}{rune}60% increased Physical Damage\n{enchant}{rune}Bonded: 60% increased effect of Fully Broken Armour\n{enchant}42% increased Elemental Damage with Attacks\n397% increased Physical Damage\n10% reduced Attack Speed\n+9% to all Elemental Resistances\n59% increased Mana Regeneration Rate\nEvery 10 seconds, gain a random non-damaging Shrine buff for 20 seconds\nTwice Corrupted",
+    "sceptre_raw_text": "Rarity: RARE\nCataclysm Cry\nStoic Sceptre\nSpirit: 100\nUnique ID: e6661031ca06ab211bb1b5cfb509b0ad728364a20cd795e13eeb916b1a2236a4\nItem Level: 82\nQuality: 20\nSockets: S S\nRune: Stag Idol\nRune: Idol of the Martyr\nLevelReq: 50\nImplicits: 7\n{enchant}{rune}Allies in your Presence deal 1 to 40 added Attack Lightning Damage\n{enchant}{rune}Bonded: Allies in your Presence Regenerate 3% of your Maximum Life per second\n{enchant}{rune}Bonded: 25% reduced Life Regeneration rate\n{enchant}{rune}40% reduced Presence Area of Effect\n{enchant}{rune}Aura Skills have 25% increased Magnitudes\n{enchant}{rune}Bonded: 40% increased Attack Damage while Shapeshifted\nGrants Skill: Level 20 Discipline\nAllies in your Presence deal 119% increased Damage\nAllies in your Presence deal 14 to 31 added Attack Physical Damage\nAllies in your Presence have 35% increased Critical Hit Chance\nAllies in your Presence have 15% increased Attack Speed\nAura Skills have 20% increased Magnitudes\nAllies in your Presence deal 22 to 35 added Attack Cold Damage",
+    "local_physical_increased_percent": 457,
+    "quality_percent": 20,
+    "weapon_range": [
+      641.664,
+      962.496
+    ],
+    "shared_range": [
+      160.416,
+      240.624
+    ],
+    "shared_effective_range": [
+      112.29119999999999,
+      168.43679999999998
+    ],
+    "no_player_global_damage_used": true
+  },
+  "selected_minion": {
+    "id": "WolfMinion",
+    "summoned_by": "WolfPackPlayer",
+    "skill": "MeleeAtAnimationSpeedWolfCompanion",
+    "gem_level": 19,
+    "quality": 20,
+    "monster_level": 38,
+    "native_monster": {
+      "id": "WolfMinion",
+      "monster_variety_id": "Metadata/Monsters/Wolves/WolfCompanionPlayerSummoned",
+      "name": "Wolf Companion",
+      "monster_tags": [
+        "beast",
+        "fast_movement",
+        "mammal_beast",
+        "not_int",
+        "not_str",
+        "Snap_onhit_audio"
+      ],
+      "life": 1.1,
+      "damage": 0.7,
+      "damage_spread": 0.2,
+      "attack_time": 0.8,
+      "attack_range": 12.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 42.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "limit": "WolfLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "companion_fire_resist": 0.0,
+      "companion_cold_resist": 0.0,
+      "companion_lightning_resist": 0.0,
+      "companion_chaos_resist": 0.0,
+      "monster_category": "Beast",
+      "evasion": 0.3,
+      "skill_list": [
+        "MeleeAtAnimationSpeedWolfCompanion",
+        "WolfLeapAttackMinion"
+      ]
+    },
+    "ally_damage_table": 180.29,
+    "virtual_weapon_range": [
+      100.9624,
+      151.44359999999998
+    ],
+    "added_damage_effectiveness": 0.7,
+    "sceptre_flat": {
+      "Physical": [
+        14,
+        31
+      ],
+      "Cold": [
+        22,
+        35
+      ],
+      "Lightning": [
+        1,
+        40
+      ]
+    },
+    "increased_damage": 183,
+    "feeding_frenzy_more": 30,
+    "crit_chance": 0.0675,
+    "crit_multiplier": 2.15,
+    "crit_effect": 1.077625,
+    "action_rate": 1.4375,
+    "physical_mitigation": {
+      "armour": 8062.5,
+      "armour_ratio": 10.0,
+      "damage_taken": 1.06,
+      "equation": "H * (1-A/(A+10*H)) * 1.06, evaluated separately for ordinary H and crit H*2.15"
+    },
+    "elemental_mitigation": {
+      "inferred_multiplier": 1.0494000000016768,
+      "arithmetic_profile_multiplier": 1.0494,
+      "equivalent_resistance_percent": 1,
+      "status": "inferred from retained total after reconstructing physical; exact upstream resistance source not independently verified in this bounded pass"
+    }
+  },
+  "four_way": [
+    {
+      "weapon_share": false,
+      "banner_damage": false,
+      "kind": "analytical_counterfactual",
+      "damage_more": 1.3,
+      "physical_noncrit_average": 522.2450869999999,
+      "elemental_noncrit_average": 126.18969999999999,
+      "physical_effective_average": 249.689912235396,
+      "elemental_effective_average": 142.7028431303475,
+      "action_rate_held_fixed": 1.4375,
+      "dps": 564.0645858382562
+    },
+    {
+      "weapon_share": true,
+      "banner_damage": false,
+      "kind": "analytical_counterfactual",
+      "damage_more": 1.3,
+      "physical_noncrit_average": 1038.6442429999997,
+      "elemental_noncrit_average": 126.18969999999999,
+      "physical_effective_average": 695.3782368277235,
+      "elemental_effective_average": 142.7028431303475,
+      "action_rate_held_fixed": 1.4375,
+      "dps": 1204.7415524397272
+    },
+    {
+      "weapon_share": false,
+      "banner_damage": true,
+      "kind": "analytical_counterfactual",
+      "damage_more": 2.29,
+      "physical_noncrit_average": 919.9548070999999,
+      "elemental_noncrit_average": 222.28800999999999,
+      "physical_effective_average": 585.150473413962,
+      "elemental_effective_average": 251.37654674499677,
+      "action_rate_held_fixed": 1.4375,
+      "dps": 1202.5075914785032
+    },
+    {
+      "weapon_share": true,
+      "banner_damage": true,
+      "kind": "analytical_counterfactual",
+      "damage_more": 2.29,
+      "physical_noncrit_average": 1829.6117818999996,
+      "elemental_noncrit_average": 222.28800999999999,
+      "physical_effective_average": 1488.8860942226015,
+      "elemental_effective_average": 251.37654674499677,
+      "action_rate_held_fixed": 1.4375,
+      "dps": 2501.627546390923
+    }
+  ],
+  "attribution": {
+    "S04_delta_with_banner_held_on": 1299.1199549124196,
+    "delta_residual": 5.804849934065714e-10,
+    "after_reconstruction_residual": 1.0772964742500335e-09,
+    "before_reconstruction_residual": 4.96811480843462e-10,
+    "banner_damage_delta_with_S04_held_on": 1296.8859939511956,
+    "remaining_no_banner_profile_minus_pinned": 3.1483704397271595,
+    "remaining_status": "3.14837 DPS combines rounding/resistance-profile differences; not asserted as a verified game rounding boundary and not a whole-row known difference"
+  },
+  "pinned_S04_proof": {
+    "base_ranges": [
+      {
+        "bound": "Min",
+        "wolf_floor": 100,
+        "sceptre_flat": 14,
+        "weapon_rounded": 642,
+        "weapon_share_percent_stat_ceil": 161,
+        "added_effectiveness": 0.7,
+        "sum": 222.5,
+        "cached": 222.5
+      },
+      {
+        "bound": "Max",
+        "wolf_floor": 151,
+        "sceptre_flat": 31,
+        "weapon_rounded": 962,
+        "weapon_share_percent_stat_ceil": 241,
+        "added_effectiveness": 0.7,
+        "sum": 341.4,
+        "cached": 341.4
+      }
+    ],
+    "physical_hit_range": [
+      819,
+      1256
+    ],
+    "physical_hit_average": 1037.5,
+    "physical_crit_average": 2230.625,
+    "cold_hit_average": 73.5,
+    "lightning_hit_average": 53,
+    "elemental_resistance": 2,
+    "enemy_armour": 8063,
+    "dps_reconstructed_from_cached_ranges": 1201.5931816863156,
+    "cache_rounding_residual": 3.136844952678075e-07,
+    "more_damage_rows": [
+      {
+        "evalValue": 30,
+        "name": "Damage",
+        "queryName": "Damage",
+        "rawValue": 30,
+        "source": "Skill:SupportFeedingFrenzyPlayer",
+        "type": "MORE"
+      }
+    ],
+    "code_locations": [
+      "vendor/PathOfBuilding-PoE2/src/Modules/ModParser.lua:3302",
+      "vendor/PathOfBuilding-PoE2/src/Classes/PassiveTree.lua:481",
+      "vendor/PathOfBuilding-PoE2/src/Modules/CalcOffence.lua:820"
+    ]
+  },
+  "banner": {
+    "native_level_18": {
+      "gem_level": 18,
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "value": 9400.0
+        },
+        {
+          "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+          "value": 25.0
+        },
+        {
+          "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+          "value": 50.0
+        },
+        {
+          "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+          "value": 25.0
+        }
+      ]
+    },
+    "native_constants": [
+      {
+        "stat": "active_skill_base_area_of_effect_radius",
+        "value": 60.0
+      },
+      {
+        "stat": "active_skill_requires_X_glory",
+        "value": 200.0
+      },
+      {
+        "stat": "active_skill_generates_mp_%_glory_per_attack_hit",
+        "value": 100.0
+      }
+    ],
+    "gem_grants_additional_planted_effect": true,
+    "config_bannerPlanted": true,
+    "config_bannerValour": 50,
+    "effect_sums": {
+      "AuraEffect": 39,
+      "Magnitude": 121
+    },
+    "effect_factor": 3.0719000000000003,
+    "more_attack_damage_percent": 76,
+    "source_before_and_after": "buff.WarBannerPlayer.base_skill_buff_attack_damage_+%_final_to_apply",
+    "recipient_and_activation": "Planted War Banner aura affects you and nearby allies. Explicit bannerPlanted=true supplies the selected activation snapshot; existing aura-area assumption supplies recipient presence. No history/uptime is inferred.",
+    "native_text_corroboration": {
+      "url": "https://poe2db.tw/us/War_Banner",
+      "checked_date": "2026-10-26",
+      "paraphrase": "Maximum Glory permits placing a timed banner; the aura grants the character and nearby allies attack damage, attack speed and accuracy."
+    },
+    "pinned_omission_cause_status": "consistent with recipient-local BannerPlanted condition retained on aura modifiers while config sets it only on player; source inspection plus cached missing modifier, no modified oracle execution",
+    "pinned_code_locations": [
+      "src/Data/Skills/act_str.lua:21034",
+      "src/Modules/ConfigOptions.lua:260",
+      "src/Modules/CalcPerform.lua:2320"
+    ]
+  },
+  "separate_confirmed_static_gap": {
+    "stat_id": "base_skill_buff_banner_attack_speed_+%_to_apply",
+    "value_at_level18": 25,
+    "planted_aura": true,
+    "proven_by": [
+      "native statset positive value",
+      "active same planted aura supplies damage/accuracy",
+      "no native or vendor extracted speed mapping",
+      "uncapped action-rate formula contains only +15% from sceptre"
+    ],
+    "current_rate_formula": {
+      "actor": {
+        "kind": "minion",
+        "index": 0
+      },
+      "base_total": 0.0,
+      "inc_total": 15.0,
+      "more_total": 1.0,
+      "mods": [
+        {
+          "mod_type": "INC",
+          "value": 15.0,
+          "active": true,
+          "source_text": "Allies in your Presence have 15% increased Attack Speed",
+          "origin_kind": "ItemAffix",
+          "origin_id": "item.weapon2.explicit",
+          "slot": "weapon2"
+        }
+      ],
+      "formula": {
+        "steps": [
+          {
+            "op": "base",
+            "operand": 1.25,
+            "result": 1.25
+          },
+          {
+            "op": "increased",
+            "operand": 15.0,
+            "result": 1.4375
+          }
+        ],
+        "value": 1.4375
+      }
+    },
+    "pinned_rate": 1.4375,
+    "minimal_path": "rules/skill_stats.rs::player_buff_modifiers_impl -> existing BuffSpec Aura pass; AttackSpeed INC with BannerPlanted condition; per-stat exporter absent provenance",
+    "expected_scaled_increase_percent": 76,
+    "analytical_rate_with_missing_buff": 2.3874999999999997,
+    "included_in_four_way": false,
+    "owner": "root-authorized S12 follow-up, separate from this pre-S12 receipt"
+  },
+  "limits": [
+    "No in-game rounding test",
+    "Aura-area presence uses existing static assumption",
+    "No whole-row known classification",
+    "No production changes while producing this evidence",
+    "No additional CLI/oracle/cargo/batch calls"
+  ]
+}

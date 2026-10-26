@@ -1,0 +1,78 @@
+{
+  "schema": "banner-speed-s12-validation/v1",
+  "commit": "d2f33cec8439d5a55789594d5adf60fd859c6f3a",
+  "parent_source": "23e013775504fb933006c50a060298728545ccb0",
+  "cause": "Native planted War Banner attack-speed stat lacked both a native mapping and extracted exporter mapping.",
+  "stat_id": "base_skill_buff_banner_attack_speed_+%_to_apply",
+  "native_values": {
+    "1": 25,
+    "18": 25,
+    "20": 25
+  },
+  "mapping": {
+    "name": "AttackSpeed",
+    "type": "INC",
+    "condition": "BannerPlanted",
+    "path": "player_buff_modifiers_impl -> existing BuffSpec Aura magnitude/recipient path"
+  },
+  "exporter_coverage": {
+    "absent_stat_only": true,
+    "rule_id": "base_skill_buff_banner_attack_speed_+%_to_apply",
+    "other_banner_stats_unchanged": true
+  },
+  "files": [
+    "crates/pobr-core/src/rules/skill_stats.rs",
+    "crates/pobr-build/tests/skills/aura_gems.rs"
+  ],
+  "regression": {
+    "name": "planted_war_banner_native_speed_reaches_attacks_once_with_its_source",
+    "scaled_value": 76,
+    "scaling": "floor(25 * 1.39 * 2.21)",
+    "wolf_rate_with_no_other_speed": 2.2,
+    "reference_wolf_rate": 1.25,
+    "checks": [
+      "native level1/18/20 positive25",
+      "player attack rate factor1.76",
+      "player spell cast rate unchanged",
+      "minion speed/source once",
+      "explicit planted false",
+      "disabled source",
+      "compatible MagnifiedArea support",
+      "inapplicable Blasphemy support",
+      "global Banner/Aura properties",
+      "exporter metadata retained",
+      "reference skips only speed, retains damage76% MORE and accuracy153% INC"
+    ]
+  },
+  "validation": [
+    {
+      "command": "mise run regen",
+      "result": "pass; generator tests pass; no generated-file drift"
+    },
+    {
+      "command": "cargo test -q -p pobr-build --test skills planted_war_banner_native_speed_reaches_attacks_once_with_its_source",
+      "result": "1 passed, 0 failed"
+    },
+    {
+      "command": "cargo clippy -q -p pobr-core -p pobr-build --lib --tests -- -D warnings",
+      "result": "pass"
+    },
+    {
+      "command": "cargo fmt --all --check",
+      "result": "pass"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass"
+    }
+  ],
+  "not_run": [
+    "full-build CLI after S12",
+    "oracle",
+    "triage",
+    "gate",
+    "holdout"
+  ],
+  "pre_S12_evidence": "../tactician-06-s04/evidence.json",
+  "parent_remaining": "integration/review and one affected remeasurement; Tactician full row remains unclassified"
+}

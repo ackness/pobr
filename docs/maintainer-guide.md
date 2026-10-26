@@ -1892,3 +1892,11 @@ increased Attack Speed through the existing planted aura. It uses the selected
 it does not infer Glory generation, placement frequency or uptime. The pinned
 exporter omits this speed stat, so reference-basis comparison excludes only this
 contribution and retains the existing damage and accuracy contributions.
+
+The frozen Tactician06 comparison illustrates why agreement alone is insufficient:
+pinned PoB2 already includes Watch How I Do It's weapon share, but omits the
+planted Banner damage on the selected wolf. The imported `bannerPlanted=true`
+supports the native active-aura snapshot. Earlier agreement came from cancelling
+differences. The [isolated evidence](../examples/reference-builds/ninja-top10-2026-10-26/reports/fix-round-5/evidence/tactician-06-s04/evidence.json)
+retains a qualified residual rather than registering the whole DPS row as known;
+the subsequent Banner speed repair is measured separately in default mode.

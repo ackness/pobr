@@ -1,0 +1,30 @@
+{
+  "parent_measurement_revision": "45a3c00a265a60ad69cf2c152395f443089abf13",
+  "source_audit": "examples/reference-builds/ninja-top10-2026-10-26/reports/fix-round-4/completion-scope-audit.json",
+  "authorized_scope": "Twelve proven static defects in the frozen corpus, existing panels and selected actors; no inferred event histories",
+  "groups": {
+    "resources_luck": [
+      "S01",
+      "S02",
+      "S03"
+    ],
+    "allies_equipment": [
+      "S04",
+      "S05",
+      "S06"
+    ],
+    "utility_ailments": [
+      "S07",
+      "S08",
+      "S09"
+    ]
+  },
+  "catalog_owner": "recovery-leech-accuracy; data/overlay-common/special_mods.json",
+  "gate": "One full batch gate, followed by affected-step reruns after reviewed source fixes; all run receipts retained.",
+  "additional_proven_static_causes": {
+    "S10": "Oisin elemental instead of physical Mana leech",
+    "S11": "Brutality existing DealNo elemental/chaos flags",
+    "S12": "Native planted War Banner attack-speed aura, exposed by the new Tactician06 row attribution"
+  },
+  "bounded_clearance": "Second Wind: 57 groups in the 85-group three-family audit; the two selected Convalescence effects are ineligible. Unsupported capability remains diagnostic elsewhere."
+}

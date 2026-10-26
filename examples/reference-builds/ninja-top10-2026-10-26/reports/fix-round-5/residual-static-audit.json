@@ -1,0 +1,2225 @@
+{
+  "schema_version": 1,
+  "audit_kind": "bounded_residual_static_source_audit",
+  "created_at_utc": "2026-10-26T18:51:41.964774+00:00",
+  "source_root": "/root/codes/pobr",
+  "current_source_commit": "9b9f9cc1ad9fee9c52ed2714cdf850b86bca400d",
+  "integrated_batch": "9db9a395 (all S01-S09; excluded from re-audit); inspected HEAD differs by maintainer documentation only",
+  "measured_baseline": {
+    "git_commit": "45a3c00a265a60ad69cf2c152395f443089abf13",
+    "started_at": "2026-10-26T18:00:05.739228+00:00",
+    "cli_sha256": "f1f8eedc8da70f236da1b5d1c623822b6598ad1196da87ebafd0c73fb08544f6",
+    "vendor_commit": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+    "command": "POBR_BIN=target/debug/pobr python3 .cache/accuracy-round4-2026-10-26/run-triage-save-after.py examples/wasm-benchmark/builds examples/reference-builds/tuned/builds examples/reference-builds/ninja-top10-2026-10-26/builds --jobs 4 --top 60 --json .cache/accuracy-round4-2026-10-26/after.json"
+  },
+  "measured_cache": "/root/codes/pobr/.cache/accuracy-round4-2026-10-26/after-builds",
+  "summary": {
+    "builds_scanned": 230,
+    "support_groups_partitioned": 85,
+    "unique_builds_with_any_family": 69,
+    "families": 3,
+    "proven_defect_families": 2,
+    "proven_affected_builds": [
+      "pathfinder-06",
+      "warbringer-01",
+      "disciple-of-varashta-02"
+    ],
+    "proven_affected_actor_group_count": 4,
+    "bounded_clearance_families": [
+      "second_wind"
+    ],
+    "coverage": {
+      "oisin": {
+        "builds_with_imported_support": 16,
+        "support_groups": 16,
+        "category_group_counts": {
+          "unselected_group_no_proven_selected_output_effect": 15,
+          "proven_selected_static_defect": 1
+        },
+        "diagnostic_records": 1,
+        "diagnostic_builds": [
+          "pathfinder-06"
+        ]
+      },
+      "brutality_iii": {
+        "builds_with_imported_support": 8,
+        "support_groups": 12,
+        "category_group_counts": {
+          "proven_secondary_actor_static_defect": 2,
+          "unselected_group_no_proven_selected_output_effect": 9,
+          "proven_selected_static_defect": 1
+        },
+        "diagnostic_records": 12,
+        "diagnostic_builds": [
+          "lich-03",
+          "warbringer-01",
+          "witchhunter-04",
+          "witchhunter-07"
+        ]
+      },
+      "second_wind": {
+        "builds_with_imported_support": 51,
+        "support_groups": 57,
+        "category_group_counts": {
+          "unselected_group_no_proven_selected_output_effect": 55,
+          "selected_reservation_effect_ineligible": 2
+        },
+        "diagnostic_records": 6,
+        "diagnostic_builds": [
+          "chronomancer-06",
+          "titan-01",
+          "titan-05",
+          "witchhunter-06",
+          "witchhunter-10"
+        ]
+      }
+    }
+  },
+  "findings": [
+    {
+      "family": "oisin",
+      "status": "proven_selected_static_defect",
+      "affected_builds": [
+        "pathfinder-06"
+      ],
+      "affected_actors": [
+        {
+          "build": "pathfinder-06",
+          "actor": "player",
+          "skill": "IceShotPlayer",
+          "group_index": 3
+        }
+      ],
+      "problem": "Selected Ice Shot keeps physical-only mana-leech eligibility; Oisin requires elemental instead of physical.",
+      "game_evidence": {
+        "effect_id": "SupportOisinsOathPlayer",
+        "implicit_stat": "mana_leech_from_elemental_instead",
+        "primary_type_gate": [
+          "Attack",
+          "CrossbowAmmoSkill",
+          "Damage",
+          "Spell"
+        ],
+        "text_url": "https://poe2db.tw/us/Ois%C3%ADns_Oath",
+        "verified_text": "Mana Leech from Supported Skills recovers based on Elemental Damage Types instead of Physical Damage"
+      },
+      "causal_proof": [
+        "Enabled Oisin is in selected group 3; Ice Shot has Attack and passes the retained type gate. Its spell tag is not an exclusivity restriction.",
+        "Cached applied ring grants PhysicalDamageManaLeech BASE 8.7; mana is positive and no CannotLeechMana/CannotGainMana restriction is present in the cached lines.",
+        "Cached hit has positive Physical 9732.511165133, Lightning 26506.898260381502, Cold 60671.4342589555 and Fire 17726.923460505503 averages. These are baseline observations, not recalculated current values.",
+        "The native stat is unmapped/unknown_mod_name. Extracted mapping requests ManaLeechBasedOnElementalDamage plus Condition:NoManaLeechFromPhysicalDamage; the flag whitelist rejects them.",
+        "Current leech_percent already knows how to extend the physical percentage to elemental types but contains no Oisin physical-exclusion consumer. It therefore still funds leech from physical instead of elemental damage.",
+        "Existing per-hit recovery output consumes the typed leech instance amount. Its amount is not capped by the mana rate ceiling, so rate saturation is not a valid reason to call the source-type error effectless."
+      ],
+      "wrong_existing_output": "ManaLeechGainPerHit / typed mana-leech amount. Exact current value and sustained ManaLeechGainRate delta not measured; capped rates may remain unchanged.",
+      "smallest_existing_path": "Translate the native Oisin stat into existing typed leech eligibility and consume the physical exclusion in leech_percent. Merely admitting the elemental-extension flag would incorrectly keep physical leech too. Preserve attack restrictions, the existing whole-hit ceiling and recovery conventions.",
+      "other_coverage": "15 other imported support groups are unselected; no selected-output defect established for those hosts.",
+      "measurement_status": "Source-proven using retained static inputs; no new calculation or current-head numerical delta."
+    },
+    {
+      "family": "brutality_iii",
+      "status": "proven_selected_static_defect",
+      "affected_builds": [
+        "warbringer-01",
+        "disciple-of-varashta-02"
+      ],
+      "affected_actors": [
+        {
+          "build": "warbringer-01",
+          "actor": "player",
+          "skill": "ShieldWallPlayer",
+          "group_index": 3
+        },
+        {
+          "build": "disciple-of-varashta-02",
+          "actor": "RaisedSkeletonWarriors",
+          "skill": "MinionMeleeStep",
+          "summoned_by": "SummonSkeletalWarriorsPlayer",
+          "group_index": 2
+        },
+        {
+          "build": "disciple-of-varashta-02",
+          "actor": "RaisedSkeletonReaver",
+          "skill": "MinionMeleeStep",
+          "summoned_by": "SummonSkeletalReaversPlayer",
+          "group_index": 6
+        }
+      ],
+      "problem": "Compatible Brutality III numeric physical MORE is admitted, while its no-elemental/no-chaos flags are rejected; forbidden damage survives existing actor output paths.",
+      "game_evidence": {
+        "effect_id": "SupportBrutalityPlayerThree",
+        "constant_stats": {
+          "support_brutality_physical_damage_+%_final": 30,
+          "hits_ignore_enemy_monster_physical_damage_reduction_%_chance": 20
+        },
+        "implicit_stats": [
+          "deal_no_elemental_damage",
+          "base_deal_no_chaos_damage"
+        ],
+        "retained_descriptions": [
+          "Deal no Elemental Damage",
+          "Deal no Chaos Damage"
+        ],
+        "description_source": "data/0.5.5.4.2/overlay/stat_descriptions.json / scopes/stat_descriptions/single"
+      },
+      "causal_proof": [
+        "warbringer-01 selected Shield Wall is Attack, has enabled Brutality III, and the cached ledger applies its PhysicalDamage MORE 30 to TotalHitAvg.",
+        "The same cache rejects both restriction stats as unknown_mod_name yet reports Fire average 47216.2222035 in the selected hit and IgniteDPS 4989.044168218. Fire damage must be zero with this support. Exact current DPS/ignite delta is not asserted.",
+        "disciple-of-varashta-02 enabled Warrior and Reaver gem groups contain Brutality III and have computed MinionMeleeStep rows. The retained skill type includes Attack. Current minion_skill_modifiers judges and maps each compatible support through the same flag translator.",
+        "That build has applied Entropic Incarnation node 30720: minions gain 10% of physical damage as chaos. Current mapper rejects DealNoChaos; the existing damage gate therefore cannot remove this granted chaos component. This establishes a second build with affected actor DPS without assuming an event or an unused skill.",
+        "The shared typed damage gate already consumes DealNoFire/Cold/Lightning/Chaos after conversion; the restrictions are missing at translation, not an absent damage simulation."
+      ],
+      "wrong_existing_output": "warbringer-01 selected elemental hit damage and damage-derived outputs; disciple-of-varashta-02 linked Warrior/Reaver DPS includes forbidden gained chaos.",
+      "smallest_existing_path": "Admit the four already-consumed DealNo<Type> flag names or add equivalent native stat translation, through the shared support mapping used by player and minion actors.",
+      "separate_unverified_subcase": {
+        "stat": "hits_ignore_enemy_monster_physical_damage_reduction_%_chance",
+        "status": "unverified_current_output_effect",
+        "reason": "20% chance is also rejected; current offence code explicitly lacks this probabilistic reduction branch. A concrete positive-mitigation contribution for these actor outputs was not established from retained decompositions. Do not infer an exact DPS correction or bundle a larger model into the proven flag fix."
+      },
+      "other_coverage": "Nine support groups outside the affected player/minion actors remain unselected. Three additional diagnostic carriers (lich-03, witchhunter-04, witchhunter-07) expose restrictions from other skills, not their selected main skill.",
+      "measurement_status": "Player fire leakage is directly visible in the 45a3 cache. Minion chaos leakage is source-proven from applied passive plus eligible support; cached minion rows lack type decomposition, so numerical magnitude remains unverified."
+    },
+    {
+      "family": "second_wind",
+      "status": "no_justified_change_under_selected_inputs",
+      "affected_builds": [],
+      "proven_defect_count": 0,
+      "game_evidence": {
+        "implicit_stat": "support_double_number_of_cooldown_uses",
+        "required_skill_types": [
+          "Cooldown",
+          "AffectedByCooldownRate"
+        ],
+        "excluded_skill_types": [
+          "Triggered",
+          "Instant",
+          "Meta"
+        ],
+        "text_url": "https://poe2db.tw/us/Second_Wind_II",
+        "verified_text": "Supported Skills have twice as many Cooldown Uses"
+      },
+      "selected_groups": [
+        {
+          "build": "pathfinder-02",
+          "group_index": 3,
+          "selected_effect": "ConvalescencePlayer",
+          "status": "ineligible_selected_reservation_effect"
+        },
+        {
+          "build": "tactician-07",
+          "group_index": 3,
+          "selected_effect": "ConvalescencePlayer",
+          "status": "ineligible_selected_reservation_effect"
+        }
+      ],
+      "causal_proof": [
+        "The full 230 scan finds 57 groups across 51 builds; exactly two are selected main groups: pathfinder-02 and tactician-07.",
+        "Both caches select ConvalescencePlayer, the persistent reservation effect. Its retained types are Buff/OngoingSkill/HasReservation/Persistent/ReserveInAllSets/AttackInPlace; it has neither required cooldown type.",
+        "No support in those two groups adds a cooldown type. Current fixed-point support judgement therefore rejects Second Wind II for the selected reservation effect. The cache has cooldown 0 and action rate 0, with no Second Wind stat diagnostics on these selected effects.",
+        "ConvalescenceActivePlayer is separately granted by the gem, has Cooldown and a 30000 ms cooldown with one stored use, but it is not the selected effect in either build. Do not silently substitute it.",
+        "The five cached double-use diagnostics belong to unselected Frost Bomb (chronomancer-06) or Infernal Cry (titan-01, titan-05, witchhunter-06, witchhunter-10). The Witchhunter Frostbolt cooldown does not make the Infernal Cry support local to Frostbolt."
+      ],
+      "retained_model_limit": "The native double-use stat is unknown and calc_cooldown only adds AdditionalCooldownUses. This remains a real unsupported capability for an eligible selected skill; it is not globally effectless.",
+      "bounded_clearance": "No eligible selected actor with a demonstrated wrong stored-use output exists in this full230 input set. Do not implement from occurrence count alone. No recharge timeline, burst usage, or new configuration inferred.",
+      "separate_deferred_subcase": "Second Wind III restore-life-on-use is an event-based stat outside this capacity lead; its chronomancer-06 diagnostic is retained but not promoted to a defect."
+    }
+  ],
+  "coverage_method": "Read every frozen full230 cache and decode every corresponding retained code.txt. Partition all enabled active-skill-set groups containing these three support families by cached zero-based selected group, then include computed minion actors belonging to Brutality groups. No top-N filtering. Other features, sets and holdout were not inspected.",
+  "group_inventory": {
+    "oisin": [
+      {
+        "build": "amazon-06",
+        "group_index_zero_based": 7,
+        "host_ids": [
+          "HeraldOfThunderPlayer"
+        ],
+        "support_ids": [
+          "SupportOisinsOathPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "LightningSpearPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "chronomancer-03",
+        "group_index_zero_based": 15,
+        "host_ids": [
+          "PoweredByVerisiumPlayer"
+        ],
+        "support_ids": [
+          "SupportOisinsOathPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "CometPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "chronomancer-05",
+        "group_index_zero_based": 9,
+        "host_ids": [
+          "HeraldOfThunderPlayer"
+        ],
+        "support_ids": [
+          "SupportOisinsOathPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "GlacialLancePlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "deadeye-06",
+        "group_index_zero_based": 4,
+        "host_ids": [
+          "FreezingMarkPlayer"
+        ],
+        "support_ids": [
+          "SupportOisinsOathPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "IceShotPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "deadeye-09",
+        "group_index_zero_based": 10,
+        "host_ids": [
+          "HeraldOfThunderPlayer"
+        ],
+        "support_ids": [
+          "SupportOisinsOathPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "IceShotPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "deadeye-10",
+        "group_index_zero_based": 5,
+        "host_ids": [
+          "FreezingMarkPlayer"
+        ],
+        "support_ids": [
+          "SupportOisinsOathPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "IceShotPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "gemling-legionnaire-06",
+        "group_index_zero_based": 6,
+        "host_ids": [
+          "HeraldOfIcePlayer"
+        ],
+        "support_ids": [
+          "SupportOisinsOathPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "FallingThunderPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "invoker-06",
+        "group_index_zero_based": 7,
+        "host_ids": [
+          "HeraldOfThunderPlayer"
+        ],
+        "support_ids": [
+          "SupportOisinsOathPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "TempestBellPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "invoker-07",
+        "group_index_zero_based": 1,
+        "host_ids": [
+          "MetaCastOnCritPlayer",
+          "CometPlayer"
+        ],
+        "support_ids": [
+          "SupportOisinsOathPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "MeleeQuarterstaffPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "martial-artist-01",
+        "group_index_zero_based": 9,
+        "host_ids": [
+          "ChargedStaffPlayer"
+        ],
+        "support_ids": [
+          "SupportOisinsOathPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "FlickerStrikePlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "martial-artist-07",
+        "group_index_zero_based": 2,
+        "host_ids": [
+          "HollowFocusPlayer"
+        ],
+        "support_ids": [
+          "SupportOisinsOathPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "MeleeQuarterstaffPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "pathfinder-06",
+        "group_index_zero_based": 3,
+        "host_ids": [
+          "IceShotPlayer"
+        ],
+        "support_ids": [
+          "SupportOisinsOathPlayer"
+        ],
+        "selected_main_group": true,
+        "selected_main_skill": "IceShotPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "proven_selected_static_defect"
+      },
+      {
+        "build": "ritualist-01",
+        "group_index_zero_based": 2,
+        "host_ids": [
+          "TornadoShotPlayer"
+        ],
+        "support_ids": [
+          "SupportOisinsOathPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "IceShotPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "ritualist-04",
+        "group_index_zero_based": 5,
+        "host_ids": [
+          "TornadoShotPlayer"
+        ],
+        "support_ids": [
+          "SupportOisinsOathPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "IceShotPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "tactician-02",
+        "group_index_zero_based": 14,
+        "host_ids": [
+          "HeraldOfThunderPlayer"
+        ],
+        "support_ids": [
+          "SupportOisinsOathPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "ExplosiveSpearPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "witchhunter-03",
+        "group_index_zero_based": 8,
+        "host_ids": [
+          "GalvanicShardsAmmoPlayer"
+        ],
+        "support_ids": [
+          "SupportOisinsOathPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "MeleeCrossbowPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      }
+    ],
+    "brutality_iii": [
+      {
+        "build": "disciple-of-varashta-02",
+        "group_index_zero_based": 2,
+        "host_ids": [
+          "SummonSkeletalWarriorsPlayer"
+        ],
+        "support_ids": [
+          "SupportBrutalityPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "SummonFireDjinnPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "proven_secondary_actor_static_defect"
+      },
+      {
+        "build": "disciple-of-varashta-02",
+        "group_index_zero_based": 6,
+        "host_ids": [
+          "SummonSkeletalReaversPlayer"
+        ],
+        "support_ids": [
+          "SupportBrutalityPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "SummonFireDjinnPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "proven_secondary_actor_static_defect"
+      },
+      {
+        "build": "lich-03",
+        "group_index_zero_based": 2,
+        "host_ids": [
+          "FortifyingCryPlayer"
+        ],
+        "support_ids": [
+          "SupportBrutalityPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "FlameWallPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "ritualist-02",
+        "group_index_zero_based": 1,
+        "host_ids": [
+          "MeleeSpearPlayer"
+        ],
+        "support_ids": [
+          "SupportBrutalityPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "TwisterPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "ritualist-02",
+        "group_index_zero_based": 2,
+        "host_ids": [
+          "BloodBoilPlayer"
+        ],
+        "support_ids": [
+          "SupportBrutalityPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "TwisterPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "spirit-walker-04",
+        "group_index_zero_based": 1,
+        "host_ids": [
+          "Melee2HMacePlayer"
+        ],
+        "support_ids": [
+          "SupportBrutalityPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "SummonBeastPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "warbringer-01",
+        "group_index_zero_based": 2,
+        "host_ids": [
+          "SeismicCryPlayer"
+        ],
+        "support_ids": [
+          "SupportBrutalityPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "ShieldWallPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "warbringer-01",
+        "group_index_zero_based": 3,
+        "host_ids": [
+          "ShieldWallPlayer"
+        ],
+        "support_ids": [
+          "SupportBrutalityPlayerThree"
+        ],
+        "selected_main_group": true,
+        "selected_main_skill": "ShieldWallPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "proven_selected_static_defect"
+      },
+      {
+        "build": "warbringer-01",
+        "group_index_zero_based": 9,
+        "host_ids": [
+          "FortifyingCryPlayer"
+        ],
+        "support_ids": [
+          "SupportBrutalityPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "ShieldWallPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "witchhunter-04",
+        "group_index_zero_based": 6,
+        "host_ids": [
+          "SeismicCryPlayer"
+        ],
+        "support_ids": [
+          "SupportBrutalityPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "FrostboltPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "witchhunter-06",
+        "group_index_zero_based": 9,
+        "host_ids": [
+          "BonestormPlayer"
+        ],
+        "support_ids": [
+          "SupportBrutalityPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "FrostboltPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "witchhunter-07",
+        "group_index_zero_based": 5,
+        "host_ids": [
+          "SeismicCryPlayer"
+        ],
+        "support_ids": [
+          "SupportBrutalityPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "CometPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      }
+    ],
+    "second_wind": [
+      {
+        "build": "abyssal-lich-01",
+        "group_index_zero_based": 10,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "CometPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "abyssal-lich-03",
+        "group_index_zero_based": 8,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "TwisterPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "abyssal-lich-07",
+        "group_index_zero_based": 5,
+        "host_ids": [
+          "BlinkReservationPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "SparkPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "abyssal-lich-09",
+        "group_index_zero_based": 0,
+        "host_ids": [
+          "UnleashPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "BoneCagePlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "abyssal-lich-10",
+        "group_index_zero_based": 14,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "TwisterPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "acolyte-of-chayula-02",
+        "group_index_zero_based": 9,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "WolfPackPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "amazon-03",
+        "group_index_zero_based": 10,
+        "host_ids": [
+          "RefutationPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "TwisterPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "blood-mage-10",
+        "group_index_zero_based": 6,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "ChaosFrogExplosionPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "chronomancer-01",
+        "group_index_zero_based": 0,
+        "host_ids": [
+          "TemporalRiftPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "CometPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "chronomancer-01",
+        "group_index_zero_based": 6,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "CometPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "chronomancer-03",
+        "group_index_zero_based": 2,
+        "host_ids": [
+          "TimeFreezePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "CometPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "chronomancer-04",
+        "group_index_zero_based": 8,
+        "host_ids": [
+          "BlinkReservationPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "ChaosFrogExplosionPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "chronomancer-04",
+        "group_index_zero_based": 14,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "ChaosFrogExplosionPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "chronomancer-06",
+        "group_index_zero_based": 11,
+        "host_ids": [
+          "FrostBombPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "LivingBombPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "chronomancer-07",
+        "group_index_zero_based": 0,
+        "host_ids": [
+          "TimeSnapPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "RaiseZombiePlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "chronomancer-07",
+        "group_index_zero_based": 2,
+        "host_ids": [
+          "TimeFreezePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "RaiseZombiePlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "chronomancer-07",
+        "group_index_zero_based": 7,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "RaiseZombiePlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "chronomancer-10",
+        "group_index_zero_based": 1,
+        "host_ids": [
+          "TimeFreezePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerTwo"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "ThunderstormPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "deadeye-01",
+        "group_index_zero_based": 7,
+        "host_ids": [
+          "BarragePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "TwisterPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "deadeye-06",
+        "group_index_zero_based": 6,
+        "host_ids": [
+          "BarragePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "IceShotPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "disciple-of-varashta-03",
+        "group_index_zero_based": 5,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "SummonWaterDjinnPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "disciple-of-varashta-04",
+        "group_index_zero_based": 2,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "SummonSandDjinnPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "disciple-of-varashta-06",
+        "group_index_zero_based": 8,
+        "host_ids": [
+          "RefutationPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "FrostboltPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "gemling-legionnaire-06",
+        "group_index_zero_based": 13,
+        "host_ids": [
+          "GhostDancePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "FallingThunderPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "gemling-legionnaire-10",
+        "group_index_zero_based": 4,
+        "host_ids": [
+          "GhostDancePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "ArcPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "infernalist-01",
+        "group_index_zero_based": 0,
+        "host_ids": [
+          "DemonFormPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "CometPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "infernalist-06",
+        "group_index_zero_based": 10,
+        "host_ids": [
+          "PoweredByVerisiumPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerTwo"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "CometPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "invoker-02",
+        "group_index_zero_based": 9,
+        "host_ids": [
+          "GhostDancePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "IceNovaPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "invoker-02",
+        "group_index_zero_based": 10,
+        "host_ids": [
+          "ArcticArmourPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "IceNovaPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "invoker-08",
+        "group_index_zero_based": 0,
+        "host_ids": [
+          "MeditatePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "GrimPillarsPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "invoker-10",
+        "group_index_zero_based": 3,
+        "host_ids": [
+          "PoweredByVerisiumPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerTwo"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "LivingBombPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "lich-03",
+        "group_index_zero_based": 6,
+        "host_ids": [
+          "SnipersMarkPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "FlameWallPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "lich-03",
+        "group_index_zero_based": 7,
+        "host_ids": [
+          "VoltaicMarkPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "FlameWallPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "lich-09",
+        "group_index_zero_based": 2,
+        "host_ids": [
+          "SigilOfPowerPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "CometPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "martial-artist-01",
+        "group_index_zero_based": 11,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "FlickerStrikePlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "martial-artist-05",
+        "group_index_zero_based": 7,
+        "host_ids": [
+          "RefutationPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "KillingPalmPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "pathfinder-02",
+        "group_index_zero_based": 3,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerTwo"
+        ],
+        "selected_main_group": true,
+        "selected_main_skill": "ConvalescencePlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "selected_reservation_effect_ineligible"
+      },
+      {
+        "build": "pathfinder-08",
+        "group_index_zero_based": 2,
+        "host_ids": [
+          "SnipersMarkPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "FlameWallPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "ritualist-05",
+        "group_index_zero_based": 7,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "LightningWarpPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "ritualist-10",
+        "group_index_zero_based": 13,
+        "host_ids": [
+          "RefutationPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerTwo"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "TwisterPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "shaman-06",
+        "group_index_zero_based": 3,
+        "host_ids": [
+          "SigilOfPowerPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "CometPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "shaman-07",
+        "group_index_zero_based": 5,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerTwo"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "GrimPillarsPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "smith-of-kitava-01",
+        "group_index_zero_based": 6,
+        "host_ids": [
+          "FlameblastPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "DetonateDeadPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "smith-of-kitava-03",
+        "group_index_zero_based": 8,
+        "host_ids": [
+          "FlameWallPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "FrostboltPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "stormweaver-02",
+        "group_index_zero_based": 7,
+        "host_ids": [
+          "GhostDancePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerTwo"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "SparkPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "stormweaver-03",
+        "group_index_zero_based": 7,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "CometPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "stormweaver-04",
+        "group_index_zero_based": 6,
+        "host_ids": [
+          "GhostDancePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerTwo"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "SparkPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "stormweaver-10",
+        "group_index_zero_based": 8,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerTwo"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "CometPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "tactician-01",
+        "group_index_zero_based": 3,
+        "host_ids": [
+          "TimeOfNeedPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "DefianceBannerPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "tactician-03",
+        "group_index_zero_based": 6,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerTwo"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "SparkPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "tactician-06",
+        "group_index_zero_based": 8,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerTwo"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "WolfPackPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "tactician-07",
+        "group_index_zero_based": 3,
+        "host_ids": [
+          "ConvalescencePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerTwo"
+        ],
+        "selected_main_group": true,
+        "selected_main_skill": "ConvalescencePlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "selected_reservation_effect_ineligible"
+      },
+      {
+        "build": "titan-01",
+        "group_index_zero_based": 6,
+        "host_ids": [
+          "InfernalCryPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "ResonatingShieldPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "titan-05",
+        "group_index_zero_based": 7,
+        "host_ids": [
+          "InfernalCryPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "ShieldWallPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "warbringer-07",
+        "group_index_zero_based": 10,
+        "host_ids": [
+          "AnimusExchangePlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayerThree"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "EarthshatterPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "witchhunter-06",
+        "group_index_zero_based": 4,
+        "host_ids": [
+          "InfernalCryPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "FrostboltPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      },
+      {
+        "build": "witchhunter-10",
+        "group_index_zero_based": 7,
+        "host_ids": [
+          "InfernalCryPlayer"
+        ],
+        "support_ids": [
+          "SupportSecondWindPlayer"
+        ],
+        "selected_main_group": false,
+        "selected_main_skill": "FrostboltPlayer",
+        "enabled": true,
+        "support_enabled": [
+          true
+        ],
+        "category": "unselected_group_no_proven_selected_output_effect"
+      }
+    ]
+  },
+  "cached_family_diagnostics": {
+    "oisin": [
+      {
+        "build": "pathfinder-06",
+        "stat": "mana_leech_from_elemental_instead",
+        "owner": "SupportOisinsOathPlayer",
+        "status": "unmapped",
+        "reason": "unknown_mod_name"
+      }
+    ],
+    "brutality_iii": [
+      {
+        "build": "lich-03",
+        "stat": "base_deal_no_chaos_damage",
+        "owner": "SupportBrutalityPlayerThree",
+        "status": "unmapped",
+        "reason": "unknown_mod_name"
+      },
+      {
+        "build": "lich-03",
+        "stat": "deal_no_elemental_damage",
+        "owner": "SupportBrutalityPlayerThree",
+        "status": "unmapped",
+        "reason": "unknown_mod_name"
+      },
+      {
+        "build": "lich-03",
+        "stat": "hits_ignore_enemy_monster_physical_damage_reduction_%_chance",
+        "owner": "SupportBrutalityPlayerThree",
+        "status": "unmapped",
+        "reason": "unknown_mod_name"
+      },
+      {
+        "build": "warbringer-01",
+        "stat": "base_deal_no_chaos_damage",
+        "owner": "SupportBrutalityPlayerThree",
+        "status": "unmapped",
+        "reason": "unknown_mod_name"
+      },
+      {
+        "build": "warbringer-01",
+        "stat": "deal_no_elemental_damage",
+        "owner": "SupportBrutalityPlayerThree",
+        "status": "unmapped",
+        "reason": "unknown_mod_name"
+      },
+      {
+        "build": "warbringer-01",
+        "stat": "hits_ignore_enemy_monster_physical_damage_reduction_%_chance",
+        "owner": "SupportBrutalityPlayerThree",
+        "status": "unmapped",
+        "reason": "unknown_mod_name"
+      },
+      {
+        "build": "witchhunter-04",
+        "stat": "base_deal_no_chaos_damage",
+        "owner": "SupportBrutalityPlayerThree",
+        "status": "unmapped",
+        "reason": "unknown_mod_name"
+      },
+      {
+        "build": "witchhunter-04",
+        "stat": "deal_no_elemental_damage",
+        "owner": "SupportBrutalityPlayerThree",
+        "status": "unmapped",
+        "reason": "unknown_mod_name"
+      },
+      {
+        "build": "witchhunter-04",
+        "stat": "hits_ignore_enemy_monster_physical_damage_reduction_%_chance",
+        "owner": "SupportBrutalityPlayerThree",
+        "status": "unmapped",
+        "reason": "unknown_mod_name"
+      },
+      {
+        "build": "witchhunter-07",
+        "stat": "base_deal_no_chaos_damage",
+        "owner": "SupportBrutalityPlayerThree",
+        "status": "unmapped",
+        "reason": "unknown_mod_name"
+      },
+      {
+        "build": "witchhunter-07",
+        "stat": "deal_no_elemental_damage",
+        "owner": "SupportBrutalityPlayerThree",
+        "status": "unmapped",
+        "reason": "unknown_mod_name"
+      },
+      {
+        "build": "witchhunter-07",
+        "stat": "hits_ignore_enemy_monster_physical_damage_reduction_%_chance",
+        "owner": "SupportBrutalityPlayerThree",
+        "status": "unmapped",
+        "reason": "unknown_mod_name"
+      }
+    ],
+    "second_wind": [
+      {
+        "build": "chronomancer-06",
+        "stat": "restore_%_life_on_skill_use_per_1000_ms_cooldown",
+        "owner": "SupportSecondWindPlayerThree",
+        "status": "unknown",
+        "reason": null
+      },
+      {
+        "build": "chronomancer-06",
+        "stat": "support_double_number_of_cooldown_uses",
+        "owner": "SupportSecondWindPlayerThree",
+        "status": "unknown",
+        "reason": null
+      },
+      {
+        "build": "titan-01",
+        "stat": "support_double_number_of_cooldown_uses",
+        "owner": "SupportSecondWindPlayer",
+        "status": "unknown",
+        "reason": null
+      },
+      {
+        "build": "titan-05",
+        "stat": "support_double_number_of_cooldown_uses",
+        "owner": "SupportSecondWindPlayer",
+        "status": "unknown",
+        "reason": null
+      },
+      {
+        "build": "witchhunter-06",
+        "stat": "support_double_number_of_cooldown_uses",
+        "owner": "SupportSecondWindPlayer",
+        "status": "unknown",
+        "reason": null
+      },
+      {
+        "build": "witchhunter-10",
+        "stat": "support_double_number_of_cooldown_uses",
+        "owner": "SupportSecondWindPlayer",
+        "status": "unknown",
+        "reason": null
+      }
+    ]
+  },
+  "selected_evidence": {
+    "disciple-of-varashta-02": {
+      "cached_file": ".cache/accuracy-round4-2026-10-26/after-builds/disciple-of-varashta-02.json",
+      "cached_sha256": "dbf93c7a818798ed75f3e27973047a89a87e38f4ab06b8a4e974e758ba7949a0",
+      "code_file": "examples/reference-builds/ninja-top10-2026-10-26/builds/disciple-of-varashta-02/code.txt",
+      "code_sha256": "4f3c70e688bf2ec0c30f7f2f38c0cbe8575ec3ac52bb938b2e0b2f6b7b6271cc",
+      "main_skill": {
+        "group_index": 1,
+        "active_skill_index": 1,
+        "skill_id": "SummonFireDjinnPlayer",
+        "hit_damage": [
+          {
+            "damage_type": "Physical",
+            "min": 0.0,
+            "max": 0.0,
+            "avg": 0.0
+          }
+        ],
+        "hit_dps": 0.0,
+        "dot_dps": 0.0,
+        "combined_dps": 0.0
+      },
+      "output_subset": {
+        "mana": 1113.4,
+        "action_rate": 0.0,
+        "cooldown": 0.0,
+        "mana_cost": 0.0
+      },
+      "relevant_lines": [
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.30720",
+          "slot": null,
+          "holder": "Entropic Incarnation",
+          "text": "[Minion|Minions] gain 10% of [Physical|Physical] Damage as [Chaos|Chaos] Damage",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "MinionModifier",
+              "mod_type": "LIST",
+              "value": "[nested 1]",
+              "applied": null,
+              "status": "applied",
+              "reason": "given to the minions, whose calculation reads it",
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.30720",
+          "slot": null,
+          "holder": "Entropic Incarnation",
+          "text": "[Minion|Minions] have +13% to [Chaos] [Resistances|Resistance]",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "MinionModifier",
+              "mod_type": "LIST",
+              "value": "[nested 1]",
+              "applied": null,
+              "status": "applied",
+              "reason": "given to the minions, whose calculation reads it",
+              "used_in": []
+            }
+          ]
+        }
+      ],
+      "relevant_minion_output_rows": [
+        {
+          "minion_id": "RaisedSkeletonWarriors",
+          "summoned_by": "SummonSkeletalWarriorsPlayer",
+          "skill_id": "MinionMeleeStep",
+          "level": 60,
+          "dps": 5396.161726274,
+          "life": 6772.95,
+          "armour": 750.0,
+          "evasion": 739.0,
+          "energy_shield": 0.0,
+          "stats": {
+            "ChaosResist": 13.0,
+            "ChaosResistMax": 75.0,
+            "ChaosResistOverCap": 0.0,
+            "ColdResist": 14.0,
+            "ColdResistMax": 75.0,
+            "ColdResistOverCap": 0.0,
+            "CurseEffectOnSelf": 100.0,
+            "FireResist": 14.0,
+            "FireResistMax": 75.0,
+            "FireResistOverCap": 0.0,
+            "LifeRegen": -0.0,
+            "LightningResist": 14.0,
+            "LightningResistMax": 75.0,
+            "LightningResistOverCap": 0.0
+          }
+        },
+        {
+          "minion_id": "RaisedSkeletonReaver",
+          "summoned_by": "SummonSkeletalReaversPlayer",
+          "skill_id": "MinionMeleeStep",
+          "level": 62,
+          "dps": 4549.104024104,
+          "life": 5766.65,
+          "armour": 338.0,
+          "evasion": 774.0,
+          "energy_shield": 0.0,
+          "stats": {
+            "ChaosResist": 13.0,
+            "ChaosResistMax": 75.0,
+            "ChaosResistOverCap": 0.0,
+            "ColdResist": 14.0,
+            "ColdResistMax": 75.0,
+            "ColdResistOverCap": 0.0,
+            "CurseEffectOnSelf": 100.0,
+            "FireResist": 14.0,
+            "FireResistMax": 75.0,
+            "FireResistOverCap": 0.0,
+            "LifeRegen": -0.0,
+            "LightningResist": 14.0,
+            "LightningResistMax": 75.0,
+            "LightningResistOverCap": 0.0
+          }
+        },
+        {
+          "minion_id": "RaisedSkeletonWarriors",
+          "summoned_by": "SummonSkeletalWarriorsPlayer",
+          "skill_id": "MinionMeleeStep",
+          "level": 60,
+          "dps": 2001.7571426,
+          "life": 6772.95,
+          "armour": 750.0,
+          "evasion": 739.0,
+          "energy_shield": 0.0,
+          "stats": {
+            "ChaosResist": 13.0,
+            "ChaosResistMax": 75.0,
+            "ChaosResistOverCap": 0.0,
+            "ColdResist": 14.0,
+            "ColdResistMax": 75.0,
+            "ColdResistOverCap": 0.0,
+            "CurseEffectOnSelf": 100.0,
+            "FireResist": 14.0,
+            "FireResistMax": 75.0,
+            "FireResistOverCap": 0.0,
+            "LifeRegen": -0.0,
+            "LightningResist": 14.0,
+            "LightningResistMax": 75.0,
+            "LightningResistOverCap": 0.0
+          }
+        }
+      ],
+      "minion_row_caveat": "The cache contains two Warrior rows with identical skill/summon IDs and different DPS. Their exact numeric association is not certified here. Source provenance identifies the affected linked group 2 and Reaver group 6; no claim is made that the other Warrior actor is affected. Actor damage-type decomposition is absent."
+    },
+    "pathfinder-02": {
+      "cached_file": ".cache/accuracy-round4-2026-10-26/after-builds/pathfinder-02.json",
+      "cached_sha256": "79fe1980a72fceba7b23ed2a5ff51192518c7528438645d0ac633d2f55e3e7f3",
+      "code_file": "examples/reference-builds/ninja-top10-2026-10-26/builds/pathfinder-02/code.txt",
+      "code_sha256": "bba86c7db92855874771f08ab92b4dc4a29ba3e8b98e3de2b552ccb72edea693",
+      "main_skill": {
+        "group_index": 3,
+        "active_skill_index": 1,
+        "skill_id": "ConvalescencePlayer",
+        "hit_damage": [
+          {
+            "damage_type": "Physical",
+            "min": 0.0,
+            "max": 0.0,
+            "avg": 0.0
+          }
+        ],
+        "hit_dps": 0.0,
+        "dot_dps": 0.0,
+        "combined_dps": 0.0
+      },
+      "output_subset": {
+        "mana": 775.2,
+        "action_rate": 0.0,
+        "cooldown": 0.0,
+        "mana_cost": 0.0
+      },
+      "relevant_lines": []
+    },
+    "pathfinder-06": {
+      "cached_file": ".cache/accuracy-round4-2026-10-26/after-builds/pathfinder-06.json",
+      "cached_sha256": "d5d7763797dede88a271d521da74cb822e1130e504bd3723f708e2ab0efdbe84",
+      "code_file": "examples/reference-builds/ninja-top10-2026-10-26/builds/pathfinder-06/code.txt",
+      "code_sha256": "89e70f48a39724502e3b78808cdcdd7b62fe1eecdca3d938a6377afe559e4285",
+      "main_skill": {
+        "group_index": 3,
+        "active_skill_index": 1,
+        "skill_id": "IceShotPlayer",
+        "hit_damage": [
+          {
+            "damage_type": "Physical",
+            "min": 7380.487633559,
+            "max": 12084.534696707,
+            "avg": 9732.511165133
+          },
+          {
+            "damage_type": "Lightning",
+            "min": 10448.002003647,
+            "max": 42565.794517116,
+            "avg": 26506.898260381502
+          },
+          {
+            "damage_type": "Cold",
+            "min": 43762.36549276,
+            "max": 77580.503025151,
+            "avg": 60671.4342589555
+          },
+          {
+            "damage_type": "Fire",
+            "min": 11899.89774091,
+            "max": 23553.949180101,
+            "avg": 17726.923460505503
+          }
+        ],
+        "hit_dps": 6859870.496906943,
+        "dot_dps": 37993.698495059,
+        "combined_dps": 6897864.195402002
+      },
+      "output_subset": {
+        "mana": 684.6,
+        "action_rate": 3.15,
+        "cooldown": 0.0,
+        "mana_cost": 108.0
+      },
+      "relevant_lines": [
+        {
+          "source_kind": "ItemAffix",
+          "source_id": "item.ring1.explicit",
+          "slot": "ring1",
+          "holder": "Gold Ring",
+          "text": "Leech 8.7% of Physical Attack Damage as Mana",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "PhysicalDamageManaLeech",
+              "mod_type": "BASE",
+              "value": 8.7,
+              "applied": 8.7,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        }
+      ]
+    },
+    "tactician-07": {
+      "cached_file": ".cache/accuracy-round4-2026-10-26/after-builds/tactician-07.json",
+      "cached_sha256": "55dfae46f6bbdbe0adeba3e08669f17b5400a25b45f740222595114492272790",
+      "code_file": "examples/reference-builds/ninja-top10-2026-10-26/builds/tactician-07/code.txt",
+      "code_sha256": "ffe175819d2e4eafdbe1029f68c1f73628607c9edc6bbbce2f0d4fd0ccc9809d",
+      "main_skill": {
+        "group_index": 3,
+        "active_skill_index": 1,
+        "skill_id": "ConvalescencePlayer",
+        "hit_damage": [
+          {
+            "damage_type": "Physical",
+            "min": 0.0,
+            "max": 0.0,
+            "avg": 0.0
+          }
+        ],
+        "hit_dps": 0.0,
+        "dot_dps": 0.0,
+        "combined_dps": 0.0
+      },
+      "output_subset": {
+        "mana": 1836.0,
+        "action_rate": 0.0,
+        "cooldown": 0.0,
+        "mana_cost": 0.0
+      },
+      "relevant_lines": []
+    },
+    "warbringer-01": {
+      "cached_file": ".cache/accuracy-round4-2026-10-26/after-builds/warbringer-01.json",
+      "cached_sha256": "6c91b6db63d2856d1812e2b799d199d287686990674cce6b62bf6b486e2adf78",
+      "code_file": "examples/reference-builds/ninja-top10-2026-10-26/builds/warbringer-01/code.txt",
+      "code_sha256": "c823e5b05a208862dc7b2ac9a637b41ab191a7d13a3c85cf9a40d895981ce37f",
+      "main_skill": {
+        "group_index": 3,
+        "active_skill_index": 1,
+        "skill_id": "ShieldWallPlayer",
+        "hit_damage": [
+          {
+            "damage_type": "Physical",
+            "min": 237693.843865526,
+            "max": 442966.052995203,
+            "avg": 340329.9484303645
+          },
+          {
+            "damage_type": "Fire",
+            "min": 38804.5927017,
+            "max": 55627.8517053,
+            "avg": 47216.2222035
+          }
+        ],
+        "hit_dps": 645085.615298015,
+        "dot_dps": 4989.044168218,
+        "combined_dps": 650074.659466233
+      },
+      "output_subset": {
+        "mana": 0.0,
+        "action_rate": 1.9296,
+        "cooldown": 0.0,
+        "mana_cost": 0.0
+      },
+      "relevant_lines": [
+        {
+          "source_kind": "SupportGem",
+          "source_id": "SupportBrutalityPlayerThree.support_brutality_physical_damage_+%_final",
+          "slot": null,
+          "holder": null,
+          "text": "SupportBrutalityPlayerThree support_brutality_physical_damage_+%_final (30)",
+          "status": "applied",
+          "reason": null,
+          "used_in": [
+            "TotalHitAvg"
+          ],
+          "modifiers": [
+            {
+              "name": "PhysicalDamage",
+              "mod_type": "MORE",
+              "value": 30.0,
+              "applied": 30.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": [
+                "TotalHitAvg"
+              ]
+            }
+          ]
+        },
+        {
+          "source_kind": "SupportGem",
+          "source_id": "support.SupportBrutalityPlayerThree.manaMultiplier",
+          "slot": null,
+          "holder": null,
+          "text": "support SupportBrutalityPlayerThree cost multiplier 20%",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "SupportManaMultiplier",
+              "mod_type": "MORE",
+              "value": 20.0,
+              "applied": 20.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        }
+      ],
+      "cached_ignite_dps": 4989.044168218
+    }
+  },
+  "source_references": {
+    "flag_translation": "crates/pobr-core/src/rules/stat_map_engine.rs:614 (flag constructor whitelist), :643 (is_consumable_flag)",
+    "leech_eligibility": "crates/pobr-core/src/calc/survivability.rs:705 (leech_percent), :780 (calc_leech_for_hit), :683 (uncapped instance amount; capped rate)",
+    "leech_outputs": "crates/pobr-core/src/calc/recovery.rs:151 (gain_for_hit), :205 (fill_leech_gain), :306 (per-hit output); crates/pobr-core/src/display_catalog.rs:2915 (ManaLeechGainPerHit)",
+    "typed_damage_gate": "crates/pobr-core/src/calc/damage.rs:189 (apply_can_deal); crates/pobr-core/src/calc/crit_pass.rs:138 (hit and crit gating)",
+    "minion_supports": "crates/pobr-core/src/skill_env/minions.rs:725 (minion_skill_modifiers), :809 (compatible supports), :817 (shared mapped_stat_modifiers)",
+    "support_eligibility": "crates/pobr-core/src/ingest/skill_source.rs:466 (judge_support); crates/pobr-core/src/skill_env/support.rs:62 (fixed-point type additions)",
+    "stored_uses": "crates/pobr-core/src/calc/skill_mechanics.rs:430 (calc_cooldown); crates/pobr-core/src/calc/perform.rs:1920; crates/pobr-core/src/display_catalog.rs:3031",
+    "static_convention": "docs/maintainer-guide.md:1754 (typed leech eligibility, existing whole-hit ceiling, panel versus sustained recovery)",
+    "game_tables": "data/0.5.5.4.2/base/granted_effects.json; base/granted_effect_stat_sets.json; base/granted_effect_levels.json; base/skill_gems.json",
+    "game_passive": "data/0.5.5.4.2/base/passive_tree.json:39019 (Entropic Incarnation, node 30720)",
+    "statmap_crosscheck": "data/0.5.5.4.2/overlay/skill_stat_map.json:20582 (Oisin), :5590 (deal_no_elemental_damage), :6446 (ignore PDR chance); mapping is a cross-check, not the game authority",
+    "minion_output": "crates/pobr-core/src/skill_env/minions.rs:494 (group-specific support modifiers, summoner provenance); crates/pobr-core/src/calc/perform.rs:777 and :825 (each minion runs calculate_minimal_vs_enemy and writes its output)"
+  },
+  "source_sha256": {
+    "crates/pobr-core/src/rules/stat_map_engine.rs": "0f1e4a434dfd6780f604cccc49b36abe82f0c6137e3539a3387988d2ae1089a8",
+    "crates/pobr-core/src/calc/survivability.rs": "f69d26bdcceeadb0f9e96b6b2e26281ff344ed9a4b769146a0a9169c82ea2416",
+    "crates/pobr-core/src/calc/recovery.rs": "871465a4d2d1170ac8facb2b5cf257d44cd26a5e6c00ab3e1e859146beca39c5",
+    "crates/pobr-core/src/calc/damage.rs": "3b9420605b96b7658d7ae9133012301cbe11c9107899b8ca9e21298c37333582",
+    "crates/pobr-core/src/skill_env/minions.rs": "8494153ca491177beb09a7bbe539f5386194186b5ef5dcef6a76787cd9b6a767",
+    "crates/pobr-core/src/calc/skill_mechanics.rs": "b3f4cb884cd4c4ddc9636cd7cf3c3637f455cef17b421607e3e52763d1f18436",
+    "crates/pobr-core/src/ingest/skill_source.rs": "293fc2903778ca73e6a5154ed5a7d0d8edc03cf48911f0ee820539ed13a4afde",
+    "data/0.5.5.4.2/base/granted_effects.json": "9ee4caaf5d398942e1a57cde4fc4245755feb38ba2035e1f80d607313da32518",
+    "data/0.5.5.4.2/base/granted_effect_stat_sets.json": "15df0520fc6254acda05bb955dad65299c0b40350b2639cfbd2b96348cfc8c5d",
+    "data/0.5.5.4.2/base/passive_tree.json": "7e021c17f9679b3ff4d72cacdba20ee3d17bf8d0acf7ea02311dd29886996851"
+  },
+  "limits": [
+    "No source changes, tests, builds, CLI/oracle/triage/gate execution, holdout inspection, child agents or new build acquisition. Only this audit JSON is written.",
+    "No current-head calculation; all numeric observations are explicitly from 45a3. Current source is used for causal proof, not fresh runtime certification.",
+    "No claimed global clearance. Unselected occurrences and diagnostic-only rows remain recorded with their reasons.",
+    "Minion flags have source-level proof but no cached actor damage-type breakdown; exact delta remains unmeasured. Ignore-PDR chance remains unverified for actual outputs.",
+    "No new event rate/history/configuration and no forced PoB2 agreement. Parent owns fix assignment and batch measurement."
+  ],
+  "handoff": "Complete bounded audit of the three requested families. Parent may act on two proven families across three builds. No further investigation requested for unverified ignore-PDR chance or unselected capacity cases. Source inspection and numeric provenance remain as recorded; later S04/S05 review corrections and final cohort measurement belong to parent."
+}
