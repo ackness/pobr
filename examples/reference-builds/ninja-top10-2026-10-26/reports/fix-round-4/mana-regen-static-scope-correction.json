@@ -1,0 +1,12 @@
+{
+  "supersedes": "Only the Infernalist integration recommendation in the copied round3 mana-regen-static-research.json; historical evidence is preserved verbatim.",
+  "user_instruction": "Melting Maelstrom recovery is finite flask per-use utility already available. Do not aggregate into permanent regeneration; defer finite flask uptime.",
+  "infernalist_07": "Arithmetic source identification remains valid; no recovery integration is authorized.",
+  "clarity_ii": "Cross-effect type-union eligibility remains unverified; no edit.",
+  "approved_files": [
+    "crates/pobr-core/src/skill_env/buff_specs.rs",
+    "crates/pobr-core/src/calc/buff_pass.rs",
+    "crates/pobr-build/tests/skills/buff_stack_limits.rs"
+  ],
+  "merged_root_commit": "3636c29ee2f416ed0d33095de14288e3ba513a81"
+}

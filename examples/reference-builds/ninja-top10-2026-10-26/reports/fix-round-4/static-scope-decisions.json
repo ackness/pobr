@@ -1,0 +1,38 @@
+{
+  "sources_reviewed_at": "2026-10-26",
+  "decisions": [
+    {
+      "template": "Grants effect of Dreaming Gloom Shrine",
+      "source": "https://poe2db.tw/Dreaming_Gloom_Shrine",
+      "decision": "defer kill-triggered explosion; retain diagnostic",
+      "reason": "The item-specific shrine grants slain-enemy explosions, while the item separately supplies damage gained as chaos. Adding the ordinary Gloom Shrine gain-as modifier again would double count an unrelated effect. No kill rate, victim Life or explosion overlap is inferred.",
+      "affected_cached_build_count": 14,
+      "builds": [
+        "blood-mage-05",
+        "chronomancer-04",
+        "chronomancer-09",
+        "gemling-legionnaire-02",
+        "gemling-legionnaire-09",
+        "lich-07",
+        "oracle-01",
+        "pathfinder-07",
+        "ritualist-06",
+        "ritualist-09",
+        "ritualist-10",
+        "spirit-walker-03",
+        "spirit-walker-06",
+        "spirit-walker-07"
+      ]
+    },
+    {
+      "stat": "base_cooldown_modifiable_repeat_interval_ms",
+      "decision": "retain unresolved repeat-cadence diagnostic",
+      "reason": "Time of Need/Ghost Dance recurrence is not activation cooldown. A SkillCooldownBase mapping would mislabel it and cap an arbitrary activation rate. No new event histories are introduced.",
+      "evidence": "/root/.t3/worktrees/pobr/t3-b90ae961/.cache/static-selected-skill-evidence.json"
+    }
+  ],
+  "limits": [
+    "These scope decisions do not declare the lines globally effectless or all differing rows explained.",
+    "No in-game timing or damage measurement was performed."
+  ]
+}

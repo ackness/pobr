@@ -1,0 +1,32 @@
+    Checking memchr v2.8.1
+    Checking typenum v1.20.1
+    Checking cfg-if v1.0.4
+    Checking itoa v1.0.18
+    Checking regex-syntax v0.8.11
+    Checking simd-adler32 v0.3.9
+    Checking adler2 v2.0.1
+    Checking cpufeatures v0.3.1
+    Checking base64 v0.23.1
+    Checking serde_core v1.0.229
+    Checking zmij v1.0.21
+    Checking thiserror v2.0.21
+    Checking crc32fast v1.5.0
+    Checking miniz_oxide v0.9.1
+    Checking aho-corasick v1.1.5
+    Checking quick-xml v0.42.0
+    Checking flate2 v1.1.10
+    Checking hybrid-array v0.4.15
+    Checking crypto-common v0.2.2
+    Checking block-buffer v0.12.1
+    Checking regex-automata v0.4.18
+    Checking serde v1.0.229
+    Checking serde_json v1.0.154
+    Checking digest v0.11.3
+    Checking sha2 v0.11.0
+    Checking pobr-data v0.0.29 (/root/.t3/worktrees/pobr/t3-b906847e/crates/pobr-data)
+    Checking regex v1.13.1
+    Checking pobr-tree v0.0.29 (/root/.t3/worktrees/pobr/t3-b906847e/crates/pobr-tree)
+    Checking pobr-core v0.0.29 (/root/.t3/worktrees/pobr/t3-b906847e/crates/pobr-core)
+    Checking pobr-gamedata v0.0.29 (/root/.t3/worktrees/pobr/t3-b906847e/crates/pobr-gamedata)
+    Checking pobr-build v0.0.29 (/root/.t3/worktrees/pobr/t3-b906847e/crates/pobr-build)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 8.01s

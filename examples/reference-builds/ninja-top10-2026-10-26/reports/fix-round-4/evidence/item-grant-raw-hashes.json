@@ -1,0 +1,62 @@
+{
+  "patch": "0.5.5.4.2",
+  "cdn": "https://patch-poe2.poecdn.com",
+  "files": [
+    {
+      "game_path": "Data/Balance/Mods.datc64",
+      "bytes": 13893170,
+      "sha256": "f1ffbcd5228f2b78c1f90a116d2ac37673b34d94c6d7f3602b5e03385eb49679",
+      "row_count": 16784,
+      "row_length": 693
+    },
+    {
+      "game_path": "Data/Balance/GrantedEffectsPerLevel.datc64",
+      "bytes": 3984104,
+      "sha256": "c2c40da817783a6d7767bf702c639b642448010d6db935ec44cf31ace8da7294",
+      "row_count": 34300,
+      "row_length": 116
+    },
+    {
+      "game_path": "Data/Balance/GrantedEffects.datc64",
+      "bytes": 3022335,
+      "sha256": "f2495c2640a79f90af1e1a99e66d1c15257153f34d12ca2a6b37d935b967c598",
+      "row_count": 8349,
+      "row_length": 297
+    },
+    {
+      "game_path": "Data/Balance/ItemInherentSkills.datc64",
+      "bytes": 13177,
+      "sha256": "4065a79c4d981c136fbccf54250fdb6c241f20030a1eb8193cbc1e514673e52b",
+      "row_count": 253,
+      "row_length": 33
+    },
+    {
+      "game_path": "Data/Balance/ModGrantedSkills.datc64",
+      "bytes": 2092,
+      "sha256": "b166e508602a08892da1bd89f79d6d8f44b47a3cf07ff77d25c283f6ced2ec55",
+      "row_count": 65,
+      "row_length": 32
+    },
+    {
+      "game_path": "Data/Balance/SkillGems.datc64",
+      "bytes": 392644,
+      "sha256": "22e3e2614edc828f1bdebd38a0f7b5937fc2e60fd1774c2938bfc3c178449300",
+      "row_count": 1191,
+      "row_length": 250
+    },
+    {
+      "game_path": "Data/Balance/GemEffects.datc64",
+      "bytes": 487382,
+      "sha256": "1b17623ec4c2408e5f9b257e10811ce6bd3465364ad0de1e1fb8987c81c8648b",
+      "row_count": 1194,
+      "row_length": 142
+    },
+    {
+      "game_path": "Data/Balance/BaseItemTypes.datc64",
+      "bytes": 2828102,
+      "sha256": "1150a50cc4005287e2a8274b158980f9ec7ac62e26511b75fc95a1ca6ce88bbc",
+      "row_count": 5496,
+      "row_length": 360
+    }
+  ]
+}

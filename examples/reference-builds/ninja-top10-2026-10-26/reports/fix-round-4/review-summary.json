@@ -1,0 +1,98 @@
+{
+  "reviews": [
+    {
+      "id": "round5-recovery-culling-r1",
+      "result": "3 P2 findings",
+      "findings": [
+        "typed leech panel ignored nonphysical damage",
+        "conditional cull active in panel mode",
+        "rarity control hidden before conditional cull activation"
+      ],
+      "responses": [
+        "184aa7ae typed leech helper shared with panel",
+        "3636c29e Effective gate and config capability visibility"
+      ]
+    },
+    {
+      "id": "round5-recovery-culling-r2",
+      "reviewed_revision": "184aa7ae08f7edda9658e06f2618c18de651ca21",
+      "result": "no actionable findings",
+      "scope": [
+        "Mystic Harvest",
+        "GhostReaver",
+        "INC-only regeneration sharing",
+        "typed leech panels",
+        "culling mode/visibility",
+        "Derange ES cost"
+      ]
+    },
+    {
+      "id": "round5-grants-ballista-r1",
+      "result": "2 P2 grant findings; no Ballista finding",
+      "findings": [
+        "Blink effect ordinal remapping",
+        "armour group weapon-set activation confused with weapon ownership"
+      ],
+      "response": [
+        "1da34acb ordinal remap",
+        "ef587706 armour group activation"
+      ]
+    },
+    {
+      "id": "round5-mana-remnants-r1",
+      "reviewed_revision": "ffa045d96126c2c46524c4e1f7a5ac0e1d165875",
+      "result": "no actionable findings",
+      "scope": [
+        "local and global RemnantEffect exclusion for permanent Mana Remnants buff",
+        "true remnant effects and normal BuffEffect retained",
+        "strongest-copy/source behavior"
+      ]
+    },
+    {
+      "id": "round5-grant-variants-r2",
+      "reviewed_revision": "52a6db0b8a77834f4c5844086bcca0252be1ae05",
+      "result": "prior findings resolved; 1 P2 active_skill_id-only API fallback remains",
+      "response": "45a3c00a active_skill_id fallback canonicalization and ordinal remap; 54 focused grant regressions passed"
+    },
+    {
+      "id": "round5-conquered-attribute-r1",
+      "reviewed_revision": "48d094994c666b9cf2b6110f40fcc15c05022578",
+      "result": "no actionable findings",
+      "scope": [
+        "Small/Attribute category isolation",
+        "allocation/radius/socket/weapon-set gates",
+        "Hulking Form exclusion",
+        "Tribute and diagnostics",
+        "source attribution and retained rolls"
+      ]
+    },
+    {
+      "id": "round5-grant-variants-r3",
+      "reviewed_revision": "45a3c00a265a60ad69cf2c152395f443089abf13",
+      "result": "no actionable findings",
+      "scope": [
+        "active_skill_id fallback and ordinal remap",
+        "attachment and weapon-set scope",
+        "disabled groups",
+        "additive reservation",
+        "independent gems and raw preservation"
+      ]
+    },
+    {
+      "id": "round5-tuned-grant-baseline-review-r1",
+      "result": "No native defect; exact tuned147 and Deadeye80 requirements reconstructed; independent gems preserved",
+      "evidence": "evidence/tuned-grant-requirement.json",
+      "response": "01769763 narrows tuned baseline correction to existing known grant exemption; only Deadeye ReqStr added"
+    },
+    {
+      "id": "round5-new-static-rows-review-r1",
+      "result": "No native defect proven; Ballista5 exact; Gemling regeneration203INC transfer exact with saved residual unverified",
+      "evidence": "evidence/new-static-rows.json",
+      "response": "Only Warbringer ActiveTotemLimit added; Gemling stays reference classification with explicit5.1 residual"
+    }
+  ],
+  "limits": [
+    "Independent reviews inspect source, retained game data and assertions; they do not rerun tests or measure game-client behavior.",
+    "Focused execution belongs to implementation commits; batch gate and corpus measurements are recorded separately."
+  ]
+}

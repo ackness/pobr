@@ -1,0 +1,6 @@
+{
+  "git_commit": "01769763af6a009af9a36b79f4c39da06f39e04e",
+  "started_at": "2026-10-26T18:14:22.533577+00:00",
+  "command": "mise run gate --only parity",
+  "change": "Only the proven tuned ReqInt grant exemption baseline and documentation/known row changed since measured45a3c00a; no calculation changes."
+}

@@ -1,0 +1,1689 @@
+{
+  "parent_start_revision": "95c38076",
+  "parent_merged_revision": "e9eac4cd",
+  "data_version": "0.5.5.4.2",
+  "scope": "Six assigned frozen worked builds only; existing cached reports, no cohort recalculation or holdout inspection.",
+  "game_sources": {
+    "culling": "https://poe2db.tw/us/Culling_Strike_II",
+    "hollow_form": "https://poe2db.tw/us/Hollow_Form",
+    "time_of_need": "https://poe2db.tw/us/Time_of_Need",
+    "ghost_dance": "https://poe2db.tw/us/Ghost_Dance"
+  },
+  "base_file_sha256": {
+    "granted_effects.json": "9ee4caaf5d398942e1a57cde4fc4245755feb38ba2035e1f80d607313da32518",
+    "granted_effect_stat_sets.json": "15df0520fc6254acda05bb955dad65299c0b40350b2639cfbd2b96348cfc8c5d",
+    "granted_effect_levels.json": "3a66d591def23772ff43b3b63ec96e9a12fc4f3c88be40f741681914926f51da",
+    "base_items.json": "525275795877d850b993f1771b3809e081ed5da7d1e3da8de5e05ef7dda2b032"
+  },
+  "builds": {
+    "invoker-06": {
+      "xml_sha256": "53c7cd7c580a5be72523b815932cf03900b3b544b75dc994a0ba70561ad5a90c",
+      "cached_native": "/root/codes/pobr/.cache/accuracy-round3-final-2026-10-26/after-builds/invoker-06.json",
+      "cached_default": "/root/codes/pobr/.cache/accuracy-round3-final-2026-10-26/default-builds/invoker-06.json",
+      "cached_oracle": "/root/codes/pobr/.cache/pob2-oracle/44b1a45e02eda970-28568b8445.json",
+      "native_provenance": {
+        "engine_version": "0.0.37",
+        "data_version": "0.5.5.4.2",
+        "data_sha256": "d2976dc01c61ab84ea4f5d0176a65a4f88610fdf32bff2b3667277e6d4965a68"
+      },
+      "selected": {
+        "group_index": 6,
+        "active_skill_index": 1,
+        "skill_id": "TempestBellPlayer",
+        "hit_damage": [
+          {
+            "damage_type": "Physical",
+            "min": 0.0,
+            "max": 0.0,
+            "avg": 0.0
+          },
+          {
+            "damage_type": "Lightning",
+            "min": 0.0,
+            "max": 0.0,
+            "avg": 0.0
+          },
+          {
+            "damage_type": "Cold",
+            "min": 0.0,
+            "max": 0.0,
+            "avg": 0.0
+          }
+        ],
+        "hit_dps": 0.0,
+        "dot_dps": 0.0,
+        "combined_dps": 0.0
+      },
+      "selected_level": {
+        "skill_id": "TempestBellPlayer",
+        "level": 23,
+        "quality": 20
+      },
+      "group": {
+        "enabled": "true",
+        "includeInFullDPS": "nil",
+        "label": "",
+        "mainActiveSkill": "1",
+        "mainActiveSkillCalcs": "1"
+      },
+      "gems": [
+        {
+          "corruptLevel": "0",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SkillGemTempestBell",
+          "level": "20",
+          "nameSpec": "Tempest Bell",
+          "quality": "20",
+          "skillId": "TempestBellPlayer",
+          "variantId": "TempestBell"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SupportGemMagnifiedEffectTwo",
+          "level": "1",
+          "nameSpec": "Magnified Area II",
+          "quality": "0",
+          "skillId": "SupportMagnifiedAreaPlayerTwo",
+          "variantId": "MagnifiedAreaSupportTwo"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SupportGemPrimalArmamentTwo",
+          "level": "1",
+          "nameSpec": "Elemental Armament II",
+          "quality": "0",
+          "skillId": "SupportElementalArmamentPlayerTwo",
+          "variantId": "ElementalArmamentSupportTwo"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SupportGemAncestralCallTwo",
+          "level": "1",
+          "nameSpec": "Ancestral Call II",
+          "quality": "0",
+          "skillId": "SupportAncestralCallPlayerTwo",
+          "variantId": "AncestralCallSupportTwo"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SupportGemHeavySwing",
+          "level": "1",
+          "nameSpec": "Heavy Swing",
+          "quality": "0",
+          "skillId": "SupportMeleePhysicalDamagePlayer",
+          "variantId": "MeleePhysicalDamageSupport"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SupportGemCullingStrikeTwo",
+          "level": "1",
+          "nameSpec": "Culling Strike II",
+          "quality": "0",
+          "skillId": "SupportCullingStrikePlayerTwo",
+          "variantId": "CullingStrikeSupportTwo"
+        }
+      ],
+      "native_values": {
+        "total_hit_avg": 0.0,
+        "dps": 0.0,
+        "action_rate": 1.893939394,
+        "cooldown": 0.528
+      },
+      "default_values": {
+        "total_hit_avg": 0.0,
+        "dps": 0.0,
+        "action_rate": 1.893939394,
+        "cooldown": 0.528
+      },
+      "cached_comparison_rows": [
+        {
+          "stat": "AverageDamage",
+          "pobr": 0.0,
+          "code": 50272.322462047,
+          "pob2": 42638.81188,
+          "class": "both",
+          "reason": null
+        },
+        {
+          "stat": "CullingDPS",
+          "pobr": 0.0,
+          "code": 5011.1964176681,
+          "pob2": 4250.280291,
+          "class": "both",
+          "reason": null
+        }
+      ],
+      "oracle_selected": {
+        "activeGemLevel": 23,
+        "activeGemName": "Tempest Bell",
+        "activeGemQuality": 20,
+        "grantedEffectId": "TempestBellPlayer",
+        "skillFlags": {},
+        "statSetIndex": 1,
+        "statSetLabel": "Tempest Bell",
+        "supports": [
+          {
+            "level": 1,
+            "name": "Magnified Area II"
+          },
+          {
+            "level": 1,
+            "name": "Elemental Armament II"
+          },
+          {
+            "level": 1,
+            "name": "Ancestral Call II"
+          },
+          {
+            "level": 1,
+            "name": "Heavy Swing"
+          },
+          {
+            "level": 1,
+            "name": "Culling Strike II"
+          }
+        ]
+      },
+      "oracle_values": {
+        "AverageDamage": 42638.81188,
+        "CombinedDPS": 85005.60581,
+        "Cooldown": 0.528,
+        "CullPercent": 5,
+        "CullingDPS": 4250.280291,
+        "Speed": 1.893939394
+      },
+      "game_effect": {
+        "id": "TempestBellPlayer",
+        "is_support": false,
+        "active_skill": "tempest_bell",
+        "displayed_name": "Tempest Bell",
+        "cast_time": 1000,
+        "stat_set": 395,
+        "additional_stat_set_ids": [
+          "TempestBellSlamPlayer",
+          "TempestBellShockwavePlayer"
+        ],
+        "cost_types": [
+          0
+        ],
+        "skill_types": [
+          "ComboStacking",
+          "Melee",
+          "RangedAttack",
+          "Attack",
+          "Area",
+          "Cooldown",
+          "ManualCooldownConsumption",
+          "Duration",
+          "Limit",
+          "Sustained",
+          "HasUsageCondition",
+          "ToggleSpawnedObjectTargetable_DefaultOn",
+          "ObjectDurability",
+          "AttackInPlace",
+          "SpecialAncestralBoost"
+        ]
+      },
+      "game_level": {
+        "level": 23,
+        "cooldown_ms": 500,
+        "cost_amounts": [
+          123
+        ],
+        "attack_speed_multiplier": 20.0,
+        "stored_uses": 1
+      },
+      "game_primary_stat_set": {
+        "set_id": "TempestBellPlayer",
+        "base_effectiveness": 1.0,
+        "constant_stats": [
+          {
+            "stat": "active_skill_required_number_of_combo_stacks",
+            "value": 4.0
+          },
+          {
+            "stat": "melee_conditional_step_distance",
+            "value": 21.0
+          },
+          {
+            "stat": "base_skill_effect_duration",
+            "value": 6000.0
+          },
+          {
+            "stat": "base_combo_stacks_decay_delay_ms",
+            "value": 8000.0
+          },
+          {
+            "stat": "dps_display_statset_index",
+            "value": 2.0
+          },
+          {
+            "stat": "bell_hit_limit",
+            "value": 10.0
+          },
+          {
+            "stat": "skill_specific_stat_description_mode",
+            "value": 1.0
+          }
+        ],
+        "implicit_stats": [
+          "is_area_damage",
+          "skill_show_tempest_bell_on_staff",
+          "cannot_damage_bell",
+          "skill_cannot_be_stunned",
+          "base_skill_show_average_damage_instead_of_dps",
+          "base_deal_no_damage",
+          "combo_only_stacks_from_hits_with_weapon_restriction"
+        ]
+      },
+      "game_selected_level_stats": {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "base_number_of_tempest_bells_allowed",
+            "value": 3.0
+          }
+        ]
+      },
+      "relevant_usage": [],
+      "relevant_gem_diagnostics": [
+        {
+          "stat": "support_culling_strike_threshold_+%_on_cull_for_seconds_from_code",
+          "owner": "SupportCullingStrikePlayerTwo",
+          "status": "unknown",
+          "reason": null
+        },
+        {
+          "stat": "support_culling_strike_vs_rare_or_unique_enemy",
+          "owner": "SupportCullingStrikePlayerTwo",
+          "status": "unmapped",
+          "reason": "unknown_mod_name"
+        }
+      ],
+      "finding": {
+        "status": "existing documented non-damaging parent effect",
+        "cause": "TempestBellPlayer primary set includes base_deal_no_damage; equipped alternate-set Razor Quarterstaff is selected. The oracle calculates damage for the same primary label without respecting that stat. Primary set has no damage multiplier; Slam/Shockwave are separate damage sets. No weapon or skill-selection change justified.",
+        "culling": "The innate support grant will be restored but remains zero DPS on a zero-damage effect. Do not replace selection with a damaging child or invent bell-strike cadence."
+      }
+    },
+    "invoker-07": {
+      "xml_sha256": "e16304aaab75cb209d70c98ba309515c586e0af5798815af52cdc8bfb0f3ac98",
+      "cached_native": "/root/codes/pobr/.cache/accuracy-round3-final-2026-10-26/after-builds/invoker-07.json",
+      "cached_default": "/root/codes/pobr/.cache/accuracy-round3-final-2026-10-26/default-builds/invoker-07.json",
+      "cached_oracle": "/root/codes/pobr/.cache/pob2-oracle/b86bd3ea46ae682e-e0f0beccb0.json",
+      "native_provenance": {
+        "engine_version": "0.0.37",
+        "data_version": "0.5.5.4.2",
+        "data_sha256": "d2976dc01c61ab84ea4f5d0176a65a4f88610fdf32bff2b3667277e6d4965a68"
+      },
+      "selected": {
+        "group_index": 0,
+        "active_skill_index": 1,
+        "skill_id": "MeleeQuarterstaffPlayer",
+        "hit_damage": [
+          {
+            "damage_type": "Physical",
+            "min": 7330.644113408,
+            "max": 16868.139403315,
+            "avg": 12099.3917583615
+          },
+          {
+            "damage_type": "Lightning",
+            "min": 2702.284937722,
+            "max": 14658.372682061,
+            "avg": 8680.3288098915
+          },
+          {
+            "damage_type": "Cold",
+            "min": 1436.873634733,
+            "max": 3152.124772966,
+            "avg": 2294.4992038495
+          },
+          {
+            "damage_type": "Fire",
+            "min": 3357.090877184,
+            "max": 7642.980046592,
+            "avg": 5500.035461888
+          }
+        ],
+        "hit_dps": 754023.489412188,
+        "dot_dps": 4596.963744179,
+        "combined_dps": 758620.453156367
+      },
+      "selected_level": {
+        "skill_id": "MeleeQuarterstaffPlayer",
+        "level": 29,
+        "quality": 0
+      },
+      "group": {
+        "enabled": "true",
+        "includeInFullDPS": "nil",
+        "label": "",
+        "mainActiveSkill": "1",
+        "mainActiveSkillCalcs": "1"
+      },
+      "gems": [
+        {
+          "corruptLevel": "0",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SkillGemPlayerDefaultQuarterstaff",
+          "level": "20",
+          "nameSpec": "Quarterstaff Strike",
+          "quality": "0",
+          "skillId": "MeleeQuarterstaffPlayer",
+          "variantId": "PlayerDefaultQuarterstaff"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SupportGemEinharsBeastrite",
+          "level": "1",
+          "nameSpec": "Einhar's Beastrite",
+          "quality": "0",
+          "skillId": "SupportEinharsBeastritePlayer",
+          "variantId": "EinharsBeastriteSupport"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SupportGemCullingStrikeTwo",
+          "level": "1",
+          "nameSpec": "Culling Strike II",
+          "quality": "0",
+          "skillId": "SupportCullingStrikePlayerTwo",
+          "variantId": "CullingStrikeSupportTwo"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SupportGemCulminationTwo",
+          "level": "1",
+          "nameSpec": "Culmination II",
+          "quality": "0",
+          "skillId": "SupportCulminationPlayerTwo",
+          "variantId": "CulminationSupportTwo"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SupportGemHeft",
+          "level": "1",
+          "nameSpec": "Heft",
+          "quality": "0",
+          "skillId": "SupportHeftPlayer",
+          "variantId": "HeftSupport"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SupportGemCloseCombatTwo",
+          "level": "1",
+          "nameSpec": "Close Combat II",
+          "quality": "0",
+          "skillId": "SupportCloseCombatPlayerTwo",
+          "variantId": "CloseCombatSupportTwo"
+        }
+      ],
+      "native_values": {
+        "total_hit_avg": 215735.627016628,
+        "dps": 754023.489412188,
+        "action_rate": 3.508123249,
+        "cooldown": 0.0
+      },
+      "default_values": {
+        "total_hit_avg": 295349.795036147,
+        "dps": 1033314.985412835,
+        "action_rate": 3.508123249,
+        "cooldown": 0.0
+      },
+      "cached_comparison_rows": [
+        {
+          "stat": "CullingDPS",
+          "pobr": 0.0,
+          "code": 41175.709515537,
+          "pob2": 41175.70952,
+          "class": "engine",
+          "reason": null
+        }
+      ],
+      "oracle_selected": {
+        "activeGemLevel": 29,
+        "activeGemName": "Quarterstaff Strike",
+        "activeGemQuality": 0,
+        "grantedEffectId": "MeleeQuarterstaffPlayer",
+        "skillFlags": {},
+        "statSetIndex": 1,
+        "statSetLabel": "Quarterstaff Strike",
+        "supports": [
+          {
+            "level": 1,
+            "name": "Einhar's Beastrite"
+          },
+          {
+            "level": 1,
+            "name": "Culling Strike II"
+          },
+          {
+            "level": 1,
+            "name": "Culmination II"
+          },
+          {
+            "level": 1,
+            "name": "Heft"
+          },
+          {
+            "level": 1,
+            "name": "Close Combat II"
+          }
+        ]
+      },
+      "oracle_values": {
+        "AverageDamage": 221241.9153,
+        "CombinedDPS": 823514.1903,
+        "CullPercent": 5,
+        "CullingDPS": 41175.70952,
+        "Speed": 3.5148
+      },
+      "game_effect": {
+        "id": "MeleeQuarterstaffPlayer",
+        "is_support": false,
+        "active_skill": "player_melee_quarterstaff",
+        "displayed_name": "Quarterstaff Strike",
+        "cast_time": 1000,
+        "stat_set": 2,
+        "cost_types": [
+          0
+        ],
+        "skill_types": [
+          "Attack",
+          "MeleeSingleTarget",
+          "Melee",
+          "Area",
+          "AttackInPlace"
+        ]
+      },
+      "game_level": {
+        "level": 29,
+        "cost_amounts": [
+          0
+        ]
+      },
+      "game_primary_stat_set": {
+        "set_id": "MeleeQuarterstaffPlayer",
+        "base_effectiveness": 1.0,
+        "constant_stats": [
+          {
+            "stat": "melee_conditional_step_distance",
+            "value": 10.0
+          }
+        ],
+        "implicit_stats": [
+          "is_area_damage",
+          "precise_cursor_targeting_uses_contact_point_height_offset"
+        ]
+      },
+      "game_selected_level_stats": {
+        "gem_level": 29,
+        "damage_multiplier": 4.84,
+        "stats": []
+      },
+      "relevant_usage": [],
+      "relevant_gem_diagnostics": [
+        {
+          "stat": "support_culling_strike_threshold_+%_on_cull_for_seconds_from_code",
+          "owner": "SupportCullingStrikePlayerTwo",
+          "status": "unknown",
+          "reason": null
+        },
+        {
+          "stat": "support_culling_strike_vs_rare_or_unique_enemy",
+          "owner": "SupportCullingStrikePlayerTwo",
+          "status": "unmapped",
+          "reason": "unknown_mod_name"
+        }
+      ],
+      "finding": {
+        "status": "confirmed native mapping bug fixed",
+        "cause": "Compatible Culling Strike II support_culling_strike_vs_rare_or_unique_enemy was unmapped: unknown_mod_name. Native CanCull grant uses rare/unique enemy gate, reading both preset bare and explicit enemy-prefixed condition aliases.",
+        "post_cull_bonus": "support_culling_strike_threshold_+%_on_cull_for_seconds_from_code remains diagnostic; no prior cull or bonus uptime assumed.",
+        "predicted_culling_from_frozen_damage_not_recalculated": 39927.39227138769,
+        "limit": "Residual damage/rate differences are separate. Full exact build effect left to root batch gate."
+      }
+    },
+    "martial-artist-03": {
+      "xml_sha256": "1c5e29eb38402a55d9defa23f93594f5d1967a6fdcbc698e9aa95253d7afe547",
+      "cached_native": "/root/codes/pobr/.cache/accuracy-round3-final-2026-10-26/after-builds/martial-artist-03.json",
+      "cached_default": "/root/codes/pobr/.cache/accuracy-round3-final-2026-10-26/default-builds/martial-artist-03.json",
+      "cached_oracle": "/root/codes/pobr/.cache/pob2-oracle/0a43828c012008ad-103ac4c099.json",
+      "native_provenance": {
+        "engine_version": "0.0.37",
+        "data_version": "0.5.5.4.2",
+        "data_sha256": "d2976dc01c61ab84ea4f5d0176a65a4f88610fdf32bff2b3667277e6d4965a68"
+      },
+      "selected": {
+        "group_index": 0,
+        "active_skill_index": 1,
+        "skill_id": "MetaHollowFormPlayer",
+        "hit_damage": [
+          {
+            "damage_type": "Physical",
+            "min": 0.0,
+            "max": 0.0,
+            "avg": 0.0
+          },
+          {
+            "damage_type": "Lightning",
+            "min": 0.0,
+            "max": 0.0,
+            "avg": 0.0
+          },
+          {
+            "damage_type": "Cold",
+            "min": 0.0,
+            "max": 0.0,
+            "avg": 0.0
+          },
+          {
+            "damage_type": "Fire",
+            "min": 0.0,
+            "max": 0.0,
+            "avg": 0.0
+          }
+        ],
+        "hit_dps": 0.0,
+        "dot_dps": 0.0,
+        "combined_dps": 0.0
+      },
+      "selected_level": {
+        "skill_id": "MetaHollowFormPlayer",
+        "level": 21,
+        "quality": 5
+      },
+      "group": {
+        "enabled": "true",
+        "includeInFullDPS": "nil",
+        "label": "",
+        "mainActiveSkill": "1",
+        "mainActiveSkillCalcs": "1"
+      },
+      "gems": [
+        {
+          "corruptLevel": "0",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SkillGemAscendancyHollowForm",
+          "level": "20",
+          "nameSpec": "Hollow Form",
+          "quality": "0",
+          "skillId": "MetaHollowFormPlayer",
+          "variantId": "HollowForm"
+        },
+        {
+          "corruptLevel": "1",
+          "corrupted": "true",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SkillGemShieldWall",
+          "level": "20",
+          "nameSpec": "Shield Wall",
+          "quality": "22",
+          "skillId": "ShieldWallPlayer",
+          "variantId": "ShieldWall"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SupportGemMagnifiedEffectTwo",
+          "level": "1",
+          "nameSpec": "Magnified Area II",
+          "quality": "0",
+          "skillId": "SupportMagnifiedAreaPlayerTwo",
+          "variantId": "MagnifiedAreaSupportTwo"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SupportGemMartialTempoTwo",
+          "level": "1",
+          "nameSpec": "Rapid Attacks II",
+          "quality": "0",
+          "skillId": "SupportRapidAttacksPlayerTwo",
+          "variantId": "RapidAttacksSupportTwo"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SupportGemDiallasDesire",
+          "level": "1",
+          "nameSpec": "Dialla's Desire",
+          "quality": "0",
+          "skillId": "SupportDiallasDesirePlayer",
+          "variantId": "DiallasDesireSupport"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SupportGemInspirationTwo",
+          "level": "1",
+          "nameSpec": "Efficiency II",
+          "quality": "0",
+          "skillId": "SupportEfficiencyPlayerTwo",
+          "variantId": "EfficiencySupportTwo"
+        }
+      ],
+      "native_values": {
+        "total_hit_avg": 0.0,
+        "dps": 0.0,
+        "action_rate": 2.823296,
+        "cooldown": 0.0
+      },
+      "default_values": {
+        "total_hit_avg": 0.0,
+        "dps": 0.0,
+        "action_rate": 3.130176,
+        "cooldown": 0.0
+      },
+      "cached_comparison_rows": [
+        {
+          "stat": "ActionRate",
+          "pobr": 2.823296,
+          "code": 1.51,
+          "pob2": 1.51,
+          "class": "engine",
+          "reason": null
+        }
+      ],
+      "oracle_selected": {
+        "activeGemLevel": 21,
+        "activeGemName": "Hollow Form",
+        "activeGemQuality": 5,
+        "grantedEffectId": "MetaHollowFormPlayer",
+        "skillFlags": {},
+        "statSetIndex": 1,
+        "statSetLabel": "Hollow Form",
+        "supports": [
+          {
+            "level": 20,
+            "name": "SupportHollowFormPlayer"
+          },
+          {
+            "level": 1,
+            "name": "Magnified Area II"
+          },
+          {
+            "level": 1,
+            "name": "Rapid Attacks II"
+          },
+          {
+            "level": 1,
+            "name": "Dialla's Desire"
+          },
+          {
+            "level": 1,
+            "name": "Efficiency II"
+          }
+        ]
+      },
+      "oracle_values": {
+        "AverageDamage": 245.082,
+        "CombinedDPS": 370.0774832,
+        "CullPercent": 0,
+        "CullingDPS": 0,
+        "Speed": 1.51
+      },
+      "game_effect": {
+        "id": "MetaHollowFormPlayer",
+        "is_support": false,
+        "active_skill": "hollow_form",
+        "displayed_name": "Hollow Form",
+        "cast_time": 1000,
+        "stat_set": 7740,
+        "skill_types": [
+          "Meta",
+          "Attack",
+          "ConsumesCharges",
+          "SkillConsumesPowerChargesOnUse",
+          "AttackInPlace",
+          "Channel",
+          "Melee",
+          "Sustained",
+          "UsableWhileMoving",
+          "GamepadDoNotChannelSkillAtLocation",
+          "UsableWhileShapeshifted"
+        ]
+      },
+      "game_level": {
+        "level": 21,
+        "attack_speed_multiplier": -30.0
+      },
+      "game_primary_stat_set": {
+        "set_id": "MetaHollowFormPlayer",
+        "base_effectiveness": 1.0,
+        "constant_stats": [
+          {
+            "stat": "active_skill_base_area_of_effect_radius",
+            "value": 60.0
+          },
+          {
+            "stat": "mantra_of_illusions_bonus_illusions_when_consuming_power_charge",
+            "value": 2.0
+          },
+          {
+            "stat": "mantra_of_illusions_cloned_skill_mana_cost_%",
+            "value": 80.0
+          },
+          {
+            "stat": "channel_start_duration_as_%_of_attack_time",
+            "value": 30.0
+          },
+          {
+            "stat": "channel_end_duration_as_%_of_attack_time",
+            "value": 30.0
+          },
+          {
+            "stat": "movement_speed_+%_final_while_performing_action",
+            "value": -80.0
+          },
+          {
+            "stat": "movement_speed_acceleration_+%_per_second_while_performing_action",
+            "value": 160.0
+          },
+          {
+            "stat": "channel_start_lock_cancelling_of_attack_time_%",
+            "value": 70.0
+          }
+        ],
+        "implicit_stats": [
+          "base_deal_no_damage",
+          "disable_quadruped_head_control",
+          "hide_minion_frame",
+          "can_perform_skill_while_moving",
+          "channel_start_lock_cancelling_scales_with_attack_speed"
+        ]
+      },
+      "game_selected_level_stats": null,
+      "relevant_usage": [],
+      "relevant_gem_diagnostics": [],
+      "finding": {
+        "status": "explained attack-vs-fallback-rate basis; no timing fix",
+        "native_formula": "(1000/625) * (1+37/100) * 0.70 * (1+84/100)",
+        "native_reconstructed": 2.823296,
+        "native_components": "Flying Spear 625ms, frozen weapon 10%+27% local attack speed, Hollow Form native level-row attack_speed_multiplier -30%, applied attack-speed INC 84% including compatible Rapid Attacks II 25%.",
+        "oracle_formula": "1 / 1s castTime * (1+51/100) = 1.51, cached IncSpeed 51.",
+        "limit": "This justifies preserving native attack-based ActionRate. It does not verify a sustained image count, charge consumption history, or image throughput. No new model/state."
+      }
+    },
+    "ritualist-08": {
+      "xml_sha256": "5248ac6cf8503f2b8a33420601b395478c9b92acc5bb776f8e8a2cc147d9873f",
+      "cached_native": "/root/codes/pobr/.cache/accuracy-round3-final-2026-10-26/after-builds/ritualist-08.json",
+      "cached_default": "/root/codes/pobr/.cache/accuracy-round3-final-2026-10-26/default-builds/ritualist-08.json",
+      "cached_oracle": "/root/codes/pobr/.cache/pob2-oracle/763cf1446cffc630-a5d862b87d.json",
+      "native_provenance": {
+        "engine_version": "0.0.37",
+        "data_version": "0.5.5.4.2",
+        "data_sha256": "d2976dc01c61ab84ea4f5d0176a65a4f88610fdf32bff2b3667277e6d4965a68"
+      },
+      "selected": {
+        "group_index": 3,
+        "active_skill_index": 1,
+        "skill_id": "TimeOfNeedPlayer",
+        "hit_damage": [
+          {
+            "damage_type": "Physical",
+            "min": 0.0,
+            "max": 0.0,
+            "avg": 0.0
+          }
+        ],
+        "hit_dps": 0.0,
+        "dot_dps": 0.0,
+        "combined_dps": 0.0
+      },
+      "selected_level": {
+        "skill_id": "TimeOfNeedPlayer",
+        "level": 18,
+        "quality": 20
+      },
+      "group": {
+        "enabled": "true",
+        "includeInFullDPS": "nil",
+        "label": "",
+        "mainActiveSkill": "1",
+        "mainActiveSkillCalcs": "1"
+      },
+      "gems": [
+        {
+          "corruptLevel": "0",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SkillGemTimeOfNeed",
+          "level": "18",
+          "nameSpec": "Time of Need",
+          "quality": "20",
+          "skillId": "TimeOfNeedPlayer",
+          "variantId": "TimeOfNeed"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SupportGemIngenuityTwo",
+          "level": "1",
+          "nameSpec": "Cooldown Recovery II",
+          "quality": "0",
+          "skillId": "SupportCooldownRecoveryPlayerTwo",
+          "variantId": "CooldownRecoverySupportTwo"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SupportGemClarity",
+          "level": "1",
+          "nameSpec": "Clarity I",
+          "quality": "0",
+          "skillId": "SupportClarityPlayer",
+          "variantId": "ClaritySupport"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SupportGemWarmBlooded",
+          "level": "1",
+          "nameSpec": "Warm Blooded",
+          "quality": "0",
+          "skillId": "SupportWarmbloodedPlayer",
+          "variantId": "WarmBloodedSupport"
+        }
+      ],
+      "native_values": {
+        "total_hit_avg": 0.0,
+        "dps": 0.0,
+        "action_rate": 1.48,
+        "cooldown": 0.0
+      },
+      "default_values": {
+        "total_hit_avg": 0.0,
+        "dps": 0.0,
+        "action_rate": 1.48,
+        "cooldown": 0.0
+      },
+      "cached_comparison_rows": [
+        {
+          "stat": "ActionRate",
+          "pobr": 1.48,
+          "code": 0.15620118712902,
+          "pob2": 0.1562011871,
+          "class": "engine",
+          "reason": null
+        },
+        {
+          "stat": "Cooldown",
+          "pobr": 0.0,
+          "code": 6.402,
+          "pob2": 6.402,
+          "class": "engine",
+          "reason": null
+        }
+      ],
+      "oracle_selected": {
+        "activeGemLevel": 18,
+        "activeGemName": "Time of Need",
+        "activeGemQuality": 20,
+        "grantedEffectId": "TimeOfNeedPlayer",
+        "skillFlags": {},
+        "statSetIndex": 1,
+        "statSetLabel": "Time of Need",
+        "supports": [
+          {
+            "level": 1,
+            "name": "Cooldown Recovery II"
+          },
+          {
+            "level": 1,
+            "name": "Clarity I"
+          },
+          {
+            "level": 1,
+            "name": "Warm Blooded"
+          }
+        ]
+      },
+      "oracle_values": {
+        "AverageDamage": 0,
+        "CombinedDPS": 0,
+        "Cooldown": 6.402,
+        "CullPercent": 0,
+        "CullingDPS": 0,
+        "Speed": 0.1562011871
+      },
+      "game_effect": {
+        "id": "TimeOfNeedPlayer",
+        "is_support": false,
+        "active_skill": "time_of_need",
+        "displayed_name": "Time of Need",
+        "cast_time": 1000,
+        "stat_set": 478,
+        "skill_types": [
+          "OngoingSkill",
+          "HasReservation",
+          "Buff",
+          "Persistent",
+          "AttackInPlace",
+          "AffectedByCooldownRate"
+        ]
+      },
+      "game_level": {
+        "level": 18,
+        "spirit_reservation_flat": 30.0
+      },
+      "game_primary_stat_set": {
+        "set_id": "TimeOfNeedPlayer",
+        "base_effectiveness": 1.0,
+        "implicit_stats": [
+          "base_deal_no_damage",
+          "cooldown_recovery_modifiers_also_apply_to_repeat_interval"
+        ]
+      },
+      "game_selected_level_stats": {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "base_cooldown_modifiable_repeat_interval_ms",
+            "value": 8300.0
+          },
+          {
+            "stat": "skill_time_of_need_gain_x_life",
+            "value": 500.0
+          }
+        ]
+      },
+      "relevant_usage": [
+        {
+          "source_kind": "SkillGem",
+          "source_id": "skill.base_cooldown_modifiable_repeat_interval_ms",
+          "slot": null,
+          "holder": null,
+          "text": "skill base_cooldown_modifiable_repeat_interval_ms (8300)",
+          "status": "inactive",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "CooldownRecovery",
+              "mod_type": "BASE",
+              "value": 8.3,
+              "applied": null,
+              "status": "inactive",
+              "reason": "CooldownRecovery is read as INC, MORE only, not as BASE",
+              "used_in": []
+            }
+          ]
+        }
+      ],
+      "relevant_gem_diagnostics": [
+        {
+          "stat": "cooldown_recovery_modifiers_also_apply_to_repeat_interval",
+          "owner": "skill",
+          "status": "unknown",
+          "reason": null
+        }
+      ],
+      "finding": {
+        "status": "unresolved repeat-cadence output gap; no formula change",
+        "cause": "base_cooldown_modifiable_repeat_interval_ms is retained but mapped to CooldownRecovery BASE, which is read only as INC/MORE. The game says recovery modifiers apply to repeat frequency; effect level row has no activation cooldown.",
+        "base_interval_seconds": 8.3,
+        "cooldown_recovery_increase_percent": 30,
+        "unrounded_repeat_interval_seconds": 6.384615384615385,
+        "oracle_rounded_interval_seconds": 6.402,
+        "oracle_basis": "Reference writes the repeat interval into Cooldown; Time of Need also caps fallback action rate by it. Ghost Dance retains zero Speed.",
+        "limit": "Mapping this to SkillCooldownBase would label internal cadence as an activation cooldown. No new repeat view/state, recovery uptime, stack history or action model introduced; not declared known/effectless."
+      }
+    },
+    "warbringer-06": {
+      "xml_sha256": "50c815ffe9f49b8e2f05679feb9867b60964712df50ba8c5643691b27908e982",
+      "cached_native": "/root/codes/pobr/.cache/accuracy-round3-final-2026-10-26/after-builds/warbringer-06.json",
+      "cached_default": "/root/codes/pobr/.cache/accuracy-round3-final-2026-10-26/default-builds/warbringer-06.json",
+      "cached_oracle": "/root/codes/pobr/.cache/pob2-oracle/5d6da708aa225737-a087ebd4ff.json",
+      "native_provenance": {
+        "engine_version": "0.0.37",
+        "data_version": "0.5.5.4.2",
+        "data_sha256": "d2976dc01c61ab84ea4f5d0176a65a4f88610fdf32bff2b3667277e6d4965a68"
+      },
+      "selected": {
+        "group_index": 2,
+        "active_skill_index": 1,
+        "skill_id": "SuperchargedSlamPlayer",
+        "hit_damage": [
+          {
+            "damage_type": "Physical",
+            "min": 326430.325107756,
+            "max": 789409.103330016,
+            "avg": 557919.714218886
+          },
+          {
+            "damage_type": "Lightning",
+            "min": 46659.730407701,
+            "max": 147715.261872576,
+            "avg": 97187.4961401385
+          },
+          {
+            "damage_type": "Fire",
+            "min": 301041.101516094,
+            "max": 603424.16266068,
+            "avg": 452232.63208838704
+          }
+        ],
+        "hit_dps": 1163282.953257175,
+        "dot_dps": 93772.043856259,
+        "combined_dps": 1257054.997113434
+      },
+      "selected_level": {
+        "skill_id": "SuperchargedSlamPlayer",
+        "level": 35,
+        "quality": 20
+      },
+      "group": {
+        "enabled": "true",
+        "includeInFullDPS": "nil",
+        "label": "",
+        "mainActiveSkill": "1",
+        "mainActiveSkillCalcs": "1"
+      },
+      "gems": [
+        {
+          "corruptLevel": "1",
+          "corrupted": "true",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemSuperchargedSlam",
+          "level": "20",
+          "nameSpec": "Supercharged Slam",
+          "quality": "20",
+          "skillId": "SuperchargedSlamPlayer",
+          "variantId": "SuperchargedSlam"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SupportGemVoranasSiege",
+          "level": "1",
+          "nameSpec": "Vorana's Siege",
+          "quality": "0",
+          "skillId": "SupportVoranasSiege",
+          "variantId": "VoranasSiegeSupport"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SupportGemRigwaldsFerocity",
+          "level": "1",
+          "nameSpec": "Rigwald's Ferocity",
+          "quality": "0",
+          "skillId": "SupportRigwaldsFerocityPlayer",
+          "variantId": "RigwaldsFerocitySupport"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SupportGemFistOfWarThree",
+          "level": "1",
+          "nameSpec": "Fist of War III",
+          "quality": "0",
+          "skillId": "FistOfWarSupportPlayerThree",
+          "variantId": "FistOfWarSupportThree"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SupportGemHeft",
+          "level": "1",
+          "nameSpec": "Heft",
+          "quality": "0",
+          "skillId": "SupportHeftPlayer",
+          "variantId": "HeftSupport"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SupportGemHeavySwing",
+          "level": "1",
+          "nameSpec": "Heavy Swing",
+          "quality": "0",
+          "skillId": "SupportMeleePhysicalDamagePlayer",
+          "variantId": "MeleePhysicalDamageSupport"
+        }
+      ],
+      "native_values": {
+        "total_hit_avg": 1217077.22083395,
+        "dps": 1163282.953257175,
+        "action_rate": 0.227272727,
+        "cooldown": 0.0
+      },
+      "default_values": {
+        "total_hit_avg": 1310749.804565529,
+        "dps": 1239924.158036498,
+        "action_rate": 0.227272727,
+        "cooldown": 0.0
+      },
+      "cached_comparison_rows": [
+        {
+          "stat": "AverageDamage",
+          "pobr": 1023689.000094741,
+          "code": 614955.66897028,
+          "pob2": 594384.6809,
+          "class": "engine",
+          "reason": null
+        },
+        {
+          "stat": "ActionRate",
+          "pobr": 0.227272727,
+          "code": 1.0,
+          "pob2": 1.0,
+          "class": "engine",
+          "reason": null
+        }
+      ],
+      "oracle_selected": {
+        "activeGemLevel": 35,
+        "activeGemName": "Supercharged Slam",
+        "activeGemQuality": 20,
+        "grantedEffectId": "SuperchargedSlamPlayer",
+        "skillFlags": {},
+        "statSetIndex": 1,
+        "statSetLabel": "Impact",
+        "supports": [
+          {
+            "level": 1,
+            "name": "Vorana's Siege"
+          },
+          {
+            "level": 1,
+            "name": "Rigwald's Ferocity"
+          },
+          {
+            "level": 1,
+            "name": "Fist of War III"
+          },
+          {
+            "level": 1,
+            "name": "Heft"
+          },
+          {
+            "level": 1,
+            "name": "Heavy Swing"
+          }
+        ]
+      },
+      "oracle_values": {
+        "AverageDamage": 594384.6809,
+        "CombinedDPS": 1252798.124,
+        "CullPercent": 0,
+        "CullingDPS": 0,
+        "HitSpeed": 1,
+        "Speed": 1.24
+      },
+      "game_effect": {
+        "id": "SuperchargedSlamPlayer",
+        "is_support": false,
+        "active_skill": "supercharged_slam",
+        "displayed_name": "Supercharged Slam",
+        "cast_time": 1000,
+        "stat_set": 222,
+        "additional_stat_set_ids": [
+          "SuperchargedSlamAftershockPlayer"
+        ],
+        "cost_types": [
+          9
+        ],
+        "skill_types": [
+          "Attack",
+          "Area",
+          "Channel",
+          "Melee",
+          "Slam",
+          "NoDualWield",
+          "GainsStages"
+        ]
+      },
+      "game_level": {
+        "level": 35,
+        "attack_time_ms": 850,
+        "cost_amounts": [
+          9108
+        ]
+      },
+      "game_primary_stat_set": {
+        "set_id": "SuperchargedSlamPlayer",
+        "base_effectiveness": 1.0,
+        "constant_stats": [
+          {
+            "stat": "active_skill_base_area_of_effect_radius",
+            "value": 16.0
+          },
+          {
+            "stat": "channelled_slam_damage_+%_final_per_stage",
+            "value": 40.0
+          },
+          {
+            "stat": "channelled_slam_max_stages",
+            "value": 3.0
+          },
+          {
+            "stat": "skill_animation_duration_multiplier_override",
+            "value": 3.0
+          },
+          {
+            "stat": "channel_skill_end_animation_duration_override_ms",
+            "value": 1000.0
+          },
+          {
+            "stat": "base_minimum_channel_time_ms",
+            "value": 1000.0
+          }
+        ],
+        "implicit_stats": [
+          "is_area_damage",
+          "base_skill_show_average_damage_instead_of_dps",
+          "channel_start_lock_cancelling_scales_with_attack_speed",
+          "quality_display_supercharged_slam_is_gem"
+        ]
+      },
+      "game_selected_level_stats": {
+        "gem_level": 35,
+        "damage_multiplier": 6.67,
+        "stats": []
+      },
+      "relevant_usage": [],
+      "relevant_gem_diagnostics": [],
+      "finding": {
+        "status": "existing documented channel-model difference",
+        "native_formula": "1 / (4*0.850 + 1.000)",
+        "native_reconstructed": 0.22727272727272727,
+        "components": "Three native stages plus one from quality; own unmodifiable 850ms attack time; one-second fixed release.",
+        "oracle": "HitSpeed 1 is release-side timing; Speed 1.24 is also cached.",
+        "limit": "Existing four-stage default/channel approximation; no in-game timing measurement. Do not change stages or rate merely for parity."
+      }
+    },
+    "acolyte-of-chayula-01": {
+      "xml_sha256": "be9a4283491045cf49f6b2c4446cd49534028a8c361d35703f99657638a84cc4",
+      "cached_native": "/root/codes/pobr/.cache/accuracy-round3-final-2026-10-26/after-builds/acolyte-of-chayula-01.json",
+      "cached_default": "/root/codes/pobr/.cache/accuracy-round3-final-2026-10-26/default-builds/acolyte-of-chayula-01.json",
+      "cached_oracle": "/root/codes/pobr/.cache/pob2-oracle/efe2d9650d40dd89-92c3c088ee.json",
+      "native_provenance": {
+        "engine_version": "0.0.37",
+        "data_version": "0.5.5.4.2",
+        "data_sha256": "d2976dc01c61ab84ea4f5d0176a65a4f88610fdf32bff2b3667277e6d4965a68"
+      },
+      "selected": {
+        "group_index": 3,
+        "active_skill_index": 1,
+        "skill_id": "GhostDancePlayer",
+        "hit_damage": [
+          {
+            "damage_type": "Physical",
+            "min": 0.0,
+            "max": 0.0,
+            "avg": 0.0
+          }
+        ],
+        "hit_dps": 0.0,
+        "dot_dps": 0.0,
+        "combined_dps": 0.0
+      },
+      "selected_level": {
+        "skill_id": "GhostDancePlayer",
+        "level": 17,
+        "quality": 0
+      },
+      "group": {
+        "enabled": "true",
+        "includeInFullDPS": "nil",
+        "label": "",
+        "mainActiveSkill": "1",
+        "mainActiveSkillCalcs": "1"
+      },
+      "gems": [
+        {
+          "corruptLevel": "0",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemGhostDance",
+          "level": "17",
+          "nameSpec": "Ghost Dance",
+          "quality": "0",
+          "skillId": "GhostDancePlayer",
+          "variantId": "GhostDance"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SupportGemIngenuityTwo",
+          "level": "1",
+          "nameSpec": "Cooldown Recovery II",
+          "quality": "0",
+          "skillId": "SupportCooldownRecoveryPlayerTwo",
+          "variantId": "CooldownRecoverySupportTwo"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SupportGemStrongHearted",
+          "level": "1",
+          "nameSpec": "Strong Hearted",
+          "quality": "0",
+          "skillId": "SupportStrongHeartedPlayer",
+          "variantId": "StrongHeartedSupport"
+        },
+        {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "1",
+          "enableGlobal1": "true",
+          "enableGlobal2": "true",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SupportGemCoolHeaded",
+          "level": "1",
+          "nameSpec": "Cool Headed",
+          "quality": "0",
+          "skillId": "SupportCoolheadedPlayer",
+          "variantId": "CoolHeadedSupport"
+        }
+      ],
+      "native_values": {
+        "total_hit_avg": 0.0,
+        "dps": 0.0,
+        "action_rate": 0.0,
+        "cooldown": 0.0
+      },
+      "default_values": {
+        "total_hit_avg": 0.0,
+        "dps": 0.0,
+        "action_rate": 0.0,
+        "cooldown": 0.0
+      },
+      "cached_comparison_rows": [
+        {
+          "stat": "Cooldown",
+          "pobr": 0.0,
+          "code": 8.019,
+          "pob2": 8.019,
+          "class": "engine",
+          "reason": null
+        }
+      ],
+      "oracle_selected": {
+        "activeGemLevel": 17,
+        "activeGemName": "Ghost Dance",
+        "activeGemQuality": 0,
+        "grantedEffectId": "GhostDancePlayer",
+        "skillFlags": {},
+        "statSetIndex": 1,
+        "statSetLabel": "Ghost Dance",
+        "supports": [
+          {
+            "level": 1,
+            "name": "Cooldown Recovery II"
+          },
+          {
+            "level": 1,
+            "name": "Strong Hearted"
+          },
+          {
+            "level": 1,
+            "name": "Cool Headed"
+          }
+        ]
+      },
+      "oracle_values": {
+        "AverageDamage": 0,
+        "CombinedDPS": 0,
+        "Cooldown": 8.019,
+        "CullPercent": 0,
+        "CullingDPS": 0,
+        "Speed": 0
+      },
+      "game_effect": {
+        "id": "GhostDancePlayer",
+        "is_support": false,
+        "active_skill": "ghost_dance",
+        "displayed_name": "Ghost Dance",
+        "cast_time": null,
+        "stat_set": 351,
+        "skill_types": [
+          "HasReservation",
+          "OngoingSkill",
+          "Persistent",
+          "Buff",
+          "AffectedByCooldownRate"
+        ]
+      },
+      "game_level": {
+        "level": 17,
+        "spirit_reservation_flat": 30.0
+      },
+      "game_primary_stat_set": {
+        "set_id": "GhostDancePlayer",
+        "base_effectiveness": 1.0,
+        "constant_stats": [
+          {
+            "stat": "skill_base_ghost_dance_grants_%_evasion_as_es_regeneration_per_minute_if_have_lost_ghost_dance_shroud_recently",
+            "value": 120.0
+          },
+          {
+            "stat": "ghost_dance_max_stacks",
+            "value": 3.0
+          }
+        ],
+        "implicit_stats": [
+          "base_deal_no_damage",
+          "quality_display_ghost_dance_is_gem",
+          "cooldown_recovery_modifiers_also_apply_to_repeat_interval"
+        ]
+      },
+      "game_selected_level_stats": {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "base_cooldown_modifiable_repeat_interval_ms",
+            "value": 10400.0
+          }
+        ]
+      },
+      "relevant_usage": [
+        {
+          "source_kind": "SkillGem",
+          "source_id": "skill.base_cooldown_modifiable_repeat_interval_ms",
+          "slot": null,
+          "holder": null,
+          "text": "skill base_cooldown_modifiable_repeat_interval_ms (10400)",
+          "status": "inactive",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "CooldownRecovery",
+              "mod_type": "BASE",
+              "value": 10.4,
+              "applied": null,
+              "status": "inactive",
+              "reason": "CooldownRecovery is read as INC, MORE only, not as BASE",
+              "used_in": []
+            }
+          ]
+        }
+      ],
+      "relevant_gem_diagnostics": [
+        {
+          "stat": "cooldown_recovery_modifiers_also_apply_to_repeat_interval",
+          "owner": "skill",
+          "status": "unknown",
+          "reason": null
+        }
+      ],
+      "finding": {
+        "status": "unresolved repeat-cadence output gap; no formula change",
+        "cause": "base_cooldown_modifiable_repeat_interval_ms is retained but mapped to CooldownRecovery BASE, which is read only as INC/MORE. The game says recovery modifiers apply to repeat frequency; effect level row has no activation cooldown.",
+        "base_interval_seconds": 10.4,
+        "cooldown_recovery_increase_percent": 30,
+        "unrounded_repeat_interval_seconds": 8.0,
+        "oracle_rounded_interval_seconds": 8.019,
+        "oracle_basis": "Reference writes the repeat interval into Cooldown; Time of Need also caps fallback action rate by it. Ghost Dance retains zero Speed.",
+        "limit": "Mapping this to SkillCooldownBase would label internal cadence as an activation cooldown. No new repeat view/state, recovery uptime, stack history or action model introduced; not declared known/effectless."
+      }
+    }
+  },
+  "implementation": {
+    "files": [
+      "crates/pobr-core/src/rules/skill_stats.rs",
+      "crates/pobr-build/tests/skills/combined_dps.rs"
+    ],
+    "focused_test": "cargo test -q -p pobr-build --test skills combined_dps::culling_strike_ii",
+    "covered": [
+      "normal target off",
+      "explicit rare 10%",
+      "pinnacle unique 5%",
+      "no on-cull threshold increase",
+      "unchanged hit DPS",
+      "support source retained",
+      "disabled support off",
+      "incompatible spell off",
+      "unselected group off",
+      "non-damaging Tempest Bell remains zero"
+    ],
+    "deferred": [
+      "root batch gate and frozen corpus measurement",
+      "root consolidated documentation and classification"
+    ],
+    "commit": "1af6b593",
+    "checks_passed": [
+      "cargo test -q -p pobr-build --test skills combined_dps::culling_strike_ii",
+      "mise run regen",
+      "cargo clippy -q -p pobr-core -p pobr-build --lib --tests -- -D warnings",
+      "cargo fmt --all --check",
+      "git diff --check"
+    ],
+    "parent_merged": "e9eac4cd",
+    "generated_artifact_diff": false
+  }
+}
