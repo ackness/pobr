@@ -8,7 +8,11 @@
 //! Archmage reserves 100 Spirit. Its quality gives 0.5% Reservation Efficiency
 //! per 1%, so a gem with 20% quality reserves 100 / 1.10 = 91.
 
-use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
+use pobr_build::{
+    Build, BuildData, DataOrchestratorOptions, WeaponSet, calculate_with_data, parse_build,
+    resolve_main_skill_selection,
+};
+use pobr_data::item::{EquipmentSlot, ItemRarity};
 
 use crate::test_data as data;
 
@@ -121,4 +125,292 @@ fn only_one_group_is_the_granted_skill() {
     let amulet = "Absent Amulet";
     let groups = [gem(20, 0, false), gem(20, 0, false), granted(amulet)];
     assert_eq!(reserved(&data, amulet, &groups), 100.0);
+}
+
+const VARIANTS: [(&str, &str, &str, &str, &str); 4] = [
+    (
+        "The Coming Calamity",
+        "Heroic Armour",
+        "Herald of Ash",
+        "HeraldOfAshPlayer",
+        "UniqueHeraldOfAshPlayer",
+    ),
+    (
+        "The Coming Calamity",
+        "Heroic Armour",
+        "Herald of Ice",
+        "HeraldOfIcePlayer",
+        "UniqueHeraldOfIcePlayer",
+    ),
+    (
+        "The Coming Calamity",
+        "Heroic Armour",
+        "Herald of Thunder",
+        "HeraldOfThunderPlayer",
+        "UniqueHeraldOfThunderPlayer",
+    ),
+    (
+        "Sands of Silk",
+        "Shrouded Vest",
+        "Blink",
+        "BlinkReservationPlayer",
+        "BlinkSandPlayer",
+    ),
+];
+
+fn skill_gem(id: &str, level: u32, quality: u32, corrupted: bool) -> String {
+    let gem_id = &data().gem_effects[id].gem_id;
+    format!(
+        r#"<Gem gemId="{gem_id}" skillId="{id}" level="{level}" quality="{quality}" corrupted="{corrupted}" enabled="true"/>"#
+    )
+}
+
+fn skill_group(attributes: &str, gems: &str) -> String {
+    format!(r#"<Skill enabled="true" {attributes}>{gems}</Skill>"#)
+}
+
+fn item_group(item: &str, base: &str, id: &str, level: u32) -> String {
+    skill_group(
+        &format!(r#"source="Item:1:{item}, {base}" slot="Body Armour""#),
+        &skill_gem(id, level, 0, false),
+    )
+}
+
+fn unique_build(item: &str, base: &str, grants: &str, groups: &[String]) -> Build {
+    let count = grants.lines().count();
+    let groups = groups.concat();
+    parse_build(&format!(
+        r#"<PathOfBuilding2>
+<Build level="100" className="Sorceress" mainSocketGroup="1"/>
+<Skills><SkillSet id="1">{groups}</SkillSet></Skills>
+<Items><Item id="1">Rarity: UNIQUE
+{item}
+{base}
+Implicits: {count}
+{grants}
+</Item><ItemSet id="1"><Slot name="Body Armour" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#,
+    ))
+    .expect("parse unique grant")
+}
+
+fn reservation(build: &Build) -> f64 {
+    calculate_with_data(build, data(), &DataOrchestratorOptions::default())
+        .expect("calculate unique grant")
+        .spirit_reserved
+}
+
+/// Game ModGrantedSkills rows 9/10/11/1 link these mods to the distinct
+/// effects. Native Heralds have zero base reservation, not a -100% multiplier:
+/// the Precision I support still reserves 10. Sand Blink has three uses.
+#[test]
+fn native_and_exported_item_variants_keep_support_costs_and_import_identity() {
+    for (item, base, name, exported, native) in VARIANTS {
+        for own_id in [exported, native] {
+            for listed_id in [exported, native] {
+                let mut gems = skill_gem(listed_id, 20, 0, false);
+                if name != "Blink" {
+                    gems.push_str(&skill_gem("SupportPrecisionPlayer", 1, 0, false));
+                }
+                let build = unique_build(
+                    item,
+                    base,
+                    &format!("Grants Skill: Level 20 {name}"),
+                    &[item_group(item, base, own_id, 20), skill_group("", &gems)],
+                );
+                let original_groups = build.socket_groups.clone();
+                let original_text = build.items[&EquipmentSlot::BodyArmour]
+                    .implicit_texts
+                    .clone();
+                assert_eq!(
+                    resolve_main_skill_selection(&build, data()),
+                    Some((1, 1, native.into())),
+                    "{item}: {own_id}, {listed_id}"
+                );
+                let output =
+                    calculate_with_data(&build, data(), &DataOrchestratorOptions::default())
+                        .unwrap();
+                assert_eq!(
+                    output.spirit_reserved,
+                    if name == "Blink" { 0.0 } else { 10.0 }
+                );
+                if name == "Blink" {
+                    assert_eq!(output.cooldown_stored_uses, 3);
+                }
+                assert_eq!(build.socket_groups, original_groups);
+                assert_eq!(
+                    build.items[&EquipmentSlot::BodyArmour].implicit_texts,
+                    original_text
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn known_unique_source_synthesizes_missing_variants_without_claiming_manual_gems() {
+    let build = unique_build(
+        "The Coming Calamity",
+        "Heroic Armour",
+        "Grants Skill: Level 20 Herald of Ash\nGrants Skill: Level 20 Herald of Ice\nGrants Skill: Level 20 Herald of Thunder",
+        &[
+            item_group(
+                "The Coming Calamity",
+                "Heroic Armour",
+                "HeraldOfAshPlayer",
+                20,
+            ),
+            skill_group("", &skill_gem("HeraldOfIcePlayer", 20, 0, false)),
+        ],
+    );
+    // Only Ash has exported attachment metadata. The synthesized Ice group
+    // does not establish that the separate manual Ice gem belongs to it.
+    assert_eq!(reservation(&build), 30.0);
+    assert_eq!(
+        resolve_main_skill_selection(&build, data()),
+        Some((0, 1, "UniqueHeraldOfAshPlayer".into()))
+    );
+}
+
+#[test]
+fn a_synthesized_native_item_source_does_not_claim_an_ordinary_manual_gem() {
+    let build = unique_build(
+        "Sands of Silk",
+        "Shrouded Vest",
+        "Grants Skill: Level 20 Blink",
+        &[
+            skill_group(
+                r#"source="Item" slot="Body Armour""#,
+                &skill_gem("BlinkSandPlayer", 20, 0, false),
+            ),
+            skill_group("", &skill_gem("BlinkReservationPlayer", 20, 0, false)),
+        ],
+    );
+    assert_eq!(reservation(&build), 60.0);
+    assert_eq!(
+        resolve_main_skill_selection(&build, data()),
+        Some((0, 1, "BlinkSandPlayer".into()))
+    );
+}
+
+#[test]
+fn runemastered_sands_keeps_a_corrupted_quality_blink_in_either_weapon_set() {
+    for base in ["Shrouded Vest", "Runemastered Shrouded Vest"] {
+        for set in [WeaponSet::First, WeaponSet::Second] {
+            let mut build = unique_build(
+                "Sands of Silk",
+                base,
+                "Grants Skill: Level 18 Blink",
+                &[
+                    skill_group("", &skill_gem("BlinkReservationPlayer", 20, 20, true)),
+                    skill_group("", &skill_gem("BlinkReservationPlayer", 18, 0, false)),
+                    item_group("Sands of Silk", base, "BlinkReservationPlayer", 18),
+                ],
+            );
+            build.weapon_set = set;
+            build.main_socket_group = Some(3);
+            assert_eq!(reservation(&build), 60.0, "{base} {set:?}");
+            assert_eq!(
+                resolve_main_skill_selection(&build, data()),
+                Some((1, 1, "BlinkSandPlayer".into()))
+            );
+            build.main_socket_group = Some(1);
+            assert_eq!(
+                resolve_main_skill_selection(&build, data()),
+                Some((0, 1, "BlinkReservationPlayer".into()))
+            );
+        }
+    }
+}
+
+#[test]
+fn a_disabled_listed_variant_suppresses_the_item_copy_and_its_support_cost() {
+    let mut build = unique_build(
+        "The Coming Calamity",
+        "Runemastered Heroic Armour",
+        "Grants Skill: Level 20 Herald of Ash",
+        &[
+            item_group(
+                "The Coming Calamity",
+                "Runemastered Heroic Armour",
+                "HeraldOfAshPlayer",
+                20,
+            ),
+            skill_group(
+                "",
+                &(skill_gem("HeraldOfAshPlayer", 20, 0, false)
+                    + &skill_gem("SupportPrecisionPlayer", 1, 0, false)),
+            ),
+        ],
+    );
+    assert_eq!(reservation(&build), 10.0);
+    build.socket_groups[1].enabled = false;
+    assert_eq!(reservation(&build), 0.0);
+    assert!(!build.socket_groups[1].enabled);
+}
+
+#[test]
+fn only_one_matching_ordinary_group_becomes_the_unique_variant() {
+    let build = unique_build(
+        "The Coming Calamity",
+        "Heroic Armour",
+        "Grants Skill: Level 20 Herald of Ice",
+        &[
+            skill_group("", &skill_gem("HeraldOfIcePlayer", 20, 0, false)),
+            item_group(
+                "The Coming Calamity",
+                "Heroic Armour",
+                "HeraldOfIcePlayer",
+                20,
+            ),
+            skill_group("", &skill_gem("HeraldOfIcePlayer", 20, 0, false)),
+        ],
+    );
+    assert_eq!(reservation(&build), 30.0);
+}
+
+#[test]
+fn a_shared_display_name_without_matching_item_evidence_stays_ordinary() {
+    let original = unique_build(
+        "Sands of Silk",
+        "Shrouded Vest",
+        "Grants Skill: Level 20 Blink",
+        &[item_group(
+            "Sands of Silk",
+            "Shrouded Vest",
+            "BlinkReservationPlayer",
+            20,
+        )],
+    );
+    for mismatch in ["name", "base", "slot", "rarity", "no_source"] {
+        let mut build = original.clone();
+        match mismatch {
+            "name" => {
+                build.socket_groups[0].source = Some("Item:1:Other Unique, Shrouded Vest".into())
+            }
+            "base" => {
+                build
+                    .items
+                    .get_mut(&EquipmentSlot::BodyArmour)
+                    .unwrap()
+                    .base = "Heroic Armour".into()
+            }
+            "slot" => build.socket_groups[0].slot = Some("Helmet".into()),
+            "rarity" => {
+                build
+                    .items
+                    .get_mut(&EquipmentSlot::BodyArmour)
+                    .unwrap()
+                    .rarity = ItemRarity::Rare
+            }
+            "no_source" => build.socket_groups[0].source = None,
+            _ => unreachable!(),
+        }
+        assert_eq!(reservation(&build), 60.0, "{mismatch}");
+        assert_eq!(
+            resolve_main_skill_selection(&build, data()),
+            Some((0, 1, "BlinkReservationPlayer".into())),
+            "{mismatch}"
+        );
+    }
 }
