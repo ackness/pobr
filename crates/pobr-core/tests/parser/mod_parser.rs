@@ -1701,6 +1701,31 @@ fn skill_keywords_restrict_to_the_skills_of_those_types() {
 }
 
 #[test]
+fn coming_calamity_resistance_override_requires_presence() {
+    let parsed = parse_mod("Enemies in your Presence have no Elemental Resistances").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed, "{parsed:?}");
+    let mut enemy = ModDb::new();
+    for outer in parsed.mods {
+        assert_eq!(outer.name.as_str(), "EnemyModifier");
+        let ModValue::NestedMods(inner) = outer.value else {
+            panic!("expected enemy modifiers");
+        };
+        enemy.add_list(inner);
+    }
+    for present in [false, true] {
+        let cfg = CalcConfig::attack().with_condition("EnemyInPresence", present);
+        for stat in ["FireResist", "ColdResist", "LightningResist"] {
+            assert_eq!(
+                enemy.override_(&cfg, stat),
+                present.then_some(0.0),
+                "{stat}"
+            );
+        }
+        assert_eq!(enemy.override_(&cfg, "ChaosResist"), None);
+    }
+}
+
+#[test]
 fn blood_price_and_radiant_grief_preserve_presence_semantics() {
     let parsed = parse_mod("Enemies in your Presence have at least 10% of Life Reserved").unwrap();
     assert_eq!(parsed.status, ParseStatus::Parsed, "{parsed:?}");
