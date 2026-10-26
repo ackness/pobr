@@ -415,6 +415,24 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
             // (this feeds into the `:659` hit pool remainder sum).
             mom_pool_remaining = 0.0;
         }
+        // Runic Ward absorbs damage after Life reaches 1. Reserve the damage
+        // needed to reach that point, then spend Ward before the Life-only
+        // loss-prevention/overkill calculation. Otherwise that calculation
+        // discards lethal excess while Ward still has damage left to absorb.
+        // Grasping Wounds prevents Life loss, not damage absorbed by Ward.
+        if ward_applies && ward > 0.0 && life > 0.0 && life_hit_pool.is_finite() {
+            let last_life_hit_pool = life_hit_pool_with_loss_prevention(
+                life.min(1.0),
+                ctx.max_life,
+                ctx.prevented_life_loss,
+                ctx.life_loss_below_half_prevented,
+            );
+            let damage_before_ward = (life_hit_pool - last_life_hit_pool).max(0.0);
+            let ward_damage = (rem - damage_before_ward).clamp(0.0, ward);
+            ward -= ward_damage;
+            rem -= ward_damage;
+            lose(&mut resources_lost, dtype, "ward", ward_damage);
+        }
         // :611-651 loss-prevention (gate = preventedLifeLossTotal > 0,
         // derived per :2670: prev>0 or belowHalf's effective value >0).
         let below_half_eff = ctx.prevented_life_loss_below_half_effective();
@@ -469,24 +487,12 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
                 lose(&mut resources_lost, dtype, "life_loss_prevented", temp);
             }
         }
-        // :659-676 life down to 1, then Runic Ward, then the last point of life.
+        // Ward's share has already been removed; the rest consumes Life.
         if life > 0.0 {
-            let temp = rem.min(life - 1.0);
+            let temp = rem.min(life);
             life -= temp;
             rem -= temp;
             lose(&mut resources_lost, dtype, "life", temp);
-            if ward > 0.0 && ward_applies {
-                let temp = rem.min(ward);
-                ward -= temp;
-                rem -= temp;
-                lose(&mut resources_lost, dtype, "ward", temp);
-            }
-            if rem > 0.0 {
-                let temp = rem.min(life);
-                life -= temp;
-                rem -= temp;
-                lose(&mut resources_lost, dtype, "life", temp);
-            }
         }
         // :656-657 overkill.
         overkill += rem;
