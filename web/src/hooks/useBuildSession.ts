@@ -35,6 +35,7 @@ import type {
   WeaponSwap,
 } from '../api/types';
 import { highestDpsSkill } from '../lib/skillSelection';
+import { LEGACY_STORAGE, type SessionStorageKeys } from '../lib/sessionStorage';
 
 export interface CharacterState {
   level: number;
@@ -338,11 +339,9 @@ export interface Library {
   skillSets: SkillSet[];
 }
 
-const LIBRARY_KEY = 'pobr-library';
-
-function loadLibrary(): Library {
+function loadLibrary(key: string): Library {
   try {
-    const parsed = JSON.parse(localStorage.getItem(LIBRARY_KEY) ?? '') as Library;
+    const parsed = JSON.parse(localStorage.getItem(key) ?? '') as Library;
     return {
       items: Array.isArray(parsed.items) ? parsed.items : [],
       skillSets: Array.isArray(parsed.skillSets) ? parsed.skillSets : [],
@@ -359,8 +358,6 @@ export interface SavedSession {
   state: BuildState;
   notes: string;
 }
-
-const STORAGE_KEY = 'pobr-build-state';
 
 /** 解析并校验存档信封（导入文件 / localStorage 共用）；非法返回 null。 */
 export function parseSaved(json: string): SavedSession | null {
@@ -610,7 +607,8 @@ export async function skillMetricsForState(state: BuildState): Promise<SkillMetr
   return { skills, item_errors };
 }
 
-export function useBuildSession(configContextActive = false): BuildSession {
+export function useBuildSession(configContextActive = false, storageKeys: SessionStorageKeys = LEGACY_STORAGE): BuildSession {
+  const storage = useRef(storageKeys).current;
   const configContextActiveRef = useRef(configContextActive);
   configContextActiveRef.current = configContextActive;
   const [dataVersion, setDataVersion] = useState<string | null>(null);
@@ -634,7 +632,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
   const [calcError, setCalcError] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [notes, setNotesState] = useState<string>(
-    () => localStorage.getItem('pobr-notes') ?? '',
+    () => localStorage.getItem(storage.notes) ?? '',
   );
 
   const notesRef = useRef(notes);
@@ -645,7 +643,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
     workspaceRef.current = next;
     setWorkspace(next);
     try {
-      localStorage.setItem(STORAGE_KEY, workspaceEnvelope(next));
+      localStorage.setItem(storage.workspace, workspaceEnvelope(next));
       setStorageFailed(false);
     } catch { setStorageFailed(true); }
   }, []);
@@ -663,18 +661,18 @@ export function useBuildSession(configContextActive = false): BuildSession {
   }, [saveToStorage]);
   const hasDrafts = Object.keys(editorDrafts).length > 0;
   useEffect(() => {
-    if (!hasDrafts) return;
+    if (!hasDrafts || !storage.warnBeforeUnload) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [hasDrafts]);
+  }, [hasDrafts, storage]);
 
   const setNotes = useCallback((text: string) => {
     setNotesState(text);
     notesRef.current = text;
     if (stateRef.current) saveToStorage(stateRef.current, text);
   }, [saveToStorage]);
-  const [library, setLibrary] = useState<Library>(loadLibrary);
+  const [library, setLibrary] = useState<Library>(() => loadLibrary(storage.library));
   const [stateVersion, setStateVersion] = useState(0);
   const calc = calculated?.version === stateVersion ? calculated.result : null;
   const [socketGroupRevision, setSocketGroupRevision] = useState(0);
@@ -691,7 +689,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
   const persistLibrary = useCallback((next: Library) => {
     setLibrary(next);
     try {
-      localStorage.setItem(LIBRARY_KEY, JSON.stringify(next));
+      localStorage.setItem(storage.library, JSON.stringify(next));
     } catch {
       // 配额失败静默。
     }
@@ -798,7 +796,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
         if (cancelled) return;
         setTreeMeta(meta);
         setBootMessage(null);
-        const raw = localStorage.getItem(STORAGE_KEY) ?? '';
+        const raw = localStorage.getItem(storage.workspace) ?? '';
         const saved = parseSaved(raw);
         if (raw && !saved) throw new Error('浏览器存档格式无效，原始数据已保留。请下载原始存档备份以便修复。');
         if (saved) {
@@ -909,7 +907,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
       if (newItems.length === 0 && !backfilled && skillSets === prev.skillSets) return prev;
       const next: Library = { items: [...existing, ...newItems], skillSets };
       try {
-        localStorage.setItem(LIBRARY_KEY, JSON.stringify(next));
+        localStorage.setItem(storage.library, JSON.stringify(next));
       } catch {
         // 配额失败静默。
       }
