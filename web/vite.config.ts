@@ -3,6 +3,7 @@ import { defineConfig, type Plugin, type PreviewServer, type ViteDevServer } fro
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import worker from './public/_worker.js';
 
 const cargoManifest = readFileSync(resolve(process.cwd(), '../Cargo.toml'), 'utf8');
@@ -47,7 +48,8 @@ function importService(): Plugin {
 
 export default defineConfig({
   define: { __POBR_APP_VERSION__: JSON.stringify(appVersion) },
-  plugins: [react(), importService()],
+  plugins: [react(), tailwindcss(), importService()],
+  resolve: { alias: { '@': resolve(process.cwd(), 'src') } },
   test: {
     // e2e/ 归 Playwright；vitest 只跑 src 内单测。
     include: ['src/**/*.test.{ts,tsx}'],

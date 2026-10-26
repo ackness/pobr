@@ -104,7 +104,7 @@ export interface PobrBackend {
   /** 内置配置目录（Config 页分区开关）。 */
   loadConfigOptions(): Promise<ConfigOption[]>;
   /** 英文词条行 → 简中显示（模板反查；不认识原样返回）。 */
-  translateLines(lines: string[]): Promise<string[]>;
+  translateLines(lines: string[], lang?: import('../lib/i18n').Lang): Promise<string[]>;
   /** 物品文本 → 逐行类别（Items 面板上色；空/异常返回 []，调用方回落无区分渲染）。 */
   classifyItemLines(text: string): Promise<ItemLineJson[]>;
   /** 树节点威力热力图（PoB2 PowerBuilder 语义：深度内单点试加求目标属性增量）。 */
