@@ -882,3 +882,64 @@ fn minion_static_support_cost_follows_the_minions_skills() {
         102.0
     );
 }
+
+#[test]
+fn minion_static_presence_auras_reach_allies_once_and_stay_off_the_weapon() {
+    use pobr_build::calculate_with_data_session;
+    use pobr_data::modifier::{ModFlags, ModName, ModType};
+
+    let data = load_data();
+    let build = |line: &str, slot: &str, base: &str| {
+        pobr_build::parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="90" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="RaiseZombiePlayer" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Aura Test
+{base}
+{line}
+</Item><ItemSet id="1"><Slot name="{slot}" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#)).unwrap()
+    };
+    let calc = |line, slot, base| {
+        calculate_with_data_session(&build(line, slot, base), data, &default_opts()).unwrap()
+    };
+    for (slot, item) in [("Ring 1", "Gold Ring"), ("Weapon 1", "Rattling Sceptre")] {
+        let bare = calc("", slot, item);
+        for (line, player_bonus) in [
+            (
+                "You and Allies in your Presence have 8% increased Attack Speed",
+                8.0,
+            ),
+            (
+                "Allies in your Presence have 8% increased Attack Speed",
+                0.0,
+            ),
+        ] {
+            let aura = calc(line, slot, item);
+            assert!(
+                (aura.output().minions[0].dps / bare.output().minions[0].dps - 1.08).abs() < 1e-8,
+                "{slot}: {line}"
+            );
+            let cfg = aura.config().clone().with_flags(ModFlags::ATTACK);
+            assert_eq!(
+                aura.mod_db()
+                    .sum(ModType::Inc, &cfg, &[ModName::from("AttackSpeed")]),
+                player_bonus
+            );
+        }
+        let resist = calc(
+            "You and Allies in your Presence have +19% to Chaos Resistance",
+            slot,
+            item,
+        );
+        assert_eq!(
+            resist.output().chaos_resistance - bare.output().chaos_resistance,
+            19.0
+        );
+        assert_eq!(
+            resist.output().minions[0].stats["ChaosResist"]
+                - bare.output().minions[0].stats["ChaosResist"],
+            19.0
+        );
+    }
+}
