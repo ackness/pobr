@@ -1970,13 +1970,42 @@ pub(crate) fn enemy_mitigation_lines<'a>(
     damage_type: DamageType,
 ) -> EnemyMitigationLines<'a> {
     let type_cfg = cfg.clone().with_damage_type(damage_type);
-    let defence_names = if damage_type == DamageType::Physical {
-        vec![
-            ModName::from("Armour"),
-            ModName::from("PhysicalDamageReduction"),
-        ]
+    let defence = if damage_type == DamageType::Physical {
+        enemy_db.evaluate_names(
+            &type_cfg,
+            &[
+                ModName::from("Armour"),
+                ModName::from("PhysicalDamageReduction"),
+            ],
+        )
     } else {
-        enemy_resist_names(damage_type)
+        let resisting = enemy_resisting_element(enemy_db, &type_cfg, damage_type);
+        let resist_cfg = type_cfg.clone().with_damage_type(resisting);
+        let names = enemy_resist_names(resisting);
+        let mut lines = enemy_db.evaluate_names(&resist_cfg, &names);
+        // The same last matching numeric override as enemy_own_resist uses.
+        // Shared ElementalResist overrides are not part of that query.
+        let winning = lines.iter().rposition(|line| {
+            line.active
+                && line.modifier.name == names[0]
+                && line.modifier.mod_type == ModType::Override
+                && line.modifier.effective_number(&resist_cfg).is_some()
+        });
+        for (index, line) in lines.iter_mut().enumerate() {
+            line.active &= match winning {
+                Some(winning) => index == winning,
+                None => matches!(
+                    line.modifier.mod_type,
+                    ModType::Base | ModType::Inc | ModType::More
+                ),
+            };
+            if !line.active {
+                line.value = line.modifier.value.as_number();
+            } else if winning.is_some() {
+                line.value = line.modifier.effective_number(&resist_cfg);
+            }
+        }
+        lines
     };
     let mut taken = enemy_db.evaluate_names(&type_cfg, &enemy_taken_names(damage_type));
     taken.extend(
@@ -1988,10 +2017,7 @@ pub(crate) fn enemy_mitigation_lines<'a>(
             .into_iter()
             .filter(|line| line.modifier.mod_type == ModType::Inc),
     );
-    EnemyMitigationLines {
-        defence: enemy_db.evaluate_names(&type_cfg, &defence_names),
-        taken,
-    }
+    EnemyMitigationLines { defence, taken }
 }
 
 /// The enemy's **final resistance** for a damage type (vendor

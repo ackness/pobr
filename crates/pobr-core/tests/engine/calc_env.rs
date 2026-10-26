@@ -9,6 +9,7 @@ mod doryani {
     use super::*;
     use pobr_core::ModTag;
     use pobr_core::calc::session::{BuffKind, BuffSpec};
+    use pobr_core::calc::{CalculationSession, MinimalInput};
 
     const LINE: &str = "Enemies in your Presence have Lightning Resistance equal to yours";
 
@@ -16,11 +17,22 @@ mod doryani {
         let parsed = crate::support::parse_mod(text).unwrap();
         assert!(parsed.is_complete(), "{text}: {parsed:?}");
         env.player.mod_db.add_list(parsed.mods.into_iter().map(|m| {
-            m.with_origin(ModifierSource::new(SourceId::new(
-                SourceKind::Item,
-                "Doryani's Prototype",
-            )))
+            m.with_origin(
+                ModifierSource::new(SourceId::new(SourceKind::Item, "Doryani's Prototype"))
+                    .with_slot("bodyarmour")
+                    .with_parent(SourceId::new(SourceKind::Item, "equipped.bodyarmour"))
+                    .with_raw_text(text),
+            )
         }));
+    }
+
+    // Query the public breakdown API with the completed enemy snapshot;
+    // do not perform again, which would reapply exposure and other debuffs.
+    fn breakdown_session(env: &Env) -> CalculationSession {
+        let mut session = CalculationSession::new(MinimalInput::from(env.player.base))
+            .with_config(env.cfg.clone());
+        session.add_enemy_modifiers(env.enemy.mod_db.iter_mods().cloned());
+        session
     }
 
     fn environment(base_resistance: f64, in_presence: bool) -> Env {
@@ -71,10 +83,40 @@ mod doryani {
             .named("LightningResist")
             .find(|m| m.mod_type == ModType::Override)
             .unwrap();
+        let origin = copied.origin.as_ref().unwrap();
         assert_eq!(
-            copied.origin.as_ref().unwrap().source_id,
+            origin.source_id,
             SourceId::new(SourceKind::Item, "Doryani's Prototype")
         );
+        assert_eq!(origin.slot.as_deref(), Some("bodyarmour"));
+        assert_eq!(
+            origin.parent_source_id,
+            Some(SourceId::new(SourceKind::Item, "equipped.bodyarmour"))
+        );
+        assert_eq!(origin.raw_text.as_deref(), Some(LINE));
+        assert_eq!(origin.stat_id, Some("LightningResist".into()));
+        assert_eq!(origin.mod_type, Some(ModType::Override));
+
+        let session = breakdown_session(&env);
+        let rows = session.hit_mitigation_mods(0, &[DamageType::Lightning]);
+        let lines = &rows[0].1.defence;
+        assert_eq!(lines.iter().filter(|line| line.active).count(), 1);
+        let active = lines.iter().find(|line| line.active).unwrap();
+        assert_eq!(active.value, Some(-184.0));
+        assert_eq!(active.modifier.origin.as_ref(), Some(origin));
+        // The retained ordinary resistance, curse, exposure and scaling
+        // rows are bypassed by the override, not additional contributions.
+        for (name, kind, value) in [
+            ("ElementalResist", ModType::Base, 50.0),
+            ("ElementalResist", ModType::Base, -20.0),
+            ("LightningResist", ModType::Base, -10.0),
+            ("LightningResist", ModType::Inc, -50.0),
+        ] {
+            assert!(lines.iter().any(|line| !line.active
+                && line.modifier.name.as_str() == name
+                && line.modifier.mod_type == kind
+                && line.value == Some(value)));
+        }
     }
 
     #[test]
@@ -146,8 +188,16 @@ mod doryani {
     fn preserves_explicit_enemy_resistance_override_priority() {
         let mut env = environment(-184.0, true);
         env.enemy.mod_db.add_mod(
+            Modifier::number("LightningResist", ModType::Override, -25.0)
+                .with_source("earlier override"),
+        );
+        env.enemy.mod_db.add_mod(
             Modifier::number("LightningResist", ModType::Override, 0.0)
                 .with_source("Enemies in your Presence have no Elemental Resistances"),
+        );
+        env.enemy.mod_db.add_mod(
+            Modifier::number("LightningResist", ModType::Override, 99.0)
+                .with_tag(ModTag::condition("InactiveOverride", false)),
         );
         perform(&mut env).unwrap();
         assert_eq!(env.player.output.lightning_resistance, -184.0);
@@ -156,6 +206,23 @@ mod doryani {
             Some(0.0)
         );
         assert!((env.player.output.dps - 100.0).abs() < 1e-9);
+        let session = breakdown_session(&env);
+        let rows = session.hit_mitigation_mods(0, &[DamageType::Lightning]);
+        let lines = &rows[0].1.defence;
+        assert_eq!(lines.iter().filter(|line| line.active).count(), 1);
+        assert_eq!(
+            lines.iter().find(|line| line.active).unwrap().value,
+            Some(0.0)
+        );
+        for value in [-25.0, 99.0] {
+            assert!(
+                lines
+                    .iter()
+                    .any(|line| line.modifier.mod_type == ModType::Override
+                        && line.value == Some(value)
+                        && !line.active)
+            );
+        }
     }
 
     #[test]
@@ -167,6 +234,18 @@ mod doryani {
             None
         );
         assert!((env.player.output.dps - 60.0).abs() < 1e-9);
+        let session = breakdown_session(&env);
+        let rows = session.hit_mitigation_mods(0, &[DamageType::Lightning]);
+        assert!(rows[0].1.defence.iter().all(|line| line.active));
+        assert_eq!(
+            rows[0]
+                .1
+                .defence
+                .iter()
+                .filter_map(|line| line.value)
+                .sum::<f64>(),
+            40.0
+        );
     }
 
     #[test]
@@ -180,6 +259,14 @@ mod doryani {
         env.player.mod_db.add_list([
             Modifier::number("FireDot", ModType::Base, 100.0),
             Modifier::number("LightningDot", ModType::Base, 100.0),
+        ]);
+        env.enemy.mod_db.add_list([
+            Modifier::number("FireResist", ModType::Base, 25.0),
+            Modifier::number("FireExposure", ModType::Base, 10.0),
+            Modifier::number("FireDamageTaken", ModType::Inc, 10.0),
+            Modifier::number("LightningDamageTaken", ModType::Inc, 20.0),
+            Modifier::number("DamageTaken", ModType::Inc, 10.0)
+                .with_tag(ModTag::DamageType(DamageType::Lightning)),
         ]);
         let mut minion = Actor::new(
             90,
@@ -198,10 +285,47 @@ mod doryani {
         ));
         env.minions.push(minion);
         perform(&mut env).unwrap();
-        assert!((env.player.output.dps - 568.0).abs() < 1e-9);
-        assert!((env.player.output.skill_total_dot - 568.0).abs() < 1e-9);
-        assert!((env.minions[0].output.dps - 284.0).abs() < 1e-9);
+        assert!((env.player.output.dps - 681.6).abs() < 1e-9);
+        assert!((env.player.output.skill_total_dot - 681.6).abs() < 1e-9);
+        assert!((env.minions[0].output.dps - 369.2).abs() < 1e-9);
         assert_eq!(env.minions[0].output.lightning_resistance, 30.0);
+        let session = breakdown_session(&env);
+        for (damage_type, lines) in
+            session.hit_mitigation_mods(0, &[DamageType::Fire, DamageType::Lightning])
+        {
+            assert_eq!(lines.defence.iter().filter(|line| line.active).count(), 1);
+            let active = lines.defence.iter().find(|line| line.active).unwrap();
+            assert_eq!(active.modifier.name.as_str(), "LightningResist");
+            assert_eq!(active.modifier.mod_type, ModType::Override);
+            assert_eq!(active.value, Some(-184.0));
+            assert_eq!(
+                active.modifier.origin.as_ref().unwrap().slot.as_deref(),
+                Some("bodyarmour")
+            );
+            assert!(
+                lines
+                    .defence
+                    .iter()
+                    .all(|line| line.modifier.name.as_str() != "FireResist")
+            );
+            assert!(lines.defence.iter().any(|line| !line.active
+                && line.modifier.name.as_str() == "LightningResist"
+                && line.value == Some(-10.0)));
+            let taken: f64 = lines
+                .taken
+                .iter()
+                .filter(|line| line.active)
+                .filter_map(|line| line.value)
+                .sum();
+            assert_eq!(
+                taken,
+                if damage_type == DamageType::Fire {
+                    10.0
+                } else {
+                    30.0
+                }
+            );
+        }
     }
 }
 

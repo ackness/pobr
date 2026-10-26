@@ -1273,6 +1273,13 @@ impl ModDb {
     /// attribution path trace a flag's behavior back to its source (e.g.
     /// which passive/gem grants `CritChanceLucky`).
     pub fn flag_origin(&self, cfg: &CalcConfig, name: &str) -> Option<SourceId> {
+        self.flag_source(cfg, name)
+            .map(|origin| origin.source_id.clone())
+    }
+
+    /// The complete origin of the first modifier activating a flag, for
+    /// derived modifiers that retain its item slot, parent and original text.
+    pub(crate) fn flag_source(&self, cfg: &CalcConfig, name: &str) -> Option<&ModifierSource> {
         let first = self
             .bucket(name, Query::One(ModType::Flag))
             .into_iter()
@@ -1283,7 +1290,7 @@ impl ModDb {
                     && modifier.value.as_bool().unwrap_or(false)
             })?;
         self.note_used(first);
-        first.origin.as_ref().map(|origin| origin.source_id.clone())
+        first.origin.as_ref()
     }
 
     /// The traced version of [`flag`](Self::flag): records a QueryFlag node
