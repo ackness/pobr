@@ -1,0 +1,67 @@
+@layer v2 {
+.v2-root .calcs-workspace { min-width: 0; }
+.v2-root .calcs-view-tabs { display: flex; flex-wrap: wrap; height: auto; width: fit-content; max-width: 100%; gap: .25rem; margin-bottom: 1rem; }
+.v2-root .calcs-view-tabs [role="tab"] { flex: 0 0 auto; min-height: 2.5rem; padding: .5rem .85rem; white-space: normal; }
+.v2-root .calcs-context-bar { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem 1.5rem; padding: 1rem; margin-bottom: 1rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--card); color: var(--muted-foreground); }
+.v2-root .calcs-context-bar strong { color: var(--foreground); }
+.v2-root .calcs-actor-picker { display: flex; align-items: center; flex-wrap: wrap; gap: .7rem; max-width: 100%; }
+.v2-root .calcs-actor-picker [role="combobox"] { max-width: 100%; }
+.v2-root .calcs-explorer { display: grid; grid-template-columns: minmax(15rem, .65fr) minmax(0, 1.35fr); align-items: start; gap: 1.25rem; }
+.v2-root .calcs-metric-browser { min-width: 0; padding: 1rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--card); }
+.v2-root .calcs-search { max-width: none; margin: 0 0 .75rem; }
+.v2-root .calcs-category-picker { display: grid; gap: .4rem; color: var(--muted-foreground); font-size: .875em; margin-bottom: 1.25rem; }
+.v2-root .calcs-category-picker [role="combobox"] { width: 100%; }
+.v2-root .calcs-metric-list { max-height: 65vh; overflow: auto; scrollbar-gutter: stable; }
+.v2-root .calcs-section { margin-bottom: 1rem; }
+.v2-root .calcs-section-title { margin: .5rem 0; padding: .5rem; color: var(--muted-foreground); font-size: .8em; letter-spacing: .05em; border: 0; }
+.v2-root .calcs-metric-row { display: flex; width: 100%; height: auto; min-height: 2.75rem; justify-content: space-between; text-align: left; white-space: normal; gap: 1rem; padding: .65rem .75rem; margin-bottom: .25rem; background: transparent; border-color: transparent; border-radius: .7rem; }
+.v2-root .calcs-metric-row > span { overflow-wrap: anywhere; }
+.v2-root .calcs-metric-row strong { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.v2-root .calcs-metric-row[aria-pressed="true"] { background: var(--accent, var(--muted)); border-color: var(--ring, var(--primary)); color: var(--accent-foreground, var(--foreground)); }
+.v2-root .calcs-detail-pane { position: sticky; top: 1rem; min-width: 0; max-height: calc(100dvh - 12rem); overflow: auto; padding: 1.25rem; background: var(--card); border: 1px solid var(--border); border-radius: 1rem; }
+.v2-root .calcs-detail-header { border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.25rem; }
+.v2-root .calcs-detail-header h3 { margin: .25rem 0 .75rem; font-size: 1.25em; overflow-wrap: anywhere; scroll-margin-top: 1rem; }
+.v2-root .calcs-detail-value { display: flex; align-items: baseline; flex-wrap: wrap; gap: 1rem; }
+.v2-root .calcs-detail-value strong { font-size: 1.75em; font-variant-numeric: tabular-nums; color: var(--primary); }
+.v2-root .calcs-detail-value span { font-size: .875em; color: var(--muted-foreground); }
+.v2-root .calcs-back-to-list { display: none; }
+.v2-root .calcs-workspace .breakdown-detail { padding: 0; min-width: 0; }
+.v2-root .calcs-workspace .breakdown-scroll { overflow-x: auto; max-width: 100%; }
+.v2-root .calcs-workspace :is(.breakdown-table, .breakdown-formula) { width: 100%; border-collapse: collapse; font-size: .875em; margin: 1rem 0; }
+.v2-root .calcs-workspace :is(.breakdown-table, .breakdown-formula) :is(th, td) { padding: .65rem .55rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.v2-root .calcs-workspace :is(.breakdown-table, .breakdown-formula) th { text-align: left; color: var(--muted-foreground); font-weight: 500; }
+.v2-root .calcs-workspace :is(.breakdown-table, .breakdown-formula) caption { text-align: left; font-weight: 600; color: var(--foreground); padding: .5rem 0; }
+.v2-root .calcs-workspace :is(.mod-value, .formula-result, .formula-operand) { font-variant-numeric: tabular-nums; text-align: right; }
+.v2-root .calcs-workspace :is(.breakdown-note, .calcs-hint) { color: var(--muted-foreground); font-size: .875em; line-height: 1.6; }
+.v2-root .calcs-workspace .breakdown-summary { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; }
+.v2-root .calcs-workspace .breakdown-derived .breakdown-table { min-width: 0; }
+.v2-root .calcs-workspace .derived-formula { overflow-wrap: anywhere; padding: 1rem; background: var(--muted); border-radius: .75rem; }
+.v2-root .calcs-workspace .is-inactive { opacity: .65; }
+.v2-root .calcs-workspace .attribution-view, .v2-root .calcs-workspace .full-dps-view { min-width: 0; padding: 1.25rem; border: 1px solid var(--border); background: var(--card); border-radius: 1rem; }
+.v2-root .calcs-workspace .calcs-skill-button { height: auto; text-align: left; justify-content: start; white-space: normal; padding: .6rem; }
+.v2-root .calcs-workspace .breakdown-hand { margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: .75rem; }
+.v2-root .calcs-workspace .formula-final { font-weight: 600; }
+@media (max-width: 760px) {
+  .v2-root .calcs-explorer { grid-template-columns: minmax(0, 1fr); }
+  .v2-root .calcs-metric-list { max-height: 22rem; }
+  .v2-root .calcs-detail-pane { position: static; max-height: none; padding: 1rem; }
+  .v2-root .calcs-back-to-list { display: inline-flex; margin-bottom: .75rem; }
+  .v2-root .calcs-view-tabs { width: 100%; }
+  .v2-root .calcs-view-tabs [role="tab"] { flex: 1 1 42%; }
+}
+
+.v2-root .calcs-detail-value strong { overflow-wrap: anywhere; max-width: 100%; }
+.v2-root .calcs-workspace :is(.breakdown-formula, .breakdown-derived > .breakdown-table) { display: block; max-width: 100%; overflow-x: auto; }
+@container v2-page (max-width: 48rem) {
+  .v2-root .calcs-explorer { grid-template-columns: minmax(0, 1fr); }
+  .v2-root .calcs-detail-pane { position: static; max-height: none; }
+  .v2-root .calcs-metric-list { max-height: 22rem; }
+  .v2-root .calcs-back-to-list { display: inline-flex; margin-bottom: .75rem; }
+}
+@container v2-page (max-width: 20rem) {
+  .v2-root .calcs-metric-row { flex-wrap: wrap; gap: .25rem .75rem; padding: .65rem .5rem; }
+  .v2-root .calcs-metric-row > span { flex-basis: 100%; }
+  .v2-root .calcs-metric-row strong { flex-shrink: 1; overflow-wrap: anywhere; }
+  .v2-root :is(.calcs-detail-pane, .calcs-metric-browser) { padding: .75rem; }
+}
+}

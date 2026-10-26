@@ -1,3 +1,4 @@
+import { AppButton, AppInput, AppSelectControl } from '../shared/controls';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { AttributeChoice, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
@@ -6,11 +7,13 @@ import { statNameLabel, type Lang } from '../../lib/i18n';
 import { passivePlanningContext, withTravelAttributes } from '../../lib/passivePlanner';
 import { evaluateNodePower, filterPowerRows, powerCandidates, rankPowerRows, type PowerRow, type PowerSort } from '../../lib/nodePower';
 import { powerLabels } from './nodePowerLabels';
+import { passiveNodeMatches, passiveNodeName, type PassiveNodeNames } from './passiveNodeNames';
 import './nodePower.css';
 
 interface Props {
   session: BuildSession;
   nodes: PassiveNode[];
+  nodeNames: PassiveNodeNames;
   lang: Lang;
   stat: string;
   stats: string[];
@@ -19,7 +22,7 @@ interface Props {
 }
 const PAGE_SIZE = 50;
 
-export function NodePowerTable({ session, nodes, lang, stat, stats, onStat, onFocus }: Props) {
+export function NodePowerTable({ session, nodes, nodeNames, lang, stat, stats, onStat, onFocus }: Props) {
   const t = powerLabels[lang];
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -43,7 +46,8 @@ export function NodePowerTable({ session, nodes, lang, stat, stats, onStat, onFo
   [nodes, session.allocatedNodes, session.character?.class_name, session.weaponSwap, session.jewels, ascendancy, session.calc?.tree_effects]);
   const candidates = useMemo(() => powerCandidates(nodes, context, session.allocatedNodes, ascendancy), [nodes, context, session.allocatedNodes, ascendancy]);
   const results = completed?.key === key ? completed : null;
-  const filtered = filterPowerRows(candidates.map(row => results?.rows.get(row.node.skill) ?? row), search, small);
+  const filtered = filterPowerRows(candidates.map(row => results?.rows.get(row.node.skill) ?? row), '', small)
+    .filter(row => passiveNodeMatches(row.node, search, nodeNames));
   const ranked = rankPowerRows(filtered, sort, ascending);
   const pending = filtered.filter(row => row.status === 'pending').length;
   const currentPage = Math.min(page, Math.max(0, Math.ceil(ranked.length / PAGE_SIZE) - 1));
@@ -85,15 +89,15 @@ export function NodePowerTable({ session, nodes, lang, stat, stats, onStat, onFo
     {open && <>
       <p>{t.hint}</p>
       <div className="node-power-controls">
-        <label>{t.stat}<select value={stat} onChange={e => onStat(e.target.value)}>{stats.map(id => <option key={id} value={id}>{statNameLabel(lang, id)}</option>)}</select></label>
-        <label>{t.attribute}<select value={attribute} onChange={e => setAttribute(e.target.value as AttributeChoice)}>{(['str', 'dex', 'int'] as const).map(id => <option key={id} value={id}>{t[id]}</option>)}</select></label>
-        <label>{t.search}<input type="search" value={search} onChange={e => { if (abort.current) cancel(); setSearch(e.target.value); setPage(0); }} /></label>
-        <label className="node-power-small"><input type="checkbox" checked={small} onChange={e => { if (abort.current) cancel(); setSmall(e.target.checked); setPage(0); }} />{t.small}</label>
+        <label>{t.stat}<AppSelectControl value={stat} onChange={e => onStat(e.target.value)}>{stats.map(id => <option key={id} value={id}>{statNameLabel(lang, id)}</option>)}</AppSelectControl></label>
+        <label>{t.attribute}<AppSelectControl value={attribute} onChange={e => setAttribute(e.target.value as AttributeChoice)}>{(['str', 'dex', 'int'] as const).map(id => <option key={id} value={id}>{t[id]}</option>)}</AppSelectControl></label>
+        <label>{t.search}<AppInput type="search" value={search} onChange={e => { if (abort.current) cancel(); setSearch(e.target.value); setPage(0); }} /></label>
+        <label className="node-power-small"><AppInput type="checkbox" checked={small} onChange={e => { if (abort.current) cancel(); setSmall(e.target.checked); setPage(0); }} />{t.small}</label>
       </div>
       <div className="node-power-actions">
-        <button disabled={session.busy || Boolean(session.calcError) || !session.calc || !pending || Boolean(progress) || !stats.includes(stat)} onClick={run}>{t.run}</button>
-        {progress && <button onClick={cancel}>{t.cancel}</button>}
-        <button disabled={Boolean(progress) || !results} onClick={() => { setCompleted(null); setMessage(null); }}>{t.refresh}</button>
+        <AppButton disabled={session.busy || Boolean(session.calcError) || !session.calc || !pending || Boolean(progress) || !stats.includes(stat)} onClick={run}>{t.run}</AppButton>
+        {progress && <AppButton onClick={cancel}>{t.cancel}</AppButton>}
+        <AppButton disabled={Boolean(progress) || !results} onClick={() => { setCompleted(null); setMessage(null); }}>{t.refresh}</AppButton>
       </div>
       <p role="status">{progress ? `${progress.done} / ${progress.total}` : message ? t[message] : ''}</p>
       <p>{t.results}: {filtered.length} · {t.evaluated}: {filtered.filter(r => r.status === 'ready').length} · {t.remaining}: {pending}</p>
@@ -101,9 +105,9 @@ export function NodePowerTable({ session, nodes, lang, stat, stats, onStat, onFo
       {results && results.limits.length > 0 && <details><summary>{t.limits} ({results.limits.length})</summary><ul>{results.limits.map(line => <li key={line}>{line}</li>)}</ul></details>}
       <div className="node-power-scroll" tabIndex={0} role="region" aria-label={t.title}>
         <table aria-label={t.title}>
-          <thead><tr>{(['node', 'perPoint', 'points', 'gain', 'kind', 'single'] as const).map(id => <th key={id} aria-sort={sort === id ? ascending ? 'ascending' : 'descending' : 'none'}><button onClick={() => changeSort(id)}>{t[id]}</button></th>)}</tr></thead>
+          <thead><tr>{(['node', 'perPoint', 'points', 'gain', 'kind', 'single'] as const).map(id => <th key={id} aria-sort={sort === id ? ascending ? 'ascending' : 'descending' : 'none'}><AppButton onClick={() => changeSort(id)}>{t[id]}</AppButton></th>)}</tr></thead>
           <tbody>{visible.map(row => <tr key={row.node.skill} data-node-id={row.node.skill} data-status={row.status}>
-            <td><button onClick={() => onFocus(row.node)} disabled={row.node.x === undefined || row.node.y === undefined}>{row.node.name ?? row.node.id}</button><small>#{row.node.skill}{row.node.ascendancy_id ? ` · ${t.asc}` : ''}</small>
+            <td><AppButton onClick={() => onFocus(row.node)} disabled={row.node.x === undefined || row.node.y === undefined}>{passiveNodeName(row.node, nodeNames)}</AppButton><small>#{row.node.skill}{row.node.ascendancy_id ? ` · ${t.asc}` : ''}</small>
               {row.status !== 'ready' && <small>{t[row.status]}</small>}
               {row.diagnostics.length > 0 && <details><summary>{t[row.status]}</summary>{row.diagnostics.map((text, i) => <p key={i}>{text}</p>)}</details>}
             </td>
@@ -113,7 +117,7 @@ export function NodePowerTable({ session, nodes, lang, stat, stats, onStat, onFo
         </table>
         {visible.length === 0 && <p>{t.empty}</p>}
       </div>
-      <div className="node-power-actions"><button disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>{t.previous}</button><span>{t.page} {currentPage + 1} / {Math.max(1, Math.ceil(ranked.length / PAGE_SIZE))}</span><button disabled={(currentPage + 1) * PAGE_SIZE >= ranked.length} onClick={() => setPage(currentPage + 1)}>{t.next}</button></div>
+      <div className="node-power-actions"><AppButton disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>{t.previous}</AppButton><span>{t.page} {currentPage + 1} / {Math.max(1, Math.ceil(ranked.length / PAGE_SIZE))}</span><AppButton disabled={(currentPage + 1) * PAGE_SIZE >= ranked.length} onClick={() => setPage(currentPage + 1)}>{t.next}</AppButton></div>
       <p>{t.scope}</p>
     </>}
   </details>;

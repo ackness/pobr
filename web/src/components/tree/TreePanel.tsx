@@ -1,3 +1,7 @@
+import { localizedName } from '../../lib/chinese';
+import { useAppDialogs } from '../shared/AppDialogs';
+import { useSessionAction } from '../shared/useSessionAction';
+import { AppTooltip, AppButton, AppInput, AppTextarea, AppSelectControl } from '../shared/controls';
 import { TreeConversionControls } from './TreeConversionControls';
 import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
@@ -23,6 +27,7 @@ import { TreeOptimizer, useTreeOptimizer, type TreeOptimizerState } from './Tree
 import type { PassivePlan } from '../../lib/passivePlanner';
 import './tree.css';
 import { NodePowerTable } from './NodePowerTable';
+import { passiveNodeMatches, passiveNodeName, usePassiveNodeNames, type PassiveNodeNames } from './passiveNodeNames';
 
 interface Props {
   session: BuildSession;
@@ -84,8 +89,15 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch 
   const [error, setError] = useState<string | null>(null);
   const [plannedNodes, setPlannedNodes] = useState<PassivePlan | null>(null);
   const byId = useMemo(() => new Map(nodes.map(node => [node.skill, node])), [nodes]);
+  const ascendancy = session.treeMeta?.classes.flatMap(entry => entry.ascendancies ?? [])
+    .find(entry => entry.name === session.character?.ascendancy_name)?.id;
+  const namedNodes = useMemo(() => nodes.filter(node => !node.ascendancy_id || node.ascendancy_id === ascendancy), [nodes, ascendancy]);
+  const nodeNames = usePassiveNodeNames(namedNodes, lang, active);
   const planner = useTreeOptimizer({ session, lang, active, nodes,
-    nodeLabel: skill => byId.get(skill)?.name ?? `#${skill}`,
+    nodeLabel: skill => {
+      const node = byId.get(skill);
+      return node ? passiveNodeName(node, nodeNames) : `#${skill}`;
+    },
     onPreview: setPlannedNodes, focusPlanner });
   useEffect(() => {
     let cancelled = false;
@@ -104,7 +116,7 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch 
     session.activeLoadout, session.activeWeaponSet, session.socketGroupRevision,
     session.character?.class_name, session.character?.ascendancy_name]);
   return <TreeCanvas key={canvasContext} session={session} lang={lang} onJewelSearch={onJewelSearch}
-    allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} art={art} error={error} plannedNodes={plannedNodes} planner={planner} />;
+    allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} nodeNames={nodeNames} art={art} error={error} plannedNodes={plannedNodes} planner={planner} />;
 }
 
 interface CanvasProps {
@@ -114,14 +126,17 @@ interface CanvasProps {
   lang: Lang;
   onJewelSearch?: (socket: number) => void;
   nodes: PassiveNode[] | null;
+  nodeNames: PassiveNodeNames;
   art: TreeArt | null;
   error: string | null;
   plannedNodes: PassivePlan | null;
   planner: TreeOptimizerState;
 }
 
-function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, art, error, plannedNodes, planner }: CanvasProps) {
+function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, art, error, plannedNodes, planner }: CanvasProps) {
   const tt = bindT(lang);
+  const dialogs = useAppDialogs(lang);
+  const captureAction = useSessionAction(session);
   const treeEffects = session.calc?.tree_effects;
   const grants = useMemo(() => treeEffects?.allocation_grants ?? [], [treeEffects]);
   const canvasGeneration = useRef(0);
@@ -319,15 +334,10 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
     if (q.length < 2) return null;
     const hits = new Set<number>();
     for (const node of placed) {
-      const haystack = [node.name ?? '', ...(node.stats ?? [])]
-        .join('\n')
-        .replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2')
-        .replace(/\[([^\]]*)\]/g, '$1')
-        .toLowerCase();
-      if (haystack.includes(q)) hits.add(node.skill);
+      if (passiveNodeMatches(node, q, nodeNames)) hits.add(node.skill);
     }
     return hits;
-  }, [placed, search]);
+  }, [placed, search, nodeNames]);
   const selectedNode = selectedSkill === null ? null : byId.get(selectedSkill) ?? null;
   const selectedAllocated = selectedSkill !== null && allocated.has(selectedSkill);
   const editRequest = session.currentRequest();
@@ -370,7 +380,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
     const generation = canvasGeneration.current;
     getBackend()
       .then(backend => !cancelled && generation === canvasGeneration.current
-        ? backend.translateLines(detailsLines) : null)
+        ? backend.translateLines(detailsLines, lang) : null)
       .then(translated => {
         if (!translated || cancelled || generation !== canvasGeneration.current) return;
         setTranslatedDetails({ key: detailsTextKey,
@@ -635,7 +645,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
     let cancelled = false;
     const generation = canvasGeneration.current;
     getBackend()
-      .then(b => !cancelled && generation === canvasGeneration.current ? b.translateLines([name, ...raw]) : null)
+      .then(b => !cancelled && generation === canvasGeneration.current ? b.translateLines([name, ...raw], lang) : null)
       .then((translated) => {
         if (!translated || cancelled || generation !== canvasGeneration.current) return;
         setHoverName(translated[0] !== name ? translated[0] : null);
@@ -832,25 +842,25 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
       closeDetails();
     }}>
       <PageHeader id="tree-heading" title={tt('tree.title')} description={tt('tree.hint')}>
-        <button onClick={() => {
+        <AppButton onClick={() => {
           toolsRef.current?.focus({ preventScroll: true });
           toolsRef.current?.scrollIntoView({ block: 'start' });
-        }}>{tt('tree.editOptions')}</button>
+        }}>{tt('tree.editOptions')}</AppButton>
         <span className="ui-badge tree-count">{session.allocatedNodes.length} {tt('tree.allocated')}</span>
       </PageHeader>
       <div className="tree-toolbar">
         <label className="tree-allocation-mode">
           {tt('tree.allocationMode')}
-          <select aria-label={tt('tree.allocationMode')} value={allocationMode} disabled={session.busy}
+          <AppSelectControl aria-label={tt('tree.allocationMode')} value={allocationMode} disabled={session.busy}
             onChange={e => { setEditError(null); setAttrPicker(null); setAttributeDraft(null);
               onAllocationMode(Number(e.target.value) as TreeAllocationMode); }}>
             <option value={0}>{tt('tree.shared')}</option>
             <option value={1}>{tt('tree.set1')}</option>
             <option value={2}>{tt('tree.set2')}</option>
-          </select>
+          </AppSelectControl>
         </label>
         <span className="tree-search">
-          <input
+          <AppInput
             ref={searchRef}
             type="search"
             placeholder={tt('tree.search')}
@@ -869,7 +879,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
             </span>
           )}
           {searchHits && searchHits.size > 0 && (
-            <button
+            <AppButton
               ref={nextHitRef}
               onClick={() => {
                 const sorted = [...searchHits].sort((a, b) => a - b);
@@ -887,12 +897,12 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
               }}
             >
               {tt('tree.nextHit')}
-            </button>
+            </AppButton>
           )}
         </span>
-        <span className="tree-heat" title={tt('tree.heatHint')}>
-          {tt('tree.heat')}
-          <select
+        <span className="tree-heat">
+          <AppTooltip content={tt('tree.heatHint')}><span tabIndex={0}>{tt('tree.heat')}</span></AppTooltip>
+          <AppSelectControl
             value={heatStat}
             aria-label={tt('tree.heat')}
             onChange={(e) => {
@@ -907,12 +917,12 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
                 {statNameLabel(lang, id)}
               </option>
             ))}
-          </select>
+          </AppSelectControl>
           {heatStat && (
             <>
               <label className="tree-heat-depth">
                 {tt('tree.heatDepth')}
-                <input
+                <AppInput
                   type="number"
                   min={1}
                   max={12}
@@ -923,9 +933,9 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
                   }}
                 />
               </label>
-              <button disabled={heatBusy || session.busy} onClick={runHeat}>
+              <AppButton disabled={heatBusy || session.busy} onClick={runHeat}>
                 {heatBusy ? tt('tree.heatComputing') : tt('tree.heatRun')}
-              </button>
+              </AppButton>
               {heatData && heatVersion !== session.stateVersion && (
                 <span className="tree-hint">{tt('tree.heatStale')}</span>
               )}
@@ -934,24 +944,26 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
         </span>
         <label className="tree-asc-picker">
           {tt('build.class')}
-          <select
+          <AppSelectControl
             value={session.character?.class_name ?? ''}
             disabled={session.busy}
-            onChange={(e) => {
-              if (session.hasBuildContent && !window.confirm(tt('build.confirmClassChange'))) return;
-              session.newBuild(e.target.value, '');
+            onChange={async (e) => {
+              const nextClass = e.target.value;
+              const valid = captureAction();
+              if (session.hasBuildContent && !await dialogs.confirm(tt('build.confirmClassChange'))) return;
+              if (valid()) session.newBuild(nextClass, '');
             }}
           >
             {(session.treeMeta?.classes ?? []).map((c) => (
               <option key={c.name} value={c.name}>
-                {lang !== 'en-US' ? (session.classNames.classes[c.name] ?? c.name) : c.name}
+                {localizedName(lang, c.name, session.classNames.classes[c.name])}
               </option>
             ))}
-          </select>
+          </AppSelectControl>
         </label>
         <label className="tree-asc-picker">
           {tt('tree.ascendancy')}
-          <select
+          <AppSelectControl
             value={session.character?.ascendancy_name ?? ''}
             disabled={session.busy}
             onChange={(e) => session.setCharacter({ ascendancy_name: e.target.value })}
@@ -961,17 +973,15 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
               .find((c) => c.name === session.character?.class_name)
               ?.ascendancies?.map((a) => (
                 <option key={a.id} value={a.name}>
-                  {lang !== 'en-US'
-                    ? (session.classNames.ascendancies[a.name] ?? a.name)
-                    : a.name}
+                  {localizedName(lang, a.name, session.classNames.ascendancies[a.name])}
                 </option>
               ))}
-          </select>
+          </AppSelectControl>
         </label>
         {ascExtent && (
-          <button onClick={() => setViewBox(ascExtent)}>{tt('tree.focusAsc')}</button>
+          <AppButton onClick={() => setViewBox(ascExtent)}>{tt('tree.focusAsc')}</AppButton>
         )}
-        <button onClick={() => setViewBox(null)}>{tt('tree.reset')}</button>
+        <AppButton onClick={() => setViewBox(null)}>{tt('tree.reset')}</AppButton>
       </div>
       <p className="tree-hint">{tt('tree.weaponRules')}</p>
       {editError && <p role="alert">{treeEditError(editError, lang)}</p>}
@@ -1052,7 +1062,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
           >
             <div className="attr-picker-title">{tt('tree.attrPick')}</div>
             {(['str', 'dex', 'int'] as AttributeChoice[]).map((choice) => (
-              <button
+              <AppButton
                 key={choice}
                 role="menuitem"
                 className={`attr-choice attr-${choice}`}
@@ -1061,12 +1071,12 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
               >
                 {tt(`tree.attr.${choice}` as Parameters<typeof tt>[0])}
                 <kbd>{choice === 'str' ? 'S' : choice === 'dex' ? 'D' : 'I'}</kbd>
-              </button>
+              </AppButton>
             ))}
-            <button className="attr-cancel" aria-label={tt('tree.closeDetails')}
+            <AppButton className="attr-cancel" aria-label={tt('tree.closeDetails')}
               onClick={() => setAttrPicker(null)}>
               ×
-            </button>
+            </AppButton>
           </div>
         )}
         {!currentAscId &&
@@ -1082,7 +1092,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
           role="group" aria-label={tt('tree.nodeDetails')} data-skill-id={selectedNode.skill}>
           <header className="tree-node-details-header">
             <h2>{displayedDetails[0]}</h2>
-            <button onClick={closeDetails}>{tt('tree.closeDetails')}</button>
+            <AppButton onClick={closeDetails}>{tt('tree.closeDetails')}</AppButton>
           </header>
           <p className="tree-node-details-state">
             #{selectedNode.skill} · {tt(selectedAllocated ? 'tree.allocated' : 'tree.notAllocated')}
@@ -1094,7 +1104,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
           {isAttrNode(selectedNode) && (selectedAllocated || selectedNeedsAttribute) && (
             <label className="tree-node-attribute">
               {tt('tree.attributeChoice')}
-              <select aria-label={tt('tree.attributeChoice')} disabled={session.busy}
+              <AppSelectControl aria-label={tt('tree.attributeChoice')} disabled={session.busy}
                 value={pendingAttribute ?? selectedChoice ?? ''}
                 onChange={e => setAttributeDraft({ skill: selectedNode.skill,
                   saved: selectedChoice, choice: e.target.value as AttributeChoice })}>
@@ -1104,7 +1114,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
                     {tt(`tree.attr.${choice}` as Parameters<typeof tt>[0])}
                   </option>
                 ))}
-              </select>
+              </AppSelectControl>
             </label>
           )}
           {!selectedAllocated && selectedPreview?.valid === false && (
@@ -1121,31 +1131,31 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
           )}
           <div className="tree-node-details-actions">
             {selectedAllocated && isAttrNode(selectedNode) && (
-              <button disabled={session.busy || !pendingAttribute || pendingAttribute === selectedChoice}
+              <AppButton disabled={session.busy || !pendingAttribute || pendingAttribute === selectedChoice}
                 onClick={() => {
                   actOnNode(selectedNode.skill, 'attribute', pendingAttribute);
                   setAttributeDraft(null);
                 }}>
                 {tt('tree.applyAttribute')}
-              </button>
+              </AppButton>
             )}
             {selectedAllocated ? (
-              <button disabled={session.busy || !selectedPreview?.valid} onClick={() => actOnNode(selectedNode.skill, 'refund')}>
+              <AppButton disabled={session.busy || !selectedPreview?.valid} onClick={() => actOnNode(selectedNode.skill, 'refund')}>
                 {tt('tree.refund')}
-              </button>
+              </AppButton>
             ) : (
-              <button disabled={session.busy || !selectedPreview?.valid
+              <AppButton disabled={session.busy || !selectedPreview?.valid
                 || (selectedNeedsAttribute && !pendingAttribute)}
                 onClick={() => actOnNode(selectedNode.skill, 'allocate', pendingAttribute || undefined)}>
                 {tt('tree.allocate')}
-              </button>
+              </AppButton>
             )}
-            {owner.has(selectedNode.skill) && <button disabled={session.busy}
-              onClick={() => actOnNode(selectedNode.skill, 'promote')}>{tt('tree.promote')}</button>}
+            {owner.has(selectedNode.skill) && <AppButton disabled={session.busy}
+              onClick={() => actOnNode(selectedNode.skill, 'promote')}>{tt('tree.promote')}</AppButton>}
             {selectedAllocated && selectedNode.kind === 'jewel_socket' && (
-              <button disabled={session.busy} onClick={() => actOnNode(selectedNode.skill, 'jewel')}>
+              <AppButton disabled={session.busy} onClick={() => actOnNode(selectedNode.skill, 'jewel')}>
                 {tt('tree.editJewel')}
-              </button>
+              </AppButton>
             )}
           </div>
         </div>
@@ -1159,7 +1169,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
           {(['str', 'dex', 'int'] as AttributeChoice[]).map((key) => (
             <label key={key} className={`attr-count attr-${key}`}>
               {tt(`tree.attr.${key}` as Parameters<typeof tt>[0])}
-              <input
+              <AppInput
                 type="number"
                 min={0}
                 max={allocatedAttrNodes.length}
@@ -1200,7 +1210,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
               const active = session.calcParams.config_inputs[cfgVar] === value;
               return (
                 <label key={key} className={`attr-count attr-${key}`}>
-                  <input
+                  <AppInput
                     type="checkbox"
                     checked={active}
                     disabled={session.busy}
@@ -1213,7 +1223,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
               );
             })}
             <label className="attr-count">
-              <input
+              <AppInput
                 type="checkbox"
                 checked={
                   session.calcParams.config_inputs['questInterlude 2QimahSeven Pillars'] ===
@@ -1232,7 +1242,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
           </span>
       </div>
       {Boolean(treeEffects?.warnings.length) && <p className="tree-hint" role="status">{tt('tree.jewelSeedMissing')}</p>}
-      <NodePowerTable session={session} nodes={nodes ?? []} lang={lang}
+      <NodePowerTable session={session} nodes={nodes ?? []} nodeNames={nodeNames} lang={lang}
         stat={heatStat || 'Life'} stats={heatStatOptions}
         onStat={stat => { setHeatStat(stat); setHeatData(null); setHeatVersion(-1); }}
         onFocus={node => {
@@ -1243,9 +1253,9 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
         }} />
       <TreeOptimizer planner={planner} />
       {Object.keys(session.editorDrafts).filter(key => key.startsWith('jewel:')).map(key => (
-        <button key={key} onClick={() => setJewelSocket(Number(key.slice(6)))}>
+        <AppButton key={key} onClick={() => setJewelSocket(Number(key.slice(6)))}>
           {tt('editor.draft')} · {tt('tree.jewel')} #{key.slice(6)}
-        </button>
+        </AppButton>
       ))}
       {jewelEdit && (
         <div className="jewel-editor" ref={jewelRef} tabIndex={-1} role="group" aria-label={tt('tree.jewel')}>
@@ -1254,7 +1264,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
               {tt('tree.jewel')} · #{jewelEdit.socket}
             </span>
             <span className="item-actions">
-              <button
+              <AppButton
                 disabled={session.busy || !jewelEdit.draft.trim()}
                 onClick={() => {
                   const rest = session.jewels.filter((j) => j.socket_node !== jewelEdit.socket);
@@ -1263,9 +1273,9 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
                 }}
               >
                 {tt('items.apply')}
-              </button>
+              </AppButton>
               {session.jewels.some((j) => j.socket_node === jewelEdit.socket) && (
-                <button
+                <AppButton
                   className="skill-remove"
                   disabled={session.busy}
                   onClick={() => {
@@ -1274,9 +1284,9 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
                   }}
                 >
                   {tt('items.remove')}
-                </button>
+                </AppButton>
               )}
-              <button
+              <AppButton
                 disabled={session.busy}
                 onClick={() => {
                   actOnNode(jewelEdit.socket, 'refund');
@@ -1284,14 +1294,14 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
                 }}
               >
                 {tt('tree.unallocSocket')}
-              </button>
-              <button
+              </AppButton>
+              <AppButton
                 disabled={session.busy}
                 onClick={() => session.saveLibraryItem('jewel', jewelEdit.draft)}
               >
                 {tt('lib.save')}
-              </button>
-              <button onClick={() => closeJewelEditor()}>{tt('items.cancel')}</button>
+              </AppButton>
+              <AppButton onClick={() => closeJewelEditor()}>{tt('items.cancel')}</AppButton>
             </span>
           </header>
           <p className="tree-hint">{tt('tree.jewelHint')}</p>
@@ -1346,9 +1356,9 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
               })()}
             </div>
           )}
-          {onJewelSearch && session.allocatedNodes.includes(jewelEdit.socket) && <button
-            onClick={() => onJewelSearch(jewelEdit.socket)}>{tt('trade.radiusJewel')}</button>}
-          <textarea
+          {onJewelSearch && session.allocatedNodes.includes(jewelEdit.socket) && <AppButton
+            onClick={() => onJewelSearch(jewelEdit.socket)}>{tt('trade.radiusJewel')}</AppButton>}
+          <AppTextarea
             rows={7}
             value={jewelEdit.draft}
             spellCheck={false}

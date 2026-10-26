@@ -573,3 +573,5 @@
 
 .gem-number { display: flex; align-items: center; gap: var(--space-1); font-size: var(--text-xs); }
 .skill-gem .gem-corrupted { width: auto; gap: var(--space-1); font-size: var(--text-xs); }
+
+/* V2 keeps each gem's controls together as the available panel width changes. */

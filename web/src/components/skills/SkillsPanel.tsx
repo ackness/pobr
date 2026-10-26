@@ -1,3 +1,5 @@
+import { localizedName } from '../../lib/chinese';
+import { AppTooltip, AppButton, AppInput } from '../shared/controls';
 import { NamedSets } from '../shared/NamedSets';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
 import { PageHeader } from '../shared/PageHeader';
@@ -109,14 +111,14 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
       </PageHeader>}
       {active && <NamedSets session={session} lang={lang} kind="skill" />}
       {active && <div className="skills-toolbar">
-        {mainIndex !== undefined && groups[mainIndex] && <button onClick={() => {
+        {mainIndex !== undefined && groups[mainIndex] && <AppButton onClick={() => {
           setOpenIdx(mainIndex);
           if (scrollFrame.current !== null) cancelAnimationFrame(scrollFrame.current);
           scrollFrame.current = requestAnimationFrame(() => {
             scrollFrame.current = null;
             groupRefs.current[mainIndex]?.scrollIntoView({ block: 'start' });
           });
-        }}>{tt('skills.editMain')} · {gemName(session.calc?.main_skill?.skill_id ?? groups[mainIndex].gems[0]?.skill_id ?? '')}</button>}
+        }}>{tt('skills.editMain')} · {gemName(session.calc?.main_skill?.skill_id ?? groups[mainIndex].gems[0]?.skill_id ?? '')}</AppButton>}
         <GemPicker
           entries={actives}
           placeholder={tt('skills.addPlaceholder')}
@@ -157,7 +159,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
               className={`skill-group${isMain ? ' is-main' : ''}${group.enabled ? '' : ' is-disabled'}`}
             >
               <div className="skill-group-header">
-                <button
+                <AppButton
                   className={`skill-main-toggle${isMain ? ' is-on' : ''}`}
                   aria-pressed={isMain}
                   disabled={session.busy}
@@ -165,8 +167,8 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                   onClick={() => session.updateParams({ main_socket_group: idx })}
                 >
                   ★
-                </button>
-                <button
+                </AppButton>
+                <AppButton
                   className="skill-group-title"
                   aria-expanded={isOpen}
                   onClick={() => setOpenIdx(isOpen ? null : idx)}
@@ -192,9 +194,9 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                       {supportGems.map((g) => `${gemLabel(g)}${byId.get(g.skill_id)?.is_lineage ? ` [${tt('picker.lineage')}]` : ''}`).join(' · ')}
                     </span>
                   )}
-                </button>
+                </AppButton>
                 <label className="skill-group-toggle">
-                  <input
+                  <AppInput
                     type="checkbox"
                     checked={group.enabled}
                     disabled={session.busy}
@@ -202,7 +204,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                   />
                   {tt('skills.enabled')}
                 </label>
-                <button
+                <AppButton
                   className="skill-remove"
                   disabled={session.busy}
                   title={tt('skills.removeGroup')}
@@ -212,7 +214,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                   }}
                 >
                   ×
-                </button>
+                </AppButton>
               </div>
               {active && isOpen && (
               <div className="skill-gem-editor">
@@ -222,9 +224,9 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                   disabled={session.busy} onChange={value => updateGroup(idx, { weapon_set: value === '0' ? null : Number(value) as 1 | 2 })} />
               </div>
               <div className="skill-full-dps-controls">
-                <label><input type="checkbox" checked={group.include_in_full_dps ?? false} disabled={session.busy}
+                <label><AppInput type="checkbox" checked={group.include_in_full_dps ?? false} disabled={session.busy}
                   onChange={event => updateGroup(idx, { include_in_full_dps: event.target.checked })} />{tt('skills.fullDps')}</label>
-                <label>{tt('skills.groupCount')}<input type="number" min={0} step="any" aria-label={tt('skills.groupCount')}
+                <label>{tt('skills.groupCount')}<AppInput type="number" min={0} step="any" aria-label={tt('skills.groupCount')}
                   value={group.group_count ?? ''} disabled={session.busy} onChange={event => {
                     const value = event.target.value;
                     if (!value || Number.isFinite(Number(value)) && Number(value) >= 0) updateGroup(idx, { group_count: value ? Number(value) : null });
@@ -241,20 +243,20 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
               <ul className="skill-gems">
                 {group.gems.map((gem, gemIdx) => (
                   <li key={gemIdx} className={`skill-gem${gemIdx === 0 ? ' is-active' : ''}${gem.enabled === false ? ' is-disabled' : ''}`}>
-                    <span className="gem-name" title={gem.skill_id === '' ? tt('skills.unresolvedHint') : undefined}>
+                    <AppTooltip content={gem.skill_id === '' ? tt('skills.unresolvedHint') : undefined}><span className="gem-name" tabIndex={gem.skill_id === '' ? 0 : undefined}>
                       {gemLabel(gem)}
                       {byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
-                    </span>
+                    </span></AppTooltip>
                     <span className="gem-controls">
-                      <label className="gem-enabled"><input type="checkbox" aria-label={tt('skills.gemEnabled')}
+                      <label className="gem-enabled"><AppInput type="checkbox" aria-label={tt('skills.gemEnabled')}
                         checked={gem.enabled !== false} disabled={session.busy}
                         onChange={event => updateGroup(idx, withGemEnabled(group, gemIdx, event.target.checked, byId))} />{tt('skills.gemEnabled')}</label>
-                      <label className="gem-count">{tt('skills.count')}<input type="number" min={0} step="any" value={gem.count ?? 1}
+                      <label className="gem-count">{tt('skills.count')}<AppInput type="number" min={0} step="any" value={gem.count ?? 1}
                         aria-label={tt('skills.gemCount')} disabled={session.busy} onChange={event => {
                           const count = Number(event.target.value);
                           if (Number.isFinite(count) && count >= 0) updateGroup(idx, { gems: group.gems.map((item, index) => index === gemIdx ? { ...item, count } : item) });
                         }} /></label>
-                      <label className="gem-number">{tt('skills.level')}<input
+                      <label className="gem-number">{tt('skills.level')}<AppInput
                         type="number"
                         min={1}
                         max={40}
@@ -269,7 +271,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                           });
                         }}
                       /></label>
-                      <label className="gem-number">{tt('skills.quality')}<input
+                      <label className="gem-number">{tt('skills.quality')}<AppInput
                         type="number"
                         min={0}
                         max={23}
@@ -284,9 +286,9 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                           });
                         }}
                       /></label>
-                      <label className="gem-corrupted" title={tt('skills.corruptedHint')}>
+                      <AppTooltip content={tt('skills.corruptedHint')}><label className="gem-corrupted">
                         {tt('skills.corrupted')}
-                        <input
+                        <AppInput
                           type="checkbox"
                           checked={gem.corrupted === true}
                           disabled={session.busy}
@@ -295,15 +297,15 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                             gems: group.gems.map((g, i) => (i === gemIdx ? withGemCorrupted(g, e.target.checked) : g)),
                           })}
                         />
-                      </label>
-                      <button
+                      </label></AppTooltip>
+                      <AppButton
                         className="skill-remove"
                         disabled={session.busy || catalog.length === 0}
                         title={tt('skills.removeGem')}
                         onClick={() => updateGroup(idx, removeSkillGem(group, gemIdx, byId))}
                       >
                         ×
-                      </button>
+                      </AppButton>
                     </span>
                   </li>
                 ))}
@@ -367,22 +369,22 @@ function SkillSets({ session, lang }: { session: BuildSession; lang: Lang }) {
       <span className="skill-sets-title">{tt('sets.title')}</span>
       {session.library.skillSets.map((set) => (
         <span key={set.id} className="skill-set-chip">
-          {lang === 'en-US' ? set.name : session.classNames.ascendancies[set.name] ?? session.classNames.classes[set.name] ?? set.name}（{set.groups.length}）
-          <button disabled={session.busy} onClick={() => session.applySkillSet(set.id)}>
+          {localizedName(lang, set.name, session.classNames.ascendancies[set.name] ?? session.classNames.classes[set.name])}（{set.groups.length}）
+          <AppButton disabled={session.busy} onClick={() => session.applySkillSet(set.id)}>
             {tt('sets.apply')}
-          </button>
-          <button className="skill-remove" onClick={() => session.removeSkillSet(set.id)}>
+          </AppButton>
+          <AppButton className="skill-remove" onClick={() => session.removeSkillSet(set.id)}>
             ×
-          </button>
+          </AppButton>
         </span>
       ))}
-      <input
+      <AppInput
         placeholder={tt('sets.namePlaceholder')}
         value={name}
         onChange={(e) => setName(e.target.value)}
         aria-label={tt('sets.namePlaceholder')}
       />
-      <button
+      <AppButton
         disabled={!name.trim() || session.socketGroups.length === 0}
         onClick={() => {
           session.saveSkillSet(name.trim());
@@ -390,7 +392,7 @@ function SkillSets({ session, lang }: { session: BuildSession; lang: Lang }) {
         }}
       >
         {tt('sets.save')}
-      </button>
+      </AppButton>
     </div>
   );
 }

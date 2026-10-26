@@ -1,3 +1,4 @@
+import { AppInput } from '../shared/controls';
 import { useEffect, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { MinionCatalog } from '../../api/types';
@@ -36,7 +37,7 @@ export function MinionSelection({ session, lang, groupIndex, gemIndex, gemName }
   const visible = choices.filter(row => row.id === id || row.name.toLowerCase().includes(query.trim().toLowerCase()));
   return <div className="minion-controls" role="group" aria-label={`${tt('minion.title')}: ${gemName}`}>
     <h4>{gemName} · {tt('minion.title')}</h4>
-    {choices.length > 8 && <input type="search" value={query} placeholder={tt('minion.search')} aria-label={tt('minion.search')}
+    {choices.length > 8 && <AppInput type="search" value={query} placeholder={tt('minion.search')} aria-label={tt('minion.search')}
       onChange={event => setQuery(event.target.value)} />}
     <label>{tt('minion.identity')}<AppSelect ariaLabel={tt('minion.identity')} value={id ?? ''}
       placeholder={id ? tt('minion.unavailable') : tt('minion.choose')} disabled={session.busy}

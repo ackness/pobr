@@ -1,3 +1,7 @@
+import { chineseScript } from '../../lib/chinese';
+import { useAppDialogs } from '../shared/AppDialogs';
+import { useSessionAction } from '../shared/useSessionAction';
+import { AppButton, AppInput, AppTextarea, AppSelectControl } from '../shared/controls';
 import { BuildWorkspace } from './BuildWorkspace';
 import { workspaceText } from '../../lib/workspaceText';
 import { PageHeader } from '../shared/PageHeader';
@@ -19,12 +23,14 @@ interface Props {
 /** Build library, current-stage editing, import and scoped sharing. */
 export function BuildPanel({ session, lang, onImported }: Props) {
   const tt = bindT(lang);
+  const dialogs = useAppDialogs(lang);
+  const captureAction = useSessionAction(session);
   const text = workspaceText(lang);
   const [destination, setDestination] = useState<'newBuild' | 'currentStage'>('newBuild');
   const activeBuild = session.workspace?.builds.find(entry => entry.id === session.workspace?.activeBuild);
   const activeStage = activeBuild?.stages.find(entry => entry.id === activeBuild.activeStage);
   const zhName = (map: Record<string, string>, name: string) =>
-    lang !== 'en-US' ? (map[name] ?? name) : name;
+    lang !== 'en-US' ? chineseScript(map[name] ?? name, lang) : name;
   const [code, setCode] = useState('');
   const [fileError, setFileError] = useState<string | null>(null);
   const [importRecovery, setImportRecovery] = useState<'file' | 'source' | null>(null);
@@ -70,18 +76,21 @@ export function BuildPanel({ session, lang, onImported }: Props) {
     finally { setGenerating(false); }
   };
 
-  const confirmReplacement = () => destination !== 'currentStage' || window.confirm(text.replaceConfirm);
+  const confirmReplacement = async () => destination !== 'currentStage' || await dialogs.confirm(text.replaceConfirm);
 
   const importFile = async (file: File) => {
+    const current = captureAction();
     setFileError(null);
     setImportRecovery(null);
     setImporting(true);
     try {
       const content = await file.text();
+      if (!current()) return;
       const kind = buildFileKind(content);
-      if (kind === 'workspace' && !window.confirm(text.backupConfirm)) return;
+      if (kind === 'workspace' && !await dialogs.confirm(text.backupConfirm)) return;
       const isSharedBuild = kind === 'session' && JSON.parse(content).format === 'pobr-build';
-      if (kind !== 'workspace' && !isSharedBuild && !confirmReplacement()) return;
+      if (kind !== 'workspace' && !isSharedBuild && !await confirmReplacement()) return;
+      if (!current()) return;
       if (kind === 'external') {
         if (await session.importCode(content.trim(), { destination, name: file.name.replace(/\.[^.]+$/, '') })) onImported();
       } else {
@@ -100,10 +109,12 @@ export function BuildPanel({ session, lang, onImported }: Props) {
   const ascendancies = currentClass?.ascendancies ?? [];
 
   const doImport = async () => {
-    if (!code.trim() || importing || session.busy || !confirmReplacement()) return;
+    if (!code.trim() || importing || session.busy) return;
+    const current = captureAction();
     setImporting(true);
     setImportRecovery(null);
     try {
+      if (!await confirmReplacement() || !current()) return;
       if (await session.importCode(code.trim(), { destination })) onImported();
       else setImportRecovery(buildFileKind(code) === 'external' ? 'source' : 'file');
     } finally {
@@ -124,13 +135,15 @@ export function BuildPanel({ session, lang, onImported }: Props) {
           <div className="character-form">
             <label>
               {tt('build.class')}
-              <select
+              <AppSelectControl
                 value={character.class_name}
                 disabled={session.busy}
-                onChange={(e) => {
+                onChange={async (e) => {
+                  const nextClass = e.target.value;
+                  const current = captureAction();
                   if (!character.class_name) { session.setCharacter({ class_name: e.target.value, ascendancy_name: '' }); return; }
-                  if (session.hasBuildContent && !window.confirm(tt('build.confirmClassChange'))) return;
-                  session.newBuild(e.target.value, '');
+                  if (session.hasBuildContent && !await dialogs.confirm(tt('build.confirmClassChange'))) return;
+                  if (current()) session.newBuild(nextClass, '');
                 }}
               >
                 {!character.class_name && <option value="">{tt('build.none')}</option>}
@@ -139,11 +152,11 @@ export function BuildPanel({ session, lang, onImported }: Props) {
                     {zhName(session.classNames.classes, c.name)}
                   </option>
                 ))}
-              </select>
+              </AppSelectControl>
             </label>
             <label>
               {tt('build.ascendancy')}
-              <select
+              <AppSelectControl
                 value={character.ascendancy_name}
                 disabled={session.busy || ascendancies.length === 0}
                 onChange={(e) => session.setCharacter({ ascendancy_name: e.target.value })}
@@ -154,11 +167,11 @@ export function BuildPanel({ session, lang, onImported }: Props) {
                     {zhName(session.classNames.ascendancies, a.name)}
                   </option>
                 ))}
-              </select>
+              </AppSelectControl>
             </label>
             <label className="character-level">
               {tt('build.level')}
-              <input
+              <AppInput
                 type="number"
                 min={1}
                 max={100}
@@ -194,7 +207,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
         <article className="build-card build-card--notes">
           <h3>{tt('tab.notes')}</h3>
           <p className="build-card-hint">{tt('notes.hint')}</p>
-          <textarea
+          <AppTextarea
             className="notes-editor"
             value={session.notes}
             placeholder={tt('notes.placeholder2')}
@@ -220,13 +233,13 @@ export function BuildPanel({ session, lang, onImported }: Props) {
           <h3>{tt('build.import')}</h3>
           <p className="build-card-hint">{text.importHint}</p>
           <label className="import-destination">{text.importDestination}
-            <select value={destination} disabled={importing || session.busy} onChange={event => setDestination(event.target.value as 'newBuild' | 'currentStage')}>
+            <AppSelectControl value={destination} disabled={importing || session.busy} onChange={event => setDestination(event.target.value as 'newBuild' | 'currentStage')}>
               <option value="newBuild">{text.importNew}</option>
               <option value="currentStage">{text.importCurrent} · {activeStage?.name || text.initialStage}</option>
-            </select>
+            </AppSelectControl>
           </label>
           <p className="build-card-hint" id="import-hint">{tt('build.importHint')}</p>
-          <textarea
+          <AppTextarea
             className="import-code"
             rows={5}
             placeholder={tt('build.importPlaceholder')}
@@ -243,17 +256,17 @@ export function BuildPanel({ session, lang, onImported }: Props) {
             </p>
           )}
           <div className="build-card-actions">
-            <button
+            <AppButton
               className="import-submit"
               onClick={doImport}
               disabled={session.busy || importing || !code.trim()}
             >
               {importing ? tt('build.importing') : destination === 'newBuild' ? tt('build.importButton') : text.importCurrent}
-            </button>
-            <button onClick={() => fileRef.current?.click()} disabled={session.busy || importing}>
+            </AppButton>
+            <AppButton onClick={() => fileRef.current?.click()} disabled={session.busy || importing}>
               {tt('save.import')}
-            </button>
-            <input
+            </AppButton>
+            <AppInput
               ref={fileRef}
               type="file"
               accept=".json,.build,.txt,application/json,text/plain"
@@ -275,20 +288,20 @@ export function BuildPanel({ session, lang, onImported }: Props) {
           <h3>{text.exportTitle}</h3>
           <p className="build-card-hint">{text.shareHint}</p>
           <div className="build-card-actions">
-            <button disabled={session.busy} onClick={() => exportFile(session.exportLocalBuild(), 'pobr-build-stages.json')}>{text.share}</button>
+            <AppButton disabled={session.busy} onClick={() => exportFile(session.exportLocalBuild(), 'pobr-build-stages.json')}>{text.share}</AppButton>
           </div>
           <h4 className="build-export-heading">{text.currentStageShare}</h4>
           <p className="build-card-hint">{tt('share.hint')}</p>
           <div className="build-card-actions">
-            <button onClick={generateCode} disabled={session.busy || generating}>
+            <AppButton onClick={generateCode} disabled={session.busy || generating}>
               {tt(generating ? 'share.generating' : 'share.generate')}
-            </button>
+            </AppButton>
             {shareCode && <CopyButton text={shareCode} lang={lang} />}
           </div>
           {shareError && <div className="calc-error" role="alert">{shareError}</div>}
           {share && !shareCode && <p className="build-card-hint" role="status">{tt('share.stale')}</p>}
           {shareCode && (
-            <textarea
+            <AppTextarea
               className="import-code"
               rows={3}
               readOnly
@@ -302,17 +315,17 @@ export function BuildPanel({ session, lang, onImported }: Props) {
           <h4 className="build-export-heading">{tt('plannerFile.title')}</h4>
           <p className="build-card-hint">{tt('plannerFile.hint')}</p>
           <div className="build-card-actions">
-            <button disabled={session.busy || generating} onClick={() => exportPlanner(false)}>{tt('plannerFile.current')}</button>
-            <button disabled={session.busy || generating} onClick={() => exportPlanner(true)}>{tt('plannerFile.all')}</button>
+            <AppButton disabled={session.busy || generating} onClick={() => exportPlanner(false)}>{tt('plannerFile.current')}</AppButton>
+            <AppButton disabled={session.busy || generating} onClick={() => exportPlanner(true)}>{tt('plannerFile.all')}</AppButton>
           </div>
           {plannerFiles && <div aria-live="polite">
-            {plannerFiles.files.map(file => <button key={file.filename} onClick={() => exportFile(file.content, file.filename)}>{file.filename}</button>)}
+            {plannerFiles.files.map(file => <AppButton key={file.filename} onClick={() => exportFile(file.content, file.filename)}>{file.filename}</AppButton>)}
             {plannerFiles.warnings.map(warning => <p className="build-card-hint" key={warning}>{warning}</p>)}
           </div>}
           <h4 className="build-export-heading">{text.backup}</h4>
           <p className="build-card-hint">{text.backupHint}</p>
           <div className="build-card-actions">
-            <button onClick={() => exportFile(session.exportWorkspace(), 'pobr-workspace.json')} disabled={session.busy || importing}>{tt('save.export')}</button>
+            <AppButton onClick={() => exportFile(session.exportWorkspace(), 'pobr-workspace.json')} disabled={session.busy || importing}>{tt('save.export')}</AppButton>
 
           </div>
         </article>

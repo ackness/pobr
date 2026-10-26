@@ -1,3 +1,5 @@
+import { localizedName } from '../../lib/chinese';
+import { AppButton, AppInput } from '../shared/controls';
 import { useState } from 'react';
 import { AppSelect } from '../shared/AppSelect';
 import { useLocalizedLines } from '../../hooks/useLocalizedLines';
@@ -16,7 +18,7 @@ export function ReplacementAugmentPicker({ plan, level, lang, disabled, onChange
     const hint = effects.slice(effectOffset, effectOffset + option.lines.length).join('\n');
     effectOffset += option.lines.length;
     return {
-    value: option.name, label: (lang === 'zh-CN' ? option.name_zh_cn : lang === 'zh-TW' ? option.name_zh_tw : option.name) || option.name,
+    value: option.name, label: localizedName(lang, option.name, option.name_zh_cn, option.name_zh_tw),
     group: ut(option.kind === 'Idol' ? 'augmentIdol' : option.is_soul_core ? 'augmentCore' : 'augmentRune'),
     hint, level: option.required_level ?? 0, limit: option.limit, limitKey: option.limit_id ?? option.name,
   }; }).filter(option => option.level <= level)
@@ -28,9 +30,9 @@ export function ReplacementAugmentPicker({ plan, level, lang, disabled, onChange
     <div className="replacement-augment-heading"><h4>{ut('augmentTitle')}</h4><span>{plan.sockets} / {plan.info.max_sockets}</span></div>
     {!plan.info.editable ? <p className="replacement-augment-note">{ut('augmentLocked')}</p> : <>
       <div className="replacement-augment-modes" role="group" aria-label={ut('augmentTitle')}>
-        {(['inherit', 'original', 'custom'] as const).map(mode => <button key={mode} disabled={disabled}
+        {(['inherit', 'original', 'custom'] as const).map(mode => <AppButton key={mode} disabled={disabled}
           aria-pressed={plan.selection.mode === mode} onClick={() => mode === 'custom' ? custom(plan.sockets || Math.min(1, plan.info.max_sockets)) : onChange({ mode })}>
-          {ut(mode === 'inherit' ? 'augmentInherit' : mode === 'original' ? 'augmentOriginal' : 'augmentCustom')}</button>)}
+          {ut(mode === 'inherit' ? 'augmentInherit' : mode === 'original' ? 'augmentOriginal' : 'augmentCustom')}</AppButton>)}
       </div>
       <p className="replacement-augment-note">{ut(plan.source === 'inherited' ? 'augmentInherited' : plan.source === 'custom' ? 'augmentSimulation' : plan.info.runes.some(Boolean) ? 'augmentPreserved' : 'augmentEmpty')}</p>
       {plan.selection.mode !== 'custom' && plan.runes.some(Boolean) && <div className="replacement-augment-summary">
@@ -38,11 +40,11 @@ export function ReplacementAugmentPicker({ plan, level, lang, disabled, onChange
       </div>}
       {plan.selection.mode === 'custom' && <>
         <div className="replacement-socket-count"><span>{ut('augmentSocket')} · {plan.sockets}</span><div>
-          <button aria-label={ut('augmentRemove')} disabled={disabled || plan.sockets <= 0} onClick={() => custom(plan.sockets - 1)}>−</button>
-          <button aria-label={ut('augmentAdd')} disabled={disabled || plan.sockets >= plan.info.max_sockets} onClick={() => custom(plan.sockets + 1)}>+</button>
+          <AppButton aria-label={ut('augmentRemove')} disabled={disabled || plan.sockets <= 0} onClick={() => custom(plan.sockets - 1)}>−</AppButton>
+          <AppButton aria-label={ut('augmentAdd')} disabled={disabled || plan.sockets >= plan.info.max_sockets} onClick={() => custom(plan.sockets + 1)}>+</AppButton>
         </div></div>
         {!!plan.sockets && <>
-          <input type="search" className="replacement-augment-search" aria-label={ut('augmentSearch')} placeholder={ut('augmentSearch')} value={query} onChange={event => setQuery(event.target.value)} />
+          <AppInput type="search" className="replacement-augment-search" aria-label={ut('augmentSearch')} placeholder={ut('augmentSearch')} value={query} onChange={event => setQuery(event.target.value)} />
           {!filtered.length && <p>{ut('noMatchingAugment')}</p>}
           {Array.from({ length: plan.sockets }, (_, index) => {
             const name = plan.runes[index] ?? '';

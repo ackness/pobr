@@ -1,3 +1,6 @@
+import { useUi } from '../shared/UiContext';
+import { uiStorageKey } from '../../lib/sessionStorage';
+import { AppButton, AppInput } from '../shared/controls';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import { upgradeT } from '../../lib/upgradeText';
 import { ItemReplacementCheck } from './ItemReplacementCheck';
@@ -39,6 +42,8 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   onSkills?: (group:number) => void; onTree?: () => void;
   initialItemText?: string;
 }) {
+  const { v2 } = useUi();
+  const preferenceKey = (key: string) => uiStorageKey(key, v2);
   const tt = bindT(lang);
   const ut = (key: Parameters<typeof upgradeT>[1]) => upgradeT(lang, key);
   const { goal, setGoal } = useUpgradeGoal();
@@ -51,15 +56,15 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   const [selected, setSelected] = useState('weapon1');
   const [jewelTypes, setJewelTypes] = useState<Record<string, JewelSearchType>>({});
   const [categories, setCategories] = useState<Record<string, string>>({});
-  const [realm, setRealm] = useState<TradeRealm>(() => localStorage.getItem(REALM_KEY) === 'cn' ? 'cn' : 'intl');
-  const [league, setLeague] = useState(() => localStorage.getItem(leagueKey(realm)) ?? REALM_DEFAULT_LEAGUE[realm]);
+  const [realm, setRealm] = useState<TradeRealm>(() => localStorage.getItem(preferenceKey(REALM_KEY)) === 'cn' ? 'cn' : 'intl');
+  const [league, setLeague] = useState(() => localStorage.getItem(preferenceKey(leagueKey(realm))) ?? REALM_DEFAULT_LEAGUE[realm]);
   const [leagues, setLeagues] = useState(REALM_LEAGUES[realm]);
   const [leagueFallback, setLeagueFallback] = useState(false);
   const preset = goal.preset;
   const setPreset = (preset: string) => setGoal({ ...goal, preset });
-  const [budget, setBudget] = useState(() => localStorage.getItem(BUDGET_KEY) ?? '100');
+  const [budget, setBudget] = useState(() => localStorage.getItem(preferenceKey(BUDGET_KEY)) ?? '100');
   const [currency, setCurrency] = useState<TradeCurrency>(() => {
-    const saved = localStorage.getItem(CURRENCY_KEY);
+    const saved = localStorage.getItem(preferenceKey(CURRENCY_KEY));
     return TRADE_CURRENCIES.find(option => option.value === saved)?.value ?? 'equiv';
   });
   const [running, setRunning] = useState<string | null>(null);
@@ -108,7 +113,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     loadTradeLeagues(realm).then(list => {
       if (cancelled) return;
       setLeagues(list);
-      if (localStorage.getItem(leagueKey(realm)) === null) setLeague(list[0]);
+      if (localStorage.getItem(preferenceKey(leagueKey(realm))) === null) setLeague(list[0]);
     }).catch(() => { if (!cancelled) setLeagueFallback(true); });
     return () => { cancelled = true; };
   }, [realm]);
@@ -237,8 +242,8 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     <div className="upgrade-evaluation">
       <div className="trade-objectives" role="group" aria-label={tt('opt.objective')} ref={goalRef} tabIndex={-1}>
         <span className="trade-field-label">{tt('opt.objective')}</span>
-        <div>{TRADE_OBJECTIVES.map(entry => <button key={entry.id} aria-pressed={preset === entry.id}
-          onClick={() => setPreset(entry.id)}>{tt(entry.labelKey as UiKey)}</button>)}</div>
+        <div>{TRADE_OBJECTIVES.map(entry => <AppButton key={entry.id} aria-pressed={preset === entry.id}
+          onClick={() => setPreset(entry.id)}>{tt(entry.labelKey as UiKey)}</AppButton>)}</div>
       </div>
         {session.socketGroups.length > 0 && <div className="trade-skill-context"><span>{tt('sidebar.mainSkill')}</span>
           <AppSelect value={mainGroup === undefined ? '' : String(mainGroup)} ariaLabel={tt('trade.analysisSkill')} disabled={session.busy}
@@ -253,18 +258,18 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     {!session.busy && !hasSkillTarget && <p className="trade-notice" role="status">{tt('sidebar.noMainSkill')}</p>}
     <WeaponSetControl session={session} lang={lang} />
     <div className="trade-safety-settings">
-      {preset === 'balanced' && <label><input type="checkbox" checked={keepEhp} onChange={event => setKeepEhp(event.target.checked)} />{tt('trade.keepEhp')}</label>}
-      <label><input type="checkbox" checked={resistanceFirst} onChange={event => setResistanceFirst(event.target.checked)} />{tt('trade.resistanceFirst')}</label>
-      {resistanceFirst && <label>{tt('trade.resistanceTarget')}<input type="number" min={0} max={90} value={resistanceTarget} aria-label={tt('trade.resistanceTarget')}
+      {preset === 'balanced' && <label><AppInput type="checkbox" checked={keepEhp} onChange={event => setKeepEhp(event.target.checked)} />{tt('trade.keepEhp')}</label>}
+      <label><AppInput type="checkbox" checked={resistanceFirst} onChange={event => setResistanceFirst(event.target.checked)} />{tt('trade.resistanceFirst')}</label>
+      {resistanceFirst && <label>{tt('trade.resistanceTarget')}<AppInput type="number" min={0} max={90} value={resistanceTarget} aria-label={tt('trade.resistanceTarget')}
         onChange={event => { const value = Number(event.target.value); if (Number.isFinite(value) && value >= 0 && value <= 90) setResistanceTarget(value); }} />%</label>}
       <details className="trade-goal-help"><summary>{tt('trade.goalHelp')}</summary><p>{tt(preset === 'balanced' ? 'trade.balancedHint' : 'trade.resistanceHint')}</p></details>
     </div>
     <details className="upgrade-goal-details" open={!!goal.cStat}><summary>{ut('advancedGoal')}{goal.cStat ? ` · ${statNameLabel(lang, goal.cStat)}` : ''}</summary><div className="opt-controls"><ObjectiveEditor value={goal} onChange={setGoal} lang={lang} constraintsOnly /></div></details>
     </div>
     <div className="upgrade-paths">
-      <button onClick={() => analysisRef.current?.scrollIntoView({block:'start'})}><SlotSymbol slot="helmet" /><strong>{ut('equipment')}</strong><span>{ut('equipmentHint')}</span></button>
-      <button disabled={!onSkills || !selectedGroup} onClick={() => { if (mainGroup !== undefined) onSkills?.(mainGroup); }}><SlotSymbol slot="gems" /><strong>{ut('supports')}</strong><span>{ut('supportsHint')}</span></button>
-      <button disabled={!onTree} onClick={onTree}><SlotSymbol slot="Jewel@" /><strong>{ut('tree')}</strong><span>{ut('treeHint')}</span></button>
+      <AppButton onClick={() => analysisRef.current?.scrollIntoView({block:'start'})}><SlotSymbol slot="helmet" /><strong>{ut('equipment')}</strong><span>{ut('equipmentHint')}</span></AppButton>
+      <AppButton disabled={!onSkills || !selectedGroup} onClick={() => { if (mainGroup !== undefined) onSkills?.(mainGroup); }}><SlotSymbol slot="gems" /><strong>{ut('supports')}</strong><span>{ut('supportsHint')}</span></AppButton>
+      <AppButton disabled={!onTree} onClick={onTree}><SlotSymbol slot="Jewel@" /><strong>{ut('tree')}</strong><span>{ut('treeHint')}</span></AppButton>
     </div>
     <p className="upgrade-shared-goal">{ut('sharedGoal')}</p>
     <ItemReplacementCheck session={session} lang={lang} active={active && canAnalyze} objective={objective} catalog={catalog} jewelSockets={jewelSockets} initialItemText={initialItemText}
@@ -272,29 +277,29 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
       onEditGoal={() => { goalRef.current?.scrollIntoView({ block: 'start' }); goalRef.current?.focus({ preventScroll: true }); }} />
     <div className="trade-setup">
       <label className="trade-price-field"><span className="trade-field-label">{tt('trade.budget')}</span>
-        <span className="trade-budget"><input type="number" min={0} aria-label={tt('trade.budget')} value={budget} placeholder={tt('trade.budgetAny')}
-          onChange={event => { setBudget(event.target.value); localStorage.setItem(BUDGET_KEY, event.target.value); }} />
+        <span className="trade-budget"><AppInput type="number" min={0} aria-label={tt('trade.budget')} value={budget} placeholder={tt('trade.budgetAny')}
+          onChange={event => { setBudget(event.target.value); localStorage.setItem(preferenceKey(BUDGET_KEY), event.target.value); }} />
           <AppSelect value={currency} ariaLabel={tt('trade.currency')}
             options={TRADE_CURRENCIES.map(option => ({ value: option.value, label: tt(option.labelKey) }))}
-            onChange={value => { setCurrency(value as TradeCurrency); localStorage.setItem(CURRENCY_KEY, value); }} /></span>
+            onChange={value => { setCurrency(value as TradeCurrency); localStorage.setItem(preferenceKey(CURRENCY_KEY), value); }} /></span>
       </label>
       <div className="trade-market-fields">
         <label><span className="trade-field-label">{tt('trade.realm')}</span><AppSelect value={realm} ariaLabel={tt('trade.realm')}
           options={[{ value: 'intl', label: tt('trade.realmIntl') }, { value: 'cn', label: tt('trade.realmCn') }]}
-          onChange={value => { const next = value as TradeRealm; setRealm(next); localStorage.setItem(REALM_KEY, next);
-            setLeague(localStorage.getItem(leagueKey(next)) ?? REALM_DEFAULT_LEAGUE[next]); }} /></label>
+          onChange={value => { const next = value as TradeRealm; setRealm(next); localStorage.setItem(preferenceKey(REALM_KEY), next);
+            setLeague(localStorage.getItem(preferenceKey(leagueKey(next))) ?? REALM_DEFAULT_LEAGUE[next]); }} /></label>
         <label><span className="trade-field-label">{tt('trade.league')}</span><AppSelect value={leagues.includes(league) ? league : '__custom'} ariaLabel={tt('trade.league')}
           options={[...leagues.map(name => ({ value: name, label: name })), { value: '__custom', label: tt('trade.leagueCustom') }]}
-          onChange={value => { const next = value === '__custom' ? '' : value; setLeague(next); localStorage.setItem(leagueKey(realm), next); }} /></label>
-        {!leagues.includes(league) && <input aria-label={tt('trade.leagueCustom')} value={league} placeholder={REALM_DEFAULT_LEAGUE[realm]}
-          onChange={event => { setLeague(event.target.value); localStorage.setItem(leagueKey(realm), event.target.value); }} />}
+          onChange={value => { const next = value === '__custom' ? '' : value; setLeague(next); localStorage.setItem(preferenceKey(leagueKey(realm)), next); }} /></label>
+        {!leagues.includes(league) && <AppInput aria-label={tt('trade.leagueCustom')} value={league} placeholder={REALM_DEFAULT_LEAGUE[realm]}
+          onChange={event => { setLeague(event.target.value); localStorage.setItem(preferenceKey(leagueKey(realm)), event.target.value); }} />}
       </div>
     </div>
     <div className="trade-overview-toolbar">
       <div><h3>{tt('trade.overviewTitle')}</h3><p>{tt('trade.overviewHint')}</p></div>
-      <button className="trade-primary trade-analyze-all" disabled={disabled || fullTargets.length === 0}
-        onClick={() => void analyze(fullTargets, true, allComplete)}>{allComplete ? tradeAnalysisText(lang, 'refresh') : reusableAllCount > 0 ? tradeAnalysisText(lang, 'resume') : tt('trade.analyzeAll')}</button>
-      <label className="trade-unique"><input type="checkbox" checked={includeUnique} onChange={event => setIncludeUnique(event.target.checked)} />{tt('trade.includeUnique')}</label>
+      <AppButton className="trade-primary trade-analyze-all" disabled={disabled || fullTargets.length === 0}
+        onClick={() => void analyze(fullTargets, true, allComplete)}>{allComplete ? tradeAnalysisText(lang, 'refresh') : reusableAllCount > 0 ? tradeAnalysisText(lang, 'resume') : tt('trade.analyzeAll')}</AppButton>
+      <label className="trade-unique"><AppInput type="checkbox" checked={includeUnique} onChange={event => setIncludeUnique(event.target.checked)} />{tt('trade.includeUnique')}</label>
     </div>
     {overview && <section className="trade-priorities ui-card" aria-label={tt('trade.overviewTitle')}>
       <div className="trade-results-heading"><h4>{tt('trade.priorityOrder')}</h4>
@@ -305,7 +310,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
         {progress && <OptimizerProgress {...progress} onCancel={cancelAnalysis} lang={lang} />}</div>}
       <ol className="trade-priority-list">
         {priorities.map((entry, index) => <li key={entry.slot}>
-          <button className="trade-priority-position" onClick={() => {
+          <AppButton className="trade-priority-position" onClick={() => {
             setSelected(entry.slot); analysisRef.current?.scrollIntoView({ block: 'start' });
           }}>
             <span className="trade-rank">{String(index + 1).padStart(2, '0')}</span>
@@ -313,7 +318,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
             <span className="trade-priority-name"><strong>{labelOf(entry.slot)}</strong><small>{entry.slot === 'gems' ? inspectedName : slotNames[slots.indexOf(entry.slot)]}</small></span>
             <span className="trade-priority-delta"><strong className={entry.gain < 0 ? 'delta-neg' : 'trade-gain'}>{entry.gain >= 0 ? '+' : ''}{number(entry.gainPercent ?? entry.gain)}{entry.gainPercent === undefined ? '' : '%'}</strong><small>{tt('trade.referencePotential')}</small></span>
             <span aria-hidden>→</span>
-          </button>
+          </AppButton>
           <div className="trade-priority-defence"><span className={entry.dpsDelta < 0 ? 'delta-neg' : ''}>DPS {entry.dpsDelta > 0 ? '+' : ''}{number(entry.dpsDelta, 0)}</span><span className={entry.lifeDelta < 0 ? 'delta-neg' : ''}>{statNameLabel(lang, 'Life')} {entry.lifeDelta > 0 ? '+' : ''}{number(entry.lifeDelta, 0)}</span><span className={entry.ehpDelta < 0 ? 'delta-neg' : ''}>EHP {entry.ehpDelta > 0 ? '+' : ''}{number(entry.ehpDelta, 0)}</span>{resistanceFirst && <span>{tt('trade.resistanceGap')} {number(entry.deficit)}%</span>}</div>
         </li>)}
       </ol>
@@ -325,16 +330,16 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
       <aside className="trade-position-panel">
         <div className="trade-section-label">{tt('trade.chooseSlot')}</div>
         <nav aria-label={tt('trade.chooseSlot')} className="trade-position-list">
-          {visibleSlots.map(slot => <button key={slot} className="trade-position" aria-pressed={selected === slot} onClick={() => setSelected(slot)}>
+          {visibleSlots.map(slot => <AppButton key={slot} className="trade-position" aria-pressed={selected === slot} onClick={() => setSelected(slot)}>
             <span className="trade-position-symbol" aria-hidden><SlotSymbol slot={slot} /></span>
             <span><strong>{labelOf(slot)}</strong><small>{slotNames[slots.indexOf(slot)] || tt('trade.slotEmpty')}</small></span>
             {results[slot]?.weights && <span className="trade-position-done" aria-label={tt('trade.analyzed')}>+</span>}
-          </button>)}
-          <button className="trade-position" aria-pressed={selected === 'gems'} onClick={() => setSelected('gems')}>
+          </AppButton>)}
+          <AppButton className="trade-position" aria-pressed={selected === 'gems'} onClick={() => setSelected('gems')}>
             <span className="trade-position-symbol" aria-hidden><SlotSymbol slot="gems" /></span><span><strong>{tt('trade.gems')}</strong><small>{tt('trade.gemSubtitle')}</small></span>
-          </button>
+          </AppButton>
         </nav>
-        {hasEquipment && <button className="trade-text-button" onClick={() => setShowEmpty(!showEmpty)}>{tt(showEmpty ? 'trade.hideEmpty' : 'trade.showEmpty')}</button>}
+        {hasEquipment && <AppButton className="trade-text-button" onClick={() => setShowEmpty(!showEmpty)}>{tt(showEmpty ? 'trade.hideEmpty' : 'trade.showEmpty')}</AppButton>}
       </aside>
       <div className="trade-analysis" ref={analysisRef}>
         <header className="trade-analysis-header">
@@ -342,8 +347,8 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
             <div className="trade-scope"><span>{selectedBase ? tt(`trade.category.${selectedBase.category}` as UiKey) : tt('trade.gems')}</span>
               {selected !== 'gems' && <><span>{tt('trade.allBases')}</span>{!includeUnique && <span>{tt('trade.nonUnique')}</span>}</>}<span>{tt('trade.levelLimit')} {session.character?.level ?? 1}</span></div>
           </div>
-          <div className="trade-header-actions"><button className={weights || result?.gems ? 'trade-secondary' : 'trade-primary'} disabled={disabled || (selected !== 'gems' && !selectedBase) || (selected === 'gems' && (!hasSkillTarget || !!selectedGroup?.source))}
-            onClick={() => void analyze([selected])}>{tt(running === selected ? 'opt.running' : weights || result?.gems ? 'trade.recalculate' : 'trade.analyze')}</button>
+          <div className="trade-header-actions"><AppButton className={weights || result?.gems ? 'trade-secondary' : 'trade-primary'} disabled={disabled || (selected !== 'gems' && !selectedBase) || (selected === 'gems' && (!hasSkillTarget || !!selectedGroup?.source))}
+            onClick={() => void analyze([selected])}>{tt(running === selected ? 'opt.running' : weights || result?.gems ? 'trade.recalculate' : 'trade.analyze')}</AppButton>
           {searchUrl && league.trim() && <a className="trade-primary trade-market-link" href={searchUrl} target="_blank" rel="noreferrer">{tt('trade.browseMarket')}<span aria-hidden>↗</span></a>}</div>
         </header>
         {selected.startsWith('Jewel@') && selectedBase && <div className="trade-range">
@@ -392,7 +397,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
           {Boolean(weights.situational?.length) && <div className="trade-situational">
             <h4>{tt('trade.situational')}</h4><p>{tt('trade.situationalHint')}</p>
             {weights.situational?.map((stat, index) => <label key={stat.id}>
-              <input type="checkbox" checked={(requiredStats[selected] ?? []).includes(stat.id)} onChange={event => setRequiredStats(prev => ({ ...prev,
+              <AppInput type="checkbox" checked={(requiredStats[selected] ?? []).includes(stat.id)} onChange={event => setRequiredStats(prev => ({ ...prev,
                 [selected]: event.target.checked ? [...(prev[selected] ?? []), stat.id] : (prev[selected] ?? []).filter(id => id !== stat.id),
               }))} />
               <span><strong>{situationalLines[index] ?? stat.line}</strong><small>{tt(`trade.mechanic.${stat.kind}`)}{stat.delta !== undefined ? ` +${number(stat.delta)}` : ''}</small></span>
@@ -404,12 +409,12 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
           {weights.unsupported.length > 0 && <details className="trade-notice trade-unsupported"><summary>{tt('trade.unsupportedHint')} ({weights.unsupported.length})</summary><pre>{weights.unsupported.join('\n')}</pre></details>}
           {searchUrl && league.trim() && <div className="trade-search-card">
             <div><span className="trade-section-label">{tt('trade.nextStep')}</span><h4>{tt('trade.searchReady')}</h4><p>{tt(realm === 'cn' ? 'trade.cnMarketHint' : 'trade.directMarketHint')}</p>
-              <label className="trade-broad"><input type="checkbox" checked={broad} onChange={event => setBroad(event.target.checked)} />{tt('trade.broaderSearch')}</label></div>
+              <label className="trade-broad"><AppInput type="checkbox" checked={broad} onChange={event => setBroad(event.target.checked)} />{tt('trade.broaderSearch')}</label></div>
             <div className="trade-search-actions"><a className="trade-primary trade-market-link" href={searchUrl} target="_blank" rel="noreferrer">{tt('trade.browseMarket')}<span aria-hidden>↗</span></a>
               <CopyButton text={searchUrl} label={tt('trade.copySearch')} lang={lang} /></div>
           </div>}
         </>}
-        {result?.gems && <div className="trade-gems"><div className="trade-results-heading"><div><h4>{tt('trade.gemCandidates')}</h4>{onSkills && mainGroup !== undefined && <button onClick={() => onSkills(mainGroup)}>{ut('autoSupports')} ↗</button>}<p>{tt('trade.gemHint')}</p></div></div>
+        {result?.gems && <div className="trade-gems"><div className="trade-results-heading"><div><h4>{tt('trade.gemCandidates')}</h4>{onSkills && mainGroup !== undefined && <AppButton onClick={() => onSkills(mainGroup)}>{ut('autoSupports')} ↗</AppButton>}<p>{tt('trade.gemHint')}</p></div></div>
           {result.gems.length === 0 && <p className="trade-notice">{tt('trade.noGemUpgrade')}</p>}
           {result.gems.map(plan => <article className="trade-gem-card" key={`${plan.gem.skill_id}:${plan.position}:${plan.level}:${plan.quality}`}>
             <span className="trade-position-symbol" aria-hidden><SlotSymbol slot="gems" /></span>
@@ -421,11 +426,11 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
             <div className="upgrade-gem-stats">{['TotalDPS', 'TotalEHP'].map(stat => { const before = plan.baseline?.[stat] ?? 0, after = plan.stats?.[stat] ?? 0; return <span key={stat}>{stat === 'TotalDPS' ? 'DPS' : 'EHP'} <b className={after < before ? 'delta-neg' : 'delta-pos'}>{number(before)} → {number(after)}</b></span>; })}</div>
             {plan.acquisition !== 'skill-adjustment' && league.trim() && <a className="trade-secondary" href={gemTradeUrl({ realm, league, category: 'gem', price: priceCap, maxLevel: session.character?.level,
               gem: { name: realm === 'cn' ? cnSkillName(plan.gem.skill_id) : plan.gem.name, level: plan.level, quality: plan.quality } })} target="_blank" rel="noreferrer">{tt('trade.browseMarket')}</a>}
-            <button disabled={session.busy} onClick={() => {
+            <AppButton disabled={session.busy} onClick={() => {
               const candidate = plan.variant.socket_groups?.[plan.group];
               if (candidate) session.setSocketGroups(session.socketGroups.map((group,index) => index === plan.group
                 ? { ...group, gems: candidate.gems, main_active_skill: candidate.main_active_skill } : group));
-            }}>{ut('apply')}</button>
+            }}>{ut('apply')}</AppButton>
           </article>)}
         </div>}
       </div>

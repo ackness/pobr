@@ -1,10 +1,4 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import App from './App';
-import './styles/global.css';
+import { isV2Path } from './v2/routes';
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+// Load one visual entry point; legacy global styles never outrank V2 tokens.
+void (isV2Path(location.pathname) ? import('./v2/entry') : import('./legacy-entry'));

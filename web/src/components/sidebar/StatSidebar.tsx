@@ -1,3 +1,6 @@
+import { AppButton } from '../shared/controls';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { useUi } from '../shared/UiContext';
 import type { MainSkillInfo } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useSkillCatalog } from '../../hooks/useSkillName';
@@ -51,9 +54,9 @@ function MainSkillSection({ session, lang, onStatClick }: Props) {
       </>
     );
     return onStatClick && session.calc && detailKind(session.calc, id) !== 'none' ? (
-      <button type="button" className="stat-row stat-row--link" key={id} onClick={() => onStatClick(id)}>
+      <AppButton type="button" className="stat-row stat-row--link" key={id} onClick={() => onStatClick(id)}>
         {inner}
-      </button>
+      </AppButton>
     ) : (
       <div className="stat-row" key={id}>{inner}</div>
     );
@@ -143,23 +146,24 @@ function MainMinionSection({ session, lang, onStatClick }: Props) {
     <p>{tt('skills.level')} {minion.level}</p><dl>
       {values.map(([name, value]) => {
         const content = <><dt>{name === 'TotalDPS' ? tt('sidebar.hitDps') : statNameLabel(lang, name)}</dt><dd>{formatStatValue(value, 'float2')}</dd></>;
-        return onStatClick && detailKind(minion, name) !== 'none' ? <button key={name} className="stat-row stat-row--link"
-          onClick={() => onStatClick(`Minion:${minion.index}:${name}`)}>{content}</button> : <div key={name} className="stat-row">{content}</div>;
+        return onStatClick && detailKind(minion, name) !== 'none' ? <AppButton key={name} className="stat-row stat-row--link"
+          onClick={() => onStatClick(`Minion:${minion.index}:${name}`)}>{content}</AppButton> : <div key={name} className="stat-row">{content}</div>;
       })}
     </dl></section>;
 }
 
 export function StatSidebar({ session, lang, onStatClick }: Props) {
+  const { v2 } = useUi();
   const calc = session.calc;
   const values = calc ? statMap(calc.stats) : null;
 
   return (
-    <aside id="character-stats" className="stat-sidebar" aria-label="Character stats">
+    <aside id="character-stats" className="stat-sidebar" aria-label={lang === 'en-US' ? 'Character stats' : lang === 'zh-TW' ? '角色屬性' : '角色属性'}>
       <MainSkillSection session={session} lang={lang} onStatClick={onStatClick} />
       <MainMinionSection session={session} lang={lang} onStatClick={onStatClick} />
-      {onStatClick && <button className="stat-row stat-row--link" onClick={() => onStatClick('skill-metrics')}>
+      {onStatClick && <AppButton className="stat-row stat-row--link" onClick={() => onStatClick('skill-metrics')}>
         {bindT(lang)('calcs.skillMetrics')} →
-      </button>}
+      </AppButton>}
       {STAT_SECTIONS.map((section) => {
         if (section.requiresSkill && (session.calcParams.main_socket_group === undefined || !calc?.main_skill)) return null;
         const rows = section.rows.filter((row) => {
@@ -184,18 +188,16 @@ export function StatSidebar({ session, lang, onStatClick }: Props) {
                   </>
                 );
                 return clickable ? (
-                  <button
+                  <AppButton
                     type="button"
                     className="stat-row stat-row--link"
                     key={row.id}
                     onClick={() => onStatClick(row.id)}
                   >
                     {inner}
-                  </button>
+                  </AppButton>
                 ) : (
-                  <div className="stat-row" key={row.id} title={bindT(lang)('calcs.noBreakdown')} data-detail-kind="none">
-                    {inner}
-                  </div>
+                  v2 ? <Tooltip key={row.id}><TooltipTrigger asChild><div className="stat-row" tabIndex={0} data-detail-kind="none">{inner}</div></TooltipTrigger><TooltipContent>{bindT(lang)('calcs.noBreakdown')}</TooltipContent></Tooltip> : <div className="stat-row" key={row.id} data-detail-kind="none">{inner}</div>
                 );
               })}
             </dl>

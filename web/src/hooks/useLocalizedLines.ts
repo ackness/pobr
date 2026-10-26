@@ -18,11 +18,30 @@ const STRUCT_LINE_KEYS: Record<string, { 'zh-TW': string; 'zh-CN': string }> = {
   'Armour': { 'zh-TW': '護甲', 'zh-CN': '护甲' },
   'Evasion': { 'zh-TW': '閃避', 'zh-CN': '闪避' },
   'Energy Shield': { 'zh-TW': '能量護盾', 'zh-CN': '能量护盾' },
+  'Physical Damage': { 'zh-TW': '物理傷害', 'zh-CN': '物理伤害' },
+  'Elemental Damage': { 'zh-TW': '元素傷害', 'zh-CN': '元素伤害' },
+  'Chaos Damage': { 'zh-TW': '混沌傷害', 'zh-CN': '混沌伤害' },
+  'Critical Hit Chance': { 'zh-TW': '暴擊機率', 'zh-CN': '暴击几率' },
+  'Critical Strike Chance': { 'zh-TW': '暴擊機率', 'zh-CN': '暴击几率' },
+  'Attacks per Second': { 'zh-TW': '每秒攻擊次數', 'zh-CN': '每秒攻击次数' },
+  'Weapon Range': { 'zh-TW': '武器範圍', 'zh-CN': '武器范围' },
+  'Block chance': { 'zh-TW': '格擋機率', 'zh-CN': '格挡几率' },
+  'Block Chance': { 'zh-TW': '格擋機率', 'zh-CN': '格挡几率' },
   'Ward': { 'zh-TW': '結界', 'zh-CN': '结界' },
   'Charm Slots': { 'zh-TW': '護符插槽', 'zh-CN': '护符插槽' },
   'Radius': { 'zh-TW': '範圍', 'zh-CN': '范围' },
   'Limited to': { 'zh-TW': '限裝', 'zh-CN': '限装' },
   'Sockets': { 'zh-TW': '插槽', 'zh-CN': '插槽' },
+};
+
+const STRUCT_VALUES: Record<string, { 'zh-TW': string; 'zh-CN': string }> = {
+  Small: { 'zh-TW': '小型', 'zh-CN': '小型' },
+  Medium: { 'zh-TW': '中型', 'zh-CN': '中型' },
+  Large: { 'zh-TW': '大型', 'zh-CN': '大型' },
+  Corrupted: { 'zh-TW': '已汙染', 'zh-CN': '已腐化' },
+  Mirrored: { 'zh-TW': '已複製', 'zh-CN': '已镜像' },
+  Unidentified: { 'zh-TW': '未鑑定', 'zh-CN': '未鉴定' },
+  Split: { 'zh-TW': '已分割', 'zh-CN': '已分割' },
 };
 
 /** 符文/魂核命名行前缀（值是物品名，需单独送翻译）。 */
@@ -89,16 +108,19 @@ export function useItemDisplayNames(texts: (string | undefined)[], lang: Lang): 
 /** 结构行本地化：`Item Level: 83` → `物品等级: 83`；非结构行返回 null。 */
 export function localizeStructLine(line: string, lang: Lang): string | null {
   if (lang === 'en-US') return null;
+  if (STRUCT_VALUES[line]) return STRUCT_VALUES[line][lang];
   const m = line.match(/^([A-Za-z' ]+):\s*(.*)$/);
   if (!m) return null;
   const entry = STRUCT_LINE_KEYS[m[1].trim()];
-  return entry ? `${entry[lang]}: ${m[2]}` : null;
+  const value = STRUCT_VALUES[m[2]]?.[lang] ?? m[2];
+  return entry ? `${entry[lang]}: ${value}` : null;
 }
 
 /** 中文界面：词条行批量反查翻译（结构行走本地词典；翻译不中原样显示）。 */
 export function useLocalizedLines(lines: string[], lang: Lang): string[] {
   const key = lines.join('\n');
-  const [translated, setTranslated] = useState<Record<string, string>>({});
+  const [result, setResult] = useState<{ key: string; lang: Lang; values: Record<string, string> } | null>(null);
+  const translated = result?.key === key && result.lang === lang ? result.values : {};
   useEffect(() => {
     if (lang === 'en-US' || lines.length === 0) return;
     // 符文命名行只送名称部分（"Rune: X" 整行不在词条模板里，X 是基底名可直译）。
@@ -108,14 +130,14 @@ export function useLocalizedLines(lines: string[], lang: Lang): string[] {
     if (pending.length === 0) return;
     let cancelled = false;
     getBackend()
-      .then((b) => b.translateLines(pending))
+      .then((b) => b.translateLines(pending, lang))
       .then((out) => {
         if (cancelled) return;
         const map: Record<string, string> = {};
         pending.forEach((en, i) => {
           if (out[i] !== en) map[en] = out[i];
         });
-        setTranslated(map);
+        setResult({ key, lang, values: map });
       })
       .catch(() => {});
     return () => {

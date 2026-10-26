@@ -1,3 +1,4 @@
+import { AppButton, AppTextarea } from './controls';
 import { useEffect, useRef, useState } from 'react';
 import { bindT, type Lang } from '../../lib/i18n';
 
@@ -19,7 +20,7 @@ export function CopyButton({ text, lang, label }: Props) {
   }, [text]);
   return (
     <span className="copy-control" onClick={event => event.stopPropagation()}>
-      <button
+      <AppButton
         type="button"
         title={label ?? tt('common.copy')}
         aria-live="polite"
@@ -36,10 +37,10 @@ export function CopyButton({ text, lang, label }: Props) {
         }}
       >
         {status === 'done' ? tt('common.copied') : (label ?? tt('common.copy'))}
-      </button>
+      </AppButton>
       {status === 'error' && <span className="copy-fallback">
         <span role="alert">{tt('common.copyFailed')}</span>
-        <textarea readOnly value={text} rows={3} aria-label={tt('common.manualCopy')}
+        <AppTextarea readOnly value={text} rows={3} aria-label={tt('common.manualCopy')}
           onFocus={event => event.target.select()} />
       </span>}
     </span>

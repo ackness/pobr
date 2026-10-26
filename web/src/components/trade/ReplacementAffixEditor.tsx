@@ -1,3 +1,4 @@
+import { AppButton, AppInput } from '../shared/controls';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReplacementReport } from '../../lib/itemReplacement';
 import type { Lang } from '../../lib/i18n';
@@ -6,6 +7,7 @@ import { useLocalizedLines } from '../../hooks/useLocalizedLines';
 import { affixRollLines, affixTier, availableAffixes, buildAffixItem, createAffixDraft, editableAffixPool, validateAffixDraft, type AffixDraft } from '../../lib/marketAffixEditor';
 import { affixT } from '../../lib/marketAffixText';
 import { AppSelect } from '../shared/AppSelect';
+import { AppRange } from '../shared/AppRange';
 import './replacementAffixEditor.css';
 
 /** Draft edits are local to the candidate; only the caller can run or apply a comparison. */
@@ -54,7 +56,7 @@ export function ReplacementAffixEditor({ report, catalog, characterLevel, lang, 
     <summary>{t('title')}</summary>
     <p className="affix-editor-hint">{t('hint')}</p>
     {current.locked ? <p className="affix-editor-warning">{t(current.locked)}</p> : !pool.length ? <p>{t('dataMissing')}</p> : <>
-      <div className="affix-editor-meta"><label>{t('itemLevel')}<input type="number" min="1" max="100" value={current.itemLevel ?? ''} disabled={disabled}
+      <div className="affix-editor-meta"><label>{t('itemLevel')}<AppInput type="number" min="1" max="100" value={current.itemLevel ?? ''} disabled={disabled}
         onChange={event => update({ ...current, itemLevel: event.target.value === '' ? null : Number(event.target.value) })} /></label>
         {(['prefix', 'suffix'] as const).map(type => <span key={type}>{t(type)} <b>{selectedMods.filter(mod => mod.kind === type).length} / {current.limit}</b></span>)}
       </div>
@@ -66,36 +68,36 @@ export function ReplacementAffixEditor({ report, catalog, characterLevel, lang, 
         const lines = displayed.slice(lineOffset, lineOffset + length); lineOffset += length;
         return <article className="affix-editor-row" key={row.key} data-affix-id={row.modId}>
           <div className="affix-editor-row-heading"><span>{mod ? `${t(mod.kind)} · T${tiers.get(mod.id)}` : t('unresolved')}</span>
-            <div><button disabled={disabled || row.fractured} onClick={() => { setReplacing(row.key); if (mod) setKind(mod.kind); setPicked(''); }}>{t('replace')}</button>
-              <button disabled={disabled || row.fractured} aria-label={`${t('remove')}: ${lines.join(' ')}`} onClick={() => { update({ ...current, rows: current.rows.filter(existing => existing.key !== row.key) }); if (replacing === row.key) setReplacing(undefined); }}>{t('remove')}</button></div></div>
+            <div><AppButton disabled={disabled || row.fractured} onClick={() => { setReplacing(row.key); if (mod) setKind(mod.kind); setPicked(''); }}>{t('replace')}</AppButton>
+              <AppButton disabled={disabled || row.fractured} aria-label={`${t('remove')}: ${lines.join(' ')}`} onClick={() => { update({ ...current, rows: current.rows.filter(existing => existing.key !== row.key) }); if (replacing === row.key) setReplacing(undefined); }}>{t('remove')}</AppButton></div></div>
           {lines.map((line, index) => <p key={index}>{line}</p>)}
           {row.fractured && <p className="affix-editor-hint">{t('fractured')}</p>}
           {mod && !row.fractured && <div className="affix-editor-roll"><span>{row.edited ? `${t('range')} · ${Math.round(row.roll * 100)}%` : t('current')}</span>
-            <div>{([0, 0.5, 1] as const).map(roll => <button key={roll} disabled={disabled} aria-pressed={row.edited && row.roll === roll}
-              onClick={() => update({ ...current, rows: current.rows.map(existing => existing.key === row.key ? { ...existing, edited: true, roll } : existing) })}>{t(roll === 0 ? 'minimum' : roll === 1 ? 'maximum' : 'midpoint')}</button>)}</div>
-            {row.edited && <input type="range" min="0" max="100" step="1" value={row.roll * 100} disabled={disabled} aria-label={`${t('range')}: ${mod.id}`}
-              onChange={event => update({ ...current, rows: current.rows.map(existing => existing.key === row.key ? { ...existing, roll: Number(event.target.value) / 100 } : existing) })} />}
+            <div>{([0, 0.5, 1] as const).map(roll => <AppButton key={roll} disabled={disabled} aria-pressed={row.edited && row.roll === roll}
+              onClick={() => update({ ...current, rows: current.rows.map(existing => existing.key === row.key ? { ...existing, edited: true, roll } : existing) })}>{t(roll === 0 ? 'minimum' : roll === 1 ? 'maximum' : 'midpoint')}</AppButton>)}</div>
+            {row.edited && <AppRange min={0} max={100} step={1} value={row.roll * 100} disabled={disabled} aria-label={`${t('range')}: ${mod.id}`}
+              onValueChange={value => update({ ...current, rows: current.rows.map(existing => existing.key === row.key ? { ...existing, roll: value / 100 } : existing) })} />}
           </div>}
         </article>;
       })}</div>
       <div className="affix-editor-add">
-        <div className="affix-editor-kind" role="group" aria-label={t('choose')}>{(['prefix', 'suffix'] as const).map(type => <button key={type} aria-pressed={kind === type} disabled={disabled}
-          onClick={() => { setKind(type); setPicked(''); }}>{t(type)}</button>)}</div>
-        {replacing && <p>{t('replace')} <button onClick={() => { setReplacing(undefined); setPicked(''); }}>{t('reset')}</button></p>}
-        <input type="search" value={query} placeholder={t('search')} aria-label={t('search')} onChange={event => setQuery(event.target.value)} />
+        <div className="affix-editor-kind" role="group" aria-label={t('choose')}>{(['prefix', 'suffix'] as const).map(type => <AppButton key={type} aria-pressed={kind === type} disabled={disabled}
+          onClick={() => { setKind(type); setPicked(''); }}>{t(type)}</AppButton>)}</div>
+        {replacing && <p>{t('replace')} <AppButton onClick={() => { setReplacing(undefined); setPicked(''); }}>{t('reset')}</AppButton></p>}
+        <AppInput type="search" value={query} placeholder={t('search')} aria-label={t('search')} onChange={event => setQuery(event.target.value)} />
         <AppSelect value={choice?.id ?? ''} placeholder={t('choose')} ariaLabel={t('choose')} disabled={disabled || !options.length}
           options={options.map(mod => ({ value: mod.id, label: `${mod.lines.map(line => aliases.get(line) ?? line).join(' / ')} · T${tiers.get(mod.id)}`,
             hint: `${t('itemLevel')} ${mod.level} · ${t('requirement')} ${Math.max(report.base.level, Math.floor(mod.level * 0.8))}` }))} onChange={setPicked} />
         {!options.length && <p className="affix-editor-hint">{t('noOptions')}</p>}
         {!!preview.length && <div className="affix-editor-preview">{ranges.map((line, index) => <p key={`range-${index}`}>{t('range')}: {line}</p>)}<small>{t('midpoint')}</small>{preview.map((line, index) => <p key={index}>{line}</p>)}</div>}
-        <button className="trade-primary" disabled={disabled || !choice} onClick={add}>{t(replacing ? 'replace' : 'add')}</button>
+        <AppButton className="trade-primary" disabled={disabled || !choice} onClick={add}>{t(replacing ? 'replace' : 'add')}</AppButton>
       </div>
       <p className="affix-editor-hint">{t('estimate')}</p>
       {!!draft && issue && issue !== 'unknown' && <p className="affix-editor-warning">{t(issue as Parameters<typeof affixT>[1])}</p>}
       {error && <p role="alert" className="affix-editor-warning">{error}</p>}
-      <div className="affix-editor-actions"><button className="trade-primary" disabled={disabled || !draft || !!issue} onClick={() => {
+      <div className="affix-editor-actions"><AppButton className="trade-primary" disabled={disabled || !draft || !!issue} onClick={() => {
         try { onCompare(buildAffixItem(current, pool, characterLevel)); } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
-      }}>{t('compare')}</button><button disabled={!draft || disabled} onClick={() => { setDraft(null); setReplacing(undefined); setPicked(''); setError(''); onDirtyChange(false); }}>{t('reset')}</button></div>
+      }}>{t('compare')}</AppButton><AppButton disabled={!draft || disabled} onClick={() => { setDraft(null); setReplacing(undefined); setPicked(''); setError(''); onDirtyChange(false); }}>{t('reset')}</AppButton></div>
     </>}
   </details>;
 }

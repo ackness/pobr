@@ -1,3 +1,4 @@
+import { AppButton, AppInput } from './controls';
 /**
  * 寻优框架共享 UI 套件：目标/约束编辑器 + 进度条 + 结果表。
  * 宝石（Skills）/ 装备（Items）/ 天赋（Tree）三个寻优面板共用；
@@ -85,11 +86,11 @@ export function ObjectiveEditor({ value, onChange, lang, disabled, constraintsOn
   return (
     <>
       {!constraintsOnly && <>
-      {value.preset === 'balanced' && <label className="opt-checkbox"><input type="checkbox" checked={value.keepEhp ?? true}
+      {value.preset === 'balanced' && <label className="opt-checkbox"><AppInput type="checkbox" checked={value.keepEhp ?? true}
         disabled={disabled} onChange={event => onChange({ ...value, keepEhp: event.target.checked })} />{tt('trade.keepEhp')}</label>}
-      <label className="opt-checkbox"><input type="checkbox" checked={value.resistanceFirst ?? false}
+      <label className="opt-checkbox"><AppInput type="checkbox" checked={value.resistanceFirst ?? false}
         disabled={disabled} onChange={event => onChange({ ...value, resistanceFirst: event.target.checked })} />{tt('trade.resistanceFirst')}</label>
-      {value.resistanceFirst && <label>{tt('trade.resistanceTarget')}<input type="number" min={0} max={90}
+      {value.resistanceFirst && <label>{tt('trade.resistanceTarget')}<AppInput type="number" min={0} max={90}
         value={value.resistanceTarget ?? 75} disabled={disabled} onChange={event => {
           const next = Number(event.target.value);
           if (Number.isFinite(next) && next >= 0 && next <= 90) onChange({ ...value, resistanceTarget: next });
@@ -122,7 +123,7 @@ export function ObjectiveEditor({ value, onChange, lang, disabled, constraintsOn
         <>
           <label>
             {tt('opt.min')}
-            <input
+            <AppInput
               type="number"
               value={value.cMin}
               disabled={disabled}
@@ -131,7 +132,7 @@ export function ObjectiveEditor({ value, onChange, lang, disabled, constraintsOn
           </label>
           <label>
             {tt('opt.max')}
-            <input
+            <AppInput
               type="number"
               value={value.cMax}
               disabled={disabled}
@@ -160,7 +161,7 @@ export function OptimizerProgress({ done, total, onCancel, lang }: ProgressProps
       <span>
         {done}/{total}
       </span>
-      <button onClick={onCancel}>{tt('opt.cancel')}</button>
+      <AppButton onClick={onCancel}>{tt('opt.cancel')}</AppButton>
     </div>
   );
 }
@@ -222,9 +223,9 @@ export function OptimizerResults({
               <td className="opt-score">{fmtNum(score)}</td>
               <td className="opt-delta">{deltaPct(score)}</td>
               <td>
-                <button disabled={disabled} onClick={() => onApply(variant)}>
+                <AppButton disabled={disabled} onClick={() => onApply(variant)}>
                   {tt('opt.apply')}
-                </button>
+                </AppButton>
               </td>
             </tr>
           );

@@ -1,0 +1,107 @@
+@layer v2 {
+.v2-root .config-page { min-width: 0; }
+.v2-root .config-scenario { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; align-items: start; padding: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 1rem; margin-bottom: 1.25rem; }
+.v2-root .config-scenario .config-row { display: grid; gap: .5rem; margin: 0; font-size: .875em; }
+.v2-root .config-view-tabs { display: flex; flex-wrap: wrap; height: auto; width: fit-content; max-width: 100%; gap: .25rem; margin-bottom: 1rem; }
+.v2-root .config-view-tabs [role="tab"] { flex: 0 0 auto; min-height: 2.5rem; padding: .5rem .85rem; white-space: normal; }
+.v2-root .config-toolbar { position: static; top: auto; z-index: auto; padding: 0; border: 0; background: transparent; display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; margin: .5rem 0 1rem; }
+.v2-root .config-search { flex: 1 1 15rem; min-width: 0; max-width: 32rem; }
+.v2-root .config-filter { display: flex; align-items: center; gap: .5rem; font-size: .875em; }
+.v2-root .config-view { display: flex; flex-wrap: wrap; gap: .5rem; }
+.v2-root .config-view [aria-pressed="true"] { background: var(--accent, var(--muted)); border-color: var(--ring, var(--primary)); color: var(--accent-foreground, var(--foreground)); }
+.v2-root :is(.config-guidance, .config-quick-disclosure) { padding: .75rem 1rem; border: 1px solid var(--border); border-radius: .75rem; margin: .75rem 0; background: var(--card); }
+.v2-root :is(.config-guidance, .config-quick-disclosure) > summary { cursor: pointer; font-weight: 500; }
+.v2-root .config-quick-access { border: 0; padding: .5rem 0; background: transparent; }
+.v2-root .config-quick-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); padding: 0; list-style: none; gap: .75rem; }
+.v2-root .config-quick-entry { display: flex; align-items: start; gap: .75rem; padding: .75rem; border: 1px solid var(--border); border-radius: .75rem; }
+.v2-root .config-quick-description { flex: 1; min-width: 0; }
+.v2-root .config-options-workspace { display: grid; grid-template-columns: 12rem minmax(0, 1fr); gap: 1.25rem; margin-top: 1.25rem; align-items: start; }
+.v2-root .config-group-nav { position: sticky; top: 1rem; display: grid; gap: .35rem; }
+.v2-root .config-group-nav h3 { color: var(--muted-foreground); font-size: .8em; margin: 0 0 .5rem; }
+.v2-root .config-group-nav button { justify-content: space-between; gap: .5rem; text-align: left; height: auto; min-height: 2.5rem; padding: .6rem .75rem; white-space: normal; }
+.v2-root .config-group-nav button span:last-child { font-size: .8em; color: var(--muted-foreground); }
+.v2-root .config-option-groups { min-width: 0; }
+.v2-root .config-section { min-width: 0; margin: 0 0 1rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--card); scroll-margin-top: 1rem; }
+.v2-root .config-section-header { display: flex; justify-content: space-between; text-align: left; width: 100%; height: auto; min-height: 3.25rem; padding: .8rem 1rem; border: 0; border-radius: calc(1rem - 1px) calc(1rem - 1px) 0 0; background: var(--muted); white-space: normal; }
+.v2-root .config-section-header[aria-expanded='false'] { border-radius: calc(1rem - 1px); }
+.v2-root .config-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+.v2-root .config-item { display: grid; grid-template-columns: minmax(0, 1fr) minmax(7rem, 12rem) 2rem; align-items: start; gap: .5rem .75rem; padding: 1rem; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: transparent; }
+.v2-root .config-item:last-child { border-bottom: 0; }
+.v2-root .config-item.is-overridden { box-shadow: inset 3px 0 var(--primary); }
+.v2-root .config-description { min-width: 0; }
+.v2-root .config-key { display: block; font-weight: 500; color: var(--foreground); font-size: .95em; }
+.v2-root .config-item > :is(input, [role="checkbox"], [role="combobox"]) { grid-column: 2; width: 100%; }
+.v2-root .config-item > [role="checkbox"] { justify-self: end; width: 1.1rem; height: 1.1rem; margin-top: .4rem; }
+.v2-root .config-reset { grid-column: 3; padding: 0; width: 2rem; height: 2rem; }
+.v2-root .config-option-help { margin-top: .5rem; font-size: .85em; }
+.v2-root .config-option-help summary { color: var(--muted-foreground); cursor: pointer; width: fit-content; }
+.v2-root .config-help { white-space: pre-line; line-height: 1.6; margin: .5rem 0; color: var(--muted-foreground); }
+.v2-root :is(.config-source, .config-applicability, .config-hint) { display: block; font-size: .8em; color: var(--muted-foreground); margin: .4rem 0 0; line-height: 1.6; }
+.v2-root .config-applicability { color: var(--primary); }
+.v2-root .config-raw-key { display: block; font-size: .85em; overflow-wrap: anywhere; color: var(--muted-foreground); }
+.v2-root .config-saved-type code { overflow-wrap: anywhere; }
+.v2-root :is(.config-custom, .config-advanced, .party-editor) { padding: 1.25rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--card); }
+.v2-root .config-modifier-blocks { display: grid; gap: 1rem; margin: 1rem 0; }
+.v2-root .config-modifier-block { padding: 1rem; border: 1px solid var(--border); border-radius: .75rem; }
+.v2-root .config-modifier-block-header { display: flex; align-items: end; flex-wrap: wrap; gap: .75rem; margin-bottom: .75rem; }
+.v2-root :is(.config-modifier-enabled, .config-modifier-title) { display: flex; align-items: center; gap: .5rem; }
+.v2-root .config-modifier-title { flex: 1 1 12rem; }
+.v2-root .config-modifier-title input { min-width: 0; }
+.v2-root .config-extra-mods { width: 100%; max-width: none; min-height: 8rem; font-family: var(--font-mono); }
+.v2-root .config-raw-value { display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1fr); gap: .5rem; min-width: 0; }
+.v2-root .config-raw-value > * { width: 100%; min-width: 0; }
+.v2-root .config-advanced .config-item { grid-template-columns: minmax(0, 1fr) minmax(13rem, 1fr) 2rem; }
+.v2-root .config-add { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
+.v2-root .config-add > input { flex: 1 1 12rem; width: auto; min-width: 0; }
+.v2-root .config-add .config-raw-value { flex: 1 1 15rem; }
+.v2-root .party-editor > summary { font-weight: 600; font-size: 1.1em; cursor: pointer; }
+.v2-root .party-editor > p { color: var(--muted-foreground); font-size: .875em; line-height: 1.6; }
+.v2-root .party-editor > label { display: grid; gap: .5rem; margin: 1rem 0; }
+.v2-root .party-editor > button { margin: 0 .5rem .75rem 0; }
+.v2-root .party-editor fieldset { min-width: 0; border: 1px solid var(--border); border-radius: .75rem; padding: 1rem; margin: 1rem 0; }
+.v2-root .party-editor legend { font-weight: 600; padding: 0 .5rem; }
+.v2-root .party-editor fieldset > label { display: flex; align-items: center; gap: .75rem; margin-bottom: .75rem; }
+.v2-root .party-editor fieldset > label input { min-width: 0; max-width: 24rem; }
+.v2-root .party-editor fieldset details { border-top: 1px solid var(--border); padding-top: .75rem; margin-top: .75rem; }
+.v2-root .party-editor fieldset summary { cursor: pointer; margin-bottom: .5rem; }
+.v2-root .party-editor textarea { width: 100%; min-width: 0; font-family: var(--font-mono); }
+@media (min-width: 1700px) {
+  .v2-root .config-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 1050px) {
+  .v2-root .config-options-workspace { grid-template-columns: minmax(0, 1fr); }
+  .v2-root .config-group-nav { position: static; display: flex; flex-wrap: wrap; }
+  .v2-root .config-group-nav h3 { flex-basis: 100%; }
+  .v2-root .config-scenario { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .v2-root .config-item, .v2-root .config-advanced .config-item { grid-template-columns: minmax(0, 1fr) 2rem; }
+  .v2-root .config-description, .v2-root .config-advanced .config-key { grid-column: 1 / -1; }
+  .v2-root .config-item > :is(input, [role="checkbox"], [role="combobox"], .config-raw-value) { grid-column: 1; justify-self: start; }
+  .v2-root .config-reset { grid-column: 2; }
+  .v2-root .config-view-tabs { width: 100%; }
+  .v2-root .config-view-tabs [role="tab"] { flex: 1 1 42%; }
+}
+
+.v2-root .config-view button, .v2-root .config-group-nav button { max-width: 100%; }
+.v2-root .config-modifier-title { min-width: 0; flex-wrap: wrap; }
+.v2-root .party-editor fieldset > label { flex-wrap: wrap; }
+.v2-root .party-editor legend { max-width: 100%; overflow-wrap: anywhere; }
+@container v2-page (max-width: 48rem) {
+  .v2-root .config-options-workspace, .v2-root .config-scenario, .v2-root .config-grid { grid-template-columns: minmax(0, 1fr); }
+  .v2-root .config-group-nav { position: static; display: flex; flex-wrap: wrap; }
+  .v2-root .config-group-nav h3 { flex-basis: 100%; }
+}
+@container v2-page (max-width: 36rem) {
+  .v2-root .config-item, .v2-root .config-advanced .config-item { grid-template-columns: minmax(0, 1fr) auto; }
+  .v2-root .config-description, .v2-root .config-advanced .config-key { grid-column: 1 / -1; }
+  .v2-root .config-item > :is(input, [role='checkbox'], .app-checkbox, [role='combobox'], .config-raw-value) { grid-column: 1; justify-self: start; }
+  .v2-root .config-reset { grid-column: 2; }
+  .v2-root .config-raw-value { width: 100%; grid-template-columns: minmax(0, 1fr); }
+}
+@container v2-page (max-width: 24rem) {
+  .v2-root :is(.config-item, .config-custom, .config-advanced, .config-modifier-block, .party-editor, .party-editor fieldset) { padding: .75rem; }
+  .v2-root .config-quick-entry { flex-direction: row; flex-wrap: wrap; }
+  .v2-root .config-quick-description { flex-basis: 100%; }
+}
+}

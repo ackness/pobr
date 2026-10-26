@@ -3,7 +3,10 @@ import { describe, expect, test, vi } from 'vitest';
 import type { BuildJson, ConfigInputValue } from '../../api/types';
 import { applyNamedConfig, backfillFromDecoded, parseSaved, toRequest, type BuildSession, type SavedSession } from '../../hooks/useBuildSession';
 import { copySection } from '../../lib/compare';
-import { ConfigPanel } from './ConfigPanel';
+import { ConfigPanel, OptionRow } from './ConfigPanel';
+import { UiProvider } from '../shared/UiContext';
+import { TooltipProvider } from '../ui/tooltip';
+import { RawConfigValue } from './RawConfigValue';
 
 vi.mock('../../api/backend', () => ({ getBackend: vi.fn() }));
 
@@ -61,4 +64,30 @@ describe('materialized configuration display', () => {
     expect(input(html, 'absentInSelectedSet')).toBeUndefined();
     expect(html).not.toContain('class="config-reset"');
   });
+});
+
+test('V2 keeps a saved inapplicable option, typed value and collapsed help', () => {
+  const html = renderToStaticMarkup(<UiProvider v2 lang="en-US"><TooltipProvider>
+    <OptionRow option={{ var: 'testOption', label: 'Test option', input_type: 'count', tooltip: 'Catalog help' }}
+      value="0" overridden={false} busy={false} lang="en-US" listLabels={{}} applicability="not_applicable"
+      onChange={vi.fn()} onReset={vi.fn()} />
+  </TooltipProvider></UiProvider>);
+  expect(html).toContain('Saved value kept visible');
+  expect(html).toContain('<details class="config-option-help">');
+  expect(html).toContain('Text: <code>&quot;0&quot;</code>');
+  expect(html).toContain('value="0"');
+  expect(html).not.toContain(' title=');
+});
+
+test.each([undefined, false, 0, '0', ''] as const)('V2 raw editor retains the type of %j', value => {
+  const html = renderToStaticMarkup(<UiProvider v2 lang="en-US">
+    <RawConfigValue name="raw" value={value} lang="en-US" onChange={vi.fn()} />
+  </UiProvider>);
+  expect(html).toContain('aria-label="Value type: raw"');
+  if (typeof value === 'boolean') expect(html.match(/role="combobox"/g)).toHaveLength(2);
+  else {
+    expect(html).toContain(`type="${typeof value === 'number' ? 'number' : 'text'}"`);
+    expect(html).toContain(`value="${value ?? ''}"`);
+    if (value === undefined) expect(html).toContain('disabled=""');
+  }
 });

@@ -6,10 +6,10 @@ const KEY = 'pobr-upgrade-goal';
 const Context = createContext<{ goal: ObjectiveState; setGoal: (next: ObjectiveState) => void } | null>(null);
 
 /** Equipment, support and passive planners share the player's intent, not stale results. */
-export function UpgradeGoalProvider({ children }: { children: ReactNode }) {
+export function UpgradeGoalProvider({ children, storageKey = KEY }: { children: ReactNode; storageKey?: string }) {
   const [goal, setState] = useState<ObjectiveState>(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem(KEY) ?? 'null');
+      const saved = JSON.parse(localStorage.getItem(storageKey) ?? 'null');
       if (saved && OBJECTIVE_PRESETS.some(preset => preset.id === saved.preset)) {
         return { ...DEFAULT_OBJECTIVE_STATE, preset: saved.preset,
           cStat: CONSTRAINT_STATS.includes(saved.cStat) ? saved.cStat : '',
@@ -25,7 +25,7 @@ export function UpgradeGoalProvider({ children }: { children: ReactNode }) {
   });
   const setGoal = (next: ObjectiveState) => {
     setState(next);
-    try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* In-memory preferences still work when storage is full. */ }
+    try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* In-memory preferences still work when storage is full. */ }
   };
   return <Context.Provider value={{ goal, setGoal }}>{children}</Context.Provider>;
 }
