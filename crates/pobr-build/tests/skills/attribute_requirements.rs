@@ -193,3 +193,127 @@ Grants Skill: Level 20 Cast on Dodge
     assert_eq!(result.req_dex, 0.0);
     assert_eq!(result.req_int, 0.0);
 }
+
+#[test]
+fn exported_amulet_grants_do_not_add_the_nominal_gems_requirements() {
+    let data = crate::test_data();
+    for (name, skill, base, level, nominal) in [
+        (
+            "Eternal Rage",
+            "EternalRagePlayer",
+            "Absent Amulet",
+            17,
+            [126.0, 0.0, 0.0],
+        ),
+        (
+            "Eternal Rage",
+            "EternalRagePlayer",
+            "Absent Amulet",
+            18,
+            [137.0, 0.0, 0.0],
+        ),
+        (
+            "Eternal Rage",
+            "EternalRagePlayer",
+            "Absent Amulet",
+            19,
+            [147.0, 0.0, 0.0],
+        ),
+        (
+            "Eternal Rage",
+            "EternalRagePlayer",
+            "Absent Amulet",
+            20,
+            [157.0, 0.0, 0.0],
+        ),
+        (
+            "Wolf Pack",
+            "WolfPackPlayer",
+            "Portent Amulet",
+            18,
+            [75.0, 0.0, 75.0],
+        ),
+        (
+            "Wolf Pack",
+            "WolfPackPlayer",
+            "Portent Amulet",
+            20,
+            [86.0, 0.0, 86.0],
+        ),
+        (
+            "Trinity",
+            "TrinityPlayer",
+            "Absent Amulet",
+            20,
+            [0.0, 86.0, 86.0],
+        ),
+        (
+            "Cast on Elemental Ailment",
+            "MetaCastOnElementalAilmentPlayer",
+            "Absent Amulet",
+            17,
+            [0.0, 0.0, 126.0],
+        ),
+        (
+            "Cast on Critical",
+            "MetaCastOnCritPlayer",
+            "Absent Amulet",
+            18,
+            [0.0, 0.0, 137.0],
+        ),
+        (
+            "Cast on Critical",
+            "MetaCastOnCritPlayer",
+            "Absent Amulet",
+            20,
+            [0.0, 0.0, 157.0],
+        ),
+    ] {
+        let xml = format!(
+            r#"<PathOfBuilding2><Build level="100" className="Witch"/>
+<Items><Item id="1">Rarity: RARE
+Test Amulet
+{base}
+Implicits: 1
+Grants Skill: Level {level} {name}
+</Item><ItemSet id="1"><Slot name="Amulet" itemId="1"/></ItemSet></Items>
+<Skills>
+<Skill enabled="true"><Gem skillId="{skill}" level="{level}" quality="0" corrupted="false" enabled="true"/></Skill>
+<Skill enabled="true" slot="Amulet" source="Item:1:Test Amulet, {base}"><Gem skillId="{skill}" level="{level}" quality="0" enabled="true"/></Skill>
+</Skills></PathOfBuilding2>"#
+        );
+        let granted = pobr_build::parse_build(&xml).unwrap();
+        let mut gem = granted.clone();
+        gem.items.clear();
+        gem.socket_groups.truncate(1);
+        for reduced in [false, true] {
+            let options = DataOrchestratorOptions {
+                extra_modifier_texts: if reduced {
+                    vec!["Equipment and Skill Gems have 8% reduced Attribute Requirements".into()]
+                } else {
+                    vec![]
+                },
+                ..Default::default()
+            };
+            let output = calculate_with_data(&granted, data, &options).unwrap();
+            assert_eq!(
+                [output.req_str, output.req_dex, output.req_int],
+                [0.0; 3],
+                "granted {name} {level}"
+            );
+            let output = calculate_with_data(&gem, data, &options).unwrap();
+            let expected = nominal.map(|requirement: f64| {
+                if reduced {
+                    (requirement * 0.92).floor()
+                } else {
+                    requirement
+                }
+            });
+            assert_eq!(
+                [output.req_str, output.req_dex, output.req_int],
+                expected,
+                "gem {name} {level}, reduced={reduced}"
+            );
+        }
+    }
+}
