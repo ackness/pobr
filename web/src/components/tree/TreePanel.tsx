@@ -1,3 +1,4 @@
+import { localizedName } from '../../lib/chinese';
 import { useAppDialogs } from '../shared/AppDialogs';
 import { useSessionAction } from '../shared/useSessionAction';
 import { AppTooltip, AppButton, AppInput, AppTextarea, AppSelectControl } from '../shared/controls';
@@ -951,7 +952,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
           >
             {(session.treeMeta?.classes ?? []).map((c) => (
               <option key={c.name} value={c.name}>
-                {lang !== 'en-US' ? (session.classNames.classes[c.name] ?? c.name) : c.name}
+                {localizedName(lang, c.name, session.classNames.classes[c.name])}
               </option>
             ))}
           </AppSelectControl>
@@ -968,9 +969,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
               .find((c) => c.name === session.character?.class_name)
               ?.ascendancies?.map((a) => (
                 <option key={a.id} value={a.name}>
-                  {lang !== 'en-US'
-                    ? (session.classNames.ascendancies[a.name] ?? a.name)
-                    : a.name}
+                  {localizedName(lang, a.name, session.classNames.ascendancies[a.name])}
                 </option>
               ))}
           </AppSelectControl>

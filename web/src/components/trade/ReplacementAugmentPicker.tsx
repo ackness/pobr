@@ -1,3 +1,4 @@
+import { localizedName } from '../../lib/chinese';
 import { AppButton, AppInput } from '../shared/controls';
 import { useState } from 'react';
 import { AppSelect } from '../shared/AppSelect';
@@ -17,7 +18,7 @@ export function ReplacementAugmentPicker({ plan, level, lang, disabled, onChange
     const hint = effects.slice(effectOffset, effectOffset + option.lines.length).join('\n');
     effectOffset += option.lines.length;
     return {
-    value: option.name, label: (lang === 'zh-CN' ? option.name_zh_cn : lang === 'zh-TW' ? option.name_zh_tw : option.name) || option.name,
+    value: option.name, label: localizedName(lang, option.name, option.name_zh_cn, option.name_zh_tw),
     group: ut(option.kind === 'Idol' ? 'augmentIdol' : option.is_soul_core ? 'augmentCore' : 'augmentRune'),
     hint, level: option.required_level ?? 0, limit: option.limit, limitKey: option.limit_id ?? option.name,
   }; }).filter(option => option.level <= level)
