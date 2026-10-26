@@ -1233,6 +1233,91 @@ fn perform_ailment_effect_scales_bleed_dps() {
     );
 }
 
+/// Shattering Spite's native -50 stat applies to each damaging ailment,
+/// independently of lance count, and is retained in its formula and source rows.
+#[test]
+fn shattering_spite_native_stat_halves_damaging_ailments_only() {
+    use pobr_core::calc::{CalculationSession, FormulaOp, MinimalInput};
+    use pobr_core::rules::skill_stats::skill_modifiers;
+
+    let stat = "active_skill_damaging_ailment_effect_+%_final";
+    let make = |selected: bool| {
+        let mut session = CalculationSession::new(MinimalInput {
+            base_life: 1000.0,
+            base_hit_min: 1000.0,
+            base_hit_max: 1000.0,
+            base_action_rate: 10.0,
+            ..Default::default()
+        })
+        .with_config(CalcConfig::attack());
+        session.add_modifiers([
+            Modifier::number("FireDamageMin", ModType::Base, 1000.0),
+            Modifier::number("FireDamageMax", ModType::Base, 1000.0),
+            Modifier::number("LightningDamageMin", ModType::Base, 1000.0),
+            Modifier::number("LightningDamageMax", ModType::Base, 1000.0),
+            Modifier::number("AilmentChance", ModType::Base, 100.0),
+        ]);
+        if selected {
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::SkillGem,
+                "skill.ShatteringSpitePlayer",
+            ))
+            .with_stat(stat)
+            .with_raw_text("50% less Magnitude of Damaging Ailments inflicted");
+            session.add_modifiers(
+                skill_modifiers(stat, -50.0)
+                    .expect("native skill stat")
+                    .into_iter()
+                    .map(|modifier| modifier.with_origin(origin.clone())),
+            );
+        }
+        session.perform_minimal().unwrap();
+        session
+    };
+    let baseline = make(false);
+    let selected = make(true);
+    for stat in ["BleedDPS", "IgniteDPS", "PoisonDPS"] {
+        let original = baseline.ailment_stage_terms(stat).unwrap();
+        let changed = selected.ailment_stage_terms(stat).unwrap();
+        let original = &original.passes[0].1;
+        let changed = &changed.passes[0].1;
+        assert!(original.dps > 0.0);
+        assert!((changed.dps - original.dps * 0.5).abs() < 1e-6);
+        assert_eq!(changed.duration, original.duration);
+        assert_eq!(changed.source_damage, original.source_damage);
+        let formula = changed.formula();
+        assert_eq!(formula.value, changed.dps);
+        let step = formula
+            .steps
+            .iter()
+            .find(|s| s.op == FormulaOp::AilmentEffect)
+            .unwrap();
+        assert_eq!(step.operand, 0.5);
+        let lines = selected.ailment_lines(stat).unwrap();
+        assert_eq!(lines.effect.len(), 1);
+        assert!(lines.effect[0].active);
+        assert_eq!(lines.effect[0].value, Some(-50.0));
+        assert_eq!(
+            lines.effect[0]
+                .modifier
+                .origin
+                .as_ref()
+                .unwrap()
+                .source_id
+                .id,
+            "skill.ShatteringSpitePlayer"
+        );
+    }
+    assert_eq!(
+        selected.output().total_hit_avg,
+        baseline.output().total_hit_avg
+    );
+    assert_eq!(
+        selected.output().shock_effect,
+        baseline.output().shock_effect
+    );
+}
+
 /// BleedFaster (rateMod) amplifies bleed DPS: +100% BleedFaster → bleed_dps ×2.
 #[test]
 fn perform_ailment_faster_scales_bleed_dps() {
