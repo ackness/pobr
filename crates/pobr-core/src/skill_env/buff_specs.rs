@@ -399,12 +399,14 @@ pub fn buff_skill_specs(
                         set_key.as_deref(),
                         buff_skill,
                     );
-                    if (debuff_mods.is_empty() && buff_mods.is_empty())
-                        || !seen.insert(skill_id.to_string())
-                    {
+                    if debuff_mods.is_empty() && buff_mods.is_empty() {
                         continue;
                     }
-                    if !debuff_mods.is_empty() {
+                    let first_copy = seen.insert(skill_id.to_string());
+                    // Keep the existing debuff selection. Ordinary player buffs
+                    // must reach the same-name strongest-modifier merger with
+                    // every usable copy, including its value and source.
+                    if first_copy && !debuff_mods.is_empty() {
                         specs.push(BuffSpec {
                             name: buff_skill_name(data, skill_id),
                             kind: BuffKind::Debuff,

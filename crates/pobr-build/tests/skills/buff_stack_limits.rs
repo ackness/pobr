@@ -105,3 +105,108 @@ fn scavenged_plating_armour_uses_stack_limit_and_enabled_state() {
         ],
     );
 }
+
+#[test]
+fn ordinary_buff_copies_keep_strongest_quality_and_source() {
+    use pobr_build::{Build, SocketGroup, calculate_with_data_session};
+    use pobr_data::{passive_tree::NodeId, source::SourceKind};
+
+    let coc = |quality| {
+        let mut group = SocketGroup::new().with_gem_skill("MetaCastOnCritPlayer", 20);
+        group.gem_skills[0].quality = quality;
+        group
+    };
+    let mut group_disabled = coc(50);
+    group_disabled.enabled = false;
+    let mut gem_disabled = coc(50);
+    gem_disabled.gem_skills[0].enabled = false;
+    let mut alternate_only = coc(50);
+    alternate_only.weapon_set = Some(2);
+    let mut alternate_disabled = alternate_only.clone();
+    alternate_disabled.enabled = false;
+    let cases = [
+        (vec![coc(22), coc(50)], 50.0),
+        (vec![coc(50), coc(22)], 50.0),
+        (vec![coc(50), coc(50)], 50.0),
+        (vec![group_disabled, coc(22)], 22.0),
+        (vec![coc(22), gem_disabled], 22.0),
+        // Ordinary global buffs already include enabled alternate-set sources;
+        // weapon-set binding alone does not disable their persistent buff.
+        (vec![alternate_only, coc(22)], 50.0),
+        (vec![alternate_disabled, coc(22)], 22.0),
+    ];
+    for (case, (copies, expected)) in cases.into_iter().enumerate() {
+        let mut build = Build::new()
+            .add_socket_group(SocketGroup::new().with_gem_skill("SparkPlayer", 20))
+            .with_main_socket_group(1);
+        // Advanced Thaumaturgy enables CoC's additional quality effect:
+        // 1% increased global critical hit chance per quality.
+        build.tree.allocated_nodes.push(NodeId(14429));
+        build.socket_groups.extend(copies);
+        let result = calculate_with_data_session(
+            &build,
+            crate::test_data(),
+            &DataOrchestratorOptions::against_reference_enemy(),
+        )
+        .unwrap();
+        assert!(
+            (result.output().crit_chance - 0.09 * (1.0 + expected / 100.0)).abs() < 1e-9,
+            "case {case}: crit={}, expected buff={expected}",
+            result.output().crit_chance
+        );
+        let applied: Vec<_> = result
+            .all_mods()
+            .into_iter()
+            .filter(|modifier| {
+                modifier.origin.as_ref().is_some_and(|origin| {
+                    origin.source_id.id
+                        == "buff.MetaCastOnCritPlayer.cast_on_crit_global_critical_hit_chance_granted_+%"
+                })
+            })
+            .collect();
+        assert_eq!(applied.len(), 1, "same-name buff copies must not stack");
+        assert_eq!(applied[0].value.as_number(), Some(expected));
+        let origin = applied[0].origin.as_ref().unwrap();
+        assert_eq!(origin.source_id.kind, SourceKind::SkillGem);
+        assert_eq!(
+            origin.raw_text.as_deref(),
+            Some(
+                format!(
+                    "buff MetaCastOnCritPlayer cast_on_crit_global_critical_hit_chance_granted_+% ({expected})"
+                )
+                .as_str()
+            )
+        );
+    }
+}
+
+#[test]
+fn ordinary_buff_copies_preserve_wind_dancer_stack_limit() {
+    use pobr_build::{Build, SocketGroup};
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+
+    let mut build = Build::new()
+        .add_socket_group(SocketGroup::new().with_gem_skill("SparkPlayer", 20))
+        .with_main_socket_group(1);
+    build
+        .config
+        .raw_inputs
+        .values
+        .insert("windDancerStacks".into(), ConfigInputValue::Number(10.0));
+    for _ in 0..2 {
+        build
+            .socket_groups
+            .push(SocketGroup::new().with_gem_skill("WindDancerPlayer", 20));
+    }
+    let output = calculate_with_data(
+        &build,
+        crate::test_data(),
+        &DataOrchestratorOptions {
+            inject_character_base: false,
+            extra_modifier_texts: vec!["+1000 to Evasion Rating".into()],
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(output.evasion, 1300.0, "three stages, one strongest buff");
+}
