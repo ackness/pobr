@@ -801,3 +801,84 @@ Wooden Club
         }
     }
 }
+
+#[test]
+fn minion_static_support_cost_follows_the_minions_skills() {
+    let data = load_data();
+    let opts = default_opts();
+    let bare = zombie_build(20);
+    let base = calculate_with_data(&bare, data, &opts).unwrap();
+    let mut supported = bare.clone();
+    supported.socket_groups[0]
+        .gem_skills
+        .push(pobr_build::build::GemSkillRef {
+            skill_id: "SupportMinionMeleeSplashPlayerTwo".into(),
+            gem_level: 1,
+            ..Default::default()
+        });
+    let boosted = calculate_with_data(&supported, data, &opts).unwrap();
+    // Minion Splash II requires CreatesMinion AND MeleeSingleTarget. The
+    // zombie's melee strike qualifies and the summon pays its 110% cost.
+    assert_eq!(base.mana_cost, 102.0);
+    assert_eq!(boosted.mana_cost, 112.0);
+    assert_eq!(boosted.action_rate, base.action_rate);
+    assert_eq!(boosted.minions[0].dps, base.minions[0].dps);
+
+    // Clash's melee requirement does not override its explicit Minion
+    // exclusion; its 120% cost must not be borrowed from the zombie attack.
+    let mut excluded = bare.clone();
+    excluded.socket_groups[0]
+        .gem_skills
+        .push(pobr_build::build::GemSkillRef {
+            skill_id: "SupportClashPlayer".into(),
+            gem_level: 1,
+            ..Default::default()
+        });
+    assert_eq!(
+        calculate_with_data(&excluded, data, &opts)
+            .unwrap()
+            .mana_cost,
+        base.mana_cost
+    );
+
+    // Raise Zombie's unrelated selected monster does not replace its zombie.
+    supported.socket_groups[0].gem_skills[0].minion = Some("RaisedSkeletonCleric".into());
+    assert_eq!(
+        calculate_with_data(&supported, data, &opts)
+            .unwrap()
+            .mana_cost,
+        112.0
+    );
+
+    // A player attack/spell is not a minion's strike, and another group's
+    // support never changes this summoning skill's cost.
+    for skill in ["FireballPlayer", "SummonSkeletalArsonistsPlayer"] {
+        let build = Build::new().add_socket_group(SocketGroup::new().with_gem_skill(skill, 20));
+        let plain = calculate_with_data(&build, data, &opts).unwrap();
+        let mut with_support = build;
+        with_support.socket_groups[0]
+            .gem_skills
+            .push(pobr_build::build::GemSkillRef {
+                skill_id: "SupportMinionMeleeSplashPlayerTwo".into(),
+                gem_level: 1,
+                ..Default::default()
+            });
+        assert_eq!(
+            calculate_with_data(&with_support, data, &opts)
+                .unwrap()
+                .mana_cost,
+            plain.mana_cost
+        );
+    }
+    let other_group = bare.add_socket_group(
+        SocketGroup::new()
+            .with_gem_skill("FireballPlayer", 20)
+            .with_gem_skill("SupportMinionMeleeSplashPlayerTwo", 1),
+    );
+    assert_eq!(
+        calculate_with_data(&other_group, data, &opts)
+            .unwrap()
+            .mana_cost,
+        102.0
+    );
+}

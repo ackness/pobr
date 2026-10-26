@@ -14,7 +14,9 @@ use crate::rules::skill_stats::{self, BuffSkill};
 use crate::rules::stat_map_engine;
 use crate::skill_env::buff_stat_map::map_aura_buff_stat;
 use crate::skill_env::buffs::buff_skill_name;
-use crate::skill_env::lookup::{EffectLookup, SocketGroupView, StatMapLookup, StatSetLookup};
+use crate::skill_env::lookup::{
+    EffectLookup, MinionLookup, SocketGroupView, StatMapLookup, StatSetLookup,
+};
 use crate::skill_env::mods::GemPropertyBonus;
 use crate::skill_env::mods::skill_type_bits;
 use crate::skill_env::resolve::{
@@ -32,8 +34,14 @@ mod minions;
 pub(super) use minions::minion_curse_specs;
 
 /// The lookup surface the buff/warcry spec builders need.
-pub trait BuffEnv: StatSetLookup + EffectLookup + StatMapLookup + GemPropertyLookup {}
-impl<T: StatSetLookup + EffectLookup + StatMapLookup + GemPropertyLookup> BuffEnv for T {}
+pub trait BuffEnv:
+    StatSetLookup + EffectLookup + StatMapLookup + GemPropertyLookup + MinionLookup
+{
+}
+impl<T: StatSetLookup + EffectLookup + StatMapLookup + GemPropertyLookup + MinionLookup> BuffEnv
+    for T
+{
+}
 
 /// Runs the group support judgement for `skill_id` over an [`EnabledGroup`]:
 /// assembles candidates from the group's gems + additional granted effects
@@ -171,6 +179,21 @@ fn support_modifiers_observed(
     let judgement = group_judgement(group, data, active_skill_id);
     let mut host_set_key = None;
     let mut mods = granting_support_modifiers(group, data, active_skill_id);
+    // A support on the minion's attack still changes the cost of summoning
+    // that minion. Directly compatible supports are handled below once.
+    for sup in super::minions::minion_supports_for_cost(group, data, active_skill_id) {
+        if judgement.compatible.contains(&sup) {
+            continue;
+        }
+        let gem = &group.gems[sup.gem_index];
+        if let Some(modifier) = crate::skill_env::support_mana_multiplier_modifier(
+            &sup.effect_id,
+            data.effect_level_row(&sup.effect_id, gem.gem_level)
+                .and_then(|row| row.mana_multiplier),
+        ) {
+            mods.push(modifier);
+        }
+    }
     for sup in &judgement.compatible {
         let gem = &group.gems[sup.gem_index];
         let set_index = support_stat_set_index(sup, group.gems);

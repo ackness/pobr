@@ -754,9 +754,88 @@ fn minion_skill_modifiers(
         .collect()
 }
 
+/// Supports that apply to a summoned minion's skills also charge their cost
+/// multiplier to the summoning skill. Keep their offensive payload off the
+/// summoner. The CreatesMinion marker lets Minion Splash require both a minion
+/// source and a melee strike; other skill types belong to the minion itself.
+pub(super) fn minion_supports_for_cost(
+    group: &crate::skill_env::EnabledGroup<'_>,
+    data: &(impl MinionLookup + EffectLookup + ?Sized),
+    skill_id: &str,
+) -> Vec<crate::skill_env::CompatibleSupport> {
+    use std::collections::HashSet;
+
+    let Some(summon) = data.effect(skill_id).filter(|effect| {
+        !effect.cannot_be_supported && effect.skill_types.iter().any(|t| t == "CreatesMinion")
+    }) else {
+        return Vec::new();
+    };
+    let summon_types: HashSet<_> = summon.skill_types.iter().cloned().collect();
+    let chosen = group
+        .gems
+        .iter()
+        .find(|gem| {
+            gem.skill_id == skill_id
+                || data
+                    .additional_effects(&gem.skill_id)
+                    .iter()
+                    .any(|id| id == skill_id)
+        })
+        .and_then(|gem| gem.minion.as_deref());
+    let mut candidates: Vec<_> = group
+        .gems
+        .iter()
+        .enumerate()
+        .flat_map(|(gem_index, gem)| {
+            std::iter::once(gem.skill_id.as_str())
+                .chain(
+                    data.additional_effects(&gem.skill_id)
+                        .iter()
+                        .map(String::as_str),
+                )
+                .filter_map(move |effect_id| {
+                    data.effect(effect_id)
+                        .filter(|effect| effect.is_support)
+                        .map(|effect| SupportCandidate {
+                            gem_index,
+                            effect_id,
+                            effect,
+                        })
+                })
+        })
+        .collect();
+    // A minion's melee type must not bypass an explicit prohibition on
+    // supporting minions (Clash / Tempestuous Tempo) or undamageable summons.
+    candidates.retain(|support| {
+        !crate::rules::skill_type_expr::matches(&support.effect.exclude_skill_types, &summon_types)
+    });
+    let mut supports = Vec::new();
+    let mut seen = HashSet::new();
+    for minion in summoned_minions(data, skill_id, chosen) {
+        let Some(def) = data.minion_def(minion) else {
+            continue;
+        };
+        for id in &def.skill_list {
+            let Some(effect) = data.effect(id) else {
+                continue;
+            };
+            let mut types: HashSet<_> = effect.skill_types.iter().cloned().collect();
+            types.insert("CreatesMinion".into());
+            let judgement =
+                judge_group_supports(&types, effect.cannot_be_supported, false, &candidates);
+            for support in judgement.compatible {
+                if seen.insert((support.gem_index, support.effect_id.clone())) {
+                    supports.push(support);
+                }
+            }
+        }
+    }
+    supports
+}
+
 /// Whether the skill `skill_id` makes a monster the player picks its minion:
 /// a Spectre, or a tamed beast.
-fn picks_a_monster(data: &dyn MinionEnv, skill_id: &str) -> bool {
+fn picks_a_monster(data: &(impl EffectLookup + ?Sized), skill_id: &str) -> bool {
     data.effect(skill_id).is_some_and(|effect| {
         matches!(
             effect.active_skill.as_deref(),
@@ -770,7 +849,7 @@ fn picks_a_monster(data: &dyn MinionEnv, skill_id: &str) -> bool {
 /// skillMinion>`), as does a skill with no minions of its own; any other
 /// skill summons its own minions, whichever one the player shows.
 fn summoned_minions<'a>(
-    data: &'a dyn MinionEnv,
+    data: &'a (impl MinionLookup + EffectLookup + ?Sized),
     skill_id: &str,
     chosen: Option<&'a str>,
 ) -> Vec<&'a String> {
