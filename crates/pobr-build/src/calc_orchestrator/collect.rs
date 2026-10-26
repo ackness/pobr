@@ -166,7 +166,11 @@ pub(crate) fn resolve_granted_socket_jewels(build: &Build, data: &BuildData) -> 
                 }));
         }
     }
-    resolved.granted_socket_jewels.clear();
+    // Unallocated records can belong to the other weapon set. Keep them
+    // available for that set's preparation; only active grants were consumed.
+    resolved
+        .granted_socket_jewels
+        .retain(|(node, _, _)| !granted.contains(node));
     Some(resolved)
 }
 

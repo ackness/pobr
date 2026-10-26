@@ -225,6 +225,68 @@ fn other_weapon_tree_controls_skill_levels_and_quality() {
 }
 
 #[test]
+fn other_weapon_tree_preserves_imported_jewels_until_their_socket_is_active() {
+    for held_second in [false, true] {
+        for (first_allocated, second_allocated) in
+            [(true, true), (true, false), (false, true), (false, false)]
+        {
+            let first = if first_allocated { "2491" } else { "" };
+            let second = if second_allocated { "7960" } else { "" };
+            let nodes = [first, second]
+                .into_iter()
+                .filter(|n| !n.is_empty())
+                .collect::<Vec<_>>()
+                .join(",");
+            let xml = format!(
+                r#"<PathOfBuilding2><Build level="100" className="Ranger"/>
+<Tree activeSpec="1"><Spec treeVersion="0_5" nodes="{nodes}">
+<WeaponSet1 nodes="{first}"/><WeaponSet2 nodes="{second}"/>
+<Sockets><Socket nodeId="2491" itemId="1"/><Socket nodeId="7960" itemId="2"/><Socket nodeId="21984" itemId="3"/></Sockets>
+</Spec></Tree>
+<Items activeItemSet="1">
+<Item id="1">Rarity: UNIQUE
+Prism of Belief
+Diamond
++3 to Level of all Ice Shot Skills</Item>
+<Item id="2">Rarity: UNIQUE
+Prism of Belief
+Diamond
++3 to Level of all Ice Shot Skills</Item>
+<Item id="3">Rarity: UNIQUE
+Prism of Belief
+Diamond
++9 to Level of all Ice Shot Skills</Item>
+<ItemSet id="1" useSecondWeaponSet="{held_second}"/></Items>
+<Skills>
+<Skill enabled="true" set1="true" set2="false"><Gem skillId="IceShotPlayer" level="20" enabled="true"/></Skill>
+<Skill enabled="true" set1="false" set2="true"><Gem skillId="IceShotPlayer" level="20" enabled="true"/></Skill>
+</Skills></PathOfBuilding2>"#
+            );
+            let mut build = import_build(&xml).unwrap().build;
+            let levels = |build: &Build| {
+                pobr_build::diagnose(build, data(), &DataOrchestratorOptions::default())
+                    .unwrap()
+                    .skills
+                    .into_iter()
+                    .filter(|skill| skill.skill_id == "IceShotPlayer")
+                    .map(|skill| skill.gem_level + skill.bonus_levels)
+                    .collect::<Vec<_>>()
+            };
+            let first_level = if first_allocated { 23 } else { 20 };
+            let second_level = if second_allocated { 23 } else { 20 };
+            assert_eq!(
+                levels(&build),
+                [first_level, second_level],
+                "held second={held_second}, allocations={nodes}"
+            );
+            // Preparing a pending jewel cannot re-enable a disabled skill.
+            build.socket_groups[1].enabled = false;
+            assert_eq!(levels(&build), [first_level]);
+        }
+    }
+}
+
+#[test]
 fn weapon_restricted_attacks_take_levels_from_the_usable_set() {
     use pobr_data::passive_tree::NodeId;
     for (skill, level, weapon, bonus, expected) in [
