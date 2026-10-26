@@ -695,6 +695,34 @@ fn minion_hit_supports_reject_non_damaging_spell() {
     }
 }
 
+#[test]
+fn minion_hit_supports_respect_summoner_exclusions() {
+    let data = load_data();
+    // Extraction excludes CreatesMinion on the summoner, even though the
+    // selected damaging spell is not itself a summoning skill. This applies
+    // to both inferred Damage (Brand) and a raw Damage type (Fracturing).
+    for (minion, skill) in [("FireDjinn", 1), ("WaterDjinn", 2)] {
+        let baseline = djinn_with_hit_supports(&data, minion, skill, &[]);
+        let extraction =
+            djinn_with_hit_supports(&data, minion, skill, &["SupportExtractionPlayer"]);
+        let ratio = extraction.output().minions[0].dps / baseline.output().minions[0].dps;
+        assert!(
+            (ratio - 1.0).abs() < 1e-9,
+            "{minion} Extraction DPS ratio: {ratio}"
+        );
+        assert_eq!(extraction.minion_stat_totals(0, "DamageGainAsChaos").0, 0.0);
+    }
+
+    // A directly compatible player spell still receives Extraction's damage.
+    let direct = Build::new().add_socket_group(
+        SocketGroup::new()
+            .with_gem_skill("FrostBombPlayer", 20)
+            .with_gem_skill("SupportExtractionPlayer", 1),
+    );
+    let session = pobr_build::calculate_with_data_session(&direct, data, &default_opts()).unwrap();
+    assert_eq!(session.stat_totals("DamageGainAsChaos").0, 35.0);
+}
+
 /// The sweep's level-20 summons, with no equipment or supports, against
 /// the reference enemy. These exercise the minion's own attack multiplier,
 /// attack speed, the summoning gem's conversions and the player's attributes.

@@ -488,7 +488,13 @@ pub fn spawn_minions(
                 let def = def.clone();
                 let skill = minion_skill(data, &def, chosen_skill, minion_level);
                 let mut minion_modifiers = group_minion_modifiers.clone();
-                minion_modifiers.extend(minion_skill_modifiers(&group, data, &skill, minion_level));
+                minion_modifiers.extend(minion_skill_modifiers(
+                    &group,
+                    data,
+                    &skill_id,
+                    &skill,
+                    minion_level,
+                ));
                 // `add_minion_from_def` internally maps gem level to monster level via
                 // `minion_level_from_gem_level` (the default rule at
                 // CalcActiveSkill.lua:948), so the effective gem level (including the
@@ -669,6 +675,7 @@ pub(super) fn minion_skill_level(data: &dyn MinionEnv, skill_id: &str, minion_le
 fn minion_skill_modifiers(
     group: &crate::skill_env::EnabledGroup<'_>,
     data: &dyn MinionEnv,
+    summon_skill_id: &str,
     skill: &crate::calc::MinionSkill,
     minion_level: u32,
 ) -> Vec<MinionModifierEntry> {
@@ -740,7 +747,14 @@ fn minion_skill_modifiers(
                         | "spell_maximum_base_chaos_damage"
                 )
         });
-    let judgement = group_judgement_with_hit(group, data, &skill.id, false, has_hit_damage);
+    let judgement = group_judgement_with_hit(
+        group,
+        data,
+        &skill.id,
+        false,
+        has_hit_damage,
+        Some(summon_skill_id),
+    );
     for sup in &judgement.compatible {
         let gem = &group.gems[sup.gem_index];
         let set_index = support_stat_set_index(sup, group.gems);
@@ -838,13 +852,7 @@ pub(super) fn minion_support_judgements(
     // Minion types cannot bypass the support's restriction on borrowing them
     // (Bursting Plague), explicit minion exclusion (Clash), or exclusions on
     // undamageable summons. Direct summoner compatibility is handled separately.
-    candidates.retain(|support| {
-        !support.effect.ignore_minion_types
-            && !crate::rules::skill_type_expr::matches(
-                &support.effect.exclude_skill_types,
-                &summon_types,
-            )
-    });
+    candidates.retain(|support| can_borrow_minion_types(support, &summon_types));
     let mut judgements = Vec::new();
     for minion in summoned_minions(data, skill_id, chosen) {
         let Some(def) = data.minion_def(minion) else {
@@ -865,6 +873,19 @@ pub(super) fn minion_support_judgements(
         }
     }
     judgements
+}
+
+/// Borrowing a minion's skill types, including inferred hit capability, cannot
+/// bypass exclusions on its summoning skill. Direct compatibility is separate.
+fn can_borrow_minion_types(
+    support: &SupportCandidate<'_>,
+    summon_types: &std::collections::HashSet<String>,
+) -> bool {
+    !support.effect.ignore_minion_types
+        && !crate::rules::skill_type_expr::matches(
+            &support.effect.exclude_skill_types,
+            summon_types,
+        )
 }
 
 /// Whether the skill `skill_id` makes a monster the player picks its minion:
@@ -993,7 +1014,7 @@ pub(super) fn group_judgement_from(
     skill_id: &str,
     from_gem: bool,
 ) -> crate::skill_env::GroupSupportJudgement {
-    group_judgement_with_hit(group, data, skill_id, from_gem, false)
+    group_judgement_with_hit(group, data, skill_id, from_gem, false, None)
 }
 
 fn group_judgement_with_hit(
@@ -1002,6 +1023,7 @@ fn group_judgement_with_hit(
     skill_id: &str,
     from_gem: bool,
     has_hit_damage: bool,
+    summon_skill_id: Option<&str>,
 ) -> crate::skill_env::GroupSupportJudgement {
     use std::collections::HashSet;
 
@@ -1014,7 +1036,7 @@ fn group_judgement_with_hit(
     }
     let cannot_be_supported = data.effect(skill_id).is_some_and(|e| e.cannot_be_supported);
 
-    let candidates: Vec<SupportCandidate<'_>> = group
+    let mut candidates: Vec<SupportCandidate<'_>> = group
         .gems
         .iter()
         .enumerate()
@@ -1036,6 +1058,10 @@ fn group_judgement_with_hit(
                 })
         })
         .collect();
+    if let Some(summon) = summon_skill_id.and_then(|id| data.effect(id)) {
+        let summon_types = summon.skill_types.iter().cloned().collect();
+        candidates.retain(|support| can_borrow_minion_types(support, &summon_types));
+    }
 
     judge_group_supports(
         &active_skill_types,
