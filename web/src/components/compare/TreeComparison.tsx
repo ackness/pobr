@@ -1,3 +1,4 @@
+import { AppButton, AppSelectControl } from '../shared/controls';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import { formatApiError } from '../../api/error';
@@ -6,6 +7,8 @@ import { cleanLine, useLocalizedLines } from '../../hooks/useLocalizedLines';
 import { compareTreeAllocations, resolvedTreeVersion, treeAllocationTotals, type OverlayNode, type StageState } from '../../lib/compare';
 import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
 import { NODE_RADIUS, hasPosition, passiveTreeEdges, treeExtent, type ViewBox } from '../../lib/treeGeometry';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { useUi } from '../shared/UiContext';
 
 interface Props {
   a: StageState;
@@ -47,6 +50,9 @@ type LoadedProps = Props & { nodesA: PassiveNode[]; nodesB: PassiveNode[]; sameV
 
 function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion, meta, lang }: LoadedProps) {
   const tt = bindT(lang);
+  const { v2 } = useUi();
+  const [hover, setHover] = useState<{ node: PassiveNode; x: number; y: number } | null>(null);
+  const [hoverName] = useLocalizedLines(hover ? [hover.node.name ?? `#${hover.node.skill}`] : [], lang);
   const overlay = useMemo(() => compareTreeAllocations(a, b, nodesA, nodesB, sameVersion), [a, b, nodesA, nodesB, sameVersion]);
   const totals = useMemo(() => [treeAllocationTotals(a, nodesA), treeAllocationTotals(b, nodesB)], [a, b, nodesA, nodesB]);
   const visible = useMemo(() => {
@@ -110,14 +116,21 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
     </details>)}
     {currentView && full ? <>
       <div className="compare-tree-tools">
-        <button type="button" onClick={() => setView(focus)}>{tt('compare.fitAllocations')}</button>
-        <button type="button" onClick={() => setView(full)}>{tt('compare.wholeTree')}</button>
-        <button type="button" aria-label={tt('compare.zoomIn')} onClick={() => zoom(.7)}>+</button>
-        <button type="button" aria-label={tt('compare.zoomOut')} onClick={() => zoom(1 / .7)}>−</button>
+        <AppButton type="button" onClick={() => setView(focus)}>{tt('compare.fitAllocations')}</AppButton>
+        <AppButton type="button" onClick={() => setView(full)}>{tt('compare.wholeTree')}</AppButton>
+        <AppButton type="button" aria-label={tt('compare.zoomIn')} onClick={() => zoom(.7)}>+</AppButton>
+        <AppButton type="button" aria-label={tt('compare.zoomOut')} onClick={() => zoom(1 / .7)}>−</AppButton>
       </div>
       <p className="compare-hint">{tt('compare.canvasHint')}</p>
       <svg ref={svg} className="compare-tree-canvas" role="group" tabIndex={0} aria-label={tt('compare.treeOverlay')}
         viewBox={`${currentView.x} ${currentView.y} ${currentView.w} ${currentView.h}`}
+        onPointerLeave={() => setHover(null)}
+        onBlur={() => setHover(null)}
+        onFocus={event => {
+          const target = (event.target as Element).closest('[data-overlay-key]');
+          const node = overlay.nodes.find(entry => entry.key === target?.getAttribute('data-overlay-key'))?.node;
+          if (node && target) { const rect = target.getBoundingClientRect(); setHover({ node, x: rect.x + rect.width / 2, y: rect.y }); }
+        }}
         onKeyDown={event => {
           if (event.target !== event.currentTarget) return;
           const shifts: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
@@ -129,13 +142,20 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
         }}
         onPointerDown={event => {
           if (event.button !== 0) return;
+          setHover(null);
           drag.current = { x: event.clientX, y: event.clientY, view: currentView, moved: false };
           suppressClick.current = false;
           event.currentTarget.setPointerCapture(event.pointerId);
         }}
         onPointerMove={event => {
           const start = drag.current, matrix = svg.current?.getScreenCTM();
-          if (!start || !matrix) return;
+          if (!start) {
+            const target = (event.target as Element).closest('[data-overlay-key]');
+            const node = overlay.nodes.find(entry => entry.key === target?.getAttribute('data-overlay-key'))?.node;
+            setHover(node ? { node, x: event.clientX, y: event.clientY } : null);
+            return;
+          }
+          if (!matrix) return;
           const dx = event.clientX - start.x, dy = event.clientY - start.y;
           if (Math.hypot(dx, dy) > 4) start.moved = true;
           if (start.moved) setView({ ...start.view, x: start.view.x - dx / matrix.a, y: start.view.y - dy / matrix.d });
@@ -154,14 +174,18 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
         }}>
         <TreeScene nodes={visible} paths={paths} selectedKey={selectedKey} select={select} />
       </svg>
+      <TooltipProvider><Tooltip open={hover !== null} onOpenChange={open => { if (!open) setHover(null); }}>
+        <TooltipTrigger asChild><span aria-hidden="true" style={{ position: 'fixed', left: hover?.x ?? 0, top: hover?.y ?? 0, width: 1, height: 1, pointerEvents: 'none' }} /></TooltipTrigger>
+        {hover && <TooltipContent className={v2 ? 'app-tooltip' : 'app-tooltip-legacy'}>{hoverName} · #{hover.node.skill}</TooltipContent>}
+      </Tooltip></TooltipProvider>
     </> : <p role="note">{tt('compare.noCoordinates')}</p>}
-    <label className="compare-tree-inspect">{inspectLabel}<select value={selected?.key ?? ''} onChange={event => {
+    <label className="compare-tree-inspect">{inspectLabel}<AppSelectControl value={selected?.key ?? ''} onChange={event => {
       select(event.target.value);
       const node = overlay.nodes.find(entry => entry.key === event.target.value)?.node;
       if (node && hasPosition(node) && currentView) setView({ ...currentView, x: node.x - currentView.w / 2, y: node.y - currentView.h / 2 });
     }}><option value="">—</option>{inspectable.map((entry, index) => <option key={entry.key} value={entry.key}>
       {entry.side === 'both' ? 'A+B' : entry.side === 'a' ? 'A' : entry.side === 'b' ? 'B' : entry.a && entry.b ? 'A/B' : entry.a ? 'A' : 'B'} · #{entry.node.skill} · {inspectNames[index]}
-    </option>)}</select></label>
+    </option>)}</AppSelectControl></label>
     {selected && <div className="compare-pair compare-node-details" role="group" aria-label={tt('tree.nodeDetails')}>
       <NodeDetails node={selected.a} state={a} output={before} side="A" lang={lang} />
       <NodeDetails node={selected.b} state={b} output={after} side="B" lang={lang} />
@@ -203,7 +227,6 @@ const TreeScene = memo(function TreeScene({ nodes, paths, selectedKey, select }:
         tabIndex={side === 'none' && !entry.jewelA && !entry.jewelB ? undefined : 0} role="button"
         aria-label={`${node.name ?? node.skill} · #${node.skill} · ${side === 'both' ? 'A+B' : side === 'a' ? 'A' : side === 'b' ? 'B' : '—'}`}
         onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); select(key); } }}>
-        <title>{node.name ?? `#${node.skill}`} · #{node.skill}</title>
         {side === 'b' ? <rect x={-r} y={-r} width={r * 2} height={r * 2} /> : <circle r={r} />}
         {side === 'both' && <circle className="compare-tree-ring" r={r * 1.55} />}
         {entry.jewelA && <path data-jewel="a" d={`M${-r / 2},${-r / 2}l${r / 2},${r / 2}l${-r / 2},${r / 2}l${-r / 2},${-r / 2}Z`} />}

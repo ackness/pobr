@@ -1,3 +1,6 @@
+import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover';
+import { useUi } from '../shared/UiContext';
+import { AppButton, AppInput } from '../shared/controls';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { GemCatalogEntry } from '../../api/types';
 import { bindT, type Lang } from '../../lib/i18n';
@@ -29,6 +32,7 @@ interface Props {
  */
 export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Props) {
   const tt = bindT(lang);
+  const { v2 } = useUi();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [colour, setColour] = useState<ColourFilter>('all');
@@ -43,7 +47,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+      if (rootRef.current && !rootRef.current.contains(e.target as Node) && !panelRef.current?.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener('pointerdown', onDown);
     return () => document.removeEventListener('pointerdown', onDown);
@@ -64,7 +68,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
       )
       .slice(0, 200);
   }, [entries, query, colour]);
-  usePopupPosition(rootRef, panelRef, open && !disabled, filtered, 340);
+  usePopupPosition(rootRef, panelRef, open && !disabled && !v2, filtered, 340);
 
   useEffect(() => setHighlight(0), [query, colour, open]);
   useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
@@ -77,7 +81,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (disabled || e.nativeEvent.isComposing) return;
+    if (disabled || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
     if (!open) {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
@@ -85,9 +89,9 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
       }
       return;
     }
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
       e.preventDefault();
-      const next = e.key === 'ArrowDown' ? highlight + 1 : highlight - 1;
+      const next = e.key === 'Home' ? 0 : e.key === 'End' ? filtered.length - 1 : e.key === 'ArrowDown' ? highlight + 1 : highlight - 1;
       const clamped = Math.max(0, Math.min(filtered.length - 1, next));
       setHighlight(clamped);
       listRef.current?.children[clamped]?.scrollIntoView({ block: 'nearest' });
@@ -95,46 +99,22 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
       e.preventDefault();
       if (filtered[highlight]) pick(filtered[highlight]);
     } else if (e.key === 'Escape') {
+      e.preventDefault();
       setOpen(false);
     }
   };
 
   const chips: { id: ColourFilter; label: string; colorVar?: string }[] = [
     { id: 'all', label: tt('picker.all') },
-    { id: 'str', label: 'STR', colorVar: COLOUR_VAR.str },
-    { id: 'dex', label: 'DEX', colorVar: COLOUR_VAR.dex },
-    { id: 'int', label: 'INT', colorVar: COLOUR_VAR.int },
+    { id: 'str', label: tt('tree.attr.str'), colorVar: COLOUR_VAR.str },
+    { id: 'dex', label: tt('tree.attr.dex'), colorVar: COLOUR_VAR.dex },
+    { id: 'int', label: tt('tree.attr.int'), colorVar: COLOUR_VAR.int },
   ];
 
-  return (
-    <div className="gem-picker" ref={rootRef}
-      onBlur={event => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
-      }}
-      onKeyDown={event => { if (event.key === 'Escape') setOpen(false); }}>
-      <input
-        ref={inputRef}
-        value={query}
-        placeholder={placeholder}
-        disabled={disabled}
-        aria-label={placeholder}
-        aria-expanded={open && !disabled}
-        aria-controls={open && !disabled ? listId : undefined}
-        aria-activedescendant={open && !disabled && filtered[highlight] ? `${listId}-${highlight}` : undefined}
-        aria-autocomplete="list"
-        role="combobox"
-        onKeyDown={onKeyDown}
-        onFocus={() => setOpen(true)}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setOpen(true);
-        }}
-      />
-      {open && !disabled && (
-        <div className="gem-picker-panel" ref={panelRef}>
+  const panelContents = <>
           <div className="gem-picker-chips" role="group" aria-label={tt('picker.colour')}>
             {chips.map((chip) => (
-              <button
+              <AppButton
                 key={chip.id}
                 type="button"
                 aria-pressed={colour === chip.id}
@@ -143,7 +123,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
                 onClick={() => setColour(chip.id)}
               >
                 {chip.label}
-              </button>
+              </AppButton>
             ))}
             <span className="gem-picker-count">{filtered.length}</span>
           </div>
@@ -189,6 +169,43 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
               );
             })}
           </ul>
+  </>;
+
+  return (
+    <div className="gem-picker" ref={rootRef}
+      onBlur={event => {
+        if (!event.currentTarget.contains(event.relatedTarget) && !panelRef.current?.contains(event.relatedTarget)) setOpen(false);
+      }}
+      onKeyDown={event => { if (event.key === 'Escape' && !event.nativeEvent.isComposing) setOpen(false); }}>
+      <AppInput
+        ref={inputRef}
+        value={query}
+        placeholder={placeholder}
+        disabled={disabled}
+        aria-label={placeholder}
+        aria-expanded={open && !disabled}
+        aria-controls={open && !disabled ? listId : undefined}
+        aria-activedescendant={open && !disabled && filtered[highlight] ? `${listId}-${highlight}` : undefined}
+        aria-autocomplete="list"
+        role="combobox"
+        onKeyDown={onKeyDown}
+        onFocus={() => setOpen(true)}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+      />
+      {v2 ? <Popover open={open && !disabled} onOpenChange={setOpen}>
+        <PopoverAnchor virtualRef={inputRef} />
+        <PopoverContent ref={panelRef} className="gem-picker-popover" align="start"
+          onOpenAutoFocus={event => event.preventDefault()}
+          onCloseAutoFocus={event => event.preventDefault()}
+          onInteractOutside={event => { if (rootRef.current?.contains(event.target as Node)) event.preventDefault(); }}>
+          {panelContents}
+        </PopoverContent>
+      </Popover> : open && !disabled && (
+        <div className="gem-picker-panel" ref={panelRef}>
+          {panelContents}
         </div>
       )}
     </div>

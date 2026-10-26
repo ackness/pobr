@@ -1,3 +1,4 @@
+import { AppButton, AppInput } from '../shared/controls';
 import { formatApiError } from '../../api/error';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CalculateBuildRequest } from '../../api/types';
@@ -155,12 +156,12 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
 
   return (
     <div className="gem-optimizer" ref={rootRef}>
-      <button className="gem-optimizer-toggle" aria-expanded={expanded} onClick={() => {
+      <AppButton className="gem-optimizer-toggle" aria-expanded={expanded} onClick={() => {
         setExpanded(!expanded);
         if (!expanded) select();
       }}>
         <span className="row-caret" aria-hidden>▸</span>{st('title')}
-      </button>
+      </AppButton>
       {expanded && <div className="gem-optimizer-body">
         <p className="skills-hint">{st('hint')}</p>
         <div className="support-pool-summary"><strong>{candidateCount}</strong> {st('eligible')}
@@ -168,11 +169,11 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
         </div>
         <details className="support-pool-details"><summary>{st('filterTitle')}</summary>
           <p className="skills-hint">{st('filterHint')}</p>
-          <label className="support-search">{st('search')}<input type="search" value={search}
+          <label className="support-search">{st('search')}<AppInput type="search" value={search}
             placeholder={st('searchPlaceholder')} onChange={event => setSearch(event.target.value)} /></label>
           <div className="opt-candidates">{visibleGems.map(gem => <label key={gem.skill_id}
             className={`opt-chip support-candidate${excluded.has(gem.skill_id) ? ' is-excluded' : ''}`} data-skill-id={gem.skill_id}>
-            <input type="checkbox" checked={!excluded.has(gem.skill_id)}
+            <AppInput type="checkbox" checked={!excluded.has(gem.skill_id)}
               onChange={event => event.target.checked ? restore(gem.skill_id) : exclude(gem.skill_id)} />
             <span>{gemName(gem.skill_id)}</span>{gem.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
           </label>)}</div>
@@ -180,15 +181,15 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
         </details>
         {excludedIds.length > 0 && <div className="support-excluded">
           <div className="support-excluded-header"><strong>{st('manualExcluded')} · {excludedIds.length}</strong>
-            <button onClick={() => updateExclusions([])}>{st('restoreAll')}</button></div>
-          <div className="opt-candidates">{excludedIds.map(id => <button key={id} className="opt-chip"
+            <AppButton onClick={() => updateExclusions([])}>{st('restoreAll')}</AppButton></div>
+          <div className="opt-candidates">{excludedIds.map(id => <AppButton key={id} className="opt-chip"
             aria-label={`${st('restore')} ${gemName(id)}`} title={`${st('restore')} ${gemName(id)}`} onClick={() => restore(id)}>
             {gemName(id)} <span aria-hidden>↶</span>
-          </button>)}</div>
+          </AppButton>)}</div>
           <p className="skills-hint">{st('excludedHint')}</p>
         </div>}
         <div className="opt-row">
-          <label>{st('capacity')}<input type="number" min={2} max={5} value={capacity} onChange={event => {
+          <label>{st('capacity')}<AppInput type="number" min={2} max={5} value={capacity} onChange={event => {
             const value = Number(event.target.value);
             if (Number.isInteger(value) && value >= 2 && value <= 5) {
               invalidate();
@@ -196,12 +197,12 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
             }
           }} /></label>
           <ObjectiveEditor value={goal} onChange={next => { invalidate(); setGoal(next); }} lang={lang} />
-          <button className="opt-run" disabled={session.busy || progress !== null || !canSearch || !group?.enabled
+          <AppButton className="opt-run" disabled={session.busy || progress !== null || !canSearch || !group?.enabled
             || (mainIndex === groupIndex && !session.calc?.main_skill)} onClick={run}>
             {progress ? tt('opt.running') : mainIndex !== groupIndex ? st('selectMain') : st('run')}
-          </button>
+          </AppButton>
         </div>
-        <label className="support-lineage-option"><input type="checkbox" checked={includeLineage}
+        <label className="support-lineage-option"><AppInput type="checkbox" checked={includeLineage}
           onChange={event => { invalidate(); setIncludeLineage(event.target.checked); }} />{st('lineage')}</label>
         <p className="skills-hint">{st('capacityHint')}</p>
         {!session.busy && mainIndex === groupIndex && !session.calc?.main_skill && <p className="skills-hint">{tt('sidebar.noMainSkill')}</p>}
@@ -242,8 +243,8 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
               data-level={gem.level} data-quality={gem.quality} data-stat-set-index={gem.stat_set_index ?? undefined}>
               {gemName(gem.skill_id)}{byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
               <small>{st('level')} {gem.level} · {st('quality')} {gem.quality}{gem.stat_set_index != null && <> · {st('statSet')} {gem.stat_set_index}</>}</small>
-              <button className="support-exclude-button" aria-label={`${st('exclude')} ${gemName(gem.skill_id)}`}
-                title={`${st('exclude')} ${gemName(gem.skill_id)}`} onClick={() => exclude(gem.skill_id)}><span aria-hidden>×</span></button>
+              <AppButton className="support-exclude-button" aria-label={`${st('exclude')} ${gemName(gem.skill_id)}`}
+                title={`${st('exclude')} ${gemName(gem.skill_id)}`} onClick={() => exclude(gem.skill_id)}><span aria-hidden>×</span></AppButton>
             </span>)}</div>
             <div className="support-plan-metrics">{['TotalDPS', 'TotalEHP'].map(stat => {
               const before = result.baseline[stat] ?? 0;
@@ -263,7 +264,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
                 </li>;
               })}</ul>
             </details>}
-            <button disabled={session.busy} onClick={() => apply(index)}>{tt('opt.apply')}</button>
+            <AppButton disabled={session.busy} onClick={() => apply(index)}>{tt('opt.apply')}</AppButton>
           </article>)}
           <p className="skills-hint">{st('keepActive')}</p>
         </div>}

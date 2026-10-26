@@ -1,3 +1,4 @@
+import { AppButton, AppInput } from '../shared/controls';
 import { useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import { formatApiError } from '../../api/error';
@@ -40,14 +41,14 @@ export function TreeConversionControls({ session, lang }: { session: BuildSessio
   if (!session.character) return null;
   return <section className="tree-conversion" aria-label={label('Tree conversion', '天赋树转换', '天賦樹轉換')}>
     <div className="tree-conversion-actions">
-      <label><input type="checkbox" checked={all} disabled={pending} onChange={event => { setAll(event.target.checked); setPreview(null); }} />
+      <label><AppInput type="checkbox" checked={all} disabled={pending} onChange={event => { setAll(event.target.checked); setPreview(null); }} />
         {label('All passive specs', '全部天赋方案', '全部天賦方案')}</label>
-      <button disabled={pending || session.busy} onClick={() => void createPreview()}>
+      <AppButton disabled={pending || session.busy} onClick={() => void createPreview()}>
         {pending ? label('Preparing preview…', '正在准备预览…', '正在準備預覽…') : label('Convert to current tree', '转换为当前天赋树', '轉換為目前天賦樹')}
-      </button>
-      <button disabled={!session.canUndoTree || session.busy || pending} onClick={() => { cancel(); session.undoTree(); }}>
-        {label('Undo tree edit', '撤销天赋编辑', '復原天賦編輯')}</button>
-      {(pending || preview) && <button onClick={cancel}>{label('Cancel', '取消')}</button>}
+      </AppButton>
+      <AppButton disabled={!session.canUndoTree || session.busy || pending} onClick={() => { cancel(); session.undoTree(); }}>
+        {label('Undo tree edit', '撤销天赋编辑', '復原天賦編輯')}</AppButton>
+      {(pending || preview) && <AppButton onClick={cancel}>{label('Cancel', '取消')}</AppButton>}
     </div>
     {error && <p role="alert">{error}</p>}
     {preview && <div className="tree-conversion-preview" role="region" aria-label={label('Conversion preview', '转换预览', '轉換預覽')}>
@@ -68,10 +69,10 @@ export function TreeConversionControls({ session, lang }: { session: BuildSessio
         </div>)}
       </article>)}
       {stale && <p role="alert">{staleText}</p>}
-      <button disabled={!!stale || session.busy} onClick={() => {
+      <AppButton disabled={!!stale || session.busy} onClick={() => {
         if (!session.applyTreeConversion(preview.decoded, preview.result.code, preview.version)) { setError(staleText); return; }
         setPreview(null);
-      }}>{label('Confirm conversion', '确认转换', '確認轉換')}</button>
+      }}>{label('Confirm conversion', '确认转换', '確認轉換')}</AppButton>
     </div>}
   </section>;
 }

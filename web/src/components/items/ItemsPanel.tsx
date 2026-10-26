@@ -1,3 +1,4 @@
+import { AppTooltip, AppButton, AppInput, AppTextarea } from '../shared/controls';
 import { UniqueCatalog } from './UniqueCatalog';
 import { uniqueT } from '../../lib/uniqueCatalogText';
 import { ItemCrafter } from './ItemCrafter';
@@ -97,12 +98,12 @@ function ItemText({ text, lang }: { text: string; lang: Lang }) {
             <div className={`item-line item-line--${line.kind}`}>
               {translated[i]}
               {line.tier != null && (
-                <span
-                  className={`item-tier item-tier--${line.tier === 1 ? 'top' : 'rest'}`}
-                  title={`${line.affix === 'prefix' ? '前缀' : '后缀'} · 该基底共 ${line.tier_total} 档`}
-                >
-                  T{line.tier}
-                </span>
+                <AppTooltip content={lang === 'en-US'
+                  ? `${line.affix === 'prefix' ? 'Prefix' : 'Suffix'} · ${line.tier_total} tiers for this base`
+                  : lang === 'zh-TW' ? `${line.affix === 'prefix' ? '前綴' : '後綴'} · 此基底共 ${line.tier_total} 階`
+                    : `${line.affix === 'prefix' ? '前缀' : '后缀'} · 该基底共 ${line.tier_total} 档`}>
+                  <span tabIndex={0} className={`item-tier item-tier--${line.tier === 1 ? 'top' : 'rest'}`}>T{line.tier}</span>
+                </AppTooltip>
               )}
             </div>
           </Fragment>
@@ -135,13 +136,13 @@ function ItemRow({
   return (
     <article className={`library-row rarity-${rarityOf(text)}`}>
       <header className="library-row-head">
-        <button className="library-row-toggle" aria-expanded={open} onClick={onToggle}>
+        <AppButton className="library-row-toggle" aria-expanded={open} onClick={onToggle}>
           <span className="row-caret" aria-hidden>
             ▸
           </span>
           <span className="item-name">{name}</span>
           {slotTag && <span className="library-row-slot">{slotTag}</span>}
-        </button>
+        </AppButton>
         <span className="item-actions">{actions}</span>
       </header>
       {open && (
@@ -401,7 +402,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
     const text = textOf(slot);
     const name = text ? slotName(slot) : null;
     return (
-      <button
+      <AppButton
         key={slot}
         className={`doll-slot${text ? ` rarity-${rarityOf(text)}` : ' doll-slot-empty'}${
           selected === slot ? ' is-selected' : ''
@@ -421,7 +422,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
         ) : (
           <span className="doll-empty">{tt('items.empty')}</span>
         )}
-      </button>
+      </AppButton>
     );
   };
 
@@ -429,9 +430,9 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
     <section className="ui-page items-page" aria-labelledby="items-heading">
       <PageHeader id="items-heading" title={tt('items.title')} description={tt('ui.itemsHint')}>
         <WeaponSetControl session={session} lang={lang} />
-        <button aria-expanded={crafting} onClick={() => { setCrafting(value => !value); setUniques(false); }}>{craftT(lang, crafting ? 'close' : 'craft')}</button>
-        <button aria-expanded={uniques} onClick={() => { setUniques(value => !value); setCrafting(false); }}>{uniqueT(lang, uniques ? 'close' : 'title')}</button>
-        {onUpgrade && <button onClick={() => onUpgrade(selected && !isLimbSlot(selected) ? selected : "weapon1")}>{tt("trade.findBetter")} ↗</button>}
+        <AppButton aria-expanded={crafting} onClick={() => { setCrafting(value => !value); setUniques(false); }}>{craftT(lang, crafting ? 'close' : 'craft')}</AppButton>
+        <AppButton aria-expanded={uniques} onClick={() => { setUniques(value => !value); setCrafting(false); }}>{uniqueT(lang, uniques ? 'close' : 'title')}</AppButton>
+        {onUpgrade && <AppButton onClick={() => onUpgrade(selected && !isLimbSlot(selected) ? selected : "weapon1")}>{tt("trade.findBetter")} ↗</AppButton>}
       </PageHeader>
       <p className="weapon-set-hint">{tt('weapons.hint')}</p>
       {uniques && <UniqueCatalog session={session} lang={lang} />}
@@ -488,22 +489,22 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
             )}
             <span className="item-actions">
               {!editing && (
-                <button disabled={session.busy} onClick={() => setEditing(true)}>
+                <AppButton disabled={session.busy} onClick={() => setEditing(true)}>
                   {selectedText ? tt('items.edit') : tt('items.add')}
-                </button>
+                </AppButton>
               )}
               {selectedText && (
                 <>
                   <CopyButton text={selectedText} lang={lang} />
-                  <button
+                  <AppButton
                     disabled={session.busy}
                     onClick={() => session.saveLibraryItem('item', selectedText, selected)}
                   >
                     {tt('lib.save')}
-                  </button>
-                  <button className="skill-remove" disabled={session.busy} onClick={removeItem}>
+                  </AppButton>
+                  <AppButton className="skill-remove" disabled={session.busy} onClick={removeItem}>
                     {tt('items.remove')}
-                  </button>
+                  </AppButton>
                 </>
               )}
             </span>
@@ -511,7 +512,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
           {editing ? (
             <div className="item-editor">
               <p className="items-hint">{tt('items.hint')}</p>
-              <textarea
+              <AppTextarea
                 rows={10}
                 value={draft}
                 spellCheck={false}
@@ -519,10 +520,10 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
                 onChange={(e) => setDraft(e.target.value)}
               />
               <div className="item-editor-actions">
-                <button className="button-primary" disabled={session.busy || !draft.trim()} onClick={applyEdit}>
+                <AppButton className="button-primary" disabled={session.busy || !draft.trim()} onClick={applyEdit}>
                   {tt('items.apply')}
-                </button>
-                <button onClick={() => setEditing(false)}>{tt('items.cancel')}</button>
+                </AppButton>
+                <AppButton onClick={() => setEditing(false)}>{tt('items.cancel')}</AppButton>
               </div>
             </div>
           ) : selectedText ? (
@@ -545,23 +546,23 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
                     <p className="items-hint">{upgradeT(lang, augmentInfo.reason === 'unknown_base'
                       ? 'unknownBase' : augmentInfo.reason === 'invalid_sockets' ? 'augmentInvalid' : 'augmentReadOnly')}</p>
                   ) : augmentInfo.sockets === 0 ? (
-                    <button disabled={session.busy || runeBusy || augmentInfo.max_sockets <= 0} onClick={() => setSocketCount(1)}>
+                    <AppButton disabled={session.busy || runeBusy || augmentInfo.max_sockets <= 0} onClick={() => setSocketCount(1)}>
                       {tt('items.addSockets')}
-                    </button>
+                    </AppButton>
                   ) : (
                     <span className="socket-count-controls">
-                      <button
+                      <AppButton
                         disabled={session.busy || runeBusy}
                         title={tt('items.socketRemove')}
                         aria-label={tt('items.socketRemove')}
                         onClick={() => setSocketCount(augmentInfo.sockets - 1)}
-                      >−</button>
-                      <button
+                      >−</AppButton>
+                      <AppButton
                         disabled={session.busy || runeBusy || augmentInfo.sockets >= augmentInfo.max_sockets}
                         title={tt('items.socketAdd')}
                         aria-label={tt('items.socketAdd')}
                         onClick={() => setSocketCount(augmentInfo.sockets + 1)}
-                      >+</button>
+                      >+</AppButton>
                     </span>
                   )}
                 </div>
@@ -705,7 +706,7 @@ function LibrarySection({
   return (
     <>
       <div className="library-toolbar" role="group" aria-label={tt('lib.title')}>
-        <input
+        <AppInput
           type="search"
           className="library-search"
           placeholder={tt('lib.search')}
@@ -715,7 +716,7 @@ function LibrarySection({
         />
         {selectedSlot && (
           <label className="library-slot-filter">
-            <input
+            <AppInput
               type="checkbox"
               checked={slotOnly}
               onChange={(e) => setSlotOnly(e.target.checked)}
@@ -738,7 +739,7 @@ function LibrarySection({
           actions={
             <>
               <CopyButton text={entry.text} lang={lang} />
-              <button
+              <AppButton
                 disabled={session.busy || !canUse(entry)}
                 title={!selectedSlot ? tt('lib.selectSlotFirst') : !canUse(entry) ? tt('lib.wrongSlot') : ''}
                 onClick={() => {
@@ -747,21 +748,21 @@ function LibrarySection({
                 }}
               >
                 {tt('lib.compare')}
-              </button>
-              <button
+              </AppButton>
+              <AppButton
                 disabled={session.busy || !canUse(entry)}
                 title={!selectedSlot ? tt('lib.selectSlotFirst') : !canUse(entry) ? tt('lib.wrongSlot') : ''}
                 onClick={() => equip(entry)}
               >
                 {tt('lib.equip')}
-              </button>
-              <button
+              </AppButton>
+              <AppButton
                 className="skill-remove"
                 title={tt('lib.delete')}
                 onClick={() => session.removeLibraryItem(entry.id)}
               >
                 ×
-              </button>
+              </AppButton>
             </>
           }
         >
