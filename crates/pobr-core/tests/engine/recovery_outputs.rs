@@ -31,6 +31,118 @@ fn value(env: &Env, name: &str, expected: f64) {
 }
 
 #[test]
+fn movement_speed_shares_only_active_increases_with_energy_shield_recharge() {
+    use pobr_core::calc::{CalculationSession, MinimalInput};
+    let text =
+        "Increases and Reductions to Movement Speed also apply to Energy Shield Recharge Rate";
+    let parsed = crate::support::parse_mod(text).unwrap();
+    assert!(parsed.is_complete());
+    let tag = |var: &str| pobr_core::ModTag::Condition {
+        var: var.into(),
+        negated: false,
+        actor: None,
+    };
+    for (sharing, moving, prohibition) in [
+        (false, false, None),
+        (true, false, None),
+        (true, true, None),
+        (true, true, Some("NoEnergyShieldRecharge")),
+        (true, true, Some("ZealotsOath")),
+    ] {
+        let mut session = CalculationSession::new(MinimalInput::default()).with_config(
+            CalcConfig::new()
+                .with_condition("ShareMovement", sharing)
+                .with_condition("Moving", moving),
+        );
+        session.add_modifiers(
+            parsed
+                .mods
+                .iter()
+                .cloned()
+                .map(|m| m.with_tag(tag("ShareMovement"))),
+        );
+        session.add_modifiers([
+            Modifier::number("EnergyShield", ModType::Base, 1000.0),
+            Modifier::number("EnergyShieldRecharge", ModType::Inc, 20.0),
+            Modifier::number("EnergyShieldRecharge", ModType::More, 50.0),
+            Modifier::number("MovementSpeed", ModType::Inc, 40.0).with_origin(
+                ModifierSource::new(SourceId::new(SourceKind::ItemAffix, "item.boots.explicit"))
+                    .with_raw_text("40% increased Movement Speed"),
+            ),
+            Modifier::number("MovementSpeed", ModType::Inc, -10.0),
+            Modifier::number("MovementSpeed", ModType::Inc, 20.0).with_tag(tag("Moving")),
+            Modifier::number("MovementSpeed", ModType::Base, 1000.0),
+            Modifier::number("MovementSpeed", ModType::More, 100.0),
+            Modifier::number("ActionSpeed", ModType::Inc, 100.0),
+            Modifier::number("MovementSpeedPenalty", ModType::Inc, -50.0),
+        ]);
+        if let Some(flag) = prohibition {
+            session.add_modifiers([Modifier::flag(flag)]);
+        }
+        let completed = session.finish().unwrap();
+        let inc = 20.0
+            + if sharing {
+                30.0 + if moving { 20.0 } else { 0.0 }
+            } else {
+                0.0
+            };
+        let expected = if prohibition.is_some() {
+            0.0
+        } else {
+            0.125 * (1.0 + inc / 100.0) * 1.5
+        };
+        assert!((display_value(completed.output(), "EsRechargeRate") - expected).abs() < 1e-9);
+        let recovered = display_value(completed.output(), "EsRechargePerSecond");
+        assert!((recovered - expected * 1000.0).abs() < 1e-9);
+        assert_eq!(
+            display_value(completed.output(), "EsRechargeDelay"),
+            if prohibition == Some("NoEnergyShieldRecharge") {
+                0.0
+            } else {
+                4.0
+            }
+        );
+        let groups = completed.detail_sources("EsRechargeRate");
+        let movement = groups.iter().find(|g| g.name == "MovementSpeed");
+        assert_eq!(movement.is_some(), sharing);
+        if let Some(group) = movement {
+            assert_eq!(group.totals, (0.0, if moving { 50.0 } else { 30.0 }, 1.0));
+            assert!(
+                group
+                    .rows
+                    .iter()
+                    .all(|r| r.modifier.mod_type == ModType::Inc)
+            );
+            assert_eq!(
+                group.rows.iter().filter(|r| !r.active).count(),
+                usize::from(!moving)
+            );
+            assert!(group.rows.iter().any(|r| {
+                r.modifier.origin.as_ref().is_some_and(|o| {
+                    o.source_id.id == "item.boots.explicit"
+                        && o.raw_text.as_deref() == Some("40% increased Movement Speed")
+                })
+            }));
+        }
+        if prohibition.is_none() {
+            let detail_inc: f64 = groups.iter().map(|g| g.totals.1).sum();
+            let detail_more: f64 = groups.iter().map(|g| g.totals.2).product();
+            assert!((0.125 * (1.0 + detail_inc / 100.0) * detail_more - expected).abs() < 1e-9);
+        }
+        let detail = completed.derived_detail("EsRechargePerSecond").unwrap();
+        assert_eq!(detail.formula, "EnergyShield * EsRechargeRate");
+        assert_eq!(
+            detail
+                .inputs
+                .iter()
+                .map(|(_, value)| value)
+                .product::<f64>(),
+            recovered
+        );
+    }
+}
+
+#[test]
 fn recovery_accounts_for_regen_recovery_drain_and_main_skill_costs() {
     // life_recovery_rate_+% applies to regeneration and other recovery.
     // life_degeneration_%_per_minute_not_in_grace is loss, not damage.
