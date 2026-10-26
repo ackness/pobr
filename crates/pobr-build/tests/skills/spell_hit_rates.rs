@@ -148,3 +148,104 @@ fn non_spell_casts_share_cast_and_skill_speed_without_attack_speed() {
         assert_eq!(session.stat_formula("ActionRate").unwrap().value, expected);
     }
 }
+
+#[test]
+fn selected_warcry_rate_uses_warcry_speed_and_explains_its_sources() {
+    let effect = &data().granted_effects["SeismicCryPlayer"];
+    assert_eq!(effect.cast_time, Some(800));
+    assert!(effect.skill_types.iter().any(|kind| kind == "Warcry"));
+    assert!(!effect.skill_types.iter().any(|kind| kind == "Spell"));
+
+    for (extra, expected, increased) in [
+        (vec![], 1.25, 0.0),
+        // The frozen Warbringer's applied WarcrySpeed totals 868%, including
+        // its scaled jewels and Mageblood's 30% Skill Speed. The generic
+        // Skill Speed line fans out to WarcrySpeed and must count only once.
+        (
+            vec!["838% increased Warcry Speed", "30% increased Skill Speed"],
+            12.1,
+            868.0,
+        ),
+        (
+            vec![
+                "838% increased Warcry Speed",
+                "30% increased Skill Speed",
+                "900% increased Cast Speed",
+                "900% increased Attack Speed",
+                "20% more Warcry Speed",
+                "20% increased Action Speed",
+            ],
+            17.424,
+            868.0,
+        ),
+    ] {
+        let options = DataOrchestratorOptions {
+            extra_modifier_texts: std::iter::once("Ignore Warcry Cooldowns")
+                .chain(extra)
+                .map(str::to_owned)
+                .collect(),
+            ..Default::default()
+        };
+        let session =
+            calculate_with_data_session(&build("SeismicCryPlayer"), data(), &options).unwrap();
+        let output = session.output();
+        assert_eq!(output.cooldown, 0.0);
+        assert!((output.action_rate - expected).abs() < 1e-9);
+        assert!((output.warcry_cast_time - 1.0 / expected).abs() < 1e-6);
+        let breakdown = pobr_build::breakdown::stat_breakdown(&session, "ActionRate").unwrap();
+        assert_eq!(breakdown.inc_total, increased);
+        let formula = breakdown.formula.unwrap();
+        assert_eq!(formula.steps[0].operand, 1.25);
+        assert_eq!(formula.value, output.action_rate);
+        assert_eq!(session.stat_mod_names("ActionRate"), ["WarcrySpeed".into()]);
+        assert!(breakdown.mods.iter().all(|row| {
+            row.source_text
+                .as_deref()
+                .is_none_or(|text| !text.contains("Cast Speed") && !text.contains("Attack Speed"))
+        }));
+    }
+}
+
+#[test]
+fn selected_warcry_rate_keeps_cooldown_recovery_and_spell_speed_separate() {
+    for (recovery, cooldown) in [(false, 8.019), (true, 4.026)] {
+        let mut options = DataOrchestratorOptions {
+            extra_modifier_texts: vec!["100% increased Warcry Speed".into()],
+            ..Default::default()
+        };
+        if recovery {
+            options
+                .extra_modifier_texts
+                .push("100% increased Warcry Cooldown Recovery Rate".into());
+        }
+        let session =
+            calculate_with_data_session(&build("SeismicCryPlayer"), data(), &options).unwrap();
+        assert!((session.output().cooldown - cooldown).abs() < 1e-9);
+        assert!((session.output().action_rate - 1.0 / cooldown).abs() < 1e-9);
+        assert_eq!(session.output().warcry_cast_time, 0.4);
+        assert_eq!(
+            session.stat_formula("ActionRate").unwrap().value,
+            session.output().action_rate
+        );
+    }
+
+    let plain = calculate_with_data_session(
+        &build("FireballPlayer"),
+        data(),
+        &DataOrchestratorOptions::default(),
+    )
+    .unwrap();
+    let modified = calculate_with_data_session(
+        &build("FireballPlayer"),
+        data(),
+        &DataOrchestratorOptions {
+            extra_modifier_texts: vec![
+                "868% increased Warcry Speed".into(),
+                "100% increased Cast Speed".into(),
+            ],
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!((modified.output().action_rate - plain.output().action_rate * 2.0).abs() < 2e-9);
+}

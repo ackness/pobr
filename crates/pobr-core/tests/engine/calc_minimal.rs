@@ -3,6 +3,161 @@ use pobr_core::{CalcConfig, ModDb, Modifier};
 use pobr_data::prelude::*;
 
 #[test]
+fn blackflame_covenant_converts_only_fire_spells_and_preserves_ignite_magnitude() {
+    use pobr_core::TraceGraph;
+    use pobr_core::calc::ailment::{AilmentSource, ignite_traced};
+    use pobr_core::calc::{Actor, ActorBaseStats, Env, perform};
+
+    let fire_type = SkillTypes::from_pob2_name("Fire").unwrap();
+    let lines = [
+        "Fire Spells Convert 100% of Fire Damage to Chaos Damage",
+        "Chaos Damage from Fire Spells Contributes to Flammability and Ignite Magnitudes",
+        "Ignite inflicted with Fire Spells deals Chaos Damage instead of Fire Damage",
+    ];
+    for (types, enabled) in [
+        (SkillTypes::SPELL | fire_type, true),
+        (SkillTypes::SPELL, false),
+        (SkillTypes::ATTACK | fire_type, false),
+    ] {
+        let mut env = Env::new(Actor::new(
+            80,
+            ActorBaseStats {
+                life: 1000.0,
+                action_rate: 1.0,
+                ..Default::default()
+            },
+        ));
+        env.cfg = CalcConfig::spell()
+            .with_skill_types(types)
+            .with_mode_effective(true);
+        for line in lines {
+            let parsed = crate::support::parse_mod(line).unwrap();
+            assert!(parsed.is_complete(), "{line}: {parsed:?}");
+            env.player.mod_db.add_list(parsed.mods.into_iter().map(|m| {
+                m.with_origin(
+                    ModifierSource::new(SourceId::new(SourceKind::PassiveNode, "node.42680"))
+                        .with_raw_text(line),
+                )
+            }));
+        }
+        env.player.mod_db.add_list([
+            Modifier::number("FireDamageMin", ModType::Base, 100.0),
+            Modifier::number("FireDamageMax", ModType::Base, 100.0),
+            Modifier::number("FireDamage", ModType::Inc, 900.0),
+            Modifier::number("ChaosDamage", ModType::Inc, 100.0),
+            Modifier::number("AilmentChance", ModType::Base, 100.0),
+            Modifier::number("ChaosPenetration", ModType::Base, 20.0),
+        ]);
+        env.enemy.mod_db.add_list([
+            Modifier::number("FireResist", ModType::Base, 75.0),
+            Modifier::number("ChaosResist", ModType::Base, 20.0),
+            Modifier::number("ChaosDamageTaken", ModType::Inc, 50.0),
+        ]);
+        perform(&mut env).unwrap();
+        // Conversion uses the destination increases only. Ignite magnitude
+        // comes from that hit once; only its mitigation changes to Chaos.
+        let source = if enabled { 200.0 } else { 1000.0 };
+        let mitigation = if enabled { 1.2 } else { 0.25 };
+        assert!((env.player.output.total_hit_avg - source).abs() < 1e-9);
+        assert!((env.player.output.ignite_dps - source * 0.2 * mitigation).abs() < 1e-9);
+
+        let mut trace = TraceGraph::new();
+        let (ignite, node) = ignite_traced(
+            &AilmentSource::new(source, 1.0, 0.0, false),
+            &env.player.mod_db,
+            &env.enemy.mod_db,
+            &env.cfg,
+            1000.0,
+            &mut trace,
+        );
+        assert!((ignite.eff_mult - mitigation).abs() < 1e-9);
+        assert_eq!(
+            trace
+                .source_ancestors(node)
+                .iter()
+                .any(|s| s.id == "node.42680"),
+            enabled
+        );
+        assert_eq!(
+            trace
+                .nodes()
+                .iter()
+                .any(|n| n.label == "enemy ChaosResist BASE"),
+            enabled
+        );
+        assert_eq!(
+            trace
+                .nodes()
+                .iter()
+                .any(|n| n.label == "enemy FireResist BASE"),
+            !enabled
+        );
+        // Changing an Ignite's type alone does not change source eligibility.
+        assert_eq!(env.player.mod_db.flag(&env.cfg, "ChaosCanIgnite"), enabled);
+        let mut session =
+            pobr_core::calc::CalculationSession::new(MinimalInput::from(env.player.base))
+                .with_config(env.cfg.clone());
+        session.add_modifiers(env.player.mod_db.iter_mods().cloned());
+        session.add_enemy_modifiers(env.enemy.mod_db.iter_mods().cloned());
+        session.perform_minimal().unwrap();
+        let detail = session.derived_detail("IgniteEffMult").unwrap();
+        let input = |id: &str| detail.inputs.iter().find(|(name, _)| name == id).unwrap().1;
+        let reconstructed = (1.0 - input("AilmentEnemyResistance") / 100.0)
+            * (1.0 + input("AilmentDamageTakenIncreased") / 100.0)
+            * input("AilmentDamageTakenMore");
+        assert!((reconstructed - mitigation).abs() < 1e-9);
+        assert!(
+            (pobr_core::display_catalog::display_value(session.output(), "IgniteEffMult")
+                - reconstructed)
+                .abs()
+                < 1e-9
+        );
+    }
+}
+
+#[test]
+fn chain_remaining_trace_uses_the_selected_hits_snapshot_in_both_crit_legs() {
+    use pobr_core::ModTag;
+
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("ChainCountMax", ModType::Base, 2.0));
+    db.add_mod(
+        Modifier::number("Damage", ModType::Inc, 10.0)
+            .with_keyword_flags(KeywordFlags::HIT)
+            .with_tag(ModTag::multiplier("ChainRemaining", 1.0, None)),
+    );
+    let input = MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        base_action_rate: 1.0,
+        ..Default::default()
+    };
+    for (used, remaining) in [(None, 2.0), (Some(1.0), 1.0), (Some(7.0), 0.0)] {
+        let mut cfg = CalcConfig::attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE);
+        if let Some(used) = used {
+            cfg = cfg.with_multiplier("Chain", used);
+        }
+        // A minimal caller has not precomputed ChainRemaining or the hit keyword.
+        assert!(cfg.multiplier_if_set("ChainRemaining").is_none());
+        let traced = calculate_minimal_traced(&db, &cfg, &input);
+        let plain = calculate_minimal(&db, &cfg, &input);
+        assert_eq!(traced.output, plain);
+        assert!((plain.total_hit_avg - (100.0 + remaining * 10.0)).abs() < 1e-9);
+        assert_eq!(plain.dps, plain.total_hit_avg);
+        for leg in ["non-crit", "crit"] {
+            let label = format!("Damage INC modifier sum ({leg} pass)");
+            let sum = traced
+                .trace
+                .nodes()
+                .iter()
+                .find(|node| node.label == label)
+                .unwrap();
+            assert_eq!(sum.value, remaining * 10.0, "{leg}, used={used:?}");
+        }
+    }
+}
+
+#[test]
 fn calculates_life_resistance_hit_damage_and_dps() {
     let mut db = ModDb::new();
     db.add_mod(Modifier::number("MaximumLife", ModType::Base, 100.0));

@@ -77,12 +77,16 @@ mod equipment_affix_effects;
 mod equipment_conditions;
 #[path = "skills/event_triggered_hits.rs"]
 mod event_triggered_hits;
+#[path = "skills/flame_wall.rs"]
+mod flame_wall;
 #[path = "skills/gem_quality.rs"]
 mod gem_quality;
 #[path = "skills/grand_spectrum.rs"]
 mod grand_spectrum;
 #[path = "skills/granted_skill_reservation.rs"]
 mod granted_skill_reservation;
+#[path = "skills/item_bases.rs"]
+mod item_bases;
 #[path = "skills/limbs.rs"]
 mod limbs;
 #[path = "skills/mark_effect.rs"]

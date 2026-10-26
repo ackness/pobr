@@ -188,6 +188,32 @@ pub fn passive_jewel_state(build: &Build, data: &BuildData) -> PassiveJewelState
         let conquest = lines
             .iter()
             .find_map(|line| conqueror(line).and_then(|name| catalog.conquerors.get(name)));
+        // Explicit conquered-passive additions do not depend on the jewel seed.
+        // Keep unknown payloads diagnostic instead of treating every directive
+        // as handled merely because its prefix is recognized.
+        let additions: Vec<_> = jewel
+            .tree_texts
+            .iter()
+            .zip(&lines)
+            .filter_map(|(raw, line)| {
+                const SMALL: &str = "conquered small passive skills also grant ";
+                const ATTRIBUTE: &str = "conquered attribute passive skills also grant ";
+                let (prefix, attribute) = if line.starts_with(SMALL) {
+                    (SMALL, false)
+                } else if line.starts_with(ATTRIBUTE) {
+                    (ATTRIBUTE, true)
+                } else {
+                    return None;
+                };
+                let text = &raw[prefix.len()..];
+                let parsed = pobr_core::mod_parser::ParseCtx {
+                    engine: data.parser_rules.as_deref(),
+                }
+                .parse(text)
+                .ok()?;
+                (parsed.is_complete() && !parsed.mods.is_empty()).then_some((raw, text, attribute))
+            })
+            .collect();
         if let Some(band) = band {
             let inner = f64::from(band.inner) * data.jewel_radii.distance_multiplier;
             let outer = f64::from(band.outer) * data.jewel_radii.distance_multiplier;
@@ -263,6 +289,18 @@ pub fn passive_jewel_state(build: &Build, data: &BuildData) -> PassiveJewelState
                                 );
                             } else {
                                 result.unresolved.insert(node.skill);
+                            }
+                            // In the conquest catalogue, attribute passives are
+                            // a distinct category from the replaced small nodes.
+                            if node.kind == PassiveNodeKind::Normal
+                                && let Some(replacement) = result.nodes.get_mut(&node.skill)
+                            {
+                                for (raw, text, targets_attribute) in &additions {
+                                    if attribute == *targets_attribute {
+                                        replacement.stats.push((*text).to_owned());
+                                        result.handled_modifiers.push((*raw).clone());
+                                    }
+                                }
                             }
                         }
                         result.warnings.push(format!(

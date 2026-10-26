@@ -388,6 +388,10 @@ pub struct MinionSkill {
     pub id: String,
     /// The skill's types (`Attack`, `Melee`, …).
     pub types: Vec<String>,
+    /// The actual hit mode of a generic weapon-capable attack. The raw types
+    /// describe both melee and ranged capabilities; absent weapon context
+    /// leaves their existing interpretation intact.
+    pub projectile_hit: Option<bool>,
     /// The skill's cast time in seconds (0 when the data gives none): how
     /// often a minion casting a spell uses it, before cast speed.
     pub cast_time: f64,
@@ -415,7 +419,12 @@ impl MinionSkill {
 
     /// The damage flags of the skill's hits.
     pub fn flags(&self) -> ModFlags {
-        crate::skill_env::skill_type_flags(&self.types)
+        let flags = crate::skill_env::skill_type_flags(&self.types);
+        match self.projectile_hit {
+            Some(true) => flags | ModFlags::PROJECTILE,
+            Some(false) => flags.without(ModFlags::PROJECTILE),
+            None => flags,
+        }
     }
 
     /// The skill's types as the bitset a calculation context carries.

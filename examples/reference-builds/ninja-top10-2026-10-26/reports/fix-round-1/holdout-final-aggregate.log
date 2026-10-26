@@ -1,0 +1,129 @@
+[accuracy] $ bash devs/scripts/driver.sh accuracy examples/reference-builds/holdout/builds
+
+running 1 test
+
+================ REFERENCE SUMMARY (tol 5%) ================
+corpus: /root/codes/pobr/examples/reference-builds/holdout/builds
+builds: 23; TotalDPS agrees on 17
+rows: 1908/2034 = 93.8%
+  beyond PoB2 (each absent rule enabled alone on reference basis; differs stays enabled):
+    additional_remnant_chance [Absent]: 8 present builds; 0 changed builds, 0 changed rows
+    ancestral_cry_empowered_attacks_strike_X_additional_enemies [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    ancestral_cry_non_skill_physical_to_fire_convert_% [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    archon_duration_increased [Absent]: 8 present builds; 0 changed builds, 0 changed rows
+    archon_effect_increased [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    archon_effect_reduced [Absent]: 4 present builds; 0 changed builds, 0 changed rows
+    archon_energy_shield_recharge_start [Absent]: 7 present builds; 0 changed builds, 0 changed rows
+    archon_grants_elemental_resistance [Absent]: 8 present builds; 0 changed builds, 0 changed rows
+    archon_grants_movement_speed [Absent]: 8 present builds; 0 changed builds, 0 changed rows
+    archon_no_recovery [Absent]: 4 present builds; 0 changed builds, 0 changed rows
+    archon_recovery_faster [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    archon_recovery_slower [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    archon_undeath_on_command [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    armour_break_damage_%_dealt_as_armour_break [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    attack_blind_chance_unmodelled [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    attack_maim_chance_unmodelled [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    attacks_chance_to_blind_on_hit_% [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    beira_ignited_ground_on_use [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    break_armour_equal_to_damage_dealt [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    break_increased_armour [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    buffs_on_you_expire_slower [Differs]: 2 present builds; 0 changed builds, 0 changed rows
+    cadiro_selected_arrow [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    chance_%_to_create_additional_remnant [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    chaos_damage_%_dealt_as_armour_break [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    charm_energy_shield_recharge_starts_when_used [Absent]: 9 present builds; 0 changed builds, 0 changed rows
+    charm_guard [Absent]: 2 present builds; 2 changed builds, 12 changed rows
+    charm_life_on_use [Absent]: 4 present builds; 0 changed builds, 0 changed rows
+    charm_mana_on_use [Absent]: 4 present builds; 0 changed builds, 0 changed rows
+    charm_spirit_bear [Absent]: 2 present builds; 2 changed builds, 19 changed rows
+    charm_spirit_cat [Absent]: 6 present builds; 6 changed builds, 104 changed rows
+    charm_spirit_owl [Absent]: 1 present builds; 1 changed builds, 8 changed rows
+    charm_spirit_ox [Absent]: 2 present builds; 2 changed builds, 17 changed rows
+    charm_spirit_primate [Absent]: 1 present builds; 1 changed builds, 6 changed rows
+    charm_spirit_stag [Absent]: 3 present builds; 3 changed builds, 51 changed rows
+    charm_spirit_wolf [Absent]: 2 present builds; 2 changed builds, 20 changed rows
+    conduit_charge_gains_to_allies [Absent]: 3 present builds; 2 changed builds, 24 changed rows
+    created_remnant_duplicate_effects [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    daze_duration_unmodelled [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    defend_with_armour_against_projectile_attacks [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    double_activation_delay_of_curses [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    doubled_totem_limit [Absent]: 3 present builds; 3 changed builds, 3 changed rows
+    energy_shield_from_equipped_focus [Differs]: 8 present builds; 0 changed builds, 0 changed rows
+    event_horizon_resource_loss [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    flask_constant_effect [Absent]: 13 present builds; 0 changed builds, 0 changed rows
+    flask_damage_taken_recouped_as_life_during_effect [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    flask_more_recovery_if_used_on_low_life [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    flask_removes_mana_recovery_from_life_on_use [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    grants_onslaught_during_effect [Absent]: 6 present builds; 6 changed builds, 49 changed rows
+    hits_break_increased_armour_on_ailmented_targets [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    immune_to_chill_if_majority_blue_supports_socketed [Differs]: 6 present builds; 0 changed builds, 0 changed rows
+    immune_to_ignite_if_majority_red_supports_socketed [Differs]: 6 present builds; 0 changed builds, 0 changed rows
+    immune_to_shock_if_majority_green_supports_socketed [Differs]: 6 present builds; 0 changed builds, 0 changed rows
+    increased_surrounded_area_of_effect [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    maim_on_hit_% [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    maximum_elemental_infusions [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    maximum_number_of_elemental_infusions [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    olroth_guard_after_effect [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    outgoing_debuff_slow_magnitude [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    physical_spell_critical_pin [Differs]: 3 present builds; 0 changed builds, 0 changed rows
+    reduced_shock_effect_on_you [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    reduced_slowing_potency_on_self [Absent]: 6 present builds; 0 changed builds, 0 changed rows
+    remnant_pickup_mana_recovery [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    resonance_endurance_instead_of_power [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    resonance_frenzy_instead_of_endurance [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    resonance_power_instead_of_frenzy [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    sanguis_consecrated_ground_on_use [Absent]: 3 present builds; 0 changed builds, 0 changed rows
+    spell_mana_cost_efficiency [Absent]: 3 present builds; 3 changed builds, 6 changed rows
+    support_increased_armour_break_armour_break_amount_+%_final [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+    thaumaturgical_dynamism [Absent]: 6 present builds; 0 changed builds, 0 changed rows
+    utility_charge_on_kill [Absent]: 14 present builds; 0 changed builds, 0 changed rows
+    volatility_refresh_chance [Absent]: 2 present builds; 0 changed builds, 0 changed rows
+    wind_ground_all_elements [Absent]: 1 present builds; 1 changed builds, 9 changed rows
+    wind_ground_shocked [Absent]: 1 present builds; 0 changed builds, 0 changed rows
+stats that disagree on at least one build (agree/compared):
+    ActiveMinionLimit           0/2
+    ActiveTotemLimit            1/4
+    IgniteDamage                1/4
+    SpiritUnreserved            10/23
+    SpiritUnreservedPercent     10/23
+    CombinedAvg                 2/4
+    TotalEHP                    16/23
+    IgniteDPS                   11/15
+    AverageBurstDamage          17/23
+    TotalDPS                    17/23
+    CombinedDPS                 15/19
+    WithBleedDPS                15/19
+    WithIgniteDPS               15/19
+    WithPoisonDPS               15/19
+    ChaosMaxHit                 19/23
+    TotalDotDPS                 19/23
+    ColdMaxHit                  20/23
+    FireMaxHit                  20/23
+    LightningMaxHit             20/23
+    ManaPerSecondCost           20/23
+    PhysicalMaxHit              20/23
+    CritMultiplier              21/23
+    DeflectChance               21/23
+    LifePerSecondCost           21/23
+    LifeRegenRecovery           21/23
+    ManaRegenRecovery           21/23
+    ReqStr                      21/23
+    ChaosResist                 22/23
+    ChaosResistOverCap          22/23
+    EnergyShieldRegenRecovery   22/23
+    EvadeChance                 22/23
+    Life                        22/23
+    LifeRecoverable             22/23
+    LifeUnreserved              22/23
+    ManaCost                    22/23
+    MeleeEvadeChance            22/23
+    ProjectileEvadeChance       22/23
+    RageRegenRecovery           22/23
+    ReqDex                      22/23
+    ReqInt                      22/23
+    SpellEvadeChance            22/23
+    SpellProjectileEvadeChance  22/23
+    Spirit                      22/23
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 59 filtered out; finished in 29.81s
+

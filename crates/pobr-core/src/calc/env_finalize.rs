@@ -47,6 +47,10 @@ pub fn env_finalize(env: &mut Env) {
     super::charm_spirits::apply(env);
     // Stage 4 (T3): the nine-way buff dispatch (aura factor / curse priority+limit / debuff→enemy).
     buff_pass(env);
+    // Applying a mark/curse can satisfy an outer EnemyModifier condition.
+    // Forward newly eligible entries now; the existing multiset dedup keeps
+    // entries already forwarded before buffs from being added a second time.
+    forward_enemy_modifiers(env);
     // Stage 5 (T5): a second keystone merge pass (for keystones granted by buffs/flasks).
     merge_keystones(env);
     // Stage 6 (T2): equivalent to doActorMisc (flag → buff_definitions → mods).
@@ -82,8 +86,8 @@ pub fn env_finalize(env: &mut Env) {
     // pobr routes all condition consumption through `cfg.conditions`, so
     // this copies the flag aggregation result back after every enemy-side
     // injection source (item EnemyModifier forwarding / buff_pass / ailments) has landed.
-    // Only conditions with enemy base-modifier consumers are bridged here;
-    // the other conditions have their own config/ailment paths.
+    // Bridge the enemy flags consumed by base modifiers and conditional player
+    // damage. Other conditions retain their own config/ailment paths.
     bridge_enemy_condition_flags(env);
     // Exposure is reduced in `perform` once the character's defences are
     // known (`setup_env::reduce_enemy_exposure`): a banner's exposure can be
@@ -539,6 +543,26 @@ pub fn expand_misc_buffs(env: &mut Env) {
     }
 }
 
+/// The definition installs the base magnitude before final Mana is available.
+/// Resolve the caster's granted magnitude once that resource snapshot is ready.
+/// Blackened Heart (`unholy_might_granted_magnitude_+%_per_100_maximum_mana`)
+/// is separate from the recipient's effect of buffs on itself.
+pub(super) fn resolve_unholy_might_magnitude(env: &mut Env) {
+    if !env.cfg.multipliers.contains_key("UnholyMightMagnitude") {
+        return;
+    }
+    let inc = env.player.mod_db.sum(
+        ModType::Inc,
+        &env.cfg,
+        &[ModName::from("UnholyMightGrantedMagnitude")],
+    );
+    if let Some(magnitude) = env.cfg.multipliers.get_mut("UnholyMightMagnitude") {
+        // Add magnitude points before the definition's multiplier tag rounds
+        // them: 100 + 16 must not become 115.999... through 100 * 1.16.
+        *magnitude += *magnitude * inc / 100.0;
+    }
+}
+
 /// Stage 7 (T4 implementation): applies non-damaging ailments -- folds
 /// Chill/Shock's Val/Base/Override and writes the result to the enemy db
 /// (mirrors CalcPerform.lua:3076-3180). Implementation in
@@ -558,9 +582,9 @@ pub fn apply_nondamaging_ailments(env: &mut Env) {
 /// so this copies the aggregated flag result back
 /// (`matches(cfg)` already includes gates like the Effective/EnemyInPresence tags).
 fn bridge_enemy_condition_flags(env: &mut Env) {
-    // Bridge the conditions consumed by enemy base modifiers. The flags retain
-    // their own gates, including the Effective gate on the Daze configuration.
-    const BRIDGED: &[&str] = &["Intimidated", "Crushed", "Dazed"];
+    // The flags retain their own gates: Zone of Control only hinders a cursed
+    // enemy, and Daze's configured state is gated on the Effective view.
+    const BRIDGED: &[&str] = &["Intimidated", "Crushed", "Dazed", "Hindered"];
     for cond in BRIDGED {
         let flag = ModName::from(format!("Condition:{cond}"));
         if env.enemy.mod_db.flag(&env.cfg, flag.as_str()) {

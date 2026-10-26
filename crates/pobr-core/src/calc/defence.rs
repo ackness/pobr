@@ -1,6 +1,6 @@
 use pobr_data::prelude::*;
 
-use crate::{CalcConfig, ModDb};
+use crate::{CalcConfig, ModDb, Modifier};
 
 use super::formula::{FormulaBuilder, FormulaOp, StatFormula};
 use super::{Actor, Env, round};
@@ -217,7 +217,7 @@ const BODY_ARMOUR_SLOT: &str = "bodyarmour";
 /// amount converted into the non-defence targets (Life/Mana).
 ///
 /// `extra_life` / `extra_mana` correspond to PoB2's `NewMod("Extra"..name, "BASE", …)`
-/// (CalcDefence.lua:1383) semantics — `perform` injects them as `MaximumLife` / `MaximumMana`
+/// (CalcDefence.lua:1383) semantics — `perform` injects them as `ExtraLife` / `ExtraMana`
 /// BASE before the minimal calculation (subject to the Life/Mana global factors).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct DefenceResources {
@@ -229,6 +229,9 @@ pub struct DefenceResources {
     /// The amount converted from defence sources into Mana (includes the old dedicated ES→Mana
     /// channel; PoB2 `ExtraMana` BASE semantics).
     pub extra_mana: f64,
+    /// Converted direct-total amounts, added after the destination's INC/MORE scaling.
+    pub extra_life_total: f64,
+    pub extra_mana_total: f64,
     /// The Runic Ward Life and Mana grant ("Gain 5% of maximum Life as Extra
     /// maximum Runic Ward", the game's `base_maximum_life_%_to_gain_as_maximum_ward`):
     /// a Runic Ward base like the others these sources grant, from the same
@@ -370,6 +373,22 @@ pub(crate) fn defence_resource_terms(
     base: &super::ActorBaseStats,
     keystones: &crate::rules::DefenceKeystones,
 ) -> (DefenceResources, [DefenceTerms; MATRIX_DEFENCE_COUNT]) {
+    let (resources, terms, _) = defence_resource_terms_and_totals(db, cfg, base, keystones);
+    (resources, terms)
+}
+
+/// Also retains the source contributions of converted totals for the pool trace.
+/// The derived Extra* names are pool inputs, never inputs to this matrix.
+pub(crate) fn defence_resource_terms_and_totals(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    base: &super::ActorBaseStats,
+    keystones: &crate::rules::DefenceKeystones,
+) -> (
+    DefenceResources,
+    [DefenceTerms; MATRIX_DEFENCE_COUNT],
+    Vec<Modifier>,
+) {
     let mut terms: [DefenceTerms; MATRIX_DEFENCE_COUNT] = Default::default();
     let slot_total = |list: &[(String, f64)]| list.iter().map(|(_, value)| value).sum::<f64>();
     // 1) ConvertTo rate matrix: per-pair cap 100 + row normalization (:1311-1320)
@@ -461,6 +480,7 @@ pub(crate) fn defence_resource_terms(
     // (:1362-1366), shrunk along with the source (:1388). Structured the same way as the global
     // base, serially.
     let mut total_received = [0.0_f64; MATRIX_RESOURCES.len()];
+    let mut total_sources_received: [Vec<Modifier>; MATRIX_RESOURCES.len()] = Default::default();
     let mut kept_total = [0.0_f64; MATRIX_DEFENCE_COUNT];
     let mut extra_ward = 0.0;
     for (s, src) in MATRIX_RESOURCES.iter().enumerate() {
@@ -476,9 +496,24 @@ pub(crate) fn defence_resource_terms(
             .unwrap_or(base_inputs[s] + global_flat + received[s]);
         // Total channel input = `<Src>Total` BASE + amounts converted in by earlier sources'
         // total (:1331/:1364, serial and structured the same way).
-        let total_s =
-            db.sum_global_only(ModType::Base, cfg, &[ModName::from(format!("{src}Total"))])
-                + total_received[s];
+        let total_name = format!("{src}Total");
+        let total_s = db.sum_global_only(ModType::Base, cfg, &[ModName::from(total_name.as_str())])
+            + total_received[s];
+        let mut total_sources: Vec<Modifier> = db
+            .named(&total_name)
+            .filter(|m| m.mod_type == ModType::Base && m.slot_name().is_none() && m.matches(cfg))
+            .filter_map(|m| {
+                let value = m.effective_number(cfg)?;
+                // Conditions and per-stat scaling have already been evaluated.
+                // Preserve attribution, without evaluating the source's tags twice.
+                let mut source = Modifier::number(total_name.as_str(), ModType::Base, value);
+                source.source = m.source.clone();
+                source.origin = m.origin.clone();
+                source.exporter_rule = m.exporter_rule.clone();
+                Some(source)
+            })
+            .collect();
+        total_sources.extend(total_sources_received[s].iter().cloned());
         let is_defence_src = s < MATRIX_DEFENCE_COUNT;
         if is_defence_src {
             let own_gear = terms[s].flat + terms[s].gear_adjusted;
@@ -492,6 +527,7 @@ pub(crate) fn defence_resource_terms(
             // the Extra* output, matching vendor `res.globalBase` semantics).
             received[s] = 0.0;
             total_received[s] = 0.0;
+            total_sources_received[s].clear();
         }
         // Slot snapshot: every target of this source reads from the same snapshot (vendor
         // converts-and-shrinks in the same loop over targets, which is a bug and not reproduced here).
@@ -517,6 +553,25 @@ pub(crate) fn defence_resource_terms(
             if rate <= 0.0 {
                 continue;
             }
+            let target_total = if is_defence_src {
+                total_s * rate / 100.0
+            } else {
+                (total_s * rate / 100.0).round()
+            };
+            // Non-defence sources round the combined amount, not each source
+            // independently. Apportion that same total to its contributors.
+            let total_factor = if total_s != 0.0 {
+                target_total / total_s
+            } else {
+                rate / 100.0
+            };
+            total_sources_received[t].extend(total_sources.iter().map(|source| {
+                let mut converted = source.clone();
+                converted.value =
+                    crate::ModValue::Number(source.value.as_number().unwrap_or(0.0) * total_factor);
+                converted
+            }));
+            total_received[t] += target_total;
             if is_defence_src {
                 // Defence sources: slot bases move per-slot (defence targets go into the same
                 // slot's bucket, subject to the target's slot-scoped factors; non-defence targets
@@ -534,11 +589,9 @@ pub(crate) fn defence_resource_terms(
                 }
                 // The global-base portion (:1355); the Total channel propagates at the same rate (:1362-1363).
                 received[t] += global_s * rate / 100.0;
-                total_received[t] += total_s * rate / 100.0;
             } else {
                 // Non-defence sources: the amount is a whole number, rounded to the nearest.
                 received[t] += (global_s * rate / 100.0).round();
-                total_received[t] += (total_s * rate / 100.0).round();
             }
         }
         if !is_defence_src {
@@ -635,11 +688,13 @@ pub(crate) fn defence_resource_terms(
         }
     }
 
-    // Life/Mana's Total converted-in amount (total_received[3]/[4], vendor :1397
-    // `NewMod("<Res>Total")` fed straight into pool calculation) currently has no output channel
-    // — the only existing Total source in the data is Discipline's EnergyShieldTotal (on the
-    // defence side), which is always 0 when there's no defence→Life/Mana conversion mod; wiring
-    // it up will need scaled_pool to add a direct-add term (not multiplied by inc).
+    let mut converted_totals = Vec::new();
+    for (s, name) in [(3, "ExtraLifeTotal"), (4, "ExtraManaTotal")] {
+        converted_totals.extend(total_sources_received[s].drain(..).map(|mut source| {
+            source.name = ModName::from(name);
+            source
+        }));
+    }
     (
         DefenceResources {
             armour: out[0],
@@ -647,9 +702,12 @@ pub(crate) fn defence_resource_terms(
             energy_shield: out[2],
             extra_life: received[3],
             extra_mana: received[4],
+            extra_life_total: total_received[3],
+            extra_mana_total: total_received[4],
             extra_ward,
         },
         terms,
+        converted_totals,
     )
 }
 

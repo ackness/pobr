@@ -53,8 +53,9 @@ pub(crate) fn herald_skill_names(build: &Build, data: &BuildData) -> Vec<String>
 /// `slot` = the socket group's raw slot name (the PoB XML `slot` attr, e.g. `Weapon 1`,
 /// the same source as curse_priority.json's slot weight key); `socket_index` = the
 /// gem's ordinal in the group (1-based, matching vendor's `ipairs(gemList)` order).
-/// The same effect appearing in multiple groups is deduplicated by id (matching the
-/// existing injection semantics).
+/// Ordinary player Buff copies retain their values and sources for the strongest
+/// same-name modifier merge. Aura and Debuff copies keep first-by-id selection;
+/// curse copies are selected by the curse pass.
 pub(crate) fn buff_skill_specs(
     context: &mut CalculationContext,
     build: &Build,

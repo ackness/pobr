@@ -235,7 +235,9 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<DerivedDetail> {
             }
             "EffMult" => {
                 let damage_type = match kind {
-                    AilmentType::Ignite => DamageType::Fire,
+                    AilmentType::Ignite => {
+                        ailment::ignite_damage_type(&env.player.mod_db, &env.cfg)
+                    }
                     AilmentType::Poison => DamageType::Chaos,
                     _ => DamageType::Physical,
                 };

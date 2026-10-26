@@ -1,0 +1,80 @@
+{
+  "build": "lich-02",
+  "build_code_sha256_prefix16": "e9d27fd6376602fa",
+  "parent_commit": "6f5412d3",
+  "cause": "The quality stat was unmapped; no native modifier for it reached a reader.",
+  "stat": "minion_maximum_life_%_to_gain_as_maximum_energy_shield",
+  "source": {
+    "quality": "data/0.5.5.4.2/overlay/gem_quality_stats.json: SummonSkeletalStormMagesPlayer, main quality, 1 percent per quality",
+    "quality_provenance": "pobr-data-adapter --gem-quality; official-table-export/v1",
+    "source_receipt_sha256": "ab13340900f7b2fbffde2fbfe0f36edd959676ed1e74ad0ac054a80dcfd6094f",
+    "description": "Minions gain 1% of their maximum Life as Extra maximum Energy Shield",
+    "description_file": "data/0.5.5.4.2/overlay/stat_descriptions.json",
+    "retained_handler": "data/0.5.5.4.2/overlay/skill_stat_map.json: MinionModifier LIST -> EnergyShield BASE -> PercentStat(Life, percent=1)",
+    "handler_provenance": "Vendor-derived mapping, cross-checked in vendor SkillStatMap.lua:2641-2642; numerical rounding is an existing compatibility convention, not an in-game measurement."
+  },
+  "convention": {
+    "selected_actor": "PercentStat reads the summoned actor final Life after Life INC/MORE; rounds the granted flat ES upward; ordinary ES INC/MORE and final whole-number rounding follow.",
+    "existing_tests": "crates/pobr-core/tests/aggregation/mod_db.rs::percent_stat_scales_by_stat_percentage_with_ceil",
+    "matrix_distinction": "The generic LifeGainAsEnergyShield matrix transfers base resources before source INC. This specific stat retained a PercentStat(Life) ES grant and does not enter that matrix gain channel.",
+    "native_precedent": "calc/session/preparation.rs snapshots completed player Life for PercentStat; perform_minions resolves recipient Life with the existing scaled_pool helper after buffs and before offence/defence; minion_detail_cfg uses the same completed actor Life.",
+    "intrinsic": "No Life deduction and no change to the existing monster energy_shield=0.15 interpretation."
+  },
+  "frozen_arithmetic_prediction": {
+    "gem_level": 38,
+    "quality": 35,
+    "monster_level": 76,
+    "base_life": "floor(8924 * 0.53) = 4729",
+    "life_inc_percent": 213,
+    "native_life": 14801.77,
+    "native_intrinsic_es_before_final_rounding": 709.35,
+    "quality_es": "ceil(14801.77 * 35 / 100) = 5181",
+    "native_es_before_quality_fix": 709,
+    "native_es_after_quality_fix_prediction": 5890,
+    "es_formula": "round(709.35 + 5181) = 5890",
+    "measurement_status": "Prediction from preserved cached terms, independently covered by the synthetic focused regression; no fresh CLI/corpus/oracle measurement run here.",
+    "oracle_cached_es": 5113,
+    "remaining_difference": "Vendor deducts intrinsic 15% from Life. Its semantic provenance remains unresolved in lich-02-life-evidence.json; this fix does not claim parity or mark that Life row known."
+  },
+  "regression": {
+    "test": "pobr-build --test skills storm_mage_quality_",
+    "qualities": [
+      0,
+      1,
+      35,
+      100
+    ],
+    "life_cases": [
+      "base Life",
+      "213% increased Life",
+      "213% increased Life and Gigantic 20% more Life"
+    ],
+    "es_scaling_cases": [
+      0,
+      50
+    ],
+    "assertions": [
+      "Life unchanged by quality",
+      "recipient ES amount and whole-number final rounding",
+      "unrelated Raised Zombie Life/ES/DPS unchanged",
+      "player Life/ES unchanged",
+      "ES source identifies summon skill and quality stat with evaluated contribution",
+      "ES formula equals output",
+      "Life formula equals output",
+      "Synthetic Life-scaled damage uses minion Life 14801.77, giving 149% more damage (DPS ratio 2.49), and TotalDPS formula equals actual output rather than reading inherited player Life 1000"
+    ],
+    "pre_fix_reproduction": "Quality 35 with base Life 4729: observed 709 ES, expected 2365 ES.",
+    "result": "2 passed, 531 filtered out",
+    "tests": [
+      "storm_mage_quality_gains_es_from_its_own_life",
+      "storm_mage_quality_life_snapshot_matches_offence_details"
+    ]
+  },
+  "validation": {
+    "regen": "passed; 14 unit + 1 integration tests; no tracked generated artifact drift",
+    "clippy": "passed: cargo clippy -q -p pobr-core -p pobr-build --lib --tests -- -D warnings",
+    "fmt": "passed: cargo fmt --check; git diff --check"
+  },
+  "scope": "No parser/data changes, new resource model, event model, intrinsic Life deduction, CLI/oracle/fullgate/triage/holdout runs, or child agents.",
+  "implementation_commit": "a7669664"
+}

@@ -5,6 +5,284 @@ use pobr_core::calc::{
 use pobr_core::{CalcConfig, Modifier};
 use pobr_data::prelude::*;
 
+mod resistance_scaled_defences {
+    use super::*;
+    use pobr_core::ModTag;
+    use pobr_core::calc::session::{BuffKind, BuffSpec};
+
+    const LINES: [&str; 4] = [
+        "Armour is increased by Uncapped Fire Resistance",
+        "Energy Shield is increased by Uncapped Cold Resistance",
+        "Evasion Rating is increased by Uncapped Lightning Resistance",
+        "Elemental Ailment Threshold is increased by Uncapped Chaos Resistance",
+    ];
+
+    fn environment(enabled: bool) -> Env {
+        let mut env = Env::new(Actor::new(
+            90,
+            ActorBaseStats {
+                life: 1000.0,
+                armour: 100.0,
+                evasion: 100.0,
+                energy_shield: 100.0,
+                fire_resistance: 125.0,
+                cold_resistance: 150.0,
+                lightning_resistance: 175.0,
+                ..Default::default()
+            },
+        ))
+        .with_config(CalcConfig::default().with_condition("SkinActive", enabled));
+        for line in LINES {
+            let parsed = crate::support::parse_mod(line).unwrap();
+            assert!(parsed.is_complete(), "{line}: {parsed:?}");
+            for modifier in parsed.mods {
+                let modifier = modifier
+                    .with_tag(ModTag::condition("SkinActive", false))
+                    .with_origin(
+                        ModifierSource::new(SourceId::new(SourceKind::Item, "skin"))
+                            .with_slot("bodyarmour")
+                            .with_raw_text(line),
+                    );
+                // Two sources of the same property establish it once.
+                env.player.mod_db.add_list([modifier.clone(), modifier]);
+            }
+        }
+        env.player
+            .mod_db
+            .add_mod(Modifier::number("ChaosResist", ModType::Base, 50.0));
+        for name in ["Armour", "Evasion", "EnergyShield", "AilmentThreshold"] {
+            env.player.mod_db.add_list([
+                Modifier::number(name, ModType::Inc, 10.0),
+                Modifier::number(name, ModType::More, 20.0),
+            ]);
+        }
+        env
+    }
+
+    #[test]
+    fn uncapped_resistance_adds_to_existing_increases_once_with_item_origin() {
+        for enabled in [false, true] {
+            let mut env = environment(enabled);
+            perform(&mut env).unwrap();
+            let expected = if enabled {
+                [282.0, 312.0, 342.0, 960.0]
+            } else {
+                [132.0, 132.0, 132.0, 660.0]
+            };
+            let actual = [
+                env.player.output.armour,
+                env.player.output.energy_shield,
+                env.player.output.evasion,
+                env.player.output.ailment_threshold,
+            ];
+            for (actual, expected) in actual.into_iter().zip(expected) {
+                assert!((actual - expected).abs() < 1e-9, "{actual} != {expected}");
+            }
+            assert_eq!(env.player.output.cold_resistance, 75.0);
+            if enabled {
+                let derived = env
+                    .player
+                    .mod_db
+                    .iter_mods()
+                    .find(|m| {
+                        m.name.as_str() == "EnergyShield" && m.value.as_number() == Some(150.0)
+                    })
+                    .unwrap();
+                let origin = derived.origin.as_ref().unwrap();
+                assert_eq!(origin.slot.as_deref(), Some("bodyarmour"));
+                assert_eq!(origin.raw_text.as_deref(), Some(LINES[1]));
+            }
+        }
+    }
+
+    #[test]
+    fn resistance_buff_and_charge_snapshot_scales_conversion_destination() {
+        let mut env = environment(true);
+        env.cfg = env
+            .cfg
+            .with_mode_buffs(true)
+            .with_condition("UsePowerCharges", true);
+        env.player.mod_db.add_list([
+            Modifier::number("ColdResist", ModType::Base, 5.0).with_tag(ModTag::multiplier(
+                "PowerCharge",
+                1.0,
+                None,
+            )),
+            Modifier::number("ArmourConvertToEnergyShield", ModType::Base, 100.0),
+        ]);
+        env.buff_skills.push(BuffSpec {
+            name: "Resistance buff".into(),
+            kind: BuffKind::Buff,
+            skill_id: "resistance-buff".into(),
+            mods: vec![Modifier::number("ColdResist", ModType::Base, 25.0)],
+            magnitude: 1.0,
+            slot: None,
+            socket_index: 1,
+            is_mark: false,
+            ignore_curse_limit: false,
+            local_effect_inc: 0.0,
+            local_effect_more: 1.0,
+            skill_types: pobr_data::skill::SkillTypes::NONE,
+        });
+        perform(&mut env).unwrap();
+        // 150 + 3 * 5 + 25 resistance, plus 10% existing increase and 20% more.
+        assert_eq!(env.player.output.armour, 0.0);
+        assert_eq!(env.player.output.energy_shield, 720.0);
+    }
+
+    #[test]
+    fn uncapped_resistance_respects_overrides_and_negative_totals() {
+        let mut env = environment(true);
+        env.player.mod_db.add_list([
+            Modifier::number("ColdResist", ModType::Override, -20.0),
+            Modifier::number("FireResist", ModType::Override, 1009.0),
+        ]);
+        perform(&mut env).unwrap();
+        assert_eq!(env.player.output.cold_resistance, -20.0);
+        assert_eq!(env.player.output.energy_shield, 108.0);
+        assert_eq!(env.player.output.armour, 1343.0);
+    }
+}
+
+mod hindered {
+    use super::*;
+    use pobr_core::calc::session::{BuffKind, BuffSpec};
+
+    fn environment(curse: bool, zone_of_control: bool) -> Env {
+        let mut env = Env::new(Actor::new(
+            90,
+            ActorBaseStats {
+                life: 1000.0,
+                action_rate: 1.0,
+                ..Default::default()
+            },
+        ))
+        .with_config(
+            CalcConfig::spell()
+                .with_mode_effective(true)
+                .with_mode_buffs(true),
+        );
+        let mut lines = vec![
+            "Adds 100 to 100 Fire Damage",
+            "30% increased Damage with Hits against Hindered Enemies",
+            "25% increased Damage with Hits against Hindered Enemies",
+        ];
+        if zone_of_control {
+            lines.push("Enemies you Curse are Hindered, with 15% reduced Movement Speed");
+        }
+        for line in lines {
+            let parsed = crate::support::parse_mod(line).unwrap();
+            assert!(parsed.is_complete(), "{line}: {parsed:?}");
+            env.player.mod_db.add_list(parsed.mods);
+        }
+        if curse {
+            env.buff_skills.push(BuffSpec {
+                name: "Temporal Chains".into(),
+                kind: BuffKind::Curse,
+                skill_id: "TemporalChainsPlayer".into(),
+                mods: vec![Modifier::number("ActionSpeed", ModType::More, -10.0)],
+                magnitude: 1.0,
+                slot: None,
+                socket_index: 1,
+                is_mark: false,
+                ignore_curse_limit: false,
+                local_effect_inc: 0.0,
+                local_effect_more: 1.0,
+                skill_types: pobr_data::skill::SkillTypes::NONE,
+            });
+        }
+        env
+    }
+
+    #[test]
+    fn cursed_enemies_are_hindered_after_the_curse_pass() {
+        for (curse, zone_of_control) in [(false, true), (true, false), (true, true)] {
+            let mut env = environment(curse, zone_of_control);
+            assert!(!env.cfg.condition("EnemyCursed"));
+            perform(&mut env).unwrap();
+            let hindered = curse && zone_of_control;
+            assert_eq!(env.cfg.condition("EnemyHindered"), hindered);
+            let expected = if hindered { 155.0 } else { 100.0 };
+            assert!((env.player.output.dps - expected).abs() < 1e-9);
+        }
+    }
+}
+
+#[test]
+fn marked_enemy_modifiers_use_the_applied_mark_without_duplicate_forwarding() {
+    use pobr_core::ModValue;
+    use pobr_core::calc::session::{BuffKind, BuffSpec};
+
+    for (mark_present, limit) in [(false, 1), (true, 0), (true, 1)] {
+        let mut env = Env::new(Actor::new(
+            90,
+            ActorBaseStats {
+                life: 1000.0,
+                action_rate: 1.0,
+                ..Default::default()
+            },
+        ))
+        .with_config(
+            CalcConfig::spell()
+                .with_mode_buffs(true)
+                .with_mode_effective(true),
+        );
+        for line in [
+            "Adds 100 to 100 Fire Damage",
+            "Enemies you Mark take 10% increased Damage",
+            "Enemies you Mark have 10% reduced Accuracy Rating",
+        ] {
+            let parsed = crate::support::parse_mod(line).unwrap();
+            assert!(parsed.is_complete(), "{line}: {parsed:?}");
+            env.player.mod_db.add_list(parsed.mods);
+        }
+        env.player.mod_db.add_mod(Modifier::number(
+            "EnemyMarkLimit",
+            ModType::Base,
+            f64::from(limit - 1),
+        ));
+        env.player.mod_db.add_mod(
+            Modifier::new(
+                "EnemyModifier",
+                ModType::List,
+                ModValue::NestedMods(vec![Modifier::number("DamageTaken", ModType::Inc, 5.0)]),
+            )
+            .with_source("always-on enemy modifier"),
+        );
+        if mark_present {
+            env.buff_skills.push(BuffSpec {
+                name: "Sniper's Mark".into(),
+                kind: BuffKind::Curse,
+                skill_id: "SnipersMarkPlayer".into(),
+                mods: vec![Modifier::number("MovementSpeed", ModType::Inc, -10.0)],
+                magnitude: 1.0,
+                slot: None,
+                socket_index: 1,
+                is_mark: true,
+                ignore_curse_limit: false,
+                local_effect_inc: 0.0,
+                local_effect_more: 1.0,
+                skill_types: pobr_data::skill::SkillTypes::NONE,
+            });
+        }
+        perform(&mut env).unwrap();
+        let marked = mark_present && limit > 0;
+        assert_eq!(env.cfg.condition("EnemyMarked"), marked);
+        let expected = if marked { 115.0 } else { 105.0 };
+        assert!(
+            (env.player.output.dps - expected).abs() < 1e-9,
+            "marked={marked}: {} != {expected}",
+            env.player.output.dps
+        );
+        assert_eq!(
+            env.enemy
+                .mod_db
+                .sum(ModType::Inc, &env.cfg, &["Accuracy".into()]),
+            if marked { -10.0 } else { 0.0 }
+        );
+    }
+}
+
 mod doryani {
     use super::*;
     use pobr_core::ModTag;

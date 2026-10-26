@@ -229,6 +229,14 @@ pub(super) fn inject_buffs_and_heralds(
         }
         session.add_buff_skill(spec);
     }
+    for spec in pobr_core::skill_env::flame_wall_buff_specs(
+        build,
+        data,
+        &super::skill::resolve::gem_property_bonuses(build, data),
+        session.config(),
+    ) {
+        session.add_buff_skill(spec);
+    }
     // 4b'. Player-side buffs granted by supports (Precision I/II → Accuracy INC,
     //     sup_dex.lua:4181-4250) → BuffSpec(kind=Buff); buff_pass's Buff branch
     //     (CalcPerform.lua:1949-1962) applies the BuffEffect multiplier zone before merging into the player db.
@@ -337,8 +345,10 @@ pub(super) fn inject_connected_support_counts(
 /// Sapphire. Items do not keep their name, so the line identifies it.
 fn is_grand_spectrum(jewel: &pobr_data::item::Item) -> bool {
     jewel
-        .modifier_texts
+        .implicit_texts
         .iter()
+        .chain(&jewel.modifier_texts)
+        .chain(&jewel.enchant_texts)
         .any(|line| line.ends_with("per socketed Grand Spectrum"))
 }
 
@@ -478,7 +488,7 @@ pub(super) fn per_slot_attribute_requirements(
 ) -> Vec<(String, f64)> {
     let mut out = Vec::new();
     for (slot, item) in build.equipped_items() {
-        let Some(def) = data.base_items.get(&item.base.to_string()) else {
+        let Some(def) = data.base_item(&item.base.to_string()) else {
             continue;
         };
         let slot_key = slot.id();
@@ -980,8 +990,7 @@ pub(super) fn inject_items(
         // double-count (13-G11).
         let has_spirit_base = item.rolled_defence.spirit.is_some()
             || data
-                .base_items
-                .get(&item.base.to_string())
+                .base_item(&item.base.to_string())
                 .and_then(|b| b.spirit)
                 .is_some();
         if has_spirit_base {
@@ -1296,13 +1305,25 @@ pub(super) fn stage_inject_jewels(
             };
             session.note_line(&source, text, LineFate::Parsed);
             for mut m in parsed_mods {
+                let origin = ModifierSource::new(source.clone()).with_raw_text(text.clone());
+                m = m.with_origin(origin);
+                // Minion bonuses are nested inside a LIST modifier. Scale
+                // that payload with the existing precision rules, as radius
+                // jewel grants already do, while preserving its source/tags.
+                if let Some(scale) = scale
+                    && matches!(m.value, pobr_core::ModValue::NestedMods(_))
+                {
+                    let mut scaled = pobr_core::ModDb::new();
+                    scaled.scale_add_mod(m, scale, &ctx.data.high_precision);
+                    mods.extend(scaled.iter_mods().cloned());
+                    continue;
+                }
                 if let Some(scale) = scale
                     && let pobr_core::ModValue::Number(v) = m.value
                 {
                     m.value = pobr_core::ModValue::Number(scale_trunc_2dp(v, scale));
                 }
-                let origin = ModifierSource::new(source.clone()).with_raw_text(text.clone());
-                mods.push(m.with_origin(origin));
+                mods.push(m);
             }
         }
         session.add_modifiers(mods);

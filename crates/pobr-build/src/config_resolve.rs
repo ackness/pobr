@@ -59,8 +59,10 @@ use crate::handlers::{build_registry, campaign_progress_from_config, enemy_tier_
 /// player-side snapshot is not wired up. Retire the three exposure mappings when
 /// that channel is activated, or exposure will be counted twice.
 const EXPLICIT_BOOLEAN_CONDITIONS: &[(&str, &str)] = &[
+    ("companionInPresence", "CompanionInPresence"),
     ("conditionFinality", "Finality"),
     ("conditionFullMana", "FullMana"),
+    ("flameWallAddedDamage", "FlameWallAddedDamage"),
     ("conditionBeiraIgniteActive", "BeiraIgniteActive"),
     ("conditionOnConsecratedGround", "OnConsecratedGround"),
     ("conditionAncestrallyBoosted", "AncestrallyBoosted"),
@@ -244,11 +246,15 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
         };
     };
 
-    let outcome = interpret(
-        &catalog.options,
-        &build.config.raw_inputs,
-        &build_registry(),
-    );
+    // This default needs skill information, unavailable to the generic
+    // interpreter. prepare selects it only when an enabled skill creates a
+    // companion. An explicit snapshot (including false) still takes priority.
+    let mut inputs = build.config.raw_inputs.clone();
+    inputs
+        .values
+        .entry("companionInPresence".into())
+        .or_insert(ConfigInputValue::Bool(false));
+    let outcome = interpret(&catalog.options, &inputs, &build_registry());
 
     merge_conditions(&mut config.conditions, &outcome);
     merge_multipliers(&mut config.multipliers, &outcome);

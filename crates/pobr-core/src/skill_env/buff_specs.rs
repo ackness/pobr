@@ -30,7 +30,9 @@ use crate::skill_env::stat_map::{
 use crate::skill_env::support::{GroupSupportJudgement, SupportCandidate, judge_group_supports};
 use crate::skill_env::{EnabledGroup, GemInput};
 
+mod flame_wall;
 mod minions;
+pub use flame_wall::flame_wall_buff_specs;
 pub(super) use minions::minion_curse_specs;
 
 /// The lookup surface the buff/warcry spec builders need.
@@ -48,7 +50,7 @@ impl<T: StatSetLookup + EffectLookup + StatMapLookup + GemPropertyLookup + Minio
 /// (the engine-semantics counterpart of `pobr-build`'s `judge_group_supports`).
 pub fn group_judgement<'a>(
     group: &EnabledGroup<'a>,
-    data: &'a (dyn BuffEnv + 'a),
+    data: &'a (impl EffectLookup + ?Sized),
     skill_id: &str,
 ) -> GroupSupportJudgement {
     use std::collections::HashSet;
@@ -96,7 +98,7 @@ pub fn group_judgement<'a>(
 /// any of a gem's effects modifies the gem.
 pub fn gem_judgements<'a>(
     group: &EnabledGroup<'a>,
-    data: &'a (dyn BuffEnv + 'a),
+    data: &'a (impl EffectLookup + MinionLookup + ?Sized),
     gem_skill_id: &str,
 ) -> Vec<GroupSupportJudgement> {
     let secondary = data
@@ -106,7 +108,10 @@ pub fn gem_judgements<'a>(
         .filter(|id| data.effect(id).is_some_and(|e| !e.is_support));
     std::iter::once(gem_skill_id)
         .chain(secondary)
-        .map(|id| group_judgement(group, data, id))
+        .flat_map(|id| {
+            std::iter::once(group_judgement(group, data, id))
+                .chain(super::minions::minion_support_judgements(group, data, id))
+        })
         .collect()
 }
 
@@ -394,12 +399,14 @@ pub fn buff_skill_specs(
                         set_key.as_deref(),
                         buff_skill,
                     );
-                    if (debuff_mods.is_empty() && buff_mods.is_empty())
-                        || !seen.insert(skill_id.to_string())
-                    {
+                    if debuff_mods.is_empty() && buff_mods.is_empty() {
                         continue;
                     }
-                    if !debuff_mods.is_empty() {
+                    let first_copy = seen.insert(skill_id.to_string());
+                    // Keep the existing debuff selection. Ordinary player buffs
+                    // must reach the same-name strongest-modifier merger with
+                    // every usable copy, including its value and source.
+                    if first_copy && !debuff_mods.is_empty() {
                         specs.push(BuffSpec {
                             name: buff_skill_name(data, skill_id),
                             kind: BuffKind::Debuff,
@@ -431,6 +438,12 @@ pub fn buff_skill_specs(
                                 skill_stats::REMNANT_EFFECT,
                             ]
                             .into_iter()
+                            // Mana Remnants grants its regeneration while active,
+                            // independently of the effect of a collected Remnant.
+                            .filter(|stat| {
+                                *stat != skill_stats::REMNANT_EFFECT
+                                    || skill_id != "ManaRemnantsPlayer"
+                            })
                             .map(|stat| {
                                 stat_on_skill_and_supports(&group, data, gem, skill_id, level, stat)
                             })

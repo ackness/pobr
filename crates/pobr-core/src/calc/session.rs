@@ -1209,12 +1209,16 @@ impl CalculationSession {
     /// aggregated under its own name.
     pub fn stat_mod_names(&self, stat: &str) -> Vec<ModName> {
         let names: &[&str] = match stat {
-            "Life" => &["MaximumLife"],
-            "Mana" => &["MaximumMana"],
+            "Life" => &["MaximumLife", "ExtraLife", "LifeTotal", "ExtraLifeTotal"],
+            "Mana" => &["MaximumMana", "ExtraMana", "ManaTotal", "ExtraManaTotal"],
             "FireResist" => &["FireResistance", "FireResist", "ElementalResist"],
             "ColdResist" => &["ColdResistance", "ColdResist", "ElementalResist"],
             "LightningResist" => &["LightningResistance", "LightningResist", "ElementalResist"],
             "ChaosResist" => &["ChaosResistance", "ChaosResist"],
+            "ActiveTotemLimit" if self.env.cfg.condition("BallistaSkill") => {
+                &["TotemLimitBase", "ActiveTotemLimit", "ActiveBallistaLimit"]
+            }
+            "ActiveTotemLimit" => &["TotemLimitBase", "ActiveTotemLimit"],
             // A rain's hits come as its arrows land, at projectile speed.
             "ActionRate"
                 if super::rain::is_rain(&self.env.player.mod_db, &self.env.cfg)
@@ -1527,7 +1531,7 @@ impl CalculationSession {
             .pass_value("TotalHitAvg", pass)
             .unwrap_or(env.player.output.total_hit_avg);
         ((hit.crit_pass.total_hit_avg - average).abs() <= 1e-6)
-            .then(|| hit.damage_terms(db, cfg, input))
+            .then(|| hit.damage_terms(db, input))
             .flatten()
     }
 
@@ -1541,8 +1545,9 @@ impl CalculationSession {
         let env = &self.env;
         let scopes = perform::pass_scopes(env);
         let cfg = scopes.get(pass).map_or(&env.cfg, |(_, cfg, _)| cfg);
-        let cfg_hit = super::crit_pass::non_crit_cfg(cfg);
         let db = &env.player.mod_db;
+        let cfg_hit =
+            super::crit_pass::non_crit_cfg(&super::offence::hit_cfg(db, &env.enemy.mod_db, cfg));
         HitDamageMods {
             shared: super::damage::evaluate_generic_scaling(db, &cfg_hit),
             by_type: types
@@ -1568,8 +1573,9 @@ impl CalculationSession {
         let env = &self.env;
         let scopes = perform::pass_scopes(env);
         let cfg = scopes.get(pass).map_or(&env.cfg, |(_, cfg, _)| cfg);
-        let cfg_hit = super::crit_pass::non_crit_cfg(cfg);
         let db = &env.player.mod_db;
+        let cfg_hit =
+            super::crit_pass::non_crit_cfg(&super::offence::hit_cfg(db, &env.enemy.mod_db, cfg));
         types
             .iter()
             .map(|ty| super::damage::evaluate_source_lines(db, &cfg_hit, *ty))
@@ -1598,7 +1604,7 @@ impl CalculationSession {
             (hit.dps * factor, env.player.output.dps)
         };
         ((expected - dps).abs() <= 1e-6)
-            .then(|| hit.mitigation_terms(db, enemy, cfg))
+            .then(|| hit.mitigation_terms(db, enemy))
             .flatten()
     }
 
@@ -1632,8 +1638,12 @@ impl CalculationSession {
         let Some((_, cfg, _)) = scopes.get(pass) else {
             return Vec::new();
         };
-        let cfg_hit = super::crit_pass::non_crit_cfg(cfg);
         let enemy = &self.env.enemy.mod_db;
+        let cfg_hit = super::crit_pass::non_crit_cfg(&super::offence::hit_cfg(
+            &self.env.player.mod_db,
+            enemy,
+            cfg,
+        ));
         types
             .iter()
             .map(|ty| {
@@ -1740,6 +1750,9 @@ impl CalculationSession {
     /// otherwise.
     fn stat_cfg(&self, stat: &str, pass: usize) -> std::borrow::Cow<'_, CalcConfig> {
         use std::borrow::Cow;
+        if stat == "ActiveTotemLimit" {
+            return Cow::Owned(super::totem::limit_cfg(&self.env.cfg));
+        }
         if let Some(kind) = ailment_of(stat) {
             return Cow::Owned(super::ailment::ailment_scoped_cfg(&self.env.cfg, kind));
         }
@@ -1834,16 +1847,37 @@ impl CalculationSession {
         }
     }
 
-    /// The steps of minion `index`'s final resistance or offence `stat`
+    /// Rebuild the actor snapshot used after its buffs were applied.
+    fn minion_detail_cfg(&self, minion: &super::Actor) -> CalcConfig {
+        let mut cfg = perform::minion_cfg(&self.env, minion);
+        // Match the actor-owned snapshot used by perform_minions' defence
+        // pass, including PercentStat(Life) grants of extra Energy Shield.
+        cfg.stats.insert("Life".into(), minion.output.life);
+        super::skill_mechanics::snapshot_remaining_chains(
+            &minion.mod_db,
+            &self.env.enemy.mod_db,
+            &mut cfg,
+        );
+        cfg
+    }
+
+    /// The steps of minion `index`'s Energy Shield, resistance or offence `stat`
     /// (`ActionRate`, `HitChance`, `TotalHitAvg`, `TotalDPS`, `CritChance`,
     /// `CritMultiplier`), as its calculation took them. `None` for any other
     /// stat, or when the steps do not end at the minion's DPS.
     pub fn minion_stat_formula(&self, index: usize, stat: &str) -> Option<super::StatFormula> {
         let minion = self.env.minions.get(index)?;
-        let cfg = perform::minion_cfg(&self.env, minion);
+        let cfg = self.minion_detail_cfg(minion);
         let mut input = super::MinimalInput::from(minion.base);
         input.enemy_evasion = super::setup_env::enemy_evasion(&self.env.enemy, &cfg);
         let formula = match stat {
+            "EnergyShield" => {
+                let db = &minion.mod_db;
+                let keystones = crate::rules::DefenceKeystones::from_db(db, &cfg);
+                let (_, [_, _, terms]) =
+                    super::defence::defence_resource_terms(db, &cfg, &minion.base, &keystones);
+                terms.formula(db, &cfg, stat)
+            }
             "FireResist" | "ColdResist" | "LightningResist" | "ChaosResist" => {
                 let element = stat.strip_suffix("Resist")?;
                 super::offence::resolve_resistance(
@@ -1857,7 +1891,11 @@ impl CalculationSession {
             }
             _ => self.actor_pass_formula(&minion.mod_db, stat, &cfg, &input)?,
         };
-        let consistent = stat != "TotalDPS" || (formula.value - minion.output.dps).abs() <= 1e-6;
+        let consistent = match stat {
+            "TotalDPS" => (formula.value - minion.output.dps).abs() <= 1e-6,
+            "EnergyShield" => (formula.value - minion.output.energy_shield).abs() <= 1e-6,
+            _ => true,
+        };
         consistent.then_some(formula)
     }
 
@@ -1867,7 +1905,7 @@ impl CalculationSession {
         let Some(minion) = self.env.minions.get(index) else {
             return Vec::new();
         };
-        let cfg = perform::minion_cfg(&self.env, minion);
+        let cfg = self.minion_detail_cfg(minion);
         minion
             .mod_db
             .evaluate_names(&cfg, &self.minion_stat_names(&cfg, stat))
@@ -1878,7 +1916,7 @@ impl CalculationSession {
         let Some(minion) = self.env.minions.get(index) else {
             return (0.0, 0.0, 1.0);
         };
-        let cfg = perform::minion_cfg(&self.env, minion);
+        let cfg = self.minion_detail_cfg(minion);
         let names = self.minion_stat_names(&cfg, stat);
         let db = &minion.mod_db;
         (
@@ -1891,7 +1929,7 @@ impl CalculationSession {
     /// The steps from minion `index`'s base Life to its maximum Life.
     pub fn minion_life_formula(&self, index: usize) -> Option<super::StatFormula> {
         let minion = self.env.minions.get(index)?;
-        let cfg = perform::minion_cfg(&self.env, minion);
+        let cfg = self.minion_detail_cfg(minion);
         Some(
             super::offence::pool_terms(&minion.mod_db, &cfg, minion.base.life, "MaximumLife")
                 .formula(),
@@ -1933,7 +1971,7 @@ fn ailment_of(stat: &str) -> Option<AilmentType> {
 /// Conditions a pass of the calculation works out for itself, for the hit
 /// or hand it is computing or from what the character has in effect. Absent
 /// from the condition map, they do not hold; nothing is missing.
-pub const CONDITIONS_SET_BY_A_PASS: [&str; 26] = [
+pub const CONDITIONS_SET_BY_A_PASS: [&str; 28] = [
     // `calc::offence` and `calc::crit_pass`: the critical and the
     // non-critical half of a hit.
     "CriticalStrike",
@@ -1951,9 +1989,10 @@ pub const CONDITIONS_SET_BY_A_PASS: [&str; 26] = [
     // `calc::buff_pass`: curses and marks on the enemy.
     "EnemyCursed",
     "EnemyMarked",
-    // `env_finalize`: the enemy's own Intimidated and Crushed flags.
+    // `env_finalize`: states granted by active enemy-side modifiers.
     "EnemyIntimidated",
     "EnemyCrushed",
+    "EnemyHindered",
     // `calc::armour_break`: derived from the enemy's remaining Armour.
     "EnemyArmourBroken",
     "EnemyArmourFullyBroken",
@@ -1962,6 +2001,7 @@ pub const CONDITIONS_SET_BY_A_PASS: [&str; 26] = [
     // `bridge_player_conditions`: from the flag of what grants it.
     "CanUseBondedModifiers",
     "CanBeElusive",
+    "BallistaSkill",
     "SorceryWard",
     "CeremonialAblution",
     // Set while the character is prepared (`session/preparation.rs`).

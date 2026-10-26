@@ -453,7 +453,16 @@ fn collect_player_buff_mod(
     // has flags=ModFlag.Spell, so the matching semantics agree on both
     // sides; tokens outside the subset are still reported wholesale). The
     // `Hit` ModFlag routes to the HIT keyword (see translate_mod_flags).
-    let (flags, kw_from_flags) = translate_mod_flags(element.flags.iter().map(String::as_str))?;
+    // Alchemist's Boon uses the same Speed + Attack/Cast encoding as
+    // skill-local speed. Consume that discriminator before translating the
+    // remaining scope; Cast is not itself a PoBR modifier flag.
+    let (speed_name, flags, kw_from_flags) = if name == "Speed" {
+        let (name, flags, keywords) = translated_mod_name_parts(name, &element.flags, &[])?;
+        (Some(name), flags, keywords)
+    } else {
+        let (flags, keywords) = translate_mod_flags(element.flags.iter().map(String::as_str))?;
+        (None, flags, keywords)
+    };
     if !element.keyword_flags.is_empty() {
         return Err(UnsupportedReason::UnsupportedKeywordFlags(
             element.keyword_flags.join("|"),
@@ -495,7 +504,9 @@ fn collect_player_buff_mod(
     // name passes through unchanged; the orchestration layer bridges it into
     // cfg.multipliers at the buff-specs injection point. Dropping it leaves
     // the payload's limitVar at zero and suppresses the whole buff.
-    let names = if mod_type == ModType::Base && name.starts_with("Multiplier:") {
+    let names = if let Some(speed_name) = speed_name {
+        vec![speed_name]
+    } else if mod_type == ModType::Base && name.starts_with("Multiplier:") {
         vec![name]
     } else {
         translate_player_buff_mod_name(name)?

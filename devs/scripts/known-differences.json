@@ -2,6 +2,46 @@
   "_doc": "Reference rows `mise run triage` files as known: differences the repository already explains, so a triage lists only what is left to look at. `build` is a fragment of the build folder's name (or a synthetic skill-sweep case id), `xml_sha256`, when present, binds an entry to the exact decoded UTF-8 XML so short rank names cannot match another snapshot; `stats` the rows it explains, `reason` where the explanation is. Synthetic case entries document sweep findings; skill-sweep does not yet consume this registry. Add an entry when a difference is documented as deliberate; remove it when the engine changes.",
   "differences": [
     {
+      "build": "blood-mage-01",
+      "xml_sha256": "6731ace4053ed644fad71db58df00dd53f95f6134ab82400f20dfe38c41a8592",
+      "stats": [
+        "TotalEHP"
+      ],
+      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/maintainer-guide.md, Runic Ward)."
+    },
+    {
+      "build": "blood-mage-02",
+      "xml_sha256": "9028072b12545625f828e24b61964792ded89293197cc6687bb04ee8bc50db57",
+      "stats": [
+        "TotalEHP"
+      ],
+      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/maintainer-guide.md, Runic Ward)."
+    },
+    {
+      "build": "blood-mage-04",
+      "xml_sha256": "7bdfe0518be6239fb10e2bf8fd5e9642adc324eb45c0089207730b122f38b4ac",
+      "stats": [
+        "TotalEHP"
+      ],
+      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/maintainer-guide.md, Runic Ward)."
+    },
+    {
+      "build": "blood-mage-05",
+      "xml_sha256": "5ca31c6cf90bee9f36b54aa9bda0fdeba27f63c93a566ad9cadb24cff6d66880",
+      "stats": [
+        "TotalEHP"
+      ],
+      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/maintainer-guide.md, Runic Ward)."
+    },
+    {
+      "build": "blood-mage-07",
+      "xml_sha256": "4ce93fd35db613a0405cf8d7d4182f7ae3e6f972325b67666ce63b39b1aa8a27",
+      "stats": [
+        "TotalEHP"
+      ],
+      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/maintainer-guide.md, Runic Ward)."
+    },
+    {
       "build": "acolyte-of-chayula-02",
       "xml_sha256": "bbcd9b13fc221216752d1efd65a4e06b5566182036daac2a33c2a4e046375a0a",
       "stats": [
@@ -20,7 +60,7 @@
         "SpellEvadeChance",
         "SpellProjectileEvadeChance"
       ],
-      "reason": "Frozen 2026-10-26 Forbidden Rites Amazon has 8993 Evasion and level-82 enemy Accuracy 2114. The strongest Blind II contributes one 20% effect increase (24% less accuracy): evade 55%, deflect 16. Pinned PoB2 counts the Pounce gem effect three times (32% less accuracy): evade 58%, deflect 18. Preserve the strongest single Blind effect; Energy Shield and TotalEHP remain unclassified. See docs/maintainer-guide.md, Blind effect."
+      "reason": "Frozen 2026-10-26 Forbidden Rites Amazon has 8993 Evasion and level-82 enemy Accuracy 2114. The strongest Blind II contributes one 20% effect increase (24% less accuracy): evade 55%, deflect 16. Pinned PoB2 counts the Pounce gem effect three times (32% less accuracy): evade 58%, deflect 18. Preserve the strongest single Blind effect. The separate Energy Shield error is fixed by alternate-tree Discipline requirements; this Blind entry does not classify TotalEHP. See docs/maintainer-guide.md, Blind effect."
     },
     {
       "build": "blood-mage-03",
@@ -689,6 +729,671 @@
       ],
       "reason": "ActiveTotemLimit starts from the Spell Totem gem's own level stat base_number_of_totems_allowed (game GrantedEffectsPerLevel: 2 at level 20, 3 from level 23) plus BASE ActiveTotemLimit lines such as Unnamed Heartwood's +1; PoB2's limit for the skill a Spell Totem uses leaves out the gem's level stat, so the reference shows 2 where PoBR's reference basis shows 3 (game mode doubles it with Ancestral Bond, an exporter-absent rule). Display only; damage still counts one totem (docs/maintainer-guide.md, calc::totem)."
 
+    },
+    {
+      "build": "deadeye-03",
+      "xml_sha256": "0180abfe4b1ad6e188fddafa92fd3579e61550bf0fbb8fd1677a00ad6b7ad535",
+      "stats": [
+        "DeflectChance"
+      ],
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+    },
+    {
+      "build": "infernalist-01",
+      "xml_sha256": "64b4561f882282f739c8399ebe30cc5c4dc7a2cbc2be4759d982359e98caf4a0",
+      "stats": [
+        "EvadeChance",
+        "MeleeEvadeChance",
+        "ProjectileEvadeChance",
+        "SpellEvadeChance",
+        "SpellProjectileEvadeChance"
+      ],
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+    },
+    {
+      "build": "lich-08",
+      "xml_sha256": "4a96b83e01dc7c65f78f75570515b8b672f379a6defdbf127b8c7bb6212924f4",
+      "stats": [
+        "DeflectChance"
+      ],
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 100%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+    },
+    {
+      "build": "martial-artist-01",
+      "xml_sha256": "af3741fb656b07a3b5e341f08a2330192c64d5f9edd6d284984d743a7c60fa6b",
+      "stats": [
+        "DeflectChance",
+        "EvadeChance",
+        "MeleeEvadeChance",
+        "ProjectileEvadeChance",
+        "SpellEvadeChance",
+        "SpellProjectileEvadeChance"
+      ],
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 220%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+    },
+    {
+      "build": "martial-artist-02",
+      "xml_sha256": "4583f85d7207d702da19245a305e7dee67f8b6cf650bb22f5a5a535901b0ef05",
+      "stats": [
+        "DeflectChance"
+      ],
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+    },
+    {
+      "build": "martial-artist-04",
+      "xml_sha256": "ef128b79c338f2c778dd1bcb846161fe7f6d6d4969430ec162eed1613665bce1",
+      "stats": [
+        "DeflectChance",
+        "EvadeChance",
+        "MeleeEvadeChance",
+        "ProjectileEvadeChance",
+        "SpellEvadeChance",
+        "SpellProjectileEvadeChance"
+      ],
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 180%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+    },
+    {
+      "build": "martial-artist-05",
+      "xml_sha256": "840f4a34a172a5a5ebb358d1d98c516e950c46db0ec19754ef696ce78fcdf260",
+      "stats": [
+        "DeflectChance"
+      ],
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+    },
+    {
+      "build": "martial-artist-08",
+      "xml_sha256": "92cb3536152c2f8f96ca45bc3c6ba44f9a36e3a7f4111c1a070ff93bd6edb9cc",
+      "stats": [
+        "DeflectChance"
+      ],
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 180%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+    },
+    {
+      "build": "pathfinder-07",
+      "xml_sha256": "2dc4ac2548aaec2989683ca595c6a4bf6235a2a5e1334da91373815289178250",
+      "stats": [
+        "DeflectChance"
+      ],
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 100%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+    },
+    {
+      "build": "stormweaver-02",
+      "xml_sha256": "e1aba1363506c41b57d3387d9824f69e68f4aaad53c58fe6e5194bd2cf13d6eb",
+      "stats": [
+        "EvadeChance",
+        "MeleeEvadeChance",
+        "ProjectileEvadeChance",
+        "SpellEvadeChance",
+        "SpellProjectileEvadeChance"
+      ],
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+    },
+    {
+      "build": "tactician-03",
+      "xml_sha256": "48a57ce948ce7fe073b2869de660b770386608d3a3358dc403c17ae12aa5a8bc",
+      "stats": [
+        "DeflectChance",
+        "EvadeChance",
+        "MeleeEvadeChance",
+        "ProjectileEvadeChance",
+        "SpellEvadeChance",
+        "SpellProjectileEvadeChance"
+      ],
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 200%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+    },
+    {
+      "build": "tactician-05",
+      "xml_sha256": "c05d786e72c0c5ce828b75ef305ba4ea7068f159b183576eea9ae214092d7beb",
+      "stats": [
+        "DeflectChance",
+        "EvadeChance",
+        "MeleeEvadeChance",
+        "ProjectileEvadeChance",
+        "SpellEvadeChance",
+        "SpellProjectileEvadeChance"
+      ],
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 180%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+    },
+    {
+      "build": "tactician-07",
+      "xml_sha256": "f4fe4d05c917a3fc281cbcfcea6b1c784d4e4c81ab501aa379f70233de92eed3",
+      "stats": [
+        "DeflectChance"
+      ],
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+    },
+    {
+      "build": "titan-04",
+      "xml_sha256": "a7217fe190d83ba85c0de56383706b7580a00020a110107be369da0d03a03678",
+      "stats": [
+        "EvadeChance",
+        "MeleeEvadeChance",
+        "ProjectileEvadeChance",
+        "SpellEvadeChance",
+        "SpellProjectileEvadeChance"
+      ],
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 140%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+    },
+    {
+      "build": "warbringer-09",
+      "xml_sha256": "0dc2d78f14ca467564758fbd5f810941752ebcd4ff810593201dbd3d2a68261b",
+      "stats": [
+        "DeflectChance"
+      ],
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+    },
+    {
+      "build": "abyssal-lich-02",
+      "xml_sha256": "b15d1c03b7e30978938e8dee099a81e77785c8c919ca1768f1a9bd6b820d4eab",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+    },
+    {
+      "build": "invoker-01",
+      "xml_sha256": "f30cec61f3a930b286f2fc291ae31240fcceae3c844f3212e2eaf87fafe3fe00",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+    },
+    {
+      "build": "invoker-03",
+      "xml_sha256": "25e288c0bd93afa498a6c986251189cf568b5072039c7c234e89135c792207c7",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+    },
+    {
+      "build": "invoker-08",
+      "xml_sha256": "0ffd3068eb9fcc3d56504e2ab5d45a79019fb5c5d2bdfcc6ee5a84acbf377d19",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+    },
+    {
+      "build": "oracle-04",
+      "xml_sha256": "d5c020fb1315891ad4873317a9bb310586fa94bd12a134729706659d24154c93",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+    },
+    {
+      "build": "oracle-06",
+      "xml_sha256": "0607c48c0239828b54997821912ffdead885638e0763651ace66bac85b505b5d",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+    },
+    {
+      "build": "shaman-01",
+      "xml_sha256": "a181f5e4a8d2a1e0a95e1b3d661d195c94f82ad01b25c259f9f1f1d73ed40489",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+    },
+    {
+      "build": "shaman-03",
+      "xml_sha256": "143f455dfdb9c1cc427662f3c2b5069eeea4d921a5a6bc45541bea484a39381f",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+    },
+    {
+      "build": "shaman-04",
+      "xml_sha256": "fb21a48bb98183bf60cb4b3306b9efa19c71f0a323a7828125e2cc468c288b03",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+    },
+    {
+      "build": "shaman-07",
+      "xml_sha256": "a01975fddb48add1dd1f532810922f4f30939cf2e4ae07afa0232f902a3067d4",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+    },
+    {
+      "build": "shaman-08",
+      "xml_sha256": "24192d44aa6d8d16e16ba00c8f0298e81ebc2ca180c9a0c28f53c4699da37656",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+    },
+    {
+      "build": "warbringer-02",
+      "xml_sha256": "8515588a7c3383564b8a320f7d14ac78f18cf866d94146e627a0ca538f6ac859",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+    },
+    {
+      "build": "warbringer-03",
+      "xml_sha256": "bb230d71a8036f966eaac699a55fda7f5c5783a1f8c0ff5334d401982c1a0dcb",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+    },
+    {
+      "build": "warbringer-09",
+      "xml_sha256": "0dc2d78f14ca467564758fbd5f810941752ebcd4ff810593201dbd3d2a68261b",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+    },
+    {
+      "build": "warbringer-10",
+      "xml_sha256": "2d62a8f8d7b4a2b040d43cd95f774c578be85ff625df1895d8758ce4add2ed48",
+      "stats": [
+        "ActiveTotemLimit"
+      ],
+      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+    },
+    {
+      "build": "shaman-08",
+      "xml_sha256": "24192d44aa6d8d16e16ba00c8f0298e81ebc2ca180c9a0c28f53c4699da37656",
+      "stats": [
+        "TotalTotemPlacementTime"
+      ],
+      "reason": "Frozen 2026-10-26: placement uses retained game cast time 0.5s, while pinned PoB2 uses a 0.6s fallback; both apply the same placement-speed factors. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+    },
+    {
+      "build": "warbringer-08",
+      "xml_sha256": "7c3387177505b152c9d0eed0f77f67fbcd37c697c00e2731b94027393007b16c",
+      "stats": [
+        "TotalTotemPlacementTime"
+      ],
+      "reason": "Frozen 2026-10-26: placement uses retained game cast time 1.0s, while pinned PoB2 uses a 0.6s fallback; both apply the same placement-speed factors. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+    },
+    {
+      "build": "blood-mage-03",
+      "xml_sha256": "fea80051e36d924393bb81a308954c88d9ce1bdf4134bea1e01099dec71c1eec",
+      "stats": [
+        "TotalEHP"
+      ],
+      "reason": "Frozen 2026-10-26: incoming critical damage applies Desensitisation, and finite Life prevention exhausts exactly. Pinned PoB2 retains positive floating residue after a lethal recursive probe, then batches across the Chaos/ES transition; its EHP is not the chronological hit result. The native result matches independently reconstructed 15933.003750905566. See docs/maintainer-guide.md and fix-round-2/ehp-attribution.json / blood03-trace.log."
+    },
+    {
+      "build": "abyssal-lich-03",
+      "xml_sha256": "358091965b807432650df1490f823745d9a29c945b45617b41da416e4d72d4f4",
+      "stats": [
+        "CritMultiplier"
+      ],
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/maintainer-guide.md and fix-round-2/reference-cluster-attribution/attribution.json."
+    },
+    {
+      "build": "abyssal-lich-04",
+      "xml_sha256": "990ea1efb4088223532c87acc41500ece54b199d5af08f1d949a78a1d661eda7",
+      "stats": [
+        "CritChance",
+        "CritMultiplier",
+        "PreEffectiveCritChance"
+      ],
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/maintainer-guide.md and fix-round-2/reference-cluster-attribution/attribution.json."
+    },
+    {
+      "build": "abyssal-lich-08",
+      "xml_sha256": "95ec9a9d0d5780bbd6f5b0c9baa7b894aa7ce21a2ba74b804c4e75f3ba1bab3f",
+      "stats": [
+        "CritMultiplier"
+      ],
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/maintainer-guide.md and fix-round-2/reference-cluster-attribution/attribution.json."
+    },
+    {
+      "build": "abyssal-lich-10",
+      "xml_sha256": "a65b6eaab5f70d7aa4c8353d4034aaa20e271fce81ca9e70c044bc5fb4ec0472",
+      "stats": [
+        "CritChance",
+        "CritMultiplier",
+        "PreEffectiveCritChance"
+      ],
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/maintainer-guide.md and fix-round-2/reference-cluster-attribution/attribution.json."
+    },
+    {
+      "build": "lich-01",
+      "xml_sha256": "6cd8353cfaeb3bf6886d70c0f08fa17abcf76e0f518a55dc012471e80e0d36c1",
+      "stats": [
+        "CritMultiplier"
+      ],
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/maintainer-guide.md and fix-round-2/reference-cluster-attribution/attribution.json."
+    },
+    {
+      "build": "lich-03",
+      "xml_sha256": "cdc6291dad7a6c78c370af2d11b540189aa106bf9135ca6bd02db60019d13c37",
+      "stats": [
+        "CritChance",
+        "EnergyShield",
+        "EnergyShieldRecoveryCap",
+        "PreEffectiveCritChance"
+      ],
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/maintainer-guide.md and fix-round-2/reference-cluster-attribution/attribution.json."
+    },
+    {
+      "build": "lich-09",
+      "xml_sha256": "f6c1b90074f01d1b2f4120c246905300e86c3721a521d2d5fb272dc780bf2f03",
+      "stats": [
+        "CritChance",
+        "CritMultiplier",
+        "PreEffectiveCritChance"
+      ],
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/maintainer-guide.md and fix-round-2/reference-cluster-attribution/attribution.json."
+    },
+    {
+      "build": "disciple-of-varashta-08",
+      "xml_sha256": "006bc1d43a942d80f1a62fd71b8d2e7b687b0c2b462db7345fbae7542c0ee5a1",
+      "stats": [
+        "MinionTotalDPS"
+      ],
+      "reason": "Frozen 2026-10-26 Water Djinn: eight existing minions give Predator Mark's 40% increased damage taken; pinned PoB2 counts zero. No on-death Pounce wolves are created. The same hit, crit and 1.782s cooldown with/without that mark give 461902.1585/348008.4756, matching the two calculators within endpoint precision. See docs/maintainer-guide.md and fix-round-2/minion-djinn-evidence.json."
+    },
+    {
+      "build": "abyssal-lich-06",
+      "xml_sha256": "524c25c1041d5a9e66674734f2ca4484f3149837f85ee201a6a8fd34002322bc",
+      "stats": [
+        "ReqStr"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "acolyte-of-chayula-09",
+      "xml_sha256": "5ac9eff2fa5fd157c6a1b29c58fe32be243434009cb0cf355a49dd914a066cf9",
+      "stats": [
+        "ReqStr"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "amazon-08",
+      "xml_sha256": "09a6e8d101bfc896ea125bb9306316092ed808fdab9aec85a01850eff86a9647",
+      "stats": [
+        "ReqStr"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "blood-mage-05",
+      "xml_sha256": "5ca31c6cf90bee9f36b54aa9bda0fdeba27f63c93a566ad9cadb24cff6d66880",
+      "stats": [
+        "ReqDex"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "deadeye-07",
+      "xml_sha256": "49d6189af42437088deca82030d58e16fad5ab9712234c610fcf7c1386ff7f47",
+      "stats": [
+        "ReqStr"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 126, after the recorded global reduction, equals the pinned oracle's 126; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "deadeye-08",
+      "xml_sha256": "c2c1e449cc5c2bc3877bebdf75840289b280b1339edcbab865fe8ba4a4ab4545",
+      "stats": [
+        "ReqInt"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 126, after the recorded global reduction, equals the pinned oracle's 126; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "disciple-of-varashta-03",
+      "xml_sha256": "d8e31782e8efb3dbff6af9c6b97748ffc3555c9e170742f0e93339ab1e82d85b",
+      "stats": [
+        "ReqStr"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 75, after the recorded global reduction, equals the pinned oracle's 75; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "disciple-of-varashta-10",
+      "xml_sha256": "ce4b92ade3e852b4bfd3f815dc681b39750d91d8bfd8bc5bbed7b81f84ab2464",
+      "stats": [
+        "ReqStr"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "gemling-legionnaire-06",
+      "xml_sha256": "639374da8e6229c55b2760661ba7264d69d86a08504c3d3fbc00d08bfaeb7d7c",
+      "stats": [
+        "ReqStr"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 144; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "invoker-04",
+      "xml_sha256": "8b31209aba7d4aa10eaff72a9f8d2b93cf239323b3950a26843ac4abae2057ae",
+      "stats": [
+        "ReqStr"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "invoker-05",
+      "xml_sha256": "07c1cca24f1d21c82ede4d66b49a8a2145e6b72141f9fb9cfb72357be71a66ab",
+      "stats": [
+        "ReqInt"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "invoker-07",
+      "xml_sha256": "e16304aaab75cb209d70c98ba309515c586e0af5798815af52cdc8bfb0f3ac98",
+      "stats": [
+        "ReqInt"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "invoker-08",
+      "xml_sha256": "0ffd3068eb9fcc3d56504e2ab5d45a79019fb5c5d2bdfcc6ee5a84acbf377d19",
+      "stats": [
+        "ReqDex"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "martial-artist-04",
+      "xml_sha256": "ef128b79c338f2c778dd1bcb846161fe7f6d6d4969430ec162eed1613665bce1",
+      "stats": [
+        "ReqStr"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 147, after the recorded global reduction, equals the pinned oracle's 147; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "martial-artist-08",
+      "xml_sha256": "92cb3536152c2f8f96ca45bc3c6ba44f9a36e3a7f4111c1a070ff93bd6edb9cc",
+      "stats": [
+        "ReqStr"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "martial-artist-09",
+      "xml_sha256": "058a6fea5f0aa513b0eae6b4e15d6c039ed5da2d9d7a54877329f3807e1547d6",
+      "stats": [
+        "ReqStr"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "martial-artist-10",
+      "xml_sha256": "815f61f956fe16b02cd686a384547574c1839657d7e1c40f14b8d44e982fe0bc",
+      "stats": [
+        "ReqStr"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "pathfinder-07",
+      "xml_sha256": "2dc4ac2548aaec2989683ca595c6a4bf6235a2a5e1334da91373815289178250",
+      "stats": [
+        "ReqStr"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 147, after the recorded global reduction, equals the pinned oracle's 147; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "pathfinder-10",
+      "xml_sha256": "c8a68079ed3156f2ceafea475d4fa1366022857fc7f3b998718be99cb12a1e67",
+      "stats": [
+        "ReqStr"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "shaman-03",
+      "xml_sha256": "143f455dfdb9c1cc427662f3c2b5069eeea4d921a5a6bc45541bea484a39381f",
+      "stats": [
+        "ReqDex"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "shaman-04",
+      "xml_sha256": "fb21a48bb98183bf60cb4b3306b9efa19c71f0a323a7828125e2cc468c288b03",
+      "stats": [
+        "ReqDex"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "witchhunter-03",
+      "xml_sha256": "53265632d89ee44bfe1cfeb026f3df365472297589a815234453f992a099582e",
+      "stats": [
+        "ReqStr"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "witchhunter-09",
+      "xml_sha256": "b691c122631a6d8cc9231c6cdde3f294b5160a43090beb970b8114fb2ecbe7a9",
+      "stats": [
+        "ReqStr"
+      ],
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+    },
+    {
+      "build": "infernalist-03",
+      "xml_sha256": "f91257949b4ae1e516479e29b9da8bdb26686e16c9c0fbcf01e0c2668d1d6c0f",
+      "stats": [
+        "Life",
+        "LifeUnreserved",
+        "LifeRecoverable"
+      ],
+      "reason": "Frozen 2026-10-26: The frozen Runeseeker enchant explicitly has45% less Life:1528*1.05*.55=882.42. Pinned PoB2 rebuilds separate15%/30% MORE modifiers and rounds their product to.60, giving963. Preserve imported text. The corresponding unreserved/recoverable Life follows the same pool. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+    },
+    {
+      "build": "witchhunter-10",
+      "xml_sha256": "8e855a6c20a4559236f619699d1773da9e7a1c36679a2ef7d512e0695a6c01f1",
+      "stats": [
+        "Armour",
+        "Evasion",
+        "TotalEHP",
+        "PhysicalMaxHit",
+        "FireMaxHit",
+        "ColdMaxHit",
+        "LightningMaxHit",
+        "ChaosMaxHit",
+        "DeflectionRating",
+        "DeflectChance",
+        "EvadeChance",
+        "MeleeEvadeChance",
+        "ProjectileEvadeChance",
+        "SpellEvadeChance",
+        "SpellProjectileEvadeChance",
+        "PhysicalDamageReduction"
+      ],
+      "reason": "Frozen 2026-10-26: Megalomaniac grants Leather Bound Gauntlets(node51446), adding1323 Evasion from equipped glove Armour. PoB2 omits that passive. Removing exactly its contribution reconstructs the oracle Armour/Evasion, Sorcery Ward, defence chances, five max hits andTotalEHP, including endpoint precision. This is not a blanket EHP classification. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+    },
+    {
+      "build": "warbringer-02",
+      "xml_sha256": "8515588a7c3383564b8a320f7d14ac78f18cf866d94146e627a0ca538f6ac859",
+      "stats": [
+        "Evasion",
+        "DeflectionRating"
+      ],
+      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+    },
+    {
+      "build": "warbringer-03",
+      "xml_sha256": "bb230d71a8036f966eaac699a55fda7f5c5783a1f8c0ff5334d401982c1a0dcb",
+      "stats": [
+        "Evasion"
+      ],
+      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+    },
+    {
+      "build": "warbringer-08",
+      "xml_sha256": "7c3387177505b152c9d0eed0f77f67fbcd37c697c00e2731b94027393007b16c",
+      "stats": [
+        "Evasion"
+      ],
+      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count1 versus pinned oracle2. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+    },
+    {
+      "build": "warbringer-10",
+      "xml_sha256": "2d62a8f8d7b4a2b040d43cd95f774c578be85ff625df1895d8758ce4add2ed48",
+      "stats": [
+        "Evasion",
+        "DeflectionRating"
+      ],
+      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+    },
+    {
+      "build": "pathfinder-01",
+      "xml_sha256": "809d011b9e59a93da86b4556af2af37bead7d3507905a7391990048b6f30889d",
+      "stats": [
+        "LifeRegenRecovery",
+        "EnergyShieldRegenRecovery"
+      ],
+      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+    },
+    {
+      "build": "pathfinder-02",
+      "xml_sha256": "a18cecf7d0b0a8120fb621a62e1ff3a8215068febc6db0891ea051bac6c223ad",
+      "stats": [
+        "LifeRegenRecovery",
+        "EnergyShieldRegenRecovery"
+      ],
+      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+    },
+    {
+      "build": "pathfinder-04",
+      "xml_sha256": "b95ed07395c3da97915db00a3608e88900bc1d54d1db540a56860728aec55f53",
+      "stats": [
+        "LifeRegenRecovery",
+        "EnergyShieldRegenRecovery"
+      ],
+      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+    },
+    {
+      "build": "pathfinder-08",
+      "xml_sha256": "6dfb667f84518612dbe01334e7d24cf9dfeea8e50929cfc931ae5414fb6c300f",
+      "stats": [
+        "LifeRegenRecovery",
+        "EnergyShieldRegenRecovery"
+      ],
+      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+    },
+    {
+      "build": "pathfinder-09",
+      "xml_sha256": "7d4186aea812960070ceb928d3b035aee82bd2da09f9194e8fb99f4ea27b2be2",
+      "stats": [
+        "LifeRegenRecovery",
+        "EnergyShieldRegenRecovery"
+      ],
+      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
     }
   ]
 }

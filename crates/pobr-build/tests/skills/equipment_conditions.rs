@@ -15,6 +15,43 @@ const BLEED: &str =
 const POISON: &str =
     "Immune to [Poison] if Equipped Helmet has higher [Evasion] Rating than [Armour]";
 
+#[test]
+fn companion_presence_default_requires_an_enabled_companion_skill() {
+    for enabled in [None, Some(false), Some(true)] {
+        for explicit in [None, Some(false), Some(true)] {
+            let skill = enabled.map_or(String::new(), |enabled| format!(
+                r#"<Skill enabled="{enabled}"><Gem skillId="WolfPackPlayer" level="20" enabled="true"/></Skill>"#,
+            ));
+            let input = explicit.map_or(String::new(), |value| {
+                format!(r#"<Input name="companionInPresence" boolean="{value}"/>"#,)
+            });
+            let xml = format!(
+                r#"<PathOfBuilding2><Build level="80" className="Druid" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill>{skill}</Skills>
+<Config>{input}</Config></PathOfBuilding2>"#,
+            );
+            let build = parse_build(&xml).unwrap();
+            assert_eq!(
+                build.config.conditions.get("CompanionInPresence").copied(),
+                explicit
+            );
+            let session = run(
+                &build,
+                &[
+                    "+100 to maximum Energy Shield",
+                    "40% increased Armour, Evasion and Energy Shield while your Companion is in your Presence",
+                ],
+            );
+            let active = explicit.unwrap_or(enabled == Some(true));
+            assert_eq!(session.config().condition("CompanionInPresence"), active);
+            assert_eq!(
+                session.output().energy_shield,
+                if active { 140.0 } else { 100.0 }
+            );
+        }
+    }
+}
+
 fn item(base: &str, mods: &[&str]) -> Item {
     Item {
         base: ItemBaseId::from(base),

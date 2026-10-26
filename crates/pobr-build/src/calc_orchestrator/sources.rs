@@ -224,6 +224,10 @@ impl SourceWriter {
         self.session.set_condition(name, value)
     }
 
+    pub fn config(&self) -> &pobr_core::CalcConfig {
+        self.session.config()
+    }
+
     pub fn set_main_skill_level(&mut self, gem_level: u32, bonus_levels: u32) {
         self.session.set_main_skill_level(gem_level, bonus_levels)
     }

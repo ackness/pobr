@@ -153,6 +153,200 @@ fn a_main_skill_a_weapon_grants_is_used_in_that_weapons_set() {
     assert_eq!(sets, vec![None, None, Some(1)]);
 }
 
+/// Discipline needs 88 Intelligence at level 15 and 80 at level 14. The
+/// granting set has 84, after replacing two +5 Intelligence passives with
+/// one, even though the selected set has 89. Its 185 total ES is added after
+/// the character's 117 base ES and 53% increased ES.
+#[test]
+fn other_weapon_tree_controls_granted_skill_requirements() {
+    let xml = r#"<PathOfBuilding2>
+<Build level="100" className="Huntress" mainSocketGroup="1"/>
+<Tree activeSpec="1"><Spec treeVersion="0_5" nodes="48198,49220,42658">
+<WeaponSet1 nodes="48198,49220"/><WeaponSet2 nodes="42658"/>
+<Overrides><AttributeOverride intNodes="42658"/></Overrides>
+</Spec></Tree>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Granting Sceptre
+Stoic Sceptre
+Implicits: 1
+Grants Skill: Level 19 Discipline
+</Item><ItemSet id="1"><Slot name="Weapon 1 Swap" itemId="1"/></ItemSet></Items>
+<Skills><Skill enabled="true"><Gem skillId="SparkPlayer" level="1" enabled="true"/></Skill>
+<Skill enabled="true" slot="Weapon 1 Swap" source="Item:1:Granting Sceptre, Stoic Sceptre">
+<Gem skillId="DisciplinePlayer" level="19" quality="0" enabled="true"/>
+</Skill></Skills></PathOfBuilding2>"#;
+    let build = import_build(xml).unwrap().build;
+    let options = DataOrchestratorOptions {
+        extra_modifier_texts: vec![
+            "+72 to Intelligence".into(),
+            "+100 to Strength".into(),
+            "+117 to maximum Energy Shield".into(),
+            "53% increased maximum Energy Shield".into(),
+        ],
+        ..Default::default()
+    };
+    let session = calculate_with_data_session(&build, data(), &options).unwrap();
+    assert_eq!(session.output().intelligence, 89.0);
+    assert_eq!(session.output().energy_shield, 364.0);
+    let diagnosis = pobr_build::diagnose(&build, data(), &options).unwrap();
+    let discipline = diagnosis
+        .skills
+        .iter()
+        .find(|skill| skill.skill_id == "DisciplinePlayer")
+        .unwrap();
+    assert_eq!(discipline.gem_level, 14);
+}
+
+/// The off-set gem reads that set's Endless Blizzard and Paragon, while the
+/// selected-set gem keeps its own two points of skill quality.
+#[test]
+fn other_weapon_tree_controls_skill_levels_and_quality() {
+    use pobr_data::passive_tree::NodeId;
+    let mut first = SocketGroup::new().with_gem_skill("IceShotPlayer", 20);
+    first.weapon_set = Some(1);
+    let mut second = first.clone();
+    second.weapon_set = Some(2);
+    let mut build = Build::new()
+        .add_socket_group(first)
+        .add_socket_group(second);
+    build.tree.allocated_nodes = vec![NodeId(34882)];
+    build.other_weapon_set_nodes = Some(vec![NodeId(19955), NodeId(20686)]);
+    let diagnosis =
+        pobr_build::diagnose(&build, data(), &DataOrchestratorOptions::default()).unwrap();
+    let usage = pobr_build::usage::line_usage(&diagnosis, &build, data());
+    assert_eq!(
+        usage
+            .skills
+            .iter()
+            .map(|skill| (skill.level, skill.quality))
+            .collect::<Vec<_>>(),
+        [(20, 2), (21, 5)]
+    );
+}
+
+#[test]
+fn other_weapon_tree_preserves_imported_jewels_until_their_socket_is_active() {
+    for held_second in [false, true] {
+        for (first_allocated, second_allocated) in
+            [(true, true), (true, false), (false, true), (false, false)]
+        {
+            let first = if first_allocated { "2491" } else { "" };
+            let second = if second_allocated { "7960" } else { "" };
+            let nodes = [first, second]
+                .into_iter()
+                .filter(|n| !n.is_empty())
+                .collect::<Vec<_>>()
+                .join(",");
+            let xml = format!(
+                r#"<PathOfBuilding2><Build level="100" className="Ranger"/>
+<Tree activeSpec="1"><Spec treeVersion="0_5" nodes="{nodes}">
+<WeaponSet1 nodes="{first}"/><WeaponSet2 nodes="{second}"/>
+<Sockets><Socket nodeId="2491" itemId="1"/><Socket nodeId="7960" itemId="2"/><Socket nodeId="21984" itemId="3"/></Sockets>
+</Spec></Tree>
+<Items activeItemSet="1">
+<Item id="1">Rarity: UNIQUE
+Prism of Belief
+Diamond
++3 to Level of all Ice Shot Skills</Item>
+<Item id="2">Rarity: UNIQUE
+Prism of Belief
+Diamond
++3 to Level of all Ice Shot Skills</Item>
+<Item id="3">Rarity: UNIQUE
+Prism of Belief
+Diamond
++9 to Level of all Ice Shot Skills</Item>
+<ItemSet id="1" useSecondWeaponSet="{held_second}"/></Items>
+<Skills>
+<Skill enabled="true" set1="true" set2="false"><Gem skillId="IceShotPlayer" level="20" enabled="true"/></Skill>
+<Skill enabled="true" set1="false" set2="true"><Gem skillId="IceShotPlayer" level="20" enabled="true"/></Skill>
+</Skills></PathOfBuilding2>"#
+            );
+            let mut build = import_build(&xml).unwrap().build;
+            let levels = |build: &Build| {
+                pobr_build::diagnose(build, data(), &DataOrchestratorOptions::default())
+                    .unwrap()
+                    .skills
+                    .into_iter()
+                    .filter(|skill| skill.skill_id == "IceShotPlayer")
+                    .map(|skill| skill.gem_level + skill.bonus_levels)
+                    .collect::<Vec<_>>()
+            };
+            let first_level = if first_allocated { 23 } else { 20 };
+            let second_level = if second_allocated { 23 } else { 20 };
+            assert_eq!(
+                levels(&build),
+                [first_level, second_level],
+                "held second={held_second}, allocations={nodes}"
+            );
+            // Preparing a pending jewel cannot re-enable a disabled skill.
+            build.socket_groups[1].enabled = false;
+            assert_eq!(levels(&build), [first_level]);
+        }
+    }
+}
+
+#[test]
+fn weapon_restricted_attacks_take_levels_from_the_usable_set() {
+    use pobr_data::passive_tree::NodeId;
+    for (skill, level, weapon, bonus, expected) in [
+        (
+            "OilGrenadePlayer",
+            21,
+            "Siege Crossbow",
+            "+5 to Level of all Projectile Skills",
+            26,
+        ),
+        ("EscapeShotPlayer", 1, "Crude Bow", "", 2),
+        ("Melee1HMacePlayer", 20, "Flanged Mace", "", 24),
+        ("BoneshatterPlayer", 1, "Oak Greathammer", "", 5),
+    ] {
+        let mut build = Build::new()
+            .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 1))
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_active_skill(skill, level)
+                    .with_gem_skill(skill, level),
+            );
+        let item = |base: &str, bonus: &str| Item {
+            base: base.into(),
+            rarity: ItemRarity::Rare,
+            quality: 0,
+            corrupted: false,
+            implicit_texts: vec![],
+            modifier_texts: (!bonus.is_empty())
+                .then(|| bonus.into())
+                .into_iter()
+                .collect(),
+            enchant_texts: vec![],
+            rolled_defence: RolledDefence::default(),
+            socketed: vec![],
+            parsed_stats: vec![],
+        };
+        build.items.insert(
+            EquipmentSlot::Weapon1,
+            item("Striking Quarterstaff", "+4 to Level of all Attack Skills"),
+        );
+        build
+            .other_weapons
+            .insert(EquipmentSlot::Weapon1, item(weapon, bonus));
+        build.other_weapon_set_nodes = Some(vec![NodeId(19955)]); // +1 Cold Skill level
+        build
+            .config
+            .global_modifier_texts
+            .push("+4 to Level of all Melee Skills".into());
+        let diagnosis =
+            pobr_build::diagnose(&build, data(), &DataOrchestratorOptions::default()).unwrap();
+        let usage = pobr_build::usage::line_usage(&diagnosis, &build, data());
+        let resolved = usage
+            .skills
+            .iter()
+            .find(|entry| entry.skill_id == skill)
+            .unwrap();
+        assert_eq!(resolved.level, expected, "{skill}");
+    }
+}
+
 /// Enablement is a player choice; the active weapon context gates inspected
 /// attacks and overview rows while all-set reservation still reads Blink.
 #[test]

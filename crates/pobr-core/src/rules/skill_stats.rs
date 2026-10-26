@@ -223,6 +223,17 @@ fn minion_modifiers_impl(
         "feeding_frenzy_minion_damage_taken_+%_final" => {
             Modifier::number("DamageTaken", ModType::More, value)
         }
+        // Storm Mage quality: "Minions gain {0}% of their maximum Life as
+        // Extra maximum Energy Shield". The retained handler is flat ES
+        // with PercentStat(Life), using the minion's completed Life pool;
+        // it is not the base-resource LifeGainAsEnergyShield matrix channel.
+        "minion_maximum_life_%_to_gain_as_maximum_energy_shield" => {
+            Modifier::number("EnergyShield", ModType::Base, value)
+                .with_tag(ModTag::PercentStat {
+                    stat: "Life".into(),
+                    percent: Some(1.0),
+                })
+        }
         // "Supported Skills have {0}% increased Minion Attack Speed".
         "minion_attack_speed_+%" => Modifier::number("AttackSpeed", ModType::Inc, value),
         // Elemental Army and resistance stats on summoning skills affect
@@ -380,7 +391,23 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
                 Modifier::number(name, ModType::Base, value / 100.0).with_flags(ModFlags::ATTACK),
             ])
         }
+        // Derange adds a cost equal to the character's Intelligence. Like
+        // Archmage's added cost, support cost multipliers scale the skill's
+        // own cost, not this additional resource cost.
+        "gain_energy_shield_cost_equal_to_intelligence" => Some(vec![
+            Modifier::number("ESCostNoMult", ModType::Base, value).with_tag(ModTag::PercentStat {
+                stat: "Intelligence".into(),
+                percent: Some(100.0),
+            }),
+        ]),
         "skill_disabled_unless_cloned" => Some(vec![Modifier::flag("MirageSkill")]),
+        // Native Ballista hosts and the support half that makes a socketed
+        // attack Ballista-used. This is skill identity, not a combat toggle.
+        "base_skill_is_ballistified" | "is_ranged_attack_totem" => Some(if value != 0.0 {
+            vec![Modifier::flag("Condition:BallistaSkill")]
+        } else {
+            Vec::new()
+        }),
         "pin_almost_pinned_enemies" => Some(vec![Modifier::flag("PinOnPrimed")]),
         "pin_duration_+%" => Some(vec![Modifier::number(
             "EnemyPinDuration",
@@ -644,6 +671,18 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         ]),
         // Reap: "Culling Strike" (`calc::skill_dot::cull_multiplier`).
         "kill_enemy_on_hit_if_under_10%_life" => Some(vec![Modifier::flag("CanCull")]),
+        // Culling Strike I/II: "Supported Skills have Culling Strike
+        // against Rare or Unique Enemies". Boss presets use the bare rarity
+        // condition; explicit enemy configuration uses the prefixed one.
+        // No previous cull is required for this grant.
+        "support_culling_strike_vs_rare_or_unique_enemy" => Some(vec![
+            Modifier::flag("CanCull")
+                .with_tag(ModTag::condition("Effective", false))
+                .with_tag(ModTag::ConditionAnyOf {
+                    vars: vec!["RareOrUnique".into(), "EnemyRareOrUnique".into()],
+                    negated: false,
+                }),
+        ]),
         // Detonate Living: "Your Spells have Culling Strike".
         "spells_have_culling_strike" => {
             Some(vec![Modifier::flag("CanCull").with_flags(ModFlags::SPELL)])

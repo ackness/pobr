@@ -792,11 +792,19 @@ fn enemy_crit_effect_with(
 ) -> f64 {
     let presets = &cfg.constants.enemy_presets;
     let chance = terms.chance();
+    // Incoming critical damage is a hit, regardless of the selected
+    // player's skill. Desensitisation's enemy modifier is Hit-only.
+    let mut hit_cfg = cfg.clone();
+    hit_cfg.flags = ModFlags::HIT;
+    let multiplier_names = [
+        ModName::from("CriticalStrikeMultiplier"),
+        ModName::from("CritMultiplier"),
+    ];
     let crit_damage = ((enemy_db
         .override_(cfg, "EnemyCritDamage")
         .unwrap_or(presets.default_enemy_crit_damage_bonus)
-        + enemy_db.sum(ModType::Base, cfg, &[ModName::from("CritMultiplier")]))
-        * (1.0 + enemy_db.sum(ModType::Inc, cfg, &[ModName::from("CritMultiplier")]) / 100.0))
+        + enemy_db.sum(ModType::Base, &hit_cfg, &multiplier_names))
+        * (1.0 + enemy_db.sum(ModType::Inc, &hit_cfg, &multiplier_names) / 100.0))
         .max(0.0);
     1.0 + chance / 100.0 * (crit_damage / 100.0) * (1.0 - crit_extra_reduction_pct / 100.0)
 }

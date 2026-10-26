@@ -1,0 +1,9 @@
+{
+  "raw_xml_flag_counts": {
+    "enableGlobal1=true": 11925,
+    "enableGlobal2=true": 11198,
+    "enableGlobal2=nil": 793,
+    "enableGlobal1=nil": 66
+  },
+  "explicit_false": []
+}

@@ -562,6 +562,11 @@ pub fn source_names(stat: &str) -> Vec<String> {
             for source in ["Life", "Mana", "EnergyShield", "Ward", "Rage"] {
                 names.push(format!("{source}RegenerationRecovers{resource}"));
             }
+            match resource {
+                "Mana" => names.push("LifeRegenAppliesToManaRegen".into()),
+                "Rage" => names.push("ManaRegenAppliesToRageRegen".into()),
+                _ => {}
+            }
             return names;
         }
     }
@@ -675,7 +680,7 @@ impl CalculationSession {
             cfg.flags = pobr_data::prelude::ModFlags::NONE;
             cfg.keyword_flags = pobr_data::prelude::KeywordFlags::NONE;
         }
-        source_names(stat)
+        let mut groups: Vec<_> = source_names(stat)
             .into_iter()
             .filter(|name| {
                 !matches!(name.as_str(), "AttackSpeed" | "CastSpeed" | "SkillSpeed")
@@ -744,7 +749,22 @@ impl CalculationSession {
                     name,
                 }
             })
-            .collect()
+            .collect();
+        let regen_stat = stat.strip_suffix("Recovery").unwrap_or(stat);
+        for name in super::super::survivability::shared_regen_increase_names(db, &cfg, regen_stat) {
+            let names = [name.clone()];
+            groups.push(SourceGroup {
+                name: name.to_string(),
+                more_precision: None,
+                totals: (0.0, db.sum(ModType::Inc, &cfg, &names), 1.0),
+                rows: db
+                    .evaluate_names(&cfg, &names)
+                    .into_iter()
+                    .filter(|row| row.modifier.mod_type == ModType::Inc)
+                    .collect(),
+            });
+        }
+        groups
     }
 
     pub fn derived_detail(&self, stat: &str) -> Option<DerivedDetail> {

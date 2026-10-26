@@ -166,7 +166,11 @@ pub(crate) fn resolve_granted_socket_jewels(build: &Build, data: &BuildData) -> 
                 }));
         }
     }
-    resolved.granted_socket_jewels.clear();
+    // Unallocated records can belong to the other weapon set. Keep them
+    // available for that set's preparation; only active grants were consumed.
+    resolved
+        .granted_socket_jewels
+        .retain(|(node, _, _)| !granted.contains(node));
     Some(resolved)
 }
 
@@ -707,6 +711,37 @@ pub(crate) fn passive_effect_copies(
     data: &BuildData,
     passive_nodes: &[AllocatedNode],
 ) -> Result<Vec<Modifier>, BuildError> {
+    fn delta(m: Modifier, scale: f64, data: &BuildData) -> Option<Modifier> {
+        let value = match m.value {
+            pobr_core::ModValue::Number(v)
+                if matches!(m.mod_type, ModType::Base | ModType::Inc) =>
+            {
+                let extra = pobr_core::calc::buff_pass::scale_value(
+                    &data.high_precision,
+                    m.name.as_str(),
+                    m.mod_type,
+                    v,
+                    scale,
+                ) - v;
+                if extra == 0.0 {
+                    return None;
+                }
+                pobr_core::ModValue::Number(extra)
+            }
+            pobr_core::ModValue::NestedMods(nested) => {
+                let nested: Vec<_> = nested
+                    .into_iter()
+                    .filter_map(|m| delta(m, scale, data))
+                    .collect();
+                if nested.is_empty() {
+                    return None;
+                }
+                pobr_core::ModValue::NestedMods(nested)
+            }
+            _ => return None,
+        };
+        Some(Modifier { value, ..m })
+    }
     let node_effect = radius_node_effects(&radius_jewel_expansions(build, data));
     let global_small = small_passive_effect_inc(build, data);
     let tree_nodes = data.passive_nodes_for(build.tree_version.as_deref());
@@ -737,23 +772,7 @@ pub(crate) fn passive_effect_copies(
             ingest
                 .modifiers
                 .into_iter()
-                .filter(|m| matches!(m.mod_type, ModType::Base | ModType::Inc))
-                .filter_map(|m| match m.value {
-                    pobr_core::ModValue::Number(v) => {
-                        let delta = pobr_core::calc::buff_pass::scale_value(
-                            &data.high_precision,
-                            m.name.as_str(),
-                            m.mod_type,
-                            v,
-                            scale,
-                        ) - v;
-                        (delta != 0.0).then_some(Modifier {
-                            value: pobr_core::ModValue::Number(delta),
-                            ..m
-                        })
-                    }
-                    _ => None,
-                }),
+                .filter_map(|m| delta(m, scale, data)),
         );
     }
     Ok(out)

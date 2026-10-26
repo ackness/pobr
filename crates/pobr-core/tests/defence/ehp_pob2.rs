@@ -554,6 +554,195 @@ fn hits_to_die_zero_damage_and_ward_pool() {
 }
 
 #[test]
+fn enemy_critical_damage_uses_incoming_hit_flags() {
+    // Desensitisation (28267) changes the enemy's critical damage bonus;
+    // Controlling Magic (13823) separately changes its critical chance.
+    let mut mods =
+        crate::support::parse_mod("Hits against you have 25% reduced Critical Damage Bonus")
+            .unwrap()
+            .mods;
+    mods.extend(
+        crate::support::parse_mod("Hits have 25% reduced Critical Hit Chance against you")
+            .unwrap()
+            .mods,
+    );
+    for flags in [
+        ModFlags::NONE,
+        ModFlags::DOT,
+        ModFlags::SPELL,
+        ModFlags::ATTACK,
+    ] {
+        let mut env = player_with(
+            ActorBaseStats {
+                life: 1000.0,
+                ..Default::default()
+            },
+            mods.clone(),
+        );
+        env.cfg.flags = flags;
+        env.cfg.mode_effective = true;
+        env.enemy.mod_db.add_list([
+            Modifier::number("EnemyPhysicalDamage", ModType::Override, 1000.0),
+            Modifier::number("EnemyCritChance", ModType::Override, 100.0),
+            Modifier::number("EnemyCritDamage", ModType::Override, 40.0),
+            // The player's spell/attack flags cannot select the type of
+            // enemy hit. Only the untyped hit reduction above applies.
+            Modifier::number("CriticalStrikeMultiplier", ModType::Inc, -50.0)
+                .with_flags(ModFlags::SPELL),
+        ]);
+        perform(&mut env).unwrap();
+        let out = &env.player.output;
+        // 100% * 0.75 chance, 40% * 0.75 bonus: 1000 * (1 + .75*.30).
+        assert_eq!(out.enemy_crit_chance, 75.0);
+        assert!(
+            (out.ehp_terms.as_ref().unwrap().enemy_damage[0] - 1225.0).abs() < 1e-9,
+            "{flags:?}: {:?}",
+            out.ehp_terms.as_ref().unwrap().enemy_damage,
+        );
+    }
+}
+
+#[test]
+fn loss_prevention_exhausts_life_exactly_without_roundoff_survival() {
+    let pools = PoolState {
+        life: 1000.32,
+        ..Default::default()
+    };
+    for below_half in [0.0, 50.0] {
+        let ctx = PoolCtx {
+            max_life: pools.life,
+            prevented_life_loss: 25.0,
+            life_loss_below_half_prevented: below_half,
+            ..Default::default()
+        };
+        let capacity = pobr_core::calc::life_hit_pool_with_loss_prevention(
+            pools.life, pools.life, 25.0, below_half,
+        );
+        for damage in [capacity, capacity + 100.0] {
+            let hit = TypedDamage {
+                physical: damage,
+                ..Default::default()
+            };
+            let after = reduce_pools(&pools, &hit, &ctx);
+            assert_eq!(after.pools.life, 0.0);
+            assert!(
+                (after.overkill - (damage - capacity)).abs() < 1e-9,
+                "{below_half}% below-half prevention: {after:?}",
+            );
+            let lost: f64 = after
+                .resources_lost
+                .iter()
+                .filter(|(_, layer, _)| *layer == "life")
+                .map(|(_, _, amount)| amount)
+                .sum();
+            assert!((lost - pools.life).abs() < 1e-9);
+            let params = EhpLoopParams {
+                gain: GainWhenHit {
+                    life: pools.life,
+                    ..Default::default()
+                },
+                ..default_params()
+            };
+            assert!(
+                (number_of_hits_to_die(&hit, &pools, &ctx, &params) - capacity / damage).abs()
+                    < 1e-9,
+                "a lethal hit cannot recover Life from a floating-point remainder",
+            );
+        }
+        // Genuine sub-point Life is still alive; no epsilon or rounding is
+        // used to decide death.
+        let survives = reduce_pools(
+            &pools,
+            &TypedDamage {
+                physical: capacity - 1e-8,
+                ..Default::default()
+            },
+            &ctx,
+        );
+        assert!(survives.pools.life > 0.0);
+        assert_eq!(survives.overkill, 0.0);
+    }
+    let prevented = reduce_pools(
+        &pools,
+        &TypedDamage {
+            physical: 1e9,
+            ..Default::default()
+        },
+        &PoolCtx {
+            max_life: pools.life,
+            prevented_life_loss: 100.0,
+            ..Default::default()
+        },
+    );
+    assert_eq!(prevented.pools.life, pools.life);
+}
+
+#[test]
+fn companion_damage_share_cannot_exceed_incoming_hit() {
+    // Loyalty on different companions can sum past 100%. "Damage taken
+    // before you" transfers the hit, never extra damage to the companion.
+    for share in [50.0, 100.0, 110.0] {
+        let pools = PoolState {
+            life: 1000.0,
+            allies: vec![pobr_core::calc::AllyLayer {
+                id: "companion",
+                remaining: 10_000.0,
+                mitigation_pct: share,
+                damage_type: None,
+            }],
+            ..Default::default()
+        };
+        let ctx = PoolCtx {
+            max_life: pools.life,
+            ..Default::default()
+        };
+        let after = reduce_pools(
+            &pools,
+            &TypedDamage {
+                physical: 400.0,
+                fire: 600.0,
+                ..Default::default()
+            },
+            &ctx,
+        );
+        let absorbed = 1000.0 * share.min(100.0) / 100.0;
+        assert_eq!(after.pools.allies[0].remaining, 10_000.0 - absorbed);
+        assert_eq!(after.pools.life, absorbed);
+        assert_eq!(after.overkill, 0.0);
+        assert_eq!(
+            after.recoupable_by_type.iter().sum::<f64>(),
+            1000.0 - absorbed
+        );
+
+        let expected_pool = if share < 100.0 { 2000.0 } else { 11_000.0 };
+        let total_pool =
+            pobr_core::calc::extend_total_hit_pool(pools.life, DamageType::Physical, &pools, &ctx);
+        assert_eq!(total_pool, expected_pool);
+        let hit = TypedDamage {
+            physical: 500.0,
+            ..Default::default()
+        };
+        assert_eq!(
+            number_of_hits_to_die(&hit, &pools, &ctx, &default_params()),
+            expected_pool / 500.0,
+        );
+        let depleted = reduce_pools(
+            &pools,
+            &TypedDamage {
+                physical: 12_000.0,
+                ..Default::default()
+            },
+            &ctx,
+        );
+        assert_eq!(depleted.pools.life, 0.0);
+        if share >= 100.0 {
+            assert_eq!(depleted.pools.allies[0].remaining, 0.0);
+            assert_eq!(depleted.overkill, 1000.0);
+        }
+    }
+}
+
+#[test]
 fn ward_with_life_loss_prevention_absorbs_the_remaining_hit() {
     // Grasping Wounds prevents Life loss, not damage to Runic Ward. The
     // latter absorbs damage after Life reaches 1, including lethal excess.

@@ -1,0 +1,7 @@
+{
+  "started_at": "2026-10-26T12:47:14+00:00",
+  "git_commit": "6a6aec590973763aa8eeb606f051142676595630",
+  "data_version": "0.5.5.4.2",
+  "command": "run-triage-save-after.py; 8 benchmark +69 tuned +230 frozen, no holdout",
+  "note": "Intermediate measurement at6a6aec59, before Mark forwarding, Djinn hit support, warcry speed, Xoph and Unholy Might follow-ups. Final report uses its own inputs.json."
+}

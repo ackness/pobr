@@ -1,0 +1,35 @@
+{
+  "commit": "669ab1de",
+  "parent_merged": "8a1122cf",
+  "branch": "investigate-minion-damage-rows",
+  "defect": "7f196898 inferred Damage from LivingBombFireDjinn hit stats without checking the support exclusions against its originating summon. Extraction excludes Minion/CreatesMinion but was admitted.",
+  "red_regression": {
+    "command": "mise exec -- cargo test -q -p pobr-build --test skills minion_hit_supports_respect_summoner_exclusions",
+    "result": "failed as expected",
+    "extraction_dps_ratio": 1.7000000000002387
+  },
+  "fix": "Pass the originating summon skill into selected-minion support judgement. Reuse the existing can-borrow predicate (ignore_minion_types plus summoner exclude_skill_types) before group judgement. Direct support judgement passes no summoner context and stays unchanged.",
+  "green_regression": {
+    "FireDjinn_Brand_Extraction_ratio": 1.0,
+    "WaterDjinn_Fracturing_Extraction_ratio": 1.0,
+    "minion_DamageGainAsChaos": 0.0,
+    "direct_FrostBomb_DamageGainAsChaos": 35.0
+  },
+  "validation": {
+    "focused": "mise exec -- cargo test -q -p pobr-build --test skills minions::",
+    "result": "26 passed, 0 failed, 505 filtered out",
+    "preserved": [
+      "Rakiata 3x, Xoph 1.8x, both 3.8x",
+      "non-damaging and attack-only rejection",
+      "direct Unearth/Bursting Plague compatibility",
+      "shared support level and minion cost regressions"
+    ],
+    "clippy": "mise exec -- cargo clippy -q -p pobr-core -p pobr-build --lib --tests -- -D warnings: passed",
+    "format": "mise exec -- cargo fmt --all --check: passed"
+  },
+  "scope": [
+    "crates/pobr-core/src/skill_env/minions.rs",
+    "crates/pobr-build/tests/skills/minions.rs"
+  ],
+  "remaining": "Parent batch gate. No CLI, full gate, triage, oracle, holdout, or child-agent run. No Unholy or mark-forwarding edits."
+}

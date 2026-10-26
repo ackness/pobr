@@ -355,16 +355,8 @@ fn gem_judgements(
     data: &BuildData,
     skill_id: &str,
 ) -> Vec<pobr_core::skill_env::GroupSupportJudgement> {
-    use pobr_core::skill_env::EffectLookup;
-    let secondary = data
-        .additional_effects(skill_id)
-        .iter()
-        .map(String::as_str)
-        .filter(|id| data.granted_effects.get(*id).is_some_and(|e| !e.is_support));
-    std::iter::once(skill_id)
-        .chain(secondary)
-        .map(|id| crate::support::judge_group_supports(group, data, id, group.from_gem()))
-        .collect()
+    let gems = group.gem_inputs();
+    pobr_core::skill_env::gem_judgements(&group.enabled_group(&gems), data, skill_id)
 }
 
 /// The quality half of [`support_granted_gem_levels`] (same scope and compatibility rules).
@@ -432,16 +424,16 @@ pub(crate) fn gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPr
 }
 
 /// These attack families require their weapon class (game skill descriptions:
-/// Rend requires Talismans, Spear Stab requires Spears, crossbow ammunition
-/// requires Crossbows). An unbound group uses the only set that can use it.
+/// Rend requires Talismans, bow skills require Bows, grenades and crossbow
+/// ammunition require Crossbows, Boneshatter and Mace Strike require Maces).
+/// An unbound group uses the only set that can use it.
 pub(crate) fn bind_required_weapon_sets(build: &Build, data: &BuildData) -> Option<Build> {
     use pobr_data::item::EquipmentSlot::Weapon1;
     let class = |items: &std::collections::HashMap<_, _>| {
         items
             .get(&Weapon1)
             .and_then(|item: &pobr_data::item::Item| {
-                data.base_items
-                    .get(&item.base.to_string())
+                data.base_item(&item.base.to_string())
                     .map(|base| base.item_class.as_str())
             })
     };
@@ -458,16 +450,25 @@ pub(crate) fn bind_required_weapon_sets(build: &Build, data: &BuildData) -> Opti
             .and_then(|id| data.granted_effects.get(id));
         let Some(effect) = effect else { continue };
         let has = |kind| effect.skill_types.iter().any(|t| t == kind);
-        let required = if has("Shapeshift") {
-            "Talisman"
+        let required: &[&str] = if has("Shapeshift") {
+            &["Talisman"]
         } else if has("Spear") || effect.id == "SpearThrowPlayer" {
-            "Spear"
-        } else if has("CrossbowSkill") || has("CrossbowAmmoSkill") {
-            "Crossbow"
+            &["Spear"]
+        } else if has("Bow") {
+            &["Bow"]
+        } else if has("CrossbowSkill") || has("CrossbowAmmoSkill") || has("Grenade") {
+            &["Crossbow"]
+        } else if matches!(
+            effect.id.as_str(),
+            "BoneshatterPlayer" | "Melee1HMacePlayer"
+        ) {
+            &["One Hand Mace", "Two Hand Mace"]
         } else {
             continue;
         };
-        if here != Some(required) && there == Some(required) {
+        if !here.is_some_and(|class| required.contains(&class))
+            && there.is_some_and(|class| required.contains(&class))
+        {
             adjusted.get_or_insert_with(|| build.clone()).socket_groups[index].weapon_set =
                 Some(3 - build.weapon_set.number());
         }
@@ -475,21 +476,11 @@ pub(crate) fn bind_required_weapon_sets(build: &Build, data: &BuildData) -> Opti
     adjusted
 }
 
-/// Equipment context for a skill used with the other weapon set. Settle its
-/// Bonded lines before either attributes or skill bonuses read that equipment.
+/// Equipment, passive and jewel context for a skill used with the other
+/// weapon set. Settle its Bonded lines before attributes or skill bonuses
+/// read those sources.
 pub(crate) fn other_weapon_set_view(build: &Build, data: &BuildData) -> Build {
-    use pobr_data::item::EquipmentSlot::{Weapon1, Weapon2};
-    let mut swapped = build.clone();
-    for slot in [Weapon1, Weapon2] {
-        swapped.items.remove(&slot);
-        if let Some(item) = build.other_weapons.get(&slot) {
-            swapped.items.insert(slot, item.clone());
-        }
-    }
-    swapped.weapon_set = match build.weapon_set {
-        crate::build::WeaponSet::First => crate::build::WeaponSet::Second,
-        crate::build::WeaponSet::Second => crate::build::WeaponSet::First,
-    };
+    let swapped = super::super::full_dps::other_weapon_set(build);
     super::super::item::bonded::resolve_bonded_modifiers(&swapped, data).unwrap_or(swapped)
 }
 

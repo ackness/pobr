@@ -1,0 +1,1056 @@
+{
+  "source": "Read-only fresh parent-produced after-builds and after.json; no new calculations run by this research agent.",
+  "user_supplied_integrated_commit": "6a6aec59",
+  "after_json_sha256": "b7be2c5ce43f4b754cab9d3d09cca588e4dcb2cfe108c62ed123c57d34c5bdfd",
+  "builds": [
+    {
+      "build": "abyssal-lich-01",
+      "after_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/after-builds/abyssal-lich-01.json",
+      "after_sha256": "a3ebeafd7921e2c835f04f8267ea610c3aa91430b52ba02b4170eac78c142879",
+      "checks": {
+        "TotalDPS": {
+          "before": 7559649.857923729,
+          "after": 7559649.857923729,
+          "unchanged": true
+        },
+        "TotalHitAvg": {
+          "before": 6685490.680865998,
+          "after": 6685490.680865998,
+          "unchanged": true
+        },
+        "CritChance": {
+          "before": 100.0,
+          "after": 100.0,
+          "unchanged": true
+        },
+        "CritMultiplier": {
+          "before": 20.11,
+          "after": 20.11,
+          "unchanged": true
+        },
+        "IgniteDPS": {
+          "before": 12558.363838303,
+          "after": 12558.363838303,
+          "unchanged": true
+        },
+        "BleedDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "TotalDotDPS": {
+          "before": 12558.363838303,
+          "after": 12558.363838303,
+          "unchanged": true
+        },
+        "EnergyShield": {
+          "before": 11515.0,
+          "after": 11515.0,
+          "unchanged": true
+        }
+      },
+      "all_checked_values_unchanged": true,
+      "retained_after_triage_stats": [
+        "AverageBurstDamage",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS",
+        "TotalDPS",
+        "CombinedDPS",
+        "TotalDotDPS",
+        "IgniteDPS",
+        "SpiritUnreserved",
+        "SpiritUnreservedPercent"
+      ]
+    },
+    {
+      "build": "abyssal-lich-03",
+      "after_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/after-builds/abyssal-lich-03.json",
+      "after_sha256": "0172dd9cb9e3c6a0d37479f6f4b748211ef668208b3256e42a5bd9cbbb70cb8f",
+      "checks": {
+        "TotalDPS": {
+          "before": 3641060.889104853,
+          "after": 3641060.889104853,
+          "unchanged": true
+        },
+        "TotalHitAvg": {
+          "before": 905558.814760023,
+          "after": 905558.814760023,
+          "unchanged": true
+        },
+        "CritChance": {
+          "before": 75.0,
+          "after": 75.0,
+          "unchanged": true
+        },
+        "CritMultiplier": {
+          "before": 21.05328,
+          "after": 21.05328,
+          "unchanged": true
+        },
+        "IgniteDPS": {
+          "before": 94599.235416924,
+          "after": 94599.235416924,
+          "unchanged": true
+        },
+        "BleedDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "TotalDotDPS": {
+          "before": 94599.235416924,
+          "after": 94599.235416924,
+          "unchanged": true
+        },
+        "EnergyShield": {
+          "before": 13024.0,
+          "after": 13024.0,
+          "unchanged": true
+        }
+      },
+      "all_checked_values_unchanged": true,
+      "retained_after_triage_stats": [
+        "AverageDamage",
+        "AverageBurstDamage",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS",
+        "TotalDPS",
+        "CombinedDPS",
+        "CritMultiplier",
+        "TotalDotDPS",
+        "IgniteDPS"
+      ]
+    },
+    {
+      "build": "abyssal-lich-04",
+      "after_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/after-builds/abyssal-lich-04.json",
+      "after_sha256": "0046811ba0ad3b2c38cf21bfd4f51159753093808c1a41043f6e1493d28e948b",
+      "checks": {
+        "TotalDPS": {
+          "before": 147302.268901137,
+          "after": 147302.268901137,
+          "unchanged": true
+        },
+        "TotalHitAvg": {
+          "before": 50032.523607495,
+          "after": 50032.523607495,
+          "unchanged": true
+        },
+        "CritChance": {
+          "before": 58.10427,
+          "after": 58.10427,
+          "unchanged": true
+        },
+        "CritMultiplier": {
+          "before": 10.975,
+          "after": 10.975,
+          "unchanged": true
+        },
+        "IgniteDPS": {
+          "before": 523.737264267,
+          "after": 523.737264267,
+          "unchanged": true
+        },
+        "BleedDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "TotalDotDPS": {
+          "before": 523.737264267,
+          "after": 523.737264267,
+          "unchanged": true
+        },
+        "EnergyShield": {
+          "before": 12583.0,
+          "after": 12583.0,
+          "unchanged": true
+        }
+      },
+      "all_checked_values_unchanged": true,
+      "retained_after_triage_stats": [
+        "AverageDamage",
+        "AverageBurstDamage",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS",
+        "TotalDPS",
+        "CombinedDPS",
+        "CritChance",
+        "CritMultiplier",
+        "TotalDotDPS",
+        "IgniteDPS",
+        "Spirit",
+        "SpiritUnreserved",
+        "FireResistOverCap",
+        "LightningResistOverCap",
+        "SpiritUnreservedPercent",
+        "PreEffectiveCritChance"
+      ]
+    },
+    {
+      "build": "abyssal-lich-05",
+      "after_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/after-builds/abyssal-lich-05.json",
+      "after_sha256": "403c3c5832c7fb91755de42829a51b3a87461a1010544fc978b7903e437e2d71",
+      "checks": {
+        "TotalDPS": {
+          "before": 174031.588432284,
+          "after": 174031.588432284,
+          "unchanged": true
+        },
+        "TotalHitAvg": {
+          "before": 48867.82038311,
+          "after": 48867.82038311,
+          "unchanged": true
+        },
+        "CritChance": {
+          "before": 42.681744,
+          "after": 42.681744,
+          "unchanged": true
+        },
+        "CritMultiplier": {
+          "before": 5.08,
+          "after": 5.08,
+          "unchanged": true
+        },
+        "IgniteDPS": {
+          "before": 1287.400805868,
+          "after": 1287.400805868,
+          "unchanged": true
+        },
+        "BleedDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "TotalDotDPS": {
+          "before": 1287.400805868,
+          "after": 1287.400805868,
+          "unchanged": true
+        },
+        "EnergyShield": {
+          "before": 11142.0,
+          "after": 11142.0,
+          "unchanged": true
+        }
+      },
+      "all_checked_values_unchanged": true,
+      "retained_after_triage_stats": [
+        "AverageDamage",
+        "AverageBurstDamage",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS",
+        "TotalDPS",
+        "CombinedDPS",
+        "TotalDotDPS",
+        "IgniteDPS"
+      ]
+    },
+    {
+      "build": "abyssal-lich-06",
+      "after_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/after-builds/abyssal-lich-06.json",
+      "after_sha256": "b25b220c16ce30c47ada234ed8f19317ae1196325592dc750c9c27b50d64eb20",
+      "checks": {
+        "TotalDPS": {
+          "before": 311973.220593385,
+          "after": 311973.220593385,
+          "unchanged": true
+        },
+        "TotalHitAvg": {
+          "before": 93345.796768227,
+          "after": 93345.796768227,
+          "unchanged": true
+        },
+        "CritChance": {
+          "before": 45.553536,
+          "after": 45.553536,
+          "unchanged": true
+        },
+        "CritMultiplier": {
+          "before": 4.67,
+          "after": 4.67,
+          "unchanged": true
+        },
+        "IgniteDPS": {
+          "before": 5786.604013467,
+          "after": 5786.604013467,
+          "unchanged": true
+        },
+        "BleedDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "TotalDotDPS": {
+          "before": 5786.604013467,
+          "after": 5786.604013467,
+          "unchanged": true
+        },
+        "EnergyShield": {
+          "before": 8430.0,
+          "after": 8430.0,
+          "unchanged": true
+        }
+      },
+      "all_checked_values_unchanged": true,
+      "retained_after_triage_stats": [
+        "AverageDamage",
+        "AverageBurstDamage",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS",
+        "ReqStr",
+        "TotalDPS",
+        "CombinedDPS",
+        "TotalDotDPS",
+        "IgniteDPS",
+        "RageRegenRecovery",
+        "SpiritUnreserved",
+        "SpiritUnreservedPercent"
+      ]
+    },
+    {
+      "build": "abyssal-lich-08",
+      "after_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/after-builds/abyssal-lich-08.json",
+      "after_sha256": "89aabffae3fa1fca29ed1fa73237dab5840b002fd88222e75462bf07a173bc29",
+      "checks": {
+        "TotalDPS": {
+          "before": 983468.26824283,
+          "after": 983468.26824283,
+          "unchanged": true
+        },
+        "TotalHitAvg": {
+          "before": 307053.968979124,
+          "after": 307053.968979124,
+          "unchanged": true
+        },
+        "CritChance": {
+          "before": 75.0,
+          "after": 75.0,
+          "unchanged": true
+        },
+        "CritMultiplier": {
+          "before": 12.7056,
+          "after": 12.7056,
+          "unchanged": true
+        },
+        "IgniteDPS": {
+          "before": 21832.79814388,
+          "after": 21832.79814388,
+          "unchanged": true
+        },
+        "BleedDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "TotalDotDPS": {
+          "before": 21832.79814388,
+          "after": 21832.79814388,
+          "unchanged": true
+        },
+        "EnergyShield": {
+          "before": 9249.0,
+          "after": 9249.0,
+          "unchanged": true
+        }
+      },
+      "all_checked_values_unchanged": true,
+      "retained_after_triage_stats": [
+        "AverageDamage",
+        "AverageBurstDamage",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS",
+        "TotalDPS",
+        "CombinedDPS",
+        "CritMultiplier",
+        "TotalDotDPS",
+        "IgniteDPS"
+      ]
+    },
+    {
+      "build": "abyssal-lich-09",
+      "after_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/after-builds/abyssal-lich-09.json",
+      "after_sha256": "8118f13552fd8827aa23ef699b6d550f2d918cd4560b9fed13321138f5a8efac",
+      "checks": {
+        "TotalDPS": {
+          "before": 1315359.481321838,
+          "after": 1315359.481321838,
+          "unchanged": true
+        },
+        "TotalHitAvg": {
+          "before": 442350.4979322,
+          "after": 442350.4979322,
+          "unchanged": true
+        },
+        "CritChance": {
+          "before": 100.0,
+          "after": 100.0,
+          "unchanged": true
+        },
+        "CritMultiplier": {
+          "before": 9.294,
+          "after": 9.294,
+          "unchanged": true
+        },
+        "IgniteDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "BleedDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "TotalDotDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "EnergyShield": {
+          "before": 9071.0,
+          "after": 9071.0,
+          "unchanged": true
+        }
+      },
+      "all_checked_values_unchanged": true,
+      "retained_after_triage_stats": [
+        "AverageBurstDamage",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS",
+        "TotalDPS",
+        "CombinedDPS",
+        "SpiritUnreserved",
+        "SpiritUnreservedPercent"
+      ]
+    },
+    {
+      "build": "abyssal-lich-10",
+      "after_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/after-builds/abyssal-lich-10.json",
+      "after_sha256": "f1901c3c16a94dcb9bb0d3afab3797d43f3eb06ae472b70d22380701c48b6305",
+      "checks": {
+        "TotalDPS": {
+          "before": 1364307.774246066,
+          "after": 1364307.774246066,
+          "unchanged": true
+        },
+        "TotalHitAvg": {
+          "before": 410035.699288246,
+          "after": 410035.699288246,
+          "unchanged": true
+        },
+        "CritChance": {
+          "before": 71.6607736,
+          "after": 71.6607736,
+          "unchanged": true
+        },
+        "CritMultiplier": {
+          "before": 12.656636295,
+          "after": 12.656636295,
+          "unchanged": true
+        },
+        "IgniteDPS": {
+          "before": 24666.847115175,
+          "after": 24666.847115175,
+          "unchanged": true
+        },
+        "BleedDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "TotalDotDPS": {
+          "before": 24666.847115175,
+          "after": 24666.847115175,
+          "unchanged": true
+        },
+        "EnergyShield": {
+          "before": 4975.0,
+          "after": 4975.0,
+          "unchanged": true
+        }
+      },
+      "all_checked_values_unchanged": true,
+      "retained_after_triage_stats": [
+        "AverageDamage",
+        "AverageBurstDamage",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS",
+        "TotalDPS",
+        "CombinedDPS",
+        "CritChance",
+        "CritMultiplier",
+        "TotalDotDPS",
+        "IgniteDPS",
+        "SpiritUnreserved",
+        "FireResistOverCap",
+        "LightningResistOverCap",
+        "SpiritUnreservedPercent",
+        "PreEffectiveCritChance"
+      ]
+    },
+    {
+      "build": "lich-01",
+      "after_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/after-builds/lich-01.json",
+      "after_sha256": "a967217c157bf2bf693ca3b270de581d36c42c9234cf4cb345debbf1e6c054e6",
+      "checks": {
+        "TotalDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "TotalHitAvg": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "CritChance": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "CritMultiplier": {
+          "before": 2.51,
+          "after": 2.51,
+          "unchanged": true
+        },
+        "IgniteDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "BleedDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "TotalDotDPS": {
+          "before": 77.983333333,
+          "after": 77.983333333,
+          "unchanged": true
+        },
+        "EnergyShield": {
+          "before": 10653.0,
+          "after": 10653.0,
+          "unchanged": true
+        }
+      },
+      "all_checked_values_unchanged": true,
+      "retained_after_triage_stats": [
+        "CritMultiplier"
+      ]
+    },
+    {
+      "build": "lich-03",
+      "after_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/after-builds/lich-03.json",
+      "after_sha256": "b28067c68043d1e32ed787a2f30bbad5938186a1f52dbae85e8fee9255034821",
+      "checks": {
+        "TotalDPS": {
+          "before": 82.800599143,
+          "after": 82.800599143,
+          "unchanged": true
+        },
+        "TotalHitAvg": {
+          "before": 101.47132248,
+          "after": 101.47132248,
+          "unchanged": true
+        },
+        "CritChance": {
+          "before": 9.44,
+          "after": 9.44,
+          "unchanged": true
+        },
+        "CritMultiplier": {
+          "before": 2.23,
+          "after": 2.23,
+          "unchanged": true
+        },
+        "IgniteDPS": {
+          "before": 0.005256114,
+          "after": 0.005256114,
+          "unchanged": true
+        },
+        "BleedDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "TotalDotDPS": {
+          "before": 7.870989447,
+          "after": 7.870989447,
+          "unchanged": true
+        },
+        "EnergyShield": {
+          "before": 74.0,
+          "after": 74.0,
+          "unchanged": true
+        }
+      },
+      "all_checked_values_unchanged": true,
+      "retained_after_triage_stats": [
+        "AverageBurstDamage",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS",
+        "TotalDPS",
+        "CombinedDPS",
+        "CritChance",
+        "TotalDotDPS",
+        "EnergyShield",
+        "ColdMaxHit",
+        "EnergyShieldRecoveryCap",
+        "ColdResistOverCap",
+        "PreEffectiveCritChance",
+        "TotalDot",
+        "WithDotDPS"
+      ]
+    },
+    {
+      "build": "lich-07",
+      "after_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/after-builds/lich-07.json",
+      "after_sha256": "a2cfb0b001aeac2c5d40dbf15ab1856a3d7e88ede0e8279365e75fc931e03427",
+      "checks": {
+        "TotalDPS": {
+          "before": 1978597.806768331,
+          "after": 1978597.806768331,
+          "unchanged": true
+        },
+        "TotalHitAvg": {
+          "before": 4229403.85146492,
+          "after": 4229403.85146492,
+          "unchanged": true
+        },
+        "CritChance": {
+          "before": 100.0,
+          "after": 100.0,
+          "unchanged": true
+        },
+        "CritMultiplier": {
+          "before": 11.842,
+          "after": 11.842,
+          "unchanged": true
+        },
+        "IgniteDPS": {
+          "before": 92441.08605594,
+          "after": 92441.08605594,
+          "unchanged": true
+        },
+        "BleedDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "TotalDotDPS": {
+          "before": 92441.08605594,
+          "after": 92441.08605594,
+          "unchanged": true
+        },
+        "EnergyShield": {
+          "before": 6107.0,
+          "after": 6107.0,
+          "unchanged": true
+        }
+      },
+      "all_checked_values_unchanged": true,
+      "retained_after_triage_stats": [
+        "AverageBurstDamage",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS",
+        "TotalDPS",
+        "CombinedDPS",
+        "TotalDotDPS",
+        "IgniteDPS",
+        "LifeUnreserved",
+        "ColdResist",
+        "ColdMaxHit",
+        "SpiritUnreserved",
+        "LifeRecoverable",
+        "SpiritUnreservedPercent"
+      ]
+    },
+    {
+      "build": "lich-09",
+      "after_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/after-builds/lich-09.json",
+      "after_sha256": "4a49ccfbabb611632c0300afadc68ce1d47d47c092e15fe366d7bf3e683be791",
+      "checks": {
+        "TotalDPS": {
+          "before": 56465.752570716,
+          "after": 56465.752570716,
+          "unchanged": true
+        },
+        "TotalHitAvg": {
+          "before": 165950.991149813,
+          "after": 165950.991149813,
+          "unchanged": true
+        },
+        "CritChance": {
+          "before": 70.07,
+          "after": 70.07,
+          "unchanged": true
+        },
+        "CritMultiplier": {
+          "before": 9.06,
+          "after": 9.06,
+          "unchanged": true
+        },
+        "IgniteDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "BleedDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "TotalDotDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "EnergyShield": {
+          "before": 13317.0,
+          "after": 13317.0,
+          "unchanged": true
+        }
+      },
+      "all_checked_values_unchanged": true,
+      "retained_after_triage_stats": [
+        "AverageBurstDamage",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS",
+        "TotalDPS",
+        "CombinedDPS",
+        "CritChance",
+        "CritMultiplier",
+        "SpiritUnreserved",
+        "SpiritUnreservedPercent",
+        "PreEffectiveCritChance"
+      ]
+    },
+    {
+      "build": "martial-artist-02",
+      "after_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/after-builds/martial-artist-02.json",
+      "after_sha256": "d97f683f8db51515f07eaa051fd9ba9cb89ce04437aa156b761649448bf4b103",
+      "checks": {
+        "TotalDPS": {
+          "before": 110553.694899654,
+          "after": 110553.694899654,
+          "unchanged": true
+        },
+        "TotalHitAvg": {
+          "before": 49330.506050448,
+          "after": 49330.506050448,
+          "unchanged": true
+        },
+        "CritChance": {
+          "before": 63.60454800000001,
+          "after": 63.60454800000001,
+          "unchanged": true
+        },
+        "CritMultiplier": {
+          "before": 5.69,
+          "after": 5.69,
+          "unchanged": true
+        },
+        "IgniteDPS": {
+          "before": 860.726108247,
+          "after": 860.726108247,
+          "unchanged": true
+        },
+        "BleedDPS": {
+          "before": 2771.464233536,
+          "after": 2771.464233536,
+          "unchanged": true
+        },
+        "TotalDotDPS": {
+          "before": 3632.190341783,
+          "after": 3632.190341783,
+          "unchanged": true
+        },
+        "EnergyShield": {
+          "before": 6357.0,
+          "after": 6357.0,
+          "unchanged": true
+        }
+      },
+      "all_checked_values_unchanged": true,
+      "retained_after_triage_stats": [
+        "AverageDamage",
+        "AverageBurstDamage",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS",
+        "TotalDPS",
+        "CombinedDPS",
+        "TotalDotDPS",
+        "BleedDPS",
+        "IgniteDPS",
+        "TotalEHP",
+        "SpiritUnreserved",
+        "DeflectChance",
+        "ColdResistOverCap",
+        "SpiritUnreservedPercent"
+      ]
+    },
+    {
+      "build": "martial-artist-05",
+      "after_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/after-builds/martial-artist-05.json",
+      "after_sha256": "176dab9cea3dc62d925900888c59c41268873da5c3e79a302fdccff9350afb76",
+      "checks": {
+        "TotalDPS": {
+          "before": 102802.707187801,
+          "after": 102802.707187801,
+          "unchanged": true
+        },
+        "TotalHitAvg": {
+          "before": 70510.327655941,
+          "after": 70510.327655941,
+          "unchanged": true
+        },
+        "CritChance": {
+          "before": 74.844,
+          "after": 74.844,
+          "unchanged": true
+        },
+        "CritMultiplier": {
+          "before": 6.76,
+          "after": 6.76,
+          "unchanged": true
+        },
+        "IgniteDPS": {
+          "before": 4518.746449733,
+          "after": 4518.746449733,
+          "unchanged": true
+        },
+        "BleedDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "TotalDotDPS": {
+          "before": 4518.746449733,
+          "after": 4518.746449733,
+          "unchanged": true
+        },
+        "EnergyShield": {
+          "before": 8994.0,
+          "after": 8994.0,
+          "unchanged": true
+        }
+      },
+      "all_checked_values_unchanged": true,
+      "retained_after_triage_stats": [
+        "AverageDamage",
+        "AverageBurstDamage",
+        "CombinedAvg",
+        "IgniteDamage",
+        "TotalDPS",
+        "TotalDotDPS",
+        "IgniteDPS",
+        "TotalEHP",
+        "DeflectChance",
+        "CullingDPS"
+      ]
+    },
+    {
+      "build": "martial-artist-06",
+      "after_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/after-builds/martial-artist-06.json",
+      "after_sha256": "f89a121998899f4f04fbd43f521bd4a40b5e2c40bc1b93c20a850cfdc429f6cd",
+      "checks": {
+        "TotalDPS": {
+          "before": 1347.362217402,
+          "after": 1347.362217402,
+          "unchanged": true
+        },
+        "TotalHitAvg": {
+          "before": 1283.143614083,
+          "after": 1283.143614083,
+          "unchanged": true
+        },
+        "CritChance": {
+          "before": 20.3762,
+          "after": 20.3762,
+          "unchanged": true
+        },
+        "CritMultiplier": {
+          "before": 4.94,
+          "after": 4.94,
+          "unchanged": true
+        },
+        "IgniteDPS": {
+          "before": 0.25295137,
+          "after": 0.25295137,
+          "unchanged": true
+        },
+        "BleedDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "TotalDotDPS": {
+          "before": 0.25295137,
+          "after": 0.25295137,
+          "unchanged": true
+        },
+        "EnergyShield": {
+          "before": 3726.0,
+          "after": 3726.0,
+          "unchanged": true
+        }
+      },
+      "all_checked_values_unchanged": true,
+      "retained_after_triage_stats": [
+        "AverageDamage",
+        "AverageBurstDamage",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS",
+        "TotalDPS",
+        "CombinedDPS",
+        "TotalDotDPS",
+        "IgniteDPS",
+        "TotalEHP"
+      ]
+    },
+    {
+      "build": "martial-artist-08",
+      "after_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/after-builds/martial-artist-08.json",
+      "after_sha256": "77ca90e3e1c115b0b15135c98c7e03cdd6c0a92a701964c7b875c758da6f6b45",
+      "checks": {
+        "TotalDPS": {
+          "before": 128850.000917736,
+          "after": 128850.000917736,
+          "unchanged": true
+        },
+        "TotalHitAvg": {
+          "before": 88116.088833122,
+          "after": 88116.088833122,
+          "unchanged": true
+        },
+        "CritChance": {
+          "before": 90.624025,
+          "after": 90.624025,
+          "unchanged": true
+        },
+        "CritMultiplier": {
+          "before": 7.8,
+          "after": 7.8,
+          "unchanged": true
+        },
+        "IgniteDPS": {
+          "before": 1198.276651062,
+          "after": 1198.276651062,
+          "unchanged": true
+        },
+        "BleedDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "TotalDotDPS": {
+          "before": 1198.276651062,
+          "after": 1198.276651062,
+          "unchanged": true
+        },
+        "EnergyShield": {
+          "before": 11561.0,
+          "after": 11561.0,
+          "unchanged": true
+        }
+      },
+      "all_checked_values_unchanged": true,
+      "retained_after_triage_stats": [
+        "AverageDamage",
+        "AverageBurstDamage",
+        "CombinedAvg",
+        "IgniteDamage",
+        "ReqStr",
+        "TotalDPS",
+        "TotalDotDPS",
+        "IgniteDPS",
+        "RageRegenRecovery",
+        "TotalEHP",
+        "SpiritUnreserved",
+        "DeflectChance",
+        "SpiritUnreservedPercent",
+        "CullingDPS"
+      ]
+    },
+    {
+      "build": "martial-artist-10",
+      "after_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/after-builds/martial-artist-10.json",
+      "after_sha256": "c78201ef8706c0c8dea608729c39c108ec99f8724ba58cfc288648c8e48e78ed",
+      "checks": {
+        "TotalDPS": {
+          "before": 32493.02935512,
+          "after": 32493.02935512,
+          "unchanged": true
+        },
+        "TotalHitAvg": {
+          "before": 8660.400090285,
+          "after": 8660.400090285,
+          "unchanged": true
+        },
+        "CritChance": {
+          "before": 39.186,
+          "after": 39.186,
+          "unchanged": true
+        },
+        "CritMultiplier": {
+          "before": 6.11,
+          "after": 6.11,
+          "unchanged": true
+        },
+        "IgniteDPS": {
+          "before": 13.05510131,
+          "after": 13.05510131,
+          "unchanged": true
+        },
+        "BleedDPS": {
+          "before": 0.0,
+          "after": 0.0,
+          "unchanged": true
+        },
+        "TotalDotDPS": {
+          "before": 13.05510131,
+          "after": 13.05510131,
+          "unchanged": true
+        },
+        "EnergyShield": {
+          "before": 6228.0,
+          "after": 6228.0,
+          "unchanged": true
+        }
+      },
+      "all_checked_values_unchanged": true,
+      "retained_after_triage_stats": [
+        "AverageDamage",
+        "AverageBurstDamage",
+        "WithIgniteDPS",
+        "WithBleedDPS",
+        "WithPoisonDPS",
+        "ReqStr",
+        "TotalDPS",
+        "CombinedDPS",
+        "TotalDotDPS",
+        "IgniteDPS",
+        "RageRegenRecovery",
+        "ChaosMaxHit",
+        "SpiritUnreserved",
+        "SpiritUnreservedPercent"
+      ]
+    }
+  ],
+  "all_primary_values_unchanged": true,
+  "non_primary_note": "Lich03 Life improved from6747.15 to7530.69, still below oracle7661; reservations and some defensive rows changed. They are not classified by these jewel/Mark causes."
+}

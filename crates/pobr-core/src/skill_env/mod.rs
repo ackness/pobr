@@ -19,8 +19,8 @@ mod triggers;
 mod weapon;
 
 pub use buff_specs::{
-    BuffEnv, buff_skill_specs, exposure_support_modifiers, group_judgement,
-    groups_inflict_exposure, skill_crushing_on_hit, skill_inflicting_withered,
+    BuffEnv, buff_skill_specs, exposure_support_modifiers, flame_wall_buff_specs, gem_judgements,
+    group_judgement, groups_inflict_exposure, skill_crushing_on_hit, skill_inflicting_withered,
     strongest_skill_blind, support_buff_specs, support_modifiers, support_modifiers_with_limits,
     supported_gem_index, warcry_skill_specs,
 };

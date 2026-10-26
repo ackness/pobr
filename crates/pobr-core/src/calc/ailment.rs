@@ -861,7 +861,16 @@ pub fn poison_traced(
     )
 }
 
-/// Computes the ignite panel output (chance-derived: fire hit/threshold × IgniteChanceMultiplier + AilmentChance).
+/// The resulting Ignite damage type, shared by calculation and displayed mitigation.
+pub(crate) fn ignite_damage_type(player: &ModDb, cfg: &CalcConfig) -> DamageType {
+    if player.flag(cfg, "IgniteToChaos") {
+        DamageType::Chaos
+    } else {
+        DamageType::Fire
+    }
+}
+
+/// Computes the ignite panel output (chance-derived: source hit/threshold × IgniteChanceMultiplier + AilmentChance).
 pub fn ignite_traced(
     source: &AilmentSource,
     player: &ModDb,
@@ -893,18 +902,25 @@ pub fn ignite_traced(
         threshold,
         trace,
     );
-    compute_damaging_ailment(
+    let damage_type = ignite_damage_type(player, cfg);
+    let (output, node) = compute_damaging_ailment(
         source,
         player,
         enemy,
         cfg,
         AilmentType::Ignite,
-        DamageType::Fire,
+        damage_type,
         chance_hit,
         chance_crit,
         chance_node,
         trace,
-    )
+    );
+    if damage_type == DamageType::Chaos {
+        let source = super::crit::flag_source(player, cfg, "IgniteToChaos");
+        let flag_node = trace.add_source_node("IgniteToChaos", 1.0, source);
+        trace.add_edge(flag_node, node);
+    }
+    (output, node)
 }
 
 /// Shock's chance-derived chance + effect magnitude (a non-damaging ailment), writes to the TraceGraph.

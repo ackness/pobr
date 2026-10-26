@@ -95,9 +95,10 @@ impl std::error::Error for ItemTextError {}
 
 /// Parses a PoB-style item text block into a structured [`Item`].
 ///
-/// Modifiers are split by section: implicit (the number of lines given by the
-/// `Implicits: N` header), enchant (lines with a `{crafted}` / `{enchant}`
-/// prefix), explicit (any other non-metadata modifier line). Metadata lines
+/// Modifiers are split by section: the first `Implicits: N` modifier lines
+/// consume the implicit span, including lines routed to enchant by a
+/// `{crafted}` / `{enchant}` / `{rune}` prefix. Other lines past that span are
+/// explicit. Metadata lines
 /// (`Item Level:` / `Requirements:` / `Quality:`, etc.) don't enter any
 /// modifier section.
 ///
@@ -193,11 +194,10 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
 /// ```
 ///
 /// Section classification reuses [`classify_mod_lines`]: lines with a
-/// `{crafted}` / `{enchant}` prefix → the enchant section; the rest → the
-/// first N lines (per the `Implicits: N` count) go to implicit, the remainder
-/// to explicit. **Calculated values are independent of section
-/// classification** (all three sections feed into the same ModDb) — the
-/// section only affects source-level attribution granularity.
+/// `{crafted}` / `{enchant}` / `{rune}` prefix → the enchant section, while
+/// still consuming a position in `Implicits: N`. Unmarked lines within that
+/// span go to implicit; later ones go to explicit. Preserve these boundaries:
+/// dedicated readers can require adjacent lines in the same section.
 ///
 /// Structural errors (empty input / missing `Rarity:` / missing base) return
 /// [`Err`]; individual modifier text that can't be parsed is still kept as a
@@ -657,8 +657,9 @@ fn strip_enchant_marker(line: &str) -> (String, bool) {
 /// Classifies a section's modifier lines into implicit / enchant / explicit.
 ///
 /// The first N lines (accumulated across sections) indicated by the
-/// `Implicits: N` header go to implicit; lines with an enchant marker go to
-/// enchant; the rest go to explicit.
+/// `Implicits: N` header consume its count, including enchant/rune lines.
+/// Marked lines go to enchant; other counted lines go to implicit, and the
+/// rest go to explicit.
 ///
 /// After classification and before storing, [`strip_pob_annotations`] is
 /// called to strip PoB export meta-annotations like `{range:0.5}` /
@@ -677,7 +678,7 @@ fn classify_mod_lines(
         // prefix semantics), then strip PoB export meta-annotations from
         // the remaining text.
         let (text_after_enchant_marker, is_enchant) = strip_enchant_marker(line);
-        let implicit = !is_enchant && *implicit_remaining > 0;
+        let implicit = *implicit_remaining > 0;
         if implicit {
             *implicit_remaining -= 1;
         }

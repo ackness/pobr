@@ -12,6 +12,187 @@
   },
   "entries": [
     {
+      "id": "mystic_harvest_elemental_life_leech",
+      "pattern": "^life leech recovers based on your elemental damage as well as physical damage$",
+      "mods": [{"name": "LifeLeechBasedOnElementalDamage", "type": "FLAG", "value": true}],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "life_leech_also_recovers_based_on_elemental_damage_types; passive 3065 Mystic Harvest",
+      "source_note": "The retained passive extends the damage types that fund existing Life Leech. It does not grant a leech percentage or remove the original modifier's attack/skill restrictions. Recovery applies conversion to the destination resource separately.",
+      "examples": ["Life Leech recovers based on your Elemental damage as well as Physical damage"]
+    },
+    {
+      "id": "blackflame_covenant_fire_spell_conversion",
+      "pattern": "^fire spells convert (\\d+)% of fire damage to chaos damage$",
+      "mods": [{"name": "FireDamageConvertToChaos", "type": "BASE", "value": "$1", "tags": [{"type": "SkillType", "skillType": "Spell"}, {"type": "SkillType", "skillType": "Fire"}]}],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "keystone_fire_spells_become_chaos_spells; passive 42680 Blackflame Covenant",
+      "source_note": "Game passive text converts the Fire damage of Fire-tagged spells, not every skill dealing Fire damage. Uses the existing final-type conversion matrix.",
+      "examples": ["Fire Spells Convert 100% of Fire Damage to Chaos Damage"]
+    },
+    {
+      "id": "blackflame_covenant_chaos_ignite_source",
+      "pattern": "^chaos damage from fire spells contributes to flammability and ignite magnitudes$",
+      "mods": [{"name": "ChaosCanIgnite", "type": "FLAG", "value": true, "tags": [{"type": "SkillType", "skillType": "Spell"}, {"type": "SkillType", "skillType": "Fire"}]}],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "keystone_fire_spells_become_chaos_spells; passive 42680 Blackflame Covenant",
+      "source_note": "Chaos hit damage from Fire spells enters the existing Ignite source and threshold calculation. Does not turn all spells or attacks into Fire skills.",
+      "examples": ["Chaos Damage from Fire Spells Contributes to Flammability and Ignite Magnitudes"]
+    },
+    {
+      "id": "blackflame_covenant_chaos_ignite_damage",
+      "pattern": "^ignite inflicted with fire spells deals chaos damage instead of fire damage$",
+      "mods": [{"name": "IgniteToChaos", "type": "FLAG", "value": true, "tags": [{"type": "SkillType", "skillType": "Spell"}, {"type": "SkillType", "skillType": "Fire"}]}],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "keystone_fire_spells_become_chaos_spells; passive 42680 Blackflame Covenant",
+      "source_note": "Changes the resulting Ignite damage type and enemy mitigation, preserving Ignite magnitude, duration and chance. No second damage-scaling pass applies to the ailment.",
+      "examples": ["Ignite inflicted with Fire Spells deals Chaos Damage instead of Fire Damage"]
+    },
+    {
+      "id": "blackened_heart_unholy_might_granted_magnitude",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased magnitude of unholy might buffs you grant per 100 maximum mana$",
+      "mods": [
+        {
+          "name": "UnholyMightGrantedMagnitude",
+          "type": "INC",
+          "value": "$1",
+          "tags": [{"type": "PerStat", "stat": "Mana", "div": 100}]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "unholy_might_granted_magnitude_+%_per_100_maximum_mana; passive 2877 Blackened Heart (AscendancyWitch3Notable4)",
+      "source_note": "Game text increases the magnitude of Unholy Might buffs YOU GRANT. Read from the caster's completed maximum Mana, once per full 100, for both self and ally grants. The recipient's Mana and buff effect are separate. Uses the existing UnholyMight definition and magnitude multiplier; no uptime is inferred.",
+      "examples": ["4% increased Magnitude of Unholy Might Buffs you grant per 100 maximum Mana"]
+    },
+    {
+      "id": "weapon_added_cold_from_mana",
+      "pattern": "^attacks with this weapon have added cold damage equal to (\\d+(?:\\.\\d+)?)% to (\\d+(?:\\.\\d+)?)% of maximum mana$",
+      "mods": [
+        {
+          "name": "ColdDamageMin",
+          "type": "BASE",
+          "value": 1,
+          "flags": ["Attack"],
+          "tags": [
+            {"type": "PercentStat", "stat": "Mana", "percent": "$1"},
+            {"type": "Condition", "var": "{Hand}Attack"}
+          ]
+        },
+        {
+          "name": "ColdDamageMax",
+          "type": "BASE",
+          "value": 1,
+          "flags": ["Attack"],
+          "tags": [
+            {"type": "PercentStat", "stat": "Mana", "percent": "$2"},
+            {"type": "Condition", "var": "{Hand}Attack"}
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "local_attacks_have_added_min_cold_damage_equal_to_%_of_maximum_mana; local_attacks_have_added_max_cold_damage_equal_to_%_of_maximum_mana",
+      "source_note": "Twisted Empyrean adds Cold damage from final maximum Mana only to attacks using the item's hand; existing PercentStat reads the completed resource snapshot.",
+      "examples": ["Attacks with this Weapon have Added Cold Damage equal to 7% to 10% of maximum Mana"]
+    },
+    {
+      "id": "mace_fire_damage_converted_to_cold",
+      "pattern": "^convert (\\d+(?:\\.\\d+)?)% of fire damage with mace skills to cold damage$",
+      "mods": [
+        {
+          "name": "FireDamageConvertToCold",
+          "type": "BASE",
+          "value": "$1",
+          "flags": ["Attack", "Mace"]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "exporter": "absent",
+      "game_source": "unique_mace_fire_damage_with_mace_skills_%_to_convert_to_cold",
+      "source_note": "Twisted Empyrean converts Fire damage of Mace attacks through the existing conversion matrix, including its normalization above 100%. The pinned exporter recognizes older 'of ... skills' wording, not the current 'with Mace Skills' line.",
+      "examples": ["Convert 102% of Fire Damage with Mace Skills to Cold Damage"]
+    },
+    {
+      "id": "spirit_with_200_strength",
+      "pattern": "\\+?(\\d+) to spirit while you have at least 200 strength",
+      "mods": [
+        {
+          "name": "Spirit",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "Strength",
+              "threshold": 200.0
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "spirit_+_if_at_least_200_strength",
+      "source_note": "Grip of Kulemak: grants Spirit when the final Strength snapshot reaches 200. The existing stat threshold preserves the condition below that value.",
+      "examples": [
+        "+23 to Spirit while you have at least 200 Strength"
+      ]
+    },
+    {
+      "id": "spirit_with_200_dexterity",
+      "pattern": "\\+?(\\d+) to spirit while you have at least 200 dexterity",
+      "mods": [
+        {
+          "name": "Spirit",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "Dexterity",
+              "threshold": 200.0
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "spirit_+_if_at_least_200_dexterity",
+      "source_note": "Grip of Kulemak: grants Spirit when the final Dexterity snapshot reaches 200. The existing stat threshold preserves the condition below that value.",
+      "examples": [
+        "+23 to Spirit while you have at least 200 Dexterity"
+      ]
+    },
+    {
+      "id": "spirit_with_200_intelligence",
+      "pattern": "\\+?(\\d+) to spirit while you have at least 200 intelligence",
+      "mods": [
+        {
+          "name": "Spirit",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "Intelligence",
+              "threshold": 200.0
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "spirit_+_if_at_least_200_intelligence",
+      "source_note": "Grip of Kulemak: grants Spirit when the final Intelligence snapshot reaches 200. The existing stat threshold preserves the condition below that value.",
+      "examples": [
+        "+23 to Spirit while you have at least 200 Intelligence"
+      ]
+    },
+    {
       "id": "mark_skill_effect",
       "pattern": "(\\d+(?:\\.\\d+)?)% increased effect of your mark skills",
       "mods": [{ "name": "MarkEffect", "type": "INC", "value": "$1" }],
@@ -6872,6 +7053,86 @@
       "source_note": "Current passive text limits this Armour defence percentage to incoming Projectile Attacks. calc::taken selects it only from the configured enemy HitCategory::Projectile and takes the strongest percentage together with ArmourDefense; player skill flags do not qualify it. It changes effective applied Armour used by taken-hit, EHP and max-hit calculations, not character Armour. Unspecified/Average, melee and spell hits remain unchanged.",
       "examples": [
         "Defend with 120% of Armour against Projectile Attacks"
+      ]
+    },
+    {
+      "id": "companions_in_presence_gain_as_random_element",
+      "pattern": "companions in your presence gain (\\d+(?:\\.\\d+)?)% of damage as extra damage of a random element",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ExtraAura",
+                "type": "LIST",
+                "value": {
+                  "mods": [
+                    {
+                      "name": "DamageGainAsRandom",
+                      "type": "BASE",
+                      "value": "$1"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "Companion"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "companions_in_presence_non_skill_base_all_damage_%_to_gain_as_random_element",
+      "source_note": "Retained game stat and overlay/stat_descriptions.json: only Companions in Presence receive this effect. The summoning skill Companion type gates the MinionModifier; its nested ExtraAura applies through the existing recipient buff/aura scaling with HiddenMonster, SelfAurasCannotAffectAllies and explicit zero MinionPresenceCount exclusions. Positive counts do not assign actor positions. DamageGainAsRandom uses the existing equal three-element average. No in-game range/effect measurement.",
+      "examples": [
+        "Companions in your Presence Gain 20% of Damage as Extra Damage of a random Element"
+      ]
+    },
+    {
+      "id": "companions_in_presence_elemental_resistance",
+      "pattern": "companions in your presence have ([+-]?\\d+(?:\\.\\d+)?)% to all elemental resistances",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ExtraAura",
+                "type": "LIST",
+                "value": {
+                  "mods": [
+                    {
+                      "name": "ElementalResist",
+                      "type": "BASE",
+                      "value": "$1"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "Companion"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "companions_in_presence_base_resist_all_elements_%",
+      "source_note": "Retained game stat and overlay/stat_descriptions.json: only Companions in Presence receive this effect. The summoning skill Companion type gates the MinionModifier; its nested ExtraAura applies through the existing recipient buff/aura scaling with HiddenMonster, SelfAurasCannotAffectAllies and explicit zero MinionPresenceCount exclusions. Positive counts do not assign actor positions. DamageGainAsRandom uses the existing equal three-element average. No in-game range/effect measurement.",
+      "examples": [
+        "Companions in your Presence have -20% to all Elemental Resistances"
       ]
     }
   ]

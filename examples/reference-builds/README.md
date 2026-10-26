@@ -11,6 +11,10 @@
 
 `examples/wasm-benchmark/builds` 的 8 个构筑同样已被逐个修过，属于前一类。`tuned/selection-holdout-2026-10-13.json` 与 `tuned/selection-holdout-2026-10-15.json` 是并入 `tuned/` 的两批 holdout 的抓取记录。
 
+`ninja-top10-2026-10-26/` 是额外的 Forbidden Rites 活动服样本：固定快照 `0757-20261026-16736`，按网站默认等级降序保留每个升华的前十行及同级原顺序，共 230 个码。它使用排名选择，与下文 `builds:fetch` 的账号排序不同。`build-codes.json` 是码合集，`index.csv` 和 `selection.json` 记录来源，`validation.json` 记录完整性校验。首轮排查51个，第二轮已覆盖全部230个；本批不是独立holdout，也没有加入默认门禁语料。运行 `mise run accuracy examples/reference-builds/ninja-top10-2026-10-26/builds` 可复测整批，首轮结果见 [第一批报告](ninja-top10-2026-10-26/reports/fix-round-1/summary.txt)，全部230个的后续修复、测试与剩余差异见 [第二批报告](ninja-top10-2026-10-26/reports/fix-round-2/summary.txt)。
+
+后续静态词条、物品分段、珠宝缩放和配置火墙修复见 [第三批报告](ninja-top10-2026-10-26/reports/fix-round-3/summary.txt)。它另外检查全部230个构筑的PoBR默认模式，和参考模式分开记录；两种结果都不作为游戏实测真值。
+
 一旦按 `holdout/` 里某个构筑的差异改了引擎，这组数字就不再说明“没调过的构筑”。需要新一轮目标时，把 `holdout/` 的构筑移入 `tuned/`，再抓一批新的作 `holdout/`。
 
 ## 抓取
@@ -138,5 +142,16 @@ mise run builds:fetch examples/reference-builds/holdout --pick last
 | 2026-10-18 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1913/2034 (94.1%) |
 | 2026-10-18 (round 52: Giant's Blood enables eligible offhand attacks while retaining two-handed identity; projectile Armour uses the incoming enemy attack category; Fully Broken Armour extends hit vulnerability to granted elements. Existing helmet Stun Threshold is verified rather than reimplemented. Reference agreement and compared-row counts are unchanged) | `tuned/` | 69 | 58 (84%) | 5790/6119 (94.6%) |
 | 2026-10-18 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1913/2034 (94.1%) |
+| 2026-10-26（round 53：静态装备条件、Mark Effect、有限 Ward 吸收、友军光环、Offering、召唤数量/消耗及武器暴击/敌人抗性输入；参考条件省略 exporter-absent Mark 规则） | `tuned/` | 69 | 58（84%） | 5793/6119（94.7%） |
+| 2026-10-26（同一批改动；只测汇总。敌人条件名称修正使保存的参考值少吻合1个伤害、6行，其他修复增加1行；汇总回退定位于该修正，未查看单个 holdout，按独立样本与回归证据保留正确行为） | `holdout/` | 23 | 17（74%） | 1908/2034（93.8%） |
+| 2026-10-26（Forbidden Rites 首批51，修复前） | `ninja-top10-2026-10-26/` 首批 | 51 | 25（49%） | 4175/4538（92.0%） |
+| 2026-10-26（相同51个冻结构筑，修复后；25行回到容差内，无新增不吻合行） | `ninja-top10-2026-10-26/` 首批 | 51 | 28（55%） | 4200/4538（92.6%） |
+| 2026-10-26（修复后的完整230个样本；230次导入计算成功） | `ninja-top10-2026-10-26/` 全部 | 230 | 150（65%） | 18974/20427（92.9%） |
+| 2026-10-26（round 54：两组武器技能/珠宝、授予组、静态防御与条件、有限资源池、连锁明细、召唤物辅助/不洁之力、战吼速度；完整门禁通过） | `tuned/` | 69 | 58（84%） | 5795/6119（94.7%） |
+| 2026-10-26（同批改动，仅汇总测量，未查看单个构筑） | `holdout/` | 23 | 17（74%） | 1908/2034（93.8%） |
+| 2026-10-26（Forbidden Rites 第二批：全部230个参与排查；157行回到容差内，8行离开；剩余差异见第二批报告） | `ninja-top10-2026-10-26/` 全部 | 230 | 159（69%） | 19123/20427（93.6%） |
+| 2026-10-26（round 55：物品分段、The Adorned/征服小天赋嵌套缩放、Blackflame、配置火墙、伙伴Presence及最强Buff合并；完整门禁通过） | `tuned/` | 69 | 58（84%） | 5795/6119（94.7%） |
+| 2026-10-26（同批改动，仅汇总测量，未查看单个构筑；提高后的基线通过） | `holdout/` | 23 | 17（74%） | 1912/2034（94.0%） |
+| 2026-10-26（Forbidden Rites 第三批：59行回到容差内、3行离开；另完成230/230默认模式计算检查） | `ninja-top10-2026-10-26/` 全部 | 230 | 169（73%） | 19179/20427（93.9%） |
 
-吻合行里有按游戏规则有意不同于参考值的行（例如护身符授予的技能不保留精魄，见 `reference_report.rs` 基线旁的说明），所以上限不是 100%。
+不吻合行里有按游戏规则有意不同于参考值的行（例如护身符授予的技能不保留精魄，见 `reference_report.rs` 基线旁的说明），所以上限不是 100%。

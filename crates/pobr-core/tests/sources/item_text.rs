@@ -31,6 +31,18 @@ fn selected_variants_and_ranges_preserve_section_boundaries() {
 }
 
 #[test]
+fn selected_enchant_variants_consume_serialized_implicit_positions() {
+    let header = "Rarity: UNIQUE\nSynthetic Jewel\nDiamond\n";
+    let body = "Variant: Old\nVariant: Current\nSelected Variant: 2\nImplicits: 3\n{variant:1}{enchant}+50 to maximum Life\n{variant:2}{range:0.5}{rune}+(20-40) to Dexterity\n{variant:2}{range:0.5}+(10-20) to maximum Mana\n{variant:1}+100 to Strength\n{variant:2}+10 to Intelligence";
+    for separator in ["", "--------\n"] {
+        let item = parse_pob_xml_item(&format!("{header}{separator}{body}")).unwrap();
+        assert_eq!(item.enchant_texts, ["+30 to Dexterity"]);
+        assert_eq!(item.implicit_texts, ["+15 to maximum Mana"]);
+        assert_eq!(item.modifier_texts, ["+10 to Intelligence"]);
+    }
+}
+
+#[test]
 fn legacy_alt_variants_and_versioned_groups_select_only_active_lines() {
     let legacy = "Rarity: UNIQUE\nSynthetic\nDiamond\nVariant: One\nVariant: Two\nVariant: Three\nSelected Variant: 1\nHas Alt Variant: true\nSelected Alt Variant: 2\nImplicits: 0\n{variant:1}+10 to Strength\n{variant:2}+10 to Dexterity\n{variant:3}+10 to Intelligence";
     assert_eq!(
@@ -482,6 +494,19 @@ fn xml_item_strips_brace_prefixes_and_collects_all_mods() {
         all.iter().any(|t| t.as_str() == "+26 to Strength"),
         "a trailing plain modifier should be kept: {all:?}"
     );
+    // Five serialized implicit positions: two runes, then three ordinary lines.
+    assert_eq!(
+        item.implicit_texts,
+        [
+            "Grenade Skills Fire an additional Projectile",
+            "Adds 1 to 356 Lightning Damage",
+            "152% increased Physical Damage"
+        ]
+    );
+    assert_eq!(
+        item.modifier_texts,
+        ["Adds 47 to 86 Physical Damage", "+26 to Strength"]
+    );
 }
 
 #[test]
@@ -587,6 +612,62 @@ Implicits: 1
         item.modifier_texts,
         vec!["+50 to maximum Life", "+25 to Dexterity"]
     );
+}
+
+#[test]
+fn xml_item_implicit_count_includes_enchants_and_runes() {
+    // Both the item codec and PoB's serializer include rune/enchant lines in
+    // Implicits: N. Keep their destination while respecting the next boundary.
+    for lines in [
+        "{enchant}{rune}+20 to maximum Mana\n{enchant}+8% to Fire Resistance\n+30% to Lightning Resistance",
+        "+30% to Lightning Resistance\n{rune}+20 to maximum Mana\n{enchant}+8% to Fire Resistance",
+    ] {
+        for separator in ["\n", "\n--------\n"] {
+            let raw = format!(
+                "Rarity: RARE\nDragon Hold\nTopaz Ring{separator}Implicits: 3{separator}{lines}{separator}+50 to maximum Life\n+25 to Dexterity"
+            );
+            let item = parse_pob_xml_item(&raw).unwrap();
+            assert_eq!(item.implicit_texts, ["+30% to Lightning Resistance"]);
+            assert_eq!(
+                item.enchant_texts,
+                ["+20 to maximum Mana", "+8% to Fire Resistance"]
+            );
+            assert_eq!(
+                item.modifier_texts,
+                ["+50 to maximum Life", "+25 to Dexterity"]
+            );
+        }
+    }
+}
+
+#[test]
+fn xml_item_enchant_keeps_wrapped_adorned_effect_explicit() {
+    use pobr_core::skill_env::CorruptedJewelEffect;
+
+    // Frozen shaman-06's rare-jewel Adorned has one enchanted resistance line.
+    // Its two effect lines must also stay together for the magic-jewel variant.
+    for (named, rarity) in [("Rare", ItemRarity::Rare), ("Magic", ItemRarity::Magic)] {
+        for separator in ["\n", "\n--------\n"] {
+            let raw = format!(
+                "Rarity: UNIQUE\nThe Adorned\nDiamond{separator}Item Level: 82\nLevelReq: 0\nLimited to: 1\nImplicits: 1{separator}{{enchant}}+8% to Fire Resistance\n75% increased Effect of Jewel Socket Passive Skills\ncontaining Corrupted {named} Jewels\nTwice Corrupted"
+            );
+            let item = parse_pob_xml_item(&raw).unwrap();
+            assert_eq!(item.rarity, ItemRarity::Unique);
+            assert!(item.corrupted);
+            assert!(item.implicit_texts.is_empty());
+            assert_eq!(item.enchant_texts, ["+8% to Fire Resistance"]);
+            assert_eq!(
+                item.modifier_texts,
+                [
+                    "75% increased Effect of Jewel Socket Passive Skills".to_string(),
+                    format!("containing Corrupted {named} Jewels")
+                ]
+            );
+            // Exercise the real dedicated reader, not a test-only line join.
+            let effect = CorruptedJewelEffect::from_jewels([&item]);
+            assert_eq!(effect.increase(rarity, true), Some(75.0));
+        }
+    }
 }
 
 /// A foil unique. An unknown rarity used to reject the whole block, so the
