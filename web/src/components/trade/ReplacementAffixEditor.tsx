@@ -7,6 +7,7 @@ import { useLocalizedLines } from '../../hooks/useLocalizedLines';
 import { affixRollLines, affixTier, availableAffixes, buildAffixItem, createAffixDraft, editableAffixPool, validateAffixDraft, type AffixDraft } from '../../lib/marketAffixEditor';
 import { affixT } from '../../lib/marketAffixText';
 import { AppSelect } from '../shared/AppSelect';
+import { AppRange } from '../shared/AppRange';
 import './replacementAffixEditor.css';
 
 /** Draft edits are local to the candidate; only the caller can run or apply a comparison. */
@@ -74,8 +75,8 @@ export function ReplacementAffixEditor({ report, catalog, characterLevel, lang, 
           {mod && !row.fractured && <div className="affix-editor-roll"><span>{row.edited ? `${t('range')} · ${Math.round(row.roll * 100)}%` : t('current')}</span>
             <div>{([0, 0.5, 1] as const).map(roll => <AppButton key={roll} disabled={disabled} aria-pressed={row.edited && row.roll === roll}
               onClick={() => update({ ...current, rows: current.rows.map(existing => existing.key === row.key ? { ...existing, edited: true, roll } : existing) })}>{t(roll === 0 ? 'minimum' : roll === 1 ? 'maximum' : 'midpoint')}</AppButton>)}</div>
-            {row.edited && <AppInput type="range" min="0" max="100" step="1" value={row.roll * 100} disabled={disabled} aria-label={`${t('range')}: ${mod.id}`}
-              onChange={event => update({ ...current, rows: current.rows.map(existing => existing.key === row.key ? { ...existing, roll: Number(event.target.value) / 100 } : existing) })} />}
+            {row.edited && <AppRange min={0} max={100} step={1} value={row.roll * 100} disabled={disabled} aria-label={`${t('range')}: ${mod.id}`}
+              onValueChange={value => update({ ...current, rows: current.rows.map(existing => existing.key === row.key ? { ...existing, roll: value / 100 } : existing) })} />}
           </div>}
         </article>;
       })}</div>
