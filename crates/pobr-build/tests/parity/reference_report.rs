@@ -512,7 +512,9 @@ const BASELINES: [Baseline; 3] = [
         // Measured only: resistance truncation, Smith sharing and Idol categories (+5 rows).
         // Measured only: reference basis excludes exporter-absent rules.
         // Measured only after the mechanic batches: +1 agreeing row, 4 new rows.
-        agreeing_rows: 1908,
+        // Measured only: the static item/projectile batch raises the aggregate
+        // by four rows. No individual holdout build was inspected.
+        agreeing_rows: 1912,
     },
 ];
 
