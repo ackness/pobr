@@ -501,6 +501,7 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "EnergyShieldRecharge",
             "ZealotsOath",
             "NoEnergyShieldRecharge",
+            "MovementSpeedAppliesToEnergyShieldRecharge",
         ],
         "EsRechargeDelay" => &[
             "EnergyShieldRechargeFaster",
@@ -751,7 +752,16 @@ impl CalculationSession {
             })
             .collect();
         let regen_stat = stat.strip_suffix("Recovery").unwrap_or(stat);
-        for name in super::super::survivability::shared_regen_increase_names(db, &cfg, regen_stat) {
+        let mut shared_increases =
+            super::super::survivability::shared_regen_increase_names(db, &cfg, regen_stat);
+        if stat == "EsRechargeRate" {
+            shared_increases.extend(
+                super::super::defence::es_recharge_increase_names(db, &cfg)
+                    .into_iter()
+                    .skip(1),
+            );
+        }
+        for name in shared_increases {
             let names = [name.clone()];
             groups.push(SourceGroup {
                 name: name.to_string(),

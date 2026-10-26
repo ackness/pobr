@@ -790,7 +790,7 @@ pub fn calc_es_recharge(
     }
 
     // Recharge rate: base 750%/min, scaled by EnergyShieldRecharge INC/MORE.
-    let rate_inc = db.sum(ModType::Inc, cfg, &[ModName::from("EnergyShieldRecharge")]);
+    let rate_inc = db.sum(ModType::Inc, cfg, &es_recharge_increase_names(db, cfg));
     let rate_more = db.more(cfg, &[ModName::from("EnergyShieldRecharge")]);
     let rate_per_min = ES_RECHARGE_RATE_PER_MINUTE_BASE * (1.0 + rate_inc / 100.0) * rate_more;
     // Convert to a per-second fraction (750%/min = 12.5%/s; divide by 100 to get a fraction).
@@ -822,6 +822,17 @@ pub fn calc_es_recharge(
         rate_fraction: round(rate_fraction),
         delay_seconds,
     }
+}
+
+/// `increases_and_reductions_to_move_speed_apply_to_es_recharge_rate`
+/// shares only MovementSpeed INC, with the original modifier conditions.
+/// Movement penalties, action speed and the source's BASE/MORE are separate.
+pub(crate) fn es_recharge_increase_names(db: &ModDb, cfg: &CalcConfig) -> Vec<ModName> {
+    let mut names = vec![ModName::from("EnergyShieldRecharge")];
+    if db.flag(cfg, "MovementSpeedAppliesToEnergyShieldRecharge") {
+        names.push(ModName::from("MovementSpeed"));
+    }
+    names
 }
 
 /// The absolute per-second ES recharge amount, for panel display. `recharge.rate_fraction * energy_shield`.
