@@ -7,11 +7,13 @@ import { statNameLabel, type Lang } from '../../lib/i18n';
 import { passivePlanningContext, withTravelAttributes } from '../../lib/passivePlanner';
 import { evaluateNodePower, filterPowerRows, powerCandidates, rankPowerRows, type PowerRow, type PowerSort } from '../../lib/nodePower';
 import { powerLabels } from './nodePowerLabels';
+import { passiveNodeMatches, passiveNodeName, type PassiveNodeNames } from './passiveNodeNames';
 import './nodePower.css';
 
 interface Props {
   session: BuildSession;
   nodes: PassiveNode[];
+  nodeNames: PassiveNodeNames;
   lang: Lang;
   stat: string;
   stats: string[];
@@ -20,7 +22,7 @@ interface Props {
 }
 const PAGE_SIZE = 50;
 
-export function NodePowerTable({ session, nodes, lang, stat, stats, onStat, onFocus }: Props) {
+export function NodePowerTable({ session, nodes, nodeNames, lang, stat, stats, onStat, onFocus }: Props) {
   const t = powerLabels[lang];
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -44,7 +46,8 @@ export function NodePowerTable({ session, nodes, lang, stat, stats, onStat, onFo
   [nodes, session.allocatedNodes, session.character?.class_name, session.weaponSwap, session.jewels, ascendancy, session.calc?.tree_effects]);
   const candidates = useMemo(() => powerCandidates(nodes, context, session.allocatedNodes, ascendancy), [nodes, context, session.allocatedNodes, ascendancy]);
   const results = completed?.key === key ? completed : null;
-  const filtered = filterPowerRows(candidates.map(row => results?.rows.get(row.node.skill) ?? row), search, small);
+  const filtered = filterPowerRows(candidates.map(row => results?.rows.get(row.node.skill) ?? row), '', small)
+    .filter(row => passiveNodeMatches(row.node, search, nodeNames));
   const ranked = rankPowerRows(filtered, sort, ascending);
   const pending = filtered.filter(row => row.status === 'pending').length;
   const currentPage = Math.min(page, Math.max(0, Math.ceil(ranked.length / PAGE_SIZE) - 1));
@@ -104,7 +107,7 @@ export function NodePowerTable({ session, nodes, lang, stat, stats, onStat, onFo
         <table aria-label={t.title}>
           <thead><tr>{(['node', 'perPoint', 'points', 'gain', 'kind', 'single'] as const).map(id => <th key={id} aria-sort={sort === id ? ascending ? 'ascending' : 'descending' : 'none'}><AppButton onClick={() => changeSort(id)}>{t[id]}</AppButton></th>)}</tr></thead>
           <tbody>{visible.map(row => <tr key={row.node.skill} data-node-id={row.node.skill} data-status={row.status}>
-            <td><AppButton onClick={() => onFocus(row.node)} disabled={row.node.x === undefined || row.node.y === undefined}>{row.node.name ?? row.node.id}</AppButton><small>#{row.node.skill}{row.node.ascendancy_id ? ` · ${t.asc}` : ''}</small>
+            <td><AppButton onClick={() => onFocus(row.node)} disabled={row.node.x === undefined || row.node.y === undefined}>{passiveNodeName(row.node, nodeNames)}</AppButton><small>#{row.node.skill}{row.node.ascendancy_id ? ` · ${t.asc}` : ''}</small>
               {row.status !== 'ready' && <small>{t[row.status]}</small>}
               {row.diagnostics.length > 0 && <details><summary>{t[row.status]}</summary>{row.diagnostics.map((text, i) => <p key={i}>{text}</p>)}</details>}
             </td>

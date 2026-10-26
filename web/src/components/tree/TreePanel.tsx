@@ -27,6 +27,7 @@ import { TreeOptimizer, useTreeOptimizer, type TreeOptimizerState } from './Tree
 import type { PassivePlan } from '../../lib/passivePlanner';
 import './tree.css';
 import { NodePowerTable } from './NodePowerTable';
+import { passiveNodeMatches, passiveNodeName, usePassiveNodeNames, type PassiveNodeNames } from './passiveNodeNames';
 
 interface Props {
   session: BuildSession;
@@ -88,8 +89,15 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch 
   const [error, setError] = useState<string | null>(null);
   const [plannedNodes, setPlannedNodes] = useState<PassivePlan | null>(null);
   const byId = useMemo(() => new Map(nodes.map(node => [node.skill, node])), [nodes]);
+  const ascendancy = session.treeMeta?.classes.flatMap(entry => entry.ascendancies ?? [])
+    .find(entry => entry.name === session.character?.ascendancy_name)?.id;
+  const namedNodes = useMemo(() => nodes.filter(node => !node.ascendancy_id || node.ascendancy_id === ascendancy), [nodes, ascendancy]);
+  const nodeNames = usePassiveNodeNames(namedNodes, lang, active);
   const planner = useTreeOptimizer({ session, lang, active, nodes,
-    nodeLabel: skill => byId.get(skill)?.name ?? `#${skill}`,
+    nodeLabel: skill => {
+      const node = byId.get(skill);
+      return node ? passiveNodeName(node, nodeNames) : `#${skill}`;
+    },
     onPreview: setPlannedNodes, focusPlanner });
   useEffect(() => {
     let cancelled = false;
@@ -108,7 +116,7 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch 
     session.activeLoadout, session.activeWeaponSet, session.socketGroupRevision,
     session.character?.class_name, session.character?.ascendancy_name]);
   return <TreeCanvas key={canvasContext} session={session} lang={lang} onJewelSearch={onJewelSearch}
-    allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} art={art} error={error} plannedNodes={plannedNodes} planner={planner} />;
+    allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} nodeNames={nodeNames} art={art} error={error} plannedNodes={plannedNodes} planner={planner} />;
 }
 
 interface CanvasProps {
@@ -118,13 +126,14 @@ interface CanvasProps {
   lang: Lang;
   onJewelSearch?: (socket: number) => void;
   nodes: PassiveNode[] | null;
+  nodeNames: PassiveNodeNames;
   art: TreeArt | null;
   error: string | null;
   plannedNodes: PassivePlan | null;
   planner: TreeOptimizerState;
 }
 
-function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, art, error, plannedNodes, planner }: CanvasProps) {
+function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, art, error, plannedNodes, planner }: CanvasProps) {
   const tt = bindT(lang);
   const dialogs = useAppDialogs(lang);
   const captureAction = useSessionAction(session);
@@ -325,15 +334,10 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
     if (q.length < 2) return null;
     const hits = new Set<number>();
     for (const node of placed) {
-      const haystack = [node.name ?? '', ...(node.stats ?? [])]
-        .join('\n')
-        .replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2')
-        .replace(/\[([^\]]*)\]/g, '$1')
-        .toLowerCase();
-      if (haystack.includes(q)) hits.add(node.skill);
+      if (passiveNodeMatches(node, q, nodeNames)) hits.add(node.skill);
     }
     return hits;
-  }, [placed, search]);
+  }, [placed, search, nodeNames]);
   const selectedNode = selectedSkill === null ? null : byId.get(selectedSkill) ?? null;
   const selectedAllocated = selectedSkill !== null && allocated.has(selectedSkill);
   const editRequest = session.currentRequest();
@@ -1238,7 +1242,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
           </span>
       </div>
       {Boolean(treeEffects?.warnings.length) && <p className="tree-hint" role="status">{tt('tree.jewelSeedMissing')}</p>}
-      <NodePowerTable session={session} nodes={nodes ?? []} lang={lang}
+      <NodePowerTable session={session} nodes={nodes ?? []} nodeNames={nodeNames} lang={lang}
         stat={heatStat || 'Life'} stats={heatStatOptions}
         onStat={stat => { setHeatStat(stat); setHeatData(null); setHeatVersion(-1); }}
         onFocus={node => {
