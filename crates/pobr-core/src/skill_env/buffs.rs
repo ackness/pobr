@@ -116,26 +116,32 @@ pub fn self_buff_offensive_modifiers(
                 gem.quality,
                 gem.stat_set_index,
             );
-            for ds in es.all() {
-                let Some(mapped) = map_self_buff_offensive_stat(&ds.stat) else {
-                    continue;
-                };
-                if ds.value == 0.0 {
-                    continue;
-                }
-                let origin = ModifierSource::new(SourceId::new(
-                    SourceKind::SkillGem,
-                    format!("buff.{}.{}", gem.skill_id, ds.stat),
-                ))
-                .with_raw_text(format!("buff {} {} ({})", gem.skill_id, ds.stat, ds.value));
-                mods.push(
-                    Modifier::number(mapped.mod_name.as_str(), mapped.mod_type, ds.value)
-                        .with_origin(origin),
-                );
-            }
+            mods.extend(mark_self_buff_modifiers(&gem.skill_id, &es));
         }
     });
     mods
+}
+
+pub(super) fn mark_self_buff_modifiers(
+    skill_id: &str,
+    stats: &crate::skill_env::EffectStats,
+) -> Vec<Modifier> {
+    stats
+        .all()
+        .filter(|stat| stat.value != 0.0)
+        .filter_map(|stat| {
+            let mapped = map_self_buff_offensive_stat(&stat.stat)?;
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::SkillGem,
+                format!("buff.{skill_id}.{}", stat.stat),
+            ))
+            .with_raw_text(format!("buff {skill_id} {} ({})", stat.stat, stat.value));
+            Some(
+                Modifier::number(mapped.mod_name.as_str(), mapped.mod_type, stat.value)
+                    .with_origin(origin),
+            )
+        })
+        .collect()
 }
 
 /// The read-only `ModDb` surface [`spirit_reservation_modifiers`] aggregates over:

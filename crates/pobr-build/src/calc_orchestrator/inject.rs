@@ -40,8 +40,8 @@ use super::item::weapon::{
     parse_local_defence_inc, parse_weapon_local_crit,
 };
 use super::skill::buffs::{
-    buff_skill_specs, herald_skill_names, self_buff_offensive_modifiers,
-    spirit_reservation_modifiers, support_buff_specs, warcry_skill_specs,
+    buff_skill_specs, herald_skill_names, spirit_reservation_modifiers, support_buff_specs,
+    warcry_skill_specs,
 };
 use super::skill::mods::{
     corpse_explosion_modifiers, crossbow_reload_modifiers, dot_flag_modifiers,
@@ -1112,12 +1112,8 @@ pub(super) fn inject_self_buff_exposure(
     data: &BuildData,
     main_skill_group: Option<&SocketGroup>,
 ) {
-    // 4c. The **self offensive buff** (gain-as-extra) a Mark grants the player on
-    //     activation → SkillGem-attributed modifier. Data-driven: an enabled gem's stat
-    //     includes `*_damage_buff_damage_%_to_gain_as_<type>` (Freezing Mark→Cold,
-    //     Voltaic Mark→Lightning), mapped to `DamageGainAs<Type>` BASE, injected into
-    //     the gain matrix.
-    session.add_modifiers(self_buff_offensive_modifiers(build, data));
+    // Mark self-buffs are assembled with their skill's BuffSpec, so Mark Effect
+    // can scale them after all sources have been collected.
     // 4c'. Exposure-effect supports outside the main group: the `<El>ExposureEffect`
     //     INC of compatible supports in the secondary group where the exposure source
     //     lives is injected globally. The main group's supports are already fully

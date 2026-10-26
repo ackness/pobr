@@ -12,6 +12,20 @@
   },
   "entries": [
     {
+      "id": "mark_skill_effect",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased effect of your mark skills",
+      "mods": [{ "name": "MarkEffect", "type": "INC", "value": "$1" }],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "mark_effect_+%",
+      "exporter": "absent",
+      "source_note": "Mark Effect passives and item affixes scale the numerical effects of Mark skills, including their granted damage buffs. The active-mark/buff assumption is unchanged; no trigger rate or uptime is inferred. The generic LocalEffect parse has no reader in the pinned exporter.",
+      "examples": [
+        "12% increased Effect of your Mark Skills",
+        "21% increased Effect of your Mark Skills"
+      ]
+    },
+    {
       "id": "volatility_refresh_chance",
       "pattern": "(\\d+(?:\\.\\d+)?)% chance that when volatility on you (?:explodes|detonates), you regain an equivalent amount of volatility",
       "mods": [

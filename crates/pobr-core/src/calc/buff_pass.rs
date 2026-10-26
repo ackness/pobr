@@ -599,6 +599,21 @@ pub fn buff_pass(env: &mut Env) {
                     .collect();
                 merge_buff(player_buffs.entry(spec.name.clone()).or_default(), scaled);
             }
+            BuffKind::CurseBuff if spec.is_mark => {
+                // Freezing/Voltaic Mark grant a self buff when the mark activates.
+                // The existing active-buff assumption is unchanged; Mark Effect
+                // scales the mark skill's numerical benefit, not its trigger rate.
+                let names = [ModName::from("MarkEffect")];
+                let mult = (1.0 + caster.mod_db.sum(ModType::Inc, &caster_cfg, &names) / 100.0)
+                    * caster.mod_db.more(&caster_cfg, &names);
+                let source_id = format!("buff.{}", spec.skill_id);
+                let scaled = spec
+                    .mods
+                    .iter()
+                    .map(|modifier| scale_buff_mod(&rules, modifier, mult, &source_id))
+                    .collect();
+                merge_buff(player_buffs.entry(spec.name.clone()).or_default(), scaled);
+            }
             BuffKind::Curse => {
                 // vendor :2289's gate: `(mode_effective and (not Hexproof or exempt)) or mark`.
                 let hexproof = env.enemy.mod_db.flag(&env.cfg, "Hexproof");
@@ -615,7 +630,10 @@ pub fn buff_pass(env: &mut Env) {
                 // (no BuffEffect), aligned with the actual vendor source;
                 // the aura source's extra AuraEffect INC (`:2296-2298`) isn't
                 // implemented (simplification (g): no aura source modeled).
-                let curse_effect = [ModName::from("CurseEffect")];
+                let mut curse_effect = vec![ModName::from("CurseEffect")];
+                if spec.is_mark {
+                    curse_effect.push(ModName::from("MarkEffect"));
+                }
                 let curse_effect_on_self = [ModName::from("CurseEffectOnSelf")];
                 // spec.local_effect_inc/more = vendor skillModList's
                 // skill-local CurseEffect section (gem quality / in-group
@@ -937,6 +955,8 @@ pub(super) fn party_exports(env: &Env) -> Vec<super::session::BuffSpec> {
             .with_keyword_flags(crate::skill_env::skill_keyword_flags(spec.skill_types));
         let names: Vec<ModName> = if spec.kind == BuffKind::Aura {
             vec!["AuraEffect".into(), "BuffEffect".into()]
+        } else if spec.is_mark {
+            vec!["CurseEffect".into(), "MarkEffect".into()]
         } else {
             vec!["CurseEffect".into()]
         };
