@@ -21,8 +21,9 @@
 .v2-root .config-group-nav button { justify-content: space-between; gap: .5rem; text-align: left; height: auto; min-height: 2.5rem; padding: .6rem .75rem; white-space: normal; }
 .v2-root .config-group-nav button span:last-child { font-size: .8em; color: var(--muted-foreground); }
 .v2-root .config-option-groups { min-width: 0; }
-.v2-root .config-section { margin: 0 0 1rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--card); overflow: hidden; scroll-margin-top: 1rem; }
-.v2-root .config-section-header { display: flex; justify-content: space-between; text-align: left; width: 100%; height: auto; min-height: 3.25rem; padding: .8rem 1rem; border: 0; border-radius: 0; background: var(--muted); white-space: normal; }
+.v2-root .config-section { min-width: 0; margin: 0 0 1rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--card); scroll-margin-top: 1rem; }
+.v2-root .config-section-header { display: flex; justify-content: space-between; text-align: left; width: 100%; height: auto; min-height: 3.25rem; padding: .8rem 1rem; border: 0; border-radius: calc(1rem - 1px) calc(1rem - 1px) 0 0; background: var(--muted); white-space: normal; }
+.v2-root .config-section-header[aria-expanded='false'] { border-radius: calc(1rem - 1px); }
 .v2-root .config-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
 .v2-root .config-item { display: grid; grid-template-columns: minmax(0, 1fr) minmax(7rem, 12rem) 2rem; align-items: start; gap: .5rem .75rem; padding: 1rem; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: transparent; }
 .v2-root .config-item:last-child { border-bottom: 0; }
@@ -47,7 +48,7 @@
 .v2-root .config-modifier-title { flex: 1 1 12rem; }
 .v2-root .config-modifier-title input { min-width: 0; }
 .v2-root .config-extra-mods { width: 100%; max-width: none; min-height: 8rem; font-family: var(--font-mono); }
-.v2-root .config-raw-value { display: grid; grid-template-columns: minmax(6rem, .7fr) minmax(6rem, 1fr); gap: .5rem; min-width: 0; }
+.v2-root .config-raw-value { display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1fr); gap: .5rem; min-width: 0; }
 .v2-root .config-raw-value > * { width: 100%; min-width: 0; }
 .v2-root .config-advanced .config-item { grid-template-columns: minmax(0, 1fr) minmax(13rem, 1fr) 2rem; }
 .v2-root .config-add { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
@@ -80,5 +81,27 @@
   .v2-root .config-reset { grid-column: 2; }
   .v2-root .config-view-tabs { width: 100%; }
   .v2-root .config-view-tabs [role="tab"] { flex: 1 1 42%; }
+}
+
+.v2-root .config-view button, .v2-root .config-group-nav button { max-width: 100%; }
+.v2-root .config-modifier-title { min-width: 0; flex-wrap: wrap; }
+.v2-root .party-editor fieldset > label { flex-wrap: wrap; }
+.v2-root .party-editor legend { max-width: 100%; overflow-wrap: anywhere; }
+@container v2-page (max-width: 48rem) {
+  .v2-root .config-options-workspace, .v2-root .config-scenario, .v2-root .config-grid { grid-template-columns: minmax(0, 1fr); }
+  .v2-root .config-group-nav { position: static; display: flex; flex-wrap: wrap; }
+  .v2-root .config-group-nav h3 { flex-basis: 100%; }
+}
+@container v2-page (max-width: 36rem) {
+  .v2-root .config-item, .v2-root .config-advanced .config-item { grid-template-columns: minmax(0, 1fr) auto; }
+  .v2-root .config-description, .v2-root .config-advanced .config-key { grid-column: 1 / -1; }
+  .v2-root .config-item > :is(input, [role='checkbox'], .app-checkbox, [role='combobox'], .config-raw-value) { grid-column: 1; justify-self: start; }
+  .v2-root .config-reset { grid-column: 2; }
+  .v2-root .config-raw-value { width: 100%; grid-template-columns: minmax(0, 1fr); }
+}
+@container v2-page (max-width: 24rem) {
+  .v2-root :is(.config-item, .config-custom, .config-advanced, .config-modifier-block, .party-editor, .party-editor fieldset) { padding: .75rem; }
+  .v2-root .config-quick-entry { flex-direction: row; flex-wrap: wrap; }
+  .v2-root .config-quick-description { flex-basis: 100%; }
 }
 }
