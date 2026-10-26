@@ -44,7 +44,8 @@ use regex::{Regex, RegexSet};
 
 use crate::modifier::{ActorRef, ModTag, ModValue, Modifier};
 use crate::parse::mod_parser::template::{
-    normalize_attribute_var, normalize_perstat_slot_suffix, slot_name_to_id,
+    normalize_attribute_var, normalize_enemy_cond_var, normalize_perstat_slot_suffix,
+    slot_name_to_id,
 };
 use crate::rules::registry::{HandlerCtx, HandlerRegistry};
 use crate::rules::stat_map_engine::damage_bound_mod_name;
@@ -685,13 +686,16 @@ fn compile_literal_tag(tag: &TemplateTagDef) -> Option<ModTag> {
                 && !vars.is_empty()
             {
                 return Some(ModTag::ConditionAnyOf {
-                    vars: vars.iter().map(|var| format!("Enemy{var}")).collect(),
+                    vars: vars
+                        .iter()
+                        .map(|var| normalize_enemy_cond_var(var))
+                        .collect(),
                     negated: neg,
                 });
             }
             let var = scalar_text(tag.fields.get("var")?)?;
             match actor.as_deref() {
-                Some("enemy") => Some(ModTag::condition(format!("Enemy{var}"), neg)),
+                Some("enemy") => Some(ModTag::condition(normalize_enemy_cond_var(&var), neg)),
                 Some("player") => Some(ModTag::Condition {
                     var,
                     negated: neg,

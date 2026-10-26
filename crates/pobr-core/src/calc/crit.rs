@@ -396,8 +396,16 @@ pub(crate) fn crit_chance_terms(
     // unaffected). One source is the Blood Mage ascendancy "Sunder the
     // Flesh" ("Base Critical Hit Chance for Spells is 15%", ModParser.lua:5801 →
     // `mod("CritChanceBase","OVERRIDE",num,SkillType.Spell)`).
-    let source_base_pct =
+    let mut source_base_pct =
         base_crit * 100.0 + player.sum(ModType::Base, cfg, &[ModName::from("SkillBaseCritChance")]);
+    // Legacy of Northpaw replaces the weapon's locally modified base, before
+    // added crit and global increases. The source writer sets this flag only
+    // for an attack that actually takes its base crit from a weapon.
+    if player.flag(cfg, "UsesWeaponBaseCritChance") {
+        source_base_pct = player
+            .override_(cfg, "WeaponBaseCritChance")
+            .unwrap_or(source_base_pct);
+    }
     let source_base = player
         .override_(cfg, "CritChanceBase")
         .unwrap_or(source_base_pct);
@@ -701,19 +709,32 @@ fn record_trace(
     let crit_chance_names = [ModName::from("CriticalStrikeChance")];
     let crit_multiplier_names = [ModName::from("CriticalStrikeMultiplier")];
 
-    // CritChance BASE / INC / MORE (BASE includes the source bucket
-    // SkillBaseCritChance, so attribution doesn't lose the weapon/gem source).
+    let weapon_base_override = player.flag(cfg, "UsesWeaponBaseCritChance")
+        && player.override_(cfg, "CritChanceBase").is_none()
+        && player.override_(cfg, "WeaponBaseCritChance").is_some();
+    let mut base_names = vec![ModName::from("CriticalStrikeChance")];
+    if !weapon_base_override {
+        base_names.push(ModName::from("SkillBaseCritChance"));
+    }
+    // Keep the source base visible, replacing the weapon source with the
+    // override's source when its original crit chance no longer contributes.
     let chance_base = player.sum_traced(
         ModType::Base,
         cfg,
-        &[
-            ModName::from("CriticalStrikeChance"),
-            ModName::from("SkillBaseCritChance"),
-        ],
+        &base_names,
         trace,
         "CriticalStrikeChance BASE sum",
     );
     trace.add_edge(chance_base.node_id, crit_node);
+    if weapon_base_override {
+        let (_, node) = player.override_traced(
+            cfg,
+            "WeaponBaseCritChance",
+            trace,
+            "weapon base crit override",
+        );
+        trace.add_edge(node, crit_node);
+    }
     let chance_inc = player.sum_traced(
         ModType::Inc,
         cfg,

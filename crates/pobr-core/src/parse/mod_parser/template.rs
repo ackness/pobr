@@ -469,7 +469,7 @@ pub(crate) fn normalize_attribute_var(var: &str) -> String {
 /// Two exceptions pass through unchanged: a var already carrying the `Enemy` prefix
 /// (`EnemyInPresence`, avoiding a double prefix); and enemy rarity names
 /// (`Rare`/`Unique`/`RareOrUnique`/`Normal`/`Magic`), which legacy uses bare.
-fn normalize_enemy_cond_var(var: &str) -> String {
+pub(crate) fn normalize_enemy_cond_var(var: &str) -> String {
     const BARE: &[&str] = &["Rare", "Unique", "RareOrUnique", "Normal", "Magic"];
     if var.starts_with("Enemy") || BARE.contains(&var) {
         var.to_string()
