@@ -392,6 +392,13 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
             ])
         }
         "skill_disabled_unless_cloned" => Some(vec![Modifier::flag("MirageSkill")]),
+        // Native Ballista hosts and the support half that makes a socketed
+        // attack Ballista-used. This is skill identity, not a combat toggle.
+        "base_skill_is_ballistified" | "is_ranged_attack_totem" => Some(if value != 0.0 {
+            vec![Modifier::flag("Condition:BallistaSkill")]
+        } else {
+            Vec::new()
+        }),
         "pin_almost_pinned_enemies" => Some(vec![Modifier::flag("PinOnPrimed")]),
         "pin_duration_+%" => Some(vec![Modifier::number(
             "EnemyPinDuration",

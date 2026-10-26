@@ -1215,6 +1215,10 @@ impl CalculationSession {
             "ColdResist" => &["ColdResistance", "ColdResist", "ElementalResist"],
             "LightningResist" => &["LightningResistance", "LightningResist", "ElementalResist"],
             "ChaosResist" => &["ChaosResistance", "ChaosResist"],
+            "ActiveTotemLimit" if self.env.cfg.condition("BallistaSkill") => {
+                &["TotemLimitBase", "ActiveTotemLimit", "ActiveBallistaLimit"]
+            }
+            "ActiveTotemLimit" => &["TotemLimitBase", "ActiveTotemLimit"],
             // A rain's hits come as its arrows land, at projectile speed.
             "ActionRate"
                 if super::rain::is_rain(&self.env.player.mod_db, &self.env.cfg)
@@ -1746,6 +1750,9 @@ impl CalculationSession {
     /// otherwise.
     fn stat_cfg(&self, stat: &str, pass: usize) -> std::borrow::Cow<'_, CalcConfig> {
         use std::borrow::Cow;
+        if stat == "ActiveTotemLimit" {
+            return Cow::Owned(super::totem::limit_cfg(&self.env.cfg));
+        }
         if let Some(kind) = ailment_of(stat) {
             return Cow::Owned(super::ailment::ailment_scoped_cfg(&self.env.cfg, kind));
         }
@@ -1964,7 +1971,7 @@ fn ailment_of(stat: &str) -> Option<AilmentType> {
 /// Conditions a pass of the calculation works out for itself, for the hit
 /// or hand it is computing or from what the character has in effect. Absent
 /// from the condition map, they do not hold; nothing is missing.
-pub const CONDITIONS_SET_BY_A_PASS: [&str; 27] = [
+pub const CONDITIONS_SET_BY_A_PASS: [&str; 28] = [
     // `calc::offence` and `calc::crit_pass`: the critical and the
     // non-critical half of a hit.
     "CriticalStrike",
@@ -1994,6 +2001,7 @@ pub const CONDITIONS_SET_BY_A_PASS: [&str; 27] = [
     // `bridge_player_conditions`: from the flag of what grants it.
     "CanUseBondedModifiers",
     "CanBeElusive",
+    "BallistaSkill",
     "SorceryWard",
     "CeremonialAblution",
     // Set while the character is prepared (`session/preparation.rs`).
