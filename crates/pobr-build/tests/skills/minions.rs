@@ -591,6 +591,110 @@ fn a_minion_casts_its_spell_at_its_level() {
     assert!((1.6..1.75).contains(&bidding), "{bidding}");
 }
 
+fn djinn_with_hit_supports(
+    data: &BuildData,
+    minion: &str,
+    skill: u32,
+    supports: &[&str],
+) -> pobr_core::calc::CompletedCalculationSession {
+    let supports: String = supports
+        .iter()
+        .map(|id| format!(r#"<Gem skillId="{id}" level="1" quality="0" enabled="true"/>"#))
+        .collect();
+    let xml = format!(
+        r#"<PathOfBuilding2>
+<Build level="90" className="Sorceress" ascendClassName="Disciple of Varashta"/>
+<Skills defaultGemLevel="20" activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="Summon{minion}Player" level="20" quality="0" enabled="true" skillMinion="{minion}" skillMinionSkill="{skill}"/>{supports}</Skill></SkillSet></Skills>
+</PathOfBuilding2>"#
+    );
+    let build = pobr_build::parse_build(&xml).expect("parse synthetic build");
+    pobr_build::calculate_with_data_session(
+        &build,
+        data,
+        &DataOrchestratorOptions::against_reference_enemy(),
+    )
+    .expect("calculate")
+}
+
+#[test]
+fn minion_hit_supports_use_selected_damage() {
+    use pobr_core::skill_env::EffectLookup;
+
+    let data = load_data();
+    let raw_types = &data.effect("LivingBombFireDjinn").unwrap().skill_types;
+    assert!(raw_types.iter().any(|kind| kind == "Spell"));
+    assert!(
+        !raw_types
+            .iter()
+            .any(|kind| kind == "Damage" || kind == "Attack")
+    );
+
+    let baseline = djinn_with_hit_supports(&data, "FireDjinn", 1, &[]);
+    let brand = &baseline.output().minions[0];
+    assert_eq!(brand.skill_id, "LivingBombFireDjinn");
+    assert!(brand.dps > 0.0);
+    for (supports, ratio, invert, gain) in [
+        (vec!["SupportRakiatasFlowPlayer"], 3.0, 1.0, 0.0),
+        (vec!["SupportXophsPyrePlayer"], 1.8, 0.0, 40.0),
+        (
+            vec!["SupportRakiatasFlowPlayer", "SupportXophsPyrePlayer"],
+            3.8,
+            1.0,
+            40.0,
+        ),
+        // Hit eligibility does not grant Attack: Rapid Attacks stays rejected.
+        (vec!["SupportRapidAttacksPlayer"], 1.0, 0.0, 0.0),
+    ] {
+        let supported = djinn_with_hit_supports(&data, "FireDjinn", 1, &supports);
+        let actual = &supported.output().minions[0];
+        assert_eq!(actual.skill_id, brand.skill_id);
+        assert_eq!(actual.level, brand.level);
+        // The reference enemy has 50% fire resistance and no chaos resistance.
+        // Inversion changes fire's multiplier from 0.5 to 1.5; Xoph adds 0.4
+        // times the original fire damage as chaos. Neither changes the rate.
+        assert!(
+            (actual.dps / brand.dps - ratio).abs() < 1e-8,
+            "{supports:?}: {actual:?}"
+        );
+        assert_eq!(
+            supported.minion_stat_totals(0, "HitsInvertEleResChance").0,
+            invert
+        );
+        assert_eq!(
+            supported.minion_stat_totals(0, "FireDamageGainAsChaos").0,
+            gain
+        );
+        assert_eq!(
+            supported.minion_stat_totals(0, "AttackSpeed"),
+            baseline.minion_stat_totals(0, "AttackSpeed"),
+        );
+    }
+}
+
+#[test]
+fn minion_hit_supports_reject_non_damaging_spell() {
+    let data = load_data();
+    // Navira's Well is a non-damaging Spell. Other skills on this same minion
+    // hit, so neither Spell nor the sibling skills may supply hit eligibility.
+    for supports in [
+        vec![],
+        vec!["SupportRakiatasFlowPlayer", "SupportXophsPyrePlayer"],
+    ] {
+        let session = djinn_with_hit_supports(&data, "WaterDjinn", 3, &supports);
+        let well = &session.output().minions[0];
+        assert_eq!(well.skill_id, "ESRechargeForceRestartWaterDjinn");
+        assert_eq!(well.dps, 0.0);
+        assert_eq!(
+            session.minion_stat_totals(0, "HitsInvertEleResChance").0,
+            0.0
+        );
+        assert_eq!(
+            session.minion_stat_totals(0, "FireDamageGainAsChaos").0,
+            0.0
+        );
+    }
+}
+
 /// The sweep's level-20 summons, with no equipment or supports, against
 /// the reference enemy. These exercise the minion's own attack multiplier,
 /// attack speed, the summoning gem's conversions and the player's attributes.

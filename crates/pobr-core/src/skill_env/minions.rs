@@ -717,7 +717,30 @@ fn minion_skill_modifiers(
         &skill.id,
         set_key.as_deref(),
     ));
-    let judgement = group_judgement_from(group, data, &skill.id, false);
+    // Ruzhan's Brand has spell hit damage but no raw `Damage` skill type.
+    // Derive support eligibility from this selected skill's intrinsic hit
+    // payload, before supports add damage; a sibling's hit or `Spell` alone
+    // does not make a non-damaging skill eligible.
+    let has_hit_damage = !own
+        .iter()
+        .any(|stat| stat.stat == "base_deal_no_damage" && stat.value != 0.0)
+        && own.iter().any(|stat| {
+            stat.value > 0.0
+                && matches!(
+                    stat.stat.as_str(),
+                    "spell_minimum_base_physical_damage"
+                        | "spell_maximum_base_physical_damage"
+                        | "spell_minimum_base_fire_damage"
+                        | "spell_maximum_base_fire_damage"
+                        | "spell_minimum_base_cold_damage"
+                        | "spell_maximum_base_cold_damage"
+                        | "spell_minimum_base_lightning_damage"
+                        | "spell_maximum_base_lightning_damage"
+                        | "spell_minimum_base_chaos_damage"
+                        | "spell_maximum_base_chaos_damage"
+                )
+        });
+    let judgement = group_judgement_with_hit(group, data, &skill.id, false, has_hit_damage);
     for sup in &judgement.compatible {
         let gem = &group.gems[sup.gem_index];
         let set_index = support_stat_set_index(sup, group.gems);
@@ -970,12 +993,25 @@ pub(super) fn group_judgement_from(
     skill_id: &str,
     from_gem: bool,
 ) -> crate::skill_env::GroupSupportJudgement {
+    group_judgement_with_hit(group, data, skill_id, from_gem, false)
+}
+
+fn group_judgement_with_hit(
+    group: &crate::skill_env::EnabledGroup<'_>,
+    data: &dyn MinionEnv,
+    skill_id: &str,
+    from_gem: bool,
+    has_hit_damage: bool,
+) -> crate::skill_env::GroupSupportJudgement {
     use std::collections::HashSet;
 
-    let active_skill_types: HashSet<String> = data
+    let mut active_skill_types: HashSet<String> = data
         .effect(skill_id)
         .map(|e| e.skill_types.iter().cloned().collect())
         .unwrap_or_default();
+    if has_hit_damage {
+        active_skill_types.insert("Damage".into());
+    }
     let cannot_be_supported = data.effect(skill_id).is_some_and(|e| e.cannot_be_supported);
 
     let candidates: Vec<SupportCandidate<'_>> = group
