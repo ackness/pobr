@@ -24,7 +24,7 @@ pub(crate) fn damage_keywords(
     // Main weapon category → weapon-type damage, for a skill attacking with it.
     if attacks_with_weapon(skill_types)
         && let Some(item) = build.items.get(&EquipmentSlot::Weapon1)
-        && let Some(def) = data.base_items.get(&item.base.to_string())
+        && let Some(def) = data.base_item(&item.base.to_string())
     {
         // An allowlist mapping flag → damage ModName (an L4 code-side derivation): only
         // covers weapon categories pobr already has a consumer for (equivalent per
@@ -95,7 +95,7 @@ pub(crate) fn weapon_cfg_flags(build: &Build, data: &BuildData) -> ModFlags {
     let Some(item) = build.items.get(&EquipmentSlot::Weapon1) else {
         return ModFlags::weapon_flags("None", "Unarmed", true, true);
     };
-    let Some(def) = data.base_items.get(&item.base.to_string()) else {
+    let Some(def) = data.base_item(&item.base.to_string()) else {
         return ModFlags::NONE;
     };
     weapon_type_info(data, &def.item_class)
@@ -111,7 +111,7 @@ pub(crate) fn main_hand_offhand_is_shield(build: &Build, data: &BuildData) -> bo
     let Some(item) = build.items.get(&EquipmentSlot::Weapon2) else {
         return false;
     };
-    let Some(def) = data.base_items.get(&item.base.to_string()) else {
+    let Some(def) = data.base_item(&item.base.to_string()) else {
         return false;
     };
     def.item_class.as_str().contains("Shield")
@@ -138,7 +138,7 @@ pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'s
     let Some(item) = build.items.get(&EquipmentSlot::Weapon1) else {
         return Vec::new();
     };
-    let Some(def) = data.base_items.get(&item.base.to_string()) else {
+    let Some(def) = data.base_item(&item.base.to_string()) else {
         return Vec::new();
     };
     // An unmapped caster Staff has no main-hand type; it must not become
@@ -151,7 +151,7 @@ pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'s
     for info in [
         main,
         build.items.get(&EquipmentSlot::Weapon2).and_then(|off| {
-            let off_def = data.base_items.get(&off.base.to_string())?;
+            let off_def = data.base_item(&off.base.to_string())?;
             data.weapon_base(&off.base.to_string())?;
             weapon_type_info(data, &off_def.item_class)
         }),

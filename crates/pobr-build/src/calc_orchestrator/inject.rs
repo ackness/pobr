@@ -478,7 +478,7 @@ pub(super) fn per_slot_attribute_requirements(
 ) -> Vec<(String, f64)> {
     let mut out = Vec::new();
     for (slot, item) in build.equipped_items() {
-        let Some(def) = data.base_items.get(&item.base.to_string()) else {
+        let Some(def) = data.base_item(&item.base.to_string()) else {
             continue;
         };
         let slot_key = slot.id();
@@ -980,8 +980,7 @@ pub(super) fn inject_items(
         // double-count (13-G11).
         let has_spirit_base = item.rolled_defence.spirit.is_some()
             || data
-                .base_items
-                .get(&item.base.to_string())
+                .base_item(&item.base.to_string())
                 .and_then(|b| b.spirit)
                 .is_some();
         if has_spirit_base {

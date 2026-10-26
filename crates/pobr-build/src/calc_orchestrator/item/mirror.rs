@@ -70,7 +70,7 @@ pub(crate) fn slot_bonus_effect_scales(
     let weapon2_is_quiver = build
         .items
         .get(&Weapon2)
-        .and_then(|item| data.base_items.get(&item.base.to_string()))
+        .and_then(|item| data.base_item(&item.base.to_string()))
         .is_some_and(|def| def.item_class == "Quiver");
     // The focus variant (matching vendor CalcSetup.lua:1209-1220: when
     // `item.type == "Focus"`, that item's whole global modList gets
@@ -82,7 +82,7 @@ pub(crate) fn slot_bonus_effect_scales(
     let weapon2_is_focus = build
         .items
         .get(&Weapon2)
-        .and_then(|item| data.base_items.get(&item.base.to_string()))
+        .and_then(|item| data.base_item(&item.base.to_string()))
         .is_some_and(|def| def.item_class == "Focus");
     let mut texts: Vec<String> = Vec::new();
     let nodes = data.passive_nodes_for(build.tree_version.as_deref());

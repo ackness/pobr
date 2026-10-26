@@ -27,8 +27,7 @@ pub(crate) fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Mod
         // ArmourTypes.dat supplies the inherent movement penalty separately
         // from the item's explicit movement modifiers.
         if let Some(penalty) = data
-            .base_items
-            .get(&item.base.to_string())
+            .base_item(&item.base.to_string())
             .and_then(|base| base.armour.as_ref())
             .and_then(|armour| armour.movement_penalty)
         {
@@ -133,8 +132,7 @@ pub(crate) fn item_spirit_modifiers(build: &Build, data: &BuildData) -> Vec<Modi
     let mut mods = Vec::new();
     for (slot, item) in &build.items {
         let base_spirit = data
-            .base_items
-            .get(&item.base.to_string())
+            .base_item(&item.base.to_string())
             .and_then(|b| b.spirit);
         let value = match item.rolled_defence.spirit {
             Some(v) => v,
