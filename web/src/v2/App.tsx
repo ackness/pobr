@@ -95,14 +95,19 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const [upgradeFocus, setUpgradeFocus] = useState<{ slot: string; nonce: number; jewelType?: 'base' | 'radius' }>();
   const [skillFocus, setSkillFocus] = useState<{ group: number; nonce: number }>();
   const [treeFocus, setTreeFocus] = useState<{ nonce: number }>();
-  const [reviewStage, setReviewStage] = useState<string | null>(null);
+  const [reviewStage, setReviewStage] = useState<{ scope: string | null } | null>(null);
   const previousStage = useRef(stageKey);
   const stageChanged = previousStage.current !== stageKey;
   useEffect(() => {
     previousStage.current = stageKey;
     setCalcsFocus(null); setUpgradeFocus(undefined); setSkillFocus(undefined); setTreeFocus(undefined);
-    setStatsOpen(false); setReviewStage(null);
+    setStatsOpen(false);
   }, [stageKey]);
+  useEffect(() => {
+    if (!reviewStage || !stageKey) return;
+    if (reviewStage.scope === null) setReviewStage({ scope: stageKey });
+    else if (reviewStage.scope !== stageKey) setReviewStage(null);
+  }, [stageKey, reviewStage]);
   useEffect(() => {
     const pop = () => { setRoute(readRoute(location.pathname)); setMenuOpen(false); setStatsOpen(false); };
     addEventListener('popstate', pop); return () => removeEventListener('popstate', pop);
@@ -139,13 +144,13 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
       <main id="v2-main" tabIndex={-1} className={`v2-main v2-page-${route}`} ref={main} key={stageKey}>
         {session.storageFailed && <div className="v2-alert" role="alert"><p>{w('Browser storage is full or unavailable. Download a backup before leaving.', '浏览器存储已满或不可用，请先下载完整备份。', '瀏覽器儲存空間已滿或無法使用，請先下載完整備份。')}</p><Button onClick={() => download(session.exportWorkspace(), 'pobr-v2-backup.json')}><Download />{w('Download backup', '下载备份', '下載備份')}</Button></div>}
         {preferencesFailed && <p className="v2-alert" role="alert">{w('Display preferences could not be saved on this device.', '显示偏好暂时无法保存到当前设备。', '顯示偏好暫時無法儲存至目前裝置。')}</p>}
-        {reviewStage === stageKey && <div className="v2-notice" role="note"><p>{t(lang, 'config.importReview')}</p><Button variant="outline" onClick={() => { setReviewStage(null); navigate('config'); }}>{t(lang, 'config.review')}</Button><Button variant="ghost" onClick={() => setReviewStage(null)}>{t(lang, 'config.reviewDismiss')}</Button></div>}
+        {reviewStage?.scope === stageKey && <div className="v2-notice" role="note"><p>{t(lang, 'config.importReview')}</p><Button variant="outline" onClick={() => { setReviewStage(null); navigate('config'); }}>{t(lang, 'config.review')}</Button><Button variant="ghost" onClick={() => setReviewStage(null)}>{t(lang, 'config.reviewDismiss')}</Button></div>}
         {Object.keys(session.editorDrafts).length > 0 && <div className="v2-notice" role="status"><p>{t(lang, 'editor.draftHint')}</p><Button variant="outline" onClick={() => navigate('items')}>{t(lang, 'editor.reviewItems')}</Button><Button variant="outline" onClick={() => navigate('tree')}>{t(lang, 'editor.reviewJewels')}</Button></div>}
         {session.calcError && <div className="v2-alert" role="alert"><strong>{w('Calculation unavailable', '当前计算不可用', '目前計算無法使用')}</strong><p>{session.calcError}</p></div>}
         {session.operationError && <div className="v2-alert" role="alert">{buildImportErrorMessage(session.operationError, lang)}</div>}
         <div className="v2-page-content">
           {route === 'overview' && <Overview session={session} lang={lang} navigate={navigate} focusStat={focusStat} />}
-          {route === 'build' && <BuildPanel session={session} lang={lang} onImported={() => { setReviewStage(stageKey ?? null); navigate('items'); }} />}
+          {route === 'build' && <BuildPanel session={session} lang={lang} onImported={() => { setReviewStage({ scope: null }); navigate('items'); }} />}
           {route === 'items' && <ItemsPanel session={session} lang={lang} onUpgrade={slot => { setUpgradeFocus({ slot, nonce: Date.now() }); navigate('trade'); }} />}
           {route === 'config' && <ConfigPanel session={session} lang={lang} />}
           <Suspense fallback={<div role="status" className="v2-panel-loading"><Skeleton className="h-12 w-2/3" /><Skeleton className="h-64 w-full" /><p>{t(lang, 'ui.loadingPanel')}</p></div>}>

@@ -316,16 +316,3 @@
   .upgrade-paths span { display: none; }
 }
 
-.v2-root .trade-setup, .v2-root .trade-overview-toolbar, .v2-root .trade-workspace { border-radius: 1.25rem; }
-.v2-root .trade-setup { gap: 1rem; padding: 1rem; }
-.v2-root .trade-market-fields { min-width: 0; flex-wrap: wrap; }
-.v2-root .trade-market-fields > label { min-width: min(12rem, 100%); flex: 1; }
-.v2-root .trade-priority-position { white-space: normal; height: auto; justify-content: flex-start; }
-.v2-root .trade-position { height: auto; justify-content: flex-start; }
-.v2-root .trade-position-name { min-width: 0; }
-.v2-root .trade-search-card { border-radius: 1.25rem; }
-@media (max-width: 700px) {
-  .v2-root .trade-priority-list { grid-template-columns: minmax(0, 1fr); }
-  .v2-root .trade-workspace { grid-template-columns: minmax(0, 1fr); }
-  .v2-root .trade-search-actions { flex-wrap: wrap; }
-}

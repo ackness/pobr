@@ -1,4 +1,4 @@
-@import './tokens.css';
+@import './tokens.css' layer(legacy);
 
 * {
   box-sizing: border-box;

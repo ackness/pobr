@@ -2,6 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: 'e2e',
+  testIgnore: ['calcs-config-v2.spec.ts'], // Isolated fixture has its own server/config.
   timeout: 120_000,
   use: {
     baseURL: 'http://localhost:4173',

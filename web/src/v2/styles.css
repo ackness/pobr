@@ -25,7 +25,7 @@
     --background: #f7f6f3; --foreground: #26251f; --card: #fffefa; --popover: #fffefa;
     --primary: #816124; --primary-foreground: #ffffff; --secondary: #eceae4;
     --muted: #ebe9e2; --muted-foreground: #69675f; --destructive: #bb3436;
-    --border: #dedbd2; --input: #d1cdc2;
+    --border: #dedbd2; --input: #d1cdc2; --ring: var(--primary); --accent: var(--muted); --accent-foreground: var(--foreground);
     --surface-page: var(--background); --surface-panel: var(--card); --surface-card: var(--secondary); --surface-raised: var(--muted);
     --text-primary: var(--foreground); --text-secondary: var(--muted-foreground); --text-muted: var(--muted-foreground);
     --border-subtle: var(--border); --border-strong: var(--input);
