@@ -355,16 +355,8 @@ fn gem_judgements(
     data: &BuildData,
     skill_id: &str,
 ) -> Vec<pobr_core::skill_env::GroupSupportJudgement> {
-    use pobr_core::skill_env::EffectLookup;
-    let secondary = data
-        .additional_effects(skill_id)
-        .iter()
-        .map(String::as_str)
-        .filter(|id| data.granted_effects.get(*id).is_some_and(|e| !e.is_support));
-    std::iter::once(skill_id)
-        .chain(secondary)
-        .map(|id| crate::support::judge_group_supports(group, data, id, group.from_gem()))
-        .collect()
+    let gems = group.gem_inputs();
+    pobr_core::skill_env::gem_judgements(&group.enabled_group(&gems), data, skill_id)
 }
 
 /// The quality half of [`support_granted_gem_levels`] (same scope and compatibility rules).
