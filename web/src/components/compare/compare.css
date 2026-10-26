@@ -42,4 +42,3 @@
 .compare-tree-inspect select { max-width: 100%; }
 .compare-node-details { margin-top: 1rem; padding: .75rem; background: #ffffff08; }
 @media (max-width: 700px) { .compare-tree-canvas { height: 380px; } }
-
