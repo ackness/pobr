@@ -1,0 +1,60 @@
+{
+  "parent_commit": "55f453df",
+  "implementation_commit": "19618ed4",
+  "build": "spirit-walker-02",
+  "code_sha256_prefix16": "196746fa00db8e09",
+  "source": "item.weapon2.enchant (Stoic Sceptre rune)",
+  "retained_game_sources": [
+    "data/0.5.5.4.2/base/stats.json",
+    "data/0.5.5.4.2/overlay/stat_descriptions.json"
+  ],
+  "pair": [
+    {
+      "stat": "companions_in_presence_non_skill_base_all_damage_%_to_gain_as_random_element",
+      "text": "Companions in your Presence Gain 20% of Damage as Extra Damage of a random Element",
+      "payload": "DamageGainAsRandom BASE 20"
+    },
+    {
+      "stat": "companions_in_presence_base_resist_all_elements_%",
+      "text": "Companions in your Presence have -20% to all Elemental Resistances",
+      "payload": "ElementalResist BASE -20"
+    }
+  ],
+  "cause": "Both exact game lines were unparsed in the preserved frozen native ledger. Existing DamageGainAsRandom and ElementalResist readers already calculate the effects; recipient routing must keep both the Companion summoner restriction and Presence ally-aura semantics.",
+  "path": "special_mods -> MinionModifier LIST tagged SkillType Companion -> granted_minion_modifiers under summoner skill types -> recipient ExtraAura LIST -> perform::apply_extra_auras -> existing recipient effect scaling -> normal damage matrix and resistance calculation",
+  "gates": [
+    "Companion summoner type; actual selected attack need not have Companion type",
+    "HiddenMonster excluded",
+    "SelfAurasCannotAffectAllies excluded",
+    "Explicit MinionPresenceCount <= 0 excluded",
+    "Inactive outer grant excluded",
+    "Explicit CompanionInPresence=false excluded (absent keeps default)"
+  ],
+  "conventions": "Uses existing ExtraAura recipient BuffEffectOnSelf/AuraEffectOnSelf scaling. Positive counts do not allocate positions among individual actors; otherwise the existing in-Presence snapshot assumption applies. No event, uptime, count or configuration model added.",
+  "regression": {
+    "command": "cargo test -q -p pobr-core --test engine companion_presence::",
+    "result": "3 passed, 313 filtered out on merged parent 55f453df",
+    "numeric": "For the pure physical regression, 20% gain is split equally: Fire/Cold/Lightning each gain 20/3 percent, total hit DPS 1.2x. Each elemental resistance loses 20 points. Recipient +25% BuffEffectOnSelf changes the pair to +25% gain / -25 resistance exactly once; parent +100% BuffEffectOnSelf does not scale it.",
+    "isolation": "Player and ordinary minion unchanged even when the player selected summoning skill has Companion type. Zero Presence, hidden recipient, blocked ally auras and inactive source suppress the pair.",
+    "attribution": "Active source rows retain Item source IDs and exact raw text; normalized parser source text remains intact. Selected minion resistance and DPS formula values agree with actual output."
+  },
+  "validation": {
+    "regen": "passed; 14 generator tests and 1 integration test; generated artifacts unchanged",
+    "core_clippy": "passed cargo clippy -q -p pobr-core --lib --tests -- -D warnings",
+    "fmt": "passed cargo fmt --all --check"
+  },
+  "limits": "No new CLI/native/oracle measurement, full gate, triage, accuracy or holdout inspection. Parent owns batch measurement. No full frozen-row ratio or PoB parity claimed. Spirit Walker 09 Rage remains explicitly unresolved and unchanged. No buff_pass, Flame Wall, defence/pool, requirements or skill-selection changes.",
+  "explicit_presence_review_fix": {
+    "parent_commit": "19618ed4",
+    "commit": "c8bc63bb",
+    "cause": "The new recipient ExtraAura branch checked MinionPresenceCount but ignored an explicitly false CompanionInPresence condition.",
+    "correction": "Reject only explicit CompanionInPresence=false in that branch; preserve the absent-condition default and generic ExtraAura behavior.",
+    "regression": "Added companion_outside_presence exclusion with no count override; verifies the spawned Presence count is positive, both rune effects are absent, and player/ordinary minion remain unchanged. Existing absent-condition cases continue to apply the pair.",
+    "validation": [
+      "cargo test -q -p pobr-core --test engine companion_presence::: 3 passed, 313 filtered out",
+      "cargo clippy -q -p pobr-core --lib --tests -- -D warnings: passed",
+      "cargo fmt --all --check: passed"
+    ],
+    "scope": "Only apply_extra_auras exclusion and its existing regression file; minion_cfg untouched. No rule edits or regeneration required. No CLI/oracle/full gate/triage/holdout."
+  }
+}

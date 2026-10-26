@@ -1,0 +1,2002 @@
+{
+  "scope": [
+    "infernalist-03",
+    "witchhunter-10",
+    "warbringer-02",
+    "warbringer-03",
+    "warbringer-08",
+    "warbringer-10",
+    "pathfinder-01",
+    "pathfinder-02",
+    "pathfinder-04",
+    "pathfinder-08",
+    "pathfinder-09"
+  ],
+  "outcome": "No calculation, parser, rule, documentation, or registry edits. Bounded source/arithmetic assessment only.",
+  "merged_parent": "e8638f187e06f5dfb5e1daa1b3a2278354deed72",
+  "inputs": {
+    "report": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/final-classified.json",
+    "frozen_native_revision": "ef00 (parent-provided label)",
+    "source_version": "0.5.5.4.2",
+    "vendor_revision": "bb52d6b3",
+    "basis": "Frozen reference-basis outputs; native usage retains game-source evidence. No new calculations or oracle executions."
+  },
+  "authority": "Frozen game text and retained game data; cached PoB2 only cross-checks arithmetic.",
+  "game_nodes": [
+    {
+      "skill": 51446,
+      "id": "evasion38_",
+      "name": "Leather Bound Gauntlets",
+      "kind": "notable",
+      "stats": [
+        "+1 to [Evasion] Rating per 1 [ItemArmour|Item Armour] on Equipped Gloves"
+      ],
+      "group": 739,
+      "orbit": 3,
+      "orbit_index": 16,
+      "x": -1657.26851,
+      "y": 11762.5,
+      "connections": [
+        19750,
+        53647
+      ]
+    },
+    {
+      "skill": 53607,
+      "id": "ballista17",
+      "name": "Fortified Location",
+      "kind": "notable",
+      "stats": [
+        "10% increased [Armour] and [Evasion] Rating per Summoned [Totem] in your [Presence]",
+        "10% increased [Attack] Damage per Summoned [Totem] in your [Presence]"
+      ],
+      "group": 631,
+      "orbit": 4,
+      "orbit_index": 3,
+      "x": -2628.812211,
+      "y": 9548.688568
+    }
+  ],
+  "validation": "Standalone arithmetic assertions over cached inputs only; no Rust changes, focused tests, Clippy, or fmt needed for this no-edit outcome.",
+  "infernalist_03": {
+    "status": "Explained frozen-text versus oracle reconstructed-rune behavior; preserve frozen 45% line.",
+    "sources": {
+      "native_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/final-builds/infernalist-03.json",
+      "native_sha256": "df7295e2bb6c22a1b567a65c8c54366a90974a74e5e58a37511e4f7b014d253b",
+      "oracle_path": "/root/codes/pobr/.cache/pob2-oracle/bfd01e3da6a19ecd-91b6b6855c.json",
+      "oracle_sha256": "83e429c945105b9301a9d13f8c7b2bfd3f39c7e8cb8fab6ad5d3e06e46edde29",
+      "xml_path": "/root/codes/pobr/.cache/pob2-oracle/bfd01e3da6a19ecd-91b6b6855c.xml",
+      "code_path": "/root/codes/pobr/examples/reference-builds/ninja-top10-2026-10-26/builds/infernalist-03/code.txt"
+    },
+    "rows": [
+      {
+        "stat": "Life",
+        "pobr": 882.42,
+        "code": 963.0,
+        "pob2": 963.0,
+        "class": "engine",
+        "reason": null
+      },
+      {
+        "stat": "LifeUnreserved",
+        "pobr": 300.0228,
+        "code": 327.0,
+        "pob2": 327.0,
+        "class": "engine",
+        "reason": null
+      },
+      {
+        "stat": "LifeRecoverable",
+        "pobr": 300.0228,
+        "code": 327.0,
+        "pob2": 327.0,
+        "class": "engine",
+        "reason": null
+      }
+    ],
+    "native_life_formula": {
+      "stat": "Life",
+      "value": 882.42,
+      "pob_key": "Life",
+      "reference": 963.0,
+      "breakdown": {
+        "actor": {
+          "kind": "player"
+        },
+        "base_total": 1528.0,
+        "inc_total": 5.0,
+        "more_total": 0.55,
+        "mods": [
+          {
+            "mod_type": "BASE",
+            "value": 20.0,
+            "active": true,
+            "source_text": "+20 to maximum Life",
+            "origin_kind": "CampaignReward",
+            "origin_id": "quest",
+            "slot": null
+          },
+          {
+            "mod_type": "BASE",
+            "value": 1230.0,
+            "active": true,
+            "source_text": null,
+            "origin_kind": "CharacterBase",
+            "origin_id": "base.MaximumLife",
+            "slot": null
+          },
+          {
+            "mod_type": "BASE",
+            "value": 220.0,
+            "active": true,
+            "source_text": null,
+            "origin_kind": "CharacterBase",
+            "origin_id": "base.attr_derived",
+            "slot": null
+          },
+          {
+            "mod_type": "BASE",
+            "value": 58.0,
+            "active": true,
+            "source_text": "+58 to maximum Life",
+            "origin_kind": "ItemImplicit",
+            "origin_id": "item.belt.implicit",
+            "slot": "belt"
+          },
+          {
+            "mod_type": "INC",
+            "value": 5.0,
+            "active": true,
+            "source_text": "5% increased maximum Life",
+            "origin_kind": "CampaignReward",
+            "origin_id": "quest",
+            "slot": null
+          },
+          {
+            "mod_type": "MORE",
+            "value": -45.0,
+            "active": true,
+            "source_text": "45% less maximum Life",
+            "origin_kind": "ItemEnchant",
+            "origin_id": "item.weapon1.enchant",
+            "slot": "weapon1"
+          }
+        ],
+        "formula": {
+          "steps": [
+            {
+              "op": "flat",
+              "operand": 1528.0,
+              "result": 1528.0
+            },
+            {
+              "op": "increased",
+              "operand": 5.0,
+              "result": 1604.4
+            },
+            {
+              "op": "more",
+              "operand": 0.55,
+              "result": 882.4200000000001
+            }
+          ],
+          "value": 882.42
+        }
+      }
+    },
+    "frozen_weapon": [
+      "\n\t\t\tRarity: UNIQUE\nRuneseeker's Call\nRunemastered Runic Fork\nUnique ID: f160ca77c9773667e045a0aa0886b37c96822b943dd7dd4f276b1335a3285cc0\nItem Level: 86\nQuality: 20\nSockets: S S S S S\nRune: Legacy of Lifesprig\nRune: Hedgewitch Assandra's Rune of Wisdom\nRune: Perfect Vision Rune\nRune: Warding Rune of Hollowing\nRune: Perfect Vision Rune\nLevelReq: 65\nImplicits: 11\n{enchant}{rune}+9 to Level of all Spell Skills\n{enchant}{rune}168% increased Critical Hit Chance for Spells\n{enchant}{rune}Bonded: 150% increased Critical Damage Bonus\n{enchant}{rune}Gain 45% of maximum Life as Extra maximum Runic Ward\n{enchant}{rune}Bonded: +3% to all Maximum Elemental Resistances while on full Runic Ward\n{enchant}{rune}Bonded: Archon recovery period expires 90% faster\n{enchant}{rune}Bonded: Leeches 3% of maximum Life when you Cast a Spell\n{enchant}{rune}45% less maximum Life\n{enchant}25% increased Spell Damage\n+300 to maximum Runic Ward\nGrants Skill: Level 20 The Stars Answer\nOnly Runes can be Socketed in this item\n200% increased effect of Socketed Runes\nCorrupted\n\t\t\t"
+    ],
+    "native_rune_line": [
+      {
+        "source_kind": "ItemEnchant",
+        "source_id": "item.weapon1.enchant",
+        "slot": "weapon1",
+        "holder": "Runemastered Runic Fork",
+        "text": "45% less maximum Life",
+        "status": "applied",
+        "reason": null,
+        "used_in": [
+          "Life"
+        ],
+        "modifiers": [
+          {
+            "name": "MaximumLife",
+            "mod_type": "MORE",
+            "value": -45.0,
+            "applied": -45.0,
+            "status": "applied",
+            "reason": null,
+            "used_in": [
+              "Life"
+            ]
+          }
+        ]
+      }
+    ],
+    "oracle_life_more_mods": [
+      {
+        "evalValue": -15,
+        "name": "Life",
+        "queryName": "Life",
+        "rawValue": -15,
+        "source": "Item:18:Runeseeker's Call, Runemastered Runic Fork",
+        "type": "MORE"
+      },
+      {
+        "evalValue": -30,
+        "name": "Life",
+        "queryName": "Life",
+        "rawValue": -30,
+        "source": "Item:18:Runeseeker's Call, Runemastered Runic Fork",
+        "type": "MORE"
+      }
+    ],
+    "arithmetic": {
+      "native": "1528 * 1.05 * (1 - .45) = 882.42; unreserved/recoverable = .34 * 882.42 = 300.0228",
+      "oracle": "round2(.85*.70) = round2(.595) = .60; round(1528*1.05*.60) = 963; 963-ceil(963*.66)=327"
+    },
+    "crosscheck": "Pinned ModDB:MoreInternal rounds its MORE product to 2 decimal places; CalcDefence doActorLifeManaSpirit rounds the final pool.",
+    "limits": "No new in-game rounding measurement. Do not change PoBR precision or split the frozen combined rune line. Reference-class EHP/max-hit rows were not reclassified by this assessment."
+  },
+  "witchhunter_10": {
+    "status": "Exact arithmetic attribution for all 16 reported defence rows; preserve game-granted passive.",
+    "sources": {
+      "native_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/final-builds/witchhunter-10.json",
+      "native_sha256": "182c8b8c2154a51f15a5a53665bd648b157080a290a3b84c86514f74c2355bea",
+      "oracle_path": "/root/codes/pobr/.cache/pob2-oracle/f758a52306756cb0-eb2cf21474.json",
+      "oracle_sha256": "bdf620a120592b74be668188069f0178d8031f8c9883affe6815891295cd205d",
+      "xml_path": "/root/codes/pobr/.cache/pob2-oracle/f758a52306756cb0-eb2cf21474.xml",
+      "code_path": "/root/codes/pobr/examples/reference-builds/ninja-top10-2026-10-26/builds/witchhunter-10/code.txt"
+    },
+    "rows": [
+      {
+        "stat": "Armour",
+        "pobr": 2750.0,
+        "code": 2393.0,
+        "pob2": 2393.0,
+        "class": "engine",
+        "reason": null
+      },
+      {
+        "stat": "Evasion",
+        "pobr": 10185.0,
+        "code": 7613.0,
+        "pob2": 7613.0,
+        "class": "engine",
+        "reason": null
+      },
+      {
+        "stat": "TotalEHP",
+        "pobr": 43182.673520364,
+        "code": 29844.514991203,
+        "pob2": 29844.51499,
+        "class": "engine",
+        "reason": null
+      },
+      {
+        "stat": "PhysicalMaxHit",
+        "pobr": 6047.0,
+        "code": 5134.0,
+        "pob2": 5134.0,
+        "class": "engine",
+        "reason": null
+      },
+      {
+        "stat": "FireMaxHit",
+        "pobr": 20700.0,
+        "code": 17557.0,
+        "pob2": 17557.0,
+        "class": "engine",
+        "reason": null
+      },
+      {
+        "stat": "ColdMaxHit",
+        "pobr": 20700.0,
+        "code": 17557.0,
+        "pob2": 17557.0,
+        "class": "engine",
+        "reason": null
+      },
+      {
+        "stat": "LightningMaxHit",
+        "pobr": 20700.0,
+        "code": 17557.0,
+        "pob2": 17557.0,
+        "class": "engine",
+        "reason": null
+      },
+      {
+        "stat": "ChaosMaxHit",
+        "pobr": 5785.0,
+        "code": 4906.0,
+        "pob2": 4906.0,
+        "class": "engine",
+        "reason": null
+      },
+      {
+        "stat": "DeflectionRating",
+        "pobr": 13138.65,
+        "code": 9820.77,
+        "pob2": 9820.77,
+        "class": "engine",
+        "reason": null
+      },
+      {
+        "stat": "DeflectChance",
+        "pobr": 74.0,
+        "code": 63.0,
+        "pob2": 63.0,
+        "class": "engine",
+        "reason": null
+      },
+      {
+        "stat": "EvadeChance",
+        "pobr": 58.0,
+        "code": 52.0,
+        "pob2": 52.0,
+        "class": "engine",
+        "reason": null
+      },
+      {
+        "stat": "MeleeEvadeChance",
+        "pobr": 58.0,
+        "code": 52.0,
+        "pob2": 52.0,
+        "class": "engine",
+        "reason": null
+      },
+      {
+        "stat": "ProjectileEvadeChance",
+        "pobr": 58.0,
+        "code": 52.0,
+        "pob2": 52.0,
+        "class": "engine",
+        "reason": null
+      },
+      {
+        "stat": "SpellEvadeChance",
+        "pobr": 58.0,
+        "code": 52.0,
+        "pob2": 52.0,
+        "class": "engine",
+        "reason": null
+      },
+      {
+        "stat": "SpellProjectileEvadeChance",
+        "pobr": 58.0,
+        "code": 52.0,
+        "pob2": 52.0,
+        "class": "engine",
+        "reason": null
+      },
+      {
+        "stat": "PhysicalDamageReduction",
+        "pobr": 22.0,
+        "code": 20.0,
+        "pob2": 20.0,
+        "class": "engine",
+        "reason": null
+      }
+    ],
+    "arithmetic": {
+      "native": {
+        "base_evasion": 4619,
+        "Armour": 2750,
+        "Evasion": 10185,
+        "aegis": 3881,
+        "life_available": 717.213,
+        "mana": 1186.5,
+        "total_hit_pool": 5784.713,
+        "enemy_accuracy_after_blind": 1607,
+        "DeflectionRating": 13138.65,
+        "DeflectChance": 74,
+        "EvadeChance": 58,
+        "damage_chance": 0.704,
+        "total_taken_hit": 1923.668929325,
+        "damaging_hits": 3.007125036858504,
+        "TotalEHP": 43182.67352036394,
+        "max_hits": {
+          "Physical": 6047,
+          "Fire": 20700,
+          "Cold": 20700,
+          "Lightning": 20700,
+          "Chaos": 5785
+        }
+      },
+      "oracle": {
+        "base_evasion": 3296,
+        "Armour": 2393,
+        "Evasion": 7613,
+        "aegis": 3002,
+        "life_available": 717,
+        "mana": 1187,
+        "total_hit_pool": 4906,
+        "enemy_accuracy_after_blind": 1607,
+        "DeflectionRating": 9820.77,
+        "DeflectChance": 63,
+        "EvadeChance": 52,
+        "damage_chance": 0.748,
+        "total_taken_hit": 1944.0175128,
+        "damaging_hits": 2.5236398168727443,
+        "TotalEHP": 29844.51499120341,
+        "max_hits": {
+          "Physical": 5134,
+          "Fire": 17557,
+          "Cold": 17557,
+          "Lightning": 17557,
+          "Chaos": 4906
+        }
+      }
+    },
+    "frozen_megalomaniac": [
+      "\n\t\t\tRarity: UNIQUE\nMegalomaniac\nDiamond\nUnique ID: 57fd389f998acb446b36c02ff7eb566e848df78a7fae367d74b4a3415c7ed84c\nItem Level: 81\nLevelReq: 0\nLimited to: 1\nImplicits: 3\n{enchant}Allocates Fearful Paralysis\n{enchant}Allocates Leather Bound Gauntlets\n{enchant}Allocates Jack of all Trades\nCorrupted\n\t\t\t"
+    ],
+    "native_source_lines": [
+      {
+        "source_kind": "CampaignReward",
+        "source_id": "quest",
+        "slot": null,
+        "holder": null,
+        "text": "+15% of Armour also applies to Elemental Damage",
+        "status": "applied",
+        "reason": null,
+        "used_in": [],
+        "modifiers": [
+          {
+            "name": "ArmourAppliesToColdDamageTaken",
+            "mod_type": "BASE",
+            "value": 15.0,
+            "applied": 15.0,
+            "status": "applied",
+            "reason": null,
+            "used_in": []
+          },
+          {
+            "name": "ArmourAppliesToFireDamageTaken",
+            "mod_type": "BASE",
+            "value": 15.0,
+            "applied": 15.0,
+            "status": "applied",
+            "reason": null,
+            "used_in": []
+          },
+          {
+            "name": "ArmourAppliesToLightningDamageTaken",
+            "mod_type": "BASE",
+            "value": 15.0,
+            "applied": 15.0,
+            "status": "applied",
+            "reason": null,
+            "used_in": []
+          }
+        ]
+      },
+      {
+        "source_kind": "ItemAffix",
+        "source_id": "item.helmet.explicit",
+        "slot": "helmet",
+        "holder": "Ancient Visor",
+        "text": "Gain 36% of Evasion Rating as extra Armour",
+        "status": "applied",
+        "reason": null,
+        "used_in": [],
+        "modifiers": [
+          {
+            "name": "EvasionGainAsArmour",
+            "mod_type": "BASE",
+            "value": 36.0,
+            "applied": 36.0,
+            "status": "applied",
+            "reason": null,
+            "used_in": []
+          }
+        ]
+      },
+      {
+        "source_kind": "PassiveNode",
+        "source_id": "node.13823",
+        "slot": null,
+        "holder": "Controlling Magic",
+        "text": "25% increased [Critical|Critical Hit Chance] for [Spell|Spells]",
+        "status": "applied",
+        "reason": null,
+        "used_in": [
+          "CritChance"
+        ],
+        "modifiers": [
+          {
+            "name": "CriticalStrikeChance",
+            "mod_type": "INC",
+            "value": 25.0,
+            "applied": 25.0,
+            "status": "applied",
+            "reason": null,
+            "used_in": [
+              "CritChance"
+            ]
+          }
+        ]
+      },
+      {
+        "source_kind": "PassiveNode",
+        "source_id": "node.13823",
+        "slot": null,
+        "holder": "Controlling Magic",
+        "text": "[Hit|Hits] have 25% reduced [Critical|Critical Hit] Chance against you",
+        "status": "applied",
+        "reason": null,
+        "used_in": [],
+        "modifiers": [
+          {
+            "name": "EnemyCritChance",
+            "mod_type": "INC",
+            "value": -25.0,
+            "applied": -25.0,
+            "status": "applied",
+            "reason": null,
+            "used_in": []
+          }
+        ]
+      },
+      {
+        "source_kind": "PassiveNode",
+        "source_id": "node.28267",
+        "slot": null,
+        "holder": "Desensitisation",
+        "text": "25% increased [CriticalDamageBonus|Critical Damage Bonus]",
+        "status": "applied",
+        "reason": null,
+        "used_in": [
+          "CritMultiplier"
+        ],
+        "modifiers": [
+          {
+            "name": "CriticalStrikeMultiplier",
+            "mod_type": "INC",
+            "value": 25.0,
+            "applied": 25.0,
+            "status": "applied",
+            "reason": null,
+            "used_in": [
+              "CritMultiplier"
+            ]
+          }
+        ]
+      },
+      {
+        "source_kind": "PassiveNode",
+        "source_id": "node.28267",
+        "slot": null,
+        "holder": "Desensitisation",
+        "text": "[Hit|Hits] against you have 25% reduced [CriticalDamageBonus|Critical Damage Bonus]",
+        "status": "applied",
+        "reason": null,
+        "used_in": [],
+        "modifiers": [
+          {
+            "name": "EnemyModifier",
+            "mod_type": "LIST",
+            "value": "[nested 1]",
+            "applied": null,
+            "status": "applied",
+            "reason": null,
+            "used_in": []
+          }
+        ]
+      },
+      {
+        "source_kind": "PassiveNode",
+        "source_id": "node.51446",
+        "slot": null,
+        "holder": "Leather Bound Gauntlets",
+        "text": "+1 to [Evasion] Rating per 1 [ItemArmour|Item Armour] on Equipped Gloves",
+        "status": "applied",
+        "reason": null,
+        "used_in": [
+          "Evasion"
+        ],
+        "modifiers": [
+          {
+            "name": "Evasion",
+            "mod_type": "BASE",
+            "value": 1.0,
+            "applied": 1323.0,
+            "status": "applied",
+            "reason": null,
+            "used_in": [
+              "Evasion"
+            ]
+          }
+        ]
+      },
+      {
+        "source_kind": "SkillGem",
+        "source_id": "buff.SorceryWardPlayer.aegis_unique_shield_max_value_from_%_armour_evasion",
+        "slot": null,
+        "holder": null,
+        "text": "buff SorceryWardPlayer aegis_unique_shield_max_value_from_%_armour_evasion (30)",
+        "status": "partial",
+        "reason": null,
+        "used_in": [],
+        "modifiers": [
+          {
+            "name": "AegisValue",
+            "mod_type": "BASE",
+            "value": 30.0,
+            "applied": 3881.0,
+            "status": "applied",
+            "reason": null,
+            "used_in": []
+          },
+          {
+            "name": "ElementalAegisValue",
+            "mod_type": "BASE",
+            "value": 30.0,
+            "applied": null,
+            "status": "inactive",
+            "reason": "Condition CeremonialAblution holds (applies only without it)",
+            "read_gate": {
+              "state": "a stronger modifier of the same name applies",
+              "config_option": null
+            },
+            "used_in": []
+          }
+        ]
+      },
+      {
+        "source_kind": "SkillGem",
+        "source_id": "skill.FrostWallPlayer.blind_effect",
+        "slot": null,
+        "holder": null,
+        "text": null,
+        "status": "applied",
+        "reason": null,
+        "used_in": [],
+        "modifiers": [
+          {
+            "name": "EnemyModifier",
+            "mod_type": "LIST",
+            "value": "[nested 1]",
+            "applied": null,
+            "status": "applied",
+            "reason": null,
+            "used_in": []
+          }
+        ]
+      }
+    ],
+    "native_ehp_terms": {
+      "by_type": {
+        "Chaos": {
+          "enemy_damage": 387.3678875,
+          "taken_hit": 387.3678875,
+          "total_hit_pool": 5784.713
+        },
+        "Cold": {
+          "enemy_damage": 968.4197187499999,
+          "taken_hit": 260.3112204,
+          "total_hit_pool": 5784.713
+        },
+        "Fire": {
+          "enemy_damage": 968.4197187499999,
+          "taken_hit": 260.3112204,
+          "total_hit_pool": 5784.713
+        },
+        "Lightning": {
+          "enemy_damage": 968.4197187499999,
+          "taken_hit": 260.3112204,
+          "total_hit_pool": 5784.713
+        },
+        "Physical": {
+          "enemy_damage": 968.4197187499999,
+          "taken_hit": 755.3673806249999,
+          "total_hit_pool": 5784.713
+        }
+      },
+      "damaging_hits": 3.0071250368585045,
+      "damage_chance": 70.39999999999999,
+      "mitigated_hits": 4.271484427355831,
+      "not_hit_chance": 57.99999999999999,
+      "enemy_damage_in": 4246.0
+    },
+    "oracle_defence_terms": {
+      "ArmourOnGloves": 1323,
+      "ChaosTakenHit": 387.5633,
+      "ChaosTotalHitPool": 4906,
+      "ColdTakenHit": 260.4425376,
+      "ColdTotalHitPool": 4906,
+      "ConfiguredDamageChance": 74.8,
+      "ConfiguredNotHitChance": 52,
+      "EnemyCritChance": 1.8,
+      "EnemyCritEffect": 1.00405,
+      "FireTakenHit": 260.4425376,
+      "FireTotalHitPool": 4906,
+      "LightningTakenHit": 260.4425376,
+      "LightningTotalHitPool": 4906,
+      "PhysicalDamageReduction": 20,
+      "PhysicalTakenHit": 775.1266,
+      "PhysicalTotalHitPool": 4906,
+      "sharedAegis": 3002,
+      "totalTakenHit": 1944.017513
+    },
+    "oracle_evasion_base_mods": [
+      {
+        "evalValue": 7,
+        "name": "Evasion",
+        "queryName": "Evasion",
+        "rawValue": 7,
+        "source": "Base",
+        "type": "BASE"
+      }
+    ],
+    "formulas": {
+      "Armour": "round((681+1323 + .36*(7+620+966+1703+LeatherBound1323))*1.50*.50)",
+      "Evasion": "round(((7+620+966+1703+LeatherBound1323)*1.62 +1703*.59)*1.20)",
+      "enemy_accuracy": "round(2114*(1-.20*1.20))=1607 on both sides; one strongest skill blind (FrostWallPlayer.blind_effect).",
+      "EvadeChance": "100-round((1-.95*Evasion/(Evasion+4*1607))*100) =58 native,52 oracle; all five attack/spell variants agree.",
+      "DeflectChance": "100-round(1607/(1607+.12*DeflectionRating)*150-50) =74 native,63 oracle.",
+      "SorceryWard": "ceil(.30*(Armour+Evasion)); Ceremonial Ablution already selected, so shared aegis protects all types",
+      "MaxHit": "Physical: floor((pool+sqrt(pool^2+.4*pool*Armour))/2). Elements: substitute h=pool/.28 and .15*Armour. Chaos: round(pool). Incoming damage multiplier is 1 for this max-hit view.",
+      "TotalEHP": "pool/sum(cached taken hits) / (1-.40*DeflectChance/100) / (1-EvadeChance/100) *4246",
+      "PhysicalDR": "round(100*Armour/(Armour+10*physical enemy hit)) =22 native,20 oracle",
+      "incoming_crit": "Enemy crit chance=5%*(1-.25)*(1-evade/100); bonus=30%*(1-.25). Crit effect=1+chance/100*.225, giving1.00354375 native and1.00405 oracle. Enemy physical hit965*effect=968.41971875 native and968.90825 oracle. Controlling Magic node13823 reduces chance; Desensitisation node28267 reduces bonus."
+    },
+    "limits": "No in-game validation of existing evasion/deflection/armour rounding or combat timeline. No need to remove the passive, alter jewel behavior, or change precision for parity."
+  },
+  "warbringer": [
+    {
+      "build": "warbringer-02",
+      "status": "Explained selected-count difference, not a rounding bug.",
+      "sources": {
+        "native_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/final-builds/warbringer-02.json",
+        "native_sha256": "042d134d6ed9513a3bdff5d59d8f270c03cbb0ff1b0dd19379059f193ea02d02",
+        "oracle_path": "/root/codes/pobr/.cache/pob2-oracle/ebac3c1cddf16ef9-5009bf44f0.json",
+        "oracle_sha256": "5c757b363a14663a404f3085bf6af6b006d93cb4bbd24e7275fec89bd8224d8a",
+        "xml_path": "/root/codes/pobr/.cache/pob2-oracle/ebac3c1cddf16ef9-5009bf44f0.xml",
+        "code_path": "/root/codes/pobr/examples/reference-builds/ninja-top10-2026-10-26/builds/warbringer-02/code.txt"
+      },
+      "rows": [
+        {
+          "stat": "Evasion",
+          "pobr": 8.0,
+          "code": 9.0,
+          "pob2": 9.0,
+          "class": "engine",
+          "reason": null
+        },
+        {
+          "stat": "DeflectionRating",
+          "pobr": 0.96,
+          "code": 1.08,
+          "pob2": 1.08,
+          "class": "engine",
+          "reason": null
+        }
+      ],
+      "base_evasion": 7,
+      "native_INC": 15,
+      "oracle_INC": 25,
+      "native_summoned_count": 0,
+      "oracle_summoned_count": 1,
+      "source_lines": [
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.53607",
+          "slot": null,
+          "holder": "Fortified Location",
+          "text": "10% increased [Armour] and [Evasion] Rating per Summoned [Totem] in your [Presence]",
+          "status": "inactive",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "ArmourAndEvasion",
+              "mod_type": "INC",
+              "value": 10.0,
+              "applied": null,
+              "status": "inactive",
+              "reason": "scaled to 0: Multiplier TotemsSummoned is 0",
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.53607",
+          "slot": null,
+          "holder": "Fortified Location",
+          "text": "10% increased [Attack] Damage per Summoned [Totem] in your [Presence]",
+          "status": "inactive",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "AttackDamage",
+              "mod_type": "INC",
+              "value": 10.0,
+              "applied": null,
+              "status": "inactive",
+              "reason": "scaled to 0: Multiplier TotemsSummoned is 0",
+              "used_in": []
+            }
+          ]
+        }
+      ],
+      "explicit_totem_inputs": [],
+      "selected_skill": "RapidShotPlayer",
+      "oracle_evasion_increases": [
+        {
+          "evalValue": 15,
+          "name": "Evasion",
+          "queryName": "Evasion",
+          "rawValue": 15,
+          "source": "Quest:Interlude 2: Qimah",
+          "tags": [
+            "type=Global"
+          ],
+          "type": "INC"
+        }
+      ],
+      "count_authority": "Existing selected-skill snapshot: none inferred for non-totem selection; one for selected totem-hosted skill. Capacity does not prove a summoned count. See fix-round-2/totem-evidence.json count_summary.",
+      "deflection": "Where reported (02/10), DeflectionRating = .12 * rounded Evasion on both sides.",
+      "limits": "Offence and cost rows were not assessed or reclassified. No inferred additional summoned totem or Presence history."
+    },
+    {
+      "build": "warbringer-03",
+      "status": "Explained selected-count difference, not a rounding bug.",
+      "sources": {
+        "native_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/final-builds/warbringer-03.json",
+        "native_sha256": "afd9bfe7a9bd5d74c36f5744f474593b91fd5450eeb81d8eb3b50203f23a6a85",
+        "oracle_path": "/root/codes/pobr/.cache/pob2-oracle/9bc87030eb1da910-8b45fc3731.json",
+        "oracle_sha256": "6319511b48044b988f699a7fa1f98598250d0c3732c10b1b8f57e9f89d5a97c8",
+        "xml_path": "/root/codes/pobr/.cache/pob2-oracle/9bc87030eb1da910-8b45fc3731.xml",
+        "code_path": "/root/codes/pobr/examples/reference-builds/ninja-top10-2026-10-26/builds/warbringer-03/code.txt"
+      },
+      "rows": [
+        {
+          "stat": "Evasion",
+          "pobr": 10.0,
+          "code": 11.0,
+          "pob2": 11.0,
+          "class": "engine",
+          "reason": null
+        }
+      ],
+      "base_evasion": 7,
+      "native_INC": 45,
+      "oracle_INC": 55,
+      "native_summoned_count": 0,
+      "oracle_summoned_count": 1,
+      "source_lines": [
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.53607",
+          "slot": null,
+          "holder": "Fortified Location",
+          "text": "10% increased [Armour] and [Evasion] Rating per Summoned [Totem] in your [Presence]",
+          "status": "inactive",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "ArmourAndEvasion",
+              "mod_type": "INC",
+              "value": 10.0,
+              "applied": null,
+              "status": "inactive",
+              "reason": "scaled to 0: Multiplier TotemsSummoned is 0",
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.53607",
+          "slot": null,
+          "holder": "Fortified Location",
+          "text": "10% increased [Attack] Damage per Summoned [Totem] in your [Presence]",
+          "status": "inactive",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "AttackDamage",
+              "mod_type": "INC",
+              "value": 10.0,
+              "applied": null,
+              "status": "inactive",
+              "reason": "scaled to 0: Multiplier TotemsSummoned is 0",
+              "used_in": []
+            }
+          ]
+        }
+      ],
+      "explicit_totem_inputs": [],
+      "selected_skill": "ExplosiveGrenadePlayer",
+      "oracle_evasion_increases": [
+        {
+          "evalValue": 30,
+          "name": "Evasion",
+          "queryName": "Evasion",
+          "rawValue": 30,
+          "source": "Quest:Act 4: Eye of Hinekora",
+          "tags": [
+            "type=Global"
+          ],
+          "type": "INC"
+        }
+      ],
+      "count_authority": "Existing selected-skill snapshot: none inferred for non-totem selection; one for selected totem-hosted skill. Capacity does not prove a summoned count. See fix-round-2/totem-evidence.json count_summary.",
+      "deflection": "Where reported (02/10), DeflectionRating = .12 * rounded Evasion on both sides.",
+      "limits": "Offence and cost rows were not assessed or reclassified. No inferred additional summoned totem or Presence history."
+    },
+    {
+      "build": "warbringer-08",
+      "status": "Explained selected-count difference, not a rounding bug.",
+      "sources": {
+        "native_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/final-builds/warbringer-08.json",
+        "native_sha256": "739aa098f1403053a5b0e1085800cc9310e601ef125a7979aa0f3994e99ea7ef",
+        "oracle_path": "/root/codes/pobr/.cache/pob2-oracle/f581dd6944a55833-fdb5c50b00.json",
+        "oracle_sha256": "1281d3b3fa72980664cf69071ebcac8649ecce6db0dfc918737df0e775f51d63",
+        "xml_path": "/root/codes/pobr/.cache/pob2-oracle/f581dd6944a55833-fdb5c50b00.xml",
+        "code_path": "/root/codes/pobr/examples/reference-builds/ninja-top10-2026-10-26/builds/warbringer-08/code.txt"
+      },
+      "rows": [
+        {
+          "stat": "Evasion",
+          "pobr": 290.0,
+          "code": 309.0,
+          "pob2": 309.0,
+          "class": "engine",
+          "reason": null
+        }
+      ],
+      "base_evasion": 187,
+      "native_INC": 55,
+      "oracle_INC": 65,
+      "native_summoned_count": 1,
+      "oracle_summoned_count": 2,
+      "source_lines": [
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.53607",
+          "slot": null,
+          "holder": "Fortified Location",
+          "text": "10% increased [Armour] and [Evasion] Rating per Summoned [Totem] in your [Presence]",
+          "status": "applied",
+          "reason": null,
+          "used_in": [
+            "Armour",
+            "Evasion"
+          ],
+          "modifiers": [
+            {
+              "name": "ArmourAndEvasion",
+              "mod_type": "INC",
+              "value": 10.0,
+              "applied": 10.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": [
+                "Armour",
+                "Evasion"
+              ]
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.53607",
+          "slot": null,
+          "holder": "Fortified Location",
+          "text": "10% increased [Attack] Damage per Summoned [Totem] in your [Presence]",
+          "status": "applied",
+          "reason": null,
+          "used_in": [
+            "TotalHitAvg"
+          ],
+          "modifiers": [
+            {
+              "name": "AttackDamage",
+              "mod_type": "INC",
+              "value": 10.0,
+              "applied": 10.0,
+              "status": "applied",
+              "reason": null,
+              "used_in": [
+                "TotalHitAvg"
+              ]
+            }
+          ]
+        }
+      ],
+      "explicit_totem_inputs": [],
+      "selected_skill": "ClusterGrenadePlayer",
+      "oracle_evasion_increases": [
+        {
+          "evalValue": 30,
+          "name": "Evasion",
+          "queryName": "Evasion",
+          "rawValue": 30,
+          "source": "Quest:Act 4: Eye of Hinekora",
+          "tags": [
+            "type=Global"
+          ],
+          "type": "INC"
+        },
+        {
+          "evalValue": 15,
+          "name": "Evasion",
+          "queryName": "Evasion",
+          "rawValue": 15,
+          "source": "Quest:Interlude 2: Qimah",
+          "tags": [
+            "type=Global"
+          ],
+          "type": "INC"
+        }
+      ],
+      "count_authority": "Existing selected-skill snapshot: none inferred for non-totem selection; one for selected totem-hosted skill. Capacity does not prove a summoned count. See fix-round-2/totem-evidence.json count_summary.",
+      "deflection": "Where reported (02/10), DeflectionRating = .12 * rounded Evasion on both sides.",
+      "limits": "Offence and cost rows were not assessed or reclassified. No inferred additional summoned totem or Presence history."
+    },
+    {
+      "build": "warbringer-10",
+      "status": "Explained selected-count difference, not a rounding bug.",
+      "sources": {
+        "native_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/final-builds/warbringer-10.json",
+        "native_sha256": "fc318a267370b7d758e5d87382ed361b4c910e24ead67780fb729d87a804977f",
+        "oracle_path": "/root/codes/pobr/.cache/pob2-oracle/91c6158ac2023958-4f5e69d687.json",
+        "oracle_sha256": "ac2d8b7660562e888e7460117d99b7e64b0a590becac3e552476674eea85ef38",
+        "xml_path": "/root/codes/pobr/.cache/pob2-oracle/91c6158ac2023958-4f5e69d687.xml",
+        "code_path": "/root/codes/pobr/examples/reference-builds/ninja-top10-2026-10-26/builds/warbringer-10/code.txt"
+      },
+      "rows": [
+        {
+          "stat": "Evasion",
+          "pobr": 7.0,
+          "code": 8.0,
+          "pob2": 8.0,
+          "class": "engine",
+          "reason": null
+        },
+        {
+          "stat": "DeflectionRating",
+          "pobr": 0.84,
+          "code": 0.96,
+          "pob2": 0.96,
+          "class": "engine",
+          "reason": null
+        }
+      ],
+      "base_evasion": 7,
+      "native_INC": 0,
+      "oracle_INC": 10,
+      "native_summoned_count": 0,
+      "oracle_summoned_count": 1,
+      "source_lines": [
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.53607",
+          "slot": null,
+          "holder": "Fortified Location",
+          "text": "10% increased [Armour] and [Evasion] Rating per Summoned [Totem] in your [Presence]",
+          "status": "inactive",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "ArmourAndEvasion",
+              "mod_type": "INC",
+              "value": 10.0,
+              "applied": null,
+              "status": "inactive",
+              "reason": "scaled to 0: Multiplier TotemsSummoned is 0",
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "PassiveNode",
+          "source_id": "node.53607",
+          "slot": null,
+          "holder": "Fortified Location",
+          "text": "10% increased [Attack] Damage per Summoned [Totem] in your [Presence]",
+          "status": "inactive",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "AttackDamage",
+              "mod_type": "INC",
+              "value": 10.0,
+              "applied": null,
+              "status": "inactive",
+              "reason": "scaled to 0: Multiplier TotemsSummoned is 0",
+              "used_in": []
+            }
+          ]
+        }
+      ],
+      "explicit_totem_inputs": [],
+      "selected_skill": "MeleeCrossbowPlayer",
+      "oracle_evasion_increases": [],
+      "count_authority": "Existing selected-skill snapshot: none inferred for non-totem selection; one for selected totem-hosted skill. Capacity does not prove a summoned count. See fix-round-2/totem-evidence.json count_summary.",
+      "deflection": "Where reported (02/10), DeflectionRating = .12 * rounded Evasion on both sides.",
+      "limits": "Offence and cost rows were not assessed or reclassified. No inferred additional summoned totem or Presence history."
+    }
+  ],
+  "pathfinder_flasks": [
+    {
+      "build": "pathfinder-01",
+      "status": "Static recovery reader exists; aggregate sustained-regeneration treatment deferred.",
+      "sources": {
+        "native_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/final-builds/pathfinder-01.json",
+        "native_sha256": "f9a1764d62773cabf764f87720c2a3a0f9c367c6e2216240782ae5cd0e08d708",
+        "oracle_path": "/root/codes/pobr/.cache/pob2-oracle/5ca237372bf4d440-739cff8d67.json",
+        "oracle_sha256": "2629853c3b255efc52b68a6d860c7a786d9dc10b96b49c476522a993fada68d5",
+        "xml_path": "/root/codes/pobr/.cache/pob2-oracle/5ca237372bf4d440-739cff8d67.xml",
+        "code_path": "/root/codes/pobr/examples/reference-builds/ninja-top10-2026-10-26/builds/pathfinder-01/code.txt"
+      },
+      "rows": [
+        {
+          "stat": "LifeRegenRecovery",
+          "pobr": 0.0,
+          "code": 8102.1824,
+          "pob2": 8102.1824,
+          "class": "engine",
+          "reason": null
+        },
+        {
+          "stat": "EnergyShieldRegenRecovery",
+          "pobr": 0.0,
+          "code": 8102.1824,
+          "pob2": 8102.1824,
+          "class": "engine",
+          "reason": null
+        }
+      ],
+      "per_use_output": {
+        "Flask1Duration": 2.0547945205479454,
+        "Flask1EnergyShieldInstantRecovery": -0.0,
+        "Flask1EnergyShieldRecovery": 16648.32,
+        "Flask1EnergyShieldRecoveryPerSecond": 8102.182399999999,
+        "Flask1InstantRecovery": -0.0,
+        "Flask1Recovery": 16648.32,
+        "Flask1RecoveryPerSecond": 8102.182399999999
+      },
+      "equipped_flasks": [
+        {
+          "active": "true",
+          "itemId": "10",
+          "itemPbURL": "",
+          "name": "Flask 1"
+        },
+        {
+          "active": "true",
+          "itemId": "9",
+          "itemPbURL": "",
+          "name": "Flask 2"
+        }
+      ],
+      "source_lines": [
+        {
+          "source_kind": "AscendancyNode",
+          "source_id": "node.41619",
+          "slot": null,
+          "holder": "Enduring Elixirs",
+          "text": "Life [Flask] Effects are not removed when [Reservation|Unreserved] Life is Filled",
+          "status": "unread",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "LifeFlaskEffectNotRemoved",
+              "mod_type": "FLAG",
+              "value": true,
+              "applied": null,
+              "status": "unread",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "ItemAffix",
+          "source_id": "item.belt.explicit",
+          "slot": "belt",
+          "holder": "Fine Belt",
+          "text": "Life Recovery from Flasks also applies to Energy Shield",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "LifeFlaskAppliesToEnergyShield",
+              "mod_type": "FLAG",
+              "value": true,
+              "applied": null,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        }
+      ],
+      "reader": "crates/pobr-core/src/calc/utility.rs: RecoveryPerSecond = gradual recovery / duration. LifeFlaskAppliesToEnergyShield copies per-use recovery with destination EnergyShieldRecoveryRate and CannotGainEnergyShield gate.",
+      "aggregate_boundary": "crates/pobr-core/src/calc/recovery.rs fill_regeneration does not fold finite flask recovery into sustained regeneration. Current guide documents per-use fields without use frequency/uptime inference.",
+      "limits": "Slots are enabled in frozen XML, but this assessment does not infer continuous flask drinking, queueing, charge supply, event history, or aggregate regen uptime. No new reader or model is justified within the requested scope."
+    },
+    {
+      "build": "pathfinder-02",
+      "status": "Static recovery reader exists; aggregate sustained-regeneration treatment deferred.",
+      "sources": {
+        "native_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/final-builds/pathfinder-02.json",
+        "native_sha256": "82d386b458257cde2974136daad2144fbc743c8cbdec37cc2f87df236b8b4d98",
+        "oracle_path": "/root/codes/pobr/.cache/pob2-oracle/437899de20c90f8d-f690a72e9a.json",
+        "oracle_sha256": "39fb35ac349914be0224a20bca66ae73bf3f21d1b3cb7d409507168756702f23",
+        "xml_path": "/root/codes/pobr/.cache/pob2-oracle/437899de20c90f8d-f690a72e9a.xml",
+        "code_path": "/root/codes/pobr/examples/reference-builds/ninja-top10-2026-10-26/builds/pathfinder-02/code.txt"
+      },
+      "rows": [
+        {
+          "stat": "LifeRegenRecovery",
+          "pobr": 0.0,
+          "code": 7725.7885224,
+          "pob2": 7725.788522,
+          "class": "engine",
+          "reason": null
+        },
+        {
+          "stat": "EnergyShieldRegenRecovery",
+          "pobr": 0.0,
+          "code": 7725.7885224,
+          "pob2": 7725.788522,
+          "class": "engine",
+          "reason": null
+        }
+      ],
+      "per_use_output": {
+        "Flask1Duration": 1.595744680851064,
+        "Flask1EnergyShieldInstantRecovery": -0.0,
+        "Flask1EnergyShieldRecovery": 12328.385939999998,
+        "Flask1EnergyShieldRecoveryPerSecond": 7725.788522399998,
+        "Flask1InstantRecovery": -0.0,
+        "Flask1Recovery": 12328.385939999998,
+        "Flask1RecoveryPerSecond": 7725.788522399998
+      },
+      "equipped_flasks": [
+        {
+          "active": "true",
+          "itemId": "8",
+          "itemPbURL": "",
+          "name": "Flask 1"
+        },
+        {
+          "active": "true",
+          "itemId": "15",
+          "itemPbURL": "",
+          "name": "Flask 2"
+        }
+      ],
+      "source_lines": [
+        {
+          "source_kind": "AscendancyNode",
+          "source_id": "node.41619",
+          "slot": null,
+          "holder": "Enduring Elixirs",
+          "text": "Life [Flask] Effects are not removed when [Reservation|Unreserved] Life is Filled",
+          "status": "unread",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "LifeFlaskEffectNotRemoved",
+              "mod_type": "FLAG",
+              "value": true,
+              "applied": null,
+              "status": "unread",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "ItemAffix",
+          "source_id": "item.belt.explicit",
+          "slot": "belt",
+          "holder": "Fine Belt",
+          "text": "Life Recovery from Flasks also applies to Energy Shield",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "LifeFlaskAppliesToEnergyShield",
+              "mod_type": "FLAG",
+              "value": true,
+              "applied": null,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        }
+      ],
+      "reader": "crates/pobr-core/src/calc/utility.rs: RecoveryPerSecond = gradual recovery / duration. LifeFlaskAppliesToEnergyShield copies per-use recovery with destination EnergyShieldRecoveryRate and CannotGainEnergyShield gate.",
+      "aggregate_boundary": "crates/pobr-core/src/calc/recovery.rs fill_regeneration does not fold finite flask recovery into sustained regeneration. Current guide documents per-use fields without use frequency/uptime inference.",
+      "limits": "Slots are enabled in frozen XML, but this assessment does not infer continuous flask drinking, queueing, charge supply, event history, or aggregate regen uptime. No new reader or model is justified within the requested scope."
+    },
+    {
+      "build": "pathfinder-04",
+      "status": "Static recovery reader exists; aggregate sustained-regeneration treatment deferred.",
+      "sources": {
+        "native_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/final-builds/pathfinder-04.json",
+        "native_sha256": "501b9b702ac175527b708a1dbe6c9ddda26a337a27001789563b828f2e189c6b",
+        "oracle_path": "/root/codes/pobr/.cache/pob2-oracle/dab6b999de3704a0-f690a72e9a.json",
+        "oracle_sha256": "7f46a4de8eedbd9963ab057d4d7a84a0c21b6efd36aab2f2fe24d611f1718f39",
+        "xml_path": "/root/codes/pobr/.cache/pob2-oracle/dab6b999de3704a0-f690a72e9a.xml",
+        "code_path": "/root/codes/pobr/examples/reference-builds/ninja-top10-2026-10-26/builds/pathfinder-04/code.txt"
+      },
+      "rows": [
+        {
+          "stat": "LifeRegenRecovery",
+          "pobr": 31.9,
+          "code": 6358.2616,
+          "pob2": 6358.2616,
+          "class": "engine",
+          "reason": null
+        },
+        {
+          "stat": "EnergyShieldRegenRecovery",
+          "pobr": 0.0,
+          "code": 6326.3616,
+          "pob2": 6326.3616,
+          "class": "engine",
+          "reason": null
+        }
+      ],
+      "per_use_output": {
+        "Flask1Duration": 2.5,
+        "Flask1EnergyShieldInstantRecovery": -0.0,
+        "Flask1EnergyShieldRecovery": 15815.903999999999,
+        "Flask1EnergyShieldRecoveryPerSecond": 6326.361599999999,
+        "Flask1InstantRecovery": -0.0,
+        "Flask1Recovery": 15815.903999999999,
+        "Flask1RecoveryPerSecond": 6326.361599999999
+      },
+      "equipped_flasks": [
+        {
+          "active": "true",
+          "itemId": "10",
+          "itemPbURL": "",
+          "name": "Flask 1"
+        },
+        {
+          "active": "true",
+          "itemId": "14",
+          "itemPbURL": "",
+          "name": "Flask 2"
+        }
+      ],
+      "source_lines": [
+        {
+          "source_kind": "AscendancyNode",
+          "source_id": "node.41619",
+          "slot": null,
+          "holder": "Enduring Elixirs",
+          "text": "Life [Flask] Effects are not removed when [Reservation|Unreserved] Life is Filled",
+          "status": "unread",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "LifeFlaskEffectNotRemoved",
+              "mod_type": "FLAG",
+              "value": true,
+              "applied": null,
+              "status": "unread",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "ItemAffix",
+          "source_id": "item.belt.explicit",
+          "slot": "belt",
+          "holder": "Fine Belt",
+          "text": "Life Recovery from Flasks also applies to Energy Shield",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "LifeFlaskAppliesToEnergyShield",
+              "mod_type": "FLAG",
+              "value": true,
+              "applied": null,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        }
+      ],
+      "reader": "crates/pobr-core/src/calc/utility.rs: RecoveryPerSecond = gradual recovery / duration. LifeFlaskAppliesToEnergyShield copies per-use recovery with destination EnergyShieldRecoveryRate and CannotGainEnergyShield gate.",
+      "aggregate_boundary": "crates/pobr-core/src/calc/recovery.rs fill_regeneration does not fold finite flask recovery into sustained regeneration. Current guide documents per-use fields without use frequency/uptime inference.",
+      "limits": "Slots are enabled in frozen XML, but this assessment does not infer continuous flask drinking, queueing, charge supply, event history, or aggregate regen uptime. No new reader or model is justified within the requested scope."
+    },
+    {
+      "build": "pathfinder-08",
+      "status": "Static recovery reader exists; aggregate sustained-regeneration treatment deferred.",
+      "sources": {
+        "native_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/final-builds/pathfinder-08.json",
+        "native_sha256": "6338f6a766261356c0ee387b7f6628ed6b33ac34bdbec399e2c1359f8b9213cb",
+        "oracle_path": "/root/codes/pobr/.cache/pob2-oracle/241795f86a042c13-f690a72e9a.json",
+        "oracle_sha256": "65275fb2ca745ff929ce848c5c677b4cf8a59142c4b0fc063b65249c2152a9af",
+        "xml_path": "/root/codes/pobr/.cache/pob2-oracle/241795f86a042c13-f690a72e9a.xml",
+        "code_path": "/root/codes/pobr/examples/reference-builds/ninja-top10-2026-10-26/builds/pathfinder-08/code.txt"
+      },
+      "rows": [
+        {
+          "stat": "LifeRegenRecovery",
+          "pobr": 0.0,
+          "code": 6394.332672,
+          "pob2": 6394.332672,
+          "class": "engine",
+          "reason": null
+        },
+        {
+          "stat": "EnergyShieldRegenRecovery",
+          "pobr": 0.0,
+          "code": 6394.332672,
+          "pob2": 6394.332672,
+          "class": "engine",
+          "reason": null
+        }
+      ],
+      "per_use_output": {
+        "Flask1Duration": 2.382352941176471,
+        "Flask1EnergyShieldInstantRecovery": -0.0,
+        "Flask1EnergyShieldRecovery": 15233.557248000001,
+        "Flask1EnergyShieldRecoveryPerSecond": 6394.332672,
+        "Flask1InstantRecovery": -0.0,
+        "Flask1Recovery": 15233.557248000001,
+        "Flask1RecoveryPerSecond": 6394.332672
+      },
+      "equipped_flasks": [
+        {
+          "active": "true",
+          "itemId": "6",
+          "itemPbURL": "",
+          "name": "Flask 1"
+        },
+        {
+          "active": "true",
+          "itemId": "15",
+          "itemPbURL": "",
+          "name": "Flask 2"
+        }
+      ],
+      "source_lines": [
+        {
+          "source_kind": "AscendancyNode",
+          "source_id": "node.41619",
+          "slot": null,
+          "holder": "Enduring Elixirs",
+          "text": "Life [Flask] Effects are not removed when [Reservation|Unreserved] Life is Filled",
+          "status": "unread",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "LifeFlaskEffectNotRemoved",
+              "mod_type": "FLAG",
+              "value": true,
+              "applied": null,
+              "status": "unread",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "ItemAffix",
+          "source_id": "item.belt.explicit",
+          "slot": "belt",
+          "holder": "Fine Belt",
+          "text": "Life Recovery from Flasks also applies to Energy Shield",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "LifeFlaskAppliesToEnergyShield",
+              "mod_type": "FLAG",
+              "value": true,
+              "applied": null,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        }
+      ],
+      "reader": "crates/pobr-core/src/calc/utility.rs: RecoveryPerSecond = gradual recovery / duration. LifeFlaskAppliesToEnergyShield copies per-use recovery with destination EnergyShieldRecoveryRate and CannotGainEnergyShield gate.",
+      "aggregate_boundary": "crates/pobr-core/src/calc/recovery.rs fill_regeneration does not fold finite flask recovery into sustained regeneration. Current guide documents per-use fields without use frequency/uptime inference.",
+      "limits": "Slots are enabled in frozen XML, but this assessment does not infer continuous flask drinking, queueing, charge supply, event history, or aggregate regen uptime. No new reader or model is justified within the requested scope."
+    },
+    {
+      "build": "pathfinder-09",
+      "status": "Static recovery reader exists; aggregate sustained-regeneration treatment deferred.",
+      "sources": {
+        "native_path": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/final-builds/pathfinder-09.json",
+        "native_sha256": "7e7fad0e534337759bbba19d62c35f55500b203c45e18bf63d3b98f7afaf3122",
+        "oracle_path": "/root/codes/pobr/.cache/pob2-oracle/597c61078b93fbfd-f690a72e9a.json",
+        "oracle_sha256": "d4dd66c385fdd0fbe8eee6e019d5db0f8404285d0f6b6687e08167653b5d6a9a",
+        "xml_path": "/root/codes/pobr/.cache/pob2-oracle/597c61078b93fbfd-f690a72e9a.xml",
+        "code_path": "/root/codes/pobr/examples/reference-builds/ninja-top10-2026-10-26/builds/pathfinder-09/code.txt"
+      },
+      "rows": [
+        {
+          "stat": "LifeRegenRecovery",
+          "pobr": 19.0,
+          "code": 5939.6214704,
+          "pob2": 5939.62147,
+          "class": "engine",
+          "reason": null
+        },
+        {
+          "stat": "EnergyShieldRegenRecovery",
+          "pobr": 0.0,
+          "code": 5920.6214704,
+          "pob2": 5920.62147,
+          "class": "engine",
+          "reason": null
+        }
+      ],
+      "per_use_output": {
+        "Flask1Duration": 3.151260504201681,
+        "Flask1EnergyShieldInstantRecovery": -0.0,
+        "Flask1EnergyShieldRecovery": 18657.4206,
+        "Flask1EnergyShieldRecoveryPerSecond": 5920.621470399999,
+        "Flask1InstantRecovery": -0.0,
+        "Flask1Recovery": 18657.4206,
+        "Flask1RecoveryPerSecond": 5920.621470399999
+      },
+      "equipped_flasks": [
+        {
+          "active": "true",
+          "itemId": "11",
+          "itemPbURL": "",
+          "name": "Flask 1"
+        },
+        {
+          "active": "true",
+          "itemId": "7",
+          "itemPbURL": "",
+          "name": "Flask 2"
+        }
+      ],
+      "source_lines": [
+        {
+          "source_kind": "AscendancyNode",
+          "source_id": "node.41619",
+          "slot": null,
+          "holder": "Enduring Elixirs",
+          "text": "Life [Flask] Effects are not removed when [Reservation|Unreserved] Life is Filled",
+          "status": "unread",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "LifeFlaskEffectNotRemoved",
+              "mod_type": "FLAG",
+              "value": true,
+              "applied": null,
+              "status": "unread",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        },
+        {
+          "source_kind": "ItemAffix",
+          "source_id": "item.belt.explicit",
+          "slot": "belt",
+          "holder": "Fine Belt",
+          "text": "Life Recovery from Flasks also applies to Energy Shield",
+          "status": "applied",
+          "reason": null,
+          "used_in": [],
+          "modifiers": [
+            {
+              "name": "LifeFlaskAppliesToEnergyShield",
+              "mod_type": "FLAG",
+              "value": true,
+              "applied": null,
+              "status": "applied",
+              "reason": null,
+              "used_in": []
+            }
+          ]
+        }
+      ],
+      "reader": "crates/pobr-core/src/calc/utility.rs: RecoveryPerSecond = gradual recovery / duration. LifeFlaskAppliesToEnergyShield copies per-use recovery with destination EnergyShieldRecoveryRate and CannotGainEnergyShield gate.",
+      "aggregate_boundary": "crates/pobr-core/src/calc/recovery.rs fill_regeneration does not fold finite flask recovery into sustained regeneration. Current guide documents per-use fields without use frequency/uptime inference.",
+      "limits": "Slots are enabled in frozen XML, but this assessment does not infer continuous flask drinking, queueing, charge supply, event history, or aggregate regen uptime. No new reader or model is justified within the requested scope."
+    }
+  ],
+  "explicit_unresolved": [
+    "Runic Tempering remains inactive without proved plates; do not infer plate use.",
+    "Blood-mage-08 residual and intrinsic 15% Life-to-ES conversion semantics remain as previously reported; not revisited here.",
+    "No new in-game proof of rounding boundaries; precision remains unchanged.",
+    "Pathfinder sustained-regeneration display/model treatment is deferred; finite flask recovery is already computed.",
+    "This bounded pass does not reclassify unrelated rows or assert all remaining full307 defence discrepancies are resolved.",
+    "Root owns documentation/known registry and report archival. This file supplies evidence only; no row was marked known here."
+  ],
+  "arithmetic_checks": [
+    {
+      "label": "infernalist-03 frozen Life",
+      "actual": 882.4200000000001,
+      "expected": 882.42,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "infernalist-03 frozen unreserved Life",
+      "actual": 300.0228,
+      "expected": 300.0228,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "infernalist-03 oracle Life from split rune MORE",
+      "actual": 963,
+      "expected": 963,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "infernalist-03 oracle unreserved Life",
+      "actual": 327,
+      "expected": 327,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 native Armour",
+      "actual": 2750,
+      "expected": 2750,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 native Evasion",
+      "actual": 10185,
+      "expected": 10185,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 native PhysicalDamageReduction",
+      "actual": 22,
+      "expected": 22,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 native damaging hits",
+      "actual": 3.007125036858504,
+      "expected": 3.0071250368585045,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 native TotalEHP",
+      "actual": 43182.67352036394,
+      "expected": 43182.673520364,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 native DeflectionRating",
+      "actual": 13138.65,
+      "expected": 13138.65,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 native DeflectChance",
+      "actual": 74,
+      "expected": 74.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 native EvadeChance",
+      "actual": 58,
+      "expected": 58.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 native MeleeEvadeChance",
+      "actual": 58,
+      "expected": 58.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 native ProjectileEvadeChance",
+      "actual": 58,
+      "expected": 58.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 native SpellEvadeChance",
+      "actual": 58,
+      "expected": 58.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 native SpellProjectileEvadeChance",
+      "actual": 58,
+      "expected": 58.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 native PhysicalMaxHit",
+      "actual": 6047,
+      "expected": 6047.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 native FireMaxHit",
+      "actual": 20700,
+      "expected": 20700.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 native ColdMaxHit",
+      "actual": 20700,
+      "expected": 20700.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 native LightningMaxHit",
+      "actual": 20700,
+      "expected": 20700.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 native ChaosMaxHit",
+      "actual": 5785,
+      "expected": 5785.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 oracle Armour",
+      "actual": 2393,
+      "expected": 2393,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 oracle Evasion",
+      "actual": 7613,
+      "expected": 7613,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 oracle PhysicalDamageReduction",
+      "actual": 20,
+      "expected": 20,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 oracle damaging hits",
+      "actual": 2.5236398168727443,
+      "expected": 2.523639817,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 oracle TotalEHP",
+      "actual": 29844.51499120341,
+      "expected": 29844.51499,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 oracle DeflectionRating",
+      "actual": 9820.77,
+      "expected": 9820.77,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 oracle DeflectChance",
+      "actual": 63,
+      "expected": 63.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 oracle EvadeChance",
+      "actual": 52,
+      "expected": 52.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 oracle MeleeEvadeChance",
+      "actual": 52,
+      "expected": 52.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 oracle ProjectileEvadeChance",
+      "actual": 52,
+      "expected": 52.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 oracle SpellEvadeChance",
+      "actual": 52,
+      "expected": 52.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 oracle SpellProjectileEvadeChance",
+      "actual": 52,
+      "expected": 52.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 oracle PhysicalMaxHit",
+      "actual": 5134,
+      "expected": 5134.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 oracle FireMaxHit",
+      "actual": 17557,
+      "expected": 17557.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 oracle ColdMaxHit",
+      "actual": 17557,
+      "expected": 17557.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 oracle LightningMaxHit",
+      "actual": 17557,
+      "expected": 17557.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "witchhunter-10 oracle ChaosMaxHit",
+      "actual": 4906,
+      "expected": 4906.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "warbringer-02 native Evasion",
+      "actual": 8,
+      "expected": 8.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "warbringer-02 oracle Evasion",
+      "actual": 9,
+      "expected": 9,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "warbringer-02 native DeflectionRating",
+      "actual": 0.96,
+      "expected": 0.96,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "warbringer-02 oracle DeflectionRating",
+      "actual": 1.08,
+      "expected": 1.08,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "warbringer-03 native Evasion",
+      "actual": 10,
+      "expected": 10.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "warbringer-03 oracle Evasion",
+      "actual": 11,
+      "expected": 11,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "warbringer-08 native Evasion",
+      "actual": 290,
+      "expected": 290.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "warbringer-08 oracle Evasion",
+      "actual": 309,
+      "expected": 309,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "warbringer-10 native Evasion",
+      "actual": 7,
+      "expected": 7.0,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "warbringer-10 oracle Evasion",
+      "actual": 8,
+      "expected": 8,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "warbringer-10 native DeflectionRating",
+      "actual": 0.84,
+      "expected": 0.84,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "warbringer-10 oracle DeflectionRating",
+      "actual": 0.96,
+      "expected": 0.96,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "pathfinder-01 LifeRegenRecovery missing amount already in utility",
+      "actual": 8102.1824,
+      "expected": 8102.182399999999,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "pathfinder-01 EnergyShieldRegenRecovery missing amount already in utility",
+      "actual": 8102.1824,
+      "expected": 8102.182399999999,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "pathfinder-02 LifeRegenRecovery missing amount already in utility",
+      "actual": 7725.788522,
+      "expected": 7725.788522399998,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "pathfinder-02 EnergyShieldRegenRecovery missing amount already in utility",
+      "actual": 7725.788522,
+      "expected": 7725.788522399998,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "pathfinder-04 LifeRegenRecovery missing amount already in utility",
+      "actual": 6326.3616,
+      "expected": 6326.361599999999,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "pathfinder-04 EnergyShieldRegenRecovery missing amount already in utility",
+      "actual": 6326.3616,
+      "expected": 6326.361599999999,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "pathfinder-08 LifeRegenRecovery missing amount already in utility",
+      "actual": 6394.332672,
+      "expected": 6394.332672,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "pathfinder-08 EnergyShieldRegenRecovery missing amount already in utility",
+      "actual": 6394.332672,
+      "expected": 6394.332672,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "pathfinder-09 LifeRegenRecovery missing amount already in utility",
+      "actual": 5920.62147,
+      "expected": 5920.621470399999,
+      "absolute_tolerance": 1e-05
+    },
+    {
+      "label": "pathfinder-09 EnergyShieldRegenRecovery missing amount already in utility",
+      "actual": 5920.62147,
+      "expected": 5920.621470399999,
+      "absolute_tolerance": 1e-05
+    }
+  ]
+}

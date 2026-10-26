@@ -1,0 +1,1817 @@
+{
+  "source_report": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/final-classified.json",
+  "source_build_outputs": "/root/codes/pobr/.cache/accuracy-round2-2026-10-26/final-builds",
+  "source_game_version": "0.5.5.4.2",
+  "row_count": 23,
+  "contract": "An exported item-granted skill and its matched ordinary listing add no separate nominal gem attribute requirement. The grant is scaled to usable level separately; independent genuine gems retain their requirements.",
+  "requirement_rows": [
+    {
+      "short": "abyssal-lich-06",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/abyssal-lich-06/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqStr",
+      "pobr": 68.0,
+      "embedded": 137.0,
+      "pob2": 137.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "13",
+        "item_name": "Beast Torc",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 18 Eternal Rage"
+        ],
+        "source_group_1_based": 19,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:13:Beast Torc, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+          "level": "18",
+          "nameSpec": "Eternal Rage",
+          "quality": "0",
+          "skillId": "EternalRagePlayer",
+          "variantId": "EternalRage"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 2,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+              "level": "18",
+              "nameSpec": "Eternal Rage",
+              "quality": "0",
+              "skillId": "EternalRagePlayer",
+              "variantId": "EternalRage"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemEternalRage",
+        "game_character_level_requirement": 78,
+        "game_attribute_share_percent": 100,
+        "nominal_gem_requirement": 137,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 137
+      }
+    },
+    {
+      "short": "acolyte-of-chayula-09",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/acolyte-of-chayula-09/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqStr",
+      "pobr": 65.0,
+      "embedded": 137.0,
+      "pob2": 137.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "12",
+        "item_name": "Beast Scarab",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 18 Eternal Rage"
+        ],
+        "source_group_1_based": 18,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:12:Beast Scarab, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+          "level": "18",
+          "nameSpec": "Eternal Rage",
+          "quality": "0",
+          "skillId": "EternalRagePlayer",
+          "variantId": "EternalRage"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 5,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+              "level": "18",
+              "nameSpec": "Eternal Rage",
+              "quality": "0",
+              "skillId": "EternalRagePlayer",
+              "variantId": "EternalRage"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemEternalRage",
+        "game_character_level_requirement": 78,
+        "game_attribute_share_percent": 100,
+        "nominal_gem_requirement": 137,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 137
+      }
+    },
+    {
+      "short": "amazon-08",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/amazon-08/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqStr",
+      "pobr": 20.0,
+      "embedded": 137.0,
+      "pob2": 137.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "8",
+        "item_name": "Entropy Heart",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 18 Eternal Rage"
+        ],
+        "source_group_1_based": 11,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:8:Entropy Heart, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+          "level": "18",
+          "nameSpec": "Eternal Rage",
+          "quality": "0",
+          "skillId": "EternalRagePlayer",
+          "variantId": "EternalRage"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 2,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+              "level": "18",
+              "nameSpec": "Eternal Rage",
+              "quality": "0",
+              "skillId": "EternalRagePlayer",
+              "variantId": "EternalRage"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemEternalRage",
+        "game_character_level_requirement": 78,
+        "game_attribute_share_percent": 100,
+        "nominal_gem_requirement": 137,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 137
+      }
+    },
+    {
+      "short": "blood-mage-05",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/blood-mage-05/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqDex",
+      "pobr": 72.0,
+      "embedded": 86.0,
+      "pob2": 86.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "10",
+        "item_name": "Tempest Scarab",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 20 Trinity"
+        ],
+        "source_group_1_based": 17,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:10:Tempest Scarab, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SkillGemTrinity",
+          "level": "20",
+          "nameSpec": "Trinity",
+          "quality": "0",
+          "skillId": "TrinityPlayer",
+          "variantId": "Trinity"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 4,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gem/SkillGemTrinity",
+              "level": "20",
+              "nameSpec": "Trinity",
+              "quality": "0",
+              "skillId": "TrinityPlayer",
+              "variantId": "Trinity"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gem/SkillGemTrinity",
+        "game_character_level_requirement": 90,
+        "game_attribute_share_percent": 50,
+        "nominal_gem_requirement": 86,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 86
+      }
+    },
+    {
+      "short": "deadeye-07",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/deadeye-07/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqStr",
+      "pobr": 60.0,
+      "embedded": 126.0,
+      "pob2": 126.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "21",
+        "item_name": "Sorrow Pendant",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 17 Eternal Rage"
+        ],
+        "source_group_1_based": 15,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:21:Sorrow Pendant, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+          "level": "17",
+          "nameSpec": "Eternal Rage",
+          "quality": "0",
+          "skillId": "EternalRagePlayer",
+          "variantId": "EternalRage"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 2,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+              "level": "17",
+              "nameSpec": "Eternal Rage",
+              "quality": "0",
+              "skillId": "EternalRagePlayer",
+              "variantId": "EternalRage"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemEternalRage",
+        "game_character_level_requirement": 72,
+        "game_attribute_share_percent": 100,
+        "nominal_gem_requirement": 126,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 126
+      }
+    },
+    {
+      "short": "deadeye-08",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/deadeye-08/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqInt",
+      "pobr": 116.0,
+      "embedded": 126.0,
+      "pob2": 126.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "20",
+        "item_name": "Damnation Torc",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 17 Cast on Elemental Ailment"
+        ],
+        "source_group_1_based": 15,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:20:Damnation Torc, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemCastOnElementalAilment",
+          "level": "17",
+          "nameSpec": "Cast on Elemental Ailment",
+          "quality": "0",
+          "skillId": "MetaCastOnElementalAilmentPlayer",
+          "variantId": "CastOnElementalAilment"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 2,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemCastOnElementalAilment",
+              "level": "17",
+              "nameSpec": "Cast on Elemental Ailment",
+              "quality": "0",
+              "skillId": "MetaCastOnElementalAilmentPlayer",
+              "variantId": "CastOnElementalAilment"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemCastOnElementalAilment",
+        "game_character_level_requirement": 72,
+        "game_attribute_share_percent": 100,
+        "nominal_gem_requirement": 126,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 126
+      }
+    },
+    {
+      "short": "disciple-of-varashta-03",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/disciple-of-varashta-03/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqStr",
+      "pobr": 30.0,
+      "embedded": 75.0,
+      "pob2": 75.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "17",
+        "item_name": "Dire Idol",
+        "item_base": "Portent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 18 Wolf Pack"
+        ],
+        "source_group_1_based": 17,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:17:Dire Idol, Portent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemWolfPack",
+          "level": "18",
+          "nameSpec": "Wolf Pack",
+          "quality": "0",
+          "skillId": "WolfPackPlayer",
+          "skillMinion": "WolfMinion",
+          "skillMinionSkill": "1",
+          "variantId": "WolfPack"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 4,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemWolfPack",
+              "level": "18",
+              "nameSpec": "Wolf Pack",
+              "quality": "0",
+              "skillId": "WolfPackPlayer",
+              "skillMinion": "WolfMinion",
+              "skillMinionSkill": "1",
+              "variantId": "WolfPack"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemWolfPack",
+        "game_character_level_requirement": 78,
+        "game_attribute_share_percent": 50,
+        "nominal_gem_requirement": 75,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 75
+      }
+    },
+    {
+      "short": "disciple-of-varashta-10",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/disciple-of-varashta-10/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqStr",
+      "pobr": 20.0,
+      "embedded": 86.0,
+      "pob2": 86.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "22",
+        "item_name": "Behemoth Locket",
+        "item_base": "Portent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 20 Wolf Pack"
+        ],
+        "source_group_1_based": 19,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:22:Behemoth Locket, Portent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemWolfPack",
+          "level": "20",
+          "nameSpec": "Wolf Pack",
+          "quality": "0",
+          "skillId": "WolfPackPlayer",
+          "skillMinion": "WolfMinion",
+          "skillMinionSkill": "1",
+          "variantId": "WolfPack"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 5,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "1",
+              "mainActiveSkillCalcs": "1"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemWolfPack",
+              "level": "20",
+              "nameSpec": "Wolf Pack",
+              "quality": "0",
+              "skillId": "WolfPackPlayer",
+              "skillMinion": "WolfMinion",
+              "skillMinionSkill": "1",
+              "variantId": "WolfPack"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemWolfPack",
+        "game_character_level_requirement": 90,
+        "game_attribute_share_percent": 50,
+        "nominal_gem_requirement": 86,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 86
+      }
+    },
+    {
+      "short": "gemling-legionnaire-06",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/gemling-legionnaire-06/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqStr",
+      "pobr": 73.0,
+      "embedded": 144.0,
+      "pob2": 144.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "12",
+        "item_name": "Miracle Gorget",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 20 Eternal Rage"
+        ],
+        "source_group_1_based": 17,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:12:Miracle Gorget, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+          "level": "20",
+          "nameSpec": "Eternal Rage",
+          "quality": "0",
+          "skillId": "EternalRagePlayer",
+          "variantId": "EternalRage"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 5,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+              "level": "20",
+              "nameSpec": "Eternal Rage",
+              "quality": "0",
+              "skillId": "EternalRagePlayer",
+              "variantId": "EternalRage"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemEternalRage",
+        "game_character_level_requirement": 90,
+        "game_attribute_share_percent": 100,
+        "nominal_gem_requirement": 157,
+        "global_requirement_multiplier": 0.92,
+        "global_requirement_reductions": [
+          {
+            "source": "node.18146",
+            "text": "Equipment and Skill Gems have 4% reduced [Attributes|Attribute] Requirements",
+            "percent": 4
+          },
+          {
+            "source": "node.3084",
+            "text": "Equipment and Skill Gems have 4% reduced [Attributes|Attribute] Requirements",
+            "percent": 4
+          }
+        ],
+        "adjusted_nominal_requirement": 144
+      }
+    },
+    {
+      "short": "invoker-04",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/invoker-04/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqStr",
+      "pobr": 70.0,
+      "embedded": 137.0,
+      "pob2": 137.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "7",
+        "item_name": "Horror Clasp",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 18 Eternal Rage"
+        ],
+        "source_group_1_based": 12,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:7:Horror Clasp, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+          "level": "18",
+          "nameSpec": "Eternal Rage",
+          "quality": "0",
+          "skillId": "EternalRagePlayer",
+          "variantId": "EternalRage"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 2,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+              "level": "18",
+              "nameSpec": "Eternal Rage",
+              "quality": "0",
+              "skillId": "EternalRagePlayer",
+              "variantId": "EternalRage"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemEternalRage",
+        "game_character_level_requirement": 78,
+        "game_attribute_share_percent": 100,
+        "nominal_gem_requirement": 137,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 137
+      }
+    },
+    {
+      "short": "invoker-05",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/invoker-05/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqInt",
+      "pobr": 126.0,
+      "embedded": 137.0,
+      "pob2": 137.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "17",
+        "item_name": "Miracle Heart",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 18 Cast on Critical"
+        ],
+        "source_group_1_based": 12,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:17:Miracle Heart, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemCastOnCritical",
+          "level": "18",
+          "nameSpec": "Cast on Critical",
+          "quality": "0",
+          "skillId": "MetaCastOnCritPlayer",
+          "variantId": "CastOnCriticalStrike"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 1,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "2",
+              "mainActiveSkillCalcs": "2"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemCastOnCritical",
+              "level": "18",
+              "nameSpec": "Cast on Critical",
+              "quality": "0",
+              "skillId": "MetaCastOnCritPlayer",
+              "variantId": "CastOnCriticalStrike"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemCastOnCritical",
+        "game_character_level_requirement": 78,
+        "game_attribute_share_percent": 100,
+        "nominal_gem_requirement": 137,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 137
+      }
+    },
+    {
+      "short": "invoker-07",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/invoker-07/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqInt",
+      "pobr": 137.0,
+      "embedded": 157.0,
+      "pob2": 157.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "11",
+        "item_name": "Gale Pendant",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 20 Cast on Critical"
+        ],
+        "source_group_1_based": 13,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:11:Gale Pendant, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemCastOnCritical",
+          "level": "20",
+          "nameSpec": "Cast on Critical",
+          "quality": "0",
+          "skillId": "MetaCastOnCritPlayer",
+          "variantId": "CastOnCriticalStrike"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 2,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "2",
+              "mainActiveSkillCalcs": "2"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemCastOnCritical",
+              "level": "20",
+              "nameSpec": "Cast on Critical",
+              "quality": "0",
+              "skillId": "MetaCastOnCritPlayer",
+              "variantId": "CastOnCriticalStrike"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemCastOnCritical",
+        "game_character_level_requirement": 90,
+        "game_attribute_share_percent": 100,
+        "nominal_gem_requirement": 157,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 157
+      }
+    },
+    {
+      "short": "invoker-08",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/invoker-08/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqDex",
+      "pobr": 57.0,
+      "embedded": 86.0,
+      "pob2": 86.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "9",
+        "item_name": "Sorrow Beads",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 20 Trinity"
+        ],
+        "source_group_1_based": 18,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:9:Sorrow Beads, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SkillGemTrinity",
+          "level": "20",
+          "nameSpec": "Trinity",
+          "quality": "0",
+          "skillId": "TrinityPlayer",
+          "variantId": "Trinity"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 3,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gem/SkillGemTrinity",
+              "level": "20",
+              "nameSpec": "Trinity",
+              "quality": "0",
+              "skillId": "TrinityPlayer",
+              "variantId": "Trinity"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gem/SkillGemTrinity",
+        "game_character_level_requirement": 90,
+        "game_attribute_share_percent": 50,
+        "nominal_gem_requirement": 86,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 86
+      }
+    },
+    {
+      "short": "martial-artist-04",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/martial-artist-04/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqStr",
+      "pobr": 137.0,
+      "embedded": 147.0,
+      "pob2": 147.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "7",
+        "item_name": "Rift Choker",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 19 Eternal Rage"
+        ],
+        "source_group_1_based": 16,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:7:Rift Choker, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+          "level": "19",
+          "nameSpec": "Eternal Rage",
+          "quality": "0",
+          "skillId": "EternalRagePlayer",
+          "variantId": "EternalRage"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 5,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+              "level": "19",
+              "nameSpec": "Eternal Rage",
+              "quality": "0",
+              "skillId": "EternalRagePlayer",
+              "variantId": "EternalRage"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemEternalRage",
+        "game_character_level_requirement": 84,
+        "game_attribute_share_percent": 100,
+        "nominal_gem_requirement": 147,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 147
+      }
+    },
+    {
+      "short": "martial-artist-08",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/martial-artist-08/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqStr",
+      "pobr": 103.0,
+      "embedded": 137.0,
+      "pob2": 137.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "11",
+        "item_name": "Empyrean Scarab",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 18 Eternal Rage"
+        ],
+        "source_group_1_based": 16,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:11:Empyrean Scarab, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+          "level": "18",
+          "nameSpec": "Eternal Rage",
+          "quality": "0",
+          "skillId": "EternalRagePlayer",
+          "variantId": "EternalRage"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 4,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+              "level": "18",
+              "nameSpec": "Eternal Rage",
+              "quality": "0",
+              "skillId": "EternalRagePlayer",
+              "variantId": "EternalRage"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemEternalRage",
+        "game_character_level_requirement": 78,
+        "game_attribute_share_percent": 100,
+        "nominal_gem_requirement": 137,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 137
+      }
+    },
+    {
+      "short": "martial-artist-09",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/martial-artist-09/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqStr",
+      "pobr": 103.0,
+      "embedded": 157.0,
+      "pob2": 157.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "14",
+        "item_name": "Soul Braid",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 20 Eternal Rage"
+        ],
+        "source_group_1_based": 14,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:14:Soul Braid, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+          "level": "20",
+          "nameSpec": "Eternal Rage",
+          "quality": "0",
+          "skillId": "EternalRagePlayer",
+          "variantId": "EternalRage"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 4,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+              "level": "20",
+              "nameSpec": "Eternal Rage",
+              "quality": "0",
+              "skillId": "EternalRagePlayer",
+              "variantId": "EternalRage"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemEternalRage",
+        "game_character_level_requirement": 90,
+        "game_attribute_share_percent": 100,
+        "nominal_gem_requirement": 157,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 157
+      }
+    },
+    {
+      "short": "martial-artist-10",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/martial-artist-10/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqStr",
+      "pobr": 63.0,
+      "embedded": 137.0,
+      "pob2": 137.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "15",
+        "item_name": "Pandemonium Collar",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 18 Eternal Rage"
+        ],
+        "source_group_1_based": 14,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:15:Pandemonium Collar, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+          "level": "18",
+          "nameSpec": "Eternal Rage",
+          "quality": "0",
+          "skillId": "EternalRagePlayer",
+          "variantId": "EternalRage"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 5,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+              "level": "18",
+              "nameSpec": "Eternal Rage",
+              "quality": "0",
+              "skillId": "EternalRagePlayer",
+              "variantId": "EternalRage"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemEternalRage",
+        "game_character_level_requirement": 78,
+        "game_attribute_share_percent": 100,
+        "nominal_gem_requirement": 137,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 137
+      }
+    },
+    {
+      "short": "pathfinder-07",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/pathfinder-07/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqStr",
+      "pobr": 86.0,
+      "embedded": 147.0,
+      "pob2": 147.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "29",
+        "item_name": "Plague Noose",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 19 Eternal Rage"
+        ],
+        "source_group_1_based": 17,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:29:Plague Noose, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+          "level": "19",
+          "nameSpec": "Eternal Rage",
+          "quality": "0",
+          "skillId": "EternalRagePlayer",
+          "variantId": "EternalRage"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 3,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+              "level": "19",
+              "nameSpec": "Eternal Rage",
+              "quality": "0",
+              "skillId": "EternalRagePlayer",
+              "variantId": "EternalRage"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemEternalRage",
+        "game_character_level_requirement": 84,
+        "game_attribute_share_percent": 100,
+        "nominal_gem_requirement": 147,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 147
+      }
+    },
+    {
+      "short": "pathfinder-10",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/pathfinder-10/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqStr",
+      "pobr": 86.0,
+      "embedded": 157.0,
+      "pob2": 157.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "23",
+        "item_name": "Torment Beads",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 20 Eternal Rage"
+        ],
+        "source_group_1_based": 12,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:23:Torment Beads, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+          "level": "20",
+          "nameSpec": "Eternal Rage",
+          "quality": "0",
+          "skillId": "EternalRagePlayer",
+          "variantId": "EternalRage"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 2,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+              "level": "20",
+              "nameSpec": "Eternal Rage",
+              "quality": "0",
+              "skillId": "EternalRagePlayer",
+              "variantId": "EternalRage"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemEternalRage",
+        "game_character_level_requirement": 90,
+        "game_attribute_share_percent": 100,
+        "nominal_gem_requirement": 157,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 157
+      }
+    },
+    {
+      "short": "shaman-03",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/shaman-03/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqDex",
+      "pobr": 41.0,
+      "embedded": 86.0,
+      "pob2": 86.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "23",
+        "item_name": "Gloom Clasp",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 20 Trinity"
+        ],
+        "source_group_1_based": 16,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:23:Gloom Clasp, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SkillGemTrinity",
+          "level": "20",
+          "nameSpec": "Trinity",
+          "quality": "0",
+          "skillId": "TrinityPlayer",
+          "variantId": "Trinity"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 2,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gem/SkillGemTrinity",
+              "level": "20",
+              "nameSpec": "Trinity",
+              "quality": "0",
+              "skillId": "TrinityPlayer",
+              "variantId": "Trinity"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gem/SkillGemTrinity",
+        "game_character_level_requirement": 90,
+        "game_attribute_share_percent": 50,
+        "nominal_gem_requirement": 86,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 86
+      }
+    },
+    {
+      "short": "shaman-04",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/shaman-04/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqDex",
+      "pobr": 10.0,
+      "embedded": 86.0,
+      "pob2": 86.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "26",
+        "item_name": "Corpse Choker",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 20 Trinity"
+        ],
+        "source_group_1_based": 13,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:26:Corpse Choker, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gem/SkillGemTrinity",
+          "level": "20",
+          "nameSpec": "Trinity",
+          "quality": "0",
+          "skillId": "TrinityPlayer",
+          "variantId": "Trinity"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 2,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "1",
+              "mainActiveSkillCalcs": "1"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gem/SkillGemTrinity",
+              "level": "20",
+              "nameSpec": "Trinity",
+              "quality": "0",
+              "skillId": "TrinityPlayer",
+              "variantId": "Trinity"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gem/SkillGemTrinity",
+        "game_character_level_requirement": 90,
+        "game_attribute_share_percent": 50,
+        "nominal_gem_requirement": 86,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 86
+      }
+    },
+    {
+      "short": "witchhunter-03",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/witchhunter-03/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqStr",
+      "pobr": 100.0,
+      "embedded": 137.0,
+      "pob2": 137.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "13",
+        "item_name": "Horror Noose",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 18 Eternal Rage"
+        ],
+        "source_group_1_based": 15,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:13:Horror Noose, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+          "level": "18",
+          "nameSpec": "Eternal Rage",
+          "quality": "0",
+          "skillId": "EternalRagePlayer",
+          "variantId": "EternalRage"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 4,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+              "level": "18",
+              "nameSpec": "Eternal Rage",
+              "quality": "0",
+              "skillId": "EternalRagePlayer",
+              "variantId": "EternalRage"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemEternalRage",
+        "game_character_level_requirement": 78,
+        "game_attribute_share_percent": 100,
+        "nominal_gem_requirement": 137,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 137
+      }
+    },
+    {
+      "short": "witchhunter-09",
+      "build": "examples/reference-builds/ninja-top10-2026-10-26/builds/witchhunter-09/code.txt",
+      "set": "examples/reference-builds/ninja-top10-2026-10-26/builds",
+      "stat": "ReqStr",
+      "pobr": 98.0,
+      "embedded": 137.0,
+      "pob2": 137.0,
+      "classification_in_input_report": "engine",
+      "cause": "exported_amulet_grant_counted_as_nominal_skill_gem_by_oracle",
+      "evidence": {
+        "item_id": "16",
+        "item_name": "Golem Locket",
+        "item_base": "Absent Amulet",
+        "raw_grant_lines": [
+          "Grants Skill: Level 18 Eternal Rage"
+        ],
+        "source_group_1_based": 16,
+        "source_group_attributes": {
+          "enabled": "true",
+          "includeInFullDPS": "nil",
+          "label": "",
+          "mainActiveSkill": "nil",
+          "mainActiveSkillCalcs": "nil",
+          "slot": "Amulet",
+          "source": "Item:16:Golem Locket, Absent Amulet"
+        },
+        "source_gem": {
+          "corruptLevel": "nil",
+          "corrupted": "nil",
+          "count": "nil",
+          "enableGlobal1": "true",
+          "enableGlobal2": "nil",
+          "enabled": "true",
+          "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+          "level": "18",
+          "nameSpec": "Eternal Rage",
+          "quality": "0",
+          "skillId": "EternalRagePlayer",
+          "variantId": "EternalRage"
+        },
+        "listed_matches": [
+          {
+            "group_1_based": 4,
+            "group_attributes": {
+              "enabled": "true",
+              "includeInFullDPS": "nil",
+              "label": "",
+              "mainActiveSkill": "nil",
+              "mainActiveSkillCalcs": "nil"
+            },
+            "first_gem": {
+              "corruptLevel": "0",
+              "corrupted": "nil",
+              "count": "1",
+              "enableGlobal1": "true",
+              "enableGlobal2": "true",
+              "enabled": "true",
+              "gemId": "Metadata/Items/Gems/SkillGemEternalRage",
+              "level": "18",
+              "nameSpec": "Eternal Rage",
+              "quality": "0",
+              "skillId": "EternalRagePlayer",
+              "variantId": "EternalRage"
+            }
+          }
+        ],
+        "game_skill_gem_id": "Metadata/Items/Gems/SkillGemEternalRage",
+        "game_character_level_requirement": 78,
+        "game_attribute_share_percent": 100,
+        "nominal_gem_requirement": 137,
+        "global_requirement_multiplier": 1.0,
+        "global_requirement_reductions": [],
+        "adjusted_nominal_requirement": 137
+      }
+    }
+  ],
+  "oracle_04": {
+    "status": "partially_explained_do_not_register_whole_row_as_known",
+    "source_oracle_cache": "/root/codes/pobr/.cache/pob2-oracle/e7ee4b1737092752-ebc21e5426.json",
+    "pobr_spirit": 377,
+    "pob2_spirit": 372,
+    "pobr_reserved": 93,
+    "pob2_reserved": 273,
+    "pobr_unreserved": 284,
+    "pob2_unreserved": 99,
+    "explained_reservation_difference": 180,
+    "reservation_terms": {
+      "arctic_armour_both": 30,
+      "spell_totem_both": 63,
+      "archmage_pob2_only": {
+        "base": 100,
+        "HerDeclaration": 30,
+        "ClarityII": 20,
+        "MysticismII": 30,
+        "total": 180,
+        "grant_item_id": "30",
+        "grant_base": "Absent Amulet",
+        "raw_grant": "Grants Skill: Level 20 Archmage",
+        "listed_group_1_based": 3,
+        "source_group_1_based": 17
+      }
+    },
+    "remaining_pool_difference": 5,
+    "remaining_pool_evidence": "Frozen Shrine Sceptre item27 explicitly reports Spirit227; native also has campaign100 and amulet50. Oracle total372 implies sceptre222 if those other sources are retained. The cause of its rebuilt five-point reduction was not established.",
+    "game_reservation_source": "data/overlay-common/item_granted_skills.json: ItemInherentSkills NoReservation for Absent Amulet"
+  },
+  "glove_gap": {
+    "status": "no_effect_in_affected_inputs_no_change",
+    "node": 39595,
+    "builds": [
+      "martial-artist-04",
+      "martial-artist-08",
+      "martial-artist-09",
+      "martial-artist-10"
+    ],
+    "evidence": "All equip Fists of Stone or Runeforged Fists of Stone, whose frozen base has zero requirements in all three attributes; the unparsed ignore-Gloves line does not change their requirements."
+  }
+}

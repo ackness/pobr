@@ -1640,3 +1640,106 @@ Life after its buffs, before offence and defence, and use the same snapshot
 for its source queries and ES formula. Player Life and unrelated minions do
 not supply this value. This quality grant does not deduct Life or resolve the
 intrinsic 15% question above.
+
+The frozen top-ten corpus has 23 remaining attribute-requirement differences
+whose reference is exactly the nominal requirement of an exported amulet grant
+(Eternal Rage, Wolf Pack, Trinity, Cast on Critical or Cast on Elemental
+Ailment). An ordinary exported listing matched to that grant is the same skill,
+not a second equipped gem. Keep its nominal requirement out of `ReqStr`,
+`ReqDex` and `ReqInt`; the granted skill's usable level is checked separately.
+An independent genuine gem still contributes its requirement. The bounded
+regression covers ten grant/level combinations and the Gemling's 8% reduction;
+the evidence is in `fix-round-3/requirements-evidence.json`.
+
+Undying Hate's explicit "Conquered Small Passive Skills also grant ..." lines
+are independent of its seed-specific notable transformations. Attach a fully
+parsed payload to each reconstructed non-attribute small passive in the
+conquered radius; allocation and small-passive effect scaling then follow the
+ordinary tree path. Attribute passives have their own category and do not
+receive this addition. Unknown payloads and unknown notable replacements
+remain diagnostic. Frozen Titan06 has twelve allocated small passives with
+6% Elemental Damage each; Hulking Form raises each to 9%, adding 108% in total.
+The retained game stat is
+`local_historic_abyss_jewel_conquered_small_passives_grant_elemental_damage_+%`;
+its imported roll is preserved instead of rebuilding it from a current range.
+
+Frozen Witchhunter10's Megalomaniac grants Leather Bound Gauntlets (51446):
+1323 equipped-glove Armour adds 1323 base Evasion. This affects Armour/Evasion,
+Sorcery Ward and the downstream defence panels; the pinned exporter omits the
+granted passive. Frozen Infernalist03 instead differs at its Runeseeker rune:
+the imported line is 45% less Life, whereas PoB2 rebuilds two MORE modifiers
+and rounds their product. Preserve the frozen line. Six defence rows across
+four Warbringer builds use the existing selected-totem count instead of assuming
+an additional totem. Exact affected rows and arithmetic are in
+`fix-round-3/static-defence-attribution.json`.
+
+The five frozen Pathfinder examples already report their finite flask recovery
+in `Flask1RecoveryPerSecond` and `Flask1EnergyShieldRecoveryPerSecond`. The
+reference adds those rates to regeneration. PoBR keeps the per-use output
+separate; selecting an active flask does not establish continuous charge supply
+or repeated-use uptime. No extra state or sustained-regeneration contribution
+is introduced for these comparisons.
+
+Jewel and passive-effect scaling reaches numeric payloads inside
+`MinionModifier` lists as well as top-level modifiers. The Adorned still uses
+the jewel's corruption, rarity and socket eligibility; Hulking Form still uses
+the allocated small passive. Preserve the wrapper's scope and source, and add
+only the effect delta once. Flags and MORE modifiers do not acquire a numeric
+passive-effect delta.
+
+The companion Presence rune pair uses its retained game stats
+`companions_in_presence_non_skill_base_all_damage_%_to_gain_as_random_element`
+and `companions_in_presence_base_resist_all_elements_%`. Both effects follow
+the existing ally aura path, restricted by the summoning skill's Companion
+type. Explicit zero Presence, hidden recipients and blocked ally auras suppress
+both the benefit and the resistance penalty. Random elemental gain uses the
+existing equal three-element average; positive Presence counts do not assign
+individual actor positions. Recipient aura/buff scaling follows the current
+ExtraAura convention, without an in-game effect/range measurement.
+
+PoB item text's `Implicits: N` is a serialized line boundary, including enchant
+and rune lines inside that span. Their destination remains `enchant_texts`,
+but they consume the count before the following explicit lines are classified.
+Otherwise a wrapped Adorned modifier can be split between implicit and explicit
+sections and lose its effect even though neither raw line was dropped. The
+earlier whole-corpus structural import audit checks retention and identifiers;
+it does not prove correct section assignment or downstream modifier application.
+
+Flame Wall's existing `FlameWallAddedDamage` selection supplies only the named
+projectile stat set's flat Fire damage. Resolve the enabled source's effective
+level, then apply the recipient projectile's ordinary effectiveness and damage
+pipeline. Duplicate local and party copies use the existing strongest-effect
+merge. The selection does not infer passage, lingering Ignite, infusion or
+uptime, and no additional configuration state is introduced.
+
+Some monster generic attacks retain both Melee and Projectile skill types as
+capabilities. Their actual projectile hit flag uses retained weapon context
+when the selected attack can fire arrows or wand projectiles; an explicit
+`base_is_projectile` takes precedence. Known unarmed recipients do not receive
+weapon-projectile bonuses. Missing context remains unknown, and raw types stay
+available for support compatibility rather than being rewritten globally.
+
+Enabled ordinary buff copies must reach the existing strongest-modifier merge
+before deduplication. A first-copy filter can discard a stronger later quality
+bonus: the frozen Gemling08 has Cast on Critical copies with 22% and 50%
+increased critical chance. Keep the larger contribution and its origin once;
+disabled groups or gems do not supply a candidate. Ordinary persistent buffs
+retain their existing alternate-weapon behavior; the frozen corpus has no
+explicit false `enableGlobal1/2` flags and does not validate that legacy state.
+This does not invent additional buff uptime or change frozen item rolls to
+match an exporter.
+For those same named buffs, matching `ExtraAura` lists merge their numeric
+children after effect scaling instead of stacking duplicate Offering payloads.
+Each child first inherits its own wrapper's source when needed. Keep surviving
+children inside their original source-bearing wrappers, removing displaced
+children and empty wrappers; both minion details and the outer-modifier line
+ledger must retain the winning sources. Other LIST kinds retain their existing
+append behavior.
+
+Frozen Shaman08's configured Flame Wall supplies 18–26 Fire damage at level 15;
+its recipient Spark can therefore ignite under the existing ailment model.
+The pinned exporter's zero stack potential reads only the BASE totem limit
+while the skill supplies an OVERRIDE. This zero is not evidence that added
+Fire damage cannot ignite. The exact steady-state value with a chosen number
+of simultaneous totems remains unverified, so the two affected rows stay in
+the diagnostic queue rather than being declared fully explained.

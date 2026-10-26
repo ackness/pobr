@@ -1,0 +1,59 @@
+{
+  "commit": "100c80f104516ac31f505c4a41fa07e04e834066",
+  "branch": "investigate-frozen-jewel-scaling",
+  "parent_before_commit": "c8bc63bb6a8bd50cddd910b5f74e5635c17e8ace",
+  "integration": "Parent confirmed fast-forward integration of 100c80f1; no further amendment.",
+  "working_tree_status": "",
+  "changed_files": {
+    "crates/pobr-core/src/ingest/item_text.rs": {
+      "path": "/root/.t3/worktrees/pobr/t3-b4da8ac6/crates/pobr-core/src/ingest/item_text.rs",
+      "sha256": "1efa817eedc1e2f207dbc895285262c2602e14e39febff4fba25f25f10f13c42"
+    },
+    "crates/pobr-core/tests/sources/item_text.rs": {
+      "path": "/root/.t3/worktrees/pobr/t3-b4da8ac6/crates/pobr-core/tests/sources/item_text.rs",
+      "sha256": "da47a56f817ec177e0eae3f2091b52eed04f2a81df85c1cd64e13bce95f58942"
+    }
+  },
+  "cause": "The serialized Implicits: N span includes enchant/rune positions. Excluding these positions from the counter misclassified the first wrapped Adorned line as implicit, preventing the explicit-only dedicated reader from recognizing it.",
+  "implementation": "Remove the is_enchant exclusion from counter consumption. Preserve existing destination selection, raw input, variant filtering and numeric values. Update the same source file's section documentation; no reader fallback or mechanic change.",
+  "contract_sources": [
+    "/root/codes/pobr/crates/pobr-item/src/build_raw.rs:118",
+    "/root/codes/pobr/crates/pobr-item/src/draft.rs:285",
+    "/root/codes/pobr/vendor/PathOfBuilding-PoE2/src/Classes/Item.lua:2104"
+  ],
+  "regressions": [
+    "Frozen shaman-06 Adorned section shape, parameterized for Rare and Magic wording; one enchant consumes the count and both effect lines remain explicit. Calls the real CorruptedJewelEffect reader and observes Some(75.0).",
+    "Rune/enchant plus ordinary implicit mixtures in two orders, followed by explicit modifiers; XML and clipboard section separators.",
+    "Selected/unselected enchant/rune variants consume serialized positions while existing range resolution is preserved.",
+    "Existing XML_RARE_CROSSBOW fixture: five counted positions are two rune lines plus three ordinary implicit lines, leaving exactly two explicit lines."
+  ],
+  "validation": [
+    {
+      "command": "cargo test -q -p pobr-core --test sources item_text::",
+      "result": "passed: 37 tests, 0 failures, 108 filtered out; final pass after parent c8bc63bb merge"
+    },
+    {
+      "command": "cargo clippy -p pobr-core --lib --tests -- -D warnings",
+      "result": "passed after parent c8bc63bb merge"
+    },
+    {
+      "command": "cargo fmt --check",
+      "result": "passed after correcting one assertion wrap"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed before final commit"
+    }
+  ],
+  "target_warming": {
+    "attempt": "mise run warm /root/codes/pobr",
+    "result": "Copy-on-write unsupported; used authorized cp -a --reflink=never fallback.",
+    "target": "/root/.t3/worktrees/pobr/t3-b4da8ac6/target",
+    "shared_target": false,
+    "CARGO_TARGET_DIR": "unset"
+  },
+  "prior_static_evidence": "/root/codes/pobr/.cache/accuracy-round3-2026-10-26/shaman-06-adorned-static-evidence.json",
+  "scope_limits": "Only the two owned source/test files were committed. No CLI, corpus calculation, oracle, triage, gate, holdout inspection, generated-rule edits, precision changes, Soul Offering changes, child agents or pushes.",
+  "remaining": "Parent owns independent review and the full batch gate/shared-impact measurement. Bounded arithmetic in the prior evidence file is not a new corpus calculation.",
+  "blockers_or_contract_ambiguities": []
+}

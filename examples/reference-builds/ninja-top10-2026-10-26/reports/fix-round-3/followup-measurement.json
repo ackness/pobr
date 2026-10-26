@@ -1,0 +1,32 @@
+{
+  "initial_source_revision": "2e45c66e4f28f70ef309af26e222a1bae3c441d2",
+  "pre_ledger_revision": "d4814eda1e0dbf919da77e242b6041b8f4bb6c78",
+  "final_source_revision": "5a3fce6767b365b7d249e5c7e9c4efca062897e2",
+  "ordinary_buff_measured_changes": [
+    {
+      "build": "gemling-legionnaire-08",
+      "stat": "CritChance",
+      "before": 75.51,
+      "after": 78.03
+    },
+    {
+      "build": "gemling-legionnaire-08",
+      "stat": "TotalDPS",
+      "before": 5563287.791687083,
+      "after": 5734162.266495102
+    },
+    {
+      "build": "gemling-legionnaire-08",
+      "stat": "AverageBurstDamage",
+      "before": 1583049.371746979,
+      "after": 1631672.189785734
+    }
+  ],
+  "ledger_fix_changed_output_builds": [],
+  "measured_builds": 230,
+  "limits": [
+    "These are actual reference-mode CLI measurements, not isolated arithmetic predictions.",
+    "CoC is only one cause; remaining saved-reference differences are not classified known.",
+    "An unchanged output does not prove identical source ledgers; dedicated line_usage regressions cover source preservation."
+  ]
+}
