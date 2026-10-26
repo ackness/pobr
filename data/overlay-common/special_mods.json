@@ -12,6 +12,41 @@
   },
   "entries": [
     {
+      "id": "watch_how_i_do_it_weapon_share",
+      "pattern": "^allies in your presence gain added attack damage equal to (\\d+(?:\\.\\d+)?)% of your main hand weapon's damage$",
+      "mods": [{"name": "ExtraAura", "type": "LIST", "value": {"mods": [{"name": "MainHandDamageToAllies", "type": "BASE", "value": "$1"}]}}],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "aura_grant_%_base_main_hand_attack_damage_to_nearby_allies; passive 16249 Watch How I Do It",
+      "source_note": "Retains the ally-only Presence grant through ExtraAura and the existing main-hand weapon-base damage path. The pinned exporter implements the same grant using an ally-only aura flag and a parent multiplier. The existing wrapped-line collector joins the native two-line text; no player damage or additional Companion restriction is introduced.",
+      "examples": ["Allies in your Presence gain added Attack Damage equal to 25% of your main hand Weapon's damage"]
+    },
+    {
+      "id": "damage_per_different_companion_in_presence",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased damage per (?:each )?different companion in your presence$",
+      "mods": [{"name": "Damage", "type": "INC", "value": "$1", "tags": [{"type": "Multiplier", "var": "DifferentCompanionsInPresence"}]}],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "damage_+%_per_different_companion_in_presence",
+      "exporter": "absent",
+      "source_note": "The native stat scales Damage increases by distinct Companion types in Presence. The multiplier is supplied by the prepared companion snapshot, not total minion count or capacity. The pinned exporter has no parser suffix for this native stat.",
+      "examples": ["24% increased Damage per each different Companion in your Presence", "24% increased Damage per different Companion in your Presence"]
+    },
+    {
+      "id": "resistance_per_equipped_lightning_resistance_item",
+      "pattern": "^\\+(\\d+(?:\\.\\d+)?)% to fire and cold resistances per equipped item with a lightning resistance modifier$",
+      "mods": [
+        {"name": "FireResistance", "type": "BASE", "value": "$1", "tags": [{"type": "Multiplier", "var": "EquippedItemsWithLightningResistance"}]},
+        {"name": "ColdResistance", "type": "BASE", "value": "$1", "tags": [{"type": "Multiplier", "var": "EquippedItemsWithLightningResistance"}]}
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "fire_and_cold_resist_+_per_equipped_item_with_a_lightning_resistance_mod",
+      "exporter": "absent",
+      "source_note": "The native stat grants Fire and Cold resistance per qualifying equipped item. The prepared equipment snapshot supplies the distinct-item multiplier; the parser neither counts modifier lines nor infers equipped items. The pinned exporter has no parser suffix for this native stat.",
+      "examples": ["+10% to Fire and Cold Resistances per Equipped Item with a Lightning Resistance Modifier", "+7% to Fire and Cold Resistances per Equipped Item with a Lightning Resistance Modifier"]
+    },
+    {
       "id": "maximum_life_mana_and_energy_shield",
       "pattern": "^(\\d+)% increased maximum life, mana and energy shield$",
       "mods": [

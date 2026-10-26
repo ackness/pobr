@@ -42658,7 +42658,20 @@
     },
     {
       "text": "[Allies] in your [Presence] gain added [Attack] Damage equal\nto 25% of your main hand Weapon's damage",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "List",
+          "value": [
+            {
+              "name": "MainHandDamageToAllies",
+              "type": "Base",
+              "value": 25.0
+            }
+          ]
+        }
+      ]
     },
     {
       "text": "[Allies] in your [Presence] have 30% increased [Glory] generation",

@@ -4,6 +4,102 @@ use pobr_core::mod_parser::{ParseOutcome, ParseStatus};
 use pobr_core::{CalcConfig, ModDb, ModTag, ModValue};
 use pobr_data::prelude::*;
 
+#[test]
+fn coordinated_static_watch_how_i_do_it_is_a_nested_ally_grant() {
+    let first = "[Allies] in your [Presence] gain added [Attack] Damage equal";
+    for value in [25.0, 12.5] {
+        let second = format!("to {value}% of your main hand Weapon's damage");
+        // combine_wrapped retries this exact pair; neither half is a full mod.
+        assert!(!parse_mod(first).unwrap().is_complete());
+        assert!(!parse_mod(&second).unwrap().is_complete());
+        let parsed = parse_mod(&format!("{first} {second}")).unwrap();
+        assert!(parsed.is_complete(), "{parsed:?}");
+        assert_eq!(parsed.mods.len(), 1);
+        let aura = &parsed.mods[0];
+        assert_eq!(aura.name.as_str(), "ExtraAura");
+        assert_eq!(aura.mod_type, ModType::List);
+        assert!(aura.tags.is_empty()); // Allies includes non-Companion recipients.
+        assert!(aura.exporter_rule.is_none()); // Pinned exporter also implements it.
+        let ModValue::NestedMods(inner) = &aura.value else {
+            panic!("expected an ally aura payload");
+        };
+        assert_eq!(inner.len(), 1);
+        assert_eq!(inner[0].name.as_str(), "MainHandDamageToAllies");
+        assert_eq!(inner[0].mod_type, ModType::Base);
+        assert_eq!(inner[0].value, ModValue::Number(value));
+        assert!(inner[0].tags.is_empty());
+    }
+}
+
+#[test]
+fn coordinated_static_companion_damage_retains_the_distinct_type_multiplier() {
+    for each in ["each ", ""] {
+        for value in [24.0, 24.5] {
+            let text =
+                format!("{value}% increased Damage per {each}different Companion in your Presence");
+            let parsed = parse_mod(&text).unwrap();
+            assert!(parsed.is_complete(), "{parsed:?}");
+            assert_eq!(parsed.mods.len(), 1);
+            let modifier = &parsed.mods[0];
+            assert_eq!(modifier.name.as_str(), "Damage");
+            assert_eq!(modifier.mod_type, ModType::Inc);
+            assert_eq!(modifier.value, ModValue::Number(value));
+            assert_eq!(
+                modifier.tags,
+                vec![ModTag::multiplier(
+                    "DifferentCompanionsInPresence",
+                    1.0,
+                    None
+                )]
+            );
+            assert_eq!(modifier.effective_number(&CalcConfig::new()), Some(0.0));
+            let cfg = CalcConfig::new().with_multiplier("DifferentCompanionsInPresence", 2.0);
+            assert_eq!(modifier.effective_number(&cfg), Some(value * 2.0));
+            let rule = modifier.exporter_rule.as_ref().unwrap();
+            assert_eq!(rule.exporter, pobr_data::source::ExporterCoverage::Absent);
+            assert_eq!(
+                rule.game_source,
+                "damage_+%_per_different_companion_in_presence"
+            );
+        }
+    }
+}
+
+#[test]
+fn coordinated_static_resistances_retain_the_qualifying_equipped_item_multiplier() {
+    for value in [10.0, 7.0, 7.5] {
+        let text = format!(
+            "+{value}% to Fire and Cold Resistances per Equipped Item with a Lightning Resistance Modifier"
+        );
+        let parsed = parse_mod(&text).unwrap();
+        assert!(parsed.is_complete(), "{parsed:?}");
+        assert_eq!(parsed.mods.len(), 2);
+        for (modifier, name) in parsed.mods.iter().zip(["FireResistance", "ColdResistance"]) {
+            assert_eq!(modifier.name.as_str(), name);
+            assert_eq!(modifier.mod_type, ModType::Base);
+            assert_eq!(modifier.value, ModValue::Number(value));
+            assert_eq!(
+                modifier.tags,
+                vec![ModTag::multiplier(
+                    "EquippedItemsWithLightningResistance",
+                    1.0,
+                    None
+                )]
+            );
+            assert_eq!(modifier.effective_number(&CalcConfig::new()), Some(0.0));
+            let cfg =
+                CalcConfig::new().with_multiplier("EquippedItemsWithLightningResistance", 2.0);
+            assert_eq!(modifier.effective_number(&cfg), Some(value * 2.0));
+            let rule = modifier.exporter_rule.as_ref().unwrap();
+            assert_eq!(rule.exporter, pobr_data::source::ExporterCoverage::Absent);
+            assert_eq!(
+                rule.game_source,
+                "fire_and_cold_resist_+_per_equipped_item_with_a_lightning_resistance_mod"
+            );
+        }
+    }
+}
+
 /// ModParser.lua:6904-6919: the MORE is capped across copies; PoBR
 /// represents its active effect directly, without vendor's OVERRIDE indirection.
 #[test]
