@@ -1,0 +1,64 @@
+{
+  "initial_failed_steps": [
+    "parity"
+  ],
+  "targeted_rerun": {
+    "inputs": {
+      "git_commit": "01769763af6a009af9a36b79f4c39da06f39e04e",
+      "started_at": "2026-10-26T18:14:22.533577+00:00",
+      "command": "mise run gate --only parity",
+      "change": "Only the proven tuned ReqInt grant exemption baseline and documentation/known row changed since measured45a3c00a; no calculation changes."
+    },
+    "exit": 0,
+    "passed_steps": [
+      "parity"
+    ],
+    "failed_steps": []
+  },
+  "gate_inputs": {
+    "git_commit": "45a3c00a265a60ad69cf2c152395f443089abf13",
+    "started_at": "2026-10-26T17:53:56.509519+00:00",
+    "command": "mise run gate"
+  },
+  "gate_exit": 1,
+  "steps_passed": [
+    "accuracy",
+    "apps",
+    "build",
+    "clippy",
+    "core",
+    "fmt",
+    "i18n",
+    "parity",
+    "regen",
+    "web"
+  ],
+  "failed_steps": [],
+  "aggregate_accuracy": [
+    {
+      "corpus": "examples/wasm-benchmark/builds",
+      "builds": 8,
+      "damage_agrees": 5,
+      "agreeing_rows": 661,
+      "compared_rows": 715
+    },
+    {
+      "corpus": "examples/reference-builds/tuned/builds",
+      "builds": 69,
+      "damage_agrees": 58,
+      "agreeing_rows": 5794,
+      "compared_rows": 6119
+    },
+    {
+      "corpus": "examples/reference-builds/holdout/builds",
+      "builds": 23,
+      "damage_agrees": 17,
+      "agreeing_rows": 1912,
+      "compared_rows": 2034
+    }
+  ],
+  "holdout_scope": "Aggregate accuracy only; no individual holdout inspected.",
+  "browser_scope": "Web typecheck/unit tests and Rust WASM/JSON contracts; 508 Web tests passed, 5 skipped (3 opt-in benchmark tests and 2 useBuildSession WASM tests). No actual browser interaction validation claimed.",
+  "independent_reviews": "See review-summary.json; focused regression execution belongs to the implementation commits.",
+  "reference_scope": "The accuracy gate covers benchmark/tuned/holdout. The separate triage measurement covers the full230 frozen cohort and77 worked builds; numerical disagreement is diagnostic."
+}
