@@ -3,6 +3,48 @@ use pobr_core::{CalcConfig, ModDb, Modifier};
 use pobr_data::prelude::*;
 
 #[test]
+fn chain_remaining_trace_uses_the_selected_hits_snapshot_in_both_crit_legs() {
+    use pobr_core::ModTag;
+
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("ChainCountMax", ModType::Base, 2.0));
+    db.add_mod(
+        Modifier::number("Damage", ModType::Inc, 10.0)
+            .with_keyword_flags(KeywordFlags::HIT)
+            .with_tag(ModTag::multiplier("ChainRemaining", 1.0, None)),
+    );
+    let input = MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        base_action_rate: 1.0,
+        ..Default::default()
+    };
+    for (used, remaining) in [(None, 2.0), (Some(1.0), 1.0), (Some(7.0), 0.0)] {
+        let mut cfg = CalcConfig::attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE);
+        if let Some(used) = used {
+            cfg = cfg.with_multiplier("Chain", used);
+        }
+        // A minimal caller has not precomputed ChainRemaining or the hit keyword.
+        assert!(cfg.multiplier_if_set("ChainRemaining").is_none());
+        let traced = calculate_minimal_traced(&db, &cfg, &input);
+        let plain = calculate_minimal(&db, &cfg, &input);
+        assert_eq!(traced.output, plain);
+        assert!((plain.total_hit_avg - (100.0 + remaining * 10.0)).abs() < 1e-9);
+        assert_eq!(plain.dps, plain.total_hit_avg);
+        for leg in ["non-crit", "crit"] {
+            let label = format!("Damage INC modifier sum ({leg} pass)");
+            let sum = traced
+                .trace
+                .nodes()
+                .iter()
+                .find(|node| node.label == label)
+                .unwrap();
+            assert_eq!(sum.value, remaining * 10.0, "{leg}, used={used:?}");
+        }
+    }
+}
+
+#[test]
 fn calculates_life_resistance_hit_damage_and_dps() {
     let mut db = ModDb::new();
     db.add_mod(Modifier::number("MaximumLife", ModType::Base, 100.0));

@@ -3,6 +3,150 @@ use pobr_core::calc::MinimalInput;
 use crate::support::session;
 
 #[test]
+fn chain_remaining_hand_details_match_damage_and_source_terms() {
+    use pobr_core::calc::{CalculationSession, HandSource, WeaponBase};
+    use pobr_core::{CalcConfig, ModTag, Modifier};
+    use pobr_data::prelude::*;
+
+    for used in [0.0, 1.0, 3.0] {
+        let mut s = CalculationSession::new(MinimalInput::default()).with_config(
+            CalcConfig::attack()
+                .with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE)
+                .with_multiplier("Chain", used)
+                .with_mode_effective(true),
+        );
+        let weapon = WeaponBase {
+            hit_min: 100.0,
+            hit_max: 100.0,
+            attack_rate: Some(1.0),
+            ..Default::default()
+        };
+        s.set_hand_sources(
+            vec![HandSource::main_hand(weapon), HandSource::off_hand(weapon)],
+            false,
+        );
+        let per_chain = ModTag::multiplier("ChainRemaining", 1.0, None);
+        s.add_modifiers([
+            Modifier::flag("CannotBeEvaded"),
+            Modifier::number("ChainCountMax", ModType::Base, 2.0),
+            Modifier::number("ChainCountMax", ModType::Base, 1.0)
+                .with_tag(ModTag::condition("OffHandAttack", false)),
+            Modifier::number("Damage", ModType::Inc, 10.0).with_tag(per_chain.clone()),
+            Modifier::number("PhysicalDamageMin", ModType::Base, 5.0).with_tag(per_chain.clone()),
+            Modifier::number("PhysicalDamageMax", ModType::Base, 5.0).with_tag(per_chain.clone()),
+        ]);
+        s.add_enemy_modifiers([
+            Modifier::number("DamageTaken", ModType::Inc, 10.0).with_tag(per_chain)
+        ]);
+        s.perform_minimal().unwrap();
+        for (pass, capacity) in [(0, 2.0_f64), (1, 3.0_f64)] {
+            let remaining = (capacity - used).max(0.0);
+            let factor = 1.0 + remaining * 0.1;
+            let hit = (100.0 + remaining * 5.0) * factor;
+            let terms = s.hit_damage_terms(pass).unwrap();
+            let part = terms
+                .parts
+                .iter()
+                .find(|part| part.damage_type == DamageType::Physical)
+                .unwrap();
+            assert_eq!(part.inc, remaining * 10.0);
+            assert!((part.avg - hit).abs() < 1e-9);
+            assert!((part.base_min * (1.0 + part.inc / 100.0) * part.more - hit).abs() < 1e-9);
+            let source = terms
+                .sources
+                .iter()
+                .find(|source| source.damage_type == DamageType::Physical)
+                .unwrap();
+            assert_eq!(source.added_min, remaining * 5.0);
+            assert_eq!(source.added_max, remaining * 5.0);
+            let mods = s.hit_damage_mods(pass, &[DamageType::Physical]);
+            let damage = mods
+                .shared
+                .iter()
+                .find(|row| row.modifier.name.as_str() == "Damage")
+                .unwrap();
+            assert!(damage.active);
+            assert_eq!(damage.value, Some(remaining * 10.0));
+            let sources = s.hit_source_mods(pass, &[DamageType::Physical]);
+            assert_eq!(sources[0].added_min[0].value, Some(remaining * 5.0));
+            assert_eq!(sources[0].added_max[0].value, Some(remaining * 5.0));
+            let mitigation = s.hit_mitigation_terms(pass).unwrap();
+            assert!((mitigation[0].taken - factor).abs() < 1e-9);
+            assert!((mitigation[0].mitigated - hit * factor).abs() < 1e-9);
+            let mitigation_mods = s.hit_mitigation_mods(pass, &[DamageType::Physical]);
+            assert_eq!(mitigation_mods[0].1.taken[0].value, Some(remaining * 10.0));
+        }
+        // Detail queries cannot rewrite the shared actor or explicit hit selection.
+        assert_eq!(s.config().multiplier("Chain"), used);
+        assert_eq!(
+            s.config().multiplier("ChainRemaining"),
+            (2.0 - used).max(0.0)
+        );
+    }
+}
+
+#[test]
+fn chain_remaining_minion_details_use_its_capacity_instead_of_the_players() {
+    use pobr_core::calc::{
+        CalculationSession,
+        minion::{AttributeInfusion, MinionOrigin},
+    };
+    use pobr_core::{CalcConfig, ModTag, Modifier};
+    use pobr_data::{minion::minion_def_zombie, prelude::*};
+
+    for (used, remaining) in [(0.0, 2.0), (1.0, 1.0), (3.0, 0.0)] {
+        let build =
+            |bonus| {
+                let mut s = CalculationSession::new(MinimalInput::default()).with_config(
+                    CalcConfig::attack()
+                        .with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE)
+                        .with_multiplier("Chain", used),
+                );
+                s.add_modifiers([Modifier::number("ChainCountMax", ModType::Base, 9.0)]);
+                s.add_minion_from_def(
+                    &minion_def_zombie(),
+                    20,
+                    1,
+                    Vec::new(),
+                    vec![
+                        Modifier::number("ChainCountMax", ModType::Base, 2.0),
+                        Modifier::number("Damage", ModType::Inc, bonus)
+                            .with_tag(ModTag::multiplier("ChainRemaining", 1.0, None)),
+                    ],
+                    AttributeInfusion::default(),
+                    MinionOrigin::default(),
+                );
+                s.perform_minimal().unwrap();
+                s
+            };
+        let baseline = build(0.0);
+        let s = build(10.0);
+        let output = s.minion_output(0).unwrap();
+        let base_hit = baseline.minion_output(0).unwrap().total_hit_avg;
+        assert!(base_hit > 0.0);
+        assert!((output.total_hit_avg - base_hit * (1.0 + remaining * 0.1)).abs() < 1e-9);
+        assert_eq!(
+            s.minion_stat_formula(0, "TotalHitAvg").unwrap().value,
+            output.total_hit_avg
+        );
+        assert_eq!(
+            s.minion_stat_formula(0, "TotalDPS").unwrap().value,
+            output.dps
+        );
+        let mods = s.minion_stat_mods(0, "Damage");
+        let damage = mods
+            .iter()
+            .find(|row| !row.modifier.tags.is_empty())
+            .unwrap();
+        assert!(damage.active);
+        assert_eq!(damage.value, Some(remaining * 10.0));
+        assert_eq!(s.minion_stat_totals(0, "Damage").1, remaining * 10.0);
+        assert_eq!(s.config().multiplier("ChainRemaining"), 9.0 - used);
+        assert_eq!(s.config().multiplier("Chain"), used);
+    }
+}
+
+#[test]
 fn per_attribute_modifiers_use_final_attributes_with_class_and_inc_more() {
     use pobr_core::{CalcConfig, CharacterBase, Modifier};
     use pobr_data::prelude::ModType;

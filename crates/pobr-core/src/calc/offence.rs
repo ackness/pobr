@@ -872,6 +872,8 @@ pub struct HitMitigationPart {
 /// displayed steps ([`HitPass::average_hit_formula`], [`HitPass::dps_formula`])
 /// read the same numbers.
 pub(crate) struct HitPass {
+    /// The resolved hand/actor snapshot used by both damage legs and their details.
+    cfg: CalcConfig,
     pub effective: Vec<super::output::HitEffectiveTerms>,
     pub action_rate: f64,
     pub hit: HitChanceTerms,
@@ -881,6 +883,16 @@ pub(crate) struct HitPass {
     pub crit_pass: super::CritPassOutput,
     pub end: super::scaled_damage::DpsEndFactors,
     pub dps: f64,
+}
+
+pub(crate) fn hit_cfg(db: &ModDb, enemy_db: &ModDb, cfg: &CalcConfig) -> CalcConfig {
+    let mut hit_cfg = cfg
+        .clone()
+        .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
+    // Resolve in this hand's scope; an off-hand chain bonus must not change
+    // the other hand, and minimal/traced callers need the same snapshot.
+    super::skill_mechanics::snapshot_remaining_chains(db, enemy_db, &mut hit_cfg);
+    hit_cfg
 }
 
 pub(crate) fn hit_pass(
@@ -916,12 +928,7 @@ pub(crate) fn hit_pass(
     // produces NONE, unchanged value-for-value); ailment scaling separately
     // strips Hit via `ailment_scoped_cfg`, and ignite/bleed etc.'s DoT base
     // is still derived from hit damage that includes Hit (matching PoB2: DoT inherits hit bonuses).
-    let mut hit_cfg = cfg
-        .clone()
-        .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
-    // Resolve again in this hand's scope; an off-hand chain bonus must not
-    // change the other hand, and minimal/traced callers need the same snapshot.
-    super::skill_mechanics::snapshot_remaining_chains(db, enemy_db, &mut hit_cfg);
+    let hit_cfg = hit_cfg(db, enemy_db, cfg);
     // ScaledDamageEffect (the DD/TD factor; effect == 1.0 unchanged
     // bit-for-bit when there's no mod; crit_chance is
     // a fraction input).
@@ -969,6 +976,7 @@ pub(crate) fn hit_pass(
     );
 
     HitPass {
+        cfg: hit_cfg,
         effective,
         action_rate,
         hit: hit_terms,
@@ -983,12 +991,8 @@ pub(crate) fn hit_pass(
 impl HitPass {
     /// The per-type rows of the non-crit leg with each type's crit average.
     /// `None` when the rows cannot be matched to the stage's components.
-    pub(crate) fn damage_terms(
-        &self,
-        db: &ModDb,
-        cfg: &CalcConfig,
-        input: &MinimalInput,
-    ) -> Option<HitDamageTerms> {
+    pub(crate) fn damage_terms(&self, db: &ModDb, input: &MinimalInput) -> Option<HitDamageTerms> {
+        let cfg = &self.cfg;
         let terms =
             super::crit_pass::non_crit_terms(db, cfg, input.base_hit_min, input.base_hit_max);
         let pass = &self.crit_pass;
@@ -1037,7 +1041,6 @@ impl HitPass {
         &self,
         db: &ModDb,
         enemy_db: &ModDb,
-        cfg: &CalcConfig,
     ) -> Option<Vec<HitMitigationPart>> {
         let pass = &self.crit_pass;
         if pass.mitigated_avg.is_empty()
@@ -1046,7 +1049,7 @@ impl HitPass {
         {
             return None;
         }
-        let cfg_hit = super::crit_pass::non_crit_cfg(cfg);
+        let cfg_hit = super::crit_pass::non_crit_cfg(&self.cfg);
         Some(
             pass.stored_combined_avg
                 .iter()
@@ -1466,12 +1469,7 @@ fn total_dps_traced(
     // TODO(attribution surface): DD/TD mods have no Input node yet (missing
     // direct, falling back to marginal).
     // The hit-view cfg: adds `KeywordFlags::HIT` (shares its source with the non-traced path, see the comment there).
-    let mut hit_cfg = cfg
-        .clone()
-        .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
-    // Resolve again in this hand's scope; an off-hand chain bonus must not
-    // change the other hand, and minimal/traced callers need the same snapshot.
-    super::skill_mechanics::snapshot_remaining_chains(db, enemy_db, &mut hit_cfg);
+    let hit_cfg = hit_cfg(db, enemy_db, cfg);
     let scaled = scaled_damage_effect(db, enemy_db, &hit_cfg, crit.chance);
     let crit_pass = run_crit_passes(
         db,
@@ -1492,7 +1490,7 @@ fn total_dps_traced(
         ModName::from("Damage"),
     ];
     // Non-crit leg sub-graph.
-    let cfg_hit = cfg.clone().with_condition("CriticalStrike", false);
+    let cfg_hit = hit_cfg.clone().with_condition("CriticalStrike", false);
     trace.begin_pass(crate::PassId::new(
         crate::HandTag::Single,
         crate::CritTag::NonCrit,
@@ -1532,7 +1530,7 @@ fn total_dps_traced(
     trace.end_pass();
     // Crit leg sub-graph (aggregated with the CriticalStrike=true condition;
     // its value includes ×CritMultiplier, reachable from crit mod sources via crit_node's incoming edge).
-    let cfg_crit = cfg.clone().with_condition("CriticalStrike", true);
+    let cfg_crit = hit_cfg.with_condition("CriticalStrike", true);
     trace.begin_pass(crate::PassId::new(
         crate::HandTag::Single,
         crate::CritTag::Crit,

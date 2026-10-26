@@ -1527,7 +1527,7 @@ impl CalculationSession {
             .pass_value("TotalHitAvg", pass)
             .unwrap_or(env.player.output.total_hit_avg);
         ((hit.crit_pass.total_hit_avg - average).abs() <= 1e-6)
-            .then(|| hit.damage_terms(db, cfg, input))
+            .then(|| hit.damage_terms(db, input))
             .flatten()
     }
 
@@ -1541,8 +1541,9 @@ impl CalculationSession {
         let env = &self.env;
         let scopes = perform::pass_scopes(env);
         let cfg = scopes.get(pass).map_or(&env.cfg, |(_, cfg, _)| cfg);
-        let cfg_hit = super::crit_pass::non_crit_cfg(cfg);
         let db = &env.player.mod_db;
+        let cfg_hit =
+            super::crit_pass::non_crit_cfg(&super::offence::hit_cfg(db, &env.enemy.mod_db, cfg));
         HitDamageMods {
             shared: super::damage::evaluate_generic_scaling(db, &cfg_hit),
             by_type: types
@@ -1568,8 +1569,9 @@ impl CalculationSession {
         let env = &self.env;
         let scopes = perform::pass_scopes(env);
         let cfg = scopes.get(pass).map_or(&env.cfg, |(_, cfg, _)| cfg);
-        let cfg_hit = super::crit_pass::non_crit_cfg(cfg);
         let db = &env.player.mod_db;
+        let cfg_hit =
+            super::crit_pass::non_crit_cfg(&super::offence::hit_cfg(db, &env.enemy.mod_db, cfg));
         types
             .iter()
             .map(|ty| super::damage::evaluate_source_lines(db, &cfg_hit, *ty))
@@ -1598,7 +1600,7 @@ impl CalculationSession {
             (hit.dps * factor, env.player.output.dps)
         };
         ((expected - dps).abs() <= 1e-6)
-            .then(|| hit.mitigation_terms(db, enemy, cfg))
+            .then(|| hit.mitigation_terms(db, enemy))
             .flatten()
     }
 
@@ -1632,8 +1634,12 @@ impl CalculationSession {
         let Some((_, cfg, _)) = scopes.get(pass) else {
             return Vec::new();
         };
-        let cfg_hit = super::crit_pass::non_crit_cfg(cfg);
         let enemy = &self.env.enemy.mod_db;
+        let cfg_hit = super::crit_pass::non_crit_cfg(&super::offence::hit_cfg(
+            &self.env.player.mod_db,
+            enemy,
+            cfg,
+        ));
         types
             .iter()
             .map(|ty| {
@@ -1834,13 +1840,24 @@ impl CalculationSession {
         }
     }
 
+    /// Rebuild the actor snapshot used after its buffs were applied.
+    fn minion_detail_cfg(&self, minion: &super::Actor) -> CalcConfig {
+        let mut cfg = perform::minion_cfg(&self.env, minion);
+        super::skill_mechanics::snapshot_remaining_chains(
+            &minion.mod_db,
+            &self.env.enemy.mod_db,
+            &mut cfg,
+        );
+        cfg
+    }
+
     /// The steps of minion `index`'s final resistance or offence `stat`
     /// (`ActionRate`, `HitChance`, `TotalHitAvg`, `TotalDPS`, `CritChance`,
     /// `CritMultiplier`), as its calculation took them. `None` for any other
     /// stat, or when the steps do not end at the minion's DPS.
     pub fn minion_stat_formula(&self, index: usize, stat: &str) -> Option<super::StatFormula> {
         let minion = self.env.minions.get(index)?;
-        let cfg = perform::minion_cfg(&self.env, minion);
+        let cfg = self.minion_detail_cfg(minion);
         let mut input = super::MinimalInput::from(minion.base);
         input.enemy_evasion = super::setup_env::enemy_evasion(&self.env.enemy, &cfg);
         let formula = match stat {
@@ -1867,7 +1884,7 @@ impl CalculationSession {
         let Some(minion) = self.env.minions.get(index) else {
             return Vec::new();
         };
-        let cfg = perform::minion_cfg(&self.env, minion);
+        let cfg = self.minion_detail_cfg(minion);
         minion
             .mod_db
             .evaluate_names(&cfg, &self.minion_stat_names(&cfg, stat))
@@ -1878,7 +1895,7 @@ impl CalculationSession {
         let Some(minion) = self.env.minions.get(index) else {
             return (0.0, 0.0, 1.0);
         };
-        let cfg = perform::minion_cfg(&self.env, minion);
+        let cfg = self.minion_detail_cfg(minion);
         let names = self.minion_stat_names(&cfg, stat);
         let db = &minion.mod_db;
         (
@@ -1891,7 +1908,7 @@ impl CalculationSession {
     /// The steps from minion `index`'s base Life to its maximum Life.
     pub fn minion_life_formula(&self, index: usize) -> Option<super::StatFormula> {
         let minion = self.env.minions.get(index)?;
-        let cfg = perform::minion_cfg(&self.env, minion);
+        let cfg = self.minion_detail_cfg(minion);
         Some(
             super::offence::pool_terms(&minion.mod_db, &cfg, minion.base.life, "MaximumLife")
                 .formula(),
