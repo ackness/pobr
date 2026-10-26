@@ -73,6 +73,8 @@ mod enemy_debuffs;
 mod energy_triggers;
 #[path = "skills/equipment_affix_effects.rs"]
 mod equipment_affix_effects;
+#[path = "skills/equipment_conditions.rs"]
+mod equipment_conditions;
 #[path = "skills/event_triggered_hits.rs"]
 mod event_triggered_hits;
 #[path = "skills/gem_quality.rs"]
