@@ -438,6 +438,12 @@ pub fn buff_skill_specs(
                                 skill_stats::REMNANT_EFFECT,
                             ]
                             .into_iter()
+                            // Mana Remnants grants its regeneration while active,
+                            // independently of the effect of a collected Remnant.
+                            .filter(|stat| {
+                                *stat != skill_stats::REMNANT_EFFECT
+                                    || skill_id != "ManaRemnantsPlayer"
+                            })
                             .map(|stat| {
                                 stat_on_skill_and_supports(&group, data, gem, skill_id, level, stat)
                             })

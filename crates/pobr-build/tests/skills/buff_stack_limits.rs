@@ -210,3 +210,129 @@ fn ordinary_buff_copies_preserve_wind_dancer_stack_limit() {
     .unwrap();
     assert_eq!(output.evasion, 1300.0, "three stages, one strongest buff");
 }
+
+#[test]
+fn mana_remnants_persistent_regen_does_not_scale_with_remnant_effect() {
+    use pobr_build::{Build, SocketGroup, calculate_with_data_session};
+    use pobr_core::calc::{CalculationSession, MinimalInput};
+    use pobr_core::skill_env::{StatMapCtx, buff_skill_specs};
+    use pobr_core::{CalcConfig, Modifier};
+    use pobr_data::{modifier::ModType, passive_tree::NodeId, source::SourceKind};
+
+    const SOURCE: &str =
+        "buff.ManaRemnantsPlayer.mana_remnants_global_mana_regeneration_rate_granted_+%";
+    let remnants = |quality, support: Option<&str>| {
+        let mut group = SocketGroup::new().with_gem_skill("ManaRemnantsPlayer", 20);
+        group.gem_skills[0].quality = quality;
+        if let Some(support) = support {
+            group = group.with_gem_skill(support, 1);
+        }
+        group
+    };
+    let data = crate::test_data();
+    // The real Gemling quality path grants 2% permanent ManaRegen per quality.
+    // Interlude III increases the Remnants themselves, not this active buff.
+    let mut build = Build::new()
+        .add_socket_group(SocketGroup::new().with_gem_skill("SparkPlayer", 20))
+        .add_socket_group(remnants(41, Some("SupportInterludePlayerThree")))
+        .with_main_socket_group(1);
+    build.tree.allocated_nodes.push(NodeId(14429));
+    let result = calculate_with_data_session(&build, data, &Default::default()).unwrap();
+    let expected = (result.output().mana * 0.04 * 1.82 * 10.0).round() / 10.0;
+    assert_eq!(result.output().mana_regen, expected);
+
+    // Exercise both scaling zones with typed global modifiers, retaining real
+    // game stats/support eligibility and the ordinary strongest-buff merger.
+    let run = |groups: Vec<SocketGroup>, remnant_effect: bool, buff_effect: bool| {
+        let mut build = Build::new();
+        build.socket_groups = groups;
+        let specs = buff_skill_specs(
+            &mut StatMapCtx::data(data.stat_map_catalog.as_deref()),
+            &build,
+            data,
+            &[],
+            true,
+        );
+        let mut session = CalculationSession::new(MinimalInput::default()).with_config(
+            CalcConfig::spell()
+                .with_mode_buffs(true)
+                .with_multiplier("PurpleFlamesCount", 3.0),
+        );
+        session.add_modifiers([Modifier::number("ManaRegen", ModType::Base, 10.0)]);
+        if remnant_effect {
+            session.add_modifiers([
+                Modifier::number("RemnantEffect", ModType::Inc, 60.0),
+                Modifier::number("RemnantEffect", ModType::More, 100.0),
+            ]);
+        }
+        if buff_effect {
+            session.add_modifiers([
+                Modifier::number("BuffEffect", ModType::Inc, 50.0),
+                Modifier::number("BuffEffect", ModType::More, 20.0),
+            ]);
+        }
+        for spec in specs {
+            session.add_buff_skill(spec);
+        }
+        session.perform_minimal().unwrap();
+        session
+    };
+    let weak = remnants(41, Some("SupportInterludePlayerThree"));
+    let strong = remnants(50, None);
+    let cases = [
+        (vec![remnants(41, None)], false, false, 82.0, 82),
+        (
+            vec![remnants(41, Some("SupportInterludePlayer"))],
+            false,
+            false,
+            82.0,
+            82,
+        ),
+        (vec![weak.clone()], false, false, 82.0, 82),
+        (vec![remnants(41, None)], true, false, 82.0, 82),
+        (vec![weak.clone()], true, true, 147.0, 82),
+        (vec![weak.clone(), strong.clone()], false, false, 100.0, 100),
+        (vec![strong.clone(), weak], false, false, 100.0, 100),
+        (vec![strong.clone(), strong], true, false, 100.0, 100),
+    ];
+    for (groups, remnant_effect, buff_effect, expected, unscaled) in cases {
+        let session = run(groups, remnant_effect, buff_effect);
+        let applied: Vec<_> = session
+            .all_mods()
+            .into_iter()
+            .filter(|modifier| {
+                modifier
+                    .origin
+                    .as_ref()
+                    .is_some_and(|origin| origin.source_id.id == SOURCE)
+            })
+            .collect();
+        assert_eq!(applied.len(), 1, "keep one strongest, source-bearing copy");
+        assert_eq!(applied[0].value.as_number(), Some(expected));
+        let origin = applied[0].origin.as_ref().unwrap();
+        assert_eq!(origin.source_id.kind, SourceKind::SkillGem);
+        assert!(origin.raw_text.as_deref().unwrap().contains(&format!(
+            "mana_remnants_global_mana_regeneration_rate_granted_+% ({unscaled})"
+        )));
+        assert!((session.output().mana_regen - (10.0 + expected / 10.0)).abs() < 1e-9);
+    }
+
+    // A Purple Flame really is a Remnant buff. At level 1 its own effect
+    // increase is zero: (7 * (1 + .4 + .6 + .5) * 2 * 1.2) = 42 per flame.
+    let breach = SocketGroup::new()
+        .with_gem_skill("IntoTheBreachPlayer", 1)
+        .with_gem_skill("SupportInterludePlayerThree", 1);
+    let session = run(vec![breach], true, true);
+    let applied: Vec<_> = session
+        .all_mods()
+        .into_iter()
+        .filter(|modifier| {
+            modifier.origin.as_ref().is_some_and(|origin| {
+                origin.source_id.id == "buff.IntoTheBreachPlayer.breach_flame_chaos_addition_%"
+            })
+        })
+        .collect();
+    assert_eq!(applied.len(), 1);
+    assert_eq!(applied[0].value.as_number(), Some(42.0));
+    assert_eq!(session.base_sum("DamageGainAsChaos"), 126.0);
+}

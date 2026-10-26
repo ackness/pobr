@@ -1662,6 +1662,13 @@ remain diagnostic. Frozen Titan06 has twelve allocated small passives with
 The retained game stat is
 `local_historic_abyss_jewel_conquered_small_passives_grant_elemental_damage_+%`;
 its imported roll is preserved instead of rebuilding it from a current range.
+The separate "Conquered Attribute Passive Skills also grant ..." directive
+attaches only to attribute nodes under the same radius, allocation and weapon-set
+gates. It retains the imported roll and source, and does not receive Hulking
+Form's small-passive amplification. Reduced frozen regressions cover Ritualist09's
+two +6 Intelligence grants (147 to 160 final Intelligence) and Smith06's three
++5 Strength grants (271 to 287 final Strength); these checks do not reconstruct
+seed-specific notable replacements.
 
 Frozen Witchhunter10's Megalomaniac grants Leather Bound Gauntlets (51446):
 1323 equipped-glove Armour adds 1323 base Evasion. This affects Armour/Evasion,
@@ -1743,3 +1750,55 @@ while the skill supplies an OVERRIDE. This zero is not evidence that added
 Fire damage cannot ignite. The exact steady-state value with a chosen number
 of simultaneous totems remains unverified, so the two affected rows stay in
 the diagnostic queue rather than being declared fully explained.
+
+### Static support costs, recovery and grant identity
+
+Mystic Harvest (`life_leech_also_recovers_based_on_elemental_damage_types`)
+extends the damage funding an existing Life-leech percentage to elemental
+damage; it grants no percentage and does not remove attack/spell restrictions.
+Essentia's `convert_all_life_leech_to_energy_shield_leech` keeps that damage
+eligibility while redirecting the base leech to ES. The game's
+[Stat Conversion](https://poe2db.tw/us/Stat_Conversion) wording applies
+destination modifiers: ES amount, speed, recovery, instant share and restrictions,
+not Life modifiers. Life on hit is separate and remains Life recovery.
+The panel and sustained recovery share typed damage eligibility and the existing
+whole-hit damage ceiling. The panel remains a raw average-hit single-instance
+view; it need not equal sustained, recovery-rate-scaled or instant recovery.
+
+`LifeRegenAppliesToManaRegen` and `ManaRegenAppliesToRageRegen` share only
+increases/reductions of the source regeneration rate. Source BASE, MORE and
+recovery modifiers do not transfer. Detail groups retain the original sources
+and conditions and include only those INC contributions.
+
+[Derange](https://poe2db.tw/us/Derange) adds an ES cost equal to final
+Intelligence (`gain_energy_shield_cost_equal_to_intelligence`). Its compatible,
+selected support supplies `ESCostNoMult` through the existing cost path.
+Support multipliers of a skill's base cost do not multiply this additional
+cost; ordinary applicable cost modifiers still do. Culling Strike I/II's native
+rare/unique grant requires the Effective context as well as the selected enemy
+rarity. Config visibility recognizes the conditional grant before it is active,
+so users can expose the existing rarity checkbox without enabling it implicitly.
+
+Native `base_skill_is_ballistified` / `is_ranged_attack_totem` establish the
+selected Ballista identity. A Mortar Cannon's socketed attack receives its
+Ballista damage and speed modifiers. Capacity queries include
+`ActiveBallistaLimit` and the host's `TotemsAreBallistae` category alongside
+generic totem additions; raw support-compatibility types remain unchanged.
+Capacity is not evidence of how many totems are present.
+
+Unique item grants use the game's `ModGrantedSkills` attachment relationship,
+not display-name collision order. The current catalog records Coming Calamity's
+three `UniqueHeraldOf*Player` variants and Sands of Silk's `BlinkSandPlayer`.
+Only proven attached calculation groups are canonicalized; imported identities
+and independent gems remain intact. Zero base Spirit reservation does not exempt
+additive support reservation. Armour grants retain their group's activation set,
+and changing an effect list must preserve the selected effect's meaning.
+
+Mana Remnants' permanent regeneration buff is distinct from its collected
+Remnants. `RemnantEffect` does not scale that permanent buff; ordinary BuffEffect
+and the existing qualifying-skill convention still apply. Clarity II's possible
+use of separate minion effects to satisfy `Persistent AND Buff` remains
+unverified and is not enabled merely to match the exporter. Melting Maelstrom's
+finite per-use recovery remains in the existing flask utility output, without
+assuming permanent flask uptime. Time of Need and Ghost Dance's repeat intervals
+remain separate from activation cooldowns; no event history is inferred.
