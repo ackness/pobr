@@ -19,6 +19,7 @@ fn exporter_rule(stat: &str) -> Option<std::sync::Arc<pobr_data::source::Exporte
             [
                 "base_spell_mana_cost_efficiency_+%",
                 "active_skill_damaging_ailment_effect_+%_final",
+                "base_skill_buff_banner_attack_speed_+%_to_apply",
                 // The per-hit Armour Break, debuff uptime, curse delay and
                 // remnant views (`calc::effect_views`).
                 "armour_break_physical_damage_%_dealt_as_armour_break",
@@ -1024,6 +1025,13 @@ pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option
 
 fn player_buff_modifiers_impl(stat: &str, value: f64, skill: BuffSkill) -> Option<Vec<Modifier>> {
     match stat {
+        // War Banner's planted aura grants attack speed to you and nearby
+        // allies. The aura pass handles magnitude and recipient forwarding,
+        // just as for its attack damage and accuracy grants.
+        "base_skill_buff_banner_attack_speed_+%_to_apply" => Some(vec![
+            Modifier::number("AttackSpeed", ModType::Inc, value)
+                .with_tag(ModTag::condition("BannerPlanted", false)),
+        ]),
         // An enabled Cry is a source; only an explicitly active Cry grants
         // its buff. The shared boost state handles Strike/Slam eligibility.
         "ancestral_cry_empowered_attacks_strike_X_additional_enemies" => Some(vec![
