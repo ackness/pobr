@@ -337,8 +337,10 @@ pub(super) fn inject_connected_support_counts(
 /// Sapphire. Items do not keep their name, so the line identifies it.
 fn is_grand_spectrum(jewel: &pobr_data::item::Item) -> bool {
     jewel
-        .modifier_texts
+        .implicit_texts
         .iter()
+        .chain(&jewel.modifier_texts)
+        .chain(&jewel.enchant_texts)
         .any(|line| line.ends_with("per socketed Grand Spectrum"))
 }
 
