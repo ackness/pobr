@@ -29,6 +29,9 @@
 .v2-root .utility-row { grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr)); }
 .v2-root .item-detail-header { gap: .75rem; }
 .v2-root .item-actions { gap: .5rem; }
+.v2-root :is(.item-line--implicit, .item-line--enchant, .replacement-affix--implicit, .replacement-affix--enchant) { color: var(--rarity-magic); }
+.v2-root :is(.item-line--rune, .replacement-affix--rune, .tree-search-count) { color: var(--color-cold); }
+.v2-root .item-tier--top { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); }
 .v2-root .library-row-toggle { justify-content: flex-start; white-space: normal; }
 @media (min-width: 1900px) { .v2-root .paper-doll { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 1200px) { .v2-root .items-workspace { grid-template-columns: minmax(0, 1fr); } }
@@ -55,6 +58,10 @@
 .v2-root .compare-panel th { font-weight: 500; }
 .v2-root .compare-panel td, .v2-root .compare-panel th { padding: .75rem; }
 .v2-root .compare-tree-canvas { border-radius: 1rem; height: clamp(22rem, 55vh, 44rem); }
+.v2-root .compare-tree-legend [data-side='a'] { color: var(--color-fire); }
+.v2-root .compare-tree-legend [data-side='b'] { color: var(--color-cold); }
+.v2-root .compare-tree-legend [data-side='both'] { color: var(--color-chaos); }
+.v2-root .compare-tree-warning { color: var(--primary); }
 .v2-root .compare-line-before { background: color-mix(in srgb, var(--destructive) 12%, transparent); color: var(--destructive); }
 .v2-root .compare-line-after { background: color-mix(in srgb, var(--color-positive) 12%, transparent); color: var(--color-positive); }
 

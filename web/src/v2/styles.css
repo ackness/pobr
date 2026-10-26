@@ -32,7 +32,7 @@
     --border-subtle: var(--border); --border-strong: var(--input);
     --accent-gold: var(--primary); --accent-gold-bright: var(--primary); --accent-gold-dim: #9f854c;
     --color-life: #b7352a; --color-mana: #375bb8; --color-es: #297b99; --color-fire: #b44323;
-    --color-cold: #246eaf; --color-lightning: #87700b; --color-chaos: #8a3d9b;
+    --color-cold: #2269a7; --color-lightning: #87700b; --color-chaos: #8a3d9b;
     --color-physical: #87564a; --color-defence: #4e7251; --color-positive: #347446; --color-negative: #bb3436;
     --rarity-normal: #56534e; --rarity-magic: #5550c6; --rarity-rare: #8a6f0e; --rarity-unique: #97521f; --rarity-gem: #15776e;
     --font-ui: Inter, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
