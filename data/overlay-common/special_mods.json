@@ -12,6 +12,16 @@
   },
   "entries": [
     {
+      "id": "mystic_harvest_elemental_life_leech",
+      "pattern": "^life leech recovers based on your elemental damage as well as physical damage$",
+      "mods": [{"name": "LifeLeechBasedOnElementalDamage", "type": "FLAG", "value": true}],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "life_leech_also_recovers_based_on_elemental_damage_types; passive 3065 Mystic Harvest",
+      "source_note": "The retained passive extends the damage types that fund existing Life Leech. It does not grant a leech percentage or remove the original modifier's attack/skill restrictions. Recovery applies conversion to the destination resource separately.",
+      "examples": ["Life Leech recovers based on your Elemental damage as well as Physical damage"]
+    },
+    {
       "id": "blackflame_covenant_fire_spell_conversion",
       "pattern": "^fire spells convert (\\d+)% of fire damage to chaos damage$",
       "mods": [{"name": "FireDamageConvertToChaos", "type": "BASE", "value": "$1", "tags": [{"type": "SkillType", "skillType": "Spell"}, {"type": "SkillType", "skillType": "Fire"}]}],
