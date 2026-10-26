@@ -2,6 +2,46 @@
   "_doc": "Reference rows `mise run triage` files as known: differences the repository already explains, so a triage lists only what is left to look at. `build` is a fragment of the build folder's name (or a synthetic skill-sweep case id), `xml_sha256`, when present, binds an entry to the exact decoded UTF-8 XML so short rank names cannot match another snapshot; `stats` the rows it explains, `reason` where the explanation is. Synthetic case entries document sweep findings; skill-sweep does not yet consume this registry. Add an entry when a difference is documented as deliberate; remove it when the engine changes.",
   "differences": [
     {
+      "build": "blood-mage-01",
+      "xml_sha256": "6731ace4053ed644fad71db58df00dd53f95f6134ab82400f20dfe38c41a8592",
+      "stats": [
+        "TotalEHP"
+      ],
+      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/maintainer-guide.md, Runic Ward)."
+    },
+    {
+      "build": "blood-mage-02",
+      "xml_sha256": "9028072b12545625f828e24b61964792ded89293197cc6687bb04ee8bc50db57",
+      "stats": [
+        "TotalEHP"
+      ],
+      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/maintainer-guide.md, Runic Ward)."
+    },
+    {
+      "build": "blood-mage-04",
+      "xml_sha256": "7bdfe0518be6239fb10e2bf8fd5e9642adc324eb45c0089207730b122f38b4ac",
+      "stats": [
+        "TotalEHP"
+      ],
+      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/maintainer-guide.md, Runic Ward)."
+    },
+    {
+      "build": "blood-mage-05",
+      "xml_sha256": "5ca31c6cf90bee9f36b54aa9bda0fdeba27f63c93a566ad9cadb24cff6d66880",
+      "stats": [
+        "TotalEHP"
+      ],
+      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/maintainer-guide.md, Runic Ward)."
+    },
+    {
+      "build": "blood-mage-07",
+      "xml_sha256": "4ce93fd35db613a0405cf8d7d4182f7ae3e6f972325b67666ce63b39b1aa8a27",
+      "stats": [
+        "TotalEHP"
+      ],
+      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/maintainer-guide.md, Runic Ward)."
+    },
+    {
       "build": "acolyte-of-chayula-02",
       "xml_sha256": "bbcd9b13fc221216752d1efd65a4e06b5566182036daac2a33c2a4e046375a0a",
       "stats": [
