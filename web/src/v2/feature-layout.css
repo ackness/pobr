@@ -2,9 +2,9 @@
 .v2-root .skill-groups { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
 .v2-root .skill-group { border-radius: 1.25rem; padding: 1.1rem; min-width: 0; }
 .v2-root .skill-group-header { flex-wrap: wrap; gap: .6rem; }
-.v2-root .skill-group-title { justify-content: flex-start; min-width: 8rem; }
+.v2-root .skill-group-title { display: grid; grid-template-columns: .75rem minmax(0, 1fr); justify-content: flex-start; min-width: 0; }
 .v2-root .skill-gem { flex-wrap: wrap; gap: .75rem; padding-block: .75rem; }
-.v2-root .gem-name { min-width: 9rem; }
+.v2-root .gem-name { min-width: 0; overflow-wrap: anywhere; }
 .v2-root .gem-controls { flex-wrap: wrap; justify-content: flex-end; gap: .6rem; }
 .v2-root .gem-controls label { gap: .35rem; }
 .gem-picker-popover { width: min(30rem, calc(100vw - 1.5rem)); max-height: min(26rem, var(--radix-popover-content-available-height)); padding: .35rem; gap: 0; overflow: hidden; }
@@ -58,4 +58,36 @@
 .v2-root .compare-line-before { background: color-mix(in srgb, var(--destructive) 12%, transparent); color: var(--destructive); }
 .v2-root .compare-line-after { background: color-mix(in srgb, var(--color-positive) 12%, transparent); color: var(--color-positive); }
 
+/* Keep labels and actions within their panel at enlarged text sizes. */
+.v2-root :is(.named-sets label, .weapon-set-control, .build-card-actions, .item-actions, .library-row-head > .item-actions, .item-detail-header, .trade-objectives > div) { flex-wrap: wrap; min-width: 0; max-width: 100%; }
+.v2-root .named-sets label { flex: 1 1 16rem; }
+.v2-root .named-sets label [data-slot='select-trigger'] { flex: 1 1 10rem; width: auto; }
+.v2-root .skill-group-title > :not(.row-caret) { grid-column: 2; min-width: 0; }
+.v2-root .skill-group-title :is(.skill-group-supports, .granted-badge) { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+.v2-root .skill-group-title .row-caret { grid-column: 1; grid-row: 1; }
+.v2-root :is(.gem-tags, .gem-controls label) { flex-wrap: wrap; }
+.v2-root :is(.gem-tag, .library-row-slot, .library-row-toggle .item-name, .trade-position small, .trade-priority-name small) { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+.v2-root .library-row-toggle { display: grid; grid-template-columns: .75rem minmax(0, 1fr); min-width: 0; }
+.v2-root .utility-row { grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)); }
+.v2-root :is(.items-equipped, .items-collection, .item-detail, .library-panel, .trade-setup > *, .trade-budget, .compare-pair > *) { min-width: 0; }
+.v2-root .trade-budget { flex-wrap: wrap; }
+.v2-root .trade-budget > input { flex: 1 1 5rem; }
+.v2-root .trade-budget [data-slot='select-trigger'] { flex: 1 1 8rem; width: auto; }
+.v2-root .trade-workspace { overflow: visible; }
+.v2-root .compare-panel { overflow-wrap: anywhere; }
+.v2-root .compare-table-wrap { min-width: 0; max-width: 100%; }
+.v2-root :is(.doll-slot.is-selected, .trade-position[aria-pressed='true'], .weapon-set-control [aria-pressed='true']) { background: color-mix(in srgb, var(--primary) 12%, var(--card)); border-color: var(--primary); color: var(--primary); }
+.gem-picker-popover .gem-chip.is-active { background: var(--muted); border-color: var(--primary); color: var(--primary); }
+@container v2-page (max-width: 48rem) {
+  .v2-root .items-workspace, .v2-root .skill-groups, .v2-root .workspace-management, .v2-root .tree-workspace { grid-template-columns: minmax(0, 1fr); }
+  .v2-root .tree-workspace > .tree-canvas { position: static; }
+}
+@container v2-page (max-width: 36rem) {
+  .v2-root .compare-controls, .v2-root .compare-pair { grid-template-columns: minmax(0, 1fr); }
+  .v2-root .trade-workspace, .v2-root .trade-priority-list { grid-template-columns: minmax(0, 1fr); }
+  .v2-root .paper-doll { grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)); }
+  .v2-root .doll-slot { grid-template-columns: minmax(0, 1fr); }
+  .v2-root .skill-group-header { flex-wrap: wrap; }
+  .v2-root .skill-group-title { flex-basis: 100%; }
+}
 }
