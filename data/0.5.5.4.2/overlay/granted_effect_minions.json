@@ -41,6 +41,18 @@
       ]
     },
     {
+      "effect_id": "FistOfWarSupportPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "FistOfWarSupportPlayerThree",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "FistOfWarSupportPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
       "effect_id": "HyenaCacklePlayer",
       "minion_list": [
         "HyenaMinion"
@@ -79,6 +91,10 @@
       "minion_list": [
         "SummonedRhoa"
       ]
+    },
+    {
+      "effect_id": "SpiritVesselSupport",
+      "ignore_minion_types": true
     },
     {
       "effect_id": "SummonAzmerianWolfPlayer",
@@ -165,6 +181,586 @@
       ]
     },
     {
+      "effect_id": "SupportAbidingHexPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportAcrimonyPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportAftershockChancePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportAftershockChancePlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportAilithLineagePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportAmbrosiaPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportAmbrosiaPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportAncestralAidPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportAncestralCallPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportAncestralCallPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportAncestralWarriorTotemPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportAnimusSplintersPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportArbitersIgnitionPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportArcaneSurgePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportAtzirisAllurePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportAtzirisImpatiencePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportBarbsPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportBarbsPlayerThree",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportBarbsPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportBattershoutPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportBhatairsVengeancePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportBlasphemyPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportBlazingCriticalPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportBrambleslamPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportBreachlordsAmalgam",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportBurgeonPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportBurgeonPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportBurstingPlaguePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportCadencePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportCatharsisPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportChaoticFreezePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportChargeInhibitionPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportChargedShotsPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportChargedShotsPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportCirelsCultivationPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportCloseCombatPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportCloseCombatPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportComboFinisherPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportComboFinisherPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportCommiseratePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportConcoctPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportConcoctPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportConsideredCastingPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportCooldownRecoveryPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportCooldownRecoveryPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportCorruptingCryPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportCorruptingCryPlayerThree",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportCorruptingCryPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportCracklingBarrierPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportCraterPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportDauntlessPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportDeadlyResolvePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportDefyPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportDefyPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportDerangePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportDurabilityPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportEinharsBeastritePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportElementalDischargePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportEssenceHarvestPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportExcisePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportExecratePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportExpandPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportExpansePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportFarCombatPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportFarCombatPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportFerociousRoarPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportFerocityPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportFlamePillarPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportFrenziedRipostePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportFrozenSpitePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportGarukhansResolvePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportHaemocrystalsPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportHeightenedChargesPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportHitAndRunPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportHollowFormPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportHourglassPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportIceBitePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportIceBitePlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportInevitableCriticalsPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportInevitableCriticalsPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportInnervatePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportLivingLightningPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportLivingLightningPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportManaFlarePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportMedvedsFelling",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportMetaTotemSpellTotemPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportMinionPactPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportMinionPactPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportMirageArcherPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportMirageDeadeyePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportMomentumPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportOlrothsHubrisPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportOverextendPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportProfanityPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportProfanityPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportPrototypeSeventeenPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportQuillburstPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportRageforgedPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportRageforgedPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportRelentlessRagePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportRetaliatePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportRetaliatePlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportRigwaldsFerocityPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportRipPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportRuneforgedBladesPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportRunicInfusionPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportSalvoPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportSecondWindPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportSecondWindPlayerThree",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportSecondWindPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportSkitteringStonePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportSkitteringStonePlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportSlamAftershocksPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportSpectralVolleyPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportSpellEchoPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportSpellslingerPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportSplinteringTotemPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportSplinteringTotemPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportStaticShocksPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportSteadfastPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportSteadfastPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportStoicismPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportStoicismPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportSyzygyPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportTearPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportThrillOfTheKillPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportThrillOfTheKillPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportTirelessPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportTrickstersShardPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportTulsAvalanche",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportUnerringPowerPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportUnleashPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportUntouchablePlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportVarashtasBlessingPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportVerglasPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportVolatilityPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportVolcanicEruptionPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportVoltPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportVruunsInevitability",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportWildshardsPlayerThree",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportZarokhsRefrainPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportZarokhsRevoltPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportZenithPlayer",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportZenithPlayerTwo",
+      "ignore_minion_types": true
+    },
+    {
+      "effect_id": "SupportZerphisLegacyPlayer",
+      "ignore_minion_types": true
+    },
+    {
       "effect_id": "SupportingFirePlayer",
       "minion_list": [
         "TacticianMinion"
@@ -187,6 +783,10 @@
       "minion_list": [
         "UnearthBoneConstruct"
       ]
+    },
+    {
+      "effect_id": "ViciousHexSupportPlayer",
+      "ignore_minion_types": true
     },
     {
       "effect_id": "WardboundMinionsPlayer",

@@ -804,10 +804,15 @@ pub(super) fn minion_supports_for_cost(
                 })
         })
         .collect();
-    // A minion's melee type must not bypass an explicit prohibition on
-    // supporting minions (Clash / Tempestuous Tempo) or undamageable summons.
+    // Minion types cannot bypass the support's restriction on borrowing them
+    // (Bursting Plague), explicit minion exclusion (Clash), or exclusions on
+    // undamageable summons. Direct summoner compatibility is handled separately.
     candidates.retain(|support| {
-        !crate::rules::skill_type_expr::matches(&support.effect.exclude_skill_types, &summon_types)
+        !support.effect.ignore_minion_types
+            && !crate::rules::skill_type_expr::matches(
+                &support.effect.exclude_skill_types,
+                &summon_types,
+            )
     });
     let mut supports = Vec::new();
     let mut seen = HashSet::new();

@@ -824,21 +824,44 @@ fn minion_static_support_cost_follows_the_minions_skills() {
     assert_eq!(boosted.action_rate, base.action_rate);
     assert_eq!(boosted.minions[0].dps, base.minions[0].dps);
 
-    // Clash's melee requirement does not override its explicit Minion
-    // exclusion; its 120% cost must not be borrowed from the zombie attack.
-    let mut excluded = bare.clone();
-    excluded.socket_groups[0]
+    // Clash excludes minions by type; Bursting Plague's game description
+    // prohibits minion skills via IgnoreMinionTypes. Neither may borrow the
+    // zombie's attack types and charge its 120% multiplier to Raise Zombie.
+    for support in ["SupportClashPlayer", "SupportBurstingPlaguePlayer"] {
+        let mut excluded = bare.clone();
+        excluded.socket_groups[0]
+            .gem_skills
+            .push(pobr_build::build::GemSkillRef {
+                skill_id: support.into(),
+                gem_level: 1,
+                ..Default::default()
+            });
+        assert_eq!(
+            calculate_with_data(&excluded, data, &opts)
+                .unwrap()
+                .mana_cost,
+            base.mana_cost,
+            "{support}"
+        );
+    }
+
+    // Unearth's own damaging spell directly qualifies for Bursting Plague,
+    // even though its summoned minion's skills cannot grant compatibility.
+    let unearth =
+        Build::new().add_socket_group(SocketGroup::new().with_gem_skill("UnearthPlayer", 20));
+    let plain = calculate_with_data(&unearth, data, &opts).unwrap();
+    let mut direct = unearth;
+    direct.socket_groups[0]
         .gem_skills
         .push(pobr_build::build::GemSkillRef {
-            skill_id: "SupportClashPlayer".into(),
+            skill_id: "SupportBurstingPlaguePlayer".into(),
             gem_level: 1,
             ..Default::default()
         });
+    assert!(plain.mana_cost > 0.0);
     assert_eq!(
-        calculate_with_data(&excluded, data, &opts)
-            .unwrap()
-            .mana_cost,
-        base.mana_cost
+        calculate_with_data(&direct, data, &opts).unwrap().mana_cost,
+        (plain.mana_cost * 1.2).floor()
     );
 
     // Raise Zombie's unrelated selected monster does not replace its zombie.

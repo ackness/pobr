@@ -166,13 +166,14 @@ pub(super) fn adapt_effects(
             additional_stat_set_ids,
             skill_types,
             cost_types: raw.cost_types,
-            // Minion foreign-key fields: always empty in the base artifact,
+            // Minion sidecar fields: empty/false in the base artifact,
             // merged in from overlay/granted_effect_minions.json during
             // gamedata loading (the adapter doesn't produce these).
             minion_list: Vec::new(),
             add_minion_list: Vec::new(),
             minion_uses: Vec::new(),
             minion_has_item_set: false,
+            ignore_minion_types: false,
         });
     }
     if dangling_type_fk > 0 {

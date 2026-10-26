@@ -389,9 +389,9 @@ impl GameData {
     /// At load time, merges `overlay/granted_effect_minions.json` (the
     /// gem → minion foreign-key sidecar) onto the base data: matched by
     /// `effect_id`, folding in `minion_list` / `add_minion_list` /
-    /// `minion_uses` / `minion_has_item_set` (the base
+    /// `minion_uses` / `minion_has_item_set` / `ignore_minion_types` (the base
     /// `granted_effects.json` doesn't have these fields; a missing overlay
-    /// file means they're all empty, backward compatible).
+    /// file leaves them empty/false, backward compatible).
     pub fn granted_effects(&self) -> Result<Vec<GrantedEffectDef>, LoadError> {
         let mut effects: Vec<GrantedEffectDef> = self.load_domain("granted_effects.json")?;
         if let Some(minions) = self.granted_effect_minions()? {
@@ -405,6 +405,7 @@ impl GameData {
                     effect.add_minion_list = entry.add_minion_list.clone();
                     effect.minion_uses = entry.minion_uses.clone();
                     effect.minion_has_item_set = entry.minion_has_item_set;
+                    effect.ignore_minion_types = entry.ignore_minion_types;
                 }
             }
         }

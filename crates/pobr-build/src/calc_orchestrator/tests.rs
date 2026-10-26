@@ -2521,6 +2521,7 @@ fn meta_gem_expands_additional_granted_effect_as_main_skill() {
         add_minion_list: vec![],
         minion_uses: vec![],
         minion_has_item_set: false,
+        ignore_minion_types: false,
         skill_types: skill_types.iter().map(|s| s.to_string()).collect(),
     };
     let mut granted_effects = HashMap::new();
@@ -2632,6 +2633,7 @@ fn trigger_modifiers_gates_on_triggered_skill_type() {
             add_minion_list: vec![],
             minion_uses: vec![],
             minion_has_item_set: false,
+            ignore_minion_types: false,
             skill_types: vec!["Spell".into(), "Triggered".into(), "InbuiltTrigger".into()],
         },
     );
@@ -2656,6 +2658,7 @@ fn trigger_modifiers_gates_on_triggered_skill_type() {
             add_minion_list: vec![],
             minion_uses: vec![],
             minion_has_item_set: false,
+            ignore_minion_types: false,
             skill_types: vec!["Spell".into()],
         },
     );
@@ -3195,6 +3198,7 @@ fn trigger_config_requires_condition_gates_injection() {
             add_minion_list: vec![],
             minion_uses: vec![],
             minion_has_item_set: false,
+            ignore_minion_types: false,
             skill_types: vec!["Attack".into()],
         },
     );

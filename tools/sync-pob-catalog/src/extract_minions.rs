@@ -7,7 +7,8 @@
 //!   `overlay/minions.json` / `overlay/spectres.json`;
 //! - `minion-list`: runs vendor `Data/Skills/*.lua` (bootstrap script
 //!   `extract_minion_list.lua`), extracting the `minionList`/`minionUses`/
-//!   `minionHasItemSet` foreign-key sidecar, producing `overlay/granted_effect_minions.json`.
+//!   `minionHasItemSet` / `ignoreMinionTypes` sidecar, producing
+//!   `overlay/granted_effect_minions.json`.
 //!
 //! The shared layer (luajit JSONL invocation / vendor version parsing /
 //! byte-stable serialization conventions) reuses [`crate::extract_lua`].
