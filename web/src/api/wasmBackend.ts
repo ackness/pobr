@@ -1,3 +1,5 @@
+import { GameTextLocalizer, type GameDisplayName } from '../lib/localizedGameText';
+import type { Lang } from '../lib/i18n';
 import type { UniqueEntry, UniqueDraft } from './uniques';
 import type { CraftingMetadata } from './itemCrafting';
 /**
@@ -159,6 +161,26 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     onProgress?.('就绪');
   };
 
+  let displayLocalizer: Promise<GameTextLocalizer> | undefined;
+  const loadDisplayLocalizer = async (): Promise<GameTextLocalizer> => {
+    if (!manifest) manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
+    const { version, files } = manifest;
+    const optionalJson = async <T,>(path: string, fallback: T): Promise<T> =>
+      files.includes(path) ? JSON.parse(await fetchVersionFile(version, path)) as T : fallback;
+    const [bases, cnBases, twBases, cnWords] = await Promise.all([
+      optionalJson<Array<{ id: string; name: string }>>('base/base_items.json', []),
+      optionalJson<Record<string, string>>('i18n/zh-CN/base_items.json', {}),
+      optionalJson<Record<string, string>>('i18n/zh-TW/base_items.json', {}),
+      optionalJson<Record<string, string>>('i18n/zh-CN/words.json', {}),
+    ]);
+    const names: GameDisplayName[] = [
+      ...Object.entries(cnWords).map(([name, name_zh_cn]) => ({ name, name_zh_cn })),
+      ...bases.map(base => ({ name: base.name, name_zh_cn: cnBases[base.id], name_zh_tw: twBases[base.id] })),
+      ...JSON.parse(wasm.gemCatalogJson()) as GemCatalogEntry[],
+    ];
+    return new GameTextLocalizer(names);
+  };
+
   const backend: PobrBackend = {
     get dataVersion() {
       return loadedDataVersion;
@@ -259,8 +281,15 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     async gemCatalog() {
       return JSON.parse(wasm.gemCatalogJson()) as GemCatalogEntry[];
     },
-    async translateLines(lines) {
-      return JSON.parse(wasm.translateLinesToZhCn(JSON.stringify(lines))) as string[];
+    async translateLines(lines, lang: Lang = 'zh-CN') {
+      if (lang === 'en-US' || lines.length === 0) return [...lines];
+      const simplified = JSON.parse(wasm.translateLinesToZhCn(JSON.stringify(lines))) as string[];
+      displayLocalizer ??= loadDisplayLocalizer().catch((error: unknown) => {
+        displayLocalizer = undefined;
+        throw error;
+      });
+      const localizer = await displayLocalizer;
+      return localizer.localizeLines(lines, simplified, lang);
     },
     async classifyItemLines(text) {
       return JSON.parse(wasm.classifyItemLinesJson(text)) as ItemLineJson[];

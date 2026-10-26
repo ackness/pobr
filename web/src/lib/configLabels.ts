@@ -1,5 +1,11 @@
+import { configCopy } from './configCopy';
+import type { Lang } from './i18n';
+import type { ConfigOption } from '../api/types';
+import helpTranslations from './configHelp.zh-CN.json';
+
 /**
- * 内置配置项标签汉化（var → 简中；zh-TW 界面暂共用简中文案）。
+ * Configuration labels are application translations keyed by stable variables.
+ * Traditional labels prefer explicit terminology; the rest use script conversion.
  *
  * 英文原文来自 vendor PoB2 `ConfigOptions.lua`（overlay/config_options.json），
  * 译名尽量对齐国服/社区通行术语；个别不准的直接改本表对应行即可。
@@ -17,14 +23,21 @@ const CADIRO_OPTIONS: Record<string, Record<string, string>> = {
   'zh-CN': { 'Unspecified arrow': '未指定箭矢', 'Crescendo Arrow': '渐强箭', 'Splinter Arrow': '裂片箭', 'Reversing Arrow': '回转箭', 'Diamond Arrow': '金刚箭', 'Covetous Arrow': '贪婪箭', 'Blunt Arrow': '钝击箭' },
 };
 export function configListOptionLabel(lang: string, text: string): string | undefined {
-  return CADIRO_OPTIONS[lang]?.[text] ?? (lang === 'en-US' ? undefined : LIST_OPTION_ZH[text]);
+  if (lang !== 'zh-CN' && lang !== 'zh-TW') return undefined;
+  const clean = stripConfigMarkup(text);
+  const explicit = CADIRO_OPTIONS[lang]?.[clean];
+  if (explicit) return explicit;
+  if (/^[\d.+−%-]+$/.test(clean)) return clean;
+  const label = LIST_OPTION_ZH[clean];
+  return label ? configCopy(label, lang) : undefined;
 }
 const CADIRO_HELP: Record<string, string> = {
   'zh-TW': '僅選定弓箭技能的一支箭矢；未指定時不加成。強鳴箭額外連鎖 6 次，每次已發生的連鎖增加 60% 傷害（使用「技能已連鎖次數」設定）；斷片箭裂化至 6 個目標；迴轉箭穿透所有目標並可返回；鑽石箭必定暴擊，暴擊傷害加成增加 60%；貪婪箭僅在其擊殺時增加 600% 掉落稀有度；重擊箭增加 600% 暈眩累積。不假設機率平均、返回的額外擊中或實際掉落結果。',
   'zh-CN': '仅选择当前弓箭技能的一支箭矢；未指定时无加成。渐强箭额外连锁 6 次，每次已发生的连锁提高 60% 伤害（使用「技能已连锁次数」设置）；裂片箭分裂至 6 个目标；回转箭贯穿所有目标并可归返；金刚箭必定暴击，暴击伤害加成提高 60%；贪婪箭仅在其击败敌人时提高 600% 掉落稀有度；钝击箭提高 600% 晕眩积蓄。不假设概率平均、归返的额外命中或实际掉落结果。',
 };
 
-export const CONFIG_LABEL_ZH_TW: Record<string, string> = {
+const CONFIG_LABEL_TW_OVERRIDES: Record<string, string> = {
+  conditionAffectedByArchon: '正受到統治者增益影響？',
   conditionFinality: '你目前擁有終極（無法獲得連擊）？',
   remnantPickupsPerSecond: "你每秒收集的痕跡數：",
   createdRemnantPickupsPerSecond: "每秒被收集的自製痕跡數：",
@@ -78,10 +91,15 @@ export function configTooltip(lang: string, variable: string, fallback?: string)
   if (variable === 'conditionBeiraIgniteActive') {
     return BEIRA_GROUND_HELP[lang] ?? fallback;
   }
+  if (fallback && (lang === 'zh-CN' || lang === 'zh-TW')) {
+    const translated = (helpTranslations as Record<string, string>)[stripConfigMarkup(fallback)];
+    if (translated) return configCopy(translated, lang);
+  }
   return fallback;
 }
 
 export const CONFIG_LABEL_ZH: Record<string, string> = {
+  conditionAffectedByArchon: '正受到执政官增益影响？',
   conditionFinality: '当前拥有绝杀（无法获得连击）？',
   remnantPickupsPerSecond: "你每秒收集的残迹数：",
   createdRemnantPickupsPerSecond: "每秒被收集的自创残迹数：",
@@ -243,7 +261,7 @@ export const CONFIG_LABEL_ZH: Record<string, string> = {
   conditionEnemyCursed: '敌人被诅咒？',
   conditionEnemyDazed: '敌人处于眩晕？',
   conditionEnemyDebilitated: '敌人被衰弱？',
-  conditionEnemyElectrocuted: '敌人被电击瘫痪？',
+  conditionEnemyElectrocuted: '敌人被触电？',
   conditionEnemyExitedPresenceRecently: '敌人最近进入过临在范围？',
   conditionEnemyFireExposure: '敌人处于火焰曝露？',
   conditionEnemyFireResZero: '敌人用火焰伤害击中过你？',
@@ -390,7 +408,7 @@ export const CONFIG_LABEL_ZH: Record<string, string> = {
   conditionTotemsKilledRecently: '你的图腾最近击杀过？',
   conditionTotemsNotSummonedInPastTwoSeconds: '过去 2 秒内未召唤图腾？',
   conditionTriggeredSkillRecently: '最近触发过技能？',
-  conditionUnravelling: '侍僧的解丝：',
+  conditionUnravelling: '侍僧的解析：',
   conditionUsedBrandRecently: '最近使用过烙印技能？',
   conditionUsedColdSkillRecently: '最近使用过冰霜技能？',
   conditionUsedDashRecently: '最近施放过冲刺？',
@@ -440,7 +458,7 @@ export const CONFIG_LABEL_ZH: Record<string, string> = {
   enemyFirePen: '敌方技能火焰穿透：',
   enemyFireResist: '敌人火焰抗性：',
   enemyInRFOrScorchingRay: '敌人处于正义之火或灼热光线中：',
-  enemyIsBoss: '敌人是 Boss？',
+  enemyIsBoss: '敌人是首领？',
   enemyLevel: '敌人等级：',
   enemyLightningDamage: '敌方技能闪电伤害：',
   enemyLightningPen: '敌方技能闪电穿透：',
@@ -469,7 +487,7 @@ export const CONFIG_LABEL_ZH: Record<string, string> = {
   iceNovaCastOnFrostbolt: '对寒冰弹施放？',
   ignoreItemDisablers: '不禁用物品',
   ignoreJewelLimits: '忽略珠宝数量上限',
-  inDemonForm: '处于恶魔形态？',
+  inDemonForm: '处于走火入魔形态？',
   incisionConsumedRecently: '最近消耗的切口数量：',
   infusedChannellingInfusion: '灌注生效中？',
   intensifyIntensity: '强度层数：',
@@ -583,7 +601,7 @@ export const CONFIG_LABEL_ZH: Record<string, string> = {
   physMode: '随机元素模式：',
   physicalAegisDepleted: '物理神盾已耗尽？',
   plagueBearerState: '状态：',
-  presetBossSkills: 'Boss 技能预设',
+  presetBossSkills: '首领技能预设',
   prideEffect: '傲慢光环效果：',
   purpleFlameStacks: '收集的紫焰数量：',
   'questAct 1ClearfellBeira': '第一章：净空林地',
@@ -670,6 +688,53 @@ export const CONFIG_LABEL_ZH: Record<string, string> = {
 
 /** 常见 list 选项词（计算口径类）；词条文本型选项走 translateLines 反查。 */
 export const LIST_OPTION_ZH: Record<string, string> = {
+  "+15% of Armour also applies to Elemental Damage\n\tGain Deflection Rating equal to 12% of Evasion Rating\n\t12% faster start of Energy Shield Recharge": "额外 15% 护甲也作用于元素伤害\n获得相当于闪避值 12% 的偏斜值\n能量护盾提前 12% 开始充能",
+  "+5 to Dexterity": "敏捷 +5",
+  "+5 to Intelligence": "智慧 +5",
+  "+5 to Strength": "力量 +5",
+  "+5 to all Attributes": "所有属性 +5",
+  "+5% to Cold Resistance": "冰冷抗性 +5%",
+  "+5% to Fire Resistance": "火焰抗性 +5%",
+  "+5% to Lightning Resistance": "闪电抗性 +5%",
+  "+5% to all Elemental Resistances": "所有元素抗性 +5%",
+  "12% increased Cooldown Recovery Rate": "冷却恢复速率提高 12%",
+  "15% increased Global Armour, Evasion and Energy Shield": "全局护甲、闪避与能量护盾提高 15%",
+  "20% increased Presence Area Of Effect": "在场范围提高 20%",
+  "25% increased Mana Regeneration Rate": "魔力再生速率提高 25%",
+  "25% increased Stun Threshold": "晕眩门槛提高 25%",
+  "3% increased Movement Speed": "移动速度提高 3%",
+  "30% increased Charm Charges Gained\n\t+1 Charm Slot": "护符充能获取提高 30%\n护符栏位 +1",
+  "30% increased Charm Effect Duration\n\t+1 Charm Slot": "护符效果持续时间提高 30%\n护符栏位 +1",
+  "30% increased Elemental Ailment Threshold": "元素异常状态门槛提高 30%",
+  "30% increased Global Armour, Evasion and Energy Shield": "全局护甲、闪避与能量护盾提高 30%",
+  "30% increased Life Recovery from Flasks": "药剂生命回复提高 30%",
+  "30% increased Mana Recovery from Flasks": "药剂魔力回复提高 30%",
+  "5% increased Experience Gain\n\t-5% to all Elemental Resistances\n\t3% reduced Movement Speed\n\t15% reduced Global Armour, Evasion and Energy Shield\n\t20% reduced Presence Area Of Effect\n\t12% reduced Cooldown Recovery Rate\n\t5% reduced Attributes": "经验获取提高 5%\n所有元素抗性 -5%\n移动速度降低 3%\n全局护甲、闪避与能量护盾降低 15%\n在场范围降低 20%\n冷却恢复速率降低 12%\n属性降低 5%",
+  "Atziri Flameblast": "阿兹里烈焰爆破",
+  "Blood Stance": "血姿态",
+  "Curse Expiration": "诅咒到期",
+  "Curse Replacement": "诅咒被替换",
+  "Eater Beam": "噬界者光束",
+  "Elemental Damage": "元素伤害",
+  "Elemental Overload": "元素超载",
+  "Hexblast Replacement": "咒爆替换",
+  "Maven Fireball": "贤主火球",
+  "Max Effect": "最大效果",
+  "Max Hit": "最大击中",
+  "Maximum effect": "最大效果",
+  "Projectile Spell": "投射物法术",
+  "Resolute Technique": "坚毅之心",
+  "Sand Stance": "沙姿态",
+  "Shaper Ball": "塑界者球体",
+  "Shaper Beam": "塑界者光束",
+  "Shaper Slam": "塑界者重击",
+  "Sirus Meteor": "希鲁斯陨石",
+  "Standard Boss": "普通首领",
+  "Unravelling Bolt": "瓦解闪电",
+  "Unravelling Flame": "瓦解火焰",
+  "Unravelling Frost": "瓦解冰霜",
+  "Very Unlucky": "极度不幸",
+  "Vixen's Curse": "雌狐的诅咒",
   'Crits Only': '仅暴击',
   Chilling: '冰缓',
   Shocking: '感电',
@@ -705,7 +770,7 @@ export const LIST_OPTION_ZH: Record<string, string> = {
   Base: '基础',
   None: '无',
   Fire: '火焰',
-  Cold: '冰霜',
+  Cold: '冰冷',
   Lightning: '闪电',
   Chaos: '混沌',
   Physical: '物理',
@@ -719,14 +784,33 @@ export const LIST_OPTION_ZH: Record<string, string> = {
   Small: '小型',
   Medium: '中型',
   Large: '大型',
-  Boss: 'Boss',
+  Boss: '首领',
   Blood: '血姿态',
   Sand: '沙姿态',
   'Act 1 (0%)': '第一章（0%）',
   'Act 2 (-10%)': '第二章（-10%）',
   'Act 3 (-20%)': '第三章（-20%）',
   'Act 4 (-30%)': '第四章（-30%）',
-  'Act 5 (-40%)': '第五章（-40%)',
+  'Act 5 (-40%)': '第五章（-40%）',
   'Act 6 (-50%)': '第六章（-50%）',
   'Endgame (-60%)': '终局（-60%）',
 };
+
+
+/** Strip only PoB display markup; never change option values or variable IDs. */
+export function stripConfigMarkup(text: string): string {
+  return text.replace(/\^x[0-9a-fA-F]{6}|\^\d/g, '').trim();
+}
+
+export const CONFIG_LABEL_ZH_TW: Record<string, string> = {
+  ...Object.fromEntries(Object.entries(CONFIG_LABEL_ZH).map(([id, label]) => [id, configCopy(label, 'zh-TW')])),
+  ...CONFIG_LABEL_TW_OVERRIDES,
+};
+
+export function configLabel(lang: Lang, option: Pick<ConfigOption, 'var' | 'label'>): string {
+  const variable = option.var;
+  const fallback = option.label ?? variable;
+  if (lang === 'zh-TW') return CONFIG_LABEL_ZH_TW[variable] ?? stripConfigMarkup(fallback);
+  if (lang === 'zh-CN') return CONFIG_LABEL_ZH[variable] ?? stripConfigMarkup(fallback);
+  return stripConfigMarkup(fallback);
+}
