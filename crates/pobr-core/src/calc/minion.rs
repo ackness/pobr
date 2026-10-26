@@ -366,10 +366,10 @@ pub struct MinionOrigin {
     /// The id of the skill that summoned it (`SummonBeastPlayer`); empty
     /// when no skill did.
     pub summoned_by: String,
-    /// Whether it is a damageable companion: the skill has
-    /// `SkillType.Companion` and not `MinionsAreUndamagable`.
-    /// `TotalCompanionLife` only sums these minions.
+    /// Whether the summoning skill has `SkillType.Companion`.
     pub is_companion: bool,
+    /// Whether the summoning skill has `MinionsAreUndamagable`.
+    pub is_undamageable: bool,
     /// The skill the minion uses, which its damage is calculated for.
     pub skill: MinionSkill,
     /// Whether it is a monster the player picked: a Spectre or a tamed beast.

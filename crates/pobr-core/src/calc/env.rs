@@ -189,10 +189,8 @@ impl Env {
     /// It's still written when `limit == 0` (multiplier=0, equivalent to no
     /// minion count contribution, for backward compatibility).
     ///
-    /// `is_companion`: whether the granted skill is `SkillType.Companion` and
-    /// not `MinionsAreUndamagable` (decided by the caller based on
-    /// skill_types) — `TotalCompanionLife` (vendor CalcPerform.lua:3364-3370)
-    /// only sums minions with this flag set.
+    /// `origin` retains Companion membership and damageability separately:
+    /// only damageable Companions contribute to `TotalCompanionLife`.
     #[allow(clippy::too_many_arguments)]
     pub fn add_minion_from_def(
         &mut self,
@@ -298,6 +296,7 @@ impl Env {
             );
         }
         actor.is_companion = origin.is_companion;
+        actor.is_undamageable = origin.is_undamageable;
         actor.minion = Some(MinionIdentity {
             summoner: origin.summoner,
             minion_id: def.id.clone(),

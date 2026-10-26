@@ -1250,6 +1250,67 @@ Wooden Club
 }
 
 #[test]
+fn manifest_companion_membership_is_independent_of_damageability() {
+    use pobr_build::calculate_with_data_session;
+    use pobr_data::passive_tree::NodeId;
+
+    let data = load_data();
+    let build = pobr_build::parse_build(
+        r#"<PathOfBuilding2>
+<Build level="90" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill><Gem skillId="FireballPlayer" level="20"/></Skill>
+<Skill><Gem skillId="ManifestWeaponPlayer" level="20"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Hardwood Spear
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#,
+    )
+    .unwrap();
+    let calc = |build: &Build| calculate_with_data_session(build, data, &default_opts()).unwrap();
+    let plain = calc(&build);
+    assert_eq!(plain.output().minions.len(), 1);
+    let mut shared = build.clone();
+    shared.tree.allocated_nodes.push(NodeId(16249));
+    let present = calc(&shared);
+    assert!(present.output().minions[0].dps > plain.output().minions[0].dps);
+    shared
+        .config
+        .conditions
+        .insert("CompanionInPresence".into(), false);
+    let absent = calc(&shared);
+
+    let loyal_wolf = SocketGroup::new()
+        .with_gem_skill("WolfPackPlayer", 20)
+        .with_gem_skill("SupportLoyaltyPlayer", 1);
+    let mixed = calc(&build.clone().add_socket_group(loyal_wolf));
+    let wolf_life = mixed
+        .output()
+        .minions
+        .iter()
+        .find(|m| m.minion_id == "WolfMinion")
+        .unwrap()
+        .life;
+    assert!(mixed.base_sum("TakenFromCompanionBeforeYou") > 0.0);
+    assert_eq!(mixed.base_sum("TotalCompanionLife"), wolf_life);
+    assert_eq!(
+        (
+            plain.config().multiplier("DifferentCompanionsInPresence"),
+            absent.output().minions[0].dps
+        ),
+        (1.0, plain.output().minions[0].dps),
+        "Manifest Weapon is a Companion for presence/counts but cannot donate life"
+    );
+    assert_eq!(
+        mixed.config().multiplier("DifferentCompanionsInPresence"),
+        2.0
+    );
+    assert_eq!(
+        absent.config().multiplier("DifferentCompanionsInPresence"),
+        0.0
+    );
+}
+
+#[test]
 fn watch_how_i_do_it_shares_only_the_main_hand_weapon_with_present_attack_allies() {
     use pobr_build::calculate_with_data_session;
     use pobr_data::{item::EquipmentSlot, passive_tree::NodeId};

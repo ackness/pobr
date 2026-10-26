@@ -345,14 +345,13 @@ pub fn spawn_minions(
                 stat_set_index,
                 session,
             );
-            // (#12 companion) Companion determination: the granted skill has
-            // `SkillType.Companion` and not `MinionsAreUndamagable` (matching vendor
-            // CalcPerform.lua:3365-3367's includeSkill predicate) → this skill's
-            // minions count toward `TotalCompanionLife`.
-            let is_companion = data.effect(&skill_id).is_some_and(|e| {
-                e.skill_types.iter().any(|t| t == "Companion")
-                    && !e.skill_types.iter().any(|t| t == "MinionsAreUndamagable")
-            });
+            // Manifest Weapon is a Companion despite being undamageable.
+            // Only the companion life pool needs the damageability exclusion.
+            let effect = data.effect(&skill_id);
+            let is_companion =
+                effect.is_some_and(|e| e.skill_types.iter().any(|t| t == "Companion"));
+            let is_undamageable =
+                effect.is_some_and(|e| e.skill_types.iter().any(|t| t == "MinionsAreUndamagable"));
             // (#12) The minion-side payload of a compatible support in the same group
             // (vendor: a support statmap's `MinionModifier LIST` is merged into the
             // supported skill's skillModList → `addMinionModifiers` injects it into
@@ -514,6 +513,7 @@ pub fn spawn_minions(
                         summoner: Some((group_index, gem_index)),
                         summoned_by: skill_id.clone(),
                         is_companion,
+                        is_undamageable,
                         skill,
                         picked_monster: picks_a_monster(data, &skill_id),
                         copied_weapon: copied_weapon.map(|weapon| crate::calc::WeaponBase {

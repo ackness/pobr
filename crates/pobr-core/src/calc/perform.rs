@@ -448,8 +448,8 @@ fn apply_resistance_scaled_defences(env: &mut Env) {
 /// CalcPerform.lua:3364-3370): when the player has `TakenFromCompanionBeforeYou` (the Loyalty
 /// support's `companion_takes_%_damage_before_you_from_support` buff payload) and no
 /// `TotalCompanionLife` Override (config override channel), sums the life of every **damageable
-/// companion** minion (`Actor::is_companion`, determined on the spawn side by the granting
-/// skill's SkillType) and writes it into the player's `TotalCompanionLife` BASE. Consumer =
+/// companion** minion (Companion membership and damageability come from the summoning
+/// skill's types) and writes it into the player's `TotalCompanionLife` BASE. Consumer =
 /// `pool_setup::build_pool_state`'s companion pre-deduction layer (shared by EHP's reduce_pools
 /// and max-hit's extend_total_hit_pool).
 fn inject_companion_life(env: &mut Env) {
@@ -468,7 +468,7 @@ fn inject_companion_life(env: &mut Env) {
     let total: f64 = env
         .minions
         .iter()
-        .filter(|m| m.is_companion)
+        .filter(|m| m.is_companion && !m.is_undamageable)
         .map(|m| m.output.life)
         .sum();
     env.player.mod_db.add_mod(
