@@ -14,4 +14,20 @@ pub struct ItemGrantedSkillsDef {
     /// Names of the base items whose granted skills reserve nothing.
     #[serde(default)]
     pub reservation_free_bases: Vec<String>,
+    /// Item-specific effects whose display names also name ordinary gems.
+    #[serde(default)]
+    pub variants: Vec<ItemGrantedSkillVariant>,
+}
+
+/// A game `ModGrantedSkills → SkillGems → GemEffects` attachment, with the
+/// ordinary effect ID used for this item skill by older character exporters.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ItemGrantedSkillVariant {
+    pub item_name: String,
+    pub base_names: Vec<String>,
+    pub skill_name: String,
+    pub granted_effect_id: String,
+    pub exported_effect_id: String,
+    /// Stable `Mods.Id` establishing the native effect, retained for audits.
+    pub game_mod_id: String,
 }
