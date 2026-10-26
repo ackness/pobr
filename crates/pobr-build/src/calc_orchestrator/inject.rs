@@ -416,6 +416,34 @@ pub(super) fn inject_build_multipliers(
     let corrupted = build.items.values().filter(|item| item.corrupted).count();
     session.set_multiplier("CorruptedItem", corrupted as f64);
     session.set_multiplier("NonCorruptedItem", (build.items.len() - corrupted) as f64);
+    // "with a Lightning Resistance Modifier" tests modifier presence, not
+    // the item's net resistance or whether its condition currently applies.
+    // All-element and negative modifiers qualify; two cancelling modifiers
+    // still belong to one item. Read the already-parsed current equipment,
+    // excluding nested ally/enemy grants and separate jewel/utility sources.
+    let lightning_resistance_items = ["LightningResistance", "ElementalResist"]
+        .into_iter()
+        .flat_map(|name| session.mod_db().named(name))
+        .filter(|modifier| modifier.value.as_number().is_some_and(|n| n != 0.0))
+        .filter_map(|modifier| modifier.origin.as_ref())
+        .filter(|origin| {
+            matches!(
+                origin.source_id.kind,
+                SourceKind::Item
+                    | SourceKind::ItemImplicit
+                    | SourceKind::ItemAffix
+                    | SourceKind::ItemEnchant
+                    | SourceKind::ItemQuality
+            )
+        })
+        .filter_map(|origin| origin.slot.as_deref())
+        .filter(|slot| build.items.keys().any(|equipped| equipped.id() == *slot))
+        .collect::<std::collections::BTreeSet<_>>()
+        .len();
+    session.set_multiplier(
+        "EquippedItemsWithLightningResistance",
+        lightning_resistance_items as f64,
+    );
     // "… per socketed Grand Spectrum": the Grand Spectrums among the jewels
     // in the build's sockets, whatever their base.
     let grand_spectrums = build.jewel_items().filter(|jewel| is_grand_spectrum(jewel));
