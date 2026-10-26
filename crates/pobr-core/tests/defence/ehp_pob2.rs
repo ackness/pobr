@@ -554,6 +554,81 @@ fn hits_to_die_zero_damage_and_ward_pool() {
 }
 
 #[test]
+fn loss_prevention_exhausts_life_exactly_without_roundoff_survival() {
+    let pools = PoolState {
+        life: 1000.32,
+        ..Default::default()
+    };
+    for below_half in [0.0, 50.0] {
+        let ctx = PoolCtx {
+            max_life: pools.life,
+            prevented_life_loss: 25.0,
+            life_loss_below_half_prevented: below_half,
+            ..Default::default()
+        };
+        let capacity = pobr_core::calc::life_hit_pool_with_loss_prevention(
+            pools.life, pools.life, 25.0, below_half,
+        );
+        for damage in [capacity, capacity + 100.0] {
+            let hit = TypedDamage {
+                physical: damage,
+                ..Default::default()
+            };
+            let after = reduce_pools(&pools, &hit, &ctx);
+            assert_eq!(after.pools.life, 0.0);
+            assert!(
+                (after.overkill - (damage - capacity)).abs() < 1e-9,
+                "{below_half}% below-half prevention: {after:?}",
+            );
+            let lost: f64 = after
+                .resources_lost
+                .iter()
+                .filter(|(_, layer, _)| *layer == "life")
+                .map(|(_, _, amount)| amount)
+                .sum();
+            assert!((lost - pools.life).abs() < 1e-9);
+            let params = EhpLoopParams {
+                gain: GainWhenHit {
+                    life: pools.life,
+                    ..Default::default()
+                },
+                ..default_params()
+            };
+            assert!(
+                (number_of_hits_to_die(&hit, &pools, &ctx, &params) - capacity / damage).abs()
+                    < 1e-9,
+                "a lethal hit cannot recover Life from a floating-point remainder",
+            );
+        }
+        // Genuine sub-point Life is still alive; no epsilon or rounding is
+        // used to decide death.
+        let survives = reduce_pools(
+            &pools,
+            &TypedDamage {
+                physical: capacity - 1e-8,
+                ..Default::default()
+            },
+            &ctx,
+        );
+        assert!(survives.pools.life > 0.0);
+        assert_eq!(survives.overkill, 0.0);
+    }
+    let prevented = reduce_pools(
+        &pools,
+        &TypedDamage {
+            physical: 1e9,
+            ..Default::default()
+        },
+        &PoolCtx {
+            max_life: pools.life,
+            prevented_life_loss: 100.0,
+            ..Default::default()
+        },
+    );
+    assert_eq!(prevented.pools.life, pools.life);
+}
+
+#[test]
 fn companion_damage_share_cannot_exceed_incoming_hit() {
     // Loyalty on different companions can sum past 100%. "Damage taken
     // before you" transfers the hit, never extra damage to the companion.

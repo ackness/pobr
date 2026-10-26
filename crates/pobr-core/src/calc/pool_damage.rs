@@ -439,6 +439,7 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
         // :611-651 loss-prevention (gate = preventedLifeLossTotal > 0,
         // derived per :2670: prev>0 or belowHalf's effective value >0).
         let below_half_eff = ctx.prevented_life_loss_below_half_effective();
+        let mut exhausts_life = false;
         if ctx.prevented_life_loss > 0.0 || below_half_eff > 0.0 {
             let half_life = ctx.max_life * 0.5;
             let life_over_half = (life - half_life).max(0.0);
@@ -451,6 +452,8 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
                 + life.min(half_life).max(0.0)
                     / (1.0 - prevent_below_half_pct)
                     / (1.0 - prevent_pct);
+            exhausts_life = damage_that_life_can_still_take.is_finite()
+                && rem >= damage_that_life_can_still_take;
             if damage_that_life_can_still_take < rem {
                 overkill += rem - damage_that_life_can_still_take;
                 rem = damage_that_life_can_still_take;
@@ -460,11 +463,20 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
                 // the above-half-life pool's share, then folds the rest
                 // through two steps -- "non-specific below-half prevention → specific below-half prevention".
                 let damage_to_split = rem.min(pool_above_low);
-                let lost_life = damage_to_split * (1.0 - prevent_pct);
-                let prevented_loss = damage_to_split * prevent_pct;
+                let reaches_half_life = rem >= pool_above_low;
+                let lost_life = if reaches_half_life {
+                    life_over_half
+                } else {
+                    damage_to_split * (1.0 - prevent_pct)
+                };
+                let prevented_loss = damage_to_split - lost_life;
                 rem -= damage_to_split;
                 life_loss_lost_over_time += prevented_loss;
-                life -= lost_life;
+                life = if reaches_half_life {
+                    life.min(half_life)
+                } else {
+                    life - lost_life
+                };
                 lose(&mut resources_lost, dtype, "life", lost_life);
                 let mut prevented_total_this_type = prevented_loss;
                 if life <= half_life {
@@ -492,9 +504,12 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
         }
         // Ward's share has already been removed; the rest consumes Life.
         if life > 0.0 {
-            let temp = rem.min(life);
+            // Once the finite hit pool is exhausted, consume Life exactly.
+            // Reversing the prevention division can otherwise leave a tiny
+            // positive remainder, allowing an extra hit or recovery on block.
+            let temp = if exhausts_life { life } else { rem.min(life) };
             life -= temp;
-            rem -= temp;
+            rem = (rem - temp).max(0.0);
             lose(&mut resources_lost, dtype, "life", temp);
         }
         // :656-657 overkill.
