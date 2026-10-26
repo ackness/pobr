@@ -1516,3 +1516,64 @@ uses the existing strongest-`ArmourDefense` convention rather than multiplying
 several “defend with” percentages; this stacking interaction has no in-game
 measurement here. The current pinned exporter has no projectile-specific rule,
 so that source is exporter-absent. No new condition, event or display is added.
+
+### Selected equipment, resources and hit snapshots
+
+Imported magic item names remain unchanged. Base lookup first accepts an exact
+catalog name, then the longest complete base between a prefix and optional
+` of ...` suffix. The base itself may contain `of` (Fists of Stone); a base
+mentioned only inside a suffix is not a match. Local defence and weapon readers
+share this lookup, so an imported defence display is not counted again as a
+base when the game base is known. Grand Spectrum counts selected socketed jewels
+across implicit, explicit and enchant text; corruption can move its identifying
+line into the implicit section.
+
+Skills bound to another weapon set resolve attributes, granted levels, quality
+and socket effects against that set's passive allocation as well as its weapons.
+Only the group explicitly identified as an item grant is exempt from ordinary
+gem requirements. A listed grant keeps its supports and enabled state instead
+of acquiring a second enabled source copy. Minion-compatible supports can count
+for the summoning gem's support-based levels and reservation, using the same
+eligibility and no-type-borrowing restrictions as summon costs.
+
+Skin of the Loyal's four uncapped-resistance flags add the corresponding final
+uncapped resistance as an increased Armour, Evasion, Energy Shield or Ailment
+Threshold modifier. These are ordinary increases, not multipliers. They read
+the buff/charge resource snapshot before defence conversion, avoiding a
+self-referential conversion loop. Companion-in-Presence defaults on only when
+an enabled companion skill exists; explicit true/false remains a selected
+condition. Hinder applied by an active curse also supplies EnemyHindered.
+
+Direct total Energy Shield, such as Discipline, converts into a direct Life or
+Mana total after the destination's increases/multipliers. It is not a new base
+pool and is not fed back into the defence conversion matrix. Converted totals
+retain their source attribution. Damage sharing is bounded to the incoming
+damage and the companion's finite pool. Life prevention consumes an exactly
+exhausted boundary as dead, rather than retaining a floating-point residue;
+legitimate positive sublethal Life is preserved. Incoming critical damage uses
+the incoming Hit context, independently of the player's selected skill.
+
+Remaining-chain modifiers apply to the selected hit: available chains minus
+the explicitly selected number already used, bounded to zero and capacity.
+They do not multiply DPS by a hypothetical number of targets. Twisted Empyrean's
+Mana-based added Cold damage uses the item's hand and the final maximum Mana;
+the existing PercentStat convention rounds each endpoint up before damage
+effectiveness. Its current `with Mace Skills` Fire-to-Cold conversion wording
+uses the ordinary conversion matrix and normalizes totals above 100%. The
+pinned exporter only recognizes the older `of ... skills` wording, so this
+conversion rule is exporter-absent.
+
+The frozen 2026-10-26 corpus also exposes reference differences that are not
+engine targets. Spell Totem's retained game-level cap reaches three (and its
+cast time is 0.5 seconds); the pinned exporter's hidden support overrides the
+cap to two and uses a 0.6-second placement fallback. Mortar Cannon's retained
+cast time is one second. A selected non-totem has no selected-totem capacity,
+and capacity alone does not establish a summoned-count snapshot. Runic
+Tempering's conditional reduction requires held Runic Plates; an enabled skill
+without that snapshot does not activate it. Frozen socket modifier text remains
+an input even when the current rune definition changes (for example Zalatl's
+3% versus 5% Mana). Blind comparisons must distinguish the strongest applicable
+effect from duplicate copies; explaining Evade/Deflect does not by itself
+explain TotalEHP. The Blood Mage03 pinned-oracle EHP has a separately traced
+positive-Life floating residue after lethal damage; its recursive batched-hit
+result is not a valid numerical target.
