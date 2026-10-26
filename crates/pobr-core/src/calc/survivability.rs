@@ -181,13 +181,36 @@ pub fn calc_regen(db: &ModDb, cfg: &CalcConfig, pool: f64, stat: &str) -> f64 {
     // has no such name, kept for compatibility) plus the generic `XRecoveryRate`.
     let rate_name = ModName::from(format!("{stat}Rate"));
     let recovery_rate_name = recovery_rate_mod_name(stat);
-    let inc = db.sum(ModType::Inc, cfg, std::slice::from_ref(&bare_name))
-        + db.sum(ModType::Inc, cfg, std::slice::from_ref(&rate_name))
-        + db.sum(ModType::Inc, cfg, std::slice::from_ref(&recovery_rate_name));
+    let mut inc_names = vec![
+        bare_name.clone(),
+        rate_name.clone(),
+        recovery_rate_name.clone(),
+    ];
+    inc_names.extend(shared_regen_increase_names(db, cfg, stat));
+    let inc = db.sum(ModType::Inc, cfg, &inc_names);
     let more = db.more(cfg, &[bare_name])
         * db.more(cfg, &[rate_name])
         * db.more(cfg, &[recovery_rate_name]);
     regen(pool, flat, percent, inc, more)
+}
+
+/// Kurgal's Gaze and Furious Wellspring copy increases/reductions to
+/// regeneration, not flat regeneration, more/less, or recovery modifiers.
+/// Calculation and details query the original sources with their conditions.
+pub(crate) fn shared_regen_increase_names(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    stat: &str,
+) -> Vec<ModName> {
+    let source = match stat {
+        "ManaRegen" if db.flag(cfg, "LifeRegenAppliesToManaRegen") => "LifeRegen",
+        "RageRegen" if db.flag(cfg, "ManaRegenAppliesToRageRegen") => "ManaRegen",
+        _ => return Vec::new(),
+    };
+    vec![
+        ModName::from(source),
+        ModName::from(format!("{source}Rate")),
+    ]
 }
 
 /// Returns the corresponding `XRecoveryRate` ModName for a resource name.
