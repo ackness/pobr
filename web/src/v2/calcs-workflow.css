@@ -1,7 +1,7 @@
 @layer v2 {
 .v2-root .calcs-workspace { min-width: 0; }
 .v2-root .calcs-view-tabs { display: flex; flex-wrap: wrap; height: auto; width: fit-content; max-width: 100%; gap: .25rem; margin-bottom: 1rem; }
-.v2-root .calcs-view-tabs [role="tab"] { min-height: 2.5rem; padding: .5rem .85rem; white-space: normal; }
+.v2-root .calcs-view-tabs [role="tab"] { flex: 0 0 auto; min-height: 2.5rem; padding: .5rem .85rem; white-space: normal; }
 .v2-root .calcs-context-bar { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem 1.5rem; padding: 1rem; margin-bottom: 1rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--card); color: var(--muted-foreground); }
 .v2-root .calcs-context-bar strong { color: var(--foreground); }
 .v2-root .calcs-actor-picker { display: flex; align-items: center; flex-wrap: wrap; gap: .7rem; max-width: 100%; }
