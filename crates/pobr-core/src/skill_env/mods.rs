@@ -476,7 +476,12 @@ fn kind_skill_types(word: &str) -> Option<&'static [&'static str]> {
 /// (lowercase): Prism of Belief's "+# to Level of all {1} Skills"
 /// (`unique_jewel_specific_skill_level_+_skill`) names the skill a tamed
 /// beast's gem grants "Tamed Companion".
-const SKILL_NAMES: &[(&str, &str)] = &[("SummonBeastPlayer", "tamed companion")];
+const SKILL_NAMES: &[(&str, &str)] = &[
+    ("SummonBeastPlayer", "tamed companion"),
+    // BaseItemTypes names the gem Skeletal Storm Mage; GrantedEffects calls
+    // its skill Skeletal Storm Mage Minion. Prism of Belief names the gem.
+    ("SummonSkeletalStormMagesPlayer", "skeletal storm mage"),
+];
 
 /// Whether `category` is the name of the skill `skill_id`.
 fn names_skill(category: &str, skill_id: &str) -> bool {
