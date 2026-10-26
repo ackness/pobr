@@ -440,8 +440,7 @@ pub(crate) fn bind_required_weapon_sets(build: &Build, data: &BuildData) -> Opti
         items
             .get(&Weapon1)
             .and_then(|item: &pobr_data::item::Item| {
-                data.base_items
-                    .get(&item.base.to_string())
+                data.base_item(&item.base.to_string())
                     .map(|base| base.item_class.as_str())
             })
     };

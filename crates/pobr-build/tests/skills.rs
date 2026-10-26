@@ -83,6 +83,8 @@ mod gem_quality;
 mod grand_spectrum;
 #[path = "skills/granted_skill_reservation.rs"]
 mod granted_skill_reservation;
+#[path = "skills/item_bases.rs"]
+mod item_bases;
 #[path = "skills/limbs.rs"]
 mod limbs;
 #[path = "skills/mark_effect.rs"]

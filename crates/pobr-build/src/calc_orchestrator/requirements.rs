@@ -17,7 +17,7 @@ pub(super) fn requirement_snapshots(build: &Build, data: &BuildData) -> Vec<(Str
         }
     };
     for (_, item) in build.equipped_items() {
-        let Some(base) = data.base_items.get(&item.base.to_string()) else {
+        let Some(base) = data.base_item(&item.base.to_string()) else {
             continue;
         };
         let mut local = ModDb::new();
