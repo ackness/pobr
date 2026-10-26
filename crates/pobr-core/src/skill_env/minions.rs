@@ -321,15 +321,7 @@ pub fn spawn_minions(
                 .gems
                 .get(gem_index)
                 .map_or(skill_id.as_str(), |gem| gem.skill_id.as_str());
-            let judgements: Vec<_> = std::iter::once(gem_skill_id)
-                .chain(
-                    data.additional_effects(gem_skill_id)
-                        .iter()
-                        .map(String::as_str)
-                        .filter(|id| data.effect(id).is_some_and(|e| !e.is_support)),
-                )
-                .map(|id| group_judgement(&group, data, id))
-                .collect();
+            let judgements = super::buff_specs::gem_judgements(&group, data, gem_skill_id);
             let judgement = group_judgement(&group, data, &skill_id);
             let effective_gem_level = gem_level
                 .saturating_add(global_level_bonus.unwrap_or_else(|| {

@@ -251,14 +251,20 @@ fn minion_supports_set_gem_levels_and_reservation() {
         .with_gem_skill("SummonSkeletalSnipersPlayer", 19)
         .with_gem_skill("SupportMinionMasteryPlayer", 1)
         .with_gem_skill("SupportUhtredAuguryPlayer", 1);
-    for (group, level, spirit) in [
-        (sniper.clone(), 20, 30.0),
-        (sniper.with_gem_skill("SupportChainPlayerTwo", 1), 22, 29.0),
+    for (group, level, monster_level, spirit) in [
+        (sniper.clone(), 20, 40, 30.0),
+        (
+            sniper.with_gem_skill("SupportChainPlayerTwo", 1),
+            22,
+            44,
+            29.0,
+        ),
         (
             SocketGroup::new()
                 .with_gem_skill("SummonSkeletalReaversPlayer", 20)
                 .with_gem_skill("SupportMinionMasteryPlayer", 1),
             21,
+            42,
             29.0,
         ),
     ] {
@@ -268,5 +274,25 @@ fn minion_supports_set_gem_levels_and_reservation() {
         assert_eq!(usage.skills[0].level, level);
         let output = calculate_with_data(&build, data, &options).unwrap();
         assert_eq!(output.spirit_reserved, spirit, "at skill level {level}");
+        assert!(!output.minions.is_empty());
+        for minion in &output.minions {
+            assert_eq!(minion.level, monster_level, "at skill level {level}");
+            assert!(minion.dps > 0.0);
+        }
+        if level == 22 {
+            // The level supports make the same level-44 Sniper, with the
+            // same damage, as a level-22 gem with Chain II directly.
+            let direct = Build::new().add_socket_group(
+                SocketGroup::new()
+                    .with_gem_skill("SummonSkeletalSnipersPlayer", 22)
+                    .with_gem_skill("SupportChainPlayerTwo", 1),
+            );
+            let direct = calculate_with_data(&direct, data, &options).unwrap();
+            assert_eq!(output.minions.len(), direct.minions.len());
+            for (supported, direct) in output.minions.iter().zip(&direct.minions) {
+                assert_eq!(supported.level, direct.level);
+                assert!((supported.dps - direct.dps).abs() < 1e-9);
+            }
+        }
     }
 }
