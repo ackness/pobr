@@ -1,3 +1,4 @@
+import { AppButton, AppInput } from '../shared/controls';
 import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
 import { useMemo, useRef, useState } from 'react';
@@ -23,6 +24,8 @@ import {
   damageTypeLabel,
   grantedSourceLabel,
   originKindLabel,
+  originLabel,
+  modTypeLabel,
   slotLabel,
   statCategoryLabel,
   statNameLabel,
@@ -33,7 +36,11 @@ import { useEffect } from 'react';
 import { useSkillName, useSkillCatalog } from '../../hooks/useSkillName';
 import './calcs.css';
 import { detailKind, detailFormula, StatDetailCache } from '../../lib/statDetails';
-import { AppSelect } from '../shared/AppSelect';
+import { AppSelectControl } from '../shared/controls';
+import { useUi } from '../shared/UiContext';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
+import { calcsLabel } from './calcsLabels';
+import '../../v2/calcs-workflow.css';
 import { SkillFormControls } from '../skills/SkillFormControls';
 import { highestDpsSkill } from '../../lib/skillSelection';
 
@@ -583,6 +590,7 @@ function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
   // 中文界面：词条行批量反查翻译（清洗标注后送翻译器；结果缓存本组件）。
   const [zhLines, setZhLines] = useState<Record<string, string>>({});
   useEffect(() => {
+    setZhLines({});
     if (lang === 'en-US') return;
     const pending = [
       ...new Set(
@@ -595,7 +603,7 @@ function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
     if (pending.length === 0) return;
     let cancelled = false;
     getBackend()
-      .then((b) => b.translateLines(pending))
+      .then((b) => b.translateLines(pending, lang))
       .then((translated) => {
         if (cancelled) return;
         const map: Record<string, string> = {};
@@ -635,7 +643,7 @@ function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
             )
             .map((mod, i) => (
               <tr key={i} className={mod.active ? undefined : 'is-inactive'}>
-                <td className={`mod-type mod-type-${mod.mod_type.toLowerCase()}`}>{mod.mod_type}</td>
+                <td className={`mod-type mod-type-${mod.mod_type.toLowerCase()}`}>{modTypeLabel(lang, mod.mod_type)}</td>
                 <td className="mod-value">{mod.value === null ? '—' : fmtNum(mod.value)}</td>
                 <td className="mod-text">
                   {modText(mod.source_text)}
@@ -757,8 +765,33 @@ export function BreakdownTable({ breakdown, lang }: { breakdown: Breakdown; lang
   );
 }
 
+function FullDpsView({ session, lang }: { session: BuildSession; lang: Lang }) {
+  const tt = bindT(lang);
+  const skillName = useSkillName(lang);
+  const full = session.calc?.full_dps;
+  return <section className="full-dps-view" aria-labelledby="full-dps-heading">
+    <h3 id="full-dps-heading">{calcsLabel(lang, 'fullDps')}</h3>
+    <p className="calcs-hint">{tt('skills.fullDpsHint')}</p>
+    {full ? <>
+      <div className="breakdown-summary">
+        <span>{statNameLabel(lang, 'FullDPS')}: <strong>{fmtNum(full.dps)}</strong></span>
+        <span>{statNameLabel(lang, 'FullDotDPS')}: <strong>{fmtNum(full.dot_dps)}</strong></span>
+      </div>
+      <div className="breakdown-scroll"><table className="breakdown-table full-dps-table">
+        <caption>{tt('calcs.fullDpsContribution')}</caption>
+        <thead><tr><th>{tt('calcs.skill')}</th><th>{tt('skills.count')}</th><th>{tt('calcs.fullDpsContribution')}</th><th>{tt('calcs.diagnostics')}</th></tr></thead>
+        <tbody>{full.skills.map(row => <tr key={`${row.group_index}-${row.active_skill_index}`}>
+          <th>{tt('calcs.group')} {row.group_index + 1} · {skillName(row.skill_id)}</th><td>{fmtNum(row.count)}</td>
+          <td>{row.error ? '—' : fmtNum(row.dps)}</td><td>{row.error}{row.unsupported_modifiers.length > 0 && <details><summary>{tt('calcs.unsupported')} ({row.unsupported_modifiers.length})</summary>
+            <ul>{row.unsupported_modifiers.map((issue, index) => <li key={index}>{issue}</li>)}</ul></details>}</td>
+        </tr>)}</tbody>
+      </table></div>
+    </> : <p role="status" className="calcs-hint">{calcsLabel(lang, 'fullDpsEmpty')}</p>}
+  </section>;
+}
+
 /** Every active effect is calculated independently; selection only changes inspection context. */
-function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang }) {
+function SkillMetricsView({ session, lang, showFullDps = true }: { session: BuildSession; lang: Lang; showFullDps?: boolean }) {
   const tt = bindT(lang);
   const [completed, setCompleted] = useState<{ version: number; report: SkillMetricsResponse } | null>(null);
   const [running, setRunning] = useState(false);
@@ -807,15 +840,7 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
       <h3 id="skill-metrics-heading" tabIndex={-1}>{tt('calcs.skillMetrics')}</h3>
       <p className="calcs-hint">{tt('calcs.skillMetricsHint')}</p>
       {mainIndex !== undefined && <SkillFormControls session={session} lang={lang} groupIndex={mainIndex} catalog={catalog} />}
-      {session.calc?.full_dps && <div className="breakdown-scroll"><table className="breakdown-table full-dps-table">
-        <caption>{tt('calcs.fullDpsContribution')}</caption>
-        <thead><tr><th>{tt('calcs.skill')}</th><th>{tt('skills.count')}</th><th>{tt('calcs.fullDpsContribution')}</th><th>{tt('calcs.diagnostics')}</th></tr></thead>
-        <tbody>{session.calc.full_dps.skills.map(row => <tr key={`${row.group_index}-${row.active_skill_index}`}>
-          <th>{tt('calcs.group')} {row.group_index + 1} · {skillName(row.skill_id)}</th><td>{fmtNum(row.count)}</td>
-          <td>{row.error ? '—' : fmtNum(row.dps)}</td><td>{row.error}{row.unsupported_modifiers.length > 0 && <details><summary>{tt('calcs.unsupported')} ({row.unsupported_modifiers.length})</summary>
-            <ul>{row.unsupported_modifiers.map((issue, index) => <li key={index}>{issue}</li>)}</ul></details>}</td>
-        </tr>)}</tbody>
-      </table></div>}
+      {showFullDps && session.calc?.full_dps && <FullDpsView session={session} lang={lang} />}
       {running && <p className="calcs-hint" role="status">{tt('calcs.running')}</p>}
       {error && <div className="calc-error" role="alert">{error}</div>}
       {report?.item_errors.map((issue, index) => (
@@ -847,14 +872,14 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
                 return (
                   <tr key={`${entry.group_index}-${entry.active_skill_index}`}
                     className={`skill-metrics-row${selected ? ' is-main' : ''}${granted ? ' is-granted' : ''}`}
-                    title={group?.gems.map(gem => skillName(gem.skill_id)).join(' + ')}
                     onClick={inspect}>
                     <td>
-                      <button className="calcs-skill-button" aria-pressed={selected}
+                      <AppButton className="calcs-skill-button h-auto justify-start whitespace-normal text-left" aria-pressed={selected}
+                        title={group?.gems.map(gem => skillName(gem.skill_id)).join(' + ')}
                         aria-disabled={disabled}
                         onClick={event => { event.stopPropagation(); inspect(); }}>
                         {tt('calcs.group')} {entry.group_index + 1} · {entry.active_skill_index} · {skillName(entry.skill_id)}
-                      </button>
+                      </AppButton>
                       {granted && <span className="granted-badge">{granted}</span>}
                       {entry === highest && entry.metrics!.combined_dps > 0 && <span className="granted-badge">{tt('calcs.highestDps')}</span>}
                     </td>
@@ -921,19 +946,21 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
         gem.skill_id ? skillName(gem.skill_id) : gem.name_spec || tt('skills.unresolved')).join(' + ');
       return `${tt('calcs.group')} ${Number(id) + 1}${gems ? ` · ${gems}` : ''}`;
     }
-    if (kind === 'item' || kind === 'flask' || kind === 'limb') return slotLabel(lang, id);
+    if (kind === 'item' || kind === 'flask') return originLabel(lang, `${kind}.${id}`);
+    if (kind === 'limb') return slotLabel(lang, id);
     return id;
   };
 
   return (
     <section className="ui-card attribution-view" aria-labelledby="attribution-heading">
       <h3 id="attribution-heading" tabIndex={-1}>{tt('calcs.attribution')}</h3>
+      <p className="calcs-hint">{tt('minion.player')}{session.calc?.main_skill && ` · ${skillName(session.calc.main_skill.skill_id)}`}</p>
       <p className="calcs-hint">
 {tt('calcs.attributionHint')}
       </p>
-      <button onClick={run} disabled={running || session.busy || !session.calc}>
+      <AppButton onClick={run} disabled={running || session.busy || !session.calc}>
         {running ? tt('calcs.running') : tt('calcs.runAttribution')}
-      </button>
+      </AppButton>
       {completed && !report && <p className="calcs-hint" role="status">{tt('calcs.attributionStale')}</p>}
       {error && <div className="calc-error">{error}</div>}
       {report && (
@@ -961,7 +988,9 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
                 .map((entry) => (
                   <tr key={`${entry.kind}-${entry.id}`}>
                     <td>
-                      <span className="attribution-kind">{entry.kind}</span> {label(entry.kind, entry.id)}
+                      <span className="attribution-kind">{entry.kind === 'item' || entry.kind === 'flask'
+                        ? originKindLabel(lang, entry.kind === 'item' ? 'Item' : 'Flask')
+                        : calcsLabel(lang, entry.kind)}</span> {label(entry.kind, entry.id)}
                     </td>
                     {fields.map((f) => {
                       const delta = entry.deltas[f] ?? 0;
@@ -987,6 +1016,10 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
 /** Calcs 页：字段点击展开 breakdown（消费 0.3）+ 归因视图（消费 0.4）。 */
 export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
   const tt = bindT(lang);
+  const { v2 } = useUi();
+  const skillName = useSkillName(lang);
+  const [view, setView] = useState('metrics');
+  const [category, setCategory] = useState('all');
   const calc = session.calcError ? null : session.calc;
   const [open, setOpen] = useState<string | null>(null);
   const [actor, setActor] = useState('player');
@@ -994,11 +1027,17 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
     `${minion.index}:${minion.minion_id}:${minion.summoned_by}`;
   const selectedMinion = calc?.minions?.find(minion => actorKey(minion) === actor);
   const actorBreakdowns = selectedMinion?.breakdowns ?? calc?.breakdowns ?? {};
+  useEffect(() => {
+    if (calc && actor !== 'player' && !selectedMinion) {
+      setActor('player');
+      setOpen(null);
+    }
+  }, [calc, actor, selectedMinion]);
   const cache = useRef(new StatDetailCache());
   const [loaded, setLoaded] = useState<{ calc: typeof calc; id: string; actor: string; detail: Breakdown | null; error?: string } | null>(null);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
-    if (!calc || !open || detailKind(selectedMinion ?? calc, open) === 'none' || actorBreakdowns[open]) return;
+    if (!calc || session.busy || (v2 && view !== 'metrics') || !open || detailKind(selectedMinion ?? calc, open) === 'none' || actorBreakdowns[open]) return;
     const request = session.currentRequest();
     if (!request) return;
     let cancelled = false;
@@ -1011,7 +1050,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
       if (!cancelled) setLoaded({ calc, id: open, actor, detail: null, error: formatApiError(error) });
     });
     return () => { cancelled = true; };
-  }, [calc, open, actor, selectedMinion, actorBreakdowns, session.currentRequest, retry]);
+  }, [calc, open, actor, selectedMinion, actorBreakdowns, session.currentRequest, session.busy, retry, v2, view]);
 
   // 侧边栏跳转：展开目标 breakdown 并滚动到可视区（渲染提交后再滚）。
   // 消费后立即让父级清空 focus——否则切走再切回本页签会带着旧 focus 重新
@@ -1021,15 +1060,17 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
     const overview = focus.id === 'skill-metrics';
     const minionFocus = /^Minion:(\d+):(.+)$/.exec(focus.id);
     const stat = minionFocus?.[2] ?? focus.id;
+    setView(overview ? 'skills' : 'metrics');
+    setCategory('all');
+    setQuery('');
     if (!overview) {
-      setQuery('');
       const minion = minionFocus && calc?.minions?.find(row => row.index === Number(minionFocus[1]));
       setActor(minion ? actorKey(minion) : 'player');
       setOpen(stat);
     }
     const frame = requestAnimationFrame(() => {
-      const target = document.getElementById(overview ? 'skill-metrics-heading' : `breakdown-${stat}`);
-      if (overview) target?.focus({ preventScroll: true });
+      const target = document.getElementById(overview ? 'skill-metrics-heading' : v2 ? 'calcs-detail-heading' : `breakdown-${stat}`);
+      if (overview || v2) target?.focus({ preventScroll: true });
       target?.scrollIntoView({ block: 'start', behavior: 'smooth' });
       onFocusConsumed?.();
     });
@@ -1077,19 +1118,105 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
   }, [calc, query, lang, selectedMinion]);
 
   const values = selectedMinion ? new Map(Object.entries(selectedMinion.stats)) : statMap(calc?.stats ?? []);
+  const rowFormat = (name: string) => selectedMinion ? 'float2' as const
+    : STAT_SECTIONS.flatMap(section => section.rows).find(row => row.id === name)?.format ?? 'float2';
+  const actorLabel = selectedMinion ? `${tt('minion.title')}: ${selectedMinion.name || tt('minion.unavailable')} · ${selectedMinion.index + 1}` : tt('minion.player');
+  const actorPicker = (calc?.minions?.length ?? 0) > 0 && <label className="calcs-actor-picker">
+    <span>{tt('minion.actor')}</span>
+    <AppSelectControl aria-label={tt('minion.actor')} value={selectedMinion ? actorKey(selectedMinion) : 'player'}
+      onChange={event => { setActor(event.target.value); setOpen(null); }}>
+      <option value="player">{tt('minion.player')}</option>
+      {(calc?.minions ?? []).map(minion => <option key={actorKey(minion)} value={actorKey(minion)}>
+        {tt('minion.title')}: {minion.name || tt('minion.unavailable')} · {minion.index + 1}
+      </option>)}
+    </AppSelectControl>
+  </label>;
+  const detail = (name: string) => {
+    const kind = detailKind(selectedMinion ?? calc!, name);
+    const current = loaded?.calc === calc && loaded.actor === actor && loaded.id === name ? loaded : null;
+    const breakdown = actorBreakdowns[name] ?? current?.detail;
+    if (session.busy) return <p role="status" className="breakdown-detail">{calcsLabel(lang, 'stale')}</p>;
+    return kind === 'none' ? <p className="breakdown-detail" role="status">{tt('calcs.noBreakdown')}</p>
+      : breakdown ? <BreakdownTable breakdown={breakdown} lang={lang} />
+      : current?.error ? <div className="breakdown-detail" role="alert">{current.error} <AppButton onClick={() => { setLoaded(null); setRetry(value => value + 1); }}>{tt('calcs.retry')}</AppButton></div>
+      : <p className="breakdown-detail" role="status">{tt(current ? 'calcs.noBreakdown' : 'calcs.loadingDetail')}</p>;
+  };
+
+  if (v2) return <section className="ui-page calcs-page calcs-workspace" aria-labelledby="calcs-heading">
+    <PageHeader id="calcs-heading" title={tt('calcs.title')} description={calcsLabel(lang, 'detailHint')} />
+    <Tabs className="flex-col" value={view} onValueChange={setView}>
+      <TabsList className="calcs-view-tabs group-data-horizontal/tabs:h-auto" aria-label={tt('calcs.title')}>
+        <TabsTrigger className="h-auto min-h-10 whitespace-nowrap max-[760px]:whitespace-normal px-3 py-2 max-[760px]:flex-[1_1_42%] data-[state=active]:bg-background data-[state=active]:text-foreground" value="metrics">{calcsLabel(lang, 'metrics')}</TabsTrigger>
+        <TabsTrigger className="h-auto min-h-10 whitespace-nowrap max-[760px]:whitespace-normal px-3 py-2 max-[760px]:flex-[1_1_42%] data-[state=active]:bg-background data-[state=active]:text-foreground" value="skills">{tt('calcs.skillMetrics')}</TabsTrigger>
+        <TabsTrigger className="h-auto min-h-10 whitespace-nowrap max-[760px]:whitespace-normal px-3 py-2 max-[760px]:flex-[1_1_42%] data-[state=active]:bg-background data-[state=active]:text-foreground" value="full-dps">{calcsLabel(lang, 'fullDps')}</TabsTrigger>
+        <TabsTrigger className="h-auto min-h-10 whitespace-nowrap max-[760px]:whitespace-normal px-3 py-2 max-[760px]:flex-[1_1_42%] data-[state=active]:bg-background data-[state=active]:text-foreground" value="attribution">{tt('calcs.attribution')}</TabsTrigger>
+      </TabsList>
+      <TabsContent className="min-w-0 w-full" value="metrics">
+        <div className="calcs-context-bar" aria-label={calcsLabel(lang, 'context')}>
+          {actorPicker || <strong>{actorLabel}</strong>}
+          {(selectedMinion || calc?.main_skill) && <span>{tt('calcs.skill')}: <strong>{skillName(selectedMinion?.skill_id ?? calc!.main_skill!.skill_id)}</strong></span>}
+          {session.busy && <span role="status">{calcsLabel(lang, 'stale')}</span>}
+        </div>
+        {!calc ? <p role={session.calcError ? 'alert' : 'status'}>{session.calcError || calcsLabel(lang, 'noCalc')}</p> : <div className="calcs-explorer">
+          <div className="calcs-metric-browser" id="calcs-metric-browser" tabIndex={-1}>
+            <AppInput className="calcs-search" type="search" placeholder={tt('calcs.search')} aria-label={tt('calcs.search')}
+              value={query} onChange={event => setQuery(event.target.value)} />
+            <label className="calcs-category-picker">{calcsLabel(lang, 'categories')}
+              <AppSelectControl className="w-full" aria-label={calcsLabel(lang, 'categories')} value={category} onChange={event => setCategory(event.target.value)}>
+                <option value="all">{calcsLabel(lang, 'all')}</option>
+                {category !== 'all' && !sections.some(section => section.category === category) && <option value={category}>{statCategoryLabel(lang, category)}</option>}
+                {sections.map(section => <option key={section.category} value={section.category}>{statCategoryLabel(lang, section.category)} ({section.names.length})</option>)}
+              </AppSelectControl>
+            </label>
+            {sections.filter(section => category === 'all' || category === section.category).length === 0 && <div className="search-empty" role="status">
+              <p>{tt('common.noResults')}</p>
+              <AppButton onClick={() => { setQuery(''); setCategory('all'); }}>{tt('common.clearSearch')}</AppButton>
+            </div>}
+            <div className="calcs-metric-list">
+              {sections.filter(section => category === 'all' || category === section.category).map(section => <section key={section.category} className="calcs-section">
+                <h3 className="calcs-section-title">{statCategoryLabel(lang, section.category)}</h3>
+                {section.names.map(name => <AppButton key={name} id={`breakdown-${name}`} className="calcs-metric-row h-auto min-h-11 w-full justify-between whitespace-normal border-transparent bg-transparent text-left aria-pressed:border-ring aria-pressed:bg-accent aria-pressed:text-accent-foreground"
+                  aria-pressed={open === name} aria-controls="calcs-detail" data-detail-kind={detailKind(selectedMinion ?? calc, name)}
+                  onClick={() => { setOpen(name); requestAnimationFrame(() => {
+                    const heading = document.getElementById('calcs-detail-heading');
+                    heading?.focus({ preventScroll: true });
+                    if (window.matchMedia('(max-width: 760px)').matches) heading?.scrollIntoView({ block: 'start' });
+                  }); }}>
+                  <span>{statNameLabel(lang, name)}</span>
+                  <strong>{formatStatValue(values.get(name) ?? null, rowFormat(name), lang)}</strong>
+                </AppButton>)}
+              </section>)}
+            </div>
+          </div>
+          <section id="calcs-detail" className="calcs-detail-pane" aria-labelledby="calcs-detail-heading">
+            <div className="calcs-detail-header">
+              <AppButton className="calcs-back-to-list hidden max-[760px]:inline-flex" onClick={() => { const browser = document.getElementById('calcs-metric-browser'); browser?.focus(); browser?.scrollIntoView({ block: 'start' }); }}>{calcsLabel(lang, 'back')}</AppButton>
+              <p className="calcs-hint">{actorLabel}</p>
+              <h3 id="calcs-detail-heading" tabIndex={-1}>{open ? statNameLabel(lang, open) : calcsLabel(lang, 'choose')}</h3>
+              {open && <div className="calcs-detail-value"><strong>{formatStatValue(values.get(open) ?? null, rowFormat(open), lang)}</strong><span>{calcsLabel(lang, detailKind(selectedMinion ?? calc, open))}</span></div>}
+            </div>
+            {open ? detail(open) : <p className="calcs-hint">{calcsLabel(lang, 'detailHint')}</p>}
+          </section>
+        </div>}
+      </TabsContent>
+      <TabsContent className="min-w-0 w-full" value="skills"><SkillMetricsView session={session} lang={lang} showFullDps={false} /></TabsContent>
+      <TabsContent className="min-w-0 w-full" value="full-dps"><FullDpsView session={session} lang={lang} /></TabsContent>
+      <TabsContent className="min-w-0 w-full" value="attribution"><AttributionView session={session} lang={lang} /></TabsContent>
+    </Tabs>
+  </section>;
 
   return (
     <section className="ui-page calcs-page" aria-labelledby="calcs-heading">
       <PageHeader id="calcs-heading" title={tt('calcs.title')} description={tt('calcs.hint')} />
       <div className="calcs-tools">
       <nav className="calcs-navigation" aria-label={tt('calcs.title')}>
-        {(['calcs.skillMetrics', 'calcs.attribution'] as const).filter(key => key === 'calcs.skillMetrics' || calc).map((key, index) => <button key={key} onClick={() => {
+        {(['calcs.skillMetrics', 'calcs.attribution'] as const).filter(key => key === 'calcs.skillMetrics' || calc).map((key, index) => <AppButton key={key} onClick={() => {
           const section = document.getElementById(index === 0 ? 'skill-metrics-heading' : 'attribution-heading');
           section?.focus({ preventScroll: true });
           section?.scrollIntoView({ block: 'start' });
-        }}>{tt(key)} ↓</button>)}
+        }}>{tt(key)} ↓</AppButton>)}
       </nav>
-      <input
+      <AppInput
         className="calcs-search"
         type="search"
         placeholder={tt('calcs.search')}
@@ -1099,17 +1226,12 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
       />
       </div>
       <SkillMetricsView session={session} lang={lang} />
-      {(calc?.minions?.length ?? 0) > 0 && <label className="calcs-actor-picker">{tt('minion.actor')}
-        <AppSelect ariaLabel={tt('minion.actor')} value={selectedMinion ? actorKey(selectedMinion) : 'player'}
-          options={[{ value: 'player', label: tt('minion.player') }, ...(calc?.minions ?? []).map(minion => ({ value: actorKey(minion),
-            label: `${tt('minion.title')}: ${minion.name || tt('minion.unavailable')} · ${minion.index + 1}` }))]}
-          onChange={value => { setActor(value); setOpen(null); }} />
-      </label>}
+      {actorPicker}
       <div className="calcs-breakdowns">
       {selectedMinion && Object.values(selectedMinion.breakdown_descriptors ?? {}).every(kind => kind === 'none') && <p>{tt('minion.noBreakdown')}</p>}
       {query.trim() && sections.length === 0 && <div className="search-empty" role="status">
         <p>{tt('common.noResults')}</p>
-        <button onClick={() => setQuery('')}>{tt('common.clearSearch')}</button>
+        <AppButton onClick={() => setQuery('')}>{tt('common.clearSearch')}</AppButton>
       </div>}
       {sections.map(({ category, names }) => (
         <section key={category} className="calcs-section">
@@ -1128,13 +1250,13 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
                   data-detail-kind={kind}
                   className={`breakdown-item${isOpen ? ' is-open' : ''}`}
                 >
-                  <button
+                  <AppButton
                     className="breakdown-toggle"
                     aria-expanded={isOpen}
                     onClick={() => setOpen(isOpen ? null : name)}
                   >
                     <span className="row-caret" aria-hidden>▸</span>
-                    <span className="breakdown-name" title={selectedMinion ? `${tt('minion.title')}: ${selectedMinion.name}` : undefined}>{selectedMinion && `${tt('minion.title')}: `}{statNameLabel(lang, name)}</span>
+                    <span className="breakdown-name">{selectedMinion && `${tt('minion.title')}: `}{statNameLabel(lang, name)}</span>
                     <span className="breakdown-value">
                       {values.has(name) ? formatStatValue(values.get(name) ?? null, rowFormat, lang) : ''}
                     </span>
@@ -1143,10 +1265,10 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
                         {breakdown.mods.filter((m) => m.active).length} {tt('calcs.mods')}
                       </span>
                     )}
-                  </button>
+                  </AppButton>
                   {isOpen && (kind === 'none' ? <p className="breakdown-detail" role="status">{tt('calcs.noBreakdown')}</p>
                     : breakdown ? <BreakdownTable breakdown={breakdown} lang={lang} />
-                    : current?.error ? <div className="breakdown-detail" role="alert">{current.error} <button onClick={() => { setLoaded(null); setRetry(value => value + 1); }}>{tt('calcs.retry')}</button></div>
+                    : current?.error ? <div className="breakdown-detail" role="alert">{current.error} <AppButton onClick={() => { setLoaded(null); setRetry(value => value + 1); }}>{tt('calcs.retry')}</AppButton></div>
                     : <p className="breakdown-detail" role="status">{tt(current ? 'calcs.noBreakdown' : 'calcs.loadingDetail')}</p>)}
                 </div>
               );
