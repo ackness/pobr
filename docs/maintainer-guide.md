@@ -205,6 +205,10 @@ Summon counts include the active skill's native game stat: Raise Zombie's `base_
 
 Presence item auras reach minions through `ExtraAura`; “You and Allies” additionally gives the player one copy. Ally modifiers on a weapon are not its numeric local attack-speed lines. Offering buff-effect queries use the Offering's own skill types, so generic Offering-effect passives apply even when another skill is selected. In frozen `chronomancer-07`, two 15% passives scale Pain Offering's damage/speed bonuses from 83/35 to 107/45 with the existing integer rounding. Danse Macabre's extra-skeleton-consumption condition and the player's `HitRecently` remain inactive without an explicit applicable snapshot; they are not enabled to match PoB2.
 
+The Coming Calamity's enemy resistance overrides retain the normalized `EnemyInPresence` condition, including inside nested modifier payloads; an already prefixed name must not become `EnemyEnemyInPresence`. Legacy of Northpaw's 7% weapon base critical chance replaces the locally modified weapon base before added critical chance and global increases. It applies independently to each actual weapon source; unarmed attacks, shields, spells and attacks with their own skill-defined base critical chance retain their own bases.
+
+Frozen `amazon-02` illustrates the existing Blind-effect difference: 8993 Evasion against level-82 enemy Accuracy 2114, with the strongest Blind II's single 20% increased effect, gives 24% less enemy accuracy and 55% rounded evade chance (16% Deflect). The pinned PoB2 counts three copies from Pounce's three active effects, giving 32% less accuracy and 58% evade (18% Deflect). Only those evade/deflect rows are classified as explained; its Energy Shield/Recovery Cap and TotalEHP differences have additional causes.
+
 `SpiritReserved` reports the total reservation requested by the enabled skills,
 even when it exceeds the Spirit pool; `SpiritUnreserved = Spirit - SpiritReserved`
 can be negative, and the calculator does not disable skills to fit the pool.

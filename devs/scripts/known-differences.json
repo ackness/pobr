@@ -2,6 +2,27 @@
   "_doc": "Reference rows `mise run triage` files as known: differences the repository already explains, so a triage lists only what is left to look at. `build` is a fragment of the build folder's name (or a synthetic skill-sweep case id), `xml_sha256`, when present, binds an entry to the exact decoded UTF-8 XML so short rank names cannot match another snapshot; `stats` the rows it explains, `reason` where the explanation is. Synthetic case entries document sweep findings; skill-sweep does not yet consume this registry. Add an entry when a difference is documented as deliberate; remove it when the engine changes.",
   "differences": [
     {
+      "build": "acolyte-of-chayula-02",
+      "xml_sha256": "bbcd9b13fc221216752d1efd65a4e06b5566182036daac2a33c2a4e046375a0a",
+      "stats": [
+        "ActiveMinionLimit"
+      ],
+      "reason": "Frozen 2026-10-26 Forbidden Rites Wolf Pack at level 19 has native pack size 6 plus one from quality, giving 7. The pinned PoB2 omits the pack size and reports 0. See docs/maintainer-guide.md, summon counts."
+    },
+    {
+      "build": "amazon-02",
+      "xml_sha256": "69d4f59aa07000fc02a99fe1c571d19ebb43ef618621ae48fda02fcdb4c91d21",
+      "stats": [
+        "DeflectChance",
+        "EvadeChance",
+        "MeleeEvadeChance",
+        "ProjectileEvadeChance",
+        "SpellEvadeChance",
+        "SpellProjectileEvadeChance"
+      ],
+      "reason": "Frozen 2026-10-26 Forbidden Rites Amazon has 8993 Evasion and level-82 enemy Accuracy 2114. The strongest Blind II contributes one 20% effect increase (24% less accuracy): evade 55%, deflect 16. Pinned PoB2 counts the Pounce gem effect three times (32% less accuracy): evade 58%, deflect 18. Preserve the strongest single Blind effect; Energy Shield and TotalEHP remain unclassified. See docs/maintainer-guide.md, Blind effect."
+    },
+    {
       "build": "blood-mage-03",
       "xml_sha256": "fea80051e36d924393bb81a308954c88d9ce1bdf4134bea1e01099dec71c1eec",
       "stats": [
