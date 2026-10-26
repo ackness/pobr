@@ -1650,6 +1650,8 @@ Implicits: 0
             "Adds 100 to 100 Cold Damage to Attacks".into(),
             "Adds 100 to 100 Lightning Damage to Attacks".into(),
             "Gain 10% of Physical Damage as Extra Chaos Damage".into(),
+            "100% chance to Poison on Hit".into(),
+            "100% chance to inflict Bleeding on Hit".into(),
         ];
         if convert {
             options
@@ -1692,6 +1694,23 @@ Implicits: 0
     }
     assert!(bare.output().ignite_dps > 0.0);
     assert_eq!(supported.output().ignite_dps, 0.0);
+    assert!(bare.output().poison_dps > 0.0);
+    assert_eq!(supported.output().poison_dps, 0.0);
+    assert!(supported.output().bleed_dps > 0.0);
+    assert!(supported.ailment_stage_terms("PoisonDPS").is_none());
+    assert!(supported.ailment_stage_terms("BleedDPS").is_some());
+    for stat in [
+        "PoisonDuration",
+        "PoisonStacksMax",
+        "PoisonStackPotentialPercent",
+        "PoisonChance",
+    ] {
+        assert_eq!(
+            pobr_core::display_value(supported.output(), stat),
+            0.0,
+            "{stat}"
+        );
+    }
     assert_eq!(
         supported.stat_formula("TotalDPS").unwrap().value,
         supported.output().dps
@@ -1718,6 +1737,7 @@ Implicits: 0
         );
         assert!(scoped_out.mods_named("DealNoFire").is_empty());
         assert!(scoped_out.mods_named("DealNoChaos").is_empty());
+        assert_eq!(scoped_out.output().poison_dps, bare.output().poison_dps);
     }
     let unsupported = run("ConvalescencePlayer", &support(true), "", true);
     let unsupported_bare = run("ConvalescencePlayer", "", "", true);
@@ -1804,5 +1824,143 @@ fn brutality_iii_restricts_linked_warrior_and_reaver_minions_only() {
         }
         let formula = supported.minion_stat_formula(index, "TotalDPS").unwrap();
         assert!((formula.value - after.dps).abs() < 1e-6);
+    }
+}
+
+/// The source hit and the ailment's dealt type are independent. A prohibited
+/// destination has neither damage nor a duration/instance to pass to stacking.
+#[test]
+fn brutality_iii_ailment_destinations_preserve_scope_and_trace() {
+    use pobr_core::calc::DamageComponent;
+    use pobr_core::calc::ailment::{
+        AilmentSource, bleed_traced, cross_type_source_hit, ignite_traced, poison_traced,
+        shock_traced,
+    };
+    use pobr_core::{CalcConfig, ModDb, ModTag, Modifier, TraceGraph};
+    use pobr_data::prelude::*;
+
+    let source = AilmentSource::new(1000.0, 1.0, 0.0, false);
+    let cfg = CalcConfig::spell();
+    let enemy = ModDb::new();
+    let origin = ModifierSource::new(SourceId::new(
+        SourceKind::SupportGem,
+        "support.destination_gate",
+    ));
+    let mut base = ModDb::new();
+    base.add_mod(Modifier::number("AilmentChance", ModType::Base, 100.0));
+    let baseline_shock = shock_traced(&source, &base, &enemy, &cfg, 1000.0, &mut TraceGraph::new());
+    for (ailment, destination, other) in [
+        (AilmentType::Bleed, "DealNoPhysical", "DealNoChaos"),
+        (AilmentType::Ignite, "DealNoFire", "DealNoChaos"),
+        (AilmentType::Poison, "DealNoChaos", "DealNoPhysical"),
+    ] {
+        for (flag, blocked) in [
+            (Modifier::flag(destination), true),
+            (Modifier::flag("DealNoDamage"), true),
+            (Modifier::flag(other), false),
+            (
+                Modifier::flag(destination).with_keyword_flags(KeywordFlags::HIT),
+                false,
+            ),
+            (
+                Modifier::flag(destination).with_tag(ModTag::condition("NotEnabled", false)),
+                false,
+            ),
+        ] {
+            let mut player = base.clone();
+            player.add_mod(flag.with_origin(origin.clone()));
+            let mut trace = TraceGraph::new();
+            let (out, node) = match ailment {
+                AilmentType::Bleed => bleed_traced(&source, &player, &enemy, &cfg, &mut trace),
+                AilmentType::Ignite => {
+                    ignite_traced(&source, &player, &enemy, &cfg, 1000.0, &mut trace)
+                }
+                AilmentType::Poison => poison_traced(&source, &player, &enemy, &cfg, &mut trace),
+                _ => unreachable!(),
+            };
+            if blocked {
+                assert_eq!(out.chance, 0.0);
+                assert_eq!(out.magnitude_dps, 0.0);
+                assert_eq!(out.expected_dps, 0.0);
+                assert_eq!(out.duration_secs, 0.0);
+                assert_eq!(out.source_damage, 0.0);
+            } else {
+                assert_eq!(out.chance, 1.0);
+                assert!(out.magnitude_dps > 0.0);
+                assert!(out.duration_secs > 0.0);
+            }
+            assert_eq!(
+                trace
+                    .source_ancestors(node)
+                    .iter()
+                    .any(|s| s.id == origin.source_id.id),
+                blocked
+            );
+            let (chance, effect, shock_node) =
+                shock_traced(&source, &player, &enemy, &cfg, 1000.0, &mut trace);
+            assert_eq!((chance, effect), (baseline_shock.0, baseline_shock.1));
+            assert!(
+                !trace
+                    .source_ancestors(shock_node)
+                    .iter()
+                    .any(|s| s.id == origin.source_id.id)
+            );
+        }
+    }
+
+    // Native passive 42680 changes both source eligibility and dealt type,
+    // but only for Fire Spells. Normal Ignite remains Fire even from a
+    // separately eligible non-Fire source hit.
+    let data = load_build_data();
+    let fire = SkillTypes::from_pob2_name("Fire").unwrap();
+    for (types, covenant) in [
+        (SkillTypes::SPELL | fire, true),
+        (SkillTypes::SPELL, false),
+        (SkillTypes::ATTACK | fire, false),
+    ] {
+        let cfg = CalcConfig::default().with_skill_types(types);
+        let mut player = base.clone();
+        for text in [
+            "Chaos Damage from Fire Spells Contributes to Flammability and Ignite Magnitudes",
+            "Ignite inflicted with Fire Spells deals Chaos Damage instead of Fire Damage",
+        ] {
+            let parsed =
+                pobr_core::mod_parser::parse_mod_engine(text, data.parser_rules.as_ref().unwrap());
+            assert!(parsed.is_complete());
+            player.add_list(parsed.mods.into_iter().map(|m| {
+                m.with_origin(
+                    ModifierSource::new(SourceId::new(SourceKind::PassiveNode, "node.42680"))
+                        .with_raw_text(text),
+                )
+            }));
+        }
+        let chaos_hit = [DamageComponent::new(DamageType::Chaos, 1000.0, 1000.0)];
+        assert_eq!(
+            cross_type_source_hit(AilmentType::Ignite, &chaos_hit, &player, &cfg),
+            if covenant { 1000.0 } else { 0.0 }
+        );
+        for (flag, blocked) in [("DealNoChaos", covenant), ("DealNoFire", !covenant)] {
+            let mut restricted = player.clone();
+            restricted.add_mod(Modifier::flag(flag).with_origin(origin.clone()));
+            let mut trace = TraceGraph::new();
+            let (ignite, node) =
+                ignite_traced(&source, &restricted, &enemy, &cfg, 1000.0, &mut trace);
+            assert_eq!(ignite.expected_dps == 0.0, blocked);
+            assert_eq!(ignite.chance == 0.0, blocked);
+            assert_eq!(
+                trace
+                    .source_ancestors(node)
+                    .iter()
+                    .any(|s| s.id == origin.source_id.id),
+                blocked
+            );
+            assert_eq!(
+                trace
+                    .source_ancestors(node)
+                    .iter()
+                    .any(|s| s.id == "node.42680"),
+                covenant
+            );
+        }
     }
 }

@@ -1115,6 +1115,30 @@ fn compute_damaging_ailment(
     chance_node: TraceNodeId,
     trace: &mut TraceGraph,
 ) -> (DamagingAilmentOutput, TraceNodeId) {
+    // An ailment can use one hit type and deal another: Physical hits can
+    // Poison, but Poison still deals Chaos damage. Covenant's Ignite uses
+    // its resolved Chaos type here, while ordinary Ignite deals Fire.
+    let scoped = ailment_scoped_cfg(cfg, ailment);
+    for flag in [
+        "DealNoDamage",
+        &format!("DealNo{}", type_prefix(damage_type)),
+    ] {
+        if let Some(node) =
+            prohibited_ailment_node(player, &scoped, flag, &format!("{ailment:?}DPS"), trace)
+        {
+            return (
+                DamagingAilmentOutput {
+                    chance: 0.0,
+                    eff_mult: 1.0,
+                    magnitude_dps: 0.0,
+                    duration_secs: 0.0,
+                    expected_dps: 0.0,
+                    source_damage: 0.0,
+                },
+                node,
+            );
+        }
+    }
     let (chance, base_source) = weighted_source_damage(source, chance_on_hit, chance_on_crit);
 
     // base magnitude (crit-weighted source × per-second fraction) goes through the same inc/more
