@@ -5,6 +5,70 @@ use pobr_core::calc::{
 use pobr_core::{CalcConfig, Modifier};
 use pobr_data::prelude::*;
 
+mod hindered {
+    use super::*;
+    use pobr_core::calc::session::{BuffKind, BuffSpec};
+
+    fn environment(curse: bool, zone_of_control: bool) -> Env {
+        let mut env = Env::new(Actor::new(
+            90,
+            ActorBaseStats {
+                life: 1000.0,
+                action_rate: 1.0,
+                ..Default::default()
+            },
+        ))
+        .with_config(
+            CalcConfig::spell()
+                .with_mode_effective(true)
+                .with_mode_buffs(true),
+        );
+        let mut lines = vec![
+            "Adds 100 to 100 Fire Damage",
+            "30% increased Damage with Hits against Hindered Enemies",
+            "25% increased Damage with Hits against Hindered Enemies",
+        ];
+        if zone_of_control {
+            lines.push("Enemies you Curse are Hindered, with 15% reduced Movement Speed");
+        }
+        for line in lines {
+            let parsed = crate::support::parse_mod(line).unwrap();
+            assert!(parsed.is_complete(), "{line}: {parsed:?}");
+            env.player.mod_db.add_list(parsed.mods);
+        }
+        if curse {
+            env.buff_skills.push(BuffSpec {
+                name: "Temporal Chains".into(),
+                kind: BuffKind::Curse,
+                skill_id: "TemporalChainsPlayer".into(),
+                mods: vec![Modifier::number("ActionSpeed", ModType::More, -10.0)],
+                magnitude: 1.0,
+                slot: None,
+                socket_index: 1,
+                is_mark: false,
+                ignore_curse_limit: false,
+                local_effect_inc: 0.0,
+                local_effect_more: 1.0,
+                skill_types: pobr_data::skill::SkillTypes::NONE,
+            });
+        }
+        env
+    }
+
+    #[test]
+    fn cursed_enemies_are_hindered_after_the_curse_pass() {
+        for (curse, zone_of_control) in [(false, true), (true, false), (true, true)] {
+            let mut env = environment(curse, zone_of_control);
+            assert!(!env.cfg.condition("EnemyCursed"));
+            perform(&mut env).unwrap();
+            let hindered = curse && zone_of_control;
+            assert_eq!(env.cfg.condition("EnemyHindered"), hindered);
+            let expected = if hindered { 155.0 } else { 100.0 };
+            assert!((env.player.output.dps - expected).abs() < 1e-9);
+        }
+    }
+}
+
 mod doryani {
     use super::*;
     use pobr_core::ModTag;

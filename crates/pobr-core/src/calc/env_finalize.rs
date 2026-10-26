@@ -82,8 +82,8 @@ pub fn env_finalize(env: &mut Env) {
     // pobr routes all condition consumption through `cfg.conditions`, so
     // this copies the flag aggregation result back after every enemy-side
     // injection source (item EnemyModifier forwarding / buff_pass / ailments) has landed.
-    // Only conditions with enemy base-modifier consumers are bridged here;
-    // the other conditions have their own config/ailment paths.
+    // Bridge the enemy flags consumed by base modifiers and conditional player
+    // damage. Other conditions retain their own config/ailment paths.
     bridge_enemy_condition_flags(env);
     // Exposure is reduced in `perform` once the character's defences are
     // known (`setup_env::reduce_enemy_exposure`): a banner's exposure can be
@@ -558,9 +558,9 @@ pub fn apply_nondamaging_ailments(env: &mut Env) {
 /// so this copies the aggregated flag result back
 /// (`matches(cfg)` already includes gates like the Effective/EnemyInPresence tags).
 fn bridge_enemy_condition_flags(env: &mut Env) {
-    // Bridge the conditions consumed by enemy base modifiers. The flags retain
-    // their own gates, including the Effective gate on the Daze configuration.
-    const BRIDGED: &[&str] = &["Intimidated", "Crushed", "Dazed"];
+    // The flags retain their own gates: Zone of Control only hinders a cursed
+    // enemy, and Daze's configured state is gated on the Effective view.
+    const BRIDGED: &[&str] = &["Intimidated", "Crushed", "Dazed", "Hindered"];
     for cond in BRIDGED {
         let flag = ModName::from(format!("Condition:{cond}"));
         if env.enemy.mod_db.flag(&env.cfg, flag.as_str()) {
