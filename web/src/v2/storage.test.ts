@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { initializeV2Storage, MIGRATION_MARKER, MIGRATION_SNAPSHOT } from './storage';
-import { LEGACY_STORAGE, V2_STORAGE } from '../lib/sessionStorage';
+import { LEGACY_STORAGE, V2_STORAGE, uiStorageKey } from '../lib/sessionStorage';
 function store(initial: Record<string, string> = {}) {
   const values = new Map(Object.entries(initial));
   return { values, getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
@@ -33,4 +33,10 @@ describe('V2 storage isolation', () => {
     const s = store({ [MIGRATION_SNAPSHOT]: '{broken' });
     expect(() => initializeV2Storage(s)).toThrow(); expect(s.getItem(MIGRATION_MARKER)).toBeNull();
   });
+});
+
+it('namespaces planner preferences without changing the legacy keys', () => {
+  expect(uiStorageKey('pobr-trade-budget', true)).toBe('pobr-v2-trade-budget');
+  expect(uiStorageKey('pobr-support-exclusions:Fireball', true)).toBe('pobr-v2-support-exclusions:Fireball');
+  expect(uiStorageKey('pobr-trade-budget', false)).toBe('pobr-trade-budget');
 });

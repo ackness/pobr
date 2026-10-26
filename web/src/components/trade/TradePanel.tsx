@@ -1,3 +1,5 @@
+import { useUi } from '../shared/UiContext';
+import { uiStorageKey } from '../../lib/sessionStorage';
 import { AppButton, AppInput } from '../shared/controls';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import { upgradeT } from '../../lib/upgradeText';
@@ -40,6 +42,8 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   onSkills?: (group:number) => void; onTree?: () => void;
   initialItemText?: string;
 }) {
+  const { v2 } = useUi();
+  const preferenceKey = (key: string) => uiStorageKey(key, v2);
   const tt = bindT(lang);
   const ut = (key: Parameters<typeof upgradeT>[1]) => upgradeT(lang, key);
   const { goal, setGoal } = useUpgradeGoal();
@@ -52,15 +56,15 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   const [selected, setSelected] = useState('weapon1');
   const [jewelTypes, setJewelTypes] = useState<Record<string, JewelSearchType>>({});
   const [categories, setCategories] = useState<Record<string, string>>({});
-  const [realm, setRealm] = useState<TradeRealm>(() => localStorage.getItem(REALM_KEY) === 'cn' ? 'cn' : 'intl');
-  const [league, setLeague] = useState(() => localStorage.getItem(leagueKey(realm)) ?? REALM_DEFAULT_LEAGUE[realm]);
+  const [realm, setRealm] = useState<TradeRealm>(() => localStorage.getItem(preferenceKey(REALM_KEY)) === 'cn' ? 'cn' : 'intl');
+  const [league, setLeague] = useState(() => localStorage.getItem(preferenceKey(leagueKey(realm))) ?? REALM_DEFAULT_LEAGUE[realm]);
   const [leagues, setLeagues] = useState(REALM_LEAGUES[realm]);
   const [leagueFallback, setLeagueFallback] = useState(false);
   const preset = goal.preset;
   const setPreset = (preset: string) => setGoal({ ...goal, preset });
-  const [budget, setBudget] = useState(() => localStorage.getItem(BUDGET_KEY) ?? '100');
+  const [budget, setBudget] = useState(() => localStorage.getItem(preferenceKey(BUDGET_KEY)) ?? '100');
   const [currency, setCurrency] = useState<TradeCurrency>(() => {
-    const saved = localStorage.getItem(CURRENCY_KEY);
+    const saved = localStorage.getItem(preferenceKey(CURRENCY_KEY));
     return TRADE_CURRENCIES.find(option => option.value === saved)?.value ?? 'equiv';
   });
   const [running, setRunning] = useState<string | null>(null);
@@ -109,7 +113,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     loadTradeLeagues(realm).then(list => {
       if (cancelled) return;
       setLeagues(list);
-      if (localStorage.getItem(leagueKey(realm)) === null) setLeague(list[0]);
+      if (localStorage.getItem(preferenceKey(leagueKey(realm))) === null) setLeague(list[0]);
     }).catch(() => { if (!cancelled) setLeagueFallback(true); });
     return () => { cancelled = true; };
   }, [realm]);
@@ -274,21 +278,21 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     <div className="trade-setup">
       <label className="trade-price-field"><span className="trade-field-label">{tt('trade.budget')}</span>
         <span className="trade-budget"><AppInput type="number" min={0} aria-label={tt('trade.budget')} value={budget} placeholder={tt('trade.budgetAny')}
-          onChange={event => { setBudget(event.target.value); localStorage.setItem(BUDGET_KEY, event.target.value); }} />
+          onChange={event => { setBudget(event.target.value); localStorage.setItem(preferenceKey(BUDGET_KEY), event.target.value); }} />
           <AppSelect value={currency} ariaLabel={tt('trade.currency')}
             options={TRADE_CURRENCIES.map(option => ({ value: option.value, label: tt(option.labelKey) }))}
-            onChange={value => { setCurrency(value as TradeCurrency); localStorage.setItem(CURRENCY_KEY, value); }} /></span>
+            onChange={value => { setCurrency(value as TradeCurrency); localStorage.setItem(preferenceKey(CURRENCY_KEY), value); }} /></span>
       </label>
       <div className="trade-market-fields">
         <label><span className="trade-field-label">{tt('trade.realm')}</span><AppSelect value={realm} ariaLabel={tt('trade.realm')}
           options={[{ value: 'intl', label: tt('trade.realmIntl') }, { value: 'cn', label: tt('trade.realmCn') }]}
-          onChange={value => { const next = value as TradeRealm; setRealm(next); localStorage.setItem(REALM_KEY, next);
-            setLeague(localStorage.getItem(leagueKey(next)) ?? REALM_DEFAULT_LEAGUE[next]); }} /></label>
+          onChange={value => { const next = value as TradeRealm; setRealm(next); localStorage.setItem(preferenceKey(REALM_KEY), next);
+            setLeague(localStorage.getItem(preferenceKey(leagueKey(next))) ?? REALM_DEFAULT_LEAGUE[next]); }} /></label>
         <label><span className="trade-field-label">{tt('trade.league')}</span><AppSelect value={leagues.includes(league) ? league : '__custom'} ariaLabel={tt('trade.league')}
           options={[...leagues.map(name => ({ value: name, label: name })), { value: '__custom', label: tt('trade.leagueCustom') }]}
-          onChange={value => { const next = value === '__custom' ? '' : value; setLeague(next); localStorage.setItem(leagueKey(realm), next); }} /></label>
+          onChange={value => { const next = value === '__custom' ? '' : value; setLeague(next); localStorage.setItem(preferenceKey(leagueKey(realm)), next); }} /></label>
         {!leagues.includes(league) && <AppInput aria-label={tt('trade.leagueCustom')} value={league} placeholder={REALM_DEFAULT_LEAGUE[realm]}
-          onChange={event => { setLeague(event.target.value); localStorage.setItem(leagueKey(realm), event.target.value); }} />}
+          onChange={event => { setLeague(event.target.value); localStorage.setItem(preferenceKey(leagueKey(realm)), event.target.value); }} />}
       </div>
     </div>
     <div className="trade-overview-toolbar">

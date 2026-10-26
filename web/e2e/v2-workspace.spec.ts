@@ -42,7 +42,7 @@ test('V2 copies legacy saves once and config edits preserve the original workspa
   expect(dialogs).toEqual([]);
 });
 
-test('V2 navigation, settings and stage-scoped prompts retain the current editor', async ({ page }) => {
+test('V2 navigation, settings and confirmations retain the current editor', async ({ page }) => {
   await importV2(page);
   await expect(page.getByRole('note')).toContainText('configuration');
   await nav(page, 'Build library').click();
@@ -52,9 +52,9 @@ test('V2 navigation, settings and stage-scoped prompts retain the current editor
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Light', exact: true }).click();
   await expect(page.locator('html')).not.toHaveClass(/dark/);
-  await page.getByRole('slider').focus(); await page.keyboard.press('End');
+  await page.getByRole('slider', { name: /Text size/ }).focus(); await page.keyboard.press('End');
   await expect(page.locator('html')).toHaveCSS('font-size', '32px');
-  await page.getByRole('slider').focus(); await page.keyboard.press('Home');
+  await page.getByRole('slider', { name: /Text size/ }).focus(); await page.keyboard.press('Home');
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(notes).toHaveValue('Persistent stage note');
   expect((await state(page)).state).toEqual(before);
@@ -62,8 +62,13 @@ test('V2 navigation, settings and stage-scoped prompts retain the current editor
   await page.goBack(); await expect(page.locator('#build-heading')).toBeVisible();
   await expect(notes).toHaveValue('Persistent stage note');
   await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Class', exact: true }).click();
+  await page.getByRole('option', { name: 'Warrior', exact: true }).click();
+  await expect(page.getByRole('alertdialog')).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  expect((await state(page)).state.character.class_name).toBe('Witch');
   expect((await state(page)).workspace.builds.at(-1).stages).toHaveLength(1);
 });
 
@@ -83,3 +88,45 @@ for (const viewport of [{ width: 390, size: 32 }, { width: 1440, size: 16 }, { w
     expect(errors).toEqual([]);
   });
 }
+
+test('browser Back closes portals owned by retained skill panels', async ({ page }) => {
+  await importV2(page);
+  await nav(page, 'Skills').click();
+  const sets = page.getByRole('combobox', { name: 'Skill set', exact: true });
+  await sets.click(); await expect(page.getByRole('listbox')).toBeVisible();
+  await page.goBack(); await expect(page.locator('.paper-doll')).toBeVisible();
+  await expect(page.getByRole('listbox')).toHaveCount(0);
+  await nav(page, 'Skills').click();
+  await expect(sets).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('V2 real WASM details stay lazy and configuration tracking follows the active route', async ({ page }) => {
+  await page.addInitScript(() => {
+    const observed = window as typeof window & { v2CalcRequests: Array<{ breakdowns?: string[]; config_context?: boolean }> };
+    observed.v2CalcRequests = [];
+    const stringify = JSON.stringify;
+    JSON.stringify = ((value: unknown, ...args: unknown[]) => {
+      if (value && typeof value === 'object' && 'character' in value && 'socket_groups' in value && 'config_inputs' in value) {
+        observed.v2CalcRequests.push(value);
+      }
+      return Reflect.apply(stringify, JSON, [value, ...args]);
+    }) as typeof JSON.stringify;
+  });
+  const requests = () => page.evaluate(() => (window as typeof window & { v2CalcRequests: Array<{ breakdowns?: string[]; config_context?: boolean; breakdown_actor?: unknown }> }).v2CalcRequests);
+  await importV2(page);
+  await nav(page, 'Calculations').click();
+  await expect(page.locator('#breakdown-Life')).toBeVisible();
+  expect((await requests()).filter(request => request.breakdowns?.length)).toHaveLength(0);
+  await page.locator('#breakdown-Life').click();
+  await expect(page.locator('#calcs-detail .formula-final')).toBeVisible();
+  expect((await requests()).filter(request => request.breakdowns?.length)).toEqual([
+    expect.objectContaining({ breakdowns: ['Life'], breakdown_actor: { kind: 'player' } }),
+  ]);
+  await nav(page, 'Combat setup').click();
+  await expect.poll(async () => (await requests()).at(-1)?.config_context).toBe(true);
+  await nav(page, 'Build library').click();
+  await page.getByLabel('Level', { exact: true }).fill('61');
+  await expect(page.locator('.v2-save-state')).toHaveText('Saved locally');
+  expect((await requests()).at(-1)?.config_context).not.toBe(true);
+  expect((await state(page)).state.character.level).toBe(61);
+});

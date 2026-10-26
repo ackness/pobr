@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { LayoutDashboard, Library, Network, Gem, Swords, TrendingUp, Calculator, SlidersHorizontal, Columns2, Settings2, Menu, PanelRightOpen, Check, LoaderCircle, ChevronRight, ArrowLeft, Download } from 'lucide-react';
 import { useBuildSession } from '../hooks/useBuildSession';
 import { UpgradeGoalProvider } from '../hooks/useUpgradeGoal';
-import { UiProvider } from '../components/shared/UiContext';
+import { UiProvider, PanelActivity } from '../components/shared/UiContext';
 import { AppDialogsProvider } from '../components/shared/AppDialogs';
 import { AppSelectControl } from '../components/shared/controls';
 import { TooltipProvider } from '../components/ui/tooltip';
@@ -156,9 +156,9 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
           <Suspense fallback={<div role="status" className="v2-panel-loading"><Skeleton className="h-12 w-2/3" /><Skeleton className="h-64 w-full" /><p>{t(lang, 'ui.loadingPanel')}</p></div>}>
             {route === 'calcs' && <CalcsPanel session={session} lang={lang} focus={stageChanged ? null : calcsFocus} onFocusConsumed={() => setCalcsFocus(null)} />}
             {route === 'compare' && <ComparePanel session={session} lang={lang} />}
-            {retained('tree') && <div hidden={route !== 'tree'}><TreePanel session={session} lang={lang} active={route === 'tree'} focusPlanner={stageChanged ? undefined : treeFocus} onJewelSearch={socket => { setUpgradeFocus({ slot: `Jewel@${socket}`, nonce: Date.now(), jewelType: 'radius' }); navigate('trade'); }} /></div>}
-            {retained('skills') && <div hidden={route !== 'skills'}><SkillsPanel session={session} lang={lang} active={route === 'skills'} focusOptimizer={stageChanged ? undefined : skillFocus} /></div>}
-            {retained('trade') && <div hidden={route !== 'trade'}><TradePanel session={session} lang={lang} active={route === 'trade'} focus={stageChanged ? undefined : upgradeFocus} onSkills={group => { setSkillFocus({ group, nonce: Date.now() }); navigate('skills'); }} onTree={() => { setTreeFocus({ nonce: Date.now() }); navigate('tree'); }} /></div>}
+            {retained('tree') && <div hidden={route !== 'tree'}><PanelActivity active={route === 'tree'}><TreePanel session={session} lang={lang} active={route === 'tree'} focusPlanner={stageChanged ? undefined : treeFocus} onJewelSearch={socket => { setUpgradeFocus({ slot: `Jewel@${socket}`, nonce: Date.now(), jewelType: 'radius' }); navigate('trade'); }} /></PanelActivity></div>}
+            {retained('skills') && <div hidden={route !== 'skills'}><PanelActivity active={route === 'skills'}><SkillsPanel session={session} lang={lang} active={route === 'skills'} focusOptimizer={stageChanged ? undefined : skillFocus} /></PanelActivity></div>}
+            {retained('trade') && <div hidden={route !== 'trade'}><PanelActivity active={route === 'trade'}><TradePanel session={session} lang={lang} active={route === 'trade'} focus={stageChanged ? undefined : upgradeFocus} onSkills={group => { setSkillFocus({ group, nonce: Date.now() }); navigate('skills'); }} onTree={() => { setTreeFocus({ nonce: Date.now() }); navigate('tree'); }} /></PanelActivity></div>}
           </Suspense>
         </div>
       </main>

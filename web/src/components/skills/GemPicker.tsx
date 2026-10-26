@@ -1,5 +1,5 @@
 import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover';
-import { useUi } from '../shared/UiContext';
+import { useUi, usePanelActive } from '../shared/UiContext';
 import { AppButton, AppInput } from '../shared/controls';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { GemCatalogEntry } from '../../api/types';
@@ -33,6 +33,7 @@ interface Props {
 export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Props) {
   const tt = bindT(lang);
   const { v2 } = useUi();
+  const active = usePanelActive();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [colour, setColour] = useState<ColourFilter>('all');
@@ -71,7 +72,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
   usePopupPosition(rootRef, panelRef, open && !disabled && !v2, filtered, 340);
 
   useEffect(() => setHighlight(0), [query, colour, open]);
-  useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
+  useEffect(() => { if (disabled || !active) setOpen(false); }, [disabled, active]);
 
   const pick = (entry: GemCatalogEntry) => {
     inputRef.current?.focus({ preventScroll: true });
@@ -195,7 +196,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
           setOpen(true);
         }}
       />
-      {v2 ? <Popover open={open && !disabled} onOpenChange={setOpen}>
+      {v2 ? <Popover open={open && !disabled && active} onOpenChange={setOpen}>
         <PopoverAnchor virtualRef={inputRef} />
         <PopoverContent ref={panelRef} className="gem-picker-popover" align="start"
           onOpenAutoFocus={event => event.preventDefault()}
