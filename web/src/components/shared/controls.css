@@ -1,0 +1,18 @@
+.v2-root .app-button { height: auto; min-height: 2rem; white-space: normal; }
+.v2-root .app-checkbox { position: relative; display: inline-flex; width: 1rem; height: 1rem; flex: 0 0 1rem; vertical-align: middle; }
+.v2-root .app-checkbox > button { pointer-events: none; width: 100%; height: 100%; }
+.v2-root .app-checkbox > input[type=checkbox] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.v2-root .app-checkbox:has(input:focus-visible) { outline: 2px solid var(--ring); outline-offset: 3px; border-radius: 5px; }
+.v2-root .app-input-radio { width: 1rem; height: 1rem; accent-color: var(--primary); }
+.v2-root .app-input-range { padding: 0; height: 1.5rem; accent-color: var(--primary); }
+.v2-root .app-disabled-tooltip { display: inline-flex; }
+.app-tooltip-legacy { z-index: 1100; max-width: min(24rem, calc(100vw - 2rem)); padding: .5rem .75rem; border: 1px solid #626977; border-radius: .5rem; background: #20232c; color: #f2f2f2; box-shadow: 0 .25rem 1rem #0005; font: 13px/1.5 system-ui, sans-serif; white-space: pre-wrap; }
+.v2-root .app-select { min-width: 0; }
+.v2-root [data-slot=select-trigger] { max-width: 100%; min-width: 0; width: 100%; text-align: start; }
+.v2-root [data-slot=select-value] { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-select-content { max-width: min(36rem, calc(100vw - 1.5rem)); }
+.app-select-content .app-select-option-copy { display: grid; gap: .2rem; white-space: normal; }
+.app-select-content .app-select-option-copy small { color: var(--muted-foreground); font-weight: normal; }
+.v2-root .workspace-switcher label [data-slot=select-trigger] { width: clamp(7rem, 17vw, 16rem); }
+.v2-root .workspace-build-list .app-button, .v2-root .workspace-stage-list .app-button { display: flex; flex-direction: column; align-items: flex-start; height: auto; padding: .85rem 1rem; }
+.v2-root .note-block { display: block; height: auto; text-align: start; }

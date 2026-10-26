@@ -1,3 +1,6 @@
+import { useAppDialogs } from '../shared/AppDialogs';
+import { useSessionAction } from '../shared/useSessionAction';
+import { AppButton, AppInput, AppSelectControl } from '../shared/controls';
 import { useState } from 'react';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
@@ -11,11 +14,11 @@ export function WorkspaceSwitcher({ session, lang, onManage }: { session: BuildS
   const build = workspace.builds.find(entry => entry.id === workspace.activeBuild)!;
   const stage = build.stages.find(entry => entry.id === build.activeStage)!;
   return <div className="workspace-switcher" aria-label={text.currentBuild}>
-    <button onClick={onManage}>{text.manage}</button>
+    <AppButton onClick={onManage}>{text.manage}</AppButton>
     <strong className="workspace-current-name">{build.name || text.initialBuild}</strong>
-    {build.stages.length > 1 ? <label>{text.stages}<select aria-label={text.stages} value={build.activeStage} disabled={session.busy} onChange={event => session.selectStage(build.id, event.target.value)}>
+    {build.stages.length > 1 ? <label>{text.stages}<AppSelectControl aria-label={text.stages} value={build.activeStage} disabled={session.busy} onChange={event => session.selectStage(build.id, event.target.value)}>
       {build.stages.map(entry => <option key={entry.id} value={entry.id}>{entry.name || text.initialStage}</option>)}
-    </select></label> : <span className="workspace-current-stage">{stage.name || text.initialStage}</span>}
+    </AppSelectControl></label> : <span className="workspace-current-stage">{stage.name || text.initialStage}</span>}
     <span className={session.storageFailed ? 'workspace-save-error' : 'workspace-saved'} role="status">{session.storageFailed ? text.failed : text.saved}</span>
   </div>;
 }
@@ -23,6 +26,8 @@ export function WorkspaceSwitcher({ session, lang, onManage }: { session: BuildS
 export function BuildWorkspace({ session, lang }: { session: BuildSession; lang: Lang }) {
   const text = workspaceText(lang);
   const tt = bindT(lang);
+  const dialogs = useAppDialogs(lang);
+  const captureAction = useSessionAction(session);
   const [action, setAction] = useState<'newBuild' | 'copyStage' | 'renameBuild' | 'renameStage' | null>(null);
   const [name, setName] = useState('');
   const workspace = session.workspace;
@@ -41,20 +46,21 @@ export function BuildWorkspace({ session, lang }: { session: BuildSession; lang:
     else session.renameWorkspace(action === 'renameBuild' ? 'build' : 'stage', name);
     setAction(null);
   }}>
-    <label>{text[action]}<input autoFocus aria-label={text.name} value={name} maxLength={100} placeholder={action === 'copyStage' ? `${text.start} / ${text.progress} / ${text.endgame}` : undefined} onChange={event => setName(event.target.value)} /></label>
-    <button type="submit" disabled={!name.trim() || session.busy}>{text.save}</button>
-    <button type="button" onClick={() => setAction(null)}>{text.cancel}</button>
+    <label>{text[action]}<AppInput autoFocus aria-label={text.name} value={name} maxLength={100} placeholder={action === 'copyStage' ? `${text.start} / ${text.progress} / ${text.endgame}` : undefined} onChange={event => setName(event.target.value)} /></label>
+    <AppButton type="submit" disabled={!name.trim() || session.busy}>{text.save}</AppButton>
+    <AppButton type="button" onClick={() => setAction(null)}>{text.cancel}</AppButton>
   </form>;
-  const confirmLoadout = () => !session.isDirty || window.confirm(tt('loadout.confirmDiscard'));
-  const manageLoadout = (op: 'duplicate' | 'rename' | 'remove') => {
-    if (!confirmLoadout()) return;
+  const confirmLoadout = async () => !session.isDirty || await dialogs.confirm(tt('loadout.confirmDiscard'));
+  const manageLoadout = async (op: 'duplicate' | 'rename' | 'remove') => {
+    const valid = captureAction();
+    if (!await confirmLoadout() || !valid()) return;
     if (op === 'remove') {
-      if (window.confirm(tt('loadout.confirmRemove'))) void session.manageLoadout(op);
+      if (await dialogs.confirm(tt('loadout.confirmRemove')) && valid()) void session.manageLoadout(op);
       return;
     }
     const current = session.loadouts[session.activeLoadout ?? 0]?.name ?? '';
-    const nextName = window.prompt(tt('loadout.namePrompt'), op === 'rename' ? current : '');
-    if (nextName?.trim()) void session.manageLoadout(op, nextName.trim());
+    const nextName = await dialogs.prompt(tt('loadout.namePrompt'), op === 'rename' ? current : '');
+    if (nextName?.trim() && valid()) void session.manageLoadout(op, nextName.trim());
   };
   const className = (raw: string) => lang === 'en-US' ? raw : session.classNames.ascendancies[raw] ?? session.classNames.classes[raw] ?? raw;
   return <div className="workspace-management">
@@ -65,15 +71,15 @@ export function BuildWorkspace({ session, lang }: { session: BuildSession; lang:
         {workspace.builds.map(entry => {
           const active = entry.stages.find(candidate => candidate.id === entry.activeStage)!;
           const character = active.saved.state.character;
-          return <button key={entry.id} aria-pressed={entry.id === build.id} disabled={session.busy} onClick={() => session.selectStage(entry.id)}>
+          return <AppButton key={entry.id} aria-pressed={entry.id === build.id} disabled={session.busy} onClick={() => session.selectStage(entry.id)}>
             <strong>{entry.name || text.initialBuild}</strong>
             <small>Lv{character.level} {className(character.ascendancy_name || character.class_name)} · {entry.stages.length} {text.stages}</small>
-          </button>;
+          </AppButton>;
         })}
       </div>
       <div className="build-card-actions">
-        <button disabled={session.busy} onClick={() => begin('newBuild')}>{text.newBuild}</button>
-        <button disabled={session.busy} onClick={() => begin('renameBuild')}>{text.renameBuild}</button>
+        <AppButton disabled={session.busy} onClick={() => begin('newBuild')}>{text.newBuild}</AppButton>
+        <AppButton disabled={session.busy} onClick={() => begin('renameBuild')}>{text.renameBuild}</AppButton>
       </div>
       {nameForm('build')}
     </article>
@@ -81,28 +87,29 @@ export function BuildWorkspace({ session, lang }: { session: BuildSession; lang:
       <h3 id="workspace-stages-heading">{text.stagesTitle} · {build.name || text.initialBuild}</h3>
       <p className="build-card-hint">{text.stagesHint}</p>
       <div className="workspace-stage-list" role="group" aria-label={text.stagesTitle}>
-        {build.stages.map(entry => <button key={entry.id} aria-pressed={entry.id === stage.id} disabled={session.busy}
-          onClick={() => session.selectStage(build.id, entry.id)}>{entry.name || text.initialStage}<small>Lv{entry.saved.state.character.level} · {entry.saved.state.allocatedNodes.length} {tt('build.passives')}</small></button>)}
+        {build.stages.map(entry => <AppButton key={entry.id} aria-pressed={entry.id === stage.id} disabled={session.busy}
+          onClick={() => session.selectStage(build.id, entry.id)}>{entry.name || text.initialStage}<small>Lv{entry.saved.state.character.level} · {entry.saved.state.allocatedNodes.length} {tt('build.passives')}</small></AppButton>)}
       </div>
       <div className="build-card-actions">
-        <button disabled={session.busy} onClick={() => begin('copyStage')}>{text.copyStage}</button>
-        <button disabled={session.busy} onClick={() => begin('renameStage')}>{text.renameStage}</button>
+        <AppButton disabled={session.busy} onClick={() => begin('copyStage')}>{text.copyStage}</AppButton>
+        <AppButton disabled={session.busy} onClick={() => begin('renameStage')}>{text.renameStage}</AppButton>
       </div>
       {nameForm('stage')}
       {session.build && session.loadouts.length > 0 && <details className="workspace-loadouts">
         <summary>{text.importedLoadouts}</summary>
         <p className="build-card-hint">{text.importedLoadoutsHint}</p>
-        <label>{tt('loadout.switch')}<select aria-label={tt('loadout.switch')} value={session.activeLoadout ?? ''} disabled={session.busy} onChange={event => {
+        <label>{tt('loadout.switch')}<AppSelectControl aria-label={tt('loadout.switch')} value={session.activeLoadout ?? ''} disabled={session.busy} onChange={async event => {
+          const valid = captureAction();
           const loadout = session.loadouts[Number(event.target.value)];
-          if (loadout && confirmLoadout()) void session.switchLoadout({ tree: loadout.tree, item: loadout.item, skill: loadout.skill, config: loadout.config });
+          if (loadout && await confirmLoadout() && valid()) void session.switchLoadout({ tree: loadout.tree, item: loadout.item, skill: loadout.skill, config: loadout.config });
         }}>
           {session.activeLoadout === null && <option value="">—</option>}
           {session.loadouts.map((loadout, index) => <option key={index} value={index}>{loadout.name}</option>)}
-        </select></label>
+        </AppSelectControl></label>
         <div className="build-card-actions">
-          <button disabled={session.busy} onClick={() => manageLoadout('duplicate')}>{tt('loadout.new')}</button>
-          <button disabled={session.busy} onClick={() => manageLoadout('rename')}>{tt('loadout.rename')}</button>
-          {session.loadouts.length > 1 && <button disabled={session.busy} onClick={() => manageLoadout('remove')}>{tt('loadout.remove')}</button>}
+          <AppButton disabled={session.busy} onClick={() => manageLoadout('duplicate')}>{tt('loadout.new')}</AppButton>
+          <AppButton disabled={session.busy} onClick={() => manageLoadout('rename')}>{tt('loadout.rename')}</AppButton>
+          {session.loadouts.length > 1 && <AppButton disabled={session.busy} onClick={() => manageLoadout('remove')}>{tt('loadout.remove')}</AppButton>}
         </div>
       </details>}
     </article>

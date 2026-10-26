@@ -1,3 +1,4 @@
+import { AppButton, AppInput, AppTextarea, AppSelectControl } from '../shared/controls';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { GemCatalogEntry, PassiveNode, SocketGroupInput } from '../../api/types';
@@ -118,36 +119,36 @@ export function BuildGuidancePanel({ session, lang, onSkills, onEquipment, onTre
     <div className="guidance-identity">
       <div><span className="page-eyebrow">{gt('identity')}</span><h3>{current.mainSkill ? gemName(current.mainSkill) : gt('noSkill')}</h3>
         <p>Lv {session.character?.level} · {className(current.ascendancy || current.className)}</p></div>
-      <label>{gt('skills')}<select aria-label={gt('skills')} value={groupIndex ?? ''} disabled={session.busy}
+      <label>{gt('skills')}<AppSelectControl aria-label={gt('skills')} value={groupIndex ?? ''} disabled={session.busy}
         onChange={event => session.updateParams({ main_socket_group: Number(event.target.value) })}>
         {groupIndex === undefined && <option value="">—</option>}
         {request.socket_groups?.map((group, index) => { const skillId = selectedSkillId(group, byId); return skillId &&
           <option value={index} key={index}>{index + 1}. {gemName(skillId)}</option>; })}
-      </select></label>
+      </AppSelectControl></label>
     </div>
     <div className="guidance-entry">
     <article className="guidance-card guidance-live"><div><h3>{gt('live')}</h3><p>{gt('leagueHint')}</p></div>
-      <div className="guidance-filters"><label>{gt('league')}<select value={league} onChange={event => setLeague(event.target.value)}>
+      <div className="guidance-filters"><label>{gt('league')}<AppSelectControl value={league} onChange={event => setLeague(event.target.value)}>
         {LEAGUES.map(([id, name]) => <option key={id} value={id}>{name}</option>)}<option value="custom">{gt('otherLeague')}</option>
-      </select></label>
-        {league === 'custom' && <label>{gt('leagueCode')}<input value={customLeague} onChange={event => setCustomLeague(event.target.value)} spellCheck={false} aria-invalid={!searchUrl} /></label>}
-        <label className="guidance-checkbox"><input type="checkbox" checked={sameClass} onChange={event => setSameClass(event.target.checked)} />{gt('sameClass')}</label>
+      </AppSelectControl></label>
+        {league === 'custom' && <label>{gt('leagueCode')}<AppInput value={customLeague} onChange={event => setCustomLeague(event.target.value)} spellCheck={false} aria-invalid={!searchUrl} /></label>}
+        <label className="guidance-checkbox"><AppInput type="checkbox" checked={sameClass} onChange={event => setSameClass(event.target.checked)} />{gt('sameClass')}</label>
         {searchUrl && <a className="guidance-link" href={searchUrl} target="_blank" rel="noreferrer">{gt('searchLive')} ↗</a>}
         <a href="https://poe.ninja/poe2/builds/" target="_blank" rel="noreferrer">{gt('leagues')} ↗</a></div>
     </article>
     <article className="guidance-card guidance-paste"><h3>{gt('pasteTitle')}</h3><p>{gt('pasteHint')}</p>
-      <textarea aria-label={gt('paste')} placeholder={gt('paste')} value={code} onChange={event => setCode(event.target.value)} rows={3} spellCheck={false} />
-      <button onClick={() => void paste()} disabled={!code.trim() || decoding}>{decoding ? gt('loading') : gt('compare')}</button>
+      <AppTextarea aria-label={gt('paste')} placeholder={gt('paste')} value={code} onChange={event => setCode(event.target.value)} rows={3} spellCheck={false} />
+      <AppButton onClick={() => void paste()} disabled={!code.trim() || decoding}>{decoding ? gt('loading') : gt('compare')}</AppButton>
       {pasteError && <p role="alert">{pasteError}</p>}
     </article>
     </div>
     <div className="guidance-section-heading" ref={samplesRef} tabIndex={-1}><h3>{gt('samples')} <span>{ranked.length}</span></h3>
       <details><summary>{gt('score')}</summary><p>{gt('formula')}</p></details></div>
     <p className="guidance-notice">{gt('history')}</p>
-    <div className="guidance-filters"><input className="guidance-search" aria-label={gt('search')} placeholder={gt('search')} value={query} onChange={event => setQuery(event.target.value)} />
-      <label className="guidance-checkbox"><input type="checkbox" checked={exact} onChange={event => setExact(event.target.checked)} />{gt('exact')}</label></div>
+    <div className="guidance-filters"><AppInput className="guidance-search" aria-label={gt('search')} placeholder={gt('search')} value={query} onChange={event => setQuery(event.target.value)} />
+      <label className="guidance-checkbox"><AppInput type="checkbox" checked={exact} onChange={event => setExact(event.target.checked)} />{gt('exact')}</label></div>
     {loading && <p role="status">{gt('loading')}</p>}
-    {failed && <p role="alert">{gt('failed')} <button onClick={() => setAttempt(value => value + 1)}>{gt('retry')}</button></p>}
+    {failed && <p role="alert">{gt('failed')} <AppButton onClick={() => setAttempt(value => value + 1)}>{gt('retry')}</AppButton></p>}
     {!loading && !ranked.length && <p className="guidance-empty">{gt('empty')}</p>}
     {!!ranked.length && ranked[0].match.score === 0 && <p className="guidance-notice">{gt('notRelated')}</p>}
     <div className="guidance-results">{ranked.map(({ reference, profile, match }) => <article className={`guidance-card guidance-result${selectedId === reference.id ? ' is-selected' : ''}`} key={reference.id}>
@@ -158,15 +159,15 @@ export function BuildGuidancePanel({ session, lang, onSkills, onEquipment, onTre
         {match.supportOverlap > 0 && <span>{gt('supports')} {Math.round(match.supportOverlap * 100)}%</span>}
         {match.uniqueOverlap > 0 && <span>{gt('uniques')} {Math.round(match.uniqueOverlap * 100)}%</span>}</div>
       <p className="guidance-source">{reference.source.url ? `${reference.source.league} · ${reference.source.gameVersion} · ${reference.source.fetchedAt}` : gt('pasted')}</p>
-      <div className="guidance-row-actions"><button aria-pressed={selectedId === reference.id} onClick={() => open(reference.id)}>{gt('details')}</button>
+      <div className="guidance-row-actions"><AppButton aria-pressed={selectedId === reference.id} onClick={() => open(reference.id)}>{gt('details')}</AppButton>
         {reference.source.url && <a href={reference.source.url} target="_blank" rel="noreferrer">{gt('source')} ↗</a>}</div>
     </article>)}</div>
     {selected && <div ref={detailRef} className="guidance-detail" tabIndex={-1} aria-label={gt('details')}>
       <PageHeader id="reference-heading" title={`${gt('reference')} · ${selectedGroup?.active_skill_id ? gemName(selectedGroup.active_skill_id) : className(selected.build.character.ascendancy_name)}`} description={gt('differences')}>
-        <button onClick={() => {
+        <AppButton onClick={() => {
           samplesRef.current?.focus({ preventScroll: true });
           samplesRef.current?.scrollIntoView({ block: 'start' });
-        }}>← {gt('samples')}</button>
+        }}>← {gt('samples')}</AppButton>
       </PageHeader>
       <h3>{gt('skills')}</h3><p className="guidance-muted">{gt('mainOnly')}</p>
       <div className="guidance-table-wrap"><table className="guidance-table"><thead><tr><th>{gt('gem')}</th><th>{gt('current')}</th><th>{gt('reference')}</th></tr></thead>
@@ -186,14 +187,14 @@ export function BuildGuidancePanel({ session, lang, onSkills, onEquipment, onTre
     {(!!session.calc?.unsupported_modifiers.length || !!session.calc?.item_errors.length) && <p className="guidance-notice">{gt('partial')}</p>}
     <div className="guidance-actions">
       <article className="guidance-card"><span className="guidance-step">01</span><h4>{gt('skills')}</h4><p>{gt('skillHint')}</p>
-        <button disabled={groupIndex === undefined || session.busy} onClick={() => groupIndex !== undefined && onSkills(groupIndex)}>{gt('planSkills')} →</button></article>
+        <AppButton disabled={groupIndex === undefined || session.busy} onClick={() => groupIndex !== undefined && onSkills(groupIndex)}>{gt('planSkills')} →</AppButton></article>
       <article className="guidance-card"><span className="guidance-step">02</span><h4>{gaps.length ? gt('gaps') : gt('gear')}</h4>
         {gaps.length > 0 && <ul className="guidance-gap-list">{gaps.map(gap => <li key={gap.stat}>{statNameLabel(lang, gap.stat)} <strong>{gap.value.toFixed(0)}% → {gap.target}%</strong></li>)}</ul>}
-        <p>{gaps.length ? gt('gapHint') : gt('gearHint')}</p><button onClick={onEquipment}>{gt('planGear')} →</button></article>
+        <p>{gaps.length ? gt('gapHint') : gt('gearHint')}</p><AppButton onClick={onEquipment}>{gt('planGear')} →</AppButton></article>
       <article className="guidance-card"><span className="guidance-step">03</span><h4>{gt('tree')}</h4><p>{gt('treeHint')}</p>
-        <button onClick={onTree}>{gt('planTree')} →</button></article>
+        <AppButton onClick={onTree}>{gt('planTree')} →</AppButton></article>
     </div>
-    <button className="guidance-config" onClick={onConfig}>{gt('configure')} →</button>
+    <AppButton className="guidance-config" onClick={onConfig}>{gt('configure')} →</AppButton>
 
   </section>;
 }
@@ -212,7 +213,7 @@ function EquipmentComparison({ session, reference, lang, onCompareItem }: { sess
   return <div className="guidance-equipment">{slots.map((slot, index) => <article className="guidance-card" key={slot}><h4>{slotLabel(lang, slot)}</h4>
     <div className="guidance-equipment-pair">{[0, 1].map(side => <div key={side}><span className="page-eyebrow">{gt(side ? 'reference' : 'current')}</span>
       <p>{names[index * 2 + side] || gt('absent')}</p>{texts[index * 2 + side] && <><details><summary>{gt('text')}</summary><pre>{texts[index * 2 + side]}</pre></details>
-        {side === 1 && <button disabled={session.busy} onClick={() => onCompareItem(texts[index * 2 + side]!)}>{gt('evaluateItem')}</button>}</>}</div>)}</div></article>)}</div>;
+        {side === 1 && <AppButton disabled={session.busy} onClick={() => onCompareItem(texts[index * 2 + side]!)}>{gt('evaluateItem')}</AppButton>}</>}</div>)}</div></article>)}</div>;
 }
 
 function PassiveList({ title, nodes, lang }: { title: string; nodes: PassiveNode[]; lang: Lang }) {

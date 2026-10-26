@@ -1,3 +1,4 @@
+import { AppButton, AppInput } from '../shared/controls';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { UniqueDraft, UniqueEntry, UniqueSelection } from '../../api/uniques';
@@ -46,7 +47,7 @@ export function UniqueCatalog({ session, lang }: { session: BuildSession; lang: 
   return <section className="item-crafter unique-catalogue ui-card" aria-label={t('title')}>
     <p>{t('hint')}</p>
     <div className="item-crafter-fields">
-      <label>{t('search')}<input type="search" aria-label={t('search')} value={query} onChange={event => { setQuery(event.target.value); setPicked(null); }} /></label>
+      <label>{t('search')}<AppInput type="search" aria-label={t('search')} value={query} onChange={event => { setQuery(event.target.value); setPicked(null); }} /></label>
       <label>{t('itemClass')}<AppSelect ariaLabel={t('itemClass')} value={itemClass}
         options={[{ value: '', label: t('allClasses') }, ...classes.map((value, i) => ({ value, label: classNames[i] ?? value }))]}
         onChange={value => { setItemClass(value); setPicked(null); }} /></label>
@@ -111,18 +112,18 @@ function UniqueItem({ entry, catalog, session, lang }: { entry: UniqueEntry; cat
           onChange={value => update({ ...selection, groups: { ...selection.groups, [group.id]: Number(value) } })} /></label>)}
       </div>
       {!!rolls.length && <div className="unique-rolls"><h4>{t('rolls')}</h4><div className="replacement-actions">
-        {([0, .5, 1] as const).map(value => <button key={value} onClick={() => update({ ...selection,
-          rolls: { ...selection.rolls, ...Object.fromEntries(rolls.map(line => [line.index, value])) } })}>{t(value === 0 ? 'minimum' : value === 1 ? 'maximum' : 'middle')}</button>)}
+        {([0, .5, 1] as const).map(value => <AppButton key={value} onClick={() => update({ ...selection,
+          rolls: { ...selection.rolls, ...Object.fromEntries(rolls.map(line => [line.index, value])) } })}>{t(value === 0 ? 'minimum' : value === 1 ? 'maximum' : 'middle')}</AppButton>)}
       </div>{rolls.map((line, i) => <label key={line.index} className="unique-roll"><span>{labels[i]}</span>
-        <input type="range" min="0" max="100" step="1" aria-label={`${t('roll')} ${i + 1}`} value={line.roll * 100}
+        <AppInput type="range" min="0" max="100" step="1" aria-label={`${t('roll')} ${i + 1}`} value={line.roll * 100}
           onChange={event => update({ ...selection, rolls: { ...selection.rolls, [line.index]: Number(event.target.value) / 100 } })} /><output>{Math.round(line.roll * 100)}%</output>
       </label>)}</div>}
-      <button className="trade-primary" onClick={() => void prepare()}>{t(busy ? 'preparing' : 'preview')}</button>
+      <AppButton className="trade-primary" onClick={() => void prepare()}>{t(busy ? 'preparing' : 'preview')}</AppButton>
     </fieldset>
     {error && <p role="alert">{t(error)}</p>}
     {draft && base && <ItemDraftWorkbench key={draft.revision} initialText={draft.value.text} base={base} catalog={previewCatalog} session={session} lang={lang} editable={false} />}
-    {draft && !base && <div><p>{t('unavailable')}</p><button disabled={saved} onClick={() => {
+    {draft && !base && <div><p>{t('unavailable')}</p><AppButton disabled={saved} onClick={() => {
       session.saveLibraryItem(entry.item_type === 'jewel' ? 'jewel' : 'item', draft.value.text); setSaved(true);
-    }}>{craftT(lang, saved ? 'saved' : 'save')}</button></div>}
+    }}>{craftT(lang, saved ? 'saved' : 'save')}</AppButton></div>}
   </div>;
 }

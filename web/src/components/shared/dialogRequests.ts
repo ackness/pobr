@@ -1,6 +1,7 @@
 import type { Lang } from '../../lib/i18n';
 
 export interface DialogRequest {
+  id: number;
   kind: 'confirm' | 'prompt';
   message: string;
   defaultValue: string;
@@ -14,6 +15,7 @@ export class DialogRequests {
   private requests: DialogRequest[] = [];
   private listeners = new Set<() => void>();
   private disposed = false;
+  private nextId = 0;
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };
@@ -23,7 +25,7 @@ export class DialogRequests {
   open(kind: DialogRequest['kind'], message: string, lang: Lang, defaultValue = '') {
     if (this.disposed) return Promise.resolve(kind === 'confirm' ? false : null);
     return new Promise<string | boolean | null>(resolve => {
-      this.requests.push({ kind, message, lang, defaultValue, resolve,
+      this.requests.push({ id: this.nextId++, kind, message, lang, defaultValue, resolve,
         trigger: typeof document !== 'undefined' && document.activeElement instanceof HTMLElement ? document.activeElement : null });
       this.emit();
     });

@@ -1,3 +1,4 @@
+import { AppButton, AppSelectControl } from '../shared/controls';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CalculateBuildRequest } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
@@ -97,21 +98,21 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
     <div className="equipment-planner-heading"><h4 id="equipment-planner-title">{ut('jointEquipment')}</h4>
       <span>{candidates.length} / {EQUIPMENT_CANDIDATE_LIMIT}</span></div>
     <p>{ut('jointEquipmentHint')}</p>
-    <label>{ut('jointMaxChanges')} <select value={maxReplacements} disabled={!active || busy}
+    <label>{ut('jointMaxChanges')} <AppSelectControl value={maxReplacements} disabled={!active || busy}
       onChange={event => setMaxReplacements(Number(event.target.value))}>
       {Array.from({ length: EQUIPMENT_MAX_REPLACEMENTS }, (_, index) => index + 1).map(count =>
-        <option key={count} value={count}>{count}</option>)}</select></label>
+        <option key={count} value={count}>{count}</option>)}</AppSelectControl></label>
     {!candidates.length && <p className="trade-notice">{ut('jointEmpty')}</p>}
     <ul className="equipment-candidates">{candidates.map(candidate => <li key={candidate.id}>
       <details><summary><strong>{candidate.label}</strong> · {slotLabel(lang, candidate.slot)}</summary><pre>{candidate.text}</pre></details>
-      <button aria-label={`${ut('jointRemove')} ${candidate.label} · ${slotLabel(lang, candidate.slot)}`} disabled={!active || busy} onClick={() => onRemove(candidate.id)}>{ut('jointRemove')}</button>
+      <AppButton aria-label={`${ut('jointRemove')} ${candidate.label} · ${slotLabel(lang, candidate.slot)}`} disabled={!active || busy} onClick={() => onRemove(candidate.id)}>{ut('jointRemove')}</AppButton>
     </li>)}</ul>
     {!!candidates.length && <div className="replacement-actions">
-      <button className="trade-primary" disabled={!active || busy || session.busy || !catalog} onClick={() => void run()}>
+      <AppButton className="trade-primary" disabled={!active || busy || session.busy || !catalog} onClick={() => void run()}>
         {maxReplacements === 2 ? ut('jointCompare') : maxReplacements === 1 ? ut('jointCompareOne')
-          : `${ut('jointCompareMany')} ${maxReplacements} ${ut('jointItems')}`}</button>
+          : `${ut('jointCompareMany')} ${maxReplacements} ${ut('jointItems')}`}</AppButton>
       {busy && <><span role="status">{ut('comparingPositions')} {progress.done} / {progress.total}</span>
-        <button onClick={stop}>{ut('cancelCompare')}</button></>}
+        <AppButton onClick={stop}>{ut('cancelCompare')}</AppButton></>}
     </div>}
     {error && <p role="alert" className="trade-error">{error}</p>}
     {result && <div className="equipment-plan-results" aria-live="polite">
@@ -135,7 +136,7 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
           {(plan.error || !!plan.warnings?.length) && <p className="trade-notice">{ut('jointInvalid')} {plan.error ? reasonText(plan.error) : plan.warnings?.map(reasonText).join(', ')}</p>}
           {!!plan.unsupported.length && <details className="trade-notice"><summary>{ut('incomplete')} ({plan.unsupported.length})</summary>
             <ul>{plan.unsupported.map((line, index) => <li key={index}>{line}</li>)}</ul></details>}
-          {!!chosen.length && <button className="trade-primary" disabled={!active || busy || session.busy || !canApply} onClick={() => apply(plan)}>{ut('jointApply')}</button>}
+          {!!chosen.length && <AppButton className="trade-primary" disabled={!active || busy || session.busy || !canApply} onClick={() => apply(plan)}>{ut('jointApply')}</AppButton>}
         </li>;
       })}</ol>
       {!!rejected.length && <details className="trade-notice"><summary>{ut('jointRejected')} ({rejected.length})</summary>

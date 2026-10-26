@@ -22,7 +22,7 @@ export function AppDialogsProvider({ children, scope }: { children: ReactNode; s
   useLayoutEffect(() => { requests.activate(); return () => requests.dispose(); }, [requests]);
   return <DialogContext.Provider value={requests}>
     {children}
-    {request && <RequestDialog key={`${scope}:${request.kind}:${request.message}`} request={request} requests={requests} />}
+    {request && <RequestDialog key={`${scope}:${request.id}`} request={request} requests={requests} />}
   </DialogContext.Provider>;
 }
 

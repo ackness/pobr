@@ -573,3 +573,27 @@
 
 .gem-number { display: flex; align-items: center; gap: var(--space-1); font-size: var(--text-xs); }
 .skill-gem .gem-corrupted { width: auto; gap: var(--space-1); font-size: var(--text-xs); }
+
+/* V2 keeps each gem's controls together as the available panel width changes. */
+.v2-root .skill-groups { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+.v2-root .skill-group { border-radius: 1.25rem; padding: 1.1rem; min-width: 0; }
+.v2-root .skill-group-header { flex-wrap: wrap; gap: .6rem; }
+.v2-root .skill-group-title { justify-content: flex-start; min-width: 8rem; }
+.v2-root .skill-gem { flex-wrap: wrap; gap: .75rem; padding-block: .75rem; }
+.v2-root .gem-name { min-width: 9rem; }
+.v2-root .gem-controls { flex-wrap: wrap; justify-content: flex-end; gap: .6rem; }
+.v2-root .gem-controls label { gap: .35rem; }
+.gem-picker-popover { width: min(30rem, calc(100vw - 1.5rem)); max-height: min(26rem, var(--radix-popover-content-available-height)); padding: .35rem; gap: 0; overflow: hidden; }
+.gem-picker-popover .gem-picker-list { max-height: 20rem; }
+.gem-picker-popover .gem-picker-item { border-radius: .65rem; min-height: 2.5rem; flex-wrap: wrap; }
+.gem-picker-popover .gem-picker-item.is-highlight { background: var(--accent); color: var(--accent-foreground); }
+.gem-picker-popover .gem-picker-chips { flex-wrap: wrap; }
+@media (min-width: 1900px) {
+  .v2-root .skill-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+@media (max-width: 640px) {
+  .v2-root .gem-name { flex-basis: 100%; }
+  .v2-root .gem-controls { justify-content: flex-start; width: 100%; }
+  .v2-root .gem-controls input[type=number] { width: 3.5rem; }
+  .v2-root .skill-group { padding: .8rem; }
+}

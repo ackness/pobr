@@ -1,3 +1,4 @@
+import { AppButton, AppTextarea } from '../shared/controls';
 import { craftT } from '../../lib/itemCraftingText';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CalculateBuildRequest } from '../../api/types';
@@ -177,22 +178,22 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   return <section className="upgrade-item-check ui-card" aria-labelledby="replacement-heading">
     {candidate ? <header><h3 id="replacement-heading">{craftT(lang, 'preview')}</h3><p>{craftT(lang, 'previewHint')}</p></header> : <header className="replacement-heading"><div><span className="trade-section-label">{ut('pasteEyebrow')}</span>
       <h3 id="replacement-heading">{ut('check')}</h3><p>{ut('checkHint')}</p></div><div className="replacement-context"><span className="ui-badge">{ut('localComparison')}</span>
-      <button className="replacement-goal" aria-label={`${ut('comparisonGoal')}: ${goalLabel}`} onClick={onEditGoal}>{goalLabel} <span aria-hidden>↗</span></button></div></header>}
+      <AppButton className="replacement-goal" aria-label={`${ut('comparisonGoal')}: ${goalLabel}`} onClick={onEditGoal}>{goalLabel} <span aria-hidden>↗</span></AppButton></div></header>}
     <div className="replacement-input"><label htmlFor="replacement-text">{ut('itemText')}</label>
-      <textarea readOnly={!!candidate} ref={inputRef} id="replacement-text" rows={report ? 3 : 5} value={text} placeholder={ut('pastePlaceholder')}
+      <AppTextarea readOnly={!!candidate} ref={inputRef} id="replacement-text" rows={report ? 3 : 5} value={text} placeholder={ut('pastePlaceholder')}
         onChange={event => { if (candidate || !latest.current.active) return; stop(); setApplied(null); setSnapshot(null); setChosenSlot(null); setAffixDirty(false); setAugmentPlans({}); setText(event.target.value); }}
         onPaste={event => { if (candidate || !latest.current.active) return; const copied = event.clipboardData.getData('text/plain'); if (!copied) return;
           event.preventDefault(); stop(); setApplied(null); setSnapshot(null); setAugmentPlans({}); setChosenSlot(null); setAffixDirty(false); setText(copied); setPendingPaste({ input: copied }); }} />
-      <div className="replacement-actions"><button className="trade-primary" disabled={!active || busy || affixDirty || session.busy || !catalog || !text.trim()} onClick={() => void run(text, augmentPlans, chosenSlot ?? undefined)}>
-        {busy ? ut('comparingPositions') : ut('compare')}</button>
-        {busy && <button onClick={stop}>{ut('cancelCompare')}</button>}
+      <div className="replacement-actions"><AppButton className="trade-primary" disabled={!active || busy || affixDirty || session.busy || !catalog || !text.trim()} onClick={() => void run(text, augmentPlans, chosenSlot ?? undefined)}>
+        {busy ? ut('comparingPositions') : ut('compare')}</AppButton>
+        {busy && <AppButton onClick={stop}>{ut('cancelCompare')}</AppButton>}
         {!candidate && <span>{ut('autoPositions')}</span>}</div>
       {!candidate && <p className="replacement-copy-links"><a href="/userscripts/pobr-market-copy.user.js" target="_blank" rel="noreferrer">{ut('copyScript')}</a>
         <a href="/userscripts/index.html" target="_blank" rel="noreferrer">{ut('copyScriptHelp')}</a></p>}
     </div>
-    {candidate && <div className="replacement-actions"><button disabled={busy || session.busy || affixDirty || saved || !active} onClick={() => {
+    {candidate && <div className="replacement-actions"><AppButton disabled={busy || session.busy || affixDirty || saved || !active} onClick={() => {
       session.saveLibraryItem(candidate.kind, candidateText, selected?.slot.startsWith('Jewel@') ? undefined : selected?.slot); setSaved(true);
-    }}>{craftT(lang, saved ? 'saved' : 'save')}</button></div>}
+    }}>{craftT(lang, saved ? 'saved' : 'save')}</AppButton></div>}
     {error && <p role="alert" className="trade-error">{error}</p>}
     {active && applied && !session.busy && applied.weaponSet === session.activeWeaponSet && appliedText === applied.text && <p role="status" className="trade-notice replacement-applied">
       {ut('applied')} · {applied.name} · {positionLabel(applied.slot)}
@@ -220,11 +221,11 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
       </div>
       <div className="upgrade-replacement-result" aria-live="polite">
         <div className="replacement-destinations" role="group" aria-label={ut('chooseReplacement')}>
-          {positions.map(row => <button key={row.slot} disabled={busy} className="replacement-position" aria-pressed={selected.slot === row.slot} onClick={() => { setChosenSlot(row.slot); setSaved(false); }}>
+          {positions.map(row => <AppButton key={row.slot} disabled={busy} className="replacement-position" aria-pressed={selected.slot === row.slot} onClick={() => { setChosenSlot(row.slot); setSaved(false); }}>
             <strong>{positionLabel(row.slot)}</strong>{recommended === row.slot && <span className="replacement-recommended">{ut('recommendedPosition')}</span>}
             <span className={(row.stats.TotalDPS ?? 0) < (report.baseline.TotalDPS ?? 0) ? 'delta-neg' : ''}>DPS {deltaText((row.stats.TotalDPS ?? 0) - (report.baseline.TotalDPS ?? 0))}</span>
             <span className={(row.stats.TotalEHP ?? 0) < (report.baseline.TotalEHP ?? 0) ? 'delta-neg' : ''}>EHP {deltaText((row.stats.TotalEHP ?? 0) - (report.baseline.TotalEHP ?? 0))}</span>
-          </button>)}
+          </AppButton>)}
         </div>
         <div className="replacement-verdict"><span className="trade-section-label">{ut('replacementOutcome')}</span>
         <strong className={selected.unsupported.length || selected.augments.limitWarning ? '' : compareObjectiveStats(selected.stats, report.baseline, objective) < 0 ? 'delta-pos' : 'delta-neg'}>
@@ -245,9 +246,9 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
           })}</tbody></table></div>
         {!!selected.unsupported.length && <details className="trade-notice replacement-unsupported"><summary>{ut('incomplete')} ({selected.unsupported.length})</summary><ul>{selected.unsupported.map((line, index) => <li key={index}>{line}</li>)}</ul></details>}
         {!!report.rejected.length && <p className="trade-notice">{report.rejected.map(row => `${positionLabel(row.slot)}: ${errorText(row.reason)}`).join('\n')}</p>}
-        <div className="replacement-apply"><button className="trade-primary" disabled={!active || busy || affixDirty || session.busy} onClick={apply}>{busy ? ut('comparingPositions') : `${ut('apply')} · ${positionLabel(selected.slot)}`}</button><span>{affixDirty ? affixT(lang, 'dirty') : ut('applyHint')}</span></div>
-        {!candidate && selectedItem && <div className="replacement-actions"><button disabled={!active || busy || affixDirty || session.busy || alreadyAdded || equipmentCandidates.length >= EQUIPMENT_CANDIDATE_LIMIT}
-          onClick={addCandidate}>{ut(alreadyAdded ? 'jointAdded' : 'jointAdd')}</button>
+        <div className="replacement-apply"><AppButton className="trade-primary" disabled={!active || busy || affixDirty || session.busy} onClick={apply}>{busy ? ut('comparingPositions') : `${ut('apply')} · ${positionLabel(selected.slot)}`}</AppButton><span>{affixDirty ? affixT(lang, 'dirty') : ut('applyHint')}</span></div>
+        {!candidate && selectedItem && <div className="replacement-actions"><AppButton disabled={!active || busy || affixDirty || session.busy || alreadyAdded || equipmentCandidates.length >= EQUIPMENT_CANDIDATE_LIMIT}
+          onClick={addCandidate}>{ut(alreadyAdded ? 'jointAdded' : 'jointAdd')}</AppButton>
           <span>{equipmentCandidates.length} / {EQUIPMENT_CANDIDATE_LIMIT}</span></div>}
       </div>
     </div>}
