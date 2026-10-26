@@ -414,3 +414,58 @@ fn a_shared_display_name_without_matching_item_evidence_stays_ordinary() {
         );
     }
 }
+
+#[test]
+fn sands_variant_remaps_selected_and_following_active_effects() {
+    for listed in [false, true] {
+        for another_gem in [false, true] {
+            let mut gems = skill_gem("BlinkReservationPlayer", 20, 0, false);
+            if another_gem {
+                gems.push_str(&skill_gem("FireballPlayer", 20, 0, false));
+            }
+            let mut groups = Vec::new();
+            if listed {
+                groups.push(item_group(
+                    "Sands of Silk",
+                    "Shrouded Vest",
+                    "BlinkReservationPlayer",
+                    20,
+                ));
+                groups.push(skill_group("", &gems));
+            } else {
+                groups.push(skill_group(
+                    r#"source="Item:1:Sands of Silk, Shrouded Vest" slot="Body Armour""#,
+                    &gems,
+                ));
+            }
+            let mut build = unique_build(
+                "Sands of Silk",
+                "Shrouded Vest",
+                "Grants Skill: Level 20 Blink",
+                &groups,
+            );
+            let selected_group = usize::from(listed);
+            // The old list is reservation, Blink, then optionally Fireball.
+            // Both first-gem effects become Sand Blink. A later gem shifts
+            // down one position but must remain the selected effect.
+            for selected in 1..=if another_gem { 3 } else { 2 } {
+                build.socket_groups[selected_group].main_active_skill = Some(selected);
+                let original = build.socket_groups.clone();
+                let (ordinal, effect) = if selected == 3 {
+                    (2, "FireballPlayer")
+                } else {
+                    (1, "BlinkSandPlayer")
+                };
+                assert_eq!(
+                    resolve_main_skill_selection(&build, data()),
+                    Some((selected_group, ordinal, effect.into())),
+                    "listed={listed}, another_gem={another_gem}, selected={selected}"
+                );
+                assert_eq!(build.socket_groups, original);
+            }
+            // An invalid explicit selection must not be changed to a valid one.
+            build.socket_groups[selected_group].main_active_skill = Some(4);
+            assert_eq!(resolve_main_skill_selection(&build, data()), None);
+        }
+    }
+}

@@ -24,7 +24,7 @@ use pobr_data::item::{EquipmentSlot, Item, ItemRarity};
 use crate::build::{Build, GemSkillRef, SocketGroup};
 use crate::build_data::BuildData;
 
-use super::skill::resolve::clean_grant_text;
+use super::skill::resolve::{clean_grant_text, group_active_effects, selected_group_effect};
 
 /// PoBR's synthesized groups have no PoB item id/name, so a source category marker is
 /// used instead; a single equipment slot in one Build only ever holds one item, so
@@ -103,18 +103,36 @@ impl GrantIdentity<'_> {
     /// Only the prepared build is changed. Imported gem references, source
     /// metadata and item text remain untouched on the caller's original build.
     fn canonicalize(self, group: &mut SocketGroup, data: &BuildData) -> bool {
-        let Some(gem) = group.gem_skills.first_mut() else {
+        let Some(gem) = group.gem_skills.first() else {
             return false;
         };
         if self.exported_alias != Some(gem.skill_id.as_str()) {
             return false;
         }
+        // An ordinal belongs to the old effect list: ordinary Blink has a
+        // reservation and an action, whereas Sand Blink has one native effect.
+        // Keep the selected gem/effect identity when that list contracts.
+        let selected = group.main_active_skill.and_then(|_| {
+            selected_group_effect(data, group)
+                .map(|effect| (effect.gem_index, effect.skill_id.to_string()))
+        });
         if group.active_skill_id.as_deref() == self.exported_alias {
             group.active_skill_id = Some(self.skill_id.to_string());
         }
-        gem.skill_id = self.skill_id.to_string();
+        group.gem_skills[0].skill_id = self.skill_id.to_string();
         if let Some(gem_id) = group.gem_ids.first_mut() {
             *gem_id = data.gem_effects[self.skill_id].gem_id.clone();
+        }
+        if let Some((gem_index, selected_id)) = selected {
+            let selected_id = if gem_index == 0 {
+                self.skill_id
+            } else {
+                &selected_id
+            };
+            let ordinal = group_active_effects(data, group)
+                .find(|effect| effect.gem_index == gem_index && effect.skill_id == selected_id)
+                .map_or(0, |effect| effect.active_skill_index);
+            group.main_active_skill = Some(ordinal);
         }
         true
     }
