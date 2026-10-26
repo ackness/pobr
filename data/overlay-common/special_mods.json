@@ -12,6 +12,55 @@
   },
   "entries": [
     {
+      "id": "weapon_added_cold_from_mana",
+      "pattern": "^attacks with this weapon have added cold damage equal to (\\d+(?:\\.\\d+)?)% to (\\d+(?:\\.\\d+)?)% of maximum mana$",
+      "mods": [
+        {
+          "name": "ColdDamageMin",
+          "type": "BASE",
+          "value": 1,
+          "flags": ["Attack"],
+          "tags": [
+            {"type": "PercentStat", "stat": "Mana", "percent": "$1"},
+            {"type": "Condition", "var": "{Hand}Attack"}
+          ]
+        },
+        {
+          "name": "ColdDamageMax",
+          "type": "BASE",
+          "value": 1,
+          "flags": ["Attack"],
+          "tags": [
+            {"type": "PercentStat", "stat": "Mana", "percent": "$2"},
+            {"type": "Condition", "var": "{Hand}Attack"}
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "local_attacks_have_added_min_cold_damage_equal_to_%_of_maximum_mana; local_attacks_have_added_max_cold_damage_equal_to_%_of_maximum_mana",
+      "source_note": "Twisted Empyrean adds Cold damage from final maximum Mana only to attacks using the item's hand; existing PercentStat reads the completed resource snapshot.",
+      "examples": ["Attacks with this Weapon have Added Cold Damage equal to 7% to 10% of maximum Mana"]
+    },
+    {
+      "id": "mace_fire_damage_converted_to_cold",
+      "pattern": "^convert (\\d+(?:\\.\\d+)?)% of fire damage with mace skills to cold damage$",
+      "mods": [
+        {
+          "name": "FireDamageConvertToCold",
+          "type": "BASE",
+          "value": "$1",
+          "flags": ["Attack", "Mace"]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "exporter": "absent",
+      "game_source": "unique_mace_fire_damage_with_mace_skills_%_to_convert_to_cold",
+      "source_note": "Twisted Empyrean converts Fire damage of Mace attacks through the existing conversion matrix, including its normalization above 100%. The pinned exporter recognizes older 'of ... skills' wording, not the current 'with Mace Skills' line.",
+      "examples": ["Convert 102% of Fire Damage with Mace Skills to Cold Damage"]
+    },
+    {
       "id": "spirit_with_200_strength",
       "pattern": "\\+?(\\d+) to spirit while you have at least 200 strength",
       "mods": [
