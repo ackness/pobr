@@ -4,6 +4,7 @@ import { getBackend } from '../../api/backend';
 import type { PartyMember } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import type { Lang } from '../../lib/i18n';
+import { createId } from '../../lib/createId';
 import { useUi } from '../shared/UiContext';
 import { workflowLabel } from './workflowLabels';
 
@@ -20,7 +21,7 @@ export function PartyEditor({ session, lang }: { session: BuildSession; lang: La
   const party = session.calcParams.party ?? { members: [], exports: {} };
   const update = (members: PartyMember[]) => session.updateParams({ party: { ...party, members } });
   const change = (id: string, patch: Partial<PartyMember>) => update(party.members.map(m => m.id === id ? { ...m, ...patch } : m));
-  const add = (member?: PartyMember) => update([...party.members, { ...(member ?? { name: label('member'), enabled: true, blocks: {}, warnings: [] }), id: crypto.randomUUID() }]);
+  const add = (member?: PartyMember) => update([...party.members, { ...(member ?? { name: label('member'), enabled: true, blocks: {}, warnings: [] }), id: createId() }]);
   return <details className="party-editor" open={v2 || undefined}>
     <summary>{label('party')} ({party.members.filter(m => m.enabled).length})</summary>
     <p>{label('partyHint')}</p>

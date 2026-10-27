@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parseSaved, type SavedSession } from '../hooks/useBuildSession';
 import { activeWorkspaceStage, addWorkspaceBuild, createWorkspace, duplicateWorkspaceStage, parseWorkspace, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope } from './buildWorkspace';
 
@@ -12,6 +12,23 @@ const saved: SavedSession = {
 };
 
 describe('local build workspace', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('creates and copies persistent entries when randomUUID is unavailable on HTTP', () => {
+    vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) });
+    const initial = updateWorkspaceStage(createWorkspace(saved), saved, { 'item:ring1': 'Unapplied item' });
+    const copied = duplicateWorkspaceStage(initial, 'Maps');
+    const workspace = addWorkspaceBuild(copied, 'Another build', saved);
+    const ids = workspace.builds.flatMap(build => [build.id, ...build.stages.map(stage => stage.id)]);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const id of ids) expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(workspace.builds[0].id).toBe(initial.activeBuild);
+    expect(workspace.builds[0].stages[0]).toEqual(activeWorkspaceStage(initial));
+    expect(workspace.builds[0].stages[1].saved).toEqual(saved);
+    expect(workspace.builds[0].stages[1].drafts).toEqual({ 'item:ring1': 'Unapplied item' });
+    expect(parseWorkspace(JSON.parse(workspaceEnvelope(workspace)).workspace, parseSaved)).toEqual(workspace);
+  });
+
   it('migrates a standalone session without changing its payload', () => {
     const workspace = createWorkspace(saved);
     expect(activeWorkspaceStage(workspace).saved).toEqual(saved);

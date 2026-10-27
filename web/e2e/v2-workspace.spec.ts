@@ -19,6 +19,18 @@ async function importV2(page: Page) {
   await expect(page.locator('.v2-save-state')).toHaveText('Saved locally');
 }
 
+test('V2 starts and preserves saved builds without crypto.randomUUID', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(crypto, 'randomUUID', { value: undefined }));
+  await importV2(page);
+  const imported = await state(page);
+  await page.reload();
+  await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 90_000 });
+  await expect(page.locator('.v2-save-state')).toHaveText('Saved locally');
+  const restored = await state(page);
+  expect(restored.workspace).toEqual(imported.workspace);
+  expect(restored.state).toEqual(imported.state);
+});
+
 test('V2 copies legacy saves once and config edits preserve the original workspace', async ({ page }) => {
   const dialogs: string[] = []; page.on('dialog', dialog => { dialogs.push(dialog.type()); void dialog.dismiss(); });
   await preferences(page);

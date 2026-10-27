@@ -35,6 +35,7 @@ import type {
   WeaponSwap,
 } from '../api/types';
 import { highestDpsSkill } from '../lib/skillSelection';
+import { createId } from '../lib/createId';
 import { LEGACY_STORAGE, type SessionStorageKeys } from '../lib/sessionStorage';
 
 export interface CharacterState {
@@ -863,7 +864,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
         slot: undefined,
       })),
     ].map((e) => ({
-      id: crypto.randomUUID(),
+      id: createId(),
       kind: e.kind,
       name: itemName(e.text),
       text: e.text,
@@ -872,7 +873,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
 
     const setName = decoded.character.ascendancy_name || decoded.character.class_name;
     const skillSet: SkillSet | null = decoded.socket_groups.length
-      ? { id: crypto.randomUUID(), name: setName, groups: materialize(decoded).socketGroups, main_socket_group: decoded.main_socket_group ?? undefined }
+      ? { id: createId(), name: setName, groups: materialize(decoded).socketGroups, main_socket_group: decoded.main_socket_group ?? undefined }
       : null;
 
     setLibrary((prev) => {
@@ -1420,8 +1421,8 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
       const imported = parseWorkspace({ version: 1, activeBuild: input.build?.id, builds: [input.build] }, parseSaved);
       if (!imported || !workspaceRef.current) throw new Error('invalid multi-stage build file');
       const source = imported.builds[0];
-      const stages = source.stages.map(stage => ({ ...stage, id: crypto.randomUUID() }));
-      const build = { ...source, id: crypto.randomUUID(), stages,
+      const stages = source.stages.map(stage => ({ ...stage, id: createId() }));
+      const build = { ...source, id: createId(), stages,
         activeStage: stages[source.stages.findIndex(stage => stage.id === source.activeStage)].id };
       workspaceRef.current = { ...workspaceRef.current, activeBuild: build.id, builds: [...workspaceRef.current.builds, build] };
       const stage = activeWorkspaceStage(workspaceRef.current);
@@ -1515,7 +1516,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
         ...library,
         items: [
           ...library.items,
-          { id: crypto.randomUUID(), kind, name: itemName(text), text, slot },
+          { id: createId(), kind, name: itemName(text), text, slot },
         ],
       });
     },
@@ -1537,7 +1538,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
         skillSets: [
           ...library.skillSets,
           {
-            id: crypto.randomUUID(),
+            id: createId(),
             name,
             groups: state.socketGroups,
             main_socket_group: state.params.main_socket_group,

@@ -1,4 +1,5 @@
 import type { SavedSession } from '../hooks/useBuildSession';
+import { createId } from './createId';
 
 export interface BuildStage {
   id: string;
@@ -26,8 +27,8 @@ export function activeWorkspaceStage(workspace: BuildWorkspace): BuildStage {
 }
 
 export function createWorkspace(saved: SavedSession): BuildWorkspace {
-  const stage: BuildStage = { id: crypto.randomUUID(), name: '', saved, drafts: {} };
-  const build: LocalBuild = { id: crypto.randomUUID(), name: '', activeStage: stage.id, stages: [stage] };
+  const stage: BuildStage = { id: createId(), name: '', saved, drafts: {} };
+  const build: LocalBuild = { id: createId(), name: '', activeStage: stage.id, stages: [stage] };
   return { version: 1, activeBuild: build.id, builds: [build] };
 }
 
@@ -56,7 +57,7 @@ export function addWorkspaceBuild(workspace: BuildWorkspace, name: string, saved
 }
 
 export function duplicateWorkspaceStage(workspace: BuildWorkspace, name: string): BuildWorkspace {
-  const stage = { ...activeWorkspaceStage(workspace), id: crypto.randomUUID(), name: name.trim() };
+  const stage = { ...activeWorkspaceStage(workspace), id: createId(), name: name.trim() };
   return { ...workspace, builds: workspace.builds.map(build => build.id !== workspace.activeBuild ? build : {
     ...build, activeStage: stage.id, stages: [...build.stages, stage],
   }) };
