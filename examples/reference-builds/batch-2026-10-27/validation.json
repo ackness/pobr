@@ -1,0 +1,42 @@
+{
+  "validated_at": "2026-10-27T15:59:23+00:00",
+  "valid": true,
+  "ascendancies": 23,
+  "build_codes": 23,
+  "distinct_characters": 23,
+  "distinct_code_hashes": 23,
+  "per_ascendancy": {
+    "Abyssal Lich": 1,
+    "Acolyte of Chayula": 1,
+    "Amazon": 1,
+    "Blood Mage": 1,
+    "Chronomancer": 1,
+    "Deadeye": 1,
+    "Disciple of Varashta": 1,
+    "Gemling Legionnaire": 1,
+    "Infernalist": 1,
+    "Invoker": 1,
+    "Lich": 1,
+    "Martial Artist": 1,
+    "Oracle": 1,
+    "Pathfinder": 1,
+    "Ritualist": 1,
+    "Shaman": 1,
+    "Smith of Kitava": 1,
+    "Spirit Walker": 1,
+    "Stormweaver": 1,
+    "Tactician": 1,
+    "Titan": 1,
+    "Warbringer": 1,
+    "Witchhunter": 1
+  },
+  "checks": [
+    "one selected character per ascendancy",
+    "pinned snapshot, league and source URLs",
+    "unique character identities and code hashes, excluding existing examples",
+    "base64/zlib and PathOfBuilding2 XML",
+    "XML class, ascendancy, level and selected main skill",
+    "equipment, tree and skill sections",
+    "SHA-256, byte lengths and selection manifest agreement"
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-27-sorceress-chronomancer-despair-fcb10e0d8bc5",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/4DeEp_siX4-7216/SoSER_ABsoSer",
+    "account": "4DeEp_siX4-7216",
+    "character": "SoSER_ABsoSer",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-27T15:49:01+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/character?account=4DeEp_siX4-7216&name=SoSER_ABsoSer&overview=forbidden-rites",
+    "snapshot": "1537-20261027-28463",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/search?overview=forbidden-rites&class=Chronomancer",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Chronomancer",
+    "level": 98,
+    "main_skill": "Despair"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 9,
+    "code_sha256": "d8bacc766d8c740826f122f9f22af6be3c150b05f1ed2134ce957dff58499ea2",
+    "code_chars": 12788,
+    "decoded_bytes": 48304
+  }
+}

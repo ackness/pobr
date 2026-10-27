@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-27-mercenary-gemling-legionnaire-flameblast-e5dd8c63a8ec",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/415683940-3606/%E7%9C%BC%E7%8F%A0%E9%AA%A8%E7%A2%8C%E4%B8%80%E5%9C%B0",
+    "account": "415683940-3606",
+    "character": "眼珠骨碌一地",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-27T15:49:01+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/character?account=415683940-3606&name=%E7%9C%BC%E7%8F%A0%E9%AA%A8%E7%A2%8C%E4%B8%80%E5%9C%B0&overview=forbidden-rites",
+    "snapshot": "1537-20261027-28463",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/search?overview=forbidden-rites&class=Gemling+Legionnaire",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Gemling Legionnaire",
+    "level": 100,
+    "main_skill": "Flameblast"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 10,
+    "code_sha256": "4513bec6d2f3b748cf82c9274c6c8fcbd89b94c65348168bb8a57f8300601cee",
+    "code_chars": 13796,
+    "decoded_bytes": 55138
+  }
+}

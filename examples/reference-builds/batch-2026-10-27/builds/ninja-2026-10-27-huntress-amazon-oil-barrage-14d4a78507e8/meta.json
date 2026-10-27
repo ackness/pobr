@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-27-huntress-amazon-oil-barrage-14d4a78507e8",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/3hongkonger-7140/Fhongkonger",
+    "account": "3hongkonger-7140",
+    "character": "Fhongkonger",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-27T15:49:01+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/character?account=3hongkonger-7140&name=Fhongkonger&overview=forbidden-rites",
+    "snapshot": "1537-20261027-28463",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/search?overview=forbidden-rites&class=Amazon",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Amazon",
+    "level": 97,
+    "main_skill": "Oil Barrage"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 8,
+    "code_sha256": "6cdfc2f8561fad836f0febdf756eb010aab78d166ad53b6882fe3ee75cc579a0",
+    "code_chars": 13244,
+    "decoded_bytes": 52395
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-27-sorceress-disciple-of-varashta-frostbolt-4b66f163467b",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/18826963302-9152/%E6%98%9F%E4%B8%80%E7%B4%A0%E8%BF%98%E7%9C%9F",
+    "account": "18826963302-9152",
+    "character": "星一素还真",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-27T15:49:01+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/character?account=18826963302-9152&name=%E6%98%9F%E4%B8%80%E7%B4%A0%E8%BF%98%E7%9C%9F&overview=forbidden-rites",
+    "snapshot": "1537-20261027-28463",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/search?overview=forbidden-rites&class=Disciple+of+Varashta",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Disciple of Varashta",
+    "level": 99,
+    "main_skill": "Frostbolt"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 10,
+    "code_sha256": "c5b64a17784fcba9749ca844a5a1bb1700a37124ef8c34d9579748cb6f1b181b",
+    "code_chars": 13652,
+    "decoded_bytes": 51330
+  }
+}

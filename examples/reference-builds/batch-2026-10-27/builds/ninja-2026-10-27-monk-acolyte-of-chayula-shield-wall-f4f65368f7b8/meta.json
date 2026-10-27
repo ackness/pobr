@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-27-monk-acolyte-of-chayula-shield-wall-f4f65368f7b8",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/260596huynq-9011/FR_Yang",
+    "account": "260596huynq-9011",
+    "character": "FR_Yang",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-27T15:49:01+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/character?account=260596huynq-9011&name=FR_Yang&overview=forbidden-rites",
+    "snapshot": "1537-20261027-28463",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/search?overview=forbidden-rites&class=Acolyte+of+Chayula",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Acolyte of Chayula",
+    "level": 99,
+    "main_skill": "Shield Wall"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 5,
+    "code_sha256": "7d0071a6a421b03da795ad0b32758687b037648f7e55dd6fd38785a6f441a649",
+    "code_chars": 13168,
+    "decoded_bytes": 47666
+  }
+}

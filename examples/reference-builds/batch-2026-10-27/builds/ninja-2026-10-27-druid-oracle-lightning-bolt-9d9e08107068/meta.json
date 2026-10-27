@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-27-druid-oracle-lightning-bolt-9d9e08107068",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/10555612-6673/%E9%A3%9E%E9%9B%B7%E7%A5%9E%E8%B0%95",
+    "account": "10555612-6673",
+    "character": "飞雷神谕",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-27T15:49:01+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/character?account=10555612-6673&name=%E9%A3%9E%E9%9B%B7%E7%A5%9E%E8%B0%95&overview=forbidden-rites",
+    "snapshot": "1537-20261027-28463",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/search?overview=forbidden-rites&class=Oracle",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Druid",
+    "ascendancy": "Oracle",
+    "level": 99,
+    "main_skill": "Lightning Bolt"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 3,
+    "code_sha256": "418b23be9999126717076f963cb712d653ec4a73395326f41adaf04e9d15f06d",
+    "code_chars": 12764,
+    "decoded_bytes": 49980
+  }
+}

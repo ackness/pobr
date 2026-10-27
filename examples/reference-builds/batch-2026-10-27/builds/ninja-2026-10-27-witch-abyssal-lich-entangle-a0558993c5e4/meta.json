@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-27-witch-abyssal-lich-entangle-a0558993c5e4",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/AnnNan-2884/Witchieslichies",
+    "account": "AnnNan-2884",
+    "character": "Witchieslichies",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-27T15:49:01+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/character?account=AnnNan-2884&name=Witchieslichies&overview=forbidden-rites",
+    "snapshot": "1537-20261027-28463",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/search?overview=forbidden-rites&class=Abyssal+Lich",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Abyssal Lich",
+    "level": 98,
+    "main_skill": "Entangle"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "c0aaa03bec26cfc2b7ddf593ad8bd8dc664ae151f8e53caf5f200ad8f97aeb50",
+    "code_chars": 12248,
+    "decoded_bytes": 45512
+  }
+}

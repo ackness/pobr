@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-27-monk-invoker-rend-52e53378754d",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/280216652-8994/gubaobaobb",
+    "account": "280216652-8994",
+    "character": "gubaobaobb",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-27T15:49:01+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/character?account=280216652-8994&name=gubaobaobb&overview=forbidden-rites",
+    "snapshot": "1537-20261027-28463",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/search?overview=forbidden-rites&class=Invoker",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Invoker",
+    "level": 96,
+    "main_skill": "Rend"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 1,
+    "code_sha256": "bdcfcfb3cbc3a6dfd49bf4ef04bf039f616159e1c084743f64c01ae0752b9ef4",
+    "code_chars": 10992,
+    "decoded_bytes": 41652
+  }
+}

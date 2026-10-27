@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-27-monk-martial-artist-hollow-form-861661f75462",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/18679198192-0519/firstWang",
+    "account": "18679198192-0519",
+    "character": "firstWang",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-27T15:49:01+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/character?account=18679198192-0519&name=firstWang&overview=forbidden-rites",
+    "snapshot": "1537-20261027-28463",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/search?overview=forbidden-rites&class=Martial+Artist",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Martial Artist",
+    "level": 99,
+    "main_skill": "Hollow Form"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 1,
+    "code_sha256": "e6cb81ebb66fa3b1f5e064f1a532131510952e4e3497763805088c61f94e1d0e",
+    "code_chars": 12248,
+    "decoded_bytes": 44750
+  }
+}

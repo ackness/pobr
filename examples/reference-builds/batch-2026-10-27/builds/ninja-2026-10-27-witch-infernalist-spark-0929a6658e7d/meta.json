@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-27-witch-infernalist-spark-0929a6658e7d",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/1135462253-5569/%E9%87%8D%E7%94%9F%E4%B8%89%E8%AE%B0%E6%B2%A1%E6%9C%A8%E4%B9%8B%E9%87%8D%E5%BA%86%E9%AD%85%E9%AD%94",
+    "account": "1135462253-5569",
+    "character": "重生三记没木之重庆魅魔",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-27T15:49:01+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/character?account=1135462253-5569&name=%E9%87%8D%E7%94%9F%E4%B8%89%E8%AE%B0%E6%B2%A1%E6%9C%A8%E4%B9%8B%E9%87%8D%E5%BA%86%E9%AD%85%E9%AD%94&overview=forbidden-rites",
+    "snapshot": "1537-20261027-28463",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/1537-20261027-28463/search?overview=forbidden-rites&class=Infernalist",
+    "selection": "ascendancy-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Infernalist",
+    "level": 100,
+    "main_skill": "Spark"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 8,
+    "code_sha256": "37da86ed0a026800871785cb68b21b9d496545e28adf100d4dd9edb49036cf00",
+    "code_chars": 14188,
+    "decoded_bytes": 58908
+  }
+}
