@@ -199,6 +199,7 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // twice would lower the resistance twice).
     super::setup_env::reduce_enemy_exposure(&mut env.enemy.mod_db, &env.player.mod_db, &env.cfg);
     super::setup_env::scale_enemy_daze(&mut env.enemy.mod_db, &env.player.mod_db, &env.cfg);
+    super::setup_env::apply_enemy_incision(&mut env.enemy.mod_db, &env.player.mod_db, &env.cfg);
 
     // Doryani's Prototype sets the enemy's resistance to the player's final
     // resistance, after buffs, charges and resource-dependent modifiers. An

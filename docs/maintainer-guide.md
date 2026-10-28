@@ -447,6 +447,27 @@ Game-client measurement or an explicit game rule remains required; no new
 known-differences exemption is added, and the poise/Cold-mitigation conventions
 above remain unchanged.
 
+Incision (`apply_X_incision_on_hit`, [Incision support](https://poe2db.tw/us/Incision): "Supported Skills inflict
+Incision on Hit, which causes Enemies to be increasingly more likely to be inflicted with Bleeding. All Incision is
+removed from a target on inflicting it with Bleeding") is read from the configured stack count
+(`multiplierIncisionStackCount`, enemy `Multiplier:IncisionStack`, at most 10, effective mode only). Each stack adds
+10% to the enemy's `SelfBleedChance`, the input every Bleed already reads (`calc::setup_env::apply_enemy_incision`),
+so the chance is limited to 100% by the ordinary chance rules. It counts only while the character can inflict Incision
+(`Condition:CanInflictIncision`), so a stale stack input left in an imported build does nothing once the source is
+removed. "N% increased effect of Incision" (`incision_effect_+%`, `IncisionEffect`) scales that chance. The 10% per
+stack and 10-stack maximum come from the Incision keyword text on poe2db and the config tooltip of the pinned
+exporter, which agree; the game data holds no constant for either. The pinned PoB2 applies the same rule
+(`CalcPerform.lua`: `10 * (1 + IncisionEffect INC / 100)` per stack, limit 10), so the rule needs no `exporter`
+attribute; that the effect modifier scales the per-stack chance is therefore the exporter's reading, **not an in-game
+measurement**. The Incision support's `apply_X_incision_on_hit` is claimed in `skill_stats` as
+`Condition:CanInflictIncision`; the extracted map entry (a `GlobalEffect` flag) was rejected as an unknown modifier
+name, so a build with only the support never counted its stacks. Thousand Cuts ("Enemies you apply Incision to take 2%
+increased Physical Damage per Incision") and the "against Enemies affected by Incision" Bleeding magnitude lines
+were already read from the same stack count (`MultiplierThreshold` on the enemy) and are not scaled by the effect
+modifier. Stacks are removed by the Bleeding they cause; the configured count is the number present when the hit
+lands, and no stack build-up, consumption timing or `incisionConsumedRecently` is inferred from the chance. No
+worked build carries Incision, so this is covered by a build-level test only.
+
 Player-side views `SelfFreezeEffect`, `SelfPoisonEffect` and `SelfBlindDuration` follow the other `Self*` views: nonnegative `(100 + INC) * MORE` percentages. Freeze effect reads `SelfFreezeEffect` (game `non_damaging_ailment_effect_+%_on_self`, also feeding Chill and Shock); Poison effect reads `SelfPoisonEffect` (`unaffected_by_damaging_ailments` gives 0). Blind has no self-duration game stat (`blind_duration_+%` is outgoing), so `SelfBlindDuration` is the 100% base times `DebuffExpirationModifier / 100`: Blind is a debuff. Incoming freeze, poison and blind remain unmodelled, so these views change no other output.
 
 “你和 Presence 内的友军 …” 类词条（例如 Infernalist 的 Bringer of Flame：“All Damage from you and Allies in your Presence contributes to Flammability and Ignite Magnitudes”）角色自己也有。PoBR 的 `ExtraAura` 只给友军，所以抽取器把 PoB2 规则里不带 `onlyAllies` 的 `ExtraAura` 展开为角色自己的词条（带同样的条件）加给友军的 `ExtraAura`（`sync-pob-catalog` 的 `character_share_of_aura`）；带 `onlyAllies` 的规则抽取器不收。

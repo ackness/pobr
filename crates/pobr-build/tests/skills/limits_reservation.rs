@@ -547,3 +547,49 @@ fn daze_magnitude_scales_the_stun_buildup_of_a_dazed_enemy() {
         plain
     );
 }
+
+/// Incision stacks give the enemy 10% chance to be inflicted with Bleeding per stack (the stack input is clamped to
+/// 10), "N% increased effect of Incision" scales it, and nothing counts unless the character inflicts Incision.
+#[test]
+fn incision_stacks_give_the_enemy_a_chance_to_bleed() {
+    const SUPPORTED: &str = r#"<Skill mainActiveSkill="1"><Gem skillId="BoneshatterPlayer" level="20"/><Gem skillId="SupportIncisionPlayer" level="20"/></Skill>"#;
+    const BARE: &str =
+        r#"<Skill mainActiveSkill="1"><Gem skillId="BoneshatterPlayer" level="20"/></Skill>"#;
+    let chance = |skills: &str, stacks: Option<u32>, line: Option<&str>| {
+        let config = stacks.map_or_else(String::new, |stacks| {
+            format!(r#"<Input name="multiplierIncisionStackCount" number="{stacks}"/>"#)
+        });
+        let build = parse_build(&format!(
+            r#"<PathOfBuilding2><Build level="80" className="Warrior" mainSocketGroup="1"/><Skills>{skills}</Skills><Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Wooden Club
+Implicits: 0
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items><Config>{config}</Config></PathOfBuilding2>"#
+        ))
+        .unwrap();
+        let output = calculate_with_data(
+            &build,
+            data(),
+            &DataOrchestratorOptions {
+                extra_modifier_texts: line.iter().map(|text| text.to_string()).collect(),
+                mode_effective: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        display_value(&output, "BleedChance")
+    };
+    let none = chance(SUPPORTED, None, None);
+    assert_eq!(none, chance(SUPPORTED, Some(0), None));
+    let four = chance(SUPPORTED, Some(4), None);
+    assert!((four - none - 40.0).abs() < 1e-6, "{none} -> {four}");
+    // Ten stacks is the maximum.
+    assert_eq!(
+        chance(SUPPORTED, Some(25), None),
+        chance(SUPPORTED, Some(10), None)
+    );
+    // +50% effect of Incision: 15% per stack.
+    let scaled = chance(SUPPORTED, Some(4), Some("50% increased effect of Incision"));
+    assert!((scaled - none - 60.0).abs() < 1e-6, "{scaled}");
+    // Without a source of Incision the configured stacks change nothing.
+    assert_eq!(chance(BARE, Some(10), None), chance(BARE, None, None));
+}
