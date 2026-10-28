@@ -77,6 +77,83 @@ impl fmt::Display for LoadError {
 
 impl std::error::Error for LoadError {}
 
+/// The in-memory backend's file table.
+///
+/// A browser holds the whole pack as bytes beside everything parsed from it, and a
+/// WebAssembly memory never shrinks, so what is resident at the peak stays committed for the
+/// life of the page. A loader that has parsed a file and will not read it again can
+/// [`GameData::release_domain`] it: the entry keeps its place (the keys are the inventory
+/// identity and enumeration read) and loses its bytes. Reading a released file is a bug in
+/// whoever released it, so it never reads as a missing file that a consumer may degrade on:
+/// it panics in a debug build and is an error otherwise.
+#[derive(Debug)]
+struct MemoryFiles {
+    entries: std::sync::Mutex<std::collections::BTreeMap<String, MemoryEntry>>,
+    /// Whether [`GameData::release_domain`] releases anything; a table staged without
+    /// asking for it keeps every file, as every other loader of it expects.
+    release_consumed: bool,
+}
+
+#[derive(Debug)]
+enum MemoryEntry {
+    Present(std::sync::Arc<Vec<u8>>),
+    Released,
+}
+
+impl MemoryFiles {
+    fn new(files: std::collections::BTreeMap<String, Vec<u8>>, release_consumed: bool) -> Self {
+        let entries = files
+            .into_iter()
+            .map(|(key, bytes)| (key, MemoryEntry::Present(std::sync::Arc::new(bytes))))
+            .collect();
+        Self {
+            entries: std::sync::Mutex::new(entries),
+            release_consumed,
+        }
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, std::collections::BTreeMap<String, MemoryEntry>> {
+        // A panic while the table was locked leaves it intact: entries are only replaced.
+        self.entries
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    fn keys(&self) -> Vec<String> {
+        self.lock().keys().cloned().collect()
+    }
+
+    fn contains_key(&self, key: &str) -> bool {
+        self.lock().contains_key(key)
+    }
+
+    fn release(&self, key: &str) {
+        if !self.release_consumed {
+            return;
+        }
+        if let Some(entry) = self.lock().get_mut(key) {
+            *entry = MemoryEntry::Released;
+        }
+    }
+}
+
+/// The bytes of a data file: owned when read from disk, shared when lent by the in-memory
+/// table, which may release its own copy while a loader is still parsing this one.
+pub(crate) enum FileBytes {
+    Owned(Vec<u8>),
+    Shared(std::sync::Arc<Vec<u8>>),
+}
+
+impl std::ops::Deref for FileBytes {
+    type Target = [u8];
+    fn deref(&self) -> &[u8] {
+        match self {
+            Self::Owned(bytes) => bytes,
+            Self::Shared(bytes) => bytes,
+        }
+    }
+}
+
 /// A loader pointed at a PoE2 version's data directory
 /// (`data/<poe_version>/`).
 ///
@@ -99,7 +176,7 @@ pub struct GameData {
     /// The in-memory file table (`Some` = the in-memory backend). Keys are
     /// paths relative to the version directory, always using forward
     /// slashes (e.g. `base/stats.json`, `overlay/uniques.json`).
-    files: Option<std::sync::Arc<std::collections::BTreeMap<String, Vec<u8>>>>,
+    files: Option<std::sync::Arc<MemoryFiles>>,
     /// Validation and inventory are fixed on first access, shared by clones.
     /// Create a new loader after replacing a snapshot on disk.
     snapshot: std::sync::Arc<
@@ -132,13 +209,35 @@ impl GameData {
     /// semantics as a file missing from disk ([`LoadError::Io`]'s
     /// NotFound — the consumer's missing-table degradation still applies).
     pub fn from_memory(files: std::collections::BTreeMap<String, Vec<u8>>) -> Self {
+        Self::memory(files, false, false)
+    }
+
+    fn memory(
+        files: std::collections::BTreeMap<String, Vec<u8>>,
+        prechecked: bool,
+        release_consumed: bool,
+    ) -> Self {
         Self {
             root: PathBuf::from("<memory>"),
-            files: Some(std::sync::Arc::new(files)),
+            files: Some(std::sync::Arc::new(MemoryFiles::new(
+                files,
+                release_consumed,
+            ))),
             snapshot: Default::default(),
             identity: Default::default(),
-            prechecked: false,
+            prechecked,
         }
+    }
+
+    /// [`Self::from_memory`] (or [`Self::from_memory_prechecked`], by `prechecked`) for a
+    /// table whose loaders may let go of a file once they have parsed it
+    /// ([`Self::release_domain`]), so the bytes of a pack are not resident beside everything
+    /// parsed from them. Reading a released file is a bug, and says so.
+    pub fn from_memory_releasing(
+        files: std::collections::BTreeMap<String, Vec<u8>>,
+        prechecked: bool,
+    ) -> Self {
+        Self::memory(files, prechecked, true)
     }
 
     /// [`Self::from_memory`] for files whose digests the caller has already compared
@@ -151,10 +250,7 @@ impl GameData {
     /// the caller, who must have made it against this manifest's digests. The pack's
     /// identity is unchanged: it is built from the manifest's digests, not from hashing.
     pub fn from_memory_prechecked(files: std::collections::BTreeMap<String, Vec<u8>>) -> Self {
-        Self {
-            prechecked: true,
-            ..Self::from_memory(files)
-        }
+        Self::memory(files, true, false)
     }
 
     /// Reduces a path (possibly carrying the `root` prefix) to an
@@ -167,19 +263,48 @@ impl GameData {
     /// Reads a data file's bytes (dispatched by backend). Memory data is lent, not
     /// copied: a data pack is tens of megabytes and every domain, the manifest check
     /// and the identity digest each read their files.
-    pub(crate) fn read_bytes(
-        &self,
-        path: &Path,
-    ) -> Result<std::borrow::Cow<'_, [u8]>, std::io::Error> {
+    pub(crate) fn read_bytes(&self, path: &Path) -> Result<FileBytes, std::io::Error> {
         match &self.files {
-            Some(map) => map
-                .get(&self.memory_key(path))
-                .map(|bytes| std::borrow::Cow::Borrowed(bytes.as_slice()))
-                .ok_or_else(|| {
-                    std::io::Error::new(std::io::ErrorKind::NotFound, "file not in memory data")
-                }),
-            None => fs::read(path).map(std::borrow::Cow::Owned),
+            Some(table) => {
+                let key = self.memory_key(path);
+                match table.lock().get(&key) {
+                    Some(MemoryEntry::Present(bytes)) => Ok(FileBytes::Shared(bytes.clone())),
+                    Some(MemoryEntry::Released) => {
+                        let message = format!("data file {key} was read after it was released");
+                        debug_assert!(false, "{message}");
+                        Err(std::io::Error::other(message))
+                    }
+                    None => Err(std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        "file not in memory data",
+                    )),
+                }
+            }
+            None => fs::read(path).map(FileBytes::Owned),
         }
+    }
+
+    /// Lets go of a domain's file once its loader has parsed it and nothing reads it again
+    /// (`rel` as for a domain load: under `base/`, else at the version root). A table not
+    /// staged with [`Self::from_memory_releasing`], and the filesystem backend, keep it.
+    pub fn release_domain(&self, rel: &str) {
+        self.release_path(&self.domain_path(rel));
+    }
+
+    /// [`Self::release_domain`] for a file of the `overlay/` layer.
+    pub fn release_overlay(&self, name: &str) {
+        self.release_path(&self.overlay_path(name));
+    }
+
+    fn release_path(&self, path: &Path) {
+        let Some(table) = &self.files else { return };
+        if table.release_consumed {
+            // What reads a pack's bytes more than once (the manifest check and the identity
+            // digest) is settled and cached first, so it never needs a released file.
+            let _ = self.validate_manifest();
+            let _ = self.identity();
+        }
+        table.release(&self.memory_key(path));
     }
 
     /// Checks whether a data file exists (dispatched by backend; used by
@@ -193,7 +318,8 @@ impl GameData {
             Ok(true) => {}
         }
         match &self.files {
-            Some(map) => map.contains_key(&self.memory_key(path)),
+            // A released file still exists: it must not read as missing.
+            Some(table) => table.contains_key(&self.memory_key(path)),
             None => path.is_file(),
         }
     }
@@ -666,11 +792,12 @@ impl GameData {
             Err(_) => return Vec::new(),
             _ => {}
         }
-        if let Some(map) = &self.files {
+        if let Some(table) = &self.files {
             // In-memory backend: enumerate `base/passive_trees/*.json` keys
             // (a BTreeMap is already ordered).
-            return map
+            return table
                 .keys()
+                .iter()
                 .filter_map(|k| k.strip_prefix("base/passive_trees/"))
                 .filter(|rest| !rest.contains('/'))
                 .filter_map(|name| name.strip_suffix(".json").map(str::to_string))

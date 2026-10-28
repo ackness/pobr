@@ -268,6 +268,14 @@ export interface NodePowerResponse {
   /** 基线属性值。 */
   base: number;
   entries: NodePowerEntry[];
+  /** 整个请求的候选节点数；只在请求带 `window` 时给出。 */
+  total?: number;
+}
+
+/** 候选列表的一段：热力图分步计算，每步可报进度、可放弃。 */
+export interface NodePowerWindow {
+  offset: number;
+  limit: number;
 }
 
 // ---------------------------------------------------------------------------

@@ -137,7 +137,7 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 - `CalculationContext` 显式携带 stat-map catalog、观察模式和触发子计算状态，热路径不用线程局部状态；需要映射诊断时用 `calculate_with_data_report`。
 - 光环与 buff 只经 `calc/buff_pass.rs`；运行时受 `mode_buffs` 控制，curse / debuff 另受 `mode_effective` 控制。不要重新引入已删除的 `buff-pass-aura` feature 或编排层直接注入光环的通道。
 - 对 `Env` 的可变写入集中在 `perform`；并行只在只读快照上展开。
-- 逐技能总览与 Full DPS 中的记忆化只能放在 `selection_memo.rs` 的 `SelectionScope` 里：被记忆的函数在注释里列出它读取的字段，debug 构建会比对每次命中与重算的结果。
+- 逐技能总览与 Full DPS 中的记忆化只能放在 `selection_memo.rs` 的 `SelectionScope` 里：被记忆的函数在注释里列出它读取的字段，debug 构建会比对每次命中与重算的结果；一次普通计算与它的触发来源子计算共用同一个作用域（子计算的克隆经 `adopt` 并入，算完即撤销）。
 - `DataCalcCache` 是调用方拥有的 opt-in 缓存，键投影解构每个字段、不用 `..`；新增输入时保持这一点。
 
 属性快照的两个时点、缓存语义等细节见 [build-model.md](build-model.md#编排来源写入与缓存)；单个机制的实现见[机制约定](mechanics/README.md)。

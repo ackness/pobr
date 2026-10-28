@@ -486,6 +486,69 @@ pub(crate) struct RadiusJewelExpansion<'a> {
     small_nodes: Vec<u32>,
 }
 
+/// Where a radius jewel reaches: its socket's position and its radius. `None` when the
+/// socket has no coordinates in the selected tree.
+fn radius_circle(
+    jewel: &RadiusJewel,
+    build: &Build,
+    data: &BuildData,
+) -> Option<((f64, f64), JewelRadius)> {
+    let socket = data
+        .passive_nodes_for(build.tree_version.as_deref())
+        .get(&jewel.socket_node)?;
+    let position = (socket.x?, socket.y?);
+    let radius = JewelRadius::Custom(
+        parse_jewel_radius(jewel.radius_label.as_deref())
+            .units_for_tree(&data.jewel_radii, build.tree_version.as_deref()),
+    );
+    Some((position, radius))
+}
+
+/// For each of `nodes` that a radius jewel of the build reaches, the places (in
+/// `build.radius_jewels`) of the jewels whose circle holds it. A radius jewel treats
+/// a node by whether the circle holds it and by nothing else about where it is, so two
+/// nodes with the same definition and the same list are treated alike. Computed with
+/// the geometry [`radius_jewel_expansions`] uses.
+pub fn radius_jewel_membership(
+    build: &Build,
+    data: &BuildData,
+    nodes: &[u32],
+) -> std::collections::BTreeMap<u32, Vec<usize>> {
+    let tree_nodes = data.passive_nodes_for(build.tree_version.as_deref());
+    let mut positions: std::collections::HashMap<u32, (f64, f64)> = nodes
+        .iter()
+        .filter_map(|skill| {
+            let def = tree_nodes.get(skill)?;
+            Some((*skill, (def.x?, def.y?)))
+        })
+        .collect();
+    let mut membership: std::collections::BTreeMap<u32, Vec<usize>> =
+        std::collections::BTreeMap::new();
+    for (place, jewel) in build.radius_jewels.iter().enumerate() {
+        let Some((socket_pos, radius)) = radius_circle(jewel, build, data) else {
+            continue;
+        };
+        // The socket is the centre, and is never one of the nodes it reaches.
+        let displaced = positions.insert(jewel.socket_node, socket_pos);
+        if let Ok(effect) = compute_radius_jewel_effect_with_radii(
+            jewel.socket_node,
+            radius,
+            &data.jewel_radii,
+            &positions,
+            Vec::new(),
+        ) {
+            for skill in effect.affected_nodes {
+                membership.entry(skill).or_default().push(place);
+            }
+        }
+        match displaced {
+            Some(position) => positions.insert(jewel.socket_node, position),
+            None => positions.remove(&jewel.socket_node),
+        };
+    }
+    membership
+}
+
 /// Runs radius geometric expansion on every radius jewel (circle center = socket node
 /// coordinates, tier = the `Radius:` line).
 ///
@@ -540,20 +603,9 @@ pub(crate) fn radius_jewel_expansions<'a>(
     for jewel in &build.radius_jewels {
         // The socket's coordinates must be available, or the circle center can't be
         // determined (skipped, nothing invented).
-        let Some(socket_pos) = tree_nodes
-            .get(&jewel.socket_node)
-            .and_then(|d| match (d.x, d.y) {
-                (Some(x), Some(y)) => Some((x, y)),
-                _ => None,
-            })
-        else {
+        let Some((socket_pos, radius)) = radius_circle(jewel, build, data) else {
             continue;
         };
-
-        let radius = JewelRadius::Custom(
-            parse_jewel_radius(jewel.radius_label.as_deref())
-                .units_for_tree(&data.jewel_radii, build.tree_version.as_deref()),
-        );
 
         // Merge the socket's coordinates into the position table (compute excludes the socket itself).
         let mut pos = positions.clone();
@@ -617,6 +669,12 @@ pub(crate) fn vendor_scale_mod_value(value: f64, scale: f64) -> f64 {
 /// Structured scaling preserves multiple values and the data pack's precision
 /// rules; rewriting only the first number in the source text loses both.
 pub(crate) fn radius_jewel_grant_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
+    super::selection_memo::radius_jewel_grants(build, data, || {
+        compute_radius_jewel_grant_modifiers(build, data)
+    })
+}
+
+fn compute_radius_jewel_grant_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     let mut mods = Vec::new();
     let expansions = radius_jewel_expansions(build, data);
     if expansions.is_empty() {

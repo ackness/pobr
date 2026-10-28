@@ -141,6 +141,7 @@ impl GameData {
         if let Some(files) = &self.files {
             return files
                 .keys()
+                .iter()
                 .filter_map(|key| key.strip_prefix(memory_prefix))
                 .filter(|key| key.ends_with(".json"))
                 .map(|key| {

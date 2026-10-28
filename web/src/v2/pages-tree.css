@@ -122,6 +122,12 @@
   .v2-root .tree-v2 .tree-planner-results > li { padding: .8rem 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: none; }
   .v2-root .tree-v2 .tree-planner-results > li.is-previewed { box-shadow: inset 2px 0 0 var(--color-cold); padding-left: .7rem; }
   .v2-root .tree-v2 .tree-plan-heading strong { font-size: var(--text-sm); font-weight: 600; color: var(--foreground); }
+  /* A respec says what is given back and what replaces it, without opening the route. */
+  .v2-root .tree-v2 .tree-plan-swap { display: grid; gap: .25rem; margin: .5rem 0 0; font-size: var(--text-xs); line-height: 1.5; color: var(--muted-foreground); overflow-wrap: anywhere; }
+  .v2-root .tree-v2 .tree-plan-swap p { margin: 0; padding-left: .6rem; border-left: 2px solid var(--border); }
+  .v2-root .tree-v2 .tree-plan-swap b { margin-right: .35rem; color: var(--foreground); }
+  .v2-root .tree-v2 .tree-plan-swap-out { border-left-color: var(--color-negative); }
+  .v2-root .tree-v2 .tree-plan-swap-in { border-left-color: var(--color-cold); }
   .v2-root .tree-v2 .tree-plan-metrics b { color: var(--foreground); }
   .v2-root .tree-v2 .tree-plan-metrics b.is-positive { color: var(--color-positive); }
   .v2-root .tree-v2 .tree-plan-metrics b.is-negative { color: var(--color-negative); }

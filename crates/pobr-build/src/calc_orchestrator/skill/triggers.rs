@@ -103,9 +103,14 @@ impl pobr_core::skill_env::TriggerSubCalc for OrchestratorSubCalc<'_> {
         {
             return Some(stats);
         }
+        // Only its selection differs from the build being calculated, so it reads the
+        // character's results that build has already settled.
+        let shares_results = super::super::selection_memo::adopt(self.build, &sub_build, self.data);
         let mut child = self.context.trigger_source();
         let result =
             calculate_prepared_with_context(&sub_build, self.data, self.options, &mut child);
+        // `sub_build` moves into the trigger memo below; its name must not outlive the calculation.
+        drop(shares_results);
         self.context.compare_records.extend(child.compare_records);
         let session = result.ok()?;
         // These limits describe the calculated trigger source, not the main host's

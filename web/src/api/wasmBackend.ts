@@ -9,7 +9,7 @@ import type { CraftingMetadata } from './itemCrafting';
  * 数据路径 `/data/`（`npm run sync-data` 从仓库 data/ 同步，gitignored）。
  */
 
-import { verifySnapshotDigests } from './dataIntegrity';
+import { dataUrl, loadDataPack, type DataManifest } from './dataPack';
 import { EXPECTED_SCHEMA_VERSION } from './types';
 import type {
   AttributionRequest,
@@ -78,11 +78,6 @@ interface WasmModule {
   translate(lang: string, key: string): string;
 }
 
-interface DataManifest {
-  version: string;
-  files: string[];
-}
-
 async function fetchText(url: string): Promise<string> {
   const res = await fetch(url);
   if (!res.ok) {
@@ -119,21 +114,6 @@ function readAgainAfterBoot(rel: string): boolean {
   ].includes(rel);
 }
 
-/** 并发受限地拉取数据文件（数据 ~30MB、上百文件；8 路并发足够）。 */
-async function fetchAll(
-  urls: string[],
-  fetchOne: (url: string) => Promise<void>,
-  concurrency = 8,
-): Promise<void> {
-  const queue = [...urls];
-  const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
-    for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
-      await fetchOne(next);
-    }
-  });
-  await Promise.all(workers);
-}
-
 export async function createWasmBackend(): Promise<PobrBackend> {
   // 动态 import：pkg 未构建时给出可操作的错误提示，而非白屏。
   let wasm: WasmModule;
@@ -167,7 +147,10 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     const existing = fetchedFiles.get(url);
     if (existing) return existing;
     const kept = keptBytes.get(url);
-    const pending = kept ? Promise.resolve(new TextDecoder().decode(kept)) : fetchText(url);
+    // Asked for by its digest where the manifest has one, so the browser keeps it.
+    const pending = kept
+      ? Promise.resolve(new TextDecoder().decode(kept))
+      : fetchText(dataUrl({ version, digests: manifest?.digests }, rel));
     pending.catch(() => fetchedFiles.delete(url));
     fetchedFiles.set(url, pending);
     return pending;
@@ -181,30 +164,23 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     if (wasm.isDataReady()) return;
     onProgress?.('加载数据清单…');
     manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
-    const { version, files } = manifest;
-    let done = 0;
-    const staged = new Map<string, Uint8Array>();
-    await fetchAll(files, async (rel) => {
-      const bytes = await fetchBytes(`/data/${version}/${rel}`);
-      staged.set(rel, bytes);
-      wasm.stageDataBytes(rel, bytes);
-      done += 1;
-      if (done % 20 === 0 || done === files.length) {
-        onProgress?.(`加载游戏数据 ${done}/${files.length}…`);
-      }
+    const { version } = manifest;
+    // Each file is compared with the snapshot manifest's digest as it arrives and handed to the
+    // engine, then let go; the browser's SHA-256 does the hashing in a fraction of the time WASM
+    // takes. Where it cannot (no secure context, an older manifest) the engine compares itself.
+    const pack = await loadDataPack({
+      manifest,
+      fetchBytes,
+      stage: (rel, bytes) => wasm.stageDataBytes(rel, bytes),
+      keep: readAgainAfterBoot,
+      onProgress: (done, total) => {
+        if (done % 20 === 0 || done === total) onProgress?.(`加载游戏数据 ${done}/${total}…`);
+      },
     });
-    onProgress?.('校验数据…');
-    // The browser's SHA-256 compares every file the manifest lists with its digest in a
-    // fraction of the time WASM takes to hash them; where it cannot (no secure context,
-    // an older manifest) the engine does the same comparison itself.
-    const verified = await verifySnapshotDigests(staged);
     onProgress?.('构建数据索引…');
-    if (verified) wasm.initStagedDataVerified();
+    if (pack.verified) wasm.initStagedDataVerified();
     else wasm.initStagedData();
-    for (const rel of files) {
-      const bytes = staged.get(rel);
-      if (bytes && readAgainAfterBoot(rel)) keptBytes.set(`/data/${version}/${rel}`, bytes);
-    }
+    for (const [rel, bytes] of pack.kept) keptBytes.set(`/data/${version}/${rel}`, bytes);
     loadedDataVersion = version;
     onProgress?.('就绪');
   };
@@ -351,10 +327,10 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     async previewTreeEdit(request, node, mode, action) {
       return JSON.parse(wasm.previewTreeEditJson(JSON.stringify({ request, node, mode, action })));
     },
-    async nodePower(request, powerStat, maxDepth, nodes) {
+    async nodePower(request, powerStat, maxDepth, nodes, window) {
       return JSON.parse(
         wasm.nodePowerJson(
-          JSON.stringify({ request, power_stat: powerStat, max_depth: maxDepth, nodes }),
+          JSON.stringify({ request, power_stat: powerStat, max_depth: maxDepth, nodes, window }),
         ),
       ) as NodePowerResponse;
     },

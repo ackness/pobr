@@ -98,6 +98,8 @@ export interface JewelPassivePlannerState {
   apply: (plan: JewelPassivePlan) => void;
   stop: () => void;
   show: (index: number | null) => void;
+  /** Drops the joint route from the tree without touching the results. */
+  clearPreview: () => void;
 }
 
 export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, active, mode, points, attribute, objective, onPreview, onStart }: Props): JewelPassivePlannerState {
@@ -203,11 +205,12 @@ export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, active
     if (!active || completed?.key !== latestKey.current || (index !== null && !result?.plans[index])) return;
     setPreview(index); onPreview(index === null ? null : result!.plans[index]);
   };
+  const clearPreview = () => { setPreview(null); previewRef.current(null); };
   const remove = (id: string) => setCandidates(values => values.filter(value => value.id !== id));
 
   return { session, lang, nodeLabel, raw, setRaw, selectedSocket, setSocket, sockets,
     applied: applied?.version === session.stateVersion && !session.busy && !session.calcError ? applied : null,
-    candidates, remove, completed, result, progress, error, preview, exclusive, add, run, apply, stop, show };
+    candidates, remove, completed, result, progress, error, preview, exclusive, add, run, apply, stop, show, clearPreview };
 }
 
 export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerState }) {

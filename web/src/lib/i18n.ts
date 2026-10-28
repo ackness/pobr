@@ -912,6 +912,7 @@ const DICT = {
   'tree.heatDepth': { 'en-US': 'Depth', 'zh-TW': '深度', 'zh-CN': '深度' },
   'tree.heatComputing': { 'en-US': 'computing…', 'zh-TW': '計算中…', 'zh-CN': '计算中…' },
   'tree.heatRun': { 'en-US': 'Compute', 'zh-TW': '計算', 'zh-CN': '计算' },
+  'tree.heatCancel': { 'en-US': 'Cancel', 'zh-TW': '取消', 'zh-CN': '取消' },
   'tree.heatStale': { 'en-US': 'stale — recompute', 'zh-TW': '已過期，點「計算」刷新', 'zh-CN': '已过期，点「计算」刷新' },
   'tree.heatHint': {
     'en-US': 'Nodes glow by how much allocating them improves the chosen stat (within depth of your tree)',

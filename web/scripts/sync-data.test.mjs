@@ -39,6 +39,12 @@ test('sync uses sealed runtime files and preserves patch/common layers', (t) => 
   assert.equal(existsSync(join(root, 'public/data/9.1/base/passive_trees/unlisted.json')), false);
   assert.equal(existsSync(join(root, 'public/data/previous.json')), false);
   assert.deepEqual(JSON.parse(readFileSync(join(root, 'public/data/manifest.json'))), result);
+  // Every published file has the digest of the bytes that were published.
+  assert.deepEqual(Object.keys(result.digests), result.files);
+  for (const rel of result.files) {
+    const published = readFileSync(join(root, 'public/data/9.1', rel));
+    assert.equal(result.digests[rel], createHash('sha256').update(published).digest('hex'), rel);
+  }
 });
 
 test('sync rejects domain and language declarations missing from the inventory', (t) => {

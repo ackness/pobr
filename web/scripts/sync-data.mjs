@@ -92,13 +92,20 @@ export function syncData({ dataRoot = join(repoRoot, 'data'), destRoot = join(we
   const previous = join(staging, 'previous');
   let movedPrevious = false;
   let preserveStaging = false;
+  // The digest of each file as published: the page asks for a file by it (`?h=`), so a URL
+  // names exactly one content and the browser and the host can keep the file for good.
+  const digests = {};
+  const sortedDigests = {};
   try {
     for (const [rel, path] of copies) {
       const destination = join(stagedData, version, rel);
       mkdirSync(dirname(destination), { recursive: true });
       cpSync(path, destination);
+      digests[rel] = createHash('sha256').update(readFileSync(destination)).digest('hex');
     }
-    writeFileSync(join(stagedData, 'manifest.json'), JSON.stringify({ version, files }, null, 2));
+    // Sorted like `files`, so the manifest does not depend on the order files were copied in.
+    for (const rel of files) sortedDigests[rel] = digests[rel];
+    writeFileSync(join(stagedData, 'manifest.json'), JSON.stringify({ version, files, digests: sortedDigests }, null, 2));
     if (statSync(destRoot, { throwIfNoEntry: false })) {
       rename(destRoot, previous);
       movedPrevious = true;
@@ -115,7 +122,7 @@ export function syncData({ dataRoot = join(repoRoot, 'data'), destRoot = join(we
       throw error;
     }
   } finally { if (!preserveStaging) rmSync(staging, { recursive: true, force: true }); }
-  return { version, files };
+  return { version, files, digests: sortedDigests };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

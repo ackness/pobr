@@ -26,6 +26,7 @@ import type {
   MinionCatalog,
   ItemLineJson,
   NodePowerResponse,
+  NodePowerWindow,
   OptimizeVariantsRequest,
   OptimizeVariantsResponse,
   PassiveNode,
@@ -120,6 +121,8 @@ export interface PobrBackend {
     powerStat: string,
     maxDepth: number,
     nodes?: number[],
+    /** 只算候选列表的一段（响应带 `total`）；省略则全部。 */
+    window?: NodePowerWindow,
   ): Promise<NodePowerResponse>;
   /** 通用变体评估（寻优框架计算面：变体 → 全量重算 → 属性值；打分在前端）。 */
   optimizeVariants(request: OptimizeVariantsRequest): Promise<OptimizeVariantsResponse>;

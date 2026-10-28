@@ -594,6 +594,8 @@ fn attributes_without_skills(
     data: &BuildData,
     options: &DataOrchestratorOptions,
 ) -> [f64; 3] {
+    // Sourcing reads the character's results more than once; they are settled once for this build.
+    let _scope = selection_memo::SelectionScope::enter_unless_named(build, data);
     let sourced = || -> Result<[f64; 3], BuildError> {
         let main = stage_resolve_main_skill(build, data);
         let (resolved_config, base_cfg) = stage_resolve_config(build, data, options);
@@ -675,6 +677,9 @@ fn calculate_prepared_with_context(
     options: &DataOrchestratorOptions,
     context: &mut CalculationContext,
 ) -> Result<CompletedCalculationSession, BuildError> {
+    // The character's own results are read once for this build and its trigger
+    // sources, whose builds differ from it in the selection alone.
+    let _scope = selection_memo::SelectionScope::enter_unless_named(build, data);
     let main = stage_resolve_main_skill(build, data);
     let (resolved_config, base_cfg) = stage_resolve_config(build, data, options);
     let (cfg, enemy_tier) =
@@ -954,6 +959,8 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
 
     build
 }
+
+pub use collect::radius_jewel_membership;
 
 /// Resolve the same active item/socket view used by the calculation pipeline.
 pub fn passive_jewel_state(
