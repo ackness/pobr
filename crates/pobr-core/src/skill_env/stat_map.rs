@@ -245,6 +245,11 @@ pub(super) fn support_stat_limit<'a>(
     stat: &pobr_data::catalog::SkillDamageStat,
     outcome: &'a MappedOutcome,
 ) -> Option<SupportStatLimit<'a>> {
+    // The engine's own definition of a stat counts as modelled, whatever the extracted map could not express: the
+    // player-buff table applies it (Fork's damage once the projectile has forked), so there is no skipped number.
+    if skill_stats::player_buff_modifiers(&stat.stat, stat.value, BuffSkill::default()).is_some() {
+        return None;
+    }
     match outcome {
         MappedOutcome::Unknown if stat.value.is_finite() && stat.value != 0.0 => {
             match stat.stat.as_str() {

@@ -1019,7 +1019,8 @@ pub struct ProjectileCounts {
 /// Damage is for the selected hit along the chain. With no chain-count
 /// snapshot this is the initial hit; capacity alone never adds hits to DPS.
 pub(super) fn snapshot_remaining_chains(db: &ModDb, enemy: &ModDb, cfg: &mut CalcConfig) {
-    let available = projectile_behavior_counts(db, enemy, cfg).chain;
+    let available_counts = projectile_behavior_counts(db, enemy, cfg);
+    let available = available_counts.chain;
     let used = cfg
         .multiplier_if_set("Chain")
         .unwrap_or_else(|| db.sum(ModType::Base, &*cfg, &[ModName::from("ChainCount")]));
@@ -1031,6 +1032,30 @@ pub(super) fn snapshot_remaining_chains(db: &ModDb, enemy: &ModDb, cfg: &mut Cal
     let remaining = available - used;
     cfg.stats.insert("ChainRemaining".into(), remaining);
     cfg.multipliers.insert("ChainRemaining".into(), remaining);
+    snapshot_projectile_interactions_taken(db, &available_counts, cfg);
+}
+
+/// How many times the selected hit's projectile has forked and pierced (the configured `ForkedCount` and
+/// `PiercedCount`, "# of times Skill has Forked/Pierced"), at most what the skill can do. "Projectiles that have
+/// Forked deal 30% less damage" and "more damage if the projectile pierced an enemy" read these as a count of at
+/// least one; with no count configured the hit is the first one.
+fn snapshot_projectile_interactions_taken(
+    db: &ModDb,
+    available: &ProjectileCounts,
+    cfg: &mut CalcConfig,
+) {
+    for (name, capacity) in [
+        ("ForkedCount", available.fork),
+        ("PiercedCount", available.pierce),
+    ] {
+        let taken = db.sum(ModType::Base, &*cfg, &[ModName::from(name)]);
+        let taken = if taken.is_finite() {
+            taken.clamp(0.0, capacity.max(0.0))
+        } else {
+            0.0
+        };
+        cfg.multipliers.insert(name.into(), taken);
+    }
 }
 
 pub fn projectile_behavior_counts(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig) -> ProjectileCounts {
