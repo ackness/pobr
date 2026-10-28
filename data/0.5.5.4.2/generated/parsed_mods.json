@@ -39687,11 +39687,11 @@
     },
     {
       "text": "Lose all Tailwind when Hit",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Lose all [Tailwind] when [Hit]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Lustrous Thawing Charm of the Brewer",
@@ -41022,11 +41022,11 @@
     },
     {
       "text": "Regenerate 3% of maximum Life over 1 second when [Stun|Stunned]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Regenerate 5% of maximum Life over 1 second when [Stun|Stunned]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Regenerate 6% of your maximum [Rage] per second",
