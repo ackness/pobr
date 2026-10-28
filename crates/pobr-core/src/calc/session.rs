@@ -266,8 +266,8 @@ impl CalculationSession {
     /// **Ordering constraint**: [`with_config`](Self::with_config) overwrites
     /// cfg wholesale (including this field), so this must be called
     /// **after** it; the orchestration layer (pobr-build's `calculate_with_data`) follows this order.
-    pub fn set_constants(&mut self, constants: RuntimeConstants) {
-        self.env.cfg.constants = constants;
+    pub fn set_constants(&mut self, constants: impl Into<std::sync::Arc<RuntimeConstants>>) {
+        self.env.cfg.constants = constants.into();
     }
 
     /// After every source has been injected, writes a resource/attribute

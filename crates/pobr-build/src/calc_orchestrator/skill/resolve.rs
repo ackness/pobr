@@ -97,8 +97,17 @@ pub fn resolve_main_skill_selection(
     build: &Build,
     data: &BuildData,
 ) -> Option<(usize, usize, String)> {
-    let prepared = super::super::stage_build_view(build, data);
-    let (_, group, skill_id, _) = resolve_main_skill(&prepared, data)?;
+    main_skill_selection_in_view(&super::super::stage_build_view(build, data), data)
+}
+
+/// [`resolve_main_skill_selection`] for `prepared`, a view a calculation already
+/// prepared (the one it read the selection from): the same answer without
+/// preparing the build again.
+pub fn main_skill_selection_in_view(
+    prepared: &Build,
+    data: &BuildData,
+) -> Option<(usize, usize, String)> {
+    let (_, group, skill_id, _) = resolve_main_skill(prepared, data)?;
     let index = prepared
         .socket_groups
         .iter()
@@ -387,6 +396,12 @@ pub(crate) fn support_granted_gem_quality(
 /// item allocates, and the lines the build's configuration adds. No rule
 /// stores such a line as a modifier; this is where it counts.
 pub(crate) fn gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPropertyBonus> {
+    super::super::selection_memo::gem_property_bonuses(build, data, || {
+        scan_gem_property_bonuses(build, data)
+    })
+}
+
+fn scan_gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPropertyBonus> {
     use pobr_core::rules::config_interpreter::{ConfigInputValue, custom_modifier_lines};
     // A notable an item allocates ("Allocates <name>") counts like an
     // allocated one, e.g. the "+5% to Quality of all Skills" of Paragon.
@@ -752,25 +767,58 @@ pub(crate) fn clean_grant_text(text: &str) -> String {
 /// (JewelSmallPassiveSkillEffect, ModParser.lua:6842) goes through a separate
 /// mechanism, not consumed here.
 pub(crate) fn small_passive_effect_inc(build: &Build, data: &BuildData) -> f64 {
-    let mut inc = 0.0;
     let nodes = data.passive_nodes_for(build.tree_version.as_deref());
-    for id in &build.tree.allocated_nodes {
-        let Some(node) = nodes.get(&id.0) else {
+    small_passive_effect_in(
+        build
+            .tree
+            .allocated_nodes
+            .iter()
+            .filter_map(|id| nodes.get(&id.0))
+            .flat_map(|node| node.stats.iter().map(String::as_str)),
+    )
+}
+
+/// [`small_passive_effect_inc`] over the stat lines of the allocated nodes.
+fn small_passive_effect_in<'a>(stats: impl Iterator<Item = &'a str>) -> f64 {
+    let mut inc = 0.0;
+    for s in stats {
+        // Few lines name it; the rest are not cleaned and lowercased at all. The
+        // line may carry link markup inside the phrase ("effect of
+        // [SmallPassive|Small Passive] Skills"), so only "small" is required.
+        if !pobr_core::skill_env::contains_ascii_ci(s, "small") {
             continue;
-        };
-        for s in &node.stats {
-            let t = clean_grant_text(s);
-            if let Some(idx) = t.find("% increased effect of small passive skills")
-                && t[idx + "% increased effect of small passive skills".len()..]
-                    .trim()
-                    .is_empty()
-                && let Ok(num) = t[..idx].trim().parse::<f64>()
-            {
-                inc += num;
-            }
+        }
+        let t = clean_grant_text(s);
+        if let Some(idx) = t.find("% increased effect of small passive skills")
+            && t[idx + "% increased effect of small passive skills".len()..]
+                .trim()
+                .is_empty()
+            && let Ok(num) = t[..idx].trim().parse::<f64>()
+        {
+            inc += num;
         }
     }
     inc
+}
+
+#[cfg(test)]
+mod small_passive_effect_tests {
+    use super::small_passive_effect_in;
+
+    /// The game text carries link markup inside the phrase; a cheap pre-check on
+    /// the raw line must not drop it.
+    #[test]
+    fn reads_the_line_with_and_without_link_markup() {
+        let lines = [
+            "50% increased effect of [SmallPassive|Small Passive] Skills",
+            "{tag}10% increased effect of Small Passive Skills",
+            "+10 to Strength",
+            "20% increased effect of Small Passive Skills with extra words",
+            "30% increased Damage",
+        ];
+        assert_eq!(small_passive_effect_in(lines.into_iter()), 60.0);
+        assert_eq!(small_passive_effect_in(std::iter::empty()), 0.0);
+    }
 }
 
 /// Kalandra's Touch's "Reflects opposite Ring": this ring has no affixes of its own; at

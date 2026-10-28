@@ -84,11 +84,20 @@ pub(crate) fn slot_bonus_effect_scales(
         .get(&Weapon2)
         .and_then(|item| data.base_item(&item.base.to_string()))
         .is_some_and(|def| def.item_class == "Focus");
+    // Only a line saying "bonuses gained from" can scale a slot, so the others are
+    // dropped before they are cleaned and lowercased. Link markup may wrap a noun of
+    // the phrase ("[Bonuses|bonuses]"), never the verb, so "gained from" is required.
+    let relevant = |text: &str| pobr_core::skill_env::contains_ascii_ci(text, "gained from");
     let mut texts: Vec<String> = Vec::new();
     let nodes = data.passive_nodes_for(build.tree_version.as_deref());
     for id in &build.tree.allocated_nodes {
         if let Some(node) = nodes.get(&id.0) {
-            texts.extend(node.stats.iter().map(|s| clean_grant_text(s)));
+            texts.extend(
+                node.stats
+                    .iter()
+                    .filter(|s| relevant(s))
+                    .map(|s| clean_grant_text(s)),
+            );
         }
     }
     // Granted notables (`Allocates <name>` enchant, same semantics as
@@ -101,7 +110,12 @@ pub(crate) fn slot_bonus_effect_scales(
             if allocated.contains(&def.skill) {
                 continue;
             }
-            texts.extend(def.stats.iter().map(|s| clean_grant_text(s)));
+            texts.extend(
+                def.stats
+                    .iter()
+                    .filter(|s| relevant(s))
+                    .map(|s| clean_grant_text(s)),
+            );
         }
     }
     // Radius grants have already been scaled as structured modifiers, including
@@ -130,6 +144,7 @@ pub(crate) fn slot_bonus_effect_scales(
             .iter()
             .chain(&item.modifier_texts)
             .chain(&item.enchant_texts)
+            .filter(|t| relevant(t))
         {
             texts.push(clean_grant_text(t));
         }
@@ -147,6 +162,7 @@ pub(crate) fn slot_bonus_effect_scales(
             .iter()
             .chain(&jewel.modifier_texts)
             .chain(&jewel.enchant_texts)
+            .filter(|text| relevant(text))
         {
             let text = clean_grant_text(text);
             if scale != 1.0 {

@@ -69,7 +69,9 @@ pub use attribute::trace::{
     CombineMode, CritTag, HandTag, PassId, TraceEdge, TraceGraph, TraceNode, TraceNodeId,
     TraceOperation, TraceOutput, TracedValue,
 };
-pub use display_catalog::{display_catalog, display_value, extract_display_values};
+pub use display_catalog::{
+    display_catalog, display_catalog_ref, display_value, extract_display_values,
+};
 pub use ingest::campaign::{CampaignProgress, CampaignReward, CampaignState};
 pub use ingest::character::CharacterBase;
 pub use ingest::item::{

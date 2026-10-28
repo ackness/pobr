@@ -99,13 +99,23 @@ pub fn detail_kind(stat: &str) -> DetailKind {
 }
 
 pub fn detail_descriptors() -> BTreeMap<String, DetailKind> {
-    pobr_core::display_catalog()
-        .into_iter()
-        .map(|stat| {
-            let kind = detail_kind(stat.id.as_str());
-            (stat.id.as_str().to_string(), kind)
-        })
-        .collect()
+    detail_descriptors_ref().clone()
+}
+
+/// [`detail_descriptors`], built once: a descriptor depends only on the stat id,
+/// so every response can share the table instead of classifying the whole catalog.
+pub fn detail_descriptors_ref() -> &'static BTreeMap<String, DetailKind> {
+    static DESCRIPTORS: std::sync::OnceLock<BTreeMap<String, DetailKind>> =
+        std::sync::OnceLock::new();
+    DESCRIPTORS.get_or_init(|| {
+        pobr_core::display_catalog_ref()
+            .iter()
+            .map(|stat| {
+                let kind = detail_kind(stat.id.as_str());
+                (stat.id.as_str().to_string(), kind)
+            })
+            .collect()
+    })
 }
 
 #[derive(Debug, Clone, Serialize)]

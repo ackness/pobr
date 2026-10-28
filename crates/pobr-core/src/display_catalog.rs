@@ -16,7 +16,20 @@ use pobr_data::prelude::*;
 use crate::calc::OutputTable;
 
 /// All display field definitions (stable declarations, no values).
+///
+/// A copy of [`display_catalog_ref`]; per-calculation readers use that one instead.
 pub fn display_catalog() -> Vec<DisplayStatDefinition> {
+    display_catalog_ref().to_vec()
+}
+
+/// The display catalog, built once. It holds only declarations, so every calculation
+/// and every response can share it instead of rebuilding about 700 definitions.
+pub fn display_catalog_ref() -> &'static [DisplayStatDefinition] {
+    static CATALOG: std::sync::OnceLock<Vec<DisplayStatDefinition>> = std::sync::OnceLock::new();
+    CATALOG.get_or_init(build_display_catalog)
+}
+
+fn build_display_catalog() -> Vec<DisplayStatDefinition> {
     use DisplayStatCategory as Cat;
     use StatValueType as Vt;
 
@@ -2712,8 +2725,8 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
 /// Extracts the current value of every `Computed` display field from an
 /// `OutputTable`, in the same order as [`display_catalog`].
 pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
-    display_catalog()
-        .into_iter()
+    display_catalog_ref()
+        .iter()
         .filter(|def| def.parity_status == ParityStatus::Computed)
         .filter(|def| {
             output.full_dps.is_some() || !matches!(def.id.as_str(), "FullDPS" | "FullDotDPS")
@@ -2725,9 +2738,9 @@ pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
         .map(|def| {
             let value = display_value(output, def.id.as_str());
             DisplayStatValue {
-                id: def.id,
+                id: def.id.clone(),
                 value,
-                category: def.category,
+                category: def.category.clone(),
             }
         })
         .collect()

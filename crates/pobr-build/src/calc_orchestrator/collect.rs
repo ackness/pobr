@@ -323,6 +323,11 @@ pub(crate) fn granted_passive_defs<'d>(
     let ctx = engine_ctx(data);
     let mut granted: Vec<String> = Vec::new();
     for text in item_texts.chain(jewel_texts) {
+        // Only the `allocates (.+)` rules write `GrantedPassive`, so a line without
+        // the word cannot grant one: skip parsing (and cloning the memoized outcome).
+        if !pobr_core::skill_env::contains_ascii_ci(text, "allocates") {
+            continue;
+        }
         let Ok(outcome) = ctx.parse(text) else {
             continue;
         };
@@ -341,18 +346,7 @@ pub(crate) fn granted_passive_defs<'d>(
     let mut seen: std::collections::HashSet<u32> = std::collections::HashSet::new();
     let mut out = Vec::new();
     for name in granted {
-        // A build grants only a few notables. Resolve those names directly instead
-        // of allocating a lowercase index of the entire tree on every gem scan.
-        let def = data
-            .passive_nodes_for(build.tree_version.as_deref())
-            .values()
-            .filter(|def| def.kind == pobr_data::catalog::PassiveNodeKind::Notable)
-            .filter(|def| {
-                def.name
-                    .as_ref()
-                    .is_some_and(|n| n.eq_ignore_ascii_case(&name))
-            })
-            .min_by_key(|def| def.skill);
+        let def = data.notable_named(build.tree_version.as_deref(), &name);
         let Some(def) = def else {
             continue; // Unknown name (outside the tree/a variant), safely skipped (under-counting is the safe failure mode).
         };
@@ -533,9 +527,10 @@ pub(crate) fn radius_jewel_expansions<'a>(
     // Position table: the socket itself + every allocated node (candidates are filtered only from the allocated set).
     let mut positions: std::collections::HashMap<u32, (f64, f64)> =
         std::collections::HashMap::new();
-    for (&skill, def) in tree_nodes {
-        if let (Some(x), Some(y)) = (def.x, def.y)
-            && allocated.contains(&skill)
+    // A hundred or so allocated points, looked up, rather than every point of the tree.
+    for &skill in &allocated {
+        if let Some(def) = tree_nodes.get(&skill)
+            && let (Some(x), Some(y)) = (def.x, def.y)
         {
             positions.insert(skill, (x, y));
         }
@@ -624,6 +619,9 @@ pub(crate) fn vendor_scale_mod_value(value: f64, scale: f64) -> f64 {
 pub(crate) fn radius_jewel_grant_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     let mut mods = Vec::new();
     let expansions = radius_jewel_expansions(build, data);
+    if expansions.is_empty() {
+        return mods;
+    }
     let effects = radius_node_effects(&expansions);
     let global_small = small_passive_effect_inc(build, data);
     let ctx = engine_ctx(data);

@@ -14,7 +14,7 @@
 //! the result as a deterministic in-memory structure.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use pobr_core::HighPrecisionRules;
 use pobr_core::rules::stat_map_engine::StatMapCatalog;
@@ -118,7 +118,7 @@ pub struct BuildData {
     /// data-driven, or with a missing file, fall back to `Default` (value-for-value
     /// equal to the JSON). Injected into pobr-core by `calculate_with_data` via
     /// `CalculationSession::set_constants`.
-    pub constants: RuntimeConstants,
+    pub constants: Arc<RuntimeConstants>,
     /// Radius jewel ring tier table (`base/jewel_radii.json`): distance multipliers +
     /// tier label→inner/outer. Consumed by this crate's tree geometry
     /// (`radius_jewel_grant_modifiers` → pobr-tree's
@@ -207,6 +207,182 @@ pub struct BuildData {
     /// the game's `ActiveSkills` / `SkillTotemVariations` / `MonsterVarieties`),
     /// with its base resistances from `base/monster_resistances.json`.
     pub totems: HashMap<String, TotemDef>,
+    /// Lookup tables derived from the fields above, built on first use. See
+    /// [`DerivedIndexes`].
+    pub derived: DerivedIndexes,
+}
+
+/// Lookup tables that are pure functions of domains fixed once the data is loaded,
+/// but that one calculation needs several times (each build of one walks every
+/// base item or granted effect). Built on first use and kept for the life of the
+/// [`BuildData`]. Loaded data is not edited, so they never go stale; a caller that
+/// does edit `passive_nodes`, `granted_effects`, `gem_effects`, `base_items` or
+/// `item_granted_skill_variants` after a calculation has used the data must call
+/// [`BuildData::reset_derived_indexes`] (a value built with `..BuildData::empty()`
+/// starts with none).
+#[derive(Debug, Clone, Default)]
+pub struct DerivedIndexes {
+    skill_id_by_gem_name: OnceLock<HashMap<String, String>>,
+    effect_id_by_normalized_name: OnceLock<HashMap<String, String>>,
+    notable_skill_by_name: OnceLock<HashMap<String, u32>>,
+    class_start_nodes: OnceLock<std::collections::BTreeMap<String, u32>>,
+}
+
+/// A name as `nameSpec` lookups compare it: lowercase letters and digits only.
+pub(crate) fn normalize_gem_name(name: &str) -> String {
+    name.chars()
+        .filter(char::is_ascii_alphanumeric)
+        .map(|c| c.to_ascii_lowercase())
+        .collect()
+}
+
+impl BuildData {
+    /// Forgets the lookup tables derived from the domains, so the next use rebuilds
+    /// them. Only needed after editing a domain they are built from (see
+    /// [`DerivedIndexes`]).
+    pub fn reset_derived_indexes(&mut self) {
+        self.derived = DerivedIndexes::default();
+    }
+
+    /// Gem display name (lowercase) to primary effect id (same source as the gem
+    /// catalog: base items' gem name joined with the gem effects' gem id link).
+    pub fn skill_id_by_gem_name(&self) -> &HashMap<String, String> {
+        self.derived.skill_id_by_gem_name.get_or_init(|| {
+            let gem_to_skill: HashMap<&str, &str> = self
+                .gem_effects
+                .iter()
+                .map(|(skill_id, def)| (def.gem_id.as_str(), skill_id.as_str()))
+                .collect();
+            let mut by_name: HashMap<String, String> = self
+                .base_items
+                .iter()
+                .filter_map(|(name, def)| {
+                    gem_to_skill
+                        .get(def.id.as_str())
+                        .map(|skill_id| (name.to_lowercase(), (*skill_id).to_string()))
+                })
+                .collect();
+            // The base-item name index collapses ordinary and unique skill gems.
+            // Without an item attachment, a shared name means the ordinary effect.
+            for variant in &self.item_granted_skill_variants {
+                if self.gem_effects.contains_key(&variant.exported_effect_id) {
+                    by_name.insert(
+                        variant.skill_name.to_lowercase(),
+                        variant.exported_effect_id.clone(),
+                    );
+                }
+            }
+            by_name
+        })
+    }
+
+    /// Each class's starting node in the passive tree `tree_version` selects, by the
+    /// ids the passive-jewel catalog names (the lowest node id when several share
+    /// one). Depends on the tree only, so the current tree's answer is kept.
+    pub(crate) fn passive_class_starts(
+        &self,
+        tree_version: Option<&str>,
+    ) -> std::borrow::Cow<'_, std::collections::BTreeMap<String, u32>> {
+        let nodes = self.passive_nodes_for(tree_version);
+        let find = || {
+            let mut starts = std::collections::BTreeMap::new();
+            for (class, id) in &self.passive_jewels.class_starts {
+                if let Some(node) = nodes
+                    .values()
+                    .filter(|n| &n.id == id)
+                    .min_by_key(|n| n.skill)
+                {
+                    starts.insert(class.clone(), node.skill);
+                }
+            }
+            starts
+        };
+        if std::ptr::eq(nodes, &self.passive_nodes) {
+            std::borrow::Cow::Borrowed(self.derived.class_start_nodes.get_or_init(find))
+        } else {
+            std::borrow::Cow::Owned(find())
+        }
+    }
+
+    /// The Notable named `name` (ASCII case ignored) in the passive tree `tree_version`
+    /// selects; when several nodes share the name, the one with the lowest id.
+    pub(crate) fn notable_named(
+        &self,
+        tree_version: Option<&str>,
+        name: &str,
+    ) -> Option<&PassiveNodeDef> {
+        use pobr_data::catalog::PassiveNodeKind;
+        let nodes = self.passive_nodes_for(tree_version);
+        if !std::ptr::eq(nodes, &self.passive_nodes) {
+            // A historical tree is rare, and a name is looked up in it only a few times.
+            return nodes
+                .values()
+                .filter(|def| def.kind == PassiveNodeKind::Notable)
+                .filter(|def| {
+                    def.name
+                        .as_ref()
+                        .is_some_and(|n| n.eq_ignore_ascii_case(name))
+                })
+                .min_by_key(|def| def.skill);
+        }
+        let index = self.derived.notable_skill_by_name.get_or_init(|| {
+            let mut index: HashMap<String, u32> = HashMap::new();
+            for def in nodes.values() {
+                if def.kind != PassiveNodeKind::Notable {
+                    continue;
+                }
+                if let Some(name) = &def.name {
+                    index
+                        .entry(name.to_ascii_lowercase())
+                        .and_modify(|skill| *skill = (*skill).min(def.skill))
+                        .or_insert(def.skill);
+                }
+            }
+            index
+        });
+        index
+            .get(&name.to_ascii_lowercase())
+            .and_then(|skill| nodes.get(skill))
+    }
+
+    /// Granted effect id by [`normalize_gem_name`] of its display stem: the `Player`
+    /// suffix and a `Support` prefix are dropped, so `SupportAtzirisCommunionPlayer`
+    /// answers to "atziriscommunion", the normal form of "Atziri's Communion".
+    ///
+    /// Some stems name two effects (`Unleash` is both an active gem and a support gem,
+    /// `UnleashPlayer` and `SupportUnleashPlayer`; 86 stems do). The name alone cannot
+    /// say which a gem entry means, so the choice is fixed by [`outranks_for_name`]
+    /// rather than left to the order the map happens to iterate in, which differs from
+    /// one process to the next.
+    pub(crate) fn effect_id_by_normalized_name(&self) -> &HashMap<String, String> {
+        self.derived.effect_id_by_normalized_name.get_or_init(|| {
+            let mut lookup: HashMap<String, String> = HashMap::new();
+            for id in self.granted_effects.keys() {
+                let stem = id.strip_suffix("Player").unwrap_or(id);
+                let stem = stem.strip_prefix("Support").unwrap_or(stem);
+                match lookup.entry(normalize_gem_name(stem)) {
+                    std::collections::hash_map::Entry::Occupied(mut held) => {
+                        if outranks_for_name(id, held.get()) {
+                            held.insert(id.clone());
+                        }
+                    }
+                    std::collections::hash_map::Entry::Vacant(slot) => {
+                        slot.insert(id.clone());
+                    }
+                }
+            }
+            lookup
+        })
+    }
+}
+
+/// Whether effect id `candidate` is the better reading of a gem name than `held`, when
+/// both normalize to it: a support effect first (a socket group has many supports and
+/// one active skill, and the entries that name a gem without its effect id are the
+/// ones the importer could not look up), then the smaller id.
+pub(crate) fn outranks_for_name(candidate: &str, held: &str) -> bool {
+    let key = |id: &str| (id.starts_with("Support"), std::cmp::Reverse(id.to_owned()));
+    key(candidate) > key(held)
 }
 
 /// A totem monster's game base stats ([`BuildData::totems`]).
@@ -592,7 +768,7 @@ impl BuildData {
             gem_effects,
             cost_types,
             base_items,
-            constants,
+            constants: Arc::new(constants),
             jewel_radii,
             passive_jewels: data.passive_jewels()?.unwrap_or_default(),
             local_mods,
@@ -608,6 +784,7 @@ impl BuildData {
             augments,
             parser_rules,
             totems,
+            derived: DerivedIndexes::default(),
         })
     }
 
@@ -629,7 +806,7 @@ impl BuildData {
             gem_effects: HashMap::new(),
             cost_types: Vec::new(),
             base_items: HashMap::new(),
-            constants: RuntimeConstants::default(),
+            constants: Arc::default(),
             jewel_radii: JewelRadiiDef::default(),
             passive_jewels: Default::default(),
             local_mods: LocalModsDef::default(),
@@ -645,6 +822,7 @@ impl BuildData {
             augments: HashMap::new(),
             parser_rules: None,
             totems: HashMap::new(),
+            derived: DerivedIndexes::default(),
         }
     }
 }
@@ -657,6 +835,57 @@ mod tests {
     /// The version directory under the repo's built-in data directory (shared with the orchestrator tests).
     pub(crate) fn repo_version_dir() -> std::path::PathBuf {
         repo_data_root().join(pobr_gamedata::data_version())
+    }
+
+    fn effect(id: &str, is_support: bool) -> pobr_data::catalog::GrantedEffectDef {
+        pobr_data::catalog::GrantedEffectDef {
+            id: id.into(),
+            is_support,
+            active_skill: None,
+            displayed_name: None,
+            cast_time: None,
+            require_skill_types: vec![],
+            add_skill_types: vec![],
+            exclude_skill_types: vec![],
+            cannot_be_supported: false,
+            support_gems_only: false,
+            stat_set: None,
+            additional_stat_set_ids: vec![],
+            cost_types: vec![],
+            minion_list: vec![],
+            add_minion_list: vec![],
+            minion_uses: vec![],
+            minion_has_item_set: false,
+            ignore_minion_types: false,
+            skill_types: vec![],
+        }
+    }
+
+    /// `Unleash` names two effects. The pick must not depend on the order a map
+    /// iterates in, which differs between processes: build the table from many
+    /// differently seeded maps and require one answer.
+    #[test]
+    fn a_name_two_effects_share_resolves_the_same_way_every_time() {
+        let ids = [
+            ("UnleashPlayer", false),
+            ("SupportUnleashPlayer", true),
+            ("BlasphemyPlayer", false),
+            ("SupportBlasphemyPlayer", true),
+            ("DoLiterallyNothing", false),
+            ("DoLiterallyNothingPlayer", false),
+            ("FirebolPlayer", false),
+        ];
+        for _ in 0..40 {
+            let mut data = BuildData::empty();
+            for (id, support) in ids {
+                data.granted_effects.insert(id.into(), effect(id, support));
+            }
+            let lookup = data.effect_id_by_normalized_name();
+            assert_eq!(lookup["unleash"], "SupportUnleashPlayer");
+            assert_eq!(lookup["blasphemy"], "SupportBlasphemyPlayer");
+            assert_eq!(lookup["doliterallynothing"], "DoLiterallyNothing");
+            assert_eq!(lookup["firebol"], "FirebolPlayer");
+        }
     }
 
     #[test]

@@ -143,7 +143,7 @@ impl std::error::Error for SpecialCompileError {}
 struct CompiledEntry {
     id: String,
     exporter_rule: Option<std::sync::Arc<pobr_data::source::ExporterRule>>,
-    regex: Regex,
+    regex: LazyRegex,
     verified: bool,
     /// Registered as changing nothing a calculation reports (batch `S0`).
     /// Batch `unmodelled` entries are recognised too, but their mechanic is
@@ -214,6 +214,39 @@ pub struct SpecialMatch {
     pub unregistered_handler: Option<String>,
 }
 
+/// Cache the set's lazy DFA may grow to. The default (2 MiB) is too small for about
+/// 2,400 whole-line patterns: the DFA keeps discarding its states, the regex engine
+/// gives up on it, and every line is matched by the much slower PikeVM instead. On 60
+/// worked builds the whole calculation took 45 ms with the default and 19 ms at 8 MiB;
+/// 16 and 64 MiB were no faster, and peak memory at 8 MiB matched the default's.
+const SET_DFA_CACHE_BYTES: usize = 8 << 20;
+
+/// An entry's own regex, compiled the first time its entry matches a line. The set
+/// decides which entries match; this one only reads their capture groups, and most of
+/// the 2,400 entries never match in a session, so compiling them all at load was the
+/// larger part of the load-time cost of the rules. The pattern is parsed at load (its
+/// syntax and capture count are checked then), so compiling it later cannot fail.
+#[derive(Debug)]
+struct LazyRegex {
+    pattern: String,
+    compiled: std::sync::OnceLock<Regex>,
+}
+
+impl LazyRegex {
+    fn new(pattern: String) -> Self {
+        Self {
+            pattern,
+            compiled: std::sync::OnceLock::new(),
+        }
+    }
+
+    fn get(&self) -> &Regex {
+        self.compiled.get_or_init(|| {
+            Regex::new(&self.pattern).expect("a special pattern that parsed at load compiles")
+        })
+    }
+}
+
 /// Compiled special rule set (compiled at load time, read-only at runtime).
 #[derive(Debug)]
 pub struct SpecialModRules {
@@ -249,12 +282,17 @@ impl SpecialModRules {
             // already lowercase, per vendor :6155-6158). Doesn't double-wrap
             // if the pattern already has `^`/`$`.
             let anchored = anchor_pattern(&def.pattern);
-            let regex = Regex::new(&anchored).map_err(|e| SpecialCompileError::BadPattern {
-                entry_id: def.id.clone(),
-                pattern: def.pattern.clone(),
-                reason: e.to_string(),
+            // Parsed with the syntax the `regex` crate itself uses, which checks the
+            // pattern and counts its groups without building a matcher.
+            let parsed = regex_syntax::Parser::new().parse(&anchored).map_err(|e| {
+                SpecialCompileError::BadPattern {
+                    entry_id: def.id.clone(),
+                    pattern: def.pattern.clone(),
+                    reason: e.to_string(),
+                }
             })?;
-            validate::entry(def, regex.captures_len() - 1, registry)?;
+            validate::entry(def, parsed.properties().explicit_captures_len(), registry)?;
+            let regex = LazyRegex::new(anchored.clone());
             patterns.push(anchored);
 
             // enums table (keys converted to u32).
@@ -290,11 +328,14 @@ impl SpecialModRules {
             });
         }
 
-        let set = RegexSet::new(&patterns).map_err(|e| SpecialCompileError::BadPattern {
-            entry_id: "<regexset>".into(),
-            pattern: "<all>".into(),
-            reason: e.to_string(),
-        })?;
+        let set = regex::RegexSetBuilder::new(&patterns)
+            .dfa_size_limit(SET_DFA_CACHE_BYTES)
+            .build()
+            .map_err(|e| SpecialCompileError::BadPattern {
+                entry_id: "<regexset>".into(),
+                pattern: "<all>".into(),
+                reason: e.to_string(),
+            })?;
 
         Ok(Self { set, entries })
     }
@@ -343,7 +384,7 @@ impl SpecialModRules {
             let entry = &self.entries[idx];
             // RegexSet only prefilters; grab the capture groups with the
             // per-entry Regex (RegexSet itself produces no captures).
-            let Some(caps) = entry.regex.captures(line) else {
+            let Some(caps) = entry.regex.get().captures(line) else {
                 continue;
             };
             let captures: Vec<String> = caps

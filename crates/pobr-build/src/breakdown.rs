@@ -859,8 +859,27 @@ pub fn main_skill_breakdown(
     data: &BuildData,
     output: &OutputTable,
 ) -> Option<MainSkillBreakdown> {
-    let (group_index, active_skill_index, skill_id) =
-        crate::resolve_main_skill_selection(build, data)?;
+    main_skill_breakdown_for(crate::resolve_main_skill_selection(build, data)?, output)
+}
+
+/// [`main_skill_breakdown`] for the view
+/// [`crate::calc_orchestrator::calculate_with_data_session_prepared`] returned: the
+/// selection is read from the view the calculation used, without preparing it again.
+pub fn main_skill_breakdown_in_view(
+    prepared: &Build,
+    data: &BuildData,
+    output: &OutputTable,
+) -> Option<MainSkillBreakdown> {
+    main_skill_breakdown_for(
+        crate::calc_orchestrator::main_skill_selection_in_view(prepared, data)?,
+        output,
+    )
+}
+
+fn main_skill_breakdown_for(
+    (group_index, active_skill_index, skill_id): (usize, usize, String),
+    output: &OutputTable,
+) -> Option<MainSkillBreakdown> {
     let hit_damage = output
         .damage_components
         .iter()

@@ -29,13 +29,13 @@ pub use buffs::{
     self_buff_offensive_modifiers, spirit_reservation_modifiers,
 };
 pub use item_text::{
-    clean_item_text, is_local_spirit_mod, is_weapon_local_mod, item_local_defence_flat,
-    item_local_defence_inc, item_local_ward_flat, item_local_ward_inc, item_per_level_defence,
-    parse_adds_physical, parse_adds_with_suffix, parse_has_per_level_defence,
-    parse_local_block_chance, parse_local_defence_flat, parse_local_defence_inc,
-    parse_local_reload_speed, parse_local_ward_flat, parse_local_ward_inc, parse_weapon_local_crit,
-    weapon_local_attack_speed, weapon_local_phys_adds, weapon_local_phys_inc,
-    weapon_local_reload_speed, weapon_mod_texts,
+    clean_item_text, contains_ascii_ci, first_kept_char, is_local_spirit_mod, is_weapon_local_mod,
+    item_local_defence_flat, item_local_defence_inc, item_local_ward_flat, item_local_ward_inc,
+    item_per_level_defence, parse_adds_physical, parse_adds_with_suffix,
+    parse_has_per_level_defence, parse_local_block_chance, parse_local_defence_flat,
+    parse_local_defence_inc, parse_local_reload_speed, parse_local_ward_flat, parse_local_ward_inc,
+    parse_weapon_local_crit, weapon_local_attack_speed, weapon_local_phys_adds,
+    weapon_local_phys_inc, weapon_local_reload_speed, weapon_mod_texts,
 };
 pub use lookup::{
     ArmourBaseLookup, BaseItemLookup, CostTypeLookup, CostTypeRef, EffectLookup, EffectStats,

@@ -56,7 +56,7 @@ mod granted_skills;
 pub(crate) mod item;
 mod skill;
 use granted_skills::*;
-pub use skill::resolve::resolve_main_skill_selection;
+pub use skill::resolve::{main_skill_selection_in_view, resolve_main_skill_selection};
 use skill::{
     minions::spawn_minions,
     resolve::{additional_ring_slot_allocated, apply_gem_quality_bonuses, group_active_effects},
@@ -80,6 +80,7 @@ pub(crate) use diagnosis::{
     condition_set_from_build, config_option_setting, multiplier_option_setting,
     read_from_build_structure, read_outside_the_database, read_under_a_state,
 };
+mod selection_memo;
 mod sources;
 use sources::SourceWriter;
 pub use sources::{LineFate, ReceivedLine};
@@ -364,6 +365,8 @@ pub fn calculate_skill_metrics(
     // and quality preparation. Reusing this view avoids applying quality twice.
     let prepared = prepared_build_view(build, data, options);
     let mut scoped = prepared.as_ref().clone();
+    // Every effect is calculated from this one build, whose selection alone changes.
+    let _scope = selection_memo::SelectionScope::enter(&scoped, data);
     let mut skills = Vec::new();
     for (group_index, group) in prepared.socket_groups.iter().enumerate() {
         if !group.enabled || !group.active_in_weapon_set(build.weapon_set) {
@@ -473,6 +476,26 @@ pub fn calculate_with_data_session_tracked(
         )?);
     }
     Ok((session, prepared.into_owned()))
+}
+
+/// [`calculate_with_data_session`], also returning the build view the calculation
+/// read. A caller that needs facts about that view after the calculation (the main
+/// skill's selection, the jewel sockets) takes them from it instead of preparing
+/// the build again, which costs about as much as the sourcing stages themselves.
+pub fn calculate_with_data_session_prepared<'a>(
+    build: &'a Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+) -> Result<(CompletedCalculationSession, Cow<'a, Build>), BuildError> {
+    let mut context = CalculationContext::new(data, options);
+    let prepared = prepared_build_view(build, data, options);
+    let mut session = calculate_prepared_with_context(&prepared, data, options, &mut context)?;
+    if options.full_dps {
+        session = session.with_full_dps(full_dps::calculate_prepared(
+            build, &prepared, data, options,
+        )?);
+    }
+    Ok((session, prepared))
 }
 
 /// A completed calculation and its mapping diagnostics, including trigger sources.
@@ -940,6 +963,15 @@ pub fn passive_jewel_state(
     crate::jewel_tree::passive_jewel_state(&stage_build_view(build, data), data)
 }
 
+/// [`passive_jewel_state`] for the view [`calculate_with_data_session_prepared`]
+/// returned, which already is the active item/socket view.
+pub fn passive_jewel_state_in_view(
+    prepared: &Build,
+    data: &BuildData,
+) -> crate::jewel_tree::PassiveJewelState {
+    crate::jewel_tree::passive_jewel_state(prepared, data)
+}
+
 /// Resolves a `GemSkillRef { skill_id: "", name_spec: Some(name) }`'s display name into
 /// a granted effect id. Normalization = lowercase + keep only alphanumerics; candidate
 /// ids have the `Player` suffix stripped (lineage variants like `PlayerTwo/Three` not
@@ -947,42 +979,31 @@ pub fn passive_jewel_state(
 /// the `Support` prefix stripped (`SupportAtzirisCommunionPlayer` → `atziriscommunion` =
 /// the normalized form of nameSpec "Atziri's Communion"). Returns None when nothing changed.
 fn resolve_name_spec_gems(build: &Build, data: &BuildData) -> Option<Build> {
-    fn norm(s: &str) -> String {
-        s.chars()
-            .filter(char::is_ascii_alphanumeric)
-            .map(|c| c.to_ascii_lowercase())
-            .collect()
-    }
-    let pending: Vec<String> = build
+    use crate::build_data::normalize_gem_name as norm;
+    let pending = build
         .socket_groups
         .iter()
         .flat_map(|g| &g.gem_skills)
-        .filter(|gem| gem.skill_id.is_empty())
-        .filter_map(|gem| gem.name_spec.clone())
-        .collect();
-    if pending.is_empty() {
+        .any(|gem| gem.skill_id.is_empty() && gem.name_spec.is_some());
+    if !pending {
         return None;
     }
-    let mut lookup: std::collections::HashMap<String, &str> = std::collections::HashMap::new();
-    for id in data.granted_effects.keys() {
-        let stem = id.strip_suffix("Player").unwrap_or(id);
-        let stem = stem.strip_prefix("Support").unwrap_or(stem);
-        lookup.insert(norm(stem), id.as_str());
-    }
-    let mut out = build.clone();
-    let mut changed = false;
-    for group in &mut out.socket_groups {
-        for gem in &mut group.gem_skills {
+    let lookup = data.effect_id_by_normalized_name();
+    // The view is cloned only once a name actually resolves.
+    let mut out: Option<Build> = None;
+    for (group_index, group) in build.socket_groups.iter().enumerate() {
+        for (gem_index, gem) in group.gem_skills.iter().enumerate() {
             if gem.skill_id.is_empty()
                 && let Some(name) = &gem.name_spec
                 && let Some(id) = lookup.get(&norm(name))
             {
-                gem.skill_id = (*id).to_string();
-                changed = true;
+                out.get_or_insert_with(|| build.clone()).socket_groups[group_index].gem_skills
+                    [gem_index]
+                    .skill_id = id.clone();
             }
         }
     }
-    changed.then_some(out)
+    out
 }
 
 /// Stage 5: session creation + runtime rule-pack injection (constants / special /

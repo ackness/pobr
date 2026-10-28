@@ -5,6 +5,79 @@ use pobr_data::prelude::*;
 /// Actor output lookup function for PerStat (`stat name → output value`; missing key → `None`).
 pub type StatLookup<'a> = &'a dyn Fn(&str) -> Option<f64>;
 
+/// A string-keyed map that clones of a configuration share until one of them writes.
+///
+/// A calculation derives many configurations from one (a damage type here, a critical
+/// or non-critical leg there), and almost all of them change a flag or a type, not the
+/// maps. Reads go through `Deref` and need no copy; the first write through `DerefMut`
+/// copies the map for that configuration alone, so call sites keep using the plain
+/// `HashMap` API.
+#[derive(Debug)]
+pub struct SharedMap<V>(std::sync::Arc<HashMap<String, V>>);
+
+impl<V> Clone for SharedMap<V> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl<V> Default for SharedMap<V> {
+    fn default() -> Self {
+        Self(std::sync::Arc::default())
+    }
+}
+
+impl<V> std::ops::Deref for SharedMap<V> {
+    type Target = HashMap<String, V>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<V: Clone> std::ops::DerefMut for SharedMap<V> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        std::sync::Arc::make_mut(&mut self.0)
+    }
+}
+
+impl<V: PartialEq> PartialEq for SharedMap<V> {
+    fn eq(&self, other: &Self) -> bool {
+        std::sync::Arc::ptr_eq(&self.0, &other.0) || self.0 == other.0
+    }
+}
+
+impl<V: PartialEq> PartialEq<HashMap<String, V>> for SharedMap<V> {
+    fn eq(&self, other: &HashMap<String, V>) -> bool {
+        *self.0 == *other
+    }
+}
+
+impl<V: PartialEq> PartialEq<SharedMap<V>> for HashMap<String, V> {
+    fn eq(&self, other: &SharedMap<V>) -> bool {
+        *self == *other.0
+    }
+}
+
+impl<V> From<HashMap<String, V>> for SharedMap<V> {
+    fn from(map: HashMap<String, V>) -> Self {
+        Self(std::sync::Arc::new(map))
+    }
+}
+
+impl<V> FromIterator<(String, V)> for SharedMap<V> {
+    fn from_iter<I: IntoIterator<Item = (String, V)>>(iter: I) -> Self {
+        Self(std::sync::Arc::new(iter.into_iter().collect()))
+    }
+}
+
+impl<'a, V> IntoIterator for &'a SharedMap<V> {
+    type Item = (&'a String, &'a V);
+    type IntoIter = std::collections::hash_map::Iter<'a, String, V>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
 /// EvalMod evaluation context.
 ///
 /// [`crate::Modifier::effective_number`]'s parameter is upgraded from
@@ -81,8 +154,8 @@ pub struct CalcConfig {
     pub keyword_flags: KeywordFlags,
     pub skill_types: SkillTypes,
     pub damage_type: Option<DamageType>,
-    pub conditions: HashMap<String, bool>,
-    pub multipliers: HashMap<String, f64>,
+    pub conditions: SharedMap<bool>,
+    pub multipliers: SharedMap<f64>,
     /// Snapshot of already-computed stats (V2s4; PoB2's `StatThreshold`/
     /// `PerStat`/`PercentStat` tags read actor **output** via GetStat,
     /// ModStore.lua:556-573). Backfilled after source injection by actor
@@ -98,7 +171,7 @@ pub struct CalcConfig {
     /// equipment facts. `perform` refreshes Life/Mana after resource conversion and
     /// snapshots Armour/Evasion/EnergyShield before offence. Other keys remain zero
     /// unless explicitly populated.
-    pub stats: HashMap<String, f64>,
+    pub stats: SharedMap<f64>,
     /// Extra damage-scaling ModNames (derived from main skill keywords /
     /// weapon category, e.g. `GrenadeDamage`, `CrossbowDamage`).
     /// `damage::aggregate_inc_more` folds them into the general increased-
@@ -176,7 +249,7 @@ pub struct CalcConfig {
     /// Backfilled by the orchestration layer during the read-only snapshot
     /// stage; an empty table means behavior is unchanged from before this was
     /// introduced.
-    pub actor_multipliers: HashMap<String, f64>,
+    pub actor_multipliers: SharedMap<f64>,
     /// The injected runtime constants bundle.
     ///
     /// All game constant magic numbers used in calc formulas (resistance
@@ -191,7 +264,7 @@ pub struct CalcConfig {
     /// (pobr-build's `calculate_with_data` calls it after `with_config`; note
     /// that `with_config` overwrites cfg wholesale, so injection must happen
     /// after it).
-    pub constants: RuntimeConstants,
+    pub constants: std::sync::Arc<RuntimeConstants>,
     /// Whether a rain hits an enemy whenever the enemy can be hit again, as
     /// if an arrow landed at that moment, instead of with the first arrow to
     /// land after it (`calc::rain`). Off by default; it is the basis of a
@@ -364,8 +437,11 @@ impl CalcConfig {
     /// Injects the runtime constants bundle (see [`CalcConfig::constants`]).
     /// Defaults to `Default` (the fallback, value-equal to the on-disk JSON)
     /// when not called.
-    pub fn with_constants(mut self, constants: RuntimeConstants) -> Self {
-        self.constants = constants;
+    pub fn with_constants(
+        mut self,
+        constants: impl Into<std::sync::Arc<RuntimeConstants>>,
+    ) -> Self {
+        self.constants = constants.into();
         self
     }
 
