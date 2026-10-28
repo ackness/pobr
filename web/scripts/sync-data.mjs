@@ -8,6 +8,12 @@ import { syncBuildReferences } from './sync-build-references.mjs';
 /** Where a published file is also found by its content: `data/h/<first 16 digits of its SHA-256>/<path>`. */
 const ADDRESSED = 'h';
 const ADDRESS_LENGTH = 16;
+/**
+ * What the host answers, with a 404 status, for a path under `data/h/` that names no file. Without a
+ * page like this it would answer with the app shell and a 200, which `_headers` marks to be kept for
+ * good. (Pages looks for the nearest `404.html` up the path, and only without one falls back to the shell.)
+ */
+const NOT_FOUND_PAGE = '<!doctype html>\n<meta charset="utf-8">\n<title>Not found</title>\n<p>Not found</p>\n';
 const webRoot = fileURLToPath(new URL('..', import.meta.url));
 const repoRoot = join(webRoot, '..');
 const maintenanceFiles = new Set([
@@ -111,6 +117,7 @@ export function syncData({ dataRoot = join(repoRoot, 'data'), destRoot = join(we
       mkdirSync(dirname(addressed), { recursive: true });
       cpSync(destination, addressed);
     }
+    writeFileSync(join(stagedData, ADDRESSED, '404.html'), NOT_FOUND_PAGE);
     // Sorted like `files`, so the manifest does not depend on the order files were copied in.
     for (const rel of files) sortedDigests[rel] = digests[rel];
     writeFileSync(join(stagedData, 'manifest.json'), JSON.stringify({ version, files, digests: sortedDigests }, null, 2));
