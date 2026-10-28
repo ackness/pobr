@@ -529,6 +529,7 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
     let jewels: Vec<Value> = serde_json::from_str(&file.jewel_data)
         .or_else(|_| serde_json::from_str(&file.jewel_data.replace("\\\"", "\"")))
         .map_err(|e| ApiError::decode_error(format!("invalid WeGame jewel data: {e}")))?;
+    let jewel_slots = game.passive_jewel_slots().ok();
     let mut socket_jewels = Vec::new();
     for entry in jewels {
         let jewel = &entry["jewel"];
@@ -536,7 +537,12 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
             continue;
         }
         let socket = text(&entry, "socket_id");
-        let Some(node) = data.passive_nodes.values().find(|n| n.id == socket) else {
+        // A share names a socket by its tree node id, or `PassiveJewel_<n>` for row n of the game's jewel slot table.
+        let node_id = jewel_slots
+            .as_ref()
+            .and_then(|slots| slots.passive_id_for_wegame_socket(socket))
+            .unwrap_or(socket);
+        let Some(node) = data.passive_nodes.values().find(|n| n.id == node_id) else {
             warnings.insert(format!("Unknown jewel socket: {socket}"));
             continue;
         };

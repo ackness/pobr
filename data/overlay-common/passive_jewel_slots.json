@@ -1,0 +1,215 @@
+{
+  "_meta": {
+    "schema": "passive_jewel_slots/v1",
+    "generator": "manual",
+    "source": "按游戏数据手工整理: official GGG CDN table export (pathofexile-dat 15.2.0 with the pinned patch), not vendor data.",
+    "patch": "0.5.5.4.2",
+    "tables": {
+      "PassiveJewelSlots": {
+        "columns": [
+          "Slot",
+          "ClusterJewelSize",
+          "SinisterJewelSocket"
+        ],
+        "export_sha256": "a829855cc713f7645f2471c4114b915e485f2aeac14bd3940f322ddcdcdb745b"
+      },
+      "PassiveSkills": {
+        "columns": [
+          "Id",
+          "PassiveSkillGraphId",
+          "IsJewelSocket"
+        ],
+        "export_sha256": "3b87ad1c8fc900530ed7e44ad7139aac1b332bb2dc10e368a457788e4f8e4d81"
+      }
+    },
+    "notes": "A WeGame share names the socket that holds a jewel `PassiveJewel_<N>`. N is the row `_index` of PassiveJewelSlots; the row's `Slot` is a row of PassiveSkills, whose Id is the passive tree node id. Checked on a level 96 Deadeye share: its four allocated jewel sockets were rows 4, 5, 12 and 17. Some rows name passives that are not in the current tree (retired sockets). The adapter should generate this domain once the table joins the regular export."
+  },
+  "slots": [
+    {
+      "index": 0,
+      "passive_id": "jewel_slot1956",
+      "passive_skill_graph_id": 26725,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 1,
+      "passive_id": "jewel_slot1957",
+      "passive_skill_graph_id": 36634,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 2,
+      "passive_id": "jewel_slot1958",
+      "passive_skill_graph_id": 33989,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 3,
+      "passive_id": "jewel_slot1959",
+      "passive_skill_graph_id": 41263,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 4,
+      "passive_id": "jewel_slot1960",
+      "passive_skill_graph_id": 60735,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 5,
+      "passive_id": "jewel_slot1961",
+      "passive_skill_graph_id": 61834,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 6,
+      "passive_id": "jewel_slot1963",
+      "passive_skill_graph_id": 31683,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 7,
+      "passive_id": "jewel_slot1964",
+      "passive_skill_graph_id": 28475,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 8,
+      "passive_id": "jewel_slot1966",
+      "passive_skill_graph_id": 6230,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 9,
+      "passive_id": "jewel_slot1967",
+      "passive_skill_graph_id": 48768,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 10,
+      "passive_id": "jewel_slot1968",
+      "passive_skill_graph_id": 34483,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 11,
+      "passive_id": "jewel_slot1969",
+      "passive_skill_graph_id": 7960,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 12,
+      "passive_id": "jewel_slot1970",
+      "passive_skill_graph_id": 46882,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 13,
+      "passive_id": "jewel_slot1971",
+      "passive_skill_graph_id": 55190,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 14,
+      "passive_id": "jewel_slot1972",
+      "passive_skill_graph_id": 61419,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 15,
+      "passive_id": "jewel_slot1974",
+      "passive_skill_graph_id": 2491,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 16,
+      "passive_id": "jewel_slot1975",
+      "passive_skill_graph_id": 54127,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 17,
+      "passive_id": "jewel_slot1976",
+      "passive_skill_graph_id": 32763,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 18,
+      "passive_id": "jewel_slot1977",
+      "passive_skill_graph_id": 26196,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 19,
+      "passive_id": "jewel_slot1978",
+      "passive_skill_graph_id": 33631,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 20,
+      "passive_id": "jewel_slot1979",
+      "passive_skill_graph_id": 21984,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 21,
+      "passive_id": "jewel_slot1980",
+      "passive_skill_graph_id": 59740,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 22,
+      "passive_id": "jewel_slot1981",
+      "passive_skill_graph_id": 63132,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 23,
+      "passive_id": "jewel_slot1982",
+      "passive_skill_graph_id": 36044,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 24,
+      "passive_id": "AscendancyWitch3Notable1",
+      "passive_skill_graph_id": 17788,
+      "sinister_jewel_socket": false
+    },
+    {
+      "index": 25,
+      "passive_id": "voices_jewel_slot1",
+      "passive_skill_graph_id": 62152,
+      "sinister_jewel_socket": true
+    },
+    {
+      "index": 26,
+      "passive_id": "voices_jewel_slot2",
+      "passive_skill_graph_id": 26178,
+      "sinister_jewel_socket": true
+    },
+    {
+      "index": 27,
+      "passive_id": "voices_jewel_slot3__",
+      "passive_skill_graph_id": 23960,
+      "sinister_jewel_socket": true
+    },
+    {
+      "index": 28,
+      "passive_id": "voices_jewel_slot4",
+      "passive_skill_graph_id": 39087,
+      "sinister_jewel_socket": true
+    },
+    {
+      "index": 29,
+      "passive_id": "voices_jewel_slot5",
+      "passive_skill_graph_id": 3367,
+      "sinister_jewel_socket": true
+    },
+    {
+      "index": 30,
+      "passive_id": "DeliriumAnoint_ZarokhsGift_",
+      "passive_skill_graph_id": 11184,
+      "sinister_jewel_socket": true
+    }
+  ]
+}

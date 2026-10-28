@@ -19,6 +19,8 @@ mod load_monster_resistances;
 mod load_monster_scaling;
 #[path = "skills/load_non_damaging_ailments.rs"]
 mod load_non_damaging_ailments;
+#[path = "skills/load_passive_jewel_slots.rs"]
+mod load_passive_jewel_slots;
 #[path = "skills/load_skill_gems.rs"]
 mod load_skill_gems;
 #[path = "skills/load_skill_overrides.rs"]
