@@ -44,7 +44,12 @@ test('sync uses sealed runtime files and preserves patch/common layers', (t) => 
   for (const rel of result.files) {
     const published = readFileSync(join(root, 'public/data/9.1', rel));
     assert.equal(result.digests[rel], createHash('sha256').update(published).digest('hex'), rel);
+    // ...and the same bytes are found under a path that names them, which is what is kept for good.
+    const addressed = readFileSync(join(root, 'public/data/h', result.digests[rel].slice(0, 16), rel));
+    assert.deepEqual(addressed, published, rel);
   }
+  // The listed files are the plain ones; the addressed copies are not part of the pack.
+  assert.equal(result.files.some((rel) => rel.startsWith('h/')), false);
 });
 
 test('sync rejects domain and language declarations missing from the inventory', (t) => {

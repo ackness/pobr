@@ -8,7 +8,7 @@
  *   engine as soon as it arrives, and its bytes are dropped; only the few files the page
  *   reads again are kept. Waiting for every file before checking any of them keeps a second
  *   copy of the whole pack in the page's memory beside the engine's.
- * - A file is asked for by its digest (`?h=`), so its URL names exactly one content and the
+ * - A file is asked for under a path that names its content (`/data/h/<digest>/<file>`), so the
  *   browser can keep it for good (the host marks those responses immutable). A repeat visit
  *   then fetches the manifest and nothing else.
  */
@@ -22,16 +22,19 @@ export interface DataManifest {
   digests?: Record<string, string>;
 }
 
-/** How many leading hex digits of a file's digest its URL carries. */
-const URL_DIGEST_LENGTH = 16;
+/** How many leading hex digits of a file's digest its path carries. */
+const ADDRESS_LENGTH = 16;
 
-/** The URL of a data file, carrying its digest when the manifest has one. */
+/**
+ * The URL of a data file. With a digest in the manifest it is the copy found under a path that
+ * names the content (`/data/h/<digest16>/<file>`), which can never hold other bytes and which the
+ * host marks immutable (`public/_headers`); without one, the plain path, which it revalidates.
+ */
 export function dataUrl(manifest: Pick<DataManifest, 'version' | 'digests'>, rel: string): string {
-  const url = `/data/${manifest.version}/${rel}`;
   const digest = manifest.digests?.[rel];
   return typeof digest === 'string' && /^[0-9a-f]{64}$/.test(digest)
-    ? `${url}?h=${digest.slice(0, URL_DIGEST_LENGTH)}`
-    : url;
+    ? `/data/h/${digest.slice(0, ADDRESS_LENGTH)}/${rel}`
+    : `/data/${manifest.version}/${rel}`;
 }
 
 /**
