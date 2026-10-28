@@ -12,6 +12,171 @@
   },
   "entries": [
     {
+      "id": "glory_generation",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% (?:increased|reduced) glory generation(?: for banner skills)?$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "banner Glory generation (passives)",
+      "exporter": "absent",
+      "source_note": "Glory, the Banner resource, is not tracked: a rate of gaining it changes no reported output.",
+      "examples": [
+        "8% increased Glory generation",
+        "20% increased Glory generation for Banner Skills"
+      ]
+    },
+    {
+      "id": "elemental_infusion_events",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% (?:increased|reduced) elemental infusion duration|(\\d+(?:\\.\\d+)?)% chance when collecting an elemental infusion to gain an additional elemental infusion of the same type|skills have (\\d+(?:\\.\\d+)?)% chance to not remove elemental infusions but still count as consuming them|when collecting an elemental infusion, gain another different elemental infusion|gain a power charge when you consume an elemental infusion)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Elemental Infusion passives",
+      "exporter": "absent",
+      "source_note": "Infusions are collected, consumed and expire as events. Only the maximum number of each is reported (MaximumFireInfusions and the like); their duration, collection and consumption are not simulated.",
+      "examples": [
+        "10% increased Elemental Infusion duration",
+        "5% chance when collecting an Elemental Infusion to gain an additional Elemental Infusion of the same type",
+        "Skills have 5% chance to not remove Elemental Infusions but still count as consuming them",
+        "When collecting an Elemental Infusion, gain another different Elemental Infusion",
+        "Gain a Power Charge when you consume an Elemental Infusion"
+      ]
+    },
+    {
+      "id": "seal_gain_frequency",
+      "pattern": "^sealed skills have (\\d+(?:\\.\\d+)?)% (?:increased|reduced) seal gain frequency$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Sealed skills (passive)",
+      "exporter": "absent",
+      "source_note": "How often a Sealed skill gains a Seal is an event rate with no model of the casting sequence.",
+      "examples": [
+        "Sealed Skills have 10% increased Seal gain frequency"
+      ]
+    },
+    {
+      "id": "puppet_master",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% surpassing chance to gain a puppet master stack whenever you use a command skill|(\\d+(?:\\.\\d+)?)% (?:increased|reduced) effect of puppet master|\\+(\\d+) maximum stacks of puppet master|(\\d+(?:\\.\\d+)?)% increased duration of each puppet master stack)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Puppet Master (passives)",
+      "exporter": "absent",
+      "source_note": "Puppet Master stacks are gained by using Command skills and expire; the stack count, its effect and its duration are not modelled.",
+      "examples": [
+        "15% Surpassing Chance to gain a Puppet Master stack whenever you use a Command Skill",
+        "20% increased Effect of Puppet Master",
+        "+1 maximum stacks of Puppet Master",
+        "25% increased Duration of each Puppet Master stack"
+      ]
+    },
+    {
+      "id": "volatility_gain_events",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% chance to gain volatility on kill|(\\d+(?:\\.\\d+)?)% chance to gain volatility when you are stunned|(\\d+(?:\\.\\d+)?)% (?:increased|reduced) volatility explosion delay)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Volatility passives",
+      "exporter": "absent",
+      "source_note": "Gaining Volatility from kills or being stunned, and the delay before it explodes, are events with no simulated frequency. calc::volatility_events takes an explicit explosion snapshot instead.",
+      "examples": [
+        "10% chance to gain Volatility on Kill",
+        "50% chance to gain Volatility when you are Stunned",
+        "15% increased Volatility Explosion delay",
+        "15% reduced Volatility Explosion delay"
+      ]
+    },
+    {
+      "id": "armour_break_duration_and_taken",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% increased armour break duration|(\\d+(?:\\.\\d+)?)% reduced armour break taken)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Armour Break passives",
+      "exporter": "absent",
+      "source_note": "How long enemy Armour stays broken, and the Armour Break enemies inflict on the character, are not simulated: only the per-hit amount and the hits needed are reported.",
+      "examples": [
+        "100% increased Armour Break Duration",
+        "50% reduced Armour Break taken"
+      ]
+    },
+    {
+      "id": "offering_maximum_life",
+      "pattern": "^offerings have (\\d+(?:\\.\\d+)?)% (?:increased|reduced) maximum life$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Offering skills (passive)",
+      "exporter": "absent",
+      "source_note": "An Offering's Life is not reported: it has no damage or defence output.",
+      "examples": [
+        "Offerings have 15% increased Maximum Life",
+        "Offerings have 30% reduced Maximum Life"
+      ]
+    },
+    {
+      "id": "corpse_consumption_chance",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% chance to not destroy corpses when consuming corpses$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Corpse consumption (passive)",
+      "exporter": "absent",
+      "source_note": "Corpses are not supplied or consumed in the calculation.",
+      "examples": [
+        "15% chance to not destroy Corpses when Consuming Corpses"
+      ]
+    },
+    {
+      "id": "charm_use_events",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% chance when a charm is used to use another charm without consuming charges|recover (\\d+(?:\\.\\d+)?)% of maximum mana when a charm is used)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Charm use passives",
+      "exporter": "absent",
+      "source_note": "Charms are used as events; no use frequency is modelled, so there is no rate for these to scale.",
+      "examples": [
+        "10% chance when a Charm is used to use another Charm without consuming Charges",
+        "Recover 5% of maximum Mana when a Charm is used"
+      ]
+    },
+    {
+      "id": "rage_on_ignite",
+      "pattern": "^gain (\\d+) rage when your hit ignites a target$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Rage from igniting (passive)",
+      "exporter": "absent",
+      "source_note": "Rage gained from an event is not simulated; the Rage count is a configured input.",
+      "examples": [
+        "Gain 1 Rage when your Hit Ignites a target"
+      ]
+    },
+    {
+      "id": "charge_gain_and_consume_events",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% chance that if you would gain (?:endurance|frenzy|power) charges, you instead gain up to (?:your )?maximum (?:number of )?(?:endurance|frenzy|power) charges|(\\d+(?:\\.\\d+)?)% chance when you gain an? (?:endurance|frenzy|power) charge to gain an additional (?:endurance|frenzy|power) charge|(\\d+(?:\\.\\d+)?)% chance that if you would gain rage on hit, you instead gain up to your maximum rage|recover (\\d+(?:\\.\\d+)?)% of maximum mana when you consume a power charge|recover (\\d+(?:\\.\\d+)?)% of maximum life for each endurance charge consumed)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Charge gain and consume passives",
+      "exporter": "absent",
+      "source_note": "Gaining and consuming charges are events and no gain or consumption rate is simulated: the configured charge counts (usePowerCharges and the like) stand for the charges held. Charges the character would gain beyond those counts are not added, and nothing is recovered for a charge consumed.",
+      "examples": [
+        "2% chance that if you would gain Endurance Charges, you instead gain up to maximum Endurance Charges",
+        "2% chance that if you would gain Frenzy Charges, you instead gain up to your maximum number of Frenzy Charges",
+        "2% chance that if you would gain Power Charges, you instead gain up to your maximum number of Power Charges",
+        "4% chance that if you would gain Rage on Hit, you instead gain up to your maximum Rage",
+        "10% chance when you gain a Power Charge to gain an additional Power Charge",
+        "10% chance when you gain an Endurance Charge to gain an additional Endurance Charge",
+        "50% chance when you gain a Frenzy Charge to gain an additional Frenzy Charge",
+        "Recover 2% of maximum Mana when you consume a Power Charge",
+        "Recover 2% of maximum Life for each Endurance Charge consumed"
+      ]
+    },
+    {
       "id": "loreweave_exclusive_item_rarity",
       "pattern": "^([+-]?\\d+(?:\\.\\d+)?)% increased rarity of items found your other modifiers to rarity of items found do not apply$",
       "mods": [

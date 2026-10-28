@@ -6810,7 +6810,7 @@
     },
     {
       "text": "10% chance to gain [Volatility] on Kill",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "10% chance to inflict Bleeding on [Critical|Critical Hit] with [Attack|Attacks]",
@@ -6840,14 +6840,7 @@
     },
     {
       "text": "10% chance when a [Charm|Charm] is used to use another Charm without consuming Charges",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "FlaskCharges",
-          "type": "Base",
-          "value": 10.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "10% chance when collecting an [ElementalInfusion|Elemental Infusion] to gain an\nadditional [ElementalInfusion|Elemental Infusion] of the same type",
@@ -8288,14 +8281,7 @@
     },
     {
       "text": "10% increased [ElementalInfusion|Elemental Infusion] duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Duration",
-          "type": "Inc",
-          "value": 10.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "10% increased [Evasion|Evasion Rating]",
@@ -9324,14 +9310,7 @@
     },
     {
       "text": "100% increased [ArmourBreak|Armour Break] Duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Armour",
-          "type": "Inc",
-          "value": 100.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "100% increased [Armour], [Evasion] and [EnergyShield|Energy Shield] from Equipped [Shield]",
@@ -11787,14 +11766,7 @@
     },
     {
       "text": "15% increased Effect of [PuppetMaster|Puppet Master]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "LocalEffect",
-          "type": "Inc",
-          "value": 15.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "15% increased Elemental Damage",
@@ -14578,36 +14550,15 @@
     },
     {
       "text": "2% chance that if you would gain [Charges|Endurance Charges], you instead gain up to maximum [Charges|Endurance Charges]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "FlaskCharges",
-          "type": "Base",
-          "value": 2.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "2% chance that if you would gain [Charges|Frenzy Charges], you instead gain up to your maximum number of [Charges|Frenzy Charges]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "FlaskCharges",
-          "type": "Base",
-          "value": 2.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "2% chance that if you would gain [Charges|Power Charges], you instead gain up to\nyour maximum number of [Charges|Power Charges]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "FlaskCharges",
-          "type": "Base",
-          "value": 2.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "2% chance to Recover all Life when you Kill an Enemy",
@@ -15276,14 +15227,7 @@
     },
     {
       "text": "20% increased Effect of [PuppetMaster|Puppet Master]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "LocalEffect",
-          "type": "Inc",
-          "value": 20.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "20% increased Energy Shield Recharge Rate",
@@ -15617,14 +15561,7 @@
     },
     {
       "text": "20% increased [ArmourBreak|Armour Break] Duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Armour",
-          "type": "Inc",
-          "value": 20.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "20% increased [Armour]",
@@ -18628,14 +18565,7 @@
     },
     {
       "text": "25% increased Duration of each [PuppetMaster|Puppet Master] stack",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Duration",
-          "type": "Inc",
-          "value": 25.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "25% increased Energy Shield Recharge Rate",
@@ -18872,14 +18802,7 @@
     },
     {
       "text": "25% increased [ArmourBreak|Armour Break] Duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Armour",
-          "type": "Inc",
-          "value": 25.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "25% increased [Armour]",
@@ -19916,14 +19839,7 @@
     },
     {
       "text": "25% reduced [ArmourBreak|Armour Break] taken",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Armour",
-          "type": "Inc",
-          "value": -25.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "25% reduced [Armour], [Evasion] and [EnergyShield|Energy Shield]",
@@ -20536,7 +20452,7 @@
     },
     {
       "text": "3% chance to gain [Volatility] on Kill",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "3% increased Area of Effect",
@@ -22215,14 +22131,7 @@
     },
     {
       "text": "30% increased [ElementalInfusion|Elemental Infusion] duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Duration",
-          "type": "Inc",
-          "value": 30.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "30% increased [Evasion|Evasion Rating]",
@@ -23725,15 +23634,7 @@
     },
     {
       "text": "4% chance that if you would gain [Rage] on [Hit], you instead gain up to your maximum Rage",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "MaximumRage",
-          "type": "Base",
-          "value": 4.0,
-          "flags": 4
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "4% increased Area of Effect",
@@ -25841,7 +25742,7 @@
     },
     {
       "text": "5% chance to gain [Volatility] on Kill",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "5% chance to inflict [Bleeding|Bleeding] on [Hit]",
@@ -26761,7 +26662,7 @@
     },
     {
       "text": "50% chance to gain [Volatility] when you are [Stun|Stunned]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "50% chance when you gain a Frenzy Charge to gain an additional Frenzy Charge",
@@ -27476,14 +27377,7 @@
     },
     {
       "text": "50% reduced [ArmourBreak|Armour Break] taken",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Armour",
-          "type": "Inc",
-          "value": -50.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "50% reduced [BuffEffect|effect] of [Curse|Curses] on you",
@@ -28281,14 +28175,7 @@
     },
     {
       "text": "6% increased [ElementalInfusion|Elemental Infusion] duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Duration",
-          "type": "Inc",
-          "value": 6.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "6% increased [Fire] Damage",
@@ -30244,14 +30131,7 @@
     },
     {
       "text": "8% increased [ElementalInfusion|Elemental Infusion] duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Duration",
-          "type": "Inc",
-          "value": 8.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "8% increased [Evasion|Evasion Rating]",
@@ -38018,7 +37898,7 @@
     },
     {
       "text": "Gain a [Charges|Power Charge] when you consume an [ElementalInfusion|Elemental Infusion]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Gain a stack of [Jade] every second",
@@ -40654,7 +40534,7 @@
     },
     {
       "text": "Recover 2% of maximum Life for each [Charges|Endurance Charge] consumed",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Recover 2% of maximum Life on Kill",
@@ -40698,7 +40578,7 @@
     },
     {
       "text": "Recover 2% of maximum Mana when you consume a [Charges|Power Charge]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Recover 20 Life when you [Block]",
@@ -40750,7 +40630,7 @@
     },
     {
       "text": "Recover 3% of maximum Life for each [Charges|Endurance Charge] consumed",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Recover 3% of maximum Life on Kill",
@@ -40798,11 +40678,11 @@
     },
     {
       "text": "Recover 5% of maximum Mana when a [Charm|Charm] is used",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Recover 5% of maximum Mana when you consume a [Charges|Power Charge]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Recover 50% of maximum Life when you [HeavyStun|Heavy Stun] a [Rarity|Rare or Unique] Enemy",
@@ -42286,7 +42166,7 @@
     },
     {
       "text": "When collecting an [ElementalInfusion|Elemental Infusion], gain another different [ElementalInfusion|Elemental Infusion]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "When you Consume a [Charges|Charge], [Trigger] Elemental Surge to gain 2 [Surge|Cold Surges]",
@@ -47328,15 +47208,15 @@
     },
     {
       "text": "[Offering|Offerings] have 15% increased Maximum Life",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Offering|Offerings] have 30% increased Maximum Life",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Offering|Offerings] have 30% reduced Maximum Life",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Orb] Skills have +1 to [Limit]",
@@ -47773,11 +47653,11 @@
     },
     {
       "text": "[Seal|Sealed] Skills have 10% increased [Seal] gain frequency",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Seal|Sealed] Skills have 25% increased [Seal] gain frequency",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Shock|Shocking] [Hit|Hits] have a 50% chance to also Shock enemies in a 1.5 metre radius",

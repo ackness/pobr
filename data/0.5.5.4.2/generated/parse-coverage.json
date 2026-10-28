@@ -6,10 +6,10 @@
   },
   "summary": {
     "total": 4277,
-    "parsed": 3534,
-    "unsupported": 743,
+    "parsed": 3550,
+    "unsupported": 727,
     "err": 0,
-    "coverage_ratio": 0.82628
+    "coverage_ratio": 0.830021
   },
   "by_source": [
     {
@@ -20,8 +20,8 @@
     },
     {
       "source": "C2_tree",
-      "parsed": 2278,
-      "unsupported": 263,
+      "parsed": 2294,
+      "unsupported": 247,
       "err": 0
     },
     {
@@ -32,26 +32,6 @@
     }
   ],
   "gaps_top_n": [
-    {
-      "text": "10% chance to gain [Volatility] on Kill",
-      "status": "unsupported",
-      "source": "C2_tree"
-    },
-    {
-      "text": "3% chance to gain [Volatility] on Kill",
-      "status": "unsupported",
-      "source": "C2_tree"
-    },
-    {
-      "text": "5% chance to gain [Volatility] on Kill",
-      "status": "unsupported",
-      "source": "C2_tree"
-    },
-    {
-      "text": "50% chance to gain [Volatility] when you are [Stun|Stunned]",
-      "status": "unsupported",
-      "source": "C2_tree"
-    },
     {
       "text": "Absent Amulet",
       "status": "unsupported",
@@ -229,6 +209,26 @@
     },
     {
       "text": "Beast Eye",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Beast Pace",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Beast Twirl",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Become [Ignite|Ignited] when you deal a [Critical|Critical Hit], taking 15% of your maximum Life and [EnergyShield|Energy Shield] as [Fire] Damage per second",
+      "status": "unsupported",
+      "source": "C2_tree"
+    },
+    {
+      "text": "Behemoth Curio",
       "status": "unsupported",
       "source": "C1_build"
     }

@@ -11,53 +11,38 @@ node.10727	12% increased [Attack] Damage for each different Non-Instant [Spell] 
 node.10731	Grants [Chronobuff|Sands of Time]
 node.10987	[Cascadable|Cascadable] [Spell|Spells] have 20% chance to [Cascadable|Echo]
 node.10987	[Repeat|Repeatable] [Spell|Spells] have 20% chance to [Repeat]
-node.1104	10% chance when you gain a [Charges|Power Charge] to gain an additional [Charges|Power Charge]
 node.11178	50% chance to gain [Onslaught|Onslaught] on Killing Blow with [Axe|Axes]
-node.11284	10% increased [ElementalInfusion|Elemental Infusion] duration
 node.11428	[Archon] Buffs also grant 30% increased [Critical|Critical Hit Chance]
 node.11428	[Archon] Buffs also grant 50% increased [CriticalDamageBonus|Critical Damage Bonus]
 node.11578	[Shock|Shocking] [Hit|Hits] have a 50% chance to also Shock enemies in a 1.5 metre radius
 node.11641	Grants Skill: <underline>{Virtuous Barrier}
 node.11667	10% increased [Immobilised|Immobilisation] buildup against Constructs
 node.1169	Recover 2% of maximum Life and Mana when you use a [Warcry]
-node.11722	[Seal|Sealed] Skills have 10% increased [Seal] gain frequency
 node.11774	20% chance for Damage of Enemies [Hit|Hitting] you to be [Unlucky]
 node.12116	20% increased [Parry] [Hit] Area of Effect
 node.12276	8% chance for [Mace] [Slam] Skills you use yourself to cause an additional [Aftershock]
-node.12324	5% chance when collecting an [ElementalInfusion|Elemental Infusion] to gain an
-node.12324	additional [ElementalInfusion|Elemental Infusion] of the same type
-node.12601	2% chance that if you would gain [Charges|Endurance Charges], you instead gain up to maximum [Charges|Endurance Charges]
 node.12795	Can Allocate Passive Skills from the Sorceress's starting point
-node.12821	20% increased [Glory] generation for [Banner] Skills
 node.12822	[Projectile|Projectiles] have 25% chance to [Fork] if you've dealt a [Melee] [Hit] in the past eight seconds
 node.12876	Grants Skill: <underline>{Meditate}
 node.12882	Grants Skill: <underline>{Elemental Storm}
 node.12882	Trigger Elemental Storm on [Critical|Critical Hit] with [Spell|Spells]
-node.13123	15% [SurpassChance|Surpassing Chance] to gain a [PuppetMaster|Puppet Master] stack whenever you use a [Command|Command] Skill
 node.13174	25% of Infernal Flame lost per second if none was gained in the past 2 seconds
 node.13174	Gain Infernal Flame instead of spending Mana for Skill costs
 node.13174	Lose all Infernal Flame on reaching maximum Infernal Flame
 node.13174	Maximum Mana is replaced by twice as much Maximum Infernal Flame
 node.13174	Take maximum Life and Energy Shield as [Fire] Damage when Infernal Flame reaches maximum
-node.13228	2% chance that if you would gain [Charges|Power Charges], you instead gain up to
-node.13228	your maximum number of [Charges|Power Charges]
 node.13289	Grants Skill: <underline>{Kelari, the Tainted Sands}
-node.13352	8% increased [Glory] generation
 node.13379	20% increased [StunThreshold|Stun Threshold] while [Parry|Parrying]
 node.13482	Enemies you [ArmourBreak|Fully Armour Break] are [Maim|Maimed]
 node.13482	Enemies you [ArmourBreak|Fully Armour Break] cannot Regenerate Life
-node.13489	50% reduced [ArmourBreak|Armour Break] taken
 node.13524	Skills have a 15% chance to not consume [Glory]
 node.13693	6% increased Cast Speed per [Spell|Spell] Echoed [Recently], up to 30%
 node.13844	1% increased [Chaos|Chaos Damage over Time] per [Volatility]
 node.13980	10% chance for [Mace] [Slam] Skills you use yourself to cause an additional [Aftershock]
 node.13980	[Strike] Skills you use yourself with [Mace|Maces] have 10% chance to deal [MeleeSplash|Splash Damage]
 node.14131	Grants Skill: <underline>{Ruzhan's Fury}
-node.14205	Gain 1 [Rage] when your [Hit] [Ignite|Ignites] a target
-node.14258	35% [SurpassChance|Surpassing Chance] to gain a [PuppetMaster|Puppet Master] stack whenever you use a [Command|Command] Skill
 node.14265	5% reduced Movement Speed Penalty from using Fire Skills while moving
 node.14343	[DamagingAilments|Damaging Ailments] Cannot Be inflicted on you while you already have one
-node.14686	15% [SurpassChance|Surpassing Chance] to gain a [PuppetMaster|Puppet Master] stack whenever you use a [Command|Command] Skill
 node.14777	100% increased [StunThreshold|Stun Threshold] during [Empowered] [Attack|Attacks]
 node.14777	[Empowered] [Attack|Attacks] have 50% increased [Stun] Buildup
 node.1502	Remove a [Curse] after Channelling for 2 seconds
@@ -73,7 +58,6 @@ node.15876	Gain 15% of maximum [EnergyShield|Energy Shield] as additional [Freez
 node.15991	Immune to [Shock] while affected by an [Archon] [Buff]
 node.16024	[Invoke|Invocation] [Spell|Spells] have 20% increased [CriticalDamageBonus|Critical Damage Bonus]
 node.16276	Body Armour grants 60% increased [Glory] generation
-node.16385	20% increased [Glory] generation for [Banner] Skills
 node.16506	20% increased [ElementalAilments|Elemental] [AilmentApplication|Ailment Application] if you have [Shapeshift|Shapeshifted] to an Animal form [Recently]
 node.16816	Attacks gain increased [Accuracy|Accuracy Rating] equal to their [Critical|Critical Hit Chance]
 node.17029	Defend with 200% of [Armour] against [Critical|Critical Hits]
@@ -87,67 +71,47 @@ node.17600	[LifeLeech|Leeching Life] from your [Hit|Hits] causes your [Companion
 node.17646	[DecimatingStrike|Decimating Strike]
 node.17754	Grants Skill: <underline>{Summon Infernal Hound}
 node.17825	+0.5 metres to Dodge Roll distance while [Surrounded]
-node.17923	10% chance to gain [Volatility] on Kill
 node.18081	Damage Penetrates 20% [ElementalDamage|Elemental] [Resistances] for each time you've used a Skill that Requires [Glory] in the past 6 seconds
 node.18101	8% increased speed of [Recoup] Effects
 node.18280	Can instead consume 25% of maximum Mana to trigger [Charm|Charms] with insufficient charges
 node.18419	[Totem|Totems] Regenerate 3% of maximum Life per second
 node.18485	Gain 3 [Volatility] when an [Allies|Allied] [Persistent] [Reviving] [Minion] is [MinionDeath|Killed]
-node.1861	15% increased [Glory] generation
 node.1865	3% increased [Fire] Damage per [Charges|Endurance Charge] consumed [Recently]
-node.18793	Skills have 5% chance to not remove [ElementalInfusion|Elemental Infusions] but still count as consuming them
 node.18826	Gain 1 [Volatility] on inflicting an [ElementalAilments|Elemental Ailment]
 node.18826	Take no Damage from [Volatility]
 node.18849	[DamageTypes|All Damage] from [Hit|Hits] [Contributes|Contributes] to [Chill] Magnitude
 node.18940	Grants Skill: <underline>{Shattering Concoction}
 node.18972	15% chance for [Shapeshift] [Slam] Skills you use yourself to cause an additional [Aftershock]
 node.1915	10% increased [Critical|Critical Hit Chance] against Humanoids
-node.19318	20% increased Effect of [PuppetMaster|Puppet Master]
 node.19370	Grants Skill: <underline>{Hollow Focus}
 node.19573	25% chance for [Projectile|Projectiles] to [Pierce|Pierce] Enemies within 3m distance of you
 node.1988	Grants Skill: <underline>{Supporting Fire}
 node.20251	Skills which create Fissures have a 20% chance to create an additional Fissure
-node.20416	10% chance when you gain an [Charges|Endurance Charge] to gain an additional [Charges|Endurance Charge]
 node.20495	[Withered] also causes enemies to deal 1% reduced Damage
 node.20511	[Empowered] [Attack|Attacks] [Gain] 15% of [Physical] Damage as Extra [Fire] damage
-node.21111	10% chance when a [Charm|Charm] is used to use another Charm without consuming Charges
 node.21206	[Burning] Enemies you kill have a 5% chance to Explode, dealing a
 node.21206	tenth of their maximum Life as [Fire] Damage
 node.21251	25% Chance to revive a random Permanent [Minion] whenever you use a [Command|Command] Skill
-node.21251	25% [SurpassChance|Surpassing Chance] to gain a [PuppetMaster|Puppet Master] stack whenever you use a [Command|Command] Skill
 node.21453	10% chance to Defend with 200% of [Armour]
 node.21748	Your [Curse|Curses] have 20% increased [BuffMagnitude|Magnitudes] if 50% of [Curse] Duration expired
 node.22532	Enemies are [Intimidate|Intimidated] for 4 seconds when you [Immobilised|Immobilise] them
 node.22541	Grants Skill: <underline>{Fire Spell on Hit}
-node.22626	100% increased [ArmourBreak|Armour Break] Duration
 node.23265	Grants Skill: <underline>{Kelari's Deception}
 node.23362	[Unaffected] by [Chill] during Dodge Roll
-node.23419	15% increased [Glory] generation
 node.2344	[HitDamage|Hits] have 15% chance to treat Enemy Monster [ElementalDamage|Elemental] [Resistances|Resistance] values as inverted
 node.23508	Benefits from consuming [Charges|Frenzy Charges] for your Skills have 50% chance to be doubled
 node.23630	[Ignite|Ignites] you cause are reflected back to you
-node.24087	Skills have 10% chance to not remove [ElementalInfusion|Elemental Infusions] but still count as consuming them
-node.24150	3% chance to gain [Volatility] on Kill
 node.24491	[Invoke|Invocated] [Spell|Spells] have 40% chance to consume half as much [Energy]
-node.24764	10% chance when collecting an [ElementalInfusion|Elemental Infusion] to gain an
-node.24764	additional [ElementalInfusion|Elemental Infusion] of the same type
 node.24843	25% increased [Evasion|Evasion Rating] while [Parry|Parrying]
-node.25058	2% chance that if you would gain [Charges|Frenzy Charges], you instead gain up to your maximum number of [Charges|Frenzy Charges]
 node.25239	Grants Skill: <underline>{Demon Form}
-node.25594	[Offering|Offerings] have 15% increased Maximum Life
-node.25620	15% chance to not destroy [Corpse|Corpses] when Consuming [Corpse|Corpses]
 node.25653	Grants Skill: <underline>{Kelari's Judgment}
 node.25683	Grants Skill: <underline>{Ruzhan's Reckoning}
 node.25781	[Leech] recovers based on [Chaos] Damage as well as [Physical] Damage
-node.25890	Recover 2% of maximum Mana when you consume a [Charges|Power Charge]
 node.26061	Gain 15% of maximum [EnergyShield|Energy Shield] as additional [FreezeThreshold|Freeze Threshold]
-node.26228	2% chance that if you would gain [Charges|Frenzy Charges], you instead gain up to your maximum number of [Charges|Frenzy Charges]
 node.26479	You cannot be [LightStun|Light Stunned] if you've been [Stun|Stunned] [Recently]
 node.26638	Grants Skill: <underline>{Temporal Rift}
-node.26863	Recover 2% of maximum Mana when you consume a [Charges|Power Charge]
 node.27009	50% increased [Minion] Damage while you have at least two different active [Offering|Offerings]
 node.27434	Gain [ElementalArchon|Elemental Archon] after spending 100% of your Maximum Mana
-node.27638	15% increased [Glory] generation
 node.27761	Successfully [Parry|Parrying] a [Melee] [Hit] grants 40% increased Damage to your next Ranged [Attack]
 node.27761	Successfully [Parry|Parrying] a [Projectile] [Hit] grants 40% increased Damage to your next [Melee] [Attack]
 node.27773	Gain a Vivid Wisp when Vivid Stampede ends
@@ -161,43 +125,29 @@ node.28254	Central [Projectile] of Owl Feather-[Empowered] Skills leaves a trail
 node.28254	Vivid Stags leap towards enemies
 node.28408	Consume all [Rage] when [Shapeshift|Shapeshifting] to Human form to recover 1% of maximum life per [Rage] Consumed
 node.28745	Grants Skill: <underline>{Apocalypse}
-node.28823	10% chance when a [Charm|Charm] is used to use another Charm without consuming Charges
 node.29288	[Invoke|Invocation] [Spell|Spells] have 50% increased [CriticalDamageBonus|Critical Damage Bonus]
 node.29320	20% increased [StunThreshold|Stun Threshold] while [Parry|Parrying]
-node.29372	4% chance that if you would gain [Rage] on [Hit], you instead gain up to your maximum Rage
 node.29881	Gain [ArcaneSurgeDuration|Arcane Surge] when you [Shapeshift] to Human form after
 node.29881	being [Shapeshift|Shapeshifted] for at least 8 seconds
-node.29990	5% chance to gain [Volatility] on Kill
 node.30	Lose all [Tailwind] when [Hit]
-node.30102	3% chance to gain [Volatility] on Kill
 node.30233	Grants Skill: <underline>{Ritual Sacrifice}
 node.30395	[Warcry|Warcries] inflict 3 [CriticalWeakness|Critical Weakness] on Enemies
-node.3051	[Offering|Offerings] have 30% increased Maximum Life
-node.30539	5% chance to not destroy [Corpse|Corpses] when Consuming [Corpse|Corpses]
 node.30904	[Hit] damage is taken from Mana before Life if your current Mana is higher than your current Life
-node.30985	5% chance when collecting an [ElementalInfusion|Elemental Infusion] to gain an
-node.30985	additional [ElementalInfusion|Elemental Infusion] of the same type
 node.31116	Grants Skill: <underline>{Void Illusion}
 node.31129	[Minion|Minions] [Reviving|Revive] 35% faster if all your [Minion|Minions] are [Companion|Companions]
 node.31366	[Parry] has 20% increased [Stun] Buildup
-node.31517	[Seal|Sealed] Skills have 10% increased [Seal] gain frequency
-node.31697	10% increased [ElementalInfusion|Elemental Infusion] duration
 node.31745	Enemies are [Maim|Maimed] for 4 seconds after becoming [Pinned|Unpinned]
 node.32128	20% increased speed of [Recoup] Effects
 node.32655	[CullingStrike|Culling Strike] against Beasts while your [Companion] is in your [Presence]
 node.32705	Grants Skill: <underline>{Navira, the Last Mirage}
-node.32768	20% increased [Glory] generation
 node.32905	Non-Keystone Passive Skills in Medium Radius of allocated Keystone Passive Skills can be allocated without being connected to your tree
 node.33093	4% increased Cast Speed for each different [Spell] you've Cast in the last eight seconds
 node.33216	[Attack] [Hit|Hits] [Aggravate] any [Bleeding] on targets which is older than 4 seconds
 node.33229	Enemies you inflict [Bleeding] on cannot Regenerate Life
 node.33400	20% increased [Parry] [Hit] Area of Effect
-node.33639	Skills have 5% chance to not remove [ElementalInfusion|Elemental Infusions] but still count as consuming them
 node.338	[Invoke|Invocated] skills have 30% increased Maximum [Energy]
 node.33852	5% reduced Movement Speed Penalty from using Cold Skills while moving
-node.34030	[Offering|Offerings] have 15% increased Maximum Life
 node.34207	Grants Skill: <underline>{Ruzhan, the Blazing Sword}
-node.34305	8% increased [Glory] generation
 node.34313	Damage of Enemies [Hit|Hitting] you is [Unlucky]
 node.34419	Become [Ignite|Ignited] when you deal a [Critical|Critical Hit], taking 15% of your maximum Life and [EnergyShield|Energy Shield] as [Fire] Damage per second
 node.34425	[Volatility|Volatile Power] also grants 1% increased [Critical|Critical Hit chance] per [Volatility] exploded
@@ -205,20 +155,14 @@ node.34490	10% chance for [Shapeshift] [Slam] Skills you use yourself to cause a
 node.34567	Grants Skill: <underline>{Archon of Chayula}
 node.34617	Immune to [Bleeding] while [Shapeshift|Shapeshifted]
 node.34617	Immune to [Maim] while [Shapeshift|Shapeshifted]
-node.34626	Recover 2% of maximum Life for each [Charges|Endurance Charge] consumed
 node.34908	[Deflect|Deflected] [Hit|Hits] cannot inflict [Bleeding] on you
 node.34908	[Deflect|Deflected] [Hit|Hits] cannot inflict [Maim] on you
 node.35046	Final [Cascadable|Echo] of [Cascadable|Cascadable] [Spell|Spells] also [Cascadable|Cascades] to either side of the targeted Area along a random axis
 node.35417	40% increased [ElementalAilments|Elemental] [AilmentApplication|Ailment Application] if you have [Shapeshift|Shapeshifted] to an Animal form [Recently]
-node.35602	[Offering|Offerings] have 30% reduced Maximum Life
-node.35739	25% increased [ArmourBreak|Armour Break] Duration
-node.35745	2% chance that if you would gain [Charges|Endurance Charges], you instead gain up to maximum [Charges|Endurance Charges]
 node.35792	Gain 8 [Rage] when you use a Life [Flask]
 node.3605	Grants Skill: <underline>{Time Snap}
 node.36109	Grants Skill: <underline>{Kelari's Malediction}
-node.36217	15% increased [Volatility] Explosion delay
 node.3663	The next [Fire] [Spell] you cast yourself after using a [Warcry] is [AncestralBoostSpell|Ancestrally Boosted]
-node.36643	10% chance when you gain a [Charges|Power Charge] to gain an additional [Charges|Power Charge]
 node.36659	You can [ArmourOverbreak|Break Enemy Armour to below 0]
 node.36659	[ArmourBreak|Fully Broken Armour] you inflict increases all Damage Taken from [Hit|Hits] instead
 node.36891	Non-[Rarity|Unique] Time-Lost [Jewel|Jewels] have 40% increased radius
@@ -232,7 +176,6 @@ node.37046	Grants Skill: <underline>{Blood Boil}
 node.37078	10% chance for Enemies you Kill to Explode, dealing 100%
 node.37078	Chance is doubled against Undead and Demons
 node.37078	of their maximum Life as [Physical] Damage
-node.37336	50% chance when you gain a [Charges|Frenzy Charge] to gain an additional [Charges|Frenzy Charge]
 node.37523	[Totem|Totems] only use Skills when you fire an [Attack] [Projectile]
 node.37619	5% chance for [Slam] Skills to cause an additional [Aftershock]
 node.37782	Grants Skill: <underline>{Align Fate}
@@ -241,16 +184,11 @@ node.37846	[Blind] Enemies 3 metres in front of you every 0.25 seconds while you
 node.37967	Enemies standing on [ChilledGround|Chilled Ground] take 25% increased [Fire|Fire Damage]
 node.37967	Enemies standing on [IgnitedGround|Ignited Ground] take 25% increased [Cold|Cold Damage]
 node.38004	Grants Skill: <underline>{Explosive Concoction}
-node.38010	8% increased [Glory] generation
 node.38111	25% increased speed of [Recoup] Effects
-node.38365	Recover 2% of maximum Life for each [Charges|Endurance Charge] consumed
 node.3843	[Parry] has 25% increased [Stun] Buildup
 node.38479	50% chance for [Projectile|Projectiles] to [Pierce|Pierce] Enemies within 3m distance of you
-node.38532	25% chance when you gain a [Charges|Power Charge] to gain an additional [Charges|Power Charge]
 node.38813	Grants Skill: Queen's Procession
 node.38835	8% increased speed of [Recoup] Effects
-node.39102	2% chance that if you would gain [Charges|Power Charges], you instead gain up to
-node.39102	your maximum number of [Charges|Power Charges]
 node.39128	15% increased [BuffMagnitude|Magnitude] of [Daze]
 node.39204	20% increased [BuffEffect|Effect] of [ArcaneSurge|Arcane Surge] on you per ten percent missing Mana
 node.39411	Grants Skill: <underline>{Ancestral Spirits}
@@ -266,10 +204,8 @@ node.39887	Can have up to one Unique Tamed Beast summoned
 node.39887	Tame Beast can capture [Rarity|Unique] Beasts
 node.39887	[Rarity|Unique] Tamed Beasts are [SpiritPossessed|Possessed] by random [AzmeriSpirit|Azmeri Spirits], changing every 20 seconds
 node.39887	[Rarity|Unique] Tamed Beasts have 30% increased movement speed
-node.40270	10% chance when you gain a [Charges|Frenzy Charge] to gain an additional [Charges|Frenzy Charge]
 node.4031	Gain 50% of maximum [EnergyShield|Energy Shield] as additional [FreezeThreshold|Freeze Threshold]
 node.40687	[Allies] in your [Presence] have 30% increased [Glory] generation
-node.40736	8% increased [Glory] generation
 node.4091	20% increased speed of [Recoup] Effects
 node.41033	[Offering|Offerings] cannot be damaged if they have been created [Recently]
 node.41076	Damage taken is Reserved from Darkness before being taken from Life or [EnergyShield|Energy Shield]
@@ -278,7 +214,6 @@ node.41401	Expend all Vivid Wisps to trigger Vivid Stampede when you [Attack]
 node.41401	Gain a Vivid Wisp for every 10 metres you move, up to a maximum of 3
 node.41401	Grants Skill: <underline>{Vivid Stampede}
 node.41619	Life [Flask] Effects do not Queue
-node.41654	[Offering|Offerings] have 15% increased Maximum Life
 node.41751	-0.2 seconds to current [ESRecharge|Energy Shield Recharge] delay per [Combo] expended when using Skills
 node.41770	8% increased [Parry] [Hit] Area of Effect
 node.41905	Recover 2% of maximum Life when one of your [Minion|Minions] is [Reviving|Revived]
@@ -292,15 +227,12 @@ node.42354	[Blind|Blind] Enemies when they [Stun|Stun] you
 node.42441	Gain 1 fewer [Surge|Lightning Surge] from [Trigger|Triggering] Elemental Surge
 node.42441	When you Consume a [Charges|Charge], [Trigger] Elemental Surge to gain 2 [Surge|Cold Surges]
 node.42441	When you Consume a [Charges|Charge], [Trigger] Elemental Surge to gain 2 [Surge|Fire Surges]
-node.42522	When collecting an [ElementalInfusion|Elemental Infusion], gain another different [ElementalInfusion|Elemental Infusion]
 node.42660	Every [Rage] also grants you 1% increased Minion Damage
 node.42660	Every five [Rage] also grants you 2% increased Minion Attack Speed
 node.42760	Regenerate 3% of maximum Life over 1 second when [Stun|Stunned]
 node.43250	+1% to [MaximumResistances|Maximum Resistances] of each [ElementalDamage|Elemental] Damage Type you have been [Hit] with [Recently]
 node.4331	The next [Attack] you use within 4 seconds after [HeavyStun|Heavy Stunning] a [Rarity|Rare or Unique] Enemy is [AncestralBoostSpell|Ancestrally Boosted]
 node.43426	Grants Skill: <underline>{Navira's Well}
-node.43486	2% chance that if you would gain [Charges|Power Charges], you instead gain up to
-node.43486	your maximum number of [Charges|Power Charges]
 node.43584	Gain 2% of Damage as Extra [Fire] Damage per [Charges|Endurance Charge] consumed [Recently]
 node.4367	Dodging can expend up to 3 Owl Feathers, granting Primal Bounty 100% more
 node.4367	Gain Owl Feathers 50% faster
@@ -309,15 +241,12 @@ node.43677	25% chance for [Attack|Attacks] to [Maim|Maim] on [Hit] against [Pois
 node.43791	When a [Banner] expires, recover 15% of the [Glory] required for that Banner
 node.43939	Enemies [Ignite|Ignited] by you permanently take 1% increased [Fire] Damage for each second they have ever been [Ignite|Ignited] by you, up to a maximum of 10%
 node.44005	6% increased Cast Speed for each different [Spell] you've Cast in the last eight seconds
-node.44188	8% increased [ElementalInfusion|Elemental Infusion] duration
-node.44369	3% chance to gain [Volatility] on Kill
 node.44563	20% increased [Hinder] Duration
 node.44573	Skills lose [Combo] 20% slower
 node.44974	[Empowered] [Attack|Attacks] [Gain] 16% of Damage as Extra [Cold] Damage
 node.45422	200% faster start of inherent [Rage] loss
 node.45602	Grants Skill: <underline>{Navira's Oasis}
 node.45751	Apply [Debilitate] to Enemies 30 Metres in front of you while your [Shield] is raised
-node.45798	3% chance to gain [Volatility] on Kill
 node.45874	Fissure Skills have +1 to [Limit]
 node.46070	Expend an Owl Feather when you Dodge to trigger Primal Bounty
 node.46070	Gain a Primal Owl Feather every 4 seconds, up to a maximum of 3
@@ -325,29 +254,20 @@ node.46070	Grants Skill: <underline>{Primal Bounty}
 node.46454	Attribute Passive Skills can instead grant 5% increased Cost [Efficiency]
 node.46454	Attribute Passive Skills can instead grant 5% increased Damage
 node.46454	Attribute Passive Skills can instead grant 5% increased [Armour], [Evasion] and [EnergyShield|Energy Shield]
-node.46499	Recover 3% of maximum Life for each [Charges|Endurance Charge] consumed
 node.46535	Deal up to 40% more Damage to Enemies based on their missing [Concentration]
 node.4661	[Banner|Banners] also grant +25% to all [ElementalDamage|Elemental] [Resistances] affected targets
-node.46615	50% chance to gain [Volatility] when you are [Stun|Stunned]
 node.46683	[Warcry|Warcries] have 15% chance to [Empowered|Empower] 3 additional [Attack|Attacks]
-node.4681	2% chance that if you would gain [Charges|Frenzy Charges], you instead gain up to your maximum number of [Charges|Frenzy Charges]
-node.47021	15% increased [Volatility] Explosion delay
 node.47097	[Warcry|Warcries] Explode [Corpse|Corpses] dealing 25% of their Life as [Physical] Damage
 node.47184	Grants Skill: <underline>{Manifest Weapon}
 node.47312	Life [Flask|Flasks] also recover Mana
 node.47312	Mana [Flask|Flasks] also recover Life
 node.47418	Remove a [Curse] when you use a Mana [Flask]
 node.47441	Recover 3% of maximum Life when you create an [Offering]
-node.47441	[Offering|Offerings] have 30% increased Maximum Life
-node.47477	15% reduced [Volatility] Explosion delay
-node.48026	20% increased [Glory] generation for [Banner] Skills
 node.48240	Regenerate 5% of maximum Life over 1 second when [Stun|Stunned]
-node.483	2% chance that if you would gain [Charges|Endurance Charges], you instead gain up to maximum [Charges|Endurance Charges]
 node.48617	50% increased Damage against Demons
 node.48617	50% increased Duration of [Ailments|Ailments] on Beasts
 node.48617	50% increased [Critical|Critical Hit Chance] against Humanoids
 node.48617	50% increased [Immobilised|Immobilisation] buildup against Constructs
-node.48828	2% chance that if you would gain [Charges|Frenzy Charges], you instead gain up to your maximum number of [Charges|Frenzy Charges]
 node.48925	8% increased Skill Effect Duration per Enemy you've [Freeze|Frozen] in the last 8 seconds, up to 40%
 node.49088	[Minion|Minions] [ArmourBreak|Break Armour] equal to 3% of [Physical] damage dealt
 node.49189	[Remnant|Remnants] you create reappear once, 3 seconds after being collected
@@ -355,20 +275,13 @@ node.49661	20% chance to [Aggravate] [Bleeding] on targets you [Critical|Critica
 node.49769	7% chance to Avoid Death from [Hit|Hits]
 node.4985	Recover 50% of maximum Life when you [HeavyStun|Heavy Stun] a [Rarity|Rare or Unique] Enemy
 node.50023	Recover 1% of maximum Life per [Glory] consumed
-node.50062	25% reduced [ArmourBreak|Armour Break] taken
 node.50098	Grants Skill: <underline>{Into the Breach}
 node.50253	[Slam] Skills you use yourself have 30% increased [Aftershock] Area of Effect
 node.5077	15% increased [Parry] [Hit] Area of Effect
-node.50820	15% increased [Glory] generation
-node.50908	2% chance that if you would gain [Charges|Endurance Charges], you instead gain up to maximum [Charges|Endurance Charges]
-node.51194	10% increased [ElementalInfusion|Elemental Infusion] duration
-node.51303	10% increased [ElementalInfusion|Elemental Infusion] duration
 node.51509	Recover 2% of maximum Life when you use a Mana [Flask]
 node.51546	100% [SurpassChance|Surpassing] chance per enemy [Power] to gain [MountainsTeachings|Mountain's Teachings] on [Immobilised|Immobilising] an enemy, up to a maximum of 30
 node.51546	Lose a [MountainsTeachings|Mountain's Teaching] when you are [Hit], or when you use or [Sustained|Sustain] an [Attack] that benefits from [MountainsTeachings|Mountain's Teachings]
 node.51602	Enemies near Enemies you [Mark] are [Blind|Blinded]
-node.51774	15% reduced [Volatility] Explosion delay
-node.51892	6% increased [ElementalInfusion|Elemental Infusion] duration
 node.52229	[Orb] Skills have +1 to [Limit]
 node.52374	[Totem|Totems] die 6 seconds after their Life is reduced to 0
 node.52410	20% increased [StunThreshold|Stun Threshold] while [Parry|Parrying]
@@ -377,26 +290,16 @@ node.52448	Trigger Elemental Expression on [Melee] [Critical|Critical Hit]
 node.52501	20% increased [Freeze] Buildup with [Empowered] [Attack|Attacks]
 node.52618	When you [Shapeshift] to Human form, gain 10% increased [Spell] Damage per second you were [Shapeshift|Shapeshifted], up to a maximum of 80%, for 8 seconds
 node.52684	[ArmourBreak|Break] 50% of [Armour] on [Pinned|Pinning] an Enemy
-node.53177	50% chance to gain [Volatility] when you are [Stun|Stunned]
 node.53187	[Allies] in your [Presence] Regenerate 5 [Rage] per second if you have gained [Rage] [Recently]
-node.53320	20% increased [Glory] generation for [Banner] Skills
-node.53324	15% [SurpassChance|Surpassing Chance] to gain a [PuppetMaster|Puppet Master] stack whenever you use a [Command|Command] Skill
 node.53527	[ArmourBreak|Break] 50% of [Armour] on [HeavyStun|Heavy Stunning] an Enemy
 node.53566	[Projectile] [Attack|Attacks] have a 12% chance to fire two additional [Projectile|Projectiles] while moving
-node.53795	15% [SurpassChance|Surpassing Chance] to gain a [PuppetMaster|Puppet Master] stack whenever you use a [Command|Command] Skill
 node.53823	25% increased Chance to [Block] if you've Blocked with a raised [Shield] [Recently]
-node.54289	2% chance that if you would gain [Charges|Power Charges], you instead gain up to
-node.54289	your maximum number of [Charges|Power Charges]
-node.54378	Recover 2% of maximum Mana when you consume a [Charges|Power Charge]
 node.54545	15% increased [BuffMagnitude|Magnitude] of [Daze]
-node.54733	15% increased Effect of [PuppetMaster|Puppet Master]
 node.54838	[Pinned] enemies cannot perform actions
-node.54923	15% increased [Glory] generation
 node.54934	3% increased [Fire] Damage per [Charges|Endurance Charge] consumed [Recently]
 node.55450	[Companion|Companions] in your [Presence] have [Onslaught] while you are [Shapeshift|Shapeshifted]
 node.55796	[RevealWeakness|Reveal Weaknesses] against [Rarity|Rare and Unique] enemies
 node.5580	[Recoup] 5% of damage taken by your [Totem|Totems] as Life
-node.55930	15% increased [Glory] generation
 node.56112	Remove [Ignite] when you [Warcry]
 node.56237	12% increased [Spell] Damage for each different Non-Instant [Attack] you've used in the past 8 seconds
 node.56388	+1 to maximum number of placed [Banner|Banners]
@@ -404,12 +307,10 @@ node.5642	5% chance for [Slam] Skills you use yourself to cause an additional [A
 node.56618	Grants Skill: <underline>{Fulminating Concoction}
 node.56860	Your [HeavyStunPlayer|Heavy Stun] buildup empties 50% faster if you've successfully [Parry|Parried] [Recently]
 node.56893	20% chance for [Charm|Charms] you use to not consume Charges
-node.56893	Recover 5% of maximum Mana when a [Charm|Charm] is used
 node.57253	Can Allocate Passive Skills from the Warrior's starting point
 node.57471	80% less [Knockback] Distance for [Block|Blocked] [Hit|Hits]
 node.57805	20% chance to [Knockback|Knock Enemies Back] with [Hit|Hits] at [CloseRange|Close Range]
 node.5817	Grants Skill: <underline>{Mirage Deadeye}
-node.58198	Recover 5% of maximum Mana when you consume a [Charges|Power Charge]
 node.58379	Grants Skill: <underline>{Acidic Concoction}
 node.58646	10% less Damage taken of each [ElementalDamage|Elemental Damage Type] per matching [Adaptation]
 node.58646	[Adaptation|Adapt] to the highest [ElementalDamage|Elemental Damage Type] of each [Hit] you take
@@ -420,70 +321,51 @@ node.59	[Curse|Curses] you inflict have infinite Duration
 node.59053	20% increased [Hinder] Duration
 node.59214	Enemies you [Curse] cannot Recharge [EnergyShield|Energy Shield]
 node.59372	Your [Hit|Hits] are [CrushingBlow|Crushing Blows]
-node.59387	Gain a [Charges|Power Charge] when you consume an [ElementalInfusion|Elemental Infusion]
 node.59413	8% increased speed of [Recoup] Effects
-node.59433	25% chance when you gain an [Charges|Endurance Charge] to gain an additional [Charges|Endurance Charge]
 node.59438	20% increased speed of [Recoup] Effects
 node.59442	8% increased speed of [Recoup] Effects
 node.59540	Every Third [Slam] skill that doesn't create Fissures which you use yourself causes 3 additional [Aftershock|Aftershocks] ahead and to each side of the initial area
 node.59781	Immune to [Bleeding] while affected by an [Archon] [Buff]
-node.59909	5% chance to not destroy [Corpse|Corpses] when Consuming [Corpse|Corpses]
 node.59913	Grants Skill: <underline>{Called Shots}
 node.60273	[Debuff|Debuffs] inflicted by [Hazard|Hazards] have 30% increased [SlowMagnitudeModifier|Slow Magnitude]
 node.60298	Grants Skill: <underline>{Temper Weapon}
 node.60700	20% increased [Freeze] Buildup with [Empowered] [Attack|Attacks]
 node.60992	Life Recovery from your [Flask|Flasks] also applies to your [Companion|Companions]
 node.61104	50% chance to [Knockback|Knock Back] [Bleeding] Enemies with [Hit|Hits]
-node.61142	Recover 2% of maximum Life for each [Charges|Endurance Charge] consumed
 node.6127	Gain a stack of [Jade] every second
 node.6127	Grants Skill: <underline>{Encase in Jade}
 node.61444	15% chance to [Hinder] Enemies on Hit with [Spell|Spells]
 node.61586	Gain [Combo] from all [Attack] [Hit|Hits]
 node.61586	Skills can build and retain [Combo] regardless of [WeaponSets|Weapon Set]
 node.61615	8% increased speed of [Recoup] Effects
-node.61796	20% increased [ArmourBreak|Armour Break] Duration
 node.61983	Double [Adaptation] Effect
 node.61983	[Adaptation|Adaptations] have a duration of 5 seconds
-node.62210	+1 maximum stacks of [PuppetMaster|Puppet Master]
-node.62258	20% increased [Glory] generation for [Banner] Skills
-node.62431	[Seal|Sealed] Skills have 25% increased [Seal] gain frequency
 node.62455	[Banner] [Buff|Buffs] linger on you for 2 seconds after you leave the Area
-node.62578	3% chance to gain [Volatility] on Kill
 node.6266	10% increased Damage against Demons
-node.62723	15% [SurpassChance|Surpassing Chance] to gain a [PuppetMaster|Puppet Master] stack whenever you use a [Command|Command] Skill
 node.62743	Grants Skill: <underline>{Wild Protector}
 node.62804	10% increased Life Recovery rate per 5% missing Unreserved Life
 node.63031	Skills gain 1 [Glory] every 2 seconds for each [Rarity|Rare or Unique] monster in your [Presence]
-node.63360	20% increased [Glory] generation for [Banner] Skills
 node.63431	Recover 2% of maximum Life on Killing a [Poison|Poisoned] Enemy
 node.63451	Gain an [Charges|Endurance Charge] when you [HeavyStun|Heavy Stun] a [Rarity|Rare or Unique] Enemy
 node.63541	Prevent +15% of Damage from [Deflect|Deflected] [Critical] [Hit|Hits]
 node.63739	Recover 3% of Maximum Life when you collect a [Remnant]
 node.64031	Grants Skill: <underline>{Unbound Avatar}
-node.64046	30% increased [ElementalInfusion|Elemental Infusion] duration
 node.64327	Your [HeavyStunPlayer|Heavy Stun] buildup empties 50% faster
-node.64427	6% increased [ElementalInfusion|Elemental Infusion] duration
 node.64591	Grants Skill: <underline>{Ruzhan's Trap}
 node.64770	You cannot be [Electrocute|Electrocuted]
-node.64804	25% increased Duration of each [PuppetMaster|Puppet Master] stack
 node.65023	Defend with 150% of [Armour] against [Hit|Hits] from Enemies that are further than 6m away
-node.65472	15% increased [Glory] generation
 node.65518	Gain 1 Life [Flask] Charge per 2% Life spent
 node.65518	On [Hit|Hitting] an Enemy while a Life [Flask] is at full Charges, 40% of its Charges are consumed
 node.65518	[Flask|Flasks] do not recover Life
 node.65518	[Gain] 1% of damage as [Physical] damage for 5 seconds per Charge consumed this way
 node.6655	10% chance to [Aggravate] [Bleeding] on targets you [Hit] with [Attack|Attacks]
-node.7104	15% increased Effect of [PuppetMaster|Puppet Master]
 node.7302	Echoed [Spell|Spells] have 25% increased Area of Effect
 node.750	[Strike|Strikes] deal [MeleeSplash|Splash Damage]
 node.7668	20% chance to [Aggravate] [Bleeding] on targets you [Hit] with [Empowered] [Attack|Attacks]
-node.7720	Gain 1 [Rage] when your [Hit] [Ignite|Ignites] a target
 node.7847	Skills have 10% chance to not remove [Charges|Charges] but still count as consuming them
 node.7947	Gain 15% of maximum [EnergyShield|Energy Shield] as additional [FreezeThreshold|Freeze Threshold]
 node.7979	Grants Skill: <underline>{Elemental Surge}
 node.7979	When you Consume a [Charges|Charge], [Trigger] Elemental Surge to gain 3 [Surge|Lightning Surges]
-node.8107	20% increased [Glory] generation
-node.8260	20% increased [ArmourBreak|Armour Break] Duration
 node.8273	25% chance on [Consume|Consuming] a [Shock] on an Enemy to reapply it
 node.8415	Grants Skill: <underline>{Life Remnants}
 node.8916	Enemies you [HeavyStun|Heavy Stun] while [Shapeshift|Shapeshifted] are [Intimidate|Intimidated] for 6 seconds
@@ -494,5 +376,4 @@ node.9323	+15 maximum [Rage] if you've used a Skill that Requires [Glory] in the
 node.9441	15% increased [Parry] [Hit] Area of Effect
 node.9652	15% of Damage taken from [Deflect|Deflected] [Hit|Hits] [Recoup|Recouped] as Life
 node.9710	Grants Skill: <underline>{Bleeding Concoction}
-node.9863	25% reduced [ArmourBreak|Armour Break] taken
 node.9988	Can only use a [ItemRarity|Normal] Body Armour
