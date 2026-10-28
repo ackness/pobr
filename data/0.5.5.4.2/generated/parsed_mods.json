@@ -7100,7 +7100,10 @@
         {
           "name": "Damage",
           "type": "Inc",
-          "value": 10.0
+          "value": 10.0,
+          "tags": [
+            "Condition { var: \"EnemyDemon\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -7296,7 +7299,10 @@
         {
           "name": "EnemyAilmentDuration",
           "type": "Inc",
-          "value": 10.0
+          "value": 10.0,
+          "tags": [
+            "Condition { var: \"EnemyBeast\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -8069,7 +8075,10 @@
         {
           "name": "CriticalStrikeChance",
           "type": "Inc",
-          "value": 10.0
+          "value": 10.0,
+          "tags": [
+            "Condition { var: \"EnemyHumanoid\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -8420,7 +8429,10 @@
         {
           "name": "EnemyImmobilisationBuildup",
           "type": "Inc",
-          "value": 10.0
+          "value": 10.0,
+          "tags": [
+            "Condition { var: \"EnemyConstruct\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -20873,8 +20885,7 @@
           "type": "Inc",
           "value": 3.0,
           "tags": [
-            "Multiplier { var: \"EnduranceCharge\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }",
-            "DamageType(Fire)"
+            "Multiplier { var: \"EnduranceChargesConsumedRecently\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -22615,7 +22626,10 @@
         {
           "name": "Damage",
           "type": "Inc",
-          "value": 30.0
+          "value": 30.0,
+          "tags": [
+            "Condition { var: \"EnemyUndead\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -26697,7 +26711,10 @@
         {
           "name": "Damage",
           "type": "Inc",
-          "value": 50.0
+          "value": 50.0,
+          "tags": [
+            "Condition { var: \"EnemyDemon\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -26763,7 +26780,10 @@
         {
           "name": "EnemyAilmentDuration",
           "type": "Inc",
-          "value": 50.0
+          "value": 50.0,
+          "tags": [
+            "Condition { var: \"EnemyBeast\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -26949,7 +26969,10 @@
         {
           "name": "CriticalStrikeChance",
           "type": "Inc",
-          "value": 50.0
+          "value": 50.0,
+          "tags": [
+            "Condition { var: \"EnemyHumanoid\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -27070,7 +27093,10 @@
         {
           "name": "EnemyImmobilisationBuildup",
           "type": "Inc",
-          "value": 50.0
+          "value": 50.0,
+          "tags": [
+            "Condition { var: \"EnemyConstruct\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -37118,7 +37144,7 @@
           "type": "Base",
           "value": 2.0,
           "tags": [
-            "Multiplier { var: \"EnduranceCharge\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+            "Multiplier { var: \"EnduranceChargesConsumedRecently\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]

@@ -243,5 +243,7 @@
   "Whirlwind has passed over Cold Ground.": "回旋之风已穿过冰冷地面。",
   "Whirlwind has passed over Fire Ground.": "回旋之风已穿过火焰地面。",
   "Whirlwind has passed over Lightning Ground.": "回旋之风已穿过闪电地面。",
-  "Assume an Archon Buff is currently active. Default off: gaining a buff does not establish its uptime. Enables bonuses granted by your Archon modifiers; the intrinsic effects of individual Archon types are not included.": "假设当前已有执政官增益生效。默认关闭：获得增益并不代表持续覆盖。启用执政官词缀授予的加成；不计入各类执政官本身的固有效果。"
+  "Assume an Archon Buff is currently active. Default off: gaining a buff does not establish its uptime. Enables bonuses granted by your Archon modifiers; the intrinsic effects of individual Archon types are not included.": "假设当前已有执政官增益生效。默认关闭：获得增益并不代表持续覆盖。启用执政官词缀授予的加成；不计入各类执政官本身的固有效果。",
+  "Declares the enemy's type for passives that act against it. The calculation has no monster type of its own; this is the type you choose to evaluate against.": "声明敌人的类型，供针对该类型的天赋使用。计算本身没有怪物类型，这是你选择用来评估的类型。",
+  "How many Endurance Charges you have consumed recently. Charge consumption is not simulated, so the number is the state you choose to evaluate.": "你近期消耗的耐力球数量。不模拟耐力球的消耗，该数值是你选择评估的状态。"
 }

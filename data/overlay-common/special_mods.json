@@ -182,12 +182,23 @@
       "mods": [
         {
           "name": "AreaOfEffect",
+      ]
+    },
+    {
+      "id": "damage_against_undead",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased damage against undead enemies$",
+      "mods": [
+        {
+          "name": "Damage",
           "type": "INC",
           "value": "$1",
           "tags": [
             {
               "type": "SkillName",
               "skillName": "Parry"
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Undead"
             }
           ]
         }
@@ -207,12 +218,28 @@
       "mods": [
         {
           "name": "EnemyHeavyStunBuildup",
+      "game_source": "passive Damage against Undead",
+      "exporter": "absent",
+      "source_note": "The monster type is a state you choose (conditionEnemy<Type>): the calculation has no monster type of its own, so the bonus applies only when it is declared.",
+      "examples": [
+        "30% increased damage against Undead Enemies"
+      ]
+    },
+    {
+      "id": "damage_against_demons",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased damage against demons$",
+      "mods": [
+        {
+          "name": "Damage",
           "type": "INC",
           "value": "$1",
           "tags": [
             {
               "type": "SkillName",
               "skillName": "Parry"
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Demon"
             }
           ]
         }
@@ -243,6 +270,128 @@
               "var": "enemyDistance",
               "threshold": 30,
               "upper": true
+      "game_source": "passive Damage against Demons",
+      "exporter": "absent",
+      "source_note": "The monster type is a state you choose (conditionEnemy<Type>): the calculation has no monster type of its own, so the bonus applies only when it is declared.",
+      "examples": [
+        "50% increased Damage against Demons"
+      ]
+    },
+    {
+      "id": "crit_chance_against_humanoids",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased critical hit chance against humanoids$",
+      "mods": [
+        {
+          "name": "CriticalStrikeChance",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Humanoid"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "passive Critical Hit Chance against Humanoids",
+      "exporter": "absent",
+      "source_note": "The monster type is a state you choose (conditionEnemy<Type>): the calculation has no monster type of its own, so the bonus applies only when it is declared.",
+      "examples": [
+        "50% increased Critical Hit Chance against Humanoids"
+      ]
+    },
+    {
+      "id": "immobilisation_buildup_against_constructs",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased immobilisation buildup against constructs$",
+      "mods": [
+        {
+          "name": "EnemyImmobilisationBuildup",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Construct"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "passive Immobilisation buildup against Constructs",
+      "exporter": "absent",
+      "source_note": "The monster type is a state you choose (conditionEnemy<Type>): the calculation has no monster type of its own, so the bonus applies only when it is declared.",
+      "examples": [
+        "50% increased Immobilisation buildup against Constructs"
+      ]
+    },
+    {
+      "id": "ailment_duration_on_beasts",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased duration of ailments on beasts$",
+      "mods": [
+        {
+          "name": "EnemyAilmentDuration",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Beast"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "passive Duration of Ailments on Beasts",
+      "exporter": "absent",
+      "source_note": "The monster type is a state you choose (conditionEnemy<Type>): the calculation has no monster type of its own, so the bonus applies only when it is declared.",
+      "examples": [
+        "50% increased Duration of Ailments on Beasts"
+      ]
+    },
+    {
+      "id": "fire_damage_per_endurance_charge_consumed",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased fire damage per endurance charge consumed recently$",
+      "mods": [
+        {
+          "name": "FireDamage",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "EnduranceChargesConsumedRecently"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "passive Fire Damage per Endurance Charge consumed Recently",
+      "exporter": "absent",
+      "source_note": "Scales with the configured number of Endurance Charges consumed recently (multiplierEnduranceChargesConsumedRecently). Charge consumption is not simulated.",
+      "examples": [
+        "3% increased Fire Damage per Endurance Charge consumed Recently"
+      ]
+    },
+    {
+      "id": "extra_fire_damage_per_endurance_charge_consumed",
+      "pattern": "^gain (\\d+(?:\\.\\d+)?)% of damage as extra fire damage per endurance charge consumed recently$",
+      "mods": [
+        {
+          "name": "DamageGainAsFire",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "EnduranceChargesConsumedRecently"
             }
           ]
         }
@@ -301,6 +450,11 @@
         "Cannot be Critically Hit while Parrying",
         "Successfully Parrying a Melee Hit grants 40% increased Damage to your next Ranged Attack",
         "Successfully Parrying a Projectile Hit grants 40% increased Damage to your next Melee Attack"
+      "game_source": "passive Extra Fire Damage per Endurance Charge consumed Recently",
+      "exporter": "absent",
+      "source_note": "Scales with the configured number of Endurance Charges consumed recently, as above.",
+      "examples": [
+        "Gain 2% of Damage as Extra Fire Damage per Endurance Charge consumed Recently"
       ]
     },
     {
