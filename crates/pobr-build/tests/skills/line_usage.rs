@@ -1720,18 +1720,14 @@ fn self_debuff_modifier_views_read_each_previously_unmodelled_line() {
 }
 
 /// A flask line the parser read only in part applies nothing and is listed as
-/// unparsed. These three lines still parse to a wrong modifier plus leftover text:
-/// "3% more Life Flask Recovery" to 3% more maximum Life, "2% more Mana Flask Recovery"
-/// to 2% more maximum Mana, and "10% increased speed of Recoup Effects" to a
-/// `LocalEffect` increase.
+/// unparsed. These two lines still parse to a wrong modifier plus leftover text:
+/// "3% more Life Flask Recovery" to 3% more maximum Life and "2% more Mana Flask Recovery"
+/// to 2% more maximum Mana. ("10% increased speed of Recoup Effects" used to be a third, read as a
+/// `LocalEffect` increase; it now has a rule and applies `RecoupSpeed`.)
 #[test]
 fn partially_parsed_flask_lines_are_unparsed_and_apply_nothing() {
     let data = data();
-    let lines = [
-        "3% more Life Flask Recovery",
-        "2% more Mana Flask Recovery",
-        "10% increased speed of Recoup Effects",
-    ];
+    let lines = ["3% more Life Flask Recovery", "2% more Mana Flask Recovery"];
     let build = parse_build(&format!(
         r#"<PathOfBuilding2>
 <Build level="80" className="Witch" mainSocketGroup="1"/>
