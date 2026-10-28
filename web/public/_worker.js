@@ -44,6 +44,9 @@ function itemFields(item, depth = 0) {
   return result;
 }
 
+// The client localizes `linkCode`; the message stays English for logs and older clients.
+const shareError = (message, linkCode) => Object.assign(new Error(message), { linkCode });
+
 export async function fetchShare(url, fetcher = fetch) {
   const code = shareKey(url);
   const methods = ['GetRoleInfo', 'GetEquipments', 'GetTalentTree', 'GetJewels', 'GetSkills'];
@@ -55,17 +58,17 @@ export async function fetchShare(url, fetcher = fetch) {
       body: JSON.stringify({ share_code: code, area: 0, from_src: 'poe2_helper' }),
       signal: AbortSignal.timeout(15000),
     });
-    if (!response.ok) throw new Error(`WeGame ${method}: HTTP ${response.status}.`);
+    if (!response.ok) throw shareError(`WeGame ${method}: HTTP ${response.status}.`, 'upstream');
     const data = await readJson(response);
     if (data.result?.error_code !== 0) {
-      throw new Error(`WeGame ${method} failed; the share may have expired or been made private.`);
+      throw shareError(`WeGame ${method} failed; the share may have expired or been made private.`, 'not_found');
     }
     return data;
   }));
   const [role, equipment, tree, jewels, skills] = responses;
   if (!role.role || !Array.isArray(equipment.equipments) || !tree.talent_tree ||
       !Array.isArray(skills.skills) || typeof jewels.jewel_data !== 'string') {
-    throw new Error('Incomplete WeGame share response.');
+    throw shareError('Incomplete WeGame share response.', 'invalid_response');
   }
   return {
     format: 'wegame', version: 1,
@@ -249,12 +252,13 @@ export default {
       input = (await readJson(request, 2048)).url;
       shareKey(input);
     } catch {
-      return Response.json({ error: 'Invalid WeGame PoE2 share URL.' }, { status: 400, headers });
+      return Response.json({ error: 'Invalid WeGame PoE2 share URL.', error_code: 'invalid_url' }, { status: 400, headers });
     }
     try {
       return Response.json(await fetchShare(input), { headers });
     } catch (error) {
-      return Response.json({ error: error instanceof Error ? error.message : 'WeGame import failed.' }, { status: 502, headers });
+      const error_code = typeof error?.linkCode === 'string' ? error.linkCode : error?.name === 'TimeoutError' ? 'timeout' : 'upstream';
+      return Response.json({ error: error instanceof Error ? error.message : 'WeGame import failed.', error_code }, { status: 502, headers });
     }
   },
 };

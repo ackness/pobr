@@ -5,6 +5,7 @@ const LINK_ERRORS = {
   invalid_url: 'build.linkInvalid', unsupported_host: 'build.linkHost', ninja_profile: 'build.linkNinjaProfile',
   too_large: 'build.linkTooLarge', invalid_response: 'build.linkInvalidResponse', timeout: 'build.linkTimeout',
   not_found: 'build.linkNotFound', unavailable: 'build.linkUnavailable', upstream: 'build.linkUpstream', network: 'build.linkNetwork',
+  wegame_unavailable: 'build.wegameUnavailable',
 } satisfies Record<string, UiKey>;
 
 /** Import errors keep stable keys until rendered in the selected UI language. */
@@ -42,15 +43,28 @@ export async function resolveBuildInput(input: string): Promise<string> {
     if (!isBuildCode(data?.code)) throw new Error(LINK_ERRORS.invalid_response);
     return data.code;
   }
-  const response = await fetch('/api/import/wegame', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ url: text }),
-    signal: AbortSignal.timeout(20000),
-  });
-  const data = await response.json().catch(() => null);
+  const signal = AbortSignal.timeout(20000);
+  let response: Response;
+  let data: { format?: unknown; error?: unknown; error_code?: unknown } | null;
+  try {
+    response = await fetch('/api/import/wegame', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: text }),
+      signal,
+    });
+    data = await response.json().catch(() => null);
+    if (signal.aborted) throw new Error(LINK_ERRORS.timeout);
+  } catch {
+    throw new Error(signal.aborted ? LINK_ERRORS.timeout : LINK_ERRORS.network);
+  }
   if (!response.ok || data?.format !== 'wegame') {
-    throw new Error(data?.error ?? 'WeGame import service is unavailable. Run pnpm dev or deploy with the bundled Pages worker.');
+    // A stable code is localized here; free text only comes from workers that predate the codes. A body that is
+    // not JSON at all (a static host, a proxy error page) means the import service is not there.
+    if (typeof data?.error_code === 'string' && Object.hasOwn(LINK_ERRORS, data.error_code)) {
+      throw new Error(LINK_ERRORS[data.error_code as keyof typeof LINK_ERRORS]);
+    }
+    throw new Error(typeof data?.error === 'string' && data.error ? data.error : LINK_ERRORS.wegame_unavailable);
   }
   return JSON.stringify(data);
 }

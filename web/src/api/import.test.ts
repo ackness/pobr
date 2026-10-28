@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { buildFileKind, resolveBuildInput } from './import';
+import { buildFileKind, buildImportErrorMessage, resolveBuildInput } from './import';
 // The exact module deployed to Pages is also exercised by the Vite tests.
 // @ts-expect-error Plain worker module has no TypeScript declarations.
 import worker, { fetchShare, shareKey } from '../../public/_worker.js';
@@ -51,12 +51,36 @@ describe('WeGame import', () => {
       method: 'POST', body: JSON.stringify({ url: 'https://example.com' }),
     }), {});
     expect(response.status).toBe(400);
+    expect((await response.json()).error_code).toBe('invalid_url');
     expect(fetcher).not.toHaveBeenCalled();
+  });
+  test('worker names the failure with a code the client localizes', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ result: { error_code: 1 } })));
+    const response = await worker.fetch(new Request('https://pobr.test/api/import/wegame', { method: 'POST', body: JSON.stringify({ url }) }), {});
+    expect(response.status).toBe(502);
+    expect(await response.json()).toMatchObject({ error_code: 'not_found', error: expect.stringContaining('expired') });
   });
   test('passes codes through and exposes share failures', async () => {
     expect(await resolveBuildInput('  eNexample  ')).toBe('eNexample');
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: 'Share expired' }, { status: 502 })));
     await expect(resolveBuildInput(url)).rejects.toThrow('Share expired');
+  });
+  test('turns every failure of the import service into a message in the selected language', async () => {
+    const message = async () => resolveBuildInput(url).then(() => '', (error: Error) => error.message);
+    // A stable code from the worker is localized, not echoed.
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: 'WeGame GetRoleInfo failed; the share may have expired.', error_code: 'not_found' }, { status: 502 })));
+    expect(await message()).toBe('build.linkNotFound');
+    // A host without the service answers with something that is not JSON.
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('<html>Not found</html>', { status: 404 })));
+    expect(await message()).toBe('build.wegameUnavailable');
+    // The browser's own failures are not shown raw either.
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
+    expect(await message()).toBe('build.linkNetwork');
+    for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
+      const text = buildImportErrorMessage('build.wegameUnavailable', lang);
+      expect(text).not.toBe('build.wegameUnavailable');
+      if (lang !== 'en-US') expect(text).toMatch(/[\u4e00-\u9fff]/);
+    }
   });
 });
 
