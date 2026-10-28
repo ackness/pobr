@@ -48,6 +48,9 @@ test('sync uses sealed runtime files and preserves patch/common layers', (t) => 
     const addressed = readFileSync(join(root, 'public/data/h', result.digests[rel].slice(0, 16), rel));
     assert.deepEqual(addressed, published, rel);
   }
+  // A path under data/h/ that names no file gets a 404 page of its own, not the app shell.
+  assert.match(readFileSync(join(root, 'public/data/h/404.html'), 'utf8'), /Not found/);
+  assert.equal(result.files.includes('h/404.html'), false);
   // The listed files are the plain ones; the addressed copies are not part of the pack.
   assert.equal(result.files.some((rel) => rel.startsWith('h/')), false);
 });
