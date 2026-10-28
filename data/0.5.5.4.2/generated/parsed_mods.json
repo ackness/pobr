@@ -1429,14 +1429,7 @@
     },
     {
       "text": "+15 maximum [Rage] if you've used a Skill that Requires [Glory] in the past 20 seconds",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "MaximumRage",
-          "type": "Base",
-          "value": 15.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "+15 to Maximum [Rage]",
@@ -6810,7 +6803,7 @@
     },
     {
       "text": "10% chance to gain [Volatility] on Kill",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "10% chance to inflict Bleeding on [Critical|Critical Hit] with [Attack|Attacks]",
@@ -6840,14 +6833,7 @@
     },
     {
       "text": "10% chance when a [Charm|Charm] is used to use another Charm without consuming Charges",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "FlaskCharges",
-          "type": "Base",
-          "value": 10.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "10% chance when collecting an [ElementalInfusion|Elemental Infusion] to gain an\nadditional [ElementalInfusion|Elemental Infusion] of the same type",
@@ -7107,7 +7093,10 @@
         {
           "name": "Damage",
           "type": "Inc",
-          "value": 10.0
+          "value": 10.0,
+          "tags": [
+            "Condition { var: \"EnemyDemon\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -7303,7 +7292,10 @@
         {
           "name": "EnemyAilmentDuration",
           "type": "Inc",
-          "value": 10.0
+          "value": 10.0,
+          "tags": [
+            "Condition { var: \"EnemyBeast\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -8076,7 +8068,10 @@
         {
           "name": "CriticalStrikeChance",
           "type": "Inc",
-          "value": 10.0
+          "value": 10.0,
+          "tags": [
+            "Condition { var: \"EnemyHumanoid\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -8288,14 +8283,7 @@
     },
     {
       "text": "10% increased [ElementalInfusion|Elemental Infusion] duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Duration",
-          "type": "Inc",
-          "value": 10.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "10% increased [Evasion|Evasion Rating]",
@@ -8434,7 +8422,10 @@
         {
           "name": "EnemyImmobilisationBuildup",
           "type": "Inc",
-          "value": 10.0
+          "value": 10.0,
+          "tags": [
+            "Condition { var: \"EnemyConstruct\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -9324,14 +9315,7 @@
     },
     {
       "text": "100% increased [ArmourBreak|Armour Break] Duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Armour",
-          "type": "Inc",
-          "value": 100.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "100% increased [Armour], [Evasion] and [EnergyShield|Energy Shield] from Equipped [Shield]",
@@ -11787,14 +11771,7 @@
     },
     {
       "text": "15% increased Effect of [PuppetMaster|Puppet Master]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "LocalEffect",
-          "type": "Inc",
-          "value": 15.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "15% increased Elemental Damage",
@@ -12409,7 +12386,14 @@
     },
     {
       "text": "15% increased [BuffMagnitude|Magnitude] of [Daze]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "DazeMagnitude",
+          "type": "Inc",
+          "value": 15.0
+        }
+      ]
     },
     {
       "text": "15% increased [BuffMagnitude|Magnitude] of [JaggedGround|Jagged Ground] you create",
@@ -12875,7 +12859,10 @@
         {
           "name": "AreaOfEffect",
           "type": "Inc",
-          "value": 15.0
+          "value": 15.0,
+          "tags": [
+            "SkillName { names: [\"parry\"] }"
+          ]
         }
       ]
     },
@@ -14578,36 +14565,15 @@
     },
     {
       "text": "2% chance that if you would gain [Charges|Endurance Charges], you instead gain up to maximum [Charges|Endurance Charges]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "FlaskCharges",
-          "type": "Base",
-          "value": 2.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "2% chance that if you would gain [Charges|Frenzy Charges], you instead gain up to your maximum number of [Charges|Frenzy Charges]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "FlaskCharges",
-          "type": "Base",
-          "value": 2.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "2% chance that if you would gain [Charges|Power Charges], you instead gain up to\nyour maximum number of [Charges|Power Charges]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "FlaskCharges",
-          "type": "Base",
-          "value": 2.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "2% chance to Recover all Life when you Kill an Enemy",
@@ -15276,14 +15242,7 @@
     },
     {
       "text": "20% increased Effect of [PuppetMaster|Puppet Master]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "LocalEffect",
-          "type": "Inc",
-          "value": 20.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "20% increased Energy Shield Recharge Rate",
@@ -15617,14 +15576,7 @@
     },
     {
       "text": "20% increased [ArmourBreak|Armour Break] Duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Armour",
-          "type": "Inc",
-          "value": 20.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "20% increased [Armour]",
@@ -16503,14 +16455,7 @@
     },
     {
       "text": "20% increased [Hinder] Duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Duration",
-          "type": "Inc",
-          "value": 20.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "20% increased [Ignite|Ignite] [BuffMagnitude|Magnitude]",
@@ -16654,7 +16599,10 @@
         {
           "name": "AreaOfEffect",
           "type": "Inc",
-          "value": 20.0
+          "value": 20.0,
+          "tags": [
+            "SkillName { names: [\"parry\"] }"
+          ]
         }
       ]
     },
@@ -16814,14 +16762,7 @@
     },
     {
       "text": "20% increased [StunThreshold|Stun Threshold] while [Parry|Parrying]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "StunThreshold",
-          "type": "Inc",
-          "value": 20.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "20% increased [StunThreshold|Stun Threshold] while on Full Life",
@@ -17089,7 +17030,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
+          "name": "RecoupSpeed",
           "type": "Inc",
           "value": 20.0
         }
@@ -18304,9 +18245,13 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ProjectileCount",
+          "name": "PierceChance",
           "type": "Base",
-          "value": 25.0
+          "value": 25.0,
+          "flags": 1024,
+          "tags": [
+            "MultiplierThreshold { var: \"enemyDistance\", threshold: 30.0, upper: true }"
+          ]
         }
       ]
     },
@@ -18628,14 +18573,7 @@
     },
     {
       "text": "25% increased Duration of each [PuppetMaster|Puppet Master] stack",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Duration",
-          "type": "Inc",
-          "value": 25.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "25% increased Energy Shield Recharge Rate",
@@ -18872,14 +18810,7 @@
     },
     {
       "text": "25% increased [ArmourBreak|Armour Break] Duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Armour",
-          "type": "Inc",
-          "value": 25.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "25% increased [Armour]",
@@ -19365,14 +19296,7 @@
     },
     {
       "text": "25% increased [Evasion|Evasion Rating] while [Parry|Parrying]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Evasion",
-          "type": "Inc",
-          "value": 25.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "25% increased [Fire] Damage",
@@ -19753,7 +19677,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
+          "name": "RecoupSpeed",
           "type": "Inc",
           "value": 25.0
         }
@@ -19916,14 +19840,7 @@
     },
     {
       "text": "25% reduced [ArmourBreak|Armour Break] taken",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Armour",
-          "type": "Inc",
-          "value": -25.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "25% reduced [Armour], [Evasion] and [EnergyShield|Energy Shield]",
@@ -20536,7 +20453,7 @@
     },
     {
       "text": "3% chance to gain [Volatility] on Kill",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "3% increased Area of Effect",
@@ -20961,8 +20878,7 @@
           "type": "Inc",
           "value": 3.0,
           "tags": [
-            "Multiplier { var: \"EnduranceCharge\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }",
-            "DamageType(Fire)"
+            "Multiplier { var: \"EnduranceChargesConsumedRecently\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -22215,14 +22131,7 @@
     },
     {
       "text": "30% increased [ElementalInfusion|Elemental Infusion] duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Duration",
-          "type": "Inc",
-          "value": 30.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "30% increased [Evasion|Evasion Rating]",
@@ -22710,7 +22619,10 @@
         {
           "name": "Damage",
           "type": "Inc",
-          "value": 30.0
+          "value": 30.0,
+          "tags": [
+            "Condition { var: \"EnemyUndead\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -23725,15 +23637,7 @@
     },
     {
       "text": "4% chance that if you would gain [Rage] on [Hit], you instead gain up to your maximum Rage",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "MaximumRage",
-          "type": "Base",
-          "value": 4.0,
-          "flags": 4
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "4% increased Area of Effect",
@@ -25841,7 +25745,7 @@
     },
     {
       "text": "5% chance to gain [Volatility] on Kill",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "5% chance to inflict [Bleeding|Bleeding] on [Hit]",
@@ -26723,9 +26627,13 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ProjectileCount",
+          "name": "PierceChance",
           "type": "Base",
-          "value": 50.0
+          "value": 50.0,
+          "flags": 1024,
+          "tags": [
+            "MultiplierThreshold { var: \"enemyDistance\", threshold: 30.0, upper: true }"
+          ]
         }
       ]
     },
@@ -26761,7 +26669,7 @@
     },
     {
       "text": "50% chance to gain [Volatility] when you are [Stun|Stunned]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "50% chance when you gain a Frenzy Charge to gain an additional Frenzy Charge",
@@ -26796,7 +26704,10 @@
         {
           "name": "Damage",
           "type": "Inc",
-          "value": 50.0
+          "value": 50.0,
+          "tags": [
+            "Condition { var: \"EnemyDemon\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -26862,7 +26773,10 @@
         {
           "name": "EnemyAilmentDuration",
           "type": "Inc",
-          "value": 50.0
+          "value": 50.0,
+          "tags": [
+            "Condition { var: \"EnemyBeast\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -27048,7 +26962,10 @@
         {
           "name": "CriticalStrikeChance",
           "type": "Inc",
-          "value": 50.0
+          "value": 50.0,
+          "tags": [
+            "Condition { var: \"EnemyHumanoid\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -27169,7 +27086,10 @@
         {
           "name": "EnemyImmobilisationBuildup",
           "type": "Inc",
-          "value": 50.0
+          "value": 50.0,
+          "tags": [
+            "Condition { var: \"EnemyConstruct\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -27476,14 +27396,7 @@
     },
     {
       "text": "50% reduced [ArmourBreak|Armour Break] taken",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Armour",
-          "type": "Inc",
-          "value": -50.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "50% reduced [BuffEffect|effect] of [Curse|Curses] on you",
@@ -28281,14 +28194,7 @@
     },
     {
       "text": "6% increased [ElementalInfusion|Elemental Infusion] duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Duration",
-          "type": "Inc",
-          "value": 6.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "6% increased [Fire] Damage",
@@ -30244,14 +30150,7 @@
     },
     {
       "text": "8% increased [ElementalInfusion|Elemental Infusion] duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Duration",
-          "type": "Inc",
-          "value": 8.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "8% increased [Evasion|Evasion Rating]",
@@ -30392,7 +30291,10 @@
         {
           "name": "AreaOfEffect",
           "type": "Inc",
-          "value": 8.0
+          "value": 8.0,
+          "tags": [
+            "SkillName { names: [\"parry\"] }"
+          ]
         }
       ]
     },
@@ -30607,7 +30509,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
+          "name": "RecoupSpeed",
           "type": "Inc",
           "value": 8.0
         }
@@ -35345,7 +35247,7 @@
     },
     {
       "text": "Consume all [Rage] when [Shapeshift|Shapeshifting] to Human form to recover 1% of maximum life per [Rage] Consumed",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Consuming [Glory] grants you 3% increased [Attack] damage per [Glory] consumed for 6 seconds, up to 60%",
@@ -35701,7 +35603,7 @@
     },
     {
       "text": "Darkness [Reservation] lasts for 5 seconds",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Deal 10% of Overkill damage to enemies within 2 metres of the enemy killed",
@@ -36653,7 +36555,7 @@
     },
     {
       "text": "Every Third [Slam] skill that doesn't create Fissures which you use yourself causes 3 additional [Aftershock|Aftershocks] ahead and to each side of the initial area",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Every [Rage] also grants 1% increased [Armour]",
@@ -36728,11 +36630,11 @@
     },
     {
       "text": "Every [Rage] also grants you 1% increased Minion Damage",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Every five [Rage] also grants you 2% increased Minion Attack Speed",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Every second [Slam] Skill you use yourself is [AncestralBoost|Ancestrally Boosted]",
@@ -37129,9 +37031,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "EnergyShield",
+          "name": "FreezeThreshold",
           "type": "Base",
-          "value": 15.0
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"EnergyShield\", percent: Some(15.0) }"
+          ]
         }
       ]
     },
@@ -37232,7 +37137,7 @@
           "type": "Base",
           "value": 2.0,
           "tags": [
-            "Multiplier { var: \"EnduranceCharge\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+            "Multiplier { var: \"EnduranceChargesConsumedRecently\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -37549,9 +37454,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "EnergyShield",
+          "name": "FreezeThreshold",
           "type": "Base",
-          "value": 50.0
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"EnergyShield\", percent: Some(50.0) }"
+          ]
         }
       ]
     },
@@ -37634,14 +37542,7 @@
     },
     {
       "text": "Gain 8 [Rage] when you use a Life [Flask]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "MaximumLife",
-          "type": "Base",
-          "value": 8.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "Gain 9% of Damage as Extra Chaos Damage",
@@ -38018,7 +37919,7 @@
     },
     {
       "text": "Gain a [Charges|Power Charge] when you consume an [ElementalInfusion|Elemental Infusion]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Gain a stack of [Jade] every second",
@@ -40531,27 +40432,11 @@
     },
     {
       "text": "Projectiles have 25% chance for an additional Projectile when [Fork|Forking]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "ProjectileCount",
-          "type": "Base",
-          "value": 25.0,
-          "flags": 1024
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "Projectiles have 75% chance for an additional Projectile when [Fork|Forking]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "ProjectileCount",
-          "type": "Base",
-          "value": 75.0,
-          "flags": 1024
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "Prolonged Ultimate Mana Flask of the Eternal",
@@ -40654,7 +40539,7 @@
     },
     {
       "text": "Recover 2% of maximum Life for each [Charges|Endurance Charge] consumed",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Recover 2% of maximum Life on Kill",
@@ -40698,7 +40583,7 @@
     },
     {
       "text": "Recover 2% of maximum Mana when you consume a [Charges|Power Charge]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Recover 20 Life when you [Block]",
@@ -40750,7 +40635,7 @@
     },
     {
       "text": "Recover 3% of maximum Life for each [Charges|Endurance Charge] consumed",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Recover 3% of maximum Life on Kill",
@@ -40798,11 +40683,11 @@
     },
     {
       "text": "Recover 5% of maximum Mana when a [Charm|Charm] is used",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Recover 5% of maximum Mana when you consume a [Charges|Power Charge]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Recover 50% of maximum Life when you [HeavyStun|Heavy Stun] a [Rarity|Rare or Unique] Enemy",
@@ -41697,11 +41582,11 @@
     },
     {
       "text": "Successfully [Parry|Parrying] a [Melee] [Hit] grants 40% increased Damage to your next Ranged [Attack]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Successfully [Parry|Parrying] a [Projectile] [Hit] grants 40% increased Damage to your next [Melee] [Attack]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Sunburst Ruby Charm of the Practitioner",
@@ -42286,7 +42171,7 @@
     },
     {
       "text": "When collecting an [ElementalInfusion|Elemental Infusion], gain another different [ElementalInfusion|Elemental Infusion]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "When you Consume a [Charges|Charge], [Trigger] Elemental Surge to gain 2 [Surge|Cold Surges]",
@@ -42658,20 +42543,7 @@
     },
     {
       "text": "[Allies] in your [Presence] Regenerate 5 [Rage] per second if you have gained [Rage] [Recently]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "ExtraAura",
-          "type": "List",
-          "value": [
-            {
-              "name": "RageRegen",
-              "type": "Base",
-              "value": 5.0
-            }
-          ]
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "[Allies] in your [Presence] gain added [Attack] Damage equal\nto 25% of your main hand Weapon's damage",
@@ -47328,15 +47200,15 @@
     },
     {
       "text": "[Offering|Offerings] have 15% increased Maximum Life",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Offering|Offerings] have 30% increased Maximum Life",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Offering|Offerings] have 30% reduced Maximum Life",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Orb] Skills have +1 to [Limit]",
@@ -47344,11 +47216,31 @@
     },
     {
       "text": "[Parry] has 20% increased [Stun] Buildup",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyHeavyStunBuildup",
+          "type": "Inc",
+          "value": 20.0,
+          "tags": [
+            "SkillName { names: [\"parry\"] }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Parry] has 25% increased [Stun] Buildup",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyHeavyStunBuildup",
+          "type": "Inc",
+          "value": 25.0,
+          "tags": [
+            "SkillName { names: [\"parry\"] }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Persistent] [Buff|Buffs] have 50% less [Reservation]",
@@ -47773,11 +47665,11 @@
     },
     {
       "text": "[Seal|Sealed] Skills have 10% increased [Seal] gain frequency",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Seal|Sealed] Skills have 25% increased [Seal] gain frequency",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Shock|Shocking] [Hit|Hits] have a 50% chance to also Shock enemies in a 1.5 metre radius",
@@ -47803,7 +47695,7 @@
     },
     {
       "text": "[Slam] Skills you use yourself have 30% increased [Aftershock] Area of Effect",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Spell|Spell] Skills have 10% reduced Area of Effect",

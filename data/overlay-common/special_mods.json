@@ -12,6 +12,544 @@
   },
   "entries": [
     {
+      "id": "glory_generation",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% (?:increased|reduced) glory generation(?: for banner skills)?$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "banner Glory generation (passives)",
+      "exporter": "absent",
+      "source_note": "Glory, the Banner resource, is not tracked: a rate of gaining it changes no reported output.",
+      "examples": [
+        "8% increased Glory generation",
+        "20% increased Glory generation for Banner Skills"
+      ]
+    },
+    {
+      "id": "elemental_infusion_events",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% (?:increased|reduced) elemental infusion duration|(\\d+(?:\\.\\d+)?)% chance when collecting an elemental infusion to gain an additional elemental infusion of the same type|skills have (\\d+(?:\\.\\d+)?)% chance to not remove elemental infusions but still count as consuming them|when collecting an elemental infusion, gain another different elemental infusion|gain a power charge when you consume an elemental infusion)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Elemental Infusion passives",
+      "exporter": "absent",
+      "source_note": "Infusions are collected, consumed and expire as events. Only the maximum number of each is reported (MaximumFireInfusions and the like); their duration, collection and consumption are not simulated.",
+      "examples": [
+        "10% increased Elemental Infusion duration",
+        "5% chance when collecting an Elemental Infusion to gain an additional Elemental Infusion of the same type",
+        "Skills have 5% chance to not remove Elemental Infusions but still count as consuming them",
+        "When collecting an Elemental Infusion, gain another different Elemental Infusion",
+        "Gain a Power Charge when you consume an Elemental Infusion"
+      ]
+    },
+    {
+      "id": "seal_gain_frequency",
+      "pattern": "^sealed skills have (\\d+(?:\\.\\d+)?)% (?:increased|reduced) seal gain frequency$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Sealed skills (passive)",
+      "exporter": "absent",
+      "source_note": "How often a Sealed skill gains a Seal is an event rate with no model of the casting sequence.",
+      "examples": [
+        "Sealed Skills have 10% increased Seal gain frequency"
+      ]
+    },
+    {
+      "id": "puppet_master",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% surpassing chance to gain a puppet master stack whenever you use a command skill|(\\d+(?:\\.\\d+)?)% (?:increased|reduced) effect of puppet master|\\+(\\d+) maximum stacks of puppet master|(\\d+(?:\\.\\d+)?)% increased duration of each puppet master stack)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Puppet Master (passives)",
+      "exporter": "absent",
+      "source_note": "Puppet Master stacks are gained by using Command skills and expire; the stack count, its effect and its duration are not modelled.",
+      "examples": [
+        "15% Surpassing Chance to gain a Puppet Master stack whenever you use a Command Skill",
+        "20% increased Effect of Puppet Master",
+        "+1 maximum stacks of Puppet Master",
+        "25% increased Duration of each Puppet Master stack"
+      ]
+    },
+    {
+      "id": "volatility_gain_events",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% chance to gain volatility on kill|(\\d+(?:\\.\\d+)?)% chance to gain volatility when you are stunned|(\\d+(?:\\.\\d+)?)% (?:increased|reduced) volatility explosion delay)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Volatility passives",
+      "exporter": "absent",
+      "source_note": "Gaining Volatility from kills or being stunned, and the delay before it explodes, are events with no simulated frequency. calc::volatility_events takes an explicit explosion snapshot instead.",
+      "examples": [
+        "10% chance to gain Volatility on Kill",
+        "50% chance to gain Volatility when you are Stunned",
+        "15% increased Volatility Explosion delay",
+        "15% reduced Volatility Explosion delay"
+      ]
+    },
+    {
+      "id": "armour_break_duration_and_taken",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% increased armour break duration|(\\d+(?:\\.\\d+)?)% reduced armour break taken)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Armour Break passives",
+      "exporter": "absent",
+      "source_note": "How long enemy Armour stays broken, and the Armour Break enemies inflict on the character, are not simulated: only the per-hit amount and the hits needed are reported.",
+      "examples": [
+        "100% increased Armour Break Duration",
+        "50% reduced Armour Break taken"
+      ]
+    },
+    {
+      "id": "offering_maximum_life",
+      "pattern": "^offerings have (\\d+(?:\\.\\d+)?)% (?:increased|reduced) maximum life$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Offering skills (passive)",
+      "exporter": "absent",
+      "source_note": "An Offering's Life is not reported: it has no damage or defence output.",
+      "examples": [
+        "Offerings have 15% increased Maximum Life",
+        "Offerings have 30% reduced Maximum Life"
+      ]
+    },
+    {
+      "id": "corpse_consumption_chance",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% chance to not destroy corpses when consuming corpses$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Corpse consumption (passive)",
+      "exporter": "absent",
+      "source_note": "Corpses are not supplied or consumed in the calculation.",
+      "examples": [
+        "15% chance to not destroy Corpses when Consuming Corpses"
+      ]
+    },
+    {
+      "id": "charm_use_events",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% chance when a charm is used to use another charm without consuming charges|recover (\\d+(?:\\.\\d+)?)% of maximum mana when a charm is used)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Charm use passives",
+      "exporter": "absent",
+      "source_note": "Charms are used as events; no use frequency is modelled, so there is no rate for these to scale.",
+      "examples": [
+        "10% chance when a Charm is used to use another Charm without consuming Charges",
+        "Recover 5% of maximum Mana when a Charm is used"
+      ]
+    },
+    {
+      "id": "rage_on_ignite",
+      "pattern": "^gain (\\d+) rage when your hit ignites a target$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Rage from igniting (passive)",
+      "exporter": "absent",
+      "source_note": "Rage gained from an event is not simulated; the Rage count is a configured input.",
+      "examples": [
+        "Gain 1 Rage when your Hit Ignites a target"
+      ]
+    },
+    {
+      "id": "charge_gain_and_consume_events",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% chance that if you would gain (?:endurance|frenzy|power) charges, you instead gain up to (?:your )?maximum (?:number of )?(?:endurance|frenzy|power) charges|(\\d+(?:\\.\\d+)?)% chance when you gain an? (?:endurance|frenzy|power) charge to gain an additional (?:endurance|frenzy|power) charge|(\\d+(?:\\.\\d+)?)% chance that if you would gain rage on hit, you instead gain up to your maximum rage|recover (\\d+(?:\\.\\d+)?)% of maximum mana when you consume a power charge|recover (\\d+(?:\\.\\d+)?)% of maximum life for each endurance charge consumed)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Charge gain and consume passives",
+      "exporter": "absent",
+      "source_note": "Gaining and consuming charges are events and no gain or consumption rate is simulated: the configured charge counts (usePowerCharges and the like) stand for the charges held. Charges the character would gain beyond those counts are not added, and nothing is recovered for a charge consumed.",
+      "examples": [
+        "2% chance that if you would gain Endurance Charges, you instead gain up to maximum Endurance Charges",
+        "2% chance that if you would gain Frenzy Charges, you instead gain up to your maximum number of Frenzy Charges",
+        "2% chance that if you would gain Power Charges, you instead gain up to your maximum number of Power Charges",
+        "4% chance that if you would gain Rage on Hit, you instead gain up to your maximum Rage",
+        "10% chance when you gain a Power Charge to gain an additional Power Charge",
+        "10% chance when you gain an Endurance Charge to gain an additional Endurance Charge",
+        "50% chance when you gain a Frenzy Charge to gain an additional Frenzy Charge",
+        "Recover 2% of maximum Mana when you consume a Power Charge",
+        "Recover 2% of maximum Life for each Endurance Charge consumed"
+      ]
+    },
+    {
+      "id": "parry_hit_area",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased parry hit area of effect$",
+      "mods": [
+        {
+          "name": "AreaOfEffect",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Parry"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "parry_hit_area_of_effect_+%; passives (5 nodes)",
+      "exporter": "absent",
+      "source_note": "The Area of Effect of the Parry skill's own hit. The skill is Parry itself, matched by name, so it does not widen other skills.",
+      "examples": [
+        "20% increased Parry Hit Area of Effect"
+      ]
+    },
+    {
+      "id": "parry_stun_buildup",
+      "pattern": "^parry has (\\d+(?:\\.\\d+)?)% increased stun buildup$",
+      "mods": [
+        {
+          "name": "EnemyHeavyStunBuildup",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Parry"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "parry_stun_buildup_+%; passives (2 nodes)",
+      "exporter": "absent",
+      "source_note": "Heavy Stun buildup of the Parry skill's own hits, matched by skill name.",
+      "examples": [
+        "Parry has 20% increased Stun Buildup"
+      ]
+    },
+    {
+      "id": "pierce_chance_within_3m",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% chance for projectiles to pierce enemies within 3m distance of you$",
+      "mods": [
+        {
+          "name": "PierceChance",
+          "type": "BASE",
+          "value": "$1",
+          "flags": [
+            "Projectile"
+          ],
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "var": "enemyDistance",
+              "threshold": 30,
+              "upper": true
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "pierce_chance_%_within_3m; passives (3 nodes)",
+      "exporter": "absent",
+      "source_note": "A Pierce chance while the enemy is within 3 metres, on the single-target distance convention (enemyDistance in tenths of a metre, within means 30 or less). The default distance in the effective mode is 20, so it applies unless a farther distance is configured. The three tree nodes all say 3m, so the distance is part of the text.",
+      "examples": [
+        "25% chance for Projectiles to Pierce Enemies within 3m distance of you"
+      ]
+    },
+    {
+      "id": "slam_aftershock_chance",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% chance for (?:mace |shapeshift )?slam skills(?: you use yourself)? to cause an additional aftershock|slam skills you use yourself have (\\d+(?:\\.\\d+)?)% increased aftershock area of effect|every third slam skill that doesn't create fissures which you use yourself causes 3 additional aftershocks ahead and to each side of the initial area)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Slam Aftershock passives",
+      "exporter": "absent",
+      "source_note": "A Slam's Aftershocks are not part of its reported damage (only Supercharged Slam's are, in calc::channel), so a chance for another one, its area or an extra wave has no damage to scale.",
+      "examples": [
+        "8% chance for Mace Slam Skills you use yourself to cause an additional Aftershock",
+        "15% chance for Shapeshift Slam Skills you use yourself to cause an additional Aftershock",
+        "5% chance for Slam Skills to cause an additional Aftershock",
+        "Slam Skills you use yourself have 30% increased Aftershock Area of Effect",
+        "Every Third Slam skill that doesn't create Fissures which you use yourself causes 3 additional Aftershocks ahead and to each side of the initial area"
+      ]
+    },
+    {
+      "id": "fork_additional_projectile",
+      "pattern": "^projectiles have (\\d+(?:\\.\\d+)?)% chance for an additional projectile when forking$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Fork passives",
+      "exporter": "absent",
+      "source_note": "A chance of an extra projectile at each fork. The fork count is a configured snapshot (skillForkCount) and single-target damage does not change, so there is no extra projectile to add.",
+      "examples": [
+        "Projectiles have 75% chance for an additional Projectile when Forking"
+      ]
+    },
+    {
+      "id": "while_parrying_states",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% increased (?:stun threshold|evasion rating) while parrying|cannot be critically hit while parrying|successfully parrying a (?:melee|projectile) hit grants (\\d+(?:\\.\\d+)?)% increased damage to your next (?:ranged|melee) attack)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Parry passives",
+      "exporter": "absent",
+      "source_note": "Parrying is an action the character performs for a moment. No share of time spent parrying is assumed, so the defence it grants, and the damage bonus for the next attack after a successful Parry, are not applied to the static snapshot.",
+      "examples": [
+        "20% increased Stun Threshold while Parrying",
+        "25% increased Evasion Rating while Parrying",
+        "Cannot be Critically Hit while Parrying",
+        "Successfully Parrying a Melee Hit grants 40% increased Damage to your next Ranged Attack",
+        "Successfully Parrying a Projectile Hit grants 40% increased Damage to your next Melee Attack"
+      ]
+    },
+    {
+      "id": "damage_against_undead",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased damage against undead enemies$",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Undead"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "passive Damage against Undead",
+      "exporter": "absent",
+      "source_note": "The monster type is a state you choose (conditionEnemy<Type>): the calculation has no monster type of its own, so the bonus applies only when it is declared.",
+      "examples": [
+        "30% increased damage against Undead Enemies"
+      ]
+    },
+    {
+      "id": "damage_against_demons",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased damage against demons$",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Demon"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "passive Damage against Demons",
+      "exporter": "absent",
+      "source_note": "The monster type is a state you choose (conditionEnemy<Type>): the calculation has no monster type of its own, so the bonus applies only when it is declared.",
+      "examples": [
+        "50% increased Damage against Demons"
+      ]
+    },
+    {
+      "id": "crit_chance_against_humanoids",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased critical hit chance against humanoids$",
+      "mods": [
+        {
+          "name": "CriticalStrikeChance",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Humanoid"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "passive Critical Hit Chance against Humanoids",
+      "exporter": "absent",
+      "source_note": "The monster type is a state you choose (conditionEnemy<Type>): the calculation has no monster type of its own, so the bonus applies only when it is declared.",
+      "examples": [
+        "50% increased Critical Hit Chance against Humanoids"
+      ]
+    },
+    {
+      "id": "immobilisation_buildup_against_constructs",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased immobilisation buildup against constructs$",
+      "mods": [
+        {
+          "name": "EnemyImmobilisationBuildup",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Construct"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "passive Immobilisation buildup against Constructs",
+      "exporter": "absent",
+      "source_note": "The monster type is a state you choose (conditionEnemy<Type>): the calculation has no monster type of its own, so the bonus applies only when it is declared.",
+      "examples": [
+        "50% increased Immobilisation buildup against Constructs"
+      ]
+    },
+    {
+      "id": "ailment_duration_on_beasts",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased duration of ailments on beasts$",
+      "mods": [
+        {
+          "name": "EnemyAilmentDuration",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Beast"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "passive Duration of Ailments on Beasts",
+      "exporter": "absent",
+      "source_note": "The monster type is a state you choose (conditionEnemy<Type>): the calculation has no monster type of its own, so the bonus applies only when it is declared.",
+      "examples": [
+        "50% increased Duration of Ailments on Beasts"
+      ]
+    },
+    {
+      "id": "fire_damage_per_endurance_charge_consumed",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased fire damage per endurance charge consumed recently$",
+      "mods": [
+        {
+          "name": "FireDamage",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "EnduranceChargesConsumedRecently"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "passive Fire Damage per Endurance Charge consumed Recently",
+      "exporter": "absent",
+      "source_note": "Scales with the configured number of Endurance Charges consumed recently (multiplierEnduranceChargesConsumedRecently). Charge consumption is not simulated.",
+      "examples": [
+        "3% increased Fire Damage per Endurance Charge consumed Recently"
+      ]
+    },
+    {
+      "id": "extra_fire_damage_per_endurance_charge_consumed",
+      "pattern": "^gain (\\d+(?:\\.\\d+)?)% of damage as extra fire damage per endurance charge consumed recently$",
+      "mods": [
+        {
+          "name": "DamageGainAsFire",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "EnduranceChargesConsumedRecently"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "passive Extra Fire Damage per Endurance Charge consumed Recently",
+      "exporter": "absent",
+      "source_note": "Scales with the configured number of Endurance Charges consumed recently, as above.",
+      "examples": [
+        "Gain 2% of Damage as Extra Fire Damage per Endurance Charge consumed Recently"
+      ]
+    },
+    {
+      "id": "daze_magnitude",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased magnitude of daze$",
+      "mods": [
+        {
+          "name": "DazeMagnitude",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "daze_magnitude_+%; passives (2 nodes)",
+      "exporter": "absent",
+      "source_note": "Scales the 50% more Stun Buildup a Dazed enemy takes (game KeywordPopups Daze): the factor becomes 1 + 0.5 * (1 + increased). Applied through setup_env::scale_enemy_daze on the same EnemyDazed state, so it needs conditionEnemyDazed like the base 50%.",
+      "examples": [
+        "15% increased Magnitude of Daze"
+      ]
+    },
+    {
+      "id": "hinder_chance_and_duration",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% chance to hinder enemies on hit with spells|(\\d+(?:\\.\\d+)?)% increased hinder duration)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Hinder passives",
+      "exporter": "absent",
+      "source_note": "Hinder is an enemy movement debuff. The state is a configured input (conditionEnemyHindered) and there is no enemy movement model, so a chance to inflict it or its duration has nothing to scale.",
+      "examples": [
+        "10% chance to Hinder Enemies on Hit with Spells",
+        "20% increased Hinder Duration"
+      ]
+    },
+    {
+      "id": "rage_events_and_rage_scaled_bonuses",
+      "pattern": "^(?:consume all rage when shapeshifting to human form to recover (\\d+(?:\\.\\d+)?)% of maximum life per rage consumed|gain (\\d+) rage when you use a life flask|every rage also grants you (\\d+(?:\\.\\d+)?)% increased minion damage|every five rage also grants you (\\d+(?:\\.\\d+)?)% increased minion attack speed|allies in your presence regenerate (\\d+) rage per second if you have gained rage recently|\\+(\\d+) maximum rage if you've used a skill that requires glory in the past (\\d+) seconds|(\\d+)% faster start of inherent rage loss)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Rage passives",
+      "exporter": "absent",
+      "source_note": "Rage gained, consumed and lost over time is not simulated: the Rage count is a configured input, so gains and losses have no rate to apply. A bonus a Rage count gives to Minions would need the minion calculation to read the player's Rage, which is not built.",
+      "examples": [
+        "Consume all Rage when Shapeshifting to Human form to recover 1% of maximum life per Rage Consumed",
+        "Gain 8 Rage when you use a Life Flask",
+        "Every Rage also grants you 1% increased Minion Damage",
+        "Every five Rage also grants you 2% increased Minion Attack Speed",
+        "Allies in your Presence Regenerate 5 Rage per second if you have gained Rage Recently",
+        "+15 maximum Rage if you've used a Skill that Requires Glory in the past 20 seconds",
+        "200% faster start of inherent Rage loss"
+      ]
+    },
+    {
+      "id": "darkness_reservation",
+      "pattern": "^(?:damage taken is reserved from darkness before being taken from life or energy shield|darkness reservation lasts for (\\d+) seconds)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Darkness passives",
+      "exporter": "absent",
+      "source_note": "Darkness is a resource the calculation does not have: there is no pool, no reservation and no damage routed through it.",
+      "examples": [
+        "Damage taken is Reserved from Darkness before being taken from Life or Energy Shield",
+        "Darkness Reservation lasts for 5 seconds"
+      ]
+    },
+    {
       "id": "loreweave_exclusive_item_rarity",
       "pattern": "^([+-]?\\d+(?:\\.\\d+)?)% increased rarity of items found your other modifiers to rarity of items found do not apply$",
       "mods": [
@@ -7342,6 +7880,51 @@
       "source_note": "A progress counter in the character's quest rewards. The game text gives the count no effect on any modifier, so the line carries nothing a calculation reads.",
       "examples": [
         "58 Broken Boss Faces"
+      ]
+    },
+    {
+      "id": "recoup_speed",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased speed of recoup effects$",
+      "mods": [
+        {
+          "name": "RecoupSpeed",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "recoup_speed_+%; passives Quick Recovery and others (10 nodes)",
+      "exporter": "absent",
+      "source_note": "Every Recoup (Life, Mana, Energy Shield) runs faster: the recoup duration (8 s, 4 s with the 4-second flags) is divided by (1 + increased) * more, so the same amount returns over a shorter time. Previously the generic pattern read the line as an increase to LocalEffect with leftover text, which was not applied.",
+      "examples": [
+        "20% increased speed of Recoup Effects"
+      ]
+    },
+    {
+      "id": "energy_shield_as_freeze_threshold",
+      "pattern": "^gain (\\d+(?:\\.\\d+)?)% of maximum energy shield as additional freeze threshold$",
+      "mods": [
+        {
+          "name": "FreezeThreshold",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "EnergyShield",
+              "percent": "$1"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "gain_%_maximum_energy_shield_as_freeze_threshold_+; passive Energy Shield as Freeze Threshold",
+      "exporter": "absent",
+      "source_note": "A flat addition to Freeze Threshold equal to the share of the completed maximum Energy Shield (the PercentStat convention, as for the Ailment Threshold). The game's base Freeze Threshold is not in the exported data, so the calculation shows what the build adds (FreezeThresholdAdded) and the increases (FreezeThresholdMod) and no total.",
+      "examples": [
+        "Gain 50% of maximum Energy Shield as additional Freeze Threshold"
       ]
     }
   ]

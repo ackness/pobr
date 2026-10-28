@@ -477,3 +477,73 @@ fn ancestrally_boosted_passives_apply_only_to_a_boosted_attack() {
     assert_eq!(inc(BOOSTED, "Damage") - inc("", "Damage"), 24.0);
     assert_eq!(inc(BOOSTED, "AreaOfEffect") - inc("", "AreaOfEffect"), 4.0);
 }
+
+/// Freeze Threshold: the passives add a share of maximum Energy Shield and increase it. The game's base is not in
+/// the exported data, so the calculation shows what the build adds and the multiplier, and no total.
+#[test]
+fn freeze_threshold_views_read_the_additions_and_the_increases() {
+    let plain = calculate(FIREBALL, &[]);
+    assert_eq!(display_value(&plain, "FreezeThresholdAdded"), 0.0);
+    assert_eq!(display_value(&plain, "FreezeThresholdMod"), 1.0);
+    let built = calculate(
+        FIREBALL,
+        &[
+            "+400 to maximum Energy Shield",
+            "Gain 50% of maximum Energy Shield as additional Freeze Threshold",
+            "60% increased Freeze Threshold",
+        ],
+    );
+    let es = display_value(&built, "EnergyShield");
+    assert!(es >= 400.0, "{es}");
+    let added = display_value(&built, "FreezeThresholdAdded");
+    assert!((added - es * 0.5).abs() <= 1.0, "{added} vs half of {es}");
+    assert!((display_value(&built, "FreezeThresholdMod") - 1.6).abs() < 1e-9);
+    // The total starts from the Ailment Threshold, which the game's chance to Freeze is measured against.
+    let ailment = display_value(&built, "AilmentThreshold");
+    let total = display_value(&built, "FreezeThreshold");
+    assert!((total - (ailment + added) * 1.6).abs() < 1e-6, "{total}");
+    assert_eq!(
+        display_value(&plain, "FreezeThreshold"),
+        display_value(&plain, "AilmentThreshold")
+    );
+}
+
+/// "N% increased Magnitude of Daze" scales the 50% more Stun Buildup a Dazed enemy takes: the factor on the buildup
+/// is 1 + 0.5 * (1 + increased), and nothing changes while the enemy is not declared Dazed.
+#[test]
+fn daze_magnitude_scales_the_stun_buildup_of_a_dazed_enemy() {
+    let buildup = |dazed: bool, line: Option<&str>| {
+        let config = if dazed {
+            r#"<Input name="conditionEnemyDazed" boolean="true"/>"#
+        } else {
+            ""
+        };
+        let build = parse_build(&format!(
+            r#"<PathOfBuilding2><Build level="80" className="Witch" mainSocketGroup="1"/><Skills>{FIREBALL}</Skills><Config>{config}</Config></PathOfBuilding2>"#
+        ))
+        .unwrap();
+        let output = calculate_with_data(
+            &build,
+            data(),
+            &DataOrchestratorOptions {
+                extra_modifier_texts: line.iter().map(|text| text.to_string()).collect(),
+                mode_effective: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        display_value(&output, "HeavyStunBuildupAvg")
+    };
+    let plain = buildup(false, None);
+    assert!(plain > 0.0);
+    // Dazed: 50% more.
+    assert!((buildup(true, None) / plain - 1.5).abs() < 1e-6);
+    // +100% magnitude: 1 + 0.5 * 2 = 2.
+    let scaled = buildup(true, Some("100% increased Magnitude of Daze"));
+    assert!((scaled / plain - 2.0).abs() < 1e-6, "{}", scaled / plain);
+    // Not Dazed: the magnitude changes nothing.
+    assert_eq!(
+        buildup(false, Some("100% increased Magnitude of Daze")),
+        plain
+    );
+}

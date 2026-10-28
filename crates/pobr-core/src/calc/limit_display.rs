@@ -31,6 +31,15 @@ pub struct LimitViews {
     /// Movement speed before action speed is applied.
     pub movement_speed_mod: f64,
     pub light_radius_mod: f64,
+    /// What the build adds to Freeze Threshold (`FreezeThreshold` BASE, including the share of maximum Energy
+    /// Shield) and the increases and reductions to it. The game's base value is not in the exported data, so no
+    /// total is shown.
+    pub freeze_threshold_added: f64,
+    pub freeze_threshold_mod: f64,
+    /// The total: the Ailment Threshold plus what the build adds, times the Freeze Threshold modifiers. The game
+    /// computes the chance to Freeze against the target's Ailment Threshold, which is the base taken here; the
+    /// order of the flat additions and the increases is the Ailment Threshold's own. No in-game measurement.
+    pub freeze_threshold: f64,
     pub life_recovery_rate_mod: f64,
     pub mana_recovery_rate_mod: f64,
     pub energy_shield_recovery_rate_mod: f64,
@@ -79,6 +88,7 @@ pub(crate) fn has_derived_detail(stat: &str) -> bool {
             | "FullLifePercentage"
             | "FullManaPercentage"
             | "DurationMod"
+            | "FreezeThreshold"
             | "StrikeTargets"
             | "LowestAttribute"
             | "MaximumChill"
@@ -170,6 +180,9 @@ pub(crate) fn display_value(out: &OutputTable, stat: &str) -> Option<f64> {
         "ActionSpeedMod" => v.action_speed_mod,
         "MovementSpeedMod" => v.movement_speed_mod,
         "LightRadiusMod" => v.light_radius_mod,
+        "FreezeThresholdAdded" => v.freeze_threshold_added,
+        "FreezeThresholdMod" => v.freeze_threshold_mod,
+        "FreezeThreshold" => v.freeze_threshold,
         "LifeRecoveryRateMod" => v.life_recovery_rate_mod,
         "ManaRecoveryRateMod" => v.mana_recovery_rate_mod,
         "EnergyShieldRecoveryRateMod" => v.energy_shield_recovery_rate_mod,
@@ -297,6 +310,20 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<DerivedDetail> {
                 views.full_mana_override,
             ));
         }
+        "FreezeThreshold" => (
+            "(AilmentThreshold + FreezeThresholdAdded) * FreezeThresholdMod",
+            vec![
+                ("AilmentThreshold".into(), out.ailment_threshold),
+                (
+                    "FreezeThresholdAdded".into(),
+                    out.limit_views.freeze_threshold_added,
+                ),
+                (
+                    "FreezeThresholdMod".into(),
+                    out.limit_views.freeze_threshold_mod,
+                ),
+            ],
+        ),
         "DurationMod" => (
             "max((1 + DurationIncreased / 100) * DurationMore, 0)",
             vec![
