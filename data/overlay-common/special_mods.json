@@ -12,6 +12,72 @@
   },
   "entries": [
     {
+      "id": "daze_magnitude",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased magnitude of daze$",
+      "mods": [
+        {
+          "name": "DazeMagnitude",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "daze_magnitude_+%; passives (2 nodes)",
+      "exporter": "absent",
+      "source_note": "Scales the 50% more Stun Buildup a Dazed enemy takes (game KeywordPopups Daze): the factor becomes 1 + 0.5 * (1 + increased). Applied through setup_env::scale_enemy_daze on the same EnemyDazed state, so it needs conditionEnemyDazed like the base 50%.",
+      "examples": [
+        "15% increased Magnitude of Daze"
+      ]
+    },
+    {
+      "id": "hinder_chance_and_duration",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% chance to hinder enemies on hit with spells|(\\d+(?:\\.\\d+)?)% increased hinder duration)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Hinder passives",
+      "exporter": "absent",
+      "source_note": "Hinder is an enemy movement debuff. The state is a configured input (conditionEnemyHindered) and there is no enemy movement model, so a chance to inflict it or its duration has nothing to scale.",
+      "examples": [
+        "10% chance to Hinder Enemies on Hit with Spells",
+        "20% increased Hinder Duration"
+      ]
+    },
+    {
+      "id": "rage_events_and_rage_scaled_bonuses",
+      "pattern": "^(?:consume all rage when shapeshifting to human form to recover (\\d+(?:\\.\\d+)?)% of maximum life per rage consumed|gain (\\d+) rage when you use a life flask|every rage also grants you (\\d+(?:\\.\\d+)?)% increased minion damage|every five rage also grants you (\\d+(?:\\.\\d+)?)% increased minion attack speed|allies in your presence regenerate (\\d+) rage per second if you have gained rage recently|\\+(\\d+) maximum rage if you've used a skill that requires glory in the past (\\d+) seconds|(\\d+)% faster start of inherent rage loss)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Rage passives",
+      "exporter": "absent",
+      "source_note": "Rage gained, consumed and lost over time is not simulated: the Rage count is a configured input, so gains and losses have no rate to apply. A bonus a Rage count gives to Minions would need the minion calculation to read the player's Rage, which is not built.",
+      "examples": [
+        "Consume all Rage when Shapeshifting to Human form to recover 1% of maximum life per Rage Consumed",
+        "Gain 8 Rage when you use a Life Flask",
+        "Every Rage also grants you 1% increased Minion Damage",
+        "Every five Rage also grants you 2% increased Minion Attack Speed",
+        "Allies in your Presence Regenerate 5 Rage per second if you have gained Rage Recently",
+        "+15 maximum Rage if you've used a Skill that Requires Glory in the past 20 seconds",
+        "200% faster start of inherent Rage loss"
+      ]
+    },
+    {
+      "id": "darkness_reservation",
+      "pattern": "^(?:damage taken is reserved from darkness before being taken from life or energy shield|darkness reservation lasts for (\\d+) seconds)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Darkness passives",
+      "exporter": "absent",
+      "source_note": "Darkness is a resource the calculation does not have: there is no pool, no reservation and no damage routed through it.",
+      "examples": [
+        "Damage taken is Reserved from Darkness before being taken from Life or Energy Shield",
+        "Darkness Reservation lasts for 5 seconds"
+      ]
+    },
+    {
       "id": "loreweave_exclusive_item_rarity",
       "pattern": "^([+-]?\\d+(?:\\.\\d+)?)% increased rarity of items found your other modifiers to rarity of items found do not apply$",
       "mods": [

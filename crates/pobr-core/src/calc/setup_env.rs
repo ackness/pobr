@@ -469,6 +469,27 @@ fn inject_ehp_damage_placeholder(
 /// Attributed to an exposure sub-source under `EnemyConfig`.
 ///
 /// Sources: agent-docs/debuffs.md §Exposure; PoB2 CalcPerform.lua:3215-3247.
+/// "N% increased Magnitude of Daze" (`daze_magnitude_+%`, `DazeMagnitude`) scales the Stun Buildup a Dazed enemy
+/// takes (50% more by default, `inject_enemy_mods`). The factor on the buildup is `1 + 0.5 * (1 + increased)`, and
+/// the enemy already carries the `1.5`, so the extra multiplier added here is `(1 + 0.5 * (1 + i)) / 1.5`, which
+/// is `1 + i / 3`. Gated on the same `EnemyDazed` state; nothing is added without a Daze Magnitude modifier.
+pub fn scale_enemy_daze(db: &mut ModDb, player_db: &ModDb, cfg: &CalcConfig) {
+    let increased = player_db.sum(ModType::Inc, cfg, &[ModName::from("DazeMagnitude")]);
+    if increased == 0.0 {
+        return;
+    }
+    db.add_mod(
+        Modifier::number(
+            "StunBuildup",
+            ModType::More,
+            100.0 * increased / 100.0 / 3.0,
+        )
+        .with_source("enemy dazed_magnitude")
+        .with_origin(enemy_source("dazed_magnitude"))
+        .with_tag(ModTag::condition("EnemyDazed", false)),
+    );
+}
+
 pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &CalcConfig) {
     // `exposureEffectOnSelf = enemyDB:More(nil, "ExposureEffectOnSelf")` (:3224):
     // a Boss's `MORE -50` → 0.5. This mod is gated by `Condition:Effective`,

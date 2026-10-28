@@ -1429,14 +1429,7 @@
     },
     {
       "text": "+15 maximum [Rage] if you've used a Skill that Requires [Glory] in the past 20 seconds",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "MaximumRage",
-          "type": "Base",
-          "value": 15.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "+15 to Maximum [Rage]",
@@ -12409,7 +12402,14 @@
     },
     {
       "text": "15% increased [BuffMagnitude|Magnitude] of [Daze]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "DazeMagnitude",
+          "type": "Inc",
+          "value": 15.0
+        }
+      ]
     },
     {
       "text": "15% increased [BuffMagnitude|Magnitude] of [JaggedGround|Jagged Ground] you create",
@@ -16503,14 +16503,7 @@
     },
     {
       "text": "20% increased [Hinder] Duration",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Duration",
-          "type": "Inc",
-          "value": 20.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "20% increased [Ignite|Ignite] [BuffMagnitude|Magnitude]",
@@ -35345,7 +35338,7 @@
     },
     {
       "text": "Consume all [Rage] when [Shapeshift|Shapeshifting] to Human form to recover 1% of maximum life per [Rage] Consumed",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Consuming [Glory] grants you 3% increased [Attack] damage per [Glory] consumed for 6 seconds, up to 60%",
@@ -35701,7 +35694,7 @@
     },
     {
       "text": "Darkness [Reservation] lasts for 5 seconds",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Deal 10% of Overkill damage to enemies within 2 metres of the enemy killed",
@@ -36728,11 +36721,11 @@
     },
     {
       "text": "Every [Rage] also grants you 1% increased Minion Damage",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Every five [Rage] also grants you 2% increased Minion Attack Speed",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Every second [Slam] Skill you use yourself is [AncestralBoost|Ancestrally Boosted]",
@@ -37634,14 +37627,7 @@
     },
     {
       "text": "Gain 8 [Rage] when you use a Life [Flask]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "MaximumLife",
-          "type": "Base",
-          "value": 8.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "Gain 9% of Damage as Extra Chaos Damage",
@@ -42658,20 +42644,7 @@
     },
     {
       "text": "[Allies] in your [Presence] Regenerate 5 [Rage] per second if you have gained [Rage] [Recently]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "ExtraAura",
-          "type": "List",
-          "value": [
-            {
-              "name": "RageRegen",
-              "type": "Base",
-              "value": 5.0
-            }
-          ]
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "[Allies] in your [Presence] gain added [Attack] Damage equal\nto 25% of your main hand Weapon's damage",
