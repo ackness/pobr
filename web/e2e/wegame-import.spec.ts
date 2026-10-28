@@ -28,9 +28,8 @@ test('WeGame import preserves gem levels and ranks quiver upgrades', async ({ pa
   await page.locator('.import-submit').click();
   await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
   await page.getByRole('button', { name: 'Build', exact: true }).click();
-  const unsupported = page.locator('.unsupported-block');
-  await unsupported.locator('summary').click();
-  await expect(unsupported.locator('li')).toHaveText(['Also grants 102 Guard']);
+  // Guard from a charm is modelled, so nothing in this import is left unsupported.
+  await expect(page.locator('.unsupported-block')).toHaveCount(0);
   await page.getByRole('button', { name: 'Skills', exact: true }).click();
   await expect(page.locator('.skill-group').first()).toContainText('Ice Shot');
   // The persisted editing state is what the optimizer and the next reload consume.

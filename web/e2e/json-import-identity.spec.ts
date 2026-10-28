@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
 import type { BuildJson, CalculateBuildRequest, CalculateBuildResponse, PassiveNode } from '../src/api/types';
 import type { SavedSession } from '../src/hooks/useBuildSession';
@@ -57,6 +58,11 @@ async function settled(page: Page) {
   await expect(page.locator('.topbar-busy')).toHaveCount(0);
   await expect(page.locator('.workspace-saved')).toBeVisible();
   await expect(page.locator('.boot-error, .workspace-save-error')).toHaveCount(0);
+}
+
+/** An import that chose no main skill gets the best one pinned a moment after it has settled. */
+async function pinned(page: Page) {
+  await expect.poll(async () => (await saved(page)).state.params.main_socket_group).toBeDefined();
 }
 
 async function capture(page: Page): Promise<BuildCapture> {
@@ -143,8 +149,8 @@ async function frostWorkspace(page: Page, lang: Lang = 'en-US') {
 async function submitPaste(page: Page, value: string, destination: Destination, lang: Lang = 'en-US', cancel = false) {
   await page.getByRole('combobox', { name: workspaceText(lang).importDestination, exact: true }).selectOption(destination);
   await page.getByRole('textbox', { name: bindT(lang)('build.code'), exact: true }).fill(value);
-  if (destination === 'currentStage') page.once('dialog', dialog => cancel ? dialog.dismiss() : dialog.accept());
   await page.locator('.import-submit').click();
+  if (destination === 'currentStage') await answerConfirm(page, !cancel);
   await settled(page);
 }
 
@@ -197,7 +203,8 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
 const invalidSources = [
   ['empty object', {}],
   ['version only', { version: 1 }],
-  ['unrelated named object', { name: 'Not a character source', ascendancy: 'Monk3' }],
+  // A name and an ascendancy alone are a valid Build Planner file, so the object carries a field no source has.
+  ['unrelated named object', { name: 'Not a character source', ascendancy: 'Monk3', colour: 'red' }],
   ['missing passives', { items: [], skills: [] }],
   ['missing items', { passives: [], skills: [] }],
   ['missing skills', { passives: [], items: [] }],
@@ -243,12 +250,12 @@ test('external JSON files reject while malformed PoBR files retain their origina
     expect(await capture(page)).toEqual(before);
   }
   const damagedBackup = JSON.stringify({ ...before.envelope, workspace: null });
-  page.once('dialog', dialog => dialog.dismiss());
   await page.locator('input[type=file]').setInputFiles({ name: 'damaged-workspace.json', mimeType: 'application/json', buffer: Buffer.from(damagedBackup) });
+  await answerConfirm(page, false);
   await settled(page);
   expect(await capture(page)).toEqual(before);
-  page.once('dialog', dialog => dialog.accept());
   await page.locator('input[type=file]').setInputFiles({ name: 'damaged-workspace.json', mimeType: 'application/json', buffer: Buffer.from(damagedBackup) });
+  await answerConfirm(page, true);
   await expect(page.getByRole('alert').last()).toBeVisible();
   expect(await capture(page)).toEqual(before);
   await page.reload();
@@ -329,7 +336,12 @@ async function checkDecodedImport(page: Page, source: string) {
   expect(state.items).toEqual(decoded.items.equipped);
   expect(state.flasks).toEqual(decoded.items.flasks);
   expect(state.jewels).toEqual(decoded.items.socket_jewels);
-  expect(state.socketGroups).toEqual(decoded.socket_groups.map(({ active_skill_id: _active, ...group }) => group));
+  // The app leaves out an absent group count, and pins the best skill of an import that chose none.
+  const expectedGroups = decoded.socket_groups.map(({ active_skill_id: _active, group_count, ...group }) => ({
+    ...group, ...(group_count != null ? { group_count } : {}),
+  }));
+  expect(state.socketGroups.map((group, index) =>
+    expectedGroups[index]?.main_active_skill === undefined ? { ...group, main_active_skill: undefined } : group)).toEqual(expectedGroups);
   expect(state.params.config_inputs).toEqual(decoded.config_inputs);
   expect(state.pobCode).toBeNull();
 }
@@ -340,6 +352,7 @@ test('committed legacy .build keeps real character, passives, equipment and gems
   await page.locator('input[type=file]').setInputFiles({ name: '召唤奥黛丽黑本.build', mimeType: 'application/json', buffer: Buffer.from(legacyBuild) });
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 90_000 });
   await settled(page);
+  await pinned(page);
   await checkDecodedImport(page, legacyBuild);
   const after = await capture(page);
   expect(after.envelope.workspace.builds.slice(0, -1)).toEqual(before.workspace.builds);
@@ -356,6 +369,7 @@ test('committed legacy .build keeps real character, passives, equipment and gems
   await expectRestored(page, after);
   await nav(page, 'Build').click();
   await importSource(page, legacyBuild);
+  await pinned(page);
   await checkDecodedImport(page, legacyBuild);
   const pasted = await capture(page);
   const pastedContent = restoredSnapshot(pasted);
@@ -429,12 +443,12 @@ test('proper pobr-build file and confirmed workspace backup preserve all stages 
   const backup = JSON.stringify(shared.envelope);
   await editName(page, workspaceText('en-US').newBuild, 'Temporary before backup restore');
   const temporary = await capture(page);
-  page.once('dialog', dialog => dialog.dismiss());
   await page.locator('input[type=file]').setInputFiles({ name: 'pobr-workspace.json', mimeType: 'application/json', buffer: Buffer.from(backup) });
+  await answerConfirm(page, false);
   await settled(page);
   expect(await capture(page)).toEqual(temporary);
-  page.once('dialog', dialog => dialog.accept());
   await page.locator('input[type=file]').setInputFiles({ name: 'pobr-workspace.json', mimeType: 'application/json', buffer: Buffer.from(backup) });
+  await answerConfirm(page, true);
   await expect(page.locator('.paper-doll')).toBeVisible();
   await expectRestored(page, shared);
   await nav(page, 'Build').click();
@@ -450,8 +464,8 @@ test('proper pobr-build file and confirmed workspace backup preserve all stages 
   const sessionFile: SavedSession = { version: 1, state: structuredClone(raw.state), notes: 'Explicit saved-session replacement' };
   sessionFile.state.character.level = 97;
   await page.getByRole('combobox', { name: 'Import into', exact: true }).selectOption('currentStage');
-  page.once('dialog', dialog => dialog.accept());
   await page.locator('input[type=file]').setInputFiles({ name: 'pobr-session.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(sessionFile)) });
+  await answerConfirm(page, true);
   await expect(page.locator('.paper-doll')).toBeVisible();
   const replaced = await capture(page);
   const expected = structuredClone(shared.envelope);

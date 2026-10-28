@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
+import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
 import type { AttributeChoice, CalculateBuildRequest, CalculateBuildResponse, PassiveNode } from '../src/api/types';
 import { formatApiError } from '../src/api/error';
@@ -180,8 +181,8 @@ async function paste(page: Page, source: string, destination: Destination, lang:
   await nav(page, bindT(lang)('tab.build')).click();
   await page.getByRole('combobox', { name: workspaceText(lang).importDestination, exact: true }).selectOption(destination);
   await page.getByRole('textbox', { name: bindT(lang)('build.code'), exact: true }).fill(source);
-  if (destination === 'currentStage') page.once('dialog', dialog => cancel ? dialog.dismiss() : dialog.accept());
   await page.locator('.import-submit').click();
+  if (destination === 'currentStage') await answerConfirm(page, !cancel);
   await settled(page);
 }
 
