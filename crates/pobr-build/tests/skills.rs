@@ -16,6 +16,9 @@ fn test_data() -> &'static pobr_build::BuildData {
     &DATA
 }
 
+#[path = "skills/passive_tree_coverage.rs"]
+mod passive_tree_coverage;
+
 #[path = "skills/volatility_events.rs"]
 mod volatility_events;
 
