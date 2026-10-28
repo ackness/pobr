@@ -468,6 +468,16 @@ modifier. Stacks are removed by the Bleeding they cause; the configured count is
 lands, and no stack build-up, consumption timing or `incisionConsumedRecently` is inferred from the chance. No
 worked build carries Incision, so this is covered by a build-level test only.
 
+Thorns (retaliation damage when the character is hit) was evaluated and is deliberately not modelled. The game data
+holds the damage, critical, leech and conversion stats (47 mods and 38 gap-queue templates), but no Thorns skill:
+the pinned PoB2 adds a synthetic `ThornsPlayer` skill to a "Thorns" socket group whenever the modifier database
+holds Thorns damage (`CalcSetup.lua`), which has no game definition, and how often it retaliates depends on how often
+enemies hit the character, an input nothing defines (the reason `enemySpeed` is not an EHP multiplier). Of the 100
+worked builds only two carry a Thorns line, a single "increased Thorns damage" enchant or jewel, which the ledger
+reports as `inactive` ("needs Thorns"); there is no reference row and no build whose numbers would change. If a build
+needs it, start from a per-hit Thorns damage view (item, body-armour, Life and Mana shares, increases, conversion)
+with an explicit hit-rate input, and no inferred retaliation frequency.
+
 Player-side views `SelfFreezeEffect`, `SelfPoisonEffect` and `SelfBlindDuration` follow the other `Self*` views: nonnegative `(100 + INC) * MORE` percentages. Freeze effect reads `SelfFreezeEffect` (game `non_damaging_ailment_effect_+%_on_self`, also feeding Chill and Shock); Poison effect reads `SelfPoisonEffect` (`unaffected_by_damaging_ailments` gives 0). Blind has no self-duration game stat (`blind_duration_+%` is outgoing), so `SelfBlindDuration` is the 100% base times `DebuffExpirationModifier / 100`: Blind is a debuff. Incoming freeze, poison and blind remain unmodelled, so these views change no other output.
 
 “你和 Presence 内的友军 …” 类词条（例如 Infernalist 的 Bringer of Flame：“All Damage from you and Allies in your Presence contributes to Flammability and Ignite Magnitudes”）角色自己也有。PoBR 的 `ExtraAura` 只给友军，所以抽取器把 PoB2 规则里不带 `onlyAllies` 的 `ExtraAura` 展开为角色自己的词条（带同样的条件）加给友军的 `ExtraAura`（`sync-pob-catalog` 的 `character_share_of_aura`）；带 `onlyAllies` 的规则抽取器不收。
