@@ -68,7 +68,6 @@ node.15494	3% increased [Fire] Damage per [Charges|Endurance Charge] consumed [R
 node.15606	Consuming [Glory] grants you 3% increased [Attack] damage per [Glory] consumed for 6 seconds, up to 60%
 node.15617	Life [Flask|Flasks] applied to you grant [Guard] for 4 seconds equal to 8% of the Life Recovery per Second they apply
 node.15839	10% increased Duration of [Ailments|Ailments] on Beasts
-node.15876	Gain 15% of maximum [EnergyShield|Energy Shield] as additional [FreezeThreshold|Freeze Threshold]
 node.15991	Immune to [Shock] while affected by an [Archon] [Buff]
 node.16024	[Invoke|Invocation] [Spell|Spells] have 20% increased [CriticalDamageBonus|Critical Damage Bonus]
 node.16276	Body Armour grants 60% increased [Glory] generation
@@ -138,7 +137,6 @@ node.25653	Grants Skill: <underline>{Kelari's Judgment}
 node.25683	Grants Skill: <underline>{Ruzhan's Reckoning}
 node.25781	[Leech] recovers based on [Chaos] Damage as well as [Physical] Damage
 node.25890	Recover 2% of maximum Mana when you consume a [Charges|Power Charge]
-node.26061	Gain 15% of maximum [EnergyShield|Energy Shield] as additional [FreezeThreshold|Freeze Threshold]
 node.26228	2% chance that if you would gain [Charges|Frenzy Charges], you instead gain up to your maximum number of [Charges|Frenzy Charges]
 node.26479	You cannot be [LightStun|Light Stunned] if you've been [Stun|Stunned] [Recently]
 node.26638	Grants Skill: <underline>{Temporal Rift}
@@ -261,7 +259,6 @@ node.39887	Tame Beast can capture [Rarity|Unique] Beasts
 node.39887	[Rarity|Unique] Tamed Beasts are [SpiritPossessed|Possessed] by random [AzmeriSpirit|Azmeri Spirits], changing every 20 seconds
 node.39887	[Rarity|Unique] Tamed Beasts have 30% increased movement speed
 node.40270	10% chance when you gain a [Charges|Frenzy Charge] to gain an additional [Charges|Frenzy Charge]
-node.4031	Gain 50% of maximum [EnergyShield|Energy Shield] as additional [FreezeThreshold|Freeze Threshold]
 node.40687	[Allies] in your [Presence] have 30% increased [Glory] generation
 node.40736	8% increased [Glory] generation
 node.41033	[Offering|Offerings] cannot be damaged if they have been created [Recently]
@@ -466,7 +463,6 @@ node.750	[Strike|Strikes] deal [MeleeSplash|Splash Damage]
 node.7668	20% chance to [Aggravate] [Bleeding] on targets you [Hit] with [Empowered] [Attack|Attacks]
 node.7720	Gain 1 [Rage] when your [Hit] [Ignite|Ignites] a target
 node.7847	Skills have 10% chance to not remove [Charges|Charges] but still count as consuming them
-node.7947	Gain 15% of maximum [EnergyShield|Energy Shield] as additional [FreezeThreshold|Freeze Threshold]
 node.7979	Grants Skill: <underline>{Elemental Surge}
 node.7979	When you Consume a [Charges|Charge], [Trigger] Elemental Surge to gain 3 [Surge|Lightning Surges]
 node.8107	20% increased [Glory] generation

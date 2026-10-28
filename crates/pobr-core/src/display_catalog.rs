@@ -626,6 +626,18 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
             "MovementSpeedMod",
         ),
         computed("LightRadiusMod", Cat::Misc, Vt::Number, "LightRadiusMod"),
+        computed(
+            "FreezeThresholdAdded",
+            Cat::Defence,
+            Vt::Number,
+            "FreezeThresholdAdded",
+        ),
+        computed(
+            "FreezeThresholdMod",
+            Cat::Defence,
+            Vt::Number,
+            "FreezeThresholdMod",
+        ),
         computed("GemLevel", Cat::Misc, Vt::Number, "GemLevel"),
         computed(
             "EffectiveLootRarityMod",

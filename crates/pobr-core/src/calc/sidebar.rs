@@ -171,6 +171,10 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     out.limit_views.action_speed_mod = action_speed;
     out.limit_views.movement_speed_mod = movement;
     out.limit_views.light_radius_mod = factor(db, &global, &["LightRadius"]);
+    out.limit_views.freeze_threshold_added = db
+        .sum(ModType::Base, &global, &[ModName::from("FreezeThreshold")])
+        .max(0.0);
+    out.limit_views.freeze_threshold_mod = factor(db, &global, &["FreezeThreshold"]);
     out.effective_loot_rarity_mod = if db.has_name("LootRarityExclusive") {
         factor(
             &db.filtered(loot_rarity_filter(db, &global)),

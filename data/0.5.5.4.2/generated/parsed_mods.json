@@ -37129,9 +37129,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "EnergyShield",
+          "name": "FreezeThreshold",
           "type": "Base",
-          "value": 15.0
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"EnergyShield\", percent: Some(15.0) }"
+          ]
         }
       ]
     },
@@ -37549,9 +37552,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "EnergyShield",
+          "name": "FreezeThreshold",
           "type": "Base",
-          "value": 50.0
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"EnergyShield\", percent: Some(50.0) }"
+          ]
         }
       ]
     },
