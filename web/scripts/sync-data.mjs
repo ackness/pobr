@@ -5,6 +5,9 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { syncBuildReferences } from './sync-build-references.mjs';
 
+/** Where a published file is also found by its content: `data/h/<first 16 digits of its SHA-256>/<path>`. */
+const ADDRESSED = 'h';
+const ADDRESS_LENGTH = 16;
 const webRoot = fileURLToPath(new URL('..', import.meta.url));
 const repoRoot = join(webRoot, '..');
 const maintenanceFiles = new Set([
@@ -102,6 +105,11 @@ export function syncData({ dataRoot = join(repoRoot, 'data'), destRoot = join(we
       mkdirSync(dirname(destination), { recursive: true });
       cpSync(path, destination);
       digests[rel] = createHash('sha256').update(readFileSync(destination)).digest('hex');
+      // The same bytes where the path names them: `_headers` matches paths, not query strings, so a
+      // file is only ever kept for good under a path that can never hold other content.
+      const addressed = join(stagedData, ADDRESSED, digests[rel].slice(0, ADDRESS_LENGTH), rel);
+      mkdirSync(dirname(addressed), { recursive: true });
+      cpSync(destination, addressed);
     }
     // Sorted like `files`, so the manifest does not depend on the order files were copied in.
     for (const rel of files) sortedDigests[rel] = digests[rel];

@@ -1,0 +1,12 @@
+# Pages applies these to the static files it serves itself. The worker only ever sees the API routes
+# of _routes.json, and a header rule matches a path, never a query string, so only files whose path
+# names their content may be kept for good: a path like that can never hold other bytes.
+
+# The bundler's output: every file's name carries a hash of its content.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The data pack's content-addressed copies (scripts/sync-data.mjs): /data/h/<digest>/<file>.
+# The plain /data/<version>/ paths and the manifest are not listed: they revalidate on every visit.
+/data/h/*
+  Cache-Control: public, max-age=31536000, immutable

@@ -16,7 +16,9 @@ function pack(contents: Record<string, string>, extra: Record<string, unknown> =
   const requested: string[] = [];
   const fetchBytes = async (url: string) => {
     requested.push(url);
-    const rel = new URL(url, 'https://x.test').pathname.replace('/data/1.2/', '');
+    // A file is found at its plain path or under the path that names its content.
+    const path = new URL(url, 'https://x.test').pathname;
+    const rel = path.startsWith('/data/h/') ? path.replace(/^\/data\/h\/[0-9a-f]{16}\//, '') : path.replace('/data/1.2/', '');
     const data = files.get(rel);
     if (!data) throw new Error(`fetch ${url}: 404`);
     return data;
@@ -25,10 +27,10 @@ function pack(contents: Record<string, string>, extra: Record<string, unknown> =
 }
 
 describe('dataUrl', () => {
-  it('names a file by its digest, and only by a whole one', () => {
+  it('names a file by its content, and only by a whole digest', () => {
     const digests = { 'base/a.json': 'ab'.repeat(32), 'base/b.json': 'xyz', 'base/c.json': 'AB'.repeat(32) };
-    expect(dataUrl({ version: '1.2', digests }, 'base/a.json')).toBe(`/data/1.2/base/a.json?h=${'ab'.repeat(8)}`);
-    // No digest, or one that is not a SHA-256 in lower-case hex: the plain URL, which the host revalidates.
+    expect(dataUrl({ version: '1.2', digests }, 'base/a.json')).toBe(`/data/h/${'ab'.repeat(8)}/base/a.json`);
+    // No digest, or one that is not a SHA-256 in lower-case hex: the plain path, which the host revalidates.
     expect(dataUrl({ version: '1.2', digests }, 'base/b.json')).toBe('/data/1.2/base/b.json');
     expect(dataUrl({ version: '1.2', digests }, 'base/c.json')).toBe('/data/1.2/base/c.json');
     expect(dataUrl({ version: '1.2' }, 'base/a.json')).toBe('/data/1.2/base/a.json');
@@ -50,9 +52,9 @@ describe('loadDataPack', () => {
     expect([...loaded.kept.keys()]).toEqual(['i18n/c.json']);
     expect(staged.sort()).toEqual(manifest.files);
     expect(progress).toEqual([1, 2, 3, 4]);
-    // The snapshot manifest is asked for first, and every file by its digest.
-    expect(requested[0]).toMatch(/\/manifest\.json\?h=[0-9a-f]{16}$/);
-    expect(requested.every((url) => /\?h=[0-9a-f]{16}$/.test(url))).toBe(true);
+    // The snapshot manifest is asked for first, and every file by its content.
+    expect(requested[0]).toMatch(/^\/data\/h\/[0-9a-f]{16}\/manifest\.json$/);
+    expect(requested.every((url) => /^\/data\/h\/[0-9a-f]{16}\//.test(url))).toBe(true);
   });
 
   it('rejects a file that does not match its digest, with the engine\'s words', async () => {
@@ -88,7 +90,7 @@ describe('loadDataPack', () => {
     const plain: DataManifest = { version: manifest.version, files: manifest.files };
     const loaded = await loadDataPack({ manifest: plain, fetchBytes, digest, stage: () => {}, keep: () => false });
     expect(loaded.verified).toBe(true);
-    expect(requested.every((url) => !url.includes('?'))).toBe(true);
+    expect(requested.every((url) => url.startsWith('/data/1.2/'))).toBe(true);
   });
 
   it('never has more files in flight than it was allowed', async () => {
