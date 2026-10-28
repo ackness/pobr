@@ -6,8 +6,9 @@
 use std::collections::BTreeSet;
 
 use pobr_build::usage::{LineStatus, line_usage};
-use pobr_build::{DataOrchestratorOptions, diagnose, parse_build};
+use pobr_build::{DataOrchestratorOptions, calculate_with_data_session, diagnose, parse_build};
 use pobr_data::catalog::PassiveNodeKind;
+use pobr_data::prelude::{ModName, ModType};
 
 use crate::test_data as data;
 
@@ -128,4 +129,57 @@ fn a_granted_skill_line_is_read_by_the_skill_the_build_lists() {
         r#"<Skill enabled="false"><Gem skillId="MetaMirageDeadeyePlayer" level="20" enabled="true"/></Skill>"#,
     );
     assert_eq!(disabled.status, LineStatus::Unparsed, "{disabled:?}");
+}
+
+/// Passive 11526: "Arrows gain Critical Hit Chance as they travel farther, up to 40% increased Critical Hit
+/// Chance after 7 metres". The bonus follows the configured enemy distance (tenths of a metre) up to 70. Without a
+/// configured distance the effective mode uses the default 20, like every distance ramp. The tree words the stat
+/// over two lines.
+#[test]
+fn arrow_critical_chance_grows_with_the_configured_distance() {
+    let data = data();
+    let inc = |node: bool, distance: Option<f64>| -> f64 {
+        let config = distance.map_or_else(String::new, |distance| {
+            format!(r#"<Input name="enemyDistance" number="{distance}"/>"#)
+        });
+        let tree = if node {
+            r#"<Tree activeSpec="1"><Spec nodes="11526"/></Tree>"#
+        } else {
+            ""
+        };
+        let build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="96" className="Ranger" ascendClassName="Deadeye" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="IceShotPlayer" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Crude Bow
+Implicits: 0
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+{tree}<Config>{config}</Config></PathOfBuilding2>"#
+        ))
+        .unwrap();
+        let options = DataOrchestratorOptions {
+            mode_effective: true,
+            ..Default::default()
+        };
+        let session = calculate_with_data_session(&build, data, &options).unwrap();
+        session.mod_db().sum(
+            ModType::Inc,
+            session.config(),
+            &[ModName::from("CriticalStrikeChance")],
+        )
+    };
+    for (distance, gained) in [
+        (None, 40.0 * 20.0 / 70.0),
+        (Some(0.0), 0.0),
+        (Some(35.0), 20.0),
+        (Some(70.0), 40.0),
+        (Some(100.0), 40.0),
+    ] {
+        let delta = inc(true, distance) - inc(false, distance);
+        assert!(
+            (delta - gained).abs() < 1e-9,
+            "distance {distance:?}: gained {delta}, expected {gained}"
+        );
+    }
 }

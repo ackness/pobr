@@ -7273,6 +7273,37 @@
       "examples": [
         "4% increased Area of Effect of Ancestrally Boosted Attacks"
       ]
+    },
+    {
+      "id": "arrow_crit_chance_with_distance",
+      "pattern": "^arrows gain critical hit chance as they travel farther, up to 40% increased critical hit chance after 7 metres$",
+      "mods": [
+        {
+          "name": "CriticalStrikeChance",
+          "type": "INC",
+          "value": 40,
+          "flags": [
+            "Projectile"
+          ],
+          "tags": [
+            {
+              "type": "DistanceRamp",
+              "ramp": [
+                "0 0",
+                "70 1"
+              ]
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "arrow_critical_strike_chance_+%_max_as_distance_travelled_increases; passive 11526",
+      "exporter": "absent",
+      "source_note": "The tree words the stat over two lines; the wrapped pair joins into this text. The bonus grows with the distance an arrow has travelled and reaches 40% increased Critical Hit Chance at 7 metres. The distance is the configured enemy distance (enemyDistance, tenths of a metre): the same single-target convention as Point Blank. The 0 to 7 m ramp is linear, assumed from the stat's name and the DistanceRamp rules for Point Blank; no in-game measurement. Like every distance ramp it reads enemyDistance, which is 20 (2 m) in effective mode until a distance is configured, so an unconfigured build gets 40 * 20 / 70 = 11.4%. The Projectile flag stands in for arrows: the line is on a Bow-passive and the engine has no arrow-only flag.",
+      "examples": [
+        "Arrows gain Critical Hit Chance as they travel farther, up to 40% increased Critical Hit Chance after 7 metres"
+      ]
     }
   ]
 }

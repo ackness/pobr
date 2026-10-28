@@ -33934,7 +33934,18 @@
     },
     {
       "text": "Arrows gain [Critical|Critical Hit] Chance as they travel farther, up to\n40% increased [Critical|Critical Hit] Chance after 7 metres",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CriticalStrikeChance",
+          "type": "Inc",
+          "value": 40.0,
+          "flags": 1024,
+          "tags": [
+            "DistanceRamp { ramp: [(0.0, 0.0), (70.0, 1.0)] }"
+          ]
+        }
+      ]
     },
     {
       "text": "Attacks Gain 19% of Damage as Extra Lightning Damage",
