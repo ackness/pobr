@@ -8,7 +8,7 @@ import type { TreeEditResult } from '../api/types';
  */
 
 import { activeWorkspaceStage, addWorkspaceBuild, createWorkspace, duplicateWorkspaceStage, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, replaceComparedStage, type StageSnapshot, type BuildWorkspace } from '../lib/buildWorkspace';
-import { mergeWorkspaces } from '../lib/workspaceMerge';
+import { mergeLibraries, mergeWorkspaces } from '../lib/workspaceMerge';
 import { formatApiError } from '../api/error';
 import { resolveBuildInput } from '../api/import';
 import { reconcileJewelAllocation } from '../lib/passiveGraph';
@@ -386,15 +386,22 @@ export interface Library {
   skillSets: SkillSet[];
 }
 
-function loadLibrary(key: string): Library {
+/** The stored text as a library: what is missing is empty, and unreadable text is an empty library too. */
+function parseLibrary(raw: string | null): Library {
+  return readStoredLibrary(raw) ?? { items: [], skillSets: [] };
+}
+
+/** The library another tab stored, or `null` when the text is not one (nothing to merge with then). */
+function readStoredLibrary(raw: string | null): Library | null {
   try {
-    const parsed = JSON.parse(localStorage.getItem(key) ?? '') as Library;
+    const parsed = JSON.parse(raw ?? '') as Library;
+    if (parsed === null || typeof parsed !== 'object') return null;
     return {
       items: Array.isArray(parsed.items) ? parsed.items : [],
       skillSets: Array.isArray(parsed.skillSets) ? parsed.skillSets : [],
     };
   } catch {
-    return { items: [], skillSets: [] };
+    return null;
   }
 }
 
@@ -752,7 +759,16 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
     notesRef.current = text;
     if (stateRef.current) saveToStorage(stateRef.current, text);
   }, [saveToStorage]);
-  const [library, setLibrary] = useState<Library>(() => loadLibrary(storage.library));
+  // The saved library is shared by the tabs like the build library, and merged the same way: what this
+  // tab last read from or wrote to storage, and the library as it was then, are the base of a merge.
+  const [initialLibrary] = useState(() => {
+    let raw: string | null = null;
+    try { raw = localStorage.getItem(storage.library); } catch { /* unreadable: start empty */ }
+    return { raw, library: parseLibrary(raw) };
+  });
+  const [library, setLibrary] = useState<Library>(initialLibrary.library);
+  const libraryRef = useRef(library);
+  const librarySyncedRef = useRef(initialLibrary);
   const [stateVersion, setStateVersion] = useState(0);
   const calc = calculated?.version === stateVersion ? calculated.result : null;
   const calcMs = calculated?.version === stateVersion ? calculated.ms : null;
@@ -767,13 +783,26 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
   /** `stateVersion` 的同步副本（apply 内自增，避免在 setState updater 里做副作用）。 */
   const versionRef = useRef(0);
 
-  const persistLibrary = useCallback((next: Library) => {
-    setLibrary(next);
+  /** Keeps what another tab saved since this one last looked, writes the result, and returns it. */
+  const persistLibrary = useCallback((next: Library): Library => {
+    let write = next;
     try {
-      localStorage.setItem(storage.library, JSON.stringify(next));
+      const stored = localStorage.getItem(storage.library);
+      if (stored !== null && stored !== librarySyncedRef.current.raw) {
+        const theirs = readStoredLibrary(stored);
+        if (theirs) write = mergeLibraries(librarySyncedRef.current.library, next, theirs);
+      }
+    } catch { /* storage cannot be read: write as before */ }
+    libraryRef.current = write;
+    setLibrary(write);
+    try {
+      const raw = JSON.stringify(write);
+      localStorage.setItem(storage.library, raw);
+      librarySyncedRef.current = { raw, library: write };
     } catch {
       // 配额失败静默。
     }
+    return write;
   }, []);
 
   // 重算请求序号：只应用最新一次的结果（快速连点加点时防乱序覆盖）。
@@ -963,7 +992,8 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
       ? { id: createId(), name: setName, groups: materialize(decoded).socketGroups, main_socket_group: decoded.main_socket_group ?? undefined }
       : null;
 
-    setLibrary((prev) => {
+    {
+      const prev = libraryRef.current;
       // 同文本的旧条目若缺 slot（记 slot 功能之前存的），借本次导入回填——
       // 否则永远进不了槽位切换候选。
       const slotByText = new Map(imported.filter((i) => i.slot).map((i) => [i.text, i.slot]));
@@ -992,16 +1022,10 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
         skillSet && !prev.skillSets.some((s) => s.name === skillSet.name)
           ? [...prev.skillSets, skillSet]
           : prev.skillSets;
-      if (newItems.length === 0 && !backfilled && skillSets === prev.skillSets) return prev;
-      const next: Library = { items: [...existing, ...newItems], skillSets };
-      try {
-        localStorage.setItem(storage.library, JSON.stringify(next));
-      } catch {
-        // 配额失败静默。
-      }
-      return next;
-    });
-  }, []);
+      if (newItems.length === 0 && !backfilled && skillSets === prev.skillSets) return;
+      persistLibrary({ items: [...existing, ...newItems], skillSets });
+    }
+  }, [persistLibrary]);
 
   const importCode = useCallback(
     async (code: string, options: ImportOptions = { destination: 'newBuild' }) => {
@@ -1530,7 +1554,23 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
   // merged a newer write cannot bring an older library back.
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
-      if (event.key !== storage.workspace || event.storageArea !== localStorage) return;
+      if (event.storageArea !== localStorage) return;
+      if (event.key === storage.library) {
+        let storedLibrary: string | null = null;
+        try { storedLibrary = localStorage.getItem(storage.library); } catch { return; }
+        const synced = librarySyncedRef.current;
+        const theirLibrary = storedLibrary === null || storedLibrary === synced.raw ? null : readStoredLibrary(storedLibrary);
+        if (storedLibrary === null || !theirLibrary) return;
+        const mergedLibrary = mergeLibraries(synced.library, libraryRef.current, theirLibrary);
+        librarySyncedRef.current = { raw: storedLibrary, library: mergedLibrary };
+        if (sameValue(mergedLibrary, libraryRef.current)) return;
+        libraryRef.current = mergedLibrary;
+        setLibrary(mergedLibrary);
+        // Only what this tab alone holds needs writing back.
+        if (!sameValue(mergedLibrary, theirLibrary)) persistLibrary(mergedLibrary);
+        return;
+      }
+      if (event.key !== storage.workspace) return;
       let stored: string | null = null;
       try { stored = localStorage.getItem(storage.workspace); } catch { return; }
       const mine = workspaceRef.current;
@@ -1550,7 +1590,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
-  }, [announce, persistWorkspace, showLibraryStage]);
+  }, [announce, persistLibrary, persistWorkspace, showLibraryStage]);
 
   const importSession = useCallback((json: string, destination: ImportDestination = 'newBuild') => {
     const input = JSON.parse(json);
@@ -1668,30 +1708,30 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
   const saveLibraryItem = useCallback(
     (kind: 'item' | 'jewel', text: string, slot?: string) => {
       persistLibrary({
-        ...library,
+        ...libraryRef.current,
         items: [
-          ...library.items,
+          ...libraryRef.current.items,
           { id: createId(), kind, name: itemName(text), text, slot },
         ],
       });
     },
-    [library, persistLibrary],
+    [persistLibrary],
   );
 
   const removeLibraryItem = useCallback(
     (id: string) => {
-      persistLibrary({ ...library, items: library.items.filter((i) => i.id !== id) });
+      persistLibrary({ ...libraryRef.current, items: libraryRef.current.items.filter((i) => i.id !== id) });
     },
-    [library, persistLibrary],
+    [persistLibrary],
   );
 
   const saveSkillSet = useCallback(
     (name: string) => {
       if (!state) return;
       persistLibrary({
-        ...library,
+        ...libraryRef.current,
         skillSets: [
-          ...library.skillSets,
+          ...libraryRef.current.skillSets,
           {
             id: createId(),
             name,
@@ -1701,7 +1741,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
         ],
       });
     },
-    [library, persistLibrary, state],
+    [persistLibrary, state],
   );
 
   const applySkillSet = useCallback(
@@ -1726,9 +1766,9 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
 
   const removeSkillSet = useCallback(
     (id: string) => {
-      persistLibrary({ ...library, skillSets: library.skillSets.filter((s) => s.id !== id) });
+      persistLibrary({ ...libraryRef.current, skillSets: libraryRef.current.skillSets.filter((s) => s.id !== id) });
     },
-    [library, persistLibrary],
+    [persistLibrary],
   );
 
   const runAttribution = useCallback(

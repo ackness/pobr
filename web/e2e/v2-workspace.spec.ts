@@ -56,8 +56,8 @@ test('V2 copies legacy saves once and config edits preserve the original workspa
   expect(dialogs).toEqual([]);
 });
 
-test('V2 tabs of one browser follow each other and merge what a tab missed', async ({ page, context }) => {
-  // Lets this tab be made deaf to `storage` events, as a frozen or sleeping tab is.
+/** Lets a tab be made deaf to `storage` events (`window.deaf = true`), as a frozen or sleeping tab is. */
+async function deafToStorage(page: Page) {
   await page.addInitScript(() => {
     const add = window.addEventListener.bind(window);
     window.addEventListener = ((type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) => {
@@ -68,6 +68,10 @@ test('V2 tabs of one browser follow each other and merge what a tab missed', asy
       }, options);
     }) as typeof window.addEventListener;
   });
+}
+
+test('V2 tabs of one browser follow each other and merge what a tab missed', async ({ page, context }) => {
+  await deafToStorage(page);
   await importV2(page);
   const other = await context.newPage();
   await other.goto('/v2/build');
@@ -114,6 +118,47 @@ test('V2 tabs of one browser follow each other and merge what a tab missed', asy
   await expect(notice(page)).toHaveAttribute('data-sync', 'updated');
   // The other tab follows the merged library; nothing either tab made is lost.
   await names(other, [...start, 'Made there', 'Made here too']);
+});
+
+test('V2 tabs of one browser share the saved skill sets', async ({ page, context }) => {
+  await deafToStorage(page);
+  await importV2(page);
+  const other = await context.newPage();
+  await other.goto('/v2/skills');
+  await expect(other.locator('details.skills-advanced summary')).toBeVisible({ timeout: 90_000 });
+  await nav(page, 'Skills').click();
+  await expect(page.locator('details.skills-advanced summary')).toBeVisible();
+  const chips = (tab: Page) => tab.locator('.skill-set-chip');
+  const stored = async (tab: Page): Promise<string[]> => (await state(tab, 'pobr-v2-library')).skillSets.map((set: { name: string }) => set.name);
+  const save = async (tab: Page, name: string) => {
+    await tab.locator('details.skills-advanced').evaluate(details => { (details as HTMLDetailsElement).open = true; });
+    await tab.getByRole('textbox', { name: 'Set name…', exact: true }).fill(name);
+    await tab.getByRole('button', { name: 'Save current as set', exact: true }).click();
+  };
+
+  // An import already leaves a set named after the class; the others are counted on top of it.
+  const start = await stored(page);
+  const count = (extra: number) => start.length + extra;
+
+  // A set saved in one tab shows up in the other without a reload.
+  await save(page, 'Set A');
+  await expect(chips(other)).toHaveCount(count(1));
+  await expect(chips(other).last()).toContainText('Set A');
+
+  // A tab that never heard of the next one keeps it when it saves its own.
+  await page.evaluate(() => Reflect.set(window, 'deaf', true));
+  await save(other, 'Set B');
+  await expect(chips(page)).toHaveCount(count(1));
+  await save(page, 'Set C');
+  await expect.poll(() => stored(page)).toEqual([...start, 'Set A', 'Set B', 'Set C']);
+  await expect(chips(page)).toHaveCount(count(3));
+  await expect(chips(other)).toHaveCount(count(3));
+
+  // Removing one in a tab that has been told removes it for the other too.
+  await page.evaluate(() => Reflect.set(window, 'deaf', false));
+  await chips(other).filter({ hasText: 'Set B' }).getByRole('button', { name: '×', exact: true }).click();
+  await expect.poll(() => stored(other)).toEqual([...start, 'Set A', 'Set C']);
+  await expect(chips(page)).toHaveCount(count(2));
 });
 
 test('V2 navigation, settings and confirmations retain the current editor', async ({ page }) => {

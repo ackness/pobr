@@ -1,4 +1,4 @@
-import type { BuildStage, BuildWorkspace, LocalBuild } from './buildWorkspace';
+import type { BuildWorkspace, LocalBuild } from './buildWorkspace';
 
 /**
  * Several tabs of one browser share the library, and each writes the whole of it. Merging what
@@ -31,10 +31,11 @@ function orderOf<T extends { id: string }>(first: T[], second: T[]): string[] {
   return [...first.map(entry => entry.id), ...second.filter(entry => !seen.has(entry.id)).map(entry => entry.id)];
 }
 
-function mergeStages(base: BuildStage[], mine: BuildStage[], theirs: BuildStage[], conflicts: string[]): BuildStage[] {
-  const of = (list: BuildStage[]) => new Map(list.map(stage => [stage.id, stage]));
+/** The merge of lists of entries matched by id (stages of a build, items and skill sets of the saved library). */
+function mergeEntries<T extends { id: string }>(base: T[], mine: T[], theirs: T[], conflicts: string[]): T[] {
+  const of = (list: T[]) => new Map(list.map(entry => [entry.id, entry]));
   const [b, m, t] = [of(base), of(mine), of(theirs)];
-  const merged: BuildStage[] = [];
+  const merged: T[] = [];
   for (const id of orderOf(theirs, mine)) {
     const [sb, sm, st] = [b.get(id), m.get(id), t.get(id)];
     if (sm && st) {
@@ -50,7 +51,7 @@ function mergeStages(base: BuildStage[], mine: BuildStage[], theirs: BuildStage[
 }
 
 function mergeBuild(base: LocalBuild | undefined, mine: LocalBuild, theirs: LocalBuild, conflicts: string[]): LocalBuild {
-  const stages = mergeStages(base?.stages ?? [], mine.stages, theirs.stages, conflicts);
+  const stages = mergeEntries(base?.stages ?? [], mine.stages, theirs.stages, conflicts);
   // A build keeps a stage: if the sides disagree so that none is left, this tab's stay.
   const kept = stages.length > 0 ? stages : mine.stages;
   const has = (id: string) => kept.some(stage => stage.id === id);
@@ -88,5 +89,18 @@ export function mergeWorkspaces(base: BuildWorkspace | null, mine: BuildWorkspac
       builds: kept,
     },
     conflicts,
+  };
+}
+
+/**
+ * The saved library of items, jewels and skill sets is shared by the tabs the same way: entries are
+ * matched by id and merged against the library as this tab last saw it (`base`), with the same rules.
+ */
+export function mergeLibraries<L extends { items: { id: string }[]; skillSets: { id: string }[] }>(base: L, mine: L, theirs: L): L {
+  const ignored: string[] = [];
+  return {
+    ...mine,
+    items: mergeEntries(base.items, mine.items, theirs.items, ignored),
+    skillSets: mergeEntries(base.skillSets, mine.skillSets, theirs.skillSets, ignored),
   };
 }

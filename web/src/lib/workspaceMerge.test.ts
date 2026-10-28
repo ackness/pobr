@@ -4,7 +4,7 @@ import {
   activeWorkspaceStage, addWorkspaceBuild, createWorkspace, duplicateWorkspaceStage, parseWorkspace, removeWorkspaceBuild,
   removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, type BuildWorkspace,
 } from './buildWorkspace';
-import { mergeWorkspaces } from './workspaceMerge';
+import { mergeLibraries, mergeWorkspaces } from './workspaceMerge';
 
 const session = (level: number, notes = ''): SavedSession => ({
   version: 1, notes, state: {
@@ -179,5 +179,42 @@ describe('merging what another tab wrote', () => {
     const theirs = addWorkspaceBuild(edit(base, 'A', 'A1', 12), 'D', session(40));
     const once = mergeWorkspaces(base, mine, theirs).workspace;
     expect(mergeWorkspaces(theirs, once, theirs).workspace).toEqual(once);
+  });
+});
+
+describe('merging the saved library of items and skill sets', () => {
+  interface Saved { items: { id: string; text: string; slot?: string }[]; skillSets: { id: string; name: string }[] }
+  const base: Saved = { items: [{ id: 'i1', text: 'Ring' }, { id: 'i2', text: 'Belt' }], skillSets: [{ id: 's1', name: 'Fire' }] };
+  const ids = (saved: Saved) => [saved.items.map(item => item.id), saved.skillSets.map(set => set.id)];
+
+  it('keeps what each tab added', () => {
+    const mine = { ...base, items: [...base.items, { id: 'i3', text: 'Amulet' }] };
+    const theirs = { ...base, skillSets: [...base.skillSets, { id: 's2', name: 'Ice' }] };
+    expect(ids(mergeLibraries(base, mine, theirs))).toEqual([['i1', 'i2', 'i3'], ['s1', 's2']]);
+  });
+
+  it('lets a deletion stand when the other tab left the entry alone', () => {
+    const mine = { ...base, items: base.items.filter(item => item.id !== 'i1') };
+    expect(ids(mergeLibraries(base, mine, base))[0]).toEqual(['i2']);
+    expect(ids(mergeLibraries(base, base, mine))[0]).toEqual(['i2']);
+  });
+
+  it('keeps an entry the other tab changed even though this tab deleted it', () => {
+    const mine = { ...base, items: base.items.filter(item => item.id !== 'i1') };
+    const theirs = { ...base, items: base.items.map(item => item.id === 'i1' ? { ...item, slot: 'ring1' } : item) };
+    const merged = mergeLibraries(base, mine, theirs);
+    expect(merged.items.find(item => item.id === 'i1')).toEqual({ id: 'i1', text: 'Ring', slot: 'ring1' });
+  });
+
+  it('takes the version only one tab changed, and this tab\'s when both did', () => {
+    const edit = (saved: Saved, slot: string) => ({ ...saved, items: saved.items.map(item => item.id === 'i2' ? { ...item, slot } : item) });
+    expect(mergeLibraries(base, base, edit(base, 'belt')).items[1].slot).toBe('belt');
+    expect(mergeLibraries(base, edit(base, 'mine'), edit(base, 'theirs')).items[1].slot).toBe('mine');
+  });
+
+  it('does not lose the first entries of two tabs that both started from nothing', () => {
+    const empty: Saved = { items: [], skillSets: [] };
+    const merged = mergeLibraries(empty, { ...empty, items: [{ id: 'a', text: 'A' }] }, { ...empty, items: [{ id: 'b', text: 'B' }] });
+    expect(merged.items.map(item => item.id)).toEqual(['b', 'a']);
   });
 });
