@@ -17089,7 +17089,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
+          "name": "RecoupSpeed",
           "type": "Inc",
           "value": 20.0
         }
@@ -19753,7 +19753,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
+          "name": "RecoupSpeed",
           "type": "Inc",
           "value": 25.0
         }
@@ -30607,7 +30607,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
+          "name": "RecoupSpeed",
           "type": "Inc",
           "value": 8.0
         }

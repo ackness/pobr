@@ -1073,9 +1073,10 @@ impl CalculationSession {
             "LifeRecoupRate" => {
                 use crate::calc::survivability::life_recoup_terms;
                 let terms = self.ehp_terms()?;
-                let t = life_recoup_terms(db, cfg, terms.recoupable_total, terms.prevented());
-                ("round((RecoupableDamage * RecoupPercent + PhysicalDamagePrevented * PreventedRecoupPercent + ChaosDamagePrevented * ChaosPreventedRecoupPercent) / 100 / RecoupDuration * RecoupRecovery, 9)".into(), vec![
+                let t = life_recoup_terms(db, cfg, terms.recoupable_by_type, terms.prevented());
+                ("round((RecoupableDamage * RecoupPercent + TypedRecoup + PhysicalDamagePrevented * PreventedRecoupPercent + ChaosDamagePrevented * ChaosPreventedRecoupPercent) / 100 / RecoupDuration * RecoupRecovery, 9)".into(), vec![
                         ("RecoupableDamage".into(), t.damage), ("RecoupPercent".into(), t.percent),
+                        ("TypedRecoup".into(), t.typed_amount),
                         ("PhysicalDamagePrevented".into(), t.physical_prevented),
                         ("PreventedRecoupPercent".into(), t.physical_prevented_percent),
                         ("ChaosDamagePrevented".into(), t.chaos_prevented),

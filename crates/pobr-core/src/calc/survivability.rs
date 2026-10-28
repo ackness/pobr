@@ -964,14 +964,21 @@ pub fn calc_recoup_from_db(
 /// Recoup duration for a resource: the global `4SecondRecoup` flag or the
 /// resource's own `4SecondXRecoup` flag selects the 4s duration, otherwise
 /// the 8s default.
+///
+/// "N% increased speed of Recoup Effects" (`recoup_speed_+%`, `RecoupSpeed`) makes every recoup run faster: the
+/// duration is divided by the speed, so the same amount comes back over a shorter time.
 fn recoup_duration(db: &ModDb, cfg: &CalcConfig, resource: RecoupResource) -> f64 {
     let four_sec = db.flag(cfg, RecoupResource::four_sec_flag_global())
         || db.flag(cfg, resource.four_sec_flag());
-    if four_sec {
+    let base = if four_sec {
         RECOUP_DURATION_4S
     } else {
         RECOUP_DURATION_DEFAULT
-    }
+    };
+    let name = ModName::from("RecoupSpeed");
+    let speed = (1.0 + db.sum(ModType::Inc, cfg, std::slice::from_ref(&name)) / 100.0)
+        * db.more(cfg, &[name]);
+    if speed > 0.0 { base / speed } else { base }
 }
 
 /// Recovery rate multiplier for a resource: its `XRecoveryRate` INC/MORE
@@ -1042,6 +1049,9 @@ pub struct PreventedDamage {
 pub struct PreventedRecoupTerms {
     pub damage: f64,
     pub percent: f64,
+    /// Damage taken of a type times that type's own recoup percentage, summed (Life: Physical and each element).
+    /// It adds to `damage * percent`, which is the generic percentage on every type.
+    pub typed_amount: f64,
     pub physical_prevented: f64,
     pub physical_prevented_percent: f64,
     pub chaos_prevented: f64,
@@ -1051,15 +1061,22 @@ pub struct PreventedRecoupTerms {
     pub rate_per_second: f64,
 }
 
+/// The modifier names that give a resource's recoup of prevented damage.
+struct PreventedRecoupNames<'a> {
+    physical: Option<&'a str>,
+    chaos: &'a str,
+}
+
 fn prevented_recoup_terms(
     db: &ModDb,
     cfg: &CalcConfig,
     resource: RecoupResource,
     damage_taken: f64,
+    typed_amount: f64,
     prevented: PreventedDamage,
-    physical_mod: Option<&str>,
-    chaos_mod: &str,
+    names: PreventedRecoupNames<'_>,
 ) -> PreventedRecoupTerms {
+    let (physical_mod, chaos_mod) = (names.physical, names.chaos);
     let damage = damage_taken.max(0.0);
     let percent = recoup_base_percent(db, cfg, resource).max(0.0);
     let physical_prevented = prevented.physical.max(0.0);
@@ -1070,13 +1087,16 @@ fn prevented_recoup_terms(
     let chaos_prevented_percent = prevented_percent(chaos_mod);
     let duration = recoup_duration(db, cfg, resource);
     let recovery = recoup_recovery_rate(db, cfg, resource).max(0.0);
+    let typed_amount = typed_amount.max(0.0);
     let total = (damage * percent
+        + typed_amount
         + physical_prevented * physical_prevented_percent
         + chaos_prevented * chaos_prevented_percent)
         / 100.0;
     PreventedRecoupTerms {
         damage,
         percent,
+        typed_amount,
         physical_prevented,
         physical_prevented_percent,
         chaos_prevented,
@@ -1091,20 +1111,40 @@ fn prevented_recoup_terms(
 /// (`PhysicalDamagePreventedLifeRecoup`) and Chaos damage prevented
 /// (`ChaosDamagePreventedLifeRecoup`), over Life's recoup duration at Life's
 /// recovery rate.
+///
+/// `recoupable_by_type` is Physical/Fire/Cold/Lightning/Chaos. The generic Life recoup applies to every type;
+/// "N% of Physical Damage taken Recouped as Life" and the elemental form (`PhysicalLifeRecoup`,
+/// `Fire/Cold/LightningLifeRecoup`) add to their own type only, as the Energy Shield forms do.
 pub fn life_recoup_terms(
     db: &ModDb,
     cfg: &CalcConfig,
-    damage_taken: f64,
+    recoupable_by_type: [f64; 5],
     prevented: PreventedDamage,
 ) -> PreventedRecoupTerms {
+    use pobr_data::constants::DamageType as DT;
+    let typed_amount: f64 = [
+        (DT::Physical, "PhysicalLifeRecoup"),
+        (DT::Fire, "FireLifeRecoup"),
+        (DT::Cold, "ColdLifeRecoup"),
+        (DT::Lightning, "LightningLifeRecoup"),
+    ]
+    .into_iter()
+    .map(|(damage_type, name)| {
+        recoupable_by_type[damage_type as usize].max(0.0)
+            * db.sum(ModType::Base, cfg, &[ModName::from(name)]).max(0.0)
+    })
+    .sum();
     prevented_recoup_terms(
         db,
         cfg,
         RecoupResource::Life,
-        damage_taken,
+        recoupable_by_type.iter().sum(),
+        typed_amount,
         prevented,
-        Some("PhysicalDamagePreventedLifeRecoup"),
-        "ChaosDamagePreventedLifeRecoup",
+        PreventedRecoupNames {
+            physical: Some("PhysicalDamagePreventedLifeRecoup"),
+            chaos: "ChaosDamagePreventedLifeRecoup",
+        },
     )
 }
 
@@ -1122,9 +1162,12 @@ pub fn mana_recoup_terms(
         cfg,
         RecoupResource::Mana,
         damage_taken,
+        0.0,
         prevented,
-        None,
-        "ChaosDamagePreventedManaRecoup",
+        PreventedRecoupNames {
+            physical: None,
+            chaos: "ChaosDamagePreventedManaRecoup",
+        },
     )
 }
 

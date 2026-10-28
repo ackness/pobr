@@ -7343,6 +7343,25 @@
       "examples": [
         "58 Broken Boss Faces"
       ]
+    },
+    {
+      "id": "recoup_speed",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased speed of recoup effects$",
+      "mods": [
+        {
+          "name": "RecoupSpeed",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "recoup_speed_+%; passives Quick Recovery and others (10 nodes)",
+      "exporter": "absent",
+      "source_note": "Every Recoup (Life, Mana, Energy Shield) runs faster: the recoup duration (8 s, 4 s with the 4-second flags) is divided by (1 + increased) * more, so the same amount returns over a shorter time. Previously the generic pattern read the line as an increase to LocalEffect with leftover text, which was not applied.",
+      "examples": [
+        "20% increased speed of Recoup Effects"
+      ]
     }
   ]
 }
