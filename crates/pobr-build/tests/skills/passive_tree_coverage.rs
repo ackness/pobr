@@ -183,3 +183,47 @@ Implicits: 0
         );
     }
 }
+
+/// A count typed into a `multiplier<X>` input is counted once. The input lands in the multiplier table when the
+/// build is read, and the effective mode's bridge for the option's tagged effect used to add it again (an input of
+/// 4 read as 8), for every count option that carries a Combat or Effective tag.
+#[test]
+fn a_typed_count_is_not_counted_twice_in_the_effective_mode() {
+    let data = data();
+    let count = |input: &str, variable: &str, effective: bool| -> Option<f64> {
+        let build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="96" className="Warrior" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+<Config><Input name="{input}" number="4"/></Config></PathOfBuilding2>"#
+        ))
+        .unwrap();
+        let options = DataOrchestratorOptions {
+            mode_effective: effective,
+            ..Default::default()
+        };
+        let session = calculate_with_data_session(&build, data, &options).unwrap();
+        session.config().multiplier_if_set(variable)
+    };
+    // "# of Recently Applied Ailments" carries a Combat tag.
+    for effective in [false, true] {
+        assert_eq!(
+            count(
+                "multiplierAppliedAilmentsRecently",
+                "AppliedAilmentsRecently",
+                effective
+            ),
+            Some(4.0),
+            "effective: {effective}"
+        );
+    }
+    // Options whose input name is not `multiplier<X>` were never doubled, and still are not.
+    assert_eq!(
+        count(
+            "multiplierEnduranceChargesConsumedRecently",
+            "EnduranceChargesConsumedRecently",
+            true
+        ),
+        Some(4.0)
+    );
+}
