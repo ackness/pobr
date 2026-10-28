@@ -8,10 +8,10 @@
 //! - "2% more Mana Flask Recovery" reads as +2% more `MaximumMana`, leftover "Flask Recovery";
 //!
 //! Four more flask and charm lines used to be listed here ("Removes 15% of Life Recovered
-//! from Mana when used", "88% more Recovery if used while on Low Mana" and the Chaos prevented
-//! recoup line, plus "1% increased speed of Recoup Effects"). They have their own rules in
-//! `overlay-common/special_mods.json` now, so they
-//! are no longer partial; the parser and line-usage tests cover them.
+//! from Mana when used", "88% more Recovery if used while on Low Mana", the Chaos prevented
+//! recoup line and "1% increased speed of Recoup Effects"). They have their own rules in
+//! `overlay-common/special_mods.json` now, so they are no longer partial; the parser and
+//! line-usage tests cover them.
 //!
 //! Every ingest path goes through `ParseOutcome::into_applicable`: such a line applies
 //! nothing and is reported in the ingest's `unsupported` list (and the session's
@@ -141,10 +141,7 @@ fn flask_ingest_does_not_apply_partially_parsed_lines() {
     // The two partial lines are reported as written, in order.
     assert_eq!(
         ingest.unsupported,
-        vec![
-            LIFE_FLASK_MORE.to_string(),
-            MANA_FLASK_MORE.to_string(),
-        ]
+        vec![LIFE_FLASK_MORE.to_string(), MANA_FLASK_MORE.to_string()]
     );
     // The payload holds only the complete line: one MovementSpeed +10% increased.
     let carrier = &ingest.modifiers[0];
