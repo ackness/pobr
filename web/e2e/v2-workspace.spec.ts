@@ -56,6 +56,66 @@ test('V2 copies legacy saves once and config edits preserve the original workspa
   expect(dialogs).toEqual([]);
 });
 
+test('V2 tabs of one browser follow each other and merge what a tab missed', async ({ page, context }) => {
+  // Lets this tab be made deaf to `storage` events, as a frozen or sleeping tab is.
+  await page.addInitScript(() => {
+    const add = window.addEventListener.bind(window);
+    window.addEventListener = ((type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) => {
+      if (type !== 'storage') return add(type, listener, options);
+      return add(type, (event: Event) => {
+        if (Reflect.get(window, 'deaf')) return;
+        if (typeof listener === 'function') listener(event); else listener.handleEvent(event);
+      }, options);
+    }) as typeof window.addEventListener;
+  });
+  await importV2(page);
+  const other = await context.newPage();
+  await other.goto('/v2/build');
+  await expect(other.locator('#build-heading')).toBeVisible({ timeout: 90_000 });
+  // The list on the Build page shows what each tab holds; the header's select only renders the open one.
+  const shown = (tab: Page) => tab.getByRole('group', { name: 'My builds', exact: true }).locator('li strong');
+  const names = (tab: Page, list: string[]) => expect(shown(tab)).toHaveText(list.map(name => name || 'My build'));
+  const notice = (tab: Page) => tab.locator('.v2-notice[data-sync]');
+  const create = async (tab: Page, value: string) => {
+    await tab.getByRole('button', { name: 'New build', exact: true }).last().click();
+    await tab.getByRole('textbox', { name: 'Name', exact: true }).fill(value);
+    await tab.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(tab.locator('.v2-save-state')).toHaveText('Saved locally');
+  };
+  const stored = async (tab: Page): Promise<string[]> =>
+    (await state(tab)).workspace.builds.map((build: { name: string }) => build.name);
+  const start = await stored(page);
+
+  // A build made in one tab appears in the other without a reload, and says so.
+  await openBuilds(page);
+  await create(page, 'Made here');
+  await names(other, [...start, 'Made here']);
+  await expect(notice(other)).toHaveAttribute('data-sync', 'updated');
+
+  // Deleting the build the other tab has open: that tab moves on to one that is still there.
+  await other.getByRole('group', { name: 'My builds', exact: true }).getByRole('button', { name: /Made here/ }).click();
+  await expect(other.locator('.v2-save-state')).toHaveText('Saved locally');
+  await openBuilds(page);
+  await page.getByRole('button', { name: 'Delete build', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+  await names(other, start);
+  await expect(notice(other)).toHaveAttribute('data-sync', 'current-removed');
+  expect(await stored(page)).toEqual(start);
+
+  // A tab that never heard of a change (a frozen or sleeping one) still keeps it when it writes.
+  await page.evaluate(() => Reflect.set(window, 'deaf', true));
+  await openBuilds(other);
+  await create(other, 'Made there');
+  await names(page, start);
+  await openBuilds(page);
+  await create(page, 'Made here too');
+  expect(await stored(page)).toEqual([...start, 'Made there', 'Made here too']);
+  await names(page, [...start, 'Made there', 'Made here too']);
+  await expect(notice(page)).toHaveAttribute('data-sync', 'updated');
+  // The other tab follows the merged library; nothing either tab made is lost.
+  await names(other, [...start, 'Made there', 'Made here too']);
+});
+
 test('V2 navigation, settings and confirmations retain the current editor', async ({ page }) => {
   await importV2(page);
   await expect(page.getByRole('note')).toContainText('configuration');

@@ -1,6 +1,6 @@
 import { Fragment, lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { LayoutDashboard, Library, Network, Gem, Swords, TrendingUp, Calculator, SlidersHorizontal, Columns2, Settings2, Menu, Undo2, Redo2, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Search, Check, LoaderCircle, Download } from 'lucide-react';
-import { useBuildSession } from '../hooks/useBuildSession';
+import { useBuildSession, type SyncNotice } from '../hooks/useBuildSession';
 import { UpgradeGoalProvider } from '../hooks/useUpgradeGoal';
 import { UiProvider, PanelActivity } from '../components/shared/UiContext';
 import { AppDialogsProvider } from '../components/shared/AppDialogs';
@@ -40,6 +40,16 @@ const TradePanel = lazy(() => import('../components/trade/TradePanel').then(m =>
 const CalcsPanel = lazy(() => import('../components/calcs/CalcsPanel').then(m => ({ default: m.CalcsPanel })));
 const Inspector = lazy(() => import('./inspector/Inspector'));
 const TreePanel = lazy(() => import('../components/tree/TreePanel').then(m => ({ default: m.TreePanel })));
+/** What a tab says after it followed a change another tab made to the library. */
+function syncMessage(kind: SyncNotice['kind'], w: (en: string, cn: string, tw?: string) => string) {
+  switch (kind) {
+    case 'current-updated': return w('Another tab changed this stage. It was reloaded here.', '其他标签页修改了当前阶段，已在此重新载入。', '其他分頁修改了目前階段，已在此重新載入。');
+    case 'current-removed': return w('The BD or stage you had open was removed in another tab. Showing one that is still there.', '当前打开的 BD 或阶段已在其他标签页删除，已切换到仍保留的内容。', '目前開啟的 BD 或階段已在其他分頁刪除，已切換至仍保留的內容。');
+    case 'conflict': return w('Another tab changed the same stage. This tab\'s version was kept.', '其他标签页修改了同一阶段，已保留此标签页的版本。', '其他分頁修改了同一階段，已保留此分頁的版本。');
+    default: return w('Another tab changed your BDs. This tab has those changes now.', '其他标签页修改了 BD 库，已同步到此标签页。', '其他分頁修改了 BD 庫，已同步至此分頁。');
+  }
+}
+
 const icons = { overview: LayoutDashboard, build: Library, tree: Network, skills: Gem, items: Swords, trade: TrendingUp, calcs: Calculator, config: SlidersHorizontal, compare: Columns2 };
 
 function download(text: string, name: string) {
@@ -201,6 +211,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
       <main id="v2-main" tabIndex={-1} className={`v2-main v2-page-${route}`} ref={main} key={stageKey}>
         {session.storageFailed && <div className="v2-alert" role="alert"><p>{w('Browser storage is full or unavailable. Download a backup before leaving.', '浏览器存储已满或不可用，请先下载完整备份。', '瀏覽器儲存空間已滿或無法使用，請先下載完整備份。')}</p><Button onClick={() => download(session.exportWorkspace(), 'pobr-v2-backup.json')}><Download />{w('Download backup', '下载备份', '下載備份')}</Button></div>}
         {preferencesFailed && <p className="v2-alert" role="alert">{w('Display preferences could not be saved on this device.', '显示偏好暂时无法保存到当前设备。', '顯示偏好暫時無法儲存至目前裝置。')}</p>}
+        {session.syncNotice && <div className="v2-notice" role="status" data-sync={session.syncNotice.kind}><p>{syncMessage(session.syncNotice.kind, w)}</p><Button variant="ghost" onClick={session.dismissSyncNotice}>{w('Dismiss', '知道了', '知道了')}</Button></div>}
         {reviewStage?.scope === stageKey && <div className="v2-notice" role="note"><p>{t(lang, 'config.importReview')}</p><Button variant="outline" onClick={() => { setReviewStage(null); navigate('config'); }}>{t(lang, 'config.review')}</Button><Button variant="ghost" onClick={() => setReviewStage(null)}>{t(lang, 'config.reviewDismiss')}</Button></div>}
         {Object.keys(session.editorDrafts).length > 0 && <div className="v2-notice" role="status"><p>{t(lang, 'editor.draftHint')}</p><Button variant="outline" onClick={() => navigate('items')}>{t(lang, 'editor.reviewItems')}</Button><Button variant="outline" onClick={() => navigate('tree')}>{t(lang, 'editor.reviewJewels')}</Button></div>}
         {session.calcError && <div className="v2-alert" role="alert"><strong>{w('Calculation unavailable', '当前计算不可用', '目前計算無法使用')}</strong><p>{session.calcError}</p></div>}
