@@ -7217,6 +7217,62 @@
       "examples": [
         "Companions in your Presence have -20% to all Elemental Resistances"
       ]
+    },
+    {
+      "id": "ancestrally_boosted_attack_damage",
+      "pattern": "^ancestrally boosted attacks deal (\\d+(?:\\.\\d+)?)% increased damage$",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "flags": [
+            "Attack"
+          ],
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "AncestrallyBoosted"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "ancestral_boosted_attack_damage_+%",
+      "exporter": "absent",
+      "source_note": "Increased Damage for a boosted attack. The existing Ancestral Boost snapshot (`Condition:AncestrallyBoosted`) decides whether the attack is boosted; the line implies no uptime. Previously parsed to the unread name AncestralBoostDamage.",
+      "examples": [
+        "Ancestrally Boosted Attacks deal 16% increased Damage"
+      ]
+    },
+    {
+      "id": "ancestrally_boosted_attack_area",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased area of effect of ancestrally boosted attacks$",
+      "mods": [
+        {
+          "name": "AreaOfEffect",
+          "type": "INC",
+          "value": "$1",
+          "flags": [
+            "Attack"
+          ],
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "AncestrallyBoosted"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "ancestral_boosted_area_of_effect_+%",
+      "exporter": "absent",
+      "source_note": "Increased Area of Effect for a boosted attack, on the same snapshot as the damage rule. Previously parsed to the unread name AncestralBoostAreaOfEffect.",
+      "examples": [
+        "4% increased Area of Effect of Ancestrally Boosted Attacks"
+      ]
     }
   ]
 }

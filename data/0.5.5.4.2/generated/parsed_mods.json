@@ -21322,10 +21322,13 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "AncestralBoostAreaOfEffect",
+          "name": "AreaOfEffect",
           "type": "Inc",
           "value": 30.0,
-          "flags": 1
+          "flags": 1,
+          "tags": [
+            "Condition { var: \"AncestrallyBoosted\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -23772,10 +23775,13 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "AncestralBoostAreaOfEffect",
+          "name": "AreaOfEffect",
           "type": "Inc",
           "value": 4.0,
-          "flags": 1
+          "flags": 1,
+          "tags": [
+            "Condition { var: \"AncestrallyBoosted\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -42818,10 +42824,13 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "AncestralBoostDamage",
+          "name": "Damage",
           "type": "Inc",
           "value": 16.0,
-          "flags": 1
+          "flags": 1,
+          "tags": [
+            "Condition { var: \"AncestrallyBoosted\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -42830,10 +42839,13 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "AncestralBoostDamage",
+          "name": "Damage",
           "type": "Inc",
           "value": 30.0,
-          "flags": 1
+          "flags": 1,
+          "tags": [
+            "Condition { var: \"AncestrallyBoosted\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -42842,10 +42854,13 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "AncestralBoostDamage",
+          "name": "Damage",
           "type": "Inc",
           "value": 8.0,
-          "flags": 1
+          "flags": 1,
+          "tags": [
+            "Condition { var: \"AncestrallyBoosted\", negated: false, actor: None }"
+          ]
         }
       ]
     },

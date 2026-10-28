@@ -446,3 +446,34 @@ fn ancestral_boost_cry_requires_an_active_source_and_never_boosts_triggered_or_p
         assert_eq!(session.base_sum("PhysicalDamageConvertToFire"), 0.0);
     }
 }
+
+/// Passives 17112 ("Ancestrally Boosted Attacks deal 16% increased Damage") and 18207 ("8% increased Damage" and
+/// "4% increased Area of Effect of Ancestrally Boosted Attacks") read the Ancestral Boost snapshot: they add to a
+/// boosted attack only. The lines used to parse to names nothing read.
+#[test]
+fn ancestrally_boosted_passives_apply_only_to_a_boosted_attack() {
+    let inc = |inputs: &str, name: &str| {
+        let mut build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+        <Build level="80" className="Warrior" mainSocketGroup="1"/>
+        <Skills><Skill><Gem skillId="BoneshatterPlayer" level="20"/>
+        <Gem skillId="SupportAncestralCallPlayer" level="1"/></Skill></Skills>
+        <Config>{inputs}</Config></PathOfBuilding2>"#
+        ))
+        .unwrap();
+        for node in [17112, 18207] {
+            build
+                .tree
+                .allocated_nodes
+                .push(pobr_data::passive_tree::NodeId(node));
+        }
+        let session =
+            calculate_with_data_session(&build, data(), &DataOrchestratorOptions::default())
+                .unwrap();
+        session
+            .mod_db()
+            .sum(ModType::Inc, session.config(), &[ModName::from(name)])
+    };
+    assert_eq!(inc(BOOSTED, "Damage") - inc("", "Damage"), 24.0);
+    assert_eq!(inc(BOOSTED, "AreaOfEffect") - inc("", "AreaOfEffect"), 4.0);
+}
