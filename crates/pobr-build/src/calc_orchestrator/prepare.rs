@@ -208,8 +208,21 @@ pub(super) fn stage_resolve_config(
             // e.g. `multiplierNearbyAlly`'s `Multiplier:NearbyAlly BASE +
             // Condition{Combat}` — the denominator for the NearbyAlly≥1 threshold row,
             // ConfigOptions.lua:1018).
+            // The XML input of a `multiplier<X>` option has already put its number in the multiplier
+            // table (`ParsedConfig::multipliers`). Backfilling the option's tagged effect as well would
+            // count the input twice: this bridge is for a placeholder default, which no input covers.
+            let counted_by_input = |var: &str| {
+                m.origin
+                    .as_ref()
+                    .and_then(|origin| origin.source_id.id.strip_prefix("config."))
+                    .is_some_and(|option| {
+                        option.strip_prefix("multiplier") == Some(var)
+                            && build.config.raw_inputs.values.contains_key(option)
+                    })
+            };
             if m.mod_type == ModType::Base
                 && let Some(var) = m.name.as_str().strip_prefix("Multiplier:")
+                && !counted_by_input(var)
                 && let pobr_core::ModValue::Number(n) = m.value
                 && !m.tags.is_empty()
                 && m.tags.iter().all(|t| {
