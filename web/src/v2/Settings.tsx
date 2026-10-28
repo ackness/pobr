@@ -1,4 +1,4 @@
-import { Moon, Sun, Monitor, Type } from 'lucide-react';
+import { Moon, Sun, Monitor, Type, ArrowLeft } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
 import { Slider } from '../components/ui/slider';
@@ -7,8 +7,8 @@ import { AppSelectControl } from '../components/shared/controls';
 import { words } from './text';
 import type { Preferences } from './preferences';
 
-export function Settings({ open, onOpenChange, preferences: p, onChange }: {
-  open: boolean; onOpenChange: (open: boolean) => void; preferences: Preferences; onChange: (next: Preferences) => void;
+export function Settings({ open, onOpenChange, preferences: p, onChange, version }: {
+  open: boolean; onOpenChange: (open: boolean) => void; preferences: Preferences; onChange: (next: Preferences) => void; version: string;
 }) {
   const w = (en: string, cn: string, tw?: string) => words(p.lang, en, cn, tw);
   return <Sheet open={open} onOpenChange={onOpenChange}><SheetContent className="v2-settings" aria-describedby="appearance-description">
@@ -32,6 +32,7 @@ export function Settings({ open, onOpenChange, preferences: p, onChange }: {
       <div><Label htmlFor="v2-density">{w('Density', '信息密度', '資訊密度')}</Label><AppSelectControl id="v2-density" value={p.density} onChange={e => onChange({ ...p, density: e.target.value as Preferences['density'] })}>
         <option value="comfortable">{w('Comfortable', '舒适', '舒適')}</option><option value="compact">{w('Compact', '紧凑', '緊湊')}</option>
       </AppSelectControl></div>
+      <div className="v2-settings-about"><a href="/"><ArrowLeft />{w('Previous version', '返回旧版', '返回舊版')}</a><p>{w('Saved in this browser only. V2 keeps its own copy of your builds.', '仅保存在当前浏览器；V2 使用独立的构筑副本。', '僅儲存在目前瀏覽器；V2 使用獨立的構築副本。')}</p><small>{version}</small></div>
       <div className="v2-font-preview"><Type aria-hidden /><p>{w('A clearer view of your next build.', '清晰掌握构筑的每一次变化。', '清晰掌握構築的每一次變化。')}</p><strong>1,284.50</strong><span> Life · DPS · 75%</span></div>
     </div>
   </SheetContent></Sheet>;

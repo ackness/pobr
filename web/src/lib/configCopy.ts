@@ -1,4 +1,4 @@
-import terms from './configGameTerms.json';
+import terms from './configGameTerms.json' with { type: 'json' };
 import { chineseScript } from './chinese';
 import type { Lang } from './i18n';
 

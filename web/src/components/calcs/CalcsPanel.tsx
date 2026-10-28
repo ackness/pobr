@@ -40,9 +40,10 @@ import { AppSelectControl } from '../shared/controls';
 import { useUi } from '../shared/UiContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { calcsLabel } from './calcsLabels';
-import '../../v2/calcs-workflow.css';
 import { SkillFormControls } from '../skills/SkillFormControls';
 import { highestDpsSkill } from '../../lib/skillSelection';
+import { LedgerView } from '../../v2/pages/calcs/LedgerView';
+import { words } from '../../v2/text';
 
 interface Props {
   session: BuildSession;
@@ -1142,68 +1143,80 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
       : <p className="breakdown-detail" role="status">{tt(current ? 'calcs.noBreakdown' : 'calcs.loadingDetail')}</p>;
   };
 
-  if (v2) return <section className="ui-page calcs-page calcs-workspace" aria-labelledby="calcs-heading">
-    <PageHeader id="calcs-heading" title={tt('calcs.title')} description={calcsLabel(lang, 'detailHint')} />
-    <Tabs className="flex-col" value={view} onValueChange={setView}>
-      <TabsList className="calcs-view-tabs group-data-horizontal/tabs:h-auto" aria-label={tt('calcs.title')}>
-        <TabsTrigger className="h-auto min-h-10 whitespace-nowrap max-[760px]:whitespace-normal px-3 py-2 max-[760px]:flex-[1_1_42%] data-[state=active]:bg-background data-[state=active]:text-foreground" value="metrics">{calcsLabel(lang, 'metrics')}</TabsTrigger>
-        <TabsTrigger className="h-auto min-h-10 whitespace-nowrap max-[760px]:whitespace-normal px-3 py-2 max-[760px]:flex-[1_1_42%] data-[state=active]:bg-background data-[state=active]:text-foreground" value="skills">{tt('calcs.skillMetrics')}</TabsTrigger>
-        <TabsTrigger className="h-auto min-h-10 whitespace-nowrap max-[760px]:whitespace-normal px-3 py-2 max-[760px]:flex-[1_1_42%] data-[state=active]:bg-background data-[state=active]:text-foreground" value="full-dps">{calcsLabel(lang, 'fullDps')}</TabsTrigger>
-        <TabsTrigger className="h-auto min-h-10 whitespace-nowrap max-[760px]:whitespace-normal px-3 py-2 max-[760px]:flex-[1_1_42%] data-[state=active]:bg-background data-[state=active]:text-foreground" value="attribution">{tt('calcs.attribution')}</TabsTrigger>
-      </TabsList>
-      <TabsContent className="min-w-0 w-full" value="metrics">
-        <div className="calcs-context-bar" aria-label={calcsLabel(lang, 'context')}>
-          {actorPicker || <strong>{actorLabel}</strong>}
-          {(selectedMinion || calc?.main_skill) && <span>{tt('calcs.skill')}: <strong>{skillName(selectedMinion?.skill_id ?? calc!.main_skill!.skill_id)}</strong></span>}
-          {session.busy && <span role="status">{calcsLabel(lang, 'stale')}</span>}
-        </div>
-        {!calc ? <p role={session.calcError ? 'alert' : 'status'}>{session.calcError || calcsLabel(lang, 'noCalc')}</p> : <div className="calcs-explorer">
-          <div className="calcs-metric-browser" id="calcs-metric-browser" tabIndex={-1}>
-            <AppInput className="calcs-search" type="search" placeholder={tt('calcs.search')} aria-label={tt('calcs.search')}
-              value={query} onChange={event => setQuery(event.target.value)} />
-            <label className="calcs-category-picker">{calcsLabel(lang, 'categories')}
-              <AppSelectControl className="w-full" aria-label={calcsLabel(lang, 'categories')} value={category} onChange={event => setCategory(event.target.value)}>
-                <option value="all">{calcsLabel(lang, 'all')}</option>
-                {category !== 'all' && !sections.some(section => section.category === category) && <option value={category}>{statCategoryLabel(lang, category)}</option>}
-                {sections.map(section => <option key={section.category} value={section.category}>{statCategoryLabel(lang, section.category)} ({section.names.length})</option>)}
-              </AppSelectControl>
-            </label>
-            {sections.filter(section => category === 'all' || category === section.category).length === 0 && <div className="search-empty" role="status">
-              <p>{tt('common.noResults')}</p>
-              <AppButton onClick={() => { setQuery(''); setCategory('all'); }}>{tt('common.clearSearch')}</AppButton>
-            </div>}
-            <div className="calcs-metric-list">
-              {sections.filter(section => category === 'all' || category === section.category).map(section => <section key={section.category} className="calcs-section">
-                <h3 className="calcs-section-title">{statCategoryLabel(lang, section.category)}</h3>
-                {section.names.map(name => <AppButton key={name} id={`breakdown-${name}`} className="calcs-metric-row h-auto min-h-11 w-full justify-between whitespace-normal border-transparent bg-transparent text-left aria-pressed:border-ring aria-pressed:bg-accent aria-pressed:text-accent-foreground"
-                  aria-pressed={open === name} aria-controls="calcs-detail" data-detail-kind={detailKind(selectedMinion ?? calc, name)}
-                  onClick={() => { setOpen(name); requestAnimationFrame(() => {
-                    const heading = document.getElementById('calcs-detail-heading');
-                    heading?.focus({ preventScroll: true });
-                    if (window.matchMedia('(max-width: 760px)').matches) heading?.scrollIntoView({ block: 'start' });
-                  }); }}>
-                  <span>{statNameLabel(lang, name)}</span>
-                  <strong>{formatStatValue(values.get(name) ?? null, rowFormat(name), lang)}</strong>
-                </AppButton>)}
-              </section>)}
+  if (v2) {
+    const scope = selectedMinion ?? calc;
+    const skillId = selectedMinion?.skill_id ?? calc?.main_skill?.skill_id;
+    const tabs = [
+      ['metrics', calcsLabel(lang, 'metrics')],
+      ['skills', tt('calcs.skillMetrics')],
+      ['full-dps', calcsLabel(lang, 'fullDps')],
+      ['attribution', tt('calcs.attribution')],
+      ['ledger', words(lang, 'Ledger', '词条账本', '詞綴帳本')],
+    ] as const;
+    const visibleSections = sections.filter(section => category === 'all' || category === section.category);
+    return <section className="ui-page calcs-page calcs-workspace" aria-labelledby="calcs-heading">
+      <PageHeader id="calcs-heading" title={tt('calcs.title')} description={calcsLabel(lang, 'detailHint')} />
+      <Tabs className="flex-col" value={view} onValueChange={setView}>
+        <TabsList variant="line" className="calcs-view-tabs group-data-horizontal/tabs:h-auto" aria-label={tt('calcs.title')}>
+          {tabs.map(([value, label]) => <TabsTrigger key={value} className="calcs-view-tab" value={value}>{label}</TabsTrigger>)}
+        </TabsList>
+        <TabsContent className="min-w-0 w-full" value="metrics">
+          {!calc ? <p className="calcs-hint" role={session.calcError ? 'alert' : 'status'}>{session.calcError || calcsLabel(lang, 'noCalc')}</p> : <div className="calcs-explorer">
+            <div className="calcs-metric-browser" id="calcs-metric-browser" tabIndex={-1}>
+              <div className="calcs-context-bar" aria-label={calcsLabel(lang, 'context')}>
+                {actorPicker || <strong>{actorLabel}</strong>}
+                {skillId && <span>{tt('calcs.skill')}: <strong>{skillName(skillId)}</strong></span>}
+                {session.busy && <span role="status">{calcsLabel(lang, 'stale')}</span>}
+              </div>
+              <div className="calcs-filters">
+                <AppInput className="calcs-search" type="search" placeholder={tt('calcs.search')} aria-label={tt('calcs.search')}
+                  value={query} onChange={event => setQuery(event.target.value)} />
+                <label className="calcs-category-picker"><span className="sr-only">{calcsLabel(lang, 'categories')}</span>
+                  <AppSelectControl className="w-full" aria-label={calcsLabel(lang, 'categories')} value={category} onChange={event => setCategory(event.target.value)}>
+                    <option value="all">{calcsLabel(lang, 'all')}</option>
+                    {category !== 'all' && !sections.some(section => section.category === category) && <option value={category}>{statCategoryLabel(lang, category)}</option>}
+                    {sections.map(section => <option key={section.category} value={section.category}>{statCategoryLabel(lang, section.category)} ({section.names.length})</option>)}
+                  </AppSelectControl>
+                </label>
+              </div>
+              {visibleSections.length === 0 && <div className="search-empty" role="status">
+                <p>{tt('common.noResults')}</p>
+                <AppButton onClick={() => { setQuery(''); setCategory('all'); }}>{tt('common.clearSearch')}</AppButton>
+              </div>}
+              <div className="calcs-metric-list">
+                {visibleSections.map(section => <section key={section.category} className="calcs-section">
+                  <h3 className="calcs-section-title">{statCategoryLabel(lang, section.category)}</h3>
+                  {section.names.map(name => <AppButton key={name} id={`breakdown-${name}`} className="calcs-metric-row h-auto min-h-11 w-full justify-between whitespace-normal border-transparent bg-transparent text-left aria-pressed:border-ring aria-pressed:bg-accent aria-pressed:text-accent-foreground"
+                    aria-pressed={open === name} aria-controls="calcs-detail" data-detail-kind={detailKind(scope!, name)}
+                    onClick={() => { setOpen(name); requestAnimationFrame(() => {
+                      const heading = document.getElementById('calcs-detail-heading');
+                      heading?.focus({ preventScroll: true });
+                      if (window.matchMedia('(max-width: 760px)').matches) heading?.scrollIntoView({ block: 'start' });
+                    }); }}>
+                    <span>{statNameLabel(lang, name)}</span>
+                    <strong>{formatStatValue(values.get(name) ?? null, rowFormat(name), lang)}</strong>
+                  </AppButton>)}
+                </section>)}
+              </div>
             </div>
-          </div>
-          <section id="calcs-detail" className="calcs-detail-pane" aria-labelledby="calcs-detail-heading">
-            <div className="calcs-detail-header">
-              <AppButton className="calcs-back-to-list hidden max-[760px]:inline-flex" onClick={() => { const browser = document.getElementById('calcs-metric-browser'); browser?.focus(); browser?.scrollIntoView({ block: 'start' }); }}>{calcsLabel(lang, 'back')}</AppButton>
-              <p className="calcs-hint">{actorLabel}</p>
-              <h3 id="calcs-detail-heading" tabIndex={-1}>{open ? statNameLabel(lang, open) : calcsLabel(lang, 'choose')}</h3>
-              {open && <div className="calcs-detail-value"><strong>{formatStatValue(values.get(open) ?? null, rowFormat(open), lang)}</strong><span>{calcsLabel(lang, detailKind(selectedMinion ?? calc, open))}</span></div>}
-            </div>
-            {open ? detail(open) : <p className="calcs-hint">{calcsLabel(lang, 'detailHint')}</p>}
-          </section>
-        </div>}
-      </TabsContent>
-      <TabsContent className="min-w-0 w-full" value="skills"><SkillMetricsView session={session} lang={lang} showFullDps={false} /></TabsContent>
-      <TabsContent className="min-w-0 w-full" value="full-dps"><FullDpsView session={session} lang={lang} /></TabsContent>
-      <TabsContent className="min-w-0 w-full" value="attribution"><AttributionView session={session} lang={lang} /></TabsContent>
-    </Tabs>
-  </section>;
+            <section id="calcs-detail" className="calcs-detail-pane" data-empty={!open || undefined} aria-labelledby="calcs-detail-heading">
+              <div className="calcs-detail-header">
+                <AppButton className="calcs-back-to-list hidden max-[760px]:inline-flex" onClick={() => { const browser = document.getElementById('calcs-metric-browser'); browser?.focus(); browser?.scrollIntoView({ block: 'start' }); }}>{calcsLabel(lang, 'back')}</AppButton>
+                {open && <p className="calcs-eyebrow">{actorLabel}</p>}
+                <h3 id="calcs-detail-heading" tabIndex={-1}>{open ? statNameLabel(lang, open) : calcsLabel(lang, 'choose')}</h3>
+                {open && <div className="calcs-detail-value"><strong>{formatStatValue(values.get(open) ?? null, rowFormat(open), lang)}</strong><span>{calcsLabel(lang, detailKind(scope!, open))}</span></div>}
+              </div>
+              {open && detail(open)}
+            </section>
+          </div>}
+        </TabsContent>
+        <TabsContent className="min-w-0 w-full" value="skills"><SkillMetricsView session={session} lang={lang} showFullDps={false} /></TabsContent>
+        <TabsContent className="min-w-0 w-full" value="full-dps"><FullDpsView session={session} lang={lang} /></TabsContent>
+        <TabsContent className="min-w-0 w-full" value="attribution"><AttributionView session={session} lang={lang} /></TabsContent>
+        <TabsContent className="min-w-0 w-full" value="ledger"><LedgerView session={session} lang={lang} /></TabsContent>
+      </Tabs>
+    </section>;
+  }
 
   return (
     <section className="ui-page calcs-page" aria-labelledby="calcs-heading">

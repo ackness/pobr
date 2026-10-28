@@ -5,7 +5,7 @@ import { AppTooltip, AppButton, AppInput, AppTextarea, AppSelectControl } from '
 import { TreeConversionControls } from './TreeConversionControls';
 import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { getBackend } from '../../api/backend';
 import type { AttributeChoice, PassiveNode, TreeArt, TreeAllocationMode } from '../../api/types';
 import { useTreeEditPreview } from '../../hooks/useTreeEditPreview';
@@ -27,6 +27,9 @@ import { TreeOptimizer, useTreeOptimizer, type TreeOptimizerState } from './Tree
 import type { PassivePlan } from '../../lib/passivePlanner';
 import './tree.css';
 import { NodePowerTable } from './NodePowerTable';
+import { useUi } from '../shared/UiContext';
+import { words } from '../../v2/text';
+import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { passiveNodeMatches, passiveNodeName, usePassiveNodeNames, type PassiveNodeNames } from './passiveNodeNames';
 
 interface Props {
@@ -56,6 +59,7 @@ const JEWEL_TEMPLATE = 'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
 /** 天赋树查看器：SVG 渲染 + 已加点高亮 + 缩放平移 / hover 词条 + 点选加点重算。 */
 export function TreePanel(props: Props) {
   const { session, lang, active } = props;
+  const { v2 } = useUi();
   const currentTree = session.dataVersion && /^\d+\.\d+/.test(session.dataVersion)
     ? `0_${session.dataVersion.split('.')[1]}` : null;
   if (session.treeVersion && session.treeVersion !== 'Default' && currentTree && session.treeVersion !== currentTree) {
@@ -65,13 +69,16 @@ export function TreePanel(props: Props) {
       : lang === 'zh-TW'
         ? `此角色使用 ${session.treeVersion} 天賦樹。計算與匯出會保留該版本，歷史天賦樹暫不支援互動編輯和路線規劃。`
         : `此角色使用 ${session.treeVersion} 天赋树。计算与导出会保留该版本，历史天赋树暂不支持交互编辑和路线规划。`;
+    if (v2) return <section className="ui-page tree-historical"><TreeConversionControls session={session} lang={lang} /><p role="status">{text}</p></section>;
     return <><TreeConversionControls session={session} lang={lang} /><section className="ui-page"><p role="status">{text}</p></section></>;
   }
-  return <>{active && <TreeConversionControls session={session} lang={lang} />}<EditableTreePanel key={JSON.stringify([session.dataVersion, session.treeVersion])} {...props} /></>;
+  // The v2 page puts the conversion controls in the canvas toolbar instead of above the page.
+  return <>{active && !v2 && <TreeConversionControls session={session} lang={lang} />}<EditableTreePanel key={JSON.stringify([session.dataVersion, session.treeVersion])} {...props}
+    conversion={active && v2 ? <TreeConversionControls session={session} lang={lang} /> : undefined} /></>;
 }
 
 /** Retain planner inputs and complete receipts, never the interactive canvas. */
-function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch }: Props) {
+function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch, conversion }: Props & { conversion?: ReactNode }) {
   const [allocationMode, setAllocationMode] = useState<TreeAllocationMode>(0);
   const mode = allocationMode === 0 ? 0 : session.activeWeaponSet;
   const changeMode = (next: TreeAllocationMode) => {
@@ -116,7 +123,7 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch 
     session.activeLoadout, session.activeWeaponSet, session.socketGroupRevision,
     session.character?.class_name, session.character?.ascendancy_name]);
   return <TreeCanvas key={canvasContext} session={session} lang={lang} onJewelSearch={onJewelSearch}
-    allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} nodeNames={nodeNames} art={art} error={error} plannedNodes={plannedNodes} planner={planner} />;
+    allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} nodeNames={nodeNames} art={art} error={error} plannedNodes={plannedNodes} planner={planner} conversion={conversion} />;
 }
 
 interface CanvasProps {
@@ -131,10 +138,15 @@ interface CanvasProps {
   error: string | null;
   plannedNodes: PassivePlan | null;
   planner: TreeOptimizerState;
+  /** v2 only: the tree-conversion controls, shown in the canvas toolbar. */
+  conversion?: ReactNode;
 }
 
-function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, art, error, plannedNodes, planner }: CanvasProps) {
+function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, art, error, plannedNodes, planner, conversion }: CanvasProps) {
   const tt = bindT(lang);
+  const { v2 } = useUi();
+  /** v2 only: whether the planner / details column beside the canvas is shown. */
+  const [sideOpen, setSideOpen] = useState(true);
   const dialogs = useAppDialogs(lang);
   const captureAction = useSessionAction(session);
   const treeEffects = session.calc?.tree_effects;
@@ -155,6 +167,9 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
   const detailsRef = useRef<HTMLDivElement>(null);
   const focusDetailsRef = useRef(false);
   const [selectedSkill, setSelectedSkill] = useState<number | null>(null);
+  // v2: a selected node's details, and a planner opened from elsewhere, live in the side column.
+  useEffect(() => { if (v2 && selectedSkill !== null) setSideOpen(true); }, [v2, selectedSkill]);
+  useEffect(() => { if (v2 && planner.expanded) setSideOpen(true); }, [v2, planner.expanded]);
   const [attributeDraft, setAttributeDraft] = useState<{
     skill: number; saved?: AttributeChoice; choice: AttributeChoice;
   } | null>(null);
@@ -526,6 +541,20 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
     [session.jewels],
   );
 
+  // v2: a node just allocated rings once. Not on the first render, and not when a whole build arrives at once.
+  const previousAllocated = useRef<Set<number> | null>(null);
+  const [pulse, setPulse] = useState<ReadonlySet<number>>(() => new Set());
+  useEffect(() => {
+    const before = previousAllocated.current;
+    previousAllocated.current = allocated;
+    if (!v2 || !before) return;
+    const added = [...allocated].filter(id => !before.has(id));
+    if (added.length === 0 || added.length > 40) { setPulse(new Set()); return; }
+    setPulse(new Set(added));
+    const timer = setTimeout(() => setPulse(new Set()), 800);
+    return () => clearTimeout(timer);
+  }, [allocated, v2]);
+
   const nodesEl = useMemo(() => {
     /** 热力上色：正增量 暗红→亮金（√ 拉开低值区分度）；负增量冷蓝；无数据不覆盖。 */
     const heatFill = (skill: number): string | undefined => {
@@ -599,12 +628,13 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
                 onPointerLeave={() => setHover((h) => (h?.skill === node.skill ? null : h))}
                 onClick={(e) => handleNodeClick(node, e)}
               />
+              {pulse.has(node.skill) && <circle className="node-pulse" cx={node.x} cy={node.y} r={r} />}
             </g>
           );
         })}
       </g>
     );
-  }, [placed, allocated, filledJewelSockets, searchHits, selectedSkill, heatStat, heatData, heatMax, handleNodeClick, art, plannedNodes, freeNodes, treeEffects, owner, previewNodes]);
+  }, [placed, allocated, pulse, filledJewelSockets, searchHits, selectedSkill, heatStat, heatData, heatMax, handleNodeClick, art, plannedNodes, freeNodes, treeEffects, owner, previewNodes]);
 
   const fullExtent = useMemo(() => treeExtent(placed), [placed]);
 
@@ -834,22 +864,14 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
     }
   };
 
-  return (
-    <section className="ui-page tree-panel" aria-labelledby="tree-heading" onKeyDown={e => {
-      if (e.key !== 'Escape' || (selectedSkill === null && !attrPicker)) return;
-      e.preventDefault();
-      setAttrPicker(null);
-      closeDetails();
-    }}>
-      <PageHeader id="tree-heading" title={tt('tree.title')} description={tt('tree.hint')}>
-        <AppButton onClick={() => {
-          toolsRef.current?.focus({ preventScroll: true });
-          toolsRef.current?.scrollIntoView({ block: 'start' });
-        }}>{tt('tree.editOptions')}</AppButton>
-        <span className="ui-badge tree-count">{session.allocatedNodes.length} {tt('tree.allocated')}</span>
-      </PageHeader>
-      <div className="tree-toolbar">
-        <label className="tree-allocation-mode">
+  const onPanelKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Escape' || (selectedSkill === null && !attrPicker)) return;
+    e.preventDefault();
+    setAttrPicker(null);
+    closeDetails();
+  };
+  const modeEl = (
+    <label className="tree-allocation-mode">
           {tt('tree.allocationMode')}
           <AppSelectControl aria-label={tt('tree.allocationMode')} value={allocationMode} disabled={session.busy}
             onChange={e => { setEditError(null); setAttrPicker(null); setAttributeDraft(null);
@@ -859,7 +881,9 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
             <option value={2}>{tt('tree.set2')}</option>
           </AppSelectControl>
         </label>
-        <span className="tree-search">
+  );
+  const searchEl = (
+    <span className="tree-search">
           <AppInput
             ref={searchRef}
             type="search"
@@ -900,7 +924,9 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
             </AppButton>
           )}
         </span>
-        <span className="tree-heat">
+  );
+  const heatEl = (
+    <span className="tree-heat">
           <AppTooltip content={tt('tree.heatHint')}><span tabIndex={0}>{tt('tree.heat')}</span></AppTooltip>
           <AppSelectControl
             value={heatStat}
@@ -942,7 +968,9 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
             </>
           )}
         </span>
-        <label className="tree-asc-picker">
+  );
+  const classEl = (
+    <label className="tree-asc-picker">
           {tt('build.class')}
           <AppSelectControl
             value={session.character?.class_name ?? ''}
@@ -961,7 +989,9 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
             ))}
           </AppSelectControl>
         </label>
-        <label className="tree-asc-picker">
+  );
+  const ascEl = (
+    <label className="tree-asc-picker">
           {tt('tree.ascendancy')}
           <AppSelectControl
             value={session.character?.ascendancy_name ?? ''}
@@ -978,14 +1008,18 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
               ))}
           </AppSelectControl>
         </label>
-        {ascExtent && (
-          <AppButton onClick={() => setViewBox(ascExtent)}>{tt('tree.focusAsc')}</AppButton>
-        )}
-        <AppButton onClick={() => setViewBox(null)}>{tt('tree.reset')}</AppButton>
-      </div>
-      <p className="tree-hint">{tt('tree.weaponRules')}</p>
-      {editError && <p role="alert">{treeEditError(editError, lang)}</p>}
-      <div className="tree-edit-preview" role="status">
+  );
+  const focusAscEl = ascExtent && (
+    <AppButton onClick={() => setViewBox(ascExtent)}>{tt('tree.focusAsc')}</AppButton>
+  );
+  const resetEl = (
+    <AppButton onClick={() => setViewBox(null)}>{tt('tree.reset')}</AppButton>
+  );
+  const countEl = (
+    <span className="ui-badge tree-count">{session.allocatedNodes.length} {tt('tree.allocated')}</span>
+  );
+  const previewEl = (
+    <div className="tree-edit-preview" role="status">
         {preview && <>
         {previewResult ? <>
           <span>{tt('tree.points')}: {previewResult.points_used} / {previewResult.points_max}</span>
@@ -995,8 +1029,9 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
         </> : treeEditError(preview.reason, lang)}
         </>}
       </div>
-      <div className="tree-workspace">
-      <div className="tree-canvas">
+  );
+  const canvasEl = (
+    <div className="tree-canvas">
         <svg
           ref={svgRef}
           viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
@@ -1086,8 +1121,8 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
             <div className="asc-hint">{tt('tree.pickAscHint')}</div>
           )}
       </div>
-      <div className="tree-edit-tools" ref={toolsRef} tabIndex={-1}>
-      {selectedNode && (
+  );
+  const detailsEl = selectedNode && (
         <div className="tree-node-details" ref={detailsRef} tabIndex={-1}
           role="group" aria-label={tt('tree.nodeDetails')} data-skill-id={selectedNode.skill}>
           <header className="tree-node-details-header">
@@ -1159,8 +1194,9 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
             )}
           </div>
         </div>
-      )}
-      <div className="attr-distribute" role="group" aria-label={tt('tree.attrDistribute')}>
+      );
+  const attrEl = (
+    <div className="attr-distribute" role="group" aria-label={tt('tree.attrDistribute')}>
         {allocatedAttrNodes.length > 0 && (
         <>
           <span className="attr-distribute-title">
@@ -1241,8 +1277,10 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
             </label>
           </span>
       </div>
-      {Boolean(treeEffects?.warnings.length) && <p className="tree-hint" role="status">{tt('tree.jewelSeedMissing')}</p>}
-      <NodePowerTable session={session} nodes={nodes ?? []} nodeNames={nodeNames} lang={lang}
+  );
+  const warnEl = Boolean(treeEffects?.warnings.length) && <p className="tree-hint" role="status">{tt('tree.jewelSeedMissing')}</p>;
+  const powerEl = (
+    <NodePowerTable session={session} nodes={nodes ?? []} nodeNames={nodeNames} lang={lang}
         stat={heatStat || 'Life'} stats={heatStatOptions}
         onStat={stat => { setHeatStat(stat); setHeatData(null); setHeatVersion(-1); }}
         onFocus={node => {
@@ -1251,13 +1289,13 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
           setViewBox({ x: node.x! - w / 2, y: node.y! - h / 2, w, h });
           svgRef.current?.scrollIntoView({ block: 'center' });
         }} />
-      <TreeOptimizer planner={planner} />
-      {Object.keys(session.editorDrafts).filter(key => key.startsWith('jewel:')).map(key => (
+  );
+  const draftsEl = Object.keys(session.editorDrafts).filter(key => key.startsWith('jewel:')).map(key => (
         <AppButton key={key} onClick={() => setJewelSocket(Number(key.slice(6)))}>
           {tt('editor.draft')} · {tt('tree.jewel')} #{key.slice(6)}
         </AppButton>
-      ))}
-      {jewelEdit && (
+      ));
+  const jewelEl = jewelEdit && (
         <div className="jewel-editor" ref={jewelRef} tabIndex={-1} role="group" aria-label={tt('tree.jewel')}>
           <header className="item-detail-header">
             <span className="item-slot">
@@ -1368,7 +1406,85 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
                 ? null : e.target.value)}
           />
         </div>
-      )}
+      );
+  const toolsBody = (
+    <>
+      {detailsEl}
+      {attrEl}
+      {warnEl}
+      {powerEl}
+      <TreeOptimizer planner={planner} />
+      {draftsEl}
+      {jewelEl}
+    </>
+  );
+
+  if (v2) {
+    const toggleSide = () => {
+      if (sideOpen) { setSideOpen(false); return; }
+      setSideOpen(true);
+      requestAnimationFrame(() => toolsRef.current?.focus({ preventScroll: true }));
+    };
+    return (
+      <section className="ui-page tree-panel tree-v2" aria-labelledby="tree-heading" data-side={sideOpen ? 'open' : 'closed'} onKeyDown={onPanelKeyDown}>
+        <h2 id="tree-heading" className="sr-only">{tt('tree.title')}</h2>
+        <div className="tree-stage">
+          {canvasEl}
+          <div className="tree-bar tree-bar-top" role="group" aria-label={words(lang, 'Find and allocate', '查找与加点', '尋找與加點')}>
+            {searchEl}
+            {modeEl}
+            {heatEl}
+          </div>
+          <AppButton className="tree-side-toggle" aria-expanded={sideOpen} aria-controls="tree-side" onClick={toggleSide}>
+            {sideOpen ? <PanelRightClose aria-hidden="true" /> : <PanelRightOpen aria-hidden="true" />}
+            {tt('tree.editOptions')}
+          </AppButton>
+          {editError && <p className="tree-edit-error" role="alert">{treeEditError(editError, lang)}</p>}
+          <div className="tree-bar tree-bar-view" role="group" aria-label={words(lang, 'View and build', '视图与 BD', '檢視與 BD')}>
+            {countEl}
+            {previewEl}
+            {classEl}
+            {ascEl}
+            {focusAscEl}
+            {resetEl}
+            {conversion}
+          </div>
+        </div>
+        <aside id="tree-side" className="tree-side" hidden={!sideOpen} aria-label={tt('tree.editOptions')}>
+          <div className="tree-edit-tools" ref={toolsRef} tabIndex={-1}>
+            {toolsBody}
+            <p className="tree-hint">{tt('tree.weaponRules')}</p>
+          </div>
+        </aside>
+      </section>
+    );
+  }
+
+  return (
+    <section className="ui-page tree-panel" aria-labelledby="tree-heading" onKeyDown={onPanelKeyDown}>
+      <PageHeader id="tree-heading" title={tt('tree.title')} description={tt('tree.hint')}>
+        <AppButton onClick={() => {
+          toolsRef.current?.focus({ preventScroll: true });
+          toolsRef.current?.scrollIntoView({ block: 'start' });
+        }}>{tt('tree.editOptions')}</AppButton>
+        <span className="ui-badge tree-count">{session.allocatedNodes.length} {tt('tree.allocated')}</span>
+      </PageHeader>
+      <div className="tree-toolbar">
+        {modeEl}
+        {searchEl}
+        {heatEl}
+        {classEl}
+        {ascEl}
+        {focusAscEl}
+        {resetEl}
+      </div>
+      <p className="tree-hint">{tt('tree.weaponRules')}</p>
+      {editError && <p role="alert">{treeEditError(editError, lang)}</p>}
+      {previewEl}
+      <div className="tree-workspace">
+      {canvasEl}
+      <div className="tree-edit-tools" ref={toolsRef} tabIndex={-1}>
+        {toolsBody}
       </div>
       </div>
     </section>

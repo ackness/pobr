@@ -1,3 +1,4 @@
+import { useJobBeacon } from '../../v2/jobs/useJobBeacon';
 import { AppButton, AppTextarea } from '../shared/controls';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { AttributeChoice, CalculateBuildRequest, PassiveNode } from '../../api/types';
@@ -109,6 +110,7 @@ export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, active
     version: number; plan: JewelPassivePlan; candidate: JewelPassiveCandidate | null;
   } | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  useJobBeacon(progress !== null);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<number | null>(null);
   const controller = useRef<AbortController | null>(null);

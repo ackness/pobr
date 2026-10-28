@@ -1,3 +1,4 @@
+import { useJobBeacon } from '../../v2/jobs/useJobBeacon';
 import { AppButton, AppInput, AppSelectControl } from '../shared/controls';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { AttributeChoice, PassiveNode } from '../../api/types';
@@ -33,6 +34,7 @@ export function NodePowerTable({ session, nodes, nodeNames, lang, stat, stats, o
   const [page, setPage] = useState(0);
   const [completed, setCompleted] = useState<{ key: string; rows: Map<number, PowerRow>; limits: string[] } | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  useJobBeacon(progress !== null);
   const [message, setMessage] = useState<'cancelled' | 'complete' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);

@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 test.use({ viewport: { width: 1440, height: 1000 } });
 
 async function language(page: Page, label: string) {
-  await page.locator('.v2-nav-footer button').click();
+  await page.locator('.v2-settings-button').click();
   await page.locator('#v2-language').click();
   await page.getByRole('option', { name: label, exact: true }).click();
   await page.locator('.v2-settings').getByRole('button', { name: /^(Close|关闭|關閉)$/ }).click();

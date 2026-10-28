@@ -28,6 +28,9 @@ import { CopyButton } from '../shared/CopyButton';
 import { NoteEditor } from '../shared/NoteEditor';
 import { AppSelect, type AppSelectOption } from '../shared/AppSelect';
 import { ItemOptimizer } from './ItemOptimizer';
+import { PaperDoll } from './PaperDoll';
+import { useUi } from '../shared/UiContext';
+import { usePreview } from '../shared/PreviewContext';
 import './items.css';
 
 interface Props {
@@ -123,11 +126,14 @@ function ItemRow({
   open,
   onToggle,
   actions,
+  hover,
   children,
 }: {
   text: string;
   name: string;
   lang: Lang;
+  /** Preview handlers (v2 only); event props add no attributes to the markup. */
+  hover?: { onEnter: () => void; onLeave: () => void };
   slotTag?: string;
   open: boolean;
   onToggle: () => void;
@@ -135,7 +141,7 @@ function ItemRow({
   children?: ReactNode;
 }) {
   return (
-    <article className={`library-row rarity-${rarityOf(text)}`}>
+    <article className={`library-row rarity-${rarityOf(text)}`} onMouseEnter={hover?.onEnter} onMouseLeave={hover?.onLeave} onFocus={hover?.onEnter} onBlur={hover?.onLeave}>
       <header className="library-row-head">
         <AppButton className="library-row-toggle" aria-expanded={open} onClick={onToggle}>
           <span className="row-caret" aria-hidden>
@@ -179,6 +185,10 @@ const itemDraftKey = (slot: string, weaponSet: number) =>
 
 /** 装备页：PoB2 式人形槽位布局；点槽位在下方编辑 PoB 文本，保存即重算。 */
 export function ItemsPanel({ session, lang, onUpgrade }: Props) {
+  const { v2 } = useUi();
+  // Slots pulse when their item changes after the page is up, never on the first render.
+  const shown = useRef(false);
+  useEffect(() => { shown.current = true; }, []);
   const [crafting, setCrafting] = useState(false);
   const [uniques, setUniques] = useState(false);
   const tt = bindT(lang);
@@ -412,15 +422,22 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
         aria-pressed={selected === slot}
         aria-label={label}
       >
+        {v2 && shown.current && text && <span key={text} className="doll-pulse" aria-hidden="true" />}
         <span className="doll-symbol"><SlotSymbol slot={slot} /></span>
         <span className="doll-slot-label">
           {slotLabel(lang, slot)}
           {hasNote(slot) && <span className="note-dot" aria-hidden />}
           {session.editorDrafts[itemDraftKey(slot, session.activeWeaponSet)] !== undefined && <span className="ui-badge">{tt('editor.draft')}</span>}
         </span>
-        {name ? (
-          <span className="doll-item-name item-name">{name}</span>
+        {name ? (v2 ? (
+          // The name joins a rare or unique item's own name and its base with a dot; the figure shows them on two lines.
+          <>
+            <span className="doll-item-name item-name">{name.split('·')[0]}</span>
+            {name.includes('·') && <span className="doll-item-base">{name.split('·').slice(1).join(' · ')}</span>}
+          </>
         ) : (
+          <span className="doll-item-name item-name">{name}</span>
+        )) : (
           <span className="doll-empty">{tt('items.empty')}</span>
         )}
       </AppButton>
@@ -439,7 +456,12 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
       {uniques && <UniqueCatalog session={session} lang={lang} />}
       {crafting && <ItemCrafter session={session} lang={lang} />}
       <div className="items-workspace">
-      <article className="ui-card items-equipped">
+      <article className={v2 ? 'items-equipped items-doll' : 'ui-card items-equipped'}>
+      {v2 ? (
+        <PaperDoll slot={(id) => slotButton(id, isUtilitySlot(id) ? id : undefined)} utilitySlots={UTILITY_SLOTS} limbSlots={LIMB_SLOTS}
+          limbsInUse={session.limbs.length > 0} labels={{ body: tt('items.title'), utility: tt('items.flasks'), limbs: tt('items.limbs') }} />
+      ) : (
+      <>
       <h3 className="section-heading">{tt('ui.equipped')}</h3>
       <div className="paper-doll" role="group" aria-label={tt('items.title')}>
         {DOLL_SLOTS.map((slot) => slotButton(slot))}
@@ -454,7 +476,8 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
       <div className="utility-row limb-row" role="group" aria-label={tt('items.limbs')}>
         {LIMB_SLOTS.map((slot) => slotButton(slot))}
       </div>
-
+      </>
+      )}
       </article>
       <div className="items-collection">
       {selected && (
@@ -684,14 +707,21 @@ function LibrarySection({
   }
 
   const canUse = (entry: LibraryItem) => Boolean(selectedSlot && entry.slot && slotFamily(entry.slot) === slotFamily(selectedSlot));
-  const compare = async (entry: LibraryItem) => {
+  /** The current build with `entry` in the selected slot. */
+  const withEntry = (entry: LibraryItem) => {
     const request = session.currentRequest();
-    if (!request || !selectedSlot || !session.calc || !canUse(entry)) return;
-    const origin = { id: entry.id, slot: selectedSlot, source: session.currentRequest };
+    if (!request || !selectedSlot) return null;
     const field = isUtilitySlot(selectedSlot) ? 'flasks' : isLimbSlot(selectedSlot) ? 'limbs' : 'items';
     const rest = (request[field] ?? []).filter((it) => it.slot !== selectedSlot);
+    return { ...request, [field]: [...rest, { slot: selectedSlot, text: entry.text }] };
+  };
+  const preview = usePreview();
+  const compare = async (entry: LibraryItem) => {
+    const candidate = withEntry(entry);
+    if (!candidate || !selectedSlot || !session.calc || !canUse(entry)) return;
+    const origin = { id: entry.id, slot: selectedSlot, source: session.currentRequest };
     try {
-      const diffs = await previewDiff({ ...request, [field]: [...rest, { slot: selectedSlot, text: entry.text }] }, session.calc);
+      const diffs = await previewDiff(candidate, session.calc);
       setComparison({ ...origin, diffs });
     } catch (error) {
       setComparison({ ...origin, diffs: [], error: formatApiError(error) });
@@ -735,6 +765,10 @@ function LibrarySection({
           name={names[all.indexOf(entry)] ?? entry.name}
           lang={lang}
           slotTag={entry.slot ? slotLabel(lang, entry.slot) : undefined}
+          hover={preview && selectedSlot && canUse(entry) ? {
+            onEnter: () => preview.show({ key: `${selectedSlot}:${entry.id}`, label: `${slotLabel(lang, selectedSlot)} ← ${names[all.indexOf(entry)] ?? entry.name}`, request: () => withEntry(entry) }),
+            onLeave: preview.clear,
+          } : undefined}
           open={expandedId === entry.id}
           onToggle={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
           actions={

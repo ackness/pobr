@@ -26,6 +26,16 @@ import gemCatalogFixture from '../fixtures/gem_catalog.json';
 import minionCatalogFixture from '../fixtures/minion_catalog.json';
 import configOptionsFixture from '../fixtures/config_options.json';
 
+/** Stronger enemies take less damage, so the mock moves when the scenario does, as the engine would. */
+const TIER_DAMAGE = { none: 1, boss: 0.85, pinnacle: 0.7, uber: 0.6 } as const;
+function againstEnemy(result: CalculateBuildResponse, tier: keyof typeof TIER_DAMAGE | undefined): CalculateBuildResponse {
+  const factor = TIER_DAMAGE[tier ?? 'none'] ?? 1;
+  if (factor === 1) return result;
+  return { ...result,
+    stats: result.stats.map(stat => /DPS$/.test(stat.id) && typeof stat.value === 'number' ? { ...stat, value: stat.value * factor } : stat),
+    main_skill: result.main_skill && { ...result.main_skill, hit_dps: result.main_skill.hit_dps * factor, dot_dps: result.main_skill.dot_dps * factor, combined_dps: result.main_skill.combined_dps * factor } };
+}
+
 export function createMockBackend(): PobrBackend {
   return {
     dataVersion: 'mock',
@@ -51,7 +61,7 @@ export function createMockBackend(): PobrBackend {
       return (calculateFixture as unknown as CalculateBuildResponse).breakdown_descriptors ?? {};
     },
     async calculateBuild(request) {
-      const result = calculateFixture as unknown as CalculateBuildResponse;
+      const result = againstEnemy(calculateFixture as unknown as CalculateBuildResponse, request.enemy_tier);
       if (request.breakdowns === undefined && request.breakdown_actor === undefined) return result;
       const details = detailFixture as unknown as CalculateBuildResponse['breakdowns'];
       const filter = (rows: CalculateBuildResponse['breakdowns']) => Object.fromEntries((request.breakdowns ?? Object.keys(rows)).filter(id => rows[id]).map(id => [id, rows[id]]));
@@ -76,7 +86,8 @@ export function createMockBackend(): PobrBackend {
       return attributionFixture as unknown as AttributionResponse;
     },
     async lineUsage() {
-      throw new Error('lineUsage is not available in the mock backend');
+      // A small realistic ledger so the Calcs "Ledger" tab can be developed without WASM.
+      return (await import('../v2/pages/calcs/mockLineUsage')).mockLineUsage();
     },
     async loadTradeCatalog() {
       return { bases: [], mods: [], gems: [] };

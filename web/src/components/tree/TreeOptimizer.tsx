@@ -1,3 +1,4 @@
+import { useJobBeacon } from '../../v2/jobs/useJobBeacon';
 import { AppButton, AppInput } from '../shared/controls';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { formatApiError } from '../../api/error';
@@ -157,6 +158,7 @@ export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onPr
       : ['Warrior', 'Marauder'].includes(session.character?.class_name ?? '') ? 'str' : 'dex';
   });
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  useJobBeacon(progress !== null);
   const [error, setError] = useState<string | null>(null);
   const [completed, setCompleted] = useState<PassiveReceipt | null>(null);
   const [applied, setApplied] = useState<{ version: number; plan: PassivePlan } | null>(null);
