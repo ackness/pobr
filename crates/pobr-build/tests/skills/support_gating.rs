@@ -461,8 +461,12 @@ fn support_coverage_resource_effects_follow_the_stat_not_the_gem_name() {
     }
 }
 
-const FORK: &str = "SupportForkPlayer";
-const FORK_STAT: &str = "support_fork_forked_projectile_damage_+%_final";
+/// A real support whose stat stays a skipped conditional number: Swift Affliction III adds 50% damage over time
+/// only if the skill's duration is below one second, and the stat map cannot express an upper threshold on a duration.
+/// (Fork was the exemplar until its damage change was modelled: it now follows the configured fork count.)
+const SWIFT: &str = "SupportSwiftAfflictionPlayerThree";
+const SWIFT_STAT: &str =
+    "support_swift_affliction_non_ailment_damage_over_time_+%_final_if_duration_below_1_second";
 
 fn coverage_build(host: &str, support: Option<&str>) -> pobr_build::Build {
     let mut group = pobr_build::SocketGroup::new().with_gem_skill(host, 20);
@@ -497,26 +501,47 @@ fn assert_same_skill_outputs(
     assert_eq!(without_requirements(left), without_requirements(right));
 }
 
-fn fork_receipt(session: &pobr_core::calc::CalculationSession) -> &str {
+/// The support's own cost multiplier (when it has one) is modelled apart from the skipped number: the supported cost
+/// is the bare cost times that multiplier.
+fn assert_cost_multiplier_preserved(
+    supported: &pobr_core::calc::OutputTable,
+    bare: &pobr_core::calc::OutputTable,
+    data: &BuildData,
+) {
+    use pobr_core::skill_env::StatSetLookup;
+    let multiplier = data
+        .effect_level_row(SWIFT, 1)
+        .and_then(|row| row.mana_multiplier)
+        // Swift Affliction III gives no cost multiplier: the cost is the bare cost.
+        .unwrap_or(100.0);
+    assert!(
+        (supported.mana_cost - bare.mana_cost * multiplier / 100.0).abs() <= 1.0,
+        "{} vs {} x {multiplier}%",
+        supported.mana_cost,
+        bare.mana_cost
+    );
+}
+
+fn swift_receipt(session: &pobr_core::calc::CalculationSession) -> &str {
     let receipts: Vec<_> = session
         .unsupported_modifier_texts()
         .iter()
-        .filter(|text| text.contains(FORK_STAT))
+        .filter(|text| text.contains(SWIFT_STAT))
         .collect();
     assert_eq!(
         receipts.len(),
         1,
-        "one limit for the calculated Fork payload"
+        "one limit for the calculated Swift Affliction payload"
     );
     receipts[0]
 }
 
-fn assert_fork_receipt(text: &str, set: u32, value: f64, host: &str) {
+fn assert_swift_receipt(text: &str, set: u32, value: f64, host: &str) {
     // Stable source identity, not explanatory prose or Debug formatting.
     for token in [
-        format!("Support:{FORK}:"),
+        format!("Support:{SWIFT}:"),
         format!("set={set}:"),
-        format!("stat={FORK_STAT}:"),
+        format!("stat={SWIFT_STAT}:"),
         format!("value={value}:"),
         format!("host={host}:"),
     ] {
@@ -579,31 +604,48 @@ fn prohibition_stats_map_to_consumed_flags() {
     }
 }
 
+/// A stat the engine models is not reported as unmodelled. Fork's "Projectiles that have Forked deal 30% less
+/// Damage" is applied from the configured fork count (`skill_stats::player_buff_modifiers`), so the support coverage
+/// has no skipped conditional number to disclose for it, whatever the stat map could not express.
 #[test]
-fn support_coverage_normal_session_discloses_actual_fork_without_changing_numbers() {
+fn support_coverage_does_not_report_a_stat_the_engine_models() {
+    let data = load_build_data();
+    let session = coverage_session(
+        &coverage_build("FireballPlayer", Some("SupportForkPlayer")),
+        &data,
+    );
+    assert!(
+        session.unsupported_modifier_texts().is_empty(),
+        "{:?}",
+        session.unsupported_modifier_texts()
+    );
+}
+
+#[test]
+fn support_coverage_normal_session_discloses_actual_swift_affliction_without_changing_numbers() {
     use pobr_core::rules::stat_map_engine::{MappedOutcome, UnsupportedReason, map_stat};
 
     let data = load_build_data();
-    let payload = data.effect_stats(FORK, 1, 0, Some(1));
+    let payload = data.effect_stats(SWIFT, 1, 0, Some(1));
     let stat = payload
         .base
         .iter()
-        .find(|stat| stat.stat == FORK_STAT)
+        .find(|stat| stat.stat == SWIFT_STAT)
         .unwrap();
-    assert_eq!(stat.value, -30.0);
+    assert_eq!(stat.value, 50.0);
     assert_eq!(
         map_stat(
             data.stat_map_catalog.as_deref().unwrap(),
-            FORK,
+            SWIFT,
             Some("1"),
-            FORK_STAT,
+            SWIFT_STAT,
             stat.value
         ),
         MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag("StatThreshold".into()))
     );
-    let build = coverage_build("FireballPlayer", Some(FORK));
+    let build = coverage_build("FireballPlayer", Some(SWIFT));
     let normal = coverage_session(&build, &data);
-    assert_fork_receipt(fork_receipt(&normal), 1, -30.0, "FireballPlayer");
+    assert_swift_receipt(swift_receipt(&normal), 1, 50.0, "FireballPlayer");
     let compare = pobr_build::calculate_with_data_report(
         &build,
         &data,
@@ -625,7 +667,7 @@ fn support_coverage_normal_session_discloses_actual_fork_without_changing_number
         repeat.unsupported_modifier_texts()
     );
 
-    // The skipped penalty belongs to forked projectiles, not every primary hit.
+    // The skipped bonus belongs to damage over time under one second, not to the primary hit.
     let bare = coverage_session(&coverage_build("FireballPlayer", None), &data);
     assert!(bare.output().dps > 0.0);
     assert_eq!(normal.output().total_hit_avg, bare.output().total_hit_avg);
@@ -634,10 +676,7 @@ fn support_coverage_normal_session_discloses_actual_fork_without_changing_number
         normal.output().damage_components,
         bare.output().damage_components
     );
-    assert!(
-        normal.output().mana_cost > bare.output().mana_cost,
-        "Fork's separately modeled cost multiplier is preserved"
-    );
+    assert_cost_multiplier_preserved(normal.output(), bare.output(), &data);
 }
 
 #[test]
@@ -740,23 +779,26 @@ fn support_coverage_resource_loss_requires_a_nonzero_calculated_compatible_paylo
 }
 
 #[test]
-fn support_coverage_removed_disabled_and_incompatible_payloads_do_not_disclose_fork() {
+fn support_coverage_removed_disabled_and_incompatible_payloads_do_not_disclose_swift_affliction() {
     let data = load_build_data();
-    let enabled = fireball_xml(Some(("Metadata/Items/Gem/SupportGemFork", FORK)));
+    let enabled = fireball_xml(Some((
+        "Metadata/Items/Gem/SupportGemSwiftAfflictionThree",
+        SWIFT,
+    )));
     let disabled = enabled.replace(
-        r#"<Gem enabled="true" gemId="Metadata/Items/Gem/SupportGemFork""#,
-        r#"<Gem enabled="false" gemId="Metadata/Items/Gem/SupportGemFork""#,
+        r#"<Gem enabled="true" gemId="Metadata/Items/Gem/SupportGemSwiftAfflictionThree""#,
+        r#"<Gem enabled="false" gemId="Metadata/Items/Gem/SupportGemSwiftAfflictionThree""#,
     );
     let equipped = coverage_session(&parse_build(&enabled).unwrap(), &data);
-    assert_fork_receipt(fork_receipt(&equipped), 1, -30.0, "FireballPlayer");
+    assert_swift_receipt(swift_receipt(&equipped), 1, 50.0, "FireballPlayer");
     let bare_build = parse_build(&fireball_xml(None)).unwrap();
     let bare = coverage_session(&bare_build, &data);
     let disabled = coverage_session(&parse_build(&disabled).unwrap(), &data);
     assert_eq!(disabled.output(), bare.output());
     assert!(disabled.unsupported_modifier_texts().is_empty());
     assert!(bare.unsupported_modifier_texts().is_empty());
-    let incompatible = coverage_session(&coverage_build("ArmourBreakerPlayer", Some(FORK)), &data);
-    let melee_bare = coverage_session(&coverage_build("ArmourBreakerPlayer", None), &data);
+    let incompatible = coverage_session(&coverage_build("ConductivityPlayer", Some(SWIFT)), &data);
+    let melee_bare = coverage_session(&coverage_build("ConductivityPlayer", None), &data);
     assert_same_skill_outputs(incompatible.output(), melee_bare.output());
     assert_eq!(incompatible.output().req_dex, 5.0);
     assert!(incompatible.unsupported_modifier_texts().is_empty());
@@ -771,18 +813,18 @@ fn support_coverage_removed_disabled_and_incompatible_payloads_do_not_disclose_f
 fn support_coverage_zero_payload_is_not_a_limit() {
     let mut data = load_build_data().clone();
     // Synthetic zero-valued input to the real mapping/ingestion boundary.
-    let stat = data.skill_stat_sets.get_mut(FORK).unwrap().sets[0]
+    let stat = data.skill_stat_sets.get_mut(SWIFT).unwrap().sets[0]
         .constant_stats
         .iter_mut()
-        .find(|stat| stat.stat == FORK_STAT)
+        .find(|stat| stat.stat == SWIFT_STAT)
         .unwrap();
     stat.value = 0.0;
-    let session = coverage_session(&coverage_build("FireballPlayer", Some(FORK)), &data);
+    let session = coverage_session(&coverage_build("FireballPlayer", Some(SWIFT)), &data);
     assert!(session.unsupported_modifier_texts().is_empty());
     let bare = coverage_session(&coverage_build("FireballPlayer", None), &data);
     assert_eq!(session.output().total_hit_avg, bare.output().total_hit_avg);
     assert_eq!(session.output().dps, bare.output().dps);
-    assert!(session.output().mana_cost > bare.output().mana_cost);
+    assert_cost_multiplier_preserved(session.output(), bare.output(), &data);
 }
 
 #[test]
@@ -792,37 +834,37 @@ fn support_coverage_selected_set_owns_payload_value_and_identity() {
     use std::sync::Arc;
 
     let mut data = load_build_data().clone();
-    // Fork has one real set. A synthetic second form reuses its actual mapping;
+    // Swift Affliction III has one real set. A synthetic second form reuses its actual mapping;
     // only input set/value vary, never the engine outcome or diagnostic.
-    let sets = &mut data.skill_stat_sets.get_mut(FORK).unwrap().sets;
+    let sets = &mut data.skill_stat_sets.get_mut(SWIFT).unwrap().sets;
     sets[0].vendor_set_index = Some(1);
     let mut second = sets[0].clone();
     second.vendor_set_index = Some(2);
-    second.set_id = "SyntheticForkSecondForm".into();
+    second.set_id = "SyntheticSwiftSecondForm".into();
     second
         .constant_stats
         .iter_mut()
-        .find(|stat| stat.stat == FORK_STAT)
+        .find(|stat| stat.stat == SWIFT_STAT)
         .unwrap()
-        .value = -15.0;
+        .value = 25.0;
     sets.push(second);
     let mut mapping: SkillStatMapDef = coverage_mapping();
-    let fork_sets = mapping.per_stat_set.get_mut(FORK).unwrap();
-    fork_sets.insert("2".into(), fork_sets["1"].clone());
+    let swift_sets = mapping.per_stat_set.get_mut(SWIFT).unwrap();
+    swift_sets.insert("2".into(), swift_sets["1"].clone());
     data.stat_map_catalog = Some(Arc::new(StatMapCatalog::new(mapping)));
     let build = |set| {
         pobr_build::Build::new()
             .add_socket_group(
                 pobr_build::SocketGroup::new()
                     .with_gem_skill("FireballPlayer", 20)
-                    .with_gem_skill_stat_set(FORK, 1, set),
+                    .with_gem_skill_stat_set(SWIFT, 1, set),
             )
             .with_main_socket_group(1)
     };
     let first = coverage_session(&build(1), &data);
     let second = coverage_session(&build(2), &data);
-    assert_fork_receipt(fork_receipt(&first), 1, -30.0, "FireballPlayer");
-    assert_fork_receipt(fork_receipt(&second), 2, -15.0, "FireballPlayer");
+    assert_swift_receipt(swift_receipt(&first), 1, 50.0, "FireballPlayer");
+    assert_swift_receipt(swift_receipt(&second), 2, 25.0, "FireballPlayer");
     assert_ne!(
         first.unsupported_modifier_texts(),
         second.unsupported_modifier_texts()
@@ -834,10 +876,10 @@ fn support_coverage_selected_set_owns_payload_value_and_identity() {
     );
 
     // Set 1 still contains -30; selecting a zero-valued set 2 must not leak it.
-    data.skill_stat_sets.get_mut(FORK).unwrap().sets[1]
+    data.skill_stat_sets.get_mut(SWIFT).unwrap().sets[1]
         .constant_stats
         .iter_mut()
-        .find(|stat| stat.stat == FORK_STAT)
+        .find(|stat| stat.stat == SWIFT_STAT)
         .unwrap()
         .value = 0.0;
     assert!(
@@ -845,10 +887,10 @@ fn support_coverage_selected_set_owns_payload_value_and_identity() {
             .unsupported_modifier_texts()
             .is_empty()
     );
-    assert_fork_receipt(
-        fork_receipt(&coverage_session(&build(1), &data)),
+    assert_swift_receipt(
+        swift_receipt(&coverage_session(&build(1), &data)),
         1,
-        -30.0,
+        50.0,
         "FireballPlayer",
     );
 }
@@ -863,33 +905,37 @@ fn support_coverage_multiple_groups_do_not_leak_another_hosts_payload() {
         .add_socket_group(
             SocketGroup::new()
                 .with_gem_skill("FireballPlayer", 20)
-                .with_gem_skill(FORK, 1),
+                .with_gem_skill(SWIFT, 1),
         )
         .add_socket_group(
             SocketGroup::new()
-                .with_gem_skill("BallLightningPlayer", 20)
-                .with_gem_skill(FORK, 1),
+                .with_gem_skill("ContagionPlayer", 20)
+                .with_gem_skill(SWIFT, 1),
         );
     let bare = coverage_session(&build.clone().with_main_socket_group(1), &data);
     assert!(bare.unsupported_modifier_texts().is_empty());
     let fire = coverage_session(&build.clone().with_main_socket_group(2), &data);
     let ice = coverage_session(&build.clone().with_main_socket_group(3), &data);
-    assert_fork_receipt(fork_receipt(&fire), 1, -30.0, "FireballPlayer");
-    assert_fork_receipt(fork_receipt(&ice), 1, -30.0, "BallLightningPlayer");
+    assert_swift_receipt(swift_receipt(&fire), 1, 50.0, "FireballPlayer");
+    assert_swift_receipt(swift_receipt(&ice), 1, 50.0, "ContagionPlayer");
     assert_ne!(
         fire.unsupported_modifier_texts(),
         ice.unsupported_modifier_texts()
     );
     for session in [&bare, &fire, &ice] {
-        assert_eq!(session.output().req_dex, 10.0, "two socketed Fork supports");
+        assert_eq!(
+            session.output().req_dex,
+            10.0,
+            "two socketed Swift Affliction supports"
+        );
     }
     assert_same_skill_outputs(
         fire.output(),
-        coverage_session(&coverage_build("FireballPlayer", Some(FORK)), &data).output(),
+        coverage_session(&coverage_build("FireballPlayer", Some(SWIFT)), &data).output(),
     );
     assert_same_skill_outputs(
         ice.output(),
-        coverage_session(&coverage_build("BallLightningPlayer", Some(FORK)), &data).output(),
+        coverage_session(&coverage_build("ContagionPlayer", Some(SWIFT)), &data).output(),
     );
     assert!(
         coverage_session(&build.with_main_socket_group(1), &data)
@@ -966,11 +1012,11 @@ fn support_coverage_mapped_distance_ramp_and_separately_handled_levels_are_not_l
 #[test]
 fn support_coverage_identity_uses_effective_set_and_survives_support_compaction() {
     let data = load_build_data();
-    let baseline = coverage_session(&coverage_build("FireballPlayer", Some(FORK)), &data);
+    let baseline = coverage_session(&coverage_build("FireballPlayer", Some(SWIFT)), &data);
     let group = pobr_build::SocketGroup::new()
         .with_gem_skill("FireballPlayer", 20)
         .with_gem_skill("SupportFireMasteryPlayer", 1)
-        .with_gem_skill_stat_set(FORK, 1, 1);
+        .with_gem_skill_stat_set(SWIFT, 1, 1);
     let build = pobr_build::Build::new()
         .add_socket_group(group)
         .with_main_socket_group(1);
@@ -1025,17 +1071,17 @@ fn support_coverage_unknown_and_display_metadata_are_not_numerical_limits() {
     assert!(hourglass.unsupported_modifier_texts().is_empty());
     let unknown = "terrain_arrow_attachment_chance_reduction_+%";
     assert_eq!(
-        map_stat(catalog, FORK, Some("1"), unknown, 100.0),
+        map_stat(catalog, SWIFT, Some("1"), unknown, 100.0),
         MappedOutcome::Unknown
     );
-    let fork = coverage_session(&coverage_build("FireballPlayer", Some(FORK)), &data);
+    let fork = coverage_session(&coverage_build("FireballPlayer", Some(SWIFT)), &data);
     assert!(
         !fork
             .unsupported_modifier_texts()
             .iter()
             .any(|text| text.contains(unknown))
     );
-    assert_fork_receipt(fork_receipt(&fork), 1, -30.0, "FireballPlayer");
+    assert_swift_receipt(swift_receipt(&fork), 1, 50.0, "FireballPlayer");
 }
 
 #[test]
@@ -1046,7 +1092,7 @@ fn support_coverage_real_host_forms_have_distinct_effective_identity() {
             .add_socket_group(
                 pobr_build::SocketGroup::new()
                     .with_gem_skill_stat_set("FireballPlayer", 20, set)
-                    .with_gem_skill(FORK, 1),
+                    .with_gem_skill(SWIFT, 1),
             )
             .with_main_socket_group(1)
     };
@@ -1057,8 +1103,8 @@ fn support_coverage_real_host_forms_have_distinct_effective_identity() {
             Some(set.to_string())
         );
         let session = coverage_session(&build(set), &data);
-        let receipt = fork_receipt(&session);
-        assert_fork_receipt(receipt, 1, -30.0, "FireballPlayer");
+        let receipt = swift_receipt(&session);
+        assert_swift_receipt(receipt, 1, 50.0, "FireballPlayer");
         assert!(receipt.contains(&format!("host_set={set}:")));
         identities.insert(receipt.to_owned());
         let repeat = coverage_session(&build(set), &data);
@@ -1082,7 +1128,7 @@ fn support_coverage_real_host_forms_have_distinct_effective_identity() {
     with_disabled_prefix.socket_groups.insert(
         0,
         pobr_build::SocketGroup::new()
-            .with_gem_skill("BallLightningPlayer", 20)
+            .with_gem_skill("ContagionPlayer", 20)
             .with_enabled(false),
     );
     with_disabled_prefix.main_socket_group = Some(2);
@@ -1098,27 +1144,27 @@ fn support_coverage_effective_zero_conditional_number_is_not_a_limit() {
     use std::sync::Arc;
 
     let mut data = load_build_data().clone();
-    let build = coverage_build("FireballPlayer", Some(FORK));
+    let build = coverage_build("FireballPlayer", Some(SWIFT));
     let baseline = coverage_session(&build, &data);
     let mut mapping = coverage_mapping();
     // Nonzero raw payload, but the actual catalog merge makes the number zero.
     mapping
         .per_stat_set
-        .get_mut(FORK)
+        .get_mut(SWIFT)
         .unwrap()
         .get_mut("1")
         .unwrap()
-        .get_mut(FORK_STAT)
+        .get_mut(SWIFT_STAT)
         .unwrap()
         .mult = Some(0.0);
     data.stat_map_catalog = Some(Arc::new(StatMapCatalog::new(mapping)));
     assert!(matches!(
         map_stat(
             data.stat_map_catalog.as_deref().unwrap(),
-            FORK,
+            SWIFT,
             Some("1"),
-            FORK_STAT,
-            -30.0
+            SWIFT_STAT,
+            50.0
         ),
         MappedOutcome::Unsupported(_)
     ));
@@ -1135,40 +1181,40 @@ fn support_coverage_routed_sibling_does_not_hide_a_skipped_conditional_number() 
     use std::sync::Arc;
 
     let mut data = load_build_data().clone();
-    let build = coverage_build("FireballPlayer", Some(FORK));
+    let build = coverage_build("FireballPlayer", Some(SWIFT));
     let baseline = coverage_session(&build, &data);
     let mut mapping = coverage_mapping();
     // Explicitly synthetic mixed entry: reuse Precision II's real routed buff
-    // before Fork's real unmodeled conditional damage, in the same stat payload.
+    // before Swift Affliction's real unmodeled conditional damage, in the same stat payload.
     let routed = mapping.per_stat_set["SupportPrecisionPlayerTwo"]["1"]
         ["support_precision_accuracy_rating_+%"].mods[0].clone();
     mapping
         .per_stat_set
-        .get_mut(FORK)
+        .get_mut(SWIFT)
         .unwrap()
         .get_mut("1")
         .unwrap()
-        .get_mut(FORK_STAT)
+        .get_mut(SWIFT_STAT)
         .unwrap()
         .mods
         .insert(0, routed);
     data.stat_map_catalog = Some(Arc::new(StatMapCatalog::new(mapping)));
     let MappedOutcome::Mapped(items) = map_player_buff_stat(
         data.stat_map_catalog.as_deref().unwrap(),
-        FORK,
+        SWIFT,
         Some("1"),
-        FORK_STAT,
-        -30.0,
+        SWIFT_STAT,
+        50.0,
     ) else {
         panic!("the routed sibling must really map through the player-buff channel");
     };
     assert!(items.iter().any(|item| matches!(item,
-        MappedItem::Modifier(modifier) if modifier.name.to_string() == "Accuracy" && modifier.value.as_number() == Some(-30.0)
+        MappedItem::Modifier(modifier) if modifier.name.to_string() == "Accuracy" && modifier.value.as_number() == Some(50.0)
     )));
     let mixed = coverage_session(&build, &data);
-    assert_fork_receipt(fork_receipt(&mixed), 1, -30.0, "FireballPlayer");
+    assert_swift_receipt(swift_receipt(&mixed), 1, 50.0, "FireballPlayer");
     assert!(
-        mixed.attribute_total("Accuracy", 100.0) < baseline.attribute_total("Accuracy", 100.0),
+        mixed.attribute_total("Accuracy", 100.0) > baseline.attribute_total("Accuracy", 100.0),
         "the alternate-domain sibling is actually consumed without covering the skipped damage"
     );
     assert_eq!(mixed.output().dps, baseline.output().dps);
@@ -1186,14 +1232,14 @@ fn support_coverage_duplicate_active_ids_report_the_calculated_host_form() {
     let mut group = SocketGroup::new()
         .with_gem_skill_stat_set("FireballPlayer", 20, 1)
         .with_gem_skill_stat_set("FireballPlayer", 20, 2)
-        .with_gem_skill(FORK, 1);
+        .with_gem_skill(SWIFT, 1);
     for selected in [1, 2] {
         group.main_active_skill = Some(selected);
         let build = Build::new()
             .add_socket_group(group.clone())
             .with_main_socket_group(1);
         let session = coverage_session(&build, &data);
-        assert!(fork_receipt(&session).contains(&format!("host_set={selected}:")));
+        assert!(swift_receipt(&session).contains(&format!("host_set={selected}:")));
     }
 }
 
