@@ -183,3 +183,126 @@ Implicits: 0
         );
     }
 }
+
+/// Passives that act against a monster type read the type you declare (`conditionEnemy<Type>`): without it the
+/// calculation has no monster type, so the bonus stays off.
+#[test]
+fn monster_type_passives_follow_the_declared_type() {
+    let data = data();
+    let inc = |line: &str, declared: Option<&str>, name: &str| -> f64 {
+        let config = declared.map_or_else(String::new, |input| {
+            format!(r#"<Input name="{input}" boolean="true"/>"#)
+        });
+        let build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="96" className="Ranger" ascendClassName="Deadeye" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="IceShotPlayer" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Crude Bow
+Implicits: 0
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+<Config>{config}</Config></PathOfBuilding2>"#
+        ))
+        .unwrap();
+        let options = DataOrchestratorOptions {
+            mode_effective: true,
+            extra_modifier_texts: vec![line.to_string()],
+            ..Default::default()
+        };
+        let session = calculate_with_data_session(&build, data, &options).unwrap();
+        // The enemy's modifiers (ailment duration, immobilisation buildup) live on the player's side as `Enemy*`.
+        session
+            .mod_db()
+            .sum(ModType::Inc, session.config(), &[ModName::from(name)])
+    };
+    for (line, input, name, expected) in [
+        (
+            "30% increased damage against Undead Enemies",
+            "conditionEnemyUndead",
+            "Damage",
+            30.0,
+        ),
+        (
+            "50% increased Damage against Demons",
+            "conditionEnemyDemon",
+            "Damage",
+            50.0,
+        ),
+        (
+            "50% increased Critical Hit Chance against Humanoids",
+            "conditionEnemyHumanoid",
+            "CriticalStrikeChance",
+            50.0,
+        ),
+        (
+            "50% increased Immobilisation buildup against Constructs",
+            "conditionEnemyConstruct",
+            "EnemyImmobilisationBuildup",
+            50.0,
+        ),
+        (
+            "50% increased Duration of Ailments on Beasts",
+            "conditionEnemyBeast",
+            "EnemyAilmentDuration",
+            50.0,
+        ),
+    ] {
+        let none = inc("", None, name);
+        assert_eq!(inc(line, None, name), none, "{line}: on without the type");
+        assert_eq!(
+            inc(line, Some("conditionEnemyDemon"), name) - none,
+            if input == "conditionEnemyDemon" {
+                expected
+            } else {
+                0.0
+            },
+            "{line}: another type"
+        );
+        let declared = inc(line, Some(input), name) - none;
+        assert!(
+            (declared - expected).abs() < 1e-9,
+            "{line}: gained {declared}"
+        );
+    }
+}
+
+/// "N% increased Fire Damage per Endurance Charge consumed Recently" and the extra Fire gain scale with the
+/// configured number of consumed charges; charge consumption itself is not simulated.
+#[test]
+fn consumed_endurance_charges_scale_the_passives_that_count_them() {
+    let data = data();
+    let sum = |count: Option<u32>, line: &str, name: &str, kind: ModType| -> f64 {
+        let config = count.map_or_else(String::new, |count| {
+            format!(
+                r#"<Input name="multiplierEnduranceChargesConsumedRecently" number="{count}"/>"#
+            )
+        });
+        let build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="96" className="Warrior" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+<Config>{config}</Config></PathOfBuilding2>"#
+        ))
+        .unwrap();
+        let options = DataOrchestratorOptions {
+            mode_effective: true,
+            extra_modifier_texts: vec![line.to_string()],
+            ..Default::default()
+        };
+        let session = calculate_with_data_session(&build, data, &options).unwrap();
+        session
+            .mod_db()
+            .sum(kind, session.config(), &[ModName::from(name)])
+    };
+    let inc = "3% increased Fire Damage per Endurance Charge consumed Recently";
+    let gain = "Gain 2% of Damage as Extra Fire Damage per Endurance Charge consumed Recently";
+    for count in [None, Some(0), Some(4)] {
+        let n = f64::from(count.unwrap_or(0));
+        let more_inc = sum(count, inc, "FireDamage", ModType::Inc)
+            - sum(count, "", "FireDamage", ModType::Inc);
+        assert!((more_inc - 3.0 * n).abs() < 1e-9, "{count:?}: {more_inc}");
+        let more_gain = sum(count, gain, "DamageGainAsFire", ModType::Base)
+            - sum(count, "", "DamageGainAsFire", ModType::Base);
+        assert!((more_gain - 2.0 * n).abs() < 1e-9, "{count:?}: {more_gain}");
+    }
+}

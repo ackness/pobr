@@ -101,6 +101,12 @@ export function configTooltip(lang: string, variable: string, fallback?: string)
 export const CONFIG_LABEL_ZH: Record<string, string> = {
   conditionAffectedByArchon: '正受到执政官增益影响？',
   conditionFinality: '当前拥有绝杀（无法获得连击）？',
+  conditionEnemyUndead: '敌人是亡灵？',
+  conditionEnemyDemon: '敌人是恶魔？',
+  conditionEnemyHumanoid: '敌人是人形生物？',
+  conditionEnemyConstruct: '敌人是构造体？',
+  conditionEnemyBeast: '敌人是野兽？',
+  multiplierEnduranceChargesConsumedRecently: '近期消耗的耐力球数：',
   remnantPickupsPerSecond: "你每秒收集的残迹数：",
   createdRemnantPickupsPerSecond: "每秒被收集的自创残迹数：",
   remnantPickupMissingMana: "每次收集残迹前缺失的魔力：",

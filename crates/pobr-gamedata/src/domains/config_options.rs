@@ -57,6 +57,11 @@ impl GameData {
         .expect("bundled Volatility config options");
         catalog.options =
             crate::paths::merge_by_key(catalog.options, volatility.options, |o| &o.var);
+        let state: ConfigOptionsDef = serde_json::from_str(include_str!(
+            "../../../../data/overlay-common/enemy_type_and_consumption_config_options.json"
+        ))
+        .expect("bundled enemy type and consumption config options");
+        catalog.options = crate::paths::merge_by_key(catalog.options, state.options, |o| &o.var);
         catalog.options.sort_by(|a, b| a.var.cmp(&b.var));
         Ok(catalog)
     }

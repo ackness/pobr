@@ -1,6 +1,5 @@
 node.10371	There is no [Limit] on the number of [Banner|Banners] you can place
 node.10371	[Banner|Banners] gain 5 [Glory] per second
-node.10499	30% increased damage against Undead Enemies
 node.10500	100% chance to [Daze] Enemies whose [Hit|Hits] you [Block] with a raised [Shield]
 node.10561	Grants Skill: <underline>{Navira's Fracturing}
 node.10612	Immune to [Freeze] and [Chill] while affected by an [Archon] [Buff]
@@ -18,7 +17,6 @@ node.11428	[Archon] Buffs also grant 30% increased [Critical|Critical Hit Chance
 node.11428	[Archon] Buffs also grant 50% increased [CriticalDamageBonus|Critical Damage Bonus]
 node.11578	[Shock|Shocking] [Hit|Hits] have a 50% chance to also Shock enemies in a 1.5 metre radius
 node.11641	Grants Skill: <underline>{Virtuous Barrier}
-node.11667	10% increased [Immobilised|Immobilisation] buildup against Constructs
 node.1169	Recover 2% of maximum Life and Mana when you use a [Warcry]
 node.11722	[Seal|Sealed] Skills have 10% increased [Seal] gain frequency
 node.11774	20% chance for Damage of Enemies [Hit|Hitting] you to be [Unlucky]
@@ -64,11 +62,9 @@ node.1502	Remove a [Curse] after Channelling for 2 seconds
 node.15030	Cannot be [Critical|Critically Hit] while [Parry|Parrying]
 node.15114	[Plant|Plants] have a 20% chance to immediately [Plant|Overgrow]
 node.15180	10% chance to [Hinder] Enemies on Hit with [Spell|Spells]
-node.15494	3% increased [Fire] Damage per [Charges|Endurance Charge] consumed [Recently]
 node.15606	Consuming [Glory] grants you 3% increased [Attack] damage per [Glory] consumed for 6 seconds, up to 60%
 node.15617	Life [Flask|Flasks] applied to you grant [Guard] for 4 seconds equal to 8% of the Life Recovery per Second they apply
 node.15801	8% increased speed of [Recoup] Effects
-node.15839	10% increased Duration of [Ailments|Ailments] on Beasts
 node.15876	Gain 15% of maximum [EnergyShield|Energy Shield] as additional [FreezeThreshold|Freeze Threshold]
 node.15991	Immune to [Shock] while affected by an [Archon] [Buff]
 node.16024	[Invoke|Invocation] [Spell|Spells] have 20% increased [CriticalDamageBonus|Critical Damage Bonus]
@@ -94,14 +90,12 @@ node.18280	Can instead consume 25% of maximum Mana to trigger [Charm|Charms] wit
 node.18419	[Totem|Totems] Regenerate 3% of maximum Life per second
 node.18485	Gain 3 [Volatility] when an [Allies|Allied] [Persistent] [Reviving] [Minion] is [MinionDeath|Killed]
 node.1861	15% increased [Glory] generation
-node.1865	3% increased [Fire] Damage per [Charges|Endurance Charge] consumed [Recently]
 node.18793	Skills have 5% chance to not remove [ElementalInfusion|Elemental Infusions] but still count as consuming them
 node.18826	Gain 1 [Volatility] on inflicting an [ElementalAilments|Elemental Ailment]
 node.18826	Take no Damage from [Volatility]
 node.18849	[DamageTypes|All Damage] from [Hit|Hits] [Contributes|Contributes] to [Chill] Magnitude
 node.18940	Grants Skill: <underline>{Shattering Concoction}
 node.18972	15% chance for [Shapeshift] [Slam] Skills you use yourself to cause an additional [Aftershock]
-node.1915	10% increased [Critical|Critical Hit Chance] against Humanoids
 node.19318	20% increased Effect of [PuppetMaster|Puppet Master]
 node.19370	Grants Skill: <underline>{Hollow Focus}
 node.19573	25% chance for [Projectile|Projectiles] to [Pierce|Pierce] Enemies within 3m distance of you
@@ -301,7 +295,6 @@ node.4331	The next [Attack] you use within 4 seconds after [HeavyStun|Heavy Stun
 node.43426	Grants Skill: <underline>{Navira's Well}
 node.43486	2% chance that if you would gain [Charges|Power Charges], you instead gain up to
 node.43486	your maximum number of [Charges|Power Charges]
-node.43584	Gain 2% of Damage as Extra [Fire] Damage per [Charges|Endurance Charge] consumed [Recently]
 node.4367	Dodging can expend up to 3 Owl Feathers, granting Primal Bounty 100% more
 node.4367	Gain Owl Feathers 50% faster
 node.4367	[Empowered|Empowerment] effect per additional Feather expended
@@ -343,10 +336,6 @@ node.47477	15% reduced [Volatility] Explosion delay
 node.48026	20% increased [Glory] generation for [Banner] Skills
 node.48240	Regenerate 5% of maximum Life over 1 second when [Stun|Stunned]
 node.483	2% chance that if you would gain [Charges|Endurance Charges], you instead gain up to maximum [Charges|Endurance Charges]
-node.48617	50% increased Damage against Demons
-node.48617	50% increased Duration of [Ailments|Ailments] on Beasts
-node.48617	50% increased [Critical|Critical Hit Chance] against Humanoids
-node.48617	50% increased [Immobilised|Immobilisation] buildup against Constructs
 node.48828	2% chance that if you would gain [Charges|Frenzy Charges], you instead gain up to your maximum number of [Charges|Frenzy Charges]
 node.48925	8% increased Skill Effect Duration per Enemy you've [Freeze|Frozen] in the last 8 seconds, up to 40%
 node.49088	[Minion|Minions] [ArmourBreak|Break Armour] equal to 3% of [Physical] damage dealt
@@ -392,7 +381,6 @@ node.54545	15% increased [BuffMagnitude|Magnitude] of [Daze]
 node.54733	15% increased Effect of [PuppetMaster|Puppet Master]
 node.54838	[Pinned] enemies cannot perform actions
 node.54923	15% increased [Glory] generation
-node.54934	3% increased [Fire] Damage per [Charges|Endurance Charge] consumed [Recently]
 node.55450	[Companion|Companions] in your [Presence] have [Onslaught] while you are [Shapeshift|Shapeshifted]
 node.55796	[RevealWeakness|Reveal Weaknesses] against [Rarity|Rare and Unique] enemies
 node.5580	[Recoup] 5% of damage taken by your [Totem|Totems] as Life
@@ -449,7 +437,6 @@ node.62258	20% increased [Glory] generation for [Banner] Skills
 node.62431	[Seal|Sealed] Skills have 25% increased [Seal] gain frequency
 node.62455	[Banner] [Buff|Buffs] linger on you for 2 seconds after you leave the Area
 node.62578	3% chance to gain [Volatility] on Kill
-node.6266	10% increased Damage against Demons
 node.62723	15% [SurpassChance|Surpassing Chance] to gain a [PuppetMaster|Puppet Master] stack whenever you use a [Command|Command] Skill
 node.62743	Grants Skill: <underline>{Wild Protector}
 node.62804	10% increased Life Recovery rate per 5% missing Unreserved Life

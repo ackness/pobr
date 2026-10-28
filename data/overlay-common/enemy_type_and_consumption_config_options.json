@@ -1,0 +1,167 @@
+{
+  "_meta": {
+    "schema": "config_options/v1",
+    "generator": "hand-curated",
+    "source": "PoBR-owned options for passives that depend on the monster's type or on charges consumed recently; no counterpart in PoB2's ConfigOptions."
+  },
+  "options": [
+    {
+      "var": "conditionEnemyUndead",
+      "input_type": "check",
+      "section": "For Effective DPS",
+      "label": "Is the enemy Undead?",
+      "tooltip": "Declares the enemy's type for passives that act against it. The calculation has no monster type of its own; this is the type you choose to evaluate against.",
+      "visibility": {
+        "if_enemy_cond": [
+          "Undead"
+        ]
+      },
+      "effects": [
+        {
+          "target": "enemy",
+          "name": "Condition:Undead",
+          "mod_type": "FLAG",
+          "value_bool": true,
+          "tags": [
+            {
+              "type": "condition",
+              "var": "Effective"
+            }
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "var": "conditionEnemyDemon",
+      "input_type": "check",
+      "section": "For Effective DPS",
+      "label": "Is the enemy a Demon?",
+      "tooltip": "Declares the enemy's type for passives that act against it. The calculation has no monster type of its own; this is the type you choose to evaluate against.",
+      "visibility": {
+        "if_enemy_cond": [
+          "Demon"
+        ]
+      },
+      "effects": [
+        {
+          "target": "enemy",
+          "name": "Condition:Demon",
+          "mod_type": "FLAG",
+          "value_bool": true,
+          "tags": [
+            {
+              "type": "condition",
+              "var": "Effective"
+            }
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "var": "conditionEnemyHumanoid",
+      "input_type": "check",
+      "section": "For Effective DPS",
+      "label": "Is the enemy a Humanoid?",
+      "tooltip": "Declares the enemy's type for passives that act against it. The calculation has no monster type of its own; this is the type you choose to evaluate against.",
+      "visibility": {
+        "if_enemy_cond": [
+          "Humanoid"
+        ]
+      },
+      "effects": [
+        {
+          "target": "enemy",
+          "name": "Condition:Humanoid",
+          "mod_type": "FLAG",
+          "value_bool": true,
+          "tags": [
+            {
+              "type": "condition",
+              "var": "Effective"
+            }
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "var": "conditionEnemyConstruct",
+      "input_type": "check",
+      "section": "For Effective DPS",
+      "label": "Is the enemy a Construct?",
+      "tooltip": "Declares the enemy's type for passives that act against it. The calculation has no monster type of its own; this is the type you choose to evaluate against.",
+      "visibility": {
+        "if_enemy_cond": [
+          "Construct"
+        ]
+      },
+      "effects": [
+        {
+          "target": "enemy",
+          "name": "Condition:Construct",
+          "mod_type": "FLAG",
+          "value_bool": true,
+          "tags": [
+            {
+              "type": "condition",
+              "var": "Effective"
+            }
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "var": "conditionEnemyBeast",
+      "input_type": "check",
+      "section": "For Effective DPS",
+      "label": "Is the enemy a Beast?",
+      "tooltip": "Declares the enemy's type for passives that act against it. The calculation has no monster type of its own; this is the type you choose to evaluate against.",
+      "visibility": {
+        "if_enemy_cond": [
+          "Beast"
+        ]
+      },
+      "effects": [
+        {
+          "target": "enemy",
+          "name": "Condition:Beast",
+          "mod_type": "FLAG",
+          "value_bool": true,
+          "tags": [
+            {
+              "type": "condition",
+              "var": "Effective"
+            }
+          ]
+        }
+      ],
+      "verified": true
+    },
+    {
+      "var": "multiplierEnduranceChargesConsumedRecently",
+      "input_type": "count",
+      "section": "When In Combat",
+      "label": "# of Endurance Charges consumed Recently:",
+      "tooltip": "How many Endurance Charges you have consumed recently. Charge consumption is not simulated, so the number is the state you choose to evaluate.",
+      "visibility": {
+        "if_mult": [
+          "EnduranceChargesConsumedRecently"
+        ]
+      },
+      "effects": [
+        {
+          "target": "player",
+          "name": "Multiplier:EnduranceChargesConsumedRecently",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "input"
+          }
+        }
+      ],
+      "verified": true
+    }
+  ]
+}
