@@ -94,11 +94,10 @@ fn property(item: &Value, property_type: u64) -> Option<u32> {
         if p["type"].as_u64() != Some(property_type) {
             return None;
         }
-        let raw = p["values"][0][0].as_str()?;
-        raw.trim_start_matches('+')
-            .trim_end_matches('%')
-            .parse()
-            .ok()
+        // The value may carry a trailing note ("20(最高等级)", "+20%"): the number leads.
+        let raw = p["values"][0][0].as_str()?.trim_start_matches('+');
+        let digits = raw.len() - raw.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+        raw[..digits].parse().ok()
     })
 }
 
@@ -345,11 +344,14 @@ fn slot(item: &Value) -> Option<String> {
     )
 }
 
-fn gem_names(data: &BuildData) -> Result<HashMap<String, BTreeSet<String>>, String> {
+/// Effect ids by (zh-CN gem name, is support). Two effects can share a name: the ordinary gem and the version an
+/// item grants (Herald of Ice and the Coming Calamity one). A character's gem list means the gem, so the item-only
+/// effects are left out whenever another effect has the name.
+fn gem_names(data: &BuildData) -> Result<HashMap<(String, bool), BTreeSet<String>>, String> {
     let names = state::game_data()?
         .base_item_names("zh-CN")
         .map_err(|e| e.to_string())?;
-    let mut result: HashMap<String, BTreeSet<String>> = HashMap::new();
+    let mut result: HashMap<(String, bool), BTreeSet<String>> = HashMap::new();
     let base_names: HashMap<_, _> = data
         .base_items
         .values()
@@ -365,10 +367,22 @@ fn gem_names(data: &BuildData) -> Result<HashMap<String, BTreeSet<String>>, Stri
             .flatten()
             {
                 result
-                    .entry(name.to_string())
+                    .entry((name.to_string(), gem.is_support))
                     .or_default()
                     .insert(effect.clone());
             }
+        }
+    }
+    let item_only = |effect: &str| {
+        effect.starts_with("Unique")
+            || data
+                .item_granted_skill_variants
+                .iter()
+                .any(|variant| variant.granted_effect_id == effect)
+    };
+    for effects in result.values_mut() {
+        if effects.len() > 1 && effects.iter().any(|effect| !item_only(effect)) {
+            effects.retain(|effect| !item_only(effect));
         }
     }
     Ok(result)
@@ -376,11 +390,11 @@ fn gem_names(data: &BuildData) -> Result<HashMap<String, BTreeSet<String>>, Stri
 
 fn gem(
     item: &Value,
-    names: &HashMap<String, BTreeSet<String>>,
+    names: &HashMap<(String, bool), BTreeSet<String>>,
     warnings: &mut BTreeSet<String>,
 ) -> Option<GemJson> {
     let name = clean(text(item, "baseType"));
-    let ids = names.get(&name);
+    let ids = names.get(&(name.clone(), item["support"].as_bool() == Some(true)));
     let Some(id) = ids.filter(|ids| ids.len() == 1).and_then(|ids| ids.first()) else {
         warnings.insert(format!("Unknown or ambiguous gem: {name}"));
         return None;
