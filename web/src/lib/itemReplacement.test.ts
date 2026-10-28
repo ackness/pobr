@@ -1,6 +1,6 @@
 /// <reference lib="es2024.promise" />
 import { expect, test, vi } from 'vitest';
-import { compareReplacementPositions, normalizeCopiedItem, replacementAffixes, validateReplacement } from './itemReplacement';
+import { compareReplacementPositions, normalizeCopiedItem, pasteNotStarted, replacementAffixes, validateReplacement } from './itemReplacement';
 import type { TradeCatalog } from './tradeOptimizer';
 import type { CalculateBuildRequest, ItemAugmentInfo, RuneCatalogEntry } from '../api/types';
 import type { EvaluateOptions, EvaluateResult } from './optimize';
@@ -323,4 +323,14 @@ test('new drafts can evaluate empty slots without changing the equipped-only pas
   expect(build).toEqual(original);
   await expect(compareReplacementPositions(build, copied, undefined,
     { catalog, translate, classify, evaluate: evaluatePositions })).rejects.toThrow('no-compatible-slot');
+});
+
+test('only a paste whose comparison has not begun survives a change of context', () => {
+  const idle = { pending: true, hasReceipt: false, busy: false, failed: false };
+  expect(pasteNotStarted(idle)).toBe(true);
+  // Nothing was pasted, or the comparison is running, finished or failed: it is discarded.
+  expect(pasteNotStarted({ ...idle, pending: false })).toBe(false);
+  expect(pasteNotStarted({ ...idle, busy: true })).toBe(false);
+  expect(pasteNotStarted({ ...idle, hasReceipt: true })).toBe(false);
+  expect(pasteNotStarted({ ...idle, failed: true })).toBe(false);
 });

@@ -9,6 +9,7 @@ import type { CraftingMetadata } from './itemCrafting';
  * 数据路径 `/data/`（`npm run sync-data` 从仓库 data/ 同步，gitignored）。
  */
 
+import { verifySnapshotDigests } from './dataIntegrity';
 import { EXPECTED_SCHEMA_VERSION } from './types';
 import type {
   AttributionRequest,
@@ -39,7 +40,10 @@ interface WasmModule {
   /** 可选：旧构建产物没有该导出，按版本 0 处理（同样判为错配）。 */
   schemaVersion?(): number;
   stageDataFile(path: string, content: string): void;
+  stageDataBytes(path: string, bytes: Uint8Array): void;
   initStagedData(): void;
+  /** `initStagedData` for files already compared with the manifest's digests. */
+  initStagedDataVerified(): void;
   isDataReady(): boolean;
   decodeBuildJson(code: string): string;
   decodeBuildLoadoutJson(requestJson: string): string;
@@ -48,6 +52,8 @@ interface WasmModule {
   decodeBuildFileJson(content: string): string;
   importTradeItemsJson(input: string): string;
   calculateBuildJson(requestJson: string): string;
+  /** Static: the detail kind of every display stat. */
+  breakdownDescriptorsJson(): string;
   encodeBuildJson(requestJson: string): string;
   skillMetricsJson(requestJson: string): string;
   importPartyMemberJson(code: string): string;
@@ -83,6 +89,34 @@ async function fetchText(url: string): Promise<string> {
     throw new Error(`fetch ${url}: ${res.status} ${res.statusText}`);
   }
   return res.text();
+}
+
+async function fetchBytes(url: string): Promise<Uint8Array> {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`fetch ${url}: ${res.status} ${res.statusText}`);
+  }
+  return new Uint8Array(await res.arrayBuffer());
+}
+
+/**
+ * Data files the page reads again after start-up (the planners, catalogs and name
+ * tables), kept as the bytes that were staged. Every other file is released once the
+ * engine has built its data: it holds its own copy, and a file not kept here is simply
+ * fetched again if something asks for it.
+ */
+function readAgainAfterBoot(rel: string): boolean {
+  return rel.startsWith('base/passive_trees/') || [
+    'base/base_items.json',
+    'base/passive_tree.json',
+    'base/passive_tree_meta.json',
+    'overlay/trade_catalog.json',
+    'overlay/config_options.json',
+    'i18n/zh-CN/classes.json',
+    'i18n/zh-CN/base_items.json',
+    'i18n/zh-TW/base_items.json',
+    'i18n/zh-CN/words.json',
+  ].includes(rel);
 }
 
 /** 并发受限地拉取数据文件（数据 ~30MB、上百文件；8 路并发足够）。 */
@@ -126,11 +160,14 @@ export async function createWasmBackend(): Promise<PobrBackend> {
   let manifest: DataManifest | null = null;
   let loadedDataVersion: string | undefined;
   const fetchedFiles = new Map<string, Promise<string>>();
+  /** Staged bytes of the files in `readAgainAfterBoot`, by url, until they are first read as text. */
+  const keptBytes = new Map<string, Uint8Array>();
   const fetchVersionFile = (version: string, rel: string): Promise<string> => {
     const url = `/data/${version}/${rel}`;
     const existing = fetchedFiles.get(url);
     if (existing) return existing;
-    const pending = fetchText(url);
+    const kept = keptBytes.get(url);
+    const pending = kept ? Promise.resolve(new TextDecoder().decode(kept)) : fetchText(url);
     pending.catch(() => fetchedFiles.delete(url));
     fetchedFiles.set(url, pending);
     return pending;
@@ -146,17 +183,28 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
     const { version, files } = manifest;
     let done = 0;
+    const staged = new Map<string, Uint8Array>();
     await fetchAll(files, async (rel) => {
-      const pending = fetchVersionFile(version, rel);
-      const content = await pending;
-      wasm.stageDataFile(rel, content);
+      const bytes = await fetchBytes(`/data/${version}/${rel}`);
+      staged.set(rel, bytes);
+      wasm.stageDataBytes(rel, bytes);
       done += 1;
       if (done % 20 === 0 || done === files.length) {
         onProgress?.(`加载游戏数据 ${done}/${files.length}…`);
       }
     });
+    onProgress?.('校验数据…');
+    // The browser's SHA-256 compares every file the manifest lists with its digest in a
+    // fraction of the time WASM takes to hash them; where it cannot (no secure context,
+    // an older manifest) the engine does the same comparison itself.
+    const verified = await verifySnapshotDigests(staged);
     onProgress?.('构建数据索引…');
-    wasm.initStagedData();
+    if (verified) wasm.initStagedDataVerified();
+    else wasm.initStagedData();
+    for (const rel of files) {
+      const bytes = staged.get(rel);
+      if (bytes && readAgainAfterBoot(rel)) keptBytes.set(`/data/${version}/${rel}`, bytes);
+    }
     loadedDataVersion = version;
     onProgress?.('就绪');
   };
@@ -212,6 +260,9 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async calculateBuild(request: CalculateBuildRequest) {
       return JSON.parse(wasm.calculateBuildJson(JSON.stringify(request))) as CalculateBuildResponse;
+    },
+    async breakdownDescriptors() {
+      return JSON.parse(wasm.breakdownDescriptorsJson()) as Awaited<ReturnType<PobrBackend['breakdownDescriptors']>>;
     },
     async encodeBuildFile(request) {
       return JSON.parse(wasm.encodeBuildFileJson(JSON.stringify(request)));

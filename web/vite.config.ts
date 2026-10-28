@@ -67,6 +67,8 @@ export default defineConfig({
   },
   // wasm-pack 产物（src/wasm/pkg）以 ES module + wasm 文件形式被引用。
   assetsInclude: ['**/*.wasm'],
+  // The engine runs in a module worker that loads the WASM package by dynamic import.
+  worker: { format: 'es' },
   server: {
     fs: {
       // 允许引用仓库根（wasm pkg 在 web/ 内，无需越界；保守放开上一级备用）。

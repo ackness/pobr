@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { CalculateBuildRequest } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useLocalizedLines } from '../../hooks/useLocalizedLines';
-import { compareReplacementPositions, replacementAffixes, type ReplacementReport } from '../../lib/itemReplacement';
+import { compareReplacementPositions, pasteNotStarted, replacementAffixes, type ReplacementReport } from '../../lib/itemReplacement';
 import { compareObjectiveStats, feasibleOf, type Objective } from '../../lib/optimize';
 import type { TradeCatalog } from '../../lib/tradeOptimizer';
 import { slotLabel, statNameLabel, type Lang } from '../../lib/i18n';
@@ -96,7 +96,9 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   useLayoutEffect(() => {
     if (previousContext.current.key === contextKey && previousContext.current.catalog === catalog) return;
     previousContext.current = { key: contextKey, catalog };
-    stop(); setSnapshot(null); setError(''); setAffixDirty(false);
+    // A paste that has not begun is kept: the debounce below compares it under this context.
+    if (!pasteNotStarted({ pending: pendingPaste !== null, hasReceipt: snapshot !== null, busy, failed: error !== '' })) stop();
+    setSnapshot(null); setError(''); setAffixDirty(false);
   }, [contextKey, catalog, stop]);
   useLayoutEffect(() => { if (!active) { stop(); setApplied(null); } }, [active, stop]);
   useEffect(() => { if (report && inputRef.current) inputRef.current.scrollTop = 0; }, [report?.text]);
