@@ -56,6 +56,111 @@ test('V2 copies legacy saves once and config edits preserve the original workspa
   expect(dialogs).toEqual([]);
 });
 
+/** Lets a tab be made deaf to `storage` events (`window.deaf = true`), as a frozen or sleeping tab is. */
+async function deafToStorage(page: Page) {
+  await page.addInitScript(() => {
+    const add = window.addEventListener.bind(window);
+    window.addEventListener = ((type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) => {
+      if (type !== 'storage') return add(type, listener, options);
+      return add(type, (event: Event) => {
+        if (Reflect.get(window, 'deaf')) return;
+        if (typeof listener === 'function') listener(event); else listener.handleEvent(event);
+      }, options);
+    }) as typeof window.addEventListener;
+  });
+}
+
+test('V2 tabs of one browser follow each other and merge what a tab missed', async ({ page, context }) => {
+  await deafToStorage(page);
+  await importV2(page);
+  const other = await context.newPage();
+  await other.goto('/v2/build');
+  await expect(other.locator('#build-heading')).toBeVisible({ timeout: 90_000 });
+  // The list on the Build page shows what each tab holds; the header's select only renders the open one.
+  const shown = (tab: Page) => tab.getByRole('group', { name: 'My builds', exact: true }).locator('li strong');
+  const names = (tab: Page, list: string[]) => expect(shown(tab)).toHaveText(list.map(name => name || 'My build'));
+  const notice = (tab: Page) => tab.locator('.v2-notice[data-sync]');
+  const create = async (tab: Page, value: string) => {
+    await tab.getByRole('button', { name: 'New build', exact: true }).last().click();
+    await tab.getByRole('textbox', { name: 'Name', exact: true }).fill(value);
+    await tab.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(tab.locator('.v2-save-state')).toHaveText('Saved locally');
+  };
+  const stored = async (tab: Page): Promise<string[]> =>
+    (await state(tab)).workspace.builds.map((build: { name: string }) => build.name);
+  const start = await stored(page);
+
+  // A build made in one tab appears in the other without a reload, and says so.
+  await openBuilds(page);
+  await create(page, 'Made here');
+  await names(other, [...start, 'Made here']);
+  await expect(notice(other)).toHaveAttribute('data-sync', 'updated');
+
+  // Deleting the build the other tab has open: that tab moves on to one that is still there.
+  await other.getByRole('group', { name: 'My builds', exact: true }).getByRole('button', { name: /Made here/ }).click();
+  await expect(other.locator('.v2-save-state')).toHaveText('Saved locally');
+  await openBuilds(page);
+  await page.getByRole('button', { name: 'Delete build', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+  await names(other, start);
+  await expect(notice(other)).toHaveAttribute('data-sync', 'current-removed');
+  expect(await stored(page)).toEqual(start);
+
+  // A tab that never heard of a change (a frozen or sleeping one) still keeps it when it writes.
+  await page.evaluate(() => Reflect.set(window, 'deaf', true));
+  await openBuilds(other);
+  await create(other, 'Made there');
+  await names(page, start);
+  await openBuilds(page);
+  await create(page, 'Made here too');
+  expect(await stored(page)).toEqual([...start, 'Made there', 'Made here too']);
+  await names(page, [...start, 'Made there', 'Made here too']);
+  await expect(notice(page)).toHaveAttribute('data-sync', 'updated');
+  // The other tab follows the merged library; nothing either tab made is lost.
+  await names(other, [...start, 'Made there', 'Made here too']);
+});
+
+test('V2 tabs of one browser share the saved skill sets', async ({ page, context }) => {
+  await deafToStorage(page);
+  await importV2(page);
+  const other = await context.newPage();
+  await other.goto('/v2/skills');
+  await expect(other.locator('details.skills-advanced summary')).toBeVisible({ timeout: 90_000 });
+  await nav(page, 'Skills').click();
+  await expect(page.locator('details.skills-advanced summary')).toBeVisible();
+  const chips = (tab: Page) => tab.locator('.skill-set-chip');
+  const stored = async (tab: Page): Promise<string[]> => (await state(tab, 'pobr-v2-library')).skillSets.map((set: { name: string }) => set.name);
+  const save = async (tab: Page, name: string) => {
+    await tab.locator('details.skills-advanced').evaluate(details => { (details as HTMLDetailsElement).open = true; });
+    await tab.getByRole('textbox', { name: 'Set name…', exact: true }).fill(name);
+    await tab.getByRole('button', { name: 'Save current as set', exact: true }).click();
+  };
+
+  // An import already leaves a set named after the class; the others are counted on top of it.
+  const start = await stored(page);
+  const count = (extra: number) => start.length + extra;
+
+  // A set saved in one tab shows up in the other without a reload.
+  await save(page, 'Set A');
+  await expect(chips(other)).toHaveCount(count(1));
+  await expect(chips(other).last()).toContainText('Set A');
+
+  // A tab that never heard of the next one keeps it when it saves its own.
+  await page.evaluate(() => Reflect.set(window, 'deaf', true));
+  await save(other, 'Set B');
+  await expect(chips(page)).toHaveCount(count(1));
+  await save(page, 'Set C');
+  await expect.poll(() => stored(page)).toEqual([...start, 'Set A', 'Set B', 'Set C']);
+  await expect(chips(page)).toHaveCount(count(3));
+  await expect(chips(other)).toHaveCount(count(3));
+
+  // Removing one in a tab that has been told removes it for the other too.
+  await page.evaluate(() => Reflect.set(window, 'deaf', false));
+  await chips(other).filter({ hasText: 'Set B' }).getByRole('button', { name: '×', exact: true }).click();
+  await expect.poll(() => stored(other)).toEqual([...start, 'Set A', 'Set C']);
+  await expect(chips(page)).toHaveCount(count(2));
+});
+
 test('V2 navigation, settings and confirmations retain the current editor', async ({ page }) => {
   await importV2(page);
   await expect(page.getByRole('note')).toContainText('configuration');
