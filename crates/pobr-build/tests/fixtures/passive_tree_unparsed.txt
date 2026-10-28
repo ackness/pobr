@@ -16,8 +16,6 @@ node.11178	50% chance to gain [Onslaught|Onslaught] on Killing Blow with [Axe|Ax
 node.11284	10% increased [ElementalInfusion|Elemental Infusion] duration
 node.11428	[Archon] Buffs also grant 30% increased [Critical|Critical Hit Chance]
 node.11428	[Archon] Buffs also grant 50% increased [CriticalDamageBonus|Critical Damage Bonus]
-node.11526	40% increased [Critical|Critical Hit] Chance after 7 metres
-node.11526	Arrows gain [Critical|Critical Hit] Chance as they travel farther, up to
 node.11578	[Shock|Shocking] [Hit|Hits] have a 50% chance to also Shock enemies in a 1.5 metre radius
 node.11641	Grants Skill: <underline>{Virtuous Barrier}
 node.11667	10% increased [Immobilised|Immobilisation] buildup against Constructs
