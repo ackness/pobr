@@ -242,6 +242,7 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "Condition:IgnoreMovementPenalties",
         ],
         "LightRadiusMod" => &["LightRadius"],
+        "FreezeThresholdAdded" | "FreezeThresholdMod" => &["FreezeThreshold"],
         "LifeRecoveryRateMod" => &["LifeRecoveryRate"],
         "ManaRecoveryRateMod" => &["ManaRecoveryRate"],
         "EnergyShieldRecoveryRateMod" => &["EnergyShieldRecoveryRate"],

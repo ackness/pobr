@@ -31,6 +31,11 @@ pub struct LimitViews {
     /// Movement speed before action speed is applied.
     pub movement_speed_mod: f64,
     pub light_radius_mod: f64,
+    /// What the build adds to Freeze Threshold (`FreezeThreshold` BASE, including the share of maximum Energy
+    /// Shield) and the increases and reductions to it. The game's base value is not in the exported data, so no
+    /// total is shown.
+    pub freeze_threshold_added: f64,
+    pub freeze_threshold_mod: f64,
     pub life_recovery_rate_mod: f64,
     pub mana_recovery_rate_mod: f64,
     pub energy_shield_recovery_rate_mod: f64,
@@ -170,6 +175,8 @@ pub(crate) fn display_value(out: &OutputTable, stat: &str) -> Option<f64> {
         "ActionSpeedMod" => v.action_speed_mod,
         "MovementSpeedMod" => v.movement_speed_mod,
         "LightRadiusMod" => v.light_radius_mod,
+        "FreezeThresholdAdded" => v.freeze_threshold_added,
+        "FreezeThresholdMod" => v.freeze_threshold_mod,
         "LifeRecoveryRateMod" => v.life_recovery_rate_mod,
         "ManaRecoveryRateMod" => v.mana_recovery_rate_mod,
         "EnergyShieldRecoveryRateMod" => v.energy_shield_recovery_rate_mod,

@@ -7304,6 +7304,32 @@
       "examples": [
         "Arrows gain Critical Hit Chance as they travel farther, up to 40% increased Critical Hit Chance after 7 metres"
       ]
+    },
+    {
+      "id": "energy_shield_as_freeze_threshold",
+      "pattern": "^gain (\\d+(?:\\.\\d+)?)% of maximum energy shield as additional freeze threshold$",
+      "mods": [
+        {
+          "name": "FreezeThreshold",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "EnergyShield",
+              "percent": "$1"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "gain_%_maximum_energy_shield_as_freeze_threshold_+; passive Energy Shield as Freeze Threshold",
+      "exporter": "absent",
+      "source_note": "A flat addition to Freeze Threshold equal to the share of the completed maximum Energy Shield (the PercentStat convention, as for the Ailment Threshold). The game's base Freeze Threshold is not in the exported data, so the calculation shows what the build adds (FreezeThresholdAdded) and the increases (FreezeThresholdMod) and no total.",
+      "examples": [
+        "Gain 50% of maximum Energy Shield as additional Freeze Threshold"
+      ]
     }
   ]
 }

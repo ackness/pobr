@@ -477,3 +477,25 @@ fn ancestrally_boosted_passives_apply_only_to_a_boosted_attack() {
     assert_eq!(inc(BOOSTED, "Damage") - inc("", "Damage"), 24.0);
     assert_eq!(inc(BOOSTED, "AreaOfEffect") - inc("", "AreaOfEffect"), 4.0);
 }
+
+/// Freeze Threshold: the passives add a share of maximum Energy Shield and increase it. The game's base is not in
+/// the exported data, so the calculation shows what the build adds and the multiplier, and no total.
+#[test]
+fn freeze_threshold_views_read_the_additions_and_the_increases() {
+    let plain = calculate(FIREBALL, &[]);
+    assert_eq!(display_value(&plain, "FreezeThresholdAdded"), 0.0);
+    assert_eq!(display_value(&plain, "FreezeThresholdMod"), 1.0);
+    let built = calculate(
+        FIREBALL,
+        &[
+            "+400 to maximum Energy Shield",
+            "Gain 50% of maximum Energy Shield as additional Freeze Threshold",
+            "60% increased Freeze Threshold",
+        ],
+    );
+    let es = display_value(&built, "EnergyShield");
+    assert!(es >= 400.0, "{es}");
+    let added = display_value(&built, "FreezeThresholdAdded");
+    assert!((added - es * 0.5).abs() <= 1.0, "{added} vs half of {es}");
+    assert!((display_value(&built, "FreezeThresholdMod") - 1.6).abs() < 1e-9);
+}
