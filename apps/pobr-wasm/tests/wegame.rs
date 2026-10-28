@@ -161,6 +161,47 @@ fn wegame_reads_gem_levels_and_names_as_the_game_lists_them() {
     assert!(!notes.contains("Unknown or ambiguous gem"), "{notes}");
 }
 
+/// A share names the socket holding a jewel by its tree node id, or `PassiveJewel_<n>`: row n of the game's
+/// jewel slot table. Row 4 is `jewel_slot1960` (node 60735) and row 12 `jewel_slot1970` (node 46882); a row no
+/// socket of the tree answers to is reported and its jewel left out.
+#[test]
+fn wegame_places_a_jewel_by_its_slot_table_row() {
+    init();
+    let jewel = |name: &str| {
+        json!({"id":"Metadata/Items/Jewels/JewelDex","name":"Emerald","display_name":name,"rarity":2,
+               "mod_descriptions":[{"values":["[Projectile|投射物]速度提高 4 (4-8)%"]}]})
+    };
+    let mut share = fixture();
+    share["jewel_data"] = json!(
+        json!([{"socket_id":"PassiveJewel_4","jewel":jewel("Row Four")},
+               {"socket_id":"PassiveJewel_12","jewel":jewel("Row Twelve")},
+               {"socket_id":"PassiveJewel_1","jewel":jewel("Retired Socket")},
+               {"socket_id":"PassiveJewel_999","jewel":jewel("No Such Row")}])
+        .to_string()
+        .replace('"', "\\\"")
+    );
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_file_json(&share.to_string()).unwrap())
+            .unwrap();
+    let placed: Vec<_> = decoded["items"]["socket_jewels"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|jewel| jewel["socket_node"].as_u64().unwrap())
+        .collect();
+    assert_eq!(placed, [60735, 46882]);
+    let notes = decoded["notes"].as_str().unwrap();
+    assert!(
+        notes.contains("Unknown jewel socket: PassiveJewel_1"),
+        "{notes}"
+    );
+    assert!(
+        notes.contains("Unknown jewel socket: PassiveJewel_999"),
+        "{notes}"
+    );
+    assert!(!notes.contains("PassiveJewel_4"), "{notes}");
+}
+
 /// A corrupted gem arrives with the flag a corrupted item has; the build keeps
 /// it, so modifiers to corrupted gems reach the gem. The level property is
 /// already the gem's whole level.

@@ -228,6 +228,8 @@ JSON/WASM 握手版本为 16（`pobr_wasm::SCHEMA_VERSION`，与 Web 的 `EXPECT
 
 游戏 Build Planner v1 `.build` 由 `build_api::decode_build_file_json` 识别，旧国服 `items` 与 WeGame 导入仍可用；`build_api::encode_build_file_json({ code, name, all_loadouts, source })` 返回 `files`（文件名与 JSON 内容）和去重的 `warnings`，可按来源 loadout 分别导出，不切换会话。格式使用游戏的天赋／宝石 id 和武器组，装备栏内容只是提示，不生成装备、药剂或珠宝；角色等级默认为 1，宝石等级／品质默认为 1/0，只识别精确的 `Level N, Q% Quality` 等级提示。`planner_source` 保存作者、链接、说明、等级区间和文本，供存档与再导出使用；区间不参与计算。未知 id 会诊断，导出跳过 meta 宝石及无游戏映射的条目，珠宝与肢体无装备栏映射；历史树须先转换。兼容性由格式契约和合成 fixture 验证，尚无游戏内导入验证。
 
+WeGame 分享（`apps/pobr-wasm/src/build_api/wegame.rs`）与 PoB 码在几处写法不同，导入器逐项归一，没有归一的会进 `notes` 的 `[import]` 警告，不静默丢弃。宝石只有中文名，按 (名字, 是否辅助) 查找：同名的物品授予版本（Herald of Ice 与 Coming Calamity 的那个，目录里的 `item_granted_skills` 变体与 `Unique` 前缀效果）在同名有普通宝石时让位，仍有歧义的（各武器的默认攻击等）报 `Unknown or ambiguous gem`。等级和品质可带注释（`20(最高等级)` 是 20 级），按开头的数字读取。珠宝所在的插槽写 `PassiveJewel_<n>` 或天赋树节点 id：`<n>` 是游戏表 `PassiveJewelSlots` 的行号，该行的 `Slot` 指向 `PassiveSkills`，其 `Id` 即树上节点 id；这张表手工整理在 `data/overlay-common/passive_jewel_slots.json`（带导出哈希，已有一个真实分享验证了 4、5、12、17 行），适配器读到该表后应改为生成。主技能、天赋授予的技能和武器组绑定 WeGame 都不提供，见 `[import]` 提示。
+
 ## 计算引擎架构（pobr-core）
 
 目录按 Modifier 的生命周期拆分（见 [pobr-core/src/lib.rs](../crates/pobr-core/src/lib.rs)）：

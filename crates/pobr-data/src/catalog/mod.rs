@@ -43,6 +43,7 @@ pub mod boss_poise_thresholds;
 pub mod high_precision_mods;
 pub mod item_granted_skills;
 pub mod local_mods;
+pub mod passive_jewel_slots;
 pub mod totem_varieties;
 
 // Per-skill override-value overlay schema (vendor Lua extraction)
