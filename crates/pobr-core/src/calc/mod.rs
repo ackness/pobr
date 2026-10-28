@@ -131,7 +131,7 @@ pub use session::{
     BuffKind, BuffSpec, CalculationSession, CompletedCalculationSession, HitDamageMods,
     SkillDotMods,
 };
-pub use setup_env::{env_with_enemy, reduce_enemy_exposure, setup_enemy};
+pub use setup_env::{env_with_enemy, reduce_enemy_exposure, scale_enemy_daze, setup_enemy};
 pub use skill_dot::{
     DotIsFlags, SkillDotInputs, SkillDotOutput, SkillDotPart, SkillDotTerms, calc_skill_dot,
     dot_config, fill_skill_dot, skill_dot_terms,
