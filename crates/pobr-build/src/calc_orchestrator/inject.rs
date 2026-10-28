@@ -1485,6 +1485,16 @@ pub(super) fn stage_inject_passives(
         } else if super::collect::is_socket_line(&line) {
             let reader = super::collect::SOCKETED_JEWEL_READER;
             session.note_line(&source, &line, LineFate::ReadBy(reader));
+        } else if let Some((name, _)) = super::granted_skills::parse_grants_skill(
+            // The tree words the skill with a style: "Grants Skill: <underline>{Mirage Deadeye}".
+            &pobr_core::mod_parser::engine::strip_display_markup(&line),
+        ) && super::granted_skills::build_lists_granted_skill(build, data, &name)
+        {
+            session.note_line(
+                &source,
+                &line,
+                LineFate::ReadBy(super::sources::GRANTED_SKILL_READER),
+            );
         } else {
             session.record_unsupported_modifier_text(format!("Tree:{node}: {line}"));
             session.note_line(&source, &line, LineFate::Unparsed);

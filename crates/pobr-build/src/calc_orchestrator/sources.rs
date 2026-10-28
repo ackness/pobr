@@ -40,6 +40,10 @@ pub struct ReceivedLine {
 /// The reader of gem level and quality bonuses, which no rule parses.
 pub(crate) const GEM_PROPERTY_READER: &str = "gem levels and quality, settled before any modifier is stored (skill::resolve::gem_property_bonuses)";
 
+/// The reader of the skills a passive node grants: they are socket groups of the build.
+pub(crate) const GRANTED_SKILL_READER: &str =
+    "the skill group of the granted skill (granted_skills::build_lists_granted_skill)";
+
 /// Whose lines arrive: an equipped item or limb, by its slot id, each of
 /// whose sections is a source of its own; or a jewel, all of whose lines are
 /// attributed to it.

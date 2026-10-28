@@ -39,7 +39,7 @@ const MAX_LEVEL_FALLBACK: u32 = 99;
 
 /// Parses one granted-skill mod line: `grants skill: level 20 purity of fire` →
 /// `("purity of fire", Some(20))`; `grants skill: firebolt` → `("firebolt", None)`.
-fn parse_grants_skill(text: &str) -> Option<(String, Option<u32>)> {
+pub(crate) fn parse_grants_skill(text: &str) -> Option<(String, Option<u32>)> {
     // The cleaned line must start with "grants skill:"; most lines start otherwise,
     // and a `[` link is replaced by its text during cleanup.
     if !matches!(
@@ -61,6 +61,20 @@ fn parse_grants_skill(text: &str) -> Option<(String, Option<u32>)> {
         return Some((name.trim().to_string(), Some(level)));
     }
     Some((rest.to_string(), None))
+}
+
+/// Whether an enabled group of the build is the skill a passive's "Grants Skill: <name>" line names, whether it is
+/// listed as the tree's own group or, as a character from the game has it, as an ordinary group. The grant is then
+/// in the calculation whatever the line itself yields. A skill the build does not list is not granted by the line.
+pub(crate) fn build_lists_granted_skill(build: &Build, data: &BuildData, name: &str) -> bool {
+    let Some(skill_id) = data.skill_id_by_gem_name().get(name) else {
+        return false;
+    };
+    build.socket_groups.iter().any(|group| {
+        group.enabled
+            && (group.active_skill_id.as_deref() == Some(skill_id.as_str())
+                || group.gem_skills.iter().any(|gem| gem.skill_id == *skill_id))
+    })
 }
 
 fn is_item_skill_source(source: Option<&str>) -> bool {
@@ -786,6 +800,14 @@ mod tests {
         );
         assert_eq!(parse_grants_skill("+50 to maximum Life"), None);
         assert_eq!(parse_grants_skill("Grants Skill:"), None);
+        // The passive tree words the skill with a style; its markup is reduced to the shown text first.
+        let shown = pobr_core::mod_parser::engine::strip_display_markup(
+            "Grants Skill: <underline>{Mirage Deadeye}",
+        );
+        assert_eq!(
+            parse_grants_skill(&shown),
+            Some(("mirage deadeye".to_string(), None))
+        );
     }
 
     #[test]
