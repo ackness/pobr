@@ -4041,8 +4041,10 @@ fn materialized_skill_form_and_historical_tree_match_import_and_export() {
 mod support_coverage {
     use serde_json::{Value, json};
 
-    const FORK: &str = "SupportForkPlayer";
-    const STAT: &str = "support_fork_forked_projectile_damage_+%_final";
+    // Swift Affliction III still has an unmodelled conditional duration threshold.
+    const SWIFT: &str = "SupportSwiftAfflictionPlayerThree";
+    const STAT: &str =
+        "support_swift_affliction_non_ailment_damage_over_time_+%_final_if_duration_below_1_second";
 
     fn init() {
         pobr_wasm::init_data_from_dir(&pobr_gamedata::current_data_dir().to_string_lossy())
@@ -4080,12 +4082,12 @@ mod support_coverage {
             .filter_map(Value::as_str)
             .filter(|text| text.contains(STAT))
             .collect();
-        assert_eq!(rows.len(), 1, "one source-specific Fork limit");
+        assert_eq!(rows.len(), 1, "one source-specific Swift Affliction limit");
         for token in [
-            format!("Support:{FORK}:"),
+            format!("Support:{SWIFT}:"),
             "set=1:".into(),
             format!("stat={STAT}:"),
-            "value=-30:".into(),
+            "value=50:".into(),
             format!("host={host}:"),
         ] {
             assert!(
@@ -4106,6 +4108,22 @@ mod support_coverage {
             .unwrap()["value"]
             .as_f64()
             .unwrap()
+    }
+
+    fn assert_same_primary_hit(left: &Value, right: &Value) {
+        // Swift Affliction's modelled duration penalty can change damage over time.
+        for field in [
+            "skill_id",
+            "group_index",
+            "active_skill_index",
+            "hit_damage",
+            "hit_dps",
+        ] {
+            assert_eq!(
+                left["main_skill"][field], right["main_skill"][field],
+                "{field}"
+            );
+        }
     }
 
     #[test]
@@ -4197,18 +4215,39 @@ mod support_coverage {
     }
 
     #[test]
-    fn normal_json_discloses_fork_and_preserves_primary_hit_numbers() {
+    fn modeled_fork_is_not_reported_as_an_unsupported_modifier() {
+        init();
+        let bare = calc(&request(vec![group("FireballPlayer", &[])], 0));
+        let equipped = calc(&request(
+            vec![group("FireballPlayer", &["SupportForkPlayer"])],
+            0,
+        ));
+        assert!(
+            equipped["unsupported_modifiers"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+        for id in ["TotalDPS", "TotalHitAvg", "Life", "Mana"] {
+            assert_eq!(stat(&equipped, id), stat(&bare, id));
+        }
+        assert!(stat(&equipped, "ManaCost") > stat(&bare, "ManaCost"));
+    }
+
+    #[test]
+    fn normal_json_discloses_swift_affliction_and_preserves_primary_hit_numbers() {
         init();
         let bare_request = request(vec![group("FireballPlayer", &[])], 0);
-        let equipped_request = request(vec![group("FireballPlayer", &[FORK])], 0);
+        let equipped_request = request(vec![group("FireballPlayer", &[SWIFT])], 0);
         let bare = calc(&bare_request);
         let equipped = calc(&equipped_request);
         let identity = receipt(&equipped, "FireballPlayer");
         for id in ["TotalDPS", "TotalHitAvg", "Life", "Mana"] {
             assert_eq!(stat(&equipped, id), stat(&bare, id));
         }
-        assert!(stat(&equipped, "ManaCost") > stat(&bare, "ManaCost"));
-        assert_eq!(equipped["main_skill"], bare["main_skill"]);
+        // Swift Affliction III has no cost multiplier.
+        assert_eq!(stat(&equipped, "ManaCost"), stat(&bare, "ManaCost"));
+        assert_same_primary_hit(&equipped, &bare);
         assert!(stat(&bare, "TotalDPS") > 0.0);
         assert_eq!(
             calc(&equipped_request),
@@ -4251,28 +4290,25 @@ mod support_coverage {
                 .cloned()
                 .collect::<Vec<_>>()
         };
-        let mut disabled = group("FireballPlayer", &[FORK]);
+        let mut disabled = group("FireballPlayer", &[SWIFT]);
         disabled["enabled"] = json!(false);
         let groups = vec![
             group("FireballPlayer", &[]),
-            group("FireballPlayer", &[FORK]),
-            group("BallLightningPlayer", &[FORK]),
-            group("ArmourBreakerPlayer", &[FORK]),
+            group("FireballPlayer", &[SWIFT]),
+            group("ContagionPlayer", &[SWIFT]),
+            group("ConductivityPlayer", &[SWIFT]),
             disabled,
         ];
         let bare = calc(&request(groups.clone(), 0));
         assert!(bare["unsupported_modifiers"].as_array().unwrap().is_empty());
         let fire = calc(&request(groups.clone(), 1));
-        let lightning = calc(&request(groups.clone(), 2));
+        let contagion = calc(&request(groups.clone(), 2));
         assert_ne!(
             receipt(&fire, "FireballPlayer"),
-            receipt(&lightning, "BallLightningPlayer")
+            receipt(&contagion, "ContagionPlayer")
         );
-        for (response, host) in [
-            (&fire, "FireballPlayer"),
-            (&lightning, "BallLightningPlayer"),
-        ] {
-            let single = calc(&request(vec![group(host, &[FORK])], 0));
+        for (response, host) in [(&fire, "FireballPlayer"), (&contagion, "ContagionPlayer")] {
+            let single = calc(&request(vec![group(host, &[SWIFT])], 0));
             assert_eq!(skill_stats(response), skill_stats(&single));
             assert_eq!(stat(response, "ReqDex"), 15.0);
             assert_eq!(stat(&single, "ReqDex"), 5.0);
@@ -4290,7 +4326,7 @@ mod support_coverage {
         );
         assert_eq!(
             skill_stats(&incompatible),
-            skill_stats(&calc(&request(vec![group("ArmourBreakerPlayer", &[])], 0)))
+            skill_stats(&calc(&request(vec![group("ConductivityPlayer", &[])], 0)))
         );
         assert_eq!(stat(&bare, "ReqDex"), 15.0);
         assert_eq!(calc(&request(groups, 0)), bare);
@@ -4312,17 +4348,20 @@ mod support_coverage {
                 .is_empty()
         );
         let expanded = calc(&request(
-            vec![group("FireballPlayer", &["SupportFireMasteryPlayer", FORK])],
+            vec![group(
+                "FireballPlayer",
+                &["SupportFireMasteryPlayer", SWIFT],
+            )],
             0,
         ));
-        let compacted = calc(&request(vec![group("FireballPlayer", &[FORK])], 0));
+        let compacted = calc(&request(vec![group("FireballPlayer", &[SWIFT])], 0));
         assert_eq!(
             receipt(&expanded, "FireballPlayer"),
             receipt(&compacted, "FireballPlayer")
         );
-        assert_eq!(expanded["main_skill"], mastery["main_skill"]);
+        assert_same_primary_hit(&expanded, &mastery);
         assert_eq!(stat(&expanded, "TotalDPS"), stat(&mastery, "TotalDPS"));
-        assert!(stat(&expanded, "ManaCost") > stat(&mastery, "ManaCost"));
+        assert_eq!(stat(&expanded, "ManaCost"), stat(&mastery, "ManaCost"));
         let ramp = calc(&request(
             vec![group("ArmourBreakerPlayer", &["SupportCloseCombatPlayer"])],
             0,
@@ -4333,7 +4372,7 @@ mod support_coverage {
     #[test]
     fn real_host_form_changes_limit_identity_but_not_the_support_set() {
         init();
-        let mut request = request(vec![group("FireballPlayer", &[FORK])], 0);
+        let mut request = request(vec![group("FireballPlayer", &[SWIFT])], 0);
         let primary = calc(&request);
         let mut identities = std::collections::BTreeSet::new();
         for set in 1..=3 {

@@ -1,8 +1,9 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { GemInput, SocketGroupInput } from '../src/api/types';
 
-const fork = 'SupportForkPlayer';
-const forkStat = 'support_fork_forked_projectile_damage_+%_final';
+// Swift Affliction III still has an unmodelled conditional duration threshold.
+const swift = 'SupportSwiftAfflictionPlayerThree';
+const swiftStat = 'support_swift_affliction_non_ailment_damage_over_time_+%_final_if_duration_below_1_second';
 const modeled = ['SupportControlledDestructionPlayer', 'SupportFireMasteryPlayer'];
 const nav = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main navigation' })
   .getByRole('button', { name, exact: true });
@@ -35,13 +36,13 @@ async function recommendationsReceipt(page: Page) {
   })));
 }
 
-function expectForkIdentity(text: string) {
-  for (const token of [`Support:${fork}:`, 'set=1:', `stat=${forkStat}:`, 'value=-30:', 'host=FireballPlayer:', 'host_set=1:']) {
+function expectSwiftIdentity(text: string) {
+  for (const token of [`Support:${swift}:`, 'set=1:', `stat=${swiftStat}:`, 'value=50:', 'host=FireballPlayer:', 'host_set=1:']) {
     expect(text).toContain(token);
   }
 }
 
-async function syntheticCaster(page: Page, equippedFork: boolean) {
+async function syntheticCaster(page: Page, equippedSwift: boolean) {
   // These HTTP import/league fixtures are explicitly synthetic. Data, compatibility,
   // diagnostics, candidate calculations and Apply use the application's real WASM.
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
@@ -51,7 +52,7 @@ async function syntheticCaster(page: Page, equippedFork: boolean) {
       explicitMods: ['40% increased Fire Damage', '+80 to maximum Life'] }],
     talent_tree: { hashes: [54447, 4739, 22419, 18407], quest_stats: [] }, jewel_data: '[]',
     skills: [{ baseType: 'Fireball', support: false, properties: [{ type: 5, values: [['16', 0]] }],
-      socketedItems: equippedFork ? [{ baseType: 'Fork', support: true, properties: [{ type: 5, values: [['1', 0]] }] }] : [] }],
+      socketedItems: equippedSwift ? [{ baseType: 'Swift Affliction III', support: true, properties: [{ type: 5, values: [['1', 0]] }] }] : [] }],
   } }));
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
@@ -61,7 +62,7 @@ async function syntheticCaster(page: Page, equippedFork: boolean) {
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.topbar-busy')).toHaveCount(0);
   expect((await groups(page))[0].gems.map(gem => gem.skill_id))
-    .toEqual(['FireballPlayer', ...(equippedFork ? [fork] : [])]);
+    .toEqual(['FireballPlayer', ...(equippedSwift ? [swift] : [])]);
 }
 
 async function openOptimizer(page: Page) {
@@ -88,7 +89,7 @@ async function boundRealCandidatePool(page: Page) {
   await page.getByRole('option', { name: 'Max total DPS', exact: true }).click();
   const pool = page.locator('.support-pool-details');
   await pool.locator('summary').click();
-  for (const id of [fork, ...modeled]) {
+  for (const id of [swift, ...modeled]) {
     await expect(pool.locator(`[data-skill-id="${id}"] input`)).toBeChecked();
   }
   // Exercise the real exclusion controls to keep this a focused three-support
@@ -96,7 +97,7 @@ async function boundRealCandidatePool(page: Page) {
   const candidates = pool.locator('.support-candidate');
   for (let index = 0; index < await candidates.count(); index++) {
     const candidate = candidates.nth(index);
-    if (![fork, ...modeled].includes((await candidate.getAttribute('data-skill-id'))!)) {
+    if (![swift, ...modeled].includes((await candidate.getAttribute('data-skill-id'))!)) {
       await candidate.locator('input').uncheck();
     }
   }
@@ -125,14 +126,14 @@ for (const [layout, viewport] of [
   test.describe(layout, () => {
     test.use({ viewport });
 
-    test('equipped Fork limit stays visible and deterministic, then disappears on support removal', async ({ page }) => {
+    test('equipped Swift Affliction III limit stays visible and deterministic, then disappears on support removal', async ({ page }) => {
       await syntheticCaster(page, true);
       await nav(page, 'Build').click();
       const buildLimits = page.locator('.unsupported-block');
       await expect(buildLimits).toBeVisible();
       await buildLimits.locator('summary').click();
-      const normalReceipt = (await buildLimits.locator('li').filter({ hasText: forkStat }).textContent())!;
-      expectForkIdentity(normalReceipt);
+      const normalReceipt = (await buildLimits.locator('li').filter({ hasText: swiftStat }).textContent())!;
+      expectSwiftIdentity(normalReceipt);
       expect(await page.locator('main').evaluate(main => main.scrollWidth - main.clientWidth)).toBeLessThanOrEqual(1);
       await openOptimizer(page);
       await boundRealCandidatePool(page);
@@ -160,8 +161,8 @@ for (const [layout, viewport] of [
       await completeSearch(page);
       await baseline(page).locator('summary').click();
       await expect(baseline(page).locator('ul > li')).toHaveText([normalReceipt]);
-      const forkGem = page.locator('.skill-gems > li').nth(1);
-      await forkGem.locator('button.skill-remove').click();
+      const swiftGem = page.locator('.skill-gems > li').nth(1);
+      await swiftGem.locator('button.skill-remove').click();
       await expect.poll(async () => (await groups(page))[0].gems.map(gem => gem.skill_id)).toEqual(['FireballPlayer']);
       await expect(page.locator('.topbar-busy')).toHaveCount(0);
       await expectInvalidated(page);
@@ -169,7 +170,7 @@ for (const [layout, viewport] of [
       await expect(page.locator('.unsupported-block')).toHaveCount(0);
     });
 
-    test('new Fork complete edits are rejected without Apply while a modeled retained plan applies exactly', async ({ page }) => {
+    test('new Swift Affliction III complete edits are rejected without Apply while a modeled retained plan applies exactly', async ({ page }) => {
       await syntheticCaster(page, false);
       await openOptimizer(page);
       await boundRealCandidatePool(page);
@@ -180,21 +181,21 @@ for (const [layout, viewport] of [
       const rejected = page.locator('ol.support-diagnostic-excluded');
       await expect(rejected).toHaveCount(1);
       await rejected.locator('..').locator(':scope > summary').click();
-      const forkEdits = rejected.locator(':scope > li > details')
-        .filter({ has: page.locator(`.support-diagnostic-gems [data-skill-id="${fork}"]`) });
-      expect(await forkEdits.count(), 'The actual Fork edit must be evaluated and receipted, not absent from the pool').toBeGreaterThan(0);
-      const single = forkEdits.filter({ has: page.locator('.support-diagnostic-gems > li:only-child') });
+      const swiftEdits = rejected.locator(':scope > li > details')
+        .filter({ has: page.locator(`.support-diagnostic-gems [data-skill-id="${swift}"]`) });
+      expect(await swiftEdits.count(), 'The actual Swift Affliction III edit must be evaluated and receipted, not absent from the pool').toBeGreaterThan(0);
+      const single = swiftEdits.filter({ has: page.locator('.support-diagnostic-gems > li:only-child') });
       await expect(single).toHaveCount(1);
-      for (let index = 0; index < await forkEdits.count(); index++) {
-        const edit = forkEdits.nth(index);
+      for (let index = 0; index < await swiftEdits.count(); index++) {
+        const edit = swiftEdits.nth(index);
         await edit.locator('summary').click();
         const reasons = edit.locator(':scope > ul:not(.support-diagnostic-gems) > li');
         await expect(reasons).toHaveCount(1);
-        expectForkIdentity(await reasons.innerText());
+        expectSwiftIdentity(await reasons.innerText());
         await expect(edit.getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
         await expect(edit.locator('.support-plan')).toHaveCount(0);
       }
-      await expect(page.locator(`.support-plan [data-skill-id="${fork}"]`)).toHaveCount(0);
+      await expect(page.locator(`.support-plan [data-skill-id="${swift}"]`)).toHaveCount(0);
       const first = page.locator('.support-plan').first();
       const expected: GemInput[] = await first.locator('.support-plan-gems > .opt-chip').evaluateAll(chips => chips.map(chip => ({
         skill_id: chip.getAttribute('data-skill-id')!, level: Number(chip.getAttribute('data-level')),

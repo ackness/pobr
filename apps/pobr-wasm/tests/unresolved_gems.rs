@@ -238,14 +238,20 @@ fn known_and_unknown_nonempty_ids_ignore_names_without_losing_unknown_rows() {
 #[test]
 fn known_active_and_support_roundtrip_keeps_complete_calculation_and_diagnostics() {
     init();
-    let request = fireball_request();
+    let mut request = fireball_request();
+    // Fork is modelled; use a still-unmodelled conditional stat to exercise diagnostic preservation.
+    request["socket_groups"][0]["gems"][1]["skill_id"] = json!("SupportSwiftAfflictionPlayerThree");
     let baseline = calculate(&request);
     assert!(
         baseline["unsupported_modifiers"]
             .as_array()
             .unwrap()
             .iter()
-            .any(|line| { line.as_str().unwrap().contains("SupportForkPlayer") })
+            .any(|line| {
+                line.as_str()
+                    .unwrap()
+                    .contains("SupportSwiftAfflictionPlayerThree")
+            })
     );
     let (_, decoded) = export(&request);
     assert_eq!(

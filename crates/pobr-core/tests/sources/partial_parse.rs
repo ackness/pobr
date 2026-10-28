@@ -6,12 +6,12 @@
 //!
 //! - "1% more Life Flask Recovery" reads as +1% more `MaximumLife`, leftover "Flask Recovery";
 //! - "2% more Mana Flask Recovery" reads as +2% more `MaximumMana`, leftover "Flask Recovery";
-//! - "1% increased speed of Recoup Effects" reads as +1% increased `LocalEffect`.
 //!
-//! Three more flask and charm lines used to be listed here ("Removes 15% of Life Recovered
-//! from Mana when used", "88% more Recovery if used while on Low Mana" and the Chaos prevented
-//! recoup line). They have their own rules in `overlay-common/special_mods.json` now, so they
-//! are no longer partial; the parser and line-usage tests cover them.
+//! Four more flask and charm lines used to be listed here ("Removes 15% of Life Recovered
+//! from Mana when used", "88% more Recovery if used while on Low Mana", the Chaos prevented
+//! recoup line and "1% increased speed of Recoup Effects"). They have their own rules in
+//! `overlay-common/special_mods.json` now, so they are no longer partial; the parser and
+//! line-usage tests cover them.
 //!
 //! Every ingest path goes through `ParseOutcome::into_applicable`: such a line applies
 //! nothing and is reported in the ingest's `unsupported` list (and the session's
@@ -35,8 +35,6 @@ use crate::support::{ctx, parse_mod, session};
 
 /// Reads as +1% more `MaximumLife`, leftover "Flask Recovery".
 const LIFE_FLASK_MORE: &str = "1% more Life Flask Recovery";
-/// Reads as +1% increased `LocalEffect`, leftover "speed of Recoup s".
-const RECOUP_SPEED: &str = "1% increased speed of Recoup Effects";
 /// Reads as +2% more `MaximumMana`, leftover "Flask Recovery".
 const MANA_FLASK_MORE: &str = "2% more Mana Flask Recovery";
 
@@ -135,20 +133,15 @@ fn flask_ingest_does_not_apply_partially_parsed_lines() {
             "10% increased Movement Speed during effect",
             LIFE_FLASK_MORE,
             MANA_FLASK_MORE,
-            RECOUP_SPEED,
         ],
     );
 
     let ingest = ingest_flask_charm_with_ctx("Flask 1", &flask, ctx());
 
-    // The three partial lines are reported as written, in order.
+    // The two partial lines are reported as written, in order.
     assert_eq!(
         ingest.unsupported,
-        vec![
-            LIFE_FLASK_MORE.to_string(),
-            MANA_FLASK_MORE.to_string(),
-            RECOUP_SPEED.to_string(),
-        ]
+        vec![LIFE_FLASK_MORE.to_string(), MANA_FLASK_MORE.to_string()]
     );
     // The payload holds only the complete line: one MovementSpeed +10% increased.
     let carrier = &ingest.modifiers[0];
@@ -158,7 +151,7 @@ fn flask_ingest_does_not_apply_partially_parsed_lines() {
     assert_eq!(payload[0].name.as_str(), "MovementSpeed");
     assert_eq!(payload[0].mod_type, ModType::Inc);
     assert_eq!(payload[0].value.as_number(), Some(10.0));
-    for wrong in ["MaximumLife", "MaximumMana", "LocalEffect"] {
+    for wrong in ["MaximumLife", "MaximumMana"] {
         assert!(!has_name(payload, wrong), "{wrong} must not be applied");
     }
 }
@@ -168,12 +161,12 @@ fn charm_ingest_does_not_apply_a_partially_parsed_line() {
     let charm = item(
         "Sapphire Charm of Lightning",
         ItemRarity::Magic,
-        &["+15% to Lightning Resistance", RECOUP_SPEED],
+        &["+15% to Lightning Resistance", MANA_FLASK_MORE],
     );
 
     let ingest = ingest_flask_charm_with_ctx("Charm 1", &charm, ctx());
 
-    assert_eq!(ingest.unsupported, vec![RECOUP_SPEED.to_string()]);
+    assert_eq!(ingest.unsupported, vec![MANA_FLASK_MORE.to_string()]);
     let payload = ingest.modifiers[0].value.as_nested_mods().unwrap();
     assert_eq!(payload.len(), 1, "{payload:?}");
     assert_eq!(payload[0].name.as_str(), "LightningResistance");
@@ -182,14 +175,14 @@ fn charm_ingest_does_not_apply_a_partially_parsed_line() {
 
 #[test]
 fn passive_ingest_does_not_apply_a_partially_parsed_line() {
-    let nodes = vec![node(2001, &["+40 to maximum Life", RECOUP_SPEED])];
+    let nodes = vec![node(2001, &["+40 to maximum Life", MANA_FLASK_MORE])];
 
     let ingest = ingest_passive_nodes_with_ctx(&nodes, ctx()).unwrap();
 
     assert_eq!(ingest.modifiers.len(), 1, "{:?}", ingest.modifiers);
     assert_eq!(ingest.modifiers[0].name.as_str(), "MaximumLife");
-    assert!(!has_name(&ingest.modifiers, "LocalEffect"));
-    assert_eq!(ingest.unsupported, vec![RECOUP_SPEED.to_string()]);
+    assert!(!has_name(&ingest.modifiers, "MaximumMana"));
+    assert_eq!(ingest.unsupported, vec![MANA_FLASK_MORE.to_string()]);
 }
 
 #[test]
@@ -244,7 +237,7 @@ fn session_add_modifier_texts_reports_a_partially_parsed_line() {
         ..MinimalInput::default()
     });
     session
-        .add_modifier_texts(["+40 to maximum Life", LIFE_FLASK_MORE, RECOUP_SPEED])
+        .add_modifier_texts(["+40 to maximum Life", LIFE_FLASK_MORE, MANA_FLASK_MORE])
         .unwrap();
 
     // Life = 100 base + 40; the "+1% more" modifier the leftover-text parse built is absent.
@@ -252,9 +245,9 @@ fn session_add_modifier_texts_reports_a_partially_parsed_line() {
     assert_eq!(output.life, 140.0);
     assert_eq!(
         session.unsupported_modifier_texts(),
-        [LIFE_FLASK_MORE, RECOUP_SPEED]
+        [LIFE_FLASK_MORE, MANA_FLASK_MORE]
     );
-    assert!(session.mods_named("LocalEffect").is_empty());
+    assert!(session.mods_named("MaximumMana").is_empty());
 }
 
 #[test]
@@ -271,7 +264,7 @@ fn session_entry_points_report_partially_parsed_lines() {
         &item("Quicksilver Flask", ItemRarity::Magic, &[MANA_FLASK_MORE]),
     );
     session
-        .add_passive_nodes(&[node(1, &[RECOUP_SPEED])])
+        .add_passive_nodes(&[node(1, &[MANA_FLASK_MORE])])
         .unwrap();
     session
         .add_skill_gem(&GemModSource::active("fireball", [LIFE_FLASK_MORE]))
@@ -282,11 +275,10 @@ fn session_entry_points_report_partially_parsed_lines() {
         [
             LIFE_FLASK_MORE,
             MANA_FLASK_MORE,
-            RECOUP_SPEED,
+            MANA_FLASK_MORE,
             LIFE_FLASK_MORE
         ]
     );
     assert!(session.mods_named("MaximumLife").is_empty());
     assert!(session.mods_named("MaximumMana").is_empty());
-    assert!(session.mods_named("LocalEffect").is_empty());
 }

@@ -410,6 +410,13 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         } else {
             Vec::new()
         }),
+        // The Incision support ("Supported Skills inflict Incision on Hit"): the character can inflict it, which is
+        // what the configured stacks and `IncisionEffect` wait for (`calc::setup_env::apply_enemy_incision`).
+        "apply_X_incision_on_hit" => Some(if value != 0.0 {
+            vec![Modifier::flag("Condition:CanInflictIncision")]
+        } else {
+            Vec::new()
+        }),
         "pin_almost_pinned_enemies" => Some(vec![Modifier::flag("PinOnPrimed")]),
         "pin_duration_+%" => Some(vec![Modifier::number(
             "EnemyPinDuration",

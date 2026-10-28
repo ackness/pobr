@@ -70,11 +70,17 @@ fn all_patterns_compile_and_captures_cover_refs() {
 }
 
 /// Numeric captures use a fixed set of shapes: `(\d+)` / `(\d+(?:\.\d+)?)` /
-/// `([+-]\d+)` / `(\+?\d+)`. Any capture outside that set must be an
+/// `([+-]\d+)` / `(\+?\d+)` / `([+-]?\d+(?:\.\d+)?)`. Any capture outside that set must be an
 /// explicit closed set (no `\d`) — the DSL's hard boundary of "no open captures".
 #[test]
 fn captures_are_numeric_or_closed_sets() {
-    const NUMERIC_FORMS: [&str; 4] = [r"(\d+)", r"(\d+(?:\.\d+)?)", r"([+-]\d+)", r"(\+?\d+)"];
+    const NUMERIC_FORMS: [&str; 5] = [
+        r"(\d+)",
+        r"(\d+(?:\.\d+)?)",
+        r"([+-]\d+)",
+        r"(\+?\d+)",
+        r"([+-]?\d+(?:\.\d+)?)",
+    ];
     for entry in &load_entries() {
         let id = entry["id"].as_str().unwrap();
         let pattern = entry["pattern"].as_str().unwrap();

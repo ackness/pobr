@@ -442,6 +442,62 @@ fn inject_ehp_damage_placeholder(
     }
 }
 
+/// "N% increased Magnitude of Daze" (`daze_magnitude_+%`, `DazeMagnitude`) scales the Stun Buildup a Dazed enemy
+/// takes (50% more by default, `inject_enemy_mods`). The factor on the buildup is `1 + 0.5 * (1 + increased)`, and
+/// the enemy already carries the `1.5`, so the extra multiplier added here is `(1 + 0.5 * (1 + i)) / 1.5`, which
+/// is `1 + i / 3`. Gated on the same `EnemyDazed` state; nothing is added without a Daze Magnitude modifier.
+pub fn scale_enemy_daze(db: &mut ModDb, player_db: &ModDb, cfg: &CalcConfig) {
+    let increased = player_db.sum(ModType::Inc, cfg, &[ModName::from("DazeMagnitude")]);
+    if increased == 0.0 {
+        return;
+    }
+    db.add_mod(
+        Modifier::number(
+            "StunBuildup",
+            ModType::More,
+            100.0 * increased / 100.0 / 3.0,
+        )
+        .with_source("enemy dazed_magnitude")
+        .with_origin(enemy_source("dazed_magnitude"))
+        .with_tag(ModTag::condition("EnemyDazed", false)),
+    );
+}
+
+/// Incision stacks on the enemy give it a chance to be inflicted with Bleeding when hit: "Supported Skills inflict
+/// Incision on Hit, which causes Enemies to be increasingly more likely to be inflicted with Bleeding", each stack
+/// applying 10% up to 10 stacks (the stack input is clamped to the maximum). The stacks are the configured
+/// `Multiplier:IncisionStack` (effective mode), counted only when the character can inflict Incision; the chance is
+/// the enemy's own `SelfBleedChance`, the input every bleed already reads. "N% increased effect of Incision" scales
+/// the chance. Stacks are removed by the Bleeding they cause, so the configured count is the stacks present when the
+/// hit lands; nothing is simulated.
+pub const INCISION_BLEED_CHANCE_PER_STACK: f64 = 10.0;
+
+/// Adds the Incision-derived bleed chance to the enemy (see `INCISION_BLEED_CHANCE_PER_STACK`).
+pub fn apply_enemy_incision(db: &mut ModDb, player_db: &ModDb, cfg: &CalcConfig) {
+    if !player_db.flag(cfg, "Condition:CanInflictIncision") {
+        return;
+    }
+    let stacks = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("Multiplier:IncisionStack")],
+    );
+    if stacks <= 0.0 {
+        return;
+    }
+    let increased = player_db.sum(ModType::Inc, cfg, &[ModName::from("IncisionEffect")]);
+    let effect = (1.0 + increased / 100.0).max(0.0);
+    db.add_mod(
+        Modifier::number(
+            "SelfBleedChance",
+            ModType::Base,
+            INCISION_BLEED_CHANCE_PER_STACK * stacks * effect,
+        )
+        .with_source("enemy incision")
+        .with_origin(enemy_source("incision")),
+    );
+}
+
 /// Exposure: strongest-wins + effect scaling (PoB2 CalcPerform.lua:3215-3247
 /// "Apply exposures"): reduces the multiple `<Element>Exposure BASE` sources
 /// in the enemy modDB for each element down to **the single strongest one**,
@@ -469,27 +525,6 @@ fn inject_ehp_damage_placeholder(
 /// Attributed to an exposure sub-source under `EnemyConfig`.
 ///
 /// Sources: agent-docs/debuffs.md §Exposure; PoB2 CalcPerform.lua:3215-3247.
-/// "N% increased Magnitude of Daze" (`daze_magnitude_+%`, `DazeMagnitude`) scales the Stun Buildup a Dazed enemy
-/// takes (50% more by default, `inject_enemy_mods`). The factor on the buildup is `1 + 0.5 * (1 + increased)`, and
-/// the enemy already carries the `1.5`, so the extra multiplier added here is `(1 + 0.5 * (1 + i)) / 1.5`, which
-/// is `1 + i / 3`. Gated on the same `EnemyDazed` state; nothing is added without a Daze Magnitude modifier.
-pub fn scale_enemy_daze(db: &mut ModDb, player_db: &ModDb, cfg: &CalcConfig) {
-    let increased = player_db.sum(ModType::Inc, cfg, &[ModName::from("DazeMagnitude")]);
-    if increased == 0.0 {
-        return;
-    }
-    db.add_mod(
-        Modifier::number(
-            "StunBuildup",
-            ModType::More,
-            100.0 * increased / 100.0 / 3.0,
-        )
-        .with_source("enemy dazed_magnitude")
-        .with_origin(enemy_source("dazed_magnitude"))
-        .with_tag(ModTag::condition("EnemyDazed", false)),
-    );
-}
-
 pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &CalcConfig) {
     // `exposureEffectOnSelf = enemyDB:More(nil, "ExposureEffectOnSelf")` (:3224):
     // a Boss's `MORE -50` → 0.5. This mod is gated by `Condition:Effective`,
