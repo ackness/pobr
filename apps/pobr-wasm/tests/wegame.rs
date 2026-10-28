@@ -202,6 +202,29 @@ fn wegame_places_a_jewel_by_its_slot_table_row() {
     assert!(!notes.contains("PassiveJewel_4"), "{notes}");
 }
 
+/// A share's quest reward list carries a progress counter, "58 Broken Boss Faces". The line is recognised and
+/// reported as not modelled, not as an unsupported modifier.
+#[test]
+fn wegame_quest_progress_counter_is_not_an_unsupported_modifier() {
+    init();
+    let mut share = fixture();
+    share["talent_tree"]["quest_stats"] = json!(["+20 生命上限", "58 个[BrokenFace|毁面首领]"]);
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_file_json(&share.to_string()).unwrap())
+            .unwrap();
+    let quest = decoded["config_inputs"]["questWeGame"].as_str().unwrap();
+    assert!(quest.contains("58 Broken Boss Faces"), "{quest}");
+    let request = json!({
+        "character": decoded["character"], "allocated_nodes": [], "items": [],
+        "socket_groups": [], "config_inputs": decoded["config_inputs"],
+    });
+    let out: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap();
+    let unsupported = out["unsupported_modifiers"].to_string();
+    assert!(!unsupported.contains("Broken Boss Faces"), "{unsupported}");
+}
+
 /// A corrupted gem arrives with the flag a corrupted item has; the build keeps
 /// it, so modifiers to corrupted gems reach the gem. The level property is
 /// already the gem's whole level.

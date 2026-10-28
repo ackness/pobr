@@ -7304,6 +7304,45 @@
       "examples": [
         "Arrows gain Critical Hit Chance as they travel farther, up to 40% increased Critical Hit Chance after 7 metres"
       ]
+    },
+    {
+      "id": "lose_all_tailwind_when_hit",
+      "pattern": "^lose all tailwind when hit$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "lose_all_tailwind_when_hit; passive 30 (Gathering Winds)",
+      "exporter": "absent",
+      "source_note": "Being hit resets the Tailwind stacks. The calculation takes the configured stack count (multiplierTailwind) as the state to evaluate, and has no hit history to reset it, so the drawback is not applied.",
+      "examples": [
+        "Lose all Tailwind when Hit"
+      ]
+    },
+    {
+      "id": "regenerate_life_when_stunned",
+      "pattern": "^regenerate (\\d+(?:\\.\\d+)?)% of maximum life over (\\d+(?:\\.\\d+)?) seconds? when stunned$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "passive Chakra of Stability",
+      "exporter": "absent",
+      "source_note": "Life regenerated as an event, after the character is Stunned. No stun frequency is modelled, so there is no rate to add to Life regeneration.",
+      "examples": [
+        "Regenerate 3% of maximum Life over 1 second when Stunned"
+      ]
+    },
+    {
+      "id": "number_of_broken_faces",
+      "pattern": "^(\\d+) broken boss faces$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "number_of_broken_faces (a WeGame quest stat)",
+      "exporter": "absent",
+      "source_note": "A progress counter in the character's quest rewards. The game text gives the count no effect on any modifier, so the line carries nothing a calculation reads.",
+      "examples": [
+        "58 Broken Boss Faces"
+      ]
     }
   ]
 }

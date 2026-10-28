@@ -168,7 +168,6 @@ node.29372	4% chance that if you would gain [Rage] on [Hit], you instead gain up
 node.29881	Gain [ArcaneSurgeDuration|Arcane Surge] when you [Shapeshift] to Human form after
 node.29881	being [Shapeshift|Shapeshifted] for at least 8 seconds
 node.29990	5% chance to gain [Volatility] on Kill
-node.30	Lose all [Tailwind] when [Hit]
 node.30102	3% chance to gain [Volatility] on Kill
 node.30233	Grants Skill: <underline>{Ritual Sacrifice}
 node.30395	[Warcry|Warcries] inflict 3 [CriticalWeakness|Critical Weakness] on Enemies
@@ -295,7 +294,6 @@ node.42441	When you Consume a [Charges|Charge], [Trigger] Elemental Surge to gai
 node.42522	When collecting an [ElementalInfusion|Elemental Infusion], gain another different [ElementalInfusion|Elemental Infusion]
 node.42660	Every [Rage] also grants you 1% increased Minion Damage
 node.42660	Every five [Rage] also grants you 2% increased Minion Attack Speed
-node.42760	Regenerate 3% of maximum Life over 1 second when [Stun|Stunned]
 node.43250	+1% to [MaximumResistances|Maximum Resistances] of each [ElementalDamage|Elemental] Damage Type you have been [Hit] with [Recently]
 node.4331	The next [Attack] you use within 4 seconds after [HeavyStun|Heavy Stunning] a [Rarity|Rare or Unique] Enemy is [AncestralBoostSpell|Ancestrally Boosted]
 node.43426	Grants Skill: <underline>{Navira's Well}
@@ -341,7 +339,6 @@ node.47441	Recover 3% of maximum Life when you create an [Offering]
 node.47441	[Offering|Offerings] have 30% increased Maximum Life
 node.47477	15% reduced [Volatility] Explosion delay
 node.48026	20% increased [Glory] generation for [Banner] Skills
-node.48240	Regenerate 5% of maximum Life over 1 second when [Stun|Stunned]
 node.483	2% chance that if you would gain [Charges|Endurance Charges], you instead gain up to maximum [Charges|Endurance Charges]
 node.48617	50% increased Damage against Demons
 node.48617	50% increased Duration of [Ailments|Ailments] on Beasts
