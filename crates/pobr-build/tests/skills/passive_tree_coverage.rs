@@ -194,6 +194,51 @@ fn forked_and_pierced_projectile_damage_follows_the_configured_count() {
     let more = |support: &str, input: &str, count: Option<u32>| -> f64 {
         let config = count.map_or_else(String::new, |count| {
             format!(r#"<Input name="{input}" number="{count}"/>"#)
+        });
+        let build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="96" className="Ranger" ascendClassName="Deadeye" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="IceShotPlayer" level="20" enabled="true"/><Gem skillId="{support}" level="1" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Crude Bow
+Implicits: 0
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+<Config>{config}</Config></PathOfBuilding2>"#
+        ))
+        .unwrap();
+        let options = DataOrchestratorOptions {
+            mode_effective: true,
+            ..Default::default()
+        };
+        let session = calculate_with_data_session(&build, data, &options).unwrap();
+        session
+            .mod_db()
+            .more(session.config(), &[ModName::from("Damage")])
+    };
+    // Fork: 30% less damage once the projectile has forked, at most as many forks as the support gives.
+    let plain = more("SupportForkPlayer", "skillForkCount", None);
+    assert_eq!(more("SupportForkPlayer", "skillForkCount", Some(0)), plain);
+    let forked = more("SupportForkPlayer", "skillForkCount", Some(1));
+    assert!((forked / plain - 0.7).abs() < 1e-9, "{forked} / {plain}");
+    assert_eq!(more("SupportForkPlayer", "skillForkCount", Some(5)), forked);
+    // Without the support the skill cannot fork, so a configured count is not a forked projectile.
+    assert_eq!(
+        more("SupportPiercePlayer", "skillForkCount", Some(1)),
+        more("SupportPiercePlayer", "skillForkCount", None)
+    );
+    // Pierce I: 20% less damage once the projectile has pierced an enemy.
+    let pierce_plain = more("SupportPiercePlayer", "skillPierceCount", None);
+    assert_eq!(
+        more("SupportPiercePlayer", "skillPierceCount", Some(0)),
+        pierce_plain
+    );
+    let pierced = more("SupportPiercePlayer", "skillPierceCount", Some(1));
+    assert!(
+        (pierced / pierce_plain - 0.8).abs() < 1e-9,
+        "{pierced} / {pierce_plain}"
+    );
+}
+
 /// The Parry passives apply to the Parry skill's own hit and to no other skill: the Area of Effect of its hit and
 /// its Heavy Stun buildup are matched by the skill's name.
 #[test]
@@ -248,6 +293,51 @@ fn close_range_pierce_chance_follows_the_configured_distance() {
     let chance = |distance: Option<f64>, with_line: bool| -> f64 {
         let config = distance.map_or_else(String::new, |distance| {
             format!(r#"<Input name="enemyDistance" number="{distance}"/>"#)
+        });
+        let build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="96" className="Ranger" ascendClassName="Deadeye" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="IceShotPlayer" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Crude Bow
+Implicits: 0
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+<Config>{config}</Config></PathOfBuilding2>"#
+        ))
+        .unwrap();
+        let options = DataOrchestratorOptions {
+            mode_effective: true,
+            extra_modifier_texts: with_line
+                .then(|| {
+                    "25% chance for Projectiles to Pierce Enemies within 3m distance of you"
+                        .to_string()
+                })
+                .into_iter()
+                .collect(),
+            ..Default::default()
+        };
+        let session = calculate_with_data_session(&build, data, &options).unwrap();
+        session.mod_db().sum(
+            ModType::Base,
+            session.config(),
+            &[ModName::from("PierceChance")],
+        )
+    };
+    for (distance, gained) in [
+        (None, 25.0),
+        (Some(0.0), 25.0),
+        (Some(30.0), 25.0),
+        (Some(31.0), 0.0),
+        (Some(70.0), 0.0),
+    ] {
+        let delta = chance(distance, true) - chance(distance, false);
+        assert!(
+            (delta - gained).abs() < 1e-9,
+            "distance {distance:?}: gained {delta}, expected {gained}"
+        );
+    }
+}
+
 /// Passives that act against a monster type read the type you declare (`conditionEnemy<Type>`): without it the
 /// calculation has no monster type, so the bonus stays off.
 #[test]
@@ -260,7 +350,6 @@ fn monster_type_passives_follow_the_declared_type() {
         let build = parse_build(&format!(
             r#"<PathOfBuilding2>
 <Build level="96" className="Ranger" ascendClassName="Deadeye" mainSocketGroup="1"/>
-<Skills><Skill enabled="true"><Gem skillId="IceShotPlayer" level="20" enabled="true"/><Gem skillId="{support}" level="1" enabled="true"/></Skill></Skills>
 <Skills><Skill enabled="true"><Gem skillId="IceShotPlayer" level="20" enabled="true"/></Skill></Skills>
 <Items activeItemSet="1"><Item id="1">Rarity: NORMAL
 Crude Bow
@@ -342,13 +431,6 @@ fn consumed_endurance_charges_scale_the_passives_that_count_them() {
                 r#"<Input name="multiplierEnduranceChargesConsumedRecently" number="{count}"/>"#
             )
         });
-/// A count typed into a `multiplier<X>` input is counted once. The input lands in the multiplier table when the
-/// build is read, and the effective mode's bridge for the option's tagged effect used to add it again (an input of
-/// 4 read as 8), for every count option that carries a Combat or Effective tag.
-#[test]
-fn a_typed_count_is_not_counted_twice_in_the_effective_mode() {
-    let data = data();
-    let count = |input: &str, variable: &str, effective: bool| -> Option<f64> {
         let build = parse_build(&format!(
             r#"<PathOfBuilding2>
 <Build level="96" className="Warrior" mainSocketGroup="1"/>
@@ -364,58 +446,6 @@ fn a_typed_count_is_not_counted_twice_in_the_effective_mode() {
         let session = calculate_with_data_session(&build, data, &options).unwrap();
         session
             .mod_db()
-            .more(session.config(), &[ModName::from("Damage")])
-    };
-    // Fork: 30% less damage once the projectile has forked, at most as many forks as the support gives.
-    let plain = more("SupportForkPlayer", "skillForkCount", None);
-    assert_eq!(more("SupportForkPlayer", "skillForkCount", Some(0)), plain);
-    let forked = more("SupportForkPlayer", "skillForkCount", Some(1));
-    assert!((forked / plain - 0.7).abs() < 1e-9, "{forked} / {plain}");
-    assert_eq!(more("SupportForkPlayer", "skillForkCount", Some(5)), forked);
-    // Without the support the skill cannot fork, so a configured count is not a forked projectile.
-    assert_eq!(
-        more("SupportPiercePlayer", "skillForkCount", Some(1)),
-        more("SupportPiercePlayer", "skillForkCount", None)
-    );
-    // Pierce I: 20% less damage once the projectile has pierced an enemy.
-    let pierce_plain = more("SupportPiercePlayer", "skillPierceCount", None);
-    assert_eq!(
-        more("SupportPiercePlayer", "skillPierceCount", Some(0)),
-        pierce_plain
-    );
-    let pierced = more("SupportPiercePlayer", "skillPierceCount", Some(1));
-    assert!(
-        (pierced / pierce_plain - 0.8).abs() < 1e-9,
-        "{pierced} / {pierce_plain}"
-    );
-            extra_modifier_texts: with_line
-                .then(|| {
-                    "25% chance for Projectiles to Pierce Enemies within 3m distance of you"
-                        .to_string()
-                })
-                .into_iter()
-                .collect(),
-            ..Default::default()
-        };
-        let session = calculate_with_data_session(&build, data, &options).unwrap();
-        session.mod_db().sum(
-            ModType::Base,
-            session.config(),
-            &[ModName::from("PierceChance")],
-        )
-    };
-    for (distance, gained) in [
-        (None, 25.0),
-        (Some(0.0), 25.0),
-        (Some(30.0), 25.0),
-        (Some(31.0), 0.0),
-        (Some(70.0), 0.0),
-    ] {
-        let delta = chance(distance, true) - chance(distance, false);
-        assert!(
-            (delta - gained).abs() < 1e-9,
-            "distance {distance:?}: gained {delta}, expected {gained}"
-        );
             .sum(kind, session.config(), &[ModName::from(name)])
     };
     let inc = "3% increased Fire Damage per Endurance Charge consumed Recently";
@@ -429,6 +459,19 @@ fn a_typed_count_is_not_counted_twice_in_the_effective_mode() {
             - sum(count, "", "DamageGainAsFire", ModType::Base);
         assert!((more_gain - 2.0 * n).abs() < 1e-9, "{count:?}: {more_gain}");
     }
+}
+
+/// A count typed into a `multiplier<X>` input is counted once. The input lands in the multiplier table when the
+/// build is read, and the effective mode's bridge for the option's tagged effect used to add it again (an input of
+/// 4 read as 8), for every count option that carries a Combat or Effective tag.
+#[test]
+fn a_typed_count_is_not_counted_twice_in_the_effective_mode() {
+    let data = data();
+    let count = |input: &str, variable: &str, effective: bool| -> Option<f64> {
+        let build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="96" className="Warrior" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
 <Config><Input name="{input}" number="4"/></Config></PathOfBuilding2>"#
         ))
         .unwrap();

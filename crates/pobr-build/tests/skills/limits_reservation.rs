@@ -505,6 +505,9 @@ fn freeze_threshold_views_read_the_additions_and_the_increases() {
     assert_eq!(
         display_value(&plain, "FreezeThreshold"),
         display_value(&plain, "AilmentThreshold")
+    );
+}
+
 /// "N% increased Magnitude of Daze" scales the 50% more Stun Buildup a Dazed enemy takes: the factor on the buildup
 /// is 1 + 0.5 * (1 + increased), and nothing changes while the enemy is not declared Dazed.
 #[test]
