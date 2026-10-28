@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Check, FileUp, Plus } from 'lucide-react';
+import { Check, FileUp, Plus, Trash2 } from 'lucide-react';
 import { buildFileKind } from '../api/import';
 import { formatApiError } from '../api/error';
 import type { BuildPlannerExport } from '../api/types';
@@ -97,6 +97,28 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
     <Button type="button" variant="ghost" onClick={() => setNaming(null)}>{text.cancel}</Button>
   </form>;
 
+  // Deleting a build or a stage: only while another one remains to open, and only after asking
+  // (it is gone from this browser for good).
+  // The button that was pressed goes away with what it deleted (and may be the last of its kind), so
+  // focus moves to the heading of its section instead of falling to the page.
+  const afterRemoving = (heading: string) => requestAnimationFrame(() => document.getElementById(heading)?.focus());
+  const removeBuild = async () => {
+    if (!build || (workspace?.builds.length ?? 0) < 2 || session.busy || importing) return;
+    const valid = captureAction();
+    const message = text.deleteBuildConfirm
+      .replace('{name}', build.name || text.initialBuild).replace('{count}', String(build.stages.length));
+    if (!await dialogs.confirm(message) || !valid()) return;
+    session.removeBuild();
+    afterRemoving('bd-library-title');
+  };
+  const removeStage = async () => {
+    if (!build || !stage || build.stages.length < 2 || session.busy || importing) return;
+    const valid = captureAction();
+    if (!await dialogs.confirm(text.deleteStageConfirm.replace('{name}', stage.name || text.initialStage)) || !valid()) return;
+    session.removeStage();
+    afterRemoving('bd-stage-title');
+  };
+
   // Loadouts that came with an imported PoB code
   const confirmLoadout = async () => !session.isDirty || await dialogs.confirm(tt('loadout.confirmDiscard'));
   const manageLoadout = async (op: 'duplicate' | 'rename' | 'remove') => {
@@ -152,9 +174,10 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
     </section>
 
     <section className="bd-sec" aria-labelledby="bd-library-title">
-      <div className="bd-sec-head"><h2 id="bd-library-title">{text.libraryTitle}</h2>
+      <div className="bd-sec-head"><h2 id="bd-library-title" tabIndex={-1}>{text.libraryTitle}</h2>
         <div className="bd-actions"><Button variant="ghost" size="sm" disabled={session.busy} onClick={() => beginNaming('newBuild')}><Plus />{text.newBuild}</Button>
-          <Button variant="ghost" size="sm" disabled={session.busy} onClick={() => beginNaming('renameBuild')}>{text.renameBuild}</Button></div></div>
+          <Button variant="ghost" size="sm" disabled={session.busy} onClick={() => beginNaming('renameBuild')}>{text.renameBuild}</Button>
+          {(workspace?.builds.length ?? 0) > 1 && <Button className="bd-danger" variant="ghost" size="sm" disabled={session.busy || importing} onClick={() => void removeBuild()}><Trash2 />{text.deleteBuild}</Button>}</div></div>
       {nameForm(['newBuild', 'renameBuild'])}
       <ul className="bd-list" role="group" aria-label={text.libraryTitle}>
         {workspace?.builds.map(entry => {
@@ -171,9 +194,10 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
     </section>
 
     <section className="bd-sec" aria-labelledby="bd-stage-title">
-      <div className="bd-sec-head"><div><h2 id="bd-stage-title">{text.stagesTitle}</h2><p className="bd-hint">{text.stageScope} <strong>{build?.name || text.initialBuild} / {stage?.name || text.initialStage}</strong></p></div>
+      <div className="bd-sec-head"><div><h2 id="bd-stage-title" tabIndex={-1}>{text.stagesTitle}</h2><p className="bd-hint">{text.stageScope} <strong>{build?.name || text.initialBuild} / {stage?.name || text.initialStage}</strong></p></div>
         <div className="bd-actions"><Button variant="ghost" size="sm" disabled={session.busy} onClick={() => beginNaming('copyStage')}>{text.copyStage}</Button>
-          <Button variant="ghost" size="sm" disabled={session.busy} onClick={() => beginNaming('renameStage')}>{text.renameStage}</Button></div></div>
+          <Button variant="ghost" size="sm" disabled={session.busy} onClick={() => beginNaming('renameStage')}>{text.renameStage}</Button>
+          {(build?.stages.length ?? 0) > 1 && <Button className="bd-danger" variant="ghost" size="sm" disabled={session.busy || importing} onClick={() => void removeStage()}><Trash2 />{text.deleteStage}</Button>}</div></div>
       {nameForm(['copyStage', 'renameStage'])}
       <ul className="bd-chips" role="group" aria-label={text.stagesTitle}>
         {build?.stages.map(entry => <li key={entry.id}><button type="button" aria-pressed={entry.id === stage?.id} disabled={session.busy} onClick={() => session.selectStage(build.id, entry.id)}>

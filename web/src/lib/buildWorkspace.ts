@@ -71,6 +71,31 @@ export function renameWorkspaceEntry(workspace: BuildWorkspace, kind: 'build' | 
   }) };
 }
 
+/**
+ * Removes the active build, the build that follows it (else the one before) becoming the active
+ * one. The library always keeps a build, so the only one is never removed.
+ */
+export function removeWorkspaceBuild(workspace: BuildWorkspace): BuildWorkspace {
+  const index = workspace.builds.findIndex(build => build.id === workspace.activeBuild);
+  if (index < 0 || workspace.builds.length < 2) return workspace;
+  const builds = workspace.builds.filter((_, at) => at !== index);
+  return { ...workspace, activeBuild: builds[Math.min(index, builds.length - 1)].id, builds };
+}
+
+/**
+ * Removes the active stage of the active build, the stage that follows it (else the one before)
+ * becoming the active one. A build always keeps a stage, so its only stage is never removed.
+ */
+export function removeWorkspaceStage(workspace: BuildWorkspace): BuildWorkspace {
+  const build = workspace.builds.find(entry => entry.id === workspace.activeBuild);
+  const index = build?.stages.findIndex(stage => stage.id === build.activeStage) ?? -1;
+  if (!build || index < 0 || build.stages.length < 2) return workspace;
+  const stages = build.stages.filter((_, at) => at !== index);
+  return { ...workspace, builds: workspace.builds.map(entry => entry !== build ? entry : {
+    ...entry, activeStage: stages[Math.min(index, stages.length - 1)].id, stages,
+  }) };
+}
+
 /** Reject malformed collections rather than silently dropping a player's stages. */
 export function parseWorkspace(raw: unknown, parseSession: (json: string) => SavedSession | null): BuildWorkspace | null {
   try {

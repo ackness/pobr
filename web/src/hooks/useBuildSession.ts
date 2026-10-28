@@ -7,7 +7,7 @@ import type { TreeEditResult } from '../api/types';
  * 防止乱序返回覆盖新状态。所有后端交互经 `api/backend`。
  */
 
-import { activeWorkspaceStage, addWorkspaceBuild, createWorkspace, duplicateWorkspaceStage, parseWorkspace, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, replaceComparedStage, type StageSnapshot, type BuildWorkspace } from '../lib/buildWorkspace';
+import { activeWorkspaceStage, addWorkspaceBuild, createWorkspace, duplicateWorkspaceStage, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, replaceComparedStage, type StageSnapshot, type BuildWorkspace } from '../lib/buildWorkspace';
 import { formatApiError } from '../api/error';
 import { resolveBuildInput } from '../api/import';
 import { reconcileJewelAllocation } from '../lib/passiveGraph';
@@ -116,6 +116,9 @@ export interface BuildSession {
   selectStage: (buildId: string, stageId?: string) => void;
   createLocalBuild: (name: string) => void;
   duplicateStage: (name: string) => void;
+  /** Removes the current build (the one that follows it opens) / the current stage; the last of either stays. */
+  removeBuild: () => void;
+  removeStage: () => void;
   renameWorkspace: (kind: 'build' | 'stage', name: string) => void;
   applyComparedStage: (a: StageSnapshot, b: StageSnapshot, state: SavedSession['state']) => boolean;
   exportWorkspace: () => string;
@@ -1426,7 +1429,12 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
     setNotesState(saved.notes);
     draftsRef.current = drafts;
     setEditorDrafts(drafts);
-    apply(saved.state);
+    // Opening another stage or build is not an edit of this one. Its history starts empty, or Undo
+    // would put the stage that was just left (a deleted one, even) over this one.
+    editHistory.current = [];
+    redoHistory.current = [];
+    treeHistory.current = [];
+    apply(saved.state, { auto: true });
     // Decode only display/export metadata. A delayed response must never replace
     // a newer stage or edits made while it was loading.
     const restoredState = stateRef.current;
@@ -1501,6 +1509,24 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
     const stage = activeWorkspaceStage(next);
     restoreSession(stage.saved, stage.drafts);
   }, [busy, restoreSession]);
+
+  const removeBuild = useCallback(() => {
+    if (!workspaceRef.current || busy) return;
+    const next = removeWorkspaceBuild(workspaceRef.current);
+    if (next === workspaceRef.current) return;
+    persistWorkspace(next);
+    const stage = activeWorkspaceStage(next);
+    restoreSession(stage.saved, stage.drafts);
+  }, [busy, persistWorkspace, restoreSession]);
+
+  const removeStage = useCallback(() => {
+    if (!workspaceRef.current || busy) return;
+    const next = removeWorkspaceStage(workspaceRef.current);
+    if (next === workspaceRef.current) return;
+    persistWorkspace(next);
+    const stage = activeWorkspaceStage(next);
+    restoreSession(stage.saved, stage.drafts);
+  }, [busy, persistWorkspace, restoreSession]);
 
   const renameWorkspace = useCallback((kind: 'build' | 'stage', name: string) => {
     if (workspaceRef.current) persistWorkspace(renameWorkspaceEntry(workspaceRef.current, kind, name));
@@ -1620,7 +1646,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
 
   return {
     treeVersion: state?.treeVersion,
-    dataVersion, workspace, storageFailed, applyComparedStage, selectStage, createLocalBuild, duplicateStage, renameWorkspace, exportWorkspace, exportLocalBuild,
+    dataVersion, workspace, storageFailed, applyComparedStage, selectStage, createLocalBuild, duplicateStage, removeBuild, removeStage, renameWorkspace, exportWorkspace, exportLocalBuild,
     activeWeaponSet: state?.weaponSwap?.active ?? 1,
     weaponSwap: state?.weaponSwap,
     setWeaponSet,

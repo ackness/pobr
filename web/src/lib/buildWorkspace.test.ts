@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parseSaved, type SavedSession } from '../hooks/useBuildSession';
-import { activeWorkspaceStage, addWorkspaceBuild, createWorkspace, duplicateWorkspaceStage, parseWorkspace, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope } from './buildWorkspace';
+import { activeWorkspaceStage, addWorkspaceBuild, createWorkspace, duplicateWorkspaceStage, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope } from './buildWorkspace';
 
 const saved: SavedSession = {
   version: 1, notes: 'Leveling route', state: {
@@ -102,3 +102,85 @@ describe('comparison section application', () => {
     expect(replaceComparedStage(workspace, aa, bb, saved.state)).toBeNull();
   });
 });
+
+describe('removing a build or a stage', () => {
+  /** Three builds named A, B and C; B has stages B1, B2 and B3; the active build is `active`. */
+  function library(active: 'A' | 'B' | 'C' = 'B') {
+    let workspace = renameWorkspaceEntry(createWorkspace(saved), 'build', 'A');
+    workspace = addWorkspaceBuild(workspace, 'B', { ...saved, notes: 'b' });
+    workspace = renameWorkspaceEntry(workspace, 'stage', 'B1');
+    workspace = renameWorkspaceEntry(duplicateWorkspaceStage(workspace, 'B2'), 'stage', 'B2');
+    workspace = renameWorkspaceEntry(duplicateWorkspaceStage(workspace, 'B3'), 'stage', 'B3');
+    workspace = addWorkspaceBuild(workspace, 'C', { ...saved, notes: 'c' });
+    const id = workspace.builds.find(build => build.name === active)!.id;
+    return selectWorkspaceStage(workspace, id);
+  }
+  const names = (workspace: ReturnType<typeof library>) => workspace.builds.map(build => build.name);
+  const activeName = (workspace: ReturnType<typeof library>) => workspace.builds.find(build => build.id === workspace.activeBuild)!.name;
+
+  it('removes the active build and moves to the one that follows it, else the one before', () => {
+    const middle = removeWorkspaceBuild(library('B'));
+    expect(names(middle)).toEqual(['A', 'C']);
+    expect(activeName(middle)).toBe('C');
+    const last = removeWorkspaceBuild(library('C'));
+    expect(names(last)).toEqual(['A', 'B']);
+    expect(activeName(last)).toBe('B');
+    const first = removeWorkspaceBuild(library('A'));
+    expect(names(first)).toEqual(['B', 'C']);
+    expect(activeName(first)).toBe('B');
+  });
+
+  it('leaves every other build, with its stages and drafts, as it was', () => {
+    const before = library('B');
+    const after = removeWorkspaceBuild(before);
+    for (const name of ['A', 'C']) {
+      expect(after.builds.find(build => build.name === name)).toBe(before.builds.find(build => build.name === name));
+    }
+    expect(activeWorkspaceStage(after).saved.notes).toBe('c');
+    // What it returns is a library the app can store and read back.
+    expect(parseWorkspace(JSON.parse(workspaceEnvelope(after)).workspace, parseSaved)).toEqual(after);
+  });
+
+  it('never removes the only build', () => {
+    const only = createWorkspace(saved);
+    expect(removeWorkspaceBuild(only)).toBe(only);
+    const one = removeWorkspaceBuild(removeWorkspaceBuild(library('B')));
+    expect(one.builds).toHaveLength(1);
+    expect(removeWorkspaceBuild(one)).toBe(one);
+  });
+
+  it('removes the active stage and moves to the stage that follows it, else the one before', () => {
+    const stagesOf = (workspace: ReturnType<typeof library>) =>
+      workspace.builds.find(build => build.id === workspace.activeBuild)!.stages.map(stage => stage.name);
+    const stageName = (workspace: ReturnType<typeof library>) => activeWorkspaceStage(workspace).name;
+    const pick = (workspace: ReturnType<typeof library>, name: string) => {
+      const build = workspace.builds.find(entry => entry.id === workspace.activeBuild)!;
+      return selectWorkspaceStage(workspace, build.id, build.stages.find(stage => stage.name === name)!.id);
+    };
+    const middle = removeWorkspaceStage(pick(library('B'), 'B2'));
+    expect(stagesOf(middle)).toEqual(['B1', 'B3']);
+    expect(stageName(middle)).toBe('B3');
+    const last = removeWorkspaceStage(pick(library('B'), 'B3'));
+    expect(stagesOf(last)).toEqual(['B1', 'B2']);
+    expect(stageName(last)).toBe('B2');
+    const first = removeWorkspaceStage(pick(library('B'), 'B1'));
+    expect(stagesOf(first)).toEqual(['B2', 'B3']);
+    expect(stageName(first)).toBe('B2');
+  });
+
+  it('removes a stage without touching the other builds, and never a build\'s only stage', () => {
+    const before = library('B');
+    const after = removeWorkspaceStage(before);
+    expect(names(after)).toEqual(['A', 'B', 'C']);
+    expect(after.builds[0]).toBe(before.builds[0]);
+    expect(after.builds[2]).toBe(before.builds[2]);
+    expect(after.activeBuild).toBe(before.activeBuild);
+    const single = library('A');
+    expect(removeWorkspaceStage(single)).toBe(single);
+    let shrunk = after;
+    shrunk = removeWorkspaceStage(removeWorkspaceStage(shrunk));
+    expect(shrunk.builds[1].stages).toHaveLength(1);
+    expect(removeWorkspaceStage(shrunk)).toBe(shrunk);
+  });
+});
+

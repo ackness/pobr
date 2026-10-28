@@ -86,6 +86,78 @@ test('V2 navigation, settings and confirmations retain the current editor', asyn
   expect((await state(page)).workspace.builds.at(-1).stages).toHaveLength(1);
 });
 
+test('V2 deletes a build or a stage only after asking, and keeps the last of each', async ({ page }) => {
+  await importV2(page);
+  const deleteBuild = page.getByRole('button', { name: 'Delete build', exact: true });
+  const deleteStage = page.getByRole('button', { name: 'Delete stage', exact: true });
+  const undo = page.getByRole('button', { name: 'Undo', exact: true });
+  const name = async (action: string, value: string) => {
+    // The import form has a "New build" choice of its own; the action is the later of the two.
+    await page.getByRole('button', { name: action, exact: true }).last().click();
+    await page.getByRole('textbox', { name: 'Name', exact: true }).fill(value);
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+  };
+  const builds = async () => (await state(page)).workspace.builds.map((build: { name: string; stages: unknown[] }) => `${build.name}:${build.stages.length}`);
+  await openBuilds(page);
+  // An import leaves the empty starter build beside the imported one, so there is something to delete.
+  const start: string[] = await builds();
+  expect(start.length).toBeGreaterThan(1);
+  await expect(deleteBuild).toBeVisible();
+  // Each build here has one stage, and a build's only stage is not offered for deletion.
+  await expect(deleteStage).toHaveCount(0);
+
+  await name('New build', 'Second');
+  // Opening another build is not an edit to take back: Undo would otherwise put the build
+  // that was just left over this one.
+  await expect(undo).toBeDisabled();
+  await name('Copy current stage', 'Later');
+  await expect(undo).toBeDisabled();
+  await expect(deleteStage).toBeVisible();
+  expect(await builds()).toEqual([...start, 'Second:2']);
+
+  // A stage: declining changes nothing; confirming removes it and keeps the build.
+  await deleteStage.click();
+  await expect(page.getByRole('alertdialog')).toContainText('Later');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  expect(await builds()).toEqual([...start, 'Second:2']);
+  await deleteStage.click();
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+  await expect.poll(builds).toEqual([...start, 'Second:1']);
+  await expect(deleteStage).toHaveCount(0);
+  await expect(undo).toBeDisabled();
+
+  // A build: the confirmation names it, declining changes nothing, and confirming removes it.
+  await deleteBuild.click();
+  await expect(page.getByRole('alertdialog')).toContainText('Second');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  expect(await builds()).toEqual([...start, 'Second:1']);
+  await deleteBuild.click();
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+  await expect.poll(builds).toEqual(start);
+  // Undo must not bring the deleted build's data back into the one that opened.
+  await expect(undo).toBeDisabled();
+  // What opens next is a build that is still there.
+  const open = (await state(page)).workspace;
+  expect(open.builds.some((build: { id: string }) => build.id === open.activeBuild)).toBe(true);
+
+  // Deleting down to the last build: it stays, and nothing offers to delete it.
+  while ((await builds()).length > 1) {
+    await deleteBuild.click();
+    await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+    await expect.poll(async () => (await builds()).length).toBeLessThan(start.length);
+    start.pop();
+  }
+  await expect(deleteBuild).toHaveCount(0);
+  await expect(page.locator('.v2-save-state')).toHaveText('Saved locally');
+
+  // It is gone for good: still one build after a reload, and it is the one that was kept.
+  const kept = (await state(page)).workspace.activeBuild;
+  await page.reload();
+  await expect(page.locator('#build-heading')).toBeVisible({ timeout: 90_000 });
+  expect(await builds()).toHaveLength(1);
+  expect((await state(page)).workspace.activeBuild).toBe(kept);
+});
+
 for (const viewport of [{ width: 390, size: 32 }, { width: 1440, size: 16 }, { width: 3440, size: 16 }]) {
   test(`V2 functional pages fit ${viewport.width}px with ${viewport.size}px text`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: 900 });

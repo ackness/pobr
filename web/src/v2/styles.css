@@ -335,6 +335,8 @@
   .bd-sec-head h2 { margin: 0; }
   .bd-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem; }
   .bd-actions-start { margin-top: .6rem; justify-content: flex-start; gap: .5rem; }
+  /* Deleting is never the first thing the eye lands on: plain until it is reached for. */
+  .bd-danger:hover:not(:disabled), .bd-danger:focus-visible { color: var(--color-negative); }
   .bd-import { padding-top: 1.5rem; }
   .bd-import textarea { width: 100%; min-height: 7rem; padding: .8rem 1rem; resize: vertical; font-family: var(--font-mono); font-size: var(--text-sm); line-height: 1.5; background: var(--card); border-radius: .5rem; }
   .bd-import-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin-top: .75rem; }
