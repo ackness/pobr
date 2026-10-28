@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { answerConfirm } from './confirmDialog';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 
@@ -18,9 +19,9 @@ async function editName(page: Page, action: string, name: string) {
 }
 async function importCode(page: Page, value: string, destination: 'newBuild' | 'currentStage' = 'newBuild') {
   await page.getByRole('combobox', { name: 'Import into', exact: true }).selectOption(destination);
-  if (destination === 'currentStage') page.once('dialog', dialog => dialog.accept());
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(value);
   await page.locator('.import-submit').click();
+  if (destination === 'currentStage') await answerConfirm(page, true);
   await expect(page.locator('.paper-doll')).toBeVisible();
   await expect(page.locator('.topbar-busy')).toHaveCount(0);
   await page.getByRole('button', { name: 'Build', exact: true }).click();
@@ -78,8 +79,8 @@ test('independent builds and stages preserve passive routes and notes across rel
   const backup = await backupPromise;
   expect(JSON.parse(readFileSync((await backup.path())!, 'utf8')).workspace.builds).toHaveLength(4);
   await editName(page, 'New build', 'Temporary');
-  page.once('dialog', dialog => dialog.accept());
   await page.locator('input[type=file]').setInputFiles((await backup.path())!);
+  await answerConfirm(page, true);
   await expect(page.locator('.paper-doll')).toBeVisible();
   expect((await snapshot(page)).workspace.builds).toHaveLength(4);
 });
@@ -238,11 +239,11 @@ test('new imports keep the current build and replacement requires an explicit de
   await expect(page.locator('.topbar-busy')).toHaveCount(0);
   await page.getByRole('combobox', { name: 'Import into', exact: true }).selectOption('currentStage');
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code(95, '3,4', 'Replacement'));
-  page.once('dialog', dialog => dialog.dismiss());
   await page.locator('.import-submit').click();
+  await answerConfirm(page, false);
   expect((await snapshot(page)).state.character.level).toBe(42);
-  page.once('dialog', dialog => dialog.accept());
   await page.locator('.import-submit').click();
+  await answerConfirm(page, true);
   await expect(page.locator('.paper-doll')).toBeVisible();
   await expect(page.locator('.topbar-busy')).toHaveCount(0);
   const replaced = await snapshot(page);

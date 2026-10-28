@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
 import type { SavedSession } from '../src/hooks/useBuildSession';
@@ -93,6 +94,13 @@ async function downloadJson(page: Page, action: string) {
 
 // Only actual UI actions write browser storage. The committed PoB code, decoding,
 // calculation and reload all use the installed real WASM and synced game data.
+/** The inspected group opens by itself; a click on an open group would close it. */
+async function expandGroup(group: Locator) {
+  const title = group.locator('.skill-group-title');
+  if ((await title.getAttribute('aria-expanded')) !== 'true') await title.click();
+  await expect(title).toHaveAttribute('aria-expanded', 'true');
+}
+
 test('committed Comet import reloads its entire saved stage and unresolved middle slot', async ({ page }) => {
   const before = await importComet(page);
   const beforeDps = await hitDps(page).innerText();
@@ -124,7 +132,7 @@ test('inactive Comet stages survive multibuild reload, switching and deliberate 
   await idle(page);
   await nav(page, 'Skills').click();
   const firestorm = page.locator('.skill-group').nth(8);
-  await firestorm.locator('.skill-group-title').click();
+  await expandGroup(firestorm);
   const activeGem = firestorm.locator('.skill-gem').nth(0);
   await activeGem.getByRole('spinbutton', { name: 'Level', exact: true }).fill('20');
   await idle(page);
@@ -190,8 +198,8 @@ test('Comet all-stage sharing and workspace backup reimport preserve complete sa
   const backup = await downloadJson(page, 'Download backup');
   expect(backup.value).toEqual(beforeBackup);
   await editName(page, 'New build', 'Temporary');
-  page.once('dialog', dialog => dialog.accept());
   await page.locator('input[type=file]').setInputFiles(backup.path);
+  await answerConfirm(page, true);
   await expect(page.locator('.paper-doll')).toBeVisible();
   await idle(page);
   await nav(page, 'Build').click();
@@ -289,11 +297,11 @@ test('malformed inactive Comet stage import preserves the current workspace and 
   const library = await page.evaluate(() => localStorage.getItem('pobr-library'));
   const malformed = structuredClone(before);
   activeBuild(malformed).stages[0].saved.state.socketGroups[8].gems[1].quality = -1;
-  page.once('dialog', dialog => dialog.accept());
   await page.locator('input[type=file]').setInputFiles({
     name: 'malformed-workspace.json', mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(malformed)),
   });
+  await answerConfirm(page, true);
   await expect(page.getByRole('alert')).toContainText('invalid workspace file');
   expect(await snapshot(page)).toEqual(before);
   expect(await page.evaluate(() => localStorage.getItem('pobr-library'))).toBe(library);
@@ -320,8 +328,8 @@ test('removing an unresolved slot does not change the selected second active ski
   const beforeDps = await hitDps(page).innerText();
   await nav(page, 'Skills').click();
   const group = page.locator('.skill-group').first();
-  await group.locator('.skill-group-title').click();
-  await group.locator('.skill-gem').nth(1).getByTitle('Remove gem', { exact: true }).click();
+  await expandGroup(group);
+  await group.locator('.skill-gem').nth(1).getByRole('button', { name: 'Remove gem', exact: true }).click();
   await idle(page);
   await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Spark');
   await expect(hitDps(page)).toHaveText(beforeDps);
@@ -347,8 +355,8 @@ for (const count of [1, 2]) {
     const beforeDps = await hitDps(page).innerText();
     await nav(page, 'Skills').click();
     const group = page.locator('.skill-group').first();
-    await group.locator('.skill-group-title').click();
-    await group.locator('.skill-gem').first().getByTitle('Remove gem', { exact: true }).click();
+    await expandGroup(group);
+    await group.locator('.skill-gem').first().getByRole('button', { name: 'Remove gem', exact: true }).click();
     await idle(page);
     const after = await snapshot(page);
     expect(after.state.socketGroups[0].gems).toEqual(before.state.socketGroups[0].gems.slice(1));
