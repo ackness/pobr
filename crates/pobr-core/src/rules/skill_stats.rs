@@ -1127,6 +1127,38 @@ fn player_buff_modifiers_impl(stat: &str, value: f64, skill: BuffSkill) -> Optio
                 })
                 .collect(),
         ),
+        // Fork: "Projectiles that have Forked deal {0}% less Damage"; Pierce: a Damage change for projectiles that
+        // have Pierced an enemy (Pierce I and II give a negative number: less damage). The stat holds the signed
+        // number. The counts are the configured "# of times Skill has Forked/Pierced", at most what the skill can
+        // do (`snapshot_remaining_chains`).
+        "support_fork_forked_projectile_damage_+%_final" => Some(vec![
+            Modifier::number("Damage", ModType::More, value).with_tag(
+                ModTag::MultiplierThreshold {
+                    var: "ForkedCount".into(),
+                    threshold: 1.0,
+                    upper: false,
+                },
+            ),
+        ]),
+        "projectile_damage_+%_final_if_pierced_enemy"
+        | "support_pierce_projectile_damage_+%_final_if_pierced_enemy" => Some(vec![
+            Modifier::number("Damage", ModType::More, value)
+                .with_flags(ModFlags::PROJECTILE)
+                .with_tag(ModTag::MultiplierThreshold {
+                    var: "PiercedCount".into(),
+                    threshold: 1.0,
+                    upper: false,
+                }),
+        ]),
+        "projectile_damage_+%_if_pierced_enemy" => Some(vec![
+            Modifier::number("Damage", ModType::Inc, value)
+                .with_flags(ModFlags::PROJECTILE)
+                .with_tag(ModTag::MultiplierThreshold {
+                    var: "PiercedCount".into(),
+                    threshold: 1.0,
+                    upper: false,
+                }),
+        ]),
         // "{0}% more Critical Hit Chance while you have a Power Charge".
         "charge_mastery_crit_chance_+%_final_with_power_charges" => Some(vec![
             Modifier::number("CriticalStrikeChance", ModType::More, value)

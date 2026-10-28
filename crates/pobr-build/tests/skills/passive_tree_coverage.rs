@@ -183,3 +183,58 @@ Implicits: 0
         );
     }
 }
+
+/// "Projectiles that have Forked deal 30% less Damage" (Fork) and "Projectiles that have Pierced deal 20% less
+/// Damage" (Pierce I; the other Pierce sources are increases) read the configured "# of times Skill has Forked/Pierced", at most what the skill can do. With
+/// no count the hit is the first one and neither applies. They used to be dropped with a "conditional numerical
+/// effect not modeled" diagnostic, so setting the count changed nothing.
+#[test]
+fn forked_and_pierced_projectile_damage_follows_the_configured_count() {
+    let data = data();
+    let more = |support: &str, input: &str, count: Option<u32>| -> f64 {
+        let config = count.map_or_else(String::new, |count| {
+            format!(r#"<Input name="{input}" number="{count}"/>"#)
+        });
+        let build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="96" className="Ranger" ascendClassName="Deadeye" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="IceShotPlayer" level="20" enabled="true"/><Gem skillId="{support}" level="1" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Crude Bow
+Implicits: 0
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+<Config>{config}</Config></PathOfBuilding2>"#
+        ))
+        .unwrap();
+        let options = DataOrchestratorOptions {
+            mode_effective: true,
+            ..Default::default()
+        };
+        let session = calculate_with_data_session(&build, data, &options).unwrap();
+        session
+            .mod_db()
+            .more(session.config(), &[ModName::from("Damage")])
+    };
+    // Fork: 30% less damage once the projectile has forked, at most as many forks as the support gives.
+    let plain = more("SupportForkPlayer", "skillForkCount", None);
+    assert_eq!(more("SupportForkPlayer", "skillForkCount", Some(0)), plain);
+    let forked = more("SupportForkPlayer", "skillForkCount", Some(1));
+    assert!((forked / plain - 0.7).abs() < 1e-9, "{forked} / {plain}");
+    assert_eq!(more("SupportForkPlayer", "skillForkCount", Some(5)), forked);
+    // Without the support the skill cannot fork, so a configured count is not a forked projectile.
+    assert_eq!(
+        more("SupportPiercePlayer", "skillForkCount", Some(1)),
+        more("SupportPiercePlayer", "skillForkCount", None)
+    );
+    // Pierce I: 20% less damage once the projectile has pierced an enemy.
+    let pierce_plain = more("SupportPiercePlayer", "skillPierceCount", None);
+    assert_eq!(
+        more("SupportPiercePlayer", "skillPierceCount", Some(0)),
+        pierce_plain
+    );
+    let pierced = more("SupportPiercePlayer", "skillPierceCount", Some(1));
+    assert!(
+        (pierced / pierce_plain - 0.8).abs() < 1e-9,
+        "{pierced} / {pierce_plain}"
+    );
+}
