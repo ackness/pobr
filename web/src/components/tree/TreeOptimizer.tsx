@@ -19,6 +19,7 @@ import {
   type PassivePlanningContext,
 } from '../../lib/passivePlanner';
 import { AppSelect } from '../shared/AppSelect';
+import { useUi } from '../shared/UiContext';
 import { ObjectiveEditor, OptimizerProgress, objectiveOf, type ObjectiveState } from '../shared/OptimizerControls';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
 import { JewelPassivePlanner, useJewelPassivePlanner, type JewelPassivePlannerState } from './JewelPassivePlanner';
@@ -30,6 +31,8 @@ interface Props {
   nodes: PassiveNode[];
   nodeLabel: (skill: number) => string;
   onPreview: (plan: PassivePlan | null) => void;
+  /** A search starts: whatever an earlier calculation painted on the tree is out of date. */
+  onRun?: () => void;
   focusPlanner?: { nonce: number };
 }
 
@@ -69,6 +72,8 @@ export interface TreeOptimizerState {
   run: () => void;
   cancel: () => void;
   show: (index: number | null) => void;
+  /** Drops the route either planner shows on the tree. */
+  clearPreview: () => void;
   apply: (plan: PassivePlan) => void;
   jewelPlanner: JewelPassivePlannerState;
 }
@@ -145,7 +150,7 @@ const COPY = {
   },
 };
 
-export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onPreview, focusPlanner }: Props): TreeOptimizerState {
+export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onPreview, onRun, focusPlanner }: Props): TreeOptimizerState {
   const [expanded, setExpanded] = useState(Boolean(focusPlanner));
   const [mode, setMode] = useState<'allocate' | 'reallocate'>('allocate');
   const [points, setPoints] = useState(3);
@@ -272,6 +277,7 @@ export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onPr
     if (!active || session.busy || session.calcError || !session.calc) return;
     stop();
     jewelPlanner.stop();
+    onRun?.();
     setCompleted(null);
     setError(null);
     setTracking(true);
@@ -281,6 +287,11 @@ export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onPr
     if (!active || latestKeyRef.current !== snapshotKey || (index !== null && !evaluated?.plans[index])) return;
     setPreview(index);
     previewRef.current(index === null ? null : evaluated?.plans[index] ?? null);
+  };
+  const clearPreview = () => {
+    setPreview(null);
+    previewRef.current(null);
+    jewelPlanner.clearPreview();
   };
   const apply = (plan: PassivePlan) => {
     if (!active || !completed || completed.key !== latestKeyRef.current || session.busy
@@ -297,11 +308,11 @@ export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onPr
     setApplied({ version: session.stateVersion + 1, plan });
   };
   const jewelPlanner = useJewelPassivePlanner({ session, lang, nodes, nodeLabel, active: active && expanded,
-    mode, points, attribute, objective, onPreview, onStart: cancel });
+    mode, points, attribute, objective, onPreview, onStart: () => { cancel(); onRun?.(); } });
   return { session, lang, nodeLabel, containerRef, expanded, setExpanded, mode, setMode, points, setPoints,
     goal, setGoal, attribute, setAttribute, context, tracking, progress, error, completed, evaluated, preview,
     applied: applied?.version === session.stateVersion && !session.busy && !session.calcError ? applied.plan : null,
-    run, cancel, show, apply, jewelPlanner };
+    run, cancel, show, clearPreview, apply, jewelPlanner };
 }
 
 export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
@@ -310,6 +321,7 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
     run, cancel, show, apply, jewelPlanner } = planner;
   const text = COPY[lang];
   const tt = bindT(lang);
+  const { v2 } = useUi();
   const number = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 2 });
   const delta = (value: number, baseline: number) => baseline > 0
     ? `${value >= baseline ? '+' : ''}${((value / baseline - 1) * 100).toFixed(1)}%`
@@ -392,6 +404,10 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
                   <small>{number(currentStats[stat] ?? 0)} → <output data-stat={stat}>{number(plan.stats[stat] ?? 0)}</output></small>
                 </span>)}
               </div>
+              {v2 && plan.deallocate.length > 0 && <div className="tree-plan-swap">
+                <p className="tree-plan-swap-out"><b>− {text.remove} {plan.deallocate.length}</b>{plan.deallocate.map(nodeLabel).join(' · ')}</p>
+                <p className="tree-plan-swap-in"><b>+ {text.add} {plan.allocate.length}</b>{plan.allocate.map(nodeLabel).join(' · ') || '—'}</p>
+              </div>}
               <details><summary>{text.route}</summary><p>{text.add}: {plan.allocate.map(nodeLabel).join(' · ')}</p>
                 {plan.deallocate.length > 0 && <p>{text.remove}: {plan.deallocate.map(nodeLabel).join(' · ')}</p>}</details>
               <div className="tree-plan-actions"><AppButton onClick={() => show(index)}>{text.preview}</AppButton><AppButton disabled={session.busy} onClick={() => apply(plan)}>{text.apply}</AppButton></div>

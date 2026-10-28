@@ -417,8 +417,11 @@
 .tree-planner-excluded { padding-left: var(--space-5); }
 .tree-planner-excluded > li { margin-top: var(--space-3); }
 .tree-plan-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
-.node.node-planned-add { stroke: var(--color-cold); stroke-width: 28; }
-.node.node-planned-remove { stroke: var(--color-negative); stroke-width: 28; stroke-dasharray: 36 16; }
+.node.node-planned-add { stroke: var(--color-cold); stroke-width: 36; }
+/* A refunded point sits among the allocated ones, so it needs more than a thin ring to be found. */
+.node.node-planned-remove { stroke: var(--color-negative); stroke-width: 48; stroke-dasharray: 60 24; }
+.tree-edges .edge-plan-add { stroke: var(--color-cold); stroke-width: 26; opacity: 1; }
+.tree-edges .edge-plan-remove { stroke: var(--color-negative); stroke-width: 26; stroke-dasharray: 45 20; opacity: 1; }
 @media (max-width: 800px) {
   .tree-planner-results { grid-template-columns: 1fr; }
   .tree-planner-body { padding: 0 var(--space-3) var(--space-3); }

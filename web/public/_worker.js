@@ -195,6 +195,23 @@ export async function fetchTradeMarket(input, fetcher = fetch) {
     total: search.total, sampled: ids.length, search_mode, listings };
 }
 
+// A file whose URL names its content can be kept for good: it can never be asked for again with
+// other content. That is a data file asked for with the digest the page read from its manifest
+// (`/data/<version>/<file>?h=<digest>`), and the bundler's own content-hashed files. Everything
+// else keeps the host's default, which revalidates on every visit.
+function isContentAddressed(url) {
+  if (/^\/data\/[^/]+\/.+/.test(url.pathname)) return /^[0-9a-f]{16,64}$/.test(url.searchParams.get('h') ?? '');
+  return /^\/assets\/[^/]+-[A-Za-z0-9_-]{8}\.[A-Za-z0-9]+$/.test(url.pathname);
+}
+
+async function serveStatic(request, env, url) {
+  const response = await env.ASSETS.fetch(request);
+  if (request.method !== 'GET' || response.status !== 200 || !isContentAddressed(url)) return response;
+  const headers = new Headers(response.headers);
+  headers.set('cache-control', 'public, max-age=31536000, immutable');
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -242,7 +259,7 @@ export default {
         return Response.json({ error: 'Trade league list is temporarily unavailable.' }, { status: 502 });
       }
     }
-    if (url.pathname !== '/api/import/wegame') return env.ASSETS.fetch(request);
+    if (url.pathname !== '/api/import/wegame') return serveStatic(request, env, url);
     const headers = { 'cache-control': 'no-store' };
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: { ...headers, allow: 'POST' } });
     const origin = request.headers.get('origin');

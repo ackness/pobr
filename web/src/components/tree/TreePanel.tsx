@@ -27,6 +27,7 @@ import { TreeOptimizer, useTreeOptimizer, type TreeOptimizerState } from './Tree
 import type { PassivePlan } from '../../lib/passivePlanner';
 import './tree.css';
 import { NodePowerTable } from './NodePowerTable';
+import { plannedEdgeClass } from './plannedRoute';
 import { useUi } from '../shared/UiContext';
 import { words } from '../../v2/text';
 import { PanelRightClose, PanelRightOpen } from 'lucide-react';
@@ -100,7 +101,9 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
     .find(entry => entry.name === session.character?.ascendancy_name)?.id;
   const namedNodes = useMemo(() => nodes.filter(node => !node.ascendancy_id || node.ascendancy_id === ascendancy), [nodes, ascendancy]);
   const nodeNames = usePassiveNodeNames(namedNodes, lang, active);
+  const [overlayReset, setOverlayReset] = useState(0);
   const planner = useTreeOptimizer({ session, lang, active, nodes,
+    onRun: () => setOverlayReset(value => value + 1),
     nodeLabel: skill => {
       const node = byId.get(skill);
       return node ? passiveNodeName(node, nodeNames) : `#${skill}`;
@@ -123,7 +126,7 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
     session.activeLoadout, session.activeWeaponSet, session.socketGroupRevision,
     session.character?.class_name, session.character?.ascendancy_name]);
   return <TreeCanvas key={canvasContext} session={session} lang={lang} onJewelSearch={onJewelSearch}
-    allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} nodeNames={nodeNames} art={art} error={error} plannedNodes={plannedNodes} planner={planner} conversion={conversion} />;
+    allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} nodeNames={nodeNames} art={art} error={error} plannedNodes={plannedNodes} planner={planner} conversion={conversion} overlayReset={overlayReset} />;
 }
 
 interface CanvasProps {
@@ -140,9 +143,11 @@ interface CanvasProps {
   planner: TreeOptimizerState;
   /** v2 only: the tree-conversion controls, shown in the canvas toolbar. */
   conversion?: ReactNode;
+  /** Counts the planner searches started; a new one replaces the heatmap's colours. */
+  overlayReset: number;
 }
 
-function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, art, error, plannedNodes, planner, conversion }: CanvasProps) {
+function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, art, error, plannedNodes, planner, conversion, overlayReset }: CanvasProps) {
   const tt = bindT(lang);
   const { v2 } = useUi();
   /** v2 only: whether the planner / details column beside the canvas is shown. */
@@ -266,23 +271,65 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
   const [heatBusy, setHeatBusy] = useState(false);
   /** 上次计算时的 stateVersion（build 变动后提示「已过期」而非自动重算）。 */
   const [heatVersion, setHeatVersion] = useState(-1);
+  /** 每步算多少个候选：步间让出 Worker，进度可见，编辑不必排到整张热力图之后。 */
+  const HEAT_STEP = 64;
+  const [heatProgress, setHeatProgress] = useState<{ done: number; total: number } | null>(null);
+  /** 当前这一轮热力图计算的编号；放弃（改属性、编辑、再点计算）就换号，旧的一轮在下一步前收手。 */
+  const heatRun = useRef(0);
+  const cancelHeat = () => {
+    heatRun.current += 1;
+    setHeatBusy(false);
+    setHeatProgress(null);
+  };
+  // 构筑一改，进行中的计算就是在算旧构筑：放弃它，已算出的部分留着并提示已过期。
+  useEffect(() => { cancelHeat(); }, [session.stateVersion]);
   const runHeat = () => {
     if (!heatStat || heatBusy) return;
     const request = session.currentRequest();
     if (!request) return;
     const version = session.stateVersion;
     const generation = canvasGeneration.current;
+    const run = ++heatRun.current;
+    const current = () => generation === canvasGeneration.current && run === heatRun.current;
+    // The colours and routes the previous calculations painted describe results that are
+    // about to be replaced; they must not stay lit while the new one runs.
+    setHeatData(null);
+    setHeatVersion(-1);
+    planner.clearPreview();
     setHeatBusy(true);
-    getBackend()
-      .then(b => generation === canvasGeneration.current ? b.nodePower(request, heatStat, heatDepth) : null)
-      .then((res) => {
-        if (!res || generation !== canvasGeneration.current) return;
-        setHeatData(new Map(res.entries.map((e) => [e.skill, e.delta])));
-        setHeatVersion(version);
-      })
-      .catch(() => { if (generation === canvasGeneration.current) setHeatData(null); })
-      .finally(() => { if (generation === canvasGeneration.current) setHeatBusy(false); });
+    setHeatProgress(null);
+    void (async () => {
+      try {
+        const backend = await getBackend();
+        const powers = new Map<number, number>();
+        for (let offset = 0; ; offset += HEAT_STEP) {
+          if (!current()) return;
+          const res = await backend.nodePower(request, heatStat, heatDepth, undefined, { offset, limit: HEAT_STEP });
+          if (!current()) return;
+          res.entries.forEach((entry) => powers.set(entry.skill, entry.delta));
+          setHeatData(new Map(powers));
+          setHeatVersion(version);
+          // An engine that does not know windows answers with everything at once.
+          if (res.total === undefined || offset + HEAT_STEP >= res.total) break;
+          setHeatProgress({ done: offset + HEAT_STEP, total: res.total });
+        }
+      } catch {
+        if (current()) setHeatData(null);
+      } finally {
+        if (current()) {
+          setHeatBusy(false);
+          setHeatProgress(null);
+        }
+      }
+    })();
   };
+
+  // A planner search that starts replaces the heatmap's colours the same way.
+  useEffect(() => {
+    if (overlayReset === 0) return;
+    setHeatData(null);
+    setHeatVersion(-1);
+  }, [overlayReset]);
 
   const heatMax = useMemo(() => {
     let max = 0;
@@ -518,6 +565,8 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
     });
   }, [actOnNode]);
 
+  const plannedEdge = useMemo(() => plannedEdgeClass(plannedNodes, allocated), [plannedNodes, allocated]);
+
   const edgesEl = useMemo(
     () => (
       <g className="tree-edges">
@@ -528,12 +577,12 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
             y1={e.y1}
             x2={e.x2}
             y2={e.y2}
-            className={`${e.active ? 'edge-active' : 'edge'}${previewNodes.path.has(e.from) && previewNodes.path.has(e.to) ? ' edge-preview' : ''}${previewNodes.removed.has(e.from) && previewNodes.removed.has(e.to) ? ' edge-refund' : ''}`}
+            className={`${e.active ? 'edge-active' : 'edge'}${previewNodes.path.has(e.from) && previewNodes.path.has(e.to) ? ' edge-preview' : ''}${previewNodes.removed.has(e.from) && previewNodes.removed.has(e.to) ? ' edge-refund' : ''}${plannedEdge(e.from, e.to)}`}
           />
         ))}
       </g>
     ),
-    [edges, previewNodes],
+    [edges, previewNodes, plannedEdge],
   );
 
   const filledJewelSockets = useMemo(
@@ -932,6 +981,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
             value={heatStat}
             aria-label={tt('tree.heat')}
             onChange={(e) => {
+              cancelHeat();
               setHeatStat(e.target.value);
               setHeatData(null);
               setHeatVersion(-1);
@@ -960,8 +1010,11 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
                 />
               </label>
               <AppButton disabled={heatBusy || session.busy} onClick={runHeat}>
-                {heatBusy ? tt('tree.heatComputing') : tt('tree.heatRun')}
+                {heatBusy
+                  ? `${tt('tree.heatComputing')}${heatProgress ? ` ${heatProgress.done}/${heatProgress.total}` : ''}`
+                  : tt('tree.heatRun')}
               </AppButton>
+              {heatBusy && <AppButton onClick={cancelHeat}>{tt('tree.heatCancel')}</AppButton>}
               {heatData && heatVersion !== session.stateVersion && (
                 <span className="tree-hint">{tt('tree.heatStale')}</span>
               )}
@@ -1282,7 +1335,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
   const powerEl = (
     <NodePowerTable session={session} nodes={nodes ?? []} nodeNames={nodeNames} lang={lang}
         stat={heatStat || 'Life'} stats={heatStatOptions}
-        onStat={stat => { setHeatStat(stat); setHeatData(null); setHeatVersion(-1); }}
+        onStat={stat => { cancelHeat(); setHeatStat(stat); setHeatData(null); setHeatVersion(-1); }}
         onFocus={node => {
           setSelectedSkill(node.skill); setAttributeDraft(null); setAttrPicker(null);
           const w = Math.min(view.w, 6000), h = w / view.w * view.h;
