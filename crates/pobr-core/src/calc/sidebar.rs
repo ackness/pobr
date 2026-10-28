@@ -175,6 +175,9 @@ pub(super) fn fill_sidebar(env: &mut Env) {
         .sum(ModType::Base, &global, &[ModName::from("FreezeThreshold")])
         .max(0.0);
     out.limit_views.freeze_threshold_mod = factor(db, &global, &["FreezeThreshold"]);
+    out.limit_views.freeze_threshold = (out.ailment_threshold
+        + out.limit_views.freeze_threshold_added)
+        * out.limit_views.freeze_threshold_mod;
     out.effective_loot_rarity_mod = if db.has_name("LootRarityExclusive") {
         factor(
             &db.filtered(loot_rarity_filter(db, &global)),

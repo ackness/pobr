@@ -83,6 +83,7 @@ pub const DERIVED_STATS: &[&str] = &[
     "FullLifePercentage",
     "FullManaPercentage",
     "DurationMod",
+    "FreezeThreshold",
     "StrikeTargets",
     "LowestAttribute",
     "MaximumChill",

@@ -627,6 +627,12 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
         ),
         computed("LightRadiusMod", Cat::Misc, Vt::Number, "LightRadiusMod"),
         computed(
+            "FreezeThreshold",
+            Cat::Defence,
+            Vt::Number,
+            "FreezeThreshold",
+        ),
+        computed(
             "FreezeThresholdAdded",
             Cat::Defence,
             Vt::Number,
