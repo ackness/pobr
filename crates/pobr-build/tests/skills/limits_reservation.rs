@@ -498,4 +498,12 @@ fn freeze_threshold_views_read_the_additions_and_the_increases() {
     let added = display_value(&built, "FreezeThresholdAdded");
     assert!((added - es * 0.5).abs() <= 1.0, "{added} vs half of {es}");
     assert!((display_value(&built, "FreezeThresholdMod") - 1.6).abs() < 1e-9);
+    // The total starts from the Ailment Threshold, which the game's chance to Freeze is measured against.
+    let ailment = display_value(&built, "AilmentThreshold");
+    let total = display_value(&built, "FreezeThreshold");
+    assert!((total - (ailment + added) * 1.6).abs() < 1e-6, "{total}");
+    assert_eq!(
+        display_value(&plain, "FreezeThreshold"),
+        display_value(&plain, "AilmentThreshold")
+    );
 }
