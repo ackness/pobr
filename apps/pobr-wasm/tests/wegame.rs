@@ -128,6 +128,39 @@ fn wegame_preserves_calculation_inputs_and_roundtrips() {
     assert_eq!(limbs(&roundtrip), limbs(&decoded));
 }
 
+/// A level can carry a note after the number ("20(最高等级)" is level 20, shown at the gem's maximum), the gem
+/// list means the ordinary gem when an item grants a version of it under the same name (Herald of Ice), and a
+/// support is looked up among supports (the active skill Unleash has the same name).
+#[test]
+fn wegame_reads_gem_levels_and_names_as_the_game_lists_them() {
+    init();
+    let mut share = fixture();
+    share["skills"] = json!([
+        {"baseType":"冰霜射击","support":false,
+         "properties":[{"type":5,"values":[["20(最高等级)",0]]},{"type":6,"values":[["+20%",1]]}],
+         "socketedItems":[{"baseType":"释出","support":true}]},
+        {"baseType":"寒冰之捷","support":false,"properties":[{"type":5,"values":[["18",0]]}]}
+    ]);
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_file_json(&share.to_string()).unwrap())
+            .unwrap();
+    let notes = decoded["notes"].as_str().unwrap();
+    let gems = |group: usize| {
+        decoded["socket_groups"][group]["gems"]
+            .as_array()
+            .unwrap()
+            .clone()
+    };
+    assert_eq!(gems(0)[0]["skill_id"], "IceShotPlayer");
+    assert_eq!(gems(0)[0]["level"], 20);
+    assert_eq!(gems(0)[0]["quality"], 20);
+    assert_eq!(gems(0)[1]["skill_id"], "SupportUnleashPlayer");
+    assert_eq!(gems(1)[0]["skill_id"], "HeraldOfIcePlayer");
+    assert_eq!(gems(1)[0]["level"], 18);
+    assert!(!notes.contains("Missing gem level"), "{notes}");
+    assert!(!notes.contains("Unknown or ambiguous gem"), "{notes}");
+}
+
 /// A corrupted gem arrives with the flag a corrupted item has; the build keeps
 /// it, so modifiers to corrupted gems reach the gem. The level property is
 /// already the gem's whole level.
