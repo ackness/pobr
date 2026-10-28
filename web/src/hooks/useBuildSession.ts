@@ -141,6 +141,8 @@ export interface BuildSession {
   limbs: SlotItemInput[];
   jewels: JewelInput[];
   calc: CalculateBuildResponse | null;
+  /** Wall time of the calculation behind `calc`, in milliseconds; null while it is pending. */
+  calcMs: number | null;
   calcParams: CalcParams;
   busy: boolean;
   /** Failure of the latest baseline calculation; retained output is not a valid baseline. */
@@ -183,6 +185,11 @@ export interface BuildSession {
   /** 整体替换加点集合（树寻路一次点亮/熄灭整条路径）。 */
   setAllocatedNodes: (skills: number[], choices?: Record<string, AttributeChoice>) => void;
   canUndoTree: boolean;
+  /** Every edit, not only the tree's: step back and forward through this stage's changes. Replacing the whole build or switching stage starts a new history. */
+  undoEdit: () => void;
+  redoEdit: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
   undoTree: () => void;
   applyTreeConversion: (decoded: BuildJson, code: string, expectedVersion: number) => boolean;
   applyTreeEdit: (result: TreeEditResult, request: CalculateBuildRequest, choices?: Record<string, AttributeChoice>) => boolean;
@@ -625,7 +632,9 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
   const buildRef = useRef(build);
   buildRef.current = build;
   const treeHistory = useRef<{ state: BuildState; build: BuildJson | null }[]>([]);
-  const [calculated, setCalculated] = useState<{ version: number; result: CalculateBuildResponse } | null>(null);
+  const editHistory = useRef<{ state: BuildState; build: BuildJson | null }[]>([]);
+  const redoHistory = useRef<{ state: BuildState; build: BuildJson | null }[]>([]);
+  const [calculated, setCalculated] = useState<{ version: number; result: CalculateBuildResponse; ms: number } | null>(null);
   const [calculating, setCalculating] = useState(false);
   // Source operations can overlap a recalc or nest (manageLoadout imports its result).
   const [pendingOperations, setPendingOperations] = useState(0);
@@ -676,6 +685,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
   const [library, setLibrary] = useState<Library>(() => loadLibrary(storage.library));
   const [stateVersion, setStateVersion] = useState(0);
   const calc = calculated?.version === stateVersion ? calculated.result : null;
+  const calcMs = calculated?.version === stateVersion ? calculated.ms : null;
   const [socketGroupRevision, setSocketGroupRevision] = useState(0);
   /**
    * 「干净」基线：导入 / 切换 loadout 落地时记下当时的版本号。之后每次编辑
@@ -707,10 +717,11 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
     const request = { ...toRequest(next), ...(configContextActiveRef.current ? { config_context: true } : {}) };
     setCalculating(true);
     setCalcError(null);
+    const started = performance.now();
     getBackend()
       .then((backend) => backend.calculateBuild({ ...request, breakdowns: [] }))
       .then((result) => {
-        if (seqRef.current === seq) setCalculated({ version, result });
+        if (seqRef.current === seq) setCalculated({ version, result, ms: performance.now() - started });
       })
       .catch((err) => {
         if (seqRef.current === seq) setCalcError(formatApiError(err));
@@ -728,8 +739,13 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
 
   /** 应用新状态并触发重算 + 自动保存到浏览器。 */
   const apply = useCallback(
-    (next: BuildState, opts?: { clean?: boolean; treeEdit?: boolean; undo?: boolean }) => {
+    (next: BuildState, opts?: { clean?: boolean; treeEdit?: boolean; undo?: boolean; auto?: boolean }) => {
       const previous = stateRef.current;
+      if (opts?.clean) { editHistory.current = []; redoHistory.current = []; }
+      else if (!opts?.undo && !opts?.auto && previous) {
+        editHistory.current = [...editHistory.current.slice(-49), { state: previous, build: buildRef.current }];
+        redoHistory.current = [];
+      }
       if (opts?.treeEdit && previous) {
         treeHistory.current = [...treeHistory.current.slice(-29), { state: previous, build: buildRef.current }];
       } else if (!opts?.undo) {
@@ -770,7 +786,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
             socketGroups: pending.socketGroups.map((group, index) => index === best.group_index
               ? { ...group, main_active_skill: best.active_skill_index } : group),
             params: { ...pending.params, main_socket_group: best.group_index },
-          });
+          }, { auto: true });
           // A default is not an edit: an untouched import stays clean.
           if (wasClean) cleanVersionRef.current = versionRef.current;
         }).catch(() => {});
@@ -1252,6 +1268,18 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
     return true;
   }, [apply]);
 
+  const stepHistory = useCallback((from: typeof editHistory, to: typeof editHistory) => {
+    const target = from.current.pop();
+    const current = stateRef.current;
+    if (!target || !current) return;
+    to.current = [...to.current.slice(-49), { state: current, build: buildRef.current }];
+    treeHistory.current = [];
+    apply(target.state, { undo: true });
+    setBuild(target.build);
+  }, [apply]);
+  const undoEdit = useCallback(() => stepHistory(editHistory, redoHistory), [stepHistory]);
+  const redoEdit = useCallback(() => stepHistory(redoHistory, editHistory), [stepHistory]);
+
   const undoTree = useCallback(() => {
     const previous = treeHistory.current.pop();
     if (!previous) return;
@@ -1611,6 +1639,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
     limbs: state?.limbs ?? [],
     jewels: state?.jewels ?? [],
     calc,
+    calcMs,
     calcParams: state?.params ?? { config_inputs: {} },
     busy,
     calcError,
@@ -1638,6 +1667,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
     setAllocatedNodes,
     applyTreeEdit,
     applyTreeConversion, undoTree, canUndoTree: treeHistory.current.length > 0,
+    undoEdit, redoEdit, canUndo: editHistory.current.length > 0, canRedo: redoHistory.current.length > 0,
     setAttributeChoices,
     setSocketGroups,
     setItems,

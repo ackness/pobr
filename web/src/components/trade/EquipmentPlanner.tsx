@@ -1,3 +1,4 @@
+import { useJobBeacon } from '../../v2/jobs/useJobBeacon';
 import { AppButton, AppSelectControl } from '../shared/controls';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CalculateBuildRequest } from '../../api/types';
@@ -6,6 +7,8 @@ import { planEquipmentUpgrades, EQUIPMENT_CANDIDATE_LIMIT, EQUIPMENT_MAX_REPLACE
 import { compareObjectiveStats, feasibleOf, type Objective } from '../../lib/optimize';
 import { slotLabel, statNameLabel, type Lang } from '../../lib/i18n';
 import { upgradeT } from '../../lib/upgradeText';
+import { usePreview } from '../shared/PreviewContext';
+import { changesFromRecords } from '../../v2/preview/fromRecords';
 import type { TradeCatalog } from '../../lib/tradeOptimizer';
 
 interface EquipmentSnapshot {
@@ -26,8 +29,10 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
   candidates: EquipmentCandidate[]; onRemove: (id: string) => void;
 }) {
   const ut = (key: Parameters<typeof upgradeT>[1]) => upgradeT(lang, key);
+  const preview = usePreview();
   const [snapshot, setSnapshot] = useState<EquipmentSnapshot | null>(null);
   const [busy, setBusy] = useState(false);
+  useJobBeacon(busy);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState('');
   const [maxReplacements, setMaxReplacements] = useState(2);
@@ -121,7 +126,9 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
       <ol>{plans.map(plan => {
         const chosen = plan.candidateIds.map(id => candidates.find(candidate => candidate.id === id)!);
         const canApply = usable(plan) && feasibleOf(plan.stats, objective);
-        return <li key={plan.candidateIds.join('/') || 'current'} className="equipment-plan">
+        const planLabel = chosen.length ? chosen.map(candidate => `${candidate.label} · ${slotLabel(lang, candidate.slot)}`).join(' + ') : ut('jointKeep');
+        return <li key={plan.candidateIds.join('/') || 'current'} className="equipment-plan"
+          onMouseEnter={preview && !plan.error ? () => preview.showChanges(planLabel, changesFromRecords(result.baseline, plan.stats)) : undefined} onMouseLeave={preview?.clear}>
           <h5>{chosen.length ? chosen.map(candidate => `${candidate.label} · ${slotLabel(lang, candidate.slot)}`).join(' + ') : ut('jointKeep')}</h5>
           {!plan.error && <div className="replacement-metrics">{['TotalDPS', 'TotalEHP', 'Life'].map(stat => {
             const before = result.baseline[stat] ?? 0, after = plan.stats[stat] ?? 0;

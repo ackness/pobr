@@ -3,7 +3,7 @@ import { AppTooltip, AppButton, AppInput } from '../shared/controls';
 import { NamedSets } from '../shared/NamedSets';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
 import { PageHeader } from '../shared/PageHeader';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { getBackend } from '../../api/backend';
 import type { GemCatalogEntry, SocketGroupInput } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
@@ -20,6 +20,11 @@ import { eligibleSupports, lineageAvailable, supportSetsCompatible, usableSuppor
 import { supportText } from '../../lib/supportI18n';
 import { MinionSelection } from './MinionSelection';
 import { SkillFormControls } from './SkillFormControls';
+import { useUi } from '../shared/UiContext';
+import { words } from '../../v2/text';
+import { barShare, groupDps, topDps, type GroupDps } from '../../v2/pages/skills/dps';
+import { useSkillMetrics } from '../../v2/pages/skills/useSkillMetrics';
+import { formatStatValue } from '../../lib/statDisplay';
 import './skills.css';
 
 interface Props {
@@ -31,6 +36,8 @@ interface Props {
 
 export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
   const tt = bindT(lang);
+  const { v2 } = useUi();
+  const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
   const [catalog, setCatalog] = useState<GemCatalogEntry[]>([]);
   const [tradeGems, setTradeGems] = useState<SupportMetadata[]>([]);
   const [catalogError, setCatalogError] = useState(false);
@@ -62,7 +69,10 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
   const groupRefs = useRef<Array<HTMLDivElement | null>>([]);
   const scrollFrame = useRef<number | null>(null);
   const [openGroup, setOpenGroup] = useState<{ index: number; revision: number; focusNonce?: number } | null>(null);
-  const openIdx = openGroup?.revision === session.socketGroupRevision ? openGroup.index : null;
+  const storedIdx = openGroup?.revision === session.socketGroupRevision ? openGroup.index : null;
+  // The V2 master-detail always has a group selected: the one the player chose, else the main skill.
+  const defaultIdx = !v2 ? null : mainIndex !== undefined && groups[mainIndex] ? mainIndex : groups.length ? 0 : null;
+  const openIdx = storedIdx !== null && (!v2 || groups[storedIdx]) ? storedIdx : defaultIdx;
   const setOpenIdx = (index: number | null, focusNonce?: number) => setOpenGroup(index === null
     ? null : { index, revision: session.socketGroupRevision, focusNonce });
   const consumedFocus = useRef<number | undefined>(undefined);
@@ -72,8 +82,8 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
     if (groups[focusOptimizer.group]) setOpenIdx(focusOptimizer.group, focusOptimizer.nonce);
   }, [active, focusOptimizer, session.socketGroupRevision]);
   useLayoutEffect(() => {
-    if (openGroup && openIdx === null) setOpenGroup(null);
-  }, [session.socketGroupRevision, openIdx]);
+    if (openGroup && storedIdx === null) setOpenGroup(null);
+  }, [session.socketGroupRevision, storedIdx]);
   useLayoutEffect(() => () => {
     if (scrollFrame.current !== null) cancelAnimationFrame(scrollFrame.current);
     scrollFrame.current = null;
@@ -104,41 +114,54 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
     session.setSocketGroups(groups.map((g, i) => (i === idx ? { ...g, ...patch } : g)));
   };
 
+  // V2 only: what each group's selected skill deals on its own, for the bars beside the list.
+  const dpsSnapshot = useSkillMetrics(session, v2 && active);
+  const dpsRows = useMemo(() => v2 && dpsSnapshot?.revision === session.socketGroupRevision
+    ? groupDps(dpsSnapshot.skills, groups) : new Map<number, GroupDps>(), [v2, dpsSnapshot, session.socketGroupRevision, groups]);
+  const dpsTop = topDps(dpsRows);
+
+  const toolbar = active && <div className="skills-toolbar">
+    {!v2 && mainIndex !== undefined && groups[mainIndex] && <AppButton onClick={() => {
+      setOpenIdx(mainIndex);
+      if (scrollFrame.current !== null) cancelAnimationFrame(scrollFrame.current);
+      scrollFrame.current = requestAnimationFrame(() => {
+        scrollFrame.current = null;
+        groupRefs.current[mainIndex]?.scrollIntoView({ block: 'start' });
+      });
+    }}>{tt('skills.editMain')} · {gemName(session.calc?.main_skill?.skill_id ?? groups[mainIndex].gems[0]?.skill_id ?? '')}</AppButton>}
+    <GemPicker
+      entries={actives}
+      placeholder={tt('skills.addPlaceholder')}
+      disabled={session.busy || catalog.length === 0}
+      lang={lang}
+      onPick={(skillId) => {
+        session.setSocketGroups([
+          ...groups,
+          { enabled: true, gems: [{ skill_id: skillId, level: 20, quality: 0 }] },
+        ]);
+        setOpenIdx(groups.length);
+      }}
+    />
+    {v2 && groups.length > 0 && <p className="skill-list-note">{w('Damage per second of each skill on its own.', '各技能单独的每秒伤害。', '各技能單獨的每秒傷害。')}</p>}
+  </div>;
+
   return (
     <section className="ui-page skills-page" aria-labelledby="skills-heading" hidden={!active}>
       {active && <PageHeader id="skills-heading" title={tt('skills.title')} description={tt('skills.hint')}>
         <WeaponSetControl session={session} lang={lang} />
       </PageHeader>}
       {active && <NamedSets session={session} lang={lang} kind="skill" />}
-      {active && <div className="skills-toolbar">
-        {mainIndex !== undefined && groups[mainIndex] && <AppButton onClick={() => {
-          setOpenIdx(mainIndex);
-          if (scrollFrame.current !== null) cancelAnimationFrame(scrollFrame.current);
-          scrollFrame.current = requestAnimationFrame(() => {
-            scrollFrame.current = null;
-            groupRefs.current[mainIndex]?.scrollIntoView({ block: 'start' });
-          });
-        }}>{tt('skills.editMain')} · {gemName(session.calc?.main_skill?.skill_id ?? groups[mainIndex].gems[0]?.skill_id ?? '')}</AppButton>}
-        <GemPicker
-          entries={actives}
-          placeholder={tt('skills.addPlaceholder')}
-          disabled={session.busy || catalog.length === 0}
-          lang={lang}
-          onPick={(skillId) => {
-            session.setSocketGroups([
-              ...groups,
-              { enabled: true, gems: [{ skill_id: skillId, level: 20, quality: 0 }] },
-            ]);
-            setOpenIdx(groups.length);
-          }}
-        />
-
-      </div>}
+      {!v2 && toolbar}
       {catalogError && <p className="opt-error">{supportText(lang, 'catalogError')}</p>}
       {!catalogError && !catalog.length && <p className="skills-hint">{supportText(lang, 'loading')}</p>}
-      {groups.length === 0 && <p className="skills-hint">{tt('skills.empty')}</p>}
-      {active && <SkillSets session={session} lang={lang} />}
-      <div className="skill-groups">
+      {groups.length === 0 && !v2 && <p className="skills-hint">{tt('skills.empty')}</p>}
+      {active && !v2 && <SkillSets session={session} lang={lang} />}
+      <div className="skill-groups" style={v2 ? { '--skill-rows': groups.length + 1 } as CSSProperties : undefined}>
+        {v2 && (groups.length > 0 ? toolbar : active && <div className="skills-empty">
+          <h3>{w('Start with the skill that deals your damage', '先加入造成伤害的主技能', '先加入造成傷害的主技能')}</h3>
+          <p>{w('Search for an active skill below to create the first group, or import a BD from the library.', '在下方搜索一个主动技能来创建第一个技能组，或到 BD 管理导入一套 BD。', '在下方搜尋一個主動技能來建立第一個技能組，或到 BD 管理匯入一套 BD。')}</p>
+          {toolbar}
+        </div>)}
         {groups.map((group, idx) => {
           const isMain = idx === mainIndex;
           const isOpen = idx === openIdx;
@@ -152,11 +175,149 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
             && compatibleSupports.catalog === tradeGems && compatibleSupports.ids.has(gem.skill_id));
           const optimizerSkillKey = JSON.stringify(group.gems
             .filter(gem => !tradeById.get(gem.skill_id)?.is_support).map(gem => gem.skill_id).sort());
+          const dps = dpsRows.get(idx);
+          const optimizer = isOpen && (
+            <GemOptimizer
+              key={`${session.socketGroupRevision}:${optimizerSkillKey}`}
+              skillKey={optimizerSkillKey}
+              session={session}
+              lang={lang}
+              active={active}
+              groupIndex={idx}
+              catalog={tradeGems}
+              gemName={gemName}
+              focusNonce={openGroup?.focusNonce}
+            />
+          );
+          const supportPicker = active && isOpen && (
+            <div className="skill-group-picker">
+              <GemPicker
+                entries={availableSupports}
+                placeholder={tt('skills.addSupport')}
+                disabled={session.busy || catalog.length === 0 || currentSupports.length >= 5}
+                lang={lang}
+                onPick={(skillId) =>
+                  updateGroup(idx, {
+                    gems: [...group.gems, { skill_id: skillId,
+                      level: usableSupportLevel(tradeById.get(skillId)!, session.character?.level ?? 1), quality: 0 }],
+                  })
+                }
+              />
+            </div>
+          );
+          const note = active && isOpen && (
+            <div className="skill-group-note">
+              <NoteEditor
+                value={session.annotations[`skill:${idx}`] ?? ''}
+                onCommit={(text) => session.setAnnotation(`skill:${idx}`, text)}
+                lang={lang}
+              />
+            </div>
+          );
+          const weaponBinding = (
+            <div className="skill-weapon-binding"><label>{tt('weapons.binding')}</label>
+              <AppSelect ariaLabel={tt('weapons.binding')} value={String(group.weapon_set ?? 0)}
+                options={[{ value: '0', label: tt('weapons.both') }, ...[1, 2].map(set => ({ value: String(set), label: `${tt('weapons.set')} ${set}` }))]}
+                disabled={session.busy} onChange={value => updateGroup(idx, { weapon_set: value === '0' ? null : Number(value) as 1 | 2 })} />
+            </div>
+          );
+          const fullDps = (
+            <div className="skill-full-dps-controls">
+              <label><AppInput type="checkbox" checked={group.include_in_full_dps ?? false} disabled={session.busy}
+                onChange={event => updateGroup(idx, { include_in_full_dps: event.target.checked })} />{tt('skills.fullDps')}</label>
+              <label>{tt('skills.groupCount')}<AppInput type="number" min={0} step="any" aria-label={tt('skills.groupCount')}
+                value={group.group_count ?? ''} disabled={session.busy} onChange={event => {
+                  const value = event.target.value;
+                  if (!value || Number.isFinite(Number(value)) && Number(value) >= 0) updateGroup(idx, { group_count: value ? Number(value) : null });
+                }} /></label>
+              <p className="skills-hint">{tt('skills.fullDpsHint')}</p>
+            </div>
+          );
+          const effectControl = effects.length > 1 && <label className="skill-effect-control">{tt('skills.effect')}
+            <AppSelect ariaLabel={tt('skills.effect')} value={String(group.main_active_skill ?? 1)} disabled={session.busy}
+              options={effects.map((effect, index) => ({ value: String(index + 1), label: `${index + 1} · ${gemName(effect.skillId)}` }))}
+              onChange={value => updateGroup(idx, { main_active_skill: Number(value) })} />
+          </label>;
+          const gemList = (
+            <ul className="skill-gems">
+              {group.gems.map((gem, gemIdx) => (
+                <li key={gemIdx} className={`skill-gem${gemIdx === 0 ? ' is-active' : ''}${gem.enabled === false ? ' is-disabled' : ''}`}
+                  data-colour={v2 ? byId.get(gem.skill_id)?.colour ?? undefined : undefined}>
+                  <AppTooltip content={gem.skill_id === '' ? tt('skills.unresolvedHint') : undefined}><span className="gem-name" tabIndex={gem.skill_id === '' ? 0 : undefined}>
+                    {gemLabel(gem)}
+                    {byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
+                  </span></AppTooltip>
+                  <span className="gem-controls">
+                    <label className="gem-enabled"><AppInput type="checkbox" aria-label={tt('skills.gemEnabled')}
+                      checked={gem.enabled !== false} disabled={session.busy}
+                      onChange={event => updateGroup(idx, withGemEnabled(group, gemIdx, event.target.checked, byId))} />{tt('skills.gemEnabled')}</label>
+                    <label className="gem-count">{tt('skills.count')}<AppInput type="number" min={0} step="any" value={gem.count ?? 1}
+                      aria-label={tt('skills.gemCount')} disabled={session.busy} onChange={event => {
+                        const count = Number(event.target.value);
+                        if (Number.isFinite(count) && count >= 0) updateGroup(idx, { gems: group.gems.map((item, index) => index === gemIdx ? { ...item, count } : item) });
+                      }} /></label>
+                    <label className="gem-number">{tt('skills.level')}<AppInput
+                      type="number"
+                      min={1}
+                      max={40}
+                      value={gem.level}
+                      disabled={session.busy}
+                      aria-label={tt('skills.level')}
+                      onChange={(e) => {
+                        const level = Number(e.target.value);
+                        if (!Number.isInteger(level) || level < 1) return;
+                        updateGroup(idx, {
+                          gems: group.gems.map((g, i) => (i === gemIdx ? { ...g, level } : g)),
+                        });
+                      }}
+                    /></label>
+                    <label className="gem-number">{tt('skills.quality')}<AppInput
+                      type="number"
+                      min={0}
+                      max={23}
+                      value={gem.quality}
+                      disabled={session.busy}
+                      aria-label={tt('skills.quality')}
+                      onChange={(e) => {
+                        const quality = Number(e.target.value);
+                        if (!Number.isInteger(quality) || quality < 0) return;
+                        updateGroup(idx, {
+                          gems: group.gems.map((g, i) => (i === gemIdx ? { ...g, quality } : g)),
+                        });
+                      }}
+                    /></label>
+                    <AppTooltip content={tt('skills.corruptedHint')}><label className="gem-corrupted">
+                      {tt('skills.corrupted')}
+                      <AppInput
+                        type="checkbox"
+                        checked={gem.corrupted === true}
+                        disabled={session.busy}
+                        aria-label={tt('skills.corrupted')}
+                        onChange={(e) => updateGroup(idx, {
+                          gems: group.gems.map((g, i) => (i === gemIdx ? withGemCorrupted(g, e.target.checked) : g)),
+                        })}
+                      />
+                    </label></AppTooltip>
+                    <AppButton
+                      className="skill-remove"
+                      disabled={session.busy || catalog.length === 0}
+                      title={tt('skills.removeGem')}
+                      onClick={() => updateGroup(idx, removeSkillGem(group, gemIdx, byId))}
+                    >
+                      ×
+                    </AppButton>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          );
+          const minionControls = group.gems.map((gem, gemIndex) => <MinionSelection key={gemIndex} session={session} lang={lang}
+            groupIndex={idx} gemIndex={gemIndex} gemName={gemLabel(gem)} />);
           return (
             <div
               key={idx}
               ref={element => { groupRefs.current[idx] = element; }}
-              className={`skill-group${isMain ? ' is-main' : ''}${group.enabled ? '' : ' is-disabled'}`}
+              className={`skill-group${isMain ? ' is-main' : ''}${group.enabled ? '' : ' is-disabled'}${v2 && isOpen ? ' is-selected' : ''}`}
             >
               <div className="skill-group-header">
                 <AppButton
@@ -171,7 +332,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                 <AppButton
                   className="skill-group-title"
                   aria-expanded={isOpen}
-                  onClick={() => setOpenIdx(isOpen ? null : idx)}
+                  onClick={() => setOpenIdx(isOpen && !v2 ? null : idx)}
                 >
                   <span className="row-caret" aria-hidden>
                     ▸
@@ -189,12 +350,21 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                       {grantedSourceLabel(lang, group.source)}
                     </span>
                   )}
-                  {!isOpen && supportGems.length > 0 && (
+                  {(v2 || !isOpen) && supportGems.length > 0 && (
                     <span className="skill-group-supports">
                       {supportGems.map((g) => `${gemLabel(g)}${byId.get(g.skill_id)?.is_lineage ? ` [${tt('picker.lineage')}]` : ''}`).join(' · ')}
                     </span>
                   )}
                 </AppButton>
+                {v2 && <>
+                  <span className="skill-dps-value" data-kind={dps?.kind ?? 'unavailable'}>
+                    {dps?.kind === 'damage' ? <>{formatStatValue(dps.dps, 'int')}<span className="sr-only"> DPS</span></>
+                      : dps?.kind === 'none' ? <>—<span className="sr-only">{w('deals no damage', '不造成伤害', '不造成傷害')}</span></> : null}
+                  </span>
+                  <span className="skill-dps-bar" aria-hidden="true">
+                    {dps?.kind === 'damage' && <span style={{ width: `${barShare(dps.dps, dpsTop) * 100}%` }} />}
+                  </span>
+                </>}
                 <label className="skill-group-toggle">
                   <AppInput
                     type="checkbox"
@@ -216,146 +386,67 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                   ×
                 </AppButton>
               </div>
+              {!v2 && <>
               {active && isOpen && (
               <div className="skill-gem-editor">
-              <div className="skill-weapon-binding"><label>{tt('weapons.binding')}</label>
-                <AppSelect ariaLabel={tt('weapons.binding')} value={String(group.weapon_set ?? 0)}
-                  options={[{ value: '0', label: tt('weapons.both') }, ...[1, 2].map(set => ({ value: String(set), label: `${tt('weapons.set')} ${set}` }))]}
-                  disabled={session.busy} onChange={value => updateGroup(idx, { weapon_set: value === '0' ? null : Number(value) as 1 | 2 })} />
-              </div>
-              <div className="skill-full-dps-controls">
-                <label><AppInput type="checkbox" checked={group.include_in_full_dps ?? false} disabled={session.busy}
-                  onChange={event => updateGroup(idx, { include_in_full_dps: event.target.checked })} />{tt('skills.fullDps')}</label>
-                <label>{tt('skills.groupCount')}<AppInput type="number" min={0} step="any" aria-label={tt('skills.groupCount')}
-                  value={group.group_count ?? ''} disabled={session.busy} onChange={event => {
-                    const value = event.target.value;
-                    if (!value || Number.isFinite(Number(value)) && Number(value) >= 0) updateGroup(idx, { group_count: value ? Number(value) : null });
-                  }} /></label>
-                <p className="skills-hint">{tt('skills.fullDpsHint')}</p>
-              </div>
-              {effects.length > 1 && <label className="skill-effect-control">{tt('skills.effect')}
-                <AppSelect ariaLabel={tt('skills.effect')} value={String(group.main_active_skill ?? 1)} disabled={session.busy}
-                  options={effects.map((effect, index) => ({ value: String(index + 1), label: `${index + 1} · ${gemName(effect.skillId)}` }))}
-                  onChange={value => updateGroup(idx, { main_active_skill: Number(value) })} />
-              </label>}
+              {weaponBinding}
+              {fullDps}
+              {effectControl}
               <SkillFormControls session={session} lang={lang} groupIndex={idx} catalog={byId} />
               <div className="gem-column-labels"><span>{tt('calcs.skill')}</span><span>{tt('skills.level')}</span><span>{tt('skills.quality')}</span><span>{tt('skills.corrupted')}</span><span /></div>
-              <ul className="skill-gems">
-                {group.gems.map((gem, gemIdx) => (
-                  <li key={gemIdx} className={`skill-gem${gemIdx === 0 ? ' is-active' : ''}${gem.enabled === false ? ' is-disabled' : ''}`}>
-                    <AppTooltip content={gem.skill_id === '' ? tt('skills.unresolvedHint') : undefined}><span className="gem-name" tabIndex={gem.skill_id === '' ? 0 : undefined}>
-                      {gemLabel(gem)}
-                      {byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
-                    </span></AppTooltip>
-                    <span className="gem-controls">
-                      <label className="gem-enabled"><AppInput type="checkbox" aria-label={tt('skills.gemEnabled')}
-                        checked={gem.enabled !== false} disabled={session.busy}
-                        onChange={event => updateGroup(idx, withGemEnabled(group, gemIdx, event.target.checked, byId))} />{tt('skills.gemEnabled')}</label>
-                      <label className="gem-count">{tt('skills.count')}<AppInput type="number" min={0} step="any" value={gem.count ?? 1}
-                        aria-label={tt('skills.gemCount')} disabled={session.busy} onChange={event => {
-                          const count = Number(event.target.value);
-                          if (Number.isFinite(count) && count >= 0) updateGroup(idx, { gems: group.gems.map((item, index) => index === gemIdx ? { ...item, count } : item) });
-                        }} /></label>
-                      <label className="gem-number">{tt('skills.level')}<AppInput
-                        type="number"
-                        min={1}
-                        max={40}
-                        value={gem.level}
-                        disabled={session.busy}
-                        aria-label={tt('skills.level')}
-                        onChange={(e) => {
-                          const level = Number(e.target.value);
-                          if (!Number.isInteger(level) || level < 1) return;
-                          updateGroup(idx, {
-                            gems: group.gems.map((g, i) => (i === gemIdx ? { ...g, level } : g)),
-                          });
-                        }}
-                      /></label>
-                      <label className="gem-number">{tt('skills.quality')}<AppInput
-                        type="number"
-                        min={0}
-                        max={23}
-                        value={gem.quality}
-                        disabled={session.busy}
-                        aria-label={tt('skills.quality')}
-                        onChange={(e) => {
-                          const quality = Number(e.target.value);
-                          if (!Number.isInteger(quality) || quality < 0) return;
-                          updateGroup(idx, {
-                            gems: group.gems.map((g, i) => (i === gemIdx ? { ...g, quality } : g)),
-                          });
-                        }}
-                      /></label>
-                      <AppTooltip content={tt('skills.corruptedHint')}><label className="gem-corrupted">
-                        {tt('skills.corrupted')}
-                        <AppInput
-                          type="checkbox"
-                          checked={gem.corrupted === true}
-                          disabled={session.busy}
-                          aria-label={tt('skills.corrupted')}
-                          onChange={(e) => updateGroup(idx, {
-                            gems: group.gems.map((g, i) => (i === gemIdx ? withGemCorrupted(g, e.target.checked) : g)),
-                          })}
-                        />
-                      </label></AppTooltip>
-                      <AppButton
-                        className="skill-remove"
-                        disabled={session.busy || catalog.length === 0}
-                        title={tt('skills.removeGem')}
-                        onClick={() => updateGroup(idx, removeSkillGem(group, gemIdx, byId))}
-                      >
-                        ×
-                      </AppButton>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              {group.gems.map((gem, gemIndex) => <MinionSelection key={gemIndex} session={session} lang={lang}
-                groupIndex={idx} gemIndex={gemIndex} gemName={gemLabel(gem)} />)}
+              {gemList}
+              {minionControls}
               </div>
               )}
-              {active && isOpen && (
-                <div className="skill-group-picker">
-                  <GemPicker
-                    entries={availableSupports}
-                    placeholder={tt('skills.addSupport')}
-                    disabled={session.busy || catalog.length === 0 || currentSupports.length >= 5}
-                    lang={lang}
-                    onPick={(skillId) =>
-                      updateGroup(idx, {
-                        gems: [...group.gems, { skill_id: skillId,
-                          level: usableSupportLevel(tradeById.get(skillId)!, session.character?.level ?? 1), quality: 0 }],
-                      })
-                    }
-                  />
-                </div>
-              )}
-              {isOpen && (
-                <GemOptimizer
-                  key={`${session.socketGroupRevision}:${optimizerSkillKey}`}
-                  skillKey={optimizerSkillKey}
-                  session={session}
-                  lang={lang}
-                  active={active}
-                  groupIndex={idx}
-                  catalog={tradeGems}
-                  gemName={gemName}
-                  focusNonce={openGroup?.focusNonce}
-                />
-              )}
-              {active && isOpen && (
-                <div className="skill-group-note">
-                  <NoteEditor
-                    value={session.annotations[`skill:${idx}`] ?? ''}
-                    onCommit={(text) => session.setAnnotation(`skill:${idx}`, text)}
-                    lang={lang}
-                  />
+              {supportPicker}
+              {optimizer}
+              {note}
+              </>}
+              {v2 && isOpen && (
+                <div className="skill-detail">
+                  <header className="skill-detail-head">
+                    <h3 className="skill-detail-title">{selectedId ? gemName(selectedId) : tt('skills.emptyGroup')}</h3>
+                    <div className="skill-detail-tags">
+                      {isMain && <span className="skill-detail-tag">{tt('skills.main')}</span>}
+                      {grantedSourceLabel(lang, group.source) && <span className="skill-detail-tag">{grantedSourceLabel(lang, group.source)}</span>}
+                    </div>
+                    {active && <div className="skill-detail-controls">
+                      {weaponBinding}
+                      {effectControl}
+                    </div>}
+                  </header>
+                  {active && <SkillFormControls session={session} lang={lang} groupIndex={idx} catalog={byId} />}
+                  {active && <section className="skill-detail-section" aria-label={w('Gems in this group', '本组宝石', '本組寶石')}>
+                    <h4 className="skill-section-label">{w('Gems', '宝石', '寶石')}</h4>
+                    <div className="gem-column-labels" aria-hidden="true">
+                      <span /><span>{tt('calcs.skill')}</span><span>{tt('skills.level')}</span><span>{tt('skills.quality')}</span>
+                      <span>{tt('skills.count')}</span><span>{tt('skills.corrupted')}</span><span />
+                    </div>
+                    {gemList}
+                  </section>}
+                  <section className="skill-detail-section" aria-label={w('Add a support gem', '添加辅助宝石', '新增輔助寶石')}>
+                    <h4 className="skill-section-label">{w('Add a support', '添加辅助', '新增輔助')}</h4>
+                    {optimizer}
+                    {supportPicker}
+                  </section>
+                  {active && <details className="skill-advanced">
+                    <summary>{w('Advanced', '高级', '進階')}</summary>
+                    <div className="skill-advanced-body">
+                      {fullDps}
+                      {minionControls}
+                      {note}
+                    </div>
+                  </details>}
                 </div>
               )}
             </div>
           );
         })}
       </div>
+      {v2 && active && <details className="skills-advanced" open={session.library.skillSets.length > 0 || undefined}>
+        <summary>{tt('sets.title')}</summary>
+        <SkillSets session={session} lang={lang} />
+      </details>}
     </section>
   );
 }

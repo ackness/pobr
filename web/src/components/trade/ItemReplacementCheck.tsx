@@ -1,4 +1,9 @@
+import { useJobBeacon } from '../../v2/jobs/useJobBeacon';
 import { AppButton, AppTextarea } from '../shared/controls';
+import { useUi } from '../shared/UiContext';
+import { usePreview } from '../shared/PreviewContext';
+import { changesFromRecords } from '../../v2/preview/fromRecords';
+import { words } from '../../v2/text';
 import { craftT } from '../../lib/itemCraftingText';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CalculateBuildRequest } from '../../api/types';
@@ -35,6 +40,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   initialItemText?: string;
   candidate?: { kind: 'item' | 'jewel' };
 }) {
+  const { v2 } = useUi();
   const ut = (key: Parameters<typeof upgradeT>[1]) => upgradeT(lang, key);
   const [saved, setSaved] = useState(false);
   const [text, setText] = useState(initialItemText ?? '');
@@ -48,6 +54,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   const [affixDirty, setAffixDirty] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  useJobBeacon(busy);
   const [augmentPlans, setAugmentPlans] = useState<Record<string, AugmentSelection>>({});
   const [equipmentCandidates, setEquipmentCandidates] = useState<EquipmentCandidate[]>([]);
   const candidateSequence = useRef(0);
@@ -63,6 +70,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   const previousContext = useRef({ key: contextKey, catalog });
   // Hide incompatible receipts before effects run, including while this page is hidden.
   const report = snapshot?.key === key && snapshot.catalog === catalog ? snapshot.report : null;
+  const preview = usePreview();
   const positions = report ? [...report.positions].sort((a, b) => compareObjectiveStats(a.stats, b.stats, objective) || a.slot.localeCompare(b.slot)) : [];
   const selected = positions.find(row => row.slot === chosenSlot) ?? positions[0];
   const best = positions[0];
@@ -178,7 +186,10 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     ?? selected?.variant.flasks?.find(item => item.slot === selected.slot)?.text
     ?? selected?.variant.jewels?.find(jewel => `Jewel@${jewel.socket_node}` === selected.slot)?.text ?? applied?.text ?? text;
   return <section className="upgrade-item-check ui-card" aria-labelledby="replacement-heading">
-    {candidate ? <header><h3 id="replacement-heading">{craftT(lang, 'preview')}</h3><p>{craftT(lang, 'previewHint')}</p></header> : <header className="replacement-heading"><div><span className="trade-section-label">{ut('pasteEyebrow')}</span>
+    {candidate ? <header><h3 id="replacement-heading">{craftT(lang, 'preview')}</h3><p>{craftT(lang, 'previewHint')}</p></header> : v2 ? <header className="replacement-heading"><div>
+      <h3 id="replacement-heading">{words(lang, 'Paste an item to compare it', '粘贴物品来对比', '貼上物品來比較')}</h3><p>{ut('checkHint')}</p></div><div className="replacement-context"><span className="ui-badge">{ut('localComparison')}</span>
+      <AppButton className="replacement-goal" aria-label={`${ut('comparisonGoal')}: ${goalLabel}`} onClick={onEditGoal}>{goalLabel} <span aria-hidden>↗</span></AppButton></div></header>
+      : <header className="replacement-heading"><div><span className="trade-section-label">{ut('pasteEyebrow')}</span>
       <h3 id="replacement-heading">{ut('check')}</h3><p>{ut('checkHint')}</p></div><div className="replacement-context"><span className="ui-badge">{ut('localComparison')}</span>
       <AppButton className="replacement-goal" aria-label={`${ut('comparisonGoal')}: ${goalLabel}`} onClick={onEditGoal}>{goalLabel} <span aria-hidden>↗</span></AppButton></div></header>}
     <div className="replacement-input"><label htmlFor="replacement-text">{ut('itemText')}</label>
@@ -223,7 +234,9 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
       </div>
       <div className="upgrade-replacement-result" aria-live="polite">
         <div className="replacement-destinations" role="group" aria-label={ut('chooseReplacement')}>
-          {positions.map(row => <AppButton key={row.slot} disabled={busy} className="replacement-position" aria-pressed={selected.slot === row.slot} onClick={() => { setChosenSlot(row.slot); setSaved(false); }}>
+          {positions.map(row => <AppButton key={row.slot} disabled={busy} className="replacement-position" aria-pressed={selected.slot === row.slot} onClick={() => { setChosenSlot(row.slot); setSaved(false); }}
+            onMouseEnter={preview ? () => preview.showChanges(`${positionLabel(row.slot)} ← ${ut('replacementOutcome')}`, changesFromRecords(report.baseline, row.stats)) : undefined}
+            onMouseLeave={preview?.clear} onFocus={preview ? () => preview.showChanges(`${positionLabel(row.slot)} ← ${ut('replacementOutcome')}`, changesFromRecords(report.baseline, row.stats)) : undefined} onBlur={preview?.clear}>
             <strong>{positionLabel(row.slot)}</strong>{recommended === row.slot && <span className="replacement-recommended">{ut('recommendedPosition')}</span>}
             <span className={(row.stats.TotalDPS ?? 0) < (report.baseline.TotalDPS ?? 0) ? 'delta-neg' : ''}>DPS {deltaText((row.stats.TotalDPS ?? 0) - (report.baseline.TotalDPS ?? 0))}</span>
             <span className={(row.stats.TotalEHP ?? 0) < (report.baseline.TotalEHP ?? 0) ? 'delta-neg' : ''}>EHP {deltaText((row.stats.TotalEHP ?? 0) - (report.baseline.TotalEHP ?? 0))}</span>
@@ -254,7 +267,11 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
           <span>{equipmentCandidates.length} / {EQUIPMENT_CANDIDATE_LIMIT}</span></div>}
       </div>
     </div>}
-    {!candidate && <EquipmentPlanner session={session} lang={lang} active={active} objective={objective} catalog={catalog} candidates={equipmentCandidates}
-      onRemove={id => setEquipmentCandidates(current => current.filter(candidate => candidate.id !== id))} />}
+    {!candidate && (v2 ? <details className="equipment-fold" open={equipmentCandidates.length > 0}>
+      <summary><span>{ut('jointEquipment')}</span><small>{equipmentCandidates.length} / {EQUIPMENT_CANDIDATE_LIMIT}</small></summary>
+      <EquipmentPlanner session={session} lang={lang} active={active} objective={objective} catalog={catalog} candidates={equipmentCandidates}
+        onRemove={id => setEquipmentCandidates(current => current.filter(candidate => candidate.id !== id))} /></details>
+      : <EquipmentPlanner session={session} lang={lang} active={active} objective={objective} catalog={catalog} candidates={equipmentCandidates}
+      onRemove={id => setEquipmentCandidates(current => current.filter(candidate => candidate.id !== id))} />)}
   </section>;
 }

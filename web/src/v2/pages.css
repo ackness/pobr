@@ -1,0 +1,92 @@
+/* Page layouts that replace the legacy card layouts, one section per rebuilt page. */
+@layer v2 {
+  /* ── Equipment ─────────────────────────────────────────────────────────── */
+  .v2-root .rarity-normal { --rc: var(--rarity-normal); }
+  .v2-root .rarity-magic { --rc: var(--rarity-magic); }
+  .v2-root .rarity-rare { --rc: var(--rarity-rare); }
+  .v2-root .rarity-unique { --rc: var(--rarity-unique); }
+  .v2-root .rarity-gem { --rc: var(--rarity-gem); }
+
+  .v2-root .items-page .weapon-set-hint { margin: 0 0 1.25rem; font-size: var(--text-xs); color: var(--muted-foreground); line-height: 1.6; }
+  .v2-root .items-page .items-workspace { display: grid; grid-template-columns: minmax(19rem, 26rem) minmax(0, 1fr); gap: 2.5rem; align-items: start; }
+  .v2-root .items-page :is(.items-equipped, .items-library, .item-detail) { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+  .v2-root .items-page .items-collection { display: grid; gap: 2rem; min-width: 0; }
+  .v2-root .items-page .item-detail { padding-top: 1rem; border-top: 2px solid var(--rc, var(--border)); }
+  .v2-root .items-page .items-library { padding-top: 1.25rem; border-top: 1px solid var(--border); }
+  .v2-root .items-doll { position: sticky; top: 0; max-height: calc(100dvh - 2rem); overflow-y: auto; container: doll / inline-size; scrollbar-width: none; }
+
+  .doll { display: grid; gap: 1.25rem; }
+  /* The figure: slots sit where the body is, as on the game's own equipment screen. */
+  .v2-root .paper-doll.doll-figure { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(4.2rem, auto) minmax(3.6rem, auto) minmax(6rem, auto) minmax(4rem, auto) 3.5rem; gap: .5rem;
+    grid-template-areas: 'weapon1 helmet weapon2' 'weapon1 amulet weapon2' 'ring1 bodyarmour ring2' 'gloves belt boots' '. . .'; }
+  .doll-cell { position: relative; z-index: 1; display: grid; min-width: 0; }
+  .doll-cell[data-slot='weapon1'] { grid-area: weapon1; } .doll-cell[data-slot='weapon2'] { grid-area: weapon2; }
+  .doll-cell[data-slot='helmet'] { grid-area: helmet; } .doll-cell[data-slot='amulet'] { grid-area: amulet; }
+  .doll-cell[data-slot='bodyarmour'] { grid-area: bodyarmour; } .doll-cell[data-slot='belt'] { grid-area: belt; }
+  .doll-cell[data-slot='ring1'] { grid-area: ring1; } .doll-cell[data-slot='ring2'] { grid-area: ring2; }
+  .doll-cell[data-slot='gloves'] { grid-area: gloves; } .doll-cell[data-slot='boots'] { grid-area: boots; }
+  .doll-silhouette { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; color: var(--muted-foreground); opacity: .13; pointer-events: none; }
+
+  .v2-root .doll .doll-slot { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto auto; align-content: start; align-items: center; column-gap: .4rem; row-gap: .15rem;
+    width: 100%; height: 100%; min-height: 4.4rem; padding: .5rem .6rem; overflow: hidden; text-align: left; white-space: normal;
+    border: 1px solid color-mix(in srgb, var(--rc, var(--input)) 50%, var(--border)); border-radius: .5rem; background: color-mix(in srgb, var(--card) 55%, transparent);
+    transition: border-color var(--dur-fast) linear, background var(--dur-fast) linear; }
+  .v2-root .doll .doll-slot:hover:not(.is-selected) { border-color: var(--input); background: var(--muted); }
+  .v2-root .doll .doll-slot.is-selected { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, var(--card)); box-shadow: 0 0 0 1px var(--primary); }
+  .v2-root .doll .doll-slot-empty { border: 1px dashed var(--input); background: transparent; }
+  .doll .doll-symbol { grid-area: 1 / 1; display: grid; color: var(--rc, var(--muted-foreground)); }
+  .doll .doll-symbol svg { width: 1rem; height: 1rem; }
+  .doll .doll-slot-empty .doll-symbol { opacity: .45; }
+  .doll .doll-slot-label { grid-area: 1 / 2; display: flex; align-items: center; gap: .35rem; min-width: 0; font-size: .6875rem; letter-spacing: .03em; color: var(--muted-foreground); }
+  .doll .doll-item-name { grid-area: 2 / 1 / 3 / -1; font-size: var(--text-sm); font-weight: 560; line-height: 1.3; color: var(--rc, var(--foreground)); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+  .doll .doll-item-base { grid-area: 3 / 1 / 4 / -1; font-size: var(--text-xs); line-height: 1.3; color: var(--muted-foreground); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+  /* An empty slot is told apart by its dashed outline; the word stays for screen readers. */
+  .doll .doll-empty { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .doll .note-dot { width: .4rem; height: .4rem; border-radius: 50%; background: var(--primary); }
+
+  .doll-group { display: grid; gap: .5rem; }
+  .doll-group-title { font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-foreground); }
+  .v2-root .doll .utility-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .4rem; }
+  .v2-root .doll .limb-row { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: .5rem; }
+  .v2-root .doll .utility-row .doll-slot { min-height: 3.6rem; padding: .4rem .45rem; }
+  .doll-limbs > summary { cursor: pointer; font-size: var(--text-sm); color: var(--muted-foreground); }
+  .doll-limbs > summary:hover { color: var(--foreground); }
+
+
+  /* Library: a plain list. Rows are divided by a hairline; their actions stay quiet until hovered. */
+  .v2-root .items-page .library-list { display: grid; gap: 0; }
+  .v2-root .items-page .library-row { padding: .35rem 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: none; box-shadow: none; }
+  .v2-root .items-page .library-row-head { display: flex; align-items: center; gap: .5rem; }
+  .v2-root .items-page .library-row-toggle { flex: 1; justify-content: flex-start; border-color: transparent; background: transparent; text-align: left; }
+  .v2-root .items-page .library-row-toggle .item-name { color: var(--rc, var(--foreground)); font-weight: 560; }
+  .v2-root .items-page .library-row-slot { color: var(--muted-foreground); font-size: var(--text-xs); }
+  .v2-root .items-page .library-row .item-actions [data-slot='button'] { border-color: transparent; background: transparent; color: var(--muted-foreground); }
+  .v2-root .items-page .library-row .item-actions [data-slot='button']:hover:not(:disabled) { background: var(--muted); color: var(--foreground); }
+  .v2-root .items-page .library-row-body { padding: .5rem 0 .75rem 1.6rem; }
+  .v2-root .items-page .library-search { width: 100%; margin-bottom: .75rem; }
+
+  @container doll (max-width: 22rem) { .v2-root .doll .utility-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } .v2-root .doll .limb-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  /* Not enough width for a figure (a phone, or very large text): the same slots as a plain list. */
+  @container doll (max-width: 21rem) {
+    .v2-root .paper-doll.doll-figure { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none; grid-auto-rows: minmax(4rem, auto);
+      grid-template-areas: 'weapon1 weapon2' 'helmet amulet' 'bodyarmour belt' 'ring1 ring2' 'gloves boots'; }
+    .doll-silhouette { display: none; }
+  }
+  @container doll (max-width: 14rem) {
+    .v2-root .paper-doll.doll-figure { grid-template-columns: minmax(0, 1fr);
+      grid-template-areas: 'weapon1' 'weapon2' 'helmet' 'amulet' 'bodyarmour' 'belt' 'ring1' 'ring2' 'gloves' 'boots'; }
+    .v2-root .doll .utility-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .v2-root .doll .limb-row { grid-template-columns: minmax(0, 1fr); }
+  }
+  @container v2-shell (max-width: 64rem) {
+    .v2-root .items-page .items-workspace { grid-template-columns: minmax(0, 1fr); gap: 2rem; }
+    .v2-root .items-doll { position: static; max-height: none; max-width: 30rem; }
+  }
+}
+
+/* Equipping an item: the slot's outline pulses once in its rarity colour. */
+@layer v2 {
+  .doll .doll-pulse { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 2px var(--rc, var(--primary)), inset 0 0 1.1rem color-mix(in srgb, var(--rc, var(--primary)) 45%, transparent); animation: doll-pulse 640ms var(--ease-out) both; }
+  @keyframes doll-pulse { from { opacity: 1; } to { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .doll .doll-pulse { display: none; } }
+}

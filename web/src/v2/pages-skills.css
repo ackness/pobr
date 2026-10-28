@@ -1,0 +1,189 @@
+/* Rebuilt skills page layout (v2 only). Scoped under .v2-root, inside @layer v2.
+   A list of socket groups on the left, the selected group's gems on the right. Rows are divided
+   by hairlines; nothing here is a card. On a narrow page the selected group opens under its row. */
+@layer v2 {
+  .v2-root .skills-page { container: skills-page / inline-size; }
+
+  /* ── Skill set picker: a quiet bar, not a panel ─────────────────────────── */
+  .v2-root .skills-page .named-sets { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .5rem; margin: 0 0 1.5rem; padding: 0; }
+  .v2-root .skills-page .named-sets > label { display: flex; flex: 0 1 auto; flex-wrap: wrap; align-items: center; gap: .3rem .6rem; max-width: 100%; margin-right: .5rem; font-size: var(--text-sm); color: var(--muted-foreground); }
+  .v2-root .skills-page .named-sets > label [data-slot='select-trigger'] { flex: 0 1 15rem; width: min(15rem, 100cqw); max-width: 100%; }
+  .v2-root .skills-page .named-sets > [data-slot='button'] { min-height: 2rem; border-color: transparent; background: transparent; color: var(--muted-foreground); font-size: var(--text-sm); }
+  .v2-root .skills-page .named-sets > [data-slot='button']:hover:not(:disabled) { background: var(--muted); color: var(--foreground); }
+  .v2-root .skills-page .named-sets form { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; width: 100%; }
+  .v2-root .skills-page .weapon-set-control { padding: 0; }
+
+  /* ── Master / detail ────────────────────────────────────────────────────── */
+  .v2-root .skills-page .skill-groups { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; align-items: start; }
+  /* Each group dissolves into the grid so its row and its detail become siblings of one layout. */
+  .v2-root .skills-page .skill-group { display: contents; }
+  .v2-root .skills-page .skills-toolbar { grid-column: 1; display: block; margin: 0 0 .9rem; }
+  .v2-root .skills-page .skills-toolbar .gem-picker { max-width: none; width: 100%; }
+  .v2-root .skills-page .skill-list-note { margin: .45rem 0 0; font-size: var(--text-xs); color: var(--muted-foreground); line-height: 1.5; }
+
+  .v2-root .skills-page .skills-empty { grid-column: 1 / -1; display: grid; justify-items: start; gap: .75rem; max-width: 38rem; margin-top: 4vh; }
+  .v2-root .skills-page .skills-empty h3 { margin: 0; font-size: var(--text-xl); font-weight: 600; letter-spacing: -.01em; }
+  .v2-root .skills-page .skills-empty p { margin: 0; font-size: var(--text-sm); line-height: 1.65; color: var(--muted-foreground); }
+  .v2-root .skills-page .skills-empty .skills-toolbar { width: 100%; margin-top: .5rem; }
+
+  /* ── A group's row ──────────────────────────────────────────────────────── */
+  .v2-root .skills-page .skill-group-header { position: relative; grid-column: 1; display: grid; grid-template-columns: 2.25rem minmax(0, 1fr) auto auto auto; grid-template-rows: auto auto auto; align-items: start; column-gap: .15rem; row-gap: 0; flex-wrap: nowrap; margin: 0; padding: .6rem .25rem .7rem 0; border-top: 1px solid var(--border); transition: background var(--dur-fast) linear; }
+  .v2-root .skills-page .skill-group-header:hover { background: var(--muted); }
+  .v2-root .skills-page .skill-group.is-selected > .skill-group-header { background: color-mix(in srgb, var(--primary) 8%, transparent); box-shadow: inset 2px 0 0 var(--primary); }
+  .v2-root .skills-page .skill-group.is-disabled > .skill-group-header > :not(.skill-group-toggle, .skill-remove) { opacity: .5; }
+
+  .v2-root .skills-page .skill-group-header > :is(.skill-main-toggle, .skill-group-toggle, .skill-remove) { position: relative; z-index: 1; }
+  .v2-root .skills-page .skill-main-toggle { grid-column: 1; grid-row: 1 / span 2; justify-self: center; width: 1.9rem; height: 1.9rem; min-height: 0; padding: 0; border-color: transparent; background: transparent; color: var(--muted-foreground); font-size: 1.05rem; line-height: 1; opacity: .55; }
+  .v2-root .skills-page .skill-main-toggle:hover:not(:disabled) { background: var(--muted); opacity: 1; }
+  .v2-root .skills-page .skill-main-toggle.is-on { color: var(--primary); opacity: 1; }
+
+  /* The whole row is one click target: the title button stretches over it. */
+  .v2-root .skills-page .skill-group-title { position: static; grid-column: 2; grid-row: 1 / span 2; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-start; gap: .05rem .55rem; width: 100%; min-width: 0; height: auto; min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent; font-weight: 400; text-align: left; white-space: normal; }
+  .v2-root .skills-page .skill-group-title:hover { background: transparent; }
+  .v2-root .skills-page .skill-group-title::after { content: ''; position: absolute; inset: 0; }
+  .v2-root .skills-page .skill-group-title:focus-visible { outline: none; }
+  .v2-root .skills-page .skill-group-title:focus-visible::after { outline: 2px solid var(--primary); outline-offset: -2px; border-radius: .3rem; }
+  .v2-root .skills-page .skill-group-title .row-caret { display: none; }
+  .v2-root .skills-page .skill-group-title .skill-group-main { display: none; }
+  .v2-root .skills-page .skill-group-name { display: inline-flex; align-items: center; gap: .4rem; min-width: 0; font-size: var(--text-base); font-weight: 560; line-height: 1.4; color: var(--foreground); white-space: normal; overflow-wrap: anywhere; }
+  .v2-root .skills-page .skill-group.is-selected .skill-group-name { color: var(--foreground); }
+  .v2-root .skills-page .skill-group-title :is(.ui-badge, .granted-badge) { margin: 0; padding: 0; border: 0; border-radius: 0; background: none; font-size: .6875rem; letter-spacing: .03em; color: var(--muted-foreground); white-space: normal; }
+  .v2-root .skills-page .skill-group-title .skill-group-supports { grid-row: auto; flex: 1 0 100%; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; white-space: normal; overflow-wrap: anywhere; font-size: var(--text-xs); line-height: 1.45; color: var(--muted-foreground); }
+  .v2-root .skills-page .skill-group-title .note-dot { width: .4rem; height: .4rem; border-radius: 50%; background: var(--primary); }
+
+  /* Damage on its own: a figure and a bar scaled to the strongest skill. */
+  .v2-root .skills-page .skill-dps-value { grid-column: 3; grid-row: 1; align-self: start; min-width: 3.5rem; padding: .1rem .5rem 0 0; font-size: var(--text-sm); font-weight: 560; font-variant-numeric: tabular-nums; line-height: 1.4; text-align: right; color: var(--foreground); pointer-events: none; }
+  .v2-root .skills-page .skill-dps-value[data-kind='none'] { font-weight: 400; color: var(--muted-foreground); }
+  .v2-root .skills-page .skill-dps-bar { grid-column: 2 / -1; grid-row: 3; height: 3px; margin: .45rem .5rem 0 0; border-radius: 3px; background: color-mix(in srgb, var(--muted-foreground) 14%, transparent); overflow: hidden; pointer-events: none; }
+  .v2-root .skills-page .skill-dps-bar:empty { visibility: hidden; }
+  .v2-root .skills-page .skill-dps-bar > span { display: block; height: 100%; border-radius: inherit; background: color-mix(in srgb, var(--muted-foreground) 75%, transparent); transition: width var(--dur) var(--ease-out); }
+  .v2-root .skills-page .skill-group.is-main .skill-dps-bar > span { background: var(--primary); }
+
+  .v2-root .skills-page .skill-group-toggle { grid-column: 4; grid-row: 1; align-self: start; display: flex; align-items: center; gap: .35rem; margin: .1rem .25rem 0 .25rem; font-size: var(--text-xs); color: var(--muted-foreground); }
+  .v2-root .skills-page .skill-group-header > .skill-remove { grid-column: 5; grid-row: 1; align-self: start; width: 1.75rem; height: 1.75rem; min-height: 0; padding: 0; border-color: transparent; background: transparent; color: var(--muted-foreground); font-size: 1.1rem; line-height: 1; opacity: .55; }
+  .v2-root .skills-page .skill-group-header > .skill-remove:hover:not(:disabled), .v2-root .skills-page .skill-group-header > .skill-remove:focus-visible { background: transparent; color: var(--destructive); opacity: 1; }
+
+  /* ── The selected group ─────────────────────────────────────────────────── */
+  .v2-root .skills-page .skill-detail { container: skill-detail / inline-size; grid-column: 1; display: grid; align-content: start; gap: 1.6rem; min-width: 0; padding: .9rem 0 1.25rem 1rem; margin-bottom: .5rem; border-left: 2px solid var(--primary); }
+  .v2-root .skills-page .skill-detail-head { display: grid; gap: .6rem; min-width: 0; }
+  .v2-root .skills-page .skill-detail-title { margin: 0; font-size: var(--text-xl); font-weight: 600; letter-spacing: -.01em; line-height: 1.3; overflow-wrap: anywhere; }
+  .v2-root .skills-page .skill-detail-tags { display: flex; flex-wrap: wrap; gap: .25rem 1rem; }
+  .v2-root .skills-page .skill-detail-tags:empty { display: none; }
+  .v2-root .skills-page .skill-detail-tag { font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--primary); }
+  .v2-root .skills-page .skill-detail-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1.75rem; }
+  .v2-root .skills-page .skill-detail-controls:empty { display: none; }
+  .v2-root .skills-page :is(.skill-weapon-binding, .skill-effect-control) { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .6rem; margin: 0; font-size: var(--text-xs); color: var(--muted-foreground); }
+  .v2-root .skills-page :is(.skill-weapon-binding, .skill-effect-control) .app-select { min-width: min(11rem, 100cqw); max-width: 100%; }
+  .v2-root .skills-page .skill-form-controls { margin: 0; gap: .6rem 1.5rem; font-size: var(--text-sm); }
+
+  .v2-root .skills-page .skill-section-label { margin: 0 0 .55rem; font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-foreground); }
+
+  /* Gems: a table without borders. Each label is named by its column heading, not repeated per row. */
+  .v2-root .skills-page .skill-detail { --gem-cols: 1.25rem minmax(6rem, 1fr) 3.6rem 3.6rem 3.6rem 4.2rem 1.9rem; }
+  .v2-root .skills-page .skill-detail .gem-column-labels { display: grid; grid-template-columns: var(--gem-cols); align-items: end; column-gap: .5rem; padding: 0 0 .35rem; border-bottom: 1px solid var(--border); font-size: .6875rem; color: var(--muted-foreground); }
+  .v2-root .skills-page .skill-detail .gem-column-labels > :nth-child(n + 3):nth-child(-n + 5) { text-align: right; padding-right: .5rem; }
+  .v2-root .skills-page .skill-detail .gem-column-labels > :nth-child(6) { text-align: center; }
+  .v2-root .skills-page .skill-detail .skill-gems { display: grid; margin: 0; padding: 0; list-style: none; }
+  .v2-root .skills-page .skill-detail .skill-gem { display: grid; grid-template-columns: var(--gem-cols); align-items: center; column-gap: .5rem; flex-wrap: nowrap; justify-content: stretch; min-width: 0; padding: .3rem 0; border-bottom: 1px solid var(--border); color: var(--foreground); }
+  .v2-root .skills-page .skill-gem > .gem-name { grid-column: 2; grid-row: 1; flex: none; display: flex; align-items: center; gap: .5rem; min-width: 0; font-size: var(--text-base); font-weight: 450; overflow-wrap: anywhere; }
+  .v2-root .skills-page .skill-gem.is-active > .gem-name { font-weight: 620; }
+  .v2-root .skills-page .skill-gem > .gem-name::before { content: ''; flex: none; width: .5rem; height: .5rem; border-radius: 50%; background: var(--gem-colour, var(--muted-foreground)); opacity: .9; }
+  .v2-root .skills-page .skill-gem[data-colour='str'] { --gem-colour: var(--color-life); }
+  .v2-root .skills-page .skill-gem[data-colour='dex'] { --gem-colour: var(--color-positive); }
+  .v2-root .skills-page .skill-gem[data-colour='int'] { --gem-colour: var(--color-mana); }
+  .v2-root .skills-page .skill-gem.is-disabled > .gem-name { opacity: .5; }
+  .v2-root .skills-page .skill-gem .gem-lineage-badge { margin: 0; padding: 0 .35rem; border-color: var(--border); color: var(--muted-foreground); }
+  .v2-root .skills-page .skill-gem .gem-controls { display: contents; }
+  .v2-root .skills-page .skill-gem .gem-controls > label { display: flex; align-items: center; justify-content: flex-end; gap: 0; margin: 0; font-size: 0; }
+  .v2-root .skills-page .skill-gem .gem-controls > :nth-child(1) { grid-column: 1; grid-row: 1; justify-content: flex-start; }
+  .v2-root .skills-page .skill-gem .gem-controls > :nth-child(2) { grid-column: 5; grid-row: 1; }
+  .v2-root .skills-page .skill-gem .gem-controls > :nth-child(3) { grid-column: 3; grid-row: 1; }
+  .v2-root .skills-page .skill-gem .gem-controls > :nth-child(4) { grid-column: 4; grid-row: 1; }
+  .v2-root .skills-page .skill-gem .gem-controls > :nth-child(5) { grid-column: 6; grid-row: 1; justify-content: center; }
+  .v2-root .skills-page .skill-gem .gem-controls > :nth-child(6) { grid-column: 7; grid-row: 1; }
+  .v2-root .skills-page .skill-gem input[type='number'] { width: 100%; min-width: 0; height: 2rem; min-height: 0; padding: 0 .5rem; font-size: var(--text-sm); text-align: right; font-variant-numeric: tabular-nums; }
+  .v2-root .skills-page .skill-gem .gem-controls > .skill-remove { width: 1.9rem; height: 1.9rem; min-height: 0; padding: 0; border-color: transparent; background: transparent; color: var(--muted-foreground); font-size: 1.1rem; line-height: 1; opacity: .6; }
+  .v2-root .skills-page .skill-gem .gem-controls > .skill-remove:hover:not(:disabled), .v2-root .skills-page .skill-gem .gem-controls > .skill-remove:focus-visible { background: transparent; color: var(--destructive); opacity: 1; }
+
+  /* Adding a support: the recommendation leads, a manual pick follows. */
+  .v2-root .skills-page .skill-detail .gem-optimizer { margin: 0; padding: 0; border: 0; }
+  .v2-root .skills-page .gem-optimizer-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; }
+  .v2-root .skills-page .gem-optimizer-toggle { justify-content: flex-start; gap: .4rem; width: auto; min-height: 0; padding: .25rem .25rem .25rem 0; border-color: transparent; background: transparent; color: var(--foreground); font-size: var(--text-base); font-weight: 560; text-align: left; }
+  .v2-root .skills-page .gem-optimizer-toggle:hover { background: transparent; }
+  .v2-root .skills-page .opt-run { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); font-weight: 560; }
+  .v2-root .skills-page .opt-run:hover:not(:disabled) { background: var(--primary); color: var(--primary-foreground); opacity: .9; }
+  .v2-root .skills-page .opt-run:disabled { opacity: .45; }
+  .v2-root .skills-page .gem-optimizer-body { display: grid; gap: .9rem; margin-top: .7rem; }
+  .v2-root .skills-page .gem-optimizer-body .skills-hint { margin: 0; font-size: var(--text-xs); line-height: 1.6; }
+  .v2-root .skills-page .opt-progress { max-width: none; }
+  .v2-root .skills-page .opt-progress progress { flex: 1; max-width: 24rem; accent-color: var(--primary); }
+  .v2-root .skills-page .support-results { display: grid; gap: 0; }
+  .v2-root .skills-page .support-baseline { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem 1.25rem; padding: 0 0 .6rem; border-radius: 0; background: none; font-size: var(--text-sm); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .v2-root .skills-page .support-baseline strong { font-weight: 560; color: var(--foreground); }
+  .v2-root .skills-page .support-results > .skills-hint { padding-bottom: .5rem; }
+  .v2-root .skills-page .support-plan { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .5rem 1rem; padding: .8rem 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: none; }
+  .v2-root .skills-page .support-plan-gems { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .v2-root .skills-page .support-plan-gems > .opt-chip { padding: .15rem .25rem .15rem .6rem; border-radius: 999px; background: transparent; font-size: var(--text-sm); }
+  .v2-root .skills-page .support-plan-metrics { gap: .25rem 1.25rem; }
+  .v2-root .skills-page .support-plan-metrics strong { font-weight: 620; }
+  .v2-root .skills-page :is(.support-diagnostics, .support-pool-details, .support-excluded) { padding: 0; border: 0; border-radius: 0; background: none; }
+  .v2-root .skills-page .support-pool-details { margin-top: .25rem; }
+  .v2-root .skills-page .support-pool-summary > strong { font-size: var(--text-base); color: var(--foreground); }
+  .v2-root .skills-page .support-diagnostics { padding: .25rem 0; }
+  .v2-root .skills-page .support-diagnostic-excluded > li { border-radius: 0; }
+  .v2-root .skills-page .gem-optimizer-settings > summary,
+  .v2-root .skills-page .support-pool-details > summary,
+  .v2-root .skills-page .skills-advanced > summary,
+  .v2-root .skills-page .skill-advanced > summary { cursor: pointer; font-size: var(--text-sm); color: var(--muted-foreground); }
+  .v2-root .skills-page .gem-optimizer-settings > summary:hover,
+  .v2-root .skills-page .skills-advanced > summary:hover,
+  .v2-root .skills-page .skill-advanced > summary:hover { color: var(--foreground); }
+  .v2-root .skills-page .gem-optimizer-settings-body { display: grid; gap: .8rem; margin-top: .7rem; }
+  .v2-root .skills-page .gem-optimizer-settings-body .opt-row { align-items: flex-end; gap: .75rem 1.25rem; }
+  .v2-root .skills-page .skill-group-picker { margin: 0; }
+  .v2-root .skills-page .skill-group-picker .gem-picker { max-width: 28rem; }
+
+  /* Advanced: out of the way until asked for. */
+  .v2-root .skills-page .skill-advanced { padding-top: .9rem; border-top: 1px solid var(--border); }
+  .v2-root .skills-page .skill-advanced-body { display: grid; gap: 1.25rem; margin-top: .9rem; }
+  .v2-root .skills-page .skill-advanced .skill-full-dps-controls { margin: 0; gap: .6rem 1.5rem; font-size: var(--text-sm); }
+  .v2-root .skills-page .skill-advanced .minion-controls { margin: 0; padding: 1rem 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; }
+  .v2-root .skills-page .skill-advanced .minion-controls h4 { font-size: var(--text-sm); font-weight: 560; }
+  .v2-root .skills-page .skill-advanced .skill-group-note { margin: 0; }
+  .v2-root .skills-page .skills-advanced { margin-top: 2.25rem; padding-top: .9rem; border-top: 1px solid var(--border); }
+  .v2-root .skills-page .skills-advanced > .skill-sets { margin: .9rem 0 0; padding: 0; border: 0; border-radius: 0; background: none; }
+  .v2-root .skills-page .skills-advanced .skill-sets-title { display: none; }
+  .v2-root .skills-page .skills-advanced .skill-sets > input { flex: 1 1 14rem; max-width: 24rem; }
+  .v2-root .skills-page .skill-set-chip { border-radius: 999px; padding: .15rem .35rem .15rem .75rem; }
+  .v2-root .skills-page .skill-set-chip [data-slot='button'] { min-height: 1.75rem; }
+
+  /* ── Wide page: the detail moves beside the list and follows the scroll ── */
+  @container skills-page (min-width: 56rem) {
+    .v2-root .skills-page .skill-groups { grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr); grid-template-rows: repeat(var(--skill-rows, 1), auto) minmax(0, 1fr); column-gap: 0; }
+    .v2-root .skills-page .skills-toolbar { padding-right: 2rem; }
+    .v2-root .skills-page .skill-group-header { margin-right: 2rem; }
+    .v2-root .skills-page .skill-detail { grid-column: 2; grid-row: 1 / -1; position: sticky; top: 0; max-height: calc(100dvh - var(--topbar-height) - 1.5rem); overflow-y: auto; margin: 0; padding: .1rem 0 1.5rem 2rem; border-left: 1px solid var(--border); scrollbar-width: thin; }
+    .v2-root .skills-page .skills-empty { grid-column: 1 / -1; }
+  }
+
+  /* ── The detail's own width decides how a gem row lays out ─────────────── */
+  @container skill-detail (max-width: 29rem) {
+    .v2-root .skills-page .skill-detail .gem-column-labels { display: none; }
+    .v2-root .skills-page .skill-detail .skill-gem { grid-template-columns: minmax(0, 1fr); row-gap: .3rem; padding: .6rem 0; }
+    .v2-root .skills-page .skill-gem > .gem-name { grid-column: 1; }
+    .v2-root .skills-page .skill-gem .gem-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .9rem; grid-column: 1; grid-row: 2; }
+    .v2-root .skills-page .skill-gem .gem-controls > label { gap: .4rem; font-size: var(--text-xs); color: var(--muted-foreground); }
+    .v2-root .skills-page .skill-gem .gem-controls > :nth-child(n) { grid-column: auto; grid-row: auto; justify-content: flex-start; }
+    .v2-root .skills-page .skill-gem input[type='number'] { width: 4.25rem; }
+    .v2-root .skills-page .skill-gem .gem-controls > .skill-remove { margin-left: auto; }
+  }
+  /* Very little room (a phone, or very large text): the title takes the row, its controls drop beneath it. */
+  @container skills-page (max-width: 30rem) {
+    .v2-root .skills-page .skill-group-header { grid-template-columns: 2.25rem minmax(0, 1fr) auto auto; }
+    .v2-root .skills-page .skill-group-title { grid-column: 2 / -1; }
+    .v2-root .skills-page .skill-dps-value { grid-column: 2; grid-row: 3; justify-self: start; text-align: left; padding: .2rem 0 0; min-width: 0; }
+    .v2-root .skills-page .skill-dps-bar { grid-row: 4; }
+    .v2-root .skills-page .skill-group-toggle { grid-column: 3; grid-row: 3; align-self: center; }
+    .v2-root .skills-page .skill-group-header > .skill-remove { grid-column: 4; grid-row: 3; align-self: center; }
+  }
+}

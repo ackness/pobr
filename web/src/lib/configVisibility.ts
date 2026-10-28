@@ -1,6 +1,6 @@
 import type { ConfigContext, ConfigInputValue, ConfigOption } from '../api/types';
 import { configDefaultValue } from './configDefaults';
-import gameRelevance from './configGameRelevance.json';
+import gameRelevance from './configGameRelevance.json' with { type: 'json' };
 
 export type Applicability = 'applicable' | 'not_applicable' | 'unknown';
 

@@ -3,6 +3,8 @@ import { deflateSync } from 'node:zlib';
 
 const code = deflateSync('<PathOfBuilding2><Build level="60" className="Witch" mainSocketGroup="1"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree><Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="FireballPlayer" level="12" quality="0" enabled="true"/></Skill></SkillSet></Skills><Items/><Config><Input name="enemyLevel" number="82"/><Input name="buffOnslaught" boolean="false"/></Config></PathOfBuilding2>').toString('base64url');
 const nav = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name, exact: true });
+/** The build library is an action, not a workflow stage, so it has a button rather than a tab. */
+const openBuilds = (page: Page) => page.getByRole('button', { name: 'BDs', exact: true }).click();
 const state = (page: Page, key = 'pobr-v2-build-state') => page.evaluate(key => JSON.parse(localStorage.getItem(key)!), key);
 async function preferences(page: Page, extra: Record<string, unknown> = {}) {
   await page.addInitScript(extra => {
@@ -15,7 +17,7 @@ async function importV2(page: Page) {
   await expect(page.getByRole('textbox', { name: 'Build code', exact: true })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
-  await expect(page.locator('.paper-doll')).toBeVisible();
+  await expect(page.locator('#ov-title')).toBeVisible();
   await expect(page.locator('.v2-save-state')).toHaveText('Saved locally');
 }
 
@@ -24,7 +26,7 @@ test('V2 starts and preserves saved builds without crypto.randomUUID', async ({ 
   await importV2(page);
   const imported = await state(page);
   await page.reload();
-  await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 90_000 });
+  await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
   await expect(page.locator('.v2-save-state')).toHaveText('Saved locally');
   const restored = await state(page);
   expect(restored.workspace).toEqual(imported.workspace);
@@ -57,7 +59,7 @@ test('V2 copies legacy saves once and config edits preserve the original workspa
 test('V2 navigation, settings and confirmations retain the current editor', async ({ page }) => {
   await importV2(page);
   await expect(page.getByRole('note')).toContainText('configuration');
-  await nav(page, 'Build library').click();
+  await openBuilds(page);
   const notes = page.getByRole('textbox', { name: 'Notes', exact: true });
   await notes.fill('Persistent stage note'); await notes.blur();
   const before = (await state(page)).state;
@@ -70,7 +72,7 @@ test('V2 navigation, settings and confirmations retain the current editor', asyn
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(notes).toHaveValue('Persistent stage note');
   expect((await state(page)).state).toEqual(before);
-  await nav(page, 'Calculations').click(); await expect(page).toHaveURL(/\/v2\/calcs$/);
+  await nav(page, 'Calcs').click(); await expect(page).toHaveURL(/\/v2\/calcs$/);
   await page.goBack(); await expect(page.locator('#build-heading')).toBeVisible();
   await expect(notes).toHaveValue('Persistent stage note');
   await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
@@ -117,7 +119,7 @@ test('browser Back closes portals owned by retained skill panels', async ({ page
   await nav(page, 'Skills').click();
   const sets = page.getByRole('combobox', { name: 'Skill set', exact: true });
   await sets.click(); await expect(page.getByRole('listbox')).toBeVisible();
-  await page.goBack(); await expect(page.locator('.paper-doll')).toBeVisible();
+  await page.goBack(); await expect(page.locator('#ov-title')).toBeVisible();
   await expect(page.getByRole('listbox')).toHaveCount(0);
   await nav(page, 'Skills').click();
   await expect(sets).toHaveAttribute('aria-expanded', 'false');
@@ -127,17 +129,27 @@ test('V2 real WASM details stay lazy and configuration tracking follows the acti
   await page.addInitScript(() => {
     const observed = window as typeof window & { v2CalcRequests: Array<{ breakdowns?: string[]; config_context?: boolean }> };
     observed.v2CalcRequests = [];
-    const stringify = JSON.stringify;
-    JSON.stringify = ((value: unknown, ...args: unknown[]) => {
+    const record = (value: unknown) => {
       if (value && typeof value === 'object' && 'character' in value && 'socket_groups' in value && 'config_inputs' in value) {
         observed.v2CalcRequests.push(value);
       }
+    };
+    // On the page's own thread a request is stringified for the engine; with the engine in a Worker it is posted as an RPC call.
+    const stringify = JSON.stringify;
+    JSON.stringify = ((value: unknown, ...args: unknown[]) => {
+      record(value);
       return Reflect.apply(stringify, JSON, [value, ...args]);
     }) as typeof JSON.stringify;
+    const post = Worker.prototype.postMessage;
+    Worker.prototype.postMessage = function (this: Worker, message: unknown, ...rest: unknown[]) {
+      const args = (message as { args?: unknown } | null)?.args;
+      if (Array.isArray(args)) args.forEach(record);
+      return Reflect.apply(post, this, [message, ...rest]);
+    } as typeof Worker.prototype.postMessage;
   });
   const requests = () => page.evaluate(() => (window as typeof window & { v2CalcRequests: Array<{ breakdowns?: string[]; config_context?: boolean; breakdown_actor?: unknown }> }).v2CalcRequests);
   await importV2(page);
-  await nav(page, 'Calculations').click();
+  await nav(page, 'Calcs').click();
   await expect(page.locator('#breakdown-Life')).toBeVisible();
   expect((await requests()).filter(request => request.breakdowns?.length)).toHaveLength(0);
   await page.locator('#breakdown-Life').click();
@@ -145,9 +157,9 @@ test('V2 real WASM details stay lazy and configuration tracking follows the acti
   expect((await requests()).filter(request => request.breakdowns?.length)).toEqual([
     expect.objectContaining({ breakdowns: ['Life'], breakdown_actor: { kind: 'player' } }),
   ]);
-  await nav(page, 'Combat setup').click();
+  await nav(page, 'Config').click();
   await expect.poll(async () => (await requests()).at(-1)?.config_context).toBe(true);
-  await nav(page, 'Build library').click();
+  await openBuilds(page);
   await page.getByLabel('Level', { exact: true }).fill('61');
   await expect(page.locator('.v2-save-state')).toHaveText('Saved locally');
   expect((await requests()).at(-1)?.config_context).not.toBe(true);

@@ -104,23 +104,22 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
   const tableRow = (key: string, label: string, values: (number | null | undefined)[]) => <tr key={key} data-total={key}>
     <th scope="row">{label}</th>{values.map((value, index) => <td key={index}>{typeof value === 'number' && Number.isFinite(value) ? value.toLocaleString(lang) : '—'}</td>)}
   </tr>;
-  return <>
-    <ul className="compare-tree-legend" aria-label={tt('compare.legend')}>
+  const legend = <ul className="compare-tree-legend" aria-label={tt('compare.legend')}>
       {(['a', 'b', 'both'] as const).map(side => <li key={side} data-side={side}>
         <span aria-hidden="true">{side === 'a' ? '●' : side === 'b' ? '■' : '◎'}</span>{' '}
         {tt(side === 'a' ? 'compare.removed' : side === 'b' ? 'compare.added' : 'compare.both')} ({count(side)})
       </li>)}
-    </ul>
-    {[overlay.unplacedA, overlay.unplacedB].map((ids, index) => ids.length > 0 && <details className="compare-tree-warning" key={index} open>
+    </ul>;
+  const unplaced = [overlay.unplacedA, overlay.unplacedB].map((ids, index) => ids.length > 0 && <details className="compare-tree-warning" key={index} open>
       <summary>{index ? 'B' : 'A'} · {tt('compare.unplaced')} ({ids.length})</summary><p>{ids.join(', ')}</p>
-    </details>)}
-    {currentView && full ? <>
-      <div className="compare-tree-tools">
+    </details>);
+  const tools = currentView && full && <div className="compare-tree-tools">
         <AppButton type="button" onClick={() => setView(focus)}>{tt('compare.fitAllocations')}</AppButton>
         <AppButton type="button" onClick={() => setView(full)}>{tt('compare.wholeTree')}</AppButton>
         <AppButton type="button" aria-label={tt('compare.zoomIn')} onClick={() => zoom(.7)}>+</AppButton>
         <AppButton type="button" aria-label={tt('compare.zoomOut')} onClick={() => zoom(1 / .7)}>−</AppButton>
-      </div>
+      </div>;
+  const canvas = currentView && full && <>
       <p className="compare-hint">{tt('compare.canvasHint')}</p>
       <svg ref={svg} className="compare-tree-canvas" role="group" tabIndex={0} aria-label={tt('compare.treeOverlay')}
         viewBox={`${currentView.x} ${currentView.y} ${currentView.w} ${currentView.h}`}
@@ -178,18 +177,19 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
         <TooltipTrigger asChild><span aria-hidden="true" style={{ position: 'fixed', left: hover?.x ?? 0, top: hover?.y ?? 0, width: 1, height: 1, pointerEvents: 'none' }} /></TooltipTrigger>
         {hover && <TooltipContent className={v2 ? 'app-tooltip' : 'app-tooltip-legacy'}>{hoverName} · #{hover.node.skill}</TooltipContent>}
       </Tooltip></TooltipProvider>
-    </> : <p role="note">{tt('compare.noCoordinates')}</p>}
-    <label className="compare-tree-inspect">{inspectLabel}<AppSelectControl value={selected?.key ?? ''} onChange={event => {
+    </>;
+  const inspect = <label className="compare-tree-inspect">{inspectLabel}<AppSelectControl value={selected?.key ?? ''} onChange={event => {
       select(event.target.value);
       const node = overlay.nodes.find(entry => entry.key === event.target.value)?.node;
       if (node && hasPosition(node) && currentView) setView({ ...currentView, x: node.x - currentView.w / 2, y: node.y - currentView.h / 2 });
     }}><option value="">—</option>{inspectable.map((entry, index) => <option key={entry.key} value={entry.key}>
       {entry.side === 'both' ? 'A+B' : entry.side === 'a' ? 'A' : entry.side === 'b' ? 'B' : entry.a && entry.b ? 'A/B' : entry.a ? 'A' : 'B'} · #{entry.node.skill} · {inspectNames[index]}
-    </option>)}</AppSelectControl></label>
-    {selected && <div className="compare-pair compare-node-details" role="group" aria-label={tt('tree.nodeDetails')}>
+    </option>)}</AppSelectControl></label>;
+  const nodeDetails = selected && <div className="compare-pair compare-node-details" role="group" aria-label={tt('tree.nodeDetails')}>
       <NodeDetails node={selected.a} state={a} output={before} side="A" lang={lang} />
       <NodeDetails node={selected.b} state={b} output={after} side="B" lang={lang} />
-    </div>}
+    </div>;
+  const rest = <>
     <div className="compare-table-wrap"><table className="compare-tree-totals"><caption>{tt('compare.treeTotals')}</caption>
       <thead><tr><th scope="col">{tt('compare.summary')}</th><th scope="col">A</th><th scope="col">B</th></tr></thead><tbody>
         {tableRow('passive', tt('compare.passivePoints'), totals.map(total => total.passive))}
@@ -211,6 +211,24 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
     <details><summary>{tt('compare.passives')}</summary>{(['a', 'b', 'both'] as const).map(side => <p key={side}>
       {tt(side === 'a' ? 'compare.removed' : side === 'b' ? 'compare.added' : 'compare.both')}: {overlay.nodes.filter(entry => entry.side === side).map(entry => entry.node.skill).join(', ') || '—'}
     </p>)}</details>
+  </>;
+  const noCoordinates = <p role="note">{tt('compare.noCoordinates')}</p>;
+  if (v2) return <>
+    <div className="cmp-tree-top">{legend}{tools}</div>
+    {unplaced}
+    <div className="cmp-tree-stage">
+      <div className="cmp-tree-view">{canvas || noCoordinates}</div>
+      <div className="cmp-tree-inspector">{inspect}{nodeDetails}</div>
+    </div>
+    {rest}
+  </>;
+  return <>
+    {legend}
+    {unplaced}
+    {currentView && full ? <>{tools}{canvas}</> : noCoordinates}
+    {inspect}
+    {nodeDetails}
+    {rest}
   </>;
 }
 

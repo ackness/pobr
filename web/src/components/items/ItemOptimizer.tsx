@@ -1,3 +1,4 @@
+import { useJobBeacon } from '../../v2/jobs/useJobBeacon';
 import { AppButton } from '../shared/controls';
 import { formatApiError } from '../../api/error';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -45,6 +46,7 @@ export function ItemOptimizer({
   const [expanded, setExpanded] = useState(false);
   const { goal: objState, setGoal: setObjState } = useUpgradeGoal();
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  useJobBeacon(progress !== null);
   const [error, setError] = useState<string | null>(null);
   const [evaluated, setEvaluated] = useState<{
     baseline: Record<string, number>;

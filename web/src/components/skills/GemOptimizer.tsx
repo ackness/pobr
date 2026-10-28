@@ -1,4 +1,6 @@
+import { useJobBeacon } from '../../v2/jobs/useJobBeacon';
 import { useUi } from '../shared/UiContext';
+import { usePreview } from '../shared/PreviewContext';
 import { uiStorageKey } from '../../lib/sessionStorage';
 import { AppButton, AppInput } from '../shared/controls';
 import { formatApiError } from '../../api/error';
@@ -12,6 +14,7 @@ import { supportText } from '../../lib/supportI18n';
 import type { Objective } from '../../lib/optimize';
 import { applySupportPlan, eligibleSupports, lineageAvailable, optimizeSupports, type SupportMetadata, type SupportOptimization } from '../../lib/supportOptimizer';
 import { ObjectiveEditor, OptimizerProgress, objectiveOf } from '../shared/OptimizerControls';
+import { words } from '../../v2/text';
 
 interface Props {
   session: BuildSession;
@@ -43,13 +46,14 @@ function savedExclusions(key: string): string[] {
 
 export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemName, skillKey, focusNonce }: Props) {
   const { v2 } = useUi();
+  const preview = usePreview();
   const tt = bindT(lang);
   const st = (key: Parameters<typeof supportText>[1]) => supportText(lang, key);
   const { goal, setGoal } = useUpgradeGoal();
   const group = session.socketGroups[groupIndex];
   const byId = useMemo(() => new Map(catalog.map(gem => [gem.skill_id, gem])), [catalog]);
   const occupied = group?.gems.filter(gem => byId.get(gem.skill_id)?.is_support).length ?? 0;
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(v2);
   const [capacity, setCapacity] = useState(Math.max(2, Math.min(5, occupied)));
   const [includeLineage, setIncludeLineage] = useState(true);
   const preferenceKey = uiStorageKey(`pobr-support-exclusions:${skillKey}`, v2);
@@ -58,6 +62,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const [search, setSearch] = useState('');
   useEffect(() => setCapacity(value => Math.max(value, Math.min(5, occupied))), [occupied]);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  useJobBeacon(progress !== null);
   const [error, setError] = useState<string | null>(null);
   const [evaluated, setEvaluated] = useState<SupportEvaluation | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -157,120 +162,178 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
 
   if (!active) return null;
 
+  const hint = <p className="skills-hint">{st('hint')}</p>;
+  const poolSummary = <div className="support-pool-summary"><strong>{candidateCount}</strong> {st('eligible')}
+    <span>{st('excluded')} {pool.unknown} / {pool.levelBlocked} / {pool.incompatible}</span>
+  </div>;
+  const poolFilter = <details className="support-pool-details"><summary>{st('filterTitle')}</summary>
+    <p className="skills-hint">{st('filterHint')}</p>
+    <label className="support-search">{st('search')}<AppInput type="search" value={search}
+      placeholder={st('searchPlaceholder')} onChange={event => setSearch(event.target.value)} /></label>
+    <div className="opt-candidates">{visibleGems.map(gem => <label key={gem.skill_id}
+      className={`opt-chip support-candidate${excluded.has(gem.skill_id) ? ' is-excluded' : ''}`} data-skill-id={gem.skill_id}>
+      <AppInput type="checkbox" checked={!excluded.has(gem.skill_id)}
+        onChange={event => event.target.checked ? restore(gem.skill_id) : exclude(gem.skill_id)} />
+      <span>{gemName(gem.skill_id)}</span>{gem.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
+    </label>)}</div>
+    {!visibleGems.length && <p className="skills-hint">{st('noMatch')}</p>}
+  </details>;
+  const excludedBlock = excludedIds.length > 0 && <div className="support-excluded">
+    <div className="support-excluded-header"><strong>{st('manualExcluded')} · {excludedIds.length}</strong>
+      <AppButton onClick={() => updateExclusions([])}>{st('restoreAll')}</AppButton></div>
+    <div className="opt-candidates">{excludedIds.map(id => <AppButton key={id} className="opt-chip"
+      aria-label={`${st('restore')} ${gemName(id)}`} title={`${st('restore')} ${gemName(id)}`} onClick={() => restore(id)}>
+      {gemName(id)} <span aria-hidden>↶</span>
+    </AppButton>)}</div>
+    <p className="skills-hint">{st('excludedHint')}</p>
+  </div>;
+  const capacityControl = <label>{st('capacity')}<AppInput type="number" min={2} max={5} value={capacity} onChange={event => {
+    const value = Number(event.target.value);
+    if (Number.isInteger(value) && value >= 2 && value <= 5) {
+      invalidate();
+      setCapacity(value);
+    }
+  }} /></label>;
+  const objectiveControls = <ObjectiveEditor value={goal} onChange={next => { invalidate(); setGoal(next); }} lang={lang} />;
+  const runButton = <AppButton className="opt-run" disabled={session.busy || progress !== null || !canSearch || !group?.enabled
+    || (mainIndex === groupIndex && !session.calc?.main_skill)} onClick={run}>
+    {progress ? tt('opt.running') : mainIndex !== groupIndex ? st('selectMain') : st('run')}
+  </AppButton>;
+  const lineageOption = <label className="support-lineage-option"><AppInput type="checkbox" checked={includeLineage}
+    onChange={event => { invalidate(); setIncludeLineage(event.target.checked); }} />{st('lineage')}</label>;
+  const capacityHint = <p className="skills-hint">{st('capacityHint')}</p>;
+  const noMainSkill = !session.busy && mainIndex === groupIndex && !session.calc?.main_skill && <p className="skills-hint">{tt('sidebar.noMainSkill')}</p>;
+  const progressBlock = progress && <OptimizerProgress {...progress} onCancel={stop} lang={lang} />;
+  const poolNotes = <>
+    {!pool.gems.length && <p className="skills-hint">{st('empty')}</p>}
+    {pool.gems.length > 0 && !candidateCount && <p className="skills-hint">{st(occupied ? 'removeOnly' : 'allExcluded')}</p>}
+  </>;
+  const errorBlock = error && <p className="opt-error">{error}</p>;
+  const resultsBlock = result && <div className="support-results">
+    <div className="support-baseline"><strong>{st('baseline')}</strong>
+      <span>DPS {number(result.baseline.TotalDPS ?? 0)}</span><span>EHP {number(result.baseline.TotalEHP ?? 0)}</span>
+    </div>
+    <p className="skills-hint">{st('results')} {result.evaluated} · {st('unsupported')} {result.unmodeled}</p>
+    <p className="skills-hint">{st('data')}: {result.dataVersion ?? st('unknownVersion')} · {st('tree')}: {result.request.tree_version ?? st('defaultTree')}</p>
+    {result.baselineUnsupported.length > 0 && <details className="support-diagnostics support-baseline-unsupported">
+      <summary>{st('baselineLimits')}: {result.baselineUnsupported.length}</summary>
+      <p className="skills-hint">{st('baselineLimitsHint')}</p>
+      <ul>{result.baselineUnsupported.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
+    </details>}
+    {result.excluded.length > 0 && <details className="support-diagnostics">
+      <summary>{st('diagnosticExcluded')}: {result.excluded.length}</summary>
+      <p className="skills-hint">{st('diagnosticExcludedHint')}</p>
+      <ol className="support-diagnostic-excluded">{result.excluded.map((edit, index) => <li key={index}>
+        <details>
+          <summary>{st('completeSet')}: {edit.supports.map(gem => gemName(gem.skill_id)).join(' · ') || st('noSupports')}</summary>
+          <ul className="support-diagnostic-gems">{edit.supports.map(gem => <li key={gem.skill_id} data-skill-id={gem.skill_id}>
+            {gemName(gem.skill_id)} · {st('level')} {gem.level} · {st('quality')} {gem.quality} · {st('statSet')} {gem.stat_set_index ?? 1}
+          </li>)}</ul>
+          {edit.unsupported.length > 0 && <><p>{st('newLimits')}</p>
+            <ul>{edit.unsupported.map((reason, reasonIndex) => <li key={reasonIndex}>{reason}</li>)}</ul></>}
+          {edit.error && <p className="opt-error">{st('engineError')}: {edit.error}</p>}
+          {edit.invalidStats && <p className="opt-error">{st('invalidStats')}</p>}
+        </details>
+      </li>)}</ol>
+    </details>}
+    {!result.plans.length && <p className="skills-hint">{st('noGain')}</p>}
+    {result.plans.map((plan, index) => {
+      // Resting on a recommendation shows what it would do, without applying it (v2 only; handlers add no attributes).
+      const hover = preview ? {
+        onEnter: () => preview.show({ key: `support:${groupIndex}:${index}`, label: `${words(lang, 'Supports', '辅助', '輔助')}: ${plan.supports.map(gem => gemName(gem.skill_id)).join(' + ')}`,
+          request: () => { const request = session.currentRequest(); return request ? { ...request, socket_groups: applySupportPlan(request.socket_groups ?? session.socketGroups, groupIndex, plan) } : null; } }),
+        onLeave: preview.clear } : undefined;
+      return <article className="support-plan" key={index} onMouseEnter={hover?.onEnter} onMouseLeave={hover?.onLeave} onFocus={hover?.onEnter} onBlur={hover?.onLeave}>
+      <div className="support-plan-gems">{plan.supports.map(gem => <span className="opt-chip" key={gem.skill_id} data-skill-id={gem.skill_id}
+        data-level={gem.level} data-quality={gem.quality} data-stat-set-index={gem.stat_set_index ?? undefined}>
+        {gemName(gem.skill_id)}{byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
+        <small>{st('level')} {gem.level} · {st('quality')} {gem.quality}{gem.stat_set_index != null && <> · {st('statSet')} {gem.stat_set_index}</>}</small>
+        <AppButton className="support-exclude-button" aria-label={`${st('exclude')} ${gemName(gem.skill_id)}`}
+          title={`${st('exclude')} ${gemName(gem.skill_id)}`} onClick={() => exclude(gem.skill_id)}><span aria-hidden>×</span></AppButton>
+      </span>)}</div>
+      <div className="support-plan-metrics">{['TotalDPS', 'TotalEHP'].map(stat => {
+        const before = result.baseline[stat] ?? 0;
+        const after = plan.stats[stat] ?? 0;
+        return <span key={stat} className={after >= before ? 'is-positive' : 'is-negative'}>
+          {stat === 'TotalDPS' ? 'DPS' : 'EHP'} {number(after)} <strong>{change(before, after)}</strong>
+        </span>;
+      })}</div>
+      {plan.supports.length > 0 && <details className="support-diagnostics support-descriptions">
+        <summary>{st('descriptions')}</summary>
+        <p className="skills-hint">{st('descriptionsHint')}</p>
+        <ul>{plan.supports.map(gem => {
+          const description = byId.get(gem.skill_id)?.description;
+          return <li key={gem.skill_id}>
+            <strong>{gemName(gem.skill_id)}</strong>
+            <p lang={description ? 'en' : lang}>{description || st('descriptionUnavailable')}</p>
+          </li>;
+        })}</ul>
+      </details>}
+      <AppButton disabled={session.busy} onClick={() => apply(index)}>{tt('opt.apply')}</AppButton>
+    </article>;
+    })}
+    <p className="skills-hint">{st('keepActive')}</p>
+  </div>;
+  const toggleButton = <AppButton className="gem-optimizer-toggle" aria-expanded={expanded} onClick={() => {
+    setExpanded(!expanded);
+    if (!expanded) select();
+  }}>
+    <span className="row-caret" aria-hidden>▸</span>{st('title')}
+  </AppButton>;
+
+  if (v2) {
+    // The recommendations lead: the action sits in the header, results come before any setting.
+    return (
+      <div className="gem-optimizer" ref={rootRef}>
+        <div className="gem-optimizer-head">
+          {toggleButton}
+          {runButton}
+        </div>
+        {expanded && <div className="gem-optimizer-body">
+          {lineageOption}
+          {noMainSkill}
+          {progressBlock}
+          {poolNotes}
+          {errorBlock}
+          {resultsBlock}
+          <details className="gem-optimizer-settings">
+            <summary>{words(lang, 'Goal, capacity and candidates', '目标、容量与候选宝石', '目標、容量與候選寶石')}</summary>
+            <div className="gem-optimizer-settings-body">
+              {hint}
+              {poolSummary}
+              <div className="opt-row">{capacityControl}{objectiveControls}</div>
+              {capacityHint}
+              {poolFilter}
+              {excludedBlock}
+              <p className="skills-hint">{st('adjustment')}</p>
+              <p className="skills-hint">{st('limit')}</p>
+            </div>
+          </details>
+        </div>}
+      </div>
+    );
+  }
+
   return (
     <div className="gem-optimizer" ref={rootRef}>
-      <AppButton className="gem-optimizer-toggle" aria-expanded={expanded} onClick={() => {
-        setExpanded(!expanded);
-        if (!expanded) select();
-      }}>
-        <span className="row-caret" aria-hidden>▸</span>{st('title')}
-      </AppButton>
+      {toggleButton}
       {expanded && <div className="gem-optimizer-body">
-        <p className="skills-hint">{st('hint')}</p>
-        <div className="support-pool-summary"><strong>{candidateCount}</strong> {st('eligible')}
-          <span>{st('excluded')} {pool.unknown} / {pool.levelBlocked} / {pool.incompatible}</span>
-        </div>
-        <details className="support-pool-details"><summary>{st('filterTitle')}</summary>
-          <p className="skills-hint">{st('filterHint')}</p>
-          <label className="support-search">{st('search')}<AppInput type="search" value={search}
-            placeholder={st('searchPlaceholder')} onChange={event => setSearch(event.target.value)} /></label>
-          <div className="opt-candidates">{visibleGems.map(gem => <label key={gem.skill_id}
-            className={`opt-chip support-candidate${excluded.has(gem.skill_id) ? ' is-excluded' : ''}`} data-skill-id={gem.skill_id}>
-            <AppInput type="checkbox" checked={!excluded.has(gem.skill_id)}
-              onChange={event => event.target.checked ? restore(gem.skill_id) : exclude(gem.skill_id)} />
-            <span>{gemName(gem.skill_id)}</span>{gem.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
-          </label>)}</div>
-          {!visibleGems.length && <p className="skills-hint">{st('noMatch')}</p>}
-        </details>
-        {excludedIds.length > 0 && <div className="support-excluded">
-          <div className="support-excluded-header"><strong>{st('manualExcluded')} · {excludedIds.length}</strong>
-            <AppButton onClick={() => updateExclusions([])}>{st('restoreAll')}</AppButton></div>
-          <div className="opt-candidates">{excludedIds.map(id => <AppButton key={id} className="opt-chip"
-            aria-label={`${st('restore')} ${gemName(id)}`} title={`${st('restore')} ${gemName(id)}`} onClick={() => restore(id)}>
-            {gemName(id)} <span aria-hidden>↶</span>
-          </AppButton>)}</div>
-          <p className="skills-hint">{st('excludedHint')}</p>
-        </div>}
+        {hint}
+        {poolSummary}
+        {poolFilter}
+        {excludedBlock}
         <div className="opt-row">
-          <label>{st('capacity')}<AppInput type="number" min={2} max={5} value={capacity} onChange={event => {
-            const value = Number(event.target.value);
-            if (Number.isInteger(value) && value >= 2 && value <= 5) {
-              invalidate();
-              setCapacity(value);
-            }
-          }} /></label>
-          <ObjectiveEditor value={goal} onChange={next => { invalidate(); setGoal(next); }} lang={lang} />
-          <AppButton className="opt-run" disabled={session.busy || progress !== null || !canSearch || !group?.enabled
-            || (mainIndex === groupIndex && !session.calc?.main_skill)} onClick={run}>
-            {progress ? tt('opt.running') : mainIndex !== groupIndex ? st('selectMain') : st('run')}
-          </AppButton>
+          {capacityControl}
+          {objectiveControls}
+          {runButton}
         </div>
-        <label className="support-lineage-option"><AppInput type="checkbox" checked={includeLineage}
-          onChange={event => { invalidate(); setIncludeLineage(event.target.checked); }} />{st('lineage')}</label>
-        <p className="skills-hint">{st('capacityHint')}</p>
-        {!session.busy && mainIndex === groupIndex && !session.calc?.main_skill && <p className="skills-hint">{tt('sidebar.noMainSkill')}</p>}
-        {progress && <OptimizerProgress {...progress} onCancel={stop} lang={lang} />}
-        {!pool.gems.length && <p className="skills-hint">{st('empty')}</p>}
-        {pool.gems.length > 0 && !candidateCount && <p className="skills-hint">{st(occupied ? 'removeOnly' : 'allExcluded')}</p>}
-        {error && <p className="opt-error">{error}</p>}
-        {result && <div className="support-results">
-          <div className="support-baseline"><strong>{st('baseline')}</strong>
-            <span>DPS {number(result.baseline.TotalDPS ?? 0)}</span><span>EHP {number(result.baseline.TotalEHP ?? 0)}</span>
-          </div>
-          <p className="skills-hint">{st('results')} {result.evaluated} · {st('unsupported')} {result.unmodeled}</p>
-          <p className="skills-hint">{st('data')}: {result.dataVersion ?? st('unknownVersion')} · {st('tree')}: {result.request.tree_version ?? st('defaultTree')}</p>
-          {result.baselineUnsupported.length > 0 && <details className="support-diagnostics support-baseline-unsupported">
-            <summary>{st('baselineLimits')}: {result.baselineUnsupported.length}</summary>
-            <p className="skills-hint">{st('baselineLimitsHint')}</p>
-            <ul>{result.baselineUnsupported.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
-          </details>}
-          {result.excluded.length > 0 && <details className="support-diagnostics">
-            <summary>{st('diagnosticExcluded')}: {result.excluded.length}</summary>
-            <p className="skills-hint">{st('diagnosticExcludedHint')}</p>
-            <ol className="support-diagnostic-excluded">{result.excluded.map((edit, index) => <li key={index}>
-              <details>
-                <summary>{st('completeSet')}: {edit.supports.map(gem => gemName(gem.skill_id)).join(' · ') || st('noSupports')}</summary>
-                <ul className="support-diagnostic-gems">{edit.supports.map(gem => <li key={gem.skill_id} data-skill-id={gem.skill_id}>
-                  {gemName(gem.skill_id)} · {st('level')} {gem.level} · {st('quality')} {gem.quality} · {st('statSet')} {gem.stat_set_index ?? 1}
-                </li>)}</ul>
-                {edit.unsupported.length > 0 && <><p>{st('newLimits')}</p>
-                  <ul>{edit.unsupported.map((reason, reasonIndex) => <li key={reasonIndex}>{reason}</li>)}</ul></>}
-                {edit.error && <p className="opt-error">{st('engineError')}: {edit.error}</p>}
-                {edit.invalidStats && <p className="opt-error">{st('invalidStats')}</p>}
-              </details>
-            </li>)}</ol>
-          </details>}
-          {!result.plans.length && <p className="skills-hint">{st('noGain')}</p>}
-          {result.plans.map((plan, index) => <article className="support-plan" key={index}>
-            <div className="support-plan-gems">{plan.supports.map(gem => <span className="opt-chip" key={gem.skill_id} data-skill-id={gem.skill_id}
-              data-level={gem.level} data-quality={gem.quality} data-stat-set-index={gem.stat_set_index ?? undefined}>
-              {gemName(gem.skill_id)}{byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
-              <small>{st('level')} {gem.level} · {st('quality')} {gem.quality}{gem.stat_set_index != null && <> · {st('statSet')} {gem.stat_set_index}</>}</small>
-              <AppButton className="support-exclude-button" aria-label={`${st('exclude')} ${gemName(gem.skill_id)}`}
-                title={`${st('exclude')} ${gemName(gem.skill_id)}`} onClick={() => exclude(gem.skill_id)}><span aria-hidden>×</span></AppButton>
-            </span>)}</div>
-            <div className="support-plan-metrics">{['TotalDPS', 'TotalEHP'].map(stat => {
-              const before = result.baseline[stat] ?? 0;
-              const after = plan.stats[stat] ?? 0;
-              return <span key={stat} className={after >= before ? 'is-positive' : 'is-negative'}>
-                {stat === 'TotalDPS' ? 'DPS' : 'EHP'} {number(after)} <strong>{change(before, after)}</strong>
-              </span>;
-            })}</div>
-            {plan.supports.length > 0 && <details className="support-diagnostics support-descriptions">
-              <summary>{st('descriptions')}</summary>
-              <p className="skills-hint">{st('descriptionsHint')}</p>
-              <ul>{plan.supports.map(gem => {
-                const description = byId.get(gem.skill_id)?.description;
-                return <li key={gem.skill_id}>
-                  <strong>{gemName(gem.skill_id)}</strong>
-                  <p lang={description ? 'en' : lang}>{description || st('descriptionUnavailable')}</p>
-                </li>;
-              })}</ul>
-            </details>}
-            <AppButton disabled={session.busy} onClick={() => apply(index)}>{tt('opt.apply')}</AppButton>
-          </article>)}
-          <p className="skills-hint">{st('keepActive')}</p>
-        </div>}
+        {lineageOption}
+        {capacityHint}
+        {noMainSkill}
+        {progressBlock}
+        {poolNotes}
+        {errorBlock}
+        {resultsBlock}
         <p className="skills-hint">{st('adjustment')}</p>
         <p className="skills-hint">{st('limit')}</p>
       </div>}

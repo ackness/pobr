@@ -1,7 +1,7 @@
 import { configCopy } from './configCopy';
 import type { Lang } from './i18n';
 import type { ConfigOption } from '../api/types';
-import helpTranslations from './configHelp.zh-CN.json';
+import helpTranslations from './configHelp.zh-CN.json' with { type: 'json' };
 
 /**
  * Configuration labels are application translations keyed by stable variables.
