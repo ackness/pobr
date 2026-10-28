@@ -212,7 +212,8 @@ the local Lua directly instead of searching online.
 
 - [`AGENTS.md`](AGENTS.md) — concise contributor guide and development entry points.
 - [Maintainer guide](docs/maintainer-guide.md) — verification tiers, command cheat-sheet, key
-  conventions (read before contributing).
+  conventions (read before contributing); it links the topic documents for
+  mechanics, outputs, the build model, PoB2 differences and diagnostics.
 - [`agent-docs/`](agent-docs/) — PoE2 (0.5.0) game-mechanics reference in
   Chinese (damage types / resistances / armour, evasion, ES / crit / ailments /
   damage-defence order, …).

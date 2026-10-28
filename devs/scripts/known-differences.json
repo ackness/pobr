@@ -7,7 +7,7 @@
       "stats": [
         "TotalEHP"
       ],
-      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/maintainer-guide.md, Runic Ward)."
+      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/mechanics/defence.md, Runic Ward)."
     },
     {
       "build": "blood-mage-02",
@@ -15,7 +15,7 @@
       "stats": [
         "TotalEHP"
       ],
-      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/maintainer-guide.md, Runic Ward)."
+      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/mechanics/defence.md, Runic Ward)."
     },
     {
       "build": "blood-mage-04",
@@ -23,7 +23,7 @@
       "stats": [
         "TotalEHP"
       ],
-      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/maintainer-guide.md, Runic Ward)."
+      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/mechanics/defence.md, Runic Ward)."
     },
     {
       "build": "blood-mage-05",
@@ -31,7 +31,7 @@
       "stats": [
         "TotalEHP"
       ],
-      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/maintainer-guide.md, Runic Ward)."
+      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/mechanics/defence.md, Runic Ward)."
     },
     {
       "build": "blood-mage-07",
@@ -39,7 +39,7 @@
       "stats": [
         "TotalEHP"
       ],
-      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/maintainer-guide.md, Runic Ward)."
+      "reason": "Frozen 2026-10-26 Ward + Grasping Wounds: Ward absorbs its finite share before the Life-only overkill cap. Pinned PoB2 discards excess damage too early, inflating EHP. The corrected result already agrees within tolerance with this code's saved reference; this entry records the deliberate pinned-oracle difference. Blood Mage08 remains unclassified because it also has another mitigation difference (docs/mechanics/defence.md, Runic Ward)."
     },
     {
       "build": "acolyte-of-chayula-02",
@@ -47,7 +47,7 @@
       "stats": [
         "ActiveMinionLimit"
       ],
-      "reason": "Frozen 2026-10-26 Forbidden Rites Wolf Pack at level 19 has native pack size 6 plus one from quality, giving 7. The pinned PoB2 omits the pack size and reports 0. See docs/maintainer-guide.md, summon counts."
+      "reason": "Frozen 2026-10-26 Forbidden Rites Wolf Pack at level 19 has native pack size 6 plus one from quality, giving 7. The pinned PoB2 omits the pack size and reports 0. See docs/mechanics/minions.md, summon counts."
     },
     {
       "build": "amazon-02",
@@ -60,7 +60,7 @@
         "SpellEvadeChance",
         "SpellProjectileEvadeChance"
       ],
-      "reason": "Frozen 2026-10-26 Forbidden Rites Amazon has 8993 Evasion and level-82 enemy Accuracy 2114. The strongest Blind II contributes one 20% effect increase (24% less accuracy): evade 55%, deflect 16. Pinned PoB2 counts the Pounce gem effect three times (32% less accuracy): evade 58%, deflect 18. Preserve the strongest single Blind effect. The separate Energy Shield error is fixed by alternate-tree Discipline requirements; this Blind entry does not classify TotalEHP. See docs/maintainer-guide.md, Blind effect."
+      "reason": "Frozen 2026-10-26 Forbidden Rites Amazon has 8993 Evasion and level-82 enemy Accuracy 2114. The strongest Blind II contributes one 20% effect increase (24% less accuracy): evade 55%, deflect 16. Pinned PoB2 counts the Pounce gem effect three times (32% less accuracy): evade 58%, deflect 18. Preserve the strongest single Blind effect. The separate Energy Shield error is fixed by alternate-tree Discipline requirements; this Blind entry does not classify TotalEHP. See docs/pob2-differences.md, Blind effect."
     },
     {
       "build": "blood-mage-03",
@@ -74,7 +74,7 @@
         "WithBleedDPS",
         "WithPoisonDPS"
       ],
-      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/pob2-differences.md, Doedre's Undoing)."
     },
     {
       "build": "blood-mage-04",
@@ -88,7 +88,7 @@
         "WithBleedDPS",
         "WithPoisonDPS"
       ],
-      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/pob2-differences.md, Doedre's Undoing)."
     },
     {
       "build": "blood-mage-06",
@@ -102,7 +102,7 @@
         "WithBleedDPS",
         "WithPoisonDPS"
       ],
-      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/pob2-differences.md, Doedre's Undoing)."
     },
     {
       "build": "blood-mage-08",
@@ -116,7 +116,7 @@
         "WithBleedDPS",
         "WithPoisonDPS"
       ],
-      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/pob2-differences.md, Doedre's Undoing)."
     },
     {
       "build": "blood-mage-10",
@@ -130,7 +130,7 @@
         "WithBleedDPS",
         "WithPoisonDPS"
       ],
-      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/pob2-differences.md, Doedre's Undoing)."
     },
     {
       "build": "chronomancer-04",
@@ -139,197 +139,197 @@
         "HitSpeed",
         "ActionRate"
       ],
-      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/maintainer-guide.md, Doedre's Undoing)."
+      "reason": "Frozen 2026-10-26 Forbidden Rites build selects Dark Consequences (ChaosFrogExplosionPlayer), despite the Impending Doom title. Two Cursed Ground areas spawn a Witchtoad every 250 ms: 8 explosions/s, independent of cast speed. PoB2 multiplies by cast speed. For the five Blood Mage damage rows, removing that rate difference leaves less than 1.5% discrepancy; Chronomancer damage remains unclassified because its Hindered condition also differs (docs/pob2-differences.md, Doedre's Undoing)."
     },
     {
       "build": "druid-oracle-ember-fusillade",
       "stats": [
         "SpiritReserved"
       ],
-      "reason": "SpiritReserved reports the enabled skills' full requested reservation (229); PoB2 caps this displayed field at the Spirit pool (179), while both report -50 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (229); PoB2 caps this displayed field at the Spirit pool (179), while both report -50 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/calc-outputs.md, SpiritReserved)."
     },
     {
       "build": "mercenary-gemling-legionnaire-explosive-grenade",
       "stats": [
         "SpiritReserved"
       ],
-      "reason": "SpiritReserved reports the enabled skills' full requested reservation (268); PoB2 caps this displayed field at the Spirit pool (250), while both report -18 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (268); PoB2 caps this displayed field at the Spirit pool (250), while both report -18 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/calc-outputs.md, SpiritReserved)."
     },
     {
       "build": "huntress-ritualist-twister-882c4b7d4c91",
       "stats": [
         "SpiritReserved"
       ],
-      "reason": "SpiritReserved reports the enabled skills' full requested reservation (285); PoB2 caps this displayed field at the Spirit pool (268), while both report -17 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (285); PoB2 caps this displayed field at the Spirit pool (268), while both report -17 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/calc-outputs.md, SpiritReserved)."
     },
     {
       "build": "monk-acolyte-of-chayula-convalescence-8743aac6ec75",
       "stats": [
         "SpiritReserved"
       ],
-      "reason": "SpiritReserved reports the enabled skills' full requested reservation (398); PoB2 caps this displayed field at the Spirit pool (312), while both report -86 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (398); PoB2 caps this displayed field at the Spirit pool (312), while both report -86 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/calc-outputs.md, SpiritReserved)."
     },
     {
       "build": "monk-invoker-grim-pillars-19a4efbb971d",
       "stats": [
         "SpiritReserved"
       ],
-      "reason": "SpiritReserved reports the enabled skills' full requested reservation (266); PoB2 caps this displayed field at the Spirit pool (236), while both report -30 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (266); PoB2 caps this displayed field at the Spirit pool (236), while both report -30 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/calc-outputs.md, SpiritReserved)."
     },
     {
       "build": "warrior-smith-of-kitava-maul-f3d9b042531d",
       "stats": [
         "SpiritReserved"
       ],
-      "reason": "SpiritReserved reports the enabled skills' full requested reservation (225); PoB2 caps this displayed field at the Spirit pool (189), while both report -36 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (225); PoB2 caps this displayed field at the Spirit pool (189), while both report -36 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/calc-outputs.md, SpiritReserved)."
     },
     {
       "build": "warrior-warbringer-infernal-cry-e2a8fe48cefb",
       "stats": [
         "SpiritReserved"
       ],
-      "reason": "SpiritReserved reports the enabled skills' full requested reservation (160); PoB2 caps this displayed field at the Spirit pool (100), while both report -60 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (160); PoB2 caps this displayed field at the Spirit pool (100), while both report -60 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/calc-outputs.md, SpiritReserved)."
     },
     {
       "build": "witch-blood-mage-comet-bc750d615159",
       "stats": [
         "SpiritReserved"
       ],
-      "reason": "SpiritReserved reports the enabled skills' full requested reservation (355); PoB2 caps this displayed field at the Spirit pool (200), while both report -155 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (355); PoB2 caps this displayed field at the Spirit pool (200), while both report -155 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/calc-outputs.md, SpiritReserved)."
     },
     {
       "build": "witch-infernalist-convalescence-6e6130dfbff5",
       "stats": [
         "SpiritReserved"
       ],
-      "reason": "SpiritReserved reports the enabled skills' full requested reservation (361); PoB2 caps this displayed field at the Spirit pool (296), while both report -65 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (361); PoB2 caps this displayed field at the Spirit pool (296), while both report -65 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/calc-outputs.md, SpiritReserved)."
     },
     {
       "build": "witch-lich-blasphemy-c72f0f283724",
       "stats": [
         "SpiritReserved"
       ],
-      "reason": "SpiritReserved reports the enabled skills' full requested reservation (318); PoB2 caps this displayed field at the Spirit pool (281), while both report -37 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (318); PoB2 caps this displayed field at the Spirit pool (281), while both report -37 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/calc-outputs.md, SpiritReserved)."
     },
     {
       "build": "mercenary-tactician-oil-barrage-02b94461578f",
       "stats": [
         "SpiritReserved"
       ],
-      "reason": "SpiritReserved reports the enabled skills' full requested reservation (273); PoB2 caps this displayed field at the Spirit pool (232), while both report -41 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (273); PoB2 caps this displayed field at the Spirit pool (232), while both report -41 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/calc-outputs.md, SpiritReserved)."
     },
     {
       "build": "witch-abyssal-lich-bonestorm-be0d16c86268",
       "stats": [
         "SpiritReserved"
       ],
-      "reason": "SpiritReserved reports the enabled skills' full requested reservation (244); PoB2 caps this displayed field at the Spirit pool (137), while both report -107 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (244); PoB2 caps this displayed field at the Spirit pool (137), while both report -107 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/calc-outputs.md, SpiritReserved)."
     },
     {
       "build": "witch-blood-mage-impending-doom-c0dcbc68022c",
       "stats": [
         "SpiritReserved"
       ],
-      "reason": "SpiritReserved reports the enabled skills' full requested reservation (220); PoB2 caps this displayed field at the Spirit pool (143), while both report -77 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (220); PoB2 caps this displayed field at the Spirit pool (143), while both report -77 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/calc-outputs.md, SpiritReserved)."
     },
     {
       "build": "ranger-deadeye-ice-shot-b6ce7b3a4329",
       "stats": [
         "SpiritReserved"
       ],
-      "reason": "SpiritReserved reports the enabled skills' full requested reservation (223); PoB2 caps this displayed field at the Spirit pool (146), while both report -77 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/maintainer-guide.md, SpiritReserved)."
+      "reason": "SpiritReserved reports the enabled skills' full requested reservation (223); PoB2 caps this displayed field at the Spirit pool (146), while both report -77 SpiritUnreserved. The per-skill reservations agree; this is the documented overcommitted-build output convention, not a game-mechanic difference (docs/calc-outputs.md, SpiritReserved)."
     },
     {
       "build": "3bfac6cd6482",
       "stats": ["AilmentThreshold"],
-      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/maintainer-guide.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
+      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/mechanics/ailments.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
     },
     {
       "build": "4651a9629c46",
       "stats": ["AilmentThreshold"],
-      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/maintainer-guide.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
+      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/mechanics/ailments.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
     },
     {
       "build": "2983379c06aa",
       "stats": ["AilmentThreshold"],
-      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/maintainer-guide.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
+      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/mechanics/ailments.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
     },
     {
       "build": "druid-oracle-ember-fusillade",
       "stats": ["AilmentThreshold"],
-      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/maintainer-guide.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
+      "reason": "The game Elemental Ailment Threshold keyword specifies half Life: CI's 1 Life gives 0.5. PoBR retains the fraction instead of PoB2's percentage-contribution ceiling to 1; the game's rounding boundary has not been measured (docs/mechanics/ailments.md, player AilmentThreshold; https://poe2db.tw/us/Keywords)."
     },
     {
       "build": "dd7f512456b6",
       "stats": ["TotalHitAvg"],
-      "reason": "TotalHitAvg intentionally retains the game's Pre-mitigation Damage view; PoB2 AverageHit includes enemy mitigation. Comet's cold/lightning effective multipliers are 0.5, explaining the approximately 2x ratio. This display pair is already excluded from reference agreement (docs/maintainer-guide.md, sidebar damage views; https://poe2db.tw/us/Keywords)."
+      "reason": "TotalHitAvg intentionally retains the game's Pre-mitigation Damage view; PoB2 AverageHit includes enemy mitigation. Comet's cold/lightning effective multipliers are 0.5, explaining the approximately 2x ratio. This display pair is already excluded from reference agreement (docs/calc-outputs.md, sidebar damage views; https://poe2db.tw/us/Keywords)."
     },
     {
       "build": "9a0fb35e890a",
       "stats": ["TotalHitAvg"],
-      "reason": "TotalHitAvg intentionally retains the game's Pre-mitigation Damage view; PoB2 AverageHit includes enemy mitigation. Living Bomb's fire/cold effective multipliers are 0.5, explaining the approximately 2x ratio. This display pair is already excluded from reference agreement (docs/maintainer-guide.md, sidebar damage views; https://poe2db.tw/us/Keywords)."
+      "reason": "TotalHitAvg intentionally retains the game's Pre-mitigation Damage view; PoB2 AverageHit includes enemy mitigation. Living Bomb's fire/cold effective multipliers are 0.5, explaining the approximately 2x ratio. This display pair is already excluded from reference agreement (docs/calc-outputs.md, sidebar damage views; https://poe2db.tw/us/Keywords)."
     },
     {
       "build": "3e588bde3126",
       "stats": ["TotalHitAvg"],
-      "reason": "TotalHitAvg intentionally retains the game's Pre-mitigation Damage view; PoB2 AverageHit includes enemy mitigation. Seismic Cry's physical/cold effective multipliers are 0.25/0.5, explaining the approximately 3.3x ratio. This display pair is already excluded from reference agreement (docs/maintainer-guide.md, sidebar damage views; https://poe2db.tw/us/Keywords)."
+      "reason": "TotalHitAvg intentionally retains the game's Pre-mitigation Damage view; PoB2 AverageHit includes enemy mitigation. Seismic Cry's physical/cold effective multipliers are 0.25/0.5, explaining the approximately 3.3x ratio. This display pair is already excluded from reference agreement (docs/calc-outputs.md, sidebar damage views; https://poe2db.tw/us/Keywords)."
     },
     {
       "build": "warrior-smith-of-kitava-shield-wall-fb03d7dce08e",
       "stats": ["ChaosMaxHit", "TotalEHP", "ChaosTakenDotMult", "ChaosDotEHP"],
-      "reason": "The imported boots explicitly grant +11% Chaos Resistance from Soul Core of Tacati, plus +53% on the item: 64%, so 386 Chaos damage becomes 138.96 (and Chaos damage over time is taken at 0.36, not 0.34). The current socketable catalog and pinned PoB2 substitute +13%, giving 66% resistance and 131.24 taken. Preserve the imported item's text. Its 2162 Runic Ward, including The Brass Dome's local +991 Ward, gives ChaosMaxHit 8001 and TotalEHP 35908.717951478; the older exporter references are 2468 and 11096.445514375 (docs/maintainer-guide.md, runes and Runic Ward; the build's code.txt item 16 and item 18; base/stats.json local_ward and overlay/runes.json Soul Core of Tacati)."
+      "reason": "The imported boots explicitly grant +11% Chaos Resistance from Soul Core of Tacati, plus +53% on the item: 64%, so 386 Chaos damage becomes 138.96 (and Chaos damage over time is taken at 0.36, not 0.34). The current socketable catalog and pinned PoB2 substitute +13%, giving 66% resistance and 131.24 taken. Preserve the imported item's text. Its 2162 Runic Ward, including The Brass Dome's local +991 Ward, gives ChaosMaxHit 8001 and TotalEHP 35908.717951478; the older exporter references are 2468 and 11096.445514375 (docs/pob2-differences.md, runes and Runic Ward; the build's code.txt item 16 and item 18; base/stats.json local_ward and overlay/runes.json Soul Core of Tacati)."
     },
     {
       "build": "mercenary-gemling-legionnaire-twister-682f26ed1957",
       "stats": ["LifeRegenRecovery"],
-      "reason": "Virtuous Barrier counts skills requiring the Attribute, including the sceptre's Purity of Fire (Strength/Intelligence), once: 3 base + Purity + Herald of Ice + Ghost Dance + Trinity = 7 Intelligence Motes. The game stat gem_barrier_blue_grants_life_regeneration_rate_+% is 5, plus 2 from 19 quality, so the buff grants 49% increased regeneration. Pinned PoB2 excludes the item-granted Purity and grants 42%. PoBR recovery is 110.3391, reference 103.34, pinned PoB2 101.76 (docs/maintainer-guide.md, Virtuous Barrier; https://poe2db.tw/us/Virtuous_Barrier; base/skill_gems.json and base/granted_effect_stat_sets.json)."
+      "reason": "Virtuous Barrier counts skills requiring the Attribute, including the sceptre's Purity of Fire (Strength/Intelligence), once: 3 base + Purity + Herald of Ice + Ghost Dance + Trinity = 7 Intelligence Motes. The game stat gem_barrier_blue_grants_life_regeneration_rate_+% is 5, plus 2 from 19 quality, so the buff grants 49% increased regeneration. Pinned PoB2 excludes the item-granted Purity and grants 42%. PoBR recovery is 110.3391, reference 103.34, pinned PoB2 101.76 (docs/mechanics/items.md, Virtuous Barrier; https://poe2db.tw/us/Virtuous_Barrier; base/skill_gems.json and base/granted_effect_stat_sets.json)."
     },
     {
       "build": "ranger-deadeye-twister-bed1edc6d8b2",
       "stats": [
         "ManaLeechGainRate"
       ],
-      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/maintainer-guide.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. The one-second strongest-instance estimate is 80.72 rather than the reference 166.17."
+      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/pob2-differences.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. The one-second strongest-instance estimate is 80.72 rather than the reference 166.17."
     },
     {
       "build": "ranger-pathfinder-ice-shot-728cbde29279",
       "stats": [
         "ManaLeechGainRate"
       ],
-      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/maintainer-guide.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. base_mana_leech_amount_+% increases the amount, not the maximum rate: 162.96 rather than 190.12."
+      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/pob2-differences.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. base_mana_leech_amount_+% increases the amount, not the maximum rate: 162.96 rather than 190.12."
     },
     {
       "build": "witch-blood-mage-arc-5bc8be0fa967",
       "stats": [
         "LifeLeechGainRate"
       ],
-      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/maintainer-guide.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. base_life_leech_amount_+% increases the amount, not the maximum rate: 513.68 rather than 575.23."
+      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/pob2-differences.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. base_life_leech_amount_+% increases the amount, not the maximum rate: 513.68 rather than 575.23."
     },
     {
       "build": "warrior-warbringer-shield-wall-1e4e329e5e5c",
       "stats": [
         "LifeLeechGainRate"
       ],
-      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/maintainer-guide.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. Previously agreeing row: 582.978 versus reference 552.40416 after removing the per-instance amount cap."
+      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/pob2-differences.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. Previously agreeing row: 582.978 versus reference 552.40416 after removing the per-instance amount cap."
     },
     {
       "build": "witch-blood-mage-comet-bc750d615159",
       "stats": [
         "LifeLeechGainRate"
       ],
-      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/maintainer-guide.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. Previously agreeing row: 641.43144 versus reference 207.01273758865 after removing the per-instance amount cap."
+      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/pob2-differences.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. Previously agreeing row: 641.43144 versus reference 207.01273758865 after removing the per-instance amount cap."
     },
     {
       "build": "mercenary-gemling-legionnaire-frostbolt-42f790c0f9ba",
       "stats": [
         "LifeLeechGainRate"
       ],
-      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/maintainer-guide.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. Previously agreeing row: 0.2 versus reference 0.0635 after removing the per-instance amount cap."
+      "reason": "0.5 leech uses the strongest active instance, with one-second base recovery and no 10%-of-pool amount cap; amount and speed are separate (docs/pob2-differences.md, Leech; https://www.pathofexile.com/forum/view-thread/3932540; https://poe2db.tw/us/Keywords). The oracle stacks instances and retains the old pool-based instance cap. Default rate ceilings remain the documented compatibility convention. Previously agreeing row: 0.2 versus reference 0.0635 after removing the per-instance amount cap."
     },
     {
       "build": "huntress-spirit-walker-companion-zekoa-the-headcrusher-e071351f645d",
       "stats": ["ColdResistOverCap"],
-      "reason": "Fox Idol's Bonded +12% Cold Resistance is enabled by the body armour; 14 over cap agrees with pinned PoB2, while the reference of 2 omits it (docs/maintainer-guide.md, Idol counts)"
+      "reason": "Fox Idol's Bonded +12% Cold Resistance is enabled by the body armour; 14 over cap agrees with pinned PoB2, while the reference of 2 omits it (docs/mechanics/items.md, Idol counts)"
     },
     {
       "build": "ranger-deadeye-ice-shot-b6ce7b3a4329",
@@ -339,282 +339,282 @@
     {
       "build": "druid-oracle-lightning-bolt",
       "stats": ["TotalDPS", "CombinedDPS", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
-      "reason": "configured Withered stacks without a source of Withered (docs/maintainer-guide.md, Withered)"
+      "reason": "configured Withered stacks without a source of Withered (docs/pob2-differences.md, Withered)"
     },
     {
       "build": "huntress-amazon-rain-of-arrows",
       "stats": ["EvadeChance", "MeleeEvadeChance", "ProjectileEvadeChance", "SpellEvadeChance", "SpellProjectileEvadeChance", "TotalEHP"],
-      "reason": "one Blind, the strongest of the character's skills; the chance not to be hit enters the EHP (docs/maintainer-guide.md, Blind)"
+      "reason": "one Blind, the strongest of the character's skills; the chance not to be hit enters the EHP (docs/pob2-differences.md, Blind)"
     },
     {
       "build": "mercenary-witchhunter-crossbow-shot",
       "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS", "AverageDamage", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS", "IgniteEffMult"],
-      "reason": "Pounce's Predator's Mark counts the minions already in Presence, not the wolves Pounce summons (docs/maintainer-guide.md, Pounce)"
+      "reason": "Pounce's Predator's Mark counts the minions already in Presence, not the wolves Pounce summons (docs/pob2-differences.md, Pounce)"
     },
     {
       "build": "mercenary-tactician-oil-barrage-02b94461578f",
       "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "IgniteDPS", "AverageDamage", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS", "IgniteEffMult"],
-      "reason": "the talisman's Soul Core of Topotante penetrates 15% as the item says, not PoB2's rune table's 25%, and Pounce's Predator's Mark counts the minions already in Presence (docs/maintainer-guide.md, runes and Pounce)"
+      "reason": "the talisman's Soul Core of Topotante penetrates 15% as the item says, not PoB2's rune table's 25%, and Pounce's Predator's Mark counts the minions already in Presence (docs/pob2-differences.md, runes and Pounce)"
     },
     {
       "build": "grim-pillars-f74c11ce4b4d",
       "stats": ["TotalDotDPS", "IgniteDPS", "IgniteDamage", "IgniteStackPotentialPercent"],
-      "reason": "a skill in a Spell Totem ignites with the totem's hits; PoB2 counts no totems for it (docs/maintainer-guide.md, totems)"
+      "reason": "a skill in a Spell Totem ignites with the totem's hits; PoB2 counts no totems for it (docs/pob2-differences.md, totems)"
     },
     {
       "build": "grim-pillars-5dda2982b793",
       "stats": ["TotalDotDPS", "IgniteDPS", "IgniteDamage", "IgniteStackPotentialPercent"],
-      "reason": "a skill in a Spell Totem ignites with the totem's hits; PoB2 counts no totems for it (docs/maintainer-guide.md, totems)"
+      "reason": "a skill in a Spell Totem ignites with the totem's hits; PoB2 counts no totems for it (docs/pob2-differences.md, totems)"
     },
     {
       "build": "mercenary-gemling-legionnaire-twister-a479eff2b320",
       "stats": ["TotalDotDPS", "IgniteDPS", "IgniteEffMult"],
-      "reason": "enemies in Presence resist each element with their lowest Elemental Resistance, ailments included (docs/maintainer-guide.md, Presence)"
+      "reason": "enemies in Presence resist each element with their lowest Elemental Resistance, ailments included (docs/pob2-differences.md, Presence)"
     },
     {
       "build": "witch-infernalist-comet-d7afa87a05ea",
       "stats": ["Life", "LifeUnreserved", "LifeRecoverable", "LifeHitPool", "PhysicalManaEffectiveLife", "FireManaEffectiveLife", "ColdManaEffectiveLife", "LightningManaEffectiveLife", "ChaosManaEffectiveLife", "PhysicalMoMHitPool", "FireMoMHitPool", "ColdMoMHitPool", "LightningMoMHitPool", "ChaosMoMHitPool"],
-      "reason": "the weapon's runes read as the item says, one \"45% less maximum Life\", not PoB2's two runes of 15% and 30% less (docs/maintainer-guide.md, runes)"
+      "reason": "the weapon's runes read as the item says, one \"45% less maximum Life\", not PoB2's two runes of 15% and 30% less (docs/pob2-differences.md, runes)"
     },
     {
       "build": "huntress-ritualist-purity-of-fire",
       "stats": ["CritMultiplier"],
-      "reason": "an aura is not a spell: increased Critical Spell Damage Bonus does not apply to Purity of Fire (docs/maintainer-guide.md, Purity of Fire)"
+      "reason": "an aura is not a spell: increased Critical Spell Damage Bonus does not apply to Purity of Fire (docs/pob2-differences.md, Purity of Fire)"
     },
     {
       "build": "huntress-ritualist-purity-of-fire",
       "stats": ["TotalEHP", "ChaosEnemyDamage", "ChaosTakenDamage", "totalEnemyDamage", "totalTakenDamage"],
-      "reason": "enemies in Presence gain Chaos damage from all of their damage (Evergrasping Ring), PoB2 only from their physical damage (docs/maintainer-guide.md, Evergrasping)"
+      "reason": "enemies in Presence gain Chaos damage from all of their damage (Evergrasping Ring), PoB2 only from their physical damage (docs/pob2-differences.md, Evergrasping)"
     },
     {
       "build": "sorceress-stormweaver-frost-bomb",
       "stats": ["TotalEHP", "ChaosEnemyDamage", "ChaosTakenDamage", "totalEnemyDamage", "totalTakenDamage"],
-      "reason": "enemies in Presence gain Chaos damage from all of their damage (Evergrasping Ring), PoB2 only from their physical damage (docs/maintainer-guide.md, Evergrasping)"
+      "reason": "enemies in Presence gain Chaos damage from all of their damage (Evergrasping Ring), PoB2 only from their physical damage (docs/pob2-differences.md, Evergrasping)"
     },
     {
       "build": "druid-oracle-grim-pillars-0a7cf6c82619",
       "stats": ["SpiritUnreserved", "SpiritUnreservedPercent"],
-      "reason": "the Blink the body armour grants and the group supporting it are one skill reserving once, and the Trinity an Absent Amulet grants reserves no Spirit (docs/maintainer-guide.md, companions and granted skills)"
+      "reason": "the Blink the body armour grants and the group supporting it are one skill reserving once, and the Trinity an Absent Amulet grants reserves no Spirit (docs/pob2-differences.md, companions and granted skills)"
     },
     {
       "build": "monk-invoker-flicker-strike-e3b8bfa3a005",
       "stats": ["TotalDotDPS", "IgniteDPS"],
-      "reason": "the quarterstaff's rune line reads 30% increased Elemental Damage with Attacks as the item says, not PoB2's rune table's 40% (docs/maintainer-guide.md, runes)"
+      "reason": "the quarterstaff's rune line reads 30% increased Elemental Damage with Attacks as the item says, not PoB2's rune table's 40% (docs/pob2-differences.md, runes)"
     },
     {
       "build": "monk-acolyte-of-chayula-decompose",
       "stats": ["TotalDPS", "CombinedDPS", "TotalDotDPS", "PoisonDPS", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS", "PoisonEffMult"],
-      "reason": "the strongest Despair, Doedre's Undoing's, applies; PoB2 picks Blasphemy's (docs/maintainer-guide.md, curses)"
+      "reason": "the strongest Despair, Doedre's Undoing's, applies; PoB2 picks Blasphemy's (docs/pob2-differences.md, curses)"
     },
     {
       "build": "monk-acolyte-of-chayula-decompose",
       "stats": ["CritMultiplier"],
-      "reason": "the cloud poisons without hitting, so it cannot critically hit and has no critical damage bonus; PoB2 leaves the bonus with no chance to crit (docs/maintainer-guide.md, Decompose)"
+      "reason": "the cloud poisons without hitting, so it cannot critically hit and has no critical damage bonus; PoB2 leaves the bonus with no chance to crit (docs/mechanics/offence.md, Decompose)"
     },
     {
       "build": "warrior-titan-his-scattering-calamity-686e624e7ff5",
       "stats": ["SpiritUnreserved", "SpiritUnreservedPercent"],
-      "reason": "His Scattering Calamity uses weapon set 1, while the persistent skills are bound to the held set 2 and have no display_skill_reserves_in_all_weapon_sets stat: they reserve nothing in set 1, as in the pinned PoB2. The Absent Amulet's Cast on Critical also reserves nothing (docs/maintainer-guide.md, weapon-set reservation and Absent Amulet)"
+      "reason": "His Scattering Calamity uses weapon set 1, while the persistent skills are bound to the held set 2 and have no display_skill_reserves_in_all_weapon_sets stat: they reserve nothing in set 1, as in the pinned PoB2. The Absent Amulet's Cast on Critical also reserves nothing (docs/build-model.md, weapon-set reservation; docs/pob2-differences.md, Absent Amulet)"
     },
     {
       "build": "mercenary-gemling-legionnaire-frostbolt-42f790c0f9ba",
       "stats": ["SpiritUnreserved", "SpiritUnreservedPercent"],
-      "reason": "the Blink the body armour grants and the group supporting it are one skill reserving once, and the Cast on Critical an Absent Amulet grants reserves no Spirit (docs/maintainer-guide.md, companions and granted skills)"
+      "reason": "the Blink the body armour grants and the group supporting it are one skill reserving once, and the Cast on Critical an Absent Amulet grants reserves no Spirit (docs/pob2-differences.md, companions and granted skills)"
     },
     {
       "build": "druid-shaman-spark-5dcf9ecdd375",
       "stats": ["SpiritUnreserved", "SpiritUnreservedPercent"],
-      "reason": "the Absent Amulet's Cast on Critical reserves nothing (the pinned PoB2 adds 85 Spirit); Svalinn's Cast on Block and its supports reserve nothing in the inactive shield weapon set (docs/maintainer-guide.md, weapon-set reservation and Absent Amulet). The code's older reference also differs from the pinned PoB2"
+      "reason": "the Absent Amulet's Cast on Critical reserves nothing (the pinned PoB2 adds 85 Spirit); Svalinn's Cast on Block and its supports reserve nothing in the inactive shield weapon set (docs/build-model.md, weapon-set reservation; docs/pob2-differences.md, Absent Amulet). The code's older reference also differs from the pinned PoB2"
     },
     {
       "build": "witch-abyssal-lich-bonestorm-be0d16c86268",
       "stats": ["TotalDPS", "CombinedDPS", "ActionRate", "TotalDotDPS", "IgniteDPS", "HitSpeed", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
-      "reason": "Bonestorm fires every spike a channel conjures, not one hit per minimum channel time (docs/maintainer-guide.md, Bonestorm)"
+      "reason": "Bonestorm fires every spike a channel conjures, not one hit per minimum channel time (docs/pob2-differences.md, Bonestorm)"
     },
     {
       "build": "witch-blood-mage-impending-doom-c0dcbc68022c",
       "stats": ["TotalDPS", "CombinedDPS", "ActionRate", "HitSpeed", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
-      "reason": "Doedre's Undoing spawns a Witchtoad every 0.25 seconds whatever the cast speed (docs/maintainer-guide.md, Doedre's Undoing)"
+      "reason": "Doedre's Undoing spawns a Witchtoad every 0.25 seconds whatever the cast speed (docs/pob2-differences.md, Doedre's Undoing)"
     },
     {
       "build": "witch-blood-mage-impending-doom-c0dcbc68022c",
       "stats": ["LifePerSecondCost"],
-      "reason": "Archmage adds a cost to Dark Consequences itself: Atalui converts it to Life and Efficiency II reduces it to 199, paid for each of 8 explosions/s (1592). PoB2 multiplies by the spell cast speed of 2.14/s (425.86), not its explosion rate (docs/maintainer-guide.md, Doedre's Undoing)"
+      "reason": "Archmage adds a cost to Dark Consequences itself: Atalui converts it to Life and Efficiency II reduces it to 199, paid for each of 8 explosions/s (1592). PoB2 multiplies by the spell cast speed of 2.14/s (425.86), not its explosion rate (docs/pob2-differences.md, Doedre's Undoing)"
     },
     {
       "build": "witch-blood-mage-impending-doom-add19135df93",
       "stats": ["LifePerSecondCost"],
-      "reason": "Doedre's Undoing spawns one Witchtoad every 0.25 seconds in each of two Cursed Ground areas, so Dark Consequences pays Archmage's added cost at 8 explosions/s. Atalui, Efficiency II and cost efficiency give 103.225806452 Life per explosion and 825.806451616 Life/s. The reference charges the same cost at 1.98 casts/s (204.387096774); pinned PoB2 likewise charges at cast speed (207.9), not explosion frequency (docs/maintainer-guide.md, Doedre's Undoing; crates/pobr-build/tests/skills/cost_rate.rs)"
+      "reason": "Doedre's Undoing spawns one Witchtoad every 0.25 seconds in each of two Cursed Ground areas, so Dark Consequences pays Archmage's added cost at 8 explosions/s. Atalui, Efficiency II and cost efficiency give 103.225806452 Life per explosion and 825.806451616 Life/s. The reference charges the same cost at 1.98 casts/s (204.387096774); pinned PoB2 likewise charges at cast speed (207.9), not explosion frequency (docs/pob2-differences.md, Doedre's Undoing; crates/pobr-build/tests/skills/cost_rate.rs)"
     },
     {
       "build": "witch-abyssal-lich-twister-4028d0b52984",
       "stats": ["TotalDPS", "CombinedDPS", "CritMultiplier", "TotalDotDPS", "IgniteDPS", "AverageDamage", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
-      "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/maintainer-guide.md, Crystalline Phylactery)"
+      "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/pob2-differences.md, Crystalline Phylactery)"
     },
     {
       "build": "witch-abyssal-lich-twister-9d1c51aef392",
       "stats": ["TotalDPS", "CombinedDPS", "CritMultiplier", "TotalDotDPS", "IgniteDPS", "AverageDamage", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS"],
-      "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/maintainer-guide.md, Crystalline Phylactery)"
+      "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/pob2-differences.md, Crystalline Phylactery)"
     },
     {
       "build": "witch-lich-spark-ce24558eff0b",
       "stats": ["TotalDPS", "CombinedDPS", "CritMultiplier", "TotalDotDPS", "IgniteDPS", "ColdResist", "ColdMaxHit", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS", "Dex", "ColdResistOverCap"],
-      "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/maintainer-guide.md, Crystalline Phylactery)"
+      "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/pob2-differences.md, Crystalline Phylactery)"
     },
     {
       "build": "witch-lich-spark-0a17a1a7df6d",
       "stats": ["TotalDPS", "CombinedDPS", "CritChance", "TotalDotDPS", "IgniteDPS", "ChaosMaxHit", "AverageBurstDamage", "WithIgniteDPS", "WithBleedDPS", "WithPoisonDPS", "PreEffectiveCritChance"],
-      "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/maintainer-guide.md, Crystalline Phylactery)"
+      "reason": "the Lich's Crystalline Phylactery doubles its jewel, \"100% increased Effect of bonuses gained from Socketed Jewel\", which the reference leaves out (docs/pob2-differences.md, Crystalline Phylactery)"
     },
     {
       "build": "monk-acolyte-of-chayula-decompose-7505238a9c8d",
       "stats": ["ReqStr"],
-      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, Eternal Rage)"
+      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/pob2-differences.md, Eternal Rage)"
     },
     {
       "build": "monk-martial-artist-ice-shot-71a879f43f2f",
       "stats": ["ReqStr"],
-      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, Eternal Rage)"
+      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/pob2-differences.md, Eternal Rage)"
     },
     {
       "build": "ranger-pathfinder-ice-shot-34c6001553ac",
       "stats": ["ReqStr"],
-      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, Eternal Rage)"
+      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/pob2-differences.md, Eternal Rage)"
     },
     {
       "build": "ranger-pathfinder-mana-remnants-c84caa555533",
       "stats": ["ReqStr"],
-      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, Eternal Rage)"
+      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/pob2-differences.md, Eternal Rage)"
     },
     {
       "build": "ranger-pathfinder-ice-shot-728cbde29279",
       "stats": ["ReqStr"],
-      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, Eternal Rage)"
+      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/pob2-differences.md, Eternal Rage)"
     },
     {
       "build": "witch-abyssal-lich-twister-9d1c51aef392",
       "stats": ["ReqStr"],
-      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, Eternal Rage)"
+      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/pob2-differences.md, Eternal Rage)"
     },
     {
       "build": "huntress-amazon-ice-shot-182e794cb5d9",
       "stats": ["ReqStr"],
-      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, Eternal Rage)"
+      "reason": "an item's granted skill (\"Grants Skill: Level N Eternal Rage\") and the group recognised as that skill add no gem attribute requirement; PoB2 counts it as a gem (docs/pob2-differences.md, Eternal Rage)"
     },
     {
       "build": "grim-pillars-5dda2982b793",
       "stats": ["TotalTotemPlacementTime"],
-      "reason": "Spell Totem is placed in its own 500 ms cast_time, not PoB2's 600 ms; per-second costs follow the placement rate (docs/maintainer-guide.md, Spell Totem)"
+      "reason": "Spell Totem is placed in its own 500 ms cast_time, not PoB2's 600 ms; per-second costs follow the placement rate (docs/pob2-differences.md, Spell Totem)"
     },
     {
       "build": "grim-pillars-f74c11ce4b4d",
       "stats": ["TotalTotemPlacementTime", "ManaPerSecondCost"],
-      "reason": "Spell Totem is placed in its own 500 ms cast_time, not PoB2's 600 ms; per-second costs follow the placement rate (docs/maintainer-guide.md, Spell Totem)"
+      "reason": "Spell Totem is placed in its own 500 ms cast_time, not PoB2's 600 ms; per-second costs follow the placement rate (docs/pob2-differences.md, Spell Totem)"
     },
     {
       "build": "grim-pillars-0a7cf6c82619",
       "stats": ["TotalTotemPlacementTime"],
-      "reason": "Spell Totem is placed in its own 500 ms cast_time, not PoB2's 600 ms; per-second costs follow the placement rate (docs/maintainer-guide.md, Spell Totem)"
+      "reason": "Spell Totem is placed in its own 500 ms cast_time, not PoB2's 600 ms; per-second costs follow the placement rate (docs/pob2-differences.md, Spell Totem)"
     },
     {
       "build": "grim-pillars-19a4efbb971d",
       "stats": ["TotalTotemPlacementTime", "ManaPerSecondCost", "LifePerSecondCost"],
-      "reason": "Spell Totem is placed in its own 500 ms cast_time, not PoB2's 600 ms; per-second costs follow the placement rate (docs/maintainer-guide.md, Spell Totem)"
+      "reason": "Spell Totem is placed in its own 500 ms cast_time, not PoB2's 600 ms; per-second costs follow the placement rate (docs/pob2-differences.md, Spell Totem)"
     },
     {
       "build": "ritualist-purity-of-fire-d557864ceebc",
       "stats": ["LifeRegenRecovery", "ManaRegenRecovery"],
-      "reason": "Wolf Pack creates skill_wolf_pack_size wolves and Licking Wounds counts each one in Presence (docs/maintainer-guide.md, Wolf Pack)"
+      "reason": "Wolf Pack creates skill_wolf_pack_size wolves and Licking Wounds counts each one in Presence (docs/pob2-differences.md, Wolf Pack)"
     },
     {
       "build": "spirit-walker-companion-zekoa-the-headcrusher",
       "stats": ["ActiveMinionLimit"],
-      "reason": "the main skill's created minion limit; a companion without a limit stat is 1, PoB2 outputs 0 (docs/maintainer-guide.md, Wolf Pack)"
+      "reason": "the main skill's created minion limit; a companion without a limit stat is 1, PoB2 outputs 0 (docs/pob2-differences.md, Wolf Pack)"
     },
     {
       "build": "mercenary-gemling-legionnaire-twister-a479eff2b320",
       "stats": ["RageRegenRecovery"],
-      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/maintainer-guide.md, granted skills)"
+      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/pob2-differences.md, granted skills)"
     },
     {
       "build": "monk-acolyte-of-chayula-decompose-7505238a9c8d",
       "stats": ["RageRegenRecovery"],
-      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/maintainer-guide.md, granted skills)"
+      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/pob2-differences.md, granted skills)"
     },
     {
       "build": "ranger-pathfinder-ice-shot-728cbde29279",
       "stats": ["RageRegenRecovery"],
-      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/maintainer-guide.md, granted skills)"
+      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/pob2-differences.md, granted skills)"
     },
     {
       "build": "witch-abyssal-lich-twister-9d1c51aef392",
       "stats": ["RageRegenRecovery"],
-      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/maintainer-guide.md, granted skills)"
+      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/pob2-differences.md, granted skills)"
     },
     {
       "build": "ranger-pathfinder-mana-remnants-c84caa555533",
       "stats": ["RageRegenRecovery"],
-      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/maintainer-guide.md, granted skills)"
+      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/pob2-differences.md, granted skills)"
     },
     {
       "build": "monk-martial-artist-ice-shot-71a879f43f2f",
       "stats": ["RageRegenRecovery"],
-      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/maintainer-guide.md, granted skills)"
+      "reason": "PoBR scales the Eternal Rage an Absent Amulet grants (\"Grants Skill: Level N Eternal Rage\") down to the level the character's attributes reach; PoB2 also keeps the plain gem group at the undowngraded level, and Rage regeneration follows the level (ceaseless_rage_base_rage_regeneration_per_minute, 300 at level 20) (docs/pob2-differences.md, granted skills)"
     },
     {
       "build": "druid-oracle-grim-pillars-0a7cf6c82619",
       "stats": ["ReqStr", "ReqDex", "ReqInt"],
-      "reason": "the item's granted Purity of Ice 18 (42 Strength), Trinity 18 (75 Dexterity) and Blink 20 (157 Intelligence) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+      "reason": "the item's granted Purity of Ice 18 (42 Strength), Trinity 18 (75 Dexterity) and Blink 20 (157 Intelligence) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/pob2-differences.md, granted skill requirements)"
     },
     {
       "build": "monk-invoker-flicker-strike-e3b8bfa3a005",
       "stats": ["ReqInt"],
-      "reason": "the item's granted Cast on Critical 19 (147 Intelligence) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+      "reason": "the item's granted Cast on Critical 19 (147 Intelligence) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/pob2-differences.md, granted skill requirements)"
     },
     {
       "build": "warrior-warbringer-shield-wall-1e4e329e5e5c",
       "stats": ["ReqInt"],
-      "reason": "the item's granted Time of Need 20 (48 Intelligence) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+      "reason": "the item's granted Time of Need 20 (48 Intelligence) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/pob2-differences.md, granted skill requirements)"
     },
     {
       "build": "sorceress-chronomancer-reap-3875ffe5d15e",
       "stats": ["ReqDex"],
-      "reason": "the item's granted Trinity 20 (86 Dexterity) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+      "reason": "the item's granted Trinity 20 (86 Dexterity) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/pob2-differences.md, granted skill requirements)"
     },
     {
       "build": "sorceress-disciple-of-varashta-navira-the-last-mirage-538d2b675299",
       "stats": ["ReqStr"],
-      "reason": "the item's granted Wolf Pack 18 (75 Strength) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+      "reason": "the item's granted Wolf Pack 18 (75 Strength) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/pob2-differences.md, granted skill requirements)"
     },
     {
       "build": "sorceress-disciple-of-varashta-navira-the-last-mirage-36b7d6c385c7",
       "stats": ["ReqStr"],
-      "reason": "the item's granted Wolf Pack 17 (70 Strength) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+      "reason": "the item's granted Wolf Pack 17 (70 Strength) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/pob2-differences.md, granted skill requirements)"
     },
     {
       "build": "monk-invoker-grim-pillars-5dda2982b793",
       "stats": ["ReqDex"],
-      "reason": "the item's granted Trinity 20 (86 Dexterity) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+      "reason": "the item's granted Trinity 20 (86 Dexterity) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/pob2-differences.md, granted skill requirements)"
     },
     {
       "build": "mercenary-gemling-legionnaire-twister-a479eff2b320",
       "stats": ["ReqStr"],
-      "reason": "the item's granted Eternal Rage 20 (157 Strength before global gem modifiers) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+      "reason": "the item's granted Eternal Rage 20 (157 Strength before global gem modifiers) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/pob2-differences.md, granted skill requirements)"
     },
     {
       "build": "witch-blood-mage-impending-doom-add19135df93",
       "stats": ["ReqStr"],
-      "reason": "the item's granted Wolf Pack 20 (86 Strength) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/maintainer-guide.md, granted skill requirements)"
+      "reason": "the item's granted Wolf Pack 20 (86 Strength) and its recognised ordinary group add no gem attribute requirement; PoB2 counts it as a gem (docs/pob2-differences.md, granted skill requirements)"
     },
     {
       "build": "huntress-spirit-walker-companion-zekoa-the-headcrusher-e071351f645d",
       "stats": ["ReqStr", "ReqInt"],
-      "reason": "The Vertex's Equipment has no Attribute Requirements (game stat global_equipment_no_attribute_requirements) removes equipment requirements, including weapons; PoB2 leaves this line out (docs/maintainer-guide.md, The Vertex)"
+      "reason": "The Vertex's Equipment has no Attribute Requirements (game stat global_equipment_no_attribute_requirements) removes equipment requirements, including weapons; PoB2 leaves this line out (docs/pob2-differences.md, The Vertex)"
     },
     {
       "build": "witch-blood-mage-impending-doom-add19135df93",
       "stats": ["ReqDex"],
-      "reason": "The Vertex's Equipment has no Attribute Requirements (game stat global_equipment_no_attribute_requirements) removes equipment requirements, including weapons; PoB2 leaves this line out (docs/maintainer-guide.md, The Vertex)"
+      "reason": "The Vertex's Equipment has no Attribute Requirements (game stat global_equipment_no_attribute_requirements) removes equipment requirements, including weapons; PoB2 leaves this line out (docs/pob2-differences.md, The Vertex)"
     },
     {
       "build": "BloodhoundsMarkPlayer/BloodhoundsMarkExplosionPlayer@2",
@@ -623,7 +623,7 @@
         "CombinedDPS",
         "CritChance"
       ],
-      "reason": "ActiveSkills.Description defines Physical Attack damage independent of weapons; game types Attack/NonWeaponAttack and no global_always_hit require accuracy. Level 20 base damage is 196–294 × 4.08, crit 5%; pinned PoB2 skips the accuracy and critical confirmation checks (docs/maintainer-guide.md, event-triggered hits). The existing 1/s presentation is not a model of blood loss, heavy stun or death events."
+      "reason": "ActiveSkills.Description defines Physical Attack damage independent of weapons; game types Attack/NonWeaponAttack and no global_always_hit require accuracy. Level 20 base damage is 196–294 × 4.08, crit 5%; pinned PoB2 skips the accuracy and critical confirmation checks (docs/pob2-differences.md, event-triggered hits). The existing 1/s presentation is not a model of blood loss, heavy stun or death events."
     },
     {
       "build": "CurseOfRepulsionPlayer/CurseOfRepulsionShockwavePlayer@2",
@@ -631,28 +631,28 @@
         "CombinedDPS",
         "CritChance"
       ],
-      "reason": "The hit is already calculated (level 20: 128–192 physical × 2.04); ActiveSkills.Description requires hitting a cursed enemy. Event rate is unmodelled: PoBR reports average_damage and zero DPS; PoB2 puts average hit into CombinedDPS and skips the attack accuracy check (docs/maintainer-guide.md, event-triggered hits)."
+      "reason": "The hit is already calculated (level 20: 128–192 physical × 2.04); ActiveSkills.Description requires hitting a cursed enemy. Event rate is unmodelled: PoBR reports average_damage and zero DPS; PoB2 puts average hit into CombinedDPS and skips the attack accuracy check (docs/pob2-differences.md, event-triggered hits)."
     },
     {
       "build": "FortifyingCryPlayer/FortifyingCryShockwavePlayer@2",
       "stats": [
         "CombinedDPS"
       ],
-      "reason": "The hit is already calculated (level 20: 85–128 plus 5–7 per complete 15 shield Armour, all × 2.04); ActiveSkills.Description triggers it when subsequent shield attacks deal damage. Event rate is unmodelled: PoBR reports average_damage and zero DPS; PoB2 puts average damage into CombinedDPS (docs/maintainer-guide.md, event-triggered hits)."
+      "reason": "The hit is already calculated (level 20: 85–128 plus 5–7 per complete 15 shield Armour, all × 2.04); ActiveSkills.Description triggers it when subsequent shield attacks deal damage. Event rate is unmodelled: PoBR reports average_damage and zero DPS; PoB2 puts average damage into CombinedDPS (docs/pob2-differences.md, event-triggered hits)."
     },
     {
       "build": "TemperWeaponPlayer/TemperWeaponCombustionPlayer@2",
       "stats": [
         "CombinedDPS"
       ],
-      "reason": "ActiveSkills.Description requires an empowered weapon attack to hit; the 100% imbue_weapon_combust_trigger_chance_% does not supply empowered attack frequency. PoBR keeps average_damage and zero DPS with an unmodelled event rate; PoB2 puts average damage into CombinedDPS (docs/maintainer-guide.md, event-triggered hits)."
+      "reason": "ActiveSkills.Description requires an empowered weapon attack to hit; the 100% imbue_weapon_combust_trigger_chance_% does not supply empowered attack frequency. PoBR keeps average_damage and zero DPS with an unmodelled event rate; PoB2 puts average damage into CombinedDPS (docs/pob2-differences.md, event-triggered hits)."
     },
     {
       "build": "TrailOfCaltropsPlayer/TriggeredTrailOfCaltropsPlayer@2",
       "stats": [
         "CombinedDPS"
       ],
-      "reason": "ActiveSkills.Description lays caltrops during dodges and deals damage when an enemy triggers them. The game provides 3 placements at 5%/20% dodge timing, not dodge/enemy-trigger frequency. PoBR keeps average_damage and zero DPS with an unmodelled event rate; PoB2 puts average damage into CombinedDPS (docs/maintainer-guide.md, event-triggered hits)."
+      "reason": "ActiveSkills.Description lays caltrops during dodges and deals damage when an enemy triggers them. The game provides 3 placements at 5%/20% dodge timing, not dodge/enemy-trigger frequency. PoBR keeps average_damage and zero DPS with an unmodelled event rate; PoB2 puts average damage into CombinedDPS (docs/pob2-differences.md, event-triggered hits)."
     },
     {
       "build": "witch-infernalist-convalescence-6e6130dfbff5",
@@ -661,14 +661,14 @@
         "FrenzyChargesDuration",
         "EnduranceChargesDuration"
       ],
-      "reason": "The game Charges keyword gives a 15-second base without specifying whole-second rounding. PoBR retains fractional seconds: 3% reduced charge duration gives 14.55s; PoB2 floors each duration to 14s. The in-game tick rounding boundary has not been measured (docs/maintainer-guide.md, charge durations; https://poe2db.tw/us/Charges)."
+      "reason": "The game Charges keyword gives a 15-second base without specifying whole-second rounding. PoBR retains fractional seconds: 3% reduced charge duration gives 14.55s; PoB2 floors each duration to 14s. The in-game tick rounding boundary has not been measured (docs/mechanics/defence.md, charge durations; https://poe2db.tw/us/Charges)."
     },
     {
       "build": "druid-shaman-spark-5dcf9ecdd375",
       "stats": [
         "HeavyStunBuildupAvg"
       ],
-      "reason": "Official 0.5.5.4.2 MonsterVarieties.PoiseThreshold for Xesht (row 1946) is 1700 (17x); pinned PoB2 uses 838% MORE (9.38x). PoBR follows the game, yielding 3.627930% vs 6.578395% on the worked Spark build; oracle/engine is 17/9.38 within 0.05% from hit/rounding differences. Source rows/export SHA are in data/overlay-common/boss_poise_thresholds.json; see docs/maintainer-guide.md, known intentional differences."
+      "reason": "Official 0.5.5.4.2 MonsterVarieties.PoiseThreshold for Xesht (row 1946) is 1700 (17x); pinned PoB2 uses 838% MORE (9.38x). PoBR follows the game, yielding 3.627930% vs 6.578395% on the worked Spark build; oracle/engine is 17/9.38 within 0.05% from hit/rounding differences. Source rows/export SHA are in data/overlay-common/boss_poise_thresholds.json; see docs/pob2-differences.md, known intentional differences."
     },
     {
       "build": "sorceress-chronomancer-mana-remnants-859e60e18169",
@@ -678,7 +678,7 @@
         "totalEnemyDamage",
         "totalTakenDamage"
       ],
-      "reason": "enemies in Presence gain Chaos damage from all of their damage (Evergrasping Ring), PoB2 only from their physical damage (docs/maintainer-guide.md, Evergrasping)"
+      "reason": "enemies in Presence gain Chaos damage from all of their damage (Evergrasping Ring), PoB2 only from their physical damage (docs/pob2-differences.md, Evergrasping)"
     },
     {
       "build": "sorceress-chronomancer-essence-drain",
@@ -688,17 +688,17 @@
         "totalEnemyDamage",
         "totalTakenDamage"
       ],
-      "reason": "enemies in Presence gain Chaos damage from all of their damage (Evergrasping Ring), PoB2 only from their physical damage (docs/maintainer-guide.md, Evergrasping)"
+      "reason": "enemies in Presence gain Chaos damage from all of their damage (Evergrasping Ring), PoB2 only from their physical damage (docs/pob2-differences.md, Evergrasping)"
     },
     {
       "build": "acolyte-of-chayula-decompose-7505238a9c8d",
       "stats": ["FreezeBuildupAvg"],
-      "reason": "Decompose's poison cloud deals no hit, and Chaotic Freeze (support_chaotic_freeze_dots_allow_enemies_to_be_frozen_by_chaos_damage) says \"Chaos damage Contributes to Freeze buildup for Hits against targets taking damage over time from Supported Skills\": PoBR builds no Freeze from the cloud (0), PoB2 builds it from the cloud's Chaos damage (docs/maintainer-guide.md, FreezeBuildupAvg)"
+      "reason": "Decompose's poison cloud deals no hit, and Chaotic Freeze (support_chaotic_freeze_dots_allow_enemies_to_be_frozen_by_chaos_damage) says \"Chaos damage Contributes to Freeze buildup for Hits against targets taking damage over time from Supported Skills\": PoBR builds no Freeze from the cloud (0), PoB2 builds it from the cloud's Chaos damage (docs/mechanics/ailments.md, FreezeBuildupAvg)"
     },
     {
       "build": "ranger-deadeye-ice-shot-b6ce7b3a4329",
       "stats": ["FreezeBuildupAvg"],
-      "reason": "PoBR/PoB2 0.745 = the Xesht poise factor 9.38/17 (0.552) times Minion Pact II's 35% more damage taken as active with the Rhoa (1.35); per-damage buildup (35% increased, 25% more, Freezing Mark) agrees (docs/maintainer-guide.md, FreezeBuildupAvg and Minion Pact)"
+      "reason": "PoBR/PoB2 0.745 = the Xesht poise factor 9.38/17 (0.552) times Minion Pact II's 35% more damage taken as active with the Rhoa (1.35); per-damage buildup (35% increased, 25% more, Freezing Mark) agrees (docs/mechanics/ailments.md, FreezeBuildupAvg and Minion Pact)"
     },
     {
 
@@ -706,28 +706,28 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "ActiveTotemLimit starts from the Spell Totem gem's own level stat base_number_of_totems_allowed (game GrantedEffectsPerLevel: 2 at level 20, 3 from level 23) plus BASE ActiveTotemLimit lines such as Unnamed Heartwood's +1; PoB2's limit for the skill a Spell Totem uses leaves out the gem's level stat, so the reference shows 2 where PoBR's reference basis shows 3 (game mode doubles it with Ancestral Bond, an exporter-absent rule). Display only; damage still counts one totem (docs/maintainer-guide.md, calc::totem)."
+      "reason": "ActiveTotemLimit starts from the Spell Totem gem's own level stat base_number_of_totems_allowed (game GrantedEffectsPerLevel: 2 at level 20, 3 from level 23) plus BASE ActiveTotemLimit lines such as Unnamed Heartwood's +1; PoB2's limit for the skill a Spell Totem uses leaves out the gem's level stat, so the reference shows 2 where PoBR's reference basis shows 3 (game mode doubles it with Ancestral Bond, an exporter-absent rule). Display only; damage still counts one totem (docs/mechanics/minions.md, calc::totem)."
     },
     {
       "build": "druid-oracle-grim-pillars-f74c11ce4b4d",
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "ActiveTotemLimit starts from the Spell Totem gem's own level stat base_number_of_totems_allowed (game GrantedEffectsPerLevel: 2 at level 20, 3 from level 23) plus BASE ActiveTotemLimit lines such as Unnamed Heartwood's +1; PoB2's limit for the skill a Spell Totem uses leaves out the gem's level stat, so the reference shows 2 where PoBR's reference basis shows 3 (game mode doubles it with Ancestral Bond, an exporter-absent rule). Display only; damage still counts one totem (docs/maintainer-guide.md, calc::totem)."
+      "reason": "ActiveTotemLimit starts from the Spell Totem gem's own level stat base_number_of_totems_allowed (game GrantedEffectsPerLevel: 2 at level 20, 3 from level 23) plus BASE ActiveTotemLimit lines such as Unnamed Heartwood's +1; PoB2's limit for the skill a Spell Totem uses leaves out the gem's level stat, so the reference shows 2 where PoBR's reference basis shows 3 (game mode doubles it with Ancestral Bond, an exporter-absent rule). Display only; damage still counts one totem (docs/mechanics/minions.md, calc::totem)."
     },
     {
       "build": "monk-invoker-grim-pillars-19a4efbb971d",
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "ActiveTotemLimit starts from the Spell Totem gem's own level stat base_number_of_totems_allowed (game GrantedEffectsPerLevel: 2 at level 20, 3 from level 23) plus BASE ActiveTotemLimit lines such as Unnamed Heartwood's +1; PoB2's limit for the skill a Spell Totem uses leaves out the gem's level stat, so the reference shows 2 where PoBR's reference basis shows 3 (game mode doubles it with Ancestral Bond, an exporter-absent rule). Display only; damage still counts one totem (docs/maintainer-guide.md, calc::totem)."
+      "reason": "ActiveTotemLimit starts from the Spell Totem gem's own level stat base_number_of_totems_allowed (game GrantedEffectsPerLevel: 2 at level 20, 3 from level 23) plus BASE ActiveTotemLimit lines such as Unnamed Heartwood's +1; PoB2's limit for the skill a Spell Totem uses leaves out the gem's level stat, so the reference shows 2 where PoBR's reference basis shows 3 (game mode doubles it with Ancestral Bond, an exporter-absent rule). Display only; damage still counts one totem (docs/mechanics/minions.md, calc::totem)."
     },
     {
       "build": "monk-invoker-grim-pillars-5dda2982b793",
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "ActiveTotemLimit starts from the Spell Totem gem's own level stat base_number_of_totems_allowed (game GrantedEffectsPerLevel: 2 at level 20, 3 from level 23) plus BASE ActiveTotemLimit lines such as Unnamed Heartwood's +1; PoB2's limit for the skill a Spell Totem uses leaves out the gem's level stat, so the reference shows 2 where PoBR's reference basis shows 3 (game mode doubles it with Ancestral Bond, an exporter-absent rule). Display only; damage still counts one totem (docs/maintainer-guide.md, calc::totem)."
+      "reason": "ActiveTotemLimit starts from the Spell Totem gem's own level stat base_number_of_totems_allowed (game GrantedEffectsPerLevel: 2 at level 20, 3 from level 23) plus BASE ActiveTotemLimit lines such as Unnamed Heartwood's +1; PoB2's limit for the skill a Spell Totem uses leaves out the gem's level stat, so the reference shows 2 where PoBR's reference basis shows 3 (game mode doubles it with Ancestral Bond, an exporter-absent rule). Display only; damage still counts one totem (docs/mechanics/minions.md, calc::totem)."
 
     },
     {
@@ -736,7 +736,7 @@
       "stats": [
         "DeflectChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
     },
     {
       "build": "infernalist-01",
@@ -748,7 +748,7 @@
         "SpellEvadeChance",
         "SpellProjectileEvadeChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
     },
     {
       "build": "lich-08",
@@ -756,7 +756,7 @@
       "stats": [
         "DeflectChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 100%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 100%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
     },
     {
       "build": "martial-artist-01",
@@ -769,7 +769,7 @@
         "SpellEvadeChance",
         "SpellProjectileEvadeChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 220%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 220%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
     },
     {
       "build": "martial-artist-02",
@@ -777,7 +777,7 @@
       "stats": [
         "DeflectChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
     },
     {
       "build": "martial-artist-04",
@@ -790,7 +790,7 @@
         "SpellEvadeChance",
         "SpellProjectileEvadeChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 180%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 180%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
     },
     {
       "build": "martial-artist-05",
@@ -798,7 +798,7 @@
       "stats": [
         "DeflectChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
     },
     {
       "build": "martial-artist-08",
@@ -806,7 +806,7 @@
       "stats": [
         "DeflectChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 180%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 180%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
     },
     {
       "build": "pathfinder-07",
@@ -814,7 +814,7 @@
       "stats": [
         "DeflectChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 100%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 100%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
     },
     {
       "build": "stormweaver-02",
@@ -826,7 +826,7 @@
         "SpellEvadeChance",
         "SpellProjectileEvadeChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
     },
     {
       "build": "tactician-03",
@@ -839,7 +839,7 @@
         "SpellEvadeChance",
         "SpellProjectileEvadeChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 200%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 200%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
     },
     {
       "build": "tactician-05",
@@ -852,7 +852,7 @@
         "SpellEvadeChance",
         "SpellProjectileEvadeChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 180%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 180%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
     },
     {
       "build": "tactician-07",
@@ -860,7 +860,7 @@
       "stats": [
         "DeflectChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
     },
     {
       "build": "titan-04",
@@ -872,7 +872,7 @@
         "SpellEvadeChance",
         "SpellProjectileEvadeChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 140%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 140%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
     },
     {
       "build": "warbringer-09",
@@ -880,7 +880,7 @@
       "stats": [
         "DeflectChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/maintainer-guide.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
     },
     {
       "build": "abyssal-lich-02",
@@ -888,7 +888,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
     },
     {
       "build": "invoker-01",
@@ -896,7 +896,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
     },
     {
       "build": "invoker-03",
@@ -904,7 +904,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
     },
     {
       "build": "invoker-08",
@@ -912,7 +912,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
     },
     {
       "build": "oracle-04",
@@ -920,7 +920,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
     },
     {
       "build": "oracle-06",
@@ -928,7 +928,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
     },
     {
       "build": "shaman-01",
@@ -936,7 +936,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
     },
     {
       "build": "shaman-03",
@@ -944,7 +944,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
     },
     {
       "build": "shaman-04",
@@ -952,7 +952,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
     },
     {
       "build": "shaman-07",
@@ -960,7 +960,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
     },
     {
       "build": "shaman-08",
@@ -968,7 +968,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
     },
     {
       "build": "warbringer-02",
@@ -976,7 +976,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
     },
     {
       "build": "warbringer-03",
@@ -984,7 +984,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
     },
     {
       "build": "warbringer-09",
@@ -992,7 +992,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
     },
     {
       "build": "warbringer-10",
@@ -1000,7 +1000,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
     },
     {
       "build": "shaman-08",
@@ -1008,7 +1008,7 @@
       "stats": [
         "TotalTotemPlacementTime"
       ],
-      "reason": "Frozen 2026-10-26: placement uses retained game cast time 0.5s, while pinned PoB2 uses a 0.6s fallback; both apply the same placement-speed factors. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: placement uses retained game cast time 0.5s, while pinned PoB2 uses a 0.6s fallback; both apply the same placement-speed factors. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
     },
     {
       "build": "warbringer-08",
@@ -1016,7 +1016,7 @@
       "stats": [
         "TotalTotemPlacementTime"
       ],
-      "reason": "Frozen 2026-10-26: placement uses retained game cast time 1.0s, while pinned PoB2 uses a 0.6s fallback; both apply the same placement-speed factors. See docs/maintainer-guide.md, Selected equipment, resources and hit snapshots, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: placement uses retained game cast time 1.0s, while pinned PoB2 uses a 0.6s fallback; both apply the same placement-speed factors. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
     },
     {
       "build": "blood-mage-03",
@@ -1024,7 +1024,7 @@
       "stats": [
         "TotalEHP"
       ],
-      "reason": "Frozen 2026-10-26: incoming critical damage applies Desensitisation, and finite Life prevention exhausts exactly. Pinned PoB2 retains positive floating residue after a lethal recursive probe, then batches across the Chaos/ES transition; its EHP is not the chronological hit result. The native result matches independently reconstructed 15933.003750905566. See docs/maintainer-guide.md and fix-round-2/ehp-attribution.json / blood03-trace.log."
+      "reason": "Frozen 2026-10-26: incoming critical damage applies Desensitisation, and finite Life prevention exhausts exactly. Pinned PoB2 retains positive floating residue after a lethal recursive probe, then batches across the Chaos/ES transition; its EHP is not the chronological hit result. The native result matches independently reconstructed 15933.003750905566. See docs/pob2-differences.md and fix-round-2/ehp-attribution.json / blood03-trace.log."
     },
     {
       "build": "abyssal-lich-03",
@@ -1032,7 +1032,7 @@
       "stats": [
         "CritMultiplier"
       ],
-      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/maintainer-guide.md and fix-round-2/reference-cluster-attribution/attribution.json."
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md and fix-round-2/reference-cluster-attribution/attribution.json."
     },
     {
       "build": "abyssal-lich-04",
@@ -1042,7 +1042,7 @@
         "CritMultiplier",
         "PreEffectiveCritChance"
       ],
-      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/maintainer-guide.md and fix-round-2/reference-cluster-attribution/attribution.json."
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md and fix-round-2/reference-cluster-attribution/attribution.json."
     },
     {
       "build": "abyssal-lich-08",
@@ -1050,7 +1050,7 @@
       "stats": [
         "CritMultiplier"
       ],
-      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/maintainer-guide.md and fix-round-2/reference-cluster-attribution/attribution.json."
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md and fix-round-2/reference-cluster-attribution/attribution.json."
     },
     {
       "build": "abyssal-lich-10",
@@ -1060,7 +1060,7 @@
         "CritMultiplier",
         "PreEffectiveCritChance"
       ],
-      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/maintainer-guide.md and fix-round-2/reference-cluster-attribution/attribution.json."
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md and fix-round-2/reference-cluster-attribution/attribution.json."
     },
     {
       "build": "lich-01",
@@ -1068,7 +1068,7 @@
       "stats": [
         "CritMultiplier"
       ],
-      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/maintainer-guide.md and fix-round-2/reference-cluster-attribution/attribution.json."
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md and fix-round-2/reference-cluster-attribution/attribution.json."
     },
     {
       "build": "lich-03",
@@ -1079,7 +1079,7 @@
         "EnergyShieldRecoveryCap",
         "PreEffectiveCritChance"
       ],
-      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/maintainer-guide.md and fix-round-2/reference-cluster-attribution/attribution.json."
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md and fix-round-2/reference-cluster-attribution/attribution.json."
     },
     {
       "build": "lich-09",
@@ -1089,7 +1089,7 @@
         "CritMultiplier",
         "PreEffectiveCritChance"
       ],
-      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/maintainer-guide.md and fix-round-2/reference-cluster-attribution/attribution.json."
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md and fix-round-2/reference-cluster-attribution/attribution.json."
     },
     {
       "build": "disciple-of-varashta-08",
@@ -1097,7 +1097,7 @@
       "stats": [
         "MinionTotalDPS"
       ],
-      "reason": "Frozen 2026-10-26 Water Djinn: eight existing minions give Predator Mark's 40% increased damage taken; pinned PoB2 counts zero. No on-death Pounce wolves are created. The same hit, crit and 1.782s cooldown with/without that mark give 461902.1585/348008.4756, matching the two calculators within endpoint precision. See docs/maintainer-guide.md and fix-round-2/minion-djinn-evidence.json."
+      "reason": "Frozen 2026-10-26 Water Djinn: eight existing minions give Predator Mark's 40% increased damage taken; pinned PoB2 counts zero. No on-death Pounce wolves are created. The same hit, crit and 1.782s cooldown with/without that mark give 461902.1585/348008.4756, matching the two calculators within endpoint precision. See docs/pob2-differences.md and fix-round-2/minion-djinn-evidence.json."
     },
     {
       "build": "abyssal-lich-06",
@@ -1105,7 +1105,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "acolyte-of-chayula-09",
@@ -1113,7 +1113,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "amazon-08",
@@ -1121,7 +1121,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "blood-mage-05",
@@ -1129,7 +1129,7 @@
       "stats": [
         "ReqDex"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "deadeye-07",
@@ -1137,7 +1137,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 126, after the recorded global reduction, equals the pinned oracle's 126; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 126, after the recorded global reduction, equals the pinned oracle's 126; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "deadeye-08",
@@ -1145,7 +1145,7 @@
       "stats": [
         "ReqInt"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 126, after the recorded global reduction, equals the pinned oracle's 126; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 126, after the recorded global reduction, equals the pinned oracle's 126; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "disciple-of-varashta-03",
@@ -1153,7 +1153,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 75, after the recorded global reduction, equals the pinned oracle's 75; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 75, after the recorded global reduction, equals the pinned oracle's 75; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "disciple-of-varashta-10",
@@ -1161,7 +1161,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "gemling-legionnaire-06",
@@ -1169,7 +1169,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 144; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 144; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "invoker-04",
@@ -1177,7 +1177,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "invoker-05",
@@ -1185,7 +1185,7 @@
       "stats": [
         "ReqInt"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "invoker-07",
@@ -1193,7 +1193,7 @@
       "stats": [
         "ReqInt"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "invoker-08",
@@ -1201,7 +1201,7 @@
       "stats": [
         "ReqDex"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "martial-artist-04",
@@ -1209,7 +1209,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 147, after the recorded global reduction, equals the pinned oracle's 147; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 147, after the recorded global reduction, equals the pinned oracle's 147; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "martial-artist-08",
@@ -1217,7 +1217,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "martial-artist-09",
@@ -1225,7 +1225,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "martial-artist-10",
@@ -1233,7 +1233,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "pathfinder-07",
@@ -1241,7 +1241,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 147, after the recorded global reduction, equals the pinned oracle's 147; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 147, after the recorded global reduction, equals the pinned oracle's 147; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "pathfinder-10",
@@ -1249,7 +1249,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "shaman-03",
@@ -1257,7 +1257,7 @@
       "stats": [
         "ReqDex"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "shaman-04",
@@ -1265,7 +1265,7 @@
       "stats": [
         "ReqDex"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "witchhunter-03",
@@ -1273,7 +1273,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "witchhunter-09",
@@ -1281,7 +1281,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/maintainer-guide.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
     },
     {
       "build": "infernalist-03",
@@ -1291,7 +1291,7 @@
         "LifeUnreserved",
         "LifeRecoverable"
       ],
-      "reason": "Frozen 2026-10-26: The frozen Runeseeker enchant explicitly has45% less Life:1528*1.05*.55=882.42. Pinned PoB2 rebuilds separate15%/30% MORE modifiers and rounds their product to.60, giving963. Preserve imported text. The corresponding unreserved/recoverable Life follows the same pool. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: The frozen Runeseeker enchant explicitly has45% less Life:1528*1.05*.55=882.42. Pinned PoB2 rebuilds separate15%/30% MORE modifiers and rounds their product to.60, giving963. Preserve imported text. The corresponding unreserved/recoverable Life follows the same pool. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
     },
     {
       "build": "witchhunter-10",
@@ -1314,7 +1314,7 @@
         "SpellProjectileEvadeChance",
         "PhysicalDamageReduction"
       ],
-      "reason": "Frozen 2026-10-26: Megalomaniac grants Leather Bound Gauntlets(node51446), adding1323 Evasion from equipped glove Armour. PoB2 omits that passive. Removing exactly its contribution reconstructs the oracle Armour/Evasion, Sorcery Ward, defence chances, five max hits andTotalEHP, including endpoint precision. This is not a blanket EHP classification. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Megalomaniac grants Leather Bound Gauntlets(node51446), adding1323 Evasion from equipped glove Armour. PoB2 omits that passive. Removing exactly its contribution reconstructs the oracle Armour/Evasion, Sorcery Ward, defence chances, five max hits andTotalEHP, including endpoint precision. This is not a blanket EHP classification. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
     },
     {
       "build": "warbringer-02",
@@ -1323,7 +1323,7 @@
         "Evasion",
         "DeflectionRating"
       ],
-      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
     },
     {
       "build": "warbringer-03",
@@ -1331,7 +1331,7 @@
       "stats": [
         "Evasion"
       ],
-      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
     },
     {
       "build": "warbringer-08",
@@ -1339,7 +1339,7 @@
       "stats": [
         "Evasion"
       ],
-      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count1 versus pinned oracle2. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count1 versus pinned oracle2. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
     },
     {
       "build": "warbringer-10",
@@ -1348,7 +1348,7 @@
         "Evasion",
         "DeflectionRating"
       ],
-      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
     },
     {
       "build": "pathfinder-01",
@@ -1357,7 +1357,7 @@
         "LifeRegenRecovery",
         "EnergyShieldRegenRecovery"
       ],
-      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
     },
     {
       "build": "pathfinder-02",
@@ -1366,7 +1366,7 @@
         "LifeRegenRecovery",
         "EnergyShieldRegenRecovery"
       ],
-      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
     },
     {
       "build": "pathfinder-04",
@@ -1375,7 +1375,7 @@
         "LifeRegenRecovery",
         "EnergyShieldRegenRecovery"
       ],
-      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
     },
     {
       "build": "pathfinder-08",
@@ -1384,7 +1384,7 @@
         "LifeRegenRecovery",
         "EnergyShieldRegenRecovery"
       ],
-      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
     },
     {
       "build": "pathfinder-09",
@@ -1393,7 +1393,7 @@
         "LifeRegenRecovery",
         "EnergyShieldRegenRecovery"
       ],
-      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/maintainer-guide.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
     },
     {
       "build": "deadeye-01",
@@ -1401,7 +1401,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen Coming Calamity groups attach through native ModGrantedSkills to UniqueHerald variants with zero attribute shares. Ordinary Herald of Ash 20 incorrectly contributes reference 157 Strength; native maximum is 16 red supports * 5 = 80, above armour 67 and selected weapons 31/17. Independent skill records are unchanged (docs/maintainer-guide.md, native item-granted variants; fix-round-4 evidence/tuned-grant-requirement.json)."
+      "reason": "Frozen Coming Calamity groups attach through native ModGrantedSkills to UniqueHerald variants with zero attribute shares. Ordinary Herald of Ash 20 incorrectly contributes reference 157 Strength; native maximum is 16 red supports * 5 = 80, above armour 67 and selected weapons 31/17. Independent skill records are unchanged (docs/mechanics/items.md, native item-granted variants; fix-round-4 evidence/tuned-grant-requirement.json)."
     },
     {
       "build": "warbringer-08",
@@ -1409,7 +1409,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen native Ballista capacity is 1 base + 1 ascendancy + 2 crossbow + 1 passive = 5, with no override and MORE x1. Pinned 2 omits host-scoped Ballista additions for the selected attack. Capacity does not imply five summoned totems; no damage row is classified by this explanation (docs/maintainer-guide.md, Ballista capacity; fix-round-4 evidence/new-static-rows.json)."
+      "reason": "Frozen native Ballista capacity is 1 base + 1 ascendancy + 2 crossbow + 1 passive = 5, with no override and MORE x1. Pinned 2 omits host-scoped Ballista additions for the selected attack. Capacity does not imply five summoned totems; no damage row is classified by this explanation (docs/mechanics/minions.md, Ballista capacity; fix-round-4 evidence/new-static-rows.json)."
     }
   ]
 }

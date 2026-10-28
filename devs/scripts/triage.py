@@ -69,7 +69,7 @@ RESERVATION_FREE = REPO / "data/overlay-common/item_granted_skills.json"
 # The engine's Spirit reservation of each skill (origin `spirit.<skill id>`).
 SKILL_RESERVATION = "SkillSpiritReservationBase"
 SPIRIT_REASON = ("the skill an Absent, Lament or Portent Amulet grants reserves no Spirit "
-                 "(docs/maintainer-guide.md)")
+                 "(docs/pob2-differences.md)")
 ACTIONABLE = ("engine", "both")
 CLASSES = ("engine", "both", "reference", "known", "no oracle")
 # PoB2's figures behind the largest hits and EHP, listed when one of those differs.

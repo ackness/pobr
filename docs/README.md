@@ -11,7 +11,13 @@ Keep these in step with the code. Update the relevant one when behavior changes.
 
 | Document | Covers |
 |----------|--------|
-| [maintainer-guide.md](maintainer-guide.md) | Build environment, validation scope, architecture, parity system and conventions |
+| [maintainer-guide.md](maintainer-guide.md) | Build environment, validation scope, architecture, parity system and cross-cutting conventions (loaded by every agent session; keep it short) |
+| [mechanics/](mechanics/README.md) | Game sources, implementation and assumptions of individual mechanics: offence, defence, ailments, minions, items, configured snapshots |
+| [calc-outputs.md](calc-outputs.md) | CLI / WASM response fields, EHP terms, Calcs and sidebar fields, Full DPS |
+| [build-model.md](build-model.md) | Data snapshot and session rules, imported build structure, save formats and JSON interfaces, orchestration invariants and caches, Web runtime |
+| [pob2-differences.md](pob2-differences.md) | Data still taken from PoB2, deliberate differences and the per-row explanations behind `known-differences.json` |
+| [diagnostics.md](diagnostics.md) | Diagnosis, ledger and coverage tools, registration lists, reference basis and corpora |
+| [import-formats.md](import-formats.md) | What each import format carries and how the importer normalizes it |
 | [development-workflow.md](development-workflow.md) | Commands, caches, PR checks, CI, releases, handling external PRs |
 | [recipes.md](recipes.md) | Exact files and the single check for adding a game line, a Calcs field or a mechanic; the validation budget and batch gate |
 | [contributing-mods.md](contributing-mods.md) | Adding or fixing modifiers through the overlay data channel |

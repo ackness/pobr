@@ -1033,7 +1033,7 @@ pub(crate) fn recoup_terms(
 }
 
 /// Damage prevented by mitigation, per source, which prevented-damage recoup
-/// returns. The convention (maintainer guide; not tested in game) counts the
+/// returns. The convention (docs/mechanics/defence.md; not tested in game) counts the
 /// Physical reduction stage and the Chaos mitigation stage.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct PreventedDamage {
