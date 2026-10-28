@@ -173,11 +173,10 @@ fn init_staged(prechecked: bool) -> Result<(), String> {
     if files.is_empty() {
         return Err("no data files staged; call stage_data_file first".to_string());
     }
-    let data = if prechecked {
-        GameData::from_memory_prechecked(files)
-    } else {
-        GameData::from_memory(files)
-    };
+    // The browser's memory is not given back, so a file the engine has parsed and will
+    // not read again is released as it is parsed: the pack's bytes are not resident beside
+    // everything built from them.
+    let data = GameData::from_memory_releasing(files, prechecked);
     let build_data = BuildData::load(&data).map_err(|e| format!("load BuildData: {e}"))?;
     BUILD_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(build_data)));
     GAME_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(data)));
@@ -185,10 +184,54 @@ fn init_staged(prechecked: bool) -> Result<(), String> {
     Ok(())
 }
 
+/// The data pack of a version directory as the browser stages it: every `.json` file by
+/// its path relative to the version directory, the shared `overlay-common` layer beside it
+/// under that prefix.
+fn read_pack_dir(version_dir: &std::path::Path) -> Result<BTreeMap<String, Vec<u8>>, String> {
+    fn walk(
+        root: &std::path::Path,
+        dir: &std::path::Path,
+        prefix: &str,
+        out: &mut BTreeMap<String, Vec<u8>>,
+    ) -> Result<(), String> {
+        let entries = std::fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                walk(root, &path, prefix, out)?;
+            } else if path.extension().is_some_and(|ext| ext == "json") {
+                let relative = path
+                    .strip_prefix(root)
+                    .map_err(|e| e.to_string())?
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                let bytes = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+                out.insert(format!("{prefix}{relative}"), bytes);
+            }
+        }
+        Ok(())
+    }
+    let mut files = BTreeMap::new();
+    walk(version_dir, version_dir, "", &mut files)?;
+    if let Some(common) = version_dir.parent().map(|p| p.join("overlay-common"))
+        && common.is_dir()
+    {
+        walk(&common, &common, "overlay-common/", &mut files)?;
+    }
+    Ok(files)
+}
+
 /// A convenience entry point for the host: initializes from a disk version
 /// directory (calling this under wasm errors out from file I/O failing).
 pub fn init_data_from_dir(version_dir: &str) -> Result<(), String> {
-    let data = GameData::new(version_dir);
+    // A debug build can run the whole test suite on the data the way the browser holds it
+    // (staged bytes, released as parsed): `POBR_DBG_RELEASE_BACKEND=1 cargo test -p pobr-wasm`.
+    // It is never set in a release build, where `dbg_env!` is always `None`.
+    let data = if pobr_core::dbg_env!("POBR_DBG_RELEASE_BACKEND").is_some() {
+        GameData::from_memory_releasing(read_pack_dir(std::path::Path::new(version_dir))?, true)
+    } else {
+        GameData::new(version_dir)
+    };
     let build_data = BuildData::load(&data).map_err(|e| format!("load BuildData: {e}"))?;
     BUILD_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(build_data)));
     GAME_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(data)));

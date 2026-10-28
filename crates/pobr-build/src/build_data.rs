@@ -455,11 +455,15 @@ impl BuildData {
         data.validate_manifest()?;
         // Pin report provenance alongside the immutable data used by this build.
         data.identity()?;
+        // A domain's file is released as soon as it is parsed (a data pack staged in memory to
+        // release them; any other keeps its files): its bytes are not resident beside what
+        // was parsed from them. Only files nothing reads after this load are released here.
         let passive_nodes = data
             .passive_nodes()?
             .into_iter()
             .map(|node| (node.skill, one_stat_per_line(node)))
             .collect();
+        data.release_domain("passive_tree.json");
 
         // Historical league trees (mirroring PoB2's multi-version TreeData):
         // `base/passive_trees/*.json` is fully preloaded (~0.5-0.8MB per version; a
@@ -469,12 +473,13 @@ impl BuildData {
         for version in data.available_tree_versions() {
             if let Some(nodes) = data.passive_nodes_versioned(&version)? {
                 versioned_passive_nodes.insert(
-                    version,
+                    version.clone(),
                     nodes
                         .into_iter()
                         .map(|node| (node.skill, one_stat_per_line(node)))
                         .collect(),
                 );
+                data.release_domain(&format!("passive_trees/{version}.json"));
             }
         }
 
@@ -483,6 +488,7 @@ impl BuildData {
             .into_iter()
             .map(|gem| (gem.id.clone(), gem))
             .collect();
+        data.release_domain("skill_gems.json");
 
         let class_attributes = data
             .passive_tree_meta()?
@@ -505,14 +511,17 @@ impl BuildData {
             .into_iter()
             .map(|effect| (effect.id.clone(), effect))
             .collect();
+        data.release_domain("granted_effects.json");
 
         let granted_effect_levels = data.granted_effect_levels()?.into_iter().collect();
+        data.release_domain("granted_effect_levels.json");
 
         let skill_stat_sets: HashMap<String, SkillStatSetDef> = data
             .skill_stat_sets()?
             .into_iter()
             .map(|set| (set.effect_id.clone(), set))
             .collect();
+        data.release_domain("granted_effect_stat_sets.json");
         let stat_sets_mark_hits = skill_stat_sets
             .values()
             .flat_map(|def| &def.sets)
