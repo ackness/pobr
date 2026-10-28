@@ -421,6 +421,47 @@ fn selection_scope_shares_gem_bonuses_only_for_the_build_it_names() {
 }
 
 #[test]
+fn an_adopted_clone_shares_the_scope_only_while_it_is_adopted() {
+    let data = repo_data();
+    let build = with_level_bonus(&Build::new(), 2);
+    let _scope = selection_memo::SelectionScope::enter(&build, &data);
+    assert_eq!(level_total(&build, &data), 2);
+    let mut clone = build.clone();
+    clone.main_socket_group = Some(1);
+    {
+        let _adopted = selection_memo::adopt(&build, &clone, &data);
+        assert_eq!(level_total(&clone, &data), 2);
+    }
+    // Not adopted any more: the clone is read for what it holds.
+    clone = with_level_bonus(&clone, 9);
+    assert_eq!(level_total(&clone, &data), 9);
+    // A parent the scope does not name adopts nothing.
+    let stranger = with_level_bonus(&Build::new(), 4);
+    let _adopted = selection_memo::adopt(&stranger, &clone, &data);
+    assert_eq!(level_total(&clone, &data), 9);
+    assert_eq!(level_total(&stranger, &data), 4);
+}
+
+#[test]
+fn a_scope_is_not_reopened_for_a_build_it_already_names() {
+    let data = repo_data();
+    let build = with_level_bonus(&Build::new(), 2);
+    let other = with_level_bonus(&Build::new(), 6);
+    assert!(selection_memo::SelectionScope::enter_unless_named(&build, &data).is_some());
+    let _scope = selection_memo::SelectionScope::enter(&build, &data);
+    assert_eq!(level_total(&build, &data), 2);
+    assert!(selection_memo::SelectionScope::enter_unless_named(&build, &data).is_none());
+    // The memo it kept is still there, and a build it does not name gets its own scope.
+    assert_eq!(level_total(&build, &data), 2);
+    {
+        let inner = selection_memo::SelectionScope::enter_unless_named(&other, &data);
+        assert!(inner.is_some());
+        assert_eq!(level_total(&other, &data), 6);
+    }
+    assert_eq!(level_total(&build, &data), 2);
+}
+
+#[test]
 fn nested_selection_scopes_restore_the_outer_one() {
     let data = repo_data();
     let outer = with_level_bonus(&Build::new(), 1);

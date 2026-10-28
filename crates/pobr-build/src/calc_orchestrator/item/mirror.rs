@@ -53,6 +53,12 @@ pub(crate) fn slot_bonus_effect_scales(
     build: &Build,
     data: &BuildData,
 ) -> Vec<(EquipmentSlot, f64)> {
+    super::super::selection_memo::slot_bonus_scales(build, data, || {
+        compute_slot_bonus_effect_scales(build, data)
+    })
+}
+
+fn compute_slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(EquipmentSlot, f64)> {
     use EquipmentSlot::{Amulet, Ring1, Ring2, Ring3, Weapon2};
     let mut scales: Vec<(EquipmentSlot, f64)> = Vec::new();
     let mut add = |slots: &[EquipmentSlot], inc: f64| {

@@ -10,6 +10,8 @@
 //!   cargo test -p pobr-wasm --features diagnostics --test perf_corpus --release -- --ignored --nocapture
 //! ```
 //!
+//! `POBR_CORPUS_STAGED=1` loads the data the way the browser does (staged as bytes, files released
+//! as they are parsed) instead of from the directory; the hashes must not change.
 //! `POBR_CORPUS_DIRS` (colon separated, relative to `examples/`) replaces the default
 //! sets. The holdout set is never a default: it is for measuring accuracy only.
 //! `POBR_CORPUS_LIMIT` caps the builds taken from each set, `POBR_CORPUS_ONLY` keeps
@@ -56,21 +58,106 @@ fn timed(call: impl FnOnce() -> Result<String, String>) -> (String, Duration) {
     (digest(&text), elapsed)
 }
 
+/// Passive-tree variants the way the planner sends them: new points, refunds, swaps and
+/// jewel sockets, chosen from the build's own allocation so every build gets the same
+/// kinds of change. Nothing here depends on the engine under test.
+fn tree_variants(code: &str) -> Vec<serde_json::Value> {
+    use serde_json::{Value, json};
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(code).expect("decode")).expect("json");
+    let allocated: Vec<u64> = decoded["allocated_nodes"]
+        .as_array()
+        .map(|nodes| nodes.iter().filter_map(Value::as_u64).collect())
+        .unwrap_or_default();
+    let path = repo_data_root()
+        .join(pobr_gamedata::data_version())
+        .join("base/passive_tree.json");
+    let tree: Vec<Value> = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    let main = |node: &&Value| node["ascendancy_id"].is_null() && node["kind"] != "mastery";
+    let ids = |kind: &str, owned: bool| -> Vec<u64> {
+        tree.iter()
+            .filter(main)
+            .filter(|node| {
+                (kind.is_empty() && node["kind"] != "jewel_socket") || node["kind"] == kind
+            })
+            .filter_map(|node| node["skill"].as_u64())
+            .filter(|id| allocated.contains(id) == owned)
+            .collect()
+    };
+    let free = ids("", false);
+    let owned = ids("", true);
+    let free_sockets = ids("jewel_socket", false);
+    let owned_sockets = ids("jewel_socket", true);
+    let pick = |list: &[u64], at: usize| list.get(at % list.len().max(1)).copied();
+    let mut variants = vec![json!({})];
+    for round in 0..3usize {
+        let nodes: Vec<u64> = (0..3)
+            .filter_map(|k| pick(&free, round * 211 + k * 37))
+            .collect();
+        variants.push(json!({ "allocate_nodes": nodes }));
+    }
+    let removed: Vec<u64> = (0..2).filter_map(|k| pick(&owned, 5 + k * 17)).collect();
+    variants.push(json!({ "deallocate_nodes": removed }));
+    let swap_in: Vec<u64> = (0..2).filter_map(|k| pick(&free, 400 + k * 53)).collect();
+    let swap_out: Vec<u64> = pick(&owned, 29).into_iter().collect();
+    variants.push(json!({ "allocate_nodes": swap_in, "deallocate_nodes": swap_out }));
+    if let Some(socket) = pick(&free_sockets, 3) {
+        variants.push(json!({ "allocate_nodes": [socket] }));
+    }
+    if let Some(socket) = pick(&owned_sockets, 0) {
+        variants.push(json!({ "deallocate_nodes": [socket] }));
+    }
+    variants
+}
+
+/// Stages every `.json` file of a version directory, and of the shared overlay beside it,
+/// under the relative paths the browser stages them with.
+fn stage_pack(version: &std::path::Path) {
+    fn walk(root: &std::path::Path, dir: &std::path::Path, prefix: &str) {
+        for entry in std::fs::read_dir(dir).unwrap().flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                walk(root, &path, prefix);
+            } else if path.extension().is_some_and(|ext| ext == "json") {
+                let relative = path
+                    .strip_prefix(root)
+                    .unwrap()
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                pobr_wasm::stage_data_bytes(
+                    &format!("{prefix}{relative}"),
+                    std::fs::read(&path).unwrap(),
+                );
+            }
+        }
+    }
+    walk(version, version, "");
+    let common = version.parent().unwrap().join("overlay-common");
+    walk(&common, &common, "overlay-common/");
+}
+
 #[test]
 #[ignore = "corpus diagnostic; run explicitly with --ignored --nocapture"]
 fn corpus_equivalence_and_timing() {
     let dir = pobr_gamedata::current_data_dir();
-    pobr_wasm::init_data_from_dir(dir.to_str().unwrap()).expect("init data");
+    if std::env::var_os("POBR_CORPUS_STAGED").is_some() {
+        // The data the way the browser holds it: staged as bytes, digests already compared,
+        // and each file released once it has been parsed.
+        stage_pack(&dir);
+        pobr_wasm::init_staged_data_verified().expect("init staged data");
+    } else {
+        pobr_wasm::init_data_from_dir(dir.to_str().unwrap()).expect("init data");
+    }
     let limit: usize = std::env::var("POBR_CORPUS_LIMIT")
         .ok()
         .and_then(|value| value.parse().ok())
         .unwrap_or(usize::MAX);
 
     let mut lines = vec![
-        "build\tempty\tdefault\tdetail\tmetrics\tms_empty\tms_default\tms_detail\tms_metrics"
+        "build\tempty\tdefault\tdetail\tmetrics\tvariants\tms_empty\tms_default\tms_detail\tms_metrics\tms_variants"
             .to_string(),
     ];
-    let mut totals = [Duration::ZERO; 4];
+    let mut totals = [Duration::ZERO; 5];
     let mut count = 0;
     for set in sets() {
         let root = repo_data_root().join("../examples").join(&set);
@@ -124,6 +211,18 @@ fn corpus_equivalence_and_timing() {
             let (h_default, t_default) =
                 timed(|| pobr_wasm::calculate_build_json(&default_calculation));
             let (h_metrics, t_metrics) = timed(|| pobr_wasm::skill_metrics_json(&default));
+            // Salted per build so no response is served from the response cache.
+            let variants_request = serde_json::json!({
+                "request": { "pob_code": code },
+                "stats": ["TotalDPS", "TotalEHP", "Life", "Mana", "ManaCost", "ActionRate",
+                    "FireResist", "ColdResist", "LightningResist", "ChaosResist", "Spirit",
+                    "SpiritReserved", "EnergyShield", "Armour", "Evasion"],
+                "variants": tree_variants(&code),
+                "include_baseline": true,
+            })
+            .to_string();
+            let (h_variants, t_variants) =
+                timed(|| pobr_wasm::optimize_variants_json(&variants_request));
             if let Ok(dump_dir) = std::env::var("POBR_CORPUS_DUMP") {
                 // The responses themselves, to find what differs between two runs.
                 let stem = name.replace('/', "__");
@@ -139,17 +238,18 @@ fn corpus_equivalence_and_timing() {
             }
             for (total, time) in totals
                 .iter_mut()
-                .zip([t_empty, t_default, t_detail, t_metrics])
+                .zip([t_empty, t_default, t_detail, t_metrics, t_variants])
             {
                 *total += time;
             }
             count += 1;
             lines.push(format!(
-                "{name}\t{h_empty}\t{h_default}\t{h_detail}\t{h_metrics}\t{:.2}\t{:.2}\t{:.2}\t{:.2}",
+                "{name}\t{h_empty}\t{h_default}\t{h_detail}\t{h_metrics}\t{h_variants}\t{:.2}\t{:.2}\t{:.2}\t{:.2}\t{:.2}",
                 ms(t_empty),
                 ms(t_default),
                 ms(t_detail),
                 ms(t_metrics),
+                ms(t_variants),
             ));
         }
     }
@@ -159,6 +259,7 @@ fn corpus_equivalence_and_timing() {
         "default breakdowns",
         "detail row",
         "skill metrics",
+        "tree variants (8/build)",
     ]
     .iter()
     .zip(totals)
