@@ -26,10 +26,6 @@ builds the application CLI. Use `mise run build --workspace` only when all binar
 are needed. On other platforms install missing prerequisites using
 the appropriate package manager before using the driver.
 
-`cargo-nextest` is optional locally. The full gate detects it and otherwise uses
-`cargo test`; CI installs nextest. A failing nextest run is a failure, never a
-reason to retry the whole suite under another runner.
-
 ## Daily agent workflow
 
 Select the affected test target before running Cargo. A test-name filter alone
@@ -52,6 +48,11 @@ They preserve compiler diagnostics and build-lock messages.
 
 - Use the change-to-check table in `docs/maintainer-guide.md` for parity, cross-crate contracts,
   Web, Worker and script changes. Do not run Rust checks for documentation alone.
+- After editing a modifier rule, `mise run regen` validates every rule and its
+  examples and regenerates the parser artifacts.
+- In a new worktree, `mise run warm <warm checkout>` clones that checkout's
+  build cache; `POBR_BIN` / `POBR_CACHE_DIR` let the analysis tools reuse its CLI,
+  ledgers and PoB2 results (see `docs/recipes.md`).
 - Tests already compile their targets; do not prepend a workspace check/build.
 - A normal local commit requires relevant tests and lint, not `full`. Reuse
   passing checks for unchanged code/dependencies/toolchain/features/data. Stop after relevant checks
@@ -67,7 +68,14 @@ They preserve compiler diagnostics and build-lock messages.
   It runs representative aggregation, parser and codec tests without a workspace
   build. It is unnecessary after relevant tests already passed.
 
-## Full gate
+## Batch gate and full gate
+
+Whoever merges several changes runs the batch gate once on a warm checkout:
+
+```bash
+mise run gate                    # fmt, regen drift, Clippy, crate suites, parity, i18n, Web, accuracy; then the failures
+mise run gate --only core,parity # rerun only the failed steps after fixing them
+```
 
 Full merge/release and broad-change gates should run in cloud CI. Release tags
 trigger the gate automatically; for another pushed ref use `mise run ci <ref>`
@@ -79,9 +87,11 @@ full gate before cloud CI. When local full Rust validation is explicitly needed:
 mise run full
 ```
 
-This runs fmt, workspace Clippy, nextest plus separate doctests (or `cargo test --workspace` when nextest is absent), and i18n lint. It stops at the first failure.
-CI retains its full Rust and Web gates on tags/manual dispatch; ordinary pushes
-do not trigger CI, and pull requests only run the lightweight checks in `pr.yml`. Do not repeat a successful full gate for
+This runs fmt, workspace Clippy (with the benchmark and diagnostics features),
+`cargo test --workspace` (including doctests) and i18n lint. It stops at the first failure.
+CI runs its full Rust and Web gates on tags, manual dispatch, release PRs (a
+changed workspace version) and nightly on master; pull requests and pushes to
+master run only the lightweight checks in `pr.yml`. Do not repeat a successful full gate for
 an unchanged local commit, or dispatch an identical CI run in addition to a tag.
 Publishing, PR updates and version bumps follow the user's authorized scope.
 See [workflow commands](../../../docs/development-workflow.md). Application version
@@ -91,14 +101,20 @@ Timing diagnostics, parity dashboards and data-version drills are opt-in, not ev
 
 ```bash
 mise run test build parity parity_baseline_report -- --ignored --nocapture
-cargo test -p pobr-wasm --test perf_timing --test perf_phases -- --ignored --nocapture
+cargo test -p pobr-wasm --features diagnostics --test perf_timing --test perf_phases -- --ignored --nocapture
 bash devs/scripts/driver.sh drill
 ```
 
-When a build's numbers look wrong, start with the build itself, not with a
-comparison against PoB2:
+When numbers look wrong, work in batches: `mise run triage` calculates every
+benchmark and tuned build against its reference and the pinned PoB2 at once,
+classifies each differing row and gathers the shared causes. Open one build only
+for a row the triage does not explain (see the accuracy workflow in `AGENTS.md`
+and `docs/diagnostics.md`):
 
 ```bash
+mise run triage [set dir | build dir ...]   # every worked build at once (needs vendor and LuaJIT)
+mise run gaps [--kind unique|passive|...]   # game-text gaps ranked by worked builds
+mise run gap "<template or text>"           # one line: stats, full sources, ledger fates
 mise run diagnose <build dir | code file | committed build name fragment>
 mise run accuracy                        # totals of every committed set
 mise run accuracy <dir of */code.txt>    # one set, with each build's differences
@@ -192,4 +208,3 @@ and [docs/version-bump-architecture.md](../../../docs/version-bump-architecture.
 |---|---|
 | `no file '/usr/.../xml.lua'` from extract-lua | relative `--vendor-root`; use absolute (the driver/oracle scripts already do). |
 | `drill` reports overlay `DIFF`/`FAIL` | Inspect the selected data version and its pinned vendor; old-version extraction limitations do not justify ignoring failures for the current version. |
-| `no such command: nextest` | Use `cargo test`; `full` selects this fallback automatically when nextest is unavailable. |
