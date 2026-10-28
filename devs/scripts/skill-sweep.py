@@ -23,7 +23,7 @@ use damage only. Average hit is reported but excluded: PoBR exports it before
 enemy mitigation, PoB2 after. As in reference_check.rs, HitSpeed replaces Speed
 for rate comparisons when present. Main-minion DPS is also compared. Known
 differences retain both sides and their reason, using selected game stats, the
-maintainer guide's model list, or recomputed integer damage bounds; they do not
+docs/pob2-differences.md model list, or recomputed integer damage bounds; they do not
 count toward unexplained family rankings. both_zero is not evidence that buffs, triggers or minions work: this fixture supplies no
 trigger payload, corpses, charges, targets, supports or other skill inputs.
 The report separates missing vendor effects from engine differences and gives
@@ -56,7 +56,7 @@ METRICS = ("TotalDPS", "CombinedDPS", "Speed", "AverageHit", "CritChance", "Firi
 DIFFERENT = {"differs", "pobr_zero", "pob2_zero"}
 AVERAGE_DAMAGE_STAT = "base_skill_show_average_damage_instead_of_dps"
 # Game effect IDs, not sweep case IDs. Sources are the named bullets under
-# docs/maintainer-guide.md's intentional-differences list, except where noted. An optional
+# docs/pob2-differences.md's intentional-differences list, except where noted. An optional
 # stat-set ID confines a model to the form documented there.
 KNOWN_MODELS = {
     # Channelled-attacks bullet: exactly calc::channel::skill_modifiers' list.

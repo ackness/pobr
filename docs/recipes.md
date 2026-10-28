@@ -3,8 +3,8 @@
 Exact steps for the most common small changes. Each recipe names the files to
 edit, the one check to run, and what to leave for the batch gate. Use these
 instead of exploring the codebase. Conventions and reasons are in the
-[maintainer guide](maintainer-guide.md); rule syntax is in
-[contributing-mods](contributing-mods.md).
+[maintainer guide](maintainer-guide.md) and the [mechanics notes](mechanics/README.md);
+rule syntax is in [contributing-mods](contributing-mods.md).
 
 **Budget.** A recipe change compiles at most one small test target. Do not run
 `cargo test -p pobr-core` (all targets), `--test parity`, the WASM/CLI suites,
@@ -50,8 +50,10 @@ gate (`mise run gate`), which the person merging runs once for many changes.
    behaviour: add the reader and one engine test in the closest existing file
    under `crates/pobr-core/tests/<suite>/`, then run
    `cargo test -q -p pobr-core --test <suite> <test name>`.
-6. One sentence in the maintainer guide when the line sets a convention
-   (an assumption, a PoB2 difference, an untested game behaviour).
+6. One paragraph in the matching [docs/mechanics/](mechanics/README.md) file when
+   the line sets a convention (an assumption, an untested game behaviour); a
+   PoB2 difference with per-build numbers goes into
+   [pob2-differences.md](pob2-differences.md) and `devs/scripts/known-differences.json`.
 
 That is the whole change. The ledger, accuracy and parity effects are measured
 by the batch gate.
@@ -81,7 +83,8 @@ by the batch gate.
 ## Implement a missing mechanic
 
 Same as above, plus the source: game stats in `data/<version>/base/`, game
-constants, keyword text or official patch notes, quoted in the guide paragraph.
+constants, keyword text or official patch notes, quoted in its paragraph in
+[docs/mechanics/](mechanics/README.md).
 PoB2 (`vendor/`) is a cross-check only; never cite its line numbers. State
 every assumption that has no in-game test.
 

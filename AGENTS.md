@@ -1,8 +1,9 @@
 # Repository Guidelines
 
-Read the [maintainer guide](docs/maintainer-guide.md) for detailed architecture, validation scope, and
-calculation conventions. Use current code and regression tests to resolve
-disagreements with historical design notes.
+Read the [maintainer guide](docs/maintainer-guide.md) for architecture, validation scope and
+cross-cutting conventions; it links the topic documents (mechanics, outputs,
+build model, PoB2 differences, diagnostics). Use current code and regression
+tests to resolve disagreements with any document.
 
 ## Project Structure & Module Organization
 
@@ -43,10 +44,10 @@ Compilation dominates the cost of a small change. Each test target, the CLI and
 the parity binary are separate builds, and a new worktree starts with no build
 cache at all.
 
-- **Per change: one focused check.** Run the test of what you touched
-  (`cargo test -q -p <crate> --test <suite> <filter>`), `mise run regen` after a
-  rule edit, then Clippy for the changed crate (`--lib --tests`) and
-  `cargo fmt --check`. That is all a commit needs.
+- **Per change: one focused check.** `mise run verify <crate> <suite> [filter]`
+  runs the test of what you touched, then fmt and Clippy for that target
+  (`cargo test -q -p <crate> --test <suite> <filter>` works too); add
+  `mise run regen` after a rule edit. That is all a commit needs.
 - **Do not run per change:** the whole `cargo test -p pobr-core`, `--test parity`,
   the WASM/CLI suites, `mise run accuracy`, `triage`, `diagnose`, `compare`,
   `skills:sweep` or the coverage scripts. They compile the parity binary or the
@@ -144,8 +145,9 @@ Improve calculation accuracy in batches, not one build at a time:
    batch shows it; slow per-build investigation means the tooling is missing
    something.
 5. When the game's text or data shows a reference wrong, document the
-   deliberate difference in the maintainer guide and list its rows in
-   `devs/scripts/known-differences.json`.
+   deliberate difference in [docs/pob2-differences.md](docs/pob2-differences.md)
+   and list its rows in `devs/scripts/known-differences.json`. A rule PoB2 does
+   not implement only needs `exporter: "absent"`, not a known-difference entry.
 
 ## Commit & Pull Request Guidelines
 
@@ -157,10 +159,16 @@ and releases follow the user's authorized scope. Contributor requirements are in
 [CONTRIBUTING.md](CONTRIBUTING.md); maintainers handling fork PRs follow
 [the external PR steps](docs/development-workflow.md#处理外部-pr).
 
-## Reference Material
+## Documentation
 
-[docs/README.md](docs/README.md) separates current guides and contracts from
-dated records. Web feature contracts are in [docs/web-contracts.md](docs/web-contracts.md).
+- [docs/README.md](docs/README.md) separates current guides and contracts from
+  dated records. Web feature contracts are in [docs/web-contracts.md](docs/web-contracts.md).
+- A new mechanic convention goes into its section of [docs/mechanics/](docs/mechanics/README.md),
+  an output field into [docs/calc-outputs.md](docs/calc-outputs.md), a PoB2
+  difference into [docs/pob2-differences.md](docs/pob2-differences.md). Keep the
+  maintainer guide to cross-cutting rules: every session loads it in full.
+- When code replaces a described behaviour, rewrite or delete the paragraph;
+  do not keep superseded history in current documents.
 
 `agent-docs/` contains mechanics research, not final authority.
 `devs/docs/architecture/` holds the feature contracts (documents 18–21).

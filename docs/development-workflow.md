@@ -219,8 +219,9 @@ Linux CI 的 WASM 构建设置 `BINARYEN_CORES=1`，让 wasm-pack 下载的 Bina
    git switch -c review/pr-<N> origin/master && git merge --no-edit pr-<N>
    ```
 
-3. **按项目约定审查。** 重点看三件事：公式或数据引用是否带 PoB2 Lua 行号；是否能用一条通用规则
-   代替逐技能 / 逐词条条目；同一机制下是否还有其他受影响的技能。修复必须带能复现错误的断言。
+3. **按项目约定审查。** 重点看三件事：机制的出处是否是游戏数据（stat id、词条原文、游戏表、官方 patch notes），
+   而不是 PoB2 Lua 行号；是否能用一条通用规则代替逐技能 / 逐词条条目；同一机制下是否还有其他受影响的技能。
+   修复必须带能复现错误的断言，新约定写进对应的[机制约定](mechanics/README.md)。
 4. **需要调整时在贡献者提交之上追加。** 保留原提交和署名，在 `review/pr-<N>` 上追加提交并另开 PR，
    在原 PR 评论里说明改了什么、为什么；或在贡献者允许时直接推送到其分支。不要重写对方的提交。
 5. **合并后收尾。** squash 合并会生成新提交，GitHub 不会把原 PR 标为已合并：手动关闭原 PR 并注明
@@ -248,7 +249,8 @@ cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown TotalDPS,
 ```
 
 `triage` 是数值差异的第一步，一次对照基准组与 tuned 组的全部构筑，`diagnose` / `compare` 只用于它解释不了的单个构筑；
-流程见 [AGENTS.md](../AGENTS.md#accuracy-workflow) 和[维护者指南的“排查数值差异”](maintainer-guide.md#排查数值差异诊断闭环)。
+流程见 [AGENTS.md](../AGENTS.md#accuracy-workflow) 和[维护者指南的“排查数值差异”](maintainer-guide.md#排查数值差异诊断闭环)，
+各工具输出的含义见[诊断工具与逐行台账](diagnostics.md)。
 `triage` 与 `compare` 需要 vendor 与 LuaJIT，PoB2 的结果按构筑码缓存在 `.cache/pob2-oracle/`，两者共用；`lookup` 只读
 当前数据版本（`POBR_DATA_ROOT` / `POBR_DATA_VERSION` / `CURRENT`，或 `--version`），二者都只用 Python 标准库。
 
