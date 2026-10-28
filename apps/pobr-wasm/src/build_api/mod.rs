@@ -43,7 +43,8 @@ pub use usage::line_usage_json;
 
 pub use analysis::{AttributionRequest, attribution_json, node_power_json, optimize_variants_json};
 pub use augments::{item_augment_info_json, reforge_runes_json, rune_catalog_json};
-pub use calculate::{calculate_build_json, skill_metrics_json};
+pub(crate) use calculate::clear_snapshots;
+pub use calculate::{breakdown_descriptors_json, calculate_build_json, skill_metrics_json};
 pub use catalog::{
     classify_item_lines_json, gem_catalog_json, minion_catalog_json, translate_lines_to_zh_cn_json,
 };

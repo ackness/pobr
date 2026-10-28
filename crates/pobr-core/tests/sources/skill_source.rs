@@ -807,3 +807,32 @@ fn gem_level_bonus_reads_every_attribute_requirement() {
         parse_gem_property_bonus("+2 to Level of all Skills with a Luck requirement").is_none()
     );
 }
+
+/// Item and tree lines carry `{tag}` markers and `[internal|display]` links before
+/// the text is read. The cheap check that skips lines not starting with `+` must
+/// not drop a bonus that only looks different before cleaning.
+#[test]
+fn gem_property_bonus_reads_through_tags_and_links_and_skips_other_lines() {
+    use pobr_core::skill_env::{GemPropertyKind, parse_gem_property_bonus};
+
+    for line in [
+        "{fractured}+2 to Level of all Cold Skills",
+        "{desecrated}{enchant}  +2 to Level of all Cold Skills",
+        "+2 to [Level] of all [Cold] Skills",
+    ] {
+        let bonus = parse_gem_property_bonus(line).unwrap_or_else(|| panic!("{line}"));
+        assert_eq!(bonus.kind, GemPropertyKind::Level, "{line}");
+        assert_eq!(bonus.value, 2, "{line}");
+        assert_eq!(bonus.category, "cold", "{line}");
+    }
+    let quality = parse_gem_property_bonus("{tag}+5% to Quality of all Skills").unwrap();
+    assert_eq!((quality.kind, quality.value), (GemPropertyKind::Quality, 5));
+    for line in [
+        "10% increased Cold Damage",
+        "Grants Skill: Level 20 Purity of Fire",
+        "{tag}Adds 3 to 5 Fire Damage",
+        "",
+    ] {
+        assert!(parse_gem_property_bonus(line).is_none(), "{line}");
+    }
+}

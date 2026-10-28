@@ -1033,6 +1033,7 @@ export function bindT(lang: Lang): (key: UiKey) => string {
 const BOOT_MESSAGES: Record<string, Entry> = {
   '初始化…': { 'en-US': 'Initializing…', 'zh-TW': '初始化中…', 'zh-CN': '初始化…' },
   '加载数据清单…': { 'en-US': 'Loading data manifest…', 'zh-TW': '載入資料清單…', 'zh-CN': '加载数据清单…' },
+  '校验数据…': { 'en-US': 'Verifying game data…', 'zh-TW': '驗證遊戲資料…', 'zh-CN': '校验数据…' },
   '构建数据索引…': { 'en-US': 'Indexing game data…', 'zh-TW': '建立遊戲資料索引…', 'zh-CN': '构建数据索引…' },
   '就绪': { 'en-US': 'Ready', 'zh-TW': '就緒', 'zh-CN': '就绪' },
 };

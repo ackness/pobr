@@ -61,6 +61,8 @@ pub(super) fn calculate_prepared(
         };
         let mut scoped = view.clone();
         scoped.main_socket_group = Some(group_index + 1);
+        // Each effect of the group is calculated from this build, whose selection alone changes.
+        let _scope = super::selection_memo::SelectionScope::enter(&scoped, data);
         for effect in group_active_effects(data, &view.socket_groups[group_index]) {
             // An item's InbuiltTrigger is one intrinsic ability. Exports can retain
             // its generated Item: row beside the editable group holding its supports.

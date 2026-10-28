@@ -94,15 +94,9 @@ pub fn passive_jewel_state(build: &Build, data: &BuildData) -> PassiveJewelState
     if catalog.class_starts.is_empty() {
         return result;
     }
-    for (class, id) in &catalog.class_starts {
-        if let Some(node) = nodes
-            .values()
-            .filter(|n| &n.id == id)
-            .min_by_key(|n| n.skill)
-        {
-            result.class_starts.insert(class.clone(), node.skill);
-        }
-    }
+    result.class_starts = data
+        .passive_class_starts(build.tree_version.as_deref())
+        .into_owned();
     let starts: BTreeSet<_> = result.class_starts.values().copied().collect();
     let eligible = |node: &&PassiveNodeDef| {
         !starts.contains(&node.skill)

@@ -337,6 +337,12 @@ pub fn clean_grant_text(text: &str) -> String {
 /// leave the kind alone as the category. Named skills also omit "all":
 /// Cursecarver's `despair_gem_level_+` is "+N to Level of Despair Skills".
 pub fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
+    // Every form starts with `+`. Only a line whose first kept character is `+` (or a
+    // `[` link, which the link cleanup replaces by its text) can get that far, so the
+    // many lines of an item or the tree that start otherwise skip the cleaned copy.
+    if !matches!(crate::skill_env::first_kept_char(text), Some('+' | '[')) {
+        return None;
+    }
     let clean = clean_grant_text(text);
     let body = clean.strip_prefix('+')?;
     let (num, rest) = body.split_once(" to ")?;

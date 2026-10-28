@@ -1513,8 +1513,7 @@ fn minion_resistances_count_intrinsics_once_and_use_full_resolution() {
     );
     // Distinguish the actor defaults: the minion still reads the monster
     // maximum of 75 even if a data pack gives the player a different one.
-    env.cfg
-        .constants
+    std::sync::Arc::make_mut(&mut env.cfg.constants)
         .game_constants
         .character
         .base_maximum_all_resistances_pct = 65.0;

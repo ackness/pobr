@@ -13,6 +13,11 @@ fn init() {
 fn calculate(request: Value) -> Value {
     serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap()).unwrap()
 }
+/// The detail kind of every display stat. Responses no longer carry it by default; it
+/// is taken once from its own export.
+fn descriptors() -> Value {
+    serde_json::from_str(&pobr_wasm::breakdown_descriptors_json().unwrap()).unwrap()
+}
 fn close(actual: f64, expected: f64, at: &str) {
     assert!(
         (actual - expected).abs() < 1e-7 * actual.abs().max(expected.abs()).max(1.0),
@@ -165,7 +170,7 @@ fn requests_select_details_without_changing_stats() {
         .map(String::as_str)
         .collect();
     assert_eq!(keys, ["Life", "ManaCost", "NetLifeRegen", "Str"]);
-    assert_eq!(details["breakdown_descriptors"]["Str"], "sources");
+    assert_eq!(descriptors()["Str"], "sources");
     let mut bad = base;
     bad["breakdowns"] = json!(["UnknownStat"]);
     assert!(
@@ -617,10 +622,7 @@ fn unticked_utility_items_keep_their_properties_without_activating_their_buffs()
         25.0,
         "unticked Ruby Charm grants no fire resistance",
     );
-    assert_eq!(
-        inactive["breakdown_descriptors"]["Flask1Recovery"],
-        "derived"
-    );
+    assert_eq!(descriptors()["Flask1Recovery"], "derived");
     assert!(inactive["breakdowns"]["Flask1Recovery"]["derived"].is_object());
 }
 
@@ -643,7 +645,7 @@ fn archon_timings_have_derived_json_details() {
             .find(|row| row["id"] == stat)
             .unwrap();
         assert_eq!(value["value"], expected);
-        assert_eq!(result["breakdown_descriptors"][stat], "derived");
+        assert_eq!(descriptors()[stat], "derived");
         assert!(
             result["breakdowns"][stat]["derived"]["inputs"]
                 .as_array()
@@ -715,4 +717,87 @@ fn flask_end_guard_and_dynamism_events_have_reconstructible_details_and_config()
             .unwrap()
     };
     assert!(max_hit(&result) > max_hit(&without));
+}
+
+fn demo_code(build: &str) -> String {
+    let path = pobr_gamedata::repo_data_root()
+        .join(format!("../examples/demo-bd-test/builds/{build}/code.txt"));
+    std::fs::read_to_string(path).unwrap().trim().to_string()
+}
+
+/// A client that holds the descriptor table can ask not to receive it again: the
+/// response loses that one field and nothing else.
+#[test]
+fn descriptors_come_from_their_own_export_and_inline_only_on_request() {
+    init();
+    let code = demo_code("monk-invoker-frost-bomb");
+    let default = calculate(json!({ "pob_code": code, "breakdowns": [] }));
+    let mut inline =
+        calculate(json!({ "pob_code": code, "breakdowns": [], "include_descriptors": true }));
+    // Left out by default, present when asked for, and the same table either way.
+    assert!(default.get("breakdown_descriptors").is_none());
+    let table = descriptors();
+    assert!(table.as_object().unwrap().len() > 100);
+    assert_eq!(inline["breakdown_descriptors"], table);
+    // The request flag changes that one field and nothing else.
+    inline
+        .as_object_mut()
+        .unwrap()
+        .remove("breakdown_descriptors");
+    assert_eq!(default, inline);
+}
+
+/// The table needs no data: a client takes it before the game data has loaded.
+#[test]
+fn descriptors_are_available_without_game_data() {
+    let table: Value =
+        serde_json::from_str(&pobr_wasm::breakdown_descriptors_json().unwrap()).unwrap();
+    assert_eq!(table["Life"], "steps");
+    assert!(["steps", "sources", "derived", "none"].iter().any(|kind| {
+        table
+            .as_object()
+            .unwrap()
+            .values()
+            .any(|value| value == kind)
+    }));
+}
+
+/// Opening a stat's explanation asks for the same calculation with one more
+/// breakdown. Its answer must be what a calculation of its own would give, whether
+/// the earlier calculation is still held or not.
+#[test]
+fn a_detail_request_matches_a_fresh_calculation() {
+    init();
+    for build in ["monk-invoker-frost-bomb", "mercenary-tactician-wolf-pack"] {
+        let code = demo_code(build);
+        // Cold: no earlier calculation of this input is held.
+        let fresh = calculate(json!({
+            "pob_code": code,
+            "breakdowns": ["Life", "TotalDPS"],
+            "extra_modifiers": ["+1 to maximum Life"],
+        }));
+        // Warm: the same calculation, then the follow-up that reuses it.
+        let base = calculate(json!({
+            "pob_code": code,
+            "breakdowns": [],
+            "extra_modifiers": ["+1 to maximum Life"],
+        }));
+        // Spelled differently, so the exact-request cache cannot answer it: only the
+        // held calculation can.
+        let hits = pobr_wasm::state::response_cache_hits();
+        let follow_up = calculate(json!({
+            "pob_code": code,
+            "breakdowns": ["TotalDPS", "Life"],
+            "extra_modifiers": ["+1 to maximum Life"],
+        }));
+        assert_eq!(pobr_wasm::state::response_cache_hits(), hits, "{build}");
+        assert_eq!(
+            fresh, follow_up,
+            "{build}: the follow-up differs from a fresh calculation"
+        );
+        // The same numbers as the base, with the requested explanations added.
+        assert_eq!(base["stats"], follow_up["stats"], "{build}");
+        assert!(base["breakdowns"].as_object().unwrap().is_empty());
+        assert!(follow_up["breakdowns"].get("Life").is_some());
+    }
 }

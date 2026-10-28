@@ -21,20 +21,23 @@ mod xml_write;
 pub mod zh;
 
 pub use build_api::{
-    attribution_json, calculate_build_json, classify_item_lines_json, decode_build_file_json,
-    decode_build_json, decode_build_loadout_json, encode_build_file_json, encode_build_json,
-    gem_catalog_json, import_party_member_json, import_trade_items_json, item_augment_info_json,
-    item_crafting_catalog_json, line_usage_json, manage_loadout_json, minion_catalog_json,
-    node_power_json, normalize_item_draft_json, optimize_variants_json, reforge_runes_json,
-    rune_catalog_json, skill_metrics_json, translate_lines_to_zh_cn_json, unique_catalog_json,
-    unique_item_draft_json,
+    attribution_json, breakdown_descriptors_json, calculate_build_json, classify_item_lines_json,
+    decode_build_file_json, decode_build_json, decode_build_loadout_json, encode_build_file_json,
+    encode_build_json, gem_catalog_json, import_party_member_json, import_trade_items_json,
+    item_augment_info_json, item_crafting_catalog_json, line_usage_json, manage_loadout_json,
+    minion_catalog_json, node_power_json, normalize_item_draft_json, optimize_variants_json,
+    reforge_runes_json, rune_catalog_json, skill_metrics_json, translate_lines_to_zh_cn_json,
+    unique_catalog_json, unique_item_draft_json,
 };
 pub use build_api::{
     preview_tree_conversion_json, preview_tree_edit_json, support_groups_compatible_json,
 };
 pub use i18n::translate;
 pub use session::calculate_json;
-pub use state::{init_data_from_dir, init_staged_data, is_data_ready, stage_data_file};
+pub use state::{
+    init_data_from_dir, init_staged_data, init_staged_data_verified, is_data_ready,
+    stage_data_bytes, stage_data_file,
+};
 
 /// The JSON contract version. **Any** breaking change to a response or
 /// request shape must bump this by 1, kept in sync with
@@ -42,7 +45,7 @@ pub use state::{init_data_from_dir, init_staged_data, is_data_ready, stage_data_
 /// compares them at boot (see [`wasm::schema_version`]); a mismatch prompts
 /// a hard refresh — closing the door on "stale frontend cache + new wasm
 /// assets" silently breaking.
-pub const SCHEMA_VERSION: u32 = 15;
+pub const SCHEMA_VERSION: u32 = 16;
 
 /// wasm-bindgen bindings: compiled only under the `wasm` feature, exposing
 /// functions with the same names as the host API to JS.
@@ -74,11 +77,25 @@ pub mod wasm {
         crate::state::stage_data_file(path, content);
     }
 
+    /// JS entry point: `stageDataBytes(path, bytes)` — like `stageDataFile`, from a
+    /// `Uint8Array` (no string decoding on the way in).
+    #[wasm_bindgen(js_name = stageDataBytes)]
+    pub fn stage_data_bytes(path: &str, bytes: Vec<u8>) {
+        crate::state::stage_data_bytes(path, bytes);
+    }
+
     /// JS entry point: `initStagedData()` — builds game data from the
     /// injected files (a one-time step, zero I/O afterward).
     #[wasm_bindgen(js_name = initStagedData)]
     pub fn init_staged_data() -> Result<(), JsError> {
         crate::state::init_staged_data().map_err(|err| JsError::new(&err))
+    }
+
+    /// JS entry point: `initStagedDataVerified()` — `initStagedData` for a caller that
+    /// has already compared every file the manifest lists with its SHA-256 digest.
+    #[wasm_bindgen(js_name = initStagedDataVerified)]
+    pub fn init_staged_data_verified() -> Result<(), JsError> {
+        crate::state::init_staged_data_verified().map_err(|err| JsError::new(&err))
     }
 
     /// JS entry point: `isDataReady() -> bool`.
@@ -103,6 +120,13 @@ pub mod wasm {
     #[wasm_bindgen(js_name = supportGroupsCompatibleJson)]
     pub fn support_groups_compatible_json(input: &str) -> Result<String, JsError> {
         crate::support_groups_compatible_json(input).map_err(|err| JsError::new(&err))
+    }
+
+    /// JS entry point: `breakdownDescriptorsJson() -> string` (the detail kind of every
+    /// display stat; static, callable before data is loaded).
+    #[wasm_bindgen(js_name = breakdownDescriptorsJson)]
+    pub fn breakdown_descriptors_json() -> Result<String, JsError> {
+        crate::build_api::breakdown_descriptors_json().map_err(|err| JsError::new(&err))
     }
 
     /// JS entry point: `skillMetricsJson(requestJson) -> string` (independent active-effect metrics).

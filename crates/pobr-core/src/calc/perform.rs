@@ -501,11 +501,13 @@ pub(crate) fn minion_cfg(env: &Env, minion: &super::Actor) -> CalcConfig {
         .insert("OnConsecratedGround".into(), on_ground);
     // The shared resistance pass reads the actor's inherent maximum.
     // A minion uses the monster default (75%), independent of the player.
-    cfg.constants
+    // This is the one place a configuration's shared constants are edited, so only
+    // a minion pays for its own copy.
+    let monster_maximum = cfg.constants.monster().base_maximum_all_resistances_pct;
+    std::sync::Arc::make_mut(&mut cfg.constants)
         .game_constants
         .character
-        .base_maximum_all_resistances_pct =
-        cfg.constants.monster().base_maximum_all_resistances_pct;
+        .base_maximum_all_resistances_pct = monster_maximum;
     if let Some(skill) = minion
         .minion
         .as_ref()

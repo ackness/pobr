@@ -47,6 +47,9 @@ export function createMockBackend(): PobrBackend {
     async decodeBuildFile() {
       return decodeFixture as unknown as BuildJson;
     },
+    async breakdownDescriptors() {
+      return (calculateFixture as unknown as CalculateBuildResponse).breakdown_descriptors ?? {};
+    },
     async calculateBuild(request) {
       const result = calculateFixture as unknown as CalculateBuildResponse;
       if (request.breakdowns === undefined && request.breakdown_actor === undefined) return result;

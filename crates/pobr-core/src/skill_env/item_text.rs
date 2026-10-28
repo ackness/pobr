@@ -7,6 +7,45 @@
 use pobr_data::item::Item;
 use pobr_data::modifier::ModType;
 
+/// The first character [`clean_item_text`] keeps: the first one outside `{...}` that is
+/// not whitespace. A reader that only accepts lines whose cleaned form starts a certain
+/// way can rule most lines out from this alone, without building the cleaned copy.
+pub fn first_kept_char(text: &str) -> Option<char> {
+    let mut depth = 0u32;
+    for c in text.chars() {
+        match c {
+            '{' => depth += 1,
+            '}' => depth = depth.saturating_sub(1),
+            _ if depth > 0 || c.is_whitespace() => {}
+            _ => return Some(c),
+        }
+    }
+    None
+}
+
+/// Whether `text` contains `needle` ignoring ASCII case. `needle` must be ASCII
+/// lowercase. Allocation-free, for ruling a line out before it is cleaned and lowercased.
+pub fn contains_ascii_ci(text: &str, needle: &str) -> bool {
+    let needle = needle.as_bytes();
+    let Some((&first, rest)) = needle.split_first() else {
+        return true;
+    };
+    let haystack = text.as_bytes();
+    // Stop where the rest of the needle can no longer fit.
+    let Some(last_start) = haystack.len().checked_sub(needle.len()) else {
+        return false;
+    };
+    // Most positions fail on the first byte, so test that alone before comparing
+    // the remainder; scanning every window was the cost of the pre-checks.
+    haystack[..=last_start]
+        .iter()
+        .enumerate()
+        .any(|(at, byte)| {
+            byte.to_ascii_lowercase() == first
+                && haystack[at + 1..at + needle.len()].eq_ignore_ascii_case(rest)
+        })
+}
+
 /// Strips PoB item mod `{tag}` markers (e.g. `{desecrated}{enchant}`), returning the
 /// untagged lowercase text.
 pub fn clean_item_text(text: &str) -> String {
@@ -367,6 +406,44 @@ pub fn parse_has_per_level_defence(clean: &str) -> Option<[f64; 3]> {
 mod tests {
     use super::*;
     use pobr_data::catalog::local_mods::WeaponLocalModsDef;
+
+    /// The cheap line probes must agree with the cleaned copy they stand in for.
+    #[test]
+    fn first_kept_char_is_the_first_char_of_the_cleaned_line() {
+        for line in [
+            "+2 to Level of all Cold Skills",
+            "{fractured}{desecrated}  +2 to Level of all Cold Skills",
+            "  {tag}+5% to Quality of all Skills",
+            "Grants Skill: Level 20 Purity of Fire",
+            "[Quality|Quality]: +5%",
+            "{unterminated +5",
+            "}{stray close}+1 to Level of all Skills",
+            "",
+            "   ",
+            "{only a tag}",
+        ] {
+            let cleaned = clean_item_text(line);
+            assert_eq!(
+                first_kept_char(line).map(|c| c.to_lowercase().next().unwrap()),
+                cleaned.chars().next(),
+                "{line:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn contains_ascii_ci_ignores_case_and_needs_the_whole_needle() {
+        assert!(contains_ascii_ci(
+            "10% Increased Bonuses Gained From Rings",
+            "bonuses gained from"
+        ));
+        assert!(contains_ascii_ci(
+            "Allocates Heart of the Warrior",
+            "allocates"
+        ));
+        assert!(!contains_ascii_ci("Allocate", "allocates"));
+        assert!(!contains_ascii_ci("", "allocates"));
+    }
 
     #[test]
     fn a_reduced_line_is_the_increased_one_with_a_negative_value() {

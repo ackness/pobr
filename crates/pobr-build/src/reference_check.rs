@@ -154,7 +154,23 @@ pub fn main_skill_minion<'a>(
         return None;
     }
     let prepared = crate::calc_orchestrator::prepared_build_view(build, data, &Default::default());
-    let (group_index, ordinal, skill_id) = crate::resolve_main_skill_selection(&prepared, data)?;
+    main_skill_minion_in_view(&prepared, data, output)
+}
+
+/// [`main_skill_minion`] for the view
+/// [`crate::calc_orchestrator::calculate_with_data_session_prepared`] returned: the
+/// minion is found in the view the calculation used, so the answer follows the
+/// calculation's own options, and the build is not prepared again.
+pub fn main_skill_minion_in_view<'a>(
+    prepared: &crate::Build,
+    data: &crate::BuildData,
+    output: &'a OutputTable,
+) -> Option<&'a MinionOutput> {
+    if output.minions.is_empty() {
+        return None;
+    }
+    let (group_index, ordinal, skill_id) =
+        crate::calc_orchestrator::main_skill_selection_in_view(prepared, data)?;
     let group = prepared.socket_groups.get(group_index)?;
     if !group.enabled {
         return None;

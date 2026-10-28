@@ -91,7 +91,10 @@ fn pin_application_uses_primed_thresholds_without_granting_buildup() {
 #[test]
 fn pin_duration_uses_runtime_base_modifiers_and_enemy_expiry() {
     let mut cfg = CalcConfig::spell().with_mode_effective(true);
-    cfg.constants.game_constants.game.pin_base_duration = 5.0;
+    std::sync::Arc::make_mut(&mut cfg.constants)
+        .game_constants
+        .game
+        .pin_base_duration = 5.0;
     let mut s = session(
         cfg,
         &[

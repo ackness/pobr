@@ -16,7 +16,7 @@ export type {
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 15;
+export const EXPECTED_SCHEMA_VERSION = 16;
 
 // ---------------------------------------------------------------------------
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
@@ -361,6 +361,11 @@ export interface CalculateBuildRequest {
   /** Omitted: legacy defaults; []: no details; otherwise only the opened ids. */
   breakdowns?: string[];
   breakdown_actor?: BreakdownActor;
+  /**
+   * Put `breakdown_descriptors` in the response. It is left out by default (the table
+   * depends only on the engine build; take it once from `breakdownDescriptors`).
+   */
+  include_descriptors?: boolean;
   /** Collect configuration visibility facts; omitted keeps read tracking off. */
   config_context?: boolean;
   /** Evaluate included effects; omitted keeps the single-skill calculation. */

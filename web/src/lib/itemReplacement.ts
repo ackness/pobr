@@ -6,6 +6,22 @@ import type { PobrBackend } from '../api/backend';
 import { planReplacementAugments, type AugmentSelection, type ReplacementAugments } from './replacementAugments';
 
 /** Only structural clipboard headers are normalized; effect text remains available for diagnostics. */
+/**
+ * A paste whose comparison has not begun: no receipt, nothing running and no failure
+ * on show. Nothing has run against the old context, so a change of context (the trade
+ * catalog or the passive tree arriving, the build being recalculated) leaves nothing
+ * stale to discard, and the paste is compared under the new context instead of being
+ * dropped. A comparison that has begun, finished or failed is discarded as before.
+ *
+ * It matters most when the engine runs in a worker, where such inputs reach the page a
+ * moment after it is interactive.
+ */
+export function pasteNotStarted(state: {
+  pending: boolean; hasReceipt: boolean; busy: boolean; failed: boolean;
+}): boolean {
+  return state.pending && !state.hasReceipt && !state.busy && !state.failed;
+}
+
 export function normalizeCopiedItem(input: string): string {
   if (input.length > 50000) throw new Error('invalid-item');
   const rarity: Record<string, string> = { '普通': 'NORMAL', '魔法': 'MAGIC', '稀有': 'RARE', '传奇': 'UNIQUE', '傳奇': 'UNIQUE', '独特': 'UNIQUE', '獨特': 'UNIQUE' };

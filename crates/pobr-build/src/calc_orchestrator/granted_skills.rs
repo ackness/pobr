@@ -40,6 +40,14 @@ const MAX_LEVEL_FALLBACK: u32 = 99;
 /// Parses one granted-skill mod line: `grants skill: level 20 purity of fire` →
 /// `("purity of fire", Some(20))`; `grants skill: firebolt` → `("firebolt", None)`.
 fn parse_grants_skill(text: &str) -> Option<(String, Option<u32>)> {
+    // The cleaned line must start with "grants skill:"; most lines start otherwise,
+    // and a `[` link is replaced by its text during cleanup.
+    if !matches!(
+        pobr_core::skill_env::first_kept_char(text),
+        Some('g' | 'G' | '[')
+    ) {
+        return None;
+    }
     let cleaned = clean_grant_text(text);
     let rest = cleaned.trim().strip_prefix("grants skill:")?.trim();
     if rest.is_empty() {
@@ -53,36 +61,6 @@ fn parse_grants_skill(text: &str) -> Option<(String, Option<u32>)> {
         return Some((name.trim().to_string(), Some(level)));
     }
     Some((rest.to_string(), None))
-}
-
-/// Gem display name (lowercase) → primary effect id lookup table (same source as
-/// gem_catalog: base_items' gem name × gem_effects' gem_id link).
-fn skill_id_by_name(data: &BuildData) -> HashMap<String, &str> {
-    let gem_to_skill: HashMap<&str, &str> = data
-        .gem_effects
-        .iter()
-        .map(|(skill_id, def)| (def.gem_id.as_str(), skill_id.as_str()))
-        .collect();
-    let mut by_name: HashMap<_, _> = data
-        .base_items
-        .iter()
-        .filter_map(|(name, def)| {
-            gem_to_skill
-                .get(def.id.as_str())
-                .map(|skill_id| (name.to_lowercase(), *skill_id))
-        })
-        .collect();
-    // The base-item name index collapses ordinary and unique skill gems.
-    // Without an item attachment, a shared name means the ordinary effect.
-    for variant in &data.item_granted_skill_variants {
-        if data.gem_effects.contains_key(&variant.exported_effect_id) {
-            by_name.insert(
-                variant.skill_name.to_lowercase(),
-                variant.exported_effect_id.as_str(),
-            );
-        }
-    }
-    by_name
 }
 
 fn is_item_skill_source(source: Option<&str>) -> bool {
@@ -162,7 +140,7 @@ fn grant_identity<'a>(
     slot: &str,
     set: Option<u8>,
     name: &str,
-    by_name: &HashMap<String, &'a str>,
+    by_name: &'a HashMap<String, String>,
 ) -> Option<GrantIdentity<'a>> {
     let base = item.base.to_string();
     let other_set = 3 - build.weapon_set.number();
@@ -201,8 +179,8 @@ fn grant_identity<'a>(
             }
         }
     }
-    by_name.get(name).map(|&skill_id| GrantIdentity {
-        skill_id,
+    by_name.get(name).map(|skill_id| GrantIdentity {
+        skill_id: skill_id.as_str(),
         exported_alias: None,
     })
 }
@@ -271,7 +249,7 @@ pub(crate) fn resolved_granted_skill_texts(build: &Build, data: &BuildData) -> V
     if grants.is_empty() {
         return Vec::new();
     }
-    let by_name = skill_id_by_name(data);
+    let by_name = data.skill_id_by_gem_name();
     grants
         .into_iter()
         .filter(|(_, name)| by_name.contains_key(name))
@@ -300,7 +278,7 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
         return None;
     }
 
-    let by_name = skill_id_by_name(data);
+    let by_name = data.skill_id_by_gem_name();
     let other_set = 3 - build.weapon_set.number();
     let mut existing: HashSet<(String, String, u32, bool)> = build
         .socket_groups
@@ -319,7 +297,7 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
     let mut synthesized: Vec<SocketGroup> = Vec::new();
     for (slot, item, name, level) in grants {
         let set = item_weapon_set(build, slot);
-        let Some(identity) = grant_identity(build, data, item, slot.id(), set, &name, &by_name)
+        let Some(identity) = grant_identity(build, data, item, slot.id(), set, &name, by_name)
         else {
             continue; // A non-gem skill name (see module doc), skipped.
         };
@@ -458,7 +436,7 @@ pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Optio
         return None;
     }
 
-    let by_name = skill_id_by_name(data);
+    let by_name = data.skill_id_by_gem_name();
     let mut marked = build.clone();
     let mut claimed: HashSet<usize> = HashSet::new();
     let mut any = false;
@@ -471,7 +449,7 @@ pub(crate) fn mark_item_granted_skills(build: &Build, data: &BuildData) -> Optio
         set,
     } in grants
     {
-        let Some(identity) = grant_identity(build, data, item, &slot, set, &name, &by_name) else {
+        let Some(identity) = grant_identity(build, data, item, &slot, set, &name, by_name) else {
             continue;
         };
         let skill_id = identity.skill_id;

@@ -128,7 +128,7 @@ impl GameData {
             let bytes = self
                 .read_bytes(&path)
                 .map_err(|source| LoadError::Io { path, source })?;
-            if sha256_hex(&bytes) != *digest {
+            if !self.prechecked && sha256_hex(&bytes) != *digest {
                 return Err(invalid(format!("SHA-256 mismatch: {file}")));
             }
         }
@@ -197,6 +197,47 @@ mod tests {
             .validate_manifest()
             .unwrap_err();
         assert!(err.to_string().contains("SHA-256 mismatch"));
+    }
+
+    /// A pack the caller says it has checked is still structurally validated, and
+    /// keeps the identity the unchecked loader gives it; only the byte comparison
+    /// is left out.
+    #[test]
+    fn a_prechecked_pack_skips_only_the_digest_comparison() {
+        let files = strict_files();
+        let checked = GameData::from_memory_prechecked(files.clone());
+        checked.validate_manifest().unwrap();
+        assert_eq!(
+            checked.identity().unwrap(),
+            GameData::from_memory(files.clone()).identity().unwrap()
+        );
+        // A changed file is the caller's to catch; the loader no longer hashes it.
+        let mut changed = files.clone();
+        changed.insert("overlay/gem_quality_stats.json".into(), b"{}".to_vec());
+        GameData::from_memory_prechecked(changed)
+            .validate_manifest()
+            .unwrap();
+        // A listed file that is missing, and a malformed inventory, still fail.
+        let mut missing = files.clone();
+        missing.remove("overlay/gem_quality_stats.json");
+        assert!(
+            GameData::from_memory_prechecked(missing)
+                .validate_manifest()
+                .is_err()
+        );
+        let mut malformed: serde_json::Value =
+            serde_json::from_slice(&files["manifest.json"]).unwrap();
+        malformed["files"]["overlay/gem_quality_stats.json"] = "NOT-A-DIGEST".into();
+        let mut bad_inventory = files;
+        bad_inventory.insert(
+            "manifest.json".into(),
+            serde_json::to_vec(&malformed).unwrap(),
+        );
+        assert!(
+            GameData::from_memory_prechecked(bad_inventory)
+                .validate_manifest()
+                .is_err()
+        );
     }
 
     #[test]

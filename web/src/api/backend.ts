@@ -1,3 +1,4 @@
+import { withBreakdownDescriptors } from './descriptors';
 import type { UniqueEntry, UniqueSelection, UniqueDraft } from './uniques';
 import type { CraftingMetadata } from './itemCrafting';
 /**
@@ -73,6 +74,12 @@ export interface PobrBackend {
   decodeBuildFile(content: string): Promise<BuildJson>;
   importTradeItems(items: unknown[]): Promise<{ text?: string; warnings?: string[]; error?: string }[]>;
   calculateBuild(request: CalculateBuildRequest): Promise<CalculateBuildResponse>;
+  /**
+   * The detail kind of every display stat (the response's `breakdown_descriptors`). A
+   * calculation response carries it only on request; `getBackend()` puts this table
+   * into the responses it returns, so callers do not have to.
+   */
+  breakdownDescriptors(): Promise<NonNullable<CalculateBuildResponse['breakdown_descriptors']>>;
   /** 编辑态 → PoB2 分享 code（请求同 calculateBuild + 可选 notes）。 */
   encodeBuild(request: CalculateBuildRequest & { notes?: string; base_code?: string }): Promise<string>;
   /** Independent metrics for every active effect, including utility and unavailable skills. */
@@ -131,11 +138,37 @@ let backendPromise: Promise<PobrBackend> | null = null;
 
 /** 取当前后端（懒加载单例）。 */
 export function getBackend(): Promise<PobrBackend> {
-  if (!backendPromise) {
-    backendPromise =
-      import.meta.env.VITE_POBR_BACKEND === 'mock'
-        ? import('./mockBackend').then((m) => m.createMockBackend())
-        : import('./wasmBackend').then((m) => m.createWasmBackend());
-  }
+  backendPromise ??= createBackend().then(withBreakdownDescriptors);
   return backendPromise;
+}
+
+/**
+ * Whether the engine should run in a Web Worker. It does by default wherever workers
+ * exist, so that a calculation never freezes the interface. `?engine=main` in the page
+ * address, or `VITE_POBR_WORKER=0` at build time, keeps it on the page's own thread
+ * (for debugging a worker-only problem).
+ */
+function wantsWorker(): boolean {
+  if (typeof Worker === 'undefined' || import.meta.env.VITE_POBR_WORKER === '0') return false;
+  try {
+    return new URLSearchParams(globalThis.location?.search).get('engine') !== 'main';
+  } catch {
+    return true;
+  }
+}
+
+async function createBackend(): Promise<PobrBackend> {
+  if (import.meta.env.VITE_POBR_BACKEND === 'mock') {
+    return (await import('./mockBackend')).createMockBackend();
+  }
+  if (wantsWorker()) {
+    try {
+      return await (await import('./workerBackend')).createWorkerBackend();
+    } catch (error) {
+      // A worker that cannot start (blocked, not built for this deployment) must not
+      // leave the page without an engine: run it on this thread, as before.
+      console.warn('Engine worker unavailable, running the engine on the page thread.', error);
+    }
+  }
+  return (await import('./wasmBackend')).createWasmBackend();
 }

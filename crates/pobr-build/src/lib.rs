@@ -62,7 +62,8 @@ pub use calc_orchestrator::{
     OrchestratorOptions, ReceivedLine, SkillMetrics, SkillMetricsReport, StatMapCompareRecord,
     StatMapMode, TreeVersionReport, UnmappedStat, UnsetCondition, calculate,
     calculate_skill_metrics, calculate_with_data, calculate_with_data_report,
-    calculate_with_data_session, diagnose, diagnose_tree_version, resolve_main_skill_selection,
+    calculate_with_data_session, calculate_with_data_session_prepared, diagnose,
+    diagnose_tree_version, resolve_main_skill_selection,
 };
 pub use comparison::{FieldDiff, OutputComparison, compare_outputs};
 pub use error::{BuildCodeError, BuildError, XmlError};
@@ -73,7 +74,7 @@ pub use loadout::{
 };
 pub use reference_check::{
     ReferenceRow, compare_build_to_reference, compare_minion_to_reference, compare_to_reference,
-    damage_row, main_skill_minion,
+    damage_row, main_skill_minion, main_skill_minion_in_view,
 };
 pub use snapshot::BuildSnapshot;
 pub use xml_build::{

@@ -189,7 +189,12 @@ rebuild without clearing Cargo caches. See [development workflow](../docs/develo
 for storage reporting, the shared dev/test profile and cache tradeoffs.
 
 `src/api/wasmBackend.ts` invokes WASM in the browser; planners reuse calculation
-results. `public/_worker.js` is the Cloudflare Pages HTTP adapter for WeGame and
+results. By default it runs in a dedicated module worker (`wasmWorker.ts`, reached
+through `workerBackend.ts` and the message protocol in `rpc.ts`), so a calculation,
+a heat map or an optimization never freezes the interface. If the worker cannot start
+the engine runs on the page's thread instead. `?engine=main` in the page address or
+`VITE_POBR_WORKER=0` at build time forces that, for debugging a worker-only problem.
+Calls are answered in the order they arrive; there is one engine and one state. `public/_worker.js` is the Cloudflare Pages HTTP adapter for WeGame and
 market endpoints, also used by Vite locally. It does not execute Rust
 calculations. Validate Worker changes in the actual workerd runtime.
 
@@ -366,9 +371,15 @@ passives, simultaneous multiple-jewel swaps and equipment-plus-tree searches are
 
 ## Data flow
 
-1. Startup: JS fetches every JSON listed in `public/data/manifest.json` →
-   `stageDataFile` injects into wasm → `initStagedData()` builds `BuildData`
-   over in-memory `GameData`; subsequent calculations read that memory.
+1. Startup: JS fetches every JSON listed in `public/data/manifest.json` as bytes →
+   `stageDataBytes` injects into wasm → the page compares each file the snapshot
+   manifest lists with its SHA-256 digest using the browser's native digest
+   (`api/dataIntegrity.ts`; hashing the same 57 MB inside wasm took about 180 ms) →
+   `initStagedDataVerified()` builds `BuildData` over in-memory `GameData`, still
+   validating everything but the byte comparison; subsequent calculations read that
+   memory. Where the browser has no native digest (not a secure context) or the
+   manifest has no digest inventory, `initStagedData()` hashes inside wasm instead.
+   `stageDataFile` (text) and `initStagedData()` remain for other callers.
 2. Import: `decodeBuildJson(code)` → structured build (character / tree / item
    text / socket groups / config).
 3. Calculation: `useBuildSession` materializes editable state into a request →

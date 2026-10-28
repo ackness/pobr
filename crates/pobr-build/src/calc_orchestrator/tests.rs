@@ -4,6 +4,7 @@ use super::collect::{combine_wrapped_then_filter, granted_passive_defs};
 use super::conditions::{combat_conditions, weapon_cfg_flags, weapon_type_conditions};
 use super::context::CalculationContext;
 use super::item::mirror::slot_bonus_effect_scales;
+use super::selection_memo;
 use super::skill::buffs::{
     buff_skill_specs, herald_skill_names, self_buff_offensive_modifiers, support_buff_specs,
 };
@@ -341,6 +342,8 @@ fn granted_anoint_notable_feeds_gem_property_scan() {
     same_name.skill = 0;
     same_name.kind = pobr_data::catalog::PassiveNodeKind::Normal;
     data.passive_nodes.insert(0, same_name);
+    // The tree was edited after the lookups above used it.
+    data.reset_derived_indexes();
     let mut build = build;
     build
         .items
@@ -363,6 +366,74 @@ fn granted_anoint_notable_feeds_gem_property_scan() {
 fn repo_data() -> BuildData {
     let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
     BuildData::load(&data).expect("load repo build data")
+}
+
+/// An amulet whose only line is a gem level bonus, or the build without one.
+fn with_level_bonus(build: &Build, bonus: u32) -> Build {
+    use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
+    let mut build = build.clone();
+    build.items.insert(
+        EquipmentSlot::Amulet,
+        Item {
+            base: ItemBaseId::from("Lunar Amulet"),
+            rarity: ItemRarity::Rare,
+            quality: 0,
+            corrupted: false,
+            implicit_texts: Vec::new(),
+            modifier_texts: vec![format!("+{bonus} to Level of all Spell Skills")],
+            enchant_texts: Vec::new(),
+            rolled_defence: RolledDefence::default(),
+            socketed: Vec::new(),
+            parsed_stats: Vec::new(),
+        },
+    );
+    build
+}
+
+fn level_total(build: &Build, data: &BuildData) -> u32 {
+    gem_property_bonuses(build, data)
+        .iter()
+        .filter(|bonus| bonus.kind == GemPropertyKind::Level)
+        .map(|bonus| bonus.value)
+        .sum()
+}
+
+#[test]
+fn selection_scope_shares_gem_bonuses_only_for_the_build_it_names() {
+    let data = repo_data();
+    let mut build = with_level_bonus(&Build::new(), 2);
+    let outside = level_total(&build, &data);
+    assert_eq!(outside, 2);
+    {
+        let _scope = selection_memo::SelectionScope::enter(&build, &data);
+        // The selection changes; the answer, and the build it names, do not.
+        build.main_socket_group = Some(1);
+        assert_eq!(level_total(&build, &data), 2);
+        // Another build, even one equal in everything but a bonus, is its own.
+        let other = with_level_bonus(&build, 5);
+        assert_eq!(level_total(&other, &data), 5);
+        assert_eq!(level_total(&build.clone(), &data), 2);
+        assert_eq!(level_total(&build, &data), 2);
+    }
+    // Once the scope closes, a change to the same build (same address) is read.
+    build = with_level_bonus(&build, 7);
+    assert_eq!(level_total(&build, &data), 7);
+}
+
+#[test]
+fn nested_selection_scopes_restore_the_outer_one() {
+    let data = repo_data();
+    let outer = with_level_bonus(&Build::new(), 1);
+    let inner = with_level_bonus(&Build::new(), 3);
+    let _outer_scope = selection_memo::SelectionScope::enter(&outer, &data);
+    assert_eq!(level_total(&outer, &data), 1);
+    {
+        let _inner_scope = selection_memo::SelectionScope::enter(&inner, &data);
+        assert_eq!(level_total(&inner, &data), 3);
+        assert_eq!(level_total(&outer, &data), 1);
+    }
+    assert_eq!(level_total(&outer, &data), 1);
+    assert_eq!(level_total(&inner, &data), 3);
 }
 
 // Text-only path (backward compatible, preserves the existing assertions)

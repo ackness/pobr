@@ -107,6 +107,9 @@ pub struct GameData {
     >,
     /// Effective input-pack fingerprint, fixed on first request and shared by clones.
     identity: std::sync::Arc<std::sync::OnceLock<Result<DataIdentity, String>>>,
+    /// The caller has already compared every inventoried file with its manifest
+    /// digest ([`Self::from_memory_prechecked`]), so validation skips that comparison.
+    prechecked: bool,
 }
 
 impl GameData {
@@ -117,6 +120,7 @@ impl GameData {
             files: None,
             snapshot: Default::default(),
             identity: Default::default(),
+            prechecked: false,
         }
     }
 
@@ -133,6 +137,23 @@ impl GameData {
             files: Some(std::sync::Arc::new(files)),
             snapshot: Default::default(),
             identity: Default::default(),
+            prechecked: false,
+        }
+    }
+
+    /// [`Self::from_memory`] for files whose digests the caller has already compared
+    /// with the snapshot manifest's.
+    ///
+    /// Hashing a data pack takes about 180 ms in WASM, which has no SHA instructions,
+    /// and the browser's own SHA-256 does the same work several times faster. Everything
+    /// else of manifest validation still runs here (schema, inventory, safe paths,
+    /// digest format, every listed file present); only the byte comparison is left to
+    /// the caller, who must have made it against this manifest's digests. The pack's
+    /// identity is unchanged: it is built from the manifest's digests, not from hashing.
+    pub fn from_memory_prechecked(files: std::collections::BTreeMap<String, Vec<u8>>) -> Self {
+        Self {
+            prechecked: true,
+            ..Self::from_memory(files)
         }
     }
 
@@ -143,13 +164,21 @@ impl GameData {
         rel.to_string_lossy().replace('\\', "/")
     }
 
-    /// Reads a data file's bytes (dispatched by backend).
-    pub(crate) fn read_bytes(&self, path: &Path) -> Result<Vec<u8>, std::io::Error> {
+    /// Reads a data file's bytes (dispatched by backend). Memory data is lent, not
+    /// copied: a data pack is tens of megabytes and every domain, the manifest check
+    /// and the identity digest each read their files.
+    pub(crate) fn read_bytes(
+        &self,
+        path: &Path,
+    ) -> Result<std::borrow::Cow<'_, [u8]>, std::io::Error> {
         match &self.files {
-            Some(map) => map.get(&self.memory_key(path)).cloned().ok_or_else(|| {
-                std::io::Error::new(std::io::ErrorKind::NotFound, "file not in memory data")
-            }),
-            None => fs::read(path),
+            Some(map) => map
+                .get(&self.memory_key(path))
+                .map(|bytes| std::borrow::Cow::Borrowed(bytes.as_slice()))
+                .ok_or_else(|| {
+                    std::io::Error::new(std::io::ErrorKind::NotFound, "file not in memory data")
+                }),
+            None => fs::read(path).map(std::borrow::Cow::Owned),
         }
     }
 

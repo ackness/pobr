@@ -43,6 +43,14 @@ name = "perf_timing"
 required-features = ["diagnostics"]
 
 [[test]]
+name = "perf_uncached"
+required-features = ["diagnostics"]
+
+[[test]]
+name = "perf_corpus"
+required-features = ["diagnostics"]
+
+[[test]]
 name = "zh_gap_probe"
 required-features = ["diagnostics"]
 

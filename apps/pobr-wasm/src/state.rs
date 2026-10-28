@@ -124,6 +124,7 @@ pub fn response_cache_hits() -> u64 {
 
 /// Clears the response cache whenever data is (re-)initialized — results are sensitive to the data version.
 fn clear_data_caches() {
+    crate::build_api::clear_snapshots();
     ZH_TRANSLATOR.with_borrow_mut(|slot| *slot = None);
     EN_TO_ZH_TRANSLATOR.with_borrow_mut(|slot| *slot = None);
     TIER_INDEX.with_borrow_mut(|slot| *slot = None);
@@ -144,14 +145,39 @@ pub fn stage_data_file(path: &str, content: &str) {
     });
 }
 
+/// [`stage_data_file`] for bytes the caller already holds. A typed array crosses the
+/// boundary as one copy, with no decoding to a string and encoding back, which is what
+/// staging a pack of tens of megabytes as text costs.
+pub fn stage_data_bytes(path: &str, bytes: Vec<u8>) {
+    STAGED.with_borrow_mut(|map| {
+        map.insert(path.to_string(), bytes);
+    });
+}
+
 /// Builds the in-memory-backed [`GameData`] plus [`BuildData`] from the
-/// staged files and caches them; clears the staging area.
+/// staged files and caches them; clears the staging area. Every file the snapshot
+/// manifest lists is hashed and compared with its digest here.
 pub fn init_staged_data() -> Result<(), String> {
+    init_staged(false)
+}
+
+/// [`init_staged_data`] for a caller that has already compared each listed file with
+/// the manifest's digest (the browser does, with its native SHA-256, in a fraction of
+/// the time hashing takes in WASM). The rest of the validation still runs.
+pub fn init_staged_data_verified() -> Result<(), String> {
+    init_staged(true)
+}
+
+fn init_staged(prechecked: bool) -> Result<(), String> {
     let files = STAGED.with_borrow_mut(std::mem::take);
     if files.is_empty() {
         return Err("no data files staged; call stage_data_file first".to_string());
     }
-    let data = GameData::from_memory(files);
+    let data = if prechecked {
+        GameData::from_memory_prechecked(files)
+    } else {
+        GameData::from_memory(files)
+    };
     let build_data = BuildData::load(&data).map_err(|e| format!("load BuildData: {e}"))?;
     BUILD_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(build_data)));
     GAME_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(data)));

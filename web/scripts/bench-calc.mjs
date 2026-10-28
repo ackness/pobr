@@ -71,7 +71,13 @@ for (const fixture of fixtures) {
         const start = performance.now();
         const response = engine.wasm[method](uncached);
         samples.get(engine.name).push(performance.now() - start);
-        const parsed = normalize(JSON.parse(response));
+        const raw = JSON.parse(response);
+        // Current engines leave the detail-kind table out of a response and offer it once;
+        // older packages inline it. Put it back so both compare like with like.
+        if (method === 'calculateBuildJson' && raw.breakdown_descriptors === undefined && engine.wasm.breakdownDescriptorsJson) {
+          raw.breakdown_descriptors = JSON.parse(engine.wasm.breakdownDescriptorsJson());
+        }
+        const parsed = normalize(raw);
         if (scenario !== 'single') {
           if (parsed.variants.length !== variants.length || parsed.variants.some(row => row.error)) {
             throw new Error(`Invalid variant result: ${fixture}/${scenario}`);
