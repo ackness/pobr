@@ -37,6 +37,18 @@ struct NodePowerRequest {
     /// Explicit single-node probes for the report, at most 16 per request.
     /// The caller obtains legal route cost from the passive planner.
     nodes: Option<Vec<u32>>,
+    /// Calculates only a slice of the candidates, so a heatmap over thousands of
+    /// nodes can be asked for in steps that report progress and can be abandoned.
+    /// Absent: every candidate, as before.
+    window: Option<NodePowerWindow>,
+}
+
+/// A slice of the candidate list of one request: stable between requests that
+/// differ only in their window.
+#[derive(Debug, Deserialize)]
+struct NodePowerWindow {
+    offset: usize,
+    limit: usize,
 }
 
 #[derive(Debug, Serialize)]
@@ -54,6 +66,9 @@ struct NodePowerResponse {
     /// The baseline stat value.
     base: f64,
     entries: Vec<NodePowerEntry>,
+    /// How many candidates the whole request has; only given for a windowed request.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    total: Option<usize>,
 }
 
 /// Extracts a display stat value from the full output (defaults to 0 if missing).
@@ -143,8 +158,16 @@ fn node_power_impl(request_json: &str) -> Result<String, super::ApiError> {
     }
 
     // Node identity matters: radius grants and transformations can distinguish
-    // nodes with identical original text. Recalculate every candidate.
-    let mut entries: Vec<NodePowerEntry> = Vec::new();
+    // nodes with identical original text, so every candidate is recalculated,
+    // except where nothing in the build can tell two nodes apart.
+    let interchangeable = nodes_are_interchangeable(&base_build, &data);
+    struct Candidate {
+        skill: u32,
+        distance: u32,
+        /// Shared by the nodes a calculation can be shared between.
+        definition: Option<String>,
+    }
+    let mut candidates: Vec<Candidate> = Vec::new();
     for (&skill, &dist) in &distance {
         let Some(node) = by_skill.get(&skill) else {
             continue;
@@ -152,19 +175,109 @@ fn node_power_impl(request_json: &str) -> Result<String, super::ApiError> {
         if node.stats.is_empty() || node.name.as_deref() == Some("Attribute") {
             continue;
         }
-        let mut variant = base_build.clone();
-        variant.tree.allocated_nodes.push(NodeId(skill));
-        let session = run_session_for_build(&variant, &req.request)?;
-        let delta = display_stat_value(&session, &req.power_stat) - base;
-        entries.push(NodePowerEntry {
+        candidates.push(Candidate {
             skill,
-            delta,
             distance: dist,
+            definition: (interchangeable
+                && node.kind != pobr_data::catalog::PassiveNodeKind::JewelSocket)
+                .then(|| definition_key(node)),
         });
     }
+    // Where radius jewels are, two nodes are alike only if the same circles hold them.
+    let circles = if interchangeable {
+        let ids: Vec<u32> = candidates.iter().map(|candidate| candidate.skill).collect();
+        pobr_build::calc_orchestrator::radius_jewel_membership(&base_build, &data, &ids)
+    } else {
+        BTreeMap::new()
+    };
+    for candidate in &mut candidates {
+        if let Some(definition) = &mut candidate.definition {
+            use std::fmt::Write;
+            let _ = write!(definition, "|{:?}", circles.get(&candidate.skill));
+        }
+    }
+    let total = candidates.len();
+    if let Some(window) = &req.window {
+        // Twins sit next to each other, so each window shares what it can. The order
+        // is by definition, then by node: the same for every window of one request.
+        candidates.sort_by(|a, b| (&a.definition, a.skill).cmp(&(&b.definition, b.skill)));
+        let end = window.offset.saturating_add(window.limit).min(total);
+        candidates = candidates
+            .drain(window.offset.min(end)..end)
+            .collect::<Vec<_>>();
+    }
+    let mut by_definition: std::collections::HashMap<String, f64> =
+        std::collections::HashMap::new();
+    let mut entries: Vec<NodePowerEntry> = Vec::new();
+    for candidate in candidates {
+        let shared = candidate
+            .definition
+            .as_ref()
+            .and_then(|key| by_definition.get(key));
+        let delta = match shared {
+            Some(&delta) => delta,
+            None => {
+                let mut variant = base_build.clone();
+                variant.tree.allocated_nodes.push(NodeId(candidate.skill));
+                let session = run_session_for_build(&variant, &req.request)?;
+                let delta = display_stat_value(&session, &req.power_stat) - base;
+                if let Some(key) = candidate.definition {
+                    by_definition.insert(key, delta);
+                }
+                delta
+            }
+        };
+        entries.push(NodePowerEntry {
+            skill: candidate.skill,
+            delta,
+            distance: candidate.distance,
+        });
+    }
+    if req.window.is_some() {
+        entries.sort_by_key(|entry| entry.skill);
+    }
 
-    Ok(serde_json::to_string(&NodePowerResponse { base, entries })
-        .map_err(|e| format!("serialize: {e}"))?)
+    Ok(serde_json::to_string(&NodePowerResponse {
+        base,
+        entries,
+        total: req.window.is_some().then_some(total),
+    })
+    .map_err(|e| format!("serialize: {e}"))?)
+}
+
+/// Whether trial-allocating a node gives the same result for any two nodes with the
+/// same definition, apart from the circles of radius jewels that hold them.
+///
+/// A node's identity reaches the calculation through the tree around it and the
+/// jewels that read it: a radius jewel scales the nodes in its circle (see
+/// [`pobr_build::calc_orchestrator::radius_jewel_membership`]), and a conquering or
+/// transforming jewel rewrites nodes by their id. Without a jewel of the second kind,
+/// a node enters the calculation as its kind, name and lines of text, and the circles
+/// that hold it (its id is only the label its modifiers are attributed to).
+///
+/// The calculation reads the jewel state for the lines it rewrites (`nodes`), the
+/// directives it has handled and the nodes it could not resolve; which points a jewel
+/// lets the player allocate (`allocation_grants`, and the `rings` that show them) is
+/// only about whether a point can be taken, never about what it gives, so a build with a
+/// "can be Allocated without being connected" jewel still shares.
+fn nodes_are_interchangeable(build: &Build, data: &BuildData) -> bool {
+    let state = pobr_build::calc_orchestrator::passive_jewel_state(build, data);
+    state.nodes.is_empty() && state.conquered.is_empty() && state.unresolved.is_empty()
+}
+
+/// Everything a node's definition says except where it is and what it is called by id.
+/// Fields added to the definition later are part of the key until they are excluded here.
+fn definition_key(node: &pobr_data::catalog::PassiveNodeDef) -> String {
+    let mut shared = node.clone();
+    shared.skill = 0;
+    shared.id.clear();
+    shared.group = None;
+    shared.orbit = None;
+    shared.orbit_index = None;
+    shared.x = None;
+    shared.y = None;
+    shared.connections.clear();
+    format!("{shared:?}")
 }
 
 // optimize_variants_json (generic variant evaluation: the compute side of the optimization framework)
