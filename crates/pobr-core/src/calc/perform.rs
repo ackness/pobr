@@ -1322,7 +1322,7 @@ fn fill_mechanics(env: &mut Env) {
             .as_ref()
             .map_or_else(Default::default, |terms| terms.prevented());
         (
-            super::survivability::life_recoup_terms(db, cfg, recoupable_total, prevented)
+            super::survivability::life_recoup_terms(db, cfg, recoupable_by_type, prevented)
                 .rate_per_second,
             super::survivability::mana_recoup_terms(db, cfg, recoupable_total, prevented)
                 .rate_per_second,

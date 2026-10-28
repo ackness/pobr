@@ -5,6 +5,7 @@
 
 use pobr_core::{
     CalcConfig, ModDb, Modifier,
+    calc::survivability::life_recoup_terms,
     calc::{
         AllChargeStates, ChargeKind, ChargeState, DEFAULT_CHARGE_DURATION_SECONDS,
         DEFAULT_MAX_CHARGES, LEECH_DURATION_SECONDS, LEECH_EFFECTIVE_MAX_HIT_DAMAGE,
@@ -633,6 +634,45 @@ fn calc_recoup_from_db_es_recoup() {
 /// 1000 (Physical/Fire/Cold/Lightning/Chaos order: [0,1000,0,0,0]) →
 /// total = 1000×15% = 150; rate = 150/8 = 18.75/s. Pure-physical recoupable
 /// [1000,0,0,0,0] → elemental pct 0 → rate 0 — appears for fire hits only.
+/// "10% of Physical Damage taken Recouped as Life" and "20% of Elemental Damage taken Recouped as Life" add to
+/// their own damage type only, on top of the generic Life recoup that applies to every type.
+#[test]
+fn typed_life_recoup_applies_to_its_own_damage_type() {
+    let mut db = ModDb::new();
+    let cfg = CalcConfig::new();
+    db.add_mod(make_modifier("PhysicalLifeRecoup", ModType::Base, 10.0));
+    for name in ["FireLifeRecoup", "ColdLifeRecoup", "LightningLifeRecoup"] {
+        db.add_mod(make_modifier(name, ModType::Base, 20.0));
+    }
+    let rate = |db: &ModDb, by_type: [f64; 5]| {
+        life_recoup_terms(db, &cfg, by_type, Default::default()).rate_per_second
+    };
+    // 1000 Physical: 10% of it over the 8 s default = 12.5/s; fire 20% = 25/s; chaos has no typed recoup.
+    assert!((rate(&db, [1000.0, 0.0, 0.0, 0.0, 0.0]) - 12.5).abs() < 1e-9);
+    assert!((rate(&db, [0.0, 1000.0, 0.0, 0.0, 0.0]) - 25.0).abs() < 1e-9);
+    assert_eq!(rate(&db, [0.0, 0.0, 0.0, 0.0, 1000.0]), 0.0);
+    // A generic Life recoup adds on every type, chaos included.
+    db.add_mod(make_modifier("LifeRecoup", ModType::Base, 8.0));
+    assert!((rate(&db, [0.0, 0.0, 0.0, 0.0, 1000.0]) - 10.0).abs() < 1e-9);
+    assert!((rate(&db, [1000.0, 0.0, 0.0, 0.0, 0.0]) - 22.5).abs() < 1e-9);
+}
+
+/// "N% increased speed of Recoup Effects" divides the recoup duration, for every resource.
+#[test]
+fn recoup_speed_shortens_the_recoup_duration() {
+    let mut db = ModDb::new();
+    let cfg = CalcConfig::new();
+    db.add_mod(make_modifier("LifeRecoup", ModType::Base, 10.0));
+    let terms =
+        |db: &ModDb| life_recoup_terms(db, &cfg, [1000.0, 0.0, 0.0, 0.0, 0.0], Default::default());
+    assert_eq!(terms(&db).duration, RECOUP_DURATION_DEFAULT);
+    assert!((terms(&db).rate_per_second - 12.5).abs() < 1e-9);
+    // 100% increased speed: the same 100 comes back in 4 s.
+    db.add_mod(make_modifier("RecoupSpeed", ModType::Inc, 100.0));
+    assert_eq!(terms(&db).duration, 4.0);
+    assert!((terms(&db).rate_per_second - 25.0).abs() < 1e-9);
+}
+
 #[test]
 fn elemental_es_recoup_applies_to_fire_hits_only() {
     let mut db = ModDb::new();

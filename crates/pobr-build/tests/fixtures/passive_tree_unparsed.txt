@@ -67,7 +67,6 @@ node.15180	10% chance to [Hinder] Enemies on Hit with [Spell|Spells]
 node.15494	3% increased [Fire] Damage per [Charges|Endurance Charge] consumed [Recently]
 node.15606	Consuming [Glory] grants you 3% increased [Attack] damage per [Glory] consumed for 6 seconds, up to 60%
 node.15617	Life [Flask|Flasks] applied to you grant [Guard] for 4 seconds equal to 8% of the Life Recovery per Second they apply
-node.15801	8% increased speed of [Recoup] Effects
 node.15839	10% increased Duration of [Ailments|Ailments] on Beasts
 node.15876	Gain 15% of maximum [EnergyShield|Energy Shield] as additional [FreezeThreshold|Freeze Threshold]
 node.15991	Immune to [Shock] while affected by an [Archon] [Buff]
@@ -89,7 +88,6 @@ node.17754	Grants Skill: <underline>{Summon Infernal Hound}
 node.17825	+0.5 metres to Dodge Roll distance while [Surrounded]
 node.17923	10% chance to gain [Volatility] on Kill
 node.18081	Damage Penetrates 20% [ElementalDamage|Elemental] [Resistances] for each time you've used a Skill that Requires [Glory] in the past 6 seconds
-node.18101	8% increased speed of [Recoup] Effects
 node.18280	Can instead consume 25% of maximum Mana to trigger [Charm|Charms] with insufficient charges
 node.18419	[Totem|Totems] Regenerate 3% of maximum Life per second
 node.18485	Gain 3 [Volatility] when an [Allies|Allied] [Persistent] [Reviving] [Minion] is [MinionDeath|Killed]
@@ -183,7 +181,6 @@ node.31366	[Parry] has 20% increased [Stun] Buildup
 node.31517	[Seal|Sealed] Skills have 10% increased [Seal] gain frequency
 node.31697	10% increased [ElementalInfusion|Elemental Infusion] duration
 node.31745	Enemies are [Maim|Maimed] for 4 seconds after becoming [Pinned|Unpinned]
-node.32128	20% increased speed of [Recoup] Effects
 node.32655	[CullingStrike|Culling Strike] against Beasts while your [Companion] is in your [Presence]
 node.32705	Grants Skill: <underline>{Navira, the Last Mirage}
 node.32768	20% increased [Glory] generation
@@ -242,13 +239,11 @@ node.37967	Enemies standing on [ChilledGround|Chilled Ground] take 25% increased
 node.37967	Enemies standing on [IgnitedGround|Ignited Ground] take 25% increased [Cold|Cold Damage]
 node.38004	Grants Skill: <underline>{Explosive Concoction}
 node.38010	8% increased [Glory] generation
-node.38111	25% increased speed of [Recoup] Effects
 node.38365	Recover 2% of maximum Life for each [Charges|Endurance Charge] consumed
 node.3843	[Parry] has 25% increased [Stun] Buildup
 node.38479	50% chance for [Projectile|Projectiles] to [Pierce|Pierce] Enemies within 3m distance of you
 node.38532	25% chance when you gain a [Charges|Power Charge] to gain an additional [Charges|Power Charge]
 node.38813	Grants Skill: Queen's Procession
-node.38835	8% increased speed of [Recoup] Effects
 node.39102	2% chance that if you would gain [Charges|Power Charges], you instead gain up to
 node.39102	your maximum number of [Charges|Power Charges]
 node.39128	15% increased [BuffMagnitude|Magnitude] of [Daze]
@@ -270,7 +265,6 @@ node.40270	10% chance when you gain a [Charges|Frenzy Charge] to gain an additio
 node.4031	Gain 50% of maximum [EnergyShield|Energy Shield] as additional [FreezeThreshold|Freeze Threshold]
 node.40687	[Allies] in your [Presence] have 30% increased [Glory] generation
 node.40736	8% increased [Glory] generation
-node.4091	20% increased speed of [Recoup] Effects
 node.41033	[Offering|Offerings] cannot be damaged if they have been created [Recently]
 node.41076	Damage taken is Reserved from Darkness before being taken from Life or [EnergyShield|Energy Shield]
 node.41076	Darkness [Reservation] lasts for 5 seconds
@@ -421,10 +415,7 @@ node.59053	20% increased [Hinder] Duration
 node.59214	Enemies you [Curse] cannot Recharge [EnergyShield|Energy Shield]
 node.59372	Your [Hit|Hits] are [CrushingBlow|Crushing Blows]
 node.59387	Gain a [Charges|Power Charge] when you consume an [ElementalInfusion|Elemental Infusion]
-node.59413	8% increased speed of [Recoup] Effects
 node.59433	25% chance when you gain an [Charges|Endurance Charge] to gain an additional [Charges|Endurance Charge]
-node.59438	20% increased speed of [Recoup] Effects
-node.59442	8% increased speed of [Recoup] Effects
 node.59540	Every Third [Slam] skill that doesn't create Fissures which you use yourself causes 3 additional [Aftershock|Aftershocks] ahead and to each side of the initial area
 node.59781	Immune to [Bleeding] while affected by an [Archon] [Buff]
 node.59909	5% chance to not destroy [Corpse|Corpses] when Consuming [Corpse|Corpses]
@@ -440,7 +431,6 @@ node.6127	Grants Skill: <underline>{Encase in Jade}
 node.61444	15% chance to [Hinder] Enemies on Hit with [Spell|Spells]
 node.61586	Gain [Combo] from all [Attack] [Hit|Hits]
 node.61586	Skills can build and retain [Combo] regardless of [WeaponSets|Weapon Set]
-node.61615	8% increased speed of [Recoup] Effects
 node.61796	20% increased [ArmourBreak|Armour Break] Duration
 node.61983	Double [Adaptation] Effect
 node.61983	[Adaptation|Adaptations] have a duration of 5 seconds
