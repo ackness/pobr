@@ -183,3 +183,102 @@ Implicits: 0
         );
     }
 }
+
+/// The Parry passives apply to the Parry skill's own hit and to no other skill: the Area of Effect of its hit and
+/// its Heavy Stun buildup are matched by the skill's name.
+#[test]
+fn parry_passives_apply_to_the_parry_skill_only() {
+    let data = data();
+    let sum = |skill: &str, line: &str, name: &str| -> f64 {
+        let build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="90" className="Warrior" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="{skill}" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Leather Buckler
+Implicits: 0
+</Item><ItemSet id="1"><Slot name="Weapon 2" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#
+        ))
+        .unwrap();
+        let options = DataOrchestratorOptions {
+            mode_effective: true,
+            extra_modifier_texts: vec![line.to_string()],
+            ..Default::default()
+        };
+        let session = calculate_with_data_session(&build, data, &options).unwrap();
+        session
+            .mod_db()
+            .sum(ModType::Inc, session.config(), &[ModName::from(name)])
+    };
+    for (line, name) in [
+        ("20% increased Parry Hit Area of Effect", "AreaOfEffect"),
+        (
+            "Parry has 25% increased Stun Buildup",
+            "EnemyHeavyStunBuildup",
+        ),
+    ] {
+        let none = sum("ParryPlayer", "", name);
+        let parry = sum("ParryPlayer", line, name);
+        let other = sum("FireballPlayer", line, name);
+        assert!(parry > none, "{line}: parry {parry} vs {none}");
+        assert_eq!(
+            other,
+            sum("FireballPlayer", "", name),
+            "{line} leaked to another skill"
+        );
+    }
+}
+
+/// "N% chance for Projectiles to Pierce Enemies within 3m distance of you" is a Pierce chance while the enemy is
+/// within 3 metres: it applies at the default distance (20, tenths of a metre) and stops past 30.
+#[test]
+fn close_range_pierce_chance_follows_the_configured_distance() {
+    let data = data();
+    let chance = |distance: Option<f64>, with_line: bool| -> f64 {
+        let config = distance.map_or_else(String::new, |distance| {
+            format!(r#"<Input name="enemyDistance" number="{distance}"/>"#)
+        });
+        let build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="96" className="Ranger" ascendClassName="Deadeye" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="IceShotPlayer" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Crude Bow
+Implicits: 0
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+<Config>{config}</Config></PathOfBuilding2>"#
+        ))
+        .unwrap();
+        let options = DataOrchestratorOptions {
+            mode_effective: true,
+            extra_modifier_texts: with_line
+                .then(|| {
+                    "25% chance for Projectiles to Pierce Enemies within 3m distance of you"
+                        .to_string()
+                })
+                .into_iter()
+                .collect(),
+            ..Default::default()
+        };
+        let session = calculate_with_data_session(&build, data, &options).unwrap();
+        session.mod_db().sum(
+            ModType::Base,
+            session.config(),
+            &[ModName::from("PierceChance")],
+        )
+    };
+    for (distance, gained) in [
+        (None, 25.0),
+        (Some(0.0), 25.0),
+        (Some(30.0), 25.0),
+        (Some(31.0), 0.0),
+        (Some(70.0), 0.0),
+    ] {
+        let delta = chance(distance, true) - chance(distance, false);
+        assert!(
+            (delta - gained).abs() < 1e-9,
+            "distance {distance:?}: gained {delta}, expected {gained}"
+        );
+    }
+}

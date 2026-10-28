@@ -12875,7 +12875,10 @@
         {
           "name": "AreaOfEffect",
           "type": "Inc",
-          "value": 15.0
+          "value": 15.0,
+          "tags": [
+            "SkillName { names: [\"parry\"] }"
+          ]
         }
       ]
     },
@@ -16654,7 +16657,10 @@
         {
           "name": "AreaOfEffect",
           "type": "Inc",
-          "value": 20.0
+          "value": 20.0,
+          "tags": [
+            "SkillName { names: [\"parry\"] }"
+          ]
         }
       ]
     },
@@ -16814,14 +16820,7 @@
     },
     {
       "text": "20% increased [StunThreshold|Stun Threshold] while [Parry|Parrying]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "StunThreshold",
-          "type": "Inc",
-          "value": 20.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "20% increased [StunThreshold|Stun Threshold] while on Full Life",
@@ -18304,9 +18303,13 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ProjectileCount",
+          "name": "PierceChance",
           "type": "Base",
-          "value": 25.0
+          "value": 25.0,
+          "flags": 1024,
+          "tags": [
+            "MultiplierThreshold { var: \"enemyDistance\", threshold: 30.0, upper: true }"
+          ]
         }
       ]
     },
@@ -19365,14 +19368,7 @@
     },
     {
       "text": "25% increased [Evasion|Evasion Rating] while [Parry|Parrying]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Evasion",
-          "type": "Inc",
-          "value": 25.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "25% increased [Fire] Damage",
@@ -26723,9 +26719,13 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ProjectileCount",
+          "name": "PierceChance",
           "type": "Base",
-          "value": 50.0
+          "value": 50.0,
+          "flags": 1024,
+          "tags": [
+            "MultiplierThreshold { var: \"enemyDistance\", threshold: 30.0, upper: true }"
+          ]
         }
       ]
     },
@@ -30392,7 +30392,10 @@
         {
           "name": "AreaOfEffect",
           "type": "Inc",
-          "value": 8.0
+          "value": 8.0,
+          "tags": [
+            "SkillName { names: [\"parry\"] }"
+          ]
         }
       ]
     },
@@ -36653,7 +36656,7 @@
     },
     {
       "text": "Every Third [Slam] skill that doesn't create Fissures which you use yourself causes 3 additional [Aftershock|Aftershocks] ahead and to each side of the initial area",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Every [Rage] also grants 1% increased [Armour]",
@@ -40531,27 +40534,11 @@
     },
     {
       "text": "Projectiles have 25% chance for an additional Projectile when [Fork|Forking]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "ProjectileCount",
-          "type": "Base",
-          "value": 25.0,
-          "flags": 1024
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "Projectiles have 75% chance for an additional Projectile when [Fork|Forking]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "ProjectileCount",
-          "type": "Base",
-          "value": 75.0,
-          "flags": 1024
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "Prolonged Ultimate Mana Flask of the Eternal",
@@ -41697,11 +41684,11 @@
     },
     {
       "text": "Successfully [Parry|Parrying] a [Melee] [Hit] grants 40% increased Damage to your next Ranged [Attack]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Successfully [Parry|Parrying] a [Projectile] [Hit] grants 40% increased Damage to your next [Melee] [Attack]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Sunburst Ruby Charm of the Practitioner",
@@ -47344,11 +47331,31 @@
     },
     {
       "text": "[Parry] has 20% increased [Stun] Buildup",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyHeavyStunBuildup",
+          "type": "Inc",
+          "value": 20.0,
+          "tags": [
+            "SkillName { names: [\"parry\"] }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Parry] has 25% increased [Stun] Buildup",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyHeavyStunBuildup",
+          "type": "Inc",
+          "value": 25.0,
+          "tags": [
+            "SkillName { names: [\"parry\"] }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Persistent] [Buff|Buffs] have 50% less [Reservation]",
@@ -47803,7 +47810,7 @@
     },
     {
       "text": "[Slam] Skills you use yourself have 30% increased [Aftershock] Area of Effect",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "[Spell|Spell] Skills have 10% reduced Area of Effect",
