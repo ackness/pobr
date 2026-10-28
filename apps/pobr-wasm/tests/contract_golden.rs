@@ -152,7 +152,6 @@ fn calculate_build_json_shape() {
             "stats",
             "unsupported_modifiers",
             "breakdowns",
-            "breakdown_descriptors",
             "main_skill",
             "minions",
             "main_minion_index",

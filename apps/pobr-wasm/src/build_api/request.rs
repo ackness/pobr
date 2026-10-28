@@ -198,6 +198,10 @@ pub struct CalculateBuildRequest {
     pub(crate) breakdowns: Option<Vec<String>>,
     /// Select an actor for requested ids; omitted keeps the player (legacy defaults include minions).
     pub(crate) breakdown_actor: Option<pobr_build::breakdown::BreakdownActor>,
+    /// Put `breakdown_descriptors` in the response. It is left out by default: the table
+    /// depends only on the engine build and is about a third of a response, so a client
+    /// takes it once from `breakdown_descriptors_json` instead. No other field changes.
+    pub(crate) include_descriptors: bool,
     /// Collect visibility facts for Config; ordinary calculations keep read tracking off.
     pub(crate) config_context: bool,
     /// Opt in to evaluating all included effects; ordinary edits stay on the main-skill path.
