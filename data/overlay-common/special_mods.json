@@ -177,6 +177,133 @@
       ]
     },
     {
+      "id": "parry_hit_area",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% increased parry hit area of effect$",
+      "mods": [
+        {
+          "name": "AreaOfEffect",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Parry"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "parry_hit_area_of_effect_+%; passives (5 nodes)",
+      "exporter": "absent",
+      "source_note": "The Area of Effect of the Parry skill's own hit. The skill is Parry itself, matched by name, so it does not widen other skills.",
+      "examples": [
+        "20% increased Parry Hit Area of Effect"
+      ]
+    },
+    {
+      "id": "parry_stun_buildup",
+      "pattern": "^parry has (\\d+(?:\\.\\d+)?)% increased stun buildup$",
+      "mods": [
+        {
+          "name": "EnemyHeavyStunBuildup",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Parry"
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "parry_stun_buildup_+%; passives (2 nodes)",
+      "exporter": "absent",
+      "source_note": "Heavy Stun buildup of the Parry skill's own hits, matched by skill name.",
+      "examples": [
+        "Parry has 20% increased Stun Buildup"
+      ]
+    },
+    {
+      "id": "pierce_chance_within_3m",
+      "pattern": "^(\\d+(?:\\.\\d+)?)% chance for projectiles to pierce enemies within 3m distance of you$",
+      "mods": [
+        {
+          "name": "PierceChance",
+          "type": "BASE",
+          "value": "$1",
+          "flags": [
+            "Projectile"
+          ],
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "var": "enemyDistance",
+              "threshold": 30,
+              "upper": true
+            }
+          ]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "pierce_chance_%_within_3m; passives (3 nodes)",
+      "exporter": "absent",
+      "source_note": "A Pierce chance while the enemy is within 3 metres, on the single-target distance convention (enemyDistance in tenths of a metre, within means 30 or less). The default distance in the effective mode is 20, so it applies unless a farther distance is configured. The three tree nodes all say 3m, so the distance is part of the text.",
+      "examples": [
+        "25% chance for Projectiles to Pierce Enemies within 3m distance of you"
+      ]
+    },
+    {
+      "id": "slam_aftershock_chance",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% chance for (?:mace |shapeshift )?slam skills(?: you use yourself)? to cause an additional aftershock|slam skills you use yourself have (\\d+(?:\\.\\d+)?)% increased aftershock area of effect|every third slam skill that doesn't create fissures which you use yourself causes 3 additional aftershocks ahead and to each side of the initial area)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Slam Aftershock passives",
+      "exporter": "absent",
+      "source_note": "A Slam's Aftershocks are not part of its reported damage (only Supercharged Slam's are, in calc::channel), so a chance for another one, its area or an extra wave has no damage to scale.",
+      "examples": [
+        "8% chance for Mace Slam Skills you use yourself to cause an additional Aftershock",
+        "15% chance for Shapeshift Slam Skills you use yourself to cause an additional Aftershock",
+        "5% chance for Slam Skills to cause an additional Aftershock",
+        "Slam Skills you use yourself have 30% increased Aftershock Area of Effect",
+        "Every Third Slam skill that doesn't create Fissures which you use yourself causes 3 additional Aftershocks ahead and to each side of the initial area"
+      ]
+    },
+    {
+      "id": "fork_additional_projectile",
+      "pattern": "^projectiles have (\\d+(?:\\.\\d+)?)% chance for an additional projectile when forking$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Fork passives",
+      "exporter": "absent",
+      "source_note": "A chance of an extra projectile at each fork. The fork count is a configured snapshot (skillForkCount) and single-target damage does not change, so there is no extra projectile to add.",
+      "examples": [
+        "Projectiles have 75% chance for an additional Projectile when Forking"
+      ]
+    },
+    {
+      "id": "while_parrying_states",
+      "pattern": "^(?:(\\d+(?:\\.\\d+)?)% increased (?:stun threshold|evasion rating) while parrying|cannot be critically hit while parrying|successfully parrying a (?:melee|projectile) hit grants (\\d+(?:\\.\\d+)?)% increased damage to your next (?:ranged|melee) attack)$",
+      "mods": [],
+      "batch": "unmodelled",
+      "verified": false,
+      "game_source": "Parry passives",
+      "exporter": "absent",
+      "source_note": "Parrying is an action the character performs for a moment. No share of time spent parrying is assumed, so the defence it grants, and the damage bonus for the next attack after a successful Parry, are not applied to the static snapshot.",
+      "examples": [
+        "20% increased Stun Threshold while Parrying",
+        "25% increased Evasion Rating while Parrying",
+        "Cannot be Critically Hit while Parrying",
+        "Successfully Parrying a Melee Hit grants 40% increased Damage to your next Ranged Attack",
+        "Successfully Parrying a Projectile Hit grants 40% increased Damage to your next Melee Attack"
+      ]
+    },
+    {
       "id": "loreweave_exclusive_item_rarity",
       "pattern": "^([+-]?\\d+(?:\\.\\d+)?)% increased rarity of items found your other modifiers to rarity of items found do not apply$",
       "mods": [
