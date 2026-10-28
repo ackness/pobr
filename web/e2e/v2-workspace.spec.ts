@@ -129,13 +129,23 @@ test('V2 real WASM details stay lazy and configuration tracking follows the acti
   await page.addInitScript(() => {
     const observed = window as typeof window & { v2CalcRequests: Array<{ breakdowns?: string[]; config_context?: boolean }> };
     observed.v2CalcRequests = [];
-    const stringify = JSON.stringify;
-    JSON.stringify = ((value: unknown, ...args: unknown[]) => {
+    const record = (value: unknown) => {
       if (value && typeof value === 'object' && 'character' in value && 'socket_groups' in value && 'config_inputs' in value) {
         observed.v2CalcRequests.push(value);
       }
+    };
+    // On the page's own thread a request is stringified for the engine; with the engine in a Worker it is posted as an RPC call.
+    const stringify = JSON.stringify;
+    JSON.stringify = ((value: unknown, ...args: unknown[]) => {
+      record(value);
       return Reflect.apply(stringify, JSON, [value, ...args]);
     }) as typeof JSON.stringify;
+    const post = Worker.prototype.postMessage;
+    Worker.prototype.postMessage = function (this: Worker, message: unknown, ...rest: unknown[]) {
+      const args = (message as { args?: unknown } | null)?.args;
+      if (Array.isArray(args)) args.forEach(record);
+      return Reflect.apply(post, this, [message, ...rest]);
+    } as typeof Worker.prototype.postMessage;
   });
   const requests = () => page.evaluate(() => (window as typeof window & { v2CalcRequests: Array<{ breakdowns?: string[]; config_context?: boolean; breakdown_actor?: unknown }> }).v2CalcRequests);
   await importV2(page);
