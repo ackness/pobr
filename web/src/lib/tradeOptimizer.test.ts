@@ -227,7 +227,7 @@ test('an indented PoB item with counted augments sets its actual current Sum wit
   expect(buildTradeQuery(result.weighted, { category: base.category, minimumWeight: result.minimumWeight }).query.stats[0]).toMatchObject({ value: { min: 250 } });
 });
 
-test('unknown current affixes disable a misleading minimum and constraints remain visibly outside Sum', async () => {
+test('unknown current affixes keep the recognised part as the minimum, and constraints remain visibly outside Sum', async () => {
   const current = `Rarity: RARE\nEquipped\n${base.name}\n10 flat\nGrants a special buff`;
   const result = await optimizeTradeAffixes({ request: { items: [{ slot: 'weapon2', text: current }] },
     slot: 'weapon2', base, pool: [affix('flat')], itemLevel: 82,
@@ -235,9 +235,18 @@ test('unknown current affixes disable a misleading minimum and constraints remai
     evaluate: evaluator(text => 100 + (text.includes('flat') ? 10 : 0)),
   });
   expect(result.currentItemScore?.complete).toBe(false);
-  expect(result.minimumWeight).toBe(0);
+  // The unrecognised line adds nothing to the market's Sum, so the recognised lines are a lower bound of it.
+  expect(result.currentItemScore!.score).toBeGreaterThan(0);
+  expect(result.minimumWeight).toBe(Math.ceil((result.currentItemScore!.score - 1e-9) * 1000) / 1000);
   expect(result.scoreWarnings).toContain('partial-current-score');
   expect(result.scoreWarnings).toContain('constraints-not-in-query');
+});
+
+test('an empty slot has no current score and so no minimum', async () => {
+  const result = await optimizeTradeAffixes({ request: { items: [] }, slot: 'weapon2', base, pool: [affix('flat')], itemLevel: 82,
+    objective, combinations: false, evaluate: evaluator(text => 100 + (text.includes('flat') ? 10 : 0)) });
+  expect(result.currentItemScore).toBeNull();
+  expect(result.minimumWeight).toBe(0);
 });
 
 /** Old published algorithm, retained only as a comparison oracle for these experiments. */

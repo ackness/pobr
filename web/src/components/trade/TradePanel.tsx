@@ -430,6 +430,10 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
           {weights.unsupported.length > 0 && <details className="trade-notice trade-unsupported"><summary>{tt('trade.unsupportedHint')} ({weights.unsupported.length})</summary><pre>{weights.unsupported.join('\n')}</pre></details>}
           {searchUrl && league.trim() && <div className="trade-search-card">
             <div><span className="trade-section-label">{tt('trade.nextStep')}</span><h4>{tt('trade.searchReady')}</h4><p>{tt(realm === 'cn' ? 'trade.cnMarketHint' : 'trade.directMarketHint')}</p>
+              <p className="trade-login">{ut('searchLogin')}</p>
+              {!broad && <p className="trade-minimum" role="status">{weights.minimumWeight > 0
+                ? <>{ut('searchMinimum')}{lang === 'en-US' ? ': ' : '：'}<b>{number(weights.minimumWeight, 3)}</b> · {ut(weights.currentItemScore?.complete ? 'searchMinimumExact' : 'searchMinimumPartial')}</>
+                : ut('searchNoMinimum')}</p>}
               <label className="trade-broad"><AppInput type="checkbox" checked={broad} onChange={event => setBroad(event.target.checked)} />{tt('trade.broaderSearch')}</label></div>
             <div className="trade-search-actions"><a className="trade-primary trade-market-link" href={searchUrl} target="_blank" rel="noreferrer">{tt('trade.browseMarket')}<span aria-hidden>↗</span></a>
               <CopyButton text={searchUrl} label={tt('trade.copySearch')} lang={lang} /></div>
