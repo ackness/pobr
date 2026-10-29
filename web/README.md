@@ -402,8 +402,7 @@ For Time-Lost jewel search, the PoB2 comparison and unique jewel limits, see
 
 The app is a Radix-based shadcn/ui workspace. Every page has its own URL: `/`
 (overview), `/build`, `/skills`, `/items`, `/tree`, `/config`, `/trade`,
-`/compare` and `/calcs`. Browser Back/Forward restores navigation. Links from the
-time the app lived under `/v2` redirect to the same page (`public/_redirects`).
+`/compare` and `/calcs`. Browser Back/Forward restores navigation.
 
 It defaults to a dark stone/gold theme. **Appearance & language** offers light
 and system themes, three language choices, local system/sans/serif font stacks,
