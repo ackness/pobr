@@ -1,9 +1,8 @@
-import { useJobBeacon } from '../../v2/jobs/useJobBeacon';
+import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppTextarea } from '../shared/controls';
-import { useUi } from '../shared/UiContext';
 import { usePreview } from '../shared/PreviewContext';
-import { changesFromRecords } from '../../v2/preview/fromRecords';
-import { words } from '../../v2/text';
+import { changesFromRecords } from '../../app/preview/fromRecords';
+import { words } from '../../app/text';
 import { craftT } from '../../lib/itemCraftingText';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CalculateBuildRequest } from '../../api/types';
@@ -40,7 +39,6 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   initialItemText?: string;
   candidate?: { kind: 'item' | 'jewel' };
 }) {
-  const { v2 } = useUi();
   const ut = (key: Parameters<typeof upgradeT>[1]) => upgradeT(lang, key);
   const [saved, setSaved] = useState(false);
   const [text, setText] = useState(initialItemText ?? '');
@@ -186,11 +184,8 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     ?? selected?.variant.flasks?.find(item => item.slot === selected.slot)?.text
     ?? selected?.variant.jewels?.find(jewel => `Jewel@${jewel.socket_node}` === selected.slot)?.text ?? applied?.text ?? text;
   return <section className="upgrade-item-check ui-card" aria-labelledby="replacement-heading">
-    {candidate ? <header><h3 id="replacement-heading">{craftT(lang, 'preview')}</h3><p>{craftT(lang, 'previewHint')}</p></header> : v2 ? <header className="replacement-heading"><div>
+    {candidate ? <header><h3 id="replacement-heading">{craftT(lang, 'preview')}</h3><p>{craftT(lang, 'previewHint')}</p></header> : <header className="replacement-heading"><div>
       <h3 id="replacement-heading">{words(lang, 'Paste an item to compare it', '粘贴物品来对比', '貼上物品來比較')}</h3><p>{ut('checkHint')}</p></div><div className="replacement-context"><span className="ui-badge">{ut('localComparison')}</span>
-      <AppButton className="replacement-goal" aria-label={`${ut('comparisonGoal')}: ${goalLabel}`} onClick={onEditGoal}>{goalLabel} <span aria-hidden>↗</span></AppButton></div></header>
-      : <header className="replacement-heading"><div><span className="trade-section-label">{ut('pasteEyebrow')}</span>
-      <h3 id="replacement-heading">{ut('check')}</h3><p>{ut('checkHint')}</p></div><div className="replacement-context"><span className="ui-badge">{ut('localComparison')}</span>
       <AppButton className="replacement-goal" aria-label={`${ut('comparisonGoal')}: ${goalLabel}`} onClick={onEditGoal}>{goalLabel} <span aria-hidden>↗</span></AppButton></div></header>}
     <div className="replacement-input"><label htmlFor="replacement-text">{ut('itemText')}</label>
       <AppTextarea readOnly={!!candidate} ref={inputRef} id="replacement-text" rows={report ? 3 : 5} value={text} placeholder={ut('pastePlaceholder')}
@@ -267,11 +262,9 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
           <span>{equipmentCandidates.length} / {EQUIPMENT_CANDIDATE_LIMIT}</span></div>}
       </div>
     </div>}
-    {!candidate && (v2 ? <details className="equipment-fold" open={equipmentCandidates.length > 0}>
+    {!candidate && <details className="equipment-fold" open={equipmentCandidates.length > 0}>
       <summary><span>{ut('jointEquipment')}</span><small>{equipmentCandidates.length} / {EQUIPMENT_CANDIDATE_LIMIT}</small></summary>
       <EquipmentPlanner session={session} lang={lang} active={active} objective={objective} catalog={catalog} candidates={equipmentCandidates}
-        onRemove={id => setEquipmentCandidates(current => current.filter(candidate => candidate.id !== id))} /></details>
-      : <EquipmentPlanner session={session} lang={lang} active={active} objective={objective} catalog={catalog} candidates={equipmentCandidates}
-      onRemove={id => setEquipmentCandidates(current => current.filter(candidate => candidate.id !== id))} />)}
+        onRemove={id => setEquipmentCandidates(current => current.filter(candidate => candidate.id !== id))} /></details>}
   </section>;
 }

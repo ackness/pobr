@@ -5,23 +5,20 @@ import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectLabel, SelectGroup, SelectTrigger, SelectValue } from '../ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '../ui/tooltip';
-import { useUi, usePanelActive } from './UiContext';
+import { usePanelActive } from './UiContext';
 import './controls.css';
 
-/** Native props stay valid on both presentations, including refs and form events. */
+/** Native props stay valid on the wrapped control, including refs and form events. */
 export function AppTooltip({ content, children }: { content?: ReactNode; children: ReactElement }) {
-  const { v2 } = useUi();
   const active = usePanelActive();
   if (!content || !active) return children;
   return <TooltipProvider delayDuration={250}><Tooltip><TooltipTrigger asChild>{children}</TooltipTrigger>
-    <TooltipContent className={v2 ? 'app-tooltip' : 'app-tooltip app-tooltip-legacy'}>{content}</TooltipContent>
+    <TooltipContent className="app-tooltip">{content}</TooltipContent>
   </Tooltip></TooltipProvider>;
 }
 
 export function AppButton({ title, children, className, ...props }: ComponentProps<'button'>) {
-  const { v2 } = useUi();
-  const button = v2 ? <Button variant="outline" className={`app-button ${className ?? ''}`} aria-label={title} {...props}>{children}</Button>
-    : <button className={className} aria-label={title} {...props}>{children}</button>;
+  const button = <Button variant="outline" className={`app-button ${className ?? ''}`} aria-label={title} {...props}>{children}</Button>;
   return <AppTooltip content={title}>{title && props.disabled
     ? <span className="app-disabled-tooltip" tabIndex={0} aria-label={title}>{button}</span> : button}</AppTooltip>;
 }
@@ -38,15 +35,13 @@ function CheckboxInput({ checked, defaultChecked, onChange, ...props }: Componen
 }
 
 export function AppInput({ title, ...props }: ComponentProps<'input'>) {
-  const { v2 } = useUi();
-  const input = !v2 ? <input {...props} /> : props.type === 'checkbox' ? <CheckboxInput {...props} />
+  const input = props.type === 'checkbox' ? <CheckboxInput {...props} />
     : <Input {...props} className={`${props.className ?? ''} ${props.type === 'radio' || props.type === 'range' ? `app-input-${props.type}` : ''}`} />;
   return <AppTooltip content={title}>{input}</AppTooltip>;
 }
 
 export function AppTextarea({ title, ...props }: ComponentProps<'textarea'>) {
-  const { v2 } = useUi();
-  return <AppTooltip content={title}>{v2 ? <Textarea {...props} /> : <textarea {...props} />}</AppTooltip>;
+  return <AppTooltip content={title}><Textarea {...props} /></AppTooltip>;
 }
 
 interface Option { value: string; label: ReactNode; disabled?: boolean; group?: string }
@@ -62,9 +57,8 @@ function optionsFrom(children: ReactNode, group?: string, disabled = false): Opt
 }
 
 export function AppSelectControl(props: ComponentProps<'select'>) {
-  const { v2 } = useUi();
   const { title, ...native } = props;
-  if (!v2 || props.multiple || (props.size ?? 0) > 1) return <AppTooltip content={title}><select {...native} /></AppTooltip>;
+  if (props.multiple || (props.size ?? 0) > 1) return <AppTooltip content={title}><select {...native} /></AppTooltip>;
   return <RadixSelectControl {...props} />;
 }
 

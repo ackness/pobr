@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import { busy, openItemsAfterImport, pageLink } from './shell';
+import { choose, generateShareCode } from './treePage';
 import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
 import type { SavedSession } from '../src/hooks/useBuildSession';
@@ -8,17 +10,18 @@ import type { SavedSession } from '../src/hooks/useBuildSession';
 const synthetic = readFileSync(new URL('../../crates/pobr-build/tests/fixtures/synthetic-tree-0_4.xml', import.meta.url), 'utf8');
 const code = deflateSync(synthetic).toString('base64url');
 const xml = (code: string) => inflateSync(Buffer.from(code, 'base64url')).toString();
-const nav = (page: Page, name: string) => page.getByRole('navigation').getByRole('button', { name, exact: true });
-const saved = (page: Page): Promise<SavedSession['state']> => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state);
+const nav = (page: Page, name: string) => pageLink(page, name);
+const saved = (page: Page): Promise<SavedSession['state']> => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
 async function idle(page: Page) {
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await expect(page.locator('.workspace-saved')).toBeVisible();
-  await expect(page.locator('.boot-error, .calc-error')).toHaveCount(0);
+  await expect(busy(page)).toHaveCount(0);
+  await expect(page.locator('.shell-save-state')).toContainText('Saved locally');
+  await expect(page.locator('.shell-boot[role=alert], .shell-alert')).toHaveCount(0);
 }
 async function importCode(page: Page, value: string) {
-  await nav(page, 'Build').click();
+  await page.locator('.shell-builds-button').click();
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(value);
   await page.locator('.import-submit').click();
+  await openItemsAfterImport(page);
   await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
   await idle(page);
 }
@@ -26,7 +29,7 @@ async function importCode(page: Page, value: string) {
 test('synthetic historical conversion previews, confirms, undoes and exports each or all specs', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1100 });
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByRole('textbox', { name: 'Build code', exact: true })).toBeVisible({ timeout: 90_000 });
   await importCode(page, code);
   const before = await saved(page);
@@ -74,9 +77,7 @@ test('synthetic historical conversion previews, confirms, undoes and exports eac
   await convert.click();
   await confirm.click();
   await idle(page);
-  await nav(page, 'Build').click();
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
-  const exported = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
+  const exported = await generateShareCode(page);
   expect(xml(exported)).not.toContain('treeVersion="0_4"');
   await importCode(page, exported);
   current = await saved(page);
@@ -89,20 +90,28 @@ test('synthetic historical conversion previews, confirms, undoes and exports eac
   await nav(page, 'Tree').click();
   await convert.click();
   await expect(confirm).toBeEnabled();
-  // Switching the active weapon set changes the request while its preview is
-  // open. A stale confirmation cannot overwrite the changed session.
-  await page.getByRole('combobox', { name: 'Allocate to', exact: true }).selectOption('2');
+  // Switching the active weapon set changes the request while its preview is open. The Tree page
+  // rebuilds its canvas (and the conversion controls on it) for the other set, so the open preview is
+  // dismissed: there is nothing left to confirm, and the session is exactly what the switch made it.
+  await choose(page, page.getByRole('combobox', { name: 'Allocate to', exact: true }), 'Weapon set 2');
   await idle(page);
-  await expect(confirm).toBeDisabled();
-  await expect(preview).toContainText('The build changed. Create a new preview.');
+  await expect(preview).toHaveCount(0);
+  await expect(confirm).toHaveCount(0);
   expect((await saved(page)).weaponSwap?.active).toBe(2);
   expect((await saved(page)).allocatedNodes).toContain(56118);
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-  // Explicitly refund the disconnected leaf through the normal tree editor;
-  // it stays allocated until this action, and ordinary tree Undo restores it.
+  expect((await saved(page)).treeVersion).toBe('0_5');
+  // Explicitly refund the disconnected leaf through the normal tree editor while a new preview is
+  // open: the edit makes that preview stale, and a stale confirmation cannot overwrite the session.
+  await convert.click();
+  await expect(confirm).toBeEnabled();
   await page.locator('circle[data-skill-id="56118"]').dispatchEvent('click', { clientX: 600, clientY: 400 });
   await expect.poll(async () => (await saved(page)).weaponSwap?.exclusive_nodes[1]).toEqual([]);
   await idle(page);
+  await expect(confirm).toBeDisabled();
+  await expect(preview).toContainText('The build changed. Create a new preview.');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(preview).toHaveCount(0);
+  // The disconnected leaf stayed allocated until that action; ordinary tree Undo restores it.
   await undo.click();
   await idle(page);
   expect((await saved(page)).weaponSwap?.exclusive_nodes[1]).toEqual([56118]);

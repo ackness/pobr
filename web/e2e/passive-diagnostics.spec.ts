@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import type { PassiveNode } from '../src/api/types';
 import { buildPassiveGraph, shortestAllocationPath } from '../src/lib/passiveGraph';
+import { busy, pageLink } from './shell';
 
 const version = readFileSync('../data/CURRENT', 'utf8').trim();
 const nodes: PassiveNode[] = JSON.parse(readFileSync(`../data/${version}/base/passive_tree.json`, 'utf8'));
@@ -22,20 +23,18 @@ const baselineReason = 'Tree:46819: missing timeless jewel seed data';
 const newReasons = ['Tree:49512: missing timeless jewel seed data', 'Tree:5936: missing timeless jewel seed data'];
 const timeless = 'Rarity: UNIQUE\nHeroic Tragedy\nTimeless Jewel\nRadius: Very Large\nImplicits: 0\nRemembrancing 1234 songworthy deeds by the line of Vorana\nPassives in radius are Conquered by the Kalguur\nHistoric';
 const replacement = 'Rarity: MAGIC\nRuby\nImplicits: 0\n+20 to maximum Life';
-const nav = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main navigation' })
-  .getByRole('button', { name, exact: true });
+const nav = (page: Page, name: string) => pageLink(page, name);
 const baseline = (page: Page) => page.locator('.tree-planner-baseline-unsupported');
 const exclusions = (page: Page) => page.locator('.tree-planner-excluded');
 const run = (page: Page) => page.getByRole('button', { name: 'Find upgrade routes', exact: true });
-const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state);
+const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
 
 async function syntheticTimelessWitch(page: Page) {
   // Synthetic persisted build/league fixture only. Jewel validation, radius membership,
   // baseline calculation, complete route batches and diagnostics use real shipped WASM.
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
   await page.addInitScript(({ allocated, attributeChoices, socket, timeless }) => {
-    localStorage.setItem('pobr-tab', 'tree');
-    localStorage.setItem('pobr-build-state', JSON.stringify({ version: 1, notes: '', state: {
+    localStorage.setItem('pobr-v2-build-state', JSON.stringify({ version: 1, notes: '', state: {
       pobCode: null, character: { level: 90, class_name: 'Witch', ascendancy_name: '' },
       allocatedNodes: allocated, attributeChoices,
       socketGroups: [{ enabled: true, gems: [{ skill_id: 'FireballPlayer', level: 16, quality: 0 }] }],
@@ -43,10 +42,10 @@ async function syntheticTimelessWitch(page: Page) {
       annotations: {}, params: { config_inputs: {} },
     } }));
   }, { allocated, attributeChoices, socket: socket.skill, timeless });
-  await page.goto('/');
+  await page.goto('/tree');
   await expect(page.locator(`circle[data-skill-id="${socket.skill}"]`)).toHaveClass(/node-jewel-filled/, { timeout: 90_000 });
   await expect(page.locator('.tree-asc-picker select').first()).toBeEnabled();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(busy(page)).toHaveCount(0);
 }
 
 async function open(page: Page) {
@@ -57,7 +56,7 @@ async function open(page: Page) {
 
 async function configure(page: Page) {
   await open(page);
-  await page.getByRole('button', { name: 'Objective', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
   await page.getByRole('option', { name: 'Max Life', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Point budget', exact: true }).fill('2');
 }
@@ -127,11 +126,11 @@ for (const edit of ['copied stage', 'jewel input'] as const) {
     expect(await saved(page)).toEqual(before);
 
     if (edit === 'copied stage') {
-      await nav(page, 'Build').click();
+      await page.locator('.shell-builds-button').click();
       await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
       await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Synthetic diagnostic copy');
       await page.getByRole('button', { name: 'Save', exact: true }).click();
-      await expect(page.locator('.topbar-busy')).toHaveCount(0);
+      await expect(busy(page)).toHaveCount(0);
       await nav(page, 'Tree').click();
       await open(page);
       await assertNoReceipt(page);
@@ -147,7 +146,7 @@ for (const edit of ['copied stage', 'jewel input'] as const) {
       await page.getByRole('textbox', { name: 'Jewel socket', exact: true }).fill(replacement);
       await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
       await expect.poll(async () => (await saved(page)).jewels).toEqual([{ socket_node: socket.skill, text: replacement }]);
-      await expect(page.locator('.topbar-busy')).toHaveCount(0);
+      await expect(busy(page)).toHaveCount(0);
       await assertNoReceipt(page);
       expect((await saved(page)).allocatedNodes).toEqual(before.allocatedNodes);
       await complete(page);
@@ -157,7 +156,7 @@ for (const edit of ['copied stage', 'jewel input'] as const) {
       const reasons = await exclusions(page).locator(':scope > li ul > li').allTextContents();
       for (const reason of reasons) expect(reason).toMatch(/^Tree:\d+: (?!missing timeless jewel seed data)/);
       await expect(page.locator('.tree-planner-body')).not.toContainText('missing timeless jewel seed data');
-      await expect(page.locator('.calc-error')).toHaveCount(0);
+      await expect(page.locator('.shell-alert')).toHaveCount(0);
     }
   });
 }

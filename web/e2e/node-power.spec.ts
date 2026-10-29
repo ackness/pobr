@@ -2,6 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import type { PassiveNode } from '../src/api/types';
 import { allocationPaths, passivePlanningContext } from '../src/lib/passivePlanner';
+import { busy } from './shell';
+import { choose } from './treePage';
 
 const version = readFileSync(new URL('../../data/CURRENT', import.meta.url), 'utf8').trim();
 const nodes = JSON.parse(readFileSync(new URL(`../../data/${version}/base/passive_tree.json`, import.meta.url), 'utf8')) as PassiveNode[];
@@ -12,19 +14,18 @@ const target = context.byId.get(route.target)!;
 test.use({ viewport: { width: 1440, height: 1000 } });
 async function ready(page: Page) {
   await page.addInitScript(() => {
-    localStorage.setItem('pobr-tab', 'tree');
-    localStorage.setItem('pobr-build-state', JSON.stringify({ version:1, notes:'Power test', state:{
+    localStorage.setItem('pobr-v2-build-state', JSON.stringify({ version:1, notes:'Power test', state:{
       pobCode:null, character:{level:80,class_name:'Witch',ascendancy_name:''}, allocatedNodes:[], attributeChoices:{},
       socketGroups:[{enabled:true,gems:[{skill_id:'FireballPlayer',level:16,quality:0}]}], items:[],flasks:[],limbs:[],jewels:[], annotations:{},params:{config_inputs:{}}
     }}));
   });
-  await page.goto('/');
+  await page.goto('/tree');
   await expect(page.locator('.tree-canvas svg')).toBeVisible({timeout:90_000});
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(busy(page)).toHaveCount(0);
   await page.locator('.node-power > summary').click();
 }
 
-const saved = (page: Page) => page.evaluate(() => localStorage.getItem('pobr-build-state'));
+const saved = (page: Page) => page.evaluate(() => localStorage.getItem('pobr-v2-build-state'));
 
 test('report filters, scores full paths, sorts and focuses without allocating; stat changes invalidate scores', async ({page}) => {
   await ready(page);
@@ -45,7 +46,7 @@ test('report filters, scores full paths, sorts and focuses without allocating; s
   expect(target.x!).toBeGreaterThanOrEqual(view[0]); expect(target.x!).toBeLessThanOrEqual(view[0]+view[2]);
   expect(target.y!).toBeGreaterThanOrEqual(view[1]); expect(target.y!).toBeLessThanOrEqual(view[1]+view[3]);
   expect(await saved(page)).toBe(before);
-  await report.getByRole('combobox',{name:'Report stat',exact:true}).selectOption('Mana');
+  await choose(page, report.getByRole('combobox',{name:'Report stat',exact:true}), 'Mana');
   await expect(row).toHaveAttribute('data-status','pending');
   await expect(row.locator('td').nth(1)).toHaveText('—');
   await report.getByRole('button',{name:'Evaluate next 128 nodes',exact:true}).click();
@@ -68,7 +69,7 @@ test('small-node toggle and cancellation preserve the build and never restore st
   await report.getByRole('button',{name:'Cancel report',exact:true}).click();
   await expect(report.getByRole('status')).toHaveText('Report cancelled; completed rows retained.');
   await expect(report.getByRole('button',{name:'Cancel report',exact:true})).toHaveCount(0);
-  await report.getByRole('combobox',{name:'Report stat',exact:true}).selectOption('EnergyShield');
+  await choose(page, report.getByRole('combobox',{name:'Report stat',exact:true}), 'Energy Shield');
   await expect(report.locator('tr[data-status=ready]')).toHaveCount(0);
   await report.locator('summary').first().click();
   await report.locator('summary').first().click();

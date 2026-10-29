@@ -1,4 +1,4 @@
-@import './tokens.css' layer(legacy);
+@import './tokens.css' layer(panels);
 
 * {
   box-sizing: border-box;
@@ -132,73 +132,6 @@ pre {
   border-color: var(--accent-gold-dim);
 }
 
-.app-select-value {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.app-select-caret {
-  flex: none;
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-}
-
-.app-select-panel {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 4px);
-  left: 0;
-  min-width: 100%;
-  width: max-content;
-  max-width: min(320px, calc(100vw - 2rem));
-  max-height: 280px;
-  overflow-y: auto;
-  list-style: none;
-  margin: 0;
-  padding: var(--space-1);
-  background: var(--surface-raised);
-  border: 1px solid var(--accent-gold-dim);
-  border-radius: var(--radius-md);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
-}
-
-.app-select-option {
-  padding: var(--space-2);
-  min-height: var(--control-height);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: var(--text-sm);
-  white-space: normal;
-  overflow-wrap: anywhere;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.app-select-hint {
-  display: block;
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-  white-space: normal;
-}
-
-.app-select-option.is-highlight {
-  background: var(--surface-card);
-  outline: 1px solid var(--accent-gold-dim);
-}
-
-.app-select-option.is-selected {
-  color: var(--accent-gold-bright);
-}
-
-.app-select-group {
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: var(--space-1) var(--space-2) 0;
-}
-
 /* 附赠技能组徽标（Skills 组头 / Calcs 技能 DPS 行共用） */
 .granted-badge {
   margin-left: 0.5em;
@@ -294,10 +227,6 @@ pre {
     opacity: 1;
     transform: none;
   }
-}
-
-.app-main > section {
-  animation: panel-in 0.16s var(--ease-out);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -444,7 +373,7 @@ a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-gold); 
 }
 
 @media (pointer: coarse) {
-  .topbar-tab, .stats-toggle, .build-card button, .config-reset, .app-select-trigger {
+  .config-reset, .app-select-trigger {
     min-height: 44px;
   }
 }

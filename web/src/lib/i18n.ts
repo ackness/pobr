@@ -64,8 +64,6 @@ const DICT = {
   "compare.title": {"en-US": "Compare builds and stages", "zh-TW": "對比構築與階段", "zh-CN": "对比构筑与阶段"},
   "compare.hint": {"en-US": "Choose A and B to inspect saved builds. Only Apply changes A; B stays untouched.", "zh-TW": "選擇 A 與 B 檢視已儲存構築。只有套用會修改 A，B 保持不變。", "zh-CN": "选择 A 与 B 查看已保存构筑。只有应用会修改 A，B 保持不变。"},
   "compare.needStages": {"en-US": "Add a build or copy a stage on the Build page to compare two snapshots.", "zh-TW": "在構築頁新增構築或複製階段，即可對比兩份快照。", "zh-CN": "在构筑页新增构筑或复制阶段，即可对比两份快照。"},
-  "compare.a": {"en-US": "Build / stage A", "zh-TW": "構築 / 階段 A", "zh-CN": "构筑 / 阶段 A"},
-  "compare.b": {"en-US": "Build / stage B", "zh-TW": "構築 / 階段 B", "zh-CN": "构筑 / 阶段 B"},
   "compare.basis": {"en-US": "Calculation config", "zh-TW": "計算配置", "zh-CN": "计算配置"},
   "compare.own": {"en-US": "Each stage’s own config", "zh-TW": "各階段自己的配置", "zh-CN": "各阶段自己的配置"},
   "compare.useA": {"en-US": "Use A’s config for both", "zh-TW": "兩者都使用 A 的配置", "zh-CN": "两者都使用 A 的配置"},
@@ -128,7 +126,6 @@ const DICT = {
   "compare.treeVersion": {"en-US": "Tree version", "zh-TW": "天賦樹版本", "zh-CN": "天赋树版本"},
   "compare.treeMismatch": {"en-US": "Tree versions differ. Matching numeric IDs are not marked as shared; each side uses its own version’s positions and node text.", "zh-TW": "天賦樹版本不同，相同數字 ID 不會標記為共有節點；兩側各自使用其版本的座標和節點文字。", "zh-CN": "天赋树版本不同，相同数字 ID 不会标记为共有节点；两侧各自使用其版本的坐标和节点文字。"},
   "compare.defaultVersion": {"en-US": "Current", "zh-TW": "目前", "zh-CN": "当前"},
-  "compare.build": {"en-US": "Build", "zh-TW": "構築", "zh-CN": "构筑"},
   "compare.stage": {"en-US": "Initial stage", "zh-TW": "初始階段", "zh-CN": "初始阶段"},
   "compare.diagnostics": {"en-US": "Calculation diagnostics", "zh-TW": "計算診斷", "zh-CN": "计算诊断"},
   "compare.calculating": {"en-US": "Calculating A and B…", "zh-TW": "正在計算 A 與 B…", "zh-CN": "正在计算 A 与 B…"},
@@ -139,7 +136,6 @@ const DICT = {
   'trade.radiusHint': { 'en-US': 'Scores use the allocated passives around this socket in the active weapon set. New jewels use Small radius; an equipped jewel retains its radius upgrades. Paste a market item to compare the complete jewel.', 'zh-TW': '依此插槽周圍、目前武器組已配置的天賦評分。新珠寶以小範圍估算，已裝備珠寶保留半徑升級。貼上市集物品可比較完整珠寶。', 'zh-CN': '按此插槽周围、当前武器组已分配的天赋评分。新珠宝以小范围估算，已装备珠宝保留半径升级。粘贴市集物品可比较完整珠宝。' },
   'trade.goalHelp': { 'en-US': 'How this goal is evaluated', 'zh-TW': '目標如何評估', 'zh-CN': '目标如何评估' },
   'items.position': { 'en-US': 'Equipment position', 'zh-TW': '裝備位置', 'zh-CN': '装备位置' },
-  'skills.editMain': { 'en-US': 'Edit inspected skill', 'zh-TW': '編輯檢視技能', 'zh-CN': '编辑查看技能' },
   'config.view': { 'en-US': 'Configuration view', 'zh-TW': '配置顯示範圍', 'zh-CN': '配置显示范围' },
   'config.applicable': { 'en-US': 'Applicable to this build', 'zh-TW': '適用於此構築', 'zh-CN': '适用于此构筑' },
   'config.sourceDefault': { 'en-US': 'Default · no saved value', 'zh-TW': '預設 · 未儲存值', 'zh-CN': '默认 · 未保存值' },
@@ -184,7 +180,6 @@ const DICT = {
   "build.importRecoveryFile": {"en-US": "This looks like a PoBR save or backup. Use Import from file… below with the original JSON file. Restoring a workspace backup replaces all local builds after confirmation.", "zh-TW": "這看起來是 PoBR 存檔或備份。請用下方的「從檔案匯入…」選取原始 JSON 檔案。恢復工作區備份會在確認後取代全部本機構築。", "zh-CN": "这看起来是 PoBR 存档或备份。请用下方的“从文件导入…”选择原始 JSON 文件。恢复工作区备份会在确认后替换全部本地构筑。"},
   "build.importRecoverySource": {"en-US": "Check the error details, then copy the complete PoB2 code, supported build-share link or .build JSON from its source. For PoBR saves and backups, use Import from file… below.", "zh-TW": "請查看錯誤詳情，再從來源複製完整的 PoB2 代碼、支援的構築分享連結或 .build JSON。PoBR 存檔與備份請用下方的「從檔案匯入…」。", "zh-CN": "请查看错误详情，再从来源复制完整的 PoB2 代码、支持的构筑分享链接或 .build JSON。PoBR 存档与备份请用下方的“从文件导入…”。"},
   "build.confirmClassChange": {"en-US": "Reset this stage to an empty level 1 character of this class? Its equipment, skills, passives, notes and configuration will be cleared. Copy the stage first to keep it.", "zh-TW": "要將目前階段重設為此職業的 1 級空白角色嗎？此階段的裝備、技能、天賦、筆記與配置將被清除。如需保留，請先複製階段。", "zh-CN": "要将当前阶段重置为此职业的 1 级空白角色吗？此阶段的装备、技能、天赋、笔记与配置将被清除。如需保留，请先复制阶段。"},
-  "build.itemError": {"en-US": "Item could not be parsed and is excluded from calculations", "zh-TW": "物品解析失敗，未計入數值", "zh-CN": "物品解析失败，未计入数值"},
   "share.generating": {"en-US": "Generating share code…", "zh-TW": "正在生成分享碼…", "zh-CN": "正在生成分享码…"},
   "share.stale": {"en-US": "Your build has changed. Generate a new share code to include your latest edits.", "zh-TW": "構築已修改，請重新生成分享碼以包含最新修改。", "zh-CN": "构筑已修改，请重新生成分享码以包含最新修改。"},
   "common.copyFailed": {"en-US": "Copy failed. Select the text below and copy it manually.", "zh-TW": "複製失敗，請選取下方文字後手動複製。", "zh-CN": "复制失败，请选中下方文本后手动复制。"},
@@ -228,17 +223,11 @@ const DICT = {
   "trade.priorityOrder": {"en-US": "Upgrade priority", "zh-TW": "升級優先順序", "zh-CN": "升级优先顺序"},
   "trade.overviewHint": {"en-US": "Analyze equipped positions, allocated jewel sockets and gems for the selected skill together.", "zh-TW": "一次分析已裝備位置、已配置珠寶插槽與目前技能的寶石。", "zh-CN": "一次分析已装备位置、已配置珠宝插槽与当前技能的宝石。"},
   "trade.overviewTitle": {"en-US": "Where should I upgrade first?", "zh-TW": "先升級哪個位置？", "zh-CN": "先升级哪个位置？"},
-  "ui.buildTitle": {"en-US": "Your build", "zh-TW": "我的構築", "zh-CN": "我的构筑"},
   "ui.buildHint": {"en-US": "Choose a build, then edit its current stage. Use stages to plan leveling, progression and endgame.", "zh-TW": "選擇 BD 後編輯目前階段，透過階段規劃開荒、過渡與畢業。", "zh-CN": "选择 BD 后编辑当前阶段，通过阶段规划开荒、过渡与毕业。"},
   "ui.itemsHint": {"en-US": "Choose a position to inspect or edit an item. Compare saved items before equipping them.", "zh-TW": "選擇位置查看、編輯裝備，從物品庫比較替換後的變化。", "zh-CN": "选择位置查看、编辑装备，从物品库比较替换后的变化。"},
-  "ui.equipped": {"en-US": "Equipped items", "zh-TW": "目前裝備", "zh-CN": "当前装备"},
   "ui.configHint": {"en-US": "Set the encounter and combat conditions used to calculate damage and survivability.", "zh-TW": "設定敵人與戰鬥條件，讓傷害和生存計算符合實際場景。", "zh-CN": "设置敌人与战斗条件，让伤害和生存计算符合实际场景。"},
-  "ui.showStats": {"en-US": "Show character stats", "zh-TW": "展開角色數據", "zh-CN": "展开角色数据"},
-  "ui.hideStats": {"en-US": "Hide character stats", "zh-TW": "收起角色數據", "zh-CN": "收起角色数据"},
 
   // Beta 提示
-  "beta.notice": {"en-US": "Beta: some effects are not included in calculations. Check unsupported modifiers before comparing upgrades.", "zh-TW": "測試版：部分效果尚未計入數值，比較提升前請核對未支援詞條。", "zh-CN": "测试版：部分效果尚未计入数值，比较提升前请核对未支持词条。"},
-  'beta.dismiss': { 'en-US': 'Got it', 'zh-TW': '知道了', 'zh-CN': '知道了' },
 
   // 页签
   'loadout.switch': { 'en-US': 'PoB loadout', 'zh-TW': 'PoB 配置組', 'zh-CN': 'PoB 配置组' },
@@ -260,7 +249,6 @@ const DICT = {
   'tab.tree': { 'en-US': 'Tree', 'zh-TW': '天賦樹', 'zh-CN': '天赋树' },
   'tab.skills': { 'en-US': 'Skills', 'zh-TW': '技能', 'zh-CN': '技能' },
   'tab.items': { 'en-US': 'Items', 'zh-TW': '裝備', 'zh-CN': '装备' },
-  'app.source': { 'en-US': 'View source on GitHub (opens in a new tab)', 'zh-TW': '在 GitHub 查看原始碼（另開分頁）', 'zh-CN': '在 GitHub 查看源码（新标签页打开）' },
   'tab.trade': { 'en-US': 'Upgrades', 'zh-TW': '提升', 'zh-CN': '提升' },
   'tab.guidance': { 'en-US': 'Build references', 'zh-TW': '流派參考', 'zh-CN': '流派参考' },
   'tab.calcs': { 'en-US': 'Calcs', 'zh-TW': '計算', 'zh-CN': '计算' },
@@ -284,15 +272,10 @@ const DICT = {
   'build.level': { 'en-US': 'Level', 'zh-TW': '等級', 'zh-CN': '等级' },
   'build.none': { 'en-US': '(none)', 'zh-TW': '（無）', 'zh-CN': '（无）' },
   "build.newHint": {"en-US": "Changing class resets this stage to an empty level 1 character. Use New build to start a separate build.", "zh-TW": "更換職業會將目前階段重設為 1 級空白角色。建立獨立 BD 請使用「新增 BD」。", "zh-CN": "更换职业会将当前阶段重置为 1 级空白角色。创建独立 BD 请使用「新建 BD」。"},
-  'build.import': { 'en-US': 'Import Build', 'zh-TW': '匯入配置', 'zh-CN': '导入配置' },
   'build.importPlaceholder': { 'en-US': 'Paste a PoB2 code, supported build-share URL, or .build JSON…', 'zh-TW': '貼上 PoB2 代碼、支援的構築分享連結或 .build JSON…', 'zh-CN': '粘贴 PoB2 代码、支持的构筑分享链接或 .build JSON…' },
   "build.importButton": {"en-US": "Import as new build", "zh-TW": "匯入為新 BD", "zh-CN": "导入为新 BD"},
   'build.calculating': { 'en-US': 'Calculating…', 'zh-TW': '計算中…', 'zh-CN': '计算中…' },
-  'build.imported': { 'en-US': 'Imported: ', 'zh-TW': '已匯入：', 'zh-CN': '已导入：' },
   'build.passives': { 'en-US': 'passives', 'zh-TW': '天賦點', 'zh-CN': '天赋点' },
-  'build.itemsCount': { 'en-US': 'items', 'zh-TW': '件裝備', 'zh-CN': '件装备' },
-  'build.unsupported': { 'en-US': 'Unsupported modifiers', 'zh-TW': '未支援詞條', 'zh-CN': '未支持词条' },
-  'build.unsupportedHint': { 'en-US': 'These effects are not included in the calculation. For example, Guard granted by charms is not yet modeled; keep it in mind when comparing survival upgrades.', 'zh-TW': '以下效果尚未計入數值。例如護符授予的 Guard 尚未建模，比較生存提升時需另外考慮。', 'zh-CN': '以下效果尚未计入数值。例如护符授予的 Guard 尚未建模，比较生存提升时需另外考虑。' },
 
   // Skills 页
   'skills.title': { 'en-US': 'Socket Groups', 'zh-TW': '技能組', 'zh-CN': '技能组' },
@@ -302,11 +285,6 @@ const DICT = {
     'en-US': 'Use the star to inspect a group; expand it to edit gems and weapon bindings. Use Skill metrics in Calcs to select an exact active effect.',
     'zh-TW': '點擊星標檢視技能組，展開可編輯寶石和武器綁定。在計算明細的技能數值總覽中可選擇確切的主動效果。',
     'zh-CN': '点击星标查看技能组，展开可编辑宝石和武器绑定。在计算明细的技能数值总览中可选择确切的主动效果。',
-  },
-  'skills.empty': {
-    'en-US': 'No socket groups yet — add one with the search box above, or import a build code.',
-    'zh-TW': '尚無技能組——用上方搜尋框添加，或匯入 build code。',
-    'zh-CN': '尚无技能组——用上方搜索框添加，或导入 build code。',
   },
   'skills.emptyGroup': { 'en-US': '(empty)', 'zh-TW': '（空組）', 'zh-CN': '（空组）' },
   'skills.unresolved': { 'en-US': 'Unresolved gem', 'zh-TW': '未解析寶石', 'zh-CN': '未解析宝石' },
@@ -328,7 +306,6 @@ const DICT = {
   'minion.actor': { 'en-US': 'Actor', 'zh-TW': '計算對象', 'zh-CN': '计算对象' },
   'minion.player': { 'en-US': 'Player', 'zh-TW': '角色', 'zh-CN': '角色' },
   'minion.skillFallback': { 'en-US': 'Skill', 'zh-TW': '技能', 'zh-CN': '技能' },
-  'minion.noBreakdown': { 'en-US': 'No breakdown is available for this actor.', 'zh-TW': '此對象沒有可用的計算分解。', 'zh-CN': '此对象没有可用的计算分解。' },
   "skills.effect": {"en-US": "Active effect", "zh-TW": "主動效果", "zh-CN": "主动效果"},
   "skills.form": {"en-US": "Skill form", "zh-TW": "技能形態", "zh-CN": "技能形态"},
   "skills.defaultForm": {"en-US": "Default form", "zh-TW": "預設形態", "zh-CN": "默认形态"},
@@ -606,7 +583,6 @@ const DICT = {
 
   // Calcs 页
   'calcs.title': { 'en-US': 'Calculations', 'zh-TW': '計算明細', 'zh-CN': '计算明细' },
-  'calcs.hint': { 'en-US': 'Compare independent skill metrics, then inspect a skill’s stat breakdowns and source contributions below.', 'zh-TW': '比較各技能獨立數值，再於下方檢視所選技能的數值明細與來源貢獻。', 'zh-CN': '比较各技能独立数值，再于下方查看所选技能的数值明细与来源贡献。' },
   'calcs.mods': { 'en-US': 'mods', 'zh-TW': '條', 'zh-CN': '条' },
   'calcs.baseTotal': { 'en-US': 'Base total', 'zh-TW': '基礎合計', 'zh-CN': '基础合计' },
   'calcs.incTotal': { 'en-US': 'Increased total', 'zh-TW': '增加合計', 'zh-CN': '增加合计' },
@@ -861,7 +837,6 @@ const DICT = {
   'tree.refundPath': { 'en-US': 'Points refunded, including disconnected nodes:', 'zh-TW': '退點數（包含斷開連線的節點）：', 'zh-CN': '退点数（包含断开连接的节点）：' },
   'tree.refundSocket': { 'en-US': 'Refund removes any socketed jewel and reconciles its dependent allocations.', 'zh-TW': '退點會移除插入的珠寶，並清理依賴它的加點。', 'zh-CN': '退点会移除插入的珠宝，并清理依赖它的加点。' },
   'tree.editJewel': { 'en-US': 'Edit jewel', 'zh-TW': '編輯珠寶', 'zh-CN': '编辑珠宝' },
-  'tree.hint': { 'en-US': 'Click a node to edit, or search and choose Next for keyboard node details. Only explicit edits change the build.', 'zh-TW': '點擊節點編輯，或搜尋後選擇「下一個」以鍵盤查看節點詳情；僅明確編輯會變更構築。', 'zh-CN': '点击节点编辑，或搜索后选择“下一个”以键盘查看节点详情；仅明确编辑会更改构筑。' },
   'tree.reset': { 'en-US': 'Reset view', 'zh-TW': '重置視圖', 'zh-CN': '重置视图' },
   'tree.loading': { 'en-US': 'Loading tree…', 'zh-TW': '載入樹資料…', 'zh-CN': '加载树数据…' },
   'tree.ascendancy': { 'en-US': 'Ascendancy', 'zh-TW': '升華', 'zh-CN': '升华' },
@@ -932,7 +907,6 @@ const DICT = {
 
   // Config 页
   'config.title': { 'en-US': 'Configuration', 'zh-TW': '戰鬥配置', 'zh-CN': '战斗配置' },
-  'config.enemyTier': { 'en-US': 'Enemy tier', 'zh-TW': '敵人檔位', 'zh-CN': '敌人档位' },
   'config.quickTitle': { 'en-US': 'Quick access', 'zh-TW': '快速存取', 'zh-CN': '快捷入口' },
   'config.quickSkill': { 'en-US': 'Calculated skill', 'zh-TW': '目前計算技能', 'zh-CN': '当前计算技能' },
   'config.quickHint': {
@@ -1004,7 +978,6 @@ const DICT = {
   },
 
   // Notes 页
-  "notes.hint": {"en-US": "Describe this stage's passive route, gear priorities and playstyle. Each stage keeps its own notes, included when you share the build.", "zh-TW": "記錄目前階段的加點順序、配裝優先級與操作細節。每個階段保留獨立筆記，分享 BD 時一併帶上。", "zh-CN": "记录当前阶段的加点顺序、配装优先级与操作细节。每个阶段保留独立笔记，分享 BD 时一并带上。"},
   'notes.placeholder2': { 'en-US': 'Write anything about this build…', 'zh-TW': '寫點關於這個 build 的東西…', 'zh-CN': '写点关于这个 build 的东西…' },
   'notes.preview': { 'en-US': 'Colored preview', 'zh-TW': '著色預覽', 'zh-CN': '着色预览' },
 

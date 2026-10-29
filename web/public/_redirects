@@ -1,0 +1,3 @@
+# The app used to be served under /v2. Those links keep working: the page is the same, at the site root.
+/v2 / 301
+/v2/* /:splat 301

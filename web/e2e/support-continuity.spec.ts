@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openItemsAfterImport } from './shell';
+import { copyCurrentStage, currentStage, dpsValue, ehpValue, goTo, openCustomModifiers, openOptimizerSettings, openStage, reduceMotion, settledNumber, settledText } from './upgradesPage';
 import type { SocketGroupInput } from '../src/api/types';
 
-const nav = (page: Page, name: string) =>
-  page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name, exact: true });
-const dps = (page: Page) => page.locator('.stat-row').filter({ hasText: 'Total DPS' }).locator('dd');
+const dps = dpsValue;
 const capacity = (page: Page) => page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true });
 const lineage = (page: Page) => page.getByRole('checkbox', { name: 'Include lineage supports', exact: true });
 const run = (page: Page) => page.getByRole('button', { name: 'Calculate support combinations', exact: true });
@@ -19,30 +19,51 @@ async function syntheticCaster(page: Page) {
     talent_tree: { hashes: [54447, 4739, 22419, 18407], quest_stats: [] }, jewel_data: '[]',
     skills: [{ baseType: 'Fireball', support: false, properties: [{ type: 5, values: [['16', 0]] }] }],
   } }));
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('textbox', { name: 'Build code', exact: true })
     .fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticSupportContinuityFixture');
   await page.locator('.import-submit').click();
+  await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
+}
+
+/**
+ * A stage or skill-set change gives the Skills page a new planner. The page opens on the main group with its
+ * optimizer drawn, but nothing of the earlier planner is carried over: no plans, and the settings are folded again.
+ */
+async function expectFreshOptimizer(page: Page) {
+  await expect(page.locator('.gem-optimizer-body')).toBeVisible();
+  await expect(page.locator('.gem-optimizer-settings')).toHaveJSProperty('open', false);
+  await expect(page.locator('.support-results')).toHaveCount(0);
+  await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
+  await expect(page.locator('.opt-progress')).toHaveCount(0);
 }
 
 async function openOptimizer(page: Page, index = 0) {
-  await nav(page, 'Skills').click();
+  await goTo(page, 'Skills');
   await expect(page.locator('.skills-toolbar input')).toBeEnabled();
   const group = page.locator('.skill-group').nth(index);
   const main = group.locator('.skill-main-toggle');
   if (await main.getAttribute('aria-pressed') === 'false') {
     await main.click();
-    await expect(page.locator('.topbar-busy')).toHaveCount(0);
+    await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   }
   const title = group.locator('.skill-group-title');
   if (await title.getAttribute('aria-expanded') === 'false') await title.click();
   const toggle = group.locator('.gem-optimizer-toggle');
   if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
   await expect(group.locator('.gem-optimizer-body')).toBeVisible();
+  await openOptimizerSettings(group);
   await expect(run(page)).toBeEnabled();
+}
+
+/** Come back to a Skills page whose optimizer was open: the optimizer is drawn afresh, with its settings folded. */
+async function returnToSkills(page: Page, options?: { force?: boolean }) {
+  await goTo(page, 'Skills', options);
+  await expect(page.locator('.gem-optimizer-body')).toBeVisible();
+  await openOptimizerSettings(page);
 }
 
 async function completePlan(page: Page) {
@@ -55,11 +76,11 @@ async function completePlan(page: Page) {
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
 
 async function socketGroups(page: Page): Promise<SocketGroupInput[]> {
-  return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state.socketGroups);
+  return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state.socketGroups);
 }
 
 async function selectObjective(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Objective', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
   await page.getByRole('option', { name, exact: true }).click();
 }
 
@@ -81,7 +102,7 @@ async function previewMetric(page: Page, label: 'DPS' | 'EHP', index = 0) {
 async function addGroup(page: Page, name: string) {
   await page.getByPlaceholder('Search an active gem to add a group…').fill(name);
   await page.getByRole('option').filter({ has: page.getByText(name, { exact: true }) }).click();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
 }
 
 async function pauseAfterRealBatch(page: Page) {
@@ -108,19 +129,19 @@ test('completed support plans and nondefault socket and lineage settings survive
   await capacity(page).fill('3');
   await lineage(page).uncheck();
   await completePlan(page);
-  const beforeDps = await dps(page).innerText();
+  const beforeDps = await settledText(dps(page));
   const completed = await page.locator('.support-results').innerText();
   const recommended = await page.locator('.support-plan').first().locator('.support-plan-metrics').innerText();
   await expect(page.locator('.support-plan .gem-lineage-badge')).toHaveCount(0);
 
-  await nav(page, 'Calcs').click();
+  await goTo(page, 'Calcs');
   await expect(page.getByRole('heading', { name: 'Socket Groups', exact: true })).toBeHidden();
   await expect(run(page)).toHaveCount(0);
   await expect(capacity(page)).toHaveCount(0);
   await expect(lineage(page)).toHaveCount(0);
   await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
 
-  await nav(page, 'Skills').click();
+  await returnToSkills(page);
   await expect(page.locator('.skill-group-title').first()).toHaveAttribute('aria-expanded', 'true');
   await expect(page.locator('.gem-optimizer-toggle')).toHaveAttribute('aria-expanded', 'true');
   await expect(capacity(page)).toHaveValue('3');
@@ -138,7 +159,7 @@ test('same-stage Apply after returning to Skills equips the displayed complete s
   await lineage(page).uncheck();
   await selectObjective(page, 'Max total DPS');
   const groupsBefore = await socketGroups(page);
-  const beforeDps = numeric(await dps(page).innerText());
+  const beforeDps = await settledNumber(dps(page));
   await completePlan(page);
   const first = page.locator('.support-plan').first();
   const ids = await first.locator('.support-plan-gems > .opt-chip').evaluateAll(elements =>
@@ -148,17 +169,17 @@ test('same-stage Apply after returning to Skills equips the displayed complete s
   const previewDps = await previewMetric(page, 'DPS');
   expect(previewDps).toBeGreaterThan(beforeDps);
 
-  await nav(page, 'Calcs').click();
+  await goTo(page, 'Calcs');
   await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
-  await nav(page, 'Skills').click();
+  await returnToSkills(page);
   await expect(first).toBeVisible();
   await first.getByRole('button', { name: 'Apply', exact: true }).click();
   await expect.poll(async () => numeric(await dps(page).innerText())).toBeGreaterThan(beforeDps);
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   const applied = await socketGroups(page);
   expect(applied[0].gems[0]).toEqual(groupsBefore[0].gems[0]);
   expect(applied[0].gems.slice(1).map(gem => gem.skill_id)).toEqual(ids);
-  expect(Math.abs(numeric(await dps(page).innerText()) - previewDps),
+  expect(Math.abs(await settledNumber(dps(page)) - previewDps),
     'Equipped DPS must match the real-WASM preview to its displayed one-decimal precision').toBeLessThanOrEqual(0.06);
   await expectNoPlans(page);
   await expect(capacity(page)).toHaveValue('3');
@@ -173,39 +194,40 @@ for (const edit of ['build', 'goal'] as const) {
     await lineage(page).uncheck();
     await completePlan(page);
     const groupsBefore = await socketGroups(page);
-    const originalDps = await dps(page).innerText();
-    const floor = Math.max(0, numeric(await page.locator('.stat-row').filter({ hasText: 'Effective HP' }).locator('dd').innerText()) - 1);
+    const originalDps = await settledText(dps(page));
+    const floor = Math.max(0, await settledNumber(ehpValue(page)) - 1);
 
     if (edit === 'build') {
-      await nav(page, 'Config').click();
+      await goTo(page, 'Config');
+      await openCustomModifiers(page);
       await page.locator('.config-modifier-add').click();
       const block = page.locator('.config-modifier-block').last();
       await block.locator('.config-extra-mods').fill('100% increased Fire Damage');
       await block.locator('.config-modifier-title input').click();
       await expect(dps(page)).not.toHaveText(originalDps);
-      await expect(page.locator('.topbar-busy')).toHaveCount(0);
+      await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
     } else {
-      await nav(page, 'Upgrades').click();
+      await goTo(page, 'Upgrades');
       await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
       await page.locator('.upgrade-goal-details > summary').click();
-      await page.getByRole('button', { name: 'Constraint', exact: true }).click();
+      await page.getByRole('combobox', { name: 'Constraint', exact: true }).click();
       await page.getByRole('option', { name: 'Effective HP', exact: true }).click();
       await page.getByRole('spinbutton', { name: 'min', exact: true }).fill(String(floor));
       await expect(dps(page)).toHaveText(originalDps);
     }
-    await nav(page, 'Skills').click();
+    await returnToSkills(page);
     await expect(capacity(page)).toHaveValue('3');
     await expect(lineage(page)).not.toBeChecked();
     await expectNoPlans(page);
     expect(await socketGroups(page)).toEqual(groupsBefore);
-    const currentDps = numeric(await dps(page).innerText());
+    const currentDps = await settledNumber(dps(page));
     await completePlan(page);
     const baselineText = await page.locator('.support-baseline').innerText();
     const baselineDps = numeric(baselineText.match(/DPS ([\d,.]+)/)![1]);
     expect(Math.abs(baselineDps - currentDps), 'New results must use the current equipped build, not the hidden old request')
       .toBeLessThanOrEqual(0.06);
     if (edit === 'goal') {
-      await expect(page.getByRole('button', { name: 'Objective', exact: true })).toContainText('Max total DPS');
+      await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Max total DPS');
       await expect(page.getByRole('spinbutton', { name: 'min', exact: true })).toHaveValue(String(floor));
       const planCount = await page.locator('.support-plan').count();
       for (let index = 0; index < planCount; index++) {
@@ -226,17 +248,12 @@ test('switching identical copied stages resets completed support plans and stage
   await lineage(page).uncheck();
   await completePlan(page);
   const originalGroups = await socketGroups(page);
-  const originalDps = await dps(page).innerText();
+  const originalDps = await settledText(dps(page));
 
-  await nav(page, 'Build').click();
-  const originalStage = await page.locator('.workspace-current-stage').innerText();
-  await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Synthetic support copy');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await nav(page, 'Skills').click();
-  await expect(page.locator('.skill-group-title').first()).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
+  const originalStage = (await currentStage(page).innerText()).trim();
+  await copyCurrentStage(page, 'Synthetic support copy');
+  await goTo(page, 'Skills');
+  await expectFreshOptimizer(page);
   await openOptimizer(page);
   await expectNoPlans(page);
   await expect(capacity(page)).toHaveValue(initialCapacity);
@@ -247,11 +264,9 @@ test('switching identical copied stages resets completed support plans and stage
   await lineage(page).uncheck();
   await completePlan(page);
 
-  await nav(page, 'Build').click();
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: originalStage });
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await nav(page, 'Skills').click();
-  await expect(page.locator('.skill-group-title').first()).toHaveAttribute('aria-expanded', 'false');
+  await openStage(page, originalStage);
+  await goTo(page, 'Skills');
+  await expectFreshOptimizer(page);
   await openOptimizer(page);
   await expectNoPlans(page);
   await expect(capacity(page)).toHaveValue(initialCapacity);
@@ -312,8 +327,8 @@ test('deleting a preceding duplicate skill group resets planner ownership instea
   await completePlan(page);
   const surviving = (await socketGroups(page))[1];
 
-  await page.locator('.skill-group').first().getByTitle('Remove group', { exact: true }).click();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await page.locator('.skill-group').first().getByRole('button', { name: 'Remove group', exact: true }).click();
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   await openOptimizer(page);
   await expect(page.locator('.skill-group')).toHaveCount(1);
   await expectNoPlans(page);
@@ -325,12 +340,13 @@ test('deleting a preceding duplicate skill group resets planner ownership instea
 });
 
 test('Cancel discards evaluated partial support plans and an explicit fresh run remains usable', async ({ page }) => {
+  await reduceMotion(page); // the clock is frozen below
   await syntheticCaster(page);
   await openOptimizer(page);
   await capacity(page).fill('3');
   await lineage(page).uncheck();
   const equipped = await socketGroups(page);
-  const beforeDps = await dps(page).innerText();
+  const beforeDps = await settledText(dps(page));
   await pauseAfterRealBatch(page);
   await page.getByRole('button', { name: 'Cancel', exact: true }).click({ force: true });
   await page.clock.runFor(1000);
@@ -346,14 +362,15 @@ test('Cancel discards evaluated partial support plans and an explicit fresh run 
 });
 
 test('leaving Skills cancels an active real-WASM batch and its late continuation cannot publish hidden support plans', async ({ page }) => {
+  await reduceMotion(page); // the clock is frozen below
   await syntheticCaster(page);
   await openOptimizer(page);
   await capacity(page).fill('3');
   await lineage(page).uncheck();
   const equipped = await socketGroups(page);
-  const beforeDps = await dps(page).innerText();
+  const beforeDps = await settledText(dps(page));
   await pauseAfterRealBatch(page);
-  await nav(page, 'Calcs').click({ force: true });
+  await goTo(page, 'Calcs', { force: true });
   await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toHaveCount(0);
   await expect(run(page)).toHaveCount(0);
   await expect(capacity(page)).toHaveCount(0);
@@ -364,7 +381,7 @@ test('leaving Skills cancels an active real-WASM batch and its late continuation
   await expect(page.locator('.opt-progress')).toHaveCount(0);
   expect(await socketGroups(page)).toEqual(equipped);
   await expect(dps(page)).toHaveText(beforeDps);
-  await nav(page, 'Skills').click({ force: true });
+  await returnToSkills(page, { force: true });
   await expectNoPlans(page);
   await expect(capacity(page)).toHaveValue('3');
   await expect(lineage(page)).not.toBeChecked();
@@ -375,22 +392,23 @@ test('leaving Skills cancels an active real-WASM batch and its late continuation
 });
 
 test('a hidden shared-goal edit cannot be overwritten by the previous real support batch continuation', async ({ page }) => {
+  await reduceMotion(page); // the clock is frozen below
   await syntheticCaster(page);
   await openOptimizer(page);
   await capacity(page).fill('3');
   await lineage(page).uncheck();
   const equipped = await socketGroups(page);
-  const beforeDps = await dps(page).innerText();
+  const beforeDps = await settledText(dps(page));
   await pauseAfterRealBatch(page);
-  await nav(page, 'Upgrades').click({ force: true });
+  await goTo(page, 'Upgrades', { force: true });
   await page.getByRole('button', { name: 'Max total DPS', exact: true }).click({ force: true });
   await page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true }).check({ force: true });
   await page.clock.runFor(1000);
   await expect(page.locator('.support-results')).toHaveCount(0);
   await expect(page.locator('.opt-progress')).toHaveCount(0);
-  await nav(page, 'Skills').click({ force: true });
+  await returnToSkills(page, { force: true });
   await expectNoPlans(page);
-  await expect(page.getByRole('button', { name: 'Objective', exact: true })).toContainText('Max total DPS');
+  await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Max total DPS');
   await expect(page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true })).toBeChecked();
   await expect(capacity(page)).toHaveValue('3');
   await expect(lineage(page)).not.toBeChecked();
@@ -414,9 +432,8 @@ test('replacing a skill set with identical groups resets selected support worksp
   await completePlan(page);
   await page.locator('.skill-set-chip').filter({ hasText: 'Identical support set' })
     .getByRole('button', { name: 'Apply', exact: true }).click();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await expect(page.locator('.skill-group-title').first()).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.locator('.gem-optimizer')).toHaveCount(0);
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
+  await expectFreshOptimizer(page);
   expect(await socketGroups(page)).toEqual(groups);
   await openOptimizer(page);
   await expectNoPlans(page);
@@ -426,20 +443,14 @@ test('replacing a skill set with identical groups resets selected support worksp
 
 test('stage switching in Skills does not replay a prior-stage focus but accepts a new planning action', async ({ page }) => {
   await syntheticCaster(page);
-  await nav(page, 'Build').click();
-  const originalStage = await page.locator('.workspace-current-stage').innerText();
-  await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Focus copy');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await nav(page, 'Upgrades').click();
+  const originalStage = (await currentStage(page).innerText()).trim();
+  await copyCurrentStage(page, 'Focus copy');
+  await goTo(page, 'Upgrades');
   await page.locator('.upgrade-paths > button').nth(1).click();
   await expect(page.locator('.gem-optimizer-body')).toBeVisible();
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: originalStage });
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await expect(page.locator('.skill-group-title').first()).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.locator('.gem-optimizer')).toHaveCount(0);
-  await nav(page, 'Upgrades').click();
+  await openStage(page, originalStage);
+  await expectFreshOptimizer(page);
+  await goTo(page, 'Upgrades');
   await page.locator('.upgrade-paths > button').nth(1).click();
   await expect(page.locator('.gem-optimizer-body')).toBeVisible();
 });

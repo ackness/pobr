@@ -14,4 +14,3 @@
 .node-power td:first-child button { white-space: normal; text-align: left; }
 .node-power small { display: block; color: var(--text-secondary); margin-top: var(--space-1); }
 .node-power [data-status=unsupported] small, .node-power [data-status=error] small { color: var(--accent-gold); }
-@media (min-width: 1281px) { .tree-workspace:has(.node-power[open]) { grid-template-columns: minmax(0, 1fr) minmax(420px, 48%); } }

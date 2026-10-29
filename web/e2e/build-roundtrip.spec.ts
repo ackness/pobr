@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openItemsAfterImport, pageLink, statValue } from './shell';
+import { openBuild, openExport, openLoadouts, stableText } from './buildLibrary';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 
@@ -11,16 +13,29 @@ const xml = `<PathOfBuilding2>
   <Notes>Original notes</Notes>
 </PathOfBuilding2>`;
 
+const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Inspected skill', exact: true });
+const hitDps = (page: Page) => statValue(page, /^Hit DPS$/).first();
+/** Opens the Imported PoB loadouts section of the Build page and switches to one of them by its position. */
+async function switchLoadout(page: Page, index: number) {
+  const picker = page.getByRole('combobox', { name: 'PoB loadout', exact: true });
+  await picker.click();
+  await page.getByRole('option').nth(index).click();
+  await expect(page.locator('details.bd-details select')).toHaveValue(String(index));
+  await expect(picker).toBeEnabled();
+}
+const loadoutValue = (page: Page) => page.locator('details.bd-details select');
+
 async function importCode(page: Page, code: string) {
-  await page.getByRole('button', { name: 'Build', exact: true }).click();
+  await openBuild(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
+  await openItemsAfterImport(page);
   await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
 }
 
 async function saved(page: Page) {
-  return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!));
+  return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));
 }
 
 test('body armour granted mitigation follows chest rarity after import and editing', async ({ page }) => {
@@ -38,11 +53,11 @@ Body Armour grants Hits against you have 100% reduced Critical Damage Bonus</Ite
       <ItemSet id="1"><Slot name="Body Armour" itemId="1"/><Slot name="Ring 1" itemId="2"/></ItemSet>
     </Items>
   </PathOfBuilding2>`;
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
   await importCode(page, deflateSync(source).toString('base64url'));
-  const ehp = page.locator('.stat-row').filter({ hasText: /^Effective HP/ }).locator('dd');
-  const normalEhp = await ehp.innerText();
+  const ehp = statValue(page, /^Effective HP$/).first();
+  const normalEhp = (await stableText(ehp))!;
   const number = (text: string) => Number(text.replaceAll(',', ''));
   expect(number(normalEhp)).toBeGreaterThan(0);
 
@@ -54,7 +69,7 @@ Body Armour grants Hits against you have 100% reduced Critical Damage Bonus</Ite
     );
     await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
     await expect(page.locator('.item-editor')).toHaveCount(0);
-    await expect(page.locator('.topbar-busy')).toHaveCount(0);
+    await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
     if (rarity === 'NORMAL') {
       await expect(ehp).toHaveText(normalEhp);
     } else {
@@ -68,12 +83,12 @@ Body Armour grants Hits against you have 100% reduced Critical Damage Bonus</Ite
 test('gem quality edits recalculate real WASM results and restore the baseline', async ({ page }) => {
   const code = readFileSync(new URL('../../examples/demo-bd-test/builds/mercenary-gemling-legionnaire-explosive-grenade/code.txt', import.meta.url), 'utf8').trim();
   const zeroQuality = inflateSync(Buffer.from(code, 'base64url')).toString('utf8').replace(/quality="\d+"/g, 'quality="0"');
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
   await importCode(page, deflateSync(zeroQuality).toString('base64url'));
-  const dps = page.locator('.main-skill-section .stat-row dd').first();
-  const baseline = await dps.textContent();
-  await page.getByRole('button', { name: 'Skills', exact: true }).click();
+  const dps = hitDps(page);
+  const baseline = await stableText(dps);
+  await pageLink(page, 'Skills').click();
   const main = page.locator('.skill-group.is-main');
   await expect(main.locator('.skill-group-name')).toHaveText('Explosive Grenade');
   await main.locator('.skill-group-title').click();
@@ -87,80 +102,81 @@ test('gem quality edits recalculate real WASM results and restore the baseline',
 
 test('an imported trigger group retains its main active skill through edits, reload and share', async ({ page }) => {
   const source = readFileSync(new URL('../../crates/pobr-build/tests/fixtures/coc_cast_on_crit.xml', import.meta.url), 'utf8');
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
   await importCode(page, deflateSync(source).toString('base64url'));
-  await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Fireball');
+  await expect(mainSkill(page)).toContainText('Fireball');
   expect((await saved(page)).state.socketGroups[0].main_active_skill).toBe(3);
-  const dps = await page.locator('.main-skill-section .stat-row dd').first().textContent();
+  const dps = await stableText(hitDps(page));
 
   // Earlier saves omitted this metadata; restore it only for unchanged gem order.
   await page.evaluate(() => {
-    const snapshot = JSON.parse(localStorage.getItem('pobr-build-state')!);
+    const snapshot = JSON.parse(localStorage.getItem('pobr-v2-build-state')!);
     delete snapshot.state.socketGroups[0].main_active_skill;
-    localStorage.setItem('pobr-build-state', JSON.stringify(snapshot));
+    localStorage.setItem('pobr-v2-build-state', JSON.stringify(snapshot));
   });
   await page.reload();
-  await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Fireball', { timeout: 90_000 });
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(mainSkill(page)).toContainText('Fireball', { timeout: 90_000 });
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   expect((await saved(page)).state.socketGroups[0].main_active_skill).toBe(3);
-  await expect(page.locator('.main-skill-section .stat-row dd').first()).toHaveText(dps!);
+  await expect(hitDps(page)).toHaveText(dps!);
 
-  await page.getByRole('button', { name: 'Build', exact: true }).click();
+  await openBuild(page);
+  await openExport(page);
   await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
   const code = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
   expect(inflateSync(Buffer.from(code, 'base64url')).toString('utf8')).toContain('mainActiveSkill="3"');
   await importCode(page, code);
-  await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Fireball');
-  await expect(page.locator('.main-skill-section .stat-row dd').first()).toHaveText(dps!);
+  await expect(mainSkill(page)).toContainText('Fireball');
+  await expect(hitDps(page)).toHaveText(dps!);
 
-  await page.getByRole('button', { name: 'Skills', exact: true }).click();
+  await pageLink(page, 'Skills').click();
   await expect(page.locator('.skill-group-name')).toHaveText('Fireball');
   await page.locator('.skill-group-title').click();
   // Removing the preceding attack must shift the active ordinal, not select the meta shell.
   await page.locator('.skill-gems .skill-remove').first().click();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   expect((await saved(page)).state.socketGroups[0].main_active_skill).toBe(2);
-  await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Fireball');
+  await expect(mainSkill(page)).toContainText('Fireball');
 });
 
 test('switch, reload, edit and share preserve the selected loadout and global fields', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
   await importCode(page, deflateSync(xml).toString('base64url'));
-  await page.getByRole('button', { name: 'Build', exact: true }).click();
-  await page.locator('.workspace-loadouts summary').click();
-  await page.getByLabel('PoB loadout', { exact: true }).selectOption('1');
-  await expect(page.getByLabel('PoB loadout', { exact: true })).toHaveValue('1');
-  await expect(page.getByLabel('PoB loadout', { exact: true })).toBeEnabled();
+  await openBuild(page);
+  await openLoadouts(page);
+  await switchLoadout(page, 1);
 
   await page.reload();
-  await expect(page.locator('.workspace-loadouts summary')).toBeVisible({ timeout: 90_000 });
-  await page.locator('.workspace-loadouts summary').click();
-  await expect(page.getByLabel('PoB loadout', { exact: true })).toHaveValue('1');
-  await expect(page.getByLabel('PoB loadout', { exact: true })).toBeEnabled();
-  await page.getByRole('button', { name: 'Build', exact: true }).click();
+  await expect(page.locator('details.bd-details summary')).toBeVisible({ timeout: 90_000 });
+  await openLoadouts(page);
+  await expect(loadoutValue(page)).toHaveValue('1');
+  await expect(page.getByRole('combobox', { name: 'PoB loadout', exact: true })).toBeEnabled();
   await page.getByLabel('Level', { exact: true }).fill('90');
   await page.getByRole('textbox', { name: 'Notes', exact: true }).fill('Edited <notes> & 中文');
-  await page.getByRole('button', { name: 'Config', exact: true }).click();
+  await pageLink(page, 'Config').click();
   await page.getByLabel('Search config options…').fill('Onslaught');
   await page.locator('.config-item input[type="checkbox"]').first().check();
-  await page.locator('.config-toolbar select').selectOption('none');
+  // The enemy is chosen with the fight presets above the options ("Mapping" is the tier without a boss).
+  await page.getByRole('group', { name: 'Enemy to fight', exact: true }).getByRole('button', { name: 'Mapping', exact: true }).click();
+  await page.getByRole('tab', { name: 'Custom modifiers', exact: true }).click();
   await page.locator('.config-modifier-add').click();
   await page.getByRole('textbox', { name: 'Group title', exact: true }).fill('Default');
   await page.getByRole('textbox', { name: 'Group title', exact: true }).blur();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   await page.locator('.config-extra-mods').fill('+100 to maximum Life');
-  await page.getByRole('button', { name: 'Skills', exact: true }).click();
+  await pageLink(page, 'Skills').click();
   await page.locator('.skill-main-toggle').nth(1).click();
   await expect(page.locator('.skill-group.is-main .skill-group-name')).toHaveText('Firestorm');
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   const before = await saved(page);
-  const beforeDps = await page.locator('.main-skill-section .stat-row dd').first().textContent();
+  const beforeDps = await stableText(hitDps(page));
   expect(before.state.params.enemy_tier).toBe('none');
   expect(before.state.params.custom_modifier_blocks).toEqual([{ title: 'Default', enabled: true, text: '+100 to maximum Life' }]);
 
-  await page.getByRole('button', { name: 'Build', exact: true }).click();
+  await openBuild(page);
+  await openExport(page);
   await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
   const code = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
   const exported = inflateSync(Buffer.from(code, 'base64url')).toString('utf8');
@@ -180,14 +196,12 @@ test('switch, reload, edit and share preserve the selected loadout and global fi
   expect(after.state.params.custom_modifier_blocks).toEqual([{ title: 'Default', enabled: true, text: '+100 to maximum Life' }]);
   expect(after.state.socketGroups).toEqual(before.state.socketGroups);
   expect(after.notes).toBe(before.notes);
-  await expect(page.locator('.main-skill-section .stat-row dd').first()).toHaveText(beforeDps!);
-  await page.getByRole('button', { name: 'Build', exact: true }).click();
-  await page.locator('.workspace-loadouts summary').click();
-  await expect(page.getByLabel('PoB loadout', { exact: true })).toHaveValue('1');
+  await expect(hitDps(page)).toHaveText(beforeDps!);
+  await openBuild(page);
+  await openLoadouts(page);
+  await expect(loadoutValue(page)).toHaveValue('1');
 
-  await page.getByLabel('PoB loadout', { exact: true }).selectOption('0');
-  await expect(page.getByLabel('PoB loadout', { exact: true })).toHaveValue('0');
-  await expect(page.getByLabel('PoB loadout', { exact: true })).toBeEnabled();
+  await switchLoadout(page, 0);
   const other = await saved(page);
   expect(other.state.allocatedNodes).toEqual([1, 2]);
   expect(other.state.socketGroups[0].gems[0].skill_id).toBe('SparkPlayer');
@@ -198,10 +212,10 @@ test('removing groups preserves the main skill and weapon binding until that ski
     <Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
     <Skills activeSkillSet="1"><SkillSet id="1">${skill('Spark', 1)}${skill('Fireball', 2)}${skill('Firestorm', 1)}</SkillSet></Skills>
     <Items activeItemSet="1"><ItemSet id="1"/></Items></PathOfBuilding2>`;
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
   await importCode(page, deflateSync(source).toString('base64url'));
-  await page.getByRole('button', { name: 'Skills', exact: true }).click();
+  await pageLink(page, 'Skills').click();
   await expect(page.locator('.skill-group.is-main .skill-group-name')).toHaveText('Fireball');
 
   // A preceding group disappears; the selected skill and set must remain the same.

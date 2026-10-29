@@ -1,18 +1,21 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { statValue } from './shell';
+import { choose, goTo } from './skillsAndCalcs';
 import type { GemInput, SocketGroupInput } from '../src/api/types';
 
 // Swift Affliction III still has an unmodelled conditional duration threshold.
 const swift = 'SupportSwiftAfflictionPlayerThree';
 const swiftStat = 'support_swift_affliction_non_ailment_damage_over_time_+%_final_if_duration_below_1_second';
 const modeled = ['SupportControlledDestructionPlayer', 'SupportFireMasteryPlayer'];
-const nav = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main navigation' })
-  .getByRole('button', { name, exact: true });
 const run = (page: Page) => page.getByRole('button', { name: 'Calculate support combinations', exact: true });
 const baseline = (page: Page) => page.locator('details.support-baseline-unsupported');
+const dps = (page: Page) => statValue(page, /^Total DPS$/).first();
+// The Overview lists the modifier lines the calculation does not apply.
+const unsupportedLines = (page: Page) => page.locator('.ov-details');
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
 
 async function groups(page: Page): Promise<SocketGroupInput[]> {
-  return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state.socketGroups);
+  return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state.socketGroups);
 }
 
 async function rejectedReceipt(rows: Locator) {
@@ -54,24 +57,26 @@ async function syntheticCaster(page: Page, equippedSwift: boolean) {
     skills: [{ baseType: 'Fireball', support: false, properties: [{ type: 5, values: [['16', 0]] }],
       socketedItems: equippedSwift ? [{ baseType: 'Swift Affliction III', support: true, properties: [{ type: 5, values: [['1', 0]] }] }] : [] }],
   } }));
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('textbox', { name: 'Build code', exact: true })
     .fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticSupportCoverageFixture');
   await page.locator('.import-submit').click();
+  await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
+  await goTo(page, 'Items');
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   expect((await groups(page))[0].gems.map(gem => gem.skill_id))
     .toEqual(['FireballPlayer', ...(equippedSwift ? [swift] : [])]);
 }
 
 async function openOptimizer(page: Page) {
-  await nav(page, 'Skills').click();
+  await goTo(page, 'Skills');
   await expect(page.locator('.skills-toolbar input')).toBeEnabled();
   const group = page.locator('.skill-group').first();
   if (await group.locator('.skill-main-toggle').getAttribute('aria-pressed') === 'false') {
     await group.locator('.skill-main-toggle').click();
-    await expect(page.locator('.topbar-busy')).toHaveCount(0);
+    await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   }
   if (await group.locator('.skill-group-title').getAttribute('aria-expanded') === 'false') {
     await group.locator('.skill-group-title').click();
@@ -79,14 +84,17 @@ async function openOptimizer(page: Page) {
   if (await group.locator('.gem-optimizer-toggle').getAttribute('aria-expanded') === 'false') {
     await group.locator('.gem-optimizer-toggle').click();
   }
+  // Capacity, objective and the candidate pool sit under the folded "Goal, capacity and candidates".
+  const settings = page.locator('.gem-optimizer-settings');
+  await expect(settings).toBeVisible();
+  if (!(await settings.evaluate(element => (element as HTMLDetailsElement).open))) await settings.locator(':scope > summary').click();
   await expect(run(page)).toBeEnabled();
 }
 
 async function boundRealCandidatePool(page: Page) {
   await page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true }).fill('2');
   await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();
-  await page.getByRole('button', { name: 'Objective', exact: true }).click();
-  await page.getByRole('option', { name: 'Max total DPS', exact: true }).click();
+  await choose(page, page.getByRole('combobox', { name: 'Objective', exact: true }), 'Max total DPS');
   const pool = page.locator('.support-pool-details');
   await pool.locator('summary').click();
   for (const id of [swift, ...modeled]) {
@@ -128,8 +136,8 @@ for (const [layout, viewport] of [
 
     test('equipped Swift Affliction III limit stays visible and deterministic, then disappears on support removal', async ({ page }) => {
       await syntheticCaster(page, true);
-      await nav(page, 'Build').click();
-      const buildLimits = page.locator('.unsupported-block');
+      await goTo(page, 'Overview');
+      const buildLimits = unsupportedLines(page);
       await expect(buildLimits).toBeVisible();
       await buildLimits.locator('summary').click();
       const normalReceipt = (await buildLimits.locator('li').filter({ hasText: swiftStat }).textContent())!;
@@ -151,10 +159,10 @@ for (const [layout, viewport] of [
       await expect(page.locator('.support-diagnostic-excluded')).toHaveCount(0);
       const plans = await recommendationsReceipt(page);
       for (const name of ['Calcs', 'Tree']) {
-        await nav(page, name).click();
+        await goTo(page, name);
         await expect(page.locator(name === 'Calcs' ? '.calcs-page' : '.tree-canvas')).toBeVisible();
         await expect(run(page)).toHaveCount(0);
-        await nav(page, 'Skills').click();
+        await goTo(page, 'Skills');
         await expect(baseline(page).locator('ul > li')).toHaveText([normalReceipt]);
         await expect.poll(() => recommendationsReceipt(page)).toEqual(plans);
       }
@@ -164,10 +172,10 @@ for (const [layout, viewport] of [
       const swiftGem = page.locator('.skill-gems > li').nth(1);
       await swiftGem.locator('button.skill-remove').click();
       await expect.poll(async () => (await groups(page))[0].gems.map(gem => gem.skill_id)).toEqual(['FireballPlayer']);
-      await expect(page.locator('.topbar-busy')).toHaveCount(0);
+      await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
       await expectInvalidated(page);
-      await nav(page, 'Build').click();
-      await expect(page.locator('.unsupported-block')).toHaveCount(0);
+      await goTo(page, 'Overview');
+      await expect(unsupportedLines(page)).toHaveCount(0);
     });
 
     test('new Swift Affliction III complete edits are rejected without Apply while a modeled retained plan applies exactly', async ({ page }) => {
@@ -175,7 +183,7 @@ for (const [layout, viewport] of [
       await openOptimizer(page);
       await boundRealCandidatePool(page);
       const before = await groups(page);
-      const beforeDps = numeric(await page.locator('.stat-row').filter({ hasText: 'Total DPS' }).locator('dd').innerText());
+      const beforeDps = numeric(await dps(page).innerText());
       await completeSearch(page);
       await expect(baseline(page)).toHaveCount(0);
       const rejected = page.locator('ol.support-diagnostic-excluded');
@@ -208,26 +216,25 @@ for (const [layout, viewport] of [
       const excluded = await rejectedReceipt(rejected);
       const recommendations = await recommendationsReceipt(page);
       for (const name of ['Calcs', 'Tree', 'Upgrades']) {
-        await nav(page, name).click();
+        await goTo(page, name);
         await expect(page.locator(name === 'Calcs' ? '.calcs-page' : name === 'Tree' ? '.tree-canvas' : '.upgrade-paths')).toBeVisible();
         await expect(run(page)).toHaveCount(0);
-        await nav(page, 'Skills').click();
+        await goTo(page, 'Skills');
         await expect.poll(() => rejectedReceipt(rejected)).toEqual(excluded);
         await expect.poll(() => recommendationsReceipt(page)).toEqual(recommendations);
         await expect(first.getByRole('button', { name: 'Apply', exact: true })).toBeEnabled();
       }
       await first.getByRole('button', { name: 'Apply', exact: true }).click();
-      await expect(page.locator('.topbar-busy')).toHaveCount(0);
+      await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
       await expect.poll(async () => {
         const applied = (await groups(page))[0].gems;
         return [applied[0], ...applied.slice(1).map(gem => ({ ...gem, stat_set_index: gem.stat_set_index ?? 1 }))];
       }).toEqual([before[0].gems[0], ...expected]);
       expect((await groups(page)).slice(1)).toEqual(before.slice(1));
-      await expect.poll(async () => Math.abs(numeric(await page.locator('.stat-row')
-        .filter({ hasText: 'Total DPS' }).locator('dd').innerText()) - preview)).toBeLessThanOrEqual(0.06);
+      await expect.poll(async () => Math.abs(numeric(await dps(page).innerText()) - preview)).toBeLessThanOrEqual(0.06);
       await expectInvalidated(page);
-      await nav(page, 'Build').click();
-      await expect(page.locator('.unsupported-block')).toHaveCount(0);
+      await goTo(page, 'Overview');
+      await expect(unsupportedLines(page)).toHaveCount(0);
     });
   });
 }

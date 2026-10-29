@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { deflateSync, inflateSync } from 'node:zlib';
+import { choose, goTo, importBuild, shareCode } from './skillsAndCalcs';
 
 const source = `<PathOfBuilding2>
   <Build level="90" className="Huntress" mainSocketGroup="1"/>
@@ -10,23 +11,22 @@ const source = `<PathOfBuilding2>
 </PathOfBuilding2>`;
 
 test('choose a companion and its skill, inspect minion breakdowns, and preserve the player', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
-  await page.getByRole('button', { name: 'Build', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(deflateSync(source).toString('base64url'));
-  await page.locator('.import-submit').click();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Skills', exact: true }).click();
+  await importBuild(page, deflateSync(source).toString('base64url'));
+  // The minion section of the results panel.
+  const minionSection = page.locator('#character-stats .rail-section')
+    .filter({ has: page.locator('.rail-title', { hasText: /^Minion/ }) });
+  const minionLife = minionSection.locator('.rail-row').filter({ has: page.locator('.rail-label', { hasText: /^Life$/ }) }).locator('.rail-value');
+  await goTo(page, 'Skills');
   await page.locator('.skill-group-title').first().click();
+  // Minion choices sit with the group's other less common settings.
+  await page.locator('.skill-advanced > summary').click();
   const picker = page.locator('.minion-controls');
   await expect(page.locator('.skill-group-title').first()).not.toContainText('{0}');
   await picker.getByRole('searchbox', { name: 'Search minions…', exact: true }).fill('Quadrilla');
-  await picker.getByRole('button', { name: 'Minion type', exact: true }).click();
-  await page.getByRole('option', { name: 'Quadrilla', exact: true }).click();
-  await expect(page.locator('.minion-section')).toContainText('Quadrilla');
-  await picker.getByRole('button', { name: 'Minion skill', exact: true }).click();
-  await page.getByRole('option', { name: /^3 ·/ }).click();
-  const state = () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state);
+  await choose(page, picker.getByRole('combobox', { name: 'Minion type', exact: true }), 'Quadrilla');
+  await expect(minionSection).toContainText('Quadrilla');
+  await choose(page, picker.getByRole('combobox', { name: 'Minion skill', exact: true }), /^3 ·/);
+  const state = () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
   await expect.poll(async () => (await state()).socketGroups[0].gems[0].minion_skill).toBe(3);
   await expect.poll(async () => (await state()).socketGroups[0].gems[0].minion).toBe('Metadata/Monsters/Quadrilla/Quadrilla');
   await page.keyboard.press('Escape');
@@ -41,28 +41,33 @@ test('choose a companion and its skill, inspect minion breakdowns, and preserve 
   }
   await page.setViewportSize(desktopSize);
 
-  await page.getByRole('button', { name: 'Calcs', exact: true }).click();
-  const life = page.locator('#breakdown-Life .breakdown-value');
+  await goTo(page, 'Calcs');
+  // The metric list shows the values of the chosen actor: the player first, then the minion.
+  const life = page.locator('#breakdown-Life strong');
   await expect(life).toBeVisible();
   const playerLife = await life.innerText();
-  await page.getByRole('button', { name: 'Actor', exact: true }).click();
-  await page.getByRole('option', { name: /^Minion: Quadrilla/ }).click();
-  await expect(page.locator('#breakdown-Life .breakdown-name')).toHaveText('Minion: Life');
-  const minionLife = page.locator('.minion-section .stat-row').filter({ has: page.getByText('Life', { exact: true }) }).locator('dd');
+  await choose(page, page.getByRole('combobox', { name: 'Actor', exact: true }), /^Minion: Quadrilla/);
   await expect(life).toHaveText(await minionLife.innerText());
-  await page.locator('#breakdown-Life .breakdown-toggle').click();
-  await expect(page.locator('#breakdown-Life .breakdown-detail')).toBeVisible();
+  await page.locator('#breakdown-Life').click();
+  await expect(page.locator('#calcs-detail .calcs-eyebrow')).toContainText('Minion: Quadrilla');
+  await expect(page.locator('#calcs-detail-heading')).toHaveText('Life');
+  await expect(page.locator('#calcs-detail div.breakdown-detail').first()).toBeVisible({ timeout: 90_000 });
   await page.screenshot({ path: '../.cache/minion-selection-calcs.png', fullPage: true });
-  await page.getByRole('button', { name: 'Actor', exact: true }).click();
-  await page.getByRole('option', { name: 'Player', exact: true }).click();
+  await choose(page, page.getByRole('combobox', { name: 'Actor', exact: true }), 'Player');
   await expect(life).toHaveText(playerLife);
-  await expect(page.locator('#breakdown-Life .breakdown-name')).toHaveText('Life');
-  await page.locator('.minion-section .stat-row').filter({ has: page.getByText('Life', { exact: true }) }).click();
-  await expect(page.locator('#breakdown-Life .breakdown-name')).toHaveText('Minion: Life');
+  await expect(page.locator('#calcs-detail-heading')).toHaveText('Choose a metric to inspect its calculation.');
+  await page.locator('#breakdown-Life').click();
+  await expect(page.locator('#calcs-detail .calcs-eyebrow')).toHaveText('Player');
+  // A minion's number in the results panel opens the minion's calculation, and carries on to Calcs.
+  await minionLife.click();
+  await expect(page.locator('.insp-kicker')).toContainText('Quadrilla');
+  await expect(page.locator('.insp h2')).toHaveText('Life');
+  await page.locator('.insp').getByRole('button', { name: 'Open in Calculations' }).click();
+  await expect(page.locator('#calcs-detail .calcs-eyebrow')).toContainText('Minion: Quadrilla');
+  await expect(page.locator('#calcs-detail-heading')).toHaveText('Life');
+  await expect(life).toHaveText(await minionLife.innerText());
 
-  await page.getByRole('button', { name: 'Build', exact: true }).click();
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
-  const code = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
+  const code = await shareCode(page);
   const xml = inflateSync(Buffer.from(code, 'base64url')).toString();
   expect(xml).toContain('skillMinion="Metadata/Monsters/Quadrilla/Quadrilla"');
   expect(xml).toContain('skillMinionSkill="3"');
@@ -70,5 +75,5 @@ test('choose a companion and its skill, inspect minion breakdowns, and preserve 
   await page.locator('.import-submit').click();
   await expect.poll(async () => (await state()).socketGroups[0].gems[0].minion_skill).toBe(3);
   await page.reload();
-  await expect(page.locator('.minion-section')).toContainText('Quadrilla', { timeout: 90_000 });
+  await expect(minionSection).toContainText('Quadrilla', { timeout: 90_000 });
 });

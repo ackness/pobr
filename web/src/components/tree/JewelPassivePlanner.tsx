@@ -1,4 +1,4 @@
-import { useJobBeacon } from '../../v2/jobs/useJobBeacon';
+import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppTextarea } from '../shared/controls';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { AttributeChoice, CalculateBuildRequest, PassiveNode } from '../../api/types';

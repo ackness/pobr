@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { deflateSync, inflateSync } from 'node:zlib';
+import { statRow } from './shell';
+import { choose, goTo, importBuild, shareCode } from './skillsAndCalcs';
 
 const source = `<PathOfBuilding2>
   <Build level="90" className="Sorceress" mainSocketGroup="1"/>
@@ -12,28 +14,24 @@ const source = `<PathOfBuilding2>
 </PathOfBuilding2>`;
 
 test('forms, stages, disabled supports and Full DPS can be edited and shared', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
-  await page.getByRole('button', { name: 'Build', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(deflateSync(source).toString('base64url'));
-  await page.locator('.import-submit').click();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Skills', exact: true }).click();
+  await importBuild(page, deflateSync(source).toString('base64url'));
+  await goTo(page, 'Skills');
   const group = page.locator('.skill-group').first();
   await group.locator('.skill-group-title').click();
-  await group.getByRole('button', { name: 'Skill form', exact: true }).click();
-  await page.getByRole('option', { name: 'Cold-Infused', exact: true }).click();
+  await choose(page, group.getByRole('combobox', { name: 'Skill form', exact: true }), 'Cold-Infused');
   await group.locator('.skill-gem').nth(1).getByRole('checkbox', { name: 'Gem enabled', exact: true }).uncheck();
+  // Full DPS inclusion and the group count are among the group's advanced settings.
+  await group.locator('.skill-advanced > summary').click();
   await group.getByRole('checkbox', { name: 'Include in Full DPS', exact: true }).check();
   await group.getByRole('spinbutton', { name: 'Group count override', exact: true }).fill('2.5');
   await group.locator('.skill-gem').first().getByRole('spinbutton', { name: 'Gem count', exact: true }).fill('1.5');
-  const state = () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state);
+  const state = () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
   await expect.poll(async () => (await state()).socketGroups[0].gems[0].stat_set_index).toBe(2);
   await expect.poll(async () => (await state()).socketGroups[0].gems[1].enabled).toBe(false);
   await expect.poll(async () => (await state()).socketGroups[0].group_count).toBe(2.5);
-  const total = page.locator('.stat-row').filter({ has: page.getByText('Full DPS', { exact: true }) });
+  const total = statRow(page, /^Full DPS$/);
   await expect(total).toBeVisible();
-  await expect(page.locator('.stat-row').filter({ has: page.getByText('Full DoT DPS', { exact: true }) })).toBeVisible();
+  await expect(statRow(page, /^Full DoT DPS$/)).toBeVisible();
   await page.screenshot({ path: '../.cache/skill-forms-skills.png', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -46,18 +44,18 @@ test('forms, stages, disabled supports and Full DPS can be edited and shared', a
   await flame.locator('.skill-group-title').click();
   await flame.getByRole('spinbutton', { name: 'Stages', exact: true }).fill('4');
   await expect.poll(async () => (await state()).params.config_inputs.skillFlameblastStages).toBe(4);
-  await page.getByRole('button', { name: 'Calcs', exact: true }).click();
+  await goTo(page, 'Calcs');
+  await page.getByRole('tab', { name: 'Full DPS', exact: true }).click();
   await expect(page.locator('.full-dps-table tbody tr')).toHaveCount(1);
   await expect(page.locator('.full-dps-table')).toContainText('2.5');
-  await page.getByRole('button', { name: 'Skill form', exact: true }).click();
-  await page.getByRole('option', { name: 'Cold-Infused', exact: true }).click();
+  // The skill overview offers the form of the inspected skill as well.
+  await page.getByRole('tab', { name: 'Skill metrics', exact: true }).click();
+  await choose(page, page.getByRole('combobox', { name: 'Skill form', exact: true }), 'Cold-Infused');
   await page.keyboard.press('Escape');
   await expect(page.locator('[aria-labelledby=skill-metrics-heading]')).toHaveAttribute('aria-busy', 'false');
   await page.screenshot({ path: '../.cache/skill-forms-calcs.png', fullPage: true });
 
-  await page.getByRole('button', { name: 'Build', exact: true }).click();
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
-  const code = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
+  const code = await shareCode(page);
   const xml = inflateSync(Buffer.from(code, 'base64url')).toString();
   expect(xml).toContain('includeInFullDPS="true"');
   expect(xml).toContain('groupCount="2.5"');

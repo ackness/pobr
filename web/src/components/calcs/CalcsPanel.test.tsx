@@ -8,10 +8,10 @@ import { TooltipProvider } from '../ui/tooltip';
 
 const empty: Breakdown = { base_total: 0, inc_total: 0, more_total: 1, mods: [], formula: null };
 
-test('V2 opens a metric browser and stable empty detail region without eager overview or attribution', () => {
+test('Calcs opens a metric browser and stable empty detail region without eager overview or attribution', () => {
   const session = { calc: { stats: [{ id: 'Life', category: 'Resource', value: 100 }],
     breakdowns: {}, breakdown_descriptors: { Life: 'steps' }, minions: [] }, socketGroups: [], calcParams: {} } as unknown as BuildSession;
-  const html = renderToStaticMarkup(<UiProvider v2 lang="en-US"><TooltipProvider>
+  const html = renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider>
     <CalcsPanel session={session} lang="en-US" />
   </TooltipProvider></UiProvider>);
   expect(html).toContain('id="calcs-detail"');

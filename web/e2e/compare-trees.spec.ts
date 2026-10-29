@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import type { PassiveNode } from '../src/api/types';
 import { comparisonWorkspace } from './fixtures/compare-workspace';
 import { workspaceEnvelope, type BuildWorkspace } from '../src/lib/buildWorkspace';
+import { busy, pageLink } from './shell';
+import { choose, compareStageA, compareStageB, compareTab } from './treePage';
 
 const version = readFileSync(new URL('../../data/CURRENT', import.meta.url), 'utf8').trim();
 const nodes: PassiveNode[] = JSON.parse(readFileSync(new URL(`../../data/${version}/base/passive_tree.json`, import.meta.url), 'utf8'));
@@ -15,17 +17,19 @@ const socket = sockets[0], inactiveSocket = sockets[1];
 const attrs = nodes.filter(node => node.name === 'Attribute' && !node.ascendancy_id && node.x !== undefined)
   .sort((a, b) => distance(a, socket) - distance(b, socket));
 const jewel = (name: string, modifier: string) => `Rarity: RARE\n${name}\nEmerald\nImplicits: 0\n${modifier}`;
-const snapshot = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).workspace);
+const snapshot = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).workspace);
 
 async function openComparison(page: Page, workspace: BuildWorkspace) {
-  await page.addInitScript(raw => { if (!localStorage.getItem('pobr-build-state')) localStorage.setItem('pobr-build-state', raw); }, workspaceEnvelope(workspace));
-  await page.goto('/');
+  await page.addInitScript(raw => { if (!localStorage.getItem('pobr-v2-build-state')) localStorage.setItem('pobr-v2-build-state', raw); }, workspaceEnvelope(workspace));
+  await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(busy(page)).toHaveCount(0);
   const original = await snapshot(page);
-  await page.getByRole('button', { name: 'Compare', exact: true }).click();
-  await page.getByRole('combobox', { name: 'Build / stage A', exact: true }).selectOption('stage-a');
-  await page.getByRole('combobox', { name: 'Build / stage B', exact: true }).selectOption('stage-b');
+  await pageLink(page, 'Compare').click();
+  await choose(page, compareStageA(page), 'Spark / Starter');
+  await choose(page, compareStageB(page), 'Spark / Target');
+  // Only the open section is mounted, so open the tree overlay explicitly.
+  await compareTab(page, 'Tree').click();
   return original;
 }
 
@@ -56,23 +60,29 @@ test('overlay both allocations, inspect socket jewels and attributes, pan and zo
   await expect(panel.locator('[data-total="choice-dex"] td')).toHaveText(['1', '0']);
   await expect(panel.locator('[data-total="choice-str"] td')).toHaveText(['0', '1']);
   await expect(panel.locator('[data-total="Str"] td').first()).toHaveText(/^\d+$/);
+  // The stat comparison lives under Stats; read its attribute rows there, then check the tree totals against them.
+  await compareTab(page, 'Stats').click();
   await page.getByRole('checkbox', { name: 'Only changed stats', exact: true }).uncheck();
+  const summaries: Record<string, string[]> = {};
   for (const id of ['Str', 'Dex', 'Int']) {
     const summary = page.locator(`.compare-summary [data-stat="${id}"] td`);
-    await expect(panel.locator(`[data-total="${id}"] td`)).toHaveText(await summary.allTextContents().then(values => values.slice(0, 2)));
+    await expect(summary).toHaveCount(4);
+    summaries[id] = (await summary.allTextContents()).slice(0, 2);
   }
+  await compareTab(page, 'Tree').click();
+  for (const id of ['Str', 'Dex', 'Int']) await expect(panel.locator(`[data-total="${id}"] td`)).toHaveText(summaries[id]);
   await expect(panel.locator(`[data-socket="${socket.skill}"]`)).toContainText('Starter Jewel');
   await expect(panel.locator(`[data-socket="${socket.skill}"]`)).toContainText('Target Jewel');
   await expect(panel.locator(`[data-socket="${inactiveSocket.skill}"]`)).toContainText('Unallocated socket (inactive jewel)');
   // Selecting a socket via keyboard and pointer is inspection, never allocation.
-  await panel.getByRole('combobox', { name: 'Inspect passive', exact: true }).selectOption(String(socket.skill));
+  await choose(page, panel.getByRole('combobox', { name: 'Inspect passive', exact: true }), new RegExp(` · #${socket.skill} · `));
   await shared.focus();
   await page.keyboard.press('Enter');
   const details = panel.getByRole('group', { name: 'Node details', exact: true });
   await expect(details).toContainText('Starter Jewel');
   await expect(details).toContainText('Target Jewel');
   await canvas.locator(`[data-skill-id="${attrs[0].skill}"]`).click();
-  await expect(panel.getByRole('combobox', { name: 'Inspect passive', exact: true })).toHaveValue(String(attrs[0].skill));
+  await expect(panel.getByRole('combobox', { name: 'Inspect passive', exact: true })).toContainText(`#${attrs[0].skill} · `);
   await expect(details).toContainText('Attribute choice: Dexterity');
   const previous = await canvas.getAttribute('viewBox');
   await panel.getByRole('button', { name: 'Zoom in', exact: true }).click();
@@ -98,6 +108,7 @@ test('overlay both allocations, inspect socket jewels and attributes, pan and zo
   await page.setViewportSize({ width: 640, height: 900 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.reload();
+  await compareTab(page, 'Tree').click();
   await expect(page.locator('.compare-tree-canvas')).toBeVisible({ timeout: 90_000 });
   expect(await snapshot(page)).toEqual(original);
 });
@@ -117,7 +128,7 @@ test('version mismatch keeps IDs distinct and warns when a historical allocation
   await expect(panel.locator('.compare-tree-warning')).toContainText(['Tree versions differ', 'B · Allocated nodes without positions in this version (1)']);
   await expect(panel.locator(`[data-overlay-key="a:${common.skill}"]`)).toHaveAttribute('data-side', 'a');
   await expect(panel.locator(`[data-overlay-key="b:${common.skill}"]`)).toHaveCount(0);
-  await panel.getByRole('combobox', { name: 'Inspect passive', exact: true }).selectOption(`b:${common.skill}`);
+  await choose(page, panel.getByRole('combobox', { name: 'Inspect passive', exact: true }), new RegExp(`^B · #${common.skill} · `));
   await expect(panel.getByRole('group', { name: 'Node details', exact: true })).toContainText(common.name!);
   expect(await snapshot(page)).toEqual(original);
 });

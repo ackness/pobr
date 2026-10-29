@@ -5,7 +5,6 @@ import type { PartyMember } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import type { Lang } from '../../lib/i18n';
 import { createId } from '../../lib/createId';
-import { useUi } from '../shared/UiContext';
 import { workflowLabel } from './workflowLabels';
 
 const destinations = ['PartyMemberStats', 'Aura', 'Curse', 'Warcry Skills', 'Link Skills', 'EnemyConditions', 'EnemyMods'] as const;
@@ -16,13 +15,12 @@ export function PartyEditor({ session, lang }: { session: BuildSession; lang: La
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [importing, setImporting] = useState(false);
-  const { v2 } = useUi();
   const label = (key: Parameters<typeof workflowLabel>[1]) => workflowLabel(lang, key);
   const party = session.calcParams.party ?? { members: [], exports: {} };
   const update = (members: PartyMember[]) => session.updateParams({ party: { ...party, members } });
   const change = (id: string, patch: Partial<PartyMember>) => update(party.members.map(m => m.id === id ? { ...m, ...patch } : m));
   const add = (member?: PartyMember) => update([...party.members, { ...(member ?? { name: label('member'), enabled: true, blocks: {}, warnings: [] }), id: createId() }]);
-  return <details className="party-editor" open={v2 || undefined}>
+  return <details className="party-editor" open>
     <summary>{label('party')} ({party.members.filter(m => m.enabled).length})</summary>
     <p>{label('partyHint')}</p>
     <label>{label('memberCode')}<AppTextarea disabled={session.busy || importing} aria-label={label('memberCode')} value={code} onChange={e => setCode(e.target.value)} /></label>

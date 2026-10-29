@@ -1,4 +1,4 @@
-import { useJobBeacon } from '../../v2/jobs/useJobBeacon';
+import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton } from '../shared/controls';
 import { formatApiError } from '../../api/error';
 import { useEffect, useMemo, useRef, useState } from 'react';

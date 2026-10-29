@@ -3,23 +3,23 @@ import { expect, test, type Page } from '@playwright/test';
 test.use({ viewport: { width: 1440, height: 1000 } });
 
 async function language(page: Page, label: string) {
-  await page.locator('.v2-settings-button').click();
-  await page.locator('#v2-language').click();
+  await page.locator('.shell-settings-button').click();
+  await page.locator('#shell-language').click();
   await page.getByRole('option', { name: label, exact: true }).click();
-  await page.locator('.v2-settings').getByRole('button', { name: /^(Close|关闭|關閉)$/ }).click();
+  await page.locator('.shell-settings').getByRole('button', { name: /^(Close|关闭|關閉)$/ }).click();
 }
 
 test('known passive names and Chinese search preserve raw IDs, build state and evaluated scores', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('pobr-v2-preferences', JSON.stringify({ lang: 'zh-CN', theme: 'dark', font: 'system', fontSize: 16, density: 'comfortable' }));
-    localStorage.setItem('pobr-build-state', JSON.stringify({ version: 1, notes: '', state: {
+    localStorage.setItem('pobr-v2-build-state', JSON.stringify({ version: 1, notes: '', state: {
       pobCode: null, character: { level: 80, class_name: 'Witch', ascendancy_name: '' },
       allocatedNodes: [], attributeChoices: {},
       socketGroups: [{ enabled: true, gems: [{ skill_id: 'FireballPlayer', level: 16, quality: 0 }] }],
       items: [], flasks: [], limbs: [], jewels: [], annotations: {}, params: { config_inputs: {} },
     } }));
   });
-  await page.goto('/v2/tree');
+  await page.goto('/tree');
   await expect(page.locator('.tree-canvas svg')).toBeVisible({ timeout: 90_000 });
   const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
   const before = await saved();

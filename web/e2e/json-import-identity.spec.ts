@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import { pageLink, statValue } from './shell';
+import { displayedRail, goTo, importInto, openBuild, openSupportSettings, selectStage, settled } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
 import type { BuildJson, CalculateBuildRequest, CalculateBuildResponse, PassiveNode } from '../src/api/types';
@@ -21,10 +23,9 @@ interface BuildCapture {
   result: CalculateBuildResponse;
   displayed: { label: string | null | undefined; value: string | null | undefined }[];
 }
-const nav = (page: Page, name: string) => page.getByRole('navigation').getByRole('button', { name, exact: true });
-const saved = (page: Page): Promise<Envelope> => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!));
+const saved = (page: Page): Promise<Envelope> => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));
 const bytes = (page: Page) => page.evaluate(() => ({
-  workspace: localStorage.getItem('pobr-build-state'), library: localStorage.getItem('pobr-library'),
+  workspace: localStorage.getItem('pobr-v2-build-state'), library: localStorage.getItem('pobr-v2-library'),
 }));
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
 
@@ -54,12 +55,6 @@ async function replayBackend() {
   return replayPromise;
 }
 
-async function settled(page: Page) {
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await expect(page.locator('.workspace-saved')).toBeVisible();
-  await expect(page.locator('.boot-error, .workspace-save-error')).toHaveCount(0);
-}
-
 /** An import that chose no main skill gets the best one pinned a moment after it has settled. */
 async function pinned(page: Page) {
   await expect.poll(async () => (await saved(page)).state.params.main_socket_group).toBeDefined();
@@ -82,9 +77,7 @@ async function capture(page: Page): Promise<BuildCapture> {
     config_inputs: state.params.config_inputs,
   };
   const result: CalculateBuildResponse = JSON.parse((await replayBackend()).calculateBuildJson(JSON.stringify(request)));
-  const displayed = await page.locator('#character-stats .stat-row').evaluateAll(rows => rows.map(row => ({
-    label: row.querySelector('dt')?.textContent, value: row.querySelector('dd')?.textContent,
-  })));
+  const displayed = await displayedRail(page);
   return { bytes: await bytes(page), envelope, request: JSON.parse(JSON.stringify(request)), result, displayed };
 }
 
@@ -111,7 +104,7 @@ async function start(page: Page, lang: Lang = 'en-US') {
   // full-build calculations and optimizer evaluation are unmodified production.
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
   await page.addInitScript(lang => localStorage.setItem('pobr-lang', lang), lang);
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByRole('textbox', { name: bindT(lang)('build.code'), exact: true })).toBeEnabled({ timeout: 90_000 });
   await settled(page);
 }
@@ -119,15 +112,19 @@ async function start(page: Page, lang: Lang = 'en-US') {
 async function importSource(page: Page, source: string, lang: Lang = 'en-US') {
   await page.getByRole('textbox', { name: bindT(lang)('build.code'), exact: true }).fill(source);
   await page.locator('.import-submit').click();
+  // An import lands on the Overview; follow it to the Items page and come back to the Build page afterwards.
+  await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
+  await goTo(page, bindT(lang)('tab.items'), lang);
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 90_000 });
   await settled(page);
   await expect(page.getByRole('alert')).toHaveCount(0);
-  await nav(page, bindT(lang)('tab.build')).click();
+  await openBuild(page);
 }
 
 async function editName(page: Page, action: string, name: string, lang: Lang = 'en-US') {
   const text = workspaceText(lang);
-  await page.getByRole('button', { name: action, exact: true }).click();
+  // The import form has a "New build" choice of its own; the library action is the later of the two.
+  await page.getByRole('button', { name: action, exact: true }).last().click();
   await page.getByRole('textbox', { name: text.name, exact: true }).fill(name);
   await page.getByRole('button', { name: text.save, exact: true }).click();
   await settled(page);
@@ -147,7 +144,7 @@ async function frostWorkspace(page: Page, lang: Lang = 'en-US') {
 }
 
 async function submitPaste(page: Page, value: string, destination: Destination, lang: Lang = 'en-US', cancel = false) {
-  await page.getByRole('combobox', { name: workspaceText(lang).importDestination, exact: true }).selectOption(destination);
+  await importInto(page, destination, lang);
   await page.getByRole('textbox', { name: bindT(lang)('build.code'), exact: true }).fill(value);
   await page.locator('.import-submit').click();
   if (destination === 'currentStage') await answerConfirm(page, !cancel);
@@ -177,7 +174,7 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
       await rejectPaste(page, unsupported, 'newBuild', before, lang);
       await rejectPaste(page, unsupported, 'currentStage', before, lang);
       const tt = bindT(lang);
-      await expect(page.getByRole('combobox', { name: workspaceText(lang).importDestination, exact: true })).toBeVisible();
+      await expect(page.getByRole('group', { name: workspaceText(lang).importDestination, exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: workspaceText(lang).importCurrent, exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: tt('save.import'), exact: true })).toBeVisible();
       const alert = page.getByRole('alert');
@@ -190,8 +187,8 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
       expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(780);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await testInfo.attach('localized-import-rejection', { body: await page.screenshot(), contentType: 'image/png' });
-      await nav(page, tt('tab.calcs')).click();
-      await nav(page, tt('tab.build')).click();
+      await goTo(page, tt('tab.calcs'), lang);
+      await openBuild(page);
       expect(await capture(page)).toEqual(before);
       await page.reload();
       await expect(page.getByLabel(tt('build.level'), { exact: true })).toHaveValue('98', { timeout: 90_000 });
@@ -268,14 +265,20 @@ for (const destination of ['newBuild', 'currentStage'] as const) {
     test.setTimeout(300_000);
     await start(page);
     await importSource(page, JSON.stringify(wegameCaster));
+    await pinned(page);
+    await settled(page);
     await editName(page, workspaceText('en-US').copyStage, 'Support review');
-    await nav(page, 'Skills').click();
+    await pinned(page);
+    await settled(page);
+    await openBuild(page);
+    await pageLink(page, 'Skills').click();
     const group = page.locator('.skill-group').first();
     const title = group.locator('.skill-group-title');
     if (await title.getAttribute('aria-expanded') === 'false') await title.click();
     const toggle = group.locator('.gem-optimizer-toggle');
     if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
     await expect(group.locator('.gem-optimizer-body')).toBeVisible();
+    await openSupportSettings(page);
     const capacity = page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true });
     const lineage = page.getByRole('checkbox', { name: 'Include lineage supports', exact: true });
     await capacity.fill('3');
@@ -294,15 +297,17 @@ for (const destination of ['newBuild', 'currentStage'] as const) {
     }));
     const dpsText = await first.locator('.support-plan-metrics > span').filter({ hasText: /^DPS / }).innerText();
     const preview = numeric(dpsText.match(/^DPS ([\d,.]+)/)![1]);
-    const totalDps = page.locator('.stat-row').filter({ hasText: 'Total DPS' }).locator('dd');
+    const totalDps = statValue(page, /^Total DPS$/).first();
     expect(preview).toBeGreaterThan(numeric(await totalDps.innerText()));
-    await nav(page, 'Build').click();
+    await openBuild(page);
     await submitPaste(page, '{}', 'currentStage', 'en-US', true);
     expect(await capture(page)).toEqual(before);
     await rejectPaste(page, JSON.stringify(before.envelope), destination, before);
-    await nav(page, 'Calcs').click();
-    await nav(page, 'Skills').click();
+    await pageLink(page, 'Calcs').click();
+    await pageLink(page, 'Skills').click();
     await expect.poll(() => page.locator('.support-results').innerText()).toBe(receipt);
+    // The settings section folds up when the page is left; the values in it are what must have been kept.
+    await openSupportSettings(page);
     await expect(capacity).toHaveValue('3');
     await expect(lineage).not.toBeChecked();
     await expect(first.getByRole('button', { name: 'Apply', exact: true })).toBeEnabled();
@@ -350,7 +355,7 @@ test('committed legacy .build keeps real character, passives, equipment and gems
   await frostWorkspace(page);
   const before = await saved(page);
   await page.locator('input[type=file]').setInputFiles({ name: '召唤奥黛丽黑本.build', mimeType: 'application/json', buffer: Buffer.from(legacyBuild) });
-  await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 90_000 });
+  await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
   await settled(page);
   await pinned(page);
   await checkDecodedImport(page, legacyBuild);
@@ -365,9 +370,9 @@ test('committed legacy .build keeps real character, passives, equipment and gems
   // Identity of real imported content, not merely collection length/no throw.
   expect(after.envelope.state.socketGroups.flatMap(group => group.gems.map(gem => gem.skill_id))).toContain('SummonSkeletalSnipersPlayer');
   await page.reload();
-  await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 90_000 });
+  await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
   await expectRestored(page, after);
-  await nav(page, 'Build').click();
+  await openBuild(page);
   await importSource(page, legacyBuild);
   await pinned(page);
   await checkDecodedImport(page, legacyBuild);
@@ -425,7 +430,7 @@ test('proper pobr-build file and confirmed workspace backup preserve all stages 
   const before = await capture(page);
   await rejectPaste(page, JSON.stringify(share), 'newBuild', before);
   await page.locator('input[type=file]').setInputFiles({ name: 'pobr-build-stages.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(share)) });
-  await expect(page.locator('.paper-doll')).toBeVisible();
+  await expect(page.locator('#ov-title')).toBeVisible();
   await settled(page);
   const shared = await capture(page);
   expect(shared.envelope.workspace.builds.slice(0, -1)).toEqual(before.envelope.workspace.builds);
@@ -437,9 +442,9 @@ test('proper pobr-build file and confirmed workspace backup preserve all stages 
   expect(shared.envelope.state).toEqual(raw.state);
   expect(shared.bytes.library).toBe(before.bytes.library);
   await page.reload();
-  await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 90_000 });
+  await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
   await expectRestored(page, shared);
-  await nav(page, 'Build').click();
+  await openBuild(page);
   const backup = JSON.stringify(shared.envelope);
   await editName(page, workspaceText('en-US').newBuild, 'Temporary before backup restore');
   const temporary = await capture(page);
@@ -449,13 +454,13 @@ test('proper pobr-build file and confirmed workspace backup preserve all stages 
   expect(await capture(page)).toEqual(temporary);
   await page.locator('input[type=file]').setInputFiles({ name: 'pobr-workspace.json', mimeType: 'application/json', buffer: Buffer.from(backup) });
   await answerConfirm(page, true);
-  await expect(page.locator('.paper-doll')).toBeVisible();
+  await expect(page.locator('#ov-title')).toBeVisible();
   await expectRestored(page, shared);
-  await nav(page, 'Build').click();
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: 'Original Frost Bomb' });
+  await openBuild(page);
+  await selectStage(page, 'Original Frost Bomb');
   await settled(page);
   expect((await saved(page)).state).toEqual(rawBuild.stages.find(stage => stage.name === 'Original Frost Bomb')!.saved.state);
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: 'Review imports' });
+  await selectStage(page, 'Review imports');
   await expectRestored(page, shared);
   await page.reload();
   await expect(page.getByLabel('Level', { exact: true })).toHaveValue('98', { timeout: 90_000 });
@@ -463,10 +468,10 @@ test('proper pobr-build file and confirmed workspace backup preserve all stages 
   // The exact version-1 shape rejected by paste remains legitimate as a file.
   const sessionFile: SavedSession = { version: 1, state: structuredClone(raw.state), notes: 'Explicit saved-session replacement' };
   sessionFile.state.character.level = 97;
-  await page.getByRole('combobox', { name: 'Import into', exact: true }).selectOption('currentStage');
+  await importInto(page, 'currentStage');
   await page.locator('input[type=file]').setInputFiles({ name: 'pobr-session.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(sessionFile)) });
   await answerConfirm(page, true);
-  await expect(page.locator('.paper-doll')).toBeVisible();
+  await expect(page.locator('#ov-title')).toBeVisible();
   const replaced = await capture(page);
   const expected = structuredClone(shared.envelope);
   expected.state = sessionFile.state;
@@ -477,6 +482,6 @@ test('proper pobr-build file and confirmed workspace backup preserve all stages 
   expect(replaced.bytes.library).toBe(shared.bytes.library);
   expect(replaced.request.character?.level).toBe(97);
   await page.reload();
-  await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 90_000 });
+  await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
   await expectRestored(page, replaced);
 });

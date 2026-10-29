@@ -20,10 +20,9 @@ import { eligibleSupports, lineageAvailable, supportSetsCompatible, usableSuppor
 import { supportText } from '../../lib/supportI18n';
 import { MinionSelection } from './MinionSelection';
 import { SkillFormControls } from './SkillFormControls';
-import { useUi } from '../shared/UiContext';
-import { words } from '../../v2/text';
-import { barShare, groupDps, topDps, type GroupDps } from '../../v2/pages/skills/dps';
-import { useSkillMetrics } from '../../v2/pages/skills/useSkillMetrics';
+import { words } from '../../app/text';
+import { barShare, groupDps, topDps, type GroupDps } from '../../app/pages/skills/dps';
+import { useSkillMetrics } from '../../app/pages/skills/useSkillMetrics';
 import { formatStatValue } from '../../lib/statDisplay';
 import './skills.css';
 
@@ -36,7 +35,6 @@ interface Props {
 
 export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
   const tt = bindT(lang);
-  const { v2 } = useUi();
   const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
   const [catalog, setCatalog] = useState<GemCatalogEntry[]>([]);
   const [tradeGems, setTradeGems] = useState<SupportMetadata[]>([]);
@@ -66,13 +64,11 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
   const groups = session.socketGroups;
   const mainIndex = session.calcParams.main_socket_group;
   // Retain only the selected workspace; group ordinals cannot own it after compaction.
-  const groupRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const scrollFrame = useRef<number | null>(null);
   const [openGroup, setOpenGroup] = useState<{ index: number; revision: number; focusNonce?: number } | null>(null);
   const storedIdx = openGroup?.revision === session.socketGroupRevision ? openGroup.index : null;
-  // The V2 master-detail always has a group selected: the one the player chose, else the main skill.
-  const defaultIdx = !v2 ? null : mainIndex !== undefined && groups[mainIndex] ? mainIndex : groups.length ? 0 : null;
-  const openIdx = storedIdx !== null && (!v2 || groups[storedIdx]) ? storedIdx : defaultIdx;
+  // The master-detail always has a group selected: the one the player chose, else the main skill.
+  const defaultIdx = mainIndex !== undefined && groups[mainIndex] ? mainIndex : groups.length ? 0 : null;
+  const openIdx = storedIdx !== null && groups[storedIdx] ? storedIdx : defaultIdx;
   const setOpenIdx = (index: number | null, focusNonce?: number) => setOpenGroup(index === null
     ? null : { index, revision: session.socketGroupRevision, focusNonce });
   const consumedFocus = useRef<number | undefined>(undefined);
@@ -84,10 +80,6 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
   useLayoutEffect(() => {
     if (openGroup && storedIdx === null) setOpenGroup(null);
   }, [session.socketGroupRevision, storedIdx]);
-  useLayoutEffect(() => () => {
-    if (scrollFrame.current !== null) cancelAnimationFrame(scrollFrame.current);
-    scrollFrame.current = null;
-  }, [active]);
 
   const pickerGroup = openIdx === null ? undefined : groups[openIdx];
   const supportPickerKey = JSON.stringify([session.socketGroupRevision, session.dataVersion, session.treeVersion,
@@ -114,21 +106,13 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
     session.setSocketGroups(groups.map((g, i) => (i === idx ? { ...g, ...patch } : g)));
   };
 
-  // V2 only: what each group's selected skill deals on its own, for the bars beside the list.
-  const dpsSnapshot = useSkillMetrics(session, v2 && active);
-  const dpsRows = useMemo(() => v2 && dpsSnapshot?.revision === session.socketGroupRevision
-    ? groupDps(dpsSnapshot.skills, groups) : new Map<number, GroupDps>(), [v2, dpsSnapshot, session.socketGroupRevision, groups]);
+  // What each group's selected skill deals on its own, for the bars beside the list.
+  const dpsSnapshot = useSkillMetrics(session, active);
+  const dpsRows = useMemo(() => dpsSnapshot?.revision === session.socketGroupRevision
+    ? groupDps(dpsSnapshot.skills, groups) : new Map<number, GroupDps>(), [dpsSnapshot, session.socketGroupRevision, groups]);
   const dpsTop = topDps(dpsRows);
 
   const toolbar = active && <div className="skills-toolbar">
-    {!v2 && mainIndex !== undefined && groups[mainIndex] && <AppButton onClick={() => {
-      setOpenIdx(mainIndex);
-      if (scrollFrame.current !== null) cancelAnimationFrame(scrollFrame.current);
-      scrollFrame.current = requestAnimationFrame(() => {
-        scrollFrame.current = null;
-        groupRefs.current[mainIndex]?.scrollIntoView({ block: 'start' });
-      });
-    }}>{tt('skills.editMain')} · {gemName(session.calc?.main_skill?.skill_id ?? groups[mainIndex].gems[0]?.skill_id ?? '')}</AppButton>}
     <GemPicker
       entries={actives}
       placeholder={tt('skills.addPlaceholder')}
@@ -142,7 +126,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
         setOpenIdx(groups.length);
       }}
     />
-    {v2 && groups.length > 0 && <p className="skill-list-note">{w('Damage per second of each skill on its own.', '各技能单独的每秒伤害。', '各技能單獨的每秒傷害。')}</p>}
+    {groups.length > 0 && <p className="skill-list-note">{w('Damage per second of each skill on its own.', '各技能单独的每秒伤害。', '各技能單獨的每秒傷害。')}</p>}
   </div>;
 
   return (
@@ -151,17 +135,14 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
         <WeaponSetControl session={session} lang={lang} />
       </PageHeader>}
       {active && <NamedSets session={session} lang={lang} kind="skill" />}
-      {!v2 && toolbar}
       {catalogError && <p className="opt-error">{supportText(lang, 'catalogError')}</p>}
       {!catalogError && !catalog.length && <p className="skills-hint">{supportText(lang, 'loading')}</p>}
-      {groups.length === 0 && !v2 && <p className="skills-hint">{tt('skills.empty')}</p>}
-      {active && !v2 && <SkillSets session={session} lang={lang} />}
-      <div className="skill-groups" style={v2 ? { '--skill-rows': groups.length + 1 } as CSSProperties : undefined}>
-        {v2 && (groups.length > 0 ? toolbar : active && <div className="skills-empty">
+      <div className="skill-groups" style={{ '--skill-rows': groups.length + 1 } as CSSProperties}>
+        {groups.length > 0 ? toolbar : active && <div className="skills-empty">
           <h3>{w('Start with the skill that deals your damage', '先加入造成伤害的主技能', '先加入造成傷害的主技能')}</h3>
           <p>{w('Search for an active skill below to create the first group, or import a BD from the library.', '在下方搜索一个主动技能来创建第一个技能组，或到 BD 管理导入一套 BD。', '在下方搜尋一個主動技能來建立第一個技能組，或到 BD 管理匯入一套 BD。')}</p>
           {toolbar}
-        </div>)}
+        </div>}
         {groups.map((group, idx) => {
           const isMain = idx === mainIndex;
           const isOpen = idx === openIdx;
@@ -242,7 +223,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
             <ul className="skill-gems">
               {group.gems.map((gem, gemIdx) => (
                 <li key={gemIdx} className={`skill-gem${gemIdx === 0 ? ' is-active' : ''}${gem.enabled === false ? ' is-disabled' : ''}`}
-                  data-colour={v2 ? byId.get(gem.skill_id)?.colour ?? undefined : undefined}>
+                  data-colour={byId.get(gem.skill_id)?.colour ?? undefined}>
                   <AppTooltip content={gem.skill_id === '' ? tt('skills.unresolvedHint') : undefined}><span className="gem-name" tabIndex={gem.skill_id === '' ? 0 : undefined}>
                     {gemLabel(gem)}
                     {byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
@@ -316,8 +297,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
           return (
             <div
               key={idx}
-              ref={element => { groupRefs.current[idx] = element; }}
-              className={`skill-group${isMain ? ' is-main' : ''}${group.enabled ? '' : ' is-disabled'}${v2 && isOpen ? ' is-selected' : ''}`}
+              className={`skill-group${isMain ? ' is-main' : ''}${group.enabled ? '' : ' is-disabled'}${isOpen ? ' is-selected' : ''}`}
             >
               <div className="skill-group-header">
                 <AppButton
@@ -332,7 +312,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                 <AppButton
                   className="skill-group-title"
                   aria-expanded={isOpen}
-                  onClick={() => setOpenIdx(isOpen && !v2 ? null : idx)}
+                  onClick={() => setOpenIdx(idx)}
                 >
                   <span className="row-caret" aria-hidden>
                     ▸
@@ -350,21 +330,19 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                       {grantedSourceLabel(lang, group.source)}
                     </span>
                   )}
-                  {(v2 || !isOpen) && supportGems.length > 0 && (
+                  {supportGems.length > 0 && (
                     <span className="skill-group-supports">
                       {supportGems.map((g) => `${gemLabel(g)}${byId.get(g.skill_id)?.is_lineage ? ` [${tt('picker.lineage')}]` : ''}`).join(' · ')}
                     </span>
                   )}
                 </AppButton>
-                {v2 && <>
-                  <span className="skill-dps-value" data-kind={dps?.kind ?? 'unavailable'}>
-                    {dps?.kind === 'damage' ? <>{formatStatValue(dps.dps, 'int')}<span className="sr-only"> DPS</span></>
-                      : dps?.kind === 'none' ? <>—<span className="sr-only">{w('deals no damage', '不造成伤害', '不造成傷害')}</span></> : null}
-                  </span>
-                  <span className="skill-dps-bar" aria-hidden="true">
-                    {dps?.kind === 'damage' && <span style={{ width: `${barShare(dps.dps, dpsTop) * 100}%` }} />}
-                  </span>
-                </>}
+                <span className="skill-dps-value" data-kind={dps?.kind ?? 'unavailable'}>
+                  {dps?.kind === 'damage' ? <>{formatStatValue(dps.dps, 'int')}<span className="sr-only"> DPS</span></>
+                    : dps?.kind === 'none' ? <>—<span className="sr-only">{w('deals no damage', '不造成伤害', '不造成傷害')}</span></> : null}
+                </span>
+                <span className="skill-dps-bar" aria-hidden="true">
+                  {dps?.kind === 'damage' && <span style={{ width: `${barShare(dps.dps, dpsTop) * 100}%` }} />}
+                </span>
                 <label className="skill-group-toggle">
                   <AppInput
                     type="checkbox"
@@ -386,23 +364,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                   ×
                 </AppButton>
               </div>
-              {!v2 && <>
-              {active && isOpen && (
-              <div className="skill-gem-editor">
-              {weaponBinding}
-              {fullDps}
-              {effectControl}
-              <SkillFormControls session={session} lang={lang} groupIndex={idx} catalog={byId} />
-              <div className="gem-column-labels"><span>{tt('calcs.skill')}</span><span>{tt('skills.level')}</span><span>{tt('skills.quality')}</span><span>{tt('skills.corrupted')}</span><span /></div>
-              {gemList}
-              {minionControls}
-              </div>
-              )}
-              {supportPicker}
-              {optimizer}
-              {note}
-              </>}
-              {v2 && isOpen && (
+              {isOpen && (
                 <div className="skill-detail">
                   <header className="skill-detail-head">
                     <h3 className="skill-detail-title">{selectedId ? gemName(selectedId) : tt('skills.emptyGroup')}</h3>
@@ -443,7 +405,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
           );
         })}
       </div>
-      {v2 && active && <details className="skills-advanced" open={session.library.skillSets.length > 0 || undefined}>
+      {active && <details className="skills-advanced" open={session.library.skillSets.length > 0 || undefined}>
         <summary>{tt('sets.title')}</summary>
         <SkillSets session={session} lang={lang} />
       </details>}

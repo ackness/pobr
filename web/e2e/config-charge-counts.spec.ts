@@ -3,6 +3,9 @@ import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
 import type { ConfigInputValue, PassiveNode } from '../src/api/types';
 import type { SavedSession } from '../src/hooks/useBuildSession';
+import { booted, openBuilds, control, copyCurrentStage, currentStageName, go, hitDps, idle, importCode, noMotion, openSetting, openStage, row, savedState, setLanguage, shareCode } from './configPage';
+
+test.use(noMotion);
 
 const charges = ['Power', 'Frenzy', 'Endurance'] as const;
 type Charge = typeof charges[number];
@@ -17,13 +20,8 @@ const version = readFileSync('../data/CURRENT', 'utf8').trim();
 const nodes: PassiveNode[] = JSON.parse(readFileSync(`../data/${version}/base/passive_tree.json`, 'utf8'));
 const treeCatalog = JSON.parse(readFileSync(`../data/${version}/overlay/passive_jewels.json`, 'utf8'));
 const root = nodes.find(node => node.id === treeCatalog.class_starts.witch)!.skill;
-const nav = (page: Page, name: string) => page.getByRole('navigation').getByRole('button', { name, exact: true });
-const control = (page: Page, key: string) => page.locator(`[id=${JSON.stringify(`config-${key}`)}]`);
-const row = (page: Page, key: string) => page.locator('.config-item').filter({ has: control(page, key) });
-const hitDps = (page: Page) => page.locator('.main-skill-section .stat-row dd').first();
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
-const saved = (page: Page): Promise<SavedSession['state']> => page.evaluate(() =>
-  JSON.parse(localStorage.getItem('pobr-build-state')!).state);
+const saved = (page: Page): Promise<SavedSession['state']> => savedState(page);
 const inputs = async (page: Page) => (await saved(page)).params.config_inputs;
 
 // Synthetic XML and named synthetic items are fixtures, not backend substitutes.
@@ -54,35 +52,10 @@ ${flatDamage ? `${flatDamage}% increased Damage` : ''}</Item><ItemSet id="1"><Sl
   </PathOfBuilding2>`).toString('base64url');
 }
 
-async function idle(page: Page) {
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await expect(page.locator('.workspace-saved')).toBeVisible();
-  await expect(page.locator('.boot-error, .calc-error, .workspace-save-error')).toHaveCount(0);
-}
-
 async function ready(page: Page) {
-  await expect(nav(page, 'Build')).toBeEnabled({ timeout: 90_000 });
-  await nav(page, 'Build').click();
+  await booted(page);
+  await openBuilds(page);
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled();
-  await idle(page);
-}
-
-async function importCode(page: Page, code: string, destination: 'newBuild' | 'currentStage' = 'newBuild') {
-  await nav(page, 'Build').click();
-  await page.getByRole('combobox', { name: 'Import into', exact: true }).selectOption(destination);
-  if (destination === 'currentStage') page.once('dialog', dialog => dialog.accept());
-  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
-  await page.locator('.import-submit').click();
-  await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
-  await expect.poll(async () => (await saved(page)).pobCode).toBe(code);
-  await idle(page);
-}
-
-async function openSetting(page: Page, key: string, configName = 'Config') {
-  await nav(page, configName).click();
-  await page.locator('.config-search').fill(key);
-  await expect(control(page, key)).toBeVisible();
-  await expect(control(page, key)).toBeEnabled();
 }
 
 async function editCount(page: Page, charge: Charge, count: number, configName = 'Config') {
@@ -106,12 +79,6 @@ async function reset(page: Page, key: string) {
   await row(page, key).locator('.config-reset').click();
   await expect(row(page, key).locator('.config-reset')).toHaveCount(0);
   await idle(page);
-}
-
-async function shareCode(page: Page) {
-  await nav(page, 'Build').click();
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
-  return page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
 }
 
 async function exportedInputs(page: Page, code: string) {
@@ -140,7 +107,7 @@ test.beforeEach(async ({ page }) => {
   // Only unrelated league discovery is intercepted; imports, data, calculation,
   // planner previews and persistence use the shipped actual app and real WASM.
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
-  await page.goto('/');
+  await page.goto('/build');
   await ready(page);
 });
 
@@ -255,13 +222,10 @@ test('all three count assumptions remain stage-scoped through switching and actu
   const config = Object.fromEntries(charges.flatMap(charge => [[useKey(charge), true], [countKey(charge), 1]]));
   await importCode(page, syntheticCode(config, charges), 'currentStage');
   await expect(hitDps(page)).toHaveText(expected.get(3)!);
-  await nav(page, 'Build').click();
-  const originalStage = await page.locator('.workspace-current-stage').innerText();
+  const originalStage = await currentStageName(page);
   const original = await saved(page);
-  await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Synthetic two-charge stage');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  const editedStage = await page.getByRole('combobox', { name: 'Stage', exact: true }).locator('option:checked').innerText();
+  await copyCurrentStage(page, 'Synthetic two-charge stage');
+  const editedStage = await currentStageName(page);
   for (const [index, charge] of charges.entries()) {
     await editCount(page, charge, 2);
     await expect(hitDps(page)).toHaveText(expected.get(4 + index)!);
@@ -271,11 +235,11 @@ test('all three count assumptions remain stage-scoped through switching and actu
   await ready(page);
   expect(await saved(page)).toEqual(edited);
   await expect(hitDps(page)).toHaveText(expected.get(6)!);
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: originalStage });
+  await openStage(page, originalStage);
   await idle(page);
   expect(await saved(page)).toEqual(original);
   await expect(hitDps(page)).toHaveText(expected.get(3)!);
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: editedStage });
+  await openStage(page, editedStage);
   await idle(page);
   expect(await saved(page)).toEqual(edited);
   await expect(hitDps(page)).toHaveText(expected.get(6)!);
@@ -296,15 +260,20 @@ const apply = (page: Page, planner: Planner) => planner === 'support'
   : page.getByRole('button', { name: planner === 'passive' ? 'Apply plan' : /^Apply to build/, exact: planner === 'passive' });
 
 async function complete(page: Page, planner: Planner, first: boolean) {
-  await nav(page, plannerPage(planner)).click();
+  await go(page, plannerPage(planner));
   if (planner === 'support') {
     if (first) {
       const group = page.locator('.skill-group').first();
-      await group.locator('.skill-group-title').click();
-      await group.locator('.gem-optimizer-toggle').click();
+      const title = group.locator('.skill-group-title');
+      if (await title.getAttribute('aria-expanded') === 'false') await title.click();
+      const toggle = group.locator('.gem-optimizer-toggle');
+      if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
+      // Goal, capacity and candidate settings are folded away until asked for.
+      const settings = group.locator('.gem-optimizer-settings');
+      if (!(await settings.evaluate(element => (element as HTMLDetailsElement).open))) await settings.locator(':scope > summary').click();
       await page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true }).fill('2');
       await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();
-      await page.getByRole('button', { name: 'Objective', exact: true }).click();
+      await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
       await page.getByRole('option', { name: 'Max total DPS', exact: true }).click();
     }
     await page.getByRole('button', { name: 'Calculate support combinations', exact: true }).click();
@@ -312,11 +281,12 @@ async function complete(page: Page, planner: Planner, first: boolean) {
     await expect(page.getByRole('button', { name: 'Calculate support combinations', exact: true })).toBeEnabled();
   } else if (planner === 'passive') {
     if (first) {
-      await page.getByRole('button', { name: 'Plan passive upgrades', exact: true }).click();
-      await page.getByRole('button', { name: 'Objective', exact: true }).click();
+      const planToggle = page.getByRole('button', { name: 'Plan passive upgrades', exact: true });
+      if (await planToggle.getAttribute('aria-expanded') === 'false') await planToggle.click();
+      await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
       await page.getByRole('option', { name: 'Max Life', exact: true }).click();
       await page.getByRole('spinbutton', { name: 'Point budget', exact: true }).fill('3');
-      await page.getByRole('button', { name: 'New travel attributes', exact: true }).click();
+      await page.getByRole('combobox', { name: 'New travel attributes', exact: true }).click();
       await page.getByRole('option', { name: 'Strength', exact: true }).click();
     }
     await page.getByRole('button', { name: 'Find upgrade routes', exact: true }).click();
@@ -346,13 +316,13 @@ for (const planner of ['support', 'passive', 'replacement'] as const) {
     await control(page, 'overridePowerCharges').focus();
     await control(page, 'overridePowerCharges').press('Tab');
     expect(await saved(page)).toEqual(original);
-    await nav(page, plannerPage(planner)).click();
+    await go(page, plannerPage(planner));
     await expect(results(page, planner)).toHaveText(receipt, { useInnerText: true });
     await expect(apply(page, planner).first()).toBeEnabled();
     await editCount(page, 'Power', 2);
     await expect(hitDps(page)).toHaveText(expected.get(2)!);
     expect((await inputs(page)).overridePowerCharges).toBe(2);
-    await nav(page, plannerPage(planner)).click();
+    await go(page, plannerPage(planner));
     await expect(results(page, planner)).toHaveCount(0);
     await expect(apply(page, planner)).toHaveCount(0);
     await complete(page, planner, false);
@@ -360,7 +330,7 @@ for (const planner of ['support', 'passive', 'replacement'] as const) {
     await reset(page, 'overridePowerCharges');
     expect(await saved(page)).toEqual(original);
     await expect(hitDps(page)).toHaveText(baseline);
-    await nav(page, plannerPage(planner)).click();
+    await go(page, plannerPage(planner));
     await expect(results(page, planner)).toHaveCount(0);
     await expect(apply(page, planner)).toHaveCount(0);
   });
@@ -374,10 +344,7 @@ for (const width of [390, 1440]) {
       await importCode(page, syntheticCode({ usePowerCharges: true, overridePowerCharges: '1' }, ['Power']), 'currentStage');
       const original = await saved(page);
       const baseline = await hitDps(page).innerText();
-      for (let index = 0; index < ['en-US', 'zh-TW', 'zh-CN'].indexOf(lang); index++) {
-        await page.getByRole('button', { name: 'Switch language', exact: true }).click();
-      }
-      await expect.poll(() => page.evaluate(() => localStorage.getItem('pobr-lang') ?? 'en-US')).toBe(lang);
+      await setLanguage(page, lang);
       await openSetting(page, 'overridePowerCharges', configName);
       const input = control(page, 'overridePowerCharges');
       await input.focus();
@@ -385,7 +352,9 @@ for (const width of [390, 1440]) {
       expect(await saved(page)).toEqual(original);
       expect((await inputs(page)).overridePowerCharges).toBe('1');
       await input.focus();
-      await input.press('ArrowUp');
+      // The imported count is the text "1": a text field takes the new count typed, a number field takes arrow up.
+      if (await input.getAttribute('type') === 'number') await input.press('ArrowUp');
+      else { await input.press('ControlOrMeta+a'); await input.pressSequentially('2'); }
       await input.press('Tab');
       await expect.poll(async () => (await inputs(page)).overridePowerCharges).toBe(2);
       await idle(page);

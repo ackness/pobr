@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openItemsAfterImport, statValue } from './shell';
+import { settledText } from './upgradesPage';
 
 const chest = [
   'Rarity: RARE', 'Local Defence Fixture', 'Chain Mail', 'Item Level: 50',
@@ -18,9 +20,8 @@ const bow = [
 ].join('\n');
 
 const numeric = (value: string) => Number(value.replaceAll(',', ''));
-const stat = (page: Page, name: string) => page.locator('.stat-row')
-  .filter({ hasText: new RegExp(`^${name}(?=[0-9\\s])`) }).locator('dd');
-const savedState = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state);
+const stat = (page: Page, name: string) => statValue(page, new RegExp(`^${name}$`));
+const savedState = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
 
 async function loadBuild(page: Page) {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
@@ -35,12 +36,13 @@ async function loadBuild(page: Page) {
     talent_tree: { hashes: [], quest_stats: [] }, jewel_data: '[]',
     skills: [{ baseType: 'Ice Shot', support: false, properties: [{ type: 5, values: [['16', 0]] }] }],
   } }));
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticLocalAffixFixture');
   await page.locator('.import-submit').click();
+  await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Upgrades', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Upgrades', exact: true }).click();
 }
 
 async function compare(page: Page, text: string) {
@@ -80,9 +82,9 @@ test('changing life preserves local armour and evasion, quality and the socketed
   // (Chain Mail 25/16 + flat 25/34) * quality 1.2 * rune 1.2 = 72/72.
   await equipFixture(page, chest, 'bodyarmour');
   const original = await savedState(page);
-  const armour = await stat(page, 'Armour').innerText();
-  const evasion = await stat(page, 'Evasion').innerText();
-  const life = await stat(page, 'Life').innerText();
+  const armour = await settledText(stat(page, 'Armour'));
+  const evasion = await settledText(stat(page, 'Evasion'));
+  const life = await settledText(stat(page, 'Life'));
   expect(numeric(armour)).toBeGreaterThan(0);
   expect(numeric(evasion)).toBeGreaterThan(0);
 
@@ -115,7 +117,7 @@ test('changing life preserves local armour and evasion, quality and the socketed
 test('changing life gained on kill preserves local physical damage, quality and Iron Rune DPS', async ({ page }) => {
   await equipFixture(page, bow, 'weapon1');
   const original = await savedState(page);
-  const dps = await stat(page, 'Total DPS').innerText();
+  const dps = await settledText(stat(page, 'Total DPS'));
   expect(numeric(dps)).toBeGreaterThan(0);
 
   await maximizeCopiedAffix(page, 'equipment:LifeGainedFromEnemyDeath1', 'Gain 6 Life per enemy killed');

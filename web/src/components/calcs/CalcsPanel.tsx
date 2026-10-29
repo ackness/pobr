@@ -37,13 +37,12 @@ import { useSkillName, useSkillCatalog } from '../../hooks/useSkillName';
 import './calcs.css';
 import { detailKind, detailFormula, StatDetailCache } from '../../lib/statDetails';
 import { AppSelectControl } from '../shared/controls';
-import { useUi } from '../shared/UiContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { calcsLabel } from './calcsLabels';
 import { SkillFormControls } from '../skills/SkillFormControls';
 import { highestDpsSkill } from '../../lib/skillSelection';
-import { LedgerView } from '../../v2/pages/calcs/LedgerView';
-import { words } from '../../v2/text';
+import { LedgerView } from '../../app/pages/calcs/LedgerView';
+import { words } from '../../app/text';
 
 interface Props {
   session: BuildSession;
@@ -792,7 +791,7 @@ function FullDpsView({ session, lang }: { session: BuildSession; lang: Lang }) {
 }
 
 /** Every active effect is calculated independently; selection only changes inspection context. */
-function SkillMetricsView({ session, lang, showFullDps = true }: { session: BuildSession; lang: Lang; showFullDps?: boolean }) {
+function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang }) {
   const tt = bindT(lang);
   const [completed, setCompleted] = useState<{ version: number; report: SkillMetricsResponse } | null>(null);
   const [running, setRunning] = useState(false);
@@ -841,7 +840,6 @@ function SkillMetricsView({ session, lang, showFullDps = true }: { session: Buil
       <h3 id="skill-metrics-heading" tabIndex={-1}>{tt('calcs.skillMetrics')}</h3>
       <p className="calcs-hint">{tt('calcs.skillMetricsHint')}</p>
       {mainIndex !== undefined && <SkillFormControls session={session} lang={lang} groupIndex={mainIndex} catalog={catalog} />}
-      {showFullDps && session.calc?.full_dps && <FullDpsView session={session} lang={lang} />}
       {running && <p className="calcs-hint" role="status">{tt('calcs.running')}</p>}
       {error && <div className="calc-error" role="alert">{error}</div>}
       {report?.item_errors.map((issue, index) => (
@@ -1017,7 +1015,6 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
 /** Calcs 页：字段点击展开 breakdown（消费 0.3）+ 归因视图（消费 0.4）。 */
 export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
   const tt = bindT(lang);
-  const { v2 } = useUi();
   const skillName = useSkillName(lang);
   const [view, setView] = useState('metrics');
   const [category, setCategory] = useState('all');
@@ -1038,7 +1035,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
   const [loaded, setLoaded] = useState<{ calc: typeof calc; id: string; actor: string; detail: Breakdown | null; error?: string } | null>(null);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
-    if (!calc || session.busy || (v2 && view !== 'metrics') || !open || detailKind(selectedMinion ?? calc, open) === 'none' || actorBreakdowns[open]) return;
+    if (!calc || session.busy || view !== 'metrics' || !open || detailKind(selectedMinion ?? calc, open) === 'none' || actorBreakdowns[open]) return;
     const request = session.currentRequest();
     if (!request) return;
     let cancelled = false;
@@ -1051,7 +1048,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
       if (!cancelled) setLoaded({ calc, id: open, actor, detail: null, error: formatApiError(error) });
     });
     return () => { cancelled = true; };
-  }, [calc, open, actor, selectedMinion, actorBreakdowns, session.currentRequest, session.busy, retry, v2, view]);
+  }, [calc, open, actor, selectedMinion, actorBreakdowns, session.currentRequest, session.busy, retry, view]);
 
   // 侧边栏跳转：展开目标 breakdown 并滚动到可视区（渲染提交后再滚）。
   // 消费后立即让父级清空 focus——否则切走再切回本页签会带着旧 focus 重新
@@ -1070,8 +1067,8 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
       setOpen(stat);
     }
     const frame = requestAnimationFrame(() => {
-      const target = document.getElementById(overview ? 'skill-metrics-heading' : v2 ? 'calcs-detail-heading' : `breakdown-${stat}`);
-      if (overview || v2) target?.focus({ preventScroll: true });
+      const target = document.getElementById(overview ? 'skill-metrics-heading' : 'calcs-detail-heading');
+      target?.focus({ preventScroll: true });
       target?.scrollIntoView({ block: 'start', behavior: 'smooth' });
       onFocusConsumed?.();
     });
@@ -1143,154 +1140,76 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
       : <p className="breakdown-detail" role="status">{tt(current ? 'calcs.noBreakdown' : 'calcs.loadingDetail')}</p>;
   };
 
-  if (v2) {
-    const scope = selectedMinion ?? calc;
-    const skillId = selectedMinion?.skill_id ?? calc?.main_skill?.skill_id;
-    const tabs = [
-      ['metrics', calcsLabel(lang, 'metrics')],
-      ['skills', tt('calcs.skillMetrics')],
-      ['full-dps', calcsLabel(lang, 'fullDps')],
-      ['attribution', tt('calcs.attribution')],
-      ['ledger', words(lang, 'Ledger', '词条账本', '詞綴帳本')],
-    ] as const;
-    const visibleSections = sections.filter(section => category === 'all' || category === section.category);
-    return <section className="ui-page calcs-page calcs-workspace" aria-labelledby="calcs-heading">
-      <PageHeader id="calcs-heading" title={tt('calcs.title')} description={calcsLabel(lang, 'detailHint')} />
-      <Tabs className="flex-col" value={view} onValueChange={setView}>
-        <TabsList variant="line" className="calcs-view-tabs group-data-horizontal/tabs:h-auto" aria-label={tt('calcs.title')}>
-          {tabs.map(([value, label]) => <TabsTrigger key={value} className="calcs-view-tab" value={value}>{label}</TabsTrigger>)}
-        </TabsList>
-        <TabsContent className="min-w-0 w-full" value="metrics">
-          {!calc ? <p className="calcs-hint" role={session.calcError ? 'alert' : 'status'}>{session.calcError || calcsLabel(lang, 'noCalc')}</p> : <div className="calcs-explorer">
-            <div className="calcs-metric-browser" id="calcs-metric-browser" tabIndex={-1}>
-              <div className="calcs-context-bar" aria-label={calcsLabel(lang, 'context')}>
-                {actorPicker || <strong>{actorLabel}</strong>}
-                {skillId && <span>{tt('calcs.skill')}: <strong>{skillName(skillId)}</strong></span>}
-                {session.busy && <span role="status">{calcsLabel(lang, 'stale')}</span>}
-              </div>
-              <div className="calcs-filters">
-                <AppInput className="calcs-search" type="search" placeholder={tt('calcs.search')} aria-label={tt('calcs.search')}
-                  value={query} onChange={event => setQuery(event.target.value)} />
-                <label className="calcs-category-picker"><span className="sr-only">{calcsLabel(lang, 'categories')}</span>
-                  <AppSelectControl className="w-full" aria-label={calcsLabel(lang, 'categories')} value={category} onChange={event => setCategory(event.target.value)}>
-                    <option value="all">{calcsLabel(lang, 'all')}</option>
-                    {category !== 'all' && !sections.some(section => section.category === category) && <option value={category}>{statCategoryLabel(lang, category)}</option>}
-                    {sections.map(section => <option key={section.category} value={section.category}>{statCategoryLabel(lang, section.category)} ({section.names.length})</option>)}
-                  </AppSelectControl>
-                </label>
-              </div>
-              {visibleSections.length === 0 && <div className="search-empty" role="status">
-                <p>{tt('common.noResults')}</p>
-                <AppButton onClick={() => { setQuery(''); setCategory('all'); }}>{tt('common.clearSearch')}</AppButton>
-              </div>}
-              <div className="calcs-metric-list">
-                {visibleSections.map(section => <section key={section.category} className="calcs-section">
-                  <h3 className="calcs-section-title">{statCategoryLabel(lang, section.category)}</h3>
-                  {section.names.map(name => <AppButton key={name} id={`breakdown-${name}`} className="calcs-metric-row h-auto min-h-11 w-full justify-between whitespace-normal border-transparent bg-transparent text-left aria-pressed:border-ring aria-pressed:bg-accent aria-pressed:text-accent-foreground"
-                    aria-pressed={open === name} aria-controls="calcs-detail" data-detail-kind={detailKind(scope!, name)}
-                    onClick={() => { setOpen(name); requestAnimationFrame(() => {
-                      const heading = document.getElementById('calcs-detail-heading');
-                      heading?.focus({ preventScroll: true });
-                      if (window.matchMedia('(max-width: 760px)').matches) heading?.scrollIntoView({ block: 'start' });
-                    }); }}>
-                    <span>{statNameLabel(lang, name)}</span>
-                    <strong>{formatStatValue(values.get(name) ?? null, rowFormat(name), lang)}</strong>
-                  </AppButton>)}
-                </section>)}
-              </div>
+  const scope = selectedMinion ?? calc;
+  const skillId = selectedMinion?.skill_id ?? calc?.main_skill?.skill_id;
+  const tabs = [
+    ['metrics', calcsLabel(lang, 'metrics')],
+    ['skills', tt('calcs.skillMetrics')],
+    ['full-dps', calcsLabel(lang, 'fullDps')],
+    ['attribution', tt('calcs.attribution')],
+    ['ledger', words(lang, 'Ledger', '词条账本', '詞綴帳本')],
+  ] as const;
+  const visibleSections = sections.filter(section => category === 'all' || category === section.category);
+  return <section className="ui-page calcs-page calcs-workspace" aria-labelledby="calcs-heading">
+    <PageHeader id="calcs-heading" title={tt('calcs.title')} description={calcsLabel(lang, 'detailHint')} />
+    <Tabs className="flex-col" value={view} onValueChange={setView}>
+      <TabsList variant="line" className="calcs-view-tabs group-data-horizontal/tabs:h-auto" aria-label={tt('calcs.title')}>
+        {tabs.map(([value, label]) => <TabsTrigger key={value} className="calcs-view-tab" value={value}>{label}</TabsTrigger>)}
+      </TabsList>
+      <TabsContent className="min-w-0 w-full" value="metrics">
+        {!calc ? <p className="calcs-hint" role={session.calcError ? 'alert' : 'status'}>{session.calcError || calcsLabel(lang, 'noCalc')}</p> : <div className="calcs-explorer">
+          <div className="calcs-metric-browser" id="calcs-metric-browser" tabIndex={-1}>
+            <div className="calcs-context-bar" aria-label={calcsLabel(lang, 'context')}>
+              {actorPicker || <strong>{actorLabel}</strong>}
+              {skillId && <span>{tt('calcs.skill')}: <strong>{skillName(skillId)}</strong></span>}
+              {session.busy && <span role="status">{calcsLabel(lang, 'stale')}</span>}
             </div>
-            <section id="calcs-detail" className="calcs-detail-pane" data-empty={!open || undefined} aria-labelledby="calcs-detail-heading">
-              <div className="calcs-detail-header">
-                <AppButton className="calcs-back-to-list hidden max-[760px]:inline-flex" onClick={() => { const browser = document.getElementById('calcs-metric-browser'); browser?.focus(); browser?.scrollIntoView({ block: 'start' }); }}>{calcsLabel(lang, 'back')}</AppButton>
-                {open && <p className="calcs-eyebrow">{actorLabel}</p>}
-                <h3 id="calcs-detail-heading" tabIndex={-1}>{open ? statNameLabel(lang, open) : calcsLabel(lang, 'choose')}</h3>
-                {open && <div className="calcs-detail-value"><strong>{formatStatValue(values.get(open) ?? null, rowFormat(open), lang)}</strong><span>{calcsLabel(lang, detailKind(scope!, open))}</span></div>}
-              </div>
-              {open && detail(open)}
-            </section>
-          </div>}
-        </TabsContent>
-        <TabsContent className="min-w-0 w-full" value="skills"><SkillMetricsView session={session} lang={lang} showFullDps={false} /></TabsContent>
-        <TabsContent className="min-w-0 w-full" value="full-dps"><FullDpsView session={session} lang={lang} /></TabsContent>
-        <TabsContent className="min-w-0 w-full" value="attribution"><AttributionView session={session} lang={lang} /></TabsContent>
-        <TabsContent className="min-w-0 w-full" value="ledger"><LedgerView session={session} lang={lang} /></TabsContent>
-      </Tabs>
-    </section>;
-  }
-
-  return (
-    <section className="ui-page calcs-page" aria-labelledby="calcs-heading">
-      <PageHeader id="calcs-heading" title={tt('calcs.title')} description={tt('calcs.hint')} />
-      <div className="calcs-tools">
-      <nav className="calcs-navigation" aria-label={tt('calcs.title')}>
-        {(['calcs.skillMetrics', 'calcs.attribution'] as const).filter(key => key === 'calcs.skillMetrics' || calc).map((key, index) => <AppButton key={key} onClick={() => {
-          const section = document.getElementById(index === 0 ? 'skill-metrics-heading' : 'attribution-heading');
-          section?.focus({ preventScroll: true });
-          section?.scrollIntoView({ block: 'start' });
-        }}>{tt(key)} ↓</AppButton>)}
-      </nav>
-      <AppInput
-        className="calcs-search"
-        type="search"
-        placeholder={tt('calcs.search')}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        aria-label={tt('calcs.search')}
-      />
-      </div>
-      <SkillMetricsView session={session} lang={lang} />
-      {actorPicker}
-      <div className="calcs-breakdowns">
-      {selectedMinion && Object.values(selectedMinion.breakdown_descriptors ?? {}).every(kind => kind === 'none') && <p>{tt('minion.noBreakdown')}</p>}
-      {query.trim() && sections.length === 0 && <div className="search-empty" role="status">
-        <p>{tt('common.noResults')}</p>
-        <AppButton onClick={() => setQuery('')}>{tt('common.clearSearch')}</AppButton>
-      </div>}
-      {sections.map(({ category, names }) => (
-        <section key={category} className="calcs-section">
-          <h3 className="calcs-section-title">{statCategoryLabel(lang, category)}</h3>
-          <div className="breakdown-list">
-            {names.map((name) => {
-              const kind = detailKind(selectedMinion ?? calc!, name);
-              const current = loaded?.calc === calc && loaded.actor === actor && loaded.id === name ? loaded : null;
-              const breakdown = actorBreakdowns[name] ?? current?.detail;
-              const rowFormat = selectedMinion ? 'float2' : STAT_SECTIONS.flatMap(section => section.rows).find(row => row.id === name)?.format ?? 'float2';
-              const isOpen = open === name;
-              return (
-                <div
-                  key={name}
-                  id={`breakdown-${name}`}
-                  data-detail-kind={kind}
-                  className={`breakdown-item${isOpen ? ' is-open' : ''}`}
-                >
-                  <AppButton
-                    className="breakdown-toggle"
-                    aria-expanded={isOpen}
-                    onClick={() => setOpen(isOpen ? null : name)}
-                  >
-                    <span className="row-caret" aria-hidden>▸</span>
-                    <span className="breakdown-name">{selectedMinion && `${tt('minion.title')}: `}{statNameLabel(lang, name)}</span>
-                    <span className="breakdown-value">
-                      {values.has(name) ? formatStatValue(values.get(name) ?? null, rowFormat, lang) : ''}
-                    </span>
-                    {breakdown && breakdown.mods.length > 0 && (
-                      <span className="breakdown-count">
-                        {breakdown.mods.filter((m) => m.active).length} {tt('calcs.mods')}
-                      </span>
-                    )}
-                  </AppButton>
-                  {isOpen && (kind === 'none' ? <p className="breakdown-detail" role="status">{tt('calcs.noBreakdown')}</p>
-                    : breakdown ? <BreakdownTable breakdown={breakdown} lang={lang} />
-                    : current?.error ? <div className="breakdown-detail" role="alert">{current.error} <AppButton onClick={() => { setLoaded(null); setRetry(value => value + 1); }}>{tt('calcs.retry')}</AppButton></div>
-                    : <p className="breakdown-detail" role="status">{tt(current ? 'calcs.noBreakdown' : 'calcs.loadingDetail')}</p>)}
-                </div>
-              );
-            })}
+            <div className="calcs-filters">
+              <AppInput className="calcs-search" type="search" placeholder={tt('calcs.search')} aria-label={tt('calcs.search')}
+                value={query} onChange={event => setQuery(event.target.value)} />
+              <label className="calcs-category-picker"><span className="sr-only">{calcsLabel(lang, 'categories')}</span>
+                <AppSelectControl className="w-full" aria-label={calcsLabel(lang, 'categories')} value={category} onChange={event => setCategory(event.target.value)}>
+                  <option value="all">{calcsLabel(lang, 'all')}</option>
+                  {category !== 'all' && !sections.some(section => section.category === category) && <option value={category}>{statCategoryLabel(lang, category)}</option>}
+                  {sections.map(section => <option key={section.category} value={section.category}>{statCategoryLabel(lang, section.category)} ({section.names.length})</option>)}
+                </AppSelectControl>
+              </label>
+            </div>
+            {visibleSections.length === 0 && <div className="search-empty" role="status">
+              <p>{tt('common.noResults')}</p>
+              <AppButton onClick={() => { setQuery(''); setCategory('all'); }}>{tt('common.clearSearch')}</AppButton>
+            </div>}
+            <div className="calcs-metric-list">
+              {visibleSections.map(section => <section key={section.category} className="calcs-section">
+                <h3 className="calcs-section-title">{statCategoryLabel(lang, section.category)}</h3>
+                {section.names.map(name => <AppButton key={name} id={`breakdown-${name}`} className="calcs-metric-row h-auto min-h-11 w-full justify-between whitespace-normal border-transparent bg-transparent text-left aria-pressed:border-ring aria-pressed:bg-accent aria-pressed:text-accent-foreground"
+                  aria-pressed={open === name} aria-controls="calcs-detail" data-detail-kind={detailKind(scope!, name)}
+                  onClick={() => { setOpen(name); requestAnimationFrame(() => {
+                    const heading = document.getElementById('calcs-detail-heading');
+                    heading?.focus({ preventScroll: true });
+                    if (window.matchMedia('(max-width: 760px)').matches) heading?.scrollIntoView({ block: 'start' });
+                  }); }}>
+                  <span>{statNameLabel(lang, name)}</span>
+                  <strong>{formatStatValue(values.get(name) ?? null, rowFormat(name), lang)}</strong>
+                </AppButton>)}
+              </section>)}
+            </div>
           </div>
-        </section>
-      ))}
-      </div>
-      <AttributionView session={session} lang={lang} />
-    </section>
-  );
+          <section id="calcs-detail" className="calcs-detail-pane" data-empty={!open || undefined} aria-labelledby="calcs-detail-heading">
+            <div className="calcs-detail-header">
+              <AppButton className="calcs-back-to-list hidden max-[760px]:inline-flex" onClick={() => { const browser = document.getElementById('calcs-metric-browser'); browser?.focus(); browser?.scrollIntoView({ block: 'start' }); }}>{calcsLabel(lang, 'back')}</AppButton>
+              {open && <p className="calcs-eyebrow">{actorLabel}</p>}
+              <h3 id="calcs-detail-heading" tabIndex={-1}>{open ? statNameLabel(lang, open) : calcsLabel(lang, 'choose')}</h3>
+              {open && <div className="calcs-detail-value"><strong>{formatStatValue(values.get(open) ?? null, rowFormat(open), lang)}</strong><span>{calcsLabel(lang, detailKind(scope!, open))}</span></div>}
+            </div>
+            {open && detail(open)}
+          </section>
+        </div>}
+      </TabsContent>
+      <TabsContent className="min-w-0 w-full" value="skills"><SkillMetricsView session={session} lang={lang} /></TabsContent>
+      <TabsContent className="min-w-0 w-full" value="full-dps"><FullDpsView session={session} lang={lang} /></TabsContent>
+      <TabsContent className="min-w-0 w-full" value="attribution"><AttributionView session={session} lang={lang} /></TabsContent>
+      <TabsContent className="min-w-0 w-full" value="ledger"><LedgerView session={session} lang={lang} /></TabsContent>
+    </Tabs>
+  </section>;
 }

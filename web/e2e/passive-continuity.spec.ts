@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import type { AttributeChoice, JewelInput, PassiveNode, SlotItemInput, SocketGroupInput } from '../src/api/types';
 import { buildPassiveGraph, shortestAllocationPath } from '../src/lib/passiveGraph';
+import { busy, pageLink, statValue } from './shell';
+import { choose } from './treePage';
 
 const version = readFileSync('../data/CURRENT', 'utf8').trim();
 const nodes: PassiveNode[] = JSON.parse(readFileSync(`../data/${version}/base/passive_tree.json`, 'utf8'));
@@ -18,8 +20,7 @@ const originalChoices = Object.fromEntries(nodes.filter(node => node.name === 'A
   .map(node => [String(node.skill), 'int' as const]));
 const jewel = 'Rarity: MAGIC\nRuby\nImplicits: 0\n+1000 to maximum Life';
 const unmodeled = 'Rarity: MAGIC\nRuby\nImplicits: 0\n+100 to maximum Life\nThis jewel grants an unmodeled power';
-const nav = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main navigation' })
-  .getByRole('button', { name, exact: true });
+const nav = (page: Page, name: string) => pageLink(page, name);
 const routeResults = (page: Page) => page.locator('.tree-planner-body > .tree-planner-results');
 const joint = (page: Page) => page.getByRole('region', { name: 'Jewels and passive routes' });
 const routeRun = (page: Page) => page.getByRole('button', { name: 'Find upgrade routes', exact: true });
@@ -33,9 +34,11 @@ interface FixtureState {
   params: unknown;
   treeVersion?: string | null;
 }
-const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state as FixtureState);
+const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state as FixtureState);
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
-const life = (page: Page) => page.locator('.stat-row').filter({ hasText: /^Life/ }).locator('dd');
+const life = (page: Page) => statValue(page, /^Life$/);
+const totalDps = (page: Page) => statValue(page, /^Total DPS$/);
+const effectiveHp = (page: Page) => statValue(page, /^Effective HP$/);
 
 type Planner = 'route' | 'joint';
 const results = (page: Page, planner: Planner) => planner === 'route' ? routeResults(page) : joint(page).locator('.jewel-plan-results');
@@ -47,8 +50,7 @@ async function syntheticWitch(page: Page) {
   // full-build calculations, candidate scoring and Apply all use real shipped WASM/data.
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
   await page.addInitScript(({ allocated, originalChoices, socket }) => {
-    localStorage.setItem('pobr-tab', 'tree');
-    localStorage.setItem('pobr-build-state', JSON.stringify({ version: 1, notes: '', state: {
+    localStorage.setItem('pobr-v2-build-state', JSON.stringify({ version: 1, notes: '', state: {
       pobCode: null, character: { level: 90, class_name: 'Witch', ascendancy_name: '' },
       allocatedNodes: allocated, attributeChoices: originalChoices,
       socketGroups: [{ enabled: true, gems: [{ skill_id: 'FireballPlayer', level: 16, quality: 0 }] }],
@@ -57,14 +59,14 @@ async function syntheticWitch(page: Page) {
       annotations: {}, params: { config_inputs: {} },
     } }));
   }, { allocated, originalChoices, socket: socket.skill });
-  await page.goto('/');
+  await page.goto('/tree');
   await expect(page.locator(`circle[data-skill-id="${socket.skill}"]`)).toHaveClass(/node-jewel-filled/, { timeout: 90_000 });
   await expect(page.locator('.tree-asc-picker select').first()).toBeEnabled();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(busy(page)).toHaveCount(0);
 }
 
 async function select(page: Page, label: string, option: string) {
-  await page.getByRole('button', { name: label, exact: true }).click();
+  await page.getByRole('combobox', { name: label, exact: true }).click();
   await page.getByRole('option', { name: option, exact: true }).click();
 }
 
@@ -84,7 +86,7 @@ async function configure(page: Page) {
 
 async function addPlacement(page: Page, text = jewel) {
   await joint(page).getByRole('textbox', { name: 'Candidate jewel text', exact: true }).fill(text);
-  await joint(page).getByRole('button', { name: 'Candidate socket', exact: true }).click();
+  await joint(page).getByRole('combobox', { name: 'Candidate socket', exact: true }).click();
   await page.getByRole('option').filter({ hasText: `#${socket.skill}` }).click();
   await joint(page).getByRole('button', { name: 'Add jewel placement', exact: true }).click();
 }
@@ -139,7 +141,7 @@ async function assertExactApply(page: Page, planner: Planner, card: Locator, bef
   await card.getByRole('button', { name: planner === 'route' ? 'Apply plan' : 'Apply jewel and passive plan', exact: true }).click();
   await expect.poll(async () => [...(await saved(page)).allocatedNodes].sort((a, b) => a - b))
     .toEqual([...expectedNodes].sort((a, b) => a - b));
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(busy(page)).toHaveCount(0);
   const after = await saved(page);
   expect(after.attributeChoices).toEqual(choices);
   expect(after.jewels).toEqual(planner === 'joint' ? [{ socket_node: socket.skill, text: jewel }] : before.jewels);
@@ -147,10 +149,10 @@ async function assertExactApply(page: Page, planner: Planner, card: Locator, bef
   expect(after.socketGroups).toEqual(before.socketGroups);
   expect(after.params).toEqual(before.params);
   await expect.poll(async () => numeric(await life(page).innerText())).toBe(Math.round(predictedLife));
-  await expect.poll(async () => numeric(await page.locator('.stat-row').filter({ hasText: 'Total DPS' }).locator('dd').innerText())).toBe(predictedDps);
-  await expect.poll(async () => numeric(await page.locator('.stat-row').filter({ hasText: 'Effective HP' }).locator('dd').innerText())).toBe(Math.round(predictedEhp));
+  await expect.poll(async () => numeric(await totalDps(page).innerText())).toBe(predictedDps);
+  await expect.poll(async () => numeric(await effectiveHp(page).innerText())).toBe(Math.round(predictedEhp));
   await expect(results(page, planner)).toHaveCount(0);
-  await expect(page.locator('.calc-error')).toHaveCount(0);
+  await expect(page.locator('.shell-alert')).toHaveCount(0);
 }
 
 for (const planner of ['route', 'joint'] as const) {
@@ -186,7 +188,7 @@ for (const planner of ['route', 'joint'] as const) {
       await page.getByRole('textbox', { name: 'Jewel socket', exact: true }).fill(text);
       await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
       await expect.poll(async () => (await saved(page)).jewels[0].text).toBe(text);
-      await expect(page.locator('.topbar-busy')).toHaveCount(0);
+      await expect(busy(page)).toHaveCount(0);
       await expect(confirmation).toHaveCount(0);
     }
     expect(await saved(page)).toEqual(applied);
@@ -195,7 +197,7 @@ for (const planner of ['route', 'joint'] as const) {
     await awayAndBack(page);
     await assertExactApply(page, planner, firstCard, await saved(page));
     await expect(confirmation).toBeVisible();
-    await nav(page, 'Build').click();
+    await page.locator('.shell-builds-button').click();
     await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Independent confirmation stage');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
@@ -229,17 +231,17 @@ for (const planner of ['route', 'joint'] as const) {
     // Raw input is deliberately different from the added candidates.
     await joint(page).getByRole('textbox', { name: 'Candidate jewel text', exact: true }).fill(jewel);
     const candidates = await joint(page).locator('.jewel-plan-candidates').innerText();
-    const socketLabel = await joint(page).getByRole('button', { name: 'Candidate socket', exact: true }).innerText();
+    const socketLabel = await joint(page).getByRole('combobox', { name: 'Candidate socket', exact: true }).innerText();
     const before = await saved(page);
     await complete(page, planner);
     const receipt = await results(page, planner).innerText();
     if (planner === 'joint') await expect(results(page, planner)).toContainText('Excluded or unmodeled candidates');
     await awayAndBack(page);
     await expect(budget(page)).toHaveValue('3');
-    await expect(page.getByRole('button', { name: 'Plan', exact: true })).toContainText('Spend new points');
-    await expect(page.getByRole('button', { name: 'New travel attributes', exact: true })).toContainText('Strength');
+    await expect(page.getByRole('combobox', { name: 'Plan', exact: true })).toContainText('Spend new points');
+    await expect(page.getByRole('combobox', { name: 'New travel attributes', exact: true })).toContainText('Strength');
     await expect(joint(page).getByRole('textbox', { name: 'Candidate jewel text', exact: true })).toHaveValue(jewel);
-    await expect.poll(() => joint(page).getByRole('button', { name: 'Candidate socket', exact: true }).innerText()).toBe(socketLabel);
+    await expect.poll(() => joint(page).getByRole('combobox', { name: 'Candidate socket', exact: true }).innerText()).toBe(socketLabel);
     await expect.poll(() => joint(page).locator('.jewel-plan-candidates').innerText()).toBe(candidates);
     await expect.poll(() => results(page, planner).innerText()).toBe(receipt);
     await expect(page.locator('.node-planned-add, .node-planned-remove, .opt-progress')).toHaveCount(0);
@@ -278,9 +280,9 @@ test('reallocation mode and maximum refunds survive navigation without changing 
   await expect(routeRun(page)).toBeEnabled();
   const receipt = await page.locator('.tree-planner-summary').innerText();
   await awayAndBack(page);
-  await expect(page.getByRole('button', { name: 'Plan', exact: true })).toContainText('Reallocate existing points');
+  await expect(page.getByRole('combobox', { name: 'Plan', exact: true })).toContainText('Reallocate existing points');
   await expect(page.getByRole('spinbutton', { name: 'Maximum refunds', exact: true })).toHaveValue('2');
-  await expect(page.getByRole('button', { name: 'New travel attributes', exact: true })).toContainText('Strength');
+  await expect(page.getByRole('combobox', { name: 'New travel attributes', exact: true })).toContainText('Strength');
   await expect(joint(page).locator('.jewel-plan-candidates > li')).toHaveCount(1);
   await expect.poll(() => page.locator('.tree-planner-summary').innerText()).toBe(receipt);
   expect(await saved(page)).toEqual(before);
@@ -296,7 +298,7 @@ for (const edit of ['equipment', 'goal'] as const) {
     await complete(page, 'route');
     const before = await saved(page);
     const beforeLife = await life(page).innerText();
-    const floor = Math.max(0, numeric(await page.locator('.stat-row').filter({ hasText: 'Effective HP' }).locator('dd').innerText()) - 1);
+    const floor = Math.max(0, numeric(await effectiveHp(page).innerText()) - 1);
     await nav(page, 'Upgrades').click();
     if (edit === 'equipment') {
       await page.locator('.trade-position').filter({ hasText: /^Ring 1/ }).click();
@@ -306,7 +308,7 @@ for (const edit of ['equipment', 'goal'] as const) {
       await expect(page.locator('.upgrade-replacement-result')).toBeVisible();
       await page.getByRole('button', { name: 'Apply to build · Ring 1', exact: true }).click();
       await expect(life(page)).not.toHaveText(beforeLife);
-      await expect(page.locator('.topbar-busy')).toHaveCount(0);
+      await expect(busy(page)).toHaveCount(0);
     } else {
       await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
       await page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true }).check();
@@ -323,14 +325,14 @@ for (const edit of ['equipment', 'goal'] as const) {
     await page.clock.fastForward(2000);
     await noReceipts(page);
     await expect(budget(page)).toHaveValue('3');
-    await expect(page.getByRole('button', { name: 'New travel attributes', exact: true })).toContainText('Strength');
+    await expect(page.getByRole('combobox', { name: 'New travel attributes', exact: true })).toContainText('Strength');
     await expect(joint(page).locator('.jewel-plan-candidates > li')).toHaveCount(1);
     const after = await saved(page);
     expect(after.allocatedNodes).toEqual(before.allocatedNodes);
     expect(after.attributeChoices).toEqual(before.attributeChoices);
     expect(after.jewels).toEqual(before.jewels);
     if (edit === 'goal') {
-      await expect(page.getByRole('button', { name: 'Objective', exact: true })).toContainText('Max total DPS');
+      await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Max total DPS');
       await expect(page.getByRole('spinbutton', { name: 'min', exact: true })).toHaveValue(String(floor));
       await expect(page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true })).toBeChecked();
     }
@@ -344,32 +346,33 @@ test('identical copied stages reset receipts and stage-local preferences without
   await syntheticWitch(page);
   await open(page);
   const initialBudget = await budget(page).inputValue();
-  const initialAttributes = await page.getByRole('button', { name: 'New travel attributes', exact: true }).innerText();
+  const initialAttributes = await page.getByRole('combobox', { name: 'New travel attributes', exact: true }).innerText();
   await configure(page);
   await addPlacement(page);
   await complete(page, 'joint');
   await complete(page, 'route');
   const before = await saved(page);
-  await nav(page, 'Build').click();
-  const originalStage = await page.locator('.workspace-current-stage').innerText();
+  await page.locator('.shell-builds-button').click();
+  const stagePicker = page.getByRole('combobox', { name: 'Current stage', exact: true });
+  const originalStage = (await stagePicker.innerText()).trim();
   await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Synthetic passive copy');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(busy(page)).toHaveCount(0);
   await nav(page, 'Tree').click();
   await expect(page.getByRole('button', { name: 'Plan passive upgrades', exact: true })).toHaveAttribute('aria-expanded', 'false');
   await open(page);
   await noReceipts(page);
   await expect(budget(page)).toHaveValue(initialBudget);
-  await expect.poll(() => page.getByRole('button', { name: 'New travel attributes', exact: true }).innerText()).toBe(initialAttributes);
+  await expect.poll(() => page.getByRole('combobox', { name: 'New travel attributes', exact: true }).innerText()).toBe(initialAttributes);
   await expect(joint(page).getByRole('textbox', { name: 'Candidate jewel text', exact: true })).toHaveValue('');
   await expect(joint(page).locator('.jewel-plan-candidates > li')).toHaveCount(0);
   expect(await saved(page)).toEqual(before);
   await nav(page, 'Upgrades').click();
   await page.locator('.upgrade-paths > button').nth(2).click();
   await expect(page.locator('.tree-planner-body')).toBeVisible();
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: originalStage });
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await choose(page, stagePicker, originalStage);
+  await expect(busy(page)).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Plan passive upgrades', exact: true })).toHaveAttribute('aria-expanded', 'false');
   await open(page);
   await noReceipts(page);
@@ -406,6 +409,10 @@ test('hidden tree has no canvas, hover, attribute editor or keyboard allocation 
 });
 
 async function pauseAfterRealEvaluation(page: Page, planner: Planner) {
+  // Page changes run inside a view transition unless motion is reduced. Its frames cannot advance
+  // while the clock below is paused, so a navigation would never complete; the transition is not
+  // what this test is about.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   // Suspend only the scheduler's inter-batch yield. No scoring/response replacement,
   // candidate truncation, time-based sleeps or synthetic progress callbacks.
   await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
@@ -454,7 +461,7 @@ for (const planner of ['route', 'joint'] as const) {
       expect(await saved(page)).toEqual(before);
       await expect(life(page)).toHaveText(beforeLife);
       if (action === 'hidden goal') {
-        await expect(page.getByRole('button', { name: 'Objective', exact: true })).toContainText('Max total DPS');
+        await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Max total DPS');
         await expect(page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true })).toBeChecked();
         // The fresh run below intentionally uses a newly chosen shared objective.
         await select(page, 'Objective', 'Max Life');
@@ -526,13 +533,13 @@ test('historical tree replacement discards current-tree receipts and exposes no 
   await addPlacement(page);
   await complete(page, 'joint');
   await complete(page, 'route');
-  await nav(page, 'Build').click();
+  await page.locator('.shell-builds-button').click();
   // Synthetic PoB document only; decoding/calculation/version rejection remain real.
   const historical = deflateSync('<PathOfBuilding2><Build level="80" className="Witch"/><Tree activeSpec="1"><Spec nodes="770" treeVersion="0_1"/></Tree><Skills/><Items/></PathOfBuilding2>').toString('base64url');
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(historical);
   await page.locator('.import-submit').click();
   await expect.poll(async () => (await saved(page)).treeVersion).toBe('0_1');
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(busy(page)).toHaveCount(0);
   await nav(page, 'Tree').click();
   await expect(page.getByRole('main').getByText('Interactive tree editing and route planning are unavailable for historical trees.', { exact: false })).toBeVisible();
   await expect(page.locator('.tree-canvas, .tree-planner, .jewel-plan-results')).toHaveCount(0);

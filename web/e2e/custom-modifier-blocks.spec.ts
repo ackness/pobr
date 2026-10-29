@@ -1,5 +1,15 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { deflateSync, inflateSync } from 'node:zlib';
+import { go, hitDps, idle, importCode, noMotion, shareCode } from './configPage';
+import { statValue } from './shell';
+
+test.use(noMotion);
+
+/** The custom modifier groups live on their own tab of the Config page. */
+async function openModifiers(page: Page) {
+  await go(page, 'Config');
+  await page.getByRole('tab', { name: 'Custom modifiers', exact: true }).click();
+}
 
 const source = `<PathOfBuilding2>
   <Build level="40" className="Witch"/>
@@ -12,17 +22,15 @@ const source = `<PathOfBuilding2>
 </PathOfBuilding2>`;
 
 test('custom modifier groups retain titles, text, order and disabled state through edits and sharing', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
-  await page.getByRole('button', { name: 'Build', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(deflateSync(source).toString('base64url'));
-  await page.locator('.import-submit').click();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await importCode(page, deflateSync(source).toString('base64url'));
+  await idle(page);
 
-  const life = page.locator('.stat-row').filter({ hasText: /^Life(?=[0-9\s])/ }).locator('dd');
+  const life = statValue(page, /^Life$/);
   const number = (value: string) => Number(value.replaceAll(',', ''));
   const activeLife = number(await life.innerText());
-  await page.getByRole('button', { name: 'Config', exact: true }).click();
+  await openModifiers(page);
   const groups = page.locator('.config-modifier-block');
   await expect(groups).toHaveCount(2);
   await expect(groups.nth(0).locator('.config-modifier-title input')).toHaveValue('Active');
@@ -42,25 +50,23 @@ test('custom modifier groups retain titles, text, order and disabled state throu
   const text = '+250 to maximum Life\n\n+10 to Spirit';
   await groups.nth(1).locator('.config-extra-mods').fill(text);
   await groups.nth(1).locator('.config-modifier-title input').click();
-  await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state.params.custom_modifier_blocks)).toEqual([
+  await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state.params.custom_modifier_blocks)).toEqual([
     { title: 'Active', enabled: false, text: '+100 to maximum Life' },
     { title: 'Defense & sustain', enabled: true, text },
   ]);
 
   await page.reload();
-  await expect(groups).toHaveCount(2, { timeout: 90_000 });
+  await page.getByRole('tab', { name: 'Custom modifiers', exact: true }).click({ timeout: 90_000 });
+  await expect(groups).toHaveCount(2);
   await expect(groups.nth(1).locator('.config-extra-mods')).toHaveValue(text);
   await expect(groups.nth(0).locator('.config-modifier-enabled input')).not.toBeChecked();
-  await page.getByRole('button', { name: 'Build', exact: true }).click();
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
-  const code = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
+  const code = await shareCode(page);
   const exported = inflateSync(Buffer.from(code, 'base64url')).toString('utf8');
   expect(exported).toContain('title="Active" enabled="false"');
   expect(exported).toContain('title="Defense &amp; sustain" enabled="true"');
-  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
-  await page.locator('.import-submit').click();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Config', exact: true }).click();
+  await importCode(page, code);
+  await idle(page);
+  await openModifiers(page);
   await expect(groups).toHaveCount(2);
   await expect(groups.nth(1).locator('.config-extra-mods')).toHaveValue(text);
 
@@ -74,9 +80,10 @@ test('custom modifier groups retain titles, text, order and disabled state throu
   await expect(groups).toHaveCount(1);
   await groups.nth(0).getByRole('button', { name: /Remove/ }).click();
   await expect(groups).toHaveCount(0);
-  await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state.params.custom_modifier_blocks)).toEqual([]);
+  await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state.params.custom_modifier_blocks)).toEqual([]);
   await page.reload();
-  await expect(groups).toHaveCount(0, { timeout: 90_000 });
+  await page.getByRole('tab', { name: 'Custom modifiers', exact: true }).click({ timeout: 90_000 });
+  await expect(groups).toHaveCount(0);
 });
 
 // A level 20 Comet and nothing else, so a custom modifier is the only thing
@@ -92,19 +99,17 @@ const caster = `<PathOfBuilding2>
 </PathOfBuilding2>`;
 
 test('a custom modifier raises gem levels, and a line the calculation cannot apply is listed under the groups', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
-  await page.getByRole('button', { name: 'Build', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(deflateSync(caster).toString('base64url'));
-  await page.locator('.import-submit').click();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await importCode(page, deflateSync(caster).toString('base64url'));
+  await idle(page);
 
-  const dps = page.locator('.main-skill-section .stat-row dd').first();
+  const dps = hitDps(page);
   const number = async () => Number((await dps.innerText()).replaceAll(',', ''));
   await expect.poll(number).toBeGreaterThan(0);
   const plain = await number();
 
-  await page.getByRole('button', { name: 'Config', exact: true }).click();
+  await openModifiers(page);
   const groups = page.locator('.config-modifier-block');
   const unapplied = page.locator('.config-unapplied');
   await expect(unapplied).toHaveCount(0);

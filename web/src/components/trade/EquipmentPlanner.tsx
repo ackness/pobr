@@ -1,4 +1,4 @@
-import { useJobBeacon } from '../../v2/jobs/useJobBeacon';
+import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppSelectControl } from '../shared/controls';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CalculateBuildRequest } from '../../api/types';
@@ -8,7 +8,7 @@ import { compareObjectiveStats, feasibleOf, type Objective } from '../../lib/opt
 import { slotLabel, statNameLabel, type Lang } from '../../lib/i18n';
 import { upgradeT } from '../../lib/upgradeText';
 import { usePreview } from '../shared/PreviewContext';
-import { changesFromRecords } from '../../v2/preview/fromRecords';
+import { changesFromRecords } from '../../app/preview/fromRecords';
 import type { TradeCatalog } from '../../lib/tradeOptimizer';
 
 interface EquipmentSnapshot {

@@ -5,16 +5,20 @@ import { deflateSync } from 'node:zlib';
 import type { CalculateBuildRequest, CalculateBuildResponse, PassiveNode } from '../src/api/types';
 import type { SavedSession } from '../src/hooks/useBuildSession';
 import { bindT } from '../src/lib/i18n';
+import { chineseScript } from '../src/lib/chinese';
 import type { Lang } from '../src/lib/i18n';
 import { allocationAccess, buildPassiveGraph, shortestAllocationPath } from '../src/lib/passiveGraph';
 import * as wasmReplay from '../src/wasm/pkg/pobr_wasm.js';
+import { busy, pageLink } from './shell';
+import { answerConfirm } from './confirmDialog';
+import { choose, newControlContext, setLanguage } from './treePage';
 
 const fixture = readFileSync(new URL('../../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', import.meta.url), 'utf8').trim();
 const version = readFileSync(new URL('../../data/CURRENT', import.meta.url), 'utf8').trim();
 const nodes: PassiveNode[] = JSON.parse(readFileSync(new URL(`../../data/${version}/base/passive_tree.json`, import.meta.url), 'utf8'));
-const nav = (page: Page, name: string) => page.getByRole('navigation').getByRole('button', { name, exact: true });
-const saved = (page: Page): Promise<SavedSession['state']> => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state);
-const savedBytes = (page: Page) => page.evaluate(() => localStorage.getItem('pobr-build-state'));
+const nav = (page: Page, name: string) => pageLink(page, name);
+const saved = (page: Page): Promise<SavedSession['state']> => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
+const savedBytes = (page: Page) => page.evaluate(() => localStorage.getItem('pobr-v2-build-state'));
 
 // Main's actual old-pointer control found this first Spell Damage result. Keep
 // the committed build intact; this is not a synthetic numerical oracle.
@@ -64,20 +68,12 @@ async function capture(page: Page) {
   };
   const wasm = await replayBackend();
   const result: CalculateBuildResponse = JSON.parse(wasm.calculateBuildJson(JSON.stringify(request)));
-  const displayed = await page.locator('#character-stats .stat-row').evaluateAll(rows =>
-    rows.map(row => ({ label: row.querySelector('dt')?.textContent, value: row.querySelector('dd')?.textContent })));
+  const displayed = await page.locator('#character-stats .rail-row').evaluateAll(rows =>
+    rows.map(row => ({ label: row.querySelector('.rail-label')?.textContent, value: row.querySelector('.rail-value')?.textContent })));
   return { state, request: JSON.parse(JSON.stringify(request)), result, displayed };
 }
 
-async function language(page: Page, lang: Lang) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const current = await page.evaluate(() => localStorage.getItem('pobr-lang') ?? 'en-US');
-    if (current === lang) return;
-    await page.getByRole('button', { name: 'Switch language', exact: true }).click();
-    await expect.poll(() => page.evaluate(() => localStorage.getItem('pobr-lang') ?? 'en-US')).not.toBe(current);
-  }
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('pobr-lang') ?? 'en-US')).toBe(lang);
-}
+const language = (page: Page, lang: Lang) => setLanguage(page, lang);
 
 async function keyboardResult(page: Page, query: string, skill: number, lang: Lang = 'en-US') {
   const tt = bindT(lang);
@@ -124,27 +120,31 @@ async function seeded(page: Page, patch: Partial<SavedSession['state']> = {}) {
   // Named synthetic persistence fixture only. Runtime nodes/graph/calculation and
   // planner evaluation remain shipped WASM/data. Reload never overwrites edits.
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
+  // The results panel eases numbers to their new value; read them as settled values.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript(state => {
-    if (localStorage.getItem('pobr-build-state')) return;
-    localStorage.setItem('pobr-tab', 'tree');
-    localStorage.setItem('pobr-build-state', JSON.stringify({ version: 1, notes: 'Synthetic keyboard boundary fixture', state }));
+    if (localStorage.getItem('pobr-v2-build-state')) return;
+    localStorage.setItem('pobr-v2-build-state', JSON.stringify({ version: 1, notes: 'Synthetic keyboard boundary fixture', state }));
   }, state);
-  await page.goto('/');
+  await page.goto('/tree');
   await expect(page.locator('.tree-canvas')).toBeVisible({ timeout: 90_000 });
   await expect(page.locator('.tree-asc-picker select').first()).toBeEnabled();
   await idle(page);
 }
 
 async function idle(page: Page) {
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await expect(page.locator('.workspace-saved')).toBeVisible();
-  await expect(page.locator('.boot-error, .calc-error, .workspace-save-error')).toHaveCount(0);
+  await expect(busy(page)).toHaveCount(0);
+  await expect(page.locator('.shell-save-state')).not.toHaveClass(/is-error/);
+  await expect(page.locator('.shell-boot[role=alert], .shell-alert')).toHaveCount(0);
+  // The results panel keeps showing the previous numbers until the new calculation has settled.
+  await expect(page.locator('#character-stats[data-stale]')).toHaveCount(0);
 }
 
 async function imported(page: Page, code = fixture) {
   // Only unrelated league discovery is intercepted; import/data/calculation are real.
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
-  await page.goto('/');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/build');
   await expect(page.getByRole('textbox', { name: 'Build code', exact: true })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
@@ -194,8 +194,7 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
       expect(original.state.allocatedNodes).toContain(attribute.skill);
       const beforeBytes = await savedBytes(page);
 
-      const controlContext = await browser.newContext({ baseURL: test.info().project.use.baseURL,
-        viewport: { width, height: 780 } });
+      const controlContext = await newControlContext(browser, { width, height: 780 });
       try {
         const pointer = await controlContext.newPage();
         await funded(pointer);
@@ -223,8 +222,10 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
         const raw = [changed?.name ?? target.name!,
           ...(changed?.replace ? changed.stats : [...(target.stats ?? []), ...(changed?.stats ?? [])])].map(line =>
           line.replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2').replace(/\[([^\]]*)\]/g, '$1'));
+        // The game-text layer translates to Simplified; Traditional is that translation converted by script.
         const expectedText: string[] = lang === 'en-US' ? raw
-          : JSON.parse((await replayBackend()).translateLinesToZhCn(JSON.stringify(raw)));
+          : (JSON.parse((await replayBackend()).translateLinesToZhCn(JSON.stringify(raw))) as string[])
+            .map(line => chineseScript(line, lang));
         await expect(details.getByRole('heading')).toHaveText(expectedText[0]);
         await expect(details.locator('.tree-node-details-stats > li')).toHaveText(expectedText.slice(1));
         await expect(details.locator('.tree-node-details-state')).toContainText(tt('tree.notAllocated'));
@@ -281,7 +282,7 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
         await page.keyboard.press('Tab');
         const choice = details.getByRole('combobox', { name: tt('tree.attributeChoice'), exact: true });
         await expect(choice).toBeFocused();
-        await choice.selectOption('str');
+        await choose(page, choice, tt('tree.attr.str'));
         expect(await capture(page)).toEqual(pointerRefunded);
         const apply = details.getByRole('button', { name: tt('tree.applyAttribute'), exact: true });
         await choice.press('Tab');
@@ -310,10 +311,10 @@ test('keyboard selection and drafts retain real planner receipts until explicit 
   await seeded(page);
   const toggle = page.getByRole('button', { name: 'Plan passive upgrades', exact: true });
   await toggle.click();
-  await page.getByRole('button', { name: 'Objective', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
   await page.getByRole('option', { name: 'Max Life', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Point budget', exact: true }).fill('3');
-  await page.getByRole('button', { name: 'New travel attributes', exact: true }).click();
+  await page.getByRole('combobox', { name: 'New travel attributes', exact: true }).click();
   await page.getByRole('option', { name: 'Strength', exact: true }).click();
   await page.getByRole('button', { name: 'Find upgrade routes', exact: true }).click();
   const receipts = page.locator('.tree-planner-body > .tree-planner-results');
@@ -322,7 +323,7 @@ test('keyboard selection and drafts retain real planner receipts until explicit 
   const joint = page.getByRole('region', { name: 'Jewels and passive routes', exact: true });
   await joint.getByRole('textbox', { name: 'Candidate jewel text', exact: true })
     .fill('Rarity: MAGIC\nRuby\nImplicits: 0\n+1000 to maximum Life');
-  await joint.getByRole('button', { name: 'Candidate socket', exact: true }).click();
+  await joint.getByRole('combobox', { name: 'Candidate socket', exact: true }).click();
   await page.getByRole('option').filter({ hasText: `#${socket.skill}` }).click();
   await joint.getByRole('button', { name: 'Add jewel placement', exact: true }).click();
   await joint.getByRole('button', { name: 'Find jewel and passive plans', exact: true }).click();
@@ -336,7 +337,7 @@ test('keyboard selection and drafts retain real planner receipts until explicit 
   expect(attrs.length, 'Fixture must supply an allocated attribute decision').toBeGreaterThan(0);
   const attr = attrs[0];
   let details = await keyboardResult(page, 'Attribute', attr.skill);
-  await details.getByRole('combobox', { name: 'Attribute choice', exact: true }).selectOption('str');
+  await choose(page, details.getByRole('combobox', { name: 'Attribute choice', exact: true }), 'Strength');
   expect(await capture(page)).toEqual(original);
   await expect.poll(() => receipts.innerText()).toBe(receipt);
   await expect.poll(() => jointResults.innerText()).toBe(jointReceipt);
@@ -348,8 +349,8 @@ test('keyboard selection and drafts retain real planner receipts until explicit 
   await expect.poll(() => jointResults.innerText()).toBe(jointReceipt);
   expect(await capture(page)).toEqual(original);
   details = await keyboardResult(page, 'Attribute', attr.skill);
-  await expect(details.getByRole('combobox', { name: 'Attribute choice', exact: true })).toHaveValue('int');
-  await details.getByRole('combobox', { name: 'Attribute choice', exact: true }).selectOption('str');
+  await expect(details.getByRole('combobox', { name: 'Attribute choice', exact: true })).toHaveText('Intelligence');
+  await choose(page, details.getByRole('combobox', { name: 'Attribute choice', exact: true }), 'Strength');
   await details.getByRole('button', { name: 'Apply choice', exact: true }).focus();
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await saved(page)).attributeChoices[String(attr.skill)]).toBe('str');
@@ -358,8 +359,9 @@ test('keyboard selection and drafts retain real planner receipts until explicit 
   await expect(jointResults).toHaveCount(0);
   await expect(joint.getByRole('button', { name: 'Apply jewel and passive plan', exact: true })).toHaveCount(0);
   const base = await capture(page);
-  await nav(page, 'Build').click();
-  const originalStage = await page.locator('.workspace-current-stage').innerText();
+  await page.locator('.shell-builds-button').click();
+  const stagePicker = page.getByRole('combobox', { name: 'Current stage', exact: true });
+  const originalStage = (await stagePicker.innerText()).trim();
   await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Keyboard manual decisions');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
@@ -367,7 +369,7 @@ test('keyboard selection and drafts retain real planner receipts until explicit 
   await nav(page, 'Tree').click();
   await expect(page.getByRole('group', { name: 'Node details', exact: true })).toHaveCount(0);
   details = await keyboardResult(page, 'Attribute', attr.skill);
-  await details.getByRole('combobox', { name: 'Attribute choice', exact: true }).selectOption('dex');
+  await choose(page, details.getByRole('combobox', { name: 'Attribute choice', exact: true }), 'Dexterity');
   await details.getByRole('button', { name: 'Apply choice', exact: true }).focus();
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await saved(page)).attributeChoices[String(attr.skill)]).toBe('dex');
@@ -377,14 +379,14 @@ test('keyboard selection and drafts retain real planner receipts until explicit 
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await saved(page)).allocatedNodes.includes(target.skill)).toBe(true);
   const copied = await capture(page);
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: originalStage });
+  await choose(page, stagePicker, originalStage);
   await idle(page);
   await expect(page.getByRole('group', { name: 'Node details', exact: true })).toHaveCount(0);
   expect(await capture(page)).toEqual(base);
   await page.reload();
   await expect(page.locator('.tree-canvas')).toBeVisible({ timeout: 90_000 });
   expect(await capture(page)).toEqual(base);
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: 'Keyboard manual decisions' });
+  await choose(page, stagePicker, 'Keyboard manual decisions');
   await idle(page);
   expect(await capture(page)).toEqual(copied);
   await page.reload();
@@ -399,14 +401,14 @@ test('class confirmation and ascendancy replacement retire selected actions; cur
   await expect(details.getByRole('button', { name: 'Allocate', exact: true })).toBeDisabled();
   await pointerNode(page, witchRoot);
   expect(await capture(page)).toEqual(original);
-  const classes = page.locator('.tree-asc-picker select').first();
-  page.once('dialog', dialog => dialog.dismiss());
-  await classes.selectOption('Ranger');
-  await expect(classes).toHaveValue('Witch');
+  const classes = page.locator('.tree-asc-picker').first().getByRole('combobox');
+  await choose(page, classes, 'Ranger');
+  await answerConfirm(page, false);
+  await expect(classes).toHaveText('Witch');
   expect(await capture(page)).toEqual(original);
   // Ascendancy replacement is an actual character edit, not a refusal guessed
   // from planner scope. It must remove any action bound to the previous context.
-  await page.locator('.tree-asc-picker select').nth(1).selectOption('Blood Mage');
+  await choose(page, page.locator('.tree-asc-picker').nth(1).getByRole('combobox'), 'Blood Mage');
   await expect.poll(async () => (await saved(page)).character.ascendancy_name).toBe('Blood Mage');
   await expect(details).toHaveCount(0);
   const blood = await saved(page);
@@ -418,8 +420,8 @@ test('class confirmation and ascendancy replacement retire selected actions; cur
   // Other ascendancies are not rendered/searchable, matching pointer canvas scope.
   const foreignAsc = nodes.find(node => node.ascendancy_id === 'Witch1' && node.kind === 'notable')!;
   await expect(page.locator(`circle[data-skill-id="${foreignAsc.skill}"]`)).toHaveCount(0);
-  page.once('dialog', dialog => dialog.accept());
-  await classes.selectOption('Ranger');
+  await choose(page, classes, 'Ranger');
+  await answerConfirm(page, true);
   await expect.poll(async () => (await saved(page)).character.class_name).toBe('Ranger');
   await idle(page);
   await expect(details).toHaveCount(0);
@@ -435,12 +437,12 @@ test('class confirmation and ascendancy replacement retire selected actions; cur
 test('historical replacement keeps exact version and calculation but exposes no stale keyboard node action', async ({ page }) => {
   await seeded(page);
   await keyboardResult(page, 'WITCH', witchRoot);
-  await nav(page, 'Build').click();
+  await page.locator('.shell-builds-button').click();
   const code = deflateSync('<PathOfBuilding2><Build level="80" className="Witch"/><Tree activeSpec="1"><Spec nodes="770" treeVersion="0_1"/></Tree><Skills/><Items/></PathOfBuilding2>').toString('base64url');
-  await page.getByRole('combobox', { name: 'Import into', exact: true }).selectOption('currentStage');
-  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('group', { name: 'Import into', exact: true }).getByRole('button', { name: /^Replace current stage/ }).click();
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
+  await answerConfirm(page, true);
   await expect.poll(async () => (await saved(page)).treeVersion).toBe('0_1');
   await idle(page);
   await nav(page, 'Tree').click();
@@ -448,8 +450,11 @@ test('historical replacement keeps exact version and calculation but exposes no 
   await expect(page.locator('.tree-canvas, .tree-node-details, .tree-planner')).toHaveCount(0);
   const historical = await capture(page);
   await page.locator('body').click({ position: { x: 2, y: 2 } });
+  // The number keys are page shortcuts in this shell; they leave the Tree page, so come back to it after them.
   for (const key of ['s', 'd', 'i', '1', '2', '3', 'Enter']) await page.keyboard.press(key);
   expect(await capture(page)).toEqual(historical);
+  await nav(page, 'Tree').click();
+  await expect(page.getByRole('main').getByText('Interactive tree editing and route planning are unavailable for historical trees.', { exact: false })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('main').getByText('Interactive tree editing and route planning are unavailable for historical trees.', { exact: false })).toBeVisible({ timeout: 90_000 });
   expect(await capture(page)).toEqual(historical);
@@ -466,7 +471,7 @@ test('weapon-exclusive refund equals pointer cleanup and changing active set can
     weaponSwap: { active: 1, alternate_items: [], exclusive_nodes: [[target.skill], [116]] },
   };
   await seeded(page, patch);
-  const controlContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+  const controlContext = await newControlContext(browser);
   try {
     const pointer = await controlContext.newPage();
     await seeded(pointer, patch);
@@ -507,19 +512,25 @@ test('focused inspector controls and hidden canvas cannot receive stale pointer-
   await page.locator(`circle[data-skill-id="${attribute.skill}"]`).dispatchEvent('pointerover', { clientX: 600, clientY: 400 });
   await details.getByRole('button', { name: 'Close details', exact: true }).focus();
   const original = await capture(page);
-  for (const key of ['s', 'd', 'i', '1', '2', '3']) await page.keyboard.press(key);
+  // While the tree is showing, only S/D/I are attribute shortcuts: the number keys jump between pages in this shell.
+  const attributeKeys = ['s', 'd', 'i'];
+  for (const key of attributeKeys) await page.keyboard.press(key);
   expect(await capture(page)).toEqual(original);
   await details.press('Escape');
   await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeFocused();
-  for (const key of ['s', 'd', 'i', '1', '2', '3']) {
+  for (const key of attributeKeys) {
     await page.keyboard.press(key);
     expect(await capture(page)).toEqual(original);
   }
   await page.locator(`circle[data-skill-id="${attribute.skill}"]`).dispatchEvent('pointerover', { clientX: 600, clientY: 400 });
-  await page.getByRole('button', { name: 'Attributes & planning', exact: true }).focus();
+  // The side column is open by default; closing it and reopening it from the keyboard moves focus into the tools.
+  const sideToggle = page.getByRole('button', { name: 'Attributes & planning', exact: true });
+  if (await sideToggle.getAttribute('aria-expanded') === 'true') await sideToggle.click();
+  await expect(sideToggle).toHaveAttribute('aria-expanded', 'false');
+  await sideToggle.focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('.tree-edit-tools')).toBeFocused();
-  for (const key of ['s', 'd', 'i', '1', '2', '3']) {
+  for (const key of attributeKeys) {
     await page.keyboard.press(key);
     expect(await capture(page)).toEqual(original);
   }
@@ -541,7 +552,7 @@ test('adjacent unallocated Attribute draft and cancellation are read-only; expli
   };
   await seeded(page, patch);
   const original = await capture(page);
-  const controlContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+  const controlContext = await newControlContext(browser);
   try {
     const pointer = await controlContext.newPage();
     await seeded(pointer, patch);
@@ -559,15 +570,15 @@ test('adjacent unallocated Attribute draft and cancellation are read-only; expli
     const allocate = details.getByRole('button', { name: 'Allocate', exact: true });
     await expect(allocate).toBeDisabled();
     const choice = details.getByRole('combobox', { name: 'Attribute choice', exact: true });
-    await choice.selectOption('str');
+    await choose(page, choice, 'Strength');
     await expect(allocate).toBeEnabled();
     expect(await capture(page)).toEqual(original);
     await details.press('Escape');
     details = await keyboardResult(page, 'Attribute', attr.skill);
-    await expect(details.getByRole('combobox', { name: 'Attribute choice', exact: true })).toHaveValue('');
+    await expect(details.getByRole('combobox', { name: 'Attribute choice', exact: true })).toHaveText('unassigned');
     await expect(allocate).toBeDisabled();
     expect(await capture(page)).toEqual(original);
-    await details.getByRole('combobox', { name: 'Attribute choice', exact: true }).selectOption('str');
+    await choose(page, details.getByRole('combobox', { name: 'Attribute choice', exact: true }), 'Strength');
     await allocate.focus();
     await allocate.press('Enter');
     await expect.poll(async () => (await saved(page)).attributeChoices[String(attr.skill)]).toBe('str');
@@ -630,7 +641,7 @@ test('keyboard socket inspection is read-only and Refund matches pointer jewel d
   };
   await seeded(page, patch);
   const original = await capture(page);
-  const context = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+  const context = await newControlContext(browser);
   try {
     const pointer = await context.newPage();
     await seeded(pointer, patch);

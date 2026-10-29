@@ -7,6 +7,7 @@
  */
 
 import { expect, test } from '@playwright/test';
+import { choose, closeSettings, goTo } from './buildLibrary';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,18 +18,21 @@ const ninjaCode = readFileSync(
 ).trim();
 
 test('tree renders, granted badges, zh item names, library search', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: /Import Build/i })).toBeVisible({
+  await page.goto('/build');
+  await expect(page.getByRole('heading', { name: 'Import a build' })).toBeVisible({
     timeout: 90_000,
   });
 
-  // 切到中文界面（循环按钮 en → zh-TW → zh-CN）。
-  const langBtn = page.getByRole('button', { name: 'Switch language' });
-  await langBtn.click();
-  await langBtn.click();
+  // 切到中文界面（设置面板里选简体中文）。
+  await page.locator('.shell-settings-button').click();
+  await choose(page, page.locator('#shell-language'), '简体中文');
+  await closeSettings(page);
 
   await page.getByRole('textbox', { name: /Build code|build code|代碼|代码/i }).fill(ninjaCode);
   await page.locator('.import-submit').click();
+  // 导入后先落在概览页，再进入装备页。
+  await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
+  await goTo(page, '装备', 'zh-CN');
   await expect(page.getByRole('heading', { name: /^(装备|Items)$/ })).toBeVisible({
     timeout: 60_000,
   });
@@ -44,7 +48,8 @@ test('tree renders, granted badges, zh item names, library search', async ({ pag
   const switcher = page.locator('.item-detail .app-select').first();
   await expect(switcher).toBeVisible();
   await switcher.locator('.app-select-trigger').click();
-  expect(await switcher.locator('.app-select-option').count()).toBeGreaterThan(1);
+  await expect(page.getByRole('option').nth(1)).toBeVisible();
+  expect(await page.getByRole('option').count()).toBeGreaterThan(1);
   await page.keyboard.press('Escape');
 
   // 6：胸甲（3 符文位）→ 符文编辑器出现 3 个下拉；换插第一颗后文本更新且
@@ -53,7 +58,8 @@ test('tree renders, granted badges, zh item names, library search', async ({ pag
   const runeSelects = page.locator('.rune-editor .app-select');
   await expect(runeSelects).toHaveCount(3);
   await runeSelects.first().locator('.app-select-trigger').click();
-  await page.locator('.app-select-option[data-value="Greater Iron Rune"]').click();
+  // The options carry their Chinese names here (Greater Iron Rune is 高级钢铁符文).
+  await page.getByRole('option', { name: /^高级钢铁符文/ }).click();
   await expect(page.locator('.item-detail')).toContainText('符文: ', { timeout: 30_000 });
   await expect(page.locator('.rune-editor .calc-error')).toHaveCount(0);
 
@@ -65,29 +71,35 @@ test('tree renders, granted badges, zh item names, library search', async ({ pag
   await expect(page.locator('.rune-editor .calc-error')).toHaveCount(0);
 
   // 1：树页渲染出上千个节点圆点。
-  await page.getByRole('button', { name: /天赋树|樹|Tree/ }).click();
+  await goTo(page, '天赋树', 'zh-CN');
   await expect
     .poll(async () => page.locator('.tree-nodes circle').count(), { timeout: 30_000 })
     .toBeGreaterThan(1000);
 
   // 8：热力图——选「生命」+ 点「计算」后（默认深度 5）出现热力上色节点；
   //    加点不自动重算，只出现「已过期」提示。
-  await page.locator('.tree-heat select').selectOption('Life');
-  await page.locator('.tree-heat button').click();
+  await choose(page, page.locator('.tree-heat').getByRole('combobox'), '生命');
+  await page.locator('.tree-heat').getByRole('button').click();
   await expect
     .poll(async () => page.locator('.tree-nodes circle[style*="fill"]').count(), {
       timeout: 60_000,
     })
     .toBeGreaterThan(5);
-  await page.locator('.tree-nodes circle[style*="fill"]').first().click();
+  // 这个构筑已用满天赋点，再加点会被拒绝；改为收回一个能收回的点（点亮的末端节点）来改动加点。
+  const count = page.locator('.tree-count');
+  const before = await count.innerText();
+  const allocated = page.locator('.tree-nodes circle.node-allocated');
+  for (let index = 0; index < 60 && (await count.innerText()) === before; index++) {
+    await allocated.nth(index).click({ timeout: 2000, trial: false }).catch(() => undefined);
+    await page.waitForTimeout(400);
+  }
+  expect(await count.innerText()).not.toBe(before);
   await expect(page.locator('.tree-heat .tree-hint')).toContainText('已过期', {
     timeout: 30_000,
   });
 
-  // 2：Calcs 页技能 DPS 列表出现附赠徽标。
-  await page
-    .getByLabel('Main navigation')
-    .getByRole('button', { name: /计算|Calcs/ })
-    .click();
+  // 2：Calcs 页技能 DPS 列表出现附赠徽标（结果栏的「技能总览」链接直接打开这张列表）。
+  await page.locator('#character-stats .rail-link').click();
+  await expect(page).toHaveURL(/\/calcs$/);
   await expect(page.locator('.granted-badge').first()).toBeVisible({ timeout: 60_000 });
 });

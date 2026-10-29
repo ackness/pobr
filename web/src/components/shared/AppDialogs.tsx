@@ -5,7 +5,6 @@ import { Dialog, DialogTitle, DialogDescription, DialogOverlay, DialogPortal } f
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import type { Lang } from '../../lib/i18n';
-import { useUi } from './UiContext';
 import { DialogRequests, type DialogRequest } from './dialogRequests';
 import './appDialogs.css';
 
@@ -41,11 +40,10 @@ export function useAppDialogs(lang: Lang): {
 }
 
 function RequestDialog({ request, requests }: { request: DialogRequest; requests: DialogRequests }) {
-  const { v2 } = useUi();
   const text = labels[request.lang];
   const [value, setValue] = useState(request.defaultValue);
   const inputId = useId();
-  const style = v2 ? 'app-dialog v2-dialog' : 'app-dialog app-dialog-legacy';
+  const style = 'app-dialog shell-dialog';
   const cancel = () => requests.finish(request, request.kind === 'confirm' ? false : null);
   const restoreFocus = (event: Event) => { event.preventDefault(); if (request.trigger?.isConnected) request.trigger.focus(); };
   if (request.kind === 'confirm') return <AlertDialog open onOpenChange={open => { if (!open) cancel(); }}>

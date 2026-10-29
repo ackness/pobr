@@ -1,11 +1,10 @@
 import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover';
-import { useUi, usePanelActive } from '../shared/UiContext';
+import { usePanelActive } from '../shared/UiContext';
 import { AppButton, AppInput } from '../shared/controls';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { GemCatalogEntry } from '../../api/types';
 import { bindT, type Lang } from '../../lib/i18n';
 import { gemTagLabels, gemTagMatches } from '../../lib/gemTags';
-import { usePopupPosition } from '../../hooks/usePopupPosition';
 import { gemDisplayName } from '../../lib/skillNames';
 export { gemDisplayName } from '../../lib/skillNames';
 
@@ -32,7 +31,6 @@ interface Props {
  */
 export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Props) {
   const tt = bindT(lang);
-  const { v2 } = useUi();
   const active = usePanelActive();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -69,7 +67,6 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
       )
       .slice(0, 200);
   }, [entries, query, colour]);
-  usePopupPosition(rootRef, panelRef, open && !disabled && !v2, filtered, 340);
 
   useEffect(() => setHighlight(0), [query, colour, open]);
   useEffect(() => { if (disabled || !active) setOpen(false); }, [disabled, active]);
@@ -196,7 +193,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
           setOpen(true);
         }}
       />
-      {v2 ? <Popover open={open && !disabled && active} onOpenChange={setOpen}>
+      <Popover open={open && !disabled && active} onOpenChange={setOpen}>
         <PopoverAnchor virtualRef={inputRef} />
         <PopoverContent ref={panelRef} className="gem-picker-popover" align="start"
           onOpenAutoFocus={event => event.preventDefault()}
@@ -204,11 +201,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
           onInteractOutside={event => { if (rootRef.current?.contains(event.target as Node)) event.preventDefault(); }}>
           {panelContents}
         </PopoverContent>
-      </Popover> : open && !disabled && (
-        <div className="gem-picker-panel" ref={panelRef}>
-          {panelContents}
-        </div>
-      )}
+      </Popover>
     </div>
   );
 }

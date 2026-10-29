@@ -46,20 +46,21 @@ function importService(): Plugin {
   return { name: 'wegame-import', configureServer: middleware, configurePreviewServer: middleware };
 }
 
-// Preserve the legacy cascade while allowing the V2 shadcn layers to own controls.
-function legacyStyles(): Plugin {
-  return { name: 'legacy-style-layer', enforce: 'pre', transform(source, id) {
-    if (!id.endsWith('.css') || !id.includes('/src/') || id.includes('/src/v2/')) return;
-    const order = '@layer theme, base, legacy, components, utilities, v2;';
-    if (id.endsWith('/shared/controls.css')) return { code: `${order}\n@layer v2 {\n${source}\n}`, map: null };
+// The feature panels bring their own stylesheets. They sit in a layer below Tailwind's utilities and
+// the app shell's rules (src/app, which declares its own layers), so the shell always wins over them.
+function panelStyles(): Plugin {
+  return { name: 'panel-style-layer', enforce: 'pre', transform(source, id) {
+    if (!id.endsWith('.css') || !id.includes('/src/') || id.includes('/src/app/')) return;
+    const order = '@layer theme, base, panels, components, utilities, app;';
+    if (id.endsWith('/shared/controls.css')) return { code: `${order}\n@layer app {\n${source}\n}`, map: null };
     const imports = source.match(/@import[^;]+;/g) ?? [];
-    return { code: `${order}\n${imports.join('\n')}\n@layer legacy {\n${source.replace(/@import[^;]+;/g, '')}\n}`, map: null };
+    return { code: `${order}\n${imports.join('\n')}\n@layer panels {\n${source.replace(/@import[^;]+;/g, '')}\n}`, map: null };
   } };
 }
 
 export default defineConfig({
   define: { __POBR_APP_VERSION__: JSON.stringify(appVersion) },
-  plugins: [legacyStyles(), react(), tailwindcss(), importService()],
+  plugins: [panelStyles(), react(), tailwindcss(), importService()],
   resolve: { alias: { '@': resolve(process.cwd(), 'src') } },
   test: {
     // e2e/ 归 Playwright；vitest 只跑 src 内单测。

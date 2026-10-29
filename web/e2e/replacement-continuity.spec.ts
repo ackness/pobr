@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openItemsAfterImport, statValue } from './shell';
+import { augmentOption, choose, copyCurrentStage, currentStage, goTo, openCustomModifiers, openOptimizerSettings, openStage, reduceMotion } from './upgradesPage';
 import type { SlotItemInput } from '../src/api/types';
 
 interface FixtureState {
@@ -6,8 +8,6 @@ interface FixtureState {
   [key: string]: unknown;
 }
 
-const nav = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main navigation' })
-  .getByRole('button', { name, exact: true });
 const input = (page: Page) => page.getByRole('textbox', { name: 'Complete item text', exact: true });
 const planner = (page: Page) => page.locator('.equipment-planner');
 const replacement = (page: Page) => page.locator('.replacement-content');
@@ -16,8 +16,8 @@ const cap = (page: Page) => planner(page).getByRole('combobox', { name: 'Maximum
 const calculate = (page: Page) => page.getByRole('button', { name: 'Calculate replacement', exact: true });
 const jointRun = (page: Page) => planner(page).getByRole('button', { name: /^Compare (one-|up to)/ });
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
-const stat = (page: Page, label: string) => page.locator('.stat-row').filter({ hasText: new RegExp(`^${label}`) }).locator('dd');
-const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state as FixtureState);
+const stat = (page: Page, label: string) => statValue(page, new RegExp(`^${label}$`));
+const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state as FixtureState);
 const ring = 'Rarity: RARE\nSynthetic Continuity Ring A\nSapphire Ring\n--------\nRequirements:\nLevel: 60\nDex: 90\n--------\nItem Level: 100\nImplicits: 1\n+30% to Cold Resistance\n--------\n20% increased Fire Damage\n+100 to maximum Life';
 const bow = 'Rarity: RARE\nSynthetic Continuity Bow\nCrude Bow\n--------\nImplicits: 0\nAdds 40 to 80 Physical Damage';
 
@@ -41,16 +41,24 @@ async function syntheticBuild(page: Page, augmented = false) {
     talent_tree: { hashes: [], quest_stats: [] }, jewel_data: '[]',
     skills: [{ baseType: augmented ? 'Ice Shot' : 'Fireball', support: false, properties: [{ type: 5, values: [['16', 0]] }] }],
   } }));
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('textbox', { name: 'Build code', exact: true })
     .fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticReplacementContinuityFixture');
   await page.locator('.import-submit').click();
+  await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await nav(page, 'Upgrades').click();
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
+  await goTo(page, 'Upgrades');
   await expect(input(page)).toBeVisible();
   await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
+}
+
+/** The equipment combinations section stays folded while it has no candidates. */
+async function openEquipmentFold(page: Page) {
+  const fold = page.locator('.equipment-fold');
+  if (!(await fold.evaluate(element => (element as HTMLDetailsElement).open))) await fold.locator(':scope > summary').click();
+  await expect(fold).toHaveJSProperty('open', true);
 }
 
 async function paste(page: Page, text: string) {
@@ -82,11 +90,11 @@ async function completeJoint(page: Page) {
 async function awayAndBack(page: Page) {
   // First lazy visits detect Suspense hide/reveal receipt loss.
   for (const name of ['Skills', 'Calcs', 'Tree']) {
-    await nav(page, name).click();
+    await goTo(page, name);
     await expect(input(page)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Apply (to build|equipment plan)/ })).toHaveCount(0);
   }
-  await nav(page, 'Upgrades').click();
+  await goTo(page, 'Upgrades');
   await expect(input(page)).toBeVisible();
 }
 
@@ -103,10 +111,10 @@ async function assertExactItems(page: Page, before: FixtureState, items: SlotIte
   const bySlot = (a: SlotItemInput, b: SlotItemInput) => a.slot.localeCompare(b.slot);
   await expect.poll(async () => [...(await saved(page)).items].sort(bySlot)).toEqual(
     [...before.items.filter(item => !items.some(next => next.slot === item.slot)), ...items].sort(bySlot));
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   const after = await saved(page);
   expect({ ...after, items: before.items }).toEqual(before);
-  await expect(page.locator('.calc-error')).toHaveCount(0);
+  await expect(page.locator('.shell-alert')).toHaveCount(0);
 }
 
 test('complete text, nondefault ring, full receipt and limits survive Upgrades → Skills/Calcs/Tree and exact raw Apply', async ({ page }) => {
@@ -139,8 +147,8 @@ test('custom prepared augments and exact evaluated Apply survive navigation with
   await settled(page);
   await page.getByRole('button', { name: 'Customize', exact: true }).click();
   await settled(page);
-  await page.getByRole('button', { name: 'Socket 1', exact: true }).click();
-  await page.locator('[role="option"][data-value="Iron Rune"]').click();
+  await page.getByRole('combobox', { name: 'Socket 1', exact: true }).click();
+  await augmentOption(page, 'Iron Rune').click();
   await settled(page);
   await page.getByRole('button', { name: 'Add to combinations', exact: true }).click();
   const prepared = await planner(page).locator('.equipment-candidates pre').textContent();
@@ -153,7 +161,7 @@ test('custom prepared augments and exact evaluated Apply survive navigation with
   await awayAndBack(page);
   await expect(input(page)).toHaveValue(bow);
   await expect(page.getByRole('button', { name: 'Customize', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('button', { name: 'Socket 1', exact: true })).toContainText('Iron Rune');
+  await expect(page.getByRole('combobox', { name: 'Socket 1', exact: true })).toContainText('Iron Rune');
   await expect.poll(() => replacement(page).innerText()).toBe(receipt);
   await page.getByRole('button', { name: /^Apply to build/ }).click();
   await assertExactItems(page, before, [{ slot: 'weapon1', text: prepared! }]);
@@ -169,7 +177,7 @@ test('equipment candidates, nondefault cap and complete joint receipt survive na
   await add(page, ring, 'Ring 1');
   await add(page, ring.replace('Ring A', 'Ring B').replace('+100 to maximum Life', '+150 to maximum Life'), 'Ring 2');
   await add(page, 'Rarity: RARE\nSynthetic Continuity Amulet\nAmber Amulet\nImplicits: 0\n+100 to maximum Life');
-  await cap(page).selectOption('3');
+  await choose(page, cap(page), '3');
   await completeJoint(page);
   const candidates = await planner(page).locator('.equipment-candidates').innerText();
   const prepared = await planner(page).locator('.equipment-candidates > li').evaluateAll(elements => elements.map(element => ({
@@ -183,7 +191,7 @@ test('equipment candidates, nondefault cap and complete joint receipt survive na
   const expectedDps = numeric(await best.locator('[data-plan-stat="TotalDPS"]').innerText());
   const expectedEhp = numeric(await best.locator('[data-plan-stat="TotalEHP"]').innerText());
   await awayAndBack(page);
-  await expect(cap(page)).toHaveValue('3');
+  await expect(cap(page)).toHaveText('3');
   await expect.poll(() => planner(page).locator('.equipment-candidates').innerText()).toBe(candidates);
   await expect.poll(() => jointResults(page).innerText()).toBe(receipt);
   await expect.poll(() => replacement(page).innerText()).toBe(comparison);
@@ -202,29 +210,32 @@ for (const [edit, maximum] of [['build', 2], ['goal', 1], ['goal', 2], ['goal', 
   test(`hidden ${edit} edits invalidate replacement and completed cap-${maximum} equipment receipts without automatic recalculation`, async ({ page }) => {
     await syntheticBuild(page);
     await add(page, ring, 'Ring 1');
-    await cap(page).selectOption(String(maximum));
+    await choose(page, cap(page), String(maximum));
     await completeJoint(page);
     const candidates = await planner(page).locator('.equipment-candidates').innerText();
     const before = await saved(page);
     if (edit === 'build') {
-      await nav(page, 'Config').click();
+      await goTo(page, 'Config');
+      await openCustomModifiers(page);
       await page.locator('.config-modifier-add').click();
       const block = page.locator('.config-modifier-block').last();
       await block.locator('.config-extra-mods').fill('100% increased Fire Damage');
       await block.locator('.config-modifier-title input').click();
-      await expect(page.locator('.topbar-busy')).toHaveCount(0);
+      await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
     } else {
-      await nav(page, 'Skills').click();
+      await goTo(page, 'Skills');
       const group = page.locator('.skill-group').first();
       await group.locator('.skill-group-title').click();
-      await group.locator('.gem-optimizer-toggle').click();
-      await page.getByRole('button', { name: 'Objective', exact: true }).click();
+      const toggle = group.locator('.gem-optimizer-toggle');
+      if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
+      await openOptimizerSettings(group);
+      await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
       await page.getByRole('option', { name: 'Max Life', exact: true }).click();
     }
-    await nav(page, 'Upgrades').click();
+    await goTo(page, 'Upgrades');
     await noReceipts(page);
     await expect(input(page)).toHaveValue(ring);
-    await expect(cap(page)).toHaveValue(String(maximum));
+    await expect(cap(page)).toHaveText(String(maximum));
     await expect.poll(() => planner(page).locator('.equipment-candidates').innerText()).toBe(candidates);
     expect((await saved(page)).items).toEqual(before.items);
     await awayAndBack(page);
@@ -239,42 +250,40 @@ test('identical copied stages reset text, candidates, replacement caps and recei
   await syntheticBuild(page);
   const before = await saved(page);
   await add(page, ring, 'Ring 1');
-  await cap(page).selectOption('3');
+  await choose(page, cap(page), '3');
   await completeJoint(page);
-  await nav(page, 'Build').click();
-  const originalStage = await page.locator('.workspace-current-stage').innerText();
-  await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Synthetic replacement copy');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await nav(page, 'Upgrades').click();
+  const originalStage = (await currentStage(page).innerText()).trim();
+  await copyCurrentStage(page, 'Synthetic replacement copy');
+  await goTo(page, 'Upgrades');
   await expect(input(page)).toHaveValue('');
+  await openEquipmentFold(page);
   await expect(planner(page).locator('.equipment-candidates > li')).toHaveCount(0);
-  await expect(cap(page)).toHaveValue('2');
+  await expect(cap(page)).toHaveText('2');
   await expect(replacement(page)).toHaveCount(0);
   await expect(jointResults(page)).toHaveCount(0);
   expect((await saved(page)).items).toEqual(before.items);
   await add(page, ring.replace('Ring A', 'Copied Stage Ring'), 'Ring 2');
   await completeJoint(page);
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: originalStage });
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await openStage(page, originalStage);
   await expect(input(page)).toHaveValue('');
+  await openEquipmentFold(page);
   await expect(planner(page).locator('.equipment-candidates > li')).toHaveCount(0);
-  await expect(cap(page)).toHaveValue('2');
+  await expect(cap(page)).toHaveText('2');
   await expect(replacement(page)).toHaveCount(0);
   await expect(jointResults(page)).toHaveCount(0);
   expect((await saved(page)).items).toEqual(before.items);
 });
 
 test('leaving cancels pending paste debounce and returning never calculates without a new action', async ({ page }) => {
+  await reduceMotion(page); // the clock is frozen below
   await syntheticBuild(page);
   const before = await saved(page);
   await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
   await page.clock.pauseAt(new Date('2026-01-01T00:00:01Z'));
   await paste(page, ring);
-  await nav(page, 'Calcs').click({ force: true });
+  await goTo(page, 'Calcs', { force: true });
   await page.clock.runFor(1000);
-  await nav(page, 'Upgrades').click({ force: true });
+  await goTo(page, 'Upgrades', { force: true });
   await page.clock.runFor(1000);
   await expect(input(page)).toHaveValue(ring);
   await noReceipts(page);
@@ -326,11 +335,11 @@ for (const work of ['replacement', 'joint'] as const) {
     await start.click();
     await expect.poll(() => page.evaluate(() =>
       (window as Window & { replacementReleases: (() => void)[] }).replacementReleases.length)).toBe(1);
-    await nav(page, 'Calcs').click();
+    await goTo(page, 'Calcs');
     await releaseContinuation(page, 0);
     await expect(input(page)).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Cancel comparison', exact: true })).toHaveCount(0);
-    await nav(page, 'Upgrades').click();
+    await goTo(page, 'Upgrades');
     await expect(start).toBeEnabled();
     await expect(jointResults(page)).toHaveCount(0);
     if (work === 'replacement') await expect(replacement(page)).toHaveCount(0);
@@ -354,8 +363,8 @@ for (const work of ['replacement', 'joint'] as const) {
     await start.click();
     await expect.poll(() => page.evaluate(() =>
       (window as Window & { replacementReleases: (() => void)[] }).replacementReleases.length)).toBe(1);
-    await nav(page, 'Calcs').click();
-    await nav(page, 'Upgrades').click();
+    await goTo(page, 'Calcs');
+    await goTo(page, 'Upgrades');
     await expect(jointResults(page)).toHaveCount(0);
     if (work === 'replacement') await expect(replacement(page)).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Cancel comparison', exact: true })).toHaveCount(0);

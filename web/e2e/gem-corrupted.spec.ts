@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { deflateSync, inflateSync } from 'node:zlib';
+import { pageLink } from './shell';
+import { headlineDps, importBuild, settledNumber, shareCode } from './skillsAndCalcs';
 
 // The ring's only modifier names corrupted gems, so the gem's corrupted state
 // alone decides whether the skill gains a level.
@@ -21,19 +23,14 @@ Implicits: 0
 </PathOfBuilding2>`;
 
 test('a gem can be marked corrupted on Skills, which decides modifiers to corrupted gems and survives saving and sharing', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
-  await page.getByRole('button', { name: 'Build', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(deflateSync(source).toString('base64url'));
-  await page.locator('.import-submit').click();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await importBuild(page, deflateSync(source).toString('base64url'));
 
-  const dps = page.locator('.main-skill-section .stat-row dd').first();
+  const dps = headlineDps(page);
   const number = async () => Number((await dps.innerText()).replaceAll(',', ''));
   await expect.poll(number).toBeGreaterThan(0);
-  const plain = await number();
+  const plain = await settledNumber(number);
 
-  await page.getByRole('button', { name: 'Skills', exact: true }).click();
+  await pageLink(page, 'Skills').click();
   const group = page.locator('.skill-group').first();
   await group.locator('.skill-group-title').click();
   const corrupted = group.locator('.skill-gem').first().getByRole('checkbox', { name: 'Corrupted', exact: true });
@@ -41,23 +38,21 @@ test('a gem can be marked corrupted on Skills, which decides modifiers to corrup
 
   await corrupted.check();
   await expect.poll(number).toBeGreaterThan(plain);
-  const raised = await number();
+  const raised = await settledNumber(number);
   await expect.poll(async () => page.evaluate(() =>
-    JSON.parse(localStorage.getItem('pobr-build-state')!).state.socketGroups[0].gems[0].corrupted)).toBe(true);
+    JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state.socketGroups[0].gems[0].corrupted)).toBe(true);
 
   await page.reload();
   await expect(dps).toBeVisible({ timeout: 90_000 });
   await expect.poll(number).toBe(raised);
-  await page.getByRole('button', { name: 'Build', exact: true }).click();
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
-  const code = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
+  const code = await shareCode(page);
   expect(inflateSync(Buffer.from(code, 'base64url')).toString('utf8')).toMatch(/<Gem\b[^>]*corrupted="true"/);
 
-  await page.getByRole('button', { name: 'Skills', exact: true }).click();
+  await pageLink(page, 'Skills').click();
   await group.locator('.skill-group-title').click();
   await expect(corrupted).toBeChecked();
   await corrupted.uncheck();
   await expect.poll(number).toBe(plain);
   await expect.poll(async () => page.evaluate(() =>
-    'corrupted' in JSON.parse(localStorage.getItem('pobr-build-state')!).state.socketGroups[0].gems[0])).toBe(false);
+    'corrupted' in JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state.socketGroups[0].gems[0])).toBe(false);
 });

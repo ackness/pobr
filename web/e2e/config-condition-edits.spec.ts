@@ -2,6 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
 import type { ConfigInputValue, PassiveNode } from '../src/api/types';
+import { booted, control, copyCurrentStage, currentStageName, go, hitDps, idle, importCode, noMotion, openSetting, openStage, row, savedState, setLanguage, shareCode } from './configPage';
+
+test.use(noMotion);
 
 const cases = [
   ['usePowerCharges', 'Fireball', 'Power'],
@@ -20,12 +23,8 @@ const version = readFileSync('../data/CURRENT', 'utf8').trim();
 const nodes: PassiveNode[] = JSON.parse(readFileSync(`../data/${version}/base/passive_tree.json`, 'utf8'));
 const treeCatalog = JSON.parse(readFileSync(`../data/${version}/overlay/passive_jewels.json`, 'utf8'));
 const root = nodes.find(node => node.id === treeCatalog.class_starts.witch)!.skill;
-const nav = (page: Page, name: string) => page.getByRole('navigation').getByRole('button', { name, exact: true });
-const control = (page: Page, key: string) => page.locator(`[id=${JSON.stringify(`config-${key}`)}]`);
-const row = (page: Page, key: string) => page.locator('.config-item').filter({ has: control(page, key) });
-const hitDps = (page: Page) => page.locator('.main-skill-section .stat-row dd').first();
 const number = (text: string) => Number(text.replaceAll(',', ''));
-const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state);
+const saved = savedState;
 const inputs = async (page: Page): Promise<Record<string, ConfigInputValue>> => (await saved(page)).params.config_inputs;
 
 // Synthetic XML is explicitly fixture input. Imported skills, parser, Config,
@@ -39,6 +38,10 @@ function syntheticCode(key: string, enabled: boolean | undefined, skill = 'Fireb
     const escaped = String(value).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;');
     return `<Input name="${name}" ${type}="${escaped}"/>`;
   }).join('');
+  // A configured exposure only counts for a character that can apply it, which an exposure source on the
+  // gear provides; without one the control is not offered and the setting has no effect.
+  const exposure = key.endsWith('Exposure')
+    ? '\nInflict Elemental Exposure on Hit, lowering total Elemental Resistances by 5%' : '';
   return deflateSync(`<PathOfBuilding2>
     <Build level="85" className="Witch" ascendClassName="None" mainSocketGroup="1"/>
     <Tree activeSpec="1"><Spec nodes="${root}" treeVersion="0_5"/></Tree>
@@ -51,36 +54,15 @@ Sapphire Ring
 Implicits: 0
 40% increased Fire Damage
 +80 to maximum Life
-${charge ? `8% increased Damage per ${charge} Charge` : ''}</Item><ItemSet id="1"><Slot name="Ring 1" itemId="1"/></ItemSet></Items>
+${charge ? `8% increased Damage per ${charge} Charge` : ''}${exposure}</Item><ItemSet id="1"><Slot name="Ring 1" itemId="1"/></ItemSet></Items>
     <Config>${xmlInputs}</Config>
   </PathOfBuilding2>`).toString('base64url');
 }
 
 async function ready(page: Page) {
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
-}
-
-async function idle(page: Page) {
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await expect(page.locator('.calc-error')).toHaveCount(0);
-}
-
-async function importCode(page: Page, code: string, destination: 'newBuild' | 'currentStage' = 'newBuild') {
-  await nav(page, 'Build').click();
-  await page.getByRole('combobox', { name: 'Import into', exact: true }).selectOption(destination);
-  if (destination === 'currentStage') page.once('dialog', dialog => dialog.accept());
-  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
-  await page.locator('.import-submit').click();
-  await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
-  await idle(page);
-}
-
-async function openSetting(page: Page, key: string, configName = 'Config') {
-  await nav(page, configName).click();
-  await page.locator('.config-search').fill(key);
-  await expect(control(page, key)).toBeVisible();
-  await expect(control(page, key)).toBeEnabled();
+  await booted(page);
 }
 
 async function edit(page: Page, key: string, enabled: boolean) {
@@ -94,12 +76,6 @@ async function reset(page: Page, key: string) {
   await row(page, key).locator('.config-reset').click();
   await expect(row(page, key).locator('.config-reset')).toHaveCount(0);
   await idle(page);
-}
-
-async function shareCode(page: Page) {
-  await nav(page, 'Build').click();
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
-  return page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
 }
 
 async function exportedInputs(page: Page, code: string) {
@@ -171,25 +147,21 @@ for (const [key, skill, charge] of cases) {
 test('opposite charge and exposure stages retain their own edited/reset/imported assumptions', async ({ page }) => {
   await ready(page);
   await importCode(page, syntheticCode('conditionEnemyFireExposure', true));
-  await nav(page, 'Build').click();
-  const originalStage = await page.locator('.workspace-current-stage').innerText();
+  const originalStage = await currentStageName(page);
   const original = await saved(page);
   const onDps = await hitDps(page).innerText();
-  await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Synthetic condition edit stage');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  const editedStage = await page.getByRole('combobox', { name: 'Stage', exact: true })
-    .locator('option:checked').innerText();
+  await copyCurrentStage(page, 'Synthetic condition edit stage');
+  const editedStage = await currentStageName(page);
   await edit(page, 'conditionEnemyFireExposure', false);
   await edit(page, 'usePowerCharges', true);
   const offDps = await hitDps(page).innerText();
   const edited = await saved(page);
   expect(number(offDps)).toBeLessThan(number(onDps));
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: originalStage });
+  await openStage(page, originalStage);
   await idle(page);
   await expect(hitDps(page)).toHaveText(onDps);
   expect(await saved(page)).toEqual(original);
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: editedStage });
+  await openStage(page, editedStage);
   await idle(page);
   await expect(hitDps(page)).toHaveText(offDps);
   expect(await saved(page)).toEqual(edited);
@@ -210,15 +182,20 @@ const apply = (page: Page, planner: Planner) => planner === 'support'
   : page.getByRole('button', { name: planner === 'passive' ? 'Apply plan' : /^Apply to build/, exact: planner === 'passive' });
 
 async function complete(page: Page, planner: Planner, first: boolean) {
-  await nav(page, plannerPage(planner)).click();
+  await go(page, plannerPage(planner));
   if (planner === 'support') {
     if (first) {
       const group = page.locator('.skill-group').first();
-      await group.locator('.skill-group-title').click();
-      await group.locator('.gem-optimizer-toggle').click();
+      const title = group.locator('.skill-group-title');
+      if (await title.getAttribute('aria-expanded') === 'false') await title.click();
+      const toggle = group.locator('.gem-optimizer-toggle');
+      if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
+      // Goal, capacity and candidate settings are folded away until asked for.
+      const settings = group.locator('.gem-optimizer-settings');
+      if (!(await settings.evaluate(element => (element as HTMLDetailsElement).open))) await settings.locator(':scope > summary').click();
       await page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true }).fill('2');
       await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();
-      await page.getByRole('button', { name: 'Objective', exact: true }).click();
+      await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
       await page.getByRole('option', { name: 'Max total DPS', exact: true }).click();
     }
     await page.getByRole('button', { name: 'Calculate support combinations', exact: true }).click();
@@ -226,11 +203,12 @@ async function complete(page: Page, planner: Planner, first: boolean) {
     await expect(page.getByRole('button', { name: 'Calculate support combinations', exact: true })).toBeEnabled();
   } else if (planner === 'passive') {
     if (first) {
-      await page.getByRole('button', { name: 'Plan passive upgrades', exact: true }).click();
-      await page.getByRole('button', { name: 'Objective', exact: true }).click();
+      const planToggle = page.getByRole('button', { name: 'Plan passive upgrades', exact: true });
+      if (await planToggle.getAttribute('aria-expanded') === 'false') await planToggle.click();
+      await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
       await page.getByRole('option', { name: 'Max Life', exact: true }).click();
       await page.getByRole('spinbutton', { name: 'Point budget', exact: true }).fill('3');
-      await page.getByRole('button', { name: 'New travel attributes', exact: true }).click();
+      await page.getByRole('combobox', { name: 'New travel attributes', exact: true }).click();
       await page.getByRole('option', { name: 'Strength', exact: true }).click();
     }
     await page.getByRole('button', { name: 'Find upgrade routes', exact: true }).click();
@@ -261,12 +239,12 @@ for (const planner of ['support', 'passive', 'replacement'] as const) {
       await control(page, key).focus();
       await control(page, key).press('Tab');
       expect(await saved(page)).toEqual(original);
-      await nav(page, plannerPage(planner)).click();
+      await go(page, plannerPage(planner));
       await expect(results(page, planner)).toHaveText(receipt, { useInnerText: true });
       await expect(apply(page, planner).first()).toBeEnabled();
       await edit(page, key, false);
       await expect.poll(async () => number(await hitDps(page).innerText())).toBeLessThan(number(baseline));
-      await nav(page, plannerPage(planner)).click();
+      await go(page, plannerPage(planner));
       await expect(results(page, planner)).toHaveCount(0);
       await expect(apply(page, planner)).toHaveCount(0);
       await complete(page, planner, false);
@@ -274,19 +252,16 @@ for (const planner of ['support', 'passive', 'replacement'] as const) {
       await reset(page, key);
       await expect(hitDps(page)).toHaveText(baseline);
       expect(await saved(page)).toEqual(original);
-      await nav(page, plannerPage(planner)).click();
+      await go(page, plannerPage(planner));
       await expect(results(page, planner)).toHaveCount(0);
       await expect(apply(page, planner)).toHaveCount(0);
       await complete(page, planner, false);
-      await nav(page, 'Build').click();
-      const originalStage = await page.locator('.workspace-current-stage').innerText();
-      await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
-      await page.getByRole('textbox', { name: 'Name', exact: true }).fill(`Synthetic ${planner} condition stage`);
-      await page.getByRole('button', { name: 'Save', exact: true }).click();
-      await nav(page, plannerPage(planner)).click();
+      const originalStage = await currentStageName(page);
+      await copyCurrentStage(page, `Synthetic ${planner} condition stage`);
+      await go(page, plannerPage(planner));
       await expect(results(page, planner)).toHaveCount(0);
       await expect(apply(page, planner)).toHaveCount(0);
-      await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: originalStage });
+      await openStage(page, originalStage);
       await idle(page);
       await expect(results(page, planner)).toHaveCount(0);
       await expect(apply(page, planner)).toHaveCount(0);
@@ -303,10 +278,7 @@ for (const width of [390, 1440]) {
       await importCode(page, syntheticCode('conditionEnemyFireExposure', true));
       const original = await saved(page);
       const baseline = await hitDps(page).innerText();
-      for (let index = 0; index < ['en-US', 'zh-TW', 'zh-CN'].indexOf(lang); index++) {
-        await page.getByRole('button', { name: 'Switch language', exact: true }).click();
-      }
-      await expect.poll(() => page.evaluate(() => localStorage.getItem('pobr-lang') ?? 'en-US')).toBe(lang);
+      await setLanguage(page, lang);
       await openSetting(page, 'conditionEnemyFireExposure', configName);
       const checkbox = control(page, 'conditionEnemyFireExposure');
       const label = await checkbox.getAttribute('aria-label');

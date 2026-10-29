@@ -29,7 +29,6 @@ import { NoteEditor } from '../shared/NoteEditor';
 import { AppSelect, type AppSelectOption } from '../shared/AppSelect';
 import { ItemOptimizer } from './ItemOptimizer';
 import { PaperDoll } from './PaperDoll';
-import { useUi } from '../shared/UiContext';
 import { usePreview } from '../shared/PreviewContext';
 import './items.css';
 
@@ -132,7 +131,7 @@ function ItemRow({
   text: string;
   name: string;
   lang: Lang;
-  /** Preview handlers (v2 only); event props add no attributes to the markup. */
+  /** Preview handlers; event props add no attributes to the markup. */
   hover?: { onEnter: () => void; onLeave: () => void };
   slotTag?: string;
   open: boolean;
@@ -185,7 +184,6 @@ const itemDraftKey = (slot: string, weaponSet: number) =>
 
 /** 装备页：PoB2 式人形槽位布局；点槽位在下方编辑 PoB 文本，保存即重算。 */
 export function ItemsPanel({ session, lang, onUpgrade }: Props) {
-  const { v2 } = useUi();
   // Slots pulse when their item changes after the page is up, never on the first render.
   const shown = useRef(false);
   useEffect(() => { shown.current = true; }, []);
@@ -422,22 +420,20 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
         aria-pressed={selected === slot}
         aria-label={label}
       >
-        {v2 && shown.current && text && <span key={text} className="doll-pulse" aria-hidden="true" />}
+        {shown.current && text && <span key={text} className="doll-pulse" aria-hidden="true" />}
         <span className="doll-symbol"><SlotSymbol slot={slot} /></span>
         <span className="doll-slot-label">
           {slotLabel(lang, slot)}
           {hasNote(slot) && <span className="note-dot" aria-hidden />}
           {session.editorDrafts[itemDraftKey(slot, session.activeWeaponSet)] !== undefined && <span className="ui-badge">{tt('editor.draft')}</span>}
         </span>
-        {name ? (v2 ? (
+        {name ? (
           // The name joins a rare or unique item's own name and its base with a dot; the figure shows them on two lines.
           <>
             <span className="doll-item-name item-name">{name.split('·')[0]}</span>
             {name.includes('·') && <span className="doll-item-base">{name.split('·').slice(1).join(' · ')}</span>}
           </>
         ) : (
-          <span className="doll-item-name item-name">{name}</span>
-        )) : (
           <span className="doll-empty">{tt('items.empty')}</span>
         )}
       </AppButton>
@@ -456,28 +452,9 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
       {uniques && <UniqueCatalog session={session} lang={lang} />}
       {crafting && <ItemCrafter session={session} lang={lang} />}
       <div className="items-workspace">
-      <article className={v2 ? 'items-equipped items-doll' : 'ui-card items-equipped'}>
-      {v2 ? (
-        <PaperDoll slot={(id) => slotButton(id, isUtilitySlot(id) ? id : undefined)} utilitySlots={UTILITY_SLOTS} limbSlots={LIMB_SLOTS}
-          limbsInUse={session.limbs.length > 0} labels={{ body: tt('items.title'), utility: tt('items.flasks'), limbs: tt('items.limbs') }} />
-      ) : (
-      <>
-      <h3 className="section-heading">{tt('ui.equipped')}</h3>
-      <div className="paper-doll" role="group" aria-label={tt('items.title')}>
-        {DOLL_SLOTS.map((slot) => slotButton(slot))}
-      </div>
-
-      <h3 className="section-heading utility-heading">{tt('items.flasks')}</h3>
-      <div className="utility-row" role="group" aria-label={tt('items.flasks')}>
-        {UTILITY_SLOTS.map((slot) => slotButton(slot, slot))}
-      </div>
-
-      <h3 className="section-heading utility-heading">{tt('items.limbs')}</h3>
-      <div className="utility-row limb-row" role="group" aria-label={tt('items.limbs')}>
-        {LIMB_SLOTS.map((slot) => slotButton(slot))}
-      </div>
-      </>
-      )}
+      <article className="items-equipped items-doll">
+      <PaperDoll slot={(id) => slotButton(id, isUtilitySlot(id) ? id : undefined)} utilitySlots={UTILITY_SLOTS} limbSlots={LIMB_SLOTS}
+        limbsInUse={session.limbs.length > 0} labels={{ body: tt('items.title'), utility: tt('items.flasks'), limbs: tt('items.limbs') }} />
       </article>
       <div className="items-collection">
       {selected && (
