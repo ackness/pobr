@@ -39,10 +39,9 @@ test('every catalog control and list choice can be changed, recalculated and res
     for (const control of controls) {
       expect(control.id).toBe(`config-${control.key}`);
       visitedKeys.push(control.key);
-      // A setting the calculation finds relevant moves up into the "Relevant to this BD" group while it is set,
-      // so the row is found on the page, not inside the group it started in.
-      const input = page.locator(`[id=${JSON.stringify(control.id)}]`);
-      const row = page.locator('.config-item').filter({ has: input });
+      // Setting a control does not move its row to another group, which would take it out of reach when that group is folded.
+      const input = section.locator(`[id=${JSON.stringify(control.id)}]`);
+      const row = section.locator('.config-item').filter({ has: page.locator(`[id=${JSON.stringify(control.id)}]`) });
       const savedValue = () => page.evaluate(key => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state.params.config_inputs[key], control.key);
       const values: (string | boolean | number)[] = control.type === 'checkbox' ? [!control.checked]
         : control.type === 'select-one' ? [...new Set(control.choices)]
@@ -71,9 +70,7 @@ test('every catalog control and list choice can be changed, recalculated and res
       await expect.poll(savedValue, `${control.key} reset`).toBeUndefined();
     }
     summary.push({ section: (await header.innerText()).replaceAll('\n', ' '), controls: controls.length, choices });
-    // Fold the group again, except the relevant one: a setting that turns relevant would otherwise move into a
-    // folded group and out of reach.
-    if (await section.getAttribute('id') !== 'config-section-Relevant-to-this-build') await header.click();
+    await header.click();
   }
   expect(visitedKeys.sort()).toEqual(expectedKeys);
   console.log('Config interaction coverage:', JSON.stringify(summary));

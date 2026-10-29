@@ -133,3 +133,26 @@ test('read tracking is requested only while Config is open, including edits and 
   await expect.poll(requests).toContainEqual({ configContext: true, level: 23 });
   expect((await requests()).every(request => request.configContext)).toBe(true);
 });
+
+test('an option that depends on the one just set appears in its own group, not in "Relevant to this BD"', async ({ page }) => {
+  await page.goto('/build');
+  await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
+  await importCode(page, code());
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await go(page, 'Config');
+  await page.locator('.config-view').getByRole('button', { name: 'Show all options', exact: true }).click();
+  const dependent = page.locator('#config-section-When-In-Combat .config-item[data-config-var="conditionChilledEffect"]');
+  const promoted = page.locator('#config-section-Relevant-to-this-build .config-item[data-config-var="conditionChilledEffect"]');
+  await expect(dependent).toBeVisible();
+  // `conditionChilledEffect` is only meant once `conditionChilled` is set. Setting it must not move the dependent
+  // to the top of the page: it stays in its own group, next to the control just changed.
+  await page.locator('#config-conditionChilled').setChecked(true);
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
+  await expect(dependent).toBeVisible();
+  await expect(promoted).toHaveCount(0);
+  // So folding the leading group does not take it out of reach either.
+  const relevant = page.locator('#config-section-Relevant-to-this-build .config-section-header');
+  await relevant.click();
+  await expect(relevant).toHaveAttribute('aria-expanded', 'false');
+  await expect(dependent).toBeVisible();
+});

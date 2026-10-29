@@ -3,6 +3,7 @@ import { PartyEditor } from './PartyEditor';
 import { NamedSets } from '../shared/NamedSets';
 import { PageHeader } from '../shared/PageHeader';
 import { useEffect, useMemo, useState } from 'react';
+import { usePanelActive } from '../shared/UiContext';
 import { getBackend } from '../../api/backend';
 import type { ConfigInputValue, ConfigOption, CustomModifierBlock } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
@@ -15,7 +16,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { workflowLabel } from './workflowLabels';
 import { RawConfigValue } from './RawConfigValue';
 import { ScenarioBar } from '../../app/pages/config/ScenarioBar';
-import { partitionRelevant } from '../../app/pages/config/scenario';
+import { confirmedByBuild, partitionRelevant } from '../../app/pages/config/scenario';
 import { words } from '../../app/text';
 import './config.css';
 import '../../app/config-workflow.css';
@@ -217,6 +218,13 @@ export function ConfigPanel({ session, lang }: Props) {
   const [configuredOnly, setConfiguredOnly] = useState(false);
   const [allOptions, setAllOptions] = useState(false);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(DEFAULT_OPEN_SECTIONS));
+  // Where each option the reader changed sat (in the leading group or not) when they changed it. Which group an
+  // option belongs to is read from the calculation, which can start to read the very option just set; its row stays
+  // put until the page or the stage is left, instead of moving to the top, or into a folded group, under the pointer.
+  const [placed, setPlaced] = useState<Record<string, boolean>>({});
+  const active = usePanelActive();
+  const stage = session.workspace?.builds.find(build => build.id === session.workspace?.activeBuild)?.activeStage;
+  useEffect(() => { setPlaced(current => Object.keys(current).length ? {} : current); }, [active, stage, session.workspace?.activeBuild]);
   // 词条文本型 list 选项（如任务奖励 "+5 to all Attributes"）的反查翻译缓存。
   const [listLabels, setListLabels] = useState<Record<string, string>>({});
 
@@ -317,14 +325,15 @@ export function ConfigPanel({ session, lang }: Props) {
   // The options the calculation has confirmed for this build form their own leading group, and
   // appear nowhere else, so every control (and its #config-<var> id) is still on the page once.
   const groups = useMemo(() => {
-    const { relevant, rest } = partitionRelevant(sections.flatMap(section => section.options),
-      option => configApplicability(option, context, visibilityInputs));
+    const { relevant, rest } = partitionRelevant(sections.flatMap(section => section.options), confirmedByBuild(context, placed));
     if (relevant.length === 0) return sections;
     const kept = new Set(rest.map(option => option.var));
     return [{ name: RELEVANT_SECTION, options: relevant },
       ...sections.map(section => ({ ...section, options: section.options.filter(option => kept.has(option.var)) }))
         .filter(section => section.options.length > 0)];
-  }, [sections, context, visibilityInputs]);
+  }, [sections, context, placed]);
+  const settle = (variable: string) => setPlaced(current => variable in current ? current
+    : { ...current, [variable]: !!groups.find(group => group.name === RELEVANT_SECTION)?.options.some(option => option.var === variable) });
   const groupTitle = (name: string) => name === RELEVANT_SECTION
     ? words(lang, 'Relevant to this BD', '与此 BD 相关', '與此 BD 相關') : configSectionLabel(lang, name);
 
@@ -501,8 +510,8 @@ export function ConfigPanel({ session, lang }: Props) {
                     lang={lang}
                     listLabels={listLabels}
                     applicability={configApplicability(option, context, visibilityInputs)}
-                    onChange={(value) => session.setConfigInput(option.var, value)}
-                    onReset={() => resetInput(option.var)}
+                    onChange={(value) => { settle(option.var); session.setConfigInput(option.var, value); }}
+                    onReset={() => { settle(option.var); resetInput(option.var); }}
                   />
                 ))}
               </div>
