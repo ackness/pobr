@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 // Pages serves the static files itself (the worker only gets the routes in _routes.json), so what a
@@ -47,4 +47,39 @@ test('static files never reach the worker, which is why their headers live in _h
     assert.equal(routed(path), false, `${path} would be served by the worker, not by the host's headers`);
   }
   assert.equal(routed('/api/trade/search'), true);
+});
+
+// A path that names no file is answered with the nearest `404.html` up the path, with a 404 status that
+// the host never lets be kept; only when there is none up to the root is it answered with the app shell
+// and a 200, which is what client routes like /v2/build rely on. Without a page of its own, a missing
+// file under a path `_headers` keeps for good would be answered with the shell and kept for good.
+const notFoundPage = (path, pages) => {
+  for (let dir = path; dir;) {
+    dir = dir.slice(0, dir.lastIndexOf('/'));
+    if (pages.includes(`${dir}/404.html`)) return `${dir}/404.html`;
+  }
+  return null;
+};
+// The pages the build ships: this one is a file of the repo, the one under /data/h/ is written by scripts/sync-data.mjs.
+const pages = ['/assets/404.html', '/data/h/404.html'];
+
+test('a missing file under a path that is kept for good gets a 404 page, not the app shell', () => {
+  assert.equal(existsSync(new URL('../public/assets/404.html', import.meta.url)), true);
+  assert.doesNotMatch(read('assets/404.html'), /<script|<link|src=/i);
+  assert.equal(notFoundPage('/assets/entry-Missing1.js', pages), '/assets/404.html');
+  assert.equal(notFoundPage('/assets/nested/chunk-Missing1.js', pages), '/assets/404.html');
+  assert.equal(notFoundPage(`/data/h/${'b'.repeat(16)}/base/mods.json`, pages), '/data/h/404.html');
+  // Every kept-for-good rule has one, so that no path it matches can be answered with the shell.
+  for (const rule of rules().filter((entry) => /\bimmutable\b/.test(entry.headers['cache-control'] ?? ''))) {
+    assert.notEqual(notFoundPage(`${rule.pattern.slice(0, -1)}missing-file.js`, pages), null, rule.pattern);
+  }
+});
+
+test('client routes still fall back to the app shell, so no 404 page may sit above them', () => {
+  for (const path of ['/', '/v2/build', '/v2/tree', '/v2/calcs', '/some/unknown/route', '/data/manifest.json']) {
+    assert.equal(notFoundPage(path, pages), null, path);
+  }
+  // A 404.html at the top, or one in a directory a route lives in, would turn every such route into a 404.
+  assert.equal(existsSync(new URL('../public/404.html', import.meta.url)), false);
+  assert.equal(existsSync(new URL('../public/v2/404.html', import.meta.url)), false);
 });
