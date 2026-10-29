@@ -333,7 +333,6 @@
 .doll-item-name { align-self: start; line-height: 1.6; margin: 0; font-size: var(--text-sm); }
 .doll-slot.is-selected { background: color-mix(in srgb, var(--accent-gold) 8%, var(--surface-card)); box-shadow: none; }
 .doll-slot.is-selected .doll-symbol { color: var(--accent-gold); }
-.utility-heading { border-top: 1px solid var(--border-subtle); padding-top: var(--space-6); margin-top: var(--space-6); }
 .utility-row .doll-slot { grid-template-columns: minmax(0, 1fr); gap: var(--space-1); min-height: 88px; }
 .utility-row .doll-symbol { display: none; }
 .item-detail-header { flex-wrap: wrap; gap: var(--space-2); padding-bottom: var(--space-3); border-bottom: 1px solid var(--border-subtle); }

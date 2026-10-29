@@ -3,30 +3,28 @@ import { PartyEditor } from './PartyEditor';
 import { NamedSets } from '../shared/NamedSets';
 import { PageHeader } from '../shared/PageHeader';
 import { useEffect, useMemo, useState } from 'react';
+import { usePanelActive } from '../shared/UiContext';
 import { getBackend } from '../../api/backend';
-import type { ConfigInputValue, ConfigOption, CustomModifierBlock, EnemyTier } from '../../api/types';
+import type { ConfigInputValue, ConfigOption, CustomModifierBlock } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useSkillName } from '../../hooks/useSkillName';
-import { bindT, configSectionLabel, damageTypeLabel, enemyTierLabel, t, type Lang } from '../../lib/i18n';
+import { bindT, configSectionLabel, damageTypeLabel, t, type Lang } from '../../lib/i18n';
 import { CONFIG_LABEL_ZH, configLabel, configListOptionLabel, configTooltip } from '../../lib/configLabels';
 import { configDefaultValue } from '../../lib/configDefaults';
 import { configApplicability, configExistsInGame, configVisibilityInputs, showConfigOption, type Applicability } from '../../lib/configVisibility';
-import { useUi } from '../shared/UiContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { workflowLabel } from './workflowLabels';
 import { RawConfigValue } from './RawConfigValue';
-import { ScenarioBar } from '../../v2/pages/config/ScenarioBar';
-import { partitionRelevant } from '../../v2/pages/config/scenario';
-import { words } from '../../v2/text';
+import { ScenarioBar } from '../../app/pages/config/ScenarioBar';
+import { confirmedByBuild, partitionRelevant } from '../../app/pages/config/scenario';
+import { words } from '../../app/text';
 import './config.css';
-import '../../v2/config-workflow.css';
+import '../../app/config-workflow.css';
 
 interface Props {
   session: BuildSession;
   lang: Lang;
 }
-
-const ENEMY_TIERS: EnemyTier[] = ['none', 'boss', 'pinnacle', 'uber'];
 
 // How `unsupported_modifiers` marks a line of the configuration (a custom
 // modifier or a quest reward) the calculation could not apply.
@@ -63,10 +61,10 @@ const SECTION_ORDER = [
   'Enemy Stats',
 ];
 
-/** V2 only: the options the calculation has confirmed matter to this build, listed before the rest. */
+/** The options the calculation has confirmed matter to this build, listed before the rest. */
 const RELEVANT_SECTION = 'Relevant to this build';
-/** V2 opens every group but quest rewards, which an import has already settled. */
-const V2_OPEN_SECTIONS = [RELEVANT_SECTION, 'General', 'Skill Options', 'When In Combat', 'For Effective DPS', 'Enemy Stats'];
+/** Every group opens but quest rewards, which an import has already settled. */
+const DEFAULT_OPEN_SECTIONS = [RELEVANT_SECTION, 'General', 'Skill Options', 'When In Combat', 'For Effective DPS', 'Enemy Stats'];
 
 /** 剥 PoB 颜色码（`^xRRGGBB` / `^N`）。 */
 function stripColorCodes(text: string): string {
@@ -102,7 +100,6 @@ export function OptionRow({
   onReset: () => void;
 }) {
   const tt = bindT(lang);
-  const { v2 } = useUi();
   const label = optionLabel(lang, option);
   const tooltip = configTooltip(lang, option.var, option.tooltip);
   const fallback = configDefaultValue(option);
@@ -113,18 +110,15 @@ export function OptionRow({
     <div className={`config-item${overridden ? ' is-overridden' : ''}`} data-config-var={option.var}>
       <div className="config-description">
         <label className="config-key" htmlFor={`config-${option.var}`}>{label}</label>
-        {v2 ? <details className="config-option-help">
+        <details className="config-option-help">
           <summary>{workflowLabel(lang, 'help')}</summary>
           {tooltip && <p className="config-help" id={`config-help-${option.var}`}>{stripColorCodes(tooltip)}</p>}
           {tooltip && lang !== 'en-US' && tooltip === option.tooltip && <p className="config-source">{workflowLabel(lang, 'sourceHelp')}</p>}
           <span className="config-source">{workflowLabel(lang, 'rawKey')}</span>
           <code className="config-raw-key">{option.var}</code>
-        </details> : <>
-          {tooltip && <p className="config-help" id={`config-help-${option.var}`}>{stripColorCodes(tooltip)}</p>}
-          <code className="config-raw-key">{option.var}</code>
-        </>}
+        </details>
         <span className="config-source">{tt(value === undefined ? 'config.sourceDefault' : 'config.sourceSaved')}</span>
-        {v2 && value !== undefined && <span className="config-source config-saved-type">
+        {value !== undefined && <span className="config-source config-saved-type">
           {workflowLabel(lang, typeof value as 'boolean' | 'number' | 'string')}: <code>{JSON.stringify(value)}</code>
         </span>}
         {applicability !== 'applicable' && <span className="config-applicability">
@@ -144,7 +138,7 @@ export function OptionRow({
         />
       ) : option.input_type === 'list' ? (
         <AppSelectControl
-          className={v2 ? "w-full" : undefined}
+          className="w-full"
           id={`config-${option.var}`}
           aria-describedby={tooltip ? `config-help-${option.var}` : undefined}
           value={String(effective ?? '')}
@@ -214,7 +208,6 @@ export function OptionRow({
 /** Config 页：敌人档位 + 内置配置目录（分区/搜索）+ build 原始 `<Input>` 高级区。 */
 export function ConfigPanel({ session, lang }: Props) {
   const tt = bindT(lang);
-  const { v2 } = useUi();
   const [view, setView] = useState('options');
   const skillName = useSkillName(lang);
   const [focusTarget, setFocusTarget] = useState<string | null>(null);
@@ -224,7 +217,14 @@ export function ConfigPanel({ session, lang }: Props) {
   const [query, setQuery] = useState('');
   const [configuredOnly, setConfiguredOnly] = useState(false);
   const [allOptions, setAllOptions] = useState(false);
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(v2 ? V2_OPEN_SECTIONS : ['General', 'Quest Rewards', 'When In Combat']));
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(DEFAULT_OPEN_SECTIONS));
+  // Where each option the reader changed sat (in the leading group or not) when they changed it. Which group an
+  // option belongs to is read from the calculation, which can start to read the very option just set; its row stays
+  // put until the page or the stage is left, instead of moving to the top, or into a folded group, under the pointer.
+  const [placed, setPlaced] = useState<Record<string, boolean>>({});
+  const active = usePanelActive();
+  const stage = session.workspace?.builds.find(build => build.id === session.workspace?.activeBuild)?.activeStage;
+  useEffect(() => { setPlaced(current => Object.keys(current).length ? {} : current); }, [active, stage, session.workspace?.activeBuild]);
   // 词条文本型 list 选项（如任务奖励 "+5 to all Attributes"）的反查翻译缓存。
   const [listLabels, setListLabels] = useState<Record<string, string>>({});
 
@@ -294,7 +294,7 @@ export function ConfigPanel({ session, lang }: Props) {
     setQuery('');
     setConfiguredOnly(false);
     setAllOptions(true);
-    setOpenSections(previous => new Set([...previous, option.section ?? 'General', ...(v2 ? [RELEVANT_SECTION] : [])]));
+    setOpenSections(previous => new Set([...previous, option.section ?? 'General', RELEVANT_SECTION]));
     setFocusTarget(option.var);
   };
 
@@ -322,18 +322,18 @@ export function ConfigPanel({ session, lang }: Props) {
     return [...known, ...rest].map((name) => ({ name, options: bySection.get(name)! }));
   }, [options, query, configuredOnly, lang, context, inputs, visibilityInputs, allOptions, session.dataVersion]);
 
-  // V2: the options the calculation has confirmed for this build form their own leading group, and
+  // The options the calculation has confirmed for this build form their own leading group, and
   // appear nowhere else, so every control (and its #config-<var> id) is still on the page once.
   const groups = useMemo(() => {
-    if (!v2) return sections;
-    const { relevant, rest } = partitionRelevant(sections.flatMap(section => section.options),
-      option => configApplicability(option, context, visibilityInputs));
+    const { relevant, rest } = partitionRelevant(sections.flatMap(section => section.options), confirmedByBuild(context, placed));
     if (relevant.length === 0) return sections;
     const kept = new Set(rest.map(option => option.var));
     return [{ name: RELEVANT_SECTION, options: relevant },
       ...sections.map(section => ({ ...section, options: section.options.filter(option => kept.has(option.var)) }))
         .filter(section => section.options.length > 0)];
-  }, [v2, sections, context, visibilityInputs]);
+  }, [sections, context, placed]);
+  const settle = (variable: string) => setPlaced(current => variable in current ? current
+    : { ...current, [variable]: !!groups.find(group => group.name === RELEVANT_SECTION)?.options.some(option => option.var === variable) });
   const groupTitle = (name: string) => name === RELEVANT_SECTION
     ? words(lang, 'Relevant to this BD', '与此 BD 相关', '與此 BD 相關') : configSectionLabel(lang, name);
 
@@ -362,7 +362,6 @@ export function ConfigPanel({ session, lang }: Props) {
   }, [options, buildInputs, inputs, session.dataVersion]);
 
   const [newKey, setNewKey] = useState('');
-  const [newValue, setNewValue] = useState('true');
   const [newTypedValue, setNewTypedValue] = useState<ConfigInputValue | null>(true);
   const modifierBlocks: CustomModifierBlock[] = session.calcParams.custom_modifier_blocks ?? [{
     title: 'Default',
@@ -379,27 +378,6 @@ export function ConfigPanel({ session, lang }: Props) {
     updateModifierBlocks(modifierBlocks.map((block, currentIndex) =>
       currentIndex === index ? { ...block, ...patch } : block));
   };
-  const parseValue = (raw: string): ConfigInputValue => {
-    if (raw === 'true') return true;
-    if (raw === 'false') return false;
-    const n = Number(raw);
-    return Number.isFinite(n) && raw.trim() !== '' ? n : raw;
-  };
-
-  const enemyControl = <label className="config-row">
-          {tt('config.enemyTier')}
-          <AppSelectControl
-            value={session.calcParams.enemy_tier ?? 'pinnacle'}
-            disabled={session.busy}
-            onChange={(e) => session.updateParams({ enemy_tier: e.target.value as EnemyTier })}
-          >
-            {ENEMY_TIERS.map((tier) => (
-              <option key={tier} value={tier}>
-                {enemyTierLabel(lang, tier)}
-              </option>
-            ))}
-          </AppSelectControl>
-        </label>;
 
   const quickAccess = (
       <article className="ui-card config-quick-access" aria-labelledby="config-quick-heading">
@@ -450,7 +428,6 @@ export function ConfigPanel({ session, lang }: Props) {
 
   const searchToolbar = (
       <div className="config-toolbar">
-        {!v2 && enemyControl}
         <AppInput
           className="config-search"
           type="search"
@@ -465,29 +442,25 @@ export function ConfigPanel({ session, lang }: Props) {
   );
   const viewToggle = (
       <div className="config-view" role="group" aria-label={tt('config.view')}>
-        <AppButton className={v2 ? "aria-pressed:bg-accent aria-pressed:text-accent-foreground" : undefined} type="button" aria-pressed={!allOptions} onClick={() => setAllOptions(false)}>{tt('config.applicable')}</AppButton>
-        <AppButton className={v2 ? "aria-pressed:bg-accent aria-pressed:text-accent-foreground" : undefined} type="button" aria-pressed={allOptions} onClick={() => setAllOptions(true)}>{tt('config.showAll')}</AppButton>
+        <AppButton className="aria-pressed:bg-accent aria-pressed:text-accent-foreground" type="button" aria-pressed={!allOptions} onClick={() => setAllOptions(false)}>{tt('config.applicable')}</AppButton>
+        <AppButton className="aria-pressed:bg-accent aria-pressed:text-accent-foreground" type="button" aria-pressed={allOptions} onClick={() => setAllOptions(true)}>{tt('config.showAll')}</AppButton>
       </div>
   );
 
   const catalog = (<>
-      {v2 ? <div className="config-controls">{searchToolbar}{viewToggle}</div> : <>{searchToolbar}{viewToggle}</>}
-      {v2 ? <details className="config-guidance"><summary>{workflowLabel(lang, 'guidance')}</summary>
+      <div className="config-controls">{searchToolbar}{viewToggle}</div>
+      <details className="config-guidance"><summary>{workflowLabel(lang, 'guidance')}</summary>
       <p className="config-hint">{tt('config.visibilityHint')}</p>
       <p className="config-hint">{tt('config.editHint')}</p>
       <p className="config-hint">{tt('config.defaultsHint')}</p>
-      </details> : <>
-      <p className="config-hint">{tt('config.visibilityHint')}</p>
-      <p className="config-hint">{tt('config.editHint')}</p>
-      <p className="config-hint">{tt('config.defaultsHint')}</p>
-      </>}
+      </details>
       {loadState === 'loading' && <p role="status">{tt('config.loading')}</p>}
       {loadState === 'error' && <div className="calc-error" role="alert">
         {tt('config.loadFailed')} <AppButton onClick={() => setLoadAttempt(value => value + 1)}>{tt('common.retry')}</AppButton>
       </div>}
-    {v2 ? <details className="config-quick-disclosure"><summary>{tt('config.quickTitle')}</summary>{quickAccess}</details> : quickAccess}
-    <div className={v2 ? 'config-options-workspace' : undefined}>
-      {v2 && groups.length > 0 && <nav className="config-group-nav" aria-label={workflowLabel(lang, 'jump')}>
+    <details className="config-quick-disclosure"><summary>{tt('config.quickTitle')}</summary>{quickAccess}</details>
+    <div className="config-options-workspace">
+      {groups.length > 0 && <nav className="config-group-nav" aria-label={workflowLabel(lang, 'jump')}>
         <h3>{workflowLabel(lang, 'jump')}</h3>
         {groups.map(section => <AppButton className="h-auto min-h-10 justify-between whitespace-normal text-left" key={section.name} onClick={() => {
           setOpenSections(previous => new Set([...previous, section.name]));
@@ -509,7 +482,7 @@ export function ConfigPanel({ session, lang }: Props) {
         return (
           <section key={name} id={`config-section-${name.replace(/\s+/g, '-')}`} className="config-section">
             <AppButton
-              className={v2 ? "config-section-header h-auto min-h-12 w-full justify-between whitespace-normal rounded-none border-0 bg-muted text-left" : "config-section-header"}
+              className="config-section-header h-auto min-h-12 w-full justify-between whitespace-normal rounded-none border-0 bg-muted text-left"
               aria-controls={`config-group-${name.replace(/\s+/g, '-')}`}
               aria-expanded={open}
               onClick={() => {
@@ -537,8 +510,8 @@ export function ConfigPanel({ session, lang }: Props) {
                     lang={lang}
                     listLabels={listLabels}
                     applicability={configApplicability(option, context, visibilityInputs)}
-                    onChange={(value) => session.setConfigInput(option.var, value)}
-                    onReset={() => resetInput(option.var)}
+                    onChange={(value) => { settle(option.var); session.setConfigInput(option.var, value); }}
+                    onReset={() => { settle(option.var); resetInput(option.var); }}
                   />
                 ))}
               </div>
@@ -612,7 +585,7 @@ export function ConfigPanel({ session, lang }: Props) {
   );
 
   const advancedValues = (
-      <details className="ui-card config-advanced" open={v2 || undefined}>
+      <details className="ui-card config-advanced" open>
       <summary>{tt('config.addTitle')}</summary>
       <p className="config-hint">{tt('config.hint')}</p>
       {extraKeys.length > 0 && (
@@ -620,21 +593,8 @@ export function ConfigPanel({ session, lang }: Props) {
           {extraKeys.map((key) => (
             <div key={key} className={`config-item${isOverridden(key) ? ' is-overridden' : ''}`}>
               <span className="config-key config-key--raw">{key}</span>
-              {v2 ? <RawConfigValue name={key} value={effective(key)} lang={lang} disabled={session.busy}
-                onChange={value => session.setConfigInput(key, value)} /> : (
-              <AppInput
-                key={String(effective(key) ?? '')}
-                className="config-value"
-                defaultValue={String(effective(key) ?? '')}
-                disabled={session.busy}
-                aria-label={key}
-                onBlur={(e) => {
-                  if (e.target.value === String(effective(key) ?? '')) return;
-                  const parsed = parseValue(e.target.value);
-                  if (parsed !== effective(key)) session.setConfigInput(key, parsed);
-                }}
-              />
-              )}
+              <RawConfigValue name={key} value={effective(key)} lang={lang} disabled={session.busy}
+                onChange={value => session.setConfigInput(key, value)} />
               {isOverridden(key) && (
                 <AppButton className="config-reset" disabled={session.busy} title={tt('config.reset')}
                   aria-label={`${tt('config.reset')}: ${key}`} onClick={() => resetInput(key)}>
@@ -652,19 +612,12 @@ export function ConfigPanel({ session, lang }: Props) {
           onChange={(e) => setNewKey(e.target.value)}
           aria-label={tt('config.key')}
         />
-        {v2 ? <RawConfigValue name={tt('config.valueLabel')} value={newTypedValue ?? undefined} lang={lang} disabled={session.busy}
-          onChange={setNewTypedValue} /> : (
-        <AppInput
-          placeholder="true / 40 / text"
-          value={newValue}
-          onChange={(e) => setNewValue(e.target.value)}
-          aria-label={tt('config.valueLabel')}
-        />
-        )}
+        <RawConfigValue name={tt('config.valueLabel')} value={newTypedValue ?? undefined} lang={lang} disabled={session.busy}
+          onChange={setNewTypedValue} />
         <AppButton
           disabled={!newKey.trim() || session.busy}
           onClick={() => {
-            session.setConfigInput(newKey.trim(), v2 ? newTypedValue : parseValue(newValue));
+            session.setConfigInput(newKey.trim(), newTypedValue);
             setNewKey('');
           }}
         >
@@ -676,24 +629,18 @@ export function ConfigPanel({ session, lang }: Props) {
 
   return <section className="ui-page config-page" aria-labelledby="config-heading">
     <PageHeader id="config-heading" title={tt('config.title')} description={tt('ui.configHint')} />
-    {v2 ? <>
-      <div className="config-scenario"><ScenarioBar session={session} lang={lang} /><NamedSets session={session} lang={lang} /></div>
-      <Tabs className="flex-col" value={view} onValueChange={setView}>
-        <TabsList className="config-view-tabs group-data-horizontal/tabs:h-auto" aria-label={tt('config.title')}>
-          <TabsTrigger className="h-auto min-h-10 whitespace-nowrap max-[600px]:whitespace-normal px-3 py-2 max-[600px]:flex-[1_1_42%] data-[state=active]:bg-background data-[state=active]:text-foreground" value="options">{workflowLabel(lang, 'options')}</TabsTrigger>
-          <TabsTrigger className="h-auto min-h-10 whitespace-nowrap max-[600px]:whitespace-normal px-3 py-2 max-[600px]:flex-[1_1_42%] data-[state=active]:bg-background data-[state=active]:text-foreground" value="modifiers">{tt('config.extraMods')}</TabsTrigger>
-          <TabsTrigger className="h-auto min-h-10 whitespace-nowrap max-[600px]:whitespace-normal px-3 py-2 max-[600px]:flex-[1_1_42%] data-[state=active]:bg-background data-[state=active]:text-foreground" value="party">{workflowLabel(lang, 'party')}</TabsTrigger>
-          <TabsTrigger className="h-auto min-h-10 whitespace-nowrap max-[600px]:whitespace-normal px-3 py-2 max-[600px]:flex-[1_1_42%] data-[state=active]:bg-background data-[state=active]:text-foreground" value="advanced">{workflowLabel(lang, 'advanced')}</TabsTrigger>
-        </TabsList>
-        <TabsContent className="min-w-0 w-full" value="options">{catalog}</TabsContent>
-        <TabsContent className="min-w-0 w-full" value="modifiers">{customModifiers}</TabsContent>
-        <TabsContent className="min-w-0 w-full" value="party"><PartyEditor session={session} lang={lang} /></TabsContent>
-        <TabsContent className="min-w-0 w-full" value="advanced">{advancedValues}</TabsContent>
-      </Tabs>
-    </> : <>
-      <NamedSets session={session} lang={lang} />
-      <PartyEditor session={session} lang={lang} />
-      {catalog}{customModifiers}{advancedValues}
-    </>}
+    <div className="config-scenario"><ScenarioBar session={session} lang={lang} /><NamedSets session={session} lang={lang} /></div>
+    <Tabs className="flex-col" value={view} onValueChange={setView}>
+      <TabsList className="config-view-tabs group-data-horizontal/tabs:h-auto" aria-label={tt('config.title')}>
+        <TabsTrigger className="h-auto min-h-10 whitespace-nowrap max-[600px]:whitespace-normal px-3 py-2 max-[600px]:flex-[1_1_42%] data-[state=active]:bg-background data-[state=active]:text-foreground" value="options">{workflowLabel(lang, 'options')}</TabsTrigger>
+        <TabsTrigger className="h-auto min-h-10 whitespace-nowrap max-[600px]:whitespace-normal px-3 py-2 max-[600px]:flex-[1_1_42%] data-[state=active]:bg-background data-[state=active]:text-foreground" value="modifiers">{tt('config.extraMods')}</TabsTrigger>
+        <TabsTrigger className="h-auto min-h-10 whitespace-nowrap max-[600px]:whitespace-normal px-3 py-2 max-[600px]:flex-[1_1_42%] data-[state=active]:bg-background data-[state=active]:text-foreground" value="party">{workflowLabel(lang, 'party')}</TabsTrigger>
+        <TabsTrigger className="h-auto min-h-10 whitespace-nowrap max-[600px]:whitespace-normal px-3 py-2 max-[600px]:flex-[1_1_42%] data-[state=active]:bg-background data-[state=active]:text-foreground" value="advanced">{workflowLabel(lang, 'advanced')}</TabsTrigger>
+      </TabsList>
+      <TabsContent className="min-w-0 w-full" value="options">{catalog}</TabsContent>
+      <TabsContent className="min-w-0 w-full" value="modifiers">{customModifiers}</TabsContent>
+      <TabsContent className="min-w-0 w-full" value="party"><PartyEditor session={session} lang={lang} /></TabsContent>
+      <TabsContent className="min-w-0 w-full" value="advanced">{advancedValues}</TabsContent>
+    </Tabs>
   </section>;
 }

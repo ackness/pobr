@@ -1,20 +1,22 @@
 import { expect, test, type Page } from '@playwright/test';
+import { bdLibraryButton, statValue } from './shell';
+import { choose, goTo } from './skillsAndCalcs';
 import type { GemInput, SocketGroupInput } from '../src/api/types';
 
-const guard = 'Also grants 102 Guard';
-const nav = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main navigation' })
-  .getByRole('button', { name, exact: true });
+// A charm line the engine does not calculate: it shows as a limit of the baseline. ("Also grants 102 Guard",
+// used here before, is calculated by now.)
+const limitLine = 'Remove Bleeding on use';
 const run = (page: Page) => page.getByRole('button', { name: 'Calculate support combinations', exact: true });
 const capacity = (page: Page) => page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true });
 const baseline = (page: Page) => page.locator('details.support-baseline-unsupported');
-const dps = (page: Page) => page.locator('.stat-row').filter({ hasText: 'Total DPS' }).locator('dd');
+const dps = (page: Page) => statValue(page, /^Total DPS$/).first();
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
 
 async function groups(page: Page): Promise<SocketGroupInput[]> {
-  return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state.socketGroups);
+  return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state.socketGroups);
 }
 
-async function casterWithGuard(page: Page) {
+async function casterWithLimit(page: Page) {
   // Only import/league HTTP responses are synthetic. All compatibility, diagnostics,
   // search previews and applied calculations come from the unmodified real WASM.
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
@@ -25,32 +27,35 @@ async function casterWithGuard(page: Page) {
         explicitMods: ['40% increased Fire Damage', '+80 to maximum Life'] },
       ...['Ultimate Mana Flask', 'Ultimate Life Flask', 'Thawing Charm', 'Stone Charm', 'Silver Charm']
         .map((baseType, x) => ({ inventoryId: 'Flask', x, baseType, name: 'Synthetic Diagnostic Utility', frameType: 1,
-          explicitMods: x === 3 ? [guard] : [] })),
+          explicitMods: x === 3 ? [limitLine] : [] })),
     ],
     talent_tree: { hashes: [54447, 4739, 22419, 18407], quest_stats: [] }, jewel_data: '[]',
     skills: [{ baseType: 'Fireball', support: false, properties: [{ type: 5, values: [['16', 0]] }] }],
   } }));
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('textbox', { name: 'Build code', exact: true })
     .fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticSupportDiagnostics');
   await page.locator('.import-submit').click();
+  await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
+  await goTo(page, 'Items');
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await nav(page, 'Build').click();
-  const limits = page.locator('.unsupported-block');
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
+  // The Overview lists the modifier lines the calculation does not apply.
+  await goTo(page, 'Overview');
+  const limits = page.locator('.ov-details');
   await limits.locator('summary').click();
-  await expect(limits.locator('li')).toHaveText([guard]);
+  await expect(limits.locator('li')).toHaveText([limitLine]);
   await openOptimizer(page);
 }
 
 async function openOptimizer(page: Page) {
-  await nav(page, 'Skills').click();
+  await goTo(page, 'Skills');
   await expect(page.locator('.skills-toolbar input')).toBeEnabled();
   const group = page.locator('.skill-group').first();
   if (await group.locator('.skill-main-toggle').getAttribute('aria-pressed') === 'false') {
     await group.locator('.skill-main-toggle').click();
-    await expect(page.locator('.topbar-busy')).toHaveCount(0);
+    await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   }
   if (await group.locator('.skill-group-title').getAttribute('aria-expanded') === 'false') {
     await group.locator('.skill-group-title').click();
@@ -58,6 +63,10 @@ async function openOptimizer(page: Page) {
   if (await group.locator('.gem-optimizer-toggle').getAttribute('aria-expanded') === 'false') {
     await group.locator('.gem-optimizer-toggle').click();
   }
+  // Capacity, objective and the candidate pool sit under the folded "Goal, capacity and candidates".
+  const settings = page.locator('.gem-optimizer-settings');
+  await expect(settings).toBeVisible();
+  if (!(await settings.evaluate(element => (element as HTMLDetailsElement).open))) await settings.locator(':scope > summary').click();
   await expect(run(page)).toBeEnabled();
 }
 
@@ -77,19 +86,18 @@ async function expectInvalidated(page: Page) {
 }
 
 test('real baseline limits remain keyboard-readable across first page visits and Apply uses the exact recommended set', async ({ page }) => {
-  await casterWithGuard(page);
+  await casterWithLimit(page);
   const before = await groups(page);
   await capacity(page).fill('2');
   await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();
-  await page.getByRole('button', { name: 'Objective', exact: true }).click();
-  await page.getByRole('option', { name: 'Max total DPS', exact: true }).click();
+  await choose(page, page.getByRole('combobox', { name: 'Objective', exact: true }), 'Max total DPS');
   await completeSearch(page);
 
   const summary = baseline(page).locator('summary');
   await summary.focus();
   await page.keyboard.press('Enter');
   await expect(baseline(page)).toHaveAttribute('open', '');
-  await expect(baseline(page).locator('ul > li')).toHaveText([guard]);
+  await expect(baseline(page).locator('ul > li')).toHaveText([limitLine]);
   await page.keyboard.press('Space');
   await expect(baseline(page)).not.toHaveAttribute('open', '');
   await page.keyboard.press('Enter');
@@ -120,17 +128,17 @@ test('real baseline limits remain keyboard-readable across first page visits and
   const preview = numeric(metric.match(/^DPS ([\d,.]+)/)![1]);
 
   for (const name of ['Calcs', 'Tree', 'Upgrades']) {
-    await nav(page, name).click();
+    await goTo(page, name);
     await expect(page.locator(name === 'Calcs' ? '.calcs-page' : name === 'Tree' ? '.tree-canvas' : '.upgrade-paths'))
       .toBeVisible();
     await expect(run(page)).toHaveCount(0);
-    await nav(page, 'Skills').click();
+    await goTo(page, 'Skills');
     await expect(baseline(page).locator('ul > li')).toHaveText(raw);
     await expect.poll(() => page.locator('.support-plan').allTextContents()).toEqual(recommendations);
     await expect(first.getByRole('button', { name: 'Apply', exact: true })).toBeEnabled();
   }
   await first.getByRole('button', { name: 'Apply', exact: true }).click();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   await expect.poll(async () => {
     const applied = (await groups(page))[0].gems;
     return [applied[0], ...applied.slice(1).map(gem => ({ ...gem, stat_set_index: gem.stat_set_index ?? 1 }))];
@@ -141,29 +149,29 @@ test('real baseline limits remain keyboard-readable across first page visits and
 });
 
 test('diagnostic receipts invalidate on search input edits and identical copied-stage switches', async ({ page }) => {
-  await casterWithGuard(page);
+  await casterWithLimit(page);
   await capacity(page).fill('2');
   await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();
   await completeSearch(page);
   await baseline(page).locator('summary').click();
-  await expect(baseline(page).locator('ul > li')).toHaveText([guard]);
+  await expect(baseline(page).locator('ul > li')).toHaveText([limitLine]);
   await capacity(page).fill('3');
   await expectInvalidated(page);
   await capacity(page).fill('2');
   await completeSearch(page);
   const before = await groups(page);
-  await nav(page, 'Build').click();
-  const originalStage = await page.locator('.workspace-current-stage').innerText();
+  const stageSwitch = page.getByRole('combobox', { name: 'Current stage', exact: true });
+  const originalStage = (await stageSwitch.innerText()).trim();
+  await bdLibraryButton(page).click();
   await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Synthetic diagnostic copy');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   await openOptimizer(page);
   await expectInvalidated(page);
   expect(await groups(page)).toEqual(before);
-  await nav(page, 'Build').click();
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: originalStage });
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await choose(page, stageSwitch, originalStage);
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   await openOptimizer(page);
   await expectInvalidated(page);
   expect(await groups(page)).toEqual(before);

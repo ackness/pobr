@@ -265,7 +265,6 @@
 .replacement-socket-icon { display: grid; place-items: center; width: 24px; height: 24px; margin-top: 5px; border: 1px dashed var(--border-subtle); border-radius: 50%; color: var(--text-muted); font-size: 11px; }
 .replacement-socket-icon.is-filled { border-style: solid; border-color: color-mix(in srgb, var(--accent-gold) 55%, var(--border-subtle)); color: var(--accent-gold); background: color-mix(in srgb, var(--accent-gold) 9%, transparent); }
 .replacement-socket-effect { margin: 6px 0 0; color: var(--text-secondary); font-size: var(--text-xs); line-height: 1.7; white-space: pre-line; overflow-wrap: anywhere; }
-.replacement-socket .app-select-hint { white-space: pre-line; }
 @media (max-width: 1100px) { .replacement-content { grid-template-columns: minmax(0, 1fr); } .replacement-candidate { grid-template-columns: repeat(2, minmax(0, 1fr)); } .replacement-candidate > :only-child { grid-column: 1 / -1; } }
 @media (max-width: 600px) {
   .replacement-heading { flex-wrap: wrap; }

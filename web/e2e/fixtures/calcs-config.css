@@ -1,0 +1,19 @@
+@import "tailwindcss";
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--foreground);
+}
+.shell-root { --background: #10151c; --foreground: #ecf0f6; --card: #17202b; --muted: #222e3c; --muted-foreground: #afbbca; --border: #3c4b60; --input: #394b63; --ring: #9bcaff; --accent: #294e70; --accent-foreground: #ecf0f6; --primary: #9bcaff; min-height: 100dvh; background: var(--background); color: var(--foreground); padding: 1rem; font: 16px/1.5 system-ui; }
+.shell-root > nav { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
+.shell-root .ui-page { max-width: 1600px; margin: auto; }
+.shell-root h2 { font-size: 1.75rem; }

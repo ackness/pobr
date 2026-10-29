@@ -1,15 +1,16 @@
 import { expect, test, type Page } from '@playwright/test';
+import { statRow, statValue } from './shell';
+import { choose, goTo, importAndOpen } from './skillsAndCalcs';
 import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
 const monk = readFileSync('../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', 'utf8');
-const nav = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name, exact: true });
-const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state);
+// The skill picker at the top of the results panel.
+const inspected = (page: Page) => page.getByRole('combobox', { name: 'Inspected skill', exact: true });
+const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
+/** Import a build and open Items. Below the wide breakpoint the page links sit in the menu sheet. */
 async function start(page: Page, code: string) {
-  await page.goto('/');
-  await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({ timeout: 90_000 });
-  await page.getByRole('textbox', { name: 'Build code' }).fill(code);
-  await page.locator('.import-submit').click();
+  await importAndOpen(page, code);
   await expect(page.locator('.paper-doll')).toBeVisible();
 }
 
@@ -21,11 +22,11 @@ for (const width of [390, 1440]) {
     await page.getByRole('button', { name: 'Body Armour', exact: true }).click();
     const detail = page.locator('.item-detail');
     await expect(detail).toBeFocused();
-    const trigger = page.getByRole('button', { name: 'Equipment position', exact: true });
+    const trigger = page.getByRole('combobox', { name: 'Equipment position', exact: true });
     const positions = ['Main Hand', 'Off Hand', 'Helmet', 'Body Armour', 'Gloves', 'Boots', 'Amulet', 'Ring 1', 'Ring 2', 'Belt', 'Flask 1', 'Flask 2', 'Charm 1', 'Charm 2', 'Charm 3', 'Arm 1', 'Arm 2', 'Leg 1', 'Leg 2'];
     for (const position of positions) {
       await trigger.click();
-      await page.getByRole('listbox', { name: 'Equipment position', exact: true }).getByRole('option', { name: position, exact: true }).click();
+      await page.getByRole('listbox').getByRole('option', { name: position, exact: true }).click();
       await expect(trigger).toContainText(position);
       await expect.poll(async () => detail.evaluate(element => {
         const main = element.closest('main')!.getBoundingClientRect();
@@ -40,7 +41,7 @@ for (const width of [390, 1440]) {
 test('configured-only filtering includes imported false values, composes with search and follows reset', async ({ page }) => {
   const code = deflateSync('<PathOfBuilding2><Build level="40" className="Witch"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree><Skills/><Items/><Config><Input name="buffOnslaught" boolean="false"/><Input name="enemyLevel" number="82"/></Config></PathOfBuilding2>').toString('base64url');
   await start(page, code);
-  await nav(page, 'Config').click();
+  await goTo(page, 'Config');
   await page.getByRole('checkbox', { name: /Configured only/ }).check();
   await expect(page.locator('#config-buffOnslaught')).toBeVisible();
   await expect(page.locator('#config-buffOnslaught')).not.toBeChecked();
@@ -53,7 +54,8 @@ test('configured-only filtering includes imported false values, composes with se
   await expect(page.locator('#config-buffOnslaught')).not.toBeChecked();
   await expect(page.locator('#config-buffOnslaught')).toBeVisible();
   await search.fill('no-such-condition');
-  await page.getByRole('button', { name: 'Show all options', exact: true }).click();
+  // The view switch above the list has a button of the same name; this one is in the empty-search notice.
+  await page.locator('.search-empty').getByRole('button', { name: 'Show all options', exact: true }).click();
   await expect(search).toHaveValue('');
   await expect(page.getByRole('checkbox', { name: /Configured only/ })).not.toBeChecked();
   expect((await saved(page)).params.config_inputs.buffOnslaught).toBe(false);
@@ -62,14 +64,20 @@ test('configured-only filtering includes imported false values, composes with se
 test('editing and analysis shortcuts reach their target without changing the current build', async ({ page }) => {
   await start(page, monk);
   const before = await saved(page);
-  await nav(page, 'Skills').click();
-  await page.getByRole('button', { name: /^Edit inspected skill/ }).click();
+  // Skills opens on the main skill's group, ready to edit.
+  await goTo(page, 'Skills');
   await expect(page.locator('.skill-group.is-main .skill-group-title')).toHaveAttribute('aria-expanded', 'true');
-  await nav(page, 'Tree').click();
-  await page.getByRole('button', { name: 'Attributes & planning', exact: true }).click();
+  await goTo(page, 'Tree');
+  // The planning side panel starts open, so the button first folds it away; opening it again moves focus to its tools.
+  const planning = page.getByRole('button', { name: 'Attributes & planning', exact: true });
+  await expect(planning).toHaveAttribute('aria-expanded', 'true');
+  await planning.click();
+  await expect(planning).toHaveAttribute('aria-expanded', 'false');
+  await planning.click();
   await expect(page.locator('.tree-edit-tools')).toBeFocused();
-  await nav(page, 'Calcs').click();
-  await page.getByRole('button', { name: 'Skill metrics ↓', exact: true }).click();
+  // The results panel's "Skill metrics" link opens the skill overview on the Calcs page.
+  await page.locator('#character-stats .rail-link').click();
+  await expect(page).toHaveURL(/\/calcs$/);
   await expect(page.locator('#skill-metrics-heading')).toBeFocused();
   expect(await saved(page)).toEqual(before);
 });
@@ -87,11 +95,11 @@ test('a build without a main selection defaults to its highest-DPS skill and can
   await start(page, code);
   // The first group deals the most damage; it is bound to the second weapon set.
   // Doom Blast runs at the level of the curse it is granted on, here 1.
-  await expect(page.locator('.main-skill-select .app-select-value')).toHaveText(/^1\. (Fireball|Spark)$/);
+  await expect(inspected(page)).toHaveText(/^1\. (Fireball|Spark)$/);
   expect((await saved(page)).params.main_socket_group).toBe(0);
   expect((await saved(page)).weaponSwap.active).toBe(2);
   await expect(page.locator('#character-stats').getByRole('heading', { name: 'Offence', exact: true })).toHaveCount(1);
-  await page.getByRole('button', { name: 'Skill metrics →', exact: true }).click();
+  await page.locator('#character-stats .rail-link').click();
   await expect(page.locator('#skill-metrics-heading')).toBeFocused();
   const rows = page.locator('.skill-metrics-row');
   await expect(rows).toHaveCount(5);
@@ -108,13 +116,13 @@ test('a build without a main selection defaults to its highest-DPS skill and can
   await expect(unavailable.locator('.calc-error')).not.toHaveText('Unavailable:');
   await expect(rows.filter({ hasText: 'Highest DPS' })).toHaveCount(1);
   expect((await saved(page)).params.main_socket_group).toBe(0);
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   await spark.getByRole('button').focus();
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await saved(page)).socketGroups[0].main_active_skill).toBe(2);
   expect((await saved(page)).params.main_socket_group).toBe(0);
   expect((await saved(page)).weaponSwap.active).toBe(2);
-  await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Spark');
+  await expect(inspected(page)).toContainText('Spark');
   await expect(spark.getByRole('button')).toHaveAttribute('aria-disabled', 'false');
   await expect(spark.getByRole('button')).toBeFocused();
   // An unresolvable inspected skill must not present the previous skill's offence as
@@ -123,16 +131,15 @@ test('a build without a main selection defaults to its highest-DPS skill and can
   const stats = page.locator('#character-stats');
   await expect(stats).toContainText('No valid inspected skill');
   await expect(stats.getByRole('heading', { name: 'Offence', exact: true })).toHaveCount(0);
-  await expect(stats.locator('.stat-row').filter({ hasText: 'Total DPS' })).toHaveCount(0);
+  await expect(statRow(page, 'Total DPS')).toHaveCount(0);
   await expect(stats.getByRole('heading', { name: 'Resources', exact: true })).toHaveCount(1);
-  await expect(stats.locator('.stat-row').filter({ hasText: 'Life' }).locator('dd').first()).not.toHaveText('—');
-  await page.getByRole('button', { name: 'Inspected skill', exact: true }).click();
-  await page.getByRole('option', { name: '1. Spark', exact: true }).click();
-  await expect(page.locator('.main-skill-select .app-select-value')).toHaveText('1. Spark');
-  await nav(page, 'Upgrades').click();
-  await expect(page.getByRole('button', { name: 'Skill used for scoring', exact: true })).toContainText('1. Spark');
+  await expect(statValue(page, /^Life$/).first()).not.toHaveText('—');
+  await choose(page, inspected(page), '1. Spark');
+  await expect(inspected(page)).toHaveText('1. Spark');
+  await goTo(page, 'Upgrades');
+  await expect(page.getByRole('combobox', { name: 'Skill used for scoring', exact: true })).toContainText('1. Spark');
   await page.reload();
-  await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Spark', { timeout: 90_000 });
+  await expect(inspected(page)).toContainText('Spark', { timeout: 90_000 });
   expect((await saved(page)).socketGroups[0].main_active_skill).toBe(2);
   expect((await saved(page)).weaponSwap.active).toBe(2);
 });
@@ -143,12 +150,12 @@ test('opening support planning explicitly selects an imported group without a pr
     <Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="15" quality="0" enabled="true"/></Skill></Skills>
     <Items/><Config/></PathOfBuilding2>`).toString('base64url');
   await start(page, code);
-  await expect(page.locator('.main-skill-select .app-select-value')).toHaveText('1. Fireball');
+  await expect(inspected(page)).toHaveText('1. Fireball');
   expect((await saved(page)).params.main_socket_group).toBe(0);
-  await nav(page, 'Skills').click();
+  await goTo(page, 'Skills');
   await page.locator('.skill-group-title').first().click();
   await page.locator('.gem-optimizer-toggle').click();
   await expect.poll(async () => (await saved(page)).params.main_socket_group).toBe(0);
-  await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Fireball');
+  await expect(inspected(page)).toContainText('Fireball');
   await expect(page.getByRole('button', { name: 'Calculate support combinations', exact: true })).toBeEnabled();
 });

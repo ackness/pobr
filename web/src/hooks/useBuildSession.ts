@@ -37,7 +37,7 @@ import type {
 } from '../api/types';
 import { highestDpsSkill } from '../lib/skillSelection';
 import { createId } from '../lib/createId';
-import { LEGACY_STORAGE, type SessionStorageKeys } from '../lib/sessionStorage';
+import { STORAGE } from '../lib/sessionStorage';
 
 export interface CharacterState {
   level: number;
@@ -661,8 +661,7 @@ export async function skillMetricsForState(state: BuildState): Promise<SkillMetr
   return { skills, item_errors };
 }
 
-export function useBuildSession(configContextActive = false, storageKeys: SessionStorageKeys = LEGACY_STORAGE): BuildSession {
-  const storage = useRef(storageKeys).current;
+export function useBuildSession(configContextActive = false): BuildSession {
   const configContextActiveRef = useRef(configContextActive);
   configContextActiveRef.current = configContextActive;
   const [dataVersion, setDataVersion] = useState<string | null>(null);
@@ -688,7 +687,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
   const [calcError, setCalcError] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [notes, setNotesState] = useState<string>(
-    () => localStorage.getItem(storage.notes) ?? '',
+    () => localStorage.getItem(STORAGE.notes) ?? '',
   );
 
   const notesRef = useRef(notes);
@@ -712,7 +711,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
     let write = next;
     let conflicts: string[] = [];
     try {
-      const stored = localStorage.getItem(storage.workspace);
+      const stored = localStorage.getItem(STORAGE.workspace);
       if (stored !== null && stored !== syncedRef.current.raw) {
         // Another tab wrote since this one last read or wrote: keep what it changed.
         const theirs = readStoredWorkspace(stored);
@@ -723,7 +722,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
     setWorkspace(write);
     try {
       const raw = workspaceEnvelope(write);
-      localStorage.setItem(storage.workspace, raw);
+      localStorage.setItem(STORAGE.workspace, raw);
       syncedRef.current = { raw, library: write };
       setStorageFailed(false);
     } catch { setStorageFailed(true); }
@@ -746,13 +745,8 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
     setEditorDrafts(next);
     if (stateRef.current) saveToStorage(stateRef.current, notesRef.current);
   }, [saveToStorage]);
+
   const hasDrafts = Object.keys(editorDrafts).length > 0;
-  useEffect(() => {
-    if (!hasDrafts || !storage.warnBeforeUnload) return;
-    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [hasDrafts, storage]);
 
   const setNotes = useCallback((text: string) => {
     setNotesState(text);
@@ -763,7 +757,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
   // tab last read from or wrote to storage, and the library as it was then, are the base of a merge.
   const [initialLibrary] = useState(() => {
     let raw: string | null = null;
-    try { raw = localStorage.getItem(storage.library); } catch { /* unreadable: start empty */ }
+    try { raw = localStorage.getItem(STORAGE.library); } catch { /* unreadable: start empty */ }
     return { raw, library: parseLibrary(raw) };
   });
   const [library, setLibrary] = useState<Library>(initialLibrary.library);
@@ -787,7 +781,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
   const persistLibrary = useCallback((next: Library): Library => {
     let write = next;
     try {
-      const stored = localStorage.getItem(storage.library);
+      const stored = localStorage.getItem(STORAGE.library);
       if (stored !== null && stored !== librarySyncedRef.current.raw) {
         const theirs = readStoredLibrary(stored);
         if (theirs) write = mergeLibraries(librarySyncedRef.current.library, next, theirs);
@@ -797,7 +791,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
     setLibrary(write);
     try {
       const raw = JSON.stringify(write);
-      localStorage.setItem(storage.library, raw);
+      localStorage.setItem(STORAGE.library, raw);
       librarySyncedRef.current = { raw, library: write };
     } catch {
       // 配额失败静默。
@@ -912,7 +906,7 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
         if (cancelled) return;
         setTreeMeta(meta);
         setBootMessage(null);
-        const raw = localStorage.getItem(storage.workspace) ?? '';
+        const raw = localStorage.getItem(STORAGE.workspace) ?? '';
         const saved = parseSaved(raw);
         if (raw && !saved) throw new Error('浏览器存档格式无效，原始数据已保留。请下载原始存档备份以便修复。');
         if (saved) {
@@ -1555,9 +1549,9 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
       if (event.storageArea !== localStorage) return;
-      if (event.key === storage.library) {
+      if (event.key === STORAGE.library) {
         let storedLibrary: string | null = null;
-        try { storedLibrary = localStorage.getItem(storage.library); } catch { return; }
+        try { storedLibrary = localStorage.getItem(STORAGE.library); } catch { return; }
         const synced = librarySyncedRef.current;
         const theirLibrary = storedLibrary === null || storedLibrary === synced.raw ? null : readStoredLibrary(storedLibrary);
         if (storedLibrary === null || !theirLibrary) return;
@@ -1570,9 +1564,9 @@ export function useBuildSession(configContextActive = false, storageKeys: Sessio
         if (!sameValue(mergedLibrary, theirLibrary)) persistLibrary(mergedLibrary);
         return;
       }
-      if (event.key !== storage.workspace) return;
+      if (event.key !== STORAGE.workspace) return;
       let stored: string | null = null;
-      try { stored = localStorage.getItem(storage.workspace); } catch { return; }
+      try { stored = localStorage.getItem(STORAGE.workspace); } catch { return; }
       const mine = workspaceRef.current;
       if (stored === null || !mine || stored === syncedRef.current.raw) return;
       const theirs = readStoredWorkspace(stored);

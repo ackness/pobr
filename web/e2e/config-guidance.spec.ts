@@ -2,15 +2,18 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
 import type { ConfigInputValue } from '../src/api/types';
+import { choose, control, currentStageName, go, hitDps, idle, importCode, nativeSelect, noMotion, openStage, row, savedState, setLanguage, shareCode } from './configPage';
 
-const nav = (page: Page, name: string) => page.getByRole('navigation')
-  .getByRole('button', { name, exact: true });
+test.use(noMotion);
+
 const card = (page: Page) => page.locator('.config-quick-access');
 const entry = (page: Page, key: string) => card(page).locator(`[data-config-var=${JSON.stringify(key)}]`);
-const control = (page: Page, key: string) => page.locator(`[id=${JSON.stringify(`config-${key}`)}]`);
-const row = (page: Page, key: string) => page.locator('.config-item').filter({ has: control(page, key) });
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
-const hitDps = (page: Page) => page.locator('.main-skill-section .stat-row dd').first();
+/** Every control with a saved key: inputs, and the buttons that open a list. */
+const controlIds = (page: Page) => page.locator('.config-section .config-item :is(input, button)[id^="config-"]')
+  .evaluateAll(elements => elements.map(element => element.id).sort());
+/** The skill whose numbers the results panel shows. */
+const inspectedSkill = (page: Page) => page.locator('.shell-rail').getByRole('combobox', { name: 'Inspected skill', exact: true });
 const common = ['conditionEnemyShocked', 'conditionShockEffect'];
 const hitSettings: Record<string, string> = {
   Physical: 'enemyPhysicalReduction', Fire: 'enemyFireResist', Cold: 'enemyColdResist',
@@ -42,31 +45,25 @@ Implicits: 0
 }
 
 async function ready(page: Page) {
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
-}
-
-async function idle(page: Page) {
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await expect(page.locator('.calc-error')).toHaveCount(0);
-}
-
-async function importCode(page: Page, code: string, destination: 'newBuild' | 'currentStage' = 'newBuild') {
-  await nav(page, 'Build').click();
-  await page.getByRole('combobox', { name: 'Import into', exact: true }).selectOption(destination);
-  if (destination === 'currentStage') page.once('dialog', dialog => dialog.accept());
-  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
-  await page.locator('.import-submit').click();
-  await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
-  await idle(page);
-}
-
-async function savedState(page: Page) {
-  return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state);
 }
 
 async function configInputs(page: Page): Promise<Record<string, ConfigInputValue>> {
   return (await savedState(page)).params.config_inputs;
+}
+
+/** The Config page with its quick-access card open (the card sits in a disclosure that starts closed). */
+async function openConfig(page: Page) {
+  await go(page, 'Config');
+  await openQuickAccess(page);
+}
+
+async function openQuickAccess(page: Page) {
+  const disclosure = page.locator('.config-quick-disclosure');
+  await expect(disclosure).toBeVisible({ timeout: 90_000 });
+  if (!(await disclosure.evaluate(element => (element as HTMLDetailsElement).open))) await disclosure.locator(':scope > summary').click();
+  await expect(card(page)).toBeVisible();
 }
 
 async function quickKeys(page: Page) {
@@ -110,7 +107,7 @@ async function receiptNumbers(page: Page, selector: string) {
 async function expectReturnedHitEntries(page: Page) {
   // This is the actual calculated main-skill hit breakdown, not class, gem colour,
   // first-gem tags, or full-DPS/DoT relevance inferred from a fixture name.
-  const types = await page.locator('.damage-share-type').allTextContents();
+  const types = await page.locator('.shell-rail .rail-share-row .rail-label').allTextContents();
   const expected = [...common, ...types.map(type => hitSettings[type.trim()])].sort();
   expect(expected.every(Boolean)).toBe(true);
   await expect.poll(() => quickKeys(page)).toEqual(expected);
@@ -136,10 +133,10 @@ for (const [fixture, identity, types] of [
     const code = readFileSync(new URL(`../../examples/demo-bd-test/builds/${fixture}/code.txt`, import.meta.url), 'utf8').trim();
     await importCode(page, code);
     expect(numeric(await hitDps(page).innerText())).toBeGreaterThan(0);
-    await nav(page, 'Config').click();
+    await openConfig(page);
     await expect(card(page)).toBeVisible();
     await expect(card(page).locator('.config-quick-skill')).toHaveText(identity);
-    expect((await page.locator('.damage-share-type').allTextContents()).sort()).toEqual([...types].sort());
+    expect((await page.locator('.shell-rail .rail-share-row .rail-label').allTextContents()).sort()).toEqual([...types].sort());
     await expectReturnedHitEntries(page);
     const before = await savedState(page);
     await openSetting(page, 'enemyColdResist');
@@ -150,15 +147,14 @@ for (const [fixture, identity, types] of [
 test('review and keyboard jump clear both filters, preserve the request and keep the unique full catalog', async ({ page }) => {
   await ready(page);
   await importCode(page, syntheticCode(['Comet']));
-  await nav(page, 'Config').click();
+  await openConfig(page);
   const allOptions = page.locator('.config-view').getByRole('button', { name: 'Show all options', exact: true });
   await allOptions.click();
   const headers = page.locator('.config-section-header');
   for (let index = 0; index < await headers.count(); index++) {
     if (await headers.nth(index).getAttribute('aria-expanded') !== 'true') await headers.nth(index).click();
   }
-  const ids = await page.locator('.config-section .config-item input, .config-section .config-item select')
-    .evaluateAll(elements => elements.map(element => element.id).sort());
+  const ids = await controlIds(page);
   expect(new Set(ids).size).toBe(ids.length);
   // An uncertain mechanic remains in the original catalog, not just quick entries.
   await page.locator('.config-search').fill('onLeyline');
@@ -175,8 +171,7 @@ test('review and keyboard jump clear both filters, preserve the request and keep
   await expect(allOptions).toHaveAttribute('aria-pressed', 'true');
   await expect(row(page, 'enemyColdResist').locator('..').locator('..').locator('.config-section-header'))
     .toHaveAttribute('aria-expanded', 'true');
-  const afterIds = await page.locator('.config-section .config-item input, .config-section .config-item select')
-    .evaluateAll(elements => elements.map(element => element.id).sort());
+  const afterIds = await controlIds(page);
   expect(afterIds).toEqual(ids);
   await expect(control(page, 'enemyColdResist')).toHaveCount(1);
   expect(await savedState(page)).toEqual(before);
@@ -186,7 +181,7 @@ test('review and keyboard jump clear both filters, preserve the request and keep
 test('cold resistance changes real hit DPS and reset restores the exact absent override/default state', async ({ page }) => {
   await ready(page);
   await importCode(page, syntheticCode(['Comet']));
-  await nav(page, 'Config').click();
+  await openConfig(page);
   const before = await savedState(page);
   const baseline = await hitDps(page).innerText();
   const defaultValue = await entry(page, 'enemyColdResist').locator('output').innerText();
@@ -206,7 +201,7 @@ for (const importedShock of [false, true]) {
     await importCode(page, syntheticCode(['Fireball'], {
       conditionEnemyShocked: importedShock, conditionShockEffect: 20,
     }));
-    await nav(page, 'Config').click();
+    await openConfig(page);
     const before = await savedState(page);
     const baseline = await hitDps(page).innerText();
     await openSetting(page, 'conditionEnemyShocked');
@@ -249,23 +244,21 @@ test('review, jump, edit/reset, share and reload preserve imported false/zero/nu
   await ready(page);
   await importCode(page, syntheticCode(['Comet', 'Fireball'], raw));
   const before = await savedState(page);
-  await expect(page.locator('.import-config-review')).toBeVisible();
-  await page.locator('.import-config-review').getByRole('button', { name: 'Review configuration', exact: true }).click();
-  await expect(card(page)).toBeVisible();
+  await expect(page.locator('.shell-notice[role=note]')).toBeVisible();
+  await page.locator('.shell-notice[role=note]').getByRole('button', { name: 'Review configuration', exact: true }).click();
+  await openQuickAccess(page);
   for (const [key, value] of [['conditionEnemyShocked', false], ['conditionShockEffect', 0], ['enemyColdResist', 17]] as const) {
     await expect(entry(page, key).locator('output code')).toHaveText(JSON.stringify(value));
     await openSetting(page, key);
   }
   // Select the separately calculated fire skill to expose the imported string summary.
-  await page.locator('.main-skill-select').getByRole('button').click();
-  await page.getByRole('listbox').getByRole('option', { name: /2\. Fireball/ }).click();
+  await choose(page, inspectedSkill(page), /2\. Fireball/);
   await idle(page);
   await expect(entry(page, 'enemyFireResist').locator('output code')).toHaveText('"23"');
   await openSetting(page, 'enemyFireResist');
   await expect(control(page, 'enemyFireResist')).toHaveValue('23');
   expect(await configInputs(page)).toEqual(before.params.config_inputs);
-  await page.locator('.main-skill-select').getByRole('button').click();
-  await page.getByRole('listbox').getByRole('option', { name: /1\. Comet/ }).click();
+  await choose(page, inspectedSkill(page), /1\. Comet/);
   await idle(page);
   expect(await savedState(page)).toEqual(before);
   const baseline = await hitDps(page).innerText();
@@ -275,13 +268,14 @@ test('review, jump, edit/reset, share and reload preserve imported false/zero/nu
   await expect(control(page, 'enemyColdResist')).toHaveValue('17');
   await expect(hitDps(page)).toHaveText(baseline);
   expect(await savedState(page)).toEqual(before);
-  await page.locator('.config-advanced summary').click();
+  // Unmodeled keys are typed raw values on the Advanced tab: a boolean is a picker, the rest are fields.
+  await page.getByRole('tab', { name: 'Advanced values', exact: true }).click();
   for (const key of Object.keys(raw).filter(key => key.startsWith('syntheticUnknown'))) {
-    await expect(page.getByRole('textbox', { name: key, exact: true })).toHaveValue(String(raw[key]));
+    const field = page.getByLabel(key, { exact: true });
+    if (typeof raw[key] === 'boolean') await expect.poll(() => nativeSelect(field).inputValue()).toBe(String(raw[key]));
+    else await expect(field).toHaveValue(String(raw[key]));
   }
-  await nav(page, 'Build').click();
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
-  const shared = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
+  const shared = await shareCode(page);
   const exportedInputs = await page.evaluate(xml => {
     const document = new DOMParser().parseFromString(xml, 'application/xml');
     return Object.fromEntries([...document.querySelectorAll('Config Input')].map(input => {
@@ -293,10 +287,10 @@ test('review, jump, edit/reset, share and reload preserve imported false/zero/nu
   expect(exportedInputs).toMatchObject(raw);
   await importCode(page, shared);
   expect(await configInputs(page)).toMatchObject(raw);
-  await nav(page, 'Config').click();
+  await openConfig(page);
   await openSetting(page, 'conditionShockEffect');
   await page.reload();
-  await expect(card(page)).toBeVisible({ timeout: 90_000 });
+  await openQuickAccess(page);
   await idle(page);
   expect(await configInputs(page)).toMatchObject(raw);
   await expect(entry(page, 'conditionEnemyShocked').locator('output code')).toHaveText('false');
@@ -307,38 +301,37 @@ test('review, jump, edit/reset, share and reload preserve imported false/zero/nu
 test('main-skill, stage and independent-build changes refresh context without leaking old hit shortcuts', async ({ page }) => {
   await ready(page);
   await importCode(page, syntheticCode());
-  await nav(page, 'Config').click();
+  await openConfig(page);
   await expect(card(page).locator('.config-quick-skill')).toHaveText('Fireball');
   await expect.poll(() => quickKeys(page)).toEqual([...common, 'enemyFireResist'].sort());
-  await page.locator('.main-skill-select').getByRole('button').click();
-  await page.getByRole('listbox').getByRole('option', { name: /2\. Spark/ }).click();
+  await choose(page, inspectedSkill(page), /2\. Spark/);
   await idle(page);
   await expect(card(page).locator('.config-quick-skill')).toHaveText('Spark');
   await expect.poll(() => quickKeys(page)).toEqual([...common, 'enemyLightningResist'].sort());
-  await nav(page, 'Build').click();
+  await page.locator('.shell-builds-button').click();
   await page.getByRole('button', { name: 'Rename build', exact: true }).click();
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Synthetic Guidance Original');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  const originalStage = await page.locator('.workspace-current-stage').innerText();
+  const originalStage = await currentStageName(page);
   await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Synthetic Guidance Empty');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await importCode(page, syntheticCode([]), 'currentStage');
-  await nav(page, 'Config').click();
+  await openConfig(page);
   await expect.poll(() => quickKeys(page)).toEqual([...common].sort());
   await expect(card(page).locator('.config-quick-skill')).toHaveCount(0);
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: originalStage });
+  await openStage(page, originalStage);
   await idle(page);
   await expect(card(page).locator('.config-quick-skill')).toHaveText('Spark');
   await expectReturnedHitEntries(page);
   await importCode(page, syntheticCode(['Comet']));
-  await nav(page, 'Config').click();
+  await openConfig(page);
   await expect(card(page).locator('.config-quick-skill')).toHaveText('Comet');
   await expectReturnedHitEntries(page);
-  await nav(page, 'Build').click();
+  await page.locator('.shell-builds-button').click();
   await page.getByRole('group', { name: 'My builds', exact: true }).getByRole('button', { name: /^Synthetic Guidance Original/ }).click();
   await idle(page);
-  await nav(page, 'Config').click();
+  await openConfig(page);
   await expect(card(page).locator('.config-quick-skill')).toHaveText('Spark');
   await expect.poll(() => quickKeys(page)).toEqual([...common, 'enemyLightningResist'].sort());
 });
@@ -346,11 +339,11 @@ test('main-skill, stage and independent-build changes refresh context without le
 test('EN/zh-TW/zh-CN labels and keyboard destinations remain localized without config mutation', async ({ page }) => {
   await ready(page);
   await importCode(page, syntheticCode(['Comet']));
-  await nav(page, 'Config').click();
+  await openConfig(page);
   const before = await savedState(page);
   const baseline = await hitDps(page).innerText();
   for (const [lang, action] of [['en-US', 'Open setting'], ['zh-TW', '開啟設定'], ['zh-CN', '打开设置']] as const) {
-    await expect.poll(() => page.evaluate(() => localStorage.getItem('pobr-lang') ?? 'en-US')).toBe(lang);
+    await expect(page.locator('html')).toHaveAttribute('lang', lang);
     const current = entry(page, 'enemyColdResist');
     await expect(current.getByRole('button', { name: new RegExp(`^${action}`) })).toBeEnabled();
     await openSetting(page, 'enemyColdResist', true);
@@ -360,7 +353,7 @@ test('EN/zh-TW/zh-CN labels and keyboard destinations remain localized without c
     await expect(entry(page, 'conditionShockEffect').locator('output code')).toHaveText('20');
     expect(await savedState(page)).toEqual(before);
     await expect(hitDps(page)).toHaveText(baseline);
-    await page.getByRole('button', { name: 'Switch language', exact: true }).click();
+    await setLanguage(page, lang === 'en-US' ? 'zh-TW' : lang === 'zh-TW' ? 'zh-CN' : 'en-US');
   }
 });
 
@@ -369,7 +362,7 @@ for (const width of [320, 390, 1440]) {
     await page.setViewportSize({ width, height: 780 });
     await ready(page);
     await importCode(page, syntheticCode(['Comet']));
-    await nav(page, 'Config').click();
+    await openConfig(page);
     await expect(card(page)).toBeVisible();
     expect(await card(page).evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
@@ -395,13 +388,18 @@ for (const planner of ['support', 'replacement'] as const) {
     let receipt: number[][];
     let supportIds: (string | null)[] = [];
     if (planner === 'support') {
-      await nav(page, 'Skills').click();
+      await go(page, 'Skills');
       const group = page.locator('.skill-group').first();
-      await group.locator('.skill-group-title').click();
-      await group.locator('.gem-optimizer-toggle').click();
+      const title = group.locator('.skill-group-title');
+      if (await title.getAttribute('aria-expanded') === 'false') await title.click();
+      const toggle = group.locator('.gem-optimizer-toggle');
+      if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
+      // Goal, capacity and candidate settings are folded away until asked for.
+      const settings = group.locator('.gem-optimizer-settings');
+      if (!(await settings.evaluate(element => (element as HTMLDetailsElement).open))) await settings.locator(':scope > summary').click();
       await page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true }).fill('2');
       await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();
-      await page.getByRole('button', { name: 'Objective', exact: true }).click();
+      await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
       await page.getByRole('option', { name: 'Max total DPS', exact: true }).click();
       await page.getByRole('button', { name: 'Calculate support combinations', exact: true }).click();
       await expect(page.locator('.support-plan').first()).toBeVisible({ timeout: 90_000 });
@@ -410,7 +408,7 @@ for (const planner of ['support', 'replacement'] as const) {
       supportIds = await page.locator('.support-plan-gems [data-skill-id]').evaluateAll(elements =>
         elements.map(element => element.getAttribute('data-skill-id')));
     } else {
-      await nav(page, 'Upgrades').click();
+      await go(page, 'Upgrades');
       await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
       await page.getByRole('textbox', { name: 'Complete item text', exact: true }).evaluate(element => {
         const data = new DataTransfer();
@@ -423,7 +421,7 @@ for (const planner of ['support', 'replacement'] as const) {
     }
     const before = await savedState(page);
     const baseline = await hitDps(page).innerText();
-    await nav(page, 'Config').click();
+    await openConfig(page);
     await page.locator('.config-search').fill('nothing-matches-this');
     await page.locator('.config-filter input').check();
     await openSetting(page, 'conditionEnemyShocked', true);
@@ -433,7 +431,7 @@ for (const planner of ['support', 'replacement'] as const) {
     await control(page, 'enemyFireResist').press('Tab');
     expect(await savedState(page)).toEqual(before);
     await expect(hitDps(page)).toHaveText(baseline);
-    await nav(page, planner === 'support' ? 'Skills' : 'Upgrades').click();
+    await go(page, planner === 'support' ? 'Skills' : 'Upgrades');
     if (planner === 'support') {
       await expect.poll(() => receiptNumbers(page, '.support-plan-metrics')).toEqual(receipt);
       await expect.poll(() => page.locator('.support-plan-gems [data-skill-id]').evaluateAll(elements =>
@@ -443,23 +441,23 @@ for (const planner of ['support', 'replacement'] as const) {
       await expect.poll(() => receiptNumbers(page, '.upgrade-replacement-result tbody td')).toEqual(receipt);
       await expect(page.getByRole('button', { name: /^Apply to build/ })).toBeEnabled();
     }
-    await nav(page, 'Config').click();
+    await openConfig(page);
     await openSetting(page, 'conditionEnemyShocked');
     await control(page, 'conditionEnemyShocked').check();
     await idle(page);
     await expect.poll(async () => numeric(await hitDps(page).innerText())).toBeGreaterThan(numeric(baseline));
-    await nav(page, planner === 'support' ? 'Skills' : 'Upgrades').click();
+    await go(page, planner === 'support' ? 'Skills' : 'Upgrades');
     await expect(page.locator(planner === 'support' ? '.support-results' : '.replacement-content')).toHaveCount(0);
     const plannerApply = planner === 'support'
       ? page.locator('.gem-optimizer').getByRole('button', { name: 'Apply', exact: true })
       : page.getByRole('button', { name: /^Apply to build/ });
     await expect(plannerApply).toHaveCount(0);
     // Reverting numerically does not resurrect a stale previously completed receipt.
-    await nav(page, 'Config').click();
+    await openConfig(page);
     await openSetting(page, 'conditionEnemyShocked');
     await reset(page, 'conditionEnemyShocked');
     await expect(hitDps(page)).toHaveText(baseline);
-    await nav(page, planner === 'support' ? 'Skills' : 'Upgrades').click();
+    await go(page, planner === 'support' ? 'Skills' : 'Upgrades');
     await expect(page.locator(planner === 'support' ? '.support-results' : '.replacement-content')).toHaveCount(0);
     expect(await savedState(page)).toEqual(before);
   });

@@ -87,7 +87,7 @@ export function createMockBackend(): PobrBackend {
     },
     async lineUsage() {
       // A small realistic ledger so the Calcs "Ledger" tab can be developed without WASM.
-      return (await import('../v2/pages/calcs/mockLineUsage')).mockLineUsage();
+      return (await import('../app/pages/calcs/mockLineUsage')).mockLineUsage();
     },
     async loadTradeCatalog() {
       return { bases: [], mods: [], gems: [] };

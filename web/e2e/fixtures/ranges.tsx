@@ -9,8 +9,7 @@ import type { BuildSession } from '../../src/hooks/useBuildSession';
 import { loadTradeCatalog } from '../../src/lib/tradeOptimizer';
 import '../../src/styles/global.css';
 
-const v2 = new URLSearchParams(location.search).get('v2') !== 'false';
-if (v2) await import('../../src/v2/styles.css');
+await import('../../src/app/styles.css');
 const backend = await getBackend();
 await backend.init();
 const catalog = await loadTradeCatalog();
@@ -31,8 +30,8 @@ function Fixture() {
   const [busy, setBusy] = useState(false);
   const [compared, setCompared] = useState('');
   const [dirty, setDirty] = useState(false);
-  useEffect(() => { document.documentElement.classList.toggle('dark', v2 && dark); }, [dark]);
-  return <UiProvider v2={v2} lang="en-US"><main className={v2 ? 'v2-root' : ''} style={{ display: 'block', height: 'auto', overflow: 'visible', padding: 24, maxWidth: 900 }}>
+  useEffect(() => { document.documentElement.classList.toggle('dark', dark); }, [dark]);
+  return <UiProvider lang="en-US"><main className="shell-root" style={{ display: 'block', height: 'auto', overflow: 'visible', padding: 24, maxWidth: 900 }}>
     <AppButton onClick={() => setDark(value => !value)}>Toggle theme</AppButton>
     <AppButton onClick={() => setBusy(value => !value)}>Toggle busy</AppButton>
     <UniqueCatalog session={{ busy } as BuildSession} lang="en-US" />

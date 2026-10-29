@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { CalculateBuildRequest } from '../../api/types';
-import type { StatChange } from '../../v2/motion/statChanges';
+import type { StatChange } from '../../app/motion/statChanges';
 
 export interface PreviewState { label: string; status: 'loading' | 'ready'; changes: StatChange[] }
 export interface PreviewCandidate {
@@ -19,6 +19,6 @@ export interface PreviewApi {
   clear: () => void;
 }
 
-/** Only the v2 shell provides it; elsewhere `usePreview()` is null and hovering does nothing. */
+/** Provided by the app shell; where it is absent (a panel rendered on its own) `usePreview()` is null and hovering does nothing. */
 export const PreviewContext = createContext<PreviewApi | null>(null);
 export function usePreview() { return useContext(PreviewContext); }

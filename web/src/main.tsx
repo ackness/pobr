@@ -1,4 +1,16 @@
-import { isV2Path } from './v2/routes';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './app/App';
+import './styles/global.css';
+import './app/styles.css';
+import './app/feature-layout.css';
+import './app/pages.css';
+import './app/pages-skills.css';
+import './app/pages-config.css';
+import './app/pages-trade.css';
+import './app/pages-compare.css';
+import './app/pages-calcs.css';
+import './app/pages-tree.css';
+import './app/inspector.css';
 
-// Load one visual entry point; legacy global styles never outrank V2 tokens.
-void (isV2Path(location.pathname) ? import('./v2/entry') : import('./legacy-entry'));
+createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);

@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import { busy, openItemsAfterImport, pageLink } from './shell';
+import { choose, generateShareCode } from './treePage';
 import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import type { PassiveNode } from '../src/api/types';
@@ -19,18 +21,19 @@ const child = nodes.filter(node => node.kind === 'normal' && node.name !== 'Attr
   .sort((a,b) => a.skill - b.skill)[0];
 const firstSet = [one.skill, child.skill].sort((a,b) => a - b);
 const code = deflateSync(`<PathOfBuilding2><Build level="80" className="Warrior"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_${version.split('.')[1]}"/></Tree><Skills/><Items/><Notes>Weapon tree round-trip</Notes></PathOfBuilding2>`).toString('base64url');
-const nav = (page: Page, name: string) => page.getByRole('navigation').getByRole('button', { name, exact: true });
-const saved = (page: Page): Promise<SavedSession['state']> => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state);
+const nav = (page: Page, name: string) => pageLink(page, name);
+const saved = (page: Page): Promise<SavedSession['state']> => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
 const circle = (page: Page, node: PassiveNode) => page.locator(`circle[data-skill-id="${node.skill}"]`);
 async function idle(page: Page) {
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await expect(page.locator('.workspace-saved')).toBeVisible();
-  await expect(page.locator('.boot-error, .calc-error')).toHaveCount(0);
+  await expect(busy(page)).toHaveCount(0);
+  await expect(page.locator('.shell-save-state')).toContainText('Saved locally');
+  await expect(page.locator('.shell-boot[role=alert], .shell-alert')).toHaveCount(0);
 }
 async function importCode(page: Page, source: string) {
-  await nav(page, 'Build').click();
+  await page.locator('.shell-builds-button').click();
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(source);
   await page.locator('.import-submit').click();
+  await openItemsAfterImport(page);
   await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
   await idle(page);
 }
@@ -56,19 +59,19 @@ test('set allocation, previews, promotion and export preserve the inactive tree'
   // Only unrelated league discovery is recorded; the tree, edits, export and
   // calculations all run the shipped WASM and current game data.
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByRole('textbox', { name: 'Build code', exact: true })).toBeVisible({ timeout: 90_000 });
   await importCode(page, code);
   await nav(page, 'Tree').click();
   const mode = page.getByRole('combobox', { name: 'Allocate to', exact: true });
-  await mode.selectOption('2');
+  await choose(page, mode, 'Weapon set 2');
   await idle(page);
   await circle(page, two).dispatchEvent('pointerover', { clientX: 600, clientY: 400 });
   await expect(circle(page, two)).toHaveClass(/node-preview-add/);
   await allocate(page, two);
   await expect(circle(page, two)).toHaveAttribute('data-weapon-set', '2');
   await expect(circle(page, two)).toHaveClass(/node-preview-refund/);
-  await mode.selectOption('1');
+  await choose(page, mode, 'Weapon set 1');
   await idle(page);
   await expect(circle(page, two)).not.toHaveClass(/node-allocated/);
   expect((await saved(page)).weaponSwap?.exclusive_nodes).toEqual([[], [two.skill]]);
@@ -76,16 +79,14 @@ test('set allocation, previews, promotion and export preserve the inactive tree'
   await expect(circle(page, one)).toHaveClass(/node-preview-add/);
   await expect(circle(page, child)).toHaveClass(/node-preview-add/);
   await allocate(page, child);
-  await nav(page, 'Build').click();
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
-  const exported = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
+  const exported = await generateShareCode(page);
   await importCode(page, exported);
   const roundtrip = await saved(page);
   expect(roundtrip.weaponSwap?.active).toBe(1);
   expect(roundtrip.weaponSwap?.exclusive_nodes).toEqual([firstSet, [two.skill]]);
   expect(roundtrip.allocatedNodes).toEqual(firstSet);
   await nav(page, 'Tree').click();
-  await mode.selectOption('2');
+  await choose(page, mode, 'Weapon set 2');
   await idle(page);
   await expect(circle(page, two)).toHaveClass(/node-allocated/);
   await expect(circle(page, one)).not.toHaveClass(/node-allocated/);
@@ -97,11 +98,11 @@ test('set allocation, previews, promotion and export preserve the inactive tree'
   await details.getByRole('button', { name: 'Make shared', exact: true }).click();
   await expect.poll(async () => (await saved(page)).weaponSwap?.exclusive_nodes).toEqual([firstSet, []]);
   await expect(circle(page, two)).toHaveAttribute('data-weapon-set', '0');
-  await mode.selectOption('1');
+  await choose(page, mode, 'Weapon set 1');
   await idle(page);
   await expect(circle(page, two)).toHaveClass(/node-allocated/);
   await inspect(page, one);
-  await page.locator('.tree-toolbar').scrollIntoViewIfNeeded();
+  await page.locator('.tree-bar-top').scrollIntoViewIfNeeded();
   await circle(page, one).dispatchEvent('pointerover', { clientX: 600, clientY: 400 });
   await expect(circle(page, one)).toHaveClass(/node-preview-refund/);
   await expect(circle(page, child)).toHaveClass(/node-preview-refund/);

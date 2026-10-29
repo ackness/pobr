@@ -8,7 +8,6 @@ import { compareTreeAllocations, resolvedTreeVersion, treeAllocationTotals, type
 import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
 import { NODE_RADIUS, hasPosition, passiveTreeEdges, treeExtent, type ViewBox } from '../../lib/treeGeometry';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { useUi } from '../shared/UiContext';
 
 interface Props {
   a: StageState;
@@ -50,7 +49,6 @@ type LoadedProps = Props & { nodesA: PassiveNode[]; nodesB: PassiveNode[]; sameV
 
 function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion, meta, lang }: LoadedProps) {
   const tt = bindT(lang);
-  const { v2 } = useUi();
   const [hover, setHover] = useState<{ node: PassiveNode; x: number; y: number } | null>(null);
   const [hoverName] = useLocalizedLines(hover ? [hover.node.name ?? `#${hover.node.skill}`] : [], lang);
   const overlay = useMemo(() => compareTreeAllocations(a, b, nodesA, nodesB, sameVersion), [a, b, nodesA, nodesB, sameVersion]);
@@ -175,7 +173,7 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
       </svg>
       <TooltipProvider><Tooltip open={hover !== null} onOpenChange={open => { if (!open) setHover(null); }}>
         <TooltipTrigger asChild><span aria-hidden="true" style={{ position: 'fixed', left: hover?.x ?? 0, top: hover?.y ?? 0, width: 1, height: 1, pointerEvents: 'none' }} /></TooltipTrigger>
-        {hover && <TooltipContent className={v2 ? 'app-tooltip' : 'app-tooltip-legacy'}>{hoverName} · #{hover.node.skill}</TooltipContent>}
+        {hover && <TooltipContent className="app-tooltip">{hoverName} · #{hover.node.skill}</TooltipContent>}
       </Tooltip></TooltipProvider>
     </>;
   const inspect = <label className="compare-tree-inspect">{inspectLabel}<AppSelectControl value={selected?.key ?? ''} onChange={event => {
@@ -213,21 +211,13 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
     </p>)}</details>
   </>;
   const noCoordinates = <p role="note">{tt('compare.noCoordinates')}</p>;
-  if (v2) return <>
+  return <>
     <div className="cmp-tree-top">{legend}{tools}</div>
     {unplaced}
     <div className="cmp-tree-stage">
       <div className="cmp-tree-view">{canvas || noCoordinates}</div>
       <div className="cmp-tree-inspector">{inspect}{nodeDetails}</div>
     </div>
-    {rest}
-  </>;
-  return <>
-    {legend}
-    {unplaced}
-    {currentView && full ? <>{tools}{canvas}</> : noCoordinates}
-    {inspect}
-    {nodeDetails}
     {rest}
   </>;
 }

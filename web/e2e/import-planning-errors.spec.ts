@@ -1,4 +1,6 @@
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
+import { pageLink, statValue } from './shell';
+import { displayedRail, goTo, importInto, mainSkillPinned, openBuild, openSupportSettings, settled } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
 import type { AttributeChoice, CalculateBuildRequest, CalculateBuildResponse, PassiveNode } from '../src/api/types';
@@ -47,14 +49,11 @@ const jointLabels = {
   'zh-TW': { title: '珠寶與天賦聯合規劃', text: '候選珠寶文字', socket: '候選珠寶孔', add: '加入珠寶位置', run: '尋找珠寶與天賦方案' },
   'zh-CN': { title: '珠宝与天赋联合规划', text: '候选珠宝文本', socket: '候选珠宝孔', add: '添加珠宝位置', run: '寻找珠宝与天赋方案' },
 };
-const nav = (page: Page, name: string) => page.getByRole('navigation').getByRole('button', { name, exact: true });
-const saved = (page: Page): Promise<Envelope> => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!));
+const saved = (page: Page): Promise<Envelope> => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));
 const bytes = (page: Page) => page.evaluate(() => ({
-  workspace: localStorage.getItem('pobr-build-state'), library: localStorage.getItem('pobr-library'),
+  workspace: localStorage.getItem('pobr-v2-build-state'), library: localStorage.getItem('pobr-v2-library'),
 }));
-const displayed = (page: Page) => page.locator('#character-stats .stat-row').evaluateAll(rows => rows.map(row => ({
-  label: row.querySelector('dt')?.textContent, value: row.querySelector('dd')?.textContent,
-})));
+const displayed = displayedRail;
 const routeResults = (page: Page) => page.locator('.tree-planner-body > .tree-planner-results');
 const joint = (page: Page, lang: Lang = 'en-US') => page.getByRole('region', { name: jointLabels[lang].title });
 const results = (page: Page, planner: Planner) => planner === 'route' ? routeResults(page) : joint(page).locator('.jewel-plan-results');
@@ -96,12 +95,6 @@ async function calculate(request: CalculateBuildRequest): Promise<CalculateBuild
   return JSON.parse((await replayBackend()).calculateBuildJson(JSON.stringify(request)));
 }
 
-async function settled(page: Page) {
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await expect(page.locator('.workspace-saved')).toBeVisible();
-  await expect(page.locator('.boot-error, .workspace-save-error')).toHaveCount(0);
-}
-
 async function capture(page: Page): Promise<Capture> {
   await settled(page);
   const envelope = await saved(page);
@@ -114,7 +107,7 @@ async function start(page: Page, lang: Lang = 'en-US') {
   // come from the shipped production app and its real WASM backend.
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
   await page.addInitScript(lang => localStorage.setItem('pobr-lang', lang), lang);
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByRole('textbox', { name: bindT(lang)('build.code'), exact: true })).toBeEnabled({ timeout: 90_000 });
   await settled(page);
 }
@@ -132,9 +125,12 @@ async function frostWorkspace(page: Page, lang: Lang) {
   await start(page, lang);
   await page.getByRole('textbox', { name: bindT(lang)('build.code'), exact: true }).fill(frostBomb);
   await page.locator('.import-submit').click();
+  // An import lands on the Overview; follow it to the Items page and come back to the Build page afterwards.
+  await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
+  await goTo(page, bindT(lang)('tab.items'), lang);
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 90_000 });
   await settled(page);
-  await nav(page, bindT(lang)('tab.build')).click();
+  await openBuild(page);
   await copyStage(page, lang);
   expect((await saved(page)).state.character).toMatchObject({ level: 98, class_name: 'Monk', ascendancy_name: 'Invoker' });
 }
@@ -151,18 +147,19 @@ async function syntheticWitch(page: Page, lang: Lang = 'en-US') {
     annotations: { 'skill:0': 'Keep source metadata' },
     params: { config_inputs: { enemyLevel: '82', overridePowerCharges: 2.5, buffOnslaught: false } },
   } };
-  await page.addInitScript(fixture => localStorage.setItem('pobr-build-state', JSON.stringify(fixture)), fixture);
+  await page.addInitScript(fixture => localStorage.setItem('pobr-v2-build-state', JSON.stringify(fixture)), fixture);
   await start(page, lang);
   await copyStage(page, lang);
+  await mainSkillPinned(page);
 }
 
 async function select(page: Page, label: string, option: string) {
-  await page.getByRole('button', { name: label, exact: true }).click();
+  await page.getByRole('combobox', { name: label, exact: true }).click();
   await page.getByRole('option', { name: option, exact: true }).click();
 }
 
 async function openTree(page: Page, lang: Lang = 'en-US') {
-  await nav(page, bindT(lang)('tab.tree')).click();
+  await goTo(page, bindT(lang)('tab.tree'), lang);
   await expect(page.locator('.tree-asc-picker select').first()).toBeEnabled({ timeout: 90_000 });
   const toggle = page.getByRole('button', { name: labels[lang].title, exact: true });
   if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
@@ -178,8 +175,8 @@ async function configure(page: Page, lang: Lang = 'en-US') {
 }
 
 async function paste(page: Page, source: string, destination: Destination, lang: Lang = 'en-US', cancel = false) {
-  await nav(page, bindT(lang)('tab.build')).click();
-  await page.getByRole('combobox', { name: workspaceText(lang).importDestination, exact: true }).selectOption(destination);
+  await openBuild(page);
+  await importInto(page, destination, lang);
   await page.getByRole('textbox', { name: bindT(lang)('build.code'), exact: true }).fill(source);
   await page.locator('.import-submit').click();
   if (destination === 'currentStage') await answerConfirm(page, !cancel);
@@ -263,6 +260,9 @@ async function exactApply(page: Page, card: Locator, planner: Planner, before: C
       `${id} must match the independently replayed route to its displayed precision`).toBeLessThanOrEqual(0.00501);
   }
   await card.getByRole('button', { name: planner === 'route' ? labels[lang].apply : 'Apply jewel and passive plan', exact: true }).click();
+  // The receipt belongs to the allocation that was just replaced, so it goes with it. A planner that keeps
+  // tracking the tree searches again for the new allocation a moment later, hence the check comes first.
+  await expect(results(page, planner)).toHaveCount(0);
   await expect.poll(async () => normalizeAllocation(await saved(page))).toEqual(normalizeAllocation(expected));
   const after = await capture(page);
   expect(after.bytes.library).toBe(before.bytes.library);
@@ -272,10 +272,8 @@ async function exactApply(page: Page, card: Locator, planner: Planner, before: C
   for (const id of metrics) {
     const row = STAT_SECTIONS.flatMap(section => section.rows).find(row => row.id === id)!;
     const value = expectedResult.stats.find(stat => stat.id === id)!.value;
-    await expect(page.locator('#character-stats .stat-row').filter({ has: page.locator('dt', { hasText: new RegExp(`^${row.label[lang]}$`) }) }).locator('dd'))
-      .toHaveText(formatStatValue(value, row.format));
+    await expect(statValue(page, new RegExp(`^${row.label[lang]}$`)).first()).toHaveText(formatStatValue(value, row.format));
   }
-  await expect(results(page, planner)).toHaveCount(0);
   return after;
 }
 
@@ -301,7 +299,7 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
       await screenshot(page, page.getByRole('alert').last(), testInfo, 'current-stage-rejection');
       await openTree(page, lang);
       await expect(page.getByRole('spinbutton', { name: labels[lang].points, exact: true })).toHaveValue('3');
-      await expect(page.getByRole('button', { name: labels[lang].attribute, exact: true })).toContainText(labels[lang].strength);
+      await expect(page.getByRole('combobox', { name: labels[lang].attribute, exact: true })).toContainText(labels[lang].strength);
       await evaluateFrostRoutes(page, lang);
       expect(await capture(page)).toEqual(before);
       await screenshot(page, page.locator('.tree-planner-summary'), testInfo, 'fresh-evaluated-route');
@@ -311,7 +309,7 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
 
 async function addPlacement(page: Page, text: string, lang: Lang = 'en-US') {
   await joint(page, lang).getByRole('textbox', { name: jointLabels[lang].text, exact: true }).fill(text);
-  await joint(page, lang).getByRole('button', { name: jointLabels[lang].socket, exact: true }).click();
+  await joint(page, lang).getByRole('combobox', { name: jointLabels[lang].socket, exact: true }).click();
   await page.getByRole('option').filter({ hasText: `#${socket.skill}` }).click();
   await joint(page, lang).getByRole('button', { name: jointLabels[lang].add, exact: true }).click();
 }
@@ -349,23 +347,23 @@ for (const planner of ['route', 'joint'] as const) {
     const routeReceipt = await routeResults(page).innerText();
     const jointReceipt = await results(page, 'joint').innerText();
     const candidates = await joint(page).locator('.jewel-plan-candidates').innerText();
-    const socketLabel = await joint(page).getByRole('button', { name: 'Candidate socket', exact: true }).innerText();
+    const socketLabel = await joint(page).getByRole('combobox', { name: 'Candidate socket', exact: true }).innerText();
     const before = await capture(page);
     await paste(page, JSON.stringify(before.envelope), 'currentStage', 'en-US', true);
     expect(await capture(page)).toEqual(before);
     await expect(page.getByRole('alert')).toHaveCount(0);
     for (const destination of ['newBuild', 'currentStage'] as const) {
       await reject(page, before, destination);
-      await nav(page, 'Calcs').click();
+      await pageLink(page, 'Calcs').click();
       await openTree(page);
       await expect.poll(() => routeResults(page).innerText()).toBe(routeReceipt);
       await expect.poll(() => results(page, 'joint').innerText()).toBe(jointReceipt);
       await expect(run(page, 'route')).toBeEnabled();
       await expect(run(page, 'joint')).toBeEnabled();
       await expect(page.getByRole('spinbutton', { name: 'Point budget', exact: true })).toHaveValue('3');
-      await expect(page.getByRole('button', { name: 'New travel attributes', exact: true })).toContainText('Strength');
+      await expect(page.getByRole('combobox', { name: 'New travel attributes', exact: true })).toContainText('Strength');
       await expect(joint(page).getByRole('textbox', { name: 'Candidate jewel text', exact: true })).toHaveValue(jewel);
-      expect(await joint(page).getByRole('button', { name: 'Candidate socket', exact: true }).innerText()).toBe(socketLabel);
+      expect(await joint(page).getByRole('combobox', { name: 'Candidate socket', exact: true }).innerText()).toBe(socketLabel);
       expect(await joint(page).locator('.jewel-plan-candidates').innerText()).toBe(candidates);
       expect(await capture(page)).toEqual(before);
     }
@@ -387,10 +385,11 @@ for (const planner of ['route', 'joint'] as const) {
 test('support receipts and settings survive rejected imports without losing the evaluated full-set Apply', async ({ page }) => {
   test.setTimeout(300_000);
   await syntheticWitch(page);
-  await nav(page, 'Skills').click();
+  await pageLink(page, 'Skills').click();
   const group = page.locator('.skill-group').first();
   if (await group.locator('.skill-group-title').getAttribute('aria-expanded') === 'false') await group.locator('.skill-group-title').click();
   if (await group.locator('.gem-optimizer-toggle').getAttribute('aria-expanded') === 'false') await group.locator('.gem-optimizer-toggle').click();
+  await openSupportSettings(page);
   const capacity = page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true });
   const lineage = page.getByRole('checkbox', { name: 'Include lineage supports', exact: true });
   await capacity.fill('3');
@@ -403,7 +402,9 @@ test('support receipts and settings survive rejected imports without losing the 
   const before = await capture(page);
   for (const destination of ['newBuild', 'currentStage'] as const) {
     await reject(page, before, destination);
-    await nav(page, 'Skills').click();
+    await pageLink(page, 'Skills').click();
+    // The settings section folds up when the page is left; the values in it are what must have been kept.
+    await openSupportSettings(page);
     await expect(capacity).toHaveValue('3');
     await expect(lineage).not.toBeChecked();
     expect(await page.locator('.support-results').innerText()).toBe(receipt);
@@ -432,7 +433,7 @@ test('support receipts and settings survive rejected imports without losing the 
   const actualDps = after.result.stats.find(stat => stat.id === 'TotalDPS')!.value!;
   expect(actualDps).toBeGreaterThan(before.result.stats.find(stat => stat.id === 'TotalDPS')!.value!);
   expect(Math.abs(actualDps - predictedDps)).toBeLessThanOrEqual(0.06);
-  await expect(page.locator('#character-stats .stat-row').filter({ hasText: /^Total DPS/ }).locator('dd')).toHaveText(formatStatValue(actualDps, 'float2'));
+  await expect(statValue(page, /^Total DPS$/).first()).toHaveText(formatStatValue(actualDps, 'float2'));
   await expect(page.locator('.support-results')).toHaveCount(0);
 });
 
@@ -441,7 +442,7 @@ test('strict saved-file rejection stays local and external decoder rejection als
   await syntheticWitch(page);
   await configure(page);
   const before = await capture(page);
-  await nav(page, 'Build').click();
+  await openBuild(page);
   const damaged = { version: 1, notes: 'Saved identity wins over valid legacy collections', state: null, passives: [], items: [], skills: [] };
   await page.locator('input[type=file]').setInputFiles({ name: 'damaged-saved-session.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(damaged)) });
   await expect(page.getByRole('alert').last()).toBeVisible();
@@ -450,7 +451,7 @@ test('strict saved-file rejection stays local and external decoder rejection als
   await expect(run(page)).toBeEnabled();
   await complete(page);
   const receipt = await routeResults(page).innerText();
-  await nav(page, 'Build').click();
+  await openBuild(page);
   await page.locator('input[type=file]').setInputFiles({ name: 'unrecognized-external.build', mimeType: 'application/json', buffer: Buffer.from('{}') });
   await expect(page.getByRole('alert').last()).toBeVisible();
   expect(await capture(page)).toEqual(before);
@@ -475,14 +476,15 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
       // Named uint32-overflow request boundary: the existing gem editor accepts
       // this positive integer; the real WASM decoder rejects it as out of range.
       // Do not repair editor bounds here or substitute a mocked engine error.
-      await nav(page, bindT(lang)('tab.skills')).click();
+      await goTo(page, bindT(lang)('tab.skills'), lang);
       const group = page.locator('.skill-group').first();
       if (await group.locator('.skill-group-title').getAttribute('aria-expanded') === 'false') await group.locator('.skill-group-title').click();
       const level = group.locator('.skill-gem').first().getByRole('spinbutton', { name: bindT(lang)('skills.level'), exact: true });
       await level.fill('4294967296');
       const calcAlert = page.getByRole('alert').filter({ hasText: '4294967296' });
       await expect(calcAlert).toContainText('u32');
-      const rawCalcError = await calcAlert.innerText();
+      // The heading and the engine message sit in separate blocks; textContent is what toHaveText compares against.
+      const rawCalcError = (await calcAlert.textContent())!;
       await settled(page);
       const invalid = await saved(page);
       expect(invalid.state.socketGroups[0].gems[0].level).toBe(4294967296);
@@ -526,7 +528,7 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
       await expect(calcAlert).toBeInViewport();
       await expect(sourceAlert).toBeInViewport();
       await screenshot(page, calcAlert, testInfo, 'calculation-failure-after-rejected-import');
-      await nav(page, bindT(lang)('tab.skills')).click();
+      await goTo(page, bindT(lang)('tab.skills'), lang);
       await level.fill(String(before.envelope.state.socketGroups[0].gems[0].level));
       await settled(page);
       await expect(page.getByRole('alert')).toHaveCount(0);

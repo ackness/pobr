@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, test, vi } from 'vitest';
 import type { BuildJson, ConfigInputValue } from '../../api/types';
@@ -9,6 +10,11 @@ import { TooltipProvider } from '../ui/tooltip';
 import { RawConfigValue } from './RawConfigValue';
 
 vi.mock('../../api/backend', () => ({ getBackend: vi.fn() }));
+// Server rendering mounts only the active tab; these tests read the Advanced tab too.
+vi.mock('../ui/tabs', async importOriginal => ({
+  ...await importOriginal<typeof import('../ui/tabs')>(),
+  TabsContent: ({ children }: { children?: ReactNode }) => children,
+}));
 
 const state = (config_inputs: Record<string, ConfigInputValue>): SavedSession['state'] => ({
   pobCode: 'source-code', sourceBackfillComplete: true,
@@ -25,8 +31,9 @@ function render(current: SavedSession['state'], imported: Record<string, ConfigI
   return renderToStaticMarkup(<ConfigPanel session={session} lang="en-US" />);
 }
 
+// The raw editor shows a boolean as a select trigger labelled with its value, anything else as an input.
 function input(html: string, key: string) {
-  return html.match(new RegExp(`<input[^>]*aria-label="${key}"[^>]*>`))?.[0];
+  return html.match(new RegExp(`<(?:input|button)[^>]*aria-label="${key}"[^>]*>(?:<span[^>]*>[^<]*</span>)?`))?.[0];
 }
 
 describe('materialized configuration display', () => {
@@ -38,7 +45,7 @@ describe('materialized configuration display', () => {
     expect(input(html, 'conditionEnemyShocked')).toContain('value=""');
     // Clearing a source value is an edit, even when its display is blank.
     expect(html).toContain('aria-label="Restore imported/default value: conditionEnemyShocked"');
-    expect(input(html, 'retainedFalse')).toContain('value="false"');
+    expect(input(html, 'retainedFalse')).toContain('>False</span>');
     expect(input(html, 'retainedZero')).toContain('value="0"');
     expect(html).not.toContain('aria-label="Restore imported/default value: retainedFalse"');
   });
@@ -59,15 +66,15 @@ describe('materialized configuration display', () => {
     const selected = applyNamedConfig(original, decoded);
     const html = render(selected, decoded.config_inputs);
     expect(toRequest(selected).config_inputs).toEqual(decoded.config_inputs);
-    expect(input(html, 'conditionEnemyShocked')).toContain('value="false"');
+    expect(input(html, 'conditionEnemyShocked')).toContain('>False</span>');
     expect(input(html, 'nativeZero')).toContain('value="0"');
     expect(input(html, 'absentInSelectedSet')).toBeUndefined();
     expect(html).not.toContain('class="config-reset"');
   });
 });
 
-test('V2 keeps a saved inapplicable option, typed value and collapsed help', () => {
-  const html = renderToStaticMarkup(<UiProvider v2 lang="en-US"><TooltipProvider>
+test('keeps a saved inapplicable option, typed value and collapsed help', () => {
+  const html = renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider>
     <OptionRow option={{ var: 'testOption', label: 'Test option', input_type: 'count', tooltip: 'Catalog help' }}
       value="0" overridden={false} busy={false} lang="en-US" listLabels={{}} applicability="not_applicable"
       onChange={vi.fn()} onReset={vi.fn()} />
@@ -79,8 +86,8 @@ test('V2 keeps a saved inapplicable option, typed value and collapsed help', () 
   expect(html).not.toContain(' title=');
 });
 
-test.each([undefined, false, 0, '0', ''] as const)('V2 raw editor retains the type of %j', value => {
-  const html = renderToStaticMarkup(<UiProvider v2 lang="en-US">
+test.each([undefined, false, 0, '0', ''] as const)('raw editor retains the type of %j', value => {
+  const html = renderToStaticMarkup(<UiProvider lang="en-US">
     <RawConfigValue name="raw" value={value} lang="en-US" onChange={vi.fn()} />
   </UiProvider>);
   expect(html).toContain('aria-label="Value type: raw"');

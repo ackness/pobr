@@ -184,7 +184,7 @@ PR 只能读取自己和 master 的缓存，所以这次运行决定了新 PR �
 Rust 检查 fmt/Clippy/Cargo tests（含 doctest）/i18n 与数据兼容；Web 检查脚本、类型、单测、Worker、
 真实 WASM 与打包。Playwright E2E 默认不运行：tag、发版 PR 和普通手动触发都跳过，
 只有 `mise run ci <ref> --e2e`（或在 Actions 页勾选 `e2e`）才运行，约 15 分钟。
-界面交互改动需要时在本地跑对应 spec，或显式请求一次云端 E2E。`mise run full` 仅运行 Rust 门禁，包含 fmt/Clippy、`cargo test --workspace`（含 doctest）和 i18n。离线或排查 CI 时可显式使用，无需重复已通过的云端全量验证。
+界面交互改动需要时在本地跑对应 spec（默认用 4173 端口的 `vite preview`；另开一次运行时设 `POBR_E2E_PORT=<端口>`，它会启动自己的预览服务），或显式请求一次云端 E2E。`mise run full` 仅运行 Rust 门禁，包含 fmt/Clippy、`cargo test --workspace`（含 doctest）和 i18n。离线或排查 CI 时可显式使用，无需重复已通过的云端全量验证。
 
 Linux CI 的 WASM 构建设置 `BINARYEN_CORES=1`，让 wasm-pack 下载的 Binaryen 在主线程执行。
 该模块在 Linux 预编译优化器的工作线程上曾触发 SIGSEGV，切为单线程后完整构建与解包计算通过；

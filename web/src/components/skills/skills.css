@@ -187,21 +187,6 @@
   width: 100%;
 }
 
-.gem-picker-panel {
-  display: flex;
-  flex-direction: column;
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  background: var(--surface-raised);
-  border: 1px solid var(--accent-gold-dim);
-  border-radius: var(--radius-md);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
-  overflow: hidden;
-}
-
 .gem-picker-chips {
   flex: none;
   display: flex;
@@ -474,9 +459,7 @@
 .skill-group-main { justify-self: start; font-weight: 500; letter-spacing: 0; }
 .skill-group.is-main { background: color-mix(in srgb, var(--accent-gold) 4%, var(--surface-card)); }
 .skill-group.is-main .skill-group-name { color: var(--accent-gold-bright); }
-.skill-gem-editor { padding-top: var(--space-3); margin-top: var(--space-3); border-top: 1px solid var(--border-subtle); }
 .gem-column-labels { display: grid; grid-template-columns: minmax(0, 1fr) 56px 56px var(--gem-corrupted-width) 32px; gap: var(--space-1); color: var(--text-muted); font-size: var(--text-xs); padding-inline: var(--space-2); }
-.skill-gem-editor { --gem-corrupted-width: 60px; }
 .gem-corrupted { display: inline-flex; justify-content: center; align-items: center; width: var(--gem-corrupted-width); min-height: 32px; cursor: pointer; }
 .gem-column-labels > :nth-child(4) { text-align: center; }
 .skill-gem { align-items: center; gap: var(--space-2); padding: var(--space-2); border-bottom: 1px solid var(--border-subtle); }
@@ -574,4 +557,4 @@
 .gem-number { display: flex; align-items: center; gap: var(--space-1); font-size: var(--text-xs); }
 .skill-gem .gem-corrupted { width: auto; gap: var(--space-1); font-size: var(--text-xs); }
 
-/* V2 keeps each gem's controls together as the available panel width changes. */
+/* Each gem's controls stay together as the available panel width changes. */

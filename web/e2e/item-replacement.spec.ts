@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openItemsAfterImport } from './shell';
+import { augmentOption, choose, dpsValue, ehpValue, lifeValue, settledText } from './upgradesPage';
 
 async function loadRings(page: Page, includeAmulet = false) {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
@@ -14,18 +16,19 @@ async function loadRings(page: Page, includeAmulet = false) {
     talent_tree: { hashes: [], quest_stats: [] }, jewel_data: '[]',
     skills: [{ baseType: 'Fireball', support: false, properties: [{ type: 5, values: [['16', 0]] }] }],
   } }));
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticCopiedItemFixture');
   await page.locator('.import-submit').click();
+  await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Upgrades', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Upgrades', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Complete item text' })).toBeVisible();
 }
 
-const dps = (page: Page) => page.locator('.stat-row').filter({ hasText: 'Total DPS' }).locator('dd');
+const dps = dpsValue;
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
-const savedState = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state);
+const savedState = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
 const copied = 'Item Class: Rings\nRarity: RARE\nMarket Candidate\nSapphire Ring\n--------\nRequirements:\nLevel: 60\nDex: 90\n--------\nItem Level: 100\nImplicits: 1\n+30% to Cold Resistance\n--------\n20% increased Fire Damage\n+100 to maximum Life';
 
 test('three-item search applies the complete result and changing its goal invalidates it', async ({ page }) => {
@@ -42,7 +45,7 @@ test('three-item search applies the complete result and changing its goal invali
   await paste(page, 'Rarity: RARE\nThird Item\nAmber Amulet\nImplicits: 0\n+100 to maximum Life');
   await expect(page.locator('.replacement-content')).toHaveAttribute('aria-busy', 'false');
   await page.getByRole('button', { name: 'Add to combinations', exact: true }).click();
-  await planner.getByRole('combobox', { name: 'Maximum replacements' }).selectOption('3');
+  await choose(page, planner.getByRole('combobox', { name: 'Maximum replacements' }), '3');
   const run = planner.getByRole('button', { name: 'Compare up to 3 items together', exact: true });
   await run.click();
   await expect(planner.locator('.equipment-plan-results')).toContainText('Plans calculated: 8');
@@ -57,7 +60,7 @@ test('three-item search applies the complete result and changing its goal invali
   await expect(best).toBeVisible();
   const expectedLife = numeric(await best.locator('[data-plan-stat="Life"]').innerText());
   await best.getByRole('button', { name: 'Apply equipment plan', exact: true }).click();
-  await expect.poll(async () => numeric(await page.locator('.stat-row').filter({ hasText: /^Life/ }).locator('dd').innerText())).toBeCloseTo(expectedLife, 0);
+  await expect.poll(async () => numeric(await lifeValue(page).innerText())).toBeCloseTo(expectedLife, 0);
   const after = await savedState(page);
   expect(after.items.filter((item: { slot: string }) => ['ring1', 'ring2', 'amulet'].includes(item.slot))).toHaveLength(3);
   expect(after.weaponSwap).toEqual(original.weaponSwap);
@@ -73,7 +76,7 @@ async function paste(page: Page, text: string) {
 test('joint equipment plans compare both ring placements, keep item identity, and apply the predicted complete build', async ({ page }) => {
   await loadRings(page);
   const original = await savedState(page);
-  const before = await dps(page).innerText();
+  const before = await settledText(dps(page));
   await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
   const planner = page.locator('.equipment-planner');
   const addBothPositions = async (text: string) => {
@@ -117,7 +120,7 @@ test('joint equipment plans compare both ring placements, keep item identity, an
   await best.getByRole('button', { name: 'Apply equipment plan', exact: true }).click();
   await expect(planner.locator('.equipment-plan-results')).toHaveCount(0);
   await expect.poll(async () => numeric(await dps(page).innerText())).toBeCloseTo(expectedDps, 0);
-  await expect.poll(async () => numeric(await page.locator('.stat-row').filter({ hasText: /^Life/ }).locator('dd').innerText())).toBeCloseTo(expectedLife, 0);
+  await expect.poll(async () => numeric(await lifeValue(page).innerText())).toBeCloseTo(expectedLife, 0);
   const applied = await savedState(page);
   const rings = applied.items.filter((item: { slot: string }) => item.slot === 'ring1' || item.slot === 'ring2');
   expect(rings).toHaveLength(2);
@@ -166,7 +169,7 @@ test('joint equipment candidates retain unmodeled effects and cannot apply an un
 
 test('pasting detects both rings, recommends the actual better destination, and applies only the selected replacement', async ({ page }) => {
   await loadRings(page);
-  const before = await dps(page).innerText();
+  const before = await settledText(dps(page));
   const original = await savedState(page);
   await paste(page, copied);
   const destinations = page.locator('.replacement-position');
@@ -248,12 +251,13 @@ async function loadAugmentedBuild(page: Page, extraEquipment: unknown[] = []) {
     talent_tree: { hashes: [], quest_stats: [] }, jewel_data: '[]',
     skills: [{ baseType: 'Ice Shot', support: false, properties: [{ type: 5, values: [['16', 0]] }] }],
   } }));
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticAugmentFixture');
   await page.locator('.import-submit').click();
+  await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Upgrades', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Upgrades', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Complete item text' })).toBeVisible();
 }
 
@@ -274,7 +278,7 @@ test('shared augment limits include other equipment and anonymous effects never 
   await expect(page.locator('.replacement-recommended')).toHaveCount(0);
   expect((await savedState(page)).items).toEqual(original.items);
 });
-const ehp = (page: Page) => page.locator('.stat-row').filter({ hasText: 'Effective HP' }).locator('dd');
+const ehp = ehpValue;
 const afterStat = async (page: Page, row: number) => numeric(await page.locator('.upgrade-replacement-result tbody tr').nth(row).locator('td').nth(1).innerText());
 
 async function settledComparison(page: Page) {
@@ -283,16 +287,16 @@ async function settledComparison(page: Page) {
 }
 
 async function selectAugment(page: Page, socket: number, name: string) {
-  await page.getByRole('button', { name: `Socket ${socket}`, exact: true }).click();
-  await page.locator(`[role="option"][data-value="${name}"]`).click();
+  await page.getByRole('combobox', { name: `Socket ${socket}`, exact: true }).click();
+  await augmentOption(page, name).click();
   await settledComparison(page);
-  await expect(page.getByRole('button', { name: `Socket ${socket}`, exact: true })).toContainText(name || 'Empty socket');
+  await expect(page.getByRole('combobox', { name: `Socket ${socket}`, exact: true })).toContainText(name || 'Empty socket');
 }
 
 test('bow comparison inherits current runes, permits socket simulation and applies the exact evaluated setup', async ({ page }) => {
   await loadAugmentedBuild(page);
   const original = await savedState(page);
-  const originalDps = await dps(page).innerText();
+  const originalDps = await settledText(dps(page));
   await paste(page, `${bareBow}\nUnmodeled market effect (pseudoMods): Sum: 369.1`);
   await settledComparison(page);
   await expect(page.locator('.replacement-augment-summary')).toContainText('Perfect Iron Rune');
@@ -337,7 +341,7 @@ test('bow comparison inherits current runes, permits socket simulation and appli
 test('armour comparison includes life augments in EHP and preserves empty sockets when applying a manual setup', async ({ page }) => {
   await loadAugmentedBuild(page);
   const original = await savedState(page);
-  const originalEhp = await ehp(page).innerText();
+  const originalEhp = await settledText(ehp(page));
   await paste(page, bareChest);
   await settledComparison(page);
   await expect(page.locator('.replacement-augment-summary')).toContainText('Perfect Body Rune');
@@ -387,7 +391,7 @@ test('repasting the same listing clears custom augments and build or input edits
   await settledComparison(page);
   await expect(page.getByRole('button', { name: 'Use current setup', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.replacement-augment-summary')).toContainText('Perfect Iron Rune');
-  await expect(page.getByRole('button', { name: 'Socket 1', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('combobox', { name: 'Socket 1', exact: true })).toHaveCount(0);
   expect(await afterStat(page, 0)).toEqual(inheritedDps);
   await page.getByRole('button', { name: 'Calculate replacement', exact: true }).click();
   await settledComparison(page);

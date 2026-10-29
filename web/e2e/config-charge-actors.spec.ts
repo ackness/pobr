@@ -3,6 +3,9 @@ import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
 import type { ConfigInputValue, PassiveNode } from '../src/api/types';
 import type { SavedSession } from '../src/hooks/useBuildSession';
+import { booted, copyCurrentStage, currentStageName, go, hitDps, idle, importCode as importInto, noMotion, openStage, savedState, setLanguage, shareCode as exportCode } from './configPage';
+
+test.use(noMotion);
 
 const charges = ['Power', 'Frenzy', 'Endurance'] as const;
 type Charge = typeof charges[number];
@@ -29,10 +32,7 @@ const version = readFileSync('../data/CURRENT', 'utf8').trim();
 const nodes: PassiveNode[] = JSON.parse(readFileSync(`../data/${version}/base/passive_tree.json`, 'utf8'));
 const treeCatalog = JSON.parse(readFileSync(`../data/${version}/overlay/passive_jewels.json`, 'utf8'));
 const root = nodes.find(node => node.id === treeCatalog.class_starts.witch)!.skill;
-const nav = (page: Page, name: string) => page.getByRole('navigation').getByRole('button', { name, exact: true });
-const hitDps = (page: Page) => page.locator('.main-skill-section .stat-row dd').first();
-const saved = (page: Page): Promise<SavedSession['state']> => page.evaluate(() =>
-  JSON.parse(localStorage.getItem('pobr-build-state')!).state);
+const saved = (page: Page): Promise<SavedSession['state']> => savedState(page);
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
 
 // Synthetic imports are named fixtures, not substitutes for data or calculation.
@@ -63,37 +63,15 @@ ${flatDamage ? `${flatDamage}% increased Damage` : ''}</Item><ItemSet id="1"><Sl
   </PathOfBuilding2>`).toString('base64url');
 }
 
-async function idle(page: Page) {
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await expect(page.locator('.workspace-saved')).toBeVisible();
-  await expect(page.locator('.boot-error, .calc-error, .workspace-save-error')).toHaveCount(0);
-}
-
-async function ready(page: Page, lang: Lang = 'en-US') {
-  await expect(nav(page, lang === 'en-US' ? 'Build' : lang === 'zh-TW' ? '構築' : '构筑')).toBeEnabled({ timeout: 90_000 });
-  await idle(page);
-}
-
-async function language(page: Page, lang: Lang) {
-  for (let attempts = 0; attempts < 3; attempts++) {
-    const current = await page.evaluate(() => localStorage.getItem('pobr-lang') ?? 'en-US');
-    if (current === lang) return;
-    await page.getByRole('button', { name: 'Switch language', exact: true }).click();
-    await expect.poll(() => page.evaluate(() => localStorage.getItem('pobr-lang') ?? 'en-US')).not.toBe(current);
-  }
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('pobr-lang') ?? 'en-US')).toBe(lang);
+async function ready(page: Page) {
+  await booted(page);
 }
 
 async function importCode(page: Page, code: string) {
   // Import/share helpers use English; all changed Config interactions below use
   // the requested live locale and its actor-specific accessible identity.
-  await language(page, 'en-US');
-  await nav(page, 'Build').click();
-  await page.getByRole('combobox', { name: 'Import into', exact: true }).selectOption('currentStage');
-  page.once('dialog', dialog => dialog.accept());
-  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
-  await page.locator('.import-submit').click();
-  await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
+  await setLanguage(page, 'en-US');
+  await importInto(page, code, 'currentStage');
   await expect.poll(async () => (await saved(page)).pobCode).toBe(code);
   await idle(page);
 }
@@ -107,12 +85,20 @@ function identity(lang: Lang, actor: Actor, charge: Charge) {
   return new RegExp(`(?=.*${actorName})(?=.*${chargeName})`, 'i');
 }
 
+// A count imported as text (a raw "1") is shown as a text field, a numeric one as a number field.
 const control = (page: Page, lang: Lang, actor: Actor, charge: Charge) =>
-  page.getByRole('spinbutton', { name: identity(lang, actor, charge) });
+  page.getByRole('spinbutton', { name: identity(lang, actor, charge) })
+    .or(page.getByRole('textbox', { name: identity(lang, actor, charge) }));
+
+/** Raise the count to 2 from the keyboard: arrow up on a number field, typing on a text field. */
+async function bumpToTwo(input: Locator) {
+  if (await input.getAttribute('type') === 'number') await input.press('ArrowUp');
+  else { await input.press('ControlOrMeta+a'); await input.pressSequentially('2'); }
+}
 const row = (page: Page, input: Locator) => page.locator('.config-item').filter({ has: input });
 
 async function openCharge(page: Page, lang: Lang, charge: Charge) {
-  await nav(page, lang === 'en-US' ? 'Config' : '配置').click();
+  await go(page, lang === 'en-US' ? 'Config' : '配置');
   // Show both actors together. The stable suffix is only a search query, never
   // the input locator: removing actor labels must make these scenarios fail.
   await page.locator('.config-search').fill(`${charge}Charges`);
@@ -128,7 +114,7 @@ async function openCharge(page: Page, lang: Lang, charge: Charge) {
 async function keyboardEdit(page: Page, lang: Lang, actor: Actor, charge: Charge) {
   const input = control(page, lang, actor, charge);
   await input.focus();
-  await input.press('ArrowUp');
+  await bumpToTwo(input);
   await input.press('Tab');
   await expect.poll(async () => (await saved(page)).params.config_inputs[countKeys[actor][charge]]).toBe(2);
   await idle(page);
@@ -162,10 +148,8 @@ async function flatControls(page: Page, stacks: readonly number[]) {
 }
 
 async function shareCode(page: Page) {
-  await language(page, 'en-US');
-  await nav(page, 'Build').click();
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
-  return page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
+  await setLanguage(page, 'en-US');
+  return exportCode(page);
 }
 
 async function exportedInputs(page: Page, code: string) {
@@ -181,7 +165,7 @@ async function exportedInputs(page: Page, code: string) {
 test.beforeEach(async ({ page }) => {
   // No mocks for imports, data, WASM, calculation or persistence.
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
-  await page.goto('/');
+  await page.goto('/build');
   await ready(page);
 });
 
@@ -199,7 +183,7 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
       // Raw string counts remain provenance, not numeric overrides: the two
       // player strings use max3, while numeric Frenzy=1 yields 7 item stacks.
       await expect(hitDps(page)).toHaveText(expected.get(7)!);
-      await language(page, lang);
+      await setLanguage(page, lang);
       for (const charge of charges) {
         await test.step(`${charge}: both actors remain distinct through untouched blur and keyboard edit/reset`, async () => {
           await openCharge(page, lang, charge);
@@ -247,14 +231,14 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
         const query = lang === 'en-US' ? 'Player' : '角色';
         await search.fill(query);
         const otherLang = lang === 'en-US' ? 'zh-TW' : 'en-US';
-        await language(page, otherLang);
+        await setLanguage(page, otherLang);
         await expect(search).toHaveValue(query);
         for (const charge of charges) {
           for (const actor of ['player', 'minions'] as const) {
             await expect(control(page, otherLang, actor, charge)).toHaveCount(0);
           }
         }
-        await language(page, lang);
+        await setLanguage(page, lang);
         await expect(search).toHaveValue(query);
         for (const charge of charges) {
           await expect(control(page, lang, 'player', charge)).toBeVisible();
@@ -264,7 +248,7 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
         expect(await saved(page)).toEqual(original);
       });
       await page.reload();
-      await ready(page, lang);
+      await ready(page);
       expect(await saved(page)).toEqual(original);
       await expect(hitDps(page)).toHaveText(expected.get(7)!);
       await openCharge(page, lang, 'Power');
@@ -277,7 +261,7 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
       const edited = await saved(page);
       await expect(hitDps(page)).toHaveText(expected.get(6)!);
       await page.reload();
-      await ready(page, lang);
+      await ready(page);
       expect(await saved(page)).toEqual(edited);
       const shared = await shareCode(page);
       expect(await exportedInputs(page, shared)).toMatchObject(edited.params.config_inputs);
@@ -285,7 +269,7 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
       expect((await saved(page)).params.config_inputs).toMatchObject(edited.params.config_inputs);
       await expect(hitDps(page)).toHaveText(expected.get(6)!);
       const reimported = await saved(page);
-      await language(page, lang);
+      await setLanguage(page, lang);
       for (const charge of charges) {
         await openCharge(page, lang, charge);
         for (const actor of ['player', 'minions'] as const) {
@@ -307,13 +291,9 @@ test('all six actor counts stay stage-isolated through switching and full-state 
   await importCode(page, syntheticCode(imported));
   const original = await saved(page);
   await expect(hitDps(page)).toHaveText(expected.get(7)!);
-  await nav(page, 'Build').click();
-  const originalStage = await page.locator('.workspace-current-stage').innerText();
-  await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Synthetic independent actor counts');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await idle(page);
-  const editedStage = await page.getByRole('combobox', { name: 'Stage', exact: true }).locator('option:checked').innerText();
+  const originalStage = await currentStageName(page);
+  await copyCurrentStage(page, 'Synthetic independent actor counts');
+  const editedStage = await currentStageName(page);
   const editedInputs = { ...original.params.config_inputs };
   for (const charge of charges) {
     await openCharge(page, 'en-US', charge);
@@ -332,16 +312,14 @@ test('all six actor counts stay stage-isolated through switching and full-state 
   await ready(page);
   expect(await saved(page)).toEqual(edited);
   await expect(hitDps(page)).toHaveText(expected.get(6)!);
-  await nav(page, 'Build').click();
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: originalStage });
+  await openStage(page, originalStage);
   await idle(page);
   expect(await saved(page)).toEqual(original);
   await expect(hitDps(page)).toHaveText(expected.get(7)!);
   await page.reload();
   await ready(page);
   expect(await saved(page)).toEqual(original);
-  await nav(page, 'Build').click();
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: editedStage });
+  await openStage(page, editedStage);
   await idle(page);
   expect(await saved(page)).toEqual(edited);
   await expect(hitDps(page)).toHaveText(expected.get(6)!);

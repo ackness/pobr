@@ -1,13 +1,7 @@
-/* Dialogs also work on V1, where the V2 utility stylesheet is not loaded. */
+/* The confirm and prompt dialogs; the shell refines them in `.shell-dialog`. */
 .app-dialog-overlay { position: fixed; inset: 0; z-index: 1000; background: rgb(0 0 0 / 55%); }
 .app-dialog { position: fixed; inset: 50% auto auto 50%; transform: translate(-50%, -50%); z-index: 1001; width: min(28rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; padding: 1.5rem; border-radius: 1.25rem; background: var(--popover, #20232c); color: var(--popover-foreground, #eee); box-shadow: 0 1rem 4rem #0006; display: grid; gap: 1rem; }
 .app-dialog h2, .app-dialog p { margin: 0; }
 .app-dialog p { white-space: pre-wrap; overflow-wrap: anywhere; }
 .app-dialog form { display: grid; gap: 1rem; }
 .app-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
-.app-dialog-legacy { border: 1px solid #555; font: 14px/1.5 system-ui, sans-serif; }
-.app-dialog-legacy h2 { font-size: 1.1rem; }
-.app-dialog-legacy button, .app-dialog-legacy input { font: inherit; border: 1px solid #666; border-radius: .5rem; background: #30343e; color: #eee; padding: .5rem .8rem; }
-.app-dialog-legacy input { box-sizing: border-box; width: 100%; }
-.app-dialog-legacy button { cursor: pointer; }
-.app-dialog-legacy button:focus-visible, .app-dialog-legacy input:focus-visible { outline: 2px solid #dfbc79; outline-offset: 3px; }

@@ -398,31 +398,33 @@ passives, simultaneous multiple-jewel swaps and equipment-plus-tree searches are
 For Time-Lost jewel search, the PoB2 comparison and unique jewel limits, see
 [jewel search](../docs/jewel-search.md) (Chinese).
 
-## V2 workspace
+## Workspace
 
-Open `/v2` for the Radix-based shadcn/ui interface. Each page also has a direct
-URL, for example `/v2/calcs` and `/v2/config`; browser Back/Forward restores
-navigation. It consumes the same WASM backend and JSON contracts as `/`.
-The previous interface remains available at `/`.
+The app is a Radix-based shadcn/ui workspace. Every page has its own URL: `/`
+(overview), `/build`, `/skills`, `/items`, `/tree`, `/config`, `/trade`,
+`/compare` and `/calcs`. Browser Back/Forward restores navigation.
 
-V2 defaults to a dark stone/gold theme. **Appearance & language** offers light
+It defaults to a dark stone/gold theme. **Appearance & language** offers light
 and system themes, three language choices, local system/sans/serif font stacks,
 14–32px base text (16px by default), and comfortable/compact density. These
 preferences do not reset drafts or calculations. Narrow screens use a navigation
 sheet and a separate stats sheet; wide screens expand the working area.
 No external font service is required.
 
-On first opening V2, the existing workspace, item library and legacy notes are
-copied into independent `pobr-v2-*` local-storage keys. The exact original strings
-are also retained in `pobr-v2-original-backup`. The completion marker is written
-last, so a storage failure can retry from the snapshot. Later edits in either
-version do **not** synchronize. Use the existing build files or full backups to
-move edits between versions. V2 never writes the old workspace keys. A storage
-failure blocks migration or offers a backup download; it must not silently
-replace an unreadable save.
+Saved data lives in `pobr-v2-*` local-storage keys. The prefix predates the
+current names and is kept so that existing saves stay readable
+(`web/src/lib/sessionStorage.ts` is the one place that spells it). A browser that
+still holds the saves of the first interface (`pobr-build-state`, `pobr-library`,
+`pobr-notes`) gets them copied once on first open; the exact original strings are
+also retained in `pobr-v2-original-backup`. The completion marker is written last,
+so a storage failure can retry from the snapshot, and the first interface's keys
+are never written afterwards. A browser that only used the first interface also
+keeps the language chosen there (`pobr-lang`) until display preferences are
+saved. A storage failure blocks migration or offers a backup download; it must
+not silently replace an unreadable save.
 
-The shared feature panels retain their session and planner semantics. V2 changes
-presentation through `UiProvider`, shared control adapters, and Radix components;
+The feature panels keep their session and planner semantics. `UiProvider` carries
+the language, shared control adapters wrap the Radix components, and
 `AppDialogsProvider` scopes asynchronous confirmations to build/stage identity.
 Visited Tree, Skills and Upgrades retain compatible state within a stage, cancel
 active work when hidden, and remount when the owning stage changes. Combat setup
@@ -430,8 +432,9 @@ requests relevance context only while open. Original imported text, technical
 identifiers and unknown diagnostics remain available for inspection.
 
 The official component source lives in `src/components/ui`, with Radix Rhea
-configuration in `components.json`. `src/v2/styles.css` defines shared semantic
-colors, typography and layout. Legacy CSS is wrapped in a lower-priority cascade
-layer by Vite; route entry points load their own visual shell. When adding UI,
-use the adapters or shadcn components instead of browser prompts or `title`
-tooltips, and keep rendering-only translations out of calculation inputs.
+configuration in `components.json`. `src/app/styles.css` defines shared semantic
+colors, typography and layout. Vite wraps each feature panel's own stylesheet in a
+lower-priority cascade layer (`panels`); the shell's styles live in `src/app`.
+When adding UI, use the adapters or shadcn components instead of browser prompts
+or `title` tooltips, and keep rendering-only translations out of calculation
+inputs.

@@ -1,32 +1,37 @@
 import { expect, test } from '@playwright/test';
+import { nav, openItemsAfterImport, pageLink } from './shell';
 import { readFileSync } from 'node:fs';
 
 const code = readFileSync(new URL('../../examples/demo-bd-test/builds/ranger-pathfinder-ice-shot/code.txt', import.meta.url), 'utf8').trim();
 const secondCode = readFileSync(new URL('../../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', import.meta.url), 'utf8').trim();
-const nav = (page: import('@playwright/test').Page, name: string) => page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name, exact: true });
 
 async function importBuild(page: import('@playwright/test').Page) {
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('textbox', { name: 'Build code' }).fill(code);
   await page.locator('.import-submit').click();
+  await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 60_000 });
-  await nav(page, 'Build references').click();
+  await pageLink(page, 'Build references').click();
   await expect(page.locator('.guidance-result')).toHaveCount(17, { timeout: 30_000 });
 }
 
-test('historical references are hidden and a saved reference tab returns to the build', async ({ page }) => {
+test('historical references stay hidden: no page for them and no reference data is ever requested', async ({ page }) => {
   const referenceRequests: string[] = [];
   page.on('request', request => {
     if (request.url().includes('/build-references/')) referenceRequests.push(request.url());
   });
-  await page.addInitScript(() => localStorage.setItem('pobr-tab', 'guidance'));
-  await page.goto('/');
+  await page.goto('/build');
   await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({ timeout: 90_000 });
-  await expect(nav(page, 'Build')).toHaveAttribute('aria-current', 'page');
-  await expect(nav(page, 'Build references')).toHaveCount(0);
+  await expect(pageLink(page, 'Build references')).toHaveCount(0);
+  await expect(nav(page).getByRole('link', { name: /reference/i })).toHaveCount(0);
   await expect(page.locator('.guidance-page')).toHaveCount(0);
-  await nav(page, 'Items').click();
+  // A route of that name is not a page either: the app shows the overview, never the panel.
+  await page.goto('/guidance');
+  await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
+  await expect(pageLink(page, 'Overview')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('.guidance-page')).toHaveCount(0);
+  await pageLink(page, 'Items').click();
   await expect(page.locator('.paper-doll')).toBeVisible();
   expect(referenceRequests).toEqual([]);
 });
@@ -35,7 +40,7 @@ test('historical references are hidden and a saved reference tab returns to the 
 test.describe.skip('reference panel temporarily hidden pending current shared builds', () => {
   test('real imported build ranks its reference first, compares without editing, and evaluates an item', async ({ page }) => {
     await importBuild(page);
-    const save = await page.evaluate(() => localStorage.getItem('pobr-build-state'));
+    const save = await page.evaluate(() => localStorage.getItem('pobr-v2-build-state'));
     expect(save).not.toBeNull();
     const first = page.locator('.guidance-result').first();
     await expect(first).toContainText('Ice Shot');
@@ -49,26 +54,26 @@ test.describe.skip('reference panel temporarily hidden pending current shared bu
     await expect(page.locator('.guidance-table')).toContainText('Ice Shot');
     await expect(page.locator('.guidance-equipment')).toContainText('Reference');
     await expect(page.locator('.guidance-passives')).toBeVisible();
-    expect(await page.evaluate(() => localStorage.getItem('pobr-build-state'))).toBe(save);
+    expect(await page.evaluate(() => localStorage.getItem('pobr-v2-build-state'))).toBe(save);
     await page.getByRole('textbox', { name: 'Filter by skill, class or unique' }).fill('no-such-build-example');
     await expect(page.locator('.guidance-result')).toHaveCount(0);
     await expect(page.locator('.guidance-empty')).toBeVisible();
     await page.getByRole('textbox', { name: 'Reference PoB2 code' }).fill(secondCode);
     await page.getByRole('button', { name: 'Open reference', exact: true }).click();
     await expect(page.locator('#reference-heading')).toContainText('Frost Bomb');
-    expect(await page.evaluate(() => localStorage.getItem('pobr-build-state'))).toBe(save);
+    expect(await page.evaluate(() => localStorage.getItem('pobr-v2-build-state'))).toBe(save);
     await page.locator('.guidance-equipment').getByRole('button', { name: 'Evaluate on my character' }).first().click();
     await expect(page.locator('#replacement-text')).not.toHaveValue('');
     await expect(page.locator('.upgrade-replacement-result')).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('.replacement-affix-editor')).toBeVisible();
-    expect(await page.evaluate(() => localStorage.getItem('pobr-build-state'))).toBe(save);
+    expect(await page.evaluate(() => localStorage.getItem('pobr-v2-build-state'))).toBe(save);
   });
 
   test('sample failure leaves manual comparison usable and never mutates a build', async ({ page }) => {
     await page.route('**/build-references/index.json', route => route.fulfill({ status: 503, body: '{}' }));
-    await page.goto('/');
+    await page.goto('/build');
     await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({ timeout: 90_000 });
-    await nav(page, 'Build references').click();
+    await pageLink(page, 'Build references').click();
     await expect(page.getByRole('alert')).toContainText('Reference samples could not be loaded');
     await page.getByRole('textbox', { name: 'Reference PoB2 code' }).fill('invalid-code');
     await page.getByRole('button', { name: 'Open reference', exact: true }).click();
@@ -83,10 +88,11 @@ test.describe.skip('reference panel temporarily hidden pending current shared bu
     test(`reference details fit ${width}px in Chinese`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.addInitScript(() => localStorage.setItem('pobr-lang', 'zh-CN'));
-      await page.goto('/');
+      await page.goto('/build');
       await expect(page.getByRole('textbox', { name: '构筑代码' })).toBeVisible({ timeout: 90_000 });
       await page.getByRole('textbox', { name: '构筑代码' }).fill(code);
       await page.locator('.import-submit').click();
+      await openItemsAfterImport(page);
       await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 60_000 });
       await nav(page, '流派参考').click();
       await expect(page.locator('.guidance-result')).toHaveCount(17);

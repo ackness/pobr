@@ -20,7 +20,6 @@ const entries: GemCatalogEntry[] = [
 
 function Fixture() {
   const query = new URLSearchParams(location.search);
-  const v2 = query.get('v2') !== 'false';
   const lang = (query.get('lang') ?? 'en-US') as Lang;
   const [scope, setScope] = useState('stage-a');
   const [revision, setRevision] = useState(0);
@@ -32,8 +31,8 @@ function Fixture() {
     document.addEventListener('fixture-edit', edit);
     return () => { document.removeEventListener('fixture-stage', change); document.removeEventListener('fixture-edit', edit); };
   }, []);
-  useEffect(() => { document.getElementById('root')!.className = v2 ? 'v2-root' : ''; }, [v2]);
-  return <UiProvider v2={v2} lang={lang}><AppDialogsProvider scope={scope}>
+  useEffect(() => { document.getElementById('root')!.className = 'shell-root'; }, []);
+  return <UiProvider lang={lang}><AppDialogsProvider scope={scope}>
     <Controls lang={lang} revision={revision} report={setResult} />
     <output aria-label="Result">{result}</output>
     <span aria-label="Stage">{scope}</span>

@@ -1,4 +1,4 @@
-import { useJobBeacon } from '../../v2/jobs/useJobBeacon';
+import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppInput } from '../shared/controls';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { formatApiError } from '../../api/error';
@@ -19,7 +19,6 @@ import {
   type PassivePlanningContext,
 } from '../../lib/passivePlanner';
 import { AppSelect } from '../shared/AppSelect';
-import { useUi } from '../shared/UiContext';
 import { ObjectiveEditor, OptimizerProgress, objectiveOf, type ObjectiveState } from '../shared/OptimizerControls';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
 import { JewelPassivePlanner, useJewelPassivePlanner, type JewelPassivePlannerState } from './JewelPassivePlanner';
@@ -321,7 +320,6 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
     run, cancel, show, apply, jewelPlanner } = planner;
   const text = COPY[lang];
   const tt = bindT(lang);
-  const { v2 } = useUi();
   const number = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 2 });
   const delta = (value: number, baseline: number) => baseline > 0
     ? `${value >= baseline ? '+' : ''}${((value / baseline - 1) * 100).toFixed(1)}%`
@@ -404,7 +402,7 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
                   <small>{number(currentStats[stat] ?? 0)} → <output data-stat={stat}>{number(plan.stats[stat] ?? 0)}</output></small>
                 </span>)}
               </div>
-              {v2 && plan.deallocate.length > 0 && <div className="tree-plan-swap">
+              {plan.deallocate.length > 0 && <div className="tree-plan-swap">
                 <p className="tree-plan-swap-out"><b>− {text.remove} {plan.deallocate.length}</b>{plan.deallocate.map(nodeLabel).join(' · ')}</p>
                 <p className="tree-plan-swap-in"><b>+ {text.add} {plan.allocate.length}</b>{plan.allocate.map(nodeLabel).join(' · ') || '—'}</p>
               </div>}

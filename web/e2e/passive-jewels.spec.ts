@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import type { PassiveNode, WeaponSwap } from '../src/api/types';
 import { buildPassiveGraph, shortestAllocationPath } from '../src/lib/passiveGraph';
+import { statValue } from './shell';
 
 const version = readFileSync('../data/CURRENT', 'utf8').trim();
 const read = (name: string) => JSON.parse(readFileSync(`../data/${version}/${name}.json`, 'utf8'));
@@ -22,19 +23,18 @@ const target = nodes.find(node => node.kind === 'notable' && !node.ascendancy_id
   && !allocated.includes(node.skill) && distance(node, socket) >= band.inner * radii.distance_multiplier
   && distance(node, socket) <= band.outer * radii.distance_multiplier)!;
 const ringText = 'Rarity: UNIQUE\nControlled Metamorphosis\nDiamond\nVersion: Old\nVersion: Current\nVariant: Small\nVariant: Medium\nSelected Variant: 2\nRadius: Variable\nImplicits: 0\n{variant:1}Only affects Passives in Small Ring\n{variant:2}Only affects Passives in Medium Ring\nPassives in Radius can be Allocated without being connected to your tree\n{range:0.5}-(20-10)% to all Elemental Resistances';
-const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state);
+const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
 const circle = (page: Page, id: number) => page.locator(`circle[data-skill-id="${id}"]`);
 
-async function start(page: Page, text: string, socketNode = socket, allocation = allocated, weaponSwap?: WeaponSwap) {
-  await page.addInitScript(({ text, socket, allocated, weaponSwap }) => {
-    localStorage.setItem('pobr-tab', 'tree');
-    localStorage.setItem('pobr-build-state', JSON.stringify({ version: 1, notes: '', state: {
+async function start(page: Page, text: string, socketNode = socket, allocation = allocated, weaponSwap?: WeaponSwap, socketGroups: unknown[] = []) {
+  await page.addInitScript(({ text, socket, allocated, weaponSwap, socketGroups }) => {
+    localStorage.setItem('pobr-v2-build-state', JSON.stringify({ version: 1, notes: '', state: {
       pobCode: null, character: { level: 90, class_name: 'Witch', ascendancy_name: '' },
-      allocatedNodes: allocated, attributeChoices: {}, socketGroups: [], items: [], flasks: [], weaponSwap,
+      allocatedNodes: allocated, attributeChoices: {}, socketGroups, items: [], flasks: [], weaponSwap,
       annotations: {}, params: { config_inputs: {} }, jewels: [{ socket_node: socket, text }],
     } }));
-  }, { text, socket: socketNode.skill, allocated: allocation, weaponSwap });
-  await page.goto('/');
+  }, { text, socket: socketNode.skill, allocated: allocation, weaponSwap, socketGroups });
+  await page.goto('/tree');
   await expect(circle(page, socketNode.skill)).toHaveClass(/node-jewel-filled/, { timeout: 90_000 });
   await expect(page.locator('.tree-asc-picker select').first()).toBeEnabled();
 }
@@ -53,9 +53,10 @@ test('selected ring grants one-point allocation and removal revokes only the dep
   await circle(page, socket.skill).dispatchEvent('click');
   await page.getByRole('button', { name: 'Remove', exact: true }).click();
   await expect.poll(async () => (await saved(page)).jewels.length).toBe(0);
-  expect((await saved(page)).allocatedNodes).toEqual(allocated);
+  // The saved list is kept in ascending order; the path is in walking order.
+  expect((await saved(page)).allocatedNodes).toEqual([...allocated].sort((a, b) => a - b));
   await expect(circle(page, target.skill)).not.toHaveClass(/node-allocated|node-jewel-allocatable/);
-  await expect(page.locator('.calc-error')).toHaveCount(0);
+  await expect(page.locator('.shell-alert')).toHaveCount(0);
 });
 
 test('alternate start is implicit and replacing its jewel revokes its remote path', async ({ page }) => {
@@ -72,7 +73,7 @@ test('alternate start is implicit and replacing its jewel revokes its remote pat
   await page.getByRole('textbox', { name: 'Jewel socket', exact: true }).fill('Rarity: MAGIC\nRuby\nImplicits: 0\n+20 to maximum Life');
   await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
   await expect.poll(async () => (await saved(page)).allocatedNodes).toEqual(allocated);
-  await expect(page.locator('.calc-error')).toHaveCount(0);
+  await expect(page.locator('.shell-alert')).toHaveCount(0);
 });
 
 test('conquered keystone shows its replacement and warns about unavailable seed data', async ({ page }) => {
@@ -101,23 +102,22 @@ test('removing an allocation jewel also cleans its inactive weapon-set dependenc
 test('joint planning pays for an empty socket and applies the exact jewel and passive preview', async ({ page }) => {
   const initialNodes = allocated.filter(id => id !== socket.skill);
   await page.addInitScript(({ allocated }) => {
-    localStorage.setItem('pobr-tab', 'tree');
-    localStorage.setItem('pobr-build-state', JSON.stringify({ version: 1, notes: '', state: {
+    localStorage.setItem('pobr-v2-build-state', JSON.stringify({ version: 1, notes: '', state: {
       pobCode: null, character: { level: 90, class_name: 'Witch', ascendancy_name: '' },
       allocatedNodes: allocated, attributeChoices: {}, socketGroups: [], items: [], flasks: [], jewels: [],
       annotations: {}, params: { config_inputs: {} },
     } }));
   }, { allocated: initialNodes });
-  await page.goto('/');
+  await page.goto('/tree');
   await expect(page.locator('.tree-asc-picker select').first()).toBeEnabled({ timeout: 90_000 });
   await page.getByRole('button', { name: 'Plan passive upgrades' }).click();
-  await page.getByRole('button', { name: 'Objective', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
   await page.getByRole('option', { name: 'Max Life', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Point budget', exact: true }).fill('2');
   const planner = page.getByRole('region', { name: 'Jewels and passive routes' });
   const candidate = `${ringText}\n+100 to maximum Life`;
   await planner.getByRole('textbox', { name: 'Candidate jewel text' }).fill(candidate);
-  await planner.getByRole('button', { name: 'Candidate socket', exact: true }).click();
+  await planner.getByRole('combobox', { name: 'Candidate socket', exact: true }).click();
   await page.getByRole('option').filter({ hasText: `#${socket.skill}` }).click();
   await planner.getByRole('button', { name: 'Add jewel placement', exact: true }).click();
   const original = await saved(page);
@@ -132,7 +132,7 @@ test('joint planning pays for an empty socket and applies the exact jewel and pa
   await expect(circle(page, socket.skill)).toHaveClass(/node-planned-add/);
   await first.getByRole('button', { name: 'Apply jewel and passive plan', exact: true }).click();
   await expect.poll(async () => (await saved(page)).jewels.length).toBe(1);
-  await expect.poll(async () => Number((await page.locator('.stat-row').filter({ hasText: /^Life/ }).locator('dd').innerText()).replaceAll(',', '')))
+  await expect.poll(async () => Number((await statValue(page, /^Life$/).innerText()).replaceAll(',', '')))
     .toBe(Math.round(predictedLife));
   const after = await saved(page);
   expect(after.allocatedNodes).toContain(socket.skill);
@@ -142,15 +142,15 @@ test('joint planning pays for an empty socket and applies the exact jewel and pa
   expect(after.socketGroups).toEqual(original.socketGroups);
   expect(after.params).toEqual(original.params);
   await expect(planner.locator('.jewel-plan-results')).toHaveCount(0);
-  await expect(page.locator('.calc-error')).toHaveCount(0);
+  await expect(page.locator('.shell-alert')).toHaveCount(0);
 });
 
 test('joint refund plan replaces an allocation jewel and removes its dependent point atomically', async ({ page }) => {
   await start(page, ringText, socket, [...allocated, target.skill]);
   await page.getByRole('button', { name: 'Plan passive upgrades' }).click();
-  await page.getByRole('button', { name: 'Objective', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
   await page.getByRole('option', { name: 'Max Life', exact: true }).click();
-  await page.getByRole('button', { name: 'Plan', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Plan', exact: true }).click();
   await page.getByRole('option', { name: 'Reallocate existing points', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Maximum refunds', exact: true }).fill('1');
   const planner = page.getByRole('region', { name: 'Jewels and passive routes' });
@@ -166,19 +166,19 @@ test('joint refund plan replaces an allocation jewel and removes its dependent p
   const predictedLife = Number((await first.locator('output[data-stat="Life"]').innerText()).replaceAll(',', ''));
   await first.getByRole('button', { name: 'Apply jewel and passive plan', exact: true }).click();
   await expect.poll(async () => (await saved(page)).jewels[0].text).toBe(replacement);
-  await expect.poll(async () => Number((await page.locator('.stat-row').filter({ hasText: /^Life/ }).locator('dd').innerText()).replaceAll(',', '')))
+  await expect.poll(async () => Number((await statValue(page, /^Life$/).innerText()).replaceAll(',', '')))
     .toBe(Math.round(predictedLife));
   const after = await saved(page);
   expect(after.allocatedNodes).not.toContain(target.skill);
   expect(after.allocatedNodes.length).toBeLessThanOrEqual(original.allocatedNodes.length);
   expect(after.allocatedNodes).toContain(socket.skill);
-  await expect(page.locator('.calc-error')).toHaveCount(0);
+  await expect(page.locator('.shell-alert')).toHaveCount(0);
 });
 
 test('joint planner rejects unmodeled jewels and invalidates results after budget edits', async ({ page }) => {
   await start(page, 'Rarity: MAGIC\nRuby\nImplicits: 0\n+1 to maximum Life');
   await page.getByRole('button', { name: 'Plan passive upgrades' }).click();
-  await page.getByRole('button', { name: 'Objective', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
   await page.getByRole('option', { name: 'Max Life', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Point budget', exact: true }).fill('1');
   const planner = page.getByRole('region', { name: 'Jewels and passive routes' });
@@ -198,8 +198,10 @@ test('joint planner rejects unmodeled jewels and invalidates results after budge
 
 test('Upgrades drops a retained jewel position when its socket is unallocated on Tree', async ({ page }) => {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
-  await start(page, 'Rarity: MAGIC\nRuby\nImplicits: 0\n+20 to maximum Life');
-  const nav = (name: string) => page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name, exact: true });
+  // Scoring a jewel position needs a skill to measure against.
+  await start(page, 'Rarity: MAGIC\nRuby\nImplicits: 0\n+20 to maximum Life', socket, allocated, undefined,
+    [{ enabled: true, gems: [{ skill_id: 'FireballPlayer', level: 16, quality: 0 }] }]);
+  const nav = (name: string) => page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name, exact: true });
   const position = page.locator('.trade-position').filter({ hasText: `Jewel socket ${socket.skill}` });
   await nav('Upgrades').click();
   await position.click();

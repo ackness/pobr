@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { pageLink } from './shell';
 
 test('WeGame import preserves gem levels and ranks quiver upgrades', async ({ page }) => {
   await page.route('**/api/import/wegame', async route => {
@@ -20,27 +21,30 @@ test('WeGame import preserves gem levels and ranks quiver upgrades', async ({ pa
         properties: [{ type: 5, values: [['12', 0]] }, { type: 6, values: [['+20%', 1]] }] }],
     } });
   });
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: /Import Build/i })).toBeVisible({ timeout: 90_000 });
+  await page.goto('/build');
+  await expect(page.getByRole('heading', { name: 'Import a build' })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('textbox', { name: 'Build code' }).fill(
     'https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456',
   );
   await page.locator('.import-submit').click();
+  await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
+  // Guard from a charm is modelled, so nothing in this import is left unsupported: the Overview reports
+  // no line as not calculated and offers no list of them.
+  await expect(page.locator('.ov-facts > div').filter({ has: page.locator('dt', { hasText: 'Lines not calculated' }) }).locator('dd'))
+    .toHaveText('0', { timeout: 60_000 });
+  await expect(page.locator('.ov-details')).toHaveCount(0);
+  await pageLink(page, 'Items').click();
   await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
-  await page.getByRole('button', { name: 'Build', exact: true }).click();
-  // Guard from a charm is modelled, so nothing in this import is left unsupported.
-  await expect(page.locator('.unsupported-block')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Skills', exact: true }).click();
+  await pageLink(page, 'Skills').click();
   await expect(page.locator('.skill-group').first()).toContainText('Ice Shot');
   // The persisted editing state is what the optimizer and the next reload consume.
-  const saved = await page.evaluate(() => Object.entries(localStorage).map(([key, value]) => ({ key, value })));
-  const session = saved.find(s => s.value.includes('"socketGroups"'));
-  expect(session).toBeDefined();
-  const state = JSON.parse(session!.value).state;
+  const session = await page.evaluate(() => localStorage.getItem('pobr-v2-build-state'));
+  expect(session).not.toBeNull();
+  const state = JSON.parse(session!).state;
   expect(state.character.level).toBe(59);
   expect(state.socketGroups[0].gems[0]).toMatchObject({ skill_id: 'IceShotPlayer', level: 12, quality: 20 });
 
-  await page.getByRole('button', { name: 'Items', exact: true }).click();
+  await pageLink(page, 'Items').click();
   await page.getByRole('button', { name: 'Off Hand', exact: true }).click();
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   const editor = page.getByRole('textbox', { name: 'weapon2 item text' });

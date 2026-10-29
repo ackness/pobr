@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openItemsAfterImport } from './shell';
 import { readFileSync } from 'node:fs';
 
 const script = readFileSync(new URL('../public/userscripts/pobr-market-copy.user.js', import.meta.url), 'utf8');
@@ -182,11 +183,12 @@ test('text copied from a market response reaches real WASM replacement compariso
     talent_tree: { hashes: [], quest_stats: [] }, jewel_data: '[]',
     skills: [{ baseType: 'Fireball', support: false, properties: [{ type: 5, values: [['16', 0]] }] }],
   } }));
-  await page.goto('/');
+  await page.goto('/build');
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticUserscriptFixture');
   await page.locator('.import-submit').click();
+  await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30000 });
-  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Upgrades', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Upgrades', exact: true }).click();
   await page.getByRole('textbox', { name: 'Complete item text' }).evaluate((element, value) => {
     const data = new DataTransfer(); data.setData('text/plain', value);
     element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));

@@ -1,5 +1,4 @@
-import { useJobBeacon } from '../../v2/jobs/useJobBeacon';
-import { useUi } from '../shared/UiContext';
+import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { usePreview } from '../shared/PreviewContext';
 import { uiStorageKey } from '../../lib/sessionStorage';
 import { AppButton, AppInput } from '../shared/controls';
@@ -14,7 +13,7 @@ import { supportText } from '../../lib/supportI18n';
 import type { Objective } from '../../lib/optimize';
 import { applySupportPlan, eligibleSupports, lineageAvailable, optimizeSupports, type SupportMetadata, type SupportOptimization } from '../../lib/supportOptimizer';
 import { ObjectiveEditor, OptimizerProgress, objectiveOf } from '../shared/OptimizerControls';
-import { words } from '../../v2/text';
+import { words } from '../../app/text';
 
 interface Props {
   session: BuildSession;
@@ -45,7 +44,6 @@ function savedExclusions(key: string): string[] {
 }
 
 export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemName, skillKey, focusNonce }: Props) {
-  const { v2 } = useUi();
   const preview = usePreview();
   const tt = bindT(lang);
   const st = (key: Parameters<typeof supportText>[1]) => supportText(lang, key);
@@ -53,10 +51,10 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const group = session.socketGroups[groupIndex];
   const byId = useMemo(() => new Map(catalog.map(gem => [gem.skill_id, gem])), [catalog]);
   const occupied = group?.gems.filter(gem => byId.get(gem.skill_id)?.is_support).length ?? 0;
-  const [expanded, setExpanded] = useState(v2);
+  const [expanded, setExpanded] = useState(true);
   const [capacity, setCapacity] = useState(Math.max(2, Math.min(5, occupied)));
   const [includeLineage, setIncludeLineage] = useState(true);
-  const preferenceKey = uiStorageKey(`pobr-support-exclusions:${skillKey}`, v2);
+  const preferenceKey = uiStorageKey(`pobr-support-exclusions:${skillKey}`);
   const [excludedIds, setExcludedIds] = useState(() => savedExclusions(preferenceKey));
   const excluded = useMemo(() => new Set(excludedIds), [excludedIds]);
   const [search, setSearch] = useState('');
@@ -238,7 +236,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     </details>}
     {!result.plans.length && <p className="skills-hint">{st('noGain')}</p>}
     {result.plans.map((plan, index) => {
-      // Resting on a recommendation shows what it would do, without applying it (v2 only; handlers add no attributes).
+      // Resting on a recommendation shows what it would do, without applying it (only where a preview provider is mounted; handlers add no attributes).
       const hover = preview ? {
         onEnter: () => preview.show({ key: `support:${groupIndex}:${index}`, label: `${words(lang, 'Supports', '辅助', '輔助')}: ${plan.supports.map(gem => gemName(gem.skill_id)).join(' + ')}`,
           request: () => { const request = session.currentRequest(); return request ? { ...request, socket_groups: applySupportPlan(request.socket_groups ?? session.socketGroups, groupIndex, plan) } : null; } }),
@@ -281,61 +279,33 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     <span className="row-caret" aria-hidden>▸</span>{st('title')}
   </AppButton>;
 
-  if (v2) {
-    // The recommendations lead: the action sits in the header, results come before any setting.
-    return (
-      <div className="gem-optimizer" ref={rootRef}>
-        <div className="gem-optimizer-head">
-          {toggleButton}
-          {runButton}
-        </div>
-        {expanded && <div className="gem-optimizer-body">
-          {lineageOption}
-          {noMainSkill}
-          {progressBlock}
-          {poolNotes}
-          {errorBlock}
-          {resultsBlock}
-          <details className="gem-optimizer-settings">
-            <summary>{words(lang, 'Goal, capacity and candidates', '目标、容量与候选宝石', '目標、容量與候選寶石')}</summary>
-            <div className="gem-optimizer-settings-body">
-              {hint}
-              {poolSummary}
-              <div className="opt-row">{capacityControl}{objectiveControls}</div>
-              {capacityHint}
-              {poolFilter}
-              {excludedBlock}
-              <p className="skills-hint">{st('adjustment')}</p>
-              <p className="skills-hint">{st('limit')}</p>
-            </div>
-          </details>
-        </div>}
-      </div>
-    );
-  }
-
+  // The recommendations lead: the action sits in the header, results come before any setting.
   return (
     <div className="gem-optimizer" ref={rootRef}>
-      {toggleButton}
+      <div className="gem-optimizer-head">
+        {toggleButton}
+        {runButton}
+      </div>
       {expanded && <div className="gem-optimizer-body">
-        {hint}
-        {poolSummary}
-        {poolFilter}
-        {excludedBlock}
-        <div className="opt-row">
-          {capacityControl}
-          {objectiveControls}
-          {runButton}
-        </div>
         {lineageOption}
-        {capacityHint}
         {noMainSkill}
         {progressBlock}
         {poolNotes}
         {errorBlock}
         {resultsBlock}
-        <p className="skills-hint">{st('adjustment')}</p>
-        <p className="skills-hint">{st('limit')}</p>
+        <details className="gem-optimizer-settings">
+          <summary>{words(lang, 'Goal, capacity and candidates', '目标、容量与候选宝石', '目標、容量與候選寶石')}</summary>
+          <div className="gem-optimizer-settings-body">
+            {hint}
+            {poolSummary}
+            <div className="opt-row">{capacityControl}{objectiveControls}</div>
+            {capacityHint}
+            {poolFilter}
+            {excludedBlock}
+            <p className="skills-hint">{st('adjustment')}</p>
+            <p className="skills-hint">{st('limit')}</p>
+          </div>
+        </details>
       </div>}
     </div>
   );

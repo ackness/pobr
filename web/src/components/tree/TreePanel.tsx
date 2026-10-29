@@ -2,8 +2,7 @@ import { localizedName } from '../../lib/chinese';
 import { useAppDialogs } from '../shared/AppDialogs';
 import { useSessionAction } from '../shared/useSessionAction';
 import { AppTooltip, AppButton, AppInput, AppTextarea, AppSelectControl } from '../shared/controls';
-import { TreeConversionControls } from './TreeConversionControls';
-import { PageHeader } from '../shared/PageHeader';
+import { TreeConversionControls, useTreeConversion } from './TreeConversionControls';
 import { formatApiError } from '../../api/error';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { getBackend } from '../../api/backend';
@@ -28,8 +27,7 @@ import type { PassivePlan } from '../../lib/passivePlanner';
 import './tree.css';
 import { NodePowerTable } from './NodePowerTable';
 import { plannedEdgeClass } from './plannedRoute';
-import { useUi } from '../shared/UiContext';
-import { words } from '../../v2/text';
+import { words } from '../../app/text';
 import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { passiveNodeMatches, passiveNodeName, usePassiveNodeNames, type PassiveNodeNames } from './passiveNodeNames';
 
@@ -60,7 +58,7 @@ const JEWEL_TEMPLATE = 'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
 /** 天赋树查看器：SVG 渲染 + 已加点高亮 + 缩放平移 / hover 词条 + 点选加点重算。 */
 export function TreePanel(props: Props) {
   const { session, lang, active } = props;
-  const { v2 } = useUi();
+  const conversion = useTreeConversion(session, lang, active);
   const currentTree = session.dataVersion && /^\d+\.\d+/.test(session.dataVersion)
     ? `0_${session.dataVersion.split('.')[1]}` : null;
   if (session.treeVersion && session.treeVersion !== 'Default' && currentTree && session.treeVersion !== currentTree) {
@@ -70,12 +68,11 @@ export function TreePanel(props: Props) {
       : lang === 'zh-TW'
         ? `此角色使用 ${session.treeVersion} 天賦樹。計算與匯出會保留該版本，歷史天賦樹暫不支援互動編輯和路線規劃。`
         : `此角色使用 ${session.treeVersion} 天赋树。计算与导出会保留该版本，历史天赋树暂不支持交互编辑和路线规划。`;
-    if (v2) return <section className="ui-page tree-historical"><TreeConversionControls session={session} lang={lang} /><p role="status">{text}</p></section>;
-    return <><TreeConversionControls session={session} lang={lang} /><section className="ui-page"><p role="status">{text}</p></section></>;
+    return <section className="ui-page tree-historical"><TreeConversionControls session={session} conversion={conversion} /><p role="status">{text}</p></section>;
   }
-  // The v2 page puts the conversion controls in the canvas toolbar instead of above the page.
-  return <>{active && !v2 && <TreeConversionControls session={session} lang={lang} />}<EditableTreePanel key={JSON.stringify([session.dataVersion, session.treeVersion])} {...props}
-    conversion={active && v2 ? <TreeConversionControls session={session} lang={lang} /> : undefined} /></>;
+  // The conversion controls sit in the canvas toolbar, not above the page.
+  return <EditableTreePanel key={JSON.stringify([session.dataVersion, session.treeVersion])} {...props}
+    conversion={active ? <TreeConversionControls session={session} conversion={conversion} /> : undefined} />;
 }
 
 /** Retain planner inputs and complete receipts, never the interactive canvas. */
@@ -141,7 +138,7 @@ interface CanvasProps {
   error: string | null;
   plannedNodes: PassivePlan | null;
   planner: TreeOptimizerState;
-  /** v2 only: the tree-conversion controls, shown in the canvas toolbar. */
+  /** The tree-conversion controls, shown in the canvas toolbar. */
   conversion?: ReactNode;
   /** Counts the planner searches started; a new one replaces the heatmap's colours. */
   overlayReset: number;
@@ -149,8 +146,7 @@ interface CanvasProps {
 
 function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, art, error, plannedNodes, planner, conversion, overlayReset }: CanvasProps) {
   const tt = bindT(lang);
-  const { v2 } = useUi();
-  /** v2 only: whether the planner / details column beside the canvas is shown. */
+  /** Whether the planner / details column beside the canvas is shown. */
   const [sideOpen, setSideOpen] = useState(true);
   const dialogs = useAppDialogs(lang);
   const captureAction = useSessionAction(session);
@@ -172,9 +168,9 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
   const detailsRef = useRef<HTMLDivElement>(null);
   const focusDetailsRef = useRef(false);
   const [selectedSkill, setSelectedSkill] = useState<number | null>(null);
-  // v2: a selected node's details, and a planner opened from elsewhere, live in the side column.
-  useEffect(() => { if (v2 && selectedSkill !== null) setSideOpen(true); }, [v2, selectedSkill]);
-  useEffect(() => { if (v2 && planner.expanded) setSideOpen(true); }, [v2, planner.expanded]);
+  // A selected node's details, and a planner opened from elsewhere, live in the side column.
+  useEffect(() => { if (selectedSkill !== null) setSideOpen(true); }, [selectedSkill]);
+  useEffect(() => { if (planner.expanded) setSideOpen(true); }, [planner.expanded]);
   const [attributeDraft, setAttributeDraft] = useState<{
     skill: number; saved?: AttributeChoice; choice: AttributeChoice;
   } | null>(null);
@@ -590,19 +586,19 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
     [session.jewels],
   );
 
-  // v2: a node just allocated rings once. Not on the first render, and not when a whole build arrives at once.
+  // A node just allocated rings once. Not on the first render, and not when a whole build arrives at once.
   const previousAllocated = useRef<Set<number> | null>(null);
   const [pulse, setPulse] = useState<ReadonlySet<number>>(() => new Set());
   useEffect(() => {
     const before = previousAllocated.current;
     previousAllocated.current = allocated;
-    if (!v2 || !before) return;
+    if (!before) return;
     const added = [...allocated].filter(id => !before.has(id));
     if (added.length === 0 || added.length > 40) { setPulse(new Set()); return; }
     setPulse(new Set(added));
     const timer = setTimeout(() => setPulse(new Set()), 800);
     return () => clearTimeout(timer);
-  }, [allocated, v2]);
+  }, [allocated]);
 
   const nodesEl = useMemo(() => {
     /** 热力上色：正增量 暗红→亮金（√ 拉开低值区分度）；负增量冷蓝；无数据不覆盖。 */
@@ -781,7 +777,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
-      // Hover shortcuts belong to the canvas (or its legacy body focus), not tools.
+      // Hover shortcuts belong to the canvas (or the page body when nothing is focused), not tools.
       if (target && target !== document.body && !target.closest('.tree-canvas')) return;
       const choice = KEYMAP[e.key.toLowerCase()];
       if (!choice) return;
@@ -795,8 +791,9 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
         e.preventDefault();
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // Capturing, so that the key is handled (and marked so) before the shell reads 1/2/3 as page numbers.
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   });
 
 
@@ -1472,74 +1469,42 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
     </>
   );
 
-  if (v2) {
-    const toggleSide = () => {
-      if (sideOpen) { setSideOpen(false); return; }
-      setSideOpen(true);
-      requestAnimationFrame(() => toolsRef.current?.focus({ preventScroll: true }));
-    };
-    return (
-      <section className="ui-page tree-panel tree-v2" aria-labelledby="tree-heading" data-side={sideOpen ? 'open' : 'closed'} onKeyDown={onPanelKeyDown}>
-        <h2 id="tree-heading" className="sr-only">{tt('tree.title')}</h2>
-        <div className="tree-stage">
-          {canvasEl}
-          <div className="tree-bar tree-bar-top" role="group" aria-label={words(lang, 'Find and allocate', '查找与加点', '尋找與加點')}>
-            {searchEl}
-            {modeEl}
-            {heatEl}
-          </div>
-          <AppButton className="tree-side-toggle" aria-expanded={sideOpen} aria-controls="tree-side" onClick={toggleSide}>
-            {sideOpen ? <PanelRightClose aria-hidden="true" /> : <PanelRightOpen aria-hidden="true" />}
-            {tt('tree.editOptions')}
-          </AppButton>
-          {editError && <p className="tree-edit-error" role="alert">{treeEditError(editError, lang)}</p>}
-          <div className="tree-bar tree-bar-view" role="group" aria-label={words(lang, 'View and build', '视图与 BD', '檢視與 BD')}>
-            {countEl}
-            {previewEl}
-            {classEl}
-            {ascEl}
-            {focusAscEl}
-            {resetEl}
-            {conversion}
-          </div>
-        </div>
-        <aside id="tree-side" className="tree-side" hidden={!sideOpen} aria-label={tt('tree.editOptions')}>
-          <div className="tree-edit-tools" ref={toolsRef} tabIndex={-1}>
-            {toolsBody}
-            <p className="tree-hint">{tt('tree.weaponRules')}</p>
-          </div>
-        </aside>
-      </section>
-    );
-  }
-
+  const toggleSide = () => {
+    if (sideOpen) { setSideOpen(false); return; }
+    setSideOpen(true);
+    requestAnimationFrame(() => toolsRef.current?.focus({ preventScroll: true }));
+  };
   return (
-    <section className="ui-page tree-panel" aria-labelledby="tree-heading" onKeyDown={onPanelKeyDown}>
-      <PageHeader id="tree-heading" title={tt('tree.title')} description={tt('tree.hint')}>
-        <AppButton onClick={() => {
-          toolsRef.current?.focus({ preventScroll: true });
-          toolsRef.current?.scrollIntoView({ block: 'start' });
-        }}>{tt('tree.editOptions')}</AppButton>
-        <span className="ui-badge tree-count">{session.allocatedNodes.length} {tt('tree.allocated')}</span>
-      </PageHeader>
-      <div className="tree-toolbar">
-        {modeEl}
-        {searchEl}
-        {heatEl}
-        {classEl}
-        {ascEl}
-        {focusAscEl}
-        {resetEl}
+    <section className="ui-page tree-panel" aria-labelledby="tree-heading" data-side={sideOpen ? 'open' : 'closed'} onKeyDown={onPanelKeyDown}>
+      <h2 id="tree-heading" className="sr-only">{tt('tree.title')}</h2>
+      <div className="tree-stage">
+        {canvasEl}
+        <div className="tree-bar tree-bar-top" role="group" aria-label={words(lang, 'Find and allocate', '查找与加点', '尋找與加點')}>
+          {searchEl}
+          {modeEl}
+          {heatEl}
+        </div>
+        <AppButton className="tree-side-toggle" aria-expanded={sideOpen} aria-controls="tree-side" onClick={toggleSide}>
+          {sideOpen ? <PanelRightClose aria-hidden="true" /> : <PanelRightOpen aria-hidden="true" />}
+          {tt('tree.editOptions')}
+        </AppButton>
+        {editError && <p className="tree-edit-error" role="alert">{treeEditError(editError, lang)}</p>}
+        <div className="tree-bar tree-bar-view" role="group" aria-label={words(lang, 'View and build', '视图与 BD', '檢視與 BD')}>
+          {countEl}
+          {previewEl}
+          {classEl}
+          {ascEl}
+          {focusAscEl}
+          {resetEl}
+          {conversion}
+        </div>
       </div>
-      <p className="tree-hint">{tt('tree.weaponRules')}</p>
-      {editError && <p role="alert">{treeEditError(editError, lang)}</p>}
-      {previewEl}
-      <div className="tree-workspace">
-      {canvasEl}
-      <div className="tree-edit-tools" ref={toolsRef} tabIndex={-1}>
-        {toolsBody}
-      </div>
-      </div>
+      <aside id="tree-side" className="tree-side" hidden={!sideOpen} aria-label={tt('tree.editOptions')}>
+        <div className="tree-edit-tools" ref={toolsRef} tabIndex={-1}>
+          {toolsBody}
+          <p className="tree-hint">{tt('tree.weaponRules')}</p>
+        </div>
+      </aside>
     </section>
   );
 }

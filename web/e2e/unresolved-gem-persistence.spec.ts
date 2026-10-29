@@ -1,4 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { openItemsAfterImport, pageLink, statValue } from './shell';
+import { importInto, openBuild, openExport, selectStage as chooseStage, settled, stableText } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
@@ -7,11 +9,11 @@ import type { BuildWorkspace } from '../src/lib/buildWorkspace';
 
 type Envelope = SavedSession & { workspace: BuildWorkspace };
 const cometCode = readFileSync(new URL('../../examples/demo-bd-test/builds/sorceress-stormweaver-comet/code.txt', import.meta.url), 'utf8').trim();
-const nav = (page: Page, name: string) => page.getByRole('navigation').getByRole('button', { name, exact: true });
-const hitDps = (page: Page) => page.locator('.main-skill-section .stat-row dd').first();
+const hitDps = (page: Page) => statValue(page, /^Hit DPS$/).first();
+const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Inspected skill', exact: true });
 
 async function snapshot(page: Page): Promise<Envelope> {
-  return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!));
+  return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));
 }
 
 function activeBuild(envelope: Envelope) {
@@ -33,30 +35,26 @@ function assertUnresolvedSlot(saved: SavedSession) {
   expect(saved.state.socketGroups[8].gems[2].skill_id).toBe('SupportSpellCascadePlayer');
 }
 
-async function idle(page: Page) {
-  await expect(page.locator('.topbar-busy')).toHaveCount(0);
-  await expect(page.locator('.workspace-saved')).toBeVisible();
-  await expect(page.locator('.boot-error')).toHaveCount(0);
-  await expect(page.locator('.workspace-save-error')).toHaveCount(0);
-}
+const idle = settled;
 
 async function ready(page: Page) {
-  await expect(nav(page, 'Build')).toBeEnabled({ timeout: 90_000 });
-  await nav(page, 'Build').click();
+  await expect(page.locator('.shell-builds-button')).toBeEnabled({ timeout: 90_000 });
+  await openBuild(page);
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled();
   await idle(page);
 }
 
 async function importComet(page: Page) {
-  await page.goto('/');
+  await page.goto('/build');
   await ready(page);
   const original = await snapshot(page);
-  await page.getByRole('combobox', { name: 'Import into', exact: true }).selectOption('newBuild');
+  await importInto(page, 'newBuild');
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(cometCode);
   await page.locator('.import-submit').click();
+  await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
   await idle(page);
-  await nav(page, 'Build').click();
+  await openBuild(page);
   const imported = await snapshot(page);
   expect(imported.workspace.builds[0]).toEqual(original.workspace.builds[0]);
   expect(imported.state.pobCode).toBe(cometCode);
@@ -67,14 +65,15 @@ async function importComet(page: Page) {
 }
 
 async function editName(page: Page, action: string, name: string) {
-  await page.getByRole('button', { name: action, exact: true }).click();
+  // The import form has a "New build" choice of its own; the library action is the later of the two.
+  await page.getByRole('button', { name: action, exact: true }).last().click();
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill(name);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await idle(page);
 }
 
 async function selectStage(page: Page, name: string) {
-  await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: name });
+  await chooseStage(page, name);
   await idle(page);
 }
 
@@ -85,6 +84,7 @@ async function selectBuild(page: Page, name: string) {
 }
 
 async function downloadJson(page: Page, action: string) {
+  await openExport(page);
   const pending = page.waitForEvent('download');
   await page.getByRole('button', { name: action, exact: true }).click();
   const download = await pending;
@@ -103,16 +103,19 @@ async function expandGroup(group: Locator) {
 
 test('committed Comet import reloads its entire saved stage and unresolved middle slot', async ({ page }) => {
   const before = await importComet(page);
-  const beforeDps = await hitDps(page).innerText();
+  const beforeDps = (await stableText(hitDps(page)))!;
   expect(Number(beforeDps.replaceAll(',', ''))).toBeGreaterThan(0);
   await page.reload();
   await ready(page);
   await expect(page.getByLabel('Level', { exact: true })).toHaveValue('98');
-  await expect(page.locator('.character-form select').nth(0)).toHaveValue('Sorceress');
-  await expect(page.locator('.character-form select').nth(1)).toHaveValue('Stormweaver');
-  await expect(page.locator('.character-form select').nth(0)).toBeEnabled();
-  await expect(page.locator('.character-form select').nth(1)).toBeEnabled();
+  const characterClass = page.getByRole('combobox', { name: 'Class', exact: true });
+  const ascendancy = page.getByRole('combobox', { name: 'Ascendancy', exact: true });
+  await expect(characterClass).toContainText('Sorceress');
+  await expect(ascendancy).toContainText('Stormweaver');
+  await expect(characterClass).toBeEnabled();
+  await expect(ascendancy).toBeEnabled();
   await expect(page.getByRole('textbox', { name: 'Notes', exact: true })).toHaveValue(before.notes);
+  await openExport(page);
   await expect(page.getByRole('button', { name: 'Generate share code', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Copy current stage', exact: true })).toBeEnabled();
   expect(await snapshot(page)).toEqual(before);
@@ -130,7 +133,7 @@ test('inactive Comet stages survive multibuild reload, switching and deliberate 
   await idle(page);
   await page.getByRole('textbox', { name: 'Notes', exact: true }).fill('Deliberate edits — keep the unresolved Unleash slot');
   await idle(page);
-  await nav(page, 'Skills').click();
+  await pageLink(page, 'Skills').click();
   const firestorm = page.locator('.skill-group').nth(8);
   await expandGroup(firestorm);
   const activeGem = firestorm.locator('.skill-gem').nth(0);
@@ -146,7 +149,7 @@ test('inactive Comet stages survive multibuild reload, switching and deliberate 
   expected.state.socketGroups[8].gems[0].quality = 21;
   expect(edited).toEqual(expected);
   assertUnresolvedSlot(edited);
-  await nav(page, 'Build').click();
+  await page.locator('.shell-builds-button').click();
   await editName(page, 'New build', 'Separate');
   await page.getByLabel('Level', { exact: true }).fill('42');
   await idle(page);
@@ -180,9 +183,9 @@ test('Comet all-stage sharing and workspace backup reimport preserve complete sa
   const shared = await downloadJson(page, 'Share this build · all stages');
   expect(shared.value.build).toEqual(build);
   await page.locator('input[type=file]').setInputFiles(shared.path);
-  await expect(page.locator('.paper-doll')).toBeVisible();
+  await expect(page.locator('#ov-title')).toBeVisible();
   await idle(page);
-  await nav(page, 'Build').click();
+  await openBuild(page);
   const afterShare = await snapshot(page);
   const reimported = activeBuild(afterShare);
   expect(reimported.id).not.toBe(build.id);
@@ -200,9 +203,9 @@ test('Comet all-stage sharing and workspace backup reimport preserve complete sa
   await editName(page, 'New build', 'Temporary');
   await page.locator('input[type=file]').setInputFiles(backup.path);
   await answerConfirm(page, true);
-  await expect(page.locator('.paper-doll')).toBeVisible();
+  await expect(page.locator('#ov-title')).toBeVisible();
   await idle(page);
-  await nav(page, 'Build').click();
+  await openBuild(page);
   expect(await snapshot(page)).toEqual(beforeBackup);
   await page.reload();
   await ready(page);
@@ -212,7 +215,9 @@ test('Comet all-stage sharing and workspace backup reimport preserve complete sa
 
 test('Comet PoB share-code reimport retains the unresolved slot and source gem metadata', async ({ page }) => {
   const before = await importComet(page);
-  const beforeDps = await hitDps(page).innerText();
+  const beforeDps = (await stableText(hitDps(page)))!;
+  await openBuild(page);
+  await openExport(page);
   await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
   const output = page.getByRole('textbox', { name: 'Share Code', exact: true });
   await expect(output).toBeVisible();
@@ -230,9 +235,10 @@ test('Comet PoB share-code reimport retains the unresolved slot and source gem m
   });
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(sharedCode);
   await page.locator('.import-submit').click();
+  await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible();
   await idle(page);
-  await nav(page, 'Build').click();
+  await openBuild(page);
   const after = await snapshot(page);
   assertUnresolvedSlot(activeSaved(after));
   for (const key of ['character', 'treeVersion', 'attributeChoices', 'socketGroups'] as const) {
@@ -257,15 +263,17 @@ test('unresolved gems without count or global weapon attributes keep them absent
 <Gem skillId="FireballPlayer" gemId="Metadata/Items/Gems/SkillGemFireball" level="20" quality="0"/>
 <Gem nameSpec="Unleash" level="0" quality="0"/>
 </Skill></SkillSet></Skills></PathOfBuilding2>`).toString('base64url');
-  await page.goto('/');
+  await page.goto('/build');
   await ready(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
+  await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible();
   await idle(page);
   const unresolved = { skill_id: '', level: 0, quality: 0, name_spec: 'Unleash' };
   expect((await snapshot(page)).state.socketGroups[0].gems[1]).toEqual(unresolved);
-  await nav(page, 'Build').click();
+  await openBuild(page);
+  await openExport(page);
   await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
   const output = page.getByRole('textbox', { name: 'Share Code', exact: true });
   await expect(output).toBeVisible();
@@ -282,6 +290,7 @@ test('unresolved gems without count or global weapon attributes keep them absent
   }
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(sharedCode);
   await page.locator('.import-submit').click();
+  await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible();
   await idle(page);
   expect((await snapshot(page)).state.socketGroups[0].gems[1]).toEqual(unresolved);
@@ -294,7 +303,7 @@ test('malformed inactive Comet stage import preserves the current workspace and 
   await importComet(page);
   await editName(page, 'Copy current stage', 'Valid copy');
   const before = await snapshot(page);
-  const library = await page.evaluate(() => localStorage.getItem('pobr-library'));
+  const library = await page.evaluate(() => localStorage.getItem('pobr-v2-library'));
   const malformed = structuredClone(before);
   activeBuild(malformed).stages[0].saved.state.socketGroups[8].gems[1].quality = -1;
   await page.locator('input[type=file]').setInputFiles({
@@ -304,7 +313,7 @@ test('malformed inactive Comet stage import preserves the current workspace and 
   await answerConfirm(page, true);
   await expect(page.getByRole('alert')).toContainText('invalid workspace file');
   expect(await snapshot(page)).toEqual(before);
-  expect(await page.evaluate(() => localStorage.getItem('pobr-library'))).toBe(library);
+  expect(await page.evaluate(() => localStorage.getItem('pobr-v2-library'))).toBe(library);
   await page.reload();
   await ready(page);
   expect(await snapshot(page)).toEqual(before);
@@ -318,20 +327,21 @@ test('removing an unresolved slot does not change the selected second active ski
 <Gem nameSpec="Unleash" level="0" quality="0"/>
 <Gem skillId="SparkPlayer" gemId="Metadata/Items/Gems/SkillGemSpark" level="20" quality="0"/>
 </Skill></SkillSet></Skills></PathOfBuilding2>`).toString('base64url');
-  await page.goto('/');
+  await page.goto('/build');
   await ready(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
+  await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible();
   await idle(page);
-  await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Spark');
-  const beforeDps = await hitDps(page).innerText();
-  await nav(page, 'Skills').click();
+  await expect(mainSkill(page)).toContainText('Spark');
+  const beforeDps = (await stableText(hitDps(page)))!;
+  await pageLink(page, 'Skills').click();
   const group = page.locator('.skill-group').first();
   await expandGroup(group);
   await group.locator('.skill-gem').nth(1).getByRole('button', { name: 'Remove gem', exact: true }).click();
   await idle(page);
-  await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Spark');
+  await expect(mainSkill(page)).toContainText('Spark');
   await expect(hitDps(page)).toHaveText(beforeDps);
   expect((await snapshot(page)).state.socketGroups[0].main_active_skill).toBe(2);
 });
@@ -345,15 +355,16 @@ for (const count of [1, 2]) {
 <Skill enabled="true"><Gem gemId="Metadata/Items/Gems/SkillGemFireball" skillId="FireballPlayer" level="20" quality="0"/></Skill>
 </SkillSet></Skills></PathOfBuilding2>`;
     const code = deflateSync(Buffer.from(xml)).toString('base64url');
-    await page.goto('/');
+    await page.goto('/build');
     await ready(page);
     await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
     await page.locator('.import-submit').click();
+    await openItemsAfterImport(page);
     await expect(page.locator('.paper-doll')).toBeVisible();
     await idle(page);
     const before = await snapshot(page);
-    const beforeDps = await hitDps(page).innerText();
-    await nav(page, 'Skills').click();
+    const beforeDps = (await stableText(hitDps(page)))!;
+    await pageLink(page, 'Skills').click();
     const group = page.locator('.skill-group').first();
     await expandGroup(group);
     await group.locator('.skill-gem').first().getByRole('button', { name: 'Remove gem', exact: true }).click();
@@ -361,7 +372,7 @@ for (const count of [1, 2]) {
     const after = await snapshot(page);
     expect(after.state.socketGroups[0].gems).toEqual(before.state.socketGroups[0].gems.slice(1));
     await page.reload();
-    await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Fireball');
+    await expect(mainSkill(page)).toContainText('Fireball');
     await idle(page);
     expect((await snapshot(page)).state.socketGroups[0].main_active_skill).toBe(1);
     expect(await snapshot(page)).toEqual(after);
