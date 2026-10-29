@@ -47,6 +47,7 @@ Implicits: 0</Item>
     if (nodes) expect(goring).toBeUndefined();
     else expect(goring).toBeGreaterThan(0);
     expect(sum.value.min).toBeCloseTo(97 * life + (goring ?? 0), 3);
+    await expect(page.locator('.trade-minimum')).toContainText('Minimum Sum in this search');
     if (!nodes) await openLibrary(page);
   }
   await page.locator('.trade-position').filter({ hasText: /^Main Hand/ }).click();
@@ -454,4 +455,41 @@ test('applying a gem replacement preserves the evaluated secondary effect throug
   await expect(inspectedSkill(page)).toHaveText('1. Spark', { timeout: 90_000 });
   await expect.poll(async () => Number((await dps.innerText()).replaceAll(',', ''))).toBeCloseTo(predicted, 0);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state.socketGroups[0].main_active_skill)).toBe(2);
+});
+
+test('a partial current score still fills the search minimum from the recognised lines', async ({ page }) => {
+  const code = deflateSync(`<PathOfBuilding2>
+    <Build level="85" className="Witch"/>
+    <Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
+    <Skills/>
+    <Items activeItemSet="1">
+      <Item id="1">Rarity: RARE
+Reference Robe
+Vile Robe
+Implicits: 0
++97 to maximum Life
+Grants a special buff that no trade stat carries</Item>
+      <ItemSet id="1"><Slot name="Body Armour" itemId="1"/></ItemSet>
+    </Items>
+  </PathOfBuilding2>`).toString('base64url');
+  await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
+  await page.goto('/build');
+  await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
+  await page.locator('.import-submit').click();
+  await openItemsAfterImport(page);
+  await goTo(page, 'Upgrades');
+  await page.getByRole('button', { name: 'Max Life', exact: true }).click();
+  await page.locator('.trade-position').filter({ hasText: 'Body Armour' }).click();
+  await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+  await expect(page.locator('.upgrade-score-reference')).toContainText('Partial score', { timeout: 60_000 });
+  const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
+  const sum = query.query.stats[0];
+  const life = sum.filters.find((filter: { id: string }) => filter.id === 'explicit.stat_3299347043').value.weight;
+  // The line nobody maps adds nothing to the market's Sum, so the recognised life roll is the minimum.
+  expect(sum.value.min).toBeCloseTo(97 * life, 3);
+  await expect(page.locator('.trade-minimum')).toContainText('lower bound');
+  await expect(page.locator('.trade-search-card')).toContainText('logged in');
+  await page.locator('.trade-broad input').check();
+  expect(searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!).query.stats[0].value).toBeUndefined();
 });

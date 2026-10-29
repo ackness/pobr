@@ -293,7 +293,10 @@ export async function optimizeTradeAffixes(options: SearchOptions): Promise<Trad
   const currentItemScore = currentText ? scoreEquipment(currentText, weighted, templates) : null;
   // A same-query Sum is a comparable search threshold. A whole-build DPS delta
   // is not in these units and the previous arbitrary 50% threshold admitted downgrades.
-  const minimumWeight = currentItemScore?.complete ? Math.max(0, Math.ceil((currentItemScore.score - 1e-9) * 1000) / 1000) : 0;
+  // A partial score is still a lower bound of the item's Sum: a line that maps to no weighted stat adds
+  // nothing to the market's Sum, and one that failed to map can only have added more (every weight is
+  // positive). So the minimum drops what is clearly worse without excluding anything that beats the item.
+  const minimumWeight = currentItemScore ? Math.max(0, Math.ceil((currentItemScore.score - 1e-9) * 1000) / 1000) : 0;
   const scoreWarnings: TradeOptimization['scoreWarnings'] = [
     ...(currentItemScore && !currentItemScore.complete ? ['partial-current-score' as const] : []),
     ...(nonlinear ? ['nonlinear' as const] : []),
