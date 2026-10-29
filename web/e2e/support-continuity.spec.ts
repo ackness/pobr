@@ -100,7 +100,7 @@ async function previewMetric(page: Page, label: 'DPS' | 'EHP', index = 0) {
 }
 
 async function addGroup(page: Page, name: string) {
-  await page.getByPlaceholder('Search an active gem to add a group…').fill(name);
+  await page.getByPlaceholder('Add a skill group…').fill(name);
   await page.getByRole('option').filter({ has: page.getByText(name, { exact: true }) }).click();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
 }
@@ -135,7 +135,7 @@ test('completed support plans and nondefault socket and lineage settings survive
   await expect(page.locator('.support-plan .gem-lineage-badge')).toHaveCount(0);
 
   await goTo(page, 'Calcs');
-  await expect(page.getByRole('heading', { name: 'Socket Groups', exact: true })).toBeHidden();
+  await expect(page.getByRole('heading', { name: 'Skill groups', exact: true })).toBeHidden();
   await expect(run(page)).toHaveCount(0);
   await expect(capacity(page)).toHaveCount(0);
   await expect(lineage(page)).toHaveCount(0);

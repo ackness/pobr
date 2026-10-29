@@ -22,7 +22,7 @@ async function importCode(page: Page, value: string) {
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(value);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible();
   await idle(page);
 }
 

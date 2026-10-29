@@ -13,7 +13,7 @@ test('applicable view hides irrelevant controls, all options exposes them, impor
   await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
   await importCode(page, code());
-  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
   await go(page, 'Config');
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   const search = page.getByLabel('Search config options…');
@@ -32,7 +32,7 @@ test('applicable view hides irrelevant controls, all options exposes them, impor
   await expect(stacks.locator('input')).toHaveValue('0');
 
   await importCode(page, code('<Input name="demonFormStacks" number="0"/><Input name="BrandsInLastHalf" boolean="false"/>'));
-  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible();
   await go(page, 'Config');
   await search.fill('demonFormStacks');
   await expect(stacks).toContainText('Not applicable to this build');
@@ -138,7 +138,7 @@ test('an option that depends on the one just set appears in its own group, not i
   await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
   await importCode(page, code());
-  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
   await go(page, 'Config');
   await page.locator('.config-view').getByRole('button', { name: 'Show all options', exact: true }).click();
   const dependent = page.locator('#config-section-When-In-Combat .config-item[data-config-var="conditionChilledEffect"]');

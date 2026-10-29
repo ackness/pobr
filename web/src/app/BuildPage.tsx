@@ -25,8 +25,7 @@ function download(content: string, filename: string) {
 }
 
 /**
- * Where a build comes from and which one you are working on. Importing is the first thing anyone
- * does here, so it leads; everything else is arranged by how often it is needed afterwards.
+ * Build and stage management. Imports stay open for an empty workspace; established builds lead with their library.
  */
 export function BuildPage({ session, lang, onImported }: { session: BuildSession; lang: Lang; onImported: () => void }) {
   const tt = bindT(lang);
@@ -46,6 +45,7 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
   // Import
   const [destination, setDestination] = useState<Destination>('newBuild');
   const [code, setCode] = useState('');
+  const [importOpen, setImportOpen] = useState(!session.hasBuildContent);
   const [importing, setImporting] = useState(false);
   const [recovery, setRecovery] = useState<'file' | 'source' | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -154,24 +154,6 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
   return <section className="bd" aria-labelledby="build-heading">
     <header className="bd-head"><h1 id="build-heading">{w('My builds', '我的 BD', '我的 BD')}</h1><p>{tt('ui.buildHint')}</p></header>
 
-    <section className="bd-sec bd-import" aria-labelledby="bd-import-title">
-      <h2 id="bd-import-title">{w('Import a build', '导入 BD', '匯入 BD')}</h2>
-      <AppTextarea className="import-code" rows={4} spellCheck={false} disabled={importing} value={code} placeholder={tt('build.importPlaceholder')} aria-label={tt('build.code')}
-        aria-describedby={recovery ? 'bd-import-hint bd-import-recovery' : 'bd-import-hint'} onChange={event => { setCode(event.target.value); setRecovery(null); }} />
-      <div className="bd-import-actions">
-        <Button className="import-submit" onClick={doImport} disabled={session.busy || importing || !code.trim()}>
-          {importing ? tt('build.importing') : destination === 'newBuild' ? tt('build.importButton') : text.importCurrent}</Button>
-        <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={session.busy || importing}><FileUp />{tt('save.import')}</Button>
-        <AppInput ref={fileRef} type="file" accept=".json,.build,.txt,application/json,text/plain" hidden aria-label={tt('save.import')}
-          onChange={event => { const file = event.target.files?.[0]; if (file) void importFile(file); event.target.value = ''; }} />
-        <div className="bd-segment" role="group" aria-label={text.importDestination}>
-          {destinations.map(([value, label]) => <button key={value} type="button" aria-pressed={destination === value} disabled={importing || session.busy} onClick={() => setDestination(value)}>{label}</button>)}
-        </div>
-      </div>
-      <p className="bd-hint" id="bd-import-hint">{tt('build.importHint')} {text.importFileHint}</p>
-      {recovery && <p className="bd-hint" id="bd-import-recovery" role="status">{tt(recovery === 'file' ? 'build.importRecoveryFile' : 'build.importRecoverySource')}</p>}
-      {fileError && <p className="bd-error" role="alert">{fileError}</p>}
-    </section>
 
     <section className="bd-sec" aria-labelledby="bd-library-title">
       <div className="bd-sec-head"><h2 id="bd-library-title" tabIndex={-1}>{text.libraryTitle}</h2>
@@ -192,6 +174,25 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
         })}
       </ul>
     </section>
+
+    <details className="bd-sec bd-import" open={importOpen} onToggle={event => setImportOpen(event.currentTarget.open)}>
+      <summary><h2 id="bd-import-title">{w('Import a build', '导入 BD', '匯入 BD')}</h2></summary>
+      <AppTextarea className="import-code" rows={4} spellCheck={false} disabled={importing} value={code} placeholder={tt('build.importPlaceholder')} aria-label={tt('build.code')}
+        aria-describedby={recovery ? 'bd-import-hint bd-import-recovery' : 'bd-import-hint'} onChange={event => { setCode(event.target.value); setRecovery(null); }} />
+      <div className="bd-import-actions">
+        <Button className="import-submit" onClick={doImport} disabled={session.busy || importing || !code.trim()}>
+          {importing ? tt('build.importing') : destination === 'newBuild' ? tt('build.importButton') : text.importCurrent}</Button>
+        <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={session.busy || importing}><FileUp />{tt('save.import')}</Button>
+        <AppInput ref={fileRef} type="file" accept=".json,.build,.txt,application/json,text/plain" hidden aria-label={tt('save.import')}
+          onChange={event => { const file = event.target.files?.[0]; if (file) void importFile(file); event.target.value = ''; }} />
+        <div className="bd-segment" role="group" aria-label={text.importDestination}>
+          {destinations.map(([value, label]) => <button key={value} type="button" aria-pressed={destination === value} disabled={importing || session.busy} onClick={() => setDestination(value)}>{label}</button>)}
+        </div>
+      </div>
+      <p className="bd-hint" id="bd-import-hint">{tt('build.importHint')} {text.importFileHint}</p>
+      {recovery && <p className="bd-hint" id="bd-import-recovery" role="status">{tt(recovery === 'file' ? 'build.importRecoveryFile' : 'build.importRecoverySource')}</p>}
+      {fileError && <p className="bd-error" role="alert">{fileError}</p>}
+    </details>
 
     <section className="bd-sec" aria-labelledby="bd-stage-title">
       <div className="bd-sec-head"><div><h2 id="bd-stage-title" tabIndex={-1}>{text.stagesTitle}</h2><p className="bd-hint">{text.stageScope} <strong>{build?.name || text.initialBuild} / {stage?.name || text.initialStage}</strong></p></div>

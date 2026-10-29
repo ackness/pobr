@@ -21,7 +21,7 @@ test('hosted import keeps selection and loadouts through editing and export; fai
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://pobb.in/Fixture_42');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
   await expect(mainSkill(page)).toContainText('Fireball');
   const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));
   expect((await saved()).state.socketGroups[0].main_active_skill).toBe(2);
@@ -44,7 +44,7 @@ test('hosted import keeps selection and loadouts through editing and export; fai
   await page.getByRole('textbox', { name: 'Build code' }).fill(exportedCode);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible();
   await expect(mainSkill(page)).toContainText('Fireball');
   await openBuild(page);
   const before = (await saved()).state;

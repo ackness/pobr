@@ -5,6 +5,9 @@ import { useState } from 'react';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
 import './namedSets.css';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { MoreHorizontal } from 'lucide-react';
+import { words } from '../../app/text';
 
 export function NamedSets({ session, lang, kind = 'config' }: { session: BuildSession; lang: Lang; kind?: 'config' | 'skill' }) {
   const tt = bindT(lang);
@@ -22,14 +25,18 @@ export function NamedSets({ session, lang, kind = 'config' }: { session: BuildSe
         {sets.map(set => <option key={set.id} value={set.id}>{set.title}</option>)}
       </AppSelectControl>
     </label>
-    {(['create', 'duplicate', 'rename'] as const).map(op => <AppButton key={op} disabled={session.busy}
-      onClick={() => { setEditing(op); setName(op === 'rename' ? sets.find(set => set.id === active)?.title ?? '' : ''); }}>
+    <DropdownMenu><DropdownMenuTrigger asChild><AppButton disabled={session.busy}
+      aria-label={words(lang, `${label} actions`, `${label}操作`, `${label}操作`)}><MoreHorizontal aria-hidden="true" /></AppButton></DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+    {(['create', 'duplicate', 'rename'] as const).map(op => <DropdownMenuItem key={op}
+      onSelect={() => { setEditing(op); setName(op === 'rename' ? sets.find(set => set.id === active)?.title ?? '' : ''); }}>
       {tt(`namedSets.${op}`)}
-    </AppButton>)}
-    <AppButton disabled={session.busy || sets.length < 2} onClick={async () => {
+    </DropdownMenuItem>)}
+    <DropdownMenuItem variant="destructive" disabled={sets.length < 2} onSelect={async () => {
       const valid = captureAction();
       if (await dialogs.confirm(tt('namedSets.confirmDelete')) && valid()) { setEditing(null); void session.changeNamedSet(kind, 'remove', active); }
-    }}>{tt('namedSets.remove')}</AppButton>
+    }}>{tt('namedSets.remove')}</DropdownMenuItem>
+      </DropdownMenuContent></DropdownMenu>
     {editing && <form onSubmit={event => {
       event.preventDefault();
       if (name.trim()) { void session.changeNamedSet(kind, editing, active, name.trim()); setEditing(null); }

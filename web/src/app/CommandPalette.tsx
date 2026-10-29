@@ -52,9 +52,9 @@ export function CommandPalette({ open, onOpenChange, session, view, lang, pageLa
   const actions = [
     { id: 'undo', label: w('Undo the last change', '撤销上一步修改', '復原上一步修改'), run: () => { if (session.canUndo) session.undoEdit(); } },
     { id: 'redo', label: w('Redo', '重做', '重做'), run: () => { if (session.canRedo) session.redoEdit(); } },
-    { id: 'import', label: w('Import or manage BDs', '导入或管理 BD', '匯入或管理 BD'), run: () => onNavigate('build') },
+    { id: 'import', label: w('Import or manage builds', '导入或管理 BD', '匯入或管理 BD'), run: () => onNavigate('build') },
     { id: 'theme', label: themeLabel, run: onToggleTheme },
-    { id: 'settings', label: w('Appearance & language', '外观与语言', '外觀與語言'), run: onSettings },
+    { id: 'settings', label: w('Display settings', '显示设置', '顯示設定'), run: onSettings },
   ].filter(action => match(action.label));
 
   const item = (key: string, label: string, hint: string | undefined, action: () => void) =>

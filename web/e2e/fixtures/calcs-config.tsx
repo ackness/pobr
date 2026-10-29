@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { getBackend } from '../../src/api/backend';
+import { createMockBackend } from '../../src/api/mockBackend';
 import type { CalculateBuildRequest, ConfigInputValue, ConfigOption, Breakdown } from '../../src/api/types';
 import { useBuildSession } from '../../src/hooks/useBuildSession';
 import { CalcsPanel } from '../../src/components/calcs/CalcsPanel';
@@ -21,7 +22,8 @@ const probe = {
 };
 Object.assign(window, { calcsConfigProbe: probe });
 const backend = await getBackend();
-const calculate = backend.calculateBuild;
+// Use an independent mock: the descriptor proxy reads the current method dynamically.
+const calculate = createMockBackend().calculateBuild;
 const decode = backend.decodeBuild;
 const metrics = backend.skillMetrics;
 const attribution = backend.attribution;
@@ -70,14 +72,14 @@ function Harness() {
   probe.focus = id => { setPage('calcs'); setFocus({ id }); };
   probe.language = setLang;
   probe.busy = session.busy;
-  return <UiProvider lang={lang}><TooltipProvider><main className="shell-root dark">
-    <nav aria-label="Test harness">
+  return <UiProvider lang={lang}><TooltipProvider><div className="shell-root dark"><main className="shell-main" data-display-mode="grouped">
+    <nav className="fixture-nav" aria-label="Test harness">
       <AppButton onClick={() => setPage('calcs')}>Open calcs</AppButton>
       <AppButton onClick={() => setPage('config')}>Open config</AppButton>
       <AppButton disabled={session.busy || !!session.bootMessage} onClick={() => void session.importCode('fixture')}>Import baseline</AppButton>
     </nav>
     {page === 'calcs' ? <CalcsPanel session={session} lang={lang} focus={focus} onFocusConsumed={() => setFocus(null)} />
       : <ConfigPanel session={session} lang={lang} />}
-  </main></TooltipProvider></UiProvider>;
+  </main></div></TooltipProvider></UiProvider>;
 }
 createRoot(document.getElementById('root')!).render(<Harness />);

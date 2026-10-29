@@ -243,7 +243,7 @@ test('open dropdowns stay within the content area on narrow and wide screens', a
 test('saved item notes can be edited with the keyboard', async ({ page }) => {
   await goTo(page, 'Items');
   await page.locator('.paper-doll').getByRole('button', { name: 'Ring 1', exact: true }).click();
-  await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
+  await page.getByRole('button', { name: 'Apply changes', exact: true }).click();
   await page.getByRole('button', { name: 'Add note' }).click();
   const note = page.getByRole('textbox', { name: 'Note', exact: true });
   await note.fill('Keep this ring');

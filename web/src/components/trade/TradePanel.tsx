@@ -241,7 +241,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   };
 
   const deltaClass = (value: number) => value < 0 ? 'delta-neg' : value > 0 ? 'delta-pos' : '';
-  const pasteTitle = words(lang, 'Paste an item to compare it', '粘贴物品来对比', '貼上物品來比較');
+  const pasteTitle = words(lang, 'Compare an item', '对比装备', '比較裝備');
   const goalBlock = <>
     <div className="upgrade-evaluation">
       <div className="trade-objectives" role="group" aria-label={tt('opt.objective')} ref={goalRef} tabIndex={-1}>

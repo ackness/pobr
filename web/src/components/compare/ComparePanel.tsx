@@ -24,7 +24,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
   const catalog = useSkillCatalog();
   const entries = useMemo(() => session.workspace?.builds.flatMap(build => build.stages.map(stage => ({
     buildId: build.id, stageId: stage.id, saved: stage.saved, drafts: stage.drafts,
-    label: `${build.name || words(lang, 'Build', 'BD')} / ${stage.name || tt('compare.stage')}`,
+    label: `${build.name || words(lang, 'Build', '构筑', 'BD')} / ${stage.name || words(lang, 'Current stage', '当前阶段', '目前階段')}`,
   }))) ?? [], [session.workspace, lang]);
   const active = session.workspace?.builds.find(build => build.id === session.workspace?.activeBuild)?.activeStage;
   const [aId, setAId] = useState(active);
@@ -168,9 +168,9 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
             return <div className="compare-table-wrap" key={section.title[lang]}><table><caption>{section.title[lang]}</caption>
               <thead><tr><th scope="col"><span className="sr-only">{tt('compare.summary')}</span></th><th scope="col">A</th><th scope="col">B</th><th scope="col">{tt('compare.delta')}</th><th scope="col">{tt('compare.percent')}</th></tr></thead>
               <tbody>{rows.map(({ def, row: maybe }) => { const row = maybe!; const tone = deltaTone(row.id, row.delta); return <tr key={row.id} data-stat={row.id}>
-                <th scope="row">{def.label[lang]}</th>{[row.before, row.after].map((number, i) => <td key={i}>{typeof number === 'number' && Number.isFinite(number) ? formatStatValue(number, def.format, lang) : tt('compare.unavailable')}</td>)}
-                <td className="cmp-delta" data-tone={tone}>{formatComparisonDelta(row.delta, def.format, lang)}</td>
-                <td className="cmp-delta" data-tone={tone}>{row.percent === null ? '—' : `${row.percent > 0 ? '+' : ''}${row.percent.toFixed(1)}%`}</td>
+                <th scope="row">{def.label[lang]}</th>{[row.before, row.after].map((number, i) => <td key={i} data-label={i === 0 ? 'A' : 'B'}>{typeof number === 'number' && Number.isFinite(number) ? formatStatValue(number, def.format, lang) : number === Infinity ? '∞' : number === -Infinity ? '−∞' : <span title={tt('compare.unavailable')}>—</span>}</td>)}
+                <td className="cmp-delta" data-tone={tone} data-label={tt('compare.delta')}>{formatComparisonDelta(row.delta, def.format, lang)}</td>
+                <td className="cmp-delta" data-tone={tone} data-label={tt('compare.percent')}>{row.percent === null ? '—' : `${row.percent > 0 ? '+' : ''}${row.percent.toFixed(1)}%`}</td>
               </tr>; })}</tbody></table></div>;
           })}
           {changedOnly && counts.stats === 0 && <p className="cmp-none">{tt('compare.none')}</p>}

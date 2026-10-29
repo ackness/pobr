@@ -186,7 +186,7 @@ for (const planner of ['route', 'joint'] as const) {
     for (const text of ['Rarity: MAGIC\nRuby\nImplicits: 0\n+20 to maximum Life', applied.jewels[0].text]) {
       await page.locator(`circle[data-skill-id="${socket.skill}"]`).dispatchEvent('click');
       await page.getByRole('textbox', { name: 'Jewel socket', exact: true }).fill(text);
-      await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
+      await page.getByRole('button', { name: 'Apply changes', exact: true }).click();
       await expect.poll(async () => (await saved(page)).jewels[0].text).toBe(text);
       await expect(busy(page)).toHaveCount(0);
       await expect(confirmation).toHaveCount(0);

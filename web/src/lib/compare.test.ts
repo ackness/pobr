@@ -134,10 +134,13 @@ describe('whole-build comparison', () => {
 
 
 test('whole-build summary keeps absent main-skill outputs unavailable', () => {
-  const output = { stats: stats([['TotalDPS', 0], ['Life', 100]]), main_skill: null } as import('../api/types').CalculateBuildResponse;
+  const output = { stats: stats([['CombinedDPS', 0], ['TotalDPS', 0], ['Life', 100]]), main_skill: null } as import('../api/types').CalculateBuildResponse;
   expect(comparisonStats(output)).toEqual(stats([['Life', 100]]));
   const withSkill = { ...output, main_skill: { hit_dps: 100, dot_dps: 20, combined_dps: 120 } } as import('../api/types').CalculateBuildResponse;
   expect(comparisonStats(withSkill)).toContainEqual({ id: 'MainSkillCombinedDPS', value: 120, category: 'Offence' });
+  expect(comparisonStats(withSkill)).toContainEqual({ id: 'CombinedDPS', value: 0, category: 'Offence' });
+  const difference = compareStats(comparisonStats(withSkill), comparisonStats(output));
+  expect(difference.find(row => row.id === 'CombinedDPS')).toMatchObject({ after: undefined, delta: null, percent: null });
 });
 
 

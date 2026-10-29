@@ -27,7 +27,7 @@ function describe(finding: Finding, lang: Lang): { title: string; detail: string
   switch (finding.kind) {
     case 'no-main-skill': return { title: w('No main skill is being calculated', '没有可计算的主技能', '沒有可計算的主技能'), detail: w('Choose a damaging skill in the side panel or on Skills.', '在侧栏或技能页选择一个造成伤害的技能。', '在側欄或技能頁選擇一個造成傷害的技能。') };
     case 'item-errors': return { title: w(`${finding.slots.length} item(s) could not be read`, `${finding.slots.length} 件装备无法解析`, `${finding.slots.length} 件裝備無法解析`), detail: finding.slots.map(slot => slotLabel(lang, slot)).join(' · ') };
-    case 'spirit': return { title: w(`Spirit is over-committed by ${int(-finding.value)}`, `精魄超额保留 ${int(-finding.value)}`, `精魄超額保留 ${int(-finding.value)}`), detail: w('Reservations exceed your Spirit; the calculation does not switch skills off for you.', '技能保留总量超过精魄上限；计算不会替你关闭技能。', '技能保留總量超過精魄上限；計算不會替你關閉技能。') };
+    case 'spirit': return { title: w(`Spirit is over-committed by ${int(-finding.value)}`, `精魂超额保留 ${int(-finding.value)}`, `精魂超額保留 ${int(-finding.value)}`), detail: w('Reservations exceed your Spirit; the calculation does not switch skills off for you.', '技能保留总量超过精魂上限；计算不会替你关闭技能。', '技能保留總量超過精魂上限；計算不會替你關閉技能。') };
     case 'attribute': { const name = statNameLabel(lang, finding.attribute); return { title: w(`${name} ${int(finding.have)} of ${int(finding.need)} required`, `${name}不足：${int(finding.have)} / 需要 ${int(finding.need)}`, `${name}不足：${int(finding.have)} / 需要 ${int(finding.need)}`), detail: w('Some gear or a gem cannot be used at this attribute level.', '有装备或宝石的属性需求未满足。', '有裝備或寶石的屬性需求未滿足。') }; }
     case 'resist': { const name = damageTypeLabel(lang, finding.element); return finding.element === 'Chaos'
       ? { title: w(`${name} resistance is ${int(finding.value)}%`, `${name}抗性为 ${int(finding.value)}%`, `${name}抗性為 ${int(finding.value)}%`), detail: w('Negative resistance increases damage taken from this type.', '负抗性会增加该类型的承受伤害。', '負抗性會增加該類型的承受傷害。') }
@@ -115,7 +115,7 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
     { id: 'CombinedDPS', label: w('Damage per second', '每秒伤害', '每秒傷害'), value: main?.combined_dps ?? null, format: dash(n => formatStatValue(n, 'float2')), sub: main ? skillName(main.skill_id) : w('No main skill', '未选择主技能', '未選擇主技能'), tone: 'dps' },
     { id: 'TotalEHP', label: w('Effective HP', '有效生命', '有效生命'), value: value('TotalEHP'), format: dash(int), sub: weakest ? w(`Weakest to ${damageTypeLabel(lang, weakest[0])}: ${int(weakest[1])}`, `最弱：${damageTypeLabel(lang, weakest[0])} 单次 ${int(weakest[1])}`, `最弱：${damageTypeLabel(lang, weakest[0])} 單次 ${int(weakest[1])}`) : '', tone: 'ehp' },
     { id: 'Life', label: w('Life', '生命', '生命'), value: value('Life'), format: dash(int), sub: `${w('ES', '护盾', '護盾')} ${int(value('EnergyShield') ?? 0)} · ${w('Mana', '魔力', '魔力')} ${int(value('Mana') ?? 0)}`, tone: 'life' },
-    { id: 'SpiritUnreserved', label: w('Spirit left', '剩余精魄', '剩餘精魄'), value: spiritFree, format: dash(int), sub: spirit === null ? '' : w(`of ${int(spirit)}`, `共 ${int(spirit)}`, `共 ${int(spirit)}`), tone: spiritFree !== null && spiritFree < 0 ? 'bad' : 'plain' },
+    { id: 'SpiritUnreserved', label: w('Spirit left', '剩余精魂', '剩餘精魂'), value: spiritFree, format: dash(int), sub: spirit === null ? '' : w(`of ${int(spirit)}`, `共 ${int(spirit)}`, `共 ${int(spirit)}`), tone: spiritFree !== null && spiritFree < 0 ? 'bad' : 'plain' },
   ];
 
   return <section className="ov" data-stale={view.stale || undefined} aria-labelledby="ov-title">
@@ -137,25 +137,25 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
         <section className="ov-sec" aria-labelledby="ov-findings">
           <h2 id="ov-findings">{w('Needs attention', '需要关注', '需要關注')}</h2>
           {!calc ? <p className="ov-muted">{session.busy ? w('Calculating…', '计算中…', '計算中…') : w('The calculation is unavailable.', '当前计算不可用。', '目前計算無法使用。')}</p>
-            : findings.length === 0 ? <p className="ov-ok"><CircleCheck />{w('Resistances, Spirit, attributes and accuracy all check out under this setup.', '在当前设定下，抗性、精魄、属性与命中均无明显问题。', '在目前設定下，抗性、精魄、屬性與命中均無明顯問題。')}</p>
+            : findings.length === 0 ? <p className="ov-ok"><CircleCheck />{w('Resistances, Spirit, attributes and accuracy all check out under this setup.', '在当前设定下，抗性、精魂、属性与命中均无明显问题。', '在目前設定下，抗性、精魂、屬性與命中均無明顯問題。')}</p>
               : <ul className="ov-findings">{findings.map((finding, index) => { const text = describe(finding, lang); const Icon = finding.severity === 'bad' ? CircleAlert : AlertTriangle;
                 return <li key={`${finding.kind}${index}`} className={`is-${finding.severity}`}><Icon aria-hidden="true" /><div><strong>{text.title}</strong><span>{text.detail}</span></div>
                   {(() => {
                   // A resistance shortfall is fixed in Upgrades with the goal already set to "resistances first".
                   const fixResist = finding.kind === 'resist' && finding.element !== 'Chaos';
                   return <Button variant="ghost" size="sm" onClick={() => { if (fixResist) { setGoal({ ...goal, resistanceFirst: true, resistanceTarget: goal.resistanceTarget ?? 75 }); navigate('trade'); } else navigate(finding.route); }}>
-                    {fixResist ? w('Fix in Upgrades', '到提升页补抗性', '到提升頁補抗性') : w('Open', '前往', '前往')}<ArrowRight /></Button>; })()}</li>; })}</ul>}
+                    {fixResist ? w('Fix in Upgrades', '到提升页补抗性', '到提升頁補抗性') : finding.kind === 'net-regen' ? w('View recovery', '查看恢复', '查看恢復') : finding.kind === 'unsupported' ? w('View modifiers', '查看词条', '查看詞綴') : finding.route === 'items' ? w('View equipment', '查看装备', '查看裝備') : finding.route === 'skills' ? w('View skills', '查看技能', '查看技能') : w('View settings', '查看配置', '查看設定')}<ArrowRight /></Button>; })()}</li>; })}</ul>}
         </section>
 
         <section className="ov-sec" aria-labelledby="ov-skills">
-          <h2 id="ov-skills">{w('Which skill carries the build', '哪个技能在输出', '哪個技能在輸出')}</h2>
+          <h2 id="ov-skills">{w('Skill damage', '技能伤害', '技能傷害')}</h2>
           {ranked.length === 0 ? <p className="ov-muted">{w('No skill deals damage yet.', '暂时没有造成伤害的技能。', '暫時沒有造成傷害的技能。')}</p>
             : <ol className="ov-rank">{ranked.map(entry => { const metrics = entry.metrics!; const current = main?.group_index === entry.group_index && main.active_skill_index === entry.active_skill_index;
               return <li key={`${entry.group_index}:${entry.active_skill_index}`}><button type="button" aria-pressed={current} onClick={() => chooseSkill(entry)}>
-                <span className="ov-rank-name">{skillName(entry.skill_id)}</span>
+                <span className="ov-rank-name">{skillName(entry.skill_id)}<small>{w(`Group ${entry.group_index + 1} · Effect ${entry.active_skill_index}`, `技能组 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`, `技能組 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`)}</small></span>
                 <span className="ov-bar"><span style={{ width: `${(metrics.combined_dps / top) * 100}%` }} /></span>
                 <span className="ov-rank-value">{formatStatValue(metrics.combined_dps, 'float2')}</span></button></li>; })}</ol>}
-          <p className="ov-hint">{w('Each effect is calculated on its own. Select one to make it the main skill.', '每个效果单独计算；点选即可设为主技能。', '每個效果單獨計算；點選即可設為主技能。')}</p>
+          <p className="ov-hint">{w('Each effect is calculated separately. Select one to use it for the current calculation.', '各效果分别计算，选择后用于当前计算。', '各效果分別計算，選取後用於目前計算。')}</p>
         </section>
       </div>
 
@@ -164,8 +164,8 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
           <div className="ov-sec-head"><h2 id="ov-contribution">{w('What each piece contributes', '每件装备与技能的贡献', '每件裝備與技能的貢獻')}</h2>
             <div className="ov-toggle" role="group" aria-label={w('Measure', '指标', '指標')}>{ATTRIBUTION_FIELDS.map(([id, label]) => <button key={id} type="button" aria-pressed={field === id} onClick={() => setField(id)}>{label === 'DPS' ? w('DPS', '伤害', '傷害') : label === 'EHP' ? w('EHP', '有效生命', '有效生命') : w('Life', '生命', '生命')}</button>)}</div></div>
           {!contribution || contribution.version !== session.stateVersion
-            ? <div className="ov-compute"><p className="ov-muted">{contribution ? w('The build changed since this was measured.', 'BD 已变化，结果已过期。', 'BD 已變化，結果已過期。') : w('Removes each item and skill group in turn and recalculates, so you can see what really matters.', '逐一移除每件装备与技能组并重算，看清谁真正重要。', '逐一移除每件裝備與技能組並重算，看清誰真正重要。')}</p>
-              <div className="ov-compute-actions"><Button variant="outline" disabled={contributionBusy || !calc} onClick={computeContribution}>{contributionBusy ? w('Measuring…', '计算中…', '計算中…') : contribution ? w('Measure again', '重新计算', '重新計算') : w('Measure contributions', '计算贡献', '計算貢獻')}</Button>
+            ? <div className="ov-compute"><p className="ov-muted">{contribution ? w('The build changed since this was measured.', 'BD 已变化，结果已过期。', 'BD 已變化，結果已過期。') : w('See how removing each item or skill group changes the result.', '查看移除每件装备或技能组后，数值会如何变化。', '查看移除每件裝備或技能組後，數值會如何變化。')}</p>
+              <div className="ov-compute-actions"><Button variant="outline" disabled={contributionBusy || !calc} onClick={computeContribution}>{contributionBusy ? w('Measuring…', '计算中…', '計算中…') : contribution ? w('Measure again', '重新计算', '重新計算') : w('Analyze contributions', '分析贡献', '分析貢獻')}</Button>
                 {contributionBusy && <Button variant="ghost" onClick={job.cancel}>{w('Cancel', '取消', '取消')}</Button>}</div>{job.error && <p className="ov-muted" role="alert">{job.error}</p>}</div>
             : entries.length === 0 ? <p className="ov-muted">{w('Nothing changes this number.', '没有任何来源影响该数值。', '沒有任何來源影響該數值。')}</p>
               : <ol className="ov-rank ov-contrib">{entries.map(({ entry, delta }) => <li key={`${entry.kind}:${entry.id}`}><div>
@@ -175,7 +175,7 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
         </section>
 
         <section className="ov-sec" aria-labelledby="ov-trust">
-          <h2 id="ov-trust">{w('How far to trust these numbers', '这些数字有多可信', '這些數字有多可信')}</h2>
+          <h2 id="ov-trust">{w('Calculation coverage', '计算覆盖', '計算涵蓋範圍')}</h2>
           <dl className="ov-facts">
             <div><dt>{w('Lines not calculated', '未参与计算的词条', '未參與計算的詞綴')}</dt><dd className={calc?.unsupported_modifiers.length ? 'is-warn' : undefined}>{calc ? calc.unsupported_modifiers.length : '—'}</dd></div>
             <div><dt>{w('Items that failed to parse', '无法解析的装备', '無法解析的裝備')}</dt><dd className={calc?.item_errors.length ? 'is-bad' : undefined}>{calc ? calc.item_errors.length : '—'}</dd></div>
@@ -184,7 +184,7 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
           </dl>
           {calc && calc.unsupported_modifiers.length > 0 && <details className="ov-details"><summary>{w('Show the lines', '查看这些词条', '查看這些詞綴')}</summary>
             <ul>{calc.unsupported_modifiers.map((line, index) => <li key={index}>{line}</li>)}</ul></details>}
-          <p className="ov-hint">{w('Numbers reflect only what the engine models. Lines it cannot calculate are not guessed at.', '数值只反映引擎已建模的内容；无法计算的词条不会被猜测。', '數值只反映引擎已建模的內容；無法計算的詞綴不會被猜測。')}</p>
+          <p className="ov-hint">{w('Results reflect modeled effects. Review the uncalculated effects above.', '数值仅反映已支持的效果。未计算的内容见上方明细。', '數值僅反映已支援的效果。未計算的內容見上方明細。')}</p>
         </section>
       </div>
     </div>

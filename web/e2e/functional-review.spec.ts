@@ -38,7 +38,7 @@ test('item drafts survive slot and page switches; cancel discards them and savin
   await goTo(page, 'Items');
   await page.getByRole('button', { name: 'Ring 1', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'ring1 item text' })).toHaveValue(ring);
-  await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
+  await page.getByRole('button', { name: 'Apply changes', exact: true }).click();
   await expect.poll(async () => (await saved(page)).items).toEqual([{ slot: 'ring1', text: ring }]);
   await page.getByRole('button', { name: 'Ring 2', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'ring2 item text' })).toHaveValue(ring.replace('Draft Ring', 'Second Draft'));
@@ -65,7 +65,7 @@ test('jewel drafts survive navigation and unallocating removes both the socket p
   await goTo(page, 'Config');
   await goTo(page, 'Tree');
   await expect(page.getByRole('textbox', { name: 'Jewel socket', exact: true })).toHaveValue(draft);
-  await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
+  await page.getByRole('button', { name: 'Apply changes', exact: true }).click();
   await expect.poll(async () => (await saved(page)).jewels.find((j: { socket_node: number }) => j.socket_node === 7960)?.text).toBe(draft);
   await node.dispatchEvent('click');
   await page.getByRole('button', { name: 'Unallocate socket', exact: true }).click();

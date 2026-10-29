@@ -238,7 +238,7 @@ test('WeGame quiver analysis opens the CN instant-buy market without JSON or bas
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
   await goTo(page, 'Upgrades');
   await openMarketSettings(page);
   await page.getByRole('combobox', { name: 'Server', exact: true }).click();
@@ -286,7 +286,7 @@ for (const [characterLevel, gemLevel] of [[71, 16], [90, 21]]) test(`gem plans a
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
   await page.getByRole('combobox', { name: 'Inspected skill', exact: true }).click();
   await page.getByRole('option', { name: '1. Fireball', exact: true }).click();
   await goTo(page, 'Upgrades');
@@ -335,7 +335,7 @@ test('explicit damage skill selection, weapon binding and whole-build priority s
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
   // The import carries no selection; the highest-DPS skill becomes the default.
   await expect(inspectedSkill(page)).not.toHaveText('Not selected');
   await goTo(page, 'Upgrades');

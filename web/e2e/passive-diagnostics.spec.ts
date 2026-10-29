@@ -144,7 +144,7 @@ for (const edit of ['copied stage', 'jewel input'] as const) {
       // publish a fresh receipt or retain the old unresolved radius diagnostics.
       await page.locator(`circle[data-skill-id="${socket.skill}"]`).dispatchEvent('click');
       await page.getByRole('textbox', { name: 'Jewel socket', exact: true }).fill(replacement);
-      await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
+      await page.getByRole('button', { name: 'Apply changes', exact: true }).click();
       await expect.poll(async () => (await saved(page)).jewels).toEqual([{ socket_node: socket.skill, text: replacement }]);
       await expect(busy(page)).toHaveCount(0);
       await assertNoReceipt(page);

@@ -14,8 +14,8 @@ async function ready(page: Page) {
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
 }
 async function editName(page: Page, action: string, name: string) {
-  // The import form has a "New build" choice of its own; the library action is the later of the two.
-  await page.getByRole('button', { name: action, exact: true }).last().click();
+  // Scope to library/stage actions; the import destination has a separate New build choice.
+  await page.locator('.bd-actions').getByRole('button', { name: action, exact: true }).click();
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill(name);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
@@ -55,7 +55,7 @@ test('independent builds and stages preserve passive routes and notes across rel
   await page.reload();
   await ready(page);
   await expect(page.getByLabel('Level', { exact: true })).toHaveValue('55');
-  await page.getByRole('group', { name: 'My builds', exact: true }).getByRole('button', { name: /^Ice Shot/ }).click();
+  await page.getByRole('group', { name: 'Saved builds', exact: true }).getByRole('button', { name: /^Ice Shot/ }).click();
   await expect(page.getByLabel('Level', { exact: true })).toHaveValue('30');
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   await selectStage(page, 'Endgame');
@@ -70,6 +70,7 @@ test('independent builds and stages preserve passive routes and notes across rel
   const shared = JSON.parse(readFileSync((await download.path())!, 'utf8'));
   expect(shared.build.stages).toHaveLength(2);
   expect(shared.build.stages[0].saved.notes).toBe('Leveling Ice Shot');
+  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   await page.locator('input[type=file]').setInputFiles((await download.path())!);
   await expect(page.locator('#ov-title')).toBeVisible();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
@@ -86,6 +87,7 @@ test('independent builds and stages preserve passive routes and notes across rel
   const backup = await backupPromise;
   expect(JSON.parse(readFileSync((await backup.path())!, 'utf8')).workspace.builds).toHaveLength(4);
   await editName(page, 'New build', 'Temporary');
+  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   await page.locator('input[type=file]').setInputFiles((await backup.path())!);
   await answerConfirm(page, true);
   await expect(page.locator('#ov-title')).toBeVisible();
@@ -108,7 +110,7 @@ test('stage switching preserves unapplied item drafts and fits a narrow viewport
   await page.locator('.paper-doll').getByRole('button', { name: 'Ring 1', exact: true }).click();
   await expect(editor).toHaveValue(/123/);
   await page.setViewportSize({ width: 320, height: 780 });
-  await page.getByRole('button', { name: 'BDs', exact: true }).click();
+  await page.getByRole('button', { name: 'Build library', exact: true }).click();
   await expect(page.locator('#build-heading')).toBeVisible();
   await expect(page.locator('#bd-library-title')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -165,6 +167,7 @@ test('malformed shared files leave the active stage and browser save untouched',
   const before = await snapshot(page);
   const invalid = { version: 1, notes: 'Invalid import', state: { ...before.state,
     flasks: {}, socketGroups: [{ enabled: true, gems: [null] }], params: { config_inputs: {} } } };
+  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   await page.locator('input[type=file]').setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(invalid)) });
   await expect(page.getByRole('alert').first()).toBeVisible();
   expect(await snapshot(page)).toEqual(before);
@@ -213,10 +216,10 @@ test('planning catalogs stay on the initialized snapshot after a deployment', as
     return route.abort();
   });
   await pageLink(page, 'Skills').click();
-  await expect(page.getByRole('heading', { name: 'Socket Groups', exact: true })).toBeVisible();
-  await expect(page.getByPlaceholder('Search an active gem to add a group…')).toBeEnabled();
+  await expect(page.getByRole('heading', { name: 'Skill groups', exact: true })).toBeVisible();
+  await expect(page.getByPlaceholder('Add a skill group…')).toBeEnabled();
   await pageLink(page, 'Upgrades').click();
-  await expect(page.getByRole('heading', { name: 'Plan your next upgrade', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Upgrades', exact: true })).toBeVisible();
   expect(manifestReads).toBe(0);
   expect(unexpected).toEqual([]);
 });
@@ -255,10 +258,10 @@ test('new imports keep the current build and replacement requires an explicit de
   expect(imported.workspace.builds).toHaveLength(2);
   expect(imported.workspace.builds[0]).toEqual(original.workspace.builds[0]);
   // The top bar names the build and stage now open; the loadouts of an imported file live on the Build page only.
-  await expect(page.getByRole('combobox', { name: 'Current BD', exact: true })).not.toContainText('Keep this build');
+  await expect(page.getByRole('combobox', { name: 'Current build', exact: true })).not.toContainText('Keep this build');
   await expect(page.locator('.shell-topbar').getByLabel('PoB loadout', { exact: true })).toHaveCount(0);
-  await page.getByRole('group', { name: 'My builds', exact: true }).getByRole('button', { name: /^Keep this build/ }).click();
-  await expect(page.getByRole('combobox', { name: 'Current BD', exact: true })).toContainText('Keep this build');
+  await page.getByRole('group', { name: 'Saved builds', exact: true }).getByRole('button', { name: /^Keep this build/ }).click();
+  await expect(page.getByRole('combobox', { name: 'Current build', exact: true })).toContainText('Keep this build');
   await expect(page.getByLabel('Level', { exact: true })).toHaveValue('42');
   await expect(page.getByRole('textbox', { name: 'Notes', exact: true })).toHaveValue('My original notes');
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);

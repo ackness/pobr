@@ -6,7 +6,7 @@ const labels = {
   categories: ['Metric categories', '指标分类', '指標分類'],
   all: ['All categories', '全部分类', '全部分類'],
   choose: ['Choose a metric to inspect its calculation.', '选择一个指标，查看计算过程。', '選擇一個指標，檢視計算過程。'],
-  detailHint: ['Details follow the selected actor and skill. Open one metric to load its explanation.', '明细对应当前对象与技能，选择指标后加载解释。', '明細對應目前對象與技能，選擇指標後載入說明。'],
+  detailHint: ['See how the selected result is calculated.', '查看所选结果的计算过程。', '查看所選結果的計算過程。'],
   noCalc: ['Calculate a build to inspect its metrics.', '完成构筑计算后查看指标。', '完成構築計算後檢視指標。'],
   fullDps: ['Full DPS', '完整 DPS', '完整 DPS'],
   fullDpsEmpty: ['Include skills in Full DPS from the Skills page to see their combined contribution here.', '在技能页将技能计入完整 DPS，即可在此查看合计贡献。', '在技能頁將技能計入完整 DPS，即可在此檢視合計貢獻。'],

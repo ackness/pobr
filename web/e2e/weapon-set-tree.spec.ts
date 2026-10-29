@@ -34,7 +34,7 @@ async function importCode(page: Page, source: string) {
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(source);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible();
   await idle(page);
 }
 async function allocate(page: Page, node: PassiveNode) {

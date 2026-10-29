@@ -78,7 +78,7 @@ async function selectStage(page: Page, name: string) {
 }
 
 async function selectBuild(page: Page, name: string) {
-  await page.getByRole('group', { name: 'My builds', exact: true })
+  await page.getByRole('group', { name: 'Saved builds', exact: true })
     .getByRole('button', { name: new RegExp(`^${name}\\b`) }).click();
   await idle(page);
 }

@@ -1,7 +1,7 @@
 import type { EnemyTier } from '../../../api/types';
 import { AppButton } from '../../../components/shared/controls';
 import type { BuildSession } from '../../../hooks/useBuildSession';
-import { enemyTierLabel, type Lang } from '../../../lib/i18n';
+import { type Lang } from '../../../lib/i18n';
 import { words } from '../../text';
 import { resolveEnemyTier } from '../../enemy';
 import { SCENARIOS } from './scenario';
@@ -21,10 +21,8 @@ export function ScenarioBar({ session, lang }: { session: BuildSession; lang: La
         {w(scenario.en, scenario.cn, scenario.tw)}
       </AppButton>)}
     </div>
-    <span className="cfg-scenario-note" role="status">
-      {current === 'custom'
-        ? w('Custom: the enemy comes from this BD’s own settings.', '自定义：敌人取自此 BD 自带的设置。', '自訂：敵人取自此 BD 自帶的設定。')
-        : w(`Calculated against: ${enemyTierLabel(lang, current)}`, `当前对手：${enemyTierLabel(lang, current)}`, `目前對手：${enemyTierLabel(lang, current)}`)}
-    </span>
+    {current === 'custom' && <span className="cfg-scenario-note" role="status">
+      {w('Using the build’s enemy settings.', '使用构筑中的敌人设置。', '使用 BD 中的敵人設定。')}
+    </span>}
   </div>;
 }

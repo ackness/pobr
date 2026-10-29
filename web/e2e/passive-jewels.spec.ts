@@ -71,7 +71,7 @@ test('alternate start is implicit and replacing its jewel revokes its remote pat
   await expect(page.locator('.tree-asc-picker select').first()).toBeEnabled();
   await circle(page, socket.skill).dispatchEvent('click');
   await page.getByRole('textbox', { name: 'Jewel socket', exact: true }).fill('Rarity: MAGIC\nRuby\nImplicits: 0\n+20 to maximum Life');
-  await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
+  await page.getByRole('button', { name: 'Apply changes', exact: true }).click();
   await expect.poll(async () => (await saved(page)).allocatedNodes).toEqual(allocated);
   await expect(page.locator('.shell-alert')).toHaveCount(0);
 });

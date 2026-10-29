@@ -1,4 +1,5 @@
 import { getBackend } from '../../src/api/backend';
+import { createMockBackend } from '../../src/api/mockBackend';
 import type { ItemLineJson } from '../../src/api/types';
 
 // The real app, preferences, item view and session run against deterministic presentation data.
@@ -44,7 +45,8 @@ const translations: Record<string, string> = {
 };
 backend.translateLines = async (source, lang) => source.map(line => lang === 'en-US' ? line : translations[line] ?? line);
 const probe = { calculations: 0, text };
-const calculate = backend.calculateBuild;
+// Use an independent mock: the descriptor proxy reads the current method dynamically.
+const calculate = createMockBackend().calculateBuild;
 backend.calculateBuild = request => { probe.calculations++; return calculate(request); };
 Object.assign(window, { itemDisplayProbe: probe });
 history.replaceState(null, '', '/build');

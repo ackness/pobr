@@ -42,7 +42,7 @@ export function ItemValues({ text }: { text: string }) {
 export function ItemDisplayContent({ text, lang, lines, translated }: {
   text: string; lang: Lang; lines: readonly ItemLineJson[]; translated: readonly string[];
 }) {
-  const { itemDisplay: style } = useUi();
+  const { displayMode: style } = useUi();
   const model = itemDisplaySections(lines, translated);
   const w = (en: string, cn: string, tw = cn) => lang === 'en-US' ? en : lang === 'zh-TW' ? tw : cn;
   const rarity = rarityOf(text);

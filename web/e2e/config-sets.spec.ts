@@ -11,7 +11,7 @@ test('config sets save edits independently and survive copy, export, reload and 
   await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
   await importCode(page, code);
-  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
   await go(page, 'Config');
   const sets = page.getByRole('region', { name: 'Config set', exact: true });
   const selector = sets.getByRole('combobox');
@@ -19,7 +19,8 @@ test('config sets save edits independently and survive copy, export, reload and 
   const selected = (id: string) => expect.poll(() => pickerValue(selector), { timeout: 90_000 }).toBe(id);
   await selected('7');
   await expect(selector).toBeEnabled();
-  await sets.getByRole('button', { name: 'Copy set', exact: true }).click();
+  await sets.getByRole('button', { name: 'Config set actions', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Copy set', exact: true }).click();
   await sets.getByRole('textbox', { name: 'Set name' }).fill('Copy');
   await sets.getByRole('button', { name: 'Save name' }).click();
   await selected('8');
@@ -47,7 +48,7 @@ test('config sets save edits independently and survive copy, export, reload and 
   expect(xml).toContain('activeConfigSet="8"');
   expect(xml.match(/name="futureInput" string="keep"/g)).toHaveLength(2);
   await importCode(page, exported);
-  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible();
   await go(page, 'Config');
   await selected('8');
   await page.getByLabel('Search config options…').fill('multiplierKilledRecently');

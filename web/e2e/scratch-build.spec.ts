@@ -58,7 +58,7 @@ test('scratch build: class picker, level edit, tree allocation', async ({ page }
   const lifeBeforeItem = await stableText(lifeValue);
   await pageLink(page, 'Items').click();
   await page.locator('.paper-doll').getByRole('button', { name: 'Ring 1' }).click();
-  await page.locator('.item-detail').getByRole('button', { name: 'Save & recalculate' }).click();
+  await page.locator('.item-detail').getByRole('button', { name: 'Apply changes' }).click();
   await expect(lifeValue).not.toHaveText(lifeBeforeItem!, { timeout: 30_000 });
 
   // 三语切换：EN → 繁 → 简（页面名称跟随，简繁字形区分）。语言在设置面板里选。
