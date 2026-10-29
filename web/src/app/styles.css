@@ -82,6 +82,8 @@
   .shell-brand { display: flex; align-items: center; gap: .55rem; color: var(--foreground); text-decoration: none; flex: none; }
   .shell-brand-mark { display: grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: .4rem; background: var(--primary); color: var(--primary-foreground); font-size: .9rem; font-weight: 700; line-height: 1; }
   .shell-brand strong { font-size: .95rem; font-weight: 650; letter-spacing: .04em; }
+  .shell-brand-version { font-size: var(--text-xs); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .shell-source-button svg { width: 1.05rem; height: 1.05rem; }
   .shell-crumb { display: flex; align-items: center; min-width: 0; flex: 0 1 auto; }
   .shell-crumb-sep { color: var(--muted-foreground); opacity: .5; padding-inline: .1rem; }
   .shell-crumb [data-slot='select-trigger'] { width: auto; max-width: 11rem; min-height: 0; height: 2rem; padding: 0 .5rem; gap: .35rem; border: 0; background: transparent; box-shadow: none; font-size: var(--text-base); font-weight: 500; border-radius: .4rem; }

@@ -3,7 +3,7 @@
   .shell-palette-button { gap: .5rem; color: var(--muted-foreground); }
   .shell-palette-button kbd, .shell-palette kbd, .shell-shortcuts kbd { padding: .05rem .4rem; border: 1px solid var(--border); border-radius: .3rem; background: var(--muted); font: inherit; font-size: .6875rem; font-family: var(--font-mono); color: var(--muted-foreground); }
   .shell-rail-toggle, .shell-history-button { color: var(--muted-foreground); }
-  @container shell-container (max-width: 56rem) { .shell-history-button { display: none; } }
+  @container shell-container (max-width: 56rem) { .shell-history-button, .shell-source-button, .shell-brand-version { display: none; } }
   .shell-rail-toggle[aria-pressed='true'] { color: var(--primary); }
 
   /* The body is rail | page | inspector. The rail can be hidden; the inspector docks when there is room. */

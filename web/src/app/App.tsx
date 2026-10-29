@@ -41,6 +41,11 @@ const CalcsPanel = lazy(() => import('../components/calcs/CalcsPanel').then(m =>
 const Inspector = lazy(() => import('./inspector/Inspector'));
 const TreePanel = lazy(() => import('../components/tree/TreePanel').then(m => ({ default: m.TreePanel })));
 /** What a tab says after it followed a change another tab made to the library. */
+// GitHub's mark; lucide no longer ships brand icons.
+function GitHubMark() {
+  return <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 .5a12 12 0 0 0-3.79 23.39c.6.11.82-.26.82-.58v-2.24c-3.34.73-4.04-1.42-4.04-1.42-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.08 1.85 1.24 1.85 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.31-.54-1.52.12-3.17 0 0 1.01-.32 3.3 1.23A11.5 11.5 0 0 1 12 6.3c1.02 0 2.04.14 3 .4 2.29-1.55 3.3-1.23 3.3-1.23.66 1.65.24 2.86.12 3.17.77.84 1.23 1.91 1.23 3.22 0 4.6-2.8 5.63-5.48 5.93.43.38.82 1.12.82 2.25v3.27c0 .32.22.7.83.58A12 12 0 0 0 12 .5Z" /></svg>;
+}
+
 function syncMessage(kind: SyncNotice['kind'], w: (en: string, cn: string, tw?: string) => string) {
   switch (kind) {
     case 'current-updated': return w('Another tab changed this stage. It was reloaded here.', '其他标签页修改了当前阶段，已在此重新载入。', '其他分頁修改了目前階段，已在此重新載入。');
@@ -181,7 +186,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
     return <a key={page} className="shell-tab" href={routePath(page)} aria-current={page === route ? 'page' : undefined} onClick={go(page)}>{withIcon && <Icon />}<span>{tabLabel(page)}</span></a>; };
   const tabs = (withIcons = false) => <nav className="shell-tabs" aria-label={t(lang, 'a11y.mainNavigation')}>
     {NAV_GROUPS.map((group, index) => <Fragment key={index}>{index > 0 && <span className="shell-tab-divider" aria-hidden="true" />}{group.map(page => link(page, withIcons))}</Fragment>)}</nav>;
-  const brand = <a className="shell-brand" href={routePath('overview')} onClick={go('overview')}><span className="shell-brand-mark">P</span><strong>PoBR</strong></a>;
+  const brand = <a className="shell-brand" href={routePath('overview')} onClick={go('overview')}><span className="shell-brand-mark">P</span><strong>PoBR</strong><span className="shell-brand-version" title={`v${__POBR_APP_VERSION__} · ${session.dataVersion}`}>v{__POBR_APP_VERSION__}</span></a>;
   const inspector = inspect && <Suspense fallback={<div className="insp" role="status"><Skeleton className="h-6 w-1/2" /><Skeleton className="mt-4 h-40 w-full" /></div>}>
     <Inspector session={session} view={view} lang={lang} id={inspect} onClose={() => setInspect(null)} onOpenCalcs={focusStat} pinned={pinned.includes(inspect)} onTogglePin={() => togglePin(inspect)} /></Suspense>;
   const panelLoading = <div role="status" className="shell-panel-loading"><Skeleton className="h-12 w-2/3" /><Skeleton className="h-64 w-full" /><p>{t(lang, 'ui.loadingPanel')}</p></div>;
@@ -205,6 +210,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
         <Button className="shell-history-button" variant="ghost" size="icon" aria-label={w('Redo', '重做', '重做')} disabled={!session.canRedo || session.busy} onClick={session.redoEdit}><Redo2 /></Button>
         <Button className="shell-rail-toggle" variant="ghost" size="icon" aria-pressed={railHidden} aria-label={w('Results panel', '结果栏', '結果欄')} onClick={toggleRail}>{railHidden ? <PanelLeftOpen /> : <PanelLeftClose />}</Button>
         <Button className="shell-stats-button" variant="ghost" size="icon" aria-label={w('Character stats', '角色属性', '角色屬性')} onClick={() => setStatsOpen(true)}><PanelRightOpen /></Button>
+        <Button asChild className="shell-source-button" variant="ghost" size="icon"><a href="https://github.com/ackness/pobr" target="_blank" rel="noopener noreferrer" aria-label={w('Source on GitHub (opens in a new tab)', '在 GitHub 查看源码（新标签页打开）', '在 GitHub 查看原始碼（另開分頁）')} title="GitHub"><GitHubMark /></a></Button>
         <Button className="shell-settings-button" variant="ghost" size="icon" aria-label={t(lang, 'common.settings')} onClick={() => setSettingsOpen(true)}><Settings2 /></Button>
       </div>
       <div className="shell-progress" data-active={session.busy || jobs > 0 || undefined} aria-hidden="true" />
