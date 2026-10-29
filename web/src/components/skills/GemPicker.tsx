@@ -80,6 +80,12 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (disabled || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
+    if (open && e.key === 'Tab' && !e.shiftKey) {
+      // The filters are drawn in the popover, after everything else in the document: lead the focus there.
+      const first = panelRef.current?.querySelector<HTMLElement>('button');
+      if (first) { e.preventDefault(); first.focus(); }
+      return;
+    }
     if (!open) {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
@@ -100,6 +106,15 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
       e.preventDefault();
       setOpen(false);
     }
+  };
+
+  /** Tab walks the filters and then continues from the field, as if they were drawn right after it. */
+  const onPanelKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Tab') return;
+    const buttons = [...e.currentTarget.querySelectorAll<HTMLElement>('button')];
+    if (e.shiftKey && e.target === buttons[0]) { e.preventDefault(); inputRef.current?.focus(); }
+    // Focus moved to the field here, so the browser's own Tab step carries on from the field to what follows it.
+    else if (!e.shiftKey && e.target === buttons.at(-1)) inputRef.current?.focus();
   };
 
   const chips: { id: ColourFilter; label: string; colorVar?: string }[] = [
@@ -196,6 +211,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
       <Popover open={open && !disabled && active} onOpenChange={setOpen}>
         <PopoverAnchor virtualRef={inputRef} />
         <PopoverContent ref={panelRef} className="gem-picker-popover" align="start"
+          onKeyDown={onPanelKeyDown}
           onOpenAutoFocus={event => event.preventDefault()}
           onCloseAutoFocus={event => event.preventDefault()}
           onInteractOutside={event => { if (rootRef.current?.contains(event.target as Node)) event.preventDefault(); }}>

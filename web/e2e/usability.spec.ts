@@ -186,12 +186,24 @@ test('gem filters activate by keyboard without adding a gem; Escape can be reope
   const picker = page.getByRole('combobox', { name: /Search an active gem/ });
   await picker.fill('Spark');
   await expect(page.locator('.gem-picker-item').first()).toBeVisible();
-  // The filter chips are drawn in the popover, outside the field's tab order, so focus a chip directly.
+  await picker.press('Tab');
   const all = page.getByRole('button', { name: 'All', exact: true });
-  await all.focus();
   await expect(all).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.locator('.skill-group')).toHaveCount(0);
+  // Shift+Tab goes back to the field with the list still open; Tab through the last filter leaves it.
+  await page.keyboard.press('Shift+Tab');
+  await expect(picker).toBeFocused();
+  await expect(picker).toHaveAttribute('aria-expanded', 'true');
+  await picker.press('Tab');
+  for (const name of ['Strength', 'Dexterity', 'Intelligence']) {
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name, exact: true })).toBeFocused();
+  }
+  await page.keyboard.press('Tab');
+  await expect(picker).not.toBeFocused();
+  await expect(picker).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('.gem-picker-popover')).toHaveCount(0);
   await picker.focus();
   await picker.press('Escape');
   await expect(picker).toHaveAttribute('aria-expanded', 'false');
