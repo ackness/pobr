@@ -20,6 +20,7 @@ test.beforeEach(async ({ page }) => {
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await expect(page.locator('#ov-title')).toBeVisible();
+  await expect(page.locator('.shell-calc-error')).toHaveCount(0);
   await pageLink(page, 'Items').click();
   await page.locator('.doll-cell[data-slot="weapon1"] button').click();
   await expect(detail(page).locator('[data-affix="prefix"]')).toHaveCount(3);
@@ -29,10 +30,9 @@ test('settings switch all item details immediately, persist and leave the build 
   await page.setViewportSize({ width: 1700, height: 1600 });
   await expect(detail(page)).toHaveAttribute('data-item-display', 'grouped');
   const before = await page.evaluate(() => ({ saved: localStorage.getItem('pobr-v2-build-state'), calculations: window.itemDisplayProbe.calculations }));
-  for (const [value, name] of [['compact', 'Compact table'], ['game', 'Game item card'], ['grouped', 'Grouped details']]) {
+  for (const [value, name] of [['compact', 'Compact tables'], ['game', 'Game cards'], ['grouped', 'Grouped details']]) {
     await openSettings(page);
-    await page.getByRole('combobox', { name: 'Equipment display', exact: true }).click();
-    await page.getByRole('option', { name, exact: true }).click();
+    await page.locator('.display-mode-choice').filter({ hasText: name }).click();
     if (value === 'grouped') {
       await page.locator('.shell-settings').evaluate(el => el.scrollTop = 0);
       await page.locator('.shell-settings').screenshot({ path: testInfo.outputPath('settings.png') });
@@ -41,7 +41,7 @@ test('settings switch all item details immediately, persist and leave the build 
     await expect(detail(page)).toHaveAttribute('data-item-display', value);
     await expect(detail(page).locator('.item-value').filter({ hasText: /^14%$/ })).toBeVisible();
     await detail(page).screenshot({ path: testInfo.outputPath(`${value}.png`) });
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-preferences')!).itemDisplay)).toBe(value);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-preferences')!).displayMode)).toBe(value);
   }
   expect(await page.evaluate(() => ({ saved: localStorage.getItem('pobr-v2-build-state'), calculations: window.itemDisplayProbe.calculations }))).toEqual(before);
   // The library uses the same presentation preference.
@@ -49,8 +49,7 @@ test('settings switch all item details immediately, persist and leave the build 
   await row.locator('.library-row-toggle').click();
   await expect(row.locator('.item-display')).toHaveAttribute('data-item-display', 'grouped');
   await openSettings(page);
-  await page.getByRole('combobox', { name: 'Equipment display', exact: true }).click();
-  await page.getByRole('option', { name: 'Game item card', exact: true }).click();
+  await page.locator('.display-mode-choice').filter({ hasText: 'Game cards' }).click();
   await closeSettings(page);
   await expect(row.locator('.item-display')).toHaveAttribute('data-item-display', 'game');
   await detail(page).getByRole('tab', { name: 'Original text' }).click();
@@ -64,19 +63,17 @@ test('settings switch all item details immediately, persist and leave the build 
   const editor = page.getByRole('textbox', { name: 'weapon1 item text' });
   await editor.fill('Unapplied equipment draft');
   await openSettings(page);
-  await page.getByRole('combobox', { name: 'Equipment display', exact: true }).click();
-  await page.getByRole('option', { name: 'Compact table', exact: true }).click();
+  await page.locator('.display-mode-choice').filter({ hasText: 'Compact tables' }).click();
   await closeSettings(page);
   await expect(editor).toHaveValue('Unapplied equipment draft');
 });
 
 test('all layouts retain unknown lines and fit a narrow viewport in light and dark themes', async ({ page }) => {
   for (const theme of ['Light', 'Dark']) {
-    for (const label of ['Grouped details', 'Compact table', 'Game item card']) {
+    for (const label of ['Grouped details', 'Compact tables', 'Game cards']) {
       await openSettings(page);
       await page.getByRole('button', { name: theme, exact: true }).click();
-      await page.getByRole('combobox', { name: 'Equipment display', exact: true }).click();
-      await page.getByRole('option', { name: label, exact: true }).click();
+      await page.locator('.display-mode-choice').filter({ hasText: label }).click();
       await closeSettings(page);
       await page.setViewportSize({ width: 390, height: 900 });
       await expect(detail(page)).toContainText('+4.92%');

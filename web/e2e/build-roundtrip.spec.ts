@@ -30,7 +30,7 @@ async function importCode(page: Page, code: string) {
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
 }
 
@@ -67,7 +67,7 @@ Body Armour grants Hits against you have 100% reduced Critical Damage Bonus</Ite
     await page.getByRole('textbox', { name: 'bodyarmour item text' }).fill(
       `Rarity: ${rarity}\n${['NORMAL', 'MAGIC'].includes(rarity) ? '' : 'Rule Acceptance Chest\n'}Plate Vest\nImplicits: 0`,
     );
-    await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
+    await page.getByRole('button', { name: 'Apply changes', exact: true }).click();
     await expect(page.locator('.item-editor')).toHaveCount(0);
     await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
     if (rarity === 'NORMAL') {

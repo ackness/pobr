@@ -13,7 +13,7 @@ const lines: ItemLineJson[] = [
   { kind: 'explicit', text: 'Unrecognised <effect> & retained text' },
 ];
 it.each(['grouped', 'compact', 'game'] as const)('%s retains all modifiers, identifies sources and highlights values', style => {
-  const html = renderToStaticMarkup(<UiProvider lang="en-US" itemDisplay={style}>
+  const html = renderToStaticMarkup(<UiProvider lang="en-US" displayMode={style}>
     <ItemDisplayContent text="Rarity: RARE\nWoe Rain\nSeeker Bow" lang="en-US" lines={lines} translated={lines.map(line => line.text)} />
   </UiProvider>);
   expect(html).toContain(`data-item-display="${style}"`);
@@ -29,7 +29,7 @@ it.each(['grouped', 'compact', 'game'] as const)('%s retains all modifiers, iden
 
 it('unique modifiers have no inferred prefix, suffix or missing-tier warning', () => {
   const unique = lines.filter(line => line.kind !== 'explicit').concat({ kind: 'explicit', text: 'Special unique effect' });
-  const html = renderToStaticMarkup(<UiProvider lang="en-US" itemDisplay="compact">
+  const html = renderToStaticMarkup(<UiProvider lang="en-US" displayMode="compact">
     <ItemDisplayContent text="Rarity: UNIQUE\nUnique item" lang="en-US" lines={unique} translated={unique.map(line => line.text)} />
   </UiProvider>);
   expect(html).toContain('Special unique effect');

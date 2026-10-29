@@ -59,6 +59,7 @@ export async function openBuilds(page: Page) {
 /** Import a code on the Build page and follow it to the Items page. */
 export async function importCode(page: Page, code: string, destination: 'newBuild' | 'currentStage' = 'newBuild', lang: Lang = 'en-US') {
   await openBuilds(page);
+  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   const text = workspaceText(lang);
   const group = page.getByRole('group', { name: text.importDestination, exact: true });
   await group.getByRole('button', { name: destination === 'newBuild' ? text.importNew : new RegExp(`^${text.importCurrent}`) }).click();

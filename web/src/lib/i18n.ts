@@ -1,12 +1,6 @@
 import { DETAIL_LABELS } from './detailLabels';
 import { CONFIG_LABEL_ZH, CONFIG_LABEL_ZH_TW } from './configLabels';
-/**
- * UI 文案三语字典（en-US / zh-TW / zh-CN）。
- *
- * 只覆盖界面文案；游戏名词（宝石/技能/物品名）走数据包 i18n 边车——当前仅有
- * 繁中（zh-TW），简中游戏数据需国服数据源接入，此前简中界面
- * 下的游戏名词回退繁中。
- */
+/** UI copy only. Game names and modifier text use the versioned localization data. */
 
 import { STAT_SECTIONS } from './statDisplay';
 
@@ -61,9 +55,9 @@ const DICT = {
   "namedSets.confirmDelete": {"en-US": "Delete this set? Its saved values will be removed.", "zh-TW": "刪除此組？其中已儲存的值也會刪除。", "zh-CN": "删除此组？其中已保存的值也会删除。"},
 
   "tab.compare": {"en-US": "Compare", "zh-TW": "對比", "zh-CN": "对比"},
-  "compare.title": {"en-US": "Compare builds and stages", "zh-TW": "對比構築與階段", "zh-CN": "对比构筑与阶段"},
-  "compare.hint": {"en-US": "Choose A and B to inspect saved builds. Only Apply changes A; B stays untouched.", "zh-TW": "選擇 A 與 B 檢視已儲存構築。只有套用會修改 A，B 保持不變。", "zh-CN": "选择 A 与 B 查看已保存构筑。只有应用会修改 A，B 保持不变。"},
-  "compare.needStages": {"en-US": "Add a build or copy a stage on the Build page to compare two snapshots.", "zh-TW": "在構築頁新增構築或複製階段，即可對比兩份快照。", "zh-CN": "在构筑页新增构筑或复制阶段，即可对比两份快照。"},
+  "compare.title": {"en-US": "Compare builds and stages", "zh-TW": "對比 BD 與階段", "zh-CN": "对比 BD 与阶段"},
+  "compare.hint": {"en-US": "See what changes from A to B. Apply a change to copy it into A.", "zh-TW": "查看從 A 到 B 的變化。套用後，會將所選內容複製到 A。", "zh-CN": "查看从 A 到 B 的变化。应用后，会将所选内容复制到 A。"},
+  "compare.needStages": {"en-US": "Add a build or copy a stage in your build library to start comparing.", "zh-TW": "在 BD 庫中新增 BD 或複製階段，即可開始對比。", "zh-CN": "在 BD 库中新增 BD 或复制阶段，即可开始对比。"},
   "compare.basis": {"en-US": "Calculation config", "zh-TW": "計算配置", "zh-CN": "计算配置"},
   "compare.own": {"en-US": "Each stage’s own config", "zh-TW": "各階段自己的配置", "zh-CN": "各阶段自己的配置"},
   "compare.useA": {"en-US": "Use A’s config for both", "zh-TW": "兩者都使用 A 的配置", "zh-CN": "两者都使用 A 的配置"},
@@ -73,7 +67,7 @@ const DICT = {
   "compare.percent": {"en-US": "% of A", "zh-TW": "相對 A 的 %", "zh-CN": "相对 A 的 %"},
   "compare.summary": {"en-US": "Stat summary", "zh-TW": "屬性總覽", "zh-CN": "属性总览"},
   "compare.none": {"en-US": "No differences", "zh-TW": "沒有差異", "zh-CN": "没有差异"},
-  "compare.unavailable": {"en-US": "Unavailable / unbounded", "zh-TW": "無法取得 / 無上限", "zh-CN": "无法获取 / 无上限"},
+  "compare.unavailable": {"en-US": "Unavailable or unbounded", "zh-TW": "無法取得或無上限", "zh-CN": "无法获取或无上限"},
   "compare.percentHint": {"en-US": "— means a delta cannot be computed, or A is zero. Missing results are not zero.", "zh-TW": "— 表示無法計算差值，或 A 為零。缺少的結果不視為零。", "zh-CN": "— 表示无法计算差值，或 A 为零。缺少的结果不视为零。"},
   "compare.notSet": {"en-US": "Not set", "zh-TW": "未設定", "zh-CN": "未设置"},
   "compare.apply": {"en-US": "Apply B → A", "zh-TW": "套用 B → A", "zh-CN": "应用 B → A"},
@@ -164,7 +158,7 @@ const DICT = {
   'plannerFile.hint': { 'en-US': 'Download .build files for the game’s BuildPlanner folder. Each file carries passives, gems and inventory hints. Equipment rolls, character level and calculation settings cannot be restored from this format. All loadouts produces one download per loadout; save each file below.', 'zh-TW': '下載 .build 檔案並放入遊戲的 BuildPlanner 資料夾。每個檔案包含天賦、寶石及裝備提示，無法還原完整裝備、角色等級或計算設定。全部配裝會產生多個檔案，請逐一下載。', 'zh-CN': '下载 .build 文件并放入游戏的 BuildPlanner 文件夹。每个文件包含天赋、宝石及装备提示，无法还原完整装备、角色等级或计算设置。全部配装会生成多个文件，请逐一下载。' },
   'plannerFile.current': { 'en-US': 'Download current .build', 'zh-TW': '下載目前 .build', 'zh-CN': '下载当前 .build' },
   'plannerFile.all': { 'en-US': 'Prepare all loadouts (.build)', 'zh-TW': '準備全部配裝（.build）', 'zh-CN': '准备全部配装（.build）' },
-  "build.importHint": {"en-US": "Paste a PoB2 code, a supported share link, or .build JSON. Links: pobb.in, poe.ninja PoB shares, Pastebin, Rentry, poe2db, Maxroll and WeGame. The selected destination controls where the build is saved.", "zh-TW": "貼上 PoB2 代碼、支援的分享連結或 .build JSON。支援 pobb.in、poe.ninja PoB 分享、Pastebin、Rentry、poe2db、Maxroll 及 WeGame。構築會儲存至上方選擇的位置。", "zh-CN": "粘贴 PoB2 代码、支持的分享链接或 .build JSON。支持 pobb.in、poe.ninja PoB 分享、Pastebin、Rentry、poe2db、Maxroll 及 WeGame。构筑会保存到上方选择的位置。"},
+  "build.importHint": {"en-US": "Paste a PoB2 code, share link or .build JSON.", "zh-TW": "貼上 PoB2 分享碼、分享連結或 .build JSON。", "zh-CN": "粘贴 PoB2 分享码、分享链接或 .build JSON。"},
   "build.linkInvalid": {"en-US": "This is not a supported HTTPS build-share URL. Copy the complete share link.", "zh-TW": "這不是支援的 HTTPS 構築分享網址。請複製完整的分享連結。", "zh-CN": "这不是支持的 HTTPS 构筑分享网址。请复制完整的分享链接。"},
   "build.linkHost": {"en-US": "This share host is not supported. Paste the PoB2 code instead.", "zh-TW": "尚不支援這個分享網站。請改貼 PoB2 代碼。", "zh-CN": "尚不支持这个分享网站。请改贴 PoB2 代码。"},
   "build.linkNinjaProfile": {"en-US": "poe.ninja character-profile URLs are not supported yet. Copy its PoB share link (/pob/) or the PoB2 code.", "zh-TW": "尚不支援 poe.ninja 角色頁網址。請複製該角色的 PoB 分享連結（/pob/）或 PoB2 代碼。", "zh-CN": "尚不支持 poe.ninja 角色页网址。请复制该角色的 PoB 分享链接（/pob/）或 PoB2 代码。"},
@@ -221,11 +215,11 @@ const DICT = {
   "trade.includeUnique": {"en-US": "Include unique items", "zh-TW": "包含傳奇物品", "zh-CN": "包含传奇物品"},
   "trade.priorityHint": {"en-US": "Each position replaces one item with a bounded affix-combination reference and recalculates your build. Ranked by the selected goal, with life and EHP changes shown below. This is potential, not a priced listing: budget and level filter the market links. Buying one upgrade changes the order; analyze again afterwards.", "zh-TW": "每個位置以詞條組合參考方案替換一件物品並重算，按目標提升排序，下方同時顯示生命與 EHP 變化。這是提升空間，並非在售商品；預算與等級用於市集篩選。買入一件後請重新分析。", "zh-CN": "每个位置以词条组合参考方案替换一件物品并重算，按目标提升排序，下方同时显示生命与 EHP 变化。这是提升空间，并非在售商品；预算与等级用于市集筛选。买入一件后请重新分析。"},
   "trade.priorityOrder": {"en-US": "Upgrade priority", "zh-TW": "升級優先順序", "zh-CN": "升级优先顺序"},
-  "trade.overviewHint": {"en-US": "Analyze equipped positions, allocated jewel sockets and gems for the selected skill together.", "zh-TW": "一次分析已裝備位置、已配置珠寶插槽與目前技能的寶石。", "zh-CN": "一次分析已装备位置、已配置珠宝插槽与当前技能的宝石。"},
-  "trade.overviewTitle": {"en-US": "Where should I upgrade first?", "zh-TW": "先升級哪個位置？", "zh-CN": "先升级哪个位置？"},
-  "ui.buildHint": {"en-US": "Choose a build, then edit its current stage. Use stages to plan leveling, progression and endgame.", "zh-TW": "選擇 BD 後編輯目前階段，透過階段規劃開荒、過渡與畢業。", "zh-CN": "选择 BD 后编辑当前阶段，通过阶段规划开荒、过渡与毕业。"},
+  "trade.overviewHint": {"en-US": "Compare upgrade potential across equipment, jewels and gems.", "zh-TW": "比較裝備、珠寶和寶石的提升空間。", "zh-CN": "比较装备、珠宝和宝石的提升空间。"},
+  "trade.overviewTitle": {"en-US": "Upgrade priorities", "zh-TW": "提升優先順序", "zh-CN": "提升优先级"},
+  "ui.buildHint": {"en-US": "Keep leveling, progression and endgame setups as separate stages.", "zh-TW": "用階段分別儲存拓荒、過渡和畢業配裝。", "zh-CN": "用阶段分别保存开荒、过渡和毕业配装。"},
   "ui.itemsHint": {"en-US": "Choose a position to inspect or edit an item. Compare saved items before equipping them.", "zh-TW": "選擇位置查看、編輯裝備，從物品庫比較替換後的變化。", "zh-CN": "选择位置查看、编辑装备，从物品库比较替换后的变化。"},
-  "ui.configHint": {"en-US": "Set the encounter and combat conditions used to calculate damage and survivability.", "zh-TW": "設定敵人與戰鬥條件，讓傷害和生存計算符合實際場景。", "zh-CN": "设置敌人与战斗条件，让伤害和生存计算符合实际场景。"},
+  "ui.configHint": {"en-US": "Match the calculation to your encounter and combat conditions.", "zh-TW": "讓計算符合實際戰鬥條件。", "zh-CN": "让计算符合实际战斗条件。"},
 
   // Beta 提示
 
@@ -278,14 +272,10 @@ const DICT = {
   'build.passives': { 'en-US': 'passives', 'zh-TW': '天賦點', 'zh-CN': '天赋点' },
 
   // Skills 页
-  'skills.title': { 'en-US': 'Socket Groups', 'zh-TW': '技能組', 'zh-CN': '技能组' },
-  'skills.addPlaceholder': { 'en-US': 'Search an active gem to add a group…', 'zh-TW': '搜尋主動技能以新建組…', 'zh-CN': '搜索主动技能以新建组…' },
-  'skills.addSupport': { 'en-US': 'Add a support gem…', 'zh-TW': '添加輔助寶石…', 'zh-CN': '添加辅助宝石…' },
-  'skills.hint': {
-    'en-US': 'Use the star to inspect a group; expand it to edit gems and weapon bindings. Use Skill metrics in Calcs to select an exact active effect.',
-    'zh-TW': '點擊星標檢視技能組，展開可編輯寶石和武器綁定。在計算明細的技能數值總覽中可選擇確切的主動效果。',
-    'zh-CN': '点击星标查看技能组，展开可编辑宝石和武器绑定。在计算明细的技能数值总览中可选择确切的主动效果。',
-  },
+  "skills.title": {"en-US": "Skill groups", "zh-TW": "技能組", "zh-CN": "技能组"},
+  "skills.addPlaceholder": {"en-US": "Add a skill group…", "zh-TW": "新增技能組…", "zh-CN": "添加技能组…"},
+  "skills.addSupport": {"en-US": "Add a support gem…", "zh-TW": "新增輔助寶石…", "zh-CN": "添加辅助宝石…"},
+  "skills.hint": {"en-US": "Edit gems in a group. The starred skill drives the main calculation and upgrade suggestions.", "zh-TW": "選擇技能組編輯寶石。星標技能用於主面板計算和提升建議。", "zh-CN": "选择技能组编辑宝石。星标技能用于主面板计算和提升建议。"},
   'skills.emptyGroup': { 'en-US': '(empty)', 'zh-TW': '（空組）', 'zh-CN': '（空组）' },
   'skills.unresolved': { 'en-US': 'Unresolved gem', 'zh-TW': '未解析寶石', 'zh-CN': '未解析宝石' },
   'skills.unresolvedHint': {
@@ -293,8 +283,8 @@ const DICT = {
     'zh-TW': '保留匯入插槽以供分享。缺少穩定技能 ID，不納入本次計算。',
     'zh-CN': '保留导入插槽以供分享。缺少稳定技能 ID，不纳入本次计算。',
   },
-  'skills.main': { 'en-US': 'INSPECTED', 'zh-TW': '檢視中', 'zh-CN': '查看中' },
-  'skills.setMain': { 'en-US': 'Inspect this skill', 'zh-TW': '檢視此技能', 'zh-CN': '查看此技能' },
+  "skills.main": {"en-US": "Calculation skill", "zh-TW": "計算技能", "zh-CN": "计算技能"},
+  "skills.setMain": {"en-US": "Use for calculations", "zh-TW": "用於計算", "zh-CN": "用于计算"},
   'minion.title': { 'en-US': 'Minion', 'zh-TW': '召喚物', 'zh-CN': '召唤物' },
   'minion.identity': { 'en-US': 'Minion type', 'zh-TW': '召喚物種類', 'zh-CN': '召唤物种类' },
   'minion.search': { 'en-US': 'Search minions…', 'zh-TW': '搜尋召喚物…', 'zh-CN': '搜索召唤物…' },
@@ -404,8 +394,8 @@ const DICT = {
   'opt.infeasible': { 'en-US': 'constraint not met', 'zh-TW': '不滿足約束', 'zh-CN': '不满足约束' },
 
   // Trade 市集页（独立 Tab，PoB2 Trader 的对应物）
-  "trade.title": {"en-US": "Plan your next upgrade", "zh-TW": "規劃下一步提升", "zh-CN": "规划下一步提升"},
-  "trade.hint": {"en-US": "Compare equipment, support combinations and passive paths under one goal. Check real changes before applying an upgrade.", "zh-TW": "以同一目標比較裝備、輔助組合與天賦路徑，確認實際變化後再套用。", "zh-CN": "以同一目标比较装备、辅助组合与天赋路径，确认实际变化后再应用。"},
+  "trade.title": {"en-US": "Upgrades", "zh-TW": "尋找提升", "zh-CN": "寻找提升"},
+  "trade.hint": {"en-US": "Find the most useful equipment, supports and passive paths for your goal.", "zh-TW": "依照目標，尋找更合適的裝備、輔助組合和天賦路線。", "zh-CN": "根据目标，寻找更合适的装备、辅助组合和天赋路线。"},
   "trade.marketCoverage": { 'en-US': "Listings evaluated / market matches", 'zh-TW': "評估商品 / 市集匹配", 'zh-CN': "评估商品 / 市集匹配" },
   "trade.rejected": { 'en-US': "Unreadable items skipped", 'zh-TW': "略過無法解析商品", 'zh-CN': "跳过无法解析商品" },
   "trade.marketHint": { 'en-US': "Each search recalculates up to 20 live listings; weights shortlist candidates, not their final ranking. Gains use your selected skill and combat settings. Prices and availability can change.", 'zh-TW': "每次搜尋重算最多 20 件在售商品，權重只用於篩選。提升取決於主技能和戰鬥設定；價格與庫存可能變動。", 'zh-CN': "每次搜索重算最多 20 件在售商品，权重只用于筛选。提升取决于主技能和战斗设置；价格与库存可能变动。" },
@@ -519,7 +509,7 @@ const DICT = {
   "trade.analyze": {"en-US": "Calculate affix scores", "zh-TW": "計算詞條評分", "zh-CN": "计算词条评分"},
   "trade.recalculate": {"en-US": "Recalculate", "zh-TW": "重新計算", "zh-CN": "重新计算"},
   "trade.analysisSkill": {"en-US": "Skill used for scoring", "zh-TW": "評分使用的技能", "zh-CN": "评分使用的技能"},
-  "trade.skillContext": {"en-US": "Uses your current combat settings", "zh-TW": "沿用目前戰鬥設定", "zh-CN": "沿用当前战斗设置"},
+  "trade.skillContext": {"en-US": "Uses your combat setup", "zh-TW": "使用目前戰鬥配置", "zh-CN": "使用当前战斗配置"},
   "trade.changeType": {"en-US": "Change the detected item type", "zh-TW": "調整自動識別的物品類型", "zh-CN": "调整自动识别的物品类型"},
   "trade.analyzingSlot": {"en-US": "Scoring", "zh-TW": "正在評分", "zh-CN": "正在评分"},
   "trade.analysisFailed": {"en-US": "Unable to calculate this position.", "zh-TW": "此位置暫時無法完成計算。", "zh-CN": "此位置暂时无法完成计算。"},
@@ -530,7 +520,7 @@ const DICT = {
   "trade.stepSearch": {"en-US": "Generate a budgeted search", "zh-TW": "生成預算內搜尋", "zh-CN": "生成预算内搜索"},
   "trade.stepBuy": {"en-US": "Choose on the official market", "zh-TW": "到官方市集挑選", "zh-CN": "到官方市集挑选"},
   "trade.affixHeading": {"en-US": "Affixes worth looking for", "zh-TW": "優先關注這些詞條", "zh-CN": "优先关注这些词条"},
-  "trade.affixDescription": {"en-US": "Scores use the reference rolls below. The most valuable affix is rated 100.", "zh-TW": "以下列參考數值評分，最有價值的詞條記為 100 分。", "zh-CN": "以下列参考数值评分，最有价值的词条记为 100 分。"},
+  "trade.affixDescription": {"en-US": "The highest-scoring modifier is 100. Scores use the reference values below.", "zh-TW": "最佳詞綴為 100 分，評分依據下方參考數值。", "zh-CN": "最优词条为 100 分，评分基于下方参考数值。"},
   "trade.usefulAffixes": {"en-US": "useful affixes", "zh-TW": "項有用詞條", "zh-CN": "项有用词条"},
   "trade.priority": {"en-US": "Priority", "zh-TW": "推薦分", "zh-CN": "推荐分"},
   "trade.referenceGain": {"en-US": "Estimated contribution", "zh-TW": "貢獻估計", "zh-CN": "贡献估计"},
@@ -555,16 +545,12 @@ const DICT = {
   // Items 页
   'common.copy': { 'en-US': 'Copy', 'zh-TW': '複製', 'zh-CN': '复制' },
   'common.copied': { 'en-US': 'Copied', 'zh-TW': '已複製', 'zh-CN': '已复制' },
-  'items.title': { 'en-US': 'Items', 'zh-TW': '裝備', 'zh-CN': '装备' },
-  'items.hint': {
-    'en-US': 'Edit each slot as PoB item text (Rarity line + name + base + one mod per line); apply recalcs. Mod lines and base names may be in English or Simplified Chinese (CN-realm text); structural lines (Rarity:) stay PoB-style.',
-    'zh-TW': '每個槽位直接編輯 PoB 物品文本（Rarity 行 + 名稱 + 基底 + 詞條逐行），保存即重算。詞條行與基底名支持英文或簡中（國服文本）；結構行（Rarity:）保持 PoB 格式。',
-    'zh-CN': '每个槽位直接编辑 PoB 物品文本（Rarity 行 + 名称 + 基底 + 词条逐行），保存即重算。词条行与基底名支持英文或简中（国服文本）；结构行（Rarity:）保持 PoB 格式。',
-  },
+  "items.title": {"en-US": "Equipment", "zh-TW": "裝備", "zh-CN": "装备"},
+  "items.hint": {"en-US": "Paste PoB item text, with one modifier per line. Keep structural fields such as Rarity: in English. Names and modifiers accept English or Simplified Chinese.", "zh-TW": "貼上 PoB 物品文字，每行一條詞綴。Rarity: 等結構欄位保留英文；名稱和詞綴支援英文或簡中。", "zh-CN": "粘贴 PoB 物品文本，每行一条词条。Rarity: 等结构字段保留英文；名称和词条支持英文或简中。"},
   'items.edit': { 'en-US': 'Edit', 'zh-TW': '編輯', 'zh-CN': '编辑' },
   'items.add': { 'en-US': 'Add', 'zh-TW': '添加', 'zh-CN': '添加' },
   'items.remove': { 'en-US': 'Remove', 'zh-TW': '移除', 'zh-CN': '移除' },
-  "items.apply": {"en-US": "Save & recalculate", "zh-TW": "儲存並重算", "zh-CN": "保存并重算"},
+  "items.apply": {"en-US": "Apply changes", "zh-TW": "套用變更", "zh-CN": "应用修改"},
   'items.cancel': { 'en-US': 'Cancel', 'zh-TW': '取消', 'zh-CN': '取消' },
   'items.empty': { 'en-US': '(empty)', 'zh-TW': '（空）', 'zh-CN': '（空）' },
   "items.flasks": {"en-US": "Flasks / Charms", "zh-TW": "藥劑 / 護符", "zh-CN": "药剂 / 护符"},
@@ -760,7 +746,7 @@ const DICT = {
   'calcs.running': { 'en-US': 'Running…', 'zh-TW': '計算中…', 'zh-CN': '计算中…' },
   'calcs.baseline': { 'en-US': 'Baseline (full build)', 'zh-TW': '基線（完整 build）', 'zh-CN': '基线（完整 build）' },
   'calcs.group': { 'en-US': 'Group', 'zh-TW': '技能組', 'zh-CN': '技能组' },
-  'calcs.search': { 'en-US': 'Search aggregates…', 'zh-TW': '搜尋聚合量…', 'zh-CN': '搜索聚合量…' },
+  'calcs.search': { 'en-US': 'Search metrics…', 'zh-TW': '搜尋指標…', 'zh-CN': '搜索指标…' },
   'calcs.skillMetrics': { 'en-US': 'Skill metrics', 'zh-TW': '技能數值總覽', 'zh-CN': '技能数值总览' },
   'calcs.skillMetricsHint': {
     'en-US': 'Each active effect is calculated independently, even without a selected skill. Zero is a measured result; unavailable effects show diagnostics. Select a row to inspect that exact effect and use it as the upgrade target. These values are not summed.',
@@ -785,7 +771,7 @@ const DICT = {
   'calcs.skill': { 'en-US': 'Skill', 'zh-TW': '技能', 'zh-CN': '技能' },
 
   // 侧边栏主技能区
-  'sidebar.mainSkill': { 'en-US': 'Inspected skill', 'zh-TW': '檢視技能', 'zh-CN': '查看技能' },
+  "sidebar.mainSkill": {"en-US": "Calculation skill", "zh-TW": "計算技能", "zh-CN": "计算技能"},
   'sidebar.unselected': { 'en-US': 'Not selected', 'zh-TW': '未選擇', 'zh-CN': '未选择' },
   'sidebar.noMainSkill': {
     'en-US': 'No valid inspected skill. Open Skill metrics to inspect any active effect.',
@@ -978,7 +964,7 @@ const DICT = {
   },
 
   // Notes 页
-  'notes.placeholder2': { 'en-US': 'Write anything about this build…', 'zh-TW': '寫點關於這個 build 的東西…', 'zh-CN': '写点关于这个 build 的东西…' },
+  'notes.placeholder2': { 'en-US': 'Goals, gear plans or reminders…', 'zh-TW': '記錄目標、配裝計畫或待辦事項…', 'zh-CN': '记录目标、配装计划或待办事项…' },
   'notes.preview': { 'en-US': 'Colored preview', 'zh-TW': '著色預覽', 'zh-CN': '着色预览' },
 
   // 分享 code

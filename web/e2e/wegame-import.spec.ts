@@ -34,7 +34,7 @@ test('WeGame import preserves gem levels and ranks quiver upgrades', async ({ pa
     .toHaveText('0', { timeout: 60_000 });
   await expect(page.locator('.ov-details')).toHaveCount(0);
   await pageLink(page, 'Items').click();
-  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
   await pageLink(page, 'Skills').click();
   await expect(page.locator('.skill-group').first()).toContainText('Ice Shot');
   // The persisted editing state is what the optimizer and the next reload consume.
@@ -50,11 +50,11 @@ test('WeGame import preserves gem levels and ranks quiver upgrades', async ({ pa
   const editor = page.getByRole('textbox', { name: 'weapon2 item text' });
   const original = await editor.inputValue();
   await editor.fill(original.replace('Current Quiver', 'Candidate Quiver') + '\nAdds 20 to 40 Physical Damage to Attacks');
-  await page.locator('.item-editor-actions').getByRole('button', { name: 'Save & recalculate', exact: true }).click();
+  await page.locator('.item-editor-actions').getByRole('button', { name: 'Apply changes', exact: true }).click();
   await page.getByRole('button', { name: 'Save to library', exact: true }).click();
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await editor.fill(original);
-  await page.locator('.item-editor-actions').getByRole('button', { name: 'Save & recalculate', exact: true }).click();
+  await page.locator('.item-editor-actions').getByRole('button', { name: 'Apply changes', exact: true }).click();
   await page.getByRole('button', { name: 'Try on items from my library' }).click();
   await page.locator('.opt-run').click();
   const results = page.locator('.opt-table');

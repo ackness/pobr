@@ -5,7 +5,7 @@ import { mainSkillPinned } from './buildLibrary';
 const code = deflateSync('<PathOfBuilding2><Build level="60" className="Witch" mainSocketGroup="1"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree><Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="FireballPlayer" level="12" quality="0" enabled="true"/></Skill></SkillSet></Skills><Items/><Config><Input name="enemyLevel" number="82"/><Input name="buffOnslaught" boolean="false"/></Config></PathOfBuilding2>').toString('base64url');
 const nav = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name, exact: true });
 /** The build library is an action, not a workflow stage, so it has a button rather than a tab. */
-const openBuilds = (page: Page) => page.getByRole('button', { name: 'BDs', exact: true }).click();
+const openBuilds = (page: Page) => page.getByRole('button', { name: 'Build library', exact: true }).click();
 const state = (page: Page, key = 'pobr-v2-build-state') => page.evaluate(key => JSON.parse(localStorage.getItem(key)!), key);
 async function preferences(page: Page, extra: Record<string, unknown> = {}) {
   await page.addInitScript(extra => {
@@ -88,7 +88,7 @@ test('tabs of one browser follow each other and merge what a tab missed', async 
   await other.goto('/build');
   await expect(other.locator('#build-heading')).toBeVisible({ timeout: 90_000 });
   // The list on the Build page shows what each tab holds; the header's select only renders the open one.
-  const shown = (tab: Page) => tab.getByRole('group', { name: 'My builds', exact: true }).locator('li strong');
+  const shown = (tab: Page) => tab.getByRole('group', { name: 'Saved builds', exact: true }).locator('li strong');
   const names = (tab: Page, list: string[]) => expect(shown(tab)).toHaveText(list.map(name => name || 'My build'));
   const notice = (tab: Page) => tab.locator('.shell-notice[data-sync]');
   const create = async (tab: Page, value: string) => {
@@ -108,7 +108,7 @@ test('tabs of one browser follow each other and merge what a tab missed', async 
   await expect(notice(other)).toHaveAttribute('data-sync', 'updated');
 
   // Deleting the build the other tab has open: that tab moves on to one that is still there.
-  await other.getByRole('group', { name: 'My builds', exact: true }).getByRole('button', { name: /Made here/ }).click();
+  await other.getByRole('group', { name: 'Saved builds', exact: true }).getByRole('button', { name: /Made here/ }).click();
   await expect(other.locator('.shell-save-state')).toHaveText('Saved locally');
   await openBuilds(page);
   await page.getByRole('button', { name: 'Delete build', exact: true }).click();
@@ -289,7 +289,7 @@ for (const viewport of [{ width: 390, size: 32 }, { width: 1440, size: 16 }, { w
     }
     if (viewport.width === 390) {
       await page.getByRole('button', { name: 'Open menu', exact: true }).click();
-      await page.getByRole('button', { name: 'Appearance & language', exact: true }).click();
+      await page.getByRole('button', { name: 'Display settings', exact: true }).click();
       await page.setViewportSize({ width: 390, height: 400 });
       await page.getByRole('button', { name: 'Light', exact: true }).click();
       await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(247, 246, 243)');

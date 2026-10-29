@@ -84,6 +84,10 @@ export function comparisonRequests(a: CalculateBuildRequest, b: CalculateBuildRe
 
 export function comparisonStats(output: CalculateBuildResponse): DisplayStatValue[] {
   const skillStats = new Set(STAT_SECTIONS.filter(section => section.requiresSkill).flatMap(section => section.rows.map(row => row.id)));
+  // CombinedDPS is an output/catalog field, but is not listed in every sidebar section.
+  // A zero emitted without a selected skill is absence, not a measured damage result.
+  skillStats.add('CombinedDPS');
+  skillStats.add('TotalDPS');
   return [...output.stats.filter(stat => output.main_skill || !skillStats.has(stat.id)), ...(output.main_skill ? [
     { id: 'MainSkillHitDPS', value: output.main_skill.hit_dps, category: 'Offence' as const },
     { id: 'MainSkillDotDPS', value: output.main_skill.dot_dps, category: 'Offence' as const },

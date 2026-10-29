@@ -39,7 +39,7 @@ const labels = {
   scoreHint: ['Sum ranks weighted affixes, not DPS. Base stats, local modifiers and interactions can reverse market rankings; paste the complete item into the comparison above.', 'Sum 是詞條加權分，不是 DPS。基底、局部詞條與交互作用可能改變排名；請把完整物品貼到上方比較。', 'Sum 是词条加权分，不是 DPS。基底、局部词条与交互作用可能改变排名；请把完整物品粘贴到上方比较。'],
   scoreDetails: ['Current item score breakdown', '目前裝備評分明細', '当前装备评分明细'],
   marginal: ['Marginal estimate', '邊際估算', '边际估算'],
-  checkHint: ['Use Copy Item on the official market, then paste the complete text here. We identify its base and compare every compatible equipped position, including both rings.', '在官方市集複製完整物品文本並貼到這裡，自動辨識基底、比較所有可替換的已裝備位置，包括兩枚戒指。', '在官方市集复制完整物品文本并粘贴到这里，自动识别基底、比较所有可替换的已装备位置，包括两枚戒指。'],
+  checkHint: ['See the gain in every compatible position. Copy the full item text from the market and paste it below.', '查看各個可替換位置的收益。從市集複製完整物品文字，貼到下方即可比較。', '查看各个可替换位置的收益。从市集复制完整物品文本，粘贴到下方即可对比。'],
   localComparison: ['Local calculation', '本地計算', '本地计算'],
   comparisonGoal: ['Comparison goal', '比較目標', '比较目标'],
   pastePlaceholder: ['Paste the full copied item, including Rarity, its base and modifiers…', '貼上包含稀有度、基底與詞綴的完整物品文本…', '粘贴包含稀有度、基底与词缀的完整物品文本…'],
@@ -112,7 +112,7 @@ const labels = {
   adjustment: ['Skill adjustment · no market purchase', '技能調整 · 無需市集購買', '技能调整 · 无需市集购买'],
   lineage: ['Lineage support', '血脈輔助', '血脉辅助'],
   autoSupports: ['Find all usable supports', '自動尋找可用輔助', '自动寻找可用辅助'],
-  sharedGoal: ['Your goal follows equipment, skills and passives. Each suggestion uses the inspected skill and its weapon set.', '裝備、技能與天賦共用目標；每項建議均使用目前檢視技能和綁定武器組。', '装备、技能与天赋共用目标；每项建议均使用当前查看技能和绑定武器组。'],
+  sharedGoal: ['Equipment, supports and passives share this goal and calculation skill.', '裝備、輔助與天賦共用此目標和計算技能。', '装备、辅助与天赋共用此目标和计算技能。'],
 } as const;
 
 export function upgradeT(lang: Lang, key: keyof typeof labels): string {

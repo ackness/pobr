@@ -49,7 +49,7 @@ test('limbs are a set of their own: imported, calculated, edited and exported', 
   // An empty arm opens on a Combat Arm to edit.
   await limbs.getByRole('button', { name: 'Arm 1', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'arm1 item text' })).toHaveValue(/Combat Arm/);
-  await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
+  await page.getByRole('button', { name: 'Apply changes', exact: true }).click();
   await expect.poll(async () => slots((await saved(page)).limbs)).toEqual(['arm1']);
   await expect(limbs.getByRole('button', { name: 'Arm 1', exact: true })).toContainText('Combat Arm');
 

@@ -1,22 +1,48 @@
-import { ExternalLink, Moon, Sun, Monitor, Type } from 'lucide-react';
+import { ExternalLink, Moon, Sun, Monitor } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
 import { Slider } from '../components/ui/slider';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '../components/ui/sheet';
 import { AppSelectControl } from '../components/shared/controls';
-import { words } from './text';
+import { words, pageNames } from './text';
+import { ROUTES, type Route } from './routes';
 import type { Preferences } from './preferences';
-import { itemDisplayOptions } from '../lib/itemDisplay';
+import { displayModeOptions, type DisplayMode } from '../lib/displayModes';
 
 export function Settings({ open, onOpenChange, preferences: p, onChange, version }: {
   open: boolean; onOpenChange: (open: boolean) => void; preferences: Preferences; onChange: (next: Preferences) => void; version: string;
 }) {
   const w = (en: string, cn: string, tw?: string) => words(p.lang, en, cn, tw);
-  const itemStyles = itemDisplayOptions(p.lang);
+  const modes = displayModeOptions(p.lang);
+  const setPageMode = (page: Route, mode: string) => {
+    const pageDisplayModes = { ...p.pageDisplayModes };
+    if (mode === 'inherit') delete pageDisplayModes[page];
+    else pageDisplayModes[page] = mode as DisplayMode;
+    onChange({ ...p, pageDisplayModes });
+  };
   return <Sheet open={open} onOpenChange={onOpenChange}><SheetContent className="shell-settings" aria-describedby="appearance-description">
-    <SheetHeader><SheetTitle>{w('Make it yours', '显示偏好', '顯示偏好')}</SheetTitle>
-      <SheetDescription id="appearance-description">{w('Saved on this device. Your build stays as it is.', '自动保存在当前设备，调整时保留编辑状态。', '自動儲存在目前裝置，調整時保留編輯狀態。')}</SheetDescription></SheetHeader>
+    <SheetHeader><SheetTitle>{w('Display settings', '显示设置', '顯示設定')}</SheetTitle>
+      <SheetDescription id="appearance-description">{w('Changes apply immediately and are saved in this browser.', '立即生效，保存在当前浏览器。', '立即生效，儲存在目前瀏覽器。')}</SheetDescription></SheetHeader>
     <div className="shell-settings-fields">
+      <fieldset className="display-mode-picker"><legend>{w('Display mode', '展示方式', '顯示方式')}</legend>
+        {modes.map(mode => <label className="display-mode-choice" key={mode.value} data-selected={p.displayMode === mode.value || undefined}>
+          <input className="sr-only" type="radio" name="display-mode" value={mode.value} checked={p.displayMode === mode.value}
+            onChange={() => onChange({ ...p, displayMode: mode.value })} />
+          <span className="display-mode-thumbnail" data-mode={mode.value} aria-hidden="true"><i /><i /><i /><i /></span>
+          <span><strong>{mode.label}</strong><small>{mode.description}</small></span>
+        </label>)}
+        <p className="shell-setting-hint">{w('The default for every page. Individual page choices take precedence.', '用作所有页面的默认方式。单独设置的页面保持原选择。', '各頁面預設使用此方式，個別頁面的設定優先。')}</p>
+      </fieldset>
+      <details className="display-page-overrides"><summary>{w('Customize individual pages', '为个别页面单独设置', '個別頁面設定')}{Object.keys(p.pageDisplayModes).length > 0 && ` (${Object.keys(p.pageDisplayModes).length})`}</summary>
+        {ROUTES.map(page => <div className="display-page-option" key={page}>
+          <Label htmlFor={`display-page-${page}`}>{pageNames[p.lang][page]}</Label>
+          <AppSelectControl id={`display-page-${page}`} value={p.pageDisplayModes[page] ?? 'inherit'} onChange={event => setPageMode(page, event.target.value)}>
+            <option value="inherit">{w('Follow global setting', '跟随全局', '跟隨全域設定')}</option>
+            {modes.map(mode => <option key={mode.value} value={mode.value}>{mode.label}</option>)}
+          </AppSelectControl>
+        </div>)}
+        {Object.keys(p.pageDisplayModes).length > 0 && <Button variant="outline" onClick={() => onChange({ ...p, pageDisplayModes: {} })}>{w('Use global setting on every page', '所有页面跟随全局', '所有頁面跟隨全域設定')}</Button>}
+      </details>
       <fieldset><legend>{w('Appearance', '外观', '外觀')}</legend><div className="shell-theme-options">
         {([['dark', Moon, w('Dark', '深色')], ['light', Sun, w('Light', '浅色', '淺色')], ['system', Monitor, w('System', '跟随系统', '跟隨系統')]] as const).map(([theme, Icon, label]) =>
           <Button key={theme} variant={p.theme === theme ? 'default' : 'outline'} aria-pressed={p.theme === theme} onClick={() => onChange({ ...p, theme })}><Icon />{label}</Button>)}
@@ -33,15 +59,9 @@ export function Settings({ open, onOpenChange, preferences: p, onChange, version
       </div>
       <div><Label htmlFor="shell-density">{w('Density', '信息密度', '資訊密度')}</Label><AppSelectControl id="shell-density" value={p.density} onChange={e => onChange({ ...p, density: e.target.value as Preferences['density'] })}>
         <option value="comfortable">{w('Comfortable', '舒适', '舒適')}</option><option value="compact">{w('Compact', '紧凑', '緊湊')}</option>
-      </AppSelectControl></div>
-      <div><Label htmlFor="shell-item-display">{w('Equipment display', '装备展示', '裝備顯示')}</Label>
-        <AppSelectControl id="shell-item-display" value={p.itemDisplay} aria-describedby="shell-item-display-hint" onChange={e => onChange({ ...p, itemDisplay: e.target.value as Preferences['itemDisplay'] })}>
-          {itemStyles.map(style => <option key={style.value} value={style.value}>{style.label}</option>)}
-        </AppSelectControl>
-        <p id="shell-item-display-hint" className="shell-setting-hint">{itemStyles.find(style => style.value === p.itemDisplay)?.description}</p>
-      </div>
-      <div className="shell-settings-about"><a href="https://github.com/ackness/pobr" target="_blank" rel="noopener noreferrer"><ExternalLink aria-hidden />{w('View source on GitHub (opens in a new tab)', '在 GitHub 查看源码（新标签页打开）', '在 GitHub 查看原始碼（另開分頁）')}</a><p>{w('Saved in this browser only.', '仅保存在当前浏览器。', '僅儲存在目前瀏覽器。')}</p><small>{version}</small></div>
-      <div className="shell-font-preview"><Type aria-hidden /><p>{w('A clearer view of your next build.', '清晰掌握构筑的每一次变化。', '清晰掌握構築的每一次變化。')}</p><strong>1,284.50</strong><span> Life · DPS · 75%</span></div>
+      </AppSelectControl><p className="shell-setting-hint">{w('Adjusts spacing without shrinking text.', '只调整间距，不缩小字号。', '只調整間距，不縮小字級。')}</p></div>
+      <div className="shell-settings-about"><a href="https://github.com/ackness/pobr" target="_blank" rel="noopener noreferrer"><ExternalLink aria-hidden />{w('View source on GitHub (opens in a new tab)', '在 GitHub 查看源码（新标签页打开）', '在 GitHub 查看原始碼（另開分頁）')}</a><small>{version}</small></div>
+      <div className="shell-font-preview"><p>{w('Text preview', '字号预览', '字級預覽')}</p><strong>1,284.50</strong><span>{w('Life · DPS · 75%', '生命 · DPS · 75%', '生命 · DPS · 75%')}</span></div>
     </div>
   </SheetContent></Sheet>;
 }

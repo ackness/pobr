@@ -12,5 +12,6 @@ import './app/pages-compare.css';
 import './app/pages-calcs.css';
 import './app/pages-tree.css';
 import './app/inspector.css';
+import './app/display-modes.css';
 
 createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);

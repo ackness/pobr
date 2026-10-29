@@ -8,14 +8,15 @@ import { TooltipProvider } from '../ui/tooltip';
 
 const empty: Breakdown = { base_total: 0, inc_total: 0, more_total: 1, mods: [], formula: null };
 
-test('Calcs opens a metric browser and stable empty detail region without eager overview or attribution', () => {
+test('Calcs selects an available resource without eager skill overview or attribution', () => {
   const session = { calc: { stats: [{ id: 'Life', category: 'Resource', value: 100 }],
     breakdowns: {}, breakdown_descriptors: { Life: 'steps' }, minions: [] }, socketGroups: [], calcParams: {} } as unknown as BuildSession;
   const html = renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider>
     <CalcsPanel session={session} lang="en-US" />
   </TooltipProvider></UiProvider>);
   expect(html).toContain('id="calcs-detail"');
-  expect(html).toContain('Choose a metric to inspect its calculation.');
+  expect(html).toContain('aria-pressed="true"');
+  expect(html).not.toContain('Choose a metric to inspect its calculation.');
   expect(html).toContain('aria-controls="calcs-detail"');
   expect(html).toContain('data-detail-kind="steps"');
   expect(html).toContain('Metrics &amp; details');

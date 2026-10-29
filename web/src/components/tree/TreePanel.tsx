@@ -1,3 +1,4 @@
+import { ValueText } from '../shared/ValueText';
 import { localizedName } from '../../lib/chinese';
 import { useAppDialogs } from '../shared/AppDialogs';
 import { useSessionAction } from '../shared/useSessionAction';
@@ -1184,7 +1185,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
             {(selectedAllocated || owner.has(selectedNode.skill)) && <> · {tt(owner.get(selectedNode.skill) === 1 ? 'tree.set1' : owner.get(selectedNode.skill) === 2 ? 'tree.set2' : 'tree.shared')}</>}
           </p>
           <ul className="tree-node-details-stats">
-            {displayedDetails.slice(1).map((line, index) => <li key={index}>{line}</li>)}
+            {displayedDetails.slice(1).map((line, index) => <li key={index}><ValueText text={line} /></li>)}
           </ul>
           {isAttrNode(selectedNode) && (selectedAllocated || selectedNeedsAttribute) && (
             <label className="tree-node-attribute">
@@ -1281,7 +1282,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
           <span className="attr-distribute-rest">
             {tt('tree.attrUnassigned')}: {allocatedAttrNodes.length - attrCounts.str - attrCounts.dex - attrCounts.int}
           </span>
-          <span className="tree-hint">{tt('tree.attrHotkeys')}</span>
+          <details className="tree-shortcuts"><summary>{words(lang, 'Keyboard shortcuts', '快捷键', '快捷鍵')}</summary><p className="tree-hint">{tt('tree.attrHotkeys')}</p></details>
         </>
         )}
           <span className="attr-quest" role="group" aria-label={tt('tree.questAttr')}>
@@ -1502,7 +1503,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
       <aside id="tree-side" className="tree-side" hidden={!sideOpen} aria-label={tt('tree.editOptions')}>
         <div className="tree-edit-tools" ref={toolsRef} tabIndex={-1}>
           {toolsBody}
-          <p className="tree-hint">{tt('tree.weaponRules')}</p>
+          <details className="tree-legend-help"><summary>{words(lang, 'Colors and weapon sets', '颜色与武器组', '顏色與武器組')}</summary><p className="tree-hint">{tt('tree.weaponRules')}</p></details>
         </div>
       </aside>
     </section>

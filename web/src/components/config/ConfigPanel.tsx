@@ -116,11 +116,11 @@ export function OptionRow({
           {tooltip && lang !== 'en-US' && tooltip === option.tooltip && <p className="config-source">{workflowLabel(lang, 'sourceHelp')}</p>}
           <span className="config-source">{workflowLabel(lang, 'rawKey')}</span>
           <code className="config-raw-key">{option.var}</code>
+          <span className="config-source">{tt(value === undefined ? 'config.sourceDefault' : 'config.sourceSaved')}</span>
+          {value !== undefined && <span className="config-source config-saved-type">
+            {workflowLabel(lang, typeof value as 'boolean' | 'number' | 'string')}: <code>{JSON.stringify(value)}</code>
+          </span>}
         </details>
-        <span className="config-source">{tt(value === undefined ? 'config.sourceDefault' : 'config.sourceSaved')}</span>
-        {value !== undefined && <span className="config-source config-saved-type">
-          {workflowLabel(lang, typeof value as 'boolean' | 'number' | 'string')}: <code>{JSON.stringify(value)}</code>
-        </span>}
         {applicability !== 'applicable' && <span className="config-applicability">
           {tt(applicability === 'unknown' ? 'config.applicabilityUnknown' : 'config.notApplicable')}
           {value !== undefined && <> · {tt('config.savedRetained')}</>}
@@ -217,6 +217,7 @@ export function ConfigPanel({ session, lang }: Props) {
   const [query, setQuery] = useState('');
   const [configuredOnly, setConfiguredOnly] = useState(false);
   const [allOptions, setAllOptions] = useState(false);
+  const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(DEFAULT_OPEN_SECTIONS));
   // Where each option the reader changed sat (in the leading group or not) when they changed it. Which group an
   // option belongs to is read from the calculation, which can start to read the very option just set; its row stays
@@ -294,6 +295,7 @@ export function ConfigPanel({ session, lang }: Props) {
     setQuery('');
     setConfiguredOnly(false);
     setAllOptions(true);
+    setSelectedSection(groups.find(group => group.options.some(entry => entry.var === option.var))?.name ?? option.section ?? 'General');
     setOpenSections(previous => new Set([...previous, option.section ?? 'General', RELEVANT_SECTION]));
     setFocusTarget(option.var);
   };
@@ -335,7 +337,7 @@ export function ConfigPanel({ session, lang }: Props) {
   const settle = (variable: string) => setPlaced(current => variable in current ? current
     : { ...current, [variable]: !!groups.find(group => group.name === RELEVANT_SECTION)?.options.some(option => option.var === variable) });
   const groupTitle = (name: string) => name === RELEVANT_SECTION
-    ? words(lang, 'Relevant to this BD', '与此 BD 相关', '與此 BD 相關') : configSectionLabel(lang, name);
+    ? words(lang, 'Relevant to this build', '与此 BD 相关', '與此 BD 相關') : configSectionLabel(lang, name);
 
   useEffect(() => {
     if (!focusTarget || session.busy) return;
@@ -348,6 +350,7 @@ export function ConfigPanel({ session, lang }: Props) {
   }, [focusTarget, groups, session.busy]);
 
   const searching = query.trim() !== '' || configuredOnly;
+  const activeSection = groups.find(group => group.name === selectedSection)?.name ?? groups[0]?.name;
   const configuredCount = options.filter(option =>
     option.var !== 'customMods' && option.var !== 'enemyIsBoss' &&
     configExistsInGame(option, session.dataVersion) && effective(option.var) !== undefined).length;
@@ -449,7 +452,7 @@ export function ConfigPanel({ session, lang }: Props) {
 
   const catalog = (<>
       <div className="config-controls">{searchToolbar}{viewToggle}</div>
-      <details className="config-guidance"><summary>{workflowLabel(lang, 'guidance')}</summary>
+      <div className="config-help-tools"><details className="config-guidance"><summary>{workflowLabel(lang, 'guidance')}</summary>
       <p className="config-hint">{tt('config.visibilityHint')}</p>
       <p className="config-hint">{tt('config.editHint')}</p>
       <p className="config-hint">{tt('config.defaultsHint')}</p>
@@ -458,11 +461,21 @@ export function ConfigPanel({ session, lang }: Props) {
       {loadState === 'error' && <div className="calc-error" role="alert">
         {tt('config.loadFailed')} <AppButton onClick={() => setLoadAttempt(value => value + 1)}>{tt('common.retry')}</AppButton>
       </div>}
-    <details className="config-quick-disclosure"><summary>{tt('config.quickTitle')}</summary>{quickAccess}</details>
+    <details className="config-quick-disclosure"><summary>{tt('config.quickTitle')}</summary>{quickAccess}</details></div>
+    {groups.length > 0 && <label className="config-mobile-category">
+      <span>{words(lang, 'Category', '分类', '分類')}</span>
+      <AppSelectControl aria-label={words(lang, 'Configuration category', '配置分类', '設定分類')} value={searching ? 'search' : activeSection}
+        onChange={event => { setQuery(''); setConfiguredOnly(false); setSelectedSection(event.target.value); setOpenSections(previous => new Set([...previous, event.target.value])); }}>
+        {searching && <option value="search">{words(lang, 'Search results', '搜索结果', '搜尋結果')}</option>}
+        {groups.map(group => <option key={group.name} value={group.name}>{groupTitle(group.name)} ({group.options.length})</option>)}
+      </AppSelectControl>
+    </label>}
     <div className="config-options-workspace">
       {groups.length > 0 && <nav className="config-group-nav" aria-label={workflowLabel(lang, 'jump')}>
         <h3>{workflowLabel(lang, 'jump')}</h3>
-        {groups.map(section => <AppButton className="h-auto min-h-10 justify-between whitespace-normal text-left" key={section.name} onClick={() => {
+        {groups.map(section => <AppButton className="h-auto min-h-10 justify-between whitespace-normal text-left" key={section.name}
+          aria-pressed={!searching && activeSection === section.name} onClick={() => {
+          setQuery(''); setConfiguredOnly(false); setSelectedSection(section.name);
           setOpenSections(previous => new Set([...previous, section.name]));
           requestAnimationFrame(() => {
             const group = document.getElementById(`config-section-${section.name.replace(/\s+/g, '-')}`);
@@ -480,7 +493,7 @@ export function ConfigPanel({ session, lang }: Props) {
       {groups.map(({ name, options: sectionOptions }) => {
         const open = searching || openSections.has(name);
         return (
-          <section key={name} id={`config-section-${name.replace(/\s+/g, '-')}`} className="config-section">
+          <section key={name} id={`config-section-${name.replace(/\s+/g, '-')}`} className="config-section" hidden={!searching && activeSection !== name}>
             <AppButton
               className="config-section-header h-auto min-h-12 w-full justify-between whitespace-normal rounded-none border-0 bg-muted text-left"
               aria-controls={`config-group-${name.replace(/\s+/g, '-')}`}

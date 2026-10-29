@@ -5,6 +5,7 @@ import { bdLibraryButton, busy, pageLink } from './shell';
 export async function importBuild(page: Page, code: string) {
   await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
+  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
@@ -19,6 +20,7 @@ export async function openStat(page: Page, id: string): Promise<Locator> {
   const detail = page.locator('#calcs-detail');
   if (!(await detail.count())) await pageLink(page, 'Calcs').click();
   const row = page.locator(`#breakdown-${id}`);
+  if (!await row.isVisible()) await page.getByRole('searchbox').fill(id);
   await row.click();
   await expect(row).toHaveAttribute('aria-pressed', 'true');
   if ((await row.getAttribute('data-detail-kind')) !== 'none') {

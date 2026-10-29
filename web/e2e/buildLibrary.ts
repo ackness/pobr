@@ -46,6 +46,7 @@ export async function selectStage(page: Page, name: string) {
 
 /** Picks where the next import goes: a new BD, or the current stage (which asks before it replaces anything). */
 export async function importInto(page: Page, destination: 'newBuild' | 'currentStage', lang: Lang = 'en-US') {
+  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   const choices = page.getByRole('group', { name: workspaceText(lang).importDestination, exact: true }).getByRole('button');
   await choices.nth(destination === 'newBuild' ? 0 : 1).click();
   await expect(choices.nth(destination === 'newBuild' ? 0 : 1)).toHaveAttribute('aria-pressed', 'true');

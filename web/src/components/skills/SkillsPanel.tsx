@@ -39,6 +39,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
   const [catalog, setCatalog] = useState<GemCatalogEntry[]>([]);
   const [tradeGems, setTradeGems] = useState<SupportMetadata[]>([]);
   const [catalogError, setCatalogError] = useState(false);
+  const [showAllGroups, setShowAllGroups] = useState(false);
   useEffect(() => {
     let active = true;
     Promise.all([getBackend().then(backend => backend.gemCatalog()), loadTradeCatalog()])
@@ -137,10 +138,10 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
       {active && <NamedSets session={session} lang={lang} kind="skill" />}
       {catalogError && <p className="opt-error">{supportText(lang, 'catalogError')}</p>}
       {!catalogError && !catalog.length && <p className="skills-hint">{supportText(lang, 'loading')}</p>}
-      <div className="skill-groups" style={{ '--skill-rows': groups.length + 1 } as CSSProperties}>
+      <div className="skill-groups" data-list-expanded={showAllGroups || undefined} style={{ '--skill-rows': groups.length + 1 } as CSSProperties}>
         {groups.length > 0 ? toolbar : active && <div className="skills-empty">
           <h3>{w('Start with the skill that deals your damage', '先加入造成伤害的主技能', '先加入造成傷害的主技能')}</h3>
-          <p>{w('Search for an active skill below to create the first group, or import a BD from the library.', '在下方搜索一个主动技能来创建第一个技能组，或到 BD 管理导入一套 BD。', '在下方搜尋一個主動技能來建立第一個技能組，或到 BD 管理匯入一套 BD。')}</p>
+          <p>{w('Search for an active skill below to create the first group, or import a build from the library.', '在下方搜索一个主动技能来创建第一个技能组，或到 BD 库导入一套 BD。', '在下方搜尋一個主動技能來建立第一個技能組，或到 BD 庫匯入一套 BD。')}</p>
           {toolbar}
         </div>}
         {groups.map((group, idx) => {
@@ -222,10 +223,12 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
           const gemList = (
             <ul className="skill-gems">
               {group.gems.map((gem, gemIdx) => (
-                <li key={gemIdx} className={`skill-gem${gemIdx === 0 ? ' is-active' : ''}${gem.enabled === false ? ' is-disabled' : ''}`}
+                <li key={gemIdx} className={`skill-gem${gem === activeGem ? ' is-active' : ''}${gem.enabled === false ? ' is-disabled' : ''}`}
+                  data-gem-kind={byId.get(gem.skill_id)?.is_support === true ? 'support' : byId.get(gem.skill_id)?.is_support === false ? 'active' : undefined}
                   data-colour={byId.get(gem.skill_id)?.colour ?? undefined}>
                   <AppTooltip content={gem.skill_id === '' ? tt('skills.unresolvedHint') : undefined}><span className="gem-name" tabIndex={gem.skill_id === '' ? 0 : undefined}>
                     {gemLabel(gem)}
+                    {byId.has(gem.skill_id) && <small className="gem-kind-label">{tt(byId.get(gem.skill_id)!.is_support ? 'compare.support' : 'compare.active')}</small>}
                     {byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
                   </span></AppTooltip>
                   <span className="gem-controls">
@@ -372,6 +375,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                       {isMain && <span className="skill-detail-tag">{tt('skills.main')}</span>}
                       {grantedSourceLabel(lang, group.source) && <span className="skill-detail-tag">{grantedSourceLabel(lang, group.source)}</span>}
                     </div>
+                    {dps?.kind === 'damage' && <div className="skill-detail-dps"><span>{tt('sidebar.combinedDps')}</span><strong>{formatStatValue(dps.dps, 'int')}</strong></div>}
                     {active && <div className="skill-detail-controls">
                       {weaponBinding}
                       {effectControl}
@@ -404,6 +408,9 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
             </div>
           );
         })}
+        {groups.length > 1 && <AppButton className="skills-list-toggle" aria-expanded={showAllGroups} onClick={() => setShowAllGroups(value => !value)}>
+          {showAllGroups ? w('Show selected skill only', '收起其他技能', '收起其他技能') : w(`All skill groups (${groups.length})`, `全部技能组（${groups.length}）`, `全部技能組（${groups.length}）`)}
+        </AppButton>}
       </div>
       {active && <details className="skills-advanced" open={session.library.skillSets.length > 0 || undefined}>
         <summary>{tt('sets.title')}</summary>

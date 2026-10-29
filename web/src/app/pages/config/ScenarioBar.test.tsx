@@ -24,15 +24,24 @@ describe('ScenarioBar', () => {
     expect(pressed(render(undefined))).toEqual(['Pinnacle']);
   });
 
-  it('presses nothing and says so when the enemy comes from an input the app does not recognise', () => {
-    const html = render(undefined, 'en-US', { enemyIsBoss: 'Standard' });
+  it.each([
+    ['en-US', 'Using the build’s enemy settings.'],
+    ['zh-CN', '使用构筑中的敌人设置。'],
+    ['zh-TW', '使用 BD 中的敵人設定。'],
+  ] as const)('explains the custom enemy settings in %s without selecting a preset', (lang, message) => {
+    const html = render(undefined, lang, { enemyIsBoss: 'Standard' });
     expect(pressed(html)).toEqual([]);
-    expect(html).toContain('Custom');
+    expect(html).toContain(`role="status">${message}</span>`);
   });
 
-  it('names the enemy being calculated, in the chosen language', () => {
-    expect(render('pinnacle')).toContain('Pinnacle Boss');
-    expect(render('pinnacle', 'zh-CN')).toContain('巅峰 Boss');
-    expect(render('none', 'zh-TW')).toContain('刷圖');
+  it.each([
+    ['en-US', 'Pinnacle', 'Mapping'],
+    ['zh-CN', '巅峰 Boss', '刷图'],
+    ['zh-TW', '巔峰頭目', '刷圖'],
+  ] as const)('identifies the selected enemy in %s without a duplicate status message', (lang, pinnacle, mapping) => {
+    const html = render('pinnacle', lang);
+    expect(pressed(html)).toEqual([pinnacle]);
+    expect(html).not.toContain('role="status"');
+    expect(pressed(render('none', lang))).toEqual([mapping]);
   });
 });

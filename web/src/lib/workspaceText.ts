@@ -1,7 +1,7 @@
 import type { Lang } from './i18n';
 const text = {
   'en-US': {
-    libraryTitle: "My builds",
+    libraryTitle: "Saved builds",
     libraryHint: "Each build is saved independently on this browser.",
     currentBuild: "Current build",
     stagesTitle: "Stages in this build",
@@ -31,7 +31,7 @@ const text = {
     start: 'Starter', progress: 'Progression', endgame: 'Endgame',
   },
   'zh-CN': {
-    libraryTitle: "我的 BD",
+    libraryTitle: "已保存的 BD",
     libraryHint: "每份 BD 独立保存在当前浏览器中。",
     currentBuild: "当前 BD",
     stagesTitle: "此 BD 的阶段",
@@ -61,7 +61,7 @@ const text = {
     start: '开荒', progress: '过渡', endgame: '毕业',
   },
   'zh-TW': {
-    libraryTitle: "我的 BD",
+    libraryTitle: "已儲存的 BD",
     libraryHint: "每份 BD 獨立儲存在目前瀏覽器中。",
     currentBuild: "目前 BD",
     stagesTitle: "此 BD 的階段",

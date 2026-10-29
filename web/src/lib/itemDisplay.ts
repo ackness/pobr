@@ -1,17 +1,6 @@
 import type { ItemLineJson } from '../api/types';
-import type { Lang } from './i18n';
-
-export const ITEM_DISPLAY_STYLES = ['grouped', 'compact', 'game'] as const;
-export type ItemDisplayStyle = typeof ITEM_DISPLAY_STYLES[number];
-
-export function itemDisplayOptions(lang: Lang) {
-  const w = (en: string, cn: string, tw: string) => lang === 'en-US' ? en : lang === 'zh-TW' ? tw : cn;
-  return [
-    { value: 'grouped', label: w('Grouped details', '分组详情', '分組詳情'), description: w('Prefixes and suffixes in separate sections.', '前后缀分区展示，数值单独突出。', '前後綴分區顯示，數值單獨強調。') },
-    { value: 'compact', label: w('Compact table', '紧凑对照', '緊湊對照'), description: w('Affix types, values and tiers in aligned rows.', '词缀类型、数值与档位对齐，便于逐行查看。', '詞綴類型、數值與階級對齊，方便逐行查看。') },
-    { value: 'game', label: w('Game item card', '游戏物品卡', '遊戲物品卡'), description: w('A familiar item card with sources and affix types.', '按游戏物品卡的顺序阅读，直接标明来源与前后缀。', '依遊戲物品卡的順序閱讀，直接標示來源與前後綴。') },
-  ] satisfies { value: ItemDisplayStyle; label: string; description: string }[];
-}
+export { DISPLAY_MODES as ITEM_DISPLAY_STYLES } from './displayModes';
+export type { DisplayMode as ItemDisplayStyle } from './displayModes';
 
 export interface DisplayItemLine extends ItemLineJson { original: string; index: number }
 export interface ItemProperty { label: string; value: string; index: number }

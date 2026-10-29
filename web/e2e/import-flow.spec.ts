@@ -31,7 +31,7 @@ test('import build code and browse tabs', async ({ page }) => {
 
   // 计算完成 → 自动落到概览页；结果栏出现非零 EnergyShield，再进入 Items 页。
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
   const sidebar = page.getByRole('complementary', { name: 'Character stats' });
   await expect(sidebar).toContainText('Energy Shield');
   const esValue = statValue(page, /^Energy Shield$/).first();

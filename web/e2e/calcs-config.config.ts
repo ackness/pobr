@@ -2,6 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 // Isolated component workflow: no production app shell or WASM artifacts needed.
 export default defineConfig({
+  outputDir: '../test-results/calcs-config',
   testDir: '.', testMatch: 'calcs-config.spec.ts', timeout: 30_000,
   fullyParallel: true, workers: 2,
   use: { baseURL: 'http://localhost:4184', screenshot: 'only-on-failure', trace: 'retain-on-failure' },

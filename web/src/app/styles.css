@@ -40,7 +40,7 @@
     --rarity-normal: #56534e; --rarity-magic: #5550c6; --rarity-rare: #8a6f0e; --rarity-unique: #97521f; --rarity-gem: #15776e;
     --font-ui: Inter, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
     --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
-    --text-xs: .75rem; --text-sm: .8125rem; --text-base: .875rem; --text-lg: 1rem; --text-xl: 1.25rem;
+    --text-xs: .75rem; --text-sm: .8125rem; --text-base: .875rem; --text-lg: 1rem; --text-xl: 1.375rem;
     --control-height: 2.25rem; --content-width: 100rem; --topbar-height: 3.25rem; --rail-width: 17.5rem;
     --radius-sm: .3rem; --radius-md: .5rem;
   }
@@ -48,7 +48,7 @@
     color-scheme: dark;
     --background: #0f1011; --foreground: #ebe9e2; --card: #141516; --popover: #1b1c1e;
     --primary: #d8b66f; --primary-foreground: #1a1508; --secondary: #1b1c1e;
-    --muted: #212224; --muted-foreground: #8f908a; --destructive: #f07e75;
+    --muted: #212224; --muted-foreground: #a3a4ad; --destructive: #f07e75;
     --border: #25262a; --input: #34353a; --accent-gold-dim: #a18a5e;
     --color-life: #ed8b7e; --color-mana: #9aaff1; --color-es: #8fcad8; --color-fire: #ef9771;
     --color-cold: #8bbce8; --color-lightning: #ddcb72; --color-chaos: #cda0df;
@@ -57,7 +57,7 @@
   }
   [data-font='sans'] { --font-ui: Arial, 'Noto Sans CJK SC', 'Noto Sans', 'Microsoft YaHei', sans-serif; }
   [data-font='serif'] { --font-ui: Georgia, 'Noto Serif CJK SC', 'Songti SC', SimSun, serif; }
-  [data-density='compact'] { --control-height: 2rem; --text-base: .8125rem; --text-sm: .75rem; }
+  [data-density='compact'] { --control-height: 2rem; }
   /* Restore control defaults above the global button and input defaults; shadcn utilities supply variants. */
   button[data-slot], [data-slot='input'], [data-slot='textarea'] { min-height: 0; padding: 0; background: transparent; color: inherit; }
   * { border-color: var(--border); }

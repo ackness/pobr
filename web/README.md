@@ -404,9 +404,11 @@ The app is a Radix-based shadcn/ui workspace. Every page has its own URL: `/`
 (overview), `/build`, `/skills`, `/items`, `/tree`, `/config`, `/trade`,
 `/compare` and `/calcs`. Browser Back/Forward restores navigation.
 
-It defaults to a dark stone/gold theme. **Appearance & language** offers light
+It defaults to a dark stone/gold theme. **Display settings** offers grouped details, compact tables and game cards globally,
+with optional overrides per page. It also offers light
 and system themes, three language choices, local system/sans/serif font stacks,
-14–32px base text (16px by default), and comfortable/compact density. These
+14–32px base text (16px by default), and comfortable/compact spacing density. Previous equipment display choices migrate
+to the global mode. These
 preferences do not reset drafts or calculations. Narrow screens use a navigation
 sheet and a separate stats sheet; wide screens expand the working area.
 No external font service is required.

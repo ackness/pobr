@@ -329,7 +329,7 @@ test('main-skill, stage and independent-build changes refresh context without le
   await expect(card(page).locator('.config-quick-skill')).toHaveText('Comet');
   await expectReturnedHitEntries(page);
   await page.locator('.shell-builds-button').click();
-  await page.getByRole('group', { name: 'My builds', exact: true }).getByRole('button', { name: /^Synthetic Guidance Original/ }).click();
+  await page.getByRole('group', { name: 'Saved builds', exact: true }).getByRole('button', { name: /^Synthetic Guidance Original/ }).click();
   await idle(page);
   await openConfig(page);
   await expect(card(page).locator('.config-quick-skill')).toHaveText('Spark');

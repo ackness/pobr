@@ -101,7 +101,7 @@ test('hovering a library item previews its effect without changing the build', a
   // Put a ring on one hand and save it to the library, then look at it from the other ring slot.
   await page.locator('.doll-cell[data-slot="ring1"] .doll-slot').click();
   // An empty slot opens its editor straight away, already holding a template item.
-  await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
+  await page.getByRole('button', { name: 'Apply changes', exact: true }).click();
   await page.getByRole('button', { name: 'Save to library', exact: true }).click();
   await expect(page.locator('.shell-save-state')).toHaveText('Saved locally');
   await page.locator('.doll-cell[data-slot="ring2"] .doll-slot').click();
@@ -121,7 +121,7 @@ test('hovering a replacement position on Upgrades previews its effect from the r
   await page.goto('/items');
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 90_000 });
   await page.locator('.doll-cell[data-slot="ring1"] .doll-slot').click();
-  await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
+  await page.getByRole('button', { name: 'Apply changes', exact: true }).click();
   await expect(page.locator('.shell-save-state')).toHaveText('Saved locally');
   await page.goto('/trade');
   await page.getByRole('textbox', { name: 'Complete item text' }).fill('Rarity: RARE\nNew Item\nSapphire Ring\n+50 to maximum Life');

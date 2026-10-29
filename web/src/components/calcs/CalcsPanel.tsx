@@ -1,3 +1,4 @@
+import { COMMON_METRICS, defaultMetric } from '../../lib/metricSelection';
 import { AppButton, AppInput } from '../shared/controls';
 import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
@@ -1018,13 +1019,19 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
   const skillName = useSkillName(lang);
   const [view, setView] = useState('metrics');
   const [category, setCategory] = useState('all');
+  const [commonOnly, setCommonOnly] = useState(true);
   const calc = session.calcError ? null : session.calc;
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(() => defaultMetric(calc?.stats ?? [], !!calc?.main_skill));
   const [actor, setActor] = useState('player');
   const actorKey = (minion: MinionOutput) =>
     `${minion.index}:${minion.minion_id}:${minion.summoned_by}`;
   const selectedMinion = calc?.minions?.find(minion => actorKey(minion) === actor);
   const actorBreakdowns = selectedMinion?.breakdowns ?? calc?.breakdowns ?? {};
+  useEffect(() => {
+    if (!calc || session.busy || focus) return;
+    const stats = selectedMinion ? Object.entries(selectedMinion.stats).map(([id, value]) => ({ id, value })) : calc.stats;
+    if (open === null || !stats.some(stat => stat.id === open)) setOpen(defaultMetric(stats, !!(selectedMinion?.skill_id ?? calc.main_skill)));
+  }, [calc, selectedMinion, session.busy, focus, open]);
   useEffect(() => {
     if (calc && actor !== 'player' && !selectedMinion) {
       setActor('player');
@@ -1060,6 +1067,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
     const stat = minionFocus?.[2] ?? focus.id;
     setView(overview ? 'skills' : 'metrics');
     setCategory('all');
+    setCommonOnly(false);
     setQuery('');
     if (!overview) {
       const minion = minionFocus && calc?.minions?.find(row => row.index === Number(minionFocus[1]));
@@ -1089,9 +1097,9 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
     const filteredNames = names
       .filter(
         (name) =>
-          q === '' ||
+          (q === '' ||
           name.toLowerCase().includes(q) ||
-          statNameLabel(lang, name).toLowerCase().includes(q),
+          statNameLabel(lang, name).toLowerCase().includes(q)),
       )
       .sort((a, b) => {
         const ia = catalogOrder.get(a) ?? Number.MAX_SAFE_INTEGER;
@@ -1149,7 +1157,10 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
     ['attribution', tt('calcs.attribution')],
     ['ledger', words(lang, 'Ledger', '词条账本', '詞綴帳本')],
   ] as const;
-  const visibleSections = sections.filter(section => category === 'all' || category === section.category);
+  const visibleSections = sections.filter(section => category === 'all' || category === section.category)
+    .map(section => ({ ...section, names: commonOnly && !query.trim() && category === 'all'
+      ? section.names.filter(name => COMMON_METRICS.some(id => id === name) || name === open) : section.names }))
+    .filter(section => section.names.length > 0);
   return <section className="ui-page calcs-page calcs-workspace" aria-labelledby="calcs-heading">
     <PageHeader id="calcs-heading" title={tt('calcs.title')} description={calcsLabel(lang, 'detailHint')} />
     <Tabs className="flex-col" value={view} onValueChange={setView}>
@@ -1165,6 +1176,10 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
               {session.busy && <span role="status">{calcsLabel(lang, 'stale')}</span>}
             </div>
             <div className="calcs-filters">
+              <div className="calcs-metric-scope" role="group" aria-label={words(lang, 'Metric list', '指标范围', '指標範圍')}>
+                <AppButton aria-pressed={commonOnly && !query.trim() && category === 'all'} onClick={() => { setCommonOnly(true); setQuery(''); setCategory('all'); }}>{words(lang, 'Common', '常用指标', '常用指標')}</AppButton>
+                <AppButton aria-pressed={!commonOnly || !!query.trim() || category !== 'all'} onClick={() => setCommonOnly(false)}>{words(lang, 'All metrics', '全部指标', '全部指標')}</AppButton>
+              </div>
               <AppInput className="calcs-search" type="search" placeholder={tt('calcs.search')} aria-label={tt('calcs.search')}
                 value={query} onChange={event => setQuery(event.target.value)} />
               <label className="calcs-category-picker"><span className="sr-only">{calcsLabel(lang, 'categories')}</span>

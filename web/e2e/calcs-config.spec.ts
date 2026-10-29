@@ -24,12 +24,19 @@ test.beforeEach(async ({ page }, testInfo) => {
 });
 
 test('details load one actor and field, preserve search-independent selection and cache a repeat', async ({ page }) => {
-  expect((await requests(page)).every(request => request.breakdowns?.length === 0)).toBe(true);
+  // Opening the page requests one useful detail; it never fetches every metric.
+  expect((await requests(page)).every(request => (request.breakdowns?.length ?? 0) <= 1)).toBe(true);
   expect(await page.evaluate(() => window.calcsConfigProbe.metrics)).toBe(0);
   await page.locator('#breakdown-Life').click();
   await expect(page.locator('#calcs-detail .formula-final')).toContainText('1,234');
-  expect(await details(page)).toHaveLength(1);
-  expect((await details(page))[0]).toMatchObject({ breakdowns: ['Life'], breakdown_actor: { kind: 'player' } });
+  const playerRequests = await details(page);
+  expect(playerRequests.at(-1)).toMatchObject({ breakdowns: ['Life'], breakdown_actor: { kind: 'player' } });
+  const commonCount = await page.locator('.calcs-metric-row').count();
+  await page.getByRole('button', { name: 'All metrics', exact: true }).click();
+  expect(await page.locator('.calcs-metric-row').count()).toBeGreaterThan(commonCount);
+  await page.getByRole('button', { name: 'Common', exact: true }).click();
+  await page.getByRole('searchbox').fill('FireResistMax');
+  await expect(page.locator('#breakdown-FireResistMax')).toBeVisible();
   await page.getByRole('searchbox').fill('nonesuch');
   await expect(page.locator('#calcs-detail-heading')).toHaveText('Life');
   await page.evaluate(() => window.calcsConfigProbe.focus('Minion:0:Life'));
@@ -38,16 +45,18 @@ test('details load one actor and field, preserve search-independent selection an
   expect((await details(page)).at(-1)).toMatchObject({ breakdowns: ['Life'], breakdown_actor: { kind: 'minion', index: 0 } });
   await page.evaluate(() => window.calcsConfigProbe.focus('Life'));
   await expect(page.locator('#calcs-detail .formula-final')).toContainText('1,234');
-  expect(await details(page)).toHaveLength(2);
+  expect(await details(page)).toHaveLength(playerRequests.length + 1);
   await page.evaluate(() => window.calcsConfigProbe.focus('Minion:0:FireResistMax'));
   await expect(page.locator('#calcs-detail [role="status"]')).toBeVisible();
-  expect(await details(page)).toHaveLength(2);
+  expect(await details(page)).toHaveLength(playerRequests.length + 1);
 });
 
 test('late details cannot replace a newer calculation', async ({ page }) => {
-  await page.evaluate(() => { window.calcsConfigProbe.holdNextDetail = true; });
   await page.locator('#breakdown-Life').click();
-  await expect.poll(() => details(page).then(rows => rows.length)).toBe(1);
+  await expect(page.locator('#calcs-detail .formula-final')).toContainText('1,234');
+  const before = (await details(page)).length;
+  await page.evaluate(() => { window.calcsConfigProbe.holdNextDetail = true; window.calcsConfigProbe.edit('probeLife', 1235); });
+  await expect.poll(() => details(page).then(rows => rows.length)).toBe(before + 1);
   await page.evaluate(() => window.calcsConfigProbe.edit('probeLife', 7777));
   await idle(page);
   await expect(page.locator('#calcs-detail .formula-final')).toContainText('7,777');

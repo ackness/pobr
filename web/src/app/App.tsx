@@ -16,7 +16,7 @@ import { bootMessageLabel, t, type Lang } from '../lib/i18n';
 import { buildImportErrorMessage } from '../api/import';
 import { LEGACY_STORAGE, STORAGE, uiStorageKey } from '../lib/sessionStorage';
 import { initializeStorage } from './storage';
-import { DEFAULT_PREFERENCES, PREFERENCES_KEY, readPreferences, type Preferences } from './preferences';
+import { DEFAULT_PREFERENCES, PREFERENCES_KEY, readPreferences, pageDisplayMode, type Preferences } from './preferences';
 import { NAV_GROUPS, readRoute, routePath, type Route } from './routes';
 import { words, pageNames } from './text';
 import { Settings } from './Settings';
@@ -49,9 +49,9 @@ function GitHubMark() {
 function syncMessage(kind: SyncNotice['kind'], w: (en: string, cn: string, tw?: string) => string) {
   switch (kind) {
     case 'current-updated': return w('Another tab changed this stage. It was reloaded here.', '其他标签页修改了当前阶段，已在此重新载入。', '其他分頁修改了目前階段，已在此重新載入。');
-    case 'current-removed': return w('The BD or stage you had open was removed in another tab. Showing one that is still there.', '当前打开的 BD 或阶段已在其他标签页删除，已切换到仍保留的内容。', '目前開啟的 BD 或階段已在其他分頁刪除，已切換至仍保留的內容。');
+    case 'current-removed': return w('The build or stage you had open was removed in another tab. Showing one that is still there.', '当前打开的 BD 或阶段已在其他标签页删除，已切换到仍保留的内容。', '目前開啟的 BD 或階段已在其他分頁刪除，已切換至仍保留的內容。');
     case 'conflict': return w('Another tab changed the same stage. This tab\'s version was kept.', '其他标签页修改了同一阶段，已保留此标签页的版本。', '其他分頁修改了同一階段，已保留此分頁的版本。');
-    default: return w('Another tab changed your BDs. This tab has those changes now.', '其他标签页修改了 BD 库，已同步到此标签页。', '其他分頁修改了 BD 庫，已同步至此分頁。');
+    default: return w('Another tab changed your builds. This tab has those changes now.', '其他标签页修改了 BD 库，已同步到此标签页。', '其他分頁修改了 BD 庫，已同步至此分頁。');
   }
 }
 
@@ -91,7 +91,7 @@ export default function App() {
     try { return { result: initializeStorage(localStorage), error: '' }; }
     catch (error) { return { result: '', error: error instanceof Error ? error.message : String(error) }; }
   });
-  return <UiProvider lang={preferences.lang} itemDisplay={preferences.itemDisplay}><TooltipProvider><UpgradeGoalProvider>
+  return <UiProvider lang={preferences.lang} displayMode={preferences.displayMode}><TooltipProvider><UpgradeGoalProvider>
     {migration.error ? <Recovery lang={preferences.lang} error={migration.error} /> : <Workspace preferences={preferences} onPreferences={update} preferencesFailed={saveError} />}
   </UpgradeGoalProvider></TooltipProvider></UiProvider>;
 }
@@ -197,14 +197,14 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
       <Button className="shell-menu-button" size="icon" variant="ghost" aria-label={t(lang, 'a11y.openMenu')} onClick={() => setMenuOpen(true)}><Menu /></Button>
       {brand}
       <div className="shell-crumb">
-        <AppSelectControl aria-label={w('Current BD', '当前 BD', '目前 BD')} value={activeBuild?.id ?? ''} onChange={e => session.selectStage(e.target.value)}>{session.workspace?.builds.map((build, index) => <option key={build.id} value={build.id}>{build.name || `${w('BD', 'BD', 'BD')} ${index + 1}`}</option>)}</AppSelectControl>
+        <AppSelectControl aria-label={w('Current build', '当前 BD', '目前 BD')} value={activeBuild?.id ?? ''} onChange={e => session.selectStage(e.target.value)}>{session.workspace?.builds.map((build, index) => <option key={build.id} value={build.id}>{build.name || `${w('Build', 'BD', 'BD')} ${index + 1}`}</option>)}</AppSelectControl>
         <span className="shell-crumb-sep" aria-hidden="true">/</span>
         <AppSelectControl aria-label={w('Current stage', '当前阶段', '目前階段')} value={activeBuild?.activeStage ?? ''} onChange={e => { if (activeBuild) session.selectStage(activeBuild.id, e.target.value); }}>{activeBuild?.stages.map((stage, index) => <option key={stage.id} value={stage.id}>{stage.name || `${w('Stage', '阶段', '階段')} ${index + 1}`}</option>)}</AppSelectControl>
       </div>
       {tabs()}
       <div className="shell-topbar-actions">
         <Button variant="ghost" size="sm" className="shell-palette-button" aria-label={w('Search and commands', '搜索与命令', '搜尋與命令')} onClick={() => setPaletteOpen(true)}><Search /><kbd>{/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'}</kbd></Button>
-        <Button variant="ghost" size="sm" className="shell-builds-button" aria-current={route === 'build' ? 'page' : undefined} onClick={() => navigate('build')}><Library /><span className="shell-quiet-label">{w('BDs', 'BD 库', 'BD 庫')}</span></Button>
+        <Button variant="ghost" size="sm" className="shell-builds-button" aria-current={route === 'build' ? 'page' : undefined} onClick={() => navigate('build')}><Library /><span className="shell-quiet-label">{w('Build library', 'BD 库', 'BD 庫')}</span></Button>
         <span className={`shell-save-state${session.storageFailed ? ' is-error' : ''}`} role="status" data-busy={session.busy || undefined}>{session.busy ? <LoaderCircle className="animate-spin" /> : <Check />}<span className="shell-quiet-label">{session.storageFailed ? w('Save failed', '保存失败', '儲存失敗') : session.busy ? w('Calculating', '计算中', '計算中') : w('Saved locally', '已保存到本地', '已儲存至本地')}</span></span>
         <Button className="shell-history-button" variant="ghost" size="icon" aria-label={w('Undo', '撤销', '復原')} disabled={!session.canUndo || session.busy} onClick={session.undoEdit}><Undo2 /></Button>
         <Button className="shell-history-button" variant="ghost" size="icon" aria-label={w('Redo', '重做', '重做')} disabled={!session.canRedo || session.busy} onClick={session.redoEdit}><Redo2 /></Button>
@@ -217,7 +217,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
     </header>
     <div className="shell-body" data-rail={railHidden || undefined} data-inspector={docked && inspect ? '' : undefined}>
       <div className="shell-rail">{rail}</div>
-      <main id="shell-main" tabIndex={-1} className={`shell-main shell-page-${route}`} ref={main} key={stageKey}>
+      <main id="shell-main" tabIndex={-1} className={`shell-main shell-page-${route}`} data-display-mode={pageDisplayMode(preferences, route)} ref={main} key={stageKey}>
         {session.storageFailed && <div className="shell-alert" role="alert"><p>{w('Browser storage is full or unavailable. Download a backup before leaving.', '浏览器存储已满或不可用，请先下载完整备份。', '瀏覽器儲存空間已滿或無法使用，請先下載完整備份。')}</p><Button onClick={() => download(session.exportWorkspace(), 'pobr-backup.json')}><Download />{w('Download backup', '下载备份', '下載備份')}</Button></div>}
         {preferencesFailed && <p className="shell-alert" role="alert">{w('Display preferences could not be saved on this device.', '显示偏好暂时无法保存到当前设备。', '顯示偏好暫時無法儲存至目前裝置。')}</p>}
         {session.syncNotice && <div className="shell-notice" role="status" data-sync={session.syncNotice.kind}><p>{syncMessage(session.syncNotice.kind, w)}</p><Button variant="ghost" onClick={session.dismissSyncNotice}>{w('Dismiss', '知道了', '知道了')}</Button></div>}
@@ -225,7 +225,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
         {Object.keys(session.editorDrafts).length > 0 && <div className="shell-notice" role="status"><p>{t(lang, 'editor.draftHint')}</p><Button variant="outline" onClick={() => navigate('items')}>{t(lang, 'editor.reviewItems')}</Button><Button variant="outline" onClick={() => navigate('tree')}>{t(lang, 'editor.reviewJewels')}</Button></div>}
         {session.calcError && <div className="shell-alert" role="alert"><strong>{w('Calculation unavailable', '当前计算不可用', '目前計算無法使用')}</strong><p>{session.calcError}</p></div>}
         {session.operationError && <div className="shell-alert" role="alert">{buildImportErrorMessage(session.operationError, lang)}</div>}
-        <div className="shell-page-content">
+        <UiProvider lang={lang} displayMode={pageDisplayMode(preferences, route)}><div className="shell-page-content">
           {route === 'overview' && <Overview session={session} view={view} lang={lang} navigate={navigate} focusStat={inspectStat} />}
           {route === 'build' && <BuildPage session={session} lang={lang} onImported={() => { setReviewStage({ scope: null }); navigate('overview'); }} />}
           {route === 'items' && <ItemsPanel session={session} lang={lang} onUpgrade={slot => { setUpgradeFocus({ slot, nonce: Date.now() }); navigate('trade'); }} />}
@@ -236,7 +236,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
             {retained('tree') && <div hidden={route !== 'tree'}><PanelActivity active={route === 'tree'}><Suspense fallback={panelLoading}><TreePanel session={session} lang={lang} active={route === 'tree'} focusPlanner={stageChanged ? undefined : treeFocus} onJewelSearch={socket => { setUpgradeFocus({ slot: `Jewel@${socket}`, nonce: Date.now(), jewelType: 'radius' }); navigate('trade'); }} /></Suspense></PanelActivity></div>}
             {retained('skills') && <div hidden={route !== 'skills'}><PanelActivity active={route === 'skills'}><SkillsPanel session={session} lang={lang} active={route === 'skills'} focusOptimizer={stageChanged ? undefined : skillFocus} /></PanelActivity></div>}
             {retained('trade') && <div hidden={route !== 'trade'}><PanelActivity active={route === 'trade'}><Suspense fallback={panelLoading}><TradePanel session={session} lang={lang} active={route === 'trade'} focus={stageChanged ? undefined : upgradeFocus} onSkills={group => { setSkillFocus({ group, nonce: Date.now() }); navigate('skills'); }} onTree={() => { setTreeFocus({ nonce: Date.now() }); navigate('tree'); }} /></Suspense></PanelActivity></div>}
-        </div>
+        </div></UiProvider>
       </main>
       <ChangeBar lang={lang} />
       {docked && inspector && <aside className="shell-inspector" aria-label={w('Why this number', '这个数从哪来', '這個數從哪來')}>{inspector}</aside>}
@@ -248,7 +248,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
     <GlobalPaste session={session} lang={lang} onImported={() => { setReviewStage({ scope: null }); navigate('overview'); }} />
     <Sheet open={menuOpen} onOpenChange={setMenuOpen}><SheetContent side="left" className="shell-mobile-navigation"><SheetHeader className="sr-only"><SheetTitle>{t(lang, 'a11y.mainNavigation')}</SheetTitle><SheetDescription>{w('Choose a workspace page', '选择工作台页面', '選擇工作台頁面')}</SheetDescription></SheetHeader>
       {brand}{tabs(true)}
-      <div className="shell-nav-footer"><Button variant="ghost" onClick={() => { setMenuOpen(false); setSettingsOpen(true); }}><Settings2 />{w('Appearance & language', '外观与语言', '外觀與語言')}</Button></div>
+      <div className="shell-nav-footer"><Button variant="ghost" onClick={() => { setMenuOpen(false); setSettingsOpen(true); }}><Settings2 />{w('Display settings', '显示设置', '顯示設定')}</Button></div>
     </SheetContent></Sheet>
     <Sheet open={statsOpen} onOpenChange={setStatsOpen}><SheetContent className="shell-stat-sheet"><SheetHeader><SheetTitle>{w('Character stats', '角色属性', '角色屬性')}</SheetTitle><SheetDescription>{w('Select a value to inspect its calculation.', '点击数值查看计算明细。', '點擊數值查看計算明細。')}</SheetDescription></SheetHeader>{rail}</SheetContent></Sheet>
     <Settings open={settingsOpen} onOpenChange={setSettingsOpen} preferences={preferences} onChange={onPreferences} version={`v${__POBR_APP_VERSION__} · ${session.dataVersion}`} />
