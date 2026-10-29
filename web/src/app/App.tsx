@@ -154,6 +154,8 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const dialogOpen = paletteOpen || helpOpen || settingsOpen || menuOpen || statsOpen || (!docked && inspect !== null);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      // A page that used the key for itself (the tree's 1/2/3 on an attribute node) has marked it handled.
+      if (event.defaultPrevented) return;
       const action = shortcutAction(event, isTyping(event.target));
       if (!action) return;
       if (action.type === 'palette') { event.preventDefault(); setPaletteOpen(open => !open); return; }

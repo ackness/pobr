@@ -790,8 +790,9 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
         e.preventDefault();
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // Capturing, so that the key is handled (and marked so) before the shell reads 1/2/3 as page numbers.
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   });
 
 

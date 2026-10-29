@@ -609,6 +609,18 @@ test('remote Attribute hover shortcuts allocate a connected route with an explic
   expect(after.state.attributeChoices).toEqual({ [String(remote.skill)]: 'str' });
 });
 
+test('1/2/3 choose the attribute of a hovered Attribute node instead of switching pages', async ({ page }) => {
+  await seeded(page, { allocatedNodes: [], attributeChoices: {}, jewels: [] });
+  const remote = nodes.find(node => node.skill === 722)!;
+  await page.locator(`circle[data-skill-id="${remote.skill}"]`).dispatchEvent('pointerover',
+    { clientX: 600, clientY: 400 });
+  await page.locator('body').click({ position: { x: 2, y: 2 } });
+  await page.keyboard.press('2');
+  await expect.poll(async () => (await saved(page)).attributeChoices[String(remote.skill)]).toBe('dex');
+  await expect(page).toHaveURL(/\/tree$/);
+  await expect(page.locator('.tree-canvas')).toBeVisible();
+});
+
 test('disconnected imported islands remain preserved and cannot receive a new allocation', async ({ page }) => {
   await seeded(page, { allocatedNodes: [3419], attributeChoices: {}, jewels: [] });
   const original = await savedBytes(page);
