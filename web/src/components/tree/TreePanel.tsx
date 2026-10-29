@@ -2,7 +2,7 @@ import { localizedName } from '../../lib/chinese';
 import { useAppDialogs } from '../shared/AppDialogs';
 import { useSessionAction } from '../shared/useSessionAction';
 import { AppTooltip, AppButton, AppInput, AppTextarea, AppSelectControl } from '../shared/controls';
-import { TreeConversionControls } from './TreeConversionControls';
+import { TreeConversionControls, useTreeConversion } from './TreeConversionControls';
 import { formatApiError } from '../../api/error';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { getBackend } from '../../api/backend';
@@ -58,6 +58,7 @@ const JEWEL_TEMPLATE = 'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
 /** 天赋树查看器：SVG 渲染 + 已加点高亮 + 缩放平移 / hover 词条 + 点选加点重算。 */
 export function TreePanel(props: Props) {
   const { session, lang, active } = props;
+  const conversion = useTreeConversion(session, lang, active);
   const currentTree = session.dataVersion && /^\d+\.\d+/.test(session.dataVersion)
     ? `0_${session.dataVersion.split('.')[1]}` : null;
   if (session.treeVersion && session.treeVersion !== 'Default' && currentTree && session.treeVersion !== currentTree) {
@@ -67,11 +68,11 @@ export function TreePanel(props: Props) {
       : lang === 'zh-TW'
         ? `此角色使用 ${session.treeVersion} 天賦樹。計算與匯出會保留該版本，歷史天賦樹暫不支援互動編輯和路線規劃。`
         : `此角色使用 ${session.treeVersion} 天赋树。计算与导出会保留该版本，历史天赋树暂不支持交互编辑和路线规划。`;
-    return <section className="ui-page tree-historical"><TreeConversionControls session={session} lang={lang} /><p role="status">{text}</p></section>;
+    return <section className="ui-page tree-historical"><TreeConversionControls session={session} conversion={conversion} /><p role="status">{text}</p></section>;
   }
   // The conversion controls sit in the canvas toolbar, not above the page.
   return <EditableTreePanel key={JSON.stringify([session.dataVersion, session.treeVersion])} {...props}
-    conversion={active ? <TreeConversionControls session={session} lang={lang} /> : undefined} />;
+    conversion={active ? <TreeConversionControls session={session} conversion={conversion} /> : undefined} />;
 }
 
 /** Retain planner inputs and complete receipts, never the interactive canvas. */

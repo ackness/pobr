@@ -90,28 +90,22 @@ test('synthetic historical conversion previews, confirms, undoes and exports eac
   await nav(page, 'Tree').click();
   await convert.click();
   await expect(confirm).toBeEnabled();
-  // Switching the active weapon set changes the request while its preview is open. The Tree page
-  // rebuilds its canvas (and the conversion controls on it) for the other set, so the open preview is
-  // dismissed: there is nothing left to confirm, and the session is exactly what the switch made it.
+  // Switching the active weapon set changes the request while its preview is open. The canvas is rebuilt
+  // for the other set, but the preview stays: a stale confirmation cannot overwrite the changed session.
   await choose(page, page.getByRole('combobox', { name: 'Allocate to', exact: true }), 'Weapon set 2');
-  await idle(page);
-  await expect(preview).toHaveCount(0);
-  await expect(confirm).toHaveCount(0);
-  expect((await saved(page)).weaponSwap?.active).toBe(2);
-  expect((await saved(page)).allocatedNodes).toContain(56118);
-  expect((await saved(page)).treeVersion).toBe('0_5');
-  // Explicitly refund the disconnected leaf through the normal tree editor while a new preview is
-  // open: the edit makes that preview stale, and a stale confirmation cannot overwrite the session.
-  await convert.click();
-  await expect(confirm).toBeEnabled();
-  await page.locator('circle[data-skill-id="56118"]').dispatchEvent('click', { clientX: 600, clientY: 400 });
-  await expect.poll(async () => (await saved(page)).weaponSwap?.exclusive_nodes[1]).toEqual([]);
   await idle(page);
   await expect(confirm).toBeDisabled();
   await expect(preview).toContainText('The build changed. Create a new preview.');
+  expect((await saved(page)).weaponSwap?.active).toBe(2);
+  expect((await saved(page)).allocatedNodes).toContain(56118);
+  expect((await saved(page)).treeVersion).toBe('0_5');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(preview).toHaveCount(0);
-  // The disconnected leaf stayed allocated until that action; ordinary tree Undo restores it.
+  // Explicitly refund the disconnected leaf through the normal tree editor; it stays allocated
+  // until this action, and ordinary tree Undo restores it.
+  await page.locator('circle[data-skill-id="56118"]').dispatchEvent('click', { clientX: 600, clientY: 400 });
+  await expect.poll(async () => (await saved(page)).weaponSwap?.exclusive_nodes[1]).toEqual([]);
+  await idle(page);
   await undo.click();
   await idle(page);
   expect((await saved(page)).weaponSwap?.exclusive_nodes[1]).toEqual([56118]);

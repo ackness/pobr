@@ -1,12 +1,17 @@
 import { AppButton, AppInput } from '../shared/controls';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import { formatApiError } from '../../api/error';
 import type { BuildJson, TreeConversionResponse } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import type { Lang } from '../../lib/i18n';
 
-export function TreeConversionControls({ session, lang }: { session: BuildSession; lang: Lang }) {
+/**
+ * The conversion request and its preview. The state lives with the page, not with the canvas it is drawn
+ * on: the canvas is rebuilt when the weapon set changes, and an open preview must survive that so that
+ * it can say the build changed instead of vanishing. Leaving the page closes it.
+ */
+export function useTreeConversion(session: BuildSession, lang: Lang, active: boolean) {
   const en = lang === 'en-US';
   const traditional = lang === 'zh-TW';
   const label = (english: string, chinese: string, taiwan = chinese) => en ? english : traditional ? taiwan : chinese;
@@ -20,6 +25,7 @@ export function TreeConversionControls({ session, lang }: { session: BuildSessio
   const staleText = label('The build changed. Create a new preview.', '构筑已变更，请重新预览。', '構築已變更，請重新預覽。');
   const stale = preview && preview.version !== session.stateVersion;
   const cancel = () => { generation.current++; setPending(false); setPreview(null); setError(null); };
+  useEffect(() => { if (!active) { cancel(); setAll(false); } }, [active]);
   const createPreview = async () => {
     const epoch = ++generation.current;
     const version = session.stateVersion;
@@ -38,6 +44,12 @@ export function TreeConversionControls({ session, lang }: { session: BuildSessio
       if (epoch === generation.current) setPending(false);
     }
   };
+  return { label, all, setAll, pending, error, setError, preview, setPreview, stale, staleText, cancel, createPreview };
+}
+export type TreeConversion = ReturnType<typeof useTreeConversion>;
+
+export function TreeConversionControls({ session, conversion }: { session: BuildSession; conversion: TreeConversion }) {
+  const { label, all, setAll, pending, error, setError, preview, setPreview, stale, staleText, cancel, createPreview } = conversion;
   if (!session.character) return null;
   return <section className="tree-conversion" aria-label={label('Tree conversion', '天赋树转换', '天賦樹轉換')}>
     <div className="tree-conversion-actions">
