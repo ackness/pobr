@@ -1,10 +1,11 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import type { Lang } from '../../lib/i18n';
+import type { ItemDisplayStyle } from '../../lib/itemDisplay';
 
-const UiContext = createContext<{ lang: Lang }>({ lang: 'en-US' });
+const UiContext = createContext<{ lang: Lang; itemDisplay: ItemDisplayStyle }>({ lang: 'en-US', itemDisplay: 'grouped' });
 
-export function UiProvider({ lang, children }: { lang: Lang; children: ReactNode }) {
-  return <UiContext.Provider value={{ lang }}>{children}</UiContext.Provider>;
+export function UiProvider({ lang, itemDisplay = 'grouped', children }: { lang: Lang; itemDisplay?: ItemDisplayStyle; children: ReactNode }) {
+  return <UiContext.Provider value={{ lang, itemDisplay }}>{children}</UiContext.Provider>;
 }
 
 export function useUi() { return useContext(UiContext); }

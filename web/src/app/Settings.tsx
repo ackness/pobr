@@ -6,11 +6,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { AppSelectControl } from '../components/shared/controls';
 import { words } from './text';
 import type { Preferences } from './preferences';
+import { itemDisplayOptions } from '../lib/itemDisplay';
 
 export function Settings({ open, onOpenChange, preferences: p, onChange, version }: {
   open: boolean; onOpenChange: (open: boolean) => void; preferences: Preferences; onChange: (next: Preferences) => void; version: string;
 }) {
   const w = (en: string, cn: string, tw?: string) => words(p.lang, en, cn, tw);
+  const itemStyles = itemDisplayOptions(p.lang);
   return <Sheet open={open} onOpenChange={onOpenChange}><SheetContent className="shell-settings" aria-describedby="appearance-description">
     <SheetHeader><SheetTitle>{w('Make it yours', '显示偏好', '顯示偏好')}</SheetTitle>
       <SheetDescription id="appearance-description">{w('Saved on this device. Your build stays as it is.', '自动保存在当前设备，调整时保留编辑状态。', '自動儲存在目前裝置，調整時保留編輯狀態。')}</SheetDescription></SheetHeader>
@@ -32,6 +34,12 @@ export function Settings({ open, onOpenChange, preferences: p, onChange, version
       <div><Label htmlFor="shell-density">{w('Density', '信息密度', '資訊密度')}</Label><AppSelectControl id="shell-density" value={p.density} onChange={e => onChange({ ...p, density: e.target.value as Preferences['density'] })}>
         <option value="comfortable">{w('Comfortable', '舒适', '舒適')}</option><option value="compact">{w('Compact', '紧凑', '緊湊')}</option>
       </AppSelectControl></div>
+      <div><Label htmlFor="shell-item-display">{w('Equipment display', '装备展示', '裝備顯示')}</Label>
+        <AppSelectControl id="shell-item-display" value={p.itemDisplay} aria-describedby="shell-item-display-hint" onChange={e => onChange({ ...p, itemDisplay: e.target.value as Preferences['itemDisplay'] })}>
+          {itemStyles.map(style => <option key={style.value} value={style.value}>{style.label}</option>)}
+        </AppSelectControl>
+        <p id="shell-item-display-hint" className="shell-setting-hint">{itemStyles.find(style => style.value === p.itemDisplay)?.description}</p>
+      </div>
       <div className="shell-settings-about"><a href="https://github.com/ackness/pobr" target="_blank" rel="noopener noreferrer"><ExternalLink aria-hidden />{w('View source on GitHub (opens in a new tab)', '在 GitHub 查看源码（新标签页打开）', '在 GitHub 查看原始碼（另開分頁）')}</a><p>{w('Saved in this browser only.', '仅保存在当前浏览器。', '僅儲存在目前瀏覽器。')}</p><small>{version}</small></div>
       <div className="shell-font-preview"><Type aria-hidden /><p>{w('A clearer view of your next build.', '清晰掌握构筑的每一次变化。', '清晰掌握構築的每一次變化。')}</p><strong>1,284.50</strong><span> Life · DPS · 75%</span></div>
     </div>

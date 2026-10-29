@@ -1,5 +1,5 @@
 import { localizedName } from '../../lib/chinese';
-import { AppTooltip, AppButton, AppInput, AppTextarea } from '../shared/controls';
+import { AppButton, AppInput, AppTextarea } from '../shared/controls';
 import { UniqueCatalog } from './UniqueCatalog';
 import { uniqueT } from '../../lib/uniqueCatalogText';
 import { ItemCrafter } from './ItemCrafter';
@@ -8,9 +8,9 @@ import { WeaponSetControl } from '../shared/WeaponSetControl';
 import { SlotSymbol } from '../shared/SlotSymbol';
 import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { getBackend } from '../../api/backend';
-import type { ItemAugmentInfo, ItemLineJson, RuneCatalogEntry, SlotItemInput } from '../../api/types';
+import type { ItemAugmentInfo, RuneCatalogEntry, SlotItemInput } from '../../api/types';
 import type { BuildSession, LibraryItem } from '../../hooks/useBuildSession';
 import {
   cleanLine,
@@ -29,6 +29,7 @@ import { NoteEditor } from '../shared/NoteEditor';
 import { AppSelect, type AppSelectOption } from '../shared/AppSelect';
 import { ItemOptimizer } from './ItemOptimizer';
 import { PaperDoll } from './PaperDoll';
+import { ItemDisplay } from './ItemDisplay';
 import { usePreview } from '../shared/PreviewContext';
 import './items.css';
 
@@ -39,82 +40,6 @@ interface Props {
 }
 
 // 行提取/翻译工具已收口在 hooks/useLocalizedLines（树页珠宝选择器共用）。
-
-/** 词条系类别（与 explicit 之间画分隔线的左侧块）。 */
-const IMPLICIT_KINDS = ['implicit', 'enchant', 'rune', 'class_req'];
-
-/** 物品文本 → 结构化展示行（后端按桶分类；空/异常返回 null 走无区分渲染）。 */
-function useClassifiedLines(text: string): ItemLineJson[] | null {
-  const [lines, setLines] = useState<ItemLineJson[] | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    setLines(null);
-    getBackend()
-      .then((b) => b.classifyItemLines(text))
-      .then((out) => {
-        if (!cancelled) setLines(out.length > 0 ? out : null);
-      })
-      .catch(() => {
-        if (!cancelled) setLines(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [text]);
-  return lines;
-}
-
-function ItemText({ text, lang }: { text: string; lang: Lang }) {
-  const classified = useClassifiedLines(text);
-  // 回落：后端未分类（mock / 旧缓存 / 异常）时，沿用原无区分拆行（首行=名，其余=普通行）。
-  const fallback = useMemo<ItemLineJson[]>(() => {
-    const [name, ...rest] = itemLines(text);
-    return [
-      ...(name ? [{ text: name, kind: 'name' as const }] : []),
-      ...rest.map((t) => ({ text: t, kind: 'struct' as const })),
-    ];
-  }, [text]);
-  const all = classified ?? fallback;
-  const nameIdx = all.findIndex((l) => l.kind === 'name');
-  // 名称行（唯一物品名/基底名）一并送翻译——命中名词直译表才能出中文名。
-  const allTranslated = useLocalizedLines(
-    all.map((l) => l.text),
-    lang,
-  );
-  const name = nameIdx >= 0 ? allTranslated[nameIdx] : '';
-  // 唯一 ID 行是纯技术标识（对比/往返用），展示视图默认隐藏；编辑态原文仍保留。
-  const body = all
-    .map((line, i) => ({ ...line, text: allTranslated[i] }))
-    .filter((_, i) => i !== nameIdx && !/^Unique ID:/i.test(all[i].text));
-  const translated = body.map((l) => l.text);
-  // implicit 系词条块与 explicit 块之间插一条分隔线（PoB2/游戏内惯例）。
-  const firstExplicit = body.findIndex((l) => l.kind === 'explicit');
-  const dividerAt =
-    firstExplicit > 0 && body.some((l) => IMPLICIT_KINDS.includes(l.kind)) ? firstExplicit : -1;
-  return (
-    <>
-      <h4 className="item-name">{name}</h4>
-      <div className="item-lines">
-        {body.map((line, i) => (
-          <Fragment key={i}>
-            {i === dividerAt && <div className="item-line-sep" role="separator" />}
-            <div className={`item-line item-line--${line.kind}`}>
-              {translated[i]}
-              {line.tier != null && (
-                <AppTooltip content={lang === 'en-US'
-                  ? `${line.affix === 'prefix' ? 'Prefix' : 'Suffix'} · ${line.tier_total} tiers for this base`
-                  : lang === 'zh-TW' ? `${line.affix === 'prefix' ? '前綴' : '後綴'} · 此基底共 ${line.tier_total} 階`
-                    : `${line.affix === 'prefix' ? '前缀' : '后缀'} · 该基底共 ${line.tier_total} 档`}>
-                  <span tabIndex={0} className={`item-tier item-tier--${line.tier === 1 ? 'top' : 'rest'}`}>T{line.tier}</span>
-                </AppTooltip>
-              )}
-            </div>
-          </Fragment>
-        ))}
-      </div>
-    </>
-  );
-}
 
 /** 紧凑物品行（物品库/珠宝列表共用）：一行名称+槽位+操作，点击行头展开完整词条。 */
 function ItemRow({
@@ -153,7 +78,7 @@ function ItemRow({
       </header>
       {open && (
         <div className="library-row-body">
-          <ItemText text={text} lang={lang} />
+          <ItemDisplay text={text} lang={lang} />
           {children}
         </div>
       )}
@@ -570,7 +495,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
               )}
               {limitedAugments?.limitWarning && <p className="items-hint">{upgradeT(lang, 'augmentLimitUnknown')}</p>}
               {visibleRuneError && <p className="calc-error" role="alert">{visibleRuneError}</p>}
-              <ItemText text={selectedText} lang={lang} />
+              <ItemDisplay text={selectedText} lang={lang} />
               <NoteEditor
                 value={session.annotations[noteKey(selected)] ?? ''}
                 onCommit={(text) => session.setAnnotation(noteKey(selected), text)}
