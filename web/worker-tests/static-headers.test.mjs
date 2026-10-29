@@ -51,7 +51,7 @@ test('static files never reach the worker, which is why their headers live in _h
 
 // A path that names no file is answered with the nearest `404.html` up the path, with a 404 status that
 // the host never lets be kept; only when there is none up to the root is it answered with the app shell
-// and a 200, which is what client routes like /v2/build rely on. Without a page of its own, a missing
+// and a 200, which is what the client routes like /build rely on. Without a page of its own, a missing
 // file under a path `_headers` keeps for good would be answered with the shell and kept for good.
 const notFoundPage = (path, pages) => {
   for (let dir = path; dir;) {
@@ -75,11 +75,20 @@ test('a missing file under a path that is kept for good gets a 404 page, not the
   }
 });
 
+// The pages of the app, from the list the app itself routes by (the overview is the site root).
+const routes = [...readFileSync(new URL('../src/app/routes.ts', import.meta.url), 'utf8').match(/export const NAV_GROUPS = \[[\s\S]*?\] as const;/)[0].matchAll(/'([a-z]+)'/g)]
+  .map((match) => match[1]).concat('build');
+
 test('client routes still fall back to the app shell, so no 404 page may sit above them', () => {
-  for (const path of ['/', '/v2/build', '/v2/tree', '/v2/calcs', '/some/unknown/route', '/data/manifest.json']) {
+  assert.ok(routes.includes('tree') && routes.includes('overview'), routes.join());
+  for (const path of ['/', ...routes.map((route) => `/${route}`), '/some/unknown/route', '/data/manifest.json']) {
     assert.equal(notFoundPage(path, pages), null, path);
   }
   // A 404.html at the top, or one in a directory a route lives in, would turn every such route into a 404.
   assert.equal(existsSync(new URL('../public/404.html', import.meta.url)), false);
-  assert.equal(existsSync(new URL('../public/v2/404.html', import.meta.url)), false);
+  // Nor may a file or a directory take a route's name: the host would serve it instead of the shell.
+  for (const route of routes) {
+    assert.equal(existsSync(new URL(`../public/${route}`, import.meta.url)), false, route);
+    assert.equal(existsSync(new URL(`../public/${route}.html`, import.meta.url)), false, route);
+  }
 });
