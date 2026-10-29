@@ -7,7 +7,7 @@ const baseURL = `http://localhost:${port}`;
 
 export default defineConfig({
   testDir: 'e2e',
-  testIgnore: ['calcs-config.spec.ts'], // Isolated fixture has its own server/config.
+  testIgnore: ['calcs-config.spec.ts', 'item-display.spec.ts'], // Isolated fixtures have their own server/config.
   timeout: 120_000,
   use: {
     baseURL,

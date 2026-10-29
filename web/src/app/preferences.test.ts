@@ -7,6 +7,14 @@ it('recovers readable defaults and bounds persisted font sizes', () => {
   expect(parsePreferences('{"fontSize":1}').fontSize).toBe(14);
   expect(parsePreferences('{"theme":"light","lang":"zh-TW","density":"compact"}')).toMatchObject({ theme: 'light', lang: 'zh-TW', density: 'compact' });
 });
+it('keeps each equipment layout and migrates old or invalid preferences to grouped details', () => {
+  for (const itemDisplay of ['grouped', 'compact', 'game']) {
+    expect(parsePreferences(JSON.stringify({ itemDisplay })).itemDisplay).toBe(itemDisplay);
+  }
+  expect(parsePreferences('{"theme":"light"}')).toMatchObject({ theme: 'light', itemDisplay: 'grouped' });
+  expect(parsePreferences('{"itemDisplay":"unknown"}').itemDisplay).toBe('grouped');
+  expect(parsePreferences(null).itemDisplay).toBe('grouped');
+});
 it('maps pages to paths at the site root and falls back to the overview', () => {
   expect(readRoute('/calcs')).toBe('calcs'); expect(readRoute('/config/')).toBe('config'); expect(readRoute('/')).toBe('overview');
   expect(readRoute('/unknown')).toBe('overview');

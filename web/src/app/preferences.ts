@@ -1,14 +1,16 @@
 import { LANGS, type Lang } from '../lib/i18n';
 import { uiStorageKey } from '../lib/sessionStorage';
+import { ITEM_DISPLAY_STYLES, type ItemDisplayStyle } from '../lib/itemDisplay';
 export interface Preferences {
   lang: Lang;
   theme: 'dark' | 'light' | 'system';
   font: 'system' | 'sans' | 'serif';
   fontSize: number;
   density: 'comfortable' | 'compact';
+  itemDisplay: ItemDisplayStyle;
 }
 export const PREFERENCES_KEY = uiStorageKey('pobr-preferences');
-export const DEFAULT_PREFERENCES: Preferences = { lang: 'zh-CN', theme: 'dark', font: 'system', fontSize: 16, density: 'comfortable' };
+export const DEFAULT_PREFERENCES: Preferences = { lang: 'zh-CN', theme: 'dark', font: 'system', fontSize: 16, density: 'comfortable', itemDisplay: 'grouped' };
 export function parsePreferences(raw: string | null): Preferences {
   let value: Partial<Preferences> = {};
   try { value = JSON.parse(raw ?? '{}') ?? {}; } catch { /* Use readable defaults. */ }
@@ -18,6 +20,7 @@ export function parsePreferences(raw: string | null): Preferences {
     font: ['system', 'sans', 'serif'].includes(value.font ?? '') ? value.font! : 'system',
     fontSize: typeof value.fontSize === 'number' && Number.isFinite(value.fontSize) ? Math.min(32, Math.max(14, value.fontSize)) : 16,
     density: value.density === 'compact' ? 'compact' : 'comfortable',
+    itemDisplay: ITEM_DISPLAY_STYLES.includes(value.itemDisplay!) ? value.itemDisplay! : DEFAULT_PREFERENCES.itemDisplay,
   };
 }
 /** The language the first interface saved; a device that never opened the current one starts from it. */

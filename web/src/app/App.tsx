@@ -91,7 +91,7 @@ export default function App() {
     try { return { result: initializeStorage(localStorage), error: '' }; }
     catch (error) { return { result: '', error: error instanceof Error ? error.message : String(error) }; }
   });
-  return <UiProvider lang={preferences.lang}><TooltipProvider><UpgradeGoalProvider>
+  return <UiProvider lang={preferences.lang} itemDisplay={preferences.itemDisplay}><TooltipProvider><UpgradeGoalProvider>
     {migration.error ? <Recovery lang={preferences.lang} error={migration.error} /> : <Workspace preferences={preferences} onPreferences={update} preferencesFailed={saveError} />}
   </UpgradeGoalProvider></TooltipProvider></UiProvider>;
 }
