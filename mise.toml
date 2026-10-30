@@ -78,6 +78,14 @@ run = "python3 pipeline/data_snapshot.py fetch-tree-source"
 description = "从固定官方输入独立生成树域候选（--out 必填；不会发布或更新 CURRENT）"
 run = "python3 pipeline/data_snapshot.py tree-candidate"
 
+[tasks."data:client"]
+description = "Acquire fixed official-client resources or import archived ranges (explicit source and mode)"
+run = "python3 pipeline/client_sources.py"
+
+[tasks."data:client:test"]
+description = "Test bounded client resource acquisition with fake HTTP and offline caches"
+run = "python3 pipeline/test-client-sources.py"
+
 [tasks."data:regen"]
 depends = ["setup:oracle"]
 description = "候选目录完整再生成、审计、验证后发布（需 vendor 检出 + luajit）"
