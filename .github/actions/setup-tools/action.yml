@@ -58,10 +58,13 @@ runs:
       if: inputs.wasm == 'true'
       with:
         tool: wasm-pack@${{ steps.versions.outputs.wasm_pack }}
-    - uses: taiki-e/install-action@v2.88.0
+    - name: Pinned actionlint
       if: inputs.scripts == 'true'
-      with:
-        tool: actionlint@${{ steps.versions.outputs.actionlint }}
+      shell: bash
+      working-directory: ${{ github.action_path }}/../../..
+      env:
+        ACTIONLINT_VERSION: ${{ steps.versions.outputs.actionlint }}
+      run: python3 devs/scripts/install-actionlint.py "$ACTIONLINT_VERSION"
     - name: Pinned LuaJIT runtime
       if: inputs.oracle == 'true'
       shell: bash

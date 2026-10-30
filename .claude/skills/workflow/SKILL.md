@@ -23,10 +23,17 @@ The common setup is lightweight. Oracle, browser and artwork tasks automatically
 provision their extra tools only when used. CI may use current stable native
 Actions reading the same version source.
 
-- Choose one focused check from [recipes.md](../../../docs/recipes.md) or the
-  maintainer validation table. No per-change Cargo workspace/parity/accuracy run.
-  Rule edits require regeneration; batch integration owns `mise run gate` once.
-  Workflow changes use `mise run check:workflows` without compiling the product.
+- Choose verification by risk and cost. Prose needs diff/link review; algorithms,
+  large changes and uncertain contracts may justify focused compilation, tests or
+  independent review before handoff. Workers can commit without a local product
+  build, while reporting unrun checks and providing needed regression cases.
+  The coordinator integrates first, regenerates rule artifacts once when needed,
+  and prefers remote batch validation. `verify`, `gate` and local full builds remain
+  optional tools. Workflow changes use `mise run check:workflows` without Rust.
+- Account for storage before new build caches or a large batch: use `mise run cache`,
+  check free disk space and reuse warm artifacts. Follow
+  [storage decisions](../../../docs/development-workflow.md#storage-decisions).
+  A dependency-store hit still requires frozen installation and actual checks.
 - Describe the problem, resulting behavior, actual checks and remaining limits.
   The PR template is a writing aid, not a mandatory schema. A small obvious fix or
   prose edit does not need a new reviewer, audit record or screenshot.
@@ -44,13 +51,15 @@ Actions reading the same version source.
 ## CI and release boundaries
 
 [pr.yml](../../../.github/workflows/pr.yml) owns automatic change routing and the
-stable code gate; [ci.yml](../../../.github/workflows/ci.yml) owns reusable/manual/
+stable quick/integration aggregate; [ci.yml](../../../.github/workflows/ci.yml) owns reusable/manual/
 nightly full validation; [release.yml](../../../.github/workflows/release.yml) owns
 tag validation, artifact publication and production deployment. Keep these roles
 separate while sharing policy scripts.
 
-`mise run ci <pushed-ref> [--e2e]` requests full validation; verify its exact SHA and
-result. E2E remains explicit opt-in. Tag publication is never implied by validation.
+PRs run relevant quick checks. Master code pushes, nightly and release tags run
+full validation. A risky batch may use `mise run ci <pushed-ref> [--e2e]` before
+merge; verify its exact SHA, result and relevant base. `PR gate` on a PR proves
+quick checks, not full integration. E2E stays opt-in; validation does not publish.
 Use the release runbook for application/independent library/data versions, immutable
 tags, SemVer/lock checks, same-run artifacts and stable-v0 deployment ordering.
 

@@ -19,12 +19,14 @@ Choose only the relevant source:
 - [Data pipeline](../../../pipeline/README.md): generation and version updates.
 - [Project workflow](../workflow/SKILL.md): proportionate PR/review handoff.
 
-Typical entry points:
+Available entry points; choose what resolves the current uncertainty:
 
 ```bash
 mise run setup
 mise run targets
-mise run verify build skills <filter>
+mise run cache
+mise exec -- cargo check --locked -p pobr-core --lib  # Optional compiler check
+mise run verify build skills <filter>                # Optional runtime tests/lints
 mise run regen
 mise run web test <file>
 mise run triage
@@ -34,6 +36,13 @@ mise run gap "<modifier text>"
 
 Setup is lightweight; oracle, browser and artwork tasks prepare their own extra
 dependencies. A test already compiles its target; do not prepend a product build.
-Use the focused validation budget and reuse passing checks for unchanged inputs.
+Workers may use review/static evidence or run local tests/builds when useful; report
+which were actually performed. Algorithms and large changes can justify earlier
+focused tests. Integrate once before batch validation, prefer remote CI, and reuse
+passing checks for unchanged inputs. `cargo check` still compiles dependencies;
+`test --no-run` still creates binaries. Avoid automatic check/build/test chains.
+Before creating build caches or running a large batch, inspect `mise run cache`
+and free disk space; follow the workflow guide's storage decisions. Reuse warm
+artifacts and scope any cleanup to confirmed stale data with no active consumer.
 Documentation changes need diff/link review. Record observed results and limits;
 requesting CI or finding a cached binary does not prove a calculation succeeded.

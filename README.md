@@ -119,7 +119,7 @@ and run the project-pinned tools. From the repository root:
 ```bash
 mise bootstrap --only packages,tools,task
 mise exec -- cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
-mise run verify build codec           # Focused check for Build Code changes
+mise run verify build codec           # Optional focused test/lint check
 mise run targets                      # List suites without compiling
 ```
 

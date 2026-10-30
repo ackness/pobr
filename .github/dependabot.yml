@@ -1,5 +1,6 @@
 # Grouped updates: Actions daily, package/toolchains monthly. A Cargo, toolchain
-# or Actions change needs the full gate before merging (`mise run ci <ref>`).
+# or Actions PR gets all quick checks; risky batches can request pre-merge full CI.
+# Master code changes and release tags always run full integration.
 version: 2
 updates:
   - package-ecosystem: github-actions

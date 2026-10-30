@@ -160,7 +160,8 @@ VITE_POBR_BACKEND=mock mise run web dev
 ## 开发与验证
 
 遵循[按改动选择验证](../docs/maintainer-guide.md#验证分层)的规则。
-运行相关 Vitest 文件和 typecheck；交互改动使用对应 Playwright spec。
+按风险和成本选择相关 Vitest、typecheck 或 Playwright；文档只审阅 diff 和链接。
+未运行项交给协调者统一验收，不要求每个 worker 都进行本地构建。
 WASM 缺失或其 Rust 源码、依赖、features、工具链变化时重建；数据缺失或变化时重新同步。
 E2E 使用当前生产 `dist`，`build` 已包含 typecheck。
 `build-wasm` 复用已验证且未变化的产物，`--force` 强制重建但不清 Cargo 缓存。
