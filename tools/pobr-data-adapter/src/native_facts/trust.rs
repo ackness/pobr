@@ -257,11 +257,19 @@ fn verify_manifest(m: &Value, profile: Profile) -> Result<(), String> {
         expected_producer["RePoE/native_skills.py"] =
             "e65aff1265c3c1becd7890acb3c0182232651dd351dab5d982b0d119f74d453d".into();
     }
-    if profile == Profile::GemsConstraintsA1 {
+    if matches!(profile, Profile::GemsConstraintsA1 | Profile::ItemsActorsBc) {
         expected_producer["RePoE/native_facts.py"] =
             "c484ce8b644868ff310ba4866a56062dd7aca634beb0406d6028d1ceea42bfc0".into();
         expected_producer["RePoE/native_gems.py"] =
             "97dbc0952b685df5de9b9d56c17c109d95f670a8a7c332821f9206433c1a363c".into();
+    }
+    if profile == Profile::ItemsActorsBc {
+        expected_producer["RePoE/native_facts.py"] =
+            "7bbe4a84b66d88dfd2c3081550ef9891fd7beb9e6d586939749e684c7607af53".into();
+        expected_producer["RePoE/native_items.py"] =
+            "9350c81674a332670eb22e24aca5cb114e7f09f74dea26cf556b707f4166f1ee".into();
+        expected_producer["RePoE/native_actor_facts.py"] =
+            "a0845e3866c5dd0fb21a8edb42f68fc9eec3affef19b426631c0066bd5e51f58".into();
     }
     require(
         m["producer"] == expected_producer,
@@ -351,8 +359,15 @@ pub(super) fn payload_paths(profile: Profile) -> Vec<String> {
         } else {
             vec![]
         })
-        .chain(if profile == Profile::GemsConstraintsA1 {
-            vec!["gems.json".into(), "constraints.json".into()]
+        .chain(
+            if matches!(profile, Profile::GemsConstraintsA1 | Profile::ItemsActorsBc) {
+                vec!["gems.json".into(), "constraints.json".into()]
+            } else {
+                vec![]
+            },
+        )
+        .chain(if profile == Profile::ItemsActorsBc {
+            vec!["items.json".into(), "actors.json".into()]
         } else {
             vec![]
         })
@@ -367,8 +382,15 @@ pub(super) fn tables(profile: Profile) -> Vec<&'static str> {
         } else {
             vec![]
         })
-        .chain(if profile == Profile::GemsConstraintsA1 {
-            super::gems::TABLES.to_vec()
+        .chain(
+            if matches!(profile, Profile::GemsConstraintsA1 | Profile::ItemsActorsBc) {
+                super::gems::TABLES.to_vec()
+            } else {
+                vec![]
+            },
+        )
+        .chain(if profile == Profile::ItemsActorsBc {
+            super::items_actors::TABLES.to_vec()
         } else {
             vec![]
         })

@@ -11,7 +11,7 @@ use super::model::{
     SkillsInput, StatSet, StatSetLink, Summary,
 };
 use super::trust::{self, VerifiedInput, require};
-use super::{Profile, core_skills, gems};
+use super::{Profile, core_skills, gems, items_actors};
 
 pub(super) fn normalize(input: &VerifiedInput) -> Result<Candidate, String> {
     let tables = Tables::new(input)?;
@@ -45,6 +45,9 @@ pub(super) fn normalize(input: &VerifiedInput) -> Result<Candidate, String> {
         gems: None,
         constraints: None,
         gem_summary: None,
+        items: None,
+        actors: None,
+        items_actors_summary: None,
     };
     require(
         passives.definitions.len() == tables.len("PassiveSkills"),
@@ -269,7 +272,10 @@ pub(super) fn normalize(input: &VerifiedInput) -> Result<Candidate, String> {
         candidate.core_skills = Some(core);
         candidate.core_summary = Some(summary);
     }
-    if input.profile == Profile::GemsConstraintsA1 {
+    if matches!(
+        input.profile,
+        Profile::GemsConstraintsA1 | Profile::ItemsActorsBc
+    ) {
         let (projection, summary) = gems::normalize(input, &tables)?;
         let counts = serde_json::to_value(&summary).map_err(|e| e.to_string())?;
         for (key, value) in counts.as_object().ok_or("invalid gem summary")? {
@@ -286,6 +292,24 @@ pub(super) fn normalize(input: &VerifiedInput) -> Result<Candidate, String> {
         candidate.gems = Some(projection.gems);
         candidate.constraints = Some(projection.constraints);
         candidate.gem_summary = Some(summary);
+    }
+    if input.profile == Profile::ItemsActorsBc {
+        let (projection, summary) = items_actors::normalize(input, &tables)?;
+        let counts = serde_json::to_value(&summary).map_err(|e| e.to_string())?;
+        for (key, value) in counts.as_object().ok_or("invalid items/actors summary")? {
+            require(
+                source_summary[key] == *value,
+                "items/actors counts differ from source summary",
+            )?;
+            source_summary
+                .as_object_mut()
+                .ok_or("invalid source summary")?
+                .remove(key);
+        }
+        candidate.format = "pobr-native-domain-candidate/v4".into();
+        candidate.items = Some(projection.items);
+        candidate.actors = Some(projection.actors);
+        candidate.items_actors_summary = Some(summary);
     }
     let expected: Summary = decode(&source_summary)?;
     require(
@@ -520,12 +544,23 @@ impl<'src> Tables<'src> {
                     "missing core-skill physical field",
                 )?;
             }
-            if input.profile == Profile::GemsConstraintsA1 {
+            if matches!(
+                input.profile,
+                Profile::GemsConstraintsA1 | Profile::ItemsActorsBc
+            ) {
                 require(
                     gems::required_fields(table)
                         .iter()
                         .all(|required| fields.iter().any(|field| field == required)),
                     "missing gem physical field",
+                )?;
+            }
+            if input.profile == Profile::ItemsActorsBc {
+                require(
+                    items_actors::required_fields(table)
+                        .iter()
+                        .all(|required| fields.contains(required)),
+                    "missing items/actors physical field",
                 )?;
             }
             let unique: BTreeSet<_> = fields.iter().collect();
@@ -551,7 +586,11 @@ impl<'src> Tables<'src> {
                     && validation["schema_row_bytes"]
                         .as_u64()
                         .is_some_and(|v| v > 0)
-                    && validation["schema_row_bytes"] == validation["actual_row_bytes"],
+                    && if input.profile == Profile::ItemsActorsBc && source_rows.is_empty() {
+                        validation["actual_row_bytes"] == 0
+                    } else {
+                        validation["schema_row_bytes"] == validation["actual_row_bytes"]
+                    },
                 "physical table validation failed",
             )?;
             let mut values = Vec::new();
@@ -561,11 +600,20 @@ impl<'src> Tables<'src> {
                 require(row["_row"] == index, "physical row order mismatch")?;
                 trust::exact_keys(&row["values"], &fields)?;
                 if fields.iter().any(|f| f == "Id") {
-                    let id = text(&row["values"]["Id"])?;
-                    require(
-                        !id.is_empty() && ids.insert(id),
-                        "empty or duplicate stable game id",
-                    )?;
+                    if input.profile == Profile::ItemsActorsBc
+                        && table == "SummonedSpecificMonsters"
+                    {
+                        require(
+                            row["values"]["Id"].is_i64() || row["values"]["Id"].is_u64(),
+                            "invalid numeric summoned-monster Id",
+                        )?;
+                    } else {
+                        let id = text(&row["values"]["Id"])?;
+                        require(
+                            !id.is_empty() && ids.insert(id),
+                            "empty or duplicate stable game id",
+                        )?;
+                    }
                 }
                 values.push(&row["values"]);
             }

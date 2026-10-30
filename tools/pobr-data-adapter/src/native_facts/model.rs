@@ -7,6 +7,7 @@ use serde_json::Value;
 
 use super::core_skills::{CoreSkills, CoreSummary, StableRef};
 use super::gems::{Constraints, FactRef, GemSummary, Gems};
+use super::items_actors::{Actors, Items, Summary as ItemsActorsSummary};
 
 /// References are resolved only against the input manifest pinned in the candidate receipt.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -51,6 +52,12 @@ pub(super) struct Candidate {
     pub constraints: Option<Constraints<FactRef>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gem_summary: Option<GemSummary>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub items: Option<Items<FactRef>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub actors: Option<Actors<FactRef>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub items_actors_summary: Option<ItemsActorsSummary>,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]

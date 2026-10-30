@@ -3,6 +3,7 @@
 mod convert;
 mod core_skills;
 mod gems;
+mod items_actors;
 mod model;
 mod output;
 mod trust;
@@ -15,6 +16,9 @@ mod tests_v2;
 
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 mod tests_v3;
+
+#[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
+mod tests_v4;
 
 #[cfg(all(test, not(any(target_os = "linux", target_os = "macos"))))]
 #[test]
@@ -52,6 +56,7 @@ enum Profile {
     BaseV1,
     CoreSkillsA0,
     GemsConstraintsA1,
+    ItemsActorsBc,
 }
 
 impl Profile {
@@ -60,6 +65,7 @@ impl Profile {
             Self::BaseV1 => "repoe-native-facts/v1",
             Self::CoreSkillsA0 => "repoe-native-facts/v2",
             Self::GemsConstraintsA1 => "repoe-native-facts/v3",
+            Self::ItemsActorsBc => "repoe-native-facts/v4",
         }
     }
 
@@ -68,6 +74,7 @@ impl Profile {
             Self::BaseV1 => trust::PRODUCER_REVISION,
             Self::CoreSkillsA0 => "aa2fb163aa422317db5c32031607eb199214e7b7",
             Self::GemsConstraintsA1 => "c450fb8e3ad4e5792386c7c5bb81c90d85407e62",
+            Self::ItemsActorsBc => "e41401224a085a676c84b8f14b144f20fe37c79a",
         }
     }
 
@@ -76,6 +83,7 @@ impl Profile {
             Self::BaseV1 => None,
             Self::CoreSkillsA0 => Some("core-skills-a0"),
             Self::GemsConstraintsA1 => Some("gems-constraints-a1"),
+            Self::ItemsActorsBc => Some("items-actors-bc"),
         }
     }
 }
@@ -104,6 +112,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         None | Some("base-v1") => Profile::BaseV1,
         Some("core-skills-a0") => Profile::CoreSkillsA0,
         Some("gems-constraints-a1") => Profile::GemsConstraintsA1,
+        Some("items-actors-bc") => Profile::ItemsActorsBc,
         Some(value) => return Err(format!("unsupported native-facts profile: {value}")),
     };
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
@@ -163,7 +172,9 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
         ]
     });
     if let Some(profile) = args.profile.name() {
-        receipt["format"] = if args.profile == Profile::GemsConstraintsA1 {
+        receipt["format"] = if args.profile == Profile::ItemsActorsBc {
+            "pobr-native-candidate-receipt/v4"
+        } else if args.profile == Profile::GemsConstraintsA1 {
             "pobr-native-candidate-receipt/v3"
         } else {
             "pobr-native-candidate-receipt/v2"
@@ -179,11 +190,21 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
             "No units, interpolation, quality, geometry or application policy is inferred.",
             "All source diagnostics retained verbatim; no PoB fallback."
         ]);
-        if args.profile == Profile::GemsConstraintsA1 {
+        if matches!(
+            args.profile,
+            Profile::GemsConstraintsA1 | Profile::ItemsActorsBc
+        ) {
             receipt["gem_summary"] =
                 serde_json::to_value(&candidate.gem_summary).map_err(|e| e.to_string())?;
             receipt["scope"].as_array_mut().ok_or("invalid receipt scope")?.push(json!(
                 "Source gem inventory and ordered constraints only; no playability filter, support expression evaluation or family conflict policy."
+            ));
+        }
+        if args.profile == Profile::ItemsActorsBc {
+            receipt["items_actors_summary"] =
+                serde_json::to_value(&candidate.items_actors_summary).map_err(|e| e.to_string())?;
+            receipt["scope"].as_array_mut().ok_or("invalid receipt scope")?.push(json!(
+                "Unfiltered item/actor source facts; no inherited tags, units, target category, selected actor or server formula policy."
             ));
         }
     }
@@ -215,6 +236,10 @@ fn implementation_sha256() -> String {
         ),
         ("output.rs", include_bytes!("output.rs").as_slice()),
         ("gems.rs", include_bytes!("gems.rs").as_slice()),
+        (
+            "items_actors.rs",
+            include_bytes!("items_actors.rs").as_slice(),
+        ),
         (
             "raw_source.rs",
             include_bytes!("../raw_source.rs").as_slice(),
