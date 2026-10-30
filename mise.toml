@@ -83,6 +83,14 @@ depends = ["setup:oracle"]
 description = "候选目录完整再生成、审计、验证后发布（需 vendor 检出 + luajit）"
 run = "bash pipeline/regen-all.sh"
 
+[tasks."data:bundle"]
+description = "Seal version data and shared rules into a new portable bundle (--out required)"
+run = "python3 pipeline/data_snapshot.py bundle"
+
+[tasks."data:bundle:verify"]
+description = "Verify all bytes and identity of a portable runtime bundle (--bundle required)"
+run = "python3 pipeline/data_snapshot.py verify-bundle"
+
 [tasks."data"]
 depends = ["setup:oracle"]
 description = "取数 + 候选快照完整再生成、验证后发布"

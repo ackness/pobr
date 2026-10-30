@@ -459,6 +459,12 @@ def main():
     tree.add_argument("--source", default="official-passive-tree")
     tree.add_argument("--out", type=Path, required=True)
     tree.add_argument("--offline", action="store_true")
+    bundle = sub.add_parser("bundle")
+    bundle.add_argument("--out", type=Path, required=True)
+    bundle.add_argument("--version")
+    check_bundle = sub.add_parser("verify-bundle")
+    check_bundle.add_argument("--bundle", type=Path, required=True)
+    check_bundle.add_argument("--expected-id", help="Trusted SHA-256 bundle identity from the selected source lock")
     for name in ["dictionary", "modifiers"]:
         sub.add_parser(name).add_argument("arguments", nargs=argparse.REMAINDER)
     sub.add_parser("patch")
@@ -475,6 +481,15 @@ def main():
         print(fetch_tree_source(ROOT, args.source, args.offline))
     elif args.command == "tree-candidate":
         tree_candidate(ROOT, args.source, args.out, args.offline)
+    elif args.command in {"bundle", "verify-bundle"}:
+        from data_bundle import create, verify
+
+        if args.command == "bundle":
+            with workspace_lock(ROOT):
+                receipt = create(ROOT, args.out, args.version)
+        else:
+            receipt = verify(args.bundle, args.expected_id)
+        print(f"Runtime bundle: {receipt['bundle_id']} (byte integrity verified; not activated)")
     else:
         arguments = getattr(args, "arguments", [])
         if arguments[:1] == ["--"]:
