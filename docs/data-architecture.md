@@ -127,7 +127,7 @@ PoBR 的开发仍可在独立 worktree 中进行，不要求切换或覆盖主 c
 | 领域 | 现有基础 | 本次规划要解决的缺口 |
 | --- | --- | --- |
 | 物品基底 | ID、武器/护甲、隐式等已有；需求、Spirit、格挡、装填、护符 buff 部分由 overlay 补齐 | 统一为可独立再生的事实；补继承 tags 和必要属性，避免删除仍有作用的补充值 |
-| 词缀 | 已有 stat 值域、等级、tags 和 spawn weights | `Families` 已列入导出配置，当前 adapter/模型未保留完整 family 关系；generation weights/条件需分别核对 |
+| 词缀 | 已有 stat 值域、等级、tags 和 spawn weights；adapter/catalog 已支持 `Families` → `ModFamily.Id` 的完整列表，独立于 `group`（`ModType.Name`） | 活动包尚未重新导出 family；generation weights/条件需分别核对 |
 | 技能/分支 | 已有效果、逐级数值、多 stat-set、implicit stats、BaseMultiplier；已实现原生 Label 外键适配及优先读取 | 活动包尚未重新导出；兼容索引继续保留，原生分支身份与兼容选择仍需逐步分离 |
 | 品质 | main/alternate 数值和 scope 列已读取 | stat-set scope 目前只留诊断，计算仍按 effect-wide 兼容策略；需补作用域与覆盖验收 |
 | 天赋 | 当前生产树可用，新 adapter 支持官方坐标与替换 | 正式再生仍有 vendor 回填；PSG 原始证据、替换归属、属性选择和部分标记尚未闭合 |
@@ -139,6 +139,18 @@ PoBR 的开发仍可在独立 worktree 中进行，不要求切换或覆盖主 c
 
 迁移清单还必须包含共享 `overlay-common/`：自有规则、buff、局部词缀、物品授予技能、图腾关联等
 不全在版本目录的域清单中，不能因盘点时遗漏而丢失现有能力。
+
+词缀 family 的入库字段为 `families: Option<Vec<String>>`：缺列或 null 保留为未知并省略序列化，
+显式空数组保留为 `[]`；旧运行时快照继续读取。原始外键按 `ModFamily._index` 连接到 `Id`，
+保留列表顺序，不把表内位置或 `ModType.Name` 当作 family 身份。实际引用缺表、悬空或指向空 ID 时，
+adapter 报出词缀 ID、来源字段和目标；不因暂时没有计算读取方而丢弃关系或补造空列表。
+导出配置已补齐 `ModFamily.Id`，必需列检查覆盖 `Mods.Families` 与目标表的 `_index`/`Id`；
+旧 raw 导出没有实际引用时可省略目标表，缺列仍进入现有 drift/strict-columns 流程。
+该切片没有引入 family 互斥、计算或物品选择行为，也未刷新活动包。
+字段依据为本地核对的[固定 schema](https://github.com/ackness/repoe/blob/64e894e2963707dc93bcc383bb57651bd200f444/schema/poe2.json)
+（`Mods.Families` 引用 `ModFamily`，其键为 `Id`）；
+[RePoE 的导出](https://github.com/ackness/repoe/blob/64e894e2963707dc93bcc383bb57651bd200f444/RePoE/parser/poe2/mods.py)
+也将 family ID 列表与 mod type 分开。这里没有认证该 schema 与当前活动补丁的客户端解码。
 
 ## 6. 筛选原则：减少交付负担，保留完整事实
 

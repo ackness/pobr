@@ -69,8 +69,8 @@ pub struct ModDef {
     /// have no display name).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    /// Raw GGG `ModType` enum value (no separate lookup table, kept as its
-    /// raw value; can be absent).
+    /// Raw `ModType` foreign key, retained for compatibility; `group`
+    /// resolves its name. Can be absent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mod_type: Option<u32>,
     /// Mod domain (a raw GGG enum value, used to decide which items this
@@ -93,6 +93,12 @@ pub struct ModDef {
     /// ranking. Absent (serde defaults to `None`) in older data.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
+    /// Stable family IDs (`Mods.Families` → `ModFamily.Id`), independent
+    /// of `group`. Missing/null means unknown (including old snapshots);
+    /// `Some(vec![])` means the source explicitly lists no families.
+    /// Source order is preserved; no calculation or selection policy is implied.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub families: Option<Vec<String>>,
     /// Spawn-weight table (tag → weight, order-sensitive: the first
     /// matching entry wins). Absent (serde defaults to empty) in older data.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

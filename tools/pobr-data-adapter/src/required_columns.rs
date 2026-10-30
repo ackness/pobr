@@ -41,10 +41,12 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
             "Stat3Value",
             "Stat4Value",
             "Tags",
+            "Families",
             "SpawnWeight_Tags",
             "SpawnWeight_Values",
         ],
     ),
+    ("ModFamily.json", &["_index", "Id"]),
     // Note: `ModType.json` (the source of the group field) isn't in the
     // required list — when the table is missing, the adapter soft-degrades
     // in `mod_type_lookup` (the group column defaults + a warning), matching F2's resilience approach.
@@ -249,6 +251,17 @@ pub(crate) fn check_required_columns(en: &Path, tw: &Path) -> Result<Vec<String>
     }
     let sets: Vec<LabelReference> = crate::read_json(&en.join("GrantedEffectStatSets.json"))?;
     let needs_labels = sets.iter().any(|set| set.label.is_some_and(|i| i >= 0));
+    #[derive(serde::Deserialize)]
+    struct FamilyReference {
+        #[serde(rename = "Id")]
+        id: String,
+        #[serde(rename = "Families")]
+        families: Option<Vec<usize>>,
+    }
+    let mods: Vec<FamilyReference> = crate::read_json(&en.join("Mods.json"))?;
+    let family_source = mods
+        .iter()
+        .find(|raw| raw.families.as_ref().is_some_and(|ids| !ids.is_empty()));
     let mut missing = Vec::new();
     for (dir_label, dir, tables) in [
         ("English", en, REQUIRED_EN),
@@ -258,6 +271,15 @@ pub(crate) fn check_required_columns(en: &Path, tw: &Path) -> Result<Vec<String>
             // Legacy raw exports can omit this table when no set uses it.
             // Keep checking any supplied table, and require it for real FKs.
             if *file == "GrantedEffectLabels.json" && !needs_labels && !dir.join(file).exists() {
+                continue;
+            }
+            if *file == "ModFamily.json" && !dir.join(file).exists() {
+                if let Some(source) = family_source {
+                    return Err(format!(
+                        "Mods {}: Families references missing English/ModFamily.json",
+                        source.id
+                    ));
+                }
                 continue;
             }
             check_table_columns(&dir.join(file), dir_label, file, columns, &mut missing)?;
@@ -307,7 +329,7 @@ mod tests {
         dir
     }
 
-    fn raw_snapshot_without_labels(name: &str, stat_sets: &str) -> PathBuf {
+    fn raw_snapshot(name: &str, stat_sets: &str, mods: &str) -> PathBuf {
         let root = std::env::temp_dir().join(format!(
             "pobr-required-columns-labels-{}-{name}",
             std::process::id()
@@ -316,7 +338,7 @@ mod tests {
             let dir = root.join(language);
             fs::create_dir_all(&dir).unwrap();
             for (file, _) in tables {
-                if *file != "GrantedEffectLabels.json" {
+                if !matches!(*file, "GrantedEffectLabels.json" | "ModFamily.json") {
                     fs::write(dir.join(file), "[]").unwrap();
                 }
             }
@@ -329,6 +351,7 @@ mod tests {
             fs::write(root.join("English").join(file), "[]").unwrap();
         }
         fs::write(root.join("English/GrantedEffectStatSets.json"), stat_sets).unwrap();
+        fs::write(root.join("English/Mods.json"), mods).unwrap();
         let mut files = std::collections::BTreeMap::new();
         for language in ["English", crate::ZH_TW] {
             for entry in fs::read_dir(root.join(language)).unwrap() {
@@ -354,7 +377,7 @@ mod tests {
             ("null", r#"[{"Id":"Legacy","Label":null}]"#),
             ("negative", r#"[{"Id":"Legacy","Label":-1}]"#),
         ] {
-            let raw = raw_snapshot_without_labels(name, sets);
+            let raw = raw_snapshot(name, sets, "[]");
             let out = raw.join("out");
             let summary = crate::run(crate::Args {
                 raw: raw.clone(),
@@ -374,7 +397,7 @@ mod tests {
 
     #[test]
     fn raw_entry_rejects_a_missing_referenced_labels_table_before_writing() {
-        let raw = raw_snapshot_without_labels("referenced", r#"[{"Id":"Native","Label":0}]"#);
+        let raw = raw_snapshot("referenced", r#"[{"Id":"Native","Label":0}]"#, "[]");
         let out = raw.join("out");
         let error = crate::run(crate::Args {
             raw: raw.clone(),
@@ -388,6 +411,105 @@ mod tests {
             !out.exists(),
             "a broken label reference must fail before output"
         );
+        fs::remove_dir_all(raw).unwrap();
+    }
+
+    #[test]
+    fn family_raw_entry_accepts_unknown_and_empty_relations_without_an_unused_table() {
+        let raw = raw_snapshot(
+            "family-states",
+            "[]",
+            r#"[
+                {"_index":11,"Id":"Old","Name":"Old"},
+                {"_index":3,"Id":"Null","Name":"Null","Families":null},
+                {"_index":40,"Id":"Empty","Name":"Empty","Families":[]}
+            ]"#,
+        );
+        let drift = check_required_columns(&raw.join("English"), &raw.join(crate::ZH_TW)).unwrap();
+        assert!(
+            drift
+                .iter()
+                .any(|message| message.contains("Mods.json is missing required column `Families`")),
+            "{drift:?}"
+        );
+        let out = raw.join("out");
+        crate::run(crate::Args {
+            raw: raw.clone(),
+            out: out.clone(),
+            patch: "label-test".into(),
+            strict_columns: false,
+        })
+        .unwrap();
+        let mods: Vec<pobr_data::catalog::ModDef> =
+            crate::read_json(&out.join("label-test/base/mods.json")).unwrap();
+        assert_eq!(
+            mods.iter().map(|raw| raw.id.as_str()).collect::<Vec<_>>(),
+            ["Empty", "Null", "Old"]
+        );
+        assert_eq!(mods[0].families, Some(vec![]));
+        assert_eq!(mods[1].families, None);
+        assert_eq!(mods[2].families, None);
+        fs::remove_dir_all(raw).unwrap();
+    }
+
+    #[test]
+    fn family_raw_entry_rejects_missing_referenced_table_before_writing() {
+        let raw = raw_snapshot(
+            "family-referenced",
+            "[]",
+            r#"[{"_index":11,"Id":"NativeMod","Name":"Named","Families":[7]}]"#,
+        );
+        let out = raw.join("out");
+        let error = crate::run(crate::Args {
+            raw: raw.clone(),
+            out: out.clone(),
+            patch: "label-test".into(),
+            strict_columns: false,
+        })
+        .unwrap_err();
+        for context in ["NativeMod", "Families", "ModFamily.json"] {
+            assert!(error.contains(context), "{error}");
+        }
+        assert!(
+            !out.exists(),
+            "a broken family reference must fail before output"
+        );
+        fs::remove_dir_all(raw).unwrap();
+    }
+
+    #[test]
+    fn family_lookup_columns_and_export_configuration_are_wired() {
+        let raw = raw_snapshot("family-columns", "[]", "[]");
+        fs::write(
+            raw.join("English/ModFamily.json"),
+            r#"[{"Name":"WrongColumn"}]"#,
+        )
+        .unwrap();
+        let drift = check_required_columns(&raw.join("English"), &raw.join(crate::ZH_TW)).unwrap();
+        for column in ["_index", "Id"] {
+            assert!(
+                drift.iter().any(|message| message.contains(&format!(
+                    "ModFamily.json is missing required column `{column}`"
+                ))),
+                "{drift:?}"
+            );
+        }
+        let config: serde_json::Value =
+            serde_json::from_str(include_str!("../../../pipeline/config.json")).unwrap();
+        for (table, column) in [("Mods", "Families"), ("ModFamily", "Id")] {
+            assert!(
+                config["tables"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|entry| entry["name"] == table
+                        && entry["columns"]
+                            .as_array()
+                            .unwrap()
+                            .contains(&serde_json::json!(column))),
+                "export must include {table}.{column}"
+            );
+        }
         fs::remove_dir_all(raw).unwrap();
     }
 

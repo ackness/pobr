@@ -453,6 +453,7 @@ mod tests {
                 .collect(),
             tags: Vec::new(),
             group: Some(group.into()),
+            families: None,
             spawn_weights: weights
                 .iter()
                 .map(|(t, w)| SpawnWeight {
