@@ -8,6 +8,10 @@ The producer contract is `RePoE/docs/native_facts.md` in that revision. The
 explicit core-skills A0, gem/constraint A1 and items/actors B/C opt-ins are
 documented below.
 
+The separate [guarded runtime assembler](native-runtime.md) can project the v4
+archive into queryable schema-4 runtime domains. It does not admit calculation
+or change this mode's partial-candidate contract.
+
 ```sh
 mise exec -- cargo run -p pobr-data-adapter -- \
   --native-facts /path/to/repoe-facts \
