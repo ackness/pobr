@@ -24,7 +24,8 @@ PoBR 把 `35% increased Fire Damage` 这样的文本解析成 `Modifier`，再�
 两层都读不懂的行记为 `ParseStatus::Unsupported`，保留在诊断和覆盖率报告中，
 不会因此崩溃。`pobr-build::build_data` 加载规则，再由
 `CompiledParserRules::compile_with_special` 编译。特殊模板在使用前就拒绝未知字段、
-非法运算和不支持的作用域。提交前用第 7 节的 `--check` 校验最终合并的规则和通用解析器格式。
+非法运算和不支持的作用域。协调者在规则整批集成时用第 7 节的 `--check`
+校验最终规则和通用解析器格式，不要求每个 worker 单独编译执行。
 
 <a id="2-the-overlay-directory"></a>
 
@@ -341,11 +342,12 @@ mise exec -- cargo run -p precompile-mods -- --data "data/$(cat data/CURRENT)" -
 
 ### 第三步：运行相关测试
 
-日常可直接运行 `mise run regen`，它合并上述校验、重生成和
+协调者整批可运行一次 `mise run regen`，它合并上述校验、重生成和
 `mise exec -- cargo test -p precompile-mods`，并逐规则检查 `examples`。
 只有名称新增读取方或读取逻辑改变时，才补引擎用例，见
 [添加一行词条](recipes.md#add-one-game-line-item-passive-jewel-flaskcharm-text)。
-`parity_no_regression`、`reference_report` 由 `mise run gate` 每批统一测量，不逐条重复。
+`parity_no_regression`、`reference_report` 由远端完整 CI 统一验证；本地
+`mise run gate` 是需要额外分析时的选项，不逐条重复。
 
 ### 第四步：提交 PR
 
