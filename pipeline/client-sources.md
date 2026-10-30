@@ -29,7 +29,10 @@ The online budget is cumulative **per invocation**, including reservations for
 failed requests, with a hard ceiling of 64 MiB. Each request reserves its requested
 length plus one overflow-detection byte before network access. The default body
 cap is 4 MiB; `--max-request-bytes` can lower it. Each response must be 206 with
-exact Content-Range, Content-Length, identity encoding and a strong ETag. Total
+exact Content-Range, Content-Length, identity encoding and a strong ETag.
+Transfer-Encoding is rejected before body reads; chunked trailers cannot bypass
+the fixed-length body budget. Case-insensitive duplicate header names are
+rejected in both online responses and archive entries before normalization. Total
 size and ETag must remain identical across all cached and new ranges for that URL;
 existing validators are sent using If-Match. Corrupt cache entries fail closed.
 HTTP timeouts are 25 seconds; failed requests are not retried automatically.

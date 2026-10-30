@@ -165,18 +165,26 @@ def load_source(path, key):
     return source, sha256(raw)
 
 
-def response_metadata(url, start, length, status, final_url, headers):
-    if status != 206:
-        raise ValueError("Expected HTTP 206 for bounded Range request")
-    if final_url != url:
-        raise ValueError("Redirect/final URL differs from the exact locked source")
+def normalized_headers(headers):
     normalized = {}
     for key, value in headers.items():
         key = key.lower()
         if key in normalized:
             raise ValueError(f"Duplicate response header: {key}")
         normalized[key] = value
-    headers = normalized
+    return normalized
+
+
+def response_metadata(url, start, length, status, final_url, headers):
+    if status != 206:
+        raise ValueError("Expected HTTP 206 for bounded Range request")
+    if final_url != url:
+        raise ValueError("Redirect/final URL differs from the exact locked source")
+    headers = normalized_headers(headers)
+    # urllib's HTTPResponse follows chunked framing even with Content-Length;
+    # read(n) can then consume unbounded trailers while returning only n bytes.
+    if "transfer-encoding" in headers:
+        raise ValueError("Transfer-Encoding is forbidden for fixed-length ranges")
     match = re.fullmatch(r"bytes ([0-9]{1,10})-([0-9]{1,10})/([0-9]{1,10})",
                          headers.get("content-range", ""))
     if not match:
@@ -549,7 +557,7 @@ def import_archive(source_lock, source_key, cache_root, archive_root, ledger_pat
         url = entry.get("url")
         if url not in cache.urls:
             continue
-        headers = {k.lower(): v for k, v in entry["headers"].items()}
+        headers = normalized_headers(entry["headers"])
         match = re.fullmatch(r"bytes ([0-9]{1,10})-([0-9]{1,10})/([0-9]{1,10})",
                              headers.get("content-range", ""))
         if not match or entry.get("method") != "GET" or "error" in entry:

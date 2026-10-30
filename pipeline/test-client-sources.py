@@ -1,7 +1,9 @@
 """Focused, network-free contracts for fixed official-client resource acquisition."""
 
 import copy
+import http.client
 import importlib.util
+import io
 import json
 from pathlib import Path
 import struct
@@ -151,6 +153,44 @@ class ClientSourceTests(unittest.TestCase):
                 self.assertEqual(http.responses[0].read_limits, [])
         with self.assertRaisesRegex(ValueError, "Redirects"):
             client.NoRedirect().redirect_request(None, None, 302, "", {}, URL)
+
+    def test_chunked_framing_is_rejected_before_real_http_response_reads_trailers(self):
+        class CountedStream(io.BytesIO):
+            consumed = 0
+
+            def read(self, *args):
+                data = super().read(*args)
+                self.consumed += len(data)
+                return data
+
+            def readline(self, *args):
+                data = super().readline(*args)
+                self.consumed += len(data)
+                return data
+
+        wire = (b'HTTP/1.1 206 Partial Content\r\nContent-Range: bytes 0-59/82\r\n'
+                b'Content-Length: 60\r\nETag: "stable"\r\nTransfer-Encoding: chunked\r\n\r\n'
+                b'3c\r\n' + bundle_bytes()[:60] + b'\r\n0\r\n'
+                + (b'X-Trailer: ' + b'x' * 65490 + b'\r\n') * 96 + b'\r\n')
+        stream = CountedStream(wire)
+
+        class Socket:
+            def makefile(self, mode):
+                return stream
+
+        response = http.client.HTTPResponse(Socket())
+        response.begin()
+        response.geturl = lambda: URL
+        before_body = stream.consumed
+
+        class Opener:
+            def open(self, request, timeout):
+                return response
+
+        with self.assertRaisesRegex(ValueError, "Transfer-Encoding"):
+            self.ranges(http=Opener(), budget=61, cap=61).read(URL, 0, 60)
+        self.assertEqual(stream.consumed, before_body)
+        self.assertFalse(self.cache.exists())
 
     def test_etag_and_total_drift_rejected_before_read_even_across_runs(self):
         for field, value in [("ETag", '"changed"'), ("Content-Range", "bytes 60-71/999")]:
@@ -324,6 +364,27 @@ class ClientSourceTests(unittest.TestCase):
         result = self.acquire(mode="offline")
         self.assertEqual(result["network"]["requests"], 0)
         self.assertEqual((self.out / "Data/Balance/Test.datc64").read_bytes(), b"bcdefgh")
+
+    def test_archive_case_duplicate_headers_cannot_hide_range_or_etag_drift(self):
+        ledger, archive = self.archive()
+        original = json.loads(ledger.read_bytes())
+        raw = (archive / "complete.bin").read_bytes()
+        for field in ["Content-Range", "ETag"]:
+            with self.subTest(field=field):
+                cache_root = self.root / ("cache-" + field)
+                cache = client.RangeCache(cache_root, self.source)
+                cache.add(URL, 0, raw, len(raw), '"stable"', {"kind": "test"})
+                before = {p.relative_to(cache_root): p.read_bytes()
+                          for p in cache_root.rglob("*") if p.is_file()}
+                entry = copy.deepcopy(original)
+                entry["headers"][field.lower()] = entry["headers"][field]
+                entry["headers"][field] = ('bytes 100-181/999' if field == "Content-Range"
+                                           else '"changed"')
+                ledger.write_text(json.dumps(entry) + "\n")
+                with self.assertRaisesRegex(ValueError, "Duplicate response header"):
+                    client.import_archive(self.lock, "fixed", cache_root, archive, ledger)
+                self.assertEqual({p.relative_to(cache_root): p.read_bytes()
+                                  for p in cache_root.rglob("*") if p.is_file()}, before)
 
     def test_archive_tampering_and_overlaps_and_validator_drift_rejected(self):
         ledger, archive = self.archive()
