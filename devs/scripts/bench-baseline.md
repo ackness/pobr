@@ -1,33 +1,15 @@
-# perform_bench 基线流程（M4 T0/W-F1）
+# 可选 Rust 性能测量
 
-> 预算（蓝图 m4-offence-deep.md §2-T0）：M4 结束时 `perform_attack_flicker`/
-> `perform_spell_comet` 耗时 ≤ 本文记录基线的 **2.5×**；traced/归因路径 ≤4×
-> （超出记录不阻塞，归因非热路径）。超预算 = T2 必须做惰性短路
-> （非双持跳 OffHand pass、无暴击词条短路 crit pass）且短路带等价性测试。
-
-## 操作
+仅在调查性能或验证性能改动时运行，不是每个 PR 的固定门槛：
 
 ```bash
-# 记录/对比基线（criterion 自动与上次运行对比）
-cargo bench -p pobr-build --features benchmarks --bench perform_bench
-cargo bench -p pobr-core --features benchmarks --bench mod_db_bench   # 聚合内核吞吐不得回归
-
-# criterion 历史数据在 target/criterion/<case>/，多 worktree 场景注意
-# CARGO_TARGET_DIR 隔离会让基线分散——M4 门禁对比一律在主仓库默认 target 跑。
+mise exec -- cargo bench -p pobr-build --features benchmarks --bench perform_bench
+mise exec -- cargo bench -p pobr-core --features benchmarks --bench mod_db_bench
 ```
 
-CI 不跑 criterion（时长）；门禁为合并前手动跑 + 结果贴 PR。
+Criterion 将同一 checkout 的历史结果保存在 `target/criterion/`。比较时保留相同工具链、
+profile、features、输入和机器条件；计时与编译分开观察，不为测量清空构建缓存。
+行为保持的优化还应使用相关断言或完整输出比较，耗时下降不能证明结果等价。
 
-## M4 起点基线（2026-06-12，master，commit 见 git log 本文件引入点）
-
-| case | 基线（中位） | 2.5× 预算上限 |
-|------|--------------|----------------|
-| perform_attack_flicker | **2.0951 ms** | 5.24 ms |
-| perform_spell_comet | **1.8758 ms** | 4.69 ms |
-| mod_db_bench::sum_inc/sum_base/more @5000 | 9.13µs / 9.59µs / 15.25µs（M3-T5 实测） | 无回归 |
-
-## 语料偏离说明
-
-蓝图要求「1 个双持攻击 build」；ninja 18-build 集中无严格双持——以
-monk-martial-artist-flicker-strike（攻击主路径）+ sorceress-stormweaver-comet
-（法术对照，隔离 crit pass 贡献）替代；W-B2 双持 fixture 落地后补真双持 case。
+真实 WASM 与构筑语料测量见[开发工作流](../../docs/development-workflow.md#慢构建与按需报告)，
+包体积测量见[WASM 包](../../docs/wasm-package.md)。原始样本和本机报告保存在忽略的 `.cache/`。

@@ -16,7 +16,7 @@
 返回的 `{ "format": "wegame", "version": 1, ... }` JSON 也可保存到本地，再从 JSON／文件入口导入。
 
 `web/public/_worker.js` 是 Cloudflare Pages 的 advanced-mode Worker。
-Vite 会把它复制到 `dist/`；本地 `pnpm --dir web dev` 和 `pnpm --dir web preview`
+Vite 会把它复制到 `dist/`；本地 `mise run web dev` 和 `mise run web preview`
 也使用同一处理器。其他静态托管服务需另行提供这个接口。计算仍由浏览器中的 WASM 执行。
 
 ## 保留的输入

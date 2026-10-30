@@ -1,6 +1,0 @@
-{
-  "git_commit": "a7669664fd601a07882b752bba15d9fedb46d461",
-  "started_at": "2026-10-26T14:16:16.534515+00:00",
-  "data_version": "0.5.5.4.2",
-  "command": "run-triage-save-quality.py; 8 benchmark +69 tuned +230 frozen, no holdout"
-}

@@ -299,9 +299,9 @@ Lich02 的 Storm Mage 在识别按名 +3 等级后达宝石 38／怪物 76。基
 
 ### 授予技能需求与装备来源
 
-冻结 top-ten 调查有 23 条剩余属性需求差异，参考值恰等于护身符授予技能（Eternal Rage、Wolf Pack、Trinity、Cast on Critical、Cast on Elemental Ailment）的名义需求。与授予匹配的普通导出组是同一技能，不是额外装备的宝石，不进 `ReqStr/ReqDex/ReqInt`；可用等级另检查，独立真宝石仍计需求。回归覆盖十种授予／等级组合和 Gemling 8% reduced，证据保存在 `fix-round-3/requirements-evidence.json`。
+冻结 top-ten 调查有 23 条剩余属性需求差异，参考值恰等于护身符授予技能（Eternal Rage、Wolf Pack、Trinity、Cast on Critical、Cast on Elemental Ailment）的名义需求。与授予匹配的普通导出组是同一技能，不是额外装备的宝石，不进 `ReqStr/ReqDex/ReqInt`；可用等级另检查，独立真宝石仍计需求。回归覆盖十种授予／等级组合和 Gemling 8% reduced。
 
-Witchhunter10 的 Megalomaniac 授予 Leather Bound Gauntlets（51446），1323 手套护甲给 1323 基础闪避，影响护甲／闪避、Sorcery Ward 和后续防御；导出器漏该天赋。Infernalist03 的 Runeseeker 导入行是 45% less Life，PoB2 重建为两条 MORE 再乘和取整，PoBR 保留原文。四个 Warbringer 的六条防御行使用现有选定图腾数，不假设额外图腾；具体算式在 `fix-round-3/static-defence-attribution.json`。
+Witchhunter10 的 Megalomaniac 授予 Leather Bound Gauntlets（51446），1323 手套护甲给 1323 基础闪避，影响护甲／闪避、Sorcery Ward 和后续防御；导出器漏该天赋。Infernalist03 的 Runeseeker 导入行是 45% less Life，PoB2 重建为两条 MORE 再乘和取整，PoBR 保留原文。四个 Warbringer 的六条防御行使用现有选定图腾数，不假设额外图腾。
 
 ### 有限药剂回复与点燃
 
@@ -311,4 +311,4 @@ Shaman08 配置的 15 级 Flame Wall 提供 18–26 火伤，Spark 因而可按�
 
 ### 同伴与旗帜的相互抵消差异
 
-Tactician06 的 PoB2 已计 Watch How I Do It 武器分享，却漏了所选狼的插旗伤害。导入 `bannerPlanted=true` 支持原生激活光环快照，较早数值一致来自两个错误互相抵消。[独立证据](../examples/reference-builds/ninja-top10-2026-10-26/reports/fix-round-5/evidence/tactician-06-s04/evidence.json)仍保留有限定的剩余差异，不把整条 DPS 注册为 known；后续旗帜攻速修复在默认口径另行测量。
+Tactician06 的 PoB2 已计 Watch How I Do It 武器分享，却漏了所选狼的插旗伤害。导入 `bannerPlanted=true` 支持原生激活光环快照，较早数值一致来自两个错误互相抵消。仍有未完全解释的剩余差异，不能把整条 DPS 注册为 known；旗帜攻速在默认口径单独测量。

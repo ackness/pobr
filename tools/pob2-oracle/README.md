@@ -20,32 +20,22 @@ special-mods / config-options，`extract_lua::headless_lua_path`）用同一条 
 `shim/` 时 PoB2 的主模块加载失败，报错是 `modLib.parseMod missing after bootstrap`。
 `HeadlessWrapper.lua` 已经把 `lcurl.safe` stub 成 no-op，所以不需要 lcurl。
 
-需要支持 compound assignment（例如 `+=`）的 LuaJIT；仅 `luajit -v` 成功不代表兼容。
-当前 PoB2 pin `bb52d6b3` 的 [Dockerfile](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/blob/bb52d6b368307457eb9c54bb13f1829993d390b1/Dockerfile)
-使用 upstream LuaJIT `2460b3ff93a1c955de3d62cfc825de7d68dc272e`。
-旧版 Ubuntu / Homebrew LuaJIT 会在 `Modules/Main.lua` 报 ` '=' expected near '+'`。
-
-运行 `mise run deps` 可从该 commit 编译并缓存到
-`${XDG_CACHE_HOME:-$HOME/.cache}/pobr/runtimes/`，需要 Git、make 和 C 编译器，
-无需 sudo，不覆盖系统 LuaJIT；重复运行复用兼容的 runtime。
-两个 oracle runner 均按 `LUAJIT` → `POBR_LUAJIT` → 缓存 → Homebrew → PATH
-解析，并实际检查 `+=`。显式指定但无效的路径会报错，不会静默回退。
-`mise run status` 只检查，不安装。Rust 抽取工具可复用同一 runtime：
-
-```bash
-export POBR_LUAJIT="$(bash devs/scripts/pob2-luajit.sh resolve)"
-```
+在仓库根运行 `mise run setup:oracle`，自动准备固定 vendor 与支持 `+=` 的 LuaJIT。
+项目 runtime 的 commit 由 `devs/scripts/pob2-luajit.sh` 维护，mise 将其暴露到
+`.cache/runtime/bin` 并设置 `POBR_LUAJIT`；不要求手工安装系统 LuaJIT。
+`mise run status` 只检查，不安装。独立调用下面的 runner 时也经 `mise exec --` 执行，
+以便使用同一份环境和纯 Lua 依赖。
 
 独立 worktree 可设 `POBR_VENDOR_ROOT=/path/to/main/repo/vendor` 读取已有 vendor。
 
 ## 用法
 
 ```bash
-# 从仓库任意位置：
-tools/pob2-oracle/run.sh <decoded.xml> [out.json]
+# 从仓库根目录运行：
+mise exec -- bash tools/pob2-oracle/run.sh <decoded.xml> [out.json]
 
 # 例：deadeye build（meta.json golden 对照）
-tools/pob2-oracle/run.sh \
+mise exec -- bash tools/pob2-oracle/run.sh \
   examples/demo-bd-test/builds/ranger-deadeye-explosive-grenade/decoded.xml \
   /tmp/deadeye_oracle.json
 ```
@@ -55,8 +45,8 @@ tools/pob2-oracle/run.sh \
 也可先把 PoB build code 解码成 XML 再跑（与 PoBR 测试同一份 build）：
 
 ```bash
-cargo run -q -p pobr-cli -- decode-code "$(cat examples/demo-bd-test/ninja-bd-deadeye.txt)" > /tmp/x.xml
-tools/pob2-oracle/run.sh /tmp/x.xml /tmp/x_oracle.json
+mise exec -- cargo run -q -p pobr-cli -- decode-code "$(cat examples/demo-bd-test/ninja-bd-deadeye.txt)" > /tmp/x.xml
+mise exec -- bash tools/pob2-oracle/run.sh /tmp/x.xml /tmp/x_oracle.json
 ```
 
 ## 输出字段（JSON）
@@ -76,15 +66,9 @@ tools/pob2-oracle/run.sh /tmp/x.xml /tmp/x_oracle.json
 
 ## 校验
 
-对 deadeye build 跑，`mainOutput.AverageDamage` / `TotalDPS` 与该 build 的
-`meta.json::player_stats` golden 完全一致（逐位）：
-
-```
-AverageDamage  132887.2645
-TotalDPS        50630.04778
-```
-
-（活动数据版本下的取值；数据或 vendor 升级后会随 `recapture_golden.py` 重采而变化。）
+将输出与同一数据版本、同一 vendor pin 下的构筑参考值比较，核对主技能和计算口径。
+参考值随 `recapture_golden.py` 重采，不在本说明中重复固定数值。
+PoB2 是回归参照，游戏数据和词条文本决定预期机制。
 
 ## 词条解析对照
 
@@ -92,6 +76,6 @@ TotalDPS        50630.04778
 PoBR 解析结果：
 
 ```bash
-echo "20% increased Fire Damage" | tools/pob2-oracle/run-parsemod.sh
-tools/pob2-oracle/run-parsemod.sh --lines-file lines.txt > out.jsonl
+echo "20% increased Fire Damage" | mise exec -- bash tools/pob2-oracle/run-parsemod.sh
+mise exec -- bash tools/pob2-oracle/run-parsemod.sh --lines-file lines.txt > out.jsonl
 ```

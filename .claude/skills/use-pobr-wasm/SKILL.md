@@ -18,7 +18,7 @@ It does not need Lua, the PoBR website or the Pages Worker.
 - Check the sibling `SHA256SUMS` against the downloaded assets. After extraction,
   inspect `manifest.json` for `packageVersion`, `schemaVersion`, `dataVersion`
   and `commit`. Keep `pobr_wasm.js`, its `.wasm` and `pobr-data.json.gz` together.
-- If building from a checkout, run its configured `pnpm --dir web build-wasm`,
+- If building from a checkout, use its mise environment and run `mise run web build-wasm`,
   `sync-data`, `package-wasm` and `smoke-wasm-package` scripts. Outputs are in
   `.cache/wasm-release/`. Source changes need a rebuild even without a version bump.
 

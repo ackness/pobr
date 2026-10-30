@@ -1,8 +1,0 @@
-{
-  "git_commit": "23e013775504fb933006c50a060298728545ccb0",
-  "started_at": "2026-10-26T19:28:30.886927+00:00",
-  "cli_sha256": "cc2200bf2f8b3bce9c0b145c8a6a72cd3b6e72beeba0c9483a15a7f86829e1b0",
-  "vendor_commit": "bb52d6b368307457eb9c54bb13f1829993d390b1",
-  "command": "POBR_BIN=target/debug/pobr python3 .cache/accuracy-round5-2026-10-26/run-triage-save-after.py examples/wasm-benchmark/builds examples/reference-builds/tuned/builds examples/reference-builds/ninja-top10-2026-10-26/builds --jobs 4 --top 60 --json .cache/accuracy-round5-2026-10-26/after.json",
-  "runtime": "/root/.cache/pobr/runtimes/luajit-2460b3ff93a1c955de3d62cfc825de7d68dc272e/src/luajit"
-}

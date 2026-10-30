@@ -1,13 +1,13 @@
 ---
 name: workflow
-description: "Operate PoBR's agent-authored PR, independent audit, CI and release handoff with its focused validation budget. Use for preparing/reviewing a PoBR PR or changing this repository's development automation; use the global repo-workflow skill for transferable workflow design."
+description: "Operate PoBR's agent-authored PR, risk-based review, CI and release handoff with its focused validation budget. Use for preparing/reviewing a PoBR PR or changing this repository's development automation."
 ---
 
 # PoBR workflow adapter
 
-This is the project adapter. The reusable design logic lives in the independently
-installed global `repo-workflow` skill; use it when researching or redesigning the
-process. Ordinary work follows the existing PoBR contract, without redoing research.
+This is the project adapter. Follow the current PoBR contract for ordinary work.
+The optional personal `repo-workflow` skill supports cross-project research and
+process redesign; using this adapter does not require installing it.
 
 Read [AGENTS.md](../../../AGENTS.md) and the full
 [maintainer guide](../../../docs/maintainer-guide.md). The single operational source

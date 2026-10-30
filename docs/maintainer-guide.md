@@ -22,11 +22,11 @@
 | 诊断工具的输出、逐行台账、参考口径与语料 | [diagnostics.md](diagnostics.md) |
 | 各导入格式 / Web 界面行为 | [import-formats.md](import-formats.md) / [web-contracts.md](web-contracts.md) |
 
-全部文档的索引和按日期保存的记录见 [docs/README.md](README.md)。
+按使用、集成与开发任务组织的入口见 [docs/README.md](README.md)。
 
 ## 构建环境
 
-- 本地与 agent 统一经 mise 安装和执行环境；首次 `mise bootstrap --only packages,tools,task`，日常用 `mise run` / `mise exec --`。CI 可用最新稳定的原生安装 Action，读取同一份工具版本。开发命令是根 `mise.toml` 里的 mise task（`mise tasks` 查看），由 `devs/scripts/driver.sh` 实现；没有 mise 时运行 `bash devs/scripts/driver.sh <命令>`。游戏 CLI（`apps/pobr-cli`，二进制 `pobr`）和 WASM 包只含游戏计算能力；新的开发命令加成 mise task，不加进 CLI 或 WASM 接口。
+- 本地与 agent 统一经 mise 安装和执行环境；首次 `mise bootstrap --only packages,tools,task`，日常用 `mise run` / `mise exec --`。CI 可用最新稳定的原生安装 Action，读取同一份工具版本。开发命令是根 `mise.toml` 里的 mise task（`mise tasks` 查看），由 `devs/scripts/driver.sh` 实现。游戏 CLI（`apps/pobr-cli`，二进制 `pobr`）和 WASM 包只含游戏计算能力；新的开发命令加成 mise task，不加进 CLI 或 WASM 接口。
 - 每个 worktree 用**自己的 `./target`**。同一 worktree 的会话共用它，Cargo 命令一次一条、前台执行；不同 worktree **禁止**共享可写的 `CARGO_TARGET_DIR`（症状是长时间无输出；stderr 的 `Blocking waiting for file lock` 不要用 `| tail` 吞掉）。看到构建锁先检查已有进程，不叠加 Cargo 命令。
 - 新 worktree 先用 `mise run warm <已编译的 checkout>` 克隆缓存，文件修改时才复制数据块。分析工具设 `POBR_BIN` / `POBR_CACHE_DIR` 复用那份 CLI、台账与 PoB2 结果（见[改动配方](recipes.md#working-in-a-new-worktree)）。
 - 根 `Cargo.toml` 的 dev/test profile（第三方依赖 `opt-level = 3`、`debug = "line-tables-only"`、`incremental = false`）是有意的设置。不要为“统一”或“加速”改它，也不要自动 `cargo clean`、改 features / `RUSTFLAGS`：这些都会让缓存失效。原因与临时调试变量见[缓存与磁盘占用](development-workflow.md#缓存与磁盘占用)。
@@ -47,7 +47,7 @@
 | Web TS / React | `mise run web test <test-file>` + `mise run web typecheck`；交互改动补相关 Playwright spec |
 | Rust → WASM / Web 契约 | Rust 契约测试 + 重建 WASM + 相关真实 WASM / E2E 测试 |
 | Worker | `mise run web test:worker` |
-| 验证脚本 | `mise run check:workflows`（shell/Actions/Python/Node 契约，不编译 Rust）；WASM 打包与数据同步脚本用 `node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs` |
+| 验证脚本 | `mise run check:workflows`（shell/Actions/Python/Node 契约，不编译 Rust）；WASM 打包与数据同步脚本用 `mise exec -- node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs` |
 | 仅文档 | 审查 diff 与链接；不运行 Cargo / Web 构建 |
 
 - 测试目标用 `mise run targets` 查（不编译）。用 `--test <suite>` / `--lib` 限定编译目标：只给名称 filter 仍可能编译整个 crate 的测试。
@@ -56,7 +56,7 @@
 - **批次门禁**：多个改动（并行代理的分支，或同一分支的多条词条）合并后，由合并者在已编译的 checkout 上运行一次 `mise run gate`：fmt、生成规则是否与提交一致、Clippy、各 crate 套件、parity、i18n、Web、accuracy，每一步都运行，最后列出失败项；修复后 `mise run gate --only <步骤>` 只重跑失败项。单个改动不重复这些步骤。
 - **CI 完整门禁**：升版、工具链、依赖、workspace manifest、工作流/验证策略与未知输入自动调用 [ci.yml](../.github/workflows/ci.yml)；普通 PR 由 [pr.yml](../.github/workflows/pr.yml) 选相关轻量检查。跨边界但路径无法表达的改动显式 `mise run ci <remote-ref>`。完整检查也每日运行，并由 [release.yml](../.github/workflows/release.yml) 在 tag 发布前调用。E2E 只在显式 `--e2e` 时启用；不要重复相同输入的本地/云端全量验证。`PR gate` 校验所有应执行的 jobs；操作细节见[开发工作流](development-workflow.md)。
 - **Review 按风险选择**：复杂、跨边界或高风险改动请独立 reviewer 检查相关代码与真实证据；文档和明显的小改动不增加审计表或固定 agent。`mise run pr-ready <N>` 是授权合并前的可选只读预检，输出准确 head 供 `--match-head-commit` 使用。CI 只阻断可判定的失败，不强制 PR 正文或审计格式，见[开发工作流](development-workflow.md)。
-- Web 纯 TS/CSS 改动复用已构建的 WASM；WASM 及其 Rust 依赖、features、工具链改变时重建。`pnpm build` 已含 typecheck；E2E 前确认 dist 对应当前代码。
+- Web 纯 TS/CSS 改动复用已构建的 WASM；WASM 及其 Rust 依赖、features、工具链改变时重建。`mise run web build` 已含 typecheck；E2E 前确认 dist 对应当前代码。
 
 ## 常用命令
 
@@ -67,8 +67,8 @@ mise run test core parser mod_parser::            # 一个套件 + filter（也�
 mise run regen                                    # 改了词条规则后：校验规则与示例、重生成产物
 mise run gate [--only 步骤,...]                   # 批次门禁
 
-cargo run -p pobr-cli -- calculate-build --file <code.txt> [--breakdown TotalDPS,Life] [--usage] [--full-dps] [--reference-basis] [--json]
-cargo run -p pobr-cli -- decode-code <pob_code>   # 另有 encode-code / parse-mod / explain-mod / parse-item / calculate
+mise exec -- cargo run -p pobr-cli -- calculate-build --file <code.txt> [--breakdown TotalDPS,Life] [--usage] [--full-dps] [--reference-basis] [--json]
+mise exec -- cargo run -p pobr-cli -- decode-code <pob_code>   # 另有 encode-code / parse-mod / explain-mod / parse-item / calculate
 
 mise run triage [组或构筑目录 ...]                 # 数值不对的第一步：全部参与修复的构筑对照参考值与固定 PoB2，跨构筑汇总原因
 mise run diagnose <构筑>                           # 一个构筑的导入损耗、参考差异与丢掉的输入
@@ -79,7 +79,7 @@ mise run accuracy [含 */code.txt 的目录]           # 构筑码对照自带�
 mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 ```
 
-各工具输出的含义见 [diagnostics.md](diagnostics.md)；参数、缓存和其余命令（基准、parity 报告、WASM 打包、数据与 vendor 任务）见[开发与 CI 工作流](development-workflow.md)。PoB2 oracle（无界面运行并输出计算结果的参考工具）是 `tools/pob2-oracle/run.sh <build.xml>`；从 vendor Lua 抽取 overlay 用 `cargo run -p sync-pob-catalog -- extract-lua --vendor-root "$PWD/vendor/PathOfBuilding-PoE2/src" --out <文件>`（`--vendor-root` 必须是绝对路径，需固定版本的 vendor 与 LuaJIT）。
+各工具输出的含义见 [diagnostics.md](diagnostics.md)；参数、缓存和其余命令（基准、parity 报告、WASM 打包、数据与 vendor 任务）见[开发与 CI 工作流](development-workflow.md)。PoB2 oracle（无界面运行并输出计算结果的参考工具）是 `mise exec -- bash tools/pob2-oracle/run.sh <build.xml>`；从 vendor Lua 抽取 overlay 用 `mise exec -- cargo run -p sync-pob-catalog -- extract-lua --vendor-root "$PWD/vendor/PathOfBuilding-PoE2/src" --out <文件>`（`--vendor-root` 必须是绝对路径，需固定版本的 vendor 与 LuaJIT）。
 
 ## Workspace 结构
 
@@ -104,7 +104,7 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 
 依赖方向：`pobr-data` 在最底层；`pobr-build` 组合计算、物品、树与数据加载；应用层使用它们。生产计算核心不读文件；测试辅助（`pobr-core` 的 `test-rules`、`pobr-gamedata` 的 `test-pins`）在 feature 后面，只由 dev-dependencies 启用。
 
-其他目录：`web/`（React / TypeScript / Vite；`src/api/` 定义 JSON 边界并默认在 module Worker 中运行 WASM，`public/` 是静态资源、同步数据与 Pages Worker，另有 `e2e/` 与 `worker-tests/`）、`data/`（按版本的 base / overlay / generated / i18n 与共享的 `overlay-common/`，默认版本见 `data/CURRENT`）、`pipeline/`（下载、抽取、再生与版本差异）、`examples/`（回归与参考语料）、`devs/`（开发脚本、`known-differences.json`，以及 `devs/docs/architecture/` 的 18–21 号功能契约）、`agent-docs/`（机制研究资料）。
+其他目录：`web/`（React / TypeScript / Vite；`src/api/` 定义 JSON 边界并默认在 module Worker 中运行 WASM，`public/` 是静态资源、同步数据与 Pages Worker，另有 `e2e/` 与 `worker-tests/`）、`data/`（按版本的 base / overlay / generated / i18n 与共享的 `overlay-common/`，默认版本见 `data/CURRENT`）、`pipeline/`（下载、抽取、再生与版本差异）、`examples/`（回归与参考语料）、`devs/`（开发脚本、CI 基线与 fixtures；差异登记在 `scripts/known-differences.json`）、`agent-docs/`（被代码引用的早期机制研究）。当前行为契约集中在 `docs/`。
 
 **数据管线**：GGG `.dat` 导出 →（`pobr-data-adapter`）→ `data/<版本>/*.json`（schema = `pobr-data::catalog`，含 `overlay/` 修正层）→（`pobr-gamedata`）→ 计算。计算所需游戏数据的文件访问集中在 `pobr-gamedata`；下载、剪贴板与 HTTP 适配属于应用或工具边界。细节见[数据管线说明](../pipeline/README.md)与[版本升级结构](version-bump-architecture.md)。
 
@@ -231,4 +231,5 @@ PoBR 主要计算静态构筑及选定条件下的结果，不追求还原游戏
 
 - 本文只放跨主题、长期有效的规则。新的机制约定写进 [mechanics/](mechanics/README.md) 的对应小节，输出字段写进 [calc-outputs.md](calc-outputs.md)，构筑模型与接口写进 [build-model.md](build-model.md)，与 PoB2 的差异写进 [pob2-differences.md](pob2-differences.md)；不要把单个机制的段落追加到本文。
 - 改变 crate 边界、聚合语义、catalog / parity 规则或验证流程时，同步更新本文、[AGENTS.md](../AGENTS.md) 和受影响的契约文档；Web 行为变化同步 [web-contracts.md](web-contracts.md)。
-- 被代码取代的叙述直接改掉或删除；当时的调查和测量写成[按日期保存的记录](README.md#dated-records)，之后不再更新。
+- 被代码取代的叙述直接改掉或删除。个人调查、审计交接与机器测量放在忽略的 `study/` 或 `.cache/`，结论写入相应契约、测试或 PR；不把过程日志累加到当前指南里。
+- 公开仓库保留能帮助复现和理解项目的文档、样本来源、有效基线与源代码引用。收起历史材料前，先迁移仍有效的约定，并检查跟踪文件中的链接；仅有本地文件存在不代表公开链接有效。

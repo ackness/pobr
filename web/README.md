@@ -175,7 +175,7 @@ for recovery; workspace persistence failures offer a backup download.
 ## Language support
 
 UI supports English, Simplified Chinese and Traditional Chinese. Game noun dictionaries
-are versioned; Simplified Chinese comes from the CN dictionary (`node pipeline/gen-zh-cn.mjs`).
+are versioned; Simplified Chinese comes from the CN dictionary (`mise exec -- node pipeline/gen-zh-cn.mjs`).
 The gem picker searches all three languages. Simplified Chinese item bases and mod
 lines are translated through templates to canonical English before parsing; PoB
 structural lines such as `Rarity:` keep their format. Unknown text remains visible
@@ -227,11 +227,11 @@ clearing Cargo caches.
 
 Seven shared request DTOs are generated from Rust into `src/api/generated/request.ts`
 using the pinned host-only `ts-rs` dev dependency. After changing them, run
-`cargo test -p pobr-wasm --lib export_typescript_contract -- --ignored` and commit the
+`mise exec -- cargo test -p pobr-wasm --lib export_typescript_contract -- --ignored` and commit the
 output. Ordinary Rust library tests and PR CI check drift. Other types remain in
 `src/api/types.ts`, with assertions in `apps/pobr-wasm/tests/contract_golden.rs`.
 Regenerate mock fixtures after contract changes with
-`cargo test -p pobr-wasm --features diagnostics --test gen_fixtures -- --ignored`.
+`mise exec -- cargo test -p pobr-wasm --features diagnostics --test gen_fixtures -- --ignored`.
 Mocks support UI work; they do not verify engine behavior.
 
 ## Layout and data flow

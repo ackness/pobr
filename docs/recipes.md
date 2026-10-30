@@ -7,7 +7,7 @@
 [机制约定](mechanics/README.md)，词条语法见[词条贡献指南](contributing-mods.md)。
 
 **验证预算：每项改动最多编译一个小测试目标。** 不逐项运行
-`cargo test -p pobr-core`（全部目标）、`--test parity`、WASM/CLI 套件、
+`mise exec -- cargo test -p pobr-core`（全部目标）、`--test parity`、WASM/CLI 套件、
 `mise run accuracy`、`triage`、`diagnose`、`compare` 或覆盖率脚本。
 这些命令会编译较大的 parity 测试程序或 CLI，部分还会重算整组构筑。
 合并者在多个改动合入后运行一次 `mise run gate`。
@@ -50,7 +50,7 @@
    precompile-mods。提交变化的生成文件，不手工编辑它们。
 5. 只有 modifier 名称没有读取方，或读取方需要新行为时，才添加读取代码，并在
    `crates/pobr-core/tests/<suite>/` 最近的现有文件中补一个引擎测试，运行
-   `cargo test -q -p pobr-core --test <suite> <test name>`。
+   `mise exec -- cargo test -q -p pobr-core --test <suite> <test name>`。
 6. 词条引入新的约定、假设或尚未实测的游戏行为时，在对应的
    [docs/mechanics/](mechanics/README.md) 文件写一段说明。与 PoB2 有意不同且已定位到
    构筑数值的情况，写入 [pob2-differences.md](pob2-differences.md) 和
@@ -73,7 +73,7 @@
    - 标签：`crates/pobr-i18n/locales/en-US/stats.toml`、
      `crates/pobr-i18n/locales/zh-TW/stats.toml`、`web/src/lib/detailLabels.ts`。
    - 不固定 catalog 的条目数。现有检查会验证活动数据版本上的 id 唯一性、标签、数值和明细连接。
-3. 运行 `cargo test -q -p pobr-core --test golden display_catalog`，并用一个引擎用例断言
+3. 运行 `mise exec -- cargo test -q -p pobr-core --test golden display_catalog`，并用一个引擎用例断言
    数值正确、派生输入能重建它。
 4. 只用两三个构筑交叉核对 PoB2，并复用门禁已编译的 CLI：
    `target/debug/pobr calculate-build --file <code.txt> --json` 对照

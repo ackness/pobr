@@ -3,16 +3,16 @@
 # 开发与 CI 工作流
 
 开发命令是根 `mise.toml` 中的 mise task：`mise tasks` 列出全部，`mise run <task> [参数]` 执行，
-任务名之后的参数原样传递。它们转发到 `devs/scripts/driver.sh`（`.claude/skills/run-pobr/driver.sh` 保留为转发入口）；没有安装 mise 时可直接运行
-`bash devs/scripts/driver.sh <命令>`，本机可选的 `.agents` 入口也转发到同一驱动。
-游戏 CLI（`cargo run -p pobr-cli`，二进制 `pobr`）只提供游戏计算命令，不包含任何开发命令。
+任务名之后的参数原样传递。它们转发到 `devs/scripts/driver.sh`；
+`.claude/skills/run-pobr/driver.sh` 仅保留为兼容转发入口。
+游戏 CLI（`mise exec -- cargo run -p pobr-cli`，二进制 `pobr`）只提供游戏计算命令，不包含任何开发命令。
 本文维护构建、测试、缓存和 CI 操作；验证范围与计算约定见 [maintainer-guide.md](maintainer-guide.md)，
 Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/README.md](../pipeline/README.md)。
 
 ## 环境：本地统一 mise，CI 使用原生安装 Action
 
 先按 [mise 官方说明](https://mise.jdx.dev/getting-started.html) 安装/更新工具管理器。
-本地和 agent 使用当前稳定版 mise；本次验证为 2026.10.23，仓库声明最低兼容版本。
+本地和 agent 使用当前稳定版 mise；仓库声明最低兼容版本。
 `mise.toml` 精确固定 Node、pnpm、Python、wasm-pack、actionlint 与 gh，
 `rust-toolchain.toml` 唯一声明 Rust、fmt/Clippy、wasm target；`mise.lock` 固定下载来源与校验和。
 本地命令用 `mise run <任务>`，没有命名任务时用 `mise exec -- <命令>`；
@@ -70,9 +70,9 @@ mise run warm <warm checkout>                 # New worktree: copy-on-write clon
 基准和手动诊断按需编译，普通测试不编译 Criterion 或五个 WASM 诊断/fixture 生成目标：
 
 ```bash
-cargo bench -p pobr-core --features benchmarks --bench mod_db_bench
-cargo bench -p pobr-build --features benchmarks --bench perform_bench
-cargo test -p pobr-wasm --features diagnostics --test perf_timing -- --ignored --nocapture
+mise exec -- cargo bench -p pobr-core --features benchmarks --bench mod_db_bench
+mise exec -- cargo bench -p pobr-build --features benchmarks --bench perform_bench
+mise exec -- cargo test -p pobr-wasm --features diagnostics --test perf_timing -- --ignored --nocapture
 ```
 
 完整 CI 和 `mise run full` 的 Clippy 显式启用这两个 feature，继续检查手动工具；
@@ -97,10 +97,10 @@ mise run build --workspace                    # Only when all binaries are neede
 调用方的契约测试。相关检查通过后结束验证，不固定串联 check/build/clippy/test/full。
 相同输入下已通过的检查可以复用；仅改文档不使代码测试失效。
 
-Web 纯 TS/CSS 修改复用 WASM，运行相关 Vitest 与 typecheck；`pnpm --dir web build`
+Web 纯 TS/CSS 修改复用 WASM，运行相关 Vitest 与 typecheck；`mise run web build`
 已包含 typecheck。交互修改补对应 Playwright spec，运行前准备当前 dist、WASM 和数据。
-脚本修改使用 `bash -n`、`python3 devs/scripts/test_workflows.py`；WASM/数据同步脚本
-使用 `node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`。
+脚本修改使用 `mise exec -- bash -n`、`mise exec -- python3 devs/scripts/test_workflows.py`；WASM/数据同步脚本
+使用 `mise exec -- node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`。
 
 ## 缓存与磁盘占用
 
@@ -117,11 +117,11 @@ Web 纯 TS/CSS 修改复用 WASM，运行相关 Vitest 与 typecheck；`pnpm --d
 `POBR_BIN` 运行的是那份 checkout 的引擎，用于读取游戏数据、台账和 PoB2 结果，不用于测量本 worktree 的改动。
 
 根 `Cargo.toml` 的 dev/test 对第三方依赖使用 `opt-level = 3`，workspace crate 保持未优化。
-游戏数据快照加载包含 JSON 解析和 SHA-256 校验；依赖未优化时历史测量一次加载约 3.4 s，
-优化后约 0.65 s。依赖首次编译后可长期复用；日常只改 workspace 源码时，无需重新优化依赖。
+游戏数据快照加载包含 JSON 解析和 SHA-256 校验，依赖优化有助于降低重复加载成本。
+依赖首次编译后可长期复用；日常只改 workspace 源码时，无需重新优化依赖。
 `pobr-build --test skills` 的当前快照由套件内一个只读 `LazyLock` 共享，修改数据的测试显式 clone，
 合成数据 fixture 保持独立。新增此套件测试复用 `crate::test_data()`，不要重复加载同一版本。
-日常测试和完整门禁统一使用 `cargo test`，套件内复用快照，同时覆盖 doctest；无需额外安装测试 runner。
+日常测试和完整门禁统一使用 `mise exec -- cargo test`，套件内复用快照，同时覆盖 doctest；无需额外安装测试 runner。
 规则生成测试用同两次生成结果检查确定性、覆盖率和已提交 golden。
 物品往返测试在同一次语料遍历中检查数量、语义并报告字节差异，不删减原有断言。
 
@@ -142,8 +142,8 @@ Cargo 仍按输入指纹复用未变的依赖、库和测试程序；重复相�
 
 ```bash
 mise run cache
-pnpm --dir web build-wasm                   # Verify and reuse unchanged output
-pnpm --dir web build-wasm --force           # Rebuild through Cargo, without cleaning
+mise run web build-wasm                   # Verify and reuse unchanged output
+mise run web build-wasm --force           # Rebuild through Cargo, without cleaning
 ```
 
 `cache` 通过离线 Cargo metadata 解析当前 target/build 目录，统计占用与文件数，
@@ -165,14 +165,14 @@ WASM 构建记录校验 Rust 源码、嵌入语言文件、共享配置 JSON、m
 缺失、损坏或旧格式记录需要一次正常重建。普通 UI、文档和运行时游戏数据修改不会触发 WASM 重编译；
 `data/overlay-common/*_config_options.json` 是可能内嵌的配置文件族，修改或新增会重新构建，
 无需另行登记缓存输入；
-游戏数据变化仍需 `pnpm --dir web sync-data`。
+游戏数据变化仍需 `mise run web sync-data`。
 
 这些设置减少后续产物，并非磁盘配额或自动清理器。`.cache/` 中历史诊断、vendor 差异副本、
 发布包以及旧 worktree 仍可能累积；先确认具体目录及保留需求，再显式清理。
 脚本不会自动删除发布资产、用户资料或其他 worktree。
 
-项目专属 [.claude/skills/workflow](../.claude/skills/workflow/SKILL.md) 将本页适配给 agent；
-跨项目的通用设计使用独立安装在个人 skills 目录的 `repo-workflow`，不把 PoBR 规则写入全局 skill。
+项目专属 [.claude/skills/workflow](../.claude/skills/workflow/SKILL.md) 将本页适配给 agent。
+本页与仓库内的 skill 足够完成日常开发，不依赖贡献者的个人 skills 或委派工具。
 
 ## CI 的责任与触发
 
@@ -259,7 +259,7 @@ Dependabot 每日分组检查 Actions 更新；Cargo、Rust toolchain、Web 与�
 ## 发布与部署
 
 应用版本由 `[workspace.package].version` 管理；七个基础库与 `data/CURRENT` 独立版本。
-更新应用版本后用 `cargo metadata --format-version 1 > /dev/null` 刷新锁文件。
+更新应用版本后用 `mise exec -- cargo metadata --format-version 1 > /dev/null` 刷新锁文件。
 [release-policy.py](../devs/scripts/release-policy.py) 按 SemVer 判断升级，检查所有继承 workspace
 版本的应用/工具锁版本；远端 tag 查询失败会报错，不能当作“tag 不存在”。
 PR 升版要求 tag 未使用；master 的合并后验证可接受指向同一提交的现有 tag。
@@ -324,7 +324,7 @@ mise run diagnose <build dir | code file | committed build name>   # One build's
 mise run compare <build> [Stat ...]                               # One build against the pinned PoB2, stat by stat
 mise run lookup <id or name> [--level N]                          # Game data records of a skill, stat, base, node or unique
 mise run accuracy [dir of */code.txt]                             # A corpus against the reference its codes carry
-cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown TotalDPS,Life   # How the stats asked for arrive
+mise exec -- cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown TotalDPS,Life   # How the stats asked for arrive
 ```
 
 `triage` 是数值差异的第一步，一次对照基准组与 tuned 组的全部构筑，`diagnose` / `compare` 只用于它解释不了的单个构筑；
@@ -345,21 +345,21 @@ cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown TotalDPS,
 
 ## 其他按需检查
 
-- `bash devs/scripts/driver.sh smoke`：聚合、解析、Build Code 的代表测试，不先构建整个工作区；不能替代完整门禁。
+- `mise run smoke`：聚合、解析、Build Code 的代表测试，不先构建整个工作区；不能替代完整门禁。
 - 本地 `.agents/skills/run-pobr/driver.sh` 转发到同一驱动（`.agents` 按仓库规则不入库）。`smoke` 是环境检查，已有相关测试通过后无需再补一次。
-- `python3 devs/scripts/test_workflows.py`：检查脚本失败传递、临时目录清理与工作区保护，以及 `compare` 的来源对齐和 `lookup` 的查找（用合成数据），不调用真实 Cargo。
+- `mise exec -- python3 devs/scripts/test_workflows.py`：检查脚本失败传递、临时目录清理与工作区保护，以及 `compare` 的来源对齐和 `lookup` 的查找（用合成数据），不调用真实 Cargo。
 - `devs/scripts/regen-check.sh` 在临时副本中重生成，保留 `overlay-common` 与 examples 语料，不写入或恢复工作区文件。
-- `node web/scripts/bench-calc.mjs`：用三个已提交构筑测真实 WASM 的非缓存计算和 16 项批量计算。
+- `mise exec -- node web/scripts/bench-calc.mjs`：用三个已提交构筑测真实 WASM 的非缓存计算和 16 项批量计算。
   需要先构建 WASM、同步数据；`--reference <old-pkg>` 另检查完整输出是否一致，适用于保持行为的优化。
   报告保存在 gitignore 的 `.cache/`，只按需运行，不属于 CI 门禁。
 - 本机性能与响应一致性检查需要 `diagnostics` feature，按需运行，不属于 CI 门禁。
   下列命令均加 `--release -- --ignored --nocapture`：
-  - `cargo test -p pobr-wasm --features diagnostics --test perf_uncached`：三个构筑的 Web 重算路径，
+  - `mise exec -- cargo test -p pobr-wasm --features diagnostics --test perf_uncached`：三个构筑的 Web 重算路径，
     包括完整重算、打开属性解释的后续请求和逐技能摘要。每个样本增加不同词条，避免响应或计算缓存代答。
     `perf_timing` 则重复同一请求，测缓存命中。
-  - `cargo test -p pobr-wasm --features diagnostics --test perf_corpus`：默认遍历四个集合：
+  - `mise exec -- cargo test -p pobr-wasm --features diagnostics --test perf_corpus`：默认遍历四个集合：
     `demo-bd-test/builds`、`wasm-benchmark/builds`、`reference-builds/tuned/builds`、
-    `reference-builds/ninja-top10-2026-10-26/builds`。在本次文档核对的 `81f8733e` 上共 325 个，不包括 holdout。它测无明细重算、默认明细、单属性明细、逐技能摘要和天赋变体，输出响应哈希与耗时。
+    `reference-builds/ninja-top10-2026-10-26/builds`。不包括 holdout，样本数由这些目录的当前内容决定。它测无明细重算、默认明细、单属性明细、逐技能摘要和天赋变体，输出响应哈希与耗时。
     `POBR_CORPUS_OUT=<file>` 保存表；在两个引擎版本上比较哈希，可检查响应是否逐字节保持一致。
     `POBR_CORPUS_ONLY` / `POBR_CORPUS_LIMIT` 缩小范围，`POBR_CORPUS_DIRS` 可替换默认集合，
     `POBR_CORPUS_DUMP=<dir>` 保存用于定位差异的响应。
@@ -367,7 +367,7 @@ cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown TotalDPS,
     `POBR_CORPUS_INLINE_DESCRIPTORS=1` 把明细类型表放回响应，便于与它改为可选前的记录比较。
     同一个二进制重复运行却得到不同哈希时，先修复该构筑的非确定性，再比较版本。
   - `perf record --call-graph dwarf` 可查看上述运行的时间花在哪里。
-    git 历史中记录的早期分析主要耗时在来源整理和特殊规则匹配，不是公式；不能当作当前版本的新测量。
-- `pnpm --dir web package-wasm`：将已准备 WASM 与同步数据打包到 `.cache/wasm-release/`；`pnpm --dir web smoke-wasm-package` 解压后执行真实计算。`build-wasm` 校验源码、工具链、构建设置和产物记录，未变时直接复用；`pnpm --dir web build-wasm --force` 显式重建但不清 Cargo 缓存。打包继续校验源码 / 绑定指纹、实际 schema 和数据快照，来源 commit 保留编译时值。脚本改动运行 `node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`；发布流程见 [WASM 打包说明](wasm-package.md)。release workflow 在完整门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
-- `cd web && pnpm test:worker`：在实际 workerd 运行时测试 Worker，使用合成上游响应，无外网依赖。E2E 失败的截图与 trace 由 CI 上传为 `playwright-failure`。
+    优化前先测当前版本，保留输入、工具链、主机与原始采样，避免沿用旧版热点结论。
+- `mise run web package-wasm`：将已准备 WASM 与同步数据打包到 `.cache/wasm-release/`；`mise run web smoke-wasm-package` 解压后执行真实计算。`build-wasm` 校验源码、工具链、构建设置和产物记录，未变时直接复用；`mise run web build-wasm --force` 显式重建但不清 Cargo 缓存。打包继续校验源码 / 绑定指纹、实际 schema 和数据快照，来源 commit 保留编译时值。脚本改动运行 `mise exec -- node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`；发布流程见 [WASM 打包说明](wasm-package.md)。release workflow 在完整门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
+- `mise run web test:worker`：在实际 workerd 运行时测试 Worker，使用合成上游响应，无外网依赖。E2E 失败的截图与 trace 由 CI 上传为 `playwright-failure`。
 - 计划发版时，在功能 PR 中一并更新 workspace 版本。本地完成相关验证、审计与 PR 完整门禁后合并，再推送一次 tag；release workflow 验证后发布，稳定 v0 版本按部署规则上线，无需在 master 额外手动运行同一套 CI。

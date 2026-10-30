@@ -21,7 +21,7 @@
 普通解析修复或同步当前固定版本的 PoB2 规则：
 
 ```bash
-bash pipeline/refresh-modifiers.sh
+mise exec -- bash pipeline/refresh-modifiers.sh
 ```
 
 命令依次提取普通规则与 `specialModList`、严格校验完整有效规则、用完整来源语料对照 PoB2、检查上一份审计，
@@ -71,15 +71,15 @@ PoBR 沿用这个边界：提取器自动吸收可表达的规则，人工修正
 普通再生成复用 `_meta.json` 中的固定提交；主动更新或精确重放：
 
 ```bash
-node pipeline/gen-zh-cn.mjs --refresh
-node pipeline/gen-zh-cn.mjs --version <version> --ref <full-commit-sha>
+mise exec -- node pipeline/gen-zh-cn.mjs --refresh
+mise exec -- node pipeline/gen-zh-cn.mjs --version <version> --ref <full-commit-sha>
 ```
 
 所有文件从同一提交下载，下载完整后才启用缓存；失败不会混入半份新版词典。
 离线输入可用 `--dict <directory>`，其元数据明确没有已验证的上游提交。
 `bump-version.sh` 在联网升级时刷新词典，并在词典生成和完整词条审计通过后才推进活动版本标记。
-词典缓存与下载失败测试运行 `node --test pipeline/test-dictionary-source.mjs pipeline/test-translation-source.mjs`，已接入 CI；
-升级失败保护由 `python3 devs/scripts/test_workflows.py` 覆盖。
+词典缓存与下载失败测试运行 `mise exec -- node --test pipeline/test-dictionary-source.mjs pipeline/test-translation-source.mjs`，已接入 CI；
+升级失败保护由 `mise exec -- python3 devs/scripts/test_workflows.py` 覆盖。
 
 ### 独立词表与人工翻译维护
 
@@ -89,13 +89,13 @@ node pipeline/gen-zh-cn.mjs --version <version> --ref <full-commit-sha>
 
 ```bash
 # 只选择独立词表的新版本；--ref 仍控制旧的基础词典
-node pipeline/gen-zh-cn.mjs --translations-ref <full-commit-sha>
+mise exec -- node pipeline/gen-zh-cn.mjs --translations-ref <full-commit-sha>
 # 同时刷新两个来源，并记录各自固定提交
-node pipeline/gen-zh-cn.mjs --refresh
+mise exec -- node pipeline/gen-zh-cn.mjs --refresh
 # 离线开发：这里是独立词表仓库的根目录，不是旧 --dict 格式
-node pipeline/gen-zh-cn.mjs --translations-dir /path/to/poe2-zh-cn-stats
+mise exec -- node pipeline/gen-zh-cn.mjs --translations-dir /path/to/poe2-zh-cn-stats
 # 两个来源均离线
-node pipeline/gen-zh-cn.mjs --dict /path/to/legacy/dictionary --translations-dir /path/to/poe2-zh-cn-stats
+mise exec -- node pipeline/gen-zh-cn.mjs --dict /path/to/legacy/dictionary --translations-dir /path/to/poe2-zh-cn-stats
 ```
 
 本地输入的来源模式为 `local`、commit 为 `null`，不会冒充固定远端提交。`--refresh` 不与固定 ref 或本地目录混用。
@@ -126,7 +126,7 @@ node pipeline/gen-zh-cn.mjs --dict /path/to/legacy/dictionary --translations-dir
 
 ```bash
 # patch.pathofexile2.com:13060，握手 [0x01,0x07]，返回形如 https://patch-poe2.poecdn.com/0.5.5.4.2/
-node query-patch-version.mjs   # 见本目录
+mise exec -- node pipeline/query-patch-version.mjs   # 从仓库根运行
 ```
 
 > **不需要下载完整的 `Content.ggpk`。** pathofexile-dat 只按 `config.json` 点名的表从 CDN 取对应 bundle。
@@ -136,9 +136,9 @@ node query-patch-version.mjs   # 见本目录
 
 ```bash
 # Run from the repository root.
-(cd pipeline && node download-index.mjs)
-bash pipeline/export-tables.sh
-bash pipeline/regen-all.sh
+mise -C pipeline exec -- node download-index.mjs
+mise exec -- bash pipeline/export-tables.sh
+mise exec -- bash pipeline/regen-all.sh
 # Only adapt base tables into an existing snapshot, with the same validation gates.
 mise run data:adapt
 ```
@@ -156,8 +156,8 @@ Web 同步沿用该清单，维护报告不进入浏览器包。共享人工规�
 旧 schema 1/2 快照继续兼容。`manifest` 子命令仅用于人工维护后重新封装已核验数据，
 不会代替生成器的语料、来源和数值验证。
 
-脚本回归检查：`python3 pipeline/test-data-snapshot.py`、
-`python3 pipeline/test-data-update.py`、`node --test web/scripts/sync-data.test.mjs`。
+脚本回归检查：`mise exec -- python3 pipeline/test-data-snapshot.py`、
+`mise exec -- python3 pipeline/test-data-update.py`、`mise exec -- node --test web/scripts/sync-data.test.mjs`。
 
 `./.cache/`（~113MB bundle 索引）、`./tables/`、`./files/` 均为中间物，**已 gitignore，不入库**。
 仓库保存配置、脚本、说明、受审的来源收据，以及产出的 `data/<version>/` 最小适配数据。
@@ -188,7 +188,7 @@ pipeline/diff-vendor-calcs.sh <old-sha> <new-sha> [--out <file>]
 
 ## 扩展 / 升版
 
-- 新 PoE2 版本：**`bash pipeline/bump-version.sh` 一条命令**自动查询最新补丁，已是最新时直接退出；
+- 新 PoE2 版本：**`mise exec -- bash pipeline/bump-version.sh` 一条命令**自动查询最新补丁，已是最新时直接退出；
   有更新则下载 → 树/vendor 对齐 → 品质兼容检查 → 候选目录内 regen-all、zh-CN / 完整词条审计 →
   manifest 封装、多版本、gamedata 与 parity 回归验证 → 发布目录、推进 `data/CURRENT` → Web 同步。
   活动版本在运行时读取 `data/CURRENT`，数据更新无需重编译基础 crate；可用 `POBR_DATA_ROOT` / `POBR_DATA_VERSION` 覆盖。

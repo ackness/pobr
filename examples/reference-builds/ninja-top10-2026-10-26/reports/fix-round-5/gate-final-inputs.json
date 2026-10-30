@@ -1,6 +1,0 @@
-{
-  "git_commit": "23e013775504fb933006c50a060298728545ccb0",
-  "started_at": "2026-10-26T19:22:59.171646+00:00",
-  "command": "mise run gate --only fmt,clippy,core,build,parity,apps,accuracy",
-  "change": "Brutality dealt-type ailment review fix. Parser/catalog/generated, Web and i18n inputs unchanged; prior passing checks retained."
-}

@@ -73,7 +73,7 @@ AdditionalRingSlot、GemlingQuality 由构筑预处理读天赋原文，分别�
    它按共同原因汇总，先修影响多个构筑的原因，整批后再跑。
 2. 只有 triage 解释不了的行，才用 `mise run diagnose <构筑>`。
    第 1 节导入损耗，第 2 节参考差异，第 3–9 节丢输入；第 6 节含未设置条件，配置可设置者另列 config: off。
-3. 看公式用 `cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown <Stat,...>`，
+3. 看公式用 `mise exec -- cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown <Stat,...>`，
    加 --reference-basis 用参考口径，--json 输出 JSON，--usage 查看逐行去向。
    查游戏记录用 `mise run lookup <id 或名字>`。
 4. 再用 `mise run compare <构筑> [Stat ...]` 对照 PoB2 的总值、比值、BASE／INC／MORE 和逐来源词条。
@@ -160,7 +160,7 @@ known 只适用于所选 stat set 的显示／无伤害规则、已写明的模�
 显式 --json／--text 优先。保留完整轮次再做定向。oracle 缓存键含 XML、vendor commit 和 wrapper。
 该扫描不读 holdout。
 
-`python3 devs/scripts/output-coverage.py` 用已构建的 target/debug/pobr，按 display_catalog.pob_key
+`mise exec -- python3 devs/scripts/output-coverage.py` 用已构建的 target/debug/pobr，按 display_catalog.pob_key
 对照 benchmark、tuned、demo 的 oracle 完整输出，拒绝 holdout。
 逐字段报告有限值样本数、非零样本、5%／10% 吻合数和最差构筑。
 --oracle-cache 只读 compare 共用缓存，--refresh-missing 补缺。

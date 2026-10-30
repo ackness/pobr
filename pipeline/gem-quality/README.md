@@ -9,7 +9,7 @@
 在仓库根目录运行：
 
 ```bash
-cargo run -p pobr-data-adapter -- \
+mise exec -- cargo run -p pobr-data-adapter -- \
   --gem-quality pipeline/tables/English \
   --quality-source "pipeline/gem-quality/$(cat data/CURRENT).json" \
   --out data --patch "$(cat data/CURRENT)"
@@ -66,7 +66,7 @@ schema 的 `latest` URL 会变化；精确重放应使用按收据指纹保存�
 
 ## 更新版本或原始表
 
-通常运行 `bash pipeline/bump-version.sh` 即可。下载器成功导出官方表后，
+通常运行 `mise exec -- bash pipeline/bump-version.sh` 即可。下载器成功导出官方表后，
 `advance-receipt.py record-export` 记录目标补丁、配置指纹和三张表的 SHA-256；
 仅目标版本还没有收据时，`advance` 核对上一版收据与品质产物，并以稳定 ID 比较语义。
 效果集合、主 / 备用属性 ID 及顺序、stat-set 作用域不变时，数值斜率可自动更新，
@@ -89,31 +89,30 @@ schema 的 `latest` URL 会变化；精确重放应使用按收据指纹保存�
 
 直接运行 `regen-all.sh` 仍要求已有匹配收据，不负责下载或推断来源。
 自动兼容检查未通过时，准备并验证收据后，可使用
-`bash pipeline/bump-version.sh --patch <patch> --skip-download` 重跑。
+`mise exec -- bash pipeline/bump-version.sh --patch <patch> --skip-download` 重跑。
 原始表必须已经对应目标版本，不能将上一版输入重新标记为新版。
 此门禁只保证品质域的输入与输出；不使整个升级脚本成为跨域事务。
 
 ## 定向验证
 
 ```bash
-cargo test -p pobr-data-adapter --bin pobr-data-adapter skills::quality::
-cargo test -p pobr-build --test skills gem_quality
-cargo test -p pobr-build --test skills spirit_reservation::
-cargo test -p pobr-wasm --test contract_golden memory_backend_matches_dir_backend
-python3 devs/scripts/test_workflows.py
-python3 pipeline/test-data-update.py
-node --test pipeline/test-query-patch-version.mjs
+mise exec -- cargo test -p pobr-data-adapter --bin pobr-data-adapter skills::quality::
+mise exec -- cargo test -p pobr-build --test skills gem_quality
+mise exec -- cargo test -p pobr-build --test skills spirit_reservation::
+mise exec -- cargo test -p pobr-wasm --test contract_golden memory_backend_matches_dir_backend
+mise exec -- python3 devs/scripts/test_workflows.py
+mise exec -- python3 pipeline/test-data-update.py
+mise exec -- node --test pipeline/test-query-patch-version.mjs
 ```
 
 主机契约测试覆盖历史和活动数据版本、三份完整 Build 的 q0/q19/q20，比较文件和内存加载。
-首次迁移已重建真实 WASM，并对三份 Build 的 q0/q19/q20 共九组完整输出进行检查：
-迁移前后、原生与 WASM 均相等（只对无序诊断列表排序，不放宽数值比较）。
+涉及加载或计算边界的改动，再比较原生与真实 WASM 的相同输入；无序诊断可排序，数值比较不放宽。
 Web 回归用爆炸手雷验证 q0 → q20 导致重算、再改回 q0 恢复原值：
 
 ```bash
-pnpm --dir web exec playwright test e2e/build-roundtrip.spec.ts -g 'gem quality edits' --workers=1
+mise run web:e2e e2e/build-roundtrip.spec.ts -g 'gem quality edits' --workers=1
 ```
 
-首次真实数据验收覆盖 `4.5.5.2`。后续离线测试使用未出现过的版本号和重排索引，
+离线测试使用合成版本号和重排索引，
 覆盖数值更新、未知机制拒绝、来源不匹配以及失败不推进活动版本；它们不代表已验收尚未发布的真实补丁。
 Lua 提取器保留为历史重放 / 对照工具；对照时输出到临时目录，不覆盖当前正式产物。

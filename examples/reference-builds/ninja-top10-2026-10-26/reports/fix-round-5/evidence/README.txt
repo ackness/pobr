@@ -1,1 +1,0 @@
-Implementation handoffs retain their as-of-commit validation and parent_remaining/not_run fields as historical records of the child scope. Current parent completion and corpus validation are in ../completion-audit.json, ../validation-summary.json and banner-speed-s12/corpus-validation.json. No historical child record claims to have run the later parent batch.

@@ -1,6 +1,0 @@
-{
-  "issue": "Temporary checker read only scalar value for uncatalogued Minion:ActionRate; that field is null while the actor formula has the valid2.3875 result.",
-  "initial_checker_result": "229 checked;1 extraction assertion; all230 CLI calls produced retained outputs.",
-  "correction": "Read that explicitly requested generic actor stat from breakdown.formula.value after asserting minion actor0. Other missing/nonfinite scalar results still fail.",
-  "validation": "Rerun invariant checks over source/input/options/hash-bound cached outputs; no engine rerun or output mutation."
-}

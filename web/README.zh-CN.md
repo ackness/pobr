@@ -132,7 +132,7 @@ PoB 导出需要可靠的来源名称；无法恢复时会报错，不丢弃插�
 ## 语言支持
 
 界面支持英文、简体中文和繁体中文。游戏名词字典随数据版本保存；
-简中来自国服字典（`node pipeline/gen-zh-cn.mjs`），宝石选择器可搜索三种语言。
+简中来自国服字典（`mise exec -- node pipeline/gen-zh-cn.mjs`），宝石选择器可搜索三种语言。
 简中物品基底和词条通过模板转为英文再解析，`Rarity:` 等 PoB 结构行保留原格式。
 未知文本保留并给出诊断。繁中有名词字典，没有原生词条模板；显示可通过繁简转换回退，
 不能视为官方译名。界面翻译不改导入原文或稳定计算 id。
@@ -179,10 +179,10 @@ E2E 使用当前生产 `dist`，`build` 已包含 typecheck。
 
 七个共用请求 DTO（传输数据结构）由 Rust 经钉定的宿主开发依赖 `ts-rs` 生成到
 `src/api/generated/request.ts`。修改后运行
-`cargo test -p pobr-wasm --lib export_typescript_contract -- --ignored` 并提交产物。
+`mise exec -- cargo test -p pobr-wasm --lib export_typescript_contract -- --ignored` 并提交产物。
 普通 Rust 库测试与 PR CI 检查是否过期。其余类型保留在 `src/api/types.ts`，
 由 `apps/pobr-wasm/tests/contract_golden.rs` 检查。
-契约变化后用 `cargo test -p pobr-wasm --features diagnostics --test gen_fixtures -- --ignored`
+契约变化后用 `mise exec -- cargo test -p pobr-wasm --features diagnostics --test gen_fixtures -- --ignored`
 重生成 mock 数据。mock 只供界面开发，不验证引擎行为。
 
 ## 结构与数据流

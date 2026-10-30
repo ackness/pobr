@@ -93,7 +93,7 @@ Found a calculation mismatch or an unsupported modifier?
 you can share publicly, the relevant item or skill, and expected versus actual
 results. UI feedback and translation corrections are welcome too.
 
-For implementation work, start with [the contributor guide](AGENTS.md) or
+For implementation work, start with [the contributor guide](CONTRIBUTING.md) or
 [adding modifier rules](docs/contributing-mods.md). If PoBR is useful to you,
 **star the repository** to bookmark it, or use **Watch → Custom → Releases** for
 release notifications.
@@ -111,45 +111,26 @@ Calculation runs locally in the browser; WeGame and market HTTP adapters use a
 Pages Worker. The WASM/JSON API and CLI are still evolving and may change
 between releases.
 
-### Performance and build analysis
-
-See [WASM performance and build analysis](docs/wasm-performance.md) for measured
-PoBR/Lua timings, package sizes, build diagnostics, measurement limits and
-reproduction commands.
-
 ### Run locally
 
+Use the latest stable [mise](https://mise.jdx.dev/getting-started.html) to install
+and run the project-pinned tools. From the repository root:
+
+```bash
+mise bootstrap --only packages,tools,task
+mise exec -- cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
+mise run verify build codec           # Focused check for Build Code changes
+mise run targets                      # List suites without compiling
+```
+
 For the web app, follow the [web setup guide](web/README.md) to prepare WASM and
-game data and start Vite. To try the CLI, run from the repository root with the
-Rust toolchain pinned in `rust-toolchain.toml`:
-
-```bash
-# CLI (binary name: pobr)
-cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
-cargo run -p pobr-cli -- decode-code <pob_code>        # PoB build code -> XML
-cargo run -p pobr-cli -- parse-mod "20% increased Fire Damage"
-```
-
-For changes, select checks for the affected behavior. For example, validate
-Build Code changes with:
-
-```bash
-mise run verify build codec
-mise run targets                     # List suites without compiling
-mise run timings build parity        # Compile one suite and report timings
-```
-
-Normal local commits use relevant checks. Full gates run in cloud CI: push a
-release tag, or request a branch run with `mise run ci <pushed-ref>`. No duplicate
-local full run is required. `mise run full` remains available for local Rust
-validation. Pull requests run lightweight checks automatically; see
-[CONTRIBUTING.md](CONTRIBUTING.md). The live app deploys from `v0.x` release tags after all CI jobs pass.
-See [development workflow](docs/development-workflow.md) for commands, cache reuse,
-storage reporting and timing.
+game data and start Vite. The [development workflow](docs/development-workflow.md)
+explains focused validation, CI, reviews and releases. See the
+[WASM package guide](docs/wasm-package.md#runtime-performance-comparison) for
+optional performance measurements and their limits.
 
 Rust **edition 2024**; apps and tools inherit the workspace release version.
-The seven internal libraries keep independent versions, so application version
-bumps do not invalidate the entire library dependency chain.
+The seven internal libraries keep independent versions.
 
 ## Documentation
 

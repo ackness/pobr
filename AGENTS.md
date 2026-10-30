@@ -19,8 +19,8 @@ tests to resolve disagreements with any document.
 - Rust integration tests live in each crate's `tests/`; frontend unit tests
   accompany source files, with browser tests in `web/e2e/`.
 
-The project-specific workflow adapter is [.claude/skills/workflow/SKILL.md](.claude/skills/workflow/SKILL.md);
-reusable workflow design belongs to the independently installed global `repo-workflow` skill.
+The project-specific workflow adapter is
+[.claude/skills/workflow/SKILL.md](.claude/skills/workflow/SKILL.md).
 
 ## Build, Test, and Development Commands
 
@@ -55,9 +55,9 @@ cache at all.
 
 - **Per change: one focused check.** `mise run verify <crate> <suite> [filter]`
   runs the test of what you touched, then fmt and Clippy for that target
-  (`cargo test -q -p <crate> --test <suite> <filter>` works too); add
+  (`mise exec -- cargo test -q -p <crate> --test <suite> <filter>` works too); add
   `mise run regen` after a rule edit. That is all a commit needs.
-- **Do not run per change:** the whole `cargo test -p pobr-core`, `--test parity`,
+- **Do not run per change:** the whole `mise exec -- cargo test -p pobr-core`, `--test parity`,
   the WASM/CLI suites, `mise run accuracy`, `triage`, `diagnose`, `compare`,
   `skills:sweep` or the coverage scripts. They compile the parity binary or the
   CLI and recompute every build.
@@ -149,8 +149,8 @@ Improve calculation accuracy in batches, not one build at a time:
    Parallel agents write independent fixes with only focused checks; the main
    session merges and runs the gate.
 3. Validate once per batch: `mise run gate` (includes accuracy and parity), then
-   rerun `mise run triage` (PoB2's side is cached). Raise improved baselines, add a round to
-   `examples/reference-builds/README.md`, and commit each cause separately.
+   rerun `mise run triage` (PoB2's side is cached). Raise improved baselines and
+   record the cause and evidence in the commits or PR; keep generated reports local.
 4. Open one build (`mise run diagnose`, `mise run compare <build> [Stat ...]`,
    `calculate-build --breakdown <stats> --usage`) only for a row the triage
    does not explain. When a kind of
@@ -179,14 +179,17 @@ Contributor requirements are in
 
 ## Documentation
 
-- [docs/README.md](docs/README.md) separates current guides and contracts from
-  dated records. Web feature contracts are in [docs/web-contracts.md](docs/web-contracts.md).
+- [docs/README.md](docs/README.md) organizes current guides by audience and task.
+  Web feature contracts are in [docs/web-contracts.md](docs/web-contracts.md).
 - A new mechanic convention goes into its section of [docs/mechanics/](docs/mechanics/README.md),
   an output field into [docs/calc-outputs.md](docs/calc-outputs.md), a PoB2
   difference into [docs/pob2-differences.md](docs/pob2-differences.md). Keep the
   maintainer guide to cross-cutting rules: every session loads it in full.
 - When code replaces a described behaviour, rewrite or delete the paragraph;
   do not keep superseded history in current documents.
+- Put generated reports and personal research in `.cache/` or `study/`.
+  Keep reproducible examples, source metadata, active baselines and current
+  explanations in version control. Preserve source citation paths when useful.
 
-`agent-docs/` contains mechanics research, not final authority.
-`devs/docs/architecture/` holds the feature contracts (documents 18–21).
+`agent-docs/` preserves earlier mechanics research cited by source and tests;
+check it against current game data and [mechanics](docs/mechanics/README.md).
