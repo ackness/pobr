@@ -103,6 +103,10 @@ jobs:
         with:
           node: 'true'
           scripts: 'true'
+      # setup-node restores the pnpm store, not the linked node_modules tree.
+      # The package contract test invokes the project's TypeScript compiler.
+      - name: Install automation test dependencies
+        run: pnpm --dir web install --frozen-lockfile
       - run: bash devs/scripts/check-workflows.sh
 
   full:
