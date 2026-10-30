@@ -8,3 +8,6 @@ pobr-data.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2 = { version = "0.11", default-features = false }
+
+[dev-dependencies]
+pobr-tree.workspace = true
