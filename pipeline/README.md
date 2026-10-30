@@ -10,11 +10,38 @@
 |----|------|------|
 | 物品基底 / 词缀 / Stat / 技能宝石 | 游戏 `Content.ggpk` 里的 `.dat` 表（GGG） | `pathofexile-dat` 按版本从 CDN 只下需要的表 bundle |
 | 宝石品质（从 `4.5.5.2` 起） | GGG `GrantedEffectQualityStats` / `GrantedEffects` / `Stats`，范围由版本收据固定 | `pobr-data-adapter --gem-quality`，见[品质生成说明](gem-quality/README.md) |
-| 词条显示文本 | `Metadata/StatDescriptions/*.txt`（GGG） | 同上，作为 `files` 导出 |
-| 被动天赋树 | GGG 官方 `github.com/grindinggear/poe2-skilltree-export` 的 `data.json` | 直接取 `data.json`（不取图集） |
+| 词条显示文本 | 游戏的 `Data/StatDescriptions/*.csd`，当前产品仍消费 PoB2 导出 | `config.json` 尚未接入这些原始 `files`；独立描述适配待迁移 |
+| 被动天赋树 | GGG 官方 `github.com/grindinggear/poe2-skilltree-export` 的 `data.json` | 生产再生成仍有 vendor 补充；固定来源的独立树域候选见下文 |
 
 `.dat` 存的是 **id / 数值 / 外键关系**（规范化数据库表）；显示文本在 `StatDescriptions` 里。
 列名/表名见 [poe-tool-dev/dat-schema](https://github.com/poe-tool-dev/dat-schema)。
+
+## 固定来源与独立树候选
+
+[sources.lock.json](sources.lock.json) 目前只登记首个迁移域的官方树输入：仓库、完整提交、
+原始 SHA-256、上游版本、服务器、已知/未知游戏补丁及版权/使用范围。
+它没有声称其他生产域已完成迁移，也没有固定现有表导出器的远端 schema；这些仍是后续工作。
+PoB2 的测试参考版本独立登记在 [devs/reference-sources.json](../devs/reference-sources.json)，
+`mise run vendor` 不再读取生产 parser 元数据选择参考版本。
+
+```bash
+mise run data:tree:source
+mise run data:tree:source --offline
+mise run data:tree:candidate --offline --out .cache/tree-proof/first
+mise run data:tree:candidate --offline --out .cache/tree-proof/second
+```
+
+获取命令将原始字节放在 `.cache/sources/<sha256>/data.json`，每次重用均验证哈希。
+`--offline` 不联网；缺缓存、内容不符或下载失败即失败，不回退到 latest 或别的版本。
+候选命令用 Rust adapter 生成 `base/passive_tree.json` 与 `base/passive_tree_meta.json`，
+记录来源 lock、adapter/数据类型与构建输入的摘要；重放结果不包含机器路径或当前时间。
+这些任务不准备 vendor、LuaJIT 或 PoB2 oracle。
+
+`--out` 必须是不存在且位于正式 `data/` 之外的路径。候选只含树域，带有
+`_domain_candidate.json`，没有产品 manifest；封存和发布入口也会拒绝此标记。
+当前固定输入的上游说明是 0.5.5，其与产品活动补丁的精确适配关系尚未核实，`game_patch` 保持 null。
+生成时目录使用上游版本作为 adapter 标签，不表示已确认客户端补丁。
+这些命令不会覆盖活动数据或修改 `CURRENT`。生产切换还需补丁适配、完整域/消费者与数值验证。
 
 ## 词条更新与回归检查
 
@@ -139,8 +166,10 @@ mise exec -- node pipeline/query-patch-version.mjs   # 从仓库根运行
 mise -C pipeline exec -- node download-index.mjs
 mise exec -- bash pipeline/export-tables.sh
 mise exec -- bash pipeline/regen-all.sh
-# Only adapt base tables into an existing snapshot, with the same validation gates.
+# Adapt base tables into an existing snapshot, with our audit and regression checks.
 mise run data:adapt
+# Explicitly require the pinned PoB2 parser comparison as well.
+mise run data:adapt:reference
 ```
 
 `export-tables.sh` 在全部配置表导出成功后记录补丁、配置哈希和每张表的 SHA-256。
@@ -162,6 +191,10 @@ Web 同步沿用该清单，维护报告不进入浏览器包。共享人工规�
 `./.cache/`（~113MB bundle 索引）、`./tables/`、`./files/` 均为中间物，**已 gitignore，不入库**。
 仓库保存配置、脚本、说明、受审的来源收据，以及产出的 `data/<version>/` 最小适配数据。
 `data:adapt` 只适配原始表，不生成品质域；完整 `regen-all.sh` 包含品质，独立更新可使用[独立生成命令](gem-quality/README.md#独立生成)。
+`data:adapt` 默认用 `refresh-modifiers.sh --offline` 校验候选的有效规则与语料，不隐式执行 PoB2。
+这只解除了适配验证对 reference 进程的依赖，现有快照仍含旧的 PoB2 派生规则。
+`data:adapt:reference` 自动准备 oracle 并显式要求对照；缺少依赖或比较失败会阻止发布。
+完整旧管线仍执行 vendor 抽取和对照，不以这一改动宣称已能自主生成全部产品数据。
 
 ## Vendor calc-delta 报告（`diff-vendor-calcs.sh`）
 

@@ -21,6 +21,8 @@ special-mods / config-options，`extract_lua::headless_lua_path`）用同一条 
 `HeadlessWrapper.lua` 已经把 `lcurl.safe` stub 成 no-op，所以不需要 lcurl。
 
 在仓库根运行 `mise run setup:oracle`，自动准备固定 vendor 与支持 `+=` 的 LuaJIT。
+PoB2 仓库、完整 commit 与输出协议由 [reference-sources.json](../../devs/reference-sources.json)
+独立固定，不由活动游戏快照的 parser 元数据选择。`vendor/.pob2-version.txt` 仅为本地安装记录。
 项目 runtime 的 commit 由 `devs/scripts/pob2-luajit.sh` 维护，mise 将其暴露到
 `.cache/runtime/bin` 并设置 `POBR_LUAJIT`；不要求手工安装系统 LuaJIT。
 `mise run status` 只检查，不安装。独立调用下面的 runner 时也经 `mise exec --` 执行，

@@ -38,6 +38,7 @@ setup 检查 Git、make、C 编译器；macOS 的 Apple SDK/Command Line Tools �
 | --- | --- |
 | Web 日常开发/测试 | `mise run web <命令>`，例如 `mise run web test <文件>` |
 | 数据导出器 | `mise run pipeline test` |
+| 官方树域候选 | `data:tree:source` / `data:tree:candidate --out <新目录>`；固定来源、可离线重放，不准备 oracle，不发布产品数据 |
 | PoB2 对照、triage、完整数据生成 | 对应任务依赖 `setup:oracle`，自动准备固定 LuaJIT commit 与固定 vendor；重复运行复用缓存 |
 | 浏览器回归 | `mise run web:e2e <spec>`，自动安装 lockfile 对应的 Playwright 浏览器/系统依赖；仍须当前 dist/WASM/data |
 | 树图资源再生成 | `mise run web:tree-art`，按需由 mise conda backend 安装固定 ImageMagick 7/zstd，自动准备 vendor |
@@ -45,6 +46,9 @@ setup 检查 Git、make、C 编译器；macOS 的 Apple SDK/Command Line Tools �
 `setup:oracle` 将兼容的 LuaJIT 暴露到 `.cache/runtime/bin`；mise 为任务配置 PATH、
 `POBR_LUAJIT` 与 vendor 的 `LUA_PATH`，无需各自修改 shell。
 默认安装使用固定上游 commit，保留显式 runtime override 的调试用途。
+PoB2 的固定仓库与 commit 由 `devs/reference-sources.json` 管理，独立于生产 parser 规则的来源；
+后者仍记录各自生成时使用的 vendor。官方表适配默认执行自有审计；需要 PoB2 解析对照时用
+`mise run data:adapt:reference`，不会将缺依赖的必需对照记为成功。
 首次源码构建会自动处理 macOS deployment target；缺依赖的任务失败会给出具体原因。
 `mise run status` 只报告工具与数据状态，不下载、不构建。
 

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "official-passive-tree": {
+      "kind": "official-passive-tree",
+      "repository": "https://github.com/grindinggear/poe2-skilltree-export",
+      "revision": "bd87e6512c92b868542eddfb1ba4ea8b6dc2da36",
+      "path": "data.json",
+      "sha256": "b52be9c4f17e4114064255ef1b8c58292e9db0e395d95af235a8d3fef0d44642",
+      "upstream_version": "0.5.5",
+      "game_patch": null,
+      "realm": "international",
+      "rights": {
+        "owner": "Grinding Gear Games",
+        "terms": "https://www.pathofexile.com/legal/terms-of-use-and-privacy-policy",
+        "scope": "Local source verification and candidate generation; product redistribution not reviewed."
+      }
+    }
+  }
+}

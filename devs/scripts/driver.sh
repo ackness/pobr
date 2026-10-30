@@ -24,17 +24,31 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT" || exit 1
 
 DATA_ROOT="${POBR_DATA_ROOT:-$ROOT/data}"
-DATA_VER="${POBR_DATA_VERSION:-$(head -n 1 "$DATA_ROOT/CURRENT")}"
-RULES="$DATA_ROOT/$DATA_VER/overlay/mod_parser_rules.json"
+DATA_VER="${POBR_DATA_VERSION:-$(head -n 1 "$DATA_ROOT/CURRENT" 2>/dev/null)}"
 VENDOR_DIR="vendor/PathOfBuilding-PoE2"
-VENDOR_REPO="https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2.git"
 
 say() { printf '\n\033[1m== %s ==\033[0m\n' "$*"; }
 
-vendor_commit() {
-  # 路径经 argv（sys.argv[1]）传入，不插值进脚本串——避免 $RULES 含引号时的注入面。
-  python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['_meta']['vendor_commit'])" "$RULES" 2>/dev/null
+reference_field() {
+  python3 - "$ROOT/devs/reference-sources.json" "$1" <<'PY'
+import json, re, sys
+try:
+    with open(sys.argv[1], encoding="utf-8") as source:
+        document = json.load(source)
+    reference = document["pob2"]
+    if document["schema_version"] != 1 or not re.fullmatch(r"[0-9a-f]{40}", reference["commit"]):
+        raise ValueError("expected schema 1 and a full commit SHA")
+    if not re.fullmatch(r"https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\.git", reference["repository"]):
+        raise ValueError("expected an HTTPS GitHub repository URL")
+    if reference["protocol"] != "pob2-oracle/v1":
+        raise ValueError("unsupported oracle protocol")
+    print(reference[sys.argv[2]])
+except (OSError, ValueError, KeyError, TypeError) as error:
+    raise SystemExit(f"Invalid reference source {sys.argv[1]}: {error}") from error
+PY
 }
+
+vendor_commit() { reference_field commit; }
 
 cmd_deps() {
   say "PoB2 LuaJIT runtime"
@@ -55,8 +69,9 @@ cmd_deps() {
 
 cmd_vendor() {
   say "PoB2 vendor 参考克隆（gitignored，不提交）"
-  local sha; sha="$(vendor_commit)"
-  [ -n "$sha" ] || { echo "ERROR: 无法从 $RULES 读 vendor_commit"; return 1; }
+  local sha repo
+  sha="$(vendor_commit)" || return 1
+  repo="$(reference_field repository)" || return 1
   mkdir -p "$VENDOR_DIR" || return 1
   local vendor_root
   vendor_root="$(git -C "$VENDOR_DIR" rev-parse --show-toplevel 2>/dev/null)" || vendor_root=""
@@ -67,17 +82,21 @@ cmd_vendor() {
     [[ -z "$(ls -A "$VENDOR_DIR")" ]] || { echo "ERROR: vendor 目录非空且不是独立 Git 仓库" >&2; return 1; }
     git -C "$VENDOR_DIR" init -q || return 1
   fi
-  if [ -f "$VENDOR_DIR/src/Modules/ModParser.lua" ] \
-     && [ "$(git -C "$VENDOR_DIR" rev-parse HEAD 2>/dev/null)" = "$sha" ]; then
-    echo "vendor 已在钉定 commit $sha"; return 0
-  fi
   local vendor_changes
   vendor_changes="$(git -C "$VENDOR_DIR" status --porcelain --untracked-files=no)" || return 1
   [[ -z "$vendor_changes" ]] \
     || { echo "ERROR: vendor 有未提交修改，拒绝切换 commit" >&2; return 1; }
+  if [ -f "$VENDOR_DIR/src/Modules/ModParser.lua" ] \
+     && [ "$(git -C "$VENDOR_DIR" rev-parse HEAD 2>/dev/null)" = "$sha" ]; then
+    printf '%s\n' "$sha" > vendor/.pob2-version.txt || return 1
+    echo "vendor 已在钉定 commit $sha"; return 0
+  fi
   echo "克隆 PoB2 @ ${sha}（depth 1 fetch-by-sha）..."
   git -C "$VENDOR_DIR" remote get-url origin >/dev/null 2>&1 \
-    || git -C "$VENDOR_DIR" remote add origin "$VENDOR_REPO" || return 1
+    || git -C "$VENDOR_DIR" remote add origin "$repo" || return 1
+  local origin; origin="$(git -C "$VENDOR_DIR" remote get-url origin)" || return 1
+  [[ "${origin%.git}" == "${repo%.git}" ]] \
+    || { echo "ERROR: vendor origin differs from devs/reference-sources.json" >&2; return 1; }
   git -C "$VENDOR_DIR" fetch -q --depth 1 origin "$sha" || return 1
   git -C "$VENDOR_DIR" checkout -q FETCH_HEAD || return 1
   [[ "$(git -C "$VENDOR_DIR" rev-parse HEAD)" == "$sha" ]] || return 1
@@ -468,6 +487,7 @@ cmd_status() {
 }
 
 case "${1:-}" in
+  reference) reference_field "${2:-commit}" ;;
   deps)      cmd_deps ;;
   vendor)    cmd_vendor ;;
   bootstrap) cmd_deps && cmd_vendor && cmd_build ;;

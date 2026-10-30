@@ -62,8 +62,21 @@ dir = "pipeline"
 run = ["node download-index.mjs", "bash export-tables.sh"]
 
 [tasks."data:adapt"]
-description = "按 config patch 在候选目录适配 base/i18n，完整验证后发布"
+description = "候选目录适配 base/i18n，运行自有审计与回归后发布；不隐式运行 PoB2"
 run = "python3 pipeline/data_snapshot.py adapt"
+
+[tasks."data:adapt:reference"]
+depends = ["setup:oracle"]
+description = "适配 base/i18n，并显式要求固定 PoB2 parser 对照审计"
+run = "python3 pipeline/data_snapshot.py adapt --reference-audit"
+
+[tasks."data:tree:source"]
+description = "获取/校验固定官方树输入；--offline 只读哈希缓存，不准备 PoB2"
+run = "python3 pipeline/data_snapshot.py fetch-tree-source"
+
+[tasks."data:tree:candidate"]
+description = "从固定官方输入独立生成树域候选（--out 必填；不会发布或更新 CURRENT）"
+run = "python3 pipeline/data_snapshot.py tree-candidate"
 
 [tasks."data:regen"]
 depends = ["setup:oracle"]

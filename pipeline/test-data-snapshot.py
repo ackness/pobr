@@ -1,6 +1,8 @@
 """Offline tests for snapshot sealing, input provenance, and failure-safe publication."""
 import fcntl
 import importlib.util
+import io
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -104,6 +106,30 @@ class SnapshotTests(unittest.TestCase):
         self.assertIn("user patch", (data / "patch/base/skill_gems.json").read_text())
         self.assertEqual(snapshot.read_json(data / "manifest.json")["files"]["base/skill_gems.json"], snapshot.digest(data / "base/skill_gems.json"))
 
+    def test_base_adaptation_runs_own_audit_without_implicit_reference(self):
+        calls = []
+        with patch.object(snapshot, "run", side_effect=lambda command, root, env: calls.append(command)):
+            snapshot.regenerate(self.root, base_only=True)
+        audits = [command for command in calls if "pipeline/refresh-modifiers.sh" in command]
+        self.assertEqual(len(audits), 1)
+        self.assertIn("--offline", audits[0])
+        self.assertFalse((self.root / "vendor").exists())
+
+    def test_base_adaptation_can_explicitly_require_reference_audit(self):
+        calls = []
+        with patch.object(snapshot, "run", side_effect=lambda command, root, env: calls.append(command)):
+            snapshot.regenerate(self.root, base_only=True, reference_audit=True)
+        audit = next(command for command in calls if "pipeline/refresh-modifiers.sh" in command)
+        self.assertNotIn("--offline", audit)
+        before = snapshot.tree_fingerprint(self.root / "data")
+        def missing_reference(command, root, env):
+            if "pipeline/refresh-modifiers.sh" in command:
+                raise FileNotFoundError("required reference unavailable")
+        with patch.object(snapshot, "run", side_effect=missing_reference):
+            with self.assertRaisesRegex(FileNotFoundError, "required reference"):
+                snapshot.regenerate(self.root, base_only=True, reference_audit=True)
+        self.assertEqual(before, snapshot.tree_fingerprint(self.root / "data"))
+
     def test_concurrent_user_changes_prevent_publication(self):
         def fake_run(command, root, env):
             self.write("data/9.1/base/skill_gems.json", [{"id": "new user edit"}])
@@ -155,6 +181,124 @@ class SnapshotTests(unittest.TestCase):
         backups = list((self.root / ".cache").glob("data-backup-*/9.1/base/skill_gems.json"))
         self.assertEqual(len(backups), 1)
         self.assertIn("original", backups[0].read_text())
+
+
+class OfficialTreeSourceTests(unittest.TestCase):
+    write = SnapshotTests.write
+
+    def setUp(self):
+        SnapshotTests.setUp(self)
+        self.raw = b'{"classes":[],"nodes":{}}'
+        self.source = snapshot.read_json(Path(__file__).with_name("sources.lock.json"))["sources"]["official-passive-tree"]
+        self.source = {**self.source, "sha256": hashlib.sha256(self.raw).hexdigest(),
+                       "upstream_version": "9.1", "game_patch": None}
+        self.write("pipeline/sources.lock.json", {"schema_version": 1,
+                   "sources": {"official-passive-tree": self.source}})
+        for name in ["Cargo.toml", "Cargo.lock", "rust-toolchain.toml",
+                     "tools/pobr-data-adapter/Cargo.toml", "crates/pobr-data/Cargo.toml",
+                     "tools/pobr-data-adapter/src/main.rs", "crates/pobr-data/src/lib.rs"]:
+            self.write(name, "fixture build input")
+
+    def cache_source(self):
+        path = self.root / ".cache/sources" / self.source["sha256"] / "data.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(self.raw)
+        return path
+
+    def adapt(self, command, root, env):
+        self.assertEqual(command[:6], ["cargo", "run", "--locked", "--quiet", "-p", "pobr-data-adapter"])
+        self.assertIn("--offline", command[:command.index("--")])
+        self.assertNotIn("POBR_BLESS_PINS", env)
+        out = Path(command[command.index("--out") + 1]) / "9.1/base"
+        out.mkdir(parents=True)
+        (out / "passive_tree.json").write_text('[{"skill":1,"x":3,"y":4}]')
+        (out / "passive_tree_meta.json").write_text('{"tree":"Default","classes":[]}')
+
+    def test_source_download_and_offline_replay_are_hash_bound(self):
+        with patch.object(snapshot, "urlopen", return_value=io.BytesIO(self.raw)) as network:
+            cached = snapshot.fetch_tree_source(self.root, "official-passive-tree")
+        self.assertIn(self.source["revision"], network.call_args.args[0])
+        self.assertEqual(cached.read_bytes(), self.raw)
+        with patch.object(snapshot, "urlopen", side_effect=AssertionError("offline network")):
+            self.assertEqual(snapshot.fetch_tree_source(self.root, "official-passive-tree", offline=True), cached)
+        cached.write_bytes(b"corrupt")
+        with patch.object(snapshot, "urlopen", side_effect=AssertionError("must not silently repair")):
+            with self.assertRaisesRegex(ValueError, "Cached source hash"):
+                snapshot.fetch_tree_source(self.root, "official-passive-tree")
+        self.assertEqual(cached.read_bytes(), b"corrupt")
+
+    def test_missing_offline_source_and_wrong_download_never_publish(self):
+        with patch.object(snapshot, "urlopen", side_effect=AssertionError("offline network")):
+            with self.assertRaisesRegex(FileNotFoundError, "offline replay"):
+                snapshot.fetch_tree_source(self.root, "official-passive-tree", offline=True)
+        with patch.object(snapshot, "urlopen", return_value=io.BytesIO(b"changed bytes")):
+            with self.assertRaisesRegex(ValueError, "Downloaded source"):
+                snapshot.fetch_tree_source(self.root, "official-passive-tree")
+        self.assertFalse((self.root / ".cache/sources").exists())
+
+    def test_mutable_revision_is_rejected_before_network(self):
+        self.source["revision"] = "master"
+        self.write("pipeline/sources.lock.json", {"schema_version": 1,
+                   "sources": {"official-passive-tree": self.source}})
+        with patch.object(snapshot, "urlopen", side_effect=AssertionError("invalid source network")):
+            with self.assertRaisesRegex(ValueError, "immutable digest"):
+                snapshot.fetch_tree_source(self.root, "official-passive-tree")
+
+    def test_domain_replay_is_deterministic_and_cannot_be_sealed_or_promoted(self):
+        self.cache_source()
+        before = snapshot.tree_fingerprint(self.root / "data")
+        outputs = [self.root / ".cache/tree-first/9.1", self.root / ".cache/tree-second/9.1"]
+        with patch.dict(os.environ, {"POBR_BLESS_PINS": "1"}), patch.object(snapshot, "run", self.adapt):
+            for out in outputs:
+                snapshot.tree_candidate(self.root, "official-passive-tree", out, offline=True)
+        self.assertEqual(snapshot.tree_fingerprint(outputs[0]), snapshot.tree_fingerprint(outputs[1]))
+        receipt = snapshot.read_json(outputs[0] / "_domain_candidate.json")
+        self.assertIsNone(receipt["source"]["game_patch"])
+        self.assertEqual(receipt["adapter_inputs"]["Cargo.lock"], snapshot.digest(self.root / "Cargo.lock"))
+        self.assertIn("blocked", receipt["publication"])
+        self.assertFalse((outputs[0] / "manifest.json").exists())
+        with self.assertRaisesRegex(ValueError, "cannot be sealed"):
+            snapshot.manifest(outputs[0])
+        with self.assertRaisesRegex(ValueError, "cannot be published"):
+            snapshot.promote(outputs[0].parent, self.root / "data", "9.1", activate=True)
+        self.assertEqual(before, snapshot.tree_fingerprint(self.root / "data"))
+
+    def test_candidate_failure_or_changed_input_preserves_published_data_and_output(self):
+        raw = self.cache_source()
+        before = snapshot.tree_fingerprint(self.root / "data")
+        for cause in ("adapter", "raw", "lock", "code"):
+            with self.subTest(cause=cause):
+                output = self.root / f".cache/tree-{cause}"
+                lock_before = (self.root / "pipeline/sources.lock.json").read_bytes()
+                def fail(command, root, env):
+                    self.adapt(command, root, env)
+                    if cause == "adapter":
+                        raise ValueError("adapter failed")
+                    if cause == "raw":
+                        raw.write_bytes(b"changed")
+                    elif cause == "lock":
+                        (root / "pipeline/sources.lock.json").write_text("{}")
+                    else:
+                        self.write("tools/pobr-data-adapter/src/new_module.rs", "new source")
+                with patch.object(snapshot, "run", fail), self.assertRaises(ValueError):
+                    snapshot.tree_candidate(self.root, "official-passive-tree", output, offline=True)
+                self.assertFalse(output.exists())
+                self.assertFalse(list(output.parent.glob(".tree-candidate-*")))
+                self.assertEqual(before, snapshot.tree_fingerprint(self.root / "data"))
+                raw.write_bytes(self.raw)
+                (self.root / "pipeline/sources.lock.json").write_bytes(lock_before)
+
+    def test_candidate_rejects_published_or_existing_outputs_before_running_adapter(self):
+        self.cache_source()
+        before = snapshot.tree_fingerprint(self.root / "data")
+        with patch.object(snapshot, "run", side_effect=AssertionError("must not run")):
+            with self.assertRaisesRegex(ValueError, "outside published"):
+                snapshot.tree_candidate(self.root, "official-passive-tree", self.root / "data/new")
+            existing = self.write(".cache/existing/keep.txt", "user data").parent
+            with self.assertRaises(FileExistsError):
+                snapshot.tree_candidate(self.root, "official-passive-tree", existing)
+        self.assertEqual((existing / "keep.txt").read_text(), "user data")
+        self.assertEqual(before, snapshot.tree_fingerprint(self.root / "data"))
 
 
 if __name__ == "__main__":
