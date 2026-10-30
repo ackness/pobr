@@ -395,22 +395,13 @@ def compare_core(candidate, receipt, documents):
             "gem_level_raw": "GemLevel", "actor_level_raw": "ActorLevel", "spell_crit_chance_raw": "SpellCritChance", "attack_crit_chance_raw": "AttackCritChance", "base_multiplier_raw": "BaseMultiplier", "base_resolved_values_raw": "BaseResolvedValues", "additional_stats_values_raw": "AdditionalStatsValues", "float_stats_values_raw": "FloatStatsValues", "stat_interpolations_raw": "StatInterpolations"}, {
             "stat_set": ("StatSet", "GrantedEffectStatSets", False), "additional_stats": ("AdditionalStats", "Stats", True), "float_stats": ("FloatStats", "Stats", True), "interpolation_bases": ("InterpolationBases", "EffectivenessCostConstants", True)}),
     }
-    def producer_refs(value):
-        if isinstance(value, dict):
-            if set(value) == {"id", "raw"}:
-                ref = value["raw"]
-                table = Path(ref["payload"]).stem
-                row = int(ref["pointer"].split("/")[2])
-                assert ref == raw(table, row)
-                expected = identity(table, row)
-                assert expected["id"] == value["id"]
-                return expected
-            return {k: producer_refs(v) for k, v in value.items()}
-        if isinstance(value, list):
-            return [producer_refs(v) for v in value]
-        return value
+    def stable(table, row):
+        expected = identity(table, row)
+        return None if expected is None else {"id": expected["id"], "raw": raw(table, row)}
 
-    converted = producer_refs(candidate["core_skills"])
+    # Expected tables come from each declared owner/foreign column. Never erase
+    # a candidate's table before comparing: another table can share its row/ID.
+    converted = candidate["core_skills"]
     assert set(converted) == set(specs) == set(documents["skill_core.json"])
     for name, (table, owner, fields, foreign) in specs.items():
         projected = documents["skill_core.json"][name]
@@ -418,18 +409,23 @@ def compare_core(candidate, receipt, documents):
         for index, physical in enumerate(rows(table)):
             values = physical["values"]
             expected = {"raw": raw(table, index), **{key: values[field] for key, field in fields.items()}}
+            expected_stable = expected.copy()
             if owner:
                 expected[owner] = identity(table, index)
+                expected_stable[owner] = stable(table, index)
             else:
                 expected["row"] = index
+                expected_stable["row"] = index
             for key, (field, target, many) in foreign.items():
                 expected[key] = [identity(target, row) for row in values[field]] if many else identity(target, values[field])
+                expected_stable[key] = [stable(target, row) for row in values[field]] if many else stable(target, values[field])
             if name == "effect_levels":
                 cost_types = rows("GrantedEffects")[values["GrantedEffect"]]["values"]["CostTypes"]
                 amounts = values["CostAmounts"]
                 expected["costs"] = [{"slot": slot, "cost_type": identity("CostTypes", cost_type), "amount_raw": amount} for slot, (cost_type, amount) in enumerate(zip(cost_types, amounts, strict=True))] if len(cost_types) == len(amounts) else None
+                expected_stable["costs"] = [{"slot": slot, "cost_type": stable("CostTypes", cost_type), "amount_raw": amount} for slot, (cost_type, amount) in enumerate(zip(cost_types, amounts, strict=True))] if len(cost_types) == len(amounts) else None
             equal_facts(expected, projected[index])
-            equal_facts(expected, converted[name][index])
+            equal_facts(expected_stable, converted[name][index])
     assert candidate["core_summary"] == receipt["core_summary"] == CORE_COUNTS
 
 
