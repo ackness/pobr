@@ -2,6 +2,9 @@
 
 [English](wasm-performance.md) | **简体中文**
 
+本文保存 **2026-10-12** 的测量和排查。耗时、体积及失败结果只对应下文标识的产物，
+不代表当前发布版。后续更正单独注明，原始数值保留。复现命令使用执行时提供的 checkout 和产物。
+
 按同一批已入库 PoB2 构筑码，实跑 **PoBR Rust WASM** 与
 [pob-web 的 Lua WASM 包](https://github.com/krauthaufen/pob-web)。
 计时范围为**构筑码导入＋计算＋JSON 响应**，不是缓存属性读取，也不是单独的计算内核。
@@ -10,13 +13,15 @@
 
 测量时间 **2026-10-12T16:13Z**，Apple M4 / macOS 27.0 arm64，Node **26.11.1**。
 PoBR 为来自 `18b6a03` 的 release WASM（rustc 1.99.0、wasm-pack 0.15.0），schema 8，
-数据 `0.5.5.4.2`。构建时唯一未提交的改动是 `mise.toml`，因此构建凭据中 `dirty: true`；
+数据 `0.5.5.4.2`。构建时唯一未提交的改动是 `mise.toml`，因此构建记录中 `dirty: true`；
 编译源码指纹 `02320289…` 覆盖了被编译的源码。Lua 侧为线上部署的 pob-web 包
 （PoB2 运行时 `v0.23.0`），产物已通过哈希校验。每个构筑预热两次、采样九次。
 
-## 最新赛季：Forbidden Rites
+<a id="最新赛季forbidden-rites"></a>
 
-于 **2026-10-11** 从 [poe.ninja 最新赛季](https://poe.ninja/poe2/builds/forbiddenrites)
+## Forbidden Rites 样本（2026-10-11）
+
+于 **2026-10-11** 从 [poe.ninja 当时最新赛季](https://poe.ninja/poe2/builds/forbiddenrites)
 保存 8 个公开 BD，每个基础职业一个，快照为 `0632-20261011-47556`。
 [选样与来源证据](../examples/wasm-benchmark/selection.json)保留索引 URL、角色及哈希。
 选样在计时前完成：每个职业使用一个预先声明的升华筛选，在索引返回的前 100 个角色中
@@ -24,7 +29,7 @@ PoBR 为来自 `18b6a03` 的 release WASM（rustc 1.99.0、wasm-pack 0.15.0）�
 [新增样本](../examples/wasm-benchmark/builds/)与旧 parity 语料分开，不作为新的数值 golden。
 
 耗时单位为 ms；**加速倍数 = Lua 耗时 / Rust 耗时**。每个完成案例采样九次；
-p95 使用 nearest rank，在九次采样下即最大值。
+p95 按排序后向上取整的名次取值（nearest rank），九次采样时就是最大值。
 
 | 职业／升华／主技能 | PoBR 中位数 | Lua 中位数 | 加速倍数 | PoBR p95 | Lua p95 | p95 耗时比 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -44,26 +49,26 @@ p95 使用 nearest rank，在九次采样下即最大值。
 **六个 Lua 报错属于 pob-web Lua WASM 的兼容问题，不是 PoBR 导入失败**：
 `CalcDefence.lua` 把无穷大传入整数 `s_format` 格式化（五个在第 2789 行，Deadeye 在第 3844 行）。
 保留 PoBR 耗时，但不为中断的 Lua 计算发布耗时或加速倍数。
-**完成配对案例的数值也有明显差异，PoBR 仍有未支持机制**；这些是 API 工作负载耗时，
-不能推广为等价机制或整个计算引擎的通用性能结论：
+**完成配对案例的数值也有明显差异，PoBR 仍有未支持机制**。
+这些耗时只描述本次导入与计算请求，不能当作相同机制下的速度对比，也不能推广到其他计算：
 
 | 完成的新赛季 BD | PoBR TotalDPS | Lua TotalDPS | PoBR 未支持词条数 |
 | --- | ---: | ---: | ---: |
 | Amazon / Ice Shot | 88,117.54 | 237,926.57 | 26 |
 | Martial Artist / Ice Shot | 2,900,388.52 | 5,173,634.32 | 13 |
 
-15 个 BD 均无物品解析错误。
+当时引擎对 15 个 BD 都报告零物品解析错误；这项诊断并不完整，见下方更正。
 
 > 后续更正：这次测量所用版本在 `{ pob_code }` 请求下不报告构筑码内读不出的物品。
 > Stormweaver 的胸甲（`Rarity: RELIC`）当时被丢弃，它的防御和伤害是缺了这件装备的数值；
-> 现在该稀有度可以读取，其余读不出的物品会出现在 `item_errors`。本节数值保持原测量。
+> 后续修复已支持该稀有度，并把其他读不出的物品列入 `item_errors`。本节数值保持原测量。
 
 <details>
 <summary>历史对比样本：7 个 BD</summary>
 
-这些是较早的 Runes of Aldur 构筑，不作为最新赛季 BD。按用户要求，从性能基准中
+这些是较早的 Runes of Aldur 构筑，不属于本次 Forbidden Rites 样本。按用户要求，从性能基准中
 移除了此前报错或结果不稳定的 11 个旧 BD，原有 parity 回归语料保持不变。
-这组历史样本是在观察较早一次结果后筛选的，不代表无偏的历史 BD 整体。
+这组历史样本是在观察较早一次结果后筛选的，不代表未经筛选的历史 BD 整体。
 它们的 `TotalDPS` 与 Lua 相差不超过 1.8%（最大为 Pathfinder，1.73%），这是观测结果，不是 parity 结论。
 
 | 职业／升华／主技能 | PoBR 中位数 | Lua 中位数 | 加速倍数 | PoBR p95 | Lua p95 | p95 耗时比 |
@@ -82,7 +87,8 @@ p95 使用 nearest rank，在九次采样下即最大值。
 | --- | ---: | ---: | ---: |
 | 引擎与数据启动 | 463.10 | 1898.10 | 4.10× |
 
-九个配对 BD 的加速倍数为 **31.65×–81.46×**；全部 15 个 BD 的 PoBR 中位数为 6.83–13.13 ms。
+九个配对 BD 的加速倍数为 **31.65×–81.46×**。另一次 PoBR 单独测量覆盖全部 15 个 BD，
+中位数范围为 6.83–13.13 ms；配对运行中的九个 PoBR 中位数范围为 7.38–13.48 ms。
 四分钟后又完整跑了一次配对测试：每个加速倍数相差不超过 6.8%，每个 PoBR 中位数相差不超过
 11.0%（Lua 为 10.7%），所以记录的这一次对这台机器有代表性，但仍然只是一台机器。
 [配对采样、诊断与产物哈希](../devs/ci/pob-web-performance-2026-10-12-m4.json)。
@@ -95,20 +101,20 @@ Lua 侧还包含 Node Worker 通信、适配器检查及无界面 UI 状态构�
 JSON 契约不同且更详细。初始化不含产物读取、哈希检查和 Lua 宿主 Worker 创建，
 但包含模块导入、数据注入及启动。未测浏览器渲染、下载、增量编辑或运行时内存。
 
-报告保留全部 **15 个入选 BD**：**9 个完成对比，6 个最新赛季案例被拒绝**。脚本拒绝被上游吞掉的
+报告保留全部 **15 个入选 BD**：**9 个完成对比，6 个 Forbidden Rites 案例被拒绝**。脚本拒绝被上游吞掉的
 Lua 错误、不完整结果及重复计算结果不稳定的案例，不把失败当成“更快”；
 任一案例失败时以非零状态退出。速度不能证明机制覆盖完整或数值 parity，
 未支持词条与物品诊断均保留在报告中。
 
-Lua/JS/数据下载自 `pob.awx.at`，部署产物的源码 revision 未知，其 SHA-256 记录在配对记录中；
-包装层、shims 与加载补丁单独固定在上游 `ee33ce6`。
+Lua/JS/数据下载自 `pob.awx.at`，部署产物的源码提交未知，其 SHA-256 记录在配对记录中；
+包装层、运行环境适配代码（shims）与加载补丁单独固定在上游 `ee33ce6`。
 保留通过哈希校验的本地快照可重跑同一组产物；重新下载可能得到更新的部署。
 
 ## 打包大小
 
 按同一组引擎与数据产物测量实际字节，**1 MiB = 1,048,576 字节**。
 数据包使用 gzip level 9；传输估算同时压缩 WASM 与 JS，不重复压缩已有 gzip 数据包。
-PoBR 数字来自本检出的 `package-wasm` 报告（v0.0.36，schema 8，数据 `0.5.5.4.2`）。
+PoBR 数字来自当时保存的 `package-wasm` 报告（v0.0.36，schema 8，数据 `0.5.5.4.2`）。
 
 | 组件／口径（MiB） | PoBR | pob-web | PoBR / Lua 体积比 |
 | --- | ---: | ---: | ---: |
@@ -118,7 +124,7 @@ PoBR 数字来自本检出的 `package-wasm` 报告（v0.0.36，schema 8，数�
 | WASM＋JS＋压缩数据合计 | 9.420 | 4.949 | 1.90× |
 | gzip 传输估算 | 6.191 | 4.763 | 1.30× |
 
-**当前 PoBR 的运行包更大，不是更小。** Rust 计算引擎编译进 WASM；Lua 侧较小的
+**本次测量中，PoBR 的运行包较大。** Rust 计算引擎编译进 WASM；Lua 侧较小的
 WASM 是解释器，计算代码放在数据包里。两侧数据内容、语言包及机制覆盖不同；
 这些体积不是运行时内存。PoBR 完整发布归档约 **6.182 MiB**，
 还包含类型声明、文档、示例与 agent skill；参考部署没有可按同口径比较的完整发布归档。
@@ -195,8 +201,9 @@ python3 -m unittest discover -s web/scripts -p 'fetch_ninja_benchmarks_test.py'
 
 ### PoBR：导入成功，但机制覆盖不完整
 
-实跑 **15 个 BD**，均通过 `calculateBuildJson` 和输出校验，`item_errors` 全部为零，
-使用当前 release WASM（schema 8，数据 `0.5.5.4.2`）。运行成功不代表数值 parity。
+当时实跑 **15 个 BD**，均通过 `calculateBuildJson` 和输出校验。
+`item_errors` 报告全部为零，但受前述漏报问题影响。所用 release WASM 为 schema 8，
+数据 `0.5.5.4.2`；运行成功不代表数值 parity。
 
 | 新赛季 BD | 未支持诊断条目数 | 物品解析错误 |
 | --- | ---: | ---: |
@@ -212,9 +219,9 @@ python3 -m unittest discover -s web/scripts -p 'fetch_ninja_benchmarks_test.py'
 Blood Mage 选中 `ChaosFrogExplosionPlayer`（辅助宝石授予的效果 2，`TotalDPS` 1,787.28）。
 Doom Blast 是效果 3，由 `skillMetricsJson` 单独报告
 （见 `crates/pobr-build/tests/skills/skill_metrics.rs` 与 [Web 功能契约](web-contracts.md)）。
-这条耗时不断言哪个效果才是该 BD 玩家眼中的主要伤害技能。
+这次计时不判断玩家把哪个效果当作主要伤害技能。
 
-当前诊断中的缺口包括 Bonded 效果、条件重复攻击、常驻药剂效果与额外投射物机制。
+当时诊断中的缺口包括 Bonded 效果、条件重复攻击、常驻药剂效果与额外投射物机制。
 Pathfinder 样本明确报告 Fork 的
 `support_fork_forked_projectile_damage_+%_final`：
 `conditional numerical effect not modeled (UnsupportedTag("StatThreshold"))`。
@@ -253,8 +260,8 @@ Pathfinder 样本明确报告 Fork 的
 
 | 层次 | 实测／查询结果 | 结论 |
 | --- | --- | --- |
-| pob-web 包装层与 shims | 固定提交 `ee33ce63920f23e634cc30e37d8ad339244dbf34` 等于上游 HEAD | 最新 |
-| 公开部署产物 | 新下载的 `lua.wasm`、`lua.mjs`、`pob-lua.json` 的 SHA-256 全部与原基准一致 | 与当前部署相同 |
+| pob-web 包装层与 shims | 固定提交 `ee33ce63920f23e634cc30e37d8ad339244dbf34` 等于当日查询的上游 HEAD | 核对当日最新 |
+| 公开部署产物 | 新下载的 `lua.wasm`、`lua.mjs`、`pob-lua.json` 的 SHA-256 全部与原基准一致 | 与核对当日部署相同 |
 | 内含 PoB2 | 运行时报 `v0.23.0`，上游最新发布为 `v0.23.1` | 不是最新 PoB2 |
 
 来源：[pob-web 提交](https://github.com/krauthaufen/pob-web/commit/ee33ce63920f23e634cc30e37d8ad339244dbf34)、
@@ -281,7 +288,7 @@ node web/scripts/benchmark-pob-web.mjs --prepare \
 
 于 **2026-10-12** 将 PoB2 最新发布版
 [`v0.23.1`／`7d6f530`](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/commit/7d6f530cbdab20389ff8bc6ba97a37ac27f74e41)
-和当前上游
+和当时上游
 [`HEAD`／`bb52d6b`](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/commit/bb52d6b368307457eb9c54bb13f1829993d390b1)
 重新下载到独立临时源码快照，使用 pob-web 固定版本的
 [打包脚本](https://github.com/krauthaufen/pob-web/blob/ee33ce63920f23e634cc30e37d8ad339244dbf34/packages/pob-data/bundle-lua.mjs)
@@ -302,7 +309,7 @@ node web/scripts/benchmark-pob-web.mjs --prepare \
 
 HEAD 更早失败：`Modules/Main.lua:340: syntax error near '+'`。
 该[源码行](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/blob/bb52d6b368307457eb9c54bb13f1829993d390b1/src/Modules/Main.lua#L340)
-是 `count += 1`，当前 Lua WASM 加载路径无法解析。
+是 `count += 1`，本次测量的 Lua WASM 加载路径无法解析。
 它不是特定 BD 的错误；本实验也不能证明 PoB2 桌面版无法运行。
 
 v0.23.1 包完成了同样的九个 BD，记录的统计值相同，同样的六个失败；本节不报告该对照的耗时。
@@ -310,6 +317,6 @@ v0.23.1 包完成了同样的九个 BD，记录的统计值相同，同样的六
 保留源码提交、数据包哈希、文件变化清单、原始采样、诊断，以及精确错误。
 Lua 报错和 HEAD 启动失败均不发布加速倍数。
 
-**结论：当前 pob-web Lua WASM／适配组合存在已复现的兼容问题；
-只替换成最新 PoB2 发布版不能解决，当前 HEAD 还需要额外兼容工作才能启动。**
-这不抵消 PoBR 自身的未支持机制。
+本次测试的 pob-web Lua WASM／适配器组合在这些构筑上失败。
+只换成 2026-10-12 可用的最新 PoB2 发布版没有解决错误；
+HEAD `bb52d6b` 还需处理加载兼容问题才能启动。PoBR 自身仍有上文记录的未支持效果。

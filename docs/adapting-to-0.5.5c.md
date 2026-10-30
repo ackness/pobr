@@ -1,70 +1,58 @@
-# PoE2 0.5.5c data update
+<a id="poe2-055c-data-update"></a>
 
-> Later change: the separate golden data version was removed. Tests and PoB2
-> reference values now follow the active version, and only the active snapshot
-> plus the two most recent are kept (see the [maintainer guide](maintainer-guide.md)).
+# PoE2 0.5.5c 数据更新记录（2026-09-26）
 
-On 2026-09-26, GGG's patch protocol returned `4.5.5.3`, replacing the
-previous active snapshot `4.5.5.2`. The latest
-[official patch notes are 0.5.5c](https://www.pathofexile.com/forum/view-thread/4006357)
-(2026-09-18), covering quest, encounter and crash fixes.
+本文记录当时的快照、检查结果和发布状态，不代表当前环境。
+之后仓库已取消独立 golden 数据版本：测试和 PoB2 参考值跟随活动版本，
+仅保留活动快照与最近入库的两个版本。现行规则见[维护者指南](maintainer-guide.md)。
 
-The configured English and Traditional Chinese tables were exported with
-`pathofexile-dat@15` from `https://patch-poe2.poecdn.com/4.5.5.3/`.
-The official passive tree was refreshed from
-[GGG's export](https://github.com/grindinggear/poe2-skilltree-export).
-PoB2's `dev` and default HEAD still resolved to the existing reference
-`ce566eac45ea8a86477f513c7ee65a1ebe60014e`, so the vendor pin is unchanged.
+2026-09-26，GGG patch 协议返回 `4.5.5.3`，取代此前活动快照 `4.5.5.2`。
+当时最新的[官方说明为 0.5.5c](https://www.pathofexile.com/forum/view-thread/4006357)
+（2026-09-18），内容包括任务、遭遇和崩溃修复。
 
-The resulting `base/` files and gem-quality effect values are identical to
-4.5.5.2. This includes the equipment, skill, modifier and passive-tree data
-used by PoBR; it does not imply that every game-client asset is unchanged.
-The quality receipt records unchanged effect/stat IDs and scopes, identical
-input-table hashes and no changed effect values. It attests successful
-official-table export, not an independent CDN bundle-byte comparison.
+配置中的英文、繁中表用 `pathofexile-dat@15` 从
+`https://patch-poe2.poecdn.com/4.5.5.3/` 导出，官方天赋树从
+[GGG 导出库](https://github.com/grindinggear/poe2-skilltree-export)刷新。
+PoB2 的 `dev` 和默认 HEAD 当时仍指向
+`ce566eac45ea8a86477f513c7ee65a1ebe60014e`，所以 vendor 固定点未变。
 
-Regeneration also brings derived artifacts in line with the existing engine:
-62 stat-ID mappings gain `GlobalLimit` tags or Arrow keyword restrictions,
-and eight precompiled modifier entries gain the corresponding limit tags.
-These are regenerated mapping changes, not new game affixes. Curated constants
-and special modifiers remain unchanged. Historical snapshots and the
-`4.5.4.8` numerical golden reference are retained.
+生成的 `base/` 文件和宝石品质效果值与 `4.5.5.2` 相同，覆盖 PoBR 使用的装备、技能、
+词条和天赋树数据；不表示游戏客户端所有资源都没变。
+品质来源记录显示效果 / stat 的稳定 ID、作用域、输入表哈希和效果值均未变化。
+它证明官方表成功导出，不是另一次 CDN bundle 原始字节对比。
 
-The Simplified Chinese dictionary is pinned to upstream commit
-`28d683c99600eb407b4e014ccaf8247532fb4607`. Its content is unchanged and its
-source timestamp remains 2026-07-06; it is not a new China-client export.
-The downloader now resolves the default HEAD instead of assuming `master`.
-Vendor setup now creates an independent repository before fetching and
-propagates failures without recording a successful pin.
+再生成也让派生产物与当时已有引擎对齐：62 个 stat-ID 映射增加 `GlobalLimit` 标签或
+Arrow 关键字限制，八个预编译词条增加对应限制标签。这些是映射再生成的变化，
+不是新增游戏词缀。人工常量与特殊规则不变。
+**当时**继续保留历史快照和 `4.5.4.8` 数值 golden，后续规则已变更，见本文开头。
 
-To run a future update, query and download the then-current patch:
+简中词典固定在上游 `28d683c99600eb407b4e014ccaf8247532fb4607`，内容未变，
+来源时间仍为 2026-07-06，不是新的国服导出。
+下载器改为解析默认 HEAD，不再假定分支叫 `master`。
+vendor 准备先创建独立仓库再 fetch；失败向上传递，不再写入成功的固定版本记录。
+
+本次记录的更新入口如下；它查询执行时的最新补丁，并非重放 `4.5.5.3`：
 
 ```sh
 bash pipeline/bump-version.sh
 ```
 
-GGG may remove old CDN snapshots. `--skip-download` requires local raw tables
-and an export receipt matching the requested version; it is not an offline
-re-download of historical client data. In a checkout without Web dependencies,
-the final static-data copy can run directly with `node web/scripts/sync-data.mjs`.
+GGG 可能下线旧 CDN 快照。`--skip-download` 要求本地原始表和导出记录与请求版本一致，
+不能重新下载已下线的历史数据。没有 Web 依赖时，最后的静态数据复制可直接运行
+`node web/scripts/sync-data.mjs`。
 
-The update gate audits all shipped modifier sources against pinned PoB2,
-loads and calculates across committed snapshots, tests `pobr-gamedata` against
-the candidate, and runs `parity_no_regression` on its unchanged numerical
-golden reference. Parser recognition is not proof of complete calculation
-support; existing unsupported effects remain diagnostics.
+当时的更新检查包括：对全部发布词条来源与固定 PoB2 做审计、遍历已提交快照加载与计算、
+针对候选运行 `pobr-gamedata`，以及使用原数值 golden 运行 `parity_no_regression`。
+文本能解析不证明机制完整，未支持效果仍作为诊断保留。
 
-Validation completed for this snapshot:
+本快照当时完成的验证：
 
-- Modifier audit: 41,750 samples, zero regressions and zero new gaps against
-  4.5.5.2. Existing PoBR/upstream gaps remain in the report.
-- Multi-version calculation: two tests passed across all six committed versions.
-- Candidate `pobr-gamedata`: 208 unit/integration tests passed; no doctests.
-  The version-discovery test now honors the runtime override so candidates can
-  be checked before promotion. Its default-marker path also passed separately.
-- Numerical `parity_no_regression` passed with the original golden baseline.
-- Workflow suite: 29 tests run, one skipped; dictionary suite: three passed.
-  Formatting, targeted Clippy and shell checks passed.
+- 词条审计：41,750 个样本；相对 `4.5.5.2` 零退化、零新增缺口。既有 PoBR / 上游缺口仍在报告中。
+- 多版本计算：两个测试通过，覆盖当时提交的六个版本。
+- 候选 `pobr-gamedata`：208 个单元 / 集成测试通过，无 doctest。
+  版本发现测试支持运行时覆盖，可在活动标记推进前检查候选；默认标记路径也单独通过。
+- `parity_no_regression` 使用原 golden 基线通过。
+- 工作流套件运行 29 项、一项跳过；词典套件三项通过。格式、定向 Clippy、shell 检查通过。
 
-After the gate, `data/CURRENT` was advanced and Web static data synchronized.
-This is a local data update; no site deployment or release was performed.
+检查通过后才推进 `data/CURRENT` 并同步 Web 静态数据。
+这次仅完成本地数据更新，没有部署网站或发布版本。

@@ -1,16 +1,17 @@
-# PoBR WASM package
+<a id="pobr-wasm-package"></a>
 
-The `pobr-wasm-v<version>-web.tar.gz` GitHub Release asset contains the standalone
-calculation engine, ES module bindings, TypeScript declarations, JSON contract
-types, matching game data, an executable demo, the `use-pobr-wasm` skill and the
-PoBR license. It needs no PoBR web UI, Cloudflare Worker, Lua interpreter or Rust
-installation to run.
+# PoBR WASM 独立包
 
-## Download and run
+GitHub Release 的 `pobr-wasm-v<version>-web.tar.gz` 包含计算引擎、ES module 绑定、
+TypeScript 声明、JSON 契约类型、匹配的游戏数据、可执行示例、`use-pobr-wasm` skill 和
+PoBR 许可证。运行它不需要 PoBR 网页、Cloudflare Worker、Lua 或 Rust。
 
-Download the archive and `SHA256SUMS` from the chosen
-[GitHub Release](https://github.com/ackness/pobr/releases). Keep the extracted
-files together. With Node.js 22 or newer:
+<a id="download-and-run"></a>
+
+## 下载与运行
+
+从选定的 [GitHub Release](https://github.com/ackness/pobr/releases) 下载归档和
+`SHA256SUMS`，解压后保留目录结构。需要 Node.js 22 或更新版本：
 
 ```bash
 tar -xzf pobr-wasm-v<version>-web.tar.gz
@@ -20,41 +21,37 @@ node example.mjs
 node example.mjs --build-code build.txt
 ```
 
-The default demo calculates a level-90 Warrior with the default 5% Life quest
-reward explicitly disabled and verifies that a synthetic
-`+100 to maximum Life` modifier increases Life by 100. It reports package, data
-and schema versions, Life and diagnostic counts. The imported-build mode checks
-positive Life and reports unsupported modifiers/item errors.
+默认示例计算一个 90 级 Warrior，显式关闭默认的 5% 生命任务奖励，并验证合成词条
+`+100 to maximum Life` 恰好增加 100 生命。输出包括包、数据和 schema 版本、生命值和
+诊断数量。导入构筑码时，示例检查生命值为正，并报告未支持词条和物品错误。
 
-`manifest.json` records the package version, build-time source commit and dirty
-state, compile-input fingerprint, tool versions, compiled JSON schema version,
-data version, file sizes and SHA-256 hashes. `SHA256SUMS` next to the archive
-covers the release assets. The API is beta: pin an engine/data pair and compare
-`schemaVersion()` with your supported JSON schema. Unchanged schema numbers do
-not promise unchanged game calculations or complete PoB2 mechanic coverage.
+`manifest.json` 记录包版本、编译时源码提交及 dirty 状态、编译输入指纹、工具版本、
+已编译的 JSON schema 版本、数据版本，以及运行文件的大小和 SHA-256。
+归档旁的 `SHA256SUMS` 覆盖发布资产。
+API 仍是 beta：调用方应固定引擎与数据配对，并用 `schemaVersion()` 检查支持的 JSON 格式。
+schema 编号没变，不代表游戏计算没变，也不代表已覆盖 PoB2 的所有机制。
 
-## Agent skill and Browser/Node.js API
+<a id="agent-skill-and-browsernodejs-api"></a>
 
-The archive includes `skills/use-pobr-wasm/`. Copy that complete folder into
-your agent's skill directory to install it, then invoke `$use-pobr-wasm`.
-The skill remains usable after installation: pass `--package` to its demo to
-select the extracted release directory.
+## Agent skill 与浏览器 / Node.js API
 
-Read `skills/use-pobr-wasm/references/api.md` inside the archive for Browser/Web
-Worker code, initialization order, JSON examples, error handling and limitations.
-In a repository checkout, the canonical skill is at
-[`.claude/skills/use-pobr-wasm/SKILL.md`](https://github.com/ackness/pobr/blob/master/.claude/skills/use-pobr-wasm/SKILL.md).
-Its API guide is
-[`.claude/skills/use-pobr-wasm/references/api.md`](https://github.com/ackness/pobr/blob/master/.claude/skills/use-pobr-wasm/references/api.md).
-Generated `pobr_wasm.d.ts` documents JS exports; `api-types.ts` supplies JSON
-request/response types, including its bundled `generated/request.ts` dependency.
-Use `import type` for the latter. Full calculation responses include `provenance`
-with the engine version, data version and effective data-pack SHA-256; retain it
-with the calculation input when reporting discrepancies.
+归档含 `skills/use-pobr-wasm/`。把整个目录复制到 agent 的 skill 目录后，调用
+`$use-pobr-wasm`。安装后仍可用；运行其中示例时通过 `--package` 指定解压的发布目录。
 
-## Build and release maintenance
+归档中的 `skills/use-pobr-wasm/references/api.md` 说明浏览器 / Web Worker 用法、
+初始化顺序、JSON 示例、错误处理和限制。仓库原件是
+[SKILL.md](https://github.com/ackness/pobr/blob/master/.claude/skills/use-pobr-wasm/SKILL.md)
+和 [API 指南](https://github.com/ackness/pobr/blob/master/.claude/skills/use-pobr-wasm/references/api.md)。
+生成的 `pobr_wasm.d.ts` 描述 JS 导出；`api-types.ts` 提供 JSON 请求和响应类型，
+其依赖的 `generated/request.ts` 也随包附带。类型使用 `import type` 引入。
+完整计算响应的 `provenance` 包括引擎版本、数据版本和有效数据包 SHA-256；
+报告数值差异时，应把它与计算输入一起保留。
 
-From a repository checkout with the configured Rust, wasm-pack and Node tools:
+<a id="build-and-release-maintenance"></a>
+
+## 构建与发布维护
+
+在已准备好仓库指定 Rust、wasm-pack 和 Node 的 checkout 中运行：
 
 ```bash
 pnpm --dir web build-wasm
@@ -63,49 +60,40 @@ pnpm --dir web package-wasm
 pnpm --dir web smoke-wasm-package
 ```
 
-Outputs go under `.cache/wasm-release/`. Packaging reuses the built WASM and the
-complete synchronized Web data manifest, including shared overlays and i18n.
-It excludes the UI, images, example player builds and maintenance audit report.
-The same `build-wasm` command selects `wasm-release` (release optimizations,
-ThinLTO and one codegen unit). Dev/test settings are unchanged. Locale TOML is
-validated and compiled to string tables automatically; keep editing the existing
-locale files as usual. The TOML parser runs on the build host, outside the WASM.
-`build-wasm` first checks the source fingerprint, tool versions, relevant build
-environment/Cargo configuration, generated binding hashes and compiled schema.
-Unchanged inputs reuse the existing package and its original receipt without
-calling wasm-pack. `pnpm --dir web build-wasm --force` explicitly rebuilds through
-Cargo without cleaning its cache. Missing or old receipts cause one normal build.
-A new receipt is written only after a successful build with unchanged compile
-inputs. Packaging verifies that receipt against the current Rust sources,
-embedded locales, shared `*_config_options.json` catalogs, manifests, lockfile,
-build configuration and JSON types, checks
-the generated binding hashes, and reads the schema from the compiled engine.
-It also compares synchronized data with the current snapshot and patch/common
-layers, including same-version changes. Stale inputs require a rebuild or sync;
-packaging itself never rebuilds or downloads. Direct `wasm-pack` builds without
-the receipt cannot be packaged. An unrelated later commit does not relabel the
-binary: its original build commit and dirty flag remain in the release manifest.
-See [development workflow](development-workflow.md) for cache storage reporting
-and the dev/test profile policy. Old versioned archives in `.cache/wasm-release/`
-are retained until explicitly removed; packaging does not delete release history.
+输出在 `.cache/wasm-release/`。打包复用已有 WASM 和完整 Web 数据清单，
+包含共享 overlay 与 i18n，不包含 UI、图片、玩家示例构筑和维护审计报告。
 
-The existing tag/manual CI runs packaging tests, builds WASM, packages it, and
-extracts the archive in a temporary directory to calculate both a new character
-and an existing build. Manual dispatch saves the `wasm-release` Actions artifact
-and size summary. A pushed `v*` tag publishes the assets only after both Rust
-and Web gates pass, creating a Release if needed or preserving existing notes
-when attaching assets. Tags must match the Cargo workspace version. A tag with
-a version suffix such as `-rc.1` creates a prerelease. No npm publication occurs.
+`build-wasm` 选择 `wasm-release` profile：release 优化、ThinLTO、一个 codegen unit，
+不改变 dev/test 设置。locale TOML 在构建主机上校验并生成字符串表；继续编辑原 locale
+文件即可，TOML 解析器不进入 WASM。
 
-`wasm-size.json` / `wasm-size.md` report raw byte counts, gzip level-9 estimates,
-the actual archive size, and a **measured, hash-identified** pob-web reference.
-`devs/ci/pob-web-wasm-size-baseline.json` records the acquisition/measurement dates,
-raw and gzip bytes, artifact hashes and compression runtime. CI uses that
-committed snapshot and does not download a moving upstream target. The deployed
-binary/data source revision remains unknown; the pinned wrapper/shims commit
-does not identify those artifacts.
+构建前检查源码指纹、工具版本、相关环境与 Cargo 配置、生成绑定哈希，以及编译出的 schema。
+输入和产物未变就复用现有包及其构建记录，不调用 wasm-pack。
+`pnpm --dir web build-wasm --force` 强制通过 Cargo 重建，但不清缓存。
+记录缺失或格式过旧时，正常重建一次；只有构建成功且期间输入未变，才写入新记录。
 
-To acquire and measure a reference, then package and exercise PoBR:
+打包再次核对 Rust 源码、内嵌语言文件、共享 `*_config_options.json`、manifest、lockfile、
+构建配置和 JSON 类型，检查生成绑定哈希，并从已编译引擎读取 schema。
+它还比较同步数据与当前快照、patch、共享层的字节，包含同版本数据修改。
+过期时需先重建或同步；打包本身不构建、不下载。
+直接运行 wasm-pack 而没有构建记录的产物无法打包。
+之后无关的提交不会改变二进制来源：发布 manifest 保留编译时的 commit 和 dirty 标记。
+缓存统计与 dev/test 规则见[开发工作流](https://github.com/ackness/pobr/blob/master/docs/development-workflow.md)。
+旧的版本归档保留到显式删除，打包不会清理发布历史。
+
+CI 会测试打包脚本、构建 WASM、打包，再解压到临时目录，计算新角色和已有构筑。
+手动触发会保存 `wasm-release` Actions artifact 和大小报告。
+推送 `v*` tag 时，只有 Rust 与 Web 检查都通过才附加 Release 资产；
+Release 不存在时创建，已有说明则保留。tag 必须与 Cargo workspace 版本一致。
+带 `-rc.1` 等版本后缀的 tag 创建 prerelease，不发布 npm 包。
+
+`wasm-size.json` / `wasm-size.md` 记录原始字节数、gzip level 9 估算、实际归档大小，
+以及按哈希固定的 pob-web 实测参考。
+`devs/ci/pob-web-wasm-size-baseline.json` 保存获取与测量日期、原始和 gzip 字节、
+产物哈希、压缩运行时。CI 读取这份已提交快照，不下载会变化的上游产物。
+参考部署的二进制与数据源码版本未知；包装层 / shims 的提交不能替代产物来源版本。
+
+获取并测量参考包，再打包、运行 PoBR：
 
 ```bash
 node web/scripts/benchmark-pob-web.mjs --prepare
@@ -115,62 +103,54 @@ pnpm --dir web smoke-wasm-package
 node --test web/scripts/measure-pob-web-size.test.mjs web/scripts/package-wasm.test.mjs
 ```
 
-The reference data bundle is compressed once with gzip level 9; transfer estimates
-also gzip WASM and JS, without compressing the stored data gzip again. The complete
-PoBR release archive additionally contains types, docs, a demo and the agent skill.
-pob-web does not provide an equivalent release archive in this snapshot, so its
-runtime components—not an invented release archive—are the comparison scope.
+参考数据包只压缩一次，使用 gzip level 9；传输估算另压缩 WASM 和 JS，不重复压缩数据 gzip。
+PoBR 完整发布归档还含类型、文档、示例和 skill；参考快照没有同等发布归档，
+因此只比较其运行组件，不能虚构一个参考归档大小。
 
-[pob-web's Lua bundler](https://github.com/krauthaufen/pob-web/blob/master/packages/pob-data/bundle-lua.mjs)
-packages PoB Lua source, game data and runtime libraries; its
-[WASM build](https://github.com/krauthaufen/pob-web/blob/master/packages/lua-wasm/scripts/build.mjs)
-compiles the Lua interpreter. PoBR compiles calculations directly into WASM.
-The report compares WASM + JS + compressed data and separately estimates all-gzip
-transfer. Dataset contents, supported mechanics and compression differ; neither
-the comparison nor a passing package smoke test establishes numerical parity.
-These are disk/transfer sizes, not runtime memory measurements.
+[pob-web 的 Lua 打包脚本](https://github.com/krauthaufen/pob-web/blob/master/packages/pob-data/bundle-lua.mjs)
+把 PoB Lua 源码、游戏数据和运行库一起打包；其
+[WASM 构建](https://github.com/krauthaufen/pob-web/blob/master/packages/lua-wasm/scripts/build.mjs)
+编译的是 Lua 解释器。PoBR 则把计算代码直接编译到 WASM。
+报告比较 WASM + JS + 压缩数据，并另算全 gzip 传输估算。
+数据内容、机制支持和压缩方式不同，大小对比或打包冒烟测试不能证明数值一致。
+这里测的是磁盘与传输大小，不是运行时内存。
 
-## Runtime performance comparison
+<a id="runtime-performance-comparison"></a>
 
-The [performance and build analysis](wasm-performance.md) document
-([中文](wasm-performance.zh-CN.md)) records an opt-in
-PoBR Rust WASM versus pob-web Lua WASM **code-import + calculation** benchmark.
-The [paired record](../devs/ci/pob-web-performance-2026-10-12-m4.json) preserves the measured
-samples, host, artifact hashes, selected outputs and failed fixtures, and the
-[PoBR-only record](../devs/ci/pobr-only-performance-2026-10-12-m4.json) covers the builds the
-Lua reference rejects. They are separate from the measured size baseline above.
-`mise run setup` installs the toolchain this benchmark needs.
+## 运行性能对照
 
-`node web/scripts/benchmark-pob-web.mjs --prepare` acquires a hash-verified local
-reference snapshot, preserving the upstream license and pinning its wrapper,
-shims and loading patches. The downloaded deployment's binary/data revision
-is unknown; the wrapper commit must not be used to label those artifacts.
-Run `node web/scripts/bench-pob-web.mjs --iterations 9 --warmup 2` from the root
-after building WASM and syncing data. Full output is written to
-`.cache/pob-web-performance.json`; failed fixtures are retained without speed
-ratios and cause exit status 1. Add `--pobr-only` to measure PoBR alone on every build
-without a reference snapshot (for builds the Lua reference rejects); that report goes to
-`.cache/pobr-performance.json` and carries no speed ratio. Subsequent preparation
-verifies the existing snapshot offline; use a new directory to measure a changed deployment.
-The runner uses an explicit seven-build historical cohort from the shared parity
-fixtures and discovers all fixtures in `examples/wasm-benchmark/builds/`.
-Eleven previously failing/unstable historical builds were removed from this
-performance cohort at the user's request; their parity fixtures remain intact.
-The historical cohort is post-selected and is not an unbiased sample. New poe.ninja
-captures retain their actual league, snapshot, character URL, fetch date and code
-hash; they do not silently become parity goldens. README tables distinguish
-latest-season captures from historical inputs. To preserve a compact baseline
-with raw samples/diagnostics but without full breakdown responses, run
-`node web/scripts/snapshot-pob-web-benchmark.mjs --output <file>` after the benchmark report
-exists; `--output` is required so an earlier record is never replaced by default.
+[英文性能记录](https://github.com/ackness/pobr/blob/master/docs/wasm-performance.md)和[中文记录](https://github.com/ackness/pobr/blob/master/docs/wasm-performance.zh-CN.md)保存
+2026-10-12 的 PoBR Rust WASM / pob-web Lua WASM **构筑码导入与计算**测试。
+[配对记录](https://github.com/ackness/pobr/blob/master/devs/ci/pob-web-performance-2026-10-12-m4.json)含样本、主机、产物哈希、
+选定输出和失败案例；[PoBR 单独记录](https://github.com/ackness/pobr/blob/master/devs/ci/pobr-only-performance-2026-10-12-m4.json)
+另测 Lua 拒绝的构筑。它们与上述体积基线是不同记录，不代表当前版本的新测量。
+`mise run setup` 安装基准需要的工具链。
 
-Regression checks:
+`node web/scripts/benchmark-pob-web.mjs --prepare` 获取本地参考快照，保留上游许可证，
+固定包装层、shims 和加载补丁，并校验哈希。部署产物的二进制 / 数据源码版本未知。
+后续准备只离线校验原快照；测新部署应使用新目录。
+
+构建 WASM、同步数据后，在仓库根运行：
+`node web/scripts/bench-pob-web.mjs --iterations 9 --warmup 2`。
+完整结果写入 `.cache/pob-web-performance.json`；失败案例保留错误、不报耗时比，
+并使退出码为 1。加 `--pobr-only` 可不依赖参考快照，单独测量全部 PoBR 构筑，
+结果写入 `.cache/pobr-performance.json`，不提供跨引擎耗时比。
+
+脚本显式选择共享 parity 语料中的七个历史构筑，并发现
+`examples/wasm-benchmark/builds/` 的全部样本。
+按用户要求，之前失败或不稳定的 11 个历史构筑已从性能组移除，但仍在 parity 语料中。
+历史性能组是观察结果后筛选的，不能当作无偏样本。
+新 poe.ninja 抓取保留真实赛季、快照、角色 URL、获取日期和构筑码哈希，不自动变成 parity golden。
+README 表格区分新赛季抓取与历史输入。
+
+基准报告生成后，用 `node web/scripts/snapshot-pob-web-benchmark.mjs --output <file>`
+保存精简记录，保留原始采样和诊断、去掉完整分解响应。
+`--output` 必填，避免默认覆盖旧记录。脚本回归检查：
 
 ```bash
 node --test web/scripts/benchmark-comparison.test.mjs web/scripts/benchmark-builds.test.mjs web/scripts/benchmark-pob-web.test.mjs
 ```
 
-Lua measurements include the Node Worker host, adapter checks and upstream
-headless UI-state setup. Implementations, JSON responses and supported mechanics
-differ. These observations do not establish a kernel-speed advantage,
-incremental-edit latency, browser performance, memory usage or numerical parity.
+Lua 计时包含 Node Worker 宿主、适配检查和上游无界面 UI 状态准备。
+两侧实现、JSON 响应和支持机制不同。这些测试不能推导纯计算内核速度、增量编辑延迟、
+浏览器表现、内存占用或数值一致性。
