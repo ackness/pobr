@@ -68,6 +68,10 @@ jobs:
       # libtest shares immutable fixtures within each suite and includes doctests.
       - name: Workspace tests (including doctests)
         run: cargo test --workspace --locked
+      # Compare fresh parser payloads with committed generated artifacts, not
+      # only coverage totals. Missing raw export inputs remain explicit skips.
+      - name: Generated data reproducibility
+        run: POBR_PATCH="$(cat data/CURRENT)" bash devs/scripts/regen-check.sh
       - name: Language catalog lint
         run: cargo run -p lint-i18n
 

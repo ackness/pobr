@@ -30,7 +30,13 @@ actionlint_installer = load("install-actionlint.py")
 
 class RoutingTests(unittest.TestCase):
     def test_docs_only_and_known_areas(self):
-        self.assertFalse(any(plan.classify(["docs/new-guide.md", "web/README.md"]).values()))
+        self.assertFalse(any(plan.classify([
+            "docs/new-guide.md", "web/README.md", "crates/pobr-core/README.md",
+            "apps/pobr-wasm/README.md", "examples/reference-builds/README.md",
+            "tools/pob2-oracle/README.md", ".claude/skills/workflow/SKILL.md",
+            "apps/pobr-wasm/tests/fixtures/pob2-planner.md",
+            "web/worker-tests/fixtures/README.md",
+        ]).values()))
         self.assertTrue(plan.classify(["crates/pobr-core/src/calc.rs"])["rust"])
         self.assertTrue(plan.classify(["web/src/App.tsx"])["web"])
         self.assertTrue(plan.classify(["pipeline/data_snapshot.py"])["full"])
@@ -50,6 +56,37 @@ class RoutingTests(unittest.TestCase):
         self.assertTrue(plan.classify(["web/worker-tests/fixtures/build-code.txt"])["web"])
         self.assertTrue(plan.classify(["web/worker-tests/fixtures/build-code.txt"])["scripts"])
         self.assertTrue(plan.classify(["data/test/manifest.json"])["rust"])
+        self.assertTrue(plan.classify(["web/e2e/fixtures/item.md"])["web"])
+        self.assertTrue(plan.classify(["crates/pobr-core/tests/fixtures/mod.md"])["rust"])
+        for name in ("pipeline/fixtures/input.md", "pipeline/fixtures/input.txt",
+                     "devs/fixtures/input.md", "devs/fixtures/input.txt"):
+            with self.subTest(name=name):
+                self.assertTrue(plan.classify([name])["full"])
+
+    def test_pr_is_quick_and_master_integrates_the_same_code_range(self):
+        for files, areas in ((["crates/pobr-core/src/lib.rs"], {"rust"}),
+                             (["web/src/App.tsx"], {"web"}),
+                             (["devs/scripts/lookup.py"], {"scripts"}),
+                             (["data/current/base/items.json"], {"rust", "scripts"}),
+                             (["Cargo.lock"], {"rust", "web", "scripts"}),
+                             ([".github/workflows/pr.yml"], {"rust", "web", "scripts"}),
+                             (["unknown-runtime.conf"], {"rust", "web", "scripts"})):
+            with self.subTest(files=files):
+                self.assertEqual(plan.plan_for_event(files, "pull_request"),
+                                 {area: area in areas for area in plan.AREAS})
+                self.assertEqual(plan.plan_for_event(files, "push"),
+                                 {area: area == "full" for area in plan.AREAS})
+        for event in ("pull_request", "push"):
+            for name in ("docs/new-guide.md", "web/worker-tests/fixtures/README.md",
+                         "apps/pobr-wasm/tests/fixtures/pob2-planner.md"):
+                self.assertFalse(any(plan.plan_for_event([name], event).values()))
+            self.assertFalse(any(plan.plan_for_event([], event).values()))
+
+    def test_missing_pr_base_fails_and_initial_master_push_selects_full(self):
+        with self.assertRaisesRegex(ValueError, "PR comparison base unavailable"):
+            plan.plan_for_event(None, "pull_request")
+        self.assertEqual(plan.plan_for_event(None, "push"),
+                         {area: area == "full" for area in plan.AREAS})
 
     def test_git_ranges_include_early_commits_deletions_and_both_rename_sides(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -85,15 +122,17 @@ class RoutingTests(unittest.TestCase):
 
 
 class GateTests(unittest.TestCase):
-    def needs(self, files=()):
-        outputs = {name: str(value).lower() for name, value in plan.classify(files).items()}
+    def needs(self, files=(), event="pull_request"):
+        outputs = {name: str(value).lower() for name, value in plan.plan_for_event(files, event).items()}
         return {"changes": {"result": "success", "outputs": outputs},
                 **{name: {"result": "success" if selected == "true" else "skipped"}
                    for name, selected in outputs.items()}}
 
     def test_expected_success_and_explicit_skips(self):
         for files in [[], ["web/src/App.tsx"], ["Cargo.lock"], ["pipeline/a.py"]]:
-            gate.check(self.needs(files), "pr")
+            for event in ("pull_request", "push"):
+                with self.subTest(files=files, event=event):
+                    gate.check(self.needs(files, event), "pr")
         gate.check({name: {"result": "success"} for name in ("lint", "ci", "web", "scripts")}, "full")
 
     def test_selected_failure_cancel_skip_or_missing_never_passes(self):

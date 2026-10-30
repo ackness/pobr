@@ -9,7 +9,9 @@ modifier text or official data; use PoB2 only as a cross-check. -->
 
 ## Validation
 
-<!-- Exact focused commands and observed results; state anything not run.
+<!-- State what was reviewed and the actual commands/results; identify unrun work.
+Local compilation/tests are optional according to risk and cost; do not call a
+review or compiler check a passing runtime test.
 No per-change full/parity run is required. Visible UI changes: before/after capture.
 Docs-only: diff/link review is enough. CI owns its selected integration checks. -->
 

@@ -92,7 +92,7 @@ WASM/JSON API 与 CLI 仍在迭代，可能随版本变更。
 ```bash
 mise bootstrap --only packages,tools,task
 mise exec -- cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
-mise run verify build codec           # Build Code 改动的定向检查
+mise run verify build codec           # 按需定向测试与 lint
 mise run targets                      # 只列测试目标，不编译
 ```
 
