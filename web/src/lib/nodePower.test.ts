@@ -15,7 +15,8 @@ const nodes: PassiveNode[] = [
   { skill: 7, id: 'asc-notable', name: 'Asc notable', kind: 'notable', ascendancy_id: 'Witch1', stats: ['Life'] },
 ];
 function candidates() { return powerCandidates(nodes, passivePlanningContext(nodes, [], 'Witch'), [], 'Witch1'); }
-const probe = vi.fn<PobrBackend['nodePower']>(async (_request, _stat, _depth, ids) => ({ base: 100, entries: (ids ?? []).map((skill: number) => ({ skill, delta: 999, distance: 0 })) }));
+const probeImplementation: PobrBackend['nodePower'] = async (_request, _stat, _depth, ids) => ({ base: 100, entries: (ids ?? []).map((skill: number) => ({ skill, delta: 999, distance: 0 })) });
+const probe = vi.fn(probeImplementation);
 const evaluate = async (opts: EvaluateOptions): Promise<EvaluateResult> => ({ baseline: { Life: 100, Mana: 100 }, aborted: false,
   results: opts.variants.map((variant, index) => {
     const ids = variant.allocate_nodes ?? [];
@@ -70,14 +71,14 @@ describe('node power routes and ranking', () => {
 
   test('caps work, bounds explicit probes, and stops before probing cancelled routes', async () => {
     const many: PowerRow[] = Array.from({length:200}, (_,i) => ({ ...candidates()[0], node:{...nodes[2], skill:100+i}, path:[100+i] }));
-    const probes = vi.fn(probe);
+    const probes = vi.fn(probeImplementation);
     let progress = 0;
     const result = await evaluateNodePower({request:{}, rows:many, stat:'Life', evaluate, probe:probes, onBatch:(_rows,done)=>{progress=done;}});
     expect(result.rows).toHaveLength(NODE_POWER_LIMIT);
     expect(progress).toBe(NODE_POWER_LIMIT);
     expect(probes.mock.calls.every(args => args[3]!.length <= 16)).toBe(true);
     const controller = new AbortController();
-    const cancelledProbe = vi.fn(probe);
+    const cancelledProbe = vi.fn(probeImplementation);
     const cancelled = await evaluateNodePower({request:{}, rows:many, stat:'Life', signal:controller.signal,
       evaluate:async opts=>{ controller.abort(); return evaluate(opts); }, probe:cancelledProbe });
     expect(cancelled).toEqual({rows:[],cancelled:true});
