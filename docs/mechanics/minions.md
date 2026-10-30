@@ -88,7 +88,7 @@ Watch How I Do It 经友军光环给接收者 `MainHandDamageToAllies`，只分�
 
 所选技能带 `SummonsTotem` / `UsedByTotem` 时，`calc::totem` 输出图腾防御。这里展示的是一只图腾和容量，不自动按容量乘 DPS。
 
-游戏关系 `ActiveSkills.SkillTotemId → SkillTotemVariations → MonsterVarieties` 存于 `overlay-common/totem_varieties.json`。Ancestral Warrior 的 SlamTotem `LifeMultiplier` 为 120，其余为 100；计算使用相应倍率值。等级由 `MinionGemLevelScaling` 取有效宝石等级的两倍，20 级宝石为 40 级图腾，等级映射尚未游戏内实测。
+游戏关系 `ActiveSkills.SkillTotemId → SkillTotemVariations → MonsterVarieties` 存于 `overlay-common/totem_varieties.json`。Ancestral Warrior 的 SlamTotem 原始 `LifeMultiplier` 为 120，其余为 100；加载时除以 100，分别转换为 1.2／1.0，再代入下表公式。等级由 `MinionGemLevelScaling` 取有效宝石等级的两倍，20 级宝石为 40 级图腾，等级映射尚未游戏内实测。
 
 | 输出 | 计算与来源 |
 |---|---|

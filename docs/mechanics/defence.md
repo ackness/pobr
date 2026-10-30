@@ -78,7 +78,9 @@ Ward 与怒气再生来自 `base_ward_regeneration_per_minute`、`base_rage_rege
 
 PoBR 采用[游戏关键词](https://poe2db.tw/us/Keywords)的一秒基础时间，不再把单次偷取量限制为资源池的 10%。`base_life_leech_amount_+%` / `base_mana_leech_amount_+%` 增加总量，`base_life_leech_rate_+%` 等加快速率，不增加总量。最大速率先应用 INC/MORE，再限制实例。生命／魔力每秒 20%、ES 每秒 10% 的默认速率上限仍是项目兼容约定，**不是该补丁确认的常量**。
 
-持续恢复按主技能平均命中频率估计覆盖，最快实例先回复，较慢实例只补其过期后的空档；不模拟随机暴击的时间序列。命中获得与瞬间偷取逐次相加。`LifeLeechGainRate` / `LifeLeechGainPerHit` 等面板仍是平均命中的原始单实例值，不必等于含恢复速率、瞬间部分或覆盖估计的持续回复。
+持续恢复按主技能平均命中频率估计覆盖，最快实例先回复，较慢实例只补其过期后的空档；不模拟随机暴击的时间序列。命中获得与瞬间偷取逐次相加。
+
+旧字段 `LifeLeechRate` 展示平均命中的单实例偷取速率。`LifeLeechGainRate` 则是持续恢复估计，计入恢复速率、命中频率、实例覆盖、瞬间偷取和命中获得；`LifeLeechGainPerHit` 是每次命中的平均恢复量，包含持续偷取总量、瞬间偷取和命中获得。魔力与 ES 的对应字段使用同样的区分。实现见 `calc/recovery.rs::fill_leech_gain`，频率与每击数值的回归见 [recovery_outputs.rs](../../crates/pobr-core/tests/engine/recovery_outputs.rs)。
 
 Mystic Harvest（`life_leech_also_recovers_based_on_elemental_damage_types`）让已有生命偷取比例也可由元素伤害提供，但不赠送比例，也不解除攻击／法术限制。Essentia（`convert_all_life_leech_to_energy_shield_leech`）保留伤害类型资格，将基础生命偷取转给 ES；按[Stat Conversion](https://poe2db.tw/us/Stat_Conversion)使用目标 ES 的总量、速度、恢复、瞬间比例与禁止条件，生命命中获得仍回复生命。
 

@@ -1,6 +1,6 @@
 # WeGame 分享导入
 
-在“管理 BD”的导入框粘贴
+在顶栏“BD 库”的导入框粘贴
 `https://www.wegame.com.cn/helper/poe2/#/share/<code>`。
 导入后可使用现有装备编辑器、技能组、天赋树、物品库和规划器，也可导出 PoBR 存档或 PoB2 构筑码。
 各格式携带的信息见[导入格式](import-formats.md)。

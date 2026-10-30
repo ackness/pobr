@@ -12,7 +12,7 @@ engine's formulas. [Web contracts](../docs/web-contracts.md) describe the behavi
 
 ## Builds and stages
 
-Open **Manage builds** to create separate builds and copy stages for leveling,
+Open **Build library** to create separate builds and copy stages for leveling,
 progression or endgame. Each stage saves equipment, passive allocations, skills,
 configuration, notes and unapplied editor drafts. Switching saves the current stage.
 A source PoB loadout is a selection inside the imported file; switching it reloads
@@ -38,7 +38,7 @@ full backups; Cancel discards a draft. PoB codes export the current stage and it
 source loadouts. **Download backup** includes all local builds and drafts;
 restoring it replaces the collection after confirmation.
 
-Delete a build or stage from Manage builds. The confirmation names what will be
+Delete a build or stage from Build library. The confirmation names what will be
 removed and recommends downloading a backup. At least one build and one stage per
 build must remain. Deletion opens a neighboring entry and cannot be undone.
 Undo/redo keeps up to 50 edits of the current stage; importing or changing stages,

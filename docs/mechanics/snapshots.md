@@ -13,7 +13,9 @@
 
 `calc_orchestrator::enemy_config::modifiers` 用 OVERRIDE 覆盖敌人等级／类别预设的五种伤害、三种元素穿透、暴击率、暴击伤害和 `enemyPhysicalOverwhelm`。显式 0 也覆盖，负数按零，非有限值忽略。来源是 `EnemyConfig`、`config.<输入名>`；被覆盖预设仍留在 `CalculationSession::enemy_hit_mods` 的 EHP／最大承伤明细中，但不计入。
 
-`enemyDamageType` 选择 Average、无类型、近战、投射物、法术、法术投射物命中，供闪避、格挡和承伤上下文使用（`calc::taken::HitCategory`）。DoT 不是命中。`EHPUnluckyWorstOf` 取 1／2／4 次中最差的防御概率估计。`enemySpeed` 只在 Energy 格挡事件没有来袭频率时回退，不是 EHP 通用倍率；`enemyDamageRollRange` 与持续伤害防御视图仍无读取者。
+`enemyDamageType` 选择 Average、无类型、近战、投射物、法术、法术投射物命中，供闪避、格挡和承伤上下文使用（`calc::taken::HitCategory`）。DoT 不是命中。`EHPUnluckyWorstOf` 取 1／2／4 次中最差的防御概率估计。
+
+显式填写的 `enemySpeed` 是敌人攻击／施法间隔，单位为毫秒。它用于 `EHPSurvivalTime`，也在 Energy 格挡事件缺少来袭频率时提供回退；它不是 EHP 通用倍率。未填写时不采用导出器的 700 ms 占位值。持续伤害防御已有实现，会处理持续抗性，并输出 `TakenDotMult` 和 `DotEHP`；字段含义见[计算输出](../calc-outputs.md)，回归见 [enemy_config.rs](../../crates/pobr-build/tests/skills/enemy_config.rs)。`enemyDamageRollRange` 仍无计算读取者。
 
 敌人等级由 `skill::mods::resolved_enemy_level` 统一解析，尸体生命和减免共用。优先级为调用方显式值、构筑码 `enemyLevel` Input、Placeholder；均缺失时，普通怪／普通首领跟随角色等级，Pinnacle/Uber 默认 82。最后限制在该档最低等级与 85 之间。尸体生命表在 82／85 级为 32956／36012；Detonate Dead 的 `corpse_explosion_monster_life_permillage_physical = 107` 表示 10.7%。
 
