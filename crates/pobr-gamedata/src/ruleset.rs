@@ -125,7 +125,10 @@ impl GameData {
     /// returns `None` (the consumer falls back to `Default`); a JSON parse
     /// error (`LoadError::Parse`) propagates upward instead — a file that
     /// exists but is broken isn't allowed to silently fall back.
+    /// Guarded native candidates are rejected before aggregation until their
+    /// profile is admitted; querying individual domains remains available.
     pub fn load_ruleset(&self) -> Result<RuleSet, LoadError> {
+        self.validate_calculation_admission()?;
         let game_constants = match self.game_constants() {
             Ok(v) => Some(v),
             Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {

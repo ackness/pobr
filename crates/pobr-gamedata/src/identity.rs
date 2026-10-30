@@ -34,7 +34,9 @@ const MAINTENANCE_FILES: &[&str] = &[
 impl GameData {
     /// Identifies this immutable runtime input pack once; clones reuse the result.
     ///
-    /// Schema 3 uses validated inventory hashes, ignoring unlisted version files.
+    /// Schemas 3/4 use validated inventory hashes, ignoring unlisted version files.
+    /// Schema 4 includes the exact native contract bytes and ignores ambient common
+    /// overlays, which cannot participate in a native candidate's loaded inputs.
     /// Legacy schemas (including no manifest) hash present JSON files, excluding
     /// maintenance reports; missing optional files contribute no entry. Shared
     /// `overlay-common` JSON files and patches of present snapshot files are added
@@ -96,7 +98,11 @@ impl GameData {
                 Err(source) => return Err(LoadError::Io { path, source }),
             }
         }
-        if let Some(common) = self.overlay_common_path("") {
+        if let Some(common) = self.overlay_common_path("").filter(|_| {
+            manifest.is_none_or(|manifest| {
+                manifest.schema_version < pobr_data::catalog::NATIVE_CATALOG_SCHEMA_VERSION
+            })
+        }) {
             for relative in self.json_files(&common, "overlay-common/")? {
                 self.hash_file(
                     &mut hashes,

@@ -192,3 +192,5 @@ mod remnant_pickup;
 
 #[path = "skills/native_passive_stats.rs"]
 mod native_passive_stats;
+#[path = "skills/native_runtime.rs"]
+mod native_runtime;

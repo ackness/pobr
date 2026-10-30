@@ -1,0 +1,35 @@
+{
+  "schema_version": 4,
+  "poe_version": "0.5.5.5",
+  "languages": [],
+  "domains": {
+    "base": [
+      "base_items",
+      "cost_types",
+      "granted_effect_levels",
+      "granted_effect_stat_sets",
+      "granted_effects",
+      "native_coverage",
+      "native_reference_index",
+      "native_runtime",
+      "passive_tree",
+      "passive_tree_meta",
+      "skill_gems"
+    ],
+    "overlay": [],
+    "generated": []
+  },
+  "files": {
+    "base/base_items.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "base/cost_types.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "base/granted_effect_levels.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "base/granted_effect_stat_sets.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "base/granted_effects.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "base/native_coverage.json": "8b567e88f70dff719c5ef18c75a74340f8b0937e20626659d7dd9e4311a1b02e",
+    "base/native_reference_index.json": "910cb36bb64f2e7eb6337a920e9e3d25ec4f7336bb0f0f90a0dfc180f09ea95b",
+    "base/native_runtime.json": "7387bb926d5d5701479fce772d9655ad1337f4d99d07b55d279cb43d98487e5e",
+    "base/passive_tree.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "base/passive_tree_meta.json": "276620dad4e19c2fdfdbf8da0f437d9ab06f7ec49d9a0f650808602c3870ab5c",
+    "base/skill_gems.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  }
+}

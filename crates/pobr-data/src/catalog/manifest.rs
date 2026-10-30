@@ -7,12 +7,17 @@
 
 use serde::{Deserialize, Serialize};
 
-/// The current catalog schema version. Bumped by 1 on a breaking structural change.
+/// The catalog schema emitted by the existing compatibility-pack producers.
 ///
 /// v2: manifest's `domains` changed from a flat array to the three-section
 /// [`DomainSections`].
 /// v3: required immutable runtime file inventory with SHA-256 digests.
 pub const CATALOG_SCHEMA_VERSION: u32 = 3;
+
+/// Guarded native candidates require a mandatory, versioned native runtime contract.
+/// Older loaders reject this envelope instead of ignoring required semantics.
+/// Domain JSON representations are unchanged; compatibility producers stay on v3.
+pub const NATIVE_CATALOG_SCHEMA_VERSION: u32 = 4;
 
 /// The data-pack envelope: describes which domains and languages are
 /// stored for a given PoE2 version.

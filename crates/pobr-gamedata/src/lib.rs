@@ -168,8 +168,9 @@ impl std::ops::Deref for FileBytes {
 /// The backing snapshot must remain unchanged for the loader's lifetime.
 /// Manifest validation (including absence or failure) is cached on first
 /// domain access and shared by clones. After replacing or repairing files,
-/// construct a new loader. Schema 3 exposes only inventoried snapshot files;
-/// user patches and shared `overlay-common` files remain separate layers.
+/// construct a new loader. Schemas 3/4 expose only inventoried snapshot files.
+/// Shared `overlay-common` remains a separate layer for legacy packs; native
+/// schema 4 ignores it and requires an immutable native contract.
 #[derive(Debug, Clone)]
 pub struct GameData {
     root: PathBuf,
@@ -179,13 +180,13 @@ pub struct GameData {
     files: Option<std::sync::Arc<MemoryFiles>>,
     /// Validation and inventory are fixed on first access, shared by clones.
     /// Create a new loader after replacing a snapshot on disk.
-    snapshot: std::sync::Arc<
-        std::sync::OnceLock<Result<Option<pobr_data::catalog::DataManifest>, String>>,
-    >,
+    snapshot:
+        std::sync::Arc<std::sync::OnceLock<Result<Option<manifest::ValidatedSnapshot>, String>>>,
     /// Effective input-pack fingerprint, fixed on first request and shared by clones.
     identity: std::sync::Arc<std::sync::OnceLock<Result<DataIdentity, String>>>,
     /// The caller has already compared every inventoried file with its manifest
-    /// digest ([`Self::from_memory_prechecked`]), so validation skips that comparison.
+    /// digest ([`Self::from_memory_prechecked`]), so legacy validation skips that
+    /// comparison. Native schema 4 always verifies bytes in this loader.
     prechecked: bool,
 }
 
@@ -249,6 +250,8 @@ impl GameData {
     /// digest format, every listed file present); only the byte comparison is left to
     /// the caller, who must have made it against this manifest's digests. The pack's
     /// identity is unchanged: it is built from the manifest's digests, not from hashing.
+    /// Schema 4 still verifies every digest here; the legacy staging handshake cannot
+    /// certify required native semantics.
     pub fn from_memory_prechecked(files: std::collections::BTreeMap<String, Vec<u8>>) -> Self {
         Self::memory(files, true, false)
     }

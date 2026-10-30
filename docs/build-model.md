@@ -35,6 +35,47 @@ parity 下降说明需要调查新版差异，不能为通过而降低基线。
 它始终严格校验三张官方输入表和版本记录，不受通用 `--strict-columns` 开关影响，
 不从 vendor 或旧产物猜范围。见[品质生成说明](../pipeline/gem-quality/README.md)。
 
+### 受保护的 native 运行时契约
+
+兼容包生成器继续使用 schema 3；显式 native 候选必须使用运行时 manifest schema 4，
+现有领域 JSON 的结构不变。schema 4 强制声明并封存 `base/native_runtime.json`、
+`base/native_coverage.json`、`base/native_reference_index.json` 和固定输入域：
+`passive_tree`、`passive_tree_meta`、`base_items`、`skill_gems`、`granted_effects`、
+`granted_effect_levels`、`granted_effect_stat_sets`、`cost_types`。缺少声明、文件或摘要均失败。
+空领域可用于中间 assembler 验证，不表示游戏没有记录，也不证明计算闭包完整。
+schema 1–3 不接受 native 契约；旧加载器也会拒绝 schema 4，不能把必需语义作为可忽略字段发布。
+
+契约类型是 [`NativeRuntimeContract`](../crates/pobr-data/src/catalog/native_runtime.rs)，
+当前版本严格为 1，字段无默认值，未知字段／profile／版本报错：
+
+| 字段 | 约束与身份作用 |
+| --- | --- |
+| `game` / `realm` / `game_patch` | `poe2` / `INTERNATIONAL`；显式数字点分 patch 必须等于 manifest 的 `poe_version` |
+| `source_lock_sha256` / `descriptions_manifest_sha256` / `compiler_revision` | 不可变输入锁、描述输入和编译器 revision；不追随当前 registry |
+| `tree` / `allowed_source_manifests` | 精确原始图资源地址、资源摘要及被允许的来源 manifest；`compatibility_tag` 固定 `0_5`，不据此推导 patch |
+| `normalization` / `rules` | 显式 `spark-level1-q0` profile、严格版本 1 和各自解释／证据工件摘要 |
+| `input_profile` / `output_profile` | `sorceress-spark-level1-q0-v1` / `spark-single-hit-cast-cost-v1`；只是所需范围，不是已支持声明 |
+| `coverage_sha256` / `reference_index_sha256` | 必须分别等于 manifest 中两个固定 sidecar 文件的摘要 |
+| `acquisition` / `supplements` | 获取状态及证据摘要；显式补充列表，只允许树坐标／渲染元数据，patch 未知时必须写 `null` |
+| `assembly_key` | `native_assembly_key` 对完整 typed 契约（本字段置空）及 `pobr-native-assembly-v1` 标签的确定性 SHA-256 |
+
+固定输入 profile 限定 level-1 Sorceress 的 Spark 主分支 level 1 / quality 0，
+没有装备、辅助、天赋分配、升华、infusion 或事件条件；输出范围只有单次命中／施法／消耗，
+不含投射物命中次数或遭遇频率。常量与规则闭包尚未完成，契约没有假造完整默认常量。
+来源摘要和 reviewed 状态是字节身份与声明，不是获取认证、语义批准或生产提升。
+
+`GameData::native_runtime()` 返回缓存的、未打 patch 的有效契约，供 assembler 查询。
+契约禁止用户 patch；schema 4 不继承 ambient `overlay-common`，这些未选输入也不参与身份。
+schema 4 即使通过 prechecked 内存入口也重新校验全部快照摘要。
+契约原字节及所有封存文件参与 `GameData::identity()`，磁盘／内存一致；
+最终运行时摘要不回写进契约，避免自引用。
+
+**当前没有 native 计算准入。** `GameData::load_ruleset()` 和 `BuildData::load()`
+在默认常量、旧文本规则或领域释放之前返回既有 `LoadError::Integrity`，
+路径指向契约，原因以 `native-profile-not-admitted:` 开头，明确列出缺少的 Spark 常量／规则闭包、
+精确 dataset/save binding 和 stable branch admission。后续必须协调完成这些切片后才可开放；
+本契约不实现 Spark 公式、分支选择、保存绑定、WASM/Web 握手或生产包切换。
+
 ### 可选 native 天赋 stat
 
 `PassiveNodeDef.native_stats` 是完整节点的可选事实包，随现有
