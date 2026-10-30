@@ -200,3 +200,11 @@ run = "bash devs/scripts/driver.sh diff"
 [tasks."vendor:lua"]
 description = "Search the vendored PoB2 Lua for a pattern"
 run = "bash devs/scripts/driver.sh lua"
+
+[tasks."check:workflows"]
+description = "Check CI syntax, routing, agent handoff, release policy and automation scripts without compiling Rust"
+run = "mise exec actionlint@1.7.12 -- bash devs/scripts/check-workflows.sh"
+
+[tasks.pr-ready]
+description = "Read-only PR preflight: fresh audit, final head/base, required checks and mergeability"
+run = "python3 devs/scripts/pr-ready.py"

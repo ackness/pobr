@@ -593,7 +593,7 @@ class OracleRuntimeTests(unittest.TestCase):
     def setUp(self):
         temp = tempfile.TemporaryDirectory(prefix="pobr oracle runtime ")
         self.addCleanup(temp.cleanup)
-        self.root = Path(temp.name)
+        self.root = Path(temp.name).resolve()
         for rel in ("devs/scripts/pob2-luajit.sh", "devs/scripts/driver.sh",
                     "tools/pob2-oracle/run.sh", "tools/pob2-oracle/run-parsemod.sh"):
             dest = self.root / rel

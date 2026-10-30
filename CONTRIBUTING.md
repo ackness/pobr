@@ -40,7 +40,7 @@ Run the checks that match your change; a full workspace run is not required.
 ```bash
 mise run verify build skills <filter>      # Selected tests, fmt and Clippy
 mise run regen                             # After editing a modifier rule
-mise run test build parity no_regression   # Parity regression gate (also run by the PR checks)
+mise run check:workflows                   # Workflow/automation changes; no Rust build
 pnpm --dir web test <file> && pnpm --dir web typecheck
 ```
 
@@ -48,18 +48,32 @@ See [validation scope](docs/maintainer-guide.md) for the table of change types a
 minimum checks, and the [development workflow](docs/development-workflow.md)
 for commands and caches.
 
-Pull requests run lightweight checks automatically: formatting, Clippy, smoke
-tests and the parity regression gate for Rust changes; typecheck and unit tests
-for `web/` changes. Runs from first-time contributors wait for a maintainer's
-approval. The full gate runs on release tags, on pull requests that change
-the workspace version and nightly on `master`.
+Pull requests select checks by changed area. Dependency, toolchain, workspace
+manifest and workflow-policy changes run full validation automatically. Ordinary
+Rust/Web changes get the relevant lighter checks; local focused evidence remains
+your responsibility. `PR gate` rejects missing or unexpectedly skipped checks.
+Parity/accuracy measurement belongs to the batch gate, not every local change.
+See the [workflow guide](docs/development-workflow.md) for exact coverage.
 
-## Pull requests
+## Pull requests and review
 
-Describe the problem, the resulting behavior, what you validated and any
-remaining limits. State plainly what you did not run or verify.
+Use one PR for one problem. Describe the problem, resulting behavior, actual
+validation and remaining limits using the PR template. Visible UI changes should
+include useful before/after captures; documentation needs diff/link review.
+A draft may be opened before the review is complete.
 
-Maintainers may add follow-up commits on top of yours in a separate pull
-request. Your commits and authorship are kept. If that pull request is
-squash-merged, yours is closed with a link to it rather than shown as merged;
-the squash commit credits you as co-author.
+Before marking ready, an independent agent/reviewer audits the current head and
+base. Put the actual result in the template's `pobr-audit` JSON record, including
+full SHAs, reviewer model/session or review link, verdict and findings. Resolve
+blocking findings on the same PR. `PR handoff` checks required content, freshness
+and unresolved blockers. A new head/base requires renewed review; CI cannot prove
+independent reasoning or that a free-text command was really executed.
+
+Maintainers run `mise run pr-ready <N>` before an authorized merge. It verifies the
+live handoff/checks and prints the exact head for `--match-head-commit`; it never
+merges. Product decisions and non-CI evidence still need review. Bot feedback and
+execution approval are separate from merge authorization.
+
+Normally maintainers request corrections on your PR. If a takeover is needed,
+follow-up commits preserve your work and credit; a replacement PR links to yours
+and explains its eventual closure. See the [external PR procedure](docs/development-workflow.md#处理外部-pr).

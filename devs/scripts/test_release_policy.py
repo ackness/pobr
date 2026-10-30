@@ -281,6 +281,18 @@ version.workspace = true
         self.git("commit", "--allow-empty", "-qm", "later checkout")
         self.assert_error(self.run_policy("tag", "v0.0.10", head), "checkout HEAD")
 
+    def test_publication_rechecks_remote_identity_for_stable_and_prerelease(self):
+        for tag in ("v0.0.10", "v0.0.11-rc.1"):
+            head = self.set_version(tag[1:])
+            for annotated in (False, True):
+                with self.subTest(tag=tag, annotated=annotated):
+                    self.remote(tag, head, annotated)
+                    self.assert_output(self.run_policy("publication", tag, head), "verified=true")
+                    self.remote(tag, self.base, annotated)
+                    self.assert_error(self.run_policy("publication", tag, head), "missing or moved")
+        self.env["REMOTE_EXIT"] = "128"
+        self.assert_error(self.run_policy("publication", tag, head), "ls-remote failed")
+
     def test_deployment_selects_highest_canonical_stable_zero_major_tag(self):
         head = self.set_version("0.0.10")
         self.remote("v0.0.10", head, annotated=True)
@@ -324,7 +336,7 @@ version.workspace = true
                 self.assertEqual(result.stdout, "")
 
     def test_sha_arguments_require_full_object_ids(self):
-        for command in ("tag", "deployment"):
+        for command in ("tag", "publication", "deployment"):
             self.assert_error(self.run_policy(command, "v0.0.9", "HEAD"), "full commit SHA")
 
     def test_invalid_base_is_fatal(self):

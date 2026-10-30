@@ -83,7 +83,8 @@ pnpm --dir web smoke-wasm-package
 
 CI 会测试打包脚本、构建 WASM、打包，再解压到临时目录，计算新角色和已有构筑。
 手动触发会保存 `wasm-release` Actions artifact 和大小报告。
-推送 `v*` tag 时，只有 Rust 与 Web 检查都通过才附加 Release 资产；
+推送 `v*` tag 时，由 [release.yml](../.github/workflows/release.yml) 校验发布身份，
+并在完整 Rust、Web、自动化检查都通过后附加 Release 资产；
 Release 不存在时创建，已有说明则保留。tag 必须与 Cargo workspace 版本一致。
 带 `-rc.1` 等版本后缀的 tag 创建 prerelease，不发布 npm 包。
 

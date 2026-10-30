@@ -10,6 +10,13 @@ body:
     validations:
       required: true
   - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the selected skill, configuration and exact action or command when relevant.
+    validations:
+      required: true
+  - type: textarea
     id: build
     attributes:
       label: Build code or link
@@ -30,6 +37,8 @@ body:
     attributes:
       label: PoBR version and data version
       description: The release tag or commit, and the contents of `data/CURRENT` for local runs.
+    validations:
+      required: true
   - type: dropdown
     id: where
     attributes:
@@ -39,3 +48,5 @@ body:
         - CLI
         - WASM package
         - Other
+    validations:
+      required: true

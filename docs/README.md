@@ -18,7 +18,7 @@
 | 还依赖 PoB2 的哪些数据，哪些结果有意不同 | [PoB2 差异](pob2-differences.md) |
 | 计算不对、词条没生效时怎么查 | [诊断工具](diagnostics.md) |
 | PoB2、WeGame、游戏规划器等格式能保留什么 | [导入格式](import-formats.md) |
-| 测试、缓存、CI、部署和发版 | [开发工作流](development-workflow.md) |
+| 测试、缓存、CI、部署和发版 | [开发工作流](development-workflow.md)；[项目 workflow skill](../.claude/skills/workflow/SKILL.md) |
 | 改一条词条、一个计算字段或机制的具体步骤 | [常见改动步骤](recipes.md) |
 | 添加或修复词条解析规则 | [词条指南](contributing-mods.md) |
 | 界面操作、升级建议和 BD 管理的行为要求 | [Web 行为约定](web-contracts.md) |
@@ -42,6 +42,7 @@
 
 | 记录 | 当时查了什么 |
 | --- | --- |
+| [CI 与协作流程研究](records/2026-10-30-repository-workflow.md) | 2026-10-30，Magpie/T3 Code 全量工作流研究、实际 review/settings 与 PoBR 迁移依据 |
 | [WASM 性能（英文）](wasm-performance.md) / [中文](wasm-performance.zh-CN.md) | 2026-10-11 的耗时和体积；2026-10-12 补充测量、诊断和 PoB2 对照 |
 | [数据升版结构改造](version-bump-architecture.md) | v0.0.3 的方案和交付记录，含 2026-09-26 的后续说明；当前操作以数据管线文档为准 |
 | [0.5.5c 数据适配](adapting-to-0.5.5c.md) | 2026-09-26，数据版本 `4.5.5.3` |

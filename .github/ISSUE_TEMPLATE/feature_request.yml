@@ -13,5 +13,5 @@ body:
     id: example
     attributes:
       label: Example
-      description: A build code, the exact modifier text or a PoB2 reference (file and line) helps.
+      description: A build code, exact modifier text, game stat ID or official game source helps. State which output or user task this would improve; PoB2 can be a cross-check.
       render: text

@@ -47,15 +47,15 @@
 | Web TS / React | `pnpm --dir web test <test-file>` + `pnpm --dir web typecheck`；交互改动补相关 Playwright spec |
 | Rust → WASM / Web 契约 | Rust 契约测试 + 重建 WASM + 相关真实 WASM / E2E 测试 |
 | Worker | `pnpm --dir web test:worker` |
-| 验证脚本 | `bash -n <script>` + `python3 devs/scripts/test_workflows.py`；WASM 打包与数据同步脚本用 `node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs` |
+| 验证脚本 | `mise run check:workflows`（shell/Actions/Python/Node 契约，不编译 Rust）；WASM 打包与数据同步脚本用 `node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs` |
 | 仅文档 | 审查 diff 与链接；不运行 Cargo / Web 构建 |
 
 - 测试目标用 `mise run targets` 查（不编译）。用 `--test <suite>` / `--lib` 限定编译目标：只给名称 filter 仍可能编译整个 crate 的测试。
 - 计算修复必须有能复现错误的断言；不降低 parity 或吻合基线来换取通过。
 - 同一代码、依赖、工具链、features、数据下已通过的检查直接复用；只改文档不使代码测试失效。失败后先重跑失败的目标，只有新改动或明确的影响范围才扩大验证。
 - **批次门禁**：多个改动（并行代理的分支，或同一分支的多条词条）合并后，由合并者在已编译的 checkout 上运行一次 `mise run gate`：fmt、生成规则是否与提交一致、Clippy、各 crate 套件、parity、i18n、Web、accuracy，每一步都运行，最后列出失败项；修复后 `mise run gate --only <步骤>` 只重跑失败项。单个改动不重复这些步骤。
-- **完整门禁**（合并 / 发版、工具链 / Cargo features / workspace 依赖变更、影响范围不明的核心改动）优先交给 CI：推送分支后 `mise run ci <remote-ref>`，再核对该提交的结果；发起 CI 不等于通过。普通 PR 与 master 推送自动运行[轻量检查](../.github/workflows/pr.yml)，不能替代完整门禁；
-  发版 PR 改跑 [ci.yml](../.github/workflows/ci.yml) 的完整检查。E2E 只在 `mise run ci <ref> --e2e` 时运行，未被要求时不发起。离线或排查 CI 时可显式 `mise run full`（仅 Rust）。相同代码不重复本地与云端全量门禁。
+- **CI 完整门禁**：升版、工具链、依赖、workspace manifest、工作流/验证策略与未知输入自动调用 [ci.yml](../.github/workflows/ci.yml)；普通 PR 由 [pr.yml](../.github/workflows/pr.yml) 选相关轻量检查。跨边界但路径无法表达的改动显式 `mise run ci <remote-ref>`。完整检查也每日运行，并由 [release.yml](../.github/workflows/release.yml) 在 tag 发布前调用。E2E 只在显式 `--e2e` 时启用；不要重复相同输入的本地/云端全量验证。`PR gate` 校验所有应执行的 jobs；操作细节见[开发工作流](development-workflow.md)。
+- **Agent PR 交接**：ready 前由独立 reviewer 核对最终 head/base、验证证据与阻断项，并填写 `pobr-audit` 记录；`PR handoff` 检查格式与新鲜度，不能证明独立推理。授权合并前 `mise run pr-ready <N>`，用它输出的准确 head 执行 `--match-head-commit`。同一 PR 修正，接管另开 PR 是例外；服务端 required checks 需单独启用，见[开发工作流](development-workflow.md)。
 - Web 纯 TS/CSS 改动复用已构建的 WASM；WASM 及其 Rust 依赖、features、工具链改变时重建。`pnpm build` 已含 typecheck；E2E 前确认 dist 对应当前代码。
 
 ## 常用命令

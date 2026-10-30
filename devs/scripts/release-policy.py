@@ -184,6 +184,15 @@ def check_tag(tag, sha):
     return "production", version.is_production()
 
 
+def publication(tag, sha):
+    tag_version(tag)
+    sha = expected_sha(sha)
+    tags = remote_tags(f"refs/tags/{tag}", f"refs/tags/{tag}^{{}}")
+    if tags.get(tag) != sha:
+        raise PolicyError(f"remote tag {tag} is missing or moved from expected commit {sha}")
+    return "verified", True
+
+
 def deployment(tag, sha):
     version = tag_version(tag)
     sha = expected_sha(sha)
@@ -218,7 +227,7 @@ def main(argv=None):
     bump_parser.add_argument("--allow-existing-tag", action="store_true")
     detect_parser = commands.add_parser("detect", help="detect a version change without validation or network")
     detect_parser.add_argument("base")
-    for command in ("tag", "deployment"):
+    for command in ("tag", "publication", "deployment"):
         subparser = commands.add_parser(command)
         subparser.add_argument("tag")
         subparser.add_argument("sha", help="full expected commit SHA")
@@ -230,6 +239,8 @@ def main(argv=None):
             result = bump(args.base, detect_only=True)
         elif args.command == "tag":
             result = check_tag(args.tag, args.sha)
+        elif args.command == "publication":
+            result = publication(args.tag, args.sha)
         else:
             result = deployment(args.tag, args.sha)
         emit(*result)

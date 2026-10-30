@@ -16,7 +16,7 @@ Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/R
 | Rust | edition 2024；版本由根 `rust-toolchain.toml` 钉定（含 rustfmt/Clippy），本地与 CI 相同；本地 `mise run setup` 通过 mise 安装它，直接使用 rustup 时首次使用自动安装。升级版本属于工具链变更，需要完整门禁 |
 | Node | 本地 `mise.toml` 与 CI 均指定 Node 26 |
 | pnpm | 本地 mise 与 CI 仅固定稳定主版本 `12`；运行 `mise install` 配置。依赖 lockfile 固定解析结果，更新直接依赖时保持原主版本，不采用预发布版本 |
-| WASM | `wasm32-unknown-unknown` target + wasm-pack（本地 mise 钉定 0.15.0，CI 用 taiki-e/install-action 取最新版），仅构建 Web 引擎时需要 |
+| WASM | `wasm32-unknown-unknown` target + wasm-pack（本地 mise 钉定 0.15.0，CI 从 mise.toml 读取同一个版本，再由 taiki-e/install-action 安装），仅构建 Web 引擎时需要 |
 | LuaJIT | oracle 需要支持 `+=` 的 runtime；`mise run deps` 按 PoB2 Dockerfile 的 upstream commit 编译并缓存，见 [oracle setup](../tools/pob2-oracle/README.md#依赖--阻塞解决)。普通计算使用已入库数据 |
 
 `mise run setup` 在新机器上一次装好 Rust（mise 读取 `rust-toolchain.toml`，不在 `mise.toml`
@@ -149,90 +149,151 @@ WASM 构建记录校验 Rust 源码、嵌入语言文件、共享配置 JSON、m
 发布包以及旧 worktree 仍可能累积；先确认具体目录及保留需求，再显式清理。
 脚本不会自动删除发布资产、用户资料或其他 worktree。
 
-## 云端验证与发布
+项目专属 [.claude/skills/workflow](../.claude/skills/workflow/SKILL.md) 将本页适配给 agent；
+跨项目的通用设计使用独立安装在个人 skills 目录的 `repo-workflow`，不把 PoBR 规则写入全局 skill。
+
+## CI 的责任与触发
+
+workflow 负责事件、环境、权限；`mise.toml` / `devs/scripts` 负责命令。
+按改动选本地定向检查；CI 的集成检查不要求开发者在本地重复编译。
+
+| 入口 | 触发与职责 | 成功出口 |
+| --- | --- | --- |
+| [pr.yml](../.github/workflows/pr.yml) | 所有 master PR、每次 master push；按整个变更范围选轻量检查或调用完整门禁 | `PR gate` |
+| [handoff.yml](../.github/workflows/handoff.yml) | PR 创建、更新提交、编辑正文、ready/draft；只校验交接记录 | `PR handoff` |
+| [ci.yml](../.github/workflows/ci.yml) | 可复用完整门禁、手动 dispatch、每日 19:00 UTC 的 master 回归 | `Full gate` |
+| [release.yml](../.github/workflows/release.yml) | `v*` tag；先校验发布身份，调用完整门禁，再发布同次产物和符合条件的生产部署 | Release / deploy jobs |
+
+PR 变更比较测试中的 merge commit 与它的 base parent；master 比较 push 事件的 before/after，
+包括一次推送的所有提交。缺少比较基线时选择完整门禁；重命名按删除旧路径、增加新路径处理。
+未知输入保守进入完整门禁。PR 新提交取消旧检查；master 的每个增量 push 独立运行，
+避免后续文档提交取消前一次代码检查。每日完整门禁也会重试旧提交的失败，不按提交年龄跳过。
+
+[ci-plan.py](../devs/scripts/ci-plan.py) 是路径选择的唯一实现：
+
+| 变更 | 自动验证 |
+| --- | --- |
+| Rust / 数据 / 构筑语料 | fmt、workspace Clippy、smoke、请求契约、parity；数据还检查脚本契约 |
+| Web 代码 | typecheck、Vitest、Worker runtime；脚本/静态资源还检查脚本契约 |
+| 普通开发脚本 | 不编译 Rust 的自动化契约：shell、Python、Node、工作流语法 |
+| workspace/包 manifest、lockfile、工具链、mise、workflow、CI/发布策略脚本、数据管线、未知输入 | 完整 Rust、Web 与自动化契约；不重复轻量 jobs |
+| 普通文档（含 Web README）、模板、说明图片 | 无产品构建；仍有稳定 gate 和 PR 交接校验 |
+
+`PR gate` 校验检测器成功、输出合法、所有选中 jobs 成功；失败、取消、缺失或意外跳过都拒绝。
+`Full gate` 同样要求全部 Rust/Web/脚本 jobs 成功。fork 和 Dependabot 使用相同的只读、无密钥验证路径；
+首次外部贡献的 Actions 批准取决于 GitHub 设置。这里的批准只允许执行，不表示代码正确。
+
+完整门禁检查 fmt/Clippy（含手动诊断 features）、workspace tests/doctest、i18n、
+数据兼容（含安装了 Lua/dkjson 的提取测试）、Web 类型/单测/Worker、真实 WASM 契约、打包与解包计算；
+本地 vendor 才能执行的对照可能跳过，不能据此声称这些公式已获验证。
+E2E 只由显式手动输入启用，PR、tag、nightly 默认不运行。
+界面交互改动仍按维护者指南在本地验证相关 spec，或显式请求云端 E2E。
 
 ```bash
-# Push the intended commit first; requires authenticated gh.
-mise run ci feature/my-change
-mise run ci feature/my-change --e2e          # Also run Playwright E2E (opt-in)
+mise run check:workflows                   # 自动化契约，不编译 Rust
+mise run ci feature/my-change              # 先推送目标提交；只请求检查，不推送代码
+mise run ci feature/my-change --e2e        # 显式启用 E2E
 mise run ci-status --branch feature/my-change
-
-# Explicit local Rust gate; Web checks are separate.
-mise run full
+mise run full                             # 显式本地 Rust 全量检查，不含 Web
 ```
 
-合并、发版、工具链/features/依赖变更或影响范围不明的核心修改需要完整门禁，
-优先使用 CI。`ci` 测试已推送的远端分支/tag，不推送本地代码；必须核对结果的提交 SHA，
-请求成功不等于验证通过。普通功能分支 push 不触发 CI；master push 会运行轻量检查，版本 tag 会运行完整门禁。
-PR 默认只运行下述轻量检查，发版 PR 例外。
+必须核对 run 对应的 SHA 和最终结果；dispatch 成功不等于检查通过。
+计算修复的完整数值测量仍由批次 `mise run gate` 负责，不因 PR 流程改变而逐次运行。
+工作流迁移用 `mise run check:workflows`，无需 Cargo / WASM / E2E。
+其 actionlint 1.7.12 尚不认识 GitHub 已支持的 `queue: max`，只豁免该特定未知键错误，
+其余语法与表达式检查仍启用；队列语义见 [GitHub 文档](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)。
 
-[pr.yml](../.github/workflows/pr.yml) 在每个指向 master 的 PR 上运行，包括 fork 提交的 PR：
+## Agent 提交、审计与合并
 
-| 改动范围 | 自动检查 |
-|----------|----------|
-| Rust 源码、`data/`、`examples/`、开发脚本 / 工作流、Rust 工具链配置或 Web API 类型 | fmt、workspace Clippy、脚本测试、`mise run smoke`、生成请求契约检查、`parity no_regression` |
-| `web/` | `pnpm typecheck` 与 Vitest 单测（不构建 WASM，不跑 E2E） |
-| 仅根目录或 `docs/` 文档 | 不运行 Rust / Web 检查；仍有变更检测任务 |
-| 发版 PR（根 `Cargo.toml` 的 workspace 版本变化） | 版本元数据校验和 [ci.yml](../.github/workflows/ci.yml) 的完整 Rust / Web 门禁；它已覆盖上面的轻量检查，后者不再重复运行 |
+1. **作者交接。** 一项可审查的问题一个 PR；填写 Problem、Change、Validation、Remaining limits。
+   Validation 写实际执行的定向命令、结果和未验证部分；文档只需 diff/link review。
+   界面变化给出有用的前后截图；计算变化引用游戏数据/stat ID，PoB2 仅交叉核对。
+   先开 draft 可以尽早获得 CI，不要求草稿已有审计。
+2. **独立审计。** 另一个 agent/reviewer 读取 diff、相关调用方和真实证据，核对当前 head 与 base。
+   将正确性、回归、契约或权限问题作为 blocking；风格建议明确标为 suggestion。
+   修正在同一 PR 追加，保留作者提交与署名。不要因使用 agent 就省略真实执行结果。
+3. **记录结论。** ready 前把实际审计结论写入 PR 正文的唯一 `pobr-audit` JSON comment。
+   `head` / `base` 用完整 SHA，`reviewer` 记录模型与 session/review 链接；
+   `verdict` 必须是 `pass`；blocking findings 必须 resolved。没有 findings 时写空数组。
+4. **机器校验。** `PR handoff` 检查正文有实际内容、审计格式、提交新鲜度和未解决阻断项。
+   新提交或 ready 事件自动重新检查；编辑正文只触发交接检查，不重新编译产品；检查读取实时 PR 元数据，旧事件重跑不能恢复过期正文或 draft 状态。
+   同一 GitHub 身份下，记录不能证明审计来自独立推理，也不能证明正文所写命令执行过；
+   CI 负责其实际检查，维护者负责审计来源和不在 CI 中的证据，禁止编造审计或通过记录。
+5. **最终预检。** 获准合并前运行 `mise run pr-ready <N>`。它只读当前 PR、fresh audit、
+   两个必需 gate、其他失败/待定检查与冲突状态，并在返回前再次核对 head/base。
+   它不推送、不评论、不合并；成功时输出准确 head 及带 `--match-head-commit` 的合并命令。
+   作者随后推送时，该参数使合并失败。base 更新仍须最新集成检查与服务端 strict 规则约束。
 
-`web/` 下的文件按目录匹配，因此只改 Web README 也会触发 Web 轻量检查。
-具体路径条件以 [pr.yml](../.github/workflows/pr.yml) 为准。
+```json
+{"head":"<40-character head SHA>","base":"<40-character base SHA>","reviewer":"<model/session or review link>","verdict":"pass","findings":[]}
+```
 
-fork PR 使用只读令牌且读不到仓库密钥；首次贡献者的运行需要维护者在 Actions 页批准。
-轻量检查通过不代表完整门禁通过：定向套件、Worker、真实 WASM 和 E2E 仍按改动在本地或手动 CI 验证。
+有发现时，例如 `{"severity":"blocking","status":"resolved","summary":"Verified the fixed schema migration"}`。
+不要为凑格式生成虚假审计；如审计受阻，保持 draft 或失败状态并说明原因。
+Dependabot PR 也由 agent 补充真实交接与审计后再 ready/合并，不因机器人身份免除检查。
 
-同一套轻量检查在 master 的每次推送后再跑一次：合并后的问题当场暴露，构建缓存也按 master 保存。
-PR 只能读取自己和 master 的缓存，所以这次运行决定了新 PR 是否从零编译。
-完整门禁另外每晚在 master 上定时运行一次（19:00 UTC；过去 24 小时没有新提交则跳过），
-把轻量检查漏掉的回归提前到第二天发现，而不是攒到发版。
+## Issue 与自动化维护
 
-当前 [ci.yml](../.github/workflows/ci.yml) 包含独立的 Rust lint、Rust 测试和 Web 门禁。
-Rust 检查 fmt/Clippy/Cargo tests（含 doctest）/i18n 与数据兼容；Web 检查脚本、类型、单测、Worker、
-真实 WASM 与打包。Playwright E2E 默认不运行：tag、发版 PR 和普通手动触发都跳过，
-只有 `mise run ci <ref> --e2e`（或在 Actions 页勾选 `e2e`）才运行，约 15 分钟。
-界面交互改动需要时在本地跑对应 spec（默认用 4173 端口的 `vite preview`；另开一次运行时设 `POBR_E2E_PORT=<端口>`，它会启动自己的预览服务），或显式请求一次云端 E2E。`mise run full` 仅运行 Rust 门禁，包含 fmt/Clippy、`cargo test --workspace`（含 doctest）和 i18n。离线或排查 CI 时可显式使用，无需重复已通过的云端全量验证。
+Bug 表单收集可复现步骤、版本/数据版本、环境，以及相关构筑码和对照数值；
+功能表单问用户目标和能改善的输出，不要求报告者懂内部实现。
+构筑输入先删除不愿公开的信息。维护者先查重、确认范围；证据不足时要求具体资料，
+确认的缺陷按原因归并，修复只覆盖一部分时用 Refs，不提前关闭整项问题。
+没有证据证明有用的事件模拟不自动进入实现，遵守静态模拟范围。
 
-Linux CI 的 WASM 构建设置 `BINARYEN_CORES=1`，让 wasm-pack 下载的 Binaryen 在主线程执行。
-该模块在 Linux 预编译优化器的工作线程上曾触发 SIGSEGV，切为单线程后完整构建与解包计算通过；
-参见 [Binaryen #7570](https://github.com/WebAssembly/binaryen/issues/7570)。所有优化步骤仍保留，
-不以禁用 wasm-opt 或忽略失败来发布。此设置只影响构建时并行度，不改变浏览器计算的线程模型。
+Dependabot 每月按 Actions、Cargo、Rust toolchain、Web 与数据管线分别维护依赖；
+manifest/lock/toolchain 改动自动进入完整门禁。没有自动合并或按年龄关闭已确认缺陷的机器人。
+不为流程形式引入收费 review 服务、贡献准入名单或带真实密钥的 fork 预览。
 
-应用发版更新 `[workspace.package].version`，用 `cargo metadata --format-version 1 > /dev/null`
-刷新应用/工具的锁文件版本，保留七个库的独立版本。数据活动版本在运行时读取 `data/CURRENT`，
-与应用版本分开。版本更新仍需对应检查，但不因应用版本或活动数据标记变化使所有基础库失去缓存。
+## 发布与部署
 
-发版 PR 在合并前就运行完整门禁：`devs/scripts/release-check.sh <base>` 比较 workspace 版本，
-版本变化时要求新版本高于基线版本、`v<版本>` tag 尚不存在、`Cargo.lock` 已带新版本，然后启动与 tag 相同的 Rust / Web 门禁
-（不发布资产、不部署，不含 E2E）。等这些检查通过再合并、打 tag，避免门禁在 tag 上失败而浪费版本号。
-修改根 `Cargo.toml` 但版本不变的 PR 只运行这一步校验，随后跳过完整门禁。
+应用版本由 `[workspace.package].version` 管理；七个基础库与 `data/CURRENT` 独立版本。
+更新应用版本后用 `cargo metadata --format-version 1 > /dev/null` 刷新锁文件。
+[release-policy.py](../devs/scripts/release-policy.py) 按 SemVer 判断升级，检查所有继承 workspace
+版本的应用/工具锁版本；远端 tag 查询失败会报错，不能当作“tag 不存在”。
+PR 升版要求 tag 未使用；master 的合并后验证可接受指向同一提交的现有 tag。
+升版、依赖、工具链 PR 会在合并前走完整门禁。
 
-推送 `v*` tag 后由 CI 完成门禁，通过后发布 WASM 资产；Cloudflare 部署仅接受 `v0.*` tag。
-不要为同一个 tag 再请求相同的 CI，
-也不要求本地先跑一次 full。CI 依赖缓存可能过期，不能保证每次都是热构建。
-发布包与构建记录规则见 [WASM 打包说明](wasm-package.md)。
+推送 `v*` tag 后先验证 tag/version/commit/lock 身份，再完整验证该提交；通过后
+从同一 run 下载 WASM 资产并校验 SHA256SUMS；上传前再次核对远端 tag 的 peeled SHA，随后附加到 GitHub Release。
+已有 Release 重跑会覆盖同名资产，适用于同一不可变 tag 的修复性重试，禁止移动已发布 tag。
+带 prerelease 后缀的版本发布为 prerelease。手动 CI 只保存 artifact，不会发布或部署。
+
+生产只接受稳定的 `v0.x.y`。部署等待完整门禁及资产发布成功，直接使用同次 `web-dist`，不重建。
+所有生产 jobs 用共享队列串行执行且不取消执行中的部署；获得锁后重新读取远端 tags，
+只有最高的稳定 v0 tag 可以部署。旧版晚完成会跳过；同 SHA 重试允许，tag 被移动会拒绝。
+这是保守策略：较新稳定 tag 即使 CI 失败，也会阻止较旧版本随后部署。
+应修复并发布更新版本，不能依靠迟到的旧 run 隐式回滚；有意回滚另行决定。
+
+验证默认只有 `contents: read`；GitHub Release job 单独获取 `contents: write`，
+Cloudflare 凭据只交给最终 deploy action。构建、安装、测试不接触发布凭据。
+Linux WASM 继续使用 `BINARYEN_CORES=1`，保留优化步骤；原因见 [Binaryen #7570](https://github.com/WebAssembly/binaryen/issues/7570)。
+WASM 包身份与使用方式见 [WASM 打包说明](wasm-package.md)。
+
+## GitHub 服务端启用
+
+本地 YAML 提供检查，不会自动配置合并保护。2026-10-30 只读观察中，master 没有 required checks/reviews，
+rulesets 为空。发布这套 workflow 并确认首次真实 PR 运行后，再在 master protection/ruleset 中：
+
+- 要求 PR 合并、禁止删除/强推，要求最新 base 的检查（strict）。
+- 将稳定状态 `PR gate` 和 `PR handoff` 设为 required；不要同时要求会按区域跳过的 jobs。
+- 清理被替换的旧状态名；核对管理员/自动化的 bypass 权限和未解决 review thread 的处理。
+- 审计 actor 的独立性按团队身份配置；单一账号不能靠“一个形式上的 APPROVED”解决独立审计。
+
+通过 `gh api repos/ackness/pobr/branches/master/protection` 和
+`gh api repos/ackness/pobr/rulesets` 核对实际配置，不以文档或 workflow 成功推断已强制执行。
+服务端设置、push、PR、合并和发版按任务授权范围执行；本地流程改动不自动发布。
 
 ## 处理外部 PR
 
-贡献者须知见 [CONTRIBUTING.md](../CONTRIBUTING.md)。维护者按下面的顺序处理 fork 提交的 PR：
+先阅读完整 diff，再在隔离 checkout 中执行外部代码；不使用真实账户配置或发布凭据。
+常规路径是原 PR 的 review → request changes → 作者更新 → 最终 head/base 复验 → 授权合并，
+采用上面的交接与检查要求。需要集成当前 master 时先检查冲突，再按影响运行相关检查，
+不为每个外部小改动重复全量构建。
 
-1. **先读 diff，再运行。** 外部代码在本机执行前完整读一遍，确认只包含声明的改动。
-2. **在当前 master 上验证。** PR 的基点可能已落后；取回后叠在最新 master 上，按
-   [maintainer-guide.md](maintainer-guide.md) 的验证分层运行对应套件，计算类改动加 `parity no_regression`。
-
-   ```bash
-   git fetch origin master pull/<N>/head:pr-<N>
-   git merge-tree --write-tree origin/master pr-<N>   # Conflict check without touching the worktree
-   git switch -c review/pr-<N> origin/master && git merge --no-edit pr-<N>
-   ```
-
-3. **按项目约定审查。** 重点看三件事：机制的出处是否是游戏数据（stat id、词条原文、游戏表、官方 patch notes），
-   而不是 PoB2 Lua 行号；是否能用一条通用规则代替逐技能 / 逐词条条目；同一机制下是否还有其他受影响的技能。
-   修复必须带能复现错误的断言，新约定写进对应的[机制约定](mechanics/README.md)。
-4. **需要调整时在贡献者提交之上追加。** 保留原提交和署名，在 `review/pr-<N>` 上追加提交并另开 PR，
-   在原 PR 评论里说明改了什么、为什么；或在贡献者允许时直接推送到其分支。不要重写对方的提交。
-5. **合并后收尾。** squash 合并会生成新提交，GitHub 不会把原 PR 标为已合并：手动关闭原 PR 并注明
-   合入的 PR 和提交；确认 squash 提交带有 `Co-authored-by`。想让原 PR 自动显示 Merged 时改用
-   merge commit 或 rebase 合并。最后删除本地和远端的临时分支。
+审查机制依据、通用规则、同类受影响技能、诊断与兼容；出处以游戏数据为准。
+只有作者不能继续或需要维护者接管时才在原提交上追加提交/另开替代 PR。
+保留署名，说明原 PR 与替代 PR 的关系；squash 时确认 coauthor，手动关闭原 PR 并链接合入结果。
+不要重写对方提交，也不要把替代 PR 当成每个外部贡献的固定步骤。
 
 ## 慢构建与按需报告
 
@@ -295,6 +356,6 @@ cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown TotalDPS,
     同一个二进制重复运行却得到不同哈希时，先修复该构筑的非确定性，再比较版本。
   - `perf record --call-graph dwarf` 可查看上述运行的时间花在哪里。
     git 历史中记录的早期分析主要耗时在来源整理和特殊规则匹配，不是公式；不能当作当前版本的新测量。
-- `pnpm --dir web package-wasm`：将已准备 WASM 与同步数据打包到 `.cache/wasm-release/`；`pnpm --dir web smoke-wasm-package` 解压后执行真实计算。`build-wasm` 校验源码、工具链、构建设置和产物记录，未变时直接复用；`pnpm --dir web build-wasm --force` 显式重建但不清 Cargo 缓存。打包继续校验源码 / 绑定指纹、实际 schema 和数据快照，来源 commit 保留编译时值。脚本改动运行 `node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`；发布流程见 [WASM 打包说明](wasm-package.md)。tag CI 在 Rust/Web 门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
+- `pnpm --dir web package-wasm`：将已准备 WASM 与同步数据打包到 `.cache/wasm-release/`；`pnpm --dir web smoke-wasm-package` 解压后执行真实计算。`build-wasm` 校验源码、工具链、构建设置和产物记录，未变时直接复用；`pnpm --dir web build-wasm --force` 显式重建但不清 Cargo 缓存。打包继续校验源码 / 绑定指纹、实际 schema 和数据快照，来源 commit 保留编译时值。脚本改动运行 `node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`；发布流程见 [WASM 打包说明](wasm-package.md)。release workflow 在完整门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
 - `cd web && pnpm test:worker`：在实际 workerd 运行时测试 Worker，使用合成上游响应，无外网依赖。E2E 失败的截图与 trace 由 CI 上传为 `playwright-failure`。
-- 计划发版时，在功能 PR 中一并更新 workspace 版本。本地完成相关验证后合并，再推送一次 tag；tag CI 完成全量门禁，通过后自动部署，无需在 master 额外手动运行同一套 CI。
+- 计划发版时，在功能 PR 中一并更新 workspace 版本。本地完成相关验证、审计与 PR 完整门禁后合并，再推送一次 tag；release workflow 验证后发布，稳定 v0 版本按部署规则上线，无需在 master 额外手动运行同一套 CI。

@@ -20,3 +20,17 @@ updates:
     directory: /
     schedule:
       interval: monthly
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: monthly
+    groups:
+      web:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /pipeline
+    schedule:
+      interval: monthly
+    groups:
+      pipeline:
+        patterns: ["*"]

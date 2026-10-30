@@ -19,6 +19,9 @@ tests to resolve disagreements with any document.
 - Rust integration tests live in each crate's `tests/`; frontend unit tests
   accompany source files, with browser tests in `web/e2e/`.
 
+The project-specific workflow adapter is [.claude/skills/workflow/SKILL.md](.claude/skills/workflow/SKILL.md);
+reusable workflow design belongs to the independently installed global `repo-workflow` skill.
+
 ## Build, Test, and Development Commands
 
 Run from the repository root, using the configured toolchains:
@@ -87,12 +90,14 @@ imported item text and JSON compatibility.
 Use Rust tests, Vitest `*.test.ts` files, and Playwright `*.spec.ts` files.
 Add regression assertions for changed behavior; calculation changes are measured
 against parity by the batch gate. Specify `--test` or `--lib` to limit
-compilation. Local commits require the focused check above. Pull requests run lightweight checks
-automatically (`.github/workflows/pr.yml`); full merge/release gates run in CI on
-tags, manual dispatch, release PRs (a changed workspace version) and nightly
-on master, so do not
-require a duplicate local full run. Use `mise run ci <pushed-ref>` for manual
-cloud validation and `mise run full` for explicit local Rust validation. Reuse
+compilation. Local commits require the focused check above; workflow changes use
+`mise run check:workflows` without compiling Rust. Pull requests select relevant
+checks automatically; version, dependency, toolchain,
+workspace manifest and workflow-policy changes select the reusable full gate.
+`PR gate` rejects failed, cancelled or unexpectedly skipped selected jobs. Full
+validation also runs nightly, manually and before tag publication. E2E stays explicit
+opt-in. Use `mise run ci <pushed-ref>` when review identifies broader integration
+risk, or `mise run full` for explicit local Rust validation. Reuse
 passing checks for unchanged inputs. See [workflow commands](docs/development-workflow.md).
 Documentation-only changes need diff/link review, not builds.
 
@@ -155,7 +160,13 @@ Follow existing subjects such as `fix: preserve skill selection` and
 `chore: scope agent validation`. Keep commits focused. PRs should explain the
 problem, resulting behavior, validation, and remaining limits; link relevant
 issues and include screenshots for visible UI changes. Pushes, PR updates,
-and releases follow the user's authorized scope. Contributor requirements are in
+and releases follow the user's authorized scope. Before marking a PR ready, an
+independent reviewer audits the current head/base;
+record the real result in the template's `pobr-audit` JSON. `PR handoff` enforces
+content/freshness and resolved blockers, not independent reasoning. Before an
+authorized merge, run `mise run pr-ready <N>` and use the reported head with
+`--match-head-commit`. Never invent an audit, reviewer identity or passing checks.
+Contributor requirements are in
 [CONTRIBUTING.md](CONTRIBUTING.md); maintainers handling fork PRs follow
 [the external PR steps](docs/development-workflow.md#处理外部-pr).
 
