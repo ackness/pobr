@@ -17,6 +17,7 @@ FULL_FILES = {
     "devs/scripts/release-policy.py", "devs/scripts/release-check.sh",
     "devs/scripts/check-workflows.sh", "devs/scripts/driver.sh",
     "devs/scripts/tool-versions.py", "devs/scripts/install-gh.py",
+    "devs/scripts/install-actionlint.py",
     "devs/scripts/setup-environment.sh", "devs/scripts/pob2-luajit.sh",
 }
 

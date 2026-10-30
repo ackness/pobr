@@ -25,6 +25,7 @@ gate = load("ci-gate.py")
 ready = load("pr-ready.py")
 tool_pins = load("tool-versions.py")
 gh_installer = load("install-gh.py")
+actionlint_installer = load("install-actionlint.py")
 
 
 class RoutingTests(unittest.TestCase):
@@ -38,7 +39,8 @@ class RoutingTests(unittest.TestCase):
     def test_shared_or_unknown_inputs_select_full_without_duplicate_light_checks(self):
         for name in ["Cargo.lock", "crates/new/Cargo.toml", "mise.toml", "web/package.json",
                      ".github/workflows/ci.yml", "devs/scripts/ci-plan.py",
-                     "devs/scripts/tool-versions.py", "devs/scripts/setup-environment.sh", "new-runtime.conf", "docs/hidden-executable.py"]:
+                     "devs/scripts/tool-versions.py", "devs/scripts/install-actionlint.py",
+                     "devs/scripts/setup-environment.sh", "new-runtime.conf", "docs/hidden-executable.py"]:
             with self.subTest(name=name):
                 self.assertEqual(plan.classify([name, "web/src/App.tsx"]),
                                  {area: area == "full" for area in plan.AREAS})
@@ -168,6 +170,57 @@ class GhInstallerTests(unittest.TestCase):
                 gh_installer.install("1.2.3", "X64", root,
                     lambda url: checksum if url.endswith("checksums.txt") else b"corrupt")
         self.assertTrue(all(url.startswith("https://github.com/cli/cli/releases/download/v1.2.3/") for url in requests))
+
+
+class ActionlintInstallerTests(unittest.TestCase):
+    def release(self, architecture, *, member="actionlint", symlink=False):
+        import hashlib, io, tarfile
+        payload = b"#!/bin/sh\necho fixture\n"
+        archive = io.BytesIO()
+        with tarfile.open(fileobj=archive, mode="w:gz") as bundle:
+            info = tarfile.TarInfo(member)
+            if symlink:
+                info.type = tarfile.SYMTYPE
+                info.linkname = "../outside"
+            else:
+                info.size = len(payload)
+            bundle.addfile(info, None if symlink else io.BytesIO(payload))
+        data = archive.getvalue()
+        asset = f"actionlint_1.2.3_linux_{architecture}.tar.gz"
+        checksum = f"{hashlib.sha256(data).hexdigest()}  {asset}\n".encode()
+        return payload, data, checksum
+
+    def test_official_assets_install_only_the_verified_binary_for_both_runners(self):
+        for runner, architecture in (("X64", "amd64"), ("ARM64", "arm64")):
+            with self.subTest(runner=runner), tempfile.TemporaryDirectory() as root:
+                payload, archive, checksum = self.release(architecture)
+                requests = []
+                def fetch(url):
+                    requests.append(url)
+                    return checksum if url.endswith("checksums.txt") else archive
+                binary = actionlint_installer.install("1.2.3", runner, root, fetch) / "actionlint"
+                self.assertEqual(binary.read_bytes(), payload)
+                self.assertTrue(binary.stat().st_mode & 0o111)
+                base = "https://github.com/rhysd/actionlint/releases/download/v1.2.3/"
+                self.assertEqual(requests, [base + "actionlint_1.2.3_checksums.txt",
+                                           base + f"actionlint_1.2.3_linux_{architecture}.tar.gz"])
+
+    def test_invalid_releases_do_not_replace_an_existing_binary(self):
+        _, archive, checksum = self.release("amd64")
+        _, missing, missing_sum = self.release("amd64", member="README.md")
+        _, linked, linked_sum = self.release("amd64", symlink=True)
+        for data, sums, error in ((b"corrupt", checksum, ValueError),
+                                  (archive, b"", ValueError),
+                                  (missing, missing_sum, KeyError),
+                                  (linked, linked_sum, ValueError)):
+            with self.subTest(error=error, data=data[:10]), tempfile.TemporaryDirectory() as root:
+                binary = Path(root) / "bin/actionlint"
+                binary.parent.mkdir()
+                binary.write_bytes(b"existing")
+                with self.assertRaises(error):
+                    actionlint_installer.install("1.2.3", "X64", root,
+                        lambda url: sums if url.endswith("checksums.txt") else data)
+                self.assertEqual(binary.read_bytes(), b"existing")
 
 
 class ReadyTests(unittest.TestCase):
