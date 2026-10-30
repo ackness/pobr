@@ -42,6 +42,7 @@ fn fixture_positions() -> HashMap<u32, (f64, f64)> {
 
 fn node(skill: u32, kind: PassiveNodeKind) -> PassiveNodeDef {
     PassiveNodeDef {
+        native_stats: None,
         apply_to_armour: false,
         skill,
         id: format!("node_{skill}"),

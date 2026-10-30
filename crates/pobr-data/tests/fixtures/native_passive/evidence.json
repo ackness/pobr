@@ -1,0 +1,193 @@
+{
+  "selected_passive": {
+    "definition": {
+      "id": "maximum_resistances1",
+      "row": 1390
+    },
+    "graph_id": 62518,
+    "in_default_graph": true,
+    "stats": [
+      {
+        "slot": 1,
+        "stat": {
+          "id": "base_fire_damage_resistance_%",
+          "row": 139
+        },
+        "value": 5,
+        "value_field": "Stat1Value"
+      }
+    ]
+  },
+  "selected_raw_fields": {
+    "AchievementItem": null,
+    "Ascendancy": null,
+    "AtlasNodeGroup": "",
+    "AtlasSubTree": null,
+    "AudioEvent": null,
+    "BrequelTree": null,
+    "Characters": [],
+    "Flag0": false,
+    "Flag1": false,
+    "Flag2": false,
+    "Flag3": false,
+    "Flag4": false,
+    "Flag5": false,
+    "Flag6": false,
+    "Flag7": false,
+    "FlavourText": "",
+    "GrantedSkill": null,
+    "Group": null,
+    "Icon_DDSFile": "Art/2DArt/SkillIcons/passives/fireresist.dds",
+    "Id": "maximum_resistances1",
+    "IsAnointmentOnly": false,
+    "IsAscendancyStartingNode": false,
+    "IsAttribute": false,
+    "IsExpansion": false,
+    "IsFree": false,
+    "IsJewelSocket": false,
+    "IsJustIcon": false,
+    "IsKeystone": false,
+    "IsMultipleChoice": false,
+    "IsMultipleChoiceOption": false,
+    "IsNotable": false,
+    "IsProxyPassive": false,
+    "IsRootOfAtlasTree": false,
+    "Keys0": [],
+    "Keys1": [],
+    "MasteryGroup": null,
+    "Name": "Fire Resistance",
+    "NodeFrameArt": null,
+    "PassiveSkillBuffs": [],
+    "PassiveSkillGraphId": 62518,
+    "QuestFlag": null,
+    "ReminderStrings": [],
+    "Requirement": null,
+    "SkillPointsGranted": 0,
+    "SkillType": 0,
+    "SoundEffect": null,
+    "Stat1Value": 5,
+    "Stat2Value": 0,
+    "Stat3Value": 0,
+    "Stat4Value": 0,
+    "Stat5Value": 0,
+    "Stat6Value": 0,
+    "Stat7Value": 0,
+    "Stats": [
+      139
+    ],
+    "Unknown0": 0,
+    "Unknown1": 0,
+    "Unknown10": 0,
+    "Unknown11": 0,
+    "Unknown2": 0,
+    "Unknown3": 0,
+    "Unknown4": 0,
+    "Unknown5": 0,
+    "Unknown6": 0,
+    "Unknown7": 4839,
+    "Unknown8": 4839,
+    "Unknown9": 0,
+    "UnlockedBy": [],
+    "VariantType": null,
+    "VisibleForAscendancy": null,
+    "WeaponPointsGranted": 0
+  },
+  "selected_stat_metadata": {
+    "BelongsActiveSkills": [],
+    "Category": 10,
+    "ContextFlags": [],
+    "DotFlag": [],
+    "Flag0": false,
+    "HASH32": 2039518076,
+    "Id": "base_fire_damage_resistance_%",
+    "IsApplyDamageFunctionStat": false,
+    "IsLocal": false,
+    "IsParty": false,
+    "IsProxied": true,
+    "IsPublic": true,
+    "IsScalable": true,
+    "IsVirtual": false,
+    "IsWeaponLocal": false,
+    "MainHandAlias_Stat": null,
+    "OffHandAlias_Stat": null,
+    "Semantic": 1,
+    "WeaponHandCheck": false
+  },
+  "selected_graph_instance": {
+    "connections": [
+      41414
+    ],
+    "definition": {
+      "id": "maximum_resistances1",
+      "row": 1390
+    },
+    "graph_id": 62518,
+    "group": 252,
+    "position": 7,
+    "radius": 3,
+    "splines": [
+      4
+    ]
+  },
+  "official_text": {
+    "path": "/Users/claw/.t3/worktrees/pobr/design-independent-pobr-ecosystem/.cache/sources/b52be9c4f17e4114064255ef1b8c58292e9db0e395d95af235a8d3fef0d44642/data.json",
+    "repository": "https://github.com/grindinggear/poe2-skilltree-export",
+    "revision": "bd87e6512c92b868542eddfb1ba4ea8b6dc2da36",
+    "sha256": "b52be9c4f17e4114064255ef1b8c58292e9db0e395d95af235a8d3fef0d44642",
+    "pointer": "/nodes/62518/stats/0",
+    "text": "+5% to [Resistances|Fire Resistance]",
+    "upstream_version": "0.5.5",
+    "game_patch": null,
+    "patch_match_to_a0_proven": false
+  },
+  "source": {
+    "manifest_sha256": "e4bd693d45d8eaa4768d9a86c3e7e5ee84f1f4d8fc05112ae3b290d51bb901e5",
+    "status": "partial-candidate",
+    "source_status": "unreviewed-acquisition-draft",
+    "profile": "core-skills-a0",
+    "game_patch": "0.5.5.5",
+    "producer_revision": "aa2fb163aa422317db5c32031607eb199214e7b7",
+    "verified_payloads": {
+      "source-lock.json": {
+        "bytes": 10338,
+        "sha256": "6d953b56043099b43162a28e6946f2c04c2ef8bb01a37d455b572efe583e07a6",
+        "verified_against_manifest": true
+      },
+      "passives.json": {
+        "bytes": 2738404,
+        "sha256": "2820da2a24586add6074bf04f5c5805500e71b762095e486a9a3153d8e34c09f",
+        "verified_against_manifest": true
+      },
+      "graph.json": {
+        "bytes": 583101,
+        "sha256": "1ab539203b3509fe5c24b2b3cc12eb72d46f3b5d28b6ebdbae917f8bbf3cd7e0",
+        "verified_against_manifest": true
+      },
+      "tables/Stats.json": {
+        "bytes": 11634008,
+        "sha256": "bef280b241a844972de0020e57c64cc403ac7e44fddf346b1014d17e1372376a",
+        "verified_against_manifest": true
+      },
+      "tables/PassiveSkills.json": {
+        "bytes": 12984257,
+        "sha256": "4d659f07e12df4c2df7f684a21c87f99458b575db6da636b96062d2f530a561c",
+        "verified_against_manifest": true
+      }
+    },
+    "raw_resources": {
+      "Data/Balance/Stats.datc64": {
+        "bytes": 5281898,
+        "sha256": "e808452ef330de79cca6d496982bc8810e7967c2c0c681e61dc63506177af8a5"
+      },
+      "Data/Balance/PassiveSkills.datc64": {
+        "bytes": 5497515,
+        "sha256": "49af4f7dfab787b57efa22e06e2673c268cbd90c4f40140aa085cb8fbb602bc2"
+      },
+      "Metadata/PassiveSkillGraph.psg": {
+        "bytes": 165144,
+        "sha256": "071cba806a621a0bdae09828cc5ad8e34259159659e950a1898770790730c344"
+      }
+    }
+  },
+  "fixture_scope": "Controlled synthetic baseline; real selected passive fact only. No old active data is copied or relabelled. Official text game patch UNKNOWN; upstream 0.5.5 is not proven equal to native 0.5.5.5."
+}

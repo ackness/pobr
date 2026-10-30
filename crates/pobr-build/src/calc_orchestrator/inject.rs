@@ -1462,7 +1462,12 @@ pub(super) fn stage_inject_passives(
     let (build, data) = (ctx.build, ctx.data);
     // 3. Passive tree: NodeId → node mod text (node-level attribution).
     let mut unsupported = Vec::new();
-    let mut passive_nodes = resolve_passive_nodes(build, data, &mut unsupported);
+    let mut native_diagnostics = Vec::new();
+    let mut passive_nodes =
+        resolve_passive_nodes(build, data, &mut unsupported, &mut native_diagnostics);
+    for issue in native_diagnostics {
+        session.record_native_passive_diagnostic(issue);
+    }
     // 3a'. Anointed notables (vendor `Allocates <name>` enchant → `GrantedPassive`
     //      LIST, ModParser.lua:5809 → CalcSetup.lua:1322-1331 merges notableMap
     //      into allocNodes): matched by name against Notable nodes and appended as

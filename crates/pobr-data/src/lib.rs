@@ -7,6 +7,7 @@ pub mod item;
 pub mod minion;
 pub mod modifier;
 pub mod monster;
+pub mod native_stat;
 pub mod passive_tree;
 pub mod skill;
 mod skill_type_names;

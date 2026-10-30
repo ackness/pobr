@@ -59,6 +59,9 @@ impl SourceId {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModifierSource {
+    /// Native game identity/value, separate from the engine name in `stat_id`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native_stat: Option<crate::native_stat::NativeStat>,
     pub source_id: SourceId,
     pub parent_source_id: Option<SourceId>,
     pub slot: Option<String>,
@@ -70,6 +73,7 @@ pub struct ModifierSource {
 impl ModifierSource {
     pub fn new(source_id: SourceId) -> Self {
         Self {
+            native_stat: None,
             source_id,
             parent_source_id: None,
             slot: None,

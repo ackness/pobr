@@ -189,3 +189,6 @@ mod sidebar_remaining;
 mod combo;
 #[path = "skills/remnant_pickup.rs"]
 mod remnant_pickup;
+
+#[path = "skills/native_passive_stats.rs"]
+mod native_passive_stats;

@@ -1,0 +1,25 @@
+{
+  "schema_version": 3,
+  "poe_version": "controlled-native-passive-0.5.5.5",
+  "languages": [],
+  "domains": {
+    "base": [
+      "passive_tree",
+      "passive_tree_meta",
+      "skill_gems",
+      "granted_effects",
+      "granted_effect_levels",
+      "base_items"
+    ],
+    "overlay": [],
+    "generated": []
+  },
+  "files": {
+    "base/passive_tree.json": "3e57646ab73ca84641ab114dfa6cec5797f7c3cee13cf036ea3947469f41d1ef",
+    "base/passive_tree_meta.json": "bfad76163eb1fffa529b30f4b4dc40af376c58ddadd5d74c6e51156c43ad5947",
+    "base/skill_gems.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "base/granted_effects.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "base/granted_effect_levels.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "base/base_items.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  }
+}

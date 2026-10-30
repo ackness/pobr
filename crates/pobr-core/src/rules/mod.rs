@@ -21,6 +21,7 @@ pub mod buff_expander;
 pub mod config_interpreter;
 pub mod handlers;
 pub mod keystone_registry;
+pub mod passive_stats;
 pub mod registry;
 pub mod skill_stats;
 pub mod skill_type_expr;

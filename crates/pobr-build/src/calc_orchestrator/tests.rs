@@ -76,6 +76,7 @@ mod ring3_tests {
     fn ring_slot_data() -> BuildData {
         // A "+1 Ring Slot" mod node (modelled after Ritualist's "Unfurled Finger").
         let node = pobr_data::catalog::PassiveNodeDef {
+            native_stats: None,
             apply_to_armour: false,
             skill: 34785,
             id: "ascendancy_ritualist_unfurled_finger".into(),
@@ -584,6 +585,7 @@ fn character_base_injects_life_from_class_and_level() {
 fn passive_node_contributes_attributed_life() {
     // Build a Normal node carrying +30 maximum Life; allocating it should raise life.
     let node = pobr_data::catalog::PassiveNodeDef {
+        native_stats: None,
         apply_to_armour: false,
         skill: 12345,
         id: "test_life_node".into(),
@@ -636,6 +638,7 @@ fn normal_node_at(
     stats: Vec<String>,
 ) -> pobr_data::catalog::PassiveNodeDef {
     pobr_data::catalog::PassiveNodeDef {
+        native_stats: None,
         apply_to_armour: false,
         skill,
         id: format!("n{skill}"),
@@ -1827,6 +1830,7 @@ fn buff_skill_specs_emits_buff_kind_for_pinnacle_of_power_flags() {
 fn slot_bonus_effect_scales_covers_equipped_quiver() {
     use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
     let quiver_node = pobr_data::catalog::PassiveNodeDef {
+        native_stats: None,
         apply_to_armour: false,
         skill: 30341,
         id: "bow_quiver_effect".into(),

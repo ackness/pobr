@@ -313,6 +313,7 @@ fn compute_node_mods_strips_bullets_of_colour_labelled_entries_only() {
 fn from_nodes_round_trips_with_positions() {
     let nodes = vec![
         PassiveNodeDef {
+            native_stats: None,
             apply_to_armour: false,
             skill: 1,
             id: "a".into(),
@@ -330,6 +331,7 @@ fn from_nodes_round_trips_with_positions() {
             variants: vec![],
         },
         PassiveNodeDef {
+            native_stats: None,
             apply_to_armour: false,
             skill: 2,
             id: "b".into(),

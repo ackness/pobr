@@ -1,0 +1,11 @@
+{
+  "tree": "Controlled fixture",
+  "classes": [
+    {
+      "name": "Fixture",
+      "base_str": 0,
+      "base_dex": 0,
+      "base_int": 0
+    }
+  ]
+}
