@@ -86,6 +86,14 @@ run = "python3 pipeline/client_sources.py"
 description = "Test bounded client resource acquisition with fake HTTP and offline caches"
 run = "python3 pipeline/test-client-sources.py"
 
+[tasks."data:client:draft"]
+description = "Collect a location-only resource selection into a new unreviewed draft; no promotion"
+run = "python3 pipeline/client_source_draft.py"
+
+[tasks."data:client:draft:test"]
+description = "Test unreviewed first acquisition with fake HTTP and network-forbidden cache replay"
+run = "python3 pipeline/test-client-source-draft.py"
+
 [tasks."data:regen"]
 depends = ["setup:oracle"]
 description = "候选目录完整再生成、审计、验证后发布（需 vendor 检出 + luajit）"

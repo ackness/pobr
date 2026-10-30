@@ -13,4 +13,5 @@ python3 pipeline/test-data-update.py CompatibleUpdateTests
 python3 pipeline/test-data-snapshot.py
 python3 pipeline/test-data-bundle.py
 python3 pipeline/test-client-sources.py
+python3 pipeline/test-client-source-draft.py
 node --test pipeline/test-dictionary-source.mjs pipeline/test-translation-source.mjs pipeline/test-query-patch-version.mjs web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs web/scripts/bench-calc.test.mjs
