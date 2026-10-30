@@ -81,16 +81,11 @@ impl StatMapCatalog {
     /// `per_stat_set[effect_id][set_key]` first, falling back to `global` on
     /// a miss.
     ///
-    /// `set_key = None` means the caller hasn't made a statSet selection, so
-    /// this uses the override table for the **default set "1"**: PoB2's
-    /// statSetIndex always defaults to 1 (vendor `SkillsTab.lua:354`
-    /// `gemInstance.statSet = { index = tonumber(child.attrib.statSetIndex) or 1 }`,
-    /// `CalcActiveSkill.lua:171` `statSet = …statSets[activeEffect.statSet.index]`),
-    /// and a miss on the selected set's statMap falls back to the global
-    /// table through the metatable chain (the `Data.lua` statMap `__index`).
-    /// Overrides on sets other than "1" only get hit with an explicit
-    /// `set_key` (statSetIndex selection wiring is planned for the T5
-    /// multi-statSet model).
+    /// The extracted compatibility catalog uses decimal export indices as
+    /// keys. `set_key = None` selects its default key `"1"`; the skill-data
+    /// lookup supplies an explicit key for a selected alternate set. A missing
+    /// per-set entry falls back to the global table. These keys are neither
+    /// native stat-set IDs nor physical client-table row numbers.
     pub(crate) fn lookup(
         &self,
         effect_id: &str,

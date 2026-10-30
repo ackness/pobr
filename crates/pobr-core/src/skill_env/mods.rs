@@ -616,7 +616,9 @@ pub struct GemInput {
     pub global_level_bonus: Option<u32>,
     /// The gem's quality.
     pub quality: u32,
-    /// The gem's selected statSet index (0-based; `None` = default).
+    /// Legacy build-code stat-set selection (1-based compatibility index;
+    /// `None` selects the primary set). This is not a native stat-set ID or
+    /// a physical client-table row number.
     pub stat_set_index: Option<u32>,
     /// Whether the gem is corrupted.
     pub corrupted: bool,
