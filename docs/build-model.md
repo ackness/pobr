@@ -49,12 +49,26 @@ parity 下降说明需要调查新版差异，不能为通过而降低基线。
 表示为 `f64` 的整数拒绝 native 路径。完整成功包在 parser 过滤之前选中，原文不再
 重复解析或注入。小天赋效果增幅复用同一 ingest 与原有 delta／取整。
 
-拒绝包先记录 `CalculationSession::native_passive_diagnostics()`（`Diagnosis.session`
-也可读），再把完整原文交给既有 wrap／filter／parse 路径，不应用包的任何子集。
-诊断保留原因、原包、来源与 fallback 原文；解析结果仍由逐行台账记录。
+`native_stats` 缺省或为 JSON `null` 时沿用文本路径。非 null 包必须先满足已知字段的
+类型和必需字段约定：stat `value` 必须是 `i64` 整数；字符串、浮点数、越界整数或缺少
+必需字段会使天赋域加载失败，由 `BuildData::load` 返回解析错误。这与节点是否分配无关，
+不会生成会话级 native 诊断或降级成字段缺省；重新封存错误 JSON 的哈希也不能使其符合 schema。
+可空的 `tree_version` 缺省或为 null 后，仍须通过使用时的版本匹配。
+
+完整文本 fallback 适用于成功解码后，在 native 选择阶段被拒绝的包：未知 stat、不支持的
+上下文或 bundle、绑定／版本不符、节点变换，以及无法精确表示为 `f64` 的 `i64`。
+先记录 `CalculationSession::native_passive_diagnostics()`（`Diagnosis.session` 也可读），
+再把节点当前完整文本交给既有 wrap／filter／parse 路径；不应用 native 包的子集，
+后续效果增幅也不能恢复该子集。fallback 仍受原有文本解析规则约束，不保证每行都能计算。
+
+诊断保留原因、解码后的包、来源与 fallback 原文；它不是原始 native JSON 的无损副本。
+未知字符串 `context` 解码为 `Unsupported` 后走 fallback；未知对象字段按现有 serde 行为忽略。
+新增元数据不能改变旧字段语义；需要新语义的 producer 应使用旧消费者不支持的上下文、
+对旧消费者省略包，或明确升级不兼容的数据契约。文本解析结果仍由逐行台账记录。
 成功来源的 `ModifierSource.native_stat` 保留游戏 ID、原始值与证据，`stat_id` 仍是
 引擎 modifier 名称。零值沿用台账的 inactive 记录，不标成未知或全局无效果。
-新增 JSON 字段均可缺省，不改变现有导入文本、构筑码或 WASM 握手版本。
+`native_stats` 与来源的 `native_stat` 扩展字段可缺省，其非 null 对象内部仍有必需字段；
+现有导入文本、构筑码与 WASM 握手版本保持不变。
 
 受控示例和来源边界见
 [native passive fixture](../crates/pobr-data/tests/fixtures/native_passive/README.md)。

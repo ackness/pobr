@@ -97,7 +97,9 @@ pub struct PassiveNodeDef {
     /// The mod-text lines this node grants.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub stats: Vec<String>,
-    /// Optional complete native facts; absent keeps the text parser path unchanged.
+    /// Optional complete native facts; missing or null keeps the text path.
+    /// A non-null packet must satisfy its schema when this domain is loaded.
+    /// Whole-text fallback applies to decoded packets rejected during selection.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub native_stats: Option<crate::native_stat::NativePassiveStats>,
     /// The node's group (GGG's `group`, used for coordinates/layout;

@@ -519,7 +519,84 @@ fn native_passive_resealed_value_changes_identity_and_malformed_packet_fails_loa
                 7.0
             );
         } else {
-            assert!(BuildData::load(&changed).is_err());
+            let error = BuildData::load(&changed).unwrap_err();
+            assert!(matches!(
+                &error,
+                pobr_gamedata::LoadError::Parse { path, .. }
+                    if path.ends_with("base/passive_tree.json")
+            ));
+            assert!(error.to_string().contains("expected i64"), "{error}");
         }
     }
+}
+
+#[test]
+fn native_passive_optional_schema_and_decoded_fallback_are_distinct() {
+    let original = serde_json::to_value(&data(false).passive_nodes[&NODE]).unwrap();
+    for absent in [true, false] {
+        let mut node = original.clone();
+        if absent {
+            node.as_object_mut().unwrap().remove("native_stats");
+        } else {
+            node["native_stats"] = serde_json::Value::Null;
+        }
+        let parsed: PassiveNodeDef = serde_json::from_value(node).unwrap();
+        assert!(parsed.native_stats.is_none());
+        assert_eq!(parsed.stats, [TEXT]);
+    }
+    for value in [
+        serde_json::json!("5"),
+        serde_json::json!(5.0),
+        serde_json::json!(1.25),
+        serde_json::json!(u64::MAX),
+    ] {
+        let mut node = original.clone();
+        node["native_stats"]["stats"][0]["value"] = value.clone();
+        assert!(
+            serde_json::from_value::<PassiveNodeDef>(node).is_err(),
+            "invalid source value {value} must not become missing or zero"
+        );
+    }
+    for field in ["data_version", "context", "stats"] {
+        let mut node = original.clone();
+        node["native_stats"].as_object_mut().unwrap().remove(field);
+        assert!(
+            serde_json::from_value::<PassiveNodeDef>(node).is_err(),
+            "{field}"
+        );
+    }
+    let mut node = original.clone();
+    node["native_stats"]["stats"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("provenance");
+    assert!(serde_json::from_value::<PassiveNodeDef>(node).is_err());
+
+    let mut node = original;
+    node["native_stats"]
+        .as_object_mut()
+        .unwrap()
+        .remove("tree_version");
+    node["native_stats"]["context"] = "future_context".into();
+    node["native_stats"]["future_descriptive_metadata"] = serde_json::json!({"ignored": true});
+    let parsed: PassiveNodeDef = serde_json::from_value(node).unwrap();
+    assert_eq!(
+        parsed.native_stats.as_ref().unwrap().context,
+        NativePassiveContext::Unsupported
+    );
+    let mut data = data(true);
+    data.passive_nodes.insert(NODE, parsed);
+    let diagnosis = run(&build("62518"), &data);
+    assert_eq!(diagnosis.session.output().fire_resistance, 5.0);
+    assert_eq!(
+        diagnosis.session.native_passive_diagnostics()[0].reason,
+        Reason::UnsupportedContext
+    );
+    assert!(
+        diagnosis
+            .session
+            .mods_named("FireResistance")
+            .iter()
+            .all(|modifier| { modifier.origin.as_ref().unwrap().native_stat.is_none() })
+    );
 }
