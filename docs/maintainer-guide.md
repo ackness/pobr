@@ -26,7 +26,7 @@
 
 ## 构建环境
 
-- 开发命令是根 `mise.toml` 里的 mise task（`mise tasks` 查看），由 `devs/scripts/driver.sh` 实现；没有 mise 时运行 `bash devs/scripts/driver.sh <命令>`。游戏 CLI（`apps/pobr-cli`，二进制 `pobr`）和 WASM 包只含游戏计算能力；新的开发命令加成 mise task，不加进 CLI 或 WASM 接口。
+- 本地与 agent 统一经 mise 安装和执行环境；首次 `mise bootstrap --only packages,tools,task`，日常用 `mise run` / `mise exec --`。CI 可用最新稳定的原生安装 Action，读取同一份工具版本。开发命令是根 `mise.toml` 里的 mise task（`mise tasks` 查看），由 `devs/scripts/driver.sh` 实现；没有 mise 时运行 `bash devs/scripts/driver.sh <命令>`。游戏 CLI（`apps/pobr-cli`，二进制 `pobr`）和 WASM 包只含游戏计算能力；新的开发命令加成 mise task，不加进 CLI 或 WASM 接口。
 - 每个 worktree 用**自己的 `./target`**。同一 worktree 的会话共用它，Cargo 命令一次一条、前台执行；不同 worktree **禁止**共享可写的 `CARGO_TARGET_DIR`（症状是长时间无输出；stderr 的 `Blocking waiting for file lock` 不要用 `| tail` 吞掉）。看到构建锁先检查已有进程，不叠加 Cargo 命令。
 - 新 worktree 先用 `mise run warm <已编译的 checkout>` 克隆缓存，文件修改时才复制数据块。分析工具设 `POBR_BIN` / `POBR_CACHE_DIR` 复用那份 CLI、台账与 PoB2 结果（见[改动配方](recipes.md#working-in-a-new-worktree)）。
 - 根 `Cargo.toml` 的 dev/test profile（第三方依赖 `opt-level = 3`、`debug = "line-tables-only"`、`incremental = false`）是有意的设置。不要为“统一”或“加速”改它，也不要自动 `cargo clean`、改 features / `RUSTFLAGS`：这些都会让缓存失效。原因与临时调试变量见[缓存与磁盘占用](development-workflow.md#缓存与磁盘占用)。
@@ -44,9 +44,9 @@
 | 一条词条规则（`special_mods.json` / `skill_stats.rs`） | 特殊规则填写 `examples`；`mise run regen` 校验规则与示例并重生成产物。新增或修改读取逻辑时补引擎测试，技能 stat 映射用相关测试验证。步骤见[改动配方](recipes.md) |
 | 计算 / Modifier / parser | 对应集成套件的定向用例；完整构筑的数值（parity、accuracy）由批次门禁统一测量 |
 | 跨 crate API / 数据结构 | 相关 crate 测试 + 直接使用者的契约或集成测试；边界无法明确时扩大到 workspace |
-| Web TS / React | `pnpm --dir web test <test-file>` + `pnpm --dir web typecheck`；交互改动补相关 Playwright spec |
+| Web TS / React | `mise run web test <test-file>` + `mise run web typecheck`；交互改动补相关 Playwright spec |
 | Rust → WASM / Web 契约 | Rust 契约测试 + 重建 WASM + 相关真实 WASM / E2E 测试 |
-| Worker | `pnpm --dir web test:worker` |
+| Worker | `mise run web test:worker` |
 | 验证脚本 | `mise run check:workflows`（shell/Actions/Python/Node 契约，不编译 Rust）；WASM 打包与数据同步脚本用 `node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs` |
 | 仅文档 | 审查 diff 与链接；不运行 Cargo / Web 构建 |
 
@@ -55,7 +55,7 @@
 - 同一代码、依赖、工具链、features、数据下已通过的检查直接复用；只改文档不使代码测试失效。失败后先重跑失败的目标，只有新改动或明确的影响范围才扩大验证。
 - **批次门禁**：多个改动（并行代理的分支，或同一分支的多条词条）合并后，由合并者在已编译的 checkout 上运行一次 `mise run gate`：fmt、生成规则是否与提交一致、Clippy、各 crate 套件、parity、i18n、Web、accuracy，每一步都运行，最后列出失败项；修复后 `mise run gate --only <步骤>` 只重跑失败项。单个改动不重复这些步骤。
 - **CI 完整门禁**：升版、工具链、依赖、workspace manifest、工作流/验证策略与未知输入自动调用 [ci.yml](../.github/workflows/ci.yml)；普通 PR 由 [pr.yml](../.github/workflows/pr.yml) 选相关轻量检查。跨边界但路径无法表达的改动显式 `mise run ci <remote-ref>`。完整检查也每日运行，并由 [release.yml](../.github/workflows/release.yml) 在 tag 发布前调用。E2E 只在显式 `--e2e` 时启用；不要重复相同输入的本地/云端全量验证。`PR gate` 校验所有应执行的 jobs；操作细节见[开发工作流](development-workflow.md)。
-- **Agent PR 交接**：ready 前由独立 reviewer 核对最终 head/base、验证证据与阻断项，并填写 `pobr-audit` 记录；`PR handoff` 检查格式与新鲜度，不能证明独立推理。授权合并前 `mise run pr-ready <N>`，用它输出的准确 head 执行 `--match-head-commit`。同一 PR 修正，接管另开 PR 是例外；服务端 required checks 需单独启用，见[开发工作流](development-workflow.md)。
+- **Review 按风险选择**：复杂、跨边界或高风险改动请独立 reviewer 检查相关代码与真实证据；文档和明显的小改动不增加审计表或固定 agent。`mise run pr-ready <N>` 是授权合并前的可选只读预检，输出准确 head 供 `--match-head-commit` 使用。CI 只阻断可判定的失败，不强制 PR 正文或审计格式，见[开发工作流](development-workflow.md)。
 - Web 纯 TS/CSS 改动复用已构建的 WASM；WASM 及其 Rust 依赖、features、工具链改变时重建。`pnpm build` 已含 typecheck；E2E 前确认 dist 对应当前代码。
 
 ## 常用命令

@@ -664,6 +664,16 @@ sys.exit(int(os.environ.get("ORACLE_EXIT", "0")))
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn(str(runtime), result.stdout)
 
+    def test_deps_prepares_missing_managed_alias_and_reuses_it(self):
+        runtime = self.runtime(self.cached)
+        alias = self.root / ".cache/runtime/bin/luajit"
+        self.env["POBR_LUAJIT"] = str(alias)
+        for _ in range(2):
+            result = self.run_script("devs/scripts/driver.sh", "deps")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue(alias.is_symlink())
+            self.assertEqual(alias.resolve(), runtime.resolve())
+
     def test_explicit_override_is_authoritative_including_invalid_paths(self):
         self.runtime(self.cached)
         preferred = self.runtime("bin/preferred lua")
@@ -704,6 +714,37 @@ sys.exit(int(os.environ.get("ORACLE_EXIT", "0")))
         self.assertEqual(record["runtime"], str(runtime))
         self.assertEqual(record["args"][1:], ["--mode", "parsemod"])
         self.assertEqual(record["stdin"], "20% increased Fire Damage\n")
+
+    def test_macos_build_sets_deployment_target_and_preserves_explicit_target(self):
+        template = self.runtime("runtime-template")
+        self.env["RUNTIME_TEMPLATE"] = str(template)
+        self.env["TARGET_CAPTURE"] = str(self.root / "deployment-target")
+        scripts = {
+            "git": "#!/bin/sh\nexit 0\n", "cc": "#!/bin/sh\nexit 0\n",
+            "uname": "#!/bin/sh\necho Darwin\n", "sw_vers": "#!/bin/sh\necho 26.1.2\n",
+            "make": """#!/usr/bin/env python3
+import os, pathlib, shutil, sys
+root = pathlib.Path(sys.argv[sys.argv.index("-C") + 1])
+(root / "src").mkdir()
+shutil.copyfile(os.environ["RUNTIME_TEMPLATE"], root / "src/luajit")
+(root / "src/luajit").chmod(0o755)
+pathlib.Path(os.environ["TARGET_CAPTURE"]).write_text(os.environ["MACOSX_DEPLOYMENT_TARGET"])
+""",
+        }
+        for name, content in scripts.items():
+            path = self.root / "bin" / name
+            path.write_text(content)
+            path.chmod(0o755)
+        for target, expected in [(None, "26.1"), ("12.0", "12.0")]:
+            self.env.pop("MACOSX_DEPLOYMENT_TARGET", None)
+            if target:
+                self.env["MACOSX_DEPLOYMENT_TARGET"] = target
+            cached = self.root / self.cached
+            if cached.parent.parent.exists():
+                shutil.rmtree(cached.parent.parent)
+            result = self.run_script("devs/scripts/driver.sh", "deps")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual((self.root / "deployment-target").read_text(), expected)
 
     def test_failed_install_stops_bootstrap_and_cleans_partial_cache(self):
         # No real network or compiler work; failed Git acquisition is terminal.

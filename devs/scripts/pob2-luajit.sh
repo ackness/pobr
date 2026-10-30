@@ -38,12 +38,17 @@ resolve() {
 
 install_runtime() {
   local executable
-  if executable="$(resolve 2>/dev/null)"; then
+  # Setup reuses only this pinned build. Generic resolution may accept a user
+  # override, but a compatible Homebrew binary is not evidence of the same pin.
+  if [[ -n "${LUAJIT:-${POBR_LUAJIT:-}}" ]]; then
+    executable="$(resolve)" || return $?
     echo "PoB2 LuaJIT ready: $executable"
     return 0
   fi
-  # A supplied override is authoritative, even when it is invalid.
-  if [[ -n "${LUAJIT:-${POBR_LUAJIT:-}}" ]]; then resolve; return $?; fi
+  if executable="$(resolve_candidate "$RUNTIME_BIN")"; then
+    echo "PoB2 LuaJIT ready: $executable"
+    return 0
+  fi
   for executable in git make cc; do
     command -v "$executable" >/dev/null || {
       echo "PoB2 LuaJIT setup needs $executable (Git, make and a C compiler)." >&2
@@ -61,6 +66,10 @@ install_runtime() {
   git -C "$RUNTIME_STAGING" init -q
   git -C "$RUNTIME_STAGING" fetch -q --depth 1 https://github.com/LuaJIT/LuaJIT.git "$LUAJIT_COMMIT"
   git -C "$RUNTIME_STAGING" checkout -q --detach FETCH_HEAD
+  if [[ "$(uname -s)" == Darwin && -z "${MACOSX_DEPLOYMENT_TARGET:-}" ]]; then
+    MACOSX_DEPLOYMENT_TARGET="$(sw_vers -productVersion | awk -F. '{ print $1 "." $2 }')"
+    export MACOSX_DEPLOYMENT_TARGET
+  fi
   make -C "$RUNTIME_STAGING" -j2
   compatible "$RUNTIME_STAGING/src/luajit"
   mv "$RUNTIME_STAGING" "$RUNTIME_SOURCE"

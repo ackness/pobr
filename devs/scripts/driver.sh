@@ -38,7 +38,19 @@ vendor_commit() {
 
 cmd_deps() {
   say "PoB2 LuaJIT runtime"
-  bash "$ROOT/devs/scripts/pob2-luajit.sh" install
+  local managed="$ROOT/.cache/runtime/bin/luajit" runtime
+  # The project requests this alias before first setup. Only its installer may
+  # refresh the managed alias; arbitrary explicit overrides remain fatal.
+  if [[ "${POBR_LUAJIT:-}" == "$managed" && -z "${LUAJIT:-}" ]]; then
+    env -u POBR_LUAJIT bash "$ROOT/devs/scripts/pob2-luajit.sh" install || return $?
+    runtime="$(env -u POBR_LUAJIT bash "$ROOT/devs/scripts/pob2-luajit.sh" resolve)" || return $?
+  else
+    bash "$ROOT/devs/scripts/pob2-luajit.sh" install || return $?
+    runtime="$(bash "$ROOT/devs/scripts/pob2-luajit.sh" resolve)" || return $?
+  fi
+  mkdir -p "$(dirname "$managed")"
+  # Refresh even when the runtime came from the shared installation cache.
+  [[ "$runtime" == "$managed" ]] || ln -sfn "$runtime" "$managed"
 }
 
 cmd_vendor() {

@@ -24,14 +24,20 @@ reusable workflow design belongs to the independently installed global `repo-wor
 
 ## Build, Test, and Development Commands
 
-Run from the repository root, using the configured toolchains:
+Local and agent commands run through mise: `mise run <task>` or
+`mise exec -- <raw command>`. Start a new machine with
+`mise bootstrap --only packages,tools,task`; everyday setup does not build the
+product. Oracle, browser and artwork dependencies are prepared by their own tasks.
+CI may use current stable official/maintained Actions reading the same tool pins.
+
+Run from the repository root:
 
 ```bash
 mise run test core parser mod_parser::   # one suite, one filter
 mise run verify build skills support_gating::
 mise run regen                           # after any special_mods / parser rule edit
 mise run targets
-pnpm --dir web test src/lib/skillSelection.test.ts
+mise run web test src/lib/skillSelection.test.ts
 ```
 
 For the common small changes (one game line, one Calcs field, one mechanic),
@@ -68,11 +74,13 @@ cache at all.
 
 ## Parallel Agents
 
-- One worktree and one branch per agent. Never `git stash`: all worktrees share it.
-- Agents commit locally and never push. Before the last commit, merge the working
-  branch, keep both sides of append-only conflicts (catalog entries, labels,
-  rule lists), check catalog wiring and labels, and rerun `mise run regen` when
-  rules changed. Generated files are regenerated, never merged by hand.
+- Isolate parallel writers in separate checkouts/branches using the selected
+  tool or normal Git workflow. Read-only helpers may share a stable version.
+  Never `git stash`: all worktrees share it.
+- Delegated workers commit locally; the coordinator owns integration and any
+  authorized push/PR. Keep both sides of append-only conflicts (catalog entries,
+  labels, rule lists), check wiring, and rerun `mise run regen` when rules changed.
+  Generated files are regenerated, never merged by hand.
 - Keep concurrent agents' files disjoint where possible. Two agents adding the same
   display id or rule produce a semantic conflict that goes back to the later one.
 - An agent finishes with what it ran and what it left for the gate.
@@ -160,12 +168,11 @@ Follow existing subjects such as `fix: preserve skill selection` and
 `chore: scope agent validation`. Keep commits focused. PRs should explain the
 problem, resulting behavior, validation, and remaining limits; link relevant
 issues and include screenshots for visible UI changes. Pushes, PR updates,
-and releases follow the user's authorized scope. Before marking a PR ready, an
-independent reviewer audits the current head/base;
-record the real result in the template's `pobr-audit` JSON. `PR handoff` enforces
-content/freshness and resolved blockers, not independent reasoning. Before an
-authorized merge, run `mise run pr-ready <N>` and use the reported head with
-`--match-head-commit`. Never invent an audit, reviewer identity or passing checks.
+and releases follow the user's authorized scope. Use independent review for
+substantial or risky changes; trivial edits do not need a new reviewer or audit
+form. Review evidence should identify the checked head/base and real limits.
+`mise run pr-ready <N>` is an optional read-only helper before an authorized merge;
+use the confirmed head with `--match-head-commit`. Never invent passing checks.
 Contributor requirements are in
 [CONTRIBUTING.md](CONTRIBUTING.md); maintainers handling fork PRs follow
 [the external PR steps](docs/development-workflow.md#处理外部-pr).

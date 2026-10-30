@@ -1,7 +1,9 @@
+min_version = "2026.10.23"
+
 # PoBR 开发环境与数据管线（mise-en-place）
 #
-# 环境：`mise run setup` 一次装好 Rust（读 rust-toolchain.toml）、wasm32 target、wasm-pack、
-# Node/pnpm 与 Web 依赖；只装工具链时用 `mise install`。
+# 环境：`mise run setup` 准备精确工具（Rust 来自 rust-toolchain.toml）、wasm target、wasm-pack、
+# Python/Node/pnpm 与 Web/pipeline 依赖；可选工具由对应任务自动准备。
 # 取数据（一键）：`mise run data:fetch` —— 索引（首次 ~113MB，之后跳过）→ 抽取 .dat 为原始 JSON。
 # data:adapt updates base/i18n in a candidate; data:regen regenerates all domains.
 # Both validate before publishing. Full regeneration needs vendor + LuaJIT.
@@ -15,18 +17,29 @@
 idiomatic_version_file_enable_tools = ["rust"]
 
 [tools]
-node = "26"
-pnpm = "12"
-# 与 CI 的 taiki-e/install-action 同源；版本记录在 WASM 构建凭据里，升级属于工具链变更。
-"aqua:wasm-bindgen/wasm-pack" = "0.15.0"
+node = "26.13.0"
+pnpm = "12.16.1"
+# CI 从这里读取同一版本；版本记录在 WASM 构建凭据里，升级属于工具链变更。
+"aqua:wasm-bindgen/wasm-pack" = "0.15.1"
+python = "3.14.10"
+gh = "2.103.3"
+actionlint = "1.7.12"
+
+[env]
+_.path = ["{{ config_root }}/.cache/runtime/bin"]
+POBR_LUAJIT = "{{ config_root }}/.cache/runtime/bin/luajit"
+LUA_PATH = "{{ config_root }}/vendor/PathOfBuilding-PoE2/runtime/lua/?.lua;{{ config_root }}/vendor/PathOfBuilding-PoE2/runtime/lua/?/init.lua;;"
+
+[bootstrap.packages]
+"apt:git" = { os = "linux" }
+"apt:curl" = { os = "linux" }
+"apt:ca-certificates" = { os = "linux" }
+"apt:build-essential" = { os = "linux" }
+"brew:git" = { os = "macos" }
 
 [tasks.setup]
-description = "Install Rust (rust-toolchain.toml), wasm32 target, wasm-pack, Node/pnpm and Web dependencies"
-run = [
-  "rustup target add wasm32-unknown-unknown",
-  "pnpm --dir web install --frozen-lockfile",
-  "bash devs/scripts/driver.sh status",
-]
+description = "Prepare everyday tools and frozen package dependencies with mise (no product build)"
+run = "mise bootstrap --only packages,tools,task"
 
 [tasks."data:version"]
 description = "查询 GGG 当前 PoE2 patch 版本号（CDN 版本）"
@@ -53,10 +66,12 @@ description = "按 config patch 在候选目录适配 base/i18n，完整验证�
 run = "python3 pipeline/data_snapshot.py adapt"
 
 [tasks."data:regen"]
+depends = ["setup:oracle"]
 description = "候选目录完整再生成、审计、验证后发布（需 vendor 检出 + luajit）"
 run = "bash pipeline/regen-all.sh"
 
 [tasks."data"]
+depends = ["setup:oracle"]
 description = "取数 + 候选快照完整再生成、验证后发布"
 dir = "pipeline"
 run = ["node download-index.mjs", "bash export-tables.sh", "cd .. && bash pipeline/regen-all.sh"]
@@ -90,10 +105,12 @@ description = "One build's dropped inputs and reference differences: `mise run d
 run = "bash devs/scripts/driver.sh diagnose"
 
 [tasks.compare]
+depends = ["setup:oracle"]
 description = "One build against the pinned PoB2, stat by stat: `mise run compare <build dir | code file | name> [Stat ...]` (needs `mise run vendor` and LuaJIT)"
 run = "bash devs/scripts/driver.sh compare"
 
 [tasks.triage]
+depends = ["setup:oracle"]
 description = "Every worked build against its reference and the pinned PoB2 at once, differences gathered across builds: `mise run triage [set dir | build dir ...]` (needs `mise run vendor` and LuaJIT)"
 run = "bash devs/scripts/driver.sh triage"
 
@@ -114,6 +131,7 @@ description = "Config readers across benchmark + tuned builds, registered handle
 run = "python3 devs/scripts/config-coverage.py"
 
 [tasks."skills:sweep"]
+depends = ["setup:oracle"]
 description = "Every primary player active skill in a synthetic build against the pinned PoB2: `mise run skills:sweep [--jobs 4] [--refresh]`"
 run = "bash devs/scripts/driver.sh skills:sweep"
 
@@ -174,8 +192,8 @@ description = "Clone or align the pinned PoB2 vendor checkout"
 run = "bash devs/scripts/driver.sh vendor"
 
 [tasks.bootstrap]
-description = "Install dependencies, clone vendor and build the game CLI"
-run = "bash devs/scripts/driver.sh bootstrap"
+description = "Finish mise bootstrap: verify tools and install frozen Web/pipeline dependencies; no product build"
+run = "bash devs/scripts/setup-environment.sh"
 
 [tasks.drill]
 description = "Version-bump drill: data regeneration, compile and parity"
@@ -202,9 +220,40 @@ description = "Search the vendored PoB2 Lua for a pattern"
 run = "bash devs/scripts/driver.sh lua"
 
 [tasks."check:workflows"]
-description = "Check CI syntax, routing, agent handoff, release policy and automation scripts without compiling Rust"
-run = "mise exec actionlint@1.7.12 -- bash devs/scripts/check-workflows.sh"
+description = "Check CI syntax, routing, merge preflight, release policy and automation scripts without compiling Rust"
+run = "bash devs/scripts/check-workflows.sh"
 
 [tasks.pr-ready]
-description = "Read-only PR preflight: fresh audit, final head/base, required checks and mergeability"
+description = "Optional read-only PR preflight: current head/base, checks and mergeability"
 run = "python3 devs/scripts/pr-ready.py"
+
+[tasks.web]
+description = "Run a web package command under the project environment: mise run web <command> [args]"
+run = "pnpm --dir web"
+
+[tasks.pipeline]
+description = "Run a pipeline package command under the project environment"
+run = "pnpm --dir pipeline"
+
+[tasks."setup:e2e"]
+description = "Install the locked Playwright browser and required OS libraries (explicit opt-in)"
+run = ["pnpm --dir web install --frozen-lockfile", "pnpm --dir web exec playwright install --with-deps chromium"]
+
+[tasks."web:e2e"]
+description = "Run Playwright with automatically prepared browser dependencies; requires current dist/WASM/data"
+depends = ["setup:e2e"]
+run = "pnpm --dir web exec playwright test"
+
+[tasks."web:tree-art"]
+description = "Regenerate tree artwork with automatically installed, pinned ImageMagick 7 and zstd"
+tools = { "conda:imagemagick" = "7.1.2_31", "conda:zstd" = "1.5.7" }
+depends = ["vendor"]
+run = "pnpm --dir web build-tree-art"
+
+[tasks."setup:oracle"]
+description = "Prepare the pinned LuaJIT and PoB2 reference automatically for oracle/data-generation tasks"
+run = [
+  "bash devs/scripts/driver.sh deps",
+  "bash devs/scripts/driver.sh vendor",
+  "luajit -e 'local n = 1; n += 1; assert(n == 2); assert(require(\"dkjson\"))'",
+]

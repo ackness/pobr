@@ -5,6 +5,12 @@ rules live in the documents linked below.
 
 ## Before you start
 
+Use the latest stable mise for local tools.
+`mise bootstrap --only packages,tools,task` prepares the common environment;
+run commands with `mise run` or `mise exec --`. Optional tools are installed by
+the task that needs them. CI uses current official/maintained Actions with the
+same pinned versions.
+
 - [AGENTS.md](AGENTS.md) is the short contributor guide: layout, commands, style.
 - [Maintainer guide](docs/maintainer-guide.md) has the architecture, validation scope and
   cross-cutting conventions; [mechanics notes](docs/mechanics/README.md) record the rules
@@ -27,9 +33,9 @@ rules live in the documents linked below.
 - **Prefer a general rule to a per-skill entry.** If the same mechanism affects
   several skills or modifiers, fix the mechanism once instead of adding one
   allow-list line per name, and check which other entries share the bug.
-- **Add an assertion that reproduces the problem.** A fix needs a test that
-  fails before it and passes after it. Do not lower a parity baseline to make a
-  test pass.
+- **Reproduce changed behavior.** Calculation/logic fixes need a focused
+  regression assertion. Prose and mechanical edits need appropriate review,
+  without mirrored tests. Do not lower a parity baseline to make a test pass.
 - **Keep it focused.** One problem per pull request. Code and comments are in
   English.
 
@@ -41,7 +47,8 @@ Run the checks that match your change; a full workspace run is not required.
 mise run verify build skills <filter>      # Selected tests, fmt and Clippy
 mise run regen                             # After editing a modifier rule
 mise run check:workflows                   # Workflow/automation changes; no Rust build
-pnpm --dir web test <file> && pnpm --dir web typecheck
+mise run web test <file>
+mise run web typecheck
 ```
 
 See [validation scope](docs/maintainer-guide.md) for the table of change types and their
@@ -62,17 +69,14 @@ validation and remaining limits using the PR template. Visible UI changes should
 include useful before/after captures; documentation needs diff/link review.
 A draft may be opened before the review is complete.
 
-Before marking ready, an independent agent/reviewer audits the current head and
-base. Put the actual result in the template's `pobr-audit` JSON record, including
-full SHAs, reviewer model/session or review link, verdict and findings. Resolve
-blocking findings on the same PR. `PR handoff` checks required content, freshness
-and unresolved blockers. A new head/base requires renewed review; CI cannot prove
-independent reasoning or that a free-text command was really executed.
+For a substantial or risky change, use an independent reviewer and identify the
+checked commit plus any limits. Small obvious fixes and documentation do not need
+an extra agent or audit form. Keep corrections on the same PR and recheck the
+affected evidence after updates. The template is a writing aid, not a CI format.
 
-Maintainers run `mise run pr-ready <N>` before an authorized merge. It verifies the
-live handoff/checks and prints the exact head for `--match-head-commit`; it never
-merges. Product decisions and non-CI evidence still need review. Bot feedback and
-execution approval are separate from merge authorization.
+Maintainers can use `mise run pr-ready <N>` to inspect the live PR/checks and get
+the exact head for `--match-head-commit`; it never merges. Equivalent direct review
+is fine. Product decisions and non-CI evidence still need judgment.
 
 Normally maintainers request corrections on your PR. If a takeover is needed,
 follow-up commits preserve your work and credit; a replacement PR links to yours

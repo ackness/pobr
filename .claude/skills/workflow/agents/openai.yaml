@@ -1,4 +1,4 @@
 interface:
   display_name: "PoBR workflow"
   short_description: "Run PoBR agent PR, audit, CI and release handoffs"
-  default_prompt: "Use $workflow to prepare, audit or validate this PoBR change with the project-specific checks and PR handoff."
+  default_prompt: "Use $workflow to prepare, audit or validate this PoBR change with the project-specific checks and appropriate focused checks."

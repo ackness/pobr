@@ -10,12 +10,14 @@ import subprocess
 
 AREAS = ("rust", "web", "scripts", "full")
 FULL_FILES = {
-    "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "mise.toml",
+    "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "mise.toml", "mise.lock",
     "web/package.json", "web/pnpm-lock.yaml", "web/pnpm-workspace.yaml",
     ".github/dependabot.yml", "devs/scripts/ci-plan.py",
-    "devs/scripts/ci-gate.py", "devs/scripts/pr-handoff.py", "devs/scripts/pr-ready.py",
+    "devs/scripts/ci-gate.py", "devs/scripts/pr-ready.py",
     "devs/scripts/release-policy.py", "devs/scripts/release-check.sh",
     "devs/scripts/check-workflows.sh", "devs/scripts/driver.sh",
+    "devs/scripts/tool-versions.py", "devs/scripts/install-gh.py",
+    "devs/scripts/setup-environment.sh", "devs/scripts/pob2-luajit.sh",
 }
 
 

@@ -1,11 +1,11 @@
-# Monthly, grouped updates: one pull request per ecosystem. A Cargo, toolchain
+# Grouped updates: Actions daily, package/toolchains monthly. A Cargo, toolchain
 # or Actions change needs the full gate before merging (`mise run ci <ref>`).
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: monthly
+      interval: daily
     groups:
       actions:
         patterns: ["*"]

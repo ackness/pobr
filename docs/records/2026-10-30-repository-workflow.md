@@ -85,11 +85,14 @@ Issue 是诊断证据，未实现功能清单不自动构成开发任务；这�
 
 ## 本次适配与验证结果
 
-- 全局通用 skill 独立安装于 `~/.codex/skills/repo-workflow`，不依赖 PoBR checkout；项目只保存 `workflow` adapter，CI 继续按职责拆分。
-- PR 代码 gate 与 metadata handoff 分开；ready 记录绑定准确 head/base，重新读取实时正文；合并预检只读当前数据并输出 `--match-head-commit` 命令。
+- 全局通用 skill 独立安装于 `~/.codex/skills/repo-workflow`；项目只保存薄的 `workflow` adapter。共享流程不绑定委派工具，具体调用交给当前场景与所选工具。
+- 默认流程保持轻：PR 模板是说明提示，没有固定审计 JSON、额外批准次数或每个改动必须创建独立 reviewer。复杂或高风险改动才扩大验证与 review。
+- `PR gate` 只校验真实的应执行检查；可选 `pr-ready` 辅助核对当前 head/checks，并输出带 `--match-head-commit` 的命令，不自动合并。
 - 自动路由覆盖整个 push、重命名两侧、未知输入和 Web 文本 fixture；完整验证可复用，验证 jobs 无发布密钥。
 - 发布按 SemVer、继承锁版本、准确 tag/commit 和同次产物验证；上传前重验远端 tag，生产部署在串行队列中再次检查最高稳定 v0 版本。
-- 补齐 Web/数据管线依赖更新与完整 CI 的 exporter 依赖安装；便宜脚本检查不要求本地 Lua，Lua 提取测试仍在安装依赖的完整 CI 执行。
-- 独立 Astra xhigh 审查指出导出依赖、移动 tag 的发布身份、文本 fixture 路由问题；均已用窄修改和行为测试处理。Lua 依赖与 macOS Bash/路径问题也在实际验证中修正。
-- 通用 skill 在独立的微型 Python 项目上前向测试：它去掉不必要的选择器，保留一个无条件快速测试 job；通过正常测试及故意破坏实现的失败检查，未照搬 PoBR 分层。
-- 本地只运行自动化契约、技能结构、YAML/链接/diff 检查；未运行产品 Cargo/WASM/E2E，也未请求云端 CI、push、PR、发布或变更服务端保护。后续首次 hosted rollout 仍需确认 fork/Dependabot 及 required statuses。
+- 本地 mise 升至当前稳定版 2026.10.23；项目精确工具/下载锁统一，CI 的原生 Action 使用同一份版本，并经官方发布 API 核对最新稳定标签。Actions 更新每日分组，其余依赖按月维护。
+- 日常 setup 不编译产品或默认获取大参考数据；oracle、浏览器和图像工具按任务自动准备。实际首次安装发现并修复了 Homebrew PATH 覆盖 pnpm、固定 LuaJIT 的 macOS deployment target，以及缓存 runtime 的 alias 问题。
+- 已实跑：首次与重复 setup、无个人工具配置的版本核验、oracle 的固定 LuaJIT/JSON、自动化契约测试、Rust 局部测试、Web 定向测试、pipeline 测试、Chromium 启动、固定图像工具的 DDS→WebP 转换和官方 Linux gh 资产校验。
+- 通用 skill 在微型 Python 项目上前向测试：去掉不必要的选择器，保留一个无条件快速测试 job；正常测试通过，故意破坏实现时失败。说明同一逻辑可以导出更简单的流程。
+- 独立审查发现的导出依赖、移动 tag、文本 fixture、CI gh/Node 对齐问题均已作窄修正与验证。没有为流程形式引入额外服务或调度器。
+- 未推送、发起 PR、修改 GitHub 服务端规则或发布；真实 hosted CI 与 required-check activation 仍需首次上线确认。未跑完整应用 E2E 或产品全量构建；本次没有改动产品行为。

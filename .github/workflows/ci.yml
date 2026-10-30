@@ -31,13 +31,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - name: Install the pinned Rust toolchain
-        run: rustup toolchain install
-      # Best-effort dependency cache, kept warm by the nightly run on master.
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-tools
+        with:
+          rust: 'true'
+      - uses: Swatinem/rust-cache@v2.9.3
       - name: Format
         run: cargo fmt --all --check
       - name: Clippy
@@ -47,18 +47,22 @@ jobs:
     name: Rust tests + data compatibility
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      LUA_PATH: '/usr/share/lua/5.1/?.lua;;'
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - name: Install the pinned Rust toolchain
-        run: rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-tools
+        with:
+          rust: 'true'
+          oracle: 'true'
+      - uses: Swatinem/rust-cache@v2.9.3
       # luajit lets the fixture-based extract-lua tooling tests run instead of
       # self-skipping. Tests that need the gitignored vendor PoB2 checkout still
       # skip gracefully in CI by design (see docs/maintainer-guide.md "Parity 体系").
       - name: Install luajit
-        run: sudo apt-get update && sudo apt-get install -y luajit lua-dkjson
+        run: sudo apt-get update && sudo apt-get install -y lua-dkjson
       - name: Data update compatibility (including Lua extraction)
         run: python3 pipeline/test-data-update.py
       # libtest shares immutable fixtures within each suite and includes doctests.
@@ -79,30 +83,15 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - name: Install the pinned Rust toolchain
-        run: |
-          rustup toolchain install
-          rustup target add wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
-      - name: Read the shared wasm-pack pin
-        id: wasm-tool
-        working-directory: .
-        run: python3 -c 'import tomllib; print("tool=wasm-pack@" + tomllib.load(open("mise.toml", "rb"))["tools"]["aqua:wasm-bindgen/wasm-pack"])' >> "$GITHUB_OUTPUT"
-      - uses: taiki-e/install-action@v2
+      - uses: ./.github/actions/setup-tools
         with:
-          tool: ${{ steps.wasm-tool.outputs.tool }}
-      # Follow the stable pnpm 12.x line, matching mise.toml.
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 12
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-          cache: pnpm
-          cache-dependency-path: web/pnpm-lock.yaml
+          rust: 'true'
+          node: 'true'
+          wasm: 'true'
+      - uses: Swatinem/rust-cache@v2.9.3
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck (pre-wasm placeholder tolerated via ts-ignore)
@@ -128,7 +117,7 @@ jobs:
       # Hand the built site to the deploy job (path is workspace-relative,
       # unaffected by the job-level working-directory).
       - name: Upload dist for deploy
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: web-dist
           path: web/dist
@@ -148,7 +137,7 @@ jobs:
           pnpm smoke-wasm-package
           cat ../.cache/wasm-release/wasm-size.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload WASM release assets
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: wasm-release
           path: .cache/wasm-release/*
@@ -157,7 +146,7 @@ jobs:
           retention-days: 14
       - name: Upload E2E failure artifacts
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: playwright-failure
           path: web/test-results
@@ -169,20 +158,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v6
+      - uses: ./.github/actions/setup-tools
         with:
-          version: 12
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-          cache: pnpm
-          cache-dependency-path: pipeline/pnpm-lock.yaml
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: actionlint@1.7.12
+          node: 'true'
+          scripts: 'true'
       - run: bash devs/scripts/check-workflows.sh
       - name: Install data exporter dependencies
         run: pnpm --dir pipeline install --frozen-lockfile
@@ -196,9 +178,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
+      - uses: ./.github/actions/setup-tools
       - name: Require every full check
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}

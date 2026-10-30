@@ -2,6 +2,8 @@
 
 import importlib.util
 import json
+import os
+import sys
 from pathlib import Path
 import subprocess
 import tempfile
@@ -20,8 +22,9 @@ def load(filename):
 
 plan = load("ci-plan.py")
 gate = load("ci-gate.py")
-handoff = load("pr-handoff.py")
 ready = load("pr-ready.py")
+tool_pins = load("tool-versions.py")
+gh_installer = load("install-gh.py")
 
 
 class RoutingTests(unittest.TestCase):
@@ -34,7 +37,8 @@ class RoutingTests(unittest.TestCase):
 
     def test_shared_or_unknown_inputs_select_full_without_duplicate_light_checks(self):
         for name in ["Cargo.lock", "crates/new/Cargo.toml", "mise.toml", "web/package.json",
-                     ".github/workflows/ci.yml", "devs/scripts/ci-plan.py", "new-runtime.conf", "docs/hidden-executable.py"]:
+                     ".github/workflows/ci.yml", "devs/scripts/ci-plan.py",
+                     "devs/scripts/tool-versions.py", "devs/scripts/setup-environment.sh", "new-runtime.conf", "docs/hidden-executable.py"]:
             with self.subTest(name=name):
                 self.assertEqual(plan.classify([name, "web/src/App.tsx"]),
                                  {area: area == "full" for area in plan.AREAS})
@@ -116,49 +120,94 @@ class GateTests(unittest.TestCase):
                 gate.check(needs, "full")
 
 
-class HandoffTests(unittest.TestCase):
-    def pr(self, **changes):
-        audit = {"head": "a" * 40, "base": "b" * 40, "reviewer": "independent-agent/session",
-                 "verdict": "pass", "findings": []}
-        audit.update(changes)
-        body = "\n".join(f"## {section}\nConcrete evidence.\n" for section in handoff.SECTIONS)
-        body += "\n<!-- pobr-audit\n" + json.dumps(audit) + "\n-->"
-        return {"draft": False, "body": body, "head": {"sha": "a" * 40}, "base": {"sha": "b" * 40}}
+class ToolVersionTests(unittest.TestCase):
+    def test_active_version_check_rejects_a_shadowed_executable(self):
+        from types import SimpleNamespace
+        values = {key: "1.2.3" for key in tool_pins.COMMANDS}
+        tool_pins.check_active(values, run=lambda *a, **kw: SimpleNamespace(stdout="tool 1.2.3", stderr=""))
+        with self.assertRaisesRegex(ValueError, "expected 1.2.3, got 9.8.7"):
+            tool_pins.check_active(values, run=lambda *a, **kw: SimpleNamespace(stdout="tool 9.8.7", stderr=""))
 
-    def test_complete_fresh_handoff_and_draft(self):
-        handoff.validate(self.pr())
-        handoff.validate({"draft": True})
+    def test_exports_authoritative_pins_and_rejects_floating_or_missing_versions(self):
+        config = {"tools": {key: "1.2.3" for key in tool_pins.TOOLS.values()}}
+        rust = {"toolchain": {"channel": "1.99.0", "components": ["rustfmt", "clippy"],
+                              "targets": ["wasm32-unknown-unknown"]}}
+        values = tool_pins.versions(config, rust)
+        self.assertEqual(values["wasm_pack"], "1.2.3")
+        self.assertEqual(values["rust_components"], "rustfmt,clippy")
+        self.assertEqual(values["rust_targets"], "wasm32-unknown-unknown")
+        for value in ("latest", "26", "26.13", "26.13.0-rc.1"):
+            config["tools"]["node"] = value
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                tool_pins.versions(config, rust)
+        config["tools"].pop("node")
+        with self.assertRaises(KeyError):
+            tool_pins.versions(config, rust)
 
-    def test_stale_audit_blockers_bad_record_and_unfilled_template_reject(self):
-        for changes in [{"head": "c" * 40}, {"base": "c" * 40}, {"verdict": "fail"},
-                        {"reviewer": ""}, {"findings": [{"severity": "blocking", "status": "open", "summary": "wrong result"}]}]:
-            with self.subTest(changes=changes), self.assertRaises(ValueError):
-                handoff.validate(self.pr(**changes))
-        for body in ["", "## Problem\n<!-- fill me -->", self.pr()["body"] + self.pr()["body"]]:
-            pr = self.pr()
-            pr["body"] = body
-            with self.assertRaises(ValueError):
-                handoff.validate(pr)
 
-    def test_old_draft_or_body_event_cannot_replace_current_audit_state(self):
-        event = self.pr()
-        event["draft"] = True
-        current = self.pr(verdict="pending")
-        with self.assertRaises(ValueError):
-            handoff.validate_current(event, current)
-        current = self.pr()
-        current["head"]["sha"] = "c" * 40
-        with self.assertRaises(ValueError):
-            handoff.validate_current(event, current)
-
-    def test_resolved_findings_and_open_suggestions_are_allowed(self):
-        for severity, status in [("blocking", "resolved"), ("suggestion", "open")]:
-            handoff.validate(self.pr(findings=[{"severity": severity, "status": status, "summary": "review finding"}]))
+class GhInstallerTests(unittest.TestCase):
+    def test_official_asset_checksum_and_expected_binary(self):
+        import hashlib, io, tarfile
+        payload = b"#!/bin/sh\necho fixture\n"
+        archive = io.BytesIO()
+        with tarfile.open(fileobj=archive, mode="w:gz") as bundle:
+            info = tarfile.TarInfo("gh_1.2.3_linux_amd64/bin/gh")
+            info.size = len(payload)
+            bundle.addfile(info, io.BytesIO(payload))
+        data = archive.getvalue()
+        checksum = f"{hashlib.sha256(data).hexdigest()}  gh_1.2.3_linux_amd64.tar.gz\n".encode()
+        requests = []
+        def fetch(url):
+            requests.append(url)
+            return checksum if url.endswith("checksums.txt") else data
+        with tempfile.TemporaryDirectory() as root:
+            binary = gh_installer.install("1.2.3", "X64", root, fetch) / "gh"
+            self.assertEqual(binary.read_bytes(), payload)
+            self.assertTrue(binary.stat().st_mode & 0o111)
+            with self.assertRaisesRegex(ValueError, "checksum mismatch"):
+                gh_installer.install("1.2.3", "X64", root,
+                    lambda url: checksum if url.endswith("checksums.txt") else b"corrupt")
+        self.assertTrue(all(url.startswith("https://github.com/cli/cli/releases/download/v1.2.3/") for url in requests))
 
 
 class ReadyTests(unittest.TestCase):
+    def test_cli_is_read_only_and_rejects_a_head_change_during_preflight(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            gh = root / "gh"
+            gh.write_text("""#!/usr/bin/env python3
+import json, os, pathlib, sys
+args = sys.argv[1:]
+with open(os.environ["CALLS"], "a") as out: out.write(json.dumps(args) + "\\n")
+if args[:2] == ["repo", "view"]:
+    print(json.dumps({"nameWithOwner": "fixture/repo"}))
+elif args[:2] == ["pr", "checks"]:
+    print(json.dumps([{"name": "PR gate", "bucket": "pass"}]))
+elif args[:1] == ["api"]:
+    count_file = pathlib.Path(os.environ["COUNT"])
+    count = int(count_file.read_text()) if count_file.exists() else 0
+    count_file.write_text(str(count + 1))
+    head = "c" * 40 if os.environ.get("RACE") and count else "a" * 40
+    print(json.dumps({"draft": False, "state": "open", "mergeable": True,
+                      "body": "Free-form description.", "head": {"sha": head}, "base": {"sha": "b" * 40}}))
+else:
+    raise SystemExit("Unexpected write operation")
+""")
+            gh.chmod(0o755)
+            env = {"PATH": str(root) + os.pathsep + os.environ["PATH"],
+                   "CALLS": str(root / "calls"), "COUNT": str(root / "count")}
+            command = [sys.executable, str(HERE / "pr-ready.py"), "123"]
+            result = subprocess.run(command, env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("a" * 40, result.stdout)
+            (root / "count").unlink()
+            result = subprocess.run(command, env={**env, "RACE": "1"}, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            calls = [json.loads(line) for line in (root / "calls").read_text().splitlines()]
+            self.assertTrue(all(args[0] in {"repo", "pr", "api"} and args[:2] != ["pr", "merge"] for args in calls))
+
     def test_preflight_rejects_unknown_or_bad_required_checks(self):
-        pr = HandoffTests().pr()
+        pr = {"draft": False, "head": {"sha": "a" * 40}, "base": {"sha": "b" * 40}}
         pr.update(state="open", mergeable=True)
         checks = [{"name": name, "bucket": "pass"} for name in ready.REQUIRED]
         ready.assess(pr, checks)
@@ -166,7 +215,7 @@ class ReadyTests(unittest.TestCase):
             with self.subTest(bucket=bucket), self.assertRaises(ValueError):
                 ready.assess(pr, [{"name": name, "bucket": bucket} for name in ready.REQUIRED])
         with self.assertRaises(ValueError):
-            ready.assess(pr, checks[:1])
+            ready.assess(pr, [])
         pr["mergeable"] = None
         with self.assertRaises(ValueError):
             ready.assess(pr, checks)

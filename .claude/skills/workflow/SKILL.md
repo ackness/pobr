@@ -17,23 +17,26 @@ policies into another checklist here.
 
 ## Apply the current contract
 
+Local tools and commands use the latest stable mise with the project's exact pins.
+Start with `mise bootstrap --only packages,tools,task`; use `mise run` / `mise exec --`.
+The common setup is lightweight. Oracle, browser and artwork tasks automatically
+provision their extra tools only when used. CI may use current stable native
+Actions reading the same version source.
+
 - Choose one focused check from [recipes.md](../../../docs/recipes.md) or the
   maintainer validation table. No per-change Cargo workspace/parity/accuracy run.
   Rule edits require regeneration; batch integration owns `mise run gate` once.
   Workflow changes use `mise run check:workflows` without compiling the product.
-- Keep one reviewable problem per PR, with truthful Problem, Change, Validation
-  and Remaining limits sections. Open a draft when publishing a PR is authorized
-  but independent audit is unfinished. Do not infer push/PR/merge/release authority
-  from a request for a local edit.
-- Assign a separate reviewer the final head/base and relevant code/evidence.
-  Fix blocking findings in the same PR, then write the actual `pobr-audit` result
-  using the [PR template](../../../.github/pull_request_template.md). Never invent
-  a review, session identity or passing command. Freshness/schema checks do not
-  establish independent reasoning under shared credentials.
-- Before an authorized merge, run `mise run pr-ready <N>` and use the returned
-  head with `--match-head-commit`. It is read-only. If head/base changes, renew the
-  affected audit/integration evidence. `PR gate` and `PR handoff` must both pass;
-  hosted strict required-check rules are configured separately after first rollout.
+- Describe the problem, resulting behavior, actual checks and remaining limits.
+  The PR template is a writing aid, not a mandatory schema. A small obvious fix or
+  prose edit does not need a new reviewer, audit record or screenshot.
+- Use an independent reviewer for substantial/high-risk changes. Give them relevant
+  code and evidence, identify the reviewed head/base and recheck changed risks.
+  Keep corrections in the same PR. Never invent reviews or passing commands.
+- `mise run pr-ready <N>` is an optional read-only merge preflight. Confirm the
+  current head/checks before an authorized merge and use `--match-head-commit`.
+  Do not infer publish/merge authority from a local edit. CI requires real selected
+  checks, not an audit JSON or a fixed count of approvals.
 - For calculations, cite game text/stat IDs and preserve diagnostics; PoB2 is a
   cross-check. An unsupported modifier is not automatically in scope for static
   simulation. An external contribution normally stays in its original PR.
@@ -41,8 +44,7 @@ policies into another checklist here.
 ## CI and release boundaries
 
 [pr.yml](../../../.github/workflows/pr.yml) owns automatic change routing and the
-stable code gate; [handoff.yml](../../../.github/workflows/handoff.yml) owns cheap
-metadata checks; [ci.yml](../../../.github/workflows/ci.yml) owns reusable/manual/
+stable code gate; [ci.yml](../../../.github/workflows/ci.yml) owns reusable/manual/
 nightly full validation; [release.yml](../../../.github/workflows/release.yml) owns
 tag validation, artifact publication and production deployment. Keep these roles
 separate while sharing policy scripts.

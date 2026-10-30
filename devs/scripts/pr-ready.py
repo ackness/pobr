@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
-"""Read-only final PR preflight; print the reviewed head for an atomic merge."""
+"""Read-only final PR preflight; print the current head for an atomic merge."""
 
-import importlib.util
 import json
-from pathlib import Path
 import subprocess
 import sys
 
-_spec = importlib.util.spec_from_file_location("handoff", Path(__file__).with_name("pr-handoff.py"))
-_handoff = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_handoff)
-REQUIRED = {"PR gate", "PR handoff"}
+REQUIRED = {"PR gate"}
 
 
 def gh(*args):
@@ -20,12 +15,11 @@ def gh(*args):
 def assess(pr, checks):
     if pr.get("draft") or pr.get("state") != "open" or pr.get("mergeable") is not True:
         raise ValueError("PR must be open, ready and conflict-free; unknown mergeability needs a later retry")
-    _handoff.validate(pr)
     by_name = {check["name"]: check for check in checks}
     if not REQUIRED <= by_name.keys():
-        raise ValueError("Both PR gate and PR handoff must exist on this PR")
+        raise ValueError("PR gate must exist on this PR")
     if any(by_name[name].get("bucket") != "pass" for name in REQUIRED):
-        raise ValueError("PR gate and PR handoff must pass, not skip or remain pending")
+        raise ValueError("PR gate must pass, not skip or remain pending")
     if any(check.get("bucket") in {"fail", "cancel", "pending"} for check in checks):
         raise ValueError("PR still has failing, cancelled or pending checks")
 
@@ -47,7 +41,7 @@ def main():
     except (ValueError, KeyError, subprocess.CalledProcessError) as error:
         raise SystemExit(f"PR not ready: {error}") from error
     head = after["head"]["sha"]
-    print(f"Reviewed head: {head}\nBase: {after['base']['sha']}")
+    print(f"Current head: {head}\nBase: {after['base']['sha']}")
     print(f"If merging is authorized: gh pr merge {number} --squash --match-head-commit {head}")
 
 

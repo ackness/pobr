@@ -17,15 +17,6 @@ Docs-only: diff/link review is enough. CI owns its selected integration checks. 
 
 <!-- Known limits, or "none". -->
 
-<!-- Before marking ready, a separate reviewer audits the current head and base.
-Copy their actual conclusion into exactly one JSON record below. Get SHA values
-from `gh pr view <N> --json headRefOid,baseRefOid`. A new head/base invalidates it.
-Do not invent a reviewer session, review or passing checks. CI validates freshness
-and schema; it cannot prove independent reasoning under shared credentials.
-
-pobr-audit must start its own comment, for example:
--->
-
-<!-- pobr-audit
-{"head":"REPLACE_WITH_FULL_HEAD_SHA","base":"REPLACE_WITH_FULL_BASE_SHA","reviewer":"MODEL_AND_SESSION_OR_REVIEW_LINK","verdict":"pending","findings":[]}
--->
+<!-- For substantial changes, ask a separate reviewer to inspect the current head
+and relevant evidence. Summarize material findings/corrections in the conversation;
+no fixed audit format or extra review is required for a trivial change. -->

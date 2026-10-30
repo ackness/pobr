@@ -9,25 +9,47 @@
 本文维护构建、测试、缓存和 CI 操作；验证范围与计算约定见 [maintainer-guide.md](maintainer-guide.md)，
 Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/README.md](../pipeline/README.md)。
 
-## 工具链来源
+## 环境：本地统一 mise，CI 使用原生安装 Action
 
-| 工具 | 当前配置 |
-|------|----------|
-| Rust | edition 2024；版本由根 `rust-toolchain.toml` 钉定（含 rustfmt/Clippy），本地与 CI 相同；本地 `mise run setup` 通过 mise 安装它，直接使用 rustup 时首次使用自动安装。升级版本属于工具链变更，需要完整门禁 |
-| Node | 本地 `mise.toml` 与 CI 均指定 Node 26 |
-| pnpm | 本地 mise 与 CI 仅固定稳定主版本 `12`；运行 `mise install` 配置。依赖 lockfile 固定解析结果，更新直接依赖时保持原主版本，不采用预发布版本 |
-| WASM | `wasm32-unknown-unknown` target + wasm-pack（本地 mise 钉定 0.15.0，CI 从 mise.toml 读取同一个版本，再由 taiki-e/install-action 安装），仅构建 Web 引擎时需要 |
-| LuaJIT | oracle 需要支持 `+=` 的 runtime；`mise run deps` 按 PoB2 Dockerfile 的 upstream commit 编译并缓存，见 [oracle setup](../tools/pob2-oracle/README.md#依赖--阻塞解决)。普通计算使用已入库数据 |
+先按 [mise 官方说明](https://mise.jdx.dev/getting-started.html) 安装/更新工具管理器。
+本地和 agent 使用当前稳定版 mise；本次验证为 2026.10.23，仓库声明最低兼容版本。
+`mise.toml` 精确固定 Node、pnpm、Python、wasm-pack、actionlint 与 gh，
+`rust-toolchain.toml` 唯一声明 Rust、fmt/Clippy、wasm target；`mise.lock` 固定下载来源与校验和。
+本地命令用 `mise run <任务>`，没有命名任务时用 `mise exec -- <命令>`；
+不要由每个 agent 临时安装另一套 runtime。CI 可使用官方或受维护的工具 Action，
+由 [setup-tools](../.github/actions/setup-tools/action.yml) 读取同一份版本，CI 不安装 mise。
 
-`mise run setup` 在新机器上一次装好 Rust（mise 读取 `rust-toolchain.toml`，不在 `mise.toml`
-重复钉版本）、`wasm32-unknown-unknown` target、wasm-pack 0.15.0、Node/pnpm 和 `web/` 依赖；
-重复运行是安全的。LuaJIT 与 vendor 不在其中，仍由 `mise run deps` / `mise run vendor` 按需安装。
-`deps` 需要 Git、make、C 编译器，缓存 runtime 到 `${XDG_CACHE_HOME:-$HOME/.cache}/pobr/runtimes/`，
-不替换系统 LuaJIT。运行 Rust vendor 抽取时可设
-`POBR_LUAJIT="$(bash devs/scripts/pob2-luajit.sh resolve)"`；oracle runner 自动选择兼容的缓存。
-首次 `build-wasm` 还会编译一次 `wasm-bindgen-cli`，wasm-pack 会缓存。
-`mise run status` 查看工具和数据是否就绪。已有可用环境时跳过 bootstrap 和安装，
-不为日常测试更新工具链或重复构建整个 workspace。
+新环境只需一次：
+
+```bash
+mise bootstrap --only packages,tools,task    # 主机依赖 → 精确工具 → 日常依赖，不编译产品
+# 兼容的简短入口；已有环境重复执行同样安全。
+mise run setup
+```
+
+支持当前 Unix 工具链：macOS 与 Debian/Ubuntu。主机包由 mise 原生 bootstrap 声明，
+setup 检查 Git、make、C 编译器；macOS 的 Apple SDK/Command Line Tools 仍由系统提供。
+工具核验会拒绝 PATH 中遮蔽 mise 版本的旧程序。setup 安装 Web 与 pipeline 的 frozen lockfile，
+不下载浏览器、不编译 CLI、不默认获取大型参考数据。
+
+按工作需要自动准备额外依赖：
+
+| 工作 | 入口与自动准备 |
+| --- | --- |
+| Web 日常开发/测试 | `mise run web <命令>`，例如 `mise run web test <文件>` |
+| 数据导出器 | `mise run pipeline test` |
+| PoB2 对照、triage、完整数据生成 | 对应任务依赖 `setup:oracle`，自动准备固定 LuaJIT commit 与固定 vendor；重复运行复用缓存 |
+| 浏览器回归 | `mise run web:e2e <spec>`，自动安装 lockfile 对应的 Playwright 浏览器/系统依赖；仍须当前 dist/WASM/data |
+| 树图资源再生成 | `mise run web:tree-art`，按需由 mise conda backend 安装固定 ImageMagick 7/zstd，自动准备 vendor |
+
+`setup:oracle` 将兼容的 LuaJIT 暴露到 `.cache/runtime/bin`；mise 为任务配置 PATH、
+`POBR_LUAJIT` 与 vendor 的 `LUA_PATH`，无需各自修改 shell。
+默认安装使用固定上游 commit，保留显式 runtime override 的调试用途。
+首次源码构建会自动处理 macOS deployment target；缺依赖的任务失败会给出具体原因。
+`mise run status` 只报告工具与数据状态，不下载、不构建。
+
+同一输入下复用已通过检查；只有显式升级工具/依赖时才更新 pins 和 lock。
+工具链改动由完整 CI 验证，不把整套产品编译变成日常 setup 前提。
 
 ## 日常命令
 
@@ -160,7 +182,6 @@ workflow 负责事件、环境、权限；`mise.toml` / `devs/scripts` 负责命
 | 入口 | 触发与职责 | 成功出口 |
 | --- | --- | --- |
 | [pr.yml](../.github/workflows/pr.yml) | 所有 master PR、每次 master push；按整个变更范围选轻量检查或调用完整门禁 | `PR gate` |
-| [handoff.yml](../.github/workflows/handoff.yml) | PR 创建、更新提交、编辑正文、ready/draft；只校验交接记录 | `PR handoff` |
 | [ci.yml](../.github/workflows/ci.yml) | 可复用完整门禁、手动 dispatch、每日 19:00 UTC 的 master 回归 | `Full gate` |
 | [release.yml](../.github/workflows/release.yml) | `v*` tag；先校验发布身份，调用完整门禁，再发布同次产物和符合条件的生产部署 | Release / deploy jobs |
 
@@ -177,7 +198,7 @@ PR 变更比较测试中的 merge commit 与它的 base parent；master 比较 p
 | Web 代码 | typecheck、Vitest、Worker runtime；脚本/静态资源还检查脚本契约 |
 | 普通开发脚本 | 不编译 Rust 的自动化契约：shell、Python、Node、工作流语法 |
 | workspace/包 manifest、lockfile、工具链、mise、workflow、CI/发布策略脚本、数据管线、未知输入 | 完整 Rust、Web 与自动化契约；不重复轻量 jobs |
-| 普通文档（含 Web README）、模板、说明图片 | 无产品构建；仍有稳定 gate 和 PR 交接校验 |
+| 普通文档（含 Web README）、模板、说明图片 | 无产品构建；仍有稳定 gate |
 
 `PR gate` 校验检测器成功、输出合法、所有选中 jobs 成功；失败、取消、缺失或意外跳过都拒绝。
 `Full gate` 同样要求全部 Rust/Web/脚本 jobs 成功。fork 和 Dependabot 使用相同的只读、无密钥验证路径；
@@ -203,34 +224,25 @@ mise run full                             # 显式本地 Rust 全量检查，不
 其 actionlint 1.7.12 尚不认识 GitHub 已支持的 `queue: max`，只豁免该特定未知键错误，
 其余语法与表达式检查仍启用；队列语义见 [GitHub 文档](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)。
 
-## Agent 提交、审计与合并
+## Agent 提交、review 与合并
 
-1. **作者交接。** 一项可审查的问题一个 PR；填写 Problem、Change、Validation、Remaining limits。
-   Validation 写实际执行的定向命令、结果和未验证部分；文档只需 diff/link review。
-   界面变化给出有用的前后截图；计算变化引用游戏数据/stat ID，PoB2 仅交叉核对。
-   先开 draft 可以尽早获得 CI，不要求草稿已有审计。
-2. **独立审计。** 另一个 agent/reviewer 读取 diff、相关调用方和真实证据，核对当前 head 与 base。
-   将正确性、回归、契约或权限问题作为 blocking；风格建议明确标为 suggestion。
-   修正在同一 PR 追加，保留作者提交与署名。不要因使用 agent 就省略真实执行结果。
-3. **记录结论。** ready 前把实际审计结论写入 PR 正文的唯一 `pobr-audit` JSON comment。
-   `head` / `base` 用完整 SHA，`reviewer` 记录模型与 session/review 链接；
-   `verdict` 必须是 `pass`；blocking findings 必须 resolved。没有 findings 时写空数组。
-4. **机器校验。** `PR handoff` 检查正文有实际内容、审计格式、提交新鲜度和未解决阻断项。
-   新提交或 ready 事件自动重新检查；编辑正文只触发交接检查，不重新编译产品；检查读取实时 PR 元数据，旧事件重跑不能恢复过期正文或 draft 状态。
-   同一 GitHub 身份下，记录不能证明审计来自独立推理，也不能证明正文所写命令执行过；
-   CI 负责其实际检查，维护者负责审计来源和不在 CI 中的证据，禁止编造审计或通过记录。
-5. **最终预检。** 获准合并前运行 `mise run pr-ready <N>`。它只读当前 PR、fresh audit、
-   两个必需 gate、其他失败/待定检查与冲突状态，并在返回前再次核对 head/base。
-   它不推送、不评论、不合并；成功时输出准确 head 及带 `--match-head-commit` 的合并命令。
-   作者随后推送时，该参数使合并失败。base 更新仍须最新集成检查与服务端 strict 规则约束。
+流程服务于可审查的改动与及时反馈，不以表单、agent 数量或 review 轮次衡量质量。
 
-```json
-{"head":"<40-character head SHA>","base":"<40-character base SHA>","reviewer":"<model/session or review link>","verdict":"pass","findings":[]}
-```
+- 普通局部修复：问题/结果说明、一个能复现行为的定向检查、相关 CI 即可。
+  文档或明显机械改动不额外要求回归测试、截图或独立 agent。
+- 跨边界、核心计算、持久化/导入兼容、工具链或发布改动：根据实际风险请独立 reviewer
+  检查调用方和证据，说明检查过的 head/base 与未验证范围；建议与阻断问题分开。
+- 修正在同一 PR 中完成；新提交后重看受影响证据。没有固定审计 JSON、形式上的批准次数、
+  每个 PR 必须创建 issue 或必须换 reviewer 等要求。机器人和人工审查都不能替代真实运行结果。
 
-有发现时，例如 `{"severity":"blocking","status":"resolved","summary":"Verified the fixed schema migration"}`。
-不要为凑格式生成虚假审计；如审计受阻，保持 draft 或失败状态并说明原因。
-Dependabot PR 也由 agent 补充真实交接与审计后再 ready/合并，不因机器人身份免除检查。
+[PR 模板](../.github/pull_request_template.md) 提供 Problem、Change、Validation、Remaining limits
+的写作提示，不由 CI 强制正文格式。只写实际执行的命令与结果；界面变化按需要给出前后证据，
+机制依据以游戏数据/stat ID 为准。draft 可用于提前获得反馈，不把它当作额外流程阶段。
+
+授权合并前可以运行 `mise run pr-ready <N>`：它只读 PR 当前状态、`PR gate`、其他失败/待定检查
+与冲突，并再次核对 head/base，输出带 `--match-head-commit` 的准确命令。它不评论、不合并、
+不验证“是否有独立推理”。这是减少误操作的辅助入口；维护者也可以直接核对同样的事实。
+base 更新后的集成结果由服务端 strict 规则及必要复验保障，不能靠固定表格证明。
 
 ## Issue 与自动化维护
 
@@ -240,8 +252,8 @@ Bug 表单收集可复现步骤、版本/数据版本、环境，以及相关构
 确认的缺陷按原因归并，修复只覆盖一部分时用 Refs，不提前关闭整项问题。
 没有证据证明有用的事件模拟不自动进入实现，遵守静态模拟范围。
 
-Dependabot 每月按 Actions、Cargo、Rust toolchain、Web 与数据管线分别维护依赖；
-manifest/lock/toolchain 改动自动进入完整门禁。没有自动合并或按年龄关闭已确认缺陷的机器人。
+Dependabot 每日分组检查 Actions 更新；Cargo、Rust toolchain、Web 与数据管线每月检查。
+当前 Action 使用经核对的最新稳定标签；升级 PR 和 manifest/lock/toolchain 改动进入完整门禁。没有自动合并或按年龄关闭已确认缺陷的机器人。
 不为流程形式引入收费 review 服务、贡献准入名单或带真实密钥的 fork 预览。
 
 ## 发布与部署
@@ -275,7 +287,7 @@ WASM 包身份与使用方式见 [WASM 打包说明](wasm-package.md)。
 rulesets 为空。发布这套 workflow 并确认首次真实 PR 运行后，再在 master protection/ruleset 中：
 
 - 要求 PR 合并、禁止删除/强推，要求最新 base 的检查（strict）。
-- 将稳定状态 `PR gate` 和 `PR handoff` 设为 required；不要同时要求会按区域跳过的 jobs。
+- 将稳定状态 `PR gate` 设为 required；不要同时要求会按区域跳过的 jobs。
 - 清理被替换的旧状态名；核对管理员/自动化的 bypass 权限和未解决 review thread 的处理。
 - 审计 actor 的独立性按团队身份配置；单一账号不能靠“一个形式上的 APPROVED”解决独立审计。
 
@@ -287,7 +299,7 @@ rulesets 为空。发布这套 workflow 并确认首次真实 PR 运行后，再
 
 先阅读完整 diff，再在隔离 checkout 中执行外部代码；不使用真实账户配置或发布凭据。
 常规路径是原 PR 的 review → request changes → 作者更新 → 最终 head/base 复验 → 授权合并，
-采用上面的交接与检查要求。需要集成当前 master 时先检查冲突，再按影响运行相关检查，
+按上面的风险与检查原则处理。需要集成当前 master 时先检查冲突，再按影响运行相关检查，
 不为每个外部小改动重复全量构建。
 
 审查机制依据、通用规则、同类受影响技能、诊断与兼容；出处以游戏数据为准。

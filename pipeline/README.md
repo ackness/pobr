@@ -60,7 +60,7 @@ PoBR 沿用这个边界：提取器自动吸收可表达的规则，人工修正
 
 ### 中文词典来源
 
-先运行 `mise install` 安装仓库钉定的 Node 和 pnpm；导出器使用 pnpm 的 frozen lockfile 与仓库内补丁，不依赖未声明的全局包管理器。
+先运行 `mise run setup` 准备精确工具与 frozen 依赖，命令使用 `mise run pipeline <命令>` 或 `mise exec -- <命令>`；导出器使用 pnpm 的 frozen lockfile 与仓库内补丁，不依赖未声明的全局包管理器。
 
 基础名词与既有游戏模板使用 [poe2-en-cn-dict 的存档](https://github.com/vagrant-soul/poe2-en-cn-dict)；新增词条与 PoBR 自维护模板使用下面的独立公开词表。
 2026-10-12 原 `addohm/poe2-en-cn-dict` 仓库、API 和固定提交原文件均返回 404；
@@ -121,7 +121,7 @@ node pipeline/gen-zh-cn.mjs --dict /path/to/legacy/dictionary --translations-dir
 历史版本使用 `4.*`；索引下载固定走 `patch-poe2.poecdn.com`，不再由主版本数字猜测游戏。
 表导出通过 `pipeline/pnpm-lock.yaml` 固定 `pathofexile-dat@15.2.0`，附带两处 `0.*` 识别补丁，
 使 bundle CDN 和 PoE2 表结构/语言目录选择一致。`export-tables.sh` 自动执行 frozen-lockfile 安装；
-不要绕过它运行未打补丁的全局/npx 导出器。路由与版本查询回归：`pnpm --dir pipeline test`。
+不要绕过它运行未打补丁的全局/npx 导出器。路由与版本查询回归：`mise run pipeline test`。
 当前 PoE2 版本可向 GGG patch 协议服务器查询：
 
 ```bash
