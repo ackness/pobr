@@ -1,206 +1,610 @@
-# Web planning and build-session contracts
+# Web 功能与存档契约
 
-Behavior contracts for the Web application's upgrade guidance (market, gems,
-passives), build workspace and comparison, item crafting and the unique
-catalogue, weapon sets and skill selection, passive-tree editing, configuration
-and calculation details. Read the relevant section before changing these areas;
-update it when the behavior changes.
+本文记录页面应有的行为。修改相关功能时，先读对应小节，再同步文档。
+“BD”指一份角色构筑；“阶段”是这个 BD 的完整本地快照；“来源 loadout”是 PoB 文件内
+关联的天赋、装备、技能和配置方案。三者不能混用。
+stat 是游戏属性标识，stat set 是技能效果的一组数值，ModDb 是计算词条数据库。数值定义见[计算输出](calc-outputs.md)，
+导入差异见[导入格式](import-formats.md)，数据和计算编排见[构筑模型](build-model.md)。
 
-## Upgrade guidance
+<a id="upgrade-guidance"></a>
+## 提升规划
 
-- `pipeline/extract-trade-catalog.lua` exports category/base spawn weights, affix groups, raw roll ranges, gem families and per-level gem requirements from the pinned PoB2 source. Regenerate alongside `trade_stat_map.json`; do not hand-edit the generated catalog. Manual affix simulation uses the full tier pool, validates prefix/suffix capacity and level, and preserves unresolved merged stats instead of guessing empty slots. Midpoint rolls are estimates, not crafting probabilities.
-- Special market sources use `search_mods` with PoB2 overrides and GGG `trade_crafting_sources.json` recipes for alloys/perfect and corrupted essences. Compound hashes retain exported lines, variable positions and official wording; crafted/desecrated/fractured stats share explicit IDs, while corruption uses enchant IDs. Reject probes that change unsupported-effect diagnostics. Special search sources do not establish legal ordinary crafting combinations. See [special affix sources and scoring](trade-special-affixes.md) for regeneration and limits.
-- `web/src/components/trade/TradePanel.tsx` analyzes the build locally, displays affix contributions and generates official market links. Players can analyze all equipped positions and allocated jewel sockets, or choose one position, goal and budget; the equipped base is detected as an internal reference, with an optional category override. Searches span every base in that category. There is no candidate JSON/bookmark import step or automatic listing request in this UI.
-- `web/src/lib/tradeOptimizer.ts` pools eligible affixes across the category using PoB2's first-match spawn weights. It averages probes on a blank reference and the equipped item; existing explicit stats use removal marginals so capped accuracy/resistance is not undervalued by adding a duplicate roll. The equipped item receives the exact final query Sum (same stat IDs, 32-filter cap and three-decimal coefficients); incomplete mappings remove the minimum filter. Sum is not whole-item DPS. The complete-item paste card detects base and required level, evaluates all compatible equipped positions and allocated jewel sockets in one batch, and shows DPS/EHP/resistance changes before explicit application. Contributions are reference estimates, not whole-item replacement gains, and cannot be added as purchase percentages. The all-position planner uses a bounded combination search with base-compatible pools, mod groups and prefix/suffix limits. It ranks whole-reference replacement gains; the per-affix marginal table is not summed into a replacement percentage. Base and affix requirements are capped at character level.
-- Balanced scoring defaults to the geometric mean of DPS and EHP, with an optional EHP floor (on by default) and optional lexicographic elemental-resistance deficit priority. Budget filters actual market links; reference combinations have no known listing price and are not a budget optimum.
-- Utility affixes with measured projectile-count/radius gains remain visible outside the scalar DPS/EHP score. Recognized debuff wording is surfaced as an unquantified configuration-dependent candidate, not a supported-effect guarantee. Players can require these stats in market links; do not invent DPS weights or multiply every projectile into same-target hits.
-- Projectile skills receive PoB2's base count of one. The selected stat set's extracted `skill_can_fire_arrows` controls Arrow keyword matching, so arrow affixes do not apply to spells or non-arrow secondary projectiles. Preserve fractional expected counts for surpassing chance. The extraction whitelist also retains projectile-count locks.
-- Item inputs accept both PoB XML text and clipboard sections. Structural separators and utility-item base names never become unsupported modifiers. Actual unmodeled effects such as charm-granted Guard remain visible and excluded from calculated survival; do not silence them as metadata.
-- Whole-item comparisons preserve listing augments by default; empty candidates inherit valid augments from each replacement position, with an explicit original/custom switch. Socket capacity and augment restrictions come from pinned PoB2 overlays through `itemAugmentInfo` and `reforgeRunes`, shared with the Equipment editor. Display assumed socketing and excluded augments; apply only the evaluated item text. Market `pseudoMods` (Sum/combined stats) are search metadata, never item modifiers.
-- WeGame magic utility items use a single canonical base line; decorated names, recovery/charge descriptions and extra requirements are retained as metadata. `ItemDraft` preserves this metadata through editing without consuming the implicit count. Existing placeholder imports need reimporting. Empty `Rune: None`/`Soul Core: None` lines never count as filled sockets.
-- `web/public/userscripts/pobr-market-copy.user.js` adds an explicit per-listing copy action on official PoE2 market search pages. It reads only the clicked item through the current market's same-origin API, preserves complete item text and excludes seller/account data. Unknown modifier groups remain unmodeled diagnostics. The Upgrade paste card links to the script and installation guide; tests cover actual script output entering real-WASM replacement comparison. See `devs/docs/architecture/20-market-copy-and-rune-boundaries.md` for rune provenance and remaining survival gaps.
-- The equipment/jewel parseability gate records rejected modifier text in session diagnostics while preserving the existing no-partial-item-injection rule. A parsed modifier does not by itself prove that every effect has a calculation consumer. Physical leech now consumes typed Life/Mana names with per-weapon attack scope and post-conversion physical hits; its panel still uses the existing strongest-single-instance approximation, not a full sustained recovery simulation.
-- `web/src/lib/trade.ts` builds category/price/required-level constrained links and excludes uniques by default (opt-in available; gems exempt). CN uses instant-buy stock (`status: any`); international uses online stock. Official pages may default to price sorting even when the query requests weight sorting; players can click a listing's Sum to sort by weight. Gem type names follow the market realm independently of UI language.
-- Group support compatibility uses `pobr_build::support::judge_group_supports` in both calculation and the WASM `supportGroupsCompatibleJson` batch API. Pass `from_gem` from the group's source marker; equipment-granted skills must reject `supportGemsOnly`. Type additions and final exclusions have one Rust implementation. TS retains search, permissive pool screening, budgets, family conflicts and lineage copy limits. JSON handshake version 6 requires this entry point and preserves `stat_set_index` / `tree_version` across decode, edit, calculation and export; group responses preserve batch order.
-- `global_cannot_crit` is retained by the curated implicit-stat extractor and maps to `NeverCrit` in the shared crit resolver. Following pinned PoB2 precedence, it sets effective/pre-effective crit chance and multiplier to zero and the average crit factor to one, before lucky/inevitable bonuses. Traced calculations retain the disabling source. The current snapshot carries this flag for Controlled Destruction and all four Elemental Storm stat sets; a support's prohibition stays local to its selected group. This fixes that mechanic, not every support downside.
-- `cannot_inflict_elemental_ailments` is retained for Elemental Focus and Elemental Armament III. Its five global `CannotIgnite` / `CannotShock` / `CannotChill` / `CannotFreeze` / `CannotElectrocute` flags suppress the calculated skill's ailment chance, damage, effect or buildup before bonuses; zero outputs retain the disabling source in ailment traces. Supports remain group-local, and separately configured enemy ailments are not removed. Zero-chance damaging ailments no longer enter the missing-rate maximum-stack fallback. The same flags are consumed for every catalog stat that carries them (`never_ignite`, `never_shock`, `never_chill`, `never_freeze`, `never_freeze_or_chill`, `active_skill_never_freeze_shock_ignite`, `cannot_inflict_status_ailments`), not only these two supports. This covers the prohibition, not damage-type-specific `Cannot` flags or every conditional support benefit.
-- Elemental Armament III's `support_elemental_armament_attack_damage_+%_final_per_elemental_ailment_on_target` uses one MORE Attack Damage term: the payload percentage times the number of configured enemy elemental ailment types (Ignited, Chilled, Frozen, Shocked, Electrocuted). Each type counts once; stack counts, Burning and Immobilised do not add types, and Frozen does not imply Chilled. The count is zero outside effective mode; explicit false inputs override imported true conditions. External target states survive the supported skill's infliction prohibition. The exact code-owned mapping applies only when the extracted catalog has no entry, preserving catalog precedence and support source/group attribution. Its former unmodeled receipt is removed. This is a source-grounded configured-target model, not automatic ailment/uptime simulation or Armament-specific Lua-oracle parity.
-- Compatible support payloads disclose the proven unmapped `lose_%_of_life_es_and_mana_when_skill_is_used` mechanic as unmodeled on-use loss of maximum Life, Mana and Energy Shield. The receipt preserves support/set/stat/value/host identity; zero, non-finite, incompatible and non-calculated-group payloads do not produce it. This is not an ordinary skill cost or a sustain simulation, so numeric outputs remain unchanged. Existing planner rules reject newly introduced limits and retain visible warnings for already-equipped baseline limits. Other unknown/control or separately consumed stats are not blanket-classified as defects; this diagnostic does not establish complete resource-loss coverage.
-- The distinct `sacrifice_%_life_on_skill_use` payload is disclosed as unmodeled on-use Life sacrifice through that same support boundary. Its canonical wording does not specify maximum versus current Life; do not alias it to maximum-resource loss or ordinary costs. Classification follows the applied raw stat, including when another support carries it, not an Extraction-specific ban. These resource receipts apply only while the raw stat remains unknown to the mapper; recognized mappings retain the existing mapped/conditional diagnostic rules.
-- Gem planning preserves the selected skill group and current gem level/quality upgrades. Ordinary supports are configuration adjustments without purchase links; active gems and lineage supports have separate market plans. Lineage comes from PoB tags, not an ID substring. Skills automatically screens all known compatible wearable supports using postfix skill-type requirements/exclusions, type additions and family overlap, then performs bounded complete-set comparisons. New unsupported effects are excluded; the default one-copy lineage limit is enforced conservatively across groups. Missing level requirements are not guessed; old catalogs retain current-gem quality probes. Equipment-granted skills cannot be purchased as gems. Plans only apply on explicit player action and preserve other groups and weapon bindings. Imported support capacity is unknown, so players can set their actual unlocked capacity.
-- Support recommendations expose a keyboard-accessible effect disclosure. The optional trade-catalog `description` is verbatim qualitative English prose from the pinned PoB2 skill definition, exported only for supports. Names and disclosure labels follow the UI language; the prose is explicitly labeled as English source text, not level/quality-specific values or evidence of modeled coverage. Missing descriptions remain visibly unavailable, including with older snapshots; do not infer effects from names, stat templates or predicted gains.
-- Support coverage observes only the calculated host's compatible, effective nonzero payload. Verified missing mechanics carry support/set/stat/value/host identity into ordinary calculation and planner diagnostics. Atziri's Impatience retains its modeled cooldown recovery, but its loss of 25% of maximum Life, Mana and Energy Shield on skill use is explicitly unmodeled; it must not be substituted with ordinary costs or negative regeneration. An equipped copy is disclosed as a baseline limit; newly introduced copies are excluded from recommendations. Disabled, incompatible and other-group payloads do not leak limits. Unknown mapping results alone are not evidence of missing mechanics because some stats have separate consumers.
-- Equipment, skill and passive planners share a persisted goal. Support exclusions persist by active-skill set and must constrain every probe and seed without changing the equipped baseline. Passive planning uses connected routes and path unions including travel cost, and bounded leaf-branch refunds with paths recomputed after refund. Preserve `unlock_constraint` from game tree data (ascendancy and prerequisite nodes), protect its prerequisites and filled sockets, and reject new unsupported effects. New travel-attribute choices are evaluated and applied atomically with nodes. Weapon-exclusive/unknown/disconnected imports disable automatic refunds. After its first search, the open passive planner refreshes from completed build edits with a 350 ms debounce; cancellation or collapse pauses it. Stale plans cannot apply, and refreshed plans never apply automatically.
-- Completed passive-route receipts retain verbatim engine-reported baseline limits and pair each excluded complete allocation/refund edit with its new unsupported effects or engine error. Excluded edits have no preview/Apply actions and are visually separate from recommendations. The engine reports a line it does not parse on an allocated passive node as `Tree:<id>: <line>`, so a route through such a node is excluded for that line even when the line could not change the objective; the remedy is a rule for the line, not hiding the exclusion. Gains do not resolve existing baseline limits; preserve the captured request, objective and data/tree identity through same-stage navigation. A missing tree annotation means the default snapshot in the captured data version, not an invented numeric version. This exposes existing diagnostics; it does not add ordinary-passive ingestion coverage.
-- Successful ordinary or joint jewel/passive application shows a localized status with the allocated/refunded node names, IDs and counts. Joint feedback also identifies the captured jewel placement and socket, or states that current jewels were kept; later candidate-list edits do not rewrite it. The acknowledgment belongs to the applied session revision, survives recommendation refresh and same-stage navigation, and is hidden while calculation is pending or failed. Applying either planner invalidates the other's prior acknowledgment. Later build edits, stage changes and reload cannot revive it, even when the same allocation is restored. It is not a retained recommendation or a persisted edit history.
-- Passive jewel allocation and deterministic transformations share the backend `tree_effects` contract. `overlay/passive_jewels.json` supplies stable class starts, ring selectors, conquerors and replacement stats; regenerate it from the pinned vendor with `pipeline/extract-passive-jewels.lua`. Radius-only points cannot extend paths until connected to a class root. Missing seed transformations remain diagnosed and protected from automatic refunds. Item calculation views filter selected variants/versions before resolving roll ranges; original text remains the export/edit source. See [jewel support and limits](jewel-search.md).
-- Changing the build, selected skill, goal or category invalidates scores and cancels ongoing analysis. Realm, league and budget edits only update links, avoiding unnecessary recalculation. Unsupported current-build modifiers are surfaced; engine/configuration limits and nonlinear interactions mean weighted sorting does not prove a global market optimum.
-- `web/public/_worker.js` discovers live leagues and retains fixed-host listing endpoints for programmatic consumers. It never accepts credentials, rejects redirects, bounds listing fetches, and surfaces verification/rate limits without retries. `web/src/lib/tradeMarket.ts` retains whole-listing import/recalculation helpers. These are separate from the player's direct-market flow. Validate the Worker in actual workerd and the player flow in Playwright with real WASM and synthetic HTTP.
+### 市集评分与搜索
 
-## Web build workspace
+`TradePanel.tsx` 在本地分析 BD，显示词条贡献并生成官方市集链接。
+玩家可分析全部已装备位置和已分配珠宝孔，也可指定位置、目标和预算。
+程序识别当前基底作为参考，可手动覆盖类别；搜索范围是该类别的全部基底。
+页面不要求导入商品 JSON，也不自动抓取商品。
 
-- `web/src/lib/buildWorkspace.ts` stores independent local builds and stages. Each stage carries a complete `SavedSession` plus unapplied editor drafts. `useBuildSession` writes the active legacy envelope and the workspace together under `pobr-build-state`; single-save imports remain supported. Do not split selection and snapshot writes across separate storage keys.
-- Shared `format: "pobr-build"` JSON contains one build with all stages and notes, excluding unapplied drafts. Import validates it, assigns fresh IDs and appends it. Full workspace backups include every build and drafts; restoring them replaces the collection after UI confirmation. PoB codes retain their existing current-session/loadout semantics.
-- Automatic import collection deduplicates equipment and jewels by exact raw text both within one import and against the existing item library, retaining separate entries for observed main-hand and offhand roles. Same-hand copies across weapon sets still merge; an import only observed in one hand does not gain eligibility for the other. Equipped copies remain in their original slots, and different rolls remain separate candidates. Reimport preserves existing library entries and backfills missing slot metadata; it does not remove pre-existing or manually saved duplicates. Reimport restores hand-role candidates lost by earlier text-only collection.
-- Stage switches remount editors and cancel panel-local planners. Delayed source-code decoding may restore metadata only for the same stage/code and must not replace newer edits. Saved stages may differ from their original PoB code, so retain conservative dirty protection when switching imported PoB loadouts.
-- The Build page deletes the current build or stage (`removeBuild` / `removeStage`) only after a confirmation that names it and, for a build, counts its stages; the data is removed from this browser for good, so the confirmation says to download a backup first. The library keeps a build and a build keeps a stage, so the button is offered only while another one exists to open; the one that followed the deleted entry opens (else the one before). Deleting is blocked while a calculation or an import runs, focus moves to the section heading because the button may be the last of its kind, and opening another stage or build (a deletion included) starts an empty undo history, so Undo can never put the stage just left over the one that opened.
-- Tabs of one browser share the library (`storage.workspace`) and each writes all of it, so a tab keeps what another tab changed instead of overwriting it (`web/src/lib/workspaceMerge.ts`, wired in `useBuildSession.ts`). Every write first compares the stored text with what the tab last read or wrote; if another tab wrote since, the two libraries are merged against the one the tab last saw. Builds and stages are matched by id; an entry only one side changed takes that side's version, an entry both changed keeps this tab's (reported as a conflict), and an entry one side deleted is gone only if the other side left it untouched since: an edit beats a deletion, so nothing the player changed is lost. The `storage` event makes the other tabs follow at once: the stored text is read again (not taken from the event, so a late event cannot bring an older library back), each tab keeps its own open build and stage, and when the stage it shows was changed or removed it is reloaded (an empty undo history, as with any stage switch). The shell says what happened in a dismissible notice (`data-sync` = `updated` / `current-updated` / `current-removed` / `conflict`). A first visit in two tabs at once keeps both starter builds. The saved library of items, jewels and skill sets (`storage.library`) is shared the same way: entries are matched by id and merged with the same rules (`mergeLibraries`), on every write and on the `storage` event, without a notice. Writers read the live library (`libraryRef`), not the render's copy, so a click between a remote change and the next render cannot write an older list.
-- The narrow workspace toolbar keeps the active stage selector readable instead of shrinking it to an icon-width control. Build and stage identity remain visible while comparing or applying upgrades.
-- Full-position trade analyses reuse only successful combination-search results for unchanged calculation inputs. Cancellation retains completed positions until the panel is left or inputs change; explicit refresh recalculates. Market-only filters do not invalidate scores.
-- Build import accepts share links from pobb.in, poe.ninja `/pob/` shares, Pastebin, Rentry, poe2db and Maxroll beside WeGame links and raw codes. The Pages Worker (`POST /api/import/build-code`, `web/public/build-import.mjs`) fetches only the raw-code URL its fixed host and path allow-list builds from the link's id: HTTPS only, no redirects, no forwarded credentials, 15 s and 1 MiB upstream limits, no caching. The code then goes through the ordinary decoder, so the main-effect ordinal, inactive loadouts and notes are kept. A failed import leaves the current build untouched; poe.ninja character pages get their own message pointing to the `/pob/` share or a copied code. Import is read-only: the app uploads nothing to these providers.
-- 来源 PoB loadout 按同名或花括号标识同时匹配天赋、装备、技能与配置组；只有一组的类别豁免匹配，配置／技能使用 XML 稳定 id。独立管理命名组前先把当前编辑写回 XML，未选中的组继续随导出保留。阶段与对比使用各阶段已物化的活动配置和技能，不另切来源 loadout。JSON/WASM 当前握手为 15。
-- 构筑页导入游戏 Build Planner v1 `.build`，同时保留旧国服 `items` 与 WeGame 导入；可准备当前阶段或各来源 loadout 的文件，再逐个点击下载，不切换阶段。格式只携带天赋、宝石、武器组与装备栏提示，提示不生成装备、药剂或珠宝；角色等级默认为 1，宝石等级／品质默认为 1/0，仅精确等级提示可恢复值，导入笔记说明缺省与未知 id。作者、链接、说明、等级区间和提示经 `plannerSource` 随本地保存和再导出保留，等级区间不参与计算；未给升华时补选职业不清空方案。导出跳过 meta 宝石、无游戏 id 的条目及无栏位映射的珠宝／肢体并警告，历史树须先转换；尚无游戏内导入验证。
-- The app release label comes from root Cargo workspace metadata at Vite build time. Data version comes from the backend manifest only after successful data initialization.
+`tradeOptimizer.ts` 按 PoB2 的首个匹配生成权重筛选可用词缀，分别在空白参考物品与当前装备上试算，
+再取平均。对当前外延词条用“移除后重算”的差值，避免重复添加已达上限的命中或抗性后低估它。
+当前物品的分数使用最终查询相同的 stat id、最多 32 项筛选和三位小数系数。
+**Sum 是市集加权分，不是整件物品的 DPS。**
 
-## Web build comparison
+当前物品只识别一部分时，仍以已识别部分的分数设置最低分：
+`max(0, ceil((score - 1e-9) * 1000) / 1000)`，并显示 `partial-current-score` 提示。
+空栏位没有当前分数，最低分为 0。“扩大搜索”可移除最低分。
+词条贡献是参考估计，不能把各行百分比相加当作购买收益。
+全部位置的组合搜索会检查基底、词缀组及前后缀数量，并按完整参考物品的换装收益排名。
+基底与词缀需求等级不超过角色等级。
 
-- Compare (`web/src/components/compare/ComparePanel.tsx`, helpers in `web/src/lib/compare.ts`) selects any two saved workspace builds or stages as A and B without changing the active workspace selection or either snapshot. Both are calculated from their saved state with the same data snapshot and `mode_effective` (`comparisonRequests`), each with its own configuration by default; a preview-only option uses A's enemy, configuration values and custom modifiers for both while B keeps its own skill selection. Comparison requests never ask for `config_context`.
-- The summary reuses the sidebar groups and formats, including main-skill DPS, and shows changed rows by default with B − A and the relative change. A missing or unbounded result is never turned into zero and a percentage from zero is unavailable; modifier-format rows show percentage-point differences, and a pierce value meaning all targets is unbounded, not a count to subtract. Main-skill rows are unavailable when a side has no resolved main skill. Character, main skill, data and tree versions and calculation diagnostics stay visible.
-- Details compare equipment per slot as an ordered diff of the raw text (repeated lines keep their counts), both physical weapon sets, flasks and limbs; skill groups by saved position with gems, level, quality, supports, form and main selection; saved configuration with unset, false and zero kept distinct; and passive allocations.
-- Copying from B to A is one explicit action per item, skill group or configuration value. It edits only A and recalculates it; B and the workspace selection stay unchanged. A copy is refused when either snapshot changed since it was shown, when A has an unapplied editor draft, or when A and B are the same stage. Item text is copied exactly, an extra B group is appended to A, and equipment-granted groups change only through their granting item. A stage changed by a copy records `sourceBackfillComplete`: reopening it still loads the source PoB code's display and export metadata, but no longer restores a configuration value the player cleared. The flag never enters calculation requests or PoB export; older snapshots keep their migration path.
-- The tree overlay (`TreeComparison.tsx`) draws both stages' saved active-set allocations on one read-only canvas: only A, only B and shared nodes differ by shape, colour and a text legend, with node and edge geometry shared with the editor (`web/src/lib/treeGeometry.ts`). Fit, zoom, pan, keyboard and a node selector inspect each side's node text with that side's calculated jewel transformations; jewels are listed per socket with their exact text, and a saved jewel in an unallocated socket is marked inactive. The overlay never allocates, refunds or applies routes.
-- Each side loads its own tree version; `Default` resolves to the data snapshot's tree. Different versions show a warning and never mark matching numeric ids as shared. Missing historical coordinates are not borrowed from the current tree: unplaceable allocated ids are listed, and node text, jewels and totals stay inspectable. The totals table counts saved passive and ascendancy allocations of the active set (class and ascendancy starts excluded, unknown ids listed), each build's calculated Strength, Dexterity and Intelligence, and saved attribute choices including unassigned ones. These are saved counts, not remaining point budgets.
+平衡目标默认取 DPS 与有效生命（EHP）的几何平均。可设 EHP 下限（默认启用），
+也可先按元素抗性缺口排序，再比较目标值。预算只过滤实际市集链接；参考组合没有价格，不能称为预算最优。
+投射物数量、范围等已测得的功能收益会另列；识别到的减益文本可以作为依赖配置、尚未量化的候选。
+玩家可在搜索中要求这些 stat，但不能虚构 DPS 权重，也不能把每颗投射物都当作同一目标的命中。
 
-## Web items: crafting and the unique catalogue
+`trade.ts` 生成类别、价格与需求等级筛选。默认排除暗金，可手动包含；宝石不受此限制。
+国服使用立即购买库存（`status: any`），国际服使用在线库存。
+官方页面可能仍按价格排序，玩家可点击商品的 Sum 改为按权重排序。
+宝石类型名跟随市场区服，与界面语言独立。
 
-- Equipment follows the global display mode or the Items page override: grouped details (default), compact tables, or game cards. The mode applies immediately to equipped items and expanded library entries, without editing a build, discarding a draft or requesting a recalculation. All layouts use the same classified lines and translations, highlight numeric values, separate implicit/enchant/rune effects, and expose the exact imported text. Prefix/suffix identity and tiers come only from classification; unidentified explicit lines stay visible without guessed affix capacity, and unique items do not acquire prefix/suffix or tier semantics. Structural fields are grouped for display, while unrecognised metadata remains visible.
-- Items → Craft item (`web/src/components/items/ItemCrafter.tsx`, `web/src/lib/itemCrafting.ts`) builds a hypothetical item from a game base: class and base, rarity, item level and quality (0–20), showing the required level and implicits. `itemCraftingCatalogJson` supplies the bases (with the class tags the `GameData` loader inherits) and the prefix and suffix mods of `base/mods.json` with domain, level, exclusive group and ordered spawn weights; eligibility comes from these game records, while display text and tier ranges come from the existing affix catalogue. An affix without a display template is counted as missing and excluded, never given invented values. Normal items take no explicit affixes, and a base limited to one prefix and one suffix (`affix_limit` 1) cannot be made rare. This is item construction, not a currency or crafting-odds simulator.
-- Items → Unique catalogue (`web/src/components/items/UniqueCatalog.tsx`, `web/src/lib/uniqueCatalog.ts`) browses the data snapshot's `uniques.json` through `uniqueCatalogJson`: search by name or modifier text, filter by equipment slot and item class, choose the version, variants, alternates and groups, and set each roll (midpoint by default, with min/mid/max presets). `uniqueItemDraftJson` resolves the choice with the engine's item parser and writes text carrying only the chosen effects and rolls; variant names and the selected headers stay as provenance, and other choices are rebuilt from the catalogue. A variant whose base cannot be resolved (`unique_base_unavailable`) is reported instead of drafted; an unknown required level stays unknown in the preview rather than becoming zero, and a draft whose base is missing from the equipment catalogue can be saved to the library but not previewed as equipment.
-- Both share `ItemDraftWorkbench`: canonical text through `normalizeItemDraftJson` (`ItemDraft` parse and `build_raw`), for crafted items the affix editor (rolls start at the midpoint estimate, with min/mid/max per line), the replacement comparison with its rune and augment choices, and the item library. Preview and library save never change the equipped build; only applying an evaluated candidate equips it. A library draft may exceed the character's requirements, while preview still rejects incompatible equipment. Crafted and catalogue drafts can also target empty equipment positions; the ordinary market-paste flow keeps its occupied-slot discovery. Being in the catalogue is not a calculation-coverage claim: unsupported effects keep their diagnostics.
+修改 BD、查看技能、目标或类别会取消分析并使分数失效。区服、赛季、预算只更新链接。
+全部位置分析只缓存计算输入未变的成功结果；取消后保留已完成位置，离页或输入变化后失效，
+明确刷新会重算。未支持的当前词条始终可见。非线性交互和引擎限制使加权排序不能证明全市场最优。
 
-## Web limbs
+### 目录与特殊来源
 
-- Transcendent limbs (slots `arm1`, `arm2`, `leg1`, `leg2`; PoB's `Arm 1/2` and `Leg 1/2`; the game's item classes `IncursionArm` / `IncursionLeg`) are a set of their own beside the equipment and the flasks: `items.limbs` when decoding, the session's `limbs`, the request's `limbs` (a whole-list override) and their own row on Items. Their lines are global modifiers attributed to the slot; attribution lists each as a `limb` entry. Saves from before limbs restore with none. WeGame's `IncursionArmRight/Left` and `IncursionLegRight/Left` are the first and second arm and leg, as in PoB.
-- Limbs have no rune sockets and no market position: the rune editor, the item optimizer and "find better" leave them out.
+`pipeline/extract-trade-catalog.lua` 从钉定的 PoB2 导出类别／基底生成权重、词缀组、
+原始范围、宝石族与逐级需求。它与 `trade_stat_map.json` 一同再生成，不能手改产物。
+手动词缀模拟用完整阶级池，检查等级与前后缀容量；无法拆解的合并 stat 保留未解析状态，不能猜空位。
+中值只是数值估计，不是打造概率。
 
-## Web weapon sets and skill selection
+特殊来源用 `search_mods`、PoB2 覆盖及 GGG `trade_crafting_sources.json` 的合金／完美与腐化精髓配方。
+复合 hash 保留导出行、数值位置与官方用词；打造、亵渎、破裂共用 explicit id，腐化用 enchant id。
+试算若改变未支持效果诊断，则拒绝该项。特殊来源能搜索，不代表它们可以按普通打造规则组合。
+再生成和评分限制见[特殊词缀](trade-special-affixes.md)。
 
-- Skills 可独立选择、新建、复制、重命名或删除本构筑的命名 SkillSet，至少保留一组；跨构筑的「可复用技能组合」库独立保留。管理前先保存当前编辑，切换只替换技能组与该集的主技能选择（`useBuildSession::applyNamedSkills`），保留角色、装备、配置和笔记；主技能的武器绑定仍决定自动切组。每集保留宝石等级、品质、形态、启用、Full DPS 数量、组武器绑定与宝石全局武器标志，替换技能集使旧编辑器／规划器失效。`SkillSet.mainSocketGroup` 从 1 起、0 为未指定，当前选择同步写入标准 `Build.mainSocketGroup`；旧文件未记忆的非活动集首次选第一组，PoB2 再保存可能丢弃扩展记忆。稀疏 id、旧平铺 Skills 和可识别来源的组／宝石扩展属性随导出保留；删除重复组后不猜不透明元数据的归属。
-- Gem catalog `additional_skill_ids` is optional display metadata for secondary effects/stat sets, not extra gem-picker entries; shared skill naming uses the parent gem's locale at display boundaries.
-- WeGame and PoB XML decoding preserve the inactive weapon pair and exclusive passive nodes in `weapon_swap`. The web session swaps only the weapon pair and exclusive nodes; shared gear, passives and jewels remain common. Empty offhands stay empty. Skills can bind set 1/2 or follow the active set. Changing the main skill selects its binding before recalculation, comparison or market analysis.
-- `toRequest` sends one materialized weapon context and names its set in `weapon_swap.active`. All groups retain their user-enabled state and original indices. Rust separates that state from weapon-set activity: all-set reservation (such as Blink) remains visible, while main-skill selection, overview rows and trigger sources use the current equipment context. An explicit main group bound to another set is unresolved until its context is selected; it never silently falls back. `runSkillMetrics` evaluates each required set with a request naming that set and includes shared groups once. Rows are independent evaluations, not an additive combat DPS total or an alternating-skill rotation. The Rust calculation API takes the weapon set in use from `weapon_swap.active` (1 or 2; another value is a bad request), so modifiers "while using Weapon Set 1/2" such as Rigwald's Ferocity follow it; a `{ pob_code }` request without `weapon_swap` uses the set the import chooses: the one its main skill is used with (a skill a weapon of that set grants, or a group bound to it), otherwise the code's active item set; the raw items view reports the same set as active. The request's `items` and `allocated_nodes` are that set's equipment and passives. `weapon_swap.alternate_items` is the other pair: a group bound to the other set takes its gem levels and quality with those weapons. The exclusive passives in `weapon_swap` reconstruct the other set for Full DPS and remain export metadata.
-- WeGame's public response lacks confirmed skill-to-set bindings; retain the equipment and ask players to assign bindings on Skills. Do not infer bindings from response order or invent them. Existing saves whose earlier import discarded alternate gear need reimporting the source.
-- A build without a main group (new builds, imports that carry none, a selection lost with its group) defaults to the enabled effect with the highest combined DPS from the independent skill overview. The default is applied once and then kept like an explicit selection, so later edits never move it; it does not mark an untouched import as edited. Nothing is selected while no effect is calculable. An imported explicit selection is never overridden; the overview marks the highest-DPS row so a mismatch is visible. Overview results and panel calculations are cached per skill: switching the inspected skill does not recompute the overview, and returning to an inspected skill reuses its result. The sidebar links to the overview. Inspecting a row atomically selects its original group, complete active-effect ordinal and weapon binding. Existing explicit selections remain intact, including utility skills and support-granted effects.
-- JSON saves and PoB export preserve both weapon pairs and exclusive passives. Skill bindings round-trip through PoB's `set1` / `set2` flags. Core XML parsing retains these bindings as metadata.
-- Imported-build exports update character identity, main skill, config and notes while retaining other loadouts and the selected sets' IDs. `decodeBuildLoadoutJson` also returns `code` with the new selection; persist it as the next export base. Item-pool renumbering applies to both equipment slots and tree jewel references. Removing a skill group shifts the selected index; removing the main group selects a remaining enabled group and its weapon binding.
-- PoB export preserves the selected enemy tier and custom modifiers through `enemyIsBoss` and native `CustomModifierBlock` elements. Only the active ConfigSet contributes; export preserves inactive ConfigSets. Import accepts legacy `customMods`, normalizes enabled blocks into one calculation input, and materializes dedicated Web controls without applying modifiers twice.
-- Schema 7 exposes ordered `custom_modifier_blocks` with title, enabled state and raw text. The editor preserves disabled and empty blocks across saves and PoB exports; only enabled blocks contribute once. An explicit empty array clears source modifiers. Legacy flat saves remain readable. `mode_effective` is a runtime calculation view, not an exported build setting. A line of an enabled block counts like the same line on an item: "+1 to Level of all Spell Skills" or "+8% to Quality of all Skills" raises the gems it names. A line the engine cannot apply is listed in `unsupported_modifiers` as `Config: <line>` while the block's other lines still count; Config shows those lines under the groups, and Build keeps them in its unsupported list. A quest reward set to "None" adds no line.
-- The Web build library separates independent builds, complete local stage snapshots and source PoB loadouts. Code and legacy-session imports default to adding a build; replacement is scoped explicitly to the current stage. Shared multi-stage files add a build, while workspace backups restore the entire library. Source loadout switching reloads imported data into the current stage and retains its discard warning.
-- Skills shows each gem's corrupted state as a checkbox next to level and quality. The gem carries `corrupted: true` only while corrupted, so an untouched gem and one toggled back save the same. The state round-trips through local saves and PoB's `<Gem corrupted>`, a WeGame import takes it from the gem's `corrupted` field (the Worker already forwards it for every item), and it decides only the modifiers that name corrupted gems ("+1 to Level of all Corrupted Skill Gems"); the level field stays the gem's whole level and is not changed by the checkbox. Below 444px the gem's name takes its own line above the controls.
-- 技能组的可选 `main_active_skill` 从 1 起，随解码、编辑、计算和导出保留。它按宝石顺序计非辅助效果，每颗宝石内部遵循 `GemEffects.GrantedEffectDisplayOrder`，包含辅助宝石授予的主动效果；宝石的主效果不保证是序号 1。目录的 `active_effect_ids` 提供该有序列表，`additional_skill_ids` 仍是可能含 stat-set 别名的显示元数据。前方效果变化时，编辑器和升级应用按身份保留所选效果；省略序号时默认第一个主动效果。
-- Schema 8 replaces `fullDpsJson` with `skillMetricsJson`, returning `skills` and `item_errors`. Each row identifies `group_index`, `active_skill_index` and `skill_id`; calculated rows expose hit/DoT/combined DPS, average hit, action rate, mana/life cost and cooldown. Utility zeroes remain visible. Unresolvable or non-finite rows are `unavailable` with null metrics and an error; one failed row does not hide other skills. Keep per-row unsupported-modifier diagnostics visible. `MainSkillInfo` includes the active-effect ordinal.
-- Skills chooses an active effect and its form separately. The effect stays the group's 1-based `main_active_skill`; the form is the supplying gem's `stat_set_index`, never an extra active effect. The gem catalog's `effect_forms` lists, per active effect, its selectable stat sets in game order with index, stable id and label (from the loaded stat-set labels; a missing label gets a localized fallback, and a set without a selectable index is not offered). Skills and Calcs share one control (`SkillFormControls`) for the inspected effect, and the choice survives export and reimport.
-- A form offers a stage input only for a stage multiplier the engine consumes: Flameblast writes `skillFlameblastStages`, the staged channelled attacks `skillChannelStages`, Incinerate `skillIncinerateStages` (catalog `stage`: `config_input`, `min`, `max`, `default`). These configuration inputs feed `FlameblastStage`, `ChannelStages` and `IncinerateStage` (`config_resolve::resolve_config`) for every skill reading that multiplier, survive XML export, and a blank input keeps the engine default. They are stage assumptions, not per-gem rotation timing; periodic storms and orbs without a stage input get no invented control.
-- Each gem carries `enabled` (omitted means true). A disabled gem stays in the editable state, local saves, PoB XML, requests and exports; the prepared calculation view (`calc_orchestrator::stage_build_view`) removes it before supports, skills, buffs, reservation, triggers and minions read the group, and active-effect ordinals count only the remaining effects. Toggling another gem keeps the inspected effect by identity, not by its old ordinal.
-- Full DPS: a group can be included (`include_in_full_dps`) with an optional `group_count`, and each gem has a fractional `count`; an empty group count uses the gem counts, and zero excludes an instance. The session sends `full_dps: true` only while some group is included, so the sidebar shows `FullDPS` / `FullDotDPS` (including a calculated zero) only then. Calcs lists each included effect's count, final contribution and diagnostics in `full_dps.skills` beside the independent skill overview, which is still never summed. Full DPS uses each included group's own weapon and passive context. New requests preserve `enabled` directly; `full_dps_enabled` remains accepted only for compatibility with older clients that masked it by the inspected set. The UI states that the total assumes the counted sources run simultaneously and is not a rotation simulation. The roll-up is cached independently of the inspected effect.
-- Skills shows a summoning gem's monster and the monster's skill (`MinionSelection.tsx`). `minionCatalogJson` returns the engine's monsters (`id`, `name`, `beast`, `spectre`, and the skills it can resolve with their 1-based `index`) and summoners (`skill_id`, `choice` `beast` / `spectre`, fixed `minion_ids`): Companion choices are beast-tagged spectres, Spectre choices the spectre definitions, and other summoners their own minion list. Names are shown with a search that keeps the selected monster visible. A gem saves the monster id as `minion` and the 1-based `minion_skill`, round-tripping through PoB XML `skillMinion` / `skillMinionSkill`; the skill list counts only effects the evaluator resolves, in its order, and changing the monster clears the skill. An unknown imported identity is kept and shown as unavailable.
-- The Blood Mage benchmark fixture explicitly selects group 5, effect 2: Doedre's Undoing's `ChaosFrogExplosionPlayer`. `DoomBlastPlayer` is effect 3 in that group, not effect 2 inferred from the build title. Both are independently inspectable. This selection fix establishes effect identity and payload calculation, not curse-expiry trigger-frequency parity.
-- Baseline output belongs to its calculation revision; pending or failed replacement calculations cannot present a previous effect's values as current. Without a valid inspected skill, the sidebar hides skill-specific offence values while retaining character resources and defence. Overview diagnostics show counts with expandable details, and refreshing after row selection preserves keyboard focus.
-- Shared page headers, card/control tokens and slot symbols live under `web/src/components/shared` and `web/src/styles`. UI verification covers every visible tab except Compare from 320px through 3440px with real WASM. Wide screens use a larger workspace and additional skill, equipment and calculation columns.
+投射物技能沿用 PoB2 的基础数量 1。所选 stat set 的 `skill_can_fire_arrows` 决定 Arrow 关键字是否匹配，
+箭矢词条不能作用于法术或非箭矢的次级投射物。超越几率保留小数期望次数；抽取白名单保留锁定数量的 stat。
 
-## Web passive tree editing
+### 完整物品、符文与复制脚本
 
-- The tree allocates in three modes, Shared, Weapon set 1 and Weapon set 2 (`crates/pobr-tree/src/allocation.rs`). Shared nodes must connect to the class start on their own; a weapon-set node may route only through shared nodes and its own set. Keystones, jewel sockets and ascendancy nodes are always shared: allocating one in a set mode, or **Make shared**, also promotes the travel nodes it needs. A refund previews and then removes every node in either set that loses its connection or unlock prerequisite, together with their attribute choices and the jewels of removed sockets. Class and ascendancy starts are protected; a mastery without an effect choice cannot be added or used as a path.
-- Ordinary points spent are the shared ordinary nodes plus the larger of the two sets' exclusive nodes; starts cost nothing, and ascendancy points count separately with a cap of eight. Each set's exclusive nodes are limited by the weapon-set allowance; weapon-set points are not extra ordinary points. Weapon Master (node 8272, "100 Passive Skill Points become Weapon Set Skill Points") raises that allowance only. The UI plans the complete campaign's 24 reward points (ordinary cap = level − 1 + 24, allowance 24 plus such conversions) and labels the assumption; per-character quest progress is not recorded. An edit may reduce an over-budget import but never worsen it.
-- `previewTreeEditJson` (JSON schema 9) validates every manual edit and hover preview: pointer, keyboard, the adjacent attribute chooser and the inspector. Request `{ request, node, mode, action, quest_points }`: `mode` 0 is shared and 1/2 a weapon set, `action` is `allocate`, `refund` or `promote`, and `quest_points` (0–24, default 24) is the earned reward count. The response `{ valid, reason, result }` carries the complete shared and per-set allocation, the added, removed and promoted nodes, the path, and `points_used` / `points_max` and `weapon_points_used` / `weapon_points_max`. The request's `allocated_nodes` must materialize the active set. The session applies a result only while it still matches the current request and mode, writing both sets and keeping the inactive set's attributes and equipment; numeric hover previews use the full validated route and refund. Attribute shortcuts cannot allocate a disconnected node.
-- 导入的断路或不支持分配保持原状并给出诊断；历史树在显式转换前只用于计算与导出。断路构筑可显式修复或退款，修改后的完整分配仍须通过连通性与点数检查；其他无效状态仍拒绝编辑。切换武器组／阶段、导出及重导入保留非活动组分配；自动规划仍不对武器组专属导入退款，手动加点不扩展其路线范围。
-- Tree 的「节点威力报告」（`nodePower::evaluateNodePower`）列出主树与当前升华未分配的核心／关键天赋，小点可选；按名称、编号、词条筛选，按节点、类型、点数、路线收益、每点收益或单点收益排序，每页 50 行。每点收益是完整路线重算差值除以新增点数，含过路属性点；单点列独立复用热力图，不代替路线收益。每目标只评估一条受支持的最短路线，不是全局最优，沿用 mastery、武器组路线与解锁前置的限制，也不保证当前剩余普通／升华点足够。每次最多 128 个待评估节点，单点请求最多 16 个，可继续评估余项；批间可取消，不能中断已运行的同步 WASM。筛选变化或折叠取消后保留已完成行；构筑、目标字段、过路属性或数据变化使结果失效，离开页面取消。无法寻路、计算失败或新增未支持效果的行不评分，基线限制保持可见；未知值始终排在已评分值之后。点名称只定位与打开详情，不加点。
+物品输入接受 PoB XML 文本和剪贴板分段。结构分隔符、功能物品基底名不是未支持词条；
+护符授予 Guard 等实际未建模效果仍显示诊断，不计入生存，不能当作元数据隐藏。
+WeGame 魔法药剂／护符只用一条标准基底行，修饰名、恢复／充能描述和额外需求保留为元数据。
+`ItemDraft` 编辑往返保留它们，也不消耗隐式词条计数。旧占位导入需重新导入。
+`Rune: None`／`Soul Core: None` 不算已填插槽；市场 `pseudoMods` 是搜索元数据，不是物品词条。
+
+粘贴完整物品后，程序识别基底和需求等级，一次比较所有兼容的已装备位置及已分配珠宝孔，
+显示 DPS、EHP 与抗性变化。玩家明确应用后才换装。
+默认保留商品增幅物；空候选可继承各替换位置有效的增幅物，并提供原始／自定义开关。
+容量和限制来自 `itemAugmentInfo`、`reforgeRunes` 使用的钉定覆盖数据，与装备编辑器共用。
+预览说明假设的插法和排除项，只应用评估过的原文。
+应用后，只有评估文本已出现在活动武器组且待处理工作结束，才显示物品名与目标栏位的确认。
+改候选、重新粘贴、另开比较或离页会清提示；确认只说明换装完成，不证明机制覆盖。
+
+`web/public/userscripts/pobr-market-copy.user.js` 在官方 PoE2 市集的每件商品旁提供主动复制操作。
+脚本只通过当前市集的同源 API 读取被点击物品，保留完整文本，不复制卖家／账号。
+未知词条组仍报告未建模。粘贴卡链接脚本与安装指南；测试将脚本输出送入真实 WASM 换装比较。
+符文来源与剩余生存限制见[架构说明 20](../devs/docs/architecture/20-market-copy-and-rune-boundaries.md)。
+
+装备／珠宝解析检查把被拒绝的文本保留在会话诊断中；不能只把可读的半件物品注入计算。
+词条能解析也不证明已有计算读取方。物理生命／魔力偷取按武器攻击范围和转换后的物理命中读取；
+面板仍近似为最强单实例，不模拟持续恢复过程。
+
+### 辅助兼容与缺失机制
+
+计算和 WASM 批量接口 `supportGroupsCompatibleJson` 共用 Rust 的 `judge_group_supports`。
+调用者传入组来源对应的 `from_gem`；物品授予技能须拒绝 `supportGemsOnly`。
+类型增加与最终排除只由 Rust 实现。TS 负责搜索、宽松初筛、预算、词族冲突与血脉份数限制。
+批量响应保持请求顺序；解码、编辑、计算和导出保留 `stat_set_index`、`tree_version`。
+当前 JSON 握手为 **16**，版本 6 开始要求该兼容接口。
+
+已支持的禁止效果与未建模效果要分开说明：
+
+| 效果 | 当前行为与边界 |
+|---|---|
+| `global_cannot_crit` → `NeverCrit` | 共用暴击解析器在幸运／必然暴击前，把有效及减伤前的暴击几率、倍率置 0，平均暴击因子置 1；追踪保留禁用来源。当前用于 Controlled Destruction 和四个 Elemental Storm stat set，辅助只影响本组。 |
+| `cannot_inflict_elemental_ailments` | Elemental Focus、Elemental Armament III 等的 `CannotIgnite`／`CannotShock`／`CannotChill`／`CannotFreeze`／`CannotElectrocute` 在加成前禁止技能的异常。也读取 `never_ignite`、`never_shock`、`never_chill`、`never_freeze`、`never_freeze_or_chill`、`active_skill_never_freeze_shock_ignite`、`cannot_inflict_status_ailments`。外部配置的敌人异常保留；零几率不触发最大层数兜底。这不涵盖所有按伤害类型的禁止或条件收益。 |
+| Elemental Armament III | `support_elemental_armament_attack_damage_+%_final_per_elemental_ailment_on_target` 形成一项 MORE 攻击伤害，数值为载荷百分比乘已配置的敌人元素异常种类数。Ignited、Chilled、Frozen、Shocked、Electrocuted 各算一次；层数、Burning、Immobilised 不额外计数，Frozen 不隐含 Chilled。非 effective 模式为 0，显式 false 覆盖导入 true。仅在抽取目录无映射时使用本地映射，保留来源／组归因；不模拟自动施加、覆盖率，也没有专项 Lua parity 结论。 |
+| `lose_%_of_life_es_and_mana_when_skill_is_used` | 报告每次使用时损失最大生命、魔力、能量护盾尚未建模，保留辅助／数值组／stat／值／主技能身份。不是普通消耗，也不转为负恢复。Atziri's Impatience 的冷却恢复已建模，25% 使用时损失仍未建模。 |
+| `sacrifice_%_life_on_skill_use` | 同样报告使用时献祭生命未建模；原文未说明最大或当前生命，不能与上一行或普通消耗合并。按原始 stat 判断，不按某颗辅助的名字封禁。 |
+
+资源损失提示只针对映射器仍未知、兼容且实际计算的非零载荷。零值、非有限值、不兼容或其他组不产生提示。
+已有映射仍按原有条件／映射诊断处理，不能把所有未知控制 stat 都判为缺失机制。
+已装备限制作为基准显示；新引入限制会被规划器排除。普通计算也会报告已确认跳过的条件／缩放数值效果，
+标明辅助、stat set、stat／值、主技能／形态，触发来源另保留自己的身份。
+例如 Fork 的分叉后惩罚未建模时不能套到所有初始命中。这些提示不是完整的机制覆盖审计。
+
+### 宝石、天赋与珠宝规划
+
+宝石规划保持所选技能组、效果和现有等级／品质升级。普通辅助是配置调整，不提供购买链接；
+主动和血脉宝石有独立市集方案。血脉身份来自 PoB 标签，不能按 id 子串猜。
+技能页先按类型要求／排除、类型增加及词族筛选，再对完整辅助搭配有限搜索。
+默认跨组保守限制同一血脉一份。未知等级需求不猜；旧目录仍可试算当前宝石品质。
+物品授予技能不能作为宝石购买。应用是明确操作，只改评估过的搭配，保留其他组和武器绑定。
+导入不能确定辅助容量，玩家需填写实际解锁数。
+当前所选辅助规划保留容量、血脉选择、筛选与兼容的已完成结果，同阶段切页可继续查看。
+离页取消运行，返回不自动重启；BD／目标变化使结果失效。换技能组、替换技能集、删组或切阶段会重置，
+不提供逐组缓存或刷新后恢复。推荐列实际等级／品质／形态，应用保持评估时的完整效果序号。
+
+辅助推荐的效果说明可用键盘展开。可选目录 `description` 是钉定 PoB2 定义中的定性英文原文，
+只为辅助导出。名称和按钮翻译，正文标为英文来源；它不是当前等级／品质数值，也不证明已计算该效果。
+缺说明时明确显示不可用，不能从名称或预测收益编造。
+
+装备、技能、天赋共用保存的目标。辅助排除项按主动技能集保存，约束每次试算与种子搭配，但不改已装备基准。
+天赋规划计算连通路线和路径并集，计入过路成本；有限退款只退叶子分支，退款后重算路线。
+保留 `unlock_constraint` 的升华／前置要求，保护前置点和已填孔，排除新增未支持效果。
+过路属性与节点一同评估和应用。武器组专属、未知或断路导入禁用自动退款。
+首次搜索后，打开的规划器在已完成编辑后延迟 350 ms 刷新；取消或折叠会暂停。旧方案不能应用，新结果不自动应用。
+
+结果保留引擎原文的基准限制，每个被排除的完整搭配／加点／退款都列明新增限制、错误或无效数值。
+排除项与手动筛选、推荐分开，无预览／应用操作。已分配节点未解析行按 `Tree:<id>: <line>` 报告；
+即使不影响目标也会阻止该路线，解决方式是补规则，不能隐藏诊断。收益不能消除基准限制。
+同阶段切页保留请求、目标及数据／树身份；树版本未标明时使用捕获数据快照的默认树，不编造版本号。
+
+普通或联合珠宝／天赋方案应用后，状态提示列出加点／退点名称、id 和数量。
+联合提示还说明实际珠宝位置，或说明保留当前珠宝。提示属于应用后的会话版本，后改候选列表不改提示。
+刷新推荐和同阶段切页保留提示；待计算／失败时隐藏。另一规划器应用、后续 BD 编辑、切阶段或刷新都会使其失效，
+即使后来恢复相同加点也不复活。它不是持久编辑历史。
+
+珠宝授权与确定性变换共用后端 `tree_effects`。
+`overlay/passive_jewels.json` 的职业起点、环选择、征服者和替换 stat 由
+`pipeline/extract-passive-jewels.lua` 再生成。仅靠范围可分配的点不能延长路线，直到连到职业根。
+未知种子变换保留诊断并保护自动退款。计算先筛选物品变体／版本，再解析范围值，编辑导出仍用原文。
+支持范围见[珠宝搜索](jewel-search.md)。
+
+装备组合最多保留 16 个候选位置，最多替换 1–10 件，默认 2 件。单件和双件完整重算，
+三件以上在 512 次内可穷举时全部计算，否则按目标有限搜索，并为可达到的件数保留评估预算。
+结果最多五套加当前装备；同一复制物品不可在一套中使用两次。最终检查符文／增幅物限制，
+一次应用评估原文，保留无关装备与非活动武器组。错误、未支持效果、无法确认增幅限制或不满足目标的方案不能应用。
+不计市场价格／总购买预算，属性需求和特殊装备条件仍需核对；药剂护符走独立比较。
+目标变化使所有替换件数上限的旧结果失效；BD、武器上下文或候选变化也须重算。
+
+联合珠宝／天赋搜索最多 8 个位置、8 点预算，每个位置及当前珠宝各最多 512 条路线，再校验最终状态。
+通往空孔的点计入预算；退款把换珠宝导致的断路点计入，最终总点数不增加。
+每套仅更换一个候选珠宝位置，限共用树；不同时换多颗珠宝，也不联合装备／天赋搜索。
+
+### HTTP 边界
+
+`web/public/_worker.js` 查询实时赛季，并为程序调用保留固定主机的商品接口。
+接口不接受凭据，拒绝重定向，限制抓取数量；验证／限流直接报告，不重试。
+`tradeMarket.ts` 保留整件商品导入／重算工具，与玩家直接打开市场的流程独立。
+Worker 修改用实际 workerd 验证；玩家流程用真实 WASM、合成 HTTP 的 Playwright 测试。
+
+<a id="web-build-workspace"></a>
+## BD、阶段与本地同步
+
+`buildWorkspace.ts` 保存独立 BD 和阶段。每个阶段含完整 `SavedSession` 与未应用草稿。
+`useBuildSession` 把活动单存档兼容结构和整个工作区写入同一个 `storage.workspace`；
+当前实际键由 `sessionStorage.ts` 给出，为 `pobr-v2-build-state`。不能把选择与快照分开写。
+
+`format: "pobr-build"` JSON 只含一个 BD 的全部阶段与笔记，不含未应用草稿。
+导入校验后分配新 id 并追加。完整工作区备份包含所有 BD 和草稿，恢复前由界面确认替换。
+PoB 码仍导出当前阶段及其来源 loadout。
+
+自动收集按完整原文去重装备／珠宝，导入内部与既有物品库都检查。
+主手和副手观察到的用途分别保留；同手跨武器组可合并，只见过一只手的物品不能自动用于另一只手。
+已装备位置不变，不同数值分开。重导入补缺失栏位信息，但不删除已有或手动重复项；
+以前因纯文本去重丢掉的手别候选可通过重导入恢复。
+
+切阶段重建编辑器并取消页面规划。延迟解码只能补同阶段、同来源码的元数据，不能覆盖较新的编辑。
+已保存阶段可能与原始 PoB 不同，切来源 loadout 仍须保留丢弃编辑提醒。
+来源 loadout 按同名或花括号标识匹配天赋、装备、技能、配置；某类别只有一组时无需匹配。
+配置／技能按 XML 稳定 id 选择。独立管理组前先把编辑写回 XML，其他组继续保留。
+阶段和对比使用已载入的活动状态，不另切来源方案。当前 JSON/WASM 握手为 16。
+
+### 删除与撤销
+
+构筑页的 `removeBuild`／`removeStage` 先确认名称；删 BD 时还显示阶段数量，并提醒先下载备份。
+只在还有另一项可打开时提供按钮，至少留一个 BD、每 BD 一个阶段。
+删除后打开下一项，没有则上一项。计算或导入期间禁用删除。
+删除后焦点移到分区标题，避免按钮消失后丢失焦点。
+
+进入另一 BD／阶段（包括删除后进入）会清空撤销／重做和天赋历史。
+全局 `undoEdit`／`redoEdit` 最多 50 步，`canUndo`／`canRedo` 控制按钮；
+导入、来源 loadout 切换也开启新历史。自动默认主技能不算编辑。
+`⌘Z`／`Ctrl Z`、`⇧⌘Z`／`Ctrl Y`、顶栏与命令菜单都可操作；文本框保留浏览器自身撤销。
+`undoTree` 独立规则见下文。历史不能恢复已删除阶段到新打开的阶段。
+
+### 多标签页同步
+
+`workspaceMerge.ts` 用本页上次见到的工作区作为基准，合并本页与存储中的版本。
+每次写入先重新读取存储，防止休眠标签页覆盖别页新内容。BD／阶段按 id 匹配：
+
+| 两边变化 | 合并结果 |
+|---|---|
+| 只有一边编辑 | 使用编辑的一边。 |
+| 两边都编辑同一阶段 | 保留本次写入方的完整阶段，并报告冲突；不逐字段合并。 |
+| 一边删除、另一边未改 | 删除。 |
+| 一边删除、另一边编辑 | 保留编辑。 |
+| 两边分别新增 | 都保留，包括同时首次打开产生的初始 BD。 |
+
+收到 `storage` 事件后再读当前存储，而不直接用事件中的旧文本。
+本页尽量保留当前 BD／阶段；它被更新或删除时重新载入并清空历史。
+外壳显示可关闭的提示，`data-sync` 为 `updated`、`current-updated`、`current-removed` 或 `conflict`。
+物品、珠宝、技能组合库（`storage.library`）用 `mergeLibraries` 按同样规则同步，但不显示通知。
+写入方读 `libraryRef` 当前值，避免远端更新与下一次渲染之间的点击写回旧列表。
+窄屏仍须让阶段选择器和 BD 身份可读，不能挤成仅容图标的控件。
+
+### 导入与版本显示
+
+分享链接经 `POST /api/import/build-code`。固定主机／路径白名单从 id 构造原始码地址，
+仅 HTTPS，不重定向，不转发凭据；上游限时 15 秒、限大小 1 MiB，不缓存。
+取回后用普通解码器，保留效果序号、非活动方案和笔记。失败不改当前 BD。
+poe.ninja 角色页提示使用 `/pob/` 或构筑码。导入只读，不向来源上传 BD。
+
+游戏 Planner v1 `.build`、旧国服和 WeGame 入口均保留。
+可准备当前阶段或所有来源 loadout 的 Planner 文件，逐个下载，不切阶段。
+装备提示不生成物品；角色默认 1 级，宝石默认 1/0，只有精确等级提示恢复宝石值。
+`plannerSource` 保留作者、链接、说明、等级区间与文本供再导出，区间不计算。
+无升华时补选职业不清空方案。导出跳过 meta、无游戏 id 或无栏位映射的条目并警告；
+历史树先转换，尚无游戏内导入验证。
+
+Vite 从根 Cargo workspace 元数据读取应用发布版本。后端成功初始化后才显示数据版本。
+静态资源缓存和 404 规则见[运行时说明](build-model.md#web-运行时与天赋树规划)。
+
+<a id="web-build-comparison"></a>
+## 构筑对比
+
+`ComparePanel.tsx`／`compare.ts` 从已保存 BD／阶段选择 A、B，不改当前选择或快照。
+两边使用同一数据快照与 `mode_effective`，默认各用自己的配置。
+可仅在预览中让两边使用 A 的敌人、配置、自定义词条和队伍；B 保留技能选择。
+请求不带 `config_context`。
+
+摘要复用侧栏分组与格式，默认只列变化，显示 B − A 和相对变化。
+缺失、非有限或无主技能的结果不补零；从零计算的百分比不可用。
+倍率格式按百分点显示差异，无限穿透不能作为普通次数相减。
+角色、主技能、数据／树版本与诊断始终可查。
+
+细节按位置比较装备原文（顺序和重复行数都保留）、两组武器、药剂与肢体；
+按保存位置比较技能等级、品质、辅助、形态与主选择；配置区分未设、false、0；天赋比较保存的分配。
+每次明确把一件物品、一个技能组或配置值从 B 复制到 A，只编辑 A 并重算。
+快照已变、A 有未应用草稿或 A/B 同阶段时拒绝复制。
+物品原样复制，B 多出的技能组追加，物品授予组只能通过授予物品修改。
+复制设置 `sourceBackfillComplete`，重开阶段仍载入来源显示／导出元数据，但不补回用户清除的配置。
+该标志不进入计算或 PoB 导出，旧存档保留迁移路径。
+
+树对比共用 `treeGeometry.ts` 的几何，只读显示 A 独有、B 独有与共有点，形状、颜色和文字图例同时区分。
+可缩放、平移、键盘定位、选节点；节点词条使用各自珠宝变换，孔内珠宝显示准确文本，未分配孔标为不生效。
+不能加点、退款或应用路线。两边分别加载树版本，Default 是数据快照默认树。
+跨版本不把相同数字 id 当共有点；历史坐标缺失时列无法定位的 id，不借当前坐标。
+总数是活动武器组已保存的普通／升华点（不计起点，未知 id 另列），不是剩余预算；
+同时列各自计算的三属性与已保存属性选择，包括尚未分配的选择。
+
+<a id="web-items-crafting-and-the-unique-catalogue"></a>
+## 装备、打造与暗金目录
+
+装备沿用全局或装备页显示模式：分组详解（默认）、紧凑表格、游戏卡片。
+已装备与展开的库物品立即切换，不改 BD、不丢草稿、不重算。
+所有布局共用分类与翻译，突出数值，区分隐式／附魔／符文，并能查看准确原文。
+前后缀身份和阶级只来自分类，未知外延词条不猜容量；暗金不套前后缀／阶级语义。
+结构字段分组，未知元数据仍显示。
+
+`ItemCrafter.tsx`／`itemCrafting.ts` 从游戏基底构造假设物品，选择类别、基底、稀有度、
+物品等级与 0–20 品质，显示需求等级和隐式词条。
+`itemCraftingCatalogJson` 提供基底及继承的类别标签，读取 `base/mods.json` 的 domain、
+等级、互斥组与有序生成权重；文本和阶级范围取已有词缀目录。
+无显示模板的词缀计为缺失并排除。普通物品不能加外延词缀；`affix_limit: 1` 的基底不能做成稀有。
+这是构造物品，不模拟通货或打造概率。
+
+`UniqueCatalog.tsx`／`uniqueCatalog.ts` 经 `uniqueCatalogJson` 浏览快照 `uniques.json`，
+按名／词条搜索，按位置／类别筛选，选择版本、变体、alternate、group 和数值（默认中值，可最小／中／最大）。
+`uniqueItemDraftJson` 用引擎解析器只写所选效果和数值，保留所选标题与变体名作来源。
+基底不可解析时报 `unique_base_unavailable`；未知需求等级保持未知。
+缺装备目录基底的草稿可存库，但不能预览装备。
+
+两者共用 `ItemDraftWorkbench` 和 `normalizeItemDraftJson`，通过 `ItemDraft`／`build_raw`
+规范文本，提供词缀数值编辑、符文选择、换装比较和物品库。预览／存库不换装，应用才换。
+草稿可高于当前角色需求，装备预览仍拒绝不兼容物品。打造／目录可比较空槽，普通市集粘贴只发现已装备位置。
+目录存在不代表效果已计算，未支持诊断照常保留。
+
+<a id="web-limbs"></a>
+## 超越肢体
+
+`arm1`、`arm2`、`leg1`、`leg2` 对应 PoB 的 `Arm 1/2`、`Leg 1/2`，游戏类别为
+`IncursionArm`／`IncursionLeg`。解码为 `items.limbs`，会话与请求用独立 `limbs` 列表整体覆盖。
+词条全局生效，来源按栏位记录，归因项类型为 `limb`。旧存档默认无肢体。
+WeGame 的 `IncursionArmRight/Left`、`IncursionLegRight/Left` 分别对应第一／第二肢体。
+肢体无符文孔、无市集位置，不进入符文编辑器、装备优化或“查找更好”。
+
+<a id="web-weapon-sets-and-skill-selection"></a>
+## 武器组、技能与导出
+
+### 命名技能集与选择身份
+
+技能页可选择、新建、复制、重命名或删除 SkillSet，至少留一组；跨 BD 的可复用技能组合库独立。
+操作前保存当前编辑，切换只替换技能与该集主选择，保留角色、装备、配置、队伍、笔记。
+主技能绑定仍决定自动切武器组。保存等级、品质、腐化、形态、启用、Full DPS 数量、组绑定与宝石全局武器标志。
+替换技能集使旧编辑器／规划器失效。
+`SkillSet.mainSocketGroup` 从 1 起，0 为未指定，活动值同步标准 `Build.mainSocketGroup`。
+旧文件未记忆的非活动集首次选第一组；PoB2 再保存可能丢掉扩展记忆。
+稀疏 id、旧平铺 Skills、可识别来源的扩展属性都保留；删除重复组后不猜不透明元数据归属。
+
+`main_active_skill` 从 1 起，按宝石顺序统计非辅助效果；每颗宝石内按
+`GemEffects.GrantedEffectDisplayOrder` 排，辅助授予的主动效果也计入。
+宝石主效果不保证为 1。宝石选择器的颜色筛选可用 Tab 到达。目录 `active_effect_ids` 是该有序列表；`additional_skill_ids`
+只是附加效果／stat-set 别名的显示元数据，不额外加入宝石选择器。
+编辑和升级应用按身份保持效果，不只记旧序号；省略时选第一个。
+
+形态另用授予宝石的 `stat_set_index`。`effect_forms` 按游戏顺序列出 index、稳定 id、标签，
+缺标签用本地化回退，没有可选 index 则不提供。技能与 Calcs 共用 `SkillFormControls`，导出重导入保留。
+只为引擎读取的层数提供输入：Flameblast → `skillFlameblastStages`／`FlameblastStage`，
+分阶段引导攻击 → `skillChannelStages`／`ChannelStages`，Incinerate → `skillIncinerateStages`／`IncinerateStage`。
+目录 `stage` 给出 `config_input`、min、max、default；空值用默认，XML 保留。
+它们是计算假设，不是每颗宝石的轮转时间；球／风暴没有层数输入时不造控件。
+
+宝石 `enabled` 省略为 true。停用仍保留编辑／存档／XML／请求，准备视图时在辅助、buff、
+保留、触发、召唤物之前移除，序号只数剩余效果。腐化只在 true 时写 `corrupted`，
+由 WeGame 字段或 PoB `<Gem corrupted>` 往返；影响要求腐化的词条，不自行改等级。
+窄于 444px 时宝石名另占一行。缺稳定 id 的插槽保留原名与等级等元数据，计算排除，
+导出 PoB 无法安全恢复名称时明确报错；PoBR JSON 仍保留。
+
+### 武器组
+
+PoB／WeGame 解码保留另一组武器与专属点，位于 `weapon_swap`。
+切组只换武器对和专属点，共用装备、天赋、珠宝不变，空副手保持空。
+技能可绑定 1／2 或跟随活动组；改主技能先选其绑定，再重算、比较和市集分析。
+WeGame 没有可靠绑定，不能按返回顺序推断，玩家需手动指定；旧导入丢过另一组的存档要重新导入。
+
+`toRequest` 将活动组的物品／天赋放入 `items`、`allocated_nodes`，并写
+`weapon_swap.active`（仅 1／2 有效）。`alternate_items` 是另一对，专属点保留以重建 Full DPS 上下文。
+所有组保留用户启用状态与原始索引，不能先按活动武器组改写 enabled。
+Rust 区分启用与武器活动：Blink 等全组保留仍可见，主技能、总览与触发来源按当前装备。
+显式主组绑定另一组时暂不可解析，不悄悄改选。
+`runSkillMetrics` 按需要逐组请求，shared 只出现一次。每行独立计算，不模拟交替轮转，也不相加。
+
+“使用武器组 1/2 时”的词条（如 Rigwald's Ferocity）按 active 生效。
+仅 `{ pob_code }` 请求按导入主技能所用组选择（授予该技能的武器或显式绑定），否则用来源活动物品组。
+原始物品视图与此一致。绑定另一组的技能按另一组武器取宝石等级／品质。
+JSON／PoB 保存两组和专属点，组绑定通过 `set1`／`set2` 往返。
+
+### 默认技能、总览与 Full DPS
+
+没有主组时，从可计算的启用效果中选综合 DPS 最高者，只自动选一次，不标记未编辑导入为脏。
+后续编辑不追着最高值切换，没有可计算效果则不选。导入的显式选择始终保留，包含功能技能和辅助授予效果。
+总览标记最高值以便发现差异。逐技能缓存不随查看选择重算；返回已看技能可复用结果。
+选择总览行同时选择原组、完整效果序号和武器绑定。
+删组会调整主索引；主组被删时选剩余启用组及其绑定。
+
+版本 8 起 `skillMetricsJson` 替代 `fullDpsJson`，返回 `skills`、`item_errors`。
+行标识为 `group_index`、`active_skill_index`、`skill_id`；可计算行含命中／持续／综合 DPS、
+平均命中、行动频率、魔力／生命消耗和冷却。功能零值保留；失败／非有限行是 unavailable，
+指标为 null 并有错误，不隐藏其他行。每行保留未支持诊断，`MainSkillInfo` 带效果序号。
+Blood Mage 基准明确选组 5 效果 2 `ChaosFrogExplosionPlayer`；`DoomBlastPlayer` 是效果 3，
+不能按标题猜。这证明效果身份与载荷，不证明诅咒到期触发频率的 parity。
+
+`include_in_full_dps` 纳入组；`group_count` 为空时用各宝石可为小数的 `count`，0 排除实例。
+只有存在纳入组时会话才请求 `full_dps: true`，此时侧栏显示 FullDPS／FullDotDPS，含算出的 0。
+Calcs 的 `full_dps.skills` 列数量、贡献与诊断；独立总览仍不求和。
+各组用自己的武器／天赋上下文，汇总缓存不依赖查看效果。
+新请求直接保留 enabled，`full_dps_enabled` 只兼容旧客户端的武器组遮罩。
+Full DPS 假设计数来源同时生效，不模拟轮转；叠层规则见[输出契约](calc-outputs.md#full-dps)。
+
+### 召唤物与导出
+
+`MinionSelection.tsx` 让召唤宝石选择怪物与技能。
+`minionCatalogJson` 返回怪物 id、name、beast、spectre、可解析技能（index 从 1 起），
+以及召唤技能的 `skill_id`、choice（beast／spectre）、固定 `minion_ids`。
+同伴选带 beast 的幽魂，幽魂选 spectre 定义，其余用自身列表；搜索保持已选怪物可见。
+宝石 `minion`、`minion_skill` 经 `skillMinion`／`skillMinionSkill` 往返，顺序只数求值器可解析效果。
+改怪物清空技能；未知导入身份保留并显示不可用。
+
+PoB 导出更新角色、主技能、配置、笔记，保留其他方案及所选组 id。
+`decodeBuildLoadoutJson` 返回新选择的 `code`，须作为后续导出底稿保存。
+物品池重编号同时更新装备栏与珠宝引用。
+敌人档位写 `enemyIsBoss`，自定义词条写原生 `CustomModifierBlock`。
+只活动 ConfigSet 参与计算，非活动组保留。旧 `customMods` 仍可导入；合并启用块时不重复应用。
+版本 7 起 `custom_modifier_blocks` 保留顺序、标题、enabled、原文；空数组明确清空。
+禁用／空块也保存，旧平铺存档仍可读。`mode_effective` 是运行时视图，不导出。
+启用块的宝石等级／品质行与物品同样生效，不能解析的行显示 `Config: <line>`，不妨碍其他行。
+任务奖励 None 不产生词条。
+
+<a id="web-passive-tree-editing"></a>
+## 天赋树编辑
+
+`pobr-tree/src/allocation.rs` 支持共用、武器组 1、武器组 2。
+共用点必须自行连到职业起点，组专属路线只能走共用和本组点。
+关键天赋、珠宝孔、升华永远共用；在组模式分配或“转为共用”时，同时提升所需过路点。
+退款先预览，再移除两组中断路或失去解锁前置的节点、属性选择和被退孔的珠宝。
+职业／升华起点受保护；没有效果选择的 mastery 不能加，也不能当路线。
+
+普通已花点数 = 共用普通点 + 两组专属点中较大者，起点免费；升华单独计，最多 8 点。
+武器组点受组额度限制，不是额外普通点。Weapon Master（8272）只提高组额度。
+界面按全部 24 剧情奖励规划并标明假设：普通上限 = 等级 − 1 + 24，组额度为 24 加转换。
+不记录逐角色任务进度。超预算导入可减少超额，不能加重。
+
+版本 9 的 `previewTreeEditJson({ request, node, mode, action, quest_points })`
+校验鼠标、键盘、属性选择与详情编辑。mode 为 0／1／2，action 为 allocate／refund／promote，
+quest_points 为 0–24、默认 24。返回 `{ valid, reason, result }`，包括完整共用／两组分配、
+新增／移除／提升点、路径、`points_used`／`points_max` 与 `weapon_points_used`／`weapon_points_max`。
+请求须已载入活动组分配；应用前再次检查请求和模式仍相同，保留另一组属性与装备。
+悬停数值用完整验证路线，属性快捷键不能加断路点。
+
+断路／不支持导入保持原状并诊断。历史树转换前仅计算／导出。
+断路可明确修复或退款，最终仍校验连通与预算，其他无效状态拒绝编辑。
+切组／阶段、导出重导入保留非活动分配。自动规划仍不能退武器组专属点。
+
+节点威力报告 `nodePower::evaluateNodePower` 列主树和当前升华未分配的核心／关键点，可选小点。
+支持名称／id／词条筛选，按类型、点数、路线收益、每点收益或单点收益排序，每页 50 行。
+路线收益完整重算，每点收益除以新增点数并含过路属性；单点列独立复用热力图。
+每目标只评估一条受支持最短路线，不保证全局最优或剩余点足够。
+每批最多 128 个路线目标，单点请求最多 16 个；批间取消，不能中断已运行的同步 WASM。
+筛选或折叠取消时保留已完成行；BD、目标、过路属性或数据变更使其失效，离页取消。
+无路、错误、新增未支持项不评分；基准限制可见，未知值排在已评分后面。点名称只定位，不加点。
 
 ### 历史天赋树转换
 
-Tree 的“转换为当前天赋树”先预览当前 Spec；勾选“全部天赋方案”则覆盖所有 Spec。
-`preview_tree_conversion_json({ code, all_specs })` 返回独立的 `code` 和逐 Spec 的
-`kept`、`dropped`（旧名、旧词条、移除原因、珠宝物品编号）、`disconnected` 与
-`disconnected_by_set`（共用、武器组 1、武器组 2）。schema 15 增加此入口。
-历史节点按编号及身份匹配；旧包无稳定 slug 时比较去除展示标记的名称与种类，
-词条数值变化不等于换节点。不可用的历史目录会报错，不能猜测转换。
-当前版本的 Spec 原文保持不变。
+“转换为当前天赋树”先预览当前 Spec（天赋方案），可勾全部方案。
+版本 15 的 `preview_tree_conversion_json({ code, all_specs })` 返回独立 code 与逐 Spec 的
+kept、dropped（旧名、词条、原因、珠宝物品编号）、disconnected、disconnected_by_set。
+节点按编号、种类与身份匹配；无稳定 slug 时比较去展示标记的名称和升华身份。
+数值变化不等于换节点，历史目录不可用则报错，当前版本 Spec 原文保持。
 
-预览、取消均不改动会话；只有确认才替换天赋状态和保存其他方案的完整 XML 底稿。
-会话版本变化后旧预览不可确认。仍存在的珠宝插槽与两组专属点保留，断路节点只报告，
-不自动退款；失效插槽的物品仍在 XML 物品池。导出及重新导入保持转换后的版本与分组。
-天赋加点、属性选择、方案应用和转换共用最多 30 步的内存撤销历史，转换撤销也恢复
-其他 Spec 和原始 XML；其他构筑编辑或切换阶段会结束该历史，避免回退之后的装备或配置。
-撤销历史不跨页面刷新持久化。
+预览／取消不改会话，确认才替换天赋与完整 XML 底稿。会话已变化则旧预览不可确认；
+切武器组会保留预览面板，但版本变化后标为过期，需重新预览。保留存续孔和两组点，断路只报告不自动退点；失效孔的珠宝留在 XML 物品池。
+导出重导入保留新版本和分组。
+天赋加点、属性选择、方案应用、转换共用最多 30 步内存历史；转换撤销恢复其他 Spec 和原始 XML。
+其他 BD 编辑或切阶段结束历史，刷新不持久化。
 
-## Web configuration
+<a id="web-configuration"></a>
+## 配置
 
-- Config 可独立选择、新建、复制、重命名或删除命名 ConfigSet，至少保留一组；操作前先保存当前编辑。切换只替换配置输入与自定义词条块，保留角色、天赋、装备、技能、队伍和笔记（`useBuildSession::applyNamedConfig`）。组使用 XML 稳定 id；非活动组、未知标量键、false／zero／text、未改值的原拼写、扩展属性和子节点随导出保留。旧平铺 Config 首次管理时转为 Default，最后一组不能删除，不存在的选择报错。
-- Config controls resolve the typed catalog defaults (`state_bool`, `state_number`, `placeholder_number`, 1-based list `index`) without materializing overrides. Fixed quest rewards default on and choice rewards default to None, matching PoB2; explicit imported false/zero values take priority. Imports show a dismissible inline configuration review note.
-- The materialized session configuration is authoritative for controls, quick summaries, configured counts and applicability, including absent keys after a Compare copy. Source inputs are only the Reset baseline: a cleared imported key shows the catalog default and Reset restores its original typed value. Stage switches and reload keep this distinction; selecting or managing a named ConfigSet saves current edits into the XML and establishes the selected set as the new Reset baseline.
-- Config opens on **Applicable to this build** and can switch to **Show all options**. Applicability tests the catalog's visibility predicates (`ConfigOptionDef::visibility`: `if_stat`, `if_skill_type`, `if_skill_flag`, `if_option`, `if_cond`, `if_mult`, …) against `config_context`: alternatives within one family are OR, families are AND (`web/src/lib/configVisibility.ts`). `if_option` dependencies resolve catalog defaults separately from saved values, so defaults are never written and explicit false and zero stay distinct. A predicate the context cannot decide leaves the row visible with "Applicability not determined"; unknown is never false, and applicable does not mean the option is modelled. Imported or explicitly set values always stay visible, marked when not applicable; filters and search never edit or drop them, and they keep round-tripping through import, edit, export and reload.
-- Rows show the catalog's static help (`tooltip`, extracted by `sync-pob-catalog` together with the `if*` metadata; dynamic tooltip callbacks are not serialized) with the raw key as secondary text. Help without a translation stays in its source language, and the UI says so.
-- For the audited data version, controls classified `not_in_game` by `devs/scripts/config_relevance.py` are omitted from both applicability views and the configured-control count. Required skills use game effect IDs/displayed names and skill-gem item names; other mechanics use conservative game-text word evidence. The same generated manifest drives `config:coverage`; regenerate it after catalog/data changes. Unknown data versions keep all controls. Excluded saved inputs remain in the advanced raw editor and round-trip unchanged.
-- `calculateBuildJson` returns `config_context` only for a request with `config_context: true`, which runs the read-tracking entry point (`calculate_with_data_session_tracked`); tracking cost up to 17.5% on the benchmark builds (Blood Mage), so ordinary recalculation stays untracked and omits the field. The context (main skill, skill types, and per predicate family true/false/unknown) is taken before breakdown queries add display-only reads. The session sends the flag only while Config is open: entering or returning to Config, edits made there and restoring straight into Config refresh it; edits after leaving do not request it. The flag is view state and never enters saved builds, planner or comparison requests, or exports.
-- Player `overridePowerCharges`, `overrideFrenzyCharges` and `overrideEnduranceCharges` feed the shared charge multiplier context as interpreted `*Charges` overrides when their use condition is enabled. Absent/zero count inputs default to maximum; disabled use retains the minimum. Explicit numeric counts floor at the minimum, retain fractions and are not upper-capped, matching the pinned PoB2 reference. Ordinary per-charge multiplier tags independently floor the consumed stack count. Raw imported Bool/Text types remain intact; numeric strings are not silently coerced into number inputs.
-- Current charge fields in native `ChargeState`, `OutputTable` and display values are `f64`; maximum/minimum fields remain `u32`. The JSON stat contract remains numeric, without a schema/data/version bump. Charge queries locally project `mode_combat` into the override tag context and restore the original condition map; do not activate unrelated Combat-tagged effects globally. This is not exhaustive charge, minion or Config-catalog coverage.
+ConfigSet 可选择、新建、复制、重命名、删除，至少留一组；操作前保存当前编辑。
+`applyNamedConfig` 只换配置与自定义块，保留角色、树、装备、技能、队伍、笔记。
+组用 XML 稳定 id，保留非活动组、未知标量、false／0／文本、未改值的原拼写、扩展属性／子节点。
+旧平铺 Config 首次管理转 Default，不存在的 id 报错。
 
-## Web party effects
+控件读取类型化默认值（state_bool、state_number、placeholder_number、从 1 起的列表 index），
+不把默认值写为覆盖。固定任务奖励默认开，选择奖励默认 None；显式导入 false／0 优先。
+导入显示可关闭的配置核对提示。
+活动会话值决定控件、摘要、计数和适用性，包含对比复制后缺失的键。
+来源只作 Reset 基准：清除键显示目录默认，还原恢复原类型值。切阶段／刷新保留区别；
+选择／管理命名组会先写 XML，并将所选组设为新还原基准。
 
-- Config's Party section adds, imports, removes and enables members. Each member retains editable `PartyMemberStats`, `Aura`, `Curse`, `Warcry Skills`, `Link Skills`, `EnemyConditions` and `EnemyMods` blocks. Member changes participate in stage saves, calculation requests and PoB exports.
-- 成员代码导入先清空其队伍输入，防止递归放大，再计算自身生命、能量护盾、魔力、三属性及已支持的光环／诅咒强度，包含技能等级、品质、辅助、装备、天赋、配置和施法者限制。可重算的同名效果替换导出值，其余沿用原始块。战吼、链接与其他无法原生重建的效果依赖导出块或手填；简单的 `parent` / `partyMembers` 资源属性缩放可用，嵌套 LIST、复杂标签和不支持的 `GlobalEffect` 字段保留并诊断，导入警告列出无法导出的项。不能去掉未知限制后变成无条件词条。队伍也随共享对比配置采用 A 的输入；PoB2 再保存可能丢弃成员边界。
-- Party effects use the existing buff pass, recipient effect modifiers, strongest-copy merging and per-caster curse limits. Sources begin with `party.<member>`. Disabling a member removes its contribution while keeping its text.
-- PoB XML writes normal `<Party><ImportedBuffs>` blocks and preserves outgoing `<ExportedBuffs>`. An ignorable `PoBRMember` extension retains individual member names, text and enabled state; PoB2 uses the combined enabled blocks. Schema 14 adds party state and member import.
+默认“适用于此 BD”，可切“显示全部”。`configVisibility.ts` 按 `config_context` 判断
+`if_stat`、`if_skill_type`、`if_skill_flag`、`if_option`、`if_cond`、`if_mult` 等。
+同类条件取 OR，不同类取 AND。`if_option` 分别解析默认与保存值，不丢 false／0。
+无法判断时保持显示并说明；适用不证明实现。导入／显式设置始终显示，筛选不编辑或丢弃值。
+静态 tooltip 随目录抽取，动态回调不序列化；未翻译说明保持原语言并标注，技术键可展开查看。
 
-## Web calculation details
+经 `config_relevance.py` 审查为 `not_in_game` 的项不显示在两种视图或已配置计数中。
+所需技能检查游戏效果 id／显示名及宝石物品名，其余使用保守的游戏文本证据。
+同一生成清单用于覆盖报告，目录／数据更新后再生成。未知数据版本保留全部项。
+被排除的保存值仍留在高级原始编辑器，导出不丢失。
 
-- Energy meta gems expose `energy_trigger` terms (storage, cost, event rate, refund and trigger rate). `SkillTriggerRate` and `TriggerRateCap` have derived explanations; `TotalDPS` and `ActionRate` include the Energy rate adjustment. Config can supply incoming blockable hits, killed-minion rate and Power, and manual Invocation uses per second; missing event sources retain the spell’s own rate with `at_own_rate: true`, a null `source`, and `missing_source` guidance in both trigger-rate explanations. Explicit zero inputs still stop triggers. Incoming hits prefer `energyIncomingHitRate`, then explicit `enemySpeed`; omitted Invocation cadence estimates immediate use subject to cooldown. The four inputs use `if_skill` gates for their stable meta-gem IDs in the Applicable view. The legacy CLI critical-hit Energy field remains for compatibility beside generic event terms.
+只有请求 `config_context: true` 时返回上下文，使用 `calculate_with_data_session_tracked`。
+上下文在分解查询前取，避免显示查询污染读取记录。普通计算不跟踪；旧 benchmark 中最高开销为 Blood Mage 17.5%。
+会话只在配置页打开、返回、编辑或直接恢复到该页时请求；离页后不请求。
+该标志不保存，不进入规划／对比或导出。
 
-- Explanations are requested, not computed on every edit. `calculateBuildJson` takes an optional `breakdowns`: omitted keeps the legacy default (`BREAKDOWN_STATS` for the player and every minion's details), `[]` computes no player or minion details, and a list computes only those ids, deduplicated first; an unknown id is a bad request. Optional `breakdown_actor` is `{kind: "player"}` or `{kind: "minion", index}` for a minion of the same response; an out-of-range index is a bad request. Values and actor identity do not depend on the requested details, and the skill-metrics and Full DPS caches ignore both fields. The session's ordinary calculation sends `breakdowns: []`; opening a row requests that one id for the selected actor. Calcs initially selects an available damage metric, or a resource without a main skill, and requests only its explanation. Its Common list filters by stable ids, not by nonzero values; All metrics, search and category selection expose the full catalog. Search does not discard the selected detail.
-- `breakdown_descriptors` is not in a WASM calculation response unless the request sets `include_descriptors`; the table depends only on the engine build, so the engine offers it once (`breakdownDescriptorsJson`, no game data needed) and `getBackend()` puts that one object into every response it returns (`web/src/api/descriptors.ts`), so components still read `calc.breakdown_descriptors`. It gives every display stat id one kind (`pobr_build::breakdown::detail::detail_kind`): `steps` (the step-by-step stats with their hand, damage, ailment and reload tables), `sources` (groups that are each one engine ModDb query: active BASE and INC rows add up, MORE multiplies with that group's precision, and groups in different units are never added into one total), `derived` (a formula over stable-id inputs with upstream pool context; enemy inputs are never additive EHP rows) or `none` (an explicit empty state). A sidebar row whose kind is not `none` opens its explanation even before the payload exists.
-- 分组侧栏全部字段可请求明细；目录中只有 `NumberOfDamagingHits` 与 `NumberOfMitigatedHits` 显示 `none`，尚无资源耗尽模拟的迭代轨迹。最大承伤展示实际求解值、敌人倍率和资源池，不重跑求解器或声称展示每次迭代；来源合计只解释查询词条，不等于含基础值的最终数值。`ChannelTimeToTrigger` 展示所选 Cast While Channelling 组从空 Energy 到首次触发的时间（总容量／持续获取速率，含增益），不改变持续 DPS、重复触发或返还模型。
-- Details are cached per calculation revision and actor (`web/src/lib/statDetails.ts`, `StatDetailCache`); a late response after an edit or build change cannot replace current details. Navigating from the sidebar clears a conflicting Calcs search. Formula and input ids are translated at the display boundary. Skill overview, attribution, minion and hand identity stay in the same Calcs workspace.
-- The response's `minions` lists every minion the calculation created (`index`, `minion_id`, `name`, `summoned_by`, `skill_id`, `level`, `dps`, `life`, `armour`, `evasion`, `energy_shield`, plus `stats`, `breakdowns` and `breakdown_descriptors`), and `main_minion_index` is the inspected skill's minion: the one created by the exact supplying gem and summoner, so duplicate summoning gems keep their own results, and a disabled main group has none. Each breakdown carries its `actor`. Each entry is one actor's snapshot, not multiplied by the summon count, and no monster skill rotation is simulated; the minion `stats` include Fire, Cold, Lightning and Chaos resistance, maximum and over-cap (`*Resist`, `*ResistMax`, `*ResistOverCap`, as for the player), with `steps` details for the four final resistances and `none` for their maximums and over-cap. Other unmodelled values are absent, not zero. The sidebar shows the main minion's level, damage, life and calculated defences in its own section, and a minion row opens that actor's breakdown; Calcs switches between the player and each minion over the same tables. Player values stay separate.
+角色 `overridePowerCharges`、`overrideFrenzyCharges`、`overrideEnduranceCharges` 只在对应使用条件启用时
+提供 `*Charges` 覆盖。缺失／0 默认最大值，禁用取最小值；显式数字至少最小值，可有小数，不截到最大。
+每球 multiplier 独立向下取整。导入 Bool／Text 保留，数字字符串不暗转数字。
+角色与召唤物控件的可见名称、无障碍名称、搜索与还原各自区分，编辑一方不改另一方；这不证明全部召唤物球效果已计算。
 
-## Web workspace
+<a id="web-party-effects"></a>
+## 队伍效果
 
-**Display settings** stores `displayMode` (`grouped`, `compact`, `game`) and optional
-`pageDisplayModes` in the existing preferences key. Each page inherits the global
-choice unless explicitly overridden; reset removes overrides. The former
-`itemDisplay` preference migrates to the global choice, while unknown modes and
-route names fall back safely. Language, theme, font and text size remain independent.
-Density changes spacing, not font sizes. The preference is presentation only: no
-build edits, new calculation inputs, remount keys or discarded editor/planner state.
-`display-modes.css` uses the existing shadcn semantic tokens; tree canvas interactions
-and form meanings stay the same, with modes applied to their details and results.
+配置页可命名、启停、删除队友，粘贴 PoB 码或直接填导出 buff 文本。
+保存 `Party` 的 Aura、Curse、Warcry Skills、Link Skills、EnemyConditions、EnemyMods 块。
+成员状态随阶段保存、计算请求和 PoB 导出。
+导入成员码前清空其自身队伍，防止递归放大，再计算资源、三属性及已支持的外放光环／诅咒，
+计入等级、品质、辅助、装备、天赋、配置与施法者限制。可重算同名效果替换导出值，其余沿用原块。
+战吼／链接等依赖导出文本或手填；只支持简单 parent／partyMembers 资源属性缩放。
+嵌套 LIST、复杂 tag、不支持的 GlobalEffect 保留并诊断，不能剥掉限制变为无条件效果。
 
-Interface copy follows the same intent in English, Simplified Chinese and Traditional
-Chinese: headings name the subject, help adds information, actions name their result,
-and instructions lead with the benefit. Write naturally for each locale instead of
-translating word for word. Game names and modifiers keep their versioned localization
-sources; presentation copy never rewrites imported text or stable calculation ids.
+效果走既有 buff pass，使用接收者缩放、最强副本合并与各施法者诅咒上限，来源以 `party.<member>` 开头。
+停用只移除贡献，保留文本。标准 `ImportedBuffs` 合并启用成员，保留 `ExportedBuffs`；
+可忽略的 `PoBRMember` 扩展保存名字、文本、enabled，PoB2 再存可能丢掉成员边界。
+版本 14 开始支持成员导入与队伍状态。
 
+<a id="web-calculation-details"></a>
+## 计算明细
 
-The app is the workspace in `web/src/app/`, with every page at the site root: `/` (Overview), `/build`, `/skills`, `/items`, `/tree`, `/config`, `/trade`, `/compare`, `/calcs`. It renders the panels in `web/src/components/*`. Saved settings keep the `pobr-v2-` key prefix they were first written with (spelled only in `lib/sessionStorage.ts`): renaming it would orphan the saves people already have. A browser that only used the first interface has its build, library and notes copied once on first open (`app/storage.ts`) and keeps the language it chose (`pobr-lang`) until preferences are saved. Keep the DOM hooks the Playwright specs rely on (`.paper-doll .doll-slot`, `.import-submit`, `#config-heading`, …) when changing a panel.
+能量 meta 技能的 `energy_trigger` 列容量、消耗、事件速率、返还与触发速率。
+`SkillTriggerRate`、`TriggerRateCap` 用公式说明，TotalDPS／ActionRate 含能量速率调整。
+配置可提供可格挡来袭命中、召唤物死亡速率／Power、Invocation 每秒使用次数。
+缺事件来源时保留法术自身速率，标 `at_own_rate: true`、`source: null` 和 missing_source，显式 0 则停止触发。
+来袭优先 energyIncomingHitRate，再用显式 enemySpeed；未设 Invocation 次数时估计冷却允许下立即使用。
+四项按稳定 meta id 的 `if_skill` 筛选。CLI 旧暴击能量字段保留兼容。
 
-- **Frame.** Top bar (identity, BD / stage selector, the workflow tabs, `⌘K`, results-panel toggle, BD library, save state, settings), an always-visible results rail on the left, the page, and an optional inspector on the right. The tabs run in three groups: Overview | Skills, Items, Tree, Config | Upgrades, Compare, Calcs. The BD library (`/build`) is an action with no tab, and the default route (`/`) is the Overview. In Chinese copy a build is "BD".
-- **Settled calculation.** `session.calc` is `null` while a recalculation is pending. the workspace reads `useSettledCalc(session, stageKey)` instead: the last good result is kept (dimmed via `data-stale`) and never carried across a build or stage, and a failed calculation is not shown as a valid baseline. The previous result is kept so the rail can show what an edit moved (`computeStatChanges`, judged by `statPolarity`: costs, drain, requirements and use times are lower-is-better; durations and areas are neutral).
-- **Page boundaries.** Calcs, Compare, Upgrades and Tree load on demand, each inside its own `Suspense`. Tree, Skills and Upgrades stay mounted (hidden) once visited, and a shared boundary would hide them and re-run their layout effects whenever another page loads for the first time, discarding the results they hold (`workspace.spec.ts` keeps this).
-- **Results rail.** Main-skill selector, enemy tier (`calcParams.enemy_tier`, global; an unset tier is the engine default, a Pinnacle boss, resolved by `app/enemy.ts` and shown the same way on the Config page; an unrecognised raw `enemyIsBoss` input reads as "custom"), a health badge from `deriveFindings` (resistances under the cap with no raised maximum, over-committed Spirit, unmet attribute requirements, hit chance under 95%, negative net recovery, unparsed lines, items that failed to parse), Combined DPS, damage by type, then the catalogue sections; fold state persists on the device. Rows with a calculation behind them open the inspector. The footer shows data version, engine version and `session.calcMs`.
-- **Inspector.** Opening a stat (`Life`, `Minion:<index>:<stat>`) loads only that stat's breakdown (`breakdowns: [stat]`, `breakdown_actor`) through a shared `StatDetailCache` keyed by the calculation, never with the baseline calculation. It docks as a third column when the shell is at least 94 rem wide (measured in rem, so the text-size preference counts) and is a right-hand sheet otherwise. `skill-metrics` still navigates to Calculations.
-- **Command palette and shortcuts.** `⌘K` / `Ctrl K` (works while typing): pages, the calculation behind any stat, main skill, enemy tier, actions. Outside text fields: `1`–`8` pages in top-bar order, `[` hides the rail, `?` lists shortcuts, `Esc` closes a docked inspector. A key the page itself used (the Tree's `1`/`2`/`3` on a hovered attribute node, `Esc` closing its own popup) is not read again as a shortcut. Pasting a PoB code or a link to a supported build host outside a text field offers to import it as a new BD (`looksLikeBuild`); it never imports without confirmation.
-- **Hover preview.** `PreviewContext` (`components/shared/PreviewContext.tsx`) is provided by the app shell. A candidate under the pointer for 120 ms is calculated on its own with `calculateBuild({ …request, breakdowns: [] })`, compared with the settled baseline and shown in the change bar; results are cached per `stateVersion`, stale ones are dropped, and the session's `busy` flag is never touched. Item-library rows, the support recommendations on Skills, and the Upgrades results (each replacement position, each combined equipment plan and each gem upgrade card) are wired; the last three already hold the engine's stats, so they use `usePreview()?.showChanges(label, changes)` (`changesFromRecords`) and calculate nothing. Other pages may call `show(...)` or `showChanges(...)`. Equipping an item pulses its slot once and allocating a tree node rings it once (never on first render, off under reduced motion).
-- **Pinned stats.** A pin on a rail row (or the inspector's "Pin to the results panel") keeps that stat in a "Pinned" group at the top of the rail, up to 12, remembered per device. The pin button has no tab stop; the keyboard pins from the inspector.
-- **Undo and redo.** `BuildSession.undoEdit` / `redoEdit` (`canUndo` / `canRedo`) step through every edit of the current stage, up to 50 steps (`⌘Z` / `Ctrl Z`, `⇧⌘Z` / `Ctrl Y`, the top bar and the palette; text fields keep the browser's own undo). Replacing the whole build (import, loadout switch, stage or BD switch) starts a new history, and the automatic default main-skill choice is not an edit. `undoTree` is unchanged.
-- **Jobs.** `JobController` / `useCancellableJob` (`app/jobs/`) run cancellable work (`useJobBeacon` lets the optimizers that keep their own `AbortController` and `<progress>` light the same progress line): starting again or cancelling drops the earlier run's late result, and every running job lights the top bar's progress line together with `session.busy`. The older optimizer panels keep their own `AbortController` and native `<progress>` + "Cancel" button.
-- **Motion.** Restrained and functional: numbers ease to new values (280 ms, one shared frame loop, at most 24 at once), changed rows wash green/red, a chip beside the headline fades after 4 s, page changes use a View Transition that leaves the frame in place, and a 2 px progress line appears after 200 ms of work. With `prefers-reduced-motion` numbers jump, nothing slides or loops, and state changes remain.
-- **Mock backend.** `VITE_POBR_BACKEND=mock` serves fixtures without WASM; its calculation scales DPS by `enemy_tier` so edits visibly move numbers. Real-engine behaviour must still be checked with the WASM build.
-- **Pages.**
-  - *Build library*: saved builds lead; the import editor is a disclosure, initially open for an empty workspace. Closing it preserves its text.
-  - *Overview*: key figures, "needs attention" (`deriveFindings`; a resistance shortfall opens Upgrades with the goal preset to "resistances first"), the skill ranking from `skillMetrics` (debounced, previous list kept), per-piece contribution from `attribution` as a cancellable job, and the numbers' trustworthiness (unparsed lines, items that failed to parse, data/engine version).
-  - *Items*: `PaperDoll` lays the slots out around a figure like the game's equipment screen (flasks and charms in a row, limbs folded until the BD has one); below 21 rem / 14 rem of container width it becomes a two-column / one-column list. The slot buttons are the existing `slotButton` output, so `.paper-doll .doll-slot` and the labels are unchanged.
-  - *Skills*: master–detail. The list shows the main-skill star, supports, weapon-set badge and a DPS bar scaled to the strongest skill (`useSkillMetrics`, `groupDps`); the selected group's gems follow the chosen display mode; mobile shows that editor before the other groups, which can be revealed with All skill groups; recommendations lead "add a support"; full-DPS inclusion, group count, minion selection and notes sit under Advanced.
-  - *Config*: a fight bar (Mapping / Boss / Pinnacle / Uber sets `enemy_tier`; see the rail bullet for the unset case), underline tabs, a leading "Relevant to this BD" group of options the engine confirmed through `config_context` (an option appears there only, so every `#config-<var>` stays unique; values of other options never promote one, so an option that depends on another via `if_option` appears in its own section when that one is set), one visible category at a time, with a sidebar selector or mobile dropdown. Search and Configured only show all matching categories; each option keeps its technical key, source and saved type under its help disclosure.
-  - *Upgrades*: three steps: goal, where the best gain is (equipment / supports / passives and "analyze all positions"), candidates (paste an item first, joint planner folded, market setup in a disclosure).
-  - *Compare*: sticky A/B pickers with a one-line summary, Stats | Items | Skills | Config | Tree tabs (the first with changes opens by default). Inactive tab panels unmount, so `[data-config-key]` and `.compare-tree-canvas` exist only while their tab is active; every "Apply B → A" is kept. Missing main-skill outputs (including CombinedDPS) remain unavailable and produce no percentage delta; a measured zero with a main skill remains zero. Missing/non-finite results are never promoted to a measured zero. Phone rows retain A, B, difference and percentage labels.
-  - *Calcs*: flat underline tabs and a master–detail stat view; the new **Ledger** tab calls `lineUsage` on demand and lists every line of the BD with its fate (unparsed, unmodelled, inactive, unread first), filters, search and a count bar. `BreakdownTable`'s export, props and markup are shared with the inspector and must stay stable.
-  - *Tree*: the canvas fills the page; search, allocation mode and heat map float above it and the point count, class, ascendancy, undo and convert below it; node details, attributes, planners and the jewel editor share one side column. The canvas component's pan, zoom and hit-testing are untouched.
-  - *Tree overlays*: what a calculation paints on the canvas (the heat map's colours, the route of a passive or joint jewel plan) belongs to that calculation. Starting another one (computing the heat map, running either planner) clears the earlier overlays, and the heat map's own colours are cleared when it recomputes. A planned route draws its new points (cold ring) and the edges that join them to the tree, and a respec also draws the refunded points (red dashed ring) and the edges the refunded branch is cut from (`plannedRoute.ts`); the plan card lists what is refunded and what replaces it without opening the route. The heat map is requested in steps of 64 candidates (`nodePower` with `window`), shows `done/total`, can be cancelled, and is abandoned when the build changes (the part already computed stays, marked stale), so other edits are never queued behind a whole run. Point counts are not what makes a plan expensive: one variant with 100 extra points costs about one recalculation; the cost is the number of candidates (at most 512 per planner search, one recalculation each).
-  - The three JSON imports in `lib/configLabels.ts`, `configVisibility.ts` and `configCopy.ts` carry `with { type: 'json' }` so Playwright can load specs that import those modules.
-  - `feature-layout.css` is kept: it carries the selected-state colours for slots, positions and weapon-set buttons and the enlarged-text wrap rules.
+`breakdowns` 省略时仍用旧默认（角色 BREAKDOWN_STATS 与全部召唤物明细），`[]` 不生成明细，
+列表先去重，只算所列 id，未知 id 报参数错。`breakdown_actor` 可为 player 或 minion/index，
+索引必须属于本次响应。数值与 actor 身份不受明细选择影响，技能总览／Full DPS 缓存忽略它们。
+普通编辑发空列表，打开一行才请求一项。Calcs 初始选可用伤害指标，无主技能则选资源。
+常用列表按稳定 id 筛，不按非零筛；全部、搜索和类别可访问完整目录，搜索不丢当前明细。
 
-## Planner experiments and hidden panels
+`breakdown_descriptors` 默认不随 WASM 响应复制，include_descriptors 才内联。
+`breakdownDescriptorsJson` 无需数据，可按引擎版本取一次；`getBackend()`／`descriptors.ts` 在页面侧附回每个响应。
+每字段明细种类为：
 
-Algorithm experiments: `POBR_UPGRADE_BENCH=1 pnpm --dir web test src/lib/upgradeBench.test.ts src/lib/supportBench.test.ts src/lib/passiveBench.test.ts` uses real WASM and synthetic fixtures, comparing finite exhaustive references and apply/recalculate equality. Benchmarks are opt-in and write ignored `.cache` reports. See `devs/docs/architecture/18-upgrade-guidance.md` for results and limits; no bounded planner is a proof of a global or budget optimum.
+| 种类 | 含义 |
+|---|---|
+| steps | 逐步计算，含手别、伤害、异常、装填表。 |
+| sources | 每组对应一次真实 ModDb 查询；BASE／INC 相加、MORE 按该组精度相乘，不同单位不合计。 |
+| derived | 公式及稳定 id 输入，复用实际计算资源池；敌人输入不能当可相加的 EHP 词条。 |
+| none | 明确显示无明细。 |
 
-Build references are temporarily hidden from navigation and saved-tab restoration. The panel, matching logic, fixtures and catalog generation remain for future player-shared builds. Its UI workflows are explicitly skipped while hidden; the saved-tab fallback and matching unit tests remain active. See `devs/docs/architecture/21-build-reference-guidance.md` for the retained behavior and `docs/reference-sources-and-engine-review.md` for source/API findings and the current PoB2 alignment review.
+分组侧栏可请求全部字段；其中 NumberOfDamagingHits、NumberOfMitigatedHits 尚无耗尽模拟的迭代轨迹。
+目录中部分原始 EHP 字段也为 none，见[防御输出](calc-outputs.md#ehp-与防御字段)。
+最大承伤展示已求解值、敌人倍率与资源池，不重跑求解器。来源合计不等于含基础值的最终值。
+`ChannelTimeToTrigger` 是 Cast While Channelling 从空 Energy 到首次触发的秒数（总容量／持续获取速率），
+不改持续 DPS、重复触发或返还模型。
+
+`StatDetailCache` 按计算版本与 actor 缓存，旧请求不能覆盖新编辑。侧栏打开 Calcs 时清除冲突搜索。
+公式与输入 id 仅显示时翻译。技能总览、归因、召唤物与手别保持同一工作区。
+`minions` 列实际创建的每个召唤物：index、minion_id、name、summoned_by、skill_id、level、dps、
+life、armour、evasion、energy_shield、stats、breakdowns、breakdown_descriptors。
+`main_minion_index` 按准确宝石和召唤来源定位，同名宝石各保留结果，禁用主组则无主召唤物。
+每项是一个实例，不乘数量，不模拟怪物技能轮转。火冰电混沌抗性、上限、超上限用角色同名 id；
+四种最终抗性有 steps，上限／超上限为 none。未建模值缺省，不补 0。
+侧栏主召唤物和 Calcs 切换各用对应 actor，角色值不混入。
+
+<a id="web-workspace"></a>
+## 页面外壳与显示设置
+
+应用源码在 `web/src/app/`。路由为 `/`（概览）、`/build`、`/skills`、`/items`、`/tree`、
+`/config`、`/trade`、`/compare`、`/calcs`，没有单独 `/v2` 界面或重定向。
+顶栏按“概览｜技能、装备、天赋、配置｜提升、对比、计算”导航；BD 库是管理操作，不占页签。
+本地存储保留 `pobr-v2-` 前缀，唯一拼写入口是 `sessionStorage.ts`。
+`app/storage.ts` 首次复制旧 build/library/notes 并保留原始备份，完成标记最后写；旧键之后只读。
+只有旧界面的浏览器沿用 `pobr-lang`，直到保存偏好。Playwright 使用的 DOM 标记需保留，
+如 `.paper-doll .doll-slot`、`.import-submit`、`#config-heading`。
+
+显示偏好保存 `displayMode`（grouped／compact／game）与 `pageDisplayModes`。
+每页默认沿用全局，可覆盖，重置删除覆盖。旧 itemDisplay 迁移为全局选择；未知模式／路由安全回退。
+语言、主题、字体、字号独立；密度只改间距，不改字号。
+这是显示偏好，不产生计算输入，不改 BD、不重建编辑器或丢规划状态。
+`display-modes.css` 使用 shadcn 语义颜色，树画布操作与表单含义不变，模式只组织明细／结果。
+三语界面按同样意图自然表述；游戏名／词条沿用版本字典，不改原文与稳定 id。
+
+### 外壳交互
+
+- 顶栏包含身份、BD／阶段选择、导航、命令菜单、结果栏开关、BD 管理、保存状态和设置。
+  结果栏在左，页面居中，右侧可开属性详情。窄屏用抽屉；宽度至少 94rem 才固定详情列，字号会影响阈值。
+- `session.calc` 在重算中为空；`useSettledCalc` 保留同阶段最后成功值并以 data-stale 淡化，不跨 BD／阶段，
+  失败不作为有效基准。`computeStatChanges`／`statPolarity` 判断变化：消耗、流失、需求、用时越低越好，范围／持续时间中性。
+- Calcs、Compare、Upgrades、Tree 按需加载，各自有 Suspense。已访问的 Tree／Skills／Upgrades 保持挂载并隐藏，
+  离页取消计算／画布追踪，切阶段重建；不能因另一页首次加载而丢结果。
+- 结果栏含主技能、全局敌人档位、问题提示、Combined DPS、伤害分类和目录分区，折叠状态按设备保存。
+  未设敌人档位按引擎默认 Pinnacle，未知原始 enemyIsBoss 标自定义。
+  问题含普通抗性未达上限、精魄超用、属性不足、命中低于 95%、净恢复为负、未解析行、物品失败。
+  页脚显示数据／引擎版本及 calcMs。
+- 属性 `Life` 或 `Minion:<index>:<stat>` 只请求该 actor 的一项明细，不重算基准。
+  `skill-metrics` 仍进入计算页。最多固定 12 项到结果栏，按设备保存；固定按钮不占 Tab，键盘从详情固定。
+- `⌘K`／`Ctrl K` 输入中也可打开命令。文本框外 `1`–`8` 按顶栏顺序切页，`[` 隐藏结果栏，`?` 看快捷键，
+  Esc 关固定详情。页面已处理的键不再作为全局键，如树悬停属性点的 1/2/3、弹窗 Esc。
+  文本框外粘贴受支持构筑码／链接只提议新建 BD，确认前不导入。
+- 悬停候选 120ms 后，PreviewContext 独立请求空 breakdowns，与有效基准比较，不改 busy。
+  按 stateVersion 缓存并丢旧结果。物品库会试算；辅助推荐、提升中的物品／组合／宝石已有结果，
+  用 showChanges／changesFromRecords 直接展示，不重复计算。换装轻闪栏位，加点轻圈节点，首次渲染不触发。
+- JobController／useCancellableJob 丢弃取消或被替代任务的迟到结果。
+  useJobBeacon 让原有 AbortController／progress 优化器共用顶栏进度，保留各面板取消按钮。
+- 数字 280ms 过渡，共用动画循环，最多 24 项；变化色、标题旁变化提示（4s）、页面 View Transition 和
+  工作超过 200ms 后出现的 2px 进度线只说明状态。减少动态效果设置下数值直接更新，不滑动／循环。
+- VITE_POBR_BACKEND=mock 使用 fixture，DPS 随 enemy_tier 变化以便界面测试，不证明真实引擎行为。
+
+### 各页面的布局
+
+| 页面 | 必须保持的行为 |
+|---|---|
+| BD 库 | 保存的 BD 优先；空工作区默认展开导入，折叠后保留输入。 |
+| 概览 | 关键值、deriveFindings 提示、技能排名（延迟刷新时保留列表）、可取消归因、诊断和版本。抗性不足可带“抗性优先”目标打开提升。 |
+| 装备 | PaperDoll 人形栏位，药剂／护符一行；没有肢体时折叠。容器小于 21rem／14rem 改双列／单列，保留 slotButton 输出与标签。 |
+| 技能 | 左列表、右编辑；星标主技能、辅助、组标记及相对最强技能的 DPS 条。手机先显示当前编辑器，可展开其他组。Full DPS、数量、召唤物与笔记放高级区。 |
+| 配置 | 场景条切 Mapping／Boss／Pinnacle／Uber；一次显示一类，窄屏下拉。读取确认的选项集中显示一次，保证 `#config-<var>` 唯一；设置过程中不因关联性移动分组。if_option 依赖项仍在自身类别。搜索／仅已配置可跨类别显示。 |
+| 提升 | 目标、收益位置、候选三步。候选先提供完整物品粘贴，联合规划和市集设置折叠。 |
+| 对比 | A/B 选择固定，默认打开首个有差异的 Stats／Items／Skills／Config／Tree 页签。非活动面板卸载，保留每个 Apply B → A。手机仍显示 A、B、差值和百分比标签。 |
+| 计算 | 平面页签与属性列表／明细。Ledger 按需调用 lineUsage，列每行状态，未解析／未建模／未生效／未读优先，可筛选搜索并显示数量。BreakdownTable 与详情栏共用。 |
+| 天赋 | 画布占工作区，搜索／模式／热力图在上，点数／职业／升华／撤销／转换在下，节点／属性／规划／珠宝共用侧栏，不改画布平移缩放和命中判定。 |
+
+热力图和规划路线属于生成它的那次计算。启动热力图或任一规划器会清掉先前覆盖；热力图重算也清旧颜色。
+计划新增点用冷色圈与连线，退款点用红色虚线圈及被切断边，卡片直接列退款和替换点。
+热力图用 `nodePower.window` 每批 64，显示 done/total，批间让出 Worker，可取消；BD 变更中止并标部分结果过期。
+成本主要是候选数量（规划最多 512 次完整重算），不是一次方案新增多少点。
+`configLabels.ts`、`configVisibility.ts`、`configCopy.ts` 的 JSON 导入保留 `with { type: 'json' }` 供 Playwright。
+`feature-layout.css` 保留选中色和大字号换行规则。共用控件、页头和槽符号在 shared／styles。
+现有真实 WASM 尺寸验证覆盖除 Compare 外的可见页，宽度 320–3440px；这不是所有布局都已穷尽验证。
+
+<a id="planner-experiments-and-hidden-panels"></a>
+## 规划器实验与隐藏面板
+
+按需实验命令为
+`POBR_UPGRADE_BENCH=1 pnpm --dir web test src/lib/upgradeBench.test.ts src/lib/supportBench.test.ts src/lib/passiveBench.test.ts`。
+它用真实 WASM 和合成数据，对照有限穷举与应用后重算一致性，报告写入忽略的 `.cache`。
+结果和范围见[架构说明 18](../devs/docs/architecture/18-upgrade-guidance.md)；有限搜索不证明全局或预算最优。
+
+参考 BD 暂不进入导航或恢复页签。面板、匹配逻辑、fixture、目录生成仍保留，相关 UI 测试明确跳过，
+旧页签回退与匹配单测继续运行。见[架构说明 21](../devs/docs/architecture/21-build-reference-guidance.md)
+和[来源与引擎审查记录](reference-sources-and-engine-review.md)。

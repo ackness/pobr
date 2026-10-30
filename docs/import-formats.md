@@ -1,66 +1,95 @@
-# Build import formats
+# 构筑导入格式
 
-A BD arrives in one of several shapes. They describe the same character but not
-the same things: what one carries another leaves out, and some write the same
-field differently. This page records, per format, what the importer reads, what
-it has to infer, and what it reports instead of guessing. Treat it as a checklist
-when a build "looks wrong after import".
+PoBR 把不同来源的角色方案（BD）转换为同一个 `Build`。各格式携带的信息不同。
+导入成功只表示文件可读，不表示装备、技能和战斗条件都完整，也不表示所有效果都能计算。
+本文说明各格式读到了什么、缺少什么，以及导入器怎样报告问题。
 
-All imports end in the same `Build`, and every loss is written down: a skipped
-item or slot in `ImportReport`, an unreadable line in `unsupported_modifiers`,
-and for WeGame a line starting `[import]` in the build's notes.
+导入器把跳过的物品和无模型栏位写入 `ImportReport`，把计算不能应用的词条保留在
+`unsupported_modifier_texts`（Web 响应为 `unsupported_modifiers`）。WeGame 的额外提示写入
+笔记，以 `[import]` 开头。存档与导出规则见[构筑模型](build-model.md)。
 
-## Where each format is decided
+<a id="where-each-format-is-decided"></a>
+## 怎样识别格式
 
-| Input | Decided by | Reader |
+| 输入 | 识别条件 | 读取入口 |
 |---|---|---|
-| PoB2 code (base64 zlib XML) | the text decodes as a code | `pobr-build` `decode_pob_code` + `xml_build` |
-| Share link (`pobb.in`, `poe.ninja/poe2/pob`, `pastebin.com`, `rentry.co`, `poe2db.tw/pob`, `maxroll.gg/poe2/pob`) | the host, in `web/public/build-import.mjs` | the page fetches the raw code through the Pages worker, then the PoB2 reader runs. A poe.ninja *profile* page is refused (`ninja_profile`): it has no code |
-| WeGame share link | `www.wegame.com.cn/helper/poe2/#/share/<key>` | the worker fetches five profile calls and returns one JSON; `build_api/wegame.rs` reads it |
-| WeGame share JSON | the object has `format` | same |
-| Game Build Planner v1 `.build` | no `items`, and a `name` | `build_api/planner_file.rs` |
-| Older China-server `.build` | an `items` array | `build_api/decode.rs` |
-| PoBR save / workspace | `version` + `state`/`workspace` | the session loader; never passed to a permissive decoder |
+| PoB2 分享码 | 可解码为压缩的 XML（zlib + URL-safe Base64） | `pobr-build` 的 `decode_pob_code`、`xml_build` |
+| 分享链接 | `web/public/build-import.mjs` 的固定站点与路径白名单 | Pages Worker 取回原始码，再交给普通 PoB2 解码器 |
+| WeGame 分享链接 | `www.wegame.com.cn/helper/poe2/#/share/<key>` | Worker 合并五个公开接口，`build_api/wegame.rs` 读取结果 |
+| WeGame 分享 JSON | 对象含 `format` 字段，再校验格式、版本和角色 | 同上 |
+| 游戏 Build Planner v1 `.build` | 没有 `items`，有 `name`，再校验 Planner 结构 | `build_api/planner_file.rs` |
+| 旧国服 `.build` | 有 `items`，且 `passives`、`items`、`skills` 都是数组 | `build_api/decode.rs` |
+| PoBR 单阶段存档、全部阶段文件、工作区备份 | 由存档加载器校验版本及 `state`／`workspace` 等结构 | 从文件导入，不交给 `.build` 解码器猜测 |
 
-## What each one carries
+分享链接支持 `pobb.in`、`poe.ninja/poe2/pob`、`pastebin.com`、`rentry.co`、
+`poe2db.tw/pob` 和 `maxroll.gg/poe2/pob`。poe.ninja 的角色页面没有可直接读取的构筑码；
+导入器会报 `ninja_profile`，提示改用 `/pob/` 分享链接或复制构筑码。
 
-| | PoB2 code (incl. poe.ninja, pobb.in) | WeGame share | Planner v1 `.build` | Older CN `.build` |
+无关 JSON、缺少数组或数组类型错误的旧 `.build` 会在修改当前 BD、阶段或物品库前失败。
+数组可以为空。PoBR 存档和备份请使用“从文件导入”。
+
+<a id="what-each-one-carries"></a>
+## 各格式携带什么
+
+| 内容 | PoB2 码（含上述分享站点） | WeGame 分享 | Planner v1 `.build` | 旧国服 `.build` |
 |---|---|---|---|---|
-| Character level, class, ascendancy | yes | yes (level, `class_name` is the ascendancy for ascended characters) | level only if given in a hint, default 1 | level from `Lv.N` in the name |
-| Passive tree | node ids, tree version, weapon-set split, attribute choices | node hashes, weapon-set `specialisations`, attribute choices in `skill_overrides` | game node ids, weapon sets | node slugs (mapped to ids) |
-| Equipment | full item text with variants, ranges, runes | per slot JSON, text rebuilt by the importer | hints only, no items generated | no base name or rarity: built as RARE with a placeholder |
-| Skills and supports | skill ids, level, quality, enabled, `mainActiveSkill`, sets | zh-CN names only; level and quality as property strings | game gem ids, defaults level 1 / quality 0 unless the exact `Level N, Q% Quality` hint is present | gem ids, default level 20 / quality 0 |
-| Main skill | yes | **no** | no | no |
-| Skills granted by passives or items | marked: `<Skill source="Tree:<node>">`, item grants, `enableGlobal` | **not marked**: they appear as ordinary groups | not carried | not carried |
-| Weapon-set binding of skills | yes | **no** | weapon sets only | second set skipped |
-| Config (enemy, charges, toggles) | yes, plus reference `PlayerStat` values | quest rewards only | no | no |
-| Jewels in the tree | socket node id | socket named `PassiveJewel_<n>` | no | no |
+| 角色等级、职业、升华 | 有 | 有；升华角色的 `class_name` 是升华名 | 等级固定默认 1；可带升华 | 等级从名称的 `Lv.N` 读取，可带升华 |
+| 天赋树 | 节点 id、树版本、武器组专属点、属性选择 | 节点 hash、`specialisations` 专属点、`skill_overrides` 属性选择 | 游戏节点 id、武器组；识别属性提示 | 节点 slug，再映射为 id |
+| 装备 | 完整文本，含变体、数值范围和符文 | 按栏位的 JSON，由导入器重建文本 | 只有提示，不生成物品 | 缺少基底名和稀有度，以占位基底和 RARE 构造 |
+| 技能和辅助 | 稳定 id、等级、品质、启用状态、效果序号、配置组 | 只有简中名；等级和品质来自属性字符串 | 游戏宝石 id；默认 1 级、0 品质，精确的 `Level N, Q% Quality` 提示可恢复数值 | 宝石 id；默认 20 级、0 品质 |
+| 主技能选择 | 有 | 无 | 无 | 无 |
+| 天赋／物品授予技能的来源 | `Tree:<node>`、物品来源、`enableGlobal` 等 | 无来源标记，作为普通组出现 | 不携带 | 不携带 |
+| 技能的武器组绑定 | 有 | 无 | 可携带 | 跳过第二组 |
+| 战斗配置和参考值 | 有配置及 `PlayerStat` 等参考值 | 只有任务奖励 | 无 | 无 |
+| 树上珠宝 | 插槽节点 id | `PassiveJewel_<n>` 或节点 id | 无 | 无 |
 
-## Per-field differences the importer normalises
+<a id="per-field-differences-the-importer-normalises"></a>
+## 导入器怎样处理写法差异
 
+<a id="wegame"></a>
 ### WeGame
 
-- **Gem level and quality.** A value can carry a note: `20(最高等级)` is level 20 at the gem's maximum, `+20%` is 20. The leading number is read. (A whole-string parse once lost the level and calculated the skill at 1.)
-- **Gem names.** Only the zh-CN name arrives, so a gem is found by `(name, is_support)`. Some names are shared: Herald of Ice also names the version Coming Calamity grants, and Unleash names a support and active skills. Item-only effects (the catalog's item-granted variants and `Unique`-prefixed effects) yield to the ordinary gem when both exist; a name that is still ambiguous (the default weapon attacks) is reported as `Unknown or ambiguous gem`.
-- **Jewel sockets.** `PassiveJewel_<n>` is row `n` of the game's `PassiveJewelSlots` table, which points at the passive that is the socket (`data/overlay-common/passive_jewel_slots.json`). A tree node id works too. A row the tree has no socket for is reported and the jewel is left out.
-- **Bonded (羁绊) rune lines** are class-only and not applied; the notes say so.
-- **Quest rewards** arrive as text lines; the progress counter `N Broken Boss Faces` is recognised as not modelled.
-- **Main skill, skill sets, weapon-set bindings** are not provided. The importer selects the first group, so check the main skill before reading any DPS (the notes carry a reminder). In the one real share checked while writing this, the first group was the default Bow Shot, not the build's skill.
+- 等级、品质可以带注释。导入器读取开头的数字：`20(最高等级)` 为 20 级，`+20%` 为 20 品质。
+- 宝石按“简中名、是否辅助”查找。同名的普通宝石优先于物品授予的变体和 `Unique` 前缀效果。
+  例如 Coming Calamity 授予的版本不会挤掉普通 Herald of Ice。同名仍有歧义时
+  （如各武器的默认攻击），导入器报告 `Unknown or ambiguous gem`。
+- `PassiveJewel_<n>` 的 `n` 是游戏 `PassiveJewelSlots` 表的行号，不是插槽顺序或节点号。
+  该行经 `Slot` 指向天赋节点；映射位于 `data/overlay-common/passive_jewel_slots.json`。
+  找不到有效插槽时报告问题，不放入该珠宝。
+- 羁绊（`Bonded`）符文行依赖特定职业，导入器不应用，并在笔记中说明。
+- 任务奖励按文本读取；`N Broken Boss Faces` 是进度计数，标为未建模，不作为普通词条。
+- 来源没有主技能、命名技能集和技能武器组绑定。解码器先取第一组，并写入提醒。
+  用户应在技能页确认主技能与武器组。曾核对的一个真实分享首组是默认 Bow Shot，并非主要输出技能。
 
-### PoB2 codes (poe.ninja and the others)
+完整的请求边界和限制见 [WeGame 导入](wegame-import.md)。
 
-- **Granted skills are listed twice.** A character exported from the game lists a skill a passive or an item grants as an ordinary group too (first in its set, at the granted level, with its supports). That group is the granted skill: the tree's own `Tree:` group yields to it and the main group follows. A grant whose skill the build does not list (or lists disabled) is still reported as an unsupported line.
-- **Reference values.** `<PlayerStat>` is the exporter's result at export time, possibly from an older exporter version. It is a comparison point, not the truth (`mise run diagnose`, `compare`).
-- **Mod text.** Variant tags, range rolls, `Implicits: N` (a serialised boundary that includes enchant and rune lines) and wrapped game text are all read from the item text; a line that is only partly understood is kept as text and reported, not applied.
+<a id="pob2-codes-poeninja-and-the-others"></a>
+### PoB2 码
 
-### Planner v1 and older CN `.build`
+从游戏导出的授予技能有时又列为普通技能组。导入器按组首效果、授予等级等信息识别它，
+让已有组优先于自动生成的 `Tree:` 组，避免重复。找不到对应启用组的授予技能仍保留未支持提示。
 
-- Equipment is a hint at best; generated items are not invented. Gem levels are defaults, so the numbers are a shape, not a result.
+`<PlayerStat>` 是导出工具在导出时得到的参考值，可能来自旧版工具。
+它不是游戏真值；差异排查用 `mise run diagnose` 和 `mise run compare`。
 
-## Rules for a new or changed format
+物品读取支持变体标签、范围数值及换行的游戏词条。`Implicits: N` 是序列化后的行边界，
+其中的附魔和符文行也消耗计数。导入器仍把它们放入 `enchant_texts`，再正确区分后面的外延词条。
+只理解一部分的词条行保留原文并报告，不应用已读懂的片段。
 
-1. Normalise at the edge: the reader turns a platform's spelling into the engine's (`20(最高等级)` → 20) so nothing downstream knows the platform.
-2. Prefer the game's own table over a guess. When a format uses an id the repo cannot resolve, export the table (as was done for `PassiveJewelSlots`, with its export hash recorded) before inventing a heuristic.
-3. Say what was lost. Anything the reader cannot place goes to the notes or `ImportReport`; a silent drop is a bug.
-4. A fix for one share needs a synthetic test that covers the shape, not the account: the WeGame tests in `apps/pobr-wasm/tests/wegame.rs` use invented payloads (no account ids, share tokens or player exports).
-5. When a format lacks something the others carry (the main skill, the grant markers), do not copy a default that looks plausible into the result; ask for it, or report it.
+<a id="planner-v1-and-older-cn-build"></a>
+### Planner v1 与旧国服 `.build`
+
+Planner 的装备栏只保存建议，不能还原装备、药剂或珠宝。旧国服格式虽能重建词条，
+也缺少可靠的基底和稀有度。两者的宝石等级还可能使用默认值；导入后应补齐信息再看数值。
+Planner 保留作者、链接、说明、等级区间和提示，供本地保存与再导出；等级区间不参与计算。
+导出会跳过 meta 宝石、无游戏映射的条目和无栏位映射的珠宝／肢体，并列出警告。
+历史树要先转换为当前树。格式测试使用合成数据，尚未在游戏内验证导入。
+
+<a id="rules-for-a-new-or-changed-format"></a>
+## 新增或修改导入格式时
+
+1. 在导入器中统一平台写法，例如把 `20(最高等级)` 转为 20，不让后续计算识别平台格式。
+2. 优先使用游戏表。无法解析 id 时先补表和来源记录，不猜映射关系。
+3. 无法放入模型的内容写入笔记或 `ImportReport`，不能静默丢失。
+4. 回归测试覆盖数据形状，使用合成数据。`apps/pobr-wasm/tests/wegame.rs` 不包含账号、分享令牌或玩家导出。
+5. 来源没有主技能或授予标记时明确提示，不能把默认选择说成来源提供的信息。
