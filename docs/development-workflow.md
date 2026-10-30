@@ -1,4 +1,6 @@
-# Development and CI workflow
+<a id="development-and-ci-workflow"></a>
+
+# 开发与 CI 工作流
 
 开发命令是根 `mise.toml` 中的 mise task：`mise tasks` 列出全部，`mise run <task> [参数]` 执行，
 任务名之后的参数原样传递。它们转发到 `devs/scripts/driver.sh`（`.claude/skills/run-pobr/driver.sh` 保留为转发入口）；没有安装 mise 时可直接运行
@@ -24,7 +26,7 @@ Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/R
 不替换系统 LuaJIT。运行 Rust vendor 抽取时可设
 `POBR_LUAJIT="$(bash devs/scripts/pob2-luajit.sh resolve)"`；oracle runner 自动选择兼容的缓存。
 首次 `build-wasm` 还会编译一次 `wasm-bindgen-cli`，wasm-pack 会缓存。
-`mise run status` 查看环境就绪态。已有可用环境时跳过 bootstrap 和安装，
+`mise run status` 查看工具和数据是否就绪。已有可用环境时跳过 bootstrap 和安装，
 不为日常测试更新工具链或重复构建整个 workspace。
 
 ## 日常命令
@@ -85,21 +87,21 @@ Web 纯 TS/CSS 修改复用 WASM，运行相关 Vitest 与 typecheck；`pnpm --d
 看到 `Blocking waiting for file lock` 时检查已有进程，不再叠加 Cargo。
 
 新 worktree 的 `target/` 为空，第一次测试会重新编译全部依赖。`mise run warm <已编译的 checkout>`
-用写时复制（APFS clonefile 或 Linux reflink）克隆那份 `target/debug`，不额外占用空间，也不共享可写目录；
-之后只有路径不同的 workspace crate 重新编译。已有 `target/debug` 时不覆盖。
+用写时复制（APFS clonefile 或 Linux reflink）克隆那份 `target/debug`。开始时复用文件数据块，修改时才占用新块，
+两份目录仍可独立写入。之后只有路径不同的 workspace crate 重新编译。已有 `target/debug` 时不覆盖。
 分析工具（`gap`、`gaps`、`triage`、`compare`、`config:coverage`、`skills:sweep`、`output-coverage.py`）
-默认各自编译 CLI，并把台账与 PoB2 结果缓存在本 checkout 的 `.cache/`。设 `POBR_BIN=<checkout>/target/debug/pobr`
+默认会准备 CLI，并把台账与 PoB2 结果缓存在本 checkout 的 `.cache/`。设 `POBR_BIN=<checkout>/target/debug/pobr`
 使用已编译的 CLI，设 `POBR_CACHE_DIR=<checkout>/.cache` 共用已有缓存（台账按程序内容、PoB2 结果按构筑码与 vendor 失效）。
 `POBR_BIN` 运行的是那份 checkout 的引擎，用于读取游戏数据、台账和 PoB2 结果，不用于测量本 worktree 的改动。
 
 根 `Cargo.toml` 的 dev/test 对第三方依赖使用 `opt-level = 3`，workspace crate 保持未优化。
 游戏数据快照加载包含 JSON 解析和 SHA-256 校验；依赖未优化时历史测量一次加载约 3.4 s，
-优化后约 0.65 s。依赖只编译一次并长期缓存，不影响日常修改 workspace 代码后的重编译速度。
+优化后约 0.65 s。依赖首次编译后可长期复用；日常只改 workspace 源码时，无需重新优化依赖。
 `pobr-build --test skills` 的当前快照由套件内一个只读 `LazyLock` 共享，修改数据的测试显式 clone，
 合成数据 fixture 保持独立。新增此套件测试复用 `crate::test_data()`，不要重复加载同一版本。
 日常测试和完整门禁统一使用 `cargo test`，套件内复用快照，同时覆盖 doctest；无需额外安装测试 runner。
-规则生成测试的确定性、覆盖率计数和已提交 golden 共用两次生成；物品往返的 corpus 大小、
-语义断言和 byte-diff 报告共用一次遍历，均保留原有断言。
+规则生成测试用同两次生成结果检查确定性、覆盖率和已提交 golden。
+物品往返测试在同一次语料遍历中检查数量、语义并报告字节差异，不删减原有断言。
 
 根 `Cargo.toml` 的 dev/test 还使用 `debug = "line-tables-only"` 和 `incremental = false`。
 前者保留回溯行号，后者停止积累每个 crate 的增量对象图和中间文件。
@@ -135,10 +137,10 @@ dist、WASM 包和同步数据。不编译、不删除、不跟随符号链接�
 这只影响 WASM 发布构建，不改变日常 dev/test 缓存。固定 locale TOML 在主机构建时解析成字符串表，
 TOML parser 不进入 WASM；不要在运行时重新解析这些静态文件。
 
-WASM 构建凭据校验 Rust 源码、嵌入语言文件、共享配置 JSON、manifest/lockfile、JSON 契约、
+WASM 构建记录校验 Rust 源码、嵌入语言文件、共享配置 JSON、manifest/lockfile、JSON 契约、
 工具版本、相关环境/Cargo 配置，以及绑定哈希与实际 schema。
 输入和产物未变时跳过 wasm-pack，保留原编译 commit 与 dirty 标记；
-缺失、损坏或旧凭据需要一次正常重建。普通 UI、文档和运行时游戏数据修改不会触发 WASM 重编译；
+缺失、损坏或旧格式记录需要一次正常重建。普通 UI、文档和运行时游戏数据修改不会触发 WASM 重编译；
 `data/overlay-common/*_config_options.json` 是可能内嵌的配置文件族，修改或新增会重新构建，
 无需另行登记缓存输入；
 游戏数据变化仍需 `pnpm --dir web sync-data`。
@@ -161,21 +163,25 @@ mise run full
 
 合并、发版、工具链/features/依赖变更或影响范围不明的核心修改需要完整门禁，
 优先使用 CI。`ci` 测试已推送的远端分支/tag，不推送本地代码；必须核对结果的提交 SHA，
-请求成功不等于验证通过。普通 push 不触发 CI；PR 只自动运行下述轻量检查，不是完整门禁。
+请求成功不等于验证通过。普通功能分支 push 不触发 CI；master push 会运行轻量检查，版本 tag 会运行完整门禁。
+PR 默认只运行下述轻量检查，发版 PR 例外。
 
 [pr.yml](../.github/workflows/pr.yml) 在每个指向 master 的 PR 上运行，包括 fork 提交的 PR：
 
 | 改动范围 | 自动检查 |
 |----------|----------|
-| Rust 源码、`data/`、`examples/`、脚本或工作流 | fmt、workspace Clippy、脚本测试、`mise run smoke`、`parity no_regression` |
+| Rust 源码、`data/`、`examples/`、开发脚本 / 工作流、Rust 工具链配置或 Web API 类型 | fmt、workspace Clippy、脚本测试、`mise run smoke`、生成请求契约检查、`parity no_regression` |
 | `web/` | `pnpm typecheck` 与 Vitest 单测（不构建 WASM，不跑 E2E） |
-| 仅文档 | 不运行 |
+| 仅根目录或 `docs/` 文档 | 不运行 Rust / Web 检查；仍有变更检测任务 |
 | 发版 PR（根 `Cargo.toml` 的 workspace 版本变化） | 版本元数据校验和 [ci.yml](../.github/workflows/ci.yml) 的完整 Rust / Web 门禁；它已覆盖上面的轻量检查，后者不再重复运行 |
+
+`web/` 下的文件按目录匹配，因此只改 Web README 也会触发 Web 轻量检查。
+具体路径条件以 [pr.yml](../.github/workflows/pr.yml) 为准。
 
 fork PR 使用只读令牌且读不到仓库密钥；首次贡献者的运行需要维护者在 Actions 页批准。
 轻量检查通过不代表完整门禁通过：定向套件、Worker、真实 WASM 和 E2E 仍按改动在本地或手动 CI 验证。
 
-同一套轻量检查在 master 的每次推送后再跑一次：合并后的问题当场暴露，构建缓存也存到 master 名下。
+同一套轻量检查在 master 的每次推送后再跑一次：合并后的问题当场暴露，构建缓存也按 master 保存。
 PR 只能读取自己和 master 的缓存，所以这次运行决定了新 PR 是否从零编译。
 完整门禁另外每晚在 master 上定时运行一次（19:00 UTC；过去 24 小时没有新提交则跳过），
 把轻量检查漏掉的回归提前到第二天发现，而不是攒到发版。
@@ -203,7 +209,7 @@ Linux CI 的 WASM 构建设置 `BINARYEN_CORES=1`，让 wasm-pack 下载的 Bina
 推送 `v*` tag 后由 CI 完成门禁，通过后发布 WASM 资产；Cloudflare 部署仅接受 `v0.*` tag。
 不要为同一个 tag 再请求相同的 CI，
 也不要求本地先跑一次 full。CI 依赖缓存可能过期，不能保证每次都是热构建。
-发布包与凭据规则见 [WASM 打包说明](wasm-package.md)。
+发布包与构建记录规则见 [WASM 打包说明](wasm-package.md)。
 
 ## 处理外部 PR
 
@@ -251,10 +257,11 @@ cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown TotalDPS,
 `triage` 是数值差异的第一步，一次对照基准组与 tuned 组的全部构筑，`diagnose` / `compare` 只用于它解释不了的单个构筑；
 流程见 [AGENTS.md](../AGENTS.md#accuracy-workflow) 和[维护者指南的“排查数值差异”](maintainer-guide.md#排查数值差异诊断闭环)，
 各工具输出的含义见[诊断工具与逐行台账](diagnostics.md)。
-`triage` 与 `compare` 需要 vendor 与 LuaJIT，PoB2 的结果按构筑码缓存在 `.cache/pob2-oracle/`，两者共用；`lookup` 只读
-当前数据版本（`POBR_DATA_ROOT` / `POBR_DATA_VERSION` / `CURRENT`，或 `--version`），二者都只用 Python 标准库。
+`triage` 与 `compare` 需要 vendor 与 LuaJIT，PoB2 的结果按构筑码缓存在 `.cache/pob2-oracle/`，两者共用。`lookup` 只读
+当前数据版本（`POBR_DATA_ROOT` / `POBR_DATA_VERSION` / `CURRENT`，或 `--version`）。
+这些 Python 脚本本身只用标准库；完整对照仍需要 CLI、vendor 和 LuaJIT。
 
-`--timings` 显示编译单元耗时与依赖等待。使用重定向后的 target 时按 Cargo 输出定位报告。
+`--timings` 显示编译单元耗时与依赖等待。改变 target 目录后按 Cargo 输出定位报告。
 不要为了测量清缓存。测试目标由 `mise run targets` 读取当前 manifest；深层 tests 文件通常是
 汇总套件的模块，并非每个文件都会单独链接。
 
@@ -269,11 +276,25 @@ cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakdown TotalDPS,
 - 本地 `.agents/skills/run-pobr/driver.sh` 转发到同一驱动（`.agents` 按仓库规则不入库）。`smoke` 是环境检查，已有相关测试通过后无需再补一次。
 - `python3 devs/scripts/test_workflows.py`：检查脚本失败传递、临时目录清理与工作区保护，以及 `compare` 的来源对齐和 `lookup` 的查找（用合成数据），不调用真实 Cargo。
 - `devs/scripts/regen-check.sh` 在临时副本中重生成，保留 `overlay-common` 与 examples 语料，不写入或恢复工作区文件。
-- `node web/scripts/bench-calc.mjs` measures uncached real-WASM calculation and 16-item batches on three committed builds. It requires built WASM and synced data; `--reference <old-pkg>` additionally checks complete output equality for behavior-preserving optimizations. Reports stay under ignored `.cache/`; this benchmark is opt-in, outside the CI gate.
-- Native timing and equivalence over the committed builds (`diagnostics` feature, opt-in, outside the CI gate; run with `--release -- --ignored --nocapture`):
-  - `cargo test -p pobr-wasm --features diagnostics --test perf_uncached` times the recalculation paths of the web frontend (full recalculation, the follow-up that opens one stat's explanation, per-skill metrics) on three builds. Every sample carries its own extra modifier, so no response or calculation cache can answer it. `perf_timing` repeats one request and measures cache hits.
-  - `cargo test -p pobr-wasm --features diagnostics --test perf_corpus` runs every committed build code except the holdout set (about 320) through the same paths and prints a hash of each response with its time. `POBR_CORPUS_OUT=<file>` saves the table; run it on two builds of the engine and compare the hash columns to show a change preserved every response byte for byte (`POBR_CORPUS_ONLY` / `POBR_CORPUS_LIMIT` / `POBR_CORPUS_DUMP=<dir>` narrow it and keep the responses; `POBR_CORPUS_INLINE_DESCRIPTORS=1` asks for the detail-kind table inline, so a table saved before it became opt-in still compares byte for byte). A hash that changes between two runs of the *same* binary means the engine is not deterministic for that build; fix that before trusting a comparison.
-  - A profile of these runs (`perf record --call-graph dwarf`) is where the engine's time goes; the sourcing stages and the special-rule matcher, not the formulas, dominated before the changes recorded in git history.
-- `pnpm --dir web package-wasm`：将已准备 WASM 与同步数据打包到 `.cache/wasm-release/`；`pnpm --dir web smoke-wasm-package` 解压后执行真实计算。`build-wasm` 校验源码、工具链、构建设置和产物凭据，未变时直接复用；`pnpm --dir web build-wasm --force` 显式重建但不清 Cargo 缓存。打包继续校验源码/绑定指纹、实际 schema 和数据快照，来源 commit 保留编译时值。脚本改动运行 `node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`；发布流程见 [WASM 打包说明](wasm-package.md)。tag CI 在 Rust/Web 门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
+- `node web/scripts/bench-calc.mjs`：用三个已提交构筑测真实 WASM 的非缓存计算和 16 项批量计算。
+  需要先构建 WASM、同步数据；`--reference <old-pkg>` 另检查完整输出是否一致，适用于保持行为的优化。
+  报告保存在 gitignore 的 `.cache/`，只按需运行，不属于 CI 门禁。
+- 本机性能与响应一致性检查需要 `diagnostics` feature，按需运行，不属于 CI 门禁。
+  下列命令均加 `--release -- --ignored --nocapture`：
+  - `cargo test -p pobr-wasm --features diagnostics --test perf_uncached`：三个构筑的 Web 重算路径，
+    包括完整重算、打开属性解释的后续请求和逐技能摘要。每个样本增加不同词条，避免响应或计算缓存代答。
+    `perf_timing` 则重复同一请求，测缓存命中。
+  - `cargo test -p pobr-wasm --features diagnostics --test perf_corpus`：默认遍历四个集合：
+    `demo-bd-test/builds`、`wasm-benchmark/builds`、`reference-builds/tuned/builds`、
+    `reference-builds/ninja-top10-2026-10-26/builds`。在本次文档核对的 `81f8733e` 上共 325 个，不包括 holdout。它测无明细重算、默认明细、单属性明细、逐技能摘要和天赋变体，输出响应哈希与耗时。
+    `POBR_CORPUS_OUT=<file>` 保存表；在两个引擎版本上比较哈希，可检查响应是否逐字节保持一致。
+    `POBR_CORPUS_ONLY` / `POBR_CORPUS_LIMIT` 缩小范围，`POBR_CORPUS_DIRS` 可替换默认集合，
+    `POBR_CORPUS_DUMP=<dir>` 保存用于定位差异的响应。
+    `POBR_CORPUS_STAGED=1` 使用浏览器分阶段注入字节、解析后释放原文件的方式加载数据，哈希应不变。
+    `POBR_CORPUS_INLINE_DESCRIPTORS=1` 把明细类型表放回响应，便于与它改为可选前的记录比较。
+    同一个二进制重复运行却得到不同哈希时，先修复该构筑的非确定性，再比较版本。
+  - `perf record --call-graph dwarf` 可查看上述运行的时间花在哪里。
+    git 历史中记录的早期分析主要耗时在来源整理和特殊规则匹配，不是公式；不能当作当前版本的新测量。
+- `pnpm --dir web package-wasm`：将已准备 WASM 与同步数据打包到 `.cache/wasm-release/`；`pnpm --dir web smoke-wasm-package` 解压后执行真实计算。`build-wasm` 校验源码、工具链、构建设置和产物记录，未变时直接复用；`pnpm --dir web build-wasm --force` 显式重建但不清 Cargo 缓存。打包继续校验源码 / 绑定指纹、实际 schema 和数据快照，来源 commit 保留编译时值。脚本改动运行 `node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`；发布流程见 [WASM 打包说明](wasm-package.md)。tag CI 在 Rust/Web 门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
 - `cd web && pnpm test:worker`：在实际 workerd 运行时测试 Worker，使用合成上游响应，无外网依赖。E2E 失败的截图与 trace 由 CI 上传为 `playwright-failure`。
 - 计划发版时，在功能 PR 中一并更新 workspace 版本。本地完成相关验证后合并，再推送一次 tag；tag CI 完成全量门禁，通过后自动部署，无需在 master 额外手动运行同一套 CI。

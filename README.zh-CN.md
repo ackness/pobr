@@ -2,7 +2,7 @@
 
 [English](README.md) | **简体中文**
 
-[![PoBR：轻量、快速的流放之路 2 在线 BD 规划工具。浏览器即开即用，比较装备与辅助宝石，规划天赋升级。基于 Rust 与 WebAssembly，开源免费。](.assets/pobr-preview-zh-CN.jpg)](https://pobr-web.pages.dev)
+[![PoBR：轻量、快速的流放之路 2 在线 BD 规划工具。浏览器即开即用，比较装备与辅助宝石，规划天赋升级。基于 Rust 与 WebAssembly，开源免费。](.assets/pobr-preview-zh-CN.jpg)](https://pobr.win)
 
 **换装备、搭辅助宝石、点天赋之前，先看看你的 BD 会提升多少。**
 
@@ -10,21 +10,24 @@ PoBR（Path of Building in Rust）是一款开源的 **流放之路 2（Path of 
 在线 BD 规划工具**。在浏览器里导入 PoB2 代码或 WeGame 分享链接，查看伤害与防御，
 比较下一步升级。使用 Rust + WebAssembly 计算，支持简体中文、繁体中文和英文界面。
 
-**[打开在线版](https://pobr-web.pages.dev)** ·
+**[打开在线版](https://pobr.win)** ·
+[Pages 备用地址](https://pobr-web.pages.dev) ·
 [更新记录](https://github.com/ackness/pobr/releases) ·
 [反馈问题](https://github.com/ackness/pobr/issues)
 
 > **测试版：** 已可体验，游戏机制覆盖仍不完整。比较升级收益前，请核对未支持效果和战斗配置。
 
-## 看看下一步能怎么提升
+## 现在的界面
 
-| 装备总览与实时角色属性 | 换装比较与词缀阶级模拟 |
+| 装备总览与实时角色属性 | 完整物品换装比较 |
 | --- | --- |
-| [![装备布局与实时伤害、防御、抗性数据](docs/screenshots/equipment.png)](docs/screenshots/equipment.png) | [![市集戒指与两个已装备戒指的换装比较，支持前后缀编辑](docs/screenshots/item-comparison.png)](docs/screenshots/item-comparison.png) |
-| **排除不想使用的辅助宝石，比较完整搭配** | **在天赋树上预览连通的升级路线** |
-| [![辅助宝石排除列表与搭配的 DPS、EHP 提升](docs/screenshots/support-upgrades.png)](docs/screenshots/support-upgrades.png) | [![高亮已分配节点和建议升级路线的天赋树](docs/screenshots/passive-tree.png)](docs/screenshots/passive-tree.png) |
+| [![装备布局与实时伤害、防御、抗性数据](docs/screenshots/equipment.png)](docs/screenshots/equipment.png) | [![示例戒指与两个已装备戒指的换装比较](docs/screenshots/item-comparison.png)](docs/screenshots/item-comparison.png) |
+| **查看技能组与辅助宝石** | **查看天赋树与已分配节点** |
+| [![当前技能组与辅助宝石操作](docs/screenshots/support-upgrades.png)](docs/screenshots/support-upgrades.png) | [![当前天赋树与已分配节点](docs/screenshots/passive-tree.png)](docs/screenshots/passive-tree.png) |
 
-点击图片可查看大图。截图使用虚构的演示角色，不是 BD 攻略。
+截图于 2026 年 10 月 30 日通过 ego-lite 从线上 v0.0.43 拍摄，使用公开回归样本，
+界面语言为简体中文。它们展示功能，不是 BD 推荐。
+[截图来源和更多页面](docs/screenshots/README.md)。
 
 ## 你可以用它做什么
 
@@ -37,17 +40,28 @@ PoBR（Path of Building in Rust）是一款开源的 **流放之路 2（Path of 
 
 ## 用你的 BD 试一试
 
-1. [打开在线版](https://pobr-web.pages.dev)，无需安装桌面软件。
-2. 在「构筑」页粘贴 **PoB2 代码**或 **WeGame PoE2 分享链接**并导入；也可以导入
-   `.build` 文件，或新建角色。
+1. [打开在线版](https://pobr.win)，点击顶栏「BD 库」；空白概览也可以点击「导入或创建 BD」。
+2. 粘贴 **PoB2 代码**或 **WeGame PoE2 分享链接**并导入。也支持其他已适配的构筑分享链接、
+   游戏内规划器 / 国服的 `.build` 文件，或新建角色。
 3. 核对主技能、战斗配置与未支持效果，再到「提升」「技能」或「天赋树」比较改动。
 
+网站首页就是工作台。「设置」可以切换游戏风格、分组、紧凑三种显示方式，为单独页面指定样式，
+或调整语言、主题和间距。显示方式不改变计算结果。
+
 修改会自动保存在当前浏览器中，不同构筑和阶段分别保留。导入构筑代码默认新增构筑；
-只有想覆盖当前阶段时，才将导入位置选为当前阶段。
+只有想覆盖当前阶段时，才将导入位置选为当前阶段。同一域名下的标签页会协调 BD 库的变化。
+**`pobr.win` 和 `pobr-web.pages.dev` 的本地存档各自独立**，换域名时请用文件迁移。
 
 你可以用 JSON 分享一个构筑及其全部阶段，也可以导出 PoB2 代码。下载工作区备份可保留
 所有构筑、阶段和编辑器中尚未应用的草稿，方便留存或换设备。恢复工作区备份会在确认后
 替换整个本地构筑集合，恢复其他备份前请先备份当前工作区。
+
+不同导入格式携带的信息不同，游戏内规划器文件不包含完整角色装备。
+[查看各导入格式能保留什么](docs/import-formats.md)。
+
+PoBR 计算的是选定条件下的 BD，不会重放一场战斗，也不会自动推算技能循环、触发历史或增益覆盖率。
+EHP 取决于配置的敌人和来伤，不能保证角色在任何场景下都能存活。
+[机制与计算假设](docs/mechanics/README.md)说明了具体边界。
 
 PoBR 是以 [Path of Building for PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)
 为计算参考的独立实现，尚未覆盖全部 PoB2 机制。推荐范围限于已计算的候选与已建模效果；
@@ -102,86 +116,25 @@ PR 会自动运行轻量检查，贡献要求见 [CONTRIBUTING.md](CONTRIBUTING.
 Rust **edition 2024**；应用与工具使用 workspace 发布版本，与 `v0.x` tag 同步。
 七个内部库保持独立版本，避免应用版本更新使整个库依赖链重新编译。
 
-## 架构一览
-
-数据流：
-
-```
-GGG .dat 导出
-  └─(pobr-data-adapter 离线适配)→ data/<version>/*.json
-       └─(pobr-gamedata 运行时 loader)→ 上层计算
-```
-
-计算流水线（`pobr-core`）：
-
-```
-modifier 文本 → 解析 → ModDb → 聚合查询 → calc
-  → OutputTable + Breakdown + TraceGraph + AttributionReport
-```
-
-标准属性聚合公式：`(base + Σbase) * (1 + Σinc/100) * Π(1 + more/100)`。
-
-游戏数据文件读取收口在 `pobr-gamedata`；生产 `pobr-data` / `pobr-core` 不读取数据文件，测试规则加载是显式的测试 feature。应用与工具负责网络及文件输入输出。`pobr-data` 是项目内依赖的底层。
-
-核心源码按 `model/`、`parse/`、`rules/`、`ingest/`、`aggregate/`、`calc/`、`attribute/` 分层。Web 的 `api/wasmBackend.ts` 通过 `apps/pobr-wasm/src/build_api/` JSON 契约调用计算；启动时 fetch 数据并注入内存 `GameData` / `BuildData`。
-
-## Workspace 结构
-
-13 个 member：`crates/` 为 7 个库、`apps/` 为 2 个应用入口、`tools/` 含 4 个 Rust 工具。React / TypeScript 的 `web/` 与 Lua oracle 不在 Cargo workspace 中。
-
-| Crate | 职责 |
-|-------|------|
-| `crates/pobr-data` | 纯数据定义（catalog schema：BaseItem/Stat/Mod/SkillGem/PassiveNode…），零逻辑零 I/O，所有 crate 的底层依赖 |
-| `crates/pobr-core` | Modifier 解析 / 存储 / 聚合 + 计算引擎 + source-level 归因 + 来源接入（item/passive/gem/flask）。零 I/O |
-| `crates/pobr-gamedata` | 运行时数据 loader——数据系统里唯一持有文件 I/O 的层，按域懒加载 + i18n 边车 |
-| `crates/pobr-i18n` | 语言包加载 / fallback / 显示文本映射（`en-US` canonical + `zh-TW`） |
-| `crates/pobr-tree` | 天赋树拓扑、allocated node mod 收集、范围珠宝 |
-| `crates/pobr-build` | Build 状态、PoB Build Code 编解码、导入识别、`calc_orchestrator/` + `CalcCache`、Build 对比。**parity 测试主战场** |
-| `crates/pobr-item` | raw item 文本的全保真编辑态解析 + 逆向序列化（BuildRaw 往返） |
-| `apps/pobr-cli` | CLI：`calculate` / `calculate-build` / `parse-mod` / `explain-mod` / `decode-code` / `encode-code` |
-| `apps/pobr-wasm` | Web/WASM API：纯 Rust JSON 入出，`wasm` feature 下 wasm-bindgen 绑定 |
-| `tools/pobr-data-adapter` | 数据管线适配器：GGG `.dat` 导出 → 反范式化为入库 JSON |
-| `tools/sync-pob-catalog` | 从 PoB 核心 Lua 抽取属性 catalog、parity 检查 / diff |
-| `tools/lint-i18n` | 语言包完整性检查 |
-| `tools/precompile-mods` | mod-parser 规则离线预编译 / 覆盖率报表 |
-
-（`tools/pob2-oracle` 是非 workspace 成员的纯 Lua wrapper，用于 dump PoB2 侧计算分解做逐分量对照。）
-
-## Parity 体系（回归基准）
-
-PoB2 兼容是硬回归门禁，三层校验互补：
-
-1. **`crates/pobr-build/tests/parity/ninja_parity.rs`** — 遍历真实 PoB2 build + 黄金数值，零硬编码对比全部职业 / 技能；`parity_no_regression` 断言聚合命中率不低于基线。
-2. **golden / dual-run 套件** — `tests/parity/` 与 `tests/dualrun/` 下的用例钉住中间值与配置语义，由 `parity.rs` / `dualrun.rs` 汇总运行。
-3. **`tools/pob2-oracle`** — 需要逐分量定位偏差时，从 vendored PoB2 直接 dump Lua 侧计算分解对照。
-
-```bash
-mise run test build parity parity_baseline_report -- --ignored --nocapture
-```
-
-`vendor/PathOfBuilding-PoE2/` 是完整检出，公式核对直接读本地 Lua，不必上网找。
-
 ## 文档
 
-- [`AGENTS.md`](AGENTS.md) — 贡献指南与开发入口。
-- [Maintainer guide](docs/maintainer-guide.md) — 验证分层、命令速查、关键约定（贡献前必读）。
-- [`agent-docs/`](agent-docs/) — PoE2（0.5.0）机制中文参考（伤害类型 / 抗性 / 护甲闪避 ES / 暴击 / 异常 / 计算顺序等）。
-- [`web/README.md`](web/README.md) — Web 前端。
+| 想做什么 | 从这里开始 |
+| --- | --- |
+| 找文档 | [文档目录](docs/README.md) |
+| 参与开发 | [贡献要求](CONTRIBUTING.md)、[AGENTS.md](AGENTS.md)、[维护者指南](docs/maintainer-guide.md) |
+| 添加或修复词条 | [词条指南](docs/contributing-mods.md)、[常见改动步骤](docs/recipes.md) |
+| 使用 JSON 接口 | [构筑模型](docs/build-model.md)、[计算输出](docs/calc-outputs.md)、[WASM 包](docs/wasm-package.md) |
+| 核对机制 | [机制约定](docs/mechanics/README.md)、[有意保留的差异](docs/pob2-differences.md) |
 
-`devs/docs/architecture/` 下的 18–21 是功能契约。当前结构以代码、维护者指南和相关测试为准。
-
-## 约定
-
-- **计算内部只用稳定 ID**（`StatId` / `ModName` / `SourceId`），显示文本走 `pobr-i18n`。
-- **不可变 / 确定性**：calc 函数对 `Env` 的可变写入集中在 `perform`，并行化只在只读快照阶段展开。
-- 涉及计算 / Modifier / parser 的改动需补对应集成测试或 golden fixture；改变 crate 边界 / 聚合语义 / catalog / parity 规则时同步更新架构文档。
+工作区包含七个 Rust 库、两个应用和四个 Rust 工具，React / TypeScript 界面在 `web/`。
+维护者指南说明了架构与数据流。`agent-docs/` 中的历史研究资料需要结合当前游戏数据和测试使用，
+不能当作当前实现的说明。
 
 ## 参考与致谢
 
-- [PathOfBuildingCommunity/PathOfBuilding-PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)（MIT）——
-  本项目的参考实现与 parity 回归基准：计算公式、Modifier 语义、specialModList
-  解析规则均以其 Lua 实现为准源逐一核对（本地检出到 `vendor/`，不入库；
-  钉定 commit 记录在 `data/<version>/overlay/mod_parser_rules.json::_meta`）。
+- [PathOfBuildingCommunity/PathOfBuilding-PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)（MIT）提供部分参考数据，
+  并用于回归比较。游戏数据和词条原文是规则依据；`vendor/` 中固定版本的 Lua 用于交叉核对，
+  与游戏证据冲突时不默认 Lua 正确。[仍依赖哪些数据](docs/pob2-differences.md)。
 - [poe2db.tw](https://poe2db.tw/) 与 PoE2 Wiki——游戏机制与文本翻译的查证来源。
 
 ## License

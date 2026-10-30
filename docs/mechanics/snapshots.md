@@ -1,264 +1,151 @@
 # 机制约定：配置输入与事件快照
 
-配置项与敌人配置，以及按显式快照计算的事件：祖灵增幅、Archon、地面与护符事件、箭袋、残骸、Volatility、Combo。索引与写法见[机制约定](README.md)，与 PoB2 的差异另见 [pob2-differences.md](../pob2-differences.md)。
+“快照”是用户明确声明的当前状态或一次事件，例如这次攻击已经获得祖灵增幅、此前用药留下多少 Guard。引擎按该状态求结果，不自动补出之前发生了什么。本文列出配置读取方式及事件视图，索引见[机制约定](README.md)。
 
 ## 配置项与敌人配置
 
-配置项进入计算的方式各不相同，有 handler id 不等于选项已生效。破甲（`conditionEnemyArmourBroken` 与破甲量 `multiplierArmourBreak`）由 `calc::armour_break::apply_armour_break` 在有效 DPS 口径下从敌人护甲中扣掉所填的量，没填时全部扣掉，“You can Break enemy Armour to below 0” 时下限为原护甲的相反数；没勾选时数值框里的残留不生效。致盲与 Elusive 的效果覆盖（`overrideBuffBlinded` / `overrideBuffElusive`）按百分数读取，不超过角色能施加的致盲、能得到的 Elusive 效果（`calc::blind`、`rules::buff_expander`）。Inexorable Critical 按配置的距上次暴击秒数（`SecondsSinceInevitableCrit`，不到 4 秒时另置 `CritRecently`）乘每秒的加成，受 `support_inevitable_criticals_*_cap` 限制（`calc::crit::apply_inexorable_critical`）。Dark Pact 的目标骷髅生命（`darkPactSkeletonLife`）乘 `skeletal_chains_aoe_%_health_dealt_as_chaos_damage` 为基础混沌伤害，Herald of Ash 的过量伤害（`hoaOverkill`）乘每分钟的燃烧比例 `herald_of_ash_burning_%_overkill_damage_per_minute` 为火焰持续伤害（`calc::configured_damage`）。
+有 handler id 不代表配置已经影响结果。几个已有入口如下：
 
-敌人受击配置（`calc_orchestrator::enemy_config::modifiers`）以 OVERRIDE 覆盖等级与敌人类别的预设：五种伤害（`enemyPhysicalDamage` 等）、三种元素穿透、暴击率、暴击伤害和物理压制（`enemyPhysicalOverwhelm`）；显式的 0 同样覆盖，负数按 0，非有限值忽略；来源标为 `EnemyConfig`、id `config.<输入名>`，被覆盖的预设行在 TotalEHP 与最大承伤的敌人输入（`CalculationSession::enemy_hit_mods`）里保留但不计入。`enemyDamageType` 选择命中类别（平均、无类型、近战、投射物、法术、法术投射物；持续伤害不是命中），决定闪避、格挡与承伤的上下文（`calc::taken::HitCategory`）；`EHPUnluckyWorstOf` 按 1 / 2 / 4 次中最差的结果估计防御概率。`enemySpeed` 只在 Energy 格挡事件缺少来袭频率时提供回退，不是 EHP 的通用伤害倍率；`enemyDamageRollRange` 和持续伤害的防御视图还没有读取方。敌人等级只解析一次（`calc_orchestrator::skill::mods::resolved_enemy_level`），尸体生命与敌人的减伤共用：调用方显式给的等级优先，其次构筑码 `enemyLevel` 的 Input、Placeholder；都没有时普通怪物和普通首领跟随角色等级，Pinnacle / Uber 取该档的默认等级（82），最后限制在该档的最低等级与敌人最高等级（85）之间。尸体爆炸按这一等级取怪物生命表（82 级 32956，85 级 36012），例如 Detonate Dead 的 `corpse_explosion_monster_life_permillage_physical` = 107 是 10.7%。
+- 破甲由 `calc::armour_break::apply_armour_break` 处理。有效模式下，`conditionEnemyArmourBroken` 开启后扣掉 `multiplierArmourBreak`，未填则全部扣掉；允许破到负数时下限为原护甲的相反数。不开状态时，残留数值无效。
+- `overrideBuffBlinded` / `overrideBuffElusive` 是百分比，不能超过角色可施加／获得的效果（`calc::blind`、`rules::buff_expander`）。
+- Inexorable Critical 用 `SecondsSinceInevitableCrit` 乘每秒加成，受 `support_inevitable_criticals_*_cap` 限制；不足 4 秒另设 `CritRecently`（`calc::crit::apply_inexorable_critical`）。
+- Dark Pact 的 `darkPactSkeletonLife` 乘 `skeletal_chains_aoe_%_health_dealt_as_chaos_damage`，得到基础混沌伤害。Herald of Ash 的 `hoaOverkill` 乘 `herald_of_ash_burning_%_overkill_damage_per_minute`，得到火焰 DoT（`calc::configured_damage`）。
+
+`calc_orchestrator::enemy_config::modifiers` 用 OVERRIDE 覆盖敌人等级／类别预设的五种伤害、三种元素穿透、暴击率、暴击伤害和 `enemyPhysicalOverwhelm`。显式 0 也覆盖，负数按零，非有限值忽略。来源是 `EnemyConfig`、`config.<输入名>`；被覆盖预设仍留在 `CalculationSession::enemy_hit_mods` 的 EHP／最大承伤明细中，但不计入。
+
+`enemyDamageType` 选择 Average、无类型、近战、投射物、法术、法术投射物命中，供闪避、格挡和承伤上下文使用（`calc::taken::HitCategory`）。DoT 不是命中。`EHPUnluckyWorstOf` 取 1／2／4 次中最差的防御概率估计。
+
+显式填写的 `enemySpeed` 是敌人攻击／施法间隔，单位为毫秒。它用于 `EHPSurvivalTime`，也在 Energy 格挡事件缺少来袭频率时提供回退；它不是 EHP 通用倍率。未填写时不采用导出器的 700 ms 占位值。持续伤害防御已有实现，会处理持续抗性，并输出 `TakenDotMult` 和 `DotEHP`；字段含义见[计算输出](../calc-outputs.md)，回归见 [enemy_config.rs](../../crates/pobr-build/tests/skills/enemy_config.rs)。`enemyDamageRollRange` 仍无计算读取者。
+
+敌人等级由 `skill::mods::resolved_enemy_level` 统一解析，尸体生命和减免共用。优先级为调用方显式值、构筑码 `enemyLevel` Input、Placeholder；均缺失时，普通怪／普通首领跟随角色等级，Pinnacle/Uber 默认 82。最后限制在该档最低等级与 85 之间。尸体生命表在 82／85 级为 32956／36012；Detonate Dead 的 `corpse_explosion_monster_life_permillage_physical = 107` 表示 10.7%。
+
+### 敌人类型、近期消耗与计数
+
+近期合并的敌人类型配置为 `conditionEnemyUndead`、`conditionEnemyDemon`、`conditionEnemyHumanoid`、`conditionEnemyConstruct`、`conditionEnemyBeast`。引擎不从首领档位猜类型；用户声明对应类型后，针对该类型的伤害、暴击率、定身累积或异常时长词条才生效。目录仅在构筑有相关词条时显示选项。
+
+`multiplierEnduranceChargesConsumedRecently` 表示近期已经消耗的耐力球数量，不是当前持球数或最大球数。[Recently 的游戏定义](https://poe2db.tw/us/Recently)是过去 4 秒。活动树节点 1865 / 15494 / 54934 每球增加 3% 火伤，[Flare（43584）](https://poe2db.tw/us/Flare)每球额外获得 2% 火伤；输入 4 分别给 12% 和 8%；缺失／零没有收益。游戏天赋文本与 stat 是来源，配置只是显式状态；不推算获球、消耗频率或再次触发。
+
+实现位于 `overlay-common/enemy_type_and_consumption_config_options.json` 和 `special_mods.json`，新规则为 `exporter: "absent"`。回归见 [passive_tree_coverage.rs](../../crates/pobr-build/tests/skills/passive_tree_coverage.rs)。`multiplier<X>` 的显式 Input 只计一次：已经从 XML 写入 multiplier 表时，不再重复加上 Combat/Effective 标签对应的配置效果。Placeholder 默认值仍按原路径补入；例如近期异常数输入 4，不会变成 8。
+
+### 识别但没有事件模型的词条
+
+当前 `special_mods.json` 已识别多类事件词条，并标为 `batch: "unmodelled"`：Glory 生成、元素灌注持续／拾取、Seal 获得、Puppet Master、Volatility 获得／爆炸延迟、破甲时长／承受破甲、Offering 生命、尸体消耗、护符使用、点燃获怒、充能球获得／消耗、怒气保留／流失时序、法术命中 Hinder 几率／时长、招架时状态、普通 Slam 余震附加及分叉额外投射物等。
+
+识别后它们可离开“无法解析”列表，但仍留在逐行台账和缺口队列。下文某个显式事件视图已支持，不代表整个事件家族都已实现；例如 Volatility 恢复视图不模拟获层过程。也不能因为静态计算暂时不需要，就把它们改成 `no_effect` / S0。
 
 ## 祖灵增幅
 
-Ancestral Boost snapshots (`calc/session/preparation::bridge_ancestral_boost`) resolve one shared state after enabled buffs are assembled. The [game keyword](https://poe2db.tw/us/Keywords) gives a boosted Strike two additional targets and a boosted Slam 30% more damage and 25% increased area. The active native `GrantedEffectStatSets` supply Ancestral Call I/II/III's `ancestral_call_spirit_strike_interval_ms` (5000/3000/1000 ms) and Fist of War I/II/III's `ancestral_slam_interval_duration` (6000/4000/14000 ms, also milliseconds); no rank interval comes from vendor constants. `double_ancestral_boost_effect` doubles the bonus once (60% more Slam damage, 50% increased area), not the whole attack or another copy of its support modifiers. [Call III](https://poe2db.tw/us/Ancestral_Call_III)'s `support_ancestral_call_damage_+%_final` is an unconditional 30% less damage on the supported skill, including unboosted uses.
+`calc/session/preparation::bridge_ancestral_boost` 在启用 buff 组装后解出一个共享状态。[游戏关键词](https://poe2db.tw/us/Keywords)规定增幅 Strike 多打两个目标，增幅 Slam 得 30% more 伤害和 25% increased 范围。原生 `GrantedEffectStatSets` 给 Ancestral Call I/II/III 的 `ancestral_call_spirit_strike_interval_ms = 5000/3000/1000`，Fist of War I/II/III 的 `ancestral_slam_interval_duration = 6000/4000/14000`，两者单位都是毫秒。
 
-The default game calculation is an unboosted attack. `conditionAncestrallyBoosted=true` (or the existing `warcryMode=MAX`) selects an available boosted use **only with a source**. Alternatively, `multiplierAncestralBoostElapsedSeconds` supplies elapsed seconds since that support last boosted this skill: before its native interval the attack is unboosted, at/after it the next use is boosted. A supplied timer takes precedence over the requested maximum; negative/non-finite values are not ready. Explicit `conditionAncestrallyBoosted=false` selects an unboosted attack even with an active Cry. These inputs are intentionally raw API controls: XML `<Input name="conditionAncestrallyBoosted" boolean="true"/>`, or JSON `config_inputs: {"conditionAncestrallyBoosted": true, "multiplierAncestralBoostElapsedSeconds": 5}` (and `"conditionAncestralCryActive": true` for an active Cry). `config_resolve` makes raw JSON edits authoritative over imported XML state. Native callers may instead set `Build.config.conditions["AncestrallyBoosted"]` / `["AncestralCryActive"]` and `Build.config.multipliers["AncestralBoostElapsedSeconds"]` when no raw override is present. Reads are tracked for config diagnostics, but these controls have no dedicated Web/catalog entries or new display labels yet; the existing Max Hit control remains available. They describe one attack, never a repeated-use frequency or an average DPS rotation. No timer, first-use readiness, automatic uptime, cooldown-recovery scaling, or rate of boost consumption is inferred. The existing `AVERAGE` selection therefore leaves this snapshot unboosted; it is not a claim that an averaged rotation has been solved.
+`double_ancestral_boost_effect` 只把增幅奖励翻一次倍，即 Slam 的 60% more 伤害、50% increased 范围，不把整次攻击或辅助词条再翻倍。[Call III](https://poe2db.tw/us/Ancestral_Call_III) 的 `support_ancestral_call_damage_+%_final` 是无条件 30% less，未增幅攻击也受它影响。增幅时的伤害／范围天赋读取同一状态，不因装备了增幅辅助就常驻。
 
-[Ancestral Cry](https://poe2db.tw/us/Ancestral_Cry)'s enabled buff additionally needs `conditionAncestralCryActive=true`, meaning the player declares that the buff is currently active. Its native `ancestral_cry_empowered_attacks_strike_X_additional_enemies` gives the same two-target boost; the skill text applies the boost to both melee Strikes and Slams. Call/Fist and Cry share one boost, not independent damage/target multipliers. `ancestral_cry_non_skill_physical_to_fire_convert_%` converts 100% of physical damage on these boosted attacks through the non-skill conversion channel. Cry's additional quality effect (enabled by Advanced Thaumaturgy) grants its global fire-damage bonus with the same explicit buff state; ordinary quality only extends duration per consumed charge. Triggered attacks (including Volcanic Steps/Eruption), totem/proxy attacks and unrelated skills never acquire this player-use boost. Cry's native eight-second duration, 50% more duration per removable Endurance Charge, Glory generation, charge consumption and volcanic trigger frequency do not imply uptime; expiry and rotations are not simulated. There is no in-game timing test. `DataOrchestratorOptions::ancestral_boost_snapshots=false`, selected by `on_reference_basis`, preserves the previous supported-Strike snapshot; new Cry and Call III rules are exporter-absent, and the new Slam bonus only applies to game snapshots. Reference compatibility is tested separately from the game behavior.
+游戏口径默认未增幅。`conditionAncestrallyBoosted=true` 或 `warcryMode=MAX` 只在存在来源时选择一次增幅攻击。也可填 `multiplierAncestralBoostElapsedSeconds`，表示该辅助上次增幅此技能后经过几秒；不足原生间隔则未准备好，达到间隔则下一次可增幅。计时优先于 MAX，负数／非有限值不算准备好；显式 false 即使有 Cry 也选择未增幅。
+
+这些仍是原始 API 输入：XML 可写 `<Input name="conditionAncestrallyBoosted" boolean="true"/>`；JSON 用 `config_inputs: {"conditionAncestrallyBoosted": true, "multiplierAncestralBoostElapsedSeconds": 5}`。原始 JSON 覆盖导入 XML；没有原始覆盖时，原生调用方可写 `Build.config.conditions["AncestrallyBoosted"]` / `["AncestralCryActive"]` 和 `multipliers["AncestralBoostElapsedSeconds"]`。读取进入配置诊断，但暂无专用 Web/catalog 项或新标签，现有 Max Hit 控件仍可用。
+
+这些输入只描述一次攻击，不能解释轮转平均 DPS。引擎不猜初次是否就绪、冷却恢复缩放、消耗频率或覆盖率；`AVERAGE` 仍保持未增幅，不表示已经求得平均轮转。
+
+[Ancestral Cry](https://poe2db.tw/us/Ancestral_Cry) 还需 `conditionAncestralCryActive=true`，即用户声明其 buff 当前激活。`ancestral_cry_empowered_attacks_strike_X_additional_enemies` 给相同的两目标奖励，技能文字将增幅给近战 Strike 和 Slam；Call/Fist/Cry 共用一次增幅，不相乘。
+
+`ancestral_cry_non_skill_physical_to_fire_convert_%` 通过非技能转换把该增幅攻击 100% 物理转火。Advanced Thaumaturgy 开启的额外品质在同一 buff 状态给全局火伤；普通品质只延长每个消耗球带来的时长。触发攻击（含 Volcanic Steps/Eruption）、图腾／代理、无关技能不继承玩家使用增幅。八秒原生时长、每个可移除耐力球 50% more 时长、Glory、消耗与火山触发均不代表自动覆盖；没有时序实测。
+
+`ancestral_boost_snapshots=false`（由 `on_reference_basis` 选择）保留原有受辅助 Strike 快照；新 Cry/Call III 规则为 `absent`，新 Slam 奖励只在游戏快照启用。参考兼容与游戏口径分别验证。
 
 ## Archon
 
-Archon shared bonuses use the explicit `conditionAffectedByArchon` configuration
-(default off; possessing a source does not establish uptime). The game's
-[Archon keyword](https://poe2db.tw/us/Archon_Buff) defines a 10-second duration
-and a 20-second recovery period; `ArchonDuration` and `ArchonRecoveryPeriod`
-report these nominal timings after `archon_duration_+%`,
-`archon_delay_expires_x%_faster` and `archon_no_recovery_period` (Dominion).
-Invigorating Archon's movement and elemental-resistance grants are scaled by
-Archon effect plus buff effect on self; Energising Archon's conditional recharge
-start bonus is not part of the buff and is not scaled. Rules are exporter-absent.
-The Command-use gain chance is recognized but does not imply an active buff;
-proc timing, uptime, and intrinsic payloads of individual Archon types are not
-modelled by this shared-bonus state. Nature's Archon needs direct BuffTemplates
-verification before its intrinsic damage is implemented: the keyword says 25%
-more damage, while the displayed `ArchonNature` template uses
-`plant_skill_damage_+% = 25` (increased).
+Archon 共享奖励要求 `conditionAffectedByArchon`，默认关闭；有来源不代表 buff 已激活。[Archon 关键词](https://poe2db.tw/us/Archon_Buff)给出 10 秒持续、20 秒恢复期，`ArchonDuration` / `ArchonRecoveryPeriod` 应用 `archon_duration_+%`、`archon_delay_expires_x%_faster`、`archon_no_recovery_period`（Dominion）后显示名义时间。
+
+Invigorating Archon 的移速和元素抗性受 Archon 效果及自身 buff 效果缩放；Energising Archon 的条件充能起始加成不属于 buff，不这样缩放。规则为 `absent`。Command 使用时获得 Archon 的几率只识别来源，不自动开启 buff；触发时序、覆盖率、各 Archon 固有效果尚未由此共享状态实现。
+
+Nature's Archon 仍有证据冲突：关键词称 25% more 伤害，而 `ArchonNature` BuffTemplates 显示 `plant_skill_damage_+% = 25`（increased）。实现其固有伤害前需进一步核对，不能用关键词或 PoB2 任一方直接定案。
 
 ## 地面与护符事件
 
-Olroth's Resolve “Gain Guard equal to Current Runic Ward for 10 seconds when
-Effect ends” (`local_unique_flask_gain_%_of_current_ward_as_guard_when_flask_effect_ends`,
-[game text](https://poe2db.tw/us/Olroths_Resolve)) retains local event metadata
-for equipped flasks, including inactive slots. Config `olrothGuard` supplies
-Guard still present from an earlier use, after any intervening damage, within
-the ten-second lifetime; unset/zero grants none. This is an explicit snapshot,
-not an estimate from current/maximum Ward or flask uptime. Reusing the flask
-does not by itself remove existing Guard. The strongest Guard grant wins
-(including charm Guard), capped at 200% maximum Life, and feeds EHP/max-hit
-pools without changing Ward. Flask effect, quality and flask duration do not
-scale the end-event metadata. `Flask<N>GuardAfterEffect` / `GuardDuration` show
-the input capped for that slot and the nominal lifetime, with reconstructible
-details and no invented PoB reference keys. The rule is exporter-absent; there
-is no in-game timing test.
+### Olroth's Resolve 的 Guard
 
-Beira's Anguish (official TW 貝伊拉的悲痛) creates Ignited Ground (點燃地面)
-for 4 seconds, igniting as though dealing Fire damage equal to 500% maximum
-Life (`UniqueCharmIgniteEnemiesInPresence1`, current game Mods). Current
-[game Keywords](https://poe2db.tw/us/Keywords) give a default ground radius of
-2 metres and require non-hit ground to build Flammability (易燃) to 50% before
-Igniting; the [current item text](https://poe2db.tw/us/Beiras_Anguish) replaced
-its pre-0.3 immediate nearby Ignite. Per-charm `IgnitedGroundDuration`,
-`IgnitedGroundRadiusMetres`, `IgnitedGroundSourceDamage`,
-`IgnitedGroundIgniteDPS` and `IgnitedGroundIgniteDuration` report potential
-from currently equipped sources, even inactive charms. Current maximum Life
-is the creation snapshot, including reserved Life. This is independent of the
-selected skill's hit, crit, attack/spell modifiers and local supports. Shared
-global Ignite magnitude, rate, duration and enemy resistance/taken apply;
-hit-only penetration does not. Charm quality/effect/buff duration do not scale
-these on-use event properties; no in-game timing test has been performed.
+[物品文本](https://poe2db.tw/us/Olroths_Resolve)的 `local_unique_flask_gain_%_of_current_ward_as_guard_when_flask_effect_ends` 表示药效结束后，以当时 Ward 获得持续 10 秒的 Guard。已装备药剂即使关闭也保留事件属性。
 
-`conditionBeiraIgniteActive` explicitly declares an already established,
-currently active ground Ignite in combat; merely equipping/enabling the charm
-never grants DPS. `BeiraIgniteDPS` is the strongest such charm source.
-`CombinedIgniteDPS` and total DoT use the strongest of that and the selected
-skill's ordinary Ignite, never their sum. Optional Full DPS includes that charm
-source once in the shared Ignite limit, independent of included skill counts.
-When an included/selected skill supports
-multiple simultaneous Ignites, cross-source stacking is unverified: the Beira
-value remains separate and is not added to total damage. No use frequency,
-buildup time, location, expiry or uptime is inferred. The item rule is
-exporter-absent; reference basis excludes the new source. Calcs labels and
-configuration help are application copy using the verified official TW terms;
-CN copy is contextual, using the pinned `i18n/zh-CN/words.json` item name
-`贝拉的苦楚` and the matching `stat_lines.json` term
-燃烧地面; these dictionaries combine trade and PoE2DB sources and are not
-claimed to be a retained official CN KeywordPopups table. Headhunter remains
-unchanged at the owner's request.
+`olrothGuard` 是用户输入的、先前使用后仍剩余的 Guard，已经考虑期间承伤且仍在十秒内；缺失或零不给 Guard。引擎不从当前／最大 Ward 或药剂覆盖率反推，重新用药也不自动移除旧 Guard。与护符 Guard 取最强，最高为 200% 最大生命，进入 EHP／最大承伤池，不改 Ward。
 
-Consecrated Ground (`calc::consecrated_ground`) uses the game
-[ConsecratedGround keyword](https://poe2db.tw/us/Keywords): an actor explicitly
-standing on it regenerates 5% of its current maximum Life per second and has
-50% reduced Curse effect (`life_regeneration_rate_per_minute_%`,
-`curse_effect_on_self_+%`, buff `ground_consecration`). Config
-`conditionOnConsecratedGround` and native `OnConsecratedGround` /
-`Condition:OnConsecratedGround` share the combat snapshot; duplicate grants
-apply once. Minions require `conditionMinionsOnConsecratedGround` or their
-own condition flag, never the player's position. Sanguis Heroum's
-`UniqueCharmCreateConsecratedGround1` in the active game's `base/mods.json`
-and [item text](https://poe2db.tw/us/Sanguis_Heroum) supply
-`charm_create_consecrated_ground_when_used_duration_ms = 4000` and
-`charm_create_consecrated_ground_when_used_radius = 14` (1.4 metres). The local
-`Charm<N>ConsecratedGroundDuration` / `ConsecratedGroundRadiusMetres` views
-retain these per-use properties on inactive equipped charms too; they neither
-establish that ground exists nor place any actor on it. Charm effect, quality
-and charm duration do not scale this separate ground event. This source rule
-is exporter-absent; the base ground benefit is implemented by PoB2 too.
-Ground ownership and an ally's ground effect are not inputs, so
-`ConsecratedGroundEffect` is deliberately not consumed: the user's own-ground
-modifiers must not scale an ally's ground. No use frequency, uptime, lingering
-effect or in-game timing measurement is assumed. TW labels use the game's
-[奉獻地面 keyword](https://poe2db.tw/tw/Keywords) and
-[嗜血英雄／止血護符 text](https://poe2db.tw/tw/Sanguis_Heroum); surrounding UI
-phrasing is application copy, not an official translation. Retained official
-tables provide English and TW only; the new CN labels/help are contextual
-application wording, not an official CN translation.
+药效、品质、药剂持续时间不缩放这个结束事件。`Flask<N>GuardAfterEffect` / `GuardDuration` 显示该栏位输入经上限限制的值和名义时长，明细可还原，无伪造 PoB key。规则为 `absent`；没有游戏内时序实测。
+
+### Beira's Anguish 的点燃地面
+
+当前 `UniqueCharmIgniteEnemiesInPresence1` 生成四秒地面，以最大生命的 500% 作为点燃来源火伤。[关键词](https://poe2db.tw/us/Keywords)给地面默认半径 2 米；非命中地面需将易燃累积到 50% 才点燃。[当前物品](https://poe2db.tw/us/Beiras_Anguish)已经替换 0.3 以前立即点燃附近敌人的行为。
+
+每件护符的 `IgnitedGroundDuration`、`IgnitedGroundRadiusMetres`、`IgnitedGroundSourceDamage`、`IgnitedGroundIgniteDPS`、`IgnitedGroundIgniteDuration` 显示潜力，已装备但关闭也可查看。创建快照取当前最大生命，包含保留部分；不借主技能命中、暴击、攻击／法术修正或本地辅助。全局点燃幅度、速度、时长、敌人抗性／承伤照常生效，命中穿透不生效。护符品质、效果和 buff 时长不缩放事件属性；未实测时序。
+
+`conditionBeiraIgniteActive` 明确声明战斗中已建立且正在生效的地面点燃；仅装备或启用不给 DPS。`BeiraIgniteDPS` 取最强护符来源，`CombinedIgniteDPS` 和总 DoT 在它与主技能普通点燃间取强者，不相加。可选 Full DPS 在共享点燃上限内只计一次，与技能数量无关。
+
+若所选／纳入技能支持多个同时点燃，跨来源叠加未验证，Beira 值单列而不加总。使用频率、积累时间、位置、过期与覆盖率均不推算。规则为 `absent`，参考口径排除新来源。
+
+TW 使用已核对的官方用语「貝伊拉的悲痛」「點燃地面」。CN 的「贝拉的苦楚」「燃烧地面」来自钉定 `i18n/zh-CN/words.json` / `stat_lines.json`，混合交易和 PoE2DB 来源，不声称保留了官方 CN KeywordPopups。完整说明文字是应用文案。Headhunter 的偷取怪物词缀没有因此实现。
+
+### 奉献地面
+
+`calc::consecrated_ground` 按[游戏关键词](https://poe2db.tw/us/Keywords)，让明确站在地面上的角色每秒再生当前最大生命的 5%，并获得 50% reduced 诅咒效果（`life_regeneration_rate_per_minute_%`、`curse_effect_on_self_+%`，buff `ground_consecration`）。玩家用 `conditionOnConsecratedGround` 或原生 `OnConsecratedGround` / `Condition:OnConsecratedGround` 声明战斗状态，重复来源只算一次。召唤物需独立的 `conditionMinionsOnConsecratedGround` 或自身条件，不能继承玩家位置。
+
+[Sanguis Heroum](https://poe2db.tw/us/Sanguis_Heroum) 与 `UniqueCharmCreateConsecratedGround1` 给 `charm_create_consecrated_ground_when_used_duration_ms = 4000`、`charm_create_consecrated_ground_when_used_radius = 14`（1.4 米）。关闭的已装备护符也显示 `Charm<N>ConsecratedGroundDuration` / `ConsecratedGroundRadiusMetres`；这不建立地面或把角色放上去。护符效果、品质和时长不缩放独立地面事件。来源规则为 `absent`，基础地面收益 PoB2 也实现。
+
+没有地面所有者／友军地面效果输入，因此 `ConsecratedGroundEffect` 有意不读取，避免把自己的地面修正用于友军地面。不推算使用率、持续覆盖或离地后保留，也未实测。TW 用[奉獻地面](https://poe2db.tw/tw/Keywords)、[嗜血英雄／止血護符](https://poe2db.tw/tw/Sanguis_Heroum)；其他说明和 CN 标签为应用文案，不声称是官方翻译。
 
 ## 箭袋、残骸、Volatility 与 Combo
 
-Cadiro's Gambit (`calc::cadiro_arrows`) uses the retained active unique,
-`UniquePerandusArrows1` and stat `each_arrow_fired_gains_random_perdandus_prefix`.
-The game's linked keywords define [Crescendo](https://poe2db.tw/us/Crescendo_Arrows)
-as 6 additional chains and 60% increased damage per prior chain,
-[Splinter](https://poe2db.tw/us/Splinter_Arrows) as splitting to 6 targets,
-[Reversing](https://poe2db.tw/us/Reversing_Arrows) as piercing all targets and
-returning, [Diamond](https://poe2db.tw/us/Diamond_Arrows) as guaranteed critical
-hits with 60% increased critical damage bonus,
-[Covetous](https://poe2db.tw/us/Covetous_Arrows) as 600% increased rarity on its
-kills, and [Blunt](https://poe2db.tw/us/Blunt_Arrows) as 600% increased stun buildup.
-The single `cadiroArrow` selection maps to native multiplier `CadiroArrow`:
-0/unset is neutral, and 1–6 follow that order. Explicit zero/false/invalid input
-retires an imported selection. Only the selected attack's `skill_can_fire_arrows`
-stat and Bow weapon flags qualify; spells, crossbows, minions, proxy skills and
-non-arrow secondary stat sets do not inherit the effect. Combat mode is required.
-Crescendo reuses `skillChainCount` (native `Chain`) for the hit's prior chains,
-capped by available chains, defaulting to the initial hit. This is increased
-damage, not MORE damage or additional single-target hits. Diamond preserves
-the first accuracy check, bypasses the critical evasion reroll, and yields to
-`NeverCrit`. The source's fixed effects do not stack from duplicate grants.
-`CadiroArrowReturn` and `CadiroArrowKillRarity` retain source details and have no
-invented PoB keys; return geometry/timing and loot outcomes remain unmodelled.
-No equal probabilities, average DPS, all-six simultaneous effects, or extra
-return/chain hits are assumed. The new source rule is exporter-absent and
-excluded on the reference basis; the ordinary quiver attack speed is unchanged.
-TW and CN arrow names use their respective game KeywordPopups
-([TW](https://poe2db.tw/tw/Crescendo_Arrows),
-[CN](https://poe2db.tw/cn/Crescendo_Arrows), and corresponding five linked names);
-these differ from the abbreviations in the item line. Surrounding control/help
-wording is application copy. No in-game timing or geometry test is claimed.
+### Cadiro's Gambit
 
-Remnant pickup views (`calc::remnant_pickup`) keep the collector's Arcane
-Remnants recovery separate from the creator's Empowering Remnants effect grants.
-The active game's `base/passive_tree.json` nodes 46124 / 40985 and `base/stats.json`
-provide `remnant_recover_%_mana_on_pickup` (3% maximum Mana per collection) and
-`created_remnants_have_%_chance_to_duplicate_pick_up_results` (15% chance for
-**Remnants you create** to grant their effects twice; also visible in the
-[current passive text](https://poe2db.tw/us/Empowering_Remnants)). The older generic
-`stat_descriptions` overlay says a pickup counts as another pickup, but that is
-not the current passive wording and does not establish that the collector's
-separate recovery triggers twice. Accordingly Arcane recovery is not multiplied
-by duplication chance or Remnant effect. Instant on-pickup recovery is not Mana
-regeneration and is not scaled by recovery-rate modifiers.
+`calc::cadiro_arrows` 读取 `UniquePerandusArrows1`、`each_arrow_fired_gains_random_perdandus_prefix`。用户用 `cadiroArrow` / 原生 `CadiroArrow` 明确选一种箭，0 或未填为无额外效果，1–6 如下：
 
-`remnantPickupsPerSecond` / native `RemnantPickupsPerSecond` counts the player's
-collections from any creator. `createdRemnantPickupsPerSecond` /
-`CreatedRemnantPickupsPerSecond` counts collections of the player's own created
-Remnants, including collections by another recipient; another creator's chance
-is unknown and is never substituted. `remnantPickupMissingMana` /
-`RemnantPickupMissingMana` is an optional deficit immediately before each pickup:
-recovery retains the maximum-Mana percentage basis, but cannot exceed that
-deficit or unreserved Mana capacity. Full Mana or an explicit zero deficit gives
-zero recovery. `CannotGainMana` also suppresses recovery; `NoManaRegen` does not
-block this instant event. Without a deficit, displays explicitly say **potential** recovery;
-none of these views is added to regeneration, sustain, or EHP. A supplied rate
-assumes that same deficit before each event, not simulated spending between them.
-Missing or zero rates do not infer collection from skill use. XML, JSON raw inputs
-and native multipliers agree; explicit false, zero or invalid raw input retires
-an imported value. Config reads are tracked even when absent. Combat is required
-for event outputs; source percentage/chance properties remain inspectable.
+| 值 | 游戏关键词 | 当前固定效果 |
+|---|---|---|
+| 1 | [Crescendo](https://poe2db.tw/us/Crescendo_Arrows) | 额外连锁 6 次，每次先前连锁给 60% increased 伤害 |
+| 2 | [Splinter](https://poe2db.tw/us/Splinter_Arrows) | 分裂至 6 个目标 |
+| 3 | [Reversing](https://poe2db.tw/us/Reversing_Arrows) | 穿透所有目标并返回 |
+| 4 | [Diamond](https://poe2db.tw/us/Diamond_Arrows) | 必定暴击、60% increased 暴击伤害加成 |
+| 5 | [Covetous](https://poe2db.tw/us/Covetous_Arrows) | 击杀给 600% increased 稀有度 |
+| 6 | [Blunt](https://poe2db.tw/us/Blunt_Arrows) | 600% increased 晕眩累积 |
 
-Expected intrinsic effect-grant counts are `1 + clamp(chance, 0, 100) / 100` for
-one collected own-created Remnant; this is event metadata, not buff magnitude,
-duration, stacks, DPS, or a recursive pickup chain. Potential grants per use reuse
-`effect_terms.remnants_per_use()` and explicitly require **all created Remnants
-to be collected**; the view does not establish that any are collected. Products
-saturate only at the largest finite representable number, recorded in details.
-The two rules are exporter-absent and excluded on the reference basis. No in-game
-timing or duplication interaction test is claimed. Retained official TW skill
-names `mana_remnants` / `life_remnants` are 魔力痕跡 / 生命痕跡; the new labels and
-help use 痕跡, with the remaining wording being contextual application copy.
-The CN labels/help are contextual UI copy, not an official CN translation.
+显式零／false／无效输入清除导入选择。只对战斗中的玩家弓攻击、所选 stat set 带 `skill_can_fire_arrows` 时生效；法术、弩、召唤物、代理、非箭次级效果不继承。
 
-Volatility restoration (`calc::volatility_events`) uses active game stat
-`volatility_refresh_%_chance`, Instability passive 43944 (25%), and
-`maximum_volatility_allowed` (Controlled Chaos: 30). The game's
-[Volatility keyword](https://poe2db.tw/us/Volatility#VolatilityRef) defines a
-200-stack default maximum, a four-second explosion timer reset by each new
-stack, and at most one gain per 0.1 seconds. The explosion consumes its stacks;
-on a successful refresh the equivalent exploded amount is regained. The keyword
-also describes 100 Physical self-damage per stack and ten seconds of Volatile
-Power, but these are not simulated by this restoration view. The explicit
-`volatilityExplosionQuantity` / native `VolatilityExplosionQuantity` snapshot
-must be a finite positive whole number; it is capped by the final maximum,
-which Controlled Chaos replaces rather than increases (also clarified in the
-[0.3.0 patch notes](https://poe2db.tw/us/Version_0.3.0)). Expected restoration per
-explosion is capped quantity times the summed refresh chance, clamped to 0–100%.
-The optional `volatilityExplosionsPerSecond` / native
-`VolatilityExplosionsPerSecond` is a supplied rate of eligible explosions of
-that same quantity. Without it, the per-second view is zero; invalid rates and
-overflow are rejected. No rate is inferred from attack speed or the resetting
-timer, and restored stacks never feed back into an infinite-chain calculation,
-even at 100% chance. No current stack count, damage, defence, Volatile Power,
-expiry, or average uptime is changed. Without a source, all views are zero. With a player source, chance and cap
-remain potential metadata even with absent/zero/invalid quantity or in noncombat
-mode; all event outcomes remain zero. Minion actors are excluded. Explicit raw false,
-zero or invalid values retire imported native settings; absent inputs preserve
-them, and both controls are tracked even when absent. Both new source rules are
-exporter-absent and excluded on the reference basis. Fields have retained
-formula inputs, source groups, and no invented PoB keys. Retained game names
-[易爆](https://poe2db.tw/tw/Volatility) / [无常](https://poe2db.tw/cn/Volatility)
-supply the TW/CN term; complete labels and help are contextual application copy.
-No in-game timing or gain-cooldown interaction test is claimed; callers supply
-eligible events rather than assuming refresh bypasses any gain restrictions.
+Crescendo 用 `skillChainCount` / `Chain` 表示此前连锁次数，受容量限制，默认初击；它是 increased，不是 MORE 或额外单体命中。Diamond 保留第一次命中检查，跳过暴击闪避重检，但仍服从 `NeverCrit`。固定效果不因重复授予而叠加。`CadiroArrowReturn` / `CadiroArrowKillRarity` 保留来源明细，无 PoB key；返回几何／时序与掉落结果未建模。
 
-`calc::combo` reports `ComboMaximum` and `ComboGainPerEligibleEvent` for the selected
-receiving skill. The current [Combo keyword](https://poe2db.tw/us/Combo) describes a
-counter on some skills, built by striking enemies with the same bound weapon;
-weapon swaps lose it. [Tempest Bell](https://poe2db.tw/us/Tempest_Bell) and
-[Mantra of Destruction](https://poe2db.tw/us/Mantra_of_Destruction) explicitly build
-it with other skills. Current `base/granted_effect_stat_sets.json` gives required
-amounts 4 and 8; Combo Finisher I/II require 3/5, and Culmination I/II and Vruun's
-Inevitability give an explicit maximum of 10. Required amounts serve as capacity
-only without an explicit maximum; they are never added to that separate cap.
-Distinct requirements use the greatest threshold, not their sum. Signed quality
-changes first adjust the active skill's own requirement (for example Mantra);
-Finisher requirements and explicit maxima each use their greatest contribution.
-Supported receivers come through the existing support eligibility checks.
+不假设六种等概率、不同时开启六种、不推算平均 DPS 或返回／连锁额外命中。来源规则 `absent`，参考口径排除它；普通箭袋攻速不变。箭名使用对应 [TW](https://poe2db.tw/tw/Crescendo_Arrows) / [CN](https://poe2db.tw/cn/Crescendo_Arrows) KeywordPopups，完整帮助为应用文案，未实测时序或几何。
 
-This is one successful eligible event **starting from an empty counter**, with
-only global gain modifiers, not the receiving skill's own hit/cast rate.
-`additional_combo_gain_on_hit` ([Martial Adept, passive 41751](https://poe2db.tw/us/Martial_Adept))
-adds its integer count once to that event. `additional_combo_gain_chance_%` says
-“chance to build an additional Combo”: its contributions add to one probability
-bounded to 0–100%, adding exactly one Combo on success. Therefore with fixed bonus
-`a`, chance `p` as a fraction and capacity `c`, expected gain is
-`(1-p) × min(c, 1+a) + p × min(c, 2+a)`. Count inputs are nonnegative integers.
-This additive, nonrecursive interpretation follows the wording and the shared
-stat IDs; the combined interaction has **not been measured in game**. There is
-no overflow mechanic in those descriptions. No held counter, decay, uptime,
-event frequency, automatic spending, recovery or DPS bonus is inferred.
-Practiced Combo modifies the generating strike, not the receiver: its support
-bonus is not borrowed from a different skill or included in this global-only view.
+### 残骸拾取
 
-The Finality keyword forbids Combo gain. `conditionFinality` / native `Finality`
-is an explicit current snapshot; false/off retires an imported true state, and
-an explicit native condition overrides a `Condition:Finality` modifier flag.
-Absent a receiver, outside combat, during Finality, or for unsupported proxy /
-minion receivers, generation is zero; inactive paths do not read global gain
-modifiers. The checkbox only models this gain restriction, not Finality's other
-bonuses. New generation rules are exporter-absent; reference mode preserves the
-existing Culmination selected-stack multiplier but excludes these generation
-views. Calcs formulas retain their inputs and have no invented PoB output keys.
-`連擊` and `終極` are the corresponding current game TW keyword terms
-([TW keyword](https://poe2db.tw/tw/Combo)); full labels/help are contextual UI copy.
-CN uses `连击` and `绝杀` from the corresponding retained
-`i18n/zh-CN/stat_lines.json` gain-Combo and gain-Finality entries.
+`calc::remnant_pickup` 区分拾取者 Arcane Remnants 的回魔与创造者 Empowering Remnants 的重复效果。天赋 46124 / 40985 给 `remnant_recover_%_mana_on_pickup = 3`（每次拾取 3% 最大魔力）和 `created_remnants_have_%_chance_to_duplicate_pick_up_results = 15`。
+
+[当前 Empowering Remnants 文本](https://poe2db.tw/us/Empowering_Remnants)说自己创造的残骸有几率给两次效果。旧 `stat_descriptions` 将其写作额外一次拾取，不能据此让拾取者自己的 Arcane 回魔重复。当前回魔不乘复制几率或 RemnantEffect；它是瞬间拾取恢复，不是再生，也不乘恢复速率。
+
+| 输入／原生 multiplier | 含义 |
+|---|---|
+| `remnantPickupsPerSecond` / `RemnantPickupsPerSecond` | 玩家每秒拾取次数，可来自任何创造者 |
+| `createdRemnantPickupsPerSecond` / `CreatedRemnantPickupsPerSecond` | 玩家创造的残骸每秒被拾取数，可由其他人拾取 |
+| `remnantPickupMissingMana` / `RemnantPickupMissingMana` | 每次拾取前的缺魔量，可选 |
+
+恢复以最大魔力百分比计算，但不超过显式缺魔量或未保留容量。满魔／显式零缺魔／`CannotGainMana` 给零，`NoManaRegen` 不阻止瞬间拾取。未填缺魔时明确展示“潜在恢复”，不加进再生、持续回复或 EHP。输入频率意味着每次事件前都有同样缺口，不模拟中间消耗；未填／零频率不从技能使用推算拾取。
+
+一次自创残骸被拾取，预期固有效果次数为 `1 + clamp(chance, 0, 100) / 100`。每次技能使用的潜在次数复用 `effect_terms.remnants_per_use()`，前提是产生的残骸全部被拾取；这不证明发生了拾取。次数不是 buff 幅度、时长、层数或 DPS，也不递归生成新拾取。数值溢出饱和到最大有限值并记入明细。
+
+XML、JSON 与原生输入一致；显式 false／零／无效原始输入清除旧值，配置读取即使缺失也记录。事件输出要求战斗，来源比例／几率仍可查看。两条规则为 `absent`，无时序或复制交互实测。TW 使用游戏「魔力痕跡／生命痕跡」中的「痕跡」，其余完整标签与 CN 说明为应用文案。
+
+### Volatility 恢复
+
+`calc::volatility_events` 读取 Instability（43944）的 `volatility_refresh_%_chance = 25`，以及 Controlled Chaos 的 `maximum_volatility_allowed = 30`。[关键词](https://poe2db.tw/us/Volatility#VolatilityRef)默认上限 200、四秒爆炸计时、每得一层重置，最多每 0.1 秒得一次；爆炸消耗层数，刷新成功后恢复同量。关键词中的每层 100 物理自身伤害、十秒 Volatile Power 不由这个视图模拟。
+
+`volatilityExplosionQuantity` / `VolatilityExplosionQuantity` 必须为有限正整数，受最终上限限制。Controlled Chaos 替换上限而非增加，亦见 [0.3.0 补丁](https://poe2db.tw/us/Version_0.3.0)。每次预期恢复为“封顶层数 × 总刷新几率（限制 0–100%）”。可选 `volatilityExplosionsPerSecond` / `VolatilityExplosionsPerSecond` 声明同样层数的合格爆炸频率，未填时每秒值为零，无效值和溢出拒绝。
+
+不从攻速或重置计时猜频率，恢复层数不反馈到无限链，即使几率 100% 也如此。当前层数、伤害、防御、Volatile Power、到期和覆盖率都不改变。没有来源时全部为零；有玩家来源时，几率和上限在非战斗或数量无效时仍可查看，事件结果为零；召唤物不适用。
+
+显式原始 false／零／无效值清除原生旧设置，缺失则保留；两项配置均记录读取。两条规则为 `absent`，参考口径排除新视图，明细保留公式／来源且无伪造 PoB key。TW「[易爆](https://poe2db.tw/tw/Volatility)」、CN「[无常](https://poe2db.tw/cn/Volatility)」来自游戏词条；完整文案为应用用语。刷新是否绕过获层限制未实测，调用方必须提供合格事件。
+
+### Combo
+
+`calc::combo` 为当前接收连击的技能展示 `ComboMaximum` 和 `ComboGainPerEligibleEvent`。[Combo](https://poe2db.tw/us/Combo)是部分技能的计数，由同一绑定武器击中敌人积累，切武器会丢失。[Tempest Bell](https://poe2db.tw/us/Tempest_Bell) 和 [Mantra of Destruction](https://poe2db.tw/us/Mantra_of_Destruction)明确要求其他技能积累。
+
+活动 `granted_effect_stat_sets.json` 给上述技能需求 4／8，Combo Finisher I/II 要 3／5，Culmination I/II 和 Vruun's Inevitability 给显式上限 10。只有没有显式上限时才把需求当容量，不能相加。不同需求取最大，带符号品质先调整主动技能本身需求；Finisher 需求和显式上限各取最大。辅助仍须通过原有资格检查。
+
+视图描述**从空计数开始的一次成功、合格事件**，只读全局获得修正，不借接收技能自己的命中／施法频率。[Martial Adept](https://poe2db.tw/us/Martial_Adept)（41751）的 `additional_combo_gain_on_hit` 一次增加整数 a；`additional_combo_gain_chance_%` 合为 0–100% 的概率 p，成功只多一层。因此容量 c 下的期望为 `(1-p) × min(c, 1+a) + p × min(c, 2+a)`。计数输入为非负整数；相加、非递归的读法来自文本及共同 stat，但组合交互未实测。没有溢出机制，也不推算当前层数、衰减、频率、消耗、回复或 DPS。
+
+Practiced Combo 修改的是产生连击的那次攻击，不从别组借给接收技能，也不进入这个仅全局视图。Finality 禁止获得连击；`conditionFinality` / 原生 `Finality` 是当前状态，显式 false 清除旧 true，原生明确条件优先于 `Condition:Finality` 标志。无接收技能、非战斗、Finality 中或不支持的代理／召唤物时，获得为零且不读取全局增益。该控件不实现 Finality 的其他奖励。
+
+新获得规则为 `absent`；参考口径保留原有 Culmination 选定层数倍率，但排除新生成视图。Calcs 公式可还原且无虚构 PoB key。TW 使用「[連擊／終極](https://poe2db.tw/tw/Combo)」，CN「连击／绝杀」取保留的 `i18n/zh-CN/stat_lines.json`；完整标签和帮助为应用文案。

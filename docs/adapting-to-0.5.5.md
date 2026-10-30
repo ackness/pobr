@@ -1,57 +1,45 @@
-# PoE2 0.5.5 data update
+<a id="poe2-055-data-update"></a>
 
-> Later change: the separate golden data version was removed. Tests and PoB2
-> reference values now follow the active version, and only the active snapshot
-> plus the two most recent are kept (see the [maintainer guide](maintainer-guide.md)).
+# PoE2 0.5.5 数据更新记录（2026-09-11）
 
-GGG's patch protocol returned `4.5.5.2` on 2026-09-11. That update advanced
-the data snapshot from `4.5.4.8`. For the subsequent active snapshot, see
-[the 0.5.5c update](adapting-to-0.5.5c.md). Raw tables come from the GGG CDN;
-the tree comes from GGG's skill-tree export, supplemented by the pinned
-PoB2 tree for coordinates, variants and anoint-only nodes.
+本文记录当时的更新与验证，不代表当前数据版本或测试配置。
+后续更新见 [0.5.5c 记录](adapting-to-0.5.5c.md)。
+之后仓库已取消独立的 golden 数据版本：测试和 PoB2 参考值跟随活动版本，
+仅保留活动快照与最近入库的两个版本。现行规则见[维护者指南](maintainer-guide.md)。
 
-The PoB2 reference is pinned to
-`ce566eac45ea8a86477f513c7ee65a1ebe60014e` on `dev`, which includes the
-[0.5.5 data export](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/commit/49e93925dcb79024175c58d25befadab67b4dd44).
-The latest tagged release, v0.23.1, predates this export. The generated
-overlays record their exact reference commit and regeneration command.
+2026-09-11，GGG patch 协议返回 `4.5.5.2`，本次把数据快照从 `4.5.4.8` 更新到该版本。
+原始表来自 GGG CDN；天赋树来自 GGG 官方导出，并用固定版本的 PoB2 树补充坐标、变体和
+仅用于涂油的节点。
 
-Newer Lua exports return constructors instead of immediately populating
-tables. Extraction supports both forms, including the returned minion
-tables. This matters because the old loader could silently emit empty
-skill, quality, minion and base-item overlays. The new `IMMUNE` parser
-form supports single and paired statuses with PoB2's false-positive guard.
-Config extraction discards the display-only `IgnoreCond` marker while
-retaining its following calculation conditions, including nested minion
-rage modifiers. The existing unverified-handler budget stays unchanged.
-The legacy `customMods` text input remains available: newer PoB2 moved its
-editor into ConfigTab mod groups, while old builds and PoBR still use this input.
-Nested rune bonuses are flattened back to conditional `Bonded:` item lines,
-which retain their condition gate. Version-specific
-curated special modifiers are carried forward before vendor deduplication;
-the common layer alone does not contain all existing corrections.
+本次 PoB2 固定为 `dev` 上的 `ce566eac45ea8a86477f513c7ee65a1ebe60014e`，
+含 [0.5.5 数据导出](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/commit/49e93925dcb79024175c58d25befadab67b4dd44)。
+当时最新 tag 为 v0.23.1，早于这次数据导出。生成的 overlay 记录了具体参考提交和再生成命令。
 
-Regeneration:
+新 Lua 导出会返回构造函数，不再总是立即填充表。抽取器兼容两种形式，也处理返回的召唤物表。
+旧加载方式可能静默生成空的技能、品质、召唤物和基底 overlay，这次兼容修改避免了该问题。
+新 `IMMUNE` 解析形式支持单个或成对状态，保留 PoB2 的误匹配防护。
+配置抽取忽略仅供显示的 `IgnoreCond` 标记，但保留后续计算条件，包括嵌套的召唤物怒气词条。
+未验证 handler 的现有预算没有改变。
+
+旧的 `customMods` 文本输入仍可用。新版 PoB2 把编辑器移入 ConfigTab mod groups，
+但旧构筑和 PoBR 仍使用该输入。嵌套符文加成被展开为带条件的 `Bonded:` 物品行，条件继续保留。
+版本专用人工特殊规则先带入新版本，再做 vendor 去重；共享层不包含此前的全部修正。
+
+本次再生成命令：
 
 ```sh
 pipeline/bump-version.sh --patch 4.5.5.2 \
   --vendor-sha ce566eac45ea8a86477f513c7ee65a1ebe60014e
 ```
 
-The pipeline explicitly targets the new snapshot when extracting special
-modifiers, before advancing the active version. Golden test pins remain
-associated with the data version their tests load.
-The precompile artifact-consistency test follows the active data snapshot,
-with the existing coverage ratchet unchanged. It validates regenerated
-parser artifacts rather than asking new parser code to reproduce archived
-coverage reports.
-Historical snapshots and `GOLDEN_PARITY_DATA_VERSION` are retained so old
-golden values are not falsely treated as 0.5.5 reference calculations.
-The hand-curated constants layer is carried forward under the existing
-snapshot policy. The Chinese dictionary retains its own upstream version
-metadata; it is not advertised as a fresh China-client data export.
+抽取特殊词条时，管线显式指向候选新快照，之后才推进活动版本。
+测试 pins 与测试加载的数据版本对应。预编译产物一致性检查跟随活动快照，
+保留既有覆盖率基线；它检查新生成的解析产物，不要求新解析器复现归档覆盖率报告。
 
-This update refreshes game data and the required extraction/parser
-compatibility. It does not claim parity with every unreleased PoB2 engine
-feature, such as independent skill weapon sets. Existing unsupported-line
-and calculation diagnostics continue to apply.
+**当时**仍保留历史快照和 `GOLDEN_PARITY_DATA_VERSION`，避免把旧 golden 当成
+0.5.5 数值参考；这项做法后来已取消，见本文开头。
+人工常量层按当时快照规则继承。中文词典保留自己的上游版本信息，
+不能把它说成新导出的国服客户端数据。
+
+本次只更新游戏数据及必要的抽取、解析兼容逻辑，不保证覆盖尚未发布的 PoB2 引擎功能，
+例如当时的独立技能武器组。未支持词条与计算诊断仍需保留。

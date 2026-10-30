@@ -1,120 +1,123 @@
-# Change recipes
+<a id="change-recipes"></a>
 
-Exact steps for the most common small changes. Each recipe names the files to
-edit, the one check to run, and what to leave for the batch gate. Use these
-instead of exploring the codebase. Conventions and reasons are in the
-[maintainer guide](maintainer-guide.md) and the [mechanics notes](mechanics/README.md);
-rule syntax is in [contributing-mods](contributing-mods.md).
+# 常见改动步骤
 
-**Budget.** A recipe change compiles at most one small test target. Do not run
-`cargo test -p pobr-core` (all targets), `--test parity`, the WASM/CLI suites,
-`mise run accuracy`, `triage`, `diagnose`, `compare` or the coverage scripts for
-it. Those compile the large parity binary or the CLI and belong to the batch
-gate (`mise run gate`), which the person merging runs once for many changes.
+本文列出常见小改动要改的文件、要跑的检查，以及留给批次门禁的验证。先按这里操作，
+不必从头搜索整个仓库。通用约定见[维护者指南](maintainer-guide.md)，机制规则见
+[机制约定](mechanics/README.md)，词条语法见[词条贡献指南](contributing-mods.md)。
 
-## Find what already exists (no compilation)
+**验证预算：每项改动最多编译一个小测试目标。** 不逐项运行
+`cargo test -p pobr-core`（全部目标）、`--test parity`、WASM/CLI 套件、
+`mise run accuracy`、`triage`、`diagnose`、`compare` 或覆盖率脚本。
+这些命令会编译较大的 parity 测试程序或 CLI，部分还会重算整组构筑。
+合并者在多个改动合入后运行一次 `mise run gate`。
 
-| Question | Command |
-|----------|---------|
-| Game stat id, full text, sources, ledger fate, nearby rules for a line | `mise run gap "<line or template>"` (in a new worktree, set `POBR_BIN` and `POBR_CACHE_DIR`, below, so it neither builds a CLI nor recomputes the ledgers) |
-| A skill, stat, base, node or unique in game data | `mise run lookup <id or name>` |
-| Who reads modifier name `X` | `rg -n '"X"' crates/pobr-core/src crates/pobr-build/src` (readers use `named("X")`, `sum(.., "X")`, `flag(.., "X")`) |
-| An existing rule for similar text | `rg -n -i '<a distinctive word>' data/overlay-common/special_mods.json` |
-| An existing skill-stat meaning | `rg -n '<stat_id>' crates/pobr-core/src/rules/skill_stats.rs` |
-| Test suites | `mise run targets` |
+<a id="find-what-already-exists-no-compilation"></a>
 
-## Add one game line (item, passive, jewel, flask/charm text)
+## 查找已有实现（不编译）
 
-1. Find the stat id and existing reader with the table above.
-2. Decide where the line goes:
+| 要查什么 | 命令 |
+|----------|------|
+| 一行文本的游戏 stat id、完整原文、来源、逐行使用记录和附近规则 | `mise run gap "<line or template>"`；新 worktree 先设置下文的 `POBR_BIN` 和 `POBR_CACHE_DIR`，避免编译 CLI 或重算记录 |
+| 游戏数据里的技能、stat、基底、节点或暗金 | `mise run lookup <id or name>` |
+| 哪些代码读取 modifier 名称 `X` | `rg -n '"X"' crates/pobr-core/src crates/pobr-build/src`；常见读取形式是 `named("X")`、`sum(.., "X")`、`flag(.., "X")` |
+| 类似文本是否已有规则 | `rg -n -i '<a distinctive word>' data/overlay-common/special_mods.json` |
+| 技能 stat 是否已有含义映射 | `rg -n '<stat_id>' crates/pobr-core/src/rules/skill_stats.rs` |
+| 有哪些测试套件 | `mise run targets` |
 
-   | The line is … | Edit |
-   |---------------|------|
-   | an existing modifier name with a value or condition | an entry in `data/overlay-common/special_mods.json` |
-   | a skill/support gem stat | `crates/pobr-core/src/rules/skill_stats.rs` (stat id → modifier), and `exporter_rule` there for provenance |
-   | logic JSON cannot express | a handler in `crates/pobr-core/src/rules/handlers/` + `handler_id` in the entry |
-   | recognised but changing no output | entry with `"mods": []`, `"batch": "S0"` |
-   | recognised, mechanic not built yet | entry with `"mods": []`, `"batch": "unmodelled"`, `source_note` naming the missing model |
+<a id="add-one-game-line-item-passive-jewel-flaskcharm-text"></a>
 
-3. Write the entry. Required fields: `id`, `pattern` (whole line, lower case,
-   Rust regex), `mods`, `batch` (`S2` for a curated rule), `verified: false`,
-   `game_source` (the stat id), `exporter` (`"absent"` when PoB2 does not
-   implement it, `"differs"` when it does differently; omit for `"same"`), and
-   `examples` with the exact game text. `examples` are matched against the rule
-   by the check in step 4, so they are the parse test.
-4. Check and regenerate: `mise run regen` (validates every rule and example,
-   rewrites `data/<version>/generated/parsed_mods.json` and
-   `parse-coverage.json`, then tests precompile-mods). Commit the regenerated
-   files; never edit them by hand.
-5. Only when the modifier name had no reader, or the reader needs new
-   behaviour: add the reader and one engine test in the closest existing file
-   under `crates/pobr-core/tests/<suite>/`, then run
-   `cargo test -q -p pobr-core --test <suite> <test name>`.
-6. One paragraph in the matching [docs/mechanics/](mechanics/README.md) file when
-   the line sets a convention (an assumption, an untested game behaviour); a
-   PoB2 difference with per-build numbers goes into
-   [pob2-differences.md](pob2-differences.md) and `devs/scripts/known-differences.json`.
+## 添加一行游戏词条（物品、天赋、珠宝、药剂或护符）
 
-That is the whole change. The ledger, accuracy and parity effects are measured
-by the batch gate.
+1. 按上表查游戏 stat id 和现有读取方。
+2. 根据词条选择位置：
 
-## Add one Calcs display field
+   | 情况 | 修改位置 |
+   |------|----------|
+   | 已有 modifier 名称，只需提供数值或条件 | `data/overlay-common/special_mods.json` 中的条目 |
+   | 技能或辅助宝石 stat | `crates/pobr-core/src/rules/skill_stats.rs` 的 stat id → modifier 映射，并用其中的 `exporter_rule` 记录来源 |
+   | JSON 无法表达的逻辑 | `crates/pobr-core/src/rules/handlers/` 中的 handler，并在条目中填写 `handler_id` |
+   | 能识别，且不影响任何计算输出 | `"mods": []`、`"batch": "S0"` |
+   | 能识别，但机制尚未实现 | `"mods": []`、`"batch": "unmodelled"`，用 `source_note` 说明缺少什么计算 |
 
-1. The value must already exist in `OutputTable` (`crates/pobr-core/src/calc/output.rs`)
-   or be computed from retained calculation terms. Never add a second
-   computation of something calculated elsewhere.
-2. Edit, in order:
-   - `crates/pobr-core/src/display_catalog.rs`: a `computed("<Id>", Cat::…, Vt::…, "<PoB key>")`
-     entry and the `"<Id>" => output.<field>` arm.
-   - Detail kind: a derived formula in `crates/pobr-core/src/calc/session/detail_views.rs`
-     (add the id to `DERIVED_STATS`) whose inputs rebuild the value, or a source
-     group from the same ModDb query the calculation uses. `pobr_build::breakdown::detail::detail_kind` must agree.
-   - Labels: `crates/pobr-i18n/locales/en-US/stats.toml`, `crates/pobr-i18n/locales/zh-TW/stats.toml`,
-     `web/src/lib/detailLabels.ts`.
-   - Do not lock catalog counts. Existing catalog checks verify unique ids, labels,
-     computed values and detail wiring on the active data version.
-3. Test: `cargo test -q -p pobr-core --test golden display_catalog` and one
-   engine test that checks the value and that the derived inputs rebuild it.
-4. Compare with PoB2 on two or three builds only, using a CLI the gate already
-   built: `target/debug/pobr calculate-build --file <code.txt> --json` against
-   `.cache/pob2-oracle/<hash>.json` → `calcsOutput.<PoB key>`. The full
-   `output-coverage.py` run belongs to the gate.
+3. 写入条目：`id`、`pattern`（小写、匹配整行的 Rust 正则）、`mods`、
+   `batch`（新人工规则用 `S2`）、`verified: false`、`game_source`（游戏 stat id）、
+   `exporter`（PoB2 未实现用 `"absent"`，行为不同用 `"differs"`，相同可省略）和
+   `examples`（游戏原文）。`source_note` 记录可追溯的来源或缺失机制。
+   下一步会逐条匹配 `examples`，因此它们就是解析回归样本。
+4. 运行 `mise run regen`：校验规则与示例，重生成
+   `data/<version>/generated/parsed_mods.json` 和 `parse-coverage.json`，再测试
+   precompile-mods。提交变化的生成文件，不手工编辑它们。
+5. 只有 modifier 名称没有读取方，或读取方需要新行为时，才添加读取代码，并在
+   `crates/pobr-core/tests/<suite>/` 最近的现有文件中补一个引擎测试，运行
+   `cargo test -q -p pobr-core --test <suite> <test name>`。
+6. 词条引入新的约定、假设或尚未实测的游戏行为时，在对应的
+   [docs/mechanics/](mechanics/README.md) 文件写一段说明。与 PoB2 有意不同且已定位到
+   构筑数值的情况，写入 [pob2-differences.md](pob2-differences.md) 和
+   `devs/scripts/known-differences.json`。
 
-## Implement a missing mechanic
+到这里即可提交。逐行使用记录、accuracy 和 parity 的变化由批次门禁统一测量。
 
-Same as above, plus the source: game stats in `data/<version>/base/`, game
-constants, keyword text or official patch notes, quoted in its paragraph in
-[docs/mechanics/](mechanics/README.md).
-PoB2 (`vendor/`) is a cross-check only; never cite its line numbers. State
-every assumption that has no in-game test.
+<a id="add-one-calcs-display-field"></a>
 
-## Batches and the gate
+## 添加一个 Calcs 展示字段
 
-Several items in one area go to one branch. Implement them one after another
-with only each item's check from the recipes above, run `mise run regen` once
-after the last rule edit, and commit.
+1. 数值必须已经存在于 `OutputTable`（`crates/pobr-core/src/calc/output.rs`），
+   或能从计算阶段保留的中间项得到。不要重复计算已有数值。
+2. 依次修改：
+   - `crates/pobr-core/src/display_catalog.rs`：添加
+     `computed("<Id>", Cat::…, Vt::…, "<PoB key>")` 和 `"<Id>" => output.<field>` 分支。
+   - 明细：在 `crates/pobr-core/src/calc/session/detail_views.rs` 添加派生公式，并把 id
+     加入 `DERIVED_STATS`；公式输入必须能重建结果。也可使用与原计算相同的 ModDb 查询
+     提供来源分组。`pobr_build::breakdown::detail::detail_kind` 必须与之对应。
+   - 标签：`crates/pobr-i18n/locales/en-US/stats.toml`、
+     `crates/pobr-i18n/locales/zh-TW/stats.toml`、`web/src/lib/detailLabels.ts`。
+   - 不固定 catalog 的条目数。现有检查会验证活动数据版本上的 id 唯一性、标签、数值和明细连接。
+3. 运行 `cargo test -q -p pobr-core --test golden display_catalog`，并用一个引擎用例断言
+   数值正确、派生输入能重建它。
+4. 只用两三个构筑交叉核对 PoB2，并复用门禁已编译的 CLI：
+   `target/debug/pobr calculate-build --file <code.txt> --json` 对照
+   `.cache/pob2-oracle/<hash>.json` 的 `calcsOutput.<PoB key>`。
+   完整 `output-coverage.py` 留给批次验证。
 
-The person merging runs the batch gate once after merging several branches:
+<a id="implement-a-missing-mechanic"></a>
 
-```bash
-mise run gate                    # every step, then a summary of failures
-mise run gate --only core,parity # rerun only what failed, after fixing it
-```
+## 实现缺失机制
 
-## Working in a new worktree
+先按[静态模拟的范围与取舍](maintainer-guide.md#静态模拟的范围与取舍)确认实际需求，
+再按上面的步骤实现。依据来自 `data/<version>/base/` 的游戏 stat、常量、词条文本或官方
+patch notes，并写入对应[机制文档](mechanics/README.md)。
+PoB2（`vendor/`）只用于交叉核对，不引用其行号来解释游戏规则。
+所有没有游戏内实测的假设都要明确写出。
 
-A new worktree has an empty `target/` and an empty `.cache/`. Without help,
-the first test rebuilds every dependency, and the analysis tools (`gap`,
-`gaps`, `triage`, `compare`, `config:coverage`, `skills:sweep`,
-`output-coverage.py`) build a CLI of their own and recompute every build's
-ledger and PoB2 oracle result. Point them at a checkout that already has these:
+<a id="batches-and-the-gate"></a>
+
+## 批量改动与门禁
+
+同一领域的多个条目放在一个分支，依次实现，每项只跑相关检查。
+最后一次规则修改后统一运行一次 `mise run regen`，再提交。
+
+合并者合入多个分支后运行一次批次门禁：
 
 ```bash
-mise run warm /path/to/warm/checkout                         # once: copy-on-write clone of its target/debug
-export POBR_BIN=/path/to/warm/checkout/target/debug/pobr     # analysis tools use this CLI, build none
-export POBR_CACHE_DIR=/path/to/warm/checkout/.cache          # share its ledgers and oracle results
+mise run gate                    # 运行全部步骤，最后列出失败项
+mise run gate --only core,parity # 修复后只重跑失败项
 ```
 
-`POBR_BIN` runs that checkout's engine, not this worktree's code: use it to
-read game data, ledgers and PoB2 values, not to measure your own change. Your
-change is measured by your focused test, and by the gate after merging.
+<a id="working-in-a-new-worktree"></a>
+
+## 在新 worktree 中工作
+
+新 worktree 的 `target/` 和 `.cache/` 为空。第一次测试会重新编译依赖；分析工具
+（`gap`、`gaps`、`triage`、`compare`、`config:coverage`、`skills:sweep`、
+`output-coverage.py`）默认会准备自己的 CLI，并重算逐行使用记录和 PoB2 结果。
+先指向已有缓存的 checkout：
+
+```bash
+mise run warm /path/to/warm/checkout                         # 首次运行：写时复制其 target/debug
+export POBR_BIN=/path/to/warm/checkout/target/debug/pobr     # 分析工具使用现有 CLI，不另行编译
+export POBR_CACHE_DIR=/path/to/warm/checkout/.cache          # 共用逐行记录和 oracle 结果
+```
+
+`POBR_BIN` 运行的是那份 checkout 的引擎。用它读取游戏数据、旧记录和 PoB2 对照值；
+本 worktree 的修改由定向测试和合并后的门禁验证。

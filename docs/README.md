@@ -1,51 +1,52 @@
-# Documentation index
+# 文档目录
 
-Repository-wide rules are in [maintainer-guide.md](maintainer-guide.md) and the short
-[AGENTS.md](../AGENTS.md); contribution requirements are in
-[CONTRIBUTING.md](../CONTRIBUTING.md). Mechanics research lives in
-`agent-docs/` and is input material, not final authority.
+先按要做的事找文档。日常开发从[维护者指南](maintainer-guide.md)和
+[AGENTS.md](../AGENTS.md)开始；提交要求见[贡献指南](../CONTRIBUTING.md)。
 
-## Current guides and contracts
+<a id="current-guides-and-contracts"></a>
 
-Keep these in step with the code. Update the relevant one when behavior changes.
+## 当前指南
 
-| Document | Covers |
-|----------|--------|
-| [maintainer-guide.md](maintainer-guide.md) | Build environment, validation scope, architecture, parity system and cross-cutting conventions (loaded by every agent session; keep it short) |
-| [mechanics/](mechanics/README.md) | Game sources, implementation and assumptions of individual mechanics: offence, defence, ailments, minions, items, configured snapshots |
-| [calc-outputs.md](calc-outputs.md) | CLI / WASM response fields, EHP terms, Calcs and sidebar fields, Full DPS |
-| [build-model.md](build-model.md) | Data snapshot and session rules, imported build structure, save formats and JSON interfaces, orchestration invariants and caches, Web runtime |
-| [pob2-differences.md](pob2-differences.md) | Data still taken from PoB2, deliberate differences and the per-row explanations behind `known-differences.json` |
-| [diagnostics.md](diagnostics.md) | Diagnosis, ledger and coverage tools, registration lists, reference basis and corpora |
-| [import-formats.md](import-formats.md) | What each import format carries and how the importer normalizes it |
-| [development-workflow.md](development-workflow.md) | Commands, caches, PR checks, CI, releases, handling external PRs |
-| [recipes.md](recipes.md) | Exact files and the single check for adding a game line, a Calcs field or a mechanic; the validation budget and batch gate |
-| [contributing-mods.md](contributing-mods.md) | Adding or fixing modifiers through the overlay data channel |
-| [web-contracts.md](web-contracts.md) | Upgrade guidance, build workspace, weapon sets and skill selection |
-| [trade-special-affixes.md](trade-special-affixes.md) | Special affix sources and scoring in market searches |
-| [jewel-search.md](jewel-search.md) | Passive jewel support and limits |
-| [wegame-import.md](wegame-import.md) | WeGame share import |
-| [wasm-package.md](wasm-package.md) | Standalone WASM package, release assets and size reports |
-| [version-bump-architecture.md](version-bump-architecture.md) | How data version bumps are structured (`overlay-common`, test pins, vendor diffs) |
+这些文档描述当前实现，功能改变时需要一起更新。
 
-Related guides outside this directory: [Web README](../web/README.md),
-[data pipeline](../pipeline/README.md) and the
-[gem quality generator](../pipeline/gem-quality/README.md).
+| 想了解什么 | 文档 |
+| --- | --- |
+| 本地开发、架构和验证要求 | [维护者指南](maintainer-guide.md) |
+| 游戏规则如何计算、哪些地方用了假设 | [机制约定](mechanics/README.md) |
+| CLI / WASM 返回什么，界面数值是什么意思 | [计算输出](calc-outputs.md) |
+| BD、存档、数据快照和计算会话如何组织 | [构筑模型](build-model.md) |
+| 还依赖 PoB2 的哪些数据，哪些结果有意不同 | [PoB2 差异](pob2-differences.md) |
+| 计算不对、词条没生效时怎么查 | [诊断工具](diagnostics.md) |
+| PoB2、WeGame、游戏规划器等格式能保留什么 | [导入格式](import-formats.md) |
+| 测试、缓存、CI、部署和发版 | [开发工作流](development-workflow.md) |
+| 改一条词条、一个计算字段或机制的具体步骤 | [常见改动步骤](recipes.md) |
+| 添加或修复词条解析规则 | [词条指南](contributing-mods.md) |
+| 界面操作、升级建议和 BD 管理的行为要求 | [Web 行为约定](web-contracts.md) |
+| 市集特殊词缀从哪里来、怎么评分 | [市集特殊词缀](trade-special-affixes.md) |
+| 珠宝搜索支持什么、有哪些限制 | [珠宝搜索](jewel-search.md) |
+| WeGame 分享链接如何导入 | [WeGame 导入](wegame-import.md) |
+| 如何使用独立 WASM 发布包 | [WASM 包](wasm-package.md) |
+| 如何升级游戏数据版本 | [当前数据管线步骤](../pipeline/README.md) |
+| 当前界面长什么样、截图怎么拍的 | [线上截图](screenshots/README.md) |
 
-## Dated records
+其他目录还有 [Web 安装指南](../web/README.zh-CN.md)、[数据管线](../pipeline/README.md)
+和[宝石品质生成说明](../pipeline/gem-quality/README.md)。
+`agent-docs/` 保存机制研究资料，结论需要结合当前游戏数据和测试核对。
 
-Snapshots of a review, investigation or data update at a point in time. They
-explain why things are the way they are; they are not current task lists, and
-they are not updated as the code moves on. Check the date and commit at the top
-of each before relying on it.
+<a id="dated-records"></a>
 
-| Document | Snapshot |
-|----------|----------|
-| [wasm-performance.md](wasm-performance.md) / [中文](wasm-performance.zh-CN.md) | WASM timings and sizes (2026-10-11); supplemental timings, build diagnostics and fresh PoB2 source comparison (2026-10-12) |
-| [adapting-to-0.5.5c.md](adapting-to-0.5.5c.md) | Data update to `4.5.5.3` (2026-09-26) |
-| [adapting-to-0.5.5.md](adapting-to-0.5.5.md) | Data update to `4.5.5.2` (2026-09-11) |
-| [calcs-display-comparison.md](calcs-display-comparison.md) | Calcs panel source comparison with PoB2 (2026-09-25) |
-| [reference-sources-and-engine-review.md](reference-sources-and-engine-review.md) | Build-reference sources and PoB2 alignment review (2026-09-12) |
+## 历史记录
 
-These files stay at their current paths because code comments and scripts
-reference them.
+以下是有日期的历史记录。它们保留当时的测量、排查结论和版本背景，不能当成当前版本的承诺。
+先看文档顶部的日期、版本或提交，再决定能否用于眼前的问题。
+
+| 记录 | 当时查了什么 |
+| --- | --- |
+| [WASM 性能（英文）](wasm-performance.md) / [中文](wasm-performance.zh-CN.md) | 2026-10-11 的耗时和体积；2026-10-12 补充测量、诊断和 PoB2 对照 |
+| [数据升版结构改造](version-bump-architecture.md) | v0.0.3 的方案和交付记录，含 2026-09-26 的后续说明；当前操作以数据管线文档为准 |
+| [0.5.5c 数据适配](adapting-to-0.5.5c.md) | 2026-09-26，数据版本 `4.5.5.3` |
+| [0.5.5 数据适配](adapting-to-0.5.5.md) | 2026-09-11，数据版本 `4.5.5.2` |
+| [Calcs 展示比较](calcs-display-comparison.md) | 2026-09-25，与 PoB2 计算面板的比较 |
+| [参考样本与引擎检查](reference-sources-and-engine-review.md) | 2026-09-12，构筑参考来源及 PoB2 对照 |
+
+历史文件保留原路径，代码注释和脚本仍会引用它们。

@@ -2,6 +2,11 @@
 
 **English** | [简体中文](wasm-performance.zh-CN.md)
 
+This is a historical record of the **2026-10-12** measurements and investigation.
+The timing and size tables describe the artifacts identified below, not the current
+release. Later corrections are marked separately; the original measurements remain.
+The reproduction commands use the checkout and artifacts you supply.
+
 The opt-in benchmark runs **real PoBR Rust WASM** and
 [pob-web's Lua WASM](https://github.com/krauthaufen/pob-web), using the same
 committed PoB2 build codes. It measures **code import + calculation + JSON
@@ -17,9 +22,11 @@ receipt says `dirty: true`; its source fingerprint `02320289…` covers the comp
 The Lua side is the deployed pob-web bundle (PoB2 runtime `v0.23.0`), hash-verified.
 Each build gets two untimed warmups and nine measured samples.
 
-## Latest season: Forbidden Rites
+<a id="latest-season-forbidden-rites"></a>
 
-Eight public builds were captured from [poe.ninja's latest season](https://poe.ninja/poe2/builds/forbiddenrites)
+## Forbidden Rites captures (2026-10-11)
+
+Eight public builds were captured from [poe.ninja's then-latest season](https://poe.ninja/poe2/builds/forbiddenrites)
 on **2026-10-11**, snapshot `0632-20261011-47556`, one per base class.
 [Selection and source evidence](../examples/wasm-benchmark/selection.json) records the
 index URLs, characters and hashes. Candidates were chosen before timing: one
@@ -51,21 +58,23 @@ Lua and are not a paired result.
 import failures: `CalcDefence.lua` passes infinity to integer `s_format` formatting
 (five at line 2789, Deadeye at line 3844). PoBR timings remain visible, but no Lua time
 or speed ratio is published for an aborted calculation. **The completed pairs also have
-materially different outputs and incomplete PoBR coverage**, so these are API-workload
-timings—not an equivalent-mechanics or universal engine-speed comparison:
+materially different outputs and incomplete PoBR coverage**. These times describe
+the measured import-and-calculation requests.
+They do not compare equivalent mechanics or establish a speed ratio for other workloads:
 
 | Completed latest-season build | PoBR TotalDPS | Lua TotalDPS | PoBR unsupported modifiers |
 | --- | ---: | ---: | ---: |
 | Amazon / Ice Shot | 88,117.54 | 237,926.57 | 26 |
 | Martial Artist / Ice Shot | 2,900,388.52 | 5,173,634.32 | 13 |
 
-All 15 builds report zero item parse errors.
+The measured engine reported zero item parse errors for all 15 builds.
+That diagnostic was incomplete, as the later correction below explains.
 
 > Later correction: the measured version did not report an item it could not read for a
 > `{ pob_code }` request. The Stormweaver's body armour (`Rarity: RELIC`) was dropped at the
-> time, so its defences and damage are those of a character without it. That rarity is now
-> read, and any other unreadable item appears in `item_errors`. The figures in this section
-> are the original measurements.
+> time, so its defences and damage are those of a character without it. A later fix reads
+> that rarity and reports other unreadable items in `item_errors`. The figures in this
+> section are the original measurements.
 
 <details>
 <summary>Historical comparison cohort: 7 builds</summary>
@@ -93,8 +102,10 @@ observation, not a parity claim.
 | --- | ---: | ---: | ---: |
 | Engine and data boot | 463.10 | 1898.10 | 4.10× |
 
-Across the nine paired builds the speed ratio is **31.65×–81.46×**; PoBR medians over all 15
-builds are 6.83–13.13 ms. A second complete paired run four minutes later agreed within
+Across the nine paired builds the speed ratio is **31.65×–81.46×**. PoBR medians over all 15
+builds in the separate PoBR-only run are 6.83–13.13 ms.
+The paired run has nine PoBR medians, ranging from 7.38 to 13.48 ms.
+A second complete paired run four minutes later agreed within
 6.8% on every speed ratio and within 11.0% on every PoBR median (Lua: 10.7%), so the
 recorded run is representative of this host, though it is still one host.
 [Paired samples, diagnostics and artifact hashes](../devs/ci/pob-web-performance-2026-10-12-m4.json).
@@ -124,7 +135,7 @@ snapshot to rerun the same artifacts; a fresh download may measure a newer deplo
 
 Actual byte measurements of the same engine/data artifacts; **MiB = 1,048,576 bytes**.
 Data is gzip level 9. The transfer estimate also gzip-compresses WASM and JS,
-without recompressing the data gzip. PoBR figures are this checkout's `package-wasm`
+without recompressing the data gzip. PoBR figures come from the recorded `package-wasm`
 report (v0.0.36, schema 8, data `0.5.5.4.2`).
 
 | Component / scope (MiB) | PoBR | pob-web | PoBR / Lua size |
@@ -135,7 +146,7 @@ report (v0.0.36, schema 8, data `0.5.5.4.2`).
 | WASM + JS + compressed data | 9.420 | 4.949 | 1.90× |
 | gzip transfer estimate | 6.191 | 4.763 | 1.30× |
 
-**PoBR's current runtime bundle is larger, not smaller.** It compiles the Rust
+**In this measurement, PoBR had the larger runtime bundle.** It compiles the Rust
 engine into WASM; Lua's smaller WASM is an interpreter whose calculation code
 travels in the data bundle. Dataset contents, localization and supported
 mechanics differ. These sizes do not measure runtime memory.
@@ -221,9 +232,9 @@ user-supplied failing build.
 
 ### PoBR: import succeeds; coverage is incomplete
 
-All **15 builds** complete `calculateBuildJson` and output validation with zero
-`item_errors`, using the current release WASM (schema 8, data `0.5.5.4.2`). These are
-runtime results, not a claim of numerical parity.
+All **15 builds** completed `calculateBuildJson` and output validation with zero reported
+`item_errors` (subject to the missing-item correction above). The measured release WASM
+used schema 8 and data `0.5.5.4.2`. Completion does not establish numerical parity.
 
 | Latest-season build | Unsupported diagnostic entries | Item parse errors |
 | --- | ---: | ---: |
@@ -242,7 +253,7 @@ The Blood Mage build selects `ChaosFrogExplosionPlayer` (support-granted effect 
 [web contracts](web-contracts.md)). The timing does not assert which effect the build's
 owner treats as its main damage skill.
 
-Observed gaps in the current diagnostics include Bonded effects, conditional repeats,
+Gaps in the recorded diagnostics include Bonded effects, conditional repeats,
 constant flask effects and additional-projectile mechanics. The Pathfinder diagnostic
 explicitly reports Fork's `support_fork_forked_projectile_damage_+%_final`
 as `conditional numerical effect not modeled (UnsupportedTag("StatThreshold"))`.
@@ -288,9 +299,9 @@ Checked on **2026-10-12**; “latest” has three different meanings:
 
 | Layer | Observed state | Verdict |
 | --- | --- | --- |
-| pob-web wrapper/shims | Pinned `ee33ce63920f23e634cc30e37d8ad339244dbf34` equals upstream HEAD | Current |
-| Public deployment | Fresh `lua.wasm`, `lua.mjs` and `pob-lua.json` SHA-256 hashes all match the recorded baseline | Same as the currently served deployment |
-| Embedded PoB2 | Runtime reports `v0.23.0`; upstream latest release is `v0.23.1` | Not the latest PoB2 release |
+| pob-web wrapper/shims | Pinned `ee33ce63920f23e634cc30e37d8ad339244dbf34` equals the HEAD checked that day | Current on the check date |
+| Public deployment | Fresh `lua.wasm`, `lua.mjs` and `pob-lua.json` SHA-256 hashes all match the recorded baseline | Same as the deployment served on the check date |
+| Embedded PoB2 | Runtime reports `v0.23.0`; the latest release checked that day is `v0.23.1` | Not the latest PoB2 release |
 
 Sources: [pob-web commit](https://github.com/krauthaufen/pob-web/commit/ee33ce63920f23e634cc30e37d8ad339244dbf34),
 [PoB2 latest release checked](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/releases/tag/v0.23.1),
@@ -316,7 +327,7 @@ node web/scripts/benchmark-pob-web.mjs --prepare \
 
 On **2026-10-12**, downloaded PoB2's latest release
 [`v0.23.1` / `7d6f530`](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/commit/7d6f530cbdab20389ff8bc6ba97a37ac27f74e41)
-and current upstream
+and the then-current upstream
 [`HEAD` / `bb52d6b`](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/commit/bb52d6b368307457eb9c54bb13f1829993d390b1)
 into separate temporary source snapshots. Rebuilt each Lua/data bundle using
 pob-web's pinned
@@ -339,7 +350,7 @@ deployment. This does not assert that every breakdown or mechanic is unchanged.
 
 HEAD fails earlier: `Modules/Main.lua:340: syntax error near '+'`.
 That [source line](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/blob/bb52d6b368307457eb9c54bb13f1829993d390b1/src/Modules/Main.lua#L340)
-is `count += 1`, which the current Lua WASM loading path cannot parse.
+is `count += 1`, which the measured Lua WASM loading path cannot parse.
 It is not a BD-specific error, and this experiment does not establish that
 the desktop PoB2 runtime fails.
 
@@ -349,7 +360,7 @@ and failed the same six; no timing from that replay is reported here.
 retains source commits, bundle hashes, changed-file lists, raw samples, diagnostics and
 the exact failures. No ratio is reported for Lua failures or HEAD's boot failure.
 
-**Conclusion:** the current pob-web Lua WASM/adapter combination has demonstrated
-compatibility failures; replacing only its PoB2 bundle with the latest release
-does not resolve them, and current HEAD needs additional compatibility work even
-to boot. This does not erase PoBR's own unsupported effects.
+The tested pob-web Lua WASM/adapter combination failed on these builds.
+Replacing only its PoB2 bundle with the release available on 2026-10-12 did not fix
+the errors; HEAD `bb52d6b` also needed loading compatibility work before it could boot.
+PoBR still had the unsupported effects recorded above.
