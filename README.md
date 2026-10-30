@@ -2,7 +2,7 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-[![PoBR: lightweight, fast Path of Exile 2 build planning in your browser. Compare gear and support gems, and plan passive upgrades. Open source, powered by Rust and WebAssembly.](.assets/pobr-preview-en.jpg)](https://pobr-web.pages.dev)
+[![PoBR: lightweight, fast Path of Exile 2 build planning in your browser. Compare gear and support gems, and plan passive upgrades. Open source, powered by Rust and WebAssembly.](.assets/pobr-preview-en.jpg)](https://pobr.win)
 
 **Compare gear, support gems and passive upgrades before changing your build.**
 
@@ -11,23 +11,26 @@ that runs in your browser**. Import a PoB2 build code or WeGame share link, insp
 your damage and defences, and preview your next upgrade. Powered by Rust and
 WebAssembly, with English, Simplified Chinese and Traditional Chinese interfaces.
 
-**[Try PoBR in your browser](https://pobr-web.pages.dev)** ·
+**[Try PoBR in your browser](https://pobr.win)** ·
+[Pages fallback](https://pobr-web.pages.dev) ·
 [Release notes](https://github.com/ackness/pobr/releases) ·
 [Report a problem](https://github.com/ackness/pobr/issues)
 
 > **Beta:** ready to try, with incomplete game-mechanic coverage. Check unsupported
 > effects and combat settings before relying on an upgrade comparison.
 
-## See your next upgrade
+## The current app
 
-| Equipment and live character stats | Compare items and simulate affix tiers |
+| Equipment and live character stats | Compare complete items |
 | --- | --- |
-| [![Equipment layout with live damage, defence and resistance stats](docs/screenshots/equipment.png)](docs/screenshots/equipment.png) | [![A copied ring compared against both equipped rings, with a prefix and suffix editor](docs/screenshots/item-comparison.png)](docs/screenshots/item-comparison.png) |
-| **Filter unwanted supports and compare combinations** | **Preview connected passive upgrades** |
-| [![Support recommendations with a player-excluded gem and DPS/EHP changes](docs/screenshots/support-upgrades.png)](docs/screenshots/support-upgrades.png) | [![Passive tree with allocated nodes and a proposed upgrade route highlighted](docs/screenshots/passive-tree.png)](docs/screenshots/passive-tree.png) |
+| [![Equipment layout with live damage, defence and resistance stats](docs/screenshots/equipment.png)](docs/screenshots/equipment.png) | [![An example ring compared against both equipped rings](docs/screenshots/item-comparison.png)](docs/screenshots/item-comparison.png) |
+| **Inspect skill groups and support gems** | **Inspect the allocated passive tree** |
+| [![Current skill groups and support controls](docs/screenshots/support-upgrades.png)](docs/screenshots/support-upgrades.png) | [![Current passive tree with allocated nodes](docs/screenshots/passive-tree.png)](docs/screenshots/passive-tree.png) |
 
-Click any image to enlarge. Screenshots use a synthetic demonstration character,
-not a build guide.
+Captured from the live site with ego-lite on October 30, 2026, using release
+v0.0.43 and a public regression build. The screenshots show the Simplified Chinese
+interface. They illustrate the app, not a recommended build.
+[Capture details and more views](docs/screenshots/README.md).
 
 ## What you can do
 
@@ -45,20 +48,36 @@ not a build guide.
 
 ## Try it with your build
 
-1. [Open the web app](https://pobr-web.pages.dev) — no desktop installation needed.
-2. On **Build**, paste a **PoB2 build code** or a **WeGame PoE2 share link** and
-   import it. You can also import a `.build` file or start a new character.
+1. [Open the web app](https://pobr.win), then choose **Build library** in the top
+   bar, or **Import or create a build** on the empty Overview.
+2. Paste a **PoB2 build code** or a **WeGame PoE2 share link** and import it.
+   You can also import supported build-share links or a `.build` file, or start
+   a new character.
 3. Check your main skill, combat configuration and unsupported effects, then use
    **Upgrades**, **Skills** or **Tree** to compare changes.
 
+The site root opens the workbench. **Settings** offers game-style, grouped and
+compact displays, with page-specific overrides, language, theme and spacing
+controls. Display choices do not change the calculation.
+
 Edits are saved in your browser, with separate builds and stages. Importing a
 build code adds a new build by default; choose the current stage as the import
-destination only when you want to replace that stage.
+destination only when you want to replace that stage. Tabs on the same origin
+coordinate library changes. **`pobr.win` and `pobr-web.pages.dev` keep separate
+local saves**; use a file to move builds between them.
 
 Share a build with all its stages as JSON, or export a PoB2 build code. Download
 a workspace backup to keep every build, stage and unapplied editor draft or move
 devices. Restoring that backup replaces the whole local collection after
 confirmation, so back up your current workspace before restoring another one.
+
+Import formats carry different information: an in-game planner file does not
+contain a complete equipped character. [See what each format preserves](docs/import-formats.md).
+
+PoBR calculates a build under your selected conditions. It does not replay a fight
+or infer rotations, trigger history or buff uptime. EHP depends on the configured
+enemy and incoming damage. [Mechanics and assumptions](docs/mechanics/README.md)
+explain the limits.
 
 PoBR is an independent implementation using
 [Path of Building for PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)
@@ -132,115 +151,28 @@ Rust **edition 2024**; apps and tools inherit the workspace release version.
 The seven internal libraries keep independent versions, so application version
 bumps do not invalidate the entire library dependency chain.
 
-## Architecture at a glance
-
-Data flow:
-
-```
-GGG .dat export
-  └─(pobr-data-adapter, offline)→ data/<version>/*.json
-       └─(pobr-gamedata, runtime loader)→ calculation layers
-```
-
-Calculation pipeline (`pobr-core`):
-
-```
-modifier text → parse → ModDb → aggregation queries → calc
-  → OutputTable + Breakdown + TraceGraph + AttributionReport
-```
-
-Standard stat aggregation: `(base + Σbase) * (1 + Σinc/100) * Π(1 + more/100)`.
-
-Game-data file loading is confined to `pobr-gamedata`; production `pobr-data` /
-`pobr-core` do not read data files. Test rule loading requires an explicit test
-feature. Apps and tools own network and file input/output; `pobr-data` remains
-the bottom project dependency.
-
-Core sources are layered into `model/`, `parse/`, `rules/`, `ingest/`,
-`aggregate/`, `calc/`, and `attribute/`. Web's `api/wasmBackend.ts` calls the JSON
-contract in `apps/pobr-wasm/src/build_api/`; startup fetches and stages data into
-in-memory `GameData` / `BuildData`.
-
-## Workspace layout
-
-13 members: seven libraries in `crates/`, two application entry points in
-`apps/`, and four Rust tools in `tools/`. The React/TypeScript `web/` application
-and Lua oracle are outside the Cargo workspace.
-
-| Crate | Responsibility |
-|-------|----------------|
-| `crates/pobr-data` | Pure data definitions (catalog schema: BaseItem/Stat/Mod/SkillGem/PassiveNode…); zero logic, zero I/O; bottom dependency of every crate |
-| `crates/pobr-core` | Modifier parsing / storage / aggregation + calculation engine + source-level attribution + source ingestion (item/passive/gem/flask). Zero I/O |
-| `crates/pobr-gamedata` | Runtime data loader — the only layer in the data system that touches files; lazy per-domain loading + i18n sidecars |
-| `crates/pobr-i18n` | Language pack loading / fallback / display-text mapping (`en-US` canonical + `zh-TW`) |
-| `crates/pobr-tree` | Passive tree topology, allocated-node mod collection, radius jewels |
-| `crates/pobr-build` | Build state, PoB build code encode/decode, import recognition, `calc_orchestrator/` + `CalcCache`, build comparison. **Home of the parity tests** |
-| `crates/pobr-item` | Full-fidelity edit-mode parsing of raw item text + reverse serialization (BuildRaw round-trip) |
-| `apps/pobr-cli` | CLI: `calculate` / `calculate-build` / `parse-mod` / `explain-mod` / `decode-code` / `encode-code` |
-| `apps/pobr-wasm` | Web/WASM API: pure-Rust JSON in/out; wasm-bindgen bindings behind the `wasm` feature |
-| `tools/pobr-data-adapter` | Data pipeline adapter: GGG `.dat` export → denormalized committed JSON |
-| `tools/sync-pob-catalog` | Extracts the stat catalog from PoB core Lua; parity check / diff |
-| `tools/lint-i18n` | Language pack completeness check |
-| `tools/precompile-mods` | Offline pre-compilation of mod-parser rules / coverage report |
-
-(`tools/pob2-oracle` is a non-workspace pure-Lua wrapper that dumps PoB2-side
-calculation breakdowns for per-component comparison.)
-
-## Parity system (regression baseline)
-
-PoB2 compatibility is a hard regression gate, guarded by three complementary
-layers:
-
-1. **`crates/pobr-build/tests/parity/ninja_parity.rs`** — walks real PoB2 builds with
-   golden stat values, comparing all classes / skills with zero hard-coding;
-   `parity_no_regression` asserts the aggregate hit rate never drops below the
-   recorded baseline.
-2. **golden / dual-run suites** — modules under `tests/parity/` and
-   `tests/dualrun/` pin intermediate values and config semantics; Cargo runs
-   their aggregate targets `parity.rs` and `dualrun.rs`.
-3. **`tools/pob2-oracle`** — when a divergence needs per-component diagnosis,
-   dumps the Lua-side calculation breakdown straight from the vendored PoB2.
-
-```bash
-mise run test build parity parity_baseline_report -- --ignored --nocapture
-```
-
-`vendor/PathOfBuilding-PoE2/` is a full checkout; verify formulas by reading
-the local Lua directly instead of searching online.
-
 ## Documentation
 
-- [`AGENTS.md`](AGENTS.md) — concise contributor guide and development entry points.
-- [Maintainer guide](docs/maintainer-guide.md) — verification tiers, command cheat-sheet, key
-  conventions (read before contributing); it links the topic documents for
-  mechanics, outputs, the build model, PoB2 differences and diagnostics.
-- [`agent-docs/`](agent-docs/) — PoE2 (0.5.0) game-mechanics reference in
-  Chinese (damage types / resistances / armour, evasion, ES / crit / ailments /
-  damage-defence order, …).
-- [`web/README.md`](web/README.md) — web frontend.
+| I want to… | Start here |
+| --- | --- |
+| Find a guide | [Documentation index](docs/README.md) |
+| Contribute code | [CONTRIBUTING.md](CONTRIBUTING.md), [AGENTS.md](AGENTS.md), [maintainer guide](docs/maintainer-guide.md) |
+| Add or fix a modifier | [Modifier guide](docs/contributing-mods.md), [change recipes](docs/recipes.md) |
+| Understand the API | [Build model](docs/build-model.md), [calculation outputs](docs/calc-outputs.md), [WASM package](docs/wasm-package.md) |
+| Check mechanics | [Mechanics](docs/mechanics/README.md), [deliberate differences](docs/pob2-differences.md) |
 
-`devs/docs/architecture/` documents 18–21 cover feature contracts. Use code, the
-maintainer guide, and relevant tests for current behavior.
-
-## Conventions
-
-- **Only stable IDs inside the calculation** (`StatId` / `ModName` /
-  `SourceId`); display text goes through `pobr-i18n`.
-- **Immutable / deterministic**: mutable writes to `Env` are concentrated in
-  `perform`; parallelism only fans out over read-only snapshots.
-- Changes touching calculation / modifiers / the parser need matching
-  integration tests or golden fixtures; changes to crate boundaries,
-  aggregation semantics, catalog or parity rules must update the architecture
-  docs in the same change.
+The workspace has seven Rust libraries, two apps and four Rust tools. The React /
+TypeScript app lives in `web/`. The maintainer guide describes the architecture
+and data flow. Historical research in `agent-docs/` needs checking against current
+game data and tests; it is not the current behavior contract.
 
 ## References & acknowledgements
 
 - [PathOfBuildingCommunity/PathOfBuilding-PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)
-  (MIT) — the reference implementation and parity baseline of this project:
-  calculation formulas, modifier semantics and specialModList parsing rules are
-  verified one-by-one against its Lua implementation (checked out locally under
-  `vendor/`, not committed; the pinned commit is recorded in
-  `data/<version>/overlay/mod_parser_rules.json::_meta`).
+  (MIT) supplies reference data and regression comparisons. Game data and item
+  wording define the intended rules. The pinned Lua checkout under `vendor/` is
+  a cross-check, not the authority when it disagrees with game evidence.
+  [Remaining dependencies](docs/pob2-differences.md).
 - [poe2db.tw](https://poe2db.tw/) and the PoE2 Wiki — sources for game
   mechanics and text translations.
 
