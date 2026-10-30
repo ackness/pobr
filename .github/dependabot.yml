@@ -1,11 +1,12 @@
-# Monthly, grouped updates: one pull request per ecosystem. A Cargo, toolchain
-# or Actions change needs the full gate before merging (`mise run ci <ref>`).
+# Grouped updates: Actions daily, package/toolchains monthly. A Cargo, toolchain
+# or Actions PR gets all quick checks; risky batches can request pre-merge full CI.
+# Master code changes and release tags always run full integration.
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: monthly
+      interval: daily
     groups:
       actions:
         patterns: ["*"]
@@ -20,3 +21,17 @@ updates:
     directory: /
     schedule:
       interval: monthly
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: monthly
+    groups:
+      web:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /pipeline
+    schedule:
+      interval: monthly
+    groups:
+      pipeline:
+        patterns: ["*"]

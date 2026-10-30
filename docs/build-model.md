@@ -231,7 +231,7 @@ BuildData 解析完仅自身读取的 passive_tree、passive_trees/*、skill_gem
 granted_effect_levels、granted_effect_stat_sets 后 release_domain，减少原文与解析结果同时驻留。
 键仍保留供身份和枚举；再读已释放文件时 debug panic、release 报错，不能假装缺文件降级。
 base_items、mods、stat_descriptions、i18n、overlay 等后续仍读，不能释放。
-新增释放项前用 `POBR_DBG_RELEASE_BACKEND=1 cargo test -p pobr-wasm --no-fail-fast`
+新增释放项前用 `POBR_DBG_RELEASE_BACKEND=1 mise exec -- cargo test -p pobr-wasm --no-fail-fast`
 使宿主测试走相同路径并通过套件。浏览器 WASM 线性内存只增不减，降低峰值有意义。
 原生用 GameData::new 读文件，其他内存调用可用 GameData::from_memory。
 

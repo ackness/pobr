@@ -51,16 +51,16 @@ PoB2 的 PoE2 pseudo-stat 映射有意留空，因为伪属性可能混入镶嵌
 
 ```sh
 trade_overlay="data/$(cat data/CURRENT)/overlay"
-python3 pipeline/extract-trade-crafting.py pipeline/tables/English "$trade_overlay/trade_crafting_sources.json"
-luajit pipeline/extract-trade-catalog.lua vendor/PathOfBuilding-PoE2/src "$trade_overlay/trade_catalog.json" "$trade_overlay/trade_crafting_sources.json"
-luajit pipeline/extract-trade-map.lua vendor/PathOfBuilding-PoE2/src "$trade_overlay/trade_stat_map.json"
-python3 pipeline/test-trade-crafting.py
-luajit pipeline/test-trade-stats.lua
-luajit pipeline/test-trade-crafting-fallback.lua
-pnpm --dir web test src/lib/tradeCatalog.test.ts src/lib/equipmentScore.test.ts src/lib/tradeOptimizer.test.ts
-pnpm --dir web sync-data
-pnpm --dir web build
-pnpm --dir web exec playwright test e2e/trade-upgrades.spec.ts --workers=1
+mise exec -- python3 pipeline/extract-trade-crafting.py pipeline/tables/English "$trade_overlay/trade_crafting_sources.json"
+mise exec -- luajit pipeline/extract-trade-catalog.lua vendor/PathOfBuilding-PoE2/src "$trade_overlay/trade_catalog.json" "$trade_overlay/trade_crafting_sources.json"
+mise exec -- luajit pipeline/extract-trade-map.lua vendor/PathOfBuilding-PoE2/src "$trade_overlay/trade_stat_map.json"
+mise exec -- python3 pipeline/test-trade-crafting.py
+mise exec -- luajit pipeline/test-trade-stats.lua
+mise exec -- luajit pipeline/test-trade-crafting-fallback.lua
+mise run web test src/lib/tradeCatalog.test.ts src/lib/equipmentScore.test.ts src/lib/tradeOptimizer.test.ts
+mise run web sync-data
+mise run web build
+mise run web:e2e e2e/trade-upgrades.spec.ts --workers=1
 ```
 
 `pipeline/regen-all.sh` 按依赖顺序执行两个提取阶段。没有原始 GGG 表的 checkout 可把已提交 crafting sources 作为 catalog 提取器第三个参数；省略时只有 PoB2 来源覆盖。

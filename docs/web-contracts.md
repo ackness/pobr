@@ -66,17 +66,25 @@ WeGame 魔法药剂／护符只用一条标准基底行，修饰名、恢复／�
 `Rune: None`／`Soul Core: None` 不算已填插槽；市场 `pseudoMods` 是搜索元数据，不是物品词条。
 
 粘贴完整物品后，程序识别基底和需求等级，一次比较所有兼容的已装备位置及已分配珠宝孔，
-显示 DPS、EHP 与抗性变化。玩家明确应用后才换装。
+显示 DPS、EHP 与抗性变化。属性与特殊装备需求仍须玩家确认，比较结果不证明装备完全合法。
+玩家明确应用后才换装。
 默认保留商品增幅物；空候选可继承各替换位置有效的增幅物，并提供原始／自定义开关。
 容量和限制来自 `itemAugmentInfo`、`reforgeRunes` 使用的钉定覆盖数据，与装备编辑器共用。
-预览说明假设的插法和排除项，只应用评估过的原文。
+继承还检查角色等级、基底与增幅物类型。共享限制以 `limit_id`（缺失时用名称）分组，
+统计其他活动装备，排除正在替换的位置和非活动武器组。未知的已占用增幅物保守预留受限组并说明原因。
+腐化／镜像物品不能新增插槽；特殊或未识别的增幅机制保持只读并保留原文。
+预览说明假设的插法和排除项，只应用评估过的原文；商品价格不包含假设新增的插槽和增幅物。
+改构筑、武器组或候选文本使结果失效；编辑增幅物后须等重算完成才能应用。
 应用后，只有评估文本已出现在活动武器组且待处理工作结束，才显示物品名与目标栏位的确认。
 改候选、重新粘贴、另开比较或离页会清提示；确认只说明换装完成，不证明机制覆盖。
 
 `web/public/userscripts/pobr-market-copy.user.js` 在官方 PoE2 市集的每件商品旁提供主动复制操作。
-脚本只通过当前市集的同源 API 读取被点击物品，保留完整文本，不复制卖家／账号。
-未知词条组仍报告未建模。粘贴卡链接脚本与安装指南；测试将脚本输出送入真实 WASM 换装比较。
-符文来源与剩余生存限制见[架构说明 20](../devs/docs/architecture/20-market-copy-and-rune-boundaries.md)。
+每次点击只通过当前市集同源 `/api/trade2/fetch` 读取该商品，不后台轮询、自动重试或联系卖家。
+复制内容保留完整物品文本、需求、插槽占用及符文／附魔／打造来源，
+不带卖家、账号、密语、价格或凭据。未知词条组仍报告未建模。
+请求失败不覆盖剪贴板；剪贴板权限失败仅在商品仍匹配时展示选中文本的手动复制框。
+粘贴卡链接[脚本与安装指南](../web/public/userscripts/index.html)；
+测试将脚本输出送入真实 WASM 换装比较。
 
 装备／珠宝解析检查把被拒绝的文本保留在会话诊断中；不能只把可读的半件物品注入计算。
 词条能解析也不证明已有计算读取方。物理生命／魔力偷取按武器攻击范围和转换后的物理命中读取；
@@ -601,10 +609,10 @@ life、armour、evasion、energy_shield、stats、breakdowns、breakdown_descrip
 ## 规划器实验与隐藏面板
 
 按需实验命令为
-`POBR_UPGRADE_BENCH=1 pnpm --dir web test src/lib/upgradeBench.test.ts src/lib/supportBench.test.ts src/lib/passiveBench.test.ts`。
+`POBR_UPGRADE_BENCH=1 mise run web test src/lib/upgradeBench.test.ts src/lib/supportBench.test.ts src/lib/passiveBench.test.ts`。
 它用真实 WASM 和合成数据，对照有限穷举与应用后重算一致性，报告写入忽略的 `.cache`。
-结果和范围见[架构说明 18](../devs/docs/architecture/18-upgrade-guidance.md)；有限搜索不证明全局或预算最优。
+真实 BD 验证还需覆盖候选适用性和所用配置；有限搜索不证明全局或预算最优。
 
 参考 BD 暂不进入导航或恢复页签。面板、匹配逻辑、fixture、目录生成仍保留，相关 UI 测试明确跳过，
-旧页签回退与匹配单测继续运行。见[架构说明 21](../devs/docs/architecture/21-build-reference-guidance.md)
-和[来源与引擎审查记录](reference-sources-and-engine-review.md)。
+旧页签回退与匹配单测继续运行。启动时不加载参考库；现有样本是静态来源，
+不能承诺实时攻略、市场价格或在线角色服务。

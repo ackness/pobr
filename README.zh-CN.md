@@ -72,7 +72,7 @@ PoBR 是以 [Path of Building for PoE2](https://github.com/PathOfBuildingCommuni
 发现计算差异或未支持词条？欢迎[提交 Issue](https://github.com/ackness/pobr/issues/new)，
 附上可公开分享的最小复现构筑、相关物品或技能，以及预期值与实际值。界面反馈和翻译修正也很有帮助。
 
-想参与开发，可以从[贡献指南](AGENTS.md)或[添加词条规则](docs/contributing-mods.md)开始。
+想参与开发，可以从[贡献指南](CONTRIBUTING.md)或[添加词条规则](docs/contributing-mods.md)开始。
 如果 PoBR 对你有用，可以 **Star 收藏仓库**；希望收到发版通知，可选择 **Watch → Custom → Releases**。
 
 ## 开发者入口
@@ -84,37 +84,23 @@ Rust 计算引擎由 WebAssembly 应用和 CLI 共用，支持词条离线预编
 计算在浏览器内完成；WeGame 和市集 HTTP 适配由 Pages Worker 提供。
 WASM/JSON API 与 CLI 仍在迭代，可能随版本变更。
 
-### 性能与 BD 分析
-
-实测 PoBR/Lua 耗时、包体积、BD 诊断、测量边界和复现命令，见
-[WASM 性能与 BD 分析](docs/wasm-performance.zh-CN.md)。
-
 ### 本地运行
 
-Web 应用请按 [Web 安装指南](web/README.zh-CN.md)准备 WASM、游戏数据并启动 Vite。
-体验 CLI 时，使用 `rust-toolchain.toml` 钉定的 Rust 工具链，在仓库根目录运行：
+使用最新稳定版 [mise](https://mise.jdx.dev/getting-started.html) 安装并执行项目固定的工具。
+在仓库根运行：
 
 ```bash
-# CLI (binary name: pobr)
-cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
-cargo run -p pobr-cli -- decode-code <pob_code>        # PoB build code -> XML
-cargo run -p pobr-cli -- parse-mod "20% increased Fire Damage"
+mise bootstrap --only packages,tools,task
+mise exec -- cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
+mise run verify build codec           # 按需定向测试与 lint
+mise run targets                      # 只列测试目标，不编译
 ```
 
-修改代码时选择相关的测试和 lint，以下以 Build Code 为例：
+Web 的 WASM、数据准备与 Vite 启动见 [Web 开发说明](web/README.zh-CN.md)。
+[开发工作流](docs/development-workflow.md)统一说明定向验证、CI、review 与发版；
+可选性能测量和解读限制见 [WASM 包说明](docs/wasm-package.md#runtime-performance-comparison)。
 
-```bash
-mise run verify build codec
-```
-
-普通本地提交只运行相关检查；合并、发版或影响范围较大的修改由云端 CI 完成完整门禁。
-推送发版 tag，或对已推送分支运行 `mise run ci <pushed-ref>`；本地无需再跑同一套全量验证。
-`mise run full` 保留为显式本地 Rust 门禁，在线版在 `v0.x` tag 通过 CI 后自动部署。
-PR 会自动运行轻量检查，贡献要求见 [CONTRIBUTING.md](CONTRIBUTING.md)。
-命令、缓存复用和磁盘统计见 [开发工作流](docs/development-workflow.md)。
-
-Rust **edition 2024**；应用与工具使用 workspace 发布版本，与 `v0.x` tag 同步。
-七个内部库保持独立版本，避免应用版本更新使整个库依赖链重新编译。
+Rust 使用 **edition 2024**；应用与工具继承 workspace 发布版本，七个内部库独立维护版本。
 
 ## 文档
 

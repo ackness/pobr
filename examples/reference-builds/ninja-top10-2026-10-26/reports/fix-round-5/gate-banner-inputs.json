@@ -1,6 +1,0 @@
-{
-  "git_commit": "8d30bd843a29cef5a151d37e110f182f39dacf06",
-  "started_at": "2026-10-26T19:49:13.225249+00:00",
-  "command": "mise run gate --only fmt,regen,clippy,core,build,parity,apps,accuracy",
-  "change": "S12 native planted Banner attack-speed rule; no Web/i18n changes. Prior gate runs remain archived."
-}

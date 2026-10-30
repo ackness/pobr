@@ -175,7 +175,7 @@ for recovery; workspace persistence failures offer a backup download.
 ## Language support
 
 UI supports English, Simplified Chinese and Traditional Chinese. Game noun dictionaries
-are versioned; Simplified Chinese comes from the CN dictionary (`node pipeline/gen-zh-cn.mjs`).
+are versioned; Simplified Chinese comes from the CN dictionary (`mise exec -- node pipeline/gen-zh-cn.mjs`).
 The gem picker searches all three languages. Simplified Chinese item bases and mod
 lines are translated through templates to canonical English before parsing; PoB
 structural lines such as `Rarity:` keep their format. Unknown text remains visible
@@ -185,29 +185,30 @@ Rendering never rewrites imported text or stable calculation ids.
 
 ## Quick start
 
-Run from the repository root. Use the pnpm version in `web/package.json`, Node 26
-(as in mise/CI), and the Rust toolchain pinned in `rust-toolchain.toml`.
+Run from the repository root. Local tools and commands use mise; exact versions
+live in `mise.toml`, `mise.lock` and `rust-toolchain.toml`. CI uses native installers
+reading the same pins.
 
 ```bash
 mise run setup
-pnpm --dir web build-wasm
-pnpm --dir web sync-data
-pnpm --dir web dev
+mise run web build-wasm
+mise run web sync-data
+mise run web dev
 ```
 
-`setup` installs prerequisites, including wasm32, wasm-pack and Web dependencies.
-Without mise, add `wasm32-unknown-unknown`, install wasm-pack 0.15.0 and run
-`pnpm --dir web install --frozen-lockfile` with the pinned tools. Dev serves
+Setup prepares the common environment without compiling the product. Optional
+oracle/browser/artwork dependencies are prepared by their own tasks. Dev serves
 `http://localhost:5173`. For UI-only work without WASM/data:
 
 ```bash
-VITE_POBR_BACKEND=mock pnpm --dir web dev
+VITE_POBR_BACKEND=mock mise run web dev
 ```
 
 ## Development and validation
 
-Follow [scoped validation](../docs/maintainer-guide.md#验证分层). Run relevant Vitest
-files and typecheck; use the matching Playwright spec for interactions. Rebuild WASM
+Follow [scoped validation](../docs/maintainer-guide.md#验证分层). Choose relevant Vitest,
+typecheck or Playwright by risk and cost; prose needs diff/link review. Report
+deferred checks to the coordinator for integration CI. Rebuild WASM
 when missing or when its Rust sources, dependencies, features or toolchain change.
 Sync missing/changed data. E2E requires current production `dist`; `build` includes
 typecheck. `build-wasm` reuses verified unchanged output; `--force` rebuilds without
@@ -215,23 +216,23 @@ clearing Cargo caches.
 
 | Command | Purpose |
 |---|---|
-| `pnpm --dir web dev` / `pnpm --dir web preview` | Dev server / preview built dist, both with the HTTP adapter. |
-| `pnpm --dir web build` / `pnpm --dir web typecheck` | Production build / types only. |
-| `pnpm --dir web test src/lib/skillSelection.test.ts` | Focused unit tests. |
-| `pnpm --dir web test:wasm-contract` | Frontend request conversion against prepared real WASM/data. |
-| `pnpm --dir web test:worker` | HTTP Worker tests in workerd. |
-| `pnpm --dir web exec playwright test e2e/build-roundtrip.spec.ts` | Focused browser regression with current dist/WASM/data. |
-| `pnpm --dir web build-wasm` / `pnpm --dir web sync-data` | Prepare WASM / copy versioned data into public. |
-| `pnpm --dir web package-wasm` / `pnpm --dir web smoke-wasm-package` | Package / verify the standalone archive in `.cache/wasm-release/`. |
-| `pnpm --dir web build-tree-art` | Regenerate tree art after a data/vendor bump; requires vendor, zstd and ImageMagick. |
+| `mise run web dev` / `mise run web preview` | Dev server / preview built dist, both with the HTTP adapter. |
+| `mise run web build` / `mise run web typecheck` | Production build / types only. |
+| `mise run web test src/lib/skillSelection.test.ts` | Focused unit tests. |
+| `mise run web test:wasm-contract` | Frontend request conversion against prepared real WASM/data. |
+| `mise run web test:worker` | HTTP Worker tests in workerd. |
+| `mise run web exec playwright test e2e/build-roundtrip.spec.ts` | Focused browser regression with current dist/WASM/data. |
+| `mise run web build-wasm` / `mise run web sync-data` | Prepare WASM / copy versioned data into public. |
+| `mise run web package-wasm` / `mise run web smoke-wasm-package` | Package / verify the standalone archive in `.cache/wasm-release/`. |
+| `mise run web:tree-art` | Regenerate tree art with automatically prepared vendor, ImageMagick 7 and zstd. |
 
 Seven shared request DTOs are generated from Rust into `src/api/generated/request.ts`
 using the pinned host-only `ts-rs` dev dependency. After changing them, run
-`cargo test -p pobr-wasm --lib export_typescript_contract -- --ignored` and commit the
+`mise exec -- cargo test -p pobr-wasm --lib export_typescript_contract -- --ignored` and commit the
 output. Ordinary Rust library tests and PR CI check drift. Other types remain in
 `src/api/types.ts`, with assertions in `apps/pobr-wasm/tests/contract_golden.rs`.
 Regenerate mock fixtures after contract changes with
-`cargo test -p pobr-wasm --features diagnostics --test gen_fixtures -- --ignored`.
+`mise exec -- cargo test -p pobr-wasm --features diagnostics --test gen_fixtures -- --ignored`.
 Mocks support UI work; they do not verify engine behavior.
 
 ## Layout and data flow

@@ -51,13 +51,13 @@ schema 编号没变，不代表游戏计算没变，也不代表已覆盖 PoB2 �
 
 ## 构建与发布维护
 
-在已准备好仓库指定 Rust、wasm-pack 和 Node 的 checkout 中运行：
+在 checkout 中通过 `mise run setup` 准备仓库指定的工具，然后运行：
 
 ```bash
-pnpm --dir web build-wasm
-pnpm --dir web sync-data
-pnpm --dir web package-wasm
-pnpm --dir web smoke-wasm-package
+mise run web build-wasm
+mise run web sync-data
+mise run web package-wasm
+mise run web smoke-wasm-package
 ```
 
 输出在 `.cache/wasm-release/`。打包复用已有 WASM 和完整 Web 数据清单，
@@ -69,7 +69,7 @@ pnpm --dir web smoke-wasm-package
 
 构建前检查源码指纹、工具版本、相关环境与 Cargo 配置、生成绑定哈希，以及编译出的 schema。
 输入和产物未变就复用现有包及其构建记录，不调用 wasm-pack。
-`pnpm --dir web build-wasm --force` 强制通过 Cargo 重建，但不清缓存。
+`mise run web build-wasm --force` 强制通过 Cargo 重建，但不清缓存。
 记录缺失或格式过旧时，正常重建一次；只有构建成功且期间输入未变，才写入新记录。
 
 打包再次核对 Rust 源码、内嵌语言文件、共享 `*_config_options.json`、manifest、lockfile、
@@ -83,7 +83,8 @@ pnpm --dir web smoke-wasm-package
 
 CI 会测试打包脚本、构建 WASM、打包，再解压到临时目录，计算新角色和已有构筑。
 手动触发会保存 `wasm-release` Actions artifact 和大小报告。
-推送 `v*` tag 时，只有 Rust 与 Web 检查都通过才附加 Release 资产；
+推送 `v*` tag 时，由 [release.yml](../.github/workflows/release.yml) 校验发布身份，
+并在完整 Rust、Web、自动化检查都通过后附加 Release 资产；
 Release 不存在时创建，已有说明则保留。tag 必须与 Cargo workspace 版本一致。
 带 `-rc.1` 等版本后缀的 tag 创建 prerelease，不发布 npm 包。
 
@@ -96,11 +97,11 @@ Release 不存在时创建，已有说明则保留。tag 必须与 Cargo workspa
 获取并测量参考包，再打包、运行 PoBR：
 
 ```bash
-node web/scripts/benchmark-pob-web.mjs --prepare
-node web/scripts/measure-pob-web-size.mjs --output devs/ci/pob-web-wasm-size-baseline.json
-pnpm --dir web package-wasm
-pnpm --dir web smoke-wasm-package
-node --test web/scripts/measure-pob-web-size.test.mjs web/scripts/package-wasm.test.mjs
+mise exec -- node web/scripts/benchmark-pob-web.mjs --prepare
+mise exec -- node web/scripts/measure-pob-web-size.mjs --output devs/ci/pob-web-wasm-size-baseline.json
+mise run web package-wasm
+mise run web smoke-wasm-package
+mise exec -- node --test web/scripts/measure-pob-web-size.test.mjs web/scripts/package-wasm.test.mjs
 ```
 
 参考数据包只压缩一次，使用 gzip level 9；传输估算另压缩 WASM 和 JS，不重复压缩数据 gzip。
@@ -119,36 +120,32 @@ PoBR 完整发布归档还含类型、文档、示例和 skill；参考快照没
 
 ## 运行性能对照
 
-[英文性能记录](https://github.com/ackness/pobr/blob/master/docs/wasm-performance.md)和[中文记录](https://github.com/ackness/pobr/blob/master/docs/wasm-performance.zh-CN.md)保存
-2026-10-12 的 PoBR Rust WASM / pob-web Lua WASM **构筑码导入与计算**测试。
-[配对记录](https://github.com/ackness/pobr/blob/master/devs/ci/pob-web-performance-2026-10-12-m4.json)含样本、主机、产物哈希、
-选定输出和失败案例；[PoBR 单独记录](https://github.com/ackness/pobr/blob/master/devs/ci/pobr-only-performance-2026-10-12-m4.json)
-另测 Lua 拒绝的构筑。它们与上述体积基线是不同记录，不代表当前版本的新测量。
-`mise run setup` 安装基准需要的工具链。
+性能测量是按需实验，不是每次提交的门禁。先用 `mise run setup` 准备开发环境，
+构建 WASM 并同步数据；报告写入忽略的 `.cache/`，不要把一次主机测量当成当前版本的性能承诺。
 
-`node web/scripts/benchmark-pob-web.mjs --prepare` 获取本地参考快照，保留上游许可证，
+`mise exec -- node web/scripts/benchmark-pob-web.mjs --prepare` 获取本地参考快照，保留上游许可证，
 固定包装层、shims 和加载补丁，并校验哈希。部署产物的二进制 / 数据源码版本未知。
 后续准备只离线校验原快照；测新部署应使用新目录。
 
 构建 WASM、同步数据后，在仓库根运行：
-`node web/scripts/bench-pob-web.mjs --iterations 9 --warmup 2`。
+`mise exec -- node web/scripts/bench-pob-web.mjs --iterations 9 --warmup 2`。
 完整结果写入 `.cache/pob-web-performance.json`；失败案例保留错误、不报耗时比，
 并使退出码为 1。加 `--pobr-only` 可不依赖参考快照，单独测量全部 PoBR 构筑，
 结果写入 `.cache/pobr-performance.json`，不提供跨引擎耗时比。
 
 脚本显式选择共享 parity 语料中的七个历史构筑，并发现
 `examples/wasm-benchmark/builds/` 的全部样本。
-按用户要求，之前失败或不稳定的 11 个历史构筑已从性能组移除，但仍在 parity 语料中。
-历史性能组是观察结果后筛选的，不能当作无偏样本。
+历史性能组曾排除失败或不稳定的构筑，它们仍在 parity 语料中。
+该性能组经过结果筛选，不能当作无偏样本。
 新 poe.ninja 抓取保留真实赛季、快照、角色 URL、获取日期和构筑码哈希，不自动变成 parity golden。
-README 表格区分新赛季抓取与历史输入。
+样本来源见各构筑目录的 `meta.json`。
 
-基准报告生成后，用 `node web/scripts/snapshot-pob-web-benchmark.mjs --output <file>`
-保存精简记录，保留原始采样和诊断、去掉完整分解响应。
+基准报告生成后，用 `mise exec -- node web/scripts/snapshot-pob-web-benchmark.mjs --output <file>`
+保存到 `.cache/` 下的精简记录，保留原始采样和诊断、去掉完整分解响应。
 `--output` 必填，避免默认覆盖旧记录。脚本回归检查：
 
 ```bash
-node --test web/scripts/benchmark-comparison.test.mjs web/scripts/benchmark-builds.test.mjs web/scripts/benchmark-pob-web.test.mjs
+mise exec -- node --test web/scripts/benchmark-comparison.test.mjs web/scripts/benchmark-builds.test.mjs web/scripts/benchmark-pob-web.test.mjs
 ```
 
 Lua 计时包含 Node Worker 宿主、适配检查和上游无界面 UI 状态准备。

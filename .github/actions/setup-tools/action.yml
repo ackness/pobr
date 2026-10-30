@@ -1,0 +1,81 @@
+name: Project tools
+description: Read the project's tool pins and use current official installers without mise in CI.
+inputs:
+  node:
+    description: Install Node and pnpm
+    default: 'false'
+  rust:
+    description: Install the pinned Rust toolchain
+    default: 'false'
+  wasm:
+    description: Install wasm-pack (requires rust)
+    default: 'false'
+  scripts:
+    description: Install actionlint
+    default: 'false'
+  oracle:
+    description: Build the pinned compatible LuaJIT runtime
+    default: 'false'
+  gh:
+    description: Install the exact GitHub CLI from its official release
+    default: 'false'
+  root:
+    description: Checkout path within the workspace
+    default: '.'
+runs:
+  using: composite
+  steps:
+    # Runner Python only bootstraps TOML parsing; all project commands use the pin.
+    - id: versions
+      shell: bash
+      working-directory: ${{ github.action_path }}/../../..
+      run: python3 devs/scripts/tool-versions.py
+    - uses: actions/setup-python@v7.1.0
+      with:
+        python-version: ${{ steps.versions.outputs.python }}
+    - uses: pnpm/action-setup@v6.1.0
+      if: inputs.node == 'true'
+      with:
+        version: ${{ steps.versions.outputs.pnpm }}
+    - uses: actions/setup-node@v7.1.0
+      if: inputs.node == 'true'
+      with:
+        node-version: ${{ steps.versions.outputs.node }}
+        cache: pnpm
+        cache-dependency-path: |
+          ${{ inputs.root }}/web/pnpm-lock.yaml
+          ${{ inputs.root }}/pipeline/pnpm-lock.yaml
+    - name: Pinned Rust toolchain
+      if: inputs.rust == 'true' || inputs.wasm == 'true'
+      shell: bash
+      env:
+        RUST_VERSION: ${{ steps.versions.outputs.rust }}
+        RUST_COMPONENTS: ${{ steps.versions.outputs.rust_components }}
+        RUST_TARGETS: ${{ steps.versions.outputs.rust_targets }}
+        RUST_PROFILE: ${{ steps.versions.outputs.rust_profile }}
+      run: rustup toolchain install "$RUST_VERSION" --profile "$RUST_PROFILE" --component "$RUST_COMPONENTS" --target "$RUST_TARGETS"
+    - uses: taiki-e/install-action@v2.88.0
+      if: inputs.wasm == 'true'
+      with:
+        tool: wasm-pack@${{ steps.versions.outputs.wasm_pack }}
+    - name: Pinned actionlint
+      if: inputs.scripts == 'true'
+      shell: bash
+      working-directory: ${{ github.action_path }}/../../..
+      env:
+        ACTIONLINT_VERSION: ${{ steps.versions.outputs.actionlint }}
+      run: python3 devs/scripts/install-actionlint.py "$ACTIONLINT_VERSION"
+    - name: Pinned LuaJIT runtime
+      if: inputs.oracle == 'true'
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        bash devs/scripts/driver.sh deps
+        echo "$GITHUB_WORKSPACE/.cache/runtime/bin" >> "$GITHUB_PATH"
+    - name: Pinned GitHub CLI
+      if: inputs.gh == 'true'
+      shell: bash
+      working-directory: ${{ github.action_path }}/../../..
+      env:
+        GH_VERSION: ${{ steps.versions.outputs.gh }}
+      run: python3 devs/scripts/install-gh.py "$GH_VERSION"

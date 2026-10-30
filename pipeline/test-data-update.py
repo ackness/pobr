@@ -142,7 +142,7 @@ self:ReconnectNodeToClassStart(node) end''')
             output = root / "result.json"
             env = dict(os.environ)
             # Fresh CI uses lua-dkjson; a local checkout can reuse PoB2's copy.
-            env["LUA_PATH"] = str(ROOT / "vendor/PathOfBuilding-PoE2/runtime/lua/?.lua") + ";;"
+            env["LUA_PATH"] = str(ROOT / "vendor/PathOfBuilding-PoE2/runtime/lua/?.lua") + ";" + env.get("LUA_PATH", ";")
             command = ["luajit", str(ROOT / "pipeline/extract-passive-jewels.lua"), str(root), str(output)]
             result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=10)
             self.assertEqual(result.returncode, 0, result.stderr)

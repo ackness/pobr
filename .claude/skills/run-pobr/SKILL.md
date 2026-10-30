@@ -1,210 +1,48 @@
 ---
 name: run-pobr
-description: Bootstrap, build, test, and drive the pobr (Path of Building in Rust) Cargo workspace from a clean machine. Use when asked to run, build, test, set up, bootstrap, or smoke-test pobr; clone the PoB2 vendor reference; run the parity gate / version-bump-drill; diagnose a build's numbers or compare them with PoB2; look up a skill, stat, base item, passive node or unique in the game data; or look up a PoB2 (Path of Building) formula in vendor Lua.
+description: "Choose and run PoBR development commands through mise: setup, focused checks, rule regeneration, data tools and calculation diagnostics. Use for running/building/testing PoBR; PR/review policy is covered by the project workflow skill."
 ---
 
-pobr is a Rust workspace with a Web frontend. Read the validation policy in
-[the maintainer guide](../../../docs/maintainer-guide.md) before choosing checks. Development commands
-are mise tasks in the root `mise.toml` (`mise tasks`, `mise run <task> [args]`), backed by
-`devs/scripts/driver.sh`; the game CLI binary `pobr` carries none of them; the optional, gitignored `.agents` entry forwards to it. Run commands
-from the repository root so the configured Rust/Node toolchains stay consistent.
+# Run PoBR commands
 
-## Prerequisites
+Run from the repository root through `mise run <task> [args]`; use `mise tasks`
+for the current task list. Keep command implementation in `mise.toml` and
+`devs/scripts`, rather than duplicating environment versions or CI policy here.
+The existing `driver.sh` in this skill is a compatibility forwarder.
 
-Inspect the existing environment first:
+Choose only the relevant source:
 
-```bash
-bash devs/scripts/driver.sh status
-```
+- [Maintainer guide](../../../docs/maintainer-guide.md): architecture and validation scope.
+- [Change recipes](../../../docs/recipes.md): files and focused check for common changes.
+- [Development workflow](../../../docs/development-workflow.md): setup, cache, CI and release operations.
+- [Diagnostics](../../../docs/diagnostics.md): triage, line usage and build comparisons.
+- [Data pipeline](../../../pipeline/README.md): generation and version updates.
+- [Project workflow](../workflow/SKILL.md): proportionate PR/review handoff.
 
-`rust-toolchain.toml` pins the Rust version with rustfmt/Clippy; rustup installs
-it on first use. `mise.toml` and CI both use Node 26.
-Use the pnpm version in `web/package.json`. Lua extraction/oracle checks need `luajit`.
-Do not bootstrap an already working checkout. On a fresh Ubuntu machine the
-`bootstrap` command installs LuaJIT through apt, clones the pinned vendor and
-builds the application CLI. Use `mise run build --workspace` only when all binaries
-are needed. On other platforms install missing prerequisites using
-the appropriate package manager before using the driver.
-
-## Daily agent workflow
-
-Select the affected test target before running Cargo. A test-name filter alone
-can still compile unrelated integration targets; specify `--test` or `--lib`.
-For example, a change to support gating needs:
+Available entry points; choose what resolves the current uncertainty:
 
 ```bash
-mise run verify build skills support_gating::
+mise run setup
+mise run targets
+mise run cache
+mise exec -- cargo check --locked -p pobr-core --lib  # Optional compiler check
+mise run verify build skills <filter>                # Optional runtime tests/lints
+mise run regen
+mise run web test <file>
+mise run triage
+mise run compare <build> [Stat ...]
+mise run gap "<modifier text>"
 ```
 
-Use `mise run targets` to discover suites. For slow compilation diagnostics only,
-use `mise run timings build parity`; it is not an extra validation step.
-
-`test` accepts `<crate> <suite|lib> [filter]` or forwards raw `cargo test`
-arguments unchanged. `verify` runs the selected tests followed by lint; a failure
-stops the command. `timings` compiles selected tests without executing them.
-`lint` runs fmt and
-Clippy for exactly the supplied Cargo targets. Both require explicit arguments.
-They preserve compiler diagnostics and build-lock messages.
-
-- Use the change-to-check table in `docs/maintainer-guide.md` for parity, cross-crate contracts,
-  Web, Worker and script changes. Do not run Rust checks for documentation alone.
-- After editing a modifier rule, `mise run regen` validates every rule and its
-  examples and regenerates the parser artifacts.
-- In a new worktree, `mise run warm <warm checkout>` clones that checkout's
-  build cache; `POBR_BIN` / `POBR_CACHE_DIR` let the analysis tools reuse its CLI,
-  ledgers and PoB2 results (see `docs/recipes.md`).
-- Tests already compile their targets; do not prepend a workspace check/build.
-- A normal local commit requires relevant tests and lint, not `full`. Reuse
-  passing checks for unchanged code/dependencies/toolchain/features/data. Stop after relevant checks
-  pass, and report the scope actually verified.
-- Reuse one default `target` per worktree, including its parallel sessions; run
-  Cargo commands sequentially. Do not create per-session/gate targets or share
-  writable targets across worktrees. Dev/test disable incremental object caches
-  but retain Cargo artifact reuse; do not toggle profiles or clean as routine preparation.
-- `mise run cache` reports storage and file counts without building or deleting.
-  `pnpm --dir web build-wasm` reuses verified unchanged bindings; `--force`
-  bypasses receipt reuse without cleaning Cargo. See [cache policy](../../../docs/development-workflow.md#缓存与磁盘占用).
-- For an environment smoke check with no specific changed behavior, use `smoke`.
-  It runs representative aggregation, parser and codec tests without a workspace
-  build. It is unnecessary after relevant tests already passed.
-
-## Batch gate and full gate
-
-Whoever merges several changes runs the batch gate once on a warm checkout:
-
-```bash
-mise run gate                    # fmt, regen drift, Clippy, crate suites, parity, i18n, Web, accuracy; then the failures
-mise run gate --only core,parity # rerun only the failed steps after fixing them
-```
-
-Full merge/release and broad-change gates should run in cloud CI. Release tags
-trigger the gate automatically; for another pushed ref use `mise run ci <ref>`
-and inspect `mise run ci-status`. This tests the remote ref, never local edits.
-A dispatch request is not a passing result. Do not require a duplicate local
-full gate before cloud CI. When local full Rust validation is explicitly needed:
-
-```bash
-mise run full
-```
-
-This runs fmt, workspace Clippy (with the benchmark and diagnostics features),
-`cargo test --workspace` (including doctests) and i18n lint. It stops at the first failure.
-CI runs its full Rust and Web gates on tags, manual dispatch, release PRs (a
-changed workspace version) and nightly on master; pull requests and pushes to
-master run only the lightweight checks in `pr.yml`. Do not repeat a successful full gate for
-an unchanged local commit, or dispatch an identical CI run in addition to a tag.
-Publishing, PR updates and version bumps follow the user's authorized scope.
-See [workflow commands](../../../docs/development-workflow.md). Application version
-bumps leave the seven `crates/` library versions unchanged.
-
-Timing diagnostics, parity dashboards and data-version drills are opt-in, not everyday gates:
-
-```bash
-mise run test build parity parity_baseline_report -- --ignored --nocapture
-cargo test -p pobr-wasm --features diagnostics --test perf_timing --test perf_phases -- --ignored --nocapture
-bash devs/scripts/driver.sh drill
-```
-
-When numbers look wrong, work in batches: `mise run triage` calculates every
-benchmark and tuned build against its reference and the pinned PoB2 at once,
-classifies each differing row and gathers the shared causes. Open one build only
-for a row the triage does not explain (see the accuracy workflow in `AGENTS.md`
-and `docs/diagnostics.md`):
-
-```bash
-mise run triage [set dir | build dir ...]   # every worked build at once (needs vendor and LuaJIT)
-mise run gaps [--kind unique|passive|...]   # game-text gaps ranked by worked builds
-mise run gap "<template or text>"           # one line: stats, full sources, ledger fates
-mise run diagnose <build dir | code file | committed build name fragment>
-mise run accuracy                        # totals of every committed set
-mise run accuracy <dir of */code.txt>    # one set, with each build's differences
-cargo run -q -p pobr-cli -- calculate-build --file <code.txt> --breakdown TotalDPS,Life
-mise run lookup <skill id | stat id | base item | passive node | unique> [--level N]
-mise run compare <build dir | code file | committed build name fragment> [Stat ...]
-```
-
-`diagnose` prints what the import dropped, where the result differs from the
-reference values the build code carries, the main skill and level actually
-calculated, and every input the calculation lost: lines no rule parses, gem
-stats the stat map rejected, modifiers that scale by a multiplier nothing set,
-modifiers that wait for a condition nothing sets (those a config option sets
-are listed apart as "config: off"), and modifiers stored under a name nothing
-reads. It needs no vendor checkout or LuaJIT.
-
-`calculate-build --breakdown <stats>` prints how each stat arrives: its steps
-and every modifier line it reads (`--reference-basis` for the reference's
-basis, `--json` for the report). `lookup` prints the game data records of an
-id or a name (a skill's types, stat sets and, with `--level`, its level row; a
-stat's descriptions and engine meaning; a base item's implicits; a passive
-node's stats; a unique's text) instead of searching the data files by hand.
-
-Only a difference that list does not explain needs PoB2: `compare` calculates
-the build with the engine and with the pinned oracle and prints, per stat, both
-totals, their BASE / INC / MORE sums and the modifier lines only one side has
-or has with another value, matched by source. It needs the vendor checkout and
-LuaJIT and caches the oracle's result per build code under `.cache/pob2-oracle/`.
-A reference is another tool's number, not the game's: judge a disagreement by
-the game's own modifier text and data. See "排查数值差异" in the maintainer
-guide.
-
-For PoB2 formula adjudication, read the pinned local Lua source:
-
-```bash
-bash devs/scripts/driver.sh lua "per (%d+) intelligence"
-```
-
-Other commands: `deps`, `vendor`, `bootstrap`, `build`, `data`, `versions`,
-`diff <verA> <verB>`. Use build/bootstrap only when their artifacts or setup are
-needed, not as preparation for a test command.
-
-## Vendor reference (PoB2 clone)
-
-`vendor/PathOfBuilding-PoE2/` is a **local clone of Path of Building (PoE2) for reference only** — reading its Lua calc/parse implementation to verify pobr's formulas. It is **gitignored (`/vendor/`) and never committed** (~739 MB). The pinned commit is read from `data/<CURRENT>/overlay/mod_parser_rules.json::_meta.vendor_commit` so it always matches the in-tree data; `driver.sh vendor` clones it shallow (`fetch --depth 1` by SHA). In ephemeral environments it disappears when the checkout is recycled; run `driver.sh vendor` only when the reference is missing or needs aligning.
-
-## Data & versions (data/calc are decoupled)
-
-The game data is **committed** under `data/<version>/` (`base`/`overlay`/`generated`/`i18n`) — **testing needs no download**. Multiple versions live side by side; inspect `data/CURRENT` for the active default.
-
-The calc is **version-agnostic**: `pobr_gamedata::data_version()` resolves
-`POBR_DATA_VERSION` → the loader data root's `CURRENT`, and fails when
-neither is set; no version is compiled in. `POBR_DATA_ROOT`
-overrides the loader data root; otherwise it is the repository's `data/`.
-Switching the active version needs no code change: set `POBR_DATA_VERSION`
-or update the selected data root's `CURRENT`.
-
-Prove it runs on every committed version (the `multi_version` smoke — `BuildData::load` + full calc per version):
-
-```bash
-bash devs/scripts/driver.sh versions
-```
-
-The active default is discovered from `data/CURRENT` at runtime. Tests and
-PoB2 reference values always target the active version: a data update
-re-records the references with `examples/demo-bd-test/tools/recapture_golden.py`
-and `recapture_panel_golden.py`. The repository keeps the active version plus
-the two most recently added (`mise run data:prune`). `driver.sh data` prints the regen
-pipeline; committed data is the source of truth.
-
-To see *what actually changed* between two committed versions (the iteration input PoB2 gets from export+CHANGELOG — added/removed/renumbered nodes, skill stat deltas, mod-pool removals, overlay drift):
-
-```bash
-bash devs/scripts/driver.sh diff <old> <new>            # all domains
-bash devs/scripts/driver.sh diff <old> <new> --domain tree --limit 40
-```
-
-For the committed data workflow, read [pipeline/README.md](../../../pipeline/README.md)
-and [docs/version-bump-architecture.md](../../../docs/version-bump-architecture.md).
-
-## Gotchas
-
-- **vendor commit is per-data-version.** Each `data/<version>/` pins its own PoB2 vendor commit in `overlay/mod_parser_rules.json::_meta.vendor_commit` The driver reads the commit for `data/CURRENT` and clones that; pass `--version <ver>` to `version-bump-drill.sh` to drill a non-current version.
-- Use `smoke` for the green signal; `drill` is the niche version-bump-reproducibility check (older pinned versions fail its extract step per above).
-- **extract-lua needs an *absolute* `--vendor-root`.** A relative path + the tool's `cd vendor/src` doubles the `LUA_PATH` and the bundled `runtime/lua/xml.lua` isn't found (`no file '.../xml.lua'`).
-- **GGG patch CDN 404s for old pinned versions**, so the `.dat` download step isn't runnable; the in-tree data is authoritative.
-
-## Troubleshooting
-
-| Symptom | Cause / fix |
-|---|---|
-| `no file '/usr/.../xml.lua'` from extract-lua | relative `--vendor-root`; use absolute (the driver/oracle scripts already do). |
-| `drill` reports overlay `DIFF`/`FAIL` | Inspect the selected data version and its pinned vendor; old-version extraction limitations do not justify ignoring failures for the current version. |
+Setup is lightweight; oracle, browser and artwork tasks prepare their own extra
+dependencies. A test already compiles its target; do not prepend a product build.
+Workers may use review/static evidence or run local tests/builds when useful; report
+which were actually performed. Algorithms and large changes can justify earlier
+focused tests. Integrate once before batch validation, prefer remote CI, and reuse
+passing checks for unchanged inputs. `cargo check` still compiles dependencies;
+`test --no-run` still creates binaries. Avoid automatic check/build/test chains.
+Before creating build caches or running a large batch, inspect `mise run cache`
+and free disk space; follow the workflow guide's storage decisions. Reuse warm
+artifacts and scope any cleanup to confirmed stale data with no active consumer.
+Documentation changes need diff/link review. Record observed results and limits;
+requesting CI or finding a cached binary does not prove a calculation succeeded.

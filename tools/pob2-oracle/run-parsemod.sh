@@ -62,7 +62,7 @@ while [[ $i -le $# ]]; do
 	esac
 done
 if [[ "$HAS_MODE" -eq 0 ]]; then
-	ARGS=("--mode" "parsemod" "${ARGS[@]}")
+	ARGS=("--mode" "parsemod" ${ARGS[@]+"${ARGS[@]}"})
 fi
 
 # The same pure-Lua shims as run.sh (the vendor requires lua-utf8).

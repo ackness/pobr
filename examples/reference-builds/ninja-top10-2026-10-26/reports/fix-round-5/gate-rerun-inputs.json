@@ -1,6 +1,0 @@
-{
-  "git_commit": "18cdb434e8061a5910edfb39d3f7815cf87d9d6f",
-  "started_at": "2026-10-26T19:09:01.464216+00:00",
-  "command": "mise run gate --only fmt,regen,clippy,core,build,parity,apps,accuracy",
-  "change": "Companion identity/source review fixes and two additional native support restrictions after initial9-cause gate; Web/i18n inputs unchanged."
-}

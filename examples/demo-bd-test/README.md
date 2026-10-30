@@ -2,7 +2,7 @@
 
 来自 [poe.ninja/poe2/builds](https://poe.ninja/poe2/builds/runesofaldur) 的真实构筑，用于 `pobr-build` 解码 / 解析 / 计算 parity 测试。
 
-当前样本：**Runes of Aldur 联赛（0.5.0）天梯 top-100**，8 个基础职业 × 每职业 ≥2 个不同升华，共 17 个 + 1 个旧样本，抓取于 2026-06-08（poe.ninja snapshot `1609-20260607-56460`）。
+固定历史回归语料：**Runes of Aldur 联赛（0.5.0）天梯 top-100**，8 个基础职业 × 每职业 ≥2 个不同升华，共 17 个 + 1 个旧样本，抓取于 2026-06-08（poe.ninja snapshot `1609-20260607-56460`）。
 
 ## 目录结构
 
@@ -45,7 +45,7 @@ COMBAT 输出，用于 `mode_effective=false` 的五列进攻回归门禁。原�
 重录面板参考值时，传入该数据版本钉定 commit 的独立 vendor 检出目录：
 
 ```bash
-python3 examples/demo-bd-test/tools/recapture_panel_golden.py --vendor-root <pinned-vendor-checkout>
+mise exec -- python3 examples/demo-bd-test/tools/recapture_panel_golden.py --vendor-root <pinned-vendor-checkout>
 ```
 
 脚本校验 vendor commit、构筑码和 XML，并将 CALCS 的技能、stat set 等选择
@@ -59,14 +59,14 @@ python3 examples/demo-bd-test/tools/recapture_panel_golden.py --vendor-root <pin
 # 测试中引用
 include_str!("…/builds/<name>/code.txt")   # 断言值取同目录 meta.json 的 player_stats
 
-# Rust 侧解码
-cargo run -p pobr-cli -- decode-code "$(cat builds/<name>/code.txt)"
+# 从仓库根目录运行：Rust 侧解码
+mise exec -- cargo run -p pobr-cli -- decode-code "$(cat examples/demo-bd-test/builds/<name>/code.txt)"
 
 # 重新生成（meta 的 source/notes 不会丢）
-python3 tools/make_fixture.py builds/<name> --code "<pob2_code>"
+mise exec -- python3 examples/demo-bd-test/tools/make_fixture.py examples/demo-bd-test/builds/<name> --code "<pob2_code>"
 
-# 从 poe.ninja 原始 JSON 重新 ingest（raw/ 下有本次抓取的原始数据）
-python3 tools/ingest_ninja.py <character.json>
+# 从 poe.ninja 原始 JSON 重新 ingest（raw/ 下保留历史抓取的原始数据）
+mise exec -- python3 examples/demo-bd-test/tools/ingest_ninja.py <character.json>
 ```
 
 ## 样本清单（2026-06-08，Runes of Aldur）

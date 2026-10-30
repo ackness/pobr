@@ -2,15 +2,14 @@
 
 # 常见改动步骤
 
-本文列出常见小改动要改的文件、要跑的检查，以及留给批次门禁的验证。先按这里操作，
+本文列出常见小改动要改的文件、可选检查，以及交给协调者的集成验证。先按这里操作，
 不必从头搜索整个仓库。通用约定见[维护者指南](maintainer-guide.md)，机制规则见
 [机制约定](mechanics/README.md)，词条语法见[词条贡献指南](contributing-mods.md)。
 
-**验证预算：每项改动最多编译一个小测试目标。** 不逐项运行
-`cargo test -p pobr-core`（全部目标）、`--test parity`、WASM/CLI 套件、
-`mise run accuracy`、`triage`、`diagnose`、`compare` 或覆盖率脚本。
-这些命令会编译较大的 parity 测试程序或 CLI，部分还会重算整组构筑。
-合并者在多个改动合入后运行一次 `mise run gate`。
+**验证按风险和成本选择。** 文档改动只审阅 diff、链接与示例；代码改动检查调用方与相关契约，
+补充必要的回归用例。算法或大幅修改可提前测试、编译或独立 review，普通 worker 不必逐项编译。
+交付说明已审阅、实际执行和未运行项；不要默认启动 parity、CLI、WASM 或整组构筑的分析。
+协调者汇总后一次验证，优先远端 CI；PR 轻量、master 合并后全量，高风险可先手动全量。
 
 <a id="find-what-already-exists-no-compilation"></a>
 
@@ -45,18 +44,19 @@
    `exporter`（PoB2 未实现用 `"absent"`，行为不同用 `"differs"`，相同可省略）和
    `examples`（游戏原文）。`source_note` 记录可追溯的来源或缺失机制。
    下一步会逐条匹配 `examples`，因此它们就是解析回归样本。
-4. 运行 `mise run regen`：校验规则与示例，重生成
+4. 协调者在整批规则汇总后运行一次 `mise run regen`：校验规则与示例，重生成
    `data/<version>/generated/parsed_mods.json` 和 `parse-coverage.json`，再测试
    precompile-mods。提交变化的生成文件，不手工编辑它们。
 5. 只有 modifier 名称没有读取方，或读取方需要新行为时，才添加读取代码，并在
-   `crates/pobr-core/tests/<suite>/` 最近的现有文件中补一个引擎测试，运行
-   `cargo test -q -p pobr-core --test <suite> <test name>`。
+   `crates/pobr-core/tests/<suite>/` 最近的现有文件中补引擎测试。需要提前运行时用
+   `mise exec -- cargo test -q -p pobr-core --test <suite> <test name>`。
 6. 词条引入新的约定、假设或尚未实测的游戏行为时，在对应的
    [docs/mechanics/](mechanics/README.md) 文件写一段说明。与 PoB2 有意不同且已定位到
    构筑数值的情况，写入 [pob2-differences.md](pob2-differences.md) 和
    `devs/scripts/known-differences.json`。
 
-到这里即可提交。逐行使用记录、accuracy 和 parity 的变化由批次门禁统一测量。
+worker 可先提交实现和未运行用例，交接给协调者生成与验收；不手改或漏交最终生成产物。
+parity/reference 基线由远端完整 CI 验证，调查性逐行记录和 accuracy 按批次选择。
 
 <a id="add-one-calcs-display-field"></a>
 
@@ -73,9 +73,9 @@
    - 标签：`crates/pobr-i18n/locales/en-US/stats.toml`、
      `crates/pobr-i18n/locales/zh-TW/stats.toml`、`web/src/lib/detailLabels.ts`。
    - 不固定 catalog 的条目数。现有检查会验证活动数据版本上的 id 唯一性、标签、数值和明细连接。
-3. 运行 `cargo test -q -p pobr-core --test golden display_catalog`，并用一个引擎用例断言
-   数值正确、派生输入能重建它。
-4. 只用两三个构筑交叉核对 PoB2，并复用门禁已编译的 CLI：
+3. 添加能验证数值正确、派生输入能重建它的引擎用例。需要提前检查 catalog 时可运行
+   `mise exec -- cargo test -q -p pobr-core --test golden display_catalog`。
+4. 如有未解决的数值疑问，用少量构筑交叉核对 PoB2，并复用已有 CLI：
    `target/debug/pobr calculate-build --file <code.txt> --json` 对照
    `.cache/pob2-oracle/<hash>.json` 的 `calcsOutput.<PoB key>`。
    完整 `output-coverage.py` 留给批次验证。
@@ -94,13 +94,15 @@ PoB2（`vendor/`）只用于交叉核对，不引用其行号来解释游戏规�
 
 ## 批量改动与门禁
 
-同一领域的多个条目放在一个分支，依次实现，每项只跑相关检查。
+同一领域的多个条目放在一个分支，依次实现；每项按实际风险选择审阅、编译或测试。
 最后一次规则修改后统一运行一次 `mise run regen`，再提交。
 
-合并者合入多个分支后运行一次批次门禁：
+协调者汇总多个分支后优先请求远端完整 CI；普通 PR 只自动运行轻量检查。
+需要本地批次诊断时，在 warm checkout 选择一次门禁：
 
 ```bash
-mise run gate                    # 运行全部步骤，最后列出失败项
+mise run ci <pushed-ref>          # 高风险批次：合并前远端全量
+mise run gate                    # 按需本地验证，含额外accuracy报告
 mise run gate --only core,parity # 修复后只重跑失败项
 ```
 
@@ -111,7 +113,7 @@ mise run gate --only core,parity # 修复后只重跑失败项
 新 worktree 的 `target/` 和 `.cache/` 为空。第一次测试会重新编译依赖；分析工具
 （`gap`、`gaps`、`triage`、`compare`、`config:coverage`、`skills:sweep`、
 `output-coverage.py`）默认会准备自己的 CLI，并重算逐行使用记录和 PoB2 结果。
-先指向已有缓存的 checkout：
+如果确需这些工具或本地编译，再按需复用已有缓存；仅审阅或文档工作不必预热：
 
 ```bash
 mise run warm /path/to/warm/checkout                         # 首次运行：写时复制其 target/debug
@@ -120,4 +122,4 @@ export POBR_CACHE_DIR=/path/to/warm/checkout/.cache          # 共用逐行记�
 ```
 
 `POBR_BIN` 运行的是那份 checkout 的引擎。用它读取游戏数据、旧记录和 PoB2 对照值；
-本 worktree 的修改由定向测试和合并后的门禁验证。
+本 worktree 的修改由实际选择的检查与集成 CI 验证；复用旧 CLI 不证明新代码已运行。

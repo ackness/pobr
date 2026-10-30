@@ -736,7 +736,7 @@
       "stats": [
         "DeflectChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect."
     },
     {
       "build": "infernalist-01",
@@ -748,7 +748,7 @@
         "SpellEvadeChance",
         "SpellProjectileEvadeChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect."
     },
     {
       "build": "lich-08",
@@ -756,7 +756,7 @@
       "stats": [
         "DeflectChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 100%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 100%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect."
     },
     {
       "build": "martial-artist-01",
@@ -769,7 +769,7 @@
         "SpellEvadeChance",
         "SpellProjectileEvadeChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 220%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 220%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect."
     },
     {
       "build": "martial-artist-02",
@@ -777,7 +777,7 @@
       "stats": [
         "DeflectChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect."
     },
     {
       "build": "martial-artist-04",
@@ -790,7 +790,7 @@
         "SpellEvadeChance",
         "SpellProjectileEvadeChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 180%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 180%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect."
     },
     {
       "build": "martial-artist-05",
@@ -798,7 +798,7 @@
       "stats": [
         "DeflectChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect."
     },
     {
       "build": "martial-artist-08",
@@ -806,7 +806,7 @@
       "stats": [
         "DeflectChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 180%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 180%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect."
     },
     {
       "build": "pathfinder-07",
@@ -814,7 +814,7 @@
       "stats": [
         "DeflectChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 100%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 100%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect."
     },
     {
       "build": "stormweaver-02",
@@ -826,7 +826,7 @@
         "SpellEvadeChance",
         "SpellProjectileEvadeChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect."
     },
     {
       "build": "tactician-03",
@@ -839,7 +839,7 @@
         "SpellEvadeChance",
         "SpellProjectileEvadeChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 200%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 200%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect."
     },
     {
       "build": "tactician-05",
@@ -852,7 +852,7 @@
         "SpellEvadeChance",
         "SpellProjectileEvadeChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 180%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 180%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect."
     },
     {
       "build": "tactician-07",
@@ -860,7 +860,7 @@
       "stats": [
         "DeflectChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect."
     },
     {
       "build": "titan-04",
@@ -872,7 +872,7 @@
         "SpellEvadeChance",
         "SpellProjectileEvadeChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 140%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 140%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect."
     },
     {
       "build": "warbringer-09",
@@ -880,7 +880,7 @@
       "stats": [
         "DeflectChance"
       ],
-      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect, and fix-round-2/blind-arithmetic.json."
+      "reason": "Frozen 2026-10-26: strongest eligible Blind effect is 120%, pinned oracle duplicates it to 160%. The resulting evade/deflect arithmetic reconstructs these exact rows; this entry does not explain TotalEHP. See docs/pob2-differences.md, Blind effect."
     },
     {
       "build": "abyssal-lich-02",
@@ -888,7 +888,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences."
     },
     {
       "build": "invoker-01",
@@ -896,7 +896,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences."
     },
     {
       "build": "invoker-03",
@@ -904,7 +904,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences."
     },
     {
       "build": "invoker-08",
@@ -912,7 +912,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences."
     },
     {
       "build": "oracle-04",
@@ -920,7 +920,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences."
     },
     {
       "build": "oracle-06",
@@ -928,7 +928,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences."
     },
     {
       "build": "shaman-01",
@@ -936,7 +936,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences."
     },
     {
       "build": "shaman-03",
@@ -944,7 +944,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences."
     },
     {
       "build": "shaman-04",
@@ -952,7 +952,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences."
     },
     {
       "build": "shaman-07",
@@ -960,7 +960,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences."
     },
     {
       "build": "shaman-08",
@@ -968,7 +968,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 support overrides the data-derived cap and global increases with 2. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences."
     },
     {
       "build": "warbringer-02",
@@ -976,7 +976,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences."
     },
     {
       "build": "warbringer-03",
@@ -984,7 +984,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences."
     },
     {
       "build": "warbringer-09",
@@ -992,7 +992,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences."
     },
     {
       "build": "warbringer-10",
@@ -1000,7 +1000,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: PoB2 active-skill loop exposes main-skill global additions even though selected skill is not a totem; native selected-skill panel has no totem. Native capacity uses game gem-level data and selected-skill scope; capacity is not a configured summoned count. See docs/pob2-differences.md, frozen-corpus reference differences."
     },
     {
       "build": "shaman-08",
@@ -1008,7 +1008,7 @@
       "stats": [
         "TotalTotemPlacementTime"
       ],
-      "reason": "Frozen 2026-10-26: placement uses retained game cast time 0.5s, while pinned PoB2 uses a 0.6s fallback; both apply the same placement-speed factors. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: placement uses retained game cast time 0.5s, while pinned PoB2 uses a 0.6s fallback; both apply the same placement-speed factors. See docs/pob2-differences.md, frozen-corpus reference differences."
     },
     {
       "build": "warbringer-08",
@@ -1016,7 +1016,7 @@
       "stats": [
         "TotalTotemPlacementTime"
       ],
-      "reason": "Frozen 2026-10-26: placement uses retained game cast time 1.0s, while pinned PoB2 uses a 0.6s fallback; both apply the same placement-speed factors. See docs/pob2-differences.md, frozen-corpus reference differences, and fix-round-2/totem-evidence.json."
+      "reason": "Frozen 2026-10-26: placement uses retained game cast time 1.0s, while pinned PoB2 uses a 0.6s fallback; both apply the same placement-speed factors. See docs/pob2-differences.md, frozen-corpus reference differences."
     },
     {
       "build": "blood-mage-03",
@@ -1024,7 +1024,7 @@
       "stats": [
         "TotalEHP"
       ],
-      "reason": "Frozen 2026-10-26: incoming critical damage applies Desensitisation, and finite Life prevention exhausts exactly. Pinned PoB2 retains positive floating residue after a lethal recursive probe, then batches across the Chaos/ES transition; its EHP is not the chronological hit result. The native result matches independently reconstructed 15933.003750905566. See docs/pob2-differences.md and fix-round-2/ehp-attribution.json / blood03-trace.log."
+      "reason": "Frozen 2026-10-26: incoming critical damage applies Desensitisation, and finite Life prevention exhausts exactly. Pinned PoB2 retains positive floating residue after a lethal recursive probe, then batches across the Chaos/ES transition; its EHP is not the chronological hit result. The native result matches independently reconstructed 15933.003750905566. See docs/pob2-differences.md."
     },
     {
       "build": "abyssal-lich-03",
@@ -1032,7 +1032,7 @@
       "stats": [
         "CritMultiplier"
       ],
-      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md and fix-round-2/reference-cluster-attribution/attribution.json."
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md."
     },
     {
       "build": "abyssal-lich-04",
@@ -1042,7 +1042,7 @@
         "CritMultiplier",
         "PreEffectiveCritChance"
       ],
-      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md and fix-round-2/reference-cluster-attribution/attribution.json."
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md."
     },
     {
       "build": "abyssal-lich-08",
@@ -1050,7 +1050,7 @@
       "stats": [
         "CritMultiplier"
       ],
-      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md and fix-round-2/reference-cluster-attribution/attribution.json."
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md."
     },
     {
       "build": "abyssal-lich-10",
@@ -1060,7 +1060,7 @@
         "CritMultiplier",
         "PreEffectiveCritChance"
       ],
-      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md and fix-round-2/reference-cluster-attribution/attribution.json."
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md."
     },
     {
       "build": "lich-01",
@@ -1068,7 +1068,7 @@
       "stats": [
         "CritMultiplier"
       ],
-      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md and fix-round-2/reference-cluster-attribution/attribution.json."
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md."
     },
     {
       "build": "lich-03",
@@ -1079,7 +1079,7 @@
         "EnergyShieldRecoveryCap",
         "PreEffectiveCritChance"
       ],
-      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md and fix-round-2/reference-cluster-attribution/attribution.json."
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md."
     },
     {
       "build": "lich-09",
@@ -1089,7 +1089,7 @@
         "CritMultiplier",
         "PreEffectiveCritChance"
       ],
-      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md and fix-round-2/reference-cluster-attribution/attribution.json."
+      "reason": "Frozen 2026-10-26 Crystalline Phylactery node 17788 doubles the selected socket jewel. Removing exactly that extra copy reconstructs these oracle crit/ES rows with the documented endpoint rounding. This entry does not classify DPS, ailments, EHP or maximum hits. See docs/pob2-differences.md."
     },
     {
       "build": "disciple-of-varashta-08",
@@ -1097,7 +1097,7 @@
       "stats": [
         "MinionTotalDPS"
       ],
-      "reason": "Frozen 2026-10-26 Water Djinn: eight existing minions give Predator Mark's 40% increased damage taken; pinned PoB2 counts zero. No on-death Pounce wolves are created. The same hit, crit and 1.782s cooldown with/without that mark give 461902.1585/348008.4756, matching the two calculators within endpoint precision. See docs/pob2-differences.md and fix-round-2/minion-djinn-evidence.json."
+      "reason": "Frozen 2026-10-26 Water Djinn: eight existing minions give Predator Mark's 40% increased damage taken; pinned PoB2 counts zero. No on-death Pounce wolves are created. The same hit, crit and 1.782s cooldown with/without that mark give 461902.1585/348008.4756, matching the two calculators within endpoint precision. See docs/pob2-differences.md."
     },
     {
       "build": "abyssal-lich-06",
@@ -1105,7 +1105,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "acolyte-of-chayula-09",
@@ -1113,7 +1113,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "amazon-08",
@@ -1121,7 +1121,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "blood-mage-05",
@@ -1129,7 +1129,7 @@
       "stats": [
         "ReqDex"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "deadeye-07",
@@ -1137,7 +1137,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 126, after the recorded global reduction, equals the pinned oracle's 126; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 126, after the recorded global reduction, equals the pinned oracle's 126; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "deadeye-08",
@@ -1145,7 +1145,7 @@
       "stats": [
         "ReqInt"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 126, after the recorded global reduction, equals the pinned oracle's 126; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 126, after the recorded global reduction, equals the pinned oracle's 126; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "disciple-of-varashta-03",
@@ -1153,7 +1153,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 75, after the recorded global reduction, equals the pinned oracle's 75; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 75, after the recorded global reduction, equals the pinned oracle's 75; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "disciple-of-varashta-10",
@@ -1161,7 +1161,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "gemling-legionnaire-06",
@@ -1169,7 +1169,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 144; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 144; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "invoker-04",
@@ -1177,7 +1177,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "invoker-05",
@@ -1185,7 +1185,7 @@
       "stats": [
         "ReqInt"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "invoker-07",
@@ -1193,7 +1193,7 @@
       "stats": [
         "ReqInt"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "invoker-08",
@@ -1201,7 +1201,7 @@
       "stats": [
         "ReqDex"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "martial-artist-04",
@@ -1209,7 +1209,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 147, after the recorded global reduction, equals the pinned oracle's 147; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 147, after the recorded global reduction, equals the pinned oracle's 147; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "martial-artist-08",
@@ -1217,7 +1217,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "martial-artist-09",
@@ -1225,7 +1225,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "martial-artist-10",
@@ -1233,7 +1233,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "pathfinder-07",
@@ -1241,7 +1241,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 147, after the recorded global reduction, equals the pinned oracle's 147; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 147, after the recorded global reduction, equals the pinned oracle's 147; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "pathfinder-10",
@@ -1249,7 +1249,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 157, after the recorded global reduction, equals the pinned oracle's 157; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "shaman-03",
@@ -1257,7 +1257,7 @@
       "stats": [
         "ReqDex"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "shaman-04",
@@ -1265,7 +1265,7 @@
       "stats": [
         "ReqDex"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 86, after the recorded global reduction, equals the pinned oracle's 86; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "witchhunter-03",
@@ -1273,7 +1273,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "witchhunter-09",
@@ -1281,7 +1281,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md and fix-round-3/requirements-evidence.json."
+      "reason": "Frozen 2026-10-26: the exported amulet grant and its ordinary listing describe one granted skill. Its nominal gem requirement 137, after the recorded global reduction, equals the pinned oracle's 137; PoBR correctly excludes it from required equipment/gem attributes while separately scaling the usable granted level. Genuine independent gems retain requirements. See docs/pob2-differences.md."
     },
     {
       "build": "infernalist-03",
@@ -1291,7 +1291,7 @@
         "LifeUnreserved",
         "LifeRecoverable"
       ],
-      "reason": "Frozen 2026-10-26: The frozen Runeseeker enchant explicitly has45% less Life:1528*1.05*.55=882.42. Pinned PoB2 rebuilds separate15%/30% MORE modifiers and rounds their product to.60, giving963. Preserve imported text. The corresponding unreserved/recoverable Life follows the same pool. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: The frozen Runeseeker enchant explicitly has45% less Life:1528*1.05*.55=882.42. Pinned PoB2 rebuilds separate15%/30% MORE modifiers and rounds their product to.60, giving963. Preserve imported text. The corresponding unreserved/recoverable Life follows the same pool. See docs/pob2-differences.md."
     },
     {
       "build": "witchhunter-10",
@@ -1314,7 +1314,7 @@
         "SpellProjectileEvadeChance",
         "PhysicalDamageReduction"
       ],
-      "reason": "Frozen 2026-10-26: Megalomaniac grants Leather Bound Gauntlets(node51446), adding1323 Evasion from equipped glove Armour. PoB2 omits that passive. Removing exactly its contribution reconstructs the oracle Armour/Evasion, Sorcery Ward, defence chances, five max hits andTotalEHP, including endpoint precision. This is not a blanket EHP classification. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Megalomaniac grants Leather Bound Gauntlets(node51446), adding1323 Evasion from equipped glove Armour. PoB2 omits that passive. Removing exactly its contribution reconstructs the oracle Armour/Evasion, Sorcery Ward, defence chances, five max hits andTotalEHP, including endpoint precision. This is not a blanket EHP classification. See docs/pob2-differences.md."
     },
     {
       "build": "warbringer-02",
@@ -1323,7 +1323,7 @@
         "Evasion",
         "DeflectionRating"
       ],
-      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/pob2-differences.md."
     },
     {
       "build": "warbringer-03",
@@ -1331,7 +1331,7 @@
       "stats": [
         "Evasion"
       ],
-      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/pob2-differences.md."
     },
     {
       "build": "warbringer-08",
@@ -1339,7 +1339,7 @@
       "stats": [
         "Evasion"
       ],
-      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count1 versus pinned oracle2. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count1 versus pinned oracle2. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/pob2-differences.md."
     },
     {
       "build": "warbringer-10",
@@ -1348,7 +1348,7 @@
         "Evasion",
         "DeflectionRating"
       ],
-      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Fortified Location(node53607) uses selected summoned count0 versus pinned oracle1. No explicit additional totem is configured. This accounts for the listed Evasion/Deflection rows; capacity does not prove additional summoned actors. No damage rows are classified by this entry. See docs/pob2-differences.md."
     },
     {
       "build": "pathfinder-01",
@@ -1357,7 +1357,7 @@
         "LifeRegenRecovery",
         "EnergyShieldRegenRecovery"
       ],
-      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/pob2-differences.md."
     },
     {
       "build": "pathfinder-02",
@@ -1366,7 +1366,7 @@
         "LifeRegenRecovery",
         "EnergyShieldRegenRecovery"
       ],
-      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/pob2-differences.md."
     },
     {
       "build": "pathfinder-04",
@@ -1375,7 +1375,7 @@
         "LifeRegenRecovery",
         "EnergyShieldRegenRecovery"
       ],
-      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/pob2-differences.md."
     },
     {
       "build": "pathfinder-08",
@@ -1384,7 +1384,7 @@
         "LifeRegenRecovery",
         "EnergyShieldRegenRecovery"
       ],
-      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/pob2-differences.md."
     },
     {
       "build": "pathfinder-09",
@@ -1393,7 +1393,7 @@
         "LifeRegenRecovery",
         "EnergyShieldRegenRecovery"
       ],
-      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/pob2-differences.md and fix-round-3/static-defence-attribution.json."
+      "reason": "Frozen 2026-10-26: Finite active-flask recovery is already reported in Flask1RecoveryPerSecond and Flask1EnergyShieldRecoveryPerSecond. Those rates exactly equal the reference regeneration difference. PoBR keeps finite flask recovery separate from sustained regeneration; no continuous drinking, charge supply or uptime is inferred. This entry does not declare the modifier globally effectless. See docs/pob2-differences.md."
     },
     {
       "build": "deadeye-01",
@@ -1401,7 +1401,7 @@
       "stats": [
         "ReqStr"
       ],
-      "reason": "Frozen Coming Calamity groups attach through native ModGrantedSkills to UniqueHerald variants with zero attribute shares. Ordinary Herald of Ash 20 incorrectly contributes reference 157 Strength; native maximum is 16 red supports * 5 = 80, above armour 67 and selected weapons 31/17. Independent skill records are unchanged (docs/mechanics/items.md, native item-granted variants; fix-round-4 evidence/tuned-grant-requirement.json)."
+      "reason": "Frozen Coming Calamity groups attach through native ModGrantedSkills to UniqueHerald variants with zero attribute shares. Ordinary Herald of Ash 20 incorrectly contributes reference 157 Strength; native maximum is 16 red supports * 5 = 80, above armour 67 and selected weapons 31/17. Independent skill records are unchanged (docs/mechanics/items.md, native item-granted variants)."
     },
     {
       "build": "warbringer-08",
@@ -1409,7 +1409,7 @@
       "stats": [
         "ActiveTotemLimit"
       ],
-      "reason": "Frozen native Ballista capacity is 1 base + 1 ascendancy + 2 crossbow + 1 passive = 5, with no override and MORE x1. Pinned 2 omits host-scoped Ballista additions for the selected attack. Capacity does not imply five summoned totems; no damage row is classified by this explanation (docs/mechanics/minions.md, Ballista capacity; fix-round-4 evidence/new-static-rows.json)."
+      "reason": "Frozen native Ballista capacity is 1 base + 1 ascendancy + 2 crossbow + 1 passive = 5, with no override and MORE x1. Pinned 2 omits host-scoped Ballista additions for the selected attack. Capacity does not imply five summoned totems; no damage row is classified by this explanation (docs/mechanics/minions.md, Ballista capacity)."
     }
   ]
 }

@@ -132,58 +132,58 @@ PoB 导出需要可靠的来源名称；无法恢复时会报错，不丢弃插�
 ## 语言支持
 
 界面支持英文、简体中文和繁体中文。游戏名词字典随数据版本保存；
-简中来自国服字典（`node pipeline/gen-zh-cn.mjs`），宝石选择器可搜索三种语言。
+简中来自国服字典（`mise exec -- node pipeline/gen-zh-cn.mjs`），宝石选择器可搜索三种语言。
 简中物品基底和词条通过模板转为英文再解析，`Rarity:` 等 PoB 结构行保留原格式。
 未知文本保留并给出诊断。繁中有名词字典，没有原生词条模板；显示可通过繁简转换回退，
 不能视为官方译名。界面翻译不改导入原文或稳定计算 id。
 
 ## 快速开始
 
-从仓库根目录运行。使用 `web/package.json` 指定的 pnpm、Node 26（与 mise／CI 一致），
-以及 `rust-toolchain.toml` 钉定的 Rust。
+从仓库根目录运行。使用 mise 的统一环境，精确版本来自 `mise.toml`、`mise.lock`
+和 `rust-toolchain.toml`；CI 可用原生安装 Action 读取同一组版本。
 
 ```bash
 mise run setup
-pnpm --dir web build-wasm
-pnpm --dir web sync-data
-pnpm --dir web dev
+mise run web build-wasm
+mise run web sync-data
+mise run web dev
 ```
 
-`setup` 安装 wasm32、wasm-pack 和 Web 依赖等前置工具。
-不用 mise 时，在钉定工具链下添加 `wasm32-unknown-unknown`、安装 wasm-pack 0.15.0，
-再运行 `pnpm --dir web install --frozen-lockfile`。开发地址为 `http://localhost:5173`。
+`setup` 只准备日常环境，不编译产品。oracle、浏览器与树图工具由各自任务按需自动准备。
+开发地址为 `http://localhost:5173`。
 没有 WASM／数据时可只开发界面：
 
 ```bash
-VITE_POBR_BACKEND=mock pnpm --dir web dev
+VITE_POBR_BACKEND=mock mise run web dev
 ```
 
 ## 开发与验证
 
 遵循[按改动选择验证](../docs/maintainer-guide.md#验证分层)的规则。
-运行相关 Vitest 文件和 typecheck；交互改动使用对应 Playwright spec。
+按风险和成本选择相关 Vitest、typecheck 或 Playwright；文档只审阅 diff 和链接。
+未运行项交给协调者统一验收，不要求每个 worker 都进行本地构建。
 WASM 缺失或其 Rust 源码、依赖、features、工具链变化时重建；数据缺失或变化时重新同步。
 E2E 使用当前生产 `dist`，`build` 已包含 typecheck。
 `build-wasm` 复用已验证且未变化的产物，`--force` 强制重建但不清 Cargo 缓存。
 
 | 命令 | 用途 |
 |---|---|
-| `pnpm --dir web dev` / `pnpm --dir web preview` | 开发服务／预览已构建 dist，都提供 HTTP 适配。 |
-| `pnpm --dir web build` / `pnpm --dir web typecheck` | 生产构建／只检查类型。 |
-| `pnpm --dir web test src/lib/skillSelection.test.ts` | 定向单元测试。 |
-| `pnpm --dir web test:wasm-contract` | 用已准备的真实 WASM／数据检查前端请求转换。 |
-| `pnpm --dir web test:worker` | 在 workerd 中检查 HTTP Worker。 |
-| `pnpm --dir web exec playwright test e2e/build-roundtrip.spec.ts` | 使用当前 dist／WASM／数据的定向浏览器回归。 |
-| `pnpm --dir web build-wasm` / `pnpm --dir web sync-data` | 准备 WASM／复制版本数据到 public。 |
-| `pnpm --dir web package-wasm` / `pnpm --dir web smoke-wasm-package` | 打包／验证 `.cache/wasm-release/` 中的独立包。 |
-| `pnpm --dir web build-tree-art` | 数据／vendor 升级后再生成树图像，需 vendor、zstd、ImageMagick。 |
+| `mise run web dev` / `mise run web preview` | 开发服务／预览已构建 dist，都提供 HTTP 适配。 |
+| `mise run web build` / `mise run web typecheck` | 生产构建／只检查类型。 |
+| `mise run web test src/lib/skillSelection.test.ts` | 定向单元测试。 |
+| `mise run web test:wasm-contract` | 用已准备的真实 WASM／数据检查前端请求转换。 |
+| `mise run web test:worker` | 在 workerd 中检查 HTTP Worker。 |
+| `mise run web exec playwright test e2e/build-roundtrip.spec.ts` | 使用当前 dist／WASM／数据的定向浏览器回归。 |
+| `mise run web build-wasm` / `mise run web sync-data` | 准备 WASM／复制版本数据到 public。 |
+| `mise run web package-wasm` / `mise run web smoke-wasm-package` | 打包／验证 `.cache/wasm-release/` 中的独立包。 |
+| `mise run web:tree-art` | 按需准备 vendor、ImageMagick 7/zstd 后再生成树图像。 |
 
 七个共用请求 DTO（传输数据结构）由 Rust 经钉定的宿主开发依赖 `ts-rs` 生成到
 `src/api/generated/request.ts`。修改后运行
-`cargo test -p pobr-wasm --lib export_typescript_contract -- --ignored` 并提交产物。
+`mise exec -- cargo test -p pobr-wasm --lib export_typescript_contract -- --ignored` 并提交产物。
 普通 Rust 库测试与 PR CI 检查是否过期。其余类型保留在 `src/api/types.ts`，
 由 `apps/pobr-wasm/tests/contract_golden.rs` 检查。
-契约变化后用 `cargo test -p pobr-wasm --features diagnostics --test gen_fixtures -- --ignored`
+契约变化后用 `mise exec -- cargo test -p pobr-wasm --features diagnostics --test gen_fixtures -- --ignored`
 重生成 mock 数据。mock 只供界面开发，不验证引擎行为。
 
 ## 结构与数据流

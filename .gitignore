@@ -24,12 +24,8 @@
 # 审计工作产物 / 架构参考文档 / 旧 oracle shim
 # （devs/ci、devs/fixtures、devs/scripts 被测试与 skill 引用，仍入库）
 /audits/
-# devs/docs is local-only except the feature contracts (18–21).
-/devs/docs/*
-!/devs/docs/architecture/
-/devs/docs/architecture/*
-!/devs/docs/architecture/1[89]-*.md
-!/devs/docs/architecture/2[01]-*.md
+# Current contracts live in docs/; design drafts and review notes stay local.
+/devs/docs/
 /devs/tools/
 # Agent loop working notes
 /.autoloop/
@@ -44,6 +40,21 @@
 /vendor/
 # 本地研究笔记
 /study/
+# Historical investigations and machine-specific measurements stay local.
+/docs/records/
+/docs/adapting-to-0.5.5.md
+/docs/adapting-to-0.5.5c.md
+/docs/calcs-display-comparison.md
+/docs/reference-sources-and-engine-review.md
+/docs/wasm-performance.md
+/docs/wasm-performance.zh-CN.md
+/devs/ci/pob-web-performance-2026-10-12-m4.json
+/devs/ci/pob-web-performance-baseline.json
+/devs/ci/pob2-refresh-comparison-2026-10-12.json
+/devs/ci/pobr-only-performance-2026-10-12-m4.json
+/devs/ci/pobr-unpaired-performance-2026-10-12.json
+# Build inputs and source metadata remain versioned; generated reports do not.
+/examples/reference-builds/*/reports/
 
 # ── Python bytecode cache ──
 __pycache__/

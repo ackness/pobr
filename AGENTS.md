@@ -19,60 +19,81 @@ tests to resolve disagreements with any document.
 - Rust integration tests live in each crate's `tests/`; frontend unit tests
   accompany source files, with browser tests in `web/e2e/`.
 
+The project-specific workflow adapter is
+[.claude/skills/workflow/SKILL.md](.claude/skills/workflow/SKILL.md).
+
 ## Build, Test, and Development Commands
 
-Run from the repository root, using the configured toolchains:
+Local and agent commands run through mise: `mise run <task>` or
+`mise exec -- <raw command>`. Start a new machine with
+`mise bootstrap --only packages,tools,task`; everyday setup does not build the
+product. Oracle, browser and artwork dependencies are prepared by their own tasks.
+CI may use current stable official/maintained Actions reading the same tool pins.
+
+Run from the repository root:
 
 ```bash
 mise run test core parser mod_parser::   # one suite, one filter
 mise run verify build skills support_gating::
-mise run regen                           # after any special_mods / parser rule edit
+mise run regen                           # coordinator: once after a rule batch
 mise run targets
-pnpm --dir web test src/lib/skillSelection.test.ts
+mise run web test src/lib/skillSelection.test.ts
 ```
 
 For the common small changes (one game line, one Calcs field, one mechanic),
 follow [the change recipes](docs/recipes.md): they name the files to edit and
-the single check to run, so no codebase exploration is needed. See
+the relevant verification options, so no codebase exploration is needed. See
 [Web setup](web/README.md) for WASM/data preparation and
 [development workflow](docs/development-workflow.md) for cache policy. Reuse one
 target per worktree and run Cargo commands sequentially.
 
 ## Validation Budget
 
-Compilation dominates the cost of a small change. Each test target, the CLI and
-the parity binary are separate builds, and a new worktree starts with no build
-cache at all.
+Choose evidence by the change's risk and the cost of obtaining it. Local compilation
+and tests are available to every agent; they are not a prerequisite for every commit.
 
-- **Per change: one focused check.** `mise run verify <crate> <suite> [filter]`
-  runs the test of what you touched, then fmt and Clippy for that target
-  (`cargo test -q -p <crate> --test <suite> <filter>` works too); add
-  `mise run regen` after a rule edit. That is all a commit needs.
-- **Do not run per change:** the whole `cargo test -p pobr-core`, `--test parity`,
-  the WASM/CLI suites, `mise run accuracy`, `triage`, `diagnose`, `compare`,
-  `skills:sweep` or the coverage scripts. They compile the parity binary or the
-  CLI and recompute every build.
-- **Per batch: one gate.** Whoever merges several changes runs `mise run gate`
-  once on a warm checkout. It runs every step and lists the failures;
-  `mise run gate --only <steps>` reruns just those after the fix.
-- **New worktree:** `mise run warm <warm checkout>` clones its build cache
-  copy-on-write. `POBR_BIN=<warm checkout>/target/debug/pobr` and
-  `POBR_CACHE_DIR=<warm checkout>/.cache` make the analysis tools reuse its CLI,
-  ledgers and PoB2 results instead of building and recomputing them.
-- **Many similar items go to one branch,** done one after another with only each
-  item's check, then one regen and one commit series. Do not open a worktree,
-  agent or full validation per line.
+- **Documentation:** review the diff, links and examples. No product build or extra
+  reviewer is needed for an ordinary prose edit.
+- **Implementation:** inspect changed code, callers and relevant tests; add regression
+  assertions for changed behavior. Use focused tests, compilation or independent
+  review when they resolve real uncertainty, especially algorithms and large changes.
+  An expensive local check may be deferred explicitly to the coordinator/CI.
+- **Cheap does not mean free:** optional `mise exec -- cargo check --locked -p <crate>
+  --lib` still builds dependencies, macros and build scripts. `cargo test --no-run`
+  still creates test binaries; a name filter still compiles the selected test target.
+  Do not automatically chain check, build, Clippy and test.
+- **Per batch:** the coordinator integrates workers first, regenerates rule artifacts
+  once when needed, and chooses one integration validation. Prefer
+  `mise run ci <pushed-ref>` for a risky batch; `mise run gate` is an explicit local
+  alternative on a warm checkout. Do not require both for unchanged inputs.
+- **Remote defaults:** PRs get relevant quick checks; master code changes run the full
+  reusable CI. High-risk changes may request full CI before merge. Nightly and tag
+  validation remain full. PR green alone does not prove full integration passed.
+- **Reuse:** keep one target per worktree, stable build settings and passing evidence.
+  Warm `target/debug` only if local compilation is useful. Similar items stay in one
+  branch; do not create a worktree or build cache per line.
+- **Storage:** before new build caches, a large batch or disk pressure, use
+  `mise run cache` and `mise exec -- df -h .`. Other worktrees/global stores are
+  separate; CoW totals are not exclusive usage. Check active consumers and rebuilding
+  cost before targeted cleanup. Setup/tests do not implicitly purge useful stores.
+  See [storage decisions](docs/development-workflow.md#storage-decisions).
+
+A worker reports the changed scope, what it inspected, actual commands/results and
+unrun checks or remaining risks. Reading code, review and `cargo check` must not be
+reported as passing runtime tests. General skill checklists do not override this budget.
 
 ## Parallel Agents
 
-- One worktree and one branch per agent. Never `git stash`: all worktrees share it.
-- Agents commit locally and never push. Before the last commit, merge the working
-  branch, keep both sides of append-only conflicts (catalog entries, labels,
-  rule lists), check catalog wiring and labels, and rerun `mise run regen` when
-  rules changed. Generated files are regenerated, never merged by hand.
+- Isolate parallel writers in separate checkouts/branches using the selected
+  tool or normal Git workflow. Read-only helpers may share a stable version.
+  Never `git stash`: all worktrees share it.
+- Delegated workers commit locally; the coordinator owns integration and any
+  authorized push/PR. Keep both sides of append-only conflicts (catalog entries,
+  labels, rule lists), check wiring, and regenerate rule artifacts once when integrating rule changes.
+  Generated files are regenerated, never merged by hand.
 - Keep concurrent agents' files disjoint where possible. Two agents adding the same
   display id or rule produce a semantic conflict that goes back to the later one.
-- An agent finishes with what it ran and what it left for the gate.
+- An agent finishes with what it reviewed/ran and what it left for integration.
 
 ## Coding Style & Naming Conventions
 
@@ -84,17 +105,19 @@ imported item text and JSON compatibility.
 
 ## Testing Guidelines
 
-Use Rust tests, Vitest `*.test.ts` files, and Playwright `*.spec.ts` files.
-Add regression assertions for changed behavior; calculation changes are measured
-against parity by the batch gate. Specify `--test` or `--lib` to limit
-compilation. Local commits require the focused check above. Pull requests run lightweight checks
-automatically (`.github/workflows/pr.yml`); full merge/release gates run in CI on
-tags, manual dispatch, release PRs (a changed workspace version) and nightly
-on master, so do not
-require a duplicate local full run. Use `mise run ci <pushed-ref>` for manual
-cloud validation and `mise run full` for explicit local Rust validation. Reuse
-passing checks for unchanged inputs. See [workflow commands](docs/development-workflow.md).
-Documentation-only changes need diff/link review, not builds.
+Use Rust tests, Vitest `*.test.ts` files and Playwright `*.spec.ts` files. Changed
+behavior needs regression assertions; workers may hand off written tests as unrun.
+Choose local checks by risk and benefit, and specify `--test` or `--lib` when running
+Rust tests. Workflow changes use `mise run check:workflows` without compiling Rust.
+
+PRs select quick checks: Rust formatting/checking, relevant Web checks and automation
+contracts. Shared/unknown inputs select every quick area. Master code changes,
+manual dispatch, nightly and release tags run full integration; high-risk changes
+can request `mise run ci <pushed-ref>` before merge. `PR gate` rejects failed,
+cancelled, missing or unexpectedly skipped selected jobs. E2E remains opt-in.
+Reuse evidence for unchanged inputs and report its scope accurately. See
+[workflow commands](docs/development-workflow.md). Documentation-only changes need
+diff/link review, not builds.
 
 ## Accuracy Workflow
 
@@ -133,11 +156,12 @@ Improve calculation accuracy in batches, not one build at a time:
    gaps by worked builds and sources, then `mise run gap "<template or text>"`
    for stat IDs, full source text, ledger fates and nearby engine rules.
    Implement from game data and item text; PoB2 is a cross-check.
-   Parallel agents write independent fixes with only focused checks; the main
-   session merges and runs the gate.
-3. Validate once per batch: `mise run gate` (includes accuracy and parity), then
-   rerun `mise run triage` (PoB2's side is cached). Raise improved baselines, add a round to
-   `examples/reference-builds/README.md`, and commit each cause separately.
+   Parallel agents write independent fixes and report their review/check evidence;
+   the coordinator integrates and chooses the batch validation.
+3. Validate once per batch, preferably with remote full CI; use `mise run gate`
+   when an explicit local accuracy/parity batch is useful. Then rerun
+   `mise run triage` for an accuracy investigation (PoB2's side is cached). Raise improved baselines and
+   record the cause and evidence in the commits or PR; keep generated reports local.
 4. Open one build (`mise run diagnose`, `mise run compare <build> [Stat ...]`,
    `calculate-build --breakdown <stats> --usage`) only for a row the triage
    does not explain. When a kind of
@@ -155,20 +179,28 @@ Follow existing subjects such as `fix: preserve skill selection` and
 `chore: scope agent validation`. Keep commits focused. PRs should explain the
 problem, resulting behavior, validation, and remaining limits; link relevant
 issues and include screenshots for visible UI changes. Pushes, PR updates,
-and releases follow the user's authorized scope. Contributor requirements are in
+and releases follow the user's authorized scope. Use independent review for
+substantial or risky changes; trivial edits do not need a new reviewer or audit
+form. Review evidence should identify the checked head/base and real limits.
+`mise run pr-ready <N>` is an optional read-only helper before an authorized merge;
+use the confirmed head with `--match-head-commit`. Never invent passing checks.
+Contributor requirements are in
 [CONTRIBUTING.md](CONTRIBUTING.md); maintainers handling fork PRs follow
 [the external PR steps](docs/development-workflow.md#处理外部-pr).
 
 ## Documentation
 
-- [docs/README.md](docs/README.md) separates current guides and contracts from
-  dated records. Web feature contracts are in [docs/web-contracts.md](docs/web-contracts.md).
+- [docs/README.md](docs/README.md) organizes current guides by audience and task.
+  Web feature contracts are in [docs/web-contracts.md](docs/web-contracts.md).
 - A new mechanic convention goes into its section of [docs/mechanics/](docs/mechanics/README.md),
   an output field into [docs/calc-outputs.md](docs/calc-outputs.md), a PoB2
   difference into [docs/pob2-differences.md](docs/pob2-differences.md). Keep the
   maintainer guide to cross-cutting rules: every session loads it in full.
 - When code replaces a described behaviour, rewrite or delete the paragraph;
   do not keep superseded history in current documents.
+- Put generated reports and personal research in `.cache/` or `study/`.
+  Keep reproducible examples, source metadata, active baselines and current
+  explanations in version control. Preserve source citation paths when useful.
 
-`agent-docs/` contains mechanics research, not final authority.
-`devs/docs/architecture/` holds the feature contracts (documents 18–21).
+`agent-docs/` preserves earlier mechanics research cited by source and tests;
+check it against current game data and [mechanics](docs/mechanics/README.md).

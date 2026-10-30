@@ -11,9 +11,8 @@
 
 `examples/wasm-benchmark/builds` 的 8 个构筑同样已被逐个修过，属于前一类。`tuned/selection-holdout-2026-10-13.json` 与 `tuned/selection-holdout-2026-10-15.json` 是并入 `tuned/` 的两批 holdout 的抓取记录。
 
-`ninja-top10-2026-10-26/` 是额外的 Forbidden Rites 活动服样本：固定快照 `0757-20261026-16736`，按网站默认等级降序保留每个升华的前十行及同级原顺序，共 230 个码。它使用排名选择，与下文 `builds:fetch` 的账号排序不同。`build-codes.json` 是码合集，`index.csv` 和 `selection.json` 记录来源，`validation.json` 记录完整性校验。首轮排查51个，第二轮已覆盖全部230个；本批不是独立holdout，也没有加入默认门禁语料。运行 `mise run accuracy examples/reference-builds/ninja-top10-2026-10-26/builds` 可复测整批，首轮结果见 [第一批报告](ninja-top10-2026-10-26/reports/fix-round-1/summary.txt)，全部230个的后续修复、测试与剩余差异见 [第二批报告](ninja-top10-2026-10-26/reports/fix-round-2/summary.txt)。
+`ninja-top10-2026-10-26/` 是额外的 Forbidden Rites 活动服样本：固定快照 `0757-20261026-16736`，按网站默认等级降序保留每个升华的前十行及同级原顺序，共 230 个码。它使用排名选择，与下文 `builds:fetch` 的账号排序不同。`build-codes.json` 是码合集，`index.csv` 和 `selection.json` 记录来源，`validation.json` 记录完整性校验。本批已用于引擎修复，不是独立 holdout，也没有加入默认门禁语料。运行 `mise run accuracy examples/reference-builds/ninja-top10-2026-10-26/builds` 可复测整批；默认模式与参考模式应分开测量，两者都不是游戏实测真值。
 
-后续静态词条、物品分段、珠宝缩放和配置火墙修复见 [第三批报告](ninja-top10-2026-10-26/reports/fix-round-3/summary.txt)。它另外检查全部230个构筑的PoBR默认模式，和参考模式分开记录；两种结果都不作为游戏实测真值。
 
 `batch-2026-10-27/` 保存了抓取脚本联网核验时取得的 23 个新构筑，来自 Forbidden Rites 普通服快照 `1537-20261027-28463`。按账号和角色名排序、排除已有角色后，每个升华取第一个；[selection.json](batch-2026-10-27/selection.json) 记录来源和选择，[validation.json](batch-2026-10-27/validation.json) 记录构筑码完整性校验。这批样本尚未做计算准确度评估，也未加入默认门禁语料。
 
@@ -30,136 +29,9 @@ mise run builds:fetch examples/reference-builds/holdout --pick last
 
 构筑目录的格式与 `examples/wasm-benchmark/builds` 相同：`code.txt`（PoB2 构筑码）和 `meta.json`（来源、职业、主技能、码的哈希）。
 
-## 记录
+## 结果与维护
 
-| 日期 | 组 | 构筑数 | `TotalDPS` 吻合 | 吻合行 |
-|------|----|--------|-----------------|--------|
-| 2026-10-13（抓取时，未做任何针对性修改） | `tuned/` | 23 | 11（48%） | 796/1061（75.0%） |
-| 2026-10-13（抓取时，未做任何针对性修改） | `holdout/` | 23 | 7（30%） | 844/1073（78.7%） |
-| 2026-10-14（第一轮：按 `tuned/` 的差异修引擎） | `tuned/` | 23 | 14（61%） | 905/1061（85.3%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 11（48%） | 949/1073（88.4%） |
-| 2026-10-14（第二轮：宝石标签与 stat set 的无值 stat 进入数据，箭雨命中频率） | `tuned/` | 23 | 15（65%） | 909/1061（85.7%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 11（48%） | 949/1073（88.4%） |
-| 2026-10-14（第三轮：“每个连接的绿色 / 蓝色辅助宝石”两条词条生效） | `tuned/` | 23 | 16（70%） | 912/1061（86.0%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 11（48%） | 949/1073（88.4%） |
-| 2026-10-14（第四轮：超越肢体作为独立的装备栏位导入并计算） | `tuned/` | 23 | 16（70%） | 922/1061（86.9%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 12（52%） | 952/1073（88.7%） |
-| 2026-10-14（第五轮：Abyssal Lich 的 Umbral Well 把骷髅召唤物换成角色身上的 Umbral Soul 增益） | `tuned/` | 23 | 17（74%） | 926/1061（87.3%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 13（57%） | 954/1073（88.9%） |
-| 2026-10-14（第六轮：构筑记录所用的武器组，“使用武器组 1/2 时”的词条按它生效，如 Rigwald's Ferocity） | `tuned/` | 23 | 18（78%） | 931/1061（87.7%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 13（57%） | 954/1073（88.9%） |
-| 2026-10-14（第七轮：Grand Spectrum 珠宝按已镶嵌的数量计数） | `tuned/` | 23 | 18（78%） | 940/1061（88.6%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 13（57%） | 954/1073（88.9%） |
-| 2026-10-14（第八轮：“Critical Spell Damage Bonus”只作用于法术） | `tuned/` | 23 | 18（78%） | 942/1061（88.8%） |
-| 2026-10-14（同一批改动；少的一行是参考值把这类词条算给了光环技能，见基线旁说明） | `holdout/` | 23 | 13（57%） | 953/1073（88.8%） |
-| 2026-10-14（第九轮：装备里的 Idol 与其他增强物按插槽计数，“per Idol / per non-Idol Augment in your Equipment”生效） | `tuned/` | 23 | 18（78%） | 944/1061（89.0%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 13（57%） | 953/1073（88.8%） |
-| 2026-10-14（第十轮：Charged Staff 按消耗的暴击球加闪电伤害；Skeletal Warriors 的前两个召唤物不保留精魄） | `tuned/` | 23 | 19（83%） | 949/1061（89.4%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 13（57%） | 953/1073（88.8%） |
-| 2026-10-14（第十一轮：物品授予的天赋石在属性派生之前生效，如珠宝上的 Giant's Blood 让力量提供的生命减半） | `tuned/` | 23 | 19（83%） | 952/1061（89.7%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 13（57%） | 953/1073（88.8%） |
-| 2026-10-14（第十二轮：“每个已填充插槽”的属性在派生生命/魔力之前计入；物品“Allocates”的天赋点算作已分配，进入珠宝范围） | `tuned/` | 23 | 19（83%） | 958/1061（90.3%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 15（65%） | 965/1073（89.9%） |
-| 2026-10-14（第十三轮：所需敌人数降到 1 时角色处于被包围状态；Bear 技能进入熊形态；武器上的“reduced Attack Speed”是本地词条；Bear 技能的物理转火） | `tuned/` | 23 | 21（91%） | 986/1061（92.9%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 15（65%） | 967/1073（90.1%） |
-| 2026-10-14（第十四轮：被设定的上限按设定值转换，如 Chaos Inoculation 的“Maximum Life is 1”不再把原本的生命转成能量护盾） | `tuned/` | 23 | 21（91%） | 993/1061（93.6%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 15（65%） | 969/1073（90.3%） |
-| 2026-10-14（第十五轮：Sorcery Ward 的屏障先于生命承受伤害，只在天赋授予该技能时存在；“per 5 of your lowest Attribute”按最低的属性计算；弩自身的装填速度计入装填时间；Pounce 的标记按 Presence 内的召唤物计数；天赋树授予技能的词条去掉显示标记后解析） | `tuned/` | 23 | 22（96%） | 1003/1061（94.5%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 16（70%） | 979/1073（91.2%） |
-| 2026-10-14（第十六轮：盾牌自身的格挡词条先作用于盾牌的格挡率，再乘角色的“increased Block chance”；Magma Barrier 给予的格挡率） | `tuned/` | 23 | 22（96%） | 1009/1061（95.1%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 16（70%） | 979/1073（91.2%） |
-| 2026-10-14（第十七轮：腰带的 “Charm Slots: N” 是物品的总数，不再与 “Has N Charm Slots” 重复计入；“for each of your empty Charm slots” 按空着的护符栏计数） | `tuned/` | 23 | 22（96%） | 1010/1061（95.2%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 16（70%） | 980/1073（91.3%） |
-| 2026-10-14（第十八轮：技能和它的辅助宝石带的 “increased Blind Effect”（Blind II）作用于它施加的致盲，敌人身上取最强的一个） | `tuned/` | 23 | 22（96%） | 1016/1061（95.8%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 16（70%） | 981/1073（91.4%） |
-| 2026-10-14（第十九轮：会命中的主技能让角色“最近命中过敌人”） | `tuned/` | 23 | 22（96%） | 1019/1061（96.0%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 16（70%） | 981/1073（91.4%） |
-| 2026-10-14（第二十轮：“Defend with N% of Armour while not on Low Energy Shield”） | `tuned/` | 23 | 22（96%） | 1021/1061（96.2%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 16（70%） | 981/1073（91.4%） |
-| 2026-10-14（第二十一轮：护甲、闪避和能量护盾的总值取最接近的整数） | `tuned/` | 23 | 22（96%） | 1022/1061（96.3%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 16（70%） | 981/1073（91.4%） |
-| 2026-10-14（第二十二轮：“Spells / Attacks cost an additional N% of your maximum Life / Mana”） | `tuned/` | 23 | 22（96%） | 1023/1061（96.4%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 16（70%） | 981/1073（91.4%） |
-| 2026-10-14（第二十三轮：Sacrifice of Flesh 预防命中造成的部分生命损失） | `tuned/` | 23 | 22（96%） | 1023/1061（96.4%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 16（70%） | 986/1073（91.9%） |
-| 2026-10-14（第二十四轮：召唤物按使用等级保留精魄，幽魂按怪物、驯服的伙伴按精魄池比例保留） | `tuned/` | 23 | 22（96%） | 1024/1061（96.5%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 16（70%） | 986/1073（91.9%） |
-| 2026-10-14（第二十五轮：逐行台账找出的输入——原文已含效果的词缀 / 符文效果加成登记为不影响计算；Presence 内敌人按最低元素抗性承受元素伤害） | `tuned/` | 23 | 22（96%） | 1024/1061（96.5%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑；Gemling Legionnaire Twister 的点燃按游戏文本也用最低抗性，参考值只在命中上用） | `holdout/` | 23 | 16（70%） | 984/1073（91.7%） |
-| 2026-10-14（第二十六轮：开始比较 `<MinionStat>`——主技能召唤物的 DPS、生命、能量护盾，召唤物构筑的伤害按召唤物的 TotalDPS 判断；幽魂与驯服野兽的宝石召唤所选的怪物。召唤物伤害尚未建模，两个召唤物构筑不再算伤害吻合） | `tuned/` | 23 | 20（87%） | 1026/1067（96.2%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 14（61%） | 984/1079（91.2%） |
-| 2026-10-14（第二十七轮：角色的全部召唤物词条（天赋、升华、珠宝、配置，不只物品文本）交给召唤物，“Companions …” 只给同伴；“Your Minions are Gigantic”；“+# to Level of all Tamed Companion Skills” 提升驯服野兽的宝石） | `tuned/` | 23 | 20（87%） | 1028/1067（96.3%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 14（61%） | 985/1079（91.3%） |
-| 2026-10-14（第二十八轮：召唤物用它怪物自己的技能攻击（`skillMinionSkill`），游戏的友军伤害表，幽魂与驯服野兽的等级缩放，“Allies in your Presence …” 光环与主手武器份额交给召唤物，“Gain #% of X as Y” 计入额外伤害） | `tuned/` | 23 | 21（91%） | 1029/1067（96.4%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 14（61%） | 985/1079（91.3%） |
-| 2026-10-14（第二十九轮：辅助宝石的 buff 是它所辅助的每个技能的 buff（同伴按怪物区分），每组召唤技能各自创建召唤物，同伴数按 PoB2 的数法） | `tuned/` | 23 | 21（91%） | 1035/1067（97.0%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 14（61%） | 985/1079（91.3%） |
-| 2026-10-14（第三十轮：召唤物施放法术，技能伤害按召唤物等级和游戏的效能成长取值，按施法时间与冷却使用；Command 技能的条件；buff 名取游戏显示名） | `tuned/` | 23 | 22（96%） | 1036/1067（97.1%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 14（61%） | 985/1079（91.3%） |
-| 2026-10-14（第三十一轮：冷却秒数减免与 0.1 秒下限；同伴按组保留精魄，保留效率按角色计数读取；buff / 光环 / 诅咒 / debuff 按技能实际等级取值，含辅助宝石授予的等级，Uhtred 系辅助按其他辅助数给等级） | `tuned/` | 23 | 22（96%） | 1037/1067（97.2%） |
-| 2026-10-14（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 14（61%） | 985/1079（91.3%） |
-| 2026-10-15（第三十二轮：授予的技能按角色等级与属性降到能满足需求的等级（物品与天赋授予；天赋授予的组与列出它的普通组合并）；辅助一颗宝石任一效果的辅助宝石给整颗宝石加等级。技能等级与 PoB2 一致的更多了，没有参考行变化） | `tuned/` | 23 | 22（96%） | 1037/1067（97.2%） |
-| 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 14（61%） | 985/1079（91.3%） |
-| 2026-10-15（换轮：上面的 `holdout/` 23 个并入 `tuned/`，按上一行的数字计入） | `tuned/` | 46 | 36（78%） | 2022/2146（94.2%） |
-| 2026-10-15（新抓取，poe.ninja 2026-10-14 的快照，每个升华取未入库的最后一个角色；未做任何针对性修改） | `holdout/` | 23 | 11（48%） | 971/1076（90.2%） |
-| 2026-10-15（第三十三轮：主副手各按自己的命中值读取 “per Accuracy Rating” 类词条；Spell Echo 的重复受冷却限制；Barrage 每消耗一个狂怒球多重复一次；给技能加冷却的辅助（Breachlord's Amalgam）提供冷却与可储存次数；Gigantic 同伴，“Companions gain your Strength”；Pain Offering 的光环只给召唤物并计入 Sacrificial Offering 的 buff 效果；偏斜命中由同伴分担的份额；抽取规则的捕获推断改为先匹配同值捕获，特殊词条正则改用 ASCII 数字） | `tuned/` | 46 | 41（89%） | 2041/2146（95.1%） |
-| 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 12（52%） | 978/1076（90.9%） |
-| 2026-10-15（第三十四轮：毒、点燃等的层数按 “deal damage #% faster” 缩短的持续时间估算，“duration of Ailments you inflict” 计入持续时间；同一诅咒取最强的一份；“per 1% Chance to Block” 读取格挡率；Decompose 的毒云必定中毒；尸爆的伤害类型取自 stat id；Into the Breach 的紫焰与残骸效果；“你和 Presence 内的友军” 类词条角色自己也有；Uhtred 系只把辅助宝石算作“其他辅助”；“Skills from Corrupted Gems” 判断主技能的宝石；Embitter 把获得的额外伤害都记为冰；技能品质与 Projectile Acceleration 的投射物速度） | `tuned/` | 46 | 43（93%） | 2054/2146（95.7%） |
-| 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 12（52%） | 979/1076（91.0%） |
-| 2026-10-15（第三十五轮：词条规则的关键字不再丢弃，“Damage with Warcries”“with Fire Skills” 只作用于对应技能，技能按类型带关键字；Smith of Kitava 的火抗同时给冰电抗；Refraction III 的旗帜按护甲施加元素曝露；Culling Strike；配置的 Arcane Surge 在战斗中生效；Fire Spell on Hit 触发的法术无消耗） | `tuned/` | 46 | 43（93%） | 2062/2146（96.1%） |
-| 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 13（57%） | 984/1076（91.4%） |
-| 2026-10-15（第三十六轮：物品自身的 “+N to maximum Runic Ward” 与 “Gain % of maximum Life as Extra maximum Runic Ward” 计入符文护盾；Presence 内的敌人从全部伤害获得混沌伤害（Evergrasping Ring）；Renly's Training 替换盾牌的格挡值；Gemling 的 Mote 不重复计物品授予的技能；角色的光环作用于召唤物；Decompose 的毒云不能暴击；分诊列出 EHP 的逐类型项和本构筑相关的未读取词条） | `tuned/` | 46 | 43（93%） | 2067/2146（96.3%） |
-| 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 13（57%） | 988/1076（91.8%） |
-| 2026-10-15（换轮：上面的 `holdout/` 23 个并入 `tuned/`，按上一行的数字计入） | `tuned/` | 69 | 56（81%） | 3055/3222（94.8%） |
-| 2026-10-15（新抓取，poe.ninja 2026-10-15 的快照，每个升华取未入库的最后一个角色；未做任何针对性修改） | `holdout/` | 23 | 19（83%） | 1008/1077（93.6%） |
-| 2026-10-15（第三十七轮：珠宝的 “Allocates” 打开它写明的插槽；戒指与护身符的加成效果放大其中的宝石等级；武器组：主技能由某组武器授予时按那一组计算，绑定另一组的技能组按那组武器取宝石等级；“You have Unholy Might”；武器的命中值只计入用它的攻击；“Spells which cost Life” 要求生命消耗；按当前能量护盾比例增加护甲防御；Oil Barrage 的油施加曝露。Titan 686e 的 9 行改与钉定的 PoB2 一致：参考值按物品集那一组武器导出） | `tuned/` | 69 | 61（88%） | 3063/3222（95.1%） |
-| 2026-10-15（同一批改动，未查看其中任何构筑） | `holdout/` | 23 | 19（83%） | 1008/1077（93.6%） |
-| 2026-10-15（第三十八轮：写明 “this Weapon” 的词条按武器所在的手生效；配置的元素曝露需要角色能施加它；“Damage with Maces” 只作用于用该武器的攻击；Styrn's Ferocity 的 Crush 降低敌人物理伤害减免；Lich 的 Crystalline Phylactery 让其中的珠宝按两倍计、不受 The Adorned 影响，4 个护符匣构筑的参考值没有这条规则，伤害改与参考值不同） | `tuned/` | 69 | 58（84%） | 3049/3222（94.6%） |
-| 2026-10-15（同一批改动，未查看其中任何构筑；2 个护符匣构筑同样改与参考值不同） | `holdout/` | 23 | 18（78%） | 1003/1077（93.1%） |
-| 2026-10-16（第三十九轮：在当前侧栏覆盖基线上，Oil Barrage 的持续魔力消耗不再重复计入启动消耗，tuned 增加 1 个吻合行；Dark Consequences 的 Archmage 消耗仍按爆炸频率支付，登记为有意差异） | `tuned/` | 69 | 58（84%） | 5778/6113（94.5%） |
-| 2026-10-16（同一批改动，仅测量总数，未查看其中任何构筑） | `holdout/` | 23 | 18（78%） | 1907/2030（93.9%） |
-| 2026-10-16（第四十轮：Smith 的火抗转换不重复转换全元素抗性词条，最终抗性向零截断；Carved Majesty 等古代 Idol 按插槽物类别计数，不多扣一次非 Idol 的抗性惩罚） | `tuned/` | 69 | 58（84%） | 5786/6113（94.7%） |
-| 2026-10-16（同一批改动，仅测量总数，未查看其中任何构筑） | `holdout/` | 23 | 18（78%） | 1912/2030（94.2%） |
-| 2026-10-16（第四十一轮：PoBR 规则声明导出器 coverage，参考口径自动排除 absent；恢复 Spell Mana Cost Efficiency 的参考基线，并让 The Fall of the Axe 的 Onslaught 在游戏口径生效。逐规则影响由 accuracy 的 beyond PoB2 计数报告，不逐构筑降低基线） | `tuned/` | 69 | 58（84%） | 5787/6113（94.7%） |
-| 2026-10-16（同一批改动，仅测量总数，未查看其中任何构筑） | `holdout/` | 23 | 18（78%） | 1912/2030（94.2%） |
-| 2026-10-16（第四十二轮：输出角色异常门槛、击杀恢复、Daze 几率与完全破甲效果；ES 门槛接受任意词缀数值；冻结积累读取游戏词条名，完全破甲按游戏文本增加物理击中承伤。新增字段不在这批构筑码的参考行中，现有吻合总数不变） | `tuned/` | 69 | 58（84%） | 5787/6113（94.7%） |
-| 2026-10-16（同一批改动，仅测量总数，未查看其中任何构筑） | `holdout/` | 23 | 18（78%） | 1912/2030（94.2%） |
-| 2026-10-16（第四十三轮：Crystallised Immunities 按启用组中超过半数的辅助宝石颜色给予异常免疫；额外残骸与每次命中破甲量登记为尚无模型的 no-effect。AvoidChill / AvoidIgnite / AvoidShock 不在这批构筑码的参考行中，现有吻合总数不变） | `tuned/` | 69 | 58（84%） | 5787/6113（94.7%） |
-| 2026-10-16（同一批改动，仅测量总数，未查看其中任何构筑） | `holdout/` | 23 | 18（78%） | 1912/2030（94.2%） |
-| 2026-10-16 (round 44: Light Radius transfers, granted passive-point budgets, buff expiry rate, flask recovery copied to ES, melee-weapon conditions, and explicit unmodelled/no-effect fates; reference agreement unchanged) | `tuned/` | 69 | 58 (84%) | 5787/6113 (94.7%) |
-| 2026-10-16 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1912/2030 (94.2%) |
-| 2026-10-16 (round 45: skill-level audit; effect-row limits, support host levels, named gem bonuses, inherent Spear Throw levels, and weapon-set equipment/attribute context reduce worked-build level/quality leads from 99 to 24; reference agreement unchanged) | `tuned/` | 69 | 58 (84%) | 5787/6113 (94.7%) |
-| 2026-10-16 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1912/2030 (94.2%) |
-| 2026-10-16 (round 46: player curse/exposure/wither and bleed/ignite effect, six self-ailment-duration, debuff expiration and three immunity modifier views, including duration support buffs; these fields add no exported PlayerStat rows, so reference totals are unchanged) | `tuned/` | 69 | 58 (84%) | 5787/6113 (94.7%) |
-| 2026-10-16 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1912/2030 (94.2%) |
-| 2026-10-16 (round 47: HeavyStunBuildupAvg uses effective hit damage, Daze and game-sourced boss poise: MAP mode 313%, Xesht 1700%; existing reference totals unchanged. Direct cached-oracle agreement stays 19/95, all zero cases, because Xesht differs intentionally from the oracle preset; three worked ratios are documented) | `tuned/` | 69 | 58 (84%) | 5787/6113 (94.7%) |
-| 2026-10-16 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1912/2030 (94.2%) |
-| 2026-10-17 (round 48: merged on-hit effect views, Freeze duration and critical ailment magnitude, totem defences and limits; new display coverage adds 6 reference rows, 2 agreeing; DPS agreement unchanged) | `tuned/` | 69 | 58 (84%) | 5790/6119 (94.6%) |
-| 2026-10-17 (same changes; aggregate measurement only, no holdout build inspected; 4 new reference rows, 1 agreeing) | `holdout/` | 23 | 18 (78%) | 1913/2034 (94.1%) |
-| 2026-10-17 (round 49: Widow damage reservation persists across EHP hits; Ancestral Boost uses explicit attack snapshots; Consecrated Ground uses independent player/minion states and local creation properties. Reference agreement and compared-row counts unchanged) | `tuned/` | 69 | 58 (84%) | 5790/6119 (94.6%) |
-| 2026-10-17 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1913/2034 (94.1%) |
-| 2026-10-18 (round 50: Beira ground uses an explicit established-Ignite snapshot and a shared strongest-Ignite limit; Cadiro uses one selected arrow; outgoing Slow Magnitude feeds modeled Chill. New rules are exporter-absent; reference agreement and compared-row counts are unchanged) | `tuned/` | 69 | 58 (84%) | 5790/6119 (94.6%) |
-| 2026-10-18 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1913/2034 (94.1%) |
-| 2026-10-18 (round 51: Combo generation uses a receiving-skill counter; Volatility restoration and Remnant pickup effects use explicit events. Collector Mana recovery stays separate from creator effect duplication. New rules are exporter-absent; reference agreement and compared-row counts are unchanged) | `tuned/` | 69 | 58 (84%) | 5790/6119 (94.6%) |
-| 2026-10-18 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1913/2034 (94.1%) |
-| 2026-10-18 (round 52: Giant's Blood enables eligible offhand attacks while retaining two-handed identity; projectile Armour uses the incoming enemy attack category; Fully Broken Armour extends hit vulnerability to granted elements. Existing helmet Stun Threshold is verified rather than reimplemented. Reference agreement and compared-row counts are unchanged) | `tuned/` | 69 | 58 (84%) | 5790/6119 (94.6%) |
-| 2026-10-18 (same changes; aggregate measurement only, no holdout build inspected) | `holdout/` | 23 | 18 (78%) | 1913/2034 (94.1%) |
-| 2026-10-26（round 53：静态装备条件、Mark Effect、有限 Ward 吸收、友军光环、Offering、召唤数量/消耗及武器暴击/敌人抗性输入；参考条件省略 exporter-absent Mark 规则） | `tuned/` | 69 | 58（84%） | 5793/6119（94.7%） |
-| 2026-10-26（同一批改动；只测汇总。敌人条件名称修正使保存的参考值少吻合1个伤害、6行，其他修复增加1行；汇总回退定位于该修正，未查看单个 holdout，按独立样本与回归证据保留正确行为） | `holdout/` | 23 | 17（74%） | 1908/2034（93.8%） |
-| 2026-10-26（Forbidden Rites 首批51，修复前） | `ninja-top10-2026-10-26/` 首批 | 51 | 25（49%） | 4175/4538（92.0%） |
-| 2026-10-26（相同51个冻结构筑，修复后；25行回到容差内，无新增不吻合行） | `ninja-top10-2026-10-26/` 首批 | 51 | 28（55%） | 4200/4538（92.6%） |
-| 2026-10-26（修复后的完整230个样本；230次导入计算成功） | `ninja-top10-2026-10-26/` 全部 | 230 | 150（65%） | 18974/20427（92.9%） |
-| 2026-10-26（round 54：两组武器技能/珠宝、授予组、静态防御与条件、有限资源池、连锁明细、召唤物辅助/不洁之力、战吼速度；完整门禁通过） | `tuned/` | 69 | 58（84%） | 5795/6119（94.7%） |
-| 2026-10-26（同批改动，仅汇总测量，未查看单个构筑） | `holdout/` | 23 | 17（74%） | 1908/2034（93.8%） |
-| 2026-10-26（Forbidden Rites 第二批：全部230个参与排查；157行回到容差内，8行离开；剩余差异见第二批报告） | `ninja-top10-2026-10-26/` 全部 | 230 | 159（69%） | 19123/20427（93.6%） |
-| 2026-10-26（round 55：物品分段、The Adorned/征服小天赋嵌套缩放、Blackflame、配置火墙、伙伴Presence及最强Buff合并；完整门禁通过） | `tuned/` | 69 | 58（84%） | 5795/6119（94.7%） |
-| 2026-10-26（同批改动，仅汇总测量，未查看单个构筑；提高后的基线通过） | `holdout/` | 23 | 17（74%） | 1912/2034（94.0%） |
-| 2026-10-26（Forbidden Rites 第三批：59行回到容差内、3行离开；另完成230/230默认模式计算检查） | `ninja-top10-2026-10-26/` 全部 | 230 | 169（73%） | 19179/20427（93.9%） |
-| 2026-10-26（round 56：原生授权技能、类型化偷取/转移、再生增幅、Ballista/斩杀/Derange、Mana Remnants及征服属性天赋；Sands原生Blink取消错误的157智力需求，准确需求147，按精确证据调整1行基线；门禁及定向重跑通过） | `tuned/` | 69 | 58（84%） | 5794/6119（94.7%） |
-| 2026-10-26（同批改动，仅汇总测量，未查看单个构筑） | `holdout/` | 23 | 17（74%） | 1912/2034（94.0%） |
-| 2026-10-26（[Forbidden Rites第四批](ninja-top10-2026-10-26/reports/fix-round-4/summary.txt)：14行回到容差内、3行离开；230/230默认模式检查通过；清点发现的后续9类静态缺陷仍待修复） | `ninja-top10-2026-10-26/` 全部 | 230 | 169（73%） | 19190/20427（93.9%） |
-| 2026-10-26（round 57：静态资源/充能/幸运、友军武器/伙伴/装备计数、稀有度/异常、Oisin/Brutality及战旗攻速；完整门禁与受影响重跑通过，基线未降低） | `tuned/` | 69 | 58（84%） | 5794/6119（94.7%） |
-| 2026-10-26（同批改动，仅汇总测量，未查看单个构筑） | `holdout/` | 23 | 17（74%） | 1912/2034（94.0%） |
-| 2026-10-26（[Forbidden Rites第五批](ninja-top10-2026-10-26/reports/fix-round-5/summary.txt)：12行回到容差内、1行离开；230/230默认模式检查通过；Tactician06保留未完全解释的差异，未新增known行） | `ninja-top10-2026-10-26/` 全部 | 230 | 170（74%） | 19201/20427（94.0%） |
-
-不吻合行里有按游戏规则有意不同于参考值的行（例如护身符授予的技能不保留精魄，见 `reference_report.rs` 基线旁的说明），所以上限不是 100%。
+当前门禁基线以 `crates/pobr-build/tests/parity/reference_report.rs` 为准，
+已确认的参考差异见 [PoB2 差异说明](../../docs/pob2-differences.md)。
+提高基线时，在提交或 PR 中说明改动原因、所用数据与实际检查。
+生成的 triage、日志和一次调查的数值报告放在 `.cache/`；样本来源和可复现输入继续入库。

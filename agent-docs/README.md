@@ -1,6 +1,9 @@
-# POE2 游戏机制文档
+# 早期游戏机制参考
 
-本目录包含 Path of Exile 2（流放之路2）的游戏机制文档，内容基于官方 Wiki、社区指南、补丁说明和 Path of Building 项目数据整理而成。文档包含原始引用链接，并标注了 0.5.0 版本更新中的机制变化。
+本目录保留围绕 PoE2 **0.5.0** 整理的机制资料与原始来源，部分路径仍被代码和回归测试引用。
+它不是当前行为契约，也不是待实现清单。理解 PoBR 当前支持的机制和假设，先读
+[机制约定](../docs/mechanics/README.md)；开发入口见[文档索引](../docs/README.md)。
+使用本目录的公式和结论前，按当前游戏数据、词条文本与回归测试复核，来源冲突时以可验证的一手证据为准。
 
 ## 文档索引
 
@@ -91,13 +94,15 @@
 - https://maxroll.gg/poe2/resources
 - https://www.sportskeeda.com/mmo
 
-**Path of Building 核对**：PoE2 计算、章节奖励、配置项和展示字段优先与 [PathOfBuildingCommunity/PathOfBuilding-PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2) 交叉核对。旧 [PathOfBuildingCommunity/PathOfBuilding](https://github.com/PathOfBuildingCommunity/PathOfBuilding) 仅作为 PoE1 历史架构和差异参考。
+**Path of Building 核对**：[PathOfBuildingCommunity/PathOfBuilding-PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2) 用于交叉核对，不取代游戏规则。旧 [PathOfBuildingCommunity/PathOfBuilding](https://github.com/PathOfBuildingCommunity/PathOfBuilding) 仅作为 PoE1 历史架构和差异参考。
 
-**本地 PoB2 源码**：仓库内 `vendor/PathOfBuilding-PoE2/` 是 PoB2 的本地检出，但为**部分检出**——只含 `src/Data/`（常量与数据表，如 `Misc.lua`、`Global.lua`、`SkillStatMap.lua`、`Costs.lua`、`Gems.lua`、`ModFlask.lua`、`ModCharm.lua`、`ModJewel.lua`、`ClusterJewels.lua`、`Bases/`、`Uniques/` 等）与 `src/Export/`，**不含 `src/Modules/` 计算引擎**（`CalcOffence.lua` / `CalcDefence.lua` / `CalcSetup.lua` / `CalcPerform.lua` 等）。因此：数据/常量/词条映射优先读本地 vendor；计算公式需用 `gh api repos/PathOfBuildingCommunity/PathOfBuilding-PoE2/contents/src/Modules/<File>.lua --jq '.content' | base64 -d` 取远程。
+**本地 PoB2 源码**：`mise run vendor` 准备固定 commit 的完整本地检出
+`vendor/PathOfBuilding-PoE2/`（忽略入库）。用 `mise run vendor:lua "<pattern>"`
+查询数据与计算源码；不要按本目录早期记录假设它仍是部分检出。
 
 ## 版本说明
 
-- 文档已更新至 **0.5.0 Return of the Ancients** 版本
+- 研究基准为 **0.5.0 Return of the Ancients**；不表示全文已随当前游戏版本更新。
 - 标注了 0.5.0 中的关键机制变化：
   - "Defences" 关键词废弃，明确为 "Armour, Evasion and Energy Shield"
   - 护甲/闪避数值调整（65级约+33%）
