@@ -175,12 +175,10 @@ def compare(source, first, second, profile="base-v1", source_lock=None):
 
     reference_count = check_refs(candidate)
 
-    def raw(ref):
-        assert ref["payload"].startswith("tables/")
-        table = tables[Path(ref["payload"]).stem]
-        parts = ref["pointer"].split("/")
-        assert parts[1] == "rows" and parts[3] == "values" and len(parts) == 4
-        return table["rows"][int(parts[2])]["values"]
+    def raw(ref, table, row):
+        expected = {"payload": f"tables/{table}.json", "pointer": f"/rows/{row}/values"}
+        assert ref == expected, ("wrong canonical table/row reference", ref, expected)
+        return tables[table]["rows"][row]["values"]
 
     assert candidate["input_manifest_sha256"] == manifest_sha
     assert candidate["passive_order"] == [r["values"]["Id"] for r in tables["PassiveSkills"]["rows"]]
@@ -188,7 +186,7 @@ def compare(source, first, second, profile="base-v1", source_lock=None):
     for definition in passives["definitions"]:
         key = definition["definition"]["id"]
         node = candidate["passives"][key]
-        physical = raw(node["raw"])
+        physical = raw(node["raw"], "PassiveSkills", definition["definition"]["row"])
         assert physical["Id"] == key
         assert node["graph_id_raw"] == physical["PassiveSkillGraphId"] == definition["graph_id"]
         assert node["in_default_graph"] == definition["in_default_graph"]
@@ -197,7 +195,7 @@ def compare(source, first, second, profile="base-v1", source_lock=None):
             assert pair["slot"] == slot and pair["value_field"] == f"Stat{slot}Value"
             assert pair["value"] == physical[pair["value_field"]]
             assert pair["stat_id"] == tables["Stats"]["rows"][physical["Stats"][slot - 1]]["values"]["Id"]
-            assert raw(pair["raw_stat"])["Id"] == pair["stat_id"]
+            assert raw(pair["raw_stat"], "Stats", physical["Stats"][slot - 1])["Id"] == pair["stat_id"]
     fifth = candidate["passives"]["energy_shield_and_armour44"]["stats"][4]
     assert (fifth["stat_id"], fifth["slot"], fifth["value"]) == ("recover_X_life_on_block", 5, 10)
     assert candidate["passives"]["energy_shield_and_armour44"]["graph_id_raw"] == 31955
@@ -220,8 +218,9 @@ def compare(source, first, second, profile="base-v1", source_lock=None):
     normalized_graph = candidate["graph"]
     assert normalized_graph["raw"] == {"payload": "graph.json", "pointer": ""}
     assert normalized_graph["tree_id"] == "Default"
-    assert raw(normalized_graph["raw_tree"])["Id"] == "Default"
-    assert raw(normalized_graph["raw_tree"])["PassiveSkillGraph"] + ".psg" == graph["raw_resource"]
+    tree = raw(normalized_graph["raw_tree"], "PassiveSkillTrees", graph["tree"]["row"])
+    assert tree["Id"] == "Default"
+    assert tree["PassiveSkillGraph"] + ".psg" == graph["raw_resource"]
     assert normalized_graph["header"] == graph["header"]
     assert normalized_graph["skills_per_orbit_raw"] == graph["skills_per_orbit"]
     assert normalized_graph["roots"] == graph["roots"]
@@ -249,12 +248,12 @@ def compare(source, first, second, profile="base-v1", source_lock=None):
     assert sum(g["unknown1"] != 0 for g in normalized_graph["groups"]) == 29
 
     for relation, original in zip(candidate["class_relations"], passives["class_overrides"], strict=True):
-        assert relation["character_id"] == original["character"]["id"] == raw(relation["raw_character"])["Id"]
+        assert relation["character_id"] == original["character"]["id"] == raw(relation["raw_character"], "Characters", original["character"]["row"])["Id"]
         assert relation["base_definition_id"] == original["base"]["id"]
         assert relation["replacement_definition_id"] == original["replacement"]["id"]
         for field in ["base_graph_id", "replacement_graph_id", "base_in_default_graph", "replacement_in_default_graph"]:
             assert relation[field] == original[field]
-        physical = raw(relation["raw"])
+        physical = raw(relation["raw"], "ClassPassiveSkillOverrides", original["row"])
         assert physical == tables["ClassPassiveSkillOverrides"]["rows"][original["row"]]["values"]
         assert relation["character_id"] == tables["Characters"]["rows"][physical["CharacterToOverrideFor"]]["values"]["Id"]
         for prefix, field in [("base", "SkillToOverride"), ("replacement", "Override")]:
@@ -267,13 +266,13 @@ def compare(source, first, second, profile="base-v1", source_lock=None):
 
     assert candidate["stat_set_order"] == [r["values"]["Id"] for r in tables["GrantedEffectStatSets"]["rows"]]
     assert len(candidate["stat_sets"]) == 8283
-    for key, stat_set in candidate["stat_sets"].items():
-        assert raw(stat_set["raw"])["Id"] == key
+    for row, key in enumerate(candidate["stat_set_order"]):
+        assert raw(candidate["stat_sets"][key]["raw"], "GrantedEffectStatSets", row)["Id"] == key
     assert candidate["effect_order"] == [r["values"]["Id"] for r in tables["GrantedEffects"]["rows"]]
     for original in skills["effects"]:
         key = original["effect"]["id"]
         effect = candidate["effects"][key]
-        physical = raw(effect["raw"])
+        physical = raw(effect["raw"], "GrantedEffects", original["effect"]["row"])
         assert physical["Id"] == key
         links = []
         if physical["StatSet"] is not None:
@@ -285,13 +284,13 @@ def compare(source, first, second, profile="base-v1", source_lock=None):
             assert link == {"stat_set_id": old["stat_set"]["id"], **{k: old[k] for k in ["source_field", "source_slot", "local_index_hypothesis"]}}
     for quality, original in zip(candidate["qualities"], skills["qualities"], strict=True):
         assert quality["effect_id"] == original["effect"]["id"]
-        physical = raw(quality["raw"])
+        physical = raw(quality["raw"], "GrantedEffectQualityStats", original["row"])
         assert tables["GrantedEffects"]["rows"][physical["GrantedEffect"]]["values"]["Id"] == quality["effect_id"]
         for channel, fields in [("main", ["ApplyToStatSets", "Stats", "StatsValuesPermille"]), ("alternate", ["AltApplyToStatSets", "AltStats", "AltStatValuesPermille"])]:
             assert quality[channel]["scope_raw"] == original[channel]["scope_raw"] == physical[fields[0]]
             assert len(quality[channel]["stats"]) == len(physical[fields[1]]) == len(physical[fields[2]])
             for pair, old in zip(quality[channel]["stats"], original[channel]["stats"], strict=True):
-                assert pair["stat_id"] == old["stat"]["id"] == raw(pair["raw_stat"])["Id"]
+                assert pair["stat_id"] == old["stat"]["id"] == raw(pair["raw_stat"], "Stats", old["stat"]["row"])["Id"]
                 assert pair["stat_id"] == tables["Stats"]["rows"][physical[fields[1]][pair["slot"]]]["values"]["Id"]
                 assert pair["slot"] == old["slot"]
                 assert pair["value_permille"] == old["value_permille"] == physical[fields[2]][pair["slot"]]
