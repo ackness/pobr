@@ -6,7 +6,8 @@ edition.workspace = true
 [dependencies]
 pobr-data.workspace = true
 serde.workspace = true
-serde_json.workspace = true
+# Raw PSG coordinates must round-trip exactly; the default parser can shift one ULP.
+serde_json = { workspace = true, features = ["float_roundtrip"] }
 sha2 = { version = "0.11", default-features = false }
 
 [dev-dependencies]
