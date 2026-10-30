@@ -170,8 +170,9 @@ RePoE `aa2fb163aa422317db5c32031607eb199214e7b7`, documented there in
 `RePoE/docs/native_core_skills.md`. Omitting the flag, or explicitly selecting
 `--profile base-v1`, keeps the v1 contract above. A v2 package fails without the
 v2 opt-in; a v1 package fails under that opt-in. There is no format fallback.
-This consumer pin is provisional while the independent producer review runs;
-a later reviewed producer change requires a deliberate pin update.
+The A0 producer increment has been independently reviewed against its fixed raw
+inputs. A later producer change requires a deliberate pin update. This review
+does not promote the acquisition proposal or certify gameplay semantics.
 
 ```sh
 mise exec -- cargo run -p pobr-data-adapter -- \
