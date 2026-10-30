@@ -94,6 +94,64 @@ def tree_adapter_inputs(root):
     return {p.relative_to(root).as_posix(): digest(p) for p in sorted(inputs)}
 
 
+def corrected_tree_input(root, source, raw, staging):
+    """Quarantine reviewed orphan mappings for diagnostic candidates only."""
+    descriptor = source.get("corrections")
+    if descriptor is None:
+        return raw, None
+    relative = f"pipeline/tree-corrections/{source['revision']}.json"
+    if descriptor["path"] != relative:
+        raise ValueError("Tree corrections must be pinned to the source revision")
+    path = root / relative
+    if digest(path) != descriptor["sha256"]:
+        raise ValueError("Tree correction hash differs from sources.lock.json")
+    correction = read_json(path)
+    if (correction["schema"] != "pobr-tree-corrections/v1"
+            or correction["source_revision"] != source["revision"]
+            or correction["input_sha256"] != source["sha256"]
+            or correction.get("candidate_only") is not True
+            or digest(raw) != source["sha256"]):
+        raise ValueError("Tree correction does not match the fixed source bytes/revision")
+    document = read_json(raw)
+    quarantined = correction["quarantined_override_pairs"]
+    if not isinstance(quarantined, list) or not quarantined or not correction["reason"]:
+        raise ValueError("Tree corrections require an explicit nonempty quarantine list and reason")
+    seen = set()
+    for entry in quarantined:
+        name, base, replacement = entry["class"], entry["base_skill"], entry["replacement_skill"]
+        if not isinstance(name, str) or not name or type(base) is not int or type(replacement) is not int:
+            raise ValueError("Invalid tree correction selector or skill ID")
+        if (name, base) in seen:
+            raise ValueError("Duplicate tree correction")
+        seen.add((name, base))
+        key = str(base)
+        # A future source containing the base, even under a different map key,
+        # must be reviewed again. Never remove a mapping from a live graph.
+        if (key in document["nodes"] or key in document.get("skillOverrides", {})
+                or any(node.get("skill") == base or key in map(str, node.get("out", []))
+                       or key in map(str, node.get("in", []))
+                       or base in (node.get("unlockConstraint") or {}).get("nodes", [])
+                       for node in document["nodes"].values())
+                or any(key in {str(edge.get("from")), str(edge.get("to"))}
+                       for edge in document.get("edges", []))
+                or any(key in map(str, group.get("nodes", [])) for group in document.get("groups", {}).values())):
+            raise ValueError(f"Tree correction base {base} is present or referenced; review required")
+        classes = [c for c in document["classes"] if c["name"] == name]
+        pairs = classes[0].get("overridePairs") if len(classes) == 1 else None
+        if not isinstance(pairs, dict) or pairs.get(key) != replacement:
+            raise ValueError(f"Tree correction no longer matches {name} {base} -> {replacement}")
+        target = document.get("skillOverrides", {}).get(str(replacement))
+        if not target or target.get("skill") != replacement:
+            raise ValueError(f"Tree correction replacement {replacement} is missing or mismatched")
+        del pairs[key]
+    normalized = staging / "official-tree-normalized.json"
+    write_json(normalized, document)
+    return normalized, {"path": relative, "sha256": descriptor["sha256"],
+                        "input_sha256": source["sha256"], "normalized_sha256": digest(normalized),
+                        "candidate_only": True, "resolution": correction["resolution"],
+                        "quarantined_override_pairs": quarantined, "reason": correction["reason"]}
+
+
 def tree_candidate(root, source_id, output, offline=False):
     """Generate only an isolated tree domain; never publish or advance CURRENT."""
     output = output.resolve()
@@ -108,16 +166,19 @@ def tree_candidate(root, source_id, output, offline=False):
     raw = fetch_tree_source(root, source_id, offline)
     # Include the adapter's schema and build inputs, not a timestamp or local path.
     fingerprints = tree_adapter_inputs(root)
+    # Preprocessing is part of this producer too; it must not drift unnoticed.
+    fingerprints["pipeline/data_snapshot.py"] = digest(root / "pipeline/data_snapshot.py")
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".tree-candidate-", dir=output.parent) as temporary:
         staging = Path(temporary)
         env = dict(os.environ)
         # Candidate generation must never bless existing test or parity pins.
         env.pop("POBR_BLESS_PINS", None)
+        adapted_input, corrections = corrected_tree_input(root, source, raw, staging)
         cargo = ["cargo", "run", "--locked", "--quiet", "-p", "pobr-data-adapter"]
         if offline:
             cargo.append("--offline")
-        run([*cargo, "--", "--tree", str(raw),
+        run([*cargo, "--", "--tree", str(adapted_input),
              "--out", str(staging), "--patch", source["upstream_version"]], root, env)
         data = staging / source["upstream_version"]
         expected = ["base/passive_tree.json", "base/passive_tree_meta.json"]
@@ -126,11 +187,18 @@ def tree_candidate(root, source_id, output, offline=False):
             read_json(data / name)
         if digest(lock) != lock_hash or digest(raw) != source["sha256"]:
             raise ValueError("Source changed during candidate generation")
-        if tree_adapter_inputs(root) != fingerprints:
+        current_inputs = tree_adapter_inputs(root)
+        current_inputs["pipeline/data_snapshot.py"] = digest(root / "pipeline/data_snapshot.py")
+        if current_inputs != fingerprints:
             raise ValueError("Adapter inputs changed during candidate generation")
+        if corrections is not None and digest(root / corrections["path"]) != corrections["sha256"]:
+            raise ValueError("Tree corrections changed during candidate generation")
+        if corrections is not None and digest(adapted_input) != corrections["normalized_sha256"]:
+            raise ValueError("Normalized tree input changed during candidate generation")
         write_json(data / "_domain_candidate.json", {
             "schema": "pobr-domain-candidate/v1", "domain": "passive-tree",
             "source_id": source_id, "source": source, "source_lock_sha256": lock_hash,
+            "source_corrections": corrections,
             "adapter_inputs": fingerprints, "files": files,
             "publication": "blocked: domain-only candidate; patch applicability and full product validation required",
         })

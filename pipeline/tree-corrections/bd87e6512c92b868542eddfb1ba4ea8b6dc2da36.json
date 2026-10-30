@@ -1,0 +1,43 @@
+{
+  "schema": "pobr-tree-corrections/v1",
+  "source_revision": "bd87e6512c92b868542eddfb1ba4ea8b6dc2da36",
+  "input_sha256": "b52be9c4f17e4114064255ef1b8c58292e9db0e395d95af235a8d3fef0d44642",
+  "reason": "The base IDs are absent from nodes, skillOverrides, group membership and graph edges. Quarantine only these unappliable class mappings in diagnostic candidates; preserve the replacement definitions and all graph nodes. This does not establish client completeness or replacement IDs.",
+  "evidence": [
+    {
+      "revision": "bd87e6512c92b868542eddfb1ba4ea8b6dc2da36",
+      "upstream_version": "0.5.5",
+      "sha256": "b52be9c4f17e4114064255ef1b8c58292e9db0e395d95af235a8d3fef0d44642"
+    },
+    {
+      "revision": "e773f6c71ddcee73093edae692754be9a8b5634d",
+      "upstream_version": "0.5.4",
+      "sha256": "10ed1be30f96f3417659e03dd047d665057dc416861931332ae47796c618a023"
+    },
+    {
+      "revision": "1e9eb2d8c1946398c3aaaacfbaead5c75c0d1fa6",
+      "upstream_version": "0.5.2",
+      "sha256": "f83c94ce7b09f2bfc5b3b1d63523c2ab3d2582d0e964f6aeec34b8b0390abcfe"
+    },
+    {
+      "revision": "8d9b16743be1a43faa3cb150673a2335e66335a2",
+      "upstream_version": "0.5.0 Preview 2",
+      "sha256": "2b2ea598d492bdb02af7afcf4e897988440da6f55692199f42d5615b22c6386e"
+    }
+  ],
+  "product_publication": "Still blocked pending client patch applicability and full native tree semantics.",
+  "quarantined_override_pairs": [
+    {
+      "class": "Druid",
+      "base_skill": 19680,
+      "replacement_skill": 40837
+    },
+    {
+      "class": "Druid",
+      "base_skill": 55194,
+      "replacement_skill": 57601
+    }
+  ],
+  "candidate_only": true,
+  "resolution": "unresolved: base nodes may be obsolete or omitted; matching client graph has not been verified"
+}

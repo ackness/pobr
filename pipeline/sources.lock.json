@@ -14,6 +14,10 @@
         "owner": "Grinding Gear Games",
         "terms": "https://www.pathofexile.com/legal/terms-of-use-and-privacy-policy",
         "scope": "Local source verification and candidate generation; product redistribution not reviewed."
+      },
+      "corrections": {
+        "path": "pipeline/tree-corrections/bd87e6512c92b868542eddfb1ba4ea8b6dc2da36.json",
+        "sha256": "f031327c21eb4a24f0fd4c694512521f4d5fe457f74d2f0f5c35b2cc10ab853f"
       }
     }
   }
