@@ -3,7 +3,7 @@
 `client_sources.py` acquires **every resource in one explicitly selected source**
 from `sources.lock.json`. It produces a new raw root with direct game-relative
 paths (`Data/Balance/*.datc64`, `Metadata/PassiveSkillGraph.psg`) suitable for
-`RePoE.native_facts --raw-root`. It does not run the fact exporter or Rust adapter.
+`RePoE.native_facts --raw`. It does not run the fact exporter or Rust adapter.
 The current nine-resource source is a bounded candidate, not complete domain or
 foreign-key coverage. Production `data/`, `CURRENT`, schema and defaults are untouched.
 

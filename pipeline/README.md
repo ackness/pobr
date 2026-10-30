@@ -63,6 +63,17 @@ Cargo 使用 `--locked`；`--offline` 同时禁止源下载和 Cargo 联网，�
 当前 native variants 仍沿用基础节点的拓扑和升华归属；替换后的独立升华归属、通用属性选择与
 vendor 推导的 armour 标记尚未迁移。历史树 adapter 继续保留，不能将此候选入口视为完整替代。
 
+## 固定客户端原始资源与事实候选
+
+`mise run data:client` 按明确选择的来源锁取得原始资源，可从归档压缩块离线重建；
+它不发现或跟随当前补丁，也不切换活动数据。需要固定 decoder 环境、显式在线/离线模式及新输出目录。
+入口和边界见[客户端资源获取](client-sources.md)。
+
+RePoE 原生事实包另由 `pobr-data-adapter --native-facts` 验证外部 manifest 摘要后形成
+PoBR 领域候选，见[候选契约](../tools/pobr-data-adapter/native-facts.md)。当前只接通部分国际服事实，
+保留完整原始事实引用和诊断；它不是运行时包，也未完成品质、几何或全部关系的语义验证。
+候选消费与旧生产再生入口仍分别存在，不能宣称生产链已退出 PoB2。
+
 ## 运行时数据组合封存
 
 运行包的版本文件与共享规则可独立封存并核验，见[运行时数据组合封存](runtime-bundle.md)。

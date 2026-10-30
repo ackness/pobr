@@ -393,6 +393,27 @@ pub(super) fn require_absent(path: &Path) -> Result<(), String> {
     }
 }
 
+pub(super) fn verify_output_location(args: &Args) -> Result<(), String> {
+    let output = std::path::absolute(&args.out).map_err(|e| e.to_string())?;
+    let parent = output.parent().ok_or("output has no parent")?;
+    no_symlink_components(parent)?;
+    no_symlink_components(&args.input)?;
+    let input = fs::canonicalize(&args.input).map_err(|e| e.to_string())?;
+    require(
+        !output.starts_with(input),
+        "output must not modify the canonical input package",
+    )?;
+    // This mode creates research candidates, never a versioned runtime snapshot.
+    let production = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../data")
+        .canonicalize()
+        .map_err(|e| e.to_string())?;
+    require(
+        !output.starts_with(production),
+        "native facts output must remain outside production data/",
+    )
+}
+
 /// Recursively reject duplicate keys before serde can overwrite evidence.
 pub(super) fn strict_json(bytes: &[u8]) -> Result<Value, String> {
     let mut decoder = serde_json::Deserializer::from_slice(bytes);

@@ -76,7 +76,9 @@ crate manifest and dependency-lock fingerprint, and every output payload's size/
 The adapter enables JSON `float_roundtrip` so raw PSG coordinates retain their exact
 binary floating-point values. The receipt is written last. Input and
 normalization failures create no output. Any existing output, even an empty
-directory or dangling symlink, is refused and retained. An I/O interruption may
+directory or dangling symlink, is refused and retained. The existing output parent
+must not contain symlinks; output inside the canonical input package or the
+checkout's production `data/` is rejected. An I/O interruption may
 leave an incomplete directory; it must not be consumed without a valid completion
 receipt and matching payload hashes. Retry at a fresh path. Output is deterministic
 for identical inputs and adapter source; it has no timestamp or invocation path.

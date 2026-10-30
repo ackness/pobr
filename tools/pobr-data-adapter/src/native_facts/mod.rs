@@ -53,6 +53,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
 
 pub(crate) fn run(args: Args) -> Result<String, String> {
     trust::require_absent(&args.out)?;
+    trust::verify_output_location(&args)?;
     let mut input = trust::verify(&args)?;
     let candidate = convert::normalize(&input)?;
     // Serialize everything before reserving output: input/normalization failures leave no directory.

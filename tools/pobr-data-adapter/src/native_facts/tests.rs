@@ -532,6 +532,49 @@ fn rejects_truncation_bad_joins_and_counts_without_partial_output() {
 }
 
 #[test]
+fn output_cannot_change_the_canonical_input_or_production_data() {
+    let f = Fixture::new();
+    let before = fs::read(f.root.join("input/manifest.json")).unwrap();
+    let mut args = f.args("input/new-candidate");
+    assert!(run(args).unwrap_err().contains("canonical input package"));
+    assert!(!f.root.join("input/new-candidate").exists());
+    assert_eq!(
+        fs::read(f.root.join("input/manifest.json")).unwrap(),
+        before
+    );
+    args = f.args("unused");
+    args.out = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../data")
+        .canonicalize()
+        .unwrap()
+        .join(format!(
+            "native-candidate-must-not-exist-{}",
+            std::process::id()
+        ));
+    let output = args.out.clone();
+    assert!(run(args).unwrap_err().contains("production data/"));
+    assert!(!output.exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn rejects_output_through_a_symlinked_parent_without_touching_its_target() {
+    let f = Fixture::new();
+    std::os::unix::fs::symlink(f.root.join("input"), f.root.join("alias")).unwrap();
+    let before = fs::read(f.root.join("input/manifest.json")).unwrap();
+    assert!(
+        run(f.args("alias/new-candidate"))
+            .unwrap_err()
+            .contains("symlink")
+    );
+    assert!(!f.root.join("input/new-candidate").exists());
+    assert_eq!(
+        fs::read(f.root.join("input/manifest.json")).unwrap(),
+        before
+    );
+}
+
+#[test]
 fn refuses_every_existing_output_and_preserves_previous_completion() {
     let f = Fixture::new();
     fs::create_dir(f.root.join("empty")).unwrap();
