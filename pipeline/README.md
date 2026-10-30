@@ -249,6 +249,10 @@ pipeline/diff-vendor-calcs.sh <old-sha> <new-sha> [--out <file>]
   数值 / 词条文本更新复用已实现机制；新的计算语义仍需实现。vendor pin 和数值 golden 保持显式选择，
   脚本不会把最新社区提交自动当作与游戏补丁匹配，也不在应用启动时联网改写数据。
 - 新数据域：在 `config.json` 的 `tables` 增表/列，并在 `pobr-data-adapter` 增对应适配器。
+- stat-set 标签由 `GrantedEffectStatSets.Label` → `GrantedEffectLabels.Text` 直接连接，
+  以原始 `_index` 查外键，不按数组位置或显示文字猜测；有引用却缺表、缺行或行号重复时拒绝适配。
+  标签为空的旧快照仍可从 `overlay/stat_set_labels.json` 回退；该兼容表继续提供 PoB 构筑码的
+  stat-set 编号，不能覆盖已存在的原生标签。此能力不自动更新活动快照。
 - 怪物基础抗性由 `MonsterVarieties.MonsterType` → `MonsterTypes.MonsterResistances` →
   `MonsterResistances.Fire1/Cold1/Lightning1/Chaos1` 导出到 `base/monster_resistances.json`，
   按 monster variety id 索引。使用普通稀有度的基础值（0.5 每列只有一个值），合并类型链接的

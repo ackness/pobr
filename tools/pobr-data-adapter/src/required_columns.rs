@@ -159,6 +159,7 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
         "GrantedEffectStatSets.json",
         &[
             "Id",
+            "Label",
             "BaseEffectiveness",
             "ConstantStats",
             "ConstantStatsValues",
@@ -174,6 +175,7 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
             "DamageIncrementalEffectiveness",
         ],
     ),
+    ("GrantedEffectLabels.json", &["_index", "Id", "Text"]),
     (
         "GrantedEffectStatSetsPerLevel.json",
         &[

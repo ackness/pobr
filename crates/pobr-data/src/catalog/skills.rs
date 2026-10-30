@@ -390,19 +390,18 @@ pub struct StatSetDef {
     /// `IceNovaColdInfusedPlayer`; the primary set's id is usually the same
     /// as the effect id).
     pub set_id: String,
-    /// Form label text (e.g. `Cold-Infused`). Sourced from
-    /// `overlay/stat_set_labels.json` (vendor-extracted, since the `.dat`
-    /// `Label` column's FK target table `GrantedEffectLabels` isn't
-    /// downloadable), merged at load time; `None` in the base artifact or
-    /// when there's no vendor counterpart.
+    /// Form label text (e.g. `Cold-Infused`), resolved from
+    /// `GrantedEffectStatSets.Label` → `GrantedEffectLabels.Text`.
+    /// Older snapshots without a label use `overlay/stat_set_labels.json`
+    /// as a fallback during loading.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
     /// 1-based index in PoB2's exported statSets list (vendor template's
     /// `#set` ordering, the same index semantics as `<Gem statSetIndex>`).
     /// The vendor template curates and skips some sets (e.g.
     /// IceNovaPlayerOnFrostbolt), so this doesn't necessarily line up with
-    /// the `sets` array's index. Sourced the same way as `label` (overlay
-    /// merge); `None` means vendor didn't export this set (it can't be
+    /// the `sets` array's index. Sourced from the compatibility overlay;
+    /// `None` means vendor didn't export this set (it can't be
     /// selected by statSetIndex).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vendor_set_index: Option<u32>,
@@ -687,10 +686,9 @@ pub struct GemEffectsDef {
 ///
 /// Sourced by joining the vendor `Export/Skills/*.txt` templates
 /// (`#skill`/`#set` lines → export order and set id) with vendor
-/// `Data/Skills/*.lua` (`statSets[i].label` text; the raw `.dat`
-/// `GrantedEffectStatSets.Label` FK target table `GrantedEffectLabels` isn't
-/// downloadable). Deterministically extracted by
-/// `sync-pob-catalog extract-lua --what stat-set-labels`.
+/// `Data/Skills/*.lua` (`statSets[i].label` text). Deterministically extracted
+/// by `sync-pob-catalog extract-lua --what stat-set-labels`; native labels
+/// from `GrantedEffectLabels` take precedence during loading.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StatSetLabelDef {
     /// Owning granted-effect id (the template's `#skill` line).

@@ -597,9 +597,8 @@ impl GameData {
     /// - `skill_overrides.json`'s statSet-level override values
     ///   (skill_attack_speed_more, a constant baseMod built into PoB2, not
     ///   in the GGG `.dat`);
-    /// - `stat_set_labels.json`'s form label / vendor export index (the
-    ///   `.dat` `Label` column's FK target table isn't downloadable, so
-    ///   this is extracted from vendor);
+    /// - `stat_set_labels.json`'s compatibility export index and fallback
+    ///   form labels for snapshots without native labels;
     /// - `skill_overrides.json`'s dotIs* booleans (merged after labels,
     ///   since locating the set depends on the vendor index).
     pub fn skill_stat_sets(&self) -> Result<Vec<SkillStatSetDef>, LoadError> {
@@ -639,10 +638,10 @@ impl GameData {
                         by_key.get(&(def.effect_id.as_str(), set.set_id.as_str()))
                     {
                         set.vendor_set_index = Some(idx);
-                        set.label = Some(label.to_string());
+                        if set.label.is_none() {
+                            set.label = Some(label.to_string());
+                        }
                     }
-                    // Vendor didn't export this set (curated out by the
-                    // template) → label/index stay None.
                 }
             }
         }
