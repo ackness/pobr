@@ -1,118 +1,59 @@
-# Special affixes in weighted market searches
+# 加权交易搜索中的特殊词缀
 
-## Sources
+市场搜索的分数是官方交易查询的加权总和（Sum），不是 DPS。PoBR 通过替换词缀重算构筑，估计各交易属性的权重，再用同一组权重给当前装备评分。购买前仍应把完整商品放入换装比较。
 
-The implementation follows these files of the PoB2 commit pinned by the active
-data version (`overlay/mod_parser_rules.json::_meta.vendor_commit`); it was first
-written against `ce566eac45ea8a86477f513c7ee65a1ebe60014e`:
+## 数据来源
 
-- `src/Classes/TradeQueryGenerator.lua`: `InitMods`, `ProcessMod`,
-  `canModSpawnForItemCategory`, and `GenerateModWeights`.
-- `src/Data/ModItem.lua`, `ModVeiled.lua` (desecrated), `ModCorrupted.lua`,
-  `ModJewel.lua`, `Essence.lua`, and `TradeSiteStats.lua`.
+PoB2 参考版本由活动数据的 `overlay/mod_parser_rules.json::_meta.vendor_commit` 指定。首次实现对照 `ce566eac45ea8a86477f513c7ee65a1ebe60014e` 的以下文件；这个旧 hash 不表示现在的上游 HEAD：
 
-PoB2 supplements ordinary spawn weights with category overrides for perfect
-essences, Genesis Tree crafts, and rune influences. Its current initialization
-does not supply Alloy overrides. The game's same-version `EssenceMods`,
-`Essences`, and `EssenceTargetItemCategories` tables provide these recipes,
-including the actual alternatives in `OutcomeMods`. They also cover corrupted
-essences. The tables are fetched through the existing GGG data pipeline;
-`trade_crafting_sources.json` retains modifier IDs, source kinds, item classes,
-required levels and the underlying stat IDs/roll ranges. Recipe categories take
-precedence over the PoB2 essence fallback.
+- `TradeQueryGenerator.lua`：`InitMods`、`ProcessMod`、`canModSpawnForItemCategory`、`GenerateModWeights`。
+- `ModItem.lua`、`ModVeiled.lua`（亵渎）、`ModCorrupted.lua`、`ModJewel.lua`、`Essence.lua`、`TradeSiteStats.lua`。
 
-For example, `AlloyCastSpeedDamageAsExtraColdHybridOneHand1` belongs to Wands
-and Foci; the stronger `AlloyCastSpeedDamageAsExtraColdHybrid1` belongs to
-Staves. Their zero ordinary spawn weights must not exclude them from market
-searches. Guessing eligibility from modifier names or granting them to every
-weapon would produce incorrect categories.
+PoB2 除普通生成权重外，还补完美精华、Genesis Tree 制作和符文影响类别，但其初始化没有提供 Alloy 类别覆盖。PoBR 从同版本游戏 `EssenceMods`、`Essences`、`EssenceTargetItemCategories` 读取配方，包括 `OutcomeMods` 中真实的替代结果及腐化精华。表经现有 GGG 管线获取，`trade_crafting_sources.json` 保留 modifier ID、来源种类、物品类别、需求等级、stat ID 和取值范围；游戏配方类别优先于 PoB2 精华回退。
 
-## Search and score semantics
+例如 `AlloyCastSpeedDamageAsExtraColdHybridOneHand1` 属于 Wand/Focus，更强的 `AlloyCastSpeedDamageAsExtraColdHybrid1` 属于 Staff。它们普通生成权重为零，仍可出现在成品搜索中。不能凭名字猜类别，也不能给所有武器。
 
-- `mods` remains the ordinary affix pool. `search_mods` adds alloy, essence,
-  desecrated, breach, influence and corrupted sources with explicit category
-  restrictions. Older catalogs without this optional field still work.
-- Each official trade hash receives one probe and one query coefficient.
-  Multiple hashes within a hybrid affix are independent searchable stats.
-  Multiple exported lines within one hash are joined and scored once;
-  `source_lines` also matches wrapped current-item exports.
-- The scalar value follows PoB2: one placeholder uses that roll, two use their
-  average, and a stat without placeholders is a one-unit presence flag. Fixed
-  numbers in conditional descriptions are not included in the average.
-  `value_indices` records these positions. More than two variable placeholders
-  and inconsistent numeric templates are excluded instead of guessed.
-- `trade_line` preserves official wording when it differs from the PoB export,
-  including inverse wording/signs. Both spellings match the same ID and value.
-- A pipe suffix is a discrete option, not a hash alias. Preserve the complete
-  ID in queries and scores. Fixed option wording selects the matching option;
-  jewel Medium/Large/Very Large radius no longer all resolve to Very Large.
-- Crafted, fractured and desecrated explicit modifiers use `explicit.stat_*`,
-  as in PoB2. Source-specific duplicates would count the same effect twice.
-  Corruption uses `enchant.stat_*`; rune augments and ordinary implicits remain
-  separate. Allocated-passive enchants use other trade IDs and are excluded.
-- Removing an existing compound stat removes all its lines. Removing a counted
-  enchant updates `Implicits:` so the next explicit modifier remains explicit.
-- Current-item minimums still use the exact final query coefficients, including
-  rounding and the 32-filter limit. Ambiguous or unknown relevant lines leave
-  the score partial and omit the minimum filter.
+## 搜索与评分规则
 
-PoB2 intentionally leaves its PoE2 pseudo-stat map empty: pseudo stats can mix
-socket augment contributions into the query. This implementation also uses
-actual namespaced hashes instead of replacing hybrids with pseudo totals.
+- `mods` 是普通词缀池。可选 `search_mods` 追加 alloy、essence、desecrated、breach、influence、corrupted 来源，并保留类别限制；没有该字段的旧目录仍可加载。
+- 一个官方交易 hash 只重算一次、只得一个查询系数。复合词缀的不同 hash 是独立属性；同 hash 的多行导出文本先合并、只计一次，`source_lines` 也用于匹配当前装备的换行文本。
+- 一个可变占位符用该值，两个用均值，没有占位符则按存在标志取 1。条件说明中的固定数字不参与均值，位置由 `value_indices` 记录。超过两个可变占位符或数值模板不一致时排除，不猜值。
+- `trade_line` 保留官方措辞，包括与 PoB 导出相反的描述／符号；两种写法匹配同一 ID 与数值。ID 的 `|选项` 后缀是离散选项，不是别名；查询和评分保留完整 ID，Medium/Large/Very Large 珠宝半径分别匹配。
+- 制作、破裂、亵渎的显式词缀统一用 `explicit.stat_*`，不按来源另造重复项；腐化用 `enchant.stat_*`，符文增强和普通隐式分开。分配天赋附魔有独立交易 ID，不混入这一类。
+- 删除复合属性时删除全部关联行；删除计入隐式数量的附魔时同步 `Implicits:`，避免下一条显式词缀变成隐式。
 
-## Calculation boundaries
+当前装备最低分使用**最终发出的查询系数**，包括舍入和最多 32 个过滤器。只识别一部分相关文本时，仍保留已识别部分的 Sum 作为最低分，并显示 `partial-current-score` 提醒。所有入选权重为正，因此已识别分数是完整可匹配分数的下界；不能因为剩余行未知就撤掉最低分，也不能把部分分数说成完整装备价值。当前实现为 `max(0, ceil((score − 1e-9) × 1000) / 1000)`。这是 [#170](https://github.com/ackness/pobr/pull/170) 合并后的行为，见 [tradeOptimizer.ts](../web/src/lib/tradeOptimizer.ts) 与其测试。
 
-Special search effects participate in the existing blank/current-item marginal
-probes. Changed unsupported-effect diagnostics reject a probe, including a
-removal that would otherwise unblock injection of the remaining item. This
-prevents an unmodeled part of a compound effect from producing an inflated
-coefficient. A parsed effect still depends on the engine's consumers and active
-configuration; a zero contribution does not establish that the effect is useless.
+PoB2 的 PoE2 pseudo-stat 映射有意留空，因为伪属性可能混入镶嵌物贡献。PoBR 同样保留实际带命名空间的 hash，不用伪总量替换复合属性。
 
-The fixed vendor omits `AlloyPuppetMasterChance1` and `EssenceGrantedPassive`
-from `ModItem.lua`, but its stat descriptions and official trade entries retain
-their definitions. The GGG stat IDs select the description; recovery requires
-an unambiguous official entry. Unknown multi-stat descriptions, transforms and
-limits remain unmapped. The current recipe pack has no unmapped modifier IDs.
+## 计算支持边界
 
-- `AlloyPuppetMasterChance1`: Sceptres, level 25, 30-50% Surpassing Chance to gain
-  a Puppet Master stack on using a Command Skill; `explicit.stat_2840930496`.
-  Neither the pinned PoB2 parser nor this engine models its trigger/stack uptime.
-  It appears as an optional required market filter with an explicit unmodeled
-  label, never an invented DPS coefficient.
-- `EssenceGrantedPassive`: Body Armour, level 1. Its `[0, 0]` roll is a dynamic
-  passive reference, not zero numeric power. Expand the official explicit
-  `Allocates <name>` options against `TreeData/0_5/tree.lua`, checking ID and
-  name. This yields 875 searchable outcomes with one-unit values and full
-  `explicit.stat_2954116742|<node>` IDs. This is the market candidate list, not
-  a guarantee about crafting probabilities or every node's modeled effects.
-- Passive probes use the existing `GrantedPassive` engine path, which deduplicates
-  already allocated/granted notables. Alternatives replace the current item's
-  allocation; other equipment anoints stay equipped. All mandatory stat probes
-  run before bounded combination search. The combination evaluation budget is
-  raised to this minimum when necessary, with batching/progress/cancellation
-  preserved. Current-item text is matched once for all removal probes.
+特殊属性和普通属性一样，分别在空装备、当前装备环境中添加／移除，比较目标变化。如果未支持效果诊断发生变化，就拒绝该次评分；移除未知部分后使其余词条突然能注入的情况也拒绝，防止产生虚高权重。
 
-Future ordinary numeric recipes can use the same description fallback without
-new per-modifier code. New effect mechanics or description transforms still need
-their own calculation/search handling and regression coverage. A tree-version
-bump must update the fallback's tree input alongside the existing tree extractors.
+文本能解析仍不代表效果生效，还要有计算读取者并满足当前条件。零分不证明该词条在游戏中无用；不能为凑正分推算触发频率或层数。
 
-Reference combination search and the manual affix editor continue to use
-ordinary, base-compatible prefix/suffix pools. The special-source catalog is
-not a crafting recipe simulator: it does not establish that several crafts can
-coexist, their cost, probability or an optimal market purchase. Complete listed
-items still need whole-build replacement comparison.
+固定 vendor 的 `ModItem.lua` 缺 `AlloyPuppetMasterChance1` / `EssenceGrantedPassive`，但其 stat 描述和官方交易条目仍有定义。回退用 GGG stat ID 选描述，并要求官方条目无歧义。未知复合描述、变换和限制继续保留未映射；当前配方包没有未映射 modifier ID。
 
-## Regeneration and checks
+| 来源 | 搜索方式与限制 |
+|---|---|
+| `AlloyPuppetMasterChance1` | Sceptre、等级 25，使用 Command 时 30–50% Surpassing Chance 获得 Puppet Master 层，交易 ID `explicit.stat_2840930496`。两边引擎都未模拟触发／层数覆盖，只提供明确标为未建模的可选必需过滤器，不生成 DPS 系数 |
+| `EssenceGrantedPassive` | 胸甲、等级 1；`[0, 0]` 是动态天赋引用，不是零收益。按 `TreeData/0_5/tree.lua` 校验官方 `Allocates <name>` 的 ID 与名字，当前生成 875 个候选，每项值为 1，ID 为 `explicit.stat_2954116742|<node>`。这是交易候选清单，不是制作概率或所有节点均已支持的证明 |
 
-From the repository root, after exporting the same-version GGG tables:
+分配天赋的重算走 `GrantedPassive`，已分配／已授予的显著天赋不重复。候选替换当前装备的授予，其他装备涂油保留。先完成全部必需单属性重算，再进行有预算的组合搜索；必要时把组合预算至少提高到这些必需项数量，同时保留分批、进度和取消。当前装备文本只匹配一次，供全部移除比较共用。
+
+同类普通数值配方可复用描述回退，无需每条新增代码；新效果或新描述变换仍需各自支持与回归。升级树版本时，也要更新回退使用的树源。
+
+参考组合搜索和手动词缀编辑器仍只使用与基底兼容的普通前／后缀池。特殊来源目录不是制作模拟器：不证明多种制作可共存、不估成本或成功率，也不保证搜索结果就是最优购买。
+
+## 数据再生与检查
+
+修改此数据功能时，在仓库根目录先导出同版本 GGG 表，再按需要运行以下命令。**仅改本文时不运行这些构建或测试**；本次文档审查只检查 diff 与链接。
 
 ```sh
-overlay="data/$(cat data/CURRENT)/overlay"
-python3 pipeline/extract-trade-crafting.py pipeline/tables/English "$overlay/trade_crafting_sources.json"
-luajit pipeline/extract-trade-catalog.lua vendor/PathOfBuilding-PoE2/src "$overlay/trade_catalog.json" "$overlay/trade_crafting_sources.json"
-luajit pipeline/extract-trade-map.lua vendor/PathOfBuilding-PoE2/src "$overlay/trade_stat_map.json"
+trade_overlay="data/$(cat data/CURRENT)/overlay"
+python3 pipeline/extract-trade-crafting.py pipeline/tables/English "$trade_overlay/trade_crafting_sources.json"
+luajit pipeline/extract-trade-catalog.lua vendor/PathOfBuilding-PoE2/src "$trade_overlay/trade_catalog.json" "$trade_overlay/trade_crafting_sources.json"
+luajit pipeline/extract-trade-map.lua vendor/PathOfBuilding-PoE2/src "$trade_overlay/trade_stat_map.json"
 python3 pipeline/test-trade-crafting.py
 luajit pipeline/test-trade-stats.lua
 luajit pipeline/test-trade-crafting-fallback.lua
@@ -122,7 +63,4 @@ pnpm --dir web build
 pnpm --dir web exec playwright test e2e/trade-upgrades.spec.ts --workers=1
 ```
 
-`pipeline/regen-all.sh` runs both extraction stages in dependency order. The
-catalog's optional third argument supplies the committed crafting sources when
-regenerating from a checkout without raw GGG tables; omitting it gives only the
-PoB2 source coverage.
+`pipeline/regen-all.sh` 按依赖顺序执行两个提取阶段。没有原始 GGG 表的 checkout 可把已提交 crafting sources 作为 catalog 提取器第三个参数；省略时只有 PoB2 来源覆盖。

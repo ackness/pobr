@@ -1,7 +1,8 @@
 # 时迭珠宝搜索与天赋珠宝支持
 
-2026-09-17 对照 PoB2 `ce566eac45ea8a86477f513c7ee65a1ebe60014e`。
-查询官方仓库时，该提交也是最新 HEAD；不把 PoE1 的 Timeless 种子算法套用到 PoE2。
+本功能最初于 2026-09-17 对照 PoB2 `ce566eac45ea8a86477f513c7ee65a1ebe60014e` 实现。
+下文固定链接保留当时依据，不表示该提交仍是最新 HEAD。当前计算以活动数据和代码为准；
+Time-Lost（时迭）范围词缀搜索不等于 Timeless 种子搜索，不能套用 PoE1 的种子算法。
 
 ## 使用方式
 
@@ -18,7 +19,10 @@
 
 新珠宝的词缀探测使用 Small 半径，与 PoB2 的 Radius 搜索参考物品一致。
 同基础的已装备珠宝保留实际半径和升级词缀。加权分数不能完整表达所有词缀间的
-交互，购买前可把完整商品文本粘贴到换装比较中重算。
+交互，购买前可把完整商品文本粘贴到换装比较中重算。当前装备只识别一部分时，仍用
+已识别部分设置交易最低分，并提示评分不完整，见[交易评分规则](trade-special-affixes.md#搜索与评分规则)。
+
+下图保留 v0.0.26 的合成构筑示例，用于说明环带，不代表当前界面截图。
 
 ![合成构筑中的珠宝环带与编辑器](images/v0.0.26/jewel-ring.png)
 
@@ -35,9 +39,9 @@
 基础物品、生成权重、词缀数值、交易 ID 来自当前数据包的 `trade_catalog.json`；
 半径及乘数来自 `jewel_radii.json`，节点及坐标来自所选树。
 半径表按数字版本选择不晚于目标版本的一组，不能按字符串排序，也不能套用未来版本。
-新数值和同类 grant 词缀无需新增 Rust 分支。grant 解析为结构化属性后逐项缩放，
+新数值和同类 grant 词缀无需新增 Rust 分支。grant（向范围内天赋追加词条）解析为结构化属性后逐项缩放，
 恢复等小数词缀复用 `high_precision_mods.json`，伤害区间的两端都参与缩放。
-新机制仍需要明确的计算消费者与验证。
+新机制仍需有实际读取它的计算逻辑与验证；能解析不代表有数值效果。
 
 `overlay/passive_jewels.json` 由 `pipeline/extract-passive-jewels.lua` 从固定的 PoB2
 源代码快照导出，已接入 `regen-all.sh`。职业起点以稳定 ID 匹配所选树，环带选择、
@@ -53,14 +57,14 @@
 取值；原始物品文本仍保留用于编辑和导出。范围取值沿用现有线性解析器，复杂的
 多值联动／催化数值转换仍属于其既有限制。
 
-## 传奇珠宝调研结论
+## 传奇珠宝支持范围
 
 | 类别 | PoB2 的机制 | PoBR 当前范围 |
 | --- | --- | --- |
-| Against the Darkness / 时迭 grant | 向半径内对应类型天赋添加词缀 | 导入后按分配节点展开；本轮补小型效果、半径升级及重叠效果处理。时迭搜索只取普通生成词缀池，尚无该传奇的独立专属词缀搜索 |
-| Voices | 额外 Sinister 插槽 | 本轮移除固定版本数字节点数组，按所选树稳定 ID 和分配数量启用；导入与手动编辑共用路径 |
-| The Adorned | 腐化魔法珠宝效果提高 | 已有计算；特殊插槽豁免仍需单独验收，不能由本轮搜索测试推导完全支持 |
-| Grand Spectrum | 按同名已镶嵌珠宝数缩放 | 不属于天赋点替换；已有计数/词条路径，本轮未扩展其机制 |
+| Against the Darkness / 时迭 grant | 向半径内对应类型天赋添加词缀 | 导入后按分配节点展开，包括小型效果、半径升级及重叠效果处理。时迭搜索只取普通生成词缀池，尚无该传奇的独立专属词缀搜索 |
+| Voices | 额外 Sinister 插槽 | 按所选树稳定 ID 和分配数量启用，不使用固定版本数字节点数组；导入与手动编辑共用路径 |
+| The Adorned | 腐化魔法珠宝效果提高 | 已有计算；Crystalline Phylactery 不受其放大；其他特殊插槽资格仍需分别核对，不能由普通搜索测试推导完全支持 |
+| Grand Spectrum | 按同名已镶嵌珠宝数缩放 | 不属于天赋点替换；已有计数／词条路径，并读取隐式、显式及附魔中的识别行 |
 | Controlled Metamorphosis | 可变环带内允许断开分配 | 已接入环带边界、单点分配、路径限制、回收及自动规划 |
 | Split Personality / From Nothing | 从其他职业起点或指定核心周围分配 | 已接入额外起点／核心半径分配，随提供珠宝启用或撤销 |
 | Heroic Tragedy | 征服、核心替换、种子相关节点变换 | 三种固定基石已参与计算，包含移除属性固有收益；种子相关普通／显著节点保留未支持诊断 |
@@ -69,14 +73,16 @@
 [PassiveSpec.lua](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/blob/ce566eac45ea8a86477f513c7ee65a1ebe60014e/src/Classes/PassiveSpec.lua)
 包含征服、部分核心/深渊节点替换及手动覆盖逻辑，但显著节点种子表相关分支仍注释为待获得数据。
 [TreeTab.lua](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/blob/ce566eac45ea8a86477f513c7ee65a1ebe60014e/src/Classes/TreeTab.lua)
-的 `Find Timeless Jewel` 按钮也被注释禁用。这不是本轮实现的 Time-Lost / Radius 搜索。
-PoB2 的固定数据写明 Circular Teachings 移除敏捷的固有收益，但本次固定版本的解析器
-尚未识别其单独词条。本实现补上 `NoDexBonusToAccuracy` 规则及实际消费者，按该词条
+的 `Find Timeless Jewel` 按钮也被注释禁用。它与这里的 Time-Lost / Radius 搜索是两个功能。
+PoB2 的固定数据写明 Circular Teachings 移除敏捷的固有收益，但上述固定参考版本的解析器
+尚未识别其单独词条。PoBR 通过 `NoDexBonusToAccuracy` 规则和属性计算，按该词条
 语义移除敏捷命中收益；这项修复不宣称与该版本 PoB2 的遗漏行为数值一致。
 
 缺失种子结果的节点不能被自动规划新增或退还；已导入构筑会保留诊断，不把原始天赋
 数值当作已验证的完整种子结果。多个受数量限制的传奇珠宝同时装备的合法性检查尚未
-覆盖，本轮测试使用合法单件配置。
+覆盖，已有测试使用合法单件配置。
 
 旧数据包的历史树若不含坐标，半径效果无法可靠计算；不会借用当前树坐标伪造结果。
 目前搜索覆盖已分配的普通树插槽，额外授予的特殊插槽可以计算已导入珠宝，搜索界面尚不枚举它们。
+
+代码核对入口：`pobr-tree` 的 `jewel_tree` / `allocation`、`pobr-build/tests/skills/passive_jewels.rs`、`web/src/lib/tradeOptimizer.ts`。种子缺失与未知词条仍保留诊断，搜索或自动规划不能将它们当作零效果。
