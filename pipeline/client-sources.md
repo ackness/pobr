@@ -42,7 +42,12 @@ selected chunks. Before table allocation or decompression it bounds counts, size
 offsets and total length, checks redundant sizes, supported encoders (9/12), flags,
 reserved fields, chunk count and the compressed size sum. Limits are 4,096 chunks,
 512 MiB declared bundle raw size, 256 MiB compressed total, 1 MiB decompressed and
-2 MiB compressed per chunk, 16 MiB per resource and 64 MiB selected raw bytes.
+2 MiB compressed per chunk, 32 MiB per resource and 64 MiB selected raw bytes.
+The fixed resource cap admits patch 0.5.5.5's 30,380,428-byte
+`Data/StatDescriptions/stat_descriptions.csd`. It has no caller override and does
+not raise HTTP/cache budgets or decoder/worker limits. Strict raw size/hash pins
+remain required, including for resources above 16 MiB.
+Raw-size eligibility does not establish support for a bundle's encoder or framing.
 Those declared bundle totals do not authorize downloading the full bundle.
 
 ## Compressed cache and archive import

@@ -77,8 +77,10 @@ unique evidence IDs. Symlinks, path traversal, case collisions and file/director
 collisions fail. Internal spaces in locale directory names such as
 `Traditional Chinese` are preserved; trailing spaces/dots remain invalid.
 Limits are 2 MiB selection JSON, 128 resources/evidence entries,
-16 MiB per resource and 64 MiB selected raw total; bundle/cache/decoder limits
-remain those of strict acquisition. Decoder repository/revision, pyooz version
+32 MiB per resource and 64 MiB selected raw total; the fixed resource cap permits
+the 30,380,428-byte `stat_descriptions.csd` in patch 0.5.5.5. It has no caller
+override; HTTP budgets and bundle/cache/decoder/worker limits remain those of
+strict acquisition. Decoder repository/revision, pyooz version
 and uv.lock hash are declared pins, checked using the explicit environment.
 
 The output root must be absent and separate from production `data/`, cache and

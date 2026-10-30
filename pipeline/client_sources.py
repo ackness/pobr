@@ -22,7 +22,9 @@ from urllib.parse import urlsplit
 MIB = 1024 * 1024
 MAX_NETWORK = 64 * MIB
 MAX_RANGE = 4 * MIB
-MAX_RESOURCE = 16 * MIB
+# Fixed raw-file bound: 0.5.5.5 stat_descriptions.csd is 30,380,428 bytes.
+# This does not raise selected-total, HTTP, bundle or decoder chunk limits.
+MAX_RESOURCE = 32 * MIB
 MAX_BUNDLE_RAW = 512 * MIB
 MAX_BUNDLE_COMPRESSED = 256 * MIB
 MAX_CHUNKS = 4096

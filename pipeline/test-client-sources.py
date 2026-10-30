@@ -268,6 +268,41 @@ class ClientSourceTests(unittest.TestCase):
         self.assertFalse((other / client.RECEIPT).exists())
         self.assertFalse((other / "Data/Balance/Test.datc64").exists())
 
+    def test_32_mib_resource_reconstruction_keeps_chunk_and_request_bounds(self):
+        raw = b"x" * (32 * client.MIB)
+        http = FakeHTTP(bundle_bytes(raw, chunk_size=client.MIB))
+        ranges = self.ranges(http=http, budget=64 * client.MIB)
+        bundle = client.Bundle(URL, ranges, FakeDecoder(None, self.decoder_lock, None))
+        self.assertEqual(bundle.read(0, len(raw)), raw)
+        self.assertEqual(FakeDecoder.calls, [(client.MIB, client.MIB)] * 32)
+        self.assertTrue(all(r.read_limits == [len(r.body) + 1] for r in http.responses))
+        self.assertTrue(all(len(r.body) + 1 <= 4 * client.MIB for r in http.responses))
+        before = len(http.requests), len(FakeDecoder.calls)
+        with self.assertRaisesRegex(ValueError, "resource length"):
+            bundle.read(0, 32 * client.MIB + 1)
+        self.assertEqual((len(http.requests), len(FakeDecoder.calls)), before)
+
+    def test_strict_raw_resource_and_64_mib_total_boundaries(self):
+        record = self.source["resources"]["Data/Balance/Test.datc64"]
+        for size in [30380428, 32 * client.MIB]:
+            record.update(bytes=size, uncompressed_length=size)
+            self.save_lock()
+            client.load_source(self.lock, "fixed")
+        for field in ["bytes", "uncompressed_length"]:
+            record[field] = 32 * client.MIB + 1
+            self.save_lock()
+            with self.assertRaisesRegex(ValueError, "resource (bytes|length)"):
+                client.load_source(self.lock, "fixed")
+            record[field] = 32 * client.MIB
+        self.source["resources"]["Data/Balance/Second.datc64"] = dict(record)
+        self.save_lock()
+        client.load_source(self.lock, "fixed")  # Exactly 64 MiB remains valid.
+        self.source["resources"]["Data/Balance/Extra.datc64"] = {
+            **record, "bytes": 1, "uncompressed_length": 1}
+        self.save_lock()
+        with self.assertRaisesRegex(ValueError, "selected raw byte total"):
+            client.load_source(self.lock, "fixed")
+
     def test_tampered_cache_and_metadata_fail_closed_without_network_fallback(self):
         self.acquire()
         blob = next((self.cache / "blobs").iterdir())
