@@ -357,6 +357,30 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         return Some(mods);
     }
     match stat {
+        // GrantedEffectStatSetsPerLevel associates these damage IDs with the
+        // pre-resolved player-level amounts, not the effectiveness coefficients.
+        "spell_minimum_base_lightning_damage" => Some(vec![Modifier::number(
+            "LightningDamageMin",
+            ModType::Base,
+            value,
+        )]),
+        "spell_maximum_base_lightning_damage" => Some(vec![Modifier::number(
+            "LightningDamageMax",
+            ModType::Base,
+            value,
+        )]),
+        // "Fires {0} Projectiles": the stat is the total base count, not extras.
+        "base_number_of_projectiles" => Some(vec![Modifier::number(
+            "ProjectileCount",
+            ModType::Base,
+            value,
+        )]),
+        // The skill's CSD duration handler converts milliseconds to seconds.
+        "base_skill_effect_duration" => Some(vec![Modifier::number(
+            "SkillDurationBase",
+            ModType::Base,
+            value / 1000.0,
+        )]),
         // "{0}% increased amount of Life/Mana Leeched" and "Leech ...
         // {0}% faster" are distinct: speed changes duration, not amount.
         "base_life_leech_amount_+%" => Some(vec![Modifier::number(
@@ -1367,6 +1391,263 @@ mod tests {
         assert_eq!(mods[0].value.as_number(), Some(-100.0));
     }
 
+    #[test]
+    fn native_skill_base_stats_map_to_existing_readers() {
+        for (stat, value, name, expected) in [
+            (
+                "spell_minimum_base_lightning_damage",
+                7.0,
+                "LightningDamageMin",
+                7.0,
+            ),
+            (
+                "spell_maximum_base_lightning_damage",
+                21.0,
+                "LightningDamageMax",
+                21.0,
+            ),
+            ("base_number_of_projectiles", 6.0, "ProjectileCount", 6.0),
+            (
+                "base_skill_effect_duration",
+                1500.0,
+                "SkillDurationBase",
+                1.5,
+            ),
+        ] {
+            let modifiers = skill_modifiers(stat, value).expect("native skill stat");
+            assert_eq!(modifiers.len(), 1, "{stat}");
+            let modifier = &modifiers[0];
+            assert_eq!(modifier.mod_type, ModType::Base, "{stat}");
+            assert_eq!(modifier.name.as_str(), name, "{stat}");
+            assert_eq!(modifier.value.as_number(), Some(expected), "{stat}");
+            assert!(modifier.flags.is_empty(), "{stat}");
+            assert!(modifier.tags.is_empty(), "{stat}");
+        }
+    }
+
+    // Fixed client 0.5.5.5 INTERNATIONAL, GE 36 / GESS 38 / GESSPL 1467:
+    // Stats 1468/1469 use BaseResolvedValues [1, 10]; AdditionalStats 18042
+    // contains 4 total projectiles; ConstantStats 347 contains 2000 ms.
+    // BC archive manifest SHA-256:
+    // 56e71e00a72c8079d100b64861fc030206b12aaeb5ad655ccb4ab4e6726332d0.
+    // Damage/projectile CSD has no numeric transform. Spark's local duration
+    // CSD uses milliseconds_to_seconds_2dp_if_required; raw file SHA-256:
+    // 759eff823281d8ebf935a300bb8bb12f8a84c2ced9a44380e25c73408510e240.
+    // These are pre-resolved stat inputs, not a native runtime data pack or
+    // actor/default-constant certification. No archive or vendor is read here.
+    #[test]
+    fn native_skill_stats_feed_noncritical_components_without_a_catalog() {
+        use crate::calc::damage::{calculate_components, sum_avg};
+        use crate::calc::skill_mechanics::calc_projectile_count;
+        use crate::skill_env::{StatMapCtx, StatMapMode, mapped_stat_modifiers};
+
+        for (minimum, maximum, projectiles, duration_ms) in
+            [(1.0, 10.0, 4.0, 2000.0), (7.0, 21.0, 6.0, 1500.0)]
+        {
+            let stats = [
+                ("spell_minimum_base_lightning_damage", minimum),
+                ("spell_maximum_base_lightning_damage", maximum),
+                ("base_number_of_projectiles", projectiles),
+                ("base_skill_effect_duration", duration_ms),
+            ]
+            .map(|(stat, value)| SkillDamageStat {
+                stat: stat.into(),
+                value,
+            });
+            let mut records = Vec::new();
+            let modifiers = mapped_stat_modifiers(
+                &mut StatMapCtx {
+                    catalog: None,
+                    mode: StatMapMode::Compare,
+                    records: Some(&mut records),
+                },
+                &stats,
+                SourceKind::SkillGem,
+                "skill",
+                "SparkPlayer",
+                None,
+            );
+            assert_eq!(modifiers.len(), 4);
+            assert_eq!(records.len(), 4);
+            assert!(
+                records
+                    .iter()
+                    .all(|record| record.classification == "mapped")
+            );
+            for (modifier, stat) in modifiers.iter().zip(&stats) {
+                let origin = modifier.origin.as_ref().expect("mapped skill source");
+                assert_eq!(origin.source_id.kind, SourceKind::SkillGem);
+                assert_eq!(origin.source_id.id, format!("skill.{}", stat.stat));
+                assert_eq!(
+                    origin.raw_text,
+                    Some(format!("skill {} ({})", stat.stat, stat.value))
+                );
+            }
+
+            let mut db = ModDb::new();
+            db.add_list(modifiers);
+            let cfg = CalcConfig::spell()
+                .with_flags(ModFlags::SPELL | ModFlags::HIT | ModFlags::PROJECTILE);
+            // Evaluate only the existing noncritical component reader: no
+            // crit blend, pools, action rate, mitigation or full calculation.
+            let components = calculate_components(&db, &cfg, 0.0, 0.0);
+            let lightning = components
+                .iter()
+                .find(|component| component.damage_type == DamageType::Lightning)
+                .expect("lightning component");
+            assert_eq!((lightning.min, lightning.max), (minimum, maximum));
+            assert_eq!(sum_avg(&components), (minimum + maximum) / 2.0);
+            let count = calc_projectile_count(&db, &cfg);
+            assert_eq!(count.projectile_count, projectiles);
+            assert_eq!(count.additional_count, projectiles - 1.0);
+            // Read the exact base seconds before any server-tick rounding.
+            assert_eq!(
+                db.sum(ModType::Base, &cfg, &[ModName::from("SkillDurationBase")]),
+                duration_ms / 1000.0
+            );
+            assert!(!crate::calc::periodic::is_periodic(&db, &cfg));
+        }
+    }
+
+    #[test]
+    fn native_skill_duration_keeps_periodic_rule_priority_without_duplication() {
+        use crate::calc::periodic;
+        use crate::skill_env::{StatMapCtx, mapped_stat_modifiers};
+
+        let modifiers = mapped_stat_modifiers(
+            &mut StatMapCtx::data(None),
+            &[SkillDamageStat {
+                stat: "base_skill_effect_duration".into(),
+                value: 3000.0,
+            }],
+            SourceKind::SkillGem,
+            "skill",
+            "FirestormPlayer",
+            None,
+        );
+        assert_eq!(modifiers.len(), 2);
+        let mut db = ModDb::new();
+        db.add_list(modifiers);
+        let cfg = CalcConfig::spell();
+        assert_eq!(
+            db.sum(ModType::Base, &cfg, &[ModName::from(periodic::DURATION)]),
+            3000.0
+        );
+        assert_eq!(
+            db.sum(ModType::Base, &cfg, &[ModName::from("SkillDurationBase")]),
+            3.0
+        );
+        let skill = BuffSkill::default();
+        assert!(player_buff_modifiers("base_skill_effect_duration", 3000.0, skill).is_none());
+        assert!(granted_skill_modifiers("base_skill_effect_duration", 3000.0, &[]).is_empty());
+        assert!(curse_modifiers("base_skill_effect_duration", 3000.0, &[]).is_none());
+    }
+
+    #[test]
+    fn native_skill_stats_take_priority_over_catalog_entries() {
+        use crate::rules::stat_map_engine::StatMapCatalog;
+        use crate::skill_env::{StatMapCtx, mapped_stat_modifiers};
+
+        let stats = [
+            ("spell_minimum_base_lightning_damage", 1.0),
+            ("spell_maximum_base_lightning_damage", 10.0),
+            ("base_number_of_projectiles", 4.0),
+            ("base_skill_effect_duration", 2000.0),
+        ]
+        .map(|(stat, value)| SkillDamageStat {
+            stat: stat.into(),
+            value,
+        });
+        // Synthetic rejected entries must not suppress the owned definitions.
+        let global: serde_json::Map<_, _> = stats
+            .iter()
+            .map(|stat| {
+                (
+                    stat.stat.clone(),
+                    serde_json::json!({"_unextractable": true}),
+                )
+            })
+            .collect();
+        let catalog = StatMapCatalog::new(
+            serde_json::from_value(serde_json::json!({"global": global}))
+                .expect("synthetic catalog"),
+        );
+        let mapped = |catalog| {
+            mapped_stat_modifiers(
+                &mut StatMapCtx::data(catalog),
+                &stats,
+                SourceKind::SkillGem,
+                "skill",
+                "SparkPlayer",
+                None,
+            )
+        };
+        assert_eq!(mapped(Some(&catalog)), mapped(None));
+    }
+
+    #[test]
+    fn native_skill_context_constraints_remain_diagnostic() {
+        use crate::skill_env::{StatMapCtx, StatMapMode, mapped_stat_modifiers};
+
+        // GESS 38's movement mappings retain their existing dedicated fields;
+        // the remaining constraints stay unknown, not globally effectless.
+        let stats = [
+            ("spark_pathing_width_bounds", 20.0),
+            ("damage_hit_effect_index", 1009.0),
+            ("movement_speed_+%_final_while_performing_action", -70.0),
+            (
+                "movement_speed_acceleration_+%_per_second_while_performing_action",
+                160.0,
+            ),
+            (
+                "movement_speed_while_performing_action_locked_duration_%",
+                50.0,
+            ),
+            ("spark_min_time_between_target_clearing_ms", 660.0),
+            ("projectiles_should_collide_with_flying_monsters", 1.0),
+            ("projectile_uses_contact_position", 1.0),
+            ("projectile_uses_contact_direction", 1.0),
+            (
+                "check_for_targets_between_initiator_and_projectile_source",
+                1.0,
+            ),
+            ("can_perform_skill_while_moving", 1.0),
+        ]
+        .map(|(stat, value)| SkillDamageStat {
+            stat: stat.into(),
+            value,
+        });
+        let mut records = Vec::new();
+        let modifiers = mapped_stat_modifiers(
+            &mut StatMapCtx {
+                catalog: None,
+                mode: StatMapMode::Compare,
+                records: Some(&mut records),
+            },
+            &stats,
+            SourceKind::SkillGem,
+            "skill",
+            "SparkPlayer",
+            None,
+        );
+        assert_eq!(modifiers.len(), 2);
+        assert_eq!(modifiers[0].name.as_str(), "SkillMovementSpeed");
+        assert_eq!(modifiers[0].mod_type, ModType::More);
+        assert_eq!(modifiers[0].value.as_number(), Some(-70.0));
+        assert_eq!(modifiers[1].name.as_str(), "UsableWhileMoving");
+        assert_eq!(modifiers[1].mod_type, ModType::Flag);
+        assert_eq!(records.len(), stats.len());
+        for (record, stat) in records.iter().zip(&stats) {
+            assert_eq!(record.stat, stat.stat);
+            let classification = match stat.stat.as_str() {
+                "movement_speed_+%_final_while_performing_action"
+                | "can_perform_skill_while_moving" => "mapped",
+                _ => "unknown",
+            };
+            assert_eq!(record.classification, classification, "{}", stat.stat);
+        }
+    }
+
     /// Effect-view stats: Armour Break Player III's 15% of Physical damage
     /// as Armour Break, Maim / Blind chances that only attacks carry, a
     /// curse's 1000 ms activation delay, and Lingering Illusion's 156%
@@ -1633,10 +1914,11 @@ mod tests {
     #[test]
     fn a_stat_without_a_rule_is_left_to_the_stat_map() {
         let skill = BuffSkill::default();
-        assert!(player_buff_modifiers("base_skill_effect_duration", 5000.0, skill).is_none());
-        assert!(skill_modifiers("base_skill_effect_duration", 5000.0).is_none());
-        assert!(granted_skill_modifiers("base_skill_effect_duration", 5000.0, &[]).is_empty());
-        assert!(curse_modifiers("base_skill_effect_duration", 5000.0, &[]).is_none());
+        let stat = "pobr_unknown_skill_stat";
+        assert!(player_buff_modifiers(stat, 5000.0, skill).is_none());
+        assert!(skill_modifiers(stat, 5000.0).is_none());
+        assert!(granted_skill_modifiers(stat, 5000.0, &[]).is_empty());
+        assert!(curse_modifiers(stat, 5000.0, &[]).is_none());
     }
 
     #[test]
