@@ -36,6 +36,33 @@ def text(value, label, cap=2048):
     return value
 
 
+def resource_paths(names):
+    """Validate portable game paths consistently for discovery and acquisition."""
+    paths, spellings = set(), {}
+    for name in names:
+        text(name, "resource path", 512)
+        path = client.relative(name)
+        if path.parts[0] not in {"Data", "Metadata"} or len(path.parts) < 2:
+            raise ValueError("Expected a game-relative Data/ or Metadata/ path")
+        for part in path.parts:
+            if (not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_. -]{0,127}", part)
+                    or part.endswith((".", " "))
+                    or part.split(".")[0].upper() in {"CON", "PRN", "AUX", "NUL",
+                        *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}):
+                raise ValueError("Unsafe portable game path")
+        folded = name.casefold()
+        if folded in paths:
+            raise ValueError("Case-colliding resource paths")
+        paths.add(folded)
+        for depth in range(1, len(path.parts) + 1):
+            prefix = "/".join(path.parts[:depth])
+            previous = spellings.setdefault(prefix.casefold(), prefix)
+            if previous != prefix:
+                raise ValueError("Case-colliding resource directory paths")
+    if any(parent.as_posix().casefold() in paths for name in names for parent in Path(name).parents):
+        raise ValueError("Resource file/directory path collision")
+
+
 def load_selection(path):
     """Validate locations, never reinterpret observed hashes as expected pins."""
     raw = client.read_file(path, 2 * client.MIB)
@@ -76,32 +103,12 @@ def load_selection(path):
     resources = selection["resources"]
     if not isinstance(resources, dict) or not 1 <= len(resources) <= 128:
         raise ValueError("Invalid selected resource count")
-    paths, spellings, total = set(), {}, 0
+    resource_paths(resources)
+    total = 0
     for name, record in resources.items():
         # Reject extra fields, especially bytes/sha256/expected_sha256 raw pins.
         fields(record, ("bundle_url", "uncompressed_offset", "uncompressed_length",
                         "location_evidence"), "location-only resource (no raw hash pins)")
-        text(name, "resource path", 512)
-        path = client.relative(name)
-        if path.parts[0] not in {"Data", "Metadata"} or len(path.parts) < 2:
-            raise ValueError("Expected a game-relative Data/ or Metadata/ path")
-        # Portable game paths also avoid device names, trailing-dot aliases and
-        # Unicode filesystem normalization collisions.
-        for part in path.parts:
-            if (not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_. -]{0,127}", part)
-                    or part.endswith((".", " "))
-                    or part.split(".")[0].upper() in {"CON", "PRN", "AUX", "NUL",
-                        *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}):
-                raise ValueError("Unsafe portable game path")
-        folded = name.casefold()
-        if folded in paths:
-            raise ValueError("Case-colliding resource paths")
-        paths.add(folded)
-        for depth in range(1, len(path.parts) + 1):
-            prefix = "/".join(path.parts[:depth])
-            previous = spellings.setdefault(prefix.casefold(), prefix)
-            if previous != prefix:
-                raise ValueError("Case-colliding resource directory paths")
         length = client.integer(record["uncompressed_length"], 1, client.MAX_RESOURCE, "resource length")
         client.integer(record["uncompressed_offset"], 0, client.MAX_BUNDLE_RAW - length, "resource offset")
         url = client.official_url(record["bundle_url"], base + "Bundles2/")
@@ -113,9 +120,6 @@ def load_selection(path):
                 or len(set(refs)) != len(refs)):
             raise ValueError("Resource needs unique known location evidence references")
         total += length
-    if any(parent.as_posix().casefold() in paths for name in resources
-           for parent in Path(name).parents):
-        raise ValueError("Resource file/directory path collision")
     client.integer(total, 1, client.MAX_NETWORK, "selected raw byte total")
     return selection, raw
 

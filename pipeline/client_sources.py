@@ -545,9 +545,23 @@ class Bundle:
 
 def import_archive(source_lock, source_key, cache_root, archive_root, ledger_path):
     source, lock_hash = load_source(source_lock, source_key)
+    cache = RangeCache(cache_root, source)
+    imported = import_ranges(cache, archive_root, ledger_path)
+    receipt = {"schema": "pobr-client-cache-import/v1", "source": source_key,
+               "source_lock_sha256": lock_hash, **imported}
+    name = cache.root / "imports" / (sha256(encoded(receipt)) + ".json")
+    if name.exists():
+        if read_file(name, MIB) != encoded(receipt):
+            raise ValueError("Import receipt mismatch")
+    else:
+        write_new(name, encoded(receipt))
+    return receipt
+
+
+def import_ranges(cache, archive_root, ledger_path):
+    """Import bounded archived ranges for the URLs already selected by a caller."""
     archive_root = safe_path(archive_root)
     ledger = read_file(ledger_path, 2 * MIB)
-    cache = RangeCache(cache_root, source)
     selected, total_bytes = [], 0
     entries = ledger.splitlines()
     if len(entries) > MAX_RECORDS:
@@ -579,16 +593,8 @@ def import_archive(source_lock, source_key, cache_root, archive_root, ledger_pat
         raise ValueError("Archive has no ranges for selected source")
     for args in selected:
         cache.add(*args)
-    receipt = {"schema": "pobr-client-cache-import/v1", "source": source_key,
-               "source_lock_sha256": lock_hash, "archive_ledger_sha256": sha256(ledger),
-               "ranges": len(selected), "body_bytes": total_bytes, "network_requests": 0}
-    name = cache.root / "imports" / (sha256(encoded(receipt)) + ".json")
-    if name.exists():
-        if read_file(name, MIB) != encoded(receipt):
-            raise ValueError("Import receipt mismatch")
-    else:
-        write_new(name, encoded(receipt))
-    return receipt
+    return {"archive_ledger_sha256": sha256(ledger), "ranges": len(selected),
+            "body_bytes": total_bytes, "network_requests": 0}
 
 
 def acquire(source_lock, source_key, cache_root, output, python, decoder_lock, mode,

@@ -6,6 +6,10 @@ promotion and strict replay → separate production adoption. It does not discov
 versions, scan indexes, schedule updates, promote locks or adopt data. Existing
 callers can invoke this command for each explicitly located selection.
 
+[Fixed index discovery](client-index.md) can produce the location-only selection
+from an explicit patch and path list. Its evidence remains unreviewed; this
+collector preserves that claim without independently repeating discovery.
+
 ```sh
 mise run data:client:draft -- \
   --selection .cache/new-source/selection.json \

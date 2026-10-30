@@ -94,6 +94,14 @@ run = "python3 pipeline/client_source_draft.py"
 description = "Test unreviewed first acquisition with fake HTTP and network-forbidden cache replay"
 run = "python3 pipeline/test-client-source-draft.py"
 
+[tasks."data:client:locate"]
+description = "Locate explicit resource paths in a fixed client index; emits an unreviewed selection"
+run = "python3 pipeline/client_index.py"
+
+[tasks."data:client:locate:test"]
+description = "Test bounded index discovery, physical hash vectors and offline replay"
+run = "python3 pipeline/test-client-index.py"
+
 [tasks."data:regen"]
 depends = ["setup:oracle"]
 description = "候选目录完整再生成、审计、验证后发布（需 vendor 检出 + luajit）"
