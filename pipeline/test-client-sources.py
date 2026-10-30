@@ -9,7 +9,7 @@ from pathlib import Path
 import struct
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 SPEC = importlib.util.spec_from_file_location("client_sources", Path(__file__).with_name("client_sources.py"))
 client = importlib.util.module_from_spec(SPEC)
@@ -18,10 +18,10 @@ SPEC.loader.exec_module(client)
 URL = "https://patch-poe2.poecdn.com/9.1/Bundles2/fixture.bundle.bin"
 
 
-def bundle_bytes(raw=b"abcdefghij", chunk_size=4):
+def bundle_bytes(raw=b"abcdefghij", chunk_size=4, encoder=12):
     chunks = [raw[i:i + chunk_size] for i in range(0, len(raw), chunk_size)]
     count = len(chunks)
-    header = struct.pack("<IIIIIQQIIIIII", len(raw), len(raw), 48 + count * 4, 12, 1,
+    header = struct.pack("<IIIIIQQIIIIII", len(raw), len(raw), 48 + count * 4, encoder, 1,
                          len(raw), len(raw), count, chunk_size, 0, 0, 0, 0)
     return header + struct.pack(f"<{count}I", *map(len, chunks)) + b"".join(chunks)
 
@@ -117,7 +117,7 @@ class ClientSourceTests(unittest.TestCase):
                                   4096 if mode == "online" else 0)
 
     def test_online_then_real_cache_only_reconstruction_and_direct_raw_paths(self):
-        http = FakeHTTP()
+        http = FakeHTTP(bundle_bytes(encoder=8))
         first = self.acquire(http=http)
         self.assertEqual((self.out / "Data/Balance/Test.datc64").read_bytes(), b"bcdefgh")
         self.assertTrue((self.out / client.RECEIPT).is_file())
@@ -132,6 +132,80 @@ class ClientSourceTests(unittest.TestCase):
         self.assertEqual(second["network"]["requests"], 0)
         self.assertEqual(second["network"]["body_bytes"], 0)
         self.assertEqual(first["ranges"], second["ranges"])
+
+    def test_supported_encoders_pass_chunks_unchanged_to_decoder(self):
+        for encoder in (8, 9, 12):
+            with self.subTest(encoder=encoder):
+                self.cache = self.root / f"encoder-{encoder}"
+                decoder = FakeDecoder(None, self.decoder_lock, None)
+                with patch.object(decoder, "decompress", wraps=decoder.decompress) as decode:
+                    bundle = client.Bundle(URL, self.ranges(http=FakeHTTP(bundle_bytes(encoder=encoder))), decoder)
+                    self.assertEqual(bundle.read(1, 7), b"bcdefgh")
+                    self.assertEqual([c.args for c in decode.call_args_list], [(b"abcd", 4), (b"efgh", 4)])
+
+    def test_unknown_encoders_fail_before_table_fetch_or_decode(self):
+        for encoder in (*range(8), 10, 11, 13, 99, 0xffffffff):
+            with self.subTest(encoder=encoder):
+                self.cache = self.root / f"unknown-{encoder}"
+                http = FakeHTTP(bundle_bytes(encoder=encoder))
+                with self.assertRaisesRegex(ValueError, "unsupported bundle framing"):
+                    client.Bundle(URL, self.ranges(http=http), FakeDecoder(None, self.decoder_lock, None))
+                self.assertEqual(len(http.requests), 1)
+                self.assertEqual(FakeDecoder.calls, [])
+
+    def test_actual_encoder8_headers_and_tables_keep_all_framing_checks(self):
+        path = Path(__file__).parent / "fixtures/client-bundle-encoder8.json"
+        fixtures = client.decode(path.read_bytes())["bundles"]
+        # These are observed bytes, not a synthetic re-encoding of expected fields.
+        for number, fixture in enumerate(fixtures):
+            header, table = bytes.fromhex(fixture["header_hex"]), bytes.fromhex(fixture["table_hex"])
+            self.assertEqual(client.sha256(header), fixture["header_sha256"])
+            self.assertEqual(client.sha256(table), fixture["table_sha256"])
+            self.assertEqual(list(struct.unpack("<IIIIIQQIIIIII", header)), fixture["header_fields"])
+            mutations = [None, (0, "I", 1), (4, "I", 1), (8, "I", 0), (12, "I", 13),
+                         (16, "I", 0), (20, "Q", client.MAX_BUNDLE_RAW + 1),
+                         (28, "Q", 1), (36, "I", client.MAX_CHUNKS + 1),
+                         (40, "I", client.MAX_CHUNK_RAW + 1),
+                         *[(offset, "I", 1) for offset in (44, 48, 52, 56)],
+                         (60, "I", 0), (60, "I", client.MAX_CHUNK_COMPRESSED + 1),
+                         (60, "I", struct.unpack_from("<I", table)[0] + 1)]
+            for case, mutation in enumerate(mutations):
+                with self.subTest(bundle=number, mutation=mutation):
+                    raw = bytearray(header + table)
+                    if mutation:
+                        offset, fmt, value = mutation
+                        struct.pack_into("<" + fmt, raw, offset, value)
+                    url = fixture["url"]
+                    source = {"resources": {"header-fixture": {"bundle_url": url}}}
+                    cache = client.RangeCache(self.root / f"actual-{number}-{case}", source)
+                    for start, data in ((0, bytes(raw[:60])), (60, bytes(raw[60:]))):
+                        cache.add(url, start, data, fixture["http_total"], '"fixture"', {"kind": "test"})
+                    ranges = client.Ranges(cache, "offline")
+                    decoder = Mock()
+                    with patch.object(client.urllib.request, "build_opener", side_effect=AssertionError("network")):
+                        if mutation:
+                            with self.assertRaises(ValueError):
+                                client.Bundle(url, ranges, decoder)
+                        else:
+                            bundle = client.Bundle(url, ranges, decoder)
+                            self.assertEqual(bundle.size, fixture["bundle_bytes"])
+                            self.assertEqual(bundle.chunk_size, fixture["chunk_size"])
+                            self.assertEqual(len(bundle.sizes), fixture["chunk_count"])
+                            self.assertEqual(bundle.offsets[-1], fixture["http_total"])
+                            with self.assertRaisesRegex(ValueError, "Offline cache miss"):
+                                bundle.read(0, 1)  # A valid header does not supply missing chunks.
+                    decoder.decompress.assert_not_called()
+                    self.assertEqual(ranges.requests, 0)
+
+    def test_encoder8_chunk_failure_or_wrong_size_cannot_write_raw_or_receipt(self):
+        for number, result in enumerate((ValueError("Malformed compressed chunk"), b"x" * 5, b"x" * 3)):
+            with self.subTest(result=result):
+                output = self.root / f"failed-chunk-{number}"
+                kwargs = {"side_effect": result} if isinstance(result, Exception) else {"return_value": result}
+                with patch.object(FakeDecoder, "decompress", **kwargs), self.assertRaises(ValueError):
+                    self.acquire(http=FakeHTTP(bundle_bytes(encoder=8)), output=output)
+                self.assertFalse((output / "Data/Balance/Test.datc64").exists())
+                self.assertFalse((output / client.RECEIPT).exists())
 
     def test_http_200_redirect_and_bad_range_metadata_rejected_without_body_read(self):
         changes = [
@@ -232,7 +306,7 @@ class ClientSourceTests(unittest.TestCase):
         self.assertEqual(len(http.requests), 1)
 
     def test_malformed_framing_count_sizes_and_offsets_fail_before_decoder(self):
-        original = bundle_bytes()
+        original = bundle_bytes(encoder=8)
         mutations = [(0, "I", 999), (8, "I", 0), (12, "I", 99), (16, "I", 0),
                      (20, "Q", client.MAX_BUNDLE_RAW + 1), (28, "Q", 1),
                      (36, "I", 0xffffffff), (40, "I", client.MAX_CHUNK_RAW + 1),
@@ -523,6 +597,31 @@ source = {git = "https://github.com/repoe-fork/pypoe.git#aaaaaaaaaaaaaaaaaaaaaaa
         self.decoder_lock.write_text('[[package]]\nname="pyooz"\nversion="wrong"\n[[package]]\nname="pypoe"\nsource={git="url#bad"}')
         with self.assertRaisesRegex(ValueError, "revision"):
             client.ExternalDecoder(Path("/usr/bin/python3"), self.decoder_lock, self.source)
+
+    def test_external_native_result_and_chunk_caps_are_still_enforced(self):
+        # Test the existing parent boundary without installing or importing ooz.
+        decoder = object.__new__(client.ExternalDecoder)
+        decoder.python = "/explicit/python"
+        decoder.identity = {"synthetic": True}
+        decoder.lock_path, decoder.lock_bytes = self.decoder_lock, self.decoder_lock.read_bytes()
+
+        def oversized_child(argv, **kwargs):
+            self.assertEqual(argv[1:5], ["-I", "-S", "-B", "-c"])
+            self.assertEqual(kwargs["timeout"], 25)
+            kwargs["stdout"].write(b"x" * 5)
+            return Mock(returncode=0)
+
+        with patch.object(client.subprocess, "run", side_effect=oversized_child):
+            with self.assertRaisesRegex(ValueError, "exceeded output cap"):
+                decoder.decompress(b"compressed", 4)
+        with patch.object(decoder, "run", return_value=b"x" * 3):
+            with self.assertRaisesRegex(ValueError, "result length mismatch"):
+                decoder.decompress(b"compressed", 4)
+        with patch.object(decoder, "run", side_effect=AssertionError("must reject before native call")):
+            for raw, size in [(b"", 1), (b"x" * (client.MAX_CHUNK_COMPRESSED + 1), 1),
+                              (b"x", 0), (b"x", client.MAX_CHUNK_RAW + 1)]:
+                with self.assertRaises(ValueError):
+                    decoder.decompress(raw, size)
 
 
 if __name__ == "__main__":

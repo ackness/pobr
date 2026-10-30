@@ -67,7 +67,7 @@ class DraftTests(unittest.TestCase):
                                  (4096 if mode == "online" else 0) if budget is None else budget, cap)
 
     def test_online_then_network_forbidden_cache_only_replay_preserves_order_and_input(self):
-        http = fixtures.FakeHTTP()
+        http = fixtures.FakeHTTP(fixtures.bundle_bytes(encoder=8))
         first = self.collect(http=http)
         self.assertEqual(first["status"], "unreviewed-acquisition-draft")
         self.assertEqual(first["schema"], draft.RECEIPT_SCHEMA)

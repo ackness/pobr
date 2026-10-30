@@ -504,7 +504,9 @@ class Bundle:
         integer(count, 1, MAX_CHUNKS, "bundle chunk count")
         integer(chunk_size, 1, MAX_CHUNK_RAW, "bundle chunk size")
         if (raw32 != raw64 or compressed32 != compressed64 or header_size != 48 + 4 * count
-                or encoder not in {9, 12} or flag != 1 or any(reserved)
+                # Bundle encoder 8 is Kraken; native stream decoder IDs differ.
+                # See client-sources.md for pinned-source and actual-chunk evidence.
+                or encoder not in {8, 9, 12} or flag != 1 or any(reserved)
                 or count != (raw64 + chunk_size - 1) // chunk_size):
             raise ValueError("Malformed or unsupported bundle framing")
         if 60 + 4 * count + compressed64 != ranges.cache.info(url)[0]:

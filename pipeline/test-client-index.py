@@ -46,8 +46,8 @@ class IndexTests(unittest.TestCase):
     def save(self):
         self.request.write_bytes(client.encoded(self.document))
 
-    def discover(self, raw=None, output=None, mode="online", budget=client.MIB):
-        http = fixtures.fixtures.FakeHTTP(fixtures.fixtures.bundle_bytes(raw or index_bytes(), chunk_size=32))
+    def discover(self, raw=None, output=None, mode="online", budget=client.MIB, encoder=12):
+        http = fixtures.fixtures.FakeHTTP(fixtures.fixtures.bundle_bytes(raw or index_bytes(), chunk_size=32, encoder=encoder))
         with patch.object(client, "ExternalDecoder", fixtures.DraftDecoder), \
                 patch.object(client.urllib.request, "build_opener", return_value=http):
             receipt = index.discover(self.request, self.cache, output or self.out, Path("/explicit/python"),
@@ -76,7 +76,7 @@ class IndexTests(unittest.TestCase):
             self.assertEqual(index.hash64(name.encode(), SEED), expected)
 
     def test_online_discovery_produces_acquisition_ready_selection_and_offline_replay(self):
-        receipt, http = self.discover()
+        receipt, http = self.discover(encoder=8)
         selection, raw = index.draft.load_selection(self.out / "selection.json")
         self.assertEqual(selection["resources"][PATH], {"bundle_url": "https://patch-poe2.poecdn.com/9.1/Bundles2/Folders/data/fixture.bundle.bin",
                          "uncompressed_offset": 13, "uncompressed_length": 7, "location_evidence": ["index-locations"]})
