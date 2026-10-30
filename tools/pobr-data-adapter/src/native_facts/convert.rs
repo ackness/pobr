@@ -335,7 +335,11 @@ fn normalize_graph(
     tables: &Tables<'_>,
     input: &VerifiedInput,
 ) -> Result<Graph, String> {
-    tables.identity("PassiveSkillTrees", &graph.tree)?;
+    let tree = tables.identity("PassiveSkillTrees", &graph.tree)?;
+    require(
+        format!("{}.psg", text(&tree["PassiveSkillGraph"])?) == graph.raw_resource,
+        "physical Default tree resource mismatch",
+    )?;
     require(
         graph.tree.id == "Default"
             && graph.raw_resource == "Metadata/PassiveSkillGraph.psg"
@@ -355,7 +359,27 @@ fn normalize_graph(
         instances.len() == passives.default_graph_instances.len(),
         "duplicate graph instance",
     )?;
+    // Only instantiated IDs require a unique physical join. Off-graph placeholder IDs
+    // may repeat and still represent distinct definitions.
+    let mut physical_definitions = BTreeMap::<u64, Vec<usize>>::new();
+    for row in 0..tables.len("PassiveSkills") {
+        if let Some(id) = tables.row("PassiveSkills", row)?["PassiveSkillGraphId"].as_u64()
+            && instances.contains_key(&id)
+        {
+            physical_definitions.entry(id).or_default().push(row);
+        }
+    }
     for instance in instances.values() {
+        let definitions = physical_definitions.get(&instance.graph_id);
+        require(
+            definitions.is_some_and(|rows| rows.len() == 1),
+            "instantiated graph id must identify exactly one physical definition",
+        )?;
+        require(
+            definitions.is_some_and(|rows| rows[0] == instance.definition.row),
+            "instance selected physical definition mismatch",
+        )?;
+        tables.identity("PassiveSkills", &instance.definition)?;
         require(
             instance.connections.len() == instance.splines.len(),
             "graph connection/spline lengths differ",

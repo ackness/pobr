@@ -2,14 +2,28 @@
 
 mod convert;
 mod model;
+mod output;
 mod trust;
 
-#[cfg(test)]
+#[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 mod tests;
 
+#[cfg(all(test, not(any(target_os = "linux", target_os = "macos"))))]
+#[test]
+fn native_output_is_explicitly_unsupported() {
+    let args = Args {
+        input: "unused-input".into(),
+        expected_manifest_sha256: "0".repeat(64),
+        source_lock: "unused-lock".into(),
+        out: "unused-output".into(),
+    };
+    assert_eq!(
+        output::Output::prepare(&args).err().as_deref(),
+        Some("native-facts output requires Linux or macOS directory handles")
+    );
+}
+
 use std::collections::BTreeMap;
-use std::fs::{self, OpenOptions};
-use std::io::Write;
 use std::path::PathBuf;
 
 use serde_json::json;
@@ -53,7 +67,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
 
 pub(crate) fn run(args: Args) -> Result<String, String> {
     trust::require_absent(&args.out)?;
-    trust::verify_output_location(&args)?;
+    let mut output = output::Output::prepare(&args)?;
     let mut input = trust::verify(&args)?;
     let candidate = convert::normalize(&input)?;
     // Serialize everything before reserving output: input/normalization failures leave no directory.
@@ -99,13 +113,13 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     });
     let receipt_bytes = json_bytes(&receipt)?;
     let receipt_sha = sha256_hex(&receipt_bytes);
-    // mkdir refuses every pre-existing output, including a concurrent creator and dangling symlink.
-    fs::create_dir(&args.out).map_err(|e| format!("reserve {}: {e}", args.out.display()))?;
+    output.reserve()?;
     for (name, bytes) in &files {
-        write_new(&args.out.join(name), bytes)?;
+        output.write_new(name, bytes)?;
     }
     // The completion receipt is the last file. Interrupted output without it is incomplete.
-    write_new(&args.out.join("candidate-receipt.json"), &receipt_bytes)?;
+    output.write_new("candidate-receipt.json", &receipt_bytes)?;
+    output.verify_namespace()?;
     Ok(format!(
         "partial native candidate: {}; receipt sha256 {receipt_sha}",
         args.out.display()
@@ -119,6 +133,7 @@ fn implementation_sha256() -> String {
         ("trust.rs", include_bytes!("trust.rs").as_slice()),
         ("model.rs", include_bytes!("model.rs").as_slice()),
         ("convert.rs", include_bytes!("convert.rs").as_slice()),
+        ("output.rs", include_bytes!("output.rs").as_slice()),
         (
             "raw_source.rs",
             include_bytes!("../raw_source.rs").as_slice(),
@@ -128,6 +143,7 @@ fn implementation_sha256() -> String {
             "Cargo.lock",
             include_bytes!("../../../../Cargo.lock").as_slice(),
         ),
+        ("pypoe-sources.json", trust::DECODER_PIN),
     ] {
         bytes.extend_from_slice(name.as_bytes());
         bytes.push(0);
@@ -141,15 +157,4 @@ fn json_bytes(value: &impl serde::Serialize) -> Result<Vec<u8>, String> {
     let mut bytes = serde_json::to_vec(value).map_err(|e| e.to_string())?;
     bytes.push(b'\n');
     Ok(bytes)
-}
-
-fn write_new(path: &std::path::Path, bytes: &[u8]) -> Result<(), String> {
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(path)
-        .map_err(|e| format!("create {}: {e}", path.display()))?;
-    file.write_all(bytes)
-        .and_then(|()| file.sync_all())
-        .map_err(|e| format!("write {}: {e}", path.display()))
 }

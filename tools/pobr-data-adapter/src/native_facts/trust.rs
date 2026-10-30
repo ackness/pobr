@@ -11,7 +11,10 @@ use serde_json::{Map, Number, Value};
 use super::Args;
 use crate::raw_source::sha256_hex;
 
-pub(super) const PRODUCER_REVISION: &str = "b6378322a80a0dc94a0f483c0031ab2df40e1334";
+pub(super) const PRODUCER_REVISION: &str = "b6def2152dfc48d8ec49c7a237b2e973c3830e97";
+const DECODER_PIN_SHA: &str = "64703bc3c5eca107108244e02baf0dc2cd46669e62a6b5ba273f868aa9db0095";
+pub(super) const DECODER_PIN: &[u8] =
+    include_bytes!("../../tests/fixtures/native-facts/pypoe-sources.json");
 const PYPOE: &str = "66d1d7442c5718260e1a8efd24989d22987e91af";
 const SCHEMA_REVISION: &str = "6034b071846ef61b39046ebdb59e6d5717179509";
 const SCHEMA_SHA: &str = "50e098543345cf8323aeb294e2cfef1b6b44842faccf560ada935cebe22727df";
@@ -197,10 +200,13 @@ fn verify_manifest(m: &Value) -> Result<(), String> {
     // These file identities bind this consumer to the requested producer revision, which v1
     // records as source fingerprints rather than a Git revision in the package itself.
     let expected_producer = serde_json::json!({
-        "RePoE/native_facts.py": "531ffe4989f036f4ad881768acea315c60f34409ecc5e52fba6da995837a01b3",
+        "RePoE/native_dat.py": "824f561af6e4b83243b459d726d6bad6821663061ac840d39c2854145707ff86",
+        "RePoE/native_facts.py": "f7bf979a7a8e4bf04143cb8d04d3728a876c1bc5dd2498c43cd2d0ec78526548",
+        "RePoE/native_tools.py": "46e4a0dd7250c44f9da714f55d90ef967223e0f50b0631d130a112c6144a37c7",
         "RePoE/schema_candidate.py": "1e2d130d8e721c6398bc3cbcd63b0acb27e4487b5cddef9bf60624a8526d1b04",
         "pyproject.toml": "db02b9819adfc21f00365595bf9d53ffb15a644cb759d539b123781a572a7912",
         "schema/SHA256SUMS": "d3e5ecda7d21c8a42f6b66009a42a7e0324dba9131d63e079be6c1f596f3a308",
+        "schema/pypoe-sources.json": DECODER_PIN_SHA,
         "schema/source.json": "7afa08a39f3da0b2e368d716593c2adef03308f100ec49edac73e8c7416441d3",
         "uv.lock": "6ac815b9e4263081b51e823a3f297f35a1c55c7fa57956d3bdd5d4a506c1c66b"
     });
@@ -228,7 +234,13 @@ fn verify_manifest(m: &Value) -> Result<(), String> {
     )?;
     exact_keys(
         &m["decoder"],
-        &["pypoe_revision", "python", "sources"].map(String::from),
+        &[
+            "pypoe_revision",
+            "python",
+            "sources",
+            "trusted_source_pin_sha256",
+        ]
+        .map(String::from),
     )?;
     require(
         m["decoder"]["pypoe_revision"] == PYPOE && !string(&m["decoder"]["python"])?.is_empty(),
@@ -237,10 +249,30 @@ fn verify_manifest(m: &Value) -> Result<(), String> {
     let sources = m["decoder"]["sources"]
         .as_object()
         .ok_or("missing decoder sources")?;
-    require(!sources.is_empty(), "empty decoder sources")?;
+    require(
+        m["decoder"]["trusted_source_pin_sha256"] == DECODER_PIN_SHA
+            && sha256_hex(DECODER_PIN) == DECODER_PIN_SHA,
+        "decoder trusted source pin mismatch",
+    )?;
+    let pin = strict_json(DECODER_PIN)?;
+    let pinned_sources = pin["sources"]
+        .as_object()
+        .ok_or("missing trusted decoder sources")?;
+    require(
+        pin["revision"] == PYPOE
+            && pinned_sources.len() == 117
+            && sources.keys().eq(pinned_sources.keys()),
+        "decoder source inventory mismatch",
+    )?;
     for (path, hash) in sources {
         safe_relative(path)?;
         check_sha(string(hash)?)?;
+        require(
+            pinned_sources[path]
+                .as_array()
+                .is_some_and(|allowed| allowed.contains(hash)),
+            &format!("decoder source fingerprint mismatch: {path}"),
+        )?;
     }
     require(
         m["scope"].is_array() && m["row_key"].is_string(),
@@ -391,27 +423,6 @@ pub(super) fn require_absent(path: &Path) -> Result<(), String> {
         Err(e) => Err(format!("inspect output: {e}")),
         Ok(_) => Err(format!("refusing existing output: {}", path.display())),
     }
-}
-
-pub(super) fn verify_output_location(args: &Args) -> Result<(), String> {
-    let output = std::path::absolute(&args.out).map_err(|e| e.to_string())?;
-    let parent = output.parent().ok_or("output has no parent")?;
-    no_symlink_components(parent)?;
-    no_symlink_components(&args.input)?;
-    let input = fs::canonicalize(&args.input).map_err(|e| e.to_string())?;
-    require(
-        !output.starts_with(input),
-        "output must not modify the canonical input package",
-    )?;
-    // This mode creates research candidates, never a versioned runtime snapshot.
-    let production = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../data")
-        .canonicalize()
-        .map_err(|e| e.to_string())?;
-    require(
-        !output.starts_with(production),
-        "native facts output must remain outside production data/",
-    )
 }
 
 /// Recursively reject duplicate keys before serde can overwrite evidence.

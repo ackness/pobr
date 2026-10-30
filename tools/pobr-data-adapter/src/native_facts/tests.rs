@@ -9,7 +9,7 @@ use super::{Args, convert, json_bytes, model::Candidate, run, trust};
 use crate::raw_source::sha256_hex;
 
 const ACTUAL_MANIFEST: &[u8] =
-    include_bytes!("../../tests/fixtures/native-facts/actual-a-manifest.json");
+    include_bytes!("../../tests/fixtures/native-facts/final-manifest.json");
 const SOURCE_LOCK: &[u8] = include_bytes!("../../../../pipeline/sources.lock.json");
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
@@ -307,7 +307,7 @@ fn deterministic_output_has_complete_receipt_and_verbatim_diagnostics() {
 fn verifies_external_pin_before_json_and_lock_exact_bytes() {
     assert_eq!(
         sha256_hex(ACTUAL_MANIFEST),
-        "519364561e03e351b36c3aca0d9a986cf240e420183baa25d3c22ff1513f8257"
+        "30b42aa2b79e1810bf44f856b924d929a3e36fffe5a9afc264b7712c5dd2f968"
     );
     let f = Fixture::new();
     fs::write(f.root.join("input/manifest.json"), b"not json").unwrap();
@@ -320,6 +320,49 @@ fn verifies_external_pin_before_json_and_lock_exact_bytes() {
     bytes.push(b' ');
     fs::write(f.root.join("source-lock.json"), bytes).unwrap();
     f.rejects("source-lock bytes");
+}
+
+#[test]
+fn binds_final_producer_and_all_trusted_decoder_sources() {
+    for change in [
+        "historical-producer",
+        "pin",
+        "missing-source",
+        "extra-source",
+        "source-hash",
+    ] {
+        let mut f = Fixture::new();
+        match change {
+            "historical-producer" => {
+                let old = trust::strict_json(include_bytes!(
+                    "../../tests/fixtures/native-facts/actual-a-manifest.json"
+                ))
+                .unwrap();
+                f.manifest["producer"] = old["producer"].clone();
+            }
+            "pin" => f.manifest["decoder"]["trusted_source_pin_sha256"] = "0".repeat(64).into(),
+            "missing-source" => {
+                f.manifest["decoder"]["sources"]
+                    .as_object_mut()
+                    .unwrap()
+                    .remove("__init__.py");
+            }
+            "extra-source" => {
+                f.manifest["decoder"]["sources"]["unreviewed.py"] = "0".repeat(64).into()
+            }
+            "source-hash" => {
+                f.manifest["decoder"]["sources"]["__init__.py"] = "0".repeat(64).into()
+            }
+            _ => unreachable!(),
+        }
+        f.seal();
+        f.rejects(match change {
+            "historical-producer" => "producer identity mismatch",
+            "pin" => "decoder trusted source pin mismatch",
+            "source-hash" => "decoder source fingerprint mismatch",
+            _ => "decoder source inventory mismatch",
+        });
+    }
 }
 
 #[test]
@@ -556,6 +599,113 @@ fn output_cannot_change_the_canonical_input_or_production_data() {
     assert!(!output.exists());
 }
 
+#[test]
+fn rejects_ambiguous_physical_definition_for_each_instantiated_graph_id() {
+    let mut f = Fixture::new();
+    // Keep counts, stats and class relations consistent while adding a second physical join.
+    f.documents.get_mut("tables/PassiveSkills.json").unwrap()["rows"][1]["values"]["PassiveSkillGraphId"] =
+        31955.into();
+    let passives = f.documents.get_mut("passives.json").unwrap();
+    passives["definitions"][1]["graph_id"] = 31955.into();
+    passives["definitions"][1]["in_default_graph"] = true.into();
+    passives["class_overrides"][0]["base_graph_id"] = 31955.into();
+    passives["class_overrides"][0]["base_in_default_graph"] = true.into();
+    f.seal();
+    f.rejects("instantiated graph id must identify exactly one physical definition");
+}
+
+#[test]
+fn permits_duplicate_offgraph_placeholder_ids() {
+    let mut f = Fixture::new();
+    f.documents.get_mut("tables/PassiveSkills.json").unwrap()["rows"][2]["values"]["PassiveSkillGraphId"] =
+        55194.into();
+    let passives = f.documents.get_mut("passives.json").unwrap();
+    passives["definitions"][2]["graph_id"] = 55194.into();
+    passives["class_overrides"][0]["replacement_graph_id"] = 55194.into();
+    f.seal();
+    run(f.args("candidate")).unwrap();
+}
+
+#[test]
+fn checks_literal_default_tree_resource_against_acquired_graph() {
+    let mut f = Fixture::new();
+    f.documents
+        .get_mut("tables/PassiveSkillTrees.json")
+        .unwrap()["rows"][0]["values"]["PassiveSkillGraph"] =
+        "Metadata/AlternateSkillGraphs/RoyalePassiveSkillGraph".into();
+    f.seal();
+    f.rejects("physical Default tree resource mismatch");
+}
+
+#[test]
+fn rejects_missing_or_wrong_chosen_physical_graph_identity() {
+    for change in ["missing", "wrong-row", "wrong-id"] {
+        let mut f = Fixture::new();
+        match change {
+            "missing" => {
+                f.documents.get_mut("tables/PassiveSkills.json").unwrap()["rows"][0]["values"]["PassiveSkillGraphId"] =
+                    123.into()
+            }
+            "wrong-row" => {
+                f.documents.get_mut("passives.json").unwrap()["default_graph_instances"][0]["definition"] =
+                    json!({"row":1,"id":"absent-base"})
+            }
+            "wrong-id" => {
+                f.documents.get_mut("passives.json").unwrap()["default_graph_instances"][0]["definition"]
+                    ["id"] = "absent-base".into()
+            }
+            _ => unreachable!(),
+        }
+        f.seal();
+        f.rejects(match change {
+            "missing" => "instantiated graph id must identify exactly one physical definition",
+            "wrong-row" => "instance selected physical definition mismatch",
+            _ => "stable id/row mismatch",
+        });
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn rejects_case_and_normalization_aliases_by_directory_identity() {
+    use std::os::unix::fs::MetadataExt;
+    let f = Fixture::new();
+    for (original, alias) in [("input", "INPUT"), ("caf\u{00e9}", "cafe\u{0301}")] {
+        let original = f.root.join(original);
+        if !original.exists() {
+            fs::create_dir(&original).unwrap();
+        }
+        let alias = f.root.join(alias);
+        let Ok(aliased) = fs::metadata(&alias) else {
+            continue;
+        };
+        let actual = fs::metadata(&original).unwrap();
+        if (actual.dev(), actual.ino()) != (aliased.dev(), aliased.ino()) {
+            continue;
+        }
+        let mut args = f.args("unused");
+        args.input = original.clone();
+        args.out = alias.join("must-not-exist");
+        assert!(run(args).unwrap_err().contains("canonical input package"));
+        assert!(!original.join("must-not-exist").exists());
+    }
+    let production = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../data")
+        .canonicalize()
+        .unwrap();
+    let alias = production.parent().unwrap().join("DATA");
+    if let Ok(meta) = fs::metadata(&alias) {
+        let actual = fs::metadata(&production).unwrap();
+        if (actual.dev(), actual.ino()) == (meta.dev(), meta.ino()) {
+            let mut args = f.args("unused");
+            args.out = alias.join(format!("native-must-not-exist-{}", std::process::id()));
+            // Also safe on the old implementation: it must never reach a valid write.
+            args.expected_manifest_sha256 = "0".repeat(64);
+            assert!(run(args).unwrap_err().contains("production data/"));
+        }
+    }
+}
+
 #[cfg(unix)]
 #[test]
 fn rejects_output_through_a_symlinked_parent_without_touching_its_target() {
@@ -568,6 +718,107 @@ fn rejects_output_through_a_symlinked_parent_without_touching_its_target() {
             .contains("symlink")
     );
     assert!(!f.root.join("input/new-candidate").exists());
+    assert_eq!(
+        fs::read(f.root.join("input/manifest.json")).unwrap(),
+        before
+    );
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[test]
+fn detects_parent_replacement_before_reservation_and_before_completion() {
+    use std::os::unix::fs::symlink;
+    for stage in ["preflight", "payload", "receipt", "output-directory"] {
+        let f = Fixture::new();
+        let parent = f.root.join("parent");
+        fs::create_dir(&parent).unwrap();
+        let mut output = super::output::Output::prepare(&f.args("parent/candidate")).unwrap();
+        if stage != "preflight" {
+            output.reserve().unwrap();
+            output
+                .write_new("candidate.json", b"anchored payload")
+                .unwrap();
+        }
+        if stage == "receipt" {
+            output
+                .write_new("candidate-receipt.json", b"anchored receipt")
+                .unwrap();
+        }
+        let moved = f.root.join("moved");
+        if stage == "output-directory" {
+            fs::rename(parent.join("candidate"), &moved).unwrap();
+            symlink(f.root.join("input"), parent.join("candidate")).unwrap();
+        } else {
+            fs::rename(&parent, &moved).unwrap();
+            symlink(f.root.join("input"), &parent).unwrap();
+        }
+        let error = match stage {
+            "preflight" => output.reserve(),
+            "receipt" => output.verify_namespace(),
+            _ => output.write_new("candidate-receipt.json", b"must not be written"),
+        }
+        .unwrap_err();
+        assert!(error.contains("namespace changed"), "{stage}: {error}");
+        assert!(
+            !f.root.join("input/candidate").exists(),
+            "redirected reservation: {stage}"
+        );
+        assert!(
+            !f.root.join("input/candidate-receipt.json").exists(),
+            "redirected receipt: {stage}"
+        );
+        if stage != "preflight" {
+            let anchored = if stage == "output-directory" {
+                moved
+            } else {
+                moved.join("candidate")
+            };
+            assert_eq!(
+                fs::read(anchored.join("candidate.json")).unwrap(),
+                b"anchored payload"
+            );
+            assert_eq!(
+                anchored.join("candidate-receipt.json").exists(),
+                stage == "receipt"
+            );
+        }
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[test]
+fn rejects_directory_identity_replacement_and_concurrent_output_without_overwriting() {
+    let f = Fixture::new();
+    fs::create_dir(f.root.join("parent")).unwrap();
+    let mut output = super::output::Output::prepare(&f.args("parent/candidate")).unwrap();
+    fs::rename(f.root.join("parent"), f.root.join("original")).unwrap();
+    fs::create_dir(f.root.join("parent")).unwrap();
+    assert!(output.reserve().unwrap_err().contains("namespace changed"));
+    assert!(!f.root.join("parent/candidate").exists());
+    assert!(!f.root.join("original/candidate").exists());
+
+    let mut output = super::output::Output::prepare(&f.args("new-output")).unwrap();
+    fs::create_dir(f.root.join("new-output")).unwrap();
+    fs::write(f.root.join("new-output/keep"), b"unchanged").unwrap();
+    assert!(output.reserve().unwrap_err().contains("existing output"));
+    assert_eq!(
+        fs::read(f.root.join("new-output/keep")).unwrap(),
+        b"unchanged"
+    );
+
+    let mut output = super::output::Output::prepare(&f.args("fresh")).unwrap();
+    output.reserve().unwrap();
+    std::os::unix::fs::symlink(
+        f.root.join("input/manifest.json"),
+        f.root.join("fresh/candidate.json"),
+    )
+    .unwrap();
+    let before = fs::read(f.root.join("input/manifest.json")).unwrap();
+    assert!(
+        output
+            .write_new("candidate.json", b"must not overwrite")
+            .is_err()
+    );
     assert_eq!(
         fs::read(f.root.join("input/manifest.json")).unwrap(),
         before
