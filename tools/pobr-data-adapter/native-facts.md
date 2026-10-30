@@ -1,10 +1,11 @@
 # Native facts domain candidate
 
-This opt-in adapter consumes `repoe-native-facts/v1` from RePoE revision
+By default this opt-in adapter consumes `repoe-native-facts/v1` from RePoE revision
 `b6def2152dfc48d8ec49c7a237b2e973c3830e97`. It creates a **partial INTERNATIONAL
 0.5.5.5 candidate**, never a runtime data manifest or production-ready package.
 It does not update `data/`, `CURRENT`, defaults, calculation rules or PoB compatibility.
-The producer contract is `RePoE/docs/native_facts.md` in that revision.
+The producer contract is `RePoE/docs/native_facts.md` in that revision. The
+explicit core-skills A0 opt-in is documented below.
 
 ```sh
 mise exec -- cargo run -p pobr-data-adapter -- \
@@ -161,3 +162,111 @@ are cross-checked. Raw group coordinates are compared by binary64 bits, without
 a tolerance that could hide a parsing change. The twelve final payloads are
 byte-identical to the older correct archive; candidate facts change only in their
 input manifest identity, with no new stat, quality or geometry policy.
+
+## Explicit core-skills A0 consumption
+
+`--profile core-skills-a0` selects the bounded `repoe-native-facts/v2` contract in
+RePoE `aa2fb163aa422317db5c32031607eb199214e7b7`, documented there in
+`RePoE/docs/native_core_skills.md`. Omitting the flag, or explicitly selecting
+`--profile base-v1`, keeps the v1 contract above. A v2 package fails without the
+v2 opt-in; a v1 package fails under that opt-in. There is no format fallback.
+This consumer pin is provisional while the independent producer review runs;
+a later reviewed producer change requires a deliberate pin update.
+
+```sh
+mise exec -- cargo run -p pobr-data-adapter -- \
+  --native-facts /path/to/actual-a --profile core-skills-a0 \
+  --expected-manifest-sha256 e4bd693d45d8eaa4768d9a86c3e7e5ee84f1f4d8fc05112ae3b290d51bb901e5 \
+  --source-lock /path/to/proposed-sources.lock.json \
+  --out .cache/new-core-skills-candidate
+```
+
+The same external byte pin, schema and full 117-file decoder checks apply. The
+ten producer SHA-256 values are fixed in the adapter and were independently
+compared with that revision's Git blobs; the two changed/added values are for
+`RePoE/native_facts.py` and `RePoE/native_skills.py`. Manifest claims and
+recomputed self-hashes cannot replace these pins. The external manifest digest
+binds a package; it does not authenticate acquisition of its upstream client.
+The checked-in `core-skills-a0-manifest.json` fixture is that receipt only,
+without physical game payloads.
+
+A0 has exactly fifteen DAT resources and the Default PSG. In addition to the
+base eight tables it requires `GrantedEffectLabels`, `ActiveSkills`,
+`ActiveSkillType`, `CostTypes`, `GrantedEffectsPerLevel`,
+`GrantedEffectStatSetsPerLevel` and `EffectivenessCostConstants`. Exactly 21
+payloads are verified before any payload is parsed: fifteen physical tables,
+the four base documents, `skill_core.json` and `source-lock.json`. The embedded
+lock must equal the external file byte-for-byte, including unselected source
+entries and whitespace. Source selection, its `profile: core-skills-a0`, raw
+resource inventory, sizes/hashes and acquisition declaration must agree.
+
+The selected source declares an acquisition status and a nonempty array of
+`{kind,sha256}` evidence fingerprints. The supported declarations are
+`unreviewed-acquisition-draft` and `reviewed-source-input`; both remain caller
+declarations, preserved in `receipt.input.source_identity.acquisition`. The
+actual `e4bd…` package and its observed raw hashes remain
+**unreviewed-acquisition-draft**. Neither the producer pin, this conversion nor
+a passing smoke test approves them or promotes them into the production lock.
+Evidence files are not fetched or authenticated by this adapter.
+
+The v2 candidate retains all base candidate fields, with explicit format
+`pobr-native-domain-candidate/v2`, a typed `core_skills` collection and measured
+`core_summary`. Its receipt uses `pobr-native-candidate-receipt/v2` and names the
+input format/profile, producer revision, acquisition declaration and exact raw
+fingerprints. Base counts remain in `summary`; the seven added counts are in
+`core_summary`. Both formats remain partial with `production_ready: false` and
+produce no runtime `manifest.json`.
+
+`core_skills` contains source-ordered arrays for labels, stat-set labels,
+active-skill types, active skills, effect metadata, cost types, interpolation
+constants and every physical effect/stat-set level row. Definition and foreign
+references use `{id,raw}`, where `id` is the stable game string and `raw` is a
+canonical-input row reference. Physical row numbers on level facts identify
+source occurrences only. They do not manufacture stable level IDs. Arrays keep
+repeated owners, repeated levels, actor contexts, duplicate references, null
+slots and source order.
+
+All projected fields and raw pointers are checked against the physical tables,
+including row-zero label references, null relations and empty label text as
+separate facts. `ActiveSkills.GrantedEffect` remains a string. Costs retain the
+entire ordered cost-type and amount arrays; unequal lengths produce `costs:
+null`, without truncation or invented defaults. Stat-set levels retain separate
+base, additional, float, interpolation and actor/level channels, even when
+arrays have unequal lengths. Numeric channels use JSON numbers without unit
+conversion; signs, zero, negative zero and exact binary64 float values round-trip.
+The adapter checks the declared physical projection and creates stable references;
+it does not interpolate, align unequal stat arrays or select effective levels.
+
+Every core definition/level fact refers to its complete canonical physical row,
+so cooldowns, reservation, flags, unknown fields, unprojected arrays and
+column/schema metadata remain in the sealed RePoE package. Diagnostics are
+copied byte-for-byte, including unresolved alignments and unknown diagnostic
+shapes. No interpolation, units, quality application, geometry or gameplay
+application policy is inferred. No production data, runtime types, engine,
+WASM or source acquisition pipeline is changed.
+
+V1 candidate serialization is unchanged. New runs accurately fingerprint the
+new adapter implementation; this does not invalidate the historical `08a7…`
+candidate receipt produced by its original implementation. The final b6
+`30b42…` input profile and authentic earlier candidate outputs remain supported.
+The historical `5193…` producer-rejection fixture keeps its existing meaning.
+
+The same smoke checker accepts an explicit A0 profile:
+
+```sh
+mise exec -- python3 tools/pobr-data-adapter/tests/smoke_native_facts.py \
+  --profile core-skills-a0 --native-facts /path/to/actual-a \
+  --source-lock /path/to/proposed-sources.lock.json \
+  --candidate-a .cache/core-skills-a --candidate-b .cache/core-skills-b
+```
+
+Generate the two candidates in fresh independent processes first. The smoke
+checks all 21 payloads, all fifteen physical table envelopes and rows, every
+core projection and stable/raw reference, the fixed ten producer hashes, full
+decoder pin, raw source inventory, exact external/embedded/output lock bytes,
+unreviewed source status, output hashes and byte determinism. The actual A0
+increment contains 202 labels, 1,147 active skills, 290 types, 18 cost types,
+3 constants, 34,300 effect-level rows and 41,557 stat-set-level rows, alongside
+the unchanged base counts and 63 verbatim diagnostic records. These checks
+certify this bounded conversion, not client decoding, acquisition approval,
+complete foreign-key closure, numerical accuracy or production adoption.

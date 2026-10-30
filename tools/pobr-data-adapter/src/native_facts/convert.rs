@@ -11,6 +11,7 @@ use super::model::{
     SkillsInput, StatSet, StatSetLink, Summary,
 };
 use super::trust::{self, VerifiedInput, require};
+use super::{Profile, core_skills};
 
 pub(super) fn normalize(input: &VerifiedInput) -> Result<Candidate, String> {
     let tables = Tables::new(input)?;
@@ -39,6 +40,8 @@ pub(super) fn normalize(input: &VerifiedInput) -> Result<Candidate, String> {
         stat_sets: BTreeMap::new(),
         qualities: Vec::new(),
         source_diagnostics: "source-diagnostics.json".into(),
+        core_skills: None,
+        core_summary: None,
     };
     require(
         passives.definitions.len() == tables.len("PassiveSkills"),
@@ -245,7 +248,25 @@ pub(super) fn normalize(input: &VerifiedInput) -> Result<Candidate, String> {
     candidate.summary.class_overrides = candidate.class_relations.len();
     candidate.summary.effects = candidate.effects.len();
     candidate.summary.qualities = candidate.qualities.len();
-    let expected: Summary = decode(&input.manifest["summary"])?;
+    let mut source_summary = input.manifest["summary"].clone();
+    if input.profile == Profile::CoreSkillsA0 {
+        let (core, summary) = core_skills::normalize(input, &tables)?;
+        let counts = serde_json::to_value(&summary).map_err(|e| e.to_string())?;
+        for (key, value) in counts.as_object().ok_or("invalid core summary")? {
+            require(
+                source_summary[key] == *value,
+                "core counts differ from source summary",
+            )?;
+            source_summary
+                .as_object_mut()
+                .ok_or("invalid source summary")?
+                .remove(key);
+        }
+        candidate.format = "pobr-native-domain-candidate/v2".into();
+        candidate.core_skills = Some(core);
+        candidate.core_summary = Some(summary);
+    }
+    let expected: Summary = decode(&source_summary)?;
     require(
         candidate.summary == expected,
         "measured projection counts differ from source summary",
@@ -441,14 +462,14 @@ fn normalize_graph(
     })
 }
 
-struct Tables<'src> {
+pub(super) struct Tables<'src> {
     rows: BTreeMap<&'static str, Vec<&'src Value>>,
 }
 
 impl<'src> Tables<'src> {
     fn new(input: &'src VerifiedInput) -> Result<Self, String> {
         let mut rows = BTreeMap::new();
-        for table in trust::TABLES {
+        for table in trust::tables(input.profile) {
             let doc = &input.documents[&format!("tables/{table}.json")];
             trust::exact_keys(
                 doc,
@@ -470,6 +491,14 @@ impl<'src> Tables<'src> {
                 "physical table identity mismatch",
             )?;
             let fields: Vec<String> = decode(&doc["physical_fields"])?;
+            if input.profile == Profile::CoreSkillsA0 {
+                require(
+                    core_skills::required_fields(table)
+                        .iter()
+                        .all(|required| fields.iter().any(|field| field == required)),
+                    "missing core-skill physical field",
+                )?;
+            }
             let unique: BTreeSet<_> = fields.iter().collect();
             require(
                 unique.len() == fields.len() && !fields.is_empty(),
@@ -516,18 +545,18 @@ impl<'src> Tables<'src> {
         Ok(Self { rows })
     }
 
-    fn len(&self, table: &str) -> usize {
+    pub(super) fn len(&self, table: &str) -> usize {
         self.rows[table].len()
     }
 
-    fn row(&self, table: &str, row: usize) -> Result<&'src Value, String> {
+    pub(super) fn row(&self, table: &str, row: usize) -> Result<&'src Value, String> {
         self.rows[table]
             .get(row)
             .copied()
             .ok_or_else(|| format!("unresolved physical row {table}/{row}"))
     }
 
-    fn identity(&self, table: &str, identity: &Identity) -> Result<&'src Value, String> {
+    pub(super) fn identity(&self, table: &str, identity: &Identity) -> Result<&'src Value, String> {
         let row = self.row(table, identity.row)?;
         require(
             row["Id"] == identity.id,
@@ -537,11 +566,11 @@ impl<'src> Tables<'src> {
     }
 }
 
-fn decode<T: DeserializeOwned>(value: &Value) -> Result<T, String> {
+pub(super) fn decode<T: DeserializeOwned>(value: &Value) -> Result<T, String> {
     T::deserialize(value).map_err(|e| e.to_string())
 }
 
-fn array(value: &Value) -> Result<&[Value], String> {
+pub(super) fn array(value: &Value) -> Result<&[Value], String> {
     value
         .as_array()
         .map(Vec::as_slice)
