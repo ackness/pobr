@@ -100,6 +100,10 @@ Focused Thrust（9227，`projectile_damage_+%_with_spears_while_there_no_enemies
 
 `FlameWallAddedDamage` 只取已启用 Flame Wall 的投射物 stat set 固定火伤。先解来源有效等级，再走受益投射物自己的伤害效用和伤害流程；本地／队伍同名副本取最强。选择该状态不代表模拟穿墙、持续点燃、灌注或覆盖率。
 
+### 基础投射物数量
+
+`base_number_of_projectiles` 是技能自带的总数，由自有 stat 规则直接映射为 BASE `ProjectileCount`。编排只对投射物技能在所选技能及 stat set 没有非零的该 stat 时补一个基础投射物，与主映射跳过零值的规则一致；不从合并后的词条总和判断。装备、辅助和品质的额外数量继续相加，其他技能及未选 stat set 不改变这个基础值。没有投射物来源的技能不展示投射物数量。回归见 [projectile_base.rs](../../crates/pobr-build/tests/skills/projectile_base.rs)。
+
 ### 投射物经过几次分叉、穿透或连锁
 
 `skillForkCount` / `skillPierceCount` 分别成为 `ForkedCount` / `PiercedCount`，由 `skill_mechanics::snapshot_projectile_interactions_taken` 限制到技能实际可用次数。未填或填零表示初次命中，没有来源时填更大数字也无效。[Fork](https://poe2db.tw/us/Fork) 分叉后 30% less、[Pierce I](https://poe2db.tw/us/Pierce_I) 穿透后 20% less 通过这些状态生效；它们不是对第一次命中的惩罚，也不是额外命中数。

@@ -1028,9 +1028,18 @@ fn stage_create_session(ctx: &StageCtx<'_>, cfg: CalcConfig) -> SourceWriter {
         ctx.options.exporter_absent_rules,
         ctx.options.exporter_rule_overrides.clone(),
     );
-    // CalcSetup supplies one base projectile; SkillStatMap count overrides
-    // subtract that one. Only projectile skills expose this output.
-    if ctx.main.skill_flags.intersects(ModFlags::PROJECTILE) {
+    // The selected skill's intrinsic count is already a total. Only skills
+    // without that stat need one base projectile; item/support additions must
+    // still add to it. Match primary mapping's zero-value skip before sources
+    // are combined, so another skill or an additional-count modifier cannot
+    // suppress this fallback.
+    let has_intrinsic_projectiles = ctx.main.main_skill.as_ref().is_some_and(|(skill, _, _)| {
+        skill
+            .base_damage
+            .iter()
+            .any(|stat| stat.stat == "base_number_of_projectiles" && stat.value != 0.0)
+    });
+    if ctx.main.skill_flags.intersects(ModFlags::PROJECTILE) && !has_intrinsic_projectiles {
         session.add_modifiers(vec![
             Modifier::number("ProjectileCount", ModType::Base, 1.0)
                 .with_source("Base projectile count"),

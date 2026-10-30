@@ -104,6 +104,8 @@ mod no_damage;
 mod oisin_leech;
 #[path = "skills/player_debuffs.rs"]
 mod player_debuffs;
+#[path = "skills/projectile_base.rs"]
+mod projectile_base;
 #[path = "skills/quarterstaff_conditions.rs"]
 mod quarterstaff_conditions;
 #[path = "skills/rain.rs"]
