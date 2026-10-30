@@ -31,9 +31,8 @@ pub struct LimitViews {
     /// Movement speed before action speed is applied.
     pub movement_speed_mod: f64,
     pub light_radius_mod: f64,
-    /// What the build adds to Freeze Threshold (`FreezeThreshold` BASE, including the share of maximum Energy
-    /// Shield) and the increases and reductions to it. The game's base value is not in the exported data, so no
-    /// total is shown.
+    /// Flat Freeze Threshold additions (`FreezeThreshold` BASE, including the share of maximum Energy
+    /// Shield). The multiplier and modeled total are displayed separately.
     pub freeze_threshold_added: f64,
     pub freeze_threshold_mod: f64,
     /// The total: the Ailment Threshold plus what the build adds, times the Freeze Threshold modifiers. The game

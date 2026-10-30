@@ -478,8 +478,8 @@ fn ancestrally_boosted_passives_apply_only_to_a_boosted_attack() {
     assert_eq!(inc(BOOSTED, "AreaOfEffect") - inc("", "AreaOfEffect"), 4.0);
 }
 
-/// Freeze Threshold: the passives add a share of maximum Energy Shield and increase it. The game's base is not in
-/// the exported data, so the calculation shows what the build adds and the multiplier, and no total.
+/// Freeze Threshold exposes flat additions and a multiplier alongside the modeled total.
+/// The total uses the Ailment Threshold as its base; this is not an in-game measurement.
 #[test]
 fn freeze_threshold_views_read_the_additions_and_the_increases() {
     let plain = calculate(FIREBALL, &[]);

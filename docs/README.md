@@ -26,7 +26,7 @@
 | 珠宝搜索支持什么、有哪些限制 | [珠宝搜索](jewel-search.md) |
 | WeGame 分享链接如何导入 | [WeGame 导入](wegame-import.md) |
 | 如何使用独立 WASM 发布包 | [WASM 包](wasm-package.md) |
-| 如何升级游戏数据版本 | [数据版本升级](version-bump-architecture.md) |
+| 如何升级游戏数据版本 | [当前数据管线步骤](../pipeline/README.md) |
 | 当前界面长什么样、截图怎么拍的 | [线上截图](screenshots/README.md) |
 
 其他目录还有 [Web 安装指南](../web/README.zh-CN.md)、[数据管线](../pipeline/README.md)
@@ -43,6 +43,7 @@
 | 记录 | 当时查了什么 |
 | --- | --- |
 | [WASM 性能（英文）](wasm-performance.md) / [中文](wasm-performance.zh-CN.md) | 2026-10-11 的耗时和体积；2026-10-12 补充测量、诊断和 PoB2 对照 |
+| [数据升版结构改造](version-bump-architecture.md) | v0.0.3 的方案和交付记录，含 2026-09-26 的后续说明；当前操作以数据管线文档为准 |
 | [0.5.5c 数据适配](adapting-to-0.5.5c.md) | 2026-09-26，数据版本 `4.5.5.3` |
 | [0.5.5 数据适配](adapting-to-0.5.5.md) | 2026-09-11，数据版本 `4.5.5.2` |
 | [Calcs 展示比较](calcs-display-comparison.md) | 2026-09-25，与 PoB2 计算面板的比较 |
