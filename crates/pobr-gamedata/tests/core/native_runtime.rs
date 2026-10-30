@@ -141,6 +141,75 @@ fn native_contract_disk_memory_identity_and_query_agree() {
 }
 
 #[test]
+fn native_reserved_metadata_requires_envelope_even_without_manifest() {
+    for malformed in [false, true] {
+        let mut files = pack();
+        files.remove("manifest.json");
+        if malformed {
+            files.insert(
+                NATIVE_RUNTIME_PATH.into(),
+                b"malformed native policy".to_vec(),
+            );
+        }
+        files.insert(
+            "overlay-common/special_mods.json".into(),
+            br#"{"entries":[]}"#.to_vec(),
+        );
+        let disk = DiskPack::new(&files);
+        for data in [
+            GameData::new(disk.version()),
+            GameData::from_memory(files.clone()),
+            GameData::from_memory_prechecked(files.clone()),
+            GameData::from_memory_releasing(files.clone(), false),
+            GameData::from_memory_releasing(files, true),
+        ] {
+            assert!(data.validate_manifest().is_err());
+            let error = data.native_runtime().unwrap_err().to_string();
+            assert!(
+                error.contains("native runtime contract requires manifest schema 4"),
+                "{error}"
+            );
+            assert!(data.validate_calculation_admission().is_err());
+            assert!(
+                data.load_ruleset().is_err(),
+                "legacy rules loaded native policy"
+            );
+            assert!(data.identity().is_err());
+        }
+    }
+    // An unmarked manifestless pack retains its historical ruleset behavior.
+    let files = BTreeMap::from([(
+        "overlay-common/special_mods.json".into(),
+        br#"{"entries":[]}"#.to_vec(),
+    )]);
+    let disk = DiskPack::new(&files);
+    for data in [
+        GameData::new(disk.version()),
+        GameData::from_memory(files.clone()),
+        GameData::from_memory_prechecked(files.clone()),
+        GameData::from_memory_releasing(files.clone(), false),
+        GameData::from_memory_releasing(files, true),
+    ] {
+        assert!(data.native_runtime().unwrap().is_none());
+        assert!(data.validate_calculation_admission().is_ok());
+        assert!(data.load_ruleset().unwrap().special_mods.is_some());
+    }
+}
+
+#[test]
+fn native_unreadable_reserved_metadata_cannot_become_legacy_absence() {
+    let files = BTreeMap::from([(NATIVE_RUNTIME_PATH.into(), b"reserved".to_vec())]);
+    let disk = DiskPack::new(&files);
+    let path = disk.version().join(NATIVE_RUNTIME_PATH);
+    std::fs::remove_file(&path).unwrap();
+    std::fs::create_dir(&path).unwrap();
+    let data = GameData::new(disk.version());
+    assert!(data.native_runtime().is_err());
+    assert!(data.validate_calculation_admission().is_err());
+    assert!(data.load_ruleset().is_err());
+}
+
+#[test]
 fn native_contract_and_required_files_cannot_be_missing_or_unlisted() {
     for domain in NATIVE_REQUIRED_DOMAINS.iter().copied().chain([
         "native_runtime",

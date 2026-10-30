@@ -43,7 +43,9 @@ parity 下降说明需要调查新版差异，不能为通过而降低基线。
 `passive_tree`、`passive_tree_meta`、`base_items`、`skill_gems`、`granted_effects`、
 `granted_effect_levels`、`granted_effect_stat_sets`、`cost_types`。缺少声明、文件或摘要均失败。
 空领域可用于中间 assembler 验证，不表示游戏没有记录，也不证明计算闭包完整。
-schema 1–3 不接受 native 契约；旧加载器也会拒绝 schema 4，不能把必需语义作为可忽略字段发布。
+schema 1–3 不接受 native 契约；缺少 manifest 而仍有保留的 native 契约路径时也拒绝，
+不会退回旧规则或默认值。未携带该保留路径的旧式无 manifest 规则目录仍可读取。
+旧加载器会拒绝 schema 4，不能把必需语义作为可忽略字段发布。
 
 契约类型是 [`NativeRuntimeContract`](../crates/pobr-data/src/catalog/native_runtime.rs)，
 当前版本严格为 1，字段无默认值，未知字段／profile／版本报错：

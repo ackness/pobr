@@ -97,7 +97,11 @@ impl GameData {
     fn snapshot(&self) -> Result<Option<&ValidatedSnapshot>, LoadError> {
         match self.snapshot.get_or_init(|| match self.manifest() {
             Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
-                Ok(None)
+                match self.native_contract_present() {
+                    Ok(false) => Ok(None),
+                    Ok(true) => Err("native runtime contract requires manifest schema 4".into()),
+                    Err(error) => Err(error.to_string()),
+                }
             }
             Err(error) => Err(error.to_string()),
             Ok(manifest) => self
@@ -110,6 +114,15 @@ impl GameData {
                 path: self.root().join("manifest.json"),
                 message: message.clone(),
             }),
+        }
+    }
+
+    fn native_contract_present(&self) -> Result<bool, LoadError> {
+        let path = self.root().join(NATIVE_RUNTIME_PATH);
+        match self.read_bytes(&path) {
+            Ok(_) => Ok(true),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+            Err(source) => Err(LoadError::Io { path, source }),
         }
     }
 
@@ -150,12 +163,7 @@ impl GameData {
         }
         if manifest.schema_version < NATIVE_CATALOG_SCHEMA_VERSION {
             // A native policy must never be ignored by a compatibility envelope.
-            let path = self.root().join(NATIVE_RUNTIME_PATH);
-            let present = match self.read_bytes(&path) {
-                Ok(_) => true,
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
-                Err(source) => return Err(LoadError::Io { path, source }),
-            };
+            let present = self.native_contract_present()?;
             if present
                 || manifest.files.contains_key(NATIVE_RUNTIME_PATH)
                 || manifest
