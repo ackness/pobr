@@ -281,6 +281,7 @@ fn adapt(raw: RawTree) -> Result<(Vec<PassiveNodeDef>, PassiveTreeMeta), String>
             )?;
         }
     }
+    let mut alias_bases = BTreeMap::new();
     for node in nodes.values_mut() {
         node.variants.sort_by(|a, b| a.class.cmp(&b.class));
         if let Some(pair) = node.variants.windows(2).find(|v| v[0].class == v[1].class) {
@@ -288,6 +289,16 @@ fn adapt(raw: RawTree) -> Result<(Vec<PassiveNodeDef>, PassiveTreeMeta), String>
                 "node {}: duplicate variant selector {}",
                 node.skill, pair[0].class
             ));
+        }
+        for alias in node.variants.iter().filter_map(|v| v.variant_skill) {
+            if let Some(base) = alias_bases.insert(alias, node.skill)
+                && base != node.skill
+            {
+                return Err(format!(
+                    "skillOverrides alias {alias} maps to multiple base nodes: {base} and {}",
+                    node.skill
+                ));
+            }
         }
     }
 
@@ -704,6 +715,17 @@ mod tests {
                     .all(|v| v.class != "Witch")
             );
         }
+    }
+
+    #[test]
+    fn replacement_alias_cannot_identify_multiple_base_nodes() {
+        let mut source = fixture();
+        source["classes"][0]["overridePairs"]["30"] = json!(210);
+        assert!(
+            convert(source)
+                .unwrap_err()
+                .contains("alias 210 maps to multiple base nodes: 20 and 30")
+        );
     }
 
     #[test]

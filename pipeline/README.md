@@ -31,10 +31,17 @@ mise run data:tree:candidate --offline --out .cache/tree-proof/first
 mise run data:tree:candidate --offline --out .cache/tree-proof/second
 ```
 
+当前固定的 `bd87e651` 输入有已确认的来源缺口：Druid 的 `overridePairs` 引用了
+`nodes` 中不存在的 `19680`、`55194`（分别指向替换项 `40837`、`57601`）。
+因此上面的完整候选命令目前会拒绝生成，并报告首个缺失引用；不会静默省略或借 vendor 修复。
+这也是旧完整再生成链使用同一不完整官方输入时需先处理的来源问题。
+adapter 的坐标、职业/升华替换、别名、几何消费和失败保护由定向测试覆盖，不能据此声称该完整来源已可发布。
+
 获取命令将原始字节放在 `.cache/sources/<sha256>/data.json`，每次重用均验证哈希。
 `--offline` 不联网；缺缓存、内容不符或下载失败即失败，不回退到 latest 或别的版本。
 候选命令用 Rust adapter 生成 `base/passive_tree.json` 与 `base/passive_tree_meta.json`，
 记录来源 lock、adapter/数据类型与构建输入的摘要；重放结果不包含机器路径或当前时间。
+Cargo 使用 `--locked`；`--offline` 同时禁止源下载和 Cargo 联网，不会为生成候选更新 lockfile。
 这些任务不准备 vendor、LuaJIT 或 PoB2 oracle。
 
 `--out` 必须是不存在且位于正式 `data/` 之外的路径。候选只含树域，带有
@@ -42,6 +49,8 @@ mise run data:tree:candidate --offline --out .cache/tree-proof/second
 当前固定输入的上游说明是 0.5.5，其与产品活动补丁的精确适配关系尚未核实，`game_patch` 保持 null。
 生成时目录使用上游版本作为 adapter 标签，不表示已确认客户端补丁。
 这些命令不会覆盖活动数据或修改 `CURRENT`。生产切换还需补丁适配、完整域/消费者与数值验证。
+当前 native variants 仍沿用基础节点的拓扑和升华归属；替换后的独立升华归属、通用属性选择与
+vendor 推导的 armour 标记尚未迁移。历史树 adapter 继续保留，不能将此候选入口视为完整替代。
 
 ## 词条更新与回归检查
 
