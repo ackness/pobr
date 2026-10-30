@@ -128,6 +128,78 @@ class BundleTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             bundle.verify(self.out)
 
+    def test_only_genuine_common_layer_absence_is_optional(self):
+        common = self.root / "data/overlay-common"
+        (common / "special_mods.json").unlink()
+        common.rmdir()
+        receipt = bundle.create(self.root, self.out)
+        self.assertFalse(any(name.startswith("data/overlay-common/") for name in receipt["files"]))
+        common.write_text("not a directory")
+        with self.assertRaisesRegex(ValueError, "must be a directory"):
+            bundle.create(self.root, self.root / ".cache/wrong-type")
+
+    def test_common_layer_traversal_and_metadata_errors_cannot_silently_drop_rules(self):
+        common = (self.root / "data/overlay-common").resolve()
+        original_scan = bundle.os.scandir
+        original_stat = Path.lstat
+
+        def scan(path):
+            if not isinstance(path, int) and Path(path) == common:
+                raise PermissionError("common scan denied")
+            return original_scan(path)
+
+        def metadata(path, *args, **kwargs):
+            if path == common:
+                raise PermissionError("common metadata denied")
+            return original_stat(path, *args, **kwargs)
+
+        for target, replacement in [("scan", scan), ("metadata", metadata)]:
+            with self.subTest(target=target):
+                owner, name = (bundle.os, "scandir") if target == "scan" else (Path, "lstat")
+                with patch.object(owner, name, replacement):
+                    with self.assertRaises(PermissionError):
+                        bundle.create(self.root, self.out)
+                self.assertFalse(self.out.exists())
+
+    def test_verification_propagates_unreadable_unlisted_directories(self):
+        bundle.create(self.root, self.out)
+        extra = (self.out / "unlisted").resolve()
+        extra.mkdir()
+        original = bundle.os.scandir
+
+        def scan(path):
+            if not isinstance(path, int) and Path(path).resolve() == extra:
+                raise PermissionError("unlisted directory denied")
+            return original(path)
+
+        with patch.object(bundle.os, "scandir", scan):
+            with self.assertRaises(PermissionError):
+                bundle.verify(self.out)
+
+    def test_runtime_manifest_envelope_and_declared_closure_are_required(self):
+        path = self.root / "data/9.1/manifest.json"
+        original = json.loads(path.read_bytes())
+        mutations = [
+            {"domains": {"base": ["skills", "missing"]}},
+            {"languages": ["unavailable"]},
+            {"languages": None},
+            {"languages": [42]},
+            {"domains": {}},
+            {"domains": {"base": [42]}},
+            {"domains": {"base": ["skills"], "overlay": None}},
+            {"domains": ["skills", 42]},
+            {"schema_version": 3.0},
+        ]
+        for mutation in mutations:
+            with self.subTest(mutation=mutation):
+                path.write_text(json.dumps({**original, **mutation}))
+                with self.assertRaises(ValueError):
+                    bundle.create(self.root, self.out)
+                self.assertFalse(self.out.exists())
+        path.write_text(json.dumps({**original, "domains": ["skills"]}))
+        bundle.create(self.root, self.out)
+        bundle.verify(self.out)
+
 
 if __name__ == "__main__":
     unittest.main()

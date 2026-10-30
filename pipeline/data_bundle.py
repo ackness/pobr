@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import tempfile
 
 
@@ -52,13 +53,19 @@ def read_file(root, name):
     return path.read_bytes()
 
 
+def walk_error(error):
+    raise error
+
+
 def json_paths(root):
-    if root.is_symlink():
-        raise ValueError(f"Symlinks are not runtime bundle inputs: {root}")
-    if not root.exists():
+    try:
+        mode = root.lstat().st_mode
+    except FileNotFoundError:
         return []
+    if not stat.S_ISDIR(mode):
+        raise ValueError(f"Shared runtime layer must be a directory without symlinks: {root}")
     found = []
-    for directory, dirs, files in os.walk(root, followlinks=False):
+    for directory, dirs, files in os.walk(root, followlinks=False, onerror=walk_error):
         for name in dirs + files:
             path = Path(directory) / name
             if path.is_symlink():
@@ -66,6 +73,31 @@ def json_paths(root):
         found.extend((Path(directory) / name).relative_to(root).as_posix()
                      for name in files if name.endswith(".json"))
     return sorted(found)
+
+
+def validate_declarations(manifest, inventory):
+    # Match DataManifest/DomainSections deserialization and schema-3 closure in
+    # crates/pobr-gamedata/src/manifest.rs, including the supported flat shape.
+    def strings(value):
+        return isinstance(value, list) and all(isinstance(item, str) for item in value)
+
+    languages = manifest.get("languages")
+    domains = manifest.get("domains")
+    if isinstance(domains, list):
+        domains = {"base": domains}
+    if not strings(languages) or not isinstance(domains, dict) or not strings(domains.get("base")):
+        raise ValueError("Invalid runtime manifest domain/language envelope")
+    for section in ["base", "overlay", "generated"]:
+        values = domains.get(section, [])
+        if not strings(values):
+            raise ValueError(f"Invalid runtime manifest domain list: {section}")
+        for domain in values:
+            name = f"{section}/{domain}.json"
+            if name not in inventory:
+                raise ValueError(f"Declared domain lacks an inventory entry: {name}")
+    for language in languages:
+        if not any(name.startswith(f"i18n/{language}/") for name in inventory):
+            raise ValueError(f"Declared language lacks files: {language}")
 
 
 def snapshot_inputs(root, version):
@@ -77,11 +109,13 @@ def snapshot_inputs(root, version):
         raise ValueError("Unaccepted domain/drift candidates cannot become runtime bundles")
     raw = read_file(data, f"{version}/manifest.json")
     manifest = decode(raw)
-    if not isinstance(manifest, dict) or manifest.get("schema_version") != 3 or manifest.get("poe_version") != version:
+    if (not isinstance(manifest, dict) or type(manifest.get("schema_version")) is not int
+            or manifest["schema_version"] != 3 or manifest.get("poe_version") != version):
         raise ValueError("Runtime bundles require a matching schema-3 snapshot")
     inventory = manifest.get("files")
     if not isinstance(inventory, dict) or not inventory:
         raise ValueError("Snapshot runtime inventory is missing or empty")
+    validate_declarations(manifest, inventory)
     files = {f"data/{version}/manifest.json": raw, "data/CURRENT": (version + "\n").encode()}
     runtime_hashes = {}
     for name, expected in sorted(inventory.items()):
@@ -132,7 +166,7 @@ def verify(output, expected_id=None):
         raise ValueError("Runtime bundle receipt or identity differs from its content")
     expected = set(files) | {"bundle.json"}
     actual = set()
-    for directory, dirs, names in os.walk(output, followlinks=False):
+    for directory, dirs, names in os.walk(output, followlinks=False, onerror=walk_error):
         for name in dirs + names:
             path = Path(directory) / name
             if path.is_symlink():
