@@ -206,8 +206,9 @@ VITE_POBR_BACKEND=mock mise run web dev
 
 ## Development and validation
 
-Follow [scoped validation](../docs/maintainer-guide.md#验证分层). Run relevant Vitest
-files and typecheck; use the matching Playwright spec for interactions. Rebuild WASM
+Follow [scoped validation](../docs/maintainer-guide.md#验证分层). Choose relevant Vitest,
+typecheck or Playwright by risk and cost; prose needs diff/link review. Report
+deferred checks to the coordinator for integration CI. Rebuild WASM
 when missing or when its Rust sources, dependencies, features or toolchain change.
 Sync missing/changed data. E2E requires current production `dist`; `build` includes
 typecheck. `build-wasm` reuses verified unchanged output; `--force` rebuilds without

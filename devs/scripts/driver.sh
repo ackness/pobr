@@ -10,7 +10,7 @@
 #   test <args> Forward targeted cargo test arguments (package, suite, filter).
 #   lint <args> Format check plus Clippy for explicitly selected Cargo targets.
 #   full       fmt + clippy + all workspace tests + i18n lint
-#   gate       batch gate after merging several changes; reports every failing step
+#   gate       optional local batch validation; reports every failing step
 #   regen      precompile-mods --report, then its tests
 #   warm       copy-on-write clone of another worktree's target/debug
 #   drill      version-bump-drill：数据可再生性 + 编译 + parity 可运行
@@ -292,7 +292,7 @@ PoBR development commands (mise tasks; without mise run this script with the sam
   mise run build [-p <crate>]               Build application CLI by default
   mise run smoke                            Representative environment checks
   mise run full                             Explicit full local Rust gate
-  mise run gate [--only step,...]           Batch gate after merging: every step, then a summary
+  mise run gate [--only step,...]           Optional warm-checkout batch validation; remote CI preferred
   mise run regen                            Regenerate parser artifacts and test precompile-mods
   mise run warm [source worktree]           Copy-on-write clone of another worktree's target/debug
   mise run ci <pushed-branch-or-tag> [--e2e] Request full cloud CI via gh (E2E only with --e2e)

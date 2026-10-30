@@ -193,7 +193,7 @@ description = "Explicit full local Rust gate: fmt, Clippy, workspace tests, doct
 run = "bash devs/scripts/driver.sh full"
 
 [tasks.gate]
-description = "Batch gate after merging several changes: fmt, regen drift, Clippy, crate suites, parity, i18n, Web, accuracy; every step runs, then a summary (`--only step,...` reruns failures)"
+description = "Optional local batch validation on a warm checkout; remote full CI is preferred. Includes fmt, regen drift, Clippy, tests, parity, Web and accuracy (`--only step,...` reruns failures)"
 run = "bash devs/scripts/driver.sh gate"
 
 [tasks.regen]
