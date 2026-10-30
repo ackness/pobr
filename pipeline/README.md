@@ -18,9 +18,12 @@
 
 ## 固定来源与独立树候选
 
-[sources.lock.json](sources.lock.json) 目前只登记首个迁移域的官方树输入：仓库、完整提交、
+[sources.lock.json](sources.lock.json) 登记首个迁移域的官方树输入：仓库、完整提交、
 原始 SHA-256、上游版本、服务器、已知/未知游戏补丁及版权/使用范围。
-它没有声称其他生产域已完成迁移，也没有固定现有表导出器的远端 schema；这些仍是后续工作。
+另已登记独立 `0.5.5.5` 客户端候选的八张原生表和默认 PSG：完整原始文件摘要、大小、
+官方 bundle URL、解压后切片位置及固定 decoder/schema 身份。该候选不等于活动 `0.5.5.4.2`；
+新源的实际获取、归档重放、领域适配与采用分别验收。当前树获取命令只消费树类来源。
+这些登记没有声称所有生产域已完成迁移，也没有固定旧表导出器的远端 schema；这些仍是后续工作。
 PoB2 的测试参考版本独立登记在 [devs/reference-sources.json](../devs/reference-sources.json)，
 `mise run vendor` 不再读取生产 parser 元数据选择参考版本。
 
