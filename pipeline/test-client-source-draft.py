@@ -100,6 +100,15 @@ class DraftTests(unittest.TestCase):
         self.assertEqual(second["network"], {"requests": 0, "body_bytes": 0, "reserved_bytes": 0,
                                           "budget_bytes": 0, "per_request_cap_bytes": client.MAX_RANGE})
 
+    def test_official_locale_directory_internal_spaces_are_preserved(self):
+        record = self.selection["resources"]["Data/Balance/A.datc64"]
+        name = "Data/Balance/Traditional Chinese/ClientStrings.datc64"
+        self.selection["resources"] = {name: record}
+        self.save()
+        receipt = self.collect()
+        self.assertEqual([r["path"] for r in receipt["resources"]], [name])
+        self.assertEqual((self.out / name).read_bytes(), b"ab")
+
     def test_expected_raw_hash_fields_are_rejected_and_strict_loader_is_unchanged(self):
         for key in ["sha256", "expected_sha256", "bytes", "observed_sha256"]:
             with self.subTest(key=key):
@@ -144,7 +153,7 @@ class DraftTests(unittest.TestCase):
     def test_safe_game_paths_case_collisions_and_file_directory_conflicts(self):
         record = self.selection["resources"]["Metadata/Z.psg"]
         for name in ["../x", "/Data/x", "Data//x", "Data/./x", "Data/a\\b", "C:x",
-                     "Data", "Other/x", "Data/A.", "Data/NUL.dat", "Data/a b", "Data/é"]:
+                     "Data", "Other/x", "Data/A.", "Data/NUL.dat", "Data/a ", "Data/é"]:
             with self.subTest(name=name):
                 self.selection["resources"] = {name: record}
                 self.save()

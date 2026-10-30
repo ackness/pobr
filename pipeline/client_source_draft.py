@@ -88,8 +88,8 @@ def load_selection(path):
         # Portable game paths also avoid device names, trailing-dot aliases and
         # Unicode filesystem normalization collisions.
         for part in path.parts:
-            if (not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}", part)
-                    or part.endswith(".")
+            if (not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_. -]{0,127}", part)
+                    or part.endswith((".", " "))
                     or part.split(".")[0].upper() in {"CON", "PRN", "AUX", "NUL",
                         *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}):
                 raise ValueError("Unsafe portable game path")

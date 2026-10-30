@@ -70,7 +70,9 @@ does not claim that check. Preserve the original evidence separately.
 Resources retain JSON insertion order. Each needs a safe portable game-relative
 `Data/` or `Metadata/` path, exact uncompressed offset/length and one or more
 unique evidence IDs. Symlinks, path traversal, case collisions and file/directory
-collisions fail. Limits are 2 MiB selection JSON, 128 resources/evidence entries,
+collisions fail. Internal spaces in locale directory names such as
+`Traditional Chinese` are preserved; trailing spaces/dots remain invalid.
+Limits are 2 MiB selection JSON, 128 resources/evidence entries,
 16 MiB per resource and 64 MiB selected raw total; bundle/cache/decoder limits
 remain those of strict acquisition. Decoder repository/revision, pyooz version
 and uv.lock hash are declared pins, checked using the explicit environment.
