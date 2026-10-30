@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::core_skills::{CoreSkills, CoreSummary, StableRef};
+use super::gems::{Constraints, FactRef, GemSummary, Gems};
 
 /// References are resolved only against the input manifest pinned in the candidate receipt.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -44,6 +45,12 @@ pub(super) struct Candidate {
     pub core_skills: Option<CoreSkills<StableRef>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub core_summary: Option<CoreSummary>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gems: Option<Gems<FactRef>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub constraints: Option<Constraints<FactRef>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gem_summary: Option<GemSummary>,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]

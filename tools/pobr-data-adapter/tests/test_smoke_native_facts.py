@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import patch
 
 import smoke_native_facts as smoke
+import smoke_native_gems as gem_smoke
 
 
 def raw(table):
@@ -88,6 +89,79 @@ class CoreEvidenceTests(unittest.TestCase):
     def test_changed_source_value_still_fails(self):
         candidate = copy.deepcopy(self.candidate)
         candidate["core_skills"]["effect_levels"][0]["cost_amounts_raw"] = [11]
+        with self.assertRaises(AssertionError):
+            self.check(candidate)
+
+
+class GemEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.documents = {
+            f"tables/{table}.json": {"rows": []}
+            for table in (*smoke.TABLES, *smoke.CORE_TABLES, *gem_smoke.GEM_TABLES)
+        }
+        for table, values in {
+            "ItemClasses": [{"Id": "Shared"}], "Tags": [{"Id": "Shared"}],
+            "WieldableClasses": [{"ItemClass": 0, "Tag": 0, "TwoWeaponSlots": False}],
+            "ActiveSkillWeaponRequirement": [{"Id": "Shared", "WieldableClasses": [0, None, 0], "Stat": None, "String": None}],
+        }.items():
+            self.documents[f"tables/{table}.json"]["rows"] = [
+                {"_row": row, "values": value} for row, value in enumerate(values)
+            ]
+        gems = {"catalogue_policy": "source-inventory; playability unresolved",
+                **dict.fromkeys(("items", "effects", "tags", "supports", "families",
+                                 "support_associations", "experience_types", "experience_levels"), [])}
+        constraints = {
+            "effects": [], "active_skills": [],
+            "weapon_requirements": [{"requirement": {"row": 0, "id": "Shared"},
+                                     "raw": raw("ActiveSkillWeaponRequirement"),
+                                     "wieldable_classes": [{"row": 0}, None, {"row": 0}],
+                                     "stat": None, "client_string": None}],
+            "wieldable_classes": [{"row": 0, "item_class": {"row": 0, "id": "Shared"},
+                                   "tag": {"row": 0, "id": "Shared"}, "two_weapon_slots_raw": False,
+                                   "raw": raw("WieldableClasses")}],
+        }
+        self.documents["gems.json"] = gems
+        self.documents["constraints.json"] = constraints
+        converted = copy.deepcopy(constraints)
+        converted["weapon_requirements"][0].update(
+            requirement=reference("ActiveSkillWeaponRequirement", "Shared"),
+            wieldable_classes=[{"raw": raw("WieldableClasses")}, None, {"raw": raw("WieldableClasses")}])
+        converted["wieldable_classes"][0].update(
+            item_class=reference("ItemClasses", "Shared"), tag=reference("Tags", "Shared"))
+        self.counts = dict.fromkeys(gem_smoke.GEM_COUNTS, 0)
+        self.counts.update(weapon_requirement_rows=1, wieldable_class_rows=1)
+        self.candidate = {"gems": copy.deepcopy(gems), "constraints": converted, "gem_summary": self.counts}
+        self.receipt = {"gem_summary": self.counts}
+
+    def check(self, candidate=None):
+        with patch.object(gem_smoke, "GEM_COUNTS", self.counts):
+            gem_smoke.compare_gems(candidate or self.candidate, self.receipt, self.documents, smoke.equal_facts)
+
+    def test_physical_only_references_and_nullable_order_pass(self):
+        self.check()
+
+    def test_cross_table_aliases_never_substitute_for_constraint_evidence(self):
+        for path, table in [
+            (("wieldable_classes", 0, "item_class", "raw", "payload"), "Tags"),
+            (("wieldable_classes", 0, "tag", "raw", "payload"), "ItemClasses"),
+            (("weapon_requirements", 0, "requirement", "raw", "payload"), "Tags"),
+            (("weapon_requirements", 0, "wieldable_classes", 0, "raw", "payload"), "ItemClasses"),
+        ]:
+            candidate = copy.deepcopy(self.candidate)
+            target = candidate["constraints"]
+            for key in path[:-1]:
+                target = target[key]
+            target[path[-1]] = f"tables/{table}.json"
+            with self.subTest(path=path), self.assertRaises(AssertionError):
+                self.check(candidate)
+
+    def test_losing_nullable_duplicate_slots_or_claiming_catalogue_policy_fails(self):
+        candidate = copy.deepcopy(self.candidate)
+        candidate["constraints"]["weapon_requirements"][0]["wieldable_classes"] = [{"raw": raw("WieldableClasses")}]
+        with self.assertRaises(AssertionError):
+            self.check(candidate)
+        candidate = copy.deepcopy(self.candidate)
+        candidate["gems"]["catalogue_policy"] = "playable"
         with self.assertRaises(AssertionError):
             self.check(candidate)
 

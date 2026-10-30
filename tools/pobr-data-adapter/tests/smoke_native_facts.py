@@ -8,6 +8,8 @@ from pathlib import Path
 import stat
 import struct
 
+from smoke_native_gems import GEM_COUNTS, GEM_MANIFEST, GEM_PRODUCER, GEM_TABLES, compare_gems
+
 
 EXPECTED_MANIFEST = "30b42aa2b79e1810bf44f856b924d929a3e36fffe5a9afc264b7712c5dd2f968"
 EXPECTED_PRODUCER = "b6def2152dfc48d8ec49c7a237b2e973c3830e97"
@@ -62,10 +64,13 @@ def read_regular(path):
 
 
 def profile_inputs(profile):
-    core = profile == "core-skills-a0"
+    core = profile != "base-v1"
     tables = (*TABLES, *CORE_TABLES) if core else TABLES
     payloads = {*PAYLOADS, *(f"tables/{t}.json" for t in CORE_TABLES), "skill_core.json", "source-lock.json"} if core else PAYLOADS
-    return core, tables, payloads, CORE_MANIFEST if core else EXPECTED_MANIFEST
+    if profile == "gems-constraints-a1":
+        tables = (*tables, *GEM_TABLES)
+        payloads = {*payloads, *(f"tables/{t}.json" for t in GEM_TABLES), "gems.json", "constraints.json"}
+    return core, tables, payloads, GEM_MANIFEST if profile == "gems-constraints-a1" else CORE_MANIFEST if core else EXPECTED_MANIFEST
 
 
 def verify_source(source, profile="base-v1"):
@@ -113,11 +118,11 @@ def verify_source(source, profile="base-v1"):
         assert all(isinstance(value, str) and value for value in ids) and len(ids) == len(set(ids))
     # External manifest identity is authoritative; these independent fixed tool
     # fixtures additionally make the producer and full decoder assertions explicit.
-    fixture = "core-skills-a0-manifest.json" if core else "final-manifest.json"
+    fixture = "gems-constraints-a1-manifest.json" if profile == "gems-constraints-a1" else "core-skills-a0-manifest.json" if core else "final-manifest.json"
     fixture_bytes = read_regular(Path(__file__).parent / "fixtures/native-facts" / fixture)
     assert sha(fixture_bytes) == manifest_sha
     fixed = decode(fixture_bytes)
-    assert manifest["producer"] == fixed["producer"] and len(manifest["producer"]) == (10 if core else 9)
+    assert manifest["producer"] == fixed["producer"] and len(manifest["producer"]) == (11 if profile == "gems-constraints-a1" else 10 if core else 9)
     assert manifest["schema"] == fixed["schema"]
     pin_bytes = read_regular(Path(__file__).parent / "fixtures/native-facts/pypoe-sources.json")
     assert sha(pin_bytes) == manifest["decoder"]["trusted_source_pin_sha256"] == "64703bc3c5eca107108244e02baf0dc2cd46669e62a6b5ba273f868aa9db0095"
@@ -125,7 +130,7 @@ def verify_source(source, profile="base-v1"):
     assert len(pin["sources"]) == 117 and set(pin["sources"]) == set(manifest["decoder"]["sources"])
     assert manifest["decoder"]["pypoe_revision"] == pin["revision"]
     assert all(digest in pin["sources"][path] for path, digest in manifest["decoder"]["sources"].items())
-    assert manifest["format"] == ("repoe-native-facts/v2" if core else "repoe-native-facts/v1")
+    assert manifest["format"] == ("repoe-native-facts/v3" if profile == "gems-constraints-a1" else "repoe-native-facts/v2" if core else "repoe-native-facts/v1")
     assert manifest["status"] == "partial-candidate" and manifest["production_ready"] is False
     return manifest_bytes, manifest, retained, documents
 
@@ -136,7 +141,7 @@ def compare(source, first, second, profile="base-v1", source_lock=None):
     output_bytes = {p.name: read_regular(p) for p in first.iterdir()}
     receipt = decode(output_bytes["candidate-receipt.json"])
     assert receipt["input"]["manifest_sha256"] == manifest_sha
-    assert receipt["input"]["producer_revision"] == (CORE_PRODUCER if core else EXPECTED_PRODUCER)
+    assert receipt["input"]["producer_revision"] == (GEM_PRODUCER if profile == "gems-constraints-a1" else CORE_PRODUCER if core else EXPECTED_PRODUCER)
     assert receipt["input"]["source_identity"] == manifest["source_identity"]
     assert receipt["production_ready"] is False
     assert receipt["status"] == "partial-candidate"
@@ -301,7 +306,7 @@ def compare(source, first, second, profile="base-v1", source_lock=None):
     assert [s["value_permille"] for s in snipe["alternate"]["stats"]] == [1000, 1000]
     assert [s["stat_set_id"] for s in candidate["effects"]["SnipePlayer"]["ordered_stat_sets"]] == ["SnipePlayer", "SnipeExplosionPlayer", "SnipeFrozenExplosionPlayer"]
     diagnostics = documents["diagnostics.json"]["diagnostics"]
-    assert len(diagnostics) == (63 if core else 61)
+    assert len(diagnostics) == (93 if profile == "gems-constraints-a1" else 63 if core else 61)
     snipe_diagnostics = [d for d in diagnostics if d["code"] == "quality_scope_out_of_range_under_local_index_hypothesis" and d.get("quality_row") == 69]
     assert snipe_diagnostics, "lost Snipe discrepancy"
 
@@ -314,9 +319,10 @@ def compare(source, first, second, profile="base-v1", source_lock=None):
     }
     assert measured == EXPECTED_COUNTS == candidate["summary"] == receipt["summary"]
     if core:
-        assert candidate["format"] == "pobr-native-domain-candidate/v2"
-        assert receipt["format"] == "pobr-native-candidate-receipt/v2"
-        assert receipt["input"]["profile"] == manifest["profile"] == "core-skills-a0"
+        version = "v3" if profile == "gems-constraints-a1" else "v2"
+        assert candidate["format"] == f"pobr-native-domain-candidate/{version}"
+        assert receipt["format"] == f"pobr-native-candidate-receipt/{version}"
+        assert receipt["input"]["profile"] == manifest["profile"] == profile
         compare_core(candidate, receipt, documents)
         assert source_lock is not None, "A0 smoke requires --source-lock for exact external-byte comparison"
         lock_bytes = read_regular(source_lock)
@@ -327,19 +333,24 @@ def compare(source, first, second, profile="base-v1", source_lock=None):
         assert sha(lock_bytes) == identity["source_lock_sha256"]
         selected_bytes = (json.dumps(selected, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n").encode()
         assert sha(selected_bytes) == identity["selected_source_sha256"]
-        assert selected["profile"] == "core-skills-a0"
+        assert selected["profile"] == profile
         assert selected["acquisition"] == identity["acquisition"]
         assert identity["acquisition"]["status"] == "unreviewed-acquisition-draft"
         assert identity["acquisition"]["evidence"]
         assert set(selected["resources"]) == set(identity["raw_resources"]) == {*(f"Data/Balance/{t}.datc64" for t in table_names), "Metadata/PassiveSkillGraph.psg"}
         for name, fingerprint in identity["raw_resources"].items():
             assert {k: selected["resources"][name][k] for k in ["bytes", "sha256"]} == fingerprint
-        assert {**measured, **CORE_COUNTS} == manifest["summary"]
+        assert {**measured, **CORE_COUNTS, **(GEM_COUNTS if profile == "gems-constraints-a1" else {})} == manifest["summary"]
+        if profile == "gems-constraints-a1":
+            compare_gems(candidate, receipt, documents, equal_facts)
+        else:
+            assert all(key not in candidate for key in ("gems", "constraints", "gem_summary"))
     else:
         assert candidate["format"] == "pobr-native-domain-candidate/v1"
         assert receipt["format"] == "pobr-native-candidate-receipt/v1"
         assert "core_skills" not in candidate and "core_summary" not in candidate
-    print(json.dumps({"measured": {**measured, **(CORE_COUNTS if core else {})}, "stat_sets": len(candidate["stat_sets"]),
+        assert all(key not in candidate for key in ("gems", "constraints", "gem_summary"))
+    print(json.dumps({"measured": {**measured, **(CORE_COUNTS if core else {}), **(GEM_COUNTS if profile == "gems-constraints-a1" else {})}, "stat_sets": len(candidate["stat_sets"]),
         "source_diagnostics": len(diagnostics), "output_bytes": total_bytes,
         "receipt_sha256": sha(output_bytes["candidate-receipt.json"]),
         "sealed_payloads": len(source_bytes), "resolved_raw_references": reference_count,
@@ -430,7 +441,7 @@ def compare_core(candidate, receipt, documents):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--profile", choices=["base-v1", "core-skills-a0"], default="base-v1")
+    parser.add_argument("--profile", choices=["base-v1", "core-skills-a0", "gems-constraints-a1"], default="base-v1")
     parser.add_argument("--source-lock", type=Path)
     parser.add_argument("--native-facts", type=Path, required=True)
     parser.add_argument("--candidate-a", type=Path, required=True)

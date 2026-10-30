@@ -16,7 +16,7 @@ fn id(row: usize, id: &str) -> Value {
     json!({"row":row,"id":id})
 }
 
-fn fixture() -> Fixture {
+pub(super) fn fixture() -> Fixture {
     let mut f = Fixture::new();
     let pinned: Value = trust::strict_json(A0_MANIFEST).unwrap();
     for key in ["format", "profile", "producer", "scope", "source_identity"] {

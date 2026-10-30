@@ -11,7 +11,7 @@ use super::model::{
     SkillsInput, StatSet, StatSetLink, Summary,
 };
 use super::trust::{self, VerifiedInput, require};
-use super::{Profile, core_skills};
+use super::{Profile, core_skills, gems};
 
 pub(super) fn normalize(input: &VerifiedInput) -> Result<Candidate, String> {
     let tables = Tables::new(input)?;
@@ -42,6 +42,9 @@ pub(super) fn normalize(input: &VerifiedInput) -> Result<Candidate, String> {
         source_diagnostics: "source-diagnostics.json".into(),
         core_skills: None,
         core_summary: None,
+        gems: None,
+        constraints: None,
+        gem_summary: None,
     };
     require(
         passives.definitions.len() == tables.len("PassiveSkills"),
@@ -249,7 +252,7 @@ pub(super) fn normalize(input: &VerifiedInput) -> Result<Candidate, String> {
     candidate.summary.effects = candidate.effects.len();
     candidate.summary.qualities = candidate.qualities.len();
     let mut source_summary = input.manifest["summary"].clone();
-    if input.profile == Profile::CoreSkillsA0 {
+    if input.profile != Profile::BaseV1 {
         let (core, summary) = core_skills::normalize(input, &tables)?;
         let counts = serde_json::to_value(&summary).map_err(|e| e.to_string())?;
         for (key, value) in counts.as_object().ok_or("invalid core summary")? {
@@ -265,6 +268,24 @@ pub(super) fn normalize(input: &VerifiedInput) -> Result<Candidate, String> {
         candidate.format = "pobr-native-domain-candidate/v2".into();
         candidate.core_skills = Some(core);
         candidate.core_summary = Some(summary);
+    }
+    if input.profile == Profile::GemsConstraintsA1 {
+        let (projection, summary) = gems::normalize(input, &tables)?;
+        let counts = serde_json::to_value(&summary).map_err(|e| e.to_string())?;
+        for (key, value) in counts.as_object().ok_or("invalid gem summary")? {
+            require(
+                source_summary[key] == *value,
+                "gem counts differ from source summary",
+            )?;
+            source_summary
+                .as_object_mut()
+                .ok_or("invalid source summary")?
+                .remove(key);
+        }
+        candidate.format = "pobr-native-domain-candidate/v3".into();
+        candidate.gems = Some(projection.gems);
+        candidate.constraints = Some(projection.constraints);
+        candidate.gem_summary = Some(summary);
     }
     let expected: Summary = decode(&source_summary)?;
     require(
@@ -491,12 +512,20 @@ impl<'src> Tables<'src> {
                 "physical table identity mismatch",
             )?;
             let fields: Vec<String> = decode(&doc["physical_fields"])?;
-            if input.profile == Profile::CoreSkillsA0 {
+            if input.profile != Profile::BaseV1 {
                 require(
                     core_skills::required_fields(table)
                         .iter()
                         .all(|required| fields.iter().any(|field| field == required)),
                     "missing core-skill physical field",
+                )?;
+            }
+            if input.profile == Profile::GemsConstraintsA1 {
+                require(
+                    gems::required_fields(table)
+                        .iter()
+                        .all(|required| fields.iter().any(|field| field == required)),
+                    "missing gem physical field",
                 )?;
             }
             let unique: BTreeSet<_> = fields.iter().collect();

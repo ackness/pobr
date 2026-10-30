@@ -5,7 +5,7 @@ By default this opt-in adapter consumes `repoe-native-facts/v1` from RePoE revis
 0.5.5.5 candidate**, never a runtime data manifest or production-ready package.
 It does not update `data/`, `CURRENT`, defaults, calculation rules or PoB compatibility.
 The producer contract is `RePoE/docs/native_facts.md` in that revision. The
-explicit core-skills A0 opt-in is documented below.
+explicit core-skills A0 and gem/constraint A1 opt-ins are documented below.
 
 ```sh
 mise exec -- cargo run -p pobr-data-adapter -- \
@@ -271,3 +271,66 @@ increment contains 202 labels, 1,147 active skills, 290 types, 18 cost types,
 the unchanged base counts and 63 verbatim diagnostic records. These checks
 certify this bounded conversion, not client decoding, acquisition approval,
 complete foreign-key closure, numerical accuracy or production adoption.
+
+
+## Explicit gems and constraints A1 consumption
+
+`--profile gems-constraints-a1` selects `repoe-native-facts/v3` from RePoE
+`c450fb8e3ad4e5792386c7c5bb81c90d85407e62`. Its bounded producer contract is
+`RePoE/docs/native_gems.md`. The producer increment passed independent review; the consumer increment
+awaits its own review. The fixed input remains an unreviewed acquisition draft,
+partial and non-runtime.
+A different producer needs a deliberate pin update. Both previous profiles
+keep their own exact formats, producer pins and resource inventories.
+
+```sh
+mise exec -- cargo run -p pobr-data-adapter -- \
+  --native-facts /path/to/actual-a --profile gems-constraints-a1 \
+  --expected-manifest-sha256 b514c9fe28f2b49c9205b8686828fb5192c6d0dc101af00cfb138b3841ee5103 \
+  --source-lock /path/to/proposed-sources.lock.json \
+  --out .cache/new-gem-candidate
+```
+
+The output parent must already exist. A1 verifies exactly 39 DATs and the
+Default PSG in the source inventory, and exactly 47 payloads before parsing:
+39 complete physical tables, the four base documents, `skill_core.json`,
+`source-lock.json`, `gems.json` and `constraints.json`. All eleven producer
+file hashes were checked against the fixed Git blobs; the additional pinned
+module is `RePoE/native_gems.py`. The external manifest digest, full decoder
+source pin, schema, embedded/external byte-identical lock and explicit
+acquisition declaration are checked with the same boundary as A0. The fixture
+`gems-constraints-a1-manifest.json` contains only metadata, no physical tables.
+
+The candidate and completion receipt use `/v3`. They retain the base and core
+collections and add typed `gems`, `constraints` and twelve measured
+`gem_summary` counts. Every declared projection field is reconstructed from
+physical rows and compared before conversion. References carry the exact
+canonical table and row. A stable string ID is included when the source table
+has one; row-only tables such as `WieldableClasses` gain no invented ID.
+`SkillGems` identity combines its physical row with the related `BaseItemTypes`
+metadata ID. Multiple gem rows referring to one item remain separate rows.
+
+Gem bindings retain source slots, shared effects, nulls, duplicates, primary
+and additional effects, and the separate existing effect-to-stat-set links.
+Variants, gem tags, multiple/empty support families, support metadata rows,
+positive support associations and every experience row remain source facts.
+Requirements and experience values retain exact JSON numeric channels.
+Constraints retain ordered skill-type expressions, minion flags, weapon
+restrictions, action/shape references and visibility flags. No support
+expression, family conflict, eligibility, requirement formula, playable
+filter, units or quality-scope policy is evaluated. Empty families and absent
+positive associations do not mean that a gem supports nothing.
+
+All source diagnostics remain verbatim, including missing support metadata,
+flag disagreements and unresolved Snipe scope. Unknown physical fields and
+unprojected auxiliary tables remain accessible in the pinned canonical input.
+This candidate does not add a runtime manifest or approve source acquisition.
+The maintained smoke checker accepts the same explicit profile and checks
+all new scalar fields, relationships and their exact table/row evidence:
+
+```sh
+mise exec -- python3 -B tools/pobr-data-adapter/tests/smoke_native_facts.py \
+  --profile gems-constraints-a1 --native-facts /path/to/actual-a \
+  --source-lock /path/to/proposed-sources.lock.json \
+  --candidate-a .cache/gem-a --candidate-b .cache/gem-b
+```
