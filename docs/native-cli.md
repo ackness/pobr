@@ -24,6 +24,18 @@ actor, gem, effect, stat-set branch, level, quality and actor-policy pin must pa
 native admission. Missing or different snapshots fail, including same-patch
 replacements; no fallback dataset or branch is selected.
 
+The opt-in `sorceress-spark-level1-q0-ordinary-damage-passives-v1` candidate uses
+`selected-player-generic-ot-ordinary-damage-passives-v1`/version 1 and its exact
+artifact hash. Edit only the saved `build.tree.allocated_nodes` graph-ID array
+within the admitted scope, then run the same command to reopen/re-admit it.
+Eligible native ordinary damage INC packets compose through the shared Rust hit
+reader. Duplicate IDs, unknown or unsupported packets, and mixed supported/unsupported
+selections fail whole; no text fallback or implicit starting grants occur. The
+old profile still rejects allocations. Result evidence distinguishes equal stats
+from different nodes, and retains the original request order/hash while sorting
+numerical addition/evidence. Selected nodes are assumed active for comparison;
+`allocation-legality` remains unavailable for points, reachability and progression.
+
 The request file is limited to 16 MiB. File reads stop after the limit plus one
 byte so oversized input can be rejected before decoding. Duplicate, unknown,
 missing or conflicting JSON fields fail through the strict document codec.
@@ -46,3 +58,17 @@ outputs are not zero-valued legacy stats. Source acquisition status and model
 assumptions remain visible in the result. This command does not certify source
 review or production readiness, and ordinary native full-calculation guards
 remain in force.
+
+An explicit actual-profile regression exercises two fresh CLI processes per edit
+and compares each complete parsed result with the shared API, then removes and
+reopens the selection. It requires actual generated pins in the supplied baseline
+document and never guesses them:
+
+```sh
+POBR_NATIVE_PASSIVE_PACK=<new-immutable-pack> \
+POBR_NATIVE_PASSIVE_REQUEST=<new-bound-baseline-document> \
+  mise exec -- cargo test --locked -p pobr-cli --test native_cmd \
+  supplied_actual_passive_saved_edits_run_in_fresh_cli_processes -- --ignored
+```
+
+This command is a coordinator check, not evidence of an executed pass.
