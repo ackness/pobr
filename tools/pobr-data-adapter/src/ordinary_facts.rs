@@ -3,6 +3,7 @@
 mod base_items;
 mod convert;
 mod gem_effects;
+mod monster_resistances;
 mod quality;
 mod skills;
 mod stat_set_codec;
@@ -43,6 +44,7 @@ enum Domain {
     GemQuality,
     StatSetCodec,
     GemEffects,
+    MonsterResistances,
 }
 
 impl Domain {
@@ -54,6 +56,7 @@ impl Domain {
             Self::GemQuality => &quality::TABLES,
             Self::StatSetCodec => &stat_set_codec::TABLES,
             Self::GemEffects => &gem_effects::TABLES,
+            Self::MonsterResistances => &monster_resistances::TABLES,
         }
     }
 
@@ -65,6 +68,7 @@ impl Domain {
             Self::GemQuality => "ordinary-gem-quality",
             Self::StatSetCodec => "ordinary-stat-set-codec",
             Self::GemEffects => "ordinary-gem-effects",
+            Self::MonsterResistances => "ordinary-monster-resistances",
         }
     }
 
@@ -76,6 +80,7 @@ impl Domain {
             Self::GemQuality => "gem-quality",
             Self::StatSetCodec => "stat-set-codec",
             Self::GemEffects => "gem-effects",
+            Self::MonsterResistances => "monster-resistances",
         }
     }
 }
@@ -113,6 +118,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("gem-quality") => Domain::GemQuality,
         Some("stat-set-codec") => Domain::StatSetCodec,
         Some("gem-effects") => Domain::GemEffects,
+        Some("monster-resistances") => Domain::MonsterResistances,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
     if domain != Domain::GemQuality
@@ -313,6 +319,21 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 ],
             )
         }
+        Domain::MonsterResistances => {
+            let converted = monster_resistances::convert(&input)?;
+            (
+                converted.base,
+                converted.receipt,
+                "pobr_data::catalog::{MonsterResistancesDef,MonsterResistanceDef}",
+                vec![
+                    "Only MonsterVarieties, MonsterTypes and MonsterResistances were read. All target normal-rarity base resistances derive from F through the original ordinary join.",
+                    "Every ordered resistance occurrence contributes, including duplicates, negative values and zeros. An explicit empty reference list means known base zeros; missing or invalid facts fail.",
+                    "Other rarities, future level arrays, flags, full minion/spectre catalogs, minionList/loadout and totem catalogs remain separate work; they are not declared effectless or certified by this table.",
+                    "Acquisition status/evidence is copied unchanged. Fingerprints and conversion do not upgrade draft acquisition, prove full runtime completeness or adopt data.",
+                    "No runtime manifest, compatibility policy, old numeric/vendor input, download, CURRENT update or consumer model change.",
+                ],
+            )
+        }
     };
     let marker = reader::json_bytes(&json!({
         "schema": "pobr-domain-candidate/v1",
@@ -462,6 +483,11 @@ fn implementation_sha256() -> String {
             include_bytes!("ordinary_facts/gem_effects/policy.rs").as_slice(),
         ),
         (
+            "ordinary_facts/monster_resistances.rs",
+            include_bytes!("ordinary_facts/monster_resistances.rs").as_slice(),
+        ),
+        ("monsters.rs", include_bytes!("monsters.rs").as_slice()),
+        (
             "ordinary_facts/stat_set_codec/policy.rs",
             include_bytes!("ordinary_facts/stat_set_codec/policy.rs").as_slice(),
         ),
@@ -531,6 +557,11 @@ fn implementation_sha256() -> String {
         (
             "catalog/skills.rs",
             include_bytes!("../../../crates/pobr-data/src/catalog/skills.rs").as_slice(),
+        ),
+        (
+            "catalog/monster_resistances.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/monster_resistances.rs")
+                .as_slice(),
         ),
         ("Cargo.toml", include_bytes!("../Cargo.toml").as_slice()),
         (
