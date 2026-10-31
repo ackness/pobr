@@ -1,12 +1,12 @@
 //! Game-data initialization and session-level caching.
 //!
 //! The wasm environment has no filesystem: data files are fetched by JS,
-//! injected one at a time via [`stage_data_file`], then built into
-//! [`BuildData`] in one shot by [`init_staged_data`] (the in-memory backend
-//! [`GameData::from_memory`]). The host (tests / CLI) instead goes through
-//! [`init_data_from_dir`], pointing directly at a `data/<version>/`
-//! directory. Both paths produce the same thing: a thread_local-cached
-//! `Rc<BuildData>`, reused with zero I/O by `build_api`'s calculation entry points.
+//! injected one at a time via [`stage_data_file`], then loaded by
+//! [`init_staged_data`] for ordinary builds or [`init_native_staged_data`]
+//! for the bounded native API. Host callers supply an explicit directory to
+//! [`init_data_from_dir`] or [`init_native_data_from_dir`]. Only one mode is
+//! active at a time. Successful initialization replaces the previous mode and
+//! clears derived caches; failure preserves the active data and caches.
 //!
 //! The wasm target is single-threaded, so thread_local is effectively
 //! global; host tests just need to init once before calling, on the same thread.
@@ -16,7 +16,7 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use pobr_build::BuildData;
-use pobr_gamedata::GameData;
+use pobr_gamedata::{GameData, NativeData};
 
 thread_local! {
     /// The staging area for data files injected in batches (`relative path -> bytes`).
@@ -25,6 +25,8 @@ thread_local! {
     static BUILD_DATA: RefCell<Option<Rc<BuildData>>> = const { RefCell::new(None) };
     /// The GameData backing the built BuildData (used for on-demand queries like i18n name sidecars).
     static GAME_DATA: RefCell<Option<Rc<GameData>>> = const { RefCell::new(None) };
+    /// Immutable native catalogs; mutually exclusive with ordinary BuildData/GameData.
+    static NATIVE_DATA: RefCell<Option<Rc<NativeData>>> = const { RefCell::new(None) };
     /// The Chinese mod-line translator (lazily built; `None` = not attempted
     /// yet, `Some(None)` = the data pack has no zh-CN templates).
     static ZH_TRANSLATOR: RefCell<Option<Option<Rc<crate::zh::LineTranslator>>>> =
@@ -180,6 +182,7 @@ fn init_staged(prechecked: bool) -> Result<(), String> {
     let build_data = BuildData::load(&data).map_err(|e| format!("load BuildData: {e}"))?;
     BUILD_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(build_data)));
     GAME_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(data)));
+    NATIVE_DATA.with_borrow_mut(|slot| *slot = None);
     clear_data_caches();
     Ok(())
 }
@@ -235,13 +238,62 @@ pub fn init_data_from_dir(version_dir: &str) -> Result<(), String> {
     let build_data = BuildData::load(&data).map_err(|e| format!("load BuildData: {e}"))?;
     BUILD_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(build_data)));
     GAME_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(data)));
+    NATIVE_DATA.with_borrow_mut(|slot| *slot = None);
     clear_data_caches();
     Ok(())
 }
 
-/// Whether data has been initialized.
+/// Loads explicitly staged native bytes, verifying integrity before replacing the active mode.
+///
+/// Consumes the staging area, including on failure, as the ordinary initializer does.
+/// Only immutable native catalogs are retained; no BuildData, ruleset or legacy
+/// constants are constructed. Loading a v1 catalog does not admit calculation.
+///
+/// # Errors
+/// Rejects empty staging, legacy packs and invalid native data. The active mode
+/// and its caches remain unchanged on failure; retry by staging a complete pack.
+pub fn init_native_staged_data() -> Result<(), String> {
+    let files = STAGED.with_borrow_mut(std::mem::take);
+    if files.is_empty() {
+        return Err("no data files staged; call stage_data_file first".to_string());
+    }
+    install_native_data(&GameData::from_memory(files))
+}
+
+/// Loads native catalogs from an explicit host directory without CURRENT or environment discovery.
+///
+/// # Errors
+/// Rejects missing, legacy or invalid native packs, preserving the active mode and caches.
+/// Filesystem access is unavailable on WASM; use [`init_native_staged_data`] there.
+pub fn init_native_data_from_dir(version_dir: &str) -> Result<(), String> {
+    install_native_data(&GameData::new(version_dir))
+}
+
+fn install_native_data(data: &GameData) -> Result<(), String> {
+    let native = NativeData::load(data).map_err(|e| format!("load NativeData: {e}"))?;
+    NATIVE_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(native)));
+    BUILD_DATA.with_borrow_mut(|slot| *slot = None);
+    GAME_DATA.with_borrow_mut(|slot| *slot = None);
+    clear_data_caches();
+    Ok(())
+}
+
+/// Whether ordinary BuildData is available; native initialization leaves this false.
 pub fn is_data_ready() -> bool {
     BUILD_DATA.with_borrow(|slot| slot.is_some())
+}
+
+/// Whether immutable native catalogs are available, independently of request admission.
+pub fn is_native_data_ready() -> bool {
+    NATIVE_DATA.with_borrow(|slot| slot.is_some())
+}
+
+pub(crate) fn native_data() -> Result<Rc<NativeData>, String> {
+    NATIVE_DATA.with_borrow(|slot| {
+        slot.clone().ok_or_else(|| {
+            "native data not initialized; call init_native_staged_data first".to_string()
+        })
+    })
 }
 
 /// Gets the initialized BuildData; if uninitialized, returns an error message safe to pass through to the frontend.
@@ -379,6 +431,77 @@ fn build_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_mode_switches_transactionally_and_clears_ordinary_caches() {
+        let legacy_dir = pobr_gamedata::current_data_dir();
+        init_data_from_dir(&legacy_dir.to_string_lossy()).expect("ordinary data");
+        let ordinary = build_data().unwrap();
+        let game = game_data().unwrap();
+        assert!(zh_translator().is_some());
+        assert!(en_to_zh_translator().is_some());
+        assert!(tier_index().is_some());
+        for _ in 0..2 {
+            assert_eq!(
+                cached_response("native_mode_test", "{}", || Ok("legacy response".into())).unwrap(),
+                "legacy response"
+            );
+        }
+        assert_eq!(response_cache_hits(), 1);
+
+        stage_data_file("manifest.json", "{}");
+        assert!(init_native_staged_data().is_err());
+        assert!(Rc::ptr_eq(&ordinary, &build_data().unwrap()));
+        assert!(Rc::ptr_eq(&game, &game_data().unwrap()));
+        assert!(!is_native_data_ready());
+        assert_eq!(response_cache_hits(), 1, "failed init keeps old responses");
+        ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_some()));
+        EN_TO_ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_some()));
+        TIER_INDEX.with_borrow(|slot| assert!(slot.is_some()));
+
+        let native_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../crates/pobr-gamedata/tests/fixtures/native_runtime");
+        init_native_data_from_dir(&native_dir.to_string_lossy()).expect("native catalogs");
+        assert!(is_native_data_ready());
+        assert!(!is_data_ready());
+        assert!(build_data().is_err());
+        assert!(game_data().is_err());
+        ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_none()));
+        EN_TO_ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_none()));
+        TIER_INDEX.with_borrow(|slot| assert!(slot.is_none()));
+        RESPONSE_CACHE.with_borrow(|cache| {
+            assert!(cache.entries.is_empty());
+            assert!(cache.order.is_empty());
+            assert_eq!(cache.hits, 0);
+        });
+        // A previously successful ordinary response cannot bypass the mode guard.
+        assert!(
+            cached_response("native_mode_test", "{}", || {
+                build_data().map(|_| "unexpected ordinary response".into())
+            })
+            .is_err()
+        );
+        let native = native_data().unwrap();
+        let error = init_data_from_dir(&native_dir.to_string_lossy()).unwrap_err();
+        assert!(error.contains("native-profile-not-admitted:"), "{error}");
+        assert!(Rc::ptr_eq(&native, &native_data().unwrap()));
+
+        // Populate cached misses in native mode. Ordinary reinitialization must
+        // invalidate those misses as well as the native catalogs themselves.
+        assert!(zh_translator().is_none());
+        assert!(en_to_zh_translator().is_none());
+        assert!(tier_index().is_none());
+        init_data_from_dir(&legacy_dir.to_string_lossy()).expect("back to ordinary data");
+        assert!(is_data_ready());
+        assert!(!is_native_data_ready());
+        assert!(native_data().is_err());
+        ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_none()));
+        EN_TO_ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_none()));
+        TIER_INDEX.with_borrow(|slot| assert!(slot.is_none()));
+        assert!(zh_translator().is_some());
+        assert!(en_to_zh_translator().is_some());
+        assert!(tier_index().is_some());
+    }
 
     #[test]
     fn initialization_recovers_preinit_misses_and_invalidates_derived_indexes() {
