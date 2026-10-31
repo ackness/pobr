@@ -56,6 +56,21 @@ fn seal_inventory(files: &mut BTreeMap<String, Vec<u8>>) {
     });
 }
 
+#[test]
+fn native_catalog_rejects_duplicate_effect_keys_even_when_resealed() {
+    for bytes in [
+        br#"{"SparkPlayer":[],"SparkPlayer":[]}"#.as_slice(),
+        br#"{"SparkPlayer":[],"Spark\u0050layer":[]}"#.as_slice(),
+    ] {
+        let mut files = pack();
+        files.insert("base/granted_effect_levels.json".into(), bytes.to_vec());
+        seal_inventory(&mut files);
+        let error = pobr_gamedata::NativeData::load(&GameData::from_memory(files))
+            .expect_err("duplicate native effect identity must not be silently overwritten");
+        assert!(error.to_string().contains("duplicate"), "{error}");
+    }
+}
+
 struct DiskPack(PathBuf);
 impl DiskPack {
     fn new(files: &BTreeMap<String, Vec<u8>>) -> Self {

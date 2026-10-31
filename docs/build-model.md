@@ -84,14 +84,18 @@ Starting options 不是免费分配或自动属性；Character7 不继承 Charac
 `selected-player-generic-ot-v1` 只把独立 generic OT 的唯一有限 lexical critical **bonus**
 应用到精确 actor/profile。它是 `conditional-model` 的 PoBR applicability assumption，
 并不证明 AO→OT 继承。policy 单独记录 identity、来源选择器、UTF-16 assignment、glossary 引用、
-条件／排除项和逐项 dispositions。未知且相关的输入仍需在后续 build admission 阶段阻断；
+条件／排除项和逐项 dispositions。未知且相关的输入在 build admission 阶段阻断；
 加载成功不等于准入。成本只表示 Mana/use，成功 damaging hit 不保证 projectile contact。
 
-**当前没有 native 计算准入。** `GameData::load_ruleset()` 和 `BuildData::load()`
+**普通完整计算的 native 准入仍关闭。** `GameData::load_ruleset()` 和 `BuildData::load()`
 在默认常量、旧文本规则或领域释放之前返回既有 `LoadError::Integrity`，
-路径指向契约，原因以 `native-profile-not-admitted:` 开头，明确列出缺少的 Spark 常量／规则闭包、
-精确 dataset/save binding 和 stable branch admission。后续必须协调完成这些切片后才可开放；
-本契约不实现 Spark 公式、分支选择、保存绑定、WASM/Web 握手或生产包切换。
+路径指向契约，原因以 `native-profile-not-admitted:` 开头。完整构筑所需的角色资源、命中、
+防御等闭包尚未准入，不能从旧默认值补齐。单独的
+[`native_skill`](native-skill-hit.md) 入口对完整原生存档逐次验证精确 dataset、actor、policy
+和稳定技能分支，再调用共享 Rust 条件命中计算。它提供本次命中及固有使用时间／成本／
+投射物属性，不产生完整 DPS、资源、需求或生存结果。存档与独立 CLI 入口见
+[原生存档](native-build-document.md)和[原生 CLI](native-cli.md)。WASM/Web、生产包切换与
+CN 数值事实尚未接通。
 
 ### 可选 native 天赋 stat
 

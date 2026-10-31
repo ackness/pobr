@@ -454,6 +454,11 @@ fn implementation_sha256() -> String {
             "gamedata/native.rs",
             include_bytes!("../../../../../crates/pobr-gamedata/src/native.rs").as_slice(),
         ),
+        (
+            "gamedata/native/unique_json.rs",
+            include_bytes!("../../../../../crates/pobr-gamedata/src/native/unique_json.rs")
+                .as_slice(),
+        ),
         ("main.rs", include_bytes!("../../main.rs").as_slice()),
     ] {
         source.extend_from_slice(name.as_bytes());

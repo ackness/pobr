@@ -83,14 +83,14 @@ impl GameData {
             .and_then(|snapshot| snapshot.native_runtime.as_ref()))
     }
 
-    /// Rejects native calculation until the fixed profile's semantic closure and
-    /// exact dataset/save/branch binding are implemented together. Domain queries
-    /// remain available to an assembler; legacy calculation behavior is unchanged.
+    /// Rejects ordinary full-build calculation of native catalogs. A bounded native
+    /// consumer admits its own exact dataset/save/branch binding and semantics;
+    /// this legacy entry must not substitute defaults for unadmitted dependencies.
     pub fn validate_calculation_admission(&self) -> Result<(), LoadError> {
         if self.native_runtime()?.is_some() {
             return Err(LoadError::Integrity {
                 path: self.root().join(NATIVE_RUNTIME_PATH),
-                message: "native-profile-not-admitted: Spark level1/q0 constants and rule closure, exact dataset/save binding and stable branch admission are not implemented".into(),
+                message: "native-profile-not-admitted: ordinary full-build constants and rule closure are unavailable; use explicit native admission for a supported bounded evaluation with exact dataset/save binding and stable branch admission".into(),
             });
         }
         Ok(())

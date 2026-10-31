@@ -16,6 +16,8 @@ use serde_json::Value;
 
 use crate::{DataIdentity, GameData, LoadError, manifest::sha256_hex};
 
+mod unique_json;
+
 /// Validated native input snapshot with private state and borrowed typed catalog access.
 /// There is no default, deserialization, legacy constants bundle or calculation authority.
 #[derive(Debug)]
@@ -152,6 +154,10 @@ fn sealed<T: DeserializeOwned>(
             format!("sealed native file changed: {relative}"),
         ));
     }
+    unique_json::check(&bytes).map_err(|source| LoadError::Parse {
+        path: path.clone(),
+        source,
+    })?;
     serde_json::from_slice(&bytes).map_err(|source| LoadError::Parse { path, source })
 }
 

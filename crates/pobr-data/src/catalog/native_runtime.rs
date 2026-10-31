@@ -1,7 +1,8 @@
 //! Required metadata for guarded native candidates, independent of calculation admission.
 //!
 //! Pins identify bytes and declarations. They do not authenticate an acquisition,
-//! promote a source, or certify a calculation. No native profile is admitted yet.
+//! promote a source, or certify a calculation. Full-build calculation stays guarded;
+//! a separate native consumer must admit each supported bounded request explicitly.
 
 use std::collections::BTreeSet;
 

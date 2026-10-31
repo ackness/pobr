@@ -147,6 +147,8 @@ a successful damaging hit does not guarantee contact.
 context and policy with private validity-bearing state. It returns v1 without
 actor defaults, and rejects legacy data, native patches and malformed v2 inputs.
 It does not construct `RuntimeConstants`/`BuildData` or call `load_ruleset`.
+Sealed typed native catalogs reject duplicate JSON object keys, including escaped
+aliases, before deserialization can overwrite a stable identity in a map.
 Its identity getter returns the final `GameData` digest; the assembly key remains
 separate. V2's receipt records that final identity outside the self-hashed
 contract. Loading is not build admission, persistence or calculation authority.
