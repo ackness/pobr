@@ -41,24 +41,39 @@ fn demo_request() -> String {
     serde_json::json!({ "pob_code": code.trim(), "breakdowns": [] }).to_string()
 }
 
+fn init_native_v1() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../crates/pobr-gamedata/tests/fixtures/native_runtime");
+    pobr_wasm::init_native_data_from_dir(&dir.to_string_lossy()).expect("native v1 catalogs");
+    assert!(pobr_wasm::is_native_data_ready());
+    assert!(!pobr_wasm::is_data_ready());
+}
+
 #[test]
 fn bytes_and_text_staging_and_both_inits_build_the_same_data() {
     let files = pack();
     let request = demo_request();
 
     // Text staging, every file hashed here: the reference.
+    init_native_v1();
     for (path, bytes) in &files {
         pobr_wasm::stage_data_file(path, std::str::from_utf8(bytes).unwrap());
     }
     pobr_wasm::init_staged_data().expect("hashing init");
+    assert!(!pobr_wasm::is_native_data_ready());
     let reference = pobr_wasm::calculate_build_json(&request).unwrap();
 
     // Byte staging, digests already compared by the caller. Identity (the digest the
     // response carries as provenance) and the calculation must come out the same.
+    init_native_v1();
+    let error = pobr_wasm::calculate_build_json(&request).expect_err("old response was cleared");
+    let error: serde_json::Value = serde_json::from_str(&error).unwrap();
+    assert_eq!(error["code"], "not_initialized");
     for (path, bytes) in &files {
         pobr_wasm::stage_data_bytes(path, bytes.clone());
     }
     pobr_wasm::init_staged_data_verified().expect("verified init");
+    assert!(!pobr_wasm::is_native_data_ready());
     let verified = pobr_wasm::calculate_build_json(&request).unwrap();
     assert_eq!(reference, verified);
     assert!(reference.contains("data_sha256"));

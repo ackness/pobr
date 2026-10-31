@@ -94,8 +94,8 @@ Starting options 不是免费分配或自动属性；Character7 不继承 Charac
 [`native_skill`](native-skill-hit.md) 入口对完整原生存档逐次验证精确 dataset、actor、policy
 和稳定技能分支，再调用共享 Rust 条件命中计算。它提供本次命中及固有使用时间／成本／
 投射物属性，不产生完整 DPS、资源、需求或生存结果。存档与独立 CLI 入口见
-[原生存档](native-build-document.md)和[原生 CLI](native-cli.md)。WASM/Web、生产包切换与
-CN 数值事实尚未接通。
+[原生存档](native-build-document.md)、[原生 CLI](native-cli.md)和显式
+[原生 WASM 导出](native-wasm.md)。Web UI、生产包切换与 CN 数值事实尚未接通。
 
 ### 可选 native 天赋 stat
 
