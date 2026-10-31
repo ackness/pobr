@@ -213,6 +213,8 @@ pub enum NativeActorPolicy {
     SelectedPlayerGenericOtV1,
     #[serde(rename = "selected-player-generic-ot-ordinary-damage-passives-v1")]
     SelectedPlayerGenericOtOrdinaryDamagePassivesV1,
+    #[serde(rename = "selected-player-generic-ot-primary-spell-hit-passives-v1")]
+    SelectedPlayerGenericOtPrimarySpellHitPassivesV1,
 }
 
 /// Required predicate for explicitly selected passive sources in the conditional model.
@@ -223,12 +225,18 @@ pub const NATIVE_OTHER_ALLOCATIONS_EXCLUSION: &str =
     "allocations-other-than-explicit-ordinary-damage-passives";
 /// Required limitation of the passive policy, also retained in consumer result assumptions.
 pub const NATIVE_ALLOCATION_ASSUMPTION: &str = "Explicitly selected eligible ordinary damage passives are assumed active for conditional comparison; allocation-legality (point budget, reachability and progression) is unavailable. Starting choices never grant nodes automatically.";
+/// Selected gem levels are source rows, independently of the fixed actor's level.
+pub const NATIVE_PRIMARY_SPELL_CONDITION: &str = "primary-spell-exact-authored-level-q0";
+/// Requirement/obtainability rules are outside this conditional hit selection.
+pub const NATIVE_GEM_LEVEL_ASSUMPTION: &str = "Selected gem levels are exact authored source rows, independently of actor level; gem requirements and obtainability are not certified.";
 
 /// Explicit evaluation contract, independent of any particular skill's implementation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NativeEvaluationKind {
     #[serde(rename = "conditional-skill-hit-v1")]
     ConditionalSkillHitV1,
+    #[serde(rename = "conditional-skill-hit-v2")]
+    ConditionalSkillHitV2,
 }
 
 /// Honest status of applying generic OT facts to the selected player.
