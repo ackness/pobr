@@ -744,7 +744,7 @@ fn eight_files_bind_separate_provenance_and_replay_without_adoption() {
     assert_eq!(r["files"].as_object().unwrap().len(), 7);
     assert_eq!(
         r["input"]["selected_payloads"].as_object().unwrap().len(),
-        5
+        6
     );
     assert_eq!(r["complete_runtime"], false);
     assert_eq!(r["adoption"], "not-adopted");
