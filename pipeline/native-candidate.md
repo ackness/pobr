@@ -99,10 +99,10 @@ orchestration completion. A complete wrapper requires a valid final receipt and
 an exact matching file inventory, with no unlisted files/directories. Replays
 always need a new output leaf; this command never repairs or overwrites one.
 
-These are queryable partial catalogs. Calculation admission remains closed,
+These are queryable partial catalogs. Ordinary full-build calculation remains closed,
 sources remain unreviewed/nonproduction, and neither gameplay correctness nor
-CN numerical coverage is established. Later source approval, consumer admission
-and publication belong to separate coordinated work.
+CN numerical coverage is established. [Bounded consumer admission](../docs/native-skill-hit.md),
+source approval and publication are separate coordinated paths.
 
 ## Actor recipe v2
 

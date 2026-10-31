@@ -2,7 +2,7 @@
 
 `--native-runtime` projects a verified RePoE `items-actors-bc` v4 archive into
 existing PoBR runtime domain types. It creates a **queryable schema-4 candidate**;
-calculation stays closed with `native-profile-not-admitted`. It does not read
+ordinary full-build calculation stays closed with `native-profile-not-admitted`. It does not read
 vendor data, active snapshot contents, `CURRENT`, shared overlays or the network.
 
 ```sh

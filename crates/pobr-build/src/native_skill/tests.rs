@@ -255,8 +255,12 @@ fn source_owned_mapping_shared_core_and_provenance_are_retained() {
     assert_eq!(out.model_status, NativeModelStatus::ConditionalModel);
     assert_eq!(out.provenance.contract, *data.contract());
     assert_eq!(
-        out.provenance.actor_dispositions,
-        data.actor_binding().unwrap().dispositions
+        out.provenance.actor_disposition_counts,
+        NativeDispositionCounts::from_facts(&data.actor_binding().unwrap().dispositions)
+    );
+    assert_eq!(
+        out.provenance.actor_dispositions_source,
+        reference("base/native_actor_binding.json", "/dispositions")
     );
     assert!(!out.critical_trace.nodes.is_empty());
     assert!(!out.critical_trace.edges.is_empty());

@@ -79,18 +79,21 @@ critical probability/multiplier, conditional weighted mean, analytical use
 milliseconds, cost per use, projectile total/lifetime, complete selection/dataset/
 request pins, `conditional-model` status, assumptions and unavailable reasons.
 Provenance retains the small native contract (including source, acquisition,
-normalization, rules and reference-index pins), exact runtime JSON pointers, all
-actor dispositions, every selected skill fact's disposition and actual shared-core
+normalization, rules and reference-index pins), exact runtime JSON pointers,
+the actor-disposition artifact reference and coverage counts, every selected
+skill fact's disposition and actual shared-core
 modifier/query evidence. Modifier origins and rule provenance are preserved. The
 critical trace projects actual core nodes/edges; intrinsic mapping readers are
 labelled separately from core queries. The sealed physical source archive stays
-in the pack.
+in the pack. Detailed actor dispositions are loaded once with their sealed policy;
+each result references that artifact instead of cloning and serializing its entire
+inventory for every calculation.
 
 Unavailable outputs include pools, requirements, hit probability/count, effective
 cadence, DPS, cost/second, sustain, mitigation, ailments, defence, recovery and EHP.
 No optional OutputTable with fabricated zero values is returned. This API exposes
-no application dispatch or new CLI/WASM interface and leaves ordinary native
-BuildData/ruleset guards closed.
+an explicit [native CLI consumer](native-cli.md) and leaves ordinary native
+BuildData/ruleset guards closed. WASM/Web dispatch is not exposed yet.
 
 Coordinator verification commands (Rust execution is required before claiming a pass):
 

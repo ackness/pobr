@@ -15,8 +15,8 @@ use pobr_gamedata::NativeData;
 use crate::native_document::NativeBuildRequest;
 
 use super::{
-    NativeAdmissionError, NativeModifierEvidence, NativeResourceCost, NativeSkillFact,
-    NativeSkillProvenance, modifier_evidence, reference, source_error,
+    NativeAdmissionError, NativeDispositionCounts, NativeModifierEvidence, NativeResourceCost,
+    NativeSkillFact, NativeSkillProvenance, modifier_evidence, reference, source_error,
 };
 
 const SETS: &str = "base/granted_effect_stat_sets.json";
@@ -239,7 +239,8 @@ pub(super) fn resolve(
         base_use_source: reference(EFFECTS, format!("{effect_path}/cast_time")),
         required_conditions: policy.required_conditions.clone(),
         excluded_sources: policy.excluded_sources.clone(),
-        actor_dispositions: policy.dispositions.clone(),
+        actor_dispositions_source: reference("base/native_actor_binding.json", "/dispositions"),
+        actor_disposition_counts: NativeDispositionCounts::from_facts(&policy.dispositions),
     };
     let mut assumptions = policy.assumptions.clone();
     assumptions.extend([

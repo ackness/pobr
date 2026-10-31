@@ -7,7 +7,9 @@ use pobr_core::Modifier;
 use pobr_core::calc::conditional_hit::{self, ConditionalHitContext, ConditionalSkillHitV1};
 use pobr_core::calc::crit::ResolvedCriticalBase;
 use pobr_data::catalog::NativeRuntimeContract;
-use pobr_data::catalog::native_player::{NativeFactDisposition, NativeModelStatus};
+use pobr_data::catalog::native_player::{
+    NativeFactDisposition, NativeFactDispositionKind, NativeModelStatus,
+};
 use pobr_data::constants::DamageType;
 use pobr_data::modifier::ModType;
 use pobr_data::source::{ExporterRule, ModifierSource, SourceId};
@@ -239,8 +241,34 @@ pub struct NativeSkillProvenance {
     pub base_use_source: NativeArtifactReference,
     pub required_conditions: Vec<String>,
     pub excluded_sources: Vec<String>,
-    /// All source-player dispositions remain local to the pinned policy/profile.
-    pub actor_dispositions: Vec<NativeFactDisposition>,
+    /// Full dispositions remain in the exactly pinned policy artifact, not copied per hit.
+    pub actor_dispositions_source: NativeArtifactReference,
+    pub actor_disposition_counts: NativeDispositionCounts,
+}
+
+/// Finite source-policy coverage; detailed reasons live at the pinned artifact reference.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub struct NativeDispositionCounts {
+    pub consumed: usize,
+    pub inactive: usize,
+    pub outside_output_scope: usize,
+    pub unresolved: usize,
+}
+
+impl NativeDispositionCounts {
+    fn from_facts(facts: &[NativeFactDisposition]) -> Self {
+        let mut counts = Self::default();
+        for fact in facts {
+            match fact.disposition {
+                NativeFactDispositionKind::Consumed => counts.consumed += 1,
+                NativeFactDispositionKind::Inactive => counts.inactive += 1,
+                NativeFactDispositionKind::OutsideOutputScope => counts.outside_output_scope += 1,
+                NativeFactDispositionKind::Unresolved => counts.unresolved += 1,
+            }
+        }
+        counts
+    }
 }
 
 /// An unavailable output is never represented as a fabricated zero.
