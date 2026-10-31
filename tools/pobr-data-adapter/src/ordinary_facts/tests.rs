@@ -82,6 +82,7 @@ impl Fixture {
             domain: super::Domain::StatsMods,
             quality_policy: None,
             codec: None,
+            branch_codec: None,
             out: self.root.join("out"),
         }
     }

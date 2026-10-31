@@ -159,7 +159,14 @@ impl Policy {
 }
 
 pub(super) fn validate_metadata(meta: &Value) -> Result<(), String> {
-    if meta["schema"] != "stat_set_labels/v1"
+    validate_extraction_metadata(meta, "stat_set_labels/v1")
+}
+
+pub(in crate::ordinary_facts) fn validate_extraction_metadata(
+    meta: &Value,
+    schema: &str,
+) -> Result<(), String> {
+    if meta["schema"] != schema
         || meta["generator"] != "sync-pob-catalog extract-lua"
         || meta["vendor"] != "PathOfBuilding-PoE2"
     {
@@ -190,7 +197,11 @@ pub(super) fn validate_metadata(meta: &Value) -> Result<(), String> {
     Ok(())
 }
 
-pub(super) fn hex(value: &str, length: usize, field: &str) -> Result<(), String> {
+pub(in crate::ordinary_facts) fn hex(
+    value: &str,
+    length: usize,
+    field: &str,
+) -> Result<(), String> {
     if value.len() != length
         || !value
             .bytes()
