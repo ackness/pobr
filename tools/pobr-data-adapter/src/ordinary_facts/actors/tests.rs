@@ -142,13 +142,21 @@ pub(in crate::ordinary_facts) fn fixture(catalog: Catalog) -> Fixture {
     })
     .unwrap();
     let mut first = json!({"id":if catalog==Catalog::Minions{"AliasZ"}else{"VarZ"},"name":"Old name","monster_tags":["old"],
-        "life":999.0,"damage":999.0,"damage_spread":999.0,"attack_time":999.0,"attack_range":999.0,"accuracy":2.5,"crit_chance":999.0,"base_movement_speed":999.0,
-        "armour":9.0,"evasion":9.0,"energy_shield":9.0,"fire_resist":999.0,"cold_resist":999.0,"lightning_resist":999.0,"chaos_resist":999.0,
+        "life":999.0,"damage":999.0,"damage_spread":999.0,"attack_time":999.0,"attack_range":999.0,"accuracy":2.5,"crit_chance":999.0,"base_movement_speed":999.0});
+    for fragment in [
+        json!({"armour":9.0,"evasion":9.0,"energy_shield":9.0,"fire_resist":999.0,"cold_resist":999.0,"lightning_resist":999.0,"chaos_resist":999.0,
         "spectre_reservation":999.0,"companion_reservation":31.2,"companion_fire_resist":999.0,"companion_cold_resist":999.0,"companion_lightning_resist":999.0,"companion_chaos_resist":999.0,
-        "base_damage_ignores_attack_speed":true,"monster_category":"CommunityCategory","limit":"UninterpretedLimit","weapon_type1":"FutureWeapon","weapon_type2":"OtherWeapon",
+        }),
+        json!({"base_damage_ignores_attack_speed":true,"monster_category":"CommunityCategory","limit":"UninterpretedLimit","weapon_type1":"FutureWeapon","weapon_type2":"OtherWeapon",
         "skill_list":["SkillA","SkillZ","SkillA"],"extra_flags":["unknown_flag"],"spawn_location":["archived location"],
         "mod_list":[{"name":"UnknownMod","type":"FUTURE","value":-3.0,"flags":"UnsupportedFlag","keyword_flags":0.0,"tags":[{"type":"FutureTag","limit":false}],"future_constructor":{"nested":[null,4]}}],
-        "future/~field":{"nested":[null,0,"unknown"]}});
+        "future/~field":{"nested":[null,0,"unknown"]}}),
+    ] {
+        first
+            .as_object_mut()
+            .unwrap()
+            .extend(fragment.as_object().unwrap().clone());
+    }
     if catalog == Catalog::Minions {
         first["monster_variety_id"] = json!("VarZ");
     }
