@@ -114,7 +114,7 @@ class NativeCandidateTests(unittest.TestCase):
                 "parent_source_lock_sha256": self.recipe["facts"]["source_lock_sha256"],
                 "actor_policy": native.ACTOR_POLICY, "producer_revision": "b" * 40}
         docs.update(native_input_lock=lock, native_acquisition=self.acquisition, native_coverage={
-            "format": "pobr-native-runtime-coverage/v1", "source_status": native.SOURCE_STATUS,
+            "format": f"pobr-native-runtime-coverage/v{version}", "source_status": native.SOURCE_STATUS,
             "production_ready": False, "calculation_admitted": False})
         files = {f"base/{name}.json": native.sha256(native.encoded(doc) + b"\n") for name, doc in docs.items()}
         docs["native_runtime"] = {**{k: self.recipe["target"][k] for k in
@@ -509,6 +509,7 @@ class NativePlayerCandidateTests(NativeCandidateTests):
                  ("native_actor_binding", "context_sha256", "0" * 64),
                  ("native_actor_binding", "evaluation", native.OUTPUT_PROFILE),
                  ("native_input_lock", "player", {}),
+                 ("native_coverage", "format", "pobr-native-runtime-coverage/v1"),
                  ("native_input_lock", "format", "pobr-native-runtime-input-lock/v1")]
         for domain, key, value in cases:
             out = self.root / f"resealed-{domain}-{key}"

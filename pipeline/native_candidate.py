@@ -211,7 +211,7 @@ def verify_runtime(runtime, recipe, acquisition):
             "evidence_sha256": files["base/native_acquisition.json"]}
             and documents["base/native_acquisition.json"] == acquisition, "Runtime acquisition mismatch")
     coverage = documents["base/native_coverage.json"]
-    require(isinstance(coverage, dict) and coverage.get("format") == "pobr-native-runtime-coverage/v1"
+    require(isinstance(coverage, dict) and coverage.get("format") == f"pobr-native-runtime-coverage/v{version}"
             and coverage.get("production_ready") is False and coverage.get("calculation_admitted") is False
             and coverage.get("source_status") == SOURCE_STATUS, "Runtime coverage/status mismatch")
     receipt = documents["assembly-receipt.json"]
