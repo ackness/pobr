@@ -1,0 +1,120 @@
+{
+  "schema": "pobr-ordinary-stat-set-codec-policy/v1",
+  "target": {
+    "game_patch": "0.5.5.5",
+    "facts_manifest_sha256": "56e71e00a72c8079d100b64861fc030206b12aaeb5ad655ccb4ab4e6726332d0"
+  },
+  "source": {
+    "snapshot_version": "0.5.5.4.2",
+    "path": "data/0.5.5.4.2/overlay/stat_set_labels.json",
+    "sha256": "825e594f43f07a4115ee29e57622670688e5d1c099f7e11a30ba66b3b80cca06",
+    "metadata": {
+      "schema": "stat_set_labels/v1",
+      "generator": "sync-pob-catalog extract-lua",
+      "vendor": "PathOfBuilding-PoE2",
+      "vendor_commit": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+      "vendor_commit_subject": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+      "extracted_files": [
+        "Data/Skills/act_dex.lua",
+        "Export/Skills/act_dex.txt",
+        "Data/Skills/act_int.lua",
+        "Export/Skills/act_int.txt",
+        "Data/Skills/act_str.lua",
+        "Export/Skills/act_str.txt",
+        "Data/Skills/minion.lua",
+        "Export/Skills/minion.txt",
+        "Data/Skills/other.lua",
+        "Export/Skills/other.txt",
+        "Data/Skills/spectre.lua",
+        "Export/Skills/spectre.txt",
+        "Data/Skills/sup_dex.lua",
+        "Export/Skills/sup_dex.txt",
+        "Data/Skills/sup_int.lua",
+        "Export/Skills/sup_int.txt",
+        "Data/Skills/sup_str.lua",
+        "Export/Skills/sup_str.txt"
+      ],
+      "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --what stat-set-labels --vendor-root vendor/PathOfBuilding-PoE2/src --files act_dex,act_int,act_str,minion,other,spectre,sup_dex,sup_int,sup_str --out data/0.5.5.4.2/overlay/stat_set_labels.json"
+    }
+  },
+  "evidence": {
+    "source_check": {
+      "path": ".cache/builddata-migration-stage/stat-set-codec/source-check.json",
+      "sha256": "70b7b4b28ca201154581d52611728168bb77559cf6c50a00d688812ec51e6060"
+    },
+    "legacy_runtime_manifest": {
+      "path": "data/0.5.5.4.2/manifest.json",
+      "sha256": "bfd31a4607da98af53b139ed101f31a67a3122e4520434fd2e3fda14672fcca4"
+    },
+    "legacy_base": {
+      "path": "data/0.5.5.4.2/base/granted_effect_stat_sets.json",
+      "sha256": "15df0520fc6254acda05bb955dad65299c0b40350b2639cfbd2b96348cfc8c5d"
+    },
+    "target_base": {
+      "path": ".cache/builddata-migration-stage/ordinary-skills/actual-a/data/0.5.5.5/base/granted_effect_stat_sets.json",
+      "sha256": "f2a58ba510a388108c73dac55c10dc6743d35e7ee4d5ef7343bfbcd0e45de7c7"
+    },
+    "target_producer_receipt_sha256": "3953c57be67e1f410e2e2d3bfdd12d66c962743a56964e04b6d4954cae57bd3d",
+    "bound_before_prepared_merges_in_both": 1358,
+    "unbound_before_prepared_merges_in_both": [
+      {
+        "set_id": "ExsanguinateDotPlayer",
+        "set_index": 2,
+        "skill": "ExsanguinatePlayer"
+      },
+      {
+        "set_id": "MetaMirageArcherPlayer",
+        "set_index": 1,
+        "skill": "MetaMirageArcherPlayer"
+      },
+      {
+        "set_id": "SupportDazePlayer",
+        "set_index": 1,
+        "skill": "SupportDazePlayer"
+      },
+      {
+        "set_id": "SupportMetaCastOnElementalAilmentPlayer",
+        "set_index": 1,
+        "skill": "SupportMetaCastOnElementalAilmentPlayer"
+      },
+      {
+        "set_id": "TimeSnapPlayer",
+        "set_index": 1,
+        "skill": "TimeSnapPlayer"
+      },
+      {
+        "set_id": "SupportHaemocrystalsPlayer",
+        "set_index": 1,
+        "skill": "TriggeredHaemocrystalsPlayer"
+      }
+    ],
+    "scope": "same pinned legacy codec stable-identity binding, before skill_overrides/minion prepared merges; no runtime/BD execution"
+  },
+  "statement": "Retain all bytes and all 1364 records of this exact legacy 0.5.5.4.2 codec snapshot as a disclosed compatibility input for the pinned target F. The source comparison found 1358 stable bindings in both bases and six unbound in both before prepared skill_overrides/minion merges, with no binding-state change. Raw ownership exceptions below retain original records only. This does not certify prepared runtime selection, all BDs, every newer exporter, target numeric values, source acquisition approval or complete package adoption.",
+  "raw_ownership_exceptions": [
+    {
+      "key": {
+        "skill": "ExsanguinatePlayer",
+        "set_id": "ExsanguinateDotPlayer",
+        "set_index": 2
+      },
+      "reason": "The pinned legacy export retains ExsanguinateDotPlayer at index 2. It is absent from this owner in both pre-merge runtime bases and from current raw ownership; preserve the record without remapping to ExsanguinatePlayer."
+    },
+    {
+      "key": {
+        "skill": "SupportMetaCastOnElementalAilmentPlayer",
+        "set_id": "SupportMetaCastOnElementalAilmentPlayer",
+        "set_index": 1
+      },
+      "reason": "The pinned legacy export uses the owner ID as its set ID at index 1, while current raw ownership names SupportMetaCastOnIgnitePlayer. This record is unbound in both pre-merge bases; retain it without substituting the current primary set."
+    },
+    {
+      "key": {
+        "skill": "TriggeredHaemocrystalsPlayer",
+        "set_id": "SupportHaemocrystalsPlayer",
+        "set_index": 1
+      },
+      "reason": "The pinned legacy export retains SupportHaemocrystalsPlayer at index 1, while current raw ownership names TriggeredHaemocrystalsPlayer. This record is unbound in both pre-merge bases; preserve its original stable identity and index."
+    }
+  ]
+}

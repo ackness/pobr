@@ -4,6 +4,7 @@ mod base_items;
 mod convert;
 mod quality;
 mod skills;
+mod stat_set_codec;
 
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 mod tests;
@@ -23,6 +24,7 @@ pub(crate) struct Args {
     out: PathBuf,
     domain: Domain,
     quality_policy: Option<quality::Args>,
+    codec: Option<stat_set_codec::Args>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,6 +33,7 @@ enum Domain {
     BaseItems,
     Skills,
     GemQuality,
+    StatSetCodec,
 }
 
 impl Domain {
@@ -40,6 +43,7 @@ impl Domain {
             Self::BaseItems => &base_items::TABLES,
             Self::Skills => &skills::TABLES,
             Self::GemQuality => &quality::TABLES,
+            Self::StatSetCodec => &stat_set_codec::TABLES,
         }
     }
 
@@ -49,6 +53,7 @@ impl Domain {
             Self::BaseItems => "ordinary-base-items",
             Self::Skills => "ordinary-skills",
             Self::GemQuality => "ordinary-gem-quality",
+            Self::StatSetCodec => "ordinary-stat-set-codec",
         }
     }
 
@@ -58,6 +63,7 @@ impl Domain {
             Self::BaseItems => "base-items",
             Self::Skills => "skills",
             Self::GemQuality => "gem-quality",
+            Self::StatSetCodec => "stat-set-codec",
         }
     }
 }
@@ -74,6 +80,10 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             "--out",
             "--quality-policy",
             "--quality-policy-sha256",
+            "--codec-source",
+            "--codec-source-sha256",
+            "--codec-policy",
+            "--codec-policy-sha256",
         ]
         .contains(&flag.as_str())
         {
@@ -89,6 +99,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("base-items") => Domain::BaseItems,
         Some("skills") => Domain::Skills,
         Some("gem-quality") => Domain::GemQuality,
+        Some("stat-set-codec") => Domain::StatSetCodec,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
     if domain != Domain::GemQuality
@@ -96,6 +107,18 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             || values.contains_key("--quality-policy-sha256"))
     {
         return Err("quality policy arguments require --ordinary-domain gem-quality".into());
+    }
+    if domain != Domain::StatSetCodec
+        && [
+            "--codec-source",
+            "--codec-source-sha256",
+            "--codec-policy",
+            "--codec-policy-sha256",
+        ]
+        .iter()
+        .any(|flag| values.contains_key(*flag))
+    {
+        return Err("codec arguments require --ordinary-domain stat-set-codec".into());
     }
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
     Ok(Args {
@@ -108,6 +131,16 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             Some(quality::Args {
                 path: take("--quality-policy")?.into(),
                 expected_sha256: take("--quality-policy-sha256")?,
+            })
+        } else {
+            None
+        },
+        codec: if domain == Domain::StatSetCodec {
+            Some(stat_set_codec::Args {
+                source: take("--codec-source")?.into(),
+                source_sha256: take("--codec-source-sha256")?,
+                policy: take("--codec-policy")?.into(),
+                policy_sha256: take("--codec-policy-sha256")?,
             })
         } else {
             None
@@ -126,6 +159,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     )?;
     let mut overlay = BTreeMap::new();
     let mut policy_bytes = None;
+    let mut codec_policy_bytes = None;
     // Complete validation and serialization before reserving any output.
     let (base, conversion, output_schema, scope) = match args.domain {
         Domain::StatsMods => {
@@ -213,6 +247,30 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 ],
             )
         }
+        Domain::StatSetCodec => {
+            let codec = args
+                .codec
+                .as_ref()
+                .ok_or("missing codec source/policy arguments")?;
+            let converted = stat_set_codec::convert(&input, codec)?;
+            for parent in &converted.protected_parents {
+                output.protect(parent)?;
+            }
+            overlay = converted.overlay;
+            codec_policy_bytes = Some(converted.policy_bytes);
+            (
+                BTreeMap::new(),
+                converted.receipt,
+                "pobr_data::catalog::{StatSetLabelsDef,StatSetLabelDef}",
+                vec![
+                    "The explicitly pinned legacy codec is copied verbatim, including its original metadata, record order, labels and export indices; it is not relabelled as target acquisition.",
+                    "Only target GrantedEffects and GrantedEffectStatSets are read. Raw stable-ID ownership is verified with explicit exact-key exceptions; no index inference, ordered-reference deduplication or branch remapping occurs.",
+                    "Historical pre-merge binding evidence is separate from prepared runtime selection, full BD execution and compatibility with later exporters. Native-label priority and conservative primary fallback remain unchanged.",
+                    "Acquisition status/evidence is copied unchanged. Fingerprints and conversion do not upgrade draft acquisition, prove full runtime completeness or adopt data.",
+                    "No runtime manifest, implicit old numeric/vendor input, Lua execution, download, CURRENT update or consumer model change.",
+                ],
+            )
+        }
     };
     let marker = reader::json_bytes(&json!({
         "schema": "pobr-domain-candidate/v1",
@@ -229,6 +287,9 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     ]);
     if let Some(bytes) = policy_bytes {
         sidecars.insert("quality-policy.json", bytes);
+    }
+    if let Some(bytes) = codec_policy_bytes {
+        sidecars.insert("codec-policy.json", bytes);
     }
     let files: BTreeMap<_, _> = base
         .iter()
@@ -342,6 +403,14 @@ fn implementation_sha256() -> String {
         (
             "skills/quality.rs",
             include_bytes!("skills/quality.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/stat_set_codec.rs",
+            include_bytes!("ordinary_facts/stat_set_codec.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/stat_set_codec/policy.rs",
+            include_bytes!("ordinary_facts/stat_set_codec/policy.rs").as_slice(),
         ),
         ("skills/mod.rs", include_bytes!("skills/mod.rs").as_slice()),
         (
