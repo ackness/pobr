@@ -7,6 +7,7 @@ mod monster_resistances;
 mod quality;
 mod skills;
 mod stat_set_codec;
+mod totem_varieties;
 
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 mod tests;
@@ -45,6 +46,7 @@ enum Domain {
     StatSetCodec,
     GemEffects,
     MonsterResistances,
+    TotemVarieties,
 }
 
 impl Domain {
@@ -57,6 +59,7 @@ impl Domain {
             Self::StatSetCodec => &stat_set_codec::TABLES,
             Self::GemEffects => &gem_effects::TABLES,
             Self::MonsterResistances => &monster_resistances::TABLES,
+            Self::TotemVarieties => &totem_varieties::TABLES,
         }
     }
 
@@ -69,6 +72,7 @@ impl Domain {
             Self::StatSetCodec => "ordinary-stat-set-codec",
             Self::GemEffects => "ordinary-gem-effects",
             Self::MonsterResistances => "ordinary-monster-resistances",
+            Self::TotemVarieties => "ordinary-totem-varieties",
         }
     }
 
@@ -81,6 +85,7 @@ impl Domain {
             Self::StatSetCodec => "stat-set-codec",
             Self::GemEffects => "gem-effects",
             Self::MonsterResistances => "monster-resistances",
+            Self::TotemVarieties => "totem-varieties",
         }
     }
 }
@@ -119,6 +124,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("stat-set-codec") => Domain::StatSetCodec,
         Some("gem-effects") => Domain::GemEffects,
         Some("monster-resistances") => Domain::MonsterResistances,
+        Some("totem-varieties") => Domain::TotemVarieties,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
     if domain != Domain::GemQuality
@@ -334,6 +340,23 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 ],
             )
         }
+        Domain::TotemVarieties => {
+            let converted = totem_varieties::convert(&input)?;
+            overlay = converted.overlay;
+            (
+                BTreeMap::new(),
+                converted.receipt,
+                "pobr_data::catalog::totem_varieties::{TotemVarietiesDef,TotemVarietyDef}",
+                vec![
+                    "Only the selected six target F tables were read. All matched granted effects use the original totem DTO and unchanged raw percentage units.",
+                    "ActiveSkill is a physical FK. SkillTotemId and SkillTotemsKey match by opaque value in their declared SkillTotems namespace; no external namespace content or reverse string link is inferred.",
+                    "Only unique skin-zero matches are applied. Tagged SummonsTotem tuples without a match remain explicit unresolved records, without inferred varieties/numbers or effectless claims; tags do not restrict matched output.",
+                    "The existing version-overlay-first loader and BuildData path are unchanged. Other skins, minion/totem catalogs and level semantics, complete target package and ordinary BD/Web acceptance remain separate work.",
+                    "Acquisition status/evidence is copied unchanged. Fingerprints and conversion do not upgrade draft acquisition, prove full runtime completeness or adopt data.",
+                    "No runtime manifest, auxiliary policy, shared/old numeric input, vendor/Lua, download, CURRENT update or consumer model change.",
+                ],
+            )
+        }
     };
     let marker = reader::json_bytes(&json!({
         "schema": "pobr-domain-candidate/v1",
@@ -488,6 +511,10 @@ fn implementation_sha256() -> String {
         ),
         ("monsters.rs", include_bytes!("monsters.rs").as_slice()),
         (
+            "ordinary_facts/totem_varieties.rs",
+            include_bytes!("ordinary_facts/totem_varieties.rs").as_slice(),
+        ),
+        (
             "ordinary_facts/stat_set_codec/policy.rs",
             include_bytes!("ordinary_facts/stat_set_codec/policy.rs").as_slice(),
         ),
@@ -564,6 +591,10 @@ fn implementation_sha256() -> String {
                 .as_slice(),
         ),
         ("Cargo.toml", include_bytes!("../Cargo.toml").as_slice()),
+        (
+            "catalog/totem_varieties.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/totem_varieties.rs").as_slice(),
+        ),
         (
             "Cargo.lock",
             include_bytes!("../../../Cargo.lock").as_slice(),
