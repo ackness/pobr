@@ -1,5 +1,6 @@
-//! Pinned physical facts to ordinary Stats/Mods, isolated from complete runtime packages.
+//! Pinned physical facts to ordinary catalog domains, isolated from complete runtime packages.
 
+mod base_items;
 mod convert;
 
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
@@ -18,6 +19,36 @@ pub(crate) struct Args {
     expected_manifest_sha256: String,
     version: String,
     out: PathBuf,
+    domain: Domain,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Domain {
+    StatsMods,
+    BaseItems,
+}
+
+impl Domain {
+    fn tables(self) -> &'static [&'static str] {
+        match self {
+            Self::StatsMods => &convert::TABLES,
+            Self::BaseItems => &base_items::TABLES,
+        }
+    }
+
+    fn marker(self) -> &'static str {
+        match self {
+            Self::StatsMods => "ordinary-stats-mods",
+            Self::BaseItems => "ordinary-base-items",
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::StatsMods => "Stats/Mods",
+            Self::BaseItems => "base-items",
+        }
+    }
 }
 
 pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, String> {
@@ -26,6 +57,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     while let Some(flag) = args.next() {
         if ![
             "--ordinary-facts",
+            "--ordinary-domain",
             "--facts-manifest-sha256",
             "--version",
             "--out",
@@ -39,12 +71,18 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             return Err(format!("missing value or duplicate argument: {flag}"));
         }
     }
+    let domain = match values.remove("--ordinary-domain").as_deref() {
+        None | Some("stats-mods") => Domain::StatsMods,
+        Some("base-items") => Domain::BaseItems,
+        Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
+    };
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
     Ok(Args {
         input: take("--ordinary-facts")?.into(),
         expected_manifest_sha256: take("--facts-manifest-sha256")?,
         version: take("--version")?,
         out: take("--out")?.into(),
+        domain,
     })
 }
 
@@ -55,17 +93,62 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
         &args.input,
         &args.expected_manifest_sha256,
         &args.version,
-        &convert::TABLES,
+        args.domain.tables(),
     )?;
-    let converted = convert::convert(&input)?;
     // Complete validation and serialization before reserving any output.
-    let base = BTreeMap::from([
-        ("stats.json".into(), pretty_bytes(&converted.stats)?),
-        ("mods.json".into(), pretty_bytes(&converted.mods)?),
-    ]);
+    let (base, conversion, output_schema, scope) = match args.domain {
+        Domain::StatsMods => {
+            let converted = convert::convert(&input)?;
+            let base = BTreeMap::from([
+                ("stats.json".into(), pretty_bytes(&converted.stats)?),
+                ("mods.json".into(), pretty_bytes(&converted.mods)?),
+            ]);
+            (
+                base,
+                json!({
+                    "stats":converted.stats.len(), "mods":converted.mods.len(), "stat_slots":8,
+                    "filtered_shells":converted.filtered_shells,
+                    "unassigned_stat_ranges":converted.unassigned_ranges,
+                    "source_row_reference":"tables/Mods.json#/rows/{source_row}/values",
+                    "mapping": {
+                        "Stats":"Id -> id; IsLocal -> is_local; Semantic/Category -> optional raw u32 metadata",
+                        "Mods":"Id -> id; Name -> name (null/empty -> absent); ModType -> raw mod_type and ModType.Name -> group; Domain -> domain; GenerationType -> generation_type; Level -> level",
+                        "stats":"Stat1..8 -> Stats.Id by physical row; StatNMin/Max -> signed min/max in slot order; null StatN is unassigned, never row zero",
+                        "families":"Families -> ModFamily.Id in source order; null differs from empty",
+                        "tags":"Tags -> Tags.Id in source order",
+                        "spawn_weights":"SpawnWeight_Tags -> Tags.Id paired with SpawnWeight_Values, preserving order and zero"
+                    }
+                }),
+                "pobr_data::catalog::{StatDef,ModDef,ModStat,SpawnWeight}",
+                vec![
+                    "Only Stats/Mods and their ModType/ModFamily/Tags dependencies were read; unselected payloads and other foreign keys are not certified.",
+                    "Physical rows identify source records inside the pinned payload, never stable business IDs. Source values remain in the immutable F package; no input was edited.",
+                    "Semantic/Category remain raw metadata in the existing DTO; no enum or classification meaning is inferred.",
+                    "Hardmode ranges, generation weights, implicit tags and other fields outside the ordinary DTO remain source facts, not newly applied semantics.",
+                    "Acquisition status/evidence is copied unchanged. Fingerprints and conversion do not upgrade draft acquisition, prove full runtime completeness or adopt data.",
+                    "No runtime manifest, vendor fallback, download, CURRENT update, calculation model or schema-4 admission change.",
+                ],
+            )
+        }
+        Domain::BaseItems => {
+            let converted = base_items::convert(&input)?;
+            (
+                BTreeMap::from([("base_items.json".into(), pretty_bytes(&converted.bases)?)]),
+                converted.receipt,
+                "pobr_data::catalog::{BaseItemDef,WeaponBaseStats,ArmourBaseStats,UtilityBaseStats}",
+                vec![
+                    "Only base-item DTO fields and required joins from the selected eleven physical tables were converted; other foreign keys are not certified.",
+                    "Physical row references are distinct from stable IDs. Unmapped fields remain in the pinned source; the receipt lists their payload/column/row scope.",
+                    "Charm inherent effects are unavailable in this slice; empty charm_buff is not a claim of no effect or complete base-item semantics.",
+                    "Acquisition status/evidence is copied unchanged. Fingerprints and conversion do not upgrade draft acquisition, prove full runtime completeness or adopt data.",
+                    "No runtime manifest, vendor fallback, download, CURRENT update, calculation model or schema-4 admission change.",
+                ],
+            )
+        }
+    };
     let marker = reader::json_bytes(&json!({
         "schema": "pobr-domain-candidate/v1",
-        "domain": "ordinary-stats-mods",
+        "domain": args.domain.marker(),
         "version": args.version,
         "source_id": input.manifest["source_identity"]["source"],
         "source_manifest_sha256": args.expected_manifest_sha256,
@@ -101,7 +184,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
         "adapter": {
             "name":"pobr-data-adapter/ordinary-facts", "version":env!("CARGO_PKG_VERSION"),
             "implementation_revision":format!("sha256:{}", implementation_sha256()),
-            "output_schema":"pobr_data::catalog::{StatDef,ModDef,ModStat,SpawnWeight}"
+            "output_schema":output_schema
         },
         "input": {
             "root":args.input.canonicalize().map_err(|e| e.to_string())?,
@@ -111,29 +194,9 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
             "schema":input.manifest["schema"],
             "selected_payloads":selected
         },
-        "conversion": {
-            "stats":converted.stats.len(), "mods":converted.mods.len(), "stat_slots":8,
-            "filtered_shells":converted.filtered_shells,
-            "unassigned_stat_ranges":converted.unassigned_ranges,
-            "source_row_reference":"tables/Mods.json#/rows/{source_row}/values",
-            "mapping": {
-                "Stats":"Id -> id; IsLocal -> is_local; Semantic/Category -> optional raw u32 metadata",
-                "Mods":"Id -> id; Name -> name (null/empty -> absent); ModType -> raw mod_type and ModType.Name -> group; Domain -> domain; GenerationType -> generation_type; Level -> level",
-                "stats":"Stat1..8 -> Stats.Id by physical row; StatNMin/Max -> signed min/max in slot order; null StatN is unassigned, never row zero",
-                "families":"Families -> ModFamily.Id in source order; null differs from empty",
-                "tags":"Tags -> Tags.Id in source order",
-                "spawn_weights":"SpawnWeight_Tags -> Tags.Id paired with SpawnWeight_Values, preserving order and zero"
-            }
-        },
+        "conversion": conversion,
         "files":files,
-        "scope": [
-            "Only Stats/Mods and their ModType/ModFamily/Tags dependencies were read; unselected payloads and other foreign keys are not certified.",
-            "Physical rows identify source records inside the pinned payload, never stable business IDs. Source values remain in the immutable F package; no input was edited.",
-            "Semantic/Category remain raw metadata in the existing DTO; no enum or classification meaning is inferred.",
-            "Hardmode ranges, generation weights, implicit tags and other fields outside the ordinary DTO remain source facts, not newly applied semantics.",
-            "Acquisition status/evidence is copied unchanged. Fingerprints and conversion do not upgrade draft acquisition, prove full runtime completeness or adopt data.",
-            "No runtime manifest, vendor fallback, download, CURRENT update, calculation model or schema-4 admission change."
-        ]
+        "scope": scope
     }))?;
     output.reserve()?;
     // Mark even an interrupted write as a domain candidate before writing ordinary files.
@@ -150,7 +213,8 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     output.write_new("producer-receipt.json", &receipt)?;
     output.verify_namespace()?;
     Ok(format!(
-        "ordinary Stats/Mods domain candidate: {}; receipt sha256 {}",
+        "ordinary {} domain candidate: {}; receipt sha256 {}",
+        args.domain.label(),
         args.out.display(),
         sha256_hex(&receipt)
     ))
@@ -169,6 +233,10 @@ fn implementation_sha256() -> String {
         (
             "ordinary_facts.rs",
             include_bytes!("ordinary_facts.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/base_items.rs",
+            include_bytes!("ordinary_facts/base_items.rs").as_slice(),
         ),
         (
             "ordinary_facts/convert.rs",
@@ -211,6 +279,10 @@ fn implementation_sha256() -> String {
         (
             "catalog/mods.rs",
             include_bytes!("../../../crates/pobr-data/src/catalog/mods.rs").as_slice(),
+        ),
+        (
+            "catalog/items.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/items.rs").as_slice(),
         ),
         ("Cargo.toml", include_bytes!("../Cargo.toml").as_slice()),
         (

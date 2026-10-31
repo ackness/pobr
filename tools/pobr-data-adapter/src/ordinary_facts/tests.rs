@@ -10,14 +10,14 @@ use super::{Args, parse_args, reader, run, sha256_hex};
 
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
-struct Fixture {
-    root: PathBuf,
-    manifest: Value,
-    documents: BTreeMap<String, Value>,
+pub(super) struct Fixture {
+    pub(super) root: PathBuf,
+    pub(super) manifest: Value,
+    pub(super) documents: BTreeMap<String, Value>,
 }
 
 impl Fixture {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         // Reuse the established v4 trust fixture. Only selected payloads exist on disk;
         // this proves the ordinary path does not read unrelated skills/actors/graph data.
         let bundle: Value = serde_json::from_slice(include_bytes!(
@@ -55,7 +55,7 @@ impl Fixture {
         result
     }
 
-    fn seal(&mut self) {
+    pub(super) fn seal(&mut self) {
         for (path, doc) in &self.documents {
             let bytes = reader::json_bytes(doc).unwrap();
             fs::write(self.root.join("input").join(path), &bytes).unwrap();
@@ -72,18 +72,19 @@ impl Fixture {
         .unwrap();
     }
 
-    fn args(&self) -> Args {
+    pub(super) fn args(&self) -> Args {
         Args {
             input: self.root.join("input"),
             expected_manifest_sha256: sha256_hex(
                 &fs::read(self.root.join("input/manifest.json")).unwrap(),
             ),
             version: "0.5.5.5".into(),
+            domain: super::Domain::StatsMods,
             out: self.root.join("out"),
         }
     }
 
-    fn values(&mut self, table: &str, row: usize) -> &mut Value {
+    pub(super) fn values(&mut self, table: &str, row: usize) -> &mut Value {
         &mut self
             .documents
             .get_mut(&format!("tables/{table}.json"))
