@@ -222,12 +222,6 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         })
         .collect();
 
-    // Default-true **condition** keys haven't been backfilled by the
-    // request's direct-construction path yet — writing an explicit false
-    // for any key not explicitly set makes the two paths' semantics
-    // converge. Quest Stat rewards are already backfilled with
-    // defaultState=true on both sides (the XML path's parse_config, the
-    // direct-construction path's parse_build_from_request), so omitting them stays consistent.
     let mut config_inputs = req.config_inputs.clone();
     // PoB2 stores current custom modifiers as a CustomModifierBlock. Older
     // callers may still send the legacy customMods Input; keep accepting it,
@@ -289,10 +283,17 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
             .entry("enemyIsBoss".to_string())
             .or_insert_with(|| serde_json::Value::String(pob_tier.to_string()));
     }
-    for key in pobr_build::default_true_condition_keys() {
-        config_inputs
-            .entry(key.to_string())
-            .or_insert(serde_json::Value::Bool(false));
+    // With a catalog, both direct requests and XML imports resolve omitted
+    // conditions through the same interpreter. Keep absence intact: pinning
+    // false here would disable an active default (for example inDemonForm).
+    // Only the legacy, catalog-less direct path needs false-pinning to match
+    // its uninitialized conditions after XML import. Explicit values win.
+    if data.config_catalog.is_none() {
+        for key in pobr_build::default_true_condition_keys() {
+            config_inputs
+                .entry(key.to_string())
+                .or_insert(serde_json::Value::Bool(false));
+        }
     }
 
     let empty_choices = BTreeMap::new();

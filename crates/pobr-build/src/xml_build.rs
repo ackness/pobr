@@ -315,10 +315,10 @@ const DEFAULT_TRUE_CONDITIONS: &[(&str, &str)] = &[
     ("VigilantStrikeBypassCD", "VigilantStrikeBypassCD"),
 ];
 
-/// The **condition-type** `<Input>` keys that default to true when omitted from XML. The
-/// direct-request path doesn't yet implement default injection for these conditions, so
-/// the encode side writes `boolean="false"` for any key not explicitly set, pinning down
-/// that semantics and keeping an encode→decode round trip's calculation consistent.
+/// The **condition-type** `<Input>` keys that default to true when omitted from XML.
+/// Without a config catalog, the direct-request path does not inject these defaults,
+/// so the encode side pins absent keys to `boolean="false"` for that legacy path.
+/// With a catalog, both paths use the interpreter's defaults; export preserves absence.
 /// Quest Stat rewards aren't in this list — the direct-request path already implements
 /// the same defaultState=true semantics via [`default_quest_stat_reward_texts`], so
 /// omission is already consistent between both paths and needs no false-pinning.

@@ -41,7 +41,7 @@ const stat = (response: CalculateBuildResponse, id: string) => response.stats.fi
 describe.skipIf(env.POBR_WASM_CONTRACT !== '1')('real TS request to WASM weapon contexts', () => {
   let calculate: (request: CalculateBuildRequest) => CalculateBuildResponse;
   let decode: (code: string) => BuildJson;
-  let encode: (request: CalculateBuildRequest) => string;
+  let encode: (request: CalculateBuildRequest & { base_code?: string }) => string;
   let metrics: (request: CalculateBuildRequest) => SkillMetricsResponse;
   let state: SavedSession['state'];
 
@@ -125,4 +125,39 @@ describe.skipIf(env.POBR_WASM_CONTRACT !== '1')('real TS request to WASM weapon 
     expect(actual.main_skill).toEqual(expected.main_skill);
     expect(stat(actual, 'SpiritReserved')).toBe(0); // Legacy callers discarded Blink's enabled state.
   });
+
+  test('ordinary Infernalist export preserves omitted conditions and real edit-state calculations', async () => {
+    const original = (await readFile(new URL('../../../examples/reference-builds/ninja-top10-2026-10-26/builds/infernalist-01/code.txt', import.meta.url), 'utf8')).trim();
+    const importedState = (code: string): SavedSession['state'] => {
+      const decoded = decode(code);
+      return {
+        ...materialize(decoded), pobCode: code, character: decoded.character,
+        allocatedNodes: decoded.tree.allocated_nodes, attributeChoices: decoded.tree.attribute_choices,
+        annotations: {}, params: { ...paramsFromDecoded(decoded), main_socket_group: decoded.main_socket_group ?? undefined },
+      };
+    };
+    const imported = importedState(original);
+    expect(imported.params.config_inputs).not.toHaveProperty('inDemonForm');
+    const request = { ...toRequest(imported), breakdowns: [] };
+    expect(request.pob_code).toBeUndefined();
+    const before = calculate(request);
+    expect(before.energy_trigger?.events_per_second).toBeGreaterThan(0);
+    expect(before).toEqual(calculate({ pob_code: original, full_dps: request.full_dps, breakdowns: [] }));
+
+    for (const edit of ['unchanged', 'level', 'false', 'true'] as const) {
+      const edited = importedState(original);
+      if (edit === 'level') edited.character = { ...edited.character, level: edited.character.level - 1 };
+      if (edit === 'false' || edit === 'true') edited.params.config_inputs.inDemonForm = edit === 'true';
+      const current = { ...toRequest(edited), breakdowns: [] };
+      const expected = calculate(current);
+      for (const base_code of [original, undefined]) {
+        const saved = encode({ ...current, base_code });
+        const reopened = importedState(saved);
+        expect(reopened.params.config_inputs).toEqual(edited.params.config_inputs);
+        expect(reopened.character).toEqual(edited.character);
+        expect(calculate({ ...toRequest(reopened), breakdowns: [] })).toEqual(expected);
+        expect(calculate({ pob_code: saved, full_dps: current.full_dps, breakdowns: [] })).toEqual(expected);
+      }
+    }
+  }, 120_000);
 });
