@@ -1,6 +1,6 @@
 //! Fixed community skill interpretation bytes, with separate target identity evidence.
 
-mod policy;
+pub(super) mod policy;
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 pub(super) mod tests;
 

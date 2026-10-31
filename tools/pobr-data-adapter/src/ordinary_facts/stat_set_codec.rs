@@ -60,6 +60,10 @@ pub(super) struct Owner {
 }
 
 impl Owner {
+    pub(super) fn primary_source_row(&self) -> usize {
+        self.primary.source_row
+    }
+
     pub(super) fn contains(&self, set_id: &str) -> bool {
         self.primary.set_id == set_id || self.additional.iter().any(|s| s.set_id == set_id)
     }

@@ -31,7 +31,7 @@ struct Target {
 
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct Source {
+pub(in crate::ordinary_facts) struct Source {
     pub snapshot_version: String,
     pub path: String,
     pub sha256: String,
@@ -119,7 +119,11 @@ impl Policy {
 }
 
 impl Source {
-    fn validate(&self, filename: &str, schema: &str) -> Result<(), String> {
+    pub(in crate::ordinary_facts) fn validate(
+        &self,
+        filename: &str,
+        schema: &str,
+    ) -> Result<(), String> {
         identity(&self.snapshot_version, "legacy snapshot version")?;
         if self.snapshot_version.contains('/')
             || self.snapshot_version.contains('\\')
@@ -140,7 +144,7 @@ impl Source {
     }
 }
 
-pub(super) fn identity(value: &str, field: &str) -> Result<(), String> {
+pub(in crate::ordinary_facts) fn identity(value: &str, field: &str) -> Result<(), String> {
     if value.is_empty() || value.trim() != value || value.chars().any(char::is_control) {
         return Err(format!("{field}: nonempty canonical identity required"));
     }
