@@ -85,6 +85,10 @@ class NativeCandidateTests(unittest.TestCase):
             expected += ["--player-context", str(self.player), "--player-manifest-sha256",
                          self.recipe["player"]["manifest_sha256"], "--player-source-lock-sha256",
                          self.recipe["player"]["source_lock_sha256"]]
+        passive = native.input_profile(self.recipe) == native.PASSIVE_INPUT_PROFILE
+        policy = native.actor_policy(self.recipe)
+        if passive:
+            expected += ["--input-profile", native.PASSIVE_INPUT_PROFILE]
         self.assertEqual(command, [*expected, "--out", str(Path(command[-1]))])
         out = Path(command[-1])
         self.assertFalse(out.exists())
@@ -93,7 +97,7 @@ class NativeCandidateTests(unittest.TestCase):
                 "format": f"pobr-native-runtime-input-lock/v{version}", "facts": self.recipe["facts"],
                 "descriptions": self.recipe["descriptions"], "official_tree": {
                     **self.recipe["official_tree"], "fields": ["coordinates"]},
-                "profile": native.INPUT_PROFILE,
+                "profile": native.input_profile(self.recipe),
                 "compiler": {k: v for k, v in self.recipe["compiler"].items() if k != "binary_sha256"}}
         docs = {name: {} for name in domains}
         if player:
@@ -106,19 +110,29 @@ class NativeCandidateTests(unittest.TestCase):
                 "parent_source_lock_sha256": self.recipe["facts"]["source_lock_sha256"]}
             context_pin = native.sha256(native.encoded(docs["native_player_context"]) + b"\n")
             docs["native_actor_binding"] = {"schema_version": 1, "context_sha256": context_pin,
-                "policy": native.ACTOR_POLICY, "evaluation": native.PLAYER_OUTPUT_PROFILE,
+                "policy": policy, "evaluation": native.PLAYER_OUTPUT_PROFILE,
                 "model_status": "conditional-model"}
             binding_pin = native.sha256(native.encoded(docs["native_actor_binding"]) + b"\n")
             lock["player"] = {**self.recipe["player"], "actor_binding_sha256": binding_pin,
                 "parent_manifest_sha256": self.recipe["facts"]["manifest_sha256"],
                 "parent_source_lock_sha256": self.recipe["facts"]["source_lock_sha256"],
-                "actor_policy": native.ACTOR_POLICY, "producer_revision": "b" * 40}
+                "actor_policy": policy, "producer_revision": "b" * 40}
         docs.update(native_input_lock=lock, native_acquisition=self.acquisition, native_coverage={
             "format": f"pobr-native-runtime-coverage/v{version}", "source_status": native.SOURCE_STATUS,
             "production_ready": False, "calculation_admitted": False})
+        if passive:
+            policy_pin = {"id": policy, "artifact_sha256": binding_pin}
+            docs["native_normalization"] = {"format": "pobr-native-normalization/v2", "version": 2,
+                "profile": native.PASSIVE_PROFILE, "actor_policy": policy_pin}
+            docs["native_rule_requirements"] = {"format": "pobr-native-rule-requirements/v2", "version": 2,
+                "profile": native.PASSIVE_PROFILE, "actor_policy_sha256": binding_pin,
+                "evaluation": native.PLAYER_OUTPUT_PROFILE}
+            docs["native_reference_index"] = {"input_profile": native.PASSIVE_INPUT_PROFILE, "actor_policy": policy_pin}
+            docs["native_coverage"]["input_profile"] = native.PASSIVE_INPUT_PROFILE
         files = {f"base/{name}.json": native.sha256(native.encoded(doc) + b"\n") for name, doc in docs.items()}
         docs["native_runtime"] = {**{k: self.recipe["target"][k] for k in
-            ["game", "realm", "game_patch", "input_profile", "output_profile"]},
+            ["game", "realm", "game_patch", "output_profile"]},
+            "input_profile": native.input_profile(self.recipe),
             "schema_version": version, "compiler_revision": lock["compiler"]["revision_declaration"],
             "assembly_key": "a" * 64,
             "descriptions_manifest_sha256": self.recipe["descriptions"]["manifest_sha256"],
@@ -134,6 +148,10 @@ class NativeCandidateTests(unittest.TestCase):
                 k: docs["native_player_context"][k] for k in ["source_manifest_sha256", "source_lock_sha256",
                                                             "parent_manifest_sha256", "parent_source_lock_sha256"]}
             docs["native_runtime"]["player"].update(context_sha256=context_pin, actor_binding_sha256=binding_pin)
+        if passive:
+            for field, domain in [("normalization", "native_normalization"), ("rules", "native_rule_requirements")]:
+                docs["native_runtime"][field] = {"profile": native.PASSIVE_PROFILE, "version": 2,
+                    "sha256": files[f"base/{domain}.json"]}
         for name, doc in docs.items():
             files[f"base/{name}.json"] = native.fingerprint(self.write(out / f"base/{name}.json", doc))
         manifest = self.write(out / "manifest.json", {"schema_version": 4, "poe_version": "9.1", "languages": [],
@@ -144,7 +162,7 @@ class NativeCandidateTests(unittest.TestCase):
             "input_lock_sha256": files["base/native_input_lock.json"], "scope": "Scoped catalogs only"}
         if player:
             receipt.update(data_identity={"data_version": "9.1", "sha256": "c" * 64},
-                           actor_policy=native.ACTOR_POLICY, evaluation=native.PLAYER_OUTPUT_PROFILE)
+                           actor_policy=policy, evaluation=native.PLAYER_OUTPUT_PROFILE)
         self.write(out / "assembly-receipt.json", receipt)
 
     def test_relocated_bindings_produce_identical_complete_bytes_and_preserve_inputs(self):
@@ -175,6 +193,29 @@ class NativeCandidateTests(unittest.TestCase):
         self.assertEqual(published, native.inventory(self.root / "data"))
         native.exact_inventory(self.out, {**receipt["files"],
             "orchestration-receipt.json": native.fingerprint(self.out / "orchestration-receipt.json")})
+
+    def test_omitted_input_profile_keeps_recipe_bytes_and_old_invocation(self):
+        del self.recipe["target"]["input_profile"]
+        self.save_recipe()
+        before = self.recipe_path.read_bytes()
+        with patch.object(native.subprocess, "run", self.assemble):
+            receipt = self.replay()
+        self.assertEqual((self.out / "recipe.json").read_bytes(), before)
+        self.assertEqual(receipt["recipe_sha256"], native.sha256(before))
+        self.assertNotIn("input_profile", receipt["target"])
+        contract = json.loads((self.out / "runtime/base/native_runtime.json").read_bytes())
+        self.assertEqual(contract["input_profile"], native.INPUT_PROFILE)
+
+    def test_new_profile_requires_actor_v2_before_execution(self):
+        self.recipe["schema"] = native.SCHEMA
+        self.recipe.pop("player", None)
+        self.recipe["target"]["output_profile"] = native.OUTPUT_PROFILE
+        self.recipe["target"]["input_profile"] = native.PASSIVE_INPUT_PROFILE
+        self.save_recipe()
+        with patch.object(native.subprocess, "run") as adapter, self.assertRaisesRegex(ValueError, "input profile/version"):
+            self.replay()
+        adapter.assert_not_called()
+        self.assertFalse(self.out.exists())
 
     def test_changed_external_pins_fail_before_adapter_or_output(self):
         cases = [(self.recipe_path, "External byte pin"), (self.source_lock, "payload size"),
@@ -444,6 +485,108 @@ class NativePlayerCandidateTests(NativeCandidateTests):
         self.assertEqual(len(receipt["files"]), 22)  # recipe + 19 domains + manifest + assembly receipt
         self.assertFalse(receipt["calculation_admitted"])
         self.assertFalse(receipt["production_ready"])
+
+    def test_explicit_passive_profile_replays_deterministically_and_preserves_sources(self):
+        self.recipe["target"]["input_profile"] = native.PASSIVE_INPUT_PROFILE
+        self.save_recipe()
+        before = native.inventory(self.root / "inputs")
+        with patch.object(native.subprocess, "run", self.assemble):
+            first = self.replay()
+            second = self.replay(out=self.root / "passive-second")
+        self.assertEqual(first, second)
+        self.assertEqual(native.inventory(self.out), native.inventory(self.root / "passive-second"))
+        self.assertEqual(before, native.inventory(self.root / "inputs"))
+        binding = json.loads((self.out / "runtime/base/native_actor_binding.json").read_bytes())
+        self.assertEqual(binding["policy"], native.PASSIVE_ACTOR_POLICY)
+        self.assertEqual(json.loads((self.out / "runtime/assembly-receipt.json").read_bytes())["actor_policy"],
+                         native.PASSIVE_ACTOR_POLICY)
+
+    def test_passive_profile_requires_complete_player_pins_and_binding(self):
+        self.recipe["target"]["input_profile"] = native.PASSIVE_INPUT_PROFILE
+        for key in ["manifest_sha256", "source_lock_sha256"]:
+            value = self.recipe["player"].pop(key)
+            self.save_recipe()
+            with patch.object(native.subprocess, "run") as adapter, self.assertRaises(ValueError):
+                self.replay()
+            adapter.assert_not_called()
+            self.recipe["player"][key] = value
+        self.save_recipe()
+        with patch.object(native.subprocess, "run") as adapter, self.assertRaisesRegex(ValueError, "requires explicit"):
+            self.replay(player_context=None)
+        adapter.assert_not_called()
+        self.assertFalse(self.out.exists())
+
+    def reseal_passive_runtime(self, runtime):
+        """Reseal dependent byte pins so failures exercise semantic tuple checks."""
+        docs = {p.stem: json.loads(p.read_bytes()) for p in (runtime / "base").iterdir()}
+        binding_pin = native.sha256(native.encoded(docs["native_actor_binding"]) + b"\n")
+        docs["native_runtime"]["player"]["actor_binding_sha256"] = binding_pin
+        docs["native_input_lock"]["player"]["actor_binding_sha256"] = binding_pin
+        docs["native_normalization"]["actor_policy"]["artifact_sha256"] = binding_pin
+        docs["native_rule_requirements"]["actor_policy_sha256"] = binding_pin
+        docs["native_reference_index"]["actor_policy"]["artifact_sha256"] = binding_pin
+        hashes = {}
+        for name, doc in docs.items():
+            if name != "native_runtime":
+                hashes[f"base/{name}.json"] = native.fingerprint(self.write(runtime / f"base/{name}.json", doc))
+        contract = docs["native_runtime"]
+        for field, domain in [("source_lock_sha256", "native_input_lock"), ("coverage_sha256", "native_coverage"),
+                               ("reference_index_sha256", "native_reference_index")]:
+            contract[field] = hashes[f"base/{domain}.json"]
+        for field, domain in [("normalization", "native_normalization"), ("rules", "native_rule_requirements")]:
+            contract[field]["sha256"] = hashes[f"base/{domain}.json"]
+        hashes["base/native_runtime.json"] = native.fingerprint(self.write(runtime / "base/native_runtime.json", contract))
+        manifest = json.loads((runtime / "manifest.json").read_bytes())
+        manifest["files"] = hashes
+        self.write(runtime / "manifest.json", manifest)
+        receipt = json.loads((runtime / "assembly-receipt.json").read_bytes())
+        receipt["manifest_sha256"] = native.fingerprint(runtime / "manifest.json")
+        receipt["input_lock_sha256"] = hashes["base/native_input_lock.json"]
+        self.write(runtime / "assembly-receipt.json", receipt)
+
+    def test_passive_replay_rejects_resealed_mixed_tuple_and_policy_artifacts(self):
+        self.recipe["target"]["input_profile"] = native.PASSIVE_INPUT_PROFILE
+        self.save_recipe()
+        cases = [
+            ("native_runtime", ["normalization", "profile"], "spark-level1-q0", "Mixed passive interpretation tuple"),
+            ("native_runtime", ["rules", "profile"], "spark-level1-q0", "Mixed passive interpretation tuple"),
+            ("native_normalization", ["profile"], "spark-level1-q0", "Mixed passive interpretation artifact"),
+            ("native_rule_requirements", ["version"], 1, "Mixed passive interpretation artifact"),
+            ("native_actor_binding", ["policy"], native.ACTOR_POLICY, "policy/context mismatch"),
+            ("native_input_lock", ["player", "actor_policy"], native.ACTOR_POLICY, "player input lock mismatch"),
+            ("native_normalization", ["actor_policy", "id"], native.ACTOR_POLICY, "normalization policy mismatch"),
+            ("native_reference_index", ["actor_policy", "id"], native.ACTOR_POLICY, "reference/coverage policy mismatch"),
+            ("native_coverage", ["input_profile"], native.INPUT_PROFILE, "reference/coverage policy mismatch"),
+        ]
+        for i, (domain, keys, value, error) in enumerate(cases):
+            out = self.root / f"passive-mixed-{i}"
+            def altered(command, **kwargs):
+                self.assemble(command, **kwargs)
+                path = out / f"runtime/base/{domain}.json"
+                doc = json.loads(path.read_bytes())
+                container = doc
+                for key in keys[:-1]:
+                    container = container[key]
+                container[keys[-1]] = value
+                self.write(path, doc)
+                self.reseal_passive_runtime(out / "runtime")
+            with self.subTest(domain=domain, keys=keys), patch.object(native.subprocess, "run", altered), \
+                    self.assertRaisesRegex(ValueError, error):
+                self.replay(out=out)
+            self.assertFalse((out / "orchestration-receipt.json").exists())
+
+    def test_passive_receipt_cannot_report_old_actor_policy(self):
+        self.recipe["target"]["input_profile"] = native.PASSIVE_INPUT_PROFILE
+        self.save_recipe()
+        def altered(command, **kwargs):
+            self.assemble(command, **kwargs)
+            path = self.out / "runtime/assembly-receipt.json"
+            doc = json.loads(path.read_bytes())
+            doc["actor_policy"] = native.ACTOR_POLICY
+            self.write(path, doc)
+        with patch.object(native.subprocess, "run", altered), self.assertRaisesRegex(ValueError, "Player assembly identity mismatch"):
+            self.replay()
+        self.assertFalse((self.out / "orchestration-receipt.json").exists())
 
     def test_player_binding_and_recipe_versions_must_agree_before_execution(self):
         with patch.object(native.subprocess, "run") as adapter, self.assertRaisesRegex(ValueError, "requires explicit"):

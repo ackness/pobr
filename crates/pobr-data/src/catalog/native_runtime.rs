@@ -46,12 +46,16 @@ pub enum NativeRealm {
     International,
 }
 
-/// Fixed initial input scope: level-1 Sorceress, Spark primary branch at level 1/q0,
-/// without equipment, supports, allocations, ascendancy, infusion or event conditions.
+/// Bounded level-1 Sorceress and primary Spark level-1/q0 input scopes.
+/// Both exclude equipment, supports, ascendancy, infusion and event conditions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NativeInputProfile {
+    /// Original scope without any passive allocations.
     #[serde(rename = "sorceress-spark-level1-q0-v1")]
     SorceressSparkLevel1Q0V1,
+    /// Explicit ordinary damage-passive selections, assumed active without legality certification.
+    #[serde(rename = "sorceress-spark-level1-q0-ordinary-damage-passives-v1")]
+    SorceressSparkLevel1Q0OrdinaryDamagePassivesV1,
 }
 
 /// Requested output scope, not an assertion that these outputs are implemented.
@@ -69,6 +73,8 @@ pub enum NativeOutputProfile {
 pub enum NativeProfile {
     #[serde(rename = "spark-level1-q0")]
     SparkLevel1Q0,
+    #[serde(rename = "spark-level1-q0-ordinary-damage-passives")]
+    SparkLevel1Q0OrdinaryDamagePassives,
 }
 
 /// Versioned normalization or rule declaration, pinned independently from game facts.

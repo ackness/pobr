@@ -8,7 +8,7 @@ use pobr_data::catalog::native_player::{NATIVE_ACTOR_BINDING_PATH, NATIVE_PLAYER
 use pobr_data::catalog::native_runtime::{
     NATIVE_COVERAGE_PATH, NATIVE_PLAYER_CONTRACT_VERSION, NATIVE_REFERENCE_INDEX_PATH,
     NATIVE_REQUIRED_DOMAINS, NATIVE_RUNTIME_CONTRACT_VERSION, NATIVE_RUNTIME_PATH,
-    NativeOutputProfile,
+    NativeInputProfile, NativeOutputProfile, NativeProfile,
 };
 use pobr_data::catalog::{DataManifest, NATIVE_CATALOG_SCHEMA_VERSION, NativeRuntimeContract};
 use sha2::{Digest, Sha256};
@@ -320,6 +320,19 @@ impl GameData {
                 "unsupported native contract version {}",
                 contract.schema_version
             )));
+        }
+        // These are complete interpretation tuples, not independently combinable scopes.
+        let profile = match contract.input_profile {
+            NativeInputProfile::SorceressSparkLevel1Q0V1 => NativeProfile::SparkLevel1Q0,
+            NativeInputProfile::SorceressSparkLevel1Q0OrdinaryDamagePassivesV1
+                if contract.schema_version == NATIVE_PLAYER_CONTRACT_VERSION =>
+            {
+                NativeProfile::SparkLevel1Q0OrdinaryDamagePassives
+            }
+            _ => return Err(invalid("unsupported native input/profile tuple".into())),
+        };
+        if contract.normalization.profile != profile || contract.rules.profile != profile {
+            return Err(invalid("mixed native input/profile tuple".into()));
         }
         let player_paths = [NATIVE_PLAYER_CONTEXT_PATH, NATIVE_ACTOR_BINDING_PATH];
         if contract.schema_version == NATIVE_RUNTIME_CONTRACT_VERSION {

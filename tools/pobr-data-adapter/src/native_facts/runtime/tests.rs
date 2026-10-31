@@ -537,6 +537,7 @@ fn native_runtime_assembled_catalog_loads_and_keeps_calculation_guard() {
         tree_sha256: "c".repeat(64),
         compiler_revision: "d".repeat(40),
         player: None,
+        input_profile: NativeInputProfile::SorceressSparkLevel1Q0V1,
     };
     let (base, receipt) =
         assemble(&input, &candidate, &official, &descriptions, None, &args).unwrap();
@@ -570,6 +571,196 @@ fn native_runtime_assembled_catalog_loads_and_keeps_calculation_guard() {
         GameData::from_memory_prechecked(files)
             .validate_manifest()
             .is_err()
+    );
+}
+
+/// Rebind the existing synthetic player context to the synthetic physical fixture.
+/// This bypasses producer trust only inside the test; no real package is rewritten.
+fn synthetic_player(input: &mut trust::VerifiedInput) -> player::Player {
+    let (mut context, parent) = player_tests::fixture();
+    input.lock_bytes = parent.lock_bytes;
+    input.manifest["source_identity"]["source_lock_sha256"] = sha256_hex(&input.lock_bytes).into();
+    for resource in ["tables/PassiveSkills.json", "tables/Stats.json"] {
+        let bytes = json_bytes(&input.documents[resource]).unwrap();
+        input.manifest["files"][resource] =
+            json!({"bytes":bytes.len(),"sha256":sha256_hex(&bytes)});
+    }
+    input.manifest_bytes = json_bytes(&input.manifest).unwrap();
+    context.parent_manifest_sha256 = sha256_hex(&input.manifest_bytes);
+    context.parent_source_lock_sha256 = sha256_hex(&input.lock_bytes);
+    context.source_archive.insert(
+        "parent-manifest.json".into(),
+        String::from_utf8(input.manifest_bytes.clone()).unwrap(),
+    );
+    let mut manifest: Value =
+        serde_json::from_str(&context.source_archive["manifest.json"]).unwrap();
+    manifest["parent"]["manifest_sha256"] = context.parent_manifest_sha256.clone().into();
+    manifest["parent"]["source_identity"] = input.manifest["source_identity"].clone();
+    manifest["files"]["parent-manifest.json"] =
+        json!({"bytes":input.manifest_bytes.len(),"sha256":context.parent_manifest_sha256});
+    let bytes = json_bytes(&manifest).unwrap();
+    context.source_manifest_sha256 = sha256_hex(&bytes);
+    context
+        .source_archive
+        .insert("manifest.json".into(), String::from_utf8(bytes).unwrap());
+    player::Player { context, manifest }
+}
+
+#[test]
+fn native_passive_assembly_is_explicit_deterministic_and_projects_changed_source_values() {
+    use pobr_data::catalog::native_player::NativeActorBinding;
+    let (mut input, mut candidate, official) = ordinary_damage_tree_case();
+    let descriptions = inputs::Descriptions {
+        manifest: json!({"files":{},"source_identity":{
+        "source_lock_sha256":"b".repeat(64),"acquisition":{"status":"unreviewed-acquisition-draft"}}}),
+    };
+    let mut args = Args {
+        facts: super::super::Args {
+            input: "unused".into(),
+            out: "unused".into(),
+            source_lock: "unused".into(),
+            expected_manifest_sha256: "a".repeat(64),
+            profile: Profile::ItemsActorsBc,
+        },
+        descriptions: "unused".into(),
+        descriptions_sha256: "b".repeat(64),
+        tree: "unused".into(),
+        tree_sha256: "c".repeat(64),
+        compiler_revision: "d".repeat(40),
+        player: None,
+        input_profile: NativeInputProfile::SorceressSparkLevel1Q0OrdinaryDamagePassivesV1,
+    };
+    assert!(
+        assemble(&input, &candidate, &official, &descriptions, None, &args)
+            .unwrap_err()
+            .contains("complete pinned player")
+    );
+    let mut identities = BTreeSet::new();
+    for value in [-17, 0, 43] {
+        mutate(
+            &mut input,
+            "PassiveSkills",
+            3241,
+            "Stat1Value",
+            json!(value),
+        );
+        candidate.passives.get_mut("chaos6").unwrap().stats[0].value = value;
+        let player = synthetic_player(&mut input);
+        let (new, receipt) = assemble(
+            &input,
+            &candidate,
+            &official,
+            &descriptions,
+            Some(&player),
+            &args,
+        )
+        .unwrap();
+        let repeated = assemble(
+            &input,
+            &candidate,
+            &official,
+            &descriptions,
+            Some(&player),
+            &args,
+        )
+        .unwrap();
+        assert_eq!((&new, &receipt), (&repeated.0, &repeated.1));
+        let mut files = new
+            .iter()
+            .map(|(name, bytes)| (format!("base/{name}"), bytes.clone()))
+            .collect::<Files>();
+        files.insert("manifest.json".into(), manifest("0.5.5.5", &new).unwrap());
+        let native = pobr_gamedata::NativeData::load(&GameData::from_memory(files)).unwrap();
+        assert!(identities.insert(native.identity().sha256.clone()));
+        let node = native
+            .passive_nodes()
+            .iter()
+            .find(|n| n.skill == 52695)
+            .unwrap();
+        let packet = node.native_stats.as_ref().unwrap();
+        assert_eq!(packet.stats[0].value, value);
+        let modifier = pobr_core::rules::passive_stats::map_stat(&packet.stats[0]).unwrap();
+        assert_eq!(
+            modifier.value,
+            pobr_core::modifier::ModValue::Number(value as f64)
+        );
+        let index = document(&new, "native_reference_index.json");
+        assert_eq!(
+            index["passive_definitions"]["chaos6"]["stats"][0]["value"],
+            value
+        );
+        assert_eq!(
+            index["archive"]["manifest_sha256"],
+            packet.stats[0].provenance.source_manifest_sha256
+        );
+        let contract = native.contract();
+        assert_eq!(contract.input_profile, args.input_profile);
+        assert_eq!(
+            contract.normalization.profile,
+            NativeProfile::SparkLevel1Q0OrdinaryDamagePassives
+        );
+        assert_eq!(contract.rules.profile, contract.normalization.profile);
+        assert_eq!(contract.normalization.version, 2);
+        for name in ["native_normalization.json", "native_rule_requirements.json"] {
+            let doc = document(&new, name);
+            assert_eq!(doc["version"], 2);
+            assert_eq!(doc["profile"], json!(contract.normalization.profile));
+        }
+        let binding: NativeActorBinding =
+            serde_json::from_slice(&new["native_actor_binding.json"]).unwrap();
+        assert_eq!(
+            binding.policy,
+            NativeActorPolicy::SelectedPlayerGenericOtOrdinaryDamagePassivesV1
+        );
+        assert_eq!(
+            document(&new, "native_input_lock.json")["player"]["actor_policy"],
+            json!(binding.policy)
+        );
+        assert_eq!(
+            index["actor_policy"]["artifact_sha256"],
+            contract.player.as_ref().unwrap().actor_binding_sha256
+        );
+        args.input_profile = NativeInputProfile::SorceressSparkLevel1Q0V1;
+        let (old, _) = assemble(
+            &input,
+            &candidate,
+            &official,
+            &descriptions,
+            Some(&player),
+            &args,
+        )
+        .unwrap();
+        assert_eq!(
+            new["native_player_context.json"],
+            old["native_player_context.json"]
+        );
+        for name in [
+            "passive_tree.json",
+            "granted_effects.json",
+            "granted_effect_stat_sets.json",
+        ] {
+            assert_eq!(new[name], old[name], "same source fact bytes: {name}");
+        }
+        for name in [
+            "native_runtime.json",
+            "native_actor_binding.json",
+            "native_input_lock.json",
+            "native_normalization.json",
+            "native_rule_requirements.json",
+            "native_coverage.json",
+            "native_reference_index.json",
+        ] {
+            assert_ne!(new[name], old[name], "policy-bound bytes: {name}");
+        }
+        args.input_profile = NativeInputProfile::SorceressSparkLevel1Q0OrdinaryDamagePassivesV1;
+    }
+    let scratch = Scratch::new();
+    let out = scratch.0.join("missing-player");
+    args.facts.out = out.clone();
+    assert!(run(args).unwrap_err().contains("complete pinned player"));
+    assert!(
+        !out.exists(),
+        "missing player must fail before reserving output"
     );
 }
 

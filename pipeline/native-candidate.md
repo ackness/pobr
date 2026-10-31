@@ -46,7 +46,7 @@ characters; the declared Git revision is 40 lowercase hex characters.
 | Object | Required fields and values |
 | --- | --- |
 | root | `schema: "pobr-native-candidate-recipe/v1"` |
-| `target` | `game: "poe2"`, `realm: "INTERNATIONAL"`, numeric dotted `game_patch`, `input_profile: "sorceress-spark-level1-q0-v1"`, `output_profile: "spark-single-hit-cast-cost-v1"`, `source_status: "unreviewed-acquisition-draft"`, `partial: true` |
+| `target` | `game: "poe2"`, `realm: "INTERNATIONAL"`, numeric dotted `game_patch`, optional `input_profile: "sorceress-spark-level1-q0-v1"` (also the omitted default), `output_profile: "spark-single-hit-cast-cost-v1"`, `source_status: "unreviewed-acquisition-draft"`, `partial: true` |
 | `facts` | Exact `manifest_sha256` and `source_lock_sha256` for `repoe-native-facts/v4` |
 | `descriptions` | Exact `manifest_sha256` and `source_lock_sha256` for `repoe-native-descriptions/v1` |
 | `official_tree` | Exact `sha256`; `game_patch: null` (unknown) |
@@ -111,7 +111,7 @@ The [player example](native-player-candidate-example.json) uses
 exact `manifest_sha256` and `source_lock_sha256` pins for a
 `repoe-native-player-context/v1` package. Supply its local directory explicitly
 with `--player-context`; v1 forbids that binding, and v2 requires it. V2 uses the
-same input profile and source status, with output profile
+same default input profile and source status, with output profile
 `conditional-skill-hit-v1`. Unknown fields or mixed-version profiles fail.
 
 The player manifest, complete inventory and source lock are verified before
@@ -153,6 +153,39 @@ The example's digest identifies its tracked bytes, not source approval. Compiler
 pins identify a particular prebuilt artifact; another platform/build needs its
 own reviewed recipe. `revision_declaration` and byte integrity do not establish
 a clean-build attestation. The old example and v1 runtime bytes remain supported.
+
+## Explicit passive input selection
+
+An actor/v2 recipe can explicitly set `target.input_profile` to
+`sorceress-spark-level1-q0-ordinary-damage-passives-v1`. It still requires both
+player pins and the explicit `--player-context` directory, with
+`conditional-skill-hit-v1` output. Replay sends this selection to the assembler
+using `--input-profile` and requires policy
+`selected-player-generic-ot-ordinary-damage-passives-v1` in the binding, input lock
+and assembly receipt. Normalization and rule profiles must both be
+`spark-level1-q0-ordinary-damage-passives` at version2, with matching policy hashes
+and reference/coverage declarations. Unsupported profiles, v1 passive selections
+and mixed old/new tuples fail without a completion receipt.
+
+The old value or an omitted `target.input_profile` selects the existing profile.
+Replay then preserves the historical assembler argument list, so existing pinned
+compilers remain usable. It preserves the input recipe bytes and their digest;
+it does not insert a default field into a saved recipe. Explicit selections are
+part of the immutable recipe rather than an ambient CLI override. The tracked
+example recipes and their compiler pins remain unchanged.
+
+For a new candidate, copy the v2 recipe to a separate file, change only the input
+profile and record the integrated compiler's **actual** binary SHA-256, revision
+declaration and implementation fingerprint. Keep the fixed source/player/tree
+pins. Then run the same v2 replay command with the new recipe, its independently
+recorded digest, the new compiler and a new output leaf. No compiler SHA or future
+assembly identity for this profile is predicted here.
+
+The new policy assumes explicitly selected eligible ordinary damage nodes active
+for a conditional comparison; it does not certify point budgets, reachability or
+progression. Starting relationships are never free grants. Actor source facts,
+unreviewed acquisition status and ordinary full-build guards are unchanged.
+See the assembler's [profile boundary](../tools/pobr-data-adapter/native-runtime.md#explicit-ordinary-damage-passive-profile).
 
 Focused stdlib checks (no Rust build or package installation):
 

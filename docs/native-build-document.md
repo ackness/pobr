@@ -39,6 +39,18 @@ the existing model's binary values. The input limit is 16 MiB.
 needs the executing engine/model implementation identity, or must recompute.
 This request digest alone does not certify engine equivalence or source approval.
 
+The opt-in ordinary-damage-passive profile edits the existing
+`build.tree.allocated_nodes` array of graph IDs; no patch API or new document
+fields are introduced. Its separately assembled pack and new actor-policy hash
+must be bound explicitly. Old saved dataset/policy pins keep their old scope and
+cannot silently widen or migrate. Save/reopen preserves allocation order, so a
+reordered array has a distinct request hash even when sorted calculation/evidence
+is equivalent. Removing all selections restores that candidate's baseline.
+Every selected packet must pass admission as a whole; mixed unsupported selections
+fail instead of saving a partial numerical answer. Selections declare active
+nodes for a conditional comparison and do not certify point budget, paths or
+progression legality. Starting relations grant nothing automatically.
+
 Existing PoB XML/build-code imports continue through their explicit compatibility
 entry points. JSON documents are rejected there before embedded XML/item markers
 can be interpreted. The application WASM handshake and active data are unchanged
