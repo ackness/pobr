@@ -4,7 +4,7 @@
 //! promote a source, or certify a calculation. Full-build calculation stays guarded;
 //! a separate native consumer must admit each supported bounded request explicitly.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
@@ -18,6 +18,10 @@ pub const NATIVE_RUNTIME_PATH: &str = "base/native_runtime.json";
 pub const NATIVE_COVERAGE_PATH: &str = "base/native_coverage.json";
 /// Canonical archive reference index retained by the assembler.
 pub const NATIVE_REFERENCE_INDEX_PATH: &str = "base/native_reference_index.json";
+/// Selected skill identities/levels and archival projection evidence.
+pub const NATIVE_SKILL_PROJECTION_PATH: &str = "base/native_skill_projection.json";
+/// Multi-primary-spell projection, distinct from the historical Spark-only artifact.
+pub const NATIVE_PRIMARY_SPELL_PROJECTION_FORMAT: &str = "pobr-native-skill-projection/v2";
 
 /// Minimum projected domains for the fixed input profile, not proof of semantic closure.
 /// Constants/rules and exact build binding still need coordinated calculation admission.
@@ -46,8 +50,8 @@ pub enum NativeRealm {
     International,
 }
 
-/// Bounded level-1 Sorceress and primary Spark level-1/q0 input scopes.
-/// Both exclude equipment, supports, ascendancy, infusion and event conditions.
+/// Bounded selected-player and primary-spell input scopes.
+/// All exclude equipment, supports, ascendancy, infusion and event conditions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NativeInputProfile {
     /// Original scope without any passive allocations.
@@ -56,6 +60,10 @@ pub enum NativeInputProfile {
     /// Explicit ordinary damage-passive selections, assumed active without legality certification.
     #[serde(rename = "sorceress-spark-level1-q0-ordinary-damage-passives-v1")]
     SorceressSparkLevel1Q0OrdinaryDamagePassivesV1,
+    /// A pinned primary-spell catalog with exact authored gem levels, quality zero,
+    /// and explicit ordinary damage passives under the fixed actor assumption.
+    #[serde(rename = "selected-player-primary-spell-hit-q0-passives-v1")]
+    SelectedPlayerPrimarySpellHitQ0PassivesV1,
 }
 
 /// Requested output scope, not an assertion that these outputs are implemented.
@@ -66,6 +74,9 @@ pub enum NativeOutputProfile {
     SparkSingleHitCastCostV1,
     #[serde(rename = "conditional-skill-hit-v1")]
     ConditionalSkillHitV1,
+    /// Optional intrinsic quantities never imply a fabricated projectile count/lifetime.
+    #[serde(rename = "conditional-skill-hit-v2")]
+    ConditionalSkillHitV2,
 }
 
 /// Named PoBR interpretation scope; unknown profiles must fail, never fall back.
@@ -75,6 +86,34 @@ pub enum NativeProfile {
     SparkLevel1Q0,
     #[serde(rename = "spark-level1-q0-ordinary-damage-passives")]
     SparkLevel1Q0OrdinaryDamagePassives,
+    #[serde(rename = "primary-spell-hit-q0-passives")]
+    PrimarySpellHitQ0Passives,
+}
+
+/// Closed normalized selection inventory. Numerical catalogs retain their existing
+/// domain types; the evidence map is archival and is never a calculation interpreter.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NativePrimarySpellProjection {
+    pub format: String,
+    pub primary_only: bool,
+    pub quality: u32,
+    pub selections: Vec<NativePrimarySpellSelection>,
+    pub retained_evidence: BTreeMap<String, serde_json::Value>,
+}
+
+/// Exact stable forward joins and the complete authored-level inventory for one gem.
+/// Source row numbers and scaling coordinates are retained separately as evidence;
+/// neither they nor gem levels stand in for requirements or the selected actor level.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NativePrimarySpellSelection {
+    pub gem_id: String,
+    pub gem_effect_id: String,
+    pub effect_id: String,
+    pub active_skill_id: String,
+    pub stat_set_id: String,
+    pub gem_levels: Vec<u32>,
 }
 
 /// Versioned normalization or rule declaration, pinned independently from game facts.

@@ -1,5 +1,8 @@
 use super::*;
 
+#[path = "primary_tests.rs"]
+mod primary_tests;
+
 fn input() -> trust::VerifiedInput {
     let fixture: Value = serde_json::from_slice(include_bytes!(
         "../../../tests/fixtures/native-runtime/spark-physical.json"
@@ -537,6 +540,7 @@ fn native_runtime_assembled_catalog_loads_and_keeps_calculation_guard() {
         tree_sha256: "c".repeat(64),
         compiler_revision: "d".repeat(40),
         player: None,
+        primary_gems: None,
         input_profile: NativeInputProfile::SorceressSparkLevel1Q0V1,
     };
     let (base, receipt) =
@@ -628,6 +632,7 @@ fn native_passive_assembly_is_explicit_deterministic_and_projects_changed_source
         tree_sha256: "c".repeat(64),
         compiler_revision: "d".repeat(40),
         player: None,
+        primary_gems: None,
         input_profile: NativeInputProfile::SorceressSparkLevel1Q0OrdinaryDamagePassivesV1,
     };
     assert!(

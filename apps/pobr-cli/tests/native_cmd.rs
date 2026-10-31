@@ -156,3 +156,89 @@ fn supplied_actual_passive_saved_edits_run_in_fresh_cli_processes() {
         "old policy cannot widen into new profile"
     );
 }
+
+/// Explicit actual-pack boundary proof; expected complete results use the shared Rust API.
+#[test]
+#[ignore = "requires POBR_NATIVE_PRIMARY_SPELL_PACK and POBR_NATIVE_PRIMARY_SPELL_REQUEST from actual assembly"]
+fn supplied_actual_primary_spell_edits_reopen_in_fresh_cli_processes() {
+    use pobr_build::native_document::{NativeBuildRequest, NativeEvaluationKind};
+    use pobr_gamedata::NativeData;
+    use serde_json::Value;
+    use std::path::PathBuf;
+    use std::process::Command;
+
+    let pack = PathBuf::from(
+        std::env::var_os("POBR_NATIVE_PRIMARY_SPELL_PACK").expect("supply actual immutable pack"),
+    );
+    let saved = PathBuf::from(
+        std::env::var_os("POBR_NATIVE_PRIMARY_SPELL_REQUEST").expect("supply actual bound request"),
+    );
+    let original = NativeBuildRequest::from_json(&std::fs::read(saved).unwrap()).unwrap();
+    assert_eq!(
+        original.evaluation,
+        NativeEvaluationKind::ConditionalSkillHitV2
+    );
+    let native = NativeData::load(&GameData::new(&pack)).unwrap();
+    let directory =
+        std::env::temp_dir().join(format!("pobr-cli-primary-spells-{}", std::process::id()));
+    std::fs::create_dir(&directory).unwrap();
+    struct Cleanup(PathBuf);
+    impl Drop for Cleanup {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+    let _cleanup = Cleanup(directory.clone());
+    let document = directory.join("saved.json");
+    let run = || {
+        Command::new(env!("CARGO_BIN_EXE_pobr"))
+            .arg("calculate-native")
+            .arg("--data-dir")
+            .arg(&pack)
+            .arg("--file")
+            .arg(&document)
+            .output()
+            .unwrap()
+    };
+    for selected in &native.primary_spells().unwrap().selections {
+        for &level in &selected.gem_levels {
+            if ![1, 2, 10].contains(&level) {
+                continue;
+            }
+            let mut r = original.clone();
+            r.skill.gem_id = selected.gem_id.clone();
+            r.skill.effect_id = selected.effect_id.clone();
+            r.skill.stat_set_id = selected.stat_set_id.clone();
+            r.skill.level = level;
+            let g = &mut r.build.socket_groups[0];
+            g.gem_ids[0] = selected.gem_id.clone();
+            g.active_skill_id = Some(selected.effect_id.clone());
+            g.active_gem_level = Some(level);
+            g.gem_requirement_levels.clear();
+            g.gem_skills[0].skill_id = selected.effect_id.clone();
+            g.gem_skills[0].gem_level = level;
+            std::fs::write(&document, r.to_json().unwrap()).unwrap();
+            let bytes = std::fs::read(&document).unwrap();
+            let expected: Value = serde_json::from_str(
+                &calculate_native_document(&GameData::new(&pack), &bytes).unwrap(),
+            )
+            .unwrap();
+            let actual = run();
+            assert!(
+                actual.status.success(),
+                "{}",
+                String::from_utf8_lossy(&actual.stderr)
+            );
+            assert_eq!(
+                serde_json::from_slice::<Value>(&actual.stdout).unwrap(),
+                expected
+            );
+            let mut invalid = r.clone();
+            invalid.evaluation = NativeEvaluationKind::ConditionalSkillHitV1;
+            std::fs::write(&document, invalid.to_json().unwrap()).unwrap();
+            assert!(!run().status.success());
+            std::fs::write(&document, bytes).unwrap();
+            assert!(run().status.success());
+        }
+    }
+}

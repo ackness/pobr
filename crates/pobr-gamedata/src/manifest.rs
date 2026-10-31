@@ -329,6 +329,11 @@ impl GameData {
             {
                 NativeProfile::SparkLevel1Q0OrdinaryDamagePassives
             }
+            NativeInputProfile::SelectedPlayerPrimarySpellHitQ0PassivesV1
+                if contract.schema_version == NATIVE_PLAYER_CONTRACT_VERSION =>
+            {
+                NativeProfile::PrimarySpellHitQ0Passives
+            }
             _ => return Err(invalid("unsupported native input/profile tuple".into())),
         };
         if contract.normalization.profile != profile || contract.rules.profile != profile {
@@ -371,9 +376,14 @@ impl GameData {
                 .player
                 .as_ref()
                 .ok_or_else(|| invalid("native contract v2 requires player artifacts".into()))?;
-            if contract.output_profile != NativeOutputProfile::ConditionalSkillHitV1 {
+            let output = if profile == NativeProfile::PrimarySpellHitQ0Passives {
+                NativeOutputProfile::ConditionalSkillHitV2
+            } else {
+                NativeOutputProfile::ConditionalSkillHitV1
+            };
+            if contract.output_profile != output {
                 return Err(invalid(
-                    "native contract v2 requires conditional-skill-hit-v1 output profile".into(),
+                    "native input requires its exact conditional-skill-hit output profile".into(),
                 ));
             }
             for (relative, digest) in [

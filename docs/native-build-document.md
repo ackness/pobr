@@ -51,6 +51,28 @@ fail instead of saving a partial numerical answer. Selections declare active
 nodes for a conditional comparison and do not certify point budget, paths or
 progression legality. Starting relations grant nothing automatically.
 
+The primary-spell increment keeps the `pobr-native-build/v1` envelope and adds
+opt-in evaluation `conditional-skill-hit-v2`. It requires the matching
+`selected-player-primary-spell-hit-q0-passives-v1` candidate and
+`selected-player-generic-ot-primary-spell-hit-passives-v1` policy with its actual
+artifact hash. Older consumers reject the new evaluation. Historical v1 requests
+and results retain their exact scope; no migration is inferred.
+
+With a new bound document, choose one typed projection selection and exact authored
+level. Update `skill.gem_id/effect_id/stat_set_id/level`, the group's `gem_ids`,
+`active_skill_id/active_gem_level/active_gem_quality`, and the gem's
+`skill_id/gem_level/quality` together. Keep quality zero, neutral config and empty
+`gem_requirement_levels`. Passive graph selections can remain and are re-admitted
+against the same candidate. Save/reopen fingerprints the complete edit and selects
+the exact catalog row; no nearby-level or additional-branch fallback occurs.
+The actor remains level 1. Gem authored level, archival ActorLevel coordinate,
+requirement level and obtainability are separate concepts.
+
+V2 permits nullable intrinsic projectile count/lifetime with explicit unavailable
+reasons. The field structure stays the same; consumers must inspect `evaluation`
+and preserve nulls. The [hit contract](native-skill-hit.md) describes Spark's known
+lifetime role and the unestablished Frostbolt duration role.
+
 Existing PoB XML/build-code imports continue through their explicit compatibility
 entry points. JSON documents are rejected there before embedded XML/item markers
 can be interpreted. The application WASM handshake and active data are unchanged

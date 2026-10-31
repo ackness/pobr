@@ -359,6 +359,28 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
     match stat {
         // GrantedEffectStatSetsPerLevel associates these damage IDs with the
         // pre-resolved player-level amounts, not the effectiveness coefficients.
+        // The generic stat descriptions pair the Fire/Cold minimum and maximum
+        // IDs directly as damage amounts, without a numeric transform.
+        "spell_minimum_base_fire_damage" => Some(vec![Modifier::number(
+            "FireDamageMin",
+            ModType::Base,
+            value,
+        )]),
+        "spell_maximum_base_fire_damage" => Some(vec![Modifier::number(
+            "FireDamageMax",
+            ModType::Base,
+            value,
+        )]),
+        "spell_minimum_base_cold_damage" => Some(vec![Modifier::number(
+            "ColdDamageMin",
+            ModType::Base,
+            value,
+        )]),
+        "spell_maximum_base_cold_damage" => Some(vec![Modifier::number(
+            "ColdDamageMax",
+            ModType::Base,
+            value,
+        )]),
         "spell_minimum_base_lightning_damage" => Some(vec![Modifier::number(
             "LightningDamageMin",
             ModType::Base,
@@ -1394,6 +1416,15 @@ mod tests {
     #[test]
     fn native_skill_base_stats_map_to_existing_readers() {
         for (stat, value, name, expected) in [
+            ("spell_minimum_base_fire_damage", 8.0, "FireDamageMin", 8.0),
+            (
+                "spell_maximum_base_fire_damage",
+                12.0,
+                "FireDamageMax",
+                12.0,
+            ),
+            ("spell_minimum_base_cold_damage", 5.0, "ColdDamageMin", 5.0),
+            ("spell_maximum_base_cold_damage", 8.0, "ColdDamageMax", 8.0),
             (
                 "spell_minimum_base_lightning_damage",
                 7.0,
@@ -1422,6 +1453,91 @@ mod tests {
             assert_eq!(modifier.value.as_number(), Some(expected), "{stat}");
             assert!(modifier.flags.is_empty(), "{stat}");
             assert!(modifier.tags.is_empty(), "{stat}");
+        }
+    }
+
+    // Fixed client0.5.5.5 INTERNATIONAL: Stats1464..1467 pair the Fire/Cold
+    // minimum/maximum IDs with GESSPL BaseResolvedValues (Fireball33289,
+    // Frostbolt33409). Generic stat_descriptions.csd records2612/2614 use no
+    // numeric transform. The facts manifest is56e71e00a72c8079d100b64861fc0302
+    // 06b12aaeb5ad655ccb4ab4e6726332d0; source/actor admission stays separate.
+    #[test]
+    fn native_elemental_spell_pairs_use_shared_hit_readers_without_scope_leakage() {
+        use crate::calc::damage::calculate_components;
+        use crate::rules::stat_map_engine::StatMapCatalog;
+        use crate::skill_env::{StatMapCtx, mapped_stat_modifiers};
+
+        for (element, damage_type, effect, minimum, maximum) in [
+            ("fire", DamageType::Fire, "FireballPlayer", 8.0, 12.0),
+            ("cold", DamageType::Cold, "FrostboltPlayer", 5.0, 8.0),
+            ("fire", DamageType::Fire, "FireballPlayer", 0.0, 37.0),
+            ("cold", DamageType::Cold, "FrostboltPlayer", 2.0, 29.0),
+        ] {
+            let stats = [
+                SkillDamageStat {
+                    stat: format!("spell_minimum_base_{element}_damage"),
+                    value: minimum,
+                },
+                SkillDamageStat {
+                    stat: format!("spell_maximum_base_{element}_damage"),
+                    value: maximum,
+                },
+            ];
+            let global: serde_json::Map<_, _> = stats
+                .iter()
+                .map(|stat| {
+                    (
+                        stat.stat.clone(),
+                        serde_json::json!({"_unextractable":true}),
+                    )
+                })
+                .collect();
+            let catalog = StatMapCatalog::new(
+                serde_json::from_value(serde_json::json!({"global":global})).unwrap(),
+            );
+            let mapped = |catalog| {
+                mapped_stat_modifiers(
+                    &mut StatMapCtx::data(catalog),
+                    &stats,
+                    SourceKind::SkillGem,
+                    "native.skill",
+                    effect,
+                    None,
+                )
+            };
+            let modifiers = mapped(None);
+            assert_eq!(mapped(Some(&catalog)), modifiers);
+            assert_eq!(modifiers.len(), if minimum == 0.0 { 1 } else { 2 });
+            for modifier in &modifiers {
+                let origin = modifier.origin.as_ref().unwrap();
+                assert_eq!(origin.source_id.kind, SourceKind::SkillGem);
+                assert!(origin.source_id.id.starts_with("native.skill.spell_"));
+                assert!(modifier.flags.is_empty());
+                assert!(modifier.tags.is_empty());
+            }
+            let mut db = ModDb::new();
+            db.add_list(modifiers);
+            let cfg = CalcConfig::spell()
+                .with_flags(ModFlags::SPELL | ModFlags::HIT | ModFlags::PROJECTILE);
+            let components = calculate_components(&db, &cfg, 0.0, 0.0);
+            let selected = components
+                .iter()
+                .find(|c| c.damage_type == damage_type)
+                .unwrap();
+            assert_eq!((selected.min, selected.max), (minimum, maximum));
+            assert!(
+                components
+                    .iter()
+                    .filter(|c| c.damage_type != damage_type)
+                    .all(|c| c.min == 0.0 && c.max == 0.0)
+            );
+            for stat in &stats {
+                assert!(
+                    player_buff_modifiers(&stat.stat, stat.value, BuffSkill::default()).is_none()
+                );
+                assert!(granted_skill_modifiers(&stat.stat, stat.value, &[]).is_empty());
+                assert!(curse_modifiers(&stat.stat, stat.value, &[]).is_none());
+            }
         }
     }
 

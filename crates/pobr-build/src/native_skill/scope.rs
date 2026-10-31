@@ -20,6 +20,7 @@ use super::{NativeAdmissionError, source_error, unsupported};
 pub(super) enum Profile {
     NoAllocations,
     OrdinaryDamagePassives,
+    PrimarySpellPassives,
 }
 
 pub(super) const GEM_ID: &str = "Metadata/Items/Gems/SkillGemSpark";
@@ -64,7 +65,6 @@ pub(super) fn validate(
     require(
         contract.schema_version == NATIVE_PLAYER_CONTRACT_VERSION
             && contract.player.is_some()
-            && contract.output_profile == NativeOutputProfile::ConditionalSkillHitV1
             && contract.normalization.version == NATIVE_PLAYER_CONTRACT_VERSION
             && contract.rules.version == NATIVE_PLAYER_CONTRACT_VERSION,
         "dataset",
@@ -80,10 +80,23 @@ pub(super) fn validate(
     let policy_id = match profile {
         Profile::NoAllocations => "selected-player-generic-ot-v1",
         Profile::OrdinaryDamagePassives => "selected-player-generic-ot-ordinary-damage-passives-v1",
+        Profile::PrimarySpellPassives => "selected-player-generic-ot-primary-spell-hit-passives-v1",
+    };
+    let (output, evaluation) = if profile == Profile::PrimarySpellPassives {
+        (
+            NativeOutputProfile::ConditionalSkillHitV2,
+            NativeEvaluationKind::ConditionalSkillHitV2,
+        )
+    } else {
+        (
+            NativeOutputProfile::ConditionalSkillHitV1,
+            NativeEvaluationKind::ConditionalSkillHitV1,
+        )
     };
     require(
-        request.schema == NativeBuildSchema::V1
-            && request.evaluation == NativeEvaluationKind::ConditionalSkillHitV1
+        contract.output_profile == output
+            && request.schema == NativeBuildSchema::V1
+            && request.evaluation == evaluation
             && request.evaluation == policy.evaluation
             && policy.schema_version == 1
             && policy.model_status == NativeModelStatus::ConditionalModel
@@ -115,14 +128,34 @@ pub(super) fn validate(
     require(
         request.skill.group_index == 0
             && request.skill.gem_index == 0
-            && request.skill.gem_id == GEM_ID
-            && request.skill.effect_id == EFFECT_ID
-            && request.skill.stat_set_id == EFFECT_ID
-            && request.skill.level == 1
             && request.skill.quality == 0,
         "skill",
-        "only the stable primary SparkPlayer branch at exact level 1/quality 0 is admitted",
+        "only one primary gem at quality zero is admitted",
     )?;
+    if profile == Profile::PrimarySpellPassives {
+        let inventory = data
+            .primary_spells()
+            .ok_or_else(|| source_error("skill", "sealed primary inventory is absent"))?;
+        require(
+            inventory.selections.iter().any(|s| {
+                s.gem_id == request.skill.gem_id
+                    && s.effect_id == request.skill.effect_id
+                    && s.stat_set_id == request.skill.stat_set_id
+                    && s.gem_levels.contains(&request.skill.level)
+            }),
+            "skill",
+            "stable gem/effect/primary-set and exact authored level must match one sealed selection",
+        )?;
+    } else {
+        require(
+            request.skill.gem_id == GEM_ID
+                && request.skill.effect_id == EFFECT_ID
+                && request.skill.stat_set_id == EFFECT_ID
+                && request.skill.level == 1,
+            "skill",
+            "historical profiles require primary SparkPlayer at exact level 1",
+        )?;
+    }
     build(&request.build, request, profile)?;
     Ok(profile)
 }
@@ -149,6 +182,12 @@ pub(super) fn profile(
             NativeProfile::SparkLevel1Q0OrdinaryDamagePassives,
             NativeActorPolicy::SelectedPlayerGenericOtOrdinaryDamagePassivesV1,
         ) => Ok(Profile::OrdinaryDamagePassives),
+        (
+            NativeInputProfile::SelectedPlayerPrimarySpellHitQ0PassivesV1,
+            NativeProfile::PrimarySpellHitQ0Passives,
+            NativeProfile::PrimarySpellHitQ0Passives,
+            NativeActorPolicy::SelectedPlayerGenericOtPrimarySpellHitPassivesV1,
+        ) => Ok(Profile::PrimarySpellPassives),
         _ => Err(unsupported(
             "dataset",
             "input, normalization, rules and actor policy must form an exact admitted tuple",
@@ -198,7 +237,7 @@ pub(super) fn build(
         attribute_overrides,
     } = tree;
     require(
-        (profile == Profile::OrdinaryDamagePassives || allocated_nodes.is_empty())
+        (profile != Profile::NoAllocations || allocated_nodes.is_empty())
             && mastery_effects.is_empty()
             && attribute_overrides.is_empty(),
         "build.tree",
@@ -228,14 +267,15 @@ pub(super) fn build(
         "build.socket_groups",
         "exactly one group is required, with main group absent or 1; disabled extras are excluded",
     )?;
-    group(&socket_groups[0], *weapon_set, request)?;
-    configuration(config)
+    group(&socket_groups[0], *weapon_set, request, profile)?;
+    configuration(config, profile)
 }
 
 fn group(
     group: &SocketGroup,
     active_set: WeaponSet,
     request: &NativeBuildRequest,
+    profile: Profile,
 ) -> Result<(), NativeAdmissionError> {
     let SocketGroup {
         include_in_full_dps,
@@ -275,7 +315,9 @@ fn group(
             && *active_gem_level == Some(request.skill.level)
             && *active_gem_quality == Some(request.skill.quality)
             && matches!(main_active_skill, None | Some(1))
-            && (gem_requirement_levels.is_empty() || gem_requirement_levels.as_slice() == [1]),
+            && (gem_requirement_levels.is_empty()
+                || (profile != Profile::PrimarySpellPassives
+                    && gem_requirement_levels.as_slice() == [1])),
         "build.socket_groups/0",
         "one gem and all active mirrors must agree; ordinal selection and prepared requirement levels cannot select another branch",
     )?;
@@ -317,7 +359,7 @@ fn gem(gem: &GemSkillRef, request: &NativeBuildRequest) -> Result<(), NativeAdmi
     )
 }
 
-fn configuration(config: &BuildConfig) -> Result<(), NativeAdmissionError> {
+fn configuration(config: &BuildConfig, profile: Profile) -> Result<(), NativeAdmissionError> {
     let BuildConfig {
         is_attack,
         is_spell,
@@ -336,12 +378,13 @@ fn configuration(config: &BuildConfig) -> Result<(), NativeAdmissionError> {
     } = raw_inputs;
     // Classification is redundant compatibility state only. Core scope comes from source.
     require(
-        matches!(
-            (*is_attack, *is_spell, *damage_type),
-            (false, false, None) | (false, true, Some(DamageType::Lightning))
-        ),
+        (!*is_attack && !*is_spell && damage_type.is_none())
+            || (profile != Profile::PrimarySpellPassives
+                && !is_attack
+                && *is_spell
+                && *damage_type == Some(DamageType::Lightning)),
         "build.config",
-        "classification must be neutral or the exact agreeing spell/lightning mirror",
+        "classification must be neutral; historical profiles also accept their agreeing spell/lightning mirror",
     )?;
     require(
         *bandit == BanditChoice::None

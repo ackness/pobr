@@ -43,8 +43,8 @@ pub struct AdmittedNativeSkill {
     intrinsic_modifiers: Vec<NativeModifierEvidence>,
     base_use_ms: u32,
     costs: Vec<NativeResourceCost>,
-    total_projectiles: f64,
-    projectile_lifetime_ms: f64,
+    total_projectiles: Option<f64>,
+    projectile_lifetime_ms: Option<f64>,
     provenance: NativeSkillProvenance,
     skill_facts: Vec<NativeSkillFact>,
     assumptions: Vec<String>,
@@ -348,8 +348,10 @@ pub struct NativeSkillResult {
     pub conditional_weighted_mean: f64,
     pub analytical_base_use_ms: u32,
     pub resource_costs: Vec<NativeResourceCost>,
-    pub total_projectiles: f64,
-    pub projectile_lifetime_ms: f64,
+    /// Explicit intrinsic total; v1 requires a number, v2 preserves source absence as null.
+    pub total_projectiles: Option<f64>,
+    /// Available only where the selected primary has an established projectile-lifetime role.
+    pub projectile_lifetime_ms: Option<f64>,
     pub modifiers: Vec<NativeModifierEvidence>,
     pub critical_trace: NativeCriticalTrace,
     pub skill_facts: Vec<NativeSkillFact>,
@@ -394,7 +396,7 @@ pub fn admit_native_skill(
             fact.source.clone(),
         )?);
     }
-    if profile == scope::Profile::OrdinaryDamagePassives {
+    if profile != scope::Profile::NoAllocations {
         for selected in passive::resolve(data, &request.build.tree.allocated_nodes)? {
             modifier_facts.push(selected.binding);
             resolved.hit_modifiers.push(selected.modifier);
@@ -568,10 +570,22 @@ pub fn calculate_native_skill(
         })
         .collect(),
     };
-    if admitted.profile == scope::Profile::OrdinaryDamagePassives {
+    if admitted.profile != scope::Profile::NoAllocations {
         result.unavailable.push(NativeUnavailableOutput {
             output: "allocation-legality".into(),
             reason: "selected nodes are assumed active; point budget, reachability and progression are not admitted".into(),
+        });
+    }
+    if admitted.total_projectiles.is_none() {
+        result.unavailable.push(NativeUnavailableOutput {
+            output: "total_projectiles".into(),
+            reason: "selected primary stats do not supply an explicit projectile total; projectile classification does not establish a count".into(),
+        });
+    }
+    if admitted.projectile_lifetime_ms.is_none() {
+        result.unavailable.push(NativeUnavailableOutput {
+            output: "projectile_lifetime_ms".into(),
+            reason: "selected primary facts do not establish projectile lifetime; an absent or unclassified skill duration cannot supply it".into(),
         });
     }
     Ok(result)

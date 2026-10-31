@@ -356,3 +356,30 @@ fn native_document_is_not_legacy_xml_code_or_item_text() {
     assert!(crate::parse_build(text).is_err());
     assert!(crate::decode_pob_code(text).is_err());
 }
+
+#[test]
+fn native_v2_evaluation_keeps_v1_envelope_and_changes_complete_request_identity() {
+    let old = request();
+    let old_bytes = old.to_json().unwrap();
+    let old_hash = old.input_sha256().unwrap();
+    let mut new = old.clone();
+    new.evaluation = NativeEvaluationKind::ConditionalSkillHitV2;
+    new.actor_policy.id = "selected-player-generic-ot-primary-spell-hit-passives-v1".into();
+    new.build.socket_groups[0].gem_requirement_levels.clear();
+    let bytes = new.to_json().unwrap();
+    let reopened = NativeBuildRequest::from_json(&bytes).unwrap();
+    assert_eq!(reopened.schema, NativeBuildSchema::V1);
+    assert_eq!(
+        reopened.evaluation,
+        NativeEvaluationKind::ConditionalSkillHitV2
+    );
+    assert_eq!(reopened.to_json().unwrap(), bytes);
+    assert_ne!(old_hash, reopened.input_sha256().unwrap());
+    assert_eq!(
+        NativeBuildRequest::from_json(&old_bytes)
+            .unwrap()
+            .to_json()
+            .unwrap(),
+        old_bytes
+    );
+}

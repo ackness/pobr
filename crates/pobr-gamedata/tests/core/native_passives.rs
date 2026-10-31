@@ -542,3 +542,32 @@ fn native_passive_reference_rows_allow_shared_stats_and_reordered_references() {
     );
     assert_ne!(stats[0].value, stats[1].value);
 }
+
+#[test]
+fn historical_projectile_minimum_reasons_remain_unchanged_in_both_policies() {
+    for files in [player_pack(), passive_pack()] {
+        let native = NativeData::load(&GameData::from_memory(files)).unwrap();
+        let stats = &native.player_context().unwrap().facts.metadata_stats;
+        let index = stats
+            .iter()
+            .position(|s| s.key_raw == "object_innate_minimum_number_of_projectiles_to_fire_is_1")
+            .unwrap();
+        let selector = format!("/facts/metadata_stats/{index}");
+        let fact = native
+            .actor_binding()
+            .unwrap()
+            .dispositions
+            .iter()
+            .find(|d| d.selector == selector)
+            .unwrap();
+        assert_eq!(
+            fact.reason,
+            "The selected intrinsic total projectile count already satisfies this minimum; no generic-OT projectile adjustment is applied."
+        );
+        assert_eq!(
+            fact.disposition,
+            pobr_data::catalog::native_player::NativeFactDispositionKind::Inactive
+        );
+        assert!(fact.relevant_to_conditional_hit);
+    }
+}

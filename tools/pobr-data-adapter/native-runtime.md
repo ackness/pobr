@@ -53,7 +53,7 @@ stats or changed context do not become partial packets. No display text is inven
 when a native-only packet has no formatter. The reference index retains all 9,731 definitions and 61 class
 relations; no missing Druid base becomes a phantom graph node.
 
-Spark's base/gem, primary granted effect/stat-set, level-1 resolved stats and
+In both historical input profiles, Spark's base/gem, primary granted effect/stat-set, level-1 resolved stats and
 costs use native stable-ID joins. `BaseResolvedValues` supplies stored damage;
 `FloatStatsValues` remains evidence, never flat damage or a second effectiveness
 multiplier. Constants and implicit stats stay separate. No PoB ordinal is
@@ -207,3 +207,83 @@ distinct assembly/final identity. Preserve old candidates and explicitly bind a
 new document to the new pack. Never infer a migration from a patch label or
 `CURRENT`. Use a newly built compiler's actual pins for a new replay recipe;
 no prebuilt compiler identity for this profile is implied by these examples.
+
+## Explicit primary spells and authored gem levels
+
+With all three player flags, select the common primary-spell interpretation:
+
+```sh
+  --input-profile selected-player-primary-spell-hit-q0-passives-v1 \
+  --primary-gems Metadata/Items/Gem/SkillGemFireball,Metadata/Items/Gems/SkillGemFrostbolt,Metadata/Items/Gems/SkillGemSpark
+```
+
+`--primary-gems` takes one comma-separated argument of exact stable base IDs.
+It is mandatory for this input profile and forbidden for both historical ones.
+Empty entries, whitespace aliases and duplicates fail. The inventory is sorted
+canonically before projection and sealing. Fireball's source base path contains
+singular `Gem`; paths are never constructed from display names. Other explicit
+selections use the same producer path and may reject unsupported source channels;
+there is no automatic enrollment of every Spell row.
+
+The exact tuple is interpretation `primary-spell-hit-q0-passives`, actor policy
+`selected-player-generic-ot-primary-spell-hit-passives-v1` and output/evaluation
+`conditional-skill-hit-v2`. Manifest4, player contract2, normalization/rules2 and
+actor artifact1 are unchanged. The two historical tuples keep their defaults,
+projection format and v1 requirements. Use a new candidate and its actual pins;
+existing candidate receipts and compiler identities are never relabelled.
+
+One shared projection follows each unique Base→SkillGem→GemEffect→GrantedEffect
+forward join, then the source's ActiveSkill and primary StatSet. Nonempty active
+reverse text must agree; empty text is retained and allowed with that forward
+chain. Several effects may legitimately point to the same ActiveSkills row.
+Only uniquely paired, positive authored effect/set-level rows are projected,
+with identical complete level inventories. The observed three selections have
+levels1–40; that observation is not a hardcoded ceiling, interpolation rule or
+obtainability claim. Finite matching `ActorLevel` coordinates are scaling evidence,
+independent of the fixed selected actor7 level1 and of gem requirements.
+
+Damage remains the signed-i32 `BaseResolvedValues` paired with `FloatStats` IDs.
+The selected elemental pair must be complete, ordered in value and nonnegative;
+unknown, duplicate or misplaced stat channels fail, including unknown zero.
+Source categorical IDs supply spell/projectile/elemental classifications. Parent
+Area capabilities do not merge the excluded explosion branch into the primary
+projectile. Constants and implicit stats remain separate for the consumer's
+explicit per-stat dispositions. Cast time is positive source milliseconds;
+cost is the exact intrinsic Mana amount with divisor1 and `PerMinute=false`.
+Only neutral interpreted cooldown/attack/reservation/storage transformations
+become empty catalog fields. Nonzero `CooldownGroup` and `CooldownBypassType`
+are retained categorical evidence, not asserted to be zero or timing rules.
+
+`native_skill_projection.json` uses typed format `pobr-native-skill-projection/v2`,
+`primary_only=true`, `quality=0`, normalized `selections` and `retained_evidence`
+keyed by exact gem ID. Each selection names gem, gem effect, effect, active skill,
+primary stat set and exact authored levels, with no duplicate numerical authority.
+The input lock's `primary_gems` matches sorted selected gem IDs; reference-index
+`skill_selection` and coverage `projected.primary_spells` equal `selections`.
+
+Each evidence entry retains seven ordered static `{payload,pointer}` references
+(base, gem, gem effect, effect, active skill, primary set, CostTypes), then one
+entry per gem level containing two ordered effect/set-level references, the
+scaling coordinate and nonconsumed raw fields. Static and level
+`retained_outside_projection` maps preserve unknown metadata, raw coefficients,
+interpolation references and excluded source fields. Consumed damage/cost/crit
+amounts are not copied there as another authority. Quality evidence remains in
+the pinned full archive. `additional_stat_sets` is an ordered array of unique
+nonempty excluded stable StatSet IDs; `[]` is valid. It excludes the primary ID.
+Original numeric `AdditionalStatSets` indices remain in archival raw metadata.
+
+The actor policy swaps only the primary Spark predicate for
+`primary-spell-exact-authored-level-q0`, adds the exact-authored-level assumption
+and retains the active-passive condition, allocation limitation and all99 actor
+stat dispositions. Only the new policy's explanation of
+`object_innate_minimum_number_of_projectiles_to_fire_is_1` changes: it retains
+the generic-OT minimum without an applicability law, does not derive a missing
+intrinsic count or apply an adjustment, and does not claim an unknown count
+satisfies the minimum. Its raw fact/source, inactive disposition and relevance
+bit stay intact; both old policy explanations remain unchanged.
+V2 permits unavailable projectile count/lifetime without
+inventing1/0. Spark retains its established duration role; Frostbolt duration is
+a retained skill fact without a certified projectile-lifetime meaning. Infusion,
+quality, additional branches and encounter outcomes remain excluded. No source
+approval, gameplay correctness, requirements, legality, pools, sustain, full DPS,
+native Web or CN numerical coverage follows from assembly or its receipt.

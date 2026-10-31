@@ -186,8 +186,8 @@ fn distinct_equal_sources_and_four_scopes_add_once_with_deterministic_evidence()
         near(out.critical_multiplier, 2.0);
         assert_eq!(out.analytical_base_use_ms, 700);
         assert_eq!(out.resource_costs[0].amount_per_use, 5.0);
-        assert_eq!(out.total_projectiles, 4.0);
-        assert_eq!(out.projectile_lifetime_ms, 2000.0);
+        assert_eq!(out.total_projectiles, Some(4.0));
+        assert_eq!(out.projectile_lifetime_ms, Some(2000.0));
         assert_eq!(passive_evidence(&out).len(), ids.len());
         assert!(
             out.unavailable

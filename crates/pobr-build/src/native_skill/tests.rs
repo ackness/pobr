@@ -249,8 +249,8 @@ fn source_owned_mapping_shared_core_and_provenance_are_retained() {
     assert_eq!(out.analytical_base_use_ms, 700);
     assert_eq!(out.resource_costs[0].resource, "Mana");
     assert_eq!(out.resource_costs[0].amount_per_use, 5.0);
-    assert_eq!(out.total_projectiles, 4.0);
-    assert_eq!(out.projectile_lifetime_ms, 2000.0);
+    assert_eq!(out.total_projectiles, Some(4.0));
+    assert_eq!(out.projectile_lifetime_ms, Some(2000.0));
     assert_eq!(out.skill_facts.len(), 16);
     assert_eq!(out.model_status, NativeModelStatus::ConditionalModel);
     assert_eq!(out.provenance.contract, *data.contract());
@@ -300,6 +300,16 @@ fn source_owned_mapping_shared_core_and_provenance_are_retained() {
     }
     let encoded = serde_json::to_value(out).unwrap();
     assert_eq!(encoded["model_status"], "conditional-model");
+    assert_eq!(encoded["evaluation"], "conditional-skill-hit-v1");
+    assert_eq!(encoded["total_projectiles"], json!(4.0));
+    assert_eq!(encoded["projectile_lifetime_ms"], json!(2000.0));
+    assert!(
+        !encoded["unavailable"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|u| u["output"] == "total_projectiles" || u["output"] == "projectile_lifetime_ms")
+    );
     assert_eq!(
         encoded["provenance"]["contract"]["acquisition"]["status"],
         "unreviewed-acquisition-draft"
@@ -561,8 +571,8 @@ fn resolved_damage_chance_bonus_and_intrinsics_flow_independently() {
     });
     reseal(&mut intrinsics);
     let changed = result(intrinsics);
-    assert_eq!(changed.total_projectiles, 6.0);
-    assert_eq!(changed.projectile_lifetime_ms, 1500.0);
+    assert_eq!(changed.total_projectiles, Some(6.0));
+    assert_eq!(changed.projectile_lifetime_ms, Some(1500.0));
     assert_eq!(changed.analytical_base_use_ms, 813);
     assert_eq!(changed.resource_costs[0].amount_per_use, 6.5);
     assert_eq!(
@@ -785,15 +795,15 @@ fn all_extra_sources_and_raw_false_zero_config_are_rejected() {
         let request: NativeBuildRequest = serde_json::from_value(document).unwrap();
         assert!(admit_native_skill(&data, &request).is_err(), "{pointer}");
         if pointer != "/build/tree/allocated_nodes" {
-            assert!(
-                scope::build(
-                    &request.build,
-                    &request,
-                    scope::Profile::OrdinaryDamagePassives
-                )
-                .is_err(),
-                "new profile must retain exclusion: {pointer}"
-            );
+            for profile in [
+                scope::Profile::OrdinaryDamagePassives,
+                scope::Profile::PrimarySpellPassives,
+            ] {
+                assert!(
+                    scope::build(&request.build, &request, profile).is_err(),
+                    "profile {profile:?} must retain exclusion: {pointer}"
+                );
+            }
         }
     }
     rejects_request(|v| {
@@ -1030,12 +1040,15 @@ fn supplied_actual_pack_save_reopen_and_conditional_outputs() {
     assert_eq!(out.analytical_base_use_ms, 700);
     assert_eq!(out.resource_costs[0].resource, "Mana");
     assert_eq!(out.resource_costs[0].amount_per_use, 5.0);
-    assert_eq!(out.total_projectiles, 4.0);
-    assert_eq!(out.projectile_lifetime_ms, 2000.0);
+    assert_eq!(out.total_projectiles, Some(4.0));
+    assert_eq!(out.projectile_lifetime_ms, Some(2000.0));
 }
 
 #[path = "tests/passives.rs"]
 mod passives;
+
+#[path = "tests/primary_spells.rs"]
+mod primary_spells;
 
 /// Actual new-profile admission, independent of the portable resolver fixtures.
 #[test]
@@ -1100,7 +1113,7 @@ fn supplied_actual_passive_pack_edits_save_remove_and_reopen() {
         assert_eq!(out.resource_costs[0].amount_per_use, 5.0);
         assert_eq!(
             (out.total_projectiles, out.projectile_lifetime_ms),
-            (4.0, 2000.0)
+            (Some(4.0), Some(2000.0))
         );
         let evidence: Vec<_> = out
             .modifiers
