@@ -77,6 +77,10 @@ pub(super) fn validate(
         require(definitions.contains_key(slug), "graph definition missing")?;
     }
     let mut ids = BTreeSet::new();
+    // All packets below bind the same exact parent and resource inventory. A row
+    // in each of those immutable resources must retain one physical identity.
+    let mut passive_rows = BTreeMap::new();
+    let mut stat_rows = BTreeMap::new();
     for node in nodes {
         let node_fail =
             |message: &str| fail(&format!("node {} ({}): {message}", node.skill, node.id));
@@ -192,6 +196,19 @@ pub(super) fn validate(
                 "source reference resource/hash/pointer mismatch",
             )?;
         }
+        let passive_identity = (node.id.as_str(), node.skill);
+        check(
+            passive_rows
+                .insert(source.passive_row, passive_identity)
+                .is_none_or(|previous| previous == passive_identity),
+            "conflicting PassiveSkills row identity",
+        )?;
+        check(
+            stat_rows
+                .insert(source.stat_row, stat.id.as_str())
+                .is_none_or(|previous| previous == stat.id),
+            "conflicting Stats row identity",
+        )?;
     }
     require(
         ids.len() == graph.len(),

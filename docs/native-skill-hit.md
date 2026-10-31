@@ -93,6 +93,11 @@ references must be the exact tree-parent manifest's PassiveSkills/Stats resource
 hashes and row pointers. The loader separately validates packet consistency with
 the full sealed reference index. Membership in `allowed_source_manifests` alone
 cannot authorize mixing passive sources.
+Within that exact parent and resource inventory, a PassiveSkills row must keep
+one definition/graph identity and a Stats row must keep one stable stat ID.
+Different passive rows can share the same stat ID and Stats row. Both exact
+references must occur once; their array order is retained as evidence and does
+not affect eligibility.
 
 Admission calls `select_native_passive` and accepts only its successful native
 modifier, with numeric, tag/flag-free INC semantics for PhysicalDamage,
