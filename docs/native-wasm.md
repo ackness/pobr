@@ -58,23 +58,38 @@ Missing or duplicate fields, escaped duplicate aliases, unsupported edits,
 different datasets and legacy XML/build-code input fail. No format autodetection
 or fallback to ordinary calculation occurs.
 
-The new ordinary-damage-passive profile uses the same exports and result fields.
+The ordinary-damage-passive profile uses the same exports and result fields.
 It requires an explicitly assembled new candidate and a document bound to that
 candidate's actual six dataset fields and new policy hash. The existing
-`build.tree.allocated_nodes` array selects graph instances; old-profile documents
-continue to reject allocations. Selection is all-or-nothing, with no text fallback,
+`build.tree.allocated_nodes` array selects graph instances; the original no-allocation profile
+continues to reject allocations. Selection is all-or-nothing, with no text fallback,
 free starting grants or class-name/tree-label selection. Selected nodes are
 assumed active for conditional comparison; the returned `allocation-legality`
 reason leaves point budget, reachability and progression unverified. Node-specific
 origins and exact packet pointers reuse existing modifier evidence and selection
 sources. `counted` records actual nonzero aggregation input, not marginal damage.
 
+The primary-spell profile also uses these exact exports and JSON function
+signatures. The global WASM handshake stays 16. It requires its own immutable
+candidate, policy hash and `conditional-skill-hit-v2` evaluation; it keeps the v1
+document envelope and reruns exact selection/level/passive admission on every call.
+Edit all stable skill and level mirrors together, with empty prepared requirement
+levels and neutral config. The initial inventory covers Spark, Fireball and
+Frostbolt primary hits at exact authored levels with actor7 level1 unchanged.
+Ordinary mode, default API dispatch and translation behavior are unchanged.
+
+V2 serializes unavailable count/lifetime as null with explicit reasons. Clients
+must branch on the evaluation and preserve nulls. Projectile classification cannot
+supply a missing count, and Frostbolt's retained duration is not a certified
+projectile lifetime. Historical v1 requests still require their complete numeric
+intrinsic outputs; old/new tuple mixing rejects.
+
 Calculation errors use the existing JSON error envelope on the Rust `Err` side
 and as the JavaScript exception message: `not_initialized` for unavailable native
 mode, `bad_request` for document/admission rejection, and `internal` for
 evaluation/serialization failures. Initializer errors remain plain messages,
-matching the ordinary initializer convention. The additions preserve existing
-request/response shapes and the ordinary schema handshake.
+matching the ordinary initializer convention. The opt-in evaluation distinguishes the new nullable intrinsic semantics; historical
+v1 results and the ordinary schema handshake remain unchanged.
 
 The result retains the [conditional model's scope](native-skill-hit.md), exact
 provenance, unreviewed acquisition status, assumptions and unavailable outputs.
@@ -117,3 +132,18 @@ scopes, remove/reopen, directory/staged equality, rejected mixed selections,
 stale pins, a corrupt staged packet and native translation/catalog-switch guards.
 This remains a host test; the rebuilt JavaScript boundary and complete parsed
 CLI-to-WASM equality are coordinator acceptance work.
+
+The primary-spell host-wrapper case is independently opt-in:
+
+```sh
+POBR_NATIVE_PRIMARY_SPELL_PACK=<new-immutable-pack> \
+POBR_NATIVE_PRIMARY_SPELL_REQUEST=<new-bound-document> \
+  mise exec -- cargo test --locked -p pobr-wasm --test native_api \
+  supplied_actual_primary_spell_edits_stage_reopen_and_preserve_failed_load -- --ignored
+```
+
+It compares directory/staged host results with the shared API across selected
+skills and exact levels, rejects old evaluation, and checks that corrupt staged
+projection bytes preserve the previous active native catalog. It does not execute
+wasm-bindgen or prove JavaScript export equality; rebuilt public WASM and real
+CLI/WASM proof remain coordinator work after integration.

@@ -31,10 +31,27 @@ within the admitted scope, then run the same command to reopen/re-admit it.
 Eligible native ordinary damage INC packets compose through the shared Rust hit
 reader. Duplicate IDs, unknown or unsupported packets, and mixed supported/unsupported
 selections fail whole; no text fallback or implicit starting grants occur. The
-old profile still rejects allocations. Result evidence distinguishes equal stats
+original no-allocation profile still rejects allocations. Result evidence distinguishes equal stats
 from different nodes, and retains the original request order/hash while sorting
 numerical addition/evidence. Selected nodes are assumed active for comparison;
 `allocation-legality` remains unavailable for points, reachability and progression.
+
+The opt-in `selected-player-primary-spell-hit-q0-passives-v1` candidate extends
+that operation to changing selected primary spell and exact authored gem level.
+Bind the new candidate's actual dataset and policy pins and request
+`conditional-skill-hit-v2`. Use the same command after updating all stable gem,
+effect, set and level mirrors as described in the
+[native document contract](native-build-document.md). Keep quality zero, neutral
+config and empty prepared requirement levels; actor7 remains level 1.
+The initial inventory selects Spark, Fireball or Frostbolt primary hits while
+preserving eligible passive selections. An unsupported edit rejects the entire
+calculation; restoring a valid saved request allows the next fresh invocation.
+
+V2 count/lifetime fields may be null and carry explicit unavailable reasons.
+Fireball/Frostbolt count is absent; Fireball lifetime is absent; Frostbolt's retained
+skill duration does not establish projectile lifetime. Spark retains its explicit
+count and known lifetime. The old v1 result keeps its numeric intrinsic fields.
+No result multiplies hit damage by projectile count or duration.
 
 The request file is limited to 16 MiB. File reads stop after the limit plus one
 byte so oversized input can be rejected before decoding. Duplicate, unknown,
@@ -44,7 +61,7 @@ discovery, XML/build-code autodetection, compatibility option or extra modifier
 input. `--reference-basis`, enemy options, `--full-dps` and `--mods` are rejected.
 Ordinary `calculate` and `calculate-build` keep their existing interfaces.
 
-The conditional-skill-hit-v1 result reports only the admitted conditional skill
+The conditional-skill-hit result reports only the admitted conditional skill
 evaluation: limited hit ranges and means, supported intrinsic use-time/cost and
 projectile facts, with exact dataset/request/selection/source/policy/acquisition
 identity, assumptions, diagnostics and unavailable-output reasons retained.
@@ -72,3 +89,16 @@ POBR_NATIVE_PASSIVE_REQUEST=<new-bound-baseline-document> \
 ```
 
 This command is a coordinator check, not evidence of an executed pass.
+
+The primary-spell fresh-process case is separately opt-in:
+
+```sh
+POBR_NATIVE_PRIMARY_SPELL_PACK=<new-immutable-pack> \
+POBR_NATIVE_PRIMARY_SPELL_REQUEST=<new-bound-document> \
+  mise exec -- cargo test --locked -p pobr-cli --test native_cmd \
+  supplied_actual_primary_spell_edits_reopen_in_fresh_cli_processes -- --ignored
+```
+
+It compares complete results for selected skills/authored levels with the shared
+API and exercises a rejected evaluation edit followed by recovery. This is an
+unrun coordinator acceptance command until actual integration supplies both files.

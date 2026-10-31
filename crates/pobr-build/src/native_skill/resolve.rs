@@ -8,6 +8,7 @@ use pobr_data::catalog::native_player::{NATIVE_PLAYER_CONTEXT_PATH, NativeFactDi
 use pobr_data::catalog::{
     GrantedEffectDef, SkillDamageStat, SkillLevelDef, SkillStatSetLevel, StatSetDef,
 };
+use pobr_data::constants::DamageType;
 use pobr_data::modifier::{KeywordFlags, ModFlags, ModType};
 use pobr_data::source::SourceKind;
 use pobr_gamedata::NativeData;
@@ -30,8 +31,8 @@ pub(super) struct Resolved {
     pub intrinsic_modifiers: Vec<NativeModifierEvidence>,
     pub base_use_ms: u32,
     pub costs: Vec<NativeResourceCost>,
-    pub total_projectiles: f64,
-    pub projectile_lifetime_ms: f64,
+    pub total_projectiles: Option<f64>,
+    pub projectile_lifetime_ms: Option<f64>,
     pub provenance: NativeSkillProvenance,
     pub skill_facts: Vec<NativeSkillFact>,
     pub assumptions: Vec<String>,
@@ -78,6 +79,10 @@ pub(super) fn resolve(
     request: &NativeBuildRequest,
 ) -> Result<Resolved, NativeAdmissionError> {
     let skill = &request.skill;
+    let historical = data.primary_spells().is_none();
+    let selection = data
+        .primary_spells()
+        .and_then(|p| p.selections.iter().find(|s| s.gem_id == skill.gem_id));
     let (base_index, base) = unique(
         data.base_items()
             .iter()
@@ -105,25 +110,28 @@ pub(super) fn resolve(
     require(
         !gem.is_support
             && gem.gem_type == Some(0)
-            && gem.gem_effect_id.as_deref() == Some("Spark")
+            && gem.gem_effect_id.as_deref()
+                == Some(selection.map_or("Spark", |s| s.gem_effect_id.as_str()))
             && gem.granted_effect_id.as_deref() == Some(skill.effect_id.as_str())
             && gem.additional_granted_effect_ids.is_empty(),
         "base/skill_gems.json",
         "gem must uniquely grant the selected active effect without additional effects",
     )?;
-    exact_names(
-        &gem.gem_tags,
-        &[
-            "intelligence",
-            "grants_active_skill",
-            "spell",
-            "projectile",
-            "lightning",
-            "duration",
-            "repeatable",
-        ],
-        "base/skill_gems.json/gem_tags",
-    )?;
+    if historical {
+        exact_names(
+            &gem.gem_tags,
+            &[
+                "intelligence",
+                "grants_active_skill",
+                "spell",
+                "projectile",
+                "lightning",
+                "duration",
+                "repeatable",
+            ],
+            "base/skill_gems.json/gem_tags",
+        )?;
+    }
     let (effect_index, effect) = unique(
         data.granted_effects()
             .iter()
@@ -132,7 +140,21 @@ pub(super) fn resolve(
         EFFECTS,
     )?;
     let effect_path = format!("/{effect_index}");
-    let base_use_ms = effect_scope(effect)?;
+    let base_use_ms = effect_scope(effect, historical)?;
+    let element = element(effect)?;
+    if !historical {
+        gem_categories(&gem.gem_tags, element)?;
+        require(
+            selection.is_some_and(|s| {
+                effect.active_skill.as_deref() == Some(s.active_skill_id.as_str())
+                    && s.effect_id == skill.effect_id
+                    && s.stat_set_id == skill.stat_set_id
+                    && s.gem_levels.contains(&skill.level)
+            }),
+            EFFECTS,
+            "sealed primary selection does not agree",
+        )?;
+    }
     let levels = data
         .granted_effect_levels()
         .get(&skill.effect_id)
@@ -188,7 +210,22 @@ pub(super) fn resolve(
         intrinsic: intrinsic_modifiers,
         count: total_projectiles,
         duration_ms: projectile_lifetime_ms,
-    } = selected_stats(set, stats, &set_path, &stat_level_path)?;
+    } = selected_stats(
+        set,
+        stats,
+        &set_path,
+        &stat_level_path,
+        SelectionSemantics {
+            effect_id: &effect.id,
+            element,
+            historical,
+            // The shared duration stat has a certified lifetime role only for this
+            // exact Spark primary identity; Frostbolt's duration retains no such role.
+            spark_lifetime: skill.gem_id == super::scope::GEM_ID
+                && effect.id == super::scope::EFFECT_ID
+                && set.set_id == super::scope::EFFECT_ID,
+        },
+    )?;
     let costs = costs(data, effect, level, &effect_path, &level_path)?;
     let policy = data
         .actor_binding()
@@ -212,9 +249,14 @@ pub(super) fn resolve(
     let context = ConditionalHitContext {
         source: ConditionalHitSource::Spell,
         delivery_flags: flags.without(ModFlags::SPELL).without(ModFlags::HIT),
-        damage_keywords: KeywordFlags::LIGHTNING,
+        damage_keywords: match element {
+            DamageType::Fire => KeywordFlags::FIRE,
+            DamageType::Cold => KeywordFlags::COLD,
+            DamageType::Lightning => KeywordFlags::LIGHTNING,
+            _ => return Err(source_error(EFFECTS, "unsupported primary damage element")),
+        },
     };
-    let provenance = NativeSkillProvenance {
+    let mut provenance = NativeSkillProvenance {
         contract: data.contract().clone(),
         selection_sources: vec![
             reference("base/base_items.json", format!("/{base_index}")),
@@ -241,6 +283,17 @@ pub(super) fn resolve(
         actor_dispositions_source: reference("base/native_actor_binding.json", "/dispositions"),
         actor_disposition_counts: NativeDispositionCounts::from_facts(&policy.dispositions),
     };
+    if let Some(projection) = data.primary_spells() {
+        let index = projection
+            .selections
+            .iter()
+            .position(|s| s.gem_id == skill.gem_id)
+            .ok_or_else(|| source_error("primary_spells", "selected inventory entry is absent"))?;
+        provenance.selection_sources.push(reference(
+            pobr_data::catalog::native_runtime::NATIVE_SKILL_PROJECTION_PATH,
+            format!("/selections/{index}"),
+        ));
+    }
     let mut assumptions = policy.assumptions.clone();
     assumptions.extend([
         "Ordinary stationary self-cast in Act1 with no quests or excluded sources; conditional on one successful damaging hit.",
@@ -266,7 +319,7 @@ fn escape(value: &str) -> String {
     value.replace('~', "~0").replace('/', "~1")
 }
 
-fn effect_scope(effect: &GrantedEffectDef) -> Result<u32, NativeAdmissionError> {
+fn effect_scope(effect: &GrantedEffectDef, historical: bool) -> Result<u32, NativeAdmissionError> {
     let GrantedEffectDef {
         id: _,
         is_support,
@@ -290,7 +343,11 @@ fn effect_scope(effect: &GrantedEffectDef) -> Result<u32, NativeAdmissionError> 
     } = effect;
     require(
         !is_support
-            && active_skill.as_deref() == Some("spark")
+            && (if historical {
+                active_skill.as_deref() == Some("spark")
+            } else {
+                active_skill.as_deref().is_some_and(|s| !s.is_empty())
+            })
             && stat_set.is_some()
             && require_skill_types.is_empty()
             && add_skill_types.is_empty()
@@ -305,9 +362,29 @@ fn effect_scope(effect: &GrantedEffectDef) -> Result<u32, NativeAdmissionError> 
         EFFECTS,
         "selected effect has an absent native join or unsupported support/minion/additional branch channel",
     )?;
-    exact_names(
-        skill_types,
-        &[
+    if historical {
+        exact_names(
+            skill_types,
+            &[
+                "Spell",
+                "Projectile",
+                "ProjectilesFromUser",
+                "Damage",
+                "Duration",
+                "Trappable",
+                "Totemable",
+                "Mineable",
+                "Multicastable",
+                "Triggerable",
+                "Lightning",
+                "Unleashable",
+                "Invokable",
+                "UsableWhileMoving",
+            ],
+            EFFECTS,
+        )?;
+    } else {
+        let allowed = [
             "Spell",
             "Projectile",
             "ProjectilesFromUser",
@@ -322,15 +399,106 @@ fn effect_scope(effect: &GrantedEffectDef) -> Result<u32, NativeAdmissionError> 
             "Unleashable",
             "Invokable",
             "UsableWhileMoving",
-        ],
-        EFFECTS,
-    )?;
+            "Area",
+            "Fire",
+            "Cold",
+            "AreaSpell",
+        ];
+        let unique: BTreeSet<_> = skill_types.iter().map(String::as_str).collect();
+        require(
+            unique.len() == skill_types.len()
+                && unique.iter().all(|s| allowed.contains(s))
+                && ["Spell", "Projectile", "ProjectilesFromUser", "Damage"]
+                    .iter()
+                    .all(|s| unique.contains(s)),
+            EFFECTS,
+            "unknown, duplicate or incomplete primary spell categorical inventory",
+        )?;
+    }
     cast_time.filter(|ms| *ms > 0).ok_or_else(|| {
         source_error(
             EFFECTS,
             "analytical base cast time must be explicit and positive",
         )
     })
+}
+
+fn element(effect: &GrantedEffectDef) -> Result<DamageType, NativeAdmissionError> {
+    let selected: Vec<_> = [
+        ("Fire", DamageType::Fire),
+        ("Cold", DamageType::Cold),
+        ("Lightning", DamageType::Lightning),
+    ]
+    .into_iter()
+    .filter(|(id, _)| effect.skill_types.iter().any(|s| s.as_str() == *id))
+    .collect();
+    require(
+        selected.len() == 1,
+        EFFECTS,
+        "one source categorical primary element is required",
+    )?;
+    Ok(selected[0].1)
+}
+
+fn damage_pair(element: DamageType) -> Result<(&'static str, &'static str), NativeAdmissionError> {
+    match element {
+        DamageType::Fire => Ok((
+            "spell_minimum_base_fire_damage",
+            "spell_maximum_base_fire_damage",
+        )),
+        DamageType::Cold => Ok((
+            "spell_minimum_base_cold_damage",
+            "spell_maximum_base_cold_damage",
+        )),
+        DamageType::Lightning => Ok((
+            "spell_minimum_base_lightning_damage",
+            "spell_maximum_base_lightning_damage",
+        )),
+        _ => Err(source_error(EFFECTS, "unsupported primary damage element")),
+    }
+}
+
+fn gem_categories(tags: &[String], element: DamageType) -> Result<(), NativeAdmissionError> {
+    let allowed = [
+        "intelligence",
+        "grants_active_skill",
+        "spell",
+        "projectile",
+        "repeatable",
+        "duration",
+        "area",
+        "fire",
+        "cold",
+        "lightning",
+    ];
+    let selected: BTreeSet<_> = tags.iter().map(String::as_str).collect();
+    let element_tag = match element {
+        DamageType::Fire => "fire",
+        DamageType::Cold => "cold",
+        DamageType::Lightning => "lightning",
+        _ => return Err(source_error(EFFECTS, "unsupported primary damage element")),
+    };
+    require(
+        selected.len() == tags.len()
+            && selected.iter().all(|t| allowed.contains(t))
+            && [
+                "intelligence",
+                "grants_active_skill",
+                "spell",
+                "projectile",
+                "repeatable",
+                element_tag,
+            ]
+            .iter()
+            .all(|t| selected.contains(t))
+            && ["fire", "cold", "lightning"]
+                .iter()
+                .filter(|t| selected.contains(**t))
+                .count()
+                == 1,
+        "base/skill_gems.json/gem_tags",
+        "unknown, duplicated or disagreeing primary gem categories",
+    )
 }
 
 fn level_scope(level: &SkillLevelDef) -> Result<f64, NativeAdmissionError> {
@@ -444,8 +612,16 @@ struct SelectedStats {
     facts: Vec<NativeSkillFact>,
     hit: Vec<Modifier>,
     intrinsic: Vec<NativeModifierEvidence>,
-    count: f64,
-    duration_ms: f64,
+    count: Option<f64>,
+    duration_ms: Option<f64>,
+}
+
+#[derive(Clone, Copy)]
+struct SelectionSemantics<'a> {
+    effect_id: &'a str,
+    element: DamageType,
+    historical: bool,
+    spark_lifetime: bool,
 }
 
 fn selected_stats(
@@ -453,13 +629,14 @@ fn selected_stats(
     stats: &[SkillDamageStat],
     set_path: &str,
     level_path: &str,
+    semantics: SelectionSemantics<'_>,
 ) -> Result<SelectedStats, NativeAdmissionError> {
     let mut selected = SelectedStats {
         facts: Vec::new(),
         hit: Vec::new(),
         intrinsic: Vec::new(),
-        count: 0.0,
-        duration_ms: 0.0,
+        count: None,
+        duration_ms: None,
     };
     let mut seen = BTreeSet::new();
     for (channel, values, path) in [
@@ -476,7 +653,7 @@ fn selected_stats(
                 &path,
                 "duplicate selected stat or nonfinite value",
             )?;
-            selected.push(stat, channel, format!("{path}/{i}"))?;
+            selected.push(stat, channel, format!("{path}/{i}"), semantics)?;
         }
     }
     let expected = [
@@ -491,24 +668,31 @@ fn selected_stats(
         "movement_speed_while_performing_action_locked_duration_%",
         "spark_min_time_between_target_clearing_ms",
     ];
-    require(
-        seen == expected.into_iter().collect(),
-        SETS,
-        "selected explicit stat inventory is incomplete",
-    )?;
-    exact_names(
-        &set.implicit_stats,
-        &[
-            "base_is_projectile",
-            "projectiles_should_collide_with_flying_monsters",
-            "projectile_uses_contact_position",
-            "projectile_uses_contact_direction",
-            "check_for_targets_between_initiator_and_projectile_source",
-            "can_perform_skill_while_moving",
-        ],
-        SETS,
-    )?;
+    if semantics.historical {
+        require(
+            seen == expected.into_iter().collect(),
+            SETS,
+            "selected explicit stat inventory is incomplete",
+        )?;
+        exact_names(
+            &set.implicit_stats,
+            &[
+                "base_is_projectile",
+                "projectiles_should_collide_with_flying_monsters",
+                "projectile_uses_contact_position",
+                "projectile_uses_contact_direction",
+                "check_for_targets_between_initiator_and_projectile_source",
+                "can_perform_skill_while_moving",
+            ],
+            SETS,
+        )?;
+    }
     for (i, stat) in set.implicit_stats.iter().enumerate() {
+        require(
+            seen.insert(stat),
+            SETS,
+            "duplicate selected implicit/explicit stat",
+        )?;
         let (disposition, reason) = match stat.as_str() {
             "base_is_projectile" => (
                 NativeFactDispositionKind::Consumed,
@@ -518,10 +702,34 @@ fn selected_stats(
                 NativeFactDispositionKind::Inactive,
                 "ordinary stationary self-cast excludes moving state",
             ),
-            _ => (
+            "active_skill_consumes_a_fire_infusion" => {
+                require(
+                    semantics.element == DamageType::Fire,
+                    SETS,
+                    "fire infusion requires fire classification",
+                )?;
+                (
+                    NativeFactDispositionKind::Inactive,
+                    "infusion is excluded; this primary hit assumes no infusion is consumed",
+                )
+            }
+            "projectiles_should_collide_with_flying_monsters"
+            | "projectile_uses_contact_position"
+            | "projectile_uses_contact_direction"
+            | "check_for_targets_between_initiator_and_projectile_source"
+            | "maintain_projectile_direction_when_using_contact_position"
+            | "should_use_additive_aiming_animation"
+            | "precise_cursor_targeting_uses_contact_point_height_offset"
+            | "always_pierce" => (
                 NativeFactDispositionKind::OutsideOutputScope,
                 "contact geometry does not supply a multiplier to one successful hit",
             ),
+            _ => {
+                return Err(source_error(
+                    SETS,
+                    format!("unknown selected implicit stat {stat}"),
+                ));
+            }
         };
         selected.facts.push(NativeSkillFact {
             stat: stat.clone(),
@@ -531,22 +739,30 @@ fn selected_stats(
             reason: reason.into(),
         });
     }
+    let (minimum, maximum) = damage_pair(semantics.element)?;
     let value = |id| {
         selected
             .facts
             .iter()
             .find(|f| f.stat == id)
-            .expect("complete selected inventory was checked")
-            .value
+            .map(|f| f.value)
     };
+    let min = value(minimum).ok_or_else(|| source_error(SETS, "minimum damage is absent"))?;
+    let max = value(maximum).ok_or_else(|| source_error(SETS, "maximum damage is absent"))?;
+    require(min <= max, SETS, "minimum damage exceeds maximum damage")?;
     require(
-        value("spell_minimum_base_lightning_damage")
-            <= value("spell_maximum_base_lightning_damage"),
+        set.implicit_stats.iter().any(|s| s == "base_is_projectile"),
         SETS,
-        "minimum damage exceeds maximum damage",
+        "primary projectile requires its explicit implicit marker",
     )?;
     require(
-        selected.count.is_finite() && selected.duration_ms.is_finite(),
+        !semantics.historical || (selected.count.is_some() && selected.duration_ms.is_some()),
+        SETS,
+        "historical v1 requires complete count and projectile lifetime",
+    )?;
+    require(
+        selected.count.is_none_or(f64::is_finite)
+            && selected.duration_ms.is_none_or(f64::is_finite),
         SETS,
         "nonfinite intrinsic output",
     )?;
@@ -559,8 +775,13 @@ impl SelectedStats {
         stat: &SkillDamageStat,
         channel: &str,
         path: String,
+        semantics: SelectionSemantics<'_>,
     ) -> Result<(), NativeAdmissionError> {
         let (expected_channel, mapping) = match stat.stat.as_str() {
+            "spell_minimum_base_fire_damage" => ("level", Some(("FireDamageMin", "hit"))),
+            "spell_maximum_base_fire_damage" => ("level", Some(("FireDamageMax", "hit"))),
+            "spell_minimum_base_cold_damage" => ("level", Some(("ColdDamageMin", "hit"))),
+            "spell_maximum_base_cold_damage" => ("level", Some(("ColdDamageMax", "hit"))),
             "spell_minimum_base_lightning_damage" => ("level", Some(("LightningDamageMin", "hit"))),
             "spell_maximum_base_lightning_damage" => ("level", Some(("LightningDamageMax", "hit"))),
             "base_number_of_projectiles" => {
@@ -568,9 +789,13 @@ impl SelectedStats {
             }
             "base_skill_effect_duration" => (
                 "constant",
-                Some(("SkillDurationBase", "projectile_lifetime_ms")),
+                semantics
+                    .spark_lifetime
+                    .then_some(("SkillDurationBase", "projectile_lifetime_ms")),
             ),
-            "spark_pathing_width_bounds"
+            "active_skill_chill_effect_+%_final" => ("level", None),
+            "projectile_maximum_range_override"
+            | "spark_pathing_width_bounds"
             | "damage_hit_effect_index"
             | "spark_min_time_between_target_clearing_ms"
             | "movement_speed_+%_final_while_performing_action"
@@ -588,6 +813,21 @@ impl SelectedStats {
             &path,
             "selected stat occurs in an unmodelled source channel",
         )?;
+        if stat.stat.starts_with("spell_") {
+            let pair = damage_pair(semantics.element)?;
+            require(
+                stat.stat == pair.0 || stat.stat == pair.1,
+                &path,
+                "damage pair disagrees with categorical element",
+            )?;
+        }
+        if stat.stat == "active_skill_chill_effect_+%_final" {
+            require(
+                semantics.element == DamageType::Cold,
+                &path,
+                "chill magnitude requires cold classification",
+            )?;
+        }
         let (disposition, reason) = if mapping.is_some() {
             (
                 NativeFactDispositionKind::Consumed,
@@ -597,6 +837,21 @@ impl SelectedStats {
             (
                 NativeFactDispositionKind::Inactive,
                 "stationary profile excludes movement modifiers while performing the action",
+            )
+        } else if stat.stat == "active_skill_chill_effect_+%_final" {
+            (
+                NativeFactDispositionKind::OutsideOutputScope,
+                "chill magnitude is retained outside hit damage; it is not hit MORE",
+            )
+        } else if stat.stat == "base_skill_effect_duration" {
+            require(
+                stat.value >= 0.0,
+                &path,
+                "raw skill duration must be nonnegative",
+            )?;
+            (
+                NativeFactDispositionKind::OutsideOutputScope,
+                "raw skill duration retained; its projectile lifetime role is unestablished",
             )
         } else {
             (
@@ -613,7 +868,7 @@ impl SelectedStats {
         };
         if let Some((name, reader)) = mapping {
             require(
-                stat.value >= 0.0 && (name == "LightningDamageMin" || stat.value > 0.0),
+                stat.value >= 0.0 && (name.ends_with("DamageMin") || stat.value > 0.0),
                 &path,
                 "consumed damage/count/duration must be nonnegative, with positive maximum/count/duration",
             )?;
@@ -634,7 +889,7 @@ impl SelectedStats {
                 std::slice::from_ref(stat),
                 SourceKind::SkillGem,
                 "native.skill",
-                super::scope::EFFECT_ID,
+                semantics.effect_id,
                 None,
             );
             // The mapper intentionally skips zero. A zero minimum is explicitly
@@ -643,7 +898,7 @@ impl SelectedStats {
                 let zero = pobr_core::rules::skill_stats::skill_modifiers(&stat.stat, stat.value)
                     .ok_or_else(|| source_error(&path, "zero stat has no owned mapping"))?;
                 require(
-                    name == "LightningDamageMin"
+                    name.ends_with("DamageMin")
                         && mapped.is_empty()
                         && records.is_empty()
                         && zero.len() == 1
@@ -692,9 +947,9 @@ impl SelectedStats {
                     evidence.intrinsic_reader = Some(reader.into());
                     self.intrinsic.push(evidence);
                     if reader == "total_projectiles" {
-                        self.count = value;
+                        self.count = Some(value);
                     } else {
-                        self.duration_ms = value * 1000.0;
+                        self.duration_ms = Some(value * 1000.0);
                     }
                 }
             }
@@ -717,6 +972,60 @@ fn valid_mapping(modifier: &Modifier, name: &str) -> bool {
 mod tests {
     use super::*;
 
+    fn spark_semantics() -> SelectionSemantics<'static> {
+        SelectionSemantics {
+            effect_id: "SparkPlayer",
+            element: DamageType::Lightning,
+            historical: true,
+            spark_lifetime: true,
+        }
+    }
+
+    #[test]
+    fn new_elemental_sources_reject_nonfinite_ranges_and_preserve_absent_intrinsics() {
+        let fixture: serde_json::Value =
+            serde_json::from_slice(include_bytes!("tests/skill-facts.json")).unwrap();
+        let mut set: StatSetDef =
+            serde_json::from_value(fixture["granted_effect_stat_sets"][0]["sets"][0].clone())
+                .unwrap();
+        set.constant_stats.clear();
+        set.implicit_stats = vec!["base_is_projectile".into()];
+        for (element, effect_id) in [
+            (DamageType::Fire, "FireballPlayer"),
+            (DamageType::Cold, "FrostboltPlayer"),
+        ] {
+            let semantics = SelectionSemantics {
+                effect_id,
+                element,
+                historical: false,
+                spark_lifetime: false,
+            };
+            let (min, max) = damage_pair(element).unwrap();
+            let stats = vec![
+                SkillDamageStat {
+                    stat: min.into(),
+                    value: 0.0,
+                },
+                SkillDamageStat {
+                    stat: max.into(),
+                    value: 19.0,
+                },
+            ];
+            let selected = selected_stats(&set, &stats, "/0", "/0/levels/0", semantics).unwrap();
+            assert_eq!(selected.count, None);
+            assert_eq!(selected.duration_ms, None);
+            for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+                for index in [0, 1] {
+                    let mut invalid = stats.clone();
+                    invalid[index].value = bad;
+                    assert!(
+                        selected_stats(&set, &invalid, "/0", "/0/levels/0", semantics).is_err()
+                    );
+                }
+            }
+        }
+    }
+
     #[test]
     fn nonfinite_selected_source_values_cannot_be_admitted() {
         let fixture: serde_json::Value =
@@ -728,7 +1037,14 @@ mod tests {
             let mut stats = set.levels[0].stats.clone();
             stats[0].value = value;
             assert!(
-                selected_stats(&set, &stats, "/0/sets/0", "/0/sets/0/levels/0").is_err(),
+                selected_stats(
+                    &set,
+                    &stats,
+                    "/0/sets/0",
+                    "/0/sets/0/levels/0",
+                    spark_semantics()
+                )
+                .is_err(),
                 "{value}"
             );
             let mut constants = set.clone();
@@ -738,7 +1054,8 @@ mod tests {
                     &constants,
                     &set.levels[0].stats,
                     "/0/sets/0",
-                    "/0/sets/0/levels/0"
+                    "/0/sets/0/levels/0",
+                    spark_semantics(),
                 )
                 .is_err(),
                 "{value}"

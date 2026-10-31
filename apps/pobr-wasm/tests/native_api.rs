@@ -294,8 +294,8 @@ fn supplied_actual_pack_saved_request_reopens_and_rechecks_every_call() {
     assert_eq!(expected.analytical_base_use_ms, 700);
     assert_eq!(expected.resource_costs[0].resource, "Mana");
     assert_eq!(expected.resource_costs[0].amount_per_use, 5.0);
-    assert_eq!(expected.total_projectiles, 4.0);
-    assert_eq!(expected.projectile_lifetime_ms, 2000.0);
+    assert_eq!(expected.total_projectiles, Some(4.0));
+    assert_eq!(expected.projectile_lifetime_ms, Some(2000.0));
 
     pobr_wasm::init_native_data_from_dir(&pack.to_string_lossy()).expect("host native init");
     assert_eq!(
@@ -554,4 +554,90 @@ fn supplied_actual_passive_request_edits_stage_reopen_and_reject_whole() {
         pobr_wasm::calculate_native_build_json(&baseline_json).unwrap(),
         baseline
     );
+}
+
+/// Host wrapper proof; rebuilt wasm-bindgen exports remain coordinator acceptance work.
+#[test]
+#[ignore = "requires POBR_NATIVE_PRIMARY_SPELL_PACK and POBR_NATIVE_PRIMARY_SPELL_REQUEST from actual assembly"]
+fn supplied_actual_primary_spell_edits_stage_reopen_and_preserve_failed_load() {
+    let pack = PathBuf::from(
+        std::env::var_os("POBR_NATIVE_PRIMARY_SPELL_PACK").expect("supply actual immutable pack"),
+    );
+    let saved = PathBuf::from(
+        std::env::var_os("POBR_NATIVE_PRIMARY_SPELL_REQUEST").expect("supply actual bound request"),
+    );
+    let original = NativeBuildRequest::from_json(&std::fs::read(saved).unwrap()).unwrap();
+    assert_eq!(
+        original.evaluation,
+        NativeEvaluationKind::ConditionalSkillHitV2
+    );
+    let files = read_pack(&pack);
+    let native = NativeData::load(&GameData::from_memory(files.clone())).unwrap();
+    pobr_wasm::init_native_data_from_dir(&pack.to_string_lossy()).unwrap();
+    for selected in &native.primary_spells().unwrap().selections {
+        for &level in &selected.gem_levels {
+            if ![1, 2, 10].contains(&level) {
+                continue;
+            }
+            let mut r = original.clone();
+            r.skill.gem_id = selected.gem_id.clone();
+            r.skill.effect_id = selected.effect_id.clone();
+            r.skill.stat_set_id = selected.stat_set_id.clone();
+            r.skill.level = level;
+            let g = &mut r.build.socket_groups[0];
+            g.gem_ids[0] = selected.gem_id.clone();
+            g.active_skill_id = Some(selected.effect_id.clone());
+            g.active_gem_level = Some(level);
+            g.gem_requirement_levels.clear();
+            g.gem_skills[0].skill_id = selected.effect_id.clone();
+            g.gem_skills[0].gem_level = level;
+            let json = String::from_utf8(r.to_json().unwrap()).unwrap();
+            let reopened = NativeBuildRequest::from_json(json.as_bytes()).unwrap();
+            let expected = serde_json::to_value(
+                native_skill::calculate_native_skill(
+                    &native_skill::admit_native_skill(&native, &reopened).unwrap(),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+            let directory: Value =
+                serde_json::from_str(&pobr_wasm::calculate_native_build_json(&json).unwrap())
+                    .unwrap();
+            assert_eq!(directory, expected);
+            stage(&files);
+            pobr_wasm::init_native_staged_data().unwrap();
+            assert!(pobr_wasm::is_native_data_ready());
+            assert!(!pobr_wasm::is_data_ready());
+            assert_eq!(
+                serde_json::from_str::<Value>(
+                    &pobr_wasm::calculate_native_build_json(&json).unwrap()
+                )
+                .unwrap(),
+                expected
+            );
+            let mut invalid = r.clone();
+            invalid.evaluation = NativeEvaluationKind::ConditionalSkillHitV1;
+            error(
+                pobr_wasm::calculate_native_build_json(
+                    &String::from_utf8(invalid.to_json().unwrap()).unwrap(),
+                ),
+                "bad_request",
+                "evaluation",
+            );
+            let mut corrupt = files.clone();
+            corrupt
+                .get_mut("base/native_skill_projection.json")
+                .unwrap()
+                .push(b' ');
+            stage(&corrupt);
+            assert!(pobr_wasm::init_native_staged_data().is_err());
+            assert_eq!(
+                serde_json::from_str::<Value>(
+                    &pobr_wasm::calculate_native_build_json(&json).unwrap()
+                )
+                .unwrap(),
+                expected
+            );
+        }
+    }
 }

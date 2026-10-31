@@ -12,6 +12,9 @@ use sha2::{Digest, Sha256};
 #[path = "native_passives.rs"]
 mod passive_profile;
 
+#[path = "native_primary_spells.rs"]
+mod primary_spell_profile;
+
 fn hash(bytes: &[u8]) -> String {
     Sha256::digest(bytes)
         .iter()
