@@ -70,6 +70,8 @@ pub use pobr_core::skill_env::ResolvedCost;
 /// - `class_attributes`: `class name -> base attributes` (for deriving CharacterBase).
 #[derive(Debug, Clone)]
 pub struct BuildData {
+    /// Snapshot version for binding optional native packets; absent in text-only data.
+    pub native_data_version: Option<String>,
     /// Passive node table, keyed by the numeric `skill` id.
     pub passive_nodes: HashMap<u32, PassiveNodeDef>,
     /// Node table for historical league tree versions (`treeVersion -> skill id -> node
@@ -765,6 +767,7 @@ impl BuildData {
         };
 
         Ok(Self {
+            native_data_version: data.identity()?.data_version.clone(),
             passive_nodes,
             versioned_passive_nodes,
             skill_gems,
@@ -803,6 +806,7 @@ impl BuildData {
     /// tests or the text-only path fallback.
     pub fn empty() -> Self {
         Self {
+            native_data_version: None,
             passive_nodes: HashMap::new(),
             versioned_passive_nodes: HashMap::new(),
             skill_gems: HashMap::new(),

@@ -67,7 +67,7 @@ class DraftTests(unittest.TestCase):
                                  (4096 if mode == "online" else 0) if budget is None else budget, cap)
 
     def test_online_then_network_forbidden_cache_only_replay_preserves_order_and_input(self):
-        http = fixtures.FakeHTTP()
+        http = fixtures.FakeHTTP(fixtures.bundle_bytes(encoder=8))
         first = self.collect(http=http)
         self.assertEqual(first["status"], "unreviewed-acquisition-draft")
         self.assertEqual(first["schema"], draft.RECEIPT_SCHEMA)
@@ -194,6 +194,26 @@ class DraftTests(unittest.TestCase):
             self.save()
             with self.assertRaises(ValueError):
                 draft.load_selection(self.selection_path)
+
+    def test_32_mib_resource_and_64_mib_total_boundaries(self):
+        record = self.selection["resources"]["Metadata/Z.psg"]
+        self.selection["resources"] = {"Data/StatDescriptions/stat_descriptions.csd": record}
+        for size in [30380428, 32 * client.MIB]:
+            record["uncompressed_length"] = size
+            self.save()
+            draft.load_selection(self.selection_path)
+        record["uncompressed_length"] += 1
+        self.save()
+        with self.assertRaisesRegex(ValueError, "resource length"):
+            draft.load_selection(self.selection_path)
+        record["uncompressed_length"] = 32 * client.MIB
+        self.selection["resources"]["Data/Second.csd"] = dict(record)
+        self.save()
+        draft.load_selection(self.selection_path)
+        self.selection["resources"]["Data/Extra.csd"] = {**record, "uncompressed_length": 1}
+        self.save()
+        with self.assertRaisesRegex(ValueError, "selected raw byte total"):
+            draft.load_selection(self.selection_path)
 
     def test_bounded_regular_json_no_duplicate_keys_or_non_json_numbers(self):
         for raw in [b'{"schema":1,"schema":1}', b'{"n":NaN}', b"[]", b" " * (2 * client.MIB + 1)]:

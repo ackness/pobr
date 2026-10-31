@@ -55,6 +55,7 @@ fn item(base: &str, rarity: ItemRarity, explicits: &[&str]) -> Item {
 
 fn node(id: u32, texts: &[&str]) -> AllocatedNode {
     AllocatedNode {
+        native: None,
         node_id: NodeId(id),
         ascendancy: false,
         modifier_texts: texts.iter().map(|t| (*t).to_string()).collect(),

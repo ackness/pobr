@@ -20,9 +20,9 @@ URL = "https://patch-poe2.poecdn.com/9.1/Bundles2/_.index.bin"
 PATH = "Data/Balance/Traditional Chinese/ClientStrings.datc64"
 
 
-def index_bytes(records=None, root=None, directory_count=1):
+def index_bytes(records=None, root=None, directory_count=1, bundle_size=1024):
     name = b"Folders/data/fixture"
-    bundles = struct.pack("<I", 1) + struct.pack("<I", len(name)) + name + struct.pack("<I", 1024)
+    bundles = struct.pack("<I", 1) + struct.pack("<I", len(name)) + name + struct.pack("<I", bundle_size)
     rows = records if records is not None else [(index.hash64(PATH.lower().encode(), SEED), 0, 13, 7)]
     files = struct.pack("<I", len(rows)) + b"".join(struct.pack("<QIII", *r) for r in rows)
     directories = struct.pack("<I", directory_count) + struct.pack("<QIII", index.hash64(b"", SEED) if root is None else root, 0, 0, 0)
@@ -46,8 +46,8 @@ class IndexTests(unittest.TestCase):
     def save(self):
         self.request.write_bytes(client.encoded(self.document))
 
-    def discover(self, raw=None, output=None, mode="online", budget=client.MIB):
-        http = fixtures.fixtures.FakeHTTP(fixtures.fixtures.bundle_bytes(raw or index_bytes(), chunk_size=32))
+    def discover(self, raw=None, output=None, mode="online", budget=client.MIB, encoder=12):
+        http = fixtures.fixtures.FakeHTTP(fixtures.fixtures.bundle_bytes(raw or index_bytes(), chunk_size=32, encoder=encoder))
         with patch.object(client, "ExternalDecoder", fixtures.DraftDecoder), \
                 patch.object(client.urllib.request, "build_opener", return_value=http):
             receipt = index.discover(self.request, self.cache, output or self.out, Path("/explicit/python"),
@@ -76,7 +76,7 @@ class IndexTests(unittest.TestCase):
             self.assertEqual(index.hash64(name.encode(), SEED), expected)
 
     def test_online_discovery_produces_acquisition_ready_selection_and_offline_replay(self):
-        receipt, http = self.discover()
+        receipt, http = self.discover(encoder=8)
         selection, raw = index.draft.load_selection(self.out / "selection.json")
         self.assertEqual(selection["resources"][PATH], {"bundle_url": "https://patch-poe2.poecdn.com/9.1/Bundles2/Folders/data/fixture.bundle.bin",
                          "uncompressed_offset": 13, "uncompressed_length": 7, "location_evidence": ["index-locations"]})
@@ -120,6 +120,31 @@ class IndexTests(unittest.TestCase):
             with patch.object(client, "ExternalDecoder", side_effect=AssertionError("decoder before request validation")), self.assertRaises(ValueError):
                 index.discover(self.request, self.cache, self.out, Path("/explicit/python"), self.lock, "online", client.MIB)
             self.assertFalse(self.out.exists())
+
+    def test_selected_32_mib_resource_and_64_mib_total_boundaries(self):
+        second, extra = "Data/Second.csd", "Data/Extra.csd"
+        self.document["resources"] = [PATH, second]
+        self.save()
+        rows = [(index.hash64(name.lower().encode(), SEED), 0, 0, 32 * client.MIB)
+                for name in self.document["resources"]]
+        receipt, _ = self.discover(index_bytes(rows, bundle_size=64 * client.MIB))
+        selection, _ = index.draft.load_selection(self.out / "selection.json")
+        self.assertEqual(sum(r["uncompressed_length"] for r in selection["resources"].values()), 64 * client.MIB)
+        self.assertFalse(receipt["production_ready"])
+        self.out = self.root / "oversized"
+        self.cache = self.root / "oversized-cache"
+        rows[0] = (*rows[0][:3], 32 * client.MIB + 1)
+        with self.assertRaisesRegex(ValueError, "selected resource bytes"):
+            self.discover(index_bytes(rows, bundle_size=64 * client.MIB))
+        self.assertFalse(self.out.exists())
+        self.cache = self.root / "total-cache"
+        rows[0] = (*rows[0][:3], 32 * client.MIB)
+        rows.append((index.hash64(extra.lower().encode(), SEED), 0, 0, 1))
+        self.document["resources"].append(extra)
+        self.save()
+        with self.assertRaisesRegex(ValueError, "selected raw total"):
+            self.discover(index_bytes(rows, bundle_size=64 * client.MIB))
+        self.assertFalse(self.out.exists())
 
     def test_bad_framing_legacy_seed_and_caps_are_rejected(self):
         cases = [b"\0" * 4, struct.pack("<I", index.MAX_BUNDLES + 1), index_bytes(root=0x07E47507B4A92E53),

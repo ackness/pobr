@@ -1,28 +1,15 @@
-//! Passive tree modifier source ingest.
+//! Passive source ingestion with an exclusive native or text channel per node.
 //!
-//! Parses the English modifier text of a set of "allocated passive nodes"
-//! into `Modifier`s attributed with [`SourceKind::PassiveNode`] (or
-//! [`SourceKind::AscendancyNode`] for ascendancy nodes), keeping each node's
-//! stable `NodeId` and raw modifier text (`raw_text`) so the final output can
-//! be traced source-level back to a specific passive node (PoBR's core
-//! value-add over PoB).
-//!
-//! Mirrors the pattern in [`crate::item`]: source (node) → parse modifiers →
-//! attributed modifiers + unsupported collection. A passive node is just a
-//! modifier container with low mechanical risk — the numbers live in the
-//! modifier text, so no extra formula is needed here.
-//!
-//! `PassiveTreeSpec` currently only holds `allocated_nodes: Vec<NodeId>` and
-//! doesn't carry each node's modifier text yet, so this entry point takes the
-//! standalone [`AllocatedNode`] as input (stable node ID + modifier text +
-//! ascendancy flag), mirroring `Item` as the input to `ingest_item`. Once
-//! `PassiveTreeSpec` can carry node modifiers and metadata, callers can
-//! assemble from that instead.
+//! Complete supported native packets bypass parsing. Rejected packets retain a
+//! diagnostic and fall back to the whole original text; absent packets keep legacy
+//! parsing. Both channels retain node attribution and raw display text.
 
 use pobr_data::prelude::*;
 
 use crate::Modifier;
 use crate::mod_parser::ParseError;
+use crate::rules::passive_stats::{self, NativePassiveRejection};
+use pobr_data::native_stat::{NativePassiveContext, NativePassiveStats};
 
 /// The target node kind for a radius jewel's `also grant` line (the granted object is determined by its prefix).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,6 +48,65 @@ pub struct AllocatedNode {
     pub ascendancy: bool,
     /// The node's English PoB-compatible modifier text (one modifier per line).
     pub modifier_texts: Vec<String>,
+    /// Complete optional native channel, after allocation/context checks.
+    pub native: Option<NativePassiveInput>,
+}
+
+/// A packet plus any invalidation discovered while resolving the allocated node.
+#[derive(Debug, Clone)]
+pub struct NativePassiveInput {
+    pub packet: NativePassiveStats,
+    pub ineligible: Option<NativePassiveRejection>,
+}
+
+/// A rejected packet and the entire text handed back to the legacy path.
+/// Text parsing/application remains visible in the ordinary line ledger.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NativePassiveDiagnostic {
+    pub source_id: SourceId,
+    pub packet: NativePassiveStats,
+    pub fallback_texts: Vec<String>,
+    pub reason: NativePassiveRejection,
+}
+
+/// Selects the native channel before any parser filtering. `None` means legacy.
+/// A rejection always falls back for the whole node, never a subset of its stats.
+pub fn select_native_passive(
+    node: &AllocatedNode,
+) -> Option<Result<Modifier, NativePassiveDiagnostic>> {
+    let input = node.native.as_ref()?;
+    let packet = &input.packet;
+    let map = || {
+        if let Some(reason) = input.ineligible {
+            return Err(reason);
+        }
+        if packet.node_id != node.node_id.0 || packet.modifier_texts != node.modifier_texts {
+            return Err(NativePassiveRejection::BindingMismatch);
+        }
+        if node.ascendancy || packet.context != NativePassiveContext::UnconditionalPlayer {
+            return Err(NativePassiveRejection::UnsupportedContext);
+        }
+        let [stat] = packet.stats.as_slice() else {
+            return Err(NativePassiveRejection::IncompletePacket);
+        };
+        if packet.modifier_texts.len() != 1 || packet.modifier_texts[0].lines().count() != 1 {
+            return Err(NativePassiveRejection::IncompletePacket);
+        }
+        if stat.provenance.passive_id != packet.node_slug {
+            return Err(NativePassiveRejection::BindingMismatch);
+        }
+        let modifier = passive_stats::map_stat(stat)?;
+        let mut origin = ModifierSource::new(node_source(node.node_id.0, node.ascendancy))
+            .with_raw_text(node.modifier_texts[0].clone());
+        origin.native_stat = Some(stat.clone());
+        Ok(modifier.with_origin(origin))
+    };
+    Some(map().map_err(|reason| NativePassiveDiagnostic {
+        source_id: node_source(node.node_id.0, node.ascendancy),
+        packet: packet.clone(),
+        fallback_texts: node.modifier_texts.clone(),
+        reason,
+    }))
 }
 
 /// Result of ingesting a set of passive nodes: parsed modifiers + raw text that couldn't be parsed.
@@ -70,6 +116,7 @@ pub struct AllocatedNode {
 pub struct PassiveIngest {
     pub modifiers: Vec<Modifier>,
     pub unsupported: Vec<String>,
+    pub native_diagnostics: Vec<NativePassiveDiagnostic>,
 }
 
 /// Parses the modifier text of a set of allocated passive nodes into node-attributed modifiers.
@@ -101,6 +148,14 @@ pub fn ingest_passive_nodes_with_ctx(
 ) -> Result<PassiveIngest, ParseError> {
     let mut ingest = PassiveIngest::default();
     for node in nodes {
+        match select_native_passive(node) {
+            Some(Ok(modifier)) => {
+                ingest.modifiers.push(modifier);
+                continue;
+            }
+            Some(Err(diagnostic)) => ingest.native_diagnostics.push(diagnostic),
+            None => {}
+        }
         let source_id = node_source(node.node_id.0, node.ascendancy);
 
         for text in &node.modifier_texts {

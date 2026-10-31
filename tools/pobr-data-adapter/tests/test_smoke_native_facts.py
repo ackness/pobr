@@ -1,10 +1,16 @@
 """Regression for typed source evidence, including real row-zero ID collisions."""
 
 import copy
+import hashlib
+from pathlib import Path
+import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
 import smoke_native_facts as smoke
+import smoke_native_gems as gem_smoke
+import smoke_native_items_actors as bc_smoke
 
 
 def raw(table):
@@ -90,6 +96,121 @@ class CoreEvidenceTests(unittest.TestCase):
         candidate["core_skills"]["effect_levels"][0]["cost_amounts_raw"] = [11]
         with self.assertRaises(AssertionError):
             self.check(candidate)
+
+
+class GemEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.documents = {
+            f"tables/{table}.json": {"rows": []}
+            for table in (*smoke.TABLES, *smoke.CORE_TABLES, *gem_smoke.GEM_TABLES)
+        }
+        for table, values in {
+            "ItemClasses": [{"Id": "Shared"}], "Tags": [{"Id": "Shared"}],
+            "WieldableClasses": [{"ItemClass": 0, "Tag": 0, "TwoWeaponSlots": False}],
+            "ActiveSkillWeaponRequirement": [{"Id": "Shared", "WieldableClasses": [0, None, 0], "Stat": None, "String": None}],
+        }.items():
+            self.documents[f"tables/{table}.json"]["rows"] = [
+                {"_row": row, "values": value} for row, value in enumerate(values)
+            ]
+        gems = {"catalogue_policy": "source-inventory; playability unresolved",
+                **dict.fromkeys(("items", "effects", "tags", "supports", "families",
+                                 "support_associations", "experience_types", "experience_levels"), [])}
+        constraints = {
+            "effects": [], "active_skills": [],
+            "weapon_requirements": [{"requirement": {"row": 0, "id": "Shared"},
+                                     "raw": raw("ActiveSkillWeaponRequirement"),
+                                     "wieldable_classes": [{"row": 0}, None, {"row": 0}],
+                                     "stat": None, "client_string": None}],
+            "wieldable_classes": [{"row": 0, "item_class": {"row": 0, "id": "Shared"},
+                                   "tag": {"row": 0, "id": "Shared"}, "two_weapon_slots_raw": False,
+                                   "raw": raw("WieldableClasses")}],
+        }
+        self.documents["gems.json"] = gems
+        self.documents["constraints.json"] = constraints
+        converted = copy.deepcopy(constraints)
+        converted["weapon_requirements"][0].update(
+            requirement=reference("ActiveSkillWeaponRequirement", "Shared"),
+            wieldable_classes=[{"raw": raw("WieldableClasses")}, None, {"raw": raw("WieldableClasses")}])
+        converted["wieldable_classes"][0].update(
+            item_class=reference("ItemClasses", "Shared"), tag=reference("Tags", "Shared"))
+        self.counts = dict.fromkeys(gem_smoke.GEM_COUNTS, 0)
+        self.counts.update(weapon_requirement_rows=1, wieldable_class_rows=1)
+        self.candidate = {"gems": copy.deepcopy(gems), "constraints": converted, "gem_summary": self.counts}
+        self.receipt = {"gem_summary": self.counts}
+
+    def check(self, candidate=None):
+        with patch.object(gem_smoke, "GEM_COUNTS", self.counts):
+            gem_smoke.compare_gems(candidate or self.candidate, self.receipt, self.documents, smoke.equal_facts)
+
+    def test_physical_only_references_and_nullable_order_pass(self):
+        self.check()
+
+    def test_cross_table_aliases_never_substitute_for_constraint_evidence(self):
+        for path, table in [
+            (("wieldable_classes", 0, "item_class", "raw", "payload"), "Tags"),
+            (("wieldable_classes", 0, "tag", "raw", "payload"), "ItemClasses"),
+            (("weapon_requirements", 0, "requirement", "raw", "payload"), "Tags"),
+            (("weapon_requirements", 0, "wieldable_classes", 0, "raw", "payload"), "ItemClasses"),
+        ]:
+            candidate = copy.deepcopy(self.candidate)
+            target = candidate["constraints"]
+            for key in path[:-1]:
+                target = target[key]
+            target[path[-1]] = f"tables/{table}.json"
+            with self.subTest(path=path), self.assertRaises(AssertionError):
+                self.check(candidate)
+
+    def test_losing_nullable_duplicate_slots_or_claiming_catalogue_policy_fails(self):
+        candidate = copy.deepcopy(self.candidate)
+        candidate["constraints"]["weapon_requirements"][0]["wieldable_classes"] = [{"raw": raw("WieldableClasses")}]
+        with self.assertRaises(AssertionError):
+            self.check(candidate)
+        candidate = copy.deepcopy(self.candidate)
+        candidate["gems"]["catalogue_policy"] = "playable"
+        with self.assertRaises(AssertionError):
+            self.check(candidate)
+
+
+class ItemsActorsEvidenceTests(unittest.TestCase):
+    def test_stable_and_numeric_id_references_keep_exact_tables(self):
+        tables = {name: {"rows": [{"values": {"Id": identifier}}]}
+                  for name, identifier in [("Stats", "Same"), ("ModFamily", "Same"), ("SummonedSpecificMonsters", 17)]}
+        first = bc_smoke.stable_reference(tables, "Stats", 0, "test")
+        second = bc_smoke.stable_reference(tables, "ModFamily", 0, "test")
+        self.assertEqual(first["id"], second["id"])
+        self.assertNotEqual(first["raw"], second["raw"])
+        numeric = bc_smoke.stable_reference(tables, "SummonedSpecificMonsters", 0, "test")
+        self.assertEqual(set(numeric), {"raw"})
+        for index in [True, -1, 1]:
+            with self.subTest(index=index), self.assertRaises(AssertionError):
+                bc_smoke.stable_reference(tables, "Stats", index, "test")
+
+    def test_wrong_projector_fingerprint_fails_before_execution(self):
+        before = {name: sys.modules.get(name) for name in ["RePoE", *bc_smoke.PINS]}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "RePoE").mkdir()
+            (root / "RePoE/native_items.py").write_text('raise RuntimeError("must not run")\n')
+            with self.assertRaisesRegex(AssertionError, "wrong fixed producer source"):
+                with bc_smoke.projectors(root):
+                    self.fail("wrong fingerprint was executed")
+        self.assertEqual(before, {name: sys.modules.get(name) for name in before})
+
+    def test_verified_buffers_skip_package_init_and_restore_module_state(self):
+        files = {"RePoE.native_items": b'class Facts:\n    marker = 17\n',
+                 "RePoE.native_actor_facts": b'from RePoE.native_items import Facts\nmarker = Facts.marker\n'}
+        before = {name: sys.modules.get(name) for name in ["RePoE", *files]}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "RePoE").mkdir()
+            (root / "RePoE/__init__.py").write_text('raise RuntimeError("package init must not run")\n')
+            for name, data in files.items():
+                root.joinpath(*name.split(".")).with_suffix(".py").write_bytes(data)
+            with patch.object(bc_smoke, "PINS", {name: hashlib.sha256(data).hexdigest() for name, data in files.items()}):
+                with bc_smoke.projectors(root) as (items, actors):
+                    self.assertEqual(items.Facts.marker, 17)
+                    self.assertEqual(actors.marker, 17)
+        self.assertEqual(before, {name: sys.modules.get(name) for name in before})
 
 
 if __name__ == "__main__":

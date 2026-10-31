@@ -35,8 +35,11 @@ is an example of a separate candidate, not a runtime default.
 
 Choose the patch deliberately; `mise run data:version` can separately query the
 public patch. Paths use the same portable spelling, locale-space, case collision
-and file/directory rules as draft acquisition. Limits: 128 paths, 16 MiB per
+and file/directory rules as draft acquisition. Limits: 128 paths, 32 MiB per
 selected resource, 64 MiB selected raw total. No raw hashes are accepted as inputs.
+The fixed resource cap includes patch 0.5.5.5's 30,380,428-byte
+`stat_descriptions.csd`; index parsing, HTTP/cache budgets and decoder/worker
+limits are unchanged.
 
 ```sh
 mise run data:client:locate -- --request /path/to/request.json \

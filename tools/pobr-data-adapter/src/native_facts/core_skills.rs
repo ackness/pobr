@@ -200,7 +200,7 @@ fn check_collection(source: &Value, name: &str, expected: &[impl Serialize]) -> 
 
 // JSON number equality alone equates negative and positive zero. Raw binary64
 // channels must retain that bit as well as every other bit of the parsed value.
-fn same_facts(expected: &Value, actual: &Value) -> bool {
+pub(super) fn same_facts(expected: &Value, actual: &Value) -> bool {
     match (expected, actual) {
         (Value::Number(a), Value::Number(b)) if a.is_f64() || b.is_f64() => {
             a.is_f64() == b.is_f64() && a.as_f64().map(f64::to_bits) == b.as_f64().map(f64::to_bits)

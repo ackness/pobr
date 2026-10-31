@@ -39,11 +39,38 @@ HTTP timeouts are 25 seconds; failed requests are not retried automatically.
 
 The reader independently interprets only the 60-byte bundle header, size table and
 selected chunks. Before table allocation or decompression it bounds counts, sizes,
-offsets and total length, checks redundant sizes, supported encoders (9/12), flags,
+offsets and total length, checks redundant sizes, supported encoders (8/9/12), flags,
 reserved fields, chunk count and the compressed size sum. Limits are 4,096 chunks,
 512 MiB declared bundle raw size, 256 MiB compressed total, 1 MiB decompressed and
-2 MiB compressed per chunk, 16 MiB per resource and 64 MiB selected raw bytes.
+2 MiB compressed per chunk, 32 MiB per resource and 64 MiB selected raw bytes.
+The fixed resource cap admits patch 0.5.5.5's 30,380,428-byte
+`Data/StatDescriptions/stat_descriptions.csd`. It has no caller override and does
+not raise HTTP/cache budgets or decoder/worker limits. Strict raw size/hash pins
+remain required, including for resources above 16 MiB.
+Raw-size eligibility does not establish support for a bundle's encoder or framing.
 Those declared bundle totals do not authorize downloading the full bundle.
+
+Encoder **8 is Kraken** in the bundle compressor enum. The fixed
+[PyPoE enum](https://github.com/repoe-fork/pypoe/blob/66d1d7442c5718260e1a8efd24989d22987e91af/PyPoE/poe/file/bundle.py)
+is a format reference only; no PyPoE source is copied or imported. Bundle compressor
+IDs differ from the native chunk stream's decoder IDs: Kraken chunks use decoder
+type 6. The existing [pyooz 0.0.8 binding](https://github.com/zao/pyooz/blob/f27d04f6d9000654b79eb07a251a98e02a7136e3/ooz/ooz_bindings.cpp)
+calls the decoder and checks the requested output length; its pinned
+[ooz submodule](https://github.com/zao/ooz/blob/2480701c664d33efa6c0165ff214cb44b991199f/kraken.cpp)
+already dispatches stream type 6 to Kraken. Acceptance passes the original chunk
+bytes unchanged to the same `ExternalDecoder`; it does not translate IDs, rewrite
+payloads, upgrade the decoder, or admit other compressor enums.
+
+The [actual header/table fixtures](fixtures/client-bundle-encoder8.json) preserve
+the 0.5.5.5 international `Folders/data/F5` and `Folders/data/4C` framing. The
+corresponding selected stat, passive-skill and skill description roots were
+reconstructed with the existing pyooz 0.0.8 native module and replayed byte-for-byte
+under OS-denied network access. These are decompression and source-byte observations,
+not trusted raw pins or CSD semantic certification. Fixtures contain no compressed
+payload and unit tests use synthetic decoders; real native acceptance requires the
+explicit environment and archived ranges. Upstream ooz does not claim fuzz safety;
+the existing isolation, identity and size checks remain the trust boundary, not a
+claim of arbitrary malformed-input safety.
 
 ## Compressed cache and archive import
 

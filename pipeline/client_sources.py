@@ -22,7 +22,9 @@ from urllib.parse import urlsplit
 MIB = 1024 * 1024
 MAX_NETWORK = 64 * MIB
 MAX_RANGE = 4 * MIB
-MAX_RESOURCE = 16 * MIB
+# Fixed raw-file bound: 0.5.5.5 stat_descriptions.csd is 30,380,428 bytes.
+# This does not raise selected-total, HTTP, bundle or decoder chunk limits.
+MAX_RESOURCE = 32 * MIB
 MAX_BUNDLE_RAW = 512 * MIB
 MAX_BUNDLE_COMPRESSED = 256 * MIB
 MAX_CHUNKS = 4096
@@ -502,7 +504,9 @@ class Bundle:
         integer(count, 1, MAX_CHUNKS, "bundle chunk count")
         integer(chunk_size, 1, MAX_CHUNK_RAW, "bundle chunk size")
         if (raw32 != raw64 or compressed32 != compressed64 or header_size != 48 + 4 * count
-                or encoder not in {9, 12} or flag != 1 or any(reserved)
+                # Bundle encoder 8 is Kraken; native stream decoder IDs differ.
+                # See client-sources.md for pinned-source and actual-chunk evidence.
+                or encoder not in {8, 9, 12} or flag != 1 or any(reserved)
                 or count != (raw64 + chunk_size - 1) // chunk_size):
             raise ValueError("Malformed or unsupported bundle framing")
         if 60 + 4 * count + compressed64 != ranges.cache.info(url)[0]:

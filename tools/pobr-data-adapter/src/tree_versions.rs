@@ -94,6 +94,7 @@ fn parse_all_nodes(lua: &str) -> Result<Vec<PassiveNodeDef>, String> {
             PassiveNodeKind::Normal
         };
         out.push(PassiveNodeDef {
+            native_stats: None,
             skill,
             // tree.lua has no GGG-export-side string key, so this uses the
             // skill id as a string (consumers index by the numeric `skill`;

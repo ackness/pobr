@@ -1,0 +1,66 @@
+[
+  {
+    "skill": 62518,
+    "id": "maximum_resistances1",
+    "name": "Fire Resistance",
+    "kind": "normal",
+    "stats": [
+      "+5% to [Resistances|Fire Resistance]"
+    ],
+    "native_stats": {
+      "data_version": "controlled-native-passive-0.5.5.5",
+      "tree_version": null,
+      "node_id": 62518,
+      "node_slug": "maximum_resistances1",
+      "modifier_texts": [
+        "+5% to [Resistances|Fire Resistance]"
+      ],
+      "context": "unconditional_player",
+      "stats": [
+        {
+          "id": "base_fire_damage_resistance_%",
+          "value": 5,
+          "provenance": {
+            "game_patch": "0.5.5.5",
+            "source_manifest_sha256": "e4bd693d45d8eaa4768d9a86c3e7e5ee84f1f4d8fc05112ae3b290d51bb901e5",
+            "passive_id": "maximum_resistances1",
+            "passive_row": 1390,
+            "stat_row": 139,
+            "references": [
+              {
+                "resource": "tables/Stats.json",
+                "sha256": "bef280b241a844972de0020e57c64cc403ac7e44fddf346b1014d17e1372376a",
+                "pointer": "/rows/139/values"
+              },
+              {
+                "resource": "tables/PassiveSkills.json",
+                "sha256": "4d659f07e12df4c2df7f684a21c87f99458b575db6da636b96062d2f530a561c",
+                "pointer": "/rows/1390/values"
+              },
+              {
+                "resource": "Data/Balance/Stats.datc64",
+                "sha256": "e808452ef330de79cca6d496982bc8810e7967c2c0c681e61dc63506177af8a5",
+                "pointer": "physical row 139"
+              },
+              {
+                "resource": "Data/Balance/PassiveSkills.datc64",
+                "sha256": "49af4f7dfab787b57efa22e06e2673c268cbd90c4f40140aa085cb8fbb602bc2",
+                "pointer": "physical row 1390"
+              },
+              {
+                "resource": "Metadata/PassiveSkillGraph.psg",
+                "sha256": "071cba806a621a0bdae09828cc5ad8e34259159659e950a1898770790730c344",
+                "pointer": "graph 62518"
+              },
+              {
+                "resource": "https://github.com/grindinggear/poe2-skilltree-export@bd87e6512c92b868542eddfb1ba4ea8b6dc2da36/data.json",
+                "sha256": "b52be9c4f17e4114064255ef1b8c58292e9db0e395d95af235a8d3fef0d44642",
+                "pointer": "/nodes/62518/stats/0"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+]

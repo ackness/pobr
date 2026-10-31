@@ -193,11 +193,23 @@ impl SourceWriter {
             for node in nodes {
                 let source = pobr_core::passive::node_source(node.node_id.0, node.ascendancy);
                 for text in &node.modifier_texts {
-                    self.note_line(&source, text, LineFate::Parsed);
+                    let fate = if node.native.is_some() {
+                        LineFate::ReadBy("PoBR native passive stat rule (rules::passive_stats)")
+                    } else {
+                        LineFate::Parsed
+                    };
+                    self.note_line(&source, text, fate);
                 }
             }
         }
         self.session.add_passive_nodes(nodes)
+    }
+
+    pub fn record_native_passive_diagnostic(
+        &mut self,
+        issue: pobr_core::passive::NativePassiveDiagnostic,
+    ) {
+        self.session.record_native_passive_diagnostic(issue);
     }
 
     pub fn add_skill_gem(&mut self, gem: &GemModSource) -> Result<(), ParseError> {

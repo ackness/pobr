@@ -14,7 +14,10 @@ use crate::build::RadiusJewel;
 use crate::build_data::BuildData;
 use crate::error::BuildError;
 use pobr_core::CharacterBase;
-use pobr_core::passive::AllocatedNode;
+use pobr_core::passive::{
+    AllocatedNode, NativePassiveDiagnostic, NativePassiveInput, select_native_passive,
+};
+use pobr_core::rules::passive_stats::NativePassiveRejection;
 use pobr_tree::{collect_allocated_mods_for_class, compute_radius_jewel_effect_with_radii};
 
 use super::skill::resolve::{parse_gem_property_bonus, small_passive_effect_inc};
@@ -197,6 +200,7 @@ pub(crate) fn resolve_passive_nodes(
     build: &Build,
     data: &BuildData,
     unsupported: &mut Vec<(u32, String)>,
+    native_diagnostics: &mut Vec<NativePassiveDiagnostic>,
 ) -> Vec<AllocatedNode> {
     // isSwitchable variant context (matching PoB's curClassName / curAscendClassName,
     // PassiveSpec.lua:1251-1256): sourced from the Build XML header's class/ascendancy name.
@@ -228,7 +232,18 @@ pub(crate) fn resolve_passive_nodes(
                     modifier_texts.extend(change.stats.iter().cloned());
                 }
             }
-            if modifier_texts.is_empty() {
+            // Gated sockets/masteries still contribute nothing. An ordinary
+            // native node whose text was removed must retain its rejection.
+            if modifier_texts.is_empty()
+                && !nodes.get(&node_id.0).is_some_and(|def| {
+                    def.native_stats.is_some()
+                        && !matches!(
+                            def.kind,
+                            pobr_data::catalog::PassiveNodeKind::JewelSocket
+                                | pobr_data::catalog::PassiveNodeKind::Mastery
+                        )
+                })
+            {
                 return None;
             }
             // Ascendancy nodes are determined by their PassiveNodeDef::ascendancy_id.
@@ -236,13 +251,59 @@ pub(crate) fn resolve_passive_nodes(
                 .get(&node_id.0)
                 .map(|def| def.ascendancy_id.is_some())
                 .unwrap_or(false);
-            let (modifier_texts, dropped) = combine_wrapped(modifier_texts, engine_ctx(data));
-            unsupported.extend(dropped.into_iter().map(|line| (node_id.0, line)));
-            Some(AllocatedNode {
+            let native = nodes.get(&node_id.0).and_then(|def| {
+                let packet = def.native_stats.as_ref()?;
+                let ineligible = if data.native_data_version.as_deref()
+                    != Some(packet.data_version.as_str())
+                    || packet.tree_version != build.tree_version
+                    || !std::ptr::eq(nodes, &data.passive_nodes)
+                {
+                    Some(NativePassiveRejection::VersionMismatch)
+                } else if transformations.nodes.contains_key(&node_id.0)
+                    || transformations.conquered.contains(&node_id.0)
+                    || !def.variants.is_empty()
+                    || build.tree.attribute_overrides.contains_key(node_id)
+                    || build.tree.mastery_effects.contains_key(node_id)
+                {
+                    Some(NativePassiveRejection::TransformedNode)
+                } else if def.kind != pobr_data::catalog::PassiveNodeKind::Normal
+                    || def.ascendancy_id.is_some()
+                    || def.unlock_constraint.is_some()
+                    || transformations
+                        .class_starts
+                        .values()
+                        .any(|id| *id == node_id.0)
+                {
+                    Some(NativePassiveRejection::UnsupportedContext)
+                } else if def.id != packet.node_slug || def.stats != packet.modifier_texts {
+                    Some(NativePassiveRejection::BindingMismatch)
+                } else {
+                    None
+                };
+                Some(NativePassiveInput {
+                    packet: packet.clone(),
+                    ineligible,
+                })
+            });
+            let mut node = AllocatedNode {
                 node_id: *node_id,
                 ascendancy,
                 modifier_texts,
-            })
+                native,
+            };
+            // Select before the parser-only gate: a complete native node needs no
+            // parser catalog. A rejected packet hands ALL original text to the
+            // existing wrap/filter path and cannot be revived by its parsed subset.
+            match select_native_passive(&node) {
+                Some(Ok(_)) => return Some(node),
+                Some(Err(issue)) => native_diagnostics.push(issue),
+                None => {}
+            }
+            node.native = None;
+            let (texts, dropped) = combine_wrapped(node.modifier_texts, engine_ctx(data));
+            node.modifier_texts = texts;
+            unsupported.extend(dropped.into_iter().map(|line| (node_id.0, line)));
+            Some(node)
         })
         .collect()
 }
@@ -270,6 +331,7 @@ pub(crate) fn append_granted_passives(
         let (modifier_texts, dropped) = combine_wrapped(def.stats.clone(), engine_ctx(data));
         unsupported.extend(dropped.into_iter().map(|line| (def.skill, line)));
         nodes.push(AllocatedNode {
+            native: None,
             node_id: pobr_data::passive_tree::NodeId(def.skill),
             ascendancy: def.ascendancy_id.is_some(),
             modifier_texts,
@@ -278,8 +340,8 @@ pub(crate) fn append_granted_passives(
 }
 
 /// Bundles the data-driven parse rules from `data` into a parse context (injected calls
-/// go through the new engine; an old data pack lacking rules falls back to the legacy
-/// parser, value unchanged). Used by scattered passive ingest calls that don't go
+/// go through the engine; a data pack lacking rules leaves text unsupported).
+/// Used by scattered passive ingest calls that don't go
 /// through `CalculationSession` (which already injects rules) to consistently use the
 /// same parse path as the primary flow.
 pub(crate) fn engine_ctx(data: &BuildData) -> ParseCtx<'_> {
@@ -436,6 +498,7 @@ pub(crate) fn keystone_mod_map(
             continue;
         };
         let node = AllocatedNode {
+            native: None,
             node_id: pobr_data::passive_tree::NodeId(*id),
             ascendancy: def.ascendancy_id.is_some(),
             // The same line handling as an allocated keystone, so a granted

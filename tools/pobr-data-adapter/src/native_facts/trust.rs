@@ -61,9 +61,9 @@ pub(super) fn verify(args: &Args) -> Result<VerifiedInput, String> {
         "unsupported source-lock schema",
     )?;
     let source = &lock["sources"][string(&identity["source"])?];
-    if args.profile == Profile::CoreSkillsA0 {
+    if args.profile != Profile::BaseV1 {
         require(
-            source["profile"] == "core-skills-a0",
+            source["profile"].as_str() == args.profile.name(),
             "source-lock profile mismatch",
         )?;
         verify_acquisition(&source["acquisition"])?;
@@ -134,7 +134,7 @@ pub(super) fn verify(args: &Args) -> Result<VerifiedInput, String> {
         )?;
         bytes.insert(path.clone(), data);
     }
-    if args.profile == Profile::CoreSkillsA0 {
+    if args.profile != Profile::BaseV1 {
         require(
             bytes["source-lock.json"] == lock_bytes,
             "embedded source-lock bytes mismatch",
@@ -175,9 +175,12 @@ fn verify_manifest(m: &Value, profile: Profile) -> Result<(), String> {
     .into_iter()
     .map(String::from)
     .collect::<Vec<_>>();
-    if profile == Profile::CoreSkillsA0 {
+    if profile != Profile::BaseV1 {
         manifest_keys.push("profile".into());
-        require(m["profile"] == "core-skills-a0", "invalid manifest profile")?;
+        require(
+            m["profile"].as_str() == profile.name(),
+            "invalid manifest profile",
+        )?;
     }
     exact_keys(m, &manifest_keys)?;
     for (key, value) in [
@@ -204,7 +207,7 @@ fn verify_manifest(m: &Value, profile: Profile) -> Result<(), String> {
     .into_iter()
     .map(String::from)
     .collect::<Vec<_>>();
-    if profile == Profile::CoreSkillsA0 {
+    if profile != Profile::BaseV1 {
         identity_keys.push("acquisition".into());
         verify_acquisition(&identity["acquisition"])?;
         require(
@@ -246,13 +249,27 @@ fn verify_manifest(m: &Value, profile: Profile) -> Result<(), String> {
         "schema/source.json": "7afa08a39f3da0b2e368d716593c2adef03308f100ec49edac73e8c7416441d3",
         "uv.lock": "6ac815b9e4263081b51e823a3f297f35a1c55c7fa57956d3bdd5d4a506c1c66b"
     });
-    // Fixed SHA-256 values independently checked against aa2fb163 Git blobs, not
-    // derived from caller-supplied manifest producer claims.
-    if profile == Profile::CoreSkillsA0 {
+    // Fixed SHA-256 values checked against the selected aa2fb163/c450fb8 Git blobs,
+    // never derived from caller-supplied manifest producer claims.
+    if profile != Profile::BaseV1 {
         expected_producer["RePoE/native_facts.py"] =
             "af8148ccf8c68fef5b0c867a892285ff95b82e50c4933d1acc4f5c499632e4a1".into();
         expected_producer["RePoE/native_skills.py"] =
             "e65aff1265c3c1becd7890acb3c0182232651dd351dab5d982b0d119f74d453d".into();
+    }
+    if matches!(profile, Profile::GemsConstraintsA1 | Profile::ItemsActorsBc) {
+        expected_producer["RePoE/native_facts.py"] =
+            "c484ce8b644868ff310ba4866a56062dd7aca634beb0406d6028d1ceea42bfc0".into();
+        expected_producer["RePoE/native_gems.py"] =
+            "97dbc0952b685df5de9b9d56c17c109d95f670a8a7c332821f9206433c1a363c".into();
+    }
+    if profile == Profile::ItemsActorsBc {
+        expected_producer["RePoE/native_facts.py"] =
+            "7bbe4a84b66d88dfd2c3081550ef9891fd7beb9e6d586939749e684c7607af53".into();
+        expected_producer["RePoE/native_items.py"] =
+            "9350c81674a332670eb22e24aca5cb114e7f09f74dea26cf556b707f4166f1ee".into();
+        expected_producer["RePoE/native_actor_facts.py"] =
+            "a0845e3866c5dd0fb21a8edb42f68fc9eec3affef19b426631c0066bd5e51f58".into();
     }
     require(
         m["producer"] == expected_producer,
@@ -337,8 +354,20 @@ pub(super) fn payload_paths(profile: Profile) -> Vec<String> {
             ]
             .map(String::from),
         )
-        .chain(if profile == Profile::CoreSkillsA0 {
+        .chain(if profile != Profile::BaseV1 {
             vec!["skill_core.json".into(), "source-lock.json".into()]
+        } else {
+            vec![]
+        })
+        .chain(
+            if matches!(profile, Profile::GemsConstraintsA1 | Profile::ItemsActorsBc) {
+                vec!["gems.json".into(), "constraints.json".into()]
+            } else {
+                vec![]
+            },
+        )
+        .chain(if profile == Profile::ItemsActorsBc {
+            vec!["items.json".into(), "actors.json".into()]
         } else {
             vec![]
         })
@@ -348,8 +377,20 @@ pub(super) fn payload_paths(profile: Profile) -> Vec<String> {
 pub(super) fn tables(profile: Profile) -> Vec<&'static str> {
     TABLES
         .into_iter()
-        .chain(if profile == Profile::CoreSkillsA0 {
+        .chain(if profile != Profile::BaseV1 {
             super::core_skills::TABLES.to_vec()
+        } else {
+            vec![]
+        })
+        .chain(
+            if matches!(profile, Profile::GemsConstraintsA1 | Profile::ItemsActorsBc) {
+                super::gems::TABLES.to_vec()
+            } else {
+                vec![]
+            },
+        )
+        .chain(if profile == Profile::ItemsActorsBc {
+            super::items_actors::TABLES.to_vec()
         } else {
             vec![]
         })

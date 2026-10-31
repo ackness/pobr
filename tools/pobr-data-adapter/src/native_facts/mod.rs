@@ -2,6 +2,8 @@
 
 mod convert;
 mod core_skills;
+mod gems;
+mod items_actors;
 mod model;
 mod output;
 mod trust;
@@ -11,6 +13,12 @@ mod tests;
 
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 mod tests_v2;
+
+#[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
+mod tests_v3;
+
+#[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
+mod tests_v4;
 
 #[cfg(all(test, not(any(target_os = "linux", target_os = "macos"))))]
 #[test]
@@ -47,6 +55,8 @@ pub(crate) struct Args {
 enum Profile {
     BaseV1,
     CoreSkillsA0,
+    GemsConstraintsA1,
+    ItemsActorsBc,
 }
 
 impl Profile {
@@ -54,6 +64,8 @@ impl Profile {
         match self {
             Self::BaseV1 => "repoe-native-facts/v1",
             Self::CoreSkillsA0 => "repoe-native-facts/v2",
+            Self::GemsConstraintsA1 => "repoe-native-facts/v3",
+            Self::ItemsActorsBc => "repoe-native-facts/v4",
         }
     }
 
@@ -61,6 +73,17 @@ impl Profile {
         match self {
             Self::BaseV1 => trust::PRODUCER_REVISION,
             Self::CoreSkillsA0 => "aa2fb163aa422317db5c32031607eb199214e7b7",
+            Self::GemsConstraintsA1 => "c450fb8e3ad4e5792386c7c5bb81c90d85407e62",
+            Self::ItemsActorsBc => "e41401224a085a676c84b8f14b144f20fe37c79a",
+        }
+    }
+
+    fn name(self) -> Option<&'static str> {
+        match self {
+            Self::BaseV1 => None,
+            Self::CoreSkillsA0 => Some("core-skills-a0"),
+            Self::GemsConstraintsA1 => Some("gems-constraints-a1"),
+            Self::ItemsActorsBc => Some("items-actors-bc"),
         }
     }
 }
@@ -88,6 +111,8 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     let profile = match values.remove("--profile").as_deref() {
         None | Some("base-v1") => Profile::BaseV1,
         Some("core-skills-a0") => Profile::CoreSkillsA0,
+        Some("gems-constraints-a1") => Profile::GemsConstraintsA1,
+        Some("items-actors-bc") => Profile::ItemsActorsBc,
         Some(value) => return Err(format!("unsupported native-facts profile: {value}")),
     };
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
@@ -146,18 +171,42 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
             "All source diagnostics retained verbatim; no PoB fallback."
         ]
     });
-    if args.profile == Profile::CoreSkillsA0 {
-        receipt["format"] = "pobr-native-candidate-receipt/v2".into();
-        receipt["input"]["profile"] = "core-skills-a0".into();
+    if let Some(profile) = args.profile.name() {
+        receipt["format"] = if args.profile == Profile::ItemsActorsBc {
+            "pobr-native-candidate-receipt/v4"
+        } else if args.profile == Profile::GemsConstraintsA1 {
+            "pobr-native-candidate-receipt/v3"
+        } else {
+            "pobr-native-candidate-receipt/v2"
+        }
+        .into();
+        receipt["input"]["profile"] = profile.into();
         receipt["core_summary"] =
             serde_json::to_value(&candidate.core_summary).map_err(|e| e.to_string())?;
         receipt["scope"] = json!([
-            "Partial INTERNATIONAL patch 0.5.5.5 core-skills-a0 candidate; never a runtime manifest.",
+            "Partial INTERNATIONAL patch 0.5.5.5 extended candidate; never a runtime manifest.",
             "All physical metadata remains in the canonical RePoE package pinned by input.manifest_sha256.",
             "Acquisition status/evidence and observed raw hashes are caller-declared; this adapter grants no source approval.",
             "No units, interpolation, quality, geometry or application policy is inferred.",
             "All source diagnostics retained verbatim; no PoB fallback."
         ]);
+        if matches!(
+            args.profile,
+            Profile::GemsConstraintsA1 | Profile::ItemsActorsBc
+        ) {
+            receipt["gem_summary"] =
+                serde_json::to_value(&candidate.gem_summary).map_err(|e| e.to_string())?;
+            receipt["scope"].as_array_mut().ok_or("invalid receipt scope")?.push(json!(
+                "Source gem inventory and ordered constraints only; no playability filter, support expression evaluation or family conflict policy."
+            ));
+        }
+        if args.profile == Profile::ItemsActorsBc {
+            receipt["items_actors_summary"] =
+                serde_json::to_value(&candidate.items_actors_summary).map_err(|e| e.to_string())?;
+            receipt["scope"].as_array_mut().ok_or("invalid receipt scope")?.push(json!(
+                "Unfiltered item/actor source facts; no inherited tags, units, target category, selected actor or server formula policy."
+            ));
+        }
     }
     let receipt_bytes = json_bytes(&receipt)?;
     let receipt_sha = sha256_hex(&receipt_bytes);
@@ -186,6 +235,11 @@ fn implementation_sha256() -> String {
             include_bytes!("core_skills.rs").as_slice(),
         ),
         ("output.rs", include_bytes!("output.rs").as_slice()),
+        ("gems.rs", include_bytes!("gems.rs").as_slice()),
+        (
+            "items_actors.rs",
+            include_bytes!("items_actors.rs").as_slice(),
+        ),
         (
             "raw_source.rs",
             include_bytes!("../raw_source.rs").as_slice(),

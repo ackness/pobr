@@ -98,6 +98,7 @@ fn parse_missing_notables(
         }
         let name = string_field(node_block, "name=");
         out.push(PassiveNodeDef {
+            native_stats: None,
             skill,
             // GGG's data.json's `id` is the export side's string key;
             // tree.lua has no equivalent, so this uses the skill id as a

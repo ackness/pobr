@@ -195,6 +195,7 @@ fn adapt(raw: RawTree) -> Result<(Vec<PassiveNodeDef>, PassiveTreeMeta), String>
         nodes.insert(
             skill,
             PassiveNodeDef {
+                native_stats: None,
                 skill,
                 id: id.to_owned(),
                 name: n.name.clone(),

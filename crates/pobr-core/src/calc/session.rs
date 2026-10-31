@@ -115,6 +115,7 @@ pub struct SkillDotMods<'a> {
 pub struct CalculationSession {
     env: Env,
     unsupported_modifier_texts: Vec<String>,
+    native_passive_diagnostics: Vec<crate::passive::NativePassiveDiagnostic>,
     /// Data-driven parser engine rules: once injected, all ingest
     /// (item/passive/gem/flask/`add_modifier_texts`) mod parsing goes
     /// through [`parse_mod_engine`] (the sole parser; legacy was removed at
@@ -196,6 +197,7 @@ impl CalculationSession {
         Self {
             env,
             unsupported_modifier_texts: Vec::new(),
+            native_passive_diagnostics: Vec::new(),
             parser_rules: None,
         }
     }
@@ -504,6 +506,8 @@ impl CalculationSession {
     /// [`SourceKind::AscendancyNode`]: pobr_data::source::SourceKind::AscendancyNode
     pub fn add_passive_nodes(&mut self, nodes: &[AllocatedNode]) -> Result<(), ParseError> {
         let ingest = ingest_passive_nodes_with_ctx(nodes, self.parse_ctx())?;
+        self.native_passive_diagnostics
+            .extend(ingest.native_diagnostics);
         self.env.player.mod_db.add_list(ingest.modifiers);
         self.unsupported_modifier_texts.extend(ingest.unsupported);
         Ok(())
@@ -772,6 +776,19 @@ impl CalculationSession {
 
     pub fn unsupported_modifier_texts(&self) -> &[String] {
         &self.unsupported_modifier_texts
+    }
+
+    /// Rejected native packets and their whole-node text fallback inputs.
+    pub fn native_passive_diagnostics(&self) -> &[crate::passive::NativePassiveDiagnostic] {
+        &self.native_passive_diagnostics
+    }
+
+    /// Records rejections discovered before the build's legacy text filtering.
+    pub fn record_native_passive_diagnostic(
+        &mut self,
+        issue: crate::passive::NativePassiveDiagnostic,
+    ) {
+        self.native_passive_diagnostics.push(issue);
     }
 
     /// Records text rejected by an orchestration-level parseability gate without
