@@ -139,7 +139,7 @@ certifies actor pools, requirements, effective cadence, full DPS or CN data.
 ```sh
 mise run data:native:candidate \
   --recipe pipeline/native-player-candidate-example.json \
-  --recipe-sha256 54f7ff4eb732c98244bad331908d503f64eb8592bc70b66103f79ab9cb5c19ce \
+  --recipe-sha256 4d2a54b1b62cfee62547526f22d88c74702dec0a7e37965e3f1524175567634c \
   --facts /local/artifacts/facts-v4 \
   --source-lock /local/artifacts/facts-v4/source-lock.json \
   --descriptions /local/artifacts/descriptions-v1 \

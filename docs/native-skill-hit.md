@@ -93,8 +93,8 @@ inventory for every calculation.
 
 Unavailable outputs include pools, requirements, hit probability/count, effective
 cadence, DPS, cost/second, sustain, mitigation, ailments, defence, recovery and EHP.
-No optional OutputTable with fabricated zero values is returned. This API exposes
-an explicit [native CLI consumer](native-cli.md) and leaves ordinary native
+No optional OutputTable with fabricated zero values is returned. An explicit
+[native CLI consumer](native-cli.md) uses this API; ordinary native
 BuildData/ruleset guards closed. WASM/Web dispatch is not exposed yet.
 
 Coordinator verification commands (Rust execution is required before claiming a pass):

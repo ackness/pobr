@@ -10,6 +10,15 @@ DPS 指每秒伤害，EHP 指按所选敌人命中估算的有效生命；stat s
 
 ## CLI 与 WASM 响应
 
+### 原生条件命中
+
+`calculate-native` 接收绑定精确原生数据包的存档，输出受限的 `NativeSkillResult`，
+字段契约见[原生条件命中](native-skill-hit.md)。`critical_probability` 是 0–1 概率，
+`conditional_weighted_mean` 是成功命中的加权伤害均值；固有使用时间和投射物寿命用毫秒，
+资源成本按每次使用表示。结果保留数据／分支／策略绑定、逐 stat 明细、固定诊断来源与
+假设，并逐项说明无法计算的 DPS、资源、生存和命中数量等结果。该入口目前由 CLI 消费，
+WASM／Web 接线尚未实现。
+
 ### 完整构筑与诊断
 
 CLI 完整构筑和 marginal（逐来源边际贡献）结果带数据版本、树版本、未支持词条与 provenance。
