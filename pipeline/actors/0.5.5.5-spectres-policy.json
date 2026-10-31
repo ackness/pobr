@@ -1,0 +1,86 @@
+{
+  "catalog": {
+    "domain": "spectres",
+    "output_file": "spectres.json",
+    "output_schema": "spectres/v1",
+    "variety_identity_field": "id"
+  },
+  "evidence": {
+    "source_check": {
+      "path": ".cache/builddata-migration-stage/actors/source-check.json",
+      "sha256": "2962c82b07be6c5c5a867d94614a43e85239cb6740e62e29f8a41b3ceb1c5428"
+    }
+  },
+  "owned_fields": [
+    "name",
+    "monster_tags",
+    "life",
+    "damage",
+    "damage_spread",
+    "attack_time",
+    "attack_range",
+    "crit_chance",
+    "base_movement_speed",
+    "armour",
+    "evasion",
+    "energy_shield",
+    "fire_resist",
+    "cold_resist",
+    "lightning_resist",
+    "chaos_resist",
+    "companion_fire_resist",
+    "companion_cold_resist",
+    "companion_lightning_resist",
+    "companion_chaos_resist",
+    "spectre_reservation",
+    "companion_reservation"
+  ],
+  "projection_references": [
+    {
+      "path": "vendor/PathOfBuilding-PoE2/src/Export/Scripts/minions.lua",
+      "role": "archived projection semantics only; never a runtime/producer read or execution input",
+      "sha256": "d24b1e3eb9b3f730eaed2dafeaff2c3d23cc0427a108c8a04853018ac502da59",
+      "vendor_commit": "bb52d6b368307457eb9c54bb13f1829993d390b1"
+    },
+    {
+      "path": "vendor/PathOfBuilding-PoE2/src/Modules/Common.lua",
+      "role": "archived projection semantics only; never a runtime/producer read or execution input",
+      "sha256": "6e416b1f1a2454c5ed785aa7f349eb5a68e13b41fa9150ab010d5ec2b7bd7ad5",
+      "vendor_commit": "bb52d6b368307457eb9c54bb13f1829993d390b1"
+    }
+  ],
+  "projection_schema": "pobr-actor-fields/legacy-bb52-v1",
+  "retained_compatibility_fields_observed": [
+    "accuracy",
+    "base_damage_ignores_attack_speed",
+    "extra_flags",
+    "mod_list",
+    "monster_category",
+    "skill_list",
+    "spawn_location",
+    "weapon_type1",
+    "weapon_type2"
+  ],
+  "schema": "pobr-ordinary-actor-catalog-policy/v1",
+  "source": {
+    "metadata": {
+      "extracted_files": [
+        "Data/Spectres.lua"
+      ],
+      "generator": "sync-pob-catalog extract-lua",
+      "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --what spectres --vendor-root vendor/PathOfBuilding-PoE2/src --out data/0.5.5.4.2/overlay/spectres.json",
+      "schema": "spectres/v1",
+      "vendor": "PathOfBuilding-PoE2",
+      "vendor_commit": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+      "vendor_commit_subject": "bb52d6b368307457eb9c54bb13f1829993d390b1"
+    },
+    "path": "data/0.5.5.4.2/overlay/spectres.json",
+    "sha256": "50b98756c340cadbaba1ff5d503e79cc06e744d5a100719941c6e1fc765fdd94",
+    "snapshot_version": "0.5.5.4.2"
+  },
+  "statement": "Regenerate declared actor fields only from target F with the existing pinned projection semantics. Preserve curated membership/aliases, accuracy, skill_list, mod_list, flags, weapon/category/location/limit and every unknown non-owned field as explicit fixed community interpretation, with original source version. The archived first-resistance projection is not a new aggregation law; original normal-resistance domain/consumers remain unchanged. No old value fills missing facts, no automatic creature admission/AI/law certification, filtering, retargeting, source approval, complete runtime or adoption.",
+  "target": {
+    "facts_manifest_sha256": "56e71e00a72c8079d100b64861fc030206b12aaeb5ad655ccb4ab4e6726332d0",
+    "game_patch": "0.5.5.5"
+  }
+}
