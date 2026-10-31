@@ -1,6 +1,8 @@
 use crate::stat::StatId;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct ItemBaseId(String);
 
 impl From<&str> for ItemBaseId {
@@ -15,7 +17,8 @@ impl std::fmt::Display for ItemBaseId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ItemRarity {
     Normal,
     Magic,
@@ -23,7 +26,8 @@ pub enum ItemRarity {
     Unique,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Socket {
     pub group: u8,
 }
@@ -36,7 +40,8 @@ pub struct Socket {
 /// `CalcDefence` takes them as-is via `item.armourData` and only then applies
 /// the item's local `increased X` mods and quality. `None` means the item text
 /// had no such line, and the base type's default applies instead.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RolledDefence {
     pub armour: Option<f64>,
     pub evasion: Option<f64>,
@@ -49,7 +54,8 @@ pub struct RolledDefence {
     pub ward: Option<f64>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Item {
     pub base: ItemBaseId,
     pub rarity: ItemRarity,
@@ -81,7 +87,8 @@ pub struct Item {
 
 /// An equipment slot. [`Self::id`] gives the stable string used when attributing
 /// mods to a slot.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum EquipmentSlot {
     Weapon1,
     Weapon2,
@@ -137,7 +144,8 @@ impl EquipmentSlot {
 /// wears beside the equipment (the game's item classes `IncursionArm` and
 /// `IncursionLeg`). A limb's modifiers are its own lines, global like a
 /// jewel's.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum LimbSlot {
     Arm1,
     Arm2,

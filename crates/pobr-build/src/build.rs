@@ -10,6 +10,7 @@
 //! dependency on SANDBOX-only types), carrying the stable id and enabled state of an
 //! "active skill + support gems" group.
 
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 
 use pobr_data::build_config::ViewMode;
@@ -24,7 +25,8 @@ use crate::build_config::BuildConfig;
 ///
 /// Contract C4 scope: `quality` is the T1 share (default 0 = no quality),
 /// `stat_set_index` is the T5 share (form selection).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct GemSkillRef {
     /// Disabled gems remain editable but supply no effects to calculations.
     pub enabled: bool,
@@ -94,7 +96,8 @@ impl Default for GemSkillRef {
 
 /// A group of skill gems in the same socket (active skill + its supports). A simplified
 /// equivalent represented by stable gem ids.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SocketGroup {
     /// Include all enabled active effects in the optional Full DPS calculation.
     pub include_in_full_dps: bool,
@@ -307,7 +310,8 @@ impl SocketGroup {
 }
 
 /// Character identity (a subset of the header fields in PoB Build XML's `<Build>`).
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CharacterIdentity {
     pub level: u32,
     pub class_name: String,
@@ -321,7 +325,8 @@ pub struct CharacterIdentity {
 /// radius times the granted value. This struct carries the minimum info that geometry
 /// needs: the tree node id the socket sits on, the radius tier text (`Radius:` line),
 /// and the `also grant` lines (raw text, expanded line by line downstream).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RadiusJewel {
     /// The `skill` id of the tree socket the jewel sits in (`<Socket nodeId>`).
     pub socket_node: u32,
@@ -351,7 +356,8 @@ pub struct RadiusJewel {
 
 /// Where a jewel is socketed. Effects on "Jewel Socket Passive Skills" (The
 /// Adorned) reach only the tree's own sockets.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum JewelSocket {
     /// One of the passive tree's own jewel sockets, allocated.
     Tree,
@@ -371,7 +377,8 @@ pub enum JewelSocket {
 }
 
 /// Which of the character's two weapon sets is in use.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum WeaponSet {
     #[default]
     First,
@@ -402,7 +409,8 @@ impl WeaponSet {
 /// Immutable updates: every `with_*` method returns a new copy; `set_item` /
 /// `add_socket_group` etc. keep the same "construct a new value" semantics (following
 /// the builder pattern to avoid in-place shared mutable state).
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Build {
     /// Character identity.
     pub character: CharacterIdentity,

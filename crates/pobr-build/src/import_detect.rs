@@ -41,6 +41,11 @@ pub fn detect_import(input: &str) -> Option<ImportKind> {
     if trimmed.is_empty() {
         return None;
     }
+    // Structured documents have their own decoder. Item/XML markers inside a
+    // JSON string must not redirect a native document into compatibility import.
+    if trimmed.starts_with('{') {
+        return None;
+    }
 
     // 1) Share link: URL shape is the easiest to recognize, so check it first.
     if let Some(link) = detect_share_link(trimmed) {

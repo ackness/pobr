@@ -1,13 +1,16 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct NodeId(pub u32);
 
 /// Which effect the player picked on a mastery node.
 ///
 /// A mastery node offers several effects and the player takes one. This is the
 /// `<MasteryEffect skill="N" effect="M">` element of a PoB2 build code.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct MasterySelection {
     /// The chosen mod line, verbatim English. Matches one entry of the node's
     /// `PassiveNodeDef::stats`, and is handed to `pobr-core::mod_parser`.
@@ -20,7 +23,8 @@ pub struct MasterySelection {
 /// in the build code (`PassiveSpec.lua::SwitchAttributeNode`). An unpicked node
 /// grants nothing at all — PoB2's ModParser turns `+N to any attribute` into an
 /// empty mod.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum AttributeChoice {
     Strength,
     Dexterity,
@@ -28,7 +32,8 @@ pub enum AttributeChoice {
 }
 
 /// Everything the player has chosen on the passive tree.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct PassiveTreeSpec {
     pub allocated_nodes: Vec<NodeId>,
     /// Effect picked on each allocated mastery node. A mastery node missing
