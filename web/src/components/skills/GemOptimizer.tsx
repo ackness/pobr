@@ -14,6 +14,7 @@ import type { Objective } from '../../lib/optimize';
 import { applySupportPlan, eligibleSupports, lineageAvailable, optimizeSupports, type SupportMetadata, type SupportOptimization } from '../../lib/supportOptimizer';
 import { ObjectiveEditor, OptimizerProgress, objectiveOf } from '../shared/OptimizerControls';
 import { words } from '../../app/text';
+import { SupportDescriptions } from './SupportDescriptions';
 
 interface Props {
   session: BuildSession;
@@ -256,17 +257,9 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
           {stat === 'TotalDPS' ? 'DPS' : 'EHP'} {number(after)} <strong>{change(before, after)}</strong>
         </span>;
       })}</div>
-      {plan.supports.length > 0 && <details className="support-diagnostics support-descriptions">
-        <summary>{st('descriptions')}</summary>
-        <p className="skills-hint">{st('descriptionsHint')}</p>
-        <ul>{plan.supports.map(gem => {
-          const description = byId.get(gem.skill_id)?.description;
-          return <li key={gem.skill_id}>
-            <strong>{gemName(gem.skill_id)}</strong>
-            <p lang={description ? 'en' : lang}>{description || st('descriptionUnavailable')}</p>
-          </li>;
-        })}</ul>
-      </details>}
+      <SupportDescriptions lang={lang} gems={plan.supports.map(gem => ({
+        skill_id: gem.skill_id, name: gemName(gem.skill_id), description: byId.get(gem.skill_id)?.description,
+      }))} />
       <AppButton disabled={session.busy} onClick={() => apply(index)}>{tt('opt.apply')}</AppButton>
     </article>;
     })}

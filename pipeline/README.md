@@ -178,6 +178,13 @@ mise exec -- node pipeline/gen-zh-cn.mjs --dict /path/to/legacy/dictionary --tra
 - 给已有交易 ID 补译，修改独立库的 `translations.json`；需要明确覆盖现有译文时使用 `overrides.json`；不属于交易目录的模板和已人工核验的多参数模板使用 `curated.json`。
 - 技能标签、物品结构行及导入语法仍由 PoBR 按上下文解释，不把 UI 文案或计算规则混入词条表。
 
+辅助定性说明由 `mise exec -- node pipeline/gen-support-descriptions.mjs` 单独生成 Web 显示映射
+`web/src/lib/supportDescriptions.zh-CN.json`（不改运行时数据快照）。它复用活动简中 `_meta.json` 的旧词典固定提交，
+读取此前未消费的 `tables/GemEffects.json` 的 `SupportText` 中英对照，剥除游戏链接标记后仅按完整英文匹配，
+保留辅助目录的稳定 ID。产物记录提交、源文件和目录 SHA-256，并列出所有未匹配 ID；英文正文变化时 UI 回退英文。
+这不是从交易词表或 native 描述候选取译文。`--check` 可验证再生成一致，纯生成逻辑用
+`mise exec -- node --test pipeline/test-support-descriptions.mjs` 验证。繁体为字形转换回退，不宣称官方繁中译文。
+
 自动模板仅支持已验证的零／单数值槽，以 `{0:d}` 避免误进入字符串捕获；多值参数、双向歧义、数值／符号不符等由独立库列为排除项。PoBR 再按实际翻译器的匹配骨架检查新模板与既有中英文模板、其他新模板的冲突，冲突不按输入顺序选第一条。审核过的迁移模板保留原行为，旧模板与七份名词表不因接入而删除。
 
 同一英文模板在旧词典与独立词表中的中文不一致时，采用独立词表的官方译法：只替换中文措辞，保留旧条目的英文模板和各参数槽的格式（符号显示、字符串捕获行为不变）。仅在新模板无歧义、英文除参数格式和空白外完全相同、且新中文不与其他既有模板冲突时替换；人工审核模板、含换行的旧模板、仅字面数值不同的模板不替换。被替换的条目列在 `translation-audit.json` 的 `replaced_legacy`。

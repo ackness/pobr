@@ -1,0 +1,2184 @@
+{
+  "_meta": {
+    "source": "https://github.com/vagrant-soul/poe2-en-cn-dict",
+    "source_commit": "288d8b9d999c5ea5664149e408847156dbd83ff4",
+    "source_file": "tables/GemEffects.json",
+    "source_sha256": "1a5b039482e09193b41b1d30e68066906a174c834ffe4974d5784203494322f7",
+    "data_version": "0.5.5.4.2",
+    "catalog_sha256": "de57e010c8bf93f18bf557c650d6cdc06d98bc3fbde58049227b31feda9deea6",
+    "regen_command": "mise exec -- node pipeline/gen-support-descriptions.mjs"
+  },
+  "entries": {
+    "CompressedDurationSupportPlayer": {
+      "en": "Supports any skill that has a duration making that duration shorter.",
+      "zh_cn": "辅助任意有持续时间的技能，缩短持续时间。"
+    },
+    "CompressedDurationSupportPlayerTwo": {
+      "en": "Supports any skill that has a duration making that duration shorter.",
+      "zh_cn": "辅助任意有持续时间的技能，缩短持续时间。"
+    },
+    "FistOfWarSupportPlayer": {
+      "en": "Supports Slams you use yourself, providing a powerful Ancestral Boost every few seconds.",
+      "zh_cn": "辅助你使用的猛击技能，每隔几秒提供强大的先祖加持。"
+    },
+    "FistOfWarSupportPlayerThree": {
+      "en": "Supports Slams you use yourself, providing a very powerful Ancestral Boost infrequently.",
+      "zh_cn": "辅助你使用的猛击技能，偶尔提供极强的先祖加持。"
+    },
+    "FistOfWarSupportPlayerTwo": {
+      "en": "Supports Slams you use yourself, providing a powerful Ancestral Boost every few seconds.",
+      "zh_cn": "辅助你使用的猛击技能，每隔几秒提供强大的先祖加持。"
+    },
+    "ImpactShockwaveSupportPlayer": {
+      "en": "Supports Melee Strike Skills and Wind Attack Skills, causing them to create an Aftershock that damages enemies around the target when they Heavy Stun an enemy.",
+      "zh_cn": "辅助近战打击和风系攻击技能，在这些技能令敌人重度晕眩时产生余震，对目标周围的敌人造成伤害。"
+    },
+    "ProlongedDurationSupportPlayer": {
+      "en": "Supports any skill that has a duration, making that duration longer.",
+      "zh_cn": "辅助任意有持续时间的技能，延长持续时间。"
+    },
+    "ProlongedDurationSupportPlayerTwo": {
+      "en": "Supports any skill that has a duration, making that duration longer.",
+      "zh_cn": "辅助任意有持续时间的技能，延长持续时间。"
+    },
+    "RuthlessSupportPlayer": {
+      "en": "Supports Attacks, causing repeated uses to be more effective at Stunning enemies.",
+      "zh_cn": "辅助攻击，反复使用可以更有效地令敌人晕眩。"
+    },
+    "SupportAbidingHexPlayer": {
+      "en": "Supports Curse Skills you cast yourself. Supported Skills will consume Power Charges on use, gaining significant Curse duration if they do. Cannot Support Skills which consume Power Charges.",
+      "zh_cn": "辅助你自己施放的诅咒技能。被辅助技能使用时可以消耗暴击球，消耗时大幅延长诅咒的持续时间。无法辅助会消耗暴击球的技能。"
+    },
+    "SupportAcrimonyPlayer": {
+      "en": "Supports Skills which can Damage Enemies. Enemies affected by Damage over time from Supported Skills which was not caused by a Damaging Ailment have reduced Life regeneration rate. Only the strongest instance of this Debuff will apply. Does not Support Skills used by Minions.",
+      "zh_cn": "辅助能够对敌人造成伤害的技能。被辅助技能的非伤害性异常状态造成的持续伤害会使敌人的生命回复速度降低。仅有最强效的该减益状态能够生效。无法辅助召唤生物使用的技能。"
+    },
+    "SupportAddedChaosDamagePlayer": {
+      "en": "Supports any skill that deals damage, causing them to Gain Chaos Damage but deal less Damage of other Types.",
+      "zh_cn": "辅助任何造成伤害的技能，使其获得混沌伤害，但造成的其它类型伤害降低。"
+    },
+    "SupportAddedColdDamagePlayer": {
+      "en": "Supports any skill that deals damage, causing them to Gain Cold Damage but deal less Fire and Lightning Damage.",
+      "zh_cn": "辅助任何造成伤害的技能，使其获得冰霜伤害，但造成的火焰与闪电伤害降低。"
+    },
+    "SupportAddedFireDamagePlayer": {
+      "en": "Supports any skill that deals damage, causing them to Gain Fire Damage but deal less Cold and Lightning Damage.",
+      "zh_cn": "辅助任何造成伤害的技能，使其获得火焰伤害，但造成的冰霜与闪电伤害降低。"
+    },
+    "SupportAddedLightningDamagePlayer": {
+      "en": "Supports any skill that deals damage, causing them to Gain Lightning Damage but deal less Cold and Fire Damage.",
+      "zh_cn": "辅助任何造成伤害的技能，使其获得闪电伤害，但造成的冰霜与火焰伤害降低。"
+    },
+    "SupportAdhesiveGrenadesPlayer": {
+      "en": "Supports Grenade Skills. Grenades from Supported Skills do not bounce, instead halting movement where they intially land, but doing lower damage when they detonate.",
+      "zh_cn": "辅助榴弹技能，被辅助技能的榴弹不会弹跳，而是停留在初始落点，引爆时造成的伤害较低。"
+    },
+    "SupportAdhesiveGrenadesPlayerTwo": {
+      "en": "Supports Grenade Skills. Grenades from Supported Skills do not bounce, instead halting movement where they intially land.",
+      "zh_cn": "辅助榴弹技能，被辅助技能的榴弹不会弹跳，而是停留在初始落点。"
+    },
+    "SupportAdmixturePlayer": {
+      "en": "Supports Skills which can cause Damaging Hits. Bleeding inflicted by those Hits is more effective against Poisoned Enemies, and Poison inflicted by Supported Skills is more effective against Bleeding Enemies.",
+      "zh_cn": "辅助可以造成击中伤害的技能。由这些击中造成的出血对中毒敌人更有效，而由被辅助技能造成的中毒对出血敌人更有效。"
+    },
+    "SupportAdvancingStormPlayer": {
+      "en": "Supports Storm skills, causing them to appear at the user's location and move towards the target location.",
+      "zh_cn": "辅助风暴技能，使其从玩家处产生，并向目标位置移动。"
+    },
+    "SupportAftershockChancePlayer": {
+      "en": "Supports Slams you use yourself, giving them a chance to create an Aftershock.",
+      "zh_cn": "辅助你使用的猛击，使其有几率产生余震。"
+    },
+    "SupportAftershockChancePlayerTwo": {
+      "en": "Supports Slams you use yourself, giving them a chance to create an Aftershock.",
+      "zh_cn": "辅助你使用的猛击，使其有几率产生余震。"
+    },
+    "SupportAhnsCitadelPlayer": {
+      "en": "Supports skills that create walls in a line, causing them to instead be created along a fissure.",
+      "zh_cn": "辅助产生一排墙体的技能，使其改为沿着裂缝创造。"
+    },
+    "SupportAilithLineagePlayer": {
+      "en": "Supports Skills which can expend Combo. On expending Combo with Supported Skills, you have a chance to gain Power Charges based on the amount of Combo expended.",
+      "zh_cn": "辅助可以消耗连击的技能。被辅助技能消耗连击时，你有机会根据消耗的连击数量获得暴击球。"
+    },
+    "SupportAlignmentPlayer": {
+      "en": "Supports Bow Attacks. Supported Skills indicate one of four directions, changing indicated direction when an Attack with Supported Skill matches that direction. Attacks from Supported Skills which match the indicated direction deal much more Damage. Cannot Support Channelled Skills.",
+      "zh_cn": "辅助弓类的攻击。被辅助技能指示四个方向之一，被辅助技能的攻击与指示方向相同时改变指示方向。被辅助技能对指示方向的攻击会造成更高的伤害。无法辅助持续吟唱技能。"
+    },
+    "SupportAlignmentPlayerThree": {
+      "en": "Supports Bow Attacks. Supported Skills indicate one of four directions, changing indicated direction when an Attack with Supported Skill matches that direction. Attacks from Supported Skills which match the indicated direction fire additional Projectiles. Cannot Support Channelled Skills.",
+      "zh_cn": "辅助弓类的攻击。被辅助技能指示四个方向之一，被辅助技能的攻击与指示方向相同时改变指示方向。被辅助技能与指示方向相同的攻击发射额外投射物。无法辅助持续吟唱技能。"
+    },
+    "SupportAlignmentPlayerTwo": {
+      "en": "Supports Bow Attacks. Supported Skills indicate one of four directions, changing indicated direction when an Attack with Supported Skill matches that direction. Attacks from Supported Skills which match the indicated direction deal much more Damage. Cannot Support Channelled Skills.",
+      "zh_cn": "辅助弓类的攻击。被辅助技能指示四个方向之一，被辅助技能的攻击与指示方向相同时改变指示方向。被辅助技能对指示方向的攻击会造成更高的伤害。无法辅助持续吟唱技能。"
+    },
+    "SupportAmanamusTithePlayer": {
+      "en": "Supports Persistent Minion Skills, granting a chance when Supported Minions die for you to gain an Abyssal Monster Modifier.",
+      "zh_cn": "辅助永久性召唤生物的技能，使被辅助的召唤生物为你而被击败后有几率获得一个深渊怪物词缀。"
+    },
+    "SupportAmbrosiaPlayer": {
+      "en": "Supports Skills you use yourself which damage enemies with Hits. Supported Skills consume a percentage of your maximum Mana Flask charges, Gaining a percentage of damage as extra Lightning damage per Mana Flask charge consumed.",
+      "zh_cn": "辅助你自己使用且能够击中敌人并造成伤害的技能。被辅助技能会消耗一定比例的最大魔力药剂充能，每消耗一层魔力药剂充能就获得一定比例的额外闪电伤害。"
+    },
+    "SupportAmbrosiaPlayerTwo": {
+      "en": "Supports Skills you use yourself which damage enemies with Hits. Supported Skills consume a percentage of your maximum Mana Flask charges, Gaining a percentage of damage as extra Lightning damage per Mana Flask charge consumed.",
+      "zh_cn": "辅助你自己使用且能够击中敌人并造成伤害的技能。被辅助技能会消耗一定比例的最大魔力药剂充能，每消耗一层魔力药剂充能就获得一定比例的额外闪电伤害。"
+    },
+    "SupportAmbushPlayer": {
+      "en": "Supports any skill that Hits enemies, making it more likely to Critically Hit enemies on full life.",
+      "zh_cn": "辅助任意击中敌人的技能，使其更有可能对满血的敌人造成暴击。"
+    },
+    "SupportAmmoConservationPlayer": {
+      "en": "Supports Crossbow Ammunition Skills, granting a chance to not consume a Bolt when firing.",
+      "zh_cn": "辅助战弩弹药技能，使其射击时有几率不消耗弩箭。"
+    },
+    "SupportAmmoConservationPlayerFour": {
+      "en": "Supports Crossbow Skills, causing them to load a bolt into all Crossbow Ammunition on kill.",
+      "zh_cn": "辅助战弩技能，击败敌人时为所有战弩弹药装填一发弩箭。"
+    },
+    "SupportAmmoConservationPlayerThree": {
+      "en": "Supports Crossbow Ammunition Skills, granting a chance to not consume a Bolt when firing, at the cost of Reload speed.",
+      "zh_cn": "辅助战弩弹药技能，使其射击时有几率不消耗弩箭，但会牺牲装填速度。"
+    },
+    "SupportAmmoConservationPlayerTwo": {
+      "en": "Supports Crossbow Ammunition Skills, granting a chance to not consume a Bolt when firing.",
+      "zh_cn": "辅助战弩弹药技能，使其射击时有几率不消耗弩箭。"
+    },
+    "SupportAncestralAidPlayer": {
+      "en": "Supports Strikes you use yourself. Supported Skills cannot be used until you have Blocked a certain number of Hits, but will be Ancestrally Boosted when used. After use, this Blocked Hit counter will reset. Cannot Support Channelled Skills or Skills which already have a Condition for use.",
+      "zh_cn": "辅助你使用的打击技能。被辅助技能只有在你格挡一定次数的击中后才能使用，但使用时会获得先祖加持。使用后格挡计数会重置。无法辅助持续吟唱技能或存在其他使用条件的技能。"
+    },
+    "SupportAncestralCallPlayer": {
+      "en": "Supports Strikes you use yourself, providing a powerful Ancestral Boost every few seconds. Cannot Support Channelled Skills and does not modify Skills used by Minions.",
+      "zh_cn": "辅助你使用的打击技能，每隔几秒提供强大的先祖加持。无法辅助持续吟唱技能，不会修改召唤生物使用的技能。"
+    },
+    "SupportAncestralCallPlayerTwo": {
+      "en": "Supports Strikes you use yourself, providing a powerful Ancestral Boost every few seconds. Cannot Support Channelled Skills and does not modify Skills used by Minions.",
+      "zh_cn": "辅助你使用的打击技能，每隔几秒提供强大的先祖加持。无法辅助持续吟唱技能，不会修改召唤生物使用的技能。"
+    },
+    "SupportArakaalisLustPlayer": {
+      "en": "Supports any Skill that Hits Enemies, causing it to deal increasingly higher damage the more Poisons are on the target.",
+      "zh_cn": "辅助任意击中敌人的技能，目标身上中毒越多，造成的伤害越高。"
+    },
+    "SupportArbitersIgnitionPlayer": {
+      "en": "Supports Fire Spell Skills causing you to gain Elemental Archon when Igniting with them.",
+      "zh_cn": "辅助火焰法术技能。用被辅助技能点燃敌人时有获得元素执政官。"
+    },
+    "SupportArcaneSurgePlayer": {
+      "en": "Supports Spells you cast yourself, tracking the mana you spend to cast them. Spending enough mana grants a burst of Mana Regeneration and Cast Speed.",
+      "zh_cn": "辅助你施放的法术，施法时会记录消耗的魔力。消耗足够的魔力可以大幅提高魔力回复和施法速度。"
+    },
+    "SupportArmourBreakPlayer": {
+      "en": "Supports Skills that Hit Enemies, causing those Hits to Break Armour based on a portion of Physical Damage dealt.",
+      "zh_cn": "辅助击中敌人的技能，使击中能够粉碎护甲，相当于造成的物理伤害的一定比例。"
+    },
+    "SupportArmourBreakPlayerThree": {
+      "en": "Supports Skills that Hit Enemies, causing those Hits to Break Armour based on a portion of Physical Damage dealt. On Fully Breaking Armour with Supported Skills, you have a chance to gain an Endurance Charge.",
+      "zh_cn": "辅助击中敌人的技能，使击中能够造成护甲破损，相当于造成物理伤害的一定比例。被辅助技能造成护甲完全破损时，你有几率获得一个耐力球。"
+    },
+    "SupportArmourBreakPlayerTwo": {
+      "en": "Supports Skills that Hit Enemies, causing those Hits to Break Armour based on a portion of Physical Damage dealt. On Fully Breaking Armour with Supported Skills, you have a chance to gain an Endurance Charge.",
+      "zh_cn": "辅助击中敌人的技能，使击中能够造成护甲破损，相当于造成物理伤害的一定比例。被辅助技能造成护甲完全破损时，你有几率获得一个耐力球。"
+    },
+    "SupportArmourDemolisherPlayer": {
+      "en": "Supports any skill, causing Armour Break it inflicts to be stronger.",
+      "zh_cn": "辅助任意技能，使其造成的护甲破损效果更强。"
+    },
+    "SupportArmourDemolisherPlayerTwo": {
+      "en": "Supports any skill, causing Armour Break it inflicts to be stronger.",
+      "zh_cn": "辅助任意技能，使其造成的护甲破损效果更强。"
+    },
+    "SupportArmourExplosionPlayer": {
+      "en": "Supports Attacks and Warcries, causing them to trigger a Fiery explosion when they Fully Break an enemy's Armour.",
+      "zh_cn": "辅助攻击和战吼，使其令敌人的护甲完全破损时触发一次烈火爆炸。"
+    },
+    "SupportArmsLengthPlayer": {
+      "en": "Supports Skills which Hit Enemies, causing Knockback from those Hits to be significantly more effective.",
+      "zh_cn": "辅助击中敌人的技能，使击中产生的击退效果大幅提高。"
+    },
+    "SupportAstralProjectionPlayer": {
+      "en": "Supports Nova Skills, causing those Skills to take place at the targeted location when used instead of around you.",
+      "zh_cn": "辅助新星技能，使用这些技能时不再在你的周围生效，改为在目标位置生效。"
+    },
+    "SupportAtaluiBloodlettingPlayer": {
+      "en": "Supports any Skill, turning a portion of its Mana cost into a Life cost. Does not support Skills which reserve Spirit. Supported Skills Gain a portion of their Life cost as extra Physical Damage.",
+      "zh_cn": "辅助任意技能，将部分魔力消耗转换为生命消耗。无法辅助保留精魂的技能。被辅助技能获得相当于部分生命消耗的额外物理伤害。"
+    },
+    "SupportAtzirisAllurePlayer": {
+      "en": "Supports Curse Spells you cast yourself, causing those Curses to ignore the usual Curse Limit, but be reflected back to you when inflicted.",
+      "zh_cn": "辅助你释放的诅咒法术技能，使这些诅咒突破通常的诅咒上限，但施放时会将效果反弹至你自身。"
+    },
+    "SupportAtzirisCommunionPlayer": {
+      "en": "Supports Persistent Skills, making them Reserve Life instead of Spirit. Cannot Support Skills which create Minions.",
+      "zh_cn": "辅助永久性技能，使其改为保留生命而非精魂。无法辅助产生召唤生物的技能。"
+    },
+    "SupportAtzirisImpatiencePlayer": {
+      "en": "Supports Skills you use yourself that have Cooldowns, dramatically increasing the rate at which those Cooldowns Recover, but causing you to lose Life, Mana, and Energy Shield when they are used. Cannot Support Meta Skills or Persistent Skills, or modify the Skills of Minions.",
+      "zh_cn": "辅助拥有冷却时间的技能，大幅提升其冷却回复速度，但使用时会消耗你的生命、魔力与能量护盾。无法辅助非凡技能、永久性技能或影响召唤生物的技能。"
+    },
+    "SupportAutoReloadPlayer": {
+      "en": "Supports Crossbow Ammunition Skills, causing them to automatically reload when they Heavy Stun an enemy.",
+      "zh_cn": "辅助战弩弹药技能，使其令敌人重度晕眩时自动装填。"
+    },
+    "SupportBarbsPlayer": {
+      "en": "Supports Melee Strike Skills. After you Retaliate with Thorns Damage, you also deal your Thorns damage to enemies you Hit with Supported Skills.",
+      "zh_cn": "辅助近战打击技能。当你用荆棘伤害进行反击后，你同时会对被辅助技能击中的敌人造成你的荆棘伤害。"
+    },
+    "SupportBarbsPlayerThree": {
+      "en": "Supports Melee Strike Skills. After you Retaliate with Thorns Damage, you also deal your Thorns damage twice to enemies you Hit with Supported Skills.",
+      "zh_cn": "辅助近战打击技能。当你用荆棘伤害进行反击后，你会对被辅助技能击中的敌人造成两次你的荆棘伤害。"
+    },
+    "SupportBarbsPlayerTwo": {
+      "en": "Supports Melee Strike Skills. After you Retaliate with Thorns Damage, you also deal your Thorns damage to enemies you Hit with Supported Skills.",
+      "zh_cn": "辅助近战打击技能。当你用荆棘伤害进行反击后，你同时会对被辅助技能击中的敌人造成你的荆棘伤害。"
+    },
+    "SupportBattershoutPlayer": {
+      "en": "Supports Warcry Skills. Supported Skills Consume Fully Broken Armour to trigger Physical Damage explosions on Enemies within their range but cannot themselves Break Armour.",
+      "zh_cn": "辅助战吼技能。被辅助技能消耗范围内敌人的护甲完全破损以触发物理伤害爆炸，但本身无法粉碎护甲。"
+    },
+    "SupportBeheadPlayer": {
+      "en": "Supports Strike skills, causing them to steal a Modifier from Rare monsters they kill.",
+      "zh_cn": "辅助打击技能，使其从击败的稀有敌人处窃取一个词缀。"
+    },
+    "SupportBeheadPlayerTwo": {
+      "en": "Supports Strike skills, causing them to steal two Modifiers from Rare monsters they kill.",
+      "zh_cn": "辅助打击技能，使其从击败的稀有敌人处窃取两个词缀。"
+    },
+    "SupportBhatairsVengeancePlayer": {
+      "en": "Supports Attacks and Warcries you use yourself. Freezing an enemy with Supported Skills infuses you and your allies with Cold damage for a short time.",
+      "zh_cn": "辅助你使用的攻击和战吼。使用被辅助技能冻结敌人后，你和友军在短时间内附加冰霜伤害。"
+    },
+    "SupportBiddingPlayer": {
+      "en": "Supports Minion Skills. Supported Minions deal more damage and have increased Cooldown Recovery Rate with Command Skills.",
+      "zh_cn": "辅助召唤生物技能，被辅助的召唤生物造成更高的伤害，命令技能的冷却回复速度提高。"
+    },
+    "SupportBiddingPlayerThree": {
+      "en": "Supports Minion Skills. Supported Minions have significantly increased Cooldown Recovery Rate with Command Skills.",
+      "zh_cn": "辅助召唤生物技能，被辅助的召唤生物命令技能的冷却回复速度大幅提高。"
+    },
+    "SupportBiddingPlayerTwo": {
+      "en": "Supports Minion Skills. Supported Minions deal more damage and have increased Cooldown Recovery Rate with Command Skills.",
+      "zh_cn": "辅助召唤生物技能，被辅助的召唤生物造成更高的伤害，命令技能的冷却回复速度提高。"
+    },
+    "SupportBitingFrostPlayer": {
+      "en": "Supports any skill that Hits enemies, causing them to deal more damage to Frozen enemies but consume their Freeze. Cannot support skills that Consume Freeze.",
+      "zh_cn": "辅助任意击中敌人的技能，使其对冻结的敌人造成更高的伤害，但会消耗敌人身上的冻结。无法辅助消耗冻结的技能。"
+    },
+    "SupportBitingFrostPlayerTwo": {
+      "en": "Supports any skill that Hits enemies, causing them to deal more damage to Frozen enemies but consume their Freeze, leaving them Chilled. Cannot support skills that Consume Freeze.",
+      "zh_cn": "辅助任意击中敌人的技能，使其对冻结的敌人造成更高的伤害，但会消耗敌人身上的冻结，使其被冰缓。无法辅助消耗冻结的技能。"
+    },
+    "SupportBlazingCriticalPlayer": {
+      "en": "Supports Skills you use yourself which Hit enemies. Critical Hits with Supported Skills imbue all of your Attacks with Fire damage for a duration.",
+      "zh_cn": "辅助你使用的可击中敌人的技能。使用被辅助的技能造成暴击后，会在持续一段时间内为你所有的攻击附加火焰伤害。"
+    },
+    "SupportBleedPlayer": {
+      "en": "Supports any skill that Hits enemies, giving it a chance to inflict Bleeding.",
+      "zh_cn": "辅助任意击中敌人的技能，使其有几率造成流血。"
+    },
+    "SupportBleedPlayerFour": {
+      "en": "Supports any skill that Hits enemies, causing it to deal more Melee Physical Damage to Bleeding Enemies, but be unable to inflict Bleeding itself. Supported Skills also inflict Incision on Hit.",
+      "zh_cn": "辅助任意击中敌人的技能，对流血敌人造成更多近战物理伤害，但自身无法施加流血。被辅助技能击中时也会施加创口。"
+    },
+    "SupportBleedPlayerThree": {
+      "en": "Supports any skill that Hits enemies, causing it to inflict Bleeding.",
+      "zh_cn": "辅助任意击中敌人的技能，使其施加流血。"
+    },
+    "SupportBleedPlayerTwo": {
+      "en": "Supports any skill that Hits enemies, giving it a chance to inflict Bleeding.",
+      "zh_cn": "辅助任意击中敌人的技能，使其有几率造成流血。"
+    },
+    "SupportBlindPlayer": {
+      "en": "Supports any skill that Hits enemies, causing them to Blind on Hit.",
+      "zh_cn": "辅助任意击中敌人的技能，使击中能造成致盲。"
+    },
+    "SupportBlindPlayerTwo": {
+      "en": "Supports any skill that Hits enemies, causing them to Blind on Hit with increased effect.",
+      "zh_cn": "辅助任意击中敌人的技能，击中时施加增强的致盲效果。"
+    },
+    "SupportBlindsidePlayer": {
+      "en": "Supports Skills which can cause Damaging Hits. Supported Skills are more likely to Critically Hit Blinded Enemies, and deal more Damage with Critical Hits against Blinded Enemies, but cannot themselves inflict Blind.",
+      "zh_cn": "辅助造成伤害性击中的技能。被辅助技能更有可能对被致盲的敌人造成暴击，对被致盲的敌人造成的暴击伤害提高，但其本身无法造成致盲。"
+    },
+    "SupportBloodFountainPlayer": {
+      "en": "Supports Skills which create Totems. Totems created by supported Skills generate a Font of Blood which will Leech Life to Allies within it.",
+      "zh_cn": "辅助产生图腾的技能。被辅助技能产生的图腾生成血脉源泉，为范围内的友军偷取生命。"
+    },
+    "SupportBloodMagicPlayer": {
+      "en": "Supports any Skill, turning its Mana cost into a Life cost. Does not support Skills which reserve Spirit.",
+      "zh_cn": "辅助任意技能，将其魔力消耗转换为生命消耗。无法辅助保留精魄的技能。"
+    },
+    "SupportBloodlustPlayer": {
+      "en": "Supports Melee Attacks, causing them to deal more damage against Bleeding enemies, but preventing them from inflicting Bleeding.",
+      "zh_cn": "辅助近战攻击，使该技能对流血敌人造成更高伤害，但无施加流血。"
+    },
+    "SupportBoneShrapnelPlayer": {
+      "en": "Supports Skills which Hit Enemies. Supported Skills trigger Bone Shrapnel explosions when killing Pinned Enemies.",
+      "zh_cn": "辅助击中敌人的技能。被辅助技能击败定身的敌人时触发钙质碎片爆破。"
+    },
+    "SupportBoundlessEnergyPlayer": {
+      "en": "Supports Meta Skills. Supported Skills generate Energy significantly faster.",
+      "zh_cn": "辅助非凡技能。被辅助技能产生能量的速度大幅加快。"
+    },
+    "SupportBoundlessEnergyPlayerTwo": {
+      "en": "Supports Meta Skills. Supported Skills generate Energy significantly faster.",
+      "zh_cn": "辅助非凡技能。被辅助技能产生能量的速度大幅加快。"
+    },
+    "SupportBountyPlayer": {
+      "en": "Supports any Skill that Hits Enemies, causing Enemies it kills to grant more Flask and Charm charges.",
+      "zh_cn": "辅助任意击中敌人的技能，使其击败的敌人提供更多药剂和咒符充能。"
+    },
+    "SupportBountyPlayerTwo": {
+      "en": "Supports any Skill that Hits Enemies, causing Enemies it kills to grant more Flask and Charm charges.",
+      "zh_cn": "辅助任意击中敌人的技能，使其击败的敌人提供更多药剂和咒符充能。"
+    },
+    "SupportBranchingFissuresPlayer": {
+      "en": "Supports Skills which create Fissures in the ground, causing them to create additional secondary Fissures which branch off from the primary fissure, with lowered area of effect and Damage.",
+      "zh_cn": "辅助在地上产生裂缝的技能，使其产生额外的次级裂缝。次级裂缝从主裂缝分支出来，效果范围和伤害降低。"
+    },
+    "SupportBranchingFissuresPlayerTwo": {
+      "en": "Supports Skills which create Fissures in the ground, causing them to create additional secondary Fissures which branch off from the primary fissure, with lowered area of effect and Damage.",
+      "zh_cn": "辅助在地上产生裂缝的技能，使其产生额外的次级裂缝。次级裂缝从主裂缝分支出来，效果范围和伤害降低。"
+    },
+    "SupportBrinkPlayer": {
+      "en": "Supports Melee Attack Skills. Supported Skills build up Heavy Stun more quickly, but cannot themselves Heavy Stun.",
+      "zh_cn": "辅助近战攻击技能。被辅助技能积蓄重度晕眩的速度更快，但其本身无法造成重度晕眩。"
+    },
+    "SupportBrinkPlayerTwo": {
+      "en": "Supports Melee Attack Skills. Supported Skills build up Stun more quickly, but cannot themselves Stun.",
+      "zh_cn": "辅助近战攻击技能。被辅助技能积蓄晕眩的速度更快，但其本身无法造成晕眩。"
+    },
+    "SupportBrittleArmourPlayer": {
+      "en": "Supports Skills which can Hit enemies. Hits with Supported Skills which Freeze enemies cause Physical damage against them to Break their Armour while they remain Frozen.",
+      "zh_cn": "辅助可击中敌人的技能。若使用被辅助技能击中，从而使敌人冻结，在其保持冻结状态期间，对其造成的物理伤害会造成护甲破损。"
+    },
+    "SupportBrutalityPlayer": {
+      "en": "Supports any skill that deals damage, boosting its Physical damage at the expense of all other Damage Types.",
+      "zh_cn": "辅助任意可以造成伤害的技能，使其牺牲其它类型伤害，提高物理伤害。"
+    },
+    "SupportBrutalityPlayerThree": {
+      "en": "Supports any skill that deals damage, boosting its Physical damage at the expense of all other Damage Types, as well as giving Hits from that skill a chance to ignore Physical Damage reduction.",
+      "zh_cn": "辅助任意造成伤害的技能，牺牲其他伤害类型来提高物理伤害，并使该技能的击中有几率无视物理伤害减免。"
+    },
+    "SupportBrutalityPlayerTwo": {
+      "en": "Supports any skill that deals damage, boosting its Physical damage at the expense of all other Damage Types.",
+      "zh_cn": "辅助任意可以造成伤害的技能，使其牺牲其它类型伤害，提高物理伤害。"
+    },
+    "SupportBrutusBrainPlayer": {
+      "en": "Supports skills which create Minions, causing those Minions to be unable to deal or take Damage. Cannot support skills which create undamageable Minions.",
+      "zh_cn": "辅助产生召唤生物的技能，使这些召唤生物无法造成或承受伤害。无法辅助产生无敌召唤生物的技能。"
+    },
+    "SupportBurgeonPlayer": {
+      "en": "Supports Channelling Skills you use yourself, causing them to deal more damage the longer they have been Channelled.",
+      "zh_cn": "辅助你自己使用的持续吟唱技能，使其吟唱的时间越久，造成的伤害越高。"
+    },
+    "SupportBurgeonPlayerTwo": {
+      "en": "Supports Channelling Skills you use yourself, causing them to deal more damage the longer they have been Channelled.",
+      "zh_cn": "辅助你自己使用的持续吟唱技能，使其吟唱的时间越久，造成的伤害越高。"
+    },
+    "SupportBurningRunesPlayer": {
+      "en": "Supports any Skill which creates Runic Inscriptions when Cast, causing those Runic Inscriptions to trigger Burning Inscription when they expire. Burning Inscription is a Spell which creates Ignited Ground based off of your Maximum Mana.",
+      "zh_cn": "辅助任意施放时产生铭刻符文的技能，使铭刻符文效果结束时产生燃烧铭文。燃烧铭文属于法术，会根据你的魔力上限造成点燃地面。"
+    },
+    "SupportBurstingPlaguePlayer": {
+      "en": "Supports skills that can Poison enemies, causing Poisoned enemies to gain Plague over time and explode in a Plague Burst on death. Cannot support the skills of Minions.",
+      "zh_cn": "辅助使敌人中毒的技能，使中毒的敌人持续受到顽疾影响，并且在被击败时造成毒爆发。无法辅助召唤生物的技能。"
+    },
+    "SupportCadencePlayer": {
+      "en": "Supports Attacks you use yourself. Supported Skills gain more Attack speed each time you use them, but will become unusable if used too frequently in a short time frame. Sustained Skills will instead gain Attack speed periodically while being used.",
+      "zh_cn": "辅助你使用的攻击。被辅助技能每次使用都会提高攻击速度，但在短时间内使用过多就会无法使用。若为持续性技能，则在使用期间会定期获得攻击速度提升。"
+    },
+    "SupportCaltropsPlayer": {
+      "en": "Supports Ranged Spear Attacks. Supported Skills create Caltrops when Projectiles they create reach the end of their flight.",
+      "zh_cn": "辅助远程战矛攻击。被辅助技能的投射物结束飞行时产生铁蒺藜。"
+    },
+    "SupportCannibalismPlayer": {
+      "en": "Supports Persistent Buff Skills, causing you to recover Life on kill while the Skill is active.",
+      "zh_cn": "辅助永久性增益技能，激活该技能时击败敌人可为你回复生命。"
+    },
+    "SupportCannibalismPlayerTwo": {
+      "en": "Supports Persistent Buff Skills, causing you to recover Life on kill while the Skill is active.",
+      "zh_cn": "辅助永久性增益技能，激活该技能时击败敌人可为你回复生命。"
+    },
+    "SupportCatalysingElementsPlayer": {
+      "en": "Supports Skills which are boosted by Elemental Ground Surfaces, Triggering Catalysing Discharge of the corresponding type when they are boosted by an allied Elemental Ground Surface.",
+      "zh_cn": "辅助那些可通过元素地面效果获得强化的技能。当它们因友方创造的元素地面效果而获得强化时，将触发相应类型的催化迸放效果。"
+    },
+    "SupportCatharsisPlayer": {
+      "en": "Supports any Skill you use yourself, causing supported Skill to detonate Volatility that is present on you. Supported Skill can only be used while you have a certain amount of Volatility and cannot support Skills which already have another Condition.",
+      "zh_cn": "辅助你使用的任意技能，使被辅助技能引爆你当前具有的无常。被辅助技能只能在你具有一定数量的无常后使用，无法辅助已有其他条件的技能。"
+    },
+    "SupportChainPlayer": {
+      "en": "Supports Projectile skills and any other skills that Chain, causing them to Chain additional times.",
+      "zh_cn": "辅助投射物技能和任意能够连锁的技能，使其能够额外连锁多次。"
+    },
+    "SupportChainPlayerThree": {
+      "en": "Supports Projectile skills and any other skills that Chain, causing them to Chain additional times.",
+      "zh_cn": "辅助投射物技能和任意能够连锁的技能，使其能够额外连锁多次。"
+    },
+    "SupportChainPlayerTwo": {
+      "en": "Supports Projectile skills and any other skills that Chain, causing them to Chain additional times.",
+      "zh_cn": "辅助投射物技能和任意能够连锁的技能，使其能够额外连锁多次。"
+    },
+    "SupportChaosMasteryPlayer": {
+      "en": "Supports Chaos skills, granting them an additional level. Does not support skills which do not have levels.",
+      "zh_cn": "辅助混沌技能，使其等级提升一级。不能辅助没有等级的技能。"
+    },
+    "SupportChaoticFreezePlayer": {
+      "en": "Supports Spells that deal non-Ailment Chaos damage over time. Enemies taking damage over time from Debuffs caused by supported skills will suffer Freeze build up from Chaos damage Hits from any source. Does not Support Skills used by Minions.",
+      "zh_cn": "辅助造成非异常状态的混沌持续伤害的法术。敌人受到被辅助技能的减益持续伤害时，从所有来源受到的击中混沌伤害都会产生冻结积蓄值。无法辅助召唤生物使用的技能。"
+    },
+    "SupportChargeInhibitionPlayer": {
+      "en": "Supports any Skill you use or Trigger yourself. Supported Skills cannot consume Charges or Infusion by any means. Cannot Support Skills which require Charges or Infusion to be used.",
+      "zh_cn": "辅助你自己使用或你自己触发的技能。被辅助技能无法以任何方式消耗能量球或灌注。无法辅助需要消耗能量球或灌注才能使用的技能。"
+    },
+    "SupportChargeProfusionPlayer": {
+      "en": "Supports skills that can generate Charges, giving them a chance to generate an additional Charge when they do so.",
+      "zh_cn": "辅助生成能量球的技能，使其在生成能量球时有几率额外生成一个。"
+    },
+    "SupportChargeProfusionPlayerTwo": {
+      "en": "Supports skills that can generate Charges, giving them a chance to generate an additional Charge when they do so, as well as a chance to generate an additional Charge of a random type.",
+      "zh_cn": "辅助生成能量球的技能，使其在生成能量球时有几率额外生成一个，并有几率额外产生一个随机类型的能量球。"
+    },
+    "SupportChargedMarkPlayer": {
+      "en": "Supports Mark Skills, causing them to Trigger Charged Mark when they are Activated. Charged Mark creates Shocked Ground at the target's location.",
+      "zh_cn": "辅助印记技能，使其激活时触发充能印记。充能印记会在目标位置生成感电地面。"
+    },
+    "SupportChargedShotsPlayer": {
+      "en": "Supports Bow Attacks. Every third shot with Supported Skills restores a portion of its Mana cost and Gains Damage as extra Lightning Damage.",
+      "zh_cn": "辅助弓类攻击。每当第三次使用被辅助技能进行射击时,会恢复一定比例的魔力消耗，并使造成的伤害获得额外的闪电伤害."
+    },
+    "SupportChargedShotsPlayerTwo": {
+      "en": "Supports Bow Attacks. Every third shot with Supported Skills Gains Damage as extra Lightning Damage.",
+      "zh_cn": "辅助弓类攻击。被辅助技能的每第三次射击获得额外闪电伤害。"
+    },
+    "SupportCharmBountyPlayer": {
+      "en": "Supports any Skill that Hits Enemies, causing Enemies it kills to grant more Charm charges.",
+      "zh_cn": "辅助任意击中敌人的技能，使其击败敌人后获得更多的咒符充能。"
+    },
+    "SupportChillingIcePlayer": {
+      "en": "Supports any skill that Hits enemies, causing it to create patches of Chilled Ground around Frozen enemies.",
+      "zh_cn": "辅助任意击中敌人的技能，在被冻结的敌人周围产生冰缓地面。"
+    },
+    "SupportCirelsCultivationPlayer": {
+      "en": "Supports Skills which create Totems, preventing you from having more than one of that Totem but granting significant benefits for Supported Totems based how many allied Totems are near them. Does not Support Skills used by Minions.",
+      "zh_cn": "辅助可创建图腾的技能，但仅允许拥有一个该种图腾，但会依据周围友军拥有的图腾数量，为被辅助的图腾提供显著增益。无法辅助由召唤生物施放的技能。"
+    },
+    "SupportClarityPlayer": {
+      "en": "Supports Persistent Buff Skills, causing you to gain increased Mana Regeneration while the Skill is active.",
+      "zh_cn": "辅助永久性增益技能，激活该技能时提高你的魔力回复速度。"
+    },
+    "SupportClarityPlayerTwo": {
+      "en": "Supports Persistent Buff Skills, causing you to gain increased Mana Regeneration while the Skill is active.",
+      "zh_cn": "辅助永久性增益技能，激活该技能时提高你的魔力回复速度。"
+    },
+    "SupportClashPlayer": {
+      "en": "Supports Melee Attack Skills. Supported Skills deal more Damage while you have a lower percentage of your Life remaining than the target struck, but less Damage when the reverse is true.",
+      "zh_cn": "辅助近战攻击技能。当你的剩余生命比例低于击中的目标时，被辅助技能会造成更高的伤害，但反之会造成更低的伤害。"
+    },
+    "SupportCloseCombatPlayer": {
+      "en": "Supports Attacks, causing them to deal more damage to enemies based on how close they are to you.",
+      "zh_cn": "辅助攻击，敌人距离你越近，攻击对敌人造成的伤害越高。"
+    },
+    "SupportCloseCombatPlayerTwo": {
+      "en": "Supports Attacks, causing them to deal more damage to enemies based on how close they are to you.",
+      "zh_cn": "辅助攻击，敌人距离你越近，攻击对敌人造成的伤害越高。"
+    },
+    "SupportColdMasteryPlayer": {
+      "en": "Supports Cold skills, granting them an additional level. Does not support skills which do not have levels.",
+      "zh_cn": "辅助冰霜技能，使其等级提升一级。不能辅助没有等级的技能。"
+    },
+    "SupportColdPenetrationPlayer": {
+      "en": "Supports any skill that Hits enemies, making those Hits Penetrate enemy Cold resistance.",
+      "zh_cn": "辅助任意击中敌人的技能，使击中能穿透敌人的冰霜抗性。"
+    },
+    "SupportCombatReloadPlayer": {
+      "en": "Supports Crossbow Ammunition Skills, causing them to load multiple extra bolts and attack faster. Supported Skills cannot reload normally, instead loading bolts when you Dodge.",
+      "zh_cn": "辅助战弩弹药技能，使其装填多发额外弩箭并提升击发速度。被辅助技能无法正常装填，改为在闪避时进行装填。"
+    },
+    "SupportComboFinisherPlayer": {
+      "en": "Supports Melee Attacks you use yourself. Supported Skills cannot be used until enough Combo has been built up, but deal more damage. Cannot support skills which already Combo.",
+      "zh_cn": "辅助你使用的近战攻击。被辅助技能只有在积累足够的连击后才能使用，但造成的伤害提高。无法辅助本身属于连击的技能。"
+    },
+    "SupportComboFinisherPlayerTwo": {
+      "en": "Supports Melee Attacks you use yourself. Supported Skills cannot be used until enough Combo has been built up, but deal massively more damage. Cannot support skills which already Combo.",
+      "zh_cn": "辅助你使用的近战攻击。被辅助技能只有在积累足够的连击后才能使用，但造成的伤害大幅提高。无法辅助本身属于连击的技能。"
+    },
+    "SupportCommandment": {
+      "en": "Supports Minions which have Command Skills. Supported Minions have massively increased cooldown recovery speed for Command Skills they use, but deal no damage with non-Command Skills.",
+      "zh_cn": "辅助具有命令技能的召唤生物。被辅助的召唤生物的命令技能冷却回复速度大幅加快，但是非命令技能无法造成伤害。"
+    },
+    "SupportCommiseratePlayer": {
+      "en": "Supports Skills you use or Trigger yourself, which can cause Damaging Hits. Supported Skills inflict more powerful Ailments if you are afflicted with those Ailments when you inflict them, while also removing from you any Ailment that they inflict.",
+      "zh_cn": "辅助你自己使用或自己触发的造成伤害性击中的技能。当你受到异常状态影响时，被辅助技能造成的同类异常状态更为强大，并且会移除你受到的同类异常状态。"
+    },
+    "SupportConcentratedAreaPlayer": {
+      "en": "Supports any skill with an area of effect, causing that area to be smaller but any area damage it deals to be higher.",
+      "zh_cn": "辅助任意有范围效果的技能，使技能的效果范围变小，但造成更高的范围伤害。"
+    },
+    "SupportConcoctPlayer": {
+      "en": "Supports Skills you use yourself which Damage enemies with Hits. Supported Skills consume a percentage of your maximum Life Flask charges, inflicting more powerful Bleeding based on Life Flask charges consumed.",
+      "zh_cn": "辅助你自己使用且能够击中敌人并造成伤害的技能。被辅助技能会消耗一定比例的最大生命药剂充能，根据消耗的生命药剂充能造成更强的流血效果。"
+    },
+    "SupportConcoctPlayerTwo": {
+      "en": "Supports Skills you use yourself which Damage enemies with Hits. Supported Skills consume a percentage of your maximum Life Flask charges, inflicting more powerful Bleeding based on Life Flask charges consumed.",
+      "zh_cn": "辅助你自己使用且能够击中敌人并造成伤害的技能。被辅助技能会消耗一定比例的最大生命药剂充能，根据消耗的生命药剂充能造成更强的流血效果。"
+    },
+    "SupportConcussiveSpellsPlayer": {
+      "en": "Supports Spells which Hit enemies. Supported Skills Daze on Critically Hitting enemies with Physical damage.",
+      "zh_cn": "辅助可击中敌人的法术。被辅助的技能若以物理伤害对敌人造成暴击，则会使其恍惚。"
+    },
+    "SupportConsideredCastingPlayer": {
+      "en": "Supports Spell Skills that Hit Enemies and you cast yourself, boosting Damage at the cost of Cast Speed.",
+      "zh_cn": "辅助你自己施放的击中敌人的法术技能，增强伤害但牺牲施法速度。"
+    },
+    "SupportControlledDestructionPlayer": {
+      "en": "Supports Spells that Hit enemies, boosting their damage but preventing them from dealing Critical Hits.",
+      "zh_cn": "辅助击中敌人的法术，大幅提升伤害，但无法造成暴击。"
+    },
+    "SupportControlledHazardPlayer": {
+      "en": "Supports Skills which create Hazards, causing those Hazards to be unable to be triggered for 3 seconds after being created.",
+      "zh_cn": "辅助产生危害的技能，使这些危害在生成后的 3 秒内无法被触发。"
+    },
+    "SupportCooldownRecoveryPlayer": {
+      "en": "Supports skills with Cooldowns, increasing the rate at which those Cooldowns Recover. Cannot modify the skills of minions.",
+      "zh_cn": "辅助有冷却时间的技能，加快冷却回复速度。不能调整召唤生物技能。"
+    },
+    "SupportCooldownRecoveryPlayerTwo": {
+      "en": "Supports skills with Cooldowns, increasing the rate at which those Cooldowns Recover. Cannot modify the skills of minions.",
+      "zh_cn": "辅助有冷却时间的技能，加快冷却回复速度。不能调整召唤生物技能。"
+    },
+    "SupportCoolheadedPlayer": {
+      "en": "Supports Persistent Buff Skills, causing Ignite applied to you to last for a shorter duration while the Supported Skill is active.",
+      "zh_cn": "辅助永久性增益状态技能，激活被辅助技能时，缩短对你施加的点燃的持续时间。"
+    },
+    "SupportCorpseConservationPlayer": {
+      "en": "Supports skills that consume Corpses, giving them a chance to take effect without destroying the Corpse.",
+      "zh_cn": "辅助消耗灵柩的技能，使其有几率在产生效果时不摧毁灵柩。"
+    },
+    "SupportCorrosionPlayer": {
+      "en": "Supports any skill that Hits enemies, causing Poison it applies to also Break enemy Armour. Cannot support skills that Consume Fully Broken Armour.",
+      "zh_cn": "辅助任意击中敌人的技能，使其在对敌人施加中毒效果的同时造成护甲破损。无法辅助消耗护甲完全破损的技能。"
+    },
+    "SupportCorruptingCryPlayer": {
+      "en": "Supports Warcries, Triggering Corrupted Cry to inflict Corrupted Blood on enemies in their area of effect.",
+      "zh_cn": "辅助战吼技能，触发腐化战吼，对其效果范围内的敌人施加腐化之血。"
+    },
+    "SupportCorruptingCryPlayerThree": {
+      "en": "Supports Warcries, Triggering Twisted Pact  to inflict Corrupted Blood on enemies in their area of effect., at the cost of your Life.",
+      "zh_cn": "辅助战吼技能，触发腐化战吼，消耗生命，对其效果范围内的敌人施加腐化之血。"
+    },
+    "SupportCorruptingCryPlayerTwo": {
+      "en": "Supports Warcries, Triggering Corrupted Cry to inflict Corrupted Blood on enemies in their area of effect.",
+      "zh_cn": "辅助战吼技能，触发腐化战吼，对其效果范围内的敌人施加腐化之血。"
+    },
+    "SupportCracklingBarrierPlayer": {
+      "en": "Supports Channelling Skills. While Channelling Supported Skills, you gain Lightning Thorns based off of your maximum Mana.",
+      "zh_cn": "辅助持续吟唱技能。在吟唱被辅助技能时，你会根据魔力上限获得闪电荆棘。"
+    },
+    "SupportCraterPlayer": {
+      "en": "Supports Melee Skills that leap into the air, causing them to create Fissures when you land. Cannot Support Totem Skills, and does not modify Skills used by Minions.",
+      "zh_cn": "辅助跃入空中的近战技能，使其落地时产生裂缝。无法辅助图腾技能，不会修改召唤生物使用的技能。"
+    },
+    "SupportCrazedMinionsPlayer": {
+      "en": "Supports Minion Skills which summon Reviving Minions. Supported Minions deal significantly more Damage if they have Revived Recently.",
+      "zh_cn": "辅助能够召唤可复活的召唤生物的召唤生物技能。被辅助的召唤生物若近期复活过，则造成的伤害大幅提高。"
+    },
+    "SupportCreepingChillPlayer": {
+      "en": "Supports any Skill that creates Ice Crystals, causing that Skill to Consume a Power Charge if possible to create Chilled Ground around the Crystal.",
+      "zh_cn": "辅助生成冰晶的技能，若有可能，该技能将消耗一个暴击球以在冰晶周围生成冰缓地面。"
+    },
+    "SupportCrescendoPlayer": {
+      "en": "Supports Strikes that perform a Final Strike at the end of a combination of attacks, allowing you to use the Final Strike twice in succession.",
+      "zh_cn": "辅助在组合攻击的最后发动绝杀打击的打击，使你可以连续使用两次绝杀打击。"
+    },
+    "SupportCrescendoPlayerThree": {
+      "en": "Supports Strikes that perform a Final Strike at the end of a combination of attacks, causing the Final Strike to be Ancestrally Boosted.",
+      "zh_cn": "辅助在组合攻击最后进行绝杀打击的打击，使绝杀打击获得先祖加持。"
+    },
+    "SupportCrescendoPlayerTwo": {
+      "en": "Supports Strikes that perform a Final Strike at the end of a combination of attacks, allowing you to use the Final Strike twice in succession, and causing Non-Final Strike Attacks to be faster.",
+      "zh_cn": "辅助在组合攻击的最后发动绝杀打击的打击，使你可以连续使用两次绝杀打击，并使非绝杀打击攻击速度更快。"
+    },
+    "SupportCrystallineShardsPlayer": {
+      "en": "Supports Skills which create Ice Crystals. Damaging Explosions caused by Ice Crystals from Supported Skills will Impale Enemies.",
+      "zh_cn": "辅助产生冰晶的技能。被辅助技能的冰晶造成的伤害性爆炸会穿刺敌人。"
+    },
+    "SupportCullingStrikePlayer": {
+      "en": "Supports Attack Skills, causing them to Cull Rare and Unique Enemies on Hit.",
+      "zh_cn": "辅助攻击技能，使攻击击中时终结稀有和传奇敌人。"
+    },
+    "SupportCullingStrikePlayerTwo": {
+      "en": "Supports Attack Skills, causing them to Cull Rare and Unique Enemies on Hit, and increasing the threshold at which they will Cull Enemies.",
+      "zh_cn": "辅助攻击技能，使其击中时终结稀有和传奇敌人，并提高终结敌人的阈值。"
+    },
+    "SupportCulminationPlayer": {
+      "en": "Supports Melee Attack Skills. Supported Skills gain Combo when you successfully Strike Enemies with other Melee Attacks. Supported Skills reset their Combo on use, dealing more Damage the higher Combo you had on use. Cannot support skills which already gain Combo. Cannot modify the Skills of Minions.",
+      "zh_cn": "辅助近战攻击技能。使用其他近战攻击成功打击敌人会使被辅助技能获得连击。使用被辅助技能时重置连击，使用时具有的连击越高，造成的伤害越高。无法辅助本身获得连击的技能。无法修改召唤生物使用的技能。"
+    },
+    "SupportCulminationPlayerTwo": {
+      "en": "Supports Melee Attack Skills. Supported Skills gain Combo when you successfully Strike Enemies with other Melee Attacks. Supported Skills reset their Combo on use, dealing more Damage the higher Combo you had on use. Cannot support skills which already gain Combo. Cannot modify the Skills of Minions.",
+      "zh_cn": "辅助近战攻击技能。使用其他近战攻击成功打击敌人会使被辅助技能获得连击。使用被辅助技能时重置连击，使用时具有的连击越高，造成的伤害越高。无法辅助本身获得连击的技能。无法修改召唤生物使用的技能。"
+    },
+    "SupportCurseEffectPlayer": {
+      "en": "Supports Curse Skills, magnifying their power.",
+      "zh_cn": "辅助诅咒技能，强化其力量。"
+    },
+    "SupportCursedGroundPlayer": {
+      "en": "Supports Curse Skills. Supported Curse Skills create areas which Curse Enemies so long as they are within them.",
+      "zh_cn": "辅助诅咒技能，被辅助的诅咒技能产生一片区域，持续对其中的敌人施加诅咒。"
+    },
+    "SupportDanseMacabrePlayer": {
+      "en": "Supports Offering Skills. Supported Skills have increased Buff effect and deal more damage, but will target an additional skeletal Minion when cast. If there is not an additional skeletal Minion to target, no damage or Buff effect will be granted.",
+      "zh_cn": "辅助奉献技能。被辅助技能的增益状态效果提高，造成更高的伤害，但施放时会额外以一个魔侍召唤生物为目标。如果没有额外的魔侍召唤生物，则不会提高伤害或增益状态效果。"
+    },
+    "SupportDaressosPassionPlayer": {
+      "en": "Supports Banner Skills, causing them to require significantly less Glory to use.",
+      "zh_cn": "辅助旗帜技能，使其需要的荣耀大幅降低。"
+    },
+    "SupportDauntlessPlayer": {
+      "en": "Supports Skills you use yourself which can cause Damaging Hits. Supported Skills cannot be used unless you have been stationary for a certain duration, but deal increasingly more damage the longer you are stationary. Cannot support Skills which have a cooldown or another usage Condition.",
+      "zh_cn": "辅助你自己使用的造成伤害性击中的技能。被辅助技能只有在你静止不动一段时间后才能使用，但静止的时间越长，造成的伤害越高。无法辅助具有冷却时间的技能或存在其他使用条件的技能。"
+    },
+    "SupportDazePlayer": {
+      "en": "Supports Attacks, causing them to build up Daze based on a portion of Physical Damage dealt.",
+      "zh_cn": "辅助攻击，使其造成恍惚积蓄值，相当于造成的物理伤害的一定比例。"
+    },
+    "SupportDeadlyCurrentPlayer": {
+      "en": "Supports Skills which Hit enemies. Shocking an enemy with Supported Skills Triggers Coursing Current, which sends Chaining Lightning Projectiles to nearby Drenched enemies.",
+      "zh_cn": "辅助可击中敌人的技能。使用被辅助的技能感电敌人会触发奔雷疾走，向附近处于浸湿状态的敌人发射连锁的闪电投射物。"
+    },
+    "SupportDeadlyHeraldsPlayer": {
+      "en": "Supports Herald Skills, making their triggered effects deal more damage at the expense of higher Spirit cost.",
+      "zh_cn": "辅助捷技能，使其触发效果造成更高伤害，但提高精魂成本。"
+    },
+    "SupportDeadlyIgnitesPlayer": {
+      "en": "Supports any skill that Hits enemies, causing inflicted Ignites to deal more damage but its Hits to deal less damage.",
+      "zh_cn": "辅助任意击中敌人的技能，使其造成的点燃伤害提高，但击中的伤害降低。"
+    },
+    "SupportDeadlyIgnitesPlayerTwo": {
+      "en": "Supports any skill that Hits enemies, causing inflicted Ignites to deal more damage but its Hits to deal less damage.",
+      "zh_cn": "辅助任意击中敌人的技能，使其造成的点燃伤害提高，但击中的伤害降低。"
+    },
+    "SupportDeadlyPoisonPlayer": {
+      "en": "Supports any skill that Hits enemies, causing it to deal less damage but inflict more potent Poison.",
+      "zh_cn": "辅助任意击中敌人的技能，使其造成的伤害降低，但造成更强的中毒效果。"
+    },
+    "SupportDeadlyPoisonPlayerTwo": {
+      "en": "Supports any skill that Hits enemies, causing it to deal less damage but inflict more potent Poison.",
+      "zh_cn": "辅助任意击中敌人的技能，使其造成的伤害降低，但造成更强的中毒效果。"
+    },
+    "SupportDeadlyResolvePlayer": {
+      "en": "Supports Channelling Skills you use yourself. While Channelling Supported Skills, periodically gain stages of Deadly Resolve. Expend a stage of Deadly Resolve when an enemy Hits you to Trigger a deadly slash towards that enemy, dealing more damage based on your Armour.",
+      "zh_cn": "辅助你使用的持续吟唱技能。在持续吟唱被辅助技能时，会周期性获得致命决心层数，之后当你被击中时，消耗一层致命决心，触发一次致命的斩击，造成的伤害会基于你的护甲提高。"
+    },
+    "SupportDeathmarchPlayer": {
+      "en": "Supports Skills which create Persistent Minions. Supported Minions will restore Life to nearby Allied Minions on death, as well as removing Ailments from those Minions.",
+      "zh_cn": "辅助能够产生永久性召唤生物的技能。被辅助的召唤生物被击败时使附近的友军召唤生物回复生命，并移除这些召唤生物受到的异常状态。"
+    },
+    "SupportDecayingHexPlayer": {
+      "en": "Supports Curse skills. Supported skill Trigger Profane Decay on each target they curse to inflict a damaging Debuff.",
+      "zh_cn": "辅助诅咒技能，被辅助技能每次诅咒一个目标时，会触发亵渎朽坏，对其施加造成伤害的减益状态。"
+    },
+    "SupportDeepCutsPlayer": {
+      "en": "Supports any skill that Hits enemies, causing it to deal less damage but inflict more potent Bleeding.",
+      "zh_cn": "辅助任意击中敌人的技能，使其造成的伤害降低，但造成更强的流血效果。"
+    },
+    "SupportDeepCutsPlayerTwo": {
+      "en": "Supports any skill that Hits enemies, causing it to deal less damage but inflict more potent Bleeding.",
+      "zh_cn": "辅助任意击中敌人的技能，使其造成的伤害降低，但造成更强的流血效果。"
+    },
+    "SupportDefyPlayer": {
+      "en": "Supports Attack Skills you use yourself. Hit Damage from Supported Skills is Lucky if you are Surrounded.",
+      "zh_cn": "辅助你使用的攻击技能。如果你被被包围，被辅助技能的击中伤害特别幸运。"
+    },
+    "SupportDefyPlayerTwo": {
+      "en": "Supports Attack Skills you use yourself. Hit Damage from Supported Skills is Lucky and Insufficient Mana doesn't prevent Supported Skills from being used if you are Surrounded.",
+      "zh_cn": "辅助你使用的攻击技能。如果你被包围，被辅助技能的击中伤害特别幸运，魔力不足不会阻止被辅助技能的使用。"
+    },
+    "SupportDelayedGratificationPlayer": {
+      "en": "Supports Skills which require some Condition to be met for use. Supported Skills can be used an additional time after their Condition has been met, but meeting that Condition is harder.",
+      "zh_cn": "辅助需要满足条件才能使用的技能。被辅助技能满足条件后可以额外使用一次，但条件会更难满足。"
+    },
+    "SupportDelayedReactionPlayer": {
+      "en": "Supports Skills which create Hazards, causing those Hazards to only be able to trigger immediately after creation or at the end of their duration. Created Hazards have significantly lowered duration, and deal more damage.",
+      "zh_cn": "辅助产生危害的技能，使危害只能在产生后立即触发或在持续时间结束时触发。产生的危害持续时间大幅缩短，并且造成更高的伤害。"
+    },
+    "SupportDeliberationPlayer": {
+      "en": "Supports skills that can be used while moving, causing you to move slower while using them, but granting more damage in exchange.",
+      "zh_cn": "辅助可在移动时使用的技能，使你在使用技能时移动速度减慢，同时提高伤害。"
+    },
+    "SupportDerangePlayer": {
+      "en": "Supports Skills which you use yourself which can deal damage. Supported Skills gain an Energy Shield cost equal to your Intelligence, while also dealing more non-Ailment Damage over time based off of your Intelligence. Cannot support Channelling Skills.",
+      "zh_cn": "辅助你自己使用的能够造成伤害的技能。被辅助技能获得等同于你的智慧的能量护盾消耗，同时会根据你的智慧造成更高的非异常状态的持续伤害。无法辅助持续吟唱技能。"
+    },
+    "SupportDiallasDesirePlayer": {
+      "en": "Supports any Skill which has levels, increasing the level and Quality, while reducing the cost and Reservation.",
+      "zh_cn": "辅助任何有等级的技能，提高等级和品质，同时降低消耗和保留。"
+    },
+    "SupportDirestrikePlayer": {
+      "en": "Supports Persistent Buff Skills, causing you to deal increased Attack Damage while on Low Life while the Supported Skill is active.",
+      "zh_cn": "辅助永久性增益状态技能，激活被辅助技能且低血时，提高你造成的攻击伤害。"
+    },
+    "SupportDirestrikePlayerTwo": {
+      "en": "Supports Persistent Buff Skills, causing you to deal increased Attack Damage while on Low Life while the Supported Skill is active.",
+      "zh_cn": "辅助永久性增益状态技能，激活被辅助技能且低血时，提高你造成的攻击伤害。"
+    },
+    "SupportDoubleBarrelPlayer": {
+      "en": "Supports Crossbow Ammunition Skills, causing them to load an extra bolt at the cost of reload speed.",
+      "zh_cn": "辅助战弩弹药技能，使其额外装填一发弩箭，但会牺牲装填速度。"
+    },
+    "SupportDoubleBarrelPlayerThree": {
+      "en": "Supports Crossbow Ammunition Skills, causing them to load an extra bolt at the cost of reload speed. Supported Skills will also automatically reload when they Heavy Stun an enemy.",
+      "zh_cn": "辅助战弩弹药技能，使其额外装填一发弩箭，但会牺牲装填速度。辅助的技能还会在使敌人重度晕眩时自动装填。"
+    },
+    "SupportDoubleBarrelPlayerTwo": {
+      "en": "Supports Crossbow Ammunition Skills, causing them to load an extra bolt at the cost of reload speed.",
+      "zh_cn": "辅助战弩弹药技能，使其额外装填一发弩箭，但会牺牲装填速度。"
+    },
+    "SupportDrainedAilmentPlayer": {
+      "en": "Supports Spells that deal non-Ailment damage over time, causing them to consume Ailments on enemies it applies damage over time Debuffs to in order to deal substantially more damage over time.",
+      "zh_cn": "辅助造成非异常状态的持续伤害的法术，使其施加持续伤害减益时消耗敌人受到的异常状态，从而大幅提高持续伤害。"
+    },
+    "SupportDurabilityPlayer": {
+      "en": "Supports Skills which create objects that are destroyed after being Hit a number of times, allowing for them to last for additional Hits. Does not modify Skills used by Minions.",
+      "zh_cn": "辅助产生被击中一定次数后被破坏的物体的技能，使其可以承受额外次数的击中。不会修改召唤生物使用的技能。"
+    },
+    "SupportEchoingCryPlayer": {
+      "en": "Supports Warcries. Supported Skills Echo twice, and their area grows larger each time, but are less effective and require you to have travelled a certain distance before use.",
+      "zh_cn": "辅助战吼类技能。被辅助技能会回响 2 次，每次范围扩大，但效果降低，并且需要你在使用前移动一定距离。"
+    },
+    "SupportEfficiencyPlayer": {
+      "en": "Supports any skill, making it cost less to use. Cannot support skills which reserve Spirit.",
+      "zh_cn": "辅助任意技能，降低使用技能的消耗。无法辅助保留精魂的技能。"
+    },
+    "SupportEfficiencyPlayerTwo": {
+      "en": "Supports any skill, making it cost less to use. Cannot support skills which reserve Spirit.",
+      "zh_cn": "辅助任意技能，降低使用技能的消耗。无法辅助保留精魂的技能。"
+    },
+    "SupportEinharsBeastritePlayer": {
+      "en": "Supports Melee Strike skills, causing them to steal a Modifier from Rare monsters they kill for a lengthy duration, while being unable to damage enemies not on low Life. Does not modify skills used by Minions.",
+      "zh_cn": "辅助近战打击技能，使其从击败的稀有怪物处窃取一个词缀，持续时间较长，但无法对非低血敌人造成伤害。无法修改召唤生物使用的技能。"
+    },
+    "SupportElectrocutePlayer": {
+      "en": "Supports any Skill which can deal Damage. Lightning Damage from Supported Skills can inflict Electrocute, but Supported Skills cannot inflict Shock.",
+      "zh_cn": "辅助任意造成伤害的技能。被辅助技能的闪电伤害可以造成触电，但被辅助技能无法施加感电。"
+    },
+    "SupportElementalArmamentPlayer": {
+      "en": "Supports Attacks, causing them to deal more Elemental damage.",
+      "zh_cn": "辅助攻击，使攻击造成更高元素伤害。"
+    },
+    "SupportElementalArmamentPlayerThree": {
+      "en": "Supports Attacks, causing them to deal more Damage for each Elemental Ailment on Enemies they Hit. Supported Skills cannot themselves inflict Elemental Ailments.",
+      "zh_cn": "辅助攻击，被辅助技能击中的敌人每有一种元素异常状态，造成的伤害就会提高，但其本身无法造成元素异常状态。"
+    },
+    "SupportElementalArmamentPlayerTwo": {
+      "en": "Supports Attacks, causing them to deal more Elemental damage.",
+      "zh_cn": "辅助攻击，使攻击造成更高元素伤害。"
+    },
+    "SupportElementalArmyPlayer": {
+      "en": "Supports skills which create Minions, bolstering the Elemental Resistances of those Minions. Cannot support skills which create undamageable Minions.",
+      "zh_cn": "辅助产生召唤生物的技能，提高召唤生物的抗性。无法辅助产生无敌召唤生物的技能。"
+    },
+    "SupportElementalDischargePlayer": {
+      "en": "Supports any Spell that Hits enemies, causing it to Consume Elemental Ailments on hit to trigger an Elemental Discharge. Cannot support the skills of Minions or skills which already Consume Elemental Ailments.",
+      "zh_cn": "辅助任意击中敌人的法术，使其在击中时消耗元素异常状态，触发一次元素解放。无法辅助召唤生物的技能，或已会消耗元素异常状态的技能。"
+    },
+    "SupportElementalFocusPlayer": {
+      "en": "Supports any skill that Hits enemies, causing it to deal more Elemental Damage but be unable to inflict Elemental Ailments.",
+      "zh_cn": "辅助任意击中敌人的技能，造成更高的元素伤害，但无法造成元素异常状态。"
+    },
+    "SupportEmbitterPlayer": {
+      "en": "Supports Skills which can Damage Enemies with Hits, causing all sources of Damage Gained to instead be treated as Damage Gained as extra Cold for Supported Skills.",
+      "zh_cn": "辅助能够击中敌人并造成伤害的技能，使从所有来源获得的伤害被视作被辅助技能获得的额外冰霜伤害。"
+    },
+    "SupportEmpoweredCullPlayer": {
+      "en": "Supports skills that can Empower skills other than themselves, causing skills they Empower to Cull enemies.",
+      "zh_cn": "辅助强化其他技能的技能，使其强化的技能可以终结敌人。"
+    },
+    "SupportEmpoweredSparksPlayer": {
+      "en": "Supports Skills which generate Charges. When generating Power Charge with Supported Skills, Empower some of your Attacks to Trigger Spark Projectiles on use.",
+      "zh_cn": "辅助可生成能量球的技能。当你使用被辅助的技能生成暴击球时，会强化你的部分攻击，使其在使用时触发火花投射物。"
+    },
+    "SupportEncroachingGroundPlayer": {
+      "en": "Supports Skills that create Ground Surfaces, causing those Surfaces to grow over time, up to a limit.",
+      "zh_cn": "辅助产生地面效果的技能，使地面效果持续扩张至特定上限。"
+    },
+    "SupportEnergyCapacitorPlayer": {
+      "en": "Supports Invocation Skills which Trigger other Skills. Supported Skills have significantly higher Maximum Energy.",
+      "zh_cn": "辅助触发其他技能的祈求技能。被辅助技能的能量上限大幅提高。"
+    },
+    "SupportEnergyRetentionPlayer": {
+      "en": "Supports Meta Skills. Supported Skills gain a chance to partially Refund a portion of Energy cost when Triggering or Invoking other Skills.",
+      "zh_cn": "辅助非凡技能。被辅助技能触发或祈唤其他技能时，有几率返还消耗的一部分能量。"
+    },
+    "SupportEnergyShieldOnShockKillPlayer": {
+      "en": "Supports any skill that Hits enemies, causing you to recover Energy Shield when it kills a Shocked enemy.",
+      "zh_cn": "辅助任意击中敌人的技能，击败感电的敌人时使你回复能量护盾。"
+    },
+    "SupportEnragedWarcryPlayer": {
+      "en": "Supports Warcries, causing them to spend Rage to bypass their usual Cooldown.",
+      "zh_cn": "辅助战吼，使其可以消耗怒火来跳过常规的冷却时间。"
+    },
+    "SupportEnragedWarcryPlayerTwo": {
+      "en": "Supports Warcries, causing them to spend Rage to bypass their usual Cooldown.",
+      "zh_cn": "辅助战吼，使其可以消耗怒火来跳过常规的冷却时间。"
+    },
+    "SupportEonyrsThunderPlayer": {
+      "en": "Supports any Skill which can deal damage. Lightning damage from Supported Skills can inflict Electrocute, but Supported Skills cannot inflict Shock. Enemies slain while Electrocuted by Supported Skills explode, dealing a percentage of their maximum Life as Lightning damage.",
+      "zh_cn": "辅助任意造成伤害的技能。被辅助技能的闪电伤害可以造成触电，但被辅助技能无法施加感电。被辅助技能的触电击杀的敌人会爆炸，造成其最大生命一定百分比的闪电伤害。"
+    },
+    "SupportEscalatingPoisonPlayer": {
+      "en": "Supports any skill that Hits enemies, allowing it to inflict an extra Poison on enemies but shortening the duration of those Poisons.",
+      "zh_cn": "辅助任意击中敌人的技能，使其对敌人造成额外的中毒效果，但缩短中毒的持续时间。"
+    },
+    "SupportEshsRadiancePlayer": {
+      "en": "Supports Skills that can cause Damaging Hits, granting extra Chaos damage and causing Chaos damage to Contribute to Shock.",
+      "zh_cn": "辅助可造成伤害性击中的技能，提供额外混沌伤害，使混沌伤害作用于感电。"
+    },
+    "SupportEssenceHarvestPlayer": {
+      "en": "Supports Skills which create Reviving Persistent Minions. When those Minions die, you Recoup a percentage of your maximum Mana.",
+      "zh_cn": "辅助能够产生可复活的永久性召唤生物的技能。这些召唤生物被击败时，为你吸纳一定比例的最大魔力。"
+    },
+    "SupportEternalMarkPlayer": {
+      "en": "Supports Mark Skills, causing them to not be Consumed the first time they are Activated.",
+      "zh_cn": "辅助印记技能，使其第一次激活时不会被消耗。"
+    },
+    "SupportExcisePlayer": {
+      "en": "Supports any damaging Skill that you use yourself, granting it significantly higher chance to Critically Hit, but causing it to gain a long cooldown. Cannot support Skills which already have a cooldown.",
+      "zh_cn": "辅助你使用的任意伤害性技能，使其暴击率明显提高，但冷却时间变长。无法辅助本身具有冷却时间的技能。"
+    },
+    "SupportExecratePlayer": {
+      "en": "Supports any damaging Skill that you use yourself, granting it significantly higher chance to inflict Ailments on hit, but causing it to gain a long cooldown. Cannot support Skills which already have a cooldown.",
+      "zh_cn": "辅助你使用的任意伤害性技能，使其击中时造成异常状态的几率明显提高，但冷却时间变长。无法辅助本身具有冷却时间的技能。"
+    },
+    "SupportExecutePlayer": {
+      "en": "Supports any skill that Hits enemies, causing it to deal more damage against enemies on Low Life.",
+      "zh_cn": "辅助任意击中敌人的技能，使其对低血敌人造成更高伤害。"
+    },
+    "SupportExecutePlayerThree": {
+      "en": "Supports any skill that Hits enemies, causing it to deal more damage against enemies on Low Life, as well as dealing more damage while you are on Low Life.",
+      "zh_cn": "辅助任意击中敌人的技能，使其对低血敌人造成更高伤害，当你低血时造成的伤害也更高。"
+    },
+    "SupportExecutePlayerTwo": {
+      "en": "Supports any skill that Hits enemies, causing it to deal more damage against enemies on Low Life.",
+      "zh_cn": "辅助任意击中敌人的技能，使其对低血敌人造成更高伤害。"
+    },
+    "SupportExpandPlayer": {
+      "en": "Supports Spells you cast yourself, Sealing them over time. The Seals are broken when cast, increasing area of effect. Cannot support Channelling Skills or Skills with a Cooldown or which already gain Seals.",
+      "zh_cn": "辅助你施放的法术，使其随时间获得封印。施放时打破封印，扩大效果范围。无法辅助持续引导技能、有冷却时间的技能或能获得封印的技能。"
+    },
+    "SupportExpansePlayer": {
+      "en": "Supports any Skill that you use yourself, granting it significantly higher Area of Effect but causing it to gain a long cooldown. Cannot support Skills which already have a cooldown.",
+      "zh_cn": "辅助你使用的任意技能，使其效果范围明显提高，但冷却时间变长。无法辅助本身具有冷却时间的技能。"
+    },
+    "SupportExploitWeaknessPlayer": {
+      "en": "Supports any skill that Hits enemies, causing them to deal more Damage against enemies with Broken Armour but preventing them from Breaking Armour themselves. Cannot support skills that Consume Broken Armour.",
+      "zh_cn": "辅助任意击中敌人的技能，使其对护甲破损的敌人造成更高伤害，但攻击本身无法粉碎护甲。无法辅助消耗护甲破损的技能。"
+    },
+    "SupportExplosiveGrowthPlayer": {
+      "en": "Supports Plant Skills, causing them to Trigger an explosion after they have been Overgrown.",
+      "zh_cn": "辅助植物技能与蔓生，使其在蔓生后触发爆炸。"
+    },
+    "SupportExplosiveGrowthPlayerTwo": {
+      "en": "Supports Plant Skills, causing them to Trigger an explosion after they have been Overgrown, Blinding enemies Hit.",
+      "zh_cn": "辅助植物技能与蔓生，使其在蔓生后触发爆炸，并致盲被击中的敌人。"
+    },
+    "SupportExposingCryPlayer": {
+      "en": "Supports Warcries. Supported Skills apply Exposure on Hitting enemies.",
+      "zh_cn": "辅助战吼技能。被辅助的技能在击中敌人时会施加曝露效果。"
+    },
+    "SupportExtractionPlayer": {
+      "en": "Supports Spell Skills which cause Damaging Hits. Using supported Spells will cause you to Sacrifice a portion of your Life on use, gaining extra Chaos Damage in exchange. Does not support Persistent Skills, Minion Skills, or Triggered Skills.",
+      "zh_cn": "辅助造成伤害性击中的法术技能。使用被辅助的法术会使你牺牲一部分生命，并获得额外的混沌伤害。无法辅助永久性技能、召唤生物技能或触发技能。"
+    },
+    "SupportFanTheFlamesPlayer": {
+      "en": "Supports Wind Skills which Hit enemies. Hits with Supported Skills against Ignited enemies Trigger a fiery explosion, dealing damage to that enemy and enemies in a cone behind them.",
+      "zh_cn": "辅助可击中敌人的风系技能。被辅助的技能击中处于点燃状态的敌人将触发火焰爆炸，对该敌人及其身后的锥形区域内的敌人造成伤害。"
+    },
+    "SupportFanTheFlamesPlayerTwo": {
+      "en": "Supports Wind Skills which Hit enemies. Hits with Supported Skills against Ignited enemies Trigger a fiery explosion, dealing damage to that enemy and enemies in a cone behind them. The explosion Spreads the initial enemy's Ignite to other enemies Hit.",
+      "zh_cn": "辅助可击中敌人的风系技能。被辅助的技能击中处于点燃状态的敌人将触发火焰爆炸，对该敌人及其身后的锥形区域内的敌人造成伤害。该爆炸会将初始敌人的点燃状态传播给其他被击中的敌人。"
+    },
+    "SupportFarCombatPlayer": {
+      "en": "Supports Attacks, causing them to deal more damage from farther away.",
+      "zh_cn": "辅助攻击，使攻击造成更高伤害，距离越远伤害越高。"
+    },
+    "SupportFarCombatPlayerTwo": {
+      "en": "Supports Attacks, causing them to deal more damage from farther away.",
+      "zh_cn": "辅助攻击，使攻击造成更高伤害，距离越远伤害越高。"
+    },
+    "SupportFeedingFrenzyPlayer": {
+      "en": "Supports skills which create Minions, making them deal and take more damage. Cannot support skills which create undamageable Minions.",
+      "zh_cn": "辅助产生召唤生物的技能，使召唤生物可以造成和承受更高的伤害。无法辅助产生无敌召唤生物的技能。"
+    },
+    "SupportFerocityPlayer": {
+      "en": "Supports Skills that you use yourself. Supported Skills will consume a Frenzy Charge on use if possible, and will gain significant Skill Speed if they do, but cannot generate Frenzy Charges. Cannot Support Skills which consume Frenzy Charges.",
+      "zh_cn": "辅助你自己使用的技能。使用被辅助技能时会尽可能消耗一个狂怒球，消耗时大幅提高技能速度。被辅助技能无法产生狂怒球。无法辅助会消耗狂怒球的技能。"
+    },
+    "SupportFieryDeathPlayer": {
+      "en": "Supports any skill that Hits enemies, causing enemies it Ignites to have a chance to explode on death.",
+      "zh_cn": "辅助任意击中敌人的技能，使其点燃的敌人被击败时有几率爆炸。"
+    },
+    "SupportFireExposurePlayer": {
+      "en": "Supports any skill that Hits enemies, causing it to inflict Exposure when Igniting.",
+      "zh_cn": "辅助任意击中敌人的技能，使其在点燃时施加曝露。"
+    },
+    "SupportFireMasteryPlayer": {
+      "en": "Supports Fire skills, granting them an additional level. Does not support skills which do not have levels.",
+      "zh_cn": "辅助火焰技能，使其等级提升一级。不能辅助没有等级的技能。"
+    },
+    "SupportFirePenetrationPlayer": {
+      "en": "Supports any skill that Hits enemies, making those Hits Penetrate enemy Fire resistance.",
+      "zh_cn": "辅助任意击中敌人的技能，使击中能穿透敌人的火焰抗性。"
+    },
+    "SupportFirePenetrationPlayerTwo": {
+      "en": "Supports any skill that Hits enemies, making those Hits ignore enemy Fire resistance.",
+      "zh_cn": "辅助任意击中敌人的技能，使击中能忽略敌人的火焰抗性。"
+    },
+    "SupportFlamePillarPlayer": {
+      "en": "Supports any Skill you use yourself which can cause Damaging Hits. Supported Skills Consume Ignite on Hit to create pillars of flame, but cannot themselves inflict Ignite. Cannot Support Skills which already Consume Ignite, and does not modify the Skills of Minions.",
+      "zh_cn": "辅助你自己使用的可造成伤害性击中的任意技能。被辅助技能击中时消耗点燃产生烈焰之柱，但其本身无法造成点燃。无法辅助已经消耗点燃的技能，不会修改召唤生物的技能。"
+    },
+    "SupportFlamepiercePlayer": {
+      "en": "Supports Skills which can fire Projectiles. Initial Projectile created by Supported Skills will always Pierce Ignited Enemies, but Supported Skills cannot inflict Ignite themselves.",
+      "zh_cn": "辅助可以发射投射物的技能。被辅助技能的初始投射物必定穿透被点燃的敌人，但被辅助技能自身无法施加点燃。"
+    },
+    "SupportFleetingRemnantsPlayer": {
+      "en": "Supports Skills which create Remnants, allowing those Remnants to be collected from further away.",
+      "zh_cn": "辅助产生残片的技能，使残片能够从更远处收集。"
+    },
+    "SupportFleetingRemnantsPlayerTwo": {
+      "en": "Supports Skills which create Remnants, allowing those Remnants to be collected from further away, with a chance to create an additional Remnant.",
+      "zh_cn": "辅助产生残片的技能，使残片能够从更远处收集，并有几率创造额外的残片。"
+    },
+    "SupportFlukePlayer": {
+      "en": "Supports Skills which Trigger other Skills. Skills Triggered by Supported Skills have their Damage randomly raised or lowered when Triggered, as well as recovering a random amount of their cost when Triggered.",
+      "zh_cn": "辅助触发其他技能的技能。被辅助技能所触发的技能的伤害在被触发时随机增减，触发时还会随机恢复一定比例的消耗。"
+    },
+    "SupportFlukePlayerTwo": {
+      "en": "Supports Skills which Trigger other Skills. Skills Triggered by Supported Skills have their Damage, Area of Effect, and Projectile Speed randomly raised or lowered when Triggered, as well as recovering a random amount of their cost when Triggered.",
+      "zh_cn": "辅助触发其他技能的技能。被辅助技能触发的技能在被触发时伤害、效果范围和投射物速度随机增减，被触发时还会随机回复一定消耗。"
+    },
+    "SupportFocusedCursePlayer": {
+      "en": "Supports Curse skills, causing them to Curse enemies more quickly after being cast.",
+      "zh_cn": "辅助诅咒技能，使其在施放后更快地诅咒敌人。"
+    },
+    "SupportForkPlayer": {
+      "en": "Supports Projectile skills, making their Projectiles Fork.",
+      "zh_cn": "辅助投射物技能，使投射物分叉。"
+    },
+    "SupportFreezePlayer": {
+      "en": "Supports any skill that Hits enemies, making it more effective at Freezing enemies.",
+      "zh_cn": "辅助任意击中敌人的技能，使其更有效地冻结敌人。"
+    },
+    "SupportFreezeforkPlayer": {
+      "en": "Supports Skills which can fire Projectiles. Projectiles from Supported Skills always Fork when the initial Projectile Hits Frozen Enemies, but Supported Skills cannot build up Freeze themselves.",
+      "zh_cn": "辅助可以发射投射物的技能。被辅助技能的初始投射物击中被冻结的敌人时，投射物必定分叉，但被辅助技能自身无法累积冻结。"
+    },
+    "SupportFrenziedRipostePlayer": {
+      "en": "Supports Attacks you use or Trigger yourself, causing them to Consume the Parried Debuff on Hit to grant you a Frenzy Charge. Cannot support Skills which already Consume the Parried Debuff.",
+      "zh_cn": "辅助你使用或你自己触发的攻击，使其在击中时消耗被招架的减益状态，使你获得一个狂怒球。无法辅助本就可以消耗被招架的减益状态的技能。"
+    },
+    "SupportFreshClipPlayer": {
+      "en": "Supports Crossbow Skills, granting them more damage for each bolt reloaded by that Skill in the last 6 seconds.",
+      "zh_cn": "辅助战弩技能，该技能过去 6 秒内每装填一发弩箭都会提高它造成的伤害。"
+    },
+    "SupportFreshClipPlayerTwo": {
+      "en": "Supports Crossbow Skills, granting them more damage for each bolt reloaded by that Skill in the last 8 seconds.",
+      "zh_cn": "辅助战弩技能，该技能过去 8 秒内每装填一发弩箭都会提高它造成的伤害。"
+    },
+    "SupportFrostfirePlayer": {
+      "en": "Supports any skill that Hits enemies, causing it to Consume Freeze on Igniting a Frozen enemy to boost the effect of the Ignite. Cannot support skills that Consume Freeze or Ignite.",
+      "zh_cn": "辅助任意击中敌人的技能，使其点燃冻结的敌人时消耗冻结效果，以增强点燃的效果。无法辅助会消耗冻结或点燃的技能。"
+    },
+    "SupportGambleshotPlayer": {
+      "en": "Supports Skills which fire Projectiles that are not ground targeted. Projectiles from Supported Skills randomly Fork, Chain or Pierce.",
+      "zh_cn": "辅助投射物不以地面为目标的技能。被辅助技能的投射物随机分叉、连锁或穿透。"
+    },
+    "SupportGarukhansResolvePlayer": {
+      "en": "Supports Attack Skills you use yourself which do not already have some Condition for use. Supported Skills have a maximum Critical Hit chance, but will Bifurcate Critical Hit Chance.",
+      "zh_cn": "辅助你自己使用且不具有使用条件的攻击技能。被辅助技能将拥有最大暴击率，但会分叉暴击率。"
+    },
+    "SupportGlacierPlayer": {
+      "en": "Supports any Skill which creates Ice Crystals, causing them to be created with higher Life.",
+      "zh_cn": "辅助产生冰晶的技能，使其产生的冰晶具有较高的生命。"
+    },
+    "SupportGorgePlayer": {
+      "en": "Supports skills that consume Corpses. Consuming Corpses with supported skills grants Flask charges.",
+      "zh_cn": "辅助消耗灵柩的技能。使用被辅助的技能消耗灵柩会获得药剂充能。"
+    },
+    "SupportGuatelitzisAblationPlayer": {
+      "en": "Supports Offering Skills. Supported Skills Sacrifice a portion of your life on use. While Offering spikes from Supported Skills persist, you are periodically granted a Power Charge. When spikes from Supported Skills die, Regenerate a percentage of your maximum Life and Mana per second based on the duration the Offering persisted.",
+      "zh_cn": "辅助奉献技能。使用被辅助技能会使你牺牲一部分生命。当被辅助技能产生的奉献尖刺存留期间，你会周期性获得一个暴击球。当尖刺消失时，基于该奉献技能的持续时长，每秒回复一定比例的最大生命与魔力。"
+    },
+    "SupportHaemocrystalsPlayer": {
+      "en": "Supports Attack Skills you use yourself which can cause Damaging Hits. Supported Skills Consume Bleeding on Hit to create explosive blood-filled crystals, but cannot themselves inflict Bleeding. Cannot Support Skills which already Consume Bleeding.",
+      "zh_cn": "辅助你自己使用的可造成伤害性击中的攻击技能。被辅助技能击中时消耗流血产生爆炸性血晶，但其本身无法造成流血。无法辅助已经消耗流血的技能。"
+    },
+    "SupportHardyTotemsPlayer": {
+      "en": "Supports Skills which create Totems, causing those Totems to have more Life.",
+      "zh_cn": "辅助产生图腾的技能，使其产生的图腾拥有更多生命。"
+    },
+    "SupportHardyTotemsPlayerThree": {
+      "en": "Supports Skills which create Totems, causing those Totems to have more Life. Totems created by Supported Skills explode on death, dealing Physical damage based on their Life.",
+      "zh_cn": "辅助产生图腾的技能，使图腾拥有更多生命。被辅助技能产生的图腾被击败时爆炸，根据其生命造成物理伤害。"
+    },
+    "SupportHardyTotemsPlayerTwo": {
+      "en": "Supports Skills which create Totems, causing those Totems to have more Life.",
+      "zh_cn": "辅助产生图腾的技能，使其产生的图腾拥有更多生命。"
+    },
+    "SupportHayoxisBindingPlayer": {
+      "en": "Supports Curse Skills, giving them a short cooldown but causing them to create areas which Curse enemies so long as they are within them. Cursed areas from Supported Skills gather power before erupting in a column of annihilating light after a moderate delay.",
+      "zh_cn": "辅助诅咒类技能。被辅助技能会拥有短暂的冷却时间，但会生成多个区域，敌人处于区域内将持续被诅咒。被辅助技能生成的诅咒区域会积蓄力量，经过短暂延迟后迸发一束摧残之光。"
+    },
+    "SupportHeavyStunEndurancePlayerOne": {
+      "en": "Supports any skill that Hits enemies, giving it a chance to gain an Endurance Charge when causing a Heavy Stun.",
+      "zh_cn": "辅助任意击中敌人的技能，使其造成重度晕眩时有几率获得一个耐力球。"
+    },
+    "SupportHeavyStunEndurancePlayerTwo": {
+      "en": "Supports any skill that Hits enemies, giving it a chance to gain an Endurance Charge when causing a Heavy Stun.",
+      "zh_cn": "辅助任意击中敌人的技能，使其造成重度晕眩时有几率获得一个耐力球。"
+    },
+    "SupportHeftPlayer": {
+      "en": "Supports Skills which deal Damage, increasing the maximum Physical Damage of their Hits.",
+      "zh_cn": "辅助造成伤害的技能，使其造成的击中物理伤害上限提高。"
+    },
+    "SupportHeightenedAccuracyPlayer": {
+      "en": "Supports Attacks, causing them to gain Accuracy.",
+      "zh_cn": "辅助攻击，使攻击的命中提高。"
+    },
+    "SupportHeightenedAccuracyPlayerTwo": {
+      "en": "Supports Attacks, causing them to gain Accuracy, and never miss against Enemies on full Life.",
+      "zh_cn": "辅助攻击，使攻击的命中提高，且对满血敌人永不落空。"
+    },
+    "SupportHeightenedChargesPlayer": {
+      "en": "Supports any Skill that Consumes Charges, granting a chance for benefits of that Consumption to be doubled.",
+      "zh_cn": "辅助消耗能量球的技能，使消耗的加成有几率翻倍。"
+    },
+    "SupportHelbrymsHidePlayer": {
+      "en": "Supports Shapeshifting Skills, causing them to grant Helbrym's Composure for a brief duration when they cause you to Shapeshift. Shapeshifting into a different form before the Buff expires causes it to be removed without effect.",
+      "zh_cn": "辅助变形技能，使你变形时，于短时间内获得赫尔布林的沉着。若在结束前再次变形为不同形态，该增益状态将被移除且不产生效果。"
+    },
+    "SupportHerbalismPlayer": {
+      "en": "Supports Persistent Buff Skills, causing you to gain increased Life recovery from Flasks while the Skill is active.",
+      "zh_cn": "辅助永久性增益技能，激活该技能时提高你从药剂获得的生命回复。"
+    },
+    "SupportHerbalismPlayerTwo": {
+      "en": "Supports Persistent Buff Skills, causing you to gain increased Life recovery from Flasks while the Skill is active.",
+      "zh_cn": "辅助永久性增益技能，激活该技能时提高你从药剂获得的生命回复。"
+    },
+    "SupportHexBloomPlayer": {
+      "en": "Supports Curses, spreading their effects when a Cursed enemy dies.",
+      "zh_cn": "辅助诅咒，当一个被诅咒的敌人被击败时，效果会被散播。"
+    },
+    "SupportHitAndRunPlayer": {
+      "en": "Supports Attack Skills you use yourself which do not already have some Condition for use. Supported Skills can only be used after you have moved a certain distance, but have massively increased Skill Speed. Cannot support Skills which have a cooldown.",
+      "zh_cn": "辅助你自己使用且不具有使用条件的攻击技能。被辅助技能只能在你移动了一定距离后使用，但会大幅提高技能速度。无法辅助具有冷却时间的技能。"
+    },
+    "SupportHolyDescentPlayer": {
+      "en": "Supports Skills that leap into the air, causing them to create Consecrated Ground when you land.",
+      "zh_cn": "辅助跃入空中的技能，使其在你落地时产生奉献地面。"
+    },
+    "SupportHourglassPlayer": {
+      "en": "Supports any damaging skill that you use yourself, causing it to deal significantly more damage but gain a long cooldown. Cannot support Skills which already have a cooldown.",
+      "zh_cn": "辅助你使用的任意伤害性技能，使其造成的伤害明显提升，但冷却时间变长。无法辅助本身具有冷却时间的技能。"
+    },
+    "SupportHulkingMinionsPlayer": {
+      "en": "Supports Skills which summon Persistent Minions. Supported Minions are larger, have more Life, and deal more Damage, but cost significantly more Spirit.",
+      "zh_cn": "辅助能够召唤永久性召唤生物的技能。被辅助的召唤生物体型变大，具有更多生命，造成更高的伤害，但大幅提高精魂消耗。"
+    },
+    "SupportIceBitePlayer": {
+      "en": "Supports damaging skills and Warcries you use yourself. Freezing an enemy with supported skills infuses your damage with Cold damage for a short time.",
+      "zh_cn": "辅助造成伤害的技能和战吼。使用被辅助技能冻结敌人后，你在短时间内附加冰霜伤害。"
+    },
+    "SupportIceBitePlayerTwo": {
+      "en": "Supports damaging skills and Warcries you use yourself. Freezing an enemy with supported skills infuses your damage with Cold damage for a short time.",
+      "zh_cn": "辅助造成伤害的技能和战吼。使用被辅助技能冻结敌人后，你在短时间内附加冰霜伤害。"
+    },
+    "SupportIciclePlayer": {
+      "en": "Supports any Skill which creates Ice Crystals, causing them to be created with lower Life.",
+      "zh_cn": "辅助产生冰晶的技能，使其产生的冰晶具有较低的生命。"
+    },
+    "SupportIgniteDurationPlayer": {
+      "en": "Supports any skill that Hits enemies, causing its Ignites to be inflicted less often but last longer.",
+      "zh_cn": "辅助任意击中敌人的技能，使其造成点燃的频率降低，但效果的持续时间延长。"
+    },
+    "SupportIgniteDurationPlayerThree": {
+      "en": "Supports any skill that Hits enemies, causing it to refresh Ignites on Critical Hit.",
+      "zh_cn": "辅助任意击中敌人的技能，使其暴击时刷新点燃持续时间。"
+    },
+    "SupportIgniteDurationPlayerTwo": {
+      "en": "Supports any skill that Hits enemies, causing its Ignites to last longer.",
+      "zh_cn": "辅助任意击中敌人的技能，使其造成的点燃持续时间延长。"
+    },
+    "SupportIgnitePlayer": {
+      "en": "Supports any skill that Hits enemies, making it more likely to Ignite.",
+      "zh_cn": "辅助任意击中敌人的技能，使其有更高几率造成点燃。"
+    },
+    "SupportIgnitePlayerThree": {
+      "en": "Supports any skill that Hits enemies, making it more likely to Ignite and causing inflicted Ignites to deal their damage more quickly.",
+      "zh_cn": "辅助任意击中敌人的技能，使其有更高几率造成点燃，并提高施加的点燃造成伤害的速度。"
+    },
+    "SupportIgnitePlayerTwo": {
+      "en": "Supports any skill that Hits enemies, making it more likely to Ignite.",
+      "zh_cn": "辅助任意击中敌人的技能，使其有更高几率造成点燃。"
+    },
+    "SupportImmolatePlayer": {
+      "en": "Supports Attacks, granting them extra Fire damage against Ignited enemies but making them unable to Ignite enemies themselves.",
+      "zh_cn": "辅助攻击，使其对点燃的敌人造成额外的火焰伤害，但攻击本身无法点燃敌人。"
+    },
+    "SupportImpalePlayer": {
+      "en": "Supports Attacks, causing them to Impale on Hit but making them unable to Extract Impale themselves.",
+      "zh_cn": "辅助攻击，使其在击中时造成穿刺，但其本身无法提取穿刺。"
+    },
+    "SupportIncisionPlayer": {
+      "en": "Supports Attack Skills. Supported Skills inflict Incision on Hit, which causes Enemies to be increasingly more likely to be inflicted with Bleeding. All Incision is removed from a target on inflicting it with Bleeding.",
+      "zh_cn": "辅助攻击技能。被辅助技能在击中时施加创口，使敌人受到流血的几率大幅提高。对目标造成流血会移除其受到的所有创口。"
+    },
+    "SupportIncreaseLimitPlayer": {
+      "en": "Supports Skills which have a Limit, increasing that Limit at the cost of their duration. Only applies to restrictions that use the word \"Limit\".",
+      "zh_cn": "辅助有上限的数量效果的技能，以缩短持续时间为代价提高数量上限。仅对明确标注“上限”词缀的技能生效。"
+    },
+    "SupportIncreaseLimitPlayerTwo": {
+      "en": "Supports Skills which have a Limit, increasing that Limit at the cost of their duration. Only applies to restrictions that use the word \"Limit\".",
+      "zh_cn": "辅助有上限的数量效果的技能，以缩短持续时间为代价提高数量上限。仅对明确标注“上限”词缀的技能生效。"
+    },
+    "SupportIncreasedCriticalDamagePlayer": {
+      "en": "Supports any skill that Hits enemies, causing it to deal more damage with Critical Hits but have less Critical Hit chance.",
+      "zh_cn": "辅助任意击中敌人的技能，使暴击造成更高伤害，但降低暴击几率。"
+    },
+    "SupportInevitableCriticalsPlayer": {
+      "en": "Supports any skill you use yourself that Hits enemies, causing it to accumulate Critical Hit chance over time.",
+      "zh_cn": "辅助任意你使用的击中敌人的技能，使其持续累积暴击几率。"
+    },
+    "SupportInevitableCriticalsPlayerTwo": {
+      "en": "Supports any skill you use yourself that Hits enemies, causing it to accumulate Critical Hit chance over time, but also reduce your Critical Damage Bonus.",
+      "zh_cn": "辅助任意你使用的击中敌人的技能，使其持续累积暴击几率，但会降低你的暴击伤害加成。"
+    },
+    "SupportInfernalLegionPlayer": {
+      "en": "Supports skills which create Minions which can be damaged, causing them and enemies near them to Ignite. The damage of the Ignite is based on the Life of the supported Minion.",
+      "zh_cn": "辅助产生可受到伤害的召唤生物的技能，点燃召唤生物和周围的敌人。点燃伤害基于被辅助召唤生物的生命值。"
+    },
+    "SupportInfernalLegionPlayerThree": {
+      "en": "Supports skills which create Minions which can be damaged, causing them and enemies near them to Ignite. The damage of the Ignite is based on the Life of the supported Minion.",
+      "zh_cn": "辅助产生可受到伤害的召唤生物的技能，点燃召唤生物和周围的敌人。点燃伤害基于被辅助召唤生物的生命值。"
+    },
+    "SupportInfernalLegionPlayerTwo": {
+      "en": "Supports skills which create Minions which can be damaged, causing them and enemies near them to Ignite. The damage of the Ignite is based on the Life of the supported Minion.",
+      "zh_cn": "辅助产生可受到伤害的召唤生物的技能，点燃召唤生物和周围的敌人。点燃伤害基于被辅助召唤生物的生命值。"
+    },
+    "SupportInnervatePlayer": {
+      "en": "Supports damaging skills you use yourself. Killing a Shocked enemy with supported skills imbues your damage with Lightning damage for a short time.",
+      "zh_cn": "辅助你自己使用的造成伤害的技能，使用被辅助技能击败一个感电的敌人后，你在短时间内附加闪电伤害。"
+    },
+    "SupportIntenseAgonyPlayer": {
+      "en": "Supports Spells that deal non-Ailment damage over time, causing them to have a shorter duration but deal substantially more damage over time with Debuffs inflicted against enemies on full life.",
+      "zh_cn": "辅助造成非异常状态的持续伤害的法术，缩短持续时间，但大幅提高对满血敌人施加的减益状态所造成的持续伤害。"
+    },
+    "SupportInterludePlayer": {
+      "en": "Supports Skills which create Remnants, making those Remnants more powerful.",
+      "zh_cn": "辅助产生残片的技能，使残片更加强大。"
+    },
+    "SupportInterludePlayerThree": {
+      "en": "Supports Skills which create Remnants, making those Remnants more powerful, but delaying their effect.",
+      "zh_cn": "辅助产生残片的技能，使残片更加强大，但延迟其效果。"
+    },
+    "SupportInterludePlayerTwo": {
+      "en": "Supports Skills which create Remnants, making those Remnants more powerful, but delaying their effect.",
+      "zh_cn": "辅助产生残片的技能，使残片更加强大，但延迟其效果。"
+    },
+    "SupportJaggedGroundPlayer": {
+      "en": "Supports Slam skills. Supported Skills will consume Endurance Charges on use to create Jagged Ground. Cannot Support Skills which consume Endurance Charges.",
+      "zh_cn": "辅助猛击技能。被辅助技能使用时会消耗耐力球来创造崎岖之地。无法辅助会消耗耐力球的技能。"
+    },
+    "SupportJaggedGroundPlayerTwo": {
+      "en": "Supports Slam skills. Aftershocks caused by Supported Slam Skills always create patches of Jagged Ground.",
+      "zh_cn": "辅助猛击技能。被辅助猛击技能造成的余震总是创造崎岖之地。"
+    },
+    "SupportKalisasCrescendoPlayer": {
+      "en": "Supports Curse Skills. Enemies Cursed by Supported Skills are Pacified for the final portion of the Supported Curse's duration.",
+      "zh_cn": "辅助诅咒技能。被辅助技能诅咒的敌人在被辅助诅咒持续时间的最后阶段被宁心。"
+    },
+    "SupportKaomsMadnessPlayer": {
+      "en": "Supports Skills which create fissures in the ground, causing them to create many additional fissures at the cost of damage, speed, and area of effect.",
+      "zh_cn": "辅助在地上产生裂缝的技能，使其产生大量额外的裂缝，但会牺牲伤害、攻击速度和效果范围。"
+    },
+    "SupportKhatalsRejuvenationPlayer": {
+      "en": "Supports Skills that generate Remnants. Picking up Remnants from Supported Skills grants Khatal's Rejuvenation.",
+      "zh_cn": "辅助可生成残片的技能。拾取被辅助技能生成的残片时，将获得卡塔尔的复苏。"
+    },
+    "SupportKnockbackPlayer": {
+      "en": "Supports any skill that Hits enemies, causing it to Knock Back enemies.",
+      "zh_cn": "辅助任意击中敌人的技能，使其可以击退敌人。"
+    },
+    "SupportKnockbackWavePlayer": {
+      "en": "Supports any skill that you can use, triggering a blast of wind that Knocks Back enemies if you are Stunned while using it.",
+      "zh_cn": "辅助你使用的任意技能，使你在晕眩状态下使用时，触发一阵可击退敌人的疾风。"
+    },
+    "SupportKulemaksDominionPlayer": {
+      "en": "Supports Offering Skills, causing your Cascadable Spells to Cascade to the locations of Supported Offerings.",
+      "zh_cn": "辅助奉献技能，使你的可扩散法术扩散至被辅助的奉献技能的所在位置。"
+    },
+    "SupportKurgalsLeashPlayer": {
+      "en": "Supports Commandable Minions causing you and the Supported Minion to gain Unholy Might when you Command them.",
+      "zh_cn": "辅助可命令的召唤生物，使你和被辅助召唤生物在命令它们时获得不洁之力。"
+    },
+    "SupportLastGaspPlayer": {
+      "en": "Supports Skills that create Persistent Minions, causing those Minions to fight on when they are fatally wounded, dying after a short duration.",
+      "zh_cn": "辅助能够产生永久性召唤生物的技能，使召唤生物在受到致命伤害后仍会继续战斗，并在短时间内死亡。"
+    },
+    "SupportLastingFrostPlayer": {
+      "en": "Supports any skill that Hits enemies, causing Freeze it inflicts to last longer.",
+      "zh_cn": "辅助击中敌人的技能，延长其造成的冻结效果。"
+    },
+    "SupportLastingGroundPlayer": {
+      "en": "Supports Skills that create Ground Surfaces, causing those surfaces to last longer.",
+      "zh_cn": "辅助产生地面效果的技能，使地面效果的持续时间延长。"
+    },
+    "SupportLastingShockPlayer": {
+      "en": "Supports any skill that Hits enemies or inflicts Shock, causing its Shocks to be inflicted less often but last longer.",
+      "zh_cn": "辅助任意击中敌人或造成感电的技能，使其造成感电的频率降低，但效果的持续时间延长。"
+    },
+    "SupportLifeFlaskPlayer": {
+      "en": "Supports any skill that Hits enemies, causing enemies it kills to grant more Life Flask charges.",
+      "zh_cn": "辅助任意击中敌人的技能，使其击败敌人后获得更多的生命药剂充能。"
+    },
+    "SupportLifeLeechPlayer": {
+      "en": "Supports Attacks, causing their Physical damage to Leech Life.",
+      "zh_cn": "辅助攻击，使攻击的物理伤害可以偷取生命。"
+    },
+    "SupportLifeLeechPlayerThree": {
+      "en": "Supports Attacks, causing their Physical damage to Leech Life and preventing Leech gained this way from being removed at full Life.",
+      "zh_cn": "辅助攻击，使其物理伤害可以偷取生命，且在满血时不会移除偷取效果。"
+    },
+    "SupportLifeLeechPlayerTwo": {
+      "en": "Supports Attacks, causing their Physical damage to Leech Life.",
+      "zh_cn": "辅助攻击，使攻击的物理伤害可以偷取生命。"
+    },
+    "SupportLifeOnCullPlayer": {
+      "en": "Supports any skill that Hits enemies, causing you to recover Life when it Culls an enemy.",
+      "zh_cn": "辅助任意击中敌人的技能，使你在终结一个敌人时回复生命。"
+    },
+    "SupportLightningExposurePlayer": {
+      "en": "Supports any skill that Hits enemies, causing it to inflict Exposure when inflicting Shock.",
+      "zh_cn": "辅助任意击中敌人的技能，使其在施加感电时施加曝露。"
+    },
+    "SupportLightningMasteryPlayer": {
+      "en": "Supports Lightning skills, granting them an additional level. Does not support skills which do not have levels.",
+      "zh_cn": "辅助闪电技能，使其等级提升一级。不能辅助没有等级的技能。"
+    },
+    "SupportLightningPenetrationPlayer": {
+      "en": "Supports any skill that Hits enemies, making those Hits Penetrate enemy Lightning resistance.",
+      "zh_cn": "辅助任意击中敌人的技能，使击中能穿透敌人的闪电抗性。"
+    },
+    "SupportLivingLightningPlayer": {
+      "en": "Supports Skills which cause Damaging Hits. Living Lightning Minions are created when dealing Lightning damage with Supported Skills - bundles of living electricity that target nearby enemies with Chaining Attacks. Enemies will not directly engage these Minions, and can pass through them. Does not modify skills used by Minions.",
+      "zh_cn": "辅助造成伤害性击中的技能。被辅助技能造成闪电伤害时产生活体闪电召唤生物 - 以连锁攻击攻击附近敌人的活体电流。敌人不会直接攻击这些召唤生物，但可以穿过它们。不会修改召唤生物使用的技能。"
+    },
+    "SupportLivingLightningPlayerTwo": {
+      "en": "Supports Skills which cause Damaging Hits. Living Lightning Minions are created when dealing Lightning damage with Supported Skills - bundles of living electricity that target nearby enemies with Chaining Attacks. Enemies will not directly engage these Minions, and can pass through them. Does not modify skills used by Minions.",
+      "zh_cn": "辅助造成伤害性击中的技能。被辅助技能造成闪电伤害时产生活体闪电召唤生物 - 以连锁攻击攻击附近敌人的活体电流。敌人不会直接攻击这些召唤生物，但可以穿过它们。不会修改召唤生物使用的技能。"
+    },
+    "SupportLockdownPlayer": {
+      "en": "Supports any skill that Hits enemies, causing any Pin buildup it inflicts to be stronger the closer the enemy is to you.",
+      "zh_cn": "辅助任意击中敌人的技能，使其对距离越近的敌人造成越高的定身积蓄值。"
+    },
+    "SupportLongFusePlayer": {
+      "en": "Supports Skills which have a Detonation Time, causing those Skills to have much higher Detonation Time and detonation damage.",
+      "zh_cn": "辅助具有引爆时间的技能，使技能的引爆时间和引爆伤害大幅提高。"
+    },
+    "SupportLongFusePlayerTwo": {
+      "en": "Supports Skills which have a Detonation Time, causing those Skills to have much higher Detonation Time and detonation damage.",
+      "zh_cn": "辅助具有引爆时间的技能，使技能的引爆时间和引爆伤害大幅提高。"
+    },
+    "SupportLoyaltyPlayer": {
+      "en": "Supports Skills that create Companions which can be damaged. Minions created by Supported Skills take a portion of Hit Damage you would otherwise have taken, but have lowered maximum Life.",
+      "zh_cn": "辅助产生能够受到伤害的伙伴的技能。被辅助技能产生的召唤生物会替你承担一定比例的击中伤害，但其生命上限降低。"
+    },
+    "SupportMagneticRemnantsPlayer": {
+      "en": "Supports Skills which create Remnants, allowing those Remnants to be collected from further away.",
+      "zh_cn": "辅助产生残片的技能，使残片能够从更远处收集。"
+    },
+    "SupportMagnifiedAreaPlayer": {
+      "en": "Supports any skill with an area of effect, making it larger.",
+      "zh_cn": "辅助任意有范围效果的技能，使范围扩大。"
+    },
+    "SupportMagnifiedAreaPlayerTwo": {
+      "en": "Supports any skill with an area of effect, making it larger.",
+      "zh_cn": "辅助任意有范围效果的技能，使范围扩大。"
+    },
+    "SupportMaimPlayer": {
+      "en": "Supports Attacks, causing them to Maim enemies.",
+      "zh_cn": "辅助攻击，使攻击可以瘫痪敌人。"
+    },
+    "SupportMaladyPlayer": {
+      "en": "Supports Skills which can cause Damaging Hits, causing base chance to inflict Bleeding with Supported Skills to instead apply to base chance to Poison, and causing base chance to Poison to instead apply to Bleeding.",
+      "zh_cn": "辅助造成伤害性击中的技能，使被辅助技能造成流血的基础几率改为对中毒的基础几率生效，中毒的基础几率生效改为对流血生效。"
+    },
+    "SupportManaFlarePlayer": {
+      "en": "Supports any Spell that Hits enemies, causing it to trigger a Mana Flare on Critical Hit. The Mana Flare consumes your Mana to deal Fire damage. Cannot support the skills of Minions.",
+      "zh_cn": "辅助任意击中敌人的法术，使其在暴击时触发一次魔力耀斑。魔力耀斑会消耗你的魔力并造成火焰伤害。无法辅助召唤生物的技能。"
+    },
+    "SupportManaFlaskPlayer": {
+      "en": "Supports any skill that Hits enemies, causing enemies it kills to grant more Mana Flask charges.",
+      "zh_cn": "辅助任意击中敌人的技能，使其击败敌人后获得更多的魔力药剂充能。"
+    },
+    "SupportManaFountainPlayer": {
+      "en": "Supports Skills which create Totems. Totems created by supported Skills generate a Font of Mana which will Leech Mana to Allies within it.",
+      "zh_cn": "辅助产生图腾的技能。被辅助技能产生的图腾生成魔力源泉，为范围内的友军偷取魔力。"
+    },
+    "SupportManaLeechPlayer": {
+      "en": "Supports Attacks, causing their Physical damage to Leech Mana.",
+      "zh_cn": "辅助攻击，使攻击的物理伤害可以偷取魔力。"
+    },
+    "SupportManaOnCullPlayer": {
+      "en": "Supports any skill that Hits enemies, causing you to recover Mana when it Culls an enemy.",
+      "zh_cn": "辅助任意击中敌人的技能，使你在终结一个敌人时回复魔力。"
+    },
+    "SupportMarkForDeathPlayer": {
+      "en": "Supports Mark Skills. Enemies affected by Supported Marks will have their Armour Broken by Physical Damage they take.",
+      "zh_cn": "辅助印记技能。受被辅助印记技能影响的敌人，在受到物理伤害时，护甲破损。"
+    },
+    "SupportMarkForDeathPlayerTwo": {
+      "en": "Supports Mark Skills. Enemies affected by Supported Marks will have their Armour Broken by Physical Damage they take.",
+      "zh_cn": "辅助印记技能。受被辅助印记技能影响的敌人，在受到物理伤害时，护甲破损。"
+    },
+    "SupportMarkOfSiphoningPlayer": {
+      "en": "Supports Mark Skills, causing enemies they Mark to Leech Mana to you when you Hit them with Attacks.",
+      "zh_cn": "辅助印记技能，你的攻击击中被施加印记的敌人时可偷取魔力。"
+    },
+    "SupportMarkOfSiphoningPlayerTwo": {
+      "en": "Supports Mark Skills, causing enemies they Mark to Leech Life and Mana to you when you Hit them with Attacks.",
+      "zh_cn": "辅助印记技能，你的攻击击中被施加印记的敌人时可偷取生命和魔力。"
+    },
+    "SupportMeatShieldPlayer": {
+      "en": "Supports skills which create Minions, granting them less damage taken but making them deal less damage. Cannot support skills which create undamageable Minions.",
+      "zh_cn": "辅助产生召唤生物的技能，使召唤生物受到的伤害降低，但造成的伤害也会降低。无法辅助产生无敌召唤生物的技能。"
+    },
+    "SupportMeatShieldPlayerTwo": {
+      "en": "Supports skills which create Minions, granting them less damage taken but making them deal less damage.",
+      "zh_cn": "辅助产生召唤生物的技能，使召唤生物受到的伤害降低，但造成的伤害也会降低。"
+    },
+    "SupportMeleePhysicalDamagePlayer": {
+      "en": "Supports Melee Attacks, boosting their Physical damage at the cost of Attack Speed.",
+      "zh_cn": "辅助近战攻击，以攻击速度为代价，提高物理伤害。"
+    },
+    "SupportMinionInstabilityPlayer": {
+      "en": "Supports skills which create Minions, causing them to violently explode when reduced to Low Life.",
+      "zh_cn": "辅助产生召唤生物的技能，使召唤生物在低血时剧烈爆炸。"
+    },
+    "SupportMinionMasteryPlayer": {
+      "en": "Supports Minion skills, granting them an additional level. Does not support skills which do not have levels.",
+      "zh_cn": "辅助召唤生物技能，使其等级提升一级。不能辅助没有等级的技能。"
+    },
+    "SupportMinionMeleeSplashPlayer": {
+      "en": "Supports Skills which create Minions which Strike, causing those Minions' Strikes to have Melee Splash.",
+      "zh_cn": "辅助可创造召唤生物并进行打击的技能，使这些召唤生物的打击获得近战伤害扩散效果。"
+    },
+    "SupportMinionMeleeSplashPlayerTwo": {
+      "en": "Supports Skills which create Minions which Strike, increasing their Area of Effect and causing those Minions' Strikes to have Melee Splash.",
+      "zh_cn": "辅助可创造召唤生物并进行打击的技能，扩大其效果范围，并使这些召唤生物的打击获得近战伤害扩散效果。"
+    },
+    "SupportMinionPactPlayer": {
+      "en": "Supports damaging skills you use yourself, draining the life from one of your Minions on use in order to boost the skill's damage. Only takes effect if you have a Minion with enough life to drain the full amount.",
+      "zh_cn": "辅助你使用的伤害性技能，使用时吸取你的一个召唤生物的生命，以提升技能的伤害。仅在你的召唤生物拥有足量的生命能够吸取时生效。"
+    },
+    "SupportMinionPactPlayerTwo": {
+      "en": "Supports damaging skills you use yourself, draining the life from one of your Minions on use in order to boost the skill's damage. Only takes effect if you have a Minion with enough life to drain the full amount.",
+      "zh_cn": "辅助你使用的伤害性技能，使用时吸取你的一个召唤生物的生命，以提升技能的伤害。仅在你的召唤生物拥有足量的生命能够吸取时生效。"
+    },
+    "SupportMobilityPlayer": {
+      "en": "Supports skills that can be used while moving, allowing you to move faster while using them.",
+      "zh_cn": "辅助可在移动时使用的技能，使你在使用时可以更快地移动。"
+    },
+    "SupportMomentumPlayer": {
+      "en": "Supports any damaging skill that you use yourself, causing it to deal more damage if you move a sufficient distance while using the skill. Teleportation does not count towards the distance travelled.",
+      "zh_cn": "辅助任意你使用的伤害性技能，如果使用技能期间移动了足够的距离，使其造成更高的伤害。传送不会计入移动距离。"
+    },
+    "SupportMorganasTempestPlayer": {
+      "en": "Supports Storm skills, increasing their Limit and causing them to move quickly from the user to the target location, but become less effective. Cannot Support Triggered Skills.",
+      "zh_cn": "辅助风暴技能，增加其数量上限，并使其从玩家处更快移向目标地点，但效果会减弱。无法辅助触发类技能。"
+    },
+    "SupportMultishotPlayer": {
+      "en": "Supports Projectile skills, making them fire extra Projectiles. Also lowers Attack and Cast speed of supported skills, as well as lessening their damage.",
+      "zh_cn": "辅助投射物技能，可以发射额外的投射物。同时降低被辅助技能的攻击和施法速度，并降低它们的伤害。"
+    },
+    "SupportMultishotPlayerTwo": {
+      "en": "Supports Projectile skills, making them fire extra Projectiles. Also lowers Attack and Cast speed of supported skills, as well as lessening their damage.",
+      "zh_cn": "辅助投射物技能，可以发射额外的投射物。同时降低被辅助技能的攻击和施法速度，并降低它们的伤害。"
+    },
+    "SupportMusterPlayer": {
+      "en": "Supports Skills which summon Minions. Supported Minions deal more Damage the more different kinds of Reviving Minions you have summoned.",
+      "zh_cn": "辅助能够召唤出召唤生物的技能。你召唤的可复活的召唤生物类型越多，被辅助的召唤生物造成的伤害越高。"
+    },
+    "SupportMysticismPlayer": {
+      "en": "Supports Persistent Buff Skills, causing you to deal increased Spell Damage while on full Energy Shield while the Supported Skill is active.",
+      "zh_cn": "辅助永久性增益状态技能，激活被辅助技能且能量护盾已满时，提高你造成的法术伤害。"
+    },
+    "SupportMysticismPlayerTwo": {
+      "en": "Supports Persistent Buff Skills, causing you to deal increased Spell Damage while on full Energy Shield while the Supported Skill is active.",
+      "zh_cn": "辅助永久性增益状态技能，激活被辅助技能且能量护盾已满时，提高你造成的法术伤害。"
+    },
+    "SupportNeuralOverloadPlayer": {
+      "en": "Supports any skill that Hits enemies. Nearby enemies are marked when they are Primed for Electrocution, and hitting a marked enemy with a supported skill will Electrocute them.",
+      "zh_cn": "辅助任意击中敌人的技能，当附近的敌人可被触电时会被添加一个印记，使用被辅助的技能击中携带印记的敌人会对其造成触电。"
+    },
+    "SupportNimbleReloadPlayer": {
+      "en": "Supports Crossbow Ammunition Skills, causing them to Reload bolts significantly faster.",
+      "zh_cn": "辅助战弩弹药技能，使其装填弩箭的速度大幅加快。"
+    },
+    "SupportNovaProjectilesPlayer": {
+      "en": "Supports Projectile Skills, making them fire Projectiles in a circle. Does not Support Skills which rain down Projectiles from above.",
+      "zh_cn": "辅助投射物技能，使其环形发射火焰投射物，但伤害降低并附加冷却时间。无法辅助自上方落下投射物的技能。"
+    },
+    "SupportNovaProjectilesTwoPlayer": {
+      "en": "Supports Projectile Skills, making them fire extra Projectiles in a circle, at the cost of Damage and gaining a cooldown. Does not Support Skills which rain down Projectiles from above. Cannot Support Skills which already have a cooldown.",
+      "zh_cn": "辅助投射物类技能，使其以环形发射额外投射物，但会降低伤害并获得冷却时间。无法辅助从空中降下投射物的技能，也无法辅助已有冷却时间的技能。"
+    },
+    "SupportOisinsOathPlayer": {
+      "en": "Supports Skills which Hit enemies, causing their Mana Leech to recover based on Elemental damage instead of Physical damage.",
+      "zh_cn": "辅助任意击中敌人的技能，使其魔力偷取效果改为基于元素伤害而非物理伤害进行恢复。"
+    },
+    "SupportOpeningMovePlayer": {
+      "en": "Supports Travel Skills which Hit enemies. Hits with Supported Skills against enemies on full life will Daze.",
+      "zh_cn": "辅助可击中敌人的旅行技能。被辅助的技能对满血敌人的击中将造成恍惚。"
+    },
+    "SupportOverchargePlayer": {
+      "en": "Supports any skill that Hits enemies, making its Shocks more effective but reflecting them back to you as well.",
+      "zh_cn": "辅助任意击中敌人的技能，使其产生的感电效果增强，但也会反射到你身上。"
+    },
+    "SupportOverextendPlayer": {
+      "en": "Supports Attack Skills you use yourself. Supported Skills deal more Damage with Critical Hits, but Critically Hitting an Enemy with them will Daze you for a short time.",
+      "zh_cn": "辅助你自己使用的攻击技能。被辅助技能的暴击造成更高的伤害，但对敌人造成暴击会使你短暂地陷入恍惚。"
+    },
+    "SupportOverreachPlayer": {
+      "en": "Supports Attack Skills which deal Damage in an Area. Supported Skills have significantly increased Area of Effect, but are less Accurate against nearby targets.",
+      "zh_cn": "辅助在范围内造成伤害的攻击技能。被辅助技能的效果范围大幅提高，但对周围目标的命中降低。"
+    },
+    "SupportPayloadPlayer": {
+      "en": "Supports Skills which fire Grenades, giving fired Grenades a chance to activate again, but lengthening their cooldowns.",
+      "zh_cn": "辅助发射榴弹的技能，使发射的榴弹有几率再次激活，但延长冷却时间。"
+    },
+    "SupportPerfectEndurancePlayer": {
+      "en": "Supports skills which have a benefit for Perfect Timing. Supported Skills grant at least one Endurance Charge when Hitting an enemy with Perfect Timing.",
+      "zh_cn": "辅助在完美时机使用能获得加成的技能。被辅助技能以完美时机击中敌人时，至少获得一个耐力球。"
+    },
+    "SupportPerfectionPlayer": {
+      "en": "Supports skills which have a benefit for Perfectly Timing their use. On successfully executing Perfect Timing with Supported Skills, gain Perfection, which is a powerful damage buff. However, failing to execute any Perfect Timing (even with skills not supported by Perfection) will remove all Perfection on you.",
+      "zh_cn": "辅助在完美时机使用能获得加成的技能。被辅助技能成功把握完美时机会获得完美增益状态，大幅提高伤害。未能把握完美时机（包括未受到完美辅助的技能）会移除你身上的所有完美状态。"
+    },
+    "SupportPerpetualChargePlayer": {
+      "en": "Supports skills that consume Power, Frenzy or Endurance Charges on use, giving them a chance not to remove each Charge while still gaining the benefits of consuming them.",
+      "zh_cn": "辅助使用时消耗暴击球、狂怒球或耐力球的技能，使其有几率不消耗每一种能量球，并依然获得消耗的效果。"
+    },
+    "SupportPersistentGroundPlayer": {
+      "en": "Supports Skills which create Ground Surfaces, causing created Surfaces to last much longer.",
+      "zh_cn": "辅助能够产生地面效果的技能，使产生的地面效果持续时间大幅延长。"
+    },
+    "SupportPersistentGroundPlayerThree": {
+      "en": "Supports Skills which create Ground Surfaces, causing created Surfaces to last much longer as well as lowering the Cooldown Recovery Speed of affected Enemies. Ground Surfaces from Supported Skills only end when their duration expires.",
+      "zh_cn": "辅助能够产生地面效果的技能，使创造的地面效果持续时间大幅延长，并降低受影响敌人的冷却回复速度。被辅助技能的地面效果只在持续时间结束时消失。"
+    },
+    "SupportPersistentGroundPlayerTwo": {
+      "en": "Supports Skills which create Ground Surfaces, causing created Surfaces to last much longer and only end when their duration expires.",
+      "zh_cn": "辅助能够产生地面效果的技能，使产生的地面效果持续时间大幅延长，且仅会在持续时间结束时消失。"
+    },
+    "SupportPhysicalMasteryPlayer": {
+      "en": "Supports Physical skills, granting them an additional level. Does not support skills which do not have levels.",
+      "zh_cn": "辅助物理技能，使其等级提升一级。不能辅助没有等级的技能。"
+    },
+    "SupportPiercePlayer": {
+      "en": "Supports Projectile skills, making their Projectiles Pierce an enemy but deal less damage after doing so.",
+      "zh_cn": "辅助投射物技能，使其投射物可以穿透一个敌人，但穿透后造成的伤害降低。"
+    },
+    "SupportPiercePlayerThree": {
+      "en": "Supports Projectile skills, making their Projectiles Pierce an unlimited number of enemies, losing damage as they do so.",
+      "zh_cn": "辅助投射物技能，使其投射物可以穿透无限数量的敌人，但穿透时会损失伤害。"
+    },
+    "SupportPiercePlayerTwo": {
+      "en": "Supports Projectile skills, making their Projectiles Pierce an enemy.",
+      "zh_cn": "辅助投射物技能，使其投射物可以穿透一个敌人。"
+    },
+    "SupportPietysMercyPlayer": {
+      "en": "Supports Projectile skills and any other skills that Chain, causing them to Chain more times.",
+      "zh_cn": "辅助投射物技能及其他可连锁的技能，增加它们的连锁次数。"
+    },
+    "SupportPinPlayer": {
+      "en": "Supports any skill that Hits enemies, allowing its Physical damage to Pin enemies but making it unable to Stun.",
+      "zh_cn": "辅助任意击中敌人的技能，使其物理伤害可以对敌人造成定身，但无法造成晕眩。"
+    },
+    "SupportPinPlayerThree": {
+      "en": "Supports any skill that Hits enemies, allowing its Physical damage to Pin enemies but making it unable to Stun. Pin buildup caused by Supported Skill is lessened, but Pin duration is significantly longer.",
+      "zh_cn": "辅助任意击中敌人的技能，使其物理伤害可以对敌人造成定身，但无法造成晕眩。被辅助技能造成的定身积蓄降低，但定身持续时间大幅延长。"
+    },
+    "SupportPinPlayerTwo": {
+      "en": "Supports any skill that Hits enemies, allowing its Physical damage to Pin enemies but making it unable to Stun, as well as granting Critial Hit Chance against Immobilised enemies.",
+      "zh_cn": "辅助任意击中敌人的技能，使其物理伤害可以对敌人造成定身，但无法造成晕眩，并获得对不可移动敌人的暴击几率。"
+    },
+    "SupportPinpointCriticalPlayer": {
+      "en": "Supports any skill that Hits Enemies, causing it to Critically Hit more often but deal less damage with Critical Hits.",
+      "zh_cn": "辅助击中敌人的技能，使其暴击几率提高，但暴击时造成的伤害降低。"
+    },
+    "SupportPoisonPlayer": {
+      "en": "Supports any skill that Hits enemies, giving it a chance to Poison enemies.",
+      "zh_cn": "辅助任意击中敌人的技能，使其有几率令敌人中毒。"
+    },
+    "SupportPoisonPlayerThree": {
+      "en": "Supports any skill that Hits enemies, giving it a chance to Poison enemies and causing it to inflict more powerful Poisons against Bleeding Enemies.",
+      "zh_cn": "辅助任意击中敌人的技能，使其有几率令敌人中毒，并对流血敌人造成更强的中毒效果。"
+    },
+    "SupportPoisonPlayerTwo": {
+      "en": "Supports any skill that Hits enemies, giving it a chance to Poison enemies.",
+      "zh_cn": "辅助任意击中敌人的技能，使其有几率令敌人中毒。"
+    },
+    "SupportPoisonSpores": {
+      "en": "Supports Plant Skills which Hit enemies. Supported Skills Trigger Toxic Pustule on Hitting an enemy.",
+      "zh_cn": "辅助可击中敌人的植物技能与蔓生。被辅助的技能在击中敌人时触发剧毒芽孢。"
+    },
+    "SupportPotentExposurePlayer": {
+      "en": "Supports Skills which apply Exposure to Enemies, increasing the effect of applied Exposure.",
+      "zh_cn": "辅助对敌人施加曝露的技能，提高施加的曝露的效果。"
+    },
+    "SupportPracticalMagicPlayer": {
+      "en": "Supports Skills which Hit enemies. Heavy Stunning an enemy with Supported Skills increases your Spell damage for a duration.",
+      "zh_cn": "辅助可击中敌人的技能。使用被辅助的技能使敌人重度晕眩后，会在持续一段时间内提高你的法术伤害。"
+    },
+    "SupportPracticalMagicPlayerTwo": {
+      "en": "Supports Skills which Hit enemies. Heavy Stunning an enemy with Supported Skills increases your Spell damage for a duration.",
+      "zh_cn": "辅助可击中敌人的技能。使用被辅助的技能使敌人重度晕眩后，会在持续一段时间内提高你的法术伤害。"
+    },
+    "SupportPracticedComboPlayer": {
+      "en": "Supports Strike Skills. Supported Skills have a chance to build additional Combo on Hit. Cannot support Skills used by Minions.",
+      "zh_cn": "辅助打击技能。被辅助技能击中时有几率积累额外的连击。无法辅助召唤生物使用的技能。"
+    },
+    "SupportPrecisionPlayer": {
+      "en": "Supports Persistent Buff Skills, causing you to gain increased Accuracy while the Skill is active.",
+      "zh_cn": "辅助永久性增益技能，激活该技能时提高你的命中。"
+    },
+    "SupportPrecisionPlayerTwo": {
+      "en": "Supports Persistent Buff Skills, causing you to gain increased Accuracy while the Skill is active.",
+      "zh_cn": "辅助永久性增益技能，激活该技能时提高你的命中。"
+    },
+    "SupportProfanityPlayer": {
+      "en": "Supports Skills you use yourself. Supported Skills consume a Corpse on use, dealing more Chaos Damage if they do.",
+      "zh_cn": "辅助你自己使用的技能。被辅助技能在使用时消耗一个灵柩，消耗时造成更高的混沌伤害。"
+    },
+    "SupportProfanityPlayerTwo": {
+      "en": "Supports Skills you use yourself. Supported Skills consume many Corpses on use, dealing more Chaos Damage per Corpse consumed.",
+      "zh_cn": "辅助你自己使用的技能。被辅助技能使用时消耗大量灵柩，每消耗一个灵柩就能造成更高的混沌伤害。"
+    },
+    "SupportProjectileAccelerationPlayer": {
+      "en": "Supports Projectile skills, making those Projectiles travel faster.",
+      "zh_cn": "辅助投射物技能，使投射物速度加快。"
+    },
+    "SupportProjectileAccelerationPlayerThree": {
+      "en": "Supports Projectile skills, making those Projectiles travel faster, and causing increases and reductions to Projectile speed to also apply to Damage.",
+      "zh_cn": "辅助投射物技能，使投射物速度加快，投射物速度的加成与减少同样作用于伤害。"
+    },
+    "SupportProjectileAccelerationPlayerTwo": {
+      "en": "Supports Projectile skills, making those Projectiles travel faster, and granting them a chance to Pierce Enemies.",
+      "zh_cn": "辅助投射物技能，使投射物速度加快，并使其有几率穿透敌人。"
+    },
+    "SupportProjectileDecelerationPlayer": {
+      "en": "Supports Projectile skills, making those Projectiles travel more slowly.",
+      "zh_cn": "辅助投射物技能，使投射物速度减慢。"
+    },
+    "SupportProjectileDecelerationPlayerTwo": {
+      "en": "Supports Projectile skills, making those Projectiles travel more slowly.",
+      "zh_cn": "辅助投射物技能，使投射物速度减慢。"
+    },
+    "SupportPunchThroughPlayer": {
+      "en": "Supports Melee Attack Skills. Supported Skills apply Easy Target when Knocking Back Enemies, causing the next Projectile Attack Hit they take to deal increased Damage.",
+      "zh_cn": "辅助近战攻击技能。被辅助技能击退敌人时施加活靶子，使其受到的下一次投射物攻击击中造成更高的伤害。"
+    },
+    "SupportPursuitPlayer": {
+      "en": "Supports Melee Attacks. Supported Skills deal more Melee damage if you have struck with a Projectile Attack Hit in the last eight seconds, but cannot themselves deal Projectile Damage.",
+      "zh_cn": "辅助近战攻击。如果你在过去八秒内造成过投射物攻击击中，被辅助技能造成的近战伤害会提高，但其本身无法造成投射物伤害。"
+    },
+    "SupportPursuitPlayerThree": {
+      "en": "Supports Melee Attacks. Supported Skills deal more Melee damage if you have struck with a Projectile Attack Hit in the last two seconds, but cannot themselves deal Projectile Damage.",
+      "zh_cn": "辅助近战攻击。如果你在过去两秒内造成过投射物攻击击中，被辅助技能造成的近战伤害会提高，但其本身无法造成投射物伤害。"
+    },
+    "SupportPursuitPlayerTwo": {
+      "en": "Supports Melee Attacks. Supported Skills deal more Melee damage if you have struck with a Projectile Attack Hit in the last eight seconds, but cannot themselves deal Projectile Damage.",
+      "zh_cn": "辅助近战攻击。如果你在过去八秒内造成过投射物攻击击中，被辅助技能造成的近战伤害会提高，但其本身无法造成投射物伤害。"
+    },
+    "SupportQuillburstPlayer": {
+      "en": "Supports Melee Attack Skills. Supported Skills trigger Quill Burst, which deals your Thorns Damage in an Area around the target struck. Quill Burst can only be triggered on Hit after you've\nRetaliated with Thorns Damage.",
+      "zh_cn": "辅助近战攻击技能。被辅助技能会触发棘刺爆发，对击中的目标周围的区域造成你的荆棘伤害。只有当你用荆棘进行反击后，\n才能在击中时触发棘刺爆发。"
+    },
+    "SupportRagePlayer": {
+      "en": "Supports Melee Attacks, causing them to grant Rage on Hit.",
+      "zh_cn": "辅助近战攻击，使攻击在击中时获得怒火。"
+    },
+    "SupportRagePlayerThree": {
+      "en": "Supports Melee Attacks, causing them to grant Rage on Hit. Supported Skills have signficantly higher Attack speed while you or supported minion are not at maximum Rage.",
+      "zh_cn": "辅助近战攻击，使攻击在击中时获得怒火。当你或被辅助的召唤生物的怒火不满时，被辅助技能的攻击速度大幅提高。"
+    },
+    "SupportRagePlayerTwo": {
+      "en": "Supports Melee Attacks, causing them to grant Rage on Hit.",
+      "zh_cn": "辅助近战攻击，使攻击在击中时获得怒火。"
+    },
+    "SupportRageforgedPlayer": {
+      "en": "Supports any damaging skill that you use or Trigger yourself, causing it to spend Rage to deal more damage. If you don't have enough Rage to spend, the damage bonus will not apply.",
+      "zh_cn": "辅助任意你使用或触发的伤害性技能，使其消耗怒火以造成更高伤害。如果你没有足够的怒火可供消耗，伤害加成不会生效。"
+    },
+    "SupportRageforgedPlayerTwo": {
+      "en": "Supports any damaging skill that you use or Trigger yourself, causing it to spend Rage to deal more damage, with a chance to skip spending Rage while still benefitting as though it had. If you don't have enough Rage to spend, the damage bonus will not apply.",
+      "zh_cn": "辅助任意你使用或触发的伤害性技能，使其消耗怒火以造成更高伤害，有几率不消耗怒火仍然视为消耗并得到增益。如果你没有足够的怒火可供消耗，伤害加成不会生效。"
+    },
+    "SupportRagingCryPlayer": {
+      "en": "Supports Warcry skills, causing them to grant you Rage on use depending on counted monster Power.",
+      "zh_cn": "辅助战吼技能，使你在使用时根据怪物的威力值而获得怒火。"
+    },
+    "SupportRakiatasFlowPlayer": {
+      "en": "Supports Skills that can cause Damaging Hits, causing those Hits to treat Enemy Elemental Resistances as inverted.",
+      "zh_cn": "辅助可造成伤害性击中的技能，使击中将敌人的元素抗性视为反转。"
+    },
+    "SupportRapidAttacksPlayer": {
+      "en": "Supports Attacks, causing them to Attack faster.",
+      "zh_cn": "辅助攻击，使攻击速度更快。"
+    },
+    "SupportRapidAttacksPlayerThree": {
+      "en": "Supports Attacks, causing them to Attack faster at the cost of Damage.",
+      "zh_cn": "辅助攻击，使其攻击速度更快，但伤害降低。"
+    },
+    "SupportRapidAttacksPlayerTwo": {
+      "en": "Supports Attacks, causing them to Attack faster.",
+      "zh_cn": "辅助攻击，使攻击速度更快。"
+    },
+    "SupportRapidCastingPlayer": {
+      "en": "Supports Spells, causing them to cast faster.",
+      "zh_cn": "辅助法术，使施法速度加快。"
+    },
+    "SupportRapidCastingPlayerThree": {
+      "en": "Supports Spells, causing them to cast faster for each different Spell you've cast in the last eight seconds.",
+      "zh_cn": "辅助法术，你过去 8 秒内每施放一种不同法术，施法速度就会加快。"
+    },
+    "SupportRapidCastingPlayerTwo": {
+      "en": "Supports Spells, causing them to cast faster.",
+      "zh_cn": "辅助法术，使施法速度加快。"
+    },
+    "SupportRearmPlayer": {
+      "en": "Supports Skills which create Hazards. Hazards created by Supported Skills have a chance to be rearmed a short duration after triggering.",
+      "zh_cn": "辅助产生危害的技能。被辅助技能产生的危害有几率在触发后的短时间里重新武装。"
+    },
+    "SupportRearmPlayerTwo": {
+      "en": "Supports Skills which create Hazards. Hazards created by Supported Skills have a chance to be rearmed a short duration after triggering.",
+      "zh_cn": "辅助产生危害的技能。被辅助技能产生的危害有几率在触发后的短时间里重新武装。"
+    },
+    "SupportRefractionPlayer": {
+      "en": "Supports Banner Skills, causing those affected by Auras they create to gain Refractive Plating, a Buff which grants Deflection Rating and causes Armour to partially apply to Elemental Hit Damage.",
+      "zh_cn": "辅助旗帜技能，使受到其光环影响的目标获得折射镀层增益状态，提供偏转值，使一部分护甲能够对元素击中伤害生效。"
+    },
+    "SupportRefractionPlayerThree": {
+      "en": "Supports Banner Skills, causing Enemies within their area to gain Refractive Dissolution, a Debuff which lowers Elemental Resistances.",
+      "zh_cn": "辅助旗帜技能，使其范围内的敌人获得折射消散效果，该减益状态会降低元素抗性。"
+    },
+    "SupportRefractionPlayerTwo": {
+      "en": "Supports Banner Skills, causing those affected by Auras they create to gain Refractive Plating, a Buff which grants Deflection Rating and causes Armour to partially apply to Elemental Hit Damage.",
+      "zh_cn": "辅助旗帜技能，使受到其光环影响的目标获得折射镀层增益状态，提供偏转值，使一部分护甲能够对元素击中伤害生效。"
+    },
+    "SupportReinforcedTotemsPlayer": {
+      "en": "Supports Skills which create Totems. Totems created by Supported Skills have additional Elemental Resistances.",
+      "zh_cn": "辅助产生图腾的技能。被辅助技能产生的图腾具有额外的元素抗性。"
+    },
+    "SupportReinforcedTotemsPlayerTwo": {
+      "en": "Supports Skills which create Totems. Totems created by Supported Skills have additional Elemental Resistances.",
+      "zh_cn": "辅助产生图腾的技能。被辅助技能产生的图腾具有额外的元素抗性。"
+    },
+    "SupportRelentlessRagePlayer": {
+      "en": "Supports Skills you use yourself. On spending Rage with any skill you will gain a Buff. Using Supported Skills consumes this Buff to grant you Rage.",
+      "zh_cn": "辅助你使用的技能，当你通过任何技能消耗怒火时，将获得一个增益状态。使用被辅助的技能会消耗此增益状态并为你提供怒火。"
+    },
+    "SupportRendingApexPlayer": {
+      "en": "Supports Strikes that perform a Final Strike at the end of a combination of attacks, causing the Final Strike to Break Armour based on a portion of Attack damage dealt.",
+      "zh_cn": "辅助可在连击结束时发动绝杀打击的打击技能，使该绝杀打击能基于所造成的攻击伤害的一部分使敌人护甲破损。"
+    },
+    "SupportRetaliatePlayer": {
+      "en": "Supports Melee Attack Skills you use yourself. Supported Skills gain much more damage the closer you are to being Heavily Stunned.",
+      "zh_cn": "辅助你自己使用的近战攻击技能。你越接近重度晕眩状态，被辅助技能造成的伤害越高。"
+    },
+    "SupportRetaliatePlayerTwo": {
+      "en": "Supports Melee Attack Skills you use yourself. Supported Skills gain much more damage and are more capable of Stunning Enemies the closer you are to being Heavily Stunned.",
+      "zh_cn": "辅助你自己使用的近战攻击技能。你越接近重度晕眩状态，被辅助技能造成的伤害越高，晕眩敌人的能力越强。"
+    },
+    "SupportRetreatPlayer": {
+      "en": "Supports Skills which create Projectiles. Supported Skills deal more damage with Projectiles if you have struck with a Melee Hit in the last eight seconds, but cannot themselves deal Melee Damage.",
+      "zh_cn": "辅助产生投射物的技能。如果你在过去八秒内造成过近战击中，被辅助技能造成的投射物伤害会提高，但其本身无法造成近战伤害。"
+    },
+    "SupportRetreatPlayerThree": {
+      "en": "Supports Skills which create Projectiles. Supported Skills deal more damage with Projectiles if you have struck with a Melee Hit in the last two seconds, but cannot themselves deal Melee Damage.",
+      "zh_cn": "辅助产生投射物的技能。如果你在过去两秒内造成过近战击中，被辅助技能造成的投射物伤害会提高，但其本身无法造成近战伤害。"
+    },
+    "SupportRetreatPlayerTwo": {
+      "en": "Supports Skills which create Projectiles. Supported Skills deal more damage with Projectiles if you have struck with a Melee Hit in the last eight seconds, but cannot themselves deal Melee Damage.",
+      "zh_cn": "辅助产生投射物的技能。如果你在过去八秒内造成过近战击中，被辅助技能造成的投射物伤害会提高，但其本身无法造成近战伤害。"
+    },
+    "SupportReveberatePlayer": {
+      "en": "Supports Slam Skills. Supported Skills that have a chance to Aftershock have increased chance to cause Aftershocks the longer their Attack time.",
+      "zh_cn": "辅助猛击技能。被辅助技能拥有余震几率时，其攻击时间越长，造成余震的几率越高。"
+    },
+    "SupportRicochetPlayer": {
+      "en": "Supports any Skill which creates Projectiles, giving those Projectiles a chance to Chain when impacting terrain.",
+      "zh_cn": "辅助产生投射物的技能，使投射物击中地形时有几率连锁。"
+    },
+    "SupportRicochetPlayerTwo": {
+      "en": "Supports any Skill which creates Projectiles, giving those Projectiles a chance to Chain when impacting terrain.",
+      "zh_cn": "辅助产生投射物的技能，使投射物击中地形时有几率连锁。"
+    },
+    "SupportRigwaldsFerocityPlayer": {
+      "en": "Supports Attack skills, granting them Attack Speed at the cost of Damage or Damage at the cost of Attack Speed depending on Weapon Set they are used in. Does not modify skills used by Minions.",
+      "zh_cn": "辅助攻击技能，根据使用的武器组，以伤害为代价提供攻击速度，或以攻击速度为代价提供伤害。不会修改召唤生物使用的技能。"
+    },
+    "SupportRipPlayer": {
+      "en": "Supports Melee Attack Skills you use or Trigger yourself. Killing Blows with Supported Skills on Bleeding enemies create a Blood Remnant. Blood Remnants increase your Life regeneration rate for a short while after being collected.",
+      "zh_cn": "辅助你使用或你自己触发的近战攻击技能。被辅助技能对流血的敌人造成最后一击会产生一个赤色残片。收集赤色残片会在短时间里提高你的生命回复速度。"
+    },
+    "SupportRitualisticCursePlayer": {
+      "en": "Supports Curse skills, causing them to cover a larger area but take longer to Curse enemies.",
+      "zh_cn": "辅助诅咒技能，使其诅咒更大范围的敌人，但需要更长的生效时间。"
+    },
+    "SupportRomirasRequitalPlayer": {
+      "en": "Supports Skills that create Companions which can be damaged. Minions created by Supported Skills take a portion of Hit Damage you would otherwise have taken, but have lowered maximum Life. A percentage of Damage taken this way is Recouped by you as Life.",
+      "zh_cn": "辅助产生能够受到伤害的伙伴的技能。被辅助技能产生的召唤生物会替你承担一定比例的击中伤害，但其生命上限降低。以此方式受到的一部分伤害会吸纳为你的生命。"
+    },
+    "SupportRupturePlayer": {
+      "en": "Supports skills that Hit Enemies. Supported skills Aggravate Bleeding on Hitting Heavily Stunned Enemies.",
+      "zh_cn": "辅助击中敌人的技能。被辅助技能击中重度晕眩的敌人时使流血效果变为恶性。"
+    },
+    "SupportRustedSpikesPlayer": {
+      "en": "Supports Skills which deal Damage with Hits. When Supported Skills Pin an Enemy, they also Aggravate Bleeding on that Enemy.",
+      "zh_cn": "辅助能够击中敌人并造成伤害的技能。被辅助技能使敌人定身时，还会使利刃受到的流血变为恶性。"
+    },
+    "SupportSacrificalOfferingPlayer": {
+      "en": "Supports Offering Skills. Supported Skills Sacrifice a portion of your life on use, but deal much more damage and have more powerful Buffs in return.",
+      "zh_cn": "辅助奉献技能。使用被辅助的技能会使你牺牲一部分生命，但造成的伤害大幅提高，并且产生更强大的增益状态。"
+    },
+    "SupportSacrificialLambPlayer": {
+      "en": "Supports Skills which create Minions, causing your Skills which can target Minions to prioritise targeting Minions from the Supported Skill before your other Minions where possible.",
+      "zh_cn": "辅助能够产生召唤生物的技能，使你以召唤生物为目标的技能，优先选中被辅助技能产生的召唤生物，而非其他召唤生物。"
+    },
+    "SupportSacrificialLambPlayerTwo": {
+      "en": "Supports Skills which create Minions, causing your Skills which can target Minions to prioritise targeting Minions from the Supported Skill before your other Minions where possible, as well as causing them to always be considered Detonatable.",
+      "zh_cn": "辅助能够产生召唤生物的技能，使你以召唤生物为目标的技能，优先选中被辅助技能产生的召唤生物，而非其他召唤生物，并使其总是被视为可引爆的。"
+    },
+    "SupportSalvoPlayer": {
+      "en": "Supports Attack Skills you use yourself which fire Projectiles, Sealing them over time. The Seals are broken when used, causing additional Projectiles to be fired. Projectiles from Supported Skills are fired in random directions. Cannot Support Skills which require Combo, have a Cooldown or which already gain Seals.",
+      "zh_cn": "辅助你使用的发射投射物的攻击技能，使其随时间获得封印。使用时打破封印，发射额外投射物。来自被辅助技能的投射物会向随机方向发射。无法辅助需要连击、有冷却时间或能获得封印的技能。"
+    },
+    "SupportSecondWindPlayer": {
+      "en": "Supports Skills which have a cooldown, giving them extra uses of that cooldown. Cannot support Meta, instant, or Triggered Skills, and cannot modify the Skills of Minions.",
+      "zh_cn": "辅助有冷却时间的技能，使其获得额外的冷却时间使用次数。\n无法辅助非凡技能、瞬发技能或触发技能。不能调整召唤生物技能。"
+    },
+    "SupportSecondWindPlayerThree": {
+      "en": "Supports Skills which have a cooldown, giving them extra uses of that cooldown and causing them to recover your Life when a Skill is used and goes on cooldown. Cannot support Meta, instant, or Triggered Skills, and cannot modify the Skills of Minions.",
+      "zh_cn": "辅助有冷却时间的技能，使其获得额外的冷却时间使用次数，在技能被使用并进入冷却时为你回复生命。\n无法辅助非凡技能、瞬发技能或触发技能。不能调整召唤生物技能。"
+    },
+    "SupportSecondWindPlayerTwo": {
+      "en": "Supports Skills which have a cooldown, giving them extra uses of that cooldown. Cannot support Meta, instant, or Triggered Skills, and cannot modify the Skills of Minions.",
+      "zh_cn": "辅助有冷却时间的技能，使其获得额外的冷却时间使用次数。\n无法辅助非凡技能、瞬发技能或触发技能。不能调整召唤生物技能。"
+    },
+    "SupportSelflessRemnantsPlayer": {
+      "en": "Supports Skills that generate Remnants, causing those Remnants to affect Allies in your Presence when collected instead of you.",
+      "zh_cn": "辅助产生残片的技能，收集残片时使其影响在场的友军，但不影响你。"
+    },
+    "SupportShockConductionPlayer": {
+      "en": "Supports any skill that Hits enemies, giving it a chance to also Shock nearby enemies when you Shock an enemy.",
+      "zh_cn": "辅助任意击中敌人的技能，令敌人感电时有几率使附近的敌人感电。"
+    },
+    "SupportShockConductionPlayerTwo": {
+      "en": "Supports any skill that Hits enemies, giving it a chance to also Shock nearby enemies when you Shock an enemy. Always Shocks enemies which are Drenched.",
+      "zh_cn": "辅助任意击中敌人的技能，令敌人感电时有几率使附近的敌人感电。对处于浸湿状态的敌人则必定施加感电。"
+    },
+    "SupportShockPlayer": {
+      "en": "Supports any skill that Hits enemies, making it more likely to Shock.",
+      "zh_cn": "辅助任意击中敌人的技能，使其更有可能造成感电。"
+    },
+    "SupportShockingLeapPlayer": {
+      "en": "Supports Skills that leap into the air and deal damage, causing them to create Shocked Ground the first time they Critically Hit an enemy.",
+      "zh_cn": "辅助会跳跃并造成伤害的技能，使其在第一次对敌人造成暴击时制造感电地面。"
+    },
+    "SupportShockingRiftPlayer": {
+      "en": "Supports Skills that Hit enemies. When Supported Skills Shock an enemy that is nearby other Shocked enemies, trigger Electromagnetism, sucking in nearby enemies, Hindering them, and dealing Lightning damage at an interval.",
+      "zh_cn": "辅助可击中敌人的技能。使用被辅助的技能对敌人施加感电时，且该敌人周围存在其他感电敌人时，将触发电磁力场，使附近敌人缓速并将其吸入中心，以固定间隔造成闪电伤害。"
+    },
+    "SupportShortFusePlayer": {
+      "en": "Supports Skills which Detonate after some amount of time has elapsed, shortening the time before Detonation.",
+      "zh_cn": "辅助经过一定时间后引爆的技能，缩短引爆前的时间。"
+    },
+    "SupportShortFusePlayerTwo": {
+      "en": "Supports Skills which Detonate after some amount of time has elapsed, massively shortening the time before Detonation at the cost of Damage.",
+      "zh_cn": "辅助经过一定时间后引爆的技能，大幅缩短引爆前的时间，但会牺牲伤害。"
+    },
+    "SupportSkitteringStonePlayer": {
+      "en": "Supports Skills which create shatterable earthen objects. After killing enough Enemies in range of these objects, they will shatter, releasing skittering stone Minions.",
+      "zh_cn": "辅助产生可破坏土质物体的技能。在这些物体范围内击败足够敌人后，它们会破碎，释放出飞掠石召唤生物。"
+    },
+    "SupportSkitteringStonePlayerTwo": {
+      "en": "Supports Skills which create shatterable earthen objects. After killing enough Enemies in range of these objects, they will shatter, releasing skittering stone Minions.",
+      "zh_cn": "辅助产生可破坏土质物体的技能。在这些物体范围内击败足够敌人后，它们会破碎，释放出飞掠石召唤生物。"
+    },
+    "SupportSlamAftershocksPlayer": {
+      "en": "Supports Slams you use yourself, causing them to create simultaneous Aftershocks behind the Slam, but lowering Aftershock damage and area of effect with Supported Skills. Cannot Support Skills which create Fissures.",
+      "zh_cn": "辅助你使用的猛击，使其在猛击后同时产生一道余震，但会降低被辅助技能的余震伤害与影响范围。无法辅助会产生裂缝的技能。"
+    },
+    "SupportSlowPotencyPlayer": {
+      "en": "Supports any skill, causing inflicted Slows to be more powerful.",
+      "zh_cn": "辅助任意技能，使其造成的减速效果更为强劲。"
+    },
+    "SupportSparPlayer": {
+      "en": "Supports Melee Attack Skills. Supported Skills are more capable of Stunning Enemies the closer you are to being Heavily Stunned.",
+      "zh_cn": "辅助近战攻击技能。你距离重度晕眩状态越近，被辅助技能使敌人晕眩的能力越强。"
+    },
+    "SupportSpectralVolleyPlayer": {
+      "en": "Supports Bow or Spear Projectile Attacks you use yourself. Supported Skills deal lower damage initially, but generate Spectral Projectiles, which deal more damage when they fire. Spectral Projectiles linger and will fire a short duration after no new Spectral Projectiles have been created. Cannot support Channelling Skills, Leaping skills, or skills which rain Projectiles from above.",
+      "zh_cn": "辅助你自己使用的弓类或战矛投射物攻击。被辅助技能造成的初始伤害降低，但会产生灵体投射物，发射时能造成更高的伤害。灵体投射物会持续保留，并在不再产生新的灵体投射物后的短时间内发射。无法辅助持续吟唱技能、跳跃技能，以及使投射物从天而降的技能。"
+    },
+    "SupportSpellCascadePlayer": {
+      "en": "Supports Cascadable Spells, causing them to Cascade to either side of the target area, along a randomly chosen axis.",
+      "zh_cn": "辅助可扩散法术，使其沿随机选择的轴向目标区域两侧扩散。"
+    },
+    "SupportSpellEchoPlayer": {
+      "en": "Supports Cascadable Spells you use yourself. Supported Spells Echo.",
+      "zh_cn": "辅助你自身使用的可扩散 法术。被辅助的法术产生法术 回响。"
+    },
+    "SupportSplinteringTotemPlayer": {
+      "en": "Supports Skills which create Totems, preventing having more than one active Totem but causing that Totem to splinter into smaller versions of itself after it uses an Attack or Spell, with each Totem becoming less effective. Each splintered Totem can further splinter, up to a maximum. Does not Support Skills used by Minions. Only one Totem can be splintering at a time.",
+      "zh_cn": "辅助可创建图腾的技能，但仅允许存在一个激活的图腾。该图腾在使用攻击或法术后会分裂为若干小型分身，且每个分裂出来的图腾效果会减弱。分裂产生的图腾可继续分裂，直至达到最大分裂次数。无法辅助由召唤生物施放的技能。同一时间仅能有一个图腾处于分裂状态。"
+    },
+    "SupportSplinteringTotemPlayerTwo": {
+      "en": "Supports Skills which create Totems, preventing having more than one active Totem but causing that Totem to splinter into smaller versions of itself after it uses an Attack or Spell, with each Totem becoming less effective. Each splintered Totem can further splinter, up to a maximum. Does not Support Skills used by Minions. Only one Totem can be splintering at a time.",
+      "zh_cn": "辅助可创建图腾的技能，但仅允许存在一个激活的图腾。该图腾在使用攻击或法术后会分裂为若干小型分身，且每个分裂出来的图腾效果会减弱。分裂产生的图腾可继续分裂，直至达到最大分裂次数。无法辅助由召唤生物施放的技能。同一时间仅能有一个图腾处于分裂状态。"
+    },
+    "SupportStaticShocksPlayer": {
+      "en": "Supports Skills which can Hit enemies. Shocking an enemy with Hits from Supported Skills Triggers Static Shocks, causing that enemy to become a source of Lightning damage sending pulses towards nearby enemies.",
+      "zh_cn": "辅助可击中敌人的技能。使用被辅助的技能击中并使敌人感电，会触发静电脉冲，使该敌人成为一个闪电伤害源，向附近的敌人释放脉冲。"
+    },
+    "SupportSteadfastPlayer": {
+      "en": "Supports Channelling Skills you use yourself, granting you higher Stun Threshold while Channelling them.",
+      "zh_cn": "辅助你自己使用的持续吟唱技能，使你在吟唱期间提高晕眩阈值。"
+    },
+    "SupportSteadfastPlayerTwo": {
+      "en": "Supports Channelling Skills you use yourself, granting you higher Stun Threshold and Ailment Threshold  while Channelling them.",
+      "zh_cn": "辅助你自己使用的持续吟唱技能，使你在吟唱期间提高晕眩阈值和异常状态阈值。"
+    },
+    "SupportStoicismPlayer": {
+      "en": "Supports Attack Skills you use yourself. Supported Skills steadily gain more Damage, up to a cap. This Damage bonus is reset if you Dodge Roll or use a Travel Skill.",
+      "zh_cn": "辅助你自己使用的攻击技能。被辅助的技能会逐渐获得更高伤害，直到达到上限。若你使用翻滚闪避或旅行技能，则该加成会重置。"
+    },
+    "SupportStoicismPlayerTwo": {
+      "en": "Supports Attack Skills you use yourself. Supported Skills steadily gain more Damage, up to a cap. This Damage bonus is reset if you Dodge Roll or use a Travel Skill.",
+      "zh_cn": "辅助你自己使用的攻击技能。被辅助的技能会逐渐获得更高伤害，直到达到上限。若你使用翻滚闪避或旅行技能，则该加成会重置。"
+    },
+    "SupportStompingGroundPlayer": {
+      "en": "Supports Travel skills, causing your footsteps to crack the earth and emit damaging shockwaves while using the skill.",
+      "zh_cn": "辅助旅行技能，使用该技能时，你的脚步会震裂大地并发出伤害性的冲击波。"
+    },
+    "SupportStormchainPlayer": {
+      "en": "Supports Projectile Skills and Skills which can Chain. Supported Skills always Chain when initially Hitting a Shocked Enemy, but cannot themselves inflict Shock. Does not support Skills which cannot Chain.",
+      "zh_cn": "辅助投射物技能和可以连锁的技能。被辅助技能第一次击中感电的敌人时必定连锁，但自身无法施加感电。无法辅助不能连锁的技能。"
+    },
+    "SupportStormfirePlayer": {
+      "en": "Supports any skill that Hits enemies. Enemies Shocked by Supported Skills take a percentage of damage from Ignite as Lightning damage as well as Fire damage.",
+      "zh_cn": "辅助任意可击中敌人的技能，被辅助技能感电的敌人，其受到的点燃伤害将有一部分额外转化为闪电伤害和火焰伤害。"
+    },
+    "SupportStreamlinedRoundsPlayer": {
+      "en": "Supports Crossbow Ammunition Skills. Supported Skills have significantly higher Attack speed and bolt capacity, but deal less damage and have longer reload time.",
+      "zh_cn": "辅助战弩弹药技能。被辅助技能的攻击速度和弩箭容量大幅提高，但伤害降低，装填时间延长。"
+    },
+    "SupportStrongHeartedPlayer": {
+      "en": "Supports Persistent Buff Skills, causing Shock applied to you to last for a shorter duration while the Supported Skill is active.",
+      "zh_cn": "辅助永久性增益状态技能，激活被辅助技能时，缩短对你施加的感电的持续时间。"
+    },
+    "SupportStunPlayer": {
+      "en": "Supports any skill that Hits Enemies, causing it to build up Stun more quickly.",
+      "zh_cn": "辅助任意击中敌人的技能，使其积蓄晕眩的速度更快。"
+    },
+    "SupportStunPlayerThree": {
+      "en": "Supports any skill that Hits Enemies, causing it to build up Stun significantly more quickly, at the cost of Damage.",
+      "zh_cn": "辅助任意击中敌人的技能，使其积蓄晕眩的速度大幅加快，但会牺牲伤害。"
+    },
+    "SupportStunPlayerTwo": {
+      "en": "Supports any skill that Hits Enemies, causing it to build up Stun more quickly.",
+      "zh_cn": "辅助任意击中敌人的技能，使其积蓄晕眩的速度更快。"
+    },
+    "SupportSwiftAfflictionPlayer": {
+      "en": "Supports any skill that deals damage, causing it to deal more non-Ailment damage over time but have a shorter duration.",
+      "zh_cn": "辅助任意造成伤害的技能，使其造成更高的非异常状态持续伤害，但缩短持续时间。"
+    },
+    "SupportSwiftAfflictionPlayerThree": {
+      "en": "Supports any skill that deals damage, causing effects with a duration of one second or less to deal more non-Ailment damage over time.",
+      "zh_cn": "辅助任意造成伤害的技能，使持续时间为一秒或更短的效果造成更高的非异常状态持续伤害。"
+    },
+    "SupportSwiftAfflictionPlayerTwo": {
+      "en": "Supports any skill that deals damage, causing it to deal more non-Ailment damage over time but have a shorter duration.",
+      "zh_cn": "辅助任意造成伤害的技能，使其造成更高的非异常状态持续伤害，但缩短持续时间。"
+    },
+    "SupportSyzygyPlayer": {
+      "en": "Supports Slam Skills you use yourself. Hits from Supported Skills are considered Crushing Blows against Enemies which are both Ignited and Fully Armour Broken. Hits with Supported Skills that Heavily Stun Ignited and Fully Armour Broken Enemies will Intimidate them.",
+      "zh_cn": "辅助你自己使用的猛击技能。被辅助技能的击中对同时受到点燃和护甲完全破损的目标视作粉碎打击。被辅助技能使点燃和护甲完全破损的目标陷入重度晕眩的击中还会威吓他们。"
+    },
+    "SupportTacatisIrePlayer": {
+      "en": "Supports Skills which can cause Damaging Hits. Poison inflicted with Supported Skills deals Damage faster the higher your Rage.",
+      "zh_cn": "辅助可造成伤害性击中的技能。根据你的怒火数量，被辅助技能施加的中毒伤害生效更快。"
+    },
+    "SupportTasaliosRhythmPlayer": {
+      "en": "Supports Skills which have a benefit for Perfectly Timing their use. On successfully executing Perfect Timing with Supported Skills, gain Tasalio's Rhythm. Tasalio's Rhythm causes Supported Skills to deal more damage and have shorter Perfect Timing windows for each stack. Failing to execute any Perfect Timing (even with skills not supported by Tasalio's Rhythm) will remove all Tasalio's Rhythm on you.",
+      "zh_cn": "辅助在完美时机使用能获得加成的技能。被辅助技能成功把握完美时机会获得塔萨里奥的律动。塔萨里奥的律动会使被辅助技能造成更多伤害，且每层律动都会缩短技能的完美时机判定窗口。未能把握完美时机（包括未受到塔萨里奥的律动辅助的技能）会移除你身上的所有塔萨里奥的律动。"
+    },
+    "SupportTearPlayer": {
+      "en": "Supports Melee Attacks you use or Trigger yourself. On-Kill effects caused by Killing Blows with Supported Skills on Bleeding enemies have a chance to occur twice.",
+      "zh_cn": "辅助你使用或你自己触发的近战攻击。被辅助技能对流血的敌人造成最后一击产生的击败效果有几率生效两次。"
+    },
+    "SupportTecrodsRevengePlayer": {
+      "en": "Supports Skills that create Persistent Minions, causing those Minions to fight on when they are fatally wounded, dying after a duration. Minions from Supported Skills gain Soul Eater and a burst of speed on entering this state.",
+      "zh_cn": "辅助能够产生永久性召唤生物的技能，使召唤生物在受到致命伤害后仍会继续战斗，持续一段时间后才会死亡。被辅助技能召唤的召唤生物在进入此状态时，获得噬魂者和速度爆发。"
+    },
+    "SupportTempestuousTempoPlayer": {
+      "en": "Supports Skills which deal Damage, raising Elemental Damage dealt for each Skill used Recently of a different Elemental type. Cannot support Minion Skills.",
+      "zh_cn": "辅助造成伤害的技能，近期每使用一个不同的元素类型的技能，其造成的元素伤害提高。无法辅助召唤生物技能。"
+    },
+    "SupportThornskinPlayer": {
+      "en": "Supports Persistent Buff Skills, causing you to deal increased Thorns Damage while the Supported Skill is active.",
+      "zh_cn": "辅助永久性增益状态技能，激活被辅助技能时，提高你造成的荆棘伤害。"
+    },
+    "SupportThornskinPlayerTwo": {
+      "en": "Supports Persistent Buff Skills, causing you to deal increased Thorns Damage while the Supported Skill is active.",
+      "zh_cn": "辅助永久性增益状态技能，激活被辅助技能时，提高你造成的荆棘伤害。"
+    },
+    "SupportThrillOfTheKillPlayer": {
+      "en": "Supports Skills you use yourself which Hit enemies. Culling a Shocked enemy with Supported Skills infuses all of your Attacks with Lightning damage for a short time.",
+      "zh_cn": "辅助你使用的击中敌人的技能。使用被辅助的技能终结感电状态的敌人时，将为你的所有攻击短暂附加闪电伤害。"
+    },
+    "SupportThrillOfTheKillPlayerTwo": {
+      "en": "Supports Skills you use yourself which Hit enemies. Culling a Shocked enemy with Supported Skills infuses all of your Attacks with Lightning damage and grants an increased chance to Shock for a short time.",
+      "zh_cn": "辅助你使用的击中敌人的技能。使用被辅助的技能终结感电状态的敌人时，将为你的所有攻击短暂附加闪电伤害并提高感电几率。"
+    },
+    "SupportTirelessPlayer": {
+      "en": "Supports Warcry Skills. Attacks Empowered by Supported Skills have a chance not to lower the Empowerment count of Supported Skills when they are used.",
+      "zh_cn": "辅助战吼技能。被辅助技能强化的攻击使用时有几率不减少被辅助技能的强化次数。"
+    },
+    "SupportTulsStillnessPlayer": {
+      "en": "Supports Skills that can cause Damaging Hits, granting extra Chaos damage and causing Chaos damage to Contribute to Freeze Buildup.",
+      "zh_cn": "辅助可造成伤害性击中的技能，提供额外混沌伤害，使混沌伤害作用于冻结积蓄。"
+    },
+    "SupportUhtredAuguryPlayer": {
+      "en": "Supports Skills which can gain levels, granting them additional levels provided exactly two other supports are used with the supported Skill. Does not support skills which do not have levels.",
+      "zh_cn": "辅助可升级的技能，在恰好有两个其他辅助宝石修改被辅助技能的情况下，提供额外等级。无法辅助没有等级的技能。"
+    },
+    "SupportUhtredExodusPlayer": {
+      "en": "Supports Skills which can gain levels, granting them many additional levels provided no other supports are used with the supported Skill. Does not support skills which do not have levels.",
+      "zh_cn": "辅助可升级的技能，在没有其他辅助宝石修改被辅助技能的情况下，提供大量额外等级。"
+    },
+    "SupportUhtredOmenPlayer": {
+      "en": "Supports Skills which can gain levels, granting them additional levels provided exactly one other support is used with the supported Skill. Does not support skills which do not have levels.",
+      "zh_cn": "辅助可升级的技能，在恰好有一个其他辅助宝石修改被辅助技能的情况下，提供额外等级。无法辅助没有等级的技能。"
+    },
+    "SupportUnderminePlayer": {
+      "en": "Supports Attack Skills. Supported Skills Consume Maim on hit, Breaking a percentage of the Maimed target's Armour in doing so. Supported Skills cannot themselves inflict Maim.",
+      "zh_cn": "辅助攻击技能。被辅助技能击中时消耗瘫痪，并粉碎被瘫痪目标一定百分比的护甲。被辅助技能自身无法施加致残。"
+    },
+    "SupportUnerringPowerPlayer": {
+      "en": "Supports Attack Skills you use yourself. When Supported Attacks are Empowered, they have significantly lowered cost and raised Accuracy.",
+      "zh_cn": "辅助你使用的攻击技能。被辅助的攻击被强化时，其消耗大幅降低，并且提高命中。"
+    },
+    "SupportUnleashPlayer": {
+      "en": "Supports Repeatable Spells you cast yourself, Sealing them over time. The Seals are broken when cast, each causing the Spell to Repeat. Cannot support skills with a Cooldown or which already gain Seals.",
+      "zh_cn": "辅助你施放的可重复法术，使其随时间获得封印。施放时打破封印，每层封印使该法术重复一次。无法辅助有冷却时间的技能或能获得封印的技能。"
+    },
+    "SupportUntouchablePlayer": {
+      "en": "Supports Attack Skills you use yourself. While using Supported Skills, you gain increased Evasion Rating, with the increase scaling higher the longer the Attack time of the supported Skill. Cannot Support Channelling Skills.",
+      "zh_cn": "辅助你使用的攻击技能。使用被辅助技能时你的闪避值提高，被辅助技能的攻击时间越长该比例越高。无法辅助持续吟唱技能。"
+    },
+    "SupportUpheavalPlayer": {
+      "en": "Supports Skills which create fissures in the ground, causing them to create an additional fissure at the cost of damage and speed.",
+      "zh_cn": "辅助在地上产生裂缝的技能，使其产生一道额外的裂缝，但会牺牲伤害和攻击速度。"
+    },
+    "SupportUpheavalPlayerTwo": {
+      "en": "Supports Skills which create fissures in the ground, causing them to create additional fissures at the cost of damage and speed.",
+      "zh_cn": "辅助在地上产生裂缝的技能，使其产生额外的裂缝，但会牺牲伤害和攻击速度。"
+    },
+    "SupportUpwellingPlayer": {
+      "en": "Supports Persistent Buff Skills, causing your Minions to deal increased Damage while you are not on full Mana while the Supported Skill is active.",
+      "zh_cn": "辅助永久性增益状态技能，激活被辅助技能且你的魔力未满时，提高你的召唤生物造成的伤害。"
+    },
+    "SupportUpwellingPlayerTwo": {
+      "en": "Supports Persistent Buff Skills, causing your Minions to deal increased Damage while you are not on full Mana while the Supported Skill is active.",
+      "zh_cn": "辅助永久性增益状态技能，激活被辅助技能且你的魔力未满时，提高你的召唤生物造成的伤害。"
+    },
+    "SupportUrgentTotemsPlayer": {
+      "en": "Supports Skills which create Totems, causing those Skills to place Totems much more quickly.",
+      "zh_cn": "辅助放置图腾的技能，使技能放置图腾的速度大幅加快。"
+    },
+    "SupportUrgentTotemsPlayerThree": {
+      "en": "Supports Skills which create Totems, causing those Skills to place Totems much more quickly. Totems created by Supported Skills have increased Attack and Cast Speed.",
+      "zh_cn": "辅助放置图腾的技能，使技能放置图腾的速度大幅加快。图腾在被辅助技能创造后的短时间内提高攻击和施法速度。"
+    },
+    "SupportUrgentTotemsPlayerTwo": {
+      "en": "Supports Skills which create Totems, causing those Skills to place Totems much more quickly.",
+      "zh_cn": "辅助放置图腾的技能，使技能放置图腾的速度大幅加快。"
+    },
+    "SupportUruksSmeltingPlayer": {
+      "en": "Supports any skill, causing Armour Break it inflicts to be stronger. Fully Breaking Armour with Supported Skills permanently increases the Physical Damage taken by those affected, up to a cap.",
+      "zh_cn": "辅助任意技能，使其造成的护甲破损更强。被辅助技能完全粉碎护甲时，永久增加受影响目标受到的物理伤害，该效果有上限。"
+    },
+    "SupportUulNetolsEmbracePlayer": {
+      "en": "Supports Skills that can cause Damaging Hits, granting extra Chaos damage and causing Chaos damage to Break Armour.",
+      "zh_cn": "辅助可造成伤害性击中的技能，提供额外混沌伤害，使混沌伤害粉碎护甲。"
+    },
+    "SupportVanguardPlayer": {
+      "en": "Supports Shield Skills, causing you to gain Guard on Stunning Enemies with the Supported Skill.",
+      "zh_cn": "辅助盾牌技能，使你用被辅助技能晕眩敌人时获得防卫。"
+    },
+    "SupportVanguardPlayerTwo": {
+      "en": "Supports Shield Skills, causing you to gain Guard on Stunning Enemies with the Supported Skill.",
+      "zh_cn": "辅助盾牌技能，使你用被辅助技能晕眩敌人时获得防卫。"
+    },
+    "SupportVarashtasBlessingPlayer": {
+      "en": "Supports any Skill that can deal damage, causing it to deal more damage for each different Command Skill you have used in the past few seconds. Cannot modify the Skills of Minions.",
+      "zh_cn": "辅助任意可造成伤害的技能，根据你在过去几秒内使用过的不同命令技能的数量，提高其伤害。无法影响召唤生物的技能。"
+    },
+    "SupportVerglasPlayer": {
+      "en": "Supports Skills you use yourself which can Hit Enemies. Supported Skills Gain a percentage of their Damage as Cold Damage when you destroy Ice Crystals.",
+      "zh_cn": "辅助你自己使用且能够击中敌人的技能。当你摧毁冰晶时，被辅助技能获得一定比例的冰霜伤害。"
+    },
+    "SupportVilentasPropulsionPlayer": {
+      "en": "Supports Spell Skills that fire Projectiles, causing increases and reductions to cast speed to also apply to Projectile speed.",
+      "zh_cn": "辅助发射投射物的法术技能，对施法速度的加速与减缓也同样作用于投射物速度。"
+    },
+    "SupportVitalityPlayer": {
+      "en": "Supports Persistent Buff Skills, causing you to gain Life Regeneration while the Skill is active.",
+      "zh_cn": "辅助永久性增益技能，激活该技能时提高你的生命回复速度。"
+    },
+    "SupportVitalityPlayerTwo": {
+      "en": "Supports Persistent Buff Skills, causing you to gain Life Regeneration while the Skill is active.",
+      "zh_cn": "辅助永久性增益技能，激活该技能时提高你的生命回复速度。"
+    },
+    "SupportVolatilityPlayer": {
+      "en": "Supports Skills you use yourself which can cause Damaging Hits. Supported Skills grant Volatility on Critical Hit.",
+      "zh_cn": "辅助你自己使用的造成伤害性击中的技能。被辅助技能暴击时产生无常。"
+    },
+    "SupportVolcanicEruptionPlayer": {
+      "en": "Supports Melee Strike Skills you use yourself. Supported Skills trigger Volcanic Eruption on Hit against Ignited Enemies.",
+      "zh_cn": "辅助你使用的近战打击技能。被辅助技能击中点燃的敌人时触发熔火喷发。"
+    },
+    "SupportVoltPlayer": {
+      "en": "Supports Projectile Attack Skills you use yourself. Supported Skills gain Voltaic Charge as you move, up to a maximum. When used, Supported Skills expend that Charge to gain extra Lightning Damage.",
+      "zh_cn": "辅助你自己使用的投射物攻击技能。被辅助技能在你移动时获得电伏充能，最多积累到最大值。使用被辅助技能时消耗充能，获得额外的闪电伤害。"
+    },
+    "SupportVruunsInevitability": {
+      "en": "Supports Melee Attack Skills. Supported Skills gain Combo when you successfully Strike Enemies with other Melee Attacks. Supported Skills expend their Combo when used, gaining more area of effect the higher Combo they had. Cannot support skills which already gain Combo. Cannot modify the Skills of Minions.",
+      "zh_cn": "辅助近战 攻击技能。当你使用其他近战 攻击成功打击敌人时，被辅助技能获得连击。被辅助技能使用时花费连击数，使用时连击数越高，获得的效果区域越大。无法辅助能获得连击的技能。无法修改召唤生物的技能。"
+    },
+    "SupportWallFortressPlayer": {
+      "en": "Supports skills that create walls in a line, causing them to be created in a circle instead but deal less Hit damage.",
+      "zh_cn": "辅助产生一排墙体的技能，使其改为产生环形墙体，但造成的击中伤害降低。"
+    },
+    "SupportWallFortressPlayerTwo": {
+      "en": "Supports skills that create walls in a line, causing them to be created in a circle instead but deal less Hit damage and have lowered Area of Effect.",
+      "zh_cn": "辅助产生一排墙体的技能，使其改为产生环形墙体，但击中伤害降低，效果范围缩小。"
+    },
+    "SupportWarmbloodedPlayer": {
+      "en": "Supports Persistent Buff Skills, causing Freeze applied to you to last for a shorter duration while the Supported Skill is active.",
+      "zh_cn": "辅助永久性增益状态技能，激活被辅助技能时，缩短对你施加的冻结的持续时间。"
+    },
+    "SupportWildfirePlayer": {
+      "en": "Supports any skill that Hits enemies, Spreading Ignites it inflicts to nearby enemies after a delay.",
+      "zh_cn": "辅助任意击中敌人的技能，使其在一段延迟后将造成的点燃传播给附近的敌人。"
+    },
+    "SupportWildshardsPlayer": {
+      "en": "Supports Projectile Spells. Supported Spells have a chance to fire many additional Projectiles in a circle.",
+      "zh_cn": "辅助投射物法术。被辅助法术有几率额外环形发射大量投射物。"
+    },
+    "SupportWildshardsPlayerThree": {
+      "en": "Supports Projectile Spells. Supported Spells have an increasingly higher chance to fire many additional Projectiles in a circle, resetting when they do.",
+      "zh_cn": "辅助投射物法术。被辅助法术额外环形发射大量投射物的几率越来越高，触发时重置几率。"
+    },
+    "SupportWildshardsPlayerTwo": {
+      "en": "Supports Projectile Spells. Supported Spells have a chance to fire many additional Projectiles in a circle.",
+      "zh_cn": "辅助投射物法术。被辅助法术有几率额外环形发射大量投射物。"
+    },
+    "SupportWindowOfOpportunityPlayer": {
+      "en": "Supports Channelling skills that have special effects if released with Perfect Timing, causing them to deal much more damage if released with Perfect Timing but reducing the Perfect Timing window.",
+      "zh_cn": "辅助在完美时机释放能产生特殊效果的持续吟唱技能，使其在完美时机释放时造成更高伤害，但会缩短完美时机的窗口。"
+    },
+    "SupportWindowOfOpportunityPlayerTwo": {
+      "en": "Supports Channelling skills that have special effects if released with Perfect Timing, causing them to deal much more damage and grant Perfect Deflection if released with Perfect Timing but reducing the Perfect Timing window.",
+      "zh_cn": "辅助在完美时机释放能产生特殊效果的持续吟唱技能，使其在完美时机释放时造成更高伤害并获得完美偏转，但会缩短完美时机的窗口。"
+    },
+    "SupportWitheringTouchPlayer": {
+      "en": "Supports any skill that Hits enemies, giving it a chance to Wither enemies on Hit.",
+      "zh_cn": "辅助任意击中敌人的技能，使其击中敌人时有概率造成死亡凋零。"
+    },
+    "SupportXibaquasRendingPlayer": {
+      "en": "Supports Skills that leap into the air, causing Corpses in the area you land to violently explode, damaging surrounding enemies.",
+      "zh_cn": "辅助可跃向空中的技能。落地时，使你着陆区域内的灵柩猛烈爆炸，并对周围敌人造成伤害。"
+    },
+    "SupportXophsPyrePlayer": {
+      "en": "Supports Skills that can cause Damaging Hits, granting extra Chaos damage and causing Chaos damage to Contribute to Ignites.",
+      "zh_cn": "辅助可造成伤害性击中的技能，提供额外混沌伤害，使混沌伤害作用于点燃。"
+    },
+    "SupportZarokhsRefrainPlayer": {
+      "en": "Supports Cascadable Spells you cast yourself. Supported Spells Echo thrice, but are given a Cooldown. Cannot support skills which already have a Cooldown.",
+      "zh_cn": "辅助你自身施放的扩散 法术。被辅助的法术产生 3 次法术 回响，但会增加冷却时间。无法辅助有冷却时间的技能。"
+    },
+    "SupportZarokhsRevoltPlayer": {
+      "en": "Supports Repeatable Spells you cast yourself, Sealing them over time and giving them a moderate Cooldown. The Seals are broken when cast, each causing the Spell to Repeat. Cannot support skills which already have a Cooldown or gain seals.",
+      "zh_cn": "辅助你施放的可重复法术，使其随时间获得封印并增加一个适中的冷却时间。施放时打破封印，每层封印使该法术重复一次。无法辅助已有冷却时间或能获得封印的技能。"
+    },
+    "SupportZenithPlayer": {
+      "en": "Supports Spell Skills. Supported Skills deal more damage while you are above 90% of your Maximum Mana. Does not modify Skills used by Minions.",
+      "zh_cn": "辅助法术技能。当你的魔力高于魔力上限的 90% 时，被辅助技能造成更高的伤害。不会修改召唤生物使用的技能。"
+    },
+    "SupportZenithPlayerTwo": {
+      "en": "Supports Spell Skills. Supported Skills have increased Mana cost Efficiency and deal more damage while you are above 90% of your maximum Mana. Does not modify Skills used by Minions.",
+      "zh_cn": "辅助法术技能。被辅助技能的魔力消耗效能提高，并且当你的魔力高于魔力上限的 90% 时，技能造成更高的伤害。不会修改召唤生物使用的技能。"
+    },
+    "SupportZerphisLegacyPlayer": {
+      "en": "Supports Attacks and Warcries you use yourself. Supported Skills gain a Glory requirement, and build Glory when you spend Life on Skills. Supported Skills deal more damage and have significantly\n increased area of effect.",
+      "zh_cn": "辅助你施放的攻击与战吼。被辅助的技能将需要消耗荣耀，并且当你在技能上消耗生命时会积攒荣耀。被辅助的技能会造成更多伤害，并显著\n扩大影响范围。"
+    },
+    "ViciousHexSupportPlayer": {
+      "en": "Supports Curse skills you cast yourself, causing them to trigger Doom Blast on Cursed enemies when the Curse expires.",
+      "zh_cn": "辅助你施放的诅咒技能，使其在诅咒结束时对被被诅咒的敌人触发末日爆炸。"
+    }
+  },
+  "untranslated": [
+    "ArbitersReachWardPlayer",
+    "SupportBrambleslamPlayer",
+    "SupportBreachlordsAmalgam",
+    "SupportBreachlordsRift",
+    "SupportCathasBrilliance",
+    "SupportColdExposurePlayer",
+    "SupportConcussiveRunesPlayer",
+    "SupportDoedresUndoingPlayer",
+    "SupportEshsProwess",
+    "SupportFeedingFrenzyPlayerTwo",
+    "SupportFistOfKalguurPlayer",
+    "SupportFrozenSpitePlayer",
+    "SupportHealingRunesPlayer",
+    "SupportHerDeclarationPlayer",
+    "SupportMedvedsFelling",
+    "SupportMorrigansInsight",
+    "SupportOlrothsConvictionPlayer",
+    "SupportOlrothsHubrisPlayer",
+    "SupportPrototypeSeventeenPlayer",
+    "SupportRuneforgedBladesPlayer",
+    "SupportRunicExtractionPlayer",
+    "SupportRunicInfusionPlayer",
+    "SupportScouringFlamePlayer",
+    "SupportSeraphsHeartPlayer",
+    "SupportStyrnsFerocity",
+    "SupportStyrnsMountain",
+    "SupportTangMazusThuriblePlayer",
+    "SupportTrickstersShardPlayer",
+    "SupportTulsAvalanche",
+    "SupportUhtredsConstellation",
+    "SupportUhtredsRitePlayer",
+    "SupportVoranasSiege",
+    "SupportVruunsAftermath"
+  ]
+}
