@@ -18,6 +18,9 @@ INPUT_PROFILE = "sorceress-spark-level1-q0-v1"
 OUTPUT_PROFILE = "spark-single-hit-cast-cost-v1"
 PLAYER_OUTPUT_PROFILE = "conditional-skill-hit-v1"
 ACTOR_POLICY = "selected-player-generic-ot-v1"
+PASSIVE_INPUT_PROFILE = "sorceress-spark-level1-q0-ordinary-damage-passives-v1"
+PASSIVE_PROFILE = "spark-level1-q0-ordinary-damage-passives"
+PASSIVE_ACTOR_POLICY = "selected-player-generic-ot-ordinary-damage-passives-v1"
 DOMAINS = sorted("""base_items cost_types granted_effect_levels granted_effect_stat_sets
 granted_effects native_acquisition native_coverage native_input_lock native_normalization
 native_reference_index native_rule_requirements native_runtime native_skill_projection
@@ -27,6 +30,14 @@ PLAYER_DOMAINS = sorted([*DOMAINS, "native_player_context", "native_actor_bindin
 
 def player_enabled(recipe):
     return recipe["schema"] == PLAYER_SCHEMA
+
+
+def input_profile(recipe):
+    return recipe["target"].get("input_profile", INPUT_PROFILE)
+
+
+def actor_policy(recipe):
+    return PASSIVE_ACTOR_POLICY if input_profile(recipe) == PASSIVE_INPUT_PROFILE else ACTOR_POLICY
 
 
 def require(condition, message):
@@ -97,9 +108,15 @@ def recipe_document(raw):
     keys(recipe, ["schema", "target", "facts", "descriptions", "official_tree", "compiler"]
          + (["player"] if player else []))
     target = recipe["target"]
-    keys(target, ["game", "realm", "game_patch", "input_profile", "output_profile", "source_status", "partial"])
+    require(isinstance(target, dict), "Invalid native target")
+    keys(target, ["game", "realm", "game_patch", "output_profile", "source_status", "partial"]
+         + (["input_profile"] if "input_profile" in target else []))
+    profile = input_profile(recipe)
+    require(profile in ([INPUT_PROFILE, PASSIVE_INPUT_PROFILE] if player else [INPUT_PROFILE]),
+            "Unsupported native input profile/version")
+    declared_profile = {"input_profile": profile} if "input_profile" in target else {}
     require(target == {"game": "poe2", "realm": "INTERNATIONAL", "game_patch": target["game_patch"],
-                       "input_profile": INPUT_PROFILE,
+                       **declared_profile,
                        "output_profile": PLAYER_OUTPUT_PROFILE if player else OUTPUT_PROFILE,
                        "source_status": SOURCE_STATUS, "partial": True}
             and target["partial"] is True, "Unsupported native target/profile/status")
@@ -187,7 +204,7 @@ def verify_runtime(runtime, recipe, acquisition):
     require(isinstance(lock, dict) and lock.get("format") == f"pobr-native-runtime-input-lock/v{version}"
             and all(lock.get(key) == target[key] for key in ["game", "realm", "game_patch"])
             and lock.get("facts") == recipe["facts"] and lock.get("descriptions") == recipe["descriptions"]
-            and lock.get("compiler") == compiler and lock.get("profile") == target["input_profile"]
+            and lock.get("compiler") == compiler and lock.get("profile") == input_profile(recipe)
             and isinstance(lock.get("official_tree"), dict)
             and all(lock["official_tree"].get(k) == v for k, v in recipe["official_tree"].items())
             and lock["official_tree"].get("fields") == ["coordinates"], "Runtime input lock mismatch")
@@ -198,7 +215,8 @@ def verify_runtime(runtime, recipe, acquisition):
     require(isinstance(contract, dict) and type(contract.get("schema_version")) is int
             and contract["schema_version"] == version
             and all(contract.get(key) == target[key] for key in
-                    ["game", "realm", "game_patch", "input_profile", "output_profile"])
+                    ["game", "realm", "game_patch", "output_profile"])
+            and contract.get("input_profile") == input_profile(recipe)
             and contract.get("compiler_revision") == compiler["revision_declaration"]
             and contract.get("descriptions_manifest_sha256") == recipe["descriptions"]["manifest_sha256"]
             and contract.get("allowed_source_manifests") == sorted(set(allowed_manifests)),
@@ -228,7 +246,7 @@ def verify_runtime(runtime, recipe, acquisition):
         verify_player(documents, recipe)
         keys(receipt["data_identity"], ["data_version", "sha256"])
         require(receipt["data_identity"]["data_version"] == target["game_patch"]
-                and receipt["actor_policy"] == ACTOR_POLICY
+                and receipt["actor_policy"] == actor_policy(recipe)
                 and receipt["evaluation"] == target["output_profile"], "Player assembly identity mismatch")
         hex_pin(receipt["data_identity"]["sha256"])
     return hashes, receipt
@@ -257,7 +275,7 @@ def verify_player(documents, recipe):
             and all(context.get(key) == recipe["target"][key] for key in ["game", "realm", "game_patch"])
             and type(binding.get("schema_version")) is int and binding["schema_version"] == 1
             and binding.get("context_sha256") == player["context_sha256"]
-            and binding.get("policy") == ACTOR_POLICY
+            and binding.get("policy") == actor_policy(recipe)
             and binding.get("evaluation") == PLAYER_OUTPUT_PROFILE
             and binding.get("model_status") == "conditional-model", "Runtime player policy/context mismatch")
     lock = documents["base/native_input_lock.json"].get("player")
@@ -266,9 +284,33 @@ def verify_player(documents, recipe):
     require(all(lock[key] == value for key, value in {
         **recipe["player"], "parent_manifest_sha256": recipe["facts"]["manifest_sha256"],
         "parent_source_lock_sha256": recipe["facts"]["source_lock_sha256"],
-        "actor_binding_sha256": player["actor_binding_sha256"], "actor_policy": ACTOR_POLICY,
+        "actor_binding_sha256": player["actor_binding_sha256"], "actor_policy": actor_policy(recipe),
     }.items()), "Runtime player input lock mismatch")
     hex_pin(lock["producer_revision"], 40)
+    if input_profile(recipe) == PASSIVE_INPUT_PROFILE:
+        contract = documents["base/native_runtime.json"]
+        for field, domain, fmt in [("normalization", "native_normalization", "pobr-native-normalization/v2"),
+                                   ("rules", "native_rule_requirements", "pobr-native-rule-requirements/v2")]:
+            require(contract.get(field) == {"profile": PASSIVE_PROFILE, "version": 2,
+                    "sha256": files[f"base/{domain}.json"]}, "Mixed passive interpretation tuple")
+            doc = documents[f"base/{domain}.json"]
+            require(isinstance(doc, dict) and doc.get("profile") == PASSIVE_PROFILE
+                    and type(doc.get("version")) is int and doc["version"] == 2
+                    and doc.get("format") == fmt, "Mixed passive interpretation artifact")
+        policy_pin = {"id": actor_policy(recipe), "artifact_sha256": player["actor_binding_sha256"]}
+        normalization = documents["base/native_normalization.json"].get("actor_policy")
+        require(isinstance(normalization, dict) and all(normalization.get(k) == v for k, v in policy_pin.items()),
+                "Passive normalization policy mismatch")
+        rules = documents["base/native_rule_requirements.json"]
+        require(rules.get("actor_policy_sha256") == player["actor_binding_sha256"]
+                and rules.get("evaluation") == PLAYER_OUTPUT_PROFILE, "Passive rule policy mismatch")
+        reference = documents["base/native_reference_index.json"]
+        coverage = documents["base/native_coverage.json"]
+        require(isinstance(reference, dict) and isinstance(coverage, dict)
+                and reference.get("input_profile") == PASSIVE_INPUT_PROFILE
+                and reference.get("actor_policy") == policy_pin
+                and coverage.get("input_profile") == PASSIVE_INPUT_PROFILE,
+                "Passive reference/coverage policy mismatch")
 
 
 def replay(root, recipe_path, expected_recipe_sha256, facts, source_lock, descriptions, official_tree, compiler, out,
@@ -319,6 +361,10 @@ def replay(root, recipe_path, expected_recipe_sha256, facts, source_lock, descri
     if player_context is not None:
         command += ["--player-context", str(player_context), "--player-manifest-sha256", recipe["player"]["manifest_sha256"],
                     "--player-source-lock-sha256", recipe["player"]["source_lock_sha256"]]
+    # Omitted/old selections retain the exact historical invocation, including compatibility
+    # with the pinned older compiler. Only the new opt-in sends the new argument.
+    if input_profile(recipe) == PASSIVE_INPUT_PROFILE:
+        command += ["--input-profile", PASSIVE_INPUT_PROFILE]
     subprocess.run([*command, "--out", str(out / "runtime")], cwd=root, env={}, check=True)
     runtime_hashes, assembly = verify_runtime(out / "runtime", recipe, acquisition)
     require(verify_inputs() == acquisition, "Producer acquisition changed during replay")

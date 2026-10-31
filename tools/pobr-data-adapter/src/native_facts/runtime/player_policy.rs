@@ -3,7 +3,8 @@
 use std::collections::BTreeSet;
 
 use pobr_data::catalog::native_player::{
-    NATIVE_GENERIC_OT, NATIVE_PLAYER_ID, NativeActorBinding, NativeActorPolicy,
+    NATIVE_ALLOCATION_ASSUMPTION, NATIVE_GENERIC_OT, NATIVE_OTHER_ALLOCATIONS_EXCLUSION,
+    NATIVE_PASSIVES_ACTIVE_CONDITION, NATIVE_PLAYER_ID, NativeActorBinding, NativeActorPolicy,
     NativeAssignmentSelector, NativeCriticalBonus, NativeEvaluationKind, NativeFactDisposition,
     NativeFactDispositionKind, NativeMetadataScope, NativeModelStatus, NativePlayerContextDef,
     NativePlayerOrigin, NativePlayerReference,
@@ -15,7 +16,10 @@ use super::super::trust::{require, strict_json};
 pub(super) fn bind(
     c: &NativePlayerContextDef,
     context_sha256: String,
+    actor_policy: NativeActorPolicy,
 ) -> Result<NativeActorBinding, String> {
+    let passives =
+        actor_policy == NativeActorPolicy::SelectedPlayerGenericOtOrdinaryDamagePassivesV1;
     let facts = &c.facts;
     let candidates = facts
         .metadata_stats
@@ -184,16 +188,18 @@ pub(super) fn bind(
             } else { NativeFactDispositionKind::OutsideOutputScope },
             relevant_to_conditional_hit: selected,
             reason: if selected { "Exact stable actor/root/starting-reference selection, never a stat grant.".into() }
+                else if passives { format!("Physical character field {key} retained without execution. Actor metadata supplies only the explicit generic OT critical bonus; request-selected ordinary damage passives are admitted separately. Row attributes/pools, equipment, animations, descriptions and opaque fields do not become hit modifiers.") }
                 else { format!("Physical character field {key} retained without execution. This profile applies only explicit generic OT critical bonus; row attributes/pools, equipment, animations, descriptions and opaque fields do not become hit modifiers.") },
         });
     }
     for i in 0..facts.all_starting_relations.len() {
         dispositions.push(NativeFactDisposition { selector: format!("/facts/all_starting_relations/{i}"),
             disposition: NativeFactDispositionKind::Inactive, relevant_to_conditional_hit: false,
-            reason: "Ordered starting choices retained; no free allocation or autogrant, including the selected relation.".into() });
+            reason: if passives { "Ordered starting choices never grant nodes automatically. A node contributes only when explicitly selected in the request and separately admitted as an ordinary damage packet.".into() }
+                else { "Ordered starting choices retained; no free allocation or autogrant, including the selected relation.".into() } });
     }
-    Ok(NativeActorBinding {
-        schema_version: 1, policy: NativeActorPolicy::SelectedPlayerGenericOtV1,
+    let mut binding = NativeActorBinding {
+        schema_version: 1, policy: actor_policy,
         evaluation: NativeEvaluationKind::ConditionalSkillHitV1, model_status: NativeModelStatus::ConditionalModel,
         context_sha256, actor_id: NATIVE_PLAYER_ID.into(), actor_level: 1,
         critical_bonus: NativeCriticalBonus { bonus_percent: bonus,
@@ -206,7 +212,27 @@ pub(super) fn bind(
             "Mana per use is intrinsic cost, not payment timing, affordability or sustain; analytical base-use duration is not effective server cadence.".into(),
             "No actor pool/accuracy/attribute requirement law or full DPS is inferred; acquisition remains unreviewed-acquisition-draft.".into(),
         ],
-    })
+    };
+    if passives {
+        binding
+            .required_conditions
+            .push(NATIVE_PASSIVES_ACTIVE_CONDITION.into());
+        binding.excluded_sources = EXCLUDED_SOURCES
+            .iter()
+            .map(|source| {
+                if *source == "allocations" {
+                    NATIVE_OTHER_ALLOCATIONS_EXCLUSION
+                } else {
+                    *source
+                }
+                .to_string()
+            })
+            .collect();
+        binding
+            .assumptions
+            .push(NATIVE_ALLOCATION_ASSUMPTION.into());
+    }
+    Ok(binding)
 }
 
 pub(super) const REQUIRED_CONDITIONS: &[&str] = &[

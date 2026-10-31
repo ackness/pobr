@@ -3,10 +3,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use pobr_data::catalog::native_player::{
-    NATIVE_ACTOR_BINDING_PATH, NATIVE_GENERIC_OT, NATIVE_PLAYER_AO, NATIVE_PLAYER_CONTEXT_PATH,
-    NATIVE_PLAYER_ID, NativeActorBinding, NativeActorPolicy, NativeEvaluationKind,
-    NativeModelStatus, NativePlayerContextDef, NativePlayerOrigin,
+    NATIVE_ACTOR_BINDING_PATH, NATIVE_ALLOCATION_ASSUMPTION, NATIVE_GENERIC_OT,
+    NATIVE_OTHER_ALLOCATIONS_EXCLUSION, NATIVE_PASSIVES_ACTIVE_CONDITION, NATIVE_PLAYER_AO,
+    NATIVE_PLAYER_CONTEXT_PATH, NATIVE_PLAYER_ID, NativeActorBinding, NativeActorPolicy,
+    NativeEvaluationKind, NativeModelStatus, NativePlayerContextDef, NativePlayerOrigin,
 };
+use pobr_data::catalog::native_runtime::{NATIVE_REFERENCE_INDEX_PATH, NativeInputProfile};
 use pobr_data::catalog::{
     BaseItemDef, CostTypeDef, DataManifest, GrantedEffectDef, NativeRuntimeContract,
     PassiveNodeDef, PassiveTreeMeta, SkillGemDef, SkillLevelDef, SkillStatSetDef,
@@ -16,6 +18,7 @@ use serde_json::Value;
 
 use crate::{DataIdentity, GameData, LoadError, manifest::sha256_hex};
 
+mod passives;
 mod unique_json;
 
 /// Validated native input snapshot with private state and borrowed typed catalog access.
@@ -54,12 +57,23 @@ impl NativeData {
             Some((context, binding)) => (Some(context), Some(binding)),
             None => (None, None),
         };
+        let passive_nodes: Vec<PassiveNodeDef> = sealed(data, &manifest, "base/passive_tree.json")?;
+        if contract.input_profile
+            == NativeInputProfile::SorceressSparkLevel1Q0OrdinaryDamagePassivesV1
+        {
+            // Keep the complete index as JSON: a partial DTO must not erase source channels.
+            let index: Value = sealed(data, &manifest, NATIVE_REFERENCE_INDEX_PATH)?;
+            let context = player_context
+                .as_ref()
+                .ok_or_else(|| invalid(data, "passive profile requires player context"))?;
+            passives::validate(data, &contract, &passive_nodes, &index, context)?;
+        }
         Ok(Self {
             identity: data.identity()?.clone(),
             contract,
             player_context,
             actor_binding,
-            passive_nodes: sealed(data, &manifest, "base/passive_tree.json")?,
+            passive_nodes,
             passive_tree_meta: sealed(data, &manifest, "base/passive_tree_meta.json")?,
             base_items: sealed(data, &manifest, "base/base_items.json")?,
             skill_gems: sealed(data, &manifest, "base/skill_gems.json")?,
@@ -250,10 +264,18 @@ pub(crate) fn validate_player(
             && facts.selected_class_overrides.is_empty(),
         "native player must bind exact Character7 and separate AO/OT roots",
     )?;
+    let actor_policy = match contract.input_profile {
+        NativeInputProfile::SorceressSparkLevel1Q0V1 => {
+            NativeActorPolicy::SelectedPlayerGenericOtV1
+        }
+        NativeInputProfile::SorceressSparkLevel1Q0OrdinaryDamagePassivesV1 => {
+            NativeActorPolicy::SelectedPlayerGenericOtOrdinaryDamagePassivesV1
+        }
+    };
     require(
         b.actor_id == NATIVE_PLAYER_ID
             && b.actor_level == 1
-            && b.policy == NativeActorPolicy::SelectedPlayerGenericOtV1
+            && b.policy == actor_policy
             && b.evaluation == NativeEvaluationKind::ConditionalSkillHitV1
             && b.model_status == NativeModelStatus::ConditionalModel,
         "unsupported native actor policy/profile",
@@ -361,10 +383,16 @@ pub(crate) fn validate_player(
             "native critical glossary reference mismatch",
         )?;
     }
+    let passives =
+        actor_policy == NativeActorPolicy::SelectedPlayerGenericOtOrdinaryDamagePassivesV1;
     let exclusions = [
         "gear",
         "supports",
-        "allocations",
+        if passives {
+            NATIVE_OTHER_ALLOCATIONS_EXCLUSION
+        } else {
+            "allocations"
+        },
         "ascendancy",
         "infusion",
         "buffs",
@@ -390,8 +418,14 @@ pub(crate) fn validate_player(
             && b.required_conditions
                 .iter()
                 .map(String::as_str)
-                .eq(conditions)
-            && !b.assumptions.is_empty(),
+                .eq(conditions
+                    .into_iter()
+                    .chain(passives.then_some(NATIVE_PASSIVES_ACTIVE_CONDITION)))
+            && !b.assumptions.is_empty()
+            && (!passives
+                || b.assumptions
+                    .iter()
+                    .any(|s| s == NATIVE_ALLOCATION_ASSUMPTION)),
         "native policy predicates/exclusions incomplete",
     )?;
     let value = serde_json::to_value(&c).expect("typed source context serializes");
