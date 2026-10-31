@@ -11,6 +11,7 @@ python3 -m unittest discover -s devs/scripts -p 'test_*.py'
 # The optional Lua/vendor extraction cases run in full CI with lua-dkjson.
 python3 pipeline/test-data-update.py CompatibleUpdateTests
 python3 pipeline/test-data-snapshot.py
+python3 pipeline/test-native-candidate.py
 python3 pipeline/test-data-bundle.py
 python3 pipeline/test-client-sources.py
 python3 pipeline/test-client-source-draft.py
