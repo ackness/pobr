@@ -459,6 +459,11 @@ def main():
     tree.add_argument("--source", default="official-passive-tree")
     tree.add_argument("--out", type=Path, required=True)
     tree.add_argument("--offline", action="store_true")
+    native = sub.add_parser("native-candidate", help="Replay a byte-pinned native recipe offline; never publish")
+    native.add_argument("--recipe", type=Path, required=True)
+    native.add_argument("--recipe-sha256", required=True)
+    for binding in ["facts", "source-lock", "descriptions", "official-tree", "compiler", "out"]:
+        native.add_argument(f"--{binding}", type=Path, required=True)
     bundle = sub.add_parser("bundle")
     bundle.add_argument("--out", type=Path, required=True)
     bundle.add_argument("--version")
@@ -481,6 +486,12 @@ def main():
         print(fetch_tree_source(ROOT, args.source, args.offline))
     elif args.command == "tree-candidate":
         tree_candidate(ROOT, args.source, args.out, args.offline)
+    elif args.command == "native-candidate":
+        from native_candidate import replay
+
+        receipt = replay(ROOT, args.recipe, args.recipe_sha256, args.facts, args.source_lock,
+                         args.descriptions, args.official_tree, args.compiler, args.out)
+        print(f"Native candidate complete: {receipt['assembly_key']} (not published; calculation not admitted)")
     elif args.command in {"bundle", "verify-bundle"}:
         from data_bundle import create, verify
 
