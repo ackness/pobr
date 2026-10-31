@@ -1,4 +1,4 @@
-//! Effective crit pipeline (resolve_crit) — mirrors PoB2 `CalcOffence.lua`'s crit section exactly.
+//! Shared critical chance and damage resolution for ordinary and conditional hits.
 //!
 //! A single implementation serves both the panel (`calculate_minimal_vs_enemy`)
 //! and attribution (`total_dps_traced`) call sites, eliminating logic drift
@@ -35,6 +35,30 @@ use super::round;
 
 /// Default crit chance cap (percentage points). PoB2's `CritChanceCap` defaults to 100, overridable.
 const DEFAULT_CRIT_CHANCE_CAP: f64 = 100.0;
+
+/// Resolved critical inputs, independent of the source dataset and actor-binding policy.
+///
+/// No default is provided: the caller must resolve both quantities. The bounded
+/// [`super::conditional_hit::calculate_conditional_hit`] entry validates them before
+/// making any modifier query. Legacy resolvers retain their original permissive inputs.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ResolvedCriticalBase {
+    /// Probability as a fraction in `0..=1` (e.g. `0.09` means 9%).
+    pub chance_fraction: f64,
+    /// Extra damage in percent, not the total multiplier (100 means `1 + 100/100`).
+    pub damage_bonus_percent: f64,
+}
+
+/// The compatibility boundary is the only critical resolver reader of the legacy pack.
+/// The conditional entry supplies its resolved actor bonus directly instead.
+pub(crate) fn legacy_critical_base(cfg: &CalcConfig, chance_fraction: f64) -> ResolvedCriticalBase {
+    #[cfg(test)]
+    super::hit_read_probe::dependency("legacy critical constants");
+    ResolvedCriticalBase {
+        chance_fraction,
+        damage_bonus_percent: cfg.constants.character().base_critical_hit_damage_bonus,
+    }
+}
 
 /// Result of the effective crit pipeline. `chance` is the final crit chance
 /// (after downgrade/lucky/bifurcate/inevitable, as a **fraction**, 0..1);
@@ -75,10 +99,10 @@ pub fn resolve_crit(
 ) -> CritOutcome {
     resolve_crit_impl(
         player,
-        enemy,
+        mode_effective.then_some(enemy),
         cfg,
         hit_chance,
-        base_crit,
+        legacy_critical_base(cfg, base_crit),
         mode_effective,
         None,
     )
@@ -103,10 +127,10 @@ pub fn resolve_crit_traced(
     };
     let outcome = resolve_crit_impl(
         player,
-        enemy,
+        mode_effective.then_some(enemy),
         cfg,
         hit_chance,
-        base_crit,
+        legacy_critical_base(cfg, base_crit),
         mode_effective,
         Some(&mut sink),
     );
@@ -114,6 +138,20 @@ pub fn resolve_crit_traced(
         .node_id
         .expect("resolve_crit_impl always sets the crit_effect node when tracing");
     (outcome, crit_node)
+}
+
+/// Same numerical and trace implementation, with no target and an explicit actor base.
+pub(crate) fn resolve_conditional_crit_traced(
+    player: &ModDb,
+    cfg: &CalcConfig,
+    base: ResolvedCriticalBase,
+    trace: &mut TraceGraph,
+) -> CritOutcome {
+    let mut sink = TraceSink {
+        trace,
+        node_id: None,
+    };
+    resolve_crit_impl(player, None, cfg, 1.0, base, false, Some(&mut sink))
 }
 
 /// Trace output sink: the implementation connects every contribution edge
@@ -126,13 +164,15 @@ struct TraceSink<'a> {
 #[allow(clippy::too_many_arguments)]
 fn resolve_crit_impl(
     player: &ModDb,
-    enemy: &ModDb,
+    enemy: Option<&ModDb>,
     cfg: &CalcConfig,
     hit_chance: f64,
-    base_crit: f64,
+    base: ResolvedCriticalBase,
     mode_effective: bool,
     sink: Option<&mut TraceSink<'_>>,
 ) -> CritOutcome {
+    #[cfg(test)]
+    super::hit_read_probe::critical_resolution();
     // PoB2 CalcOffence.lua:3818-3823: this prohibition precedes every
     // chance/multiplier bonus, including inevitable critical hits.
     if never_crit(player, cfg) {
@@ -159,7 +199,7 @@ fn resolve_crit_impl(
     }
 
     // 0)-2) Source base, mod totals and the cap.
-    let terms = crit_chance_terms(player, enemy, cfg, base_crit, mode_effective);
+    let terms = crit_chance_terms(player, enemy, cfg, base.chance_fraction);
     let pre_effective_pct = terms.capped_pct();
 
     // 3)-6) Hit chance downgrade, lucky, bifurcate and inevitable.
@@ -170,8 +210,13 @@ fn resolve_crit_impl(
     let pre_effective_chance = round((pre_effective_pct / 100.0).clamp(0.0, 1.0));
 
     // 7) Crit damage
-    let multiplier_terms =
-        crit_multiplier_terms(player, enemy, cfg, mode_effective.then_some(&adjust));
+    let multiplier_terms = crit_multiplier_terms(
+        player,
+        enemy,
+        cfg,
+        base.damage_bonus_percent,
+        mode_effective.then_some(&adjust),
+    );
     let crit_multiplier = multiplier_terms.multiplier();
     let pre_effective_multiplier = multiplier_terms.pre_effective_multiplier();
 
@@ -179,7 +224,7 @@ fn resolve_crit_impl(
     let crit_effect = round(1.0 - crit_chance + crit_chance * crit_multiplier);
 
     if let Some(sink) = sink {
-        record_trace(sink, player, enemy, cfg, mode_effective, crit_effect);
+        record_trace(sink, player, enemy, cfg, crit_effect);
     }
 
     CritOutcome {
@@ -374,10 +419,9 @@ impl CritChanceTerms {
 
 pub(crate) fn crit_chance_terms(
     player: &ModDb,
-    enemy: &ModDb,
+    enemy: Option<&ModDb>,
     cfg: &CalcConfig,
     base_crit: f64,
-    mode_effective: bool,
 ) -> CritChanceTerms {
     let crit_chance_names = [ModName::from("CriticalStrikeChance")];
     let self_crit_chance = [ModName::from("SelfCritChance")];
@@ -414,17 +458,17 @@ pub(crate) fn crit_chance_terms(
     // The source base and mod contributions are both in percentage points;
     // all arithmetic stays in percentage-point space (matching PoB2).
     let player_flat = player.sum(ModType::Base, cfg, &crit_chance_names);
-    let enemy_flat = if mode_effective {
+    let enemy_flat = enemy.map_or(0.0, |enemy| {
+        #[cfg(test)]
+        super::hit_read_probe::dependency("enemy critical chance");
         enemy.sum(ModType::Base, cfg, &self_crit_chance)
-    } else {
-        0.0
-    };
+    });
     let player_inc = player.sum(ModType::Inc, cfg, &crit_chance_names);
-    let enemy_inc = if mode_effective {
+    let enemy_inc = enemy.map_or(0.0, |enemy| {
+        #[cfg(test)]
+        super::hit_read_probe::dependency("enemy critical chance");
         enemy.sum(ModType::Inc, cfg, &self_crit_chance)
-    } else {
-        0.0
-    };
+    });
     CritChanceTerms {
         always: player.flag(cfg, "AlwaysCrit"),
         source_base,
@@ -610,8 +654,9 @@ impl CritMultiplierTerms {
 /// SelfCritMultiplier, and the inevitable less-damage term.
 pub(crate) fn crit_multiplier_terms(
     player: &ModDb,
-    enemy: &ModDb,
+    enemy: Option<&ModDb>,
     cfg: &CalcConfig,
+    base_bonus_percent: f64,
     adjust: Option<&CritChanceAdjust>,
 ) -> CritMultiplierTerms {
     let crit_multiplier_names = [ModName::from("CriticalStrikeMultiplier")];
@@ -632,8 +677,7 @@ pub(crate) fn crit_multiplier_terms(
         });
     let self_crit_mult = [ModName::from("SelfCritMultiplier")];
     CritMultiplierTerms {
-        //  Player's base crit damage bonus reads from the injected constants pack.
-        base_bonus: cfg.constants.character().base_critical_hit_damage_bonus,
+        base_bonus: base_bonus_percent,
         flat: player.sum(ModType::Base, cfg, &crit_multiplier_names),
         inc: player.sum(ModType::Inc, cfg, &crit_multiplier_names),
         more: player.more(cfg, &crit_multiplier_names),
@@ -641,7 +685,9 @@ pub(crate) fn crit_multiplier_terms(
         disabled: player.flag(cfg, "NoCritMultiplier"),
         inevitable_less_more: adjust.and_then(|adjust| adjust.inevitable_less_more),
         bifurcate_share,
-        enemy: adjust.map(|_| {
+        enemy: enemy.map(|enemy| {
+            #[cfg(test)]
+            super::hit_read_probe::dependency("enemy critical bonus");
             (
                 enemy.sum(ModType::Base, cfg, &self_crit_mult),
                 enemy.sum(ModType::Inc, cfg, &self_crit_mult),
@@ -698,9 +744,8 @@ fn inevitable_less_crit_bonus(crit_pct: f64, pre_bifurcate_pct: f64, bifurcate: 
 fn record_trace(
     sink: &mut TraceSink<'_>,
     player: &ModDb,
-    enemy: &ModDb,
+    enemy: Option<&ModDb>,
     cfg: &CalcConfig,
-    mode_effective: bool,
     crit_effect: f64,
 ) {
     let trace = &mut *sink.trace;
@@ -779,7 +824,9 @@ fn record_trace(
     trace.add_edge(mult_more.node_id, crit_node);
 
     // Enemy SelfCritChance / SelfCritMultiplier (mode_effective only, attributed to EnemyConfig).
-    if mode_effective {
+    if let Some(enemy) = enemy {
+        #[cfg(test)]
+        super::hit_read_probe::dependency("enemy critical trace");
         let enemy_chance = enemy.sum_traced(
             ModType::Base,
             cfg,

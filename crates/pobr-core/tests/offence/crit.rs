@@ -46,6 +46,65 @@ fn baseline_matches_legacy_formula() {
     approx(crit.effect, 1.4);
 }
 
+/// The explicit-base seam leaves the public compatibility wrappers, operation
+/// order and traced numerical result identical for varied injected actor bonuses.
+#[test]
+fn legacy_actor_bonus_numeric_and_traced_resolvers_stay_identical() {
+    for bonus in [0.0, 25.0, 100.0, 275.0] {
+        for effective in [false, true] {
+            for special in [
+                None,
+                Some("CritChanceLucky"),
+                Some("BifurcateCrit"),
+                Some("InevitableCriticalHits"),
+                Some("NoCritMultiplier"),
+                Some("NeverCrit"),
+            ] {
+                let mut constants = RuntimeConstants::default();
+                constants
+                    .game_constants
+                    .character
+                    .base_critical_hit_damage_bonus = bonus;
+                let cfg = CalcConfig::spell()
+                    .with_constants(constants)
+                    .with_mode_effective(effective);
+                let mut db = ModDb::new();
+                db.add_list(vec![
+                    Modifier::number("CriticalStrikeChance", ModType::Base, 3.0),
+                    Modifier::number("CriticalStrikeChance", ModType::Inc, 37.0),
+                    Modifier::number("CriticalStrikeChance", ModType::More, 12.5),
+                    Modifier::number("CriticalStrikeMultiplier", ModType::Base, 17.0),
+                    Modifier::number("CriticalStrikeMultiplier", ModType::Inc, 23.0),
+                    Modifier::number("CriticalStrikeMultiplier", ModType::More, 11.0),
+                ]);
+                if let Some(flag) = special {
+                    db.add_mod(Modifier::flag(flag));
+                }
+                let mut enemy = ModDb::new();
+                enemy.add_list(vec![
+                    Modifier::number("SelfCritChance", ModType::Base, 2.0),
+                    Modifier::number("SelfCritChance", ModType::Inc, 11.0),
+                    Modifier::number("SelfCritMultiplier", ModType::Base, 13.0),
+                    Modifier::number("SelfCritMultiplier", ModType::Inc, 19.0),
+                ]);
+                let numeric = resolve_crit(&db, &enemy, &cfg, 0.71, 0.19, effective);
+                let mut trace = TraceGraph::new();
+                let (traced, node) =
+                    resolve_crit_traced(&db, &enemy, &cfg, 0.71, 0.19, effective, &mut trace);
+                assert_eq!(
+                    numeric, traced,
+                    "bonus {bonus}, effective {effective}, special {special:?}"
+                );
+                assert_eq!(trace.nodes()[node.as_usize()].value, numeric.effect);
+                if !effective && special.is_none() {
+                    let expected = (1.0 + (bonus + 17.0) / 100.0 * 1.23 * 1.11) * 1e9;
+                    assert_eq!(numeric.multiplier, expected.round() / 1e9);
+                }
+            }
+        }
+    }
+}
+
 /// CritChanceCap: defaults to 100%; injecting an Override makes the cap take
 /// effect (gap crit-chance-cap-queryable).
 #[test]

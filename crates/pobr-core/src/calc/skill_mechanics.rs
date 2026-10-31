@@ -711,6 +711,8 @@ pub struct SkillCosts {
 /// (`SkillManaCostBase` / `SkillLifeCostBase`) and everything that moves a
 /// cost between the two. A resource the skill has no cost in stays 0.
 pub fn skill_costs(db: &ModDb, cfg: &CalcConfig) -> SkillCosts {
+    #[cfg(test)]
+    super::hit_read_probe::dependency("skill costs");
     let base = |name: &str| db.sum(ModType::Base, cfg, &[ModName::from(name)]);
     let base_mana = db
         .override_(cfg, "BaseManaCostOverride")

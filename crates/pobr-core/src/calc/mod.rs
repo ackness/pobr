@@ -12,6 +12,7 @@ pub mod channel;
 pub mod charge_generation;
 pub mod charm_spirits;
 pub mod combo;
+pub mod conditional_hit;
 mod configured_damage;
 pub mod crit;
 pub mod crit_pass;
@@ -28,6 +29,8 @@ pub mod flameblast;
 pub mod formula;
 pub mod hand_pass;
 pub(crate) mod hit_display;
+#[cfg(test)]
+pub(crate) mod hit_read_probe;
 pub mod keystone_merge;
 pub(crate) mod limit_display;
 pub mod mageblood;

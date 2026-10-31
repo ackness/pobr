@@ -127,6 +127,8 @@ impl<'a> EvalContext<'a> {
     /// [`CalcConfig::stats`] doc for the shared backfill source of both
     /// channels) → 0.
     pub fn stat(&self, name: &str) -> f64 {
+        #[cfg(test)]
+        crate::calc::hit_read_probe::dependency("actor stat");
         self.stat_lookup
             .and_then(|lookup| lookup(name))
             .unwrap_or_else(|| self.cfg.stat(name))
@@ -446,6 +448,8 @@ impl CalcConfig {
     }
 
     pub fn condition(&self, name: &str) -> bool {
+        #[cfg(test)]
+        crate::calc::hit_read_probe::dependency("condition snapshot");
         if let Some(reads) = &self.reads {
             reads.note(name, true);
         }
@@ -471,6 +475,8 @@ impl CalcConfig {
 
     /// A multiplier's value when something set it.
     pub fn multiplier_if_set(&self, name: &str) -> Option<f64> {
+        #[cfg(test)]
+        crate::calc::hit_read_probe::dependency("multiplier snapshot");
         if let Some(reads) = &self.reads {
             reads.note(name, false);
         }
@@ -479,6 +485,8 @@ impl CalcConfig {
 
     /// Reads the already-computed stat snapshot (see [`CalcConfig::stats`]; missing key → 0).
     pub fn stat(&self, name: &str) -> f64 {
+        #[cfg(test)]
+        crate::calc::hit_read_probe::dependency("actor stat");
         self.stats.get(name).copied().unwrap_or(0.0)
     }
 
@@ -508,6 +516,8 @@ impl CalcConfig {
     /// Missing key → 0.0 — conservatively matching PoB2 ModStore.lua's
     /// behavior where the mod doesn't apply when `getActor` is missing.
     pub fn actor_snapshot(&self, actor: crate::ActorRef, var: &str) -> f64 {
+        #[cfg(test)]
+        crate::calc::hit_read_probe::dependency("cross-actor stat");
         self.actor_multipliers
             .get(&format!("{}.{}", actor.key(), var))
             .copied()
@@ -521,6 +531,8 @@ impl CalcConfig {
     /// likewise makes the player its own `player` actor. Lines such as
     /// "… per Idol in your Equipment" take this path.
     pub fn actor_multiplier(&self, actor: crate::ActorRef, var: &str) -> f64 {
+        #[cfg(test)]
+        crate::calc::hit_read_probe::dependency("cross-actor multiplier");
         let key = format!("{}.{}", actor.key(), var);
         match self.actor_multipliers.get(&key) {
             Some(value) => *value,

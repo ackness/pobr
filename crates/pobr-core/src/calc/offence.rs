@@ -3,10 +3,9 @@ use pobr_data::prelude::*;
 use crate::{CalcConfig, ModDb, TraceGraph, TraceNodeId, TraceOperation, TraceOutput, TracedValue};
 
 use super::crit::{resolve_crit, resolve_crit_traced};
-use super::crit_pass::run_crit_passes;
 use super::damage::DamageComponent;
 use super::formula::{FormulaBuilder, FormulaOp, StatFormula};
-use super::scaled_damage::{dps_end_factors, scaled_damage_effect};
+use super::scaled_damage::dps_end_factors;
 use super::{ActorBaseStats, BreakdownStep, BreakdownTable, OutputTable, hit_chance, round};
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -498,6 +497,8 @@ pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> 
 /// The rate a skill's hits come at, which is its rate of use except for a
 /// rain or periodic spell (`calc::rain`, `calc::periodic`).
 pub(crate) fn resolve_action_rate(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> f64 {
+    #[cfg(test)]
+    super::hit_read_probe::dependency("action rate");
     action_rate_terms(db, cfg, input).value
 }
 
@@ -756,6 +757,8 @@ pub(crate) fn hit_chance_terms(
     cfg: &CalcConfig,
     input: &MinimalInput,
 ) -> HitChanceTerms {
+    #[cfg(test)]
+    super::hit_read_probe::dependency("hit chance/target");
     let accuracy = accuracy_terms(db, cfg, input).value;
     // PoE2 hit chance (agent-docs/accuracy-and-enemy.md §2, §3):
     // - Non-attacks always hit (matching vendor CalcOffence.lua:2611-2612's
@@ -929,22 +932,15 @@ pub(crate) fn hit_pass(
     // strips Hit via `ailment_scoped_cfg`, and ignite/bleed etc.'s DoT base
     // is still derived from hit damage that includes Hit (matching PoB2: DoT inherits hit bonuses).
     let hit_cfg = hit_cfg(db, enemy_db, cfg);
-    // ScaledDamageEffect (the DD/TD factor; effect == 1.0 unchanged
-    // bit-for-bit when there's no mod; crit_chance is
-    // a fraction input).
-    let scaled = scaled_damage_effect(db, enemy_db, &hit_cfg, crit.chance);
-    // Both legs aggregated + canDeal + lucky + CritBlend (vendor `:4395`).
-    // Short-circuits to the old single-factor formula when there's no
-    // CriticalStrike-conditioned mod (rounding order copied, bit-identical).
+    // Ordinary offence and conditional hits share scaling and both damage legs.
     let mut effective = Vec::new();
-    let crit_pass = run_crit_passes(
+    let (scaled, crit_pass) = super::crit_pass::calculate_hit_damage(
         db,
         &hit_cfg,
         input.base_hit_min,
         input.base_hit_max,
         &crit,
-        &scaled,
-        cfg.mode_effective,
+        cfg.mode_effective.then_some(enemy_db),
         |pass_cfg, damage_type, raw_hit| {
             let terms = enemy_mitigation_terms(db, enemy_db, pass_cfg, damage_type, raw_hit);
             let multiplier = terms.multiplier();
@@ -1470,15 +1466,13 @@ fn total_dps_traced(
     // direct, falling back to marginal).
     // The hit-view cfg: adds `KeywordFlags::HIT` (shares its source with the non-traced path, see the comment there).
     let hit_cfg = hit_cfg(db, enemy_db, cfg);
-    let scaled = scaled_damage_effect(db, enemy_db, &hit_cfg, crit.chance);
-    let crit_pass = run_crit_passes(
+    let (scaled, crit_pass) = super::crit_pass::calculate_hit_damage(
         db,
         &hit_cfg,
         input.base_hit_min,
         input.base_hit_max,
         &crit,
-        &scaled,
-        cfg.mode_effective,
+        cfg.mode_effective.then_some(enemy_db),
         |pass_cfg, damage_type, raw_hit| {
             enemy_damage_multiplier(db, enemy_db, pass_cfg, damage_type, raw_hit)
         },

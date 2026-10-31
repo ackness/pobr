@@ -1494,7 +1494,8 @@ impl CalculationSession {
             }
             "CritChance" | "CritMultiplier" => {
                 let effective = cfg.mode_effective;
-                let chance = super::crit::crit_chance_terms(db, enemy, cfg, 0.0, effective);
+                let chance =
+                    super::crit::crit_chance_terms(db, effective.then_some(enemy), cfg, 0.0);
                 let adjust = super::crit::adjust_crit_chance(
                     db,
                     cfg,
@@ -1505,8 +1506,14 @@ impl CalculationSession {
                 if stat == "CritChance" {
                     chance.formula(&adjust)
                 } else {
-                    super::crit::crit_multiplier_terms(db, enemy, cfg, effective.then_some(&adjust))
-                        .formula()
+                    super::crit::crit_multiplier_terms(
+                        db,
+                        effective.then_some(enemy),
+                        cfg,
+                        super::crit::legacy_critical_base(cfg, 0.0).damage_bonus_percent,
+                        effective.then_some(&adjust),
+                    )
+                    .formula()
                 }
             }
             _ => return None,

@@ -57,6 +57,16 @@ pub fn scaled_damage_effect(
     cfg: &CalcConfig,
     crit_chance: f64,
 ) -> ScaledDamage {
+    scaled_damage_effect_for_target(db, cfg.mode_effective.then_some(enemy_db), cfg, crit_chance)
+}
+
+/// `None` is a genuinely target-free query: no empty enemy database is manufactured.
+pub(crate) fn scaled_damage_effect_for_target(
+    db: &ModDb,
+    enemy: Option<&ModDb>,
+    cfg: &CalcConfig,
+    crit_chance: f64,
+) -> ScaledDamage {
     let triple_on_crit = db
         .sum(
             ModType::Base,
@@ -64,8 +74,10 @@ pub fn scaled_damage_effect(
             &[ModName::from("TripleDamageChanceOnCrit")],
         )
         .min(100.0);
-    let enemy_self_triple = if cfg.mode_effective {
-        enemy_db.sum(
+    let enemy_self_triple = if let Some(enemy) = enemy {
+        #[cfg(test)]
+        super::hit_read_probe::dependency("enemy scaled damage");
+        enemy.sum(
             ModType::Base,
             cfg,
             &[ModName::from("SelfTripleDamageChance")],
@@ -85,8 +97,10 @@ pub fn scaled_damage_effect(
             &[ModName::from("DoubleDamageChanceOnCrit")],
         )
         .min(100.0);
-    let enemy_self_double = if cfg.mode_effective {
-        enemy_db.sum(
+    let enemy_self_double = if let Some(enemy) = enemy {
+        #[cfg(test)]
+        super::hit_read_probe::dependency("enemy scaled damage");
+        enemy.sum(
             ModType::Base,
             cfg,
             &[ModName::from("SelfDoubleDamageChance")],
