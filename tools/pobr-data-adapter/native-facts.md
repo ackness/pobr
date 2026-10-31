@@ -1,5 +1,9 @@
 # Native facts domain candidate
 
+For physical facts feeding the existing ordinary Stats/Mods catalog DTOs, use
+[ordinary-facts.md](ordinary-facts.md). That mode shares this input verifier and
+physical reader, and emits domain files for later ordinary-package assembly.
+
 By default this opt-in adapter consumes `repoe-native-facts/v1` from RePoE revision
 `b6def2152dfc48d8ec49c7a237b2e973c3830e97`. It creates a **partial INTERNATIONAL
 0.5.5.5 candidate**, never a runtime data manifest or production-ready package.

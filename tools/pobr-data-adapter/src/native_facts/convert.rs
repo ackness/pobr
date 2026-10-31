@@ -507,15 +507,34 @@ fn normalize_graph(
     })
 }
 
-pub(super) struct Tables<'src> {
+pub(crate) struct Tables<'src> {
     rows: BTreeMap<&'static str, Vec<&'src Value>>,
 }
 
 impl<'src> Tables<'src> {
     fn new(input: &'src VerifiedInput) -> Result<Self, String> {
+        Self::read(input, &trust::tables(input.profile), true)
+    }
+
+    /// Read selected, already authenticated tables with the existing physical-row checks.
+    pub(crate) fn selected(
+        input: &'src VerifiedInput,
+        selected: &[&'static str],
+    ) -> Result<Self, String> {
+        Self::read(input, selected, false)
+    }
+
+    fn read(
+        input: &'src VerifiedInput,
+        selected: &[&'static str],
+        native_projection: bool,
+    ) -> Result<Self, String> {
         let mut rows = BTreeMap::new();
-        for table in trust::tables(input.profile) {
-            let doc = &input.documents[&format!("tables/{table}.json")];
+        for &table in selected {
+            let doc = input
+                .documents
+                .get(&format!("tables/{table}.json"))
+                .ok_or_else(|| format!("unverified physical table: {table}"))?;
             trust::exact_keys(
                 doc,
                 &[
@@ -536,7 +555,7 @@ impl<'src> Tables<'src> {
                 "physical table identity mismatch",
             )?;
             let fields: Vec<String> = decode(&doc["physical_fields"])?;
-            if input.profile != Profile::BaseV1 {
+            if native_projection && input.profile != Profile::BaseV1 {
                 require(
                     core_skills::required_fields(table)
                         .iter()
@@ -544,10 +563,12 @@ impl<'src> Tables<'src> {
                     "missing core-skill physical field",
                 )?;
             }
-            if matches!(
-                input.profile,
-                Profile::GemsConstraintsA1 | Profile::ItemsActorsBc
-            ) {
+            if native_projection
+                && matches!(
+                    input.profile,
+                    Profile::GemsConstraintsA1 | Profile::ItemsActorsBc
+                )
+            {
                 require(
                     gems::required_fields(table)
                         .iter()
@@ -555,7 +576,7 @@ impl<'src> Tables<'src> {
                     "missing gem physical field",
                 )?;
             }
-            if input.profile == Profile::ItemsActorsBc {
+            if native_projection && input.profile == Profile::ItemsActorsBc {
                 require(
                     items_actors::required_fields(table)
                         .iter()
@@ -622,12 +643,14 @@ impl<'src> Tables<'src> {
         Ok(Self { rows })
     }
 
-    pub(super) fn len(&self, table: &str) -> usize {
+    pub(crate) fn len(&self, table: &str) -> usize {
         self.rows[table].len()
     }
 
-    pub(super) fn row(&self, table: &str, row: usize) -> Result<&'src Value, String> {
-        self.rows[table]
+    pub(crate) fn row(&self, table: &str, row: usize) -> Result<&'src Value, String> {
+        self.rows
+            .get(table)
+            .ok_or_else(|| format!("unverified physical table: {table}"))?
             .get(row)
             .copied()
             .ok_or_else(|| format!("unresolved physical row {table}/{row}"))
