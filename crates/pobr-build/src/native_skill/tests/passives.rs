@@ -62,7 +62,8 @@ fn composed(nodes: &[PassiveNodeDef], ids: &[u32]) -> NativeSkillResult {
     // Exercise the real selector -> binding -> shared reader -> public evidence path
     // independently of the new policy/index loader. No new-profile fixture is forged.
     let mut files = pack();
-    bonus(&mut files, "100.0");
+    // Keep the four-byte lexical span of the synthetic source token intact.
+    bonus(&mut files, "100.");
     let data = load(files);
     let mut request = request(&data);
     let mut admitted = admit_native_skill(&data, &request).unwrap();
