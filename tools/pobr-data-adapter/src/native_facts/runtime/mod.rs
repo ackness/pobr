@@ -141,7 +141,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
         receipt["format"] = "pobr-native-runtime-assembly-receipt/v2".into();
         receipt["data_identity"] = serde_json::to_value(&identity).map_err(|e| e.to_string())?;
         receipt["actor_policy"] = "selected-player-generic-ot-v1".into();
-        receipt["evaluation"] = "ConditionalSkillHitV1".into();
+        receipt["evaluation"] = "conditional-skill-hit-v1".into();
     }
     let receipt_bytes = json_bytes(&receipt)?;
     output.reserve()?;
@@ -281,7 +281,7 @@ fn assemble(
         rules["format"] = "pobr-native-rule-requirements/v2".into();
         rules["version"] = 2.into();
         rules["actor_policy_sha256"] = pins.actor_binding_sha256.clone().into();
-        rules["evaluation"] = "ConditionalSkillHitV1".into();
+        rules["evaluation"] = "conditional-skill-hit-v1".into();
         acquisition["player"] = player.manifest["source_identity"]["acquisition"].clone();
         Some(pins)
     } else {

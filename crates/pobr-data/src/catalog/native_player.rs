@@ -216,6 +216,7 @@ pub enum NativeActorPolicy {
 /// Explicit evaluation contract, independent of any particular skill's implementation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NativeEvaluationKind {
+    #[serde(rename = "conditional-skill-hit-v1")]
     ConditionalSkillHitV1,
 }
 

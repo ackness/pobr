@@ -1,5 +1,6 @@
 use super::*;
 use crate::calc::{MinimalInput, hit_read_probe, offence};
+use pobr_data::catalog::runtime::query_probe;
 
 fn damage() -> [Modifier; 2] {
     [
@@ -29,7 +30,8 @@ fn conditional_hit_reaches_shared_body_without_core_dependency_reads() {
     ] {
         let mut input = request(&modifiers);
         input.context.source = source;
-        let (result, reads) = hit_read_probe::observe(|| calculate_conditional_hit(&input));
+        let ((result, reads), constants) =
+            query_probe::observe(|| hit_read_probe::observe(|| calculate_conditional_hit(&input)));
         let out = result.unwrap();
         assert!((out.conditional_weighted_mean - 5.995).abs() < 1e-12);
         assert!(reads.dependencies.is_empty(), "{reads:?}");
@@ -37,17 +39,40 @@ fn conditional_hit_reaches_shared_body_without_core_dependency_reads() {
         assert_eq!(reads.damage_bodies, 1);
         assert_eq!(reads.components, 2);
         assert_eq!(reads.critical_resolutions, 1);
+        assert_eq!(constants, query_probe::Reads::default());
     }
 }
 
 fn rejected_before_queries(input: &ConditionalSkillHitV1<'_>) {
-    let (result, reads) = hit_read_probe::observe(|| calculate_conditional_hit(input));
+    let ((result, reads), constants) =
+        query_probe::observe(|| hit_read_probe::observe(|| calculate_conditional_hit(input)));
     assert!(result.is_err());
     assert!(reads.dependencies.is_empty(), "{reads:?}");
     assert_eq!(reads.queries, 0);
     assert_eq!(reads.critical_resolutions, 0);
     assert_eq!(reads.damage_bodies, 0);
     assert_eq!(reads.components, 0);
+    assert_eq!(constants, query_probe::Reads::default());
+}
+
+#[test]
+fn runtime_constant_getter_probe_observes_real_access_and_resets() {
+    let constants = pobr_data::catalog::RuntimeConstants::default();
+    let (_, reads) = query_probe::observe(|| {
+        constants.game();
+        constants.character();
+        constants.monster();
+    });
+    assert_eq!(
+        reads,
+        query_probe::Reads {
+            game: 1,
+            character: 1,
+            monster: 1
+        }
+    );
+    let (_, reads) = query_probe::observe(|| ());
+    assert_eq!(reads, query_probe::Reads::default());
 }
 
 #[test]

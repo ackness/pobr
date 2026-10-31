@@ -1,8 +1,8 @@
 //! Test-only observations at shared hit and excluded dependency boundaries.
 //!
-//! This does not instrument `RuntimeConstants`' public fields/getters in pobr-data.
-//! Getter traps there plus inspection for direct field reads are needed for that
-//! cross-crate claim; a constant-perturbation test cannot establish it.
+//! RuntimeConstants getters are observed separately through pobr-data's optional
+//! runtime-constant-query-probe feature. The companion tests combine both probes;
+//! direct public-field reads still require call-graph inspection.
 
 use std::cell::RefCell;
 

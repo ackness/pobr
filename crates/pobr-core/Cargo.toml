@@ -26,6 +26,7 @@ serde_json = { workspace = true, optional = true }
 criterion = { version = "0.8", default-features = false, optional = true }
 
 [dev-dependencies]
+pobr-data = { workspace = true, features = ["runtime-constant-query-probe"] }
 # 仅测试侧反序列化 statmap 条目 fixture（lib 本体维持零 I/O / 零 serde_json）。
 serde_json.workspace = true
 

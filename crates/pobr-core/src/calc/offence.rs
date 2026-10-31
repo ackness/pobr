@@ -1466,7 +1466,7 @@ fn total_dps_traced(
     // direct, falling back to marginal).
     // The hit-view cfg: adds `KeywordFlags::HIT` (shares its source with the non-traced path, see the comment there).
     let hit_cfg = hit_cfg(db, enemy_db, cfg);
-    let (scaled, crit_pass) = super::crit_pass::calculate_hit_damage(
+    let (_, crit_pass) = super::crit_pass::calculate_hit_damage(
         db,
         &hit_cfg,
         input.base_hit_min,

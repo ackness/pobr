@@ -6,6 +6,7 @@
 
 use std::fmt;
 
+pub use pobr_data::catalog::native_player::NativeEvaluationKind;
 use pobr_data::catalog::native_runtime::{NativeGame, NativeRealm};
 use pobr_data::item::Item;
 use pobr_gamedata::{GameData, LoadError};
@@ -27,13 +28,6 @@ pub const MAX_NATIVE_BUILD_BYTES: usize = 16 * 1024 * 1024;
 pub enum NativeBuildSchema {
     #[serde(rename = "pobr-native-build/v1")]
     V1,
-}
-
-/// One concrete requested calculation scope; broader outputs require admission.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum NativeEvaluationKind {
-    #[serde(rename = "conditional-skill-hit-v1")]
-    ConditionalSkillHitV1,
 }
 
 /// Exact dataset binding, distinct from display language and compatibility tags.

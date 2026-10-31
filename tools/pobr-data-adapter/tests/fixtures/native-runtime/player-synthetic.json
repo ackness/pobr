@@ -779,7 +779,7 @@
         "selector": "/metadata/files/Metadata~1Parent.ao/records/1"
       }
     ],
-    "evaluation": "ConditionalSkillHitV1",
+    "evaluation": "conditional-skill-hit-v1",
     "excluded_sources": [
       "gear",
       "supports",
