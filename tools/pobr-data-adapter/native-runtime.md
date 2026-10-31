@@ -82,7 +82,8 @@ without the final receipt is incomplete.
 
 Sources remain unreviewed and `production_ready: false`. Ordinary calculation
 stays blocked for both contract versions. No pool/accuracy/requirement formula,
-server cadence, full DPS, build/save binding or CN numerical coverage is inferred.
+server cadence, full DPS or CN numerical coverage is inferred. The bounded native
+consumer separately validates saved documents and each conditional-hit request.
 
 ## Opt-in player context (native contract v2)
 
@@ -155,3 +156,54 @@ maps; compatibility-domain decoding keeps its existing policy.
 Its identity getter returns the final `GameData` digest; the assembly key remains
 separate. V2's receipt records that final identity outside the self-hashed
 contract. Loading is not build admission, persistence or calculation authority.
+
+## Explicit ordinary damage-passive profile
+
+With all three player flags, opt into the additional input scope:
+
+```sh
+  --input-profile sorceress-spark-level1-q0-ordinary-damage-passives-v1
+```
+
+Omitting this flag preserves the old v1/v2 selection and its allocation exclusion.
+The new profile requires the complete player package; unknown profiles and partial
+player bindings fail before output completion. It selects exactly interpretation
+`spark-level1-q0-ordinary-damage-passives` and policy
+`selected-player-generic-ot-ordinary-damage-passives-v1`. Old/new combinations
+cannot be mixed. Contract2, manifest4, actor artifact schema1, normalization/rule
+version2 and output/evaluation `conditional-skill-hit-v1` retain their shapes.
+
+The separate policy admits only explicitly selected, complete, untransformed,
+unconditional ordinary damage packets whose owned mapper supplies numeric,
+tag/flag-free INC for physical, fire, cold, lightning, chaos, elemental, spell or
+projectile damage. Resistance packets remain queryable evidence, outside this
+hit admission. Other allocations and all non-allocation exclusions stay closed.
+Starting choices remain source relationships; they never automatically grant a
+node. Actor7 level1 and primary Spark level1/q0 remain the evaluation anchor.
+
+The policy explicitly assumes selected eligible nodes active for conditional
+comparison. Point budget, reachability and progression legality are unavailable;
+this is not a legal or obtainable level-1 tree certification. The generic-OT
+assumption, complete actor fact dispositions and separate source packages remain
+intact. Actor metadata consumption is still limited to the explicit critical
+bonus; selected passives are separate request sources.
+
+For this new profile, `NativeData` reads the complete sealed reference index
+through byte-integrity and duplicate-key checks. It rejects duplicate graph IDs,
+graph/definition disagreement, changed packet context, patch or compatibility
+tag, and mismatched single-stat values, slots, physical rows or either source
+reference. The archive manifest must equal the tree parent and its file inventory
+must match the retained parent manifest. Every emitted packet is checked,
+including resistance packets. Unknown interpreted channels fail; opaque index
+evidence remains JSON instead of disappearing through a partial DTO. This proves
+internal source-index consistency, not raw-source authenticity. It opens no
+external source files and does not replace the assembler's whole raw-context
+comparison with a node-kind or name guess.
+
+Tree/skill fact bytes can stay identical for identical inputs. The selected
+tuple binds the input lock, actor artifact, normalization, rules, coverage,
+reference-index metadata and assembly receipt; their actual hashes determine a
+distinct assembly/final identity. Preserve old candidates and explicitly bind a
+new document to the new pack. Never infer a migration from a patch label or
+`CURRENT`. Use a newly built compiler's actual pins for a new replay recipe;
+no prebuilt compiler identity for this profile is implied by these examples.

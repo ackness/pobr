@@ -16,6 +16,7 @@ mod tests;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
+use pobr_data::catalog::native_player::{NativeActorPolicy, NativeEvaluationKind};
 use pobr_data::catalog::native_runtime::*;
 use pobr_data::catalog::*;
 use pobr_gamedata::GameData;
@@ -32,6 +33,7 @@ pub(crate) struct Args {
     tree_sha256: String,
     compiler_revision: String,
     player: Option<player::Args>,
+    input_profile: NativeInputProfile,
 }
 
 pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, String> {
@@ -52,6 +54,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
                 "--player-context",
                 "--player-manifest-sha256",
                 "--player-source-lock-sha256",
+                "--input-profile",
             ]
             .contains(&flag.as_str()),
             &format!("unsupported native-runtime argument: {flag}"),
@@ -67,6 +70,14 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         (Some(root),Some(manifest_sha256),Some(source_lock_sha256)) => Some(player::Args { root: root.into(), manifest_sha256, source_lock_sha256 }),
         _ => return Err("--player-context requires both external --player-manifest-sha256 and --player-source-lock-sha256".into()),
     };
+    let input_profile = values
+        .remove("--input-profile")
+        .map(|name| {
+            serde_json::from_value::<NativeInputProfile>(json!(name)).map_err(|e| e.to_string())
+        })
+        .transpose()?
+        .unwrap_or(NativeInputProfile::SorceressSparkLevel1Q0V1);
+    require_player(input_profile, player.is_some())?;
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
     Ok(Args {
         facts: super::Args {
@@ -82,10 +93,12 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         tree_sha256: take("--official-tree-sha256")?,
         compiler_revision: take("--compiler-revision")?,
         player,
+        input_profile,
     })
 }
 
 pub(crate) fn run(args: Args) -> Result<String, String> {
+    require_player(args.input_profile, args.player.is_some())?;
     trust::require_absent(&args.facts.out)?;
     let mut output = output::Output::prepare(&args.facts)?;
     output.protect(&args.descriptions)?;
@@ -140,8 +153,8 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     if player.is_some() {
         receipt["format"] = "pobr-native-runtime-assembly-receipt/v2".into();
         receipt["data_identity"] = serde_json::to_value(&identity).map_err(|e| e.to_string())?;
-        receipt["actor_policy"] = "selected-player-generic-ot-v1".into();
-        receipt["evaluation"] = "conditional-skill-hit-v1".into();
+        receipt["actor_policy"] = json!(selected_profiles(args.input_profile).1);
+        receipt["evaluation"] = json!(NativeEvaluationKind::ConditionalSkillHitV1);
     }
     let receipt_bytes = json_bytes(&receipt)?;
     output.reserve()?;
@@ -158,6 +171,26 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
 
 type Files = BTreeMap<String, Vec<u8>>;
 
+fn require_player(profile: NativeInputProfile, player_present: bool) -> Result<(), String> {
+    trust::require(
+        profile == NativeInputProfile::SorceressSparkLevel1Q0V1 || player_present,
+        "ordinary damage-passive input profile requires the complete pinned player package",
+    )
+}
+
+fn selected_profiles(input: NativeInputProfile) -> (NativeProfile, NativeActorPolicy) {
+    match input {
+        NativeInputProfile::SorceressSparkLevel1Q0V1 => (
+            NativeProfile::SparkLevel1Q0,
+            NativeActorPolicy::SelectedPlayerGenericOtV1,
+        ),
+        NativeInputProfile::SorceressSparkLevel1Q0OrdinaryDamagePassivesV1 => (
+            NativeProfile::SparkLevel1Q0OrdinaryDamagePassives,
+            NativeActorPolicy::SelectedPlayerGenericOtOrdinaryDamagePassivesV1,
+        ),
+    }
+}
+
 fn assemble(
     input: &trust::VerifiedInput,
     candidate: &super::model::Candidate,
@@ -166,6 +199,8 @@ fn assemble(
     player: Option<&player::Player>,
     args: &Args,
 ) -> Result<(Files, Value), String> {
+    require_player(args.input_profile, player.is_some())?;
+    let (profile, actor_policy) = selected_profiles(args.input_profile);
     let source_sha = sha256_hex(&input.manifest_bytes);
     let patch = input.manifest["source_identity"]["game_patch"]
         .as_str()
@@ -190,7 +225,7 @@ fn assemble(
         "official_tree":{"sha256":args.tree_sha256,"game_patch":null,
             "fields":["coordinates"],"match_policy":"exact-ids-directed-edges-orbits-class-pairs; rounded-group-centres"},
         "compiler":{"revision_declaration":args.compiler_revision,"implementation_sha256":implementation},
-        "profile":"sorceress-spark-level1-q0-v1"
+        "profile":args.input_profile
     });
     let mut coverage = json!({
         "format":"pobr-native-runtime-coverage/v1", "production_ready":false,
@@ -223,7 +258,7 @@ fn assemble(
             "evidence":"Physical stable-ID joins; BaseResolvedValues, never FloatStatsValues, supplies resolved damage."}
     });
     let mut normalization = json!({
-        "format":"pobr-native-normalization/v1", "profile":"spark-level1-q0", "version":1,
+        "format":"pobr-native-normalization/v1", "profile":profile, "version":1,
         "rules":[
             "Stable-ID gem -> GemEffects -> GrantedEffects -> primary StatSet; no additional-set merging.",
             "Level 1 BaseResolvedValues aligns exactly with FloatStats; AdditionalStatsValues aligns exactly with AdditionalStats.",
@@ -236,7 +271,7 @@ fn assemble(
             "Native passive packets require one complete stat, the reviewed ordinary raw-context cohort, and an existing exact core rule; no numerical meaning is inferred from node labels."
         ]
     });
-    let mut rules = json!({"format":"pobr-native-rule-requirements/v1", "profile":"spark-level1-q0","version":1,
+    let mut rules = json!({"format":"pobr-native-rule-requirements/v1", "profile":profile,"version":1,
         "calculation_admitted":false,
         "required_own_stat_rules":["spell_minimum_base_lightning_damage","spell_maximum_base_lightning_damage",
             "base_number_of_projectiles","base_skill_effect_duration"],
@@ -250,7 +285,7 @@ fn assemble(
         let context = &player.context;
         let context_bytes = json_bytes(context)?;
         let context_sha = sha256_hex(&context_bytes);
-        let binding = player_policy::bind(context, context_sha.clone())?;
+        let binding = player_policy::bind(context, context_sha.clone(), actor_policy)?;
         let binding_bytes = json_bytes(&binding)?;
         let pins = NativePlayerArtifacts {
             context_sha256: context_sha,
@@ -267,25 +302,40 @@ fn assemble(
             "source_lock_sha256":pins.source_lock_sha256,"parent_manifest_sha256":pins.parent_manifest_sha256,
             "parent_source_lock_sha256":pins.parent_source_lock_sha256,
             "producer_revision":player::PRODUCER_REVISION,
-            "actor_policy":"selected-player-generic-ot-v1", "actor_binding_sha256":pins.actor_binding_sha256});
+            "actor_policy":binding.policy, "actor_binding_sha256":pins.actor_binding_sha256});
         coverage["format"] = "pobr-native-runtime-coverage/v2".into();
         coverage["player"] = json!({"context_sha256":pins.context_sha256,
             "actor_binding_sha256":pins.actor_binding_sha256,"model_status":"conditional-model",
             "raw_stats":context.facts.metadata_stats.len(),"starting_relations":context.facts.all_starting_relations.len(),
             "policy":"Only selected generic OT critical bonus is normalized; every fact is retained with a finite profile disposition. Loading is not admission."});
-        coverage["missing_or_excluded"][0] = "Build calculation admission/persistence, actor pools/accuracy/requirements and effective cadence remain unavailable.".into();
+        coverage["missing_or_excluded"][0] = "Ordinary full-build calculation, actor pools/accuracy/requirements and effective cadence remain unavailable. The bounded consumer re-admits each saved conditional-hit request.".into();
         references["format"] = "pobr-native-runtime-reference-index/v2".into();
         references["player"] = json!({"manifest_sha256":pins.source_manifest_sha256,"files":player.manifest["files"],
             "parent_manifest_sha256":pins.parent_manifest_sha256,"origin_policy":"player and parent namespaces are resolved separately",
             "retained_archive":"base/native_player_context.json#/source_archive"});
         normalization["format"] = "pobr-native-normalization/v2".into();
         normalization["version"] = 2.into();
-        normalization["actor_policy"] = json!({"id":"selected-player-generic-ot-v1","artifact_sha256":pins.actor_binding_sha256,
+        normalization["actor_policy"] = json!({"id":binding.policy,"artifact_sha256":pins.actor_binding_sha256,
             "rule":"Parse the sole plain generic OT base_critical_hit_damage_bonus lexical token as a finite explicit extra-damage bonus. Never infer AO-to-OT inheritance or full constants."});
         rules["format"] = "pobr-native-rule-requirements/v2".into();
         rules["version"] = 2.into();
         rules["actor_policy_sha256"] = pins.actor_binding_sha256.clone().into();
-        rules["evaluation"] = "conditional-skill-hit-v1".into();
+        rules["evaluation"] = json!(binding.evaluation);
+        if args.input_profile == NativeInputProfile::SorceressSparkLevel1Q0OrdinaryDamagePassivesV1
+        {
+            coverage["player"]["policy"] = "Actor metadata supplies only the selected generic OT critical bonus. Explicitly selected ordinary damage packets are separate request sources; every actor fact retains its finite disposition. Loading is not admission.".into();
+            coverage["input_profile"] = json!(args.input_profile);
+            coverage["missing_or_excluded"][0] = "Ordinary full-build calculation, actor pools/accuracy/requirements, allocation point budget/reachability/progression and effective cadence remain unavailable. The bounded consumer re-admits each saved conditional-hit request.".into();
+            references["input_profile"] = json!(args.input_profile);
+            references["actor_policy"] =
+                json!({"id":binding.policy,"artifact_sha256":pins.actor_binding_sha256});
+            normalization["rules"].as_array_mut().ok_or("missing normalization rules")?.push(json!(
+                "Only explicitly selected complete ordinary damage packets are admitted as passive sources; no starting grants, class inheritance, partial packets or text fallback. Active selections are conditional assumptions, not allocation legality."
+            ));
+            rules["passive_input_policy"] = json!(
+                "The owned selector must yield tag/flag-free numeric INC in PhysicalDamage, FireDamage, ColdDamage, LightningDamage, ChaosDamage, ElementalDamage, SpellDamage or ProjectileDamage. Resistance packets remain queryable evidence only."
+            );
+        }
         acquisition["player"] = player.manifest["source_identity"]["acquisition"].clone();
         Some(pins)
     } else {
@@ -338,16 +388,16 @@ fn assemble(
             .chain([source_sha])
             .collect(),
         normalization: NativeProfilePin {
-            profile: NativeProfile::SparkLevel1Q0,
+            profile,
             version: if player_pins.is_some() { 2 } else { 1 },
             sha256: digest("native_normalization"),
         },
         rules: NativeProfilePin {
-            profile: NativeProfile::SparkLevel1Q0,
+            profile,
             version: if player_pins.is_some() { 2 } else { 1 },
             sha256: digest("native_rule_requirements"),
         },
-        input_profile: NativeInputProfile::SorceressSparkLevel1Q0V1,
+        input_profile: args.input_profile,
         output_profile: if player_pins.is_some() {
             NativeOutputProfile::ConditionalSkillHitV1
         } else {
@@ -458,6 +508,19 @@ fn implementation_sha256() -> String {
             "gamedata/native/unique_json.rs",
             include_bytes!("../../../../../crates/pobr-gamedata/src/native/unique_json.rs")
                 .as_slice(),
+        ),
+        (
+            "gamedata/native/passives.rs",
+            include_bytes!("../../../../../crates/pobr-gamedata/src/native/passives.rs").as_slice(),
+        ),
+        (
+            "catalog/native_runtime.rs",
+            include_bytes!("../../../../../crates/pobr-data/src/catalog/native_runtime.rs")
+                .as_slice(),
+        ),
+        (
+            "gamedata/manifest.rs",
+            include_bytes!("../../../../../crates/pobr-gamedata/src/manifest.rs").as_slice(),
         ),
         ("main.rs", include_bytes!("../../main.rs").as_slice()),
     ] {

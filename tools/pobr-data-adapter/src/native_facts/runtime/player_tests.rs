@@ -3,7 +3,7 @@
 use super::*;
 use pobr_data::catalog::native_player::*;
 
-fn fixture() -> (NativePlayerContextDef, trust::VerifiedInput) {
+pub(super) fn fixture() -> (NativePlayerContextDef, trust::VerifiedInput) {
     let fixture: Value = serde_json::from_slice(include_bytes!(
         "../../../tests/fixtures/native-runtime/player-synthetic.json"
     ))
@@ -158,7 +158,12 @@ fn player_all_physical_projections_reject_origin_row_id_and_metadata_drift() {
 fn player_policy_reads_explicit_bonus_and_retains_all99_without_autogrants() {
     let (mut c, parent) = fixture();
     player::validate_projection(&c, &parent).unwrap();
-    let binding = player_policy::bind(&c, "a".repeat(64)).unwrap();
+    let binding = player_policy::bind(
+        &c,
+        "a".repeat(64),
+        NativeActorPolicy::SelectedPlayerGenericOtV1,
+    )
+    .unwrap();
     assert_eq!(binding.critical_bonus.bonus_percent, 37.5);
     assert_eq!(binding.actor_id, NATIVE_PLAYER_ID);
     assert_eq!(c.facts.character.source.row, 7);
@@ -196,10 +201,14 @@ fn player_policy_reads_explicit_bonus_and_retains_all99_without_autogrants() {
             .assignments[stat.assignment]
             .value_raw = token.into();
         assert_eq!(
-            player_policy::bind(&c, "a".repeat(64))
-                .unwrap()
-                .critical_bonus
-                .bonus_percent,
+            player_policy::bind(
+                &c,
+                "a".repeat(64),
+                NativeActorPolicy::SelectedPlayerGenericOtV1
+            )
+            .unwrap()
+            .critical_bonus
+            .bonus_percent,
             token.parse::<f64>().unwrap()
         );
     }
@@ -210,7 +219,14 @@ fn player_policy_reads_explicit_bonus_and_retains_all99_without_autogrants() {
             .find(|s| s.key_raw == "base_critical_hit_damage_bonus")
             .unwrap()
             .value_raw = token.into();
-        assert!(player_policy::bind(&c, "a".repeat(64)).is_err());
+        assert!(
+            player_policy::bind(
+                &c,
+                "a".repeat(64),
+                NativeActorPolicy::SelectedPlayerGenericOtV1
+            )
+            .is_err()
+        );
     }
 }
 
@@ -232,16 +248,24 @@ fn player_policy_rejects_duplicate_critical_and_unknown_plain_keys() {
         .assignments
         .push(critical);
     assert!(
-        player_policy::bind(&changed, "a".repeat(64))
-            .unwrap_err()
-            .contains("duplicate/ambiguous")
+        player_policy::bind(
+            &changed,
+            "a".repeat(64),
+            NativeActorPolicy::SelectedPlayerGenericOtV1
+        )
+        .unwrap_err()
+        .contains("duplicate/ambiguous")
     );
     let mut changed = c;
     changed.facts.metadata_stats[0].key_raw = "unknown_spell_hit_damage".into();
     assert!(
-        player_policy::bind(&changed, "a".repeat(64))
-            .unwrap_err()
-            .contains("unresolved profile-relevant")
+        player_policy::bind(
+            &changed,
+            "a".repeat(64),
+            NativeActorPolicy::SelectedPlayerGenericOtV1
+        )
+        .unwrap_err()
+        .contains("unresolved profile-relevant")
     );
 }
 
@@ -299,6 +323,140 @@ fn player_cli_requires_all_external_pins_as_one_opt_in() {
             .player
             .is_some()
     );
+    let new_profile = [
+        "--input-profile",
+        "sorceress-spark-level1-q0-ordinary-damage-passives-v1",
+    ];
+    assert!(parse_args(base.into_iter().chain(new_profile).map(String::from)).is_err());
+    let selected = parse_args(
+        base.into_iter()
+            .chain(extras)
+            .chain(new_profile)
+            .map(String::from),
+    )
+    .unwrap();
+    assert_eq!(
+        selected.input_profile,
+        NativeInputProfile::SorceressSparkLevel1Q0OrdinaryDamagePassivesV1
+    );
+    for value in [
+        "",
+        "spark-level1-q0-ordinary-damage-passives",
+        "all-passives",
+        "selected-player-generic-ot-v1",
+    ] {
+        assert!(
+            parse_args(
+                base.into_iter()
+                    .chain(extras)
+                    .chain(["--input-profile", value])
+                    .map(String::from)
+            )
+            .is_err()
+        );
+    }
+    assert!(
+        parse_args(
+            base.into_iter()
+                .chain(extras)
+                .chain(new_profile)
+                .chain(new_profile)
+                .map(String::from)
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn passive_policy_preserves_actor_inventory_and_old_policy_isolation() {
+    let (context, _) = fixture();
+    let before = serde_json::to_value(&context).unwrap();
+    let old = player_policy::bind(
+        &context,
+        "a".repeat(64),
+        NativeActorPolicy::SelectedPlayerGenericOtV1,
+    )
+    .unwrap();
+    let new = player_policy::bind(
+        &context,
+        "a".repeat(64),
+        NativeActorPolicy::SelectedPlayerGenericOtOrdinaryDamagePassivesV1,
+    )
+    .unwrap();
+    assert_eq!(
+        serde_json::to_value(&context).unwrap(),
+        before,
+        "binding must not mutate source facts"
+    );
+    assert_eq!(old.schema_version, 1);
+    assert_eq!(old.policy, NativeActorPolicy::SelectedPlayerGenericOtV1);
+    assert!(
+        old.required_conditions
+            .iter()
+            .map(String::as_str)
+            .eq(player_policy::REQUIRED_CONDITIONS.iter().copied())
+    );
+    assert!(
+        old.excluded_sources
+            .iter()
+            .map(String::as_str)
+            .eq(player_policy::EXCLUDED_SOURCES.iter().copied())
+    );
+    assert!(
+        !old.assumptions
+            .iter()
+            .any(|s| s == NATIVE_ALLOCATION_ASSUMPTION)
+    );
+    assert_ne!(json_bytes(&old).unwrap(), json_bytes(&new).unwrap());
+    assert_eq!(new.critical_bonus, old.critical_bonus);
+    assert_eq!(new.actor_id, old.actor_id);
+    assert_eq!(new.actor_level, 1);
+    assert_eq!(new.dispositions.len(), old.dispositions.len());
+    assert_eq!(
+        new.dispositions
+            .iter()
+            .filter(|d| d.selector.starts_with("/facts/metadata_stats/"))
+            .collect::<Vec<_>>(),
+        old.dispositions
+            .iter()
+            .filter(|d| d.selector.starts_with("/facts/metadata_stats/"))
+            .collect::<Vec<_>>()
+    );
+    assert!(old.excluded_sources.iter().any(|s| s == "allocations"));
+    assert!(!new.excluded_sources.iter().any(|s| s == "allocations"));
+    assert!(
+        new.excluded_sources
+            .iter()
+            .any(|s| s == NATIVE_OTHER_ALLOCATIONS_EXCLUSION)
+    );
+    assert!(
+        new.required_conditions
+            .iter()
+            .any(|s| s == NATIVE_PASSIVES_ACTIVE_CONDITION)
+    );
+    assert!(
+        new.assumptions
+            .iter()
+            .any(|s| s == NATIVE_ALLOCATION_ASSUMPTION)
+    );
+    for d in new
+        .dispositions
+        .iter()
+        .filter(|d| d.selector.starts_with("/facts/all_starting_relations/"))
+    {
+        assert_eq!(d.disposition, NativeFactDispositionKind::Inactive);
+        assert!(d.reason.contains("explicitly selected"));
+    }
+    let mut unknown = context;
+    unknown.facts.metadata_stats[0].key_raw = "unknown_damage_channel".into();
+    assert!(
+        player_policy::bind(
+            &unknown,
+            "a".repeat(64),
+            NativeActorPolicy::SelectedPlayerGenericOtOrdinaryDamagePassivesV1
+        )
+        .is_err()
+    );
 }
 
 #[test]
@@ -350,7 +508,12 @@ fn player_policy_keeps_unknown_nonclient_scope_relevant_and_unresolved() {
             value_byte_start: 0,
             value_byte_end: 4,
         });
-    let binding = player_policy::bind(&c, "a".repeat(64)).unwrap();
+    let binding = player_policy::bind(
+        &c,
+        "a".repeat(64),
+        NativeActorPolicy::SelectedPlayerGenericOtV1,
+    )
+    .unwrap();
     assert!(
         binding
             .dispositions

@@ -9,6 +9,9 @@ use pobr_gamedata::{GameData, LoadError, manifest::native_assembly_key};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
+#[path = "native_passives.rs"]
+mod passive_profile;
+
 fn hash(bytes: &[u8]) -> String {
     Sha256::digest(bytes)
         .iter()

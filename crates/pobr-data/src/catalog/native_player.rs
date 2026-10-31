@@ -206,12 +206,23 @@ pub struct NativePlayerContextDef {
     pub source_archive: BTreeMap<String, String>,
 }
 
-/// The one supported applicability assumption; this never asserts source inheritance.
+/// Bounded applicability policies; neither asserts source inheritance or allocation legality.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NativeActorPolicy {
     #[serde(rename = "selected-player-generic-ot-v1")]
     SelectedPlayerGenericOtV1,
+    #[serde(rename = "selected-player-generic-ot-ordinary-damage-passives-v1")]
+    SelectedPlayerGenericOtOrdinaryDamagePassivesV1,
 }
+
+/// Required predicate for explicitly selected passive sources in the conditional model.
+pub const NATIVE_PASSIVES_ACTIVE_CONDITION: &str =
+    "selected-ordinary-damage-passives-assumed-active";
+/// Every allocation outside the complete ordinary damage-packet scope stays excluded.
+pub const NATIVE_OTHER_ALLOCATIONS_EXCLUSION: &str =
+    "allocations-other-than-explicit-ordinary-damage-passives";
+/// Required limitation of the passive policy, also retained in consumer result assumptions.
+pub const NATIVE_ALLOCATION_ASSUMPTION: &str = "Explicitly selected eligible ordinary damage passives are assumed active for conditional comparison; allocation-legality (point budget, reachability and progression) is unavailable. Starting choices never grant nodes automatically.";
 
 /// Explicit evaluation contract, independent of any particular skill's implementation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
