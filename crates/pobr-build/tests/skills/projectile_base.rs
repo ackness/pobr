@@ -415,3 +415,155 @@ fn active_legacy_skill_uses_its_resolved_total_and_item_additions() {
         assert_eq!(session.output().projectile_count, total + f64::from(extra));
     }
 }
+
+#[test]
+fn active_legacy_from_the_grave_keeps_its_secondary_projectiles_off_raise_zombie() {
+    let data = crate::test_data();
+    for mode in [StatMapMode::Data, StatMapMode::Compare] {
+        for supported in [false, true] {
+            let mut group = SocketGroup::new().with_gem_skill("RaiseZombiePlayer", 20);
+            if supported {
+                group = group.with_gem_skill("SupportFromTheGravePlayer", 1);
+            }
+            let build = Build::new().add_socket_group(group);
+            let report = calculate_with_data_report(
+                &build,
+                data,
+                &DataOrchestratorOptions {
+                    stat_map_mode: mode,
+                    ..options()
+                },
+            )
+            .unwrap();
+            assert_eq!(
+                report.session.output().projectile_count,
+                0.0,
+                "{mode:?}, support={supported}"
+            );
+            assert!(
+                !report
+                    .session
+                    .mods_named("ProjectileCount")
+                    .iter()
+                    .any(
+                        |modifier| modifier.origin.as_ref().is_some_and(|origin| origin
+                            .source_id
+                            .id
+                            .starts_with("SupportFromTheGravePlayer."))
+                    )
+            );
+            let limits = report.session.unsupported_modifier_texts();
+            assert_eq!(
+                limits
+                    .iter()
+                    .any(|text| text.contains("Support:SupportFromTheGravePlayer:")
+                        && text.contains("stat=base_number_of_projectiles:value=3")
+                        && text.contains(
+                            "secondary-effect=TriggeredSupportFromTheGraveIceFragmentPlayer"
+                        )),
+                supported
+            );
+            if supported && mode == StatMapMode::Compare {
+                let records = report
+                    .stat_map_records
+                    .iter()
+                    .filter(|row| {
+                        row.label == "SupportFromTheGravePlayer"
+                            && row.stat == "base_number_of_projectiles"
+                    })
+                    .collect::<Vec<_>>();
+                assert_eq!(records.len(), 1);
+                assert_eq!(records[0].classification, "unsupported");
+                assert!(records[0].detail.contains("host=RaiseZombiePlayer"));
+            }
+        }
+    }
+}
+
+#[test]
+fn secondary_support_sets_are_deferred_as_whole_payloads_without_dropping_costs_or_normal_forms() {
+    let mut data = data(Some(4.0));
+    add_support(&mut data);
+    add_effect(
+        &mut data,
+        "SeparateGrantedEffect",
+        &[("base_number_of_projectiles", 3.0)],
+    );
+    let secondary = data
+        .granted_effects
+        .get_mut("SeparateGrantedEffect")
+        .unwrap();
+    secondary.active_skill = Some("separate_granted_effect".into());
+    secondary.skill_types.push("SkillGrantedBySupport".into());
+    secondary.stat_set = Some(700);
+    data.granted_effects
+        .get_mut("TestAdditional")
+        .unwrap()
+        .stat_set = Some(700);
+    data.granted_effect_levels
+        .get_mut("TestAdditional")
+        .unwrap()[0]
+        .mana_multiplier = Some(20.0);
+    data.skill_stat_sets.get_mut("TestAdditional").unwrap().sets = vec![
+        stat_set(
+            "SeparateGrantedEffect",
+            1,
+            &[
+                ("base_number_of_projectiles", 3.0),
+                ("number_of_additional_projectiles", 2.0),
+            ],
+        ),
+        stat_set(
+            "OrdinarySupportForm",
+            2,
+            &[("number_of_additional_projectiles", 2.0)],
+        ),
+    ];
+    for (form, expected, deferred) in [(1, 4.0, true), (2, 6.0, false)] {
+        let build = Build::new().add_socket_group(
+            SocketGroup::new()
+                .with_gem_skill("TestProjectile", 1)
+                .with_gem_skill_stat_set("TestAdditional", 1, form),
+        );
+        let report = calculate_with_data_report(
+            &build,
+            &data,
+            &DataOrchestratorOptions {
+                stat_map_mode: StatMapMode::Compare,
+                ..options()
+            },
+        )
+        .unwrap();
+        assert_eq!(report.session.output().projectile_count, expected);
+        assert!(
+            report
+                .session
+                .mods_named("SupportManaMultiplier")
+                .iter()
+                .any(|m| m.value.as_number() == Some(20.0))
+        );
+        assert_eq!(
+            report
+                .session
+                .unsupported_modifier_texts()
+                .iter()
+                .any(|text| text.contains("secondary-effect=SeparateGrantedEffect")),
+            deferred
+        );
+        if deferred {
+            for id in [
+                "base_number_of_projectiles",
+                "number_of_additional_projectiles",
+            ] {
+                assert!(
+                    report
+                        .stat_map_records
+                        .iter()
+                        .any(|row| row.label == "TestAdditional"
+                            && row.stat == id
+                            && row.classification == "unsupported")
+                );
+            }
+        }
+    }
+}

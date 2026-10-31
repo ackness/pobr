@@ -104,6 +104,8 @@ Focused Thrust（9227，`projectile_damage_+%_with_spears_while_there_no_enemies
 
 `base_number_of_projectiles` 是技能自带的总数，由自有 stat 规则直接映射为 BASE `ProjectileCount`。编排只对投射物技能在所选技能及 stat set 没有非零的该 stat 时补一个基础投射物，与主映射跳过零值的规则一致；不从合并后的词条总和判断。装备、辅助和品质的额外数量继续相加，其他技能及未选 stat set 不改变这个基础值。没有投射物来源的技能不展示投射物数量。回归见 [projectile_base.rs](../../crates/pobr-build/tests/skills/projectile_base.rs)。
 
+辅助选中的 stat-set 若可由稳定 ID、明确的 `SkillGrantedBySupport` 类型及共用主 set／附加 set 关系证明属于独立主动效果，其整组数值不会作为辅助词条注入宿主。原始 stat、数值、辅助、独立效果与宿主身份保留在未支持诊断及 Compare 记录中；合法辅助加成和辅助费用倍率仍按原有路径处理。例如 From the Grave 的三个冰碎片不成为 Raise Zombie 的投射物数量。这不模拟次级效果的触发时序，也不将未建模效果声明为无效。
+
 ### 投射物经过几次分叉、穿透或连锁
 
 `skillForkCount` / `skillPierceCount` 分别成为 `ForkedCount` / `PiercedCount`，由 `skill_mechanics::snapshot_projectile_interactions_taken` 限制到技能实际可用次数。未填或填零表示初次命中，没有来源时填更大数字也无效。[Fork](https://poe2db.tw/us/Fork) 分叉后 30% less、[Pierce I](https://poe2db.tw/us/Pierce_I) 穿透后 20% less 通过这些状态生效；它们不是对第一次命中的惩罚，也不是额外命中数。

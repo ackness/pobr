@@ -67,7 +67,13 @@ impl<'a> StatMapCtx<'a> {
         }
     }
 
-    fn record(&mut self, stat: &str, label: String, classification: &'static str, detail: String) {
+    pub(super) fn record(
+        &mut self,
+        stat: &str,
+        label: String,
+        classification: &'static str,
+        detail: String,
+    ) {
         if self.mode != StatMapMode::Compare {
             return;
         }

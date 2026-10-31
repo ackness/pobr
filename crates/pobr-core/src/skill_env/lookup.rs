@@ -55,6 +55,12 @@ pub trait StatSetLookup {
     /// Returns the selected statSet's override key for `effect_id`.
     fn selected_set_key(&self, effect_id: &str, set_index: Option<u32>) -> Option<String>;
 
+    /// Stable identity of the selected set, independent of its compatibility key.
+    /// Older/partial environments may lack this ownership evidence.
+    fn selected_set_id(&self, _effect_id: &str, _set_index: Option<u32>) -> Option<String> {
+        None
+    }
+
     /// Returns the selected statSet's dot flags for `effect_id`.
     fn selected_set_dot_flags(&self, effect_id: &str, set_index: Option<u32>) -> DotFlags;
 
