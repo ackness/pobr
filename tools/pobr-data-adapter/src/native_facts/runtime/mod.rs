@@ -197,7 +197,8 @@ fn assemble(
         "calculation_admitted":false, "source_status":"unreviewed-acquisition-draft",
         "facts":{"tables":77,"passive_definitions":candidate.passives.len(),
             "graph_instances":candidate.instances.len(),"class_relations":candidate.class_relations.len()},
-        "projected":{"tree_instances":projected_tree.nodes.len(),"native_passive_packets":1,
+        "projected":{"tree_instances":projected_tree.nodes.len(),
+            "native_passive_packets":projected_tree.nodes.iter().filter(|node| node.native_stats.is_some()).count(),
             "gem":"Metadata/Items/Gems/SkillGemSpark","effect":"SparkPlayer",
             "branch":"SparkPlayer","gem_level":1,"quality":0},
         "missing_or_excluded":[
@@ -231,7 +232,8 @@ fn assemble(
             "SpellCritChance / 100 gives percentage points; BaseMultiplier / 10000 + 1 gives damage multiplier.",
             "Native raw base_number_of_projectiles is a total, not an additional count.",
             "Native raw base_skill_effect_duration is milliseconds; Rust semantics converts to seconds.",
-            "No vendor ordinal or compatibility statSetIndex is assigned; the branch retains its stable set_id."
+            "No vendor ordinal or compatibility statSetIndex is assigned; the branch retains its stable set_id.",
+            "Native passive packets require one complete stat, the reviewed ordinary raw-context cohort, and an existing exact core rule; no numerical meaning is inferred from node labels."
         ]
     });
     let mut rules = json!({"format":"pobr-native-rule-requirements/v1", "profile":"spark-level1-q0","version":1,
@@ -239,6 +241,8 @@ fn assemble(
         "required_own_stat_rules":["spell_minimum_base_lightning_damage","spell_maximum_base_lightning_damage",
             "base_number_of_projectiles","base_skill_effect_duration"],
         "passive_rule":"base_fire_damage_resistance_%",
+        "passive_rules":projected_tree.nodes.iter().filter_map(|node| node.native_stats.as_ref())
+            .flat_map(|packet| packet.stats.iter().map(|stat| stat.id.as_str())).collect::<BTreeSet<_>>(),
         "policy":"This is a required-rule declaration, not certification of engine coverage or game correctness."});
     let mut acquisition = json!({"facts":input.manifest["source_identity"]["acquisition"],
         "descriptions":descriptions.manifest["source_identity"]["acquisition"]});
@@ -422,6 +426,10 @@ fn implementation_sha256() -> String {
         ("runtime/mod.rs", include_bytes!("mod.rs").as_slice()),
         ("runtime/inputs.rs", include_bytes!("inputs.rs").as_slice()),
         ("runtime/tree.rs", include_bytes!("tree.rs").as_slice()),
+        (
+            "core/rules/passive_stats.rs",
+            include_bytes!("../../../../../crates/pobr-core/src/rules/passive_stats.rs").as_slice(),
+        ),
         ("runtime/skills.rs", include_bytes!("skills.rs").as_slice()),
         ("runtime/player.rs", include_bytes!("player.rs").as_slice()),
         (

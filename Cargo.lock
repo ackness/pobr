@@ -517,6 +517,7 @@ dependencies = [
 name = "pobr-data-adapter"
 version = "0.0.43"
 dependencies = [
+ "pobr-core",
  "pobr-data",
  "pobr-gamedata",
  "pobr-tree",

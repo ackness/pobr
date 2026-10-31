@@ -6,7 +6,9 @@ value, passive/stat row references, source manifest and raw-source hashes,
 patch `0.5.5.5`, and the exact GGG exported node text. The packets attest the
 reviewed unconditional player context: no requirements, choices, grants,
 alternate actor, local weapon scope, or periodic/secondary behavior. The
-fixture does not enable native packets in any assembled pack.
+fixture itself does not modify a snapshot. The guarded assembler now reuses
+these core rules for complete single-stat nodes matching its reviewed ordinary
+raw-context cohort; generated packets need no invented English display text.
 
 Native source package: `items-actors-bc` (native v4), manifest
 `56e71e00a72c8079d100b64861fc030206b12aaeb5ad655ccb4ab4e6726332d0`.
@@ -46,4 +48,4 @@ The Rust regressions cover parser-free native ingestion, existing noncritical
 damage components, additive increases, skill/type scopes, value changes and
 source attribution. The whole-packet gate and fallback remain in force. They do
 not establish assembled-build admission, pools, crit or DPS behavior, and do not
-change the active runtime data or the guarded assembler's one-passive projection.
+change the active runtime data or admit allocations in the conditional-hit profile.

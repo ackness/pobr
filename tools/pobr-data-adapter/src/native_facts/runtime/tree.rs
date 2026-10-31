@@ -9,7 +9,7 @@ use pobr_data::native_stat::{
 use serde_json::{Value, json};
 
 use super::super::{
-    model::Candidate,
+    model::{Candidate, Instance, Passive},
     trust::{VerifiedInput, require},
 };
 use super::inputs::{index, row, text};
@@ -147,6 +147,12 @@ pub(super) fn project(
         expected_pairs == declared_pairs,
         "official class relations differ from native archive",
     )?;
+    let ordinary_reference = candidate
+        .passives
+        .get("maximum_resistances1")
+        .ok_or("missing reviewed ordinary-passive reference")?;
+    let reference_row = pointer_row(&ordinary_reference.raw.pointer)?;
+    let reference = row(input, "PassiveSkills", reference_row)?;
     let mut nodes = Vec::new();
     for instance in &candidate.instances {
         let supplement = &official_nodes[&instance.graph_id.to_string()];
@@ -176,14 +182,33 @@ pub(super) fn project(
             "official directed edges differ from native graph",
         )?;
         let native_stats = if instance.definition_id == "maximum_resistances1" {
+            require(
+                definition.stats.len() == 1
+                    && definition.stats[0].stat_id == "base_fire_damage_resistance_%",
+                "selected passive is outside the owned one-stat rule",
+            )?;
             Some(packet(
                 input,
-                candidate,
-                instance.graph_id,
+                definition,
+                instance,
                 definition_row,
                 source_sha,
                 patch,
             )?)
+        } else if definition.stats.len() == 1 && same_ordinary_context(raw, reference)? {
+            let packet = packet(
+                input,
+                definition,
+                instance,
+                definition_row,
+                source_sha,
+                patch,
+            )?;
+            // The core owns numerical semantics. Generation only asks whether this
+            // complete one-stat packet has a supported, exactly representable rule.
+            pobr_core::rules::passive_stats::map_stat(&packet.stats[0])
+                .is_ok()
+                .then_some(packet)
         } else {
             None
         };
@@ -214,9 +239,7 @@ pub(super) fn project(
     require(
         nodes
             .iter()
-            .filter(|node| node.native_stats.is_some())
-            .count()
-            == 1,
+            .any(|node| node.id == "maximum_resistances1" && node.native_stats.is_some()),
         "missing selected ordinary passive",
     )?;
     let (_, character) =
@@ -251,18 +274,40 @@ pub(super) fn project(
     })
 }
 
+/// Only identity, presentation and the one complete numeric slot may vary from
+/// the reviewed raw context. Unknown fields and unused value slots must match,
+/// rather than being interpreted as harmless from their names or missing readers.
+fn same_ordinary_context(raw: &Value, reference: &Value) -> Result<bool, String> {
+    let raw = raw.as_object().ok_or("invalid passive context")?;
+    let reference = reference
+        .as_object()
+        .ok_or("invalid reference passive context")?;
+    let per_node = [
+        "Id",
+        "Name",
+        "Icon_DDSFile",
+        "PassiveSkillGraphId",
+        "Stats",
+        "Stat1Value",
+    ];
+    Ok(raw.len() == reference.len()
+        && raw.iter().all(|(key, value)| {
+            reference.contains_key(key)
+                && (per_node.contains(&key.as_str()) || reference.get(key) == Some(value))
+        }))
+}
+
 fn packet(
     input: &VerifiedInput,
-    candidate: &Candidate,
-    graph_id: u64,
+    passive: &Passive,
+    instance: &Instance,
     definition_row: usize,
     source_sha: &str,
     patch: &str,
 ) -> Result<NativePassiveStats, String> {
-    let passive = &candidate.passives["maximum_resistances1"];
     let raw = row(input, "PassiveSkills", definition_row)?;
     require(
-        passive.stats.len() == 1 && passive.stats[0].stat_id == "base_fire_damage_resistance_%",
+        passive.stats.len() == 1,
         "selected passive is outside the owned one-stat rule",
     )?;
     for key in [
@@ -336,8 +381,8 @@ fn packet(
     Ok(NativePassiveStats {
         data_version: patch.into(),
         tree_version: Some("0_5".into()),
-        node_id: u32::try_from(graph_id).map_err(|e| e.to_string())?,
-        node_slug: "maximum_resistances1".into(),
+        node_id: u32::try_from(instance.graph_id).map_err(|e| e.to_string())?,
+        node_slug: instance.definition_id.clone(),
         modifier_texts: vec![],
         context: NativePassiveContext::UnconditionalPlayer,
         stats: vec![NativeStat {
@@ -346,7 +391,7 @@ fn packet(
             provenance: NativeStatProvenance {
                 game_patch: patch.into(),
                 source_manifest_sha256: source_sha.into(),
-                passive_id: "maximum_resistances1".into(),
+                passive_id: instance.definition_id.clone(),
                 passive_row: u32::try_from(definition_row).map_err(|e| e.to_string())?,
                 stat_row: u32::try_from(stat_row).map_err(|e| e.to_string())?,
                 references: vec![

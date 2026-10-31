@@ -42,9 +42,15 @@ client definitions are retained. Official names, numeric text and effects are
 never imported.
 
 The projection includes all 5,152 Default graph instances and the selected
-Sorceress's base attributes. One ordinary passive gets the existing whole-packet
-native contract, bound to the exact source/patch/tree tag. Its amount is read
-from the source. The reference index retains all 9,731 definitions and 61 class
+Sorceress's base attributes. Complete single-stat ordinary passives can use the
+existing native contract, bound to the exact source/patch/tree tag. Eligibility
+uses the core's own mapper, never a second stat-to-modifier registry or fixed
+node list. Amounts and node/stat identities come from source rows. The reviewed
+fire-resistance node remains a required reference. Other nodes must match its
+entire raw context apart from identity, name/icon, graph ID and the one stat/value
+slot. Unknown fields and unused slots must match too; grants, choices, multiple
+stats or changed context do not become partial packets. No display text is invented
+when a native-only packet has no formatter. The reference index retains all 9,731 definitions and 61 class
 relations; no missing Druid base becomes a phantom graph node.
 
 Spark's base/gem, primary granted effect/stat-set, level-1 resolved stats and
@@ -62,7 +68,9 @@ General tree modifier text is absent pending effective CSD selection/formatting.
 Ascendancy ownership, unlock constraints, class variants, attribute choices and
 jewel geometry are unprojected. An empty field does not declare an unmodelled
 mechanic effectless. `base/native_coverage.json` records these omissions, and the
-candidate cannot enter legacy calculation.
+candidate cannot enter legacy calculation. Packet coverage is counted from emitted
+nodes and lists the required core rules. Unprojected nodes remain in the archive;
+their absent packets do not mean their effects are globally irrelevant.
 
 Sealed sidecars retain the transitive input lock, canonical raw references,
 normalization decisions, required-rule declarations, acquisition status and tree

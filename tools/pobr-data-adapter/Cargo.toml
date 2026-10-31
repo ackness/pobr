@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 pobr-data.workspace = true
+pobr-core.workspace = true
 pobr-gamedata.workspace = true
 serde.workspace = true
 # Raw PSG coordinates must round-trip exactly; the default parser can shift one ULP.
