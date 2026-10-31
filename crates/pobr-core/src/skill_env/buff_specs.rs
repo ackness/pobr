@@ -25,7 +25,7 @@ use crate::skill_env::resolve::{
 };
 use crate::skill_env::stat_map::{
     StatMapCtx, curse_stat_modifiers, debuff_stat_modifiers, mapped_stat_modifiers,
-    player_buff_stat_modifiers, player_buff_stat_modifiers_by_stat,
+    mapped_stat_modifiers_observed, player_buff_stat_modifiers, player_buff_stat_modifiers_by_stat,
 };
 use crate::skill_env::support::{GroupSupportJudgement, SupportCandidate, judge_group_supports};
 use crate::skill_env::{EnabledGroup, GemInput};
@@ -213,7 +213,30 @@ fn support_modifiers_observed(
         // the full merge for a multi-set support's additional sets is a current gap.
         let set_key = data.selected_set_key(&sup.effect_id, set_index);
         let catalog = ctx.catalog;
-        mods.extend(crate::skill_env::stat_map::mapped_stat_modifiers_observed(
+        if let Some(secondary) = secondary_support_stat_owner(data, &sup.effect_id, set_index) {
+            // These are the granted skill's intrinsic facts, not changes to the
+            // supported host. Retain their source and deferred scope rather than
+            // turning them into host modifiers or globally effectless stats.
+            for stat in stats.base.iter().filter(|stat| stat.value != 0.0) {
+                let detail = format!(
+                    "Support:{}:set={}:stat={}:value={}:host={active_skill_id}: secondary-effect={secondary}; payload belongs to the separately granted skill and is not applied through support ingestion",
+                    sup.effect_id,
+                    set_key.as_deref().unwrap_or("1"),
+                    stat.stat,
+                    stat.value,
+                );
+                ctx.record(
+                    &stat.stat,
+                    sup.effect_id.clone(),
+                    "unsupported",
+                    detail.clone(),
+                );
+                if let Some(limits) = limits.as_deref_mut() {
+                    limits.push(detail);
+                }
+            }
+        } else {
+            mods.extend(mapped_stat_modifiers_observed(
             ctx,
             &stats.base,
             SourceKind::SupportGem,
@@ -244,7 +267,8 @@ fn support_modifiers_observed(
                     limits.push(limit);
                 }
             },
-        ));
+            ));
+        }
         // A compatible support's per-level cost multiplier → `SupportManaMultiplier`
         // MORE (matching PoB2's `CalcActiveSkill.lua:689-691`:
         // `NewMod("SupportManaMultiplier","MORE", level.manaMultiplier, modSource)`).
@@ -261,6 +285,36 @@ fn support_modifiers_observed(
         }
     }
     mods
+}
+
+/// A shared set can describe a support-granted active effect. Classify only
+/// when stable set/effect identity, the explicit granted-skill type, and a
+/// primary/additional set relation agree. This does not simulate its trigger.
+fn secondary_support_stat_owner(
+    data: &dyn BuffEnv,
+    support_id: &str,
+    set_index: Option<u32>,
+) -> Option<String> {
+    let support = data.effect(support_id)?;
+    let set_id = data.selected_set_id(support_id, set_index)?;
+    let secondary = data.effect(&set_id)?;
+    let linked_set = support
+        .stat_set
+        .zip(secondary.stat_set)
+        .is_some_and(|(left, right)| left == right)
+        || support
+            .additional_stat_set_ids
+            .iter()
+            .any(|id| id == &set_id);
+    (support.is_support
+        && !secondary.is_support
+        && secondary.active_skill.is_some()
+        && linked_set
+        && secondary
+            .skill_types
+            .iter()
+            .any(|kind| kind == "SkillGrantedBySupport"))
+    .then(|| secondary.id.clone())
 }
 
 /// What the support that grants `active_skill_id` says about it.

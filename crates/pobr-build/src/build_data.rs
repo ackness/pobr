@@ -455,6 +455,7 @@ impl BuildData {
     /// return value rather than reloading the same version directory repeatedly.
     pub fn load(data: &GameData) -> Result<Self, LoadError> {
         data.validate_manifest()?;
+        data.validate_calculation_admission()?;
         // Pin report provenance alongside the immutable data used by this build.
         data.identity()?;
         // A domain's file is released as soon as it is parsed (a data pack staged in memory to

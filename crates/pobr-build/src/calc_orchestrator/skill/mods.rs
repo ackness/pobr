@@ -308,11 +308,9 @@ pub(crate) fn main_skill_quality_modifiers(
             set_key.as_deref(),
         )
     };
-    // PoB2 adds quality onto the stat before mapping (CalcTools.lua:163-175), so a
-    // statmap `base` offset applies once per stat. A quality stat the set already
-    // carries is therefore mapped as the difference it makes on top of the set's
-    // value; mapping it alone would apply the offset a second time (e.g.
-    // `base_number_of_projectiles`, `base = -1`, SkillStatMap.lua:1889-1892).
+    // Quality adds to the set's stat before mapping. Map that difference so an
+    // intrinsic total is not injected again and any catalog offset applies only
+    // once to the combined stat.
     let mut mods = Vec::new();
     for quality in &stats.quality {
         let in_set: f64 = stats

@@ -6,6 +6,7 @@ mod gems;
 mod items_actors;
 mod model;
 mod output;
+pub(crate) mod runtime;
 mod trust;
 
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]

@@ -104,6 +104,8 @@ mod supported {
     pub(in crate::native_facts) struct Output {
         directories: Directories,
         input: Directories,
+        extra_inputs: Vec<Directories>,
+        base: Option<File>,
         production: Directories,
         name: OsString,
         reserved: bool,
@@ -127,6 +129,8 @@ mod supported {
             let result = Self {
                 directories,
                 input,
+                extra_inputs: Vec::new(),
+                base: None,
                 production,
                 name,
                 reserved: false,
@@ -139,14 +143,91 @@ mod supported {
             self.input.verify_namespace()?;
             self.production.verify_namespace()?;
             self.directories.verify_namespace()?;
+            if let Some(base) = &self.base {
+                let current =
+                    fs::statat(self.directories.last(), "base", AtFlags::SYMLINK_NOFOLLOW)
+                        .map_err(|e| e.to_string())?;
+                let held = fs::fstat(base).map_err(|e| e.to_string())?;
+                require(
+                    FileType::from_raw_mode(current.st_mode) == FileType::Directory
+                        && (current.st_dev, current.st_ino) == (held.st_dev, held.st_ino),
+                    "base directory namespace changed",
+                )?;
+                for input in std::iter::once(&self.input)
+                    .chain(&self.extra_inputs)
+                    .chain(std::iter::once(&self.production))
+                {
+                    let protected = fs::fstat(input.last()).map_err(|e| e.to_string())?;
+                    require(
+                        (held.st_dev, held.st_ino) != (protected.st_dev, protected.st_ino),
+                        "base directory aliases a protected input",
+                    )?;
+                }
+            }
             self.directories.excludes(
                 &self.input,
                 "output must not modify the canonical input package",
             )?;
+            for input in &self.extra_inputs {
+                input.verify_namespace()?;
+                self.directories
+                    .excludes(input, "output must not modify a supplemental input")?;
+            }
             self.directories.excludes(
                 &self.production,
                 "native facts output must remain outside production data/",
             )
+        }
+
+        pub(in crate::native_facts) fn protect(&mut self, path: &Path) -> Result<(), String> {
+            self.extra_inputs.push(Directories::open(path)?);
+            self.verify_namespace()
+        }
+
+        /// Write one immutable base layer using a held directory descriptor.
+        /// Names are flat within base; the completion manifest is written separately.
+        pub(in crate::native_facts) fn write_base(
+            &mut self,
+            files: &std::collections::BTreeMap<String, Vec<u8>>,
+        ) -> Result<(), String> {
+            require(self.reserved, "output is not reserved")?;
+            self.verify_namespace()?;
+            for name in files.keys() {
+                require(
+                    name.ends_with(".json")
+                        && Path::new(name).components().count() == 1
+                        && matches!(
+                            Path::new(name).components().next(),
+                            Some(Component::Normal(_))
+                        ),
+                    "base filename must be a single normal JSON component",
+                )?;
+            }
+            fs::mkdirat(self.directories.last(), "base", Mode::RWXU)
+                .map_err(|e| format!("reserve base: {e}"))?;
+            let fd = fs::openat(self.directories.last(), "base", DIRECTORY, Mode::empty())
+                .map_err(|e| e.to_string())?;
+            self.base = Some(File::from(fd));
+            for (name, bytes) in files {
+                self.verify_namespace()?;
+                let fd = fs::openat(
+                    self.base.as_ref().ok_or("base directory not reserved")?,
+                    name.as_str(),
+                    OFlags::WRONLY
+                        | OFlags::CREATE
+                        | OFlags::EXCL
+                        | OFlags::NOFOLLOW
+                        | OFlags::CLOEXEC,
+                    Mode::RUSR | Mode::WUSR,
+                )
+                .map_err(|e| format!("create base/{name}: {e}"))?;
+                let mut file = File::from(fd);
+                file.write_all(bytes)
+                    .and_then(|()| file.sync_all())
+                    .map_err(|e| e.to_string())?;
+                self.verify_namespace()?;
+            }
+            Ok(())
         }
 
         pub(in crate::native_facts) fn reserve(&mut self) -> Result<(), String> {
@@ -209,6 +290,15 @@ impl Output {
         Self::prepare_unavailable()
     }
     pub(super) fn verify_namespace(&self) -> Result<(), String> {
+        Self::prepare_unavailable()
+    }
+    pub(super) fn protect(&mut self, _: &std::path::Path) -> Result<(), String> {
+        Self::prepare_unavailable()
+    }
+    pub(super) fn write_base(
+        &mut self,
+        _: &std::collections::BTreeMap<String, Vec<u8>>,
+    ) -> Result<(), String> {
         Self::prepare_unavailable()
     }
     fn prepare_unavailable() -> Result<(), String> {

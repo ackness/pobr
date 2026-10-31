@@ -1,0 +1,1976 @@
+{
+  "manifest": {
+    "decoder": {
+      "pypoe_revision": "66d1d7442c5718260e1a8efd24989d22987e91af",
+      "python": "3.14.10",
+      "sources": {
+        "__init__.py": "dbb8100481b8ae4a493d449732f6023617218a7fc2b3a3c951dabd5470a5aa20",
+        "cli/__init__.py": "76c7c040f78688f48f1f64fec5cdb77b42f241943b1d4442ffcd4fdb1c290b0c",
+        "cli/config.py": "63614550a31875545f163350bfe7a3538a81c2a13879c1b21e8beb37f1f2c705",
+        "cli/core.py": "f950bc81d39d56ec4c395abba33d06938c59003885bd71b6bffa5966f2573a3a",
+        "cli/exporter/__init__.py": "5ab5817efb8c5a211baa89de2213dab73a672cb896d4ae7ea4fe9eb4f6de4d38",
+        "cli/exporter/core.py": "b55bcd4daea6f3d50f721fcbd0a09ebf83eef1b13e526628db89827f51bd395b",
+        "cli/exporter/dat/__init__.py": "9f91890f9087d382e8ad367406cb8da367340cbf74572ea9bf1f93c3e56df36a",
+        "cli/exporter/dat/handler.py": "833c70f333c9e3e8ccc513d37fad0383e9ed5d391d717cdc35af9d67d6a42fa0",
+        "cli/exporter/dat/parsers/__init__.py": "13678ffefae062745e2742b6dc9ef63be07bdef584ae2057167457981fdc6115",
+        "cli/exporter/dat/parsers/json.py": "5afeffd508c2275ee3ad03d71952c781b28b9258035417eb10a7b974d51e4921",
+        "cli/exporter/poe2wiki/__init__.py": "a326166570adc0a5f084b112b09ac3a27131775924a9b7b800b469fd17883623",
+        "cli/exporter/poe2wiki/admin/__init__.py": "81e5cfae8c0fe24483b14b844478c75d901506bb09b6da21b4a0e19bbaf8b447",
+        "cli/exporter/poe2wiki/admin/unique.py": "c7d44cade540dd6c0baac62a3d6606c10abcc0f86c0f2a9c3ea1908696d6eac7",
+        "cli/exporter/poe2wiki/core.py": "ac248727b0cf0d521c6e91281b9a5a0a0d63a66929df416a32ae99844252b043",
+        "cli/exporter/poe2wiki/handler.py": "49abc5142347a52b2f3793064a44313f0894de6d3a835f852be9860d4184be63",
+        "cli/exporter/poe2wiki/parser.py": "5601c486994f64d5cd4194afb09e42ab614d6f5ff6ad55db2757843b896b25c4",
+        "cli/exporter/poe2wiki/parsers/__init__.py": "0ac18556fa3bb3f7742bd7584935e885b6e6f1d330af49e13c56d7f29be82440",
+        "cli/exporter/poe2wiki/parsers/area.py": "ae6f1cdbd6b0a1ec93479a923fe729339563fb91f2d67c5f6b82941c79360d0d",
+        "cli/exporter/poe2wiki/parsers/incursion.py": "47f4462865f7cd3e4d84791d3b720482f7e1a8d137c7fb293604b874284b044f",
+        "cli/exporter/poe2wiki/parsers/item.py": "2260a79e31d21001e23655e02668afdf12731a5eee51b23ff813486f7fbaecf4",
+        "cli/exporter/poe2wiki/parsers/itemconstants.py": "a652d0328a5867a2d0013e4726c113270859e15eff3f1f6850fb0101eb9b200a",
+        "cli/exporter/poe2wiki/parsers/lua.py": "5ab90e24bfbf18266249742cbb9d19e32cf4f81b264960041871e646588cdc4f",
+        "cli/exporter/poe2wiki/parsers/mods.py": "2366a1f24e8e116656cb771c2cbbfbf783e5fba1093306b80916015552b72153",
+        "cli/exporter/poe2wiki/parsers/monster.py": "874e6306b91a09641fc299fd4e75ab80574e17f7d7798dff37ce95bd8c7b9b85",
+        "cli/exporter/poe2wiki/parsers/passives.py": "d5221d739cf57e4dc4dfe35e0a707da178a132de8a8d584b3d7a43d308a32238",
+        "cli/exporter/poe2wiki/parsers/skill.py": "7b4dc3690ad749afad7c5610d3993147bb79738ab6b16a84f4434ff4bbaaa791",
+        "cli/exporter/util.py": "0fe044437eabb002196a6370562b55e8e61f52b128ffddc20511f89968061486",
+        "cli/exporter/wiki/__init__.py": "cef570ff12f11f8cdc3837ce068f66090944d15b402befcec4afcacdb48eee39",
+        "cli/exporter/wiki/admin/__init__.py": "7a08f82c948c6489dcdae98fcf6be81b4d3f255292e6aba7eb27861a049c5f71",
+        "cli/exporter/wiki/admin/unique.py": "e25e2a9ad5869f3daffb31cfcc2364ba41e726289906a75eccd8d7eedcf84f06",
+        "cli/exporter/wiki/core.py": "4e20d6035ecaba3f64efc60bd8c31e07485302e1aad418c6d855fd0f43f4c265",
+        "cli/exporter/wiki/handler.py": "ef994a1892cc9b4ac487f65afaebbbb267db8e253cf13ac2238617478304040d",
+        "cli/exporter/wiki/parser.py": "e363b4cb97ea18687421098a7b3a391c4c779380e7f858cd945e57dbcdf8a273",
+        "cli/exporter/wiki/parsers/__init__.py": "34820b6acaa344fa69d8aaca2fe1e7c0cfcc54d8be6ef1d6bb0b600ba08fa87b",
+        "cli/exporter/wiki/parsers/area.py": "1ecc1f04e247922b073fa93d70f2a95d8a6c38524eaa8a844e747fa057b6d649",
+        "cli/exporter/wiki/parsers/incursion.py": "50b2a4be7f3e888a79fe06e2b396a48d846f277c8084cb2b3d5b73e53220af84",
+        "cli/exporter/wiki/parsers/item.py": "59d8ec84c7740a65b9dbe511a5273778a86ba3dbaf7a90920c547c4d9a62192e",
+        "cli/exporter/wiki/parsers/itemconstants.py": "d09443a0e6a29ef765f1c071ede82c2f7c71eb15150f727ab152632d3fe0c01c",
+        "cli/exporter/wiki/parsers/lua.py": "be1fc9d0973a802f4d7d4ea202eccbb61b19625be355c3a5d961e0b5eb52d70c",
+        "cli/exporter/wiki/parsers/maps.py": "dc1d1082111049450463efc61f73e9013d10879c332d790e627b9055d68e0600",
+        "cli/exporter/wiki/parsers/masteries.py": "078bb48d8cbb50234eb47e07be1c2b33107b43d8642d1ad0cbc35f01c4e57436",
+        "cli/exporter/wiki/parsers/mods.py": "7d353cfce30da0c45129cd260ea25374a36cee24a17c3dc6e67739309235823f",
+        "cli/exporter/wiki/parsers/monster.py": "4a8c5a250cb9e0a528e26dde7f1e9beec6b834ac28b4c6f3593dca88c9e7a97a",
+        "cli/exporter/wiki/parsers/passives.py": "e2b32fd3c1af41703bfebc1e0985fb24609f5170ca8a7031c37a4da03e16c2fe",
+        "cli/exporter/wiki/parsers/skill.py": "aa6b85e32cc35ba9cb79db9b50c2edad285da425461dcb94fe413f1f410f1a03",
+        "cli/handler.py": "73378917835f1ffa092a092cc9b0168634d905542133f34c0fcde9db2184ddb9",
+        "poe/__init__.py": "c2114889c8fca4a19cbfd07d22f0b4055c09514aa3ed67e9a3fd77c86fa14d6d",
+        "poe/constants.py": "0834d4a0817514c0f6085b9ed2302e06fdf031c36a87b8e081e529ba11038712",
+        "poe/file/__init__.py": "51bf08e4c99b89effc339d5bf4e97ca81b82b19e1fb56abff8a7ad4406bd5ba9",
+        "poe/file/bundle.py": "ce4a1b377cce7a00b627fe789e7a90006e261c5c391900f5a0ed59b553e4655f",
+        "poe/file/dat.py": "19f114e1a763a177a2c9a9aa36af9798341ef1a7f496219fdb8fcd54fb823d43",
+        "poe/file/dgr.py": "4f7e8c9bc91e0d2e03e5277aa08338f205d741ebd64b02ef840f5be2980e4feb",
+        "poe/file/file_set.py": "346004feeeaf062491e13c9126f4d677046ac63e8c84b50b0d902d54db0a3fd9",
+        "poe/file/file_system.py": "ce76a4a8d67904d84841cd06e37ffacb69f6beabd4e0579aa16359ceb7816411",
+        "poe/file/ggpk.py": "e0453229b5c46d5f19bc3abaedc11747c20a20c151c06e9775f1de0e368d2d19",
+        "poe/file/idl.py": "6bf58d64702e38299862e0b68ffdf5c5c0e1e6a783570a4eef0e70ce50e0ba7a",
+        "poe/file/idt.py": "ff0ef7be034a05d565e65f97bec73188506954ccba5e53969b8ad5e93c44d63f",
+        "poe/file/it.py": "4ab58e730905fcb1328ac01f692b1bd51282d8134fe5f76a147daff51c65be9b",
+        "poe/file/ot.py": "6acf48486dd0e1b857dba4e94ac0543d1de37e3c950fd826c484f336628294fd",
+        "poe/file/psg.py": "fe1b54a1dd30960ea455a8930cd24a8f5075bfbb03e08cc4245e75c882739e47",
+        "poe/file/psg2.py": "957efb216513bb001e95c217c41b96fa0be7718fe25506884fcbf80681af408d",
+        "poe/file/shared/__init__.py": "e54d3fa871d36d17e06dd185e908fd5b83849b00b44015b798164b53280e232e",
+        "poe/file/shared/cache.py": "6a1d0a91374756fe27612670b501a00701fb876d43f1574b394252ebc6ec8f28",
+        "poe/file/shared/keyvalues.py": "47e43f379cb8d0e72ac1389982d161541006caf3e8e752133f5ade4ac6049298",
+        "poe/file/specification/__init__.py": "f99fbca1a37480599812e681cb267d312cb54a1acf7067e3b061150f70f4743e",
+        "poe/file/specification/data/__init__.py": "a110d637c2ed84d0cf78bb25fffb2b1cfd18d17a217fedb64646a0e533dcd0b4",
+        "poe/file/specification/data/alpha.py": "feb8e1289d984244de107bd552bc04fb11ea7e8b94af984dac23f7d5315de427",
+        "poe/file/specification/data/beta.py": "056b5bdd3224905216fe97512b02e3b2fc5932f3689b6f451397b63e93814882",
+        "poe/file/specification/data/generated.py": "29d25a24a6fefb3c9cceecab36bb8a73e397655d05b4ce7f529d6ea3304c9304",
+        "poe/file/specification/data/poe2.py": "56199307a47d131a3dd9fb7f0065766c79beb0a57d5efac9ee4bc979c4714a27",
+        "poe/file/specification/data/stable.py": "c211263cf9a1143f6640a95e4a641c0322b7952f483ccfadec78b36a70004559",
+        "poe/file/specification/errors.py": "33fbec5637b152ef4e234677482077d1f18b8bf590a756a48e7a53249539eb43",
+        "poe/file/specification/fields.py": "761239a5670a3b84a320efc6323de4060278940743da5d07dc0099edf7a1ed70",
+        "poe/file/specification/generation/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "poe/file/specification/generation/column_naming.py": "f85d64e62beeae95267dfce9ad23eff9331010da31ec567cb26cf1a4bce0fd2e",
+        "poe/file/specification/generation/custom_attributes.py": "09a7487447f47024e66f89f4b1c2724646ab94107b72efa953362b8f42295eb8",
+        "poe/file/specification/generation/import_dat_schema.py": "91235f8d89bb7d0e0c8a19a9c3f64ed40e31bdaad9552e966fc532c68951e157",
+        "poe/file/specification/generation/template.py": "12ac8a5e064f13908aa45f532cb72da9aeb2d3437c9fe778f413921766c5cfeb",
+        "poe/file/specification/generation/virtual_fields.py": "7710af21cc8cb5d646cecb49e46f4e643b5df85823e2528ae2eb6fd130d503c9",
+        "poe/file/stat_filters.py": "701e08d746827433f1c39824ffdb25d115512d0261f55c7f2ac7833bd18d2df0",
+        "poe/file/translations.py": "50f02a717f50ed774d9ff7a00e6ff10a75727c877bc43fb61b74236af302457a",
+        "poe/file/tsi.py": "8515f651c19797c430c4be8cfc7afe9e080017d3fdd1c505d13fd2b04c0c14c1",
+        "poe/patchserver.py": "640847c498cfe3b0a166334b6d4b9df946a249cb87bc49cab3167061e0901454",
+        "poe/path.py": "7aac9d2971365611010632cb74470106d3e92ecd2fecd3f61d8f9ee5948b5b85",
+        "poe/poe1constants.py": "523dc6f82e27b9aa3b1e2754563b478096c60fbf44779e0d0b12c47c837507f7",
+        "poe/poe2constants.py": "ada1f13131adf00d4b4a1184a6db694c5b956779eca8cbe06d83cdceca3f409e",
+        "poe/sim/__init__.py": "4b142d396a8dd3290c885f450e967becb11446ebe6bfed25f45042a0418e533b",
+        "poe/sim/item.py": "9e0d2630cbaf5dfd9382b8d4f4f7250993f918e4a3d326c2c712e317ca79f5b8",
+        "poe/sim/mods.py": "0350b6792838861765164a966ef162747de63d166ef5f4654fd02b9d188e5737",
+        "poe/sim/monster.py": "3db3f1830244c54847bf129ba5816449a60b4ac736f9c64897078a06deb86dfb",
+        "poe/sim/poe1formula.py": "ab30890af99bc6a5b82360e38adae20480127417c6c88b7294929a146629ebcc",
+        "poe/sim/poe2formula.py": "f9aea3fbcde1bef30672dfef5a527a770a1c793f3e2fd784461bfb6453bc739a",
+        "poe/text.py": "7d2540ed6646998e35e8aa18e444ef803882a5aaf3d0af4f50f25856e0d91500",
+        "shared/__init__.py": "32db20ae725d8eddf716759bc621526c086d95d80efd8739ed51a03230d8bb7f",
+        "shared/config/__init__.py": "3feee40a84da957980a0aa2dfdd61e7f00b6d9e70d304dc788580fe33e3169f5",
+        "shared/config/validator.py": "cbee8f2d3447edbb06baa6ad04ef6ee712dc50d816acab61b65868d46f40740f",
+        "shared/containers.py": "95ab95cd7f4f060612a5893833c757db57d9dd2956369d25ec220ca552157023",
+        "shared/decorators.py": "58d70ef303e307e21d671799106398fa2a25690b647a2421ec522034aac353d9",
+        "shared/mixins.py": "ff229c68a682a2ecc0cea750b5573e3146d790d94ed37045f10f91cc7d66d559",
+        "shared/murmur2.py": "84ad1b318665d45a1a7c0e25294e15f6be7d544d3bfc05b35803284209e0157f",
+        "ui/__init__.py": "0d16516af8b85e27071c0b3593a5d282703d024e551564525bf514c9a103ff34",
+        "ui/ggpk_viewer/__init__.py": "286697366beeb52d73bafdd937849878cb6b49af3c22694a8ad42ec9c36034ce",
+        "ui/ggpk_viewer/core.py": "fd417a9bd5c2b859a87d2e122aaffe15c78b9317a3897214a2bf8caa2420c430",
+        "ui/ggpk_viewer/menu.py": "f457d0fb8f0c318acf9627cdcbbc73e221f3b248ab0bb3e0b7459ac9bef92e14",
+        "ui/ggpk_viewer/toolbar.py": "a742e38067149b839f64445233c589120baad287669fff014e96ea8d62152af2",
+        "ui/launchpad/__init__.py": "d8329c4501633d3b406caf899c68751c228d3c7dd7a80934f929a2bc4c0b0c73",
+        "ui/shared/__init__.py": "d7ccb402c4e557a0a383c78a1ece0ee5853dbd183d4a753ddc61e94369343bff",
+        "ui/shared/dialog.py": "c3dfafa8bc5e56b5508df3fcdca64f9dcd2bb89c00a03d4e60b70526a57e2ac2",
+        "ui/shared/file/__init__.py": "ef8849c2820e4ac4f6d314c695f9badef31fcc0c072f1da60b8161271b7aeb59",
+        "ui/shared/file/ggpk.py": "d156c52a63b706a0785fbe91d0c76e5b2ce2b65a7036b7c8fa717afe97350666",
+        "ui/shared/file/handler.py": "2cbc8d63acd4369c838926d1c10141d6e2b155b983daa509dd0c65dc77edd07f",
+        "ui/shared/file/manager.py": "eb2c47452894a3aeb53e934ef01b764a2656a8d6c68af99e7aa72a328dcd8b0b",
+        "ui/shared/file/model.py": "a95837e4177faaf9e0b189ac30ff509576190429ab8d3335668cd0cddff01802",
+        "ui/shared/proxy_filter_model.py": "e81e6cba81097be3edb666af98c1453e9fa76d5b7b622b4ab0f9df286f814a98",
+        "ui/shared/regex_widgets.py": "cb15cbbe41e3b4d7577a35076a5f85836b15c4651b16143e010a7251cbc3888c",
+        "ui/shared/settings.py": "92b186f3b478cb1a146380a1a68dfd521f3f385fde679853eb53412c62b425b0",
+        "ui/shared/table_context_menus.py": "0aff8ab040bb179711729a5804d17ce0bfca620dfd5766f710d4c3ed442655f7"
+      },
+      "trusted_source_pin_sha256": "64703bc3c5eca107108244e02baf0dc2cd46669e62a6b5ba273f868aa9db0095"
+    },
+    "files": {
+      "actors.json": {
+        "bytes": 6022780,
+        "sha256": "e930f8fb2ddd6979d02c29f114ed15a31fa2e8aefc0a177a2378f892d830ccbc"
+      },
+      "constraints.json": {
+        "bytes": 4858795,
+        "sha256": "fdbaffa5fd1eafa24d4b8952b9638b02feefec7fd41c3f9ee7812bf5703fcba7"
+      },
+      "diagnostics.json": {
+        "bytes": 7201287,
+        "sha256": "bff88ba9159484ff2b3276f758c4fe582616ea4123679a802a6b1008579ed926"
+      },
+      "gems.json": {
+        "bytes": 2408440,
+        "sha256": "79efc33c0c464afdb5d8f73680b8ed76b1387a808dc6aa158d2d8d483e53ffbf"
+      },
+      "graph.json": {
+        "bytes": 583101,
+        "sha256": "1ab539203b3509fe5c24b2b3cc12eb72d46f3b5d28b6ebdbae917f8bbf3cd7e0"
+      },
+      "items.json": {
+        "bytes": 33727247,
+        "sha256": "a9af28a99bce14d9b9f7f38ba34823261d1db71606202fb7a2c8591781a0ee55"
+      },
+      "passives.json": {
+        "bytes": 2738404,
+        "sha256": "2820da2a24586add6074bf04f5c5805500e71b762095e486a9a3153d8e34c09f"
+      },
+      "skill_core.json": {
+        "bytes": 35246116,
+        "sha256": "329a5f3595c1395c0bd6d4f2ed7619f4de2d0c73ee95d85e2544998c2a2ce21e"
+      },
+      "skills.json": {
+        "bytes": 2042516,
+        "sha256": "23b568edfc92ff8654e379dce9c6af821a7c9e4bd37d211d6bda13c55a2a3505"
+      },
+      "source-lock.json": {
+        "bytes": 41544,
+        "sha256": "d7a59a052109f411a62b1398ac844ff31ca8afd6d4158e3488446a19cb75743f"
+      },
+      "tables/ActionTypes.json": {
+        "bytes": 115881,
+        "sha256": "bfbbca7a3d40512fe85c6ce0425250f51fdcbdfdabc0d9a2c4c4aeb5b33c2393"
+      },
+      "tables/ActiveSkillType.json": {
+        "bytes": 19214,
+        "sha256": "822653455a41934f1ccbeaa7b316d23733b0a7b8170329528316af60f837ea3c"
+      },
+      "tables/ActiveSkillWeaponRequirement.json": {
+        "bytes": 7498,
+        "sha256": "3d45a27970bc163eb065ae9451e06babc78410537b9835ffba6805dec3bfb6d6"
+      },
+      "tables/ActiveSkills.json": {
+        "bytes": 1363288,
+        "sha256": "8b4b8779f8e68cc669afc6322eebc33cca5d9a590c0edfad1c8236a91308bdaa"
+      },
+      "tables/AlternateSkillTargetingBehaviours.json": {
+        "bytes": 5252,
+        "sha256": "dcb42953b37de75efb950fabddc526b5284f6260357f51aa3320a22ab072a3e2"
+      },
+      "tables/ArmourTypes.json": {
+        "bytes": 177371,
+        "sha256": "408e0a223d72263779b5aed559eda8f8d1cd0e9900f9e6296f726fd4d762a6f5"
+      },
+      "tables/AttributeRequirements.json": {
+        "bytes": 138147,
+        "sha256": "fb5d6d7ebf30445385b800a04a730d690210fbe0615a2bcd04a80cedabad0a82"
+      },
+      "tables/BaseItemTypes.json": {
+        "bytes": 4119490,
+        "sha256": "8225d82000eadd38f547fc431a94b40c8effebc2be2b5e8537e2944666674b3d"
+      },
+      "tables/BuffDefinitions.json": {
+        "bytes": 3035364,
+        "sha256": "af156221e8a25b3b1f1f8f9bd54f06f8ea945aefcea49e524fb36bd720740094"
+      },
+      "tables/BuffTemplates.json": {
+        "bytes": 183156,
+        "sha256": "5fa2835258bb059e627b4f4903265274f70114b2fa1edf4237d5e96f7c628d02"
+      },
+      "tables/Characters.json": {
+        "bytes": 40857,
+        "sha256": "b68686433b51073348f18fb1322057900b0742ddcfde3c4cd91cb32e40f8b0da"
+      },
+      "tables/ClassPassiveSkillOverrides.json": {
+        "bytes": 6647,
+        "sha256": "443885d4f9f316ec03f5b6bb403b85098ea7749630fbdcd9dff9a5b2c82c94ed"
+      },
+      "tables/ClientStrings.json": {
+        "bytes": 1954532,
+        "sha256": "89cd9bd33df147e1084b128605156a698c63a11c0c37e0a0afed37d65461e00b"
+      },
+      "tables/ClientStrings2.json": {
+        "bytes": 170436,
+        "sha256": "58bd05bd4a9d32adcf8fceb4fe6c6d554aeac640b065dcccd2850939c323db9e"
+      },
+      "tables/ComponentCharges.json": {
+        "bytes": 6052,
+        "sha256": "89728510f59caf3835182d6c28b88d05c8cf0a236a084791e481c3ae4168ea10"
+      },
+      "tables/CostTypes.json": {
+        "bytes": 3618,
+        "sha256": "ba83478f058ccb0489f05907316797c31e8dcbbeefff8c4a4f5b3213bfe8a32e"
+      },
+      "tables/DefaultMonsterStats.json": {
+        "bytes": 53764,
+        "sha256": "b95c37f932f08ae52f0664090c781c94889dd23b8805de0f11fec99364998745"
+      },
+      "tables/DisplayMinionMonsterType.json": {
+        "bytes": 861,
+        "sha256": "2273139e09d446778d30a12f32ab95cc957b923222920207ddbfc04ee7ee3659"
+      },
+      "tables/EffectivenessCostConstants.json": {
+        "bytes": 1006,
+        "sha256": "edb482137b99d64e6c9c398e6a8d2dda366e4c5915caa272361360a94a8597fb"
+      },
+      "tables/EssenceMods.json": {
+        "bytes": 27136,
+        "sha256": "10b738e8c7b00f859ac6e9485204282ac86ce41789f02026de37961637918ceb"
+      },
+      "tables/EssenceReplacementType.json": {
+        "bytes": 588,
+        "sha256": "cc30fa9f9df2f87bf82d89da41d8559b94ba94823d5da17e013a916fcbfbeccb"
+      },
+      "tables/EssenceTargetItemCategories.json": {
+        "bytes": 6113,
+        "sha256": "f5305bf15405f16ff9aa22ab856f4278a7d55d6e5ae50dca52b800006cc01ac6"
+      },
+      "tables/Essences.json": {
+        "bytes": 26779,
+        "sha256": "05371ae757eeae1e3ee1683a050b4cd73d87967b17d5b186f05f08044f82892a"
+      },
+      "tables/Flasks.json": {
+        "bytes": 9042,
+        "sha256": "8fa1770564a98b6a65d361ce404f79ea2eee7e0acc7c9cc28d9aa0ebe64859ad"
+      },
+      "tables/GameConstants.json": {
+        "bytes": 10983,
+        "sha256": "2875cee742980ea3de14a3b9acee532d740d2734f203e8c2b41a7d02815bf364"
+      },
+      "tables/GemEffects.json": {
+        "bytes": 441261,
+        "sha256": "29222821a7bcb48ac4b69abf1ce755ae3caac274e793b0688f98892aaf84d977"
+      },
+      "tables/GemTags.json": {
+        "bytes": 10373,
+        "sha256": "a8e67d8797cfaaf07d51a11aeed4913046e24bd23e1dfd5f8536d41b07de78c6"
+      },
+      "tables/GrantedEffectLabels.json": {
+        "bytes": 21849,
+        "sha256": "3fcc0090267319161c33bcd3481594fb3ece038e78b7d6f859f1ecabe3eec780"
+      },
+      "tables/GrantedEffectQualityStats.json": {
+        "bytes": 94479,
+        "sha256": "21ceebb7af0c53708f01097001d209753078b4c34e9c6a6f70d68bd6946c22af"
+      },
+      "tables/GrantedEffectStatSets.json": {
+        "bytes": 2542497,
+        "sha256": "783e661341dc84fad2ce38c1af66f9bf9819a2a4a3a5ab49459670afec3945c9"
+      },
+      "tables/GrantedEffectStatSetsPerLevel.json": {
+        "bytes": 16281031,
+        "sha256": "bc8b13347a6be6b8ec22881296480bd433a6686a3f2c2451d4206d986d9a2bf6"
+      },
+      "tables/GrantedEffects.json": {
+        "bytes": 6314332,
+        "sha256": "528b7162a9f2efdffd7c92e698c3c903873e03ffc97bdef31f31ee6fcefd53e8"
+      },
+      "tables/GrantedEffectsPerLevel.json": {
+        "bytes": 15021541,
+        "sha256": "5e4e5ec0909ca8eb7dfd87309c8f79ae179053315dcc585e660f0a2fb2d6f772"
+      },
+      "tables/ItemClassCategories.json": {
+        "bytes": 6498,
+        "sha256": "3e78d27cec2acc6241aa27a55786d6d55c097c04fe4c05e279701dc30d5a603c"
+      },
+      "tables/ItemClasses.json": {
+        "bytes": 80878,
+        "sha256": "5bbac0ae80a98bbf069b85c3207c72c7d64d0fa0c392079b9d17211b19e8b84e"
+      },
+      "tables/ItemExperiencePerLevel.json": {
+        "bytes": 38598,
+        "sha256": "e535e4c857d89d60e945b1f8b6e14bd4b17a64af86827bf58c5294049dc4f40e"
+      },
+      "tables/ItemExperienceTypes.json": {
+        "bytes": 2860,
+        "sha256": "1f3dc6995bb892950a79df8dab298143a93e4db07b4f7bc2f773b03b40a37df3"
+      },
+      "tables/ItemInherentSkills.json": {
+        "bytes": 22202,
+        "sha256": "3f5785d41b1affa0ca78d29e364978d1fcab57628c79bc364fe81ef4e678fc4b"
+      },
+      "tables/ItemSpirit.json": {
+        "bytes": 1841,
+        "sha256": "1a525e828fa594b82e22a6501a9ba5acb30be6a1ad9911af7e4c97a003772ce5"
+      },
+      "tables/ItemStances.json": {
+        "bytes": 2385,
+        "sha256": "0376f8aa64dd883f784de8987a85e5bb008f9cb8ae4a0005080254a327b1f203"
+      },
+      "tables/MinionGemLevelScaling.json": {
+        "bytes": 2954,
+        "sha256": "a2d83de15897c0ba838605850d12e8c15f7539df9cade034c1084238720f1b6b"
+      },
+      "tables/MinionStats.json": {
+        "bytes": 54238,
+        "sha256": "5bfd3ac77f3fef06b396e6182a6ed5f016a4ddf4cb17cf1157131206a071389d"
+      },
+      "tables/MinionType.json": {
+        "bytes": 44248,
+        "sha256": "8c5705934219ea60496e620913492adcaefb7cfb1c3f1cadd7bbcb520cd9804c"
+      },
+      "tables/ModFamily.json": {
+        "bytes": 369765,
+        "sha256": "1ae7eb6173410bbc08d8efa7b499460a05025ff6f90d90dc53fc2400e0893a26"
+      },
+      "tables/ModType.json": {
+        "bytes": 1338243,
+        "sha256": "c022a02f02cdbd0dc9f5199038bcf1d1133b08d4fa5043087250aa300b5ccf14"
+      },
+      "tables/Mods.json": {
+        "bytes": 25724416,
+        "sha256": "9d31219bb40ba9c6651fd627905f091e35978beefa84fcd5a8789a45e819df1b"
+      },
+      "tables/MonsterResistances.json": {
+        "bytes": 18525,
+        "sha256": "d0b4322576e7d686b126b72b24bac8072eede62ab92ff23f3f3a643817f03b86"
+      },
+      "tables/MonsterTypes.json": {
+        "bytes": 322049,
+        "sha256": "c8784770440704b991c2fcab2e7c127d0a0d8246d34a1ba2fe15bab8f5bef358"
+      },
+      "tables/MonsterVarieties.json": {
+        "bytes": 7492728,
+        "sha256": "87f788a94347a4f30735f6d929b270a8075eda3b4a33ffc5127eacdcf7a2e4e4"
+      },
+      "tables/PassiveSkillStatCategories.json": {
+        "bytes": 1981,
+        "sha256": "a379a36a5f518c4cdeeea4e5ab32d6090f7942c8c5c7605a1d0435ccc85c9f99"
+      },
+      "tables/PassiveSkillTrees.json": {
+        "bytes": 8809,
+        "sha256": "72e7651253177d63afdab52635d0e9ba1e851fcb245ec3672a9b2a0063a43583"
+      },
+      "tables/PassiveSkills.json": {
+        "bytes": 12984257,
+        "sha256": "4d659f07e12df4c2df7f684a21c87f99458b575db6da636b96062d2f530a561c"
+      },
+      "tables/PlayerMinionIntrinsicStats.json": {
+        "bytes": 999,
+        "sha256": "050dd40bfb18f8e331e449f42299c0286b93679aa4807dd3bbee6f90c1f0ef88"
+      },
+      "tables/ShapeShiftForms.json": {
+        "bytes": 10383,
+        "sha256": "005daf85fd622e64976a009da3660280bb9a896db9b6864fa636ecef1cfdaa2e"
+      },
+      "tables/ShieldTypes.json": {
+        "bytes": 11876,
+        "sha256": "61361b09719cfadc39aefd7fad76496cdcf7337e24a5a8b22e4f2c06ef76cb04"
+      },
+      "tables/SkillCraftingData.json": {
+        "bytes": 5273,
+        "sha256": "d40f750ec70a6062033acccfa4aa5ee21681f9b17fa22fd0d760fd2b3805cb7c"
+      },
+      "tables/SkillGemSearchTerms.json": {
+        "bytes": 2701,
+        "sha256": "cfc1650558147468f042332ed69790b3b8e4a39d072c8359fddfbf20b7bd4d79"
+      },
+      "tables/SkillGemSupports.json": {
+        "bytes": 41250,
+        "sha256": "19c390bc9ccb21827659fd026b320bcadd9ed3e233d18e55b53f4baa05a4dc5f"
+      },
+      "tables/SkillGems.json": {
+        "bytes": 880648,
+        "sha256": "fe6a6c00381fe86ade4c67408f6c106204790b53426cd3b69e11254ea2915310"
+      },
+      "tables/SkillTotemVariations.json": {
+        "bytes": 3180,
+        "sha256": "16f0ea32de873085c42453003bc3f1a5fca928bfc6cb376c99401ecb6024ef31"
+      },
+      "tables/SoulCoreLimits.json": {
+        "bytes": 1610,
+        "sha256": "49bbd549cd6701f41003fb637cbbbde0cc215265f7ae5dc16d7ee0f9a0bce30f"
+      },
+      "tables/SoulCoreStatCategories.json": {
+        "bytes": 4468,
+        "sha256": "3c330327456ec4ba87ad9dcb8cfe2b601f0798254ffd2a716c9c9cb785eb819a"
+      },
+      "tables/SoulCoreStats.json": {
+        "bytes": 73477,
+        "sha256": "9ce0d6303cdc43a862de02237c6202f788307a35f452c549297b99fa296fb60a"
+      },
+      "tables/SoulCoreTypes.json": {
+        "bytes": 1839,
+        "sha256": "cc205403496db7b017f2b6cb6fb4d4bf6625461ee1bb0edced09a01bf3634eaa"
+      },
+      "tables/SoulCores.json": {
+        "bytes": 101249,
+        "sha256": "76378a8f4cf638ef00fbec1791883d539df1b7b5f2928ec4a2ee2737e50dddbc"
+      },
+      "tables/SpectreOverrides.json": {
+        "bytes": 14198,
+        "sha256": "fc826c670312a38baf69ba2fc8073558ecb16764ca3edb0bd1e9005e9eb01ba7"
+      },
+      "tables/Stats.json": {
+        "bytes": 11634008,
+        "sha256": "bef280b241a844972de0020e57c64cc403ac7e44fddf346b1014d17e1372376a"
+      },
+      "tables/SummonedSpecificMonsters.json": {
+        "bytes": 58043,
+        "sha256": "2ca650f9b4d4099105c67e406e4f4eb09ac2f6b6680c5c889e906d71bbb4def6"
+      },
+      "tables/SummonedSpecificMonstersOnDeath.json": {
+        "bytes": 1866,
+        "sha256": "13d155c1ce495008530286f51293a9f2c760d6438c3436c443e3208d5550a661"
+      },
+      "tables/SupportGemFamily.json": {
+        "bytes": 25990,
+        "sha256": "6c9955136ade0c82a01594444e45ab5c54d3e9d89646427c224356579709d6e5"
+      },
+      "tables/SupportGems.json": {
+        "bytes": 136395,
+        "sha256": "d2ed72003353f03aa21bbfdcfa801006b719d0e11c60f4e1b5536847541f01e9"
+      },
+      "tables/Tags.json": {
+        "bytes": 150331,
+        "sha256": "feaec2df8e2bba282ef479216665f8dc8e9b724b8538445ee6aab2879e61b13e"
+      },
+      "tables/UtilityFlaskBuffs.json": {
+        "bytes": 2487,
+        "sha256": "493a2c4fe87d554e1ea4efe0b8c5fa126c8ea631df63e83dd3139962196cc2e9"
+      },
+      "tables/VirtualStatContextFlags.json": {
+        "bytes": 3069,
+        "sha256": "293a62a6f198d7d0a1b2a6eb6d0057aad4bb146545d99214e1969f49ea436781"
+      },
+      "tables/WeaponClasses.json": {
+        "bytes": 2019,
+        "sha256": "f0882f0e36e5baa89ea8f750067cbaf7f0edbc4c62281d903ca9afda44c3a3e6"
+      },
+      "tables/WeaponTypes.json": {
+        "bytes": 62961,
+        "sha256": "b003bef72bde07833ec3d16add1911899314f2efe91a68d889b39ea310808e58"
+      },
+      "tables/WieldableClasses.json": {
+        "bytes": 21546,
+        "sha256": "db8ecad73b3105254b71c9600c825d4f488500a4a02e308fc1133693b53b27f8"
+      }
+    },
+    "format": "repoe-native-facts/v4",
+    "producer": {
+      "RePoE/native_actor_facts.py": "a0845e3866c5dd0fb21a8edb42f68fc9eec3affef19b426631c0066bd5e51f58",
+      "RePoE/native_dat.py": "824f561af6e4b83243b459d726d6bad6821663061ac840d39c2854145707ff86",
+      "RePoE/native_facts.py": "7bbe4a84b66d88dfd2c3081550ef9891fd7beb9e6d586939749e684c7607af53",
+      "RePoE/native_gems.py": "97dbc0952b685df5de9b9d56c17c109d95f670a8a7c332821f9206433c1a363c",
+      "RePoE/native_items.py": "9350c81674a332670eb22e24aca5cb114e7f09f74dea26cf556b707f4166f1ee",
+      "RePoE/native_skills.py": "e65aff1265c3c1becd7890acb3c0182232651dd351dab5d982b0d119f74d453d",
+      "RePoE/native_tools.py": "46e4a0dd7250c44f9da714f55d90ef967223e0f50b0631d130a112c6144a37c7",
+      "RePoE/schema_candidate.py": "1e2d130d8e721c6398bc3cbcd63b0acb27e4487b5cddef9bf60624a8526d1b04",
+      "pyproject.toml": "db02b9819adfc21f00365595bf9d53ffb15a644cb759d539b123781a572a7912",
+      "schema/SHA256SUMS": "d3e5ecda7d21c8a42f6b66009a42a7e0324dba9131d63e079be6c1f596f3a308",
+      "schema/pypoe-sources.json": "64703bc3c5eca107108244e02baf0dc2cd46669e62a6b5ba273f868aa9db0095",
+      "schema/source.json": "7afa08a39f3da0b2e368d716593c2adef03308f100ec49edac73e8c7416441d3",
+      "uv.lock": "6ac815b9e4263081b51e823a3f297f35a1c55c7fa57956d3bdd5d4a506c1c66b"
+    },
+    "production_ready": false,
+    "profile": "items-actors-bc",
+    "row_key": "Zero-based physical source row; ephemeral within these exact raw bytes, never a stable game ID.",
+    "schema": {
+      "compatibility_views": 0,
+      "native_specification_sha256": "c9417f03e2205ff649721c3dbf9620ee0c703bf905b3cf53469ce3eda86f1e25",
+      "revision": "6034b071846ef61b39046ebdb59e6d5717179509",
+      "sha256": "50e098543345cf8323aeb294e2cfef1b6b44842faccf560ada935cebe22727df"
+    },
+    "scope": [
+      "Partial candidate only; forbidden as a production snapshot or runtime-ready PoBR pack.",
+      "Seventy-seven physical DAT tables and the Default PSG; complete metadata/text and foreign-key closure remain incomplete.",
+      "Acquisition status/evidence is caller-declared, not source authentication by this exporter.",
+      "Source rows, eight modifier slots, ordered relations, unknowns and nulls are retained without playable catalogue filtering.",
+      "Item inheritance stems/direct tags do not establish inherited tags, mod applicability, enum meanings or unit conversions.",
+      "SoulCore categories, normal/bonded stats, limits and flags retain raw meanings; no target-category or stacking policy is inferred.",
+      "Constants, level tables and monster/minion relations do not certify server formulas, selected actor defaults or gem-to-variety identity.",
+      "Ordered skill types and support families remain facts, not an expression grammar, conflict policy or exhaustive support whitelist.",
+      "No CSD/locale closure, physical radii, global coordinates, quality scopes, timeline or complete gameplay support is inferred."
+    ],
+    "source_identity": {
+      "acquisition": {
+        "evidence": [
+          {
+            "kind": "reviewed-base-source-lock",
+            "sha256": "e5ca7ea7dea4a0e220afcf0acac97d046cfbed3c0099e5074b2182fe50a43bde"
+          },
+          {
+            "kind": "seven-table-acquisition-receipt",
+            "sha256": "3cdf1a7124933005e0ea0efa9aee823f2bfd8be6d5ebeb189f234bf59fdddf1b"
+          },
+          {
+            "kind": "seven-table-offline-replay",
+            "sha256": "0ac3e530e7d17465db8f3ad32a0686cf1a3f90c0e13c61352ca59507e0e1f719"
+          },
+          {
+            "kind": "a1-acquisition-receipt",
+            "sha256": "d29738cfae07f5acf286ec7846d2ff3d0fe26afbd629a9507391eda1cb4db017"
+          },
+          {
+            "kind": "a1-offline-proof",
+            "sha256": "14f595c714fb23f265e767de2e78126c62d7ce534b1e3bbe65789c9d2d95453f"
+          },
+          {
+            "kind": "bc-draft-receipt",
+            "sha256": "ded06898ab0b4461f1e8991941bcfa536f4668072c1884096769a90dc774bf8f"
+          },
+          {
+            "kind": "bc-offline-proof",
+            "sha256": "af33803948a55c9264a38831812a6d7bb8de1250ee6a5a82bb7ba8c7903e47b1"
+          },
+          {
+            "kind": "bc-decode-inspection",
+            "sha256": "0fc52baa816187ebc11302168014e5c13d84567ddc406979c91979777e24f6a7"
+          }
+        ],
+        "status": "unreviewed-acquisition-draft"
+      },
+      "game": "poe2",
+      "game_patch": "0.5.5.5",
+      "kind": "official-client-resource-candidate",
+      "raw_resources": {
+        "Data/Balance/ActionTypes.datc64": {
+          "bytes": 46646,
+          "sha256": "eb896bbf446e66d8bf55d4303b3b76b5d7f8becf30da01fb8309c26bc901c5c9"
+        },
+        "Data/Balance/ActiveSkillType.datc64": {
+          "bytes": 17218,
+          "sha256": "2794c68fbeb4759aee8b75811967ba626e951ba4944e3ce905205da9c35849ec"
+        },
+        "Data/Balance/ActiveSkillWeaponRequirement.datc64": {
+          "bytes": 7968,
+          "sha256": "f519b8f02b9031fc6f3653a770855c64f945a6e1e6c43e0cd12ec92fcbeecaed"
+        },
+        "Data/Balance/ActiveSkills.datc64": {
+          "bytes": 1376430,
+          "sha256": "c187cf977c93386f732584c7e7c4ac019caddd03f7ef3918b0d688c0e318f2f3"
+        },
+        "Data/Balance/AlternateSkillTargetingBehaviours.datc64": {
+          "bytes": 1812,
+          "sha256": "bd3b9040f6c9a2b14d5f761f9dad7ca7020c8b944713c6d5e11c12be21864d86"
+        },
+        "Data/Balance/ArmourTypes.datc64": {
+          "bytes": 51212,
+          "sha256": "3c242ba0dfb8383ae8d4b3c6e47bf7c57bd58b59ef14b3e675e61687ef227cab"
+        },
+        "Data/Balance/AttributeRequirements.datc64": {
+          "bytes": 48592,
+          "sha256": "68aac797db420cb7ba762895184dbf93a1a2900a1f5505749738f695fdef7b50"
+        },
+        "Data/Balance/BaseItemTypes.datc64": {
+          "bytes": 2828102,
+          "sha256": "1150a50cc4005287e2a8274b158980f9ec7ac62e26511b75fc95a1ca6ce88bbc"
+        },
+        "Data/Balance/BuffDefinitions.datc64": {
+          "bytes": 1679844,
+          "sha256": "2399071c239ef1be1104dce27ec176ec7de4205c97ca9d642866a095db8457f0"
+        },
+        "Data/Balance/BuffTemplates.datc64": {
+          "bytes": 141869,
+          "sha256": "8b8f1b103764d09c73419eecda82ce024075a3d8fecd0b1ec06c4a5636bf4a1d"
+        },
+        "Data/Balance/Characters.datc64": {
+          "bytes": 26584,
+          "sha256": "3eeee7ac53267a008381646c3abd4f2f9f25ca71541a4be1a4ec38582b2375b0"
+        },
+        "Data/Balance/ClassPassiveSkillOverrides.datc64": {
+          "bytes": 2940,
+          "sha256": "65fe77df8b41ea978a052a6c39614147f1d4d2d58e45c3fcc00777bce3110cd9"
+        },
+        "Data/Balance/ClientStrings.datc64": {
+          "bytes": 1995020,
+          "sha256": "e502f4c640b9864cbbff8bd725b512d2513941ea3fa1e5256520df0b94fb17fe"
+        },
+        "Data/Balance/ClientStrings2.datc64": {
+          "bytes": 170878,
+          "sha256": "3c64d2e03b0c66e352309cc66a31be4f5ddf16e4f383a6210deed0675876f3fb"
+        },
+        "Data/Balance/ComponentCharges.datc64": {
+          "bytes": 3016,
+          "sha256": "7de3b81e7409455971a839b0f76c9c7cf0e138a68b5c1668d707106e419c9ecd"
+        },
+        "Data/Balance/CostTypes.datc64": {
+          "bytes": 1802,
+          "sha256": "13b7f7b5ae99fcce6489e4bf66331c39daedd3f9c3dfd5c26751472d3e240745"
+        },
+        "Data/Balance/DefaultMonsterStats.datc64": {
+          "bytes": 9596,
+          "sha256": "2c5bb67cc64294785f72b0ded90209b474f824b5d70e69871d73602945fb0ad9"
+        },
+        "Data/Balance/DisplayMinionMonsterType.datc64": {
+          "bytes": 12,
+          "sha256": "dcee8ef773abb4496aab2c0d8b33b72e66440e0ec922b96d779f87a5c4514505"
+        },
+        "Data/Balance/EffectivenessCostConstants.datc64": {
+          "bytes": 138,
+          "sha256": "768f19841d61f0d9429a4fda34e2ef5812285acb8d2026960049c87aabb96acd"
+        },
+        "Data/Balance/EssenceMods.datc64": {
+          "bytes": 19268,
+          "sha256": "68a70a2f2282f82592cf38e65b1caccb9757b85ba7a61e438546c58a728dc32f"
+        },
+        "Data/Balance/EssenceReplacementType.datc64": {
+          "bytes": 36,
+          "sha256": "c37ff49399e7caaad3a9801543465a985a4acb2c975f4e722b97cb86a0c8eb02"
+        },
+        "Data/Balance/EssenceTargetItemCategories.datc64": {
+          "bytes": 8526,
+          "sha256": "428eab96b37cd1e0bd345cf7f41d99ee58311b689ab252d891900db0cb5f7f69"
+        },
+        "Data/Balance/Essences.datc64": {
+          "bytes": 16835,
+          "sha256": "f20dea15b8929ba76603f7ff8056a97a8420432ee20eab2f6f5bad1917172d01"
+        },
+        "Data/Balance/Flasks.datc64": {
+          "bytes": 3828,
+          "sha256": "9a98a1e5fb9b85a57189db664f80b4bcd0b912398e66b740ed4d93d9719fd031"
+        },
+        "Data/Balance/GameConstants.datc64": {
+          "bytes": 8944,
+          "sha256": "3a7c378b990a9b2012989a3a24eefdd92577b736823499620115a456857b4e0f"
+        },
+        "Data/Balance/GemEffects.datc64": {
+          "bytes": 487382,
+          "sha256": "1b17623ec4c2408e5f9b257e10811ce6bd3465364ad0de1e1fb8987c81c8648b"
+        },
+        "Data/Balance/GemTags.datc64": {
+          "bytes": 6870,
+          "sha256": "9f7dca41766e3d0cc1d558f9d412b673246be8357a8243243bc57be295a75f9f"
+        },
+        "Data/Balance/GrantedEffectLabels.datc64": {
+          "bytes": 12140,
+          "sha256": "fb15d2f4a437a6739b27525670da1475d46408031e64e25eb8b2a25ae182bad8"
+        },
+        "Data/Balance/GrantedEffectQualityStats.datc64": {
+          "bytes": 73600,
+          "sha256": "d33100f07d4ad4f334827e38fda18f2e7be8b47775b3e707cdbeb5381404fbfb"
+        },
+        "Data/Balance/GrantedEffectStatSets.datc64": {
+          "bytes": 1869773,
+          "sha256": "09fedc37835e668bece90b99a0f5862b9fe4600b23d31249262c65a3cee32631"
+        },
+        "Data/Balance/GrantedEffectStatSetsPerLevel.datc64": {
+          "bytes": 9497869,
+          "sha256": "910bc0fc9a2e9557b67afdcf89a086e678bd57b53cb4dd61d0b3d8b68f6b7989"
+        },
+        "Data/Balance/GrantedEffects.datc64": {
+          "bytes": 3022335,
+          "sha256": "f2495c2640a79f90af1e1a99e66d1c15257153f34d12ca2a6b37d935b967c598"
+        },
+        "Data/Balance/GrantedEffectsPerLevel.datc64": {
+          "bytes": 3984104,
+          "sha256": "c2c40da817783a6d7767bf702c639b642448010d6db935ec44cf31ace8da7294"
+        },
+        "Data/Balance/ItemClassCategories.datc64": {
+          "bytes": 5770,
+          "sha256": "2d0dda06ade190d8e41d6b69e5b0288b1009c05b8f8efedc5a2eb1868dd61d87"
+        },
+        "Data/Balance/ItemClasses.datc64": {
+          "bytes": 23564,
+          "sha256": "1aee2b9b8107cce9eb9237733e4177777809aa276ea0dbda55521d86ea3886f3"
+        },
+        "Data/Balance/ItemExperiencePerLevel.datc64": {
+          "bytes": 10512,
+          "sha256": "46d0aecab81733fbf5e4061ab654db15a10018ea1d416e5ec2585ac76c47dedb"
+        },
+        "Data/Balance/ItemExperienceTypes.datc64": {
+          "bytes": 2260,
+          "sha256": "128c6e262b72dbb44853de95acf3c17e5fc4c695d07747283da25f1721d13ce4"
+        },
+        "Data/Balance/ItemInherentSkills.datc64": {
+          "bytes": 13177,
+          "sha256": "4065a79c4d981c136fbccf54250fdb6c241f20030a1eb8193cbc1e514673e52b"
+        },
+        "Data/Balance/ItemSpirit.datc64": {
+          "bytes": 332,
+          "sha256": "e9a68ccfaf166f201edd4c37f112301308abb2fb966708d25760e02faa3eb29a"
+        },
+        "Data/Balance/ItemStances.datc64": {
+          "bytes": 762,
+          "sha256": "46284095a703d085d7c38497d814f84019643d733f97822751cdb79704ff9efa"
+        },
+        "Data/Balance/MinionGemLevelScaling.datc64": {
+          "bytes": 332,
+          "sha256": "8cc93b694637f6ca9249b869f71508b0eb1b5dccc42ff6e8d0bd1a49675feb10"
+        },
+        "Data/Balance/MinionStats.datc64": {
+          "bytes": 35256,
+          "sha256": "91ae7021cda4aea847086787daa3ee2b491c2a28445b764e272842b19d1c6baa"
+        },
+        "Data/Balance/MinionType.datc64": {
+          "bytes": 12351,
+          "sha256": "3e98189336f7cc7286bb52a10eea6476991146a3dc24815517dd9bf5121ea794"
+        },
+        "Data/Balance/ModFamily.datc64": {
+          "bytes": 409902,
+          "sha256": "015b34eda9d95d04365bf335c213ed8f14b8cb73c2fb01b6ea47a050551d1eee"
+        },
+        "Data/Balance/ModType.datc64": {
+          "bytes": 1607902,
+          "sha256": "899cd076f1d16cc79fb06529b44710faa22c2261e95216e368379969775a5bd0"
+        },
+        "Data/Balance/Mods.datc64": {
+          "bytes": 13893170,
+          "sha256": "f1ffbcd5228f2b78c1f90a116d2ac37673b34d94c6d7f3602b5e03385eb49679"
+        },
+        "Data/Balance/MonsterResistances.datc64": {
+          "bytes": 12356,
+          "sha256": "835de53bf98e568f46b77d5b031c7d75d89943031ec47131aa549e88e87cb536"
+        },
+        "Data/Balance/MonsterTypes.datc64": {
+          "bytes": 173242,
+          "sha256": "f046eb06092e7422eb20ddabc949cdca30ec538a491bf618be94c263e2f12d36"
+        },
+        "Data/Balance/MonsterVarieties.datc64": {
+          "bytes": 4783126,
+          "sha256": "2ff340aeea0c69ceeb087254fe284bcfb370629b9154688622838a949fcbcb69"
+        },
+        "Data/Balance/PassiveSkillStatCategories.datc64": {
+          "bytes": 824,
+          "sha256": "dd7867acd000682a5a2ca4ce0f4d2ab4881a13b3a09dfc9d31ef51a311b798aa"
+        },
+        "Data/Balance/PassiveSkillTrees.datc64": {
+          "bytes": 1174,
+          "sha256": "e9be3ec7c8d65e347613b44b309e7ddb04b687bf708da19eb5b0c663cc6f4e95"
+        },
+        "Data/Balance/PassiveSkills.datc64": {
+          "bytes": 5497515,
+          "sha256": "49af4f7dfab787b57efa22e06e2673c268cbd90c4f40140aa085cb8fbb602bc2"
+        },
+        "Data/Balance/PlayerMinionIntrinsicStats.datc64": {
+          "bytes": 92,
+          "sha256": "fc9f68a5ed96f8a05f896bf3f6ec1388855590849e46bbf1735a92eb1e84fc53"
+        },
+        "Data/Balance/ShapeShiftForms.datc64": {
+          "bytes": 2995,
+          "sha256": "68e5d160056ad821d9555ef675ccd0d98de8a9ee9eb3dfe07ddf7f8fc89e2b8e"
+        },
+        "Data/Balance/ShieldTypes.datc64": {
+          "bytes": 4072,
+          "sha256": "c80ef3850088921ac34db11bf0e780de763306277f2022cee37995aa513b733c"
+        },
+        "Data/Balance/SkillCraftingData.datc64": {
+          "bytes": 5432,
+          "sha256": "dc068a5ebf0402b67dd88ec835a73ad2a8dce877743c9b40ea3a22d524f7047a"
+        },
+        "Data/Balance/SkillGemSearchTerms.datc64": {
+          "bytes": 1368,
+          "sha256": "4dd5a08104151164540545a53585459e24880102ebd7fa7c76f7de1621d0ae81"
+        },
+        "Data/Balance/SkillGemSupports.datc64": {
+          "bytes": 93180,
+          "sha256": "8c3b2960debf145e62378bad26ecfe573d2293daa7a5e02f4417a7da6c5f3256"
+        },
+        "Data/Balance/SkillGems.datc64": {
+          "bytes": 392644,
+          "sha256": "22e3e2614edc828f1bdebd38a0f7b5937fc2e60fd1774c2938bfc3c178449300"
+        },
+        "Data/Balance/SkillTotemVariations.datc64": {
+          "bytes": 588,
+          "sha256": "0434055443b705249912082ef7642397d305328bc825c80eb7accaaf23e6b3bb"
+        },
+        "Data/Balance/SoulCoreLimits.datc64": {
+          "bytes": 364,
+          "sha256": "6d90e881c8664117f2dbe1fad23cb39d5b1855a03fe688f4c174b6e8757b878c"
+        },
+        "Data/Balance/SoulCoreStatCategories.datc64": {
+          "bytes": 3088,
+          "sha256": "b4d336e557411a30e616b2518759cda53772f34b46783de28aca5206a8c6ed55"
+        },
+        "Data/Balance/SoulCoreStats.datc64": {
+          "bytes": 68736,
+          "sha256": "0b8a1098f71a0f2c62d30b675a5a1dc91beb58b7ec844ada3a1127ae9e10adf7"
+        },
+        "Data/Balance/SoulCoreTypes.datc64": {
+          "bytes": 552,
+          "sha256": "3d8ff9dbab8ee08658045443f82543f8465245f442ce0a2ce7a61e8bcd3e5674"
+        },
+        "Data/Balance/SoulCores.datc64": {
+          "bytes": 30686,
+          "sha256": "7fd883c775b9d61499741350e09960d9f10d28177e1d543bd1fef1b79985d0d0"
+        },
+        "Data/Balance/SpectreOverrides.datc64": {
+          "bytes": 9900,
+          "sha256": "fff2b553ce06a55b0486a62aaf0f81750442b01b8667680e3180d34784f6b65c"
+        },
+        "Data/Balance/Stats.datc64": {
+          "bytes": 5281898,
+          "sha256": "e808452ef330de79cca6d496982bc8810e7967c2c0c681e61dc63506177af8a5"
+        },
+        "Data/Balance/SummonedSpecificMonsters.datc64": {
+          "bytes": 19260,
+          "sha256": "228a5bdf4bdd8fd34a07854143516b0dc8d679da97c8b4a9e11700b02a11ddb4"
+        },
+        "Data/Balance/SummonedSpecificMonstersOnDeath.datc64": {
+          "bytes": 12,
+          "sha256": "dcee8ef773abb4496aab2c0d8b33b72e66440e0ec922b96d779f87a5c4514505"
+        },
+        "Data/Balance/SupportGemFamily.datc64": {
+          "bytes": 24330,
+          "sha256": "b0ec5f0938ad7beb0720f34a48e29d2892f858a9866bcff29903080dd873d63d"
+        },
+        "Data/Balance/SupportGems.datc64": {
+          "bytes": 110296,
+          "sha256": "3f5ea85da2e635f3f08c21f51862ce2464df92c4fc0764e696749fd04993b5ef"
+        },
+        "Data/Balance/Tags.datc64": {
+          "bytes": 107936,
+          "sha256": "26d1167906b91339240a817259ee3cb31b60b6cb8accec1a926919d139f257a2"
+        },
+        "Data/Balance/UtilityFlaskBuffs.datc64": {
+          "bytes": 856,
+          "sha256": "bb0fe5763365413762b2befdd33394134b071c97d0270969fa9fae4035a765af"
+        },
+        "Data/Balance/VirtualStatContextFlags.datc64": {
+          "bytes": 1560,
+          "sha256": "ae97d4fc0e4369e50803deeea6f68f314c4805e21c4ec21746cbc29ece7af063"
+        },
+        "Data/Balance/WeaponClasses.datc64": {
+          "bytes": 552,
+          "sha256": "5da01fb7a04c3bd0fb8e7afa24e8c295511f151ad45316a63c475bd13a5f0df3"
+        },
+        "Data/Balance/WeaponTypes.datc64": {
+          "bytes": 22804,
+          "sha256": "46229b57602b9e1136837360862c5f43e137be26ad9c47283aeadd684d2683f1"
+        },
+        "Data/Balance/WieldableClasses.datc64": {
+          "bytes": 11380,
+          "sha256": "7e274e192c3de0c0e5c5b2ff1063c861783758993abac8b6c42ae2d84528e8cc"
+        },
+        "Metadata/PassiveSkillGraph.psg": {
+          "bytes": 165144,
+          "sha256": "071cba806a621a0bdae09828cc5ad8e34259159659e950a1898770790730c344"
+        }
+      },
+      "realm": "international",
+      "selected_source_sha256": "c0492ecb6c507b4e0fc5678decbdaa44b8465990afcb4d01a08b36e5b579fae8",
+      "source": "official-client-0.5.5.5-items-actors-draft",
+      "source_lock_sha256": "d7a59a052109f411a62b1398ac844ff31ca8afd6d4158e3488446a19cb75743f"
+    },
+    "status": "partial-candidate",
+    "summary": {
+      "active_constraint_rows": 1147,
+      "active_skill_types": 290,
+      "active_skills": 1147,
+      "base_item_rows": 5496,
+      "class_overrides": 61,
+      "constant_rows": 121,
+      "cost_types": 18,
+      "default_monster_level_rows": 100,
+      "effect_constraint_rows": 8349,
+      "effect_level_rows": 34300,
+      "effects": 8349,
+      "essence_mod_rows": 178,
+      "gem_effect_definitions": 1194,
+      "gem_items": 1191,
+      "gem_tags": 67,
+      "graph_instances": 5152,
+      "graph_stat_entries": 5957,
+      "interpolation_constants": 3,
+      "intrinsic_minion_stat_rows": 4,
+      "item_experience_level_rows": 375,
+      "item_experience_types": 48,
+      "labels": 202,
+      "minion_gem_scaling_rows": 40,
+      "mod_rows": 16784,
+      "monster_resistance_rows": 22,
+      "monster_type_rows": 1571,
+      "monster_variety_rows": 2794,
+      "passive_definitions": 9731,
+      "qualities": 429,
+      "soul_core_category_rows": 30,
+      "soul_core_rows": 313,
+      "soul_core_stat_rows": 526,
+      "spectre_override_rows": 206,
+      "stat_set_level_rows": 41557,
+      "summoned_monster_rows": 170,
+      "support_association_rows": 410,
+      "support_families": 389,
+      "support_metadata_rows": 637,
+      "utility_buff_rows": 13,
+      "weapon_requirement_rows": 51,
+      "wieldable_class_rows": 28
+    }
+  },
+  "source": {
+    "game_patch": "0.5.5.5",
+    "manifest_sha256": "56e71e00a72c8079d100b64861fc030206b12aaeb5ad655ccb4ab4e6726332d0",
+    "scope": "Unmodified selected physical rows; sparse original indices restored by tests. Supplemental synthetic graph is constructed in tests."
+  },
+  "tables": {
+    "ActiveSkillType": {
+      "1": {
+        "FlagStat": 425,
+        "Id": "Spell"
+      },
+      "124": {
+        "FlagStat": 17937,
+        "Id": "Invokable"
+      },
+      "13": {
+        "FlagStat": null,
+        "Id": "Trappable"
+      },
+      "14": {
+        "FlagStat": null,
+        "Id": "Totemable"
+      },
+      "140": {
+        "FlagStat": null,
+        "Id": "UsableWhileMoving"
+      },
+      "15": {
+        "FlagStat": null,
+        "Id": "Mineable"
+      },
+      "2": {
+        "FlagStat": 5974,
+        "Id": "Projectile"
+      },
+      "21": {
+        "FlagStat": null,
+        "Id": "Multicastable"
+      },
+      "233": {
+        "FlagStat": null,
+        "Id": "Unleashable"
+      },
+      "29": {
+        "FlagStat": 2695,
+        "Id": "Lightning"
+      },
+      "30": {
+        "FlagStat": 8691,
+        "Id": "Triggerable"
+      },
+      "56": {
+        "FlagStat": null,
+        "Id": "ProjectilesFromUser"
+      },
+      "6": {
+        "FlagStat": null,
+        "Id": "Damage"
+      },
+      "8": {
+        "FlagStat": null,
+        "Id": "Duration"
+      }
+    },
+    "ActiveSkills": {
+      "49": {
+        "AIFile": "Metadata/Monsters/Totems/PlayerAIScripts/Spells/GenericTotem.ais",
+        "ActionType": 35,
+        "ActiveSkillTargetTypes": [
+          1,
+          2
+        ],
+        "ActiveSkillTypes": [
+          1,
+          2,
+          56,
+          6,
+          8,
+          13,
+          14,
+          15,
+          21,
+          30,
+          29,
+          233,
+          124,
+          140
+        ],
+        "AiScript": "Metadata/Monsters/Companions/AIScripts/Generic.ais",
+        "AlternateSkillTargetingBehaviour": 3,
+        "AudioEvent": null,
+        "CharacterAudioEvent": null,
+        "Description": "Launch a spray of sparking [Projectile|Projectiles] that travel erratically along the ground until they hit an enemy or expire. [Consume|Consumes] a [Cold] [ElementalInfusion|Infusion] if possible to fire many sparks in a circle.",
+        "DisplayedName": "Spark",
+        "Flag0": false,
+        "Flag1": true,
+        "Flag2": false,
+        "Flag3": false,
+        "Flag4": false,
+        "Flag5": true,
+        "Flag6": true,
+        "GrantedEffect": "SparkPlayer",
+        "HideOnWebsite": false,
+        "Icon_DDSFile": "Art/2DArt/SkillIcons/SorceressSpark.dds",
+        "Id": "spark",
+        "Input_Stats": [
+          3833,
+          4079,
+          4055,
+          5227,
+          5900,
+          5902,
+          5943,
+          17093,
+          17112
+        ],
+        "IsGem": true,
+        "IsManuallyCasted": true,
+        "MinionActiveSkillTypes": [],
+        "Output_Stats": [
+          24,
+          168,
+          170,
+          167,
+          1770,
+          168,
+          212,
+          17041,
+          17111
+        ],
+        "SecondarySkillSpecificStats": [],
+        "ShapeShiftForm": null,
+        "ShortDescription": "Launch a spray of erratically moving sparks.",
+        "SkillMine": 8,
+        "SkillTotemId": 27,
+        "StatContextFlags": [
+          3,
+          18,
+          29,
+          10,
+          11,
+          16,
+          17,
+          19,
+          26,
+          27,
+          12,
+          13
+        ],
+        "StatDescription": "Data/StatDescriptions/specific_skill_stat_descriptions/spark/statset_0.csd",
+        "StatDescriptionType": 2,
+        "Unknown0": 0,
+        "Unknown1": "",
+        "VideoClip": "Art/Videos/SkillExamples/Spark.bk2",
+        "WeaponRequirements": null,
+        "WebsiteDescription": "Lightning is a fickle servant. However, skilled casters have learned to harness this frenetic element to devastating effect. With a single incantation, two pulsing strands of electric energy appear, and begin to move erratically around the battlefield. Whenever one contacts an enemy, it discharges, dealing tremendous damage and frequently causing paralysis.",
+        "WebsiteImage": "http://s3.amazonaws.com/pathofexile/image/skills/intelligence/spark.jpg"
+      }
+    },
+    "BaseItemTypes": {
+      "498": {
+        "Achievement": [],
+        "Data0": [],
+        "Data1": [],
+        "Data2": [],
+        "DropLevel": 1,
+        "Equip_AchievementItem": null,
+        "Flag0": false,
+        "Flag1": false,
+        "FlavourText": null,
+        "FragmentBaseItemType": null,
+        "HASH32": 2416772920,
+        "Height": 1,
+        "Id": "Metadata/Items/Gems/SkillGemSpark",
+        "IdentifyMagic_AchievementItems": [],
+        "Identify_AchievementItems": [],
+        "Implicit_Mods": [],
+        "Inflection": "",
+        "InheritsFrom": "Metadata/Items/Gems/ActiveSkillGem",
+        "IsCorrupted": false,
+        "ItemClass": 18,
+        "ItemStance": null,
+        "ItemVisualIdentity": 8959,
+        "Key0": null,
+        "ModDomain": 38,
+        "Name": "Spark",
+        "ShopTag": 182,
+        "SizeOnGround": 1,
+        "SoundEffect": null,
+        "Tags": [
+          301,
+          302
+        ],
+        "UncutGemSoundEffect": null,
+        "Unknown0": 0,
+        "Unmodifiable": false,
+        "VendorRecipe_AchievementItems": [],
+        "Width": 1
+      }
+    },
+    "Characters": {
+      "7": {
+        "ACTFile": "Metadata/Characters/Int/IntFour.act",
+        "AOFile": "Metadata/Characters/Int/IntFourB.ao",
+        "AfterImage": "Metadata/Effects/Spells/maneuver_mechanics/AfterImage/IntFourBAfterImage",
+        "Attr": "Int",
+        "AttrLowercase": "int",
+        "AttrsAsId": "IntFourb",
+        "BaseClass": "Witch",
+        "BaseDexterity": 7,
+        "BaseIntelligence": 15,
+        "BaseMaxLife": 16,
+        "BaseMaxMana": 30,
+        "BaseStrength": 7,
+        "CharacterSize": 2,
+        "Clone": 57,
+        "CloneImmobile": 1790,
+        "CreationIcons": [
+          9,
+          10,
+          11
+        ],
+        "DarkExile": 40,
+        "Data0": [],
+        "Description": "The elements are mine to control. I know why lightning strikes, why fire burns, and why cold freezes. They do so because I command it. The vengeance of the Maraketh will find those who have transgressed no matter where they run.",
+        "DoubleTwo": 136,
+        "GemCuttingIcon": "Art/2DArt/UIImages/InGame/Gemcutting/GemcuttingIconSorceress",
+        "Gender": "F",
+        "GhostArmMtx": 554,
+        "Icon": "",
+        "Id": "Metadata/Characters/Int/IntFourb",
+        "IntegerId": 7,
+        "IntroSoundFile": "Audio/Dialogue/Character/Int42D/Witch_001.ogg",
+        "Key0": 0,
+        "Key1": null,
+        "Key2": null,
+        "Key3": 14892,
+        "Keys0": [],
+        "LevelUpEffect": 615,
+        "LightningClone": 127,
+        "LoginScreen": "Metadata/Characters/Int/IntFourBLoginScene.ao",
+        "MaxAttackDistance": 8,
+        "MaxDamage": 5,
+        "MinDamage": 2,
+        "Mirage": 69,
+        "MirageWarrior": 34,
+        "Name": "Sorceress",
+        "PassiveTreeImage": "Art/2DArt/BaseClassIllustrations/SorceressBaseIllustration.dds",
+        "PlayerCritter": "Metadata/Critters/PlayerCritters/IntCritter",
+        "PlayerEffect": "Metadata/Effects/PlayerEffects/IntFourBEffect",
+        "Portrait": 88,
+        "ReplicateClone": 75,
+        "Script": "int_back",
+        "SkillTreeBackground": "Art/2DArt/UIImages/InGame/Classes/Int/PassiveSkillScreenStartNodeBackground",
+        "StartSkillGem": 498,
+        "StartWeapons": [
+          2172
+        ],
+        "StartingPassive": 2,
+        "StartingSkill": [
+          899
+        ],
+        "StartingWeapon": null,
+        "TraitDescription": "Trait: Natural resilience to elements",
+        "Unknown0": 1,
+        "Unknown1": 1,
+        "Unknown2": "",
+        "Unknown3": 0.0,
+        "Unknown4": 0.0,
+        "Unknown5": 80,
+        "Unknown6": 1.0,
+        "Unknown7": 190.0,
+        "Unknown8": 1.0,
+        "Unknown9": 92.5,
+        "WeaponSoundType": 1,
+        "WeaponSpeed": 606
+      }
+    },
+    "CostTypes": {
+      "0": {
+        "Divisor": 1,
+        "FormatText": "{0} Mana",
+        "Id": "Mana",
+        "PerMinute": false,
+        "Stat": 10946
+      }
+    },
+    "GemEffects": {
+      "36": {
+        "AdditionalGrantedEffects": [],
+        "Consumed_Mod": null,
+        "Data0": [],
+        "Flag0": false,
+        "Flag1": false,
+        "GemTags": [
+          11,
+          24,
+          4,
+          5,
+          2,
+          15,
+          60
+        ],
+        "GrantedEffect": 36,
+        "Id": "Spark",
+        "ItemColor": 3,
+        "Keys0": [],
+        "Name": "",
+        "SupportName": "",
+        "SupportText": "",
+        "Unknown0": -1,
+        "Unknown1": -1
+      }
+    },
+    "GemTags": {
+      "11": {
+        "GlobalSpellLevelStat": null,
+        "Id": "intelligence",
+        "LocalLevelStat": null,
+        "LocalQualityStat": 9999,
+        "Name": ""
+      },
+      "15": {
+        "GlobalSpellLevelStat": null,
+        "Id": "duration",
+        "LocalLevelStat": null,
+        "LocalQualityStat": null,
+        "Name": "[DurationSkill|Duration]"
+      },
+      "2": {
+        "GlobalSpellLevelStat": 9900,
+        "Id": "lightning",
+        "LocalLevelStat": 9524,
+        "LocalQualityStat": 9994,
+        "Name": "[Lightning]"
+      },
+      "24": {
+        "GlobalSpellLevelStat": null,
+        "Id": "grants_active_skill",
+        "LocalLevelStat": null,
+        "LocalQualityStat": null,
+        "Name": ""
+      },
+      "4": {
+        "GlobalSpellLevelStat": null,
+        "Id": "spell",
+        "LocalLevelStat": null,
+        "LocalQualityStat": 9521,
+        "Name": "[Spell]"
+      },
+      "5": {
+        "GlobalSpellLevelStat": null,
+        "Id": "projectile",
+        "LocalLevelStat": null,
+        "LocalQualityStat": 18623,
+        "Name": "[Projectile]"
+      },
+      "60": {
+        "GlobalSpellLevelStat": null,
+        "Id": "repeatable",
+        "LocalLevelStat": null,
+        "LocalQualityStat": null,
+        "Name": "[Repeat|Repeatable]"
+      }
+    },
+    "GrantedEffectLabels": {
+      "12": {
+        "Flag0": true,
+        "Flag1": true,
+        "Flag2": true,
+        "Id": "Base",
+        "Text": "Base"
+      }
+    },
+    "GrantedEffectStatSets": {
+      "38": {
+        "BaseEffectiveness": 1.2000000476837158,
+        "ConstantStats": [
+          347,
+          17186,
+          11237,
+          18231,
+          18294,
+          20007,
+          21278
+        ],
+        "ConstantStatsValues": [
+          2000,
+          20,
+          1009,
+          -70,
+          160,
+          50,
+          660
+        ],
+        "DamageIncrementalEffectiveness": 0.006099999882280827,
+        "Flag0": false,
+        "Id": "SparkPlayer",
+        "IgnoredStats": [],
+        "ImplicitStats": [
+          489,
+          17566,
+          4401,
+          6443,
+          9949,
+          18238
+        ],
+        "IncrementalEffectiveness": 0.12999999523162842,
+        "Label": 12
+      }
+    },
+    "GrantedEffectStatSetsPerLevel": {
+      "1467": {
+        "ActorLevel": 1.0,
+        "AdditionalFlags": [],
+        "AdditionalStats": [
+          18042
+        ],
+        "AdditionalStatsValues": [
+          4
+        ],
+        "AttackCritChance": 0,
+        "BaseMultiplier": 0,
+        "BaseResolvedValues": [
+          1,
+          10
+        ],
+        "Flag0": false,
+        "FloatStats": [
+          1468,
+          1469
+        ],
+        "FloatStatsValues": [
+          0.10000000149011612,
+          2.0999999046325684
+        ],
+        "GemLevel": 1,
+        "GrantedEffects": [
+          36
+        ],
+        "InterpolationBases": [
+          0,
+          0
+        ],
+        "SpellCritChance": 900,
+        "StatInterpolations": [
+          3,
+          3,
+          1
+        ],
+        "StatSet": 38,
+        "Unknown0": 100
+      }
+    },
+    "GrantedEffects": {
+      "36": {
+        "ActiveSkill": 49,
+        "AddedActiveSkillTypes": [],
+        "AddedMinionActiveSkillTypes": [],
+        "AdditionalStatSets": [
+          39
+        ],
+        "AllowedActiveSkillTypes": [],
+        "Animation": 299,
+        "Audio": "",
+        "CannotBeSupported": false,
+        "CastTime": 700,
+        "CooldownNotRecoverDuringActive": false,
+        "CostTypes": [
+          0
+        ],
+        "Data0": [],
+        "ExcludedActiveSkillTypes": [],
+        "Flag0": false,
+        "Flag1": false,
+        "Flag2": false,
+        "Flag3": true,
+        "HASH32": 784810722,
+        "Id": "SparkPlayer",
+        "IgnoreMinionTypes": false,
+        "IsSupport": false,
+        "LifeLeech": 2,
+        "MinionType": null,
+        "MultiPartAchievement": null,
+        "RegularVariant": null,
+        "SkillID": 5,
+        "StatSet": 38,
+        "SupportGemLetter": "",
+        "SupportWeaponRestrictions": [],
+        "SupportsGemsOnly": false,
+        "Unknown0": 0,
+        "Unknown1": 0,
+        "Unknown2": -1,
+        "Unknown3": "",
+        "Unknown4": 0.10999999940395355,
+        "Unknown5": 0.06499999761581421,
+        "Unknown6": 0
+      }
+    },
+    "GrantedEffectsPerLevel": {
+      "1301": {
+        "ActorLevel": 1.0,
+        "AttackSpeedMultiplier": 0,
+        "AttackTime": 0,
+        "Cooldown": 0,
+        "CooldownBypassType": 4,
+        "CooldownGroup": 67,
+        "CostAmounts": [
+          5
+        ],
+        "CostMultiplier": 100,
+        "EffectOnPlayer": 100,
+        "GrantedEffect": 36,
+        "Level": 1,
+        "PvPDamageMultiplier": 0,
+        "Reservation": 0,
+        "SoulGainPreventionDuration": 0,
+        "StoredUses": 0,
+        "Unknown0": 0,
+        "Unknown1": 0,
+        "Unknown2": 0,
+        "Unknown3": 0,
+        "Unknown4": 0,
+        "Unknown5": 0,
+        "VaalSouls": 0,
+        "VaalStoredUses": 0
+      }
+    },
+    "ItemClasses": {
+      "18": {
+        "AllocateToMapOwner": false,
+        "AlwaysAllocate": true,
+        "AlwaysShow": false,
+        "CanBeCorrupted": true,
+        "CanBeDoubleCorrupted": false,
+        "CanBeFractured": false,
+        "CanHaveAspects": false,
+        "CanHaveIncubators": false,
+        "CanHaveInfluence": false,
+        "CanHaveVeiledMods": false,
+        "CanScourge": false,
+        "CanUpgradeRarity": false,
+        "Data0": [],
+        "EquipAchievement": null,
+        "Flag0": false,
+        "Flag1": false,
+        "Flag2": true,
+        "Id": "Active Skill Gem",
+        "IdentifyAchievements": [],
+        "ItemClassCategory": 16,
+        "ItemClassFlags": [],
+        "ItemStance": null,
+        "Name": "Skill Gems",
+        "PickedUpQuest": null,
+        "RemovedIfLeavesArea": false,
+        "Unknown0": 4839,
+        "Unmodfiable": false,
+        "UsableInMapDevice": false
+      }
+    },
+    "Mods": {},
+    "PassiveSkills": {
+      "1390": {
+        "AchievementItem": null,
+        "Ascendancy": null,
+        "AtlasNodeGroup": "",
+        "AtlasSubTree": null,
+        "AudioEvent": null,
+        "BrequelTree": null,
+        "Characters": [],
+        "Flag0": false,
+        "Flag1": false,
+        "Flag2": false,
+        "Flag3": false,
+        "Flag4": false,
+        "Flag5": false,
+        "Flag6": false,
+        "Flag7": false,
+        "FlavourText": "",
+        "GrantedSkill": null,
+        "Group": null,
+        "Icon_DDSFile": "Art/2DArt/SkillIcons/passives/fireresist.dds",
+        "Id": "maximum_resistances1",
+        "IsAnointmentOnly": false,
+        "IsAscendancyStartingNode": false,
+        "IsAttribute": false,
+        "IsExpansion": false,
+        "IsFree": false,
+        "IsJewelSocket": false,
+        "IsJustIcon": false,
+        "IsKeystone": false,
+        "IsMultipleChoice": false,
+        "IsMultipleChoiceOption": false,
+        "IsNotable": false,
+        "IsProxyPassive": false,
+        "IsRootOfAtlasTree": false,
+        "Keys0": [],
+        "Keys1": [],
+        "MasteryGroup": null,
+        "Name": "Fire Resistance",
+        "NodeFrameArt": null,
+        "PassiveSkillBuffs": [],
+        "PassiveSkillGraphId": 62518,
+        "QuestFlag": null,
+        "ReminderStrings": [],
+        "Requirement": null,
+        "SkillPointsGranted": 0,
+        "SkillType": 0,
+        "SoundEffect": null,
+        "Stat1Value": 5,
+        "Stat2Value": 0,
+        "Stat3Value": 0,
+        "Stat4Value": 0,
+        "Stat5Value": 0,
+        "Stat6Value": 0,
+        "Stat7Value": 0,
+        "Stats": [
+          139
+        ],
+        "Unknown0": 0,
+        "Unknown1": 0,
+        "Unknown10": 0,
+        "Unknown11": 0,
+        "Unknown2": 0,
+        "Unknown3": 0,
+        "Unknown4": 0,
+        "Unknown5": 0,
+        "Unknown6": 0,
+        "Unknown7": 4839,
+        "Unknown8": 4839,
+        "Unknown9": 0,
+        "UnlockedBy": [],
+        "VariantType": null,
+        "VisibleForAscendancy": null,
+        "WeaponPointsGranted": 0
+      }
+    },
+    "SkillGems": {
+      "35": {
+        "AwakenedVariant": null,
+        "BaseItemType": 498,
+        "BaseSkillGem": null,
+        "CraftingLevel": 1,
+        "CraftingTypes": [
+          7
+        ],
+        "Data0": [],
+        "DexterityRequirementPercent": 0,
+        "Flag0": false,
+        "Flag1": false,
+        "Flag2": false,
+        "Flag3": false,
+        "Flag4": true,
+        "Flag5": false,
+        "Flag6": false,
+        "GemColour": 3,
+        "GemEffects": [
+          36
+        ],
+        "GemType": 0,
+        "GlobalSkillLevelStat": null,
+        "GroundEffect": [],
+        "IntelligenceRequirementPercent": 100,
+        "IsVaalVariant": false,
+        "ItemExperienceType": 0,
+        "MinLevelReq": 1,
+        "MtxSlotTypes": [
+          0
+        ],
+        "RegisterPrimaryGrantedEffect": true,
+        "RegisterSecondaryGrantedEffect": true,
+        "RegularVariant": null,
+        "SearchTerms": [],
+        "StrengthRequirementPercent": 0,
+        "Tier": 0,
+        "TutorialVideo": "Art/Videos/SkillTutorials/Spark.bk2",
+        "UI_Image": "Art/2DArt/UIImages/InGame/SmartHover/GemHoverImage/GemHoverImageSpark",
+        "Unknown0": 3,
+        "Unknown1": 2,
+        "VaalVariant_BaseItemType": null
+      }
+    },
+    "Stats": {
+      "11237": {
+        "BelongsActiveSkills": [],
+        "Category": null,
+        "ContextFlags": [],
+        "DotFlag": [],
+        "Flag0": false,
+        "HASH32": 2394627197,
+        "Id": "damage_hit_effect_index",
+        "IsApplyDamageFunctionStat": false,
+        "IsLocal": false,
+        "IsParty": false,
+        "IsProxied": true,
+        "IsPublic": false,
+        "IsScalable": true,
+        "IsVirtual": false,
+        "IsWeaponLocal": false,
+        "MainHandAlias_Stat": null,
+        "OffHandAlias_Stat": null,
+        "Semantic": 3,
+        "WeaponHandCheck": false
+      },
+      "139": {
+        "BelongsActiveSkills": [],
+        "Category": 10,
+        "ContextFlags": [],
+        "DotFlag": [],
+        "Flag0": false,
+        "HASH32": 2039518076,
+        "Id": "base_fire_damage_resistance_%",
+        "IsApplyDamageFunctionStat": false,
+        "IsLocal": false,
+        "IsParty": false,
+        "IsProxied": true,
+        "IsPublic": true,
+        "IsScalable": true,
+        "IsVirtual": false,
+        "IsWeaponLocal": false,
+        "MainHandAlias_Stat": null,
+        "OffHandAlias_Stat": null,
+        "Semantic": 1,
+        "WeaponHandCheck": false
+      },
+      "1468": {
+        "BelongsActiveSkills": [],
+        "Category": null,
+        "ContextFlags": [],
+        "DotFlag": [],
+        "Flag0": true,
+        "HASH32": 3037511671,
+        "Id": "spell_minimum_base_lightning_damage",
+        "IsApplyDamageFunctionStat": false,
+        "IsLocal": false,
+        "IsParty": false,
+        "IsProxied": true,
+        "IsPublic": true,
+        "IsScalable": true,
+        "IsVirtual": false,
+        "IsWeaponLocal": false,
+        "MainHandAlias_Stat": null,
+        "OffHandAlias_Stat": null,
+        "Semantic": 3,
+        "WeaponHandCheck": false
+      },
+      "1469": {
+        "BelongsActiveSkills": [],
+        "Category": null,
+        "ContextFlags": [],
+        "DotFlag": [],
+        "Flag0": true,
+        "HASH32": 1897459105,
+        "Id": "spell_maximum_base_lightning_damage",
+        "IsApplyDamageFunctionStat": false,
+        "IsLocal": false,
+        "IsParty": false,
+        "IsProxied": true,
+        "IsPublic": true,
+        "IsScalable": true,
+        "IsVirtual": false,
+        "IsWeaponLocal": false,
+        "MainHandAlias_Stat": null,
+        "OffHandAlias_Stat": null,
+        "Semantic": 3,
+        "WeaponHandCheck": false
+      },
+      "17186": {
+        "BelongsActiveSkills": [],
+        "Category": null,
+        "ContextFlags": [],
+        "DotFlag": [],
+        "Flag0": false,
+        "HASH32": 1367558175,
+        "Id": "spark_pathing_width_bounds",
+        "IsApplyDamageFunctionStat": false,
+        "IsLocal": false,
+        "IsParty": true,
+        "IsProxied": true,
+        "IsPublic": false,
+        "IsScalable": true,
+        "IsVirtual": false,
+        "IsWeaponLocal": false,
+        "MainHandAlias_Stat": null,
+        "OffHandAlias_Stat": null,
+        "Semantic": 3,
+        "WeaponHandCheck": false
+      },
+      "17566": {
+        "BelongsActiveSkills": [],
+        "Category": null,
+        "ContextFlags": [],
+        "DotFlag": [],
+        "Flag0": false,
+        "HASH32": 716323194,
+        "Id": "projectiles_should_collide_with_flying_monsters",
+        "IsApplyDamageFunctionStat": false,
+        "IsLocal": false,
+        "IsParty": true,
+        "IsProxied": true,
+        "IsPublic": true,
+        "IsScalable": true,
+        "IsVirtual": false,
+        "IsWeaponLocal": false,
+        "MainHandAlias_Stat": null,
+        "OffHandAlias_Stat": null,
+        "Semantic": 4,
+        "WeaponHandCheck": false
+      },
+      "18042": {
+        "BelongsActiveSkills": [],
+        "Category": null,
+        "ContextFlags": [],
+        "DotFlag": [],
+        "Flag0": false,
+        "HASH32": 3341199913,
+        "Id": "base_number_of_projectiles",
+        "IsApplyDamageFunctionStat": false,
+        "IsLocal": false,
+        "IsParty": false,
+        "IsProxied": true,
+        "IsPublic": true,
+        "IsScalable": true,
+        "IsVirtual": false,
+        "IsWeaponLocal": false,
+        "MainHandAlias_Stat": null,
+        "OffHandAlias_Stat": null,
+        "Semantic": 3,
+        "WeaponHandCheck": false
+      },
+      "18231": {
+        "BelongsActiveSkills": [],
+        "Category": null,
+        "ContextFlags": [],
+        "DotFlag": [],
+        "Flag0": true,
+        "HASH32": 2890800074,
+        "Id": "movement_speed_+%_final_while_performing_action",
+        "IsApplyDamageFunctionStat": false,
+        "IsLocal": false,
+        "IsParty": true,
+        "IsProxied": true,
+        "IsPublic": false,
+        "IsScalable": true,
+        "IsVirtual": false,
+        "IsWeaponLocal": false,
+        "MainHandAlias_Stat": null,
+        "OffHandAlias_Stat": null,
+        "Semantic": 1,
+        "WeaponHandCheck": false
+      },
+      "18238": {
+        "BelongsActiveSkills": [],
+        "Category": null,
+        "ContextFlags": [],
+        "DotFlag": [],
+        "Flag0": true,
+        "HASH32": 3080444068,
+        "Id": "can_perform_skill_while_moving",
+        "IsApplyDamageFunctionStat": false,
+        "IsLocal": false,
+        "IsParty": true,
+        "IsProxied": true,
+        "IsPublic": false,
+        "IsScalable": false,
+        "IsVirtual": false,
+        "IsWeaponLocal": false,
+        "MainHandAlias_Stat": null,
+        "OffHandAlias_Stat": null,
+        "Semantic": 4,
+        "WeaponHandCheck": false
+      },
+      "18294": {
+        "BelongsActiveSkills": [],
+        "Category": null,
+        "ContextFlags": [],
+        "DotFlag": [],
+        "Flag0": true,
+        "HASH32": 1284387827,
+        "Id": "movement_speed_acceleration_+%_per_second_while_performing_action",
+        "IsApplyDamageFunctionStat": false,
+        "IsLocal": false,
+        "IsParty": true,
+        "IsProxied": true,
+        "IsPublic": false,
+        "IsScalable": true,
+        "IsVirtual": false,
+        "IsWeaponLocal": false,
+        "MainHandAlias_Stat": null,
+        "OffHandAlias_Stat": null,
+        "Semantic": 1,
+        "WeaponHandCheck": false
+      },
+      "20007": {
+        "BelongsActiveSkills": [],
+        "Category": null,
+        "ContextFlags": [],
+        "DotFlag": [],
+        "Flag0": false,
+        "HASH32": 999176723,
+        "Id": "movement_speed_while_performing_action_locked_duration_%",
+        "IsApplyDamageFunctionStat": false,
+        "IsLocal": false,
+        "IsParty": true,
+        "IsProxied": true,
+        "IsPublic": false,
+        "IsScalable": true,
+        "IsVirtual": false,
+        "IsWeaponLocal": false,
+        "MainHandAlias_Stat": null,
+        "OffHandAlias_Stat": null,
+        "Semantic": 1,
+        "WeaponHandCheck": false
+      },
+      "21278": {
+        "BelongsActiveSkills": [],
+        "Category": null,
+        "ContextFlags": [],
+        "DotFlag": [],
+        "Flag0": false,
+        "HASH32": 1216634786,
+        "Id": "spark_min_time_between_target_clearing_ms",
+        "IsApplyDamageFunctionStat": false,
+        "IsLocal": false,
+        "IsParty": true,
+        "IsProxied": true,
+        "IsPublic": false,
+        "IsScalable": true,
+        "IsVirtual": false,
+        "IsWeaponLocal": false,
+        "MainHandAlias_Stat": null,
+        "OffHandAlias_Stat": null,
+        "Semantic": 3,
+        "WeaponHandCheck": false
+      },
+      "347": {
+        "BelongsActiveSkills": [],
+        "Category": null,
+        "ContextFlags": [],
+        "DotFlag": [],
+        "Flag0": true,
+        "HASH32": 3797695503,
+        "Id": "base_skill_effect_duration",
+        "IsApplyDamageFunctionStat": false,
+        "IsLocal": false,
+        "IsParty": true,
+        "IsProxied": true,
+        "IsPublic": true,
+        "IsScalable": true,
+        "IsVirtual": false,
+        "IsWeaponLocal": false,
+        "MainHandAlias_Stat": null,
+        "OffHandAlias_Stat": null,
+        "Semantic": 3,
+        "WeaponHandCheck": false
+      },
+      "4401": {
+        "BelongsActiveSkills": [],
+        "Category": null,
+        "ContextFlags": [],
+        "DotFlag": [],
+        "Flag0": false,
+        "HASH32": 2092954104,
+        "Id": "projectile_uses_contact_position",
+        "IsApplyDamageFunctionStat": false,
+        "IsLocal": false,
+        "IsParty": true,
+        "IsProxied": true,
+        "IsPublic": true,
+        "IsScalable": false,
+        "IsVirtual": false,
+        "IsWeaponLocal": false,
+        "MainHandAlias_Stat": null,
+        "OffHandAlias_Stat": null,
+        "Semantic": 4,
+        "WeaponHandCheck": false
+      },
+      "489": {
+        "BelongsActiveSkills": [],
+        "Category": null,
+        "ContextFlags": [],
+        "DotFlag": [],
+        "Flag0": true,
+        "HASH32": 2547622407,
+        "Id": "base_is_projectile",
+        "IsApplyDamageFunctionStat": false,
+        "IsLocal": false,
+        "IsParty": false,
+        "IsProxied": true,
+        "IsPublic": false,
+        "IsScalable": false,
+        "IsVirtual": false,
+        "IsWeaponLocal": false,
+        "MainHandAlias_Stat": null,
+        "OffHandAlias_Stat": null,
+        "Semantic": 4,
+        "WeaponHandCheck": false
+      },
+      "6443": {
+        "BelongsActiveSkills": [],
+        "Category": null,
+        "ContextFlags": [],
+        "DotFlag": [],
+        "Flag0": false,
+        "HASH32": 2385257573,
+        "Id": "projectile_uses_contact_direction",
+        "IsApplyDamageFunctionStat": false,
+        "IsLocal": false,
+        "IsParty": true,
+        "IsProxied": true,
+        "IsPublic": true,
+        "IsScalable": false,
+        "IsVirtual": false,
+        "IsWeaponLocal": false,
+        "MainHandAlias_Stat": null,
+        "OffHandAlias_Stat": null,
+        "Semantic": 4,
+        "WeaponHandCheck": false
+      },
+      "9949": {
+        "BelongsActiveSkills": [],
+        "Category": null,
+        "ContextFlags": [],
+        "DotFlag": [],
+        "Flag0": false,
+        "HASH32": 3292596092,
+        "Id": "check_for_targets_between_initiator_and_projectile_source",
+        "IsApplyDamageFunctionStat": false,
+        "IsLocal": false,
+        "IsParty": true,
+        "IsProxied": true,
+        "IsPublic": false,
+        "IsScalable": true,
+        "IsVirtual": false,
+        "IsWeaponLocal": false,
+        "MainHandAlias_Stat": null,
+        "OffHandAlias_Stat": null,
+        "Semantic": 4,
+        "WeaponHandCheck": false
+      }
+    },
+    "Tags": {
+      "301": {
+        "DisplayString": "",
+        "HASH32": 3527151252,
+        "Id": "up_to_level_2_gem",
+        "Keys0": [],
+        "UiHints": ""
+      },
+      "302": {
+        "DisplayString": "",
+        "HASH32": 738930902,
+        "Id": "up_to_level_8_gem",
+        "Keys0": [],
+        "UiHints": ""
+      }
+    }
+  }
+}

@@ -19,6 +19,7 @@
 pub mod items;
 pub mod manifest;
 pub mod mods;
+pub mod native_runtime;
 pub mod skills;
 pub mod tree;
 
@@ -89,9 +90,12 @@ pub use item_overlay::{
     RuneDef, RuneSlotDef, RunesDef, UniqueDef, UniquesDef,
 };
 pub use items::{ArmourBaseStats, BaseItemDef, UtilityBaseStats, WeaponBaseStats};
-pub use manifest::{CATALOG_SCHEMA_VERSION, DataManifest, DomainSections};
+pub use manifest::{
+    CATALOG_SCHEMA_VERSION, DataManifest, DomainSections, NATIVE_CATALOG_SCHEMA_VERSION,
+};
 pub use mods::{ModDef, ModStat, SpawnWeight, StatDef};
 pub use monster_resistances::{MonsterResistanceDef, MonsterResistancesDef};
+pub use native_runtime::NativeRuntimeContract;
 pub use parser_rules::{
     FlagPhraseDef, FlagTypeDef, FlagTypeModDef, FormDef, MOD_PARSER_RULES_SCHEMA,
     ModParserRulesDoc, ModTemplateDef, NameMapDef, PhraseNamesDef, PhraseValueDef, PreFlagDef,

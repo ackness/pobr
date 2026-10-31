@@ -394,6 +394,11 @@ impl pobr_core::skill_env::StatSetLookup for BuildData {
         self.selected_set_key(effect_id, set_index)
     }
 
+    fn selected_set_id(&self, effect_id: &str, set_index: Option<u32>) -> Option<String> {
+        self.select_stat_set(effect_id, set_index)
+            .map(|set| set.set_id.clone())
+    }
+
     fn selected_set_dot_flags(
         &self,
         effect_id: &str,

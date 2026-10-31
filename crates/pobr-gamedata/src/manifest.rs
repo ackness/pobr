@@ -1,12 +1,37 @@
 //! Manifest loading and immutable runtime snapshot validation.
 //!
 //! Schemas 1/2 preserve legacy domain layouts; schema 3 adds required file hashes.
+//! Schema 4 requires an immutable native contract, without calculation admission.
 //! The manifest lives at the version root and is never overlaid by user patches.
 
-use pobr_data::catalog::DataManifest;
+use pobr_data::catalog::native_runtime::{
+    NATIVE_COVERAGE_PATH, NATIVE_REFERENCE_INDEX_PATH, NATIVE_REQUIRED_DOMAINS,
+    NATIVE_RUNTIME_CONTRACT_VERSION, NATIVE_RUNTIME_PATH,
+};
+use pobr_data::catalog::{DataManifest, NATIVE_CATALOG_SCHEMA_VERSION, NativeRuntimeContract};
 use sha2::{Digest, Sha256};
 
 use crate::{GameData, LoadError};
+
+/// Validated envelope and native metadata share one immutable snapshot cache.
+#[derive(Debug)]
+pub(crate) struct ValidatedSnapshot {
+    pub manifest: DataManifest,
+    pub native_runtime: Option<NativeRuntimeContract>,
+}
+
+/// Deterministic key for the concrete native assembly declaration.
+///
+/// All typed metadata participates, including input/compiler/rule pins and profile
+/// versions. Set ordering is canonical. The key itself is replaced with an empty
+/// string; final runtime inventory hashes belong to `GameData::identity` instead.
+pub fn native_assembly_key(contract: &NativeRuntimeContract) -> String {
+    let mut inputs = contract.clone();
+    inputs.assembly_key.clear();
+    let bytes = serde_json::to_vec(&("pobr-native-assembly-v1", inputs))
+        .expect("typed native metadata serializes");
+    sha256_hex(&bytes)
+}
 
 /// Lowercase hex SHA-256 of `bytes`.
 pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
@@ -31,6 +56,7 @@ impl GameData {
     /// Checks the immutable snapshot before any optional-domain fallbacks.
     /// Schemas 1/2 retain legacy missing-domain compatibility. Schema 3 requires
     /// every declared file and verifies original bytes before user patches merge.
+    /// Schema 4 additionally validates the mandatory native contract and input profile.
     pub fn validate_manifest(&self) -> Result<DataManifest, LoadError> {
         self.snapshot_manifest()?
             .cloned()
@@ -44,9 +70,38 @@ impl GameData {
     /// manifests are validated once, including all hashes, before any domain can
     /// degrade to an optional fallback. Clones share the same immutable inventory.
     pub(crate) fn snapshot_manifest(&self) -> Result<Option<&DataManifest>, LoadError> {
+        Ok(self.snapshot()?.map(|snapshot| &snapshot.manifest))
+    }
+
+    /// Returns the validated, unpatched native contract for schema-4 candidates.
+    /// Legacy snapshots have no native contract. Loading this is not calculation admission.
+    pub fn native_runtime(&self) -> Result<Option<&NativeRuntimeContract>, LoadError> {
+        Ok(self
+            .snapshot()?
+            .and_then(|snapshot| snapshot.native_runtime.as_ref()))
+    }
+
+    /// Rejects native calculation until the fixed profile's semantic closure and
+    /// exact dataset/save/branch binding are implemented together. Domain queries
+    /// remain available to an assembler; legacy calculation behavior is unchanged.
+    pub fn validate_calculation_admission(&self) -> Result<(), LoadError> {
+        if self.native_runtime()?.is_some() {
+            return Err(LoadError::Integrity {
+                path: self.root().join(NATIVE_RUNTIME_PATH),
+                message: "native-profile-not-admitted: Spark level1/q0 constants and rule closure, exact dataset/save binding and stable branch admission are not implemented".into(),
+            });
+        }
+        Ok(())
+    }
+
+    fn snapshot(&self) -> Result<Option<&ValidatedSnapshot>, LoadError> {
         match self.snapshot.get_or_init(|| match self.manifest() {
             Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
-                Ok(None)
+                match self.native_contract_present() {
+                    Ok(false) => Ok(None),
+                    Ok(true) => Err("native runtime contract requires manifest schema 4".into()),
+                    Err(error) => Err(error.to_string()),
+                }
             }
             Err(error) => Err(error.to_string()),
             Ok(manifest) => self
@@ -59,6 +114,15 @@ impl GameData {
                 path: self.root().join("manifest.json"),
                 message: message.clone(),
             }),
+        }
+    }
+
+    fn native_contract_present(&self) -> Result<bool, LoadError> {
+        let path = self.root().join(NATIVE_RUNTIME_PATH);
+        match self.read_bytes(&path) {
+            Ok(_) => Ok(true),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+            Err(source) => Err(LoadError::Io { path, source }),
         }
     }
 
@@ -75,7 +139,7 @@ impl GameData {
             .overlay_common_path("")
             .is_some_and(|common| path.starts_with(common))
         {
-            return Ok(true);
+            return Ok(manifest.schema_version < NATIVE_CATALOG_SCHEMA_VERSION);
         }
         let relative = self.memory_key(path);
         Ok(relative == "manifest.json"
@@ -83,12 +147,12 @@ impl GameData {
             || manifest.files.contains_key(&relative))
     }
 
-    fn validate_snapshot(&self, manifest: DataManifest) -> Result<DataManifest, LoadError> {
+    fn validate_snapshot(&self, manifest: DataManifest) -> Result<ValidatedSnapshot, LoadError> {
         let invalid = |message| LoadError::Integrity {
             path: self.root().join("manifest.json"),
             message,
         };
-        if !(1..=pobr_data::catalog::CATALOG_SCHEMA_VERSION).contains(&manifest.schema_version) {
+        if !(1..=NATIVE_CATALOG_SCHEMA_VERSION).contains(&manifest.schema_version) {
             return Err(invalid(format!(
                 "unsupported schema {}",
                 manifest.schema_version
@@ -97,12 +161,31 @@ impl GameData {
         if manifest.poe_version.trim().is_empty() {
             return Err(invalid("empty data version".into()));
         }
+        if manifest.schema_version < NATIVE_CATALOG_SCHEMA_VERSION {
+            // A native policy must never be ignored by a compatibility envelope.
+            let present = self.native_contract_present()?;
+            if present
+                || manifest.files.contains_key(NATIVE_RUNTIME_PATH)
+                || manifest
+                    .domains
+                    .base
+                    .iter()
+                    .any(|domain| domain == "native_runtime")
+            {
+                return Err(invalid(
+                    "native runtime contract requires manifest schema 4".into(),
+                ));
+            }
+        }
         if manifest.schema_version < 3 {
-            return Ok(manifest);
+            return Ok(ValidatedSnapshot {
+                manifest,
+                native_runtime: None,
+            });
         }
         if manifest.files.is_empty() {
             return Err(invalid(
-                "schema 3 requires a nonempty file inventory".into(),
+                "schema 3/4 requires a nonempty file inventory".into(),
             ));
         }
         for (file, digest) in &manifest.files {
@@ -128,7 +211,11 @@ impl GameData {
             let bytes = self
                 .read_bytes(&path)
                 .map_err(|source| LoadError::Io { path, source })?;
-            if !self.prechecked && sha256_hex(&bytes) != *digest {
+            // The older staging handshake cannot certify schema-4 semantics.
+            // Native candidates always verify bytes, even on a prechecked backend.
+            if (!self.prechecked || manifest.schema_version == NATIVE_CATALOG_SCHEMA_VERSION)
+                && sha256_hex(&bytes) != *digest
+            {
                 return Err(invalid(format!("SHA-256 mismatch: {file}")));
             }
         }
@@ -156,8 +243,175 @@ impl GameData {
                 )));
             }
         }
-        Ok(manifest)
+        let native_runtime = if manifest.schema_version == NATIVE_CATALOG_SCHEMA_VERSION {
+            Some(self.validate_native_contract(&manifest)?)
+        } else {
+            None
+        };
+        Ok(ValidatedSnapshot {
+            manifest,
+            native_runtime,
+        })
     }
+
+    fn validate_native_contract(
+        &self,
+        manifest: &DataManifest,
+    ) -> Result<NativeRuntimeContract, LoadError> {
+        let path = self.root().join(NATIVE_RUNTIME_PATH);
+        let invalid = |message| LoadError::Integrity {
+            path: path.clone(),
+            message,
+        };
+        for domain in NATIVE_REQUIRED_DOMAINS.iter().copied().chain([
+            "native_runtime",
+            "native_coverage",
+            "native_reference_index",
+        ]) {
+            if !manifest
+                .domains
+                .base
+                .iter()
+                .any(|declared| declared == domain)
+                || !manifest.files.contains_key(&format!("base/{domain}.json"))
+            {
+                return Err(invalid(format!(
+                    "native input profile requires base/{domain}.json"
+                )));
+            }
+        }
+        // Contract metadata is immutable and cannot be patched around admission checks.
+        let patch = self.root().join("patch").join(NATIVE_RUNTIME_PATH);
+        match self.read_bytes(&patch) {
+            Ok(_) => return Err(invalid("native runtime contract cannot be patched".into())),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(source) => {
+                return Err(LoadError::Io {
+                    path: patch,
+                    source,
+                });
+            }
+        }
+        let bytes = self.read_bytes(&path).map_err(|source| LoadError::Io {
+            path: path.clone(),
+            source,
+        })?;
+        let contract: NativeRuntimeContract =
+            serde_json::from_slice(&bytes).map_err(|source| LoadError::Parse {
+                path: path.clone(),
+                source,
+            })?;
+        if contract.schema_version != NATIVE_RUNTIME_CONTRACT_VERSION {
+            return Err(invalid(format!(
+                "unsupported native contract version {}",
+                contract.schema_version
+            )));
+        }
+        if contract.game_patch != manifest.poe_version
+            || contract.game_patch.split('.').count() < 2
+            || !contract
+                .game_patch
+                .split('.')
+                .all(|part| !part.is_empty() && part.bytes().all(|c| c.is_ascii_digit()))
+        {
+            return Err(invalid(
+                "native game patch must be an explicit dotted patch matching poe_version".into(),
+            ));
+        }
+        if contract.tree.compatibility_tag != "0_5" {
+            return Err(invalid(
+                "unsupported native tree compatibility tag (expected 0_5)".into(),
+            ));
+        }
+        let resource = &contract.tree.resource;
+        if resource.contains(['\\', ':'])
+            || resource
+                .split('/')
+                .any(|part| matches!(part, "" | "." | ".."))
+        {
+            return Err(invalid(
+                "native tree resource must be a canonical relative address".into(),
+            ));
+        }
+        if contract.allowed_source_manifests.is_empty()
+            || !contract
+                .allowed_source_manifests
+                .contains(&contract.tree.source_manifest_sha256)
+        {
+            return Err(invalid(
+                "native tree source manifest must be explicitly allowed".into(),
+            ));
+        }
+        for profile in [&contract.normalization, &contract.rules] {
+            if profile.version != 1 {
+                return Err(invalid(format!(
+                    "unsupported native profile version {}",
+                    profile.version
+                )));
+            }
+        }
+        let mut digests = vec![
+            contract.assembly_key.as_str(),
+            contract.source_lock_sha256.as_str(),
+            contract.descriptions_manifest_sha256.as_str(),
+            contract.tree.source_manifest_sha256.as_str(),
+            contract.tree.resource_sha256.as_str(),
+            contract.normalization.sha256.as_str(),
+            contract.rules.sha256.as_str(),
+            contract.coverage_sha256.as_str(),
+            contract.reference_index_sha256.as_str(),
+            contract.acquisition.evidence_sha256.as_str(),
+        ];
+        digests.extend(contract.allowed_source_manifests.iter().map(String::as_str));
+        for supplement in &contract.supplements {
+            if supplement.fields.is_empty()
+                || supplement
+                    .game_patch
+                    .as_ref()
+                    .is_some_and(|patch| patch != &contract.game_patch)
+            {
+                return Err(invalid(
+                    "native supplement requires explicit fields and a matching or unknown patch"
+                        .into(),
+                ));
+            }
+            digests.extend([
+                supplement.sha256.as_str(),
+                supplement.match_evidence_sha256.as_str(),
+            ]);
+        }
+        if digests.iter().any(|digest| !is_lower_hex(digest, 64))
+            || !is_lower_hex(&contract.compiler_revision, 40)
+        {
+            return Err(invalid(
+                "invalid native SHA-256 or compiler revision".into(),
+            ));
+        }
+        for (file, digest) in [
+            (NATIVE_COVERAGE_PATH, &contract.coverage_sha256),
+            (
+                NATIVE_REFERENCE_INDEX_PATH,
+                &contract.reference_index_sha256,
+            ),
+        ] {
+            if manifest.files.get(file) != Some(digest) {
+                return Err(invalid(format!(
+                    "native artifact digest disagrees with inventory: {file}"
+                )));
+            }
+        }
+        if native_assembly_key(&contract) != contract.assembly_key {
+            return Err(invalid("native assembly key mismatch".into()));
+        }
+        Ok(contract)
+    }
+}
+
+fn is_lower_hex(value: &str, length: usize) -> bool {
+    value.len() == length
+        && value
+            .bytes()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
 }
 
 #[cfg(test)]
