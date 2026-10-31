@@ -6,6 +6,7 @@ mod gem_effects;
 mod monster_resistances;
 mod monster_scaling;
 mod quality;
+mod skill_stat_map;
 mod skills;
 mod stat_set_codec;
 mod totem_varieties;
@@ -29,6 +30,12 @@ pub(crate) struct Args {
     domain: Domain,
     quality_policy: Option<quality::Args>,
     codec: Option<CodecArgs>,
+    branch_codec: Option<BranchCodecArgs>,
+}
+
+struct BranchCodecArgs {
+    path: PathBuf,
+    sha256: String,
 }
 
 struct CodecArgs {
@@ -49,6 +56,7 @@ enum Domain {
     MonsterResistances,
     TotemVarieties,
     MonsterScaling,
+    SkillStatMap,
 }
 
 impl Domain {
@@ -63,6 +71,7 @@ impl Domain {
             Self::MonsterResistances => &monster_resistances::TABLES,
             Self::TotemVarieties => &totem_varieties::TABLES,
             Self::MonsterScaling => &monster_scaling::TABLES,
+            Self::SkillStatMap => &skill_stat_map::TABLES,
         }
     }
 
@@ -77,6 +86,7 @@ impl Domain {
             Self::MonsterResistances => "ordinary-monster-resistances",
             Self::TotemVarieties => "ordinary-totem-varieties",
             Self::MonsterScaling => "ordinary-monster-scaling",
+            Self::SkillStatMap => "ordinary-skill-stat-map",
         }
     }
 
@@ -91,6 +101,7 @@ impl Domain {
             Self::MonsterResistances => "monster-resistances",
             Self::TotemVarieties => "totem-varieties",
             Self::MonsterScaling => "monster-scaling",
+            Self::SkillStatMap => "skill-stat-map",
         }
     }
 }
@@ -111,6 +122,8 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             "--codec-source-sha256",
             "--codec-policy",
             "--codec-policy-sha256",
+            "--branch-codec",
+            "--branch-codec-sha256",
         ]
         .contains(&flag.as_str())
         {
@@ -131,6 +144,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("monster-resistances") => Domain::MonsterResistances,
         Some("totem-varieties") => Domain::TotemVarieties,
         Some("monster-scaling") => Domain::MonsterScaling,
+        Some("skill-stat-map") => Domain::SkillStatMap,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
     if domain != Domain::GemQuality
@@ -139,19 +153,28 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     {
         return Err("quality policy arguments require --ordinary-domain gem-quality".into());
     }
-    if !matches!(domain, Domain::StatSetCodec | Domain::GemEffects)
-        && [
-            "--codec-source",
-            "--codec-source-sha256",
-            "--codec-policy",
-            "--codec-policy-sha256",
-        ]
-        .iter()
-        .any(|flag| values.contains_key(*flag))
+    if !matches!(
+        domain,
+        Domain::StatSetCodec | Domain::GemEffects | Domain::SkillStatMap
+    ) && [
+        "--codec-source",
+        "--codec-source-sha256",
+        "--codec-policy",
+        "--codec-policy-sha256",
+    ]
+    .iter()
+    .any(|flag| values.contains_key(*flag))
     {
         return Err(
-            "codec arguments require --ordinary-domain stat-set-codec or gem-effects".into(),
+            "codec arguments require --ordinary-domain stat-set-codec, gem-effects or skill-stat-map".into(),
         );
+    }
+    if domain != Domain::SkillStatMap
+        && ["--branch-codec", "--branch-codec-sha256"]
+            .iter()
+            .any(|flag| values.contains_key(*flag))
+    {
+        return Err("branch codec arguments require --ordinary-domain skill-stat-map".into());
     }
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
     Ok(Args {
@@ -168,12 +191,23 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         } else {
             None
         },
-        codec: if matches!(domain, Domain::StatSetCodec | Domain::GemEffects) {
+        codec: if matches!(
+            domain,
+            Domain::StatSetCodec | Domain::GemEffects | Domain::SkillStatMap
+        ) {
             Some(CodecArgs {
                 source: take("--codec-source")?.into(),
                 source_sha256: take("--codec-source-sha256")?,
                 policy: take("--codec-policy")?.into(),
                 policy_sha256: take("--codec-policy-sha256")?,
+            })
+        } else {
+            None
+        },
+        branch_codec: if domain == Domain::SkillStatMap {
+            Some(BranchCodecArgs {
+                path: take("--branch-codec")?.into(),
+                sha256: take("--branch-codec-sha256")?,
             })
         } else {
             None
@@ -194,6 +228,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     let mut policy_bytes = None;
     let mut codec_policy_bytes = None;
     let mut legacy_gem_effects_bytes = None;
+    let mut branch_codec_bytes = None;
     // Complete validation and serialization before reserving any output.
     let (base, conversion, output_schema, scope) = match args.domain {
         Domain::StatsMods => {
@@ -378,6 +413,35 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 ],
             )
         }
+        Domain::SkillStatMap => {
+            let codec = args
+                .codec
+                .as_ref()
+                .ok_or("missing map source/policy arguments")?;
+            let branch = args
+                .branch_codec
+                .as_ref()
+                .ok_or("missing branch codec arguments")?;
+            let converted = skill_stat_map::convert(&input, codec, branch)?;
+            for parent in &converted.protected_parents {
+                output.protect(parent)?;
+            }
+            overlay = converted.overlay;
+            codec_policy_bytes = Some(converted.policy_bytes);
+            branch_codec_bytes = Some(converted.branch_bytes);
+            (
+                BTreeMap::new(),
+                converted.receipt,
+                "pobr_data::catalog::{stat_map::SkillStatMapDef,StatSetLabelsDef}",
+                vec![
+                    "The exact fixed community map and branch codec bytes remain legacy interpretation inputs with original metadata; no target numerical or gameplay-law acquisition is claimed.",
+                    "Only target Stats/GrantedEffects/GrantedEffectStatSets are read. Every map occurrence records present/absent stat identity; each scope binds through the actual pinned export-index codec to raw stable-set ownership or an exact unbound policy exception.",
+                    "All constructors, transforms, scalars, tags, unsupported and unknown contents are preserved. Ordered references are not deduplicated; export indices are never inferred from raw order or labels.",
+                    "Policy exceptions must be consumed exactly. Nothing is filtered, retargeted, disabled, defaulted or declared effectless; the engine and diagnostics are unchanged.",
+                    "Acquisition remains draft; full target rule applicability, remaining assets, complete runtime and ordinary BD/Web/accuracy acceptance are separate. No Lua/vendor execution, implicit candidate input, CURRENT update or adoption.",
+                ],
+            )
+        }
     };
     let marker = reader::json_bytes(&json!({
         "schema": "pobr-domain-candidate/v1",
@@ -400,6 +464,9 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     }
     if let Some(bytes) = legacy_gem_effects_bytes {
         sidecars.insert("legacy-gem-effects.json", bytes);
+    }
+    if let Some(bytes) = branch_codec_bytes {
+        sidecars.insert("branch-codec.json", bytes);
     }
     let files: BTreeMap<_, _> = base
         .iter()
@@ -542,6 +609,18 @@ fn implementation_sha256() -> String {
         (
             "catalog/monster_scaling.rs",
             include_bytes!("../../../crates/pobr-data/src/catalog/monster_scaling.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/skill_stat_map.rs",
+            include_bytes!("ordinary_facts/skill_stat_map.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/skill_stat_map/policy.rs",
+            include_bytes!("ordinary_facts/skill_stat_map/policy.rs").as_slice(),
+        ),
+        (
+            "catalog/stat_map.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/stat_map.rs").as_slice(),
         ),
         (
             "ordinary_facts/stat_set_codec/policy.rs",

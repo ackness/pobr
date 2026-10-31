@@ -20,6 +20,9 @@ object overlay, with unresolved selectors disclosed in
 [ordinary-totem-varieties.md](ordinary-totem-varieties.md).
 `--ordinary-domain monster-scaling` produces the original nine per-level monster
 arrays, as described in [ordinary-monster-scaling.md](ordinary-monster-scaling.md).
+`--ordinary-domain skill-stat-map` preserves a pinned interpretation map with
+separately verified branch-codec identity, as described in
+[ordinary-skill-stat-map.md](ordinary-skill-stat-map.md).
 Each call produces only its
 selected domain for later assembly into an ordinary runtime package. It does
 not produce a complete GameData/BuildData package or a restricted runtime profile.
@@ -44,9 +47,11 @@ An invalid, missing-value or repeated `--ordinary-domain` is an error. Omitting
 it preserves the Stats/Mods JSON, marker and receipt content except for the
 compiled implementation revision. The sections below describe Stats/Mods;
 base-items, skills, gem-quality, stat-set-codec, gem-effects, monster-resistances,
-totem-varieties and monster-scaling use the same
+totem-varieties, monster-scaling and skill-stat-map use the same
 verification/output boundary with their own table subsets. Quality-only options
-require gem-quality; codec options require stat-set-codec or gem-effects.
+require gem-quality; codec options require stat-set-codec, gem-effects or
+skill-stat-map. The two branch-codec options are required only by skill-stat-map
+and rejected by every other domain.
 
 ## Input and checks
 

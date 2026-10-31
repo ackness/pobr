@@ -1,6 +1,6 @@
 //! Preserve a pinned legacy codec verbatim, verifying target raw ownership separately.
 
-mod policy;
+pub(super) mod policy;
 
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 pub(super) mod tests;
@@ -53,14 +53,14 @@ struct SetRef {
 }
 
 #[derive(Serialize)]
-struct Owner {
+pub(super) struct Owner {
     effect_source_row: usize,
     primary: SetRef,
     additional: Vec<SetRef>,
 }
 
 impl Owner {
-    fn contains(&self, set_id: &str) -> bool {
+    pub(super) fn contains(&self, set_id: &str) -> bool {
         self.primary.set_id == set_id || self.additional.iter().any(|s| s.set_id == set_id)
     }
 }
@@ -188,29 +188,33 @@ fn owners(tables: &Tables<'_>) -> Result<BTreeMap<String, Owner>, String> {
     let mut result = BTreeMap::new();
     for effect_source_row in 0..tables.len("GrantedEffects") {
         let row = tables.row("GrantedEffects", effect_source_row)?;
-        let primary = resolve(tables, &row["StatSet"])
-            .map_err(|e| format!("GrantedEffects/{effect_source_row}.StatSet: {e}"))?;
-        let additional = row["AdditionalStatSets"]
-            .as_array()
-            .ok_or_else(|| {
-                format!("GrantedEffects/{effect_source_row}.AdditionalStatSets: array required")
-            })?
-            .iter()
-            .map(|v| resolve(tables, v))
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| format!("GrantedEffects/{effect_source_row}.AdditionalStatSets: {e}"))?;
+        let owner = read_owner(tables, effect_source_row)?;
         // The shared reader validates unique stable Id and physical _row. Additional
         // references are ordered occurrences and deliberately have no uniqueness rule.
-        result.insert(
-            row["Id"].as_str().ok_or("invalid owner Id")?.into(),
-            Owner {
-                effect_source_row,
-                primary,
-                additional,
-            },
-        );
+        result.insert(row["Id"].as_str().ok_or("invalid owner Id")?.into(), owner);
     }
     Ok(result)
+}
+
+/// Parse the ordered physical references of one owner; callers choose their used subset.
+pub(super) fn read_owner(tables: &Tables<'_>, effect_source_row: usize) -> Result<Owner, String> {
+    let row = tables.row("GrantedEffects", effect_source_row)?;
+    let primary = resolve(tables, &row["StatSet"])
+        .map_err(|e| format!("GrantedEffects/{effect_source_row}.StatSet: {e}"))?;
+    let additional = row["AdditionalStatSets"]
+        .as_array()
+        .ok_or_else(|| {
+            format!("GrantedEffects/{effect_source_row}.AdditionalStatSets: array required")
+        })?
+        .iter()
+        .map(|v| resolve(tables, v))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("GrantedEffects/{effect_source_row}.AdditionalStatSets: {e}"))?;
+    Ok(Owner {
+        effect_source_row,
+        primary,
+        additional,
+    })
 }
 
 fn resolve(tables: &Tables<'_>, value: &Value) -> Result<SetRef, String> {
@@ -225,7 +229,7 @@ fn resolve(tables: &Tables<'_>, value: &Value) -> Result<SetRef, String> {
     })
 }
 
-fn check_columns(input: &VerifiedFacts) -> Result<(), String> {
+pub(super) fn check_columns(input: &VerifiedFacts) -> Result<(), String> {
     for (table, field, kind, array, target) in [
         ("GrantedEffects", "Id", "string", false, None),
         ("GrantedEffectStatSets", "Id", "string", false, None),

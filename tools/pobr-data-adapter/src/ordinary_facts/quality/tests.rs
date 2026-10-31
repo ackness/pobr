@@ -902,3 +902,32 @@ fn monster_scaling_does_not_change_quality_files_or_receipt() {
         );
     }
 }
+
+#[test]
+fn skill_stat_map_does_not_change_quality_files_or_receipt() {
+    let f = fixture();
+    run(args(&f)).unwrap();
+    let stat_map = super::super::skill_stat_map::tests::fixture();
+    run(super::super::skill_stat_map::tests::args(&stat_map)).unwrap();
+    run(Args {
+        out: f.root.join("after-stat_map"),
+        ..args(&f)
+    })
+    .unwrap();
+    let receipt = read(&f, "producer-receipt.json");
+    assert_eq!(receipt["files"].as_object().unwrap().len(), 5);
+    assert!(!f.root.join("out/overlay/skill_stat_map.json").exists());
+    for path in receipt["files"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .chain(["producer-receipt.json"])
+    {
+        assert_eq!(
+            fs::read(f.root.join("out").join(path)).unwrap(),
+            fs::read(f.root.join("after-stat_map").join(path)).unwrap(),
+            "{path}"
+        );
+    }
+}
