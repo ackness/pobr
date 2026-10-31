@@ -29,7 +29,7 @@ export function itemDisplaySections(lines: readonly ItemLineJson[], translated: 
     if (!line.original.trim() || /^[-—]+$/.test(line.original) || /^(Unique ID:|Implicits:|Requirements:\s*$)/i.test(line.original)) return;
     if (/^(Corrupted|Mirrored|Unidentified|Split|Sanctified)$/i.test(line.original)) { result.states.push(line); return; }
     if (/^(Rune|Soul Core):/i.test(line.original)) { result.runes.push(line); return; }
-    const property = /^(Item Level|Quality|LevelReq|Requires Level|Str|Dex|Int|Armour|Evasion|Energy Shield|Ward|Physical Damage|Elemental Damage|Chaos Damage|Critical (?:Hit|Strike) Chance|Attacks per Second|Weapon Range|Block Chance|Charm Slots|Sockets|Radius|Limited to):/i.test(line.original);
+    const property = /^(Item Level|Quality|LevelReq|Requires Level|Str|Dex|Int|Armour|Evasion(?: Rating)?|Energy Shield|Ward|Physical Damage|Elemental Damage|Chaos Damage|Critical (?:Hit|Strike) Chance|Attacks per Second|Weapon Range|Block Chance|Charm Slots|Sockets|Radius|Limited to):/i.test(line.original);
     const parts = property && line.text.match(/^([^:：]+)[:：]\s*(.+)$/);
     if (parts) {
       const labels: Record<string, string> = { LevelReq: 'Required level', 'Requires Level': 'Required level', Str: 'Required Strength', Dex: 'Required Dexterity', Int: 'Required Intelligence' };
