@@ -150,7 +150,7 @@ mod tests {
         ]
         .iter()
         .map(|name| {
-            db.named(*name)
+            db.named(name)
                 .next()
                 .expect("one mapped source per fixture ID")
         })
