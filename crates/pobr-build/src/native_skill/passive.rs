@@ -156,13 +156,14 @@ fn select(
         format!("/rows/{}/values/Id", provenance.stat_row),
     ];
     for (i, resource) in RESOURCES.iter().enumerate() {
-        let source = &provenance.references[i];
-        if source.resource != *resource
-            || source.pointer != pointers[i]
-            || source.sha256 != resource_hashes[i]
-            || source.sha256.len() != 64
-            || !source
-                .sha256
+        let matches = provenance.references.iter().filter(|source| {
+            source.resource == *resource
+                && source.pointer == pointers[i]
+                && source.sha256 == resource_hashes[i]
+        });
+        if matches.count() != 1
+            || resource_hashes[i].len() != 64
+            || !resource_hashes[i]
                 .bytes()
                 .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
         {

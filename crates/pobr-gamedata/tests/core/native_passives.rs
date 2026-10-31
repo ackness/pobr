@@ -461,3 +461,84 @@ fn native_passive_packet_cannot_use_another_allowed_manifest_as_its_tree_source(
         "{error}"
     );
 }
+
+fn shared_stat_row_pack() -> BTreeMap<String, Vec<u8>> {
+    let mut files = passive_pack();
+    edit(&mut files, TREE, |v| {
+        let stat = &mut v[1]["native_stats"]["stats"][0];
+        stat["id"] = "spell_damage_+%".into();
+        stat["provenance"]["stat_row"] = 5.into();
+        stat["provenance"]["references"][1]["pointer"] = "/rows/5/values/Id".into();
+    });
+    edit(&mut files, NATIVE_REFERENCE_INDEX_PATH, |v| {
+        let stat = &mut v["passive_definitions"]["synthetic_resistance"]["stats"][0];
+        stat["stat_id"] = "spell_damage_+%".into();
+        stat["raw_stat"]["pointer"] = "/rows/5/values".into();
+    });
+    reseal_passives(&mut files);
+    files
+}
+
+#[test]
+fn native_passive_reference_rows_reject_conflicting_cross_record_identities() {
+    // Both sides of each local packet/index relation agree. Only the cross-record
+    // physical identity reveals the contradiction; resealing cannot legitimize it.
+    let mut passive_alias = shared_stat_row_pack();
+    edit(&mut passive_alias, TREE, |v| {
+        let stat = &mut v[1]["native_stats"]["stats"][0];
+        stat["value"] = (-17).into();
+        stat["provenance"]["passive_row"] = 3.into();
+        stat["provenance"]["references"][0]["pointer"] = "/rows/3/values/Stat1Value".into();
+    });
+    edit(&mut passive_alias, NATIVE_REFERENCE_INDEX_PATH, |v| {
+        let definition = &mut v["passive_definitions"]["synthetic_resistance"];
+        definition["raw"]["pointer"] = "/rows/3/values".into();
+        definition["stats"][0]["value"] = (-17).into();
+    });
+    let mut stat_alias = passive_pack();
+    edit(&mut stat_alias, TREE, |v| {
+        let provenance = &mut v[1]["native_stats"]["stats"][0]["provenance"];
+        provenance["stat_row"] = 5.into();
+        provenance["references"][1]["pointer"] = "/rows/5/values/Id".into();
+    });
+    edit(&mut stat_alias, NATIVE_REFERENCE_INDEX_PATH, |v| {
+        v["passive_definitions"]["synthetic_resistance"]["stats"][0]["raw_stat"]["pointer"] =
+            "/rows/5/values".into();
+    });
+    for (mut files, reason) in [
+        (passive_alias, "conflicting PassiveSkills row identity"),
+        (stat_alias, "conflicting Stats row identity"),
+    ] {
+        reseal_passives(&mut files);
+        let error = NativeData::load(&GameData::from_memory(files))
+            .err()
+            .expect("conflicting physical row identities must be rejected");
+        assert!(error.to_string().contains(reason), "{error}");
+    }
+}
+
+#[test]
+fn native_passive_reference_rows_allow_shared_stats_and_reordered_references() {
+    let mut files = shared_stat_row_pack();
+    edit(&mut files, TREE, |v| {
+        v[1]["native_stats"]["stats"][0]["provenance"]["references"]
+            .as_array_mut()
+            .unwrap()
+            .reverse();
+    });
+    reseal_passives(&mut files);
+    let native = NativeData::load(&GameData::from_memory(files)).unwrap();
+    assert_eq!(native.passive_nodes().len(), 2);
+    let stats: Vec<_> = native
+        .passive_nodes()
+        .iter()
+        .map(|node| &node.native_stats.as_ref().unwrap().stats[0])
+        .collect();
+    assert_eq!(stats[0].provenance.stat_row, stats[1].provenance.stat_row);
+    assert_eq!(stats[0].id, stats[1].id);
+    assert_ne!(
+        stats[0].provenance.passive_row,
+        stats[1].provenance.passive_row
+    );
+    assert_ne!(stats[0].value, stats[1].value);
+}

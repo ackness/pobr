@@ -296,6 +296,39 @@ fn signed_zero_changed_values_and_irrelevant_types_retain_real_reader_evidence()
 }
 
 #[test]
+fn reordered_source_references_preserve_selection_and_full_native_evidence() {
+    let mut nodes = [node(&contract(), 1, "spell_damage_+%", 10)];
+    let original = composed(&nodes, &[1]);
+    nodes[0].native_stats.as_mut().unwrap().stats[0]
+        .provenance
+        .references
+        .reverse();
+    let reordered = composed(&nodes, &[1]);
+    near(reordered.conditional_weighted_mean, 6.5945);
+    assert_eq!(original.damage, reordered.damage);
+    assert_eq!(original.request_sha256, reordered.request_sha256);
+    let evidence = passive_evidence(&reordered)[0];
+    assert!(evidence.counted);
+    assert_eq!(
+        evidence.origin.as_ref().unwrap().native_stat.as_ref(),
+        Some(&nodes[0].native_stats.as_ref().unwrap().stats[0])
+    );
+    assert_eq!(
+        evidence.runtime_source,
+        passive_evidence(&original)[0].runtime_source
+    );
+    // Reference order is retained as evidence, while both exact bindings are required.
+    for duplicate in [0, 1] {
+        let mut bad = nodes.clone();
+        let references = &mut bad[0].native_stats.as_mut().unwrap().stats[0]
+            .provenance
+            .references;
+        references[1 - duplicate] = references[duplicate].clone();
+        assert!(selected(&bad, &[1]).is_err());
+    }
+}
+
+#[test]
 fn duplicate_unknown_missing_and_unsupported_mixed_selections_fail_whole() {
     let c = contract();
     let good = node(&c, 1, "spell_damage_+%", 10);
