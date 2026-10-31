@@ -873,3 +873,32 @@ fn totem_varieties_does_not_change_quality_files_or_receipt() {
         );
     }
 }
+
+#[test]
+fn monster_scaling_does_not_change_quality_files_or_receipt() {
+    let f = fixture();
+    run(args(&f)).unwrap();
+    let scaling = super::super::monster_scaling::tests::fixture();
+    run(super::super::monster_scaling::tests::args(&scaling)).unwrap();
+    run(Args {
+        out: f.root.join("after-scaling"),
+        ..args(&f)
+    })
+    .unwrap();
+    let receipt = read(&f, "producer-receipt.json");
+    assert_eq!(receipt["files"].as_object().unwrap().len(), 5);
+    assert!(!f.root.join("out/base/monster_scaling.json").exists());
+    for path in receipt["files"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .chain(["producer-receipt.json"])
+    {
+        assert_eq!(
+            fs::read(f.root.join("out").join(path)).unwrap(),
+            fs::read(f.root.join("after-scaling").join(path)).unwrap(),
+            "{path}"
+        );
+    }
+}

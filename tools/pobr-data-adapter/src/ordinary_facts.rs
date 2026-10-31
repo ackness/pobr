@@ -4,6 +4,7 @@ mod base_items;
 mod convert;
 mod gem_effects;
 mod monster_resistances;
+mod monster_scaling;
 mod quality;
 mod skills;
 mod stat_set_codec;
@@ -47,6 +48,7 @@ enum Domain {
     GemEffects,
     MonsterResistances,
     TotemVarieties,
+    MonsterScaling,
 }
 
 impl Domain {
@@ -60,6 +62,7 @@ impl Domain {
             Self::GemEffects => &gem_effects::TABLES,
             Self::MonsterResistances => &monster_resistances::TABLES,
             Self::TotemVarieties => &totem_varieties::TABLES,
+            Self::MonsterScaling => &monster_scaling::TABLES,
         }
     }
 
@@ -73,6 +76,7 @@ impl Domain {
             Self::GemEffects => "ordinary-gem-effects",
             Self::MonsterResistances => "ordinary-monster-resistances",
             Self::TotemVarieties => "ordinary-totem-varieties",
+            Self::MonsterScaling => "ordinary-monster-scaling",
         }
     }
 
@@ -86,6 +90,7 @@ impl Domain {
             Self::GemEffects => "gem-effects",
             Self::MonsterResistances => "monster-resistances",
             Self::TotemVarieties => "totem-varieties",
+            Self::MonsterScaling => "monster-scaling",
         }
     }
 }
@@ -125,6 +130,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("gem-effects") => Domain::GemEffects,
         Some("monster-resistances") => Domain::MonsterResistances,
         Some("totem-varieties") => Domain::TotemVarieties,
+        Some("monster-scaling") => Domain::MonsterScaling,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
     if domain != Domain::GemQuality
@@ -357,6 +363,21 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 ],
             )
         }
+        Domain::MonsterScaling => {
+            let converted = monster_scaling::convert(&input)?;
+            (
+                converted.base,
+                converted.receipt,
+                "pobr_data::catalog::monster_scaling::MonsterScalingTable",
+                vec![
+                    "Only target F DefaultMonsterStats was read. All nine arrays are constructed from its complete unique DisplayLevel set; physical rows are provenance, not level indices.",
+                    "Seven exact i32 source fields are checked into u32. Damage/MinionDamage retain signed finite f32-range input through the existing nearest-0.01, ties-away-from-zero convention; raw and normalized values are recorded.",
+                    "No default array, old numeric file, vendor/Lua, auxiliary policy or hiddenDamageFixup calculation supplies values. Existing DTO, lookups, clamps and consumers are unchanged.",
+                    "Unconsumed fields, minionGemLevel-to-monsterLevel mapping, full minion catalogs, remaining assets and ordinary target BD/Web/accuracy acceptance remain separate; unapplied does not mean effectless.",
+                    "Acquisition remains unchanged draft evidence; no complete runtime manifest, source approval, CURRENT update or adoption.",
+                ],
+            )
+        }
     };
     let marker = reader::json_bytes(&json!({
         "schema": "pobr-domain-candidate/v1",
@@ -513,6 +534,14 @@ fn implementation_sha256() -> String {
         (
             "ordinary_facts/totem_varieties.rs",
             include_bytes!("ordinary_facts/totem_varieties.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/monster_scaling.rs",
+            include_bytes!("ordinary_facts/monster_scaling.rs").as_slice(),
+        ),
+        (
+            "catalog/monster_scaling.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/monster_scaling.rs").as_slice(),
         ),
         (
             "ordinary_facts/stat_set_codec/policy.rs",
