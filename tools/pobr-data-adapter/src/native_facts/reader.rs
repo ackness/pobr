@@ -41,3 +41,8 @@ pub(crate) fn json_bytes(value: &impl serde::Serialize) -> Result<Vec<u8>, Strin
 pub(crate) fn require_absent(path: &Path) -> Result<(), String> {
     trust::require_absent(path)
 }
+
+/// Reuse the envelope decoder for pinned auxiliary policy JSON, including duplicate-key rejection.
+pub(crate) fn strict_json(bytes: &[u8]) -> Result<serde_json::Value, String> {
+    trust::strict_json(bytes)
+}

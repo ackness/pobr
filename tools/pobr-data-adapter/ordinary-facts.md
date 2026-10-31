@@ -5,7 +5,9 @@
 `--ordinary-domain stats-mods` to select that same domain explicitly, or
 `--ordinary-domain base-items` for the existing item DTOs described in
 [ordinary-base-items.md](ordinary-base-items.md), or `--ordinary-domain skills`
-for the five ordinary skill files described in [ordinary-skills.md](ordinary-skills.md).
+for the five ordinary skill files described in [ordinary-skills.md](ordinary-skills.md),
+or `--ordinary-domain gem-quality` with the explicitly pinned target policy in
+[ordinary-quality.md](ordinary-quality.md).
 Each call produces only its
 selected domain for later assembly into an ordinary runtime package. It does
 not produce a complete GameData/BuildData package or a restricted runtime profile.
@@ -29,7 +31,8 @@ unchanged.
 An invalid, missing-value or repeated `--ordinary-domain` is an error. Omitting
 it preserves the Stats/Mods JSON, marker and receipt content except for the
 compiled implementation revision. The sections below describe Stats/Mods;
-base-items and skills use the same verification/output boundary with their own table subsets.
+base-items, skills and gem-quality use the same verification/output boundary
+with their own table subsets. Quality-only options are rejected by other domains.
 
 ## Input and checks
 
