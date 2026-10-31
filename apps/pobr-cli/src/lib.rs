@@ -13,6 +13,8 @@
 //! - [`encode_code`] / [`decode_code`]: wrap PoB Build Code encoding/decoding.
 //! - [`calculate_build_detailed`]: a full build from its code, with the
 //!   breakdowns of the stats asked for ([`render_breakdowns`] prints them).
+//! - [`native::calculate_native_document`]: strict native JSON and explicit game data,
+//!   returning the complete conditional skill result as JSON after fresh admission.
 
 use std::path::PathBuf;
 
@@ -34,6 +36,7 @@ use serde::Serialize;
 use thiserror::Error;
 
 mod breakdown;
+pub mod native;
 mod usage;
 
 pub use breakdown::{BuildDetail, StatBreakdownEntry, render_breakdowns};
@@ -59,6 +62,12 @@ pub enum CliError {
     /// Game data failed to load (missing data dir / JSON deserialization failure).
     #[error("game data load error: {0}")]
     GameData(#[from] pobr_gamedata::LoadError),
+    /// Strict native JSON decoding or document validation failed.
+    #[error("native build document error: {0}")]
+    NativeDocument(#[from] pobr_build::native_document::NativeDocumentError),
+    /// Native admission or the shared conditional skill calculation failed.
+    #[error("native skill error: {0}")]
+    NativeSkill(String),
 }
 
 // calculate
