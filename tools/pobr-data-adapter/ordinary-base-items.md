@@ -13,8 +13,9 @@ mise exec -- cargo run --locked -p pobr-data-adapter -- \
   --out /absolute/path/to/existing-parent/fresh-base-items
 ```
 
-`--ordinary-domain` accepts only `stats-mods` and `base-items`; omission means
-`stats-mods`. Modes cannot be combined. The existing manifest/lock/decoder pins,
+`--ordinary-domain` accepts `stats-mods`, `base-items` and
+[`skills`](ordinary-skills.md); omission means `stats-mods`. Modes cannot be combined.
+The existing manifest/lock/decoder pins,
 target patch equality, fresh-directory requirement, directory-handle protection
 and validation-before-write rules still apply. No implicit source search,
 vendor extraction, download, production manifest, translations or CURRENT write

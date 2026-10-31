@@ -7,12 +7,10 @@
 //! level requires comes from `ItemExperiencePerLevel`, by the gem's
 //! `ItemExperienceType`.
 
-use std::path::Path;
-
 use pobr_data::catalog::SkillGemDef;
 use serde::Deserialize;
 
-use crate::{is_placeholder, read_json};
+use crate::is_placeholder;
 
 use super::clamp_u32;
 
@@ -79,14 +77,15 @@ struct RawGemTag {
 /// Adapts the `SkillGems` table into id-sorted gem definitions (returns `(entries, raw row total)`).
 /// `effect_ids` is `GrantedEffects` row index -> id.
 pub(super) fn adapt_gems(
-    en: &Path,
+    en: &(impl super::SkillTables + ?Sized),
     base_ids: &[(String, String)],
     effect_ids: &[String],
 ) -> Result<(Vec<SkillGemDef>, usize), String> {
-    let raw_gems = read_json::<Vec<RawSkillGem>>(&en.join("SkillGems.json"))?;
+    let raw_gems = en.read_table::<RawSkillGem>("SkillGems")?;
     let gems_total = raw_gems.len();
-    let gem_effects = read_json::<Vec<RawGemEffect>>(&en.join("GemEffects.json"))?;
-    let tag_ids: Vec<String> = read_json::<Vec<RawGemTag>>(&en.join("GemTags.json"))?
+    let gem_effects = en.read_table::<RawGemEffect>("GemEffects")?;
+    let tag_ids: Vec<String> = en
+        .read_table::<RawGemTag>("GemTags")?
         .into_iter()
         .map(|tag| tag.id)
         .collect();
@@ -163,8 +162,10 @@ pub(super) fn adapt_gems(
 /// list only some levels (Cast when Stunned's lists gem level 11 at character
 /// level 41); a level it doesn't list requires what the level before it does,
 /// nothing before the first listed.
-fn level_requirements(en: &Path) -> Result<std::collections::HashMap<usize, Vec<u32>>, String> {
-    let rows = read_json::<Vec<RawItemExperienceLevel>>(&en.join("ItemExperiencePerLevel.json"))?;
+fn level_requirements(
+    en: &(impl super::SkillTables + ?Sized),
+) -> Result<std::collections::HashMap<usize, Vec<u32>>, String> {
+    let rows = en.read_table::<RawItemExperienceLevel>("ItemExperiencePerLevel")?;
     let mut by_type: std::collections::HashMap<usize, Vec<u32>> = std::collections::HashMap::new();
     let mut listed: Vec<(usize, usize, u32)> = rows
         .into_iter()
@@ -249,7 +250,7 @@ mod tests {
                 ),
             ],
         );
-        let (gems, total) = adapt_gems(&dir, &base_ids(), &effect_ids()).unwrap();
+        let (gems, total) = adapt_gems(dir.as_path(), &base_ids(), &effect_ids()).unwrap();
         assert_eq!(total, 2);
         let rain = &gems[0];
         assert_eq!(rain.id, "Metadata/Items/Gems/SkillGemRain");
@@ -289,7 +290,7 @@ mod tests {
                 ("ItemExperiencePerLevel.json", json!([])),
             ],
         );
-        let error = adapt_gems(&dir, &base_ids(), &effect_ids()).unwrap_err();
+        let error = adapt_gems(dir.as_path(), &base_ids(), &effect_ids()).unwrap_err();
         assert!(error.contains("2 rows of GemEffects"), "{error}");
     }
 }

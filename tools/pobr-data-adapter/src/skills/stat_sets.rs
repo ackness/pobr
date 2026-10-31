@@ -9,8 +9,6 @@ use pobr_data::catalog::{
 };
 use serde::Deserialize;
 
-use crate::read_json;
-
 /// A set with fewer level rows than this is resolved at the level of whoever
 /// uses it (a gem's set has a row per gem level). The tables give each row
 /// an actor level and each stat an interpolation, but the export has
@@ -115,7 +113,10 @@ pub struct StatSetsBundle {
     pub damage_levels_total: usize,
 }
 
-fn adapt_labels(en: &Path, sets: &[RawStatSet]) -> Result<Vec<Option<String>>, String> {
+fn adapt_labels(
+    en: &(impl super::SkillTables + ?Sized),
+    sets: &[RawStatSet],
+) -> Result<Vec<Option<String>>, String> {
     #[derive(Deserialize)]
     struct RawLabel {
         #[serde(rename = "_index")]
@@ -129,7 +130,7 @@ fn adapt_labels(en: &Path, sets: &[RawStatSet]) -> Result<Vec<Option<String>>, S
     if !sets.iter().any(|set| set.label.is_some_and(|i| i >= 0)) {
         return Ok(vec![None; sets.len()]);
     }
-    let rows = read_json::<Vec<RawLabel>>(&en.join("GrantedEffectLabels.json"))?;
+    let rows = en.read_table::<RawLabel>("GrantedEffectLabels")?;
     let mut labels = BTreeMap::new();
     for row in rows {
         if labels.insert(row.index, row.text).is_some() {
@@ -178,7 +179,7 @@ fn adapt_labels(en: &Path, sets: &[RawStatSet]) -> Result<Vec<Option<String>>, S
 /// T5-owned file) without touching existing logic; T5's multi-statSet
 /// overhaul should align the call sites accordingly.
 pub(super) fn crit_from_statset_levels(
-    en: &Path,
+    en: &(impl super::SkillTables + ?Sized),
 ) -> Result<BTreeMap<String, BTreeMap<u32, f64>>, String> {
     /// A minimal row read for just the two crit columns (kept separate from
     /// [`RawStatSetPerLevel`]: this function only cares about crit columns).
@@ -206,7 +207,7 @@ pub(super) fn crit_from_statset_levels(
         additional_stat_sets: Vec<i64>,
     }
 
-    let rows = read_json::<Vec<RawCritRow>>(&en.join("GrantedEffectStatSetsPerLevel.json"))?;
+    let rows = en.read_table::<RawCritRow>("GrantedEffectStatSetsPerLevel")?;
     // set row index -> {gem level -> crit chance} (a later write at the same
     // level overwrites within file order; Offhand overrides the primary column within a row).
     let mut crit_by_set: BTreeMap<usize, BTreeMap<u32, f64>> = BTreeMap::new();
@@ -228,7 +229,7 @@ pub(super) fn crit_from_statset_levels(
         }
     }
 
-    let links = read_json::<Vec<RawEffectSetLink>>(&en.join("GrantedEffects.json"))?;
+    let links = en.read_table::<RawEffectSetLink>("GrantedEffects")?;
     let mut out: BTreeMap<String, BTreeMap<u32, f64>> = BTreeMap::new();
     for link in links {
         if link.id.is_empty() {
@@ -282,22 +283,27 @@ pub(super) fn crit_from_statset_levels(
 /// main set's content matches the single-set era value-for-value — the
 /// consumption side defaults to the main set, which is the migration invariant).
 pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
+    adapt_stat_sets_from(en)
+}
+
+pub(crate) fn adapt_stat_sets_from(
+    en: &(impl super::SkillTables + ?Sized),
+) -> Result<StatSetsBundle, String> {
     // stat row index -> stable id (positioned by `_index`, out-of-range entries stay an empty string).
-    let raw_stats = read_json::<Vec<RawStatId>>(&en.join("Stats.json"))?;
+    let raw_stats = en.read_table::<RawStatId>("Stats")?;
     let max_stat = raw_stats.iter().map(|r| r.index).max().map_or(0, |m| m + 1);
     let mut stat_id = vec![String::new(); max_stat];
     for r in &raw_stats {
         stat_id[r.index] = r.id.clone();
     }
 
-    let sets = read_json::<Vec<RawStatSet>>(&en.join("GrantedEffectStatSets.json"))?;
+    let sets = en.read_table::<RawStatSet>("GrantedEffectStatSets")?;
     let labels = adapt_labels(en, &sets)?;
     let sets_total = sets.len();
-    let links = read_json::<Vec<RawGrantedEffectStatSetLink>>(&en.join("GrantedEffects.json"))?;
+    let links = en.read_table::<RawGrantedEffectStatSetLink>("GrantedEffects")?;
 
     // Per-level rows are grouped by StatSet row index (file order = vendor's GetRowList order, the basis for positional pairing).
-    let per_level =
-        read_json::<Vec<RawStatSetPerLevel>>(&en.join("GrantedEffectStatSetsPerLevel.json"))?;
+    let per_level = en.read_table::<RawStatSetPerLevel>("GrantedEffectStatSetsPerLevel")?;
     let mut rows_by_set: BTreeMap<usize, Vec<&RawStatSetPerLevel>> = BTreeMap::new();
     for row in &per_level {
         if let Some(si) = row.stat_set {

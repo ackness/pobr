@@ -1,0 +1,317 @@
+{
+  "BaseItemTypes": {
+    "table": "BaseItemTypes",
+    "raw_resource": "Data/Balance/BaseItemTypes.datc64",
+    "row_key": "_row",
+    "physical_fields": ["Id", "Name"],
+    "validation": {"rows": 5, "warnings": [], "schema_row_bytes": 1, "actual_row_bytes": 1},
+    "columns": [
+      {"source_column": 0, "physical_fields": ["Id"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "Id", "references": null, "type": "string", "unique": true, "until": null}},
+      {"source_column": 1, "physical_fields": ["Name"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": true, "name": "Name", "references": null, "type": "string", "unique": false, "until": null}}
+    ],
+    "rows": [
+      {"_row": 0, "values": {"Id": "Metadata/Attack", "Name": "Same Name"}},
+      {"_row": 1, "values": {"Id": "Metadata/Support", "Name": "Same Name"}},
+      {"_row": 2, "values": {"Id": "Metadata/Minion", "Name": "Minion"}},
+      {"_row": 3, "values": {"Id": "Metadata/Compound", "Name": "Compound"}},
+      {"_row": 4, "values": {"Id": "Metadata/Dev", "Name": "[DNT] Placeholder"}}
+    ]
+  },
+  "SkillGems": {
+    "table": "SkillGems",
+    "raw_resource": "Data/Balance/SkillGems.datc64",
+    "row_key": "_row",
+    "physical_fields": ["BaseItemType", "GemType", "GemColour", "MinLevelReq", "StrengthRequirementPercent", "DexterityRequirementPercent", "IntelligenceRequirementPercent", "GemEffects", "ItemExperienceType"],
+    "validation": {"rows": 5, "warnings": [], "schema_row_bytes": 1, "actual_row_bytes": 1},
+    "columns": [
+      {"source_column": 0, "physical_fields": ["BaseItemType"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "BaseItemType", "references": {"table": "BaseItemTypes"}, "type": "foreignrow", "unique": true, "until": null}},
+      {"source_column": 1, "physical_fields": ["GemType"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "GemType", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 2, "physical_fields": ["GemColour"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "GemColour", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 3, "physical_fields": ["MinLevelReq"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "MinLevelReq", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 4, "physical_fields": ["StrengthRequirementPercent"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "StrengthRequirementPercent", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 5, "physical_fields": ["DexterityRequirementPercent"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "DexterityRequirementPercent", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 6, "physical_fields": ["IntelligenceRequirementPercent"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "IntelligenceRequirementPercent", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 7, "physical_fields": ["GemEffects"], "schema": {"array": true, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "GemEffects", "references": {"table": "GemEffects"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 8, "physical_fields": ["ItemExperienceType"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "ItemExperienceType", "references": {"table": "ItemExperienceTypes"}, "type": "foreignrow", "unique": false, "until": null}}
+    ],
+    "rows": [
+      {"_row": 0, "values": {"BaseItemType": 3, "GemType": 0, "GemColour": 3, "MinLevelReq": 5, "StrengthRequirementPercent": 20, "DexterityRequirementPercent": 30, "IntelligenceRequirementPercent": 50, "GemEffects": [1], "ItemExperienceType": 0}},
+      {"_row": 1, "values": {"BaseItemType": 0, "GemType": 0, "GemColour": 1, "MinLevelReq": 0, "StrengthRequirementPercent": 100, "DexterityRequirementPercent": 0, "IntelligenceRequirementPercent": 0, "GemEffects": [2], "ItemExperienceType": 0}},
+      {"_row": 2, "values": {"BaseItemType": 1, "GemType": 1, "GemColour": 2, "MinLevelReq": 1, "StrengthRequirementPercent": 0, "DexterityRequirementPercent": 100, "IntelligenceRequirementPercent": 0, "GemEffects": [0], "ItemExperienceType": 1}},
+      {"_row": 3, "values": {"BaseItemType": 2, "GemType": 0, "GemColour": 3, "MinLevelReq": 2, "StrengthRequirementPercent": 0, "DexterityRequirementPercent": 0, "IntelligenceRequirementPercent": 100, "GemEffects": [3], "ItemExperienceType": 0}},
+      {"_row": 4, "values": {"BaseItemType": 4, "GemType": 0, "GemColour": 4, "MinLevelReq": 0, "StrengthRequirementPercent": 0, "DexterityRequirementPercent": 0, "IntelligenceRequirementPercent": 0, "GemEffects": [4], "ItemExperienceType": 0}}
+    ]
+  },
+  "GemEffects": {
+    "table": "GemEffects",
+    "raw_resource": "Data/Balance/GemEffects.datc64",
+    "row_key": "_row",
+    "physical_fields": ["Id", "GrantedEffect", "AdditionalGrantedEffects", "GemTags"],
+    "validation": {"rows": 5, "warnings": [], "schema_row_bytes": 1, "actual_row_bytes": 1},
+    "columns": [
+      {"source_column": 0, "physical_fields": ["Id"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "Id", "references": null, "type": "string", "unique": true, "until": null}},
+      {"source_column": 1, "physical_fields": ["GrantedEffect"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "GrantedEffect", "references": {"table": "GrantedEffects"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 2, "physical_fields": ["AdditionalGrantedEffects"], "schema": {"array": true, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "AdditionalGrantedEffects", "references": {"table": "GrantedEffects"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 3, "physical_fields": ["GemTags"], "schema": {"array": true, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "GemTags", "references": {"table": "GemTags"}, "type": "foreignrow", "unique": false, "until": null}}
+    ],
+    "rows": [
+      {"_row": 0, "values": {"Id": "SupportVariant", "GrantedEffect": 1, "AdditionalGrantedEffects": [], "GemTags": [1]}},
+      {"_row": 1, "values": {"Id": "CompoundVariant", "GrantedEffect": 3, "AdditionalGrantedEffects": [4, 0], "GemTags": [3, 2]}},
+      {"_row": 2, "values": {"Id": "AttackVariant", "GrantedEffect": 0, "AdditionalGrantedEffects": [], "GemTags": [0]}},
+      {"_row": 3, "values": {"Id": "MinionVariant", "GrantedEffect": 2, "AdditionalGrantedEffects": [], "GemTags": [2, 3]}},
+      {"_row": 4, "values": {"Id": "DevVariant", "GrantedEffect": 5, "AdditionalGrantedEffects": [], "GemTags": []}}
+    ]
+  },
+  "GemTags": {
+    "table": "GemTags",
+    "raw_resource": "Data/Balance/GemTags.datc64",
+    "row_key": "_row",
+    "physical_fields": ["Id"],
+    "validation": {"rows": 4, "warnings": [], "schema_row_bytes": 1, "actual_row_bytes": 1},
+    "columns": [
+      {"source_column": 0, "physical_fields": ["Id"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "Id", "references": null, "type": "string", "unique": true, "until": null}}
+    ],
+    "rows": [
+      {"_row": 0, "values": {"Id": "attack"}},
+      {"_row": 1, "values": {"Id": "support"}},
+      {"_row": 2, "values": {"Id": "minion"}},
+      {"_row": 3, "values": {"Id": "spell"}}
+    ]
+  },
+  "ItemExperienceTypes": {
+    "table": "ItemExperienceTypes",
+    "raw_resource": "Data/Balance/ItemExperienceTypes.datc64",
+    "row_key": "_row",
+    "physical_fields": ["Id"],
+    "validation": {"rows": 2, "warnings": [], "schema_row_bytes": 1, "actual_row_bytes": 1},
+    "columns": [
+      {"source_column": 0, "physical_fields": ["Id"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "Id", "references": null, "type": "string", "unique": true, "until": null}}
+    ],
+    "rows": [
+      {"_row": 0, "values": {"Id": "MainXP"}},
+      {"_row": 1, "values": {"Id": "SupportXP"}}
+    ]
+  },
+  "ItemExperiencePerLevel": {
+    "table": "ItemExperiencePerLevel",
+    "raw_resource": "Data/Balance/ItemExperiencePerLevel.datc64",
+    "row_key": "_row",
+    "physical_fields": ["ItemExperienceType", "ItemCurrentLevel", "Level"],
+    "validation": {"rows": 5, "warnings": [], "schema_row_bytes": 1, "actual_row_bytes": 1},
+    "columns": [
+      {"source_column": 0, "physical_fields": ["ItemExperienceType"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "ItemExperienceType", "references": {"table": "ItemExperienceTypes"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 1, "physical_fields": ["ItemCurrentLevel"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "ItemCurrentLevel", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 2, "physical_fields": ["Level"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "Level", "references": null, "type": "i32", "unique": false, "until": null}}
+    ],
+    "rows": [
+      {"_row": 0, "values": {"ItemExperienceType": 0, "ItemCurrentLevel": 3, "Level": 7}},
+      {"_row": 1, "values": {"ItemExperienceType": 1, "ItemCurrentLevel": 2, "Level": 10}},
+      {"_row": 2, "values": {"ItemExperienceType": 0, "ItemCurrentLevel": 1, "Level": 0}},
+      {"_row": 3, "values": {"ItemExperienceType": 0, "ItemCurrentLevel": 4, "Level": 5}},
+      {"_row": 4, "values": {"ItemExperienceType": 1, "ItemCurrentLevel": 0, "Level": 0}}
+    ]
+  },
+  "GrantedEffects": {
+    "table": "GrantedEffects",
+    "raw_resource": "Data/Balance/GrantedEffects.datc64",
+    "row_key": "_row",
+    "physical_fields": ["Id", "IsSupport", "ActiveSkill", "CastTime", "AllowedActiveSkillTypes", "AddedActiveSkillTypes", "ExcludedActiveSkillTypes", "CannotBeSupported", "SupportsGemsOnly", "IgnoreMinionTypes", "StatSet", "AdditionalStatSets", "CostTypes"],
+    "validation": {"rows": 6, "warnings": [], "schema_row_bytes": 1, "actual_row_bytes": 1},
+    "columns": [
+      {"source_column": 0, "physical_fields": ["Id"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "Id", "references": null, "type": "string", "unique": true, "until": null}},
+      {"source_column": 1, "physical_fields": ["IsSupport"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "IsSupport", "references": null, "type": "bool", "unique": false, "until": null}},
+      {"source_column": 2, "physical_fields": ["ActiveSkill"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "ActiveSkill", "references": {"table": "ActiveSkills"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 3, "physical_fields": ["CastTime"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "CastTime", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 4, "physical_fields": ["AllowedActiveSkillTypes"], "schema": {"array": true, "description": "This support gem only supports active skills with at least one of these types", "file": null, "files": null, "interval": false, "localized": false, "name": "AllowedActiveSkillTypes", "references": {"table": "ActiveSkillType"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 5, "physical_fields": ["AddedActiveSkillTypes"], "schema": {"array": true, "description": "This support gem adds these types to supported active skills", "file": null, "files": null, "interval": false, "localized": false, "name": "AddedActiveSkillTypes", "references": {"table": "ActiveSkillType"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 6, "physical_fields": ["ExcludedActiveSkillTypes"], "schema": {"array": true, "description": "This support gem does not support active skills with one of these types", "file": null, "files": null, "interval": false, "localized": false, "name": "ExcludedActiveSkillTypes", "references": {"table": "ActiveSkillType"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 7, "physical_fields": ["CannotBeSupported"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "CannotBeSupported", "references": null, "type": "bool", "unique": false, "until": null}},
+      {"source_column": 8, "physical_fields": ["SupportsGemsOnly"], "schema": {"array": false, "description": "This support gem only supports active skills that come from gem items", "file": null, "files": null, "interval": false, "localized": false, "name": "SupportsGemsOnly", "references": null, "type": "bool", "unique": false, "until": null}},
+      {"source_column": 9, "physical_fields": ["IgnoreMinionTypes"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "IgnoreMinionTypes", "references": null, "type": "bool", "unique": false, "until": null}},
+      {"source_column": 10, "physical_fields": ["StatSet"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "StatSet", "references": {"table": "GrantedEffectStatSets"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 11, "physical_fields": ["AdditionalStatSets"], "schema": {"array": true, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "AdditionalStatSets", "references": {"table": "GrantedEffectStatSets"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 12, "physical_fields": ["CostTypes"], "schema": {"array": true, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "CostTypes", "references": {"table": "CostTypes"}, "type": "foreignrow", "unique": false, "until": null}}
+    ],
+    "rows": [
+      {"_row": 0, "values": {"Id": "AttackPlayer", "IsSupport": false, "ActiveSkill": 1, "CastTime": 600, "AllowedActiveSkillTypes": [], "AddedActiveSkillTypes": [], "ExcludedActiveSkillTypes": [], "CannotBeSupported": false, "SupportsGemsOnly": false, "IgnoreMinionTypes": false, "StatSet": 1, "AdditionalStatSets": [], "CostTypes": [1, 0]}},
+      {"_row": 1, "values": {"Id": "SupportPlayer", "IsSupport": true, "ActiveSkill": null, "CastTime": 0, "AllowedActiveSkillTypes": [0, 1, 3], "AddedActiveSkillTypes": [2], "ExcludedActiveSkillTypes": [1, 5], "CannotBeSupported": false, "SupportsGemsOnly": true, "IgnoreMinionTypes": true, "StatSet": 2, "AdditionalStatSets": [], "CostTypes": []}},
+      {"_row": 2, "values": {"Id": "MinionPlayer", "IsSupport": false, "ActiveSkill": 0, "CastTime": 1000, "AllowedActiveSkillTypes": [], "AddedActiveSkillTypes": [], "ExcludedActiveSkillTypes": [], "CannotBeSupported": false, "SupportsGemsOnly": false, "IgnoreMinionTypes": false, "StatSet": 3, "AdditionalStatSets": [], "CostTypes": []}},
+      {"_row": 3, "values": {"Id": "CompoundPlayer", "IsSupport": false, "ActiveSkill": 2, "CastTime": 800, "AllowedActiveSkillTypes": [], "AddedActiveSkillTypes": [], "ExcludedActiveSkillTypes": [], "CannotBeSupported": false, "SupportsGemsOnly": false, "IgnoreMinionTypes": false, "StatSet": 4, "AdditionalStatSets": [0, 5], "CostTypes": [0]}},
+      {"_row": 4, "values": {"Id": "ExplosionPlayer", "IsSupport": false, "ActiveSkill": 3, "CastTime": 0, "AllowedActiveSkillTypes": [], "AddedActiveSkillTypes": [], "ExcludedActiveSkillTypes": [], "CannotBeSupported": true, "SupportsGemsOnly": false, "IgnoreMinionTypes": false, "StatSet": 5, "AdditionalStatSets": [], "CostTypes": []}},
+      {"_row": 5, "values": {"Id": "DevPlayer", "IsSupport": false, "ActiveSkill": null, "CastTime": 0, "AllowedActiveSkillTypes": [], "AddedActiveSkillTypes": [], "ExcludedActiveSkillTypes": [], "CannotBeSupported": false, "SupportsGemsOnly": false, "IgnoreMinionTypes": false, "StatSet": 6, "AdditionalStatSets": [], "CostTypes": []}}
+    ]
+  },
+  "ActiveSkills": {
+    "table": "ActiveSkills",
+    "raw_resource": "Data/Balance/ActiveSkills.datc64",
+    "row_key": "_row",
+    "physical_fields": ["Id", "DisplayedName", "ActiveSkillTypes"],
+    "validation": {"rows": 4, "warnings": [], "schema_row_bytes": 1, "actual_row_bytes": 1},
+    "columns": [
+      {"source_column": 0, "physical_fields": ["Id"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "Id", "references": null, "type": "string", "unique": true, "until": null}},
+      {"source_column": 1, "physical_fields": ["DisplayedName"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "DisplayedName", "references": null, "type": "string", "unique": false, "until": null}},
+      {"source_column": 2, "physical_fields": ["ActiveSkillTypes"], "schema": {"array": true, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "ActiveSkillTypes", "references": {"table": "ActiveSkillType"}, "type": "foreignrow", "unique": false, "until": null}}
+    ],
+    "rows": [
+      {"_row": 0, "values": {"Id": "MinionActive", "DisplayedName": null, "ActiveSkillTypes": [2, 1]}},
+      {"_row": 1, "values": {"Id": "AttackActive", "DisplayedName": "Attack name", "ActiveSkillTypes": [0]}},
+      {"_row": 2, "values": {"Id": "CompoundActive", "DisplayedName": "Compound name", "ActiveSkillTypes": [1]}},
+      {"_row": 3, "values": {"Id": "ExplosionActive", "DisplayedName": "", "ActiveSkillTypes": [1]}}
+    ]
+  },
+  "ActiveSkillType": {
+    "table": "ActiveSkillType",
+    "raw_resource": "Data/Balance/ActiveSkillType.datc64",
+    "row_key": "_row",
+    "physical_fields": ["Id"],
+    "validation": {"rows": 6, "warnings": [], "schema_row_bytes": 1, "actual_row_bytes": 1},
+    "columns": [
+      {"source_column": 0, "physical_fields": ["Id"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "Id", "references": null, "type": "string", "unique": true, "until": null}}
+    ],
+    "rows": [
+      {"_row": 0, "values": {"Id": "Attack"}},
+      {"_row": 1, "values": {"Id": "Spell"}},
+      {"_row": 2, "values": {"Id": "Minion"}},
+      {"_row": 3, "values": {"Id": "AND"}},
+      {"_row": 4, "values": {"Id": "OR"}},
+      {"_row": 5, "values": {"Id": "NOT"}}
+    ]
+  },
+  "GrantedEffectsPerLevel": {
+    "table": "GrantedEffectsPerLevel",
+    "raw_resource": "Data/Balance/GrantedEffectsPerLevel.datc64",
+    "row_key": "_row",
+    "physical_fields": ["GrantedEffect", "Level", "Cooldown", "AttackTime", "CostAmounts", "AttackSpeedMultiplier", "CostMultiplier", "Reservation", "EffectOnPlayer", "StoredUses"],
+    "validation": {"rows": 8, "warnings": [], "schema_row_bytes": 1, "actual_row_bytes": 1},
+    "columns": [
+      {"source_column": 0, "physical_fields": ["GrantedEffect"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "GrantedEffect", "references": {"table": "GrantedEffects"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 1, "physical_fields": ["Level"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "Level", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 2, "physical_fields": ["Cooldown"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "Cooldown", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 3, "physical_fields": ["AttackTime"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "AttackTime", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 4, "physical_fields": ["CostAmounts"], "schema": {"array": true, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "CostAmounts", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 5, "physical_fields": ["AttackSpeedMultiplier"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "AttackSpeedMultiplier", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 6, "physical_fields": ["CostMultiplier"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "CostMultiplier", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 7, "physical_fields": ["Reservation"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "Reservation", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 8, "physical_fields": ["EffectOnPlayer"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "EffectOnPlayer", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 9, "physical_fields": ["StoredUses"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "StoredUses", "references": null, "type": "i32", "unique": false, "until": null}}
+    ],
+    "rows": [
+      {"_row": 0, "values": {"GrantedEffect": 0, "Level": 2, "Cooldown": 10, "AttackTime": 800, "CostAmounts": [6, 120], "AttackSpeedMultiplier": -50, "CostMultiplier": 75, "Reservation": 12, "EffectOnPlayer": 90, "StoredUses": 2}},
+      {"_row": 1, "values": {"GrantedEffect": 3, "Level": 1, "Cooldown": 0, "AttackTime": 0, "CostAmounts": [30], "AttackSpeedMultiplier": 0, "CostMultiplier": 100, "Reservation": 0, "EffectOnPlayer": 100, "StoredUses": 0}},
+      {"_row": 2, "values": {"GrantedEffect": 2, "Level": 1, "Cooldown": 0, "AttackTime": 0, "CostAmounts": [], "AttackSpeedMultiplier": 0, "CostMultiplier": 100, "Reservation": 0, "EffectOnPlayer": 100, "StoredUses": 0}},
+      {"_row": 3, "values": {"GrantedEffect": 0, "Level": 1, "Cooldown": 0, "AttackTime": 0, "CostAmounts": [0, 0], "AttackSpeedMultiplier": 0, "CostMultiplier": 100, "Reservation": 0, "EffectOnPlayer": 100, "StoredUses": 0}},
+      {"_row": 4, "values": {"GrantedEffect": 1, "Level": 1, "Cooldown": 0, "AttackTime": 0, "CostAmounts": [], "AttackSpeedMultiplier": 0, "CostMultiplier": 100, "Reservation": 0, "EffectOnPlayer": 100, "StoredUses": 0}},
+      {"_row": 5, "values": {"GrantedEffect": 5, "Level": 1, "Cooldown": 0, "AttackTime": 0, "CostAmounts": [], "AttackSpeedMultiplier": 0, "CostMultiplier": 100, "Reservation": 0, "EffectOnPlayer": 100, "StoredUses": 0}},
+      {"_row": 6, "values": {"GrantedEffect": 4, "Level": 1, "Cooldown": 0, "AttackTime": 0, "CostAmounts": [], "AttackSpeedMultiplier": 0, "CostMultiplier": 100, "Reservation": 0, "EffectOnPlayer": 100, "StoredUses": 0}},
+      {"_row": 7, "values": {"GrantedEffect": 0, "Level": 0, "Cooldown": 0, "AttackTime": 0, "CostAmounts": [0, 0], "AttackSpeedMultiplier": 0, "CostMultiplier": 100, "Reservation": 0, "EffectOnPlayer": 100, "StoredUses": 0}}
+    ]
+  },
+  "GrantedEffectStatSets": {
+    "table": "GrantedEffectStatSets",
+    "raw_resource": "Data/Balance/GrantedEffectStatSets.datc64",
+    "row_key": "_row",
+    "physical_fields": ["Id", "Label", "BaseEffectiveness", "IncrementalEffectiveness", "DamageIncrementalEffectiveness", "ImplicitStats", "ConstantStats", "ConstantStatsValues", "IgnoredStats"],
+    "validation": {"rows": 7, "warnings": [], "schema_row_bytes": 1, "actual_row_bytes": 1},
+    "columns": [
+      {"source_column": 0, "physical_fields": ["Id"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "Id", "references": null, "type": "string", "unique": true, "until": null}},
+      {"source_column": 1, "physical_fields": ["Label"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "Label", "references": {"table": "GrantedEffectLabels"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 2, "physical_fields": ["BaseEffectiveness"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "BaseEffectiveness", "references": null, "type": "f32", "unique": false, "until": null}},
+      {"source_column": 3, "physical_fields": ["IncrementalEffectiveness"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "IncrementalEffectiveness", "references": null, "type": "f32", "unique": false, "until": null}},
+      {"source_column": 4, "physical_fields": ["DamageIncrementalEffectiveness"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "DamageIncrementalEffectiveness", "references": null, "type": "f32", "unique": false, "until": null}},
+      {"source_column": 5, "physical_fields": ["ImplicitStats"], "schema": {"array": true, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "ImplicitStats", "references": {"table": "Stats"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 6, "physical_fields": ["ConstantStats"], "schema": {"array": true, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "ConstantStats", "references": {"table": "Stats"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 7, "physical_fields": ["ConstantStatsValues"], "schema": {"array": true, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "ConstantStatsValues", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 8, "physical_fields": ["IgnoredStats"], "schema": {"array": true, "description": "Values for these stats are NOT copied from the base StatSet of the GrantedEffect", "file": null, "files": null, "interval": false, "localized": false, "name": "IgnoredStats", "references": {"table": "Stats"}, "type": "foreignrow", "unique": false, "until": null}}
+    ],
+    "rows": [
+      {"_row": 0, "values": {"Id": "AlternateA", "Label": 0, "BaseEffectiveness": 1.0, "IncrementalEffectiveness": 0.0, "DamageIncrementalEffectiveness": 0.0, "ImplicitStats": [1, 2], "ConstantStats": [0], "ConstantStatsValues": [-5], "IgnoredStats": [0, 0, 1]}},
+      {"_row": 1, "values": {"Id": "AttackMain", "Label": 1, "BaseEffectiveness": 2.0, "IncrementalEffectiveness": 0.1, "DamageIncrementalEffectiveness": 0.02, "ImplicitStats": [1, 1], "ConstantStats": [0], "ConstantStatsValues": [3], "IgnoredStats": []}},
+      {"_row": 2, "values": {"Id": "SupportMain", "Label": null, "BaseEffectiveness": 0.0, "IncrementalEffectiveness": 0.0, "DamageIncrementalEffectiveness": 0.0, "ImplicitStats": [2], "ConstantStats": [4], "ConstantStatsValues": [-20], "IgnoredStats": []}},
+      {"_row": 3, "values": {"Id": "MinionMain", "Label": null, "BaseEffectiveness": 2.5, "IncrementalEffectiveness": 0.2, "DamageIncrementalEffectiveness": 0.03, "ImplicitStats": [2], "ConstantStats": [], "ConstantStatsValues": [], "IgnoredStats": []}},
+      {"_row": 4, "values": {"Id": "CompoundMain", "Label": 1, "BaseEffectiveness": 3.0, "IncrementalEffectiveness": 0.0, "DamageIncrementalEffectiveness": 0.0, "ImplicitStats": [1, 1], "ConstantStats": [0], "ConstantStatsValues": [10], "IgnoredStats": []}},
+      {"_row": 5, "values": {"Id": "AlternateB", "Label": 2, "BaseEffectiveness": 4.0, "IncrementalEffectiveness": 0.0, "DamageIncrementalEffectiveness": 0.0, "ImplicitStats": [], "ConstantStats": [3], "ConstantStatsValues": [8], "IgnoredStats": []}},
+      {"_row": 6, "values": {"Id": "EmptySet", "Label": null, "BaseEffectiveness": 0.0, "IncrementalEffectiveness": 0.0, "DamageIncrementalEffectiveness": 0.0, "ImplicitStats": [], "ConstantStats": [], "ConstantStatsValues": [], "IgnoredStats": []}}
+    ]
+  },
+  "GrantedEffectStatSetsPerLevel": {
+    "table": "GrantedEffectStatSetsPerLevel",
+    "raw_resource": "Data/Balance/GrantedEffectStatSetsPerLevel.datc64",
+    "row_key": "_row",
+    "physical_fields": ["StatSet", "GemLevel", "FloatStats", "BaseResolvedValues", "FloatStatsValues", "AdditionalStats", "AdditionalStatsValues", "AdditionalFlags", "BaseMultiplier", "SpellCritChance", "AttackCritChance"],
+    "validation": {"rows": 10, "warnings": [], "schema_row_bytes": 1, "actual_row_bytes": 1},
+    "columns": [
+      {"source_column": 0, "physical_fields": ["StatSet"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "StatSet", "references": {"table": "GrantedEffectStatSets"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 1, "physical_fields": ["GemLevel"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "GemLevel", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 2, "physical_fields": ["FloatStats"], "schema": {"array": true, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "FloatStats", "references": {"table": "Stats"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 3, "physical_fields": ["BaseResolvedValues"], "schema": {"array": true, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "BaseResolvedValues", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 4, "physical_fields": ["FloatStatsValues"], "schema": {"array": true, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "FloatStatsValues", "references": null, "type": "f32", "unique": false, "until": null}},
+      {"source_column": 5, "physical_fields": ["AdditionalStats"], "schema": {"array": true, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "AdditionalStats", "references": {"table": "Stats"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 6, "physical_fields": ["AdditionalStatsValues"], "schema": {"array": true, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "AdditionalStatsValues", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 7, "physical_fields": ["AdditionalFlags"], "schema": {"array": true, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "AdditionalFlags", "references": {"table": "Stats"}, "type": "foreignrow", "unique": false, "until": null}},
+      {"source_column": 8, "physical_fields": ["BaseMultiplier"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "BaseMultiplier", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 9, "physical_fields": ["SpellCritChance"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "SpellCritChance", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 10, "physical_fields": ["AttackCritChance"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "AttackCritChance", "references": null, "type": "i32", "unique": false, "until": null}}
+    ],
+    "rows": [
+      {"_row": 0, "values": {"StatSet": 4, "GemLevel": 2, "FloatStats": [0], "BaseResolvedValues": [20], "FloatStatsValues": [2.0], "AdditionalStats": [0], "AdditionalStatsValues": [200], "AdditionalFlags": [1], "BaseMultiplier": 5000, "SpellCritChance": 0, "AttackCritChance": 0}},
+      {"_row": 1, "values": {"StatSet": 0, "GemLevel": 1, "FloatStats": [0], "BaseResolvedValues": [5], "FloatStatsValues": [0.5], "AdditionalStats": [], "AdditionalStatsValues": [], "AdditionalFlags": [2], "BaseMultiplier": 0, "SpellCritChance": 500, "AttackCritChance": 900}},
+      {"_row": 2, "values": {"StatSet": 1, "GemLevel": 1, "FloatStats": [0], "BaseResolvedValues": [7], "FloatStatsValues": [1.5], "AdditionalStats": [3], "AdditionalStatsValues": [-2], "AdditionalFlags": [1], "BaseMultiplier": -2500, "SpellCritChance": 500, "AttackCritChance": 600}},
+      {"_row": 3, "values": {"StatSet": 4, "GemLevel": 1, "FloatStats": [0], "BaseResolvedValues": [10], "FloatStatsValues": [1.0], "AdditionalStats": [0], "AdditionalStatsValues": [100], "AdditionalFlags": [1], "BaseMultiplier": 10000, "SpellCritChance": 0, "AttackCritChance": 0}},
+      {"_row": 4, "values": {"StatSet": 0, "GemLevel": 2, "FloatStats": [0], "BaseResolvedValues": [6], "FloatStatsValues": [0.6], "AdditionalStats": [], "AdditionalStatsValues": [], "AdditionalFlags": [], "BaseMultiplier": -10000, "SpellCritChance": -700, "AttackCritChance": 0}},
+      {"_row": 5, "values": {"StatSet": 3, "GemLevel": 1, "FloatStats": [0], "BaseResolvedValues": [12], "FloatStatsValues": [3.0], "AdditionalStats": [], "AdditionalStatsValues": [], "AdditionalFlags": [2], "BaseMultiplier": 0, "SpellCritChance": 0, "AttackCritChance": 0}},
+      {"_row": 6, "values": {"StatSet": 5, "GemLevel": 1, "FloatStats": [], "BaseResolvedValues": [], "FloatStatsValues": [], "AdditionalStats": [3], "AdditionalStatsValues": [9], "AdditionalFlags": [], "BaseMultiplier": 0, "SpellCritChance": 1200, "AttackCritChance": 0}},
+      {"_row": 7, "values": {"StatSet": 6, "GemLevel": 1, "FloatStats": [], "BaseResolvedValues": [], "FloatStatsValues": [], "AdditionalStats": [], "AdditionalStatsValues": [], "AdditionalFlags": [], "BaseMultiplier": 0, "SpellCritChance": 0, "AttackCritChance": 0}},
+      {"_row": 8, "values": {"StatSet": 1, "GemLevel": 2, "FloatStats": [0], "BaseResolvedValues": [8], "FloatStatsValues": [2.0], "AdditionalStats": [], "AdditionalStatsValues": [], "AdditionalFlags": [1], "BaseMultiplier": 0, "SpellCritChance": 500, "AttackCritChance": 0}},
+      {"_row": 9, "values": {"StatSet": 4, "GemLevel": 0, "FloatStats": [], "BaseResolvedValues": [], "FloatStatsValues": [], "AdditionalStats": [], "AdditionalStatsValues": [], "AdditionalFlags": [], "BaseMultiplier": 0, "SpellCritChance": 0, "AttackCritChance": 0}}
+    ]
+  },
+  "GrantedEffectLabels": {
+    "table": "GrantedEffectLabels",
+    "raw_resource": "Data/Balance/GrantedEffectLabels.datc64",
+    "row_key": "_row",
+    "physical_fields": ["Text"],
+    "validation": {"rows": 3, "warnings": [], "schema_row_bytes": 1, "actual_row_bytes": 1},
+    "columns": [
+      {"source_column": 0, "physical_fields": ["Text"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "Text", "references": null, "type": "string", "unique": false, "until": null}}
+    ],
+    "rows": [
+      {"_row": 0, "values": {"Text": "Alternate"}},
+      {"_row": 1, "values": {"Text": "Primary"}},
+      {"_row": 2, "values": {"Text": ""}}
+    ]
+  },
+  "Stats": {
+    "table": "Stats",
+    "raw_resource": "Data/Balance/Stats.datc64",
+    "row_key": "_row",
+    "physical_fields": ["Id"],
+    "validation": {"rows": 5, "warnings": [], "schema_row_bytes": 1, "actual_row_bytes": 1},
+    "columns": [
+      {"source_column": 0, "physical_fields": ["Id"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "Id", "references": null, "type": "string", "unique": true, "until": null}}
+    ],
+    "rows": [
+      {"_row": 0, "values": {"Id": "damage"}},
+      {"_row": 1, "values": {"Id": "flag"}},
+      {"_row": 2, "values": {"Id": "minion_flag"}},
+      {"_row": 3, "values": {"Id": "signed_stat"}},
+      {"_row": 4, "values": {"Id": "support_damage_final"}}
+    ]
+  },
+  "CostTypes": {
+    "table": "CostTypes",
+    "raw_resource": "Data/Balance/CostTypes.datc64",
+    "row_key": "_row",
+    "physical_fields": ["Id", "Divisor", "PerMinute"],
+    "validation": {"rows": 3, "warnings": [], "schema_row_bytes": 1, "actual_row_bytes": 1},
+    "columns": [
+      {"source_column": 0, "physical_fields": ["Id"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "Id", "references": null, "type": "string", "unique": true, "until": null}},
+      {"source_column": 1, "physical_fields": ["Divisor"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "Divisor", "references": null, "type": "i32", "unique": false, "until": null}},
+      {"source_column": 2, "physical_fields": ["PerMinute"], "schema": {"array": false, "description": null, "file": null, "files": null, "interval": false, "localized": false, "name": "PerMinute", "references": null, "type": "bool", "unique": false, "until": null}}
+    ],
+    "rows": [
+      {"_row": 0, "values": {"Id": "ZManaPerMinute", "Divisor": 60, "PerMinute": true}},
+      {"_row": 1, "values": {"Id": "ALife", "Divisor": 0, "PerMinute": false}},
+      {"_row": 2, "values": {"Id": "MiddleCost", "Divisor": -2, "PerMinute": false}}
+    ]
+  }
+}

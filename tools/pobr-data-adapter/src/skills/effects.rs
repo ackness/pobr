@@ -72,14 +72,14 @@ struct RawActiveSkillTwName {
 /// used by per-level rows to resolve the `GrantedEffect` foreign key (see
 /// [`super::levels`]).
 pub(super) fn adapt_effects(
-    en: &Path,
+    en: &(impl super::SkillTables + ?Sized),
     active_skills: &[RawActiveSkillName],
     skill_type_names: &[String],
 ) -> Result<(Vec<GrantedEffectDef>, usize, Vec<String>), String> {
     let active_ids: Vec<String> = active_skills.iter().map(|a| a.id.clone()).collect();
 
     // raw_effects is in file order, which is `_index` order; build the `_index -> Id` table first for per-level rows to resolve.
-    let raw_effects = read_json::<Vec<RawGrantedEffect>>(&en.join("GrantedEffects.json"))?;
+    let raw_effects = en.read_table::<RawGrantedEffect>("GrantedEffects")?;
     let effects_total = raw_effects.len();
     let effect_id_by_index: Vec<String> = raw_effects.iter().map(|r| r.id.clone()).collect();
 
@@ -89,11 +89,11 @@ pub(super) fn adapt_effects(
         #[serde(rename = "Id")]
         id: String,
     }
-    let stat_set_ids: Vec<String> =
-        read_json::<Vec<RawStatSetId>>(&en.join("GrantedEffectStatSets.json"))?
-            .into_iter()
-            .map(|r| r.id)
-            .collect();
+    let stat_set_ids: Vec<String> = en
+        .read_table::<RawStatSetId>("GrantedEffectStatSets")?
+        .into_iter()
+        .map(|r| r.id)
+        .collect();
 
     // Type-expression FK resolution: index -> `ActiveSkillType.Id` name
     // (AND/OR/NOT are special rows), preserving token order (postfix
@@ -231,7 +231,13 @@ struct RawCostType {
 /// Adapts `CostTypes.dat` into an index-ascending resource-type array (the
 /// target table for the [`GrantedEffectDef::cost_types`] foreign key). Indices are contiguous, so this lands directly into an ordered Vec.
 pub fn adapt_cost_types(en: &Path) -> Result<Vec<CostTypeDef>, String> {
-    let raw = read_json::<Vec<RawCostType>>(&en.join("CostTypes.json"))?;
+    adapt_cost_types_from(en)
+}
+
+pub(crate) fn adapt_cost_types_from(
+    en: &(impl super::SkillTables + ?Sized),
+) -> Result<Vec<CostTypeDef>, String> {
+    let raw = en.read_table::<RawCostType>("CostTypes")?;
     let max = raw.iter().map(|r| r.index).max().map_or(0, |m| m + 1);
     let mut out = vec![
         CostTypeDef {
