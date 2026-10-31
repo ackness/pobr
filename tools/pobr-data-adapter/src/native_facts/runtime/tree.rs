@@ -40,6 +40,10 @@ pub(super) fn project(
         .map(|node| node.graph_id)
         .collect::<BTreeSet<_>>();
     let mut supplied_ids = BTreeSet::new();
+    require(
+        official_nodes.contains_key("root"),
+        "official root connector is required",
+    )?;
     for (key, node) in official_nodes {
         if key == "root" {
             require(

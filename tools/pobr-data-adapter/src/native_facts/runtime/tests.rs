@@ -190,6 +190,8 @@ fn tree_case() -> (trust::VerifiedInput, super::super::model::Candidate, Value) 
     })).unwrap();
     let official = json!({"tree":"Default","nodes":{"62518":{"skill":62518,"id":"maximum_resistances1","group":1,"orbit":3,"orbitIndex":7,"out":[],"x":12.25,"y":-5.75}},
         "groups":{"1":{"x":0.0,"y":0.0,"nodes":["62518"]}},"classes":[]});
+    let mut official = official;
+    official["nodes"]["root"] = json!({"group":0,"orbit":0,"orbitIndex":0,"out":[]});
     (input, candidate, official)
 }
 
@@ -231,6 +233,104 @@ fn native_runtime_tree_requires_graph_agreement_and_ordinary_packet_context() {
         json!(true),
     );
     assert!(tree::project(&input, &candidate, &official, &"a".repeat(64), "0.5.5.5").is_err());
+}
+
+#[test]
+fn native_runtime_rejects_duplicates_before_building_runtime_vectors() {
+    for (table, row, key, value) in [
+        (
+            "GrantedEffectStatSetsPerLevel",
+            1467,
+            "FloatStats",
+            json!([1468, 1468]),
+        ),
+        (
+            "GrantedEffectStatSetsPerLevel",
+            1467,
+            "AdditionalStats",
+            json!([1468]),
+        ),
+        (
+            "GrantedEffectStatSets",
+            38,
+            "ConstantStats",
+            json!([347, 347, 11237, 18231, 18294, 20007, 21278]),
+        ),
+        (
+            "GrantedEffectStatSets",
+            38,
+            "ConstantStats",
+            json!([1468, 17186, 11237, 18231, 18294, 20007, 21278]),
+        ),
+        (
+            "GrantedEffectStatSets",
+            38,
+            "ImplicitStats",
+            json!([489, 489]),
+        ),
+        ("GrantedEffectStatSets", 38, "ImplicitStats", json!([347])),
+    ] {
+        let mut input = input();
+        mutate(&mut input, table, row, key, value);
+        assert!(
+            skills::project(&input)
+                .unwrap_err()
+                .contains("duplicate selected stat ID")
+        );
+    }
+}
+
+#[test]
+fn native_runtime_scalar_integer_channels_reject_fractions_and_width_overflow() {
+    for (table, row, fields) in [
+        (
+            "GrantedEffectStatSetsPerLevel",
+            1467,
+            &["SpellCritChance", "BaseMultiplier"][..],
+        ),
+        (
+            "GrantedEffectsPerLevel",
+            1301,
+            &[
+                "AttackSpeedMultiplier",
+                "CostMultiplier",
+                "Reservation",
+                "EffectOnPlayer",
+            ][..],
+        ),
+    ] {
+        for key in fields {
+            for value in [json!(900.5), json!(2147483648i64), json!(-2147483649i64)] {
+                let mut input = input();
+                mutate(&mut input, table, row, key, value);
+                assert!(
+                    skills::project(&input)
+                        .unwrap_err()
+                        .contains("physical signed i32"),
+                    "{table}.{key}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn native_runtime_official_connector_is_mandatory_and_never_allocatable() {
+    let (input, candidate, mut official) = tree_case();
+    assert_eq!(
+        tree::project(&input, &candidate, &official, &"a".repeat(64), "0.5.5.5")
+            .unwrap()
+            .nodes
+            .len(),
+        1
+    );
+    official["nodes"].as_object_mut().unwrap().remove("root");
+    assert!(
+        tree::project(&input, &candidate, &official, &"a".repeat(64), "0.5.5.5")
+            .err()
+            .unwrap()
+            .contains("root connector is required")
+    );
 }
 
 #[test]
@@ -314,14 +414,18 @@ fn native_runtime_coordinate_rounding_is_exact_and_null_slugs_are_not_definition
 }
 
 struct Scratch(std::path::PathBuf);
+static SCRATCH_SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 impl Scratch {
     fn new() -> Self {
         let suffix = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let path =
-            std::env::temp_dir().join(format!("pobr-runtime-{}-{suffix}", std::process::id()));
+        let sequence = SCRATCH_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let path = std::env::temp_dir().join(format!(
+            "pobr-runtime-{}-{suffix}-{sequence}",
+            std::process::id()
+        ));
         std::fs::create_dir(&path).unwrap();
         Self(path.canonicalize().unwrap())
     }

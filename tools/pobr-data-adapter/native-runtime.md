@@ -53,6 +53,10 @@ costs use native stable-ID joins. `BaseResolvedValues` supplies stored damage;
 multiplier. Constants and implicit stats stay separate. No PoB ordinal is
 assigned. The cold-infused branch, other levels/quality/supports/equipment remain
 outside this projection, with complete facts retained in the archive.
+The selected normalized stat IDs must be unique across resolved, constant and
+implicit channels; no duplicate/override policy is inferred. Physical signed-i32
+scalar fields are checked before unit conversion, alongside the i32 stat arrays.
+The non-allocatable official root connector is mandatory matching evidence.
 
 General tree modifier text is absent pending effective CSD selection/formatting.
 Ascendancy ownership, unlock constraints, class variants, attribute choices and

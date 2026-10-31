@@ -1,6 +1,6 @@
 //! Selected primary Spark branch from physical facts, with explicit normalization.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use pobr_data::catalog::*;
 use serde_json::{Value, json};
@@ -92,6 +92,20 @@ pub(super) fn project(input: &VerifiedInput) -> Result<Files, String> {
     )?;
     let constant_stats = paired(input, &set["ConstantStats"], &set["ConstantStatsValues"])?;
     let implicit_stats = ids(input, "Stats", &set["ImplicitStats"])?;
+    // This bounded profile has no source-backed duplicate/override policy.
+    // Never publish ambiguous amounts that downstream aggregation would sum.
+    let mut seen = BTreeSet::new();
+    for id in resolved
+        .iter()
+        .chain(&constant_stats)
+        .map(|stat| stat.stat.as_str())
+        .chain(implicit_stats.iter().map(String::as_str))
+    {
+        require(
+            seen.insert(id),
+            &format!("duplicate selected stat ID: {id}"),
+        )?;
+    }
     let label = if set["Label"].is_null() {
         None
     } else {
@@ -144,7 +158,7 @@ pub(super) fn project(input: &VerifiedInput) -> Result<Files, String> {
         cost_amounts: amounts.iter().map(unsigned).collect::<Result<_, _>>()?,
         attack_speed_multiplier: nonzero_number(&level["AttackSpeedMultiplier"])?,
         base_multiplier: None,
-        crit_chance: Some(number(&set_level["SpellCritChance"])? / 100.0),
+        crit_chance: Some(physical_i32(&set_level["SpellCritChance"])? / 100.0),
         mana_multiplier: nonneutral(&level["CostMultiplier"], 100.0)?,
         spirit_reservation_flat: nonzero_number(&level["Reservation"])?,
         reservation_multiplier: nonneutral(&level["EffectOnPlayer"], 100.0)?,
@@ -166,7 +180,7 @@ pub(super) fn project(input: &VerifiedInput) -> Result<Files, String> {
             implicit_stats,
             levels: vec![SkillStatSetLevel {
                 gem_level: 1,
-                damage_multiplier: 1.0 + number(&set_level["BaseMultiplier"])? / 10000.0,
+                damage_multiplier: 1.0 + physical_i32(&set_level["BaseMultiplier"])? / 10000.0,
                 stats: resolved,
                 per_effectiveness: vec![],
             }],
@@ -319,12 +333,19 @@ fn boolean(value: &Value) -> Result<bool, String> {
     value.as_bool().ok_or("expected boolean".into())
 }
 fn nonzero_number(value: &Value) -> Result<Option<f64>, String> {
-    let n = number(value)?;
+    let n = physical_i32(value)?;
     Ok((n != 0.0).then_some(n))
 }
 fn nonneutral(value: &Value, neutral: f64) -> Result<Option<f64>, String> {
-    let n = number(value)?;
+    let n = physical_i32(value)?;
     Ok((n != neutral).then_some(n - neutral))
+}
+fn physical_i32(value: &Value) -> Result<f64, String> {
+    value
+        .as_i64()
+        .and_then(|value| i32::try_from(value).ok())
+        .map(f64::from)
+        .ok_or_else(|| format!("expected physical signed i32, got {value}"))
 }
 fn reference(table: &str, index: usize) -> Value {
     json!({"payload":format!("tables/{table}.json"),"pointer":format!("/rows/{index}/values")})
