@@ -1,0 +1,449 @@
+{
+  "catalog": {
+    "domain": "passive-tree",
+    "meta_file": "passive_tree_meta.json",
+    "tree_compatibility_tag": "0_5",
+    "tree_file": "passive_tree.json"
+  },
+  "evidence": {
+    "existing_source_pointers": {
+      "path": "/Users/claw/codes/pobr/.cache/t3-supervision/ordinary-tree-source-pointers.md",
+      "sha256": "5a8ef64f90543c1057685bd6a18853bf77eabeeeaeed914a87002fad9f71a0a9"
+    },
+    "graph_structure_inspection": {
+      "path": ".cache/builddata-migration-stage/passive-tree/source-boundary.json",
+      "sha256": "32f84d1fa053be20e8998183938b3f9b4d6b1ed87cc218f1a25de7d71c9e4c1f"
+    },
+    "prepared_source_check": {
+      "path": ".cache/builddata-migration-stage/passive-tree/prepared-tree-source-check.json",
+      "sha256": "e0f0bca2c028b54c100a111088ad320f9e9084dc2d24c1e33977454803b9a16e"
+    }
+  },
+  "legacy_connection_exceptions": [
+    {
+      "expected_target_name": "Movement Speed",
+      "id": "AscendancyHuntress3Notable7",
+      "position": 0,
+      "role": "existing prepared reference outside emitted skills and variant aliases; preserve exact edge, do not emit target or certify reachability/eligibility",
+      "skill": 30233,
+      "source_entry_sha256": "0c3f7f463b26e8bacab514382a0c1c39bcda4d6673d0cbbaa36c1a93d5c7124a",
+      "source_pointer": "/2204/connections/0",
+      "source_row": 2204,
+      "target_passive_id": "AscendancyHuntress3Small7",
+      "target_row_evidence": 6684,
+      "target_skill": 30100
+    },
+    {
+      "expected_target_name": "Assassin",
+      "id": "six704",
+      "position": 1,
+      "role": "existing prepared reference outside emitted skills and variant aliases; preserve exact edge, do not emit target or certify reachability/eligibility",
+      "skill": 44683,
+      "source_entry_sha256": "114f773e531a069f800f0ef37362abc674c2c84b176b0177790a8d8c6c835d4d",
+      "source_pointer": "/3338/connections/1",
+      "source_row": 3338,
+      "target_passive_id": "AscendancyShadow1Start",
+      "target_row_evidence": 6031,
+      "target_skill": 5162
+    },
+    {
+      "expected_target_name": "Phantom",
+      "id": "six704",
+      "position": 4,
+      "role": "existing prepared reference outside emitted skills and variant aliases; preserve exact edge, do not emit target or certify reachability/eligibility",
+      "skill": 44683,
+      "source_entry_sha256": "114f773e531a069f800f0ef37362abc674c2c84b176b0177790a8d8c6c835d4d",
+      "source_pointer": "/3338/connections/4",
+      "source_row": 3338,
+      "target_passive_id": "AscendancyShadow2Start",
+      "target_row_evidence": 6032,
+      "target_skill": 45406
+    },
+    {
+      "expected_target_name": "Saboteur",
+      "id": "six704",
+      "position": 5,
+      "role": "existing prepared reference outside emitted skills and variant aliases; preserve exact edge, do not emit target or certify reachability/eligibility",
+      "skill": 44683,
+      "source_entry_sha256": "114f773e531a069f800f0ef37362abc674c2c84b176b0177790a8d8c6c835d4d",
+      "source_pointer": "/3338/connections/5",
+      "source_row": 3338,
+      "target_passive_id": "AscendancyShadow3Start",
+      "target_row_evidence": 6033,
+      "target_skill": 50198
+    },
+    {
+      "expected_target_name": "Warlord",
+      "id": "marauder594",
+      "position": 2,
+      "role": "existing prepared reference outside emitted skills and variant aliases; preserve exact edge, do not emit target or certify reachability/eligibility",
+      "skill": 47175,
+      "source_entry_sha256": "1d23aac164b86935c8a005eee15157de3e0c53647206a50cfa32db08abd7227c",
+      "source_pointer": "/3535/connections/2",
+      "source_row": 3535,
+      "target_passive_id": "AscendancyMarauder1Start",
+      "target_row_evidence": 6001,
+      "target_skill": 16732
+    },
+    {
+      "expected_target_name": "Chieftain",
+      "id": "marauder594",
+      "position": 6,
+      "role": "existing prepared reference outside emitted skills and variant aliases; preserve exact edge, do not emit target or certify reachability/eligibility",
+      "skill": 47175,
+      "source_entry_sha256": "1d23aac164b86935c8a005eee15157de3e0c53647206a50cfa32db08abd7227c",
+      "source_pointer": "/3535/connections/6",
+      "source_row": 3535,
+      "target_passive_id": "AscendancyMarauder3Start_",
+      "target_row_evidence": 6003,
+      "target_skill": 51916
+    },
+    {
+      "expected_target_name": "Berserker",
+      "id": "marauder594",
+      "position": 7,
+      "role": "existing prepared reference outside emitted skills and variant aliases; preserve exact edge, do not emit target or certify reachability/eligibility",
+      "skill": 47175,
+      "source_entry_sha256": "1d23aac164b86935c8a005eee15157de3e0c53647206a50cfa32db08abd7227c",
+      "source_pointer": "/3535/connections/7",
+      "source_row": 3535,
+      "target_passive_id": "AscendancyMarauder2Start",
+      "target_row_evidence": 6002,
+      "target_skill": 54579
+    },
+    {
+      "expected_target_name": "Arcane Archer",
+      "id": "ranger596",
+      "position": 2,
+      "role": "existing prepared reference outside emitted skills and variant aliases; preserve exact edge, do not emit target or certify reachability/eligibility",
+      "skill": 50459,
+      "source_entry_sha256": "d514838de8850f2f43bc817b3cb35cfe66dac80647378382f189ad37724ef876",
+      "source_pointer": "/3772/connections/2",
+      "source_row": 3772,
+      "target_passive_id": "AscendancyRanger2Start",
+      "target_row_evidence": 6008,
+      "target_skill": 24665
+    },
+    {
+      "expected_target_name": "Champion",
+      "id": "duelist597",
+      "position": 1,
+      "role": "existing prepared reference outside emitted skills and variant aliases; preserve exact edge, do not emit target or certify reachability/eligibility",
+      "skill": 50986,
+      "source_entry_sha256": "51bce7f7b5f70c78e8b86bbfa5384e9952a4eddca842046a114479a6361fbb23",
+      "source_pointer": "/3810/connections/1",
+      "source_row": 3810,
+      "target_passive_id": "AscendancyDuelist3Start",
+      "target_row_evidence": 6021,
+      "target_skill": 10889
+    },
+    {
+      "expected_target_name": "Gladiator",
+      "id": "duelist597",
+      "position": 3,
+      "role": "existing prepared reference outside emitted skills and variant aliases; preserve exact edge, do not emit target or certify reachability/eligibility",
+      "skill": 50986,
+      "source_entry_sha256": "51bce7f7b5f70c78e8b86bbfa5384e9952a4eddca842046a114479a6361fbb23",
+      "source_pointer": "/3810/connections/3",
+      "source_row": 3810,
+      "target_passive_id": "AscendancyDuelist2Start",
+      "target_row_evidence": 6020,
+      "target_skill": 39383
+    },
+    {
+      "expected_target_name": "Deathmarked",
+      "id": "duelist597",
+      "position": 6,
+      "role": "existing prepared reference outside emitted skills and variant aliases; preserve exact edge, do not emit target or certify reachability/eligibility",
+      "skill": 50986,
+      "source_entry_sha256": "51bce7f7b5f70c78e8b86bbfa5384e9952a4eddca842046a114479a6361fbb23",
+      "source_pointer": "/3810/connections/6",
+      "source_row": 3810,
+      "target_passive_id": "AscendancyDuelist1Start",
+      "target_row_evidence": 6019,
+      "target_skill": 62386
+    },
+    {
+      "expected_target_name": "Guardian",
+      "id": "templar598",
+      "position": 0,
+      "role": "existing prepared reference outside emitted skills and variant aliases; preserve exact edge, do not emit target or certify reachability/eligibility",
+      "skill": 61525,
+      "source_entry_sha256": "d25a2094fced822e3b6c1f7aaf2fba8ec1f02c545b8f294ac889e0e391fe1a8e",
+      "source_pointer": "/4611/connections/0",
+      "source_row": 4611,
+      "target_passive_id": "AscendancyTemplar3Start",
+      "target_row_evidence": 6027,
+      "target_skill": 950
+    },
+    {
+      "expected_target_name": "Heretic",
+      "id": "templar598",
+      "position": 2,
+      "role": "existing prepared reference outside emitted skills and variant aliases; preserve exact edge, do not emit target or certify reachability/eligibility",
+      "skill": 61525,
+      "source_entry_sha256": "d25a2094fced822e3b6c1f7aaf2fba8ec1f02c545b8f294ac889e0e391fe1a8e",
+      "source_pointer": "/4611/connections/2",
+      "source_row": 4611,
+      "target_passive_id": "AscendancyTemplar2Start",
+      "target_row_evidence": 6026,
+      "target_skill": 26353
+    },
+    {
+      "expected_target_name": "[DNT] Unused",
+      "id": "templar598",
+      "position": 3,
+      "role": "existing prepared reference outside emitted skills and variant aliases; preserve exact edge, do not emit target or certify reachability/eligibility",
+      "skill": 61525,
+      "source_entry_sha256": "d25a2094fced822e3b6c1f7aaf2fba8ec1f02c545b8f294ac889e0e391fe1a8e",
+      "source_pointer": "/4611/connections/3",
+      "source_row": 4611,
+      "target_passive_id": "AscendancyDruid3Start",
+      "target_row_evidence": 6030,
+      "target_skill": 28429
+    },
+    {
+      "expected_target_name": "Inquisitor",
+      "id": "templar598",
+      "position": 5,
+      "role": "existing prepared reference outside emitted skills and variant aliases; preserve exact edge, do not emit target or certify reachability/eligibility",
+      "skill": 61525,
+      "source_entry_sha256": "d25a2094fced822e3b6c1f7aaf2fba8ec1f02c545b8f294ac889e0e391fe1a8e",
+      "source_pointer": "/4611/connections/5",
+      "source_row": 4611,
+      "target_passive_id": "AscendancyTemplar1Start",
+      "target_row_evidence": 6025,
+      "target_skill": 35715
+    }
+  ],
+  "legacy_id_bindings": [
+    {
+      "expected_name": "Devotion to the King",
+      "legacy_id": "38813",
+      "role": "explicit legacy numeric-slug identity binding only; keep output id/fields; no native packet for this alias",
+      "skill": 38813,
+      "source_entry_sha256": "3509d9452fc6b71fe2504183cb48b4a9dbc852785c4c9a81550ceaab4b7c1169",
+      "target_passive_id": "AscendancyHuntress3Notable8"
+    }
+  ],
+  "legacy_metadata": {
+    "source_declaration": {
+      "path": "data/0.5.5.4.2/base/passive_tree_meta.json",
+      "role": "policy-owned compatibility metadata; authoring file declared, not producer-provided or file-hash-verified",
+      "schema": "pobr_data::catalog::PassiveTreeMeta",
+      "sha256": "6247ea4b7d75853f3b4947e8946ecf4c7b45450e057dab57516ebe2ec7534ce8",
+      "snapshot_version": "0.5.5.4.2"
+    },
+    "value": {
+      "classes": [
+        {
+          "ascendancies": [
+            {
+              "id": "Druid1",
+              "name": "Oracle"
+            },
+            {
+              "id": "Druid2",
+              "name": "Shaman"
+            }
+          ],
+          "base_dex": 7,
+          "base_int": 11,
+          "base_str": 11,
+          "name": "Druid"
+        },
+        {
+          "base_dex": 11,
+          "base_int": 7,
+          "base_str": 11,
+          "name": "Duelist"
+        },
+        {
+          "ascendancies": [
+            {
+              "id": "Huntress1",
+              "name": "Amazon"
+            },
+            {
+              "id": "Huntress2",
+              "name": "Spirit Walker"
+            },
+            {
+              "id": "Huntress3",
+              "name": "Ritualist"
+            }
+          ],
+          "base_dex": 15,
+          "base_int": 7,
+          "base_str": 7,
+          "name": "Huntress"
+        },
+        {
+          "base_dex": 7,
+          "base_int": 7,
+          "base_str": 15,
+          "name": "Marauder"
+        },
+        {
+          "ascendancies": [
+            {
+              "id": "Mercenary1",
+              "name": "Tactician"
+            },
+            {
+              "id": "Mercenary2",
+              "name": "Witchhunter"
+            },
+            {
+              "id": "Mercenary3",
+              "name": "Gemling Legionnaire"
+            }
+          ],
+          "base_dex": 11,
+          "base_int": 7,
+          "base_str": 11,
+          "name": "Mercenary"
+        },
+        {
+          "ascendancies": [
+            {
+              "id": "Monk1",
+              "name": "Martial Artist"
+            },
+            {
+              "id": "Monk2",
+              "name": "Invoker"
+            },
+            {
+              "id": "Monk3",
+              "name": "Acolyte of Chayula"
+            }
+          ],
+          "base_dex": 11,
+          "base_int": 11,
+          "base_str": 7,
+          "name": "Monk"
+        },
+        {
+          "ascendancies": [
+            {
+              "id": "Ranger1",
+              "name": "Deadeye"
+            },
+            {
+              "id": "Ranger3",
+              "name": "Pathfinder"
+            }
+          ],
+          "base_dex": 15,
+          "base_int": 7,
+          "base_str": 7,
+          "name": "Ranger"
+        },
+        {
+          "base_dex": 11,
+          "base_int": 11,
+          "base_str": 7,
+          "name": "Shadow"
+        },
+        {
+          "ascendancies": [
+            {
+              "id": "Sorceress1",
+              "name": "Stormweaver"
+            },
+            {
+              "id": "Sorceress2",
+              "name": "Chronomancer"
+            },
+            {
+              "id": "Sorceress3",
+              "name": "Disciple of Varashta"
+            }
+          ],
+          "base_dex": 7,
+          "base_int": 15,
+          "base_str": 7,
+          "name": "Sorceress"
+        },
+        {
+          "base_dex": 7,
+          "base_int": 11,
+          "base_str": 11,
+          "name": "Templar"
+        },
+        {
+          "ascendancies": [
+            {
+              "id": "Warrior1",
+              "name": "Titan"
+            },
+            {
+              "id": "Warrior2",
+              "name": "Warbringer"
+            },
+            {
+              "id": "Warrior3",
+              "name": "Smith of Kitava"
+            }
+          ],
+          "base_dex": 7,
+          "base_int": 7,
+          "base_str": 15,
+          "name": "Warrior"
+        },
+        {
+          "ascendancies": [
+            {
+              "id": "Witch1",
+              "name": "Infernalist"
+            },
+            {
+              "id": "Witch2",
+              "name": "Blood Mage"
+            },
+            {
+              "id": "Witch3",
+              "name": "Lich"
+            },
+            {
+              "id": "Witch3b",
+              "name": "Abyssal Lich"
+            }
+          ],
+          "base_dex": 7,
+          "base_int": 15,
+          "base_str": 7,
+          "name": "Witch"
+        }
+      ],
+      "tree": "Default"
+    }
+  },
+  "qualification": {
+    "context_sha256": "e0ea24d12544e5f2a762f631732d995cdcecd3e41eea5982c89ab53c22141a7c",
+    "reference_passive_id": "maximum_resistances1",
+    "schema": "pobr-ordinary-passive-native-context/whole-row-reference-v1",
+    "variable_fields": [
+      "Id",
+      "Name",
+      "Icon_DDSFile",
+      "PassiveSkillGraphId",
+      "Stats",
+      "Stat1Value"
+    ]
+  },
+  "schema": "pobr-ordinary-passive-tree-policy/v1",
+  "source": {
+    "path": "data/0.5.5.4.2/base/passive_tree.json",
+    "schema": "pobr_data::catalog::PassiveNodeDef[]",
+    "sha256": "7e021c17f9679b3ff4d72cacdba20ee3d17bf8d0acf7ea02311dd29886996851",
+    "snapshot_manifest_sha256": "bfd31a4607da98af53b139ed101f31a67a3122e4520434fd2e3fda14672fcca4",
+    "snapshot_version": "0.5.5.4.2"
+  },
+  "statement": "Preserve the complete prepared ordinary tree, all existing text/variants/unlock/ascendancy/coordinates/apply_to_armour and unknown fields as fixed compatibility with original version. Add only complete optional single-stat native packets through the existing exact context recipe and mapper; never expand engine laws or synthesize missing fallback text. Regenerate class base attributes from exact target Characters names. Alias and complete metadata values are policy-owned authored inputs, not evidence of unprovided-file verification. No numeric Ascendancy ordinal inference, Requirement predicate inference, target text renderer certification, target tree eligibility, whole-patch equivalence, complete runtime or adoption.",
+  "target": {
+    "facts_manifest_sha256": "56e71e00a72c8079d100b64861fc030206b12aaeb5ad655ccb4ab4e6726332d0",
+    "game_patch": "0.5.5.5"
+  }
+}
