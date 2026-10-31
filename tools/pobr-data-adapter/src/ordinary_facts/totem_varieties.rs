@@ -52,13 +52,13 @@ struct Variation {
 
 /// Compact source locations for large unmatched/null partitions, in physical order.
 #[derive(Default, Serialize)]
-struct RowRanges {
+pub(super) struct RowRanges {
     count: usize,
     ranges: Vec<[usize; 2]>,
 }
 
 impl RowRanges {
-    fn push(&mut self, row: usize) {
+    pub(super) fn push(&mut self, row: usize) {
         self.count += 1;
         if let Some(last) = self.ranges.last_mut().filter(|last| last[1] == row) {
             last[1] = row + 1;
