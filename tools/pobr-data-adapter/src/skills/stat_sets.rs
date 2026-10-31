@@ -42,6 +42,9 @@ struct RawStatSet {
     /// The stable statSet id (e.g. `IceNovaColdInfusedPlayer`).
     #[serde(rename = "Id", default)]
     id: String,
+    /// Foreign key into `GrantedEffectLabels`; null/negative means no label.
+    #[serde(rename = "Label")]
+    label: Option<i64>,
     #[serde(rename = "BaseEffectiveness")]
     base_effectiveness: Option<f64>,
     /// How the set's effectiveness grows per level of whoever uses it.
@@ -110,6 +113,46 @@ pub struct StatSetsBundle {
     pub sets_total: usize,
     /// Total per-level rows stored (including additional sets).
     pub damage_levels_total: usize,
+}
+
+fn adapt_labels(en: &Path, sets: &[RawStatSet]) -> Result<Vec<Option<String>>, String> {
+    #[derive(Deserialize)]
+    struct RawLabel {
+        #[serde(rename = "_index")]
+        index: usize,
+        #[serde(rename = "Text")]
+        text: String,
+    }
+
+    // Older snapshots did not export labels. No table is needed when no
+    // set references one; a real reference must never silently disappear.
+    if !sets.iter().any(|set| set.label.is_some_and(|i| i >= 0)) {
+        return Ok(vec![None; sets.len()]);
+    }
+    let rows = read_json::<Vec<RawLabel>>(&en.join("GrantedEffectLabels.json"))?;
+    let mut labels = BTreeMap::new();
+    for row in rows {
+        if labels.insert(row.index, row.text).is_some() {
+            return Err(format!(
+                "GrantedEffectLabels: duplicate row index {}",
+                row.index
+            ));
+        }
+    }
+    sets.iter()
+        .map(|set| {
+            let Some(index) = set.label.filter(|&i| i >= 0) else {
+                return Ok(None);
+            };
+            let label = usize::try_from(index)
+                .ok()
+                .and_then(|index| labels.get(&index))
+                .ok_or_else(|| {
+                    format!("GrantedEffectStatSets {}: dangling Label {index}", set.id)
+                })?;
+            Ok((!label.is_empty()).then(|| label.clone()))
+        })
+        .collect()
 }
 
 /// Reads the base skill crit chance directly from
@@ -248,6 +291,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
     }
 
     let sets = read_json::<Vec<RawStatSet>>(&en.join("GrantedEffectStatSets.json"))?;
+    let labels = adapt_labels(en, &sets)?;
     let sets_total = sets.len();
     let links = read_json::<Vec<RawGrantedEffectStatSetLink>>(&en.join("GrantedEffects.json"))?;
 
@@ -418,11 +462,8 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
 
         let mut def_sets = vec![StatSetDef {
             set_id: main_set.id.clone(),
-            // label / the vendor export index come from
-            // overlay/stat_set_labels.json (vendor-extracted, since the
-            // `.dat` Label column's FK target table isn't downloadable),
-            // merged in during loading; left empty during adaptation.
-            label: None,
+            label: labels[main_idx].clone(),
+            // Import/export compatibility indices are supplied separately.
             vendor_set_index: None,
             base_effectiveness: main_set.base_effectiveness.unwrap_or(0.0),
             user_level_scaling: main_scaling,
@@ -501,7 +542,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
             levels.sort_by_key(|l| l.gem_level);
             def_sets.push(StatSetDef {
                 set_id: add_set.id.clone(),
-                label: None,
+                label: labels[add_idx].clone(),
                 vendor_set_index: None,
                 base_effectiveness,
                 user_level_scaling: add_scaling,
@@ -550,6 +591,99 @@ mod tests {
             fs::write(dir.join(file), serde_json::to_vec(value).unwrap()).unwrap();
         }
         dir
+    }
+
+    fn label_tables(name: &str, mut sets: Value, labels: Option<Value>) -> PathBuf {
+        for set in sets.as_array_mut().unwrap() {
+            set["ImplicitStats"] = json!([0]);
+        }
+        let mut files = vec![
+            ("Stats.json", json!([{"_index": 0, "Id": "is_area_damage"}])),
+            ("GrantedEffectStatSets.json", sets),
+            (
+                "GrantedEffects.json",
+                json!([{"Id": "ExamplePlayer", "StatSet": 0, "AdditionalStatSets": [1, 2]}]),
+            ),
+            ("GrantedEffectStatSetsPerLevel.json", json!([])),
+        ];
+        if let Some(labels) = labels {
+            files.push(("GrantedEffectLabels.json", labels));
+        }
+        tables(name, &files)
+    }
+
+    #[test]
+    fn labels_follow_foreign_keys_without_changing_set_identity_or_order() {
+        let dir = label_tables(
+            "labels",
+            json!([
+                {"Id": "Primary", "Label": 7},
+                {"Id": "Alternate", "Label": 2},
+                {"Id": "Unlabelled", "Label": 8}
+            ]),
+            Some(json!([
+                {"_index": 2, "Id": "AlternateLabel", "Text": "Alternate form"},
+                {"_index": 8, "Id": "EmptyLabel", "Text": ""},
+                {"_index": 7, "Id": "PrimaryLabel", "Text": "Primary form"}
+            ])),
+        );
+        let bundle = adapt_stat_sets(&dir).unwrap();
+        let sets = &bundle.sets[0].sets;
+        assert_eq!(bundle.sets[0].effect_id, "ExamplePlayer");
+        assert_eq!(
+            sets.iter()
+                .map(|set| set.set_id.as_str())
+                .collect::<Vec<_>>(),
+            ["Primary", "Alternate", "Unlabelled"]
+        );
+        assert_eq!(sets[0].label.as_deref(), Some("Primary form"));
+        assert_eq!(sets[1].label.as_deref(), Some("Alternate form"));
+        assert_eq!(sets[2].label, None);
+        assert!(sets.iter().all(|set| set.vendor_set_index.is_none()));
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn absent_labels_keep_older_table_snapshots_readable() {
+        let dir = label_tables(
+            "labels-absent",
+            json!([
+                {"Id": "Primary"},
+                {"Id": "Alternate", "Label": null},
+                {"Id": "Unlabelled", "Label": -1}
+            ]),
+            None,
+        );
+        let bundle = adapt_stat_sets(&dir).unwrap();
+        assert!(bundle.sets[0].sets.iter().all(|set| set.label.is_none()));
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn referenced_labels_require_a_unique_resolvable_table_row() {
+        for (name, labels, expected) in [
+            ("missing", None, "GrantedEffectLabels.json"),
+            ("dangling", Some(json!([])), "Primary: dangling Label 7"),
+            (
+                "duplicate",
+                Some(json!([
+                    {"_index": 7, "Text": "First"},
+                    {"_index": 7, "Text": "Second"}
+                ])),
+                "duplicate row index 7",
+            ),
+        ] {
+            let dir = label_tables(
+                &format!("labels-{name}"),
+                json!([{"Id": "Primary", "Label": 7}]),
+                labels,
+            );
+            let error = adapt_stat_sets(&dir)
+                .err()
+                .expect("invalid label input must fail");
+            assert!(error.contains(expected), "{name}: {error}");
+            fs::remove_dir_all(dir).unwrap();
+        }
     }
 
     /// The valueless stats of a set: an additional set has the main set's

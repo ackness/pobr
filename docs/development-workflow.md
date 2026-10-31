@@ -38,6 +38,7 @@ setup 检查 Git、make、C 编译器；macOS 的 Apple SDK/Command Line Tools �
 | --- | --- |
 | Web 日常开发/测试 | `mise run web <命令>`，例如 `mise run web test <文件>` |
 | 数据导出器 | `mise run pipeline test` |
+| 官方树域候选 | `data:tree:source` / `data:tree:candidate --out <新目录>`；固定来源、可离线重放，不准备 oracle，不发布产品数据 |
 | PoB2 对照、triage、完整数据生成 | 对应任务依赖 `setup:oracle`，自动准备固定 LuaJIT commit 与固定 vendor；重复运行复用缓存 |
 | 浏览器回归 | `mise run web:e2e <spec>`，自动安装 lockfile 对应的 Playwright 浏览器/系统依赖；仍须当前 dist/WASM/data |
 | 树图资源再生成 | `mise run web:tree-art`，按需由 mise conda backend 安装固定 ImageMagick 7/zstd，自动准备 vendor |
@@ -45,6 +46,9 @@ setup 检查 Git、make、C 编译器；macOS 的 Apple SDK/Command Line Tools �
 `setup:oracle` 将兼容的 LuaJIT 暴露到 `.cache/runtime/bin`；mise 为任务配置 PATH、
 `POBR_LUAJIT` 与 vendor 的 `LUA_PATH`，无需各自修改 shell。
 默认安装使用固定上游 commit，保留显式 runtime override 的调试用途。
+PoB2 的固定仓库与 commit 由 `devs/reference-sources.json` 管理，独立于生产 parser 规则的来源；
+后者仍记录各自生成时使用的 vendor。官方表适配默认执行自有审计；需要 PoB2 解析对照时用
+`mise run data:adapt:reference`，不会将缺依赖的必需对照记为成功。
 首次源码构建会自动处理 macOS deployment target；缺依赖的任务失败会给出具体原因。
 `mise run status` 只报告工具与数据状态，不下载、不构建。
 
@@ -404,7 +408,12 @@ mise exec -- cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakd
 - `devs/scripts/regen-check.sh` 在临时副本中重生成，保留 `overlay-common` 与 examples 语料，不写入或恢复工作区文件。
 - `mise exec -- node web/scripts/bench-calc.mjs`：用三个已提交构筑测真实 WASM 的非缓存计算和 16 项批量计算。
   需要先构建 WASM、同步数据；`--reference <old-pkg>` 另检查完整输出是否一致，适用于保持行为的优化。
-  报告保存在 gitignore 的 `.cache/`，只按需运行，不属于 CI 门禁。
+  v2 报告另记录数据读取/校验、WASM 初始化各阶段、任何预热前的首次计算、实际构建收据和进程峰值 RSS。
+  单引擎的首次响应耗时从脚本内开始计时，包含文件读取与校验；配对运行不报告该启动耗时。
+  构建收据与数据摘要核验失败即停止；它记录实际产物身份，不重新认证当前源码或构建环境。
+  文件系统缓存不受控，不能称为冷盘或浏览器加载；峰值 RSS 包括 Node/测量缓冲区及配对时的两个引擎。
+  热样本绕过接口响应缓存，内部计算缓存仍可复用。报告不覆盖旧文件；复测须指定新的 `--output` 路径。
+  报告保存在 gitignore 的 `.cache/`，只按需运行，不属于 CI 门禁；多次独立 Node 进程才构成启动样本集合。
 - 本机性能与响应一致性检查需要 `diagnostics` feature，按需运行，不属于 CI 门禁。
   下列命令均加 `--release -- --ignored --nocapture`：
   - `mise exec -- cargo test -p pobr-wasm --features diagnostics --test perf_uncached`：三个构筑的 Web 重算路径，

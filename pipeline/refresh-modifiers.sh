@@ -46,17 +46,27 @@ PRECOMPILE=(cargo run --quiet -p precompile-mods -- --data "$DATA")
 SYNC=(cargo run --quiet -p sync-pob-catalog --)
 
 if [[ "$ORACLE" -eq 1 ]]; then
-    PIN="$(python3 - "$DATA/overlay/mod_parser_rules.json" <<'PY'
+    PIN="$(bash devs/scripts/driver.sh reference commit)"
+    ACTUAL="$(git -C "$VENDOR" rev-parse HEAD)"
+    [[ "$PIN" == "$ACTUAL" ]] || {
+        echo "Vendor differs from reference pin ($PIN); run mise run vendor." >&2
+        exit 2
+    }
+    # A comparison may deliberately use a newer reference than the producer
+    # of the installed rules. Mutating legacy rules still requires its reviewed
+    # producer pin; a reference update must not silently rewrite production data.
+    if [[ "$AUDIT_ONLY" -eq 0 ]]; then
+        PRODUCER="$(python3 - "$DATA/overlay/mod_parser_rules.json" <<'PY'
 import json, sys
 with open(sys.argv[1], encoding="utf-8") as source:
     print(json.load(source)["_meta"]["vendor_commit"])
 PY
 )"
-    ACTUAL="$(git -C "$VENDOR" rev-parse HEAD)"
-    [[ "$PIN" == "$ACTUAL" ]] || {
-        echo "Vendor differs from data pin ($PIN); align vendor or regenerate the version first." >&2
-        exit 2
-    }
+        [[ "$PRODUCER" == "$ACTUAL" ]] || {
+            echo "Rule extraction differs from producer pin ($PRODUCER); review regeneration first." >&2
+            exit 2
+        }
+    fi
 fi
 
 # Keep the previous report separate: a failed audit must not bless its own regression.

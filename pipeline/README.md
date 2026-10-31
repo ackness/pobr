@@ -10,11 +10,74 @@
 |----|------|------|
 | 物品基底 / 词缀 / Stat / 技能宝石 | 游戏 `Content.ggpk` 里的 `.dat` 表（GGG） | `pathofexile-dat` 按版本从 CDN 只下需要的表 bundle |
 | 宝石品质（从 `4.5.5.2` 起） | GGG `GrantedEffectQualityStats` / `GrantedEffects` / `Stats`，范围由版本收据固定 | `pobr-data-adapter --gem-quality`，见[品质生成说明](gem-quality/README.md) |
-| 词条显示文本 | `Metadata/StatDescriptions/*.txt`（GGG） | 同上，作为 `files` 导出 |
-| 被动天赋树 | GGG 官方 `github.com/grindinggear/poe2-skilltree-export` 的 `data.json` | 直接取 `data.json`（不取图集） |
+| 词条显示文本 | 游戏的 `Data/StatDescriptions/*.csd`，当前产品仍消费 PoB2 导出 | `config.json` 尚未接入这些原始 `files`；独立描述适配待迁移 |
+| 被动天赋树 | GGG 官方 `github.com/grindinggear/poe2-skilltree-export` 的 `data.json` | 生产再生成仍有 vendor 补充；固定来源的独立树域候选见下文 |
 
 `.dat` 存的是 **id / 数值 / 外键关系**（规范化数据库表）；显示文本在 `StatDescriptions` 里。
 列名/表名见 [poe-tool-dev/dat-schema](https://github.com/poe-tool-dev/dat-schema)。
+
+## 固定来源与独立树候选
+
+[sources.lock.json](sources.lock.json) 登记首个迁移域的官方树输入：仓库、完整提交、
+原始 SHA-256、上游版本、服务器、已知/未知游戏补丁及版权/使用范围。
+另已登记独立 `0.5.5.5` 客户端候选的八张原生表和默认 PSG：完整原始文件摘要、大小、
+官方 bundle URL、解压后切片位置及固定 decoder/schema 身份。该候选不等于活动 `0.5.5.4.2`；
+新源的实际获取、归档重放、领域适配与采用分别验收。当前树获取命令只消费树类来源。
+这些登记没有声称所有生产域已完成迁移，也没有固定旧表导出器的远端 schema；这些仍是后续工作。
+PoB2 的测试参考版本独立登记在 [devs/reference-sources.json](../devs/reference-sources.json)，
+`mise run vendor` 不再读取生产 parser 元数据选择参考版本。
+
+```bash
+mise run data:tree:source
+mise run data:tree:source --offline
+mise run data:tree:candidate --offline --out .cache/tree-proof/first
+mise run data:tree:candidate --offline --out .cache/tree-proof/second
+```
+
+当前固定的 `bd87e651` 输入有已确认的来源缺口：Druid 的 `overridePairs` 引用了
+`nodes` 中不存在的 `19680`、`55194`（分别指向替换项 `40837`、`57601`）。
+这些记录在已核对的多个官方版本中均悬空；是否属于游戏中已删除的节点尚未证实。
+直接将原始文件交给严格 adapter 仍会拒绝生成；旧完整再生成链也需要先解决其来源问题。
+
+上面的诊断候选入口通过 [固定修正清单](tree-corrections/bd87e6512c92b868542eddfb1ba4ea8b6dc2da36.json)
+隔离这两条无法应用的映射。清单同时绑定源提交、原始哈希和精确旧值，并进入来源 lock；
+只有基础节点在节点表、替换表、边、分组和解锁引用中均不存在时才可应用。
+原始缓存与替换定义完整保留，不补造节点、位置或新 ID。其他缺失引用继续由 adapter 报错。
+候选 receipt 保存 `quarantined_override_pairs`、未解决状态、修正文件与规范化输入的摘要，
+也记录预处理代码摘要并检查生成期间是否变化。这只允许继续研究已有图，不计作完整来源验收。
+最终确认需要匹配补丁的客户端 `.psg`、`PassiveSkills` 与 `ClassPassiveSkillOverrides`；
+本候选没有因此获得生产发布资格。
+
+获取命令将原始字节放在 `.cache/sources/<sha256>/data.json`，每次重用均验证哈希。
+`--offline` 不联网；缺缓存、内容不符或下载失败即失败，不回退到 latest 或别的版本。
+候选命令用 Rust adapter 生成 `base/passive_tree.json` 与 `base/passive_tree_meta.json`，
+记录来源 lock、adapter/数据类型与构建输入的摘要；重放结果不包含机器路径或当前时间。
+Cargo 使用 `--locked`；`--offline` 同时禁止源下载和 Cargo 联网，不会为生成候选更新 lockfile。
+这些任务不准备 vendor、LuaJIT 或 PoB2 oracle。
+
+`--out` 必须是不存在且位于正式 `data/` 之外的路径。候选只含树域，带有
+`_domain_candidate.json`，没有产品 manifest；封存和发布入口也会拒绝此标记。
+当前固定输入的上游说明是 0.5.5，其与产品活动补丁的精确适配关系尚未核实，`game_patch` 保持 null。
+生成时目录使用上游版本作为 adapter 标签，不表示已确认客户端补丁。
+这些命令不会覆盖活动数据或修改 `CURRENT`。生产切换还需补丁适配、完整域/消费者与数值验证。
+当前 native variants 仍沿用基础节点的拓扑和升华归属；替换后的独立升华归属、通用属性选择与
+vendor 推导的 armour 标记尚未迁移。历史树 adapter 继续保留，不能将此候选入口视为完整替代。
+
+## 固定客户端原始资源与事实候选
+
+`mise run data:client` 按明确选择的来源锁取得原始资源，可从归档压缩块离线重建；
+它不发现或跟随当前补丁，也不切换活动数据。需要固定 decoder 环境、显式在线/离线模式及新输出目录。
+入口和边界见[客户端资源获取](client-sources.md)。
+
+RePoE 原生事实包另由 `pobr-data-adapter --native-facts` 验证外部 manifest 摘要后形成
+PoBR 领域候选，见[候选契约](../tools/pobr-data-adapter/native-facts.md)。当前只接通部分国际服事实，
+保留完整原始事实引用和诊断；它不是运行时包，也未完成品质、几何或全部关系的语义验证。
+候选消费与旧生产再生入口仍分别存在，不能宣称生产链已退出 PoB2。
+
+## 运行时数据组合封存
+
+运行包的版本文件与共享规则可独立封存并核验，见[运行时数据组合封存](runtime-bundle.md)。
+该入口保存已存在的完整运行组合，不替代下述领域来源与发布验收。
 
 ## 词条更新与回归检查
 
@@ -139,8 +202,10 @@ mise exec -- node pipeline/query-patch-version.mjs   # 从仓库根运行
 mise -C pipeline exec -- node download-index.mjs
 mise exec -- bash pipeline/export-tables.sh
 mise exec -- bash pipeline/regen-all.sh
-# Only adapt base tables into an existing snapshot, with the same validation gates.
+# Adapt base tables into an existing snapshot, with our audit and regression checks.
 mise run data:adapt
+# Explicitly require the pinned PoB2 parser comparison as well.
+mise run data:adapt:reference
 ```
 
 `export-tables.sh` 在全部配置表导出成功后记录补丁、配置哈希和每张表的 SHA-256。
@@ -162,6 +227,10 @@ Web 同步沿用该清单，维护报告不进入浏览器包。共享人工规�
 `./.cache/`（~113MB bundle 索引）、`./tables/`、`./files/` 均为中间物，**已 gitignore，不入库**。
 仓库保存配置、脚本、说明、受审的来源收据，以及产出的 `data/<version>/` 最小适配数据。
 `data:adapt` 只适配原始表，不生成品质域；完整 `regen-all.sh` 包含品质，独立更新可使用[独立生成命令](gem-quality/README.md#独立生成)。
+`data:adapt` 默认用 `refresh-modifiers.sh --offline` 校验候选的有效规则与语料，不隐式执行 PoB2。
+这只解除了适配验证对 reference 进程的依赖，现有快照仍含旧的 PoB2 派生规则。
+`data:adapt:reference` 自动准备 oracle 并显式要求对照；缺少依赖或比较失败会阻止发布。
+完整旧管线仍执行 vendor 抽取和对照，不以这一改动宣称已能自主生成全部产品数据。
 
 ## Vendor calc-delta 报告（`diff-vendor-calcs.sh`）
 
@@ -199,6 +268,10 @@ pipeline/diff-vendor-calcs.sh <old-sha> <new-sha> [--out <file>]
   数值 / 词条文本更新复用已实现机制；新的计算语义仍需实现。vendor pin 和数值 golden 保持显式选择，
   脚本不会把最新社区提交自动当作与游戏补丁匹配，也不在应用启动时联网改写数据。
 - 新数据域：在 `config.json` 的 `tables` 增表/列，并在 `pobr-data-adapter` 增对应适配器。
+- stat-set 标签由 `GrantedEffectStatSets.Label` → `GrantedEffectLabels.Text` 直接连接，
+  以原始 `_index` 查外键，不按数组位置或显示文字猜测；有引用却缺表、缺行或行号重复时拒绝适配。
+  标签为空的旧快照仍可从 `overlay/stat_set_labels.json` 回退；该兼容表继续提供 PoB 构筑码的
+  stat-set 编号，不能覆盖已存在的原生标签。此能力不自动更新活动快照。
 - 怪物基础抗性由 `MonsterVarieties.MonsterType` → `MonsterTypes.MonsterResistances` →
   `MonsterResistances.Fire1/Cold1/Lightning1/Chaos1` 导出到 `base/monster_resistances.json`，
   按 monster variety id 索引。使用普通稀有度的基础值（0.5 每列只有一个值），合并类型链接的

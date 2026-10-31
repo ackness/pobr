@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "official-passive-tree": {
+      "kind": "official-passive-tree",
+      "repository": "https://github.com/grindinggear/poe2-skilltree-export",
+      "revision": "bd87e6512c92b868542eddfb1ba4ea8b6dc2da36",
+      "path": "data.json",
+      "sha256": "b52be9c4f17e4114064255ef1b8c58292e9db0e395d95af235a8d3fef0d44642",
+      "upstream_version": "0.5.5",
+      "game_patch": null,
+      "realm": "international",
+      "rights": {
+        "owner": "Grinding Gear Games",
+        "terms": "https://www.pathofexile.com/legal/terms-of-use-and-privacy-policy",
+        "scope": "Local source verification and candidate generation; product redistribution not reviewed."
+      },
+      "corrections": {
+        "path": "pipeline/tree-corrections/bd87e6512c92b868542eddfb1ba4ea8b6dc2da36.json",
+        "sha256": "f031327c21eb4a24f0fd4c694512521f4d5fe457f74d2f0f5c35b2cc10ab853f"
+      }
+    },
+    "official-client-0.5.5.5": {
+      "kind": "official-client-resource-candidate",
+      "game": "poe2",
+      "game_patch": "0.5.5.5",
+      "realm": "international",
+      "base_url": "https://patch-poe2.poecdn.com/0.5.5.5/",
+      "discovery": {
+        "host": "patch.pathofexile2.com",
+        "port": 13060,
+        "request_hex": "0107",
+        "response_sha256": "4d7c3b2576f363d689f34a6cb70b4d77b8d1ea347fa039c17b1dff84d5d68e84"
+      },
+      "decoder": {
+        "repository": "https://github.com/repoe-fork/pypoe",
+        "revision": "66d1d7442c5718260e1a8efd24989d22987e91af",
+        "dat_schema_repository": "https://github.com/poe-tool-dev/dat-schema",
+        "dat_schema_revision": "6034b071846ef61b39046ebdb59e6d5717179509",
+        "schema_sha256": "50e098543345cf8323aeb294e2cfef1b6b44842faccf560ada935cebe22727df"
+      },
+      "resources": {
+        "Data/Balance/Characters.datc64": {
+          "sha256": "3eeee7ac53267a008381646c3abd4f2f9f25ca71541a4be1a4ec38582b2375b0",
+          "bytes": 26584,
+          "bundle_url": "https://patch-poe2.poecdn.com/0.5.5.5/Bundles2/Folders/data/7A/balance.datc64.bundle.bin",
+          "uncompressed_offset": 0,
+          "uncompressed_length": 26584
+        },
+        "Data/Balance/ClassPassiveSkillOverrides.datc64": {
+          "sha256": "65fe77df8b41ea978a052a6c39614147f1d4d2d58e45c3fcc00777bce3110cd9",
+          "bytes": 2940,
+          "bundle_url": "https://patch-poe2.poecdn.com/0.5.5.5/Bundles2/Tiny.VC.1.bundle.bin",
+          "uncompressed_offset": 1906212,
+          "uncompressed_length": 2940
+        },
+        "Data/Balance/GrantedEffectQualityStats.datc64": {
+          "sha256": "d33100f07d4ad4f334827e38fda18f2e7be8b47775b3e707cdbeb5381404fbfb",
+          "bytes": 73600,
+          "bundle_url": "https://patch-poe2.poecdn.com/0.5.5.5/Bundles2/Folders/data/1C/balance.datc64.bundle.bin",
+          "uncompressed_offset": 44734,
+          "uncompressed_length": 73600
+        },
+        "Data/Balance/GrantedEffectStatSets.datc64": {
+          "sha256": "09fedc37835e668bece90b99a0f5862b9fe4600b23d31249262c65a3cee32631",
+          "bytes": 1869773,
+          "bundle_url": "https://patch-poe2.poecdn.com/0.5.5.5/Bundles2/Folders/data/D0/balance.datc64.bundle.bin",
+          "uncompressed_offset": 59175,
+          "uncompressed_length": 1869773
+        },
+        "Data/Balance/GrantedEffects.datc64": {
+          "sha256": "f2495c2640a79f90af1e1a99e66d1c15257153f34d12ca2a6b37d935b967c598",
+          "bytes": 3022335,
+          "bundle_url": "https://patch-poe2.poecdn.com/0.5.5.5/Bundles2/Folders/data/0B/statdescriptions.bundle.bin",
+          "uncompressed_offset": 51024,
+          "uncompressed_length": 3022335
+        },
+        "Data/Balance/PassiveSkillTrees.datc64": {
+          "sha256": "e9be3ec7c8d65e347613b44b309e7ddb04b687bf708da19eb5b0c663cc6f4e95",
+          "bytes": 1174,
+          "bundle_url": "https://patch-poe2.poecdn.com/0.5.5.5/Bundles2/Tiny.VE.1.bundle.bin",
+          "uncompressed_offset": 1582311,
+          "uncompressed_length": 1174
+        },
+        "Data/Balance/PassiveSkills.datc64": {
+          "sha256": "49af4f7dfab787b57efa22e06e2673c268cbd90c4f40140aa085cb8fbb602bc2",
+          "bytes": 5497515,
+          "bundle_url": "https://patch-poe2.poecdn.com/0.5.5.5/Bundles2/Folders/data/3E/balance.datc64.bundle.bin",
+          "uncompressed_offset": 1802426,
+          "uncompressed_length": 5497515
+        },
+        "Data/Balance/Stats.datc64": {
+          "sha256": "e808452ef330de79cca6d496982bc8810e7967c2c0c681e61dc63506177af8a5",
+          "bytes": 5281898,
+          "bundle_url": "https://patch-poe2.poecdn.com/0.5.5.5/Bundles2/Folders/data/28/balance.datc64.bundle.bin",
+          "uncompressed_offset": 5807544,
+          "uncompressed_length": 5281898
+        },
+        "Metadata/PassiveSkillGraph.psg": {
+          "sha256": "071cba806a621a0bdae09828cc5ad8e34259159659e950a1898770790730c344",
+          "bytes": 165144,
+          "bundle_url": "https://patch-poe2.poecdn.com/0.5.5.5/Bundles2/Folders/metadata.bundle.bin",
+          "uncompressed_offset": 68546,
+          "uncompressed_length": 165144
+        }
+      },
+      "scope": "Eight native tables and default PSG only; not full foreign-key closure, metadata, geometry semantics or a production pack.",
+      "rights": {
+        "owner": "Grinding Gear Games",
+        "terms": "https://www.pathofexile.com/legal/terms-of-use-and-privacy-policy",
+        "scope": "Local source verification and candidate generation; raw asset redistribution not reviewed."
+      }
+    }
+  }
+}

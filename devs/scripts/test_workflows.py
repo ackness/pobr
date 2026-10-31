@@ -379,6 +379,9 @@ import os, pathlib, sys
 args = sys.argv[1:]
 if "--check" in args:
     sys.exit(int(os.environ.get("CHECK_EXIT", "0")))
+if "--audit-corpus" in args:
+    pathlib.Path(args[args.index("--audit-corpus") + 1]).write_text("+1 to maximum Life")
+    sys.exit(0)
 assert "--audit" in args, "Offline audit must not extract or precompile"
 assert pathlib.Path(args[args.index("--baseline") + 1]).read_text() == "previous snapshot"
 out = pathlib.Path(args[args.index("--audit") + 1])
@@ -408,6 +411,46 @@ sys.exit(int(os.environ.get("AUDIT_EXIT", "0")))
         result = self.run_audit(0)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.snapshot.read_text(encoding="utf-8"), "candidate snapshot")
+
+    def reference_audit(self, actual, mutates=False):
+        (self.root / "devs/scripts").mkdir(parents=True)
+        shutil.copyfile(REPO / "devs/scripts/driver.sh", self.root / "devs/scripts/driver.sh")
+        pin = {"schema_version": 1, "pob2": {"commit": "a" * 40,
+               "repository": "https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2.git",
+               "protocol": "pob2-oracle/v1"}}
+        (self.root / "devs/reference-sources.json").write_text(json.dumps(pin))
+        overlay = self.root / "data/test/overlay"
+        overlay.mkdir()
+        (overlay / "mod_parser_rules.json").write_text(json.dumps({"_meta": {"vendor_commit": "b" * 40}}))
+        git = self.root / "bin/git"
+        git.write_text(f"#!/usr/bin/env bash\nprintf '%s\\n' '{actual}'\n")
+        git.chmod(0o755)
+        oracle = self.root / "tools/pob2-oracle/run-parsemod.sh"
+        oracle.parent.mkdir(parents=True)
+        oracle.write_text("#!/usr/bin/env bash\nprintf '{}\\n'\n")
+        return subprocess.run(["bash", "pipeline/refresh-modifiers.sh", *([] if mutates else ["--audit-only"])],
+            cwd=self.root, env={**os.environ, "PATH": f"{self.root / 'bin'}{os.pathsep}{os.environ['PATH']}",
+                "POBR_CANDIDATE": "1"}, capture_output=True, text=True, timeout=15)
+
+    def test_reference_audit_accepts_a_different_production_parser_pin(self):
+        result = self.reference_audit("a" * 40)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        producer = json.loads((self.root / "data/test/overlay/mod_parser_rules.json").read_text())
+        self.assertEqual(producer["_meta"]["vendor_commit"], "b" * 40)
+        self.assertEqual(self.snapshot.read_text(), "candidate snapshot")
+        self.assertTrue((self.root / ".cache/modifier-audit/test/oracle.jsonl").is_file())
+
+    def test_reference_audit_rejects_the_producer_checkout_when_reference_differs(self):
+        result = self.reference_audit("b" * 40)
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("reference pin", result.stderr)
+        self.assertEqual(self.snapshot.read_text(), "previous snapshot")
+
+    def test_reference_update_cannot_silently_rewrite_legacy_production_rules(self):
+        result = self.reference_audit("a" * 40, mutates=True)
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("producer pin", result.stderr)
+        self.assertEqual(self.snapshot.read_text(), "previous snapshot")
 
 
 class VersionPromotionTests(unittest.TestCase):
@@ -508,8 +551,11 @@ class VendorRepositoryIsolationTests(unittest.TestCase):
             self.write(rel, (REPO / rel).read_text(encoding="utf-8"))
         self.write("data/CURRENT", "1.2.3\n")
         self.sha = "a" * 40
+        self.write("devs/reference-sources.json", json.dumps({"schema_version": 1, "pob2": {
+            "commit": self.sha, "repository": "https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2.git",
+            "protocol": "pob2-oracle/v1"}}))
         self.write("data/1.2.3/overlay/mod_parser_rules.json",
-                   json.dumps({"_meta": {"vendor_commit": self.sha}}))
+                   json.dumps({"_meta": {"vendor_commit": "b" * 40}}))
         self.write("pipeline/config.json", '{"patch": "1.2.3"}\n')
         self.write("vendor/.pob2-version.txt", "previous\n")
         self.write("bin/git", '''#!/usr/bin/env python3
@@ -560,6 +606,37 @@ pathlib.Path(sys.argv[sys.argv.index("-o") + 1]).write_text("{}", encoding="utf-
                                 env=self.env, capture_output=True, text=True, timeout=10)
         self.assert_failed_fetch_is_isolated(result)
         self.assertNotIn("OK:", result.stdout)
+        self.assertIn(self.sha, result.stdout)
+        self.assertNotIn("b" * 40, result.stdout)
+
+    def test_reference_setup_does_not_read_production_data(self):
+        shutil.rmtree(self.root / "data")
+        result = subprocess.run(["bash", "devs/scripts/driver.sh", "vendor"], cwd=self.root,
+                                env=self.env, capture_output=True, text=True, timeout=10)
+        self.assert_failed_fetch_is_isolated(result)
+        self.assertNotIn("CURRENT", result.stderr)
+
+    def test_driver_accepts_existing_bump_workflow_origin_without_git_suffix(self):
+        vendor = self.root / "vendor/PathOfBuilding-PoE2"
+        vendor.mkdir()
+        subprocess.run([self.real_git, "init", "--quiet"], cwd=vendor, check=True)
+        subprocess.run([self.real_git, "remote", "add", "origin",
+                        "https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2"], cwd=vendor, check=True)
+        result = subprocess.run(["bash", "devs/scripts/driver.sh", "vendor"], cwd=self.root,
+                                env=self.env, capture_output=True, text=True, timeout=10)
+        self.assert_failed_fetch_is_isolated(result)
+        self.assertNotIn("origin differs", result.stderr)
+
+    def test_invalid_reference_pin_fails_before_initializing_or_fetching(self):
+        self.write("devs/reference-sources.json", json.dumps({"schema_version": 1, "pob2": {
+            "commit": "latest", "repository": "https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2.git",
+            "protocol": "pob2-oracle/v1"}}))
+        result = subprocess.run(["bash", "devs/scripts/driver.sh", "vendor"], cwd=self.root,
+                                env=self.env, capture_output=True, text=True, timeout=10)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Invalid reference source", result.stderr)
+        self.assertFalse((self.root / "vendor/PathOfBuilding-PoE2").exists())
+        self.assertFalse((self.root / "fetch-root").exists())
 
     def test_bump_vendor_initializes_own_repo_and_does_not_promote_on_fetch_failure(self):
         result = subprocess.run(["bash", "pipeline/bump-version.sh", "--patch", "1.2.4",

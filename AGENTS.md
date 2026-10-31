@@ -16,6 +16,8 @@ tests to resolve disagreements with any document.
   `apps/pobr-wasm/src/build_api/` JSON contract.
 - `tools/` and `pipeline/` generate and verify versioned `data/` snapshots.
   `web/public/` holds static assets and the Pages Worker.
+- `devs/reference-sources.json` pins the PoB2 test reference independently of
+  production data. Official tree domain candidates stay outside published `data/`.
 - Rust integration tests live in each crate's `tests/`; frontend unit tests
   accompany source files, with browser tests in `web/e2e/`.
 

@@ -68,6 +68,69 @@ fn mods_load_with_resolved_stat_foreign_keys() {
 }
 
 #[test]
+fn mod_families_survive_runtime_loading_and_json_roundtrips() {
+    use serde_json::{Value, json};
+    use sha2::{Digest, Sha256};
+    use std::collections::BTreeMap;
+
+    for (name, field, expected) in [
+        ("old", None, None),
+        ("null", Some(Value::Null), None),
+        ("empty", Some(json!([])), Some(vec![])),
+        (
+            "multiple",
+            Some(json!(["FamilyB", "FamilyA"])),
+            Some(vec!["FamilyB".to_owned(), "FamilyA".to_owned()]),
+        ),
+    ] {
+        let mut raw = json!({
+            "id":"Example", "domain":1, "level":1, "stats":[], "tags":[],
+            "group":"ExistingGroup", "mod_type":9
+        });
+        if let Some(field) = field {
+            raw["families"] = field;
+        }
+        let bytes = serde_json::to_vec(&json!([raw])).unwrap();
+        let digest: String = Sha256::digest(&bytes)
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect();
+        let manifest = json!({
+            "schema_version":3, "poe_version":"1.2.3", "languages":[],
+            "domains":{"base":["mods"],"overlay":[],"generated":[]},
+            "files":{"base/mods.json":digest}
+        });
+        let data = GameData::from_memory(BTreeMap::from([
+            ("base/mods.json".into(), bytes),
+            (
+                "manifest.json".into(),
+                serde_json::to_vec(&manifest).unwrap(),
+            ),
+        ]));
+        let mods = data
+            .mods()
+            .unwrap_or_else(|error| panic!("{name}: {error}"));
+        assert_eq!(mods[0].families, expected, "{name}");
+        assert_eq!(mods[0].group.as_deref(), Some("ExistingGroup"));
+        assert_eq!(mods[0].mod_type, Some(9));
+        let serialized = serde_json::to_value(&mods[0]).unwrap();
+        if expected.is_none() {
+            assert!(serialized.get("families").is_none(), "{name}: {serialized}");
+        } else {
+            assert_eq!(
+                serialized["families"],
+                serde_json::to_value(&expected).unwrap(),
+                "{name}"
+            );
+        }
+        assert_eq!(
+            serde_json::from_value::<pobr_data::catalog::ModDef>(serialized).unwrap(),
+            mods[0]
+        );
+    }
+}
+
+#[test]
 fn every_mod_stat_id_resolves_against_registry() {
     let stats = game_data().stats().unwrap();
     let registry: std::collections::HashSet<&str> = stats.iter().map(|s| s.id.as_str()).collect();

@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "pob2": {
+    "repository": "https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2.git",
+    "commit": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+    "protocol": "pob2-oracle/v1"
+  }
+}

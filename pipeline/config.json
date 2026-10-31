@@ -96,6 +96,12 @@
       ]
     },
     {
+      "name": "ModFamily",
+      "columns": [
+        "Id"
+      ]
+    },
+    {
       "name": "ModType",
       "columns": [
         "Name"

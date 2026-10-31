@@ -165,7 +165,7 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 - 结果不同时，先按游戏词条和数据判断谁对，不默认 PoB2 正确。PoBR 自有的词条规则声明 `exporter: "absent"`（导出工具没有实现）或 `"differs"`（口径不同），并填 `game_source`；absent 规则在参考口径下自动排除。确认的有意差异写进 [pob2-differences.md](pob2-differences.md)，逐行登记到 `devs/scripts/known-differences.json`。
 - 仍从 PoB2 抽取的数据（词条解析规则、技能 stat 映射、配置项、暗金、符文、召唤物映射、stat 描述等）与建议的退出顺序见 [pob2-differences.md](pob2-differences.md#数据来源现状与退出顺序)。这些数据域的更新仍依赖 PoB2 导出；PoBR 自有机制规则可独立实现，不能据此把 PoB2 覆盖当作上限。
 
-`vendor/PathOfBuilding-PoE2/` 是固定 commit 的完整检出（gitignore；`mise run vendor` 按固定 commit 克隆，`mise run vendor:lua "<pattern>"` 搜索）。核对公式时读本地 Lua，不去网上找。
+`vendor/PathOfBuilding-PoE2/` 是固定 commit 的完整检出（gitignore；`mise run vendor` 按 `devs/reference-sources.json` 的独立参考 pin 克隆，`mise run vendor:lua "<pattern>"` 搜索）。核对公式时读本地 Lua，不去网上找。生产数据的来源与参考测试版本分别维护；独立树域候选不会发布或覆盖活动快照，见[数据管线](../pipeline/README.md#固定来源与独立树候选)。
 
 ## Parity 体系（回归基准）
 
