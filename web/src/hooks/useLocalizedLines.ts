@@ -20,6 +20,7 @@ const STRUCT_LINE_KEYS: Record<string, { 'zh-TW': string; 'zh-CN': string }> = {
   'Quality': { 'zh-TW': '品質', 'zh-CN': '品质' },
   'Armour': { 'zh-TW': '護甲', 'zh-CN': '护甲' },
   'Evasion': { 'zh-TW': '閃避', 'zh-CN': '闪避' },
+  'Evasion Rating': { 'zh-TW': '閃避值', 'zh-CN': '闪避值' },
   'Energy Shield': { 'zh-TW': '能量護盾', 'zh-CN': '能量护盾' },
   'Physical Damage': { 'zh-TW': '物理傷害', 'zh-CN': '物理伤害' },
   'Elemental Damage': { 'zh-TW': '元素傷害', 'zh-CN': '元素伤害' },
