@@ -6,8 +6,11 @@ mod gems;
 mod items_actors;
 mod model;
 mod output;
+pub(crate) mod reader;
 pub(crate) mod runtime;
 mod trust;
+
+pub(crate) use output::Output;
 
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 mod tests;

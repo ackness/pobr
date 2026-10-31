@@ -9,6 +9,8 @@
 //! ```text
 //! # Item base domain (pathofexile-dat tables)
 //! cargo run -p pobr-data-adapter -- --raw pipeline/tables --out data --patch 4.5.0.3.4
+//! # Ordinary Stats/Mods domain from pinned physical facts (see ordinary-facts.md)
+//! cargo run -p pobr-data-adapter -- --ordinary-facts <F> --facts-manifest-sha256 <HEX> --version <patch> --out <fresh-directory>
 //! # Passive tree domain (GGG's official tree export data.json)
 //! cargo run -p pobr-data-adapter -- --tree pipeline/tree/data.json --out data --patch 4.5.0.3.4
 //! # Backfill isSwitchable per-class/ascendancy variants (vendor tree.lua -> the existing passive_tree.json)
@@ -39,6 +41,7 @@ use serde::Deserialize;
 mod mods;
 mod monsters;
 mod native_facts;
+mod ordinary_facts;
 mod raw_source;
 mod required_columns;
 mod skills;
@@ -58,6 +61,7 @@ fn main() -> ExitCode {
         Ok(Mode::GemQuality(args)) => skills::quality::run(args),
         Ok(Mode::NativeFacts(args)) => native_facts::run(args),
         Ok(Mode::NativeRuntime(args)) => native_facts::runtime::run(*args),
+        Ok(Mode::OrdinaryFacts(args)) => ordinary_facts::run(args),
         Err(err) => Err(err),
     };
     match result {
@@ -82,6 +86,7 @@ struct Args {
 
 /// Independent data-domain adapter modes, mutually exclusive.
 enum Mode {
+    OrdinaryFacts(ordinary_facts::Args),
     NativeRuntime(Box<native_facts::runtime::Args>),
     NativeFacts(native_facts::Args),
     BaseItems(Args),
@@ -101,13 +106,21 @@ enum Mode {
 }
 
 fn parse_args() -> Result<Mode, String> {
-    if std::env::args().any(|arg| arg == "--native-runtime") {
-        return native_facts::runtime::parse_args(std::env::args().skip(1))
+    parse_args_from(std::env::args().skip(1))
+}
+
+fn parse_args_from(args: impl Iterator<Item = String>) -> Result<Mode, String> {
+    let args: Vec<_> = args.collect();
+    if args.iter().any(|arg| arg == "--ordinary-facts") {
+        return ordinary_facts::parse_args(args.into_iter()).map(Mode::OrdinaryFacts);
+    }
+    if args.iter().any(|arg| arg == "--native-runtime") {
+        return native_facts::runtime::parse_args(args.into_iter())
             .map(Box::new)
             .map(Mode::NativeRuntime);
     }
-    if std::env::args().any(|arg| arg == "--native-facts") {
-        return native_facts::parse_args(std::env::args().skip(1)).map(Mode::NativeFacts);
+    if args.iter().any(|arg| arg == "--native-facts") {
+        return native_facts::parse_args(args.into_iter()).map(Mode::NativeFacts);
     }
     let mut raw = None;
     let mut gem_quality = None;
@@ -122,7 +135,7 @@ fn parse_args() -> Result<Mode, String> {
     let mut out = None;
     let mut patch = None;
     let mut strict_columns = false;
-    let mut it = std::env::args().skip(1);
+    let mut it = args.into_iter();
     while let Some(flag) = it.next() {
         let mut take = |name: &str| {
             it.next()

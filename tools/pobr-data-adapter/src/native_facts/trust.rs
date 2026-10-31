@@ -30,8 +30,8 @@ pub(super) const TABLES: [&str; 8] = [
     "Stats",
 ];
 
-pub(super) struct VerifiedInput {
-    pub profile: Profile,
+pub(crate) struct VerifiedInput {
+    pub(super) profile: Profile,
     pub manifest: Value,
     pub manifest_bytes: Vec<u8>,
     pub lock_bytes: Vec<u8>,
@@ -40,6 +40,14 @@ pub(super) struct VerifiedInput {
 }
 
 pub(super) fn verify(args: &Args) -> Result<VerifiedInput, String> {
+    verify_selection(args, None)
+}
+
+/// Reuse the same authenticated envelope while reading only the requested physical tables.
+pub(super) fn verify_selection(
+    args: &Args,
+    selected_tables: Option<&[&str]>,
+) -> Result<VerifiedInput, String> {
     check_sha(&args.expected_manifest_sha256)?;
     let manifest_bytes = read_regular(&args.input.join("manifest.json"))?;
     // External byte authentication precedes even JSON parsing.
@@ -114,12 +122,29 @@ pub(super) fn verify(args: &Args) -> Result<VerifiedInput, String> {
     }
     let paths = payload_paths(args.profile);
     exact_keys(&manifest["files"], &paths)?;
-    let expected: BTreeSet<_> = paths
-        .iter()
-        .cloned()
-        .chain(["manifest.json".into(), "tables".into()])
-        .collect();
-    verify_inventory(&args.input, &args.input, &expected)?;
+    let paths = if let Some(selected) = selected_tables {
+        let available = tables(args.profile);
+        let unique: BTreeSet<_> = selected.iter().collect();
+        require(
+            !selected.is_empty()
+                && unique.len() == selected.len()
+                && selected.iter().all(|table| available.contains(table)),
+            "invalid selected physical tables",
+        )?;
+        selected
+            .iter()
+            .map(|table| format!("tables/{table}.json"))
+            .chain(["source-lock.json".into()])
+            .collect()
+    } else {
+        let expected: BTreeSet<_> = paths
+            .iter()
+            .cloned()
+            .chain(["manifest.json".into(), "tables".into()])
+            .collect();
+        verify_inventory(&args.input, &args.input, &expected)?;
+        paths
+    };
     let mut bytes = BTreeMap::new();
     // No payload is consumed until every fingerprint has passed.
     for path in &paths {

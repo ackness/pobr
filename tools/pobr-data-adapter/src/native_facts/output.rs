@@ -1,7 +1,7 @@
 //! Reserve and write one candidate through directory handles, detecting namespace drift.
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-pub(super) use supported::Output;
+pub(crate) use supported::Output;
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod supported {
@@ -101,7 +101,7 @@ mod supported {
         }
     }
 
-    pub(in crate::native_facts) struct Output {
+    pub(crate) struct Output {
         directories: Directories,
         input: Directories,
         extra_inputs: Vec<Directories>,
@@ -112,15 +112,19 @@ mod supported {
     }
 
     impl Output {
-        pub(in crate::native_facts) fn prepare(args: &Args) -> Result<Self, String> {
-            let path = std::path::absolute(&args.out).map_err(|e| e.to_string())?;
+        pub(crate) fn prepare(args: &Args) -> Result<Self, String> {
+            Self::prepare_paths(&args.input, &args.out)
+        }
+
+        pub(crate) fn prepare_paths(input: &Path, out: &Path) -> Result<Self, String> {
+            let path = std::path::absolute(out).map_err(|e| e.to_string())?;
             let parent = path.parent().ok_or("output has no parent")?;
             let name = path
                 .file_name()
                 .ok_or("output has no directory name")?
                 .to_owned();
             let directories = Directories::open(parent)?;
-            let input = Directories::open(&args.input)?;
+            let input = Directories::open(input)?;
             let production_path = Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("../../data")
                 .canonicalize()
@@ -139,7 +143,7 @@ mod supported {
             Ok(result)
         }
 
-        pub(in crate::native_facts) fn verify_namespace(&self) -> Result<(), String> {
+        pub(crate) fn verify_namespace(&self) -> Result<(), String> {
             self.input.verify_namespace()?;
             self.production.verify_namespace()?;
             self.directories.verify_namespace()?;
@@ -179,14 +183,14 @@ mod supported {
             )
         }
 
-        pub(in crate::native_facts) fn protect(&mut self, path: &Path) -> Result<(), String> {
+        pub(crate) fn protect(&mut self, path: &Path) -> Result<(), String> {
             self.extra_inputs.push(Directories::open(path)?);
             self.verify_namespace()
         }
 
         /// Write one immutable base layer using a held directory descriptor.
         /// Names are flat within base; the completion manifest is written separately.
-        pub(in crate::native_facts) fn write_base(
+        pub(crate) fn write_base(
             &mut self,
             files: &std::collections::BTreeMap<String, Vec<u8>>,
         ) -> Result<(), String> {
@@ -230,7 +234,7 @@ mod supported {
             Ok(())
         }
 
-        pub(in crate::native_facts) fn reserve(&mut self) -> Result<(), String> {
+        pub(crate) fn reserve(&mut self) -> Result<(), String> {
             require(!self.reserved, "output already reserved")?;
             self.verify_namespace()?;
             // mkdirat is exclusive, and resolves only the single leaf under the held parent.
@@ -241,11 +245,7 @@ mod supported {
             self.verify_namespace()
         }
 
-        pub(in crate::native_facts) fn write_new(
-            &self,
-            name: &str,
-            bytes: &[u8],
-        ) -> Result<(), String> {
+        pub(crate) fn write_new(&self, name: &str, bytes: &[u8]) -> Result<(), String> {
             require(self.reserved, "output is not reserved")?;
             require(
                 !name.is_empty()
@@ -276,26 +276,29 @@ mod supported {
 // Native output needs openat/mkdirat semantics. Other adapter modes still compile
 // and run on unsupported platforms; this mode fails before reading or writing data.
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-pub(super) struct Output;
+pub(crate) struct Output;
 
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
 impl Output {
-    pub(super) fn prepare(_: &super::Args) -> Result<Self, String> {
+    pub(crate) fn prepare(_: &super::Args) -> Result<Self, String> {
         Err("native-facts output requires Linux or macOS directory handles".into())
     }
-    pub(super) fn reserve(&mut self) -> Result<(), String> {
+    pub(crate) fn prepare_paths(_: &std::path::Path, _: &std::path::Path) -> Result<Self, String> {
+        Err("native-facts output requires Linux or macOS directory handles".into())
+    }
+    pub(crate) fn reserve(&mut self) -> Result<(), String> {
         Self::prepare_unavailable()
     }
-    pub(super) fn write_new(&self, _: &str, _: &[u8]) -> Result<(), String> {
+    pub(crate) fn write_new(&self, _: &str, _: &[u8]) -> Result<(), String> {
         Self::prepare_unavailable()
     }
-    pub(super) fn verify_namespace(&self) -> Result<(), String> {
+    pub(crate) fn verify_namespace(&self) -> Result<(), String> {
         Self::prepare_unavailable()
     }
-    pub(super) fn protect(&mut self, _: &std::path::Path) -> Result<(), String> {
+    pub(crate) fn protect(&mut self, _: &std::path::Path) -> Result<(), String> {
         Self::prepare_unavailable()
     }
-    pub(super) fn write_base(
+    pub(crate) fn write_base(
         &mut self,
         _: &std::collections::BTreeMap<String, Vec<u8>>,
     ) -> Result<(), String> {

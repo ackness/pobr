@@ -1,0 +1,124 @@
+{
+  "ModFamily": {
+    "columns": [
+      {"physical_fields":["Id"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Id","references":null,"type":"string","unique":true,"until":null},"source_column":0}
+    ],
+    "physical_fields": ["Id"],
+    "raw_resource": "Data/Balance/ModFamily.datc64",
+    "row_key": "Synthetic zero-based physical source row; never a stable game ID.",
+    "rows": [
+      {"_row":0,"values":{"Id":"family-z"}},
+      {"_row":1,"values":{"Id":"family-a"}}
+    ],
+    "table": "ModFamily",
+    "validation": {"actual_row_bytes":1,"rows":2,"schema_row_bytes":1,"warnings":[]}
+  },
+  "ModType": {
+    "columns": [
+      {"physical_fields":["Name"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Name","references":null,"type":"string","unique":true,"until":null},"source_column":0}
+    ],
+    "physical_fields": ["Name"],
+    "raw_resource": "Data/Balance/ModType.datc64",
+    "row_key": "Synthetic zero-based physical source row; never a stable game ID.",
+    "rows": [
+      {"_row":0,"values":{"Name":"WrongFamilyGroup"}},
+      {"_row":1,"values":{"Name":"TierGroup"}}
+    ],
+    "table": "ModType",
+    "validation": {"actual_row_bytes":1,"rows":2,"schema_row_bytes":1,"warnings":[]}
+  },
+  "Mods": {
+    "columns": [
+      {"physical_fields":["Id"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Id","references":null,"type":"string","unique":true,"until":null},"source_column":0},
+      {"physical_fields":["ModType"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"ModType","references":{"table":"ModType"},"type":"foreignrow","unique":false,"until":null},"source_column":1},
+      {"physical_fields":["Level"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Level","references":null,"type":"i32","unique":false,"until":null},"source_column":2},
+      {"physical_fields":["Stat1"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat1","references":{"table":"Stats"},"type":"foreignrow","unique":false,"until":null},"source_column":3},
+      {"physical_fields":["Stat2"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat2","references":{"table":"Stats"},"type":"foreignrow","unique":false,"until":null},"source_column":4},
+      {"physical_fields":["Stat3"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat3","references":{"table":"Stats"},"type":"foreignrow","unique":false,"until":null},"source_column":5},
+      {"physical_fields":["Stat4"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat4","references":{"table":"Stats"},"type":"foreignrow","unique":false,"until":null},"source_column":6},
+      {"physical_fields":["Domain"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Domain","references":{"table":"ModDomains"},"type":"enumrow","unique":false,"until":null},"source_column":7},
+      {"physical_fields":["Name"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Name","references":null,"type":"string","unique":false,"until":null},"source_column":8},
+      {"physical_fields":["GenerationType"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"GenerationType","references":{"table":"ModGenerationType"},"type":"enumrow","unique":false,"until":null},"source_column":9},
+      {"physical_fields":["Families"],"schema":{"array":true,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Families","references":{"table":"ModFamily"},"type":"foreignrow","unique":false,"until":null},"source_column":10},
+      {"physical_fields":["Stat1Min","Stat1Max"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":true,"localized":false,"name":"Stat1Value","references":null,"type":"i32","unique":false,"until":null},"source_column":11},
+      {"physical_fields":["Stat2Min","Stat2Max"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":true,"localized":false,"name":"Stat2Value","references":null,"type":"i32","unique":false,"until":null},"source_column":12},
+      {"physical_fields":["Stat3Min","Stat3Max"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":true,"localized":false,"name":"Stat3Value","references":null,"type":"i32","unique":false,"until":null},"source_column":13},
+      {"physical_fields":["Stat4Min","Stat4Max"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":true,"localized":false,"name":"Stat4Value","references":null,"type":"i32","unique":false,"until":null},"source_column":14},
+      {"physical_fields":["SpawnWeight_Tags"],"schema":{"array":true,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"SpawnWeight_Tags","references":{"table":"Tags"},"type":"foreignrow","unique":false,"until":null},"source_column":15},
+      {"physical_fields":["Tags"],"schema":{"array":true,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Tags","references":{"table":"Tags"},"type":"foreignrow","unique":false,"until":null},"source_column":16},
+      {"physical_fields":["Stat5Min","Stat5Max"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":true,"localized":false,"name":"Stat5Value","references":null,"type":"i32","unique":false,"until":null},"source_column":17},
+      {"physical_fields":["Stat5"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat5","references":{"table":"Stats"},"type":"foreignrow","unique":false,"until":null},"source_column":18},
+      {"physical_fields":["Stat6Min","Stat6Max"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":true,"localized":false,"name":"Stat6Value","references":null,"type":"i32","unique":false,"until":null},"source_column":19},
+      {"physical_fields":["Stat6"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat6","references":{"table":"Stats"},"type":"foreignrow","unique":false,"until":null},"source_column":20},
+      {"physical_fields":["Stat7Min","Stat7Max"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":true,"localized":false,"name":"Stat7Value","references":null,"type":"i32","unique":false,"until":null},"source_column":21},
+      {"physical_fields":["Stat7"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat7","references":{"table":"Stats"},"type":"foreignrow","unique":false,"until":null},"source_column":22},
+      {"physical_fields":["Stat8"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat8","references":{"table":"Stats"},"type":"foreignrow","unique":false,"until":null},"source_column":23},
+      {"physical_fields":["Stat8Min","Stat8Max"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":true,"localized":false,"name":"Stat8Value","references":null,"type":"i32","unique":false,"until":null},"source_column":24},
+      {"physical_fields":["Stat1MinHardmode"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat1MinHardmode","references":null,"type":"i32","unique":false,"until":null},"source_column":25},
+      {"physical_fields":["Stat1MaxHardmode"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat1MaxHardmode","references":null,"type":"i32","unique":false,"until":null},"source_column":26},
+      {"physical_fields":["Stat2MinHardmode"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat2MinHardmode","references":null,"type":"i32","unique":false,"until":null},"source_column":27},
+      {"physical_fields":["Stat2MaxHardmode"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat2MaxHardmode","references":null,"type":"i32","unique":false,"until":null},"source_column":28},
+      {"physical_fields":["Stat3MinHardmode"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat3MinHardmode","references":null,"type":"i32","unique":false,"until":null},"source_column":29},
+      {"physical_fields":["Stat3MaxHardmode"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat3MaxHardmode","references":null,"type":"i32","unique":false,"until":null},"source_column":30},
+      {"physical_fields":["Stat4MinHardmode"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat4MinHardmode","references":null,"type":"i32","unique":false,"until":null},"source_column":31},
+      {"physical_fields":["Stat4MaxHardmode"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat4MaxHardmode","references":null,"type":"i32","unique":false,"until":null},"source_column":32},
+      {"physical_fields":["Stat5MinHardmode"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat5MinHardmode","references":null,"type":"i32","unique":false,"until":null},"source_column":33},
+      {"physical_fields":["Stat5MaxHardmode"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat5MaxHardmode","references":null,"type":"i32","unique":false,"until":null},"source_column":34},
+      {"physical_fields":["Stat6MinHardmode"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat6MinHardmode","references":null,"type":"i32","unique":false,"until":null},"source_column":35},
+      {"physical_fields":["Stat6MaxHardmode"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat6MaxHardmode","references":null,"type":"i32","unique":false,"until":null},"source_column":36},
+      {"physical_fields":["Stat7MinHardmode"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat7MinHardmode","references":null,"type":"i32","unique":false,"until":null},"source_column":37},
+      {"physical_fields":["Stat7MaxHardmode"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat7MaxHardmode","references":null,"type":"i32","unique":false,"until":null},"source_column":38},
+      {"physical_fields":["Stat8MinHardmode"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat8MinHardmode","references":null,"type":"i32","unique":false,"until":null},"source_column":39},
+      {"physical_fields":["Stat8MaxHardmode"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Stat8MaxHardmode","references":null,"type":"i32","unique":false,"until":null},"source_column":40},
+      {"physical_fields":["SpawnWeight_Values"],"schema":{"array":true,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"SpawnWeight_Values","references":null,"type":"i32","unique":false,"until":null},"source_column":41}
+    ],
+    "physical_fields": ["Id","ModType","Level","Stat1","Stat2","Stat3","Stat4","Domain","Name","GenerationType","Families","Stat1Min","Stat1Max","Stat2Min","Stat2Max","Stat3Min","Stat3Max","Stat4Min","Stat4Max","SpawnWeight_Tags","Tags","Stat5Min","Stat5Max","Stat5","Stat6Min","Stat6Max","Stat6","Stat7Min","Stat7Max","Stat7","Stat8","Stat8Min","Stat8Max","Stat1MinHardmode","Stat1MaxHardmode","Stat2MinHardmode","Stat2MaxHardmode","Stat3MinHardmode","Stat3MaxHardmode","Stat4MinHardmode","Stat4MaxHardmode","Stat5MinHardmode","Stat5MaxHardmode","Stat6MinHardmode","Stat6MaxHardmode","Stat7MinHardmode","Stat7MaxHardmode","Stat8MinHardmode","Stat8MaxHardmode","SpawnWeight_Values"],
+    "raw_resource": "Data/Balance/Mods.datc64",
+    "row_key": "Synthetic zero-based physical source row; never a stable game ID.",
+    "rows": [
+      {"_row":0,"values":{"Domain":0,"Families":[1,0],"GenerationType":0,"Id":"EightSlots","Level":0,"ModType":1,"Name":"Synthetic","SpawnWeight_Tags":[1,0],"SpawnWeight_Values":[0,7],"Stat1":0,"Stat1Max":0,"Stat1MaxHardmode":0,"Stat1Min":0,"Stat1MinHardmode":0,"Stat2":1,"Stat2Max":-3,"Stat2MaxHardmode":0,"Stat2Min":-12,"Stat2MinHardmode":0,"Stat3":2,"Stat3Max":6,"Stat3MaxHardmode":0,"Stat3Min":-4,"Stat3MinHardmode":0,"Stat4":3,"Stat4Max":3,"Stat4MaxHardmode":0,"Stat4Min":2,"Stat4MinHardmode":0,"Stat5":4,"Stat5Max":8,"Stat5MaxHardmode":0,"Stat5Min":5,"Stat5MinHardmode":0,"Stat6":5,"Stat6Max":34,"Stat6MaxHardmode":0,"Stat6Min":25,"Stat6MinHardmode":0,"Stat7":6,"Stat7Max":-9,"Stat7MaxHardmode":0,"Stat7Min":-9,"Stat7MinHardmode":0,"Stat8":7,"Stat8Max":24,"Stat8MaxHardmode":0,"Stat8Min":0,"Stat8MinHardmode":0,"Tags":[1,0]}},
+      {"_row":1,"values":{"Domain":0,"Families":null,"GenerationType":null,"Id":"UnknownFamily","Level":0,"ModType":null,"Name":"","SpawnWeight_Tags":[],"SpawnWeight_Values":[],"Stat1":0,"Stat1Max":0,"Stat1MaxHardmode":0,"Stat1Min":0,"Stat1MinHardmode":0,"Stat2":null,"Stat2Max":0,"Stat2MaxHardmode":0,"Stat2Min":0,"Stat2MinHardmode":0,"Stat3":null,"Stat3Max":0,"Stat3MaxHardmode":0,"Stat3Min":0,"Stat3MinHardmode":0,"Stat4":null,"Stat4Max":0,"Stat4MaxHardmode":0,"Stat4Min":0,"Stat4MinHardmode":0,"Stat5":null,"Stat5Max":0,"Stat5MaxHardmode":0,"Stat5Min":0,"Stat5MinHardmode":0,"Stat6":null,"Stat6Max":0,"Stat6MaxHardmode":0,"Stat6Min":0,"Stat6MinHardmode":0,"Stat7":null,"Stat7Max":0,"Stat7MaxHardmode":0,"Stat7Min":0,"Stat7MinHardmode":0,"Stat8":null,"Stat8Max":9,"Stat8MaxHardmode":0,"Stat8Min":-7,"Stat8MinHardmode":0,"Tags":[]}},
+      {"_row":2,"values":{"Domain":0,"Families":[],"GenerationType":null,"Id":"EmptyFamily","Level":0,"ModType":null,"Name":"","SpawnWeight_Tags":[],"SpawnWeight_Values":[],"Stat1":0,"Stat1Max":0,"Stat1MaxHardmode":0,"Stat1Min":0,"Stat1MinHardmode":0,"Stat2":null,"Stat2Max":0,"Stat2MaxHardmode":0,"Stat2Min":0,"Stat2MinHardmode":0,"Stat3":null,"Stat3Max":0,"Stat3MaxHardmode":0,"Stat3Min":0,"Stat3MinHardmode":0,"Stat4":null,"Stat4Max":0,"Stat4MaxHardmode":0,"Stat4Min":0,"Stat4MinHardmode":0,"Stat5":null,"Stat5Max":0,"Stat5MaxHardmode":0,"Stat5Min":0,"Stat5MinHardmode":0,"Stat6":null,"Stat6Max":0,"Stat6MaxHardmode":0,"Stat6Min":0,"Stat6MinHardmode":0,"Stat7":null,"Stat7Max":0,"Stat7MaxHardmode":0,"Stat7Min":0,"Stat7MinHardmode":0,"Stat8":null,"Stat8Max":9,"Stat8MaxHardmode":0,"Stat8Min":-7,"Stat8MinHardmode":0,"Tags":[]}},
+      {"_row":3,"values":{"Domain":0,"Families":null,"GenerationType":null,"Id":"Shell","Level":0,"ModType":null,"Name":"","SpawnWeight_Tags":[],"SpawnWeight_Values":[],"Stat1":null,"Stat1Max":0,"Stat1MaxHardmode":0,"Stat1Min":0,"Stat1MinHardmode":0,"Stat2":null,"Stat2Max":0,"Stat2MaxHardmode":0,"Stat2Min":0,"Stat2MinHardmode":0,"Stat3":null,"Stat3Max":0,"Stat3MaxHardmode":0,"Stat3Min":0,"Stat3MinHardmode":0,"Stat4":null,"Stat4Max":0,"Stat4MaxHardmode":0,"Stat4Min":0,"Stat4MinHardmode":0,"Stat5":null,"Stat5Max":0,"Stat5MaxHardmode":0,"Stat5Min":0,"Stat5MinHardmode":0,"Stat6":null,"Stat6Max":0,"Stat6MaxHardmode":0,"Stat6Min":0,"Stat6MinHardmode":0,"Stat7":null,"Stat7Max":0,"Stat7MaxHardmode":0,"Stat7Min":0,"Stat7MinHardmode":0,"Stat8":null,"Stat8Max":9,"Stat8MaxHardmode":0,"Stat8Min":-7,"Stat8MinHardmode":0,"Tags":[]}}
+    ],
+    "table": "Mods",
+    "validation": {"actual_row_bytes":1,"rows":4,"schema_row_bytes":1,"warnings":[]}
+  },
+  "Stats": {
+    "columns": [
+      {"physical_fields":["Id"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Id","references":null,"type":"string","unique":true,"until":null},"source_column":0},
+      {"physical_fields":["IsLocal"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"IsLocal","references":null,"type":"bool","unique":false,"until":null},"source_column":1},
+      {"physical_fields":["Semantic"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Semantic","references":{"table":"StatSemantics"},"type":"enumrow","unique":false,"until":null},"source_column":2},
+      {"physical_fields":["Category"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Category","references":{"table":"PassiveSkillStatCategories"},"type":"foreignrow","unique":false,"until":null},"source_column":3}
+    ],
+    "physical_fields": ["Id","IsLocal","Semantic","Category"],
+    "raw_resource": "Data/Balance/Stats.datc64",
+    "row_key": "Synthetic zero-based physical source row; never a stable game ID.",
+    "rows": [
+      {"_row":0,"values":{"Category":null,"Id":"z_zero","IsLocal":false,"Semantic":0}},
+      {"_row":1,"values":{"Category":0,"Id":"a_negative","IsLocal":true,"Semantic":null}},
+      {"_row":2,"values":{"Category":null,"Id":"m_crossing","IsLocal":false,"Semantic":null}},
+      {"_row":3,"values":{"Category":null,"Id":"b_fourth","IsLocal":false,"Semantic":null}},
+      {"_row":4,"values":{"Category":null,"Id":"y_fifth","IsLocal":false,"Semantic":null}},
+      {"_row":5,"values":{"Category":null,"Id":"c_sixth","IsLocal":false,"Semantic":null}},
+      {"_row":6,"values":{"Category":null,"Id":"x_seventh","IsLocal":false,"Semantic":null}},
+      {"_row":7,"values":{"Category":null,"Id":"d_eighth","IsLocal":false,"Semantic":null}}
+    ],
+    "table": "Stats",
+    "validation": {"actual_row_bytes":1,"rows":8,"schema_row_bytes":1,"warnings":[]}
+  },
+  "Tags": {
+    "columns": [
+      {"physical_fields":["Id"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Id","references":null,"type":"string","unique":true,"until":null},"source_column":0}
+    ],
+    "physical_fields": ["Id"],
+    "raw_resource": "Data/Balance/Tags.datc64",
+    "row_key": "Synthetic zero-based physical source row; never a stable game ID.",
+    "rows": [
+      {"_row":0,"values":{"Id":"default"}},
+      {"_row":1,"values":{"Id":"ring"}}
+    ],
+    "table": "Tags",
+    "validation": {"actual_row_bytes":1,"rows":2,"schema_row_bytes":1,"warnings":[]}
+  }
+}
