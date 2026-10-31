@@ -264,8 +264,8 @@ fn validate(
             require(
                 authored.contains(&level.gem_level)
                     && evidence_levels.insert(level.gem_level)
-                    && level.actor_scaling_coordinate.is_finite()
-                    && level.actor_scaling_coordinate > 0.0,
+                    // This archival coordinate has no actor/requirement-level law.
+                    && level.actor_scaling_coordinate.is_finite(),
                 "retained level identity/scaling evidence missing or duplicated",
             )?;
             let identity = format!("{}:{}", selection.effect_id, level.gem_level);

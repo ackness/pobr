@@ -345,3 +345,26 @@ fn new_minimum_reason_preserves_all_raw_stats_and_old_policy_dispositions() {
     );
     assert_ne!(old.actor_binding_sha256(), new.actor_binding_sha256());
 }
+
+#[test]
+fn finite_archival_scaling_coordinates_do_not_impose_actor_or_requirement_levels() {
+    for coordinate in [0.0, -3.452] {
+        let mut files = primary_pack();
+        fixture::edit(&mut files, PROJECTION, |v| {
+            v["retained_evidence"][FIRE]["levels"][1]["actor_scaling_coordinate"] =
+                coordinate.into();
+        });
+        fixture::reseal(&mut files);
+        let native = NativeData::load(&GameData::from_memory(files)).unwrap();
+        assert_eq!(native.actor_binding().unwrap().actor_level, 1);
+        let projection = native.primary_spells().unwrap();
+        assert_eq!(projection.selections[0].gem_levels, [1, 2, 10, 40]);
+        assert_eq!(
+            projection.retained_evidence[FIRE]["levels"][1]["actor_scaling_coordinate"],
+            coordinate
+        );
+    }
+    rejects(PROJECTION, |v| {
+        v["retained_evidence"][FIRE]["levels"][1]["actor_scaling_coordinate"] = Value::Null;
+    });
+}
