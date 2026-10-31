@@ -464,6 +464,7 @@ def main():
     native.add_argument("--recipe-sha256", required=True)
     for binding in ["facts", "source-lock", "descriptions", "official-tree", "compiler", "out"]:
         native.add_argument(f"--{binding}", type=Path, required=True)
+    native.add_argument("--player-context", type=Path, help="Required only for the explicit v2 actor recipe")
     bundle = sub.add_parser("bundle")
     bundle.add_argument("--out", type=Path, required=True)
     bundle.add_argument("--version")
@@ -490,7 +491,7 @@ def main():
         from native_candidate import replay
 
         receipt = replay(ROOT, args.recipe, args.recipe_sha256, args.facts, args.source_lock,
-                         args.descriptions, args.official_tree, args.compiler, args.out)
+                         args.descriptions, args.official_tree, args.compiler, args.out, args.player_context)
         print(f"Native candidate complete: {receipt['assembly_key']} (not published; calculation not admitted)")
     elif args.command in {"bundle", "verify-bundle"}:
         from data_bundle import create, verify

@@ -64,37 +64,62 @@ class NativeCandidateTests(unittest.TestCase):
     def replay(self, **kwargs):
         arguments = dict(root=self.root, recipe_path=self.recipe_path, expected_recipe_sha256=self.recipe_sha,
                          facts=self.facts, source_lock=self.source_lock, descriptions=self.descriptions,
-                         official_tree=self.tree, compiler=self.compiler, out=self.out)
+                         official_tree=self.tree, compiler=self.compiler, out=self.out,
+                         player_context=getattr(self, "player", None))
         return native.replay(**{**arguments, **kwargs})
 
     def assemble(self, command, *, cwd, env, check):
         self.assertEqual(cwd, self.root)
         self.assertEqual(env, {})
         self.assertIs(check, True)
-        self.assertEqual(command, [str(self.compiler), "--native-runtime", str(self.facts),
+        expected = [str(self.compiler), "--native-runtime", str(self.facts),
             "--expected-manifest-sha256", self.recipe["facts"]["manifest_sha256"],
             "--source-lock", str(self.source_lock), "--descriptions", str(self.descriptions),
             "--descriptions-manifest-sha256", self.recipe["descriptions"]["manifest_sha256"],
             "--official-tree", str(self.tree), "--official-tree-sha256", self.recipe["official_tree"]["sha256"],
-            "--compiler-revision", self.recipe["compiler"]["revision_declaration"],
-            "--out", str(Path(command[-1]))])
+            "--compiler-revision", self.recipe["compiler"]["revision_declaration"]]
+        player = native.player_enabled(self.recipe)
+        version = 2 if player else 1
+        domains = native.PLAYER_DOMAINS if player else native.DOMAINS
+        if player:
+            expected += ["--player-context", str(self.player), "--player-manifest-sha256",
+                         self.recipe["player"]["manifest_sha256"], "--player-source-lock-sha256",
+                         self.recipe["player"]["source_lock_sha256"]]
+        self.assertEqual(command, [*expected, "--out", str(Path(command[-1]))])
         out = Path(command[-1])
         self.assertFalse(out.exists())
         self.assertFalse((out.parent / "orchestration-receipt.json").exists())
         lock = {**{k: self.recipe["target"][k] for k in ["game", "realm", "game_patch"]},
-                "format": "pobr-native-runtime-input-lock/v1", "facts": self.recipe["facts"],
+                "format": f"pobr-native-runtime-input-lock/v{version}", "facts": self.recipe["facts"],
                 "descriptions": self.recipe["descriptions"], "official_tree": {
                     **self.recipe["official_tree"], "fields": ["coordinates"]},
                 "profile": native.INPUT_PROFILE,
                 "compiler": {k: v for k, v in self.recipe["compiler"].items() if k != "binary_sha256"}}
-        docs = {name: {} for name in native.DOMAINS}
+        docs = {name: {} for name in domains}
+        if player:
+            docs["native_player_context"] = {
+                "schema_version": 1,
+                **{k: self.recipe["target"][k] for k in ["game", "realm", "game_patch"]},
+                "source_manifest_sha256": self.recipe["player"]["manifest_sha256"],
+                "source_lock_sha256": self.recipe["player"]["source_lock_sha256"],
+                "parent_manifest_sha256": self.recipe["facts"]["manifest_sha256"],
+                "parent_source_lock_sha256": self.recipe["facts"]["source_lock_sha256"]}
+            context_pin = native.sha256(native.encoded(docs["native_player_context"]) + b"\n")
+            docs["native_actor_binding"] = {"schema_version": 1, "context_sha256": context_pin,
+                "policy": native.ACTOR_POLICY, "evaluation": native.PLAYER_OUTPUT_PROFILE,
+                "model_status": "conditional-model"}
+            binding_pin = native.sha256(native.encoded(docs["native_actor_binding"]) + b"\n")
+            lock["player"] = {**self.recipe["player"], "actor_binding_sha256": binding_pin,
+                "parent_manifest_sha256": self.recipe["facts"]["manifest_sha256"],
+                "parent_source_lock_sha256": self.recipe["facts"]["source_lock_sha256"],
+                "actor_policy": native.ACTOR_POLICY, "producer_revision": "b" * 40}
         docs.update(native_input_lock=lock, native_acquisition=self.acquisition, native_coverage={
             "format": "pobr-native-runtime-coverage/v1", "source_status": native.SOURCE_STATUS,
             "production_ready": False, "calculation_admitted": False})
         files = {f"base/{name}.json": native.sha256(native.encoded(doc) + b"\n") for name, doc in docs.items()}
         docs["native_runtime"] = {**{k: self.recipe["target"][k] for k in
             ["game", "realm", "game_patch", "input_profile", "output_profile"]},
-            "schema_version": 1, "compiler_revision": lock["compiler"]["revision_declaration"],
+            "schema_version": version, "compiler_revision": lock["compiler"]["revision_declaration"],
             "assembly_key": "a" * 64,
             "descriptions_manifest_sha256": self.recipe["descriptions"]["manifest_sha256"],
             "allowed_source_manifests": [self.recipe["facts"]["manifest_sha256"]],
@@ -102,14 +127,25 @@ class NativeCandidateTests(unittest.TestCase):
             "coverage_sha256": files["base/native_coverage.json"],
             "reference_index_sha256": files["base/native_reference_index.json"],
             "acquisition": {"status": native.SOURCE_STATUS, "evidence_sha256": files["base/native_acquisition.json"]}}
+        if player:
+            docs["native_runtime"]["allowed_source_manifests"] = sorted(set(
+                self.recipe[k]["manifest_sha256"] for k in ["facts", "descriptions", "player"]))
+            docs["native_runtime"]["player"] = {
+                k: docs["native_player_context"][k] for k in ["source_manifest_sha256", "source_lock_sha256",
+                                                            "parent_manifest_sha256", "parent_source_lock_sha256"]}
+            docs["native_runtime"]["player"].update(context_sha256=context_pin, actor_binding_sha256=binding_pin)
         for name, doc in docs.items():
             files[f"base/{name}.json"] = native.fingerprint(self.write(out / f"base/{name}.json", doc))
         manifest = self.write(out / "manifest.json", {"schema_version": 4, "poe_version": "9.1", "languages": [],
-            "domains": {"base": native.DOMAINS, "overlay": [], "generated": []}, "files": files})
-        self.write(out / "assembly-receipt.json", {"format": "pobr-native-runtime-assembly-receipt/v1",
+            "domains": {"base": domains, "overlay": [], "generated": []}, "files": files})
+        receipt = {"format": f"pobr-native-runtime-assembly-receipt/v{version}",
             "assembly_key": "a" * 64, "compiler": lock["compiler"], "production_ready": False,
             "calculation_admitted": False, "manifest_sha256": native.fingerprint(manifest),
-            "input_lock_sha256": files["base/native_input_lock.json"], "scope": "Scoped catalogs only"})
+            "input_lock_sha256": files["base/native_input_lock.json"], "scope": "Scoped catalogs only"}
+        if player:
+            receipt.update(data_identity={"data_version": "9.1", "sha256": "c" * 64},
+                           actor_policy=native.ACTOR_POLICY, evaluation=native.PLAYER_OUTPUT_PROFILE)
+        self.write(out / "assembly-receipt.json", receipt)
 
     def test_relocated_bindings_produce_identical_complete_bytes_and_preserve_inputs(self):
         before = native.inventory(self.root / "inputs")
@@ -130,6 +166,8 @@ class NativeCandidateTests(unittest.TestCase):
             self.source_lock = self.facts / "source-lock.json"
             self.tree = relocated / "inputs/tree/official.json"
             self.compiler = relocated / "tools/prebuilt-adapter"
+            if hasattr(self, "player"):
+                self.player = relocated / "inputs/player"
             moved_recipe = self.write("relocated/recipe copy.json", self.recipe_path.read_bytes())
             self.replay(out=self.root / "second candidate", recipe_path=moved_recipe)
         self.assertEqual(first, native.inventory(self.root / "second candidate"))
@@ -193,7 +231,7 @@ class NativeCandidateTests(unittest.TestCase):
                    valid.replace(b'"partial":true', b'"partial":true,"partial":true'),
                    valid.replace(b'"partial":true', b'"partial":NaN')]
         for field, value in [("command", ["sh", "-c", "true"]), ("compiler", {"path": "/bin/true"}),
-                             ("schema", "pobr-native-candidate-recipe/v2"), ("target", [])]:
+                             ("schema", "pobr-native-candidate-recipe/v3"), ("target", [])]:
             invalid.append(native.encoded({**self.recipe, field: value}))
         for raw in invalid:
             self.recipe_path.write_bytes(raw)
@@ -369,6 +407,154 @@ class NativeCandidateTests(unittest.TestCase):
             result = subprocess.run([sys.executable, str(script), *args], capture_output=True, text=True)
             self.assertEqual(result.returncode, 2)
             self.assertIn("required", result.stderr)
+
+
+class NativePlayerCandidateTests(NativeCandidateTests):
+    """Exercise the same replay guarantees with an explicit, separately pinned actor input."""
+
+    def setUp(self):
+        super().setUp()
+        self.player = self.root / "inputs/player"
+        self.write(self.player / "source-lock.json", b'{"test":"player source lock"}')
+        self.write(self.player / "payload.json", b'{"opaque":"actor facts"}')
+        parent_bytes = (self.facts / "manifest.json").read_bytes()
+        self.write(self.player / "parent-manifest.json", parent_bytes)
+        identity = {"game": "poe2", "realm": "international", "game_patch": "9.1",
+                    "acquisition": {"status": native.SOURCE_STATUS, "evidence": []},
+                    "source_lock_sha256": native.fingerprint(self.player / "source-lock.json")}
+        self.acquisition["player"] = identity["acquisition"]
+        self.write(self.player / "manifest.json", {
+            "format": "repoe-native-player-context/v1", "status": "partial-candidate",
+            "production_ready": False, "source_identity": identity,
+            "parent": {"manifest_sha256": self.recipe["facts"]["manifest_sha256"],
+                       "source_identity": json.loads(parent_bytes)["source_identity"]},
+            "files": {p.name: {"bytes": p.stat().st_size, "sha256": native.fingerprint(p)}
+                      for p in self.player.iterdir()}})
+        self.recipe["schema"] = native.PLAYER_SCHEMA
+        self.recipe["target"]["output_profile"] = native.PLAYER_OUTPUT_PROFILE
+        self.recipe["player"] = {"manifest_sha256": native.fingerprint(self.player / "manifest.json"),
+                                 "source_lock_sha256": identity["source_lock_sha256"]}
+        self.save_recipe()
+
+    def test_player_completion_binds_exact_data_identity_without_admitting_calculation(self):
+        with patch.object(native.subprocess, "run", self.assemble):
+            receipt = self.replay()
+        self.assertEqual(receipt["schema"], "pobr-native-candidate-orchestration/v2")
+        self.assertEqual(receipt["data_identity"], {"data_version": "9.1", "sha256": "c" * 64})
+        self.assertEqual(len(receipt["files"]), 22)  # recipe + 19 domains + manifest + assembly receipt
+        self.assertFalse(receipt["calculation_admitted"])
+        self.assertFalse(receipt["production_ready"])
+
+    def test_player_binding_and_recipe_versions_must_agree_before_execution(self):
+        with patch.object(native.subprocess, "run") as adapter, self.assertRaisesRegex(ValueError, "requires explicit"):
+            self.replay(player_context=None)
+        adapter.assert_not_called()
+        self.recipe["schema"] = native.SCHEMA
+        self.recipe["target"]["output_profile"] = native.OUTPUT_PROFILE
+        del self.recipe["player"]
+        self.save_recipe()
+        with patch.object(native.subprocess, "run") as adapter, self.assertRaisesRegex(ValueError, "forbids"):
+            self.replay()
+        adapter.assert_not_called()
+        self.assertFalse(self.out.exists())
+
+    def test_player_external_payloads_and_pins_fail_before_execution(self):
+        for name in ["manifest.json", "source-lock.json", "parent-manifest.json", "payload.json"]:
+            path = self.player / name
+            original = path.read_bytes()
+            with self.subTest(name=name):
+                path.write_bytes(original + b" ")
+                with patch.object(native.subprocess, "run") as adapter, self.assertRaises(ValueError):
+                    self.replay()
+                adapter.assert_not_called()
+                self.assertFalse(self.out.exists())
+                path.write_bytes(original)
+
+    def test_same_patch_player_with_different_parent_or_realm_is_rejected(self):
+        path = self.player / "manifest.json"
+        original = json.loads(path.read_bytes())
+        for field in ["manifest_sha256", "source_lock_sha256", "game_patch", "realm"]:
+            altered = copy.deepcopy(original)
+            if field == "manifest_sha256":
+                altered["parent"][field] = "0" * 64
+            else:
+                altered["parent"]["source_identity"][field] = "0" * 64
+            self.write(path, altered)
+            self.recipe["player"]["manifest_sha256"] = native.fingerprint(path)
+            self.save_recipe()
+            with self.subTest(field=field), patch.object(native.subprocess, "run") as adapter, \
+                    self.assertRaisesRegex(ValueError, "parent identity"):
+                self.replay()
+            adapter.assert_not_called()
+            self.assertFalse(self.out.exists())
+
+    def test_player_source_status_cannot_be_promoted_by_repinned_manifest(self):
+        path = self.player / "manifest.json"
+        original = json.loads(path.read_bytes())
+        for key, value in [("realm", "wegame"), ("game_patch", "9.2"),
+                           ("acquisition", {"status": "reviewed"})]:
+            altered = copy.deepcopy(original)
+            altered["source_identity"][key] = value
+            self.write(path, altered)
+            self.recipe["player"]["manifest_sha256"] = native.fingerprint(path)
+            self.save_recipe()
+            with patch.object(native.subprocess, "run") as adapter, self.assertRaisesRegex(ValueError, "identity/status"):
+                self.replay()
+            adapter.assert_not_called()
+
+    def test_resealed_player_policy_identity_and_input_links_still_fail(self):
+        cases = [("native_runtime", "player", {}),
+                 ("native_player_context", "source_manifest_sha256", "0" * 64),
+                 ("native_actor_binding", "policy", "invented-inheritance"),
+                 ("native_actor_binding", "context_sha256", "0" * 64),
+                 ("native_actor_binding", "evaluation", native.OUTPUT_PROFILE),
+                 ("native_input_lock", "player", {}),
+                 ("native_input_lock", "format", "pobr-native-runtime-input-lock/v1")]
+        for domain, key, value in cases:
+            out = self.root / f"resealed-{domain}-{key}"
+            def altered(command, **kwargs):
+                self.assemble(command, **kwargs)
+                runtime = out / "runtime"
+                path = runtime / f"base/{domain}.json"
+                doc = json.loads(path.read_bytes())
+                doc[key] = value
+                self.write(path, doc)
+                manifest = json.loads((runtime / "manifest.json").read_bytes())
+                manifest["files"][f"base/{domain}.json"] = native.fingerprint(path)
+                self.write(runtime / "manifest.json", manifest)
+                receipt = json.loads((runtime / "assembly-receipt.json").read_bytes())
+                receipt["manifest_sha256"] = native.fingerprint(runtime / "manifest.json")
+                self.write(runtime / "assembly-receipt.json", receipt)
+            with self.subTest(domain=domain, key=key), patch.object(native.subprocess, "run", altered), \
+                    self.assertRaises(ValueError):
+                self.replay(out=out)
+            self.assertFalse((out / "orchestration-receipt.json").exists())
+
+    def test_player_data_identity_shape_and_evaluation_are_required(self):
+        for key, value in [("data_identity", {}), ("data_identity", {"data_version": "9.2", "sha256": "c" * 64}),
+                           ("data_identity", {"data_version": "9.1", "sha256": "not-a-digest"}),
+                           ("evaluation", native.OUTPUT_PROFILE), ("actor_policy", "invented-inheritance")]:
+            out = self.root / f"receipt-{key}-{len(list(self.root.glob('receipt-*')))}"
+            def altered(command, **kwargs):
+                self.assemble(command, **kwargs)
+                path = out / "runtime/assembly-receipt.json"
+                doc = json.loads(path.read_bytes())
+                doc[key] = value
+                self.write(path, doc)
+            with patch.object(native.subprocess, "run", altered), self.assertRaises(ValueError):
+                self.replay(out=out)
+            self.assertFalse((out / "orchestration-receipt.json").exists())
+
+    def test_player_drift_and_protected_output_do_not_complete(self):
+        with patch.object(native.subprocess, "run") as adapter, self.assertRaisesRegex(ValueError, "outside production"):
+            self.replay(out=self.player / "new")
+        adapter.assert_not_called()
+        def drift(command, **kwargs):
+            self.assemble(command, **kwargs)
+            self.write(self.player / "payload.json", b"changed")
+        with patch.object(native.subprocess, "run", drift), self.assertRaises(ValueError):
+            self.replay()
+        self.assertFalse((self.out / "orchestration-receipt.json").exists())
 
 
 if __name__ == "__main__":

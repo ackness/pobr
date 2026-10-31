@@ -104,6 +104,44 @@ sources remain unreviewed/nonproduction, and neither gameplay correctness nor
 CN numerical coverage is established. Later source approval, consumer admission
 and publication belong to separate coordinated work.
 
+## Actor recipe v2
+
+The [player example](native-player-candidate-example.json) uses
+`pobr-native-candidate-recipe/v2` and requires an additional `player` object with
+exact `manifest_sha256` and `source_lock_sha256` pins for a
+`repoe-native-player-context/v1` package. Supply its local directory explicitly
+with `--player-context`; v1 forbids that binding, and v2 requires it. V2 uses the
+same input profile and source status, with `output_profile:
+"conditional-skill-hit-v1"`. Unknown fields or mixed-version profiles fail.
+
+The player manifest, complete inventory and source lock are verified before
+execution. Its embedded parent manifest must byte-match the facts pin, and its
+declared parent game, patch, numerical realm and source-lock identity must agree.
+Changing a patch label or re-pinning a different actor parent does not substitute
+for that relationship. All three player assembler flags come from these explicit
+bindings; no actor or policy is selected through a local default.
+
+V2 verifies a 19-domain runtime inventory, including the separate sealed player
+context and actor-policy artifacts. It checks their external source/parent pins,
+artifact/context hashes, v2 input-lock and contract links, conditional-model
+policy, evaluation and v2 assembly receipt. Rust still owns source interpretation
+and `NativeData` validation. Python checks the shape and links of the assembler's
+reported final data identity; it does not independently recompute the Rust
+identity algorithm or grant calculation authority.
+
+The completion marker is `pobr-native-candidate-orchestration/v2` and includes that
+reported `data_identity` separately from the assembly key. Both source status and
+`production_ready: false` remain unchanged; `calculation_admitted: false` denotes
+the assembler's guarded candidate, not a complete Build calculation. The player
+policy retains the explicit generic-OT applicability assumption. Nothing here
+certifies actor pools, requirements, effective cadence, full DPS or CN data.
+
+Use the same command with the player example, its independently supplied recipe
+SHA and `--player-context /local/artifacts/player-context-v1`. Example compiler
+pins identify a particular prebuilt artifact; another platform/build needs its
+own reviewed recipe. `revision_declaration` and byte integrity do not establish
+a clean-build attestation. The old example and v1 runtime bytes remain supported.
+
 Focused stdlib checks (no Rust build or package installation):
 
 ```sh

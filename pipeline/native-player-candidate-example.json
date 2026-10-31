@@ -1,0 +1,33 @@
+{
+  "schema": "pobr-native-candidate-recipe/v2",
+  "target": {
+    "game": "poe2",
+    "realm": "INTERNATIONAL",
+    "game_patch": "0.5.5.5",
+    "input_profile": "sorceress-spark-level1-q0-v1",
+    "output_profile": "conditional-skill-hit-v1",
+    "source_status": "unreviewed-acquisition-draft",
+    "partial": true
+  },
+  "facts": {
+    "manifest_sha256": "56e71e00a72c8079d100b64861fc030206b12aaeb5ad655ccb4ab4e6726332d0",
+    "source_lock_sha256": "d7a59a052109f411a62b1398ac844ff31ca8afd6d4158e3488446a19cb75743f"
+  },
+  "descriptions": {
+    "manifest_sha256": "c8a475ba97b2fda3231ab05d23c4fdafa6b8593dec4a3d8307339b9cb6a794f2",
+    "source_lock_sha256": "d431792ed54d098f9c2fdf8074cbe2bc631be404a83c7c028af3418062d9bbad"
+  },
+  "official_tree": {
+    "sha256": "b52be9c4f17e4114064255ef1b8c58292e9db0e395d95af235a8d3fef0d44642",
+    "game_patch": null
+  },
+  "compiler": {
+    "binary_sha256": "198058ef0af3be0eb193a372144e769a368d36bb675ffeac84a8a2fd0182017d",
+    "revision_declaration": "91c6cc74efcd7122813193963877ab28eeafce8d",
+    "implementation_sha256": "9d2dc78bd978dbb92734b30702ced167947f14cf30335e43a4dd1e8a56dfb090"
+  },
+  "player": {
+    "manifest_sha256": "c0412e13d92141476cae28d7dc9b58db9ec74cc82c8084847af6fed62f141bd5",
+    "source_lock_sha256": "973c6658dbb822649c09320c32808c3e8f69ee97c2f35f72c94ded54d30eb6cc"
+  }
+}
