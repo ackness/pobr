@@ -1,0 +1,41 @@
+{
+  "schema": "pobr-ordinary-gem-effects-policy/v1",
+  "target": {
+    "game_patch": "0.5.5.5",
+    "facts_manifest_sha256": "56e71e00a72c8079d100b64861fc030206b12aaeb5ad655ccb4ab4e6726332d0"
+  },
+  "source": {
+    "snapshot_version": "0.5.5.4.2",
+    "path": "data/0.5.5.4.2/overlay/gem_effects.json",
+    "sha256": "6bee113b2068e80caece3d15db1c521d98f507c56c4726f5b927d9f259bd4f13",
+    "metadata": {
+      "schema": "gem_effects/v1",
+      "generator": "sync-pob-catalog extract-lua",
+      "vendor": "PathOfBuilding-PoE2",
+      "vendor_commit": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+      "vendor_commit_subject": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+      "extracted_files": [
+        "Data/Gems.lua"
+      ],
+      "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --what gem-effects --vendor-root vendor/PathOfBuilding-PoE2/src --out data/0.5.5.4.2/overlay/gem_effects.json"
+    }
+  },
+  "owner_precedence": "base-first-legacy-owner-overlay-last/v1",
+  "evidence": {
+    "source_check": {
+      "path": ".cache/builddata-migration-stage/gem-effect-links/source-check.json",
+      "sha256": "e9cc49b9f7d6799f3794f9d745683a54b6314896ebd6b2103f3f0f61e581bc4d"
+    },
+    "legacy_runtime_manifest": {
+      "path": "data/0.5.5.4.2/manifest.json",
+      "sha256": "bfd31a4607da98af53b139ed101f31a67a3122e4520434fd2e3fda14672fcca4"
+    },
+    "target_skill_gems": {
+      "path": ".cache/builddata-migration-stage/ordinary-skills/actual-a/data/0.5.5.5/base/skill_gems.json",
+      "sha256": "2a65df5da5144d88046f3fb9eab302ebf93293bc0bb29c88d8930ca5eb8f31b7"
+    },
+    "target_producer_receipt_sha256": "3953c57be67e1f410e2e2d3bfdd12d66c962743a56964e04b6d4954cae57bd3d",
+    "scope": "Parent source comparison of the pinned legacy codec against target F and frozen ordinary skills output; not a producer run, complete runtime/BD execution, or acquisition approval. Paths are evidence labels, never implicit producer inputs."
+  },
+  "statement": "Derive every normal gem relationship from target F, including gems absent from the legacy codec. All 966 legacy variant/primary/ordered additional effect/additional stat-set tuples matched in the parent source comparison; the producer must independently enforce exact tuple equality without exceptions. Retain the 24 legacy display orders, including five valid partial orders, without filling or sorting them. For each primary, choose the first gem_id in existing base sort, then override with the unique legacy codec owner when present. Serialize every non-preferred gem first and every preferred gem last, each partition sorted by gem_id, so the unchanged overlay last-wins consumer retains exactly that owner without losing other gems. The legacy bytes keep their original identity in a separate sidecar. This does not certify prepared gameplay semantics, full BDs/Web selection, every later exporter, source acquisition, or complete package adoption."
+}
