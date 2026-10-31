@@ -57,7 +57,7 @@ fn main() -> ExitCode {
         Ok(Mode::SpecialDerived(args)) => special_derived::run(args),
         Ok(Mode::GemQuality(args)) => skills::quality::run(args),
         Ok(Mode::NativeFacts(args)) => native_facts::run(args),
-        Ok(Mode::NativeRuntime(args)) => native_facts::runtime::run(args),
+        Ok(Mode::NativeRuntime(args)) => native_facts::runtime::run(*args),
         Err(err) => Err(err),
     };
     match result {
@@ -82,7 +82,7 @@ struct Args {
 
 /// Independent data-domain adapter modes, mutually exclusive.
 enum Mode {
-    NativeRuntime(native_facts::runtime::Args),
+    NativeRuntime(Box<native_facts::runtime::Args>),
     NativeFacts(native_facts::Args),
     BaseItems(Args),
     GemQuality(skills::quality::QualityArgs),
@@ -103,6 +103,7 @@ enum Mode {
 fn parse_args() -> Result<Mode, String> {
     if std::env::args().any(|arg| arg == "--native-runtime") {
         return native_facts::runtime::parse_args(std::env::args().skip(1))
+            .map(Box::new)
             .map(Mode::NativeRuntime);
     }
     if std::env::args().any(|arg| arg == "--native-facts") {

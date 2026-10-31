@@ -110,10 +110,10 @@ fn primary_selection_edits_exact_authored_rows_and_reopens_complete_results() {
             admitted
                 .context
                 .delivery_flags
-                .contains(ModFlags::PROJECTILE)
+                .intersects(ModFlags::PROJECTILE)
         );
         assert!(
-            !admitted.context.delivery_flags.contains(ModFlags::AREA),
+            !admitted.context.delivery_flags.intersects(ModFlags::AREA),
             "parent Area must not make the primary projectile an explosion"
         );
         let out = calculate_native_skill(&admitted).unwrap();

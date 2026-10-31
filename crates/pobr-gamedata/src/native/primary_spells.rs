@@ -238,17 +238,17 @@ fn validate(
         {
             physical
                 .bind(reference, table, identity, index)
-                .map_err(|e| fail(e))?;
+                .map_err(fail)?;
         }
-        let active_row = row(&evidence.rows[4], "ActiveSkills").map_err(|e| fail(e))?;
+        let active_row = row(&evidence.rows[4], "ActiveSkills").map_err(fail)?;
         require(
             active_reverse
                 .insert(active_row, evidence.active_reverse_granted_effect.clone())
                 .is_none_or(|previous| previous == evidence.active_reverse_granted_effect),
             "shared active row has conflicting retained reverse evidence",
         )?;
-        let primary_row = row(&evidence.rows[5], "GrantedEffectStatSets").map_err(|e| fail(e))?;
-        let cost_row = row(&evidence.rows[6], "CostTypes").map_err(|e| fail(e))?;
+        let primary_row = row(&evidence.rows[5], "GrantedEffectStatSets").map_err(fail)?;
+        let cost_row = row(&evidence.rows[6], "CostTypes").map_err(fail)?;
         require(
             effect.stat_set.map(u64::from) == Some(primary_row)
                 && effect.cost_types.as_slice() == [0]
@@ -271,7 +271,7 @@ fn validate(
             let identity = format!("{}:{}", selection.effect_id, level.gem_level);
             physical
                 .bind(&level.rows[0], "GrantedEffectsPerLevel", &identity, index)
-                .map_err(|e| fail(e))?;
+                .map_err(fail)?;
             let identity = format!("{}:{}", selection.stat_set_id, level.gem_level);
             physical
                 .bind(
@@ -280,7 +280,7 @@ fn validate(
                     &identity,
                     index,
                 )
-                .map_err(|e| fail(e))?;
+                .map_err(fail)?;
             // Deliberately retain unknown source channels without numeric reinterpretation.
             let _ = &level.retained_outside_projection;
         }
