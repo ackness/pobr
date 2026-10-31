@@ -81,19 +81,81 @@ impl RuntimeConstants {
     /// The mechanic-formula magic-numbers section (resistance boundary /
     /// armour coefficient / server tick / ailment baseline / various caps).
     pub fn game(&self) -> &GameMechanicsConstantsDef {
+        #[cfg(feature = "runtime-constant-query-probe")]
+        query_probe::record(query_probe::Query::Game);
         &self.game_constants.game
     }
 
     /// The player-inherent constants section (default max resistance /
     /// player base crit damage bonus, etc.).
     pub fn character(&self) -> &CharacterConstantsDef {
+        #[cfg(feature = "runtime-constant-query-probe")]
+        query_probe::record(query_probe::Query::Character);
         &self.game_constants.character
     }
 
     /// The monster-inherent constants section (monster max resistance /
     /// monster base crit damage bonus, etc.).
     pub fn monster(&self) -> &MonsterConstantsDef {
+        #[cfg(feature = "runtime-constant-query-probe")]
+        query_probe::record(query_probe::Query::Monster);
         &self.game_constants.monster
+    }
+}
+
+/// Test-support observation of actual getter calls, excluded from normal builds.
+/// Direct public-field accesses require separate inspection of the call graph.
+#[cfg(feature = "runtime-constant-query-probe")]
+#[doc(hidden)]
+pub mod query_probe {
+    use std::cell::Cell;
+
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+    pub struct Reads {
+        pub game: usize,
+        pub character: usize,
+        pub monster: usize,
+    }
+
+    pub(super) enum Query {
+        Game,
+        Character,
+        Monster,
+    }
+
+    thread_local! {
+        static READS: Cell<Option<Reads>> = const { Cell::new(None) };
+    }
+
+    pub(super) fn record(query: Query) {
+        READS.with(|slot| {
+            if let Some(mut reads) = slot.get() {
+                match query {
+                    Query::Game => reads.game += 1,
+                    Query::Character => reads.character += 1,
+                    Query::Monster => reads.monster += 1,
+                }
+                slot.set(Some(reads));
+            }
+        });
+    }
+
+    /// Runs one observation on the current thread and resets even after panic.
+    pub fn observe<T>(f: impl FnOnce() -> T) -> (T, Reads) {
+        struct Reset;
+        impl Drop for Reset {
+            fn drop(&mut self) {
+                READS.with(|slot| slot.set(None));
+            }
+        }
+        READS.with(|slot| {
+            assert!(slot.get().is_none(), "runtime query probes cannot nest");
+            slot.set(Some(Reads::default()));
+        });
+        let _reset = Reset;
+        let value = f();
+        let reads = READS.with(|slot| slot.take().expect("runtime query probe is active"));
+        (value, reads)
     }
 }
 

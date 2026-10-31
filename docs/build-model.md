@@ -48,17 +48,18 @@ schema 1–3 不接受 native 契约；缺少 manifest 而仍有保留的 native
 旧加载器会拒绝 schema 4，不能把必需语义作为可忽略字段发布。
 
 契约类型是 [`NativeRuntimeContract`](../crates/pobr-data/src/catalog/native_runtime.rs)，
-当前版本严格为 1，字段无默认值，未知字段／profile／版本报错：
+支持 query-only v1 与显式 player-context v2。v1 的 `player` 扩展省略时，原序列化与 assembly key 不变；v2 必需该字段。未知字段／profile／版本报错：
 
 | 字段 | 约束与身份作用 |
 | --- | --- |
 | `game` / `realm` / `game_patch` | `poe2` / `INTERNATIONAL`；显式数字点分 patch 必须等于 manifest 的 `poe_version` |
 | `source_lock_sha256` / `descriptions_manifest_sha256` / `compiler_revision` | 不可变输入锁、描述输入和编译器 revision；不追随当前 registry |
 | `tree` / `allowed_source_manifests` | 精确原始图资源地址、资源摘要及被允许的来源 manifest；`compatibility_tag` 固定 `0_5`，不据此推导 patch |
-| `normalization` / `rules` | 显式 `spark-level1-q0` profile、严格版本 1 和各自解释／证据工件摘要 |
-| `input_profile` / `output_profile` | `sorceress-spark-level1-q0-v1` / `spark-single-hit-cast-cost-v1`；只是所需范围，不是已支持声明 |
+| `normalization` / `rules` | 显式 `spark-level1-q0` profile、与 native 契约相同的版本（1 或 2）和各自解释／证据工件摘要 |
+| `input_profile` / `output_profile` | 输入为 `sorceress-spark-level1-q0-v1`；输出 v1 为 `spark-single-hit-cast-cost-v1`、v2 为 `conditional-skill-hit-v1`，只是所需范围 |
 | `coverage_sha256` / `reference_index_sha256` | 必须分别等于 manifest 中两个固定 sidecar 文件的摘要 |
 | `acquisition` / `supplements` | 获取状态及证据摘要；显式补充列表，只允许树坐标／渲染元数据，patch 未知时必须写 `null` |
+| `player`（仅 v2 必需） | 分别封存 `NativePlayerContextDef` 与 `NativeActorBinding`，以及 player/parent manifest 与 source-lock 的精确摘要；v1 禁止夹带这两个工件 |
 | `assembly_key` | `native_assembly_key` 对完整 typed 契约（本字段置空）及 `pobr-native-assembly-v1` 标签的确定性 SHA-256 |
 
 固定输入 profile 限定 level-1 Sorceress 的 Spark 主分支 level 1 / quality 0，
@@ -72,22 +73,42 @@ schema 4 即使通过 prechecked 内存入口也重新校验全部快照摘要�
 契约原字节及所有封存文件参与 `GameData::identity()`，磁盘／内存一致；
 最终运行时摘要不回写进契约，避免自引用。
 
-**当前没有 native 计算准入。** `GameData::load_ruleset()` 和 `BuildData::load()`
+`pobr_gamedata::NativeData::load(&GameData)` 返回私有状态的不可变 typed catalogs、
+契约和最终 `DataIdentity`；v2 还提供完整 player context 与独立 actor binding，v1 的两者为 `None`。
+该入口直接读取封存域，拒绝 patch，不读取旧 overlay、不构造 `RuntimeConstants`、
+`BuildData` 或 ruleset。v2 的 source context、actor policy、输入锁、normalization、rules、
+获取证据及树匹配证据均必须在 inventory 中封存。所有原始 player JSON 文本、
+99 条 plain Stats、scoped/unknown metadata、六组 starting relations 和十二个 options 均保留。
+Starting options 不是免费分配或自动属性；Character7 不继承 Character1 的 class overrides。
+
+`selected-player-generic-ot-v1` 只把独立 generic OT 的唯一有限 lexical critical **bonus**
+应用到精确 actor/profile。它是 `conditional-model` 的 PoBR applicability assumption，
+并不证明 AO→OT 继承。policy 单独记录 identity、来源选择器、UTF-16 assignment、glossary 引用、
+条件／排除项和逐项 dispositions。未知且相关的输入在 build admission 阶段阻断；
+加载成功不等于准入。成本只表示 Mana/use，成功 damaging hit 不保证 projectile contact。
+
+**普通完整计算的 native 准入仍关闭。** `GameData::load_ruleset()` 和 `BuildData::load()`
 在默认常量、旧文本规则或领域释放之前返回既有 `LoadError::Integrity`，
-路径指向契约，原因以 `native-profile-not-admitted:` 开头，明确列出缺少的 Spark 常量／规则闭包、
-精确 dataset/save binding 和 stable branch admission。后续必须协调完成这些切片后才可开放；
-本契约不实现 Spark 公式、分支选择、保存绑定、WASM/Web 握手或生产包切换。
+路径指向契约，原因以 `native-profile-not-admitted:` 开头。完整构筑所需的角色资源、命中、
+防御等闭包尚未准入，不能从旧默认值补齐。单独的
+[`native_skill`](native-skill-hit.md) 入口对完整原生存档逐次验证精确 dataset、actor、policy
+和稳定技能分支，再调用共享 Rust 条件命中计算。它提供本次命中及固有使用时间／成本／
+投射物属性，不产生完整 DPS、资源、需求或生存结果。存档与独立 CLI 入口见
+[原生存档](native-build-document.md)和[原生 CLI](native-cli.md)。WASM/Web、生产包切换与
+CN 数值事实尚未接通。
 
 ### 可选 native 天赋 stat
 
 `PassiveNodeDef.native_stats` 是完整节点的可选事实包，随现有
 `GameData` 天赋域进入 `BuildData`；缺省仍走文本解析。包绑定数据版本、构筑的
 `treeVersion`、节点编号／定义 ID 和完整原始文本。当前只接受默认树上未变换的普通
-单 stat、单行、无条件玩家节点；职业变体、属性选择、需求、升华、历史树与珠宝征服／
+单 stat、无条件玩家节点；显示文本必须是一个完整行，原生目录也可同时省略节点与包的
+显示文本，不捏造英语词条。职业变体、属性选择、需求、升华、历史树与珠宝征服／
 替换／追加都不能复用旧包，文本变动也会使绑定失效。
 
-唯一内建语义规则在 `pobr-core::rules::passive_stats`：精确匹配
-`base_fire_damage_resistance_%`，生成 `FireResistance` BASE，复用现有抗性计算。
+内建语义规则集中在 `pobr-core::rules::passive_stats`：精确匹配
+`base_fire_damage_resistance_%` 生成 `FireResistance` BASE，并将已核实的物理、火焰、冰霜、
+闪电、混沌、元素、法术和投射物伤害百分比 stat 映射到既有伤害桶的 INC。
 不按节点名、编号、值或 stat 后缀推导语义。原始值是 `i64`，零与负值保留；无法精确
 表示为 `f64` 的整数拒绝 native 路径。完整成功包在 parser 过滤之前选中，原文不再
 重复解析或注入。小天赋效果增幅复用同一 ingest 与原有 delta／取整。
@@ -104,7 +125,9 @@ schema 4 即使通过 prechecked 内存入口也重新校验全部快照摘要�
 再把节点当前完整文本交给既有 wrap／filter／parse 路径；不应用 native 包的子集，
 后续效果增幅也不能恢复该子集。fallback 仍受原有文本解析规则约束，不保证每行都能计算。
 
-诊断保留原因、解码后的包、来源与 fallback 原文；它不是原始 native JSON 的无损副本。
+诊断保留原因、解码后的包、来源与 fallback 原文；没有显示文本的原生包仍须保留拒绝诊断，
+不能把空 fallback 当作成功应用。成功的无文本包保留完整 native stat 证据，`raw_text` 为 `None`。
+诊断不是原始 native JSON 的无损副本。
 未知字符串 `context` 解码为 `Unsupported` 后走 fallback；未知对象字段按现有 serde 行为忽略。
 新增元数据不能改变旧字段语义；需要新语义的 producer 应使用旧消费者不支持的上下文、
 对旧消费者省略包，或明确升级不兼容的数据契约。文本解析结果仍由逐行台账记录。

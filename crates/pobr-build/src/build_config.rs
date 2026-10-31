@@ -5,6 +5,7 @@
 //! dependency lives here, adapted to the REAL [`CalcConfig`] via
 //! [`BuildConfig::to_calc_config`].
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use pobr_core::rules::config_interpreter::RawConfigInputs;
@@ -19,7 +20,8 @@ use pobr_data::prelude::{DamageType, ModFlags, SkillTypes};
 /// attack/spell, the target version, bandit choice, plus arbitrary condition /
 /// multiplier overrides (a 1:1 match to PoB ConfigOptions.lua's toggles, but keyed by
 /// stable keys here, with display text going through i18n).
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct BuildConfig {
     /// Whether the main skill is an attack (drives `ModFlags::ATTACK` / `SkillTypes::ATTACK`).
     pub is_attack: bool,

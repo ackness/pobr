@@ -8,6 +8,8 @@
 #[path = "support/parse.rs"]
 mod support;
 
+#[path = "offence/conditional_hit.rs"]
+mod conditional_hit;
 #[path = "offence/crit.rs"]
 mod crit;
 #[path = "offence/crit_formula.rs"]

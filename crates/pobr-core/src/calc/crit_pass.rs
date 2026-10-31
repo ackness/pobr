@@ -94,6 +94,37 @@ pub struct CritPassOutput {
     pub short_circuited: bool,
 }
 
+/// Shared damage body for ordinary offence and the bounded conditional entry.
+/// Target effects are explicit; `None` cannot query an enemy or call mitigation.
+pub(crate) fn calculate_hit_damage<F>(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    base_hit_min: f64,
+    base_hit_max: f64,
+    crit: &CritOutcome,
+    target: Option<&ModDb>,
+    mitigation: F,
+) -> (ScaledDamage, CritPassOutput)
+where
+    F: FnMut(&CalcConfig, DamageType, f64) -> f64,
+{
+    #[cfg(test)]
+    super::hit_read_probe::damage_body();
+    let scaled =
+        super::scaled_damage::scaled_damage_effect_for_target(db, target, cfg, crit.chance);
+    let passes = run_crit_passes(
+        db,
+        cfg,
+        base_hit_min,
+        base_hit_max,
+        crit,
+        &scaled,
+        target.is_some(),
+        mitigation,
+    );
+    (scaled, passes)
+}
+
 /// Aggregation output for a single leg.
 struct Leg {
     components: Vec<DamageComponent>,

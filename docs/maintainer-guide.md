@@ -118,6 +118,7 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 - 活动数据版本在运行时解析：`POBR_DATA_VERSION` → `POBR_DATA_ROOT/CURRENT`（默认仓库的 `data/`），都缺失时报错；代码和测试不写具体版本号。测试与 PoB2 对照值都针对活动版本：数据升级时用 `examples/demo-bd-test/tools/recapture_golden.py` 与 `recapture_panel_golden.py` 重采，parity 不再达到基线时，需要排查引擎与新版 PoB2 的差距，修引擎而不是降基线。仓库只保留活动版本加最近入库的两个（`mise run data:prune`）。
 - schema 3 的 `manifest.json` 列出运行时文件与 SHA-256，未列的文件视为不存在；`patch/` 与 `overlay-common/` 是独立覆盖层。`GameData` 首次访问时验证并缓存不可变快照，替换磁盘数据后必须创建新实例。
 - `GameData::identity()` 用摘要标识快照、共享覆盖层与有效 patch，进入完整计算响应的 `provenance`（`engine_version`、`data_version`、`data_sha256`）。
+- 原生 schema 4 通过 `NativeData` 加载不可变目录；普通 `BuildData`／ruleset 完整计算仍拒绝它。原生存档绑定最终数据摘要、assembly、actor、policy 与稳定技能分支，每次重开／修改后重新准入。受限的条件命中入口复用共享 Rust 核心，不读取旧资源／敌人／服务器时序默认值，也不生成尚未准入的完整构筑结果。见[条件命中契约](native-skill-hit.md)。
 - `CalculationSession` / `Env` 只执行一次（再次 `perform` 返回 `AlreadyPerformed`）；构筑入口返回只读的 `CompletedCalculationSession`。重算创建新会话，避免再次应用资源转换。
 - CLI 与 WASM 结果里的未支持词条、`missing_items`、`item_errors` 是诊断，调用方必须保留，不能当作零效果。
 

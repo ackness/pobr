@@ -132,6 +132,8 @@ pub fn calc_skill_use_time(
     use_time_penalty: f64,
     is_channelling: bool,
 ) -> SkillUseTime {
+    #[cfg(test)]
+    super::hit_read_probe::dependency("skill use time/server tick");
     let total_skill_speed = db.sum(ModType::Inc, cfg, &speed_names_for(cfg));
     let action_factor = action_speed_factor(db, cfg);
     let total_action_speed = (action_factor - 1.0) * 100.0;

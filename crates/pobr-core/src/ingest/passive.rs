@@ -2,7 +2,7 @@
 //!
 //! Complete supported native packets bypass parsing. Rejected packets retain a
 //! diagnostic and fall back to the whole original text; absent packets keep legacy
-//! parsing. Both channels retain node attribution and raw display text.
+//! parsing. Both channels retain node attribution and any supplied raw display text.
 
 use pobr_data::prelude::*;
 
@@ -89,15 +89,24 @@ pub fn select_native_passive(
         let [stat] = packet.stats.as_slice() else {
             return Err(NativePassiveRejection::IncompletePacket);
         };
-        if packet.modifier_texts.len() != 1 || packet.modifier_texts[0].lines().count() != 1 {
+        // A native-only catalog need not invent English text before its formatter
+        // is available. Any supplied display text must still be the whole line.
+        if packet.modifier_texts.len() > 1
+            || packet
+                .modifier_texts
+                .first()
+                .is_some_and(|text| text.lines().count() != 1)
+        {
             return Err(NativePassiveRejection::IncompletePacket);
         }
         if stat.provenance.passive_id != packet.node_slug {
             return Err(NativePassiveRejection::BindingMismatch);
         }
         let modifier = passive_stats::map_stat(stat)?;
-        let mut origin = ModifierSource::new(node_source(node.node_id.0, node.ascendancy))
-            .with_raw_text(node.modifier_texts[0].clone());
+        let mut origin = ModifierSource::new(node_source(node.node_id.0, node.ascendancy));
+        if let Some(text) = node.modifier_texts.first() {
+            origin = origin.with_raw_text(text.clone());
+        }
         origin.native_stat = Some(stat.clone());
         Ok(modifier.with_origin(origin))
     };

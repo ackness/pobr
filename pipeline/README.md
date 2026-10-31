@@ -79,6 +79,10 @@ PoBR 领域候选，见[候选契约](../tools/pobr-data-adapter/native-facts.md
 保留完整原始事实引用和诊断；它不是运行时包，也未完成品质、几何或全部关系的语义验证。
 候选消费与旧生产再生入口仍分别存在，不能宣称生产链已退出 PoB2。
 
+已有版本化事实、CSD 描述和官方树可通过[固定 recipe 的原生候选统一入口](native-candidate.md)
+与显式绑定的预编译 adapter 离线组包：`mise run data:native:candidate`。
+该入口只编排现有 `--native-runtime`，封存 recipe 与完成收据；不获取原始来源、不发布或切换活动数据。
+
 ## 运行时数据组合封存
 
 运行包的版本文件与共享规则可独立封存并核验，见[运行时数据组合封存](runtime-bundle.md)。

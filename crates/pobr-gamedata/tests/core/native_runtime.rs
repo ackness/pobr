@@ -56,6 +56,37 @@ fn seal_inventory(files: &mut BTreeMap<String, Vec<u8>>) {
     });
 }
 
+#[test]
+fn native_catalog_rejects_duplicate_effect_keys_even_when_resealed() {
+    for bytes in [
+        br#"{"SparkPlayer":[],"SparkPlayer":[]}"#.as_slice(),
+        br#"{"SparkPlayer":[],"Spark\u0050layer":[]}"#.as_slice(),
+    ] {
+        let mut files = pack();
+        files.insert("base/granted_effect_levels.json".into(), bytes.to_vec());
+        seal_inventory(&mut files);
+        let error = pobr_gamedata::NativeData::load(&GameData::from_memory(files))
+            .expect_err("duplicate native effect identity must not be silently overwritten");
+        assert!(error.to_string().contains("duplicate"), "{error}");
+    }
+}
+
+#[test]
+fn native_catalog_rejects_unmodelled_fields_before_typed_data_can_drop_them() {
+    let mut files = pack();
+    files.insert(
+        "base/granted_effect_levels.json".into(),
+        br#"{"SparkPlayer":[{"level":1,"unmodelled_damage_multiplier":2}]}"#.to_vec(),
+    );
+    seal_inventory(&mut files);
+    let error = pobr_gamedata::NativeData::load(&GameData::from_memory(files))
+        .expect_err("new mechanical input cannot disappear before admission");
+    assert!(
+        error.to_string().contains("unmodelled_damage_multiplier"),
+        "{error}"
+    );
+}
+
 struct DiskPack(PathBuf);
 impl DiskPack {
     fn new(files: &BTreeMap<String, Vec<u8>>) -> Self {
@@ -237,7 +268,7 @@ fn native_contract_rejects_versions_profiles_and_bad_declarations() {
     for (field, value, expected) in [
         (
             "schema_version",
-            json!(2),
+            json!(99),
             "unsupported native contract version",
         ),
         ("game", json!("poe1"), "unknown variant"),
@@ -486,4 +517,257 @@ fn native_contract_does_not_inherit_ambient_common() {
         assert!(data.buff_definitions().unwrap().is_none());
         assert_eq!(data.identity().unwrap(), &expected);
     }
+}
+
+fn player_pack() -> BTreeMap<String, Vec<u8>> {
+    let fixture: Value = serde_json::from_slice(include_bytes!(
+        "../../../../tools/pobr-data-adapter/tests/fixtures/native-runtime/player-synthetic.json"
+    ))
+    .unwrap();
+    let mut files = pack();
+    let context = serde_json::to_vec(&fixture["context"]).unwrap();
+    let context_sha = hash(&context);
+    let mut binding = fixture["binding"].clone();
+    binding["context_sha256"] = context_sha.clone().into();
+    let binding = serde_json::to_vec(&binding).unwrap();
+    let binding_sha = hash(&binding);
+    files.insert("base/native_player_context.json".into(), context);
+    files.insert("base/native_actor_binding.json".into(), binding);
+    for name in [
+        "native_input_lock",
+        "native_normalization",
+        "native_rule_requirements",
+        "native_acquisition",
+    ] {
+        files.insert(format!("base/{name}.json"), b"{}".to_vec());
+    }
+    edit(&mut files, NATIVE_RUNTIME_PATH, |v| {
+        v["schema_version"] = 2.into();
+        v["normalization"]["version"] = 2.into();
+        v["normalization"]["sha256"] = hash(b"{}").into();
+        v["rules"]["version"] = 2.into();
+        v["rules"]["sha256"] = hash(b"{}").into();
+        v["source_lock_sha256"] = hash(b"{}").into();
+        v["acquisition"]["evidence_sha256"] = hash(b"{}").into();
+        v["output_profile"] = "conditional-skill-hit-v1".into();
+        v["tree"]["source_manifest_sha256"] = fixture["context"]["parent_manifest_sha256"].clone();
+        v["allowed_source_manifests"] = json!([
+            fixture["context"]["source_manifest_sha256"],
+            fixture["context"]["parent_manifest_sha256"]
+        ]);
+        v["player"] = json!({"context_sha256":context_sha,"actor_binding_sha256":binding_sha,
+            "source_manifest_sha256":fixture["context"]["source_manifest_sha256"],
+            "source_lock_sha256":fixture["context"]["source_lock_sha256"],
+            "parent_manifest_sha256":fixture["context"]["parent_manifest_sha256"],
+            "parent_source_lock_sha256":fixture["context"]["parent_source_lock_sha256"]});
+    });
+    edit(&mut files, "manifest.json", |v| {
+        for name in [
+            "native_player_context",
+            "native_actor_binding",
+            "native_input_lock",
+            "native_normalization",
+            "native_rule_requirements",
+            "native_acquisition",
+        ] {
+            v["domains"]["base"]
+                .as_array_mut()
+                .unwrap()
+                .push(name.into());
+        }
+    });
+    reseal(&mut files);
+    files
+}
+
+#[test]
+fn native_data_v1_has_no_actor_defaults_and_preserves_contract_serialization() {
+    let files = pack();
+    let original: Value = serde_json::from_slice(&files[NATIVE_RUNTIME_PATH]).unwrap();
+    let contract: NativeRuntimeContract = serde_json::from_value(original.clone()).unwrap();
+    assert!(contract.player.is_none());
+    assert_eq!(serde_json::to_value(&contract).unwrap(), original);
+    assert_eq!(native_assembly_key(&contract), contract.assembly_key);
+    let data = GameData::from_memory(files);
+    let native = pobr_gamedata::NativeData::load(&data).unwrap();
+    assert!(native.player_context().is_none());
+    assert!(native.actor_binding().is_none());
+    assert_eq!(native.identity(), data.identity().unwrap());
+    assert!(data.load_ruleset().is_err());
+    assert!(data.validate_calculation_admission().is_err());
+}
+
+#[test]
+fn native_data_v2_disk_memory_exact_identity_and_actor_policy_agree() {
+    let files = player_pack();
+    let disk = DiskPack::new(&files);
+    let memory = GameData::from_memory(files.clone());
+    let expected = pobr_gamedata::NativeData::load(&memory).unwrap();
+    for data in [
+        GameData::new(disk.version()),
+        GameData::from_memory_prechecked(files.clone()),
+        GameData::from_memory_releasing(files, true),
+    ] {
+        let native = pobr_gamedata::NativeData::load(&data).unwrap();
+        assert_eq!(native.identity(), expected.identity());
+        assert_ne!(native.identity().sha256, native.contract().assembly_key);
+        assert_eq!(native.player_context(), expected.player_context());
+        assert_eq!(native.actor_binding(), expected.actor_binding());
+        let context = native.player_context().unwrap();
+        assert_eq!(context.facts.character.source.row, 7);
+        assert!(context.facts.selected_class_overrides.is_empty());
+        assert_eq!(
+            native.actor_binding().unwrap().critical_bonus.bonus_percent,
+            37.5
+        );
+        assert!(native.passive_nodes().is_empty());
+        assert!(native.skill_gems().is_empty());
+        assert!(data.load_ruleset().is_err());
+        assert!(data.validate_calculation_admission().is_err());
+    }
+}
+
+#[test]
+fn native_v2_artifacts_required_and_v1_smuggling_rejected() {
+    for name in ["native_player_context", "native_actor_binding"] {
+        let mut missing = player_pack();
+        missing.remove(&format!("base/{name}.json"));
+        rejected(missing, name);
+        let mut unlisted = player_pack();
+        edit(&mut unlisted, "manifest.json", |v| {
+            v["files"]
+                .as_object_mut()
+                .unwrap()
+                .remove(&format!("base/{name}.json"));
+            v["domains"]["base"]
+                .as_array_mut()
+                .unwrap()
+                .retain(|d| d != name);
+        });
+        rejected(unlisted, "native v2 artifact missing");
+        let mut smuggled = pack();
+        smuggled.insert(format!("base/{name}.json"), b"{}".to_vec());
+        // Even an unlisted file cannot hide a v2 actor policy under v1.
+        rejected(smuggled, "cannot appear under native contract v1");
+    }
+    let mut missing = player_pack();
+    edit(&mut missing, NATIVE_RUNTIME_PATH, |v| {
+        v.as_object_mut().unwrap().remove("player");
+    });
+    seal_inventory(&mut missing);
+    rejected(missing, "v2 requires player artifacts");
+}
+
+fn reseal_player(files: &mut BTreeMap<String, Vec<u8>>) {
+    let context_sha = hash(&files["base/native_player_context.json"]);
+    edit(files, "base/native_actor_binding.json", |v| {
+        v["context_sha256"] = context_sha.clone().into()
+    });
+    let binding_sha = hash(&files["base/native_actor_binding.json"]);
+    edit(files, NATIVE_RUNTIME_PATH, |v| {
+        v["player"]["context_sha256"] = context_sha.into();
+        v["player"]["actor_binding_sha256"] = binding_sha.into();
+    });
+    reseal(files);
+}
+
+#[test]
+fn native_v2_rejects_forged_context_normalization_predicates_and_patches() {
+    for (path, pointer, value) in [
+        ("base/native_player_context.json", "/realm", json!("CN")),
+        (
+            "base/native_player_context.json",
+            "/game_patch",
+            json!("0.5.5.4.2"),
+        ),
+        (
+            "base/native_player_context.json",
+            "/facts/character/source/row",
+            json!(1),
+        ),
+        (
+            "base/native_player_context.json",
+            "/facts/character/values/BaseIntelligence",
+            json!(1000),
+        ),
+        (
+            "base/native_actor_binding.json",
+            "/critical_bonus/bonus_percent",
+            json!(100),
+        ),
+        (
+            "base/native_actor_binding.json",
+            "/critical_bonus/meaning/0/origin",
+            json!("parent"),
+        ),
+        (
+            "base/native_actor_binding.json",
+            "/actor_id",
+            json!("Metadata/Characters/Int/Int"),
+        ),
+        (
+            "base/native_actor_binding.json",
+            "/excluded_sources",
+            json!([]),
+        ),
+        ("base/native_actor_binding.json", "/dispositions", json!([])),
+    ] {
+        let mut files = player_pack();
+        edit(&mut files, path, |v| {
+            *v.pointer_mut(pointer).unwrap() = value
+        });
+        reseal_player(&mut files);
+        assert!(
+            pobr_gamedata::NativeData::load(&GameData::from_memory(files)).is_err(),
+            "accepted {path}#{pointer}"
+        );
+    }
+    for path in [
+        "base/native_player_context.json",
+        "base/native_actor_binding.json",
+        "base/granted_effect_levels.json",
+    ] {
+        let mut files = player_pack();
+        files.insert(format!("patch/{path}"), b"{}".to_vec());
+        rejected(files, "cannot be patched");
+    }
+    let mut legacy = pack();
+    legacy.remove(NATIVE_RUNTIME_PATH);
+    edit(&mut legacy, "manifest.json", |v| {
+        v["schema_version"] = 3.into();
+        v["files"]
+            .as_object_mut()
+            .unwrap()
+            .remove(NATIVE_RUNTIME_PATH);
+        v["domains"]["base"]
+            .as_array_mut()
+            .unwrap()
+            .retain(|d| d != "native_runtime");
+    });
+    assert!(pobr_gamedata::NativeData::load(&GameData::from_memory(legacy)).is_err());
+}
+
+#[test]
+fn native_v2_ignores_ambient_legacy_defaults_and_does_not_admit_unknown_outputs() {
+    let mut files = player_pack();
+    let expected = pobr_gamedata::NativeData::load(&GameData::from_memory(files.clone())).unwrap();
+    files.insert(
+        "overlay-common/character_constants.json".into(),
+        b"invalid legacy constants".to_vec(),
+    );
+    files.insert(
+        "overlay-common/skill_overrides.json".into(),
+        b"invalid legacy overrides".to_vec(),
+    );
+    let data = GameData::from_memory(files);
+    let native = pobr_gamedata::NativeData::load(&data).unwrap();
+    assert_eq!(native.identity(), expected.identity());
+    assert_eq!(native.actor_binding(), expected.actor_binding());
+    assert!(data.validate_calculation_admission().is_err());
+    let mut files = player_pack();
+    edit(&mut files, NATIVE_RUNTIME_PATH, |v| {
+        v["output_profile"] = "full-dps-v1".into()
+    });
+    seal_inventory(&mut files);
+    rejected(files, "unknown variant");
 }

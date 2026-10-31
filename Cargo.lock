@@ -474,6 +474,7 @@ dependencies = [
  "quick-xml",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror",
 ]
 
@@ -516,6 +517,7 @@ dependencies = [
 name = "pobr-data-adapter"
 version = "0.0.43"
 dependencies = [
+ "pobr-core",
  "pobr-data",
  "pobr-gamedata",
  "pobr-tree",
@@ -533,6 +535,7 @@ dependencies = [
  "pobr-data",
  "pobr-tree",
  "serde",
+ "serde_ignored",
  "serde_json",
  "sha2",
 ]

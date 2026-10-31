@@ -235,6 +235,176 @@ fn native_runtime_tree_requires_graph_agreement_and_ordinary_packet_context() {
     assert!(tree::project(&input, &candidate, &official, &"a".repeat(64), "0.5.5.5").is_err());
 }
 
+fn ordinary_damage_tree_case() -> (trust::VerifiedInput, super::super::model::Candidate, Value) {
+    let (mut input, mut candidate, mut official) = tree_case();
+    let evidence: Value = serde_json::from_slice(include_bytes!(
+        "../../../../../crates/pobr-data/tests/fixtures/native_passive_damage/evidence.json"
+    ))
+    .unwrap();
+    for sample in evidence["samples"].as_array().unwrap() {
+        let source = &sample["passive"];
+        let id = source["definition"]["id"].as_str().unwrap();
+        let row = source["definition"]["row"].as_u64().unwrap() as usize;
+        let node = source["graph_id"].as_u64().unwrap();
+        let stat = &source["stats"][0];
+        let stat_row = stat["stat"]["row"].as_u64().unwrap();
+        let rows = input
+            .documents
+            .get_mut("tables/PassiveSkills.json")
+            .unwrap()["rows"]
+            .as_array_mut()
+            .unwrap();
+        rows.resize(rows.len().max(row + 1), json!({"values":{}}));
+        rows[row] = json!({"values":sample["physical_context"]});
+        candidate.passives.insert(
+            id.into(),
+            serde_json::from_value(json!({
+            "raw":{"payload":"tables/PassiveSkills.json","pointer":format!("/rows/{row}/values")},
+            "graph_id_raw":node,"in_default_graph":true,"stats":[{
+                "stat_id":stat["stat"]["id"],"value":stat["value"],"slot":stat["slot"],
+                "value_field":stat["value_field"],"raw_stat":{"payload":"tables/Stats.json",
+                    "pointer":format!("/rows/{stat_row}/values")}}]}))
+            .unwrap(),
+        );
+        candidate.instances.push(
+            serde_json::from_value(json!({"graph_id":node,"definition_id":id,
+            "group":0,"radius_raw":3,"position_raw":7,"connections":[],"splines":[]}))
+            .unwrap(),
+        );
+        candidate.graph.groups[0].node_order.push(node);
+        official["groups"]["1"]["nodes"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!(node.to_string()));
+        official["nodes"][node.to_string()] = json!({"skill":node,"id":id,"group":1,"orbit":3,
+            "orbitIndex":7,"out":[],"x":12.25,"y":-5.75});
+    }
+    (input, candidate, official)
+}
+
+#[test]
+fn native_runtime_ordinary_packets_use_core_rules_source_values_and_complete_context() {
+    let (mut input, mut candidate, official) = ordinary_damage_tree_case();
+    for value in [10, 0, -11, 37] {
+        candidate.passives.get_mut("chaos6").unwrap().stats[0].value = value;
+        mutate(
+            &mut input,
+            "PassiveSkills",
+            3241,
+            "Stat1Value",
+            json!(value),
+        );
+        let projected =
+            tree::project(&input, &candidate, &official, &"a".repeat(64), "0.5.5.5").unwrap();
+        assert_eq!(projected.nodes.len(), 9);
+        let nodes = projected
+            .nodes
+            .iter()
+            .map(|node| {
+                let packet = node
+                    .native_stats
+                    .clone()
+                    .expect("all nine reviewed stat IDs have packets");
+                assert!(node.stats.is_empty());
+                assert!(packet.modifier_texts.is_empty());
+                assert_eq!(packet.node_slug, node.id);
+                assert_eq!(packet.node_id, node.skill);
+                assert_eq!(packet.stats[0].provenance.passive_id, node.id);
+                if node.skill == 52695 {
+                    assert_eq!(packet.stats[0].id, "physical_damage_+%");
+                    assert_eq!(packet.stats[0].value, value);
+                    assert_eq!(packet.stats[0].provenance.passive_row, 3241);
+                    assert_eq!(packet.stats[0].provenance.stat_row, 26);
+                    assert_eq!(
+                        packet.stats[0].provenance.references[0].pointer,
+                        "/rows/3241/values/Stat1Value"
+                    );
+                }
+                pobr_core::passive::AllocatedNode {
+                    node_id: pobr_data::passive_tree::NodeId(node.skill),
+                    modifier_texts: node.stats.clone(),
+                    native: Some(pobr_core::passive::NativePassiveInput {
+                        packet,
+                        ineligible: None,
+                    }),
+                    ..Default::default()
+                }
+            })
+            .collect::<Vec<_>>();
+        let ingest = pobr_core::passive::ingest_passive_nodes_with_ctx(
+            &nodes,
+            pobr_core::mod_parser::ParseCtx::none(),
+        )
+        .unwrap();
+        assert_eq!(ingest.modifiers.len(), 9);
+        assert!(ingest.native_diagnostics.is_empty());
+        assert!(ingest.unsupported.is_empty());
+        assert!(
+            ingest
+                .modifiers
+                .iter()
+                .all(|m| m.origin.as_ref().unwrap().raw_text.is_none())
+        );
+    }
+}
+
+#[test]
+fn native_runtime_ordinary_packet_expansion_rejects_unknown_and_changed_context_as_whole() {
+    for (field, value) in [
+        ("Stat2Value", json!(10)),
+        ("Flag0", json!(true)),
+        ("GrantedSkill", json!(1)),
+        ("Unknown7", json!(999)),
+        ("extra_context", json!(0)),
+    ] {
+        let (mut input, candidate, official) = ordinary_damage_tree_case();
+        mutate(&mut input, "PassiveSkills", 3241, field, value);
+        let projected =
+            tree::project(&input, &candidate, &official, &"a".repeat(64), "0.5.5.5").unwrap();
+        assert!(
+            projected
+                .nodes
+                .iter()
+                .find(|n| n.skill == 52695)
+                .unwrap()
+                .native_stats
+                .is_none(),
+            "{field}"
+        );
+        assert_eq!(
+            projected
+                .nodes
+                .iter()
+                .filter(|n| n.native_stats.is_some())
+                .count(),
+            8
+        );
+    }
+    for changed in ["unknown", "multiple"] {
+        let (input, mut candidate, official) = ordinary_damage_tree_case();
+        let passive = candidate.passives.get_mut("chaos6").unwrap();
+        if changed == "unknown" {
+            passive.stats[0].stat_id = "unknown_stat".into();
+        } else {
+            let additional =
+                serde_json::from_value(serde_json::to_value(&passive.stats[0]).unwrap()).unwrap();
+            passive.stats.push(additional);
+        }
+        let projected =
+            tree::project(&input, &candidate, &official, &"a".repeat(64), "0.5.5.5").unwrap();
+        assert!(
+            projected
+                .nodes
+                .iter()
+                .find(|n| n.skill == 52695)
+                .unwrap()
+                .native_stats
+                .is_none(),
+            "{changed}"
+        );
+    }
+}
+
 #[test]
 fn native_runtime_rejects_duplicates_before_building_runtime_vectors() {
     for (table, row, key, value) in [
@@ -366,8 +536,10 @@ fn native_runtime_assembled_catalog_loads_and_keeps_calculation_guard() {
         tree: "unused".into(),
         tree_sha256: "c".repeat(64),
         compiler_revision: "d".repeat(40),
+        player: None,
     };
-    let (base, receipt) = assemble(&input, &candidate, &official, &descriptions, &args).unwrap();
+    let (base, receipt) =
+        assemble(&input, &candidate, &official, &descriptions, None, &args).unwrap();
     let mut files = base
         .iter()
         .map(|(name, bytes)| (format!("base/{name}"), bytes.clone()))
@@ -413,10 +585,10 @@ fn native_runtime_coordinate_rounding_is_exact_and_null_slugs_are_not_definition
     assert!(tree::project(&input, &candidate, &official, &"a".repeat(64), "0.5.5.5").is_err());
 }
 
-struct Scratch(std::path::PathBuf);
+pub(super) struct Scratch(pub(super) std::path::PathBuf);
 static SCRATCH_SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 impl Scratch {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         let suffix = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()

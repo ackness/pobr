@@ -444,6 +444,8 @@ pub(crate) fn calculate_components(
     base_hit_min: f64,
     base_hit_max: f64,
 ) -> Vec<DamageComponent> {
+    #[cfg(test)]
+    super::hit_read_probe::components();
     calculate_component_terms(db, cfg, base_hit_min, base_hit_max)
         .into_iter()
         .map(|terms| terms.component)

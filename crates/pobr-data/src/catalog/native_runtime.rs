@@ -1,14 +1,17 @@
 //! Required metadata for guarded native candidates, independent of calculation admission.
 //!
 //! Pins identify bytes and declarations. They do not authenticate an acquisition,
-//! promote a source, or certify a calculation. No native profile is admitted yet.
+//! promote a source, or certify a calculation. Full-build calculation stays guarded;
+//! a separate native consumer must admit each supported bounded request explicitly.
 
 use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
 
-/// Only this contract version is understood by the current loader.
+/// Original query-only contract version; its serialization and assembly keys stay stable.
 pub const NATIVE_RUNTIME_CONTRACT_VERSION: u32 = 1;
+/// Player-context contract version, still outside ordinary calculation admission.
+pub const NATIVE_PLAYER_CONTRACT_VERSION: u32 = 2;
 /// Immutable contract location, never merged with a user patch.
 pub const NATIVE_RUNTIME_PATH: &str = "base/native_runtime.json";
 /// Coverage declarations retained by the assembler, without a completeness claim.
@@ -57,6 +60,8 @@ pub enum NativeInputProfile {
 pub enum NativeOutputProfile {
     #[serde(rename = "spark-single-hit-cast-cost-v1")]
     SparkSingleHitCastCostV1,
+    #[serde(rename = "conditional-skill-hit-v1")]
+    ConditionalSkillHitV1,
 }
 
 /// Named PoBR interpretation scope; unknown profiles must fail, never fall back.
@@ -152,4 +157,19 @@ pub struct NativeRuntimeContract {
     pub acquisition: NativeAcquisition,
     /// An empty list explicitly declares no supplements. Shared overlays are not inputs.
     pub supplements: Vec<NativeTreeSupplement>,
+    /// Absent in v1, mandatory in v2. Omission preserves exact v1 canonical serialization.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub player: Option<NativePlayerArtifacts>,
+}
+
+/// Required sealed artifacts and transitive source pins for contract v2.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NativePlayerArtifacts {
+    pub context_sha256: String,
+    pub actor_binding_sha256: String,
+    pub source_manifest_sha256: String,
+    pub source_lock_sha256: String,
+    pub parent_manifest_sha256: String,
+    pub parent_source_lock_sha256: String,
 }

@@ -1,0 +1,497 @@
+{
+  "accuracy_rating_+%_final_at_max_distance_scaled": {
+    "disposition": "outside-output-scope",
+    "reason": "Distance accuracy affects contact probability; the evaluation conditions on a successful damaging hit.",
+    "relevant_to_conditional_hit": true
+  },
+  "accuracy_rating_per_level": {
+    "disposition": "outside-output-scope",
+    "reason": "Per-level actor growth is retained; no pool, accuracy or attribute formula is evaluated.",
+    "relevant_to_conditional_hit": false
+  },
+  "actor_scale_+%_limit": {
+    "disposition": "outside-output-scope",
+    "reason": "Actor scale and cosmetic counters do not belong to the requested hit quantities.",
+    "relevant_to_conditional_hit": false
+  },
+  "additional_insanity_effects_while_delirious": {
+    "disposition": "inactive",
+    "reason": "Delirium is explicitly excluded; no insanity condition is supplied.",
+    "relevant_to_conditional_hit": true
+  },
+  "base_block_angle_degrees": {
+    "disposition": "outside-output-scope",
+    "reason": "Defence, incoming control and presence facts are retained; no actor defence or stun outcome is requested.",
+    "relevant_to_conditional_hit": false
+  },
+  "base_critical_hit_damage_bonus": {
+    "disposition": "consumed",
+    "reason": "Explicit extra-damage critical bonus from the independent generic OT, applied by the named PoBR assumption.",
+    "relevant_to_conditional_hit": true
+  },
+  "base_evasion_rating": {
+    "disposition": "outside-output-scope",
+    "reason": "Defence, incoming control and presence facts are retained; no actor defence or stun outcome is requested.",
+    "relevant_to_conditional_hit": false
+  },
+  "base_heavy_stun_duration_ms": {
+    "disposition": "outside-output-scope",
+    "reason": "Defence, incoming control and presence facts are retained; no actor defence or stun outcome is requested.",
+    "relevant_to_conditional_hit": false
+  },
+  "base_knockback_speed_+%": {
+    "disposition": "outside-output-scope",
+    "reason": "Defence, incoming control and presence facts are retained; no actor defence or stun outcome is requested.",
+    "relevant_to_conditional_hit": false
+  },
+  "base_max_fortification": {
+    "disposition": "outside-output-scope",
+    "reason": "Defence, incoming control and presence facts are retained; no actor defence or stun outcome is requested.",
+    "relevant_to_conditional_hit": false
+  },
+  "base_maximum_all_resistances_%": {
+    "disposition": "outside-output-scope",
+    "reason": "Defence, incoming control and presence facts are retained; no actor defence or stun outcome is requested.",
+    "relevant_to_conditional_hit": false
+  },
+  "base_maximum_number_of_stored_corpses": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "base_number_of_remote_mines_allowed": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "base_number_of_traps_allowed": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "base_number_of_weapon_sets": {
+    "disposition": "inactive",
+    "reason": "Ordinary stationary self-cast excludes movement, form changes, weapon swaps, poise actions and animation cancellation.",
+    "relevant_to_conditional_hit": false
+  },
+  "base_pay_cost_over_start_of_skill_animation": {
+    "disposition": "outside-output-scope",
+    "reason": "Cost payment timing is retained; Mana per use does not certify a payment instant or affordability.",
+    "relevant_to_conditional_hit": true
+  },
+  "base_presence_radius": {
+    "disposition": "outside-output-scope",
+    "reason": "Defence, incoming control and presence facts are retained; no actor defence or stun outcome is requested.",
+    "relevant_to_conditional_hit": false
+  },
+  "base_total_number_of_sigils_allowed": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "base_weapon_swap_duration_ms": {
+    "disposition": "inactive",
+    "reason": "Ordinary stationary self-cast excludes movement, form changes, weapon swaps, poise actions and animation cancellation.",
+    "relevant_to_conditional_hit": false
+  },
+  "branching_fissure_max_branch_angle": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "branching_fissure_min_branch_angle": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "branching_fissure_placement_along_main_fissure_variance_%": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "can_evade_spells": {
+    "disposition": "outside-output-scope",
+    "reason": "Spell evasion is retained; a successful damaging hit does not certify guaranteed contact.",
+    "relevant_to_conditional_hit": true
+  },
+  "chance_to_deal_triple_damage_%_per_brutal_charge": {
+    "disposition": "inactive",
+    "reason": "Charges, rampage and fortification are explicitly excluded; no stacks, rates or uptime are inferred.",
+    "relevant_to_conditional_hit": true
+  },
+  "character_inherent_mana_regeneration_rate_per_minute_%": {
+    "disposition": "outside-output-scope",
+    "reason": "Recovery rate is retained; conditional hit does not calculate resource recovery.",
+    "relevant_to_conditional_hit": false
+  },
+  "crossbow_ammo_switch_time_ms": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "damage_+%_per_10_rampage_stacks": {
+    "disposition": "inactive",
+    "reason": "Charges, rampage and fortification are explicitly excluded; no stacks, rates or uptime are inferred.",
+    "relevant_to_conditional_hit": true
+  },
+  "damage_taken_when_hit_+%_final_per_fortification": {
+    "disposition": "inactive",
+    "reason": "Charges, rampage and fortification are explicitly excluded; no stacks, rates or uptime are inferred.",
+    "relevant_to_conditional_hit": true
+  },
+  "dexterity_per_level": {
+    "disposition": "outside-output-scope",
+    "reason": "Per-level actor growth is retained; no pool, accuracy or attribute formula is evaluated.",
+    "relevant_to_conditional_hit": false
+  },
+  "disable_minion_formation": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "dodge_roll_sprint_minimum_time_ms": {
+    "disposition": "inactive",
+    "reason": "Ordinary stationary self-cast excludes movement, form changes, weapon swaps, poise actions and animation cancellation.",
+    "relevant_to_conditional_hit": false
+  },
+  "dodge_roll_sprint_turn_rate": {
+    "disposition": "inactive",
+    "reason": "Ordinary stationary self-cast excludes movement, form changes, weapon swaps, poise actions and animation cancellation.",
+    "relevant_to_conditional_hit": false
+  },
+  "elemental_damage_taken_goes_to_energy_shield_over_4_seconds_%_per_absorption_charge": {
+    "disposition": "inactive",
+    "reason": "Charges, rampage and fortification are explicitly excluded; no stacks, rates or uptime are inferred.",
+    "relevant_to_conditional_hit": true
+  },
+  "enable_movement_skill_animation_skipping": {
+    "disposition": "inactive",
+    "reason": "Ordinary stationary self-cast excludes movement, form changes, weapon swaps, poise actions and animation cancellation.",
+    "relevant_to_conditional_hit": false
+  },
+  "enable_weapon_sets": {
+    "disposition": "inactive",
+    "reason": "Ordinary stationary self-cast excludes movement, form changes, weapon swaps, poise actions and animation cancellation.",
+    "relevant_to_conditional_hit": false
+  },
+  "energy_shield_recharge_rate_per_minute_%": {
+    "disposition": "outside-output-scope",
+    "reason": "Recovery rate is retained; conditional hit does not calculate resource recovery.",
+    "relevant_to_conditional_hit": false
+  },
+  "fixed_frost_wall_limit": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "global_resummon_time_ms": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "heat_base_decay_rate_ms": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "heat_base_delay_before_decay_ms": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "ignore_talisman_inherent_form_restriction": {
+    "disposition": "inactive",
+    "reason": "Ordinary stationary self-cast excludes movement, form changes, weapon swaps, poise actions and animation cancellation.",
+    "relevant_to_conditional_hit": false
+  },
+  "intelligence_per_level": {
+    "disposition": "outside-output-scope",
+    "reason": "Per-level actor growth is retained; no pool, accuracy or attribute formula is evaluated.",
+    "relevant_to_conditional_hit": false
+  },
+  "is_player": {
+    "disposition": "inactive",
+    "reason": "Actor level and player identity are explicit selection predicates; no generic actor-stat merge.",
+    "relevant_to_conditional_hit": false
+  },
+  "level": {
+    "disposition": "inactive",
+    "reason": "Actor level and player identity are explicit selection predicates; no generic actor-stat merge.",
+    "relevant_to_conditional_hit": false
+  },
+  "life_per_level": {
+    "disposition": "outside-output-scope",
+    "reason": "Per-level actor growth is retained; no pool, accuracy or attribute formula is evaluated.",
+    "relevant_to_conditional_hit": false
+  },
+  "light_stun_threshold_+%_final_per_number_of_times_stunned_in_past_duration_from_ot": {
+    "disposition": "outside-output-scope",
+    "reason": "Defence, incoming control and presence facts are retained; no actor defence or stun outcome is requested.",
+    "relevant_to_conditional_hit": false
+  },
+  "mana_per_level": {
+    "disposition": "outside-output-scope",
+    "reason": "Per-level actor growth is retained; no pool, accuracy or attribute formula is evaluated.",
+    "relevant_to_conditional_hit": false
+  },
+  "max_azurite_debuff_stacks": {
+    "disposition": "inactive",
+    "reason": "No delve or azurite condition is selected.",
+    "relevant_to_conditional_hit": false
+  },
+  "max_charged_attack_stacks": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "max_delve_degen_stacks": {
+    "disposition": "inactive",
+    "reason": "No delve or azurite condition is selected.",
+    "relevant_to_conditional_hit": false
+  },
+  "max_endurance_charges": {
+    "disposition": "inactive",
+    "reason": "Charges, rampage and fortification are explicitly excluded; no stacks, rates or uptime are inferred.",
+    "relevant_to_conditional_hit": true
+  },
+  "max_fire_beam_stacks": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "max_frenzy_charges": {
+    "disposition": "inactive",
+    "reason": "Charges, rampage and fortification are explicitly excluded; no stacks, rates or uptime are inferred.",
+    "relevant_to_conditional_hit": true
+  },
+  "max_frost_nova_stacks": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "max_fuse_arrow_orbs": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "max_power_charges": {
+    "disposition": "inactive",
+    "reason": "Charges, rampage and fortification are explicitly excluded; no stacks, rates or uptime are inferred.",
+    "relevant_to_conditional_hit": true
+  },
+  "max_rampage_stacks": {
+    "disposition": "inactive",
+    "reason": "Charges, rampage and fortification are explicitly excluded; no stacks, rates or uptime are inferred.",
+    "relevant_to_conditional_hit": true
+  },
+  "max_steel_ammo": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "max_talisman_degen_stacks": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "max_viper_strike_orbs": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "maximum_blood_scythe_charges": {
+    "disposition": "inactive",
+    "reason": "Charges, rampage and fortification are explicitly excluded; no stacks, rates or uptime are inferred.",
+    "relevant_to_conditional_hit": true
+  },
+  "maximum_briarpatches_allowed": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "maximum_caltrops_allowed": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "maximum_physical_damage_reduction_%": {
+    "disposition": "outside-output-scope",
+    "reason": "Defence, incoming control and presence facts are retained; no actor defence or stun outcome is requested.",
+    "relevant_to_conditional_hit": false
+  },
+  "maximum_righteous_charges": {
+    "disposition": "inactive",
+    "reason": "Charges, rampage and fortification are explicitly excluded; no stacks, rates or uptime are inferred.",
+    "relevant_to_conditional_hit": true
+  },
+  "maximum_volatility_allowed_default": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "melee_defer_damage_prediction": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "melee_hit_damage_stun_multiplier_+%_final_from_ot": {
+    "disposition": "outside-output-scope",
+    "reason": "Hit stun multipliers remain retained; conditional damage does not calculate stun outcomes.",
+    "relevant_to_conditional_hit": false
+  },
+  "melee_strike_bonus_attack_distance": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "melee_variation": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "mines_invulnerable_for_duration_ms": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "minion_damage_taken_+%_from_arrow_traps_final": {
+    "disposition": "inactive",
+    "reason": "No minion or labyrinth encounter is selected.",
+    "relevant_to_conditional_hit": false
+  },
+  "minion_damage_taken_+%_from_guillotine_traps_final": {
+    "disposition": "inactive",
+    "reason": "No minion or labyrinth encounter is selected.",
+    "relevant_to_conditional_hit": false
+  },
+  "minion_damage_taken_+%_from_spike_traps_final": {
+    "disposition": "inactive",
+    "reason": "No minion or labyrinth encounter is selected.",
+    "relevant_to_conditional_hit": false
+  },
+  "minions_are_immune_to_labyrinth_degen_effect": {
+    "disposition": "inactive",
+    "reason": "No minion or labyrinth encounter is selected.",
+    "relevant_to_conditional_hit": false
+  },
+  "minions_have_labyrinth_trap_degen_effect_+%": {
+    "disposition": "inactive",
+    "reason": "No minion or labyrinth encounter is selected.",
+    "relevant_to_conditional_hit": false
+  },
+  "movement_velocity_+%_per_10_rampage_stacks": {
+    "disposition": "inactive",
+    "reason": "Charges, rampage and fortification are explicitly excluded; no stacks, rates or uptime are inferred.",
+    "relevant_to_conditional_hit": true
+  },
+  "mtx_max_killcounter_stacks": {
+    "disposition": "outside-output-scope",
+    "reason": "Actor scale and cosmetic counters do not belong to the requested hit quantities.",
+    "relevant_to_conditional_hit": false
+  },
+  "no_extra_bleeding_damage_while_moving": {
+    "disposition": "outside-output-scope",
+    "reason": "Moving-target bleeding behaviour is retained; no bleed or movement outcome is requested.",
+    "relevant_to_conditional_hit": false
+  },
+  "number_of_banners_allowed": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "object_inherent_armour_break_amount_+%_final_against_magic_monsters": {
+    "disposition": "outside-output-scope",
+    "reason": "Armour break against monster rarity is retained; no enemy mitigation or armour-break outcome is requested.",
+    "relevant_to_conditional_hit": false
+  },
+  "object_inherent_armour_break_amount_+%_final_against_normal_monsters": {
+    "disposition": "outside-output-scope",
+    "reason": "Armour break against monster rarity is retained; no enemy mitigation or armour-break outcome is requested.",
+    "relevant_to_conditional_hit": false
+  },
+  "object_inherent_base_maximum_block_%_from_ot": {
+    "disposition": "outside-output-scope",
+    "reason": "Defence, incoming control and presence facts are retained; no actor defence or stun outcome is requested.",
+    "relevant_to_conditional_hit": false
+  },
+  "object_innate_minimum_number_of_projectiles_to_fire_is_1": {
+    "disposition": "inactive",
+    "reason": "The selected intrinsic total projectile count already satisfies this minimum; no generic-OT projectile adjustment is applied.",
+    "relevant_to_conditional_hit": true
+  },
+  "physical_hit_damage_stun_multiplier_+%_final_from_ot": {
+    "disposition": "outside-output-scope",
+    "reason": "Hit stun multipliers remain retained; conditional damage does not calculate stun outcomes.",
+    "relevant_to_conditional_hit": false
+  },
+  "player_allow_dodge_roll_cancel": {
+    "disposition": "inactive",
+    "reason": "Ordinary stationary self-cast excludes movement, form changes, weapon swaps, poise actions and animation cancellation.",
+    "relevant_to_conditional_hit": false
+  },
+  "poise_decay_%_per_second": {
+    "disposition": "inactive",
+    "reason": "Ordinary stationary self-cast excludes movement, form changes, weapon swaps, poise actions and animation cancellation.",
+    "relevant_to_conditional_hit": false
+  },
+  "poise_decay_delay_ms": {
+    "disposition": "inactive",
+    "reason": "Ordinary stationary self-cast excludes movement, form changes, weapon swaps, poise actions and animation cancellation.",
+    "relevant_to_conditional_hit": false
+  },
+  "pvp_shield_damage_+%_final": {
+    "disposition": "inactive",
+    "reason": "PvP is explicitly excluded; its damage adjustment is retained.",
+    "relevant_to_conditional_hit": true
+  },
+  "quadruped_head_turn_duration_ms": {
+    "disposition": "inactive",
+    "reason": "Ordinary stationary self-cast excludes movement, form changes, weapon swaps, poise actions and animation cancellation.",
+    "relevant_to_conditional_hit": false
+  },
+  "sprint_end_stun_linger_duration_ms": {
+    "disposition": "inactive",
+    "reason": "Ordinary stationary self-cast excludes movement, form changes, weapon swaps, poise actions and animation cancellation.",
+    "relevant_to_conditional_hit": false
+  },
+  "sprint_movement_speed_+%": {
+    "disposition": "inactive",
+    "reason": "Ordinary stationary self-cast excludes movement, form changes, weapon swaps, poise actions and animation cancellation.",
+    "relevant_to_conditional_hit": false
+  },
+  "strength_per_level": {
+    "disposition": "outside-output-scope",
+    "reason": "Per-level actor growth is retained; no pool, accuracy or attribute formula is evaluated.",
+    "relevant_to_conditional_hit": false
+  },
+  "stun_base_duration_override_ms": {
+    "disposition": "outside-output-scope",
+    "reason": "Defence, incoming control and presence facts are retained; no actor defence or stun outcome is requested.",
+    "relevant_to_conditional_hit": false
+  },
+  "stun_threshold_+%_per_brutal_charge": {
+    "disposition": "inactive",
+    "reason": "Charges, rampage and fortification are explicitly excluded; no stacks, rates or uptime are inferred.",
+    "relevant_to_conditional_hit": true
+  },
+  "traps_explode_on_timeout": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "traps_invulnerable_for_duration_ms": {
+    "disposition": "inactive",
+    "reason": "This selected ordinary spell is not the named other skill, weapon, minion, trap, mine or mechanic.",
+    "relevant_to_conditional_hit": false
+  },
+  "unarmed_base_critical_strike_chance": {
+    "disposition": "inactive",
+    "reason": "Unarmed weapon critical chance does not supply this spell's explicit intrinsic critical chance.",
+    "relevant_to_conditional_hit": true
+  },
+  "x_ms_for_number_of_times_stunned_in_past_duration_from_ot": {
+    "disposition": "outside-output-scope",
+    "reason": "Defence, incoming control and presence facts are retained; no actor defence or stun outcome is requested.",
+    "relevant_to_conditional_hit": false
+  }
+}

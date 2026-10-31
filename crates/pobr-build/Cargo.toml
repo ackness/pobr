@@ -16,10 +16,11 @@ flate2 = "1"
 quick-xml = "0.42"
 thiserror = "2"
 serde.workspace = true
+serde_json = { workspace = true, features = ["float_roundtrip"] }
+sha2 = { version = "0.11", default-features = false }
 criterion = { version = "0.8", default-features = false, optional = true }
 
 [dev-dependencies]
-serde_json = { workspace = true }
 # 测试取真实 CompiledParserRules（读仓库数据目录）；仅测试构建启用。
 pobr-core = { workspace = true, features = ["test-rules"] }
 # Snapshot pins for data-count assertions; test builds only.

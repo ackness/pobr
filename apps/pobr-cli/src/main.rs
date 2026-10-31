@@ -1,4 +1,4 @@
-//! pobr-cli: the command-line entry point (calculate / parse-mod / parse-item / decode-code / encode-code).
+//! pobr-cli: calculation, native conditional evaluation, parsing and build-code commands.
 //!
 //! `main` only glues together IO: clap parses args, reads the file / stdin,
 //! calls into `pobr_cli` library functions, and prints JSON. All command
@@ -7,9 +7,11 @@
 
 use std::fs;
 use std::io::Read;
+use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{Args, Parser, Subcommand};
+use pobr_build::native_document::MAX_NATIVE_BUILD_BYTES;
 use pobr_cli::{CalculateBuildRequest, CalculateRequest, ParseItemRequest};
 use pobr_core::calc::MinimalInput;
 use pobr_data::monster::EnemyTier;
@@ -33,6 +35,9 @@ enum Command {
     /// enemy — printing the result as JSON, or with --breakdown how it arrives at
     /// the stats asked for, as text.
     CalculateBuild(CalculateBuildArgs),
+    /// Evaluate a bound native JSON request against one explicit native dataset.
+    /// Always prints the complete conditional result as JSON; no full DPS.
+    CalculateNative(CalculateNativeArgs),
     /// Parse one mod line and print what the parser made of it.
     ParseMod(ParseModArgs),
     /// Break one mod line all the way down: name, type and value plus the flags and
@@ -129,6 +134,16 @@ struct CalculateBuildArgs {
     /// fully used; with --json, every line.
     #[arg(long)]
     usage: bool,
+}
+
+#[derive(Debug, Args)]
+struct CalculateNativeArgs {
+    /// Exact native version root matching the saved binding; no CURRENT/environment fallback.
+    #[arg(long, value_name = "VERSION_ROOT")]
+    data_dir: PathBuf,
+    /// Strict pobr-native-build/v1 JSON file (at most 16 MiB); no stdin or imports.
+    #[arg(long, value_name = "NATIVE_BUILD_JSON")]
+    file: PathBuf,
 }
 
 #[derive(Debug, Args)]
@@ -245,6 +260,11 @@ fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
                 return Ok(pobr_cli::render_breakdowns(&report));
             }
             Ok(serde_json::to_string_pretty(&report)?)
+        }
+        Command::CalculateNative(args) => {
+            let bytes = read_native_document(fs::File::open(args.file)?)?;
+            let data = pobr_gamedata::GameData::new(args.data_dir);
+            Ok(pobr_cli::native::calculate_native_document(&data, &bytes)?)
         }
         Command::ParseMod(args) => {
             let data_dir = match args.data_dir {
@@ -372,4 +392,155 @@ fn read_text_source(
     let mut buf = String::new();
     std::io::stdin().read_to_string(&mut buf)?;
     Ok(buf)
+}
+
+/// Read one extra byte so the strict document codec can reject oversized input.
+fn read_native_document(reader: impl Read) -> std::io::Result<Vec<u8>> {
+    let mut bytes = Vec::new();
+    reader
+        .take((MAX_NATIVE_BUILD_BYTES + 1) as u64)
+        .read_to_end(&mut bytes)?;
+    Ok(bytes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::error::ErrorKind;
+
+    #[test]
+    fn native_requires_both_explicit_paths() {
+        for (args, missing) in [
+            (
+                vec!["pobr", "calculate-native"],
+                vec!["--data-dir", "--file"],
+            ),
+            (
+                vec!["pobr", "calculate-native", "--file", "request.json"],
+                vec!["--data-dir"],
+            ),
+            (
+                vec!["pobr", "calculate-native", "--data-dir", "native-version"],
+                vec!["--file"],
+            ),
+        ] {
+            let error = Cli::try_parse_from(&args).expect_err("native paths are required");
+            assert_eq!(error.kind(), ErrorKind::MissingRequiredArgument, "{args:?}");
+            for flag in missing {
+                assert!(error.to_string().contains(flag), "{args:?}: {error}");
+            }
+        }
+    }
+
+    #[test]
+    fn native_accepts_explicit_paths() {
+        let cli = Cli::try_parse_from([
+            "pobr",
+            "calculate-native",
+            "--data-dir",
+            "native-version",
+            "--file",
+            "request.json",
+        ])
+        .expect("explicit native paths parse");
+        let Command::CalculateNative(args) = cli.command else {
+            panic!("calculate-native must select its own command");
+        };
+        assert_eq!(args.data_dir, PathBuf::from("native-version"));
+        assert_eq!(args.file, PathBuf::from("request.json"));
+    }
+
+    #[test]
+    fn help_exposes_the_native_command_and_explicit_inputs() {
+        let help = Cli::try_parse_from(["pobr", "--help"])
+            .expect_err("top-level help is returned without executing a command");
+        assert_eq!(help.kind(), ErrorKind::DisplayHelp);
+        assert!(help.to_string().contains("calculate-native"));
+        let help = Cli::try_parse_from(["pobr", "calculate-native", "--help"])
+            .expect_err("native help is returned without opening input paths");
+        assert_eq!(help.kind(), ErrorKind::DisplayHelp);
+        let text = help.to_string();
+        assert!(text.contains("--data-dir <VERSION_ROOT>"), "{text}");
+        assert!(text.contains("--file <NATIVE_BUILD_JSON>"), "{text}");
+        assert!(text.contains("pobr-native-build/v1"), "{text}");
+    }
+
+    #[test]
+    fn native_rejects_compatibility_flags_and_inline_inputs() {
+        for extra in [
+            "--reference-basis",
+            "--enemy",
+            "--enemy-level",
+            "--enemy-tier",
+            "--full-dps",
+            "--mods",
+            "--mod",
+            "--mods-file",
+            "--panel",
+            "--json",
+            "--text",
+            "--code",
+            "eJwPoBBuildCode",
+            "<PathOfBuilding/>",
+        ] {
+            let error = Cli::try_parse_from([
+                "pobr",
+                "calculate-native",
+                "--data-dir",
+                "native-version",
+                "--file",
+                "request.json",
+                extra,
+            ])
+            .expect_err("native has no compatibility options or inline input");
+            assert_eq!(error.kind(), ErrorKind::UnknownArgument, "{extra}: {error}");
+        }
+    }
+
+    #[test]
+    fn ordinary_commands_keep_their_existing_inputs() {
+        for args in [
+            vec!["pobr", "calculate"],
+            vec!["pobr", "calculate-build"],
+            vec!["pobr", "parse-mod", "+50 to maximum Life"],
+            vec!["pobr", "explain-mod", "+50 to maximum Life"],
+            vec!["pobr", "parse-item"],
+            vec!["pobr", "decode-code", "eJwPoBBuildCode"],
+            vec!["pobr", "encode-code"],
+        ] {
+            assert!(Cli::try_parse_from(&args).is_ok(), "{args:?}");
+        }
+        let cli = Cli::try_parse_from([
+            "pobr",
+            "calculate-build",
+            "--file",
+            "code.txt",
+            "--reference-basis",
+            "--full-dps",
+            "--enemy-level",
+            "80",
+        ])
+        .expect("ordinary build compatibility options still parse");
+        let Command::CalculateBuild(args) = cli.command else {
+            panic!("calculate-build must keep its own command");
+        };
+        assert!(args.reference_basis);
+        assert!(args.full_dps);
+        assert_eq!(args.enemy_level, 80);
+        assert_eq!(args.enemy_tier, "pinnacle");
+        assert_eq!(args.file.as_deref(), Some("code.txt"));
+        assert!(args.data_dir.is_none());
+    }
+
+    #[test]
+    fn native_read_is_bounded_before_decoding() {
+        let bytes = read_native_document(std::io::repeat(b' '))
+            .expect("bounded read must finish even without EOF");
+        assert_eq!(bytes.len(), MAX_NATIVE_BUILD_BYTES + 1);
+        let data = pobr_gamedata::GameData::from_memory(Default::default());
+        let error = pobr_cli::native::calculate_native_document(&data, &bytes)
+            .expect_err("oversized native input must fail before data loading");
+        assert!(matches!(error, pobr_cli::CliError::NativeDocument(_)));
+        assert!(error.to_string().contains("exceeds the byte limit"));
+    }
 }

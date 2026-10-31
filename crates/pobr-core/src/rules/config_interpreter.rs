@@ -25,6 +25,7 @@
 //!    `custom_mod_lines`, fed to mod_parser by the build layer (vendor
 //!    ConfigOptions.lua:2278-2296).
 
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 use pobr_data::catalog::config_def::{
@@ -39,7 +40,8 @@ use crate::rules::registry::{HandlerCtx, HandlerRegistry};
 use crate::rules::value_expr;
 
 /// A raw config input value, as read from an xml_build `<Input name bool|number|string>`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ConfigInputValue {
     /// Boolean input.
     Bool(bool),
@@ -63,7 +65,8 @@ impl ConfigInputValue {
 }
 
 /// A set of raw config inputs (var → value).
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RawConfigInputs {
     /// Explicit inputs (parsed from XML `<Input>`).
     pub values: BTreeMap<String, ConfigInputValue>,

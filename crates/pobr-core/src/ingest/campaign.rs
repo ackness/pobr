@@ -10,6 +10,7 @@
 //! against PoB-PoE2's `QuestRewards.lua` / `CalcSetup.lua`).
 
 use pobr_data::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::Modifier;
 
@@ -24,7 +25,8 @@ pub(crate) const RESISTANCE_PENALTY_SOURCE: &str = "campaign.resistance_penalty"
 ///
 /// The penalty applies to fire / cold / lightning resistance; current sources
 /// haven't confirmed whether chaos resistance drops alongside it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum CampaignProgress {
     Act1,
     Act2,

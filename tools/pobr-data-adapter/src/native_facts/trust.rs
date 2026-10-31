@@ -293,8 +293,16 @@ fn verify_manifest(m: &Value, profile: Profile) -> Result<(), String> {
                 == "c9417f03e2205ff649721c3dbf9620ee0c703bf905b3cf53469ce3eda86f1e25",
         "schema identity mismatch",
     )?;
+    verify_decoder(&m["decoder"])?;
+    require(
+        m["scope"].is_array() && m["row_key"].is_string(),
+        "missing source scope/row evidence",
+    )
+}
+
+pub(super) fn verify_decoder(decoder: &Value) -> Result<(), String> {
     exact_keys(
-        &m["decoder"],
+        decoder,
         &[
             "pypoe_revision",
             "python",
@@ -304,14 +312,14 @@ fn verify_manifest(m: &Value, profile: Profile) -> Result<(), String> {
         .map(String::from),
     )?;
     require(
-        m["decoder"]["pypoe_revision"] == PYPOE && !string(&m["decoder"]["python"])?.is_empty(),
+        decoder["pypoe_revision"] == PYPOE && !string(&decoder["python"])?.is_empty(),
         "decoder identity mismatch",
     )?;
-    let sources = m["decoder"]["sources"]
+    let sources = decoder["sources"]
         .as_object()
         .ok_or("missing decoder sources")?;
     require(
-        m["decoder"]["trusted_source_pin_sha256"] == DECODER_PIN_SHA
+        decoder["trusted_source_pin_sha256"] == DECODER_PIN_SHA
             && sha256_hex(DECODER_PIN) == DECODER_PIN_SHA,
         "decoder trusted source pin mismatch",
     )?;
@@ -335,10 +343,7 @@ fn verify_manifest(m: &Value, profile: Profile) -> Result<(), String> {
             &format!("decoder source fingerprint mismatch: {path}"),
         )?;
     }
-    require(
-        m["scope"].is_array() && m["row_key"].is_string(),
-        "missing source scope/row evidence",
-    )
+    Ok(())
 }
 
 pub(super) fn payload_paths(profile: Profile) -> Vec<String> {

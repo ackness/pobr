@@ -51,6 +51,8 @@ impl HighPrecisionRules {
     /// (`BASE`/`MORE`…, = [`ModType::as_trace_label`]). Returns `None` when
     /// not injected / no match.
     pub fn precision_for(&self, name: &str, mod_type: ModType) -> Option<u32> {
+        #[cfg(test)]
+        crate::calc::hit_read_probe::dependency("modifier precision table");
         self.def
             .as_ref()?
             .mods
@@ -61,6 +63,8 @@ impl HighPrecisionRules {
 
     /// `data.defaultHighPrecision` (`Data.lua:413` = 1; same-value fallback when not injected).
     pub fn default_high_precision(&self) -> u32 {
+        #[cfg(test)]
+        crate::calc::hit_read_probe::dependency("modifier default precision");
         self.def.as_ref().map_or(1, |d| d.default_high_precision)
     }
 }
@@ -495,6 +499,8 @@ impl ModDb {
     /// query takes its modifiers from here; writes and whole-db iteration do not.
     #[inline]
     fn bucket(&self, name: &str, query: Query<'_>) -> Option<&Vec<Modifier>> {
+        #[cfg(test)]
+        crate::calc::hit_read_probe::query(name);
         let bucket = self.mods.get(name);
         if bucket.is_some()
             && let Some(reads) = &self.reads
