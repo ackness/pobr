@@ -27,3 +27,18 @@ The test harness reuses `../native-facts/items-actors-bc-synthetic.json` for its
 reviewed test envelope/lock structure, reseals the selected fixture payloads,
 and leaves all unrelated payloads absent. Its trust values authenticate only
 these synthetic test bytes; they do not claim new real-source acquisition.
+
+## Base-item fixture
+
+`base-item-tables.json` uses the same F manifest/lock and compact column-metadata
+approach for the eleven selected base-item tables. Its hand-adapted rows are
+synthetic, with the validation byte width set to 1 and selected source-column
+ordinals renumbered. The seven base IDs have shared display names; component
+order differs from base order, and ComponentCharges uses stable string IDs.
+The fixture covers all existing item DTO fields, placeholder exclusion and a
+UtilityFlask whose inherent charm effect is explicitly unavailable.
+
+Secondary utility values deliberately differ from their primary values and one
+is null. These are synthetic retention cases, not a claim that this F has those
+differences. Raw UtilityBuff references are copied only as unconverted facts;
+no referenced buff table or meaning is supplied by this fixture.

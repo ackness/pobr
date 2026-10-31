@@ -177,7 +177,12 @@ fn convert_mod(
     })
 }
 
-fn resolve(tables: &Tables<'_>, table: &str, row: &Value, key: &str) -> Result<String, String> {
+pub(super) fn resolve(
+    tables: &Tables<'_>,
+    table: &str,
+    row: &Value,
+    key: &str,
+) -> Result<String, String> {
     let index = row
         .as_u64()
         .and_then(|i| usize::try_from(i).ok())
@@ -189,14 +194,18 @@ fn resolve(tables: &Tables<'_>, table: &str, row: &Value, key: &str) -> Result<S
     Ok(value.into())
 }
 
-fn resolve_list(tables: &Tables<'_>, table: &str, values: &Value) -> Result<Vec<String>, String> {
+pub(super) fn resolve_list(
+    tables: &Tables<'_>,
+    table: &str,
+    values: &Value,
+) -> Result<Vec<String>, String> {
     array(values)?
         .iter()
         .map(|value| resolve(tables, table, value, "Id"))
         .collect()
 }
 
-fn text(value: &Value) -> Result<&str, String> {
+pub(super) fn text(value: &Value) -> Result<&str, String> {
     value.as_str().ok_or_else(|| "expected string".into())
 }
 
@@ -207,7 +216,7 @@ fn array(value: &Value) -> Result<&[Value], String> {
         .ok_or_else(|| "expected array".into())
 }
 
-fn u32_value(value: &Value) -> Result<u32, String> {
+pub(super) fn u32_value(value: &Value) -> Result<u32, String> {
     value
         .as_u64()
         .and_then(|v| u32::try_from(v).ok())
@@ -317,7 +326,7 @@ fn check_columns(input: &VerifiedFacts) -> Result<(), String> {
 }
 
 /// Assert the physical column contract, including foreign-key destination and interval expansion.
-fn column(
+pub(super) fn column(
     input: &VerifiedFacts,
     table: &str,
     fields: &[&str],

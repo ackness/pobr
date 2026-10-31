@@ -1,9 +1,12 @@
-# Ordinary Stats/Mods from pinned facts
+# Ordinary domains from pinned facts
 
 `--ordinary-facts` converts a fixed RePoE physical fact package into the existing
-`StatDef`, `ModDef`, `ModStat` and `SpawnWeight` JSON shapes. It produces two domain
-files for later assembly into an ordinary runtime package. It does not produce
-a complete GameData/BuildData package or a new restricted runtime profile.
+`StatDef`, `ModDef`, `ModStat` and `SpawnWeight` JSON shapes by default. Add
+`--ordinary-domain stats-mods` to select that same domain explicitly, or
+`--ordinary-domain base-items` for the existing item DTOs described in
+[ordinary-base-items.md](ordinary-base-items.md). Each call produces only its
+selected domain for later assembly into an ordinary runtime package. It does
+not produce a complete GameData/BuildData package or a restricted runtime profile.
 
 ```sh
 mise exec -- cargo run --locked -p pobr-data-adapter -- \
@@ -20,6 +23,11 @@ such as `.cache/ordinary-stats-mods`. Arguments are required, cannot repeat, and
 cannot be combined with `--raw`, `--native-facts`, `--native-runtime` or vendor
 adapter modes. The legacy `--raw … --patch …` interface and conversions remain
 unchanged.
+
+An invalid, missing-value or repeated `--ordinary-domain` is an error. Omitting
+it preserves the Stats/Mods JSON, marker and receipt content except for the
+compiled implementation revision. The sections below describe Stats/Mods;
+base-items uses the same verification/output boundary with its own table subset.
 
 ## Input and checks
 

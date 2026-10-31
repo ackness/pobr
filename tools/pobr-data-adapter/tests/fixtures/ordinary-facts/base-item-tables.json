@@ -1,0 +1,200 @@
+{
+  "BaseItemTypes": {
+    "columns": [
+      {"physical_fields":["Id"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Id","references":null,"type":"string","unique":true,"until":null},"source_column":0},
+      {"physical_fields":["ItemClass"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"ItemClass","references":{"table":"ItemClasses"},"type":"foreignrow","unique":false,"until":null},"source_column":1},
+      {"physical_fields":["Width"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Width","references":null,"type":"i32","unique":false,"until":null},"source_column":2},
+      {"physical_fields":["Height"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Height","references":null,"type":"i32","unique":false,"until":null},"source_column":3},
+      {"physical_fields":["Name"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":true,"name":"Name","references":null,"type":"string","unique":false,"until":null},"source_column":4},
+      {"physical_fields":["DropLevel"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"DropLevel","references":null,"type":"i32","unique":false,"until":null},"source_column":5},
+      {"physical_fields":["Implicit_Mods"],"schema":{"array":true,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Implicit_Mods","references":{"table":"Mods"},"type":"foreignrow","unique":false,"until":null},"source_column":6},
+      {"physical_fields":["Tags"],"schema":{"array":true,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Tags","references":{"table":"Tags"},"type":"foreignrow","unique":false,"until":null},"source_column":7},
+      {"physical_fields":["ModDomain"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"ModDomain","references":{"table":"ModDomains"},"type":"enumrow","unique":false,"until":null},"source_column":8}
+    ],
+    "physical_fields": ["Id","ItemClass","Width","Height","Name","DropLevel","Implicit_Mods","Tags","ModDomain"],
+    "raw_resource": "Data/Balance/BaseItemTypes.datc64",
+    "row_key": "Synthetic zero-based physical row; not a stable ID.",
+    "rows": [
+      {"_row":0,"values":{"DropLevel":0,"Height":2,"Id":"Metadata/z-sword","Implicit_Mods":[1,0],"ItemClass":2,"ModDomain":0,"Name":"Same Display Name","Tags":[1,0],"Width":1}},
+      {"_row":1,"values":{"DropLevel":0,"Height":2,"Id":"Metadata/a-shield","Implicit_Mods":[1,0],"ItemClass":1,"ModDomain":0,"Name":"Same Display Name","Tags":[1,0],"Width":1}},
+      {"_row":2,"values":{"DropLevel":0,"Height":2,"Id":"Metadata/sceptre","Implicit_Mods":[1,0],"ItemClass":2,"ModDomain":0,"Name":"Same Display Name","Tags":[1,0],"Width":1}},
+      {"_row":3,"values":{"DropLevel":0,"Height":2,"Id":"Metadata/flask","Implicit_Mods":[1,0],"ItemClass":0,"ModDomain":0,"Name":"Same Display Name","Tags":[1,0],"Width":1}},
+      {"_row":4,"values":{"DropLevel":0,"Height":2,"Id":"Metadata/charm","Implicit_Mods":[1,0],"ItemClass":3,"ModDomain":0,"Name":"Same Display Name","Tags":[1,0],"Width":1}},
+      {"_row":5,"values":{"DropLevel":0,"Height":2,"Id":"Metadata/placeholder","Implicit_Mods":[1,0],"ItemClass":4,"ModDomain":0,"Name":"[DNT] placeholder","Tags":[1,0],"Width":1}},
+      {"_row":6,"values":{"DropLevel":0,"Height":0,"Id":"Metadata/plain","Implicit_Mods":[],"ItemClass":4,"ModDomain":0,"Name":"Plain","Tags":[],"Width":0}}
+    ],
+    "table": "BaseItemTypes",
+    "validation": {"actual_row_bytes":1,"rows":7,"schema_row_bytes":1,"warnings":[]}
+  },
+  "ItemClasses": {
+    "columns": [
+      {"physical_fields":["Id"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Id","references":null,"type":"string","unique":true,"until":null},"source_column":0},
+      {"physical_fields":["Name"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Name","references":null,"type":"string","unique":false,"until":null},"source_column":1}
+    ],
+    "physical_fields": ["Id","Name"],
+    "raw_resource": "Data/Balance/ItemClasses.datc64",
+    "row_key": "Synthetic zero-based physical row; not a stable ID.",
+    "rows": [
+      {"_row":0,"values":{"Id":"LifeFlask","Name":"Unreliable display label"}},
+      {"_row":1,"values":{"Id":"Shield","Name":"Unreliable display label"}},
+      {"_row":2,"values":{"Id":"Weapon","Name":"Unreliable display label"}},
+      {"_row":3,"values":{"Id":"UtilityFlask","Name":"Unreliable display label"}},
+      {"_row":4,"values":{"Id":"Other","Name":"Unreliable display label"}}
+    ],
+    "table": "ItemClasses",
+    "validation": {"actual_row_bytes":1,"rows":5,"schema_row_bytes":1,"warnings":[]}
+  },
+  "Tags": {
+    "columns": [
+      {"physical_fields":["Id"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Id","references":null,"type":"string","unique":true,"until":null},"source_column":0}
+    ],
+    "physical_fields": ["Id"],
+    "raw_resource": "Data/Balance/Tags.datc64",
+    "row_key": "Synthetic zero-based physical row; not a stable ID.",
+    "rows": [
+      {"_row":0,"values":{"Id":"default"}},
+      {"_row":1,"values":{"Id":"tag-one"}}
+    ],
+    "table": "Tags",
+    "validation": {"actual_row_bytes":1,"rows":2,"schema_row_bytes":1,"warnings":[]}
+  },
+  "Mods": {
+    "columns": [
+      {"physical_fields":["Id"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Id","references":null,"type":"string","unique":true,"until":null},"source_column":0}
+    ],
+    "physical_fields": ["Id"],
+    "raw_resource": "Data/Balance/Mods.datc64",
+    "row_key": "Synthetic zero-based physical row; not a stable ID.",
+    "rows": [
+      {"_row":0,"values":{"Id":"mod-zero"}},
+      {"_row":1,"values":{"Id":"mod-one"}}
+    ],
+    "table": "Mods",
+    "validation": {"actual_row_bytes":1,"rows":2,"schema_row_bytes":1,"warnings":[]}
+  },
+  "WeaponTypes": {
+    "columns": [
+      {"physical_fields":["BaseItemType"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"BaseItemType","references":{"table":"BaseItemTypes"},"type":"foreignrow","unique":true,"until":null},"source_column":0},
+      {"physical_fields":["CritChance"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"CritChance","references":null,"type":"i32","unique":false,"until":null},"source_column":1},
+      {"physical_fields":["Speed"],"schema":{"array":false,"description":"1000 / speed -> attacks per second","file":null,"files":null,"interval":false,"localized":false,"name":"Speed","references":null,"type":"i32","unique":false,"until":null},"source_column":2},
+      {"physical_fields":["DamageMin"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"DamageMin","references":null,"type":"i32","unique":false,"until":null},"source_column":3},
+      {"physical_fields":["DamageMax"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"DamageMax","references":null,"type":"i32","unique":false,"until":null},"source_column":4},
+      {"physical_fields":["RangeMax"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"RangeMax","references":null,"type":"i32","unique":false,"until":null},"source_column":5},
+      {"physical_fields":["ReloadTime"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"ReloadTime","references":null,"type":"i32","unique":false,"until":null},"source_column":6}
+    ],
+    "physical_fields": ["BaseItemType","CritChance","Speed","DamageMin","DamageMax","RangeMax","ReloadTime"],
+    "raw_resource": "Data/Balance/WeaponTypes.datc64",
+    "row_key": "Synthetic zero-based physical row; not a stable ID.",
+    "rows": [
+      {"_row":0,"values":{"BaseItemType":2,"CritChance":0,"DamageMax":0,"DamageMin":0,"RangeMax":0,"ReloadTime":0,"Speed":0}},
+      {"_row":1,"values":{"BaseItemType":0,"CritChance":500,"DamageMax":12,"DamageMin":7,"RangeMax":120,"ReloadTime":800,"Speed":625}}
+    ],
+    "table": "WeaponTypes",
+    "validation": {"actual_row_bytes":1,"rows":2,"schema_row_bytes":1,"warnings":[]}
+  },
+  "ArmourTypes": {
+    "columns": [
+      {"physical_fields":["BaseItemType"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"BaseItemType","references":{"table":"BaseItemTypes"},"type":"foreignrow","unique":true,"until":null},"source_column":0},
+      {"physical_fields":["Armour"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Armour","references":null,"type":"i32","unique":false,"until":null},"source_column":1},
+      {"physical_fields":["Evasion"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Evasion","references":null,"type":"i32","unique":false,"until":null},"source_column":2},
+      {"physical_fields":["EnergyShield"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"EnergyShield","references":null,"type":"i32","unique":false,"until":null},"source_column":3},
+      {"physical_fields":["IncreasedMovementSpeed"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"IncreasedMovementSpeed","references":null,"type":"i32","unique":false,"until":null},"source_column":4},
+      {"physical_fields":["Ward"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Ward","references":null,"type":"i32","unique":false,"until":null},"source_column":5}
+    ],
+    "physical_fields": ["BaseItemType","Armour","Evasion","EnergyShield","IncreasedMovementSpeed","Ward"],
+    "raw_resource": "Data/Balance/ArmourTypes.datc64",
+    "row_key": "Synthetic zero-based physical row; not a stable ID.",
+    "rows": [
+      {"_row":0,"values":{"Armour":123,"BaseItemType":1,"EnergyShield":7,"Evasion":4,"IncreasedMovementSpeed":-300,"Ward":9}},
+      {"_row":1,"values":{"Armour":0,"BaseItemType":2,"EnergyShield":0,"Evasion":0,"IncreasedMovementSpeed":200,"Ward":0}},
+      {"_row":2,"values":{"Armour":0,"BaseItemType":5,"EnergyShield":0,"Evasion":0,"IncreasedMovementSpeed":0,"Ward":0}}
+    ],
+    "table": "ArmourTypes",
+    "validation": {"actual_row_bytes":1,"rows":3,"schema_row_bytes":1,"warnings":[]}
+  },
+  "ShieldTypes": {
+    "columns": [
+      {"physical_fields":["BaseItemType"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"BaseItemType","references":{"table":"BaseItemTypes"},"type":"foreignrow","unique":true,"until":null},"source_column":0},
+      {"physical_fields":["Block"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"Block","references":null,"type":"i32","unique":false,"until":null},"source_column":1}
+    ],
+    "physical_fields": ["BaseItemType","Block"],
+    "raw_resource": "Data/Balance/ShieldTypes.datc64",
+    "row_key": "Synthetic zero-based physical row; not a stable ID.",
+    "rows": [
+      {"_row":0,"values":{"BaseItemType":1,"Block":0}}
+    ],
+    "table": "ShieldTypes",
+    "validation": {"actual_row_bytes":1,"rows":1,"schema_row_bytes":1,"warnings":[]}
+  },
+  "ItemSpirit": {
+    "columns": [
+      {"physical_fields":["BaseItemType"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"BaseItemType","references":{"table":"BaseItemTypes"},"type":"foreignrow","unique":true,"until":null},"source_column":0},
+      {"physical_fields":["SpiritGranted"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"SpiritGranted","references":null,"type":"i32","unique":false,"until":null},"source_column":1}
+    ],
+    "physical_fields": ["BaseItemType","SpiritGranted"],
+    "raw_resource": "Data/Balance/ItemSpirit.datc64",
+    "row_key": "Synthetic zero-based physical row; not a stable ID.",
+    "rows": [
+      {"_row":0,"values":{"BaseItemType":2,"SpiritGranted":0}},
+      {"_row":1,"values":{"BaseItemType":0,"SpiritGranted":100}}
+    ],
+    "table": "ItemSpirit",
+    "validation": {"actual_row_bytes":1,"rows":2,"schema_row_bytes":1,"warnings":[]}
+  },
+  "AttributeRequirements": {
+    "columns": [
+      {"physical_fields":["BaseItemType"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"BaseItemType","references":{"table":"BaseItemTypes"},"type":"foreignrow","unique":true,"until":null},"source_column":0},
+      {"physical_fields":["ReqStr"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"ReqStr","references":null,"type":"i32","unique":false,"until":null},"source_column":1},
+      {"physical_fields":["ReqInt"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"ReqInt","references":null,"type":"i32","unique":false,"until":null},"source_column":2},
+      {"physical_fields":["ReqDex"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"ReqDex","references":null,"type":"i32","unique":false,"until":null},"source_column":3}
+    ],
+    "physical_fields": ["BaseItemType","ReqStr","ReqInt","ReqDex"],
+    "raw_resource": "Data/Balance/AttributeRequirements.datc64",
+    "row_key": "Synthetic zero-based physical row; not a stable ID.",
+    "rows": [
+      {"_row":0,"values":{"BaseItemType":2,"ReqDex":0,"ReqInt":0,"ReqStr":0}},
+      {"_row":1,"values":{"BaseItemType":1,"ReqDex":20,"ReqInt":30,"ReqStr":10}}
+    ],
+    "table": "AttributeRequirements",
+    "validation": {"actual_row_bytes":1,"rows":2,"schema_row_bytes":1,"warnings":[]}
+  },
+  "Flasks": {
+    "columns": [
+      {"physical_fields":["BaseItemType"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"BaseItemType","references":{"table":"BaseItemTypes"},"type":"foreignrow","unique":true,"until":null},"source_column":0},
+      {"physical_fields":["LifePerUse"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"LifePerUse","references":null,"type":"i32","unique":false,"until":null},"source_column":1},
+      {"physical_fields":["ManaPerUse"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"ManaPerUse","references":null,"type":"i32","unique":false,"until":null},"source_column":2},
+      {"physical_fields":["RecoveryTime"],"schema":{"array":false,"description":"in 1/10 s","file":null,"files":null,"interval":false,"localized":false,"name":"RecoveryTime","references":null,"type":"i32","unique":false,"until":null},"source_column":3},
+      {"physical_fields":["RecoveryTime2"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"RecoveryTime2","references":null,"type":"i32","unique":false,"until":null},"source_column":4},
+      {"physical_fields":["BuffDefinition"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"BuffDefinition","references":{"table":"BuffDefinitions"},"type":"foreignrow","unique":false,"until":null},"source_column":5},
+      {"physical_fields":["UtilityBuff"],"schema":{"array":true,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"UtilityBuff","references":{"table":"UtilityFlaskBuffs"},"type":"foreignrow","unique":false,"until":null},"source_column":6}
+    ],
+    "physical_fields": ["BaseItemType","LifePerUse","ManaPerUse","RecoveryTime","RecoveryTime2","BuffDefinition","UtilityBuff"],
+    "raw_resource": "Data/Balance/Flasks.datc64",
+    "row_key": "Synthetic zero-based physical row; not a stable ID.",
+    "rows": [
+      {"_row":0,"values":{"BaseItemType":4,"BuffDefinition":null,"LifePerUse":0,"ManaPerUse":0,"RecoveryTime":40,"RecoveryTime2":0,"UtilityBuff":[7]}},
+      {"_row":1,"values":{"BaseItemType":3,"BuffDefinition":null,"LifePerUse":50,"ManaPerUse":70,"RecoveryTime":25,"RecoveryTime2":25,"UtilityBuff":[]}}
+    ],
+    "table": "Flasks",
+    "validation": {"actual_row_bytes":1,"rows":2,"schema_row_bytes":1,"warnings":[]}
+  },
+  "ComponentCharges": {
+    "columns": [
+      {"physical_fields":["BaseItemTypesKey"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"BaseItemTypesKey","references":{"column":"Id","table":"BaseItemTypes"},"type":"string","unique":true,"until":null},"source_column":0},
+      {"physical_fields":["MaxCharges"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"MaxCharges","references":null,"type":"i32","unique":false,"until":null},"source_column":1},
+      {"physical_fields":["PerCharge"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"PerCharge","references":null,"type":"i32","unique":false,"until":null},"source_column":2},
+      {"physical_fields":["MaxCharges2"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"MaxCharges2","references":null,"type":"i32","unique":false,"until":null},"source_column":3},
+      {"physical_fields":["PerCharge2"],"schema":{"array":false,"description":null,"file":null,"files":null,"interval":false,"localized":false,"name":"PerCharge2","references":null,"type":"i32","unique":false,"until":null},"source_column":4}
+    ],
+    "physical_fields": ["BaseItemTypesKey","MaxCharges","PerCharge","MaxCharges2","PerCharge2"],
+    "raw_resource": "Data/Balance/ComponentCharges.datc64",
+    "row_key": "Synthetic zero-based physical row; not a stable ID.",
+    "rows": [
+      {"_row":0,"values":{"BaseItemTypesKey":"Metadata/flask","MaxCharges":75,"MaxCharges2":75,"PerCharge":10,"PerCharge2":null}},
+      {"_row":1,"values":{"BaseItemTypesKey":"Metadata/charm","MaxCharges":40,"MaxCharges2":80,"PerCharge":20,"PerCharge2":0}},
+      {"_row":2,"values":{"BaseItemTypesKey":"Metadata/plain","MaxCharges":0,"MaxCharges2":0,"PerCharge":0,"PerCharge2":0}}
+    ],
+    "table": "ComponentCharges",
+    "validation": {"actual_row_bytes":1,"rows":3,"schema_row_bytes":1,"warnings":[]}
+  }
+}
