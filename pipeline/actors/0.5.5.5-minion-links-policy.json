@@ -1,0 +1,229 @@
+{
+  "alias_catalog": {
+    "aliases": [
+      {
+        "id": "AncestralSpiritCaster",
+        "monster_variety_id": "Metadata/Monsters/LeagueAncestral/AncestralSpiritCasterTotemSpirit",
+        "source_catalog_row": 0
+      },
+      {
+        "id": "AncestralSpiritHulk",
+        "monster_variety_id": "Metadata/Monsters/LeagueAncestral/AncestralJadeHulkTotemSpirit",
+        "source_catalog_row": 1
+      },
+      {
+        "id": "AncestralSpiritTurtle",
+        "monster_variety_id": "Metadata/Monsters/LeagueAncestral/AncestralTurtleTotemSpirit",
+        "source_catalog_row": 2
+      },
+      {
+        "id": "AncestralSpiritWarhorn",
+        "monster_variety_id": "Metadata/Monsters/LeagueAncestral/AncestralKaruiHornTotemSpirit",
+        "source_catalog_row": 3
+      },
+      {
+        "id": "AzmerianSwarm",
+        "monster_variety_id": "Metadata/Monsters/UniqueItemMonsters/AzmerianSwarmMinion/AzmerianSwarmMinion",
+        "source_catalog_row": 4
+      },
+      {
+        "id": "AzmerianWolf",
+        "monster_variety_id": "Metadata/Monsters/UniqueItemMonsters/AzmerianPackleader/PackleaderWolfMinion",
+        "source_catalog_row": 5
+      },
+      {
+        "id": "BearCompanion",
+        "monster_variety_id": "Metadata/Monsters/CompanionBear/CompanionBearPlayerSummoned",
+        "source_catalog_row": 6
+      },
+      {
+        "id": "BeetleMinion",
+        "monster_variety_id": "Metadata/Monsters/Monsters/CorpseBeetlePlayerSummoned",
+        "source_catalog_row": 7
+      },
+      {
+        "id": "FireDjinn",
+        "monster_variety_id": "Metadata/Monsters/MarakethTimeDjinn/FireDjinn",
+        "source_catalog_row": 8
+      },
+      {
+        "id": "HyenaMinion",
+        "monster_variety_id": "Metadata/Monsters/HyenaMonster/HyenaCompanionPlayerSummoned",
+        "source_catalog_row": 9
+      },
+      {
+        "id": "LivingLightning",
+        "monster_variety_id": "Metadata/Monsters/Monsters/LivingLightningPlayerSummoned",
+        "source_catalog_row": 10
+      },
+      {
+        "id": "ManifestWeapon",
+        "monster_variety_id": "Metadata/Monsters/AnimatedItem/AnimatedWeaponPlayerSummoned",
+        "source_catalog_row": 11
+      },
+      {
+        "id": "MistRaven",
+        "monster_variety_id": "Metadata/Monsters/Daemon/TangmazuRavensDaemon/TangmazuRavensDaemon",
+        "source_catalog_row": 12
+      },
+      {
+        "id": "RaisedSkeletonArsonist",
+        "monster_variety_id": "Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonArsonistPlayerSummoned",
+        "source_catalog_row": 13
+      },
+      {
+        "id": "RaisedSkeletonBrute",
+        "monster_variety_id": "Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonBrutePlayerSummoned_",
+        "source_catalog_row": 14
+      },
+      {
+        "id": "RaisedSkeletonCleric",
+        "monster_variety_id": "Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonClericPlayerSummoned_",
+        "source_catalog_row": 15
+      },
+      {
+        "id": "RaisedSkeletonFrostMage",
+        "monster_variety_id": "Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonFrostMagePlayerSummoned",
+        "source_catalog_row": 16
+      },
+      {
+        "id": "RaisedSkeletonReaver",
+        "monster_variety_id": "Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonReaverPlayerSummoned",
+        "source_catalog_row": 17
+      },
+      {
+        "id": "RaisedSkeletonSniper",
+        "monster_variety_id": "Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonArcherPlayerSummoned",
+        "source_catalog_row": 18
+      },
+      {
+        "id": "RaisedSkeletonStormMage",
+        "monster_variety_id": "Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonStormMagePlayerSummoned_",
+        "source_catalog_row": 19
+      },
+      {
+        "id": "RaisedSkeletonWarriors",
+        "monster_variety_id": "Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonWarriorPlayerSummoned",
+        "source_catalog_row": 20
+      },
+      {
+        "id": "RaisedZombie",
+        "monster_variety_id": "Metadata/Monsters/Zombies/PlayerSummoned/PlayerSummonedZombie_",
+        "source_catalog_row": 21
+      },
+      {
+        "id": "RavenousSwarm",
+        "monster_variety_id": "Metadata/Monsters/Daemon/RavenousSwarmPlayer/RavenousSwarmPlayerSummoned",
+        "source_catalog_row": 22
+      },
+      {
+        "id": "SandDjinn",
+        "monster_variety_id": "Metadata/Monsters/MarakethSamdDjinn/SandDjinn",
+        "source_catalog_row": 23
+      },
+      {
+        "id": "SummonedHellhound",
+        "monster_variety_id": "Metadata/Monsters/Hellhound/HellhoundPlayerSummoned",
+        "source_catalog_row": 24
+      },
+      {
+        "id": "SummonedRagingSpirit",
+        "monster_variety_id": "Metadata/Monsters/RagingSpirit/RagingSpiritPlayerSummoned",
+        "source_catalog_row": 25
+      },
+      {
+        "id": "SummonedRhoa",
+        "monster_variety_id": "Metadata/Monsters/RhoaPlayerSummoned/RhoaPlayerSummoned",
+        "source_catalog_row": 26
+      },
+      {
+        "id": "TacticianMinion",
+        "monster_variety_id": "Metadata/Monsters/Daemon/ArtilleryPlayer/SummonArtilleryDaemon",
+        "source_catalog_row": 27
+      },
+      {
+        "id": "UnearthBoneConstruct",
+        "monster_variety_id": "Metadata/Monsters/SkeletalConstruct/BoneConstructPlayerSummoned",
+        "source_catalog_row": 28
+      },
+      {
+        "id": "Wardbound",
+        "monster_variety_id": "Metadata/Monsters/LeagueExpeditionNew/PlayerSummoned/WardboundMinionPlayerSummoned",
+        "source_catalog_row": 29
+      },
+      {
+        "id": "WaterDjinn",
+        "monster_variety_id": "Metadata/Monsters/MarakethWaterDjinn/WaterDjinn",
+        "source_catalog_row": 30
+      },
+      {
+        "id": "WolfMinion",
+        "monster_variety_id": "Metadata/Monsters/Wolves/WolfCompanionPlayerSummoned",
+        "source_catalog_row": 31
+      }
+    ],
+    "source_declaration": {
+      "metadata": {
+        "extracted_files": [
+          "Data/Minions.lua",
+          "Export/Minions/Minions.txt"
+        ],
+        "generator": "sync-pob-catalog extract-lua",
+        "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --what minions --vendor-root vendor/PathOfBuilding-PoE2/src --out data/0.5.5.4.2/overlay/minions.json",
+        "schema": "minions/v1",
+        "vendor": "PathOfBuilding-PoE2",
+        "vendor_commit": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+        "vendor_commit_subject": "bb52d6b368307457eb9c54bb13f1829993d390b1"
+      },
+      "path": "data/0.5.5.4.2/overlay/minions.json",
+      "role": "parent-verified policy authoring only; not a future producer-read input",
+      "sha256": "338aa6da92aa85143b3e4f0478c9c498ad52a154826ed1c15754573dee20799a",
+      "snapshot_version": "0.5.5.4.2"
+    }
+  },
+  "catalog": {
+    "domain": "granted-effect-minions",
+    "output_file": "granted_effect_minions.json",
+    "output_schema": "granted_effect_minions/v1"
+  },
+  "evidence": {
+    "source_check": {
+      "path": ".cache/builddata-migration-stage/minion-links/source-check.json",
+      "sha256": "fe66a9fc98a2bd77b565115fd7c936eb5f696b5516223d0d92d6d9dae335c735"
+    }
+  },
+  "owned_fields": [
+    "ignore_minion_types"
+  ],
+  "projection_schema": "pobr-minion-links/target-boolean-fixed-curation-v1",
+  "schema": "pobr-ordinary-minion-links-policy/v1",
+  "source": {
+    "metadata": {
+      "extracted_files": [
+        "Data/Skills/act_dex.lua",
+        "Data/Skills/act_int.lua",
+        "Data/Skills/act_str.lua",
+        "Data/Skills/minion.lua",
+        "Data/Skills/other.lua",
+        "Data/Skills/spectre.lua",
+        "Data/Skills/sup_dex.lua",
+        "Data/Skills/sup_int.lua",
+        "Data/Skills/sup_str.lua"
+      ],
+      "generator": "sync-pob-catalog extract-lua",
+      "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --what minion-list --vendor-root vendor/PathOfBuilding-PoE2/src --out data/0.5.5.4.2/overlay/granted_effect_minions.json",
+      "schema": "granted_effect_minions/v1",
+      "vendor": "PathOfBuilding-PoE2",
+      "vendor_commit": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+      "vendor_commit_subject": "bb52d6b368307457eb9c54bb13f1829993d390b1"
+    },
+    "path": "data/0.5.5.4.2/overlay/granted_effect_minions.json",
+    "sha256": "356efcf25802787c52de25e5e34700ebb2cada2d6cafc71895e7fcf41a95e16c",
+    "snapshot_version": "0.5.5.4.2"
+  },
+  "statement": "Regenerate ignore_minion_types from the exact target GrantedEffects row (true emitted, false omitted as the existing DTO default). Preserve every other raw entry field, entry order, relationship occurrence, absent default and unknown field as explicit fixed community compatibility with original version. Alias-to-variety bindings are policy-owned curated input, authored from the declared pinned old minion catalog; the producer verifies policy bytes and target identities, not that unprovided catalog. No DAT-derived summoning relationship, AI, equipment model, new creature admission, legality, complete-runtime or source approval claim. Target effects outside this curated sidecar retain their ordinary-skills base flag; no empty default overlay entries are generated for them.",
+  "target": {
+    "facts_manifest_sha256": "56e71e00a72c8079d100b64861fc030206b12aaeb5ad655ccb4ab4e6726332d0",
+    "game_patch": "0.5.5.5"
+  }
+}

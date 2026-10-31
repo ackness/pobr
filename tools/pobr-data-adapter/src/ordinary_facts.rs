@@ -4,6 +4,7 @@ mod actors;
 mod base_items;
 mod convert;
 mod gem_effects;
+mod minion_links;
 mod monster_resistances;
 mod monster_scaling;
 mod quality;
@@ -62,6 +63,7 @@ enum Domain {
     SkillOverrides,
     Minions,
     Spectres,
+    GrantedEffectMinions,
 }
 
 impl Domain {
@@ -79,6 +81,7 @@ impl Domain {
             Self::SkillStatMap => &skill_stat_map::TABLES,
             Self::SkillOverrides => &skill_overrides::TABLES,
             Self::Minions | Self::Spectres => &actors::TABLES,
+            Self::GrantedEffectMinions => &minion_links::TABLES,
         }
     }
 
@@ -97,6 +100,7 @@ impl Domain {
             Self::SkillOverrides => "ordinary-skill-overrides",
             Self::Minions => "ordinary-minions",
             Self::Spectres => "ordinary-spectres",
+            Self::GrantedEffectMinions => "ordinary-granted-effect-minions",
         }
     }
 
@@ -115,6 +119,7 @@ impl Domain {
             Self::SkillOverrides => "skill-overrides",
             Self::Minions => "minions",
             Self::Spectres => "spectres",
+            Self::GrantedEffectMinions => "granted-effect-minions",
         }
     }
 }
@@ -161,6 +166,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("skill-overrides") => Domain::SkillOverrides,
         Some("minions") => Domain::Minions,
         Some("spectres") => Domain::Spectres,
+        Some("granted-effect-minions") => Domain::GrantedEffectMinions,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
     if domain != Domain::GemQuality
@@ -177,6 +183,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             | Domain::SkillOverrides
             | Domain::Minions
             | Domain::Spectres
+            | Domain::GrantedEffectMinions
     ) && [
         "--codec-source",
         "--codec-source-sha256",
@@ -187,7 +194,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     .any(|flag| values.contains_key(*flag))
     {
         return Err(
-            "codec arguments require --ordinary-domain stat-set-codec, gem-effects, skill-stat-map, skill-overrides, minions or spectres".into(),
+            "codec arguments require --ordinary-domain stat-set-codec, gem-effects, skill-stat-map, skill-overrides, minions, spectres or granted-effect-minions".into(),
         );
     }
     if !matches!(domain, Domain::SkillStatMap | Domain::SkillOverrides)
@@ -223,6 +230,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
                 | Domain::SkillOverrides
                 | Domain::Minions
                 | Domain::Spectres
+                | Domain::GrantedEffectMinions
         ) {
             Some(CodecArgs {
                 source: take("--codec-source")?.into(),
@@ -260,6 +268,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     let mut branch_codec_bytes = None;
     let mut legacy_skill_overrides_bytes = None;
     let mut legacy_actors_bytes = None;
+    let mut legacy_minion_links_bytes = None;
     // Complete validation and serialization before reserving any output.
     let (base, conversion, output_schema, scope) = match args.domain {
         Domain::StatsMods => {
@@ -534,6 +543,30 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 ],
             )
         }
+        Domain::GrantedEffectMinions => {
+            let codec = args
+                .codec
+                .as_ref()
+                .ok_or("missing minion-links source/policy arguments")?;
+            let converted = minion_links::convert(&input, codec)?;
+            for parent in &converted.protected_parents {
+                output.protect(parent)?;
+            }
+            overlay = converted.overlay;
+            codec_policy_bytes = Some(converted.policy_bytes);
+            legacy_minion_links_bytes = Some(converted.source_bytes);
+            (
+                BTreeMap::new(),
+                converted.receipt,
+                "pobr_data::catalog::actors::{GrantedEffectMinionsDef,GrantedEffectMinionDef}",
+                vec![
+                    "Only target GrantedEffects/MonsterVarieties and the lock are read. IgnoreMinionTypes is regenerated per curated effect: true emitted, false omitted; no legacy fallback or equality gate.",
+                    "Entry membership/order, all other raw fields and ordered alias relationships are fixed community compatibility. Policy aliases bind exact target variety identities; their authoring catalog is declared, not provided or hash-verified by this producer.",
+                    "Outside-sidecar true effects remain in ordinary-skills base data. No empty/default overlay entries, new summoning/equipment/AI mechanism or creature admission is generated.",
+                    "Original source/policy bytes and metadata are archived separately from target field provenance. Domain-only, draft, incomplete and not adopted; full target package and ordinary BD/Web remain separate.",
+                ],
+            )
+        }
     };
     let marker = reader::json_bytes(&json!({
         "schema": "pobr-domain-candidate/v1",
@@ -565,6 +598,9 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     }
     if let Some(bytes) = legacy_actors_bytes {
         sidecars.insert("legacy-actors.json", bytes);
+    }
+    if let Some(bytes) = legacy_minion_links_bytes {
+        sidecars.insert("legacy-minion-links.json", bytes);
     }
     let files: BTreeMap<_, _> = base
         .iter()
@@ -650,6 +686,14 @@ fn implementation_sha256() -> String {
         (
             "ordinary_facts.rs",
             include_bytes!("ordinary_facts.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/minion_links.rs",
+            include_bytes!("ordinary_facts/minion_links.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/minion_links/policy.rs",
+            include_bytes!("ordinary_facts/minion_links/policy.rs").as_slice(),
         ),
         (
             "ordinary_facts/actors.rs",

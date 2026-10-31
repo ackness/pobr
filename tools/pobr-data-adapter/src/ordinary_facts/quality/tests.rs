@@ -994,3 +994,32 @@ fn both_actor_catalogs_do_not_change_quality_files_or_receipt() {
         );
     }
 }
+
+#[test]
+fn minion_links_does_not_change_quality_files_or_receipt() {
+    let f = fixture();
+    run(args(&f)).unwrap();
+    let links = super::super::minion_links::tests::fixture();
+    run(super::super::minion_links::tests::args(&links)).unwrap();
+    run(Args {
+        out: f.root.join("after-links"),
+        ..args(&f)
+    })
+    .unwrap();
+    let receipt = read(&f, "producer-receipt.json");
+    assert_eq!(receipt["files"].as_object().unwrap().len(), 5);
+    assert!(!f.root.join("out/legacy-minion-links.json").exists());
+    for path in receipt["files"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .chain(["producer-receipt.json"])
+    {
+        assert_eq!(
+            fs::read(f.root.join("out").join(path)).unwrap(),
+            fs::read(f.root.join("after-links").join(path)).unwrap(),
+            "{path}"
+        );
+    }
+}
