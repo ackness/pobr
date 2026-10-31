@@ -22,6 +22,7 @@
 | --- | --- |
 | 使用独立 WASM 包 | [下载、校验、运行与测量](wasm-package.md) |
 | Build、导入、存档、数据快照和计算会话 | [构筑模型](build-model.md) |
+| 原生数据集绑定、存档和受限计算 | [原生构筑文档](native-build-document.md)、[条件命中](native-skill-hit.md)、[CLI](native-cli.md) |
 | JSON / CLI 输出、单位与解释字段 | [计算输出](calc-outputs.md) |
 | 固定原生候选、受限条件命中和精确存档绑定 | [候选重放](../pipeline/native-candidate.md)、[条件命中](native-skill-hit.md)、[原生存档](native-build-document.md)、[CLI](native-cli.md) |
 | 页面操作、持久化与 API 消费约定 | [Web 契约](web-contracts.md) |
