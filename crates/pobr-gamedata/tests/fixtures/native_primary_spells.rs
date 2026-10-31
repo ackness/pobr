@@ -17,6 +17,9 @@ const CONTRACT: &str = "base/native_runtime.json";
 const PROJECTION: &str = "base/native_skill_projection.json";
 const INDEX: &str = "base/native_reference_index.json";
 
+pub const MINIMUM_STAT_ID: &str = "object_innate_minimum_number_of_projectiles_to_fire_is_1";
+pub const MINIMUM_REASON: &str = "The generic-OT minimum is retained without a projectile-count applicability law. This policy does not derive a missing intrinsic count or apply a projectile adjustment; the one-successful-hit output is independent of count.";
+
 pub fn edit(files: &mut BTreeMap<String, Vec<u8>>, path: &str, change: impl FnOnce(&mut Value)) {
     let mut value = serde_json::from_slice(&files[path]).unwrap();
     change(&mut value);
@@ -268,7 +271,21 @@ pub fn extend(mut files: BTreeMap<String, Vec<u8>>) -> BTreeMap<String, Vec<u8>>
         serde_json::to_vec(&nodes).unwrap(),
     );
     files.insert(INDEX.into(),serde_json::to_vec(&json!({"format":"pobr-native-runtime-reference-index/v2","archive":{"manifest_sha256":parent_sha,"files":resources},"skill_selection":selections,"graph_instances":instances,"passive_definitions":definitions})).unwrap());
+    let minimum_index = context["facts"]["metadata_stats"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .position(|s| s["key_raw"] == MINIMUM_STAT_ID)
+        .unwrap();
+    let minimum_selector = format!("/facts/metadata_stats/{minimum_index}");
     edit(&mut files, BINDING, |v| {
+        let minimum = v["dispositions"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|d| d["selector"] == minimum_selector)
+            .unwrap();
+        minimum["reason"] = MINIMUM_REASON.into();
         v["policy"] = "selected-player-generic-ot-primary-spell-hit-passives-v1".into();
         v["evaluation"] = "conditional-skill-hit-v2".into();
         v["excluded_sources"][2] = NATIVE_OTHER_ALLOCATIONS_EXCLUSION.into();

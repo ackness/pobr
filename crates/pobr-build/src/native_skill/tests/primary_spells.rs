@@ -488,3 +488,41 @@ fn supplied_actual_primary_spell_request_reopens_and_matches_memory() {
     assert!(admit_native_skill(&memory, &rejected).is_err());
     evaluate(&memory, &reopened);
 }
+
+#[test]
+fn inactive_generic_minimum_does_not_fill_unknown_intrinsic_projectile_count() {
+    let data = load(primary_pack());
+    let stats = &data.player_context().unwrap().facts.metadata_stats;
+    let index = stats
+        .iter()
+        .position(|s| s.key_raw == fixture::MINIMUM_STAT_ID)
+        .unwrap();
+    let selector = format!("/facts/metadata_stats/{index}");
+    let fact = data
+        .actor_binding()
+        .unwrap()
+        .dispositions
+        .iter()
+        .find(|d| d.selector == selector)
+        .unwrap();
+    assert_eq!(fact.reason, fixture::MINIMUM_REASON);
+    assert_eq!(fact.disposition, NativeFactDispositionKind::Inactive);
+    assert!(fact.relevant_to_conditional_hit);
+    let mut r = primary_request(&data);
+    for effect in ["FireballPlayer", "FrostboltPlayer"] {
+        select(&mut r, &data, effect, 10);
+        let out = evaluate(&data, &r);
+        assert_eq!(out.total_projectiles, None);
+        assert!(
+            out.unavailable
+                .iter()
+                .any(|u| u.output == "total_projectiles")
+        );
+        assert!(
+            !out.modifiers.iter().any(
+                |m| m.native_stat_id == fixture::MINIMUM_STAT_ID || m.name == "ProjectileCount"
+            ),
+            "no minimum adjustment or fabricated count enters the result"
+        );
+    }
+}

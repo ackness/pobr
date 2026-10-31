@@ -293,3 +293,55 @@ fn primary_profile_keeps_strict_passive_validator_and_exact_policy_tuple() {
     reseal_player(&mut old);
     assert!(NativeData::load(&GameData::from_memory(old)).is_err());
 }
+
+#[test]
+fn new_minimum_reason_preserves_all_raw_stats_and_old_policy_dispositions() {
+    let old = NativeData::load(&GameData::from_memory(player_pack())).unwrap();
+    let new = NativeData::load(&GameData::from_memory(primary_pack())).unwrap();
+    let old_stats = &old.player_context().unwrap().facts.metadata_stats;
+    let new_stats = &new.player_context().unwrap().facts.metadata_stats;
+    assert_eq!(new_stats.len(), 99);
+    assert_eq!(
+        serde_json::to_value(new_stats).unwrap(),
+        serde_json::to_value(old_stats).unwrap()
+    );
+    let index = new_stats
+        .iter()
+        .position(|s| s.key_raw == fixture::MINIMUM_STAT_ID)
+        .unwrap();
+    let selector = format!("/facts/metadata_stats/{index}");
+    let old_policy = old.actor_binding().unwrap();
+    let new_policy = new.actor_binding().unwrap();
+    let old_fact = old_policy
+        .dispositions
+        .iter()
+        .find(|d| d.selector == selector)
+        .unwrap();
+    let new_fact = new_policy
+        .dispositions
+        .iter()
+        .find(|d| d.selector == selector)
+        .unwrap();
+    assert_eq!(
+        old_fact.reason,
+        "The selected intrinsic total projectile count already satisfies this minimum; no generic-OT projectile adjustment is applied."
+    );
+    assert_eq!(new_fact.reason, fixture::MINIMUM_REASON);
+    assert_eq!(
+        new_fact.disposition,
+        pobr_data::catalog::native_player::NativeFactDispositionKind::Inactive
+    );
+    assert!(new_fact.relevant_to_conditional_hit);
+    let mut restored = new_policy.dispositions.clone();
+    restored
+        .iter_mut()
+        .find(|d| d.selector == selector)
+        .unwrap()
+        .reason = old_fact.reason.clone();
+    assert_eq!(
+        serde_json::to_value(restored).unwrap(),
+        serde_json::to_value(&old_policy.dispositions).unwrap(),
+        "only the new policy's one reason may differ; source selectors, dispositions and relevance stay exact"
+    );
+    assert_ne!(old.actor_binding_sha256(), new.actor_binding_sha256());
+}

@@ -153,6 +153,12 @@ role is unestablished, so lifetime is also null. Each missing quantity has an ex
 `unavailable` reason. No projectile flag supplies count 1, absent duration supplies
 0, or generic duration-to-lifetime assumption fills the gap.
 
+The retained generic-OT minimum-projectile fact remains inactive and relevant.
+The new policy's reason leaves its count-applicability law unestablished; it does
+not derive a missing intrinsic count, apply an adjustment or assert that an unknown
+count satisfies a minimum. The one-successful-hit output is independent of count.
+Historical policy reasons and raw fact/source identities remain unchanged.
+
 Every recognized source channel receives a disposition. Stationary movement stats
 and Fireball infusion are inactive under the excluded-movement/no-infusion model.
 Frostbolt chill magnitude remains outside hit damage and never supplies hit MORE.
