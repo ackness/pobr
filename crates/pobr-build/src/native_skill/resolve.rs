@@ -86,15 +86,14 @@ pub(super) fn resolve(
         "base/base_items.json",
     )?;
     require(
-        base.item_class == "Active Skill Gem"
-            && base.implicits.is_empty()
+        base.implicits.is_empty()
             && base.weapon.is_none()
             && base.armour.is_none()
             && base.spirit.is_none()
             && base.charm_buff.is_empty()
             && base.utility.is_none(),
         "base/base_items.json",
-        "selected gem base cannot supply extra mechanical channels",
+        "selected stable gem base cannot supply extra mechanical channels",
     )?;
     let (gem_index, gem) = unique(
         data.skill_gems()

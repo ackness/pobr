@@ -29,6 +29,8 @@ catalog joins must be unique; no nearest-level, cold branch or vendor ordinal
 fallback exists. Selected explicit/implicit stat inventories are closed: new,
 missing, duplicated, nonfinite or unmodelled selected channels fail admission.
 Relevant unresolved actor-policy dispositions also fail.
+Display names, item-class labels and form labels never classify or select the skill;
+the native base/gem/effect/stat-set identities and source categorical IDs do.
 
 The model assumes ordinary stationary self-cast, explicit Act1 with no quests,
 and a successful damaging hit. The named

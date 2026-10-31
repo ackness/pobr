@@ -403,6 +403,33 @@ fn agreeing_redundant_mirrors_and_neutral_controls_preserve_source_outputs() {
     assert_ne!(actual.request_sha256, baseline.request_sha256);
 }
 
+#[test]
+fn display_labels_never_select_or_classify_the_native_skill() {
+    let original = result(pack());
+    let mut files = pack();
+    edit(&mut files, "base/base_items.json", |v| {
+        v[0]["name"] = "测试名称".into();
+        v[0]["item_class"] = "主动技能宝石".into();
+    });
+    edit(&mut files, "base/granted_effects.json", |v| {
+        v[0]["displayed_name"] = "电球".into()
+    });
+    edit(&mut files, SETS, |v| {
+        v[0]["sets"][0]["label"] = "基础形态".into()
+    });
+    reseal(&mut files);
+    let changed = result(files);
+    assert_ne!(changed.dataset, original.dataset);
+    assert_eq!(changed.skill, original.skill);
+    assert_eq!(changed.damage, original.damage);
+    assert_eq!(
+        changed.conditional_weighted_mean,
+        original.conditional_weighted_mean
+    );
+    assert_eq!(changed.critical_probability, original.critical_probability);
+    assert_eq!(changed.resource_costs, original.resource_costs);
+}
+
 // Change the fixture's lexical source, typed projection, retained archive, and all pins.
 // This is a synthetic fixture mutation, not a producer or decoder reimplementation.
 fn bonus(files: &mut BTreeMap<String, Vec<u8>>, token: &str) {
