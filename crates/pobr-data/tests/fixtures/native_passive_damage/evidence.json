@@ -1,0 +1,1186 @@
+{
+  "facts_manifest_sha256": "56e71e00a72c8079d100b64861fc030206b12aaeb5ad655ccb4ab4e6726332d0",
+  "description_manifest_sha256": "c8a475ba97b2fda3231ab05d23c4fdafa6b8593dec4a3d8307339b9cb6a794f2",
+  "descriptions_payload_sha256": "e9c403e11f5b3d7bc9a26af1b1cf636a6dbf439d9ca1e3503b1490568be1ad0e",
+  "official_tree_sha256": "b52be9c4f17e4114064255ef1b8c58292e9db0e395d95af235a8d3fef0d44642",
+  "official_exact_patch": null,
+  "scope": "Controlled one-stat ordinary-player regression facts. No source promotion or runtime activation.",
+  "samples": [
+    {
+      "stat_id": "physical_damage_+%",
+      "passive": {
+        "definition": {
+          "id": "chaos6",
+          "row": 3241
+        },
+        "graph_id": 52695,
+        "in_default_graph": true,
+        "stats": [
+          {
+            "slot": 1,
+            "stat": {
+              "id": "physical_damage_+%",
+              "row": 26
+            },
+            "value": 10,
+            "value_field": "Stat1Value"
+          }
+        ]
+      },
+      "physical_context": {
+        "AchievementItem": null,
+        "Ascendancy": null,
+        "AtlasNodeGroup": "",
+        "AtlasSubTree": null,
+        "AudioEvent": null,
+        "BrequelTree": null,
+        "Characters": [],
+        "Flag0": false,
+        "Flag1": false,
+        "Flag2": false,
+        "Flag3": false,
+        "Flag4": false,
+        "Flag5": false,
+        "Flag6": false,
+        "Flag7": false,
+        "FlavourText": "",
+        "GrantedSkill": null,
+        "Group": null,
+        "Icon_DDSFile": "Art/2DArt/SkillIcons/WitchBoneStorm.dds",
+        "Id": "chaos6",
+        "IsAnointmentOnly": false,
+        "IsAscendancyStartingNode": false,
+        "IsAttribute": false,
+        "IsExpansion": false,
+        "IsFree": false,
+        "IsJewelSocket": false,
+        "IsJustIcon": false,
+        "IsKeystone": false,
+        "IsMultipleChoice": false,
+        "IsMultipleChoiceOption": false,
+        "IsNotable": false,
+        "IsProxyPassive": false,
+        "IsRootOfAtlasTree": false,
+        "Keys0": [],
+        "Keys1": [],
+        "MasteryGroup": null,
+        "Name": "Physical Damage",
+        "NodeFrameArt": null,
+        "PassiveSkillBuffs": [],
+        "PassiveSkillGraphId": 52695,
+        "QuestFlag": null,
+        "ReminderStrings": [],
+        "Requirement": null,
+        "SkillPointsGranted": 0,
+        "SkillType": 0,
+        "SoundEffect": null,
+        "Stat1Value": 10,
+        "Stat2Value": 0,
+        "Stat3Value": 0,
+        "Stat4Value": 0,
+        "Stat5Value": 0,
+        "Stat6Value": 0,
+        "Stat7Value": 0,
+        "Stats": [
+          26
+        ],
+        "Unknown0": 0,
+        "Unknown1": 0,
+        "Unknown10": 0,
+        "Unknown11": 0,
+        "Unknown2": 0,
+        "Unknown3": 0,
+        "Unknown4": 0,
+        "Unknown5": 0,
+        "Unknown6": 0,
+        "Unknown7": 4839,
+        "Unknown8": 4839,
+        "Unknown9": 0,
+        "UnlockedBy": [],
+        "VariantType": null,
+        "VisibleForAscendancy": null,
+        "WeaponPointsGranted": 0
+      },
+      "official_tree": {
+        "node_id": 52695,
+        "text": [
+          "10% increased [Physical] Damage"
+        ]
+      },
+      "description": {
+        "file": "Data/StatDescriptions/passive_skill_stat_descriptions.csd",
+        "raw_resource_sha256": "7351c16a1d8c4b7d7f319e29b7463247f767457ff0d0660b1986f932d84b074e",
+        "record": 282,
+        "raw_slice_sha256": "47f28b7ae6b960d1c7bc3ae33bdb69911e55709e74f414294849ca1c65763aaa",
+        "span": {
+          "byte_end": 410164,
+          "byte_start": 407444,
+          "line_end": 5258,
+          "line_start": 5214
+        },
+        "implicit_default_branches": [
+          {
+            "condition_tokens_raw": [
+              "1|#"
+            ],
+            "quantifier_tokens_raw": [],
+            "restrictions_raw": [],
+            "template_raw": "{0}% increased [Physical] Damage",
+            "span": {
+              "byte_end": 407608,
+              "byte_start": 407524,
+              "line_end": 5217,
+              "line_start": 5217
+            }
+          },
+          {
+            "condition_tokens_raw": [
+              "#|-1"
+            ],
+            "quantifier_tokens_raw": [
+              "negate",
+              "1"
+            ],
+            "restrictions_raw": [],
+            "template_raw": "{0}% reduced [Physical] Damage",
+            "span": {
+              "byte_end": 407708,
+              "byte_start": 407608,
+              "line_end": 5218,
+              "line_start": 5218
+            }
+          }
+        ]
+      }
+    },
+    {
+      "stat_id": "fire_damage_+%",
+      "passive": {
+        "definition": {
+          "id": "ignite_mitigation1",
+          "row": 1671
+        },
+        "graph_id": 32845,
+        "in_default_graph": true,
+        "stats": [
+          {
+            "slot": 1,
+            "stat": {
+              "id": "fire_damage_+%",
+              "row": 42
+            },
+            "value": 10,
+            "value_field": "Stat1Value"
+          }
+        ]
+      },
+      "physical_context": {
+        "AchievementItem": null,
+        "Ascendancy": null,
+        "AtlasNodeGroup": "",
+        "AtlasSubTree": null,
+        "AudioEvent": null,
+        "BrequelTree": null,
+        "Characters": [],
+        "Flag0": false,
+        "Flag1": false,
+        "Flag2": false,
+        "Flag3": false,
+        "Flag4": false,
+        "Flag5": false,
+        "Flag6": false,
+        "Flag7": false,
+        "FlavourText": "",
+        "GrantedSkill": null,
+        "Group": null,
+        "Icon_DDSFile": "Art/2DArt/SkillIcons/passives/firedamagestr.dds",
+        "Id": "ignite_mitigation1",
+        "IsAnointmentOnly": false,
+        "IsAscendancyStartingNode": false,
+        "IsAttribute": false,
+        "IsExpansion": false,
+        "IsFree": false,
+        "IsJewelSocket": false,
+        "IsJustIcon": false,
+        "IsKeystone": false,
+        "IsMultipleChoice": false,
+        "IsMultipleChoiceOption": false,
+        "IsNotable": false,
+        "IsProxyPassive": false,
+        "IsRootOfAtlasTree": false,
+        "Keys0": [],
+        "Keys1": [],
+        "MasteryGroup": null,
+        "Name": "Fire Damage",
+        "NodeFrameArt": null,
+        "PassiveSkillBuffs": [],
+        "PassiveSkillGraphId": 32845,
+        "QuestFlag": null,
+        "ReminderStrings": [],
+        "Requirement": null,
+        "SkillPointsGranted": 0,
+        "SkillType": 0,
+        "SoundEffect": null,
+        "Stat1Value": 10,
+        "Stat2Value": 0,
+        "Stat3Value": 0,
+        "Stat4Value": 0,
+        "Stat5Value": 0,
+        "Stat6Value": 0,
+        "Stat7Value": 0,
+        "Stats": [
+          42
+        ],
+        "Unknown0": 0,
+        "Unknown1": 0,
+        "Unknown10": 0,
+        "Unknown11": 0,
+        "Unknown2": 0,
+        "Unknown3": 0,
+        "Unknown4": 0,
+        "Unknown5": 0,
+        "Unknown6": 0,
+        "Unknown7": 4839,
+        "Unknown8": 4839,
+        "Unknown9": 0,
+        "UnlockedBy": [],
+        "VariantType": null,
+        "VisibleForAscendancy": null,
+        "WeaponPointsGranted": 0
+      },
+      "official_tree": {
+        "node_id": 32845,
+        "text": [
+          "10% increased [Fire] Damage"
+        ]
+      },
+      "description": {
+        "file": "Data/StatDescriptions/stat_descriptions.csd",
+        "raw_resource_sha256": "9eb47635f9d5744a57c82d0ad5521d3b8899163dac0a2817808655447ee2b391",
+        "record": 1768,
+        "raw_slice_sha256": "e024b502908728bc33342b63684c92a485ff8aae41f14ef4d7e8aea85af47c47",
+        "span": {
+          "byte_end": 2075206,
+          "byte_start": 2072730,
+          "line_end": 33358,
+          "line_start": 33314
+        },
+        "implicit_default_branches": [
+          {
+            "condition_tokens_raw": [
+              "1|#"
+            ],
+            "quantifier_tokens_raw": [],
+            "restrictions_raw": [],
+            "template_raw": "{0}% increased [Fire] Damage",
+            "span": {
+              "byte_end": 2072878,
+              "byte_start": 2072802,
+              "line_end": 33317,
+              "line_start": 33317
+            }
+          },
+          {
+            "condition_tokens_raw": [
+              "#|-1"
+            ],
+            "quantifier_tokens_raw": [
+              "negate",
+              "1"
+            ],
+            "restrictions_raw": [],
+            "template_raw": "{0}% reduced [Fire] Damage",
+            "span": {
+              "byte_end": 2072970,
+              "byte_start": 2072878,
+              "line_end": 33318,
+              "line_start": 33318
+            }
+          }
+        ]
+      }
+    },
+    {
+      "stat_id": "cold_damage_+%",
+      "passive": {
+        "definition": {
+          "id": "cold3",
+          "row": 3096
+        },
+        "graph_id": 22713,
+        "in_default_graph": true,
+        "stats": [
+          {
+            "slot": 1,
+            "stat": {
+              "id": "cold_damage_+%",
+              "row": 49
+            },
+            "value": 10,
+            "value_field": "Stat1Value"
+          }
+        ]
+      },
+      "physical_context": {
+        "AchievementItem": null,
+        "Ascendancy": null,
+        "AtlasNodeGroup": "",
+        "AtlasSubTree": null,
+        "AudioEvent": null,
+        "BrequelTree": null,
+        "Characters": [],
+        "Flag0": false,
+        "Flag1": false,
+        "Flag2": false,
+        "Flag3": false,
+        "Flag4": false,
+        "Flag5": false,
+        "Flag6": false,
+        "Flag7": false,
+        "FlavourText": "",
+        "GrantedSkill": null,
+        "Group": null,
+        "Icon_DDSFile": "Art/2DArt/SkillIcons/passives/colddamage.dds",
+        "Id": "cold3",
+        "IsAnointmentOnly": false,
+        "IsAscendancyStartingNode": false,
+        "IsAttribute": false,
+        "IsExpansion": false,
+        "IsFree": false,
+        "IsJewelSocket": false,
+        "IsJustIcon": false,
+        "IsKeystone": false,
+        "IsMultipleChoice": false,
+        "IsMultipleChoiceOption": false,
+        "IsNotable": false,
+        "IsProxyPassive": false,
+        "IsRootOfAtlasTree": false,
+        "Keys0": [],
+        "Keys1": [],
+        "MasteryGroup": null,
+        "Name": "Cold Damage",
+        "NodeFrameArt": null,
+        "PassiveSkillBuffs": [],
+        "PassiveSkillGraphId": 22713,
+        "QuestFlag": null,
+        "ReminderStrings": [],
+        "Requirement": null,
+        "SkillPointsGranted": 0,
+        "SkillType": 0,
+        "SoundEffect": null,
+        "Stat1Value": 10,
+        "Stat2Value": 0,
+        "Stat3Value": 0,
+        "Stat4Value": 0,
+        "Stat5Value": 0,
+        "Stat6Value": 0,
+        "Stat7Value": 0,
+        "Stats": [
+          49
+        ],
+        "Unknown0": 0,
+        "Unknown1": 0,
+        "Unknown10": 0,
+        "Unknown11": 0,
+        "Unknown2": 0,
+        "Unknown3": 0,
+        "Unknown4": 0,
+        "Unknown5": 0,
+        "Unknown6": 0,
+        "Unknown7": 4839,
+        "Unknown8": 4839,
+        "Unknown9": 0,
+        "UnlockedBy": [],
+        "VariantType": null,
+        "VisibleForAscendancy": null,
+        "WeaponPointsGranted": 0
+      },
+      "official_tree": {
+        "node_id": 22713,
+        "text": [
+          "10% increased [Cold] Damage"
+        ]
+      },
+      "description": {
+        "file": "Data/StatDescriptions/stat_descriptions.csd",
+        "raw_resource_sha256": "9eb47635f9d5744a57c82d0ad5521d3b8899163dac0a2817808655447ee2b391",
+        "record": 1770,
+        "raw_slice_sha256": "1375896c11fb2506af72be90e023e678d5e32c1a02cd60d0d06e7c042ed24421",
+        "span": {
+          "byte_end": 2077726,
+          "byte_start": 2075210,
+          "line_end": 33404,
+          "line_start": 33360
+        },
+        "implicit_default_branches": [
+          {
+            "condition_tokens_raw": [
+              "1|#"
+            ],
+            "quantifier_tokens_raw": [],
+            "restrictions_raw": [],
+            "template_raw": "{0}% increased [Cold] Damage",
+            "span": {
+              "byte_end": 2075358,
+              "byte_start": 2075282,
+              "line_end": 33363,
+              "line_start": 33363
+            }
+          },
+          {
+            "condition_tokens_raw": [
+              "#|-1"
+            ],
+            "quantifier_tokens_raw": [
+              "negate",
+              "1"
+            ],
+            "restrictions_raw": [],
+            "template_raw": "{0}% reduced [Cold] Damage",
+            "span": {
+              "byte_end": 2075450,
+              "byte_start": 2075358,
+              "line_end": 33364,
+              "line_start": 33364
+            }
+          }
+        ]
+      }
+    },
+    {
+      "stat_id": "lightning_damage_+%",
+      "passive": {
+        "definition": {
+          "id": "shock_mitigation1__",
+          "row": 1696
+        },
+        "graph_id": 20649,
+        "in_default_graph": true,
+        "stats": [
+          {
+            "slot": 1,
+            "stat": {
+              "id": "lightning_damage_+%",
+              "row": 56
+            },
+            "value": 10,
+            "value_field": "Stat1Value"
+          }
+        ]
+      },
+      "physical_context": {
+        "AchievementItem": null,
+        "Ascendancy": null,
+        "AtlasNodeGroup": "",
+        "AtlasSubTree": null,
+        "AudioEvent": null,
+        "BrequelTree": null,
+        "Characters": [],
+        "Flag0": false,
+        "Flag1": false,
+        "Flag2": false,
+        "Flag3": false,
+        "Flag4": false,
+        "Flag5": false,
+        "Flag6": false,
+        "Flag7": false,
+        "FlavourText": "",
+        "GrantedSkill": null,
+        "Group": null,
+        "Icon_DDSFile": "Art/2DArt/SkillIcons/passives/lightningint.dds",
+        "Id": "shock_mitigation1__",
+        "IsAnointmentOnly": false,
+        "IsAscendancyStartingNode": false,
+        "IsAttribute": false,
+        "IsExpansion": false,
+        "IsFree": false,
+        "IsJewelSocket": false,
+        "IsJustIcon": false,
+        "IsKeystone": false,
+        "IsMultipleChoice": false,
+        "IsMultipleChoiceOption": false,
+        "IsNotable": false,
+        "IsProxyPassive": false,
+        "IsRootOfAtlasTree": false,
+        "Keys0": [],
+        "Keys1": [],
+        "MasteryGroup": null,
+        "Name": "Lightning Damage",
+        "NodeFrameArt": null,
+        "PassiveSkillBuffs": [],
+        "PassiveSkillGraphId": 20649,
+        "QuestFlag": null,
+        "ReminderStrings": [],
+        "Requirement": null,
+        "SkillPointsGranted": 0,
+        "SkillType": 0,
+        "SoundEffect": null,
+        "Stat1Value": 10,
+        "Stat2Value": 0,
+        "Stat3Value": 0,
+        "Stat4Value": 0,
+        "Stat5Value": 0,
+        "Stat6Value": 0,
+        "Stat7Value": 0,
+        "Stats": [
+          56
+        ],
+        "Unknown0": 0,
+        "Unknown1": 0,
+        "Unknown10": 0,
+        "Unknown11": 0,
+        "Unknown2": 0,
+        "Unknown3": 0,
+        "Unknown4": 0,
+        "Unknown5": 0,
+        "Unknown6": 0,
+        "Unknown7": 4839,
+        "Unknown8": 4839,
+        "Unknown9": 0,
+        "UnlockedBy": [],
+        "VariantType": null,
+        "VisibleForAscendancy": null,
+        "WeaponPointsGranted": 0
+      },
+      "official_tree": {
+        "node_id": 20649,
+        "text": [
+          "10% increased [Lightning] Damage"
+        ]
+      },
+      "description": {
+        "file": "Data/StatDescriptions/stat_descriptions.csd",
+        "raw_resource_sha256": "9eb47635f9d5744a57c82d0ad5521d3b8899163dac0a2817808655447ee2b391",
+        "record": 1772,
+        "raw_slice_sha256": "893355364dcfc617648c2db80b899a2d58015dba82d8cd181e96b2b17971731e",
+        "span": {
+          "byte_end": 2080472,
+          "byte_start": 2077730,
+          "line_end": 33450,
+          "line_start": 33406
+        },
+        "implicit_default_branches": [
+          {
+            "condition_tokens_raw": [
+              "1|#"
+            ],
+            "quantifier_tokens_raw": [],
+            "restrictions_raw": [],
+            "template_raw": "{0}% increased [Lightning] Damage",
+            "span": {
+              "byte_end": 2077898,
+              "byte_start": 2077812,
+              "line_end": 33409,
+              "line_start": 33409
+            }
+          },
+          {
+            "condition_tokens_raw": [
+              "#|-1"
+            ],
+            "quantifier_tokens_raw": [
+              "negate",
+              "1"
+            ],
+            "restrictions_raw": [],
+            "template_raw": "{0}% reduced [Lightning] Damage",
+            "span": {
+              "byte_end": 2078000,
+              "byte_start": 2077898,
+              "line_end": 33410,
+              "line_start": 33410
+            }
+          }
+        ]
+      }
+    },
+    {
+      "stat_id": "chaos_damage_+%",
+      "passive": {
+        "definition": {
+          "id": "chaos3",
+          "row": 3238
+        },
+        "graph_id": 12367,
+        "in_default_graph": true,
+        "stats": [
+          {
+            "slot": 1,
+            "stat": {
+              "id": "chaos_damage_+%",
+              "row": 63
+            },
+            "value": 7,
+            "value_field": "Stat1Value"
+          }
+        ]
+      },
+      "physical_context": {
+        "AchievementItem": null,
+        "Ascendancy": null,
+        "AtlasNodeGroup": "",
+        "AtlasSubTree": null,
+        "AudioEvent": null,
+        "BrequelTree": null,
+        "Characters": [],
+        "Flag0": false,
+        "Flag1": false,
+        "Flag2": false,
+        "Flag3": false,
+        "Flag4": false,
+        "Flag5": false,
+        "Flag6": false,
+        "Flag7": false,
+        "FlavourText": "",
+        "GrantedSkill": null,
+        "Group": null,
+        "Icon_DDSFile": "Art/2DArt/SkillIcons/passives/ChaosDamagenode.dds",
+        "Id": "chaos3",
+        "IsAnointmentOnly": false,
+        "IsAscendancyStartingNode": false,
+        "IsAttribute": false,
+        "IsExpansion": false,
+        "IsFree": false,
+        "IsJewelSocket": false,
+        "IsJustIcon": false,
+        "IsKeystone": false,
+        "IsMultipleChoice": false,
+        "IsMultipleChoiceOption": false,
+        "IsNotable": false,
+        "IsProxyPassive": false,
+        "IsRootOfAtlasTree": false,
+        "Keys0": [],
+        "Keys1": [],
+        "MasteryGroup": null,
+        "Name": "Chaos Damage",
+        "NodeFrameArt": null,
+        "PassiveSkillBuffs": [],
+        "PassiveSkillGraphId": 12367,
+        "QuestFlag": null,
+        "ReminderStrings": [],
+        "Requirement": null,
+        "SkillPointsGranted": 0,
+        "SkillType": 0,
+        "SoundEffect": null,
+        "Stat1Value": 7,
+        "Stat2Value": 0,
+        "Stat3Value": 0,
+        "Stat4Value": 0,
+        "Stat5Value": 0,
+        "Stat6Value": 0,
+        "Stat7Value": 0,
+        "Stats": [
+          63
+        ],
+        "Unknown0": 0,
+        "Unknown1": 0,
+        "Unknown10": 0,
+        "Unknown11": 0,
+        "Unknown2": 0,
+        "Unknown3": 0,
+        "Unknown4": 0,
+        "Unknown5": 0,
+        "Unknown6": 0,
+        "Unknown7": 4839,
+        "Unknown8": 4839,
+        "Unknown9": 0,
+        "UnlockedBy": [],
+        "VariantType": null,
+        "VisibleForAscendancy": null,
+        "WeaponPointsGranted": 0
+      },
+      "official_tree": {
+        "node_id": 12367,
+        "text": [
+          "7% increased [Chaos] Damage"
+        ]
+      },
+      "description": {
+        "file": "Data/StatDescriptions/stat_descriptions.csd",
+        "raw_resource_sha256": "9eb47635f9d5744a57c82d0ad5521d3b8899163dac0a2817808655447ee2b391",
+        "record": 1774,
+        "raw_slice_sha256": "00a6d5da80acc170f44b89baab464096639936584f7bf3d71a0788d55d6f0aee",
+        "span": {
+          "byte_end": 2083018,
+          "byte_start": 2080476,
+          "line_end": 33496,
+          "line_start": 33452
+        },
+        "implicit_default_branches": [
+          {
+            "condition_tokens_raw": [
+              "1|#"
+            ],
+            "quantifier_tokens_raw": [],
+            "restrictions_raw": [],
+            "template_raw": "{0}% increased [Chaos] Damage",
+            "span": {
+              "byte_end": 2080628,
+              "byte_start": 2080550,
+              "line_end": 33455,
+              "line_start": 33455
+            }
+          },
+          {
+            "condition_tokens_raw": [
+              "#|-1"
+            ],
+            "quantifier_tokens_raw": [
+              "negate",
+              "1"
+            ],
+            "restrictions_raw": [],
+            "template_raw": "{0}% reduced [Chaos] Damage",
+            "span": {
+              "byte_end": 2080722,
+              "byte_start": 2080628,
+              "line_end": 33456,
+              "line_start": 33456
+            }
+          }
+        ]
+      }
+    },
+    {
+      "stat_id": "elemental_damage_+%",
+      "passive": {
+        "definition": {
+          "id": "cold2",
+          "row": 3095
+        },
+        "graph_id": 22821,
+        "in_default_graph": true,
+        "stats": [
+          {
+            "slot": 1,
+            "stat": {
+              "id": "elemental_damage_+%",
+              "row": 476
+            },
+            "value": 10,
+            "value_field": "Stat1Value"
+          }
+        ]
+      },
+      "physical_context": {
+        "AchievementItem": null,
+        "Ascendancy": null,
+        "AtlasNodeGroup": "",
+        "AtlasSubTree": null,
+        "AudioEvent": null,
+        "BrequelTree": null,
+        "Characters": [],
+        "Flag0": false,
+        "Flag1": false,
+        "Flag2": false,
+        "Flag3": false,
+        "Flag4": false,
+        "Flag5": false,
+        "Flag6": false,
+        "Flag7": false,
+        "FlavourText": "",
+        "GrantedSkill": null,
+        "Group": null,
+        "Icon_DDSFile": "Art/2DArt/SkillIcons/passives/elementaldamage.dds",
+        "Id": "cold2",
+        "IsAnointmentOnly": false,
+        "IsAscendancyStartingNode": false,
+        "IsAttribute": false,
+        "IsExpansion": false,
+        "IsFree": false,
+        "IsJewelSocket": false,
+        "IsJustIcon": false,
+        "IsKeystone": false,
+        "IsMultipleChoice": false,
+        "IsMultipleChoiceOption": false,
+        "IsNotable": false,
+        "IsProxyPassive": false,
+        "IsRootOfAtlasTree": false,
+        "Keys0": [],
+        "Keys1": [],
+        "MasteryGroup": null,
+        "Name": "Elemental Damage",
+        "NodeFrameArt": null,
+        "PassiveSkillBuffs": [],
+        "PassiveSkillGraphId": 22821,
+        "QuestFlag": null,
+        "ReminderStrings": [],
+        "Requirement": null,
+        "SkillPointsGranted": 0,
+        "SkillType": 0,
+        "SoundEffect": null,
+        "Stat1Value": 10,
+        "Stat2Value": 0,
+        "Stat3Value": 0,
+        "Stat4Value": 0,
+        "Stat5Value": 0,
+        "Stat6Value": 0,
+        "Stat7Value": 0,
+        "Stats": [
+          476
+        ],
+        "Unknown0": 0,
+        "Unknown1": 0,
+        "Unknown10": 0,
+        "Unknown11": 0,
+        "Unknown2": 0,
+        "Unknown3": 0,
+        "Unknown4": 0,
+        "Unknown5": 0,
+        "Unknown6": 0,
+        "Unknown7": 4839,
+        "Unknown8": 4839,
+        "Unknown9": 0,
+        "UnlockedBy": [],
+        "VariantType": null,
+        "VisibleForAscendancy": null,
+        "WeaponPointsGranted": 0
+      },
+      "official_tree": {
+        "node_id": 22821,
+        "text": [
+          "10% increased [ElementalDamage|Elemental Damage]"
+        ]
+      },
+      "description": {
+        "file": "Data/StatDescriptions/stat_descriptions.csd",
+        "raw_resource_sha256": "9eb47635f9d5744a57c82d0ad5521d3b8899163dac0a2817808655447ee2b391",
+        "record": 3474,
+        "raw_slice_sha256": "f0fc813a0f35b8ae282d51539584f905a8701b2b2bf792aaf7657b3b8d5c9247",
+        "span": {
+          "byte_end": 4315886,
+          "byte_start": 4312804,
+          "line_end": 68158,
+          "line_start": 68114
+        },
+        "implicit_default_branches": [
+          {
+            "condition_tokens_raw": [
+              "1|#"
+            ],
+            "quantifier_tokens_raw": [],
+            "restrictions_raw": [],
+            "template_raw": "{0}% increased [ElementalDamage|Elemental Damage]",
+            "span": {
+              "byte_end": 4313004,
+              "byte_start": 4312886,
+              "line_end": 68117,
+              "line_start": 68117
+            }
+          },
+          {
+            "condition_tokens_raw": [
+              "#|-1"
+            ],
+            "quantifier_tokens_raw": [
+              "negate",
+              "1"
+            ],
+            "restrictions_raw": [],
+            "template_raw": "{0}% reduced [ElementalDamage|Elemental Damage]",
+            "span": {
+              "byte_end": 4313138,
+              "byte_start": 4313004,
+              "line_end": 68118,
+              "line_start": 68118
+            }
+          }
+        ]
+      }
+    },
+    {
+      "stat_id": "spell_damage_+%",
+      "passive": {
+        "definition": {
+          "id": "spells1",
+          "row": 2762
+        },
+        "graph_id": 53975,
+        "in_default_graph": true,
+        "stats": [
+          {
+            "slot": 1,
+            "stat": {
+              "id": "spell_damage_+%",
+              "row": 25
+            },
+            "value": 10,
+            "value_field": "Stat1Value"
+          }
+        ]
+      },
+      "physical_context": {
+        "AchievementItem": null,
+        "Ascendancy": null,
+        "AtlasNodeGroup": "",
+        "AtlasSubTree": null,
+        "AudioEvent": null,
+        "BrequelTree": null,
+        "Characters": [],
+        "Flag0": false,
+        "Flag1": false,
+        "Flag2": false,
+        "Flag3": false,
+        "Flag4": false,
+        "Flag5": false,
+        "Flag6": false,
+        "Flag7": false,
+        "FlavourText": "",
+        "GrantedSkill": null,
+        "Group": null,
+        "Icon_DDSFile": "Art/2DArt/SkillIcons/passives/damagespells.dds",
+        "Id": "spells1",
+        "IsAnointmentOnly": false,
+        "IsAscendancyStartingNode": false,
+        "IsAttribute": false,
+        "IsExpansion": false,
+        "IsFree": false,
+        "IsJewelSocket": false,
+        "IsJustIcon": false,
+        "IsKeystone": false,
+        "IsMultipleChoice": false,
+        "IsMultipleChoiceOption": false,
+        "IsNotable": false,
+        "IsProxyPassive": false,
+        "IsRootOfAtlasTree": false,
+        "Keys0": [],
+        "Keys1": [],
+        "MasteryGroup": null,
+        "Name": "Spell Damage",
+        "NodeFrameArt": null,
+        "PassiveSkillBuffs": [],
+        "PassiveSkillGraphId": 53975,
+        "QuestFlag": null,
+        "ReminderStrings": [],
+        "Requirement": null,
+        "SkillPointsGranted": 0,
+        "SkillType": 0,
+        "SoundEffect": null,
+        "Stat1Value": 10,
+        "Stat2Value": 0,
+        "Stat3Value": 0,
+        "Stat4Value": 0,
+        "Stat5Value": 0,
+        "Stat6Value": 0,
+        "Stat7Value": 0,
+        "Stats": [
+          25
+        ],
+        "Unknown0": 0,
+        "Unknown1": 0,
+        "Unknown10": 0,
+        "Unknown11": 0,
+        "Unknown2": 0,
+        "Unknown3": 0,
+        "Unknown4": 0,
+        "Unknown5": 0,
+        "Unknown6": 0,
+        "Unknown7": 4839,
+        "Unknown8": 4839,
+        "Unknown9": 0,
+        "UnlockedBy": [],
+        "VariantType": null,
+        "VisibleForAscendancy": null,
+        "WeaponPointsGranted": 0
+      },
+      "official_tree": {
+        "node_id": 53975,
+        "text": [
+          "10% increased [Spell] Damage"
+        ]
+      },
+      "description": {
+        "file": "Data/StatDescriptions/stat_descriptions.csd",
+        "raw_resource_sha256": "9eb47635f9d5744a57c82d0ad5521d3b8899163dac0a2817808655447ee2b391",
+        "record": 1764,
+        "raw_slice_sha256": "f5484963b5fe7b27358ac99871eaa0462e8c060f957da3ca71079a47c311890c",
+        "span": {
+          "byte_end": 2070150,
+          "byte_start": 2067596,
+          "line_end": 33266,
+          "line_start": 33222
+        },
+        "implicit_default_branches": [
+          {
+            "condition_tokens_raw": [
+              "1|#"
+            ],
+            "quantifier_tokens_raw": [],
+            "restrictions_raw": [],
+            "template_raw": "{0}% increased [Spell] Damage",
+            "span": {
+              "byte_end": 2067748,
+              "byte_start": 2067670,
+              "line_end": 33225,
+              "line_start": 33225
+            }
+          },
+          {
+            "condition_tokens_raw": [
+              "#|-1"
+            ],
+            "quantifier_tokens_raw": [
+              "negate",
+              "1"
+            ],
+            "restrictions_raw": [],
+            "template_raw": "{0}% reduced [Spell] Damage",
+            "span": {
+              "byte_end": 2067842,
+              "byte_start": 2067748,
+              "line_end": 33226,
+              "line_start": 33226
+            }
+          }
+        ]
+      }
+    },
+    {
+      "stat_id": "projectile_damage_+%",
+      "passive": {
+        "definition": {
+          "id": "ranged1",
+          "row": 2949
+        },
+        "graph_id": 33053,
+        "in_default_graph": true,
+        "stats": [
+          {
+            "slot": 1,
+            "stat": {
+              "id": "projectile_damage_+%",
+              "row": 488
+            },
+            "value": 10,
+            "value_field": "Stat1Value"
+          }
+        ]
+      },
+      "physical_context": {
+        "AchievementItem": null,
+        "Ascendancy": null,
+        "AtlasNodeGroup": "",
+        "AtlasSubTree": null,
+        "AudioEvent": null,
+        "BrequelTree": null,
+        "Characters": [],
+        "Flag0": false,
+        "Flag1": false,
+        "Flag2": false,
+        "Flag3": false,
+        "Flag4": false,
+        "Flag5": false,
+        "Flag6": false,
+        "Flag7": false,
+        "FlavourText": "",
+        "GrantedSkill": null,
+        "Group": null,
+        "Icon_DDSFile": "Art/2DArt/SkillIcons/passives/projectilespeed.dds",
+        "Id": "ranged1",
+        "IsAnointmentOnly": false,
+        "IsAscendancyStartingNode": false,
+        "IsAttribute": false,
+        "IsExpansion": false,
+        "IsFree": false,
+        "IsJewelSocket": false,
+        "IsJustIcon": false,
+        "IsKeystone": false,
+        "IsMultipleChoice": false,
+        "IsMultipleChoiceOption": false,
+        "IsNotable": false,
+        "IsProxyPassive": false,
+        "IsRootOfAtlasTree": false,
+        "Keys0": [],
+        "Keys1": [],
+        "MasteryGroup": null,
+        "Name": "Projectile Damage",
+        "NodeFrameArt": null,
+        "PassiveSkillBuffs": [],
+        "PassiveSkillGraphId": 33053,
+        "QuestFlag": null,
+        "ReminderStrings": [],
+        "Requirement": null,
+        "SkillPointsGranted": 0,
+        "SkillType": 0,
+        "SoundEffect": null,
+        "Stat1Value": 10,
+        "Stat2Value": 0,
+        "Stat3Value": 0,
+        "Stat4Value": 0,
+        "Stat5Value": 0,
+        "Stat6Value": 0,
+        "Stat7Value": 0,
+        "Stats": [
+          488
+        ],
+        "Unknown0": 0,
+        "Unknown1": 0,
+        "Unknown10": 0,
+        "Unknown11": 0,
+        "Unknown2": 0,
+        "Unknown3": 0,
+        "Unknown4": 0,
+        "Unknown5": 0,
+        "Unknown6": 0,
+        "Unknown7": 4839,
+        "Unknown8": 4839,
+        "Unknown9": 0,
+        "UnlockedBy": [],
+        "VariantType": null,
+        "VisibleForAscendancy": null,
+        "WeaponPointsGranted": 0
+      },
+      "official_tree": {
+        "node_id": 33053,
+        "text": [
+          "10% increased [Projectile] Damage"
+        ]
+      },
+      "description": {
+        "file": "Data/StatDescriptions/stat_descriptions.csd",
+        "raw_resource_sha256": "9eb47635f9d5744a57c82d0ad5521d3b8899163dac0a2817808655447ee2b391",
+        "record": 3498,
+        "raw_slice_sha256": "eb3cf7ea98a72871e2a9d932929254acbd1afdafb989fd0be7dccfbca3b7474c",
+        "span": {
+          "byte_end": 4351470,
+          "byte_start": 4348570,
+          "line_end": 68688,
+          "line_start": 68644
+        },
+        "implicit_default_branches": [
+          {
+            "condition_tokens_raw": [
+              "1|#"
+            ],
+            "quantifier_tokens_raw": [],
+            "restrictions_raw": [],
+            "template_raw": "{0}% increased [Projectile] Damage",
+            "span": {
+              "byte_end": 4348742,
+              "byte_start": 4348654,
+              "line_end": 68647,
+              "line_start": 68647
+            }
+          },
+          {
+            "condition_tokens_raw": [
+              "#|-1"
+            ],
+            "quantifier_tokens_raw": [
+              "negate",
+              "1"
+            ],
+            "restrictions_raw": [],
+            "template_raw": "{0}% reduced [Projectile] Damage",
+            "span": {
+              "byte_end": 4348846,
+              "byte_start": 4348742,
+              "line_end": 68648,
+              "line_start": 68648
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
