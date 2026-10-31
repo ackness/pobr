@@ -1,12 +1,16 @@
 //! Opt-in RePoE facts to PoBR domain candidate conversion, without runtime publication.
 
 mod convert;
+mod core_skills;
 mod model;
 mod output;
 mod trust;
 
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 mod tests;
+
+#[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
+mod tests_v2;
 
 #[cfg(all(test, not(any(target_os = "linux", target_os = "macos"))))]
 #[test]
@@ -16,6 +20,7 @@ fn native_output_is_explicitly_unsupported() {
         expected_manifest_sha256: "0".repeat(64),
         source_lock: "unused-lock".into(),
         out: "unused-output".into(),
+        profile: Profile::BaseV1,
     };
     assert_eq!(
         output::Output::prepare(&args).err().as_deref(),
@@ -35,6 +40,29 @@ pub(crate) struct Args {
     expected_manifest_sha256: String,
     source_lock: PathBuf,
     out: PathBuf,
+    profile: Profile,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Profile {
+    BaseV1,
+    CoreSkillsA0,
+}
+
+impl Profile {
+    fn format(self) -> &'static str {
+        match self {
+            Self::BaseV1 => "repoe-native-facts/v1",
+            Self::CoreSkillsA0 => "repoe-native-facts/v2",
+        }
+    }
+
+    fn producer_revision(self) -> &'static str {
+        match self {
+            Self::BaseV1 => trust::PRODUCER_REVISION,
+            Self::CoreSkillsA0 => "aa2fb163aa422317db5c32031607eb199214e7b7",
+        }
+    }
 }
 
 pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, String> {
@@ -46,6 +74,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             "--expected-manifest-sha256",
             "--source-lock",
             "--out",
+            "--profile",
         ]
         .contains(&flag.as_str())
         {
@@ -56,12 +85,18 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             return Err(format!("missing value or duplicate argument: {flag}"));
         }
     }
+    let profile = match values.remove("--profile").as_deref() {
+        None | Some("base-v1") => Profile::BaseV1,
+        Some("core-skills-a0") => Profile::CoreSkillsA0,
+        Some(value) => return Err(format!("unsupported native-facts profile: {value}")),
+    };
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
     Ok(Args {
         input: take("--native-facts")?.into(),
         expected_manifest_sha256: take("--expected-manifest-sha256")?,
         source_lock: take("--source-lock")?.into(),
         out: take("--out")?.into(),
+        profile,
     })
 }
 
@@ -92,15 +127,15 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
             )
         })
         .collect();
-    let receipt = json!({
+    let mut receipt = json!({
         "format": "pobr-native-candidate-receipt/v1",
         "status": "partial-candidate",
         "production_ready": false,
         "adapter": {"name": "pobr-data-adapter/native-facts", "version": env!("CARGO_PKG_VERSION"),
             "implementation_sha256": implementation_sha256()},
-        "input": {"format": "repoe-native-facts/v1",
+        "input": {"format": args.profile.format(),
             "manifest_sha256": args.expected_manifest_sha256,
-            "producer_revision": trust::PRODUCER_REVISION,
+            "producer_revision": args.profile.producer_revision(),
             "source_identity": input.manifest["source_identity"]},
         "summary": candidate.summary,
         "files": inventory,
@@ -111,6 +146,19 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
             "All source diagnostics retained verbatim; no PoB fallback."
         ]
     });
+    if args.profile == Profile::CoreSkillsA0 {
+        receipt["format"] = "pobr-native-candidate-receipt/v2".into();
+        receipt["input"]["profile"] = "core-skills-a0".into();
+        receipt["core_summary"] =
+            serde_json::to_value(&candidate.core_summary).map_err(|e| e.to_string())?;
+        receipt["scope"] = json!([
+            "Partial INTERNATIONAL patch 0.5.5.5 core-skills-a0 candidate; never a runtime manifest.",
+            "All physical metadata remains in the canonical RePoE package pinned by input.manifest_sha256.",
+            "Acquisition status/evidence and observed raw hashes are caller-declared; this adapter grants no source approval.",
+            "No units, interpolation, quality, geometry or application policy is inferred.",
+            "All source diagnostics retained verbatim; no PoB fallback."
+        ]);
+    }
     let receipt_bytes = json_bytes(&receipt)?;
     let receipt_sha = sha256_hex(&receipt_bytes);
     output.reserve()?;
@@ -133,6 +181,10 @@ fn implementation_sha256() -> String {
         ("trust.rs", include_bytes!("trust.rs").as_slice()),
         ("model.rs", include_bytes!("model.rs").as_slice()),
         ("convert.rs", include_bytes!("convert.rs").as_slice()),
+        (
+            "core_skills.rs",
+            include_bytes!("core_skills.rs").as_slice(),
+        ),
         ("output.rs", include_bytes!("output.rs").as_slice()),
         (
             "raw_source.rs",

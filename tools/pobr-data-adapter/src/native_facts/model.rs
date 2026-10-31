@@ -5,6 +5,8 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::core_skills::{CoreSkills, CoreSummary, StableRef};
+
 /// References are resolved only against the input manifest pinned in the candidate receipt.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(super) struct InputRef {
@@ -38,6 +40,10 @@ pub(super) struct Candidate {
     pub stat_sets: BTreeMap<String, StatSet>,
     pub qualities: Vec<Quality>,
     pub source_diagnostics: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub core_skills: Option<CoreSkills<StableRef>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub core_summary: Option<CoreSummary>,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -164,7 +170,7 @@ pub(super) struct QualityStat {
 
 // The v1 projection is deliberately strict; unknown physical metadata remains accessible
 // through InputRef rather than being interpreted or duplicated in this candidate schema.
-#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Identity {
     pub row: usize,

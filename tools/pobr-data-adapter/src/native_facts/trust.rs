@@ -8,7 +8,7 @@ use std::path::{Component, Path};
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde_json::{Map, Number, Value};
 
-use super::Args;
+use super::{Args, Profile};
 use crate::raw_source::sha256_hex;
 
 pub(super) const PRODUCER_REVISION: &str = "b6def2152dfc48d8ec49c7a237b2e973c3830e97";
@@ -31,6 +31,7 @@ pub(super) const TABLES: [&str; 8] = [
 ];
 
 pub(super) struct VerifiedInput {
+    pub profile: Profile,
     pub manifest: Value,
     pub manifest_bytes: Vec<u8>,
     pub lock_bytes: Vec<u8>,
@@ -47,7 +48,7 @@ pub(super) fn verify(args: &Args) -> Result<VerifiedInput, String> {
         "external manifest sha256 mismatch",
     )?;
     let manifest = strict_json(&manifest_bytes)?;
-    verify_manifest(&manifest)?;
+    verify_manifest(&manifest, args.profile)?;
     let lock_bytes = read_regular(&args.source_lock)?;
     let identity = &manifest["source_identity"];
     require(
@@ -59,7 +60,18 @@ pub(super) fn verify(args: &Args) -> Result<VerifiedInput, String> {
         lock["schema_version"] == 1,
         "unsupported source-lock schema",
     )?;
-    let source = &lock["sources"]["official-client-0.5.5.5"];
+    let source = &lock["sources"][string(&identity["source"])?];
+    if args.profile == Profile::CoreSkillsA0 {
+        require(
+            source["profile"] == "core-skills-a0",
+            "source-lock profile mismatch",
+        )?;
+        verify_acquisition(&source["acquisition"])?;
+        require(
+            source["acquisition"] == identity["acquisition"],
+            "source-lock acquisition mismatch",
+        )?;
+    }
     require(
         identity["selected_source_sha256"] == sha256_hex(&super::json_bytes(source)?),
         "selected source-lock entry mismatch",
@@ -86,7 +98,7 @@ pub(super) fn verify(args: &Args) -> Result<VerifiedInput, String> {
             &format!("source-lock decoder {key} mismatch"),
         )?;
     }
-    let raw_paths = raw_paths();
+    let raw_paths = raw_paths(args.profile);
     exact_keys(&source["resources"], &raw_paths)?;
     exact_keys(&identity["raw_resources"], &raw_paths)?;
     for path in &raw_paths {
@@ -100,7 +112,7 @@ pub(super) fn verify(args: &Args) -> Result<VerifiedInput, String> {
             )?;
         }
     }
-    let paths = payload_paths();
+    let paths = payload_paths(args.profile);
     exact_keys(&manifest["files"], &paths)?;
     let expected: BTreeSet<_> = paths
         .iter()
@@ -122,6 +134,12 @@ pub(super) fn verify(args: &Args) -> Result<VerifiedInput, String> {
         )?;
         bytes.insert(path.clone(), data);
     }
+    if args.profile == Profile::CoreSkillsA0 {
+        require(
+            bytes["source-lock.json"] == lock_bytes,
+            "embedded source-lock bytes mismatch",
+        )?;
+    }
     let documents = bytes
         .iter()
         .map(|(path, data)| {
@@ -131,6 +149,7 @@ pub(super) fn verify(args: &Args) -> Result<VerifiedInput, String> {
         })
         .collect::<Result<_, _>>()?;
     Ok(VerifiedInput {
+        profile: args.profile,
         manifest,
         manifest_bytes,
         lock_bytes,
@@ -139,26 +158,30 @@ pub(super) fn verify(args: &Args) -> Result<VerifiedInput, String> {
     })
 }
 
-fn verify_manifest(m: &Value) -> Result<(), String> {
-    exact_keys(
-        m,
-        &[
-            "decoder",
-            "files",
-            "format",
-            "producer",
-            "production_ready",
-            "row_key",
-            "schema",
-            "scope",
-            "source_identity",
-            "status",
-            "summary",
-        ]
-        .map(String::from),
-    )?;
+fn verify_manifest(m: &Value, profile: Profile) -> Result<(), String> {
+    let mut manifest_keys = vec![
+        "decoder",
+        "files",
+        "format",
+        "producer",
+        "production_ready",
+        "row_key",
+        "schema",
+        "scope",
+        "source_identity",
+        "status",
+        "summary",
+    ]
+    .into_iter()
+    .map(String::from)
+    .collect::<Vec<_>>();
+    if profile == Profile::CoreSkillsA0 {
+        manifest_keys.push("profile".into());
+        require(m["profile"] == "core-skills-a0", "invalid manifest profile")?;
+    }
+    exact_keys(m, &manifest_keys)?;
     for (key, value) in [
-        ("format", "repoe-native-facts/v1"),
+        ("format", profile.format()),
         ("status", "partial-candidate"),
     ] {
         require(m[key] == value, &format!("invalid manifest {key}"))?;
@@ -168,30 +191,43 @@ fn verify_manifest(m: &Value) -> Result<(), String> {
         "native facts must be partial, never production_ready",
     )?;
     let identity = &m["source_identity"];
-    exact_keys(
-        identity,
-        &[
-            "game",
-            "game_patch",
-            "kind",
-            "raw_resources",
-            "realm",
-            "selected_source_sha256",
-            "source",
-            "source_lock_sha256",
-        ]
-        .map(String::from),
-    )?;
+    let mut identity_keys = vec![
+        "game",
+        "game_patch",
+        "kind",
+        "raw_resources",
+        "realm",
+        "selected_source_sha256",
+        "source",
+        "source_lock_sha256",
+    ]
+    .into_iter()
+    .map(String::from)
+    .collect::<Vec<_>>();
+    if profile == Profile::CoreSkillsA0 {
+        identity_keys.push("acquisition".into());
+        verify_acquisition(&identity["acquisition"])?;
+        require(
+            !string(&identity["source"])?.is_empty(),
+            "empty selected source",
+        )?;
+    }
+    exact_keys(identity, &identity_keys)?;
     for (key, value) in [
         ("game", "poe2"),
         ("game_patch", "0.5.5.5"),
         ("realm", "international"),
         ("kind", "official-client-resource-candidate"),
-        ("source", "official-client-0.5.5.5"),
     ] {
         require(
             identity[key] == value,
             &format!("invalid source identity {key}"),
+        )?;
+    }
+    if profile == Profile::BaseV1 {
+        require(
+            identity["source"] == "official-client-0.5.5.5",
+            "invalid source identity source",
         )?;
     }
     for key in ["source_lock_sha256", "selected_source_sha256"] {
@@ -199,7 +235,7 @@ fn verify_manifest(m: &Value) -> Result<(), String> {
     }
     // These file identities bind this consumer to the requested producer revision, which v1
     // records as source fingerprints rather than a Git revision in the package itself.
-    let expected_producer = serde_json::json!({
+    let mut expected_producer = serde_json::json!({
         "RePoE/native_dat.py": "824f561af6e4b83243b459d726d6bad6821663061ac840d39c2854145707ff86",
         "RePoE/native_facts.py": "f7bf979a7a8e4bf04143cb8d04d3728a876c1bc5dd2498c43cd2d0ec78526548",
         "RePoE/native_tools.py": "46e4a0dd7250c44f9da714f55d90ef967223e0f50b0631d130a112c6144a37c7",
@@ -210,6 +246,14 @@ fn verify_manifest(m: &Value) -> Result<(), String> {
         "schema/source.json": "7afa08a39f3da0b2e368d716593c2adef03308f100ec49edac73e8c7416441d3",
         "uv.lock": "6ac815b9e4263081b51e823a3f297f35a1c55c7fa57956d3bdd5d4a506c1c66b"
     });
+    // Fixed SHA-256 values independently checked against aa2fb163 Git blobs, not
+    // derived from caller-supplied manifest producer claims.
+    if profile == Profile::CoreSkillsA0 {
+        expected_producer["RePoE/native_facts.py"] =
+            "af8148ccf8c68fef5b0c867a892285ff95b82e50c4933d1acc4f5c499632e4a1".into();
+        expected_producer["RePoE/native_skills.py"] =
+            "e65aff1265c3c1becd7890acb3c0182232651dd351dab5d982b0d119f74d453d".into();
+    }
     require(
         m["producer"] == expected_producer,
         "producer identity mismatch",
@@ -280,9 +324,9 @@ fn verify_manifest(m: &Value) -> Result<(), String> {
     )
 }
 
-pub(super) fn payload_paths() -> Vec<String> {
-    TABLES
-        .iter()
+pub(super) fn payload_paths(profile: Profile) -> Vec<String> {
+    tables(profile)
+        .into_iter()
         .map(|table| format!("tables/{table}.json"))
         .chain(
             [
@@ -293,15 +337,55 @@ pub(super) fn payload_paths() -> Vec<String> {
             ]
             .map(String::from),
         )
+        .chain(if profile == Profile::CoreSkillsA0 {
+            vec!["skill_core.json".into(), "source-lock.json".into()]
+        } else {
+            vec![]
+        })
         .collect()
 }
 
-fn raw_paths() -> Vec<String> {
+pub(super) fn tables(profile: Profile) -> Vec<&'static str> {
     TABLES
-        .iter()
+        .into_iter()
+        .chain(if profile == Profile::CoreSkillsA0 {
+            super::core_skills::TABLES.to_vec()
+        } else {
+            vec![]
+        })
+        .collect()
+}
+
+fn raw_paths(profile: Profile) -> Vec<String> {
+    tables(profile)
+        .into_iter()
         .map(|table| format!("Data/Balance/{table}.datc64"))
         .chain(["Metadata/PassiveSkillGraph.psg".into()])
         .collect()
+}
+
+fn verify_acquisition(value: &Value) -> Result<(), String> {
+    exact_keys(value, &["status".into(), "evidence".into()])?;
+    require(
+        matches!(
+            value["status"].as_str(),
+            Some("unreviewed-acquisition-draft" | "reviewed-source-input")
+        ),
+        "invalid acquisition status",
+    )?;
+    let evidence = value["evidence"]
+        .as_array()
+        .ok_or("missing acquisition evidence")?;
+    require(!evidence.is_empty(), "empty acquisition evidence")?;
+    for item in evidence {
+        exact_keys(item, &["kind".into(), "sha256".into()])?;
+        require(
+            !string(&item["kind"])?.is_empty(),
+            "empty acquisition evidence kind",
+        )?;
+        check_sha(string(&item["sha256"])?)?;
+    }
+    Ok(())
 }
 
 pub(super) fn require(condition: bool, message: &str) -> Result<(), String> {

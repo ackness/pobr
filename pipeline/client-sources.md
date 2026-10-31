@@ -111,8 +111,10 @@ not independently verified by comparing its installed RECORD.
 For a future fixed source, separately discover/review its exact resource paths,
 raw bytes/hashes, bundle URLs and uncompressed offsets/lengths, and pin its decoder
 and schema. Add that reviewed source through the source-lock maintenance process,
-then run this same command with its key and a new raw root. New index discovery,
-scheduling, full-domain export and production adoption remain separate work.
+then run this same command with its key and a new raw root.
+[Index discovery](client-index.md) and [unreviewed acquisition](client-source-draft.md)
+are separate commands; scheduling, full-domain export and production adoption
+remain separate work.
 
 ```sh
 mise run data:client:test

@@ -13,14 +13,14 @@ const ACTUAL_MANIFEST: &[u8] =
 const SOURCE_LOCK: &[u8] = include_bytes!("../../../../pipeline/sources.lock.json");
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
-struct Fixture {
-    root: PathBuf,
-    manifest: Value,
-    documents: BTreeMap<String, Value>,
+pub(super) struct Fixture {
+    pub(super) root: PathBuf,
+    pub(super) manifest: Value,
+    pub(super) documents: BTreeMap<String, Value>,
 }
 
 impl Fixture {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         // The worktree cache avoids platform /tmp symlinks, which the input verifier rejects.
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
@@ -119,7 +119,7 @@ impl Fixture {
         fixture
     }
 
-    fn seal(&mut self) {
+    pub(super) fn seal(&mut self) {
         for (path, doc) in &self.documents {
             let bytes = json_bytes(doc).unwrap();
             fs::write(self.root.join("input").join(path), &bytes).unwrap();
@@ -132,7 +132,7 @@ impl Fixture {
         .unwrap();
     }
 
-    fn args(&self, out: &str) -> Args {
+    pub(super) fn args(&self, out: &str) -> Args {
         Args {
             input: self.root.join("input"),
             source_lock: self.root.join("source-lock.json"),
@@ -140,10 +140,11 @@ impl Fixture {
                 &fs::read(self.root.join("input/manifest.json")).unwrap(),
             ),
             out: self.root.join(out),
+            profile: super::Profile::BaseV1,
         }
     }
 
-    fn rejects(&self, expected: &str) {
+    pub(super) fn rejects(&self, expected: &str) {
         let args = self.args("bad-output");
         let out = args.out.clone();
         let error = run(args).unwrap_err();
@@ -161,7 +162,7 @@ impl Drop for Fixture {
     }
 }
 
-fn table_document(table: &str, rows: Vec<Value>) -> Value {
+pub(super) fn table_document(table: &str, rows: Vec<Value>) -> Value {
     let fields: Vec<_> = rows[0].as_object().unwrap().keys().cloned().collect();
     json!({"table":table,"raw_resource":format!("Data/Balance/{table}.datc64"),"row_key":"Ephemeral source row",
         "physical_fields":fields,"columns":fields.iter().enumerate().map(|(i,f)|json!({"source_column":i,
