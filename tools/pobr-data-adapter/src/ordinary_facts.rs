@@ -9,6 +9,7 @@ mod monster_resistances;
 mod monster_scaling;
 mod passive_tree;
 mod quality;
+mod runtime_constants;
 mod skill_overrides;
 mod skill_stat_map;
 mod skills;
@@ -66,6 +67,7 @@ enum Domain {
     Spectres,
     GrantedEffectMinions,
     PassiveTree,
+    RuntimeConstants,
 }
 
 impl Domain {
@@ -85,6 +87,7 @@ impl Domain {
             Self::Minions | Self::Spectres => &actors::TABLES,
             Self::GrantedEffectMinions => &minion_links::TABLES,
             Self::PassiveTree => &passive_tree::TABLES,
+            Self::RuntimeConstants => &runtime_constants::TABLES,
         }
     }
 
@@ -105,6 +108,7 @@ impl Domain {
             Self::Spectres => "ordinary-spectres",
             Self::GrantedEffectMinions => "ordinary-granted-effect-minions",
             Self::PassiveTree => "ordinary-passive-tree",
+            Self::RuntimeConstants => "ordinary-runtime-constants",
         }
     }
 
@@ -125,6 +129,7 @@ impl Domain {
             Self::Spectres => "spectres",
             Self::GrantedEffectMinions => "granted-effect-minions",
             Self::PassiveTree => "passive-tree",
+            Self::RuntimeConstants => "runtime-constants",
         }
     }
 }
@@ -173,6 +178,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("spectres") => Domain::Spectres,
         Some("granted-effect-minions") => Domain::GrantedEffectMinions,
         Some("passive-tree") => Domain::PassiveTree,
+        Some("runtime-constants") => Domain::RuntimeConstants,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
     if domain != Domain::GemQuality
@@ -191,6 +197,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             | Domain::Spectres
             | Domain::GrantedEffectMinions
             | Domain::PassiveTree
+            | Domain::RuntimeConstants
     ) && [
         "--codec-source",
         "--codec-source-sha256",
@@ -201,7 +208,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     .any(|flag| values.contains_key(*flag))
     {
         return Err(
-            "codec arguments require --ordinary-domain stat-set-codec, gem-effects, skill-stat-map, skill-overrides, minions, spectres, granted-effect-minions or passive-tree".into(),
+            "codec arguments require --ordinary-domain stat-set-codec, gem-effects, skill-stat-map, skill-overrides, minions, spectres, granted-effect-minions, passive-tree or runtime-constants".into(),
         );
     }
     if !matches!(domain, Domain::SkillStatMap | Domain::SkillOverrides)
@@ -239,6 +246,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
                 | Domain::Spectres
                 | Domain::GrantedEffectMinions
                 | Domain::PassiveTree
+                | Domain::RuntimeConstants
         ) {
             Some(CodecArgs {
                 source: take("--codec-source")?.into(),
@@ -278,6 +286,8 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     let mut legacy_actors_bytes = None;
     let mut legacy_minion_links_bytes = None;
     let mut legacy_passive_tree_bytes = None;
+    let mut legacy_manifest_bytes = None;
+    let mut legacy_constant_files = BTreeMap::new();
     // Complete validation and serialization before reserving any output.
     let (base, conversion, output_schema, scope) = match args.domain {
         Domain::StatsMods => {
@@ -601,6 +611,32 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 ],
             )
         }
+        Domain::RuntimeConstants => {
+            let converted = runtime_constants::convert(
+                &input,
+                args.codec
+                    .as_ref()
+                    .ok_or("missing runtime-constants snapshot/policy arguments")?,
+            )?;
+            for parent in &converted.protected_parents {
+                output.protect(parent)?;
+            }
+            codec_policy_bytes = Some(converted.policy_bytes);
+            legacy_manifest_bytes = Some(converted.manifest_bytes);
+            legacy_constant_files = converted.legacy_files;
+            (
+                converted.base,
+                converted.receipt,
+                "pobr_data::catalog::{GameConstantsDef,CharacterConstantsDef,JewelRadiiDef}",
+                vec![
+                    "Only target GameConstants and source-lock are selected. Policy bindings use exact source Id and Value / Divisor followed by ordered additional division, with no old-value gate or numeric default input.",
+                    "Exactly three declared old snapshot files are manifest/policy pinned before parsing; their original bytes/version remain verified compatibility inputs. Every non-owned field, unknown value, array and absence remains unchanged.",
+                    "Known numeric DTO shape checks do not supply values. An explicitly allowed absent leaf receives only its target fact; no extra fields or default sections are materialized.",
+                    "Unselected snapshot files, historical evidence, vendor/Lua and other assets are not read. Retained constants/radii are not relabeled as target facts or new formula/geometry laws.",
+                    "Draft domain candidate, incomplete and not adopted; no runtime manifest/profile/CURRENT. Complete package and ordinary BD/Web/accuracy acceptance remain separate.",
+                ],
+            )
+        }
     };
     let marker = reader::json_bytes(&json!({
         "schema": "pobr-domain-candidate/v1",
@@ -639,6 +675,9 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     if let Some(bytes) = legacy_passive_tree_bytes {
         sidecars.insert("legacy-passive-tree.json", bytes);
     }
+    if let Some(bytes) = legacy_manifest_bytes {
+        sidecars.insert("legacy-manifest.json", bytes);
+    }
     let files: BTreeMap<_, _> = base
         .iter()
         .map(|(name, data)| (format!("base/{name}"), data))
@@ -646,6 +685,11 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
             overlay
                 .iter()
                 .map(|(name, data)| (format!("overlay/{name}"), data)),
+        )
+        .chain(
+            legacy_constant_files
+                .iter()
+                .map(|(name, data)| (format!("legacy-constants/{name}"), data)),
         )
         .chain(sidecars.iter().map(|(name, data)| (name.to_string(), data)))
         .map(|(name, data)| (name, json!({"bytes":data.len(), "sha256":sha256_hex(data)})))
@@ -695,6 +739,9 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     if !overlay.is_empty() {
         output.write_overlay(&overlay)?;
     }
+    if !legacy_constant_files.is_empty() {
+        output.write_legacy_constants(&legacy_constant_files)?;
+    }
     for (name, bytes) in &sidecars {
         if *name != "_domain_candidate.json" {
             output.write_new(name, bytes)?;
@@ -720,6 +767,27 @@ fn implementation_sha256() -> String {
     let mut bytes = Vec::new();
     // Content revision records the compiled implementation, not whichever checkout invokes it.
     for (name, source) in [
+        (
+            "ordinary_facts/runtime_constants.rs",
+            include_bytes!("ordinary_facts/runtime_constants.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/runtime_constants/policy.rs",
+            include_bytes!("ordinary_facts/runtime_constants/policy.rs").as_slice(),
+        ),
+        (
+            "catalog/game_constants.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/game_constants.rs").as_slice(),
+        ),
+        (
+            "catalog/character_constants.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/character_constants.rs")
+                .as_slice(),
+        ),
+        (
+            "catalog/jewel_radii.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/jewel_radii.rs").as_slice(),
+        ),
         (
             "ordinary_facts/passive_tree.rs",
             include_bytes!("ordinary_facts/passive_tree.rs").as_slice(),

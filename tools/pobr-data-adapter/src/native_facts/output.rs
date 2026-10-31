@@ -203,6 +203,14 @@ mod supported {
             self.write_layer("overlay", files)
         }
 
+        /// Archive the three selected legacy constants files with the existing layer guards.
+        pub(crate) fn write_legacy_constants(
+            &mut self,
+            files: &std::collections::BTreeMap<String, Vec<u8>>,
+        ) -> Result<(), String> {
+            self.write_layer("legacy-constants", files)
+        }
+
         fn write_layer(
             &mut self,
             layer: &'static str,
@@ -312,6 +320,12 @@ impl Output {
         Self::prepare_unavailable()
     }
     pub(crate) fn protect(&mut self, _: &std::path::Path) -> Result<(), String> {
+        Self::prepare_unavailable()
+    }
+    pub(crate) fn write_legacy_constants(
+        &mut self,
+        _: &std::collections::BTreeMap<String, Vec<u8>>,
+    ) -> Result<(), String> {
         Self::prepare_unavailable()
     }
     pub(crate) fn write_base(

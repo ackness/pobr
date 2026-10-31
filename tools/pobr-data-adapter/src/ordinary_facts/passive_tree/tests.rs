@@ -10,7 +10,7 @@ use std::fs;
 const SOURCE: &str = "legacy/source.json";
 const POLICY: &str = "policy/policy.json";
 
-fn fixture() -> Fixture {
+pub(in crate::ordinary_facts) fn fixture() -> Fixture {
     let mut f = Fixture::new();
     let old: Vec<_> = f
         .documents
@@ -180,7 +180,7 @@ fn reseal(f: &mut Fixture) {
     p["source"]["sha256"] = json!(sha256_hex(&fs::read(f.root.join(SOURCE)).unwrap()));
     write(f, POLICY, &p);
 }
-fn args(f: &Fixture) -> Args {
+pub(in crate::ordinary_facts) fn args(f: &Fixture) -> Args {
     Args {
         domain: Domain::PassiveTree,
         codec: Some(CodecArgs {
