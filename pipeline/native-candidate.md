@@ -111,8 +111,8 @@ The [player example](native-player-candidate-example.json) uses
 exact `manifest_sha256` and `source_lock_sha256` pins for a
 `repoe-native-player-context/v1` package. Supply its local directory explicitly
 with `--player-context`; v1 forbids that binding, and v2 requires it. V2 uses the
-same input profile and source status, with `output_profile:
-"conditional-skill-hit-v1"`. Unknown fields or mixed-version profiles fail.
+same input profile and source status, with output profile
+`conditional-skill-hit-v1`. Unknown fields or mixed-version profiles fail.
 
 The player manifest, complete inventory and source lock are verified before
 execution. Its embedded parent manifest must byte-match the facts pin, and its
@@ -136,8 +136,20 @@ the assembler's guarded candidate, not a complete Build calculation. The player
 policy retains the explicit generic-OT applicability assumption. Nothing here
 certifies actor pools, requirements, effective cadence, full DPS or CN data.
 
-Use the same command with the player example, its independently supplied recipe
-SHA and `--player-context /local/artifacts/player-context-v1`. Example compiler
+```sh
+mise run data:native:candidate \
+  --recipe pipeline/native-player-candidate-example.json \
+  --recipe-sha256 54f7ff4eb732c98244bad331908d503f64eb8592bc70b66103f79ab9cb5c19ce \
+  --facts /local/artifacts/facts-v4 \
+  --source-lock /local/artifacts/facts-v4/source-lock.json \
+  --descriptions /local/artifacts/descriptions-v1 \
+  --player-context /local/artifacts/player-context-v1 \
+  --official-tree /local/references/official-tree.json \
+  --compiler /local/tools/pobr-data-adapter \
+  --out .cache/native-candidates/new-player-candidate
+```
+
+The example's digest identifies its tracked bytes, not source approval. Compiler
 pins identify a particular prebuilt artifact; another platform/build needs its
 own reviewed recipe. `revision_declaration` and byte integrity do not establish
 a clean-build attestation. The old example and v1 runtime bytes remain supported.
