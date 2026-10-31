@@ -535,6 +535,7 @@ dependencies = [
  "pobr-data",
  "pobr-tree",
  "serde",
+ "serde_ignored",
  "serde_json",
  "sha2",
 ]

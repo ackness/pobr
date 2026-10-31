@@ -71,6 +71,22 @@ fn native_catalog_rejects_duplicate_effect_keys_even_when_resealed() {
     }
 }
 
+#[test]
+fn native_catalog_rejects_unmodelled_fields_before_typed_data_can_drop_them() {
+    let mut files = pack();
+    files.insert(
+        "base/granted_effect_levels.json".into(),
+        br#"{"SparkPlayer":[{"level":1,"unmodelled_damage_multiplier":2}]}"#.to_vec(),
+    );
+    seal_inventory(&mut files);
+    let error = pobr_gamedata::NativeData::load(&GameData::from_memory(files))
+        .expect_err("new mechanical input cannot disappear before admission");
+    assert!(
+        error.to_string().contains("unmodelled_damage_multiplier"),
+        "{error}"
+    );
+}
+
 struct DiskPack(PathBuf);
 impl DiskPack {
     fn new(files: &BTreeMap<String, Vec<u8>>) -> Self {

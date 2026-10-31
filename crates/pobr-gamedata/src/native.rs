@@ -158,7 +158,28 @@ fn sealed<T: DeserializeOwned>(
         path: path.clone(),
         source,
     })?;
-    serde_json::from_slice(&bytes).map_err(|source| LoadError::Parse { path, source })
+    // These catalogs are numerical inputs, unlike permissive compatibility data.
+    // A new field cannot disappear before the closed native admission checks see it.
+    let mut decoder = serde_json::Deserializer::from_slice(&bytes);
+    let mut unknown = None;
+    let value = serde_ignored::deserialize(&mut decoder, |field| {
+        unknown.get_or_insert_with(|| field.to_string());
+    })
+    .map_err(|source| LoadError::Parse {
+        path: path.clone(),
+        source,
+    })?;
+    decoder.end().map_err(|source| LoadError::Parse {
+        path: path.clone(),
+        source,
+    })?;
+    if let Some(field) = unknown {
+        return Err(LoadError::Integrity {
+            path,
+            message: format!("unrecognized native catalog field: {field}"),
+        });
+    }
+    Ok(value)
 }
 
 pub(crate) fn reject_patches(data: &GameData, manifest: &DataManifest) -> Result<(), LoadError> {
