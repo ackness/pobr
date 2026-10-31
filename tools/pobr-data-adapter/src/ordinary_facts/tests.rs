@@ -80,6 +80,7 @@ impl Fixture {
             ),
             version: "0.5.5.5".into(),
             domain: super::Domain::StatsMods,
+            quality_policy: None,
             out: self.root.join("out"),
         }
     }

@@ -2,6 +2,7 @@
 
 mod base_items;
 mod convert;
+mod quality;
 mod skills;
 
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
@@ -21,6 +22,7 @@ pub(crate) struct Args {
     version: String,
     out: PathBuf,
     domain: Domain,
+    quality_policy: Option<quality::Args>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,6 +30,7 @@ enum Domain {
     StatsMods,
     BaseItems,
     Skills,
+    GemQuality,
 }
 
 impl Domain {
@@ -36,6 +39,7 @@ impl Domain {
             Self::StatsMods => &convert::TABLES,
             Self::BaseItems => &base_items::TABLES,
             Self::Skills => &skills::TABLES,
+            Self::GemQuality => &quality::TABLES,
         }
     }
 
@@ -44,6 +48,7 @@ impl Domain {
             Self::StatsMods => "ordinary-stats-mods",
             Self::BaseItems => "ordinary-base-items",
             Self::Skills => "ordinary-skills",
+            Self::GemQuality => "ordinary-gem-quality",
         }
     }
 
@@ -52,6 +57,7 @@ impl Domain {
             Self::StatsMods => "Stats/Mods",
             Self::BaseItems => "base-items",
             Self::Skills => "skills",
+            Self::GemQuality => "gem-quality",
         }
     }
 }
@@ -66,6 +72,8 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             "--facts-manifest-sha256",
             "--version",
             "--out",
+            "--quality-policy",
+            "--quality-policy-sha256",
         ]
         .contains(&flag.as_str())
         {
@@ -80,8 +88,15 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         None | Some("stats-mods") => Domain::StatsMods,
         Some("base-items") => Domain::BaseItems,
         Some("skills") => Domain::Skills,
+        Some("gem-quality") => Domain::GemQuality,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
+    if domain != Domain::GemQuality
+        && (values.contains_key("--quality-policy")
+            || values.contains_key("--quality-policy-sha256"))
+    {
+        return Err("quality policy arguments require --ordinary-domain gem-quality".into());
+    }
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
     Ok(Args {
         input: take("--ordinary-facts")?.into(),
@@ -89,6 +104,14 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         version: take("--version")?,
         out: take("--out")?.into(),
         domain,
+        quality_policy: if domain == Domain::GemQuality {
+            Some(quality::Args {
+                path: take("--quality-policy")?.into(),
+                expected_sha256: take("--quality-policy-sha256")?,
+            })
+        } else {
+            None
+        },
     })
 }
 
@@ -101,6 +124,8 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
         &args.version,
         args.domain.tables(),
     )?;
+    let mut overlay = BTreeMap::new();
+    let mut policy_bytes = None;
     // Complete validation and serialization before reserving any output.
     let (base, conversion, output_schema, scope) = match args.domain {
         Domain::StatsMods => {
@@ -166,6 +191,28 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 ],
             )
         }
+        Domain::GemQuality => {
+            let policy = args
+                .quality_policy
+                .as_ref()
+                .ok_or("missing quality policy arguments")?;
+            let converted = quality::convert(&input, policy)?;
+            output.protect(&converted.policy_parent)?;
+            overlay = converted.overlay;
+            policy_bytes = Some(converted.policy_bytes);
+            (
+                BTreeMap::new(),
+                converted.receipt,
+                "pobr_data::catalog::{GemQualityStatsDef,GemQualityStatDef,QualityStat}",
+                vec![
+                    "Only GrantedEffects, Stats and GrantedEffectQualityStats were read; target F supplies all numeric values and stable IDs.",
+                    "The explicitly pinned policy records target applicability of the existing effect-wide model, with prior source/patch/vendor evidence kept separate. It does not supply numeric values.",
+                    "Main/alt order and unapplied scope arrays are preserved. Exclusions and unconsumed fields remain traceable target facts, not claims of no effect.",
+                    "Acquisition status/evidence is copied unchanged. Fingerprints and conversion do not upgrade draft acquisition, prove full runtime completeness or adopt data.",
+                    "No runtime manifest, vendor fallback, download, CURRENT update, calculation model or schema-4 admission change.",
+                ],
+            )
+        }
     };
     let marker = reader::json_bytes(&json!({
         "schema": "pobr-domain-candidate/v1",
@@ -175,14 +222,22 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
         "source_manifest_sha256": args.expected_manifest_sha256,
         "publication": "blocked: domain-only candidate; not a complete runtime package"
     }))?;
-    let sidecars = BTreeMap::from([
+    let mut sidecars = BTreeMap::from([
         ("_domain_candidate.json", marker),
         ("source-manifest.json", input.manifest_bytes.clone()),
         ("source-lock.json", input.lock_bytes.clone()),
     ]);
+    if let Some(bytes) = policy_bytes {
+        sidecars.insert("quality-policy.json", bytes);
+    }
     let files: BTreeMap<_, _> = base
         .iter()
         .map(|(name, data)| (format!("base/{name}"), data))
+        .chain(
+            overlay
+                .iter()
+                .map(|(name, data)| (format!("overlay/{name}"), data)),
+        )
         .chain(sidecars.iter().map(|(name, data)| (name.to_string(), data)))
         .map(|(name, data)| (name, json!({"bytes":data.len(), "sha256":sha256_hex(data)})))
         .collect();
@@ -225,7 +280,12 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
         "_domain_candidate.json",
         &sidecars["_domain_candidate.json"],
     )?;
-    output.write_base(&base)?;
+    if !base.is_empty() {
+        output.write_base(&base)?;
+    }
+    if !overlay.is_empty() {
+        output.write_overlay(&overlay)?;
+    }
     for (name, bytes) in &sidecars {
         if *name != "_domain_candidate.json" {
             output.write_new(name, bytes)?;
@@ -270,6 +330,18 @@ fn implementation_sha256() -> String {
         (
             "ordinary_facts/skills/receipt.rs",
             include_bytes!("ordinary_facts/skills/receipt.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/quality.rs",
+            include_bytes!("ordinary_facts/quality.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/quality/policy.rs",
+            include_bytes!("ordinary_facts/quality/policy.rs").as_slice(),
+        ),
+        (
+            "skills/quality.rs",
+            include_bytes!("skills/quality.rs").as_slice(),
         ),
         ("skills/mod.rs", include_bytes!("skills/mod.rs").as_slice()),
         (

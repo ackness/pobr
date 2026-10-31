@@ -105,7 +105,7 @@ mod supported {
         directories: Directories,
         input: Directories,
         extra_inputs: Vec<Directories>,
-        base: Option<File>,
+        layers: std::collections::BTreeMap<&'static str, File>,
         production: Directories,
         name: OsString,
         reserved: bool,
@@ -134,7 +134,7 @@ mod supported {
                 directories,
                 input,
                 extra_inputs: Vec::new(),
-                base: None,
+                layers: Default::default(),
                 production,
                 name,
                 reserved: false,
@@ -147,15 +147,14 @@ mod supported {
             self.input.verify_namespace()?;
             self.production.verify_namespace()?;
             self.directories.verify_namespace()?;
-            if let Some(base) = &self.base {
-                let current =
-                    fs::statat(self.directories.last(), "base", AtFlags::SYMLINK_NOFOLLOW)
-                        .map_err(|e| e.to_string())?;
+            for (&layer, base) in &self.layers {
+                let current = fs::statat(self.directories.last(), layer, AtFlags::SYMLINK_NOFOLLOW)
+                    .map_err(|e| e.to_string())?;
                 let held = fs::fstat(base).map_err(|e| e.to_string())?;
                 require(
                     FileType::from_raw_mode(current.st_mode) == FileType::Directory
                         && (current.st_dev, current.st_ino) == (held.st_dev, held.st_ino),
-                    "base directory namespace changed",
+                    &format!("{layer} directory namespace changed"),
                 )?;
                 for input in std::iter::once(&self.input)
                     .chain(&self.extra_inputs)
@@ -164,7 +163,7 @@ mod supported {
                     let protected = fs::fstat(input.last()).map_err(|e| e.to_string())?;
                     require(
                         (held.st_dev, held.st_ino) != (protected.st_dev, protected.st_ino),
-                        "base directory aliases a protected input",
+                        &format!("{layer} directory aliases a protected input"),
                     )?;
                 }
             }
@@ -194,6 +193,21 @@ mod supported {
             &mut self,
             files: &std::collections::BTreeMap<String, Vec<u8>>,
         ) -> Result<(), String> {
+            self.write_layer("base", files)
+        }
+
+        pub(crate) fn write_overlay(
+            &mut self,
+            files: &std::collections::BTreeMap<String, Vec<u8>>,
+        ) -> Result<(), String> {
+            self.write_layer("overlay", files)
+        }
+
+        fn write_layer(
+            &mut self,
+            layer: &'static str,
+            files: &std::collections::BTreeMap<String, Vec<u8>>,
+        ) -> Result<(), String> {
             require(self.reserved, "output is not reserved")?;
             self.verify_namespace()?;
             for name in files.keys() {
@@ -204,18 +218,20 @@ mod supported {
                             Path::new(name).components().next(),
                             Some(Component::Normal(_))
                         ),
-                    "base filename must be a single normal JSON component",
+                    &format!("{layer} filename must be a single normal JSON component"),
                 )?;
             }
-            fs::mkdirat(self.directories.last(), "base", Mode::RWXU)
-                .map_err(|e| format!("reserve base: {e}"))?;
-            let fd = fs::openat(self.directories.last(), "base", DIRECTORY, Mode::empty())
+            fs::mkdirat(self.directories.last(), layer, Mode::RWXU)
+                .map_err(|e| format!("reserve {layer}: {e}"))?;
+            let fd = fs::openat(self.directories.last(), layer, DIRECTORY, Mode::empty())
                 .map_err(|e| e.to_string())?;
-            self.base = Some(File::from(fd));
+            self.layers.insert(layer, File::from(fd));
             for (name, bytes) in files {
                 self.verify_namespace()?;
                 let fd = fs::openat(
-                    self.base.as_ref().ok_or("base directory not reserved")?,
+                    self.layers
+                        .get(layer)
+                        .ok_or("layer directory not reserved")?,
                     name.as_str(),
                     OFlags::WRONLY
                         | OFlags::CREATE
@@ -224,7 +240,7 @@ mod supported {
                         | OFlags::CLOEXEC,
                     Mode::RUSR | Mode::WUSR,
                 )
-                .map_err(|e| format!("create base/{name}: {e}"))?;
+                .map_err(|e| format!("create {layer}/{name}: {e}"))?;
                 let mut file = File::from(fd);
                 file.write_all(bytes)
                     .and_then(|()| file.sync_all())
@@ -299,6 +315,12 @@ impl Output {
         Self::prepare_unavailable()
     }
     pub(crate) fn write_base(
+        &mut self,
+        _: &std::collections::BTreeMap<String, Vec<u8>>,
+    ) -> Result<(), String> {
+        Self::prepare_unavailable()
+    }
+    pub(crate) fn write_overlay(
         &mut self,
         _: &std::collections::BTreeMap<String, Vec<u8>>,
     ) -> Result<(), String> {
