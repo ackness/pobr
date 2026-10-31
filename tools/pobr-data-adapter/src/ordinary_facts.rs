@@ -7,6 +7,7 @@ mod gem_effects;
 mod minion_links;
 mod monster_resistances;
 mod monster_scaling;
+mod passive_tree;
 mod quality;
 mod skill_overrides;
 mod skill_stat_map;
@@ -64,6 +65,7 @@ enum Domain {
     Minions,
     Spectres,
     GrantedEffectMinions,
+    PassiveTree,
 }
 
 impl Domain {
@@ -82,6 +84,7 @@ impl Domain {
             Self::SkillOverrides => &skill_overrides::TABLES,
             Self::Minions | Self::Spectres => &actors::TABLES,
             Self::GrantedEffectMinions => &minion_links::TABLES,
+            Self::PassiveTree => &passive_tree::TABLES,
         }
     }
 
@@ -101,6 +104,7 @@ impl Domain {
             Self::Minions => "ordinary-minions",
             Self::Spectres => "ordinary-spectres",
             Self::GrantedEffectMinions => "ordinary-granted-effect-minions",
+            Self::PassiveTree => "ordinary-passive-tree",
         }
     }
 
@@ -120,6 +124,7 @@ impl Domain {
             Self::Minions => "minions",
             Self::Spectres => "spectres",
             Self::GrantedEffectMinions => "granted-effect-minions",
+            Self::PassiveTree => "passive-tree",
         }
     }
 }
@@ -167,6 +172,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("minions") => Domain::Minions,
         Some("spectres") => Domain::Spectres,
         Some("granted-effect-minions") => Domain::GrantedEffectMinions,
+        Some("passive-tree") => Domain::PassiveTree,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
     if domain != Domain::GemQuality
@@ -184,6 +190,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             | Domain::Minions
             | Domain::Spectres
             | Domain::GrantedEffectMinions
+            | Domain::PassiveTree
     ) && [
         "--codec-source",
         "--codec-source-sha256",
@@ -194,7 +201,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     .any(|flag| values.contains_key(*flag))
     {
         return Err(
-            "codec arguments require --ordinary-domain stat-set-codec, gem-effects, skill-stat-map, skill-overrides, minions, spectres or granted-effect-minions".into(),
+            "codec arguments require --ordinary-domain stat-set-codec, gem-effects, skill-stat-map, skill-overrides, minions, spectres, granted-effect-minions or passive-tree".into(),
         );
     }
     if !matches!(domain, Domain::SkillStatMap | Domain::SkillOverrides)
@@ -231,6 +238,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
                 | Domain::Minions
                 | Domain::Spectres
                 | Domain::GrantedEffectMinions
+                | Domain::PassiveTree
         ) {
             Some(CodecArgs {
                 source: take("--codec-source")?.into(),
@@ -269,6 +277,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     let mut legacy_skill_overrides_bytes = None;
     let mut legacy_actors_bytes = None;
     let mut legacy_minion_links_bytes = None;
+    let mut legacy_passive_tree_bytes = None;
     // Complete validation and serialization before reserving any output.
     let (base, conversion, output_schema, scope) = match args.domain {
         Domain::StatsMods => {
@@ -567,6 +576,31 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 ],
             )
         }
+        Domain::PassiveTree => {
+            let converted = passive_tree::convert(
+                &input,
+                args.codec
+                    .as_ref()
+                    .ok_or("missing passive-tree source/policy arguments")?,
+            )?;
+            for parent in &converted.protected_parents {
+                output.protect(parent)?;
+            }
+            codec_policy_bytes = Some(converted.policy_bytes);
+            legacy_passive_tree_bytes = Some(converted.source_bytes);
+            (
+                converted.base,
+                converted.receipt,
+                "pobr_data::catalog::{PassiveNodeDef[],PassiveTreeMeta}",
+                vec![
+                    "All prepared nodes and metadata retain their non-owned fields, order, text, variants, unlock/ascendancy/armour context and unknown values. Fixed source/policy compatibility is distinct from target facts.",
+                    "Only complete single-stat whole-context eligible nodes receive target native_stats through the existing shared mapper. All others retain the full original text path; class attributes use target Characters values.",
+                    "Explicit identity and outside-connection exceptions are exact, consumed compatibility declarations, not node admission or legality rules. No added nodes, edge rewiring, guessed Ascendancy ordinal or Requirement predicate.",
+                    "Four selected tables and lock, plus explicit prepared tree and policy only. Metadata authoring/evidence paths are declarations, not implicitly read or file-hash-verified inputs.",
+                    "Draft domain candidate, incomplete and not adopted. No runtime manifest/CURRENT; full target text, BD/Web, package and source approval remain separate.",
+                ],
+            )
+        }
     };
     let marker = reader::json_bytes(&json!({
         "schema": "pobr-domain-candidate/v1",
@@ -601,6 +635,9 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     }
     if let Some(bytes) = legacy_minion_links_bytes {
         sidecars.insert("legacy-minion-links.json", bytes);
+    }
+    if let Some(bytes) = legacy_passive_tree_bytes {
+        sidecars.insert("legacy-passive-tree.json", bytes);
     }
     let files: BTreeMap<_, _> = base
         .iter()
@@ -683,6 +720,34 @@ fn implementation_sha256() -> String {
     let mut bytes = Vec::new();
     // Content revision records the compiled implementation, not whichever checkout invokes it.
     for (name, source) in [
+        (
+            "ordinary_facts/passive_tree.rs",
+            include_bytes!("ordinary_facts/passive_tree.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/passive_tree/policy.rs",
+            include_bytes!("ordinary_facts/passive_tree/policy.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/passive_tree/prepared.rs",
+            include_bytes!("ordinary_facts/passive_tree/prepared.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/passive_tree/source.rs",
+            include_bytes!("ordinary_facts/passive_tree/source.rs").as_slice(),
+        ),
+        (
+            "catalog/tree.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/tree.rs").as_slice(),
+        ),
+        (
+            "native_stat.rs",
+            include_bytes!("../../../crates/pobr-data/src/native_stat.rs").as_slice(),
+        ),
+        (
+            "rules/passive_stats.rs",
+            include_bytes!("../../../crates/pobr-core/src/rules/passive_stats.rs").as_slice(),
+        ),
         (
             "ordinary_facts.rs",
             include_bytes!("ordinary_facts.rs").as_slice(),

@@ -3,7 +3,7 @@
 mod policy;
 
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
-mod tests;
+pub(super) mod tests;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;

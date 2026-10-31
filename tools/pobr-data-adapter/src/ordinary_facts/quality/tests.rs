@@ -30,7 +30,7 @@ fn table(name: &str, columns: &[(&str, &str, bool, Option<&str>)], values: Value
     })
 }
 
-fn fixture() -> Fixture {
+pub(in crate::ordinary_facts) fn fixture() -> Fixture {
     let mut f = Fixture::new();
     let old: Vec<_> = f
         .documents
@@ -130,7 +130,7 @@ fn policy(f: &Fixture) -> Value {
     crate::read_json(&f.root.join("policy/policy.json")).unwrap()
 }
 
-fn args(f: &Fixture) -> Args {
+pub(in crate::ordinary_facts) fn args(f: &Fixture) -> Args {
     let path = f.root.join("policy/policy.json");
     Args {
         domain: Domain::GemQuality,
