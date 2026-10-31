@@ -758,3 +758,31 @@ fn quality_does_not_change_existing_domain_outputs_or_add_overlay_fields() {
         }
     }
 }
+
+#[test]
+fn stat_set_codec_does_not_change_quality_files_or_receipt() {
+    let f = fixture();
+    run(args(&f)).unwrap();
+    let codec = super::super::stat_set_codec::tests::fixture();
+    run(super::super::stat_set_codec::tests::args(&codec)).unwrap();
+    run(Args {
+        out: f.root.join("after-codec"),
+        ..args(&f)
+    })
+    .unwrap();
+    let receipt = read(&f, "producer-receipt.json");
+    assert!(!f.root.join("out/codec-policy.json").exists());
+    for path in receipt["files"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .chain(["producer-receipt.json"])
+    {
+        assert_eq!(
+            fs::read(f.root.join("out").join(path)).unwrap(),
+            fs::read(f.root.join("after-codec").join(path)).unwrap(),
+            "{path}"
+        );
+    }
+}
