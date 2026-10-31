@@ -41,6 +41,8 @@ catalogs and those caches. `isDataReady()` continues to report only ordinary
 BuildData availability. Ordinary data-dependent routes fail in native mode;
 native calculation fails in ordinary or uninitialized mode. Static helpers keep
 their existing behavior.
+`translateLinesToZhCn` also returns `not_initialized` in native mode; its ordinary
+missing-template and pre-initialization pass-through behavior is preserved.
 
 Initialization is transactional for active data and derived caches. A failed load
 preserves the previous mode and its catalogs/caches. Staged initializers

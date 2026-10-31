@@ -130,6 +130,50 @@ fn native_calculation_requires_explicit_native_initialization() {
 }
 
 #[test]
+fn ordinary_translation_rejects_native_mode_and_recovers_after_switching_back() {
+    let lines = r#"["+50 to maximum Life","untranslated custom line"]"#;
+    assert_eq!(
+        pobr_wasm::translate_lines_to_zh_cn_json(lines).unwrap(),
+        lines,
+        "the uninitialized compatibility fallback remains unchanged"
+    );
+    let ordinary_dir = pobr_gamedata::current_data_dir();
+    pobr_wasm::init_data_from_dir(&ordinary_dir.to_string_lossy()).expect("ordinary data");
+    let translated = pobr_wasm::translate_lines_to_zh_cn_json(lines).unwrap();
+    let values: Vec<String> = serde_json::from_str(&translated).unwrap();
+    assert_ne!(values[0], "+50 to maximum Life");
+    assert_eq!(values[1], "untranslated custom line");
+
+    pobr_wasm::init_native_data_from_dir(&v1_dir().to_string_lossy()).expect("native catalogs");
+    for input in [lines, "[]"] {
+        error(
+            pobr_wasm::translate_lines_to_zh_cn_json(input),
+            "not_initialized",
+            "ordinary translation unavailable in native mode",
+        );
+    }
+    error(
+        pobr_wasm::translate_lines_to_zh_cn_json("{}"),
+        "bad_request",
+        "invalid lines json",
+    );
+
+    pobr_wasm::stage_data_file("manifest.json", "{}");
+    assert!(pobr_wasm::init_staged_data().is_err());
+    error(
+        pobr_wasm::translate_lines_to_zh_cn_json(lines),
+        "not_initialized",
+        "ordinary translation unavailable in native mode",
+    );
+    pobr_wasm::init_data_from_dir(&ordinary_dir.to_string_lossy()).expect("ordinary reinit");
+    assert_eq!(
+        pobr_wasm::translate_lines_to_zh_cn_json(lines).unwrap(),
+        translated,
+        "switching back restores the ordinary translator"
+    );
+}
+
+#[test]
 fn staged_native_v1_is_ready_but_never_calculable_or_ordinary_data() {
     stage(&read_pack(&v1_dir()));
     pobr_wasm::init_native_staged_data().expect("mixed byte/text staging of native v1");
