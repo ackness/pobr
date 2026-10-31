@@ -6,6 +6,7 @@ mod gem_effects;
 mod monster_resistances;
 mod monster_scaling;
 mod quality;
+mod skill_overrides;
 mod skill_stat_map;
 mod skills;
 mod stat_set_codec;
@@ -57,6 +58,7 @@ enum Domain {
     TotemVarieties,
     MonsterScaling,
     SkillStatMap,
+    SkillOverrides,
 }
 
 impl Domain {
@@ -72,6 +74,7 @@ impl Domain {
             Self::TotemVarieties => &totem_varieties::TABLES,
             Self::MonsterScaling => &monster_scaling::TABLES,
             Self::SkillStatMap => &skill_stat_map::TABLES,
+            Self::SkillOverrides => &skill_overrides::TABLES,
         }
     }
 
@@ -87,6 +90,7 @@ impl Domain {
             Self::TotemVarieties => "ordinary-totem-varieties",
             Self::MonsterScaling => "ordinary-monster-scaling",
             Self::SkillStatMap => "ordinary-skill-stat-map",
+            Self::SkillOverrides => "ordinary-skill-overrides",
         }
     }
 
@@ -102,6 +106,7 @@ impl Domain {
             Self::TotemVarieties => "totem-varieties",
             Self::MonsterScaling => "monster-scaling",
             Self::SkillStatMap => "skill-stat-map",
+            Self::SkillOverrides => "skill-overrides",
         }
     }
 }
@@ -145,6 +150,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("totem-varieties") => Domain::TotemVarieties,
         Some("monster-scaling") => Domain::MonsterScaling,
         Some("skill-stat-map") => Domain::SkillStatMap,
+        Some("skill-overrides") => Domain::SkillOverrides,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
     if domain != Domain::GemQuality
@@ -155,7 +161,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     }
     if !matches!(
         domain,
-        Domain::StatSetCodec | Domain::GemEffects | Domain::SkillStatMap
+        Domain::StatSetCodec | Domain::GemEffects | Domain::SkillStatMap | Domain::SkillOverrides
     ) && [
         "--codec-source",
         "--codec-source-sha256",
@@ -166,15 +172,18 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     .any(|flag| values.contains_key(*flag))
     {
         return Err(
-            "codec arguments require --ordinary-domain stat-set-codec, gem-effects or skill-stat-map".into(),
+            "codec arguments require --ordinary-domain stat-set-codec, gem-effects, skill-stat-map or skill-overrides".into(),
         );
     }
-    if domain != Domain::SkillStatMap
+    if !matches!(domain, Domain::SkillStatMap | Domain::SkillOverrides)
         && ["--branch-codec", "--branch-codec-sha256"]
             .iter()
             .any(|flag| values.contains_key(*flag))
     {
-        return Err("branch codec arguments require --ordinary-domain skill-stat-map".into());
+        return Err(
+            "branch codec arguments require --ordinary-domain skill-stat-map or skill-overrides"
+                .into(),
+        );
     }
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
     Ok(Args {
@@ -193,7 +202,10 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         },
         codec: if matches!(
             domain,
-            Domain::StatSetCodec | Domain::GemEffects | Domain::SkillStatMap
+            Domain::StatSetCodec
+                | Domain::GemEffects
+                | Domain::SkillStatMap
+                | Domain::SkillOverrides
         ) {
             Some(CodecArgs {
                 source: take("--codec-source")?.into(),
@@ -204,7 +216,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         } else {
             None
         },
-        branch_codec: if domain == Domain::SkillStatMap {
+        branch_codec: if matches!(domain, Domain::SkillStatMap | Domain::SkillOverrides) {
             Some(BranchCodecArgs {
                 path: take("--branch-codec")?.into(),
                 sha256: take("--branch-codec-sha256")?,
@@ -229,6 +241,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     let mut codec_policy_bytes = None;
     let mut legacy_gem_effects_bytes = None;
     let mut branch_codec_bytes = None;
+    let mut legacy_skill_overrides_bytes = None;
     // Complete validation and serialization before reserving any output.
     let (base, conversion, output_schema, scope) = match args.domain {
         Domain::StatsMods => {
@@ -442,6 +455,36 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 ],
             )
         }
+        Domain::SkillOverrides => {
+            let codec = args
+                .codec
+                .as_ref()
+                .ok_or("missing overrides source/policy arguments")?;
+            let branch = args
+                .branch_codec
+                .as_ref()
+                .ok_or("missing branch codec arguments")?;
+            let converted = skill_overrides::convert(&input, codec, branch)?;
+            for parent in &converted.protected_parents {
+                output.protect(parent)?;
+            }
+            overlay = converted.overlay;
+            codec_policy_bytes = Some(converted.policy_bytes);
+            branch_codec_bytes = Some(converted.branch_bytes);
+            legacy_skill_overrides_bytes = Some(converted.source_bytes);
+            (
+                BTreeMap::new(),
+                converted.receipt,
+                "pobr_data::catalog::skill_overrides::{SkillOverridesDef,SkillOverrideEntry}",
+                vec![
+                    "Only the selected five target F tables were read. Raw-owned base multipliers use all actual positive primary stat-set levels and the existing 1 + raw/10000 expression, never old numeric values or defaults.",
+                    "Legacy constants retain constant semantics only while target source is constant; target changes and new levels are emitted. GPL records pairing evidence without filtering or creating source/runtime levels.",
+                    "Fixed virtual and prepared community entries retain authored JSON and unknown fields. Actual branch codec membership and exact source-row/key exceptions are explicit; no new primary fallback, retargeting, law interpretation or diagnostic clearing.",
+                    "The original legacy source, branch codec and policy bytes are archived with their own identities; target numeric provenance remains separate. Existing DTO, loaders, merges and core behavior are unchanged.",
+                    "Acquisition remains draft; full target rule applicability, remaining assets, complete runtime and ordinary BD/Web/accuracy acceptance are separate. No Lua/vendor execution, implicit input, CURRENT update or adoption.",
+                ],
+            )
+        }
     };
     let marker = reader::json_bytes(&json!({
         "schema": "pobr-domain-candidate/v1",
@@ -467,6 +510,9 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     }
     if let Some(bytes) = branch_codec_bytes {
         sidecars.insert("branch-codec.json", bytes);
+    }
+    if let Some(bytes) = legacy_skill_overrides_bytes {
+        sidecars.insert("legacy-skill-overrides.json", bytes);
     }
     let files: BTreeMap<_, _> = base
         .iter()
@@ -609,6 +655,22 @@ fn implementation_sha256() -> String {
         (
             "catalog/monster_scaling.rs",
             include_bytes!("../../../crates/pobr-data/src/catalog/monster_scaling.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/skill_overrides.rs",
+            include_bytes!("ordinary_facts/skill_overrides.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/skill_overrides/policy.rs",
+            include_bytes!("ordinary_facts/skill_overrides/policy.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/skill_overrides/source.rs",
+            include_bytes!("ordinary_facts/skill_overrides/source.rs").as_slice(),
+        ),
+        (
+            "catalog/skill_overrides.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/skill_overrides.rs").as_slice(),
         ),
         (
             "ordinary_facts/skill_stat_map.rs",

@@ -1,0 +1,206 @@
+{
+  "branch_codec": {
+    "metadata": {
+      "extracted_files": [
+        "Data/Skills/act_dex.lua",
+        "Export/Skills/act_dex.txt",
+        "Data/Skills/act_int.lua",
+        "Export/Skills/act_int.txt",
+        "Data/Skills/act_str.lua",
+        "Export/Skills/act_str.txt",
+        "Data/Skills/minion.lua",
+        "Export/Skills/minion.txt",
+        "Data/Skills/other.lua",
+        "Export/Skills/other.txt",
+        "Data/Skills/spectre.lua",
+        "Export/Skills/spectre.txt",
+        "Data/Skills/sup_dex.lua",
+        "Export/Skills/sup_dex.txt",
+        "Data/Skills/sup_int.lua",
+        "Export/Skills/sup_int.txt",
+        "Data/Skills/sup_str.lua",
+        "Export/Skills/sup_str.txt"
+      ],
+      "generator": "sync-pob-catalog extract-lua",
+      "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --what stat-set-labels --vendor-root vendor/PathOfBuilding-PoE2/src --files act_dex,act_int,act_str,minion,other,spectre,sup_dex,sup_int,sup_str --out data/0.5.5.4.2/overlay/stat_set_labels.json",
+      "schema": "stat_set_labels/v1",
+      "vendor": "PathOfBuilding-PoE2",
+      "vendor_commit": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+      "vendor_commit_subject": "bb52d6b368307457eb9c54bb13f1829993d390b1"
+    },
+    "path": "data/0.5.5.4.2/overlay/stat_set_labels.json",
+    "sha256": "825e594f43f07a4115ee29e57622670688e5d1c099f7e11a30ba66b3b80cca06",
+    "snapshot_version": "0.5.5.4.2"
+  },
+  "evidence": {
+    "source_check": {
+      "path": ".cache/builddata-migration-stage/skill-overrides/source-check.json",
+      "sha256": "3f4dd6a962dabdd2a54379c19c084c07c7cf5a51849f7d057633eb9fc4cda174"
+    }
+  },
+  "legacy_numeric_exceptions": [
+    {
+      "key": {
+        "skill": "EnemyExplode",
+        "stat": "base_multiplier"
+      },
+      "reason": "Legacy virtual effect absent from target GrantedEffects; retain as fixed community entry, not target numerical data.",
+      "source_row": 54
+    }
+  ],
+  "retained_interpretation_stats": [
+    "implicit_stat",
+    "explode_corpse",
+    "skill_attack_speed_more",
+    "dot_is_area"
+  ],
+  "schema": "pobr-ordinary-skill-overrides-policy/v1",
+  "source": {
+    "metadata": {
+      "extracted_files": [
+        "Data/Skills/act_dex.lua",
+        "Data/Skills/act_int.lua",
+        "Data/Skills/act_str.lua",
+        "Data/Skills/minion.lua",
+        "Data/Skills/other.lua",
+        "Data/Skills/spectre.lua",
+        "Data/Skills/sup_dex.lua",
+        "Data/Skills/sup_int.lua",
+        "Data/Skills/sup_str.lua"
+      ],
+      "generator": "sync-pob-catalog extract-lua",
+      "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --vendor-root vendor/PathOfBuilding-PoE2/src --files act_dex,act_int,act_str,minion,other,spectre,sup_dex,sup_int,sup_str --out data/0.5.5.4.2/overlay/skill_overrides.json",
+      "schema": "skill_overrides/v1",
+      "vendor": "PathOfBuilding-PoE2",
+      "vendor_commit": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+      "vendor_commit_subject": "bb52d6b368307457eb9c54bb13f1829993d390b1"
+    },
+    "path": "data/0.5.5.4.2/overlay/skill_overrides.json",
+    "sha256": "02948c49387a0c83fb5bc013552b8bcc1b98edfc1027ceb743de3288d7652397",
+    "snapshot_version": "0.5.5.4.2"
+  },
+  "statement": "Rebuild all raw-owned primary base_multiplier entries from target F, never from legacy values or defaults. Preserve non-raw-owned virtual/implicit/special interpretation entries as explicit fixed community compatibility, with original source versions, byte-preserved archival input, exact exceptions and no implied target law certification. Do not retarget branch indices, silently drop functionality, clear diagnostics or promote source/adoption.",
+  "target": {
+    "facts_manifest_sha256": "56e71e00a72c8079d100b64861fc030206b12aaeb5ad655ccb4ab4e6726332d0",
+    "game_patch": "0.5.5.5"
+  },
+  "unbound_retained_entries": [
+    {
+      "action": "retain unchanged compatibility entry; no inferred target branch ownership",
+      "codec_present": false,
+      "key": {
+        "skill": "EnemyExplode",
+        "stat": "explode_corpse",
+        "stat_set": 1
+      },
+      "source_row": 55,
+      "target_effect_present": false
+    },
+    {
+      "action": "retain unchanged compatibility entry; no inferred target branch ownership",
+      "codec_present": false,
+      "key": {
+        "skill": "EnemyExplode",
+        "stat": "explode_corpse",
+        "stat_set": 2
+      },
+      "source_row": 56,
+      "target_effect_present": false
+    },
+    {
+      "action": "retain unchanged compatibility entry; no inferred target branch ownership",
+      "codec_present": false,
+      "key": {
+        "skill": "EnemyExplode",
+        "stat": "explode_corpse",
+        "stat_set": 3
+      },
+      "source_row": 57,
+      "target_effect_present": false
+    },
+    {
+      "action": "retain unchanged compatibility entry; no inferred target branch ownership",
+      "codec_present": false,
+      "key": {
+        "skill": "MAASExpedition2ShakariTailSwipe",
+        "stat": "implicit_stat",
+        "stat_id": "skill_can_fire_arrows",
+        "stat_set": 1
+      },
+      "source_row": 173,
+      "target_effect_present": true
+    },
+    {
+      "action": "retain unchanged compatibility entry; no inferred target branch ownership",
+      "codec_present": false,
+      "key": {
+        "skill": "MeleeAtAnimationSpeedCold",
+        "stat": "implicit_stat",
+        "stat_id": "skill_can_fire_arrows",
+        "stat_set": 1
+      },
+      "source_row": 202,
+      "target_effect_present": true
+    },
+    {
+      "action": "retain unchanged compatibility entry; no inferred target branch ownership",
+      "codec_present": false,
+      "key": {
+        "skill": "MeleeAtAnimationSpeedFire",
+        "stat": "implicit_stat",
+        "stat_id": "skill_can_fire_arrows",
+        "stat_set": 1
+      },
+      "source_row": 204,
+      "target_effect_present": true
+    },
+    {
+      "action": "retain unchanged compatibility entry; no inferred target branch ownership",
+      "codec_present": false,
+      "key": {
+        "skill": "MeleeAtAnimationSpeedFireCombo35",
+        "stat": "implicit_stat",
+        "stat_id": "skill_can_fire_arrows",
+        "stat_set": 1
+      },
+      "source_row": 205,
+      "target_effect_present": true
+    },
+    {
+      "action": "retain unchanged compatibility entry; no inferred target branch ownership",
+      "codec_present": false,
+      "key": {
+        "skill": "MeleeAtAnimationSpeedLightning",
+        "stat": "implicit_stat",
+        "stat_id": "skill_can_fire_arrows",
+        "stat_set": 1
+      },
+      "source_row": 206,
+      "target_effect_present": true
+    },
+    {
+      "action": "retain unchanged compatibility entry; no inferred target branch ownership",
+      "codec_present": false,
+      "key": {
+        "skill": "RisenArbalestSnipe",
+        "stat": "implicit_stat",
+        "stat_id": "skill_can_fire_arrows",
+        "stat_set": 1
+      },
+      "source_row": 261,
+      "target_effect_present": true
+    },
+    {
+      "action": "retain unchanged compatibility entry; no inferred target branch ownership",
+      "codec_present": false,
+      "key": {
+        "skill": "ShellMonsterSprayMortar",
+        "stat": "implicit_stat",
+        "stat_id": "number_of_projectiles_cannot_be_modified",
+        "stat_set": 1
+      },
+      "source_row": 268,
+      "target_effect_present": true
+    }
+  ]
+}
