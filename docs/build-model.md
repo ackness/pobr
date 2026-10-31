@@ -98,11 +98,13 @@ Starting options 不是免费分配或自动属性；Character7 不继承 Charac
 `PassiveNodeDef.native_stats` 是完整节点的可选事实包，随现有
 `GameData` 天赋域进入 `BuildData`；缺省仍走文本解析。包绑定数据版本、构筑的
 `treeVersion`、节点编号／定义 ID 和完整原始文本。当前只接受默认树上未变换的普通
-单 stat、单行、无条件玩家节点；职业变体、属性选择、需求、升华、历史树与珠宝征服／
+单 stat、无条件玩家节点；显示文本必须是一个完整行，原生目录也可同时省略节点与包的
+显示文本，不捏造英语词条。职业变体、属性选择、需求、升华、历史树与珠宝征服／
 替换／追加都不能复用旧包，文本变动也会使绑定失效。
 
-唯一内建语义规则在 `pobr-core::rules::passive_stats`：精确匹配
-`base_fire_damage_resistance_%`，生成 `FireResistance` BASE，复用现有抗性计算。
+内建语义规则集中在 `pobr-core::rules::passive_stats`：精确匹配
+`base_fire_damage_resistance_%` 生成 `FireResistance` BASE，并将已核实的物理、火焰、冰霜、
+闪电、混沌、元素、法术和投射物伤害百分比 stat 映射到既有伤害桶的 INC。
 不按节点名、编号、值或 stat 后缀推导语义。原始值是 `i64`，零与负值保留；无法精确
 表示为 `f64` 的整数拒绝 native 路径。完整成功包在 parser 过滤之前选中，原文不再
 重复解析或注入。小天赋效果增幅复用同一 ingest 与原有 delta／取整。
@@ -119,7 +121,9 @@ Starting options 不是免费分配或自动属性；Character7 不继承 Charac
 再把节点当前完整文本交给既有 wrap／filter／parse 路径；不应用 native 包的子集，
 后续效果增幅也不能恢复该子集。fallback 仍受原有文本解析规则约束，不保证每行都能计算。
 
-诊断保留原因、解码后的包、来源与 fallback 原文；它不是原始 native JSON 的无损副本。
+诊断保留原因、解码后的包、来源与 fallback 原文；没有显示文本的原生包仍须保留拒绝诊断，
+不能把空 fallback 当作成功应用。成功的无文本包保留完整 native stat 证据，`raw_text` 为 `None`。
+诊断不是原始 native JSON 的无损副本。
 未知字符串 `context` 解码为 `Unsupported` 后走 fallback；未知对象字段按现有 serde 行为忽略。
 新增元数据不能改变旧字段语义；需要新语义的 producer 应使用旧消费者不支持的上下文、
 对旧消费者省略包，或明确升级不兼容的数据契约。文本解析结果仍由逐行台账记录。

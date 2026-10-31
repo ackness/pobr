@@ -40,11 +40,12 @@ pub enum NativePassiveContext {
     Unsupported,
 }
 
-/// Complete native payload bound to one version, node definition and original text.
+/// Complete native payload bound to one version, node definition and any display text.
 ///
 /// Producers must attest the whole source context, including absence of choices,
 /// requirements, grants and alternate actors. No partial stat bundles are eligible.
-/// The current consumer supports only a single stat on the default tree.
+/// The current consumer supports only a single stat on the default tree, with
+/// either one matching display line or no display text in a native-only catalog.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NativePassiveStats {
     pub data_version: String,

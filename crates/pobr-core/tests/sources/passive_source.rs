@@ -170,6 +170,43 @@ fn native_passive_without_parser_reaches_resistance_and_preserves_provenance() {
 }
 
 #[test]
+fn native_passive_without_display_text_uses_complete_facts_and_keeps_empty_fallback_visible() {
+    let mut node = native_node();
+    node.modifier_texts.clear();
+    node.native.as_mut().unwrap().packet.modifier_texts.clear();
+    let expected = node.native.as_ref().unwrap().packet.stats[0].clone();
+    let ingest = ingest_passive_nodes_with_ctx(
+        std::slice::from_ref(&node),
+        pobr_core::mod_parser::ParseCtx::none(),
+    )
+    .unwrap();
+    assert_eq!(ingest.modifiers.len(), 1);
+    assert!(ingest.unsupported.is_empty());
+    assert!(ingest.native_diagnostics.is_empty());
+    let origin = ingest.modifiers[0].origin.as_ref().unwrap();
+    assert_eq!(origin.raw_text, None);
+    assert_eq!(origin.native_stat.as_ref(), Some(&expected));
+    assert_eq!(ingest.modifiers[0].value.as_number(), Some(5.0));
+
+    // A missing formatter must not hide an unsupported numeric packet either.
+    node.native.as_mut().unwrap().packet.stats[0].id = "unknown_native_stat".into();
+    let rejected =
+        ingest_passive_nodes_with_ctx(&[node], pobr_core::mod_parser::ParseCtx::none()).unwrap();
+    assert!(rejected.modifiers.is_empty());
+    assert!(rejected.unsupported.is_empty());
+    assert_eq!(rejected.native_diagnostics.len(), 1);
+    assert_eq!(
+        rejected.native_diagnostics[0].reason,
+        pobr_core::rules::passive_stats::NativePassiveRejection::UnknownStat
+    );
+    assert!(rejected.native_diagnostics[0].fallback_texts.is_empty());
+    assert_eq!(
+        rejected.native_diagnostics[0].packet.stats[0].id,
+        "unknown_native_stat"
+    );
+}
+
+#[test]
 fn native_passive_and_text_are_exclusive_and_legacy_stays_identical() {
     let node = native_node();
     let native = ingest_passive_nodes(std::slice::from_ref(&node)).unwrap();
