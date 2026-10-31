@@ -18,13 +18,6 @@ use crate::raw_source::sha256_hex;
 
 pub(super) const TABLES: [&str; 2] = ["GrantedEffects", "GrantedEffectStatSets"];
 
-pub(super) struct Args {
-    pub source: PathBuf,
-    pub source_sha256: String,
-    pub policy: PathBuf,
-    pub policy_sha256: String,
-}
-
 pub(super) struct Converted {
     pub overlay: BTreeMap<String, Vec<u8>>,
     pub policy_bytes: Vec<u8>,
@@ -32,13 +25,13 @@ pub(super) struct Converted {
     pub receipt: Value,
 }
 
-struct Pinned {
-    bytes: Vec<u8>,
-    document: Value,
-    parent: PathBuf,
+pub(super) struct Pinned {
+    pub bytes: Vec<u8>,
+    pub document: Value,
+    pub parent: PathBuf,
 }
 
-fn read_pinned(path: &Path, expected: &str, name: &str) -> Result<Pinned, String> {
+pub(super) fn read_pinned(path: &Path, expected: &str, name: &str) -> Result<Pinned, String> {
     policy::hex(expected, 64, name)?;
     let path = path.canonicalize().map_err(|e| format!("{name}: {e}"))?;
     let bytes = fs::read(&path).map_err(|e| format!("{name}: {e}"))?;
@@ -72,7 +65,7 @@ impl Owner {
     }
 }
 
-pub(super) fn convert(input: &VerifiedFacts, args: &Args) -> Result<Converted, String> {
+pub(super) fn convert(input: &VerifiedFacts, args: &super::CodecArgs) -> Result<Converted, String> {
     let policy_input = read_pinned(&args.policy, &args.policy_sha256, "codec policy")?;
     let policy: policy::Policy =
         serde_json::from_value(policy_input.document).map_err(|e| format!("codec policy: {e}"))?;

@@ -19,8 +19,9 @@ mise exec -- cargo run --locked -p pobr-data-adapter -- \
   --out /absolute/path/to/existing-parent/fresh-codec-candidate
 ```
 
-All four codec options are required. Other ordinary domains reject them;
-stat-set-codec rejects quality-only options. Duplicate flags, missing values,
+All four codec options are required. Only stat-set-codec and
+[gem-effects](ordinary-gem-effects.md) accept them; each requires its own policy
+schema and source identity. Stat-set-codec rejects quality-only options. Duplicate flags, missing values,
 unsupported domains and mixed raw/native modes remain errors. The supplied
 source file may be a copy elsewhere: its bytes, not its actual filesystem
 location, establish its identity.

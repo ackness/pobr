@@ -2,6 +2,7 @@
 
 mod base_items;
 mod convert;
+mod gem_effects;
 mod quality;
 mod skills;
 mod stat_set_codec;
@@ -24,7 +25,14 @@ pub(crate) struct Args {
     out: PathBuf,
     domain: Domain,
     quality_policy: Option<quality::Args>,
-    codec: Option<stat_set_codec::Args>,
+    codec: Option<CodecArgs>,
+}
+
+struct CodecArgs {
+    source: PathBuf,
+    source_sha256: String,
+    policy: PathBuf,
+    policy_sha256: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,6 +42,7 @@ enum Domain {
     Skills,
     GemQuality,
     StatSetCodec,
+    GemEffects,
 }
 
 impl Domain {
@@ -44,6 +53,7 @@ impl Domain {
             Self::Skills => &skills::TABLES,
             Self::GemQuality => &quality::TABLES,
             Self::StatSetCodec => &stat_set_codec::TABLES,
+            Self::GemEffects => &gem_effects::TABLES,
         }
     }
 
@@ -54,6 +64,7 @@ impl Domain {
             Self::Skills => "ordinary-skills",
             Self::GemQuality => "ordinary-gem-quality",
             Self::StatSetCodec => "ordinary-stat-set-codec",
+            Self::GemEffects => "ordinary-gem-effects",
         }
     }
 
@@ -64,6 +75,7 @@ impl Domain {
             Self::Skills => "skills",
             Self::GemQuality => "gem-quality",
             Self::StatSetCodec => "stat-set-codec",
+            Self::GemEffects => "gem-effects",
         }
     }
 }
@@ -100,6 +112,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("skills") => Domain::Skills,
         Some("gem-quality") => Domain::GemQuality,
         Some("stat-set-codec") => Domain::StatSetCodec,
+        Some("gem-effects") => Domain::GemEffects,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
     if domain != Domain::GemQuality
@@ -108,7 +121,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     {
         return Err("quality policy arguments require --ordinary-domain gem-quality".into());
     }
-    if domain != Domain::StatSetCodec
+    if !matches!(domain, Domain::StatSetCodec | Domain::GemEffects)
         && [
             "--codec-source",
             "--codec-source-sha256",
@@ -118,7 +131,9 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         .iter()
         .any(|flag| values.contains_key(*flag))
     {
-        return Err("codec arguments require --ordinary-domain stat-set-codec".into());
+        return Err(
+            "codec arguments require --ordinary-domain stat-set-codec or gem-effects".into(),
+        );
     }
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
     Ok(Args {
@@ -135,8 +150,8 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         } else {
             None
         },
-        codec: if domain == Domain::StatSetCodec {
-            Some(stat_set_codec::Args {
+        codec: if matches!(domain, Domain::StatSetCodec | Domain::GemEffects) {
+            Some(CodecArgs {
                 source: take("--codec-source")?.into(),
                 source_sha256: take("--codec-source-sha256")?,
                 policy: take("--codec-policy")?.into(),
@@ -160,6 +175,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     let mut overlay = BTreeMap::new();
     let mut policy_bytes = None;
     let mut codec_policy_bytes = None;
+    let mut legacy_gem_effects_bytes = None;
     // Complete validation and serialization before reserving any output.
     let (base, conversion, output_schema, scope) = match args.domain {
         Domain::StatsMods => {
@@ -271,6 +287,32 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 ],
             )
         }
+        Domain::GemEffects => {
+            let codec = args
+                .codec
+                .as_ref()
+                .ok_or("missing codec source/policy arguments")?;
+            let converted = gem_effects::convert(&input, codec)?;
+            for parent in &converted.protected_parents {
+                output.protect(parent)?;
+            }
+            overlay = converted.overlay;
+            codec_policy_bytes = Some(converted.policy_bytes);
+            legacy_gem_effects_bytes = Some(converted.source_bytes);
+            (
+                BTreeMap::new(),
+                converted.receipt,
+                "pobr_data::catalog::{GemEffectsDef,GemEffectDef}",
+                vec![
+                    "All normal gem relationships derive from the five selected target F tables; only the original placeholder predicate excludes rows.",
+                    "The explicitly pinned legacy codec supplies display order and primary-owner precedence only. Every legacy relationship tuple must match target facts; no exceptions or remapping.",
+                    "All shared-primary gems remain in the output. Non-preferred rows precede preferred rows to preserve existing base-first plus legacy-owner selection with the unchanged overlay last-wins consumer.",
+                    "Legacy codec bytes and provenance, target source acquisition and historical source-check evidence remain separate. Full ordinary BD/Web behavior and complete runtime compatibility are not established by this domain.",
+                    "Acquisition status/evidence is copied unchanged. Fingerprints and conversion do not upgrade draft acquisition, prove full runtime completeness or adopt data.",
+                    "No runtime manifest, implicit old numeric/vendor input, Lua execution, download, CURRENT update or consumer model change.",
+                ],
+            )
+        }
     };
     let marker = reader::json_bytes(&json!({
         "schema": "pobr-domain-candidate/v1",
@@ -290,6 +332,9 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     }
     if let Some(bytes) = codec_policy_bytes {
         sidecars.insert("codec-policy.json", bytes);
+    }
+    if let Some(bytes) = legacy_gem_effects_bytes {
+        sidecars.insert("legacy-gem-effects.json", bytes);
     }
     let files: BTreeMap<_, _> = base
         .iter()
@@ -407,6 +452,14 @@ fn implementation_sha256() -> String {
         (
             "ordinary_facts/stat_set_codec.rs",
             include_bytes!("ordinary_facts/stat_set_codec.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/gem_effects.rs",
+            include_bytes!("ordinary_facts/gem_effects.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/gem_effects/policy.rs",
+            include_bytes!("ordinary_facts/gem_effects/policy.rs").as_slice(),
         ),
         (
             "ordinary_facts/stat_set_codec/policy.rs",

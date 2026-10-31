@@ -8,7 +8,11 @@ use super::super::tests::Fixture;
 use super::super::{Args, Domain, parse_args, run};
 use crate::raw_source::sha256_hex;
 
-fn table(name: &str, fields: &[(&str, &str, bool, Option<&str>)], values: Value) -> Value {
+pub(in crate::ordinary_facts) fn table(
+    name: &str,
+    fields: &[(&str, &str, bool, Option<&str>)],
+    values: Value,
+) -> Value {
     let rows: Vec<_> = values
         .as_array()
         .unwrap()
@@ -139,7 +143,7 @@ pub(in crate::ordinary_facts) fn args(f: &Fixture) -> Args {
     let policy = f.root.join("policy/policy.json");
     Args {
         domain: Domain::StatSetCodec,
-        codec: Some(super::Args {
+        codec: Some(super::super::CodecArgs {
             source_sha256: sha256_hex(&fs::read(&source).unwrap()),
             source,
             policy_sha256: sha256_hex(&fs::read(&policy).unwrap()),
