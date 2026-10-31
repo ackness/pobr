@@ -1,7 +1,11 @@
-//! Selected primary Spark branch from physical facts, with explicit normalization.
+//! Explicit primary branches from physical facts, with exact authored level normalization.
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use pobr_data::catalog::native_runtime::{
+    NATIVE_PRIMARY_SPELL_PROJECTION_FORMAT, NativePrimarySpellProjection,
+    NativePrimarySpellSelection,
+};
 use pobr_data::catalog::*;
 use serde_json::{Value, json};
 
@@ -9,11 +13,112 @@ use super::super::trust::{VerifiedInput, require};
 use super::{
     Files,
     inputs::{find, ids, index, row, rows, text},
-    json_bytes,
+    json_bytes, skills_policy,
 };
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Scope {
+    LegacySpark,
+    AuthoredPrimary,
+}
+
+struct Projected {
+    base: BaseItemDef,
+    gem: SkillGemDef,
+    effect: GrantedEffectDef,
+    levels: Vec<SkillLevelDef>,
+    sets: SkillStatSetDef,
+    cost: CostTypeDef,
+    selection: NativePrimarySpellSelection,
+    evidence: Value,
+}
+
 pub(super) fn project(input: &VerifiedInput) -> Result<Files, String> {
-    let (base_index, base) = find(input, "BaseItemTypes", "Metadata/Items/Gems/SkillGemSpark")?;
+    let selected = project_one(
+        input,
+        "Metadata/Items/Gems/SkillGemSpark",
+        Scope::LegacySpark,
+    )?;
+    catalogs(vec![selected], Scope::LegacySpark)
+}
+
+pub(super) fn project_primary(input: &VerifiedInput, gems: &[String]) -> Result<Files, String> {
+    require(!gems.is_empty(), "primary gems must be nonempty")?;
+    let mut selected = Vec::new();
+    let mut gem_ids = BTreeSet::new();
+    let mut gem_effect_ids = BTreeSet::new();
+    let mut effect_ids = BTreeSet::new();
+    let mut set_ids = BTreeSet::new();
+    for gem in gems {
+        require(
+            !gem.is_empty() && gem.trim() == gem && gem_ids.insert(gem),
+            "empty/duplicate primary gem ID",
+        )?;
+        let projection = project_one(input, gem, Scope::AuthoredPrimary)?;
+        require(
+            gem_effect_ids.insert(projection.selection.gem_effect_id.clone())
+                && effect_ids.insert(projection.selection.effect_id.clone())
+                && set_ids.insert(projection.selection.stat_set_id.clone()),
+            "aliased selected effect/primary stat set",
+        )?;
+        selected.push(projection);
+    }
+    selected.sort_by(|a, b| a.selection.gem_id.cmp(&b.selection.gem_id));
+    catalogs(selected, Scope::AuthoredPrimary)
+}
+
+fn catalogs(selected: Vec<Projected>, scope: Scope) -> Result<Files, String> {
+    let projection = if scope == Scope::LegacySpark {
+        selected[0].evidence.clone()
+    } else {
+        serde_json::to_value(NativePrimarySpellProjection {
+            format: NATIVE_PRIMARY_SPELL_PROJECTION_FORMAT.into(),
+            primary_only: true,
+            quality: 0,
+            selections: selected.iter().map(|s| s.selection.clone()).collect(),
+            retained_evidence: selected
+                .iter()
+                .map(|s| (s.selection.gem_id.clone(), s.evidence.clone()))
+                .collect(),
+        })
+        .map_err(|e| e.to_string())?
+    };
+    let mut bases = Vec::new();
+    let mut gems = Vec::new();
+    let mut effects = Vec::new();
+    let mut levels = BTreeMap::new();
+    let mut sets = Vec::new();
+    let mut costs = Vec::new();
+    for s in selected {
+        bases.push(s.base);
+        gems.push(s.gem);
+        effects.push(s.effect);
+        levels.insert(s.selection.effect_id, s.levels);
+        sets.push(s.sets);
+        if costs.is_empty() {
+            costs.push(s.cost);
+        }
+    }
+    Ok(BTreeMap::from([
+        ("base_items.json".into(), json_bytes(&bases)?),
+        ("skill_gems.json".into(), json_bytes(&gems)?),
+        ("granted_effects.json".into(), json_bytes(&effects)?),
+        ("granted_effect_levels.json".into(), json_bytes(&levels)?),
+        ("granted_effect_stat_sets.json".into(), json_bytes(&sets)?),
+        ("cost_types.json".into(), json_bytes(&costs)?),
+        (
+            "native_skill_projection.json".into(),
+            json_bytes(&projection)?,
+        ),
+    ]))
+}
+
+fn project_one(input: &VerifiedInput, gem_id: &str, scope: Scope) -> Result<Projected, String> {
+    let (base_index, base) = if scope == Scope::LegacySpark {
+        find(input, "BaseItemTypes", gem_id)?
+    } else {
+        unique(input, "BaseItemTypes", |v| v["Id"] == gem_id)?
+    };
     let (gem_index, gem) = unique(input, "SkillGems", |v| v["BaseItemType"] == base_index)?;
     let effects = gem["GemEffects"].as_array().ok_or("gem effects missing")?;
     require(effects.len() == 1, "selected gem has ambiguous GemEffects")?;
@@ -27,84 +132,165 @@ pub(super) fn project(input: &VerifiedInput) -> Result<Files, String> {
     let effect = row(input, "GrantedEffects", effect_index)?;
     let effect_id = text(&effect["Id"])?;
     require(
-        effect_id == "SparkPlayer" && effect["IsSupport"] == false,
-        "selected gem is not primary Spark",
+        (scope != Scope::LegacySpark || effect_id == "SparkPlayer") && effect["IsSupport"] == false,
+        if scope == Scope::LegacySpark {
+            "selected gem is not primary Spark"
+        } else {
+            "selected gem is not a primary active spell"
+        },
     )?;
     let active_index = index(&effect["ActiveSkill"])?;
     let active = row(input, "ActiveSkills", active_index)?;
     require(
-        active["GrantedEffect"] == effect_id,
+        active["GrantedEffect"] == effect_id
+            || (scope == Scope::AuthoredPrimary && active["GrantedEffect"] == ""),
         "active skill string points to another effect",
     )?;
     let set_index = index(&effect["StatSet"])?;
     let set = row(input, "GrantedEffectStatSets", set_index)?;
     require(
-        set["Id"] == "SparkPlayer",
+        scope != Scope::LegacySpark || set["Id"] == "SparkPlayer",
         "selected primary branch changed",
     )?;
     require(
         set["IgnoredStats"] == json!([]),
         "primary ignored stats require an explicit policy",
     )?;
-    let (level_index, level) = unique(input, "GrantedEffectsPerLevel", |v| {
-        v["GrantedEffect"] == effect_index && v["Level"] == 1
-    })?;
-    let (set_level_index, set_level) = unique(input, "GrantedEffectStatSetsPerLevel", |v| {
-        v["StatSet"] == set_index && v["GemLevel"] == 1
-    })?;
-    require(
-        set_level["GrantedEffects"]
-            .as_array()
-            .is_some_and(|values| values.contains(&json!(effect_index))),
-        "primary stat-set level does not declare selected effect",
-    )?;
-    require(
-        set_level["ActorLevel"] == level["ActorLevel"]
-            && set_level["ActorLevel"].as_f64() == Some(1.0),
-        "selected actor level is outside fixed profile",
-    )?;
-    require(
-        set_level["AdditionalFlags"] == json!([]) && set_level["AttackCritChance"] == 0,
-        "selected spell level has unsupported flags or attack crit",
-    )?;
-    let mut resolved = paired(
-        input,
-        &set_level["FloatStats"],
-        &set_level["BaseResolvedValues"],
-    )?;
-    let coefficients = set_level["FloatStatsValues"]
-        .as_array()
-        .ok_or("float coefficients missing")?;
-    require(
-        coefficients.len() == resolved.len(),
-        "float coefficients/resolved values length mismatch",
-    )?;
-    resolved.extend(paired(
-        input,
-        &set_level["AdditionalStats"],
-        &set_level["AdditionalStatsValues"],
-    )?);
-    require(
-        set_level["StatInterpolations"]
-            .as_array()
-            .is_some_and(|values| values.len() == resolved.len()),
-        "stat interpolation evidence length mismatch",
-    )?;
+    if scope == Scope::AuthoredPrimary {
+        for (table, index) in [
+            ("BaseItemTypes", base_index),
+            ("SkillGems", gem_index),
+            ("GemEffects", gem_effect_index),
+            ("GrantedEffects", effect_index),
+            ("ActiveSkills", active_index),
+            ("GrantedEffectStatSets", set_index),
+            ("CostTypes", 0),
+        ] {
+            // SkillGems has no Id; its unique BaseItemType join above is its identity.
+            if table != "SkillGems" {
+                stable_row(input, table, index)?;
+            }
+        }
+        skills_policy::static_fields(input, gem, gem_effect, effect, active, set)?;
+    }
     let constant_stats = paired(input, &set["ConstantStats"], &set["ConstantStatsValues"])?;
     let implicit_stats = ids(input, "Stats", &set["ImplicitStats"])?;
-    // This bounded profile has no source-backed duplicate/override policy.
-    // Never publish ambiguous amounts that downstream aggregation would sum.
-    let mut seen = BTreeSet::new();
-    for id in resolved
-        .iter()
-        .chain(&constant_stats)
-        .map(|stat| stat.stat.as_str())
-        .chain(implicit_stats.iter().map(String::as_str))
-    {
+    let paired_levels = if scope == Scope::LegacySpark {
+        let (level_index, level) = unique(input, "GrantedEffectsPerLevel", |v| {
+            v["GrantedEffect"] == effect_index && v["Level"] == 1
+        })?;
+        let (set_level_index, set_level) = unique(input, "GrantedEffectStatSetsPerLevel", |v| {
+            v["StatSet"] == set_index && v["GemLevel"] == 1
+        })?;
+        vec![(1, level_index, level, set_level_index, set_level)]
+    } else {
+        authored_levels(input, effect_index, set_index)?
+    };
+    let mut levels = Vec::new();
+    let mut set_levels = Vec::new();
+    let mut level_evidence = Vec::new();
+    for (gem_level, level_index, level, set_level_index, set_level) in &paired_levels {
         require(
-            seen.insert(id),
-            &format!("duplicate selected stat ID: {id}"),
+            set_level["GrantedEffects"]
+                .as_array()
+                .is_some_and(|values| values.contains(&json!(effect_index))),
+            "primary stat-set level does not declare selected effect",
         )?;
+        require(
+            if scope == Scope::LegacySpark {
+                set_level["ActorLevel"] == level["ActorLevel"]
+                    && set_level["ActorLevel"].as_f64() == Some(1.0)
+            } else {
+                number(&set_level["ActorLevel"])? == number(&level["ActorLevel"])?
+            },
+            if scope == Scope::LegacySpark {
+                "selected actor level is outside fixed profile"
+            } else {
+                "paired actor scaling coordinates differ"
+            },
+        )?;
+        require(
+            set_level["AdditionalFlags"] == json!([]) && set_level["AttackCritChance"] == 0,
+            "selected spell level has unsupported flags or attack crit",
+        )?;
+        let mut resolved = paired(
+            input,
+            &set_level["FloatStats"],
+            &set_level["BaseResolvedValues"],
+        )?;
+        let coefficients = set_level["FloatStatsValues"]
+            .as_array()
+            .ok_or("float coefficients missing")?;
+        require(
+            coefficients.len() == resolved.len(),
+            "float coefficients/resolved values length mismatch",
+        )?;
+        resolved.extend(paired(
+            input,
+            &set_level["AdditionalStats"],
+            &set_level["AdditionalStatsValues"],
+        )?);
+        require(
+            set_level["StatInterpolations"]
+                .as_array()
+                .is_some_and(|values| values.len() == resolved.len()),
+            "stat interpolation evidence length mismatch",
+        )?;
+        // This bounded profile has no source-backed duplicate/override policy.
+        // Never publish ambiguous amounts that downstream aggregation would sum.
+        let mut seen = BTreeSet::new();
+        for id in resolved
+            .iter()
+            .chain(&constant_stats)
+            .map(|stat| stat.stat.as_str())
+            .chain(implicit_stats.iter().map(String::as_str))
+        {
+            require(
+                seen.insert(id),
+                &format!("duplicate selected stat ID: {id}"),
+            )?;
+        }
+        let cost_slots = effect["CostTypes"].as_array().ok_or("missing cost types")?;
+        let amounts = level["CostAmounts"].as_array().ok_or("missing costs")?;
+        require(
+            cost_slots == &[json!(0)] && cost_slots.len() == amounts.len(),
+            "selected cost types outside fixed Mana slot",
+        )?;
+        let cost = row(input, "CostTypes", 0)?;
+        require(
+            cost["Id"] == "Mana" && cost["Divisor"] == 1 && cost["PerMinute"] == false,
+            "selected instantaneous Mana cost normalization changed",
+        )?;
+        levels.push(SkillLevelDef {
+            level: *gem_level,
+            cooldown_ms: nonzero(&level["Cooldown"])?,
+            attack_time_ms: nonzero(&level["AttackTime"])?,
+            cost_amounts: amounts.iter().map(unsigned).collect::<Result<_, _>>()?,
+            attack_speed_multiplier: nonzero_number(&level["AttackSpeedMultiplier"])?,
+            base_multiplier: None,
+            crit_chance: Some(physical_i32(&set_level["SpellCritChance"])? / 100.0),
+            mana_multiplier: nonneutral(&level["CostMultiplier"], 100.0)?,
+            spirit_reservation_flat: nonzero_number(&level["Reservation"])?,
+            reservation_multiplier: nonneutral(&level["EffectOnPlayer"], 100.0)?,
+            stored_uses: nonzero(&level["StoredUses"])?,
+            level_requirement: None,
+        });
+        set_levels.push(SkillStatSetLevel {
+            gem_level: *gem_level,
+            damage_multiplier: 1.0 + physical_i32(&set_level["BaseMultiplier"])? / 10000.0,
+            stats: resolved,
+            per_effectiveness: vec![],
+        });
+        if scope == Scope::AuthoredPrimary {
+            skills_policy::level_fields(input, level, set_level, active)?;
+            level_evidence.push(json!({"gem_level":gem_level,
+            "rows":[reference("GrantedEffectsPerLevel",*level_index),reference("GrantedEffectStatSetsPerLevel",*set_level_index)],
+            "actor_scaling_coordinate":number(&level["ActorLevel"])?,
+            "retained_outside_projection":{
+                "GrantedEffectsPerLevel":retained(level, &["Level","GrantedEffect","ActorLevel","CostAmounts","Cooldown","AttackTime","AttackSpeedMultiplier","CostMultiplier","Reservation","EffectOnPlayer","StoredUses"]),
+                "GrantedEffectStatSetsPerLevel":retained(set_level, &["GemLevel","StatSet","GrantedEffects","ActorLevel","FloatStats","BaseResolvedValues","AdditionalStats","AdditionalStatsValues","SpellCritChance","BaseMultiplier","AttackCritChance","AdditionalFlags"])
+            }}));
+        }
     }
     let label = if set["Label"].is_null() {
         None
@@ -113,17 +299,6 @@ pub(super) fn project(input: &VerifiedInput) -> Result<Files, String> {
             &row(input, "GrantedEffectLabels", index(&set["Label"])?)?["Text"],
         )?)
     };
-    let cost_slots = effect["CostTypes"].as_array().ok_or("missing cost types")?;
-    let amounts = level["CostAmounts"].as_array().ok_or("missing costs")?;
-    require(
-        cost_slots == &[json!(0)] && cost_slots.len() == amounts.len(),
-        "selected cost types outside fixed Mana slot",
-    )?;
-    let cost = row(input, "CostTypes", 0)?;
-    require(
-        cost["Id"] == "Mana" && cost["Divisor"] == 1 && cost["PerMinute"] == false,
-        "selected instantaneous Mana cost normalization changed",
-    )?;
     let effect_definition = GrantedEffectDef {
         id: effect_id.clone(),
         is_support: false,
@@ -151,20 +326,6 @@ pub(super) fn project(input: &VerifiedInput) -> Result<Files, String> {
         minion_has_item_set: false,
         ignore_minion_types: boolean(&effect["IgnoreMinionTypes"])?,
     };
-    let levels = vec![SkillLevelDef {
-        level: 1,
-        cooldown_ms: nonzero(&level["Cooldown"])?,
-        attack_time_ms: nonzero(&level["AttackTime"])?,
-        cost_amounts: amounts.iter().map(unsigned).collect::<Result<_, _>>()?,
-        attack_speed_multiplier: nonzero_number(&level["AttackSpeedMultiplier"])?,
-        base_multiplier: None,
-        crit_chance: Some(physical_i32(&set_level["SpellCritChance"])? / 100.0),
-        mana_multiplier: nonneutral(&level["CostMultiplier"], 100.0)?,
-        spirit_reservation_flat: nonzero_number(&level["Reservation"])?,
-        reservation_multiplier: nonneutral(&level["EffectOnPlayer"], 100.0)?,
-        stored_uses: nonzero(&level["StoredUses"])?,
-        level_requirement: None,
-    }];
     let sets = SkillStatSetDef {
         effect_id: effect_id.clone(),
         sets: vec![StatSetDef {
@@ -178,12 +339,7 @@ pub(super) fn project(input: &VerifiedInput) -> Result<Files, String> {
             dot_flags: DotFlags::default(),
             explode_corpse: false,
             implicit_stats,
-            levels: vec![SkillStatSetLevel {
-                gem_level: 1,
-                damage_multiplier: 1.0 + physical_i32(&set_level["BaseMultiplier"])? / 10000.0,
-                stats: resolved,
-                per_effectiveness: vec![],
-            }],
+            levels: set_levels,
         }],
     };
     let gem_definition = SkillGemDef {
@@ -224,6 +380,8 @@ pub(super) fn project(input: &VerifiedInput) -> Result<Files, String> {
         req_dex: 0,
         req_int: 0,
     };
+    let cost = row(input, "CostTypes", 0)?;
+    let (_, level_index, _, set_level_index, set_level) = paired_levels[0];
     let evidence = json!({"format":"pobr-native-skill-projection/v1","primary_only":true,
         "rows": [reference("BaseItemTypes",base_index),reference("SkillGems",gem_index),reference("GemEffects",gem_effect_index),
             reference("GrantedEffects",effect_index),reference("ActiveSkills",active_index),reference("GrantedEffectStatSets",set_index),
@@ -235,37 +393,62 @@ pub(super) fn project(input: &VerifiedInput) -> Result<Files, String> {
             "float_coefficients":set_level["FloatStatsValues"]},
         "missing":"General requirements, actor constants, timing/gameplay and exact branch/dataset admission."
     });
-    Ok(BTreeMap::from([
-        (
-            "base_items.json".into(),
-            json_bytes(&vec![base_definition])?,
-        ),
-        ("skill_gems.json".into(), json_bytes(&vec![gem_definition])?),
-        (
-            "granted_effects.json".into(),
-            json_bytes(&vec![effect_definition])?,
-        ),
-        (
-            "granted_effect_levels.json".into(),
-            json_bytes(&BTreeMap::from([(effect_id, levels)]))?,
-        ),
-        (
-            "granted_effect_stat_sets.json".into(),
-            json_bytes(&vec![sets])?,
-        ),
-        (
-            "cost_types.json".into(),
-            json_bytes(&vec![CostTypeDef {
-                id: text(&cost["Id"])?,
-                divisor: 1,
-                per_minute: false,
-            }])?,
-        ),
-        (
-            "native_skill_projection.json".into(),
-            json_bytes(&evidence)?,
-        ),
-    ]))
+    let selection = NativePrimarySpellSelection {
+        gem_id: gem_id.into(),
+        gem_effect_id: text(&gem_effect["Id"])?,
+        effect_id,
+        active_skill_id: text(&active["Id"])?,
+        stat_set_id: text(&set["Id"])?,
+        gem_levels: paired_levels.iter().map(|(level, ..)| *level).collect(),
+    };
+    let evidence = if scope == Scope::LegacySpark {
+        evidence
+    } else {
+        let additional_stat_sets = ids(
+            input,
+            "GrantedEffectStatSets",
+            &effect["AdditionalStatSets"],
+        )?;
+        let mut seen = BTreeSet::new();
+        for id in &additional_stat_sets {
+            require(
+                !id.is_empty() && id != &selection.stat_set_id && seen.insert(id),
+                "invalid additional stat set identity",
+            )?;
+            unique(input, "GrantedEffectStatSets", |v| v["Id"] == *id)?;
+        }
+        json!({
+            "rows":[reference("BaseItemTypes",base_index),reference("SkillGems",gem_index),reference("GemEffects",gem_effect_index),
+                reference("GrantedEffects",effect_index),reference("ActiveSkills",active_index),reference("GrantedEffectStatSets",set_index),reference("CostTypes",0)],
+            "levels":level_evidence, "active_reverse_granted_effect":active["GrantedEffect"],
+            "additional_stat_sets":additional_stat_sets,
+            "retained_outside_projection":{
+                "BaseItemTypes":retained(base, &["Id","Name","ItemClass","DropLevel","Width","Height","Tags","Implicit_Mods","ModDomain"]),
+                "SkillGems":retained(gem, &["BaseItemType","GemEffects","GemType","GemColour","MinLevelReq","StrengthRequirementPercent","DexterityRequirementPercent","IntelligenceRequirementPercent"]),
+                "GemEffects":retained(gem_effect, &["Id","GrantedEffect","AdditionalGrantedEffects","GemTags"]),
+                "GrantedEffects":retained(effect, &["Id","IsSupport","ActiveSkill","StatSet","CastTime","CostTypes","AllowedActiveSkillTypes","AddedActiveSkillTypes","ExcludedActiveSkillTypes","CannotBeSupported","SupportsGemsOnly","IgnoreMinionTypes"]),
+                "ActiveSkills":retained(active, &["Id","GrantedEffect","DisplayedName","ActiveSkillTypes"]),
+                "GrantedEffectStatSets":retained(set, &["Id","ConstantStats","ConstantStatsValues","ImplicitStats","IgnoredStats","Label"]),
+                "CostTypes":retained(cost, &["Id","Divisor","PerMinute"]),
+                "quality":"all source quality scopes retained in the pinned archive; quality zero only",
+                "damage":"BaseResolvedValues paired with FloatStats is used once; coefficients and effectiveness are not damage inputs"
+            }
+        })
+    };
+    Ok(Projected {
+        base: base_definition,
+        gem: gem_definition,
+        effect: effect_definition,
+        levels,
+        sets,
+        cost: CostTypeDef {
+            id: text(&cost["Id"])?,
+            divisor: 1,
+            per_minute: false,
+        },
+        selection,
+        evidence,
+    })
 }
 
 fn paired(
@@ -349,4 +532,84 @@ fn physical_i32(value: &Value) -> Result<f64, String> {
 }
 fn reference(table: &str, index: usize) -> Value {
     json!({"payload":format!("tables/{table}.json"),"pointer":format!("/rows/{index}/values")})
+}
+
+fn retained(value: &Value, consumed: &[&str]) -> Value {
+    Value::Object(
+        value
+            .as_object()
+            .into_iter()
+            .flatten()
+            .filter(|(key, _)| !consumed.contains(&key.as_str()))
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect(),
+    )
+}
+
+fn stable_row(input: &VerifiedInput, table: &str, physical: usize) -> Result<(), String> {
+    let id = text(&row(input, table, physical)?["Id"])?;
+    require(!id.is_empty(), "empty selected stable ID")?;
+    let (found, _) = unique(input, table, |v| v["Id"] == id)?;
+    require(
+        found == physical,
+        "selected stable/physical identity mismatch",
+    )
+}
+
+type LevelPair<'a> = (u32, usize, &'a Value, usize, &'a Value);
+
+fn authored_levels(
+    input: &VerifiedInput,
+    effect: usize,
+    set: usize,
+) -> Result<Vec<LevelPair<'_>>, String> {
+    fn collect<'a>(
+        input: &'a VerifiedInput,
+        table: &str,
+        relation: &str,
+        index: usize,
+        level_key: &str,
+    ) -> Result<BTreeMap<u32, (usize, &'a Value)>, String> {
+        let mut selected = BTreeMap::new();
+        for (physical, entry) in rows(input, table)?.iter().enumerate() {
+            let value = &entry["values"];
+            if value[relation] != index {
+                continue;
+            }
+            let level = unsigned(&value[level_key])?;
+            require(
+                level > 0
+                    && i32::try_from(level).is_ok()
+                    && selected.insert(level, (physical, value)).is_none(),
+                "invalid/duplicate authored gem level",
+            )?;
+        }
+        require(!selected.is_empty(), "missing authored gem levels")?;
+        Ok(selected)
+    }
+    let effects = collect(
+        input,
+        "GrantedEffectsPerLevel",
+        "GrantedEffect",
+        effect,
+        "Level",
+    )?;
+    let sets = collect(
+        input,
+        "GrantedEffectStatSetsPerLevel",
+        "StatSet",
+        set,
+        "GemLevel",
+    )?;
+    require(
+        effects.keys().eq(sets.keys()),
+        "missing paired authored level",
+    )?;
+    Ok(effects
+        .into_iter()
+        .map(|(level, (ei, ev))| {
+            let (si, sv) = sets[&level];
+            (level, ei, ev, si, sv)
+        })
+        .collect())
 }

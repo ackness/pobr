@@ -85,10 +85,15 @@ class NativeCandidateTests(unittest.TestCase):
             expected += ["--player-context", str(self.player), "--player-manifest-sha256",
                          self.recipe["player"]["manifest_sha256"], "--player-source-lock-sha256",
                          self.recipe["player"]["source_lock_sha256"]]
-        passive = native.input_profile(self.recipe) == native.PASSIVE_INPUT_PROFILE
+        primary = native.input_profile(self.recipe) == native.PRIMARY_INPUT_PROFILE
+        passive = native.input_profile(self.recipe) in [native.PASSIVE_INPUT_PROFILE, native.PRIMARY_INPUT_PROFILE]
+        profile = native.PRIMARY_PROFILE if primary else native.PASSIVE_PROFILE
+        evaluation = self.recipe["target"]["output_profile"]
         policy = native.actor_policy(self.recipe)
         if passive:
-            expected += ["--input-profile", native.PASSIVE_INPUT_PROFILE]
+            expected += ["--input-profile", native.input_profile(self.recipe)]
+        if primary:
+            expected += ["--primary-gems", ",".join(sorted(self.recipe["target"]["primary_gems"]))]
         self.assertEqual(command, [*expected, "--out", str(Path(command[-1]))])
         out = Path(command[-1])
         self.assertFalse(out.exists())
@@ -110,8 +115,12 @@ class NativeCandidateTests(unittest.TestCase):
                 "parent_source_lock_sha256": self.recipe["facts"]["source_lock_sha256"]}
             context_pin = native.sha256(native.encoded(docs["native_player_context"]) + b"\n")
             docs["native_actor_binding"] = {"schema_version": 1, "context_sha256": context_pin,
-                "policy": policy, "evaluation": native.PLAYER_OUTPUT_PROFILE,
+                "policy": policy, "evaluation": evaluation,
                 "model_status": "conditional-model"}
+            if primary:
+                docs["native_actor_binding"].update(required_conditions=["exact-selected-actor-level1", native.PRIMARY_CONDITION,
+                    "ordinary-stationary-self-cast", "Act1-no-quests", "successful-damaging-hit",
+                    "selected-ordinary-damage-passives-assumed-active"], assumptions=[native.GEM_LEVEL_ASSUMPTION])
             binding_pin = native.sha256(native.encoded(docs["native_actor_binding"]) + b"\n")
             lock["player"] = {**self.recipe["player"], "actor_binding_sha256": binding_pin,
                 "parent_manifest_sha256": self.recipe["facts"]["manifest_sha256"],
@@ -123,12 +132,14 @@ class NativeCandidateTests(unittest.TestCase):
         if passive:
             policy_pin = {"id": policy, "artifact_sha256": binding_pin}
             docs["native_normalization"] = {"format": "pobr-native-normalization/v2", "version": 2,
-                "profile": native.PASSIVE_PROFILE, "actor_policy": policy_pin}
+                "profile": profile, "actor_policy": policy_pin}
             docs["native_rule_requirements"] = {"format": "pobr-native-rule-requirements/v2", "version": 2,
-                "profile": native.PASSIVE_PROFILE, "actor_policy_sha256": binding_pin,
-                "evaluation": native.PLAYER_OUTPUT_PROFILE}
-            docs["native_reference_index"] = {"input_profile": native.PASSIVE_INPUT_PROFILE, "actor_policy": policy_pin}
-            docs["native_coverage"]["input_profile"] = native.PASSIVE_INPUT_PROFILE
+                "profile": profile, "actor_policy_sha256": binding_pin,
+                "evaluation": evaluation}
+            docs["native_reference_index"] = {"input_profile": native.input_profile(self.recipe), "actor_policy": policy_pin}
+            docs["native_coverage"]["input_profile"] = native.input_profile(self.recipe)
+        if primary:
+            self.primary_documents(docs, lock)
         files = {f"base/{name}.json": native.sha256(native.encoded(doc) + b"\n") for name, doc in docs.items()}
         docs["native_runtime"] = {**{k: self.recipe["target"][k] for k in
             ["game", "realm", "game_patch", "output_profile"]},
@@ -150,7 +161,7 @@ class NativeCandidateTests(unittest.TestCase):
             docs["native_runtime"]["player"].update(context_sha256=context_pin, actor_binding_sha256=binding_pin)
         if passive:
             for field, domain in [("normalization", "native_normalization"), ("rules", "native_rule_requirements")]:
-                docs["native_runtime"][field] = {"profile": native.PASSIVE_PROFILE, "version": 2,
+                docs["native_runtime"][field] = {"profile": profile, "version": 2,
                     "sha256": files[f"base/{domain}.json"]}
         for name, doc in docs.items():
             files[f"base/{name}.json"] = native.fingerprint(self.write(out / f"base/{name}.json", doc))
@@ -162,8 +173,41 @@ class NativeCandidateTests(unittest.TestCase):
             "input_lock_sha256": files["base/native_input_lock.json"], "scope": "Scoped catalogs only"}
         if player:
             receipt.update(data_identity={"data_version": "9.1", "sha256": "c" * 64},
-                           actor_policy=policy, evaluation=native.PLAYER_OUTPUT_PROFILE)
+                           actor_policy=policy, evaluation=evaluation)
         self.write(out / "assembly-receipt.json", receipt)
+
+    def primary_documents(self, docs, lock):
+        """Synthetic normalized adapter response; no physical source execution is claimed."""
+        gems = sorted(self.recipe["target"]["primary_gems"])
+        lock["primary_gems"] = gems
+        selections, evidence = [], {}
+        for name in ["base_items", "skill_gems", "granted_effects", "granted_effect_stat_sets"]:
+            docs[name] = []
+        docs["granted_effect_levels"] = {}
+        def ref(table, row):
+            return {"payload": f"tables/{table}.json", "pointer": f"/rows/{row}/values"}
+        for i, gem in enumerate(gems):
+            effect, active, stat_set = f"Effect{i}", f"active{i}", f"Set{i}"
+            levels = [1, 2, 10, 40]
+            selections.append(dict(gem_id=gem, gem_effect_id=f"GemEffect{i}", effect_id=effect,
+                                   active_skill_id=active, stat_set_id=stat_set, gem_levels=levels))
+            docs["base_items"].append({"id": gem})
+            docs["skill_gems"].append({"id": gem, "gem_effect_id": f"GemEffect{i}", "granted_effect_id": effect})
+            docs["granted_effects"].append({"id": effect, "active_skill": active, "stat_set": i})
+            docs["granted_effect_levels"][effect] = [{"level": level} for level in levels]
+            docs["granted_effect_stat_sets"].append({"effect_id": effect, "sets": [{"set_id": stat_set,
+                "levels": [{"gem_level": level} for level in levels]}]})
+            evidence[gem] = {"rows": [ref(table, i) for table in ["BaseItemTypes", "SkillGems", "GemEffects",
+                "GrantedEffects", "ActiveSkills", "GrantedEffectStatSets"]] + [ref("CostTypes", 0)],
+                "active_reverse_granted_effect": "", "additional_stat_sets": [f"Extra{i}"],
+                "retained_outside_projection": {"source": "test evidence"},
+                "levels": [{"gem_level": level, "rows": [ref("GrantedEffectsPerLevel", i*100+level),
+                    ref("GrantedEffectStatSetsPerLevel", i*100+level)], "actor_scaling_coordinate": 3.4519999027252197,
+                    "retained_outside_projection": {"CooldownGroup": 67, "CooldownBypassType": 4}} for level in levels]}
+        docs["native_skill_projection"] = {"format": "pobr-native-skill-projection/v2", "quality": 0,
+            "primary_only": True, "selections": selections, "retained_evidence": evidence}
+        docs["native_reference_index"]["skill_selection"] = selections
+        docs["native_coverage"]["projected"] = {"primary_spells": selections}
 
     def test_relocated_bindings_produce_identical_complete_bytes_and_preserve_inputs(self):
         before = native.inventory(self.root / "inputs")
@@ -516,6 +560,125 @@ class NativePlayerCandidateTests(NativeCandidateTests):
         adapter.assert_not_called()
         self.assertFalse(self.out.exists())
 
+    def primary_recipe(self):
+        self.recipe["target"].update(input_profile=native.PRIMARY_INPUT_PROFILE,
+            output_profile=native.PRIMARY_OUTPUT_PROFILE,
+            primary_gems=["Metadata/Items/Gems/SkillGemSpark", "Metadata/Items/Gems/SkillGemFrostbolt",
+                          "Metadata/Items/Gem/SkillGemFireball"])
+        self.save_recipe()
+
+    def test_primary_recipe_canonicalizes_execution_and_lock_but_preserves_exact_recipe_bytes(self):
+        self.primary_recipe()
+        original = self.recipe_path.read_bytes()
+        source = native.inventory(self.root / "inputs")
+        with patch.object(native.subprocess, "run", self.assemble):
+            first = self.replay()
+            second = self.replay(out=self.root / "primary-second")
+        self.assertEqual(first, second)
+        self.assertEqual(native.inventory(self.out), native.inventory(self.root / "primary-second"))
+        self.assertEqual((self.out / "recipe.json").read_bytes(), original)
+        self.assertEqual(native.inventory(self.root / "inputs"), source)
+        gems = sorted(self.recipe["target"]["primary_gems"])
+        self.assertEqual(first["target"]["primary_gems"], gems)
+        lock = json.loads((self.out / "runtime/base/native_input_lock.json").read_bytes())
+        self.assertEqual(lock["primary_gems"], gems)
+        self.assertFalse(first["calculation_admitted"])
+
+    def test_primary_recipe_rejects_missing_empty_duplicate_invalid_and_old_tuple_inventories(self):
+        self.primary_recipe()
+        original = copy.deepcopy(self.recipe)
+        for value in [None, [], "Spark", [""], [" Spark"], ["a,b"], [1], ["a", "a"], [True]]:
+            self.recipe = copy.deepcopy(original)
+            self.recipe["target"]["primary_gems"] = value
+            self.save_recipe()
+            with self.subTest(value=value), patch.object(native.subprocess, "run") as adapter, self.assertRaises(ValueError):
+                self.replay()
+            adapter.assert_not_called()
+
+            self.assertFalse(self.out.exists())
+        for change in ["missing", "old-input", "old-output", "query-only"]:
+            self.recipe = copy.deepcopy(original)
+            if change == "missing":
+                del self.recipe["target"]["primary_gems"]
+            elif change == "old-input":
+                self.recipe["target"]["input_profile"] = native.PASSIVE_INPUT_PROFILE
+            elif change == "old-output":
+                self.recipe["target"]["output_profile"] = native.PLAYER_OUTPUT_PROFILE
+            else:
+                self.recipe["schema"] = native.SCHEMA
+                del self.recipe["player"]
+            self.save_recipe()
+            with self.subTest(change=change), patch.object(native.subprocess, "run") as adapter, self.assertRaises(ValueError):
+                self.replay()
+            adapter.assert_not_called()
+
+    def test_primary_replay_accepts_empty_exclusions_and_shared_active_without_inverse_uniqueness(self):
+        self.primary_recipe()
+        def altered(command, **kwargs):
+            self.assemble(command, **kwargs)
+            runtime = self.out / "runtime"
+            docs = {p.stem: json.loads(p.read_bytes()) for p in (runtime / "base").iterdir()}
+            projection = docs["native_skill_projection"]
+            projection["selections"][1]["active_skill_id"] = "active0"
+            gem = projection["selections"][1]["gem_id"]
+            projection["retained_evidence"][gem]["rows"][4]["pointer"] = "/rows/0/values"
+            projection["retained_evidence"][gem]["additional_stat_sets"] = []
+            docs["granted_effects"][1]["active_skill"] = "active0"
+            docs["native_reference_index"]["skill_selection"] = projection["selections"]
+            docs["native_coverage"]["projected"]["primary_spells"] = projection["selections"]
+            for name, doc in docs.items():
+                self.write(runtime / f"base/{name}.json", doc)
+            self.reseal_passive_runtime(runtime)
+        with patch.object(native.subprocess, "run", altered):
+            self.assertEqual(self.replay()["status"], "complete")
+
+    def test_primary_replay_rejects_resealed_inventory_catalog_policy_and_evidence_mismatches(self):
+        self.primary_recipe()
+        gem = sorted(self.recipe["target"]["primary_gems"])[0]
+        cases = [
+            ("native_runtime", ["normalization", "profile"], native.PASSIVE_PROFILE),
+            ("native_actor_binding", ["policy"], native.PASSIVE_ACTOR_POLICY),
+            ("native_actor_binding", ["evaluation"], native.PLAYER_OUTPUT_PROFILE),
+            ("native_actor_binding", ["required_conditions", 1], "primary-SparkPlayer-level1-q0"),
+            ("native_actor_binding", ["assumptions"], []),
+            ("native_rule_requirements", ["evaluation"], native.PLAYER_OUTPUT_PROFILE),
+            ("native_input_lock", ["primary_gems"], [gem]),
+            ("native_reference_index", ["skill_selection"], []),
+            ("native_coverage", ["projected", "primary_spells"], []),
+            ("native_skill_projection", ["format"], "pobr-native-skill-projection/v1"),
+            ("native_skill_projection", ["quality"], False),
+            ("native_skill_projection", ["selections", 0, "gem_levels"], [1, 1]),
+            ("native_skill_projection", ["selections", 0, "active_skill_id"], "wrong"),
+            ("granted_effects", [0, "stat_set"], 999),
+            ("granted_effects", [0, "active_skill"], "wrong"),
+            ("granted_effect_stat_sets", [0, "sets", 0, "set_id"], "wrong"),
+            ("granted_effect_levels", ["Effect0", 0, "level"], 2),
+            ("native_skill_projection", ["retained_evidence", gem, "active_reverse_granted_effect"], "OtherEffect"),
+            ("native_skill_projection", ["retained_evidence", gem, "additional_stat_sets"], [1]),
+            ("native_skill_projection", ["retained_evidence", gem, "additional_stat_sets"], ["Extra0", "Extra0"]),
+            ("native_skill_projection", ["retained_evidence", gem, "additional_stat_sets"], ["Set0"]),
+            ("native_skill_projection", ["retained_evidence", gem, "rows", 0, "pointer"], "/rows/00/values"),
+            ("native_skill_projection", ["retained_evidence", gem, "levels", 0, "gem_level"], 2),
+            ("native_skill_projection", ["retained_evidence", gem, "levels", 0, "rows", 0, "payload"], "tables/Stats.json"),
+            ("native_skill_projection", ["retained_evidence", gem, "levels", 0, "actor_scaling_coordinate"], None),
+            ("native_skill_projection", ["retained_evidence", gem, "levels", 0, "actor_scaling_coordinate"], 10**400),
+        ]
+        for i, (domain, keys, value) in enumerate(cases):
+            out = self.root / f"primary-mixed-{i}"
+            def altered(command, **kwargs):
+                self.assemble(command, **kwargs)
+                path = out / f"runtime/base/{domain}.json"
+                doc = json.loads(path.read_bytes())
+                container = doc
+                for key in keys[:-1]:
+                    container = container[key]
+                container[keys[-1]] = value
+                self.write(path, doc)
+                self.reseal_passive_runtime(out / "runtime")
+            with self.subTest(domain=domain, keys=keys), patch.object(native.subprocess, "run", altered), self.assertRaises(ValueError):
+                self.replay(out=out)
+            self.assertFalse((out / "orchestration-receipt.json").exists())
+
     def reseal_passive_runtime(self, runtime):
         """Reseal dependent byte pins so failures exercise semantic tuple checks."""
         docs = {p.stem: json.loads(p.read_bytes()) for p in (runtime / "base").iterdir()}
@@ -557,6 +720,9 @@ class NativePlayerCandidateTests(NativeCandidateTests):
             ("native_normalization", ["actor_policy", "id"], native.ACTOR_POLICY, "normalization policy mismatch"),
             ("native_reference_index", ["actor_policy", "id"], native.ACTOR_POLICY, "reference/coverage policy mismatch"),
             ("native_coverage", ["input_profile"], native.INPUT_PROFILE, "reference/coverage policy mismatch"),
+            ("native_skill_projection", ["format"], "pobr-native-skill-projection/v2", "Old tuple forbids primary inventory"),
+            ("native_skill_projection", ["selections"], [], "Old tuple forbids primary inventory"),
+            ("native_normalization", ["profile"], native.PRIMARY_PROFILE, "Old tuple forbids primary interpretation"),
         ]
         for i, (domain, keys, value, error) in enumerate(cases):
             out = self.root / f"passive-mixed-{i}"

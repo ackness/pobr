@@ -187,6 +187,43 @@ progression. Starting relationships are never free grants. Actor source facts,
 unreviewed acquisition status and ordinary full-build guards are unchanged.
 See the assembler's [profile boundary](../tools/pobr-data-adapter/native-runtime.md#explicit-ordinary-damage-passive-profile).
 
+## Explicit primary-spell inventory
+
+An actor/v2 recipe can instead select
+`target.input_profile: "selected-player-primary-spell-hit-q0-passives-v1"` with
+`target.output_profile: "conditional-skill-hit-v2"`. Only this tuple requires
+`target.primary_gems`, a nonempty array of unique exact stable base IDs. Initial
+source-backed selections are `Metadata/Items/Gems/SkillGemSpark`,
+`Metadata/Items/Gem/SkillGemFireball` and
+`Metadata/Items/Gems/SkillGemFrostbolt`. Empty IDs, whitespace aliases, commas
+inside IDs, duplicate entries, missing arrays and mixed old/new tuples fail.
+Both older profiles forbid `primary_gems` and keep their historical argument flow.
+
+Replay preserves the exact pinned input recipe bytes as `recipe.json`, sorts the
+inventory for execution and its receipt target, and sends one `--primary-gems`
+comma-separated argument alongside the explicit new `--input-profile`.
+The sealed runtime input lock must contain that same sorted inventory.
+Actor policy must be `selected-player-generic-ot-primary-spell-hit-passives-v1`;
+normalization/rules must be `primary-spell-hit-q0-passives` at version2 and both
+binding and receipt must declare `conditional-skill-hit-v2`. Actor level1 and
+exact-authored-gem-level conditions remain distinct. Manifest4, contract2 and
+the19-domain inventory are unchanged.
+
+The projection-v2 `selections` array must equal reference-index `skill_selection`
+and coverage `projected.primary_spells`, with gem IDs matching the lock. Replay
+checks unique selected identities, normalized gem/effect/primary-set joins and
+complete exact-level inventories. It checks ordered physical reference addresses,
+evidence-level identities, the retained reverse string, and the excluded stable
+StatSet-ID array (including valid empty arrays). It does not infer damage, costs,
+classification, source authenticity or a requirement law from archival fields;
+the Rust producer/loader/consumer retain those responsibilities.
+
+Create a separate recipe only after the integrated compiler exists and its actual
+binary, revision and implementation fingerprints are known. The tracked old
+example recipes and their pins are unchanged; no new executable or candidate
+identity is predicted here. See the assembler's
+[primary-spell boundary](../tools/pobr-data-adapter/native-runtime.md#explicit-primary-spells-and-authored-gem-levels).
+
 Focused stdlib checks (no Rust build or package installation):
 
 ```sh

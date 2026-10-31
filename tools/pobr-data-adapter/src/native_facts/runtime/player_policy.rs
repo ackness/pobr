@@ -3,8 +3,9 @@
 use std::collections::BTreeSet;
 
 use pobr_data::catalog::native_player::{
-    NATIVE_ALLOCATION_ASSUMPTION, NATIVE_GENERIC_OT, NATIVE_OTHER_ALLOCATIONS_EXCLUSION,
-    NATIVE_PASSIVES_ACTIVE_CONDITION, NATIVE_PLAYER_ID, NativeActorBinding, NativeActorPolicy,
+    NATIVE_ALLOCATION_ASSUMPTION, NATIVE_GEM_LEVEL_ASSUMPTION, NATIVE_GENERIC_OT,
+    NATIVE_OTHER_ALLOCATIONS_EXCLUSION, NATIVE_PASSIVES_ACTIVE_CONDITION, NATIVE_PLAYER_ID,
+    NATIVE_PRIMARY_SPELL_CONDITION, NativeActorBinding, NativeActorPolicy,
     NativeAssignmentSelector, NativeCriticalBonus, NativeEvaluationKind, NativeFactDisposition,
     NativeFactDispositionKind, NativeMetadataScope, NativeModelStatus, NativePlayerContextDef,
     NativePlayerOrigin, NativePlayerReference,
@@ -18,8 +19,10 @@ pub(super) fn bind(
     context_sha256: String,
     actor_policy: NativeActorPolicy,
 ) -> Result<NativeActorBinding, String> {
-    let passives =
-        actor_policy == NativeActorPolicy::SelectedPlayerGenericOtOrdinaryDamagePassivesV1;
+    let primary =
+        actor_policy == NativeActorPolicy::SelectedPlayerGenericOtPrimarySpellHitPassivesV1;
+    let passives = primary
+        || actor_policy == NativeActorPolicy::SelectedPlayerGenericOtOrdinaryDamagePassivesV1;
     let facts = &c.facts;
     let candidates = facts
         .metadata_stats
@@ -102,6 +105,9 @@ pub(super) fn bind(
             disposition
                 .reason
                 .push_str(" Native Stats ID is unresolved and remains retained.");
+        }
+        if primary && s.key_raw == "object_innate_minimum_number_of_projectiles_to_fire_is_1" {
+            disposition.reason = "The generic-OT minimum is retained without a projectile-count applicability law. This policy does not derive a missing intrinsic count or apply a projectile adjustment; the one-successful-hit output is independent of count.".into();
         }
         dispositions.push(disposition);
     }
@@ -213,6 +219,14 @@ pub(super) fn bind(
             "No actor pool/accuracy/attribute requirement law or full DPS is inferred; acquisition remains unreviewed-acquisition-draft.".into(),
         ],
     };
+    if primary {
+        binding.evaluation = NativeEvaluationKind::ConditionalSkillHitV2;
+        for condition in &mut binding.required_conditions {
+            if condition == "primary-SparkPlayer-level1-q0" {
+                *condition = NATIVE_PRIMARY_SPELL_CONDITION.into();
+            }
+        }
+    }
     if passives {
         binding
             .required_conditions
@@ -231,6 +245,9 @@ pub(super) fn bind(
         binding
             .assumptions
             .push(NATIVE_ALLOCATION_ASSUMPTION.into());
+    }
+    if primary {
+        binding.assumptions.push(NATIVE_GEM_LEVEL_ASSUMPTION.into());
     }
     Ok(binding)
 }

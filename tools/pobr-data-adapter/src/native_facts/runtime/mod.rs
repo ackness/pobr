@@ -6,6 +6,7 @@ mod inputs;
 mod player;
 mod player_policy;
 mod skills;
+mod skills_policy;
 mod tree;
 
 #[cfg(test)]
@@ -34,6 +35,7 @@ pub(crate) struct Args {
     compiler_revision: String,
     player: Option<player::Args>,
     input_profile: NativeInputProfile,
+    primary_gems: Option<Vec<String>>,
 }
 
 pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, String> {
@@ -55,6 +57,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
                 "--player-manifest-sha256",
                 "--player-source-lock-sha256",
                 "--input-profile",
+                "--primary-gems",
             ]
             .contains(&flag.as_str()),
             &format!("unsupported native-runtime argument: {flag}"),
@@ -78,6 +81,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         .transpose()?
         .unwrap_or(NativeInputProfile::SorceressSparkLevel1Q0V1);
     require_player(input_profile, player.is_some())?;
+    let primary_gems = primary_gems(input_profile, values.remove("--primary-gems"))?;
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
     Ok(Args {
         facts: super::Args {
@@ -94,6 +98,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         compiler_revision: take("--compiler-revision")?,
         player,
         input_profile,
+        primary_gems,
     })
 }
 
@@ -154,7 +159,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
         receipt["format"] = "pobr-native-runtime-assembly-receipt/v2".into();
         receipt["data_identity"] = serde_json::to_value(&identity).map_err(|e| e.to_string())?;
         receipt["actor_policy"] = json!(selected_profiles(args.input_profile).1);
-        receipt["evaluation"] = json!(NativeEvaluationKind::ConditionalSkillHitV1);
+        receipt["evaluation"] = json!(evaluation(args.input_profile));
     }
     let receipt_bytes = json_bytes(&receipt)?;
     output.reserve()?;
@@ -178,11 +183,46 @@ fn require_player(profile: NativeInputProfile, player_present: bool) -> Result<(
     )
 }
 
+fn evaluation(input: NativeInputProfile) -> NativeEvaluationKind {
+    if input == NativeInputProfile::SelectedPlayerPrimarySpellHitQ0PassivesV1 {
+        NativeEvaluationKind::ConditionalSkillHitV2
+    } else {
+        NativeEvaluationKind::ConditionalSkillHitV1
+    }
+}
+
+fn primary_gems(
+    profile: NativeInputProfile,
+    argument: Option<String>,
+) -> Result<Option<Vec<String>>, String> {
+    match (profile, argument) {
+        (NativeInputProfile::SelectedPlayerPrimarySpellHitQ0PassivesV1, Some(argument)) => {
+            let mut selected = BTreeSet::new();
+            for id in argument.split(',') {
+                trust::require(
+                    !id.is_empty() && id.trim() == id && selected.insert(id.to_string()),
+                    "primary gems require nonempty unique exact stable IDs",
+                )?;
+            }
+            Ok(Some(selected.into_iter().collect()))
+        }
+        (NativeInputProfile::SelectedPlayerPrimarySpellHitQ0PassivesV1, None) => {
+            Err("primary spell profile requires --primary-gems".into())
+        }
+        (_, Some(_)) => Err("old profiles forbid --primary-gems".into()),
+        (_, None) => Ok(None),
+    }
+}
+
 fn selected_profiles(input: NativeInputProfile) -> (NativeProfile, NativeActorPolicy) {
     match input {
         NativeInputProfile::SorceressSparkLevel1Q0V1 => (
             NativeProfile::SparkLevel1Q0,
             NativeActorPolicy::SelectedPlayerGenericOtV1,
+        ),
+        NativeInputProfile::SelectedPlayerPrimarySpellHitQ0PassivesV1 => (
+            NativeProfile::PrimarySpellHitQ0Passives,
+            NativeActorPolicy::SelectedPlayerGenericOtPrimarySpellHitPassivesV1,
         ),
         NativeInputProfile::SorceressSparkLevel1Q0OrdinaryDamagePassivesV1 => (
             NativeProfile::SparkLevel1Q0OrdinaryDamagePassives,
@@ -206,7 +246,16 @@ fn assemble(
         .as_str()
         .ok_or("missing patch")?;
     let projected_tree = tree::project(input, candidate, official, &source_sha, patch)?;
-    let mut base = skills::project(input)?;
+    let mut base = match (&args.primary_gems, args.input_profile) {
+        (Some(gems), NativeInputProfile::SelectedPlayerPrimarySpellHitQ0PassivesV1) => {
+            skills::project_primary(input, gems)?
+        }
+        (None, NativeInputProfile::SelectedPlayerPrimarySpellHitQ0PassivesV1) => {
+            return Err("primary spell profile requires --primary-gems".into());
+        }
+        (None, _) => skills::project(input)?,
+        (Some(_), _) => return Err("old profiles forbid --primary-gems".into()),
+    };
     base.insert(
         "passive_tree.json".into(),
         json_bytes(&projected_tree.nodes)?,
@@ -321,8 +370,7 @@ fn assemble(
         rules["version"] = 2.into();
         rules["actor_policy_sha256"] = pins.actor_binding_sha256.clone().into();
         rules["evaluation"] = json!(binding.evaluation);
-        if args.input_profile == NativeInputProfile::SorceressSparkLevel1Q0OrdinaryDamagePassivesV1
-        {
+        if args.input_profile != NativeInputProfile::SorceressSparkLevel1Q0V1 {
             coverage["player"]["policy"] = "Actor metadata supplies only the selected generic OT critical bonus. Explicitly selected ordinary damage packets are separate request sources; every actor fact retains its finite disposition. Loading is not admission.".into();
             coverage["input_profile"] = json!(args.input_profile);
             coverage["missing_or_excluded"][0] = "Ordinary full-build calculation, actor pools/accuracy/requirements, allocation point budget/reachability/progression and effective cadence remain unavailable. The bounded consumer re-admits each saved conditional-hit request.".into();
@@ -341,6 +389,49 @@ fn assemble(
     } else {
         None
     };
+    if args.input_profile == NativeInputProfile::SelectedPlayerPrimarySpellHitQ0PassivesV1 {
+        let projection: NativePrimarySpellProjection =
+            serde_json::from_slice(&base["native_skill_projection.json"])
+                .map_err(|e| e.to_string())?;
+        lock["primary_gems"] = json!(
+            projection
+                .selections
+                .iter()
+                .map(|s| &s.gem_id)
+                .collect::<Vec<_>>()
+        );
+        references["skill_selection"] = json!(projection.selections);
+        coverage["projected"] = json!({"tree_instances":projected_tree.nodes.len(),
+            "native_passive_packets":projected_tree.nodes.iter().filter(|node| node.native_stats.is_some()).count(),
+            "primary_spells":projection.selections,"quality":0});
+        coverage["missing_or_excluded"][3] = "Unselected gems/branches, quality, supports, equipment, infusion and encounter conditions; gem requirements and obtainability are not certified.".into();
+        normalization["rules"][1] = "Every uniquely authored positive gem level pairs exact effect/set-level rows. BaseResolvedValues aligns with FloatStats; AdditionalStatsValues aligns with AdditionalStats. No interpolation or extrapolation.".into();
+        normalization["rules"][3] = "Positive base cast milliseconds and intrinsic Mana cost are source-derived. Only neutral cooldown duration/attack/reservation/storage transformations are absent; nonzero cooldown categories remain archival evidence.".into();
+        normalization["rules"][6] = "Raw base_skill_effect_duration is milliseconds, not a universal projectile-lifetime role. Only the established Spark primary interpretation supplies lifetime; other duration facts remain outside that output.".into();
+        normalization["rules"].as_array_mut().ok_or("missing normalization rules")?.push(json!(
+            "ActorLevel pair coordinates are finite equal source scaling evidence, independently of fixed selected actor level1 and gem requirements. Empty ActiveSkills reverse text is retained; a nonempty reverse must agree with the selected forward join."
+        ));
+        // Declaration comes from the selected normalized channels, not a fixed Lightning list.
+        let sets: Vec<SkillStatSetDef> =
+            serde_json::from_slice(&base["granted_effect_stat_sets.json"])
+                .map_err(|e| e.to_string())?;
+        rules["required_own_stat_rules"] = json!(
+            sets.iter()
+                .flat_map(|s| &s.sets)
+                .flat_map(|s| s
+                    .constant_stats
+                    .iter()
+                    .chain(s.levels.iter().flat_map(|level| &level.stats)))
+                .map(|stat| stat.stat.as_str())
+                .filter(|id| id.starts_with("spell_minimum_base_")
+                    || id.starts_with("spell_maximum_base_")
+                    || matches!(
+                        *id,
+                        "base_number_of_projectiles" | "base_skill_effect_duration"
+                    ))
+                .collect::<BTreeSet<_>>()
+        );
+    }
     for (name, value) in [
         ("native_input_lock", lock),
         ("native_coverage", coverage),
@@ -398,7 +489,11 @@ fn assemble(
             sha256: digest("native_rule_requirements"),
         },
         input_profile: args.input_profile,
-        output_profile: if player_pins.is_some() {
+        output_profile: if args.input_profile
+            == NativeInputProfile::SelectedPlayerPrimarySpellHitQ0PassivesV1
+        {
+            NativeOutputProfile::ConditionalSkillHitV2
+        } else if player_pins.is_some() {
             NativeOutputProfile::ConditionalSkillHitV1
         } else {
             NativeOutputProfile::SparkSingleHitCastCostV1
@@ -481,6 +576,10 @@ fn implementation_sha256() -> String {
             include_bytes!("../../../../../crates/pobr-core/src/rules/passive_stats.rs").as_slice(),
         ),
         ("runtime/skills.rs", include_bytes!("skills.rs").as_slice()),
+        (
+            "runtime/skills_policy.rs",
+            include_bytes!("skills_policy.rs").as_slice(),
+        ),
         ("runtime/player.rs", include_bytes!("player.rs").as_slice()),
         (
             "player-producer-manifest.json",
@@ -512,6 +611,11 @@ fn implementation_sha256() -> String {
         (
             "gamedata/native/passives.rs",
             include_bytes!("../../../../../crates/pobr-gamedata/src/native/passives.rs").as_slice(),
+        ),
+        (
+            "gamedata/native/primary_spells.rs",
+            include_bytes!("../../../../../crates/pobr-gamedata/src/native/primary_spells.rs")
+                .as_slice(),
         ),
         (
             "catalog/native_runtime.rs",
