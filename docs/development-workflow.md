@@ -66,7 +66,7 @@ mise run lint build skills                    # fmt and selected Clippy target
 mise run build                                # Application CLI only
 mise run cache                                # Read-only storage and file counts
 mise run regen                                # After a rule edit: regenerate parser artifacts, test the generator
-mise run gate                                 # Once per batch of merged changes: every step, then the failures
+mise run gate                                 # Optional local batch validation on a warm checkout
 mise run gate --only core,parity              # Rerun only the failed steps
 mise run warm <warm checkout>                 # New worktree: copy-on-write clone of its target/debug
 ```
@@ -82,39 +82,70 @@ mise exec -- cargo test -p pobr-wasm --features diagnostics --test perf_timing -
 完整 CI 和 `mise run full` 的 Clippy 显式启用这两个 feature，继续检查手动工具；
 日常定向测试和 PR 检查不启用。`gen_fixtures` 同样需要 `--features diagnostics`。
 
-小改动的文件与检查步骤见[改动配方](recipes.md)。单个改动只跑定向测试；`gate` 由合并多个改动的人运行一次，
-不在每个改动上重复（规则见 [AGENTS.md](../AGENTS.md#validation-budget)）。
+小改动的文件与验证选项见[改动配方](recipes.md)。子 Agent 按风险和成本选择代码审阅、
+静态检查、定向编译或测试；文档只检查 diff、链接和示例。算法、大幅修改和跨边界行为可以提前测试，
+不要求每个 worker 都先编译才能提交。必要的回归断言仍须写入，未运行项明确交接。
+
+协调者先汇总多个 worker 的修改，检查语义冲突，规则变化时集中生成一次产物，再统一验证。
+默认依赖远端：PR 轻量、master 合并后全量；高风险批次可先 `mise run ci <pushed-ref>`。
+本地 `mise run verify`、`mise run gate` 和 `mise run full` 都保留为按需工具，
+不与相同输入的云端结果固定串联。
 
 短参数 `build` 对应 `pobr-build`，`core` 对应 `pobr-core`；完整包名也可用。
-`lib` 选择单元测试，其他名字选择 `--test <suite>`。不传目标会显示用法并退出，
-不会默认启动全量测试。多个目标、features 或其他选项直接传 Cargo 参数。
+`lib` 选择单元测试，其他名字选择 `--test <suite>`。不传目标会显示用法并退出。
+需要检查一个 Rust 包或明确执行测试时，例如：
 
 ```bash
-mise run test -p pobr-build --test skills --test codec
-mise run lint -p pobr-build --lib --test skills
-mise run test build parity no_regression
-mise run build --workspace                    # Only when all binaries are needed
+mise exec -- cargo check --locked -p pobr-core --lib  # Optional; dependencies/macros may still compile
+mise run test core parser mod_parser::               # Runtime assertions when useful
+mise run verify build skills <filter>                # Tests, fmt and Clippy for one target
 ```
 
-测试本身会编译，不必先执行 `check` 或 `build`。只有测试名称过滤仍可能编译
-该 crate 的全部测试目标，应同时选择 `--test` 或 `--lib`。跨 crate API 修改还需要
-调用方的契约测试。相关检查通过后结束验证，不固定串联 check/build/clippy/test/full。
-相同输入下已通过的检查可以复用；仅改文档不使代码测试失效。
+`cargo check` 不运行测试，`cargo test --no-run` 仍生成测试二进制；名称过滤也会编译整个测试目标。
+不要把它们都当作免费检查，或固定串联 check/build/Clippy/test。复用输入未变的证据；
+读码、review、编译检查和运行时测试分别说明，不能相互冒充。
 
-Web 纯 TS/CSS 修改复用 WASM，运行相关 Vitest 与 typecheck；`mise run web build`
-已包含 typecheck。交互修改补对应 Playwright spec，运行前准备当前 dist、WASM 和数据。
-脚本修改使用 `mise exec -- bash -n`、`mise exec -- python3 devs/scripts/test_workflows.py`；WASM/数据同步脚本
-使用 `mise exec -- node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`。
+Web 纯 TS/CSS 修改复用已有 WASM，按风险选择相关 Vitest、typecheck 或 Playwright。
+`mise run web build` 已含 typecheck，普通文档不需要 Web 构建。
+自动化修改使用 `mise run check:workflows`，不编译 Rust；安装顺序变化还要验证冷依赖环境。
 
 ## 缓存与磁盘占用
+
+本地由 mise 提供工具，CI 由官方或受维护的 Actions 安装；两者读取相同的版本声明，
+使用同一份 lockfile 与构建配置，各检查按其既定 profile/features 执行。缓存用于减少下载和编译，
+不改变应执行的安装、校验和测试。
+
+<a id="storage-decisions"></a>
+
+### Agent 的存储决策
+
+需要本地构建且要创建新的缓存、运行大批检查，或发现空间不足时，先运行 `mise run cache` 与 `mise exec -- df -h .`。
+前者不编译、不删除，按目录定位占用；后者查看所在卷的实际剩余空间。
+普通小改动继续使用既有定向检查，不增加存储检查门禁。
+
+- 优先复用当前 worktree 的产物；确需新 worktree 时用下文的写时复制预热，
+  不为单项修复另建 target，也不让并行 writer 共用可写 target。
+- 工具链、profile、features、target 与编译环境改变会产生不同产物；保持日常设置稳定，
+  需要诊断或发布配置时才使用对应任务，不为“加速”临时轮换配置。
+- 本 checkout 的报告不含其他 worktree、全局 mise/Rustup 安装、Cargo registry/git、
+  pnpm store 或编译器缓存。需要时分别查看；`mise exec -- pnpm store path` 可定位包存储。
+  写时复制或硬链接可共享数据块，多个目录的统计不能直接相加为独占空间或预计可释放量。
+- 清理前确认目录的用途、仍在运行的构建和保留需求。优先处理已结束任务的临时输出、
+  确认废弃的 worktree/构建配置；保留有后续用途的编译缓存、发布产物与用户资料。
+  全局 Cargo/pnpm 清理和 `cargo clean` 不作为 setup、测试或空间不足时的自动补救。
+
+### 本地复用
 
 每个 worktree 复用一个默认 `target/`。同一 worktree 的会话共用它、串行运行 Cargo，
 不按会话、测试或门禁创建 `target-gate` 等副本；不同 worktree 不共享可写 target。
 看到 `Blocking waiting for file lock` 时检查已有进程，不再叠加 Cargo。
 
-新 worktree 的 `target/` 为空，第一次测试会重新编译全部依赖。`mise run warm <已编译的 checkout>`
+新 worktree 的 `target/` 为空，第一次测试会重新编译全部依赖。选择空闲、版本兼容的
+已编译 checkout 作为来源，在新 worktree 运行 `mise run warm <已编译的 checkout>`，
 用写时复制（APFS clonefile 或 Linux reflink）克隆那份 `target/debug`。开始时复用文件数据块，修改时才占用新块，
-两份目录仍可独立写入。之后只有路径不同的 workspace crate 重新编译。已有 `target/debug` 时不覆盖。
+两份目录仍可独立写入；Cargo 复用输入未变的依赖，路径或输入改变的包仍可能重编译。已有 `target/debug` 时不覆盖。
+它只预热 `target/debug`，不复制 WASM 或 release 目录；文件系统不支持写时复制时停止，
+不会回退为整份普通复制。Cargo 仍按实际输入判断哪些产物可复用。
 分析工具（`gap`、`gaps`、`triage`、`compare`、`config:coverage`、`skills:sweep`、`output-coverage.py`）
 默认会准备 CLI，并把台账与 PoB2 结果缓存在本 checkout 的 `.cache/`。设 `POBR_BIN=<checkout>/target/debug/pobr`
 使用已编译的 CLI，设 `POBR_CACHE_DIR=<checkout>/.cache` 共用已有缓存（台账按程序内容、PoB2 结果按构筑码与 vendor 失效）。
@@ -153,7 +184,7 @@ mise run web build-wasm --force           # Rebuild through Cargo, without clean
 `cache` 通过离线 Cargo metadata 解析当前 target/build 目录，统计占用与文件数，
 细分 host/WASM profile 的 deps、incremental 等目录；同时统计 `.cache`、Web 依赖、
 dist、WASM 包和同步数据。不编译、不删除、不跟随符号链接。
-支持文件系统时显示分配块大小，否则显示文件字节数；硬链接或压缩可能影响与真实占用的差异。
+支持文件系统时显示分配块大小，否则显示文件字节数；硬链接、写时复制或压缩可能影响与真实占用的差异。
 本地 Cargo 配置和 `CARGO_INCREMENTAL` / `CARGO_PROFILE_*` 可以覆盖仓库默认设置。
 全局 Cargo registry/git、pnpm store 和编译器缓存另行存储，未计入本仓库的统计。
 已配置 sccache 时用 `sccache --show-stats` 查看位置、命中率、占用及上限；
@@ -175,44 +206,61 @@ WASM 构建记录校验 Rust 源码、嵌入语言文件、共享配置 JSON、m
 发布包以及旧 worktree 仍可能累积；先确认具体目录及保留需求，再显式清理。
 脚本不会自动删除发布资产、用户资料或其他 worktree。
 
+### CI 恢复与跳过
+
+Rust 缓存按 job、平台与工具链等输入隔离；兼容前缀命中后仍由 Cargo 判断需要重编译的内容。
+完整 key 命中时不重复保存同一份缓存是正常行为。核查时看恢复 key、命中结果、保存结果和实际构建日志，
+不因工作流使用了 cache Action 就认定已经复用。
+
+`setup-node` 恢复 pnpm store，不恢复 `node_modules`。相关 job 仍须运行
+`pnpm install --frozen-lockfile`，再执行项目脚本；恢复缓存不能替代依赖安装。
+PR merge ref 的缓存供该 PR 后续运行复用，默认分支缓存也可供 PR 恢复；
+PR 缓存不会反向成为默认分支或其他 PR 的缓存。
+
+master 选中完整验证时，轻量 Rust/Web/脚本 jobs 按计划跳过；PR 中完整 job 默认跳过。
+E2E 默认未选中，显式开启才运行。
+缓存命中不会跳过这些正确性检查。更新 PR 后旧 run 的取消可由新 run 接替，
+确认结果时始终核对当前 head，以及 gate 是否成功验证了所有应运行的 jobs。
+
 项目专属 [.claude/skills/workflow](../.claude/skills/workflow/SKILL.md) 将本页适配给 agent。
 本页与仓库内的 skill 足够完成日常开发，不依赖贡献者的个人 skills 或委派工具。
 
 ## CI 的责任与触发
 
 workflow 负责事件、环境、权限；`mise.toml` / `devs/scripts` 负责命令。
-按改动选本地定向检查；CI 的集成检查不要求开发者在本地重复编译。
+本地按实际需要验证，默认不重复远端集成构建。
 
 | 入口 | 触发与职责 | 成功出口 |
 | --- | --- | --- |
-| [pr.yml](../.github/workflows/pr.yml) | 所有 master PR、每次 master push；按整个变更范围选轻量检查或调用完整门禁 | `PR gate` |
+| [pr.yml](../.github/workflows/pr.yml) | PR 按整个变更范围运行相关轻量检查；master 代码 push 调用完整集成 | `PR gate` |
 | [ci.yml](../.github/workflows/ci.yml) | 可复用完整门禁、手动 dispatch、每日 19:00 UTC 的 master 回归 | `Full gate` |
-| [release.yml](../.github/workflows/release.yml) | `v*` tag；先校验发布身份，调用完整门禁，再发布同次产物和符合条件的生产部署 | Release / deploy jobs |
+| [release.yml](../.github/workflows/release.yml) | `v*` tag；校验发布身份、完整验证后发布同次产物并按条件部署 | Release / deploy jobs |
 
-PR 变更比较测试中的 merge commit 与它的 base parent；master 比较 push 事件的 before/after，
-包括一次推送的所有提交。缺少比较基线时选择完整门禁；重命名按删除旧路径、增加新路径处理。
-未知输入保守进入完整门禁。PR 新提交取消旧检查；master 的每个增量 push 独立运行，
-避免后续文档提交取消前一次代码检查。每日完整门禁也会重试旧提交的失败，不按提交年龄跳过。
+PR 比较被测试的 merge commit 与 base parent，包含整个 PR；master 比较 push 的 before/after，
+覆盖一次推送的全部提交，重命名按删除和新增两侧处理。PR 无法读取比较基线时快速失败，
+不生成绿色空计划；master 首次 push 或缺基线时保守全量。
+PR 新提交替换旧运行；master 每个增量 push 独立，后续文档提交不会取消前一次代码验证。
 
-[ci-plan.py](../devs/scripts/ci-plan.py) 是路径选择的唯一实现：
+[ci-plan.py](../devs/scripts/ci-plan.py) 是事件和路径选路的唯一实现：
 
-| 变更 | 自动验证 |
-| --- | --- |
-| Rust / 数据 / 构筑语料 | fmt、workspace Clippy、smoke、请求契约、parity；数据还检查脚本契约 |
-| Web 代码 | typecheck、Vitest、Worker runtime；脚本/静态资源还检查脚本契约 |
-| 普通开发脚本 | 不编译 Rust 的自动化契约：shell、Python、Node、工作流语法 |
-| workspace/包 manifest、lockfile、工具链、mise、workflow、CI/发布策略脚本、数据管线、未知输入 | 完整 Rust、Web 与自动化契约；不重复轻量 jobs |
-| 普通文档（含 Web README）、模板、说明图片 | 无产品构建；仍有稳定 gate |
+| 变更 | PR 自动检查 | master push |
+| --- | --- | --- |
+| Rust / 数据 / 构筑输入 | fmt、`cargo check --locked --workspace --all-targets`；数据另含脚本契约 | 完整集成 |
+| Web | typecheck、Vitest、Worker；脚本和静态资源另含自动化契约 | 完整集成 |
+| 开发脚本 | shell/Actions/Python/Node 契约，不编译 Rust | 完整集成 |
+| manifest、lockfile、工具链、工作流、数据管线、共享或未知输入 | 上述全部轻量区域 | 完整集成 |
+| 普通文档、模板、说明图片 | 无产品构建，保留稳定 gate；fixture 文本仍视为输入 | 无产品构建，保留稳定 gate |
 
-`PR gate` 校验检测器成功、输出合法、所有选中 jobs 成功；失败、取消、缺失或意外跳过都拒绝。
-`Full gate` 同样要求全部 Rust/Web/脚本 jobs 成功。fork 和 Dependabot 使用相同的只读、无密钥验证路径；
-首次外部贡献的 Actions 批准取决于 GitHub 设置。这里的批准只允许执行，不表示代码正确。
+`PR gate` 要求检测器与每个选中的 job 成功，拒绝失败、取消、缺失与意外跳过。
+它在 PR 中证明轻量检查通过；master 中还要求完整 job 成功。
+`Full gate` 要求 Rust、Web、自动化全部成功。fork 和 Dependabot 使用同样的只读、无发布密钥路径；
+首次外部贡献是否批准执行由 GitHub 设置决定，执行许可不代表正确性批准。
 
-完整门禁检查 fmt/Clippy（含手动诊断 features）、workspace tests/doctest、i18n、
-数据兼容（含安装了 Lua/dkjson 的提取测试）、Web 类型/单测/Worker、真实 WASM 契约、打包与解包计算；
-本地 vendor 才能执行的对照可能跳过，不能据此声称这些公式已获验证。
-E2E 只由显式手动输入启用，PR、tag、nightly 默认不运行。
-界面交互改动仍按维护者指南在本地验证相关 spec，或显式请求云端 E2E。
+完整 CI 包括 fmt/Clippy（含诊断 features）、workspace tests/doctest、parity/reference 退步断言、
+活动数据生成产物的 byte-diff、i18n、数据兼容、Web 类型/单测/Worker、真实 WASM 契约与打包计算。
+缺少本地原始导出输入或 vendor 的项目会明确跳过，不能将其描述为已验收。
+它不等同于本地 `mise run gate` 的额外 accuracy 报告和全部本地输入。
+E2E 只在显式手动输入时运行；交互风险需要时选择相关本地 spec 或云端 E2E。
 
 ```bash
 mise run check:workflows                   # 自动化契约，不编译 Rust
@@ -223,7 +271,8 @@ mise run full                             # 显式本地 Rust 全量检查，不
 ```
 
 必须核对 run 对应的 SHA 和最终结果；dispatch 成功不等于检查通过。
-计算修复的完整数值测量仍由批次 `mise run gate` 负责，不因 PR 流程改变而逐次运行。
+计算修复的统计调查由协调者按批次选择；默认完整 CI 已检查 parity/reference 基线，
+需要额外 accuracy/triage 报告时再用本地 warm checkout 或相应分析任务。
 工作流迁移用 `mise run check:workflows`，无需 Cargo / WASM / E2E。
 其 actionlint 1.7.12 尚不认识 GitHub 已支持的 `queue: max`，只豁免该特定未知键错误，
 其余语法与表达式检查仍启用；队列语义见 [GitHub 文档](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)。
@@ -232,7 +281,7 @@ mise run full                             # 显式本地 Rust 全量检查，不
 
 流程服务于可审查的改动与及时反馈，不以表单、agent 数量或 review 轮次衡量质量。
 
-- 普通局部修复：问题/结果说明、一个能复现行为的定向检查、相关 CI 即可。
+- 普通局部修复：问题/结果说明、必要的回归用例与实际审阅/检查证据；本地执行按需要选择。
   文档或明显机械改动不额外要求回归测试、截图或独立 agent。
 - 跨边界、核心计算、持久化/导入兼容、工具链或发布改动：根据实际风险请独立 reviewer
   检查调用方和证据，说明检查过的 head/base 与未验证范围；建议与阻断问题分开。
@@ -246,7 +295,9 @@ mise run full                             # 显式本地 Rust 全量检查，不
 授权合并前可以运行 `mise run pr-ready <N>`：它只读 PR 当前状态、`PR gate`、其他失败/待定检查
 与冲突，并再次核对 head/base，输出带 `--match-head-commit` 的准确命令。它不评论、不合并、
 不验证“是否有独立推理”。这是减少误操作的辅助入口；维护者也可以直接核对同样的事实。
-base 更新后的集成结果由服务端 strict 规则及必要复验保障，不能靠固定表格证明。
+`pr-ready` 不要求每个普通 PR 都有合并前 full。若风险需要手动 full，单独核对该 run 的
+`head_sha`、结果与当前 base；分支 head 的结果不证明之后变化的 merge commit。
+base 更新后的保障取决于已配置的服务端规则和必要复验，不能从本地文件推断 strict 已启用。
 
 ## Issue 与自动化维护
 
@@ -257,7 +308,8 @@ Bug 表单收集可复现步骤、版本/数据版本、环境，以及相关构
 没有证据证明有用的事件模拟不自动进入实现，遵守静态模拟范围。
 
 Dependabot 每日分组检查 Actions 更新；Cargo、Rust toolchain、Web 与数据管线每月检查。
-当前 Action 使用经核对的最新稳定标签；升级 PR 和 manifest/lock/toolchain 改动进入完整门禁。没有自动合并或按年龄关闭已确认缺陷的机器人。
+当前 Action 使用经核对的最新稳定标签；升级 PR 运行全部轻量检查，master 合并后完整验证，
+高风险升级可先手动 full。没有自动合并或按年龄关闭已确认缺陷的机器人。
 不为流程形式引入收费 review 服务、贡献准入名单或带真实密钥的 fork 预览。
 
 ## 发布与部署
@@ -267,7 +319,8 @@ Dependabot 每日分组检查 Actions 更新；Cargo、Rust toolchain、Web 与�
 [release-policy.py](../devs/scripts/release-policy.py) 按 SemVer 判断升级，检查所有继承 workspace
 版本的应用/工具锁版本；远端 tag 查询失败会报错，不能当作“tag 不存在”。
 PR 升版要求 tag 未使用；master 的合并后验证可接受指向同一提交的现有 tag。
-升版、依赖、工具链 PR 会在合并前走完整门禁。
+升版、依赖、工具链 PR 默认运行全部轻量检查；风险需要时在合并前手动 full，
+master 合并后和发布 tag 各自执行完整验证。
 
 推送 `v*` tag 后先验证 tag/version/commit/lock 身份，再完整验证该提交；通过后
 从同一 run 下载 WASM 资产并校验 SHA256SUMS；上传前再次核对远端 tag 的 peeled SHA，随后附加到 GitHub Release。
@@ -379,4 +432,4 @@ mise exec -- cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakd
     优化前先测当前版本，保留输入、工具链、主机与原始采样，避免沿用旧版热点结论。
 - `mise run web package-wasm`：将已准备 WASM 与同步数据打包到 `.cache/wasm-release/`；`mise run web smoke-wasm-package` 解压后执行真实计算。`build-wasm` 校验源码、工具链、构建设置和产物记录，未变时直接复用；`mise run web build-wasm --force` 显式重建但不清 Cargo 缓存。打包继续校验源码 / 绑定指纹、实际 schema 和数据快照，来源 commit 保留编译时值。脚本改动运行 `mise exec -- node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`；发布流程见 [WASM 打包说明](wasm-package.md)。release workflow 在完整门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
 - `mise run web test:worker`：在实际 workerd 运行时测试 Worker，使用合成上游响应，无外网依赖。E2E 失败的截图与 trace 由 CI 上传为 `playwright-failure`。
-- 计划发版时，在功能 PR 中一并更新 workspace 版本。本地完成相关验证、审计与 PR 完整门禁后合并，再推送一次 tag；release workflow 验证后发布，稳定 v0 版本按部署规则上线，无需在 master 额外手动运行同一套 CI。
+- 计划发版时，在功能 PR 中一并更新 workspace 版本。按风险完成审阅和 PR 检查，必要时先手动 full；合并后 master 自动全量，发布 tag 仍须通过对应提交的完整验证。稳定 v0 版本按部署规则上线，不把旧分支的通过结果冒充为 tag 验证。

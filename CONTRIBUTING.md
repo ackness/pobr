@@ -41,26 +41,30 @@ same pinned versions.
 
 ## Checks
 
-Run the checks that match your change; a full workspace run is not required.
+Choose checks by the behavior at risk and their cost. Documentation needs diff/link
+review. Large changes and algorithms often benefit from focused tests or compilation
+before handoff; ordinary commits do not require a local product build.
 
 ```bash
-mise run verify build skills <filter>      # Selected tests, fmt and Clippy
-mise run regen                             # After editing a modifier rule
-mise run check:workflows                   # Workflow/automation changes; no Rust build
+mise exec -- cargo check --locked -p pobr-core --lib  # Optional targeted compiler check
+mise run verify build skills <filter>                # Optional tests, fmt and Clippy
+mise run regen                                       # Once when integrating a rule batch
+mise run check:workflows                             # Automation changes; no Rust build
 mise run web test <file>
-mise run web typecheck
 ```
 
-See [validation scope](docs/maintainer-guide.md) for the table of change types and their
-minimum checks, and the [development workflow](docs/development-workflow.md)
-for commands and caches.
+Add regression cases for changed behavior even when execution is deferred. Report
+what you inspected, actual commands/results and anything left unrun. A review or
+compiler check does not prove runtime assertions passed.
 
-Pull requests select checks by changed area. Dependency, toolchain, workspace
-manifest and workflow-policy changes run full validation automatically. Ordinary
-Rust/Web changes get the relevant lighter checks; local focused evidence remains
-your responsibility. `PR gate` rejects missing or unexpectedly skipped checks.
-Parity/accuracy measurement belongs to the batch gate, not every local change.
-See the [workflow guide](docs/development-workflow.md) for exact coverage.
+PRs select relevant quick checks. Rust uses formatting and `cargo check`; Web and
+automation use their relevant checks. Shared or unknown inputs select all quick
+areas. Master code changes run full CI; maintainers may request
+`mise run ci <pushed-ref>` before merging a risky batch. Nightly and tag validation
+also remain full. There is no need to repeat the same full run locally.
+`PR gate` rejects missing or unexpectedly skipped selected checks; it is a quick
+gate, not a full-integration claim. See [validation scope](docs/maintainer-guide.md)
+and [development workflow](docs/development-workflow.md).
 
 ## Pull requests and review
 
