@@ -19,6 +19,7 @@
 pub mod items;
 pub mod manifest;
 pub mod mods;
+pub mod native_player;
 pub mod native_runtime;
 pub mod skills;
 pub mod tree;
@@ -95,6 +96,7 @@ pub use manifest::{
 };
 pub use mods::{ModDef, ModStat, SpawnWeight, StatDef};
 pub use monster_resistances::{MonsterResistanceDef, MonsterResistancesDef};
+pub use native_player::{NativeActorBinding, NativePlayerContextDef};
 pub use native_runtime::NativeRuntimeContract;
 pub use parser_rules::{
     FlagPhraseDef, FlagTypeDef, FlagTypeModDef, FormDef, MOD_PARSER_RULES_SCHEMA,

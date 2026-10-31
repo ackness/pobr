@@ -366,8 +366,10 @@ fn native_runtime_assembled_catalog_loads_and_keeps_calculation_guard() {
         tree: "unused".into(),
         tree_sha256: "c".repeat(64),
         compiler_revision: "d".repeat(40),
+        player: None,
     };
-    let (base, receipt) = assemble(&input, &candidate, &official, &descriptions, &args).unwrap();
+    let (base, receipt) =
+        assemble(&input, &candidate, &official, &descriptions, None, &args).unwrap();
     let mut files = base
         .iter()
         .map(|(name, bytes)| (format!("base/{name}"), bytes.clone()))
@@ -413,10 +415,10 @@ fn native_runtime_coordinate_rounding_is_exact_and_null_slugs_are_not_definition
     assert!(tree::project(&input, &candidate, &official, &"a".repeat(64), "0.5.5.5").is_err());
 }
 
-struct Scratch(std::path::PathBuf);
+pub(super) struct Scratch(pub(super) std::path::PathBuf);
 static SCRATCH_SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 impl Scratch {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         let suffix = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()

@@ -3,9 +3,13 @@
 //! This produces queryable catalogs, not calculation admission or source approval.
 
 mod inputs;
+mod player;
+mod player_policy;
 mod skills;
 mod tree;
 
+#[cfg(test)]
+mod player_tests;
 #[cfg(test)]
 mod tests;
 
@@ -27,6 +31,7 @@ pub(crate) struct Args {
     tree: PathBuf,
     tree_sha256: String,
     compiler_revision: String,
+    player: Option<player::Args>,
 }
 
 pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, String> {
@@ -44,6 +49,9 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
                 "--official-tree",
                 "--official-tree-sha256",
                 "--compiler-revision",
+                "--player-context",
+                "--player-manifest-sha256",
+                "--player-source-lock-sha256",
             ]
             .contains(&flag.as_str()),
             &format!("unsupported native-runtime argument: {flag}"),
@@ -54,6 +62,11 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             &format!("missing value or duplicate argument: {flag}"),
         )?;
     }
+    let player = match (values.remove("--player-context"), values.remove("--player-manifest-sha256"), values.remove("--player-source-lock-sha256")) {
+        (None,None,None) => None,
+        (Some(root),Some(manifest_sha256),Some(source_lock_sha256)) => Some(player::Args { root: root.into(), manifest_sha256, source_lock_sha256 }),
+        _ => return Err("--player-context requires both external --player-manifest-sha256 and --player-source-lock-sha256".into()),
+    };
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
     Ok(Args {
         facts: super::Args {
@@ -68,6 +81,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         tree: take("--official-tree")?.into(),
         tree_sha256: take("--official-tree-sha256")?,
         compiler_revision: take("--compiler-revision")?,
+        player,
     })
 }
 
@@ -75,6 +89,9 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     trust::require_absent(&args.facts.out)?;
     let mut output = output::Output::prepare(&args.facts)?;
     output.protect(&args.descriptions)?;
+    if let Some(player) = &args.player {
+        output.protect(&player.root)?;
+    }
     output.protect(
         args.tree
             .parent()
@@ -92,6 +109,11 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     let official_tree = inputs::pinned_json(&args.tree, &args.tree_sha256, 16 * 1024 * 1024)?;
     let input = trust::verify(&args.facts)?;
     let candidate = convert::normalize(&input)?;
+    let player = args
+        .player
+        .as_ref()
+        .map(|args| player::verify(args, &input))
+        .transpose()?;
     let patch = input.manifest["source_identity"]["game_patch"]
         .as_str()
         .ok_or("missing game patch")?;
@@ -99,7 +121,14 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
         descriptions.manifest["source_identity"]["game_patch"] == patch,
         "descriptions and native facts patches differ",
     )?;
-    let (base, receipt) = assemble(&input, &candidate, &official_tree, &descriptions, &args)?;
+    let (base, mut receipt) = assemble(
+        &input,
+        &candidate,
+        &official_tree,
+        &descriptions,
+        player.as_ref(),
+        &args,
+    )?;
     // Every byte and every loader-visible domain is checked before reserving output.
     let mut memory = base
         .iter()
@@ -107,7 +136,13 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
         .collect::<BTreeMap<_, _>>();
     let manifest = manifest(patch, &base)?;
     memory.insert("manifest.json".into(), manifest.clone());
-    validate_runtime(memory)?;
+    let identity = validate_runtime(memory)?;
+    if player.is_some() {
+        receipt["format"] = "pobr-native-runtime-assembly-receipt/v2".into();
+        receipt["data_identity"] = serde_json::to_value(&identity).map_err(|e| e.to_string())?;
+        receipt["actor_policy"] = "selected-player-generic-ot-v1".into();
+        receipt["evaluation"] = "ConditionalSkillHitV1".into();
+    }
     let receipt_bytes = json_bytes(&receipt)?;
     output.reserve()?;
     output.write_base(&base)?;
@@ -128,6 +163,7 @@ fn assemble(
     candidate: &super::model::Candidate,
     official: &Value,
     descriptions: &inputs::Descriptions,
+    player: Option<&player::Player>,
     args: &Args,
 ) -> Result<(Files, Value), String> {
     let source_sha = sha256_hex(&input.manifest_bytes);
@@ -145,7 +181,7 @@ fn assemble(
         json_bytes(&projected_tree.meta)?,
     );
     let implementation = implementation_sha256();
-    let lock = json!({
+    let mut lock = json!({
         "format":"pobr-native-runtime-input-lock/v1",
         "game":"poe2", "realm":"INTERNATIONAL", "game_patch":patch,
         "facts":{"manifest_sha256":source_sha,"source_lock_sha256":sha256_hex(&input.lock_bytes)},
@@ -156,7 +192,7 @@ fn assemble(
         "compiler":{"revision_declaration":args.compiler_revision,"implementation_sha256":implementation},
         "profile":"sorceress-spark-level1-q0-v1"
     });
-    let coverage = json!({
+    let mut coverage = json!({
         "format":"pobr-native-runtime-coverage/v1", "production_ready":false,
         "calculation_admitted":false, "source_status":"unreviewed-acquisition-draft",
         "facts":{"tables":77,"passive_definitions":candidate.passives.len(),
@@ -173,7 +209,7 @@ fn assemble(
         ],
         "policy":"All unprojected data remains in the exact referenced canonical archive; absence is not effectless."
     });
-    let references = json!({
+    let mut references = json!({
         "format":"pobr-native-runtime-reference-index/v1",
         "archive":{"manifest_sha256":source_sha,"files":input.manifest["files"]},
         "descriptions":{"manifest_sha256":args.descriptions_sha256,"files":descriptions.manifest["files"],
@@ -185,7 +221,7 @@ fn assemble(
             "effect":"SparkPlayer","stat_set":"SparkPlayer","level":1,
             "evidence":"Physical stable-ID joins; BaseResolvedValues, never FloatStatsValues, supplies resolved damage."}
     });
-    let normalization = json!({
+    let mut normalization = json!({
         "format":"pobr-native-normalization/v1", "profile":"spark-level1-q0", "version":1,
         "rules":[
             "Stable-ID gem -> GemEffects -> GrantedEffects -> primary StatSet; no additional-set merging.",
@@ -198,14 +234,59 @@ fn assemble(
             "No vendor ordinal or compatibility statSetIndex is assigned; the branch retains its stable set_id."
         ]
     });
-    let rules = json!({"format":"pobr-native-rule-requirements/v1", "profile":"spark-level1-q0","version":1,
+    let mut rules = json!({"format":"pobr-native-rule-requirements/v1", "profile":"spark-level1-q0","version":1,
         "calculation_admitted":false,
         "required_own_stat_rules":["spell_minimum_base_lightning_damage","spell_maximum_base_lightning_damage",
             "base_number_of_projectiles","base_skill_effect_duration"],
         "passive_rule":"base_fire_damage_resistance_%",
         "policy":"This is a required-rule declaration, not certification of engine coverage or game correctness."});
-    let acquisition = json!({"facts":input.manifest["source_identity"]["acquisition"],
+    let mut acquisition = json!({"facts":input.manifest["source_identity"]["acquisition"],
         "descriptions":descriptions.manifest["source_identity"]["acquisition"]});
+    let player_pins = if let Some(player) = player {
+        let context = &player.context;
+        let context_bytes = json_bytes(context)?;
+        let context_sha = sha256_hex(&context_bytes);
+        let binding = player_policy::bind(context, context_sha.clone())?;
+        let binding_bytes = json_bytes(&binding)?;
+        let pins = NativePlayerArtifacts {
+            context_sha256: context_sha,
+            actor_binding_sha256: sha256_hex(&binding_bytes),
+            source_manifest_sha256: context.source_manifest_sha256.clone(),
+            source_lock_sha256: context.source_lock_sha256.clone(),
+            parent_manifest_sha256: context.parent_manifest_sha256.clone(),
+            parent_source_lock_sha256: context.parent_source_lock_sha256.clone(),
+        };
+        base.insert("native_player_context.json".into(), context_bytes);
+        base.insert("native_actor_binding.json".into(), binding_bytes);
+        lock["format"] = "pobr-native-runtime-input-lock/v2".into();
+        lock["player"] = json!({"manifest_sha256":pins.source_manifest_sha256,
+            "source_lock_sha256":pins.source_lock_sha256,"parent_manifest_sha256":pins.parent_manifest_sha256,
+            "parent_source_lock_sha256":pins.parent_source_lock_sha256,
+            "producer_revision":player::PRODUCER_REVISION,
+            "actor_policy":"selected-player-generic-ot-v1", "actor_binding_sha256":pins.actor_binding_sha256});
+        coverage["format"] = "pobr-native-runtime-coverage/v2".into();
+        coverage["player"] = json!({"context_sha256":pins.context_sha256,
+            "actor_binding_sha256":pins.actor_binding_sha256,"model_status":"conditional-model",
+            "raw_stats":context.facts.metadata_stats.len(),"starting_relations":context.facts.all_starting_relations.len(),
+            "policy":"Only selected generic OT critical bonus is normalized; every fact is retained with a finite profile disposition. Loading is not admission."});
+        coverage["missing_or_excluded"][0] = "Build calculation admission/persistence, actor pools/accuracy/requirements and effective cadence remain unavailable.".into();
+        references["format"] = "pobr-native-runtime-reference-index/v2".into();
+        references["player"] = json!({"manifest_sha256":pins.source_manifest_sha256,"files":player.manifest["files"],
+            "parent_manifest_sha256":pins.parent_manifest_sha256,"origin_policy":"player and parent namespaces are resolved separately",
+            "retained_archive":"base/native_player_context.json#/source_archive"});
+        normalization["format"] = "pobr-native-normalization/v2".into();
+        normalization["version"] = 2.into();
+        normalization["actor_policy"] = json!({"id":"selected-player-generic-ot-v1","artifact_sha256":pins.actor_binding_sha256,
+            "rule":"Parse the sole plain generic OT base_critical_hit_damage_bonus lexical token as a finite explicit extra-damage bonus. Never infer AO-to-OT inheritance or full constants."});
+        rules["format"] = "pobr-native-rule-requirements/v2".into();
+        rules["version"] = 2.into();
+        rules["actor_policy_sha256"] = pins.actor_binding_sha256.clone().into();
+        rules["evaluation"] = "ConditionalSkillHitV1".into();
+        acquisition["player"] = player.manifest["source_identity"]["acquisition"].clone();
+        Some(pins)
+    } else {
+        None
+    };
     for (name, value) in [
         ("native_input_lock", lock),
         ("native_coverage", coverage),
@@ -220,7 +301,11 @@ fn assemble(
     let digest = |name: &str| sha256_hex(&base[&format!("{name}.json")]);
     let tree_resource = "Metadata/PassiveSkillGraph.psg";
     let mut contract = NativeRuntimeContract {
-        schema_version: NATIVE_RUNTIME_CONTRACT_VERSION,
+        schema_version: if player_pins.is_some() {
+            NATIVE_PLAYER_CONTRACT_VERSION
+        } else {
+            NATIVE_RUNTIME_CONTRACT_VERSION
+        },
         game: NativeGame::Poe2,
         realm: NativeRealm::International,
         game_patch: patch.into(),
@@ -238,25 +323,39 @@ fn assemble(
                     .into(),
             compatibility_tag: "0_5".into(),
         },
-        allowed_source_manifests: BTreeSet::from([source_sha]),
+        allowed_source_manifests: player_pins
+            .iter()
+            .flat_map(|p| {
+                [
+                    p.source_manifest_sha256.clone(),
+                    args.descriptions_sha256.clone(),
+                ]
+            })
+            .chain([source_sha])
+            .collect(),
         normalization: NativeProfilePin {
             profile: NativeProfile::SparkLevel1Q0,
-            version: 1,
+            version: if player_pins.is_some() { 2 } else { 1 },
             sha256: digest("native_normalization"),
         },
         rules: NativeProfilePin {
             profile: NativeProfile::SparkLevel1Q0,
-            version: 1,
+            version: if player_pins.is_some() { 2 } else { 1 },
             sha256: digest("native_rule_requirements"),
         },
         input_profile: NativeInputProfile::SorceressSparkLevel1Q0V1,
-        output_profile: NativeOutputProfile::SparkSingleHitCastCostV1,
+        output_profile: if player_pins.is_some() {
+            NativeOutputProfile::ConditionalSkillHitV1
+        } else {
+            NativeOutputProfile::SparkSingleHitCastCostV1
+        },
         coverage_sha256: digest("native_coverage"),
         reference_index_sha256: digest("native_reference_index"),
         acquisition: NativeAcquisition {
             status: NativeAcquisitionStatus::UnreviewedAcquisitionDraft,
             evidence_sha256: digest("native_acquisition"),
         },
+        player: player_pins,
         supplements: vec![NativeTreeSupplement {
             sha256: args.tree_sha256.clone(),
             game_patch: None,
@@ -294,10 +393,11 @@ fn manifest(patch: &str, base: &Files) -> Result<Vec<u8>, String> {
     })
 }
 
-fn validate_runtime(files: Files) -> Result<(), String> {
+fn validate_runtime(files: Files) -> Result<pobr_gamedata::DataIdentity, String> {
     let data = GameData::from_memory(files);
     let check = || -> Result<(), pobr_gamedata::LoadError> {
         data.validate_manifest()?;
+        pobr_gamedata::NativeData::load(&data)?;
         data.passive_nodes()?;
         data.passive_tree_meta()?;
         data.base_items()?;
@@ -312,7 +412,8 @@ fn validate_runtime(files: Files) -> Result<(), String> {
     trust::require(
         data.validate_calculation_admission().is_err(),
         "native calculation must remain unadmitted",
-    )
+    )?;
+    data.identity().cloned().map_err(|e| e.to_string())
 }
 
 fn implementation_sha256() -> String {
@@ -322,6 +423,29 @@ fn implementation_sha256() -> String {
         ("runtime/inputs.rs", include_bytes!("inputs.rs").as_slice()),
         ("runtime/tree.rs", include_bytes!("tree.rs").as_slice()),
         ("runtime/skills.rs", include_bytes!("skills.rs").as_slice()),
+        ("runtime/player.rs", include_bytes!("player.rs").as_slice()),
+        (
+            "player-producer-manifest.json",
+            include_bytes!("../../../tests/fixtures/native-facts/player-context-manifest.json")
+                .as_slice(),
+        ),
+        (
+            "runtime/player_policy.rs",
+            include_bytes!("player_policy.rs").as_slice(),
+        ),
+        (
+            "runtime/player-stat-policy.json",
+            include_bytes!("player-stat-policy.json").as_slice(),
+        ),
+        (
+            "catalog/native_player.rs",
+            include_bytes!("../../../../../crates/pobr-data/src/catalog/native_player.rs")
+                .as_slice(),
+        ),
+        (
+            "gamedata/native.rs",
+            include_bytes!("../../../../../crates/pobr-gamedata/src/native.rs").as_slice(),
+        ),
         ("main.rs", include_bytes!("../../main.rs").as_slice()),
     ] {
         source.extend_from_slice(name.as_bytes());

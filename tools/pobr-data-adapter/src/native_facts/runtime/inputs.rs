@@ -16,6 +16,10 @@ pub(super) struct Descriptions {
 }
 
 pub(super) fn pinned_json(path: &Path, expected: &str, cap: u64) -> Result<Value, String> {
+    strict_json(&pinned_bytes(path, expected, cap)?)
+}
+
+pub(super) fn pinned_bytes(path: &Path, expected: &str, cap: u64) -> Result<Vec<u8>, String> {
     check_sha(expected)?;
     let mut bytes = Vec::new();
     open(path, cap)?
@@ -23,7 +27,7 @@ pub(super) fn pinned_json(path: &Path, expected: &str, cap: u64) -> Result<Value
         .map_err(|e| e.to_string())?;
     require(bytes.len() as u64 <= cap, "supplement exceeds byte limit")?;
     require(sha256_hex(&bytes) == expected, "supplement sha256 mismatch")?;
-    strict_json(&bytes)
+    Ok(bytes)
 }
 
 pub(super) fn descriptions(root: &Path, expected: &str) -> Result<Descriptions, String> {

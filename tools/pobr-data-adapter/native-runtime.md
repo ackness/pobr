@@ -72,9 +72,73 @@ and the schema-4 memory loader must pass before output reservation. The manifest
 and final `assembly-receipt.json` follow base writes. An interrupted directory
 without the final receipt is incomplete.
 
-Sources remain unreviewed and `production_ready: false`. This establishes
-assembly/integrity/domain loading, not selected actor-template binding, resource
-initialization formulas, critical/timing outputs, build/save/export binding,
-general gameplay accuracy, China numerical coverage or browser performance.
-Complete the coordinated admission checks before enabling native calculation;
-copying legacy defaults is not a substitute.
+Sources remain unreviewed and `production_ready: false`. Ordinary calculation
+stays blocked for both contract versions. No pool/accuracy/requirement formula,
+server cadence, full DPS, build/save binding or CN numerical coverage is inferred.
+
+## Opt-in player context (native contract v2)
+
+Add all three flags to the command above:
+
+```sh
+  --player-context /path/to/repoe-native-player-context-package \
+  --player-manifest-sha256 <external-manifest-byte-pin> \
+  --player-source-lock-sha256 <external-player-source-lock-byte-pin>
+```
+
+Without these flags, the existing query-only v1 contract remains the default.
+Its absent `player` extension is omitted from serialization and canonical hashes.
+V2 still uses manifest schema4; it requires sealed `native_player_context.json`
+and `native_actor_binding.json`, version2 normalization/rules, complete artifact
+pins, and the allowed player plus exact parent source manifests. V2 artifacts
+under v1 fail even when they are unlisted. Neither version enters `BuildData`
+or `load_ruleset` calculation.
+
+The player consumer binds the 14 fixed producer fingerprints at RePoE cf190d05,
+reuses the 117-source decoder verifier, authenticates the complete eight-file
+inventory against the external manifest pin and the separate external lock pin,
+and compares the embedded parent manifest byte-for-byte with the verified v4
+input. Player and parent game/realm/patch must agree. Reference origins resolve
+against separate archives with exact table, physical row, stable ID and pointer.
+Consumed physical tables and canonical retained metadata lines are cross-checked
+against their projections. Every UTF-16 line/resource fingerprint and assignment
+value span is checked; duplicate or ambiguous critical assignments fail.
+This consumes a pinned package, without re-decoding DAT or claiming raw source
+review. `tests/check_native_player_sources.py` is a read-only standard-library
+receipt checker, not a Rust replay or source approval.
+
+The selected identity is exactly `Metadata/Characters/Int/IntFourb` (Character7)
+and AO `Metadata/Characters/Int/IntFourB.ao`. The IntFourB→Character→Parent AO
+chain and independent Character.ot remain distinct. Character1's Witch override
+cannot bind this actor. All six starting relations and twelve ordered choices
+remain references; selected row2 options2779/1146 are never autogranted.
+
+`NativePlayerContextDef` retains typed source facts/metadata/local physical tables
+and all eight original JSON texts. The separate `NativeActorBinding` names
+`selected-player-generic-ot-v1` for `ConditionalSkillHitV1`, with status
+`conditional-model`. It normalizes only the sole plain generic OT
+`base_critical_hit_damage_bonus` lexical token into a finite explicit extra-damage
+bonus. The amount is source-derived. Critical glossary definitions and exact
+assignment/path/UTF-16 provenance remain retained. Applying this separate OT
+quantity to the selected actor is a PoBR assumption, never an inferred AO→OT
+inheritance edge or effective metadata merge.
+
+All99 plain Stats have explicit per-key dispositions in `player-stat-policy.json`;
+unknown/scoped metadata, character fields and starting relationships remain
+retained with local dispositions. Charges/rampage, PvP, delirium and other
+excluded conditions remain inactive; defence, recovery, contact probability,
+payment timing and ailment outputs remain outside this evaluation. An unknown
+plain key fails source-policy normalization. Relevant unresolved inputs still
+block the later build admission; an unused fact is never globally effectless.
+The no-override policy excludes gear, supports, allocations, ascendancy, infusion,
+buffs, charges, rampage, quests, PvP, delirium, events, movement, cutscenes and
+external modifiers. Mana/use does not certify payment instant or affordability;
+a successful damaging hit does not guarantee contact.
+
+`pobr_gamedata::NativeData::load(&GameData)` loads immutable typed catalogs,
+context and policy with private validity-bearing state. It returns v1 without
+actor defaults, and rejects legacy data, native patches and malformed v2 inputs.
+It does not construct `RuntimeConstants`/`BuildData` or call `load_ruleset`.
+Its identity getter returns the final `GameData` digest; the assembly key remains
+separate. V2's receipt records that final identity outside the self-hashed
+contract. Loading is not build admission, persistence or calculation authority.

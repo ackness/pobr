@@ -4,9 +4,11 @@
 //! Schema 4 requires an immutable native contract, without calculation admission.
 //! The manifest lives at the version root and is never overlaid by user patches.
 
+use pobr_data::catalog::native_player::{NATIVE_ACTOR_BINDING_PATH, NATIVE_PLAYER_CONTEXT_PATH};
 use pobr_data::catalog::native_runtime::{
-    NATIVE_COVERAGE_PATH, NATIVE_REFERENCE_INDEX_PATH, NATIVE_REQUIRED_DOMAINS,
-    NATIVE_RUNTIME_CONTRACT_VERSION, NATIVE_RUNTIME_PATH,
+    NATIVE_COVERAGE_PATH, NATIVE_PLAYER_CONTRACT_VERSION, NATIVE_REFERENCE_INDEX_PATH,
+    NATIVE_REQUIRED_DOMAINS, NATIVE_RUNTIME_CONTRACT_VERSION, NATIVE_RUNTIME_PATH,
+    NativeOutputProfile,
 };
 use pobr_data::catalog::{DataManifest, NATIVE_CATALOG_SCHEMA_VERSION, NativeRuntimeContract};
 use sha2::{Digest, Sha256};
@@ -118,12 +120,19 @@ impl GameData {
     }
 
     fn native_contract_present(&self) -> Result<bool, LoadError> {
-        let path = self.root().join(NATIVE_RUNTIME_PATH);
-        match self.read_bytes(&path) {
-            Ok(_) => Ok(true),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
-            Err(source) => Err(LoadError::Io { path, source }),
+        for relative in [
+            NATIVE_RUNTIME_PATH,
+            NATIVE_PLAYER_CONTEXT_PATH,
+            NATIVE_ACTOR_BINDING_PATH,
+        ] {
+            let path = self.root().join(relative);
+            match self.read_bytes(&path) {
+                Ok(_) => return Ok(true),
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(source) => return Err(LoadError::Io { path, source }),
+            }
         }
+        Ok(false)
     }
 
     pub(crate) fn snapshot_allows(&self, path: &std::path::Path) -> Result<bool, LoadError> {
@@ -301,11 +310,88 @@ impl GameData {
                 path: path.clone(),
                 source,
             })?;
-        if contract.schema_version != NATIVE_RUNTIME_CONTRACT_VERSION {
+        if ![
+            NATIVE_RUNTIME_CONTRACT_VERSION,
+            NATIVE_PLAYER_CONTRACT_VERSION,
+        ]
+        .contains(&contract.schema_version)
+        {
             return Err(invalid(format!(
                 "unsupported native contract version {}",
                 contract.schema_version
             )));
+        }
+        let player_paths = [NATIVE_PLAYER_CONTEXT_PATH, NATIVE_ACTOR_BINDING_PATH];
+        if contract.schema_version == NATIVE_RUNTIME_CONTRACT_VERSION {
+            if contract.player.is_some()
+                || contract.output_profile != NativeOutputProfile::SparkSingleHitCastCostV1
+            {
+                return Err(invalid(
+                    "v2 player artifacts cannot appear under native contract v1".into(),
+                ));
+            }
+            for relative in player_paths {
+                let path = self.root().join(relative);
+                match self.read_bytes(&path) {
+                    Ok(_) => {
+                        return Err(invalid(
+                            "v2 player artifacts cannot appear under native contract v1".into(),
+                        ));
+                    }
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(source) => return Err(LoadError::Io { path, source }),
+                }
+                if manifest.files.contains_key(relative)
+                    || manifest
+                        .domains
+                        .base
+                        .iter()
+                        .any(|d| relative == format!("base/{d}.json"))
+                {
+                    return Err(invalid(
+                        "v2 player artifacts cannot appear under native contract v1".into(),
+                    ));
+                }
+            }
+        } else {
+            let player = contract
+                .player
+                .as_ref()
+                .ok_or_else(|| invalid("native contract v2 requires player artifacts".into()))?;
+            if contract.output_profile != NativeOutputProfile::ConditionalSkillHitV1 {
+                return Err(invalid(
+                    "native contract v2 requires conditional-skill-hit-v1 output profile".into(),
+                ));
+            }
+            for (relative, digest) in [
+                (NATIVE_PLAYER_CONTEXT_PATH, &player.context_sha256),
+                (NATIVE_ACTOR_BINDING_PATH, &player.actor_binding_sha256),
+            ] {
+                if manifest.files.get(relative) != Some(digest)
+                    || !manifest
+                        .domains
+                        .base
+                        .iter()
+                        .any(|d| relative == format!("base/{d}.json"))
+                {
+                    return Err(invalid(format!(
+                        "native v2 artifact missing or digest disagrees with inventory: {relative}"
+                    )));
+                }
+            }
+            if player.parent_manifest_sha256 != contract.tree.source_manifest_sha256
+                || !contract
+                    .allowed_source_manifests
+                    .contains(&player.source_manifest_sha256)
+                || !contract
+                    .allowed_source_manifests
+                    .contains(&player.parent_manifest_sha256)
+            {
+                return Err(invalid(
+                    "native player and exact parent source manifests must be explicitly allowed"
+                        .into(),
+                ));
+            }
         }
         if contract.game_patch != manifest.poe_version
             || contract.game_patch.split('.').count() < 2
@@ -343,7 +429,7 @@ impl GameData {
             ));
         }
         for profile in [&contract.normalization, &contract.rules] {
-            if profile.version != 1 {
+            if profile.version != contract.schema_version {
                 return Err(invalid(format!(
                     "unsupported native profile version {}",
                     profile.version
@@ -362,6 +448,16 @@ impl GameData {
             contract.reference_index_sha256.as_str(),
             contract.acquisition.evidence_sha256.as_str(),
         ];
+        if let Some(player) = &contract.player {
+            digests.extend([
+                player.context_sha256.as_str(),
+                player.actor_binding_sha256.as_str(),
+                player.source_manifest_sha256.as_str(),
+                player.source_lock_sha256.as_str(),
+                player.parent_manifest_sha256.as_str(),
+                player.parent_source_lock_sha256.as_str(),
+            ]);
+        }
         digests.extend(contract.allowed_source_manifests.iter().map(String::as_str));
         for supplement in &contract.supplements {
             if supplement.fields.is_empty()
@@ -399,6 +495,39 @@ impl GameData {
                     "native artifact digest disagrees with inventory: {file}"
                 )));
             }
+        }
+        if contract.schema_version == NATIVE_PLAYER_CONTRACT_VERSION {
+            // Every v2 interpretation/provenance sidecar is sealed, including rules.
+            for (relative, digest) in [
+                ("base/native_input_lock.json", &contract.source_lock_sha256),
+                (
+                    "base/native_normalization.json",
+                    &contract.normalization.sha256,
+                ),
+                ("base/native_rule_requirements.json", &contract.rules.sha256),
+                (
+                    "base/native_acquisition.json",
+                    &contract.acquisition.evidence_sha256,
+                ),
+            ] {
+                if manifest.files.get(relative) != Some(digest) {
+                    return Err(invalid(format!(
+                        "native v2 artifact digest disagrees with inventory: {relative}"
+                    )));
+                }
+            }
+            for supplement in &contract.supplements {
+                if !manifest
+                    .files
+                    .values()
+                    .any(|sha| sha == &supplement.match_evidence_sha256)
+                {
+                    return Err(invalid(
+                        "native v2 tree match evidence must be sealed".into(),
+                    ));
+                }
+            }
+            crate::native::validate_player(self, manifest, &contract)?;
         }
         if native_assembly_key(&contract) != contract.assembly_key {
             return Err(invalid("native assembly key mismatch".into()));

@@ -21,6 +21,7 @@
 pub mod domains;
 mod identity;
 pub mod manifest;
+mod native;
 pub mod overlay;
 pub mod paths;
 pub mod ruleset;
@@ -37,6 +38,7 @@ use pobr_data::catalog::{
 };
 
 pub use identity::DataIdentity;
+pub use native::NativeData;
 pub use overlay::{MergeError, merge};
 pub use ruleset::RuleSet;
 

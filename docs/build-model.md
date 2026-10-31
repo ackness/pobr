@@ -48,17 +48,18 @@ schema 1–3 不接受 native 契约；缺少 manifest 而仍有保留的 native
 旧加载器会拒绝 schema 4，不能把必需语义作为可忽略字段发布。
 
 契约类型是 [`NativeRuntimeContract`](../crates/pobr-data/src/catalog/native_runtime.rs)，
-当前版本严格为 1，字段无默认值，未知字段／profile／版本报错：
+支持 query-only v1 与显式 player-context v2。v1 的 `player` 扩展省略时，原序列化与 assembly key 不变；v2 必需该字段。未知字段／profile／版本报错：
 
 | 字段 | 约束与身份作用 |
 | --- | --- |
 | `game` / `realm` / `game_patch` | `poe2` / `INTERNATIONAL`；显式数字点分 patch 必须等于 manifest 的 `poe_version` |
 | `source_lock_sha256` / `descriptions_manifest_sha256` / `compiler_revision` | 不可变输入锁、描述输入和编译器 revision；不追随当前 registry |
 | `tree` / `allowed_source_manifests` | 精确原始图资源地址、资源摘要及被允许的来源 manifest；`compatibility_tag` 固定 `0_5`，不据此推导 patch |
-| `normalization` / `rules` | 显式 `spark-level1-q0` profile、严格版本 1 和各自解释／证据工件摘要 |
-| `input_profile` / `output_profile` | `sorceress-spark-level1-q0-v1` / `spark-single-hit-cast-cost-v1`；只是所需范围，不是已支持声明 |
+| `normalization` / `rules` | 显式 `spark-level1-q0` profile、与 native 契约相同的版本（1 或 2）和各自解释／证据工件摘要 |
+| `input_profile` / `output_profile` | 输入为 `sorceress-spark-level1-q0-v1`；输出 v1 为 `spark-single-hit-cast-cost-v1`、v2 为 `conditional-skill-hit-v1`，只是所需范围 |
 | `coverage_sha256` / `reference_index_sha256` | 必须分别等于 manifest 中两个固定 sidecar 文件的摘要 |
 | `acquisition` / `supplements` | 获取状态及证据摘要；显式补充列表，只允许树坐标／渲染元数据，patch 未知时必须写 `null` |
+| `player`（仅 v2 必需） | 分别封存 `NativePlayerContextDef` 与 `NativeActorBinding`，以及 player/parent manifest 与 source-lock 的精确摘要；v1 禁止夹带这两个工件 |
 | `assembly_key` | `native_assembly_key` 对完整 typed 契约（本字段置空）及 `pobr-native-assembly-v1` 标签的确定性 SHA-256 |
 
 固定输入 profile 限定 level-1 Sorceress 的 Spark 主分支 level 1 / quality 0，
@@ -71,6 +72,20 @@ schema 1–3 不接受 native 契约；缺少 manifest 而仍有保留的 native
 schema 4 即使通过 prechecked 内存入口也重新校验全部快照摘要。
 契约原字节及所有封存文件参与 `GameData::identity()`，磁盘／内存一致；
 最终运行时摘要不回写进契约，避免自引用。
+
+`pobr_gamedata::NativeData::load(&GameData)` 返回私有状态的不可变 typed catalogs、
+契约和最终 `DataIdentity`；v2 还提供完整 player context 与独立 actor binding，v1 的两者为 `None`。
+该入口直接读取封存域，拒绝 patch，不读取旧 overlay、不构造 `RuntimeConstants`、
+`BuildData` 或 ruleset。v2 的 source context、actor policy、输入锁、normalization、rules、
+获取证据及树匹配证据均必须在 inventory 中封存。所有原始 player JSON 文本、
+99 条 plain Stats、scoped/unknown metadata、六组 starting relations 和十二个 options 均保留。
+Starting options 不是免费分配或自动属性；Character7 不继承 Character1 的 class overrides。
+
+`selected-player-generic-ot-v1` 只把独立 generic OT 的唯一有限 lexical critical **bonus**
+应用到精确 actor/profile。它是 `conditional-model` 的 PoBR applicability assumption，
+并不证明 AO→OT 继承。policy 单独记录 identity、来源选择器、UTF-16 assignment、glossary 引用、
+条件／排除项和逐项 dispositions。未知且相关的输入仍需在后续 build admission 阶段阻断；
+加载成功不等于准入。成本只表示 Mana/use，成功 damaging hit 不保证 projectile contact。
 
 **当前没有 native 计算准入。** `GameData::load_ruleset()` 和 `BuildData::load()`
 在默认常量、旧文本规则或领域释放之前返回既有 `LoadError::Integrity`，
