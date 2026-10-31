@@ -1,0 +1,257 @@
+{
+  "bindings": [
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "LightStunMinimumChance",
+      "target_pointer": "/game/light_stun_minimum_chance"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "LightStunRatioScale",
+      "target_pointer": "/game/light_stun_ratio_scale"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "LightStunMinimumChancePlayer",
+      "target_pointer": "/game/light_stun_minimum_chance_player"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "LightStunRatioScalePlayer",
+      "target_pointer": "/game/light_stun_ratio_scale_player"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "HeavyStunDamageScale",
+      "target_pointer": "/game/heavy_stun_damage_scale"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "HeavyStunThresholdModifier",
+      "target_pointer": "/game/heavy_stun_threshold_modifier"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "HeavyStunModifierDuration",
+      "target_pointer": "/game/heavy_stun_modifier_duration"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "HeavyStunDamageScalePlayer",
+      "target_pointer": "/game/heavy_stun_damage_scale_player"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "HeavyStunThresholdModifierPlayer",
+      "target_pointer": "/game/heavy_stun_threshold_modifier_player"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "HeavyStunModifierDurationPlayer",
+      "target_pointer": "/game/heavy_stun_modifier_duration_player"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "PinDamageScale",
+      "target_pointer": "/game/pin_damage_scale"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "BaseShockMagnitude",
+      "target_pointer": "/game/shock_min_effect"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "ChillEffectMultiplier",
+      "target_pointer": "/game/chill_effect_multiplier"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "ChillMaxEffect",
+      "target_pointer": "/game/chill_max_effect"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "BaseBleedingDuration",
+      "target_pointer": "/game/bleed_base_duration"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "BaseIgniteDuration",
+      "target_pointer": "/game/ignite_base_duration"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "BasePoisonDuration",
+      "target_pointer": "/game/poison_base_duration"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "CullingStrikeNormalThreshold",
+      "target_pointer": "/game/culling_strike_normal_threshold"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "CullingStrikeMagicThreshold",
+      "target_pointer": "/game/culling_strike_magic_threshold"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "CullingStrikeRareThreshold",
+      "target_pointer": "/game/culling_strike_rare_threshold"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "CullingStrikeUniqueThreshold",
+      "target_pointer": "/game/culling_strike_unique_threshold"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "DefaultMaxEvadeChancePercent",
+      "target_pointer": "/game/evade_chance_cap"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "BasePercentDamageDeflected",
+      "target_pointer": "/game/deflect_effect"
+    },
+    {
+      "additional_divisors": [],
+      "file": "game_constants.json",
+      "source_id": "EffectiveMaxDamageForLeech",
+      "target_pointer": "/game/effective_max_damage_for_leech"
+    },
+    {
+      "additional_divisors": [
+        100
+      ],
+      "file": "game_constants.json",
+      "source_id": "BaseShockMagnitude",
+      "target_pointer": "/game/shock_default_effect"
+    },
+    {
+      "additional_divisors": [
+        100
+      ],
+      "file": "game_constants.json",
+      "source_id": "DefaultLowStatusThresholdPercent",
+      "target_pointer": "/game/low_pool_threshold"
+    },
+    {
+      "additional_divisors": [
+        60,
+        100
+      ],
+      "file": "game_constants.json",
+      "source_id": "BleedingHitDamagePercentPerMinute",
+      "target_pointer": "/game/bleed_base_fraction"
+    },
+    {
+      "additional_divisors": [
+        60,
+        100
+      ],
+      "file": "game_constants.json",
+      "source_id": "IgniteHitDamagePercentPerMinute",
+      "target_pointer": "/game/ignite_base_fraction"
+    },
+    {
+      "additional_divisors": [
+        60,
+        100
+      ],
+      "file": "game_constants.json",
+      "source_id": "PoisonHitDamagePercentPerMinute",
+      "target_pointer": "/game/poison_base_fraction"
+    },
+    {
+      "additional_divisors": [],
+      "allow_missing_leaf": true,
+      "file": "character_constants.json",
+      "source_id": "BaseWardRegenerationPercentPerMinute",
+      "target_pointer": "/ward_regeneration_per_minute_pct"
+    },
+    {
+      "additional_divisors": [],
+      "file": "jewel_radii.json",
+      "source_id": "PassiveTreeJewelDistanceMultiplier",
+      "target_pointer": "/distance_multiplier"
+    }
+  ],
+  "evidence": {
+    "existing_dto_semantics": [
+      {
+        "path": "crates/pobr-data/src/catalog/game_constants.rs",
+        "sha256": "9f0cccc920e72d0b686265356290a7d6af5761a3a444f9ab2f1ccf55104846c9"
+      },
+      {
+        "path": "crates/pobr-data/src/catalog/character_constants.rs",
+        "sha256": "80adf094b1ad282d66aabbffde1f1f7631aea12e72ff37a8a6e7468c097173f4"
+      },
+      {
+        "path": "crates/pobr-data/src/catalog/jewel_radii.rs",
+        "sha256": "4cfde40e4d505c8430f21657ab045f614c87f1397280815bc4b64c520359206a"
+      }
+    ],
+    "source_check": {
+      "path": ".cache/builddata-migration-stage/runtime-constants/source-check.json",
+      "sha256": "69ece5d1914c23c577260ef27a249cce0645ef154fa079c64263603a5de8487b"
+    }
+  },
+  "normalization": "value_over_divisor_then_divide_in_order/v1",
+  "schema": "pobr-ordinary-runtime-constants-policy/v1",
+  "source_files": [
+    {
+      "file": "game_constants.json",
+      "relative_path": "base/game_constants.json",
+      "schema": "pobr_data::catalog::GameConstantsDef",
+      "sha256": "7a90760b853088493bbcd377d274c5bf6582384c2ad8d59a30dbe0221f2e0e22"
+    },
+    {
+      "file": "character_constants.json",
+      "relative_path": "base/character_constants.json",
+      "schema": "pobr_data::catalog::CharacterConstantsDef",
+      "sha256": "e64bd63f5c2288447ff22e878297752aae8ec5ee9a6135e460f514914ed22150"
+    },
+    {
+      "file": "jewel_radii.json",
+      "relative_path": "base/jewel_radii.json",
+      "schema": "pobr_data::catalog::JewelRadiiDef",
+      "sha256": "00c1e71af6666521c2e1fc3afd7af7f5eb9cb14b1a4537dbb44e8f2de6d7d336"
+    }
+  ],
+  "source_snapshot": {
+    "path": "data/0.5.5.4.2/manifest.json",
+    "schema_version": 3,
+    "sha256": "bfd31a4607da98af53b139ed101f31a67a3122e4520434fd2e3fda14672fcca4",
+    "snapshot_version": "0.5.5.4.2"
+  },
+  "statement": "Regenerate declared numeric fields only from exact target GameConstants Id/Value/Divisor and the existing DTO unit conversions. Preserve all other numeric model/character/monster assumptions, fields, arrays, historical radii and unknown Values from the three explicitly selected old snapshot files as fixed compatibility with original version. These retained values are not relabeled target client facts; no new mechanic, formula, default, geometry/actor law, whole-patch certification, complete runtime or adoption. Data acquisition remains draft.",
+  "target": {
+    "facts_manifest_sha256": "56e71e00a72c8079d100b64861fc030206b12aaeb5ad655ccb4ab4e6726332d0",
+    "game_patch": "0.5.5.5"
+  }
+}

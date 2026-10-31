@@ -1,0 +1,142 @@
+{
+  "game_constants.json": {
+    "character": {
+      "base_maximum_all_resistances_pct": 901.25,
+      "base_critical_hit_damage_bonus": 901.25,
+      "maximum_physical_damage_reduction_pct": 901.25,
+      "energy_shield_recharge_rate_per_minute_pct": 901.25,
+      "energy_shield_recharge_delay_seconds": 901.25,
+      "mana_regeneration_rate_per_minute_pct": 901.25
+    },
+    "monster": {
+      "base_maximum_all_resistances_pct": 901.25,
+      "maximum_physical_damage_reduction_pct": 901.25,
+      "base_critical_hit_damage_bonus": 901.25,
+      "melee_hit_stun_multiplier_pct": 901.25,
+      "physical_hit_stun_multiplier_pct": 901.25
+    },
+    "game": {
+      "resist_hard_cap": 901.25,
+      "resist_floor": 901.25,
+      "server_tick_seconds": 901.25,
+      "armour_ratio": 901.25,
+      "block_chance_cap": 901.25,
+      "dot_dps_cap": 901.25,
+      "shock_min_effect": 901.25,
+      "shock_default_effect": 901.25,
+      "bleed_base_fraction": 901.25,
+      "bleed_base_duration": 901.25,
+      "ignite_base_fraction": 901.25,
+      "ignite_base_duration": 901.25,
+      "poison_base_fraction": 901.25,
+      "poison_base_duration": 901.25,
+      "evade_chance_cap": 901.25,
+      "deflection_chance_cap": 901.25,
+      "deflect_effect": 901.25,
+      "dodge_chance_cap": 901.25,
+      "avoid_chance_cap": 901.25,
+      "suppression_chance_cap": 901.25,
+      "suppression_effect": 901.25,
+      "accuracy_falloff_start": 901.25,
+      "accuracy_falloff_end": 901.25,
+      "max_accuracy_range_penalty": 901.25,
+      "chill_max_effect": 901.25,
+      "chill_effect_multiplier": 901.25,
+      "low_pool_threshold": 901.25,
+      "leech_rate_base": 901.25,
+      "effective_max_damage_for_leech": 901.25,
+      "culling_strike_normal_threshold": 901.25,
+      "culling_strike_magic_threshold": 901.25,
+      "culling_strike_rare_threshold": 901.25,
+      "culling_strike_unique_threshold": 901.25,
+      "min_stun_chance_needed": 901.25,
+      "stun_base_mult": 901.25,
+      "stun_base_duration_seconds": 901.25,
+      "light_stun_minimum_chance_player": 901.25,
+      "light_stun_ratio_scale_player": 901.25,
+      "light_stun_minimum_chance": 901.25,
+      "light_stun_ratio_scale": 901.25,
+      "heavy_stun_damage_scale_player": 901.25,
+      "heavy_stun_threshold_modifier_player": 901.25,
+      "heavy_stun_modifier_duration_player": 901.25,
+      "heavy_stun_damage_scale": 901.25,
+      "heavy_stun_threshold_modifier": 901.25,
+      "heavy_stun_modifier_duration": 901.25,
+      "pin_damage_scale": 901.25,
+      "neg_armour_dmg_bonus_cap": 901.25,
+      "ehp_calc_max_damage": 901.25,
+      "ehp_calc_max_iterations": 901.25,
+      "ehp_calc_speed_up": 901.25,
+      "normal_enemy_dps_mult": 901.25,
+      "max_hit_smoothing_passes": 901.25,
+      "base_block_chance_max": 901.25,
+      "charm_limit_cap": 901.25,
+      "buff_expiration_slow_cap": 901.25
+    },
+    "unknown/~field": {
+      "nested": [
+        null,
+        false,
+        0,
+        -8
+      ],
+      "opaque": "keep"
+    }
+  },
+  "character_constants.json": {
+    "base_life_constant": 901.25,
+    "life_per_level": 901.25,
+    "life_per_strength": 901.25,
+    "base_mana_constant": 901.25,
+    "mana_per_level": 901.25,
+    "mana_per_intelligence": 901.25,
+    "base_accuracy_constant": 901.25,
+    "accuracy_per_level": 901.25,
+    "accuracy_per_dexterity": 901.25,
+    "base_evasion": 901.25,
+    "strength_per_level": 901.25,
+    "dexterity_per_level": 901.25,
+    "intelligence_per_level": 901.25,
+    "unknown/~field": {
+      "nested": [
+        null,
+        false,
+        0,
+        -8
+      ],
+      "opaque": "keep"
+    }
+  },
+  "jewel_radii.json": {
+    "distance_multiplier": 901.25,
+    "tree_versions": {
+      "old": [
+        {
+          "label": "Second",
+          "inner": 4,
+          "outer": 12,
+          "colour": "blue",
+          "extra": [
+            2,
+            1
+          ]
+        },
+        {
+          "label": "First",
+          "inner": 0,
+          "outer": 8,
+          "colour": "red"
+        }
+      ]
+    },
+    "unknown/~field": {
+      "nested": [
+        null,
+        false,
+        0,
+        -8
+      ],
+      "opaque": "keep"
+    }
+  }
+}

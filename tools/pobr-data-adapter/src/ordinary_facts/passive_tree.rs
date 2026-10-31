@@ -4,7 +4,7 @@ mod policy;
 mod prepared;
 mod source;
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
-mod tests;
+pub(super) mod tests;
 
 use super::stat_set_codec::read_pinned;
 use crate::native_facts::reader::{self, VerifiedFacts};

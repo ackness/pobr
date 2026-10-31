@@ -33,6 +33,9 @@ target support-gating boolean, described in [ordinary-minion-links.md](ordinary-
 `--ordinary-domain passive-tree` preserves the complete prepared tree and metadata
 with narrowly qualified target native fields, described in
 [ordinary-passive-tree.md](ordinary-passive-tree.md).
+`--ordinary-domain runtime-constants` produces the three foundation constant files
+with explicit selected legacy inputs, described in
+[ordinary-runtime-constants.md](ordinary-runtime-constants.md).
 Each call produces only its
 selected domain for later assembly into an ordinary runtime package. It does
 not produce a complete GameData/BuildData package or a restricted runtime profile.
@@ -58,10 +61,10 @@ it preserves the Stats/Mods JSON, marker and receipt content except for the
 compiled implementation revision. The sections below describe Stats/Mods;
 base-items, skills, gem-quality, stat-set-codec, gem-effects, monster-resistances,
 totem-varieties, monster-scaling, skill-stat-map, skill-overrides, minions, spectres and
-granted-effect-minions and passive-tree use the same
+granted-effect-minions, passive-tree and runtime-constants use the same
 verification/output boundary with their own table subsets. Quality-only options
 require gem-quality; codec options require stat-set-codec, gem-effects,
-skill-stat-map, skill-overrides, minions, spectres, granted-effect-minions or passive-tree. The two branch-codec options are required by
+skill-stat-map, skill-overrides, minions, spectres, granted-effect-minions, passive-tree or runtime-constants. The two branch-codec options are required by
 skill-stat-map and skill-overrides and rejected by every other domain.
 
 ## Input and checks
