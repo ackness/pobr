@@ -42,3 +42,25 @@ Secondary utility values deliberately differ from their primary values and one
 is null. These are synthetic retention cases, not a claim that this F has those
 differences. Raw UtilityBuff references are copied only as unconverted facts;
 no referenced buff table or meaning is supplied by this fixture.
+
+## Skill fixture
+
+`skill-tables.json` has 78 invented rows across the fifteen selected skill tables,
+using the same F's consumed column metadata, renumbered columns and synthetic byte
+width 1. It contains no client extraction or complete runtime artifact. GPL's
+optional `BaseMultiplier` column is absent, as in this F; a separate test adds a
+synthetic declaration to exercise the existing fallback.
+
+Attack/support/minion/compound records use deliberately permuted foreign keys,
+repeated display names, source levels out of numeric order, labels, signed values,
+null active/label/name fields, repeated stats and flags, and a filtered gem with
+an otherwise retained effect. Additional-set merging must pair source positions
+before sorting levels. Synthetic nonpositive cost divisors and a falling listed
+requirement exercise the existing normalization and receipt policies; they are
+not claims about this F's values.
+
+A mutation test mirrors the real `MAASBaronEndgameBasic` reference shape: one
+primary plus three occurrences of the same additional set. Table identities and
+level keys remain unique; ordered-reference multiplicity must survive. A test-only
+flattened directory compares the original raw Path wrappers on the same invented
+rows. The production fact path never writes or reads such a directory.

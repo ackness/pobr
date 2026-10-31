@@ -2,6 +2,7 @@
 
 mod base_items;
 mod convert;
+mod skills;
 
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 mod tests;
@@ -26,6 +27,7 @@ pub(crate) struct Args {
 enum Domain {
     StatsMods,
     BaseItems,
+    Skills,
 }
 
 impl Domain {
@@ -33,6 +35,7 @@ impl Domain {
         match self {
             Self::StatsMods => &convert::TABLES,
             Self::BaseItems => &base_items::TABLES,
+            Self::Skills => &skills::TABLES,
         }
     }
 
@@ -40,6 +43,7 @@ impl Domain {
         match self {
             Self::StatsMods => "ordinary-stats-mods",
             Self::BaseItems => "ordinary-base-items",
+            Self::Skills => "ordinary-skills",
         }
     }
 
@@ -47,6 +51,7 @@ impl Domain {
         match self {
             Self::StatsMods => "Stats/Mods",
             Self::BaseItems => "base-items",
+            Self::Skills => "skills",
         }
     }
 }
@@ -74,6 +79,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     let domain = match values.remove("--ordinary-domain").as_deref() {
         None | Some("stats-mods") => Domain::StatsMods,
         Some("base-items") => Domain::BaseItems,
+        Some("skills") => Domain::Skills,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
@@ -140,6 +146,21 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                     "Only base-item DTO fields and required joins from the selected eleven physical tables were converted; other foreign keys are not certified.",
                     "Physical row references are distinct from stable IDs. Unmapped fields remain in the pinned source; the receipt lists their payload/column/row scope.",
                     "Charm inherent effects are unavailable in this slice; empty charm_buff is not a claim of no effect or complete base-item semantics.",
+                    "Acquisition status/evidence is copied unchanged. Fingerprints and conversion do not upgrade draft acquisition, prove full runtime completeness or adopt data.",
+                    "No runtime manifest, vendor fallback, download, CURRENT update, calculation model or schema-4 admission change.",
+                ],
+            )
+        }
+        Domain::Skills => {
+            let converted = skills::convert(&input)?;
+            (
+                converted.base,
+                converted.receipt,
+                "pobr_data::catalog::{SkillGemDef,GrantedEffectDef,SkillLevelDef,SkillStatSetDef,CostTypeDef}",
+                vec![
+                    "Only the selected fifteen skill tables were read; physical facts feed the original ordinary converters after strict validation.",
+                    "All skill families are considered; no restricted skill profile or stat whitelist is used. Compatibility gaps and original conversion exclusions remain explicit in the receipt.",
+                    "Quality applicability, vendor set ordinals, prepared skill/minion overrides and language assets remain pending; no other patch's assets are substituted.",
                     "Acquisition status/evidence is copied unchanged. Fingerprints and conversion do not upgrade draft acquisition, prove full runtime completeness or adopt data.",
                     "No runtime manifest, vendor fallback, download, CURRENT update, calculation model or schema-4 admission change.",
                 ],
@@ -239,6 +260,35 @@ fn implementation_sha256() -> String {
             include_bytes!("ordinary_facts/base_items.rs").as_slice(),
         ),
         (
+            "ordinary_facts/skills.rs",
+            include_bytes!("ordinary_facts/skills.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/skills/validation.rs",
+            include_bytes!("ordinary_facts/skills/validation.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/skills/receipt.rs",
+            include_bytes!("ordinary_facts/skills/receipt.rs").as_slice(),
+        ),
+        ("skills/mod.rs", include_bytes!("skills/mod.rs").as_slice()),
+        (
+            "skills/gems.rs",
+            include_bytes!("skills/gems.rs").as_slice(),
+        ),
+        (
+            "skills/effects.rs",
+            include_bytes!("skills/effects.rs").as_slice(),
+        ),
+        (
+            "skills/levels.rs",
+            include_bytes!("skills/levels.rs").as_slice(),
+        ),
+        (
+            "skills/stat_sets.rs",
+            include_bytes!("skills/stat_sets.rs").as_slice(),
+        ),
+        (
             "ordinary_facts/convert.rs",
             include_bytes!("ordinary_facts/convert.rs").as_slice(),
         ),
@@ -283,6 +333,10 @@ fn implementation_sha256() -> String {
         (
             "catalog/items.rs",
             include_bytes!("../../../crates/pobr-data/src/catalog/items.rs").as_slice(),
+        ),
+        (
+            "catalog/skills.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/skills.rs").as_slice(),
         ),
         ("Cargo.toml", include_bytes!("../Cargo.toml").as_slice()),
         (

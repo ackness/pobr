@@ -20,12 +20,9 @@
 //! | `level_requirement` | **no `.dat` column** (the real source `ItemExperiencePerLevel` isn't downloadable) | always None, filled in via extract-lua |
 
 use std::collections::BTreeMap;
-use std::path::Path;
 
 use pobr_data::catalog::SkillLevelDef;
 use serde::Deserialize;
-
-use crate::read_json;
 
 #[derive(Deserialize)]
 struct RawGrantedEffectPerLevel {
@@ -76,12 +73,11 @@ struct RawGrantedEffectPerLevel {
 /// [`super::stat_sets::crit_from_statset_levels`] — crit chance lives at the
 /// stat-set level in `.dat`, and is joined against this table by (effect, level).
 pub(super) fn adapt_levels(
-    en: &Path,
+    en: &(impl super::SkillTables + ?Sized),
     effect_id_by_index: &[String],
     crit_by_effect: &BTreeMap<String, BTreeMap<u32, f64>>,
 ) -> Result<(BTreeMap<String, Vec<SkillLevelDef>>, usize), String> {
-    let raw_levels =
-        read_json::<Vec<RawGrantedEffectPerLevel>>(&en.join("GrantedEffectsPerLevel.json"))?;
+    let raw_levels = en.read_table::<RawGrantedEffectPerLevel>("GrantedEffectsPerLevel")?;
     let level_rows_total = raw_levels.len();
     let mut levels: BTreeMap<String, Vec<SkillLevelDef>> = BTreeMap::new();
     for raw in raw_levels {

@@ -4,7 +4,9 @@
 `StatDef`, `ModDef`, `ModStat` and `SpawnWeight` JSON shapes by default. Add
 `--ordinary-domain stats-mods` to select that same domain explicitly, or
 `--ordinary-domain base-items` for the existing item DTOs described in
-[ordinary-base-items.md](ordinary-base-items.md). Each call produces only its
+[ordinary-base-items.md](ordinary-base-items.md), or `--ordinary-domain skills`
+for the five ordinary skill files described in [ordinary-skills.md](ordinary-skills.md).
+Each call produces only its
 selected domain for later assembly into an ordinary runtime package. It does
 not produce a complete GameData/BuildData package or a restricted runtime profile.
 
@@ -27,7 +29,7 @@ unchanged.
 An invalid, missing-value or repeated `--ordinary-domain` is an error. Omitting
 it preserves the Stats/Mods JSON, marker and receipt content except for the
 compiled implementation revision. The sections below describe Stats/Mods;
-base-items uses the same verification/output boundary with its own table subset.
+base-items and skills use the same verification/output boundary with their own table subsets.
 
 ## Input and checks
 

@@ -29,12 +29,26 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use pobr_data::catalog::{GrantedEffectDef, SkillGemDef, SkillLevelDef};
-use serde::Deserialize;
+use serde::{Deserialize, de::DeserializeOwned};
 
 use crate::read_json;
 
 pub use effects::adapt_cost_types;
+pub(crate) use effects::adapt_cost_types_from;
 pub use stat_sets::adapt_stat_sets;
+pub(crate) use stat_sets::adapt_stat_sets_from;
+
+/// Supply parsed rows to the existing skill converters. Physical facts implement
+/// this only after their envelope, columns, values and joins have been checked.
+pub(crate) trait SkillTables {
+    fn read_table<T: DeserializeOwned>(&self, table: &str) -> Result<Vec<T>, String>;
+}
+
+impl SkillTables for Path {
+    fn read_table<T: DeserializeOwned>(&self, table: &str) -> Result<Vec<T>, String> {
+        read_json(&self.join(format!("{table}.json")))
+    }
+}
 
 // Raw .dat JSON row structures shared across submodules (only the columns we need)
 
@@ -90,16 +104,25 @@ pub struct SkillsBundle {
 
 /// Adapts skill gems + granted effects + Traditional Chinese skill names from the raw tables (the orchestration entry point).
 pub fn adapt_skills(en: &Path, tw: &Path) -> Result<SkillsBundle, String> {
+    adapt_skills_from(en, Some(tw))
+}
+
+/// Use the same converters with authenticated in-memory rows; names are optional
+/// because an ordinary fact domain does not produce a translation sidecar.
+pub(crate) fn adapt_skills_from(
+    en: &(impl SkillTables + ?Sized),
+    tw: Option<&Path>,
+) -> Result<SkillsBundle, String> {
     // Foreign-key resolution tables shared across submodules
-    let base_rows = read_json::<Vec<RawBaseItemId>>(&en.join("BaseItemTypes.json"))?;
+    let base_rows = en.read_table::<RawBaseItemId>("BaseItemTypes")?;
     let base_ids = id_lookup_from_base(&base_rows);
-    let active_skills = read_json::<Vec<RawActiveSkillName>>(&en.join("ActiveSkills.json"))?;
+    let active_skills = en.read_table::<RawActiveSkillName>("ActiveSkills")?;
     // Skill-type enum: row index -> name (e.g. `Attack`/`Spell`/`Projectile`).
-    let skill_type_names: Vec<String> =
-        read_json::<Vec<RawBaseItemId>>(&en.join("ActiveSkillType.json"))?
-            .into_iter()
-            .map(|r| r.id)
-            .collect();
+    let skill_type_names: Vec<String> = en
+        .read_table::<RawBaseItemId>("ActiveSkillType")?
+        .into_iter()
+        .map(|r| r.id)
+        .collect();
 
     let (effects, effects_total, effect_id_by_index) =
         effects::adapt_effects(en, &active_skills, &skill_type_names)?;
@@ -108,7 +131,10 @@ pub fn adapt_skills(en: &Path, tw: &Path) -> Result<SkillsBundle, String> {
     let crit_by_effect = stat_sets::crit_from_statset_levels(en)?;
     let (levels, level_rows_total) =
         levels::adapt_levels(en, &effect_id_by_index, &crit_by_effect)?;
-    let zh_skill_names = effects::adapt_zh_skill_names(tw, &active_skills)?;
+    let zh_skill_names = match tw {
+        Some(tw) => effects::adapt_zh_skill_names(tw, &active_skills)?,
+        None => BTreeMap::new(),
+    };
 
     Ok(SkillsBundle {
         gems,
