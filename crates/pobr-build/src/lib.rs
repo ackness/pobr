@@ -42,6 +42,7 @@ pub mod import_report;
 pub mod jewel_tree;
 pub mod loadout;
 pub mod native_document;
+pub mod native_skill;
 pub mod party;
 pub mod provenance;
 pub mod reference_check;

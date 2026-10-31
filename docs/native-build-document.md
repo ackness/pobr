@@ -1,10 +1,11 @@
 # Native build document
 
 `pobr_build::native_document::NativeBuildRequest` stores the existing `Build`
-state with an explicit `pobr-native-build/v1` JSON discriminator. The current
-implementation provides strict encoding, decoding and dataset matching. Numerical
-admission and application dispatch are separate; saving a document does not make
-a native catalog calculable. Ordinary schema-4 calculation remains guarded.
+state with an explicit `pobr-native-build/v1` JSON discriminator. Strict encoding,
+decoding and dataset matching are separate from the bounded
+[`native_skill`](../crates/pobr-build/src/native_skill.rs) admission/calculation API.
+Saving a document does not make a native catalog calculable. Ordinary schema-4
+BuildData/ruleset calculation remains guarded; application dispatch is separate.
 
 The required envelope records:
 
@@ -20,10 +21,12 @@ The required envelope records:
 The dataset binding takes an explicitly supplied `GameData`. Missing, legacy or
 different data fails; no CURRENT lookup, same-patch substitution or branch ordinal
 fallback occurs. The selected actor/gem levels and identity mirrors must agree.
-The native admission layer must additionally check catalog ownership, model
-policy, profile restrictions and all calculation dependencies after every edit
-and reopen. Unsupported state can be retained by the document codec without
-being admitted as a calculation source.
+`admit_native_skill` checks catalog ownership, model policy, profile restrictions
+and calculation dependencies after every edit and reopen. It owns the validated
+request and resolved inputs behind private fields. It has no deserializer,
+caller-forgeable constructor, defaults or mutable getters. Unsupported state can
+be retained by the document codec without being admitted as a calculation source.
+The current numerical contract is [native conditional skill hit](native-skill-hit.md).
 
 `to_json()` canonicalizes object ordering and retains array order. Every emitted
 field, including nullable fields, is required on reopen. Duplicate keys (also
@@ -47,8 +50,9 @@ Focused check:
 mise run verify build lib native_document::tests::
 ```
 
-The regressions exercise complete in-memory round trips, source/selection and
+The codec regressions exercise complete in-memory round trips, source/selection and
 policy-sensitive fingerprints, retained inactive/Chinese state, malformed and
 conflicting input, duplicate/ignored fields, exact finite numbers and compatibility
-route rejection. Actual native dataset reopen/calculation belongs to the combined
-source/core/admission stage, not to these codec tests alone.
+route rejection. The admission suite adds portable sealed-fixture save/reopen and
+fresh disk/memory instances. Its explicit supplied-path test covers actual native
+dataset reopen/calculation; codec tests alone do not prove that path.

@@ -1,0 +1,162 @@
+{
+  "base_items": [
+    {
+      "drop_level": 1,
+      "height": 1,
+      "id": "Metadata/Items/Gems/SkillGemSpark",
+      "implicits": [],
+      "item_class": "Active Skill Gem",
+      "mod_domain": 38,
+      "name": "Spark",
+      "tags": [
+        "up_to_level_2_gem",
+        "up_to_level_8_gem"
+      ],
+      "width": 1
+    }
+  ],
+  "cost_types": [
+    {
+      "divisor": 1,
+      "id": "Mana"
+    }
+  ],
+  "granted_effect_levels": {
+    "SparkPlayer": [
+      {
+        "cost_amounts": [
+          5
+        ],
+        "crit_chance": 9.0,
+        "level": 1
+      }
+    ]
+  },
+  "granted_effect_stat_sets": [
+    {
+      "effect_id": "SparkPlayer",
+      "sets": [
+        {
+          "base_effectiveness": 1.2000000476837158,
+          "constant_stats": [
+            {
+              "stat": "base_skill_effect_duration",
+              "value": 2000.0
+            },
+            {
+              "stat": "spark_pathing_width_bounds",
+              "value": 20.0
+            },
+            {
+              "stat": "damage_hit_effect_index",
+              "value": 1009.0
+            },
+            {
+              "stat": "movement_speed_+%_final_while_performing_action",
+              "value": -70.0
+            },
+            {
+              "stat": "movement_speed_acceleration_+%_per_second_while_performing_action",
+              "value": 160.0
+            },
+            {
+              "stat": "movement_speed_while_performing_action_locked_duration_%",
+              "value": 50.0
+            },
+            {
+              "stat": "spark_min_time_between_target_clearing_ms",
+              "value": 660.0
+            }
+          ],
+          "implicit_stats": [
+            "base_is_projectile",
+            "projectiles_should_collide_with_flying_monsters",
+            "projectile_uses_contact_position",
+            "projectile_uses_contact_direction",
+            "check_for_targets_between_initiator_and_projectile_source",
+            "can_perform_skill_while_moving"
+          ],
+          "label": "Base",
+          "levels": [
+            {
+              "gem_level": 1,
+              "stats": [
+                {
+                  "stat": "spell_minimum_base_lightning_damage",
+                  "value": 1.0
+                },
+                {
+                  "stat": "spell_maximum_base_lightning_damage",
+                  "value": 10.0
+                },
+                {
+                  "stat": "base_number_of_projectiles",
+                  "value": 4.0
+                }
+              ]
+            }
+          ],
+          "set_id": "SparkPlayer"
+        }
+      ]
+    }
+  ],
+  "granted_effects": [
+    {
+      "active_skill": "spark",
+      "cast_time": 700,
+      "cost_types": [
+        0
+      ],
+      "displayed_name": "Spark",
+      "id": "SparkPlayer",
+      "is_support": false,
+      "skill_types": [
+        "Spell",
+        "Projectile",
+        "ProjectilesFromUser",
+        "Damage",
+        "Duration",
+        "Trappable",
+        "Totemable",
+        "Mineable",
+        "Multicastable",
+        "Triggerable",
+        "Lightning",
+        "Unleashable",
+        "Invokable",
+        "UsableWhileMoving"
+      ],
+      "stat_set": 38
+    }
+  ],
+  "skill_gems": [
+    {
+      "dex_pct": 0,
+      "gem_colour": 3,
+      "gem_effect_id": "Spark",
+      "gem_tags": [
+        "intelligence",
+        "grants_active_skill",
+        "spell",
+        "projectile",
+        "lightning",
+        "duration",
+        "repeatable"
+      ],
+      "gem_type": 0,
+      "granted_effect_id": "SparkPlayer",
+      "id": "Metadata/Items/Gems/SkillGemSpark",
+      "int_pct": 100,
+      "is_support": false,
+      "min_level_req": 1,
+      "str_pct": 0
+    }
+  ],
+  "source": {
+    "descriptions_manifest_sha256": "c8a475ba97b2fda3231ab05d23c4fdafa6b8593dec4a3d8307339b9cb6a794f2",
+    "parent_manifest_sha256": "56e71e00a72c8079d100b64861fc030206b12aaeb5ad655ccb4ab4e6726332d0",
+    "runtime_manifest_sha256": "4f19ab9e909689628ede6abefe95da5b11a0b7e8101891fcef75d02f1d4e3039",
+    "scope": "Small selected-skill catalog projection from the actual v2 pack; tests combine it with the existing explicitly synthetic player archive."
+  }
+}
