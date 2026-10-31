@@ -164,6 +164,70 @@ fn static_source_scopes_apply_through_existing_queries() {
 }
 
 #[test]
+fn damage_type_tagged_generic_and_critical_increases_are_rejected() {
+    for (name, source) in [
+        ("Damage", ConditionalHitSource::Spell),
+        ("AttackDamage", ConditionalHitSource::Attack),
+        ("SpellDamage", ConditionalHitSource::Spell),
+        ("ProjectileDamage", ConditionalHitSource::Spell),
+        ("AreaDamage", ConditionalHitSource::Spell),
+        ("MeleeDamage", ConditionalHitSource::Attack),
+        ("CriticalStrikeChance", ConditionalHitSource::Spell),
+        ("CriticalStrikeMultiplier", ConditionalHitSource::Spell),
+    ] {
+        for value in [0.0, 100.0] {
+            let mut modifiers = lightning(10.0, 20.0);
+            modifiers.push(
+                Modifier::number(name, ModType::Inc, value)
+                    .with_tag(ModTag::DamageType(DamageType::Lightning)),
+            );
+            let mut request = input(&modifiers, 0.25, 100.0);
+            request.context.source = source;
+            request.context.delivery_flags =
+                ModFlags::PROJECTILE | ModFlags::AREA | ModFlags::MELEE;
+            assert_eq!(
+                calculate_conditional_hit(&request).unwrap_err(),
+                ConditionalHitError::UnsupportedModifierTag { index: 2 },
+                "{name} INC {value} must not be accepted and silently omitted"
+            );
+        }
+    }
+}
+
+#[test]
+fn damage_type_tags_on_typed_ranges_and_elemental_increases_stay_type_scoped() {
+    let modifiers = [
+        Modifier::number("LightningDamageMin", ModType::Base, 10.0)
+            .with_tag(ModTag::DamageType(DamageType::Lightning)),
+        Modifier::number("LightningDamageMax", ModType::Base, 20.0)
+            .with_tag(ModTag::DamageType(DamageType::Lightning)),
+        Modifier::number("FireDamageMin", ModType::Base, 10.0)
+            .with_tag(ModTag::DamageType(DamageType::Fire)),
+        Modifier::number("FireDamageMax", ModType::Base, 20.0)
+            .with_tag(ModTag::DamageType(DamageType::Fire)),
+        Modifier::number("ElementalDamage", ModType::Inc, 100.0)
+            .with_tag(ModTag::DamageType(DamageType::Lightning)),
+    ];
+    let out = calculate_conditional_hit(&input(&modifiers, 0.25, 100.0)).unwrap();
+    for (damage_type, min, max) in [
+        (DamageType::Lightning, 20.0, 40.0),
+        (DamageType::Fire, 10.0, 20.0),
+    ] {
+        let row = out
+            .damage
+            .iter()
+            .find(|row| row.damage_type == damage_type)
+            .unwrap();
+        approximately(row.non_critical.min, min);
+        approximately(row.non_critical.max, max);
+        approximately(row.critical.min, min * 2.0);
+        approximately(row.critical.max, max * 2.0);
+    }
+    assert!(out.modifiers.iter().all(|evidence| evidence.counted));
+    approximately(out.conditional_weighted_mean, 56.25);
+}
+
+#[test]
 fn other_damage_types_and_critical_increases_use_common_readers() {
     let modifiers = [
         Modifier::number("FireDamageMin", ModType::Base, 20.0),

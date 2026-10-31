@@ -72,8 +72,10 @@ impl ConditionalHitContext {
 ///
 /// The closed modifier vocabulary is those five typed BASE ranges and INC for
 /// generic/type/elemental/attack/spell/projectile/area/melee damage and critical
-/// chance/bonus. Only static flags, keywords and `DamageType`/`SkillTypes` tags are
-/// allowed. MORE (including precision-table rules), flags, overrides, conditions,
+/// chance/bonus. Static flags, keywords and `SkillTypes` tags are allowed.
+/// `DamageType` tags require typed BASE ranges or typed/elemental INC names;
+/// generic/source damage and critical queries have no damage-type context.
+/// MORE (including precision-table rules), flags, overrides, conditions,
 /// dynamic tags, costs, counts and durations require another admitted contract.
 #[derive(Debug, Clone, Copy)]
 pub struct ConditionalSkillHitV1<'a> {
@@ -257,7 +259,17 @@ fn validate(
         }
         for tag in &modifier.tags {
             match tag {
-                ModTag::DamageType(_) => {}
+                ModTag::DamageType(_)
+                    if modifier.mod_type == ModType::Base
+                        || matches!(
+                            modifier.name.as_str(),
+                            "PhysicalDamage"
+                                | "LightningDamage"
+                                | "ColdDamage"
+                                | "FireDamage"
+                                | "ChaosDamage"
+                                | "ElementalDamage"
+                        ) => {}
                 ModTag::SkillTypes(types)
                     if (SkillTypes::ATTACK | SkillTypes::SPELL).contains(*types) => {}
                 _ => return Err(ConditionalHitError::UnsupportedModifierTag { index }),

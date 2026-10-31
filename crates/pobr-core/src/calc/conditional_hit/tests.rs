@@ -102,6 +102,12 @@ fn conditional_hit_rejects_missing_invalid_and_unadmitted_inputs_before_queries(
         Modifier::number("Unknown", ModType::Inc, 0.0),
         Modifier::number("Damage", ModType::More, 5.0),
         Modifier::number("Damage", ModType::Inc, f64::NAN),
+        Modifier::number("Damage", ModType::Inc, 0.0)
+            .with_tag(ModTag::DamageType(DamageType::Lightning)),
+        Modifier::number("SpellDamage", ModType::Inc, 10.0)
+            .with_tag(ModTag::DamageType(DamageType::Lightning)),
+        Modifier::number("CriticalStrikeChance", ModType::Inc, 100.0)
+            .with_tag(ModTag::DamageType(DamageType::Lightning)),
         Modifier::number("Damage", ModType::Inc, 5.0).with_tag(ModTag::condition("LowLife", false)),
         Modifier::number("Damage", ModType::Inc, 5.0)
             .with_tag(ModTag::multiplier("Mana", 1.0, None)),

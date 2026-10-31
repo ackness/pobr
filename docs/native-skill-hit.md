@@ -65,6 +65,9 @@ stats cannot pass. Only damage BASE modifiers enter the shared
 `calculate_conditional_hit` operation. Its target remains None and its required
 critical base comes from the selected rows/policy. Existing core rounding applies.
 No complete build, pool, accuracy, enemy, use-time, cost or server-tick path runs.
+The core entry permits damage-type tags only on typed BASE ranges and
+typed/elemental INC names. Generic/source damage and critical increases with
+those tags fail before queries, since their shared readers use an untyped context.
 
 The owned total-projectile BASE and duration BASE mappings supply intrinsic
 outputs directly from their numeric payloads. There is no added default
