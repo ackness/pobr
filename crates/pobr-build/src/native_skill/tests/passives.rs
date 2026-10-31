@@ -407,9 +407,7 @@ fn duplicate_unknown_missing_and_unsupported_mixed_selections_fail_whole() {
             *value_node.pointer_mut(pointer).unwrap() = value;
         }
         let bad: PassiveNodeDef = serde_json::from_value(value_node).unwrap();
-        let error = selected(&[good.clone(), bad], &[1, 2])
-            .err()
-            .expect("mixed set fails whole");
+        let error = selected(&[good.clone(), bad], &[1, 2]).expect_err("mixed set fails whole");
         assert!(
             error.to_string().contains("base/passive_tree.json#/1"),
             "{pointer}: {error}"
