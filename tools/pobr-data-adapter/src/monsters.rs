@@ -8,21 +8,21 @@ use pobr_data::catalog::{MonsterResistanceDef, MonsterResistancesDef};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
-struct RawVariety {
+pub(crate) struct RawVariety {
     #[serde(rename = "Id")]
-    id: String,
+    pub id: String,
     #[serde(rename = "MonsterType")]
-    monster_type: usize,
+    pub monster_type: usize,
 }
 
 #[derive(Deserialize)]
-struct RawMonsterType {
+pub(crate) struct RawMonsterType {
     #[serde(rename = "MonsterResistances")]
-    resistances: Vec<usize>,
+    pub resistances: Vec<usize>,
 }
 
 #[derive(Deserialize)]
-struct RawResistance {
+pub(crate) struct RawResistance {
     #[serde(rename = "Fire1")]
     fire: Vec<i32>,
     #[serde(rename = "Cold1")]
@@ -37,6 +37,15 @@ fn adapt(en: &Path) -> Result<MonsterResistancesDef, String> {
     let varieties: Vec<RawVariety> = crate::read_json(&en.join("MonsterVarieties.json"))?;
     let types: Vec<RawMonsterType> = crate::read_json(&en.join("MonsterTypes.json"))?;
     let raw: Vec<RawResistance> = crate::read_json(&en.join("MonsterResistances.json"))?;
+    adapt_rows(varieties, &types, raw)
+}
+
+/// Join parsed rows from either the original raw loader or authenticated physical facts.
+pub(crate) fn adapt_rows(
+    varieties: Vec<RawVariety>,
+    types: &[RawMonsterType],
+    raw: Vec<RawResistance>,
+) -> Result<MonsterResistancesDef, String> {
     let resistances: Vec<MonsterResistanceDef> = raw
         .into_iter()
         .enumerate()
@@ -74,10 +83,18 @@ fn adapt(en: &Path) -> Result<MonsterResistancesDef, String> {
             let resistance = resistances
                 .get(index)
                 .ok_or_else(|| format!("{}: missing MonsterResistances row {index}", variety.id))?;
-            combined.fire += resistance.fire;
-            combined.cold += resistance.cold;
-            combined.lightning += resistance.lightning;
-            combined.chaos += resistance.chaos;
+            let add = |column: &str, sum: i32, value: i32| {
+                sum.checked_add(value).ok_or_else(|| {
+                    format!(
+                        "{}: {column} i32 sum overflow at MonsterResistances row {index}",
+                        variety.id
+                    )
+                })
+            };
+            combined.fire = add("Fire1", combined.fire, resistance.fire)?;
+            combined.cold = add("Cold1", combined.cold, resistance.cold)?;
+            combined.lightning = add("Lightning1", combined.lightning, resistance.lightning)?;
+            combined.chaos = add("Chaos1", combined.chaos, resistance.chaos)?;
         }
         if monsters.insert(variety.id.clone(), combined).is_some() {
             return Err(format!("duplicate MonsterVarieties id: {}", variety.id));

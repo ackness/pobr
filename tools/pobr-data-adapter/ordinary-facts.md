@@ -12,6 +12,9 @@ for the verbatim legacy export-index sidecar in
 [ordinary-stat-set-codec.md](ordinary-stat-set-codec.md), or
 `--ordinary-domain gem-effects` for target gem links with explicit legacy display
 and owner compatibility in [ordinary-gem-effects.md](ordinary-gem-effects.md).
+`--ordinary-domain monster-resistances` produces normal-rarity base resistances
+through the original monster join, as described in
+[ordinary-monster-resistances.md](ordinary-monster-resistances.md).
 Each call produces only its
 selected domain for later assembly into an ordinary runtime package. It does
 not produce a complete GameData/BuildData package or a restricted runtime profile.
@@ -35,7 +38,7 @@ unchanged.
 An invalid, missing-value or repeated `--ordinary-domain` is an error. Omitting
 it preserves the Stats/Mods JSON, marker and receipt content except for the
 compiled implementation revision. The sections below describe Stats/Mods;
-base-items, skills, gem-quality, stat-set-codec and gem-effects use the same
+base-items, skills, gem-quality, stat-set-codec, gem-effects and monster-resistances use the same
 verification/output boundary with their own table subsets. Quality-only options
 require gem-quality; codec options require stat-set-codec or gem-effects.
 
