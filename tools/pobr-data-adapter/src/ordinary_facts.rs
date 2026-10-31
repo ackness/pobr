@@ -1,5 +1,6 @@
 //! Pinned physical facts to ordinary catalog domains, isolated from complete runtime packages.
 
+mod actors;
 mod base_items;
 mod convert;
 mod gem_effects;
@@ -59,6 +60,8 @@ enum Domain {
     MonsterScaling,
     SkillStatMap,
     SkillOverrides,
+    Minions,
+    Spectres,
 }
 
 impl Domain {
@@ -75,6 +78,7 @@ impl Domain {
             Self::MonsterScaling => &monster_scaling::TABLES,
             Self::SkillStatMap => &skill_stat_map::TABLES,
             Self::SkillOverrides => &skill_overrides::TABLES,
+            Self::Minions | Self::Spectres => &actors::TABLES,
         }
     }
 
@@ -91,6 +95,8 @@ impl Domain {
             Self::MonsterScaling => "ordinary-monster-scaling",
             Self::SkillStatMap => "ordinary-skill-stat-map",
             Self::SkillOverrides => "ordinary-skill-overrides",
+            Self::Minions => "ordinary-minions",
+            Self::Spectres => "ordinary-spectres",
         }
     }
 
@@ -107,6 +113,8 @@ impl Domain {
             Self::MonsterScaling => "monster-scaling",
             Self::SkillStatMap => "skill-stat-map",
             Self::SkillOverrides => "skill-overrides",
+            Self::Minions => "minions",
+            Self::Spectres => "spectres",
         }
     }
 }
@@ -151,6 +159,8 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("monster-scaling") => Domain::MonsterScaling,
         Some("skill-stat-map") => Domain::SkillStatMap,
         Some("skill-overrides") => Domain::SkillOverrides,
+        Some("minions") => Domain::Minions,
+        Some("spectres") => Domain::Spectres,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
     if domain != Domain::GemQuality
@@ -161,7 +171,12 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     }
     if !matches!(
         domain,
-        Domain::StatSetCodec | Domain::GemEffects | Domain::SkillStatMap | Domain::SkillOverrides
+        Domain::StatSetCodec
+            | Domain::GemEffects
+            | Domain::SkillStatMap
+            | Domain::SkillOverrides
+            | Domain::Minions
+            | Domain::Spectres
     ) && [
         "--codec-source",
         "--codec-source-sha256",
@@ -172,7 +187,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     .any(|flag| values.contains_key(*flag))
     {
         return Err(
-            "codec arguments require --ordinary-domain stat-set-codec, gem-effects, skill-stat-map or skill-overrides".into(),
+            "codec arguments require --ordinary-domain stat-set-codec, gem-effects, skill-stat-map, skill-overrides, minions or spectres".into(),
         );
     }
     if !matches!(domain, Domain::SkillStatMap | Domain::SkillOverrides)
@@ -206,6 +221,8 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
                 | Domain::GemEffects
                 | Domain::SkillStatMap
                 | Domain::SkillOverrides
+                | Domain::Minions
+                | Domain::Spectres
         ) {
             Some(CodecArgs {
                 source: take("--codec-source")?.into(),
@@ -242,6 +259,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     let mut legacy_gem_effects_bytes = None;
     let mut branch_codec_bytes = None;
     let mut legacy_skill_overrides_bytes = None;
+    let mut legacy_actors_bytes = None;
     // Complete validation and serialization before reserving any output.
     let (base, conversion, output_schema, scope) = match args.domain {
         Domain::StatsMods => {
@@ -485,6 +503,37 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 ],
             )
         }
+        Domain::Minions | Domain::Spectres => {
+            let codec = args
+                .codec
+                .as_ref()
+                .ok_or("missing actor source/policy arguments")?;
+            let catalog = if args.domain == Domain::Minions {
+                actors::Catalog::Minions
+            } else {
+                actors::Catalog::Spectres
+            };
+            let converted = actors::convert(&input, codec, catalog)?;
+            for parent in &converted.protected_parents {
+                output.protect(parent)?;
+            }
+            overlay = converted.overlay;
+            codec_policy_bytes = Some(converted.policy_bytes);
+            legacy_actors_bytes = Some(converted.source_bytes);
+            (
+                BTreeMap::new(),
+                converted.receipt,
+                "pobr_data::catalog::actors::{MinionsDef,MinionEntryDef}",
+                vec![
+                    "Only target MonsterVarieties/MonsterTypes/MonsterResistances/Tags/GrantedEffects are read. The declared 22 actor fields use target facts through a fixed archived recipe, without legacy numeric/default fallback.",
+                    "Curated catalog membership/aliases and every non-owned field remain fixed community interpretation with original metadata. Ordered tags, skill occurrences and resistance refs are preserved; no automatic creature admission, AI or new law is inferred.",
+                    "This catalog uses the archived first-resistance-reference/first-array-element projection. Further occurrences remain explicit unapplied evidence. The independent normal-resistance sum/injection domain and consumers are unchanged.",
+                    "Crit uses floor-based rounding with negative ties towards positive infinity; reservation preserves the original pow/sqrt/floor order and floating tails. Equality to old numeric text is never required.",
+                    "The original source and policy bytes are archived; metadata separates target fields, projection reference and legacy compatibility. No implicit vendor/Lua/evidence/candidate input, CURRENT update, source promotion or adoption.",
+                    "Source remains draft and the output incomplete. Remaining links/minion-level/tree/config assets, full target package, ordinary BD/Web/accuracy and minion-model/law certification remain separate.",
+                ],
+            )
+        }
     };
     let marker = reader::json_bytes(&json!({
         "schema": "pobr-domain-candidate/v1",
@@ -513,6 +562,9 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     }
     if let Some(bytes) = legacy_skill_overrides_bytes {
         sidecars.insert("legacy-skill-overrides.json", bytes);
+    }
+    if let Some(bytes) = legacy_actors_bytes {
+        sidecars.insert("legacy-actors.json", bytes);
     }
     let files: BTreeMap<_, _> = base
         .iter()
@@ -598,6 +650,22 @@ fn implementation_sha256() -> String {
         (
             "ordinary_facts.rs",
             include_bytes!("ordinary_facts.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/actors.rs",
+            include_bytes!("ordinary_facts/actors.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/actors/policy.rs",
+            include_bytes!("ordinary_facts/actors/policy.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/actors/projection.rs",
+            include_bytes!("ordinary_facts/actors/projection.rs").as_slice(),
+        ),
+        (
+            "catalog/actors.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/actors.rs").as_slice(),
         ),
         (
             "ordinary_facts/base_items.rs",

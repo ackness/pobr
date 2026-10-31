@@ -960,3 +960,37 @@ fn skill_overrides_does_not_change_quality_files_or_receipt() {
         );
     }
 }
+
+#[test]
+fn both_actor_catalogs_do_not_change_quality_files_or_receipt() {
+    let f = fixture();
+    run(args(&f)).unwrap();
+    for catalog in [
+        super::super::actors::Catalog::Minions,
+        super::super::actors::Catalog::Spectres,
+    ] {
+        let actor = super::super::actors::tests::fixture(catalog);
+        run(super::super::actors::tests::args(&actor, catalog)).unwrap();
+    }
+    run(Args {
+        out: f.root.join("after-actors"),
+        ..args(&f)
+    })
+    .unwrap();
+    let receipt = read(&f, "producer-receipt.json");
+    assert_eq!(receipt["files"].as_object().unwrap().len(), 5);
+    assert!(!f.root.join("out/legacy-actors.json").exists());
+    for path in receipt["files"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .chain(["producer-receipt.json"])
+    {
+        assert_eq!(
+            fs::read(f.root.join("out").join(path)).unwrap(),
+            fs::read(f.root.join("after-actors").join(path)).unwrap(),
+            "{path}"
+        );
+    }
+}

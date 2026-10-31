@@ -26,6 +26,8 @@ separately verified branch-codec identity, as described in
 `--ordinary-domain skill-overrides` combines target primary multipliers with
 explicit fixed prepared compatibility, as described in
 [ordinary-skill-overrides.md](ordinary-skill-overrides.md).
+`--ordinary-domain minions` and `--ordinary-domain spectres` share the actor-field
+producer with fixed curated membership, described in [ordinary-actors.md](ordinary-actors.md).
 Each call produces only its
 selected domain for later assembly into an ordinary runtime package. It does
 not produce a complete GameData/BuildData package or a restricted runtime profile.
@@ -50,10 +52,11 @@ An invalid, missing-value or repeated `--ordinary-domain` is an error. Omitting
 it preserves the Stats/Mods JSON, marker and receipt content except for the
 compiled implementation revision. The sections below describe Stats/Mods;
 base-items, skills, gem-quality, stat-set-codec, gem-effects, monster-resistances,
-totem-varieties, monster-scaling, skill-stat-map and skill-overrides use the same
+totem-varieties, monster-scaling, skill-stat-map, skill-overrides, minions and
+spectres use the same
 verification/output boundary with their own table subsets. Quality-only options
 require gem-quality; codec options require stat-set-codec, gem-effects,
-skill-stat-map or skill-overrides. The two branch-codec options are required by
+skill-stat-map, skill-overrides, minions or spectres. The two branch-codec options are required by
 skill-stat-map and skill-overrides and rejected by every other domain.
 
 ## Input and checks
