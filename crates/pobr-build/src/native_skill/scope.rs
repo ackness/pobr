@@ -16,6 +16,12 @@ use crate::party::Party;
 
 use super::{NativeAdmissionError, source_error, unsupported};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Profile {
+    NoAllocations,
+    OrdinaryDamagePassives,
+}
+
 pub(super) const GEM_ID: &str = "Metadata/Items/Gems/SkillGemSpark";
 pub(super) const EFFECT_ID: &str = "SparkPlayer";
 
@@ -30,7 +36,7 @@ fn require(condition: bool, path: &str, reason: &str) -> Result<(), NativeAdmiss
 pub(super) fn validate(
     data: &NativeData,
     request: &NativeBuildRequest,
-) -> Result<(), NativeAdmissionError> {
+) -> Result<Profile, NativeAdmissionError> {
     let contract = data.contract();
     let binding = &request.dataset;
     // Every saved identity field participates, independently of patch/display compatibility.
@@ -58,11 +64,8 @@ pub(super) fn validate(
     require(
         contract.schema_version == NATIVE_PLAYER_CONTRACT_VERSION
             && contract.player.is_some()
-            && contract.input_profile == NativeInputProfile::SorceressSparkLevel1Q0V1
             && contract.output_profile == NativeOutputProfile::ConditionalSkillHitV1
-            && contract.normalization.profile == NativeProfile::SparkLevel1Q0
             && contract.normalization.version == NATIVE_PLAYER_CONTRACT_VERSION
-            && contract.rules.profile == NativeProfile::SparkLevel1Q0
             && contract.rules.version == NATIVE_PLAYER_CONTRACT_VERSION,
         "dataset",
         "conditional hit requires the exact v2 player/input/output interpretation contract",
@@ -73,18 +76,22 @@ pub(super) fn validate(
     let policy = data
         .actor_binding()
         .ok_or_else(|| source_error("actor_binding", "missing v2 actor policy"))?;
+    let profile = profile(contract, policy.policy)?;
+    let policy_id = match profile {
+        Profile::NoAllocations => "selected-player-generic-ot-v1",
+        Profile::OrdinaryDamagePassives => "selected-player-generic-ot-ordinary-damage-passives-v1",
+    };
     require(
         request.schema == NativeBuildSchema::V1
             && request.evaluation == NativeEvaluationKind::ConditionalSkillHitV1
             && request.evaluation == policy.evaluation
-            && policy.policy == NativeActorPolicy::SelectedPlayerGenericOtV1
             && policy.schema_version == 1
             && policy.model_status == NativeModelStatus::ConditionalModel
-            && request.actor_policy.id == "selected-player-generic-ot-v1"
+            && request.actor_policy.id == policy_id
             && request.actor_policy.version == policy.schema_version
             && Some(request.actor_policy.sha256.as_str()) == data.actor_binding_sha256(),
         "actor_policy",
-        "evaluation and exact selected-player-generic-ot-v1/version1 artifact pin must agree",
+        "evaluation and exact selected profile policy/version1 artifact pin must agree",
     )?;
     require(
         request.actor.id == NATIVE_PLAYER_ID
@@ -116,10 +123,44 @@ pub(super) fn validate(
         "skill",
         "only the stable primary SparkPlayer branch at exact level 1/quality 0 is admitted",
     )?;
-    build(&request.build, request)
+    build(&request.build, request, profile)?;
+    Ok(profile)
 }
 
-fn build(build: &Build, request: &NativeBuildRequest) -> Result<(), NativeAdmissionError> {
+pub(super) fn profile(
+    contract: &pobr_data::catalog::NativeRuntimeContract,
+    policy: NativeActorPolicy,
+) -> Result<Profile, NativeAdmissionError> {
+    match (
+        contract.input_profile,
+        contract.normalization.profile,
+        contract.rules.profile,
+        policy,
+    ) {
+        (
+            NativeInputProfile::SorceressSparkLevel1Q0V1,
+            NativeProfile::SparkLevel1Q0,
+            NativeProfile::SparkLevel1Q0,
+            NativeActorPolicy::SelectedPlayerGenericOtV1,
+        ) => Ok(Profile::NoAllocations),
+        (
+            NativeInputProfile::SorceressSparkLevel1Q0OrdinaryDamagePassivesV1,
+            NativeProfile::SparkLevel1Q0OrdinaryDamagePassives,
+            NativeProfile::SparkLevel1Q0OrdinaryDamagePassives,
+            NativeActorPolicy::SelectedPlayerGenericOtOrdinaryDamagePassivesV1,
+        ) => Ok(Profile::OrdinaryDamagePassives),
+        _ => Err(unsupported(
+            "dataset",
+            "input, normalization, rules and actor policy must form an exact admitted tuple",
+        )),
+    }
+}
+
+pub(super) fn build(
+    build: &Build,
+    request: &NativeBuildRequest,
+    profile: Profile,
+) -> Result<(), NativeAdmissionError> {
     // No `..`: a new Build input must receive an explicit numerical-scope decision.
     let Build {
         character,
@@ -157,9 +198,11 @@ fn build(build: &Build, request: &NativeBuildRequest) -> Result<(), NativeAdmiss
         attribute_overrides,
     } = tree;
     require(
-        allocated_nodes.is_empty() && mastery_effects.is_empty() && attribute_overrides.is_empty(),
+        (profile == Profile::OrdinaryDamagePassives || allocated_nodes.is_empty())
+            && mastery_effects.is_empty()
+            && attribute_overrides.is_empty(),
         "build.tree",
-        "allocations, masteries and attribute overrides are excluded; starting choices grant nothing",
+        "only the new profile permits explicitly selected eligible ordinary damage passives; masteries/attribute overrides are excluded and starting choices grant nothing",
     )?;
     require(
         items.is_empty()

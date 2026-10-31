@@ -58,6 +58,17 @@ Missing or duplicate fields, escaped duplicate aliases, unsupported edits,
 different datasets and legacy XML/build-code input fail. No format autodetection
 or fallback to ordinary calculation occurs.
 
+The new ordinary-damage-passive profile uses the same exports and result fields.
+It requires an explicitly assembled new candidate and a document bound to that
+candidate's actual six dataset fields and new policy hash. The existing
+`build.tree.allocated_nodes` array selects graph instances; old-profile documents
+continue to reject allocations. Selection is all-or-nothing, with no text fallback,
+free starting grants or class-name/tree-label selection. Selected nodes are
+assumed active for conditional comparison; the returned `allocation-legality`
+reason leaves point budget, reachability and progression unverified. Node-specific
+origins and exact packet pointers reuse existing modifier evidence and selection
+sources. `counted` records actual nonzero aggregation input, not marginal damage.
+
 Calculation errors use the existing JSON error envelope on the Rust `Err` side
 and as the JavaScript exception message: `not_initialized` for unavailable native
 mode, `bad_request` for document/admission rejection, and `internal` for
@@ -91,3 +102,18 @@ expectations and rejection after edits or catalog switches. Host tests do not
 prove wasm-bindgen export wiring: the parent/coordinator must build with the
 pinned mise toolchain and exercise the real JavaScript exports and staged actual
 pack in compiled WASM before claiming that boundary passes.
+
+The separate ignored new-profile host case keeps the old baseline case intact:
+
+```sh
+POBR_NATIVE_PASSIVE_PACK=<new-immutable-pack> \
+POBR_NATIVE_PASSIVE_REQUEST=<new-bound-baseline-document> \
+  mise exec -- cargo test --locked -p pobr-wasm --test native_api \
+  supplied_actual_passive_request_edits_stage_reopen_and_reject_whole -- --ignored
+```
+
+It checks actual saved allocations, distinct equal-stat nodes, four applicable
+scopes, remove/reopen, directory/staged equality, rejected mixed selections,
+stale pins, a corrupt staged packet and native translation/catalog-switch guards.
+This remains a host test; the rebuilt JavaScript boundary and complete parsed
+CLI-to-WASM equality are coordinator acceptance work.

@@ -307,6 +307,14 @@ fn source_owned_mapping_shared_core_and_provenance_are_retained() {
     assert!(encoded.get("dps").is_none());
     assert!(encoded.get("pools").is_none());
     assert!(encoded["unavailable"].as_array().unwrap().len() >= 9);
+    assert!(
+        !encoded["unavailable"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|u| u["output"] == "allocation-legality"),
+        "old profile output stays unchanged"
+    );
 }
 
 struct DiskPack(PathBuf);
@@ -771,7 +779,22 @@ fn all_extra_sources_and_raw_false_zero_config_are_rejected() {
             json!({"x":{"number":0}}),
         ),
     ] {
-        rejects_request(|v| *v.pointer_mut(pointer).unwrap() = value);
+        let data = load(pack());
+        let mut document = serde_json::to_value(request(&data)).unwrap();
+        *document.pointer_mut(pointer).unwrap() = value;
+        let request: NativeBuildRequest = serde_json::from_value(document).unwrap();
+        assert!(admit_native_skill(&data, &request).is_err(), "{pointer}");
+        if pointer != "/build/tree/allocated_nodes" {
+            assert!(
+                scope::build(
+                    &request.build,
+                    &request,
+                    scope::Profile::OrdinaryDamagePassives
+                )
+                .is_err(),
+                "new profile must retain exclusion: {pointer}"
+            );
+        }
     }
     rejects_request(|v| {
         let mut extra = v["build"]["socket_groups"][0].clone();
@@ -1009,4 +1032,126 @@ fn supplied_actual_pack_save_reopen_and_conditional_outputs() {
     assert_eq!(out.resource_costs[0].amount_per_use, 5.0);
     assert_eq!(out.total_projectiles, 4.0);
     assert_eq!(out.projectile_lifetime_ms, 2000.0);
+}
+
+#[path = "tests/passives.rs"]
+mod passives;
+
+/// Actual new-profile admission, independent of the portable resolver fixtures.
+#[test]
+#[ignore = "requires POBR_NATIVE_PASSIVE_PACK and POBR_NATIVE_PASSIVE_REQUEST bound to an assembled new-profile candidate"]
+fn supplied_actual_passive_pack_edits_save_remove_and_reopen() {
+    let path = PathBuf::from(
+        std::env::var_os("POBR_NATIVE_PASSIVE_PACK").expect("supply new-profile pack"),
+    );
+    let document = PathBuf::from(
+        std::env::var_os("POBR_NATIVE_PASSIVE_REQUEST").expect("supply bound baseline document"),
+    );
+    let bytes = std::fs::read(&document).unwrap();
+    let original = NativeBuildRequest::from_json(&bytes).unwrap();
+    assert!(original.build.tree.allocated_nodes.is_empty());
+    let data = NativeData::load(&GameData::new(&path)).unwrap();
+    assert_eq!(data.contract().input_profile, pobr_data::catalog::native_runtime::NativeInputProfile::SorceressSparkLevel1Q0OrdinaryDamagePassivesV1);
+    let baseline = calculate_native_skill(&admit_native_skill(&data, &original).unwrap()).unwrap();
+    near(baseline.conditional_weighted_mean, 5.995);
+    assert!(
+        baseline
+            .assumptions
+            .iter()
+            .any(|a| a.contains("assumed active") && a.contains("legality"))
+    );
+    let saved = DiskPack::new(&BTreeMap::from([(
+        "request.json".into(),
+        original.to_json().unwrap(),
+    )]));
+    for (ids, mean) in [
+        (vec![], 5.995),
+        (vec![4739], 6.5945),
+        (vec![4739, 18845], 7.194),
+        (vec![4739, 20649, 22821, 33053], 8.393),
+        (vec![], 5.995),
+    ] {
+        let mut edit = original.clone();
+        edit.build.tree.allocated_nodes = ids
+            .iter()
+            .copied()
+            .map(pobr_data::passive_tree::NodeId)
+            .collect();
+        std::fs::write(saved.0.join("request.json"), edit.to_json().unwrap()).unwrap();
+        let reopened =
+            NativeBuildRequest::from_json(&std::fs::read(saved.0.join("request.json")).unwrap())
+                .unwrap();
+        let fresh = load(read_pack(&path));
+        let out = calculate_native_skill(&admit_native_skill(&fresh, &reopened).unwrap()).unwrap();
+        near(out.conditional_weighted_mean, mean);
+        let factor = match ids.len() {
+            0 => 1.0,
+            1 => 1.1,
+            2 => 1.2,
+            4 => 1.4,
+            _ => unreachable!(),
+        };
+        near(lightning(&out).non_critical.min, factor);
+        near(lightning(&out).non_critical.max, 10.0 * factor);
+        near(lightning(&out).critical.mean, 11.0 * factor);
+        near(out.critical_probability, 0.09);
+        near(out.critical_multiplier, 2.0);
+        assert_eq!(out.analytical_base_use_ms, 700);
+        assert_eq!(out.resource_costs[0].amount_per_use, 5.0);
+        assert_eq!(
+            (out.total_projectiles, out.projectile_lifetime_ms),
+            (4.0, 2000.0)
+        );
+        let evidence: Vec<_> = out
+            .modifiers
+            .iter()
+            .filter(|m| m.runtime_source.artifact == "base/passive_tree.json")
+            .collect();
+        assert_eq!(evidence.len(), ids.len());
+        let origins: std::collections::BTreeSet<_> = evidence
+            .iter()
+            .map(|m| &m.origin.as_ref().unwrap().source_id.id)
+            .collect();
+        assert_eq!(origins.len(), ids.len());
+        assert!(evidence.iter().all(|m| m.counted
+            && !m.queries.is_empty()
+            && m.origin.as_ref().unwrap().native_stat.is_some()));
+        if ids.is_empty() {
+            assert_eq!(
+                serde_json::to_value(out).unwrap(),
+                serde_json::to_value(&baseline).unwrap()
+            );
+        }
+    }
+    let resistance = data
+        .passive_nodes()
+        .iter()
+        .find(|n| {
+            n.native_stats.as_ref().is_some_and(|p| {
+                p.stats
+                    .iter()
+                    .any(|s| s.id == "base_fire_damage_resistance_%")
+            })
+        })
+        .expect("actual resistance packet retained")
+        .skill;
+    for ids in [
+        vec![4739, 4739],
+        vec![4739, u32::MAX],
+        vec![4739, resistance],
+    ] {
+        let mut edit = original.clone();
+        edit.build.tree.allocated_nodes = ids
+            .into_iter()
+            .map(pobr_data::passive_tree::NodeId)
+            .collect();
+        assert!(admit_native_skill(&data, &edit).is_err());
+        assert_eq!(
+            serde_json::to_value(
+                calculate_native_skill(&admit_native_skill(&data, &original).unwrap()).unwrap()
+            )
+            .unwrap(),
+            serde_json::to_value(&baseline).unwrap()
+        );
+    }
 }

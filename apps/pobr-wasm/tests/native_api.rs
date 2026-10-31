@@ -398,3 +398,160 @@ fn different_pin(pin: &str) -> String {
         "f".repeat(64)
     }
 }
+
+#[test]
+#[ignore = "requires POBR_NATIVE_PASSIVE_PACK and POBR_NATIVE_PASSIVE_REQUEST bound to an assembled new-profile candidate"]
+fn supplied_actual_passive_request_edits_stage_reopen_and_reject_whole() {
+    use pobr_data::passive_tree::NodeId;
+
+    let pack = PathBuf::from(
+        std::env::var_os("POBR_NATIVE_PASSIVE_PACK").expect("supply new-profile pack"),
+    );
+    let saved = PathBuf::from(
+        std::env::var_os("POBR_NATIVE_PASSIVE_REQUEST").expect("supply bound baseline document"),
+    );
+    let request = NativeBuildRequest::from_json(&std::fs::read(saved).unwrap()).unwrap();
+    assert!(request.build.tree.allocated_nodes.is_empty());
+    assert_eq!(
+        request.actor_policy.id,
+        "selected-player-generic-ot-ordinary-damage-passives-v1"
+    );
+    let native = NativeData::load(&GameData::new(&pack)).unwrap();
+    let files = read_pack(&pack);
+    let baseline_json = String::from_utf8(request.to_json().unwrap()).unwrap();
+    let mut baseline = None;
+    for (ids, mean) in [
+        (vec![], 5.995),
+        (vec![4739], 6.5945),
+        (vec![4739, 18845], 7.194),
+        (vec![4739, 20649, 22821, 33053], 8.393),
+        (vec![], 5.995),
+    ] {
+        let mut edited = request.clone();
+        edited.build.tree.allocated_nodes = ids.iter().copied().map(NodeId).collect();
+        let json = String::from_utf8(edited.to_json().unwrap()).unwrap();
+        let reopened = NativeBuildRequest::from_json(json.as_bytes()).unwrap();
+        let expected = native_skill::calculate_native_skill(
+            &native_skill::admit_native_skill(&native, &reopened).unwrap(),
+        )
+        .unwrap();
+        let expected = serde_json::to_string(&expected).unwrap();
+        pobr_wasm::init_native_data_from_dir(&pack.to_string_lossy()).unwrap();
+        assert_eq!(
+            pobr_wasm::calculate_native_build_json(&json).unwrap(),
+            expected
+        );
+        stage(&files);
+        pobr_wasm::init_native_staged_data().unwrap();
+        assert!(pobr_wasm::is_native_data_ready() && !pobr_wasm::is_data_ready());
+        let actual = pobr_wasm::calculate_native_build_json(&json).unwrap();
+        assert_eq!(actual, expected, "fresh staged snapshot/save reopen");
+        let value: Value = serde_json::from_str(&actual).unwrap();
+        assert!((value["conditional_weighted_mean"].as_f64().unwrap() - mean).abs() < 1e-10);
+        let evidence: Vec<_> = value["modifiers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["runtime_source"]["artifact"] == "base/passive_tree.json")
+            .collect();
+        assert_eq!(evidence.len(), ids.len());
+        assert!(
+            evidence
+                .iter()
+                .all(|m| m["counted"] == true && m["origin"]["native_stat"].is_object())
+        );
+        if ids.is_empty() {
+            if let Some(before) = &baseline {
+                assert_eq!(&actual, before);
+            } else {
+                baseline = Some(actual);
+            }
+        }
+    }
+    let baseline = baseline.unwrap();
+    let resistance = native
+        .passive_nodes()
+        .iter()
+        .find(|n| {
+            n.native_stats.as_ref().is_some_and(|p| {
+                p.stats
+                    .iter()
+                    .any(|s| s.id == "base_fire_damage_resistance_%")
+            })
+        })
+        .unwrap()
+        .skill;
+    for ids in [
+        vec![4739, 4739],
+        vec![4739, u32::MAX],
+        vec![4739, resistance],
+    ] {
+        let mut invalid = request.clone();
+        invalid.build.tree.allocated_nodes = ids.into_iter().map(NodeId).collect();
+        let invalid = String::from_utf8(invalid.to_json().unwrap()).unwrap();
+        error(
+            pobr_wasm::calculate_native_build_json(&invalid),
+            "bad_request",
+            "native",
+        );
+        assert_eq!(
+            pobr_wasm::calculate_native_build_json(&baseline_json).unwrap(),
+            baseline
+        );
+    }
+    for (pointer, value) in [
+        ("/actor_policy/id", json!("selected-player-generic-ot-v1")),
+        (
+            "/actor_policy/sha256",
+            json!(different_pin(&request.actor_policy.sha256)),
+        ),
+        (
+            "/dataset/runtime_identity_sha256",
+            json!(different_pin(&request.dataset.runtime_identity_sha256)),
+        ),
+        (
+            "/dataset/assembly_key",
+            json!(different_pin(&request.dataset.assembly_key)),
+        ),
+    ] {
+        let mut invalid = serde_json::to_value(&request).unwrap();
+        *invalid.pointer_mut(pointer).unwrap() = value;
+        error(
+            pobr_wasm::calculate_native_build_json(&invalid.to_string()),
+            "bad_request",
+            "native",
+        );
+        assert_eq!(
+            pobr_wasm::calculate_native_build_json(&baseline_json).unwrap(),
+            baseline
+        );
+    }
+    let mut corrupt = files.clone();
+    corrupt
+        .get_mut("base/passive_tree.json")
+        .unwrap()
+        .push(b' ');
+    stage(&corrupt);
+    assert!(pobr_wasm::init_native_staged_data().is_err());
+    assert_eq!(
+        pobr_wasm::calculate_native_build_json(&baseline_json).unwrap(),
+        baseline
+    );
+    error(
+        pobr_wasm::translate_lines_to_zh_cn_json("[]"),
+        "not_initialized",
+        "ordinary translation unavailable in native mode",
+    );
+    pobr_wasm::init_native_data_from_dir(&v1_dir().to_string_lossy()).unwrap();
+    error(
+        pobr_wasm::calculate_native_build_json(&baseline_json),
+        "bad_request",
+        "native dataset differs",
+    );
+    stage(&files);
+    pobr_wasm::init_native_staged_data().unwrap();
+    assert_eq!(
+        pobr_wasm::calculate_native_build_json(&baseline_json).unwrap(),
+        baseline
+    );
+}

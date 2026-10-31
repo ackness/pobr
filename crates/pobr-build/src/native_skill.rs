@@ -22,6 +22,7 @@ use crate::native_document::{
     NativeDocumentError, NativeEvaluationKind, NativeGemSelection,
 };
 
+mod passive;
 mod resolve;
 mod scope;
 
@@ -37,6 +38,8 @@ pub struct AdmittedNativeSkill {
     context: ConditionalHitContext,
     critical_base: ResolvedCriticalBase,
     hit_modifiers: Vec<Modifier>,
+    modifier_facts: Vec<ModifierFactBinding>,
+    profile: scope::Profile,
     intrinsic_modifiers: Vec<NativeModifierEvidence>,
     base_use_ms: u32,
     costs: Vec<NativeResourceCost>,
@@ -88,6 +91,8 @@ fn source_error(path: impl Into<String>, reason: impl Into<String>) -> NativeAdm
 pub enum NativeCalculationError {
     #[error(transparent)]
     Hit(#[from] conditional_hit::ConditionalHitError),
+    #[error("admitted modifier lost its validated source-fact binding")]
+    MissingModifierFact,
 }
 
 /// Exact JSON pointer into an artifact in the result's bound runtime snapshot.
@@ -146,9 +151,10 @@ pub struct NativeModifierEvidence {
     pub flags: u64,
     /// Exact shared KeywordFlags bits.
     pub keyword_flags: u64,
-    /// Debug spellings of the shared core's static tags; empty for this initial profile.
+    /// Debug spellings of the shared core's static tags; empty for admitted native packets.
     pub tags: Vec<String>,
     pub queries: Vec<String>,
+    /// For hit queries, a nonzero input entered aggregation; not a marginal output delta.
     pub counted: bool,
     /// Intrinsic values use the mapped numeric payload directly, without a hit query.
     pub intrinsic_reader: Option<String>,
@@ -156,13 +162,14 @@ pub struct NativeModifierEvidence {
 
 fn modifier_evidence(
     modifier: &Modifier,
-    fact: &NativeSkillFact,
+    stat: &str,
+    runtime_source: &NativeArtifactReference,
     queries: Vec<String>,
     counted: bool,
 ) -> NativeModifierEvidence {
     NativeModifierEvidence {
-        native_stat_id: fact.stat.clone(),
-        runtime_source: fact.source.clone(),
+        native_stat_id: stat.into(),
+        runtime_source: runtime_source.clone(),
         name: modifier.name.to_string(),
         mod_type: modifier.mod_type,
         value: modifier
@@ -178,6 +185,45 @@ fn modifier_evidence(
         queries,
         counted,
         intrinsic_reader: None,
+    }
+}
+
+// Kept private: public evidence reuses the existing result shape. Full origins,
+// rather than stat IDs, distinguish equal stats supplied by different nodes.
+#[derive(Debug)]
+struct ModifierFactBinding {
+    origin: ModifierSource,
+    stat: String,
+    source: NativeArtifactReference,
+}
+
+impl ModifierFactBinding {
+    fn new(
+        modifier: &Modifier,
+        stat: &str,
+        source: NativeArtifactReference,
+    ) -> Result<Self, NativeAdmissionError> {
+        let origin = modifier.origin.clone().ok_or_else(|| {
+            source_error(&source.artifact, "owned modifier lost its source origin")
+        })?;
+        if stat.is_empty()
+            || origin.stat_id.as_ref() != Some(&modifier.name)
+            || origin.mod_type != Some(modifier.mod_type)
+            || origin
+                .native_stat
+                .as_ref()
+                .is_some_and(|native| native.id != stat)
+        {
+            return Err(source_error(
+                &source.artifact,
+                "owned modifier/source-fact binding mismatch",
+            ));
+        }
+        Ok(Self {
+            origin,
+            stat: stat.into(),
+            source,
+        })
     }
 }
 
@@ -324,14 +370,58 @@ pub fn admit_native_skill(
     request: &NativeBuildRequest,
 ) -> Result<AdmittedNativeSkill, NativeAdmissionError> {
     request.validate_document()?;
-    scope::validate(data, request)?;
-    let resolved = resolve::resolve(data, request)?;
+    let profile = scope::validate(data, request)?;
+    let mut resolved = resolve::resolve(data, request)?;
+    let mut modifier_facts = Vec::new();
+    for modifier in &resolved.hit_modifiers {
+        let fact = resolved
+            .skill_facts
+            .iter()
+            .find(|fact| {
+                modifier.origin.as_ref().is_some_and(|origin| {
+                    origin.source_id.id == format!("native.skill.{}", fact.stat)
+                })
+            })
+            .ok_or_else(|| {
+                source_error(
+                    "skill_facts",
+                    "owned skill modifier has no selected source fact",
+                )
+            })?;
+        modifier_facts.push(ModifierFactBinding::new(
+            modifier,
+            &fact.stat,
+            fact.source.clone(),
+        )?);
+    }
+    if profile == scope::Profile::OrdinaryDamagePassives {
+        for selected in passive::resolve(data, &request.build.tree.allocated_nodes)? {
+            modifier_facts.push(selected.binding);
+            resolved.hit_modifiers.push(selected.modifier);
+            resolved
+                .provenance
+                .selection_sources
+                .push(selected.selection_source);
+        }
+        resolved.assumptions.push("Explicitly selected eligible ordinary damage passives are assumed active for this conditional comparison; point budget, reachability and progression legality are not certified, and starting relations grant nothing automatically.".into());
+    }
+    let mut origins = std::collections::BTreeSet::new();
+    for fact in &modifier_facts {
+        if !origins.insert(&fact.origin.source_id) {
+            return Err(source_error(
+                &fact.source.artifact,
+                "ambiguous duplicate modifier origin",
+            ));
+        }
+    }
     Ok(AdmittedNativeSkill {
         request: request.clone(),
         request_sha256: request.input_sha256()?,
         context: resolved.context,
         critical_base: resolved.critical_base,
         hit_modifiers: resolved.hit_modifiers,
+        modifier_facts,
+        profile,
         intrinsic_modifiers: resolved.intrinsic_modifiers,
         base_use_ms: resolved.base_use_ms,
         costs: resolved.costs,
@@ -348,7 +438,7 @@ pub fn admit_native_skill(
 /// No pool, requirements, contact, enemy, ailment, cadence or full-build calculation runs.
 ///
 /// # Errors
-/// Returns the shared core error on invalid ranges or nonfinite numerical results.
+/// Returns the shared core error on invalid ranges/nonfinite results or a lost private source binding.
 pub fn calculate_native_skill(
     admitted: &AdmittedNativeSkill,
 ) -> Result<NativeSkillResult, NativeCalculationError> {
@@ -362,17 +452,19 @@ pub fn calculate_native_skill(
         .iter()
         .map(|entry| {
             let fact = admitted
-                .skill_facts
+                .modifier_facts
                 .iter()
-                .find(|fact| {
-                    entry.modifier.origin.as_ref().is_some_and(|origin| {
-                        origin.source_id.id == format!("native.skill.{}", fact.stat)
-                    })
-                })
-                .expect("every admitted modifier retains its selected stat source");
-            modifier_evidence(&entry.modifier, fact, entry.queries.clone(), entry.counted)
+                .find(|fact| entry.modifier.origin.as_ref() == Some(&fact.origin))
+                .ok_or(NativeCalculationError::MissingModifierFact)?;
+            Ok(modifier_evidence(
+                &entry.modifier,
+                &fact.stat,
+                &fact.source,
+                entry.queries.clone(),
+                entry.counted,
+            ))
         })
-        .collect();
+        .collect::<Result<_, NativeCalculationError>>()?;
     modifiers.extend(admitted.intrinsic_modifiers.clone());
     let critical_trace = NativeCriticalTrace {
         nodes: hit
@@ -396,7 +488,7 @@ pub fn calculate_native_skill(
             .collect(),
     };
     let request = &admitted.request;
-    Ok(NativeSkillResult {
+    let mut result = NativeSkillResult {
         evaluation: request.evaluation,
         model_status: NativeModelStatus::ConditionalModel,
         dataset: request.dataset.clone(),
@@ -475,5 +567,12 @@ pub fn calculate_native_skill(
             reason: reason.into(),
         })
         .collect(),
-    })
+    };
+    if admitted.profile == scope::Profile::OrdinaryDamagePassives {
+        result.unavailable.push(NativeUnavailableOutput {
+            output: "allocation-legality".into(),
+            reason: "selected nodes are assumed active; point budget, reachability and progression are not admitted".into(),
+        });
+    }
+    Ok(result)
 }

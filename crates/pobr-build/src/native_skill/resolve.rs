@@ -687,7 +687,8 @@ impl SelectedStats {
                 if reader == "hit" {
                     self.hit.extend(mapped);
                 } else {
-                    let mut evidence = modifier_evidence(modifier, &fact, Vec::new(), true);
+                    let mut evidence =
+                        modifier_evidence(modifier, &fact.stat, &fact.source, Vec::new(), true);
                     evidence.intrinsic_reader = Some(reader.into());
                     self.intrinsic.push(evidence);
                     if reader == "total_projectiles" {
