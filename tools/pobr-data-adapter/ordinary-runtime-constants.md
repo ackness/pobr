@@ -1,9 +1,9 @@
-# Runtime constants from target facts and three fixed compatibility files
+# Runtime constants from target facts and fixed compatibility files
 
 `--ordinary-domain runtime-constants` produces the original game constants,
 character constants and jewel radii DTOs as one domain candidate. Policy-selected
 numeric leaves come from target `GameConstants`; every other field remains
-explicit fixed compatibility from three supplied old snapshot files. Consumers,
+explicit fixed compatibility from supplied old snapshot files. Consumers,
 formulas and Rust defaults are unchanged.
 
 ```sh
@@ -39,7 +39,7 @@ Each selected pin must match both policy and manifest before the actual file is
 hashed and parsed by `read_pinned`. An unknown filename/schema, altered relative
 path or a link escaping the snapshot directory fails. No other manifest entry,
 shared overlay, vendor, Lua, historical evidence or default numeric source is
-opened. The supplied manifest and three selected files are actually verified
+opened. The supplied manifest and selected files are actually verified
 inputs, unlike policy evidence paths, which are authoring declarations only.
 Unselected file contents and whole-snapshot target applicability are not certified.
 
@@ -86,9 +86,9 @@ status, proc, actor or time model is inferred from names or adjacent constants.
 The fresh directory has twelve files:
 
 - `_domain_candidate.json` first
-- Three ordinary files under `base/`, without added `_meta` wrappers
+- The selected ordinary files under `base/`, without added `_meta` wrappers
 - `legacy-manifest.json` and `codec-policy.json`, verbatim
-- The three verbatim originals under `legacy-constants/`
+- The selected verbatim originals under `legacy-constants/`
 - `source-manifest.json` and `source-lock.json`
 - `producer-receipt.json` last
 
@@ -107,6 +107,31 @@ the owned leaves. This preserves evidence for unknown fields and full arrays
 without copying every retained model value into the receipt.
 
 The compiled revision includes the converter, policy validator, existing Output
-and all three original DTO source files. Source acquisition remains draft,
+and the selected DTO source files. Source acquisition remains draft,
 `complete_runtime=false`, and adoption is `not-adopted`. These 31 fields do not
 measure complete-package or ordinary BD/Web coverage.
+
+## Optional existing ailment domain
+
+The original three-file policy remains unchanged and replayable. The separate
+[`0.5.5.5-with-ailments-policy.json`](../../pipeline/runtime-constants/0.5.5.5-with-ailments-policy.json)
+selects the same three files plus `base/non_damaging_ailments.json` (pin verified
+against the supplied legacy manifest). Use that policy and its SHA256 with the
+same command. It adds these six destinations, for37 total:
+
+| Existing DTO leaf | Target GameConstants ID | Unit |
+| --- | --- | --- |
+| Chill maximum | ChillMaxEffect | percentage points |
+| Chill duration | BaseChillDuration | seconds |
+| Freeze duration | FreezeDuration | seconds after Value/Divisor |
+| Shock default and minimum | BaseShockMagnitude | percentage points |
+| Shock duration | BaseShockDuration | seconds |
+
+All unlisted fields, including Chill minimum, Shock maximum, Freeze bounds,
+precision, damage-type/scaling relationships, unknown JSON and absent defaults,
+retain their explicit legacy source. Required original files cannot be dropped
+when the optional file is selected. Binding an unknown DTO field, missing source
+ID or invalid divisor rejects before output. The existing GameData ailment loader
+consumes the output; this does not change which fields the calculation core reads
+or add formulas. Tests exercise changed values, zero, complete preservation and
+byte-identical outputs for the original three domains.

@@ -799,10 +799,10 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
             (
                 converted.base,
                 converted.receipt,
-                "pobr_data::catalog::{GameConstantsDef,CharacterConstantsDef,JewelRadiiDef}",
+                "pobr_data::catalog::{GameConstantsDef,CharacterConstantsDef,JewelRadiiDef}; optional non_damaging_ailments::NonDamagingAilmentsDef",
                 vec![
                     "Only target GameConstants and source-lock are selected. Policy bindings use exact source Id and Value / Divisor followed by ordered additional division, with no old-value gate or numeric default input.",
-                    "Exactly three declared old snapshot files are manifest/policy pinned before parsing; their original bytes/version remain verified compatibility inputs. Every non-owned field, unknown value, array and absence remains unchanged.",
+                    "The declared old snapshot files are manifest/policy pinned before parsing; their original bytes/version remain verified compatibility inputs. The original three domains are mandatory; the existing ailment DTO is optional. Every non-owned field, unknown value, array and absence remains unchanged.",
                     "Known numeric DTO shape checks do not supply values. An explicitly allowed absent leaf receives only its target fact; no extra fields or default sections are materialized.",
                     "Unselected snapshot files, historical evidence, vendor/Lua and other assets are not read. Retained constants/radii are not relabeled as target facts or new formula/geometry laws.",
                     "Draft domain candidate, incomplete and not adopted; no runtime manifest/profile/CURRENT. Complete package and ordinary BD/Web/accuracy acceptance remain separate.",
@@ -990,6 +990,11 @@ fn implementation_sha256() -> String {
         (
             "catalog/jewel_radii.rs",
             include_bytes!("../../../crates/pobr-data/src/catalog/jewel_radii.rs").as_slice(),
+        ),
+        (
+            "catalog/non_damaging_ailments.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/non_damaging_ailments.rs")
+                .as_slice(),
         ),
         (
             "ordinary_facts/passive_tree.rs",

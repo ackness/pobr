@@ -147,6 +147,138 @@ fn receipt(f: &Fixture) -> Value {
     doc(f, "out/producer-receipt.json")
 }
 
+fn ailment_fixture() -> Fixture {
+    let mut f = fixture();
+    let mut rows: Vec<_> = f.documents["tables/GameConstants.json"]["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["values"].clone())
+        .collect();
+    for (id, value, divisor) in [
+        ("BaseChillDuration", 9, 2),
+        ("FreezeDuration", 4500, 1000),
+        ("BaseShockDuration", 0, 1),
+    ] {
+        rows.push(json!({"Id":id,"Value":value,"Divisor":divisor,"Future":"preserved"}));
+    }
+    f.documents.insert(
+        "tables/GameConstants.json".into(),
+        table(
+            "GameConstants",
+            &[
+                ("Id", "string", false, None),
+                ("Value", "i32", false, None),
+                ("Divisor", "i32", false, None),
+                ("Future", "string", false, None),
+            ],
+            json!(rows),
+        ),
+    );
+    let old = json!({"ailments":{
+        "Chill":{"associated_type":"Cold","alt":false,"default":30,"min":30,"max":50,"precision":0,"duration":8,"future":null},
+        "Freeze":{"associated_type":"Cold","alt":false,"min":0.3,"max":3,"precision":2,"duration":4},
+        "Shock":{"associated_type":"Lightning","alt":false,"default":20,"min":20,"max":100,"precision":0,"duration":8}},
+        "buildup_types":{"Freeze":{"scales_from":["Cold"]}},
+        "default_ailment_damage_types":{"Poison":{"scales_from":["Physical","Chaos"],"damage_type":"Chaos"}},
+        "unknown":{"preserve":[null,4,"ordered"]}});
+    write(&f, "snapshot/base/non_damaging_ailments.json", &old);
+    let mut p = doc(&f, POLICY);
+    p["source_files"].as_array_mut().unwrap().push(json!({"file":"non_damaging_ailments.json","relative_path":"base/non_damaging_ailments.json",
+        "schema":"pobr_data::catalog::non_damaging_ailments::NonDamagingAilmentsDef","sha256":"0".repeat(64)}));
+    let actual: Value = serde_json::from_slice(include_bytes!(
+        "../../../../../pipeline/runtime-constants/0.5.5.5-with-ailments-policy.json"
+    ))
+    .unwrap();
+    p["bindings"].as_array_mut().unwrap().extend(
+        actual["bindings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|b| b["file"] == "non_damaging_ailments.json")
+            .cloned(),
+    );
+    write(&f, POLICY, &p);
+    reseal(&mut f);
+    f
+}
+
+#[test]
+fn optional_ailment_fields_reach_existing_loader_and_keep_other_raw_fields() {
+    let f = ailment_fixture();
+    run(args(&f)).unwrap();
+    let mut expected = doc(&f, "snapshot/base/non_damaging_ailments.json");
+    let actual = output(&f, "non_damaging_ailments.json");
+    let p = doc(&f, POLICY);
+    for binding in p["bindings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|b| b["file"] == "non_damaging_ailments.json")
+    {
+        let row = raw_row(&f, binding["source_id"].as_str().unwrap());
+        let raw = &f.documents["tables/GameConstants.json"]["rows"][row]["values"];
+        *expected
+            .pointer_mut(binding["target_pointer"].as_str().unwrap())
+            .unwrap() = json!(raw["Value"].as_f64().unwrap() / raw["Divisor"].as_f64().unwrap());
+    }
+    assert_eq!(actual, expected);
+    assert!(actual["ailments"]["Freeze"].get("default").is_none());
+    let data = pobr_gamedata::GameData::from_memory(BTreeMap::from([(
+        "base/non_damaging_ailments.json".into(),
+        fs::read(f.root.join("out/base/non_damaging_ailments.json")).unwrap(),
+    )]));
+    let dto = data.non_damaging_ailments().unwrap();
+    assert_eq!(dto.ailments["Chill"].duration, 4.5);
+    assert_eq!(dto.ailments["Freeze"].duration, 4.5);
+    assert_eq!(dto.ailments["Shock"].default, Some(17.0));
+    assert_eq!(dto.ailments["Shock"].min, 17.0);
+    assert_eq!(dto.ailments["Shock"].duration, 0.0);
+}
+
+#[test]
+fn optional_domain_cannot_replace_required_files_or_bind_unknown_fields() {
+    for change in 0..4 {
+        let mut f = ailment_fixture();
+        let mut p = doc(&f, POLICY);
+        if change == 0 {
+            p["source_files"].as_array_mut().unwrap().remove(0);
+        } else if change == 1 {
+            p["bindings"][31]["target_pointer"] = json!("/ailments/Chill/future");
+        } else if change == 2 {
+            let row = raw_row(&f, "FreezeDuration");
+            f.values("GameConstants", row)["Divisor"] = json!(0);
+        } else {
+            let row = raw_row(&f, "FreezeDuration");
+            f.values("GameConstants", row)["Id"] = json!("RenamedSource");
+        }
+        write(&f, POLICY, &p);
+        reseal(&mut f);
+        assert!(run(args(&f)).is_err());
+        assert!(!f.root.join("out").exists());
+    }
+}
+
+#[test]
+fn optional_domain_leaves_original_three_outputs_identical() {
+    let plain = fixture();
+    let optional = ailment_fixture();
+    run(args(&plain)).unwrap();
+    run(args(&optional)).unwrap();
+    for (name, _) in super::policy::FILES {
+        assert_eq!(
+            fs::read(plain.root.join("out/base").join(name)).unwrap(),
+            fs::read(optional.root.join("out/base").join(name)).unwrap()
+        );
+    }
+    assert!(
+        !plain
+            .root
+            .join("out/base/non_damaging_ailments.json")
+            .exists()
+    );
+}
+
 #[test]
 fn three_original_dtos_use_target_values_and_preserve_every_other_raw_value() {
     use pobr_data::catalog::{

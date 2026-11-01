@@ -17,6 +17,10 @@ pub(super) const FILES: [(&str, &str); 3] = [
     ),
     ("jewel_radii.json", "pobr_data::catalog::JewelRadiiDef"),
 ];
+const OPTIONAL_FILES: [(&str, &str); 1] = [(
+    "non_damaging_ailments.json",
+    "pobr_data::catalog::non_damaging_ailments::NonDamagingAilmentsDef",
+)];
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Policy {
@@ -107,6 +111,7 @@ impl Policy {
         for f in &self.source_files {
             let schema = FILES
                 .iter()
+                .chain(OPTIONAL_FILES.iter())
                 .find(|(name, _)| *name == f.file)
                 .map(|(_, schema)| *schema)
                 .ok_or("unknown selected constants file")?;
@@ -118,7 +123,7 @@ impl Policy {
             }
             hex(&f.sha256, 64, "selected constants SHA256")?;
         }
-        if files.len() != FILES.len() {
+        if FILES.iter().any(|(name, _)| !files.contains(name)) {
             return Err("incomplete selected constants file set".into());
         }
         let mut destinations = BTreeSet::new();

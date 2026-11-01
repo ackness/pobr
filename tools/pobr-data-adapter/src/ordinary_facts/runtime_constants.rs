@@ -1,4 +1,4 @@
-//! Three ordinary numeric domains with target-owned leaves and explicit legacy models.
+//! Existing ordinary numeric domains with target-owned leaves and explicit legacy models.
 
 mod policy;
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
@@ -11,6 +11,7 @@ use crate::raw_source::sha256_hex;
 use pobr_data::catalog::character_constants::CharacterConstantsDef;
 use pobr_data::catalog::game_constants::GameConstantsDef;
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
+use pobr_data::catalog::non_damaging_ailments::NonDamagingAilmentsDef;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
@@ -243,6 +244,10 @@ fn numeric_fields(file: &str, raw: &Value) -> Result<BTreeSet<String>, String> {
         ),
         "jewel_radii.json" => serde_json::to_value(
             serde_json::from_value::<JewelRadiiDef>(raw.clone()).map_err(|e| e.to_string())?,
+        ),
+        "non_damaging_ailments.json" => serde_json::to_value(
+            serde_json::from_value::<NonDamagingAilmentsDef>(raw.clone())
+                .map_err(|e| e.to_string())?,
         ),
         _ => return Err("unknown constants DTO file".into()),
     }
