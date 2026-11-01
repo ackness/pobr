@@ -1,0 +1,13 @@
+{
+  "RePoE/native_dat.py": "824f561af6e4b83243b459d726d6bad6821663061ac840d39c2854145707ff86",
+  "RePoE/native_descriptions.py": "50be39f03b4e0967ccb6371ad68e987d70309624726d189bbbee31f6a944b217",
+  "RePoE/native_facts.py": "7bbe4a84b66d88dfd2c3081550ef9891fd7beb9e6d586939749e684c7607af53",
+  "RePoE/native_tables.py": "72456c015e4c92d343c31d91e42c9d93d122f3ee89a7acd029577be3be7ecbf6",
+  "RePoE/native_tools.py": "46e4a0dd7250c44f9da714f55d90ef967223e0f50b0631d130a112c6144a37c7",
+  "RePoE/schema_candidate.py": "1e2d130d8e721c6398bc3cbcd63b0acb27e4487b5cddef9bf60624a8526d1b04",
+  "pyproject.toml": "db02b9819adfc21f00365595bf9d53ffb15a644cb759d539b123781a572a7912",
+  "schema/SHA256SUMS": "d3e5ecda7d21c8a42f6b66009a42a7e0324dba9131d63e079be6c1f596f3a308",
+  "schema/pypoe-sources.json": "64703bc3c5eca107108244e02baf0dc2cd46669e62a6b5ba273f868aa9db0095",
+  "schema/source.json": "7afa08a39f3da0b2e368d716593c2adef03308f100ec49edac73e8c7416441d3",
+  "uv.lock": "6ac815b9e4263081b51e823a3f297f35a1c55c7fa57956d3bdd5d4a506c1c66b"
+}

@@ -1051,3 +1051,58 @@ fn an_unowned_missing_defaulted_leaf_is_not_materialized() {
         doc(&f, "snapshot/base/character_constants.json")
     );
 }
+
+#[test]
+fn player_policy_requires_explicit_context_and_cli_pair_is_scoped() {
+    let mut f = fixture();
+    let mut p = doc(&f, POLICY);
+    let source: Value = serde_json::from_slice(include_bytes!(
+        "../../../../../pipeline/runtime-constants/0.5.5.5-with-player-baselines-policy.json"
+    ))
+    .unwrap();
+    p["player"] = source["player"].clone();
+    write(&f, POLICY, &p);
+    reseal(&mut f);
+    rejects(&f, "policy/context must be paired");
+    let flags = [
+        "--ordinary-facts",
+        "facts",
+        "--facts-manifest-sha256",
+        "pin",
+        "--version",
+        "0.5.5.5",
+        "--out",
+        "out",
+        "--ordinary-domain",
+        "runtime-constants",
+        "--codec-source",
+        "snapshot",
+        "--codec-source-sha256",
+        "pin",
+        "--codec-policy",
+        "policy",
+        "--codec-policy-sha256",
+        "pin",
+    ];
+    let extra = [
+        "--player-context",
+        "player",
+        "--player-manifest-sha256",
+        "pin",
+    ];
+    assert!(
+        parse_args(flags.into_iter().chain(extra).map(str::to_owned))
+            .unwrap()
+            .player_context
+            .is_some()
+    );
+    assert!(
+        parse_args(
+            flags
+                .into_iter()
+                .chain(extra[..2].iter().copied())
+                .map(str::to_owned)
+        )
+        .is_err()
+    );
+}

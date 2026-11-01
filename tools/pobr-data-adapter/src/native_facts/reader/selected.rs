@@ -19,6 +19,24 @@ impl Input {
     pub fn tables(&self, names: &[&'static str]) -> Result<Tables<'_>, String> {
         Tables::selected_documents(&self.documents, names)
     }
+
+    /// Check a consumed physical column without fabricating a full fact envelope.
+    pub fn column(&self, table: &str, field: &str, schema: &Value) -> Result<(), String> {
+        let columns = self.documents[&format!("tables/{table}.json")]["columns"]
+            .as_array()
+            .ok_or("missing supplement columns")?;
+        let column = columns
+            .iter()
+            .find(|c| c["physical_fields"] == json!([field]))
+            .ok_or("missing supplement column")?;
+        for (key, expected) in schema.as_object().ok_or("invalid column contract")? {
+            trust::require(
+                column["schema"][key] == *expected,
+                &format!("supplement column schema mismatch: {table}/{field}/{key}"),
+            )?;
+        }
+        Ok(())
+    }
 }
 
 pub(crate) fn open(path: &Path, pin: &str, parent: &Value) -> Result<Input, String> {
@@ -37,8 +55,11 @@ pub(crate) fn open(path: &Path, pin: &str, parent: &Value) -> Result<Input, Stri
     let producer = trust::strict_json(include_bytes!(
         "../../../tests/fixtures/ordinary-facts/selected-tables-producer.json"
     ))?;
+    let localized_capable_producer = trust::strict_json(include_bytes!(
+        "../../../tests/fixtures/ordinary-facts/selected-tables-producer-21ace02.json"
+    ))?;
     trust::require(
-        manifest["producer"] == producer,
+        manifest["producer"] == producer || manifest["producer"] == localized_capable_producer,
         "supplement producer identity mismatch",
     )?;
     trust::require(

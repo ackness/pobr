@@ -1,10 +1,9 @@
 //! Rules for the skills that items grant (`overlay/item_granted_skills.json`).
 //!
-//! The game's table of the skills a base item grants (`ItemInherentSkills`)
-//! flags some bases `NoReservation`: the skill such an item grants reserves no
-//! Spirit, although the same skill reserves Spirit as a gem. The Lament,
-//! Portent and Absent Amulets are those bases; the skills they grant reserve
-//! 30, 60 and 100 Spirit as gems.
+//! A versioned community interpretation of `ItemInherentSkills` marks bases
+//! whose item skills reserve no Spirit. The raw schema calls its third boolean
+//! `IsWeapon`; the pinned community schema calls it `NoReservation`. The producer
+//! records both identities instead of claiming an official field definition.
 
 use serde::{Deserialize, Serialize};
 

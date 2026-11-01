@@ -10,6 +10,49 @@ use super::{Args, parse_args, reader, run, sha256_hex};
 
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
+/// Seal a synthetic selected-table package through the real supplemental reader.
+pub(super) fn supplement(f: &Fixture, tables: &Value) -> super::BranchCodecArgs {
+    let path = f.root.join("supplement");
+    fs::create_dir_all(&path).unwrap();
+    let mut source = f.documents["source-lock.json"]["sources"]
+        .as_object()
+        .unwrap()
+        .values()
+        .next()
+        .unwrap()
+        .clone();
+    source.as_object_mut().unwrap().remove("profile");
+    source["resources"] = json!({});
+    let mut summary = json!({});
+    for (name, doc) in tables.as_object().unwrap() {
+        source["resources"][format!("Data/Balance/{name}.datc64")] =
+            json!({"bytes":10,"sha256":"a".repeat(64)});
+        summary[name] = json!(doc["rows"].as_array().unwrap().len());
+    }
+    let lock =
+        reader::json_bytes(&json!({"schema_version":1,"sources":{"selected":source}})).unwrap();
+    let raw = reader::json_bytes(tables).unwrap();
+    let mut identity = f.manifest["source_identity"].clone();
+    identity["source"] = json!("selected");
+    identity["source_lock_sha256"] = json!(sha256_hex(&lock));
+    identity["selected_source_sha256"] = json!(sha256_hex(&reader::json_bytes(&source).unwrap()));
+    identity["raw_resources"] = source["resources"].clone();
+    let manifest = reader::json_bytes(&json!({"format":"repoe-native-tables/v1",
+        "status":"partial-candidate","production_ready":false,"source_identity":identity,
+        "schema":f.manifest["schema"],"decoder":f.manifest["decoder"],
+        "producer":serde_json::from_slice::<Value>(include_bytes!("../../tests/fixtures/ordinary-facts/selected-tables-producer-21ace02.json")).unwrap(),
+        "summary":{"tables":summary},"files":{
+            "source-lock.json":{"bytes":lock.len(),"sha256":sha256_hex(&lock)},
+            "tables.json":{"bytes":raw.len(),"sha256":sha256_hex(&raw)}}})).unwrap();
+    fs::write(path.join("source-lock.json"), lock).unwrap();
+    fs::write(path.join("tables.json"), raw).unwrap();
+    fs::write(path.join("manifest.json"), &manifest).unwrap();
+    super::BranchCodecArgs {
+        path,
+        sha256: sha256_hex(&manifest),
+    }
+}
+
 pub(super) struct Fixture {
     pub(super) root: PathBuf,
     pub(super) manifest: Value,

@@ -32,6 +32,8 @@ pub(super) struct Policy {
     pub bindings: Vec<Binding>,
     pub evidence: Evidence,
     pub statement: String,
+    #[serde(default)]
+    pub player: Option<super::player::Policy>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -146,6 +148,9 @@ impl Policy {
             {
                 return Err("additional divisors must be finite and nonzero".into());
             }
+        }
+        if let Some(player) = &self.player {
+            player.validate(&files, &mut destinations)?;
         }
         for r in self
             .evidence

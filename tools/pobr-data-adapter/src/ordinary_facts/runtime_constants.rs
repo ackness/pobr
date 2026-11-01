@@ -1,5 +1,6 @@
 //! Existing ordinary numeric domains with target-owned leaves and explicit legacy models.
 
+mod player;
 mod policy;
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 mod tests;
@@ -17,6 +18,13 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
 pub(super) const TABLES: [&str; 1] = ["GameConstants"];
+pub(super) const PLAYER_TABLES: [&str; 5] = [
+    "GameConstants",
+    "Characters",
+    "Stats",
+    "PassiveSkills",
+    "ClassPassiveSkillOverrides",
+];
 const TABLE: &str = TABLES[0];
 const PAYLOAD: &str = "tables/GameConstants.json";
 
@@ -27,9 +35,14 @@ pub(super) struct Converted {
     pub policy_bytes: Vec<u8>,
     pub protected_parents: Vec<PathBuf>,
     pub receipt: Value,
+    pub player_files: BTreeMap<String, Vec<u8>>,
 }
 
-pub(super) fn convert(input: &VerifiedFacts, args: &super::CodecArgs) -> Result<Converted, String> {
+pub(super) fn convert(
+    input: &VerifiedFacts,
+    args: &super::CodecArgs,
+    context: Option<&super::BranchCodecArgs>,
+) -> Result<Converted, String> {
     let pinned_policy = read_pinned(
         &args.policy,
         &args.policy_sha256,
@@ -38,6 +51,9 @@ pub(super) fn convert(input: &VerifiedFacts, args: &super::CodecArgs) -> Result<
     let p: policy::Policy = serde_json::from_value(pinned_policy.document)
         .map_err(|e| format!("runtime-constants policy: {e}"))?;
     p.validate(input)?;
+    if p.player.is_some() != context.is_some() {
+        return Err("player constants policy/context must be paired".into());
+    }
     if p.source_snapshot.sha256 != args.source_sha256 {
         return Err("snapshot pin differs from policy source identity".into());
     }
@@ -112,10 +128,19 @@ pub(super) fn convert(input: &VerifiedFacts, args: &super::CodecArgs) -> Result<
             "normalization_steps":steps,"output":value,"legacy":{"present":old.is_some(),"value":old,"equals_normalized_f64":old.as_ref().and_then(Value::as_f64).map(|v|v==value)},
             "scope":"target-owned value; old equality is diagnostic only, never an input or admission condition"}));
     }
+    let player = p
+        .player
+        .as_ref()
+        .zip(context)
+        .map(|(policy, context)| player::apply(input, context, policy, &mut documents, &shapes))
+        .transpose()?;
     let mut base = BTreeMap::new();
     let mut file_records = Vec::new();
     let mut legacy_files = BTreeMap::new();
     let mut protected_parents = vec![manifest.parent.clone(), pinned_policy.parent];
+    if let Some(context) = context {
+        protected_parents.push(context.path.clone());
+    }
     for selected in &p.source_files {
         let source = &sources[&selected.file];
         let document = &documents[&selected.file];
@@ -126,6 +151,13 @@ pub(super) fn convert(input: &VerifiedFacts, args: &super::CodecArgs) -> Result<
             .iter()
             .filter(|b| b.file == selected.file)
             .map(|b| b.target_pointer.as_str())
+            .chain(
+                p.player
+                    .iter()
+                    .flat_map(|p| p.bindings.iter())
+                    .filter(|b| b.file == selected.file)
+                    .map(|b| b.target_pointer.as_str()),
+            )
             .collect();
         let mut retained_source = source.document.clone();
         let mut retained_output = document.clone();
@@ -170,7 +202,7 @@ pub(super) fn convert(input: &VerifiedFacts, args: &super::CodecArgs) -> Result<
             })
         })
         .collect();
-    let receipt = json!({"bindings":records,"source_occurrences":shared,"files":file_records,
+    let mut receipt = json!({"bindings":records,"source_occurrences":shared,"files":file_records,
         "legacy_snapshot":{"declaration":p.source_snapshot,"archive":"legacy-manifest.json","bytes":manifest.bytes.len(),"sha256":sha256_hex(&manifest.bytes),
             "file_read_and_hash_verified":true,"unselected_scope":"manifest metadata only; no unselected file opened, hash-verified or certified for the target"},
         "codec_policy":{"archive":"codec-policy.json","bytes":pinned_policy.bytes.len(),"sha256":sha256_hex(&pinned_policy.bytes)},
@@ -178,6 +210,12 @@ pub(super) fn convert(input: &VerifiedFacts, args: &super::CodecArgs) -> Result<
         "unconsumed_source":{"table":TABLE,"columns":columns,"rows":unused,"source_row_range":{"start":0,"end_exclusive":tables.len(TABLE)},"scope":"unapplied facts, not globally effectless; unused values/divisors are not evaluated"},
         "historical_evidence_declarations":p.evidence,"compatibility_statement":p.statement,
         "pending":"retained model constants/radii remain fixed compatibility, not independent target laws; full runtime package, ordinary BD/Web/accuracy, source approval and adoption remain separate"});
+    let player_files = if let Some(player) = player {
+        receipt["player_fields"] = player.receipt;
+        player.files
+    } else {
+        BTreeMap::new()
+    };
     Ok(Converted {
         base,
         legacy_files,
@@ -185,6 +223,7 @@ pub(super) fn convert(input: &VerifiedFacts, args: &super::CodecArgs) -> Result<
         policy_bytes: pinned_policy.bytes,
         protected_parents,
         receipt,
+        player_files,
     })
 }
 

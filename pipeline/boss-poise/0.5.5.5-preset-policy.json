@@ -1,0 +1,8 @@
+{
+  "schema": "pobr-ordinary-boss-poise-policy/v1",
+  "version": "0.5.5.5",
+  "map_id_contains": "MAP",
+  "pinnacle_id": "Metadata/Monsters/Breach/BreachOverseerBoss/ItThatReturned",
+  "uber_uses_pinnacle": true,
+  "statement": "Retain the existing PoBR generic preset selection: unique PoiseThreshold mode among BossHealthBar rows with MAP in exact Id, Xesht for pinnacle, and the same representative for Uber. These selectors are curated simulation compatibility, not a universal classification or claim that all bosses share this poise. All numeric values come from the selected target rows; no old-value gate or default. A tied or empty mode and a missing representative require an explicit selection decision."
+}
