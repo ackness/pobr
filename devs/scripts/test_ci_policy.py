@@ -8,7 +8,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+import tomllib
 
 
 HERE = Path(__file__).resolve().parent
@@ -68,7 +68,7 @@ class SparsePlannerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             checkout = Path(directory)
             files = ["Cargo.toml", "Cargo.lock", *[
-                f"{member}/Cargo.toml" for member in __import__('tomllib').loads(
+                f"{member}/Cargo.toml" for member in tomllib.loads(
                     (root / "Cargo.toml").read_text())["workspace"]["members"]]]
             for name in files:
                 dest = checkout / name

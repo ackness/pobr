@@ -64,10 +64,11 @@ runs:
         # An explicit override prevents rustup from adding the root file's WASM
         # target later when a host-only job invokes Cargo.
         echo "RUSTUP_TOOLCHAIN=$RUST_VERSION" >> "$GITHUB_ENV"
-    - uses: taiki-e/install-action@v2.88.0
+    - uses: taiki-e/install-action@v2.88.1
       if: inputs.wasm == 'true'
       with:
         tool: wasm-pack@${{ steps.versions.outputs.wasm_pack }}
+        fallback: none
     - name: Pinned actionlint
       if: inputs.scripts == 'true'
       shell: bash

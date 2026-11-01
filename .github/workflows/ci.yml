@@ -131,7 +131,7 @@ jobs:
       - uses: actions/cache@v5
         with:
           path: web/src/wasm/pkg
-          key: wasm-bindings-${{ runner.os }}-${{ runner.arch }}-${{ steps.wasm-key.outputs.key }}
+          key: wasm-bindings-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.wasm-key.outputs.key }}
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck (pre-wasm placeholder tolerated via ts-ignore)
@@ -146,7 +146,9 @@ jobs:
         # https://github.com/WebAssembly/binaryen/issues/7570
         env:
           BINARYEN_CORES: '1'
-        run: pnpm build-wasm
+        # Match the identity step's environment. pnpm scripts can prepend
+        # invocation-specific PATH entries, invalidating a restored receipt.
+        run: node scripts/build-wasm.mjs
       - name: Sync game data
         run: pnpm sync-data
       - name: Real WASM request contract
