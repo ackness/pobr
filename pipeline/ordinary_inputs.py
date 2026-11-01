@@ -64,6 +64,7 @@ def paths(names):
 
 def safe(path):
     path = Path(path).absolute()
+    require(".." not in path.parts, "Parent traversal in input/output path")
     require(all(not item.is_symlink() for item in (path, *path.parents)), "Symlink input/output path")
     return path
 

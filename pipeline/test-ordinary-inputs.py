@@ -220,6 +220,23 @@ put('producer-receipt.json',encoded(receipt))
             o.run(self.request, self.lock, self.root / "bad-code", self.local, verifier_library=library)
         self.assertFalse((self.root / "bad-code/verified-inputs.json").exists())
 
+    def test_parent_traversal_cannot_alias_output_into_local_inputs(self):
+        alias = self.root / "alias"
+        alias.mkdir()
+        before = sorted(path.relative_to(self.local) for path in self.local.rglob("*"))
+        for action in ("verify", "pack"):
+            output = alias / ".." / "portable" / action
+            with self.subTest(action=action), self.assertRaisesRegex(ValueError, "Parent traversal"):
+                if action == "verify":
+                    o.run(self.request, self.lock, output, self.local)
+                else:
+                    o.pack(self.request, self.lock, self.local, output)
+            self.assertFalse((self.local / action).exists())
+        with self.assertRaisesRegex(ValueError, "Parent traversal"):
+            o.run(self.request, self.lock, self.root / "input-alias", alias / ".." / "portable")
+        self.assertFalse((self.root / "input-alias").exists())
+        self.assertEqual(sorted(path.relative_to(self.local) for path in self.local.rglob("*")), before)
+
     def test_wrong_pin_missing_file_and_symlink_fail_before_execution(self):
         path=self.local/'spectres/source/legacy.json'; original=path.read_bytes()
         for mutation in ('pin','missing','symlink'):
