@@ -395,7 +395,7 @@ fn normalize_links(
         .collect()
 }
 
-fn normalize_graph(
+pub(super) fn normalize_graph(
     graph: GraphInput,
     passives: &PassiveInput,
     tables: &Tables<'_>,

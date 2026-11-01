@@ -11,7 +11,7 @@ use super::items_actors::{Actors, Items, Summary as ItemsActorsSummary};
 
 /// References are resolved only against the input manifest pinned in the candidate receipt.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(super) struct InputRef {
+pub(crate) struct InputRef {
     pub payload: String,
     pub pointer: String,
 }
@@ -89,7 +89,7 @@ pub(super) struct PassiveStat {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub(super) struct Graph {
+pub(crate) struct Graph {
     pub tree_id: String,
     pub raw_tree: InputRef,
     pub raw: InputRef,
@@ -101,13 +101,13 @@ pub(super) struct Graph {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct Root {
+pub(crate) struct Root {
     pub graph_id: u64,
     pub unknown: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub(super) struct Group {
+pub(crate) struct Group {
     pub x_raw: f64,
     pub y_raw: f64,
     pub flag_raw: u64,
@@ -186,7 +186,7 @@ pub(super) struct QualityStat {
 // through InputRef rather than being interpreted or duplicated in this candidate schema.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-pub(super) struct Identity {
+pub(crate) struct Identity {
     pub row: usize,
     pub id: String,
 }
@@ -219,7 +219,7 @@ pub(super) struct PassiveStatInput {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct InstanceInput {
+pub(crate) struct InstanceInput {
     pub definition: Identity,
     pub graph_id: u64,
     pub group: usize,

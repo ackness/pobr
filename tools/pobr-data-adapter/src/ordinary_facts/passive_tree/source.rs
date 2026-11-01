@@ -218,7 +218,7 @@ impl<'a> Facts<'a> {
         }).collect()
     }
 }
-fn column(
+pub(super) fn column(
     input: &VerifiedFacts,
     table: &str,
     field: &str,

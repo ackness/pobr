@@ -30,8 +30,8 @@ explicit fixed prepared compatibility, as described in
 producer with fixed curated membership, described in [ordinary-actors.md](ordinary-actors.md).
 `--ordinary-domain granted-effect-minions` preserves curated actor links with the
 target support-gating boolean, described in [ordinary-minion-links.md](ordinary-minion-links.md).
-`--ordinary-domain passive-tree` preserves the complete prepared tree and metadata
-with narrowly qualified target native fields, described in
+`--ordinary-domain passive-tree` with explicit tree reference/CSD inputs produces
+target graph, names and complete supported stat text with field-scoped compatibility, described in
 [ordinary-passive-tree.md](ordinary-passive-tree.md).
 `--ordinary-domain runtime-constants` produces the three foundation constant files
 with explicit selected legacy inputs, described in

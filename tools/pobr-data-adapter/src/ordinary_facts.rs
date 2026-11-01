@@ -36,6 +36,7 @@ pub(crate) struct Args {
     quality_policy: Option<quality::Args>,
     codec: Option<CodecArgs>,
     branch_codec: Option<BranchCodecArgs>,
+    tree_refresh: Option<Box<passive_tree::RefreshArgs>>,
 }
 
 struct BranchCodecArgs {
@@ -152,6 +153,8 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             "--codec-policy-sha256",
             "--branch-codec",
             "--branch-codec-sha256",
+            "--tree-reference",
+            "--tree-descriptions",
         ]
         .contains(&flag.as_str())
         {
@@ -221,8 +224,22 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
                 .into(),
         );
     }
+    let tree_refresh = match (
+        values.remove("--tree-reference"),
+        values.remove("--tree-descriptions"),
+    ) {
+        (None, None) => None,
+        (Some(reference), Some(descriptions)) if domain == Domain::PassiveTree => {
+            Some(Box::new(passive_tree::RefreshArgs {
+                reference: reference.into(),
+                descriptions: descriptions.into(),
+            }))
+        }
+        _ => return Err("both tree-reference and tree-descriptions require passive-tree".into()),
+    };
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
     Ok(Args {
+        tree_refresh,
         input: take("--ordinary-facts")?.into(),
         expected_manifest_sha256: take("--facts-manifest-sha256")?,
         version: take("--version")?,
@@ -271,12 +288,19 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
 pub(crate) fn run(args: Args) -> Result<String, String> {
     reader::require_absent(&args.out)?;
     let mut output = Output::prepare_paths(&args.input, &args.out)?;
-    let input = reader::open(
+    let mut input = reader::open(
         &args.input,
         &args.expected_manifest_sha256,
         &args.version,
-        args.domain.tables(),
+        if args.tree_refresh.is_some() {
+            &passive_tree::REFRESH_TABLES
+        } else {
+            args.domain.tables()
+        },
     )?;
+    if args.tree_refresh.is_some() {
+        reader::read_tree(&args.input, &mut input)?;
+    }
     let mut overlay = BTreeMap::new();
     let mut policy_bytes = None;
     let mut codec_policy_bytes = None;
@@ -587,11 +611,12 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
             )
         }
         Domain::PassiveTree => {
-            let converted = passive_tree::convert(
+            let converted = passive_tree::convert_with_refresh(
                 &input,
                 args.codec
                     .as_ref()
                     .ok_or("missing passive-tree source/policy arguments")?,
+                args.tree_refresh.as_deref(),
             )?;
             for parent in &converted.protected_parents {
                 output.protect(parent)?;
@@ -602,13 +627,22 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 converted.base,
                 converted.receipt,
                 "pobr_data::catalog::{PassiveNodeDef[],PassiveTreeMeta}",
-                vec![
-                    "All prepared nodes and metadata retain their non-owned fields, order, text, variants, unlock/ascendancy/armour context and unknown values. Fixed source/policy compatibility is distinct from target facts.",
-                    "Only complete single-stat whole-context eligible nodes receive target native_stats through the existing shared mapper. All others retain the full original text path; class attributes use target Characters values.",
-                    "Explicit identity and outside-connection exceptions are exact, consumed compatibility declarations, not node admission or legality rules. No added nodes, edge rewiring, guessed Ascendancy ordinal or Requirement predicate.",
-                    "Four selected tables and lock, plus explicit prepared tree and policy only. Metadata authoring/evidence paths are declarations, not implicitly read or file-hash-verified inputs.",
-                    "Draft domain candidate, incomplete and not adopted. No runtime manifest/CURRENT; full target text, BD/Web, package and source approval remain separate.",
-                ],
+                if args.tree_refresh.is_some() {
+                    vec![
+                        "Target Default graph owns membership/ordered emitted edges/group-orbit-slot and definitions own names/categories; source-bound non-allocatable records remain explicit exclusions.",
+                        "Complete supported CSD descriptions feed the existing ordinary parser; unsupported whole-node text retains exact semantic-guarded compatibility. No partial target packets or zero substitutes.",
+                        "Prepared conditional metadata, physical orbit offsets and exceptional variants remain field-scoped fixed compatibility; unknown target applicability is retained. No guessed Ascendancy ordinal or Requirement predicate.",
+                        "Five selected tables plus graph/passives and lock, externally pinned prepared policy/reference/CSD inputs. No source promotion, runtime adoption or CURRENT change.",
+                    ]
+                } else {
+                    vec![
+                        "All prepared nodes and metadata retain their non-owned fields, order, text, variants, unlock/ascendancy/armour context and unknown values. Fixed source/policy compatibility is distinct from target facts.",
+                        "Only complete single-stat whole-context eligible nodes receive target native_stats through the existing shared mapper. All others retain the full original text path; class attributes use target Characters values.",
+                        "Explicit identity and outside-connection exceptions are exact, consumed compatibility declarations, not node admission or legality rules. No added nodes, edge rewiring, guessed Ascendancy ordinal or Requirement predicate.",
+                        "Four selected tables and lock, plus explicit prepared tree and policy only. Metadata authoring/evidence paths are declarations, not implicitly read or file-hash-verified inputs.",
+                        "Draft domain candidate, incomplete and not adopted. No runtime manifest/CURRENT; full target text, BD/Web, package and source approval remain separate.",
+                    ]
+                },
             )
         }
         Domain::RuntimeConstants => {
@@ -791,6 +825,14 @@ fn implementation_sha256() -> String {
         (
             "ordinary_facts/passive_tree.rs",
             include_bytes!("ordinary_facts/passive_tree.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/passive_tree/refresh.rs",
+            include_bytes!("ordinary_facts/passive_tree/refresh.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/passive_tree/render.rs",
+            include_bytes!("ordinary_facts/passive_tree/render.rs").as_slice(),
         ),
         (
             "ordinary_facts/passive_tree/policy.rs",

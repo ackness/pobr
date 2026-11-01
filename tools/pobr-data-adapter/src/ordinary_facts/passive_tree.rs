@@ -1,8 +1,20 @@
-//! Complete prepared ordinary tree with narrowly qualified target native facts.
+//! Ordinary tree production from target facts with explicit field compatibility.
 
 mod policy;
 mod prepared;
+mod refresh;
+#[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
+mod refresh_tests;
+mod render;
 mod source;
+pub(super) use refresh::Args as RefreshArgs;
+pub(super) const REFRESH_TABLES: [&str; 5] = [
+    "PassiveSkills",
+    "Stats",
+    "Characters",
+    "ClassPassiveSkillOverrides",
+    "PassiveSkillTrees",
+];
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 pub(super) mod tests;
 
@@ -27,8 +39,20 @@ pub(super) struct Converted {
     pub base: BTreeMap<String, Vec<u8>>,
     pub source_bytes: Vec<u8>,
     pub policy_bytes: Vec<u8>,
-    pub protected_parents: [PathBuf; 2],
+    pub protected_parents: Vec<PathBuf>,
     pub receipt: Value,
+}
+
+pub(super) fn convert_with_refresh(
+    input: &VerifiedFacts,
+    args: &super::CodecArgs,
+    refresh: Option<&RefreshArgs>,
+) -> Result<Converted, String> {
+    if let Some(extra) = refresh {
+        refresh::convert(input, args, extra)
+    } else {
+        convert(input, args)
+    }
 }
 
 pub(super) fn convert(input: &VerifiedFacts, args: &super::CodecArgs) -> Result<Converted, String> {
@@ -198,7 +222,7 @@ pub(super) fn convert(input: &VerifiedFacts, args: &super::CodecArgs) -> Result<
         ]),
         source_bytes: legacy.bytes,
         policy_bytes: pinned_policy.bytes,
-        protected_parents: [legacy.parent, pinned_policy.parent],
+        protected_parents: vec![legacy.parent, pinned_policy.parent],
         receipt,
     })
 }
