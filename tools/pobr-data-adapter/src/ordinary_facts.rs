@@ -13,6 +13,7 @@ mod runtime_constants;
 mod skill_overrides;
 mod skill_stat_map;
 mod skills;
+mod socketables;
 mod stat_set_codec;
 mod totem_varieties;
 
@@ -37,6 +38,7 @@ pub(crate) struct Args {
     codec: Option<CodecArgs>,
     branch_codec: Option<BranchCodecArgs>,
     tree_refresh: Option<Box<passive_tree::RefreshArgs>>,
+    item_descriptions: Option<PathBuf>,
 }
 
 struct BranchCodecArgs {
@@ -69,6 +71,7 @@ enum Domain {
     GrantedEffectMinions,
     PassiveTree,
     RuntimeConstants,
+    Socketables,
 }
 
 impl Domain {
@@ -89,6 +92,7 @@ impl Domain {
             Self::GrantedEffectMinions => &minion_links::TABLES,
             Self::PassiveTree => &passive_tree::TABLES,
             Self::RuntimeConstants => &runtime_constants::TABLES,
+            Self::Socketables => &socketables::TABLES,
         }
     }
 
@@ -110,6 +114,7 @@ impl Domain {
             Self::GrantedEffectMinions => "ordinary-granted-effect-minions",
             Self::PassiveTree => "ordinary-passive-tree",
             Self::RuntimeConstants => "ordinary-runtime-constants",
+            Self::Socketables => "ordinary-socketables",
         }
     }
 
@@ -131,6 +136,7 @@ impl Domain {
             Self::GrantedEffectMinions => "granted-effect-minions",
             Self::PassiveTree => "passive-tree",
             Self::RuntimeConstants => "runtime-constants",
+            Self::Socketables => "socketables",
         }
     }
 }
@@ -155,6 +161,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             "--branch-codec-sha256",
             "--tree-reference",
             "--tree-descriptions",
+            "--item-descriptions",
         ]
         .contains(&flag.as_str())
         {
@@ -182,6 +189,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("granted-effect-minions") => Domain::GrantedEffectMinions,
         Some("passive-tree") => Domain::PassiveTree,
         Some("runtime-constants") => Domain::RuntimeConstants,
+        Some("socketables") => Domain::Socketables,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
     if domain != Domain::GemQuality
@@ -201,6 +209,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             | Domain::GrantedEffectMinions
             | Domain::PassiveTree
             | Domain::RuntimeConstants
+            | Domain::Socketables
     ) && [
         "--codec-source",
         "--codec-source-sha256",
@@ -211,7 +220,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     .any(|flag| values.contains_key(*flag))
     {
         return Err(
-            "codec arguments require --ordinary-domain stat-set-codec, gem-effects, skill-stat-map, skill-overrides, minions, spectres, granted-effect-minions, passive-tree or runtime-constants".into(),
+            "codec arguments require --ordinary-domain stat-set-codec, gem-effects, skill-stat-map, skill-overrides, minions, spectres, granted-effect-minions, passive-tree, runtime-constants or socketables".into(),
         );
     }
     if !matches!(domain, Domain::SkillStatMap | Domain::SkillOverrides)
@@ -237,9 +246,14 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         }
         _ => return Err("both tree-reference and tree-descriptions require passive-tree".into()),
     };
+    let item_descriptions = values.remove("--item-descriptions").map(PathBuf::from);
+    if (domain == Domain::Socketables) != item_descriptions.is_some() {
+        return Err("item-descriptions is required only for socketables".into());
+    }
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
     Ok(Args {
         tree_refresh,
+        item_descriptions,
         input: take("--ordinary-facts")?.into(),
         expected_manifest_sha256: take("--facts-manifest-sha256")?,
         version: take("--version")?,
@@ -264,6 +278,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
                 | Domain::GrantedEffectMinions
                 | Domain::PassiveTree
                 | Domain::RuntimeConstants
+                | Domain::Socketables
         ) {
             Some(CodecArgs {
                 source: take("--codec-source")?.into(),
@@ -311,9 +326,37 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     let mut legacy_minion_links_bytes = None;
     let mut legacy_passive_tree_bytes = None;
     let mut legacy_manifest_bytes = None;
+    let mut legacy_socketables_bytes = None;
     let mut legacy_constant_files = BTreeMap::new();
     // Complete validation and serialization before reserving any output.
     let (base, conversion, output_schema, scope) = match args.domain {
+        Domain::Socketables => {
+            let converted = socketables::convert(
+                &input,
+                args.codec
+                    .as_ref()
+                    .ok_or("missing socketable compatibility arguments")?,
+                args.item_descriptions
+                    .as_ref()
+                    .ok_or("missing socketable descriptions")?,
+            )?;
+            for parent in &converted.protected_parents {
+                output.protect(parent)?;
+            }
+            overlay = converted.overlay;
+            codec_policy_bytes = Some(converted.policy_bytes);
+            legacy_socketables_bytes = Some(converted.source_bytes);
+            (
+                BTreeMap::new(),
+                converted.receipt,
+                "pobr_data::catalog::item_overlay::RunesDef",
+                vec![
+                    "Target socketable facts and complete global-CSD packets feed the existing ordinary item editor.",
+                    "Unrenderable complete socketables require explicit unchanged target-packet bindings to pinned historical text. No partial effect or missing value becomes zero.",
+                    "Source acquisition remains draft; no runtime manifest, CURRENT update, Lua execution or new calculation law.",
+                ],
+            )
+        }
         Domain::StatsMods => {
             let converted = convert::convert(&input)?;
             let base = BTreeMap::from([
@@ -712,6 +755,9 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     if let Some(bytes) = legacy_manifest_bytes {
         sidecars.insert("legacy-manifest.json", bytes);
     }
+    if let Some(bytes) = legacy_socketables_bytes {
+        sidecars.insert("legacy-socketables.json", bytes);
+    }
     let files: BTreeMap<_, _> = base
         .iter()
         .map(|(name, data)| (format!("base/{name}"), data))
@@ -801,6 +847,14 @@ fn implementation_sha256() -> String {
     let mut bytes = Vec::new();
     // Content revision records the compiled implementation, not whichever checkout invokes it.
     for (name, source) in [
+        (
+            "ordinary_facts/socketables.rs",
+            include_bytes!("ordinary_facts/socketables.rs").as_slice(),
+        ),
+        (
+            "catalog/item_overlay.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/item_overlay.rs").as_slice(),
+        ),
         (
             "ordinary_facts/runtime_constants.rs",
             include_bytes!("ordinary_facts/runtime_constants.rs").as_slice(),

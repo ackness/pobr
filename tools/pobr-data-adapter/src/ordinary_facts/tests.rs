@@ -75,6 +75,7 @@ impl Fixture {
     pub(super) fn args(&self) -> Args {
         Args {
             tree_refresh: None,
+            item_descriptions: None,
             input: self.root.join("input"),
             expected_manifest_sha256: sha256_hex(
                 &fs::read(self.root.join("input/manifest.json")).unwrap(),

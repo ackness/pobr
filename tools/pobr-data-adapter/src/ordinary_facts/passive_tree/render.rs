@@ -11,14 +11,23 @@ const SCOPES: [&str; 2] = [
     "Data/StatDescriptions/stat_descriptions.csd",
 ];
 
-pub(super) struct Renderer<'a> {
+pub(in crate::ordinary_facts) struct Renderer<'a> {
     descriptions: BTreeMap<String, Vec<(&'a Value, String)>>,
 }
 
 impl<'a> Renderer<'a> {
     pub fn new(document: &'a Value) -> Result<Self, String> {
+        Self::scoped(document, &SCOPES)
+    }
+
+    /// Item socketables use the global item-stat scope, without passive overrides.
+    pub fn global(document: &'a Value) -> Result<Self, String> {
+        Self::scoped(document, &SCOPES[1..])
+    }
+
+    fn scoped(document: &'a Value, scopes: &[&str]) -> Result<Self, String> {
         let mut descriptions: BTreeMap<String, Vec<(&Value, String)>> = BTreeMap::new();
-        for path in SCOPES {
+        for &path in scopes {
             let file = &document["files"][path];
             if file["path"] != path {
                 return Err(format!("missing CSD scope {path}"));

@@ -5,7 +5,7 @@ mod prepared;
 mod refresh;
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 mod refresh_tests;
-mod render;
+pub(super) mod render;
 mod source;
 pub(super) use refresh::Args as RefreshArgs;
 pub(super) const REFRESH_TABLES: [&str; 5] = [
