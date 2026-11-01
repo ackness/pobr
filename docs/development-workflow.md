@@ -217,9 +217,9 @@ Rust 使用 `Swatinem/rust-cache`，按平台、工具链与用途隔离；PR �
 不因工作流使用了 cache Action 就认定已经复用。
 
 WASM 另外缓存体积较小的绑定与构建记录，key 直接来自源码指纹和构建输入，不能用 commit SHA
-或仅 lockfile 代替。命中后 `build-wasm` 仍验证源码、环境、绑定哈希及实际 schema；真实 WASM 契约、
+或仅 lockfile 代替。命中后 `build-wasm` 仍验证源码、环境、绑定哈希及实际 schema。
 CI 的 key 与构建都直接用 Node 执行，避免 pnpm 为脚本注入的临时 PATH 使构建记录每次失效。
-同步数据、站点构建、打包与解包后的真实计算每次照常执行。Rust 依赖缓存还保存 wasm-pack 下载的
+真实 WASM 契约、同步数据、站点构建、打包与解包后的真实计算每次照常执行。Rust 依赖缓存还保存 wasm-pack 下载的
 预编译 bindgen/Binaryen 工具；固定 LuaJIT 无官方二进制，只缓存源码 pin 对应的可执行文件，
 仅缺失时编译。工具安装不使用 `cargo install` / `go install`。
 按仓库 10 GiB 缓存预算控制存储，不缓存 dist、node_modules、游戏数据或历史诊断产物。
