@@ -21,7 +21,7 @@ MAINTENANCE_FILES = {
     "generated/modifier-audit.json", "generated/parsed_mods.json",
     "generated/parse-coverage.json", "generated/test_pins.json",
     "overlay/stat_id_map.json",
-    "generated/translation-audit.json",
+    "generated/translation-audit.json", "generated/locale-generation-receipt.json",
 }
 
 
@@ -360,14 +360,14 @@ def export_tables(root):
              "--out", "pipeline/tables/quality-export-source.json"], root, os.environ)
 
 
-def regenerate(root, refresh_dictionary=False, activate=False, base_only=False, operation=None, arguments=(),
-               reference_audit=None):
+def regenerate(root, activate=False, base_only=False, operation=None, arguments=(),
+               reference_audit=None, locale_lock=None):
     with workspace_lock(root):
-        _regenerate(root, refresh_dictionary, activate, base_only, operation, arguments, reference_audit)
+        _regenerate(root, activate, base_only, operation, arguments, reference_audit, locale_lock)
 
 
-def _regenerate(root, refresh_dictionary=False, activate=False, base_only=False, operation=None, arguments=(),
-                reference_audit=None):
+def _regenerate(root, activate=False, base_only=False, operation=None, arguments=(),
+                reference_audit=None, locale_lock=None):
     # Full legacy generation still extracts vendor data. Adapting official tables
     # validates our effective rules without implicitly executing the reference.
     if reference_audit is None:
@@ -400,8 +400,19 @@ def _regenerate(root, refresh_dictionary=False, activate=False, base_only=False,
                "POBR_CANDIDATE": "1", "POBR_DEFER_MODIFIER_AUDIT": "1", "OLD_PATCH": old}
         # Golden snapshots linked above must never be blessed by generation.
         env.pop("POBR_BLESS_PINS", None)
+        if operation != "modifiers":
+            selected_locale_lock = locale_lock or root / "pipeline/locale-generation.lock.json"
+            if operation == "dictionary" and "--lock" in arguments:
+                index = arguments.index("--lock")
+                if index + 1 == len(arguments):
+                    raise ValueError("Missing independent locale lock path")
+                selected_locale_lock = arguments[index + 1]
+            # Refuse another patch before invoking expensive game generators.
+            run(["python3", "pipeline/locale_inputs.py", "--lock", str(selected_locale_lock),
+                 "--version", version, "--check-lock"], root, env)
         if operation == "dictionary":
-            run(["node", "pipeline/gen-zh-cn.mjs", *arguments], root, env)
+            run(["python3", "pipeline/locale_inputs.py", "--candidate", str(data_root / version),
+                 *arguments], root, env)
         elif operation == "modifiers":
             run(["bash", "pipeline/refresh-modifiers.sh", "--data", str(data_root / version), *arguments], root, env)
         elif base_only:
@@ -410,10 +421,11 @@ def _regenerate(root, refresh_dictionary=False, activate=False, base_only=False,
         else:
             run(["bash", "pipeline/regen-all.sh"], root, env)
         if not operation:
-            dictionary = ["node", "pipeline/gen-zh-cn.mjs", "--version", version]
-            if refresh_dictionary:
-                dictionary.append("--refresh")
-            run(dictionary, root, env)
+            language = ["python3", "pipeline/locale_inputs.py", "--candidate", str(data_root / version),
+                        "--version", version]
+            if locale_lock is not None:
+                language += ["--lock", str(locale_lock)]
+            run(language, root, env)
         # Auditors use the normal hash-validating loader. Seal changed candidate
         # runtime bytes before they read them; audit outputs are maintenance-only.
         manifest(data_root / version)
@@ -446,9 +458,10 @@ def main():
     record.add_argument("--config", type=Path, required=True)
     record.add_argument("--raw", type=Path, required=True)
     regen = sub.add_parser("regenerate")
-    regen.add_argument("--refresh-dictionary", action="store_true")
+    regen.add_argument("--locale-lock", type=Path, help="Explicit independent language-generation lock for this patch")
     regen.add_argument("--activate", action="store_true")
     adapt = sub.add_parser("adapt")
+    adapt.add_argument("--locale-lock", type=Path, help="Explicit independent language-generation lock for this patch")
     adapt.add_argument("--reference-audit", action="store_true",
                        help="Also compare parser behavior with the installed PoB2 reference")
     sub.add_parser("export")
@@ -506,11 +519,12 @@ def main():
         arguments = getattr(args, "arguments", [])
         if arguments[:1] == ["--"]:
             arguments = arguments[1:]
-        regenerate(ROOT, getattr(args, "refresh_dictionary", False), getattr(args, "activate", False),
+        regenerate(ROOT, activate=getattr(args, "activate", False),
                    base_only=args.command == "adapt",
                    operation=args.command if args.command in {"dictionary", "modifiers"} else None,
                    arguments=arguments,
-                   reference_audit=args.reference_audit if args.command == "adapt" else None)
+                   reference_audit=args.reference_audit if args.command == "adapt" else None,
+                   locale_lock=getattr(args, "locale_lock", None))
 
 
 if __name__ == "__main__":

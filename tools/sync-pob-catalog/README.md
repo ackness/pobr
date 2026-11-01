@@ -66,3 +66,11 @@ vendor commit（读自 `.pob2-version.txt`）与 `regen_command`。
 只许工具再生。
 
 运行时由 `pobr-gamedata` 加载技能数据时合并这份 overlay；本工具只负责抽取与固化。
+
+当前保留表的旧来源 `ce8bffaba31f8e68cfce70579e1c96465e7c133c` 已能从上游固定 Git 提交获取。
+对其 [`CalcPerform.lua`](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/blob/ce8bffaba31f8e68cfce70579e1c96465e7c133c/src/Modules/CalcPerform.lua)
+及 [`CalcDefence.lua`](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/blob/ce8bffaba31f8e68cfce70579e1c96465e7c133c/src/Modules/CalcDefence.lua)
+逐条按各自 `vendor_ref.file` 核对，15 个原行段的旧 hash 均匹配；在当前固定
+`bb52d6b368307457eb9c54bb13f1829993d390b1` 中各有唯一、逐字节相同的行段。
+这消除了“旧源码无法取得”的证据缺口，但外部保留表仍记录旧来源／旧行号，默认漂移检查仍报告失败。
+引用元数据的外部修订、完整上下文适用和运行身份更新须分别处理；未改效果值，也未据此认证官方 buff 或 charm 语义。

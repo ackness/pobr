@@ -475,7 +475,8 @@ class VersionPromotionTests(unittest.TestCase):
 
             def run(command, cwd, env):
                 candidate = Path(env["POBR_DATA_ROOT"]) / version
-                if command[0] == "node":
+                if "pipeline/locale_inputs.py" in command and "--check-lock" not in command:
+                    self.assertIn("--candidate", command)
                     (candidate / relative).write_text(updated, encoding="utf-8")
                 elif "pipeline/refresh-modifiers.sh" in command:
                     manifest = snapshot.read_json(candidate / "manifest.json")
@@ -504,6 +505,7 @@ class VersionPromotionTests(unittest.TestCase):
 mkdir -p "$POBR_DATA_ROOT/1.2.4/base"
 printf '[]\\n' > "$POBR_DATA_ROOT/1.2.4/base/skill_gems.json"
 ''').chmod(0o755)
+                write("pipeline/locale_inputs.py", f"import sys\nsys.exit({19 if failure == 'dictionary' else 0})\n")
                 write("pipeline/refresh-modifiers.sh", f"#!/usr/bin/env bash\nexit {17 if failure == 'audit' else 0}\n")
                 # Simulate resuming after a different failed candidate.
                 write("pipeline/config.json", '{"patch": "1.2.99"}')
@@ -535,7 +537,7 @@ pathlib.Path(sys.argv[sys.argv.index("-o") + 1]).write_text("{}", encoding="utf-
                 self.assertEqual((root / "crates/pobr-data/src/lib.rs").read_text(encoding="utf-8"), rust)
                 self.assertEqual(json.loads((root / "pipeline/config.json").read_text(encoding="utf-8"))["patch"], "1.2.4")
                 if failure:
-                    expected = {"dictionary": "gen-zh-cn.mjs", "audit": "refresh-modifiers.sh",
+                    expected = {"dictionary": "locale_inputs.py", "audit": "refresh-modifiers.sh",
                                 "versions": "driver.sh", "gamedata": "pobr-gamedata", "parity": "parity_no_regression"}
                     self.assertIn(expected[failure], result.stderr)
 

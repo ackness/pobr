@@ -3,7 +3,7 @@
 # audit and validate an isolated complete snapshot before publication and CURRENT.
 # Explicit vendor pin selection and numerical golden updates remain separate decisions.
 # Usage: pipeline/bump-version.sh [--patch <version>] [--vendor-sha <full-sha>]
-#                               [--skip-download]
+#                               [--skip-download] [--locale-lock <pinned-lock>]
 # Same-version refreshes use the same candidate/rollback boundary as upgrades.
 set -uo pipefail
 
@@ -18,11 +18,13 @@ NEW_PATCH=""
 EXPLICIT_PATCH=0
 VENDOR_SHA=""
 SKIP_DOWNLOAD=0
+LOCALE_LOCK=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --patch)         NEW_PATCH="$2"; EXPLICIT_PATCH=1; shift 2 ;;
         --vendor-sha)    VENDOR_SHA="$2";  shift 2 ;;
         --skip-download) SKIP_DOWNLOAD=1;  shift ;;
+        --locale-lock)   LOCALE_LOCK="$2"; shift 2 ;;
         *) echo "bump-version: 未知参数 $1" >&2; exit 2 ;;
     esac
 done
@@ -147,7 +149,7 @@ if [[ ! -f "pipeline/gem-quality/$NEW_PATCH.json" ]]; then
 fi
 # Generate, audit, seal and validate an isolated candidate before publishing it.
 transaction_args=(regenerate --activate)
-if [[ "$SKIP_DOWNLOAD" -eq 0 ]]; then transaction_args+=(--refresh-dictionary); fi
+if [[ -n "$LOCALE_LOCK" ]]; then transaction_args+=(--locale-lock "$LOCALE_LOCK"); fi
 die_on_fail env OLD_PATCH="$OLD_PATCH" POBR_EXPECTED_PATCH="$NEW_PATCH" python3 pipeline/data_snapshot.py "${transaction_args[@]}"
 
 if [[ -d web/node_modules ]]; then
@@ -166,7 +168,7 @@ if [[ ${#FAILURES[@]} -gt 0 ]]; then
 fi
 cat <<EOF
 剩余人工决策：
-  1. review 本次 data/ diff 后提交（生成物已标 -diff，重点看 overlay 人工域与 base 结构变化）；
+  1. review 临时候选、外部 owner 产物和 pins；完整 data/ 不提交到 PoBR，更新独立输入锁；
   2. 引擎适配 triage：pipeline/diff-vendor-calcs.sh ${OLD_VENDOR_SHA:-<旧sha>} <新sha> 拿公式 delta 清单；
   3. 重采 PoB2 参照值：examples/demo-bd-test/tools/recapture_golden.py 与 recapture_panel_golden.py，
      再跑 parity；掉格即引擎与新版 PoB2 的差距，按第 2 步的清单修，不降基线。

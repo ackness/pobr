@@ -17,7 +17,7 @@ cd "$ROOT"
 
 # Public regeneration always owns an isolated candidate and validation transaction.
 if [[ "${POBR_CANDIDATE:-0}" != 1 ]]; then
-    exec python3 pipeline/data_snapshot.py regenerate
+    exec python3 pipeline/data_snapshot.py regenerate "$@"
 fi
 DATA_ROOT="${POBR_DATA_ROOT:?candidate data root is required}"
 [[ "$DATA_ROOT" != "$ROOT/data" && "$DATA_ROOT" != data ]] || {

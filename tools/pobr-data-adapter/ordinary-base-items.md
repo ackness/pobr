@@ -251,14 +251,88 @@ empty numeric values do not establish an empty/effectless buff. In particular,
 `FourCharm13` (Cleansing Charm) has a curse-immunity flag but no legacy
 `charm_buff`, so the 12 retained text entries do not bound target coverage.
 
-The next adapter slice should bind value-to-stat ordering, the roles of
-`Stats`/`GrantedStats`/`Stats2`, flag truth semantics, conditions and applicable
-effect scope, then convert complete supported packets through an explicit text
-interpretation. Verify every consumed FK and list length. Retain ordering,
-duplicates, nulls, zero values, unsupported members and their source pointers.
-Do not synthesize numeric zero for flags, concatenate duplicate stat lists, or
-use `BuffDefinitions.Description` as a numeric template. Known scalar values
-alone do not authorize dropping an unknown member from the packet.
+### Complete-packet ownership is blocked
+
+The fixed schema is dat-schema
+[`6034b071846ef61b39046ebdb59e6d5717179509`](https://github.com/poe-tool-dev/dat-schema/blob/6034b071846ef61b39046ebdb59e6d5717179509/dat-schema/poe2/_Core.gql#L949),
+with schema digest
+`50e098543345cf8323aeb294e2cfef1b6b44842faccf560ada935cebe22727df`.
+It declares the physical types and references, but leaves several buff fields
+unnamed. Checking all 55 physical `BuffDefinitions` fields in each of the 13
+selected rows gives this shared unresolved profile. Column indices are zero-based
+`source_column` values in the pinned table, not guessed byte offsets.
+
+| Physical field | Column | Value in all 13 packets | Missing interpretation |
+| --- | ---: | --- | --- |
+| `Flag1` | 14 | `true` | The schema supplies only an unnamed bool |
+| `Flag4` | 18 | `true` | The schema supplies only an unnamed bool |
+| `Unknown0` | 12 | `31` | The schema supplies only an unnamed i32 |
+| `Unknown3` | 50 | `1` | The schema supplies only an unnamed i32 |
+| `MergeMode` | 7 | `3` | The referenced [`BuffMergeModes` enum](https://github.com/poe-tool-dev/dat-schema/blob/6034b071846ef61b39046ebdb59e6d5717179509/dat-schema/_Core.gql#L782) has no named modes in the fixed schema |
+
+Other shared facts include `BuffCategory=17`, `UIStackMode=8`,
+`CancelOnDeath=true`, `BuffLimit=0`, `IsRecovery=false` and `IsSkillBuff=false`.
+`Implementation` is empty; `Stats2`, `ConditionStats`, `Keys0`, `Keys1`, `Data0`,
+`Data1`, `MultiPartAchievement` and `PreloadGroup` are empty; `Maximum_Stat`,
+`Current_Stat`, `MinStat` and `Key0` are null. Every utility row also has
+`StatValues2=[]` and `Key0=null`. These observations constrain the selected
+input; they do not certify that nonempty unknown fields are cosmetic, effectless
+or safe to ignore. A constant-value allowlist would only recognize this source
+profile, not establish its effect scope or merge law.
+
+There is useful but narrower parser evidence. At the pinned PyPoE revision
+`66d1d7442c5718260e1a8efd24989d22987e91af`,
+[`_apply_flask_buffs`](https://github.com/repoe-fork/pypoe/blob/66d1d7442c5718260e1a8efd24989d22987e91af/PyPoE/cli/exporter/poe2wiki/parsers/item.py#L1632)
+reads each ordered `UtilityBuff`, passes `StatsKeys` followed by `GrantedFlags`
+to `stat_descriptions.txt`, and supplies `StatValues` followed by one integer
+`1` per flag. The generated
+[`BuffDefinitions` compatibility alias](https://github.com/repoe-fork/pypoe/blob/66d1d7442c5718260e1a8efd24989d22987e91af/PyPoE/poe/file/specification/data/poe2.py#L7593)
+maps `StatsKeys` to the physical `Stats` column. This supports a community
+display interpretation of primary value ordering and flag truth; it neither
+applies `GrantedStats` a second time nor resolves the unknown packet members.
+The wiki exporter does not prove calculation applicability, complete packet
+coverage, length validation or equivalence to PoBR's merge policy. Buff
+`Description` is prose, not a numeric template or an alternative renderer.
+
+The existing consumer boundary stays unchanged. The
+[ordinary override loader](../../crates/pobr-gamedata/src/domains/base_item_overrides.rs)
+lets a present legacy `charm_buff` replace the base vector, including an explicit
+empty vector. The v1/v2 adapter policies do not delegate this field. Build
+[utility injection](../../crates/pobr-build/src/calc_orchestrator/inject.rs)
+looks up the longest matching base name, adds utility properties for active and
+inactive slots, and appends inherent buff text only for an active slot.
+[Utility merging](../../crates/pobr-core/src/calc/env_finalize.rs) then gates it
+on combat mode and charm capacity, scales numeric effects, retains flag truth,
+and keeps slot attribution. These existing policies are consumers to preserve;
+their implementation cannot establish the target meaning of `MergeMode=3` or
+the unknown fields. The
+[active/inactive regression](../../crates/pobr-build/tests/skills/unique_lines_3.rs)
+already exercises charm-effect scaling across both states. Unchanged consumer
+evidence can be reused; source inspection alone is not a new passing runtime test.
+
+Consequently none of the 13 complete effect packets is admitted as source-owned
+`charm_buff`. The 12 historical text entries remain compatibility; Cleansing
+Charm's absent historical text stays absent with the missing-effect diagnostic.
+Its target curse flag is preserved as evidence, without inventing zero effect,
+an event history or a new immunity implementation.
+
+The next required input is a source-backed interpretation of the nonempty
+unknown fields and merge mode, including their applicability to the selected
+player/charm conditions. An interpretation must bind the primary, granted,
+secondary and conditional lists, ordering, units, flags and precedence, and
+identify all remaining fields as interpreted or outside the static effect by
+evidence. RePoE owns any additional decoding; the translation repository owns
+the target stat-description assets. No additional raw charm dump is needed to
+recover the already available 13 relationships. A physical relationship
+projection could separately own base/utility/buff/stat identities and ordered
+raw values without assigning effects, but would not authorize legacy removal
+and is not a new calculation DTO or model in this domain.
+
+After that boundary is established, convert complete supported packets through
+an explicit text interpretation. Verify every consumed FK and list length.
+Retain ordering, duplicates, nulls, zero values, unsupported members and their
+source pointers. Do not synthesize numeric zero for flags, concatenate duplicate
+stat lists, or discard an unknown member because a scalar is recognized.
 
 This is a PoBR consumption/interpretation gap in already exported facts, not a
 request for a second raw charm exporter or another complete snapshot. RePoE owns
