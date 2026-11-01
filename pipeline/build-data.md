@@ -87,8 +87,10 @@ The source-derived 0.5.5.5 composition uses snapshot `73b2d77e...` and runtime
 `2a03ad79...` / `d7ac23c5...` baseline. All 92 catalog business records match.
 The immutable inputs are published. Fresh remote Git composition, denied-network
 replay and local adoption are verified; the frozen CLI reads the new identity with
-identical business output/diagnostics. Full integration CI and gameplay/source
-certification remain separate. The [rollback lock](build-data-0.5.5.4.2.lock.json)
+identical business output/diagnostics. [Full integration CI](https://github.com/ackness/pobr/actions/runs/41348105556)
+passes at exact head `7e4d0c23`, including real WASM and runtime composition. Its
+compact release remains `9932ea87...` / `ec4f3776...`; the source lock is retained
+in the build receipt. Gameplay/source certification and unselected E2E stay separate. The [rollback lock](build-data-0.5.5.4.2.lock.json)
 preserves snapshot `bfd31a46...` and runtime `dcfc32c2...`. Full hashes live in
 the locks. The older 4.5.5.2/4.5.5.3 directories are no longer current-tree
 inputs; historical Git objects are not rewritten or used as runtime fallbacks.

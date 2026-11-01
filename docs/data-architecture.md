@@ -166,14 +166,14 @@ PoE2 游戏数据导出的例外。官方来源的客户端字节与官方支持
 完整数据已迁往独立RePoE／翻译仓库，由精确锁临时组合；PoBR tracked `data/`只有CURRENT和十一份自有规则。原`7793f93b`入库快照的过渡存储已撤出当前tree，历史不改写。
 当前完整快照有67个manifest文件、简繁两种词典及18份共享JSON；manifest SHA为`73b2d77e669743ced67df5cf6e0245f79e333bb9b2a481b796da7099d8f63a06`，
 完整runtime身份为`dba0615e55471570b22cb7759b3906b1db9e78629a2a6846a743e070708f0e72`。制作目录改为必需的独立七表事实投影，92条业务记录不变，来源元数据更新。
-旧`0.5.5.4.2`由独立回滚锁恢复runtime `dcfc32c2`，可用`--keep-current`安装作兼容测试；旧完整目录不再入库。独立数据artifact已按授权发布；源码接线已由PoBR218／219、翻译库5及RePoE7合并。设计分支使用独立干净发布历史，未部署。
+旧`0.5.5.4.2`由独立回滚锁恢复runtime `dcfc32c2`，可用`--keep-current`安装作兼容测试；旧完整目录不再入库。独立数据artifact已按授权发布；源码接线已由PoBR218／219／221、翻译库5及RePoE7／8合并。设计分支使用独立干净发布历史，未部署。
 
 自主RePoE事实和CSD已通过领域adapter接回普通DTO、GameData／BuildData及原计算路径；保留构筑码导入、装备、技能、天赋、配置和存档能力。
-六域最新输出与N4显示已封入SC紧凑release `9932ea87`／runtime `ec4f3776`；原2a03ad79／d7ac23c5完整双语基线投影后的四个玩家文件与它逐字节相同；该封包证明保持原身份。
-既有356条开发输入的真实TypeScript／WASM API流程和三对CLI结果按原固定代码／产物身份复用；新完整快照另验证一个真实CLI／WASM构筑及采用／回滚演练。
+六域最新输出与N4显示已封入SC紧凑release `9932ea87`／runtime `ec4f3776`；原2a03ad79／d7ac23c5基线与当前73b2d77e／dba0615e组合均投影到这一紧凑身份。精确7e4d0c23的完整CI重新生成同一release，下载产物核验完整归档摘要及全部block身份通过；新来源锁留在构建收据中。
+既有356条开发输入的真实TypeScript／WASM API流程和三对CLI结果按原固定代码／产物身份复用；初次2a03ad79／d7ac23c5基线另验证真实CLI／WASM构筑及采用／回滚。当前制作组合以固定CLI验证默认身份与业务／诊断等价，完整CI另验证实际WASM和组包。
 root从远端Git重新取得当前及回滚输入，恢复相同manifest／runtime／bundle；无数据路径或版本覆盖的CLI计算与候选结果完全相同，Web默认同步86个运行文件。
-真实本地浏览器完成Druid／Oracle构筑导入、计算、等级与笔记编辑、刷新后恢复，并在打造选择器看到exact-ID的“蓝玉”；原WASM未重编译。完整Web测试757通过／8跳过，workflow检查通过，旧新版两项真实构筑兼容测试通过。
-这些证据不等于全部浏览器／BD、远端CI、准确率、CN数值或所有用户patch组合已通过。
+初始2a03ad79／d7ac23c5基线的真实本地浏览器完成Druid／Oracle导入、计算、等级／笔记编辑、刷新恢复及打造exact-ID的“蓝玉”；该阶段复用原WASM，Web757通过／8跳过及两项多版本构筑证明保持原身份。
+PR221精确7e4d0c23的[完整CI](https://github.com/ackness/pobr/actions/runs/41348105556)通过三个Rust分片、fmt／Clippy、automation、Web／真实WASM／独立打包、声明运行组包和Full gate；E2E未选。它不认证全部浏览器／BD、准确率、CN数值、许可或所有用户patch组合。
 
 本轮root已分别接受精确91项tree／IT资源、10项CSD和12项语言原生资源，加入原F77及六DAT采集决定。
 [sources.lock](../pipeline/sources.lock.json)的`retained_input_acceptances`另记录locale／shared／compat三类有界保留决定，逐项状态和精确pin生效，不改五项原采集接受。
@@ -233,10 +233,11 @@ SC客户端身份、CN数值、分发许可和未知机制仍未认证；有界�
 | 语言：官方缺译／补译工作台 | 独立0e7778c4已接v3：真实工作台58588当前条目、45 eligible，保留117160条prior observations。21项库测试与原真实导出证据复用；紧凑审核包395B／0条、SHA563015ee，两真实草稿仍不生效。PoBR 9f3f2022消费该包，真实58588决策为25097 official／33491 fallback，输出381d827a与原N4逐字节同 | source-review／拒绝绑定不能当官方缺译。718B单条补译只作明确标注的合成验证：真实库接受精确query，跨区服拒绝、英文或完整context不符回退；不自动批准Freezing Pulse草稿，不认证旧网站描述的当前机制 |
 | 语言：补译版本／区服隔离 | PoBR显式reviewed-only入口绑定catalog原bytes／SHA、原v3 verification Buffer、独立紧凑包及workbench单模块pin；官方六模块与catalog.producer精确guard不变。查询传精确patch／realm／locale／table／field／ID／English／完整英文context，官方先返回、审核补译其次。933c40e3补拒v2＋补译及缺声明bytes的守卫，19 Node／12 Python定向测试通过 | 目前PoBR补译仅v3 international／zh-CN，旧v1／v2官方查询保留。SC观察patch／realm仍null；china／international与zh-CN／zh-TW独立，target-missing不是国服专属。换catalog／patch／context须复核，未知／内部placeholder／草稿不可生效；来源与CN数值另验 |
 | 交付：声明式显示候选导入 | 需求JSON与Git lock固定九表／18字段／官方六模块，并显式启用独立审核包。补译artifact 5d019466（runtime.zip 1585B／989293a6）已发布到翻译库handoff/reviewed-supplements-20261101；workbench固定0e7778c4，两新增Git对象均由fresh Git获取并核bytes／SHA。d12b85bd的六域八替换路径及完成收据guard保持 | 9f3f2022真实禁网import 25秒、19／11定向测试与automation通过；root后继933c40e3的守卫由19／12定向测试验证。root用既有六域outputs与新显示import在OS拒网下组包4.451秒，玩家四文件及CLI ZIP全同9932ea87／ec4f3776；新构建收据绑定审核输入。未重跑普通producer／WASM／356 API。对应代码已随PR218合并，精确fa66514a轻量及完整CI通过；该历史局部实测仍不扩称全Browser／HTTP验收，本地活动采用见第5.2节 |
+| 交付：必需制作事实与新组合 | RePoE74c48815的七表中立导出已由PR8合并，缺失语言保留unknown。PoBR221改用v2锁与[八槽目录投影](../pipeline/crafting-inputs.md)，game part拒绝旧成品交集，v1回滚独立保留；实际89行生成92条目录，未改变业务值 | fresh Git、OS禁网重放、默认固定CLI及精确7e4d0c23完整CI通过；来源元数据更新完整组合73b2d77e／dba0615e／afc78a77，CI紧凑release仍9932ea87／ec4f3776。7条权重诊断与null stat的-20/-20保留；原旧执行身份、全部效果／概率、客户端身份和许可不因此认证 |
 | 交付：独立语言生成与历史入口退出 | 翻译库629be2d9提供离线语言producer，PoBR已删除旧生成／下载／模板合并实现；dictionary／regen／adapt／bump改用[独立生成锁](../pipeline/locale-generation.lock.json)和[临时适配层](../pipeline/locale-generation.md)，不再解析语言来源HEAD | 固定15输入实际生成九个SC文件，27896＋140＋2＝28038且逐字节等于当前基线；候选manifest2a03ad79／runtime d7ac23c5不变。TW三文件与compact display仍独立组合，旧metadata保留身份；新输入须显式固定预期输出及适用目标。部分游戏vendor再生工具与直接raw语言投影仍待退出，不把历史复现称新客户端语义认证 |
 | 交付：当前加载与体积 | [loadDataPack](../web/src/api/dataPack.ts)兼容原快照及[三块release](../pipeline/runtime-bundle.md)：core27515708B、rules15006508B、SC locale6243071B、manifest14142B，共48779429B／本地gzip-9合计5315211B；CLI确定性ZIP5315593B归档相同块。56845333B catalog及335031638B verification仅编译校验 | 当前release9932ea87／runtime ec4f3776为固定保留输入＋最新六域＋N4显示；相较a788ae27／dcc1ff4a，82虚拟文件仅stat_descriptions的两个descriptor及manifest变化，其余逐字节同。原树177个来源摘要变化、62d40368及旧体积保持各批身份；大小不含Web JS、WASM、素材及HTTP开销，非首屏／复访或峰值内存实测 |
 | 交付：共享运行schema与必要可选块 | ae39a0ff的当前TS backend＋原674654ef WASM在OS禁网下重新完成356开发输入的导入／计算／level编辑／保存重开及旧包切回恢复，业务结果全同固定R；355 PoB码可编辑语义同，唯一.build仅保留既有tree_version null→0_5变化，计算和notes不变。历史树、966trade gems、1073 gem标签1053源译／20阻断、12class／23asc路由核同 | 复用compiled663b的CLI实际验证开发1／324／352三对输出，除各自固定runtime digest全同；未新编译Rust/WASM。原八个组包边界回归及automation保留d12b身份；本批14项编排契约测试通过，六领域28.630秒、356输入API26.753秒。两次完整六文件组包同字节，所有CLI物化bytes等于玩家块。非Browser／HTTP／准确度／holdout／生产回滚；审核补译的新入口及空包组包见上行，非空真实译文及远端发布另验；本地活动采用见第5.2节 |
-| 交付：独立存储与临时导入 | [当前build-data锁](../pipeline/build-data.lock.json)绑定RePoE game e00695a9、翻译库a4bd9b5b；[ordinary锁](../pipeline/ordinary-inputs.lock.json)绑定RePoE aed5f734，大映射外置而十份policy仍按原字节物化。辅助说明5046a18a归翻译库，十一份历史API响应dbd35717归RePoE，均为published固定Git产物；测试响应不冒充当前事实 | PoBR已移除四完整快照／外部shared七份／四大policy映射及完整显示、测试表。当前与回滚fresh远端取回后身份不变，缺包／错pin拒绝，无tracked快照或旧PoBR artifact回退。processed兼容表的原producer和适用限制保留，存储迁出不等于全部从客户端自主再生 |
+| 交付：独立存储与临时导入 | [当前v2 build-data锁](../pipeline/build-data.lock.json)绑定RePoE game／独立crafting facts 2c664da4、翻译库a4bd9b5b；game part不再携带crafting成品，由PoBR必需投影；[ordinary锁](../pipeline/ordinary-inputs.lock.json)绑定RePoE aed5f734，大映射外置而十份policy仍按原字节物化。辅助说明5046a18a归翻译库，十一份历史API响应dbd35717归RePoE，均为published固定Git产物；测试响应不冒充当前事实 | PoBR已移除四完整快照／外部shared七份／四大policy映射及完整显示、测试表。当前与回滚fresh远端取回后身份不变，缺包／错pin拒绝，无tracked快照或旧PoBR artifact回退。processed兼容表的原producer和适用限制保留，存储迁出不等于全部从客户端自主再生 |
 | 来源准入／新鲜度／回滚／CURRENT | [采集契约](../pipeline/client-source-draft.md)与[sources.lock](../pipeline/sources.lock.json)分别固定五项raw采集接受和三类保留输入决定。F77、六DAT、91 tree／IT、10 CSD和12语言原生资源仅按各自pins及scope接受；raw字节、物理解码、领域解释及文本适用分开。完整候选身份、缓存采用／回滚及CURRENT替换失败恢复已验证，独立旧版锁另实际恢复dcfc32c2且不改变CURRENT | 本地已选0.5.5.5；旧目录由外部锁临时恢复。SC身份、完整unique、未知机制及许可不随之认证。13:34 UTC官方discovery单次超时，无新响应或最新版本结论；10:39 UTC的189B响应SHA4d7c3b25保留为历史。远端发布前另核新鲜度、CI及部署回滚；代表性本地浏览器已验，未重跑未变化的大输入生产及356 API，不把本地演练写成生产回滚 |
 
 H的比较投影按固定PyPoE66d1规则：每模板next index从0开始；显式k使用k并重置next为k+1，自动槽使用next后递增，

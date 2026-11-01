@@ -93,11 +93,11 @@ PoBR 领域候选，见[候选契约](../tools/pobr-data-adapter/native-facts.md
 上方独立树域与 schema-4 受限原生候选仍是不同入口，不代表普通完整路径的现行覆盖范围。
 
 本地活动快照`data/0.5.5.5`有67个清单文件及manifest，加18份未变shared；manifest `73b2d77e`／完整runtime `dba0615e`。制作目录现为必需的独立事实投影；92条业务记录与原基线相同，仅来源元数据改变。
-它保留简繁两种词典和历史树。原2a03ad79／d7ac23c5基线投影后的四个SC玩家文件与六域紧凑release `9932ea87`／runtime `ec4f3776`逐字节相同；该紧凑包等价证据不升级为新制作元数据组合的封包验收。
+它保留简繁两种词典和历史树。精确7e4d0c23完整CI将当前组合投影为同一SC紧凑release `9932ea87`／runtime `ec4f3776`（82个虚拟文件）；产物归档摘要与block身份已核验，新来源锁保留在构建收据。
 六域双次生产、356条开发输入的TypeScript／WASM API流程及三对CLI结果沿用各自固定证据；完整双语候选另核一个CLI／WASM构筑和采用／回滚演练。
-本地激活后默认CLI读取新身份，默认Web同步86个运行文件；未重编译Rust／WASM、未重跑不变的356条，未跑浏览器全流程或远端CI。
+本地默认CLI读取新身份，Web同步86个运行文件；本地复用固定CLI，未重编译Rust／WASM或重跑原356条API流程。精确7e4d0c23的完整CI另执行Rust分片、真实WASM／Web与运行组包，E2E未选。
 描述、继承tags、actor字段及保留兼容的分母和关闭条件见[架构现状](../docs/data-architecture.md#5-当前已有数据与实际缺口)。
-本地CURRENT采用已完成；PoBR218／219、翻译库5和RePoE7已合并，b8b980fa完整CI通过，仍未部署。新增制作投影的独立审阅语言P2已修复，artifact已发布；新组合经fresh远端Git、禁网重放与默认固定CLI等价检查后本地采用。源码完整CI另行验收，原浏览器／WASM与356语料证据保留原身份。
+本地CURRENT采用已完成；PoBR218／219／221、翻译库5和RePoE7／8已合并，仍未部署。新增制作投影的独立审阅语言P2已修复，artifact已发布；新组合经fresh远端Git、禁网重放与默认固定CLI等价检查后本地采用。PR221轻量及完整CI通过；原浏览器／WASM与356语料证据保留原身份。
 
 语言库的完整显示目录可经[显示侧表投影](native-display-texts.md)接入普通 Web
 `translateLines`：精确来源查询、跨表同名冲突和缺译保留，不改原始构筑文本或计算。

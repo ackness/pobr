@@ -183,3 +183,10 @@ target-produced outputs outside the six-domain release scope. A buff reference
 check still exits 1 for 15 relocated windows; the parser drift check exits 0 with
 closure/count warnings. Neither result certifies semantics. Local activation is a
 separate user-authorized operation, not an effect of these registry entries.
+
+The historical crafting-table decision keeps its original execution identity
+unknown. The current [required crafting projection](crafting-inputs.md) instead
+uses seven already pinned F77 tables and a separate neutral RePoE package; it
+preserves unknown language, raw intervals and scope diagnostics. This new
+consumer/source publication does not rewrite the old decision or expand raw
+acquisition acceptance, complete-effect semantics or client-identity claims.
