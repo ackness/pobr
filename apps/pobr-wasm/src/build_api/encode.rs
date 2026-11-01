@@ -96,6 +96,13 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         ));
     }
     let mut items: Vec<(String, String)> = Vec::new();
+    let equipment_jewels = req.equipment_jewels.as_deref().unwrap_or_default();
+    super::request::validate_equipment_jewels(equipment_jewels)?;
+    items.extend(
+        equipment_jewels
+            .iter()
+            .map(|jewel| (jewel.slot.clone(), jewel.text.clone())),
+    );
     for item in req.items.as_deref().unwrap_or_default() {
         let slot = slot_from_id(&item.slot)?;
         let name = pob_slot_name(slot);

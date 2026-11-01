@@ -5,6 +5,9 @@ use serde_json::{Value, json};
 const INFERNALIST_CODE: &str = include_str!(
     "../../../examples/reference-builds/ninja-top10-2026-10-26/builds/infernalist-01/code.txt"
 );
+const EQUIPMENT_JEWEL_CODE: &str = include_str!(
+    "../../../examples/wasm-benchmark/builds/ninja-2026-10-11-druid-oracle-lightning-bolt-950c9ad4451d/code.txt"
+);
 
 fn init() {
     pobr_wasm::init_data_from_dir(&pobr_gamedata::current_data_dir().to_string_lossy()).unwrap();
@@ -42,6 +45,7 @@ fn materialized(decoded: &Value) -> Value {
         "flasks": decoded["items"]["flasks"],
         "limbs": decoded["items"]["limbs"],
         "jewels": decoded["items"]["socket_jewels"],
+        "equipment_jewels": decoded["items"]["equipment_jewels"],
         "weapon_swap": decoded["weapon_swap"],
         "main_socket_group": decoded["main_socket_group"],
         "config_inputs": decoded["config_inputs"],
@@ -70,6 +74,60 @@ fn assert_roundtrip(request: &Value) -> Value {
         "preserve absent keys and explicit scalar types/values"
     );
     reopened
+}
+
+#[test]
+fn equipment_jewels_survive_materialization_tree_edits_and_save() {
+    init();
+    let decoded = decode(EQUIPMENT_JEWEL_CODE);
+    let jewels = &decoded["items"]["equipment_jewels"];
+    assert_eq!(jewels.as_array().unwrap().len(), 1);
+    assert_eq!(jewels[0]["slot"], "Gloves Jewel Socket 1");
+    assert!(jewels[0]["text"].as_str().unwrap().contains("Kraken Eye"));
+    let original = materialized(&decoded);
+    assert_eq!(
+        calculate(&original),
+        calculate(&json!({
+            "pob_code": EQUIPMENT_JEWEL_CODE.trim(), "full_dps": original["full_dps"], "breakdowns": []
+        }))
+    );
+    for with_base in [false, true] {
+        let mut request = original.clone();
+        if with_base {
+            request["base_code"] = json!(EQUIPMENT_JEWEL_CODE.trim());
+        }
+        let reopened = assert_roundtrip(&request);
+        let restored = &reopened["items"]["equipment_jewels"];
+        assert_eq!(restored.as_array().unwrap().len(), 1);
+        assert_eq!(restored[0]["slot"], jewels[0]["slot"]);
+        // XML pretty-printing adds outer whitespace; the item's text is unchanged.
+        assert_eq!(
+            restored[0]["text"].as_str().unwrap().trim(),
+            jewels[0]["text"].as_str().unwrap().trim()
+        );
+        request["equipment_jewels"] = json!([]);
+        assert_eq!(
+            assert_roundtrip(&request)["items"]["equipment_jewels"],
+            json!([])
+        );
+        assert_ne!(calculate(&request)["stats"], calculate(&original)["stats"]);
+    }
+    // Reapplying a tree-jewel override to a parsed build must retain the
+    // equipment channel, including when all tree jewels are removed.
+    let mut no_tree = original;
+    no_tree["jewels"] = json!([]);
+    assert_eq!(
+        calculate(&no_tree),
+        calculate(&json!({
+            "pob_code": EQUIPMENT_JEWEL_CODE.trim(), "jewels": [],
+            "full_dps": no_tree["full_dps"], "breakdowns": []
+        }))
+    );
+    for slot in ["Jewel 1", "Gloves", "Flask 1"] {
+        no_tree["equipment_jewels"] = json!([{ "slot": slot, "text": jewels[0]["text"] }]);
+        assert!(pobr_wasm::calculate_build_json(&no_tree.to_string()).is_err());
+        assert!(pobr_wasm::encode_build_json(&no_tree.to_string()).is_err());
+    }
 }
 
 #[test]

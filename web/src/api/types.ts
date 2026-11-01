@@ -16,7 +16,7 @@ export type {
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 16;
+export const EXPECTED_SCHEMA_VERSION = 17;
 
 // ---------------------------------------------------------------------------
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
@@ -93,6 +93,8 @@ export interface ItemsJson {
   jewels: string[];
   /** 树插槽珠宝（天赋树页可编辑）。 */
   socket_jewels: SocketJewelJson[];
+  /** Equipment socket jewels retain their exact PoB ItemSet slot names. */
+  equipment_jewels?: SlotItemJson[];
   flasks: SlotItemJson[];
   /** 超越肢体（槽 `arm1`/`arm2`/`leg1`/`leg2`）：与装备并列的一组栏位，词条为全局词条。 */
   limbs: SlotItemJson[];
@@ -400,6 +402,8 @@ export interface CalculateBuildRequest {
   limbs?: SlotItemInput[];
   /** 整份替换树插槽珠宝。 */
   jewels?: JewelInput[];
+  /** Replace equipment-socket jewels independently of the passive tree. */
+  equipment_jewels?: SlotItemInput[];
   main_socket_group?: number;
   mode_effective?: boolean;
   enemy_tier?: EnemyTier;

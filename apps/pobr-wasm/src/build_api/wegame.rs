@@ -646,6 +646,7 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
             equipped,
             jewels: Vec::new(),
             socket_jewels,
+            equipment_jewels: Vec::new(),
             flasks,
             limbs,
         },

@@ -235,6 +235,9 @@ pub struct CalculateBuildRequest {
     /// The tree-socket jewel override (including radius jewels: `in Radius
     /// also grant` lines rewrite passive mod lines via geometric expansion).
     pub(crate) jewels: Option<Vec<JewelInput>>,
+    /// Equipment-socket jewels, by exact PoB ItemSet slot name. An explicit
+    /// empty list clears these; omission retains imported equipment jewels.
+    pub(crate) equipment_jewels: Option<Vec<SlotItemInput>>,
     /// The main-socket-group override (0-based, used for switching the main skill on the Skills page).
     pub(crate) main_socket_group: Option<usize>,
     /// The effective-DPS basis (defaults to true, matching PoB2's main panel basis).
@@ -257,6 +260,22 @@ pub struct CalculateBuildRequest {
     /// Defaults to generating a single set from scratch.
     #[serde(default)]
     pub(crate) base_code: Option<String>,
+}
+
+pub(crate) fn validate_equipment_jewels(jewels: &[SlotItemInput]) -> Result<(), ApiError> {
+    let mut slots = std::collections::HashSet::new();
+    for jewel in jewels {
+        if !pobr_build::xml_build::is_equipment_jewel_slot(&jewel.slot)
+            || !slots.insert(jewel.slot.as_str())
+        {
+            return Err(ApiError::bad_request(format!(
+                "invalid or duplicate equipment jewel slot: {}",
+                jewel.slot
+            ))
+            .with_slot(jewel.slot.as_str()));
+        }
+    }
+    Ok(())
 }
 
 fn parse_enemy_tier(s: &str) -> Result<EnemyTier, String> {
@@ -470,6 +489,24 @@ pub(crate) fn apply_request_overrides(
             }
         }
     }
+    if let Some(jewels) = &req.equipment_jewels {
+        validate_equipment_jewels(jewels)?;
+        build
+            .jewels
+            .retain(|(socket, _)| *socket != pobr_build::build::JewelSocket::Equipment);
+        for jewel in jewels {
+            let text = localize_input_text(&jewel.text);
+            match parse_pob_xml_item(&text) {
+                Ok(parsed) => build
+                    .jewels
+                    .push((pobr_build::build::JewelSocket::Equipment, parsed)),
+                Err(error) => issues.push(SlotIssue {
+                    slot: jewel.slot.clone(),
+                    message: format!("{error:?}"),
+                }),
+            }
+        }
+    }
     if let Some(jewels) = &req.jewels {
         // Explicit allocations can be resolved now. Item-granted sockets are
         // resolved against the selected tree by the shared calculation path.
@@ -505,7 +542,10 @@ pub(crate) fn apply_request_overrides(
                 radius.push(rj);
             }
         }
-        build.jewels = plain;
+        build
+            .jewels
+            .retain(|(socket, _)| *socket == pobr_build::build::JewelSocket::Equipment);
+        build.jewels.extend(plain);
         build.radius_jewels = radius;
     }
     if let Some(main) = req.main_socket_group {

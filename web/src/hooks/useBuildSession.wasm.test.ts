@@ -1,6 +1,8 @@
 /** Actual editing-state conversion against the built WASM, not a second DTO projection. */
 import { beforeAll, describe, expect, test } from 'vitest';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { env } from 'node:process';
 import { deflateSync } from 'node:zlib';
 import { materialize, paramsFromDecoded, toRequest, type SavedSession } from './useBuildSession';
@@ -52,9 +54,9 @@ describe.skipIf(env.POBR_WASM_CONTRACT !== '1')('real TS request to WASM weapon 
     expect(wasm.schemaVersion()).toBe(EXPECTED_SCHEMA_VERSION);
     const root = new URL('../../public/data/', import.meta.url);
     const manifest = JSON.parse(await readFile(new URL('manifest.json', root), 'utf8')) as { version: string; files: string[] };
-    expect(manifest.version).toBe((await readFile(new URL('../../../data/CURRENT', import.meta.url), 'utf8')).trim());
+    expect(manifest.version).toBe(env.POBR_DATA_VERSION ?? (await readFile(new URL('../../../data/CURRENT', import.meta.url), 'utf8')).trim());
     for (const file of manifest.files) wasm.stageDataFile(file, await readFile(new URL(`${manifest.version}/${file}`, root), 'utf8'));
-    wasm.initStagedData();
+    wasm.initStagedDataVerified();
     calculate = request => JSON.parse(wasm.calculateBuildJson(JSON.stringify(request)));
     decode = code => JSON.parse(wasm.decodeBuildJson(code));
     encode = request => wasm.encodeBuildJson(JSON.stringify(request));
@@ -65,6 +67,49 @@ describe.skipIf(env.POBR_WASM_CONTRACT !== '1')('real TS request to WASM weapon 
       allocatedNodes: decoded.tree.allocated_nodes, attributeChoices: decoded.tree.attribute_choices,
       annotations: {}, params: { ...paramsFromDecoded(decoded), main_socket_group: decoded.main_socket_group ?? undefined },
     };
+  }, 120_000);
+
+  test('worked build codes agree with real frontend requests and optional native CLI', async () => {
+    const directory = new URL('../../../examples/wasm-benchmark/builds/', import.meta.url);
+    const builds = (await readdir(directory, { withFileTypes: true })).filter(entry => entry.isDirectory()).sort((a, b) => a.name.localeCompare(b.name));
+    expect(builds.length).toBeGreaterThan(0);
+    for (const entry of builds) {
+      const path = new URL(`${entry.name}/code.txt`, directory);
+      const original = (await readFile(path, 'utf8')).trim();
+      const decoded = decode(original);
+      const edited: SavedSession['state'] = {
+        ...materialize(decoded), pobCode: original, character: decoded.character,
+        allocatedNodes: decoded.tree.allocated_nodes, attributeChoices: decoded.tree.attribute_choices,
+        annotations: {}, params: { ...paramsFromDecoded(decoded), main_socket_group: decoded.main_socket_group ?? undefined },
+      };
+      const request = { ...toRequest(edited), full_dps: true, breakdowns: [] };
+      const actual = calculate(request);
+      const direct = calculate({ pob_code: original, full_dps: true, breakdowns: [] });
+      expect(actual, entry.name).toEqual(direct);
+      for (const base_code of [undefined, original]) {
+        const savedCode = encode({ ...request, base_code });
+        expect(calculate({ pob_code: savedCode, full_dps: true, breakdowns: [] }), `${entry.name}: save/reopen`).toEqual(actual);
+        expect(decode(savedCode).items.equipment_jewels?.map(jewel => ({ ...jewel, text: jewel.text.trim() })))
+          .toEqual(decoded.items.equipment_jewels?.map(jewel => ({ ...jewel, text: jewel.text.trim() })));
+      }
+      // Explicit opt-in uses an already built binary; this suite never compiles one.
+      if (env.POBR_CLI_CONTRACT_BIN) {
+        const dataRoot = env.POBR_DATA_ROOT ?? fileURLToPath(new URL('../../../data/', import.meta.url));
+        const native = JSON.parse(execFileSync(env.POBR_CLI_CONTRACT_BIN, ['calculate-build', '--file', fileURLToPath(path),
+          '--data-dir', `${dataRoot}/${actual.provenance!.data_version}`, '--full-dps', '--breakdown', 'Life', '--json'],
+        { encoding: 'utf8', timeout: 60_000, maxBuffer: 16 * 1024 * 1024 }));
+        expect(native.provenance, entry.name).toEqual(actual.provenance);
+        expect(native.main_skill, entry.name).toEqual(actual.main_skill);
+        // CLI omits empty skill lists; WASM exposes the empty list in its Full DPS object.
+        expect(native.output.full_dps_skills ?? [], entry.name).toEqual(actual.full_dps?.skills ?? []);
+        expect(native.output.full_dps, entry.name).toBe(actual.full_dps?.dps);
+        expect(native.output.full_dot_dps, entry.name).toBe(actual.full_dps?.dot_dps);
+        for (const [field, id] of [['life', 'Life'], ['mana', 'Mana'], ['energy_shield', 'EnergyShield'],
+          ['armour', 'Armour'], ['evasion', 'Evasion'], ['dps', 'TotalDPS'], ['mana_cost', 'ManaCost']] as const) {
+          expect(native.output[field], `${entry.name}: ${id}`).toBe(stat(actual, id));
+        }
+      }
+    }
   }, 120_000);
 
   test('actual materialization preserves all-set reservation, attack contexts, Full DPS and export', () => {

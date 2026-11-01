@@ -96,7 +96,9 @@ WeGame 魔法药剂／护符只用一条标准基底行，修饰名、恢复／�
 调用者传入组来源对应的 `from_gem`；物品授予技能须拒绝 `supportGemsOnly`。
 类型增加与最终排除只由 Rust 实现。TS 负责搜索、宽松初筛、预算、词族冲突与血脉份数限制。
 批量响应保持请求顺序；解码、编辑、计算和导出保留 `stat_set_index`、`tree_version`。
-当前 JSON 握手为 **16**，版本 6 开始要求该兼容接口。
+当前 JSON 握手为 **17**，版本 6 开始要求该兼容接口。
+装备插槽珠宝通过 `equipment_jewels` 保留原 PoB 槽名及物品文本，与树珠宝分别覆盖。
+导入、编辑态计算和导出均保留此集合；旧存档缺失该字段时从原码补齐，显式空集合表示删除。
 
 已支持的禁止效果与未建模效果要分开说明：
 
@@ -571,6 +573,8 @@ life、armour、evasion、energy_shield、stats、breakdowns、breakdown_descrip
   结果栏在左，页面居中，右侧可开属性详情。窄屏用抽屉；宽度至少 94rem 才固定详情列，字号会影响阈值。
 - `session.calc` 在重算中为空；`useSettledCalc` 保留同阶段最后成功值并以 data-stale 淡化，不跨 BD／阶段，
   失败不作为有效基准。`computeStatChanges`／`statPolarity` 判断变化：消耗、流失、需求、用时越低越好，范围／持续时间中性。
+  配置的相关选项分组和 Calcs 指标／完整 DPS 也保留该显示快照，不能在每次编辑时清空列表、压缩页面并重置滚动位置。
+  旧快照只用于显示，编辑、计算请求和保存仍使用当前状态；计算失败时显示错误。
 - Calcs、Compare、Upgrades、Tree 按需加载，各自有 Suspense。已访问的 Tree／Skills／Upgrades 保持挂载并隐藏，
   离页取消计算／画布追踪，切阶段重建；不能因另一页首次加载而丢结果。
 - 结果栏含主技能、全局敌人档位、问题提示、Combined DPS、伤害分类和目录分区，折叠状态按设备保存。

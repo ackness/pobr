@@ -67,6 +67,7 @@ struct SlotAssignments {
     equipment: Vec<(EquipmentSlot, u32)>,
     /// ItemSet jewel slots, with the kind of socket the slot name says.
     jewels: Vec<(u32, JewelSocket)>,
+    equipment_jewels: Vec<(String, u32)>,
     /// Active Flask/Charm slots, by PoB slot name.
     flask_charms: Vec<(String, u32)>,
     inactive_flask_charms: Vec<(String, u32)>,
@@ -1017,6 +1018,7 @@ fn parse_items_and_slots(
         limbs: limb_ids,
         unmodelled,
         use_second_weapon_set: _,
+        equipment_jewels: _,
     } = parse_item_set_for_weapons(xml, Some(use_second_weapon_set))?;
 
     // Where each item id is used, to say what a rejected block leaves empty.
@@ -1205,6 +1207,8 @@ pub struct RawItemsView {
     pub jewels: Vec<String>,
     /// Tree socket jewels with their socket node number (the editable view: `(socket node's skill id, raw text)`).
     pub socket_jewels: Vec<(u32, String)>,
+    /// Equipment-socket jewels, retaining the exact PoB ItemSet slot name.
+    pub equipment_jewels: Vec<(String, String)>,
     /// Active Flask/Charm: `(slot name, raw text block)`.
     pub flasks: Vec<(String, String)>,
     /// Transcendent limbs: `(slot's stable id, raw text block)`, in slot order.
@@ -1289,6 +1293,7 @@ pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
     let SlotAssignments {
         equipment: slot_assignments,
         jewels: jewel_ids,
+        equipment_jewels: equipment_jewel_ids,
         flask_charms: flask_charm_ids,
         limbs: mut limb_ids,
         ..
@@ -1321,6 +1326,21 @@ pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
         .filter_map(|&(node, id)| Some((node, texts.get(&id)?.clone())))
         .collect();
     socket_jewels.sort_by_key(|(node, _)| *node);
+    let allocated = parse_passive_nodes(xml, second)?.allocated;
+    let tree_items: std::collections::HashSet<u32> = socket_items
+        .iter()
+        .filter(|(node, _)| allocated.contains(&NodeId(*node)))
+        .map(|(_, id)| *id)
+        .collect();
+    // Match direct import's item-id deduplication and allocated-tree precedence.
+    let equipment_jewels = equipment_jewel_ids
+        .into_iter()
+        .map(|(slot, id)| (id, slot))
+        .collect::<BTreeMap<_, _>>()
+        .into_iter()
+        .filter(|(id, _)| !tree_items.contains(id))
+        .filter_map(|(id, slot)| Some((slot, texts.get(&id)?.clone())))
+        .collect();
     let mut jewel_item_ids: Vec<u32> = jewel_ids.into_iter().map(|(id, _)| id).collect();
     jewel_item_ids.extend(socket_items.into_iter().map(|(_, id)| id));
     jewel_item_ids.sort_unstable();
@@ -1342,6 +1362,7 @@ pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
         equipped,
         jewels,
         socket_jewels,
+        equipment_jewels,
         flasks,
         limbs,
         alternate_weapons,
@@ -1658,6 +1679,9 @@ fn parse_item_set_for_weapons(
         } else if is_jewel_slot(slot_name) {
             out.jewels
                 .push((*item_id, item_set_jewel_socket(slot_name)));
+            if is_equipment_jewel_slot(slot_name) {
+                out.equipment_jewels.push((slot_name.clone(), *item_id));
+            }
         } else if is_flask_charm_slot(slot_name) {
             // Active items enter the effect pool; unticked items retain only
             // their per-use duration, recovery and charge properties.
@@ -1686,6 +1710,11 @@ fn is_flask_charm_slot(name: &str) -> bool {
 /// PoB jewel/abyss slot names (`Jewel 12345` / `… Abyssal Socket N` / `… Socket N`) → collected into the jewel list.
 fn is_jewel_slot(name: &str) -> bool {
     name.starts_with("Jewel") || name.contains("Socket")
+}
+
+/// Whether a PoB ItemSet slot names an equipment socket rather than a tree jewel.
+pub fn is_equipment_jewel_slot(name: &str) -> bool {
+    is_jewel_slot(name) && !name.starts_with("Jewel")
 }
 
 /// `Jewel <node>` names a tree socket; every other jewel slot of an ItemSet
