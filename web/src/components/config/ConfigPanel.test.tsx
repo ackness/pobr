@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { BuildJson, ConfigInputValue } from '../../api/types';
 import { applyNamedConfig, backfillFromDecoded, parseSaved, toRequest, type BuildSession, type SavedSession } from '../../hooks/useBuildSession';
 import { copySection } from '../../lib/compare';
+import { configValueDiffers } from '../../lib/configDefaults';
 import { ConfigPanel, OptionRow } from './ConfigPanel';
 import { UiProvider } from '../shared/UiContext';
 import { TooltipProvider } from '../ui/tooltip';
@@ -96,5 +97,18 @@ test.each([undefined, false, 0, '0', ''] as const)('raw editor retains the type 
     expect(html).toContain(`type="${typeof value === 'number' ? 'number' : 'text'}"`);
     expect(html).toContain(`value="${value ?? ''}"`);
     if (value === undefined) expect(html).toContain('disabled=""');
+  }
+});
+
+
+test.each([true, false])('catalog row removes reset after returning to default %s', baseline => {
+  const option = { var: 'flag', label: 'Flag', input_type: 'check' as const, default: { state_bool: baseline } };
+  for (const current of [undefined, !baseline, baseline]) {
+    const html = renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider>
+      <OptionRow option={option} value={current} overridden={configValueDiffers(option, current, undefined)}
+        busy={false} lang="en-US" listLabels={{}} applicability="applicable" onChange={vi.fn()} onReset={vi.fn()} />
+    </TooltipProvider></UiProvider>);
+    expect(html.includes('aria-label="Restore imported/default value: Flag"')).toBe(current === !baseline);
+    expect(html.includes('is-overridden')).toBe(current === !baseline);
   }
 });
