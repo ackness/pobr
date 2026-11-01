@@ -1,11 +1,11 @@
 # PoBR 数据管线（pipeline）
 
-把 **GGG 官方游戏数据（`.dat` 表）** 抽取为 JSON，再适配为 PoBR 自有的最小 JSON schema
-（落在仓库根的 `data/<poe-version>/`）。GGG 数据提供物品与技能的原始定义，
-固定提交的 PoB2 Lua 提供解析规则、机制映射及补充目录；不在仓库存放大体积原始数据。
+本目录声明 PoBR 构建所需的固定输入，将 RePoE 游戏事实、翻译库语言产物和 PoBR 自有政策
+适配、组合为既有 DTO／运行 schema。完整输入与 `data/<poe-version>/` 运行目录仅临时物化；
+尚未迁移的字段继续保留明确固定的 vendor／社区来源，不称为已从客户端自主再生。
 
-目标存储职责：游戏数据归RePoE、语言数据归翻译库，PoBR只提交代码、需求／版本锁及小型夹具；CI构建和需要实物的测试在临时目录导入数据并生成发布资产。
-现有入库版本快照与PoBR数据artifact仍在迁出，不能作为最终存储方式；本地目标版本保持0.5.5.5。详见[存储边界](../docs/data-architecture.md#1-架构决策与三仓库职责)。
+当前存储职责：游戏数据归RePoE、语言数据归翻译库，PoBR只提交代码、需求／版本锁、来源元数据及小型合成夹具；CI构建和需要实物的测试在临时目录导入数据并生成发布资产。
+四份完整快照、七份外部shared、历史大policy及完整语言／API样本已迁出当前Git tree；无旧PoBR数据artifact回退。本地活动目标保持0.5.5.5，Git历史不改写。详见[存储边界](../docs/data-architecture.md#1-架构决策与三仓库职责)。
 
 ## 活动数据来源与生产
 
@@ -30,7 +30,7 @@
 [sources.lock.json](sources.lock.json)保留历史官方树输入及固定客户端资源位置、原始SHA-256、大小、decoder／schema和采集证据。
 `acquisition_acceptances`分别接受F77、六DAT、91 tree／IT、10 CSD及12语言原生资源；
 `retained_input_acceptances`另记locale／shared／compat三类有界保留决定。各项只接受明确scope和pins，不认证全部机制、SC客户端身份或分发许可。
-本地活动版本现为`0.5.5.5`，完整双语runtime `d7ac23c5`；旧`0.5.5.4.2`保留。
+本地活动版本现为`0.5.5.5`，完整双语runtime `d7ac23c5`；旧`0.5.5.4.2`由独立回滚锁按需恢复。
 采集、领域解释、消费者验证、本地采用及远端发布仍分开；完整状态见[架构现状](../docs/data-architecture.md#5-当前已有数据与实际缺口)。
 下方`data:tree:source`／`data:tree:candidate`只消费历史树类来源，不是当前普通树的再生流程。
 PoB2 的测试参考版本独立登记在 [devs/reference-sources.json](../devs/reference-sources.json)，
