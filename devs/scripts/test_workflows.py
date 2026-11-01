@@ -135,9 +135,9 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         shutil.copyfile(REPO / "pipeline/regen-all.sh", self.root / "pipeline/regen-all.sh")
         shutil.copyfile(REPO / "pipeline/data_snapshot.py", self.root / "pipeline/data_snapshot.py")
         self.write("pipeline/config.json", '{"patch":"9.1"}')
-        # This test isolates the first game generator after a successful language
-        # preflight. Any later language generation would be an ordering failure.
+        # Isolate the first game generator after successful input preflights.
         self.write("pipeline/locale_inputs.py", "import sys\nassert '--check-lock' in sys.argv\n")
+        self.write("pipeline/crafting_inputs.py", "import sys\nassert '--check-lock' in sys.argv\n")
         self.write("data/CURRENT", "9.1\n")
         self.write("data/9.1/overlay/gem_quality_stats.json", "previous quality data")
         self.env["FAIL_QUALITY"] = "1"
@@ -147,6 +147,21 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         self.assertIn("--gem-quality", self.calls()[0])
         self.assertEqual((self.root / "data/9.1/overlay/gem_quality_stats.json").read_text(),
                          "previous quality data")
+
+    def test_foreign_crafting_target_aborts_regeneration_before_game_generators(self):
+        for name in ("regen-all.sh", "data_snapshot.py", "crafting_inputs.py", "data_imports.py", "data_bundle.py"):
+            shutil.copyfile(REPO / "pipeline" / name, self.root / "pipeline" / name)
+        self.write("pipeline/config.json", '{"patch":"9.1"}')
+        self.write("pipeline/locale_inputs.py", "import sys\nassert '--check-lock' in sys.argv\n")
+        self.write("pipeline/build-data.lock.json", json.dumps({"schema": "pobr-build-data-lock/v2",
+                                                              "target": {"game_patch": "9.2"}}))
+        self.write("data/CURRENT", "9.1\n")
+        self.write("data/9.1/overlay/gem_quality_stats.json", "previous quality data")
+        result = self.run_script("pipeline/regen-all.sh")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Crafting build lock does not match requested patch", result.stderr)
+        self.assertFalse((self.root / "calls.jsonl").exists())
+        self.assertEqual((self.root / "data/9.1/overlay/gem_quality_stats.json").read_text(), "previous quality data")
 
     def test_regen_drift_preserves_uncommitted_artifact(self):
         self.write("data/test/generated/parsed_mods.json", "uncommitted edit")

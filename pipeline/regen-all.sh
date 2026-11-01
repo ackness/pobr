@@ -50,6 +50,9 @@ echo "regen-all: patch=$PATCH  old=$OLD_PATCH  vendor=$VENDOR"
 ADAPTER=(cargo run --quiet -p pobr-data-adapter --)
 SYNC=(cargo run --quiet -p sync-pob-catalog --)
 
+# The external crafting target must match before any costly generator runs.
+die_on_fail python3 pipeline/crafting_inputs.py --patch "$PATCH" --check-lock
+
 # Verify the official quality input receipt before the remaining generators run.
 # A missing/stale receipt is fatal; never relabel an old vendor export as fresh data.
 echo "== gem quality: official tables and reviewed compatibility scope"
@@ -122,7 +125,7 @@ soft_step stat_set_labels "${SYNC[@]}" extract-lua --what stat-set-labels --vend
 soft_step uniques         "${SYNC[@]}" extract-lua --what uniques         --vendor-root "$VENDOR" --out "$OVL/uniques.json"
 soft_step trade_stat_map  luajit pipeline/extract-trade-map.lua "$VENDOR" "$OVL/trade_stat_map.json"
 soft_step passive_jewels  luajit pipeline/extract-passive-jewels.lua "$VENDOR" "$OVL/passive_jewels.json"
-soft_step trade_crafting  python3 pipeline/extract-trade-crafting.py pipeline/tables/English "$OVL/trade_crafting_sources.json"
+die_on_fail python3 pipeline/crafting_inputs.py --patch "$PATCH" --out "$OVL/trade_crafting_sources.json"
 soft_step trade_catalog   luajit pipeline/extract-trade-catalog.lua "$VENDOR" "$OVL/trade_catalog.json" "$OVL/trade_crafting_sources.json"
 soft_step mirage_configs  "${SYNC[@]}" gen-mirage-configs  --vendor-root "$VENDOR" --out "$OVL/mirage_configs.json"
 soft_step trigger_configs "${SYNC[@]}" gen-trigger-configs --vendor-root "$VENDOR" --out "$OVL/trigger_configs.json"

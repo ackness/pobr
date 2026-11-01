@@ -35,7 +35,7 @@ class BuildDataTests(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(raw)
         _, identity = bundle.snapshot_inputs(self.root / "source", self.version)
-        self.lock = {"schema": build.LOCK_SCHEMA, "target": self.target,
+        self.lock = {"schema": build.LEGACY_LOCK_SCHEMA, "target": self.target,
                      "snapshot_manifest": pack.pin(self.contents["data/9.1/manifest.json"]),
                      "runtime_identity": identity, "packages": {},
                      "shared_files": {"own.json": pack.pin((self.shared / "own.json").read_bytes())}}
@@ -64,6 +64,10 @@ class BuildDataTests(unittest.TestCase):
 
     def fetch(self, address):
         url, revision, name = address
+        if name == "crafting.zip":
+            self.assertEqual(url, "https://github.com/ackness/repoe.git")
+            self.assertEqual(revision, "b" * 40)
+            return self.crafting_archive
         kind = next(k for k, s in self.lock["packages"].items() if s["path"] == name)
         self.assertEqual(url, f"https://github.com/{build.OWNERS[kind]}.git")
         self.assertEqual(revision, "a" * 40)
@@ -198,6 +202,64 @@ class BuildDataTests(unittest.TestCase):
                                   fetcher=self.fetch, shared_root=self.shared)
         release, _, _ = pack.read_release(self.root / "pack/player", result["release_id"])
         self.assertEqual(release["target"], self.target)
+
+    def enable_crafting(self, include_old=False):
+        import crafting_inputs
+        import runpy
+        helpers = runpy.run_path(str(Path(__file__).with_name("test-trade-crafting.py")))
+        spec, self.crafting_archive = helpers["source_package"](helpers["fixture"](), self.target)
+        projected, _ = crafting_inputs.project(helpers["fixture"](),
+            source_manifest_sha256=spec["manifest"]["sha256"],
+            facts_manifest_sha256=spec["input_manifest"]["sha256"], target=self.target)
+        from data_imports import encoded
+        raw = encoded(projected)
+        name = "data/9.1/overlay/trade_crafting_sources.json"
+        snapshot = bundle.decode(self.contents["data/9.1/manifest.json"])
+        snapshot["domains"]["overlay"] = ["trade_crafting_sources"]
+        snapshot["files"]["overlay/trade_crafting_sources.json"] = bundle.sha256(raw)
+        self.contents["data/9.1/manifest.json"] = pack.raw_json(snapshot)
+        hashes = snapshot["files"] | {"overlay-common/own.json": self.lock["shared_files"]["own.json"]["sha256"]}
+        self.lock.update(schema=build.LOCK_SCHEMA, crafting=spec, runtime_identity=pack.identity("9.1", hashes),
+                         snapshot_manifest=pack.pin(self.contents["data/9.1/manifest.json"]))
+        game = {n: r for n, r in self.contents.items() if "/i18n/" not in n}
+        if include_old:
+            game[name] = raw  # Even an identical processed copy must not provide the projected member.
+        self.set_part("game", game)
+        self.save()
+        return raw
+
+    def test_v2_crafting_is_required_and_never_reads_processed_fallback(self):
+        raw = self.enable_crafting()
+        result = self.prepare()
+        self.assertEqual((self.out / "data/9.1/overlay/trade_crafting_sources.json").read_bytes(), raw)
+        receipts = list((self.cache / "build-input-receipts").glob("*.json"))
+        self.assertEqual(len(receipts), 1)
+        proof = bundle.decode(receipts[0].read_bytes())
+        self.assertEqual(proof["summary"], {"selected_rows": 2, "catalog_mods": 3})
+        self.assertFalse((self.out / "crafting.json").exists())
+        self.assertEqual(bundle.verify(self.out), result)
+        self.assertEqual(build.prepare(self.lock_path, self.root / "again", self.cache, self.shared, offline=True), result)
+        self.enable_crafting(include_old=True)
+        with self.assertRaisesRegex(ValueError, "contains PoBR-projected"):
+            build.prepare(self.lock_path, self.root / "old-fallback", self.cache, self.shared, fetcher=self.fetch)
+        self.assertFalse((self.root / "old-fallback").exists())
+
+    def test_v2_missing_corrupt_or_foreign_crafting_cannot_publish_bundle(self):
+        for case in ("missing", "offline", "corrupt", "foreign"):
+            with self.subTest(case=case):
+                self.enable_crafting()
+                if case == "missing": del self.lock["crafting"]
+                elif case == "corrupt": self.crafting_archive += b"corrupt"
+                elif case == "foreign":
+                    # A valid archive/pin bound to a different source target still rejects.
+                    import runpy
+                    helpers = runpy.run_path(str(Path(__file__).with_name("test-trade-crafting.py")))
+                    self.lock["crafting"], self.crafting_archive = helpers["source_package"](
+                        helpers["fixture"](), self.target | {"realm": "china"})
+                self.save()
+                with self.assertRaises((ValueError, KeyError)):
+                    self.prepare(offline=case == "offline")
+                self.assertFalse(self.out.exists())
 
     def test_rollback_install_keeps_active_current_and_ownership_guard_rejects_forced_data(self):
         self.prepare()
