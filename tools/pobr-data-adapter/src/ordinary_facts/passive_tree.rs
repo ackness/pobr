@@ -1,5 +1,6 @@
 //! Ordinary tree production from target facts with explicit field compatibility.
 
+mod ascendancy;
 mod policy;
 mod prepared;
 mod refresh;
@@ -47,10 +48,14 @@ pub(super) fn convert_with_refresh(
     input: &VerifiedFacts,
     args: &super::CodecArgs,
     refresh: Option<&RefreshArgs>,
+    supplement: Option<&reader::selected::Input>,
 ) -> Result<Converted, String> {
     if let Some(extra) = refresh {
-        refresh::convert(input, args, extra)
+        refresh::convert(input, args, extra, supplement)
     } else {
+        if supplement.is_some() {
+            return Err("supplement requires target tree refresh".into());
+        }
         convert(input, args)
     }
 }

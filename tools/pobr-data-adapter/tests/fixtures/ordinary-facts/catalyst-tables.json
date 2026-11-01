@@ -1,0 +1,531 @@
+{
+  "BaseItemTypes": {
+    "table": "BaseItemTypes",
+    "raw_resource": "Data/Balance/BaseItemTypes.datc64",
+    "row_key": "Synthetic physical rows",
+    "physical_fields": [
+      "Id",
+      "Name"
+    ],
+    "columns": [
+      {
+        "physical_fields": [
+          "Id"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Id",
+          "references": null,
+          "type": "string",
+          "unique": true,
+          "until": null
+        },
+        "source_column": 0
+      },
+      {
+        "physical_fields": [
+          "Name"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": true,
+          "name": "Name",
+          "references": null,
+          "type": "string",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 1
+      }
+    ],
+    "validation": {
+      "rows": 2,
+      "schema_row_bytes": 8,
+      "actual_row_bytes": 8,
+      "warnings": []
+    },
+    "rows": [
+      {
+        "_row": 0,
+        "values": {
+          "Id": "Currency/Test",
+          "Name": "Test Catalyst"
+        }
+      },
+      {
+        "_row": 1,
+        "values": {
+          "Id": "Currency/RefinedTest",
+          "Name": "Refined Test Catalyst"
+        }
+      }
+    ]
+  },
+  "Stats": {
+    "table": "Stats",
+    "raw_resource": "Data/Balance/Stats.datc64",
+    "row_key": "Synthetic physical rows",
+    "physical_fields": [
+      "Id"
+    ],
+    "columns": [
+      {
+        "physical_fields": [
+          "Id"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Id",
+          "references": null,
+          "type": "string",
+          "unique": true,
+          "until": null
+        },
+        "source_column": 0
+      }
+    ],
+    "validation": {
+      "rows": 1,
+      "schema_row_bytes": 8,
+      "actual_row_bytes": 8,
+      "warnings": []
+    },
+    "rows": [
+      {
+        "_row": 0,
+        "values": {
+          "Id": "quality_test"
+        }
+      }
+    ]
+  },
+  "Tags": {
+    "table": "Tags",
+    "raw_resource": "Data/Balance/Tags.datc64",
+    "row_key": "Synthetic physical rows",
+    "physical_fields": [
+      "Id"
+    ],
+    "columns": [
+      {
+        "physical_fields": [
+          "Id"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Id",
+          "references": null,
+          "type": "string",
+          "unique": true,
+          "until": null
+        },
+        "source_column": 0
+      }
+    ],
+    "validation": {
+      "rows": 2,
+      "schema_row_bytes": 8,
+      "actual_row_bytes": 8,
+      "warnings": []
+    },
+    "rows": [
+      {
+        "_row": 0,
+        "values": {
+          "Id": "test"
+        }
+      },
+      {
+        "_row": 1,
+        "values": {
+          "Id": "changed"
+        }
+      }
+    ]
+  },
+  "ItemClasses": {
+    "table": "ItemClasses",
+    "raw_resource": "Data/Balance/ItemClasses.datc64",
+    "row_key": "Synthetic physical rows",
+    "physical_fields": [
+      "Id"
+    ],
+    "columns": [
+      {
+        "physical_fields": [
+          "Id"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Id",
+          "references": null,
+          "type": "string",
+          "unique": true,
+          "until": null
+        },
+        "source_column": 0
+      }
+    ],
+    "validation": {
+      "rows": 1,
+      "schema_row_bytes": 8,
+      "actual_row_bytes": 8,
+      "warnings": []
+    },
+    "rows": [
+      {
+        "_row": 0,
+        "values": {
+          "Id": "Ring"
+        }
+      }
+    ]
+  },
+  "AlternateQualityTypes": {
+    "table": "AlternateQualityTypes",
+    "raw_resource": "Data/Balance/AlternateQualityTypes.datc64",
+    "row_key": "Synthetic physical rows",
+    "physical_fields": [
+      "Id",
+      "Description",
+      "Item",
+      "ModEffectStat",
+      "HASH16",
+      "ItemClass"
+    ],
+    "columns": [
+      {
+        "physical_fields": [
+          "Id"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Id",
+          "references": null,
+          "type": "string",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 0
+      },
+      {
+        "physical_fields": [
+          "Description"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Description",
+          "references": null,
+          "type": "string",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 1
+      },
+      {
+        "physical_fields": [
+          "Item"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Item",
+          "references": {
+            "table": "BaseItemTypes"
+          },
+          "type": "foreignrow",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 2
+      },
+      {
+        "physical_fields": [
+          "ModEffectStat"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "ModEffectStat",
+          "references": {
+            "table": "ModEffectStats"
+          },
+          "type": "foreignrow",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 3
+      },
+      {
+        "physical_fields": [
+          "HASH16"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "HASH16",
+          "references": null,
+          "type": "u16",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 4
+      },
+      {
+        "physical_fields": [
+          "ItemClass"
+        ],
+        "schema": {
+          "array": true,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "ItemClass",
+          "references": {
+            "table": "ItemClasses"
+          },
+          "type": "foreignrow",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 5
+      }
+    ],
+    "validation": {
+      "rows": 2,
+      "schema_row_bytes": 8,
+      "actual_row_bytes": 8,
+      "warnings": []
+    },
+    "rows": [
+      {
+        "_row": 0,
+        "values": {
+          "Id": "TestQuality",
+          "Description": "Quality (Test Modifiers)",
+          "Item": 0,
+          "ModEffectStat": 0,
+          "HASH16": 10,
+          "ItemClass": [
+            0
+          ]
+        }
+      },
+      {
+        "_row": 1,
+        "values": {
+          "Id": "RefinedTestQuality",
+          "Description": "Quality (Test Modifiers)",
+          "Item": 1,
+          "ModEffectStat": 0,
+          "HASH16": 11,
+          "ItemClass": [
+            0
+          ]
+        }
+      }
+    ]
+  },
+  "ModEffectStats": {
+    "table": "ModEffectStats",
+    "raw_resource": "Data/Balance/ModEffectStats.datc64",
+    "row_key": "Synthetic physical rows",
+    "physical_fields": [
+      "Stat",
+      "Tags",
+      "ApplyToExplicit",
+      "Unknown0",
+      "ApplyToImplicit",
+      "Multiplier"
+    ],
+    "columns": [
+      {
+        "physical_fields": [
+          "Stat"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Stat",
+          "references": {
+            "table": "Stats"
+          },
+          "type": "foreignrow",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 0
+      },
+      {
+        "physical_fields": [
+          "Tags"
+        ],
+        "schema": {
+          "array": true,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Tags",
+          "references": {
+            "table": "Tags"
+          },
+          "type": "foreignrow",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 1
+      },
+      {
+        "physical_fields": [
+          "ApplyToExplicit"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "ApplyToExplicit",
+          "references": null,
+          "type": "bool",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 2
+      },
+      {
+        "physical_fields": [
+          "Unknown0"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": null,
+          "references": null,
+          "type": "i32",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 3
+      },
+      {
+        "physical_fields": [
+          "ApplyToImplicit"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "ApplyToImplicit",
+          "references": null,
+          "type": "bool",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 4
+      },
+      {
+        "physical_fields": [
+          "Multiplier"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Multiplier",
+          "references": null,
+          "type": "i32",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 5
+      }
+    ],
+    "validation": {
+      "rows": 1,
+      "schema_row_bytes": 8,
+      "actual_row_bytes": 8,
+      "warnings": []
+    },
+    "rows": [
+      {
+        "_row": 0,
+        "values": {
+          "Stat": 0,
+          "Tags": [
+            0
+          ],
+          "ApplyToExplicit": true,
+          "Unknown0": -1,
+          "ApplyToImplicit": true,
+          "Multiplier": 35
+        }
+      }
+    ]
+  }
+}

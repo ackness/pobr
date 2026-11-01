@@ -1,5 +1,5 @@
 // Select literal display translations by the actual CSD record/branch consumed
-// by the ordinary socketable producer. Never flatten the complete native archive.
+// by ordinary socketable/tree producers. Never flatten the complete native archive.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -35,10 +35,25 @@ function format(template, rawValues, tokens) {
 }
 
 /** Preserve existing wording and add only context-bound, globally unambiguous literals. */
-export function nativeSocketableTranslations(legacy, selection, candidate) {
+export function nativeSelectedTranslations(legacy, selection, candidate) {
   required(Array.isArray(legacy) && legacy.every(p => typeof p.src === 'string' && typeof p.en === 'string'), 'invalid legacy translation pairs');
-  required(selection.format === 'pobr-ordinary-facts-receipt/v1'
-    && selection.adapter?.output_schema === 'pobr_data::catalog::item_overlay::RunesDef', 'not a socketable producer receipt');
+  required(selection.format === 'pobr-ordinary-facts-receipt/v1', 'not an ordinary producer receipt');
+  const schema = selection.adapter?.output_schema;
+  let records;
+  if (schema === 'pobr_data::catalog::item_overlay::RunesDef') records = selection.conversion.records;
+  else if (schema === 'pobr_data::catalog::{PassiveNodeDef[],PassiveTreeMeta}') {
+    records = [];
+    required(Array.isArray(selection.conversion?.projection?.source_records), 'missing target tree projection');
+    for (const node of selection.conversion.projection.source_records) {
+      const packets = [{ id: node.id, row: node.target_row, packet: 'node', text: node.text },
+        ...node.variants.map(v => ({ id: v.target, row: v.source_row, packet: `variant:${v.class}`, text: v.text }))];
+      for (const p of packets) {
+        if (p.text?.owner !== 'target-csd') continue;
+        records.push({ id: p.id, mode: 'target-csd', selected_descriptions: [{
+          packet: p.packet, source_row: p.row, prefix: '', evidence: p.text.descriptions }] });
+      }
+    }
+  } else throw new Error('unsupported ordinary selection schema');
   required(candidate.format === 'poe2-native-localization-candidate/v1' && Array.isArray(candidate.pairs), 'invalid native translation export');
   required(candidate.input?.manifest_sha256 === selection.conversion?.descriptions?.manifest_sha256
     && candidate.input?.source_identity?.game_patch === selection.target?.version, 'translation/selected fact identity mismatch');
@@ -58,7 +73,7 @@ export function nativeSocketableTranslations(legacy, selection, candidate) {
     }
   }
   const proposals = [], excluded = [];
-  for (const record of selection.conversion.records) {
+  for (const record of records) {
     if (record.mode !== 'target-csd') continue;
     for (const packet of record.selected_descriptions) {
       for (const evidence of packet.evidence) {
@@ -113,6 +128,9 @@ export function nativeSocketableTranslations(legacy, selection, candidate) {
     scope: 'Selected, unambiguous literal effect text only. Existing templates and untranslatable effects remain intact; no name translation or CN numeric equivalence claim.' } };
 }
 
+// Keep the original import API for existing socketable callers.
+export const nativeSocketableTranslations = nativeSelectedTranslations;
+
 function pinned(file, expected) {
   required(/^[a-f0-9]{64}$/u.test(expected), 'invalid external SHA256');
   const fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK | fs.constants.O_NOFOLLOW);
@@ -144,5 +162,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   fs.writeFileSync(path.join(out, 'receipt.json'), JSON.stringify({ ...result.report, inputs: options,
     files: { 'stat_lines.json': { bytes: Buffer.byteLength(lines), sha256: digest(lines) } },
     implementation_sha256: digest(fs.readFileSync(fileURLToPath(import.meta.url))), adoption: 'not-adopted' }, null, 2) + '\n', { flag: 'wx' });
-  console.log(`native socketable translations: ${result.report.added.length} literal pairs added; ${result.report.excluded.length} selections retained/excluded`);
+  console.log(`native selected translations: ${result.report.added.length} literal pairs added; ${result.report.excluded.length} selections retained/excluded`);
 }

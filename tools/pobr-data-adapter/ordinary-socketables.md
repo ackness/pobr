@@ -63,6 +63,10 @@ mise exec -- node pipeline/native-socketable-translations.mjs \
   --out /absolute/existing-parent/fresh-translations
 ```
 
+The same selector accepts the target ordinary tree receipt and follows complete
+node/variant CSD evidence, including source-owned ascendancy replacements.
+Prepared text is never given a target-language claim.
+
 Both commands require fresh outputs. Assembly remains explicit and records the
 new snapshot/shared-layer identity before ordinary consumption. Regression scope:
 

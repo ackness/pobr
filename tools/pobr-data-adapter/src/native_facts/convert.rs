@@ -529,10 +529,27 @@ impl<'src> Tables<'src> {
         selected: &[&'static str],
         native_projection: bool,
     ) -> Result<Self, String> {
+        Self::read_documents(&input.documents, selected, input.profile, native_projection)
+    }
+
+    /// Supplemental physical tables use the same row/column checks, without a
+    /// full-profile projection or a fabricated parent fact manifest.
+    pub(crate) fn selected_documents(
+        documents: &'src BTreeMap<String, Value>,
+        selected: &[&'static str],
+    ) -> Result<Self, String> {
+        Self::read_documents(documents, selected, Profile::ItemsActorsBc, false)
+    }
+
+    fn read_documents(
+        documents: &'src BTreeMap<String, Value>,
+        selected: &[&'static str],
+        profile: Profile,
+        native_projection: bool,
+    ) -> Result<Self, String> {
         let mut rows = BTreeMap::new();
         for &table in selected {
-            let doc = input
-                .documents
+            let doc = documents
                 .get(&format!("tables/{table}.json"))
                 .ok_or_else(|| format!("unverified physical table: {table}"))?;
             trust::exact_keys(
@@ -555,7 +572,7 @@ impl<'src> Tables<'src> {
                 "physical table identity mismatch",
             )?;
             let fields: Vec<String> = decode(&doc["physical_fields"])?;
-            if native_projection && input.profile != Profile::BaseV1 {
+            if native_projection && profile != Profile::BaseV1 {
                 require(
                     core_skills::required_fields(table)
                         .iter()
@@ -564,10 +581,7 @@ impl<'src> Tables<'src> {
                 )?;
             }
             if native_projection
-                && matches!(
-                    input.profile,
-                    Profile::GemsConstraintsA1 | Profile::ItemsActorsBc
-                )
+                && matches!(profile, Profile::GemsConstraintsA1 | Profile::ItemsActorsBc)
             {
                 require(
                     gems::required_fields(table)
@@ -576,7 +590,7 @@ impl<'src> Tables<'src> {
                     "missing gem physical field",
                 )?;
             }
-            if native_projection && input.profile == Profile::ItemsActorsBc {
+            if native_projection && profile == Profile::ItemsActorsBc {
                 require(
                     items_actors::required_fields(table)
                         .iter()
@@ -607,7 +621,7 @@ impl<'src> Tables<'src> {
                     && validation["schema_row_bytes"]
                         .as_u64()
                         .is_some_and(|v| v > 0)
-                    && if input.profile == Profile::ItemsActorsBc && source_rows.is_empty() {
+                    && if profile == Profile::ItemsActorsBc && source_rows.is_empty() {
                         validation["actual_row_bytes"] == 0
                     } else {
                         validation["schema_row_bytes"] == validation["actual_row_bytes"]
@@ -621,9 +635,7 @@ impl<'src> Tables<'src> {
                 require(row["_row"] == index, "physical row order mismatch")?;
                 trust::exact_keys(&row["values"], &fields)?;
                 if fields.iter().any(|f| f == "Id") {
-                    if input.profile == Profile::ItemsActorsBc
-                        && table == "SummonedSpecificMonsters"
-                    {
+                    if profile == Profile::ItemsActorsBc && table == "SummonedSpecificMonsters" {
                         require(
                             row["values"]["Id"].is_i64() || row["values"]["Id"].is_u64(),
                             "invalid numeric summoned-monster Id",

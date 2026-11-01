@@ -1,7 +1,7 @@
 //! Target graph/definition ownership with explicitly bounded compatibility fields.
 
 use super::super::stat_set_codec::read_pinned;
-use super::{Converted, policy, prepared, render::Renderer, source::Facts};
+use super::{Converted, ascendancy, policy, prepared, render::Renderer, source::Facts};
 use crate::native_facts::reader::{self, VerifiedFacts};
 use crate::raw_source::sha256_hex;
 use pobr_data::catalog::{PassiveNodeDef, PassiveNodeKind, PassiveTreeMeta};
@@ -28,6 +28,8 @@ pub(super) struct Policy {
     pub excluded: BTreeMap<String, Exclusion>,
     pub class_bindings: Vec<ClassBinding>,
     pub statement: String,
+    #[serde(default)]
+    pub ascendancy: Option<ascendancy::Policy>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -52,12 +54,21 @@ pub(super) fn convert(
     input: &VerifiedFacts,
     args: &super::super::CodecArgs,
     extra: &Args,
+    supplement: Option<&reader::selected::Input>,
 ) -> Result<Converted, String> {
     let pinned = read_pinned(&args.policy, &args.policy_sha256, "target tree policy")?;
     let policy: Policy = serde_json::from_value(pinned.document).map_err(|e| e.to_string())?;
-    if policy.schema != "pobr-ordinary-target-tree-policy/v1" || policy.statement.trim().is_empty()
+    if !matches!(
+        policy.schema.as_str(),
+        "pobr-ordinary-target-tree-policy/v1" | "pobr-ordinary-target-tree-policy/v2"
+    ) || policy.statement.trim().is_empty()
     {
         return Err("unsupported target tree policy".into());
+    }
+    if (policy.schema == "pobr-ordinary-target-tree-policy/v2") != policy.ascendancy.is_some()
+        || policy.ascendancy.is_some() != supplement.is_some()
+    {
+        return Err("target tree policy/supplement scope mismatch".into());
     }
     policy.base_policy.validate(input)?;
     if args.source_sha256 != policy.base_policy.source.sha256 {
@@ -94,6 +105,20 @@ pub(super) fn convert(
     }
     let facts = Facts::read(input, &policy.base_policy)?;
     let renderer = Renderer::new(&descriptions.document)?;
+    let ascendancy = policy
+        .ascendancy
+        .as_ref()
+        .zip(supplement)
+        .map(|(p, s)| {
+            ascendancy::Source::read(
+                input,
+                &facts,
+                s,
+                p,
+                &policy.base_policy.legacy_metadata.value,
+            )
+        })
+        .transpose()?;
     let (tree, metadata, receipt) = project(
         input,
         &facts,
@@ -101,6 +126,7 @@ pub(super) fn convert(
         &legacy.document,
         &reference.document,
         &renderer,
+        ascendancy.as_ref(),
     )?;
     Ok(Converted {
         base: BTreeMap::from([
@@ -149,6 +175,16 @@ pub(super) fn context(raw: &Value) -> Result<Value, String> {
     });
     Ok(Value::Object(context))
 }
+fn policy_context(policy: &Policy, raw: &Value) -> Result<Value, String> {
+    let mut value = context(raw)?;
+    if policy.ascendancy.is_some() {
+        value
+            .as_object_mut()
+            .ok_or("invalid context")?
+            .remove("Ascendancy");
+    }
+    Ok(value)
+}
 fn hash(value: &impl serde::Serialize) -> Result<String, String> {
     Ok(sha256_hex(&reader::json_bytes(value)?))
 }
@@ -173,7 +209,9 @@ fn exact_compatibility(
         .compatibility_bindings
         .get(id)
         .ok_or_else(|| format!("{id}: no whole-text compatibility binding"))?;
-    if binding.context_sha256 != hash(&context(raw)?)? || binding.stats_sha256 != hash(&stats)? {
+    if binding.context_sha256 != hash(&policy_context(policy, raw)?)?
+        || binding.stats_sha256 != hash(&stats)?
+    {
         return Err(format!(
             "{id}: target semantics changed; stale whole-text compatibility rejected"
         ));
@@ -229,6 +267,7 @@ pub(super) fn project(
     legacy: &Value,
     reference: &Value,
     renderer: &Renderer<'_>,
+    ascendancy: Option<&ascendancy::Source>,
 ) -> Result<(Value, Value, Value), String> {
     for field in [
         "IsNotable",
@@ -288,10 +327,11 @@ pub(super) fn project(
             .compatibility_bindings
             .get(id)
             .map(|b| b.context_sha256.clone())
-            .unwrap_or(hash(&context(
+            .unwrap_or(hash(&policy_context(
+                policy,
                 facts.tables.row("PassiveSkills", facts.reference_row)?,
             )?)?);
-        if expected_context != hash(&context(raw)?)? {
+        if expected_context != hash(&policy_context(policy, raw)?)? {
             return Err(format!(
                 "{id}: unsupported source context change or new conditional identity"
             ));
@@ -365,9 +405,9 @@ pub(super) fn project(
             facts,
             policy,
             renderer,
-            id,
             previous.map(|(_, n)| n),
             object,
+            ascendancy,
         )?;
         // Keep the existing bounded mapper as an optimization only. Multi-stat
         // nodes use the same ordinary parser as every other rendered tree node.
@@ -404,17 +444,27 @@ pub(super) fn project(
             );
             native_count += 1;
         }
+        if let Some(source) = ascendancy {
+            source.node(raw, object)?;
+        }
         records.push(json!({"skill":skill,"id":id,"target_row":row,"previous_row":previous.map(|(i,_)|i),
             "name":name,"text":text_record,"geometry":geometry,"variants":variant_records,
             "source_connections":instance.connections,"excluded_connections":instance.connections.iter().filter(|id|excluded.contains(id)).collect::<Vec<_>>(),
-            "compatibility_fields":["ascendancy_id","unlock_constraint","apply_to_armour","unknown prepared extension fields"],
-            "context_sha256":hash(&context(raw)?)?,"output_entry_sha256":hash(&entry)?}));
+            "compatibility_fields":if ascendancy.is_some(){vec!["unlock_constraint","apply_to_armour","unknown prepared extension fields"]}else{vec!["ascendancy_id","unlock_constraint","apply_to_armour","unknown prepared extension fields"]},
+            "context_sha256":hash(&policy_context(policy, raw)?)?,"output_entry_sha256":hash(&entry)?}));
         output.push(entry);
     }
     output.sort_by_key(|n| n["skill"].as_u64());
     let typed: Vec<PassiveNodeDef> =
         serde_json::from_value(json!(output)).map_err(|e| e.to_string())?;
-    prepared::validate(&typed, &meta)?;
+    let (mut metadata, classes) =
+        prepared::metadata(&policy.base_policy.legacy_metadata.value, &meta, facts)?;
+    if let Some(source) = ascendancy {
+        source.metadata(&mut metadata)?;
+    }
+    let output_meta =
+        serde_json::from_value(metadata.clone()).map_err(|e| format!("projected metadata: {e}"))?;
+    prepared::validate(&typed, &output_meta)?;
     let skills: BTreeSet<_> = typed.iter().map(|n| n.skill).collect();
     if typed
         .iter()
@@ -422,8 +472,6 @@ pub(super) fn project(
     {
         return Err("emitted edge targets non-emitted node".into());
     }
-    let (metadata, classes) =
-        prepared::metadata(&policy.base_policy.legacy_metadata.value, &meta, facts)?;
     let removed: Vec<_> = old_nodes
         .iter()
         .filter(|n| !skills.contains(&n.skill))
@@ -435,8 +483,8 @@ pub(super) fn project(
         json!({"entries":typed.len(),"graph_instances":instances.len(),"target_text_nodes":rendered_count,
         "target_multistat_nodes":multi_count,"native_packets":native_count,"source_records":records,"excluded":excluded_records,
         "removed_prepared_skills":removed,"class_records":classes,"class_override_inventory":facts.relations,
-        "ownership":{"target":["membership minus source-bound eligibility exclusions","ordered emitted edges","id","name","kind","group","orbit","orbit_index","group centres","complete rendered stats","class override identities and rendered stats","base attributes"],
-            "compatibility":["whole unrenderable text with exact semantic binding","prepared planar placement/coordinate absence under exact reference group-orbit-slot binding; explicit reference offsets for new nodes","ascendancy","unlock predicates","armour","non-class variants","unknown prepared fields"]}}),
+        "ascendancy":ascendancy.map(|a|&a.receipt),"ownership":{"ascendancy":if ascendancy.is_some(){"target physical membership, names, character FK, node FK and replacement relations; geometry/unlock remain compatibility"}else{"compatibility"},"target":["membership minus source-bound eligibility exclusions","ordered emitted edges","id","name","kind","group","orbit","orbit_index","group centres","complete rendered stats","class override identities and rendered stats","base attributes"],
+            "compatibility":["whole unrenderable text with exact semantic binding","prepared planar placement/coordinate absence under exact reference group-orbit-slot binding; explicit reference offsets for new nodes","unlock predicates","armour","non-class variants when no supplement","unknown prepared fields"]}}),
     ))
 }
 
@@ -556,10 +604,14 @@ fn variants(
     facts: &Facts<'_>,
     policy: &Policy,
     renderer: &Renderer<'_>,
-    id: &str,
     previous: Option<&PassiveNodeDef>,
     out: &mut serde_json::Map<String, Value>,
+    ascendancy: Option<&ascendancy::Source>,
 ) -> Result<Vec<Value>, String> {
+    let id = out["id"]
+        .as_str()
+        .ok_or("missing output node identity")?
+        .to_owned();
     let mut variants = out
         .get("variants")
         .and_then(Value::as_array)
@@ -584,7 +636,11 @@ fn variants(
         .collect::<Result<_, String>>()?;
     // Preserve unknown variant fields. Only declared target class relations replace
     // these entries; remaining ascendancy variants stay complete compatibility.
-    variants.retain(|v| !previous_classes.contains(v["class"].as_str().unwrap_or("")));
+    variants.retain(|v| {
+        let selector = v["class"].as_str().unwrap_or("");
+        !previous_classes.contains(selector)
+            && !ascendancy.is_some_and(|a| a.previous_selectors.contains(selector))
+    });
     let mut records = Vec::new();
     for v in &variants {
         if let Some(skill) = v["variant_skill"].as_u64() {
@@ -615,30 +671,52 @@ fn variants(
             ));
         }
     }
-    let mut classes = BTreeSet::new();
+    let mut relations = Vec::new();
     for relation in &facts.relations {
-        if relation["definitions"][0]["id"] != id {
-            continue;
+        if relation["definitions"][0]["id"] == id {
+            let class = relation["character"]["name"]
+                .as_str()
+                .ok_or("invalid class relation")?;
+            let row = relation["definitions"][1]["source_row"]
+                .as_u64()
+                .ok_or("invalid replacement row")? as usize;
+            relations.push((
+                class,
+                row,
+                Some(class),
+                json!({"table":"ClassPassiveSkillOverrides","source_row":relation["source_row"]}),
+            ));
         }
-        let class = relation["character"]["name"]
-            .as_str()
-            .ok_or("invalid class relation")?;
+    }
+    if let Some(source) = ascendancy {
+        for link in source.links.get(&id).into_iter().flatten() {
+            relations.push((
+                link.selector.as_str(),
+                link.target,
+                link.previous_selector.as_deref(),
+                json!({"table":"AscendancyPassiveSkillOverrides","source_row":link.row}),
+            ));
+        }
+    }
+    let mut classes = BTreeSet::new();
+    for (class, row, old_selector, relationship) in relations {
         if !classes.insert(class) {
-            return Err(format!("{id}: repeated class replacement {class}"));
+            return Err(format!("{id}: repeated replacement selector {class}"));
         }
-        let row = relation["definitions"][1]["source_row"]
-            .as_u64()
-            .ok_or("invalid replacement row")? as usize;
         let raw = facts.tables.row("PassiveSkills", row)?;
         let target = raw["Id"].as_str().ok_or("invalid replacement id")?;
         let binding = policy
             .compatibility_bindings
             .get(target)
             .ok_or_else(|| format!("{target}: missing variant context binding"))?;
-        if binding.context_sha256 != hash(&context(raw)?)? {
+        if binding.context_sha256 != hash(&policy_context(policy, raw)?)? {
             return Err(format!("{target}: changed variant context"));
         }
-        let old_variant = previous.and_then(|n| n.variants.iter().find(|v| v.class == class));
+        let old_variant = previous.and_then(|n| {
+            n.variants
+                .iter()
+                .find(|v| Some(v.class.as_str()) == old_selector)
+        });
         let target_skill = super::source::graph_id(raw)?;
         // A class slot can change its replacement. Its old text belongs only to
         // the original target, even if the new target has a valid semantic guard.
@@ -647,7 +725,7 @@ fn variants(
             .map(|v| v.stats.as_slice());
         let (stats, evidence) = text(input, facts, row, policy, renderer, compatible_text)?;
         let mut replacement = old_by_class
-            .get(class)
+            .get(old_selector.unwrap_or(class))
             .cloned()
             .unwrap_or_else(|| json!({}));
         replacement["class"] = json!(class);
@@ -656,7 +734,7 @@ fn variants(
         replacement["stats"] = json!(stats);
         variants.retain(|v| v["class"] != class);
         variants.push(replacement);
-        records.push(json!({"class":class,"target":target,"source_row":row,"text":evidence}));
+        records.push(json!({"class":class,"target":target,"source_row":row,"text":evidence,"relationship":relationship}));
     }
     if variants.is_empty() {
         out.remove("variants");

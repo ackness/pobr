@@ -80,3 +80,24 @@ test('signed values use the same selected handler, never an untranslated raw mag
   assert.deepEqual(nativeSocketableTranslations([], selection, candidate).pairs,
     [{ en: '+4 to Armour', src: '+4 点护甲' }]);
 });
+
+test('ordinary tree nodes and ascendancy variants select their own library records', () => {
+  const { candidate, selection } = fixture();
+  const evidence = selection.conversion.records[0].selected_descriptions[0].evidence;
+  selection.adapter.output_schema = 'pobr_data::catalog::{PassiveNodeDef[],PassiveTreeMeta}';
+  selection.conversion.projection = { source_records: [{ id: 'base', target_row: 5,
+    text: { owner: 'prepared-whole-text' }, variants: [{ class: 'Lich', target: 'variant', source_row: 8,
+      text: { owner: 'target-csd', descriptions: evidence } }] }] };
+  const result = nativeSocketableTranslations([], selection, candidate);
+  assert.deepEqual(result.pairs, [{ en: '+12 to Armour', src: '+12 点护甲' }]);
+  assert.equal(result.report.added[0].provenance[0].packet, 'variant:Lich');
+  assert.equal(result.report.added[0].provenance[0].id, 'variant');
+  selection.conversion.projection.source_records[0].variants[0].text.owner = 'prepared-whole-text';
+  assert.deepEqual(nativeSocketableTranslations([], selection, candidate).pairs, []);
+});
+
+test('an old prepared tree receipt cannot impersonate selected CSD evidence', () => {
+  const { candidate, selection } = fixture();
+  selection.adapter.output_schema = 'pobr_data::catalog::{PassiveNodeDef[],PassiveTreeMeta}';
+  assert.throws(() => nativeSocketableTranslations([], selection, candidate), /missing target tree projection/);
+});

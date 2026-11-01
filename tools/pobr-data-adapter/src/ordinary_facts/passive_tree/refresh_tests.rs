@@ -14,7 +14,7 @@ fn descriptor(ids: &[&str], template: &str) -> Value {
             "condition_tokens_raw":ids.iter().map(|_|"#").collect::<Vec<_>>(),"template_raw":template,
             "template_syntax_diagnostics":[],"quantifiers_lexical":[],"quantifier_tokens_raw":[],"restrictions_raw":[],"span":{}}]}]})
 }
-fn descriptions() -> Value {
+pub(super) fn descriptions() -> Value {
     json!({"files":{
         "Data/StatDescriptions/passive_skill_stat_descriptions.csd":{
             "path":"Data/StatDescriptions/passive_skill_stat_descriptions.csd","records":[
@@ -24,7 +24,7 @@ fn descriptions() -> Value {
                 descriptor(&["base_fire_damage_resistance_%"],"{0:+d}% to Fire Resistance"),
                 descriptor(&["spell_damage_+%"],"{0}% increased Spell Damage")]}}})
 }
-fn fixture() -> (Fixture, Value, Value, Value) {
+pub(super) fn fixture() -> (Fixture, Value, Value, Value) {
     let mut f = super::tests::fixture();
     let passive = f.documents.get_mut("tables/PassiveSkills.json").unwrap();
     for field in [
@@ -119,7 +119,7 @@ fn fixture() -> (Fixture, Value, Value, Value) {
     }
     (f, policy, legacy, reference)
 }
-fn input(f: &mut Fixture) -> VerifiedFacts {
+pub(super) fn input(f: &mut Fixture) -> VerifiedFacts {
     f.seal();
     let mut input = reader::open(
         &f.root.join("input"),
@@ -142,7 +142,7 @@ fn project(
     let facts = Facts::read(&input, &policy.base_policy)?;
     let descriptions = descriptions();
     let renderer = Renderer::new(&descriptions)?;
-    refresh::project(&input, &facts, &policy, old, reference, &renderer)
+    refresh::project(&input, &facts, &policy, old, reference, &renderer, None)
 }
 fn edit_node(f: &mut Fixture, id: u64, edit: impl Fn(&mut Value)) {
     for n in f.documents.get_mut("graph.json").unwrap()["groups"][0]["nodes"]

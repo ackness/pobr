@@ -15,9 +15,10 @@ pub(super) const PRODUCER_REVISION: &str = "b6def2152dfc48d8ec49c7a237b2e973c383
 const DECODER_PIN_SHA: &str = "64703bc3c5eca107108244e02baf0dc2cd46669e62a6b5ba273f868aa9db0095";
 pub(super) const DECODER_PIN: &[u8] =
     include_bytes!("../../tests/fixtures/native-facts/pypoe-sources.json");
-const PYPOE: &str = "66d1d7442c5718260e1a8efd24989d22987e91af";
-const SCHEMA_REVISION: &str = "6034b071846ef61b39046ebdb59e6d5717179509";
-const SCHEMA_SHA: &str = "50e098543345cf8323aeb294e2cfef1b6b44842faccf560ada935cebe22727df";
+pub(super) const PYPOE: &str = "66d1d7442c5718260e1a8efd24989d22987e91af";
+pub(super) const SCHEMA_REVISION: &str = "6034b071846ef61b39046ebdb59e6d5717179509";
+pub(super) const SCHEMA_SHA: &str =
+    "50e098543345cf8323aeb294e2cfef1b6b44842faccf560ada935cebe22727df";
 
 pub(super) const TABLES: [&str; 8] = [
     "Characters",
@@ -435,7 +436,7 @@ fn raw_paths(profile: Profile) -> Vec<String> {
         .collect()
 }
 
-fn verify_acquisition(value: &Value) -> Result<(), String> {
+pub(super) fn verify_acquisition(value: &Value) -> Result<(), String> {
     exact_keys(value, &["status".into(), "evidence".into()])?;
     require(
         matches!(

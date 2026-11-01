@@ -2,6 +2,7 @@
 
 mod actors;
 mod base_items;
+mod catalysts;
 mod convert;
 mod gem_effects;
 mod minion_links;
@@ -39,6 +40,8 @@ pub(crate) struct Args {
     branch_codec: Option<BranchCodecArgs>,
     tree_refresh: Option<Box<passive_tree::RefreshArgs>>,
     item_descriptions: Option<PathBuf>,
+    supplement: Option<BranchCodecArgs>,
+    catalog_policy: Option<BranchCodecArgs>,
 }
 
 struct BranchCodecArgs {
@@ -72,6 +75,7 @@ enum Domain {
     PassiveTree,
     RuntimeConstants,
     Socketables,
+    Catalysts,
 }
 
 impl Domain {
@@ -93,6 +97,7 @@ impl Domain {
             Self::PassiveTree => &passive_tree::TABLES,
             Self::RuntimeConstants => &runtime_constants::TABLES,
             Self::Socketables => &socketables::TABLES,
+            Self::Catalysts => &catalysts::TABLES,
         }
     }
 
@@ -115,6 +120,7 @@ impl Domain {
             Self::PassiveTree => "ordinary-passive-tree",
             Self::RuntimeConstants => "ordinary-runtime-constants",
             Self::Socketables => "ordinary-socketables",
+            Self::Catalysts => "ordinary-catalysts",
         }
     }
 
@@ -137,6 +143,7 @@ impl Domain {
             Self::PassiveTree => "passive-tree",
             Self::RuntimeConstants => "runtime-constants",
             Self::Socketables => "socketables",
+            Self::Catalysts => "catalysts",
         }
     }
 }
@@ -162,6 +169,10 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             "--tree-reference",
             "--tree-descriptions",
             "--item-descriptions",
+            "--supplement",
+            "--supplement-manifest-sha256",
+            "--catalog-policy",
+            "--catalog-policy-sha256",
         ]
         .contains(&flag.as_str())
         {
@@ -190,6 +201,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("passive-tree") => Domain::PassiveTree,
         Some("runtime-constants") => Domain::RuntimeConstants,
         Some("socketables") => Domain::Socketables,
+        Some("catalysts") => Domain::Catalysts,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
     if domain != Domain::GemQuality
@@ -250,8 +262,34 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     if (domain == Domain::Socketables) != item_descriptions.is_some() {
         return Err("item-descriptions is required only for socketables".into());
     }
+    let supplement = match (
+        values.remove("--supplement"),
+        values.remove("--supplement-manifest-sha256"),
+    ) {
+        (Some(path), Some(sha256)) if matches!(domain, Domain::Catalysts | Domain::PassiveTree) => {
+            Some(BranchCodecArgs {
+                path: path.into(),
+                sha256,
+            })
+        }
+        (None, None) if domain != Domain::Catalysts => None,
+        _ => return Err("paired supplement arguments require catalysts or passive-tree".into()),
+    };
+    let catalog_policy = match (
+        values.remove("--catalog-policy"),
+        values.remove("--catalog-policy-sha256"),
+    ) {
+        (Some(path), Some(sha256)) if domain == Domain::Catalysts => Some(BranchCodecArgs {
+            path: path.into(),
+            sha256,
+        }),
+        (None, None) if domain != Domain::Catalysts => None,
+        _ => return Err("paired catalog policy arguments require catalysts".into()),
+    };
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
     Ok(Args {
+        supplement,
+        catalog_policy,
         tree_refresh,
         item_descriptions,
         input: take("--ordinary-facts")?.into(),
@@ -316,6 +354,14 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     if args.tree_refresh.is_some() {
         reader::read_tree(&args.input, &mut input)?;
     }
+    let supplement = args
+        .supplement
+        .as_ref()
+        .map(|extra| {
+            output.protect(&extra.path)?;
+            reader::selected::open(&extra.path, &extra.sha256, &input.manifest)
+        })
+        .transpose()?;
     let mut overlay = BTreeMap::new();
     let mut policy_bytes = None;
     let mut codec_policy_bytes = None;
@@ -330,6 +376,27 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     let mut legacy_constant_files = BTreeMap::new();
     // Complete validation and serialization before reserving any output.
     let (base, conversion, output_schema, scope) = match args.domain {
+        Domain::Catalysts => {
+            let converted = catalysts::convert(
+                &input,
+                supplement.as_ref().ok_or("missing supplement")?,
+                args.catalog_policy
+                    .as_ref()
+                    .ok_or("missing catalyst policy")?,
+            )?;
+            output.protect(&converted.policy_parent)?;
+            overlay = converted.overlay;
+            codec_policy_bytes = Some(converted.policy_bytes);
+            (
+                BTreeMap::new(),
+                converted.receipt,
+                "pobr_data::catalog::item_overlay::CatalystsDef",
+                vec![
+                    "Target catalyst names, descriptors and tags feed the existing ordinary catalog. Historical XML IDs remain explicit codec policy.",
+                    "All source currency variants remain in the receipt. No new quality multiplier or application law is inferred; source draft and CURRENT unchanged.",
+                ],
+            )
+        }
         Domain::Socketables => {
             let converted = socketables::convert(
                 &input,
@@ -660,6 +727,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                     .as_ref()
                     .ok_or("missing passive-tree source/policy arguments")?,
                 args.tree_refresh.as_deref(),
+                supplement.as_ref(),
             )?;
             for parent in &converted.protected_parents {
                 output.protect(parent)?;
@@ -674,8 +742,8 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                     vec![
                         "Target Default graph owns membership/ordered emitted edges/group-orbit-slot and definitions own names/categories; source-bound non-allocatable records remain explicit exclusions.",
                         "Complete supported CSD descriptions feed the existing ordinary parser; unsupported whole-node text retains exact semantic-guarded compatibility. No partial target packets or zero substitutes.",
-                        "Prepared conditional metadata, physical orbit offsets and exceptional variants remain field-scoped fixed compatibility; unknown target applicability is retained. No guessed Ascendancy ordinal or Requirement predicate.",
-                        "Five selected tables plus graph/passives and lock, externally pinned prepared policy/reference/CSD inputs. No source promotion, runtime adoption or CURRENT change.",
+                        "Prepared unlock predicates, physical orbit offsets and armour remain field-scoped compatibility. A paired supplemental table package and v2 policy move ascendancy identities, names, character/node relationships and replacements to target facts; without it v1 remains replayable.",
+                        "Five selected tables plus graph/passives and lock, externally pinned prepared policy/reference/CSD inputs and optional matching-patch supplement. No guessed import ordinal, Requirement predicate, source promotion or CURRENT change.",
                     ]
                 } else {
                     vec![
@@ -847,6 +915,23 @@ fn implementation_sha256() -> String {
     let mut bytes = Vec::new();
     // Content revision records the compiled implementation, not whichever checkout invokes it.
     for (name, source) in [
+        (
+            "native_facts/reader/selected.rs",
+            include_bytes!("native_facts/reader/selected.rs").as_slice(),
+        ),
+        (
+            "selected-tables-producer.json",
+            include_bytes!("../tests/fixtures/ordinary-facts/selected-tables-producer.json")
+                .as_slice(),
+        ),
+        (
+            "ordinary_facts/catalysts.rs",
+            include_bytes!("ordinary_facts/catalysts.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/passive_tree/ascendancy.rs",
+            include_bytes!("ordinary_facts/passive_tree/ascendancy.rs").as_slice(),
+        ),
         (
             "ordinary_facts/socketables.rs",
             include_bytes!("ordinary_facts/socketables.rs").as_slice(),
