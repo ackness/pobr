@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 HERE = Path(__file__).resolve().parent
@@ -27,6 +28,60 @@ tool_pins = load("tool-versions.py")
 gh_installer = load("install-gh.py")
 actionlint_installer = load("install-actionlint.py")
 rust_tests = load("ci-rust-tests.py")
+timings = load("actions-timings.py")
+
+
+class TimingTests(unittest.TestCase):
+    def test_queue_excludes_dependencies_and_compile_excludes_test_time(self):
+        run = {"id": 1, "name": "CI", "event": "push", "head_branch": "master",
+               "head_sha": "a", "created_at": "2026-01-01T01:00:00Z"}
+        job = {"id": 2, "name": "Rust", "conclusion": "success",
+               "created_at": "2026-01-01T01:01:00Z", "started_at": "2026-01-01T01:01:03Z",
+               "completed_at": "2026-01-01T01:02:03Z", "steps": [
+                   # Deliberately different runner clock, as in the real API logs.
+                   {"name": "Workspace tests (including doctests)",
+                    "started_at": "2026-01-01T00:01:13Z", "completed_at": "2026-01-01T00:02:03Z"}]}
+        measured = timings.measure(run, job, "2026-01-01T00:01:33Z Finished `test` profile target(s) in 20s")
+        self.assertEqual(measured["queue_s"], 3)
+        self.assertEqual(measured["dependency_wait_s"], 60)
+        self.assertEqual(measured["cargo_test_compile_s"], 20)
+        self.assertEqual(measured["validation_s"], 30)
+        self.assertEqual(measured["preparation_s"], 30)
+
+    def test_package_smoke_is_validation_but_packaging_is_preparation(self):
+        self.assertTrue(timings.validation("Standalone WASM package smoke"))
+        self.assertTrue(timings.validation("Worker runtime smoke"))
+        self.assertFalse(timings.validation("Package standalone WASM and report size"))
+        self.assertFalse(timings.validation("Post Run actions/cache@v5"))
+
+
+class SparsePlannerTests(unittest.TestCase):
+    def test_release_lock_policy_has_all_manifests_after_sparse_checkout(self):
+        root = HERE.parents[1]
+        workflow = (root / ".github/workflows/pr.yml").read_text()
+        block = workflow.split("sparse-checkout: |\n", 1)[1]
+        patterns = []
+        for line in block.splitlines():
+            if not line.startswith("            "):
+                break
+            patterns.append(line.strip())
+        with tempfile.TemporaryDirectory() as directory:
+            checkout = Path(directory)
+            files = ["Cargo.toml", "Cargo.lock", *[
+                f"{member}/Cargo.toml" for member in __import__('tomllib').loads(
+                    (root / "Cargo.toml").read_text())["workspace"]["members"]]]
+            for name in files:
+                dest = checkout / name
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes((root / name).read_bytes())
+            def git(*args, **kwargs):
+                return subprocess.run(["git", *args], cwd=checkout, check=True,
+                                      capture_output=True, **kwargs)
+            git("init", "-q")
+            git("add", ".")
+            git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "fixture")
+            git("sparse-checkout", "set", "--no-cone", "--stdin", input="\n".join(patterns).encode())
+            self.assertTrue(all((checkout / name).is_file() for name in files))
 
 
 class RustShardTests(unittest.TestCase):

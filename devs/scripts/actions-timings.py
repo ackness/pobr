@@ -28,7 +28,7 @@ def validation(name):
     if re.search(r"^(Post |Set up |Complete |Install|Build|Sync |Upload|Package )", name):
         return False
     return bool(re.search(
-        r"tests?|doctests|typecheck|clippy|Format|cargo (check|fmt)|pnpm (test|typecheck)"
+        r"tests?|doctests|smoke|typecheck|clippy|Format|cargo (check|fmt)|pnpm (test|typecheck)"
         r"|check-workflows|contract|compatibility|reproducibility|catalog lint|Require every"
         r"|plan.py|Validate version|Dependabot", name, re.I))
 
@@ -123,7 +123,9 @@ def main():
     def download(job):
         path = logs / f"log-{job['id']}.txt"
         if job.get("conclusion") in ("success", "failure", "cancelled") and not path.exists():
-            result = subprocess.run(["gh", "api", f"repos/{args.repo}/actions/jobs/{job['id']}/logs"], capture_output=True)
+            # Recent gh protects terminals from raw ANSI. Logs are written only
+            # to a file and stripped for analysis, never rendered in a terminal.
+            result = subprocess.run(["gh", "api", "--allow-escape-sequences", f"repos/{args.repo}/actions/jobs/{job['id']}/logs"], capture_output=True)
             if result.returncode == 0:
                 path.write_bytes(result.stdout)
             else:

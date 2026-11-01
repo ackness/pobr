@@ -55,6 +55,10 @@ jobs:
           sparse-checkout: |
             devs/scripts
             Cargo.toml
+            Cargo.lock
+            crates/*/Cargo.toml
+            apps/*/Cargo.toml
+            tools/*/Cargo.toml
             mise.toml
             rust-toolchain.toml
           sparse-checkout-cone-mode: false
