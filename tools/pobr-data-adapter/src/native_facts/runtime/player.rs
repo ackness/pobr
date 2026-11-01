@@ -29,18 +29,18 @@ const PAYLOADS: &[&str] = &[
     "source-lock.json",
 ];
 
-pub(super) struct Args {
+pub(crate) struct Args {
     pub root: PathBuf,
     pub manifest_sha256: String,
     pub source_lock_sha256: String,
 }
 
-pub(super) struct Player {
+pub(crate) struct Player {
     pub context: NativePlayerContextDef,
     pub manifest: Value,
 }
 
-pub(super) fn verify(args: &Args, parent: &VerifiedInput) -> Result<Player, String> {
+pub(crate) fn verify(args: &Args, parent: &VerifiedInput) -> Result<Player, String> {
     let manifest_bytes = inputs::pinned_bytes(
         &args.root.join("manifest.json"),
         &args.manifest_sha256,

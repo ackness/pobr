@@ -17,6 +17,7 @@ mod skills;
 mod socketables;
 mod stat_set_codec;
 mod totem_varieties;
+mod unarmed;
 
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 mod tests;
@@ -42,6 +43,7 @@ pub(crate) struct Args {
     item_descriptions: Option<PathBuf>,
     supplement: Option<BranchCodecArgs>,
     catalog_policy: Option<BranchCodecArgs>,
+    player_context: Option<BranchCodecArgs>,
 }
 
 struct BranchCodecArgs {
@@ -76,6 +78,7 @@ enum Domain {
     RuntimeConstants,
     Socketables,
     Catalysts,
+    Unarmed,
 }
 
 impl Domain {
@@ -98,6 +101,7 @@ impl Domain {
             Self::RuntimeConstants => &runtime_constants::TABLES,
             Self::Socketables => &socketables::TABLES,
             Self::Catalysts => &catalysts::TABLES,
+            Self::Unarmed => &unarmed::TABLES,
         }
     }
 
@@ -121,6 +125,7 @@ impl Domain {
             Self::RuntimeConstants => "ordinary-runtime-constants",
             Self::Socketables => "ordinary-socketables",
             Self::Catalysts => "ordinary-catalysts",
+            Self::Unarmed => "ordinary-unarmed-data",
         }
     }
 
@@ -144,6 +149,7 @@ impl Domain {
             Self::RuntimeConstants => "runtime-constants",
             Self::Socketables => "socketables",
             Self::Catalysts => "catalysts",
+            Self::Unarmed => "unarmed-data",
         }
     }
 }
@@ -173,6 +179,8 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             "--supplement-manifest-sha256",
             "--catalog-policy",
             "--catalog-policy-sha256",
+            "--player-context",
+            "--player-manifest-sha256",
         ]
         .contains(&flag.as_str())
         {
@@ -202,6 +210,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("runtime-constants") => Domain::RuntimeConstants,
         Some("socketables") => Domain::Socketables,
         Some("catalysts") => Domain::Catalysts,
+        Some("unarmed-data") => Domain::Unarmed,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
     if domain != Domain::GemQuality
@@ -213,6 +222,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     if !matches!(
         domain,
         Domain::BaseItems
+            | Domain::Unarmed
             | Domain::StatSetCodec
             | Domain::GemEffects
             | Domain::SkillStatMap
@@ -233,7 +243,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     .any(|flag| values.contains_key(*flag))
     {
         return Err(
-            "codec arguments require --ordinary-domain base-items, stat-set-codec, gem-effects, skill-stat-map, skill-overrides, minions, spectres, granted-effect-minions, passive-tree, runtime-constants or socketables".into(),
+            "codec arguments require --ordinary-domain base-items, stat-set-codec, gem-effects, skill-stat-map, skill-overrides, minions, spectres, granted-effect-minions, passive-tree, runtime-constants, socketables or unarmed-data".into(),
         );
     }
     if !matches!(domain, Domain::SkillStatMap | Domain::SkillOverrides)
@@ -296,8 +306,20 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         ]
         .iter()
         .any(|f| values.contains_key(*f));
+    let player_context = match (
+        values.remove("--player-context"),
+        values.remove("--player-manifest-sha256"),
+    ) {
+        (Some(path), Some(sha256)) if domain == Domain::Unarmed => Some(BranchCodecArgs {
+            path: path.into(),
+            sha256,
+        }),
+        (None, None) if domain != Domain::Unarmed => None,
+        _ => return Err("paired player context arguments require unarmed-data".into()),
+    };
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
     Ok(Args {
+        player_context,
         supplement,
         catalog_policy,
         tree_refresh,
@@ -318,7 +340,8 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         codec: if base_compatibility
             || matches!(
                 domain,
-                Domain::StatSetCodec
+                Domain::Unarmed
+                    | Domain::StatSetCodec
                     | Domain::GemEffects
                     | Domain::SkillStatMap
                     | Domain::SkillOverrides
@@ -373,6 +396,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
             reader::selected::open(&extra.path, &extra.sha256, &input.manifest)
         })
         .transpose()?;
+    let mut extra_sidecars = BTreeMap::new();
     let mut overlay = BTreeMap::new();
     let mut policy_bytes = None;
     let mut codec_policy_bytes = None;
@@ -388,6 +412,31 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     let mut legacy_constant_files = BTreeMap::new();
     // Complete validation and serialization before reserving any output.
     let (base, conversion, output_schema, scope) = match args.domain {
+        Domain::Unarmed => {
+            let converted = unarmed::convert(
+                &input,
+                args.codec
+                    .as_ref()
+                    .ok_or("missing unarmed compatibility policy/source")?,
+                args.player_context
+                    .as_ref()
+                    .ok_or("missing unarmed player context")?,
+            )?;
+            for parent in &converted.protected_parents {
+                output.protect(parent)?;
+            }
+            extra_sidecars = converted.sidecars;
+            (
+                BTreeMap::from([("unarmed_data.json".into(), converted.bytes)]),
+                converted.receipt,
+                "pobr_data::catalog::UnarmedWeaponDef",
+                vec![
+                    "All target Characters supply their own identity/name and unarmed damage/time. The existing verified player archive supplies the explicitly bound common Character.ot unarmed crit stat; no AO inheritance edge or general actor merge is inferred.",
+                    "Existing unarmed DTO/core remain unchanged. Weapon type vocabulary and the exact historical-only entry are explicit compatibility; source draft, complete-runtime guard and CURRENT remain unchanged.",
+                ],
+            )
+        }
+
         Domain::Catalysts => {
             let converted = catalysts::convert(
                 &input,
@@ -856,6 +905,9 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     if let Some(bytes) = legacy_socketables_bytes {
         sidecars.insert("legacy-socketables.json", bytes);
     }
+    for (name, bytes) in &extra_sidecars {
+        sidecars.insert(name.as_str(), bytes.clone());
+    }
     let files: BTreeMap<_, _> = base
         .iter()
         .map(|(name, data)| (format!("base/{name}"), data))
@@ -945,6 +997,35 @@ fn implementation_sha256() -> String {
     let mut bytes = Vec::new();
     // Content revision records the compiled implementation, not whichever checkout invokes it.
     for (name, source) in [
+        (
+            "catalog/native_runtime.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/native_runtime.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/unarmed.rs",
+            include_bytes!("ordinary_facts/unarmed.rs").as_slice(),
+        ),
+        (
+            "native_facts/runtime/player.rs",
+            include_bytes!("native_facts/runtime/player.rs").as_slice(),
+        ),
+        (
+            "native_facts/runtime/inputs.rs",
+            include_bytes!("native_facts/runtime/inputs.rs").as_slice(),
+        ),
+        (
+            "catalog/native_player.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/native_player.rs").as_slice(),
+        ),
+        (
+            "player-context-manifest.json",
+            include_bytes!("../tests/fixtures/native-facts/player-context-manifest.json")
+                .as_slice(),
+        ),
+        (
+            "catalog/unarmed_data.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/unarmed_data.rs").as_slice(),
+        ),
         (
             "native_facts/reader/selected.rs",
             include_bytes!("native_facts/reader/selected.rs").as_slice(),

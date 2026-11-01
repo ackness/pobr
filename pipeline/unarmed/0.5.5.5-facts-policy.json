@@ -1,0 +1,29 @@
+{
+  "legacy_bindings": {
+    "Druid": "Metadata/Characters/StrInt/StrIntFourb",
+    "Huntress": "Metadata/Characters/Dex/DexFourb",
+    "Mercenary": "Metadata/Characters/StrDex/StrDexFourb",
+    "Monk": "Metadata/Characters/DexInt/DexIntFourb",
+    "Ranger": "Metadata/Characters/Dex/DexFour",
+    "Sorceress": "Metadata/Characters/Int/IntFourb",
+    "Warrior": "Metadata/Characters/Str/StrFourb",
+    "Witch": "Metadata/Characters/Int/IntFour"
+  },
+  "legacy_only": {
+    "Scion": {
+      "attack_rate": 1.65,
+      "class_id": 0,
+      "class_name": "Scion",
+      "crit_chance": 0.05,
+      "physical_max": 6.0,
+      "physical_min": 2.0,
+      "weapon_type": "None"
+    }
+  },
+  "player_manifest_sha256": "c0412e13d92141476cae28d7dc9b58db9ec74cc82c8084847af6fed62f141bd5",
+  "player_source_lock_sha256": "973c6658dbb822649c09320c32808c3e8f69ee97c2f35f72c94ded54d30eb6cc",
+  "schema": "pobr-ordinary-unarmed-policy/v1",
+  "source_sha256": "5c363209d25e131ef54f69229252b02e6d99a7178b125537cf0d83bec131e803",
+  "statement": "All target Characters rows supply stable identity, current English class name/IntegerId, physical damage and attack time. The ordinary unarmed-base interpretation uses the generic Character.ot plain Stats unarmed_base_critical_strike_chance as its shared intrinsic critical-strike base, divided by10000 into the existing serialized fraction; this is an explicit field binding, not AO-to-OT inheritance inference or general actor-stat merge. Weapon type None is existing DTO model vocabulary. Legacy-only Scion remains an explicitly fixed historical import fallback; duplicate class_id0 with target Marauder is retained, because the current consumer selects by class_name. Never infer new actor or combat laws.",
+  "version": "0.5.5.5"
+}

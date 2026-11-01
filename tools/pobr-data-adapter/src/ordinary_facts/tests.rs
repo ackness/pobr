@@ -78,6 +78,7 @@ impl Fixture {
             item_descriptions: None,
             supplement: None,
             catalog_policy: None,
+            player_context: None,
             input: self.root.join("input"),
             expected_manifest_sha256: sha256_hex(
                 &fs::read(self.root.join("input/manifest.json")).unwrap(),
