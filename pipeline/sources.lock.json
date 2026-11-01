@@ -3956,6 +3956,236 @@
       ],
       "frozen_metadata": "Original draft packages, requests, source locks, warnings and failures remain unchanged. Only these exact pins are accepted.",
       "production_ready": false
+    },
+    "actor-ot-0.5.5.5-international": {
+      "status": "accepted-bounded-source-acquisition",
+      "target": {
+        "game": "poe2",
+        "game_patch": "0.5.5.5",
+        "realm": "international"
+      },
+      "scope": "Exactly six observed OT resources for BearCompanion, LivingLightning and SummonedRagingSpirit, their retained fixed-index/range acquisition chain, raw-byte reconstruction, lexical spans and literal parent paths. No effect evaluation, merge law or mod-list approval.",
+      "artifact": {
+        "repository": "ackness/repoe",
+        "revision": "9f20e64ca06c5402f34f02a3d45eac8ec8d3e6db",
+        "path": "handoff/actor-templates-draft-20261101/source-package.zip",
+        "bytes": 425944,
+        "sha256": "8d4b4df40e59d5a5464456ed3621d3bc8f3809c16d360e1444ec455f13a19627",
+        "manifest": {
+          "bytes": 9768,
+          "sha256": "71479cb3ddac65c92c6575019e70c54d56555b7960579dce9a125069114b4729"
+        },
+        "expanded_bytes": 8098823
+      },
+      "candidate_manifest": {
+        "bytes": 2785,
+        "path": "facts/manifest.json",
+        "sha256": "4a208bef72a5b03a4e56551d6138898313c91c8388305c166a7e5489b31e0628"
+      },
+      "raw_resources": {
+        "Metadata/Monsters/BearCompanion/BearCompanion.ot": {
+          "bytes": 1960,
+          "sha256": "e4b3d75ee9db47f701dbeb9e9ab1d48fc4f0bb1b9e2641c73d66ba365a69ade4"
+        },
+        "Metadata/Monsters/LivingLightning/LivingLightning.ot": {
+          "bytes": 1990,
+          "sha256": "eb7da9cab9847b6fe2800b88919313021b46509d1d851d60ab2c1a21b2c2fa86"
+        },
+        "Metadata/Monsters/Monster.ot": {
+          "bytes": 4820,
+          "sha256": "b3d038cfec761b236ecf68883607478aaa134bd97093bd6c6491612025ce5762"
+        },
+        "Metadata/Monsters/PlayerFollowingMinionBase.ot": {
+          "bytes": 524,
+          "sha256": "d06e47948232ab94acc1dc937a39bbdf077563b171d0fd43f0ad15b97f454cd6"
+        },
+        "Metadata/Monsters/PlayerSummonedMinionBase.ot": {
+          "bytes": 1264,
+          "sha256": "15089e61c540edd012b5b48a52c9446349c77a26acb6b7f07aeb32c5811ad902"
+        },
+        "Metadata/Monsters/SummonRagingSpirit/SummonedRagingSpirit.ot": {
+          "bytes": 614,
+          "sha256": "9ff70a6eee6d53930ec57bc3ec6b27faa848e212b58da2c2ea32b224d7a20de4"
+        }
+      },
+      "review": {
+        "thread": "<t3-thread://v2/ce64fd3e-1463-4764-9139-4a80c2681391/thread:delegated-task:command%3Amcp%3Ab9c098b9-c563-44e0-9788-26589bfbc7f8%3Adelegate-task%3Apostmerge-actor-templates-review-20261101-1>",
+        "checked_source": "cbf63d2854d7ea49b89838a1c8b3835bc46a9f86",
+        "report": {
+          "path": ".cache/postmerge-20261101/actor-templates/review/final-result.md",
+          "bytes": 5637,
+          "sha256": "26200ab0dbf7fcad9905df4b17186f78894e0ae8c90f176ec1b42da1976a6633"
+        },
+        "result": "Existing independent review replayed all six observed byte chains and found one P3 unsupported block-comment parser case. Root fixed it at b41b3e84, ran seven focused tests/Ruff and confirmed unchanged templates/source-lock bytes with corrected manifest4a208bef. No remaining blocker for the exact source-byte scope.",
+        "reuse": "Reuse the completed six-resource index/cache/decoder replay; no second OT review, new acquisition or old large-closure audit. Effect semantics remain open separately."
+      },
+      "production_ready": false,
+      "not_accepted": [
+        "Independent client build/patch/realm/language identity or authoritative path casing beyond fixed endpoint/request declarations and observed hash matches.",
+        "Three missing OTC candidates and missing IndexableNonActiveSupportGems are not accepted as empty/successful acquisitions.",
+        "OT merge/set_ execution, DAT/OT/skill precedence, effect scope, mod_list ownership or correctness.",
+        "Nonempty IndexableSupportGems layout/Index-FK-name mapping, general reward-key base, PoE2 formatter registration or a mapping from stat-ID suffixes to raw keys.",
+        "Complete catalogue, gameplay/locale/numeric correctness, distribution authorization, runtime/CURRENT adoption or deployment."
+      ],
+      "frozen_metadata": "Historical draft packages, source locks, receipts, warnings and failures remain unchanged. This separate decision applies only to the exact resources and observed byte pins listed here; new bytes require a new decision.",
+      "decided_at_utc": "2026-11-01T22:40:09.550856+00:00",
+      "decision_owner": "PoBR integration coordinator",
+      "checked_head": "0d6fe696d21fcc8ed60b42ad93e7cb5aaa40f819",
+      "realm_basis": "international fixed endpoint/request declaration, not independent attestation",
+      "counts": {
+        "resources": 6,
+        "raw_bytes": 11172,
+        "roots": 3,
+        "blocks": 43,
+        "fields": 104,
+        "opaque_rhs_fields": 9
+      },
+      "evidence": {
+        "original_handoff": {
+          "package_member": "evidence/original/handoff.json",
+          "bytes": 18460,
+          "sha256": "dd9ddf73e64a8d947a6f6ea61326c7412c00868d7d13764ab971ba1cd7def062"
+        },
+        "p3_resolution": {
+          "path": ".cache/postmerge-20261101/actor-templates/p3-resolution.json",
+          "bytes": 1260,
+          "sha256": "78bd86e26ffece02b4a523ad7f8514f3dd7333cdbefa594aa30a13bca11047c3"
+        },
+        "fresh_remote_recovery": {
+          "path": ".cache/postmerge-20261101/actor-templates/remote-proof.json",
+          "bytes": 807,
+          "sha256": "6864246777b5227084e312f52112dbc076e765bd391b31236509fd5823d566d5"
+        },
+        "os_denied_network_replay": {
+          "path": ".cache/postmerge-20261101/actor-templates/offline-replay.json",
+          "bytes": 635,
+          "sha256": "6a545a77144b356d5e861e71bf11d2ea4151facd33febf8578bcf45c742260b4"
+        }
+      },
+      "limitations": [
+        "Case-insensitive non-cryptographic index path matches do not certify authoritative spelling or exclude hash collisions.",
+        "The retained range records and collector validation are provenance evidence, not a new raw-header journal, signed upstream authenticity or independent client-build/language attestation.",
+        "Literal nothing termination and appended parent suffix are the declared parser convention, not an official inheritance/merge law; three unmatched OTC candidates remain excluded.",
+        "Unknown blocks, duplicate fields and nine opaque event RHS remain literal, unevaluated source facts; no actor mod_list semantics are certified."
+      ]
+    },
+    "description-relations-0.5.5.5-international": {
+      "status": "accepted-bounded-source-acquisition",
+      "target": {
+        "game": "poe2",
+        "game_patch": "0.5.5.5",
+        "realm": "international"
+      },
+      "scope": "Exactly the two present DAT resources below, their complete selected-subset HTTP/index/range acquisition chain and complete existing zero-row/one-row physical payload. The missing third resource, nonempty support layout and formatter/gameplay meaning are excluded.",
+      "artifact": {
+        "repository": "ackness/repoe",
+        "revision": "80feccafcb196f7e37cf9499da19dcde946247a9",
+        "path": "handoff/description-relations-draft-20261101/source-package.zip",
+        "bytes": 393315,
+        "sha256": "c3018660af1bffbf5c7a784bb1c06d92b11a05db3892bdbd9ce9a9ebcec3fbe6",
+        "manifest": {
+          "bytes": 13735,
+          "sha256": "86a91221d7ffb22792fb09eddeb5672c34da981738d25e1e8e800e344085f321"
+        },
+        "expanded_bytes": 670924
+      },
+      "candidate_manifest": {
+        "bytes": 14811,
+        "path": "candidate/manifest.json",
+        "sha256": "2ec3a9a9d53734114963ce2ab47972aabbae7c29c077bc46fd47f6f7d60bed8f"
+      },
+      "raw_resources": {
+        "Data/Balance/AfflictionRewardTypeVisuals.datc64": {
+          "bytes": 98,
+          "raw_keys": [
+            0
+          ],
+          "rows": 1,
+          "sha256": "aa10babef65f2aca1dc22f8397c22d4f9f241e1068262f5c6b89f36c5b991d9f"
+        },
+        "Data/Balance/IndexableSupportGems.datc64": {
+          "bytes": 12,
+          "rows": 0,
+          "sha256": "dcee8ef773abb4496aab2c0d8b33b72e66440e0ec922b96d779f87a5c4514505"
+        }
+      },
+      "review": {
+        "thread": "<t3-thread://v2/ce64fd3e-1463-4764-9139-4a80c2681391/thread:delegated-task:command%3Amcp%3Ab9c098b9-c563-44e0-9788-26589bfbc7f8%3Adelegate-task%3Apostmerge-description-raw-admission-review-20261101-1>",
+        "checked_source": "5bae0d1d0e34259b61a4eae93364382a67660005",
+        "report": {
+          "path": ".cache/postmerge-20261101/description-relations-lead/review/REPORT.md",
+          "bytes": 6166,
+          "sha256": "bfe8e6c301a8414e9889edcfce98a1021f66c0fa59123765152e202d8a37c629"
+        },
+        "evidence": {
+          "path": ".cache/postmerge-20261101/description-relations-lead/review/evidence.json",
+          "bytes": 14765,
+          "sha256": "7f68574eb5f5729781b916bc21ef37143531cd544c2acec099f7b0d7db35b747"
+        },
+        "probe": {
+          "path": ".cache/postmerge-20261101/description-relations-lead/review/probe.py",
+          "bytes": 7636,
+          "sha256": "20ab1f8f39f0ca4007359d2205c37e9cb4c75e05b98c5f11cef9783a740a6649"
+        },
+        "probe_output": {
+          "path": ".cache/postmerge-20261101/description-relations-lead/review/probe-output.json",
+          "bytes": 8899,
+          "sha256": "bcf120a6d4af7e917010666d64b79972e6a5bfd6ea25aae0bb141026f5a73955"
+        },
+        "result": "No P0-P3 finding or evidence gap preventing this exact bounded acquisition/physical-payload decision. Independently checked six saved HTTP206 responses, two physical index records, bundle framing/chunk positions, and decoded both chunks to recover all110 raw bytes; independently parsed the existing one/zero row payloads.",
+        "reuse": "Reuse prior index framing/full-table uniqueness and missing-path evidence; read only the selected records, without scanning85MB or rehashing/decoding346 index chunks. Root remote recovery and OS-denied producer replay are separately recorded and not represented as this reviewer's execution."
+      },
+      "production_ready": false,
+      "not_accepted": [
+        "Independent client build/patch/realm/language identity or authoritative path casing beyond fixed endpoint/request declarations and observed hash matches.",
+        "Three missing OTC candidates and missing IndexableNonActiveSupportGems are not accepted as empty/successful acquisitions.",
+        "OT merge/set_ execution, DAT/OT/skill precedence, effect scope, mod_list ownership or correctness.",
+        "Nonempty IndexableSupportGems layout/Index-FK-name mapping, general reward-key base, PoE2 formatter registration or a mapping from stat-ID suffixes to raw keys.",
+        "Complete catalogue, gameplay/locale/numeric correctness, distribution authorization, runtime/CURRENT adoption or deployment."
+      ],
+      "frozen_metadata": "Historical draft packages, source locks, receipts, warnings and failures remain unchanged. This separate decision applies only to the exact resources and observed byte pins listed here; new bytes require a new decision.",
+      "decided_at_utc": "2026-11-01T22:40:09.550856+00:00",
+      "decision_owner": "PoBR integration coordinator",
+      "checked_head": "0d6fe696d21fcc8ed60b42ad93e7cb5aaa40f819",
+      "realm_basis": "international fixed endpoint/request declaration, not independent attestation",
+      "counts": {
+        "resources": 2,
+        "raw_bytes": 110,
+        "physical_rows": 1,
+        "support_rows": 0,
+        "reward_rows": 1,
+        "new_http_requests": 6,
+        "http_body_bytes": 157643
+      },
+      "evidence": {
+        "original_handoff": {
+          "package_member": "handoff.json",
+          "bytes": 7933,
+          "sha256": "908f63cbd4f2f412f0130769935782c3950c51b6f4bb5f1435d22bd8522e9a0d"
+        },
+        "original_inventory": {
+          "package_member": "artifact-pins.json",
+          "bytes": 17677,
+          "sha256": "965f829ee98f77494a8cebe30168408722d5f30eac5efb174e8000b8897e77c0"
+        },
+        "fresh_remote_recovery": {
+          "path": ".cache/postmerge-20261101/description-relations-lead/remote-proof.json",
+          "bytes": 701,
+          "sha256": "2665fc80b89dd5f21e93a65470898f11d6fb36df21c4abb5d122649285048715"
+        },
+        "os_denied_network_replay": {
+          "path": ".cache/postmerge-20261101/description-relations-lead/offline-proof.json",
+          "bytes": 639,
+          "sha256": "ce7f587000c7e944104557b4df042807c80261d46b28b5c0e9982e5a1b56b6ce"
+        }
+      },
+      "limitations": [
+        "Saved response status/final URL/Content-Range/length/strongETag and bodies were checked; no independent online witnessing or signed source attestation is claimed. Serialized headers are not wire bytes.",
+        "Index hashing remains a non-cryptographic, case-insensitive path convention; full-table uniqueness was reused, not independently rescanned.",
+        "The support table is exactly12 bytes and zero rows. Its declared28-byte nonempty layout, index/FK/name relationships and general applicability remain unproven.",
+        "The reward table has only signed raw key0. Physical row0, enum indexing0 and stat-ID suffixes do not establish a general key-base or formatter map.",
+        "Both fixed community formatter registrations are PoE1-guarded. These two PoE2 physical observations close no handler or gameplay interpretation."
+      ]
     }
   },
   "retained_input_acceptances": {

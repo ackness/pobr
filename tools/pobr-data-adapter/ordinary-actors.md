@@ -307,11 +307,14 @@ candidate before publication.
 Fresh remote Git retrieval verified every included member and producer blob;
 OS-denied-network raw-to-facts replay reproduced all three output files exactly.
 Independent review also replayed the six observed byte chains against the fixed
-index evidence and decoder. Acquisition remains `unreviewed-acquisition-draft`:
-observed hashes are not independent expected pins, official signatures, language
-identity, independent client-build identity or authoritative path casing. This
-does not cover other catalog roots or imply a successful all-candidates acquisition
-receipt for the missing OTC files.
+index evidence and decoder. The original `unreviewed-acquisition-draft` envelope
+is frozen; the separate `actor-ot-0.5.5.5-international` decision in
+[`sources.lock.json`](../../pipeline/sources.lock.json) accepts exactly these six
+acquisition-byte identities and their lexical physical payload. Observed hashes
+are not independent expected pins, official signatures, language identity,
+independent client-build identity or authoritative path casing. This does not
+cover other catalog roots or imply a successful all-candidates acquisition
+receipt for the missing OTC files, effect semantics or runtime adoption.
 
 No `mod_list` is migrated by this handoff:
 

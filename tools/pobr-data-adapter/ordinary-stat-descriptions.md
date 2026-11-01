@@ -105,6 +105,23 @@ avoids a cross-product of whole tables. Descriptor storage is shared across its
 templates. PoE1-only `affliction_reward_type` / `display_indexable_support`
 policies remain unsupported; no PoE1 relation is guessed for PoE2.
 
+A bounded observation now supplies two exact PoE2 table resources, accepted only
+for their acquisition bytes and existing physical payload by the separate
+`description-relations-0.5.5.5-international` entry in
+[`sources.lock.json`](../../pipeline/sources.lock.json). RePoE package `80feccaf`
+preserves their recovery inputs: `IndexableSupportGems` is 12 bytes with zero rows;
+`AfflictionRewardTypeVisuals` is 98 bytes with only signed raw key `0`,
+`DeliriumRewardGeneric`, `Delirium`. `IndexableNonActiveSupportGems` was not matched
+in the selected index and is not an empty-table success. The original draft
+envelopes and all 13 scoped fallback bindings remain unchanged.
+
+The two support compounds order level before index and apply the formatter to
+member 2. The nine reward descriptors apply it to wildcard member 1, independently
+of their `_1` through `_9` ID suffixes. No name mapping is inferred from those
+suffixes, row ordinals or an empty table. The fixed community registrations remain
+PoE1-guarded; the observed generic reward does not establish a complete PoE2
+formatter contract. No new formatter or calculation model is enabled.
+
 Use `0.5.5.5-lookups-policy.json` plus the pinned nine-table package when enabling
 these names; `0.5.5.5-policy.json` replays the numeric-only catalog. The oracle's
 optional `--lookup-tables /absolute/supplement/tables.json` independently checks
