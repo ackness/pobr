@@ -39,6 +39,9 @@ with explicit selected legacy inputs, described in
 `--ordinary-domain socketables` produces target rune/augment membership, restrictions
 and complete supported effect text, with exact whole-entry compatibility and
 selected translation-library consumption in [ordinary-socketables.md](ordinary-socketables.md).
+`--ordinary-domain stat-descriptions` replaces unscaled global singleton templates
+from pinned RePoE descriptions, retaining explicit field-scoped compatibility in
+[ordinary-stat-descriptions.md](ordinary-stat-descriptions.md).
 `--ordinary-domain catalysts` consumes a pinned supplemental physical table package
 and preserves the existing quality catalog/codec, described in
 [ordinary-catalysts.md](ordinary-catalysts.md).
@@ -74,8 +77,8 @@ verification/output boundary with their own table subsets. Quality-only options
 require gem-quality; codec options are optional for base-items field ownership,
 and required for stat-set-codec, gem-effects,
 skill-stat-map, skill-overrides, minions, spectres, granted-effect-minions, passive-tree,
-runtime-constants, socketables or unarmed-data. Paired `--player-context` and
-`--player-manifest-sha256` are required only by unarmed-data. `--item-descriptions` is required only by socketables.
+runtime-constants, socketables, stat-descriptions or unarmed-data. Paired `--player-context` and
+`--player-manifest-sha256` are required only by unarmed-data. `--item-descriptions` is required by socketables and stat-descriptions, and rejected by other domains.
 Catalysts requires paired `--supplement` and `--catalog-policy` paths/SHA256 pins.
 Tree refresh v2 also accepts the paired supplement with its explicit policy; other
 domains reject it.

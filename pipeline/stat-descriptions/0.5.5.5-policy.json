@@ -1,0 +1,9 @@
+{
+  "schema": "pobr-ordinary-stat-descriptions-policy/v1",
+  "version": "0.5.5.5",
+  "source_sha256": "bed5ed56c8281e0c8ae1da2fb142e0f74ba1a3c79ffcee0011b3fbc3875f9b77",
+  "descriptions_sha256": "e9c403e11f5b3d7bc9a26af1b1cf636a6dbf439d9ca1e3503b1490568be1ad0e",
+  "descriptions_manifest_sha256": "c8a475ba97b2fda3231ab05d23c4fdafa6b8593dec4a3d8307339b9cb6a794f2",
+  "compatibility_sha256": "73bdfeff2d7300311345f4bb5333cd2ae164e997ed82ae9069e1104359c2be9f",
+  "statement": "Global singleton representative V=1 descriptions without handlers come from pinned target RePoE CSD. Compound, handled, unrenderable, absent and other-scope fields retain the pinned 0.5.5.4.2 catalog as explicit compatibility, not target applicability evidence. No generated rules, arithmetic or localization changes."
+}
