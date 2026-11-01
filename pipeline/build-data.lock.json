@@ -1,5 +1,5 @@
 {
-  "schema": "pobr-build-data-lock/v1",
+  "schema": "pobr-build-data-lock/v2",
   "target": {
     "game": "poe2",
     "game_patch": "0.5.5.5",
@@ -7,22 +7,22 @@
   },
   "snapshot_manifest": {
     "bytes": 8234,
-    "sha256": "2a03ad79cc33b10e103895e2bae8b5984cadf341c0cc58425ac97dacb90348fd"
+    "sha256": "73b2d77e669743ced67df5cf6e0245f79e333bb9b2a481b796da7099d8f63a06"
   },
-  "runtime_identity": "d7ac23c544a4d8ccc50b3237e20301e4fb1164c40a84745a9d3d4f1602dee9e8",
+  "runtime_identity": "dba0615e55471570b22cb7759b3906b1db9e78629a2a6846a743e070708f0e72",
   "packages": {
     "game": {
       "publication": "published",
       "repository": "ackness/repoe",
-      "revision": "e00695a96665047625b9d4a22408f74fcef85de2",
-      "path": "handoff/independent-0.5.5.5/game-build-part.zip",
-      "bytes": 4421455,
-      "sha256": "64c9867f91af99cf7eb4a4d30ac884712c1c63ccc7ecee2ae263986a3ea8c129",
+      "revision": "2c664da43c2cc850e98a4fdba0e875a0acd5c3b1",
+      "path": "handoff/native-crafting-20261101/game-build-part.zip",
+      "bytes": 4419797,
+      "sha256": "fc2e05bc6c1f99f06c8439a2d43642e13b4109d9201c7abebd5902c22b8fbb02",
       "manifest": {
-        "bytes": 68751,
-        "sha256": "ab0d81c3647d9893895e64d1e81765e09089bdda3e3c7134b818389d4a8e986d"
+        "bytes": 80259,
+        "sha256": "eb872ba740b878459a46acb1330ac9a504e69bdb1fdf293e847b6571d65641a6"
       },
-      "expanded_bytes": 64608099
+      "expanded_bytes": 64588415
     },
     "language": {
       "format": "locale-git-files",
@@ -123,5 +123,26 @@
       "tree.json",
       "tree_meta.json"
     ]
+  },
+  "crafting": {
+    "publication": "published",
+    "repository": "ackness/repoe",
+    "revision": "2c664da43c2cc850e98a4fdba0e875a0acd5c3b1",
+    "path": "handoff/native-crafting-20261101/crafting-facts.zip",
+    "bytes": 2319239,
+    "sha256": "d04a692744f1debce1826987bfee0be77844847e31da0ff9c0b2faaacb82a75e",
+    "manifest": {
+      "bytes": 22247,
+      "sha256": "4dda6ae1639252df3f0afdd2965c14a85c282bcce599eeaf27d0c9a54e858e7a"
+    },
+    "expanded_bytes": 58770683,
+    "input_manifest": {
+      "bytes": 44765,
+      "sha256": "050fcf93ce2cdc763d32fc9336516e25ee8791b0feb360bc811c835213712603"
+    },
+    "producer": {
+      "RePoE/native_crafting_facts.py": "738335d65b2d3fca491bfde09b19d7aa4ca2526d5dd9633cf48d2e3e1917ff81",
+      "RePoE/native_descriptions.py": "8f784d7937f15dfd16dc163d9aa39076e8198e4dea1f2a50a4d75885a0cb7062"
+    }
   }
 }

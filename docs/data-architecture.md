@@ -164,12 +164,12 @@ PoE2 游戏数据导出的例外。官方来源的客户端字节与官方支持
 
 当前设计分支已在本地采用 **0.5.5.5**；`data/CURRENT` 和默认 CLI／Web 数据同步均选中该版本，CURRENT本身不提供数据回退。
 完整数据已迁往独立RePoE／翻译仓库，由精确锁临时组合；PoBR tracked `data/`只有CURRENT和十一份自有规则。原`7793f93b`入库快照的过渡存储已撤出当前tree，历史不改写。
-临时恢复的完整快照有67个manifest文件、简繁两种词典及18份共享JSON；manifest SHA为`2a03ad79cc33b10e103895e2bae8b5984cadf341c0cc58425ac97dacb90348fd`，
-完整runtime身份为`d7ac23c544a4d8ccc50b3237e20301e4fb1164c40a84745a9d3d4f1602dee9e8`。
-旧`0.5.5.4.2`由独立回滚锁恢复runtime `dcfc32c2`，可用`--keep-current`安装作兼容测试；旧完整目录不再入库。独立数据artifact已按授权发布，PoBR设计分支未推送、未建PR、未部署。
+当前完整快照有67个manifest文件、简繁两种词典及18份共享JSON；manifest SHA为`73b2d77e669743ced67df5cf6e0245f79e333bb9b2a481b796da7099d8f63a06`，
+完整runtime身份为`dba0615e55471570b22cb7759b3906b1db9e78629a2a6846a743e070708f0e72`。制作目录改为必需的独立七表事实投影，92条业务记录不变，来源元数据更新。
+旧`0.5.5.4.2`由独立回滚锁恢复runtime `dcfc32c2`，可用`--keep-current`安装作兼容测试；旧完整目录不再入库。独立数据artifact已按授权发布；源码接线已由PoBR218／219、翻译库5及RePoE7合并。设计分支使用独立干净发布历史，未部署。
 
 自主RePoE事实和CSD已通过领域adapter接回普通DTO、GameData／BuildData及原计算路径；保留构筑码导入、装备、技能、天赋、配置和存档能力。
-六域最新输出与N4显示已封入SC紧凑release `9932ea87`／runtime `ec4f3776`；完整双语快照投影后的四个玩家文件与它逐字节相同。
+六域最新输出与N4显示已封入SC紧凑release `9932ea87`／runtime `ec4f3776`；原2a03ad79／d7ac23c5完整双语基线投影后的四个玩家文件与它逐字节相同；该封包证明保持原身份。
 既有356条开发输入的真实TypeScript／WASM API流程和三对CLI结果按原固定代码／产物身份复用；新完整快照另验证一个真实CLI／WASM构筑及采用／回滚演练。
 root从远端Git重新取得当前及回滚输入，恢复相同manifest／runtime／bundle；无数据路径或版本覆盖的CLI计算与候选结果完全相同，Web默认同步86个运行文件。
 真实本地浏览器完成Druid／Oracle构筑导入、计算、等级与笔记编辑、刷新后恢复，并在打造选择器看到exact-ID的“蓝玉”；原WASM未重编译。完整Web测试757通过／8跳过，workflow检查通过，旧新版两项真实构筑兼容测试通过。
@@ -178,7 +178,7 @@ root从远端Git重新取得当前及回滚输入，恢复相同manifest／runti
 本轮root已分别接受精确91项tree／IT资源、10项CSD和12项语言原生资源，加入原F77及六DAT采集决定。
 [sources.lock](../pipeline/sources.lock.json)的`retained_input_acceptances`另记录locale／shared／compat三类有界保留决定，逐项状态和精确pin生效，不改五项原采集接受。
 它们固定旧字典、140项native-selected与2项literal增量、v3显示、空审核补译包、18份shared及兼容输入，保留原来源版本／社区解释和未解决状态。
-三个vendor抽取表在固定版本重现；crafting表因原物理输入缺失只接受精确字节身份。buff引用检查仍exit 1（15处窗口唯一定位，refs未改），parser检查exit 0但有closure／count警告。
+三个vendor抽取表在固定版本重现；crafting历史执行输入仍未知。新增七表中立事实与[必需目录投影](../pipeline/crafting-inputs.md)已在禁网本地组合中验证：89源行／92条业务记录与旧基线一致，八槽／源权重分别保留，null stat 的非零区间保持诊断。新来源元数据manifest `73b2d77e`／runtime `dba0615e`已由发布artifact2c664da4恢复并本地采用，fresh远端Git、禁网重放和默认固定CLI等价验证通过；语言声明缺失保持unknown。独立审阅发现的English默认P2已修复；不覆盖原保留接受记录，也不把本次本地验证说成完整CI／全部语义认证。buff引用检查仍exit 1（15处窗口唯一定位，refs未改），parser检查exit 0但有closure／count警告。
 SC客户端身份、CN数值、分发许可和未知机制仍未认证；有界接受不代表全部自主迁源。
 
 审核补译已集成到PoBR importer及显示生产者：官方优先，补译须审核并精确绑定catalog、版本、区服、英文和完整context。
@@ -293,7 +293,7 @@ target identity与未知observed-client patch／realm分别保存；接收格式
 
 | 固定阶段 | 源码与候选 | 实际消费／玩家证据 | 采用状态 |
 | --- | --- | --- | --- |
-| 当前外部导入／完整双语活动组合 | CI接线90f10562已集成为032c8205，root240a8a9修复两处旧数据测试依赖。独立game／language与PoBR十一份自有规则恢复67个清单文件＋manifest／18份shared：manifest `2a03ad79`／runtime `d7ac23c5`／bundle `a6075854`；SC紧凑release仍为另一身份9932ea87／ec4f3776 | root实际fresh远端Git恢复当前与旧版，默认CLI等同候选，Web同步86文件；真实浏览器导入Druid／Oracle、编辑等级／笔记、刷新恢复及打造“蓝玉”通过。Web757通过／8跳过，workflow通过，core buff18／工具buff3／实际多版本构筑2项通过。复用CLI `1cd9e614`（compiled `663b798f`）和WASM `674654ef`（compiled `7c688522`），未重编译WASM或重跑356条 | **本地已采用0.5.5.5，完整数据已迁出PoBR当前Git tree**；旧版由独立两owner锁恢复dcfc32c2。数据artifact已发布，PoBR218／219、翻译库5和RePoE7源码已合并；精确b8b980fa完整CI通过三Rust分片、Web／WASM／组包与automation，源仓各自检查通过。未部署；非全部浏览器、准确度、CN语义或许可认证 |
+| 初始外部导入／完整双语采用基线 | CI接线90f10562已集成为032c8205，root240a8a9修复两处旧数据测试依赖。独立game／language与PoBR十一份自有规则恢复67个清单文件＋manifest／18份shared：manifest `2a03ad79`／runtime `d7ac23c5`／bundle `a6075854`；SC紧凑release仍为另一身份9932ea87／ec4f3776 | root实际fresh远端Git恢复当前与旧版，默认CLI等同候选，Web同步86文件；真实浏览器导入Druid／Oracle、编辑等级／笔记、刷新恢复及打造“蓝玉”通过。Web757通过／8跳过，workflow通过，core buff18／工具buff3／实际多版本构筑2项通过。复用CLI `1cd9e614`（compiled `663b798f`）和WASM `674654ef`（compiled `7c688522`），未重编译WASM或重跑356条 | **本地已采用0.5.5.5，完整数据已迁出PoBR当前Git tree**；旧版由独立两owner锁恢复dcfc32c2。数据artifact已发布，PoBR218／219、翻译库5和RePoE7源码已合并；精确b8b980fa完整CI通过三Rust分片、Web／WASM／组包与automation，源仓各自检查通过。未部署；非全部浏览器、准确度、CN语义或许可认证 |
 | 历史75b整包 | `75b4615b`／PR206；63 snapshot +18 shared，manifest `2fbe3ea72e9a167537be83c08a9818b64988ce72cae4db4083d284a83c40cb38`，runtime `3239739ec53903ed7f55b673da8e1993bac0b830d09c4eed3f5673f5cc6086f2` | 356导入／编辑计算／保存重开，355原PoB码计算；3类代表真实Web及旧包恢复。非全部 opaque 字段、浏览器或准确度认证 | 本地过渡验证；未采用 |
 | PR215普通描述基线 | 作者 `8c856e86`，PR215已合并 `a5ef8dd4`；66 snapshot +18 shared，manifest `548ad7e63da1fd5a6ed978dbd03d758ae1c7ab475af339d94c905c0fc14b834b`，runtime `4cc89713bad0dc046abcf4297927604407a14c3407e997d9d55c5e93bd6239f9` | D的9761模板／compat核对及开发0、324普通API流程属于此前组合；本轮R以它作旧候选对照及恢复对象，不把原结果移用到新代码 | 历史基线保留；来源draft，CURRENT仍 `0.5.5.4.2` |
 | FIELDS／TREE交接至本地集成 | V的`73a631d8`／25路径、J的`42bfbf93`／9路径已全部集成；I首批报告、b/c来源和完整patch替代关系保留。DOCS `a977fe1`已集成为 `b4f73166`，文档blob相同 | owner阶段的stdlib预测与J的59来源候选保持原身份；已写回归及真实producer现由R提供运行证据。7unbound、策展／规则／codec及未获源字段仍保留 | 本地集成完成；本批源码未发布，采用／完整玩家验收未完成 |
@@ -392,7 +392,7 @@ GGG 树精确客户端补丁仍未知，故这里只用于该项旁证，不作�
 用户 `patch/` 属于单独的本地覆盖身份，不改写官方发行包；计算 provenance 同时识别发行组合、有效 patch 和引擎/构筑条件。
 回滚恢复完整发行组合并核验身份，不能只回退版本目录或 `CURRENT`。patch 在回滚后重新校验；不兼容时拒绝该组合并保留原文件，不能静默删除或套用。
 现有加载与身份行为见[构筑模型](build-model.md#数据快照身份与会话)；版本 manifest 仍是 schema 3，
-封存包在其外固定共享层，用户patch继续单独管理。本地0.5.5.5采用已完成，独立记录完整runtime `d7ac23c5`与封存bundle `a6075854`。
+封存包在其外固定共享层，用户patch继续单独管理。本地0.5.5.5采用已完成，当前记录完整runtime `dba0615e`与封存bundle `afc78a77`；原2a03ad79／d7ac23c5／a6075854组合及其既有验收证据仍按原身份保留。
 当前锁和[旧版锁](../pipeline/build-data-0.5.5.4.2.lock.json)分别从两个数据owner恢复完整组合；root已fresh取回旧版runtime `dcfc32c2`／bundle `6768c476`，并用`--keep-current`实际安装且保持CURRENT为0.5.5.5。
 原缓存切换演练的正常回退及替换失败恢复保留原证据。引擎／WASM未重建，不能把本地演练扩称远端生产组合回滚；不兼容用户patch及部署组合仍须分别验收。
 

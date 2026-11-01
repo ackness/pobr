@@ -15,6 +15,7 @@ python3 pipeline/test-native-candidate.py
 python3 pipeline/test-data-bundle.py
 python3 pipeline/check_data_ownership.py
 python3 pipeline/test-build-data.py
+python3 pipeline/test-trade-crafting.py
 python3 pipeline/test-display-assets.py
 python3 pipeline/test-runtime-pack.py
 python3 pipeline/test-runtime-ordinary.py

@@ -20,14 +20,21 @@ The previous version is installed without changing `CURRENT`; it is a byte-bound
 compatibility test input, not newly certified official source data. Ordinary
 production, display validation and compact release assembly remain separate gates.
 
-[`build-data.lock.json`](build-data.lock.json) fixes the current target, original
-snapshot manifest bytes/SHA and full runtime identity. Its two owner inputs use
+[`build-data.lock.json`](build-data.lock.json) fixes the current target,
+snapshot manifest bytes/SHA and full runtime identity. Its two owners use
 `GitInputs`: repository, full immutable Git commit, path and exact bytes/SHA. ZIP
 parts additionally pin their embedded manifest and expanded size. The retained
 language Git tree pins its original manifest, then authenticates every listed
 file, including evidence, before projecting only `i18n/` into runtime data.
 Evidence, reviewed supplement packages and verification sidecars are never player
 payloads. Existing v3 and reviewed-only display guards remain independent.
+
+The current v2 build lock additionally requires the separate RePoE crafting facts
+package. PoBR projects its category/identified-regular-stat catalog temporarily;
+the game part must omit that processed file. Missing facts cannot fall back to
+the retained catalog. [Crafting inputs](crafting-inputs.md) defines the eight-slot
+projection, raw-value diagnostics and build receipt outside the runtime bundle.
+The explicitly selected v1 rollback lock retains its historical processed bytes.
 
 A ZIP part has schema `pobr-build-data-part/v1`, exact `target`, `kind` and a
 `files` map of canonical paths to `{bytes, sha256}`. Game members use
@@ -75,8 +82,13 @@ paths authenticate unpublished local handoffs against exactly the same lock;
 are command arguments, never version-lock fields. Deleting an ignored prepared
 version and rerunning prepare rebuilds it from its external owner pins.
 
-The current 0.5.5.5 composition preserves snapshot `2a03ad79...` and runtime
-`d7ac23c5...`. The separate [rollback lock](build-data-0.5.5.4.2.lock.json)
+The source-derived 0.5.5.5 composition uses snapshot `73b2d77e...` and runtime
+`dba0615e...`; only crafting source metadata changes from the previous
+`2a03ad79...` / `d7ac23c5...` baseline. All 92 catalog business records match.
+The immutable inputs are published. Fresh remote Git composition, denied-network
+replay and local adoption are verified; the frozen CLI reads the new identity with
+identical business output/diagnostics. Full integration CI and gameplay/source
+certification remain separate. The [rollback lock](build-data-0.5.5.4.2.lock.json)
 preserves snapshot `bfd31a46...` and runtime `dcfc32c2...`. Full hashes live in
 the locks. The older 4.5.5.2/4.5.5.3 directories are no longer current-tree
 inputs; historical Git objects are not rewritten or used as runtime fallbacks.

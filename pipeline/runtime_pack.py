@@ -372,12 +372,12 @@ def import_pack(requirements_path, lock_path, imports_path, output, cache, offli
                 allow_unpublished=False, fetcher=None, ordinary_path=None, local_parts=None, shared_root=None):
     requirements = bundle.decode(regular(requirements_path))
     lock = bundle.decode(regular(lock_path))
-    from build_data import LOCK_SCHEMA as BUILD_LOCK_SCHEMA
+    from build_data import LOCK_SCHEMAS as BUILD_LOCK_SCHEMAS
     config = requirements["runtime_pack"]
     require(config["schema"] == SCHEMA, "Unknown required runtime pack")
     require(config.get("blocks", ["core", "rules", "locale"]) == ["core", "rules", "locale"],
             "Unsupported required runtime blocks")
-    require(lock.get("schema") in (LOCK_SCHEMA, BUILD_LOCK_SCHEMA), "Unknown runtime input lock")
+    require(lock.get("schema") in (LOCK_SCHEMA, *BUILD_LOCK_SCHEMAS), "Unknown runtime input lock")
     if lock["schema"] == LOCK_SCHEMA:
         require(lock.get("repository") != "ackness/pobr", "PoBR cannot store external runtime data")
         from data_imports import validate_pin
@@ -402,14 +402,14 @@ def import_pack(requirements_path, lock_path, imports_path, output, cache, offli
     with tempfile.TemporaryDirectory(prefix=".pack-import-", dir=output.parent) as temp:
         temp = Path(temp)
         fetcher = fetcher or GitInputs(temp / "git")
-        if lock["schema"] == BUILD_LOCK_SCHEMA:
+        if lock["schema"] in BUILD_LOCK_SCHEMAS:
             from build_data import prepare
             require(lock["target"] == requirements["target"], "Build data target mismatch")
             receipt = prepare(lock_path, temp / "input", cache, shared_root or ROOT / "data/overlay-common", offline=offline,
                               local_parts=local_parts, fetcher=fetcher)
             version = receipt["data_version"]
             files, _ = bundle.snapshot_inputs(temp / "input", version)
-            manifest = {"schema": BUILD_LOCK_SCHEMA, "bundle": receipt}
+            manifest = {"schema": lock["schema"], "bundle": receipt}
         else:
             archive = acquire(lock, lock["path"], lock, cache, offline, fetcher)
             from data_imports import unpack
