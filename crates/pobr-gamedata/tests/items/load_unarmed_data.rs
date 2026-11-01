@@ -1,17 +1,11 @@
-//! `base/unarmed_data.json` load tests: value-by-value comparison against
-//! pobr's existing Rust source of truth,
-//! `pobr-build::calc_orchestrator::unarmed_contribution` (a migration
-//! invariant); vendor-only fields (class_id / weapon_type) are spot-checked
-//! against vendor line numbers.
+//! Historical fallback invariants use their declared external 0.5.5.4.2 pack.
+//! Current source rows preserve source ordering and append explicit compatibility
+//! entries; they need not equal the old rounded vendor table.
 
 use pobr_gamedata::{GameData, repo_data_root};
 
-fn version() -> String {
-    pobr_gamedata::data_version()
-}
-
-fn game_data() -> GameData {
-    GameData::new(repo_data_root().join(version()))
+fn historical_data() -> GameData {
+    GameData::new(repo_data_root().join("0.5.5.4.2"))
 }
 
 /// The per-class expected values from pobr's source of truth
@@ -32,7 +26,7 @@ fn rust_source_expectation(class_name: &str) -> (f64, f64, f64, f64) {
 /// migration invariant: the values don't change within this commit).
 #[test]
 fn values_match_existing_rust_table() {
-    let entries = game_data()
+    let entries = historical_data()
         .unarmed_data()
         .expect("unarmed_data should load");
     assert_eq!(
@@ -56,10 +50,10 @@ fn values_match_existing_rust_table() {
 /// the classId table key + the trailing class-name comment; `type = "None"`).
 #[test]
 fn vendor_only_fields_sampled() {
-    let entries = game_data().unarmed_data().unwrap();
+    let entries = historical_data().unarmed_data().unwrap();
 
     // The full classId → class-name set (Data.lua:627-635's trailing
-    // comments; PoE2 skips ids 3/4/5, they don't exist).
+    // comments; this historical vendor table omits ids 3/4/5).
     let expected_ids: &[(u32, &str)] = &[
         (0, "Scion"),
         (1, "Witch"),
@@ -99,11 +93,45 @@ fn vendor_only_fields_sampled() {
 /// the other base tables' sort order).
 #[test]
 fn sorted_by_class_id_for_stable_diffs() {
-    let entries = game_data().unarmed_data().unwrap();
+    let entries = historical_data().unarmed_data().unwrap();
     let mut sorted = entries.clone();
     sorted.sort_by_key(|e| e.class_id);
     assert_eq!(
         entries, sorted,
         "unarmed_data.json should be sorted by class_id"
+    );
+}
+
+/// The ordinary source projection keeps all twelve Characters rows before the
+/// retained Scion entry. Its duplicate legacy class_id does not reorder source
+/// rows or replace target Marauder; the consumer resolves by class name.
+#[test]
+fn target_source_order_precedes_explicit_legacy_compatibility() {
+    let entries = GameData::new(pobr_gamedata::current_data_dir())
+        .unarmed_data()
+        .expect("current source unarmed data");
+    let (legacy, source) = entries.split_last().expect("nonempty source projection");
+    assert_eq!(source.len(), 12);
+    assert_eq!(
+        source
+            .iter()
+            .map(|entry| entry.class_id)
+            .collect::<Vec<_>>(),
+        (0..12).collect::<Vec<_>>()
+    );
+    assert_eq!(source[0].class_name, "Marauder");
+    assert_eq!(legacy.class_name, "Scion");
+    let historical = historical_data().unarmed_data().unwrap();
+    assert_eq!(
+        legacy,
+        historical
+            .iter()
+            .find(|entry| entry.class_name == "Scion")
+            .unwrap()
+    );
+    assert!(
+        source
+            .iter()
+            .all(|entry| entry.attack_rate == 1000.0 / 606.0)
     );
 }
