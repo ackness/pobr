@@ -310,12 +310,20 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         values.remove("--player-context"),
         values.remove("--player-manifest-sha256"),
     ) {
-        (Some(path), Some(sha256)) if domain == Domain::Unarmed => Some(BranchCodecArgs {
-            path: path.into(),
-            sha256,
-        }),
+        (Some(path), Some(sha256))
+            if matches!(domain, Domain::Unarmed | Domain::RuntimeConstants) =>
+        {
+            Some(BranchCodecArgs {
+                path: path.into(),
+                sha256,
+            })
+        }
         (None, None) if domain != Domain::Unarmed => None,
-        _ => return Err("paired player context arguments require unarmed-data".into()),
+        _ => {
+            return Err(
+                "paired player context arguments require unarmed-data or runtime-constants".into(),
+            );
+        }
     };
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
     Ok(Args {
@@ -381,6 +389,8 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
         &args.version,
         if args.tree_refresh.is_some() {
             &passive_tree::REFRESH_TABLES
+        } else if args.domain == Domain::RuntimeConstants && args.player_context.is_some() {
+            &runtime_constants::PLAYER_TABLES
         } else {
             args.domain.tables()
         },
@@ -838,6 +848,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 args.codec
                     .as_ref()
                     .ok_or("missing runtime-constants snapshot/policy arguments")?,
+                args.player_context.as_ref(),
             )?;
             for parent in &converted.protected_parents {
                 output.protect(parent)?;
@@ -845,12 +856,17 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
             codec_policy_bytes = Some(converted.policy_bytes);
             legacy_manifest_bytes = Some(converted.manifest_bytes);
             legacy_constant_files = converted.legacy_files;
+            extra_sidecars = converted.player_files;
             (
                 converted.base,
                 converted.receipt,
                 "pobr_data::catalog::{GameConstantsDef,CharacterConstantsDef,JewelRadiiDef}; optional non_damaging_ailments::NonDamagingAilmentsDef",
                 vec![
-                    "Only target GameConstants and source-lock are selected. Policy bindings use exact source Id and Value / Divisor followed by ordered additional division, with no old-value gate or numeric default input.",
+                    if args.player_context.is_some() {
+                        "Target GameConstants plus the explicitly verified player archive/Characters supply policy-bound ordinary scalar leaves. Exact common OT assignments and all-class consensus are recorded; no AO inheritance or general actor merge is inferred."
+                    } else {
+                        "Only target GameConstants and source-lock are selected. Policy bindings use exact source Id and Value / Divisor followed by ordered additional division, with no old-value gate or numeric default input."
+                    },
                     "The declared old snapshot files are manifest/policy pinned before parsing; their original bytes/version remain verified compatibility inputs. The original three domains are mandatory; the existing ailment DTO is optional. Every non-owned field, unknown value, array and absence remains unchanged.",
                     "Known numeric DTO shape checks do not supply values. An explicitly allowed absent leaf receives only its target fact; no extra fields or default sections are materialized.",
                     "Unselected snapshot files, historical evidence, vendor/Lua and other assets are not read. Retained constants/radii are not relabeled as target facts or new formula/geometry laws.",
@@ -1058,6 +1074,10 @@ fn implementation_sha256() -> String {
         (
             "ordinary_facts/runtime_constants/policy.rs",
             include_bytes!("ordinary_facts/runtime_constants/policy.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/runtime_constants/player.rs",
+            include_bytes!("ordinary_facts/runtime_constants/player.rs").as_slice(),
         ),
         (
             "catalog/game_constants.rs",

@@ -136,3 +136,42 @@ ID or invalid divisor rejects before output. The existing GameData ailment loade
 consumes the output; this does not change which fields the calculation core reads
 or add formulas. Tests exercise changed values, zero, complete preservation and
 byte-identical outputs for the original three domains.
+
+## Optional verified player baselines
+
+[`0.5.5.5-with-player-baselines-policy.json`](../../pipeline/runtime-constants/0.5.5.5-with-player-baselines-policy.json) retains the 37 existing GameConstants
+bindings and adds 16 leaves in the **existing** character/game constant DTOs.
+Supply `--player-context <root> --player-manifest-sha256 <sha>` together; the
+policy also fixes that archive's source-lock SHA. Omitting context continues the
+original GameConstants-only behavior with the earlier policies. A player policy
+without its context, or context without a player policy, fails before publication.
+
+The same eight-file source verifier used by ordinary unarmed data binds the
+independent generic `Character.ot` and its Stats references to the parent facts.
+Only unique plain Stats integer assignments selected by policy are evaluated.
+The original eight files are retained as `player-*` sidecars. This is an explicit
+common-scalar interpretation, not AO inheritance or arbitrary actor merging.
+
+`Characters.BaseMaxLife` and `BaseMaxMana` supply shared scalar coefficients only
+when **every** target character row agrees. No selected-class fallback, average,
+or old-value equality gate is allowed. A later class disagreement requires a
+more expressive existing-model change and is rejected here. Remaining bindings
+use exact OT stat IDs; the negative accuracy-per-level offset preserves the
+existing level-one formula, and percentage/minute values keep the existing DTO
+units. All other old fields, unknown values and absence remain fixed compatibility.
+
+These leaves reach `CharacterBase` and existing game-constant consumers; the
+historical `base_player_mods.json` mirror is not an active input to this path and
+is not relabeled as newly consumed data. Attribute conversion ratios, other
+model constants and unbound facts remain separate. Tests vary actual coefficients,
+verify original `CharacterBase` output, reject class disagreement and ambiguous
+assignments, and retain all unowned fields. Source acquisition status, domain
+candidate guard and CURRENT are unchanged.
+
+For the fixed player policy, replace the policy arguments in the command above
+with SHA256 `9ac98ee23cc3a77bd855b0614a7a5707b18100d731e340d7ad35ad8a2a7db5e7`
+and add `--player-context /absolute/path/to/player-archive` and
+`--player-manifest-sha256 c0412e13d92141476cae28d7dc9b58db9ec74cc82c8084847af6fed62f141bd5`.
+The reader additionally selects `Characters`, `Stats`, `PassiveSkills` and
+`ClassPassiveSkillOverrides` to verify the existing archive parent references.
+These extra tables are not a new source of implicit scalar defaults.
