@@ -359,5 +359,24 @@
         "sha256": "892612813249acb829ec052a2a72344e154ee08ceb2929723d1980f4b01bac9b"
       }
     }
+  },
+  "source_verifier": {
+    "schema": "pobr-source-verifier/v1",
+    "repository": "ackness/repoe",
+    "revision": "a27c0a795728bb64d988519ccebe7faeacf9edf7",
+    "files": {
+      "RePoE/__init__.py": {
+        "bytes": 269,
+        "sha256": "a4b5da428da8625b74d47b5600b596502f7bb77ca5c3015c30f00b6c9a892f0c"
+      },
+      "RePoE/source_io.py": {
+        "bytes": 3404,
+        "sha256": "a58636dbcc495e862de164cf54af64fcce74d70472f85afbf01b29224fc8a64d"
+      },
+      "RePoE/source_rebinding.py": {
+        "bytes": 27418,
+        "sha256": "629f2cfc88702319da5b91268a3cc35688fdb142c50b1818cecb4e50514b8fa9"
+      }
+    }
   }
 }

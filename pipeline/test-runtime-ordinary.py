@@ -69,13 +69,14 @@ class RuntimeOrdinaryTests(unittest.TestCase):
         self.assertFalse((self.source / "inputs/ordinary-input.zip").exists())
 
     def test_partial_wrong_version_lock_request_and_missing_domains_fail(self):
-        for change in ("status", "version", "realm", "lock", "requirements", "domain", "source", "binary"):
+        for change in ("status", "version", "realm", "lock", "requirements", "domain", "source", "binary", "verifier"):
             changed = copy.deepcopy(self.complete)
             if change == "status": changed["status"] = "verified-inputs-only"
             elif change in ("version", "realm"): changed["target"]["game_patch" if change == "version" else "realm"] = "wrong"
             elif change in ("lock", "requirements"): changed[change]["sha256"] = "0" * 64
             elif change == "domain": changed["domains"].pop("spectres")
             elif change == "source": changed["facts_manifest"]["sha256"] = "0" * 64
+            elif change == "verifier": changed["source_verifier"]["library"]["revision"] = "b" * 40
             else: changed["binary"]["bytes"] = True
             self.update_complete(changed)
             with self.subTest(change=change), self.assertRaises(ValueError): self.overlay()
