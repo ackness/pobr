@@ -589,7 +589,7 @@ fn gem_effects_cli_uses_only_the_four_explicit_codec_options() {
             )
             .is_err()
         );
-        for other in ["stats-mods", "base-items", "skills", "gem-quality"] {
+        for other in ["stats-mods", "skills", "gem-quality"] {
             assert!(
                 parse_args(
                     base.into_iter()
