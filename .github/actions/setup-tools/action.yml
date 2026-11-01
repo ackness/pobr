@@ -4,6 +4,9 @@ inputs:
   node:
     description: Install Node and pnpm
     default: 'false'
+  python:
+    description: Install Python for test suites (routing/gates use runner Python)
+    default: 'true'
   rust:
     description: Install the pinned Rust toolchain
     default: 'false'
@@ -31,6 +34,7 @@ runs:
       working-directory: ${{ github.action_path }}/../../..
       run: python3 devs/scripts/tool-versions.py
     - uses: actions/setup-python@v7.1.0
+      if: inputs.python == 'true'
       with:
         python-version: ${{ steps.versions.outputs.python }}
     - uses: pnpm/action-setup@v6.1.0
@@ -53,11 +57,18 @@ runs:
         RUST_COMPONENTS: ${{ steps.versions.outputs.rust_components }}
         RUST_TARGETS: ${{ steps.versions.outputs.rust_targets }}
         RUST_PROFILE: ${{ steps.versions.outputs.rust_profile }}
-      run: rustup toolchain install "$RUST_VERSION" --profile "$RUST_PROFILE" --component "$RUST_COMPONENTS" --target "$RUST_TARGETS"
-    - uses: taiki-e/install-action@v2.88.0
+      run: |
+        args=("$RUST_VERSION" --profile "$RUST_PROFILE" --component "$RUST_COMPONENTS")
+        if [ "${{ inputs.wasm }}" = true ]; then args+=(--target "$RUST_TARGETS"); fi
+        rustup toolchain install "${args[@]}"
+        # An explicit override prevents rustup from adding the root file's WASM
+        # target later when a host-only job invokes Cargo.
+        echo "RUSTUP_TOOLCHAIN=$RUST_VERSION" >> "$GITHUB_ENV"
+    - uses: taiki-e/install-action@v2.88.1
       if: inputs.wasm == 'true'
       with:
         tool: wasm-pack@${{ steps.versions.outputs.wasm_pack }}
+        fallback: none
     - name: Pinned actionlint
       if: inputs.scripts == 'true'
       shell: bash
@@ -65,6 +76,13 @@ runs:
       env:
         ACTIONLINT_VERSION: ${{ steps.versions.outputs.actionlint }}
       run: python3 devs/scripts/install-actionlint.py "$ACTIONLINT_VERSION"
+    # Upstream LuaJIT has no official binaries for this pin. Retain only its
+    # executable, not the source tree, and compile once on a genuine cache miss.
+    - uses: actions/cache@v5
+      if: inputs.oracle == 'true'
+      with:
+        path: ~/.cache/pobr/runtimes/*/src/luajit
+        key: luajit-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devs/scripts/pob2-luajit.sh') }}
     - name: Pinned LuaJIT runtime
       if: inputs.oracle == 'true'
       shell: bash

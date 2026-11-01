@@ -18,6 +18,7 @@ FULL_FILES = {
     "devs/scripts/check-workflows.sh", "devs/scripts/driver.sh",
     "devs/scripts/tool-versions.py", "devs/scripts/install-gh.py",
     "devs/scripts/install-actionlint.py",
+    "devs/scripts/ci-rust-tests.py",
     "devs/scripts/setup-environment.sh", "devs/scripts/pob2-luajit.sh",
 }
 DOCUMENTATION_SIDECARS = {"apps/pobr-wasm/tests/fixtures/pob2-planner.md"}

@@ -117,6 +117,10 @@ contracts. Shared/unknown inputs select every quick area. Master code changes,
 manual dispatch, nightly and release tags run full integration; high-risk changes
 can request `mise run ci <pushed-ref>` before merge. `PR gate` rejects failed,
 cancelled, missing or unexpectedly skipped selected jobs. E2E remains opt-in.
+Full Rust CI partitions every workspace package once across three parallel shards,
+including doctests. Exact WASM build reuse still runs contract/package checks.
+Superseded PRs cancel; master/tag runs remain independent. Docs PRs keep the stable
+gate; ordinary documentation pushes are path-filtered.
 Reuse evidence for unchanged inputs and report its scope accurately. See
 [workflow commands](docs/development-workflow.md). Documentation-only changes need
 diff/link review, not builds.

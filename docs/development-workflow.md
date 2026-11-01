@@ -18,6 +18,8 @@ Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/R
 本地命令用 `mise run <任务>`，没有命名任务时用 `mise exec -- <命令>`；
 不要由每个 agent 临时安装另一套 runtime。CI 可使用官方或受维护的工具 Action，
 由 [setup-tools](../.github/actions/setup-tools/action.yml) 读取同一份版本，CI 不安装 mise。
+测试套件使用这些固定版本；只做 stdlib 选路与结果汇总的 jobs 使用 runner Python，
+不重复安装测试工具链。host Rust job 不安装 WASM target，纯 Web 检查不恢复 Rust 缓存。
 
 新环境只需一次：
 
@@ -208,9 +210,19 @@ WASM 构建记录校验 Rust 源码、嵌入语言文件、共享配置 JSON、m
 
 ### CI 恢复与跳过
 
-Rust 缓存按 job、平台与工具链等输入隔离；兼容前缀命中后仍由 Cargo 判断需要重编译的内容。
+Rust 使用 `Swatinem/rust-cache`，按平台、工具链与用途隔离；PR 的 `cargo check` 和完整 Clippy
+共用 `host-check` 依赖缓存，三个测试分片分别缓存。PR 只读 Rust 缓存，避免每个 merge ref
+保存一份其他 PR 无法复用的副本；master 与手动运行负责更新。兼容前缀命中后仍由 Cargo 判断需要重编译的内容。
 完整 key 命中时不重复保存同一份缓存是正常行为。核查时看恢复 key、命中结果、保存结果和实际构建日志，
 不因工作流使用了 cache Action 就认定已经复用。
+
+WASM 另外缓存体积较小的绑定与构建记录，key 直接来自源码指纹和构建输入，不能用 commit SHA
+或仅 lockfile 代替。命中后 `build-wasm` 仍验证源码、环境、绑定哈希及实际 schema。
+CI 的 key 与构建都直接用 Node 执行，避免 pnpm 为脚本注入的临时 PATH 使构建记录每次失效。
+真实 WASM 契约、同步数据、站点构建、打包与解包后的真实计算每次照常执行。Rust 依赖缓存还保存 wasm-pack 下载的
+预编译 bindgen/Binaryen 工具；固定 LuaJIT 无官方二进制，只缓存源码 pin 对应的可执行文件，
+仅缺失时编译。工具安装不使用 `cargo install` / `go install`。
+按仓库 10 GiB 缓存预算控制存储，不缓存 dist、node_modules、游戏数据或历史诊断产物。
 
 `setup-node` 恢复 pnpm store，不恢复 `node_modules`。相关 job 仍须运行
 `pnpm install --frozen-lockfile`，再执行项目脚本；恢复缓存不能替代依赖安装。
@@ -240,6 +252,8 @@ PR 比较被测试的 merge commit 与 base parent，包含整个 PR；master �
 覆盖一次推送的全部提交，重命名按删除和新增两侧处理。PR 无法读取比较基线时快速失败，
 不生成绿色空计划；master 首次 push 或缺基线时保守全量。
 PR 新提交替换旧运行；master 每个增量 push 独立，后续文档提交不会取消前一次代码验证。
+master 的普通 Markdown/文档图片通过事件路径过滤，不创建 CI；fixture Markdown 仍保留触发。
+PR 不在 workflow 层过滤文档，以免必需检查永久 pending：只运行轻量选路与成功结束的 `PR gate`。
 
 [ci-plan.py](../devs/scripts/ci-plan.py) 是事件和路径选路的唯一实现：
 
@@ -249,7 +263,17 @@ PR 新提交替换旧运行；master 每个增量 push 独立，后续文档提�
 | Web | typecheck、Vitest、Worker；脚本和静态资源另含自动化契约 | 完整集成 |
 | 开发脚本 | shell/Actions/Python/Node 契约，不编译 Rust | 完整集成 |
 | manifest、lockfile、工具链、工作流、数据管线、共享或未知输入 | 上述全部轻量区域 | 完整集成 |
-| 普通文档、模板、说明图片 | 无产品构建，保留稳定 gate；fixture 文本仍视为输入 | 无产品构建，保留稳定 gate |
+| 普通文档、模板、说明图片 | 无产品构建，保留稳定 gate；fixture 文本仍视为输入 | 普通文档不触发；其余 inert 输入只报告 gate |
+
+完整 Rust 测试按包分成 build/CLI、WASM、其余库和工具三组并行，保留每个包默认的单元、集成
+与 doctest；新 workspace 成员自动进入第三组。`ci-rust-tests.py` 和回归测试保证所有包恰好覆盖一次。
+分片 `fail-fast: false`，一个失败不会取消其他组；完整 gate 必须收到所有分片成功才通过。
+格式、Clippy、Web 与自动化契约彼此独立；产物发布仍等待全部验证。
+
+排查耗时可运行 `mise exec -- python3 devs/scripts/actions-timings.py --output .cache/ci-performance/latest`。
+默认用 `gh` 拉最近 50 次运行和每个 job/step/log，输出原始 JSON、逐 job CSV 与中位数汇总；
+也可用 `--run <id>` 选择实验。排队从 job 创建到启动计算，依赖等待另列；准备包含工具、编译和产物处理，
+测试/检查步骤单列，Cargo test 日志可用时把编译时间从测试步骤拆出。不要将失败/取消的短运行计入提速成绩。
 
 `PR gate` 要求检测器与每个选中的 job 成功，拒绝失败、取消、缺失与意外跳过。
 它在 PR 中证明轻量检查通过；master 中还要求完整 job 成功。

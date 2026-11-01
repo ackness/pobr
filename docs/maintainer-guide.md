@@ -60,6 +60,7 @@
 - 同一代码、依赖、工具链、features 和数据下的通过证据可复用。先修复并重跑失败的相关项，仅在影响范围改变时扩大验证。
 - **集中集成**：协调者先合并 worker 的变更与生成产物，再选一次批次验证，优先 `mise run ci <pushed-ref>`。`mise run gate` 保留为 warm checkout 上的显式本地方案，含额外 accuracy 报告；不要求与远端完整 CI 重复执行。修复后可用 `--only` 重跑本地失败步骤。
 - **CI 分层**：PR 按整个变更范围运行轻量检查；共享配置或未知输入运行全部轻量区域。master 代码改动、手动、nightly 与 tag 运行完整 CI。高风险批次可在合并前手动全量；E2E 显式开启。`PR gate` 只证明应运行的轻量检查通过，不能代替完整集成结论。
+- **CI 复用与并行**：完整 Rust 测试按 workspace 包分成三个不重叠分片，保留 doctest；WASM 仅在源码与构建输入完全匹配且记录验证通过时复用绑定，实际契约与打包计算仍运行。PR 新提交可取消旧运行，master/tag 每次运行独立；文档 PR 保留稳定 gate，普通文档 push 通过路径过滤。
 - **Review 按风险选择**：复杂、跨边界或高风险改动使用独立 reviewer；文档和明显小改动不增加审计表或固定 agent。`mise run pr-ready <N>` 是可选只读预检，返回准确 head 供 `--match-head-commit` 使用；是否还需手动 full 由变更风险决定。
 - Web 纯 TS/CSS 修改复用已构建的 WASM。WASM/Rust/features/工具链变化时再重建；`mise run web build` 已含 typecheck，E2E 使用对应代码的 dist/WASM/data。
 
