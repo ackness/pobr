@@ -164,6 +164,30 @@ The original draft envelopes remain unchanged. Handler/category or tree gameplay
 complete unique ownership/roll/variants, locale, compatibility, freshness and
 CURRENT remain outside these decisions. New bytes do not inherit acceptance.
 
+Two further entries accept only eight exact observed resources, separately from
+the five earlier decisions. `actor-ot-0.5.5.5-international` covers six OT files
+(11,172 raw bytes) and their retained index/range chain, lexical spans and three
+literal parent paths. The immutable RePoE package is `9f20e64c`; the completed
+independent byte-chain review is reused, with the small block-comment parser
+finding fixed and the unchanged payloads replayed. Three unmatched OTC candidates,
+official merge/setter rules, effect scope and `mod_list` ownership stay excluded.
+
+`description-relations-0.5.5.5-international` covers two present DAT resources
+(110 raw bytes), bound to RePoE package `80feccaf`. Independent review checked all
+six retained HTTP responses, two physical index records, bundle/chunk positions
+and both restored raw payloads. `IndexableSupportGems` has zero rows;
+`AfflictionRewardTypeVisuals` has one row with signed raw key `0` and name
+`Delirium`. The missing `IndexableNonActiveSupportGems` is outside the successful
+subset. Empty support data does not validate nonempty row layout or an index/name
+relation; the reward row does not supply a general key base or authorize mapping
+stat-ID suffixes to keys. The 13 consumer formatter gaps remain open.
+
+These are coordinator decisions about precise observed acquisition bytes and
+existing physical payloads. Original draft statuses remain frozen. Endpoint and
+request realm declarations, local hashes and retained responses are not official
+signatures or independent client-build/patch/realm/language attestations. Neither
+entry accepts a whole outer archive as gameplay data or changes runtime/CURRENT.
+
 The sibling `retained_input_acceptances` records three separate bounded decisions
 for the 0.5.5.5 international snapshot: locale text, shared PoBR rules/configuration,
 and retained compatibility inputs. Each decision pins its files and source basis;
