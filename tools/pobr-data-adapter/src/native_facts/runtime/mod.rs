@@ -3,7 +3,7 @@
 //! This produces queryable catalogs, not calculation admission or source approval.
 
 mod inputs;
-mod player;
+pub(crate) mod player;
 mod player_policy;
 mod skills;
 mod skills_policy;

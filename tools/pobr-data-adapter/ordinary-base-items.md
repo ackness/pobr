@@ -13,8 +13,8 @@ mise exec -- cargo run --locked -p pobr-data-adapter -- \
   --out /absolute/path/to/existing-parent/fresh-base-items
 ```
 
-`--ordinary-domain` accepts `stats-mods`, `base-items` and
-[`skills`](ordinary-skills.md); omission means `stats-mods`. Modes cannot be combined.
+This mode can be selected alongside the other available ordinary domain modes;
+omission still means `stats-mods`. Modes cannot be combined.
 The existing manifest/lock/decoder pins,
 target patch equality, fresh-directory requirement, directory-handle protection
 and validation-before-write rules still apply. No implicit source search,
@@ -117,7 +117,35 @@ raw/native tests remain in the same binary target.
 mise exec -- cargo test --locked -p pobr-data-adapter --bin pobr-data-adapter
 ```
 
-The implementation worker did not execute Cargo or the producer. Parent performs
-warm-target compilation/tests, fixed-binary conversion and field comparison after
-integration. Passing this domain does not establish complete-package or BD/Web
-adoption.
+Passing this domain does not establish complete-package or BD/Web adoption.
+
+## Optional compatibility overlay
+
+When assembling a package containing the historical base override overlay, supply
+all four `--codec-source`, `--codec-source-sha256`, `--codec-policy` and
+`--codec-policy-sha256` options. The versioned ownership policy is
+[`pipeline/base-items/0.5.5.5-overlay-policy.json`](../../pipeline/base-items/0.5.5.5-overlay-policy.json).
+Pins are checked before parsing; the policy also fixes the legacy metadata and
+exact delegated field set. Without these options the original base-only output
+is unchanged.
+
+The converter emits the same `base_items.json` plus
+`overlay/base_item_overrides.json`. For every legacy entry whose name matches
+target bases, it removes `req_str`, `req_dex`, `req_int`, `block_chance`, `spirit`
+and `reload_time_ms`. The existing GameData loader then retains those values and
+their absence directly from each target base ID. It does not pick one value for
+multiple bases sharing a display name. Otherwise a late name-based legacy merge
+would overwrite the new facts, even after a source value or component disappears.
+
+Other fields, unknown JSON values and entry order remain unchanged. This includes
+socket limits, subtype, full inherited tags and charm effects. Unmatched entries
+remain complete declared compatibility; they do not gain a guessed target ID.
+The receipt records removed old fields, all matched target IDs/physical rows and
+the converted numeric values/presence. Exact legacy/policy sidecars are preserved,
+and their directories are protected from output. These retained fields and the
+original metadata are compatibility provenance, not complete native ownership.
+
+Focused regressions exercise the actual `GameData::base_items` loader with
+multiple same-name bases, changed target values, absent components, changed names,
+unknown legacy fields, unmatched entries, bad pins/policy/DTOs, output protection
+and the unchanged no-overlay invocation.

@@ -1,5 +1,9 @@
 //! Physical base-item facts joined into the existing ordinary item DTOs.
 
+pub(super) mod compatibility;
+
+#[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
+mod compatibility_tests;
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 mod tests;
 

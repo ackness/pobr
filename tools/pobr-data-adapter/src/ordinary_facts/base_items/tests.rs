@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 use super::super::tests::Fixture;
 use super::super::{Args, Domain, parse_args, run};
 
-fn fixture() -> Fixture {
+pub(super) fn fixture() -> Fixture {
     let tables: BTreeMap<String, Value> = serde_json::from_slice(include_bytes!(
         "../../../tests/fixtures/ordinary-facts/base-item-tables.json"
     ))
