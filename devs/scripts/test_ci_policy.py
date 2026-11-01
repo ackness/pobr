@@ -26,6 +26,27 @@ ready = load("pr-ready.py")
 tool_pins = load("tool-versions.py")
 gh_installer = load("install-gh.py")
 actionlint_installer = load("install-actionlint.py")
+rust_tests = load("ci-rust-tests.py")
+
+
+class RustShardTests(unittest.TestCase):
+    def test_every_workspace_package_runs_once_including_future_members(self):
+        members = [*rust_tests.packages(), "future-library"]
+        selected = [name for shard in rust_tests.SHARDS
+                    for name in rust_tests.select(shard, members)]
+        self.assertCountEqual(selected, members)
+        self.assertEqual(len(selected), len(set(selected)))
+        self.assertIn("future-library", rust_tests.select("libraries-tools", members))
+
+    def test_missing_package_fails_instead_of_silently_dropping_checks(self):
+        with self.assertRaisesRegex(ValueError, "missing packages"):
+            rust_tests.select("build", ["pobr-wasm"])
+
+    def test_shards_retain_default_tests_and_doctests(self):
+        for shard in rust_tests.SHARDS:
+            command = rust_tests.command(shard, rust_tests.packages())
+            self.assertEqual(command[:3], ["cargo", "test", "--locked"])
+            self.assertTrue(all(command[i] == "-p" for i in range(3, len(command), 2)))
 
 
 class RoutingTests(unittest.TestCase):

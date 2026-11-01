@@ -19,8 +19,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  # Only non-default branch work is replaceable. Unique groups preserve every
+  # master/tag run, including pending runs (cancel-in-progress:false alone does not).
+  group: full-${{ github.workflow }}-${{ github.ref_type == 'branch' && github.ref_name != github.event.repository.default_branch && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.ref_type == 'branch' && github.ref_name != github.event.repository.default_branch }}
+
 # The caller cancels superseded PR runs. No callee group can cancel its parent;
-# manual/nightly runs stay independent and nightly also retries older failures.
+# master/nightly runs stay independent and nightly also retries older failures.
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
@@ -37,16 +43,26 @@ jobs:
       - uses: ./.github/actions/setup-tools
         with:
           rust: 'true'
+          python: 'false'
       - uses: Swatinem/rust-cache@v2.9.3
+        with:
+          shared-key: host-check
+          cache-bin: 'false'
+          save-if: ${{ github.event_name != 'pull_request' }}
       - name: Format
         run: cargo fmt --all --check
       - name: Clippy
         run: cargo clippy --locked --workspace --all-targets --features pobr-core/benchmarks,pobr-build/benchmarks,pobr-wasm/diagnostics -- -D warnings
 
   ci:
-    name: Rust tests + data compatibility
+    name: Rust tests (${{ matrix.shard }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      # A failure must not cancel other shards: all original checks still run.
+      fail-fast: false
+      matrix:
+        shard: [build, wasm, libraries-tools]
     env:
       LUA_PATH: '/usr/share/lua/5.1/?.lua;;'
     steps:
@@ -56,24 +72,30 @@ jobs:
       - uses: ./.github/actions/setup-tools
         with:
           rust: 'true'
-          oracle: 'true'
+          python: ${{ matrix.shard == 'libraries-tools' && 'true' || 'false' }}
+          oracle: ${{ matrix.shard == 'libraries-tools' && 'true' || 'false' }}
       - uses: Swatinem/rust-cache@v2.9.3
-      # luajit lets the fixture-based extract-lua tooling tests run instead of
-      # self-skipping. Tests that need the gitignored vendor PoB2 checkout still
-      # skip gracefully in CI by design (see docs/maintainer-guide.md "Parity 体系").
-      - name: Install luajit
-        run: sudo apt-get update && sudo apt-get install -y lua-dkjson
-      - name: Data update compatibility (including Lua extraction)
-        run: python3 pipeline/test-data-update.py
-      # libtest shares immutable fixtures within each suite and includes doctests.
+        with:
+          shared-key: tests-${{ matrix.shard }}
+          cache-bin: 'false'
+          save-if: ${{ github.event_name != 'pull_request' }}
+      - name: Install Lua JSON module
+        if: matrix.shard == 'libraries-tools'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends lua-dkjson
+      # The compatible-update class already ran in automation contracts.
+      - name: Lua extraction compatibility
+        if: matrix.shard == 'libraries-tools'
+        run: python3 pipeline/test-data-update.py VendorTreeTests
       - name: Workspace tests (including doctests)
-        run: cargo test --workspace --locked
-      # Compare fresh parser payloads with committed generated artifacts, not
-      # only coverage totals. Missing raw export inputs remain explicit skips.
+        env:
+          CI_SHARD: ${{ matrix.shard }}
+        run: python3 devs/scripts/ci-rust-tests.py "$CI_SHARD"
       - name: Generated data reproducibility
+        if: matrix.shard == 'libraries-tools'
         run: POBR_PATCH="$(cat data/CURRENT)" bash devs/scripts/regen-check.sh
       - name: Language catalog lint
-        run: cargo run -p lint-i18n
+        if: matrix.shard == 'libraries-tools'
+        run: cargo run --locked -p lint-i18n
 
   # Independent Web gate: script tests, typecheck, unit tests and Worker checks.
   # Then build real WASM, sync data and bundle the site once. The standalone
@@ -95,7 +117,21 @@ jobs:
           rust: 'true'
           node: 'true'
           wasm: 'true'
+          python: 'false'
       - uses: Swatinem/rust-cache@v2.9.3
+        with:
+          cache-bin: 'false'
+          cache-directories: ~/.cache/.wasm-pack
+          save-if: ${{ github.event_name != 'pull_request' }}
+      # A small, exact source/toolchain cache avoids Cargo + bindgen + wasm-opt
+      # when only UI, tests or runtime data changed. The receipt is revalidated.
+      - name: WASM build identity
+        id: wasm-key
+        run: node scripts/wasm-cache-key.mjs
+      - uses: actions/cache@v5
+        with:
+          path: web/src/wasm/pkg
+          key: wasm-bindings-${{ runner.os }}-${{ runner.arch }}-${{ steps.wasm-key.outputs.key }}
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck (pre-wasm placeholder tolerated via ts-ignore)
@@ -188,7 +224,10 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/setup-tools
+          sparse-checkout: |
+            devs/scripts/ci-gate.py
+            devs/scripts/ci-plan.py
+          sparse-checkout-cone-mode: false
       - name: Require every full check
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
