@@ -171,7 +171,7 @@ PoBR 沿用这个边界：提取器自动吸收可表达的规则，人工修正
 国际服导出提供繁中；完整游戏表的新版官方简中仍需相应 WeGame 客户端数据，不能用繁转简冒充。独立词表中的腾讯交易文本不等于完整客户端名词表。
 当前构建从独立翻译库的固定产物导入，执行 `mise run data:prepare`；完整词典和元数据保持原字节，不在PoBR内重新生成或跟踪上游HEAD。
 目标、Git修订、manifest及成员摘要见[构建锁](build-data.lock.json)，临时导入及回滚见[build-data](build-data.md)。
-`gen-zh-cn.mjs`及旧snapshot dictionary／bump路径尚作为历史再生工具留在PoBR，已不属于当前CI构建链；其处理代码归并至翻译库和旧入口退出仍待后续完成，不能据存储迁出宣称生产者全部迁完。
+旧简中生成、下载与合并实现已迁至翻译库；PoBR 的 dictionary／regen／bump 仅调用固定独立 producer，不再解析语言来源 HEAD。九个 SC 成员与 140+2 分层按固定历史输入生成，TW 与紧凑 display 继续独立组合，见[语言生成契约](locale-generation.md)。部分游戏 vendor 再生工具仍待按域退出，现有 processed 包的精确恢复不代表全部客户端自主再生。
 
 ### 独立词表与人工翻译维护
 

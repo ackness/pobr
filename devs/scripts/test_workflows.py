@@ -135,6 +135,9 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         shutil.copyfile(REPO / "pipeline/regen-all.sh", self.root / "pipeline/regen-all.sh")
         shutil.copyfile(REPO / "pipeline/data_snapshot.py", self.root / "pipeline/data_snapshot.py")
         self.write("pipeline/config.json", '{"patch":"9.1"}')
+        # This test isolates the first game generator after a successful language
+        # preflight. Any later language generation would be an ordering failure.
+        self.write("pipeline/locale_inputs.py", "import sys\nassert '--check-lock' in sys.argv\n")
         self.write("data/CURRENT", "9.1\n")
         self.write("data/9.1/overlay/gem_quality_stats.json", "previous quality data")
         self.env["FAIL_QUALITY"] = "1"
@@ -454,6 +457,35 @@ sys.exit(int(os.environ.get("AUDIT_EXIT", "0")))
 
 
 class VersionPromotionTests(unittest.TestCase):
+    def test_foreign_language_lock_aborts_before_game_generation(self):
+        spec = importlib.util.spec_from_file_location("snapshot_preflight_test", REPO / "pipeline/data_snapshot.py")
+        snapshot = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(snapshot)
+        with tempfile.TemporaryDirectory(prefix="pobr locale preflight ") as directory:
+            root = Path(directory).resolve()
+            (root / "pipeline").mkdir()
+            (root / "pipeline/config.json").write_text('{"patch":"1.2.4"}')
+            shutil.copyfile(REPO / "pipeline/locale-generation.lock.json", root / "pipeline/locale-generation.lock.json")
+            data = root / "data/1.2.3/base"
+            data.mkdir(parents=True)
+            (data / "items.json").write_text("[]")
+            (root / "data/CURRENT").write_text("1.2.3\n")
+            original = snapshot.tree_fingerprint(root / "data")
+            commands = []
+
+            def run(command, cwd, env):
+                commands.append(command)
+                self.assertIn("--check-lock", command, "no game generator may run before this refusal")
+                subprocess.run([command[0], str(REPO / command[1]), *command[2:]],
+                               cwd=cwd, env=env, check=True, capture_output=True, text=True)
+
+            with patch.object(snapshot, "run", run), self.assertRaises(subprocess.CalledProcessError) as raised:
+                snapshot.regenerate(root)
+            self.assertIn("another patch", raised.exception.stderr)
+            self.assertEqual(len(commands), 1)
+            self.assertEqual(snapshot.tree_fingerprint(root / "data"), original)
+            self.assertEqual(list((root / ".cache").glob("data-update-*")), [])
+
     def test_updated_dictionary_is_sealed_before_audit_reads_candidate(self):
         spec = importlib.util.spec_from_file_location("snapshot_test", REPO / "pipeline/data_snapshot.py")
         snapshot = importlib.util.module_from_spec(spec)
@@ -475,7 +507,8 @@ class VersionPromotionTests(unittest.TestCase):
 
             def run(command, cwd, env):
                 candidate = Path(env["POBR_DATA_ROOT"]) / version
-                if command[0] == "node":
+                if "pipeline/locale_inputs.py" in command and "--check-lock" not in command:
+                    self.assertIn("--candidate", command)
                     (candidate / relative).write_text(updated, encoding="utf-8")
                 elif "pipeline/refresh-modifiers.sh" in command:
                     manifest = snapshot.read_json(candidate / "manifest.json")
@@ -504,6 +537,7 @@ class VersionPromotionTests(unittest.TestCase):
 mkdir -p "$POBR_DATA_ROOT/1.2.4/base"
 printf '[]\\n' > "$POBR_DATA_ROOT/1.2.4/base/skill_gems.json"
 ''').chmod(0o755)
+                write("pipeline/locale_inputs.py", f"import sys\nsys.exit({19 if failure == 'dictionary' else 0})\n")
                 write("pipeline/refresh-modifiers.sh", f"#!/usr/bin/env bash\nexit {17 if failure == 'audit' else 0}\n")
                 # Simulate resuming after a different failed candidate.
                 write("pipeline/config.json", '{"patch": "1.2.99"}')
@@ -535,7 +569,7 @@ pathlib.Path(sys.argv[sys.argv.index("-o") + 1]).write_text("{}", encoding="utf-
                 self.assertEqual((root / "crates/pobr-data/src/lib.rs").read_text(encoding="utf-8"), rust)
                 self.assertEqual(json.loads((root / "pipeline/config.json").read_text(encoding="utf-8"))["patch"], "1.2.4")
                 if failure:
-                    expected = {"dictionary": "gen-zh-cn.mjs", "audit": "refresh-modifiers.sh",
+                    expected = {"dictionary": "locale_inputs.py", "audit": "refresh-modifiers.sh",
                                 "versions": "driver.sh", "gamedata": "pobr-gamedata", "parity": "parity_no_regression"}
                     self.assertIn(expected[failure], result.stderr)
 
