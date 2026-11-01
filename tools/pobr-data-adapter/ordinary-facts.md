@@ -69,7 +69,8 @@ base-items, skills, gem-quality, stat-set-codec, gem-effects, monster-resistance
 totem-varieties, monster-scaling, skill-stat-map, skill-overrides, minions, spectres and
 granted-effect-minions, passive-tree, runtime-constants, socketables and catalysts use the same
 verification/output boundary with their own table subsets. Quality-only options
-require gem-quality; codec options require stat-set-codec, gem-effects,
+require gem-quality; codec options are optional for base-items field ownership,
+and required for stat-set-codec, gem-effects,
 skill-stat-map, skill-overrides, minions, spectres, granted-effect-minions, passive-tree,
 runtime-constants or socketables. `--item-descriptions` is required only by socketables.
 Catalysts requires paired `--supplement` and `--catalog-policy` paths/SHA256 pins.

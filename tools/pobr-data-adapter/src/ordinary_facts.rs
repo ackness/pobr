@@ -212,7 +212,8 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     }
     if !matches!(
         domain,
-        Domain::StatSetCodec
+        Domain::BaseItems
+            | Domain::StatSetCodec
             | Domain::GemEffects
             | Domain::SkillStatMap
             | Domain::SkillOverrides
@@ -232,7 +233,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     .any(|flag| values.contains_key(*flag))
     {
         return Err(
-            "codec arguments require --ordinary-domain stat-set-codec, gem-effects, skill-stat-map, skill-overrides, minions, spectres, granted-effect-minions, passive-tree, runtime-constants or socketables".into(),
+            "codec arguments require --ordinary-domain base-items, stat-set-codec, gem-effects, skill-stat-map, skill-overrides, minions, spectres, granted-effect-minions, passive-tree, runtime-constants or socketables".into(),
         );
     }
     if !matches!(domain, Domain::SkillStatMap | Domain::SkillOverrides)
@@ -286,6 +287,15 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         (None, None) if domain != Domain::Catalysts => None,
         _ => return Err("paired catalog policy arguments require catalysts".into()),
     };
+    let base_compatibility = domain == Domain::BaseItems
+        && [
+            "--codec-source",
+            "--codec-source-sha256",
+            "--codec-policy",
+            "--codec-policy-sha256",
+        ]
+        .iter()
+        .any(|f| values.contains_key(*f));
     let mut take = |flag: &str| values.remove(flag).ok_or_else(|| format!("missing {flag}"));
     Ok(Args {
         supplement,
@@ -305,19 +315,20 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         } else {
             None
         },
-        codec: if matches!(
-            domain,
-            Domain::StatSetCodec
-                | Domain::GemEffects
-                | Domain::SkillStatMap
-                | Domain::SkillOverrides
-                | Domain::Minions
-                | Domain::Spectres
-                | Domain::GrantedEffectMinions
-                | Domain::PassiveTree
-                | Domain::RuntimeConstants
-                | Domain::Socketables
-        ) {
+        codec: if base_compatibility
+            || matches!(
+                domain,
+                Domain::StatSetCodec
+                    | Domain::GemEffects
+                    | Domain::SkillStatMap
+                    | Domain::SkillOverrides
+                    | Domain::Minions
+                    | Domain::Spectres
+                    | Domain::GrantedEffectMinions
+                    | Domain::PassiveTree
+                    | Domain::RuntimeConstants
+                    | Domain::Socketables
+            ) {
             Some(CodecArgs {
                 source: take("--codec-source")?.into(),
                 source_sha256: take("--codec-source-sha256")?,
@@ -373,6 +384,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     let mut legacy_passive_tree_bytes = None;
     let mut legacy_manifest_bytes = None;
     let mut legacy_socketables_bytes = None;
+    let mut legacy_base_overrides_bytes = None;
     let mut legacy_constant_files = BTreeMap::new();
     // Complete validation and serialization before reserving any output.
     let (base, conversion, output_schema, scope) = match args.domain {
@@ -458,7 +470,18 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
             )
         }
         Domain::BaseItems => {
-            let converted = base_items::convert(&input)?;
+            let mut converted = base_items::convert(&input)?;
+            if let Some(codec) = &args.codec {
+                let compatibility =
+                    base_items::compatibility::convert(&input, &converted.bases, codec)?;
+                for parent in &compatibility.protected_parents {
+                    output.protect(parent)?;
+                }
+                overlay = compatibility.overlay;
+                codec_policy_bytes = Some(compatibility.policy_bytes);
+                legacy_base_overrides_bytes = Some(compatibility.source_bytes);
+                converted.receipt["compatibility_overlay"] = compatibility.receipt;
+            }
             (
                 BTreeMap::from([("base_items.json".into(), pretty_bytes(&converted.bases)?)]),
                 converted.receipt,
@@ -468,7 +491,11 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                     "Physical row references are distinct from stable IDs. Unmapped fields remain in the pinned source; the receipt lists their payload/column/row scope.",
                     "Charm inherent effects are unavailable in this slice; empty charm_buff is not a claim of no effect or complete base-item semantics.",
                     "Acquisition status/evidence is copied unchanged. Fingerprints and conversion do not upgrade draft acquisition, prove full runtime completeness or adopt data.",
-                    "No runtime manifest, vendor fallback, download, CURRENT update, calculation model or schema-4 admission change.",
+                    if args.codec.is_some() {
+                        "Pinned legacy overlay retains only non-owned fields for target-matched bases; numeric fields come from target per-ID BaseItemDef. Unmatched entries remain explicit compatibility. No runtime manifest, download, CURRENT update or calculation-model change."
+                    } else {
+                        "No runtime manifest, vendor fallback, download, CURRENT update, calculation model or schema-4 admission change."
+                    },
                 ],
             )
         }
@@ -823,6 +850,9 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     if let Some(bytes) = legacy_manifest_bytes {
         sidecars.insert("legacy-manifest.json", bytes);
     }
+    if let Some(bytes) = legacy_base_overrides_bytes {
+        sidecars.insert("legacy-base-item-overrides.json", bytes);
+    }
     if let Some(bytes) = legacy_socketables_bytes {
         sidecars.insert("legacy-socketables.json", bytes);
     }
@@ -1032,6 +1062,15 @@ fn implementation_sha256() -> String {
         (
             "ordinary_facts/base_items.rs",
             include_bytes!("ordinary_facts/base_items.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/base_items/compatibility.rs",
+            include_bytes!("ordinary_facts/base_items/compatibility.rs").as_slice(),
+        ),
+        (
+            "catalog/base_item_overrides.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/base_item_overrides.rs")
+                .as_slice(),
         ),
         (
             "ordinary_facts/skills.rs",
