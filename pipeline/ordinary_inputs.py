@@ -10,10 +10,10 @@ import stat
 import subprocess
 import zipfile
 
-from data_bundle import decode
+from data_bundle import decode, relative_path
 from data_imports import (GitInputs, acquire, encoded, git_address, pinned, regular,
                           require, sha, unpack, validate_pin, write)
-from source_rebinding import absent, inventory, paths, pin, portable, verify
+import source_verifier
 
 
 COMMON = {"--codec-source": "--codec-source-sha256", "--codec-policy": "--codec-policy-sha256"}
@@ -36,6 +36,61 @@ POLICY_TARGETS = {"passive-tree": ["base_policy", "target", "facts_manifest_sha2
                      for name in ("minions", "spectres", "skill-overrides")}}
 
 
+def pin(raw):
+    return {"bytes": len(raw), "sha256": sha(raw)}
+
+
+def portable(name):
+    relative_path(name)
+    require(all(not part.endswith((".", " "))
+                and not any(ord(c) < 32 or c in '<>"|?*' for c in part)
+                and part.split(".")[0].upper() not in {
+                    "CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)),
+                    *(f"LPT{i}" for i in range(1, 10))}
+                for part in name.split("/")), f"Nonportable path: {name}")
+    return name
+
+
+def paths(names):
+    folded = set()
+    for name in names:
+        portable(name)
+        require(name.casefold() not in folded, "Duplicate/case-colliding path")
+        folded.add(name.casefold())
+    for name in folded:
+        require(not any("/".join(name.split("/")[:i]) in folded
+                        for i in range(1, len(name.split("/")))), "File/directory path collision")
+
+
+def safe(path):
+    path = Path(path).absolute()
+    require(all(not item.is_symlink() for item in (path, *path.parents)), "Symlink input/output path")
+    return path
+
+
+def inventory(root):
+    root = safe(root)
+    require(root.is_dir(), "Expected input directory")
+    result = {}
+    for child in sorted(root.rglob("*")):
+        safe(child)
+        require(child.is_dir() or child.is_file(), "Nonregular input entry")
+        if child.is_file():
+            result[child.relative_to(root).as_posix()] = pin(regular(child))
+    paths(result)
+    return result
+
+
+def absent(path, inputs=()):
+    path = safe(path)
+    require(not path.exists(), f"Output already exists: {path}")
+    for source in inputs:
+        source = safe(source)
+        require(path != source and path not in source.parents and source not in path.parents,
+                "Output overlaps an input")
+    return path
+
+
 def load(path):
     return decode(regular(path))
 
@@ -46,7 +101,9 @@ def plan(request, lock):
     fields = {"schema", "target", "publication", "package", "inputs"} if lock["schema"].endswith("/v1") else {
         "schema", "target", "packages", "policies", "inputs"}
     require(set(request) == {"schema", "target", "domains", "retained"}
-            and set(lock) == fields, "Unknown request/lock fields")
+            and set(lock) in (fields, fields | {"source_verifier"}), "Unknown request/lock fields")
+    if "source_verifier" in lock:
+        source_verifier.validate(lock["source_verifier"])
     target = request["target"]
     require(target == lock["target"] and set(target) == {"game", "game_patch", "realm"}
             and target["game"] == "poe2" and target["realm"] in ("international", "china")
@@ -141,7 +198,7 @@ def identity(document, target):
             "Source game/patch/realm mismatch")
 
 
-def preflight(request, lock, inputs, source):
+def preflight(request, lock, inputs, source, verify):
     handoff = load(inputs / HANDOFF_INPUT / HANDOFF_INPUT)
     verify(inputs / ARCHIVE_INPUT / ARCHIVE_INPUT, handoff, source)
     manifest = load(source / "facts/manifest.json")
@@ -266,10 +323,13 @@ def check_output(job, output, facts, manifest, handoff, lock):
             "outputs": {name: files[name] for name in sorted(business)}}
 
 
-def run(request, lock, output, local=None, adapter=None, cache=None, offline=False, fetcher=None, local_packages=None):
+def run(request, lock, output, local=None, adapter=None, cache=None, offline=False, fetcher=None,
+        local_packages=None, verifier_library=None):
     files = plan(request, lock)
+    require("source_verifier" in lock, "New ordinary production requires a pinned RePoE verifier")
     local = Path(local).absolute() if local else None
-    output = absent(output, [p for p in (local, Path(adapter) if adapter else None) if p is not None])
+    output = absent(output, [p for p in (local, Path(adapter) if adapter else None,
+                                        Path(verifier_library) if verifier_library else None) if p is not None])
     require(local is not None or lock["schema"].endswith("/v2") or lock["publication"] == "published", "Pending Git publication")
     executable = Path(adapter).absolute() if adapter else None
     binary = pin(regular(executable)) if executable else None
@@ -316,43 +376,55 @@ def run(request, lock, output, local=None, adapter=None, cache=None, offline=Fal
             manifest = unpack(raw, spec, inputs)
             require(manifest == {"schema": "pobr-ordinary-declared-inputs/v1", "target": request["target"], "files": files},
                     "Declared input archive mismatch")
-    handoff, manifest, resolved = preflight(request, lock, inputs, output / "source")
-    evidence = {"schema": "pobr-ordinary-production/v1", "target": request["target"],
-                "requirements": pin(encoded(request)), "lock": pin(encoded(lock)),
-                "facts_manifest": handoff["facts_manifest"], "source_lock": handoff["source_lock"],
-                "production_ready": False, "adoption": "not-adopted", "retained": request["retained"]}
+    if verifier_library is None:
+        cache = safe(cache or output / "cache")
+        cache.mkdir(parents=True, exist_ok=True)
+        fetcher = fetcher or GitInputs(output / "git")
+        verifier_library = source_verifier.materialize(lock["source_verifier"], output / "verification-library",
+                                                     cache, offline, fetcher)
+    with source_verifier.open_verifier(verifier_library, lock["source_verifier"]) as (verify, verifier_receipt):
+        handoff, manifest, resolved = preflight(request, lock, inputs, output / "source", verify)
+        evidence = {"schema": "pobr-ordinary-production/v1", "target": request["target"],
+                    "requirements": pin(encoded(request)), "lock": pin(encoded(lock)),
+                    "facts_manifest": handoff["facts_manifest"], "source_lock": handoff["source_lock"],
+                    "production_ready": False, "adoption": "not-adopted", "retained": request["retained"],
+                    "source_verifier": verifier_receipt}
+        results = {}
+        if executable is not None:
+            for job in request["domains"]:
+                pinned(regular(executable), binary)
+                args = [str(executable), "--ordinary-facts", str(output / "source/facts"),
+                        "--facts-manifest-sha256", handoff["facts_manifest"]["sha256"],
+                        "--version", request["target"]["game_patch"], "--ordinary-domain", job["domain"],
+                        "--out", str(output / job["domain"])]
+                for flag, value in job["options"].items():
+                    args += [flag, str(resolved[value["input"]]) if isinstance(value, dict) else value]
+                log = output / "logs" / job["domain"]
+                log.mkdir(parents=True)
+                with (log / "stdout.txt").open("xb") as stdout, (log / "stderr.txt").open("xb") as stderr:
+                    process = subprocess.run(args, stdout=stdout, stderr=stderr, check=False)
+                write(log / "execution.json", encoded({"command": args, "exit_code": process.returncode, "binary": binary}))
+                require(process.returncode == 0, f"Producer failed: {job['domain']}; see {log}")
+                results[job["domain"]] = check_output(job, output / job["domain"], output / "source/facts", manifest, handoff, lock)
+                pinned(regular(executable), binary)
+        # Inputs must still be the bytes authenticated before the first producer.
+        for name, expected in {**files, **external}.items():
+            pinned(regular(inputs / name), expected)
+        for name, expected in manifest["files"].items():
+            pinned(regular(output / "source/facts" / portable(name)), expected)
+        pinned(regular(output / "source/facts/manifest.json"), handoff["facts_manifest"])
+        if executable is not None:
+            for job in request["domains"]:
+                require(results[job["domain"]] == check_output(job, output / job["domain"], output / "source/facts",
+                                                             manifest, handoff, lock), "Completed domain changed")
+    # The code closure's final re-pin must pass before publishing either marker.
     if executable is None:
         evidence.update(status="verified-inputs-only", domains=[j["domain"] for j in request["domains"]])
-        write(output / "verified-inputs.json", encoded(evidence))
-        return evidence
-    results = {}
-    for job in request["domains"]:
-        pinned(regular(executable), binary)
-        args = [str(executable), "--ordinary-facts", str(output / "source/facts"),
-                "--facts-manifest-sha256", handoff["facts_manifest"]["sha256"],
-                "--version", request["target"]["game_patch"], "--ordinary-domain", job["domain"],
-                "--out", str(output / job["domain"])]
-        for flag, value in job["options"].items():
-            args += [flag, str(resolved[value["input"]]) if isinstance(value, dict) else value]
-        log = output / "logs" / job["domain"]
-        log.mkdir(parents=True)
-        with (log / "stdout.txt").open("xb") as stdout, (log / "stderr.txt").open("xb") as stderr:
-            process = subprocess.run(args, stdout=stdout, stderr=stderr, check=False)
-        write(log / "execution.json", encoded({"command": args, "exit_code": process.returncode, "binary": binary}))
-        require(process.returncode == 0, f"Producer failed: {job['domain']}; see {log}")
-        results[job["domain"]] = check_output(job, output / job["domain"], output / "source/facts", manifest, handoff, lock)
-        pinned(regular(executable), binary)
-    # Inputs must still be the bytes authenticated before the first producer.
-    for name, expected in {**files, **external}.items():
-        pinned(regular(inputs / name), expected)
-    for name, expected in manifest["files"].items():
-        pinned(regular(output / "source/facts" / portable(name)), expected)
-    pinned(regular(output / "source/facts/manifest.json"), handoff["facts_manifest"])
-    for job in request["domains"]:
-        require(results[job["domain"]] == check_output(job, output / job["domain"], output / "source/facts",
-                                                     manifest, handoff, lock), "Completed domain changed")
-    evidence.update(status="completed-declared-domains", binary=binary, domains=results)
-    write(output / "completed.json", encoded(evidence))
+        marker = "verified-inputs.json"
+    else:
+        evidence.update(status="completed-declared-domains", binary=binary, domains=results)
+        marker = "completed.json"
+    write(output / marker, encoded(evidence))
     return evidence
 
 
@@ -366,6 +438,7 @@ def main():
     parser.add_argument("--adapter", type=Path, help="Already built ordinary adapter executable")
     parser.add_argument("--cache", type=Path)
     parser.add_argument("--offline", action="store_true")
+    parser.add_argument("--verifier-library", type=Path, help="Explicit local three-file library; lock pins remain mandatory")
     parser.add_argument("--package", action="append", default=[], help="Explicit local owner input: key=archive.zip")
     args = parser.parse_args()
     try:
@@ -381,7 +454,8 @@ def main():
                 require(args.action != "execute" or args.adapter is not None, "--adapter required")
                 result = run(request, lock, args.out, args.local,
                              args.adapter if args.action == "execute" else None, args.cache, args.offline,
-                             local_packages=dict(item.split("=", 1) for item in args.package))
+                             local_packages=dict(item.split("=", 1) for item in args.package),
+                             verifier_library=args.verifier_library)
         print(encoded(result).decode(), end="")
     except (ValueError, KeyError, TypeError, OSError, zipfile.BadZipFile) as error:
         parser.exit(1, f"ordinary-inputs: {error}\n")

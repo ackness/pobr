@@ -26,10 +26,10 @@
 独立客户端候选的可重复流程是[固定补丁索引定位](client-index.md) →
 [未审阅原始采集](client-source-draft.md) → 来源审阅与固定 →
 [严格重放](client-sources.md) → RePoE 事实导出与 PoBR 领域适配。
-这些步骤不自动提升来源锁，也不切换活动数据；下方旧表导出链仍独立保留。
+索引定位、采集、重放与来源包生成由独立RePoE实现并测试；PoBR只按固定三文件验包接口验证输入，见[ordinary接入](ordinary-inputs.md)。这些步骤不自动提升来源锁，也不切换活动数据；下方旧表导出链仍独立保留。
 
 [sources.lock.json](sources.lock.json)保留历史官方树输入及固定客户端资源位置、原始SHA-256、大小、decoder／schema和采集证据。
-`acquisition_acceptances`分别接受F77、六DAT、91 tree／IT、10 CSD及12语言原生资源；
+`acquisition_acceptances`分别接受F77、六DAT、91 tree／IT、10 CSD、12语言原生资源，以及精确六OT／两描述DAT字节；
 `retained_input_acceptances`另记locale／shared／compat三类有界保留决定。各项只接受明确scope和pins，不认证全部机制、SC客户端身份或分发许可。
 本地活动版本现为`0.5.5.5`，完整双语runtime `dba0615e`；旧`0.5.5.4.2`由独立回滚锁按需恢复。
 采集、领域解释、消费者验证、本地采用及远端发布仍分开；完整状态见[架构现状](../docs/data-architecture.md#5-当前已有数据与实际缺口)。
@@ -75,9 +75,8 @@ vendor 推导的 armour 标记尚未迁移。历史树 adapter 继续保留，�
 
 ## 固定客户端原始资源与事实候选
 
-`mise run data:client` 按明确选择的来源锁取得原始资源，可从归档压缩块离线重建；
-它不发现或跟随当前补丁，也不切换活动数据。需要固定 decoder 环境、显式在线/离线模式及新输出目录。
-入口和边界见[客户端资源获取](client-sources.md)。
+原始客户端采集、索引定位及来源包生成请在独立RePoE运行其`client:source`、`client:draft`、`client:locate`、`source:rebind`任务。
+入口、默认strict及显式diagnostic边界见[客户端资源获取](client-sources.md)。
 
 RePoE 原生事实包另由 `pobr-data-adapter --native-facts` 验证外部 manifest 摘要后形成
 PoBR 领域候选，见[候选契约](../tools/pobr-data-adapter/native-facts.md)。当前只接通部分国际服事实，

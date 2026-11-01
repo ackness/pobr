@@ -1,9 +1,9 @@
 """Offline orchestration tests; the executable fixture is not a Rust producer."""
 import copy
-import importlib.util
 from pathlib import Path
 import sys
 import tempfile
+import zipfile
 import unittest
 from unittest.mock import patch
 import ordinary_policy as policy
@@ -11,9 +11,6 @@ import runtime_pack as runtime
 
 import ordinary_inputs as o
 
-spec = importlib.util.spec_from_file_location("rebinding_fixture", Path(__file__).with_name("test-source-rebinding.py"))
-fixture = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(fixture)
 
 
 class Contracts(unittest.TestCase):
@@ -21,14 +18,53 @@ class Contracts(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
-        self.f = fixture.Fixture(self.root)
-        self.f.create()
+        # A sealed synthetic source envelope from the independent owner's tests.
+        # The tiny verifier below tests routing only; real source semantics stay upstream.
+        fixture = o.load(Path(__file__).parent / "fixtures/ordinary-source-synthetic.json")
+        self.assertTrue(fixture["synthetic"])
         self.local = self.root / "portable"
-        self.target = self.f.target
+        self.target = fixture["target"]
+        archive = self.root / "out/ordinary-input.zip"
+        archive.parent.mkdir()
+        with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as package:
+            for name, text in fixture["files"].items():
+                package.writestr(name, text.encode())
+        handoff = fixture["handoff"]
+        handoff["archive"].update(o.pin(archive.read_bytes()))
+        handoff["synthetic_fixture"] = True
+        (archive.parent / "handoff.json").write_bytes(o.encoded(handoff))
+        self.sdk = {
+            "RePoE/__init__.py": b'"""Synthetic verifier, never for real source data."""\n',
+            "RePoE/source_io.py": b'from hashlib import sha256\n',
+            "RePoE/source_rebinding.py": b'''from .source_io import sha256
+from pathlib import Path
+import zipfile
+def verify(archive, handoff, output):
+    if handoff.get("synthetic_fixture") is not True:
+        raise ValueError("Only explicitly synthetic source envelopes")
+    raw = Path(archive).read_bytes()
+    if {"bytes": len(raw), "sha256": sha256(raw).hexdigest()} != {k: handoff["archive"][k] for k in ("bytes", "sha256")}:
+        raise ValueError("Synthetic envelope pin mismatch")
+    with zipfile.ZipFile(archive) as package:
+        for name in package.namelist():
+            path = Path(output) / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(package.read(name))
+''',
+        }
+        self.sdk_spec = {"schema": "pobr-source-verifier/v1", "repository": "ackness/repoe",
+                         "revision": "a" * 40, "files": {name: o.pin(raw) for name, raw in self.sdk.items()}}
+        def materialize(spec, output, cache, offline, fetcher):
+            self.assertEqual(spec, self.sdk_spec)
+            for name, raw in self.sdk.items():
+                o.write(Path(output) / name, raw)
+            return Path(output)
+        self.addCleanup(patch.stopall)
+        patch.object(o.source_verifier, "materialize", side_effect=materialize).start()
         self.request = {"schema": "pobr-ordinary-requirements/v1", "target": self.target,
                         "domains": [], "retained": "Other runtime domains are external."}
         self.lock = {"schema": "pobr-ordinary-input-lock/v1", "target": self.target,
-                     "publication": "pending", "package": None, "inputs": {}}
+                     "publication": "pending", "package": None, "inputs": {}, "source_verifier": self.sdk_spec}
         self.add_unit(o.ARCHIVE_INPUT, o.ARCHIVE_INPUT, {o.ARCHIVE_INPUT: (self.root / "out/ordinary-input.zip").read_bytes()})
         self.add_unit(o.HANDOFF_INPUT, o.HANDOFF_INPUT, {o.HANDOFF_INPUT: (self.root / "out/handoff.json").read_bytes()})
         for domain in ("minions", "spectres"):
@@ -150,6 +186,39 @@ put('producer-receipt.json',encoded(receipt))
         self.assertEqual(result['status'],'verified-inputs-only')
         self.assertFalse((self.root/'candidate/completed.json').exists())
         self.assertFalse((self.root/'candidate/logs').exists())
+
+    def test_new_runs_require_pinned_code_while_legacy_output_plans_remain_readable(self):
+        del self.lock["source_verifier"]
+        o.plan(self.request, self.lock)
+        with self.assertRaisesRegex(ValueError, "pinned RePoE verifier"):
+            self.run_candidate()
+        self.assertFalse((self.root / "candidate").exists())
+
+    def test_verifier_pins_and_final_recheck_precede_both_completion_markers(self):
+        original = o.preflight
+        for production in (False, True):
+            name = "code-changed-" + str(production)
+            def mutate(*args):
+                result = original(*args)
+                (self.root / name / "verification-library/RePoE/source_io.py").write_text("# changed\n")
+                return result
+            with patch.object(o, "preflight", side_effect=mutate), self.assertRaises(ValueError):
+                o.run(self.request, self.lock, self.root / name, self.local,
+                      self.executable() if production else None)
+            self.assertFalse((self.root / name / "verified-inputs.json").exists())
+            self.assertFalse((self.root / name / "completed.json").exists())
+
+    def test_explicit_local_verifier_uses_same_pins_without_acquisition(self):
+        library = self.root / "local-verifier"
+        for name, raw in self.sdk.items(): o.write(library / name, raw)
+        with patch.object(o.source_verifier, "materialize", side_effect=AssertionError("local must not fetch")):
+            result = o.run(self.request, self.lock, self.root / "local-verified", self.local,
+                           verifier_library=library)
+        self.assertEqual(result["source_verifier"]["library"], self.sdk_spec)
+        (library / "RePoE/source_io.py").write_bytes(b"# changed\n")
+        with self.assertRaises(ValueError):
+            o.run(self.request, self.lock, self.root / "bad-code", self.local, verifier_library=library)
+        self.assertFalse((self.root / "bad-code/verified-inputs.json").exists())
 
     def test_wrong_pin_missing_file_and_symlink_fail_before_execution(self):
         path=self.local/'spectres/source/legacy.json'; original=path.read_bytes()

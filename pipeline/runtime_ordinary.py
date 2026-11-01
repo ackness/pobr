@@ -9,7 +9,7 @@ from pathlib import Path
 import ordinary_inputs as ordinary
 from data_bundle import decode, relative_path
 from data_imports import encoded, pinned, regular, require, validate_pin
-from source_rebinding import pin
+from ordinary_inputs import pin
 
 
 def overlay(files, version, target, config, config_dir, source):
@@ -33,6 +33,10 @@ def overlay(files, version, target, config, config_dir, source):
             and completed.get("lock") == pin(encoded(lock))
             and completed.get("production_ready") is False and completed.get("adoption") == "not-adopted"
             and completed.get("retained") == request["retained"], "Ordinary completion identity mismatch")
+    if "source_verifier" in lock:
+        require(completed.get("source_verifier") == {"schema": "pobr-source-verifier-use/v1",
+                                                   "library": lock["source_verifier"]},
+                "Ordinary source verifier identity mismatch")
     validate_pin(completed["binary"])
     handoff_name = ordinary.HANDOFF_INPUT
     handoff_raw = pinned(regular(source / "inputs" / handoff_name / handoff_name),

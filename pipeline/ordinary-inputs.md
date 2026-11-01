@@ -80,7 +80,7 @@ mise run data:ordinary verify --package repoe=/absolute/path/ordinary-inputs.zip
 
 Local-only/pending packages cannot silently fetch an unpublished remote. Missing
 or damaged offline cache entries reject; no checked-in or historical snapshot is
-consulted. Original v1 local/synthetic verification remains supported, while a
+consulted. Original v1 envelopes remain readable; new runs require the pinned verifier described below. A
 v1 package owned by `ackness/pobr` is explicitly rejected. Its legacy `pack`
 command is an explicit local diagnostic, not the production storage contract.
 
@@ -91,3 +91,31 @@ eight declared replacements. Expanded sources, CSD, external mapping and policy
 materialization remain disposable build evidence. Ordinary production does not
 change CURRENT, source acceptance, the site or adopted runtime. Local input
 verification and synthetic process tests do not prove remote CI or game behavior.
+
+## Pinned upstream envelope verifier
+
+The lock's `source_verifier` field fixes `ackness/repoe`, one full Git revision
+and the exact bytes/SHA of `RePoE/__init__.py`, `RePoE/source_io.py` and
+`RePoE/source_rebinding.py`. New verification or production requires all three;
+there is no installed-package, old PoBR collector or unpinned fallback. Historical
+completed artifacts can still be read with their own original lock.
+
+The importer acquires these three small code files through the same Git/cache
+boundary as other pinned inputs. It checks the complete inventory before running
+any initializer, executes verified byte snapshots in a temporary private package,
+and removes that namespace afterwards. The package has no filesystem import
+search path. The upstream verifier checks the full nested portable source envelope;
+no HTTP, index discovery or decoder module is part of its code closure.
+
+For an explicit unpublished local handoff, `--verifier-library <directory>` points
+to a directory containing exactly that three-file closure. The same lock pins and
+symlink/inventory checks apply. `--offline` never fetches missing code: prefill the
+cache or provide this explicit local directory. All code files, input bytes and
+completed domains are rechecked before `verified-inputs.json` or `completed.json`
+is written. A changed verifier leaves no completion marker. The receipt records
+`source_verifier` with its exact library identity.
+
+Outputs-only CI artifacts keep that small provenance receipt. The runtime
+assembler compares it with the declared lock without executing the verifier or
+shipping library code to players. Full facts, acquisition receipts, external
+mapping and verifier code remain disposable build evidence.
