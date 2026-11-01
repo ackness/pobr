@@ -4,6 +4,8 @@ use crate::ordinary_facts::{
 };
 use std::fs;
 
+mod links;
+
 fn fixture() -> (Fixture, Value) {
     let mut f = Fixture::new();
     f.documents.insert(

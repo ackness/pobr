@@ -8,12 +8,21 @@ use serde_json::{Value, json};
 
 use super::convert::{column, resolve, text};
 use super::stat_set_codec::{policy::hex, read_pinned};
-use crate::native_facts::reader::{Tables, VerifiedFacts};
+use crate::native_facts::reader::{Tables, VerifiedFacts, selected};
 use crate::raw_source::sha256_hex;
 
+mod links;
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 mod tests;
 pub(super) const TABLES: [&str; 3] = ["ItemInherentSkills", "BaseItemTypes", "SkillGems"];
+pub(super) const LINK_TABLES: [&str; 6] = [
+    "ItemInherentSkills",
+    "BaseItemTypes",
+    "SkillGems",
+    "Mods",
+    "GemEffects",
+    "GrantedEffects",
+];
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -46,7 +55,11 @@ pub(super) struct Converted {
     pub receipt: Value,
 }
 
-pub(super) fn convert(input: &VerifiedFacts, args: &super::CodecArgs) -> Result<Converted, String> {
+pub(super) fn convert(
+    input: &VerifiedFacts,
+    args: &super::CodecArgs,
+    extra: Option<&selected::Input>,
+) -> Result<Converted, String> {
     let pinned = read_pinned(
         &args.policy,
         &args.policy_sha256,
@@ -61,6 +74,9 @@ pub(super) fn convert(input: &VerifiedFacts, args: &super::CodecArgs) -> Result<
         "legacy item grant compatibility",
     )?;
     let (mut document, records) = project(input, &old.document)?;
+    let links = extra
+        .map(|extra| links::project(input, extra, &mut document))
+        .transpose()?;
     let legacy_meta = document
         .as_object_mut()
         .ok_or("item grants must be an object")?
@@ -69,6 +85,19 @@ pub(super) fn convert(input: &VerifiedFacts, args: &super::CodecArgs) -> Result<
         "facts_manifest_sha256":sha256_hex(&input.manifest_bytes),"policy_sha256":args.policy_sha256,
         "reservation_free_bases":"Target IsWeapon flags interpreted as NoReservation only under the pinned community policy; not official field semantics.",
         "other_fields_source_sha256":args.source_sha256,"legacy_metadata_present":legacy_meta.is_some(),"legacy_metadata":legacy_meta});
+    let mut receipt = json!({"records":records,"interpretation_policy":pinned.document,
+        "legacy_source_sha256":args.source_sha256,"retained_fields":"Every legacy field except reservation_free_bases; original _meta is nested intact, and original bytes are archived.",
+        "semantic_boundary":"The raw schema and its IsWeapon name remain unchanged. Community schema names column three NoReservation. This is an explicit compatibility interpretation, not independent official semantic approval or a unique/mod/roll relationship proof."});
+    if let Some(links) = links {
+        document["_meta"]["variant_links"] = json!({
+            "supplement_manifest_sha256":links["supplement_manifest_sha256"],
+            "target_fields":["skill_name","granted_effect_id"],
+            "compatibility_fields":"variant membership, game_mod_id selectors, item/base names, exported aliases and all unknown fields"});
+        receipt["retained_fields"] = json!(
+            "Every legacy field except reservation_free_bases and the two target-owned variant fields skill_name/granted_effect_id; original _meta and bytes retained."
+        );
+        receipt["variant_links"] = links;
+    }
     serde_json::from_value::<ItemGrantedSkillsDef>(document.clone()).map_err(|e| e.to_string())?;
     Ok(Converted {
         bytes: super::pretty_bytes(&document)?,
@@ -77,9 +106,7 @@ pub(super) fn convert(input: &VerifiedFacts, args: &super::CodecArgs) -> Result<
             ("codec-policy.json".into(), pinned.bytes),
         ]),
         protected_parents: vec![old.parent, pinned.parent],
-        receipt: json!({"records":records,"interpretation_policy":pinned.document,
-            "legacy_source_sha256":args.source_sha256,"retained_fields":"Every legacy field except reservation_free_bases; original _meta is nested intact, and original bytes are archived.",
-            "semantic_boundary":"The raw schema and its IsWeapon name remain unchanged. Community schema names column three NoReservation. This is an explicit compatibility interpretation, not independent official semantic approval or a unique/mod/roll relationship proof."}),
+        receipt,
     })
 }
 

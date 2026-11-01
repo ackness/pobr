@@ -1,4 +1,4 @@
-# Item grant reservation flags from target facts
+# Item grants from target facts
 
 `--ordinary-domain item-grants` regenerates the existing
 `overlay/item_granted_skills.json.reservation_free_bases` from target
@@ -30,7 +30,7 @@ empty emitted names or equal base names with conflicting flag ownership reject.
 Repeated skill references remain ordered in the receipt. A name-only DTO cannot
 resolve a collision by choosing a different item arbitrarily.
 
-All fields other than `reservation_free_bases` remain exact legacy JSON Values.
+Without a supplement, all fields other than `reservation_free_bases` remain exact legacy JSON Values.
 Original metadata is nested intact under the new `_meta.legacy_metadata`, with
 presence recorded. Original file and policy bytes are archived. Four unique
 skill variants and historical exporter aliases remain compatibility; this does
@@ -40,3 +40,31 @@ The receipt retains all source rows, raw flags, interpreted flags, item and skil
 references, both schema declarations, and explicit ownership. The standard
 source-draft status, domain guard, protected output rules and CURRENT remain
 unchanged.
+
+## Target skill links
+
+Optionally supply `--supplement <selected-table-directory>` and
+`--supplement-manifest-sha256 <pin>` for a matching-patch RePoE
+`ModGrantedSkills` export. The existing selected-table verifier accepts the
+original producer and the exact `21ace02` producer fingerprint, with the same
+English format, schema, decoder and source-identity checks. Localized envelopes
+remain rejected.
+
+Each retained variant's `game_mod_id` selects exactly one target row, joined
+through `SkillGems → BaseItemTypes` for its `skill_name` and
+`SkillGems → GemEffects → GrantedEffects` for its `granted_effect_id`.
+A selected row needs exactly one primary effect. Missing or ambiguous matches,
+invalid references, empty selected names or changed schema fail before output;
+there is no first-effect guess or old-value fallback. New target names/effects
+propagate without requiring equality to old values.
+
+All source links and ordered effect references are retained in the receipt,
+including links not selected by a legacy variant. Only those two variant fields
+are replaced. Item names, base-name lists, variant membership, historical
+`exported_effect_id` aliases and unknown fields retain their fixed compatibility
+source. A mod-to-skill link does not establish the unique item that owns it or its
+roll ranges. This mode does not claim complete unique data migration.
+
+The existing DTO and ordinary consumers remain unchanged. The output still
+archives the original legacy bytes and interpretation policy; supplement
+identity and field ownership are recorded independently.

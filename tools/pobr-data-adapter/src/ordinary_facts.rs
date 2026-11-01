@@ -10,6 +10,7 @@ mod item_grants;
 mod minion_links;
 mod monster_resistances;
 mod monster_scaling;
+mod passive_jewel_slots;
 mod passive_tree;
 mod quality;
 mod runtime_constants;
@@ -77,6 +78,7 @@ enum Domain {
     Spectres,
     GrantedEffectMinions,
     PassiveTree,
+    PassiveJewelSlots,
     RuntimeConstants,
     Socketables,
     Catalysts,
@@ -102,6 +104,7 @@ impl Domain {
             Self::Minions | Self::Spectres => &actors::TABLES,
             Self::GrantedEffectMinions => &minion_links::TABLES,
             Self::PassiveTree => &passive_tree::TABLES,
+            Self::PassiveJewelSlots => &passive_jewel_slots::TABLES,
             Self::RuntimeConstants => &runtime_constants::TABLES,
             Self::Socketables => &socketables::TABLES,
             Self::Catalysts => &catalysts::TABLES,
@@ -128,6 +131,7 @@ impl Domain {
             Self::Spectres => "ordinary-spectres",
             Self::GrantedEffectMinions => "ordinary-granted-effect-minions",
             Self::PassiveTree => "ordinary-passive-tree",
+            Self::PassiveJewelSlots => "ordinary-passive-jewel-slots",
             Self::RuntimeConstants => "ordinary-runtime-constants",
             Self::Socketables => "ordinary-socketables",
             Self::Catalysts => "ordinary-catalysts",
@@ -154,6 +158,7 @@ impl Domain {
             Self::Spectres => "spectres",
             Self::GrantedEffectMinions => "granted-effect-minions",
             Self::PassiveTree => "passive-tree",
+            Self::PassiveJewelSlots => "passive-jewel-slots",
             Self::RuntimeConstants => "runtime-constants",
             Self::Socketables => "socketables",
             Self::Catalysts => "catalysts",
@@ -217,6 +222,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("spectres") => Domain::Spectres,
         Some("granted-effect-minions") => Domain::GrantedEffectMinions,
         Some("passive-tree") => Domain::PassiveTree,
+        Some("passive-jewel-slots") => Domain::PassiveJewelSlots,
         Some("runtime-constants") => Domain::RuntimeConstants,
         Some("socketables") => Domain::Socketables,
         Some("catalysts") => Domain::Catalysts,
@@ -290,14 +296,14 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         values.remove("--supplement"),
         values.remove("--supplement-manifest-sha256"),
     ) {
-        (Some(path), Some(sha256)) if matches!(domain, Domain::Catalysts | Domain::PassiveTree) => {
+        (Some(path), Some(sha256)) if matches!(domain, Domain::Catalysts | Domain::PassiveTree | Domain::PassiveJewelSlots | Domain::ItemGrants) => {
             Some(BranchCodecArgs {
                 path: path.into(),
                 sha256,
             })
         }
-        (None, None) if domain != Domain::Catalysts => None,
-        _ => return Err("paired supplement arguments require catalysts or passive-tree".into()),
+        (None, None) if !matches!(domain, Domain::Catalysts | Domain::PassiveJewelSlots) => None,
+        _ => return Err("paired supplement arguments require catalysts, passive-tree, passive-jewel-slots or item-grants".into()),
     };
     let catalog_policy = match (
         values.remove("--catalog-policy"),
@@ -407,6 +413,8 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
             &passive_tree::REFRESH_TABLES
         } else if args.domain == Domain::RuntimeConstants && args.player_context.is_some() {
             &runtime_constants::PLAYER_TABLES
+        } else if args.domain == Domain::ItemGrants && args.supplement.is_some() {
+            &item_grants::LINK_TABLES
         } else {
             args.domain.tables()
         },
@@ -463,12 +471,31 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
             )
         }
 
+        Domain::PassiveJewelSlots => {
+            let converted = passive_jewel_slots::convert(
+                &input,
+                supplement
+                    .as_ref()
+                    .ok_or("missing passive jewel slots supplement")?,
+            )?;
+            overlay = BTreeMap::from([("passive_jewel_slots.json".into(), converted.bytes)]);
+            (
+                BTreeMap::new(),
+                converted.receipt,
+                "pobr_data::catalog::passive_jewel_slots::PassiveJewelSlotsDef",
+                vec![
+                    "Every target PassiveJewelSlots physical row resolves its exact PassiveSkills identity, raw graph ID and sinister flag through the existing ordinary import DTO. No active-tree filter or graph-ID substitute.",
+                    "Physical slot ordinals retain the existing share-code interpretation. Cluster/proxy/replacement cases require a separate consumer decision; source draft, complete-runtime guard and CURRENT remain unchanged.",
+                ],
+            )
+        }
         Domain::ItemGrants => {
             let converted = item_grants::convert(
                 &input,
                 args.codec
                     .as_ref()
                     .ok_or("missing item-grants source/policy")?,
+                supplement.as_ref(),
             )?;
             for parent in &converted.protected_parents {
                 output.protect(parent)?;
@@ -481,7 +508,11 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 "pobr_data::catalog::item_granted_skills::ItemGrantedSkillsDef",
                 vec![
                     "Target raw IsWeapon membership and target base names regenerate reservation_free_bases under an explicit fixed community NoReservation interpretation. Neither raw schema nor field names are changed.",
-                    "All remaining fields, including unique effect variants/export aliases, retain their pinned legacy source. Existing DTO/ordinary consumer and source-draft/CURRENT boundaries remain unchanged.",
+                    if supplement.is_some() {
+                        "Target ModGrantedSkills joins regenerate the skill name and native effect ID of each explicitly retained variant. Item identities, base-name lists and historical export aliases remain pinned compatibility; unbound links do not prove unique-item ownership."
+                    } else {
+                        "All remaining fields, including unique effect variants/export aliases, retain their pinned legacy source. Existing DTO/ordinary consumer and source-draft/CURRENT boundaries remain unchanged."
+                    },
                 ],
             )
         }
@@ -1071,6 +1102,26 @@ fn implementation_sha256() -> String {
     let mut bytes = Vec::new();
     // Content revision records the compiled implementation, not whichever checkout invokes it.
     for (name, source) in [
+        (
+            "ordinary_facts/passive_jewel_slots.rs",
+            include_bytes!("ordinary_facts/passive_jewel_slots.rs").as_slice(),
+        ),
+        (
+            "catalog/passive_jewel_slots.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/passive_jewel_slots.rs")
+                .as_slice(),
+        ),
+        (
+            "ordinary_facts/item_grants/links.rs",
+            include_bytes!("ordinary_facts/item_grants/links.rs").as_slice(),
+        ),
+        (
+            "selected-tables-producer-21ace02.json",
+            include_bytes!(
+                "../tests/fixtures/ordinary-facts/selected-tables-producer-21ace02.json"
+            )
+            .as_slice(),
+        ),
         (
             "ordinary_facts/item_grants.rs",
             include_bytes!("ordinary_facts/item_grants.rs").as_slice(),
