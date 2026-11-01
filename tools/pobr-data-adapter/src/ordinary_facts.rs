@@ -18,6 +18,7 @@ mod skill_overrides;
 mod skill_stat_map;
 mod skills;
 mod socketables;
+mod stat_descriptions;
 mod stat_set_codec;
 mod totem_varieties;
 mod unarmed;
@@ -81,6 +82,7 @@ enum Domain {
     PassiveJewelSlots,
     RuntimeConstants,
     Socketables,
+    StatDescriptions,
     Catalysts,
     BossPoise,
     ItemGrants,
@@ -107,6 +109,7 @@ impl Domain {
             Self::PassiveJewelSlots => &passive_jewel_slots::TABLES,
             Self::RuntimeConstants => &runtime_constants::TABLES,
             Self::Socketables => &socketables::TABLES,
+            Self::StatDescriptions => &stat_descriptions::TABLES,
             Self::Catalysts => &catalysts::TABLES,
             Self::BossPoise => &boss_poise::TABLES,
             Self::ItemGrants => &item_grants::TABLES,
@@ -134,6 +137,7 @@ impl Domain {
             Self::PassiveJewelSlots => "ordinary-passive-jewel-slots",
             Self::RuntimeConstants => "ordinary-runtime-constants",
             Self::Socketables => "ordinary-socketables",
+            Self::StatDescriptions => "ordinary-stat-descriptions",
             Self::Catalysts => "ordinary-catalysts",
             Self::BossPoise => "ordinary-boss-poise",
             Self::ItemGrants => "ordinary-item-grants",
@@ -161,6 +165,7 @@ impl Domain {
             Self::PassiveJewelSlots => "passive-jewel-slots",
             Self::RuntimeConstants => "runtime-constants",
             Self::Socketables => "socketables",
+            Self::StatDescriptions => "stat-descriptions",
             Self::Catalysts => "catalysts",
             Self::BossPoise => "boss-poise",
             Self::ItemGrants => "item-grants",
@@ -225,6 +230,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("passive-jewel-slots") => Domain::PassiveJewelSlots,
         Some("runtime-constants") => Domain::RuntimeConstants,
         Some("socketables") => Domain::Socketables,
+        Some("stat-descriptions") => Domain::StatDescriptions,
         Some("catalysts") => Domain::Catalysts,
         Some("boss-poise") => Domain::BossPoise,
         Some("item-grants") => Domain::ItemGrants,
@@ -252,6 +258,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             | Domain::PassiveTree
             | Domain::RuntimeConstants
             | Domain::Socketables
+            | Domain::StatDescriptions
     ) && [
         "--codec-source",
         "--codec-source-sha256",
@@ -262,7 +269,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     .any(|flag| values.contains_key(*flag))
     {
         return Err(
-            "codec arguments require --ordinary-domain base-items, stat-set-codec, gem-effects, skill-stat-map, skill-overrides, minions, spectres, granted-effect-minions, passive-tree, runtime-constants, socketables, unarmed-data or item-grants".into(),
+            "codec arguments require --ordinary-domain base-items, stat-set-codec, gem-effects, skill-stat-map, skill-overrides, minions, spectres, granted-effect-minions, passive-tree, runtime-constants, socketables, stat-descriptions, unarmed-data or item-grants".into(),
         );
     }
     if !matches!(domain, Domain::SkillStatMap | Domain::SkillOverrides)
@@ -289,8 +296,12 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         _ => return Err("both tree-reference and tree-descriptions require passive-tree".into()),
     };
     let item_descriptions = values.remove("--item-descriptions").map(PathBuf::from);
-    if (domain == Domain::Socketables) != item_descriptions.is_some() {
-        return Err("item-descriptions is required only for socketables".into());
+    if matches!(domain, Domain::Socketables | Domain::StatDescriptions)
+        != item_descriptions.is_some()
+    {
+        return Err(
+            "item-descriptions is required only for socketables or stat-descriptions".into(),
+        );
     }
     let supplement = match (
         values.remove("--supplement"),
@@ -381,6 +392,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
                     | Domain::PassiveTree
                     | Domain::RuntimeConstants
                     | Domain::Socketables
+                    | Domain::StatDescriptions
             ) {
             Some(CodecArgs {
                 source: take("--codec-source")?.into(),
@@ -554,6 +566,30 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 vec![
                     "Target catalyst names, descriptors and tags feed the existing ordinary catalog. Historical XML IDs remain explicit codec policy.",
                     "All source currency variants remain in the receipt. No new quality multiplier or application law is inferred; source draft and CURRENT unchanged.",
+                ],
+            )
+        }
+        Domain::StatDescriptions => {
+            let converted = stat_descriptions::convert(
+                &input,
+                args.codec
+                    .as_ref()
+                    .ok_or("missing description compatibility arguments")?,
+                args.item_descriptions
+                    .as_ref()
+                    .ok_or("missing item descriptions")?,
+            )?;
+            for parent in &converted.protected_parents {
+                output.protect(parent)?;
+            }
+            overlay.insert("stat_descriptions.json".into(), converted.bytes);
+            extra_sidecars = converted.sidecars;
+            (
+                BTreeMap::new(),
+                converted.receipt,
+                "pobr_data::catalog::stat_descriptions::StatDescriptionsDef",
+                vec![
+                    "Pinned RePoE global unscaled singleton descriptions feed the existing representative-value catalog. Other fields remain explicit compatibility; no math, generated rules or CURRENT change.",
                 ],
             )
         }
@@ -1102,6 +1138,14 @@ fn implementation_sha256() -> String {
     let mut bytes = Vec::new();
     // Content revision records the compiled implementation, not whichever checkout invokes it.
     for (name, source) in [
+        (
+            "ordinary_facts/stat_descriptions.rs",
+            include_bytes!("ordinary_facts/stat_descriptions.rs").as_slice(),
+        ),
+        (
+            "catalog/stat_descriptions.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/stat_descriptions.rs").as_slice(),
+        ),
         (
             "ordinary_facts/passive_jewel_slots.rs",
             include_bytes!("ordinary_facts/passive_jewel_slots.rs").as_slice(),

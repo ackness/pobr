@@ -520,6 +520,7 @@ dependencies = [
  "pobr-core",
  "pobr-data",
  "pobr-gamedata",
+ "pobr-item",
  "pobr-tree",
  "rustix",
  "serde",
