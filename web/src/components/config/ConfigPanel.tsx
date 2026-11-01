@@ -5,7 +5,7 @@ import { PageHeader } from '../shared/PageHeader';
 import { useEffect, useMemo, useState } from 'react';
 import { usePanelActive } from '../shared/UiContext';
 import { getBackend } from '../../api/backend';
-import type { ConfigInputValue, ConfigOption, CustomModifierBlock } from '../../api/types';
+import type { CalculateBuildResponse, ConfigInputValue, ConfigOption, CustomModifierBlock } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useSkillName } from '../../hooks/useSkillName';
 import { bindT, configSectionLabel, damageTypeLabel, t, type Lang } from '../../lib/i18n';
@@ -24,6 +24,8 @@ import '../../app/config-workflow.css';
 interface Props {
   session: BuildSession;
   lang: Lang;
+  /** Last result for this stage, retained by the shell during recalculation. */
+  settledCalc?: CalculateBuildResponse | null;
 }
 
 // How `unsupported_modifiers` marks a line of the configuration (a custom
@@ -206,7 +208,7 @@ export function OptionRow({
 }
 
 /** Config 页：敌人档位 + 内置配置目录（分区/搜索）+ build 原始 `<Input>` 高级区。 */
-export function ConfigPanel({ session, lang }: Props) {
+export function ConfigPanel({ session, lang, settledCalc }: Props) {
   const tt = bindT(lang);
   const [view, setView] = useState('options');
   const skillName = useSkillName(lang);
@@ -281,10 +283,13 @@ export function ConfigPanel({ session, lang }: Props) {
   const isOverridden = (key: string) => inputs[key] !== buildInputs[key];
   const resetInput = (key: string) => session.setConfigInput(key, buildInputs[key] ?? null);
   const visibilityInputs = useMemo(() => configVisibilityInputs(options, inputs), [options, inputs]);
-  const context = !session.busy && !session.calcError ? session.calc?.config_context : null;
+  // Clearing context while an edit recalculates collapses the relevant group and
+  // clamps the scroll container to its temporary height. Keep its last layout.
+  const calc = session.calcError ? null : session.calc ?? settledCalc;
+  const context = calc?.config_context;
 
-  // Previous output remains visible while the baseline recalculates or has failed.
-  const calculatedMain = !session.busy && !session.calcError ? session.calc?.main_skill : null;
+  // Previous output remains visible while the baseline recalculates.
+  const calculatedMain = calc?.main_skill;
   const quickOptions = QUICK_OPTIONS.flatMap(({ key, damageType }) => {
     if (damageType && !calculatedMain?.hit_damage.some(part =>
       part.damage_type === damageType && Number.isFinite(part.avg) && part.avg > 0)) return [];
@@ -371,7 +376,7 @@ export function ConfigPanel({ session, lang }: Props) {
     enabled: true,
     text: (session.calcParams.extra_modifiers ?? []).join('\n'),
   }];
-  const unappliedLines = (session.calc?.unsupported_modifiers ?? [])
+  const unappliedLines = (calc?.unsupported_modifiers ?? [])
     .filter(line => line.startsWith(UNAPPLIED_PREFIX))
     .map(line => line.slice(UNAPPLIED_PREFIX.length));
   const updateModifierBlocks = (blocks: CustomModifierBlock[]) => {

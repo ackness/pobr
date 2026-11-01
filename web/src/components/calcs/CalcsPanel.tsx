@@ -17,6 +17,7 @@ import type {
   ReloadDetail,
   DisplayStatCategory,
   SkillMetricsResponse,
+  CalculateBuildResponse,
 } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { STAT_SECTIONS, formatStatValue, statMap } from '../../lib/statDisplay';
@@ -48,6 +49,8 @@ import { words } from '../../app/text';
 interface Props {
   session: BuildSession;
   lang: Lang;
+  /** Display only; requests and mutations still use the current session. */
+  settledCalc?: CalculateBuildResponse | null;
   /** 侧边栏点击跳转：要展开的 breakdown（对象引用每次点击新建，作为 effect 触发键）。 */
   focus?: { id: string } | null;
   /** 跳转消费完毕的回调（父级清空 focus，防止页签切回时重复触发滚动）。 */
@@ -766,10 +769,10 @@ export function BreakdownTable({ breakdown, lang }: { breakdown: Breakdown; lang
   );
 }
 
-function FullDpsView({ session, lang }: { session: BuildSession; lang: Lang }) {
+function FullDpsView({ calc, lang }: { calc: CalculateBuildResponse | null; lang: Lang }) {
   const tt = bindT(lang);
   const skillName = useSkillName(lang);
-  const full = session.calc?.full_dps;
+  const full = calc?.full_dps;
   return <section className="full-dps-view" aria-labelledby="full-dps-heading">
     <h3 id="full-dps-heading">{calcsLabel(lang, 'fullDps')}</h3>
     <p className="calcs-hint">{tt('skills.fullDpsHint')}</p>
@@ -1014,13 +1017,13 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
 }
 
 /** Calcs 页：字段点击展开 breakdown（消费 0.3）+ 归因视图（消费 0.4）。 */
-export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
+export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed }: Props) {
   const tt = bindT(lang);
   const skillName = useSkillName(lang);
   const [view, setView] = useState('metrics');
   const [category, setCategory] = useState('all');
   const [commonOnly, setCommonOnly] = useState(true);
-  const calc = session.calcError ? null : session.calc;
+  const calc = session.calcError ? null : session.calc ?? settledCalc ?? null;
   const [open, setOpen] = useState<string | null>(() => defaultMetric(calc?.stats ?? [], !!calc?.main_skill));
   const [actor, setActor] = useState('player');
   const actorKey = (minion: MinionOutput) =>
@@ -1141,7 +1144,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
     const kind = detailKind(selectedMinion ?? calc!, name);
     const current = loaded?.calc === calc && loaded.actor === actor && loaded.id === name ? loaded : null;
     const breakdown = actorBreakdowns[name] ?? current?.detail;
-    if (session.busy) return <p role="status" className="breakdown-detail">{calcsLabel(lang, 'stale')}</p>;
+    if (session.busy && !breakdown) return <p role="status" className="breakdown-detail">{calcsLabel(lang, 'stale')}</p>;
     return kind === 'none' ? <p className="breakdown-detail" role="status">{tt('calcs.noBreakdown')}</p>
       : breakdown ? <BreakdownTable breakdown={breakdown} lang={lang} />
       : current?.error ? <div className="breakdown-detail" role="alert">{current.error} <AppButton onClick={() => { setLoaded(null); setRetry(value => value + 1); }}>{tt('calcs.retry')}</AppButton></div>
@@ -1161,7 +1164,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
     .map(section => ({ ...section, names: commonOnly && !query.trim() && category === 'all'
       ? section.names.filter(name => COMMON_METRICS.some(id => id === name) || name === open) : section.names }))
     .filter(section => section.names.length > 0);
-  return <section className="ui-page calcs-page calcs-workspace" aria-labelledby="calcs-heading">
+  return <section className="ui-page calcs-page calcs-workspace" aria-labelledby="calcs-heading" aria-busy={session.busy}>
     <PageHeader id="calcs-heading" title={tt('calcs.title')} description={calcsLabel(lang, 'detailHint')} />
     <Tabs className="flex-col" value={view} onValueChange={setView}>
       <TabsList variant="line" className="calcs-view-tabs group-data-horizontal/tabs:h-auto" aria-label={tt('calcs.title')}>
@@ -1222,7 +1225,10 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
         </div>}
       </TabsContent>
       <TabsContent className="min-w-0 w-full" value="skills"><SkillMetricsView session={session} lang={lang} /></TabsContent>
-      <TabsContent className="min-w-0 w-full" value="full-dps"><FullDpsView session={session} lang={lang} /></TabsContent>
+      <TabsContent className="min-w-0 w-full" value="full-dps">
+        {session.busy && <p role="status" className="calcs-hint">{calcsLabel(lang, 'stale')}</p>}
+        <FullDpsView calc={calc} lang={lang} />
+      </TabsContent>
       <TabsContent className="min-w-0 w-full" value="attribution"><AttributionView session={session} lang={lang} /></TabsContent>
       <TabsContent className="min-w-0 w-full" value="ledger"><LedgerView session={session} lang={lang} /></TabsContent>
     </Tabs>

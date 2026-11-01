@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { go, importCode, shareCode } from './configPage';
 import { deflateSync, inflateSync } from 'node:zlib';
+import { readFileSync } from 'node:fs';
 
 const code = (inputs = '') => deflateSync(`<PathOfBuilding2>
   <Build level="20" className="Witch" mainSocketGroup="1"/>
@@ -8,6 +9,44 @@ const code = (inputs = '') => deflateSync(`<PathOfBuilding2>
   <Skills><Skill enabled="true"><Gem skillId="SparkPlayer" level="5" enabled="true"/></Skill></Skills>
   <Config>${inputs}</Config><Notes>Config visibility fixture</Notes>
 </PathOfBuilding2>`).toString('base64url');
+
+test('editing a deep combat option keeps the scroll position throughout recalculation', async ({ page }) => {
+  const source = readFileSync(new URL('../../examples/wasm-benchmark/builds/ninja-2026-10-11-ranger-deadeye-ice-shot-b6ce7b3a4329/code.txt', import.meta.url), 'utf8').trim();
+  await page.goto('/build');
+  await importCode(page, source);
+  await go(page, 'Config');
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
+  const option = page.locator('#config-conditionCritRecently');
+  await option.scrollIntoViewIfNeeded();
+  const top = await page.locator('#shell-main').evaluate(el => el.scrollTop);
+  expect(top).toBeGreaterThan(100);
+  // Capture every rendered frame: checking only the eventual layout misses the
+  // short-lived collapse that clamps scrollTop before the result comes back.
+  await page.evaluate(() => {
+    const root = document.querySelector('#shell-main')!;
+    const state = { active: true, positions: [root.scrollTop] };
+    (window as unknown as { editScroll: typeof state }).editScroll = state;
+    const sample = () => { state.positions.push(root.scrollTop); if (state.active) requestAnimationFrame(sample); };
+    requestAnimationFrame(sample);
+  });
+  await option.click();
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
+  const positions = await page.evaluate(() => {
+    const state = (window as unknown as { editScroll: { active: boolean; positions: number[] } }).editScroll;
+    state.active = false;
+    return state.positions;
+  });
+  expect(Math.min(...positions)).toBeGreaterThanOrEqual(top - 2);
+  expect(await page.locator('#shell-main').evaluate(el => el.scrollTop)).toBeCloseTo(top, 0);
+  await go(page, 'Calcs');
+  await page.getByRole('button', { name: 'All metrics', exact: true }).click();
+  const metrics = page.locator('.calcs-metric-list');
+  await metrics.evaluate(el => { el.scrollTop = 800; });
+  expect(await metrics.evaluate(el => el.scrollTop)).toBe(800);
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
+  expect(await metrics.evaluate(el => el.scrollTop)).toBe(800);
+});
 
 test('applicable view hides irrelevant controls, all options exposes them, imported false and zero persist', async ({ page }, testInfo) => {
   await page.goto('/build');

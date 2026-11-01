@@ -229,9 +229,9 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
           {route === 'overview' && <Overview session={session} view={view} lang={lang} navigate={navigate} focusStat={inspectStat} />}
           {route === 'build' && <BuildPage session={session} lang={lang} onImported={() => { setReviewStage({ scope: null }); navigate('overview'); }} />}
           {route === 'items' && <ItemsPanel session={session} lang={lang} onUpgrade={slot => { setUpgradeFocus({ slot, nonce: Date.now() }); navigate('trade'); }} />}
-          {route === 'config' && <ConfigPanel session={session} lang={lang} />}
+          {route === 'config' && <ConfigPanel session={session} lang={lang} settledCalc={view.calc} />}
           {/* One boundary per lazy page: a page that is still loading must not hide, and so re-run the effects of, the planners kept mounted beside it. */}
-            {route === 'calcs' && <Suspense fallback={panelLoading}><CalcsPanel session={session} lang={lang} focus={stageChanged ? null : calcsFocus} onFocusConsumed={() => setCalcsFocus(null)} /></Suspense>}
+            {route === 'calcs' && <Suspense fallback={panelLoading}><CalcsPanel session={session} lang={lang} settledCalc={view.calc} focus={stageChanged ? null : calcsFocus} onFocusConsumed={() => setCalcsFocus(null)} /></Suspense>}
             {route === 'compare' && <Suspense fallback={panelLoading}><ComparePanel session={session} lang={lang} /></Suspense>}
             {retained('tree') && <div hidden={route !== 'tree'}><PanelActivity active={route === 'tree'}><Suspense fallback={panelLoading}><TreePanel session={session} lang={lang} active={route === 'tree'} focusPlanner={stageChanged ? undefined : treeFocus} onJewelSearch={socket => { setUpgradeFocus({ slot: `Jewel@${socket}`, nonce: Date.now(), jewelType: 'radius' }); navigate('trade'); }} /></Suspense></PanelActivity></div>}
             {retained('skills') && <div hidden={route !== 'skills'}><PanelActivity active={route === 'skills'}><SkillsPanel session={session} lang={lang} active={route === 'skills'} focusOptimizer={stageChanged ? undefined : skillFocus} /></PanelActivity></div>}
