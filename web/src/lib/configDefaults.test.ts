@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import type { ConfigOption } from '../api/types';
-import { configDefaultValue } from './configDefaults';
+import { configDefaultValue, configValueDiffers } from './configDefaults';
 import { CONFIG_LABEL_ZH, CONFIG_LABEL_ZH_TW, configTooltip } from './configLabels';
 
 const version = readFileSync(new URL('../../../data/CURRENT', import.meta.url), 'utf8').trim();
@@ -76,4 +76,24 @@ test('Cadiro defaults to unspecified and uses each locale’s game arrow names',
   expect(configTooltip('zh-TW', arrow.var, arrow.tooltip)).toContain('未指定');
   expect(configTooltip('zh-CN', arrow.var, arrow.tooltip)).toContain('未指定');
   expect(configTooltip('en-US', arrow.var, arrow.tooltip)).toBe(arrow.tooltip);
+});
+
+
+test.each([true, false])('checkbox toggles back to default %s are no longer resettable', baseline => {
+  const option: ConfigOption = { var: 'flag', input_type: 'check', default: { state_bool: baseline } };
+  expect(configValueDiffers(option, undefined, undefined)).toBe(false);
+  expect(configValueDiffers(option, !baseline, undefined)).toBe(true);
+  expect(configValueDiffers(option, baseline, undefined)).toBe(false);
+  expect(configValueDiffers(option, Number(baseline), undefined)).toBe(false);
+  // An explicit imported choice remains the reset target, including false.
+  expect(configValueDiffers(option, baseline, !baseline)).toBe(true);
+  expect(configValueDiffers(option, !baseline, !baseline)).toBe(false);
+  expect(configValueDiffers(option, undefined, !baseline)).toBe(true);
+});
+
+test('reset comparison resolves catalog defaults without changing saved value types', () => {
+  expect(configValueDiffers({ var: 'flag', input_type: 'check' }, false, undefined)).toBe(false);
+  expect(configValueDiffers({ var: 'count', input_type: 'count', default: 0 }, 0, undefined)).toBe(false);
+  expect(configValueDiffers({ var: 'count', input_type: 'count', default: 0 }, '0', undefined)).toBe(true);
+  expect(configValueDiffers({ var: 'mode', input_type: 'list', list_options: [{ value: 'None', label: 'None' }] }, 'None', undefined)).toBe(false);
 });

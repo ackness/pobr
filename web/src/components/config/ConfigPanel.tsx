@@ -10,7 +10,7 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { useSkillName } from '../../hooks/useSkillName';
 import { bindT, configSectionLabel, damageTypeLabel, t, type Lang } from '../../lib/i18n';
 import { CONFIG_LABEL_ZH, configLabel, configListOptionLabel, configTooltip } from '../../lib/configLabels';
-import { configDefaultValue } from '../../lib/configDefaults';
+import { configDefaultValue, configValueDiffers } from '../../lib/configDefaults';
 import { configApplicability, configExistsInGame, configVisibilityInputs, showConfigOption, type Applicability } from '../../lib/configVisibility';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { workflowLabel } from './workflowLabels';
@@ -523,7 +523,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
                     key={option.var}
                     option={option}
                     value={effective(option.var)}
-                    overridden={isOverridden(option.var)}
+                    overridden={configValueDiffers(option, inputs[option.var], buildInputs[option.var])}
                     busy={session.busy}
                     lang={lang}
                     listLabels={listLabels}
