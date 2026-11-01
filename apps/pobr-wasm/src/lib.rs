@@ -48,7 +48,7 @@ pub use state::{
 /// compares them at boot (see [`wasm::schema_version`]); a mismatch prompts
 /// a hard refresh — closing the door on "stale frontend cache + new wasm
 /// assets" silently breaking.
-pub const SCHEMA_VERSION: u32 = 16;
+pub const SCHEMA_VERSION: u32 = 17;
 
 /// wasm-bindgen bindings: compiled only under the `wasm` feature, exposing
 /// functions with the same names as the host API to JS.

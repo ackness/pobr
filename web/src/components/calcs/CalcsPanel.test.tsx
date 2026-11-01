@@ -1,12 +1,30 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
-import type { Breakdown } from '../../api/types';
+import type { Breakdown, CalculateBuildResponse } from '../../api/types';
 import { BreakdownTable, CalcsPanel } from './CalcsPanel';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { UiProvider } from '../shared/UiContext';
 import { TooltipProvider } from '../ui/tooltip';
 
 const empty: Breakdown = { base_total: 0, inc_total: 0, more_total: 1, mods: [], formula: null };
+
+test('recalculation retains the metric list and settled detail instead of collapsing the page', () => {
+  const settled = { stats: [{ id: 'Life', category: 'Resource', value: 1234 }],
+    breakdowns: { Life: { ...empty, base_total: 1234 } }, breakdown_descriptors: { Life: 'steps' }, minions: [] } as unknown as CalculateBuildResponse;
+  const session = { calc: null, busy: true, socketGroups: [], calcParams: {} } as unknown as BuildSession;
+  const html = renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider>
+    <CalcsPanel session={session} settledCalc={settled} lang="en-US" />
+  </TooltipProvider></UiProvider>);
+  expect(html).toContain('class="calcs-explorer"');
+  expect(html).toContain('aria-busy="true"');
+  expect(html).toContain('1,234');
+  expect(html).toContain('Base total: <strong>1,234</strong>');
+  const failed = renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider>
+    <CalcsPanel session={{ ...session, calcError: 'Failed calculation' }} settledCalc={settled} lang="en-US" />
+  </TooltipProvider></UiProvider>);
+  expect(failed).toContain('Failed calculation');
+  expect(failed).not.toContain('class="calcs-explorer"');
+});
 
 test('Calcs selects an available resource without eager skill overview or attribution', () => {
   const session = { calc: { stats: [{ id: 'Life', category: 'Resource', value: 100 }],

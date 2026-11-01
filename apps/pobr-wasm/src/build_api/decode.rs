@@ -66,6 +66,7 @@ struct ItemsJson {
     jewels: Vec<String>,
     /// Tree-socketed jewels (editable: maintained per-socket on the passive tree page).
     socket_jewels: Vec<SocketJewelJson>,
+    equipment_jewels: Vec<SlotItemJson>,
     flasks: Vec<SlotItemJson>,
     /// Transcendent limbs, by stable slot id (`arm1` … `leg2`).
     limbs: Vec<SlotItemJson>,
@@ -267,6 +268,11 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
                 .map(|(slot, text)| SlotItemJson { slot, text })
                 .collect(),
             jewels: raw_items.jewels,
+            equipment_jewels: raw_items
+                .equipment_jewels
+                .into_iter()
+                .map(|(slot, text)| SlotItemJson { slot, text })
+                .collect(),
             socket_jewels: raw_items
                 .socket_jewels
                 .into_iter()
@@ -821,6 +827,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
             equipped,
             jewels: Vec::new(),
             socket_jewels: Vec::new(),
+            equipment_jewels: Vec::new(),
             flasks: Vec::new(),
             limbs: Vec::new(),
         },

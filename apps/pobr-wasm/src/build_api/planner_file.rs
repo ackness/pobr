@@ -519,7 +519,10 @@ fn export_build(
         hints.retain(|h| h["inventory_id"] != "Flask1" || h["slot_x"].as_u64().unwrap_or(0) != x);
         hints.push(json!({"inventory_id":"Flask1", "slot_x":x, "additional_text":item.text.replace(['{','}'], "")}));
     }
-    if !build.items.socket_jewels.is_empty() || !build.items.limbs.is_empty() {
+    if !build.items.socket_jewels.is_empty()
+        || !build.items.equipment_jewels.is_empty()
+        || !build.items.limbs.is_empty()
+    {
         warnings
             .push("Jewels and limbs have no planner inventory mapping and were omitted.".into());
     }

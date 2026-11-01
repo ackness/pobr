@@ -41,7 +41,7 @@ describe('complete jewel/passive plan application', () => {
     tree_version: current.treeVersion, character: current.character,
     allocated_nodes: current.allocatedNodes, attribute_choices: current.attributeChoices,
     socket_groups: current.socketGroups, weapon_swap: current.weaponSwap, items: current.items, flasks: current.flasks,
-    limbs: current.limbs, jewels: current.jewels, main_socket_group: current.params.main_socket_group,
+    limbs: current.limbs, jewels: current.jewels, equipment_jewels: [], main_socket_group: current.params.main_socket_group,
     enemy_tier: current.params.enemy_tier, extra_modifiers: current.params.extra_modifiers,
     custom_modifier_blocks: current.params.custom_modifier_blocks,
     config_inputs: current.params.config_inputs,
@@ -211,6 +211,21 @@ describe('saved-session validation', () => {
     expect(materialize(decoded([limb])).limbs).toEqual([limb]);
     expect(materialize(decoded([limb])).items).toEqual([]);
     expect(materialize(decoded()).limbs).toEqual([]);
+  });
+
+  test('equipment jewels survive old saves, tree edits and explicit removal', () => {
+    const jewel = { slot: 'Gloves Jewel Socket 1', text: 'Rarity: RARE\nKraken Eye\nRuby\n+20 to maximum Life' };
+    const decoded = { tree: {}, socket_groups: [], items: { equipped: [], equipment_jewels: [jewel] } } as unknown as BuildJson;
+    expect(materialize(decoded).equipmentJewels).toEqual([jewel]);
+    const legacy = parseState({ sourceBackfillComplete: true })!.state;
+    expect(legacy.equipmentJewels).toBeUndefined();
+    const restored = backfillFromDecoded(legacy, decoded);
+    expect(toRequest({ ...restored, jewels: [] }).equipment_jewels).toEqual([jewel]);
+    const persisted = parseSaved(JSON.stringify({ ...saved, state: restored }))!.state;
+    expect(persisted.equipmentJewels).toEqual([jewel]);
+    const cleared = parseState({ sourceBackfillComplete: true, equipmentJewels: [] })!.state;
+    expect(toRequest(backfillFromDecoded(cleared, decoded)).equipment_jewels).toEqual([]);
+    expect(parseState({ equipmentJewels: [{ ...jewel, slot: 'Jewel 123' }] })).toBeNull();
   });
 
   test.each([

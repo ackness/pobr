@@ -77,6 +77,8 @@ interface BuildState {
   limbs: SlotItemInput[];
   /** 树插槽珠宝（插槽号 + PoB 文本；插槽加点才生效）。 */
   jewels: JewelInput[];
+  /** Exact PoB equipment socket names; undefined only in older saved states. */
+  equipmentJewels?: SlotItemInput[];
   /** 局部注释（key 约定见 lib/annotations）；不参与计算，分享时嵌入 <Notes>。 */
   annotations: Annotations;
   params: CalcParams;
@@ -287,6 +289,7 @@ export function toRequest(state: BuildState): CalculateBuildRequest {
     flasks: state.flasks,
     limbs: state.limbs,
     jewels: state.jewels,
+    equipment_jewels: state.equipmentJewels ?? [],
     main_socket_group: state.params.main_socket_group,
     enemy_tier: state.params.enemy_tier,
     extra_modifiers: state.params.extra_modifiers,
@@ -476,11 +479,13 @@ export function parseSaved(json: string): SavedSession | null {
     // Saved before limbs were modelled: none.
     const limbs = state.limbs ?? [];
     const jewels = state.jewels ?? [];
+    const equipmentJewels = state.equipmentJewels;
     const annotations = state.annotations ?? {};
     const attributeChoices = state.attributeChoices ?? {};
     const params = state.params ?? {};
     if (!itemList(flasks, /^(Flask [12]|Charm [123])$/) || !itemList(limbs, /^(arm|leg)[12]$/)
       || !Array.isArray(jewels) || !jewels.every(jewel => record(jewel) && uint(jewel.socket_node) && typeof jewel.text === 'string')
+      || equipmentJewels !== undefined && !itemList(equipmentJewels, /^(?!Jewel).*Socket/)
       || !textMap(annotations) || !record(attributeChoices)
       || !Object.entries(attributeChoices).every(([node, choice]) => /^\d+$/.test(node) && uint(Number(node)) && typeof choice === 'string' && ['str', 'dex', 'int'].includes(choice))
       || !record(params) || !optionalIndex(params.main_socket_group)
@@ -516,6 +521,7 @@ export function parseSaved(json: string): SavedSession | null {
         flasks,
         limbs,
         jewels: jewels as JewelInput[],
+        ...(equipmentJewels !== undefined ? { equipmentJewels } : {}),
         annotations: annotations as Annotations,
         params: paramsFromConfigInputs(configInputs as Record<string, ConfigInputValue>, {
           ...(params.main_socket_group != null ? { main_socket_group: Number(params.main_socket_group) } : {}),
@@ -547,6 +553,11 @@ function itemName(text: string): string {
  * 兜底的 XML config / 主技能组，恢复会话时从解码结果回填（已保存的显式值优先）。
  */
 export function backfillFromDecoded(state: BuildState, decoded: BuildJson): BuildState {
+  // This field was not stored by earlier clients, including ones that already
+  // finished the original source backfill. An explicit [] is a saved removal.
+  if (state.equipmentJewels === undefined && decoded.items?.equipment_jewels !== undefined) {
+    state = { ...state, equipmentJewels: decoded.items.equipment_jewels };
+  }
   if (state.sourceBackfillComplete) return state;
   const decodedParams = paramsFromDecoded(decoded);
   const savedParams = paramsFromConfigInputs(state.params.config_inputs, state.params);
@@ -601,7 +612,7 @@ export function backfillFromDecoded(state: BuildState, decoded: BuildJson): Buil
 /** 解码结果 → 可编辑技能组/装备状态（物化，之后全走覆盖）。 */
 export function materialize(
   decoded: BuildJson,
-): Pick<BuildState, 'plannerSource' | 'treeVersion' | 'socketGroups' | 'items' | 'flasks' | 'limbs' | 'jewels' | 'weaponSwap'> {
+): Pick<BuildState, 'plannerSource' | 'treeVersion' | 'socketGroups' | 'items' | 'flasks' | 'limbs' | 'jewels' | 'equipmentJewels' | 'weaponSwap'> {
   return {
     ...(decoded.planner_source ? { plannerSource: decoded.planner_source } : {}),
     treeVersion: decoded.tree.tree_version,
@@ -630,6 +641,7 @@ export function materialize(
       })),
     })),
     items: decoded.items.equipped.map((item) => ({ slot: item.slot, text: item.text })),
+    equipmentJewels: (decoded.items.equipment_jewels ?? []).map(item => ({ slot: item.slot, text: item.text })),
     flasks: (decoded.items.flasks ?? []).map((f) => ({ slot: f.slot, text: f.text })),
     limbs: (decoded.items.limbs ?? []).map((limb) => ({ slot: limb.slot, text: limb.text })),
     jewels: (decoded.items.socket_jewels ?? []).map((j) => ({

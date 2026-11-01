@@ -79,7 +79,14 @@ fn decode_build_json_shape() {
     );
     assert_keys(
         &json["items"],
-        &["equipped", "jewels", "socket_jewels", "flasks", "limbs"],
+        &[
+            "equipped",
+            "jewels",
+            "socket_jewels",
+            "equipment_jewels",
+            "flasks",
+            "limbs",
+        ],
         "items",
     );
     assert_keys(
