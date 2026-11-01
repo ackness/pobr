@@ -4,6 +4,8 @@ use std::path::Path;
 
 use super::{Args, Profile, trust};
 
+pub(crate) mod selected;
+
 pub(crate) use super::convert::Tables;
 pub(crate) use super::model::{Graph, InstanceInput};
 pub(crate) use super::trust::VerifiedInput as VerifiedFacts;

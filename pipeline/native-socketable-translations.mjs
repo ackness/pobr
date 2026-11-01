@@ -1,5 +1,5 @@
 // Select literal display translations by the actual CSD record/branch consumed
-// by the ordinary socketable producer. Never flatten the complete native archive.
+// by ordinary socketable/tree producers. Never flatten the complete native archive.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -13,9 +13,17 @@ const key = ref => JSON.stringify([ref.file, ref.record, ref.branch]);
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const required = (ok, message) => { if (!ok) throw new Error(message); };
 
-function format(template, rawValues, tokens) {
+function format(template, rawValues, tokens, formatted) {
   const values = [...rawValues];
   required(values.every(Number.isSafeInteger), 'unsafe source integer');
+  if (formatted !== undefined) {
+    // Unit conversion belongs to the pinned Rust renderer. A verified receipt
+    // supplies its decimal literals; both languages use precisely those values.
+    required(Array.isArray(formatted) && formatted.length === values.length
+      && formatted.every(v => typeof v === 'string' && /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:e[+-]\d+)?$/u.test(v)),
+    'invalid Rust formatted values');
+    return substitute(template, formatted);
+  }
   required(tokens.length % 2 === 0, 'unsupported translation handler arity');
   for (let i = 0; i < tokens.length; i += 2) {
     const index = Number(tokens[i + 1]) - 1;
@@ -25,20 +33,39 @@ function format(template, rawValues, tokens) {
     values[index] *= scale;
     required(Number.isSafeInteger(values[index]), 'translation integer overflow');
   }
+  return substitute(template, values.map(String));
+}
+
+function substitute(template, values) {
   const rendered = template.replace(/\{(\d+)(?::(\+?d))?\}/gu, (_, index, spec) => {
     required(Number(index) < values.length, 'translation placeholder outside packet');
     const value = values[Number(index)];
-    return spec === '+d' && value >= 0 ? `+${value}` : String(value);
+    return spec === '+d' && !value.startsWith('-') ? `+${value}` : value;
   });
   required(!/[{}]/u.test(rendered), 'unsupported translation placeholder');
   return plain(rendered);
 }
 
 /** Preserve existing wording and add only context-bound, globally unambiguous literals. */
-export function nativeSocketableTranslations(legacy, selection, candidate) {
+export function nativeSelectedTranslations(legacy, selection, candidate) {
   required(Array.isArray(legacy) && legacy.every(p => typeof p.src === 'string' && typeof p.en === 'string'), 'invalid legacy translation pairs');
-  required(selection.format === 'pobr-ordinary-facts-receipt/v1'
-    && selection.adapter?.output_schema === 'pobr_data::catalog::item_overlay::RunesDef', 'not a socketable producer receipt');
+  required(selection.format === 'pobr-ordinary-facts-receipt/v1', 'not an ordinary producer receipt');
+  const schema = selection.adapter?.output_schema;
+  let records;
+  if (schema === 'pobr_data::catalog::item_overlay::RunesDef') records = selection.conversion.records;
+  else if (schema === 'pobr_data::catalog::{PassiveNodeDef[],PassiveTreeMeta}') {
+    records = [];
+    required(Array.isArray(selection.conversion?.projection?.source_records), 'missing target tree projection');
+    for (const node of selection.conversion.projection.source_records) {
+      const packets = [{ id: node.id, row: node.target_row, packet: 'node', text: node.text },
+        ...node.variants.map(v => ({ id: v.target, row: v.source_row, packet: `variant:${v.class}`, text: v.text }))];
+      for (const p of packets) {
+        if (p.text?.owner !== 'target-csd') continue;
+        records.push({ id: p.id, mode: 'target-csd', selected_descriptions: [{
+          packet: p.packet, source_row: p.row, prefix: '', evidence: p.text.descriptions }] });
+      }
+    }
+  } else throw new Error('unsupported ordinary selection schema');
   required(candidate.format === 'poe2-native-localization-candidate/v1' && Array.isArray(candidate.pairs), 'invalid native translation export');
   required(candidate.input?.manifest_sha256 === selection.conversion?.descriptions?.manifest_sha256
     && candidate.input?.source_identity?.game_patch === selection.target?.version, 'translation/selected fact identity mismatch');
@@ -58,7 +85,7 @@ export function nativeSocketableTranslations(legacy, selection, candidate) {
     }
   }
   const proposals = [], excluded = [];
-  for (const record of selection.conversion.records) {
+  for (const record of records) {
     if (record.mode !== 'target-csd') continue;
     for (const packet of record.selected_descriptions) {
       for (const evidence of packet.evidence) {
@@ -66,7 +93,7 @@ export function nativeSocketableTranslations(legacy, selection, candidate) {
         required(match, 'invalid selected description pointer');
         const ref = { file: match[1].replace(/~1/gu, '/').replace(/~0/gu, '~'), record: Number(match[2]), branch: evidence.branch };
         const pair = index.get(key(ref));
-        const provenance = { id: record.id, packet: packet.packet, source_row: packet.source_row, reference: ref, values: evidence.values };
+        const provenance = { id: record.id, packet: packet.packet, source_row: packet.source_row, reference: ref, values: evidence.values, formatted_values: evidence.formatted_values, equivalent_english_descriptors: evidence.equivalent_english_descriptors };
         if (!pair) { excluded.push({ reason: 'no-library-pair-for-selected-branch', provenance }); continue; }
         required(pair.declared_chinese_language === 'Simplified Chinese'
           && /\p{Script=Han}/u.test(pair.chinese_template_raw), 'invalid selected Chinese wording');
@@ -77,8 +104,8 @@ export function nativeSocketableTranslations(legacy, selection, candidate) {
             || chinese.get(skeleton(plain(pair.chinese_template_raw))).size !== 1) {
           excluded.push({ reason: 'context-free-translation-would-be-ambiguous', provenance }); continue;
         }
-        const en = format(pair.default_template_raw, evidence.values, handlers).split('\n');
-        const src = format(pair.chinese_template_raw, evidence.values, handlers).split('\n');
+        const en = format(pair.default_template_raw, evidence.values, handlers, evidence.formatted_values).split('\n');
+        const src = format(pair.chinese_template_raw, evidence.values, handlers, evidence.formatted_values).split('\n');
         if (en.length !== src.length) { excluded.push({ reason: 'multiline-alignment-unproven', provenance }); continue; }
         // Bonded is an existing item syntax marker, not a newly authored translation.
         // Keep it intact; this producer owns only the library's effect wording.
@@ -113,6 +140,9 @@ export function nativeSocketableTranslations(legacy, selection, candidate) {
     scope: 'Selected, unambiguous literal effect text only. Existing templates and untranslatable effects remain intact; no name translation or CN numeric equivalence claim.' } };
 }
 
+// Keep the original import API for existing socketable callers.
+export const nativeSocketableTranslations = nativeSelectedTranslations;
+
 function pinned(file, expected) {
   required(/^[a-f0-9]{64}$/u.test(expected), 'invalid external SHA256');
   const fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK | fs.constants.O_NOFOLLOW);
@@ -144,5 +174,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   fs.writeFileSync(path.join(out, 'receipt.json'), JSON.stringify({ ...result.report, inputs: options,
     files: { 'stat_lines.json': { bytes: Buffer.byteLength(lines), sha256: digest(lines) } },
     implementation_sha256: digest(fs.readFileSync(fileURLToPath(import.meta.url))), adoption: 'not-adopted' }, null, 2) + '\n', { flag: 'wx' });
-  console.log(`native socketable translations: ${result.report.added.length} literal pairs added; ${result.report.excluded.length} selections retained/excluded`);
+  console.log(`native selected translations: ${result.report.added.length} literal pairs added; ${result.report.excluded.length} selections retained/excluded`);
 }

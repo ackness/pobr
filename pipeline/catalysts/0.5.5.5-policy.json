@@ -1,0 +1,20 @@
+{
+  "import_ids": {
+    "JewelleryQualityAttack": 9,
+    "JewelleryQualityAttribute": 12,
+    "JewelleryQualityCaster": 10,
+    "JewelleryQualityChaos": 8,
+    "JewelleryQualityCold": 6,
+    "JewelleryQualityDefence": 3,
+    "JewelleryQualityFire": 5,
+    "JewelleryQualityLife": 1,
+    "JewelleryQualityLightning": 7,
+    "JewelleryQualityMana": 2,
+    "JewelleryQualityMinion": 13,
+    "JewelleryQualityPhysical": 4,
+    "JewelleryQualitySpeed": 11
+  },
+  "schema": "pobr-ordinary-catalyst-policy/v1",
+  "statement": "Stable quality identity to historical PoB XML Catalyst ordinal only (bb52d6b3 Classes/Item.lua). Names, descriptors, tags and currency relationships derive from target facts; this policy supplies no numerical effect or source applicability approval.",
+  "version": "0.5.5.5"
+}

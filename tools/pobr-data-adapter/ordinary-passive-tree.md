@@ -37,7 +37,8 @@ No client, Lua, network acquisition or implicit translation input is invoked.
 | Complete stat text | Target passive CSD scope and its explicit general include, using the complete ordered source stat/value list. Unsupported whole-node text uses a declared compatibility binding. |
 | Class replacements | Target class relations determine membership, aliases, names and complete text. Fixed class bindings identify old entries to replace/remove. Other variants remain guarded complete compatibility. |
 | Base class attributes | Target Characters values. |
-| Ascendancy IDs, unlock predicates, armour, unknown extensions | Fixed prepared fields and metadata. Source context changes fail pending an explicit interpretation. No Ascendancy ordinal or Requirement predicate is guessed. |
+| Ascendancy IDs, names, character/node relationships and replacements | With v2 policy and supplemental Ascendancy/AscendancyPassiveSkillOverrides, target physical rows; v1 retains prepared compatibility. |
+| Unlock predicates, armour, unknown extensions | Fixed prepared fields and metadata. Source context changes fail pending an explicit interpretation. No Requirement predicate is guessed. |
 
 The policy records the prepared source's original version and manifest. Its
 embedded metadata is the actual input; historical metadata paths are authoring
@@ -52,16 +53,53 @@ eligibility decision. New normal members with supported context and an explicit
 geometry binding can be emitted; removed members disappear. These are policy
 observations, not compiled node IDs or a fixed output count.
 
+## Supplemental ascendancy source
+
+Use `pipeline/passive-tree/0.5.5.5-ascendancy-tree-policy.json` and add
+`--supplement /absolute/selected-tables --supplement-manifest-sha256 "$SUPPLEMENT_SHA"`
+to the invocation above. The [selected-table envelope](ordinary-catalysts.md)
+must match F's game/patch/realm/schema and known producer. The v2 policy requires
+the supplement; v1 rejects it and remains reproducible.
+
+Target `Ascendancy.Character`, IDs and names regenerate the metadata membership;
+`PassiveSkills.Ascendancy` regenerates node ownership. The 14 exact placeholder
+exclusions are explicit eligibility policy, not a `Disabled`-only release law.
+New supported members propagate, removed members disappear or reject unresolved
+consumers, and changed/unused exclusions fail. Existing metadata extensions and
+relative ordering survive for retained IDs. `BaseAscendancy`, ClassNo and UI data
+remain in the receipt, without inventing allocation or historical ordinal laws.
+
+`AscendancyPassiveSkillOverrides` supplies replacement owners and targets through
+the same complete CSD/guarded text path as class overrides. Removal, renaming,
+new values and target changes propagate. A new unsupported target cannot inherit
+the former target's old text. All 13 source relationships remain in the receipt,
+including any not used by current emitted nodes. Only the source-owned Ascendancy
+field leaves the v2 compatibility context guard; `VisibleForAscendancy`,
+Requirement and other unknown conditions remain guarded.
+
 ## Complete text and compatibility
 
-The renderer handles integer values, `#`, exact/range conditions, indexed integer
-placeholders and the explicitly supported integer transforms `negate`, `double`
-and `negate_and_double`. It verifies lexical handler coverage. Unknown syntax,
-restrictions, transforms, ambiguous descriptor ownership, missing compound
-members or overlapping coverage reject the whole node's rendering. Every compound
-member must select the same unique effective descriptor; a parent compound cannot
-consume a child-owned or ambiguous member, regardless of source stat order.
-`no_description` is not treated as an effectless law. Non-stat grants also
+The renderer preserves signed source integers and selects `#` or exact/range
+conditions before formatting. It supports indexed placeholders, checked integer
+`negate`/`double`/`negate_and_double`, and these display-only unit handlers:
+`divide_by_one_hundred`, `divide_by_ten_1dp_if_required`,
+`per_minute_to_per_second`, `per_minute_to_per_second_2dp_if_required`,
+`milliseconds_to_seconds`, `milliseconds_to_seconds_1dp`, and
+`milliseconds_to_seconds_2dp_if_required`. Their precision follows the pinned
+PyPoE numeric-format definitions; the checked-in reference cases cover signed
+limits, rounding and zero. `canonical_line` is a zero-argument display marker.
+Raw values and formatted literals are both recorded. These are text formatting
+operations, not new calculation rules.
+
+Ordinary passive/item callers exclude only the known gem-quality-only branch.
+Unknown syntax, restrictions or transforms still reject the complete text.
+Duplicate descriptors can share an owner only when their complete English
+semantics agree after removing source positions; all original pointers/hashes
+remain in the receipt. Other language disagreements still go through the
+translation library's ambiguity checks. Every compound member must select the
+same effective descriptor; a parent compound cannot consume a child-owned or
+ambiguous member, regardless of source order. Missing compound values are never
+invented as zero. `no_description` is not an effectless law. Non-stat grants also
 require complete compatibility text.
 
 A fallback requires exact hashes of both the target non-owned context and the
@@ -73,8 +111,8 @@ never a silent old numeric line or partial native packet. A renderable value or
 name can change without passing an old-value equality gate. Unknown prepared
 node and variant fields retain their original JSON value/presence.
 
-For the fixed inputs, 4624 nodes use target CSD text (including empty-text layout
-icons), 1129 of those are multi-stat nodes, and 289 use guarded complete text.
+For the fixed inputs, 4803 nodes use target CSD text (including empty-text layout
+icons), 1228 of those are multi-stat nodes, and 110 use guarded complete text.
 These counts are production observations, not calculation-accuracy percentages.
 The existing mapper still produces 177 eligible single-stat native packets as
 an optimization. Multi-stat nodes use the same ordinary parser as other text;
@@ -89,7 +127,8 @@ The reader selects five physical tables (`PassiveSkills`, `PassiveSkillTrees`,
 the physical tables. Raw graph roots, splines and group flags are validated or
 retained in source evidence, not interpreted as new allocation rules.
 
-The output remains eight files: `_domain_candidate.json`, two base JSON files,
+The domain output remains eight files (the supplemental manifest and full raw
+relationship inventory are also embedded in the receipt): `_domain_candidate.json`, two base JSON files,
 verbatim `legacy-passive-tree.json` and `codec-policy.json`, source manifest and
 lock, and `producer-receipt.json`. All conversion precedes output reservation.
 Existing protections reject overwrite, symlinks and output inside input or

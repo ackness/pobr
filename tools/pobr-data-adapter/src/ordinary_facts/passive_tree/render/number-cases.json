@@ -1,0 +1,858 @@
+{
+  "source": {
+    "source_path": "PyPoE/poe/file/translations.py",
+    "sha256": "50f02a717f50ed774d9ff7a00e6ff10a75727c877bc43fb61b74236af302457a",
+    "repoe_pypoe_revision": "66d1d7442c5718260e1a8efd24989d22987e91af",
+    "role": "Existing pinned decoder numeric-format implementation reference, not raw game numeric values or new simulation laws",
+    "handlers": {
+      "divide_by_one_hundred": {
+        "divisor": 100
+      },
+      "per_minute_to_per_second": {
+        "divisor": 60,
+        "precision": 1,
+        "fixed": false
+      },
+      "per_minute_to_per_second_2dp_if_required": {
+        "divisor": 60,
+        "precision": 2,
+        "fixed": false
+      },
+      "milliseconds_to_seconds": {
+        "divisor": 1000
+      },
+      "milliseconds_to_seconds_1dp": {
+        "divisor": 1000,
+        "precision": 1,
+        "fixed": true
+      },
+      "milliseconds_to_seconds_2dp_if_required": {
+        "divisor": 1000,
+        "precision": 2,
+        "fixed": false
+      },
+      "divide_by_ten_1dp_if_required": {
+        "divisor": 10,
+        "precision": 1,
+        "fixed": false
+      }
+    },
+    "no_numeric_transform": [
+      "canonical_line"
+    ],
+    "limits": [
+      "Missing compound stat values are not invented as zero.",
+      "Identical English descriptor semantics may share an owner, with every original pointer retained.",
+      "No_description and missing source effects remain unsupported.",
+      "Language uses the same pinned Rust-formatted literals with identical source handlers."
+    ],
+    "reference_pipeline": "TQNumberFormat.handle -> TranslationQuantifierHandler._whole_float_to_int -> selected format"
+  },
+  "cases": [
+    {
+      "handler": "divide_by_one_hundred",
+      "value": -2147483648,
+      "expected": "-2.14748e+07"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": -1234567,
+      "expected": "-12345.7"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": -1501,
+      "expected": "-15.01"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": -999,
+      "expected": "-9.99"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": -75,
+      "expected": "-0.75"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": -1,
+      "expected": "-0.01"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": 0,
+      "expected": "0"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": 1,
+      "expected": "0.01"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": 7,
+      "expected": "0.07"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": 15,
+      "expected": "0.15"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": 29,
+      "expected": "0.29"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": 35,
+      "expected": "0.35"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": 60,
+      "expected": "0.6"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": 65,
+      "expected": "0.65"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": 75,
+      "expected": "0.75"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": 125,
+      "expected": "1.25"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": 999,
+      "expected": "9.99"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": 1000,
+      "expected": "10"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": 1501,
+      "expected": "15.01"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": 1234567,
+      "expected": "12345.7"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": 100000000,
+      "expected": "1000000"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": 2147483600,
+      "expected": "21474836"
+    },
+    {
+      "handler": "divide_by_one_hundred",
+      "value": 2147483647,
+      "expected": "2.14748e+07"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": -2147483648,
+      "expected": "-35791394.1"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": -1234567,
+      "expected": "-20576.1"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": -1501,
+      "expected": "-25"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": -999,
+      "expected": "-16.6"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": -75,
+      "expected": "-1.2"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": -1,
+      "expected": "-0"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": 0,
+      "expected": "0"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": 1,
+      "expected": "0"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": 7,
+      "expected": "0.1"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": 15,
+      "expected": "0.2"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": 29,
+      "expected": "0.5"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": 35,
+      "expected": "0.6"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": 60,
+      "expected": "1"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": 65,
+      "expected": "1.1"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": 75,
+      "expected": "1.2"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": 125,
+      "expected": "2.1"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": 999,
+      "expected": "16.6"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": 1000,
+      "expected": "16.7"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": 1501,
+      "expected": "25"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": 1234567,
+      "expected": "20576.1"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": 100000000,
+      "expected": "1666666.7"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": 2147483600,
+      "expected": "35791393.3"
+    },
+    {
+      "handler": "per_minute_to_per_second",
+      "value": 2147483647,
+      "expected": "35791394.1"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": -2147483648,
+      "expected": "-35791394.13"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": -1234567,
+      "expected": "-20576.12"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": -1501,
+      "expected": "-25.02"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": -999,
+      "expected": "-16.65"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": -75,
+      "expected": "-1.25"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": -1,
+      "expected": "-0.02"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": 0,
+      "expected": "0"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": 1,
+      "expected": "0.02"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": 7,
+      "expected": "0.12"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": 15,
+      "expected": "0.25"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": 29,
+      "expected": "0.48"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": 35,
+      "expected": "0.58"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": 60,
+      "expected": "1"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": 65,
+      "expected": "1.08"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": 75,
+      "expected": "1.25"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": 125,
+      "expected": "2.08"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": 999,
+      "expected": "16.65"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": 1000,
+      "expected": "16.67"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": 1501,
+      "expected": "25.02"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": 1234567,
+      "expected": "20576.12"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": 100000000,
+      "expected": "1666666.67"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": 2147483600,
+      "expected": "35791393.33"
+    },
+    {
+      "handler": "per_minute_to_per_second_2dp_if_required",
+      "value": 2147483647,
+      "expected": "35791394.12"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": -2147483648,
+      "expected": "-2.14748e+06"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": -1234567,
+      "expected": "-1234.57"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": -1501,
+      "expected": "-1.501"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": -999,
+      "expected": "-0.999"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": -75,
+      "expected": "-0.075"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": -1,
+      "expected": "-0.001"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": 0,
+      "expected": "0"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": 1,
+      "expected": "0.001"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": 7,
+      "expected": "0.007"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": 15,
+      "expected": "0.015"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": 29,
+      "expected": "0.029"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": 35,
+      "expected": "0.035"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": 60,
+      "expected": "0.06"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": 65,
+      "expected": "0.065"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": 75,
+      "expected": "0.075"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": 125,
+      "expected": "0.125"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": 999,
+      "expected": "0.999"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": 1000,
+      "expected": "1"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": 1501,
+      "expected": "1.501"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": 1234567,
+      "expected": "1234.57"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": 100000000,
+      "expected": "100000"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": 2147483600,
+      "expected": "2.14748e+06"
+    },
+    {
+      "handler": "milliseconds_to_seconds",
+      "value": 2147483647,
+      "expected": "2.14748e+06"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": -2147483648,
+      "expected": "-2147483.6"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": -1234567,
+      "expected": "-1234.6"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": -1501,
+      "expected": "-1.5"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": -999,
+      "expected": "-1.0"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": -75,
+      "expected": "-0.1"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": -1,
+      "expected": "-0.0"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": 0,
+      "expected": "0.0"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": 1,
+      "expected": "0.0"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": 7,
+      "expected": "0.0"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": 15,
+      "expected": "0.0"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": 29,
+      "expected": "0.0"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": 35,
+      "expected": "0.0"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": 60,
+      "expected": "0.1"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": 65,
+      "expected": "0.1"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": 75,
+      "expected": "0.1"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": 125,
+      "expected": "0.1"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": 999,
+      "expected": "1.0"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": 1000,
+      "expected": "1.0"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": 1501,
+      "expected": "1.5"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": 1234567,
+      "expected": "1234.6"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": 100000000,
+      "expected": "100000.0"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": 2147483600,
+      "expected": "2147483.6"
+    },
+    {
+      "handler": "milliseconds_to_seconds_1dp",
+      "value": 2147483647,
+      "expected": "2147483.6"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": -2147483648,
+      "expected": "-2147483.65"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": -1234567,
+      "expected": "-1234.57"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": -1501,
+      "expected": "-1.5"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": -999,
+      "expected": "-1"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": -75,
+      "expected": "-0.07"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": -1,
+      "expected": "-0"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": 0,
+      "expected": "0"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": 1,
+      "expected": "0"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": 7,
+      "expected": "0.01"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": 15,
+      "expected": "0.01"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": 29,
+      "expected": "0.03"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": 35,
+      "expected": "0.04"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": 60,
+      "expected": "0.06"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": 65,
+      "expected": "0.07"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": 75,
+      "expected": "0.07"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": 125,
+      "expected": "0.12"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": 999,
+      "expected": "1"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": 1000,
+      "expected": "1"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": 1501,
+      "expected": "1.5"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": 1234567,
+      "expected": "1234.57"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": 100000000,
+      "expected": "100000"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": 2147483600,
+      "expected": "2147483.6"
+    },
+    {
+      "handler": "milliseconds_to_seconds_2dp_if_required",
+      "value": 2147483647,
+      "expected": "2147483.65"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": -2147483648,
+      "expected": "-214748364.8"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": -1234567,
+      "expected": "-123456.7"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": -1501,
+      "expected": "-150.1"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": -999,
+      "expected": "-99.9"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": -75,
+      "expected": "-7.5"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": -1,
+      "expected": "-0.1"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": 0,
+      "expected": "0"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": 1,
+      "expected": "0.1"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": 7,
+      "expected": "0.7"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": 15,
+      "expected": "1.5"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": 29,
+      "expected": "2.9"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": 35,
+      "expected": "3.5"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": 60,
+      "expected": "6"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": 65,
+      "expected": "6.5"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": 75,
+      "expected": "7.5"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": 125,
+      "expected": "12.5"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": 999,
+      "expected": "99.9"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": 1000,
+      "expected": "100"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": 1501,
+      "expected": "150.1"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": 1234567,
+      "expected": "123456.7"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": 100000000,
+      "expected": "10000000"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": 2147483600,
+      "expected": "214748360"
+    },
+    {
+      "handler": "divide_by_ten_1dp_if_required",
+      "value": 2147483647,
+      "expected": "214748364.7"
+    }
+  ]
+}

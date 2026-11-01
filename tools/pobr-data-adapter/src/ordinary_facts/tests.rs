@@ -76,6 +76,8 @@ impl Fixture {
         Args {
             tree_refresh: None,
             item_descriptions: None,
+            supplement: None,
+            catalog_policy: None,
             input: self.root.join("input"),
             expected_manifest_sha256: sha256_hex(
                 &fs::read(self.root.join("input/manifest.json")).unwrap(),
