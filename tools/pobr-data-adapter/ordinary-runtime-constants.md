@@ -93,6 +93,9 @@ fourteen when the optional ailments file is selected:
 - `source-manifest.json` and `source-lock.json`
 - `producer-receipt.json` last
 
+Selecting player context adds eight verbatim `player-*` archive files, making
+twenty-two files with the ailments policy.
+
 Validation and serialization finish before reservation. `Output` reuses its
 existing held-directory layer writer for `legacy-constants`, including exclusive
 creation and namespace checks. Output may not overlap F, the supplied snapshot,
