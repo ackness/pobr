@@ -2,6 +2,7 @@
 
 mod actors;
 mod base_items;
+mod boss_poise;
 mod catalysts;
 mod convert;
 mod gem_effects;
@@ -78,6 +79,7 @@ enum Domain {
     RuntimeConstants,
     Socketables,
     Catalysts,
+    BossPoise,
     Unarmed,
 }
 
@@ -101,6 +103,7 @@ impl Domain {
             Self::RuntimeConstants => &runtime_constants::TABLES,
             Self::Socketables => &socketables::TABLES,
             Self::Catalysts => &catalysts::TABLES,
+            Self::BossPoise => &boss_poise::TABLES,
             Self::Unarmed => &unarmed::TABLES,
         }
     }
@@ -125,6 +128,7 @@ impl Domain {
             Self::RuntimeConstants => "ordinary-runtime-constants",
             Self::Socketables => "ordinary-socketables",
             Self::Catalysts => "ordinary-catalysts",
+            Self::BossPoise => "ordinary-boss-poise",
             Self::Unarmed => "ordinary-unarmed-data",
         }
     }
@@ -149,6 +153,7 @@ impl Domain {
             Self::RuntimeConstants => "runtime-constants",
             Self::Socketables => "socketables",
             Self::Catalysts => "catalysts",
+            Self::BossPoise => "boss-poise",
             Self::Unarmed => "unarmed-data",
         }
     }
@@ -210,6 +215,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("runtime-constants") => Domain::RuntimeConstants,
         Some("socketables") => Domain::Socketables,
         Some("catalysts") => Domain::Catalysts,
+        Some("boss-poise") => Domain::BossPoise,
         Some("unarmed-data") => Domain::Unarmed,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
@@ -290,12 +296,14 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         values.remove("--catalog-policy"),
         values.remove("--catalog-policy-sha256"),
     ) {
-        (Some(path), Some(sha256)) if domain == Domain::Catalysts => Some(BranchCodecArgs {
-            path: path.into(),
-            sha256,
-        }),
-        (None, None) if domain != Domain::Catalysts => None,
-        _ => return Err("paired catalog policy arguments require catalysts".into()),
+        (Some(path), Some(sha256)) if matches!(domain, Domain::Catalysts | Domain::BossPoise) => {
+            Some(BranchCodecArgs {
+                path: path.into(),
+                sha256,
+            })
+        }
+        (None, None) if !matches!(domain, Domain::Catalysts | Domain::BossPoise) => None,
+        _ => return Err("paired catalog policy arguments require catalysts or boss-poise".into()),
     };
     let base_compatibility = domain == Domain::BaseItems
         && [
@@ -447,6 +455,26 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
             )
         }
 
+        Domain::BossPoise => {
+            let converted = boss_poise::convert(
+                &input,
+                args.catalog_policy
+                    .as_ref()
+                    .ok_or("missing boss poise policy")?,
+            )?;
+            output.protect(&converted.policy_parent)?;
+            overlay = BTreeMap::from([("boss_poise_thresholds.json".into(), converted.bytes)]);
+            codec_policy_bytes = Some(converted.policy_bytes);
+            (
+                BTreeMap::new(),
+                converted.receipt,
+                "pobr_data::catalog::boss_poise_thresholds::BossPoiseThresholdsDef",
+                vec![
+                    "Target MonsterVarieties supplies the numeric values; the explicit policy retains the generic MAP-mode/Xesht/Uber-alias preset selection. It is not a universal boss law.",
+                    "Existing version-overlay priority, DTO and ordinary consumer remain unchanged. Source acquisition is draft; CURRENT is unchanged.",
+                ],
+            )
+        }
         Domain::Catalysts => {
             let converted = catalysts::convert(
                 &input,
@@ -1013,6 +1041,15 @@ fn implementation_sha256() -> String {
     let mut bytes = Vec::new();
     // Content revision records the compiled implementation, not whichever checkout invokes it.
     for (name, source) in [
+        (
+            "ordinary_facts/boss_poise.rs",
+            include_bytes!("ordinary_facts/boss_poise.rs").as_slice(),
+        ),
+        (
+            "catalog/boss_poise_thresholds.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/boss_poise_thresholds.rs")
+                .as_slice(),
+        ),
         (
             "catalog/native_runtime.rs",
             include_bytes!("../../../crates/pobr-data/src/catalog/native_runtime.rs").as_slice(),
