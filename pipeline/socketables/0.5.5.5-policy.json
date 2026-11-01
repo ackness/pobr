@@ -1,0 +1,1472 @@
+{
+  "categories": {
+    "All": [
+      "armour",
+      "caster",
+      "weapon"
+    ],
+    "Armour": [
+      "armour"
+    ],
+    "Body Armour": [
+      "body armour"
+    ],
+    "Boots": [
+      "boots"
+    ],
+    "Bow": [
+      "bow"
+    ],
+    "Buckler": [
+      "buckler"
+    ],
+    "Caster Weapon": [
+      "caster"
+    ],
+    "Crossbow": [
+      "crossbow"
+    ],
+    "Crossbow Bow or Spear": [
+      "crossbow",
+      "bow",
+      "spear"
+    ],
+    "Focus": [
+      "focus"
+    ],
+    "Gloves": [
+      "gloves"
+    ],
+    "Helmet": [
+      "helmet"
+    ],
+    "Maces or Talisman": [
+      "one hand mace",
+      "two hand mace",
+      "talisman"
+    ],
+    "Martial Or Caster Weapon": [
+      "weapon",
+      "caster"
+    ],
+    "Martial Weapon": [
+      "weapon"
+    ],
+    "Martial Weapon Wand or Staff": [
+      "weapon",
+      "wand",
+      "staff"
+    ],
+    "One Hand Mace": [
+      "one hand mace"
+    ],
+    "One Hand Mace or Quarterstaff": [
+      "one hand mace",
+      "quarterstaff"
+    ],
+    "Quarterstaff": [
+      "quarterstaff"
+    ],
+    "Quarterstaff or Spear": [
+      "quarterstaff",
+      "spear"
+    ],
+    "Sceptre": [
+      "sceptre"
+    ],
+    "Shield": [
+      "shield"
+    ],
+    "Shield or Buckler": [
+      "shield",
+      "buckler"
+    ],
+    "Spear": [
+      "spear"
+    ],
+    "Staff": [
+      "staff"
+    ],
+    "Talisman": [
+      "talisman"
+    ],
+    "Two Hand Mace": [
+      "two hand mace"
+    ],
+    "Two Handed Weapon": [
+      "quarterstaff",
+      "two hand mace",
+      "talisman",
+      "crossbow",
+      "bow",
+      "staff"
+    ],
+    "Wand": [
+      "wand"
+    ],
+    "Wand or Staff": [
+      "wand",
+      "staff"
+    ]
+  },
+  "category_item_classes": {
+    "All": [],
+    "Armour": [],
+    "Body Armour": [
+      "Body Armour"
+    ],
+    "Boots": [
+      "Boots"
+    ],
+    "Bow": [
+      "Bow"
+    ],
+    "Buckler": [
+      "Buckler"
+    ],
+    "Caster Weapon": [
+      "Wand",
+      "Staff",
+      "Sceptre"
+    ],
+    "Crossbow": [
+      "Crossbow"
+    ],
+    "Crossbow Bow or Spear": [
+      "Spear",
+      "Crossbow",
+      "Bow"
+    ],
+    "Focus": [
+      "Focus"
+    ],
+    "Gloves": [
+      "Gloves"
+    ],
+    "Helmet": [
+      "Helmet"
+    ],
+    "Maces or Talisman": [
+      "One Hand Mace",
+      "Two Hand Mace",
+      "Talisman"
+    ],
+    "Martial Or Caster Weapon": [
+      "Wand",
+      "Staff",
+      "Sceptre"
+    ],
+    "Martial Weapon": [],
+    "Martial Weapon Wand or Staff": [
+      "Wand",
+      "Staff"
+    ],
+    "One Hand Mace": [
+      "One Hand Mace"
+    ],
+    "One Hand Mace or Quarterstaff": [
+      "One Hand Mace",
+      "Warstaff"
+    ],
+    "Quarterstaff": [
+      "Warstaff"
+    ],
+    "Quarterstaff or Spear": [
+      "Warstaff",
+      "Spear"
+    ],
+    "Sceptre": [
+      "Sceptre"
+    ],
+    "Shield": [
+      "Shield"
+    ],
+    "Shield or Buckler": [
+      "Shield",
+      "Buckler"
+    ],
+    "Spear": [
+      "Spear"
+    ],
+    "Staff": [
+      "Staff"
+    ],
+    "Talisman": [
+      "Talisman"
+    ],
+    "Two Hand Mace": [
+      "Two Hand Mace"
+    ],
+    "Two Handed Weapon": [
+      "Warstaff",
+      "Two Hand Mace",
+      "Talisman",
+      "Crossbow",
+      "Bow",
+      "Staff"
+    ],
+    "Wand": [
+      "Wand"
+    ],
+    "Wand or Staff": [
+      "Wand",
+      "Staff"
+    ]
+  },
+  "compatibility": {
+    "Metadata/Items/SoulCores/AmanamusGaze": {
+      "effects_sha256": "404140e6b7a4c658972416e6c6cd3cbc538a7341e2ea6649d57c2e47160e574a",
+      "name": "Amanamu's Gaze"
+    },
+    "Metadata/Items/SoulCores/AugmentAnoint": {
+      "effects_sha256": "ae833f792bffd0e8fa0124419bfda526b3db2e82fbcd5f7bc912c1acaae390f7",
+      "name": "Raven-Touched Shard"
+    },
+    "Metadata/Items/SoulCores/CarvedCunning": {
+      "effects_sha256": "179c0af299f18582656375149cfc672f0f40f1de6c574343f7a6b182e9cd9dba",
+      "name": "Carved Cunning"
+    },
+    "Metadata/Items/SoulCores/CarvedMajesty": {
+      "effects_sha256": "59d2aa0c0027881e9dc0480d6f88271979558b3643f96a350edd4f9b9fc78a72",
+      "name": "Carved Majesty"
+    },
+    "Metadata/Items/SoulCores/CarvedMischief": {
+      "effects_sha256": "d210dfb8366c7eaf91c0c6e6ecba99a54c9679822bf2b6953542f420e2455f9a",
+      "name": "Carved Mischief"
+    },
+    "Metadata/Items/SoulCores/CarvedTenacity": {
+      "effects_sha256": "fec90130b14b5ea11dbab17a25c71d207e606c2745943e40fd05768adb62f92d",
+      "name": "Carved Tenacity"
+    },
+    "Metadata/Items/SoulCores/EmergentInstinct": {
+      "effects_sha256": "d4c9b676d2e9a901b8126c684e9c385d376958b9496a9504f13a60c65b42ff89",
+      "name": "Emergent Instinct"
+    },
+    "Metadata/Items/SoulCores/EmergentPossibility": {
+      "effects_sha256": "60a6fc96b1ebbc1e5d7b56306def0cefe8a0d3ed6289b4173788e070b4b34a1d",
+      "name": "Emergent Possibility"
+    },
+    "Metadata/Items/SoulCores/EmergentProtection": {
+      "effects_sha256": "448347ab368594388a93f90b5fcf699e629cebe062829104f6e59dd5adcf50f7",
+      "name": "Emergent Protection"
+    },
+    "Metadata/Items/SoulCores/EmergentVigour": {
+      "effects_sha256": "ddaa5e16106423e50850db97de222ff886aa433a4306bf742036b85675ac4b1b",
+      "name": "Emergent Vigour"
+    },
+    "Metadata/Items/SoulCores/IdolCorrupted1": {
+      "effects_sha256": "368817e6c78d766f013b6ec1012ef98c532f3ab9bb9fd722d3f9603eb92b6583",
+      "name": "Idol of the Sycophant"
+    },
+    "Metadata/Items/SoulCores/IdolCorrupted2": {
+      "effects_sha256": "2f2f5f92776123e3ac7aa8ca39f4c294310cf9c36b4e0e8edc226889f30e3392",
+      "name": "Idol of the Martyr"
+    },
+    "Metadata/Items/SoulCores/IdolCorrupted3": {
+      "effects_sha256": "83885856dbe4e0eb7cb0afa6cf0544ec191d97ee73a87d6c54674c0ebb274c4b",
+      "name": "Idol of the Pharisee"
+    },
+    "Metadata/Items/SoulCores/IdolHawk": {
+      "effects_sha256": "a0818c20ef9c09f34814d320b0843f820c7a5880e015cd4084a7746fba373885",
+      "name": "Hawk Idol"
+    },
+    "Metadata/Items/SoulCores/IdolPanther": {
+      "effects_sha256": "4cfae9e8deadcaa4060ca403555244679c7b57cba4e73d25f93873f781ca5e0d",
+      "name": "Panther Idol"
+    },
+    "Metadata/Items/SoulCores/IdolSpecial1": {
+      "effects_sha256": "eab057802e3d8846eb6d12e6e69ad57c0437f17f799f1471ab58e6e6e8352981",
+      "name": "Idol of Greust"
+    },
+    "Metadata/Items/SoulCores/IdolSpecial2": {
+      "effects_sha256": "838a33bdb2fcd2fe9329800667646573cf393c2f38140d19170fd9e2d296f91c",
+      "name": "Idol of Yeena"
+    },
+    "Metadata/Items/SoulCores/IdolSpecial3": {
+      "effects_sha256": "b8703953892d60d9231f9d3e0f49a39dcdc07d0417cf5c3b4bdec1661cd43b81",
+      "name": "Idol of Eramir"
+    },
+    "Metadata/Items/SoulCores/IdolSpecial4": {
+      "effects_sha256": "6ad714442e74e2fa8fb64f5338f0a4be0648ab5e1189a54e1bcc4b375e3cca5f",
+      "name": "Idol of Oak"
+    },
+    "Metadata/Items/SoulCores/IdolSpecial5": {
+      "effects_sha256": "170dd37b30163c94842d85884417b6f058f86011c0d437b9c6c7dad0faec5816",
+      "name": "Idol of Alira"
+    },
+    "Metadata/Items/SoulCores/IdolSpecial6": {
+      "effects_sha256": "2b47f8580f5f7e505d7cf0ad8f91e6b7dd263a3b635bfa9cbd403a3b8e0d9771",
+      "name": "Idol of Kraityn"
+    },
+    "Metadata/Items/SoulCores/IdolSpecial7": {
+      "effects_sha256": "ed5bf273c262114e2e1dbb3e702f3c4965dc73121118aa6e50e120f8e95219f0",
+      "name": "Idol of Silk"
+    },
+    "Metadata/Items/SoulCores/IdolStoat": {
+      "effects_sha256": "954482ababc00ce5f3106ccb3a3ea1d554916e20e357369015723dd7a8ee02ea",
+      "name": "Stoat Idol"
+    },
+    "Metadata/Items/SoulCores/KurgalsGaze": {
+      "effects_sha256": "da5506a9b93c037d9152067edc619f284a42f448eafe68469b8439674f3aec4c",
+      "name": "Kurgal's Gaze"
+    },
+    "Metadata/Items/SoulCores/RuneAccuracy": {
+      "effects_sha256": "54e375437fd740891100a67a0b5bd3e322508a152fd9b66b1dc8a35b4b824e26",
+      "name": "Vision Rune"
+    },
+    "Metadata/Items/SoulCores/RuneAccuracyGreater": {
+      "effects_sha256": "200f9f4f010845a4a6c680202d9b1e68248fd859b89517902ffe26e0c0f505cc",
+      "name": "Greater Vision Rune"
+    },
+    "Metadata/Items/SoulCores/RuneAccuracyLesser": {
+      "effects_sha256": "29b7db2bd3d170fad445b76bc40376b73f65dda6c153d67b08902668b749a002",
+      "name": "Lesser Vision Rune"
+    },
+    "Metadata/Items/SoulCores/RuneAccuracyPerfect": {
+      "effects_sha256": "4c3ad6e6cca6f1897b7323967fa0407a4d804a737345fa93c91fb577d7cc9fd3",
+      "name": "Perfect Vision Rune"
+    },
+    "Metadata/Items/SoulCores/RuneCold": {
+      "effects_sha256": "670cc9a28b6de67a1f88d918ec757bef66b68695caf061059d8b1ef466d16b54",
+      "name": "Glacial Rune"
+    },
+    "Metadata/Items/SoulCores/RuneColdGreater": {
+      "effects_sha256": "b28293723d05d098f4ef8b9dd4c528d1f0b58367839bed2966c4c3c08b7789dc",
+      "name": "Greater Glacial Rune"
+    },
+    "Metadata/Items/SoulCores/RuneColdLesser": {
+      "effects_sha256": "1683775f0e042b9cefbed6b7ed078c400dc2f7b2cd7807d369facd4227ec3492",
+      "name": "Lesser Glacial Rune"
+    },
+    "Metadata/Items/SoulCores/RuneColdPerfect": {
+      "effects_sha256": "bbe4a2a67f21730b9e2c72d23f486459fb653919be4f95b2721ec35841f8a254",
+      "name": "Perfect Glacial Rune"
+    },
+    "Metadata/Items/SoulCores/RuneConvertChaos": {
+      "effects_sha256": "a2d3d89d6092134ba71f349c8b1fe0cf6950d15dd03bed015a613dd7b232449c",
+      "name": "Betrayal of Aldur"
+    },
+    "Metadata/Items/SoulCores/RuneConvertCold": {
+      "effects_sha256": "2a943dcdadb3b2f26db3df83240a657ec17b91ae321341344e461a299aecf886",
+      "name": "Breath of Aldur"
+    },
+    "Metadata/Items/SoulCores/RuneConvertFire": {
+      "effects_sha256": "cb5189ad1ce59518aa6b9ec462ab03254b5db84de47bf092de8f887a889890e4",
+      "name": "Passion of Aldur"
+    },
+    "Metadata/Items/SoulCores/RuneConvertLightning": {
+      "effects_sha256": "b6dbad7388ed0e41903581f8da189b3fc033959544e608ab7de3ede40ed80b2c",
+      "name": "Ire of Aldur"
+    },
+    "Metadata/Items/SoulCores/RuneDexterity": {
+      "effects_sha256": "ae00fc052be3d18edd2bbe538fe66daace490906efd4d4109b9f4ab42844c612",
+      "name": "Adept Rune"
+    },
+    "Metadata/Items/SoulCores/RuneDexterityGreater": {
+      "effects_sha256": "83f2087f53cf0ba32b02b463de5a2e83d6cfe341feeabed0819782f566b320e4",
+      "name": "Greater Adept Rune"
+    },
+    "Metadata/Items/SoulCores/RuneDexterityLesser": {
+      "effects_sha256": "536a6c706ce645034b8ea606879ee953b822dd0b415afa1228b671a71cd84bb5",
+      "name": "Lesser Adept Rune"
+    },
+    "Metadata/Items/SoulCores/RuneDexterityPerfect": {
+      "effects_sha256": "d99c83a8aacb4f5e145937f11f5406436879f9e669b99cd5b3588fb02603517e",
+      "name": "Perfect Adept Rune"
+    },
+    "Metadata/Items/SoulCores/RuneEnhance": {
+      "effects_sha256": "7e32b8e0b18e07c0041f454113858f2d2e90650b3371cc8a9564eb0a3c06694b",
+      "name": "Iron Rune"
+    },
+    "Metadata/Items/SoulCores/RuneEnhanceGreater": {
+      "effects_sha256": "3a39b66114b036fceca36ae1e960d89129be05e67a5cd8b42df3f135c3c3c734",
+      "name": "Greater Iron Rune"
+    },
+    "Metadata/Items/SoulCores/RuneEnhanceLesser": {
+      "effects_sha256": "722873b59aab781c408e1f946412a5b04f1314c24a5528132f04f4a3d36b58be",
+      "name": "Lesser Iron Rune"
+    },
+    "Metadata/Items/SoulCores/RuneEnhancePerfect": {
+      "effects_sha256": "ee0e6bb456d669300538f31274a0c950df8f4ae57b22aa3b21ed1996df26ae07",
+      "name": "Perfect Iron Rune"
+    },
+    "Metadata/Items/SoulCores/RuneFire": {
+      "effects_sha256": "783449da63348105d843b13f19ced2f6d50b2bb5c65fa3a42f3b4163c822884e",
+      "name": "Desert Rune"
+    },
+    "Metadata/Items/SoulCores/RuneFireGreater": {
+      "effects_sha256": "1821e106cc38766248da000561da6cf90b5c54b2ec1dc1956dccb684ff1a9d1b",
+      "name": "Greater Desert Rune"
+    },
+    "Metadata/Items/SoulCores/RuneFireLesser": {
+      "effects_sha256": "5acef4cb1bfdf855611c77c4a77888e23ce6ae933ffe472c229bf039458590be",
+      "name": "Lesser Desert Rune"
+    },
+    "Metadata/Items/SoulCores/RuneFirePerfect": {
+      "effects_sha256": "c65b0e4ba2672518bcdbca39b3844bc0f77e60988753a84f2f1d9bfeadd00d83",
+      "name": "Perfect Desert Rune"
+    },
+    "Metadata/Items/SoulCores/RuneIntelligence": {
+      "effects_sha256": "67b575e4c5578c76634135d2393b03373f2ca6a3dec38845143e1607f916da8b",
+      "name": "Resolve Rune"
+    },
+    "Metadata/Items/SoulCores/RuneIntelligenceGreater": {
+      "effects_sha256": "1b855238e098c1f117750d33516de2d14eba5d57f80a8635055eac0bee85664c",
+      "name": "Greater Resolve Rune"
+    },
+    "Metadata/Items/SoulCores/RuneIntelligenceLesser": {
+      "effects_sha256": "c8ac22f94a459de906b45d3d105a867e818c0f93e3569ea7c1ce0fdcfaea632a",
+      "name": "Lesser Resolve Rune"
+    },
+    "Metadata/Items/SoulCores/RuneIntelligencePerfect": {
+      "effects_sha256": "ff7f030c7a930042e4085f712dd5da76e19d253e1040e33f3eb106dcc7facd88",
+      "name": "Perfect Resolve Rune"
+    },
+    "Metadata/Items/SoulCores/RuneLife": {
+      "effects_sha256": "c7e8006b51fdc60bdb4b37dc58ee44f03963bdaf96799c9cd8e4efe392d0fec2",
+      "name": "Body Rune"
+    },
+    "Metadata/Items/SoulCores/RuneLifeGreater": {
+      "effects_sha256": "98b432351eca507ac91cbaf783ca0703ee86c0c27d04e9d725370f4b4af363a8",
+      "name": "Greater Body Rune"
+    },
+    "Metadata/Items/SoulCores/RuneLifeLesser": {
+      "effects_sha256": "1363d7461388a263be936883fd07a21aa5e80c484c3107ca67d3a7f70b691207",
+      "name": "Lesser Body Rune"
+    },
+    "Metadata/Items/SoulCores/RuneLifePerfect": {
+      "effects_sha256": "0b63ffd1010665e65d30305649fecd7d9b2077478e195dd519af2814484fcec5",
+      "name": "Perfect Body Rune"
+    },
+    "Metadata/Items/SoulCores/RuneLifeRecovery": {
+      "effects_sha256": "68bd4a2ae14f6824d9bdb54c7807f53e836fcf20068062e62c2995350a1f01a3",
+      "name": "Rebirth Rune"
+    },
+    "Metadata/Items/SoulCores/RuneLifeRecoveryGreater": {
+      "effects_sha256": "28dca011132b2af14ee35526ae0bdcc9e8eab84639746a6e65c6645d8ef705b3",
+      "name": "Greater Rebirth Rune"
+    },
+    "Metadata/Items/SoulCores/RuneLifeRecoveryLesser": {
+      "effects_sha256": "8e5c4ce945b1354d0d8625ea035cee21d4c95fd00486fcfa985ee093bc7ab1aa",
+      "name": "Lesser Rebirth Rune"
+    },
+    "Metadata/Items/SoulCores/RuneLifeRecoveryPerfect": {
+      "effects_sha256": "cdd21643eafb9f3f51456fc68bd0517497e73594aa07cb8b1269cb864ca3121b",
+      "name": "Perfect Rebirth Rune"
+    },
+    "Metadata/Items/SoulCores/RuneLightning": {
+      "effects_sha256": "382b6c00b52519bc78acded65fc9771c14baf2dba38af66ac71edbf96bc5ca30",
+      "name": "Storm Rune"
+    },
+    "Metadata/Items/SoulCores/RuneLightningGreater": {
+      "effects_sha256": "a4813056a9efa4e48293c183c790d691b0ce77a2ad51d13233b8e8c76003e436",
+      "name": "Greater Storm Rune"
+    },
+    "Metadata/Items/SoulCores/RuneLightningLesser": {
+      "effects_sha256": "64c64f66364dc3e56215d74a1b7ef4a4d8357ae6eeb045642b1639c4b898315f",
+      "name": "Lesser Storm Rune"
+    },
+    "Metadata/Items/SoulCores/RuneLightningPerfect": {
+      "effects_sha256": "c24d320fde52fc138f77783835a4eea19cee9cb6f7d110b429f521490a87a72f",
+      "name": "Perfect Storm Rune"
+    },
+    "Metadata/Items/SoulCores/RuneMana": {
+      "effects_sha256": "275116f86574dd5e1911c8db08e36cc8f72977ec88813c78322b0963c3246fde",
+      "name": "Mind Rune"
+    },
+    "Metadata/Items/SoulCores/RuneManaGreater": {
+      "effects_sha256": "eea9ec47e76ce714c60a350f296d7ce9419d2cd3d9236aa9e981705ae2915a78",
+      "name": "Greater Mind Rune"
+    },
+    "Metadata/Items/SoulCores/RuneManaLesser": {
+      "effects_sha256": "9e61fe87b30b62e68e104a4b2491fdf6a91cd6861afccafd8aca3f9b1368e293",
+      "name": "Lesser Mind Rune"
+    },
+    "Metadata/Items/SoulCores/RuneManaPerfect": {
+      "effects_sha256": "9aa325866946ecf57a0c79ed19097ef36876b091884ce40ae051d3ba58df0575",
+      "name": "Perfect Mind Rune"
+    },
+    "Metadata/Items/SoulCores/RuneManaRecovery": {
+      "effects_sha256": "88e59acb085c3c75b6bc7c8c15a90a79f6178a8da54fd92bd9c20316de334083",
+      "name": "Inspiration Rune"
+    },
+    "Metadata/Items/SoulCores/RuneManaRecoveryGreater": {
+      "effects_sha256": "7cb23a436ded3b359457c5dc0d922600d57dad3ded1877b0a273932579a8d20b",
+      "name": "Greater Inspiration Rune"
+    },
+    "Metadata/Items/SoulCores/RuneManaRecoveryLesser": {
+      "effects_sha256": "86a825b4ccb87fa2da1d5f84267e59c39a4bd86d0cf4a8ecc256087b4a4bb91f",
+      "name": "Lesser Inspiration Rune"
+    },
+    "Metadata/Items/SoulCores/RuneManaRecoveryPerfect": {
+      "effects_sha256": "a77a37df5b7f5f509bf490219869780b1701330a587868f1e31de273a4d59008",
+      "name": "Perfect Inspiration Rune"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients1": {
+      "effects_sha256": "d04a5604e5d58b05174c95d138b14b276ed7bbe7d8acabe582571b92052df02d",
+      "name": "Ancient Rune of Splinters"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients10": {
+      "effects_sha256": "b233b1f75b73f6f30b0715f49dafef3303f3042713901b1ad9b425a4b7e2288d",
+      "name": "Ancient Rune of the Horde"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients11": {
+      "effects_sha256": "04941ee43670a510543d2c3fe6682e219b00e779eb85332d3ba57d71f9afa4b0",
+      "name": "Ancient Rune of Animosity"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients12": {
+      "effects_sha256": "eb67652ff0699b6c2e060bbfc7d31d88df9e5ba309fca6c8280c64a74be8fe04",
+      "name": "Ancient Rune of Detonation"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients13": {
+      "effects_sha256": "5458e734dbc12bfd27103d0fb244c8c8e2da4733fdf596dae07c7b6d1e0bf945",
+      "name": "Ancient Rune of Retaliation"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients14": {
+      "effects_sha256": "334f1ed14588e8e1b377272ef52e0b4b2b1940c245dd9e7b9f72c583ccc30b8c",
+      "name": "Rune of Vitality"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients15": {
+      "effects_sha256": "e1b1093a3d353f01025d2f5025b81e7517531d7bd47b4234c6805b80e7a3a1c5",
+      "name": "Rune of the Hunt"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients16": {
+      "effects_sha256": "f331d360eebde138c8a17c60204c69a4e1d06e8afd7153dc5abd7c40b14761ed",
+      "name": "Rune of Acrobatics"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients17": {
+      "effects_sha256": "e4376ce8d7d0948faa88107e635f60957d19dce1b20c2d9b75f076453d5ad6b2",
+      "name": "Rune of Culmination"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients18": {
+      "effects_sha256": "a776932981c5c8151c48f2aeca67f2dbf3e175134ef17c86a639e40d2ba917a3",
+      "name": "Rune of Renown"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients19": {
+      "effects_sha256": "06f313401865851e97d9d0f7f431a650f3c9887260a8da295dd5528d6b188940",
+      "name": "Rune of Accumulation"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients2": {
+      "effects_sha256": "a4e78467f428085c2edbce50c95a5ba29590ef8b9123e1cdf68df01f0df36d58",
+      "name": "Ancient Rune of Dueling"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients20": {
+      "effects_sha256": "4801313c9e47d40285c1ca5c058519ab8c5a8eaa496f4fb94fe74186c0c68fa5",
+      "name": "Rune of Foundations"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients21": {
+      "effects_sha256": "801c7b6b19c7b9abe2f502d8070d5456d42ec74c14ea25fab4ce94779be59f7d",
+      "name": "Rune of the Prism"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients22": {
+      "effects_sha256": "315143c445ba724770eb161eef04058fa9f29373e82463275ce43ea096f38fa8",
+      "name": "Rune of the Blossom"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients23": {
+      "effects_sha256": "2775f9621d0ca9a3e14231130d196cc7d83706981ad601390c0bf6f82f636bc1",
+      "name": "Rune of Consistency"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients24": {
+      "effects_sha256": "e293f0f3d6f904884c08240eb4c447257dc20479d413872927b7d7537261ba83",
+      "name": "Rune of Reach"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients25": {
+      "effects_sha256": "59afbc761ec072ec418f6bf9e84625348dc96b1ddfe0af1b23f533f85707d2a9",
+      "name": "Rune of Vital Flame"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients26": {
+      "effects_sha256": "f795b9e95b243cc1e66fcd304f2128fa3946c18d0a00e62637088f1ead7d543c",
+      "name": "Rune of Confrontation"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients3": {
+      "effects_sha256": "e8c6e739c0a54014cccf9fa5816be92307cda3dc889883a975554d4a0735874c",
+      "name": "Ancient Rune of the Titan"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients4": {
+      "effects_sha256": "c4bb0c4af76cadff24821f76842724bf5e8871c1efc19209b0d0fc9fcc3921a7",
+      "name": "Ancient Rune of Shattering"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients5": {
+      "effects_sha256": "37c404ccb24007f0c68fdb3727ed327fc5b7cae299f2723a3c42985efc91c705",
+      "name": "Ancient Rune of Prowess"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients6": {
+      "effects_sha256": "5c712a757698bdec92dbd2cdbea509992c2b4d72aae25d33a3d208c7b42d3694",
+      "name": "Ancient Rune of Control"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients7": {
+      "effects_sha256": "f9d130292c243845a7efeda47493110bdc50ca6b73e9798fa78b056594c3af55",
+      "name": "Ancient Rune of Discovery"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients8": {
+      "effects_sha256": "5371b931e783d04ac22baeec8f1f11f9231eeb4caec17a317964d66e10081c88",
+      "name": "Ancient Rune of Decay"
+    },
+    "Metadata/Items/SoulCores/RuneOfTheAncients9": {
+      "effects_sha256": "13325bc2f4dcf176d652f954bae2cf37fef612f0b316660497384d74ad00cfbf",
+      "name": "Ancient Rune of Witchcraft"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyAdoniasEgo": {
+      "effects_sha256": "fef7134fc036c43cfc7a455a854a4a9c1326fba1f2a605628ea8d4525f1ccecc",
+      "name": "Legacy of Adonia's Ego"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyAlkemEira": {
+      "effects_sha256": "f144712563f54f3c9ff4de6e4dd537fc279869c602ae95ad83696a9a514b7f37",
+      "name": "Legacy of Alkem Eira"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyAmorMandragora": {
+      "effects_sha256": "3a59232f5ba30b079725baccc2bbd17e3fe4fe34eba8a1fb76a36275416c4b79",
+      "name": "Legacy of Amor Mandragora"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyAshrend": {
+      "effects_sha256": "fba262b448617d598be8e59d6e15e556e39fbdc823c6ed616e2a5757608d6554",
+      "name": "Legacy of Ashrend"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyBlackbraid": {
+      "effects_sha256": "7c64b0b7991c39b0c59a2d37ef80a792f69010a1d568fb414511c7ca934212da",
+      "name": "Legacy of Blackbraid"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyBrainRattler": {
+      "effects_sha256": "631fc8b4082188f4c8a21c8e6154cc792ec86cd9384cacd670cba6fb46cadd5c",
+      "name": "Legacy of Brain Rattler"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyBramblejack": {
+      "effects_sha256": "9c5993b163c9aa573a2696cb7dff22147c0410f88b0f1f3532239eb25b5053e8",
+      "name": "Legacy of Bramblejack"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyBriarpatch": {
+      "effects_sha256": "bd6245d264aaebe595c143118d5c097455f04ce57af5f4d9121fa248c059266e",
+      "name": "Legacy of Briarpatch"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyBriskwrap": {
+      "effects_sha256": "5e8157d885c514bbd1dd855f3fd92e02d8365547257eec3b26b35807d2c05f20",
+      "name": "Legacy of Briskwrap"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyBristleboar": {
+      "effects_sha256": "2a1833d015616e2fd5e3c948852fdb21a894946eef849db555769a5c9be4beb9",
+      "name": "Legacy of Bristleboar"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyBrynhandsMark": {
+      "effects_sha256": "851d85e6517f59c0c68dcb190a33c685720e71ba7c19f466dad5de6e104ee2c9",
+      "name": "Legacy of Brynhand's Mark"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyBushwhack": {
+      "effects_sha256": "bf97bc14e45cdbaedb35d4e97124f3a9c98b37328248eb3daf22b8f685ee031b",
+      "name": "Legacy of Bushwhack"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyCandlemaker": {
+      "effects_sha256": "611e9582fcbd4569499158b2f9cfb0ca337af6722a945e60668b3951bbff42aa",
+      "name": "Legacy of Candlemaker"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyChernobogsPillar": {
+      "effects_sha256": "a8a9d39fbdd2b29863e6a6a3258e2b1f5ab6f2d480c4cf8d2574950f2cc033f5",
+      "name": "Legacy of Chernobog's Pillar"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyCrownofThorns": {
+      "effects_sha256": "b0a05d5e0952a25c7e40dac1b2321ebd7d7163d32b9c9a988ee6d85b78c90039",
+      "name": "Legacy of Crown of Thorns"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyCursecarver": {
+      "effects_sha256": "4b24834f4f2c54d9320404d578f1a9f9217fd5011fd9ba6a5b14e4b26ae27467",
+      "name": "Legacy of Cursecarver"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyDeathblow": {
+      "effects_sha256": "653d83fb37dbf3da3b7c212db2eee070d1503844289de8de610cad88b171869c",
+      "name": "Legacy of Deathblow"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyDeidbell": {
+      "effects_sha256": "a34f4c5a179445079302c83d6f33db9345be102d470111c967c2d79073cd3ac7",
+      "name": "Legacy of Deidbell"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyDionadair": {
+      "effects_sha256": "8867d3eb01aabf101345fec498e6b73711e1ef19056f703773e99e524c374600",
+      "name": "Legacy of Dionadair"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyDuality": {
+      "effects_sha256": "3926b145b8d892c8e3e7576c2b8533e8ad2d6c7c95d046917baeff5e99da4ae1",
+      "name": "Legacy of Duality"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyDunkelhalt": {
+      "effects_sha256": "58d80d27bc8546d23007b146e0b1748dc0edce5ad5ee4b044c9a478ff7225e1b",
+      "name": "Legacy of Dunkelhalt"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyDuskVigil": {
+      "effects_sha256": "c1d948fab155e504f0bc7c055610c92082a850d0cb306f0dde047999eaed1add",
+      "name": "Legacy of Dusk Vigil"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyEdyrnsTusks": {
+      "effects_sha256": "3c74242ee3d5a00ee525cbfd347b896b00db809a6695adc0a5ae908067d7149d",
+      "name": "Legacy of Edyrn's Tusks"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyElevore": {
+      "effects_sha256": "ba12c0f1cfb5ad441bce8bc833a1a96e64cd78a63928f997f6e270dbae5618db",
+      "name": "Legacy of Elevore"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyEriansCobble": {
+      "effects_sha256": "4bdea1dff7178733a6a6196d47da771e06912104940edd4aaab27d64cbb22cd7",
+      "name": "Legacy of Erian's Cobble"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyEyesOfTheRunefather": {
+      "effects_sha256": "58f7e7993811c456a54b9a6720db86c35f48de5574e32107cfa390cee83a5209",
+      "name": "Legacy of A Worthy Foe"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyEzomytePeak": {
+      "effects_sha256": "4681deda35dc7b53dbfd4dd3516399f0464343a1cc07976520c479985a3621ef",
+      "name": "Legacy of Ezomyte Peak"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyFacebreaker": {
+      "effects_sha256": "58355d30a5aa2c9fe7d14ff3f97aaa030be0108553c1f06393a13976eb2703c1",
+      "name": "Legacy of Facebreaker"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyFoxshade": {
+      "effects_sha256": "450bb71fbb9f937abc9a044417a5abca7897858548bb1e88ec06fb707b505265",
+      "name": "Legacy of Foxshade"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyGreymake": {
+      "effects_sha256": "c70aaeb3d2f7e7ce9cdfdd103498bba5a850850273cc50a1f9e65aa490af09ec",
+      "name": "Legacy of Greymake"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyHoghunt": {
+      "effects_sha256": "edf22b5c507e8de08773da7c1bc24af839c1042b0c703243149607d3595383bd",
+      "name": "Legacy of Hoghunt"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyHornsofBynden": {
+      "effects_sha256": "4e43121b66d18c62a68f9dfe6d4faa8fe44244728e2ad439cc72a74444655a20",
+      "name": "Legacy of Horns of Bynden"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyHrimnorsHymn": {
+      "effects_sha256": "212f46dfdce514d7e7ea4ab927280f35df0d0caa6c6f1f2742be575a271d32aa",
+      "name": "Legacy of Hrimnor's Hymn"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyIronbound": {
+      "effects_sha256": "65fa1b323c4342efd5007114dc2439b98011e47a5d73b798b167b30a2c30cb2a",
+      "name": "Legacy of Ironbound"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyKeeperoftheArc": {
+      "effects_sha256": "425231453ceaa2b7ccd5daa43eb217d76bca65a4acc14cdd3a312ae1e160f9a8",
+      "name": "Legacy of Keeper of the Arc"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyKingsguard": {
+      "effects_sha256": "8460da3d7c40c805f9896209b500548b77321d5120fb0ee9b50a7e4775e1bb5b",
+      "name": "Legacy of Kingsguard"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyLegionstride": {
+      "effects_sha256": "81a346f319e63cee6c58289fd65c47ae4ca617bb972f23ba0e5e2b47cc5d7780",
+      "name": "Legacy of Legionstride"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyLifesprig": {
+      "effects_sha256": "109fad099b910b9c853d815726bf70343bb40693278dae0a7947a2a2936c158c",
+      "name": "Legacy of Lifesprig"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyMjölner": {
+      "effects_sha256": "4e980c2892482df55e3edaa5802cb0ffa8ddd49eee5f4f265c771396e09bfbb9",
+      "name": "Legacy of Mjolner"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyNorthpaw": {
+      "effects_sha256": "0cd26e234e3e5d315d12e08b7be555684e86a10c511a1a108158a8a1002bfb9a",
+      "name": "Legacy of Northpaw"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyOaksworn": {
+      "effects_sha256": "dcc17e987e858ed4c12e7f0759f88acbe1bac2dc85427be3a6530881dfb8bbf5",
+      "name": "Legacy of Oaksworn"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyObernsBastion": {
+      "effects_sha256": "ece95a11cf30a0f8551ec00fd78015bb9f29c0c6c92622637166df0a6341af14",
+      "name": "Legacy of Obern's Bastion"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyOlrovasara": {
+      "effects_sha256": "84b08505cd69a07160df4baccd0efb5806f9776ac1f85b0bd615e998c7463db1",
+      "name": "Legacy of Olrovasara"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyQuillRain": {
+      "effects_sha256": "26c041677f4bfee5c6f5b1282eeab7c323ecd8105a6a38a54168ac5369a6c690",
+      "name": "Legacy of Quill Rain"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyRondeldeEzo": {
+      "effects_sha256": "82b2f1e889c03a0c5d0ecc2ccb09c0e69494f636f70866abd0007c6ed2ef751d",
+      "name": "Legacy of Rondel de Ezo"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyRuneseekersCall": {
+      "effects_sha256": "0c6c9686e22c8846ed119a9e8a7c38ec6fa7ae3f71ec3fc5a31e582715910407",
+      "name": "Legacy of Runeseeker's Call"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacySerlesGrit": {
+      "effects_sha256": "37c52d1b7c865fda84188238bf93324d3a26a9e36ccf1b9eaae9dd346d3e9090",
+      "name": "Legacy of Serle's Grit"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacySpitefulFloret": {
+      "effects_sha256": "1cd14eac723f7484585d1f61214ff3e4e118d9d4c306e619126104b2b5c2d24e",
+      "name": "Legacy of Spiteful Floret"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyStarkonjasHead": {
+      "effects_sha256": "6b9e5aa5851298e3112caad1824e2f868cd63533dafeec71a9c75c57ab589072",
+      "name": "Legacy of Starkonja's Head"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacySvalinn": {
+      "effects_sha256": "1c29f383c3d447d53d3a88de1f20ced3a1c77693e5cf5d24d869a28786d68fbd",
+      "name": "Legacy of Svalinn"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyTheBloodThorn": {
+      "effects_sha256": "6c4fdca781cd36840766347df3edfee134d33aa34575e852f60f8d263e95dd87",
+      "name": "Legacy of The Blood Thorn"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyTheKnight-errant": {
+      "effects_sha256": "55264540b9609b3b596d138ca2124434ded530f79c779c33f628e59422826fdf",
+      "name": "Legacy of The Knight-errant"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyTheSentry": {
+      "effects_sha256": "f22508d5602185015154e3e52ea9efb9d4013ff73fabc9c3474e6f0dac67e886",
+      "name": "Legacy of The Sentry"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyTheSmilingKnight": {
+      "effects_sha256": "77ff490cfdd3c01db0f4160d84cc2044cce7af11be1e8aa70f4ba40073eeeb41",
+      "name": "Legacy of The Smiling Knight"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyTheUnleashed": {
+      "effects_sha256": "8ee0ea2e8149bc5d80ce510003034f93b6ff803176f915da21ceca83ffed514c",
+      "name": "Legacy of The Unleashed"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyTheVileKnight": {
+      "effects_sha256": "0ff11eb25435daaec3ea681b22d4ad0f1d3aa8b74abe622914acdc5818d8ab69",
+      "name": "Legacy of The Vile Knight"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyTrampletoe": {
+      "effects_sha256": "6d0598cd9c35b98f9f802780adfdf6ab9856803e840a83e14bd2f85c7d7c3a2d",
+      "name": "Legacy of Trampletoe"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyTrenchtimbre": {
+      "effects_sha256": "2446aa013963c6c9bf9344d3974b093ecde3855cece2cfb9f21f23c92fdcff45",
+      "name": "Legacy of Trenchtimbre"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyTwistedEmpyrean": {
+      "effects_sha256": "80ba0c1a3500374d60f7c7a680985871806ee997dd3460cfaab9bc0ac01ce525",
+      "name": "Legacy of Twisted Empyrean"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyTyrannysGrip": {
+      "effects_sha256": "c245ae4b0038bc99e9c662f9791c94430a38a529c92afcade16dda3bf4a1e22d",
+      "name": "Legacy of Tyranny's Grip"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyWanderlust": {
+      "effects_sha256": "24bb4ce21c899c12b52be7b2465d3666b15bdb83e01bdc7d78eeb99cd5bd5dfb",
+      "name": "Legacy of Wanderlust"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyWingsofCaelyn": {
+      "effects_sha256": "ab553ba7a26de1b50d53b2dd899ae8156dea50b259d9a5d88f349d5ec9dea18e",
+      "name": "Legacy of Wings of Caelyn"
+    },
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyWulfsbane": {
+      "effects_sha256": "a6f05d456d6ebb0e7d423564b5206f6301cf7c132f8fdbfe19c7d9b8db8e2a90",
+      "name": "Legacy of Wulfsbane"
+    },
+    "Metadata/Items/SoulCores/RunePhysical": {
+      "effects_sha256": "35f5ab725b5b28ecf0e432ad003553c98b29dc948c94d0d170f1fd3bb8728139",
+      "name": "Tempered Rune"
+    },
+    "Metadata/Items/SoulCores/RunePhysicalGreater": {
+      "effects_sha256": "b22833a54c697b748a9ac2b7118f9546e115195c50148700e864f5a7c3f5be58",
+      "name": "Greater Tempered Rune"
+    },
+    "Metadata/Items/SoulCores/RunePhysicalLesser": {
+      "effects_sha256": "3ce858942a6ba89fc79b843d285c4c7795b648a80e26740796db319ccba42e6f",
+      "name": "Lesser Tempered Rune"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial1": {
+      "effects_sha256": "6da09b6ac475aa29749900bc6e6a26abc696ac0714156bf1890fb05c78c60d90",
+      "name": "Greater Rune of Leadership"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial10": {
+      "effects_sha256": "6653eacd39a08f2615bd56dd49fc22bd57d098d5bf8caf48791009788a9f3dbc",
+      "name": "Craiceann's Rune of Warding"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial11": {
+      "effects_sha256": "9de875d192d7d37bd43aef43b5579144e2ce77a24339abe8d4308c95df93b4e2",
+      "name": "Saqawal's Rune of Memory"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial12": {
+      "effects_sha256": "26e9a01e10b70cae8f5bd297deaa4afd93714698920b2fbc9b5ebe452c7a5f0e",
+      "name": "Saqawal's Rune of Erosion"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial13": {
+      "effects_sha256": "2fd29cdf4158561ef3493639272bb2cc6f1e731cbd01d6642a81225c51ff7f44",
+      "name": "Farrul's Rune of the Hunt"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial14": {
+      "effects_sha256": "847c419d54135ab7ab8d8ae27b6979829a9265c2f57d6677c9aa49fe80f86bc7",
+      "name": "Craiceann's Rune of Recovery"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial15": {
+      "effects_sha256": "a87052f2661b5fd9984c464d8b7612250b9dd6dd474776a42f5ec090858c72ec",
+      "name": "Courtesan Mannan's Rune of Cruelty"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial16": {
+      "effects_sha256": "03f300be37cc52fa848d2988b7eba47d2b0d9b10ccb300865658523498b2b225",
+      "name": "Thane Grannell's Rune of Mastery"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial17": {
+      "effects_sha256": "288c5f9fd87d6e16d394444e3f53e867a5e0604a6f29b4564951677464693713",
+      "name": "Fenumus' Rune of Spinning"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial18": {
+      "effects_sha256": "526d36abeded9e1ca061f7730221e06c7dc98b6a729534c2aec70371a84f29de",
+      "name": "Countess Seske's Rune of Archery"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial19": {
+      "effects_sha256": "d3d3b24048b9fb51971064f12e6c65fa70d64269de0a870c3679ae244e4ebe8d",
+      "name": "Thane Girt's Rune of Wildness"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial2": {
+      "effects_sha256": "18caabeec56c926a0dff094dc41566bc3778a9e9b974995c330c1a8809c3b4cc",
+      "name": "Greater Rune of Tithing"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial20": {
+      "effects_sha256": "429b98b8947553523d1a23dc33015e53c57fcecd7752a58c91503a6f2ff3530d",
+      "name": "Fenumus' Rune of Draining"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial21": {
+      "effects_sha256": "5c695b663d327813695778ef300baeac78265b6037447314bda6299088a7e670",
+      "name": "Thane Myrk's Rune of Summer"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial22": {
+      "effects_sha256": "3b11da402f2e0486109ac102adcd7afcc7c5920d7485a359e3091eed859a3a30",
+      "name": "Lady Hestra's Rune of Winter"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial23": {
+      "effects_sha256": "380293b4fcbdeb433413f1b2fc0d7bd4ba5dbccf7b231e291afcebca763e5547",
+      "name": "Thane Leld's Rune of Spring"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial24": {
+      "effects_sha256": "b492b3d6f5a71d9ebe75192ed7f430d3436a34cb828c261aed64fc54f1c1cc72",
+      "name": "The Greatwolf's Rune of Claws"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial25": {
+      "effects_sha256": "42df5745a611e323b69fd2ca7cb4e230d6712017afe81c2b85ac4bd1d271e3f9",
+      "name": "The Greatwolf's Rune of Willpower"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial3": {
+      "effects_sha256": "c5fdcd3921e95b4ed2790bc44f2d8ee1d12b25ef7977468dfb9a277593870144",
+      "name": "Greater Rune of Alacrity"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial4": {
+      "effects_sha256": "1b754a2dbd1034ecc690942eb6c921165d848d9a28283cd31bffc84d8e28d944",
+      "name": "Greater Rune of Nobility"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial5": {
+      "effects_sha256": "f53e2919156d2b2067186cf51eabbaa509a4763b8c2504a76c87821d3bd85e46",
+      "name": "Hedgewitch Assandra's Rune of Wisdom"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial6": {
+      "effects_sha256": "9a8a2b2469382b8a698a6f501eeefe69a79bd8fd83a67f03059f82bc25945833",
+      "name": "Saqawal's Rune of the Sky"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial7": {
+      "effects_sha256": "f0050114bd3a24d8a133fda1fa5fb7216af9d1935c34bce8fd7df2493e676a67",
+      "name": "Fenumus' Rune of Agony"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial8": {
+      "effects_sha256": "cd965e1c1ba78398a222c1ce0fa02050adb60e7b9282f1442b633b38d6547cdd",
+      "name": "Farrul's Rune of Grace"
+    },
+    "Metadata/Items/SoulCores/RuneSpecial9": {
+      "effects_sha256": "9d1717845ec646eacded42c0c6c269eff3f63855f4230280f4c875494d4ad958",
+      "name": "Farrul's Rune of the Chase"
+    },
+    "Metadata/Items/SoulCores/RuneStrength": {
+      "effects_sha256": "9d135f985b7464ffa7a6f17d2bb728e3e22eca3589b00c9dfd0681f46e783d1d",
+      "name": "Robust Rune"
+    },
+    "Metadata/Items/SoulCores/RuneStrengthGreater": {
+      "effects_sha256": "0239781f95f9750d6d82d0ea83de7961b89ff7163ede1ba97ce4ec864d480d9d",
+      "name": "Greater Robust Rune"
+    },
+    "Metadata/Items/SoulCores/RuneStrengthLesser": {
+      "effects_sha256": "9064e35ca988bc1a5916829a4462d7ef8f25bcf114b5d0023f81b8f64ee86f86",
+      "name": "Lesser Robust Rune"
+    },
+    "Metadata/Items/SoulCores/RuneStrengthPerfect": {
+      "effects_sha256": "a6a5173562987087cd2fa96b22285a0e4a5eb661728fed83e65038b6a592166b",
+      "name": "Perfect Robust Rune"
+    },
+    "Metadata/Items/SoulCores/RuneStun": {
+      "effects_sha256": "e1f85b8373408ae2429fffbfe9bd08b367a339832c146637205016525b257ded",
+      "name": "Stone Rune"
+    },
+    "Metadata/Items/SoulCores/RuneStunGreater": {
+      "effects_sha256": "adfc4222cafc1f72abfad85562dbd81908db20ff34065cccf57636ced5f8a69d",
+      "name": "Greater Stone Rune"
+    },
+    "Metadata/Items/SoulCores/RuneStunLesser": {
+      "effects_sha256": "3b51263892cd715af0e2009b04f5ff1e2250d598dab8307675d55face60223b4",
+      "name": "Lesser Stone Rune"
+    },
+    "Metadata/Items/SoulCores/RuneStunPerfect": {
+      "effects_sha256": "3802e516b85f25bbaec87d9c1be155d37be88501342db90197ac8add07e5fbbb",
+      "name": "Perfect Stone Rune"
+    },
+    "Metadata/Items/SoulCores/RuneUpgrade": {
+      "effects_sha256": "4ccc3b9ef1b3972d0477c2874d12f5f3e1c1c701321c5198889ddca6751d7e3d",
+      "name": "Masterwork Rune"
+    },
+    "Metadata/Items/SoulCores/RuneWard1Greater": {
+      "effects_sha256": "7cd75fd3644f7c66b3cd8b48265060e8929edd5459edf434cab5044f3eb16552",
+      "name": "Greater Ward Rune"
+    },
+    "Metadata/Items/SoulCores/RuneWard1Lesser": {
+      "effects_sha256": "b5c0ca6870d4a85031f5f1ce8558384ace3b8f0f29c4626c22205732b69801c4",
+      "name": "Lesser Ward Rune"
+    },
+    "Metadata/Items/SoulCores/RuneWard1Normal": {
+      "effects_sha256": "b06168a26f4ab8f934410c66792384c9b6a8ad87c26220257a64350edc8e7311",
+      "name": "Ward Rune"
+    },
+    "Metadata/Items/SoulCores/RuneWard1Perfect": {
+      "effects_sha256": "cc5175cfaec186837e7bdf2c3d41f2a9a5dbb7571353eec170e32a82829382f7",
+      "name": "Perfect Ward Rune"
+    },
+    "Metadata/Items/SoulCores/RuneWard2Greater": {
+      "effects_sha256": "6142723e6f7786ac1b56dcddecc05c0ce2cbed1205771c7f56bb7537e2232ad9",
+      "name": "Greater Charging Rune"
+    },
+    "Metadata/Items/SoulCores/RuneWard2Lesser": {
+      "effects_sha256": "3fdcecadfeaee97456451fe670cc16471682b27820ed4526f125d66bd169e0f6",
+      "name": "Lesser Charging Rune"
+    },
+    "Metadata/Items/SoulCores/RuneWard2Normal": {
+      "effects_sha256": "a3f3aa1e743964f10e802a7e7e189e348fd1caacfc129d0117542429252e493a",
+      "name": "Charging Rune"
+    },
+    "Metadata/Items/SoulCores/RuneWard2Perfect": {
+      "effects_sha256": "822253b4589e0c34897b7f5bab1562e10d1928905b239f8e248d9ab78793fc0e",
+      "name": "Perfect Charging Rune"
+    },
+    "Metadata/Items/SoulCores/RuneWardSpecial1": {
+      "effects_sha256": "093f83701ed32ee53f6f1cc25a633ee3a4c6fb14dcd8aec769adac7853cfd9e2",
+      "name": "Warding Rune of Reinforcement"
+    },
+    "Metadata/Items/SoulCores/RuneWardSpecial10": {
+      "effects_sha256": "cd5c3f83a3dc006ab242fadd12cd5fb91f269b76b41be8fa97d3df03b4bc33bd",
+      "name": "Warding Rune of Stability"
+    },
+    "Metadata/Items/SoulCores/RuneWardSpecial13": {
+      "effects_sha256": "131c3b36086304457fd9ebccf6f0b9965f4429e2431d3d998e3e6449e90334f0",
+      "name": "Warding Rune of Glancing"
+    },
+    "Metadata/Items/SoulCores/RuneWardSpecial14": {
+      "effects_sha256": "7c6aeb971268149fede43939708c856245b092e335ab6818103bae1adf03a3c3",
+      "name": "Warding Rune of Heart"
+    },
+    "Metadata/Items/SoulCores/RuneWardSpecial15": {
+      "effects_sha256": "d24ddd32e311567333dc3970caa213051138698c50feb4281d47bca044f6aec3",
+      "name": "Warding Rune of Nourishment"
+    },
+    "Metadata/Items/SoulCores/RuneWardSpecial16": {
+      "effects_sha256": "483e1190941ef6a6a9706befe9c48f384eed60cc14ab78af2dad523677fb64c7",
+      "name": "Warding Rune of Annihilation"
+    },
+    "Metadata/Items/SoulCores/RuneWardSpecial18": {
+      "effects_sha256": "46209369ac80c92def4503c2d1e6f9387b25af7c423e73829e891d7219ec1d7a",
+      "name": "Warding Rune of Armature"
+    },
+    "Metadata/Items/SoulCores/RuneWardSpecial19": {
+      "effects_sha256": "6396c60088bacc375094fb0447e55d46752072973ecbac856822d0070cf195f1",
+      "name": "Warding Rune of Obsession"
+    },
+    "Metadata/Items/SoulCores/RuneWardSpecial2": {
+      "effects_sha256": "a832062393805e047c3dd75ff9550af11d469d1d34c7a282fe88f3f9e0ee92d5",
+      "name": "Warding Rune of Protection"
+    },
+    "Metadata/Items/SoulCores/RuneWardSpecial20": {
+      "effects_sha256": "f52e6fee4d383b1d3ad9d865587cae4d79fb3656acb4d3277c38aa3ed31ac3e2",
+      "name": "Warding Rune of Equinox"
+    },
+    "Metadata/Items/SoulCores/RuneWardSpecial21": {
+      "effects_sha256": "cd901a26a550554e4a8a6df90d8c822b046bd2217c9b99fbe7149bd6089b9d76",
+      "name": "Warding Rune of Salvaging"
+    },
+    "Metadata/Items/SoulCores/RuneWardSpecial23": {
+      "effects_sha256": "31cf7719f776d6f7a7d555d1f3381b079019bae27ab46594c997d0fe4682cb57",
+      "name": "Warding Rune of Bodyguards"
+    },
+    "Metadata/Items/SoulCores/RuneWardSpecial24": {
+      "effects_sha256": "34eeb1d95cb7a569c88fd79a7bbcde21917a128723c2dae2a9be197c439d99c8",
+      "name": "Warding Rune of Hollowing"
+    },
+    "Metadata/Items/SoulCores/RuneWardSpecial3": {
+      "effects_sha256": "420dba161543de39942d33591109059785759c524c8435b0942f31e8de6aabdf",
+      "name": "Warding Rune of Disintegration"
+    },
+    "Metadata/Items/SoulCores/RuneWardSpecial4": {
+      "effects_sha256": "2ca9fa070ad68cff3db0549728b38d6d12e519e163e87ca7c209210f4e565823",
+      "name": "Warding Rune of Desperation"
+    },
+    "Metadata/Items/SoulCores/RuneWardSpecial8": {
+      "effects_sha256": "59a401a42387031433aa715e21b8cd6c8691e3613ca321f67e8051ce07b9a8b9",
+      "name": "Warding Rune of Symbiosis"
+    },
+    "Metadata/Items/SoulCores/RuneWardSpecial9": {
+      "effects_sha256": "630a534536acd4eec1a4c6140664051f8087c610d663e07ba7930a446a3e5986",
+      "name": "Warding Rune of Courage"
+    },
+    "Metadata/Items/SoulCores/RuneWarpingAdditionalCraftedMod": {
+      "effects_sha256": "89e4f33f15fad16ab0b1ff0729ed6a62ad0ab42267de8db89ee57c37cfc8858e",
+      "name": "Astrid's Creativity"
+    },
+    "Metadata/Items/SoulCores/RuneWarpingAdditionalSuffix": {
+      "effects_sha256": "2302095e8874728c8ae446725ab063cd616d24fcc02e4aabe58742ab66c0cd24",
+      "name": "Serle's Triumph"
+    },
+    "Metadata/Items/SoulCores/RuneWarpingBerserkerInfluence": {
+      "effects_sha256": "5bfcf2b655b95103590f11f5ee3a04d57ff2d2435aedba4c15d5f59f80c6edb7",
+      "name": "Vorana's Carnage"
+    },
+    "Metadata/Items/SoulCores/RuneWarpingCreateJewelSocket": {
+      "effects_sha256": "aab3cf6b102a296ee01840d736f32fdcf4a27832b77a547cebe6f7e506ce4e01",
+      "name": "Cadigan's Epiphany"
+    },
+    "Metadata/Items/SoulCores/RuneWarpingDecayInfluence": {
+      "effects_sha256": "0918a4ba20c27cd3cbee12bb1cd2e117e2a8c7c09a82c947067a73d2f91ff755",
+      "name": "Katla's Gloom"
+    },
+    "Metadata/Items/SoulCores/RuneWarpingDestructionInfluence": {
+      "effects_sha256": "822a4000a9c7f07f477fdb980ef7f4482bf9535222ae598669b9b02051896adb",
+      "name": "Thrud's Might"
+    },
+    "Metadata/Items/SoulCores/RuneWarpingMarksmanInfluence": {
+      "effects_sha256": "09203507fe0d8fc5547de2538028cd3e3ef92cc085771c9d0c0b6999f6ebcdb8",
+      "name": "Kolr's Hunt"
+    },
+    "Metadata/Items/SoulCores/RuneWarpingOlrothsLegacy": {
+      "effects_sha256": "d0782a73c7dcac34837cc10dd065da7f1168a496016755d75f284cbacdb33aaf",
+      "name": "Aldur's Legacy"
+    },
+    "Metadata/Items/SoulCores/RuneWarpingSoulInfluence": {
+      "effects_sha256": "f9e328c049abe0e95273c40b89573afc1a622a54224629fd9bcbaa12c67f1222",
+      "name": "Medved's Tending"
+    },
+    "Metadata/Items/SoulCores/RuneWarpingTimeInfluence": {
+      "effects_sha256": "ac44e85099250ed58c05aa56873eafd556c091eebaca050e48265c1304ce4d04",
+      "name": "Uhtred's Sidereus"
+    },
+    "Metadata/Items/SoulCores/SoulCoreBleed": {
+      "effects_sha256": "0fa301f8f11b7a3a6ff2410b0ccdb7ec6a50cd46c8aedab8419514da561e5be2",
+      "name": "Soul Core of Opiloti"
+    },
+    "Metadata/Items/SoulCores/SoulCoreChaos": {
+      "effects_sha256": "26ee99d040593bfcad4a8bd1972f0ee70679d496a2dec7f31fc826675b05397a",
+      "name": "Soul Core of Tacati"
+    },
+    "Metadata/Items/SoulCores/SoulCoreCrit": {
+      "effects_sha256": "145f26bc4953b2273538c9f399e2764416c1574dee3df5e80b1f2ad688c38286",
+      "name": "Soul Core of Ticaba"
+    },
+    "Metadata/Items/SoulCores/SoulCoreDexterity": {
+      "effects_sha256": "d037c1c5f7af35bcfea831c3de9fad4c46af6838ec7a79ed819229bccc6e20a3",
+      "name": "Soul Core of Cholotl"
+    },
+    "Metadata/Items/SoulCores/SoulCoreElemental": {
+      "effects_sha256": "82003e07ec2a71dd89db80f6609a922e96a741ca8dafce4a79784cd3f5387b48",
+      "name": "Soul Core of Topotante"
+    },
+    "Metadata/Items/SoulCores/SoulCoreEnlighten": {
+      "effects_sha256": "d9912312fac1d74a652763bd4de241ea9c1ae3ceb472250899662efad6d8db4a",
+      "name": "Soul Core of Citaqualotl"
+    },
+    "Metadata/Items/SoulCores/SoulCoreFreeze": {
+      "effects_sha256": "2b8dd558e3fd1c5276abb6d3ca9cc1e3e1f58a933b4c2d511f8d48b2711bb6a6",
+      "name": "Soul Core of Tzamoto"
+    },
+    "Metadata/Items/SoulCores/SoulCoreIgnite": {
+      "effects_sha256": "932867ea4de4c981b09f62a8f2ff3b176ddaf22f99aa4895c77a37a2078eef9f",
+      "name": "Soul Core of Puhuarte"
+    },
+    "Metadata/Items/SoulCores/SoulCoreIntelligence": {
+      "effects_sha256": "ab0a8bc798b7d3c2f281e415d4c7b98d049ef9fe79677c6842eb4be5d48fb8e3",
+      "name": "Soul Core of Zantipi"
+    },
+    "Metadata/Items/SoulCores/SoulCoreLight": {
+      "effects_sha256": "ccab976f45b4a87a136c662bf76760bbb029f8ff3268c436ef2e722171a9b6f7",
+      "name": "Soul Core of Azcapa"
+    },
+    "Metadata/Items/SoulCores/SoulCoreMaxLife": {
+      "effects_sha256": "7d783fcde84372ce96a74aa5e36d21a10c9f581814bcbdc708e1e701267a9daf",
+      "name": "Soul Core of Jiquani"
+    },
+    "Metadata/Items/SoulCores/SoulCoreMaxMana": {
+      "effects_sha256": "dc33100fd336fc2479effbeeb0ad190ce67755ca454a3972270ac885ba2a8155",
+      "name": "Soul Core of Zalatl"
+    },
+    "Metadata/Items/SoulCores/SoulCoreShock": {
+      "effects_sha256": "c0825223342975381c923372f6751b5a59d94601dc05fafd65b651722b51e444",
+      "name": "Soul Core of Xopec"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial1": {
+      "effects_sha256": "0d3e1ca926b9ace01fc3d9561e8110e9677b92bfb637d2eae44251855f2e915d",
+      "name": "Hayoxi's Soul Core of Heatproofing"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial10": {
+      "effects_sha256": "5466e0a2a0adda8b058103ecedca2b802b1bab8fe17d43443dbad33d074cfdb8",
+      "name": "Xopec's Soul Core of Power"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial11": {
+      "effects_sha256": "2b00fd52b9f7fef6ba0e605c1051bac71a36e19ef47173f3d9da0ab35362c95f",
+      "name": "Estazunti's Soul Core of Convalescence"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial12": {
+      "effects_sha256": "93675a31abe53cb4db20b602e7c54dccdb26994ce179a808b46687039d9482b1",
+      "name": "Tacati's Soul Core of Affliction"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial13": {
+      "effects_sha256": "ab780befb6b1ebf864e21d26ee20133ae837ee77f2b3a62c106aac541cdaef30",
+      "name": "Cholotl's Soul Core of War"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial14": {
+      "effects_sha256": "ff9c7053cd71c134522da8ac2a09989d7b97dc3d95863749772f6d1522c88d0c",
+      "name": "Citaqualotl's Soul Core of Foulness"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial15": {
+      "effects_sha256": "95b7865b717a9396606f142d872b4098dc1e8914136cfdc64f6a6aa1c4b831df",
+      "name": "Xipocado's Soul Core of Dominion"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial16": {
+      "effects_sha256": "1ba2f10f317eb204e8aa3756605aa2dd053b99b0d352cb86d67571515dd25d04",
+      "name": "Jiquani's Soul Core of Automation"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial17": {
+      "effects_sha256": "742c0d37e3cb97df4270b6139176b84bca2b7bf6924d6600a6071ca8567d0b27",
+      "name": "Jiquani's Soul Core of Malediction"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial18": {
+      "effects_sha256": "bafbbcda67bdd21c2d6399956001e5277ee14bf170f2adc610df126394d7c87e",
+      "name": "Jiquani's Soul Core of Targeting"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial19": {
+      "effects_sha256": "d1b5c86a287be5a02a76b018e896398f1ec0e82345c4e4d11ed1cea6375a658a",
+      "name": "Jiquani's Soul Core of Rallying"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial2": {
+      "effects_sha256": "34081151cd195c6209dad610941db77a851d8cbc884bb41ab0be3488cb44c1da",
+      "name": "Zalatl's Soul Core of Insulation"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial20": {
+      "effects_sha256": "67c18f2c0eac31a13ed82396e795a2c130889aedcaaab6e64f4b1020f984e92e",
+      "name": "Jiquani's Soul Core of Radiance"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial21": {
+      "effects_sha256": "51b51feb082be9d038f9bda29700996121fb6c4c391b28753ca07b88798b24c0",
+      "name": "Jiquani's Soul Core of Severing"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial22": {
+      "effects_sha256": "2d4808ba00b6cfa5142514f5784a1ed1307d1e16d5142a026bc43ea9ba66b47d",
+      "name": "Jiquani's Soul Core of Rippling"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial23": {
+      "effects_sha256": "c270c2c12c5c19d79ceba3adcab10bd1e18832564495419cc94ef50ce0a0a04b",
+      "name": "Jiquani's Soul Core of Quaking"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial24": {
+      "effects_sha256": "5369eee09d10b00faed37541b399fa16f08a26110eff2aa06b266aaea30ac9bd",
+      "name": "Jiquani's Soul Core of Munitions"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial25": {
+      "effects_sha256": "2c75349d06f943c82b564f53624c96256b4bf68241d1bf9b46f2280cf7d9a1fb",
+      "name": "Jiquani's Soul Core of Snares"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial26": {
+      "effects_sha256": "552688460cf93f837bf2af98c2808d52c3ee0363d7274f01ec50dc714c2f488b",
+      "name": "Jiquani's Soul Core of Abundance"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial27": {
+      "effects_sha256": "6a11af7b997b652956cb91135e646e9a453336b000701e21c054c10c7703fdac",
+      "name": "Jiquani's Soul Core of Squalls"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial28": {
+      "effects_sha256": "5a14c31b55d28e8c950705aeb02e38b864f4158d15b6575308a05a757d37ee4d",
+      "name": "Jiquani's Soul Core of Thundering"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial29": {
+      "effects_sha256": "40c33a81163f892b0331cf2eeaeb5448e6d852c044a0bd7dbf5bbf182290f6c0",
+      "name": "Atziri's Soul Core of Devotion"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial3": {
+      "effects_sha256": "48fa86682e28aa24f14eacc6970e8ad69e4710c741768a41606a61bf6b92455d",
+      "name": "Topotante's Soul Core of Dampening"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial30": {
+      "effects_sha256": "f2a2257d0a58e5f2ebcafb74b302c18b8f35e2a2808c4f4ee1bf952106b9fcff",
+      "name": "Atziri's Soul Core of Vitality"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial31": {
+      "effects_sha256": "42f1c5afcab8314067949c8501dcf1e6a7228b13097d6f4ec725ae3db3453383",
+      "name": "Atziri's Soul Core of Alacrity"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial32": {
+      "effects_sha256": "e8dcd5298b7f01a868a12a4365ce31003b229a693039eb606e04d3fdbeb452bf",
+      "name": "Atziri's Soul Core of Inoculation"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial4": {
+      "effects_sha256": "1d7e20aa11c159939fc9cb55f05d10fca076d494bd699737533f52f222b35dd6",
+      "name": "Atmohua's Soul Core of Retreat"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial5": {
+      "effects_sha256": "e1d3a888fc6fedbd4783de5a015866d91b1ee6545ff79e8ce5f6c601f82dcebf",
+      "name": "Quipolatl's Soul Core of Flow"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial6": {
+      "effects_sha256": "75ed595f0964600a2385dd048d910d7a73a11ef7480245d83d1fc4f02b253e96",
+      "name": "Tzamoto's Soul Core of Ferocity"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial7": {
+      "effects_sha256": "3e29f701d59f978bfd8e2c54f51a15220eea293fc5be173bfdf23e7fefdff0ad",
+      "name": "Uromoti's Soul Core of Attenuation"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial8": {
+      "effects_sha256": "b659fb464fa016655f8aeccf7f5eb252d24b898553f820acdb1f02416928df80",
+      "name": "Opiloti's Soul Core of Assault"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpecial9": {
+      "effects_sha256": "e455300702e9453b5519adbb7b49b10326a466e17436bd060d8be6e631bc5cbd",
+      "name": "Guatelitzi's Soul Core of Endurance"
+    },
+    "Metadata/Items/SoulCores/SoulCoreSpeed": {
+      "effects_sha256": "9e8d84fead14a485549c9464fef4f36d40e7296005b6042aaf4741eb1fd12fc6",
+      "name": "Soul Core of Quipolatl"
+    },
+    "Metadata/Items/SoulCores/SoulCoreStrength": {
+      "effects_sha256": "839be04994d1cfbbb5ba83949a7f1e99e4041bf8ab291f1c38325b1145bed497",
+      "name": "Soul Core of Atmohua"
+    },
+    "Metadata/Items/SoulCores/SoulCoreVision": {
+      "effects_sha256": "d6e95d1b901d9bd6030682b13779d0f0b80399bd8725bc687b739a553a327a00",
+      "name": "Soul Core of Vizoma"
+    },
+    "Metadata/Items/SoulCores/TalismanBear": {
+      "effects_sha256": "faceca94ebb0604de2cb71963b5672da558de8455c16fc7fe820329d7c9df5aa",
+      "name": "Bear Idol"
+    },
+    "Metadata/Items/SoulCores/TalismanBoar": {
+      "effects_sha256": "91fefab520e99b327caa95f48f78048cb433c5570b559252754374594e8b0f80",
+      "name": "Boar Idol"
+    },
+    "Metadata/Items/SoulCores/TalismanCat": {
+      "effects_sha256": "a2f0595d610643773f70c0352beb9c6e0438e3d05957e5206d61b95e2b2f8531",
+      "name": "Cat Idol"
+    },
+    "Metadata/Items/SoulCores/TalismanFox": {
+      "effects_sha256": "88a12aaab070e5c59551160475c3039317f548115eac29b198a5b717f8e94248",
+      "name": "Fox Idol"
+    },
+    "Metadata/Items/SoulCores/TalismanMonkey": {
+      "effects_sha256": "7741a25e4607dd281b0376dc4919c47fcb8cc6eef017edea4a4fd1a7163a03ec",
+      "name": "Primate Idol"
+    },
+    "Metadata/Items/SoulCores/TalismanOwl": {
+      "effects_sha256": "dfdf23297eef9027d5bc694eee85ab2a0be4683430f5737ff6054e4277053822",
+      "name": "Owl Idol"
+    },
+    "Metadata/Items/SoulCores/TalismanOx": {
+      "effects_sha256": "90b0a112153d42a399caeb1c18386b3d0dd62d2c9d0b4b5efc2a89e27b8aeac7",
+      "name": "Ox Idol"
+    },
+    "Metadata/Items/SoulCores/TalismanRabbit": {
+      "effects_sha256": "3a670dda518834b9ae203cdddcbf14f5861801924813d44bdace9a393f480aa0",
+      "name": "Rabbit Idol"
+    },
+    "Metadata/Items/SoulCores/TalismanSnake": {
+      "effects_sha256": "de1dda5a0c816e0e0ab655522c44dc41a287e3c7dd7a512331e9bd93835a66bd",
+      "name": "Snake Idol"
+    },
+    "Metadata/Items/SoulCores/TalismanSpecial1": {
+      "effects_sha256": "54c90363f3a5f372772c2e832e93835b5bd116dd02ff4c626585bd1158fdffec",
+      "name": "Idol of Sirrius"
+    },
+    "Metadata/Items/SoulCores/TalismanSpecial2": {
+      "effects_sha256": "032591d964a505b142da4a505602a081e0f2d78be0c93ea5ecde9f35991d3fff",
+      "name": "Idol of Thruldana"
+    },
+    "Metadata/Items/SoulCores/TalismanSpecial3": {
+      "effects_sha256": "b17ea49237e62fe3a1e7aeda1bea61d8601a23b6ecc7c458bf6f2fe767be7d99",
+      "name": "Idol of Grold"
+    },
+    "Metadata/Items/SoulCores/TalismanSpecial4": {
+      "effects_sha256": "5acc03acee534594925d147caa82fdb6887fdf1bf78788b6615dbccfbff57fc5",
+      "name": "Idol of Eeshta"
+    },
+    "Metadata/Items/SoulCores/TalismanSpecial5": {
+      "effects_sha256": "ed942f4a9b0a655e03baf51fe6eaf867afe904bb3f60cb84c361d55f86c8e70d",
+      "name": "Idol of Egrin"
+    },
+    "Metadata/Items/SoulCores/TalismanSpecial6": {
+      "effects_sha256": "0dfb30796d56df8b075bb93175be2cf1d2c6c5e5a55903d84177e53af05e3420",
+      "name": "Idol of Maxarius"
+    },
+    "Metadata/Items/SoulCores/TalismanSpecial7": {
+      "effects_sha256": "459d74357952d4888013c2624b3abfe62fb1dc6ddd7c498a33d5d4cd604aeefe",
+      "name": "Idol of Ralakesh"
+    },
+    "Metadata/Items/SoulCores/TalismanStag": {
+      "effects_sha256": "03eb48e6751ff1f65007daf56bc04e505ca5efbb5c41ab7f573a567b943a157a",
+      "name": "Stag Idol"
+    },
+    "Metadata/Items/SoulCores/TalismanWolf": {
+      "effects_sha256": "95b51631092033fda120bf60a4e0a287ccfce40a790ddf3b7564003e63fab8df",
+      "name": "Wolf Idol"
+    },
+    "Metadata/Items/SoulCores/TecrodsGaze": {
+      "effects_sha256": "b46cbf19edce5155c4c5c1a4ed6b1243334b4b46c0950c1d642ecee70c81f181",
+      "name": "Tecrod's Gaze"
+    },
+    "Metadata/Items/SoulCores/ThesisOfBlood": {
+      "effects_sha256": "816a375287a5c19139a24b0357c6adcf4f0a33e84a1a5a75ba9751e9b5012895",
+      "name": "Guatelitzi's Thesis"
+    },
+    "Metadata/Items/SoulCores/ThesisOfExperiments": {
+      "effects_sha256": "f35a2e26af19e377e71a2183169a8fcff0f03a0049c8eb2730461b5d00c396e1",
+      "name": "Quipolatl's Thesis"
+    },
+    "Metadata/Items/SoulCores/ThesisOfSacrifice": {
+      "effects_sha256": "e982a42c021e42ff462f8cfc5e4068be93a21cce4c6e3a0fff657511a9022b9c",
+      "name": "Citaqualotl's Thesis"
+    },
+    "Metadata/Items/SoulCores/ThesisOfSouls": {
+      "effects_sha256": "aff7c64a5cbb3a1c3d90e2b38e34f1b3763ee815cc66e06720082cdce6f0438b",
+      "name": "Jiquani's Thesis"
+    },
+    "Metadata/Items/SoulCores/UlamansGaze": {
+      "effects_sha256": "c43524644a37bf185436b3fb3f52580a9e3f9ad572f90bb898b6080aec9c176a",
+      "name": "Ulaman's Gaze"
+    }
+  },
+  "compatibility_slot_aliases": {
+    "martial weapon wand or staff": [
+      "weapon",
+      "wand",
+      "staff"
+    ]
+  },
+  "descriptions_manifest_sha256": "c8a475ba97b2fda3231ab05d23c4fdafa6b8593dec4a3d8307339b9cb6a794f2",
+  "descriptions_sha256": "e9c403e11f5b3d7bc9a26af1b1cf636a6dbf439d9ca1e3503b1490568be1ad0e",
+  "excluded": {
+    "Metadata/Items/SoulCores/RuneOfTheAncients27": "e5930d6f73f8c623235fa43f6d92d829aacb62e040028f5f6a6e724b92d31770",
+    "Metadata/Items/SoulCores/RuneOfTheAncients28": "19f1d96727ace034d402ebdee3f2811773d00aa39788326643c28eebeba641fd",
+    "Metadata/Items/SoulCores/RuneOfTheAncients29": "e35b71d0411d9603c402a47832584d14968ca3ba443db10597314dafcd10adb5",
+    "Metadata/Items/SoulCores/RuneOfTheAncients30": "4480b1bd1079a0d3e4baead8c5c6fdbeab2161eb1de3766b5e71feab4e583eb6",
+    "Metadata/Items/SoulCores/RuneOfTheAncients31": "0e6f6e7836877ccac82b0b02dc9b1815e2ec15531d9e81b0970c336d5a0af44a",
+    "Metadata/Items/SoulCores/RuneOfTheAncients32": "9eff396597f1a27478874236a51a43e138d457b96fb47d5b5502068390b53ae1",
+    "Metadata/Items/SoulCores/RuneOfTheAncients33": "a3ff0c75610a0beaaeeac008a92bbbe42b47f03e14eaa2aeb09bf268271dffd3",
+    "Metadata/Items/SoulCores/RuneOfTheAncients34": "7ecffbab7f973817f785fc7a28e316bed51fec7e61526aa9e55fbf05030505ec"
+  },
+  "import_aliases": {
+    "Metadata/Items/SoulCores/RuneOlrothsLegacyMjölner": [
+      "Legacy of Mjolner"
+    ]
+  },
+  "limit_groups": {
+    "AldursLegacyLimit1": "AldursLegacyLimit1",
+    "AncientAugment": "AncientAugment",
+    "GenericLimit1": null,
+    "GenericLimit2": null
+  },
+  "schema": "pobr-ordinary-socketables-policy/v1",
+  "source_sha256": "cfec5d6eb345045c558b004bc241348378ef5b25f49060c948ac4e6b56f3671d",
+  "statement": "Target F 0.5.5.5 supplies membership, restrictions, names and complete numeric packets. Category/limit-group mappings adapt stable source IDs to the existing item-editor contract. Only unrenderable whole socketables may retain pinned 0.5.5.4.2 text when all target effect packets exactly match these declared baseline bindings; this is explicit historical compatibility, not target-source certification of that text. Source acquisition remains draft. Display rank/stat_order are not target game facts.",
+  "version": "0.5.5.5"
+}

@@ -1,0 +1,715 @@
+{
+  "BaseItemTypes": {
+    "table": "BaseItemTypes",
+    "raw_resource": "Data/Balance/BaseItemTypes.datc64",
+    "row_key": "Zero-based physical source row; ephemeral within these exact raw bytes, never a stable game ID.",
+    "columns": [
+      {
+        "physical_fields": [
+          "Id"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Id",
+          "references": null,
+          "type": "string",
+          "unique": true,
+          "until": null
+        },
+        "source_column": 0
+      },
+      {
+        "physical_fields": [
+          "Name"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": true,
+          "name": "Name",
+          "references": null,
+          "type": "string",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 1
+      }
+    ],
+    "physical_fields": [
+      "Id",
+      "Name"
+    ],
+    "rows": [
+      {
+        "_row": 0,
+        "values": {
+          "Id": "Metadata/TestRune",
+          "Name": "Source Rune"
+        }
+      }
+    ],
+    "validation": {
+      "rows": 1,
+      "schema_row_bytes": 1,
+      "actual_row_bytes": 1,
+      "warnings": []
+    }
+  },
+  "Stats": {
+    "table": "Stats",
+    "raw_resource": "Data/Balance/Stats.datc64",
+    "row_key": "Zero-based physical source row; ephemeral within these exact raw bytes, never a stable game ID.",
+    "columns": [
+      {
+        "physical_fields": [
+          "Id"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Id",
+          "references": null,
+          "type": "string",
+          "unique": true,
+          "until": null
+        },
+        "source_column": 0
+      }
+    ],
+    "physical_fields": [
+      "Id"
+    ],
+    "rows": [
+      {
+        "_row": 0,
+        "values": {
+          "Id": "test_life"
+        }
+      },
+      {
+        "_row": 1,
+        "values": {
+          "Id": "test_mana"
+        }
+      }
+    ],
+    "validation": {
+      "rows": 2,
+      "schema_row_bytes": 1,
+      "actual_row_bytes": 1,
+      "warnings": []
+    }
+  },
+  "ItemClasses": {
+    "table": "ItemClasses",
+    "raw_resource": "Data/Balance/ItemClasses.datc64",
+    "row_key": "Zero-based physical source row; ephemeral within these exact raw bytes, never a stable game ID.",
+    "columns": [
+      {
+        "physical_fields": [
+          "Id"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Id",
+          "references": null,
+          "type": "string",
+          "unique": true,
+          "until": null
+        },
+        "source_column": 0
+      }
+    ],
+    "physical_fields": [
+      "Id"
+    ],
+    "rows": [
+      {
+        "_row": 0,
+        "values": {
+          "Id": "Helmet"
+        }
+      }
+    ],
+    "validation": {
+      "rows": 1,
+      "schema_row_bytes": 1,
+      "actual_row_bytes": 1,
+      "warnings": []
+    }
+  },
+  "SoulCoreTypes": {
+    "table": "SoulCoreTypes",
+    "raw_resource": "Data/Balance/SoulCoreTypes.datc64",
+    "row_key": "Zero-based physical source row; ephemeral within these exact raw bytes, never a stable game ID.",
+    "columns": [
+      {
+        "physical_fields": [
+          "Id"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Id",
+          "references": null,
+          "type": "string",
+          "unique": true,
+          "until": null
+        },
+        "source_column": 0
+      }
+    ],
+    "physical_fields": [
+      "Id"
+    ],
+    "rows": [
+      {
+        "_row": 0,
+        "values": {
+          "Id": "Rune"
+        }
+      }
+    ],
+    "validation": {
+      "rows": 1,
+      "schema_row_bytes": 1,
+      "actual_row_bytes": 1,
+      "warnings": []
+    }
+  },
+  "SoulCoreLimits": {
+    "table": "SoulCoreLimits",
+    "raw_resource": "Data/Balance/SoulCoreLimits.datc64",
+    "row_key": "Zero-based physical source row; ephemeral within these exact raw bytes, never a stable game ID.",
+    "columns": [
+      {
+        "physical_fields": [
+          "Id"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Id",
+          "references": null,
+          "type": "string",
+          "unique": true,
+          "until": null
+        },
+        "source_column": 0
+      },
+      {
+        "physical_fields": [
+          "Limit"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Limit",
+          "references": null,
+          "type": "i32",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 1
+      }
+    ],
+    "physical_fields": [
+      "Id",
+      "Limit"
+    ],
+    "rows": [
+      {
+        "_row": 0,
+        "values": {
+          "Id": "per-item",
+          "Limit": 2
+        }
+      }
+    ],
+    "validation": {
+      "rows": 1,
+      "schema_row_bytes": 1,
+      "actual_row_bytes": 1,
+      "warnings": []
+    }
+  },
+  "SoulCoreStatCategories": {
+    "table": "SoulCoreStatCategories",
+    "raw_resource": "Data/Balance/SoulCoreStatCategories.datc64",
+    "row_key": "Zero-based physical source row; ephemeral within these exact raw bytes, never a stable game ID.",
+    "columns": [
+      {
+        "physical_fields": [
+          "Id"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Id",
+          "references": null,
+          "type": "string",
+          "unique": true,
+          "until": null
+        },
+        "source_column": 0
+      },
+      {
+        "physical_fields": [
+          "TargetItemClasses"
+        ],
+        "schema": {
+          "array": true,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "TargetItemClasses",
+          "references": {
+            "table": "ItemClasses"
+          },
+          "type": "foreignrow",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 1
+      }
+    ],
+    "physical_fields": [
+      "Id",
+      "TargetItemClasses"
+    ],
+    "rows": [
+      {
+        "_row": 0,
+        "values": {
+          "Id": "All",
+          "TargetItemClasses": []
+        }
+      },
+      {
+        "_row": 1,
+        "values": {
+          "Id": "Helmet",
+          "TargetItemClasses": [
+            0
+          ]
+        }
+      }
+    ],
+    "validation": {
+      "rows": 2,
+      "schema_row_bytes": 1,
+      "actual_row_bytes": 1,
+      "warnings": []
+    }
+  },
+  "SoulCores": {
+    "table": "SoulCores",
+    "raw_resource": "Data/Balance/SoulCores.datc64",
+    "row_key": "Zero-based physical source row; ephemeral within these exact raw bytes, never a stable game ID.",
+    "columns": [
+      {
+        "physical_fields": [
+          "BaseItemType"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "BaseItemType",
+          "references": {
+            "table": "BaseItemTypes"
+          },
+          "type": "foreignrow",
+          "unique": true,
+          "until": null
+        },
+        "source_column": 0
+      },
+      {
+        "physical_fields": [
+          "RequiredLevel"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "RequiredLevel",
+          "references": null,
+          "type": "i32",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 1
+      },
+      {
+        "physical_fields": [
+          "Limit"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Limit",
+          "references": {
+            "table": "SoulCoreLimits"
+          },
+          "type": "foreignrow",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 2
+      },
+      {
+        "physical_fields": [
+          "Type"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Type",
+          "references": {
+            "table": "SoulCoreTypes"
+          },
+          "type": "foreignrow",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 3
+      },
+      {
+        "physical_fields": [
+          "IsSocketBound"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "IsSocketBound",
+          "references": null,
+          "type": "bool",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 4
+      },
+      {
+        "physical_fields": [
+          "CanSocketInUniqueItems"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "CanSocketInUniqueItems",
+          "references": null,
+          "type": "bool",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 5
+      },
+      {
+        "physical_fields": [
+          "CanSocketInJewellery"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "CanSocketInJewellery",
+          "references": null,
+          "type": "bool",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 6
+      },
+      {
+        "physical_fields": [
+          "CanSocketInCorruptedSanctified"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "CanSocketInCorruptedSanctified",
+          "references": null,
+          "type": "bool",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 7
+      }
+    ],
+    "physical_fields": [
+      "BaseItemType",
+      "RequiredLevel",
+      "Limit",
+      "Type",
+      "IsSocketBound",
+      "CanSocketInUniqueItems",
+      "CanSocketInJewellery",
+      "CanSocketInCorruptedSanctified"
+    ],
+    "rows": [
+      {
+        "_row": 0,
+        "values": {
+          "BaseItemType": 0,
+          "Type": 0,
+          "Limit": 0,
+          "RequiredLevel": 15,
+          "IsSocketBound": false,
+          "CanSocketInUniqueItems": true,
+          "CanSocketInJewellery": false,
+          "CanSocketInCorruptedSanctified": true
+        }
+      }
+    ],
+    "validation": {
+      "rows": 1,
+      "schema_row_bytes": 1,
+      "actual_row_bytes": 1,
+      "warnings": []
+    }
+  },
+  "SoulCoreStats": {
+    "table": "SoulCoreStats",
+    "raw_resource": "Data/Balance/SoulCoreStats.datc64",
+    "row_key": "Zero-based physical source row; ephemeral within these exact raw bytes, never a stable game ID.",
+    "columns": [
+      {
+        "physical_fields": [
+          "SoulCore"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "SoulCore",
+          "references": {
+            "table": "SoulCores"
+          },
+          "type": "foreignrow",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 0
+      },
+      {
+        "physical_fields": [
+          "StatCategory"
+        ],
+        "schema": {
+          "array": false,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "StatCategory",
+          "references": {
+            "table": "SoulCoreStatCategories"
+          },
+          "type": "foreignrow",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 1
+      },
+      {
+        "physical_fields": [
+          "Stats"
+        ],
+        "schema": {
+          "array": true,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "Stats",
+          "references": {
+            "table": "Stats"
+          },
+          "type": "foreignrow",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 2
+      },
+      {
+        "physical_fields": [
+          "StatsValues"
+        ],
+        "schema": {
+          "array": true,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "StatsValues",
+          "references": null,
+          "type": "i32",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 3
+      },
+      {
+        "physical_fields": [
+          "BondedStats"
+        ],
+        "schema": {
+          "array": true,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "BondedStats",
+          "references": {
+            "table": "Stats"
+          },
+          "type": "foreignrow",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 4
+      },
+      {
+        "physical_fields": [
+          "BondedStatsValues"
+        ],
+        "schema": {
+          "array": true,
+          "description": null,
+          "file": null,
+          "files": null,
+          "interval": false,
+          "localized": false,
+          "name": "BondedStatsValues",
+          "references": null,
+          "type": "i32",
+          "unique": false,
+          "until": null
+        },
+        "source_column": 5
+      }
+    ],
+    "physical_fields": [
+      "SoulCore",
+      "StatCategory",
+      "Stats",
+      "StatsValues",
+      "BondedStats",
+      "BondedStatsValues"
+    ],
+    "rows": [
+      {
+        "_row": 0,
+        "values": {
+          "SoulCore": 0,
+          "StatCategory": 0,
+          "Stats": [
+            0
+          ],
+          "StatsValues": [
+            10
+          ],
+          "BondedStats": [
+            1
+          ],
+          "BondedStatsValues": [
+            4
+          ]
+        }
+      },
+      {
+        "_row": 1,
+        "values": {
+          "SoulCore": 0,
+          "StatCategory": 1,
+          "Stats": [
+            0
+          ],
+          "StatsValues": [
+            -2
+          ],
+          "BondedStats": [],
+          "BondedStatsValues": []
+        }
+      }
+    ],
+    "validation": {
+      "rows": 2,
+      "schema_row_bytes": 1,
+      "actual_row_bytes": 1,
+      "warnings": []
+    }
+  }
+}

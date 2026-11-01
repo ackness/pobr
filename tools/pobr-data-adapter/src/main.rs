@@ -61,7 +61,7 @@ fn main() -> ExitCode {
         Ok(Mode::GemQuality(args)) => skills::quality::run(args),
         Ok(Mode::NativeFacts(args)) => native_facts::run(args),
         Ok(Mode::NativeRuntime(args)) => native_facts::runtime::run(*args),
-        Ok(Mode::OrdinaryFacts(args)) => ordinary_facts::run(args),
+        Ok(Mode::OrdinaryFacts(args)) => ordinary_facts::run(*args),
         Err(err) => Err(err),
     };
     match result {
@@ -86,7 +86,7 @@ struct Args {
 
 /// Independent data-domain adapter modes, mutually exclusive.
 enum Mode {
-    OrdinaryFacts(ordinary_facts::Args),
+    OrdinaryFacts(Box<ordinary_facts::Args>),
     NativeRuntime(Box<native_facts::runtime::Args>),
     NativeFacts(native_facts::Args),
     BaseItems(Args),
@@ -112,7 +112,8 @@ fn parse_args() -> Result<Mode, String> {
 fn parse_args_from(args: impl Iterator<Item = String>) -> Result<Mode, String> {
     let args: Vec<_> = args.collect();
     if args.iter().any(|arg| arg == "--ordinary-facts") {
-        return ordinary_facts::parse_args(args.into_iter()).map(Mode::OrdinaryFacts);
+        return ordinary_facts::parse_args(args.into_iter())
+            .map(|args| Mode::OrdinaryFacts(Box::new(args)));
     }
     if args.iter().any(|arg| arg == "--native-runtime") {
         return native_facts::runtime::parse_args(args.into_iter())
