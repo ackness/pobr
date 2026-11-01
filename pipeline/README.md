@@ -327,3 +327,7 @@ adapter 落库时按 PoB2 语义重命名。已核验对照（PoE2 段，validFo
 （199 条直接命中 `SpellCritChance/100`；2 条位于 AdditionalStatSets 指向的附加 set，同列命中）。
 另注：PoE2 的 `GrantedEffectsPerLevel` **没有** `PlayerLevelReq` 列（PoE1 才有）；等级需求
 走 `SkillGems.ItemExperienceType → ItemExperiencePerLevel` 链（PoB2 `Export/Scripts/skills.lua:240`）。
+
+Target-language proper names can be adapted from the independent translation repository
+with the [native name sidecar adapter](native-name-translations.md). It preserves
+exact locale/source identity and does not activate data.
