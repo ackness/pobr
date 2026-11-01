@@ -6,6 +6,7 @@ mod boss_poise;
 mod catalysts;
 mod convert;
 mod gem_effects;
+mod item_grants;
 mod minion_links;
 mod monster_resistances;
 mod monster_scaling;
@@ -80,6 +81,7 @@ enum Domain {
     Socketables,
     Catalysts,
     BossPoise,
+    ItemGrants,
     Unarmed,
 }
 
@@ -104,6 +106,7 @@ impl Domain {
             Self::Socketables => &socketables::TABLES,
             Self::Catalysts => &catalysts::TABLES,
             Self::BossPoise => &boss_poise::TABLES,
+            Self::ItemGrants => &item_grants::TABLES,
             Self::Unarmed => &unarmed::TABLES,
         }
     }
@@ -129,6 +132,7 @@ impl Domain {
             Self::Socketables => "ordinary-socketables",
             Self::Catalysts => "ordinary-catalysts",
             Self::BossPoise => "ordinary-boss-poise",
+            Self::ItemGrants => "ordinary-item-grants",
             Self::Unarmed => "ordinary-unarmed-data",
         }
     }
@@ -154,6 +158,7 @@ impl Domain {
             Self::Socketables => "socketables",
             Self::Catalysts => "catalysts",
             Self::BossPoise => "boss-poise",
+            Self::ItemGrants => "item-grants",
             Self::Unarmed => "unarmed-data",
         }
     }
@@ -216,6 +221,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         Some("socketables") => Domain::Socketables,
         Some("catalysts") => Domain::Catalysts,
         Some("boss-poise") => Domain::BossPoise,
+        Some("item-grants") => Domain::ItemGrants,
         Some("unarmed-data") => Domain::Unarmed,
         Some(value) => return Err(format!("unsupported ordinary domain: {value}")),
     };
@@ -229,6 +235,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         domain,
         Domain::BaseItems
             | Domain::Unarmed
+            | Domain::ItemGrants
             | Domain::StatSetCodec
             | Domain::GemEffects
             | Domain::SkillStatMap
@@ -249,7 +256,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
     .any(|flag| values.contains_key(*flag))
     {
         return Err(
-            "codec arguments require --ordinary-domain base-items, stat-set-codec, gem-effects, skill-stat-map, skill-overrides, minions, spectres, granted-effect-minions, passive-tree, runtime-constants, socketables or unarmed-data".into(),
+            "codec arguments require --ordinary-domain base-items, stat-set-codec, gem-effects, skill-stat-map, skill-overrides, minions, spectres, granted-effect-minions, passive-tree, runtime-constants, socketables, unarmed-data or item-grants".into(),
         );
     }
     if !matches!(domain, Domain::SkillStatMap | Domain::SkillOverrides)
@@ -357,6 +364,7 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
             || matches!(
                 domain,
                 Domain::Unarmed
+                    | Domain::ItemGrants
                     | Domain::StatSetCodec
                     | Domain::GemEffects
                     | Domain::SkillStatMap
@@ -455,6 +463,28 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
             )
         }
 
+        Domain::ItemGrants => {
+            let converted = item_grants::convert(
+                &input,
+                args.codec
+                    .as_ref()
+                    .ok_or("missing item-grants source/policy")?,
+            )?;
+            for parent in &converted.protected_parents {
+                output.protect(parent)?;
+            }
+            overlay = BTreeMap::from([("item_granted_skills.json".into(), converted.bytes)]);
+            extra_sidecars = converted.sidecars;
+            (
+                BTreeMap::new(),
+                converted.receipt,
+                "pobr_data::catalog::item_granted_skills::ItemGrantedSkillsDef",
+                vec![
+                    "Target raw IsWeapon membership and target base names regenerate reservation_free_bases under an explicit fixed community NoReservation interpretation. Neither raw schema nor field names are changed.",
+                    "All remaining fields, including unique effect variants/export aliases, retain their pinned legacy source. Existing DTO/ordinary consumer and source-draft/CURRENT boundaries remain unchanged.",
+                ],
+            )
+        }
         Domain::BossPoise => {
             let converted = boss_poise::convert(
                 &input,
@@ -1041,6 +1071,15 @@ fn implementation_sha256() -> String {
     let mut bytes = Vec::new();
     // Content revision records the compiled implementation, not whichever checkout invokes it.
     for (name, source) in [
+        (
+            "ordinary_facts/item_grants.rs",
+            include_bytes!("ordinary_facts/item_grants.rs").as_slice(),
+        ),
+        (
+            "catalog/item_granted_skills.rs",
+            include_bytes!("../../../crates/pobr-data/src/catalog/item_granted_skills.rs")
+                .as_slice(),
+        ),
         (
             "ordinary_facts/boss_poise.rs",
             include_bytes!("ordinary_facts/boss_poise.rs").as_slice(),

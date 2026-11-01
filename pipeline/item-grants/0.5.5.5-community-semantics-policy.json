@@ -1,0 +1,23 @@
+{
+  "schema": "pobr-ordinary-item-grants-policy/v1",
+  "version": "0.5.5.5",
+  "source_sha256": "0cfd12f28ef7261c01bb270db033ad31ca959e618ac274355a657bd495d8b087",
+  "raw_schema_revision": "6034b071846ef61b39046ebdb59e6d5717179509",
+  "raw_field": "IsWeapon",
+  "raw_source_column": 2,
+  "interpreted_semantic": "NoReservation",
+  "community_schema": {
+    "repository": "https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2",
+    "revision": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+    "files": {
+      "src/Export/spec.lua": "4df9f94a1acc8fa8f4e505db7fc8a281e3e2f1b35a2d969e4f99ef1880d5ed4b",
+      "src/Export/Scripts/bases.lua": "143aa9091fe8dae6b3f9cdfebb8412a29d8169af76479b5b5c1d513d902b6351",
+      "src/Data/Bases/amulet.lua": "cedb4a4a6591286b7c37973ca6af89d49c6245aa6664c34dc50db838cc866ea3"
+    },
+    "spec_table": "iteminherentskills",
+    "spec_field": 3,
+    "spec_type": "Bool",
+    "spec_name": "NoReservation"
+  },
+  "statement": "Explicit fixed community semantic interpretation of the third physical boolean, not an independently confirmed official field name. Target raw IsWeapon is preserved; only the ordinary reservation_free_bases list is regenerated. The other fields, including four item-specific variants/export aliases, retain their original pinned compatibility source and are not target unique-to-mod/roll evidence."
+}
