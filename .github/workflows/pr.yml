@@ -89,7 +89,7 @@ jobs:
       - uses: ./.github/actions/setup-tools
         with:
           rust: 'true'
-          python: 'false'
+          python: 'true'
       - uses: Swatinem/rust-cache@v2.9.3
         with:
           shared-key: host-check
@@ -116,6 +116,9 @@ jobs:
           node: 'true'
           python: 'false'
       - run: pnpm install --frozen-lockfile
+      - name: Prepare pinned external data for Web integration tests
+        working-directory: .
+        run: python3 pipeline/build_data.py --install data
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm test:worker
@@ -138,6 +141,8 @@ jobs:
       # The package contract test invokes the project's TypeScript compiler.
       - name: Install automation test dependencies
         run: pnpm --dir web install --frozen-lockfile
+      - name: Prepare pinned external data for automation integration tests
+        run: python3 pipeline/build_data.py --install data
       - run: bash devs/scripts/check-workflows.sh
 
   full:

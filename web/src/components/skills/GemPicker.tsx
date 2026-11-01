@@ -144,7 +144,8 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
           <ul className="gem-picker-list" role="listbox" ref={listRef} id={listId} aria-label={placeholder}>
             {filtered.map((entry, idx) => {
               const primary = gemDisplayName(entry, lang);
-              const secondary = primary === entry.name ? entry.name_zh_tw : entry.name;
+              const secondary = primary === entry.name
+                ? (lang === 'en-US' && entry.name_zh_tw !== entry.name ? entry.name_zh_tw : null) : entry.name;
               // 限 3 个：列表项是单行 flex，再多会挤掉宝石名。
               const tags = gemTagLabels(entry.tags, lang, 3);
               return (

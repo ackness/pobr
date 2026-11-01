@@ -2179,7 +2179,7 @@ class SkillSweepTests(unittest.TestCase):
         result = self.result(100, effect)
         row = {"skill_id": effect, "classification": "agree", "families": [],
                "vendor_has_effect": True, "pobr": result, "pob2": result, "reasons": []}
-        commit = self.sweep.read_json(self.data / "overlay/skill_overrides.json")["_meta"]["vendor_commit"]
+        commit = self.sweep.read_json(REPO / "devs/reference-sources.json")["pob2"]["commit"]
         with tempfile.TemporaryDirectory() as temp, contextlib.ExitStack() as stack:
             root = Path(temp)
             cache = root / "cache"
@@ -2187,6 +2187,9 @@ class SkillSweepTests(unittest.TestCase):
             vendor = root / "vendor"
             (vendor / "src").mkdir(parents=True)
             (vendor / "src/HeadlessWrapper.lua").touch()
+            (root / "devs").mkdir()
+            (root / "devs/reference-sources.json").write_text(json.dumps({"schema_version": 1,
+                "pob2": {"commit": commit, "protocol": "pob2-oracle/v1"}}))
             (root / "target/debug").mkdir(parents=True)
             (root / "target/debug/pobr").touch()
             for suffix in ("json", "txt"):

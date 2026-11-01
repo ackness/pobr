@@ -1,5 +1,5 @@
 {
-  "data_version": "0.5.5.4.2",
+  "data_version": "0.5.5.5",
   "rule": "Exclude a control if none of its required if_skill names/ids exist in base/granted_effects.json or the game's skill-gem item names; otherwise exclude only when its mechanic identifiers lack complete word evidence in base stats/skills/mods/passives or inherited overlay item/stat-description text (even across separate records). Keep controls without a searchable mechanic. Legacy stats and exporter-derived overlay text are retained evidence, not proof of a playable PoE2 mechanic.",
   "excluded": {
     "ActiveBrands": {

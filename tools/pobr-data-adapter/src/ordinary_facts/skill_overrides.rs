@@ -100,7 +100,13 @@ pub(super) fn convert(
     let mut target_numeric = 0;
     let mut retained = 0;
     let mut virtual_numeric = 0;
-    for (source_row, (entry, output)) in dto.overrides.iter().zip(output_entries).enumerate() {
+    let mut delegated_implicit = BTreeSet::new();
+    for (source_row, (entry, output)) in dto
+        .overrides
+        .iter()
+        .zip(output_entries.iter_mut())
+        .enumerate()
+    {
         let raw = &legacy.document["overrides"][source_row];
         let key = policy::Key::from(entry);
         key.validate()?;
@@ -175,27 +181,57 @@ pub(super) fn convert(
                 json!({"status":"policy-unbound","codec_record":null,"target_owner":owner,"policy_exception":exception,
                     "scope":"retained unchanged without target branch claim; no producer primary fallback or retargeting"})
             };
-            let stat = entry
-                .stat_id
-                .as_ref()
-                .map(|id| {
-                    let row = facts.stats.get(id).ok_or_else(|| {
+            if policy.delegates_implicit()
+                && entry.stat == "implicit_stat"
+                && branch_binding["status"] == "raw-owned"
+            {
+                retained -= 1;
+                delegated_implicit.insert(source_row);
+                let (_, label) = label.ok_or("delegated implicit stat has no codec binding")?;
+                let primary = owner
+                    .as_ref()
+                    .ok_or("delegated implicit stat has no target owner")?
+                    .primary_source_row();
+                let selected = *facts
+                    .sets
+                    .get(&label.set_id)
+                    .ok_or("delegated implicit set absent from facts")?;
+                let evidence = source::implicit_evidence(input, &tables, primary, selected)?;
+                json!({"status":"delegated-target-implicit-stat","branch":branch_binding,"source_evidence":evidence,
+                    "legacy_stat_id":entry.stat_id,"legacy_stat_present_in_target":entry.stat_id.as_ref().is_some_and(|id|facts.stats.contains_key(id)),
+                    "scope":"raw-owned implicit membership belongs to ordinary-skills; old overlay entry archived and removed even when target membership changes; no old flag is re-injected"})
+            } else {
+                let stat =
+                    entry
+                        .stat_id
+                        .as_ref()
+                        .map(|id| {
+                            let row = facts.stats.get(id).ok_or_else(|| {
                         format!("implicit stat Id {id} absent from target Stats; policy conflict")
                     })?;
-                    Ok::<_, String>(json!({"table":"Stats","source_row":row,"id":id}))
-                })
-                .transpose()?;
-            json!({"status":"retained-community-interpretation","branch":branch_binding,"implicit_stat":stat,
+                            Ok::<_, String>(json!({"table":"Stats","source_row":row,"id":id}))
+                        })
+                        .transpose()?;
+                json!({"status":"retained-community-interpretation","branch":branch_binding,"implicit_stat":stat,
                 "scope":"authored raw JSON preserved; target identity checks are not mechanic correctness certification"})
+            }
         };
         records.push(json!({"source_row":source_row,"source_pointer":format!("/overrides/{source_row}"),"key":key,
             "source_entry_sha256":sha256_hex(&reader::json_bytes(raw)?),
-            "output_entry_sha256":sha256_hex(&reader::json_bytes(output)?),
+            "output_entry_sha256":if delegated_implicit.contains(&source_row){None}else{Some(sha256_hex(&reader::json_bytes(output)?))},
+            "emitted":!delegated_implicit.contains(&source_row),
             "entry_value_unchanged":raw.eq(output),"binding":binding}));
     }
     if !numeric_exceptions.is_empty() || !unbound.is_empty() {
         return Err("unused/stale numeric or unbound retained exception".into());
     }
+    let mut source_row = 0;
+    output_entries.retain(|_| {
+        let keep = !delegated_implicit.contains(&source_row);
+        source_row += 1;
+        keep
+    });
+    let output_count = output_entries.len();
     let legacy_identity = json!({"file":"legacy-skill-overrides.json","bytes":legacy.bytes.len(),"sha256":sha256_hex(&legacy.bytes),
         "snapshot_version":policy.source.snapshot_version,"reference_path":policy.source.path,"metadata":policy.source.metadata});
     let codec_identity = json!({"file":"branch-codec.json","bytes":codec.bytes.len(),"sha256":sha256_hex(&codec.bytes),
@@ -211,14 +247,15 @@ pub(super) fn convert(
     // Recheck the emitted shape, without losing raw unknown fields through DTO serialization.
     let _: SkillOverridesDef = serde_json::from_value(output_document.clone())
         .map_err(|e| format!("converted skill-overrides: {e}"))?;
-    let receipt = json!({"entries":records.len(),"target_numeric_entries":target_numeric,"legacy_only_numeric_entries":virtual_numeric,
+    let receipt = json!({"entries":output_count,"source_entries":records.len(),"target_numeric_entries":target_numeric,"legacy_only_numeric_entries":virtual_numeric,
         "retained_interpretation_entries":retained,"entry_records":records,
+        "delegated_implicit_entries":delegated_implicit.len(),"delegated_implicit_source_rows":delegated_implicit,
         "legacy_source":legacy_identity,"branch_codec":codec_identity,"codec_policy":policy_identity,"target_numeric":target_identity,
         "historical_source_evidence":policy.evidence,"compatibility_statement":policy.statement,
-        "unconsumed_source":source::unmapped(input,&tables)?,
+        "unconsumed_source":source::unmapped(input,&tables,policy.delegates_implicit())?,
         "reference_occurrences":"owner additional refs are ordered physical occurrences, including duplicates; export indices come only from pinned codec records",
         "numeric_comparison":"legacy values are comparison/template shape only; f64 equality is reported separately and never gates target output; historical Decimal comparison is not serialized/f64 equality",
-        "preservation":"authored order/identity/unknown fields retained; only target-owned numeric representation and top metadata replaced; original source/codec/policy bytes archived verbatim",
+        "preservation":"unowned authored order/identity/unknown fields retained; target-owned numeric representation rebuilt and v2 raw-owned implicit entries delegated to ordinary-skills. Complete original source/codec/policy bytes, including delegated entries, archived verbatim",
         "pending":"remaining prepared assets, target law correctness, full package, ordinary BD/Web/accuracy and adoption remain separate; no new actor scaling, interpolation, primary fallback, source approval or effectless claims"});
     Ok(Converted {
         overlay: BTreeMap::from([(

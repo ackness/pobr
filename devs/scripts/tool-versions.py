@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export the project's exact tool pins for official CI installers."""
+"""Resolve tool requests through mise.lock for official CI installers."""
 
 import argparse
 import json
@@ -18,13 +18,28 @@ TOOLS = {
 }
 
 
-def versions(config, rust):
+def versions(config, rust, lock):
+    if lock.get("lockfile_version") != 3:
+        raise ValueError("mise.lock must use the supported lockfile version 3")
     result = {}
     for output, key in TOOLS.items():
-        value = config["tools"][key]
-        if not isinstance(value, str) or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", value):
-            raise ValueError(f"{key} must use an exact stable version, got {value!r}")
-        result[output] = value
+        request = config["tools"][key]
+        if not isinstance(request, str) or (request != "latest" and not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", request)):
+            raise ValueError(f"{key} must request latest or an exact stable version, got {request!r}")
+        entries = lock.get("tools", {}).get(key, [])
+        if not isinstance(entries, list):
+            raise ValueError(f"{key}: invalid mise.lock entries")
+        matching = [entry for entry in entries if isinstance(entry, dict)
+                    and isinstance(entry.get("specifiers"), list)
+                    and request in entry["specifiers"]]
+        if len(matching) != 1:
+            raise ValueError(f"{key}: expected one mise.lock entry for {request!r}; run mise lock")
+        resolved = matching[0].get("version")
+        if not isinstance(resolved, str) or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", resolved):
+            raise ValueError(f"{key}: locked version must be exact and stable, got {resolved!r}")
+        if request != "latest" and resolved != request:
+            raise ValueError(f"{key}: locked version {resolved!r} disagrees with {request!r}")
+        result[output] = resolved
     toolchain = rust["toolchain"]
     result["rust"] = toolchain["channel"]
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", result["rust"]):
@@ -60,7 +75,9 @@ def main():
         config = tomllib.load(source)
     with (ROOT / "rust-toolchain.toml").open("rb") as source:
         rust = tomllib.load(source)
-    values = versions(config, rust)
+    with (ROOT / "mise.lock").open("rb") as source:
+        lock = tomllib.load(source)
+    values = versions(config, rust, lock)
     if args.check:
         check_active(values)
         return

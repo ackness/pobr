@@ -6,6 +6,13 @@
 stat 是游戏属性标识，stat set 是技能效果的一组数值，ModDb 是计算词条数据库。数值定义见[计算输出](calc-outputs.md)，
 导入差异见[导入格式](import-formats.md)，数据和计算编排见[构筑模型](build-model.md)。
 
+候选运行时可使用[三块 JSON 发行包](../pipeline/runtime-bundle.md#三块-json-发行包)：
+核心、规则／共享兼容与选定语言共用一份 release manifest。Web 校验 release、块和文件摘要后，
+将原有相对路径及精确 UTF-8 文本送入既有 WASM staging，CLI materialize 得到相同字节。
+`trade_catalog.gems`、历史天赋节点、原始文本与 null 翻译阻断保持可用。
+块使用 immutable 内容路径；缺 SHA-256 支持或混合版本／区服／语言时拒绝初始化。
+旧版逐文件清单保持兼容，默认站点仍选择已采用的数据；显式候选同步不代表正式采用。
+
 <a id="upgrade-guidance"></a>
 ## 提升规划
 
@@ -129,16 +136,25 @@ WeGame 魔法药剂／护符只用一条标准基底行，修饰名、恢复／�
 不提供逐组缓存或刷新后恢复。推荐列实际等级／品质／形态，应用保持评估时的完整效果序号。
 
 辅助推荐的效果说明可用键盘展开。可选目录 `description` 是钉定 PoB2 定义中的定性英文原文，
-只为辅助导出。中文正文由 `pipeline/gen-support-descriptions.mjs` 从现有简中词典的固定提交
-`GemEffects.SupportText` 中精确匹配完整英文，按原有 `skill_id` 生成 Web 显示映射；
-记录源文件摘要、目录摘要和提交，不消费 native 描述候选。独立交易词表不含此描述域。
+只为辅助导出。中文正文和`GemEffects.SupportText`语言配对处理由翻译库独立维护，
+PoBR构建时按`build-data.lock.json`的`support_display`固定提交、manifest和资产摘要导入，
+核对目标目录完整SHA后生成忽略的Web显示输入，不在PoBR Git存储完整说明表。
+原资产生成版本、社区提交和来源摘要保留；当前目标适用绑定不改写原生成版本，不消费native描述候选。
 运行时再次核对 ID 与完整英文，防止目录更新后使用过时译文。简中采用词典译文，繁体采用现有字形转换回退并在说明中注明；
 无匹配时保留英文并标明来源，无原文时显示不可用，不能从名称或预测收益编造。
-这些说明不是当前等级／品质数值，也不证明已计算该效果。词典或辅助目录更新后运行
-`mise exec -- node pipeline/gen-support-descriptions.mjs`；`--check` 验证生成产物一致。
+这些说明不是当前等级／品质数值，也不证明已计算该效果。词典或辅助目录更新由翻译库重新配对并交付固定资产，
+PoBR更新锁后运行`mise run data:prepare`；目录摘要不符时拒绝导入，不使用旧说明作隐式回退。
 
 物品结构属性（含 `Evasion:`／`Evasion Rating:`、护甲、能量护盾等）在 `useLocalizedLines` 显示边界翻译，
 详情按原始键分组，数值和未知字段保留；原始文本页、编辑和导入导出不使用显示译文。
+
+普通 Web 名称优先使用 manifest 列出的 `i18n/<locale>/display_texts.json`。
+宝石通过包内 `skill_gems` 和 `gem_effects` 的既有授予关系匹配 `BaseItemTypes.Name`，
+并核对 WASM 返回的当前英文；多个可能基底必须给出一致译名，不能按顺序取首项。
+升华核对 `Ascendancy.Name` 的稳定 ID 与当前英文；职业元数据没有来源 ID，
+只接受 `Characters.Name` 内无歧义的当前英文匹配。选择器、摘要与技能集共用显示入口，
+不改计算 ID、选择值、导入原文或保存格式。明确未决／冲突保留英文并阻断旧译文与繁简转换补回；
+未被该语言目录覆盖的记录保留原兼容路径。目录身份或格式错误会报错。
 
 装备、技能、天赋共用保存的目标。辅助排除项按主动技能集保存，约束每次试算与种子搭配，但不改已装备基准。
 天赋规划计算连通路线和路径并集，计入过路成本；有限退款只退叶子分支，退款后重算路线。

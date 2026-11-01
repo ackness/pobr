@@ -47,13 +47,26 @@ PoB2 的 PoE2 pseudo-stat 映射有意留空，因为伪属性可能混入镶嵌
 
 ## 数据再生与检查
 
-修改此数据功能时，在仓库根目录先导出同版本 GGG 表，再按需要运行以下命令。**仅改本文时不运行这些构建或测试**；本次文档审查只检查 diff 与链接。
+游戏事实由 RePoE 保存和发布；PoBR 在构建或需要实物的测试中临时导入固定产物。制作配方的旧物理输入及其补丁／服别身份尚未找到，不能把旧输出的字节身份当成来源重生证明。若要重现旧提取器或验证替代来源，需要同一来源快照中的七张表及以下字段，保留外键所用的行索引、空值和数组顺序：
+
+| 表 | 提取器读取的字段 |
+|---|---|
+| `BaseItemTypes` | `Id` |
+| `ItemClasses` | `Id` |
+| `Mods` | `Id`、`Level`、`Stat1`–`Stat4` 及其 `Stat1Value`–`Stat4Value` |
+| `Stats` | `Id` |
+| `Essences` | `BaseItemType` |
+| `EssenceTargetItemCategories` | `ItemClasses` |
+| `EssenceMods` | `Essence`、`TargetItemCategory`、`Mod`、`OutcomeMods` |
+
+RePoE 的交付应记录每个原始输入和导出物的来源、字节数、SHA-256、解码器/schema 修订以及观测到的补丁和服别；未知项保持未知。上述关联须能无损解析，随机制作使用 `OutcomeMods`，为空时才回退 `Mod`。新来源的目标是 0.5.5.5 international，只有来源证据支持时才能声明适用；复现旧字节也不单独证明游戏语义或目标适用性。旧 `trade_crafting_sources.json` 仅有身份：31,192 bytes，SHA-256 `6153ccd3eee148312fac673c9669896c66c8ab1cf712167a5e836544821a4202`。基线提取器 `pipeline/extract-trade-crafting.py` SHA-256 为 `9cd3a04aa6a703312b55fb8c93b606cbbc0370ebd7fbf5ade64a5349fc51c7f2`。这不记录原始执行时的输入身份。
+
+用该提取器比较时，将七个 `<表名>.json` 放在临时输入目录，并将输出写到临时目录；比较字节及语义差异并记录双方身份。不要把完整表或产物放入 PoBR Git 或 PoBR 的数据 artifact ref。以下命令中的两个目录由调用方指定：
 
 ```sh
-trade_overlay="data/$(cat data/CURRENT)/overlay"
-mise exec -- python3 pipeline/extract-trade-crafting.py pipeline/tables/English "$trade_overlay/trade_crafting_sources.json"
-mise exec -- luajit pipeline/extract-trade-catalog.lua vendor/PathOfBuilding-PoE2/src "$trade_overlay/trade_catalog.json" "$trade_overlay/trade_crafting_sources.json"
-mise exec -- luajit pipeline/extract-trade-map.lua vendor/PathOfBuilding-PoE2/src "$trade_overlay/trade_stat_map.json"
+mise exec -- python3 pipeline/extract-trade-crafting.py "$POBR_TRADE_INPUT" "$POBR_TRADE_OUTPUT/trade_crafting_sources.json"
+mise exec -- luajit pipeline/extract-trade-catalog.lua vendor/PathOfBuilding-PoE2/src "$POBR_TRADE_OUTPUT/trade_catalog.json" "$POBR_TRADE_OUTPUT/trade_crafting_sources.json"
+mise exec -- luajit pipeline/extract-trade-map.lua vendor/PathOfBuilding-PoE2/src "$POBR_TRADE_OUTPUT/trade_stat_map.json"
 mise exec -- python3 pipeline/test-trade-crafting.py
 mise exec -- luajit pipeline/test-trade-stats.lua
 mise exec -- luajit pipeline/test-trade-crafting-fallback.lua
@@ -63,4 +76,4 @@ mise run web build
 mise run web:e2e e2e/trade-upgrades.spec.ts --workers=1
 ```
 
-`pipeline/regen-all.sh` 按依赖顺序执行两个提取阶段。没有原始 GGG 表的 checkout 可把已提交 crafting sources 作为 catalog 提取器第三个参数；省略时只有 PoB2 来源覆盖。
+`pipeline/regen-all.sh` 的旧路径按依赖顺序执行两个提取阶段；迁移期间可用经过身份核验的保留 crafting 输出作为 catalog 提取器第三个参数。省略时只有 PoB2 来源覆盖，不代表制作事实已验证。

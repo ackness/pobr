@@ -14,18 +14,23 @@
 //! values fall within its roll range + domain/spawn weight applicability) ->
 //! rank ascending by level within the (group, generation_type, stat set) pool.
 //!
-//! Explicitly out of scope (ponytail: this is best-effort display — no match
-//! means no label, never guess):
-//! - Scaled stats (e.g. regen stored per-minute) — the captured value won't
-//!   land in any range, so it's left unlabeled;
+//! Source-owned optional branches match complete raw integer intervals through
+//! their shared display formatter, conditions and first-match precedence.
+//! Multiple matching mods remain unlabeled. Legacy templates without metadata
+//! keep the original matching behavior, including their unit limitations.
+//!
+//! The following remain outside the rollable pool or whole-line contract:
 //! - Essence/corrupted/exclusive affixes (spawn weight is all zero) — not in
 //!   the rollable pool, so unlabeled;
 //! - Cross-line hybrids (one mod rendered across multiple lines) — a single
 //!   line's stat set won't equal the mod's, so unlabeled.
 
 use std::collections::{BTreeSet, HashMap};
+use std::sync::Arc;
 
-use pobr_data::catalog::stat_descriptions::StatDescriptionsDef;
+use pobr_data::catalog::stat_descriptions::{StatDescriptionsDef, StatDescriptor};
+
+mod branches;
 use pobr_data::catalog::{ModDef, ModStat, SpawnWeight};
 
 /// GGG `Mods.GenerationType`: 1 = prefix, 2 = suffix (other generation types don't participate in tiering).
@@ -63,6 +68,8 @@ struct TemplateEntry {
     stat_ids: Vec<String>,
     /// Numeric slots, in text order.
     slots: Vec<Slot>,
+    descriptor: Option<(Arc<StatDescriptor>, usize)>,
+    lookup_key: Option<(usize, i64)>,
 }
 
 /// An affix entry participating in tier ranking (the fields needed, pulled from [`ModDef`]).
@@ -131,7 +138,87 @@ impl TierIndex {
         let Some(scope) = descriptions.scopes.get("stat_descriptions") else {
             return index;
         };
+        let owned: BTreeSet<_> = scope
+            .descriptors
+            .values()
+            .flat_map(|d| &d.member_stats)
+            .collect();
+        for descriptor in scope.descriptors.values() {
+            if !branches::valid(descriptor) {
+                continue;
+            }
+            let descriptor = Arc::new(descriptor.clone());
+            let pool = index.pools.get(&stat_key(
+                descriptor.member_stats.iter().map(String::as_str),
+            ));
+            for (branch, b) in descriptor.branches.iter().enumerate() {
+                let lookup = b
+                    .lookups
+                    .iter()
+                    .enumerate()
+                    .find_map(|(i, l)| l.as_ref().map(|name| (i, name)));
+                let templates = if let Some((member, handler)) = lookup {
+                    let Some(pool) = pool else {
+                        continue;
+                    };
+                    let Some(mapping) = scope.lookup_values.get(handler) else {
+                        continue;
+                    };
+                    let mut keys = BTreeSet::new();
+                    for &mod_index in pool {
+                        if let Some(stat) = index.mods[mod_index]
+                            .stats
+                            .iter()
+                            .find(|s| s.stat_id == descriptor.member_stats[member])
+                        {
+                            if stat.min > stat.max {
+                                continue;
+                            }
+                            for (&key, _) in mapping.range(stat.min..=stat.max) {
+                                let c = &b.conditions[member];
+                                if c.min.is_none_or(|m| m <= key)
+                                    && c.max.is_none_or(|m| m >= key)
+                                    && c.not != Some(key)
+                                {
+                                    keys.insert(key);
+                                }
+                            }
+                        }
+                    }
+                    keys.into_iter()
+                        .filter_map(|key| {
+                            branches::literal_template(&b.template, member, &mapping[&key])
+                                .map(|text| (text, Some((member, key))))
+                        })
+                        .collect::<Vec<_>>()
+                } else {
+                    vec![(b.template.clone(), None)]
+                };
+                for (template, lookup_key) in templates {
+                    if let Some((skeleton, slots)) = compound_template_slots(&template) {
+                        if slots.iter().any(
+                            |s| matches!(s, Slot::Value(k) if *k >= descriptor.member_stats.len()),
+                        ) {
+                            continue;
+                        }
+                        index
+                            .templates
+                            .entry(skeleton)
+                            .or_default()
+                            .push(TemplateEntry {
+                                stat_ids: descriptor.member_stats.clone(),
+                                slots,
+                                descriptor: Some((Arc::clone(&descriptor), branch)),
+                                lookup_key,
+                            });
+                    }
+                }
+            }
+        }
         for (stat_id, lines) in &scope.single {
+            if owned.contains(stat_id) {
+                continue;
+            }
             for line in lines {
                 if let Some((skeleton, slots)) = single_template_slots(line) {
                     index
@@ -141,11 +228,16 @@ impl TierIndex {
                         .push(TemplateEntry {
                             stat_ids: vec![stat_id.clone()],
                             slots,
+                            descriptor: None,
+                            lookup_key: None,
                         });
                 }
             }
         }
         for compound in scope.compound.values() {
+            if compound.member_stats.iter().any(|s| owned.contains(s)) {
+                continue;
+            }
             if let Some((skeleton, slots)) = compound_template_slots(&compound.template) {
                 index
                     .templates
@@ -154,6 +246,8 @@ impl TierIndex {
                     .push(TemplateEntry {
                         stat_ids: compound.member_stats.clone(),
                         slots,
+                        descriptor: None,
+                        lookup_key: None,
                     });
             }
         }
@@ -166,9 +260,16 @@ impl TierIndex {
     /// `base_tags` = the base's `BaseItemDef::tags`; `mod_domain` = the
     /// base's `BaseItemDef::mod_domain` (the affix's domain must match).
     pub fn lookup(&self, line: &str, base_tags: &[String], mod_domain: u32) -> Option<TierInfo> {
-        let (skeleton, captures) = skeletonize(line);
+        let (skeleton, exact_captures) = tokenize(line);
+        let captures = exact_captures
+            .iter()
+            .map(|s| s.parse::<f64>().ok())
+            .collect::<Option<Vec<_>>>()?;
         let tags: BTreeSet<&str> = base_tags.iter().map(String::as_str).collect();
         let mut best: Option<TierInfo> = None;
+        let mut matched = std::collections::BTreeMap::new();
+        let mut metadata_match = false;
+        let mut lookup_matches = BTreeSet::new();
 
         for entry in self.templates.get(&skeleton)? {
             let Some(values) = bind_captures(entry, &captures) else {
@@ -191,7 +292,11 @@ impl TierIndex {
                 .collect();
             for &i in &spawnable {
                 let m = &self.mods[i];
-                if !values_in_range(&m.stats, &entry.stat_ids, &values) {
+                if let Some((descriptor, branch)) = &entry.descriptor {
+                    if !branches::matches(&m.stats, entry, descriptor, *branch, &exact_captures) {
+                        continue;
+                    }
+                } else if !values_in_range(&m.stats, &entry.stat_ids, &values) {
                     continue;
                 }
                 // Only mods sharing (group, prefix/suffix) are tiers of each
@@ -210,6 +315,11 @@ impl TierIndex {
                     affix_name: m.affix_name.clone(),
                     mod_id: m.id.clone(),
                 };
+                metadata_match |= entry.descriptor.is_some();
+                if let Some((member, key)) = entry.lookup_key {
+                    lookup_matches.insert((entry.stat_ids.clone(), member, key));
+                }
+                matched.insert(info.mod_id.clone(), info.clone());
                 // Overlapping ranges can produce multiple matches; keep the
                 // strongest tier (ponytail: boundary-value ambiguity is rare, picking the best is fine).
                 if best.as_ref().is_none_or(|b| info.tier < b.tier) {
@@ -217,7 +327,15 @@ impl TierIndex {
                 }
             }
         }
-        best
+        if metadata_match {
+            if matched.len() == 1 && lookup_matches.len() <= 1 {
+                matched.into_values().next()
+            } else {
+                None
+            }
+        } else {
+            best
+        }
     }
 }
 
@@ -228,13 +346,23 @@ fn stat_key<'a>(ids: impl Iterator<Item = &'a str>) -> String {
 }
 
 /// The magnitude used as a ranking tiebreak: the absolute value of the first stat's upper roll bound.
-fn stat_magnitude(stats: &[ModStat]) -> i64 {
-    stats.first().map_or(0, |s| s.max.abs().max(s.min.abs()))
+fn stat_magnitude(stats: &[ModStat]) -> u64 {
+    stats
+        .first()
+        .map_or(0, |s| s.max.unsigned_abs().max(s.min.unsigned_abs()))
 }
 
 /// Skeletonizes a line of text: replaces each numeric run
 /// (`[+-]?\d+(\.\d+)?`) with `#`, capturing the values in order.
 fn skeletonize(text: &str) -> (String, Vec<f64>) {
+    let (skeleton, tokens) = tokenize(text);
+    (
+        skeleton,
+        tokens.into_iter().filter_map(|s| s.parse().ok()).collect(),
+    )
+}
+
+fn tokenize(text: &str) -> (String, Vec<&str>) {
     let mut skeleton = String::with_capacity(text.len());
     let mut captures = Vec::new();
     let bytes = text.as_bytes();
@@ -256,8 +384,8 @@ fn skeletonize(text: &str) -> (String, Vec<f64>) {
                     i += 1;
                 }
             }
-            if let Ok(v) = text[start..i].parse::<f64>() {
-                captures.push(v);
+            if text[start..i].parse::<f64>().is_ok() {
+                captures.push(&text[start..i]);
                 skeleton.push('#');
                 continue;
             }
@@ -426,6 +554,7 @@ fn spawn_weight_positive(weights: &[SpawnWeight], base_tags: &BTreeSet<&str>) ->
 mod tests {
     use super::*;
     use pobr_data::catalog::stat_descriptions::ScopeDescriptions;
+    use std::collections::BTreeMap;
 
     fn mod_def(
         id: &str,
@@ -610,6 +739,243 @@ mod tests {
             index
                 .lookup("Corrupted", &["ring".to_string()], 1)
                 .is_none()
+        );
+    }
+    #[test]
+    fn source_branches_reverse_scaled_compound_values_and_reject_ambiguous_tiers() {
+        use pobr_data::catalog::stat_descriptions::{
+            DescriptionBranch, StatCondition, StatDescriptor, StatValueFormat,
+        };
+        let mut descriptions = StatDescriptionsDef::default();
+        let scope = descriptions
+            .scopes
+            .entry("stat_descriptions".into())
+            .or_default();
+        scope.descriptors.insert(
+            "regen".into(),
+            StatDescriptor {
+                member_stats: vec!["regen".into()],
+                branches: vec![DescriptionBranch {
+                    template: "Regenerate {0} Life per second".into(),
+                    conditions: vec![StatCondition::default()],
+                    lookups: Vec::new(),
+                    formats: vec![StatValueFormat {
+                        divisor: 60,
+                        precision: Some(1),
+                        ..Default::default()
+                    }],
+                }],
+            },
+        );
+        scope
+            .single
+            .insert("regen".into(), vec!["Regenerate 1 Life per second".into()]);
+        scope.descriptors.insert(
+            "duration".into(),
+            StatDescriptor {
+                member_stats: vec!["duration".into(), "chance".into()],
+                branches: vec![DescriptionBranch {
+                    template: "{1}% chance for {0} seconds".into(),
+                    conditions: vec![StatCondition::default(); 2],
+                    lookups: Vec::new(),
+                    formats: vec![
+                        StatValueFormat {
+                            divisor: 1000,
+                            ..Default::default()
+                        },
+                        StatValueFormat {
+                            offset: 200,
+                            ..Default::default()
+                        },
+                    ],
+                }],
+            },
+        );
+        let mut mods = vec![
+            mod_def(
+                "Regen",
+                "",
+                1,
+                1,
+                &[("regen", 150, 150)],
+                &[("ring", 1)],
+                "Regen",
+            ),
+            mod_def(
+                "Compound",
+                "",
+                1,
+                1,
+                &[("chance", 25, 25), ("duration", 1500, 1500)],
+                &[("ring", 1)],
+                "Compound",
+            ),
+        ];
+        let tags = vec!["ring".into()];
+        let index = TierIndex::build(&mods, &descriptions);
+        assert_eq!(
+            index
+                .lookup("Regenerate 2.5 Life per second", &tags, 1)
+                .unwrap()
+                .mod_id,
+            "Regen"
+        );
+        assert_eq!(
+            index
+                .lookup("225% chance for 1.5 seconds", &tags, 1)
+                .unwrap()
+                .mod_id,
+            "Compound"
+        );
+        assert!(
+            index
+                .lookup("Regenerate 150 Life per second", &tags, 1)
+                .is_none()
+        );
+        // A distinct raw mod maps to the same rounded display. Neither tier is certain.
+        mods.push(mod_def(
+            "RoundedOther",
+            "",
+            1,
+            2,
+            &[("regen", 151, 151)],
+            &[("ring", 1)],
+            "Regen",
+        ));
+        assert!(
+            TierIndex::build(&mods, &descriptions)
+                .lookup("Regenerate 2.5 Life per second", &tags, 1)
+                .is_none()
+        );
+    }
+    #[test]
+    fn lookup_templates_bind_source_keys_only_in_actual_pools_and_refuse_same_name_ambiguity() {
+        use pobr_data::catalog::stat_descriptions::{
+            DescriptionBranch, StatCondition, StatDescriptor, StatValueFormat,
+        };
+        let mut descriptions = StatDescriptionsDef::default();
+        let scope = descriptions
+            .scopes
+            .entry("stat_descriptions".into())
+            .or_default();
+        scope.lookup_values.insert(
+            "passive_hash".into(),
+            BTreeMap::from([
+                (-32768, "Named passive".into()),
+                (-32767, "Other passive".into()),
+            ]),
+        );
+        scope.descriptors.insert(
+            "key".into(),
+            StatDescriptor {
+                member_stats: vec!["key".into()],
+                branches: vec![DescriptionBranch {
+                    template: "Allocates {0}".into(),
+                    conditions: vec![StatCondition::default()],
+                    formats: vec![StatValueFormat::default()],
+                    lookups: vec![Some("passive_hash".into())],
+                }],
+            },
+        );
+        assert!(TierIndex::build(&[], &descriptions).templates.is_empty());
+        let mut mods = vec![mod_def(
+            "Named",
+            "",
+            1,
+            1,
+            &[("key", -32768, -32768)],
+            &[("ring", 1)],
+            "Named",
+        )];
+        let tags = vec!["ring".into()];
+        assert_eq!(
+            TierIndex::build(&mods, &descriptions)
+                .lookup("Allocates Named passive", &tags, 1)
+                .unwrap()
+                .mod_id,
+            "Named"
+        );
+        assert!(
+            TierIndex::build(&mods, &descriptions)
+                .lookup("Allocates Other passive", &tags, 1)
+                .is_none()
+        );
+        let mut missing = descriptions.clone();
+        missing
+            .scopes
+            .get_mut("stat_descriptions")
+            .unwrap()
+            .lookup_values
+            .clear();
+        assert!(TierIndex::build(&mods, &missing).templates.is_empty());
+        descriptions
+            .scopes
+            .get_mut("stat_descriptions")
+            .unwrap()
+            .lookup_values
+            .get_mut("passive_hash")
+            .unwrap()
+            .insert(-32767, "Named passive".into());
+        mods[0].stats[0].max = -32767;
+        // One mod permits two raw keys with the same display: key identity is uncertain.
+        assert!(
+            TierIndex::build(&mods, &descriptions)
+                .lookup("Allocates Named passive", &tags, 1)
+                .is_none()
+        );
+        mods.push(mod_def(
+            "Other",
+            "",
+            1,
+            2,
+            &[("key", -32767, -32767)],
+            &[("ring", 1)],
+            "Named",
+        ));
+        assert!(
+            TierIndex::build(&mods, &descriptions)
+                .lookup("Allocates Named passive", &tags, 1)
+                .is_none()
+        );
+    }
+    #[test]
+    fn full_signed_raw_limit_does_not_overflow_tier_ranking() {
+        use pobr_data::catalog::stat_descriptions::{
+            DescriptionBranch, StatCondition, StatDescriptor, StatValueFormat,
+        };
+        let mut descriptions = StatDescriptionsDef::default();
+        descriptions
+            .scopes
+            .entry("stat_descriptions".into())
+            .or_default()
+            .descriptors
+            .insert(
+                "signed".into(),
+                StatDescriptor {
+                    member_stats: vec!["signed".into()],
+                    branches: vec![DescriptionBranch {
+                        template: "Signed {0}".into(),
+                        conditions: vec![StatCondition::default()],
+                        formats: vec![StatValueFormat::default()],
+                        lookups: Vec::new(),
+                    }],
+                },
+            );
+        let mods = vec![mod_def(
+            "Signed",
+            "",
+            1,
+            1,
+            &[("signed", i64::MIN, i64::MIN)],
+            &[("ring", 1)],
+            "Signed",
+        )];
+        assert_eq!(
+            TierIndex::build(&mods, &descriptions)
+                .lookup("Signed -9223372036854775808", &["ring".into()], 1)
+                .unwrap()
+                .mod_id,
+            "Signed"
         );
     }
 }

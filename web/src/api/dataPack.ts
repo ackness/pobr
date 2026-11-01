@@ -14,8 +14,10 @@
  */
 
 import { nativeDigest, type DigestFn } from './dataIntegrity';
+import { blockUrl, decodeBlock, validateRelease, validateSnapshot } from './runtimeRelease';
 
 export interface DataManifest {
+  schema?: string;
   version: string;
   files: string[];
   /** The digest of every listed file as published; absent in a manifest from an older sync. */
@@ -93,6 +95,26 @@ export interface LoadedDataPack {
 export async function loadDataPack(options: LoadDataPackOptions): Promise<LoadedDataPack> {
   const { manifest, fetchBytes, stage, keep, onProgress } = options;
   const digest = options.digest === undefined ? nativeDigest() ?? null : options.digest;
+  if (manifest.schema !== undefined) {
+    if (!digest) throw new Error('Runtime blocks require SHA-256 support');
+    const release = await validateRelease(manifest, digest);
+    const kept = new Map<string, Uint8Array>();
+    let done = 0;
+    // Sequential blocks bound transport memory to one block. The original
+    // strings become exactly the same per-path bytes as CLI materialization.
+    for (const spec of release.blocks) {
+      const files = await decodeBlock(release, spec, await fetchBytes(blockUrl(spec)), digest);
+      const snapshot = files.get('manifest.json');
+      if (snapshot) validateSnapshot(release, snapshot);
+      for (const [rel, bytes] of files) {
+        stage(rel, bytes);
+        if (keep(rel)) kept.set(rel, bytes);
+        onProgress?.(++done, release.files.length);
+        files.delete(rel);
+      }
+    }
+    return { verified: true, kept };
+  }
   const concurrency = options.concurrency ?? 8;
   const total = manifest.files.length;
   const kept = new Map<string, Uint8Array>();

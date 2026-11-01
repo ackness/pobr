@@ -1,6 +1,7 @@
 //! Ordinary tree production from target facts with explicit field compatibility.
 
 mod ascendancy;
+mod nonstat;
 mod policy;
 mod prepared;
 mod refresh;
@@ -8,6 +9,7 @@ mod refresh;
 mod refresh_tests;
 pub(super) mod render;
 mod source;
+mod unlock;
 pub(super) use refresh::Args as RefreshArgs;
 pub(super) const REFRESH_TABLES: [&str; 5] = [
     "PassiveSkills",

@@ -37,13 +37,30 @@ function format(template, rawValues, tokens, formatted) {
 }
 
 function substitute(template, values) {
-  const rendered = template.replace(/\{(\d+)(?::(\+?d))?\}/gu, (_, index, spec) => {
-    required(Number(index) < values.length, 'translation placeholder outside packet');
-    const value = values[Number(index)];
-    return spec === '+d' && !value.startsWith('-') ? `+${value}` : value;
-  });
-  required(!/[{}]/u.test(rendered), 'unsupported translation placeholder');
-  return plain(rendered);
+  // Same source numbering contract as passive_tree::render::format_template:
+  // an explicit index resets the next implicit slot; escapes are literal and
+  // substituted values are never reparsed. Numeric conversion stays in Rust.
+  let rendered = '', nextIndex = 0;
+  for (let cursor = 0; cursor < template.length;) {
+    const escape = template.slice(cursor, cursor + 2);
+    if (escape === '{{' || escape === '}}') {
+      rendered += escape[0]; cursor += 2; continue;
+    }
+    const ch = template[cursor++];
+    required(ch !== '}', 'unmatched translation brace');
+    if (ch !== '{') { rendered += ch; continue; }
+    const end = template.indexOf('}', cursor);
+    required(end !== -1, 'unclosed translation placeholder');
+    const match = /^(\d*)(?::(d|\+d|-d)?)?$/u.exec(template.slice(cursor, end));
+    required(match, 'unsupported translation placeholder');
+    const index = match[1] === '' ? nextIndex : Number(match[1]);
+    required(Number.isSafeInteger(index) && index < values.length, 'translation placeholder outside packet');
+    nextIndex = index + 1;
+    const value = values[index];
+    rendered += match[2] === '+d' && !value.startsWith('-') ? `+${value}` : value;
+    cursor = end + 1;
+  }
+  return plain(rendered.replaceAll('%%', '%'));
 }
 
 /** Preserve existing wording and add only context-bound, globally unambiguous literals. */
@@ -52,6 +69,7 @@ export function nativeSelectedTranslations(legacy, selection, candidate) {
   required(selection.format === 'pobr-ordinary-facts-receipt/v1', 'not an ordinary producer receipt');
   const schema = selection.adapter?.output_schema;
   let records;
+  const unselectedFields = [];
   if (schema === 'pobr_data::catalog::item_overlay::RunesDef') records = selection.conversion.records;
   else if (schema === 'pobr_data::catalog::{PassiveNodeDef[],PassiveTreeMeta}') {
     records = [];
@@ -60,7 +78,16 @@ export function nativeSelectedTranslations(legacy, selection, candidate) {
       const packets = [{ id: node.id, row: node.target_row, packet: 'node', text: node.text },
         ...node.variants.map(v => ({ id: v.target, row: v.source_row, packet: `variant:${v.class}`, text: v.text }))];
       for (const p of packets) {
-        if (p.text?.owner !== 'target-csd') continue;
+        if (!['target-csd', 'target-csd-and-client-strings'].includes(p.text?.owner)) continue;
+        if (p.text.owner === 'target-csd-and-client-strings') {
+          required(Array.isArray(p.text.non_stat), 'missing source ClientStrings evidence');
+          // This CSD library has no ClientStrings/name bindings. Preserve their
+          // separate ownership and report them instead of matching English.
+          for (const field of p.text.non_stat) {
+            unselectedFields.push({ reason: 'client-string-requires-separate-language-binding',
+              provenance: { id: p.id, packet: p.packet, source_row: p.row }, evidence: field });
+          }
+        }
         records.push({ id: p.id, mode: 'target-csd', selected_descriptions: [{
           packet: p.packet, source_row: p.row, prefix: '', evidence: p.text.descriptions }] });
       }
@@ -84,7 +111,7 @@ export function nativeSelectedTranslations(legacy, selection, candidate) {
       map.get(bucket).add(signature);
     }
   }
-  const proposals = [], excluded = [];
+  const proposals = [], excluded = [...unselectedFields];
   for (const record of records) {
     if (record.mode !== 'target-csd') continue;
     for (const packet of record.selected_descriptions) {

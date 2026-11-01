@@ -73,6 +73,8 @@ pub struct RefDrift {
 /// Reconcile: returns the drift list (empty means everything matches). When
 /// `write = true`, writes back the freshly computed hashes and re-serializes
 /// the defs file (a mechanical refresh, meant to be used after manual review).
+/// An invalid range prevents all writes, so a partial refresh cannot be
+/// mistaken for a complete one.
 pub fn run_check_buff_refs(
     vendor_root: &Path,
     defs_path: &Path,
@@ -111,6 +113,12 @@ pub fn run_check_buff_refs(
         }
     }
 
+    if write && let Some(drift) = drifts.iter().find(|drift| drift.actual.is_none()) {
+        return Err(io::Error::other(format!(
+            "cannot refresh buff references: `{}` has an invalid or out-of-bounds line range; no hashes written",
+            drift.id
+        )));
+    }
     if write && !drifts.is_empty() {
         let mut json = serde_json::to_string_pretty(&doc)
             .expect("buff definitions document serialization should not fail");
@@ -144,5 +152,39 @@ mod tests {
         assert!(segment_hash(text, 0, 1).is_none());
         assert!(segment_hash(text, 2, 1).is_none());
         assert!(segment_hash(text, 1, 4).is_none());
+    }
+
+    #[test]
+    fn refresh_rejects_invalid_ranges_without_partial_write() {
+        let root = std::env::temp_dir().join(format!(
+            "pobr-buff-refs-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir(&root).unwrap();
+        let defs = root.join("defs.json");
+        fs::write(root.join("source.lua"), "first\nsecond\n").unwrap();
+        let original = r#"{"_meta":{},"buffs":[
+            {"id":"moved","trigger_flag":"moved","mode_gate":"combat",
+             "vendor_ref":{"file":"source.lua","line_start":1,"line_end":1,"segment_hash":"old"}},
+            {"id":"missing","trigger_flag":"missing","mode_gate":"combat",
+             "vendor_ref":{"file":"source.lua","line_start":3,"line_end":3,"segment_hash":"old"}}
+        ]}"#;
+        fs::write(&defs, original).unwrap();
+
+        let drifts = run_check_buff_refs(&root, &defs, false).unwrap();
+        assert_eq!(drifts.len(), 2);
+        assert!(drifts[1].actual.is_none());
+        let error = run_check_buff_refs(&root, &defs, true).unwrap_err();
+        assert!(error.to_string().contains("missing"));
+        assert_eq!(fs::read_to_string(&defs).unwrap(), original);
+
+        fs::write(root.join("source.lua"), "first\nsecond\nthird\n").unwrap();
+        assert_eq!(run_check_buff_refs(&root, &defs, true).unwrap().len(), 2);
+        assert!(run_check_buff_refs(&root, &defs, false).unwrap().is_empty());
+        fs::remove_dir_all(root).unwrap();
     }
 }

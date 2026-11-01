@@ -104,6 +104,22 @@ class RustShardTests(unittest.TestCase):
             self.assertTrue(all(command[i] == "-p" for i in range(3, len(command), 2)))
 
 
+class ExternalDataShardTests(unittest.TestCase):
+    def test_every_rust_shard_prepares_data_and_only_one_publishes_candidates(self):
+        workflow = (HERE.parents[1] / ".github/workflows/ci.yml").read_text()
+        job = workflow.split("  ci:\n", 1)[1].split("\n  web:", 1)[0]
+        steps = job.split("      - name: ")
+        prepare = next(step for step in steps if step.startswith("Prepare pinned external data"))
+        self.assertNotIn("        if:", prepare)
+        self.assertIn("--install data", prepare)
+        self.assertIn("--keep-current", prepare)
+        self.assertLess(job.index("Prepare pinned external data"), job.index("Workspace tests"))
+        for name in ("Build ordinary domain adapter", "Produce declared ordinary candidates",
+                     "Preserve ordinary runtime outputs", "Preserve failed ordinary command logs"):
+            step = next(step for step in steps if step.startswith(name))
+            self.assertIn("matrix.shard == 'libraries-tools'", step)
+
+
 class RoutingTests(unittest.TestCase):
     def test_docs_only_and_known_areas(self):
         self.assertFalse(any(plan.classify([
@@ -209,7 +225,7 @@ class GateTests(unittest.TestCase):
             for event in ("pull_request", "push"):
                 with self.subTest(files=files, event=event):
                     gate.check(self.needs(files, event), "pr")
-        gate.check({name: {"result": "success"} for name in ("lint", "ci", "web", "scripts")}, "full")
+        gate.check({name: {"result": "success"} for name in ("lint", "ci", "web", "runtime", "scripts")}, "full")
 
     def test_selected_failure_cancel_skip_or_missing_never_passes(self):
         for name in plan.AREAS:
@@ -231,10 +247,14 @@ class GateTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 gate.check(needs, "pr")
         for result in ["skipped", "failure", "cancelled"]:
-            needs = {name: {"result": "success"} for name in ("lint", "ci", "web", "scripts")}
-            needs["ci"]["result"] = result
-            with self.assertRaises(ValueError):
-                gate.check(needs, "full")
+            for job in ("ci", "runtime"):
+                needs = {name: {"result": "success"} for name in ("lint", "ci", "web", "runtime", "scripts")}
+                needs[job]["result"] = result
+                with self.subTest(job=job, result=result), self.assertRaises(ValueError):
+                    gate.check(needs, "full")
+        needs.pop("runtime")
+        with self.assertRaisesRegex(ValueError, "dependencies"):
+            gate.check(needs, "full")
 
 
 class ToolVersionTests(unittest.TestCase):
@@ -245,21 +265,63 @@ class ToolVersionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "expected 1.2.3, got 9.8.7"):
             tool_pins.check_active(values, run=lambda *a, **kw: SimpleNamespace(stdout="tool 9.8.7", stderr=""))
 
-    def test_exports_authoritative_pins_and_rejects_floating_or_missing_versions(self):
-        config = {"tools": {key: "1.2.3" for key in tool_pins.TOOLS.values()}}
+    def tool_config(self, request="1.2.3"):
+        config = {"tools": {key: request for key in tool_pins.TOOLS.values()}}
         rust = {"toolchain": {"channel": "1.99.0", "components": ["rustfmt", "clippy"],
                               "targets": ["wasm32-unknown-unknown"]}}
-        values = tool_pins.versions(config, rust)
+        lock = {"lockfile_version": 3, "tools": {
+            key: [{"version": "1.2.3", "specifiers": [request]}]
+            for key in tool_pins.TOOLS.values()
+        }}
+        return config, rust, lock
+
+    def test_exports_exact_pins_and_rejects_partial_or_missing_requests(self):
+        config, rust, lock = self.tool_config()
+        values = tool_pins.versions(config, rust, lock)
         self.assertEqual(values["wasm_pack"], "1.2.3")
         self.assertEqual(values["rust_components"], "rustfmt,clippy")
         self.assertEqual(values["rust_targets"], "wasm32-unknown-unknown")
-        for value in ("latest", "26", "26.13", "26.13.0-rc.1"):
+        for value in ("26", "26.13", "26.13.0-rc.1", {"version": "latest"}):
             config["tools"]["node"] = value
             with self.subTest(value=value), self.assertRaises(ValueError):
-                tool_pins.versions(config, rust)
+                tool_pins.versions(config, rust, lock)
         config["tools"].pop("node")
         with self.assertRaises(KeyError):
-            tool_pins.versions(config, rust)
+            tool_pins.versions(config, rust, lock)
+
+    def test_latest_uses_the_matching_committed_lock_without_remote_resolution(self):
+        config, rust, lock = self.tool_config("latest")
+        lock["tools"]["node"].insert(0, {"version": "9.8.7", "specifiers": ["9"]})
+        values = tool_pins.versions(config, rust, lock)
+        self.assertEqual(values["node"], "1.2.3")
+        self.assertEqual(values["wasm_pack"], "1.2.3")
+        self.assertEqual(values["rust"], "1.99.0")
+
+    def test_latest_rejects_missing_stale_ambiguous_or_nonstable_locks(self):
+        cases = [[], [{"version": "1.2.3", "specifiers": ["1.2.3"]}],
+                 [{"version": "1.2.3", "specifiers": ["latest"]}] * 2,
+                 [{"version": "1.2.3-rc.1", "specifiers": ["latest"]}],
+                 [{"specifiers": ["latest"]}],
+                 [{"version": "1.2.3", "specifiers": "latest"}], {}]
+        for entries in cases:
+            config, rust, lock = self.tool_config("latest")
+            lock["tools"]["node"] = entries
+            with self.subTest(entries=entries), self.assertRaises(ValueError):
+                tool_pins.versions(config, rust, lock)
+
+    def test_rejects_exact_request_lock_mismatch_and_unrecognized_lock_format(self):
+        config, rust, lock = self.tool_config()
+        lock["tools"]["node"][0]["version"] = "9.8.7"
+        with self.assertRaisesRegex(ValueError, "disagrees"):
+            tool_pins.versions(config, rust, lock)
+        config, rust, lock = self.tool_config("latest")
+        lock["lockfile_version"] = 4
+        with self.assertRaisesRegex(ValueError, "lockfile version"):
+            tool_pins.versions(config, rust, lock)
+        lock["lockfile_version"] = 3
+        rust["toolchain"]["channel"] = "stable"
+        with self.assertRaisesRegex(ValueError, "Rust must"):
+            tool_pins.versions(config, rust, lock)
 
 
 class GhInstallerTests(unittest.TestCase):

@@ -9,7 +9,7 @@ import { useAppDialogs } from '../components/shared/AppDialogs';
 import { CopyButton } from '../components/shared/CopyButton';
 import { useSessionAction } from '../components/shared/useSessionAction';
 import type { BuildSession } from '../hooks/useBuildSession';
-import { chineseScript } from '../lib/chinese';
+import { classDisplayName } from '../lib/nativeDisplayNames';
 import { bindT, type Lang } from '../lib/i18n';
 import { hasPobColorCodes, parsePobColorText } from '../lib/pobColors';
 import { workspaceText } from '../lib/workspaceText';
@@ -39,8 +39,7 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
   const character = session.character!;
   const classes = session.treeMeta?.classes ?? [];
   const ascendancies = classes.find(entry => entry.name === character.class_name)?.ascendancies ?? [];
-  const zhName = (map: Record<string, string>, name: string) => lang !== 'en-US' ? chineseScript(map[name] ?? name, lang) : name;
-  const className = (raw: string) => zhName({ ...session.classNames.classes, ...session.classNames.ascendancies }, raw);
+  const className = (raw: string, kind?: 'classes' | 'ascendancies') => classDisplayName(session.classNames, raw, lang, kind);
 
   // Import
   const [destination, setDestination] = useState<Destination>('newBuild');
@@ -223,9 +222,9 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
           if (!character.class_name) { session.setCharacter({ class_name: next, ascendancy_name: '' }); return; }
           if (session.hasBuildContent && !await dialogs.confirm(tt('build.confirmClassChange'))) return;
           if (current()) session.newBuild(next, '');
-        }}>{!character.class_name && <option value="">{tt('build.none')}</option>}{classes.map(entry => <option key={entry.name} value={entry.name}>{zhName(session.classNames.classes, entry.name)}</option>)}</AppSelectControl></label>
+        }}>{!character.class_name && <option value="">{tt('build.none')}</option>}{classes.map(entry => <option key={entry.name} value={entry.name}>{className(entry.name, 'classes')}</option>)}</AppSelectControl></label>
         <label>{tt('build.ascendancy')}<AppSelectControl value={character.ascendancy_name} disabled={session.busy || ascendancies.length === 0} onChange={event => session.setCharacter({ ascendancy_name: event.target.value })}>
-          <option value="">{tt('build.none')}</option>{ascendancies.map(entry => <option key={entry.id} value={entry.name}>{zhName(session.classNames.ascendancies, entry.name)}</option>)}</AppSelectControl></label>
+          <option value="">{tt('build.none')}</option>{ascendancies.map(entry => <option key={entry.id} value={entry.name}>{className(entry.name, 'ascendancies')}</option>)}</AppSelectControl></label>
         <label className="bd-level">{tt('build.level')}<AppInput type="number" min={1} max={100} value={character.level} disabled={session.busy}
           onChange={event => { const level = Number(event.target.value); if (Number.isInteger(level) && level >= 1 && level <= 100) session.setCharacter({ level }); }} /></label>
       </div>

@@ -1,6 +1,15 @@
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { dataUrl, loadDataPack, type DataManifest } from './dataPack';
+import { canonical, fetchReleaseFile, validateRelease, type RuntimeRelease } from './runtimeRelease';
+// @ts-ignore -- Node test helper, excluded from the application module graph.
+import { runtimePackFixture } from '../../scripts/runtime-pack-fixture.mjs';
+// @ts-ignore -- Node sync entry point, exercised without bundling the application.
+import { syncData } from '../../scripts/sync-data.mjs';
 
 const sha = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 const digest = async (bytes: Uint8Array) => sha(bytes);
@@ -108,4 +117,116 @@ describe('loadDataPack', () => {
     await loadDataPack({ manifest, fetchBytes: slow, digest, stage: () => {}, keep: () => false, concurrency: 3 });
     expect(peak).toBeLessThanOrEqual(3);
   });
+});
+
+describe('runtime release transport', () => {
+  function fixture() {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'pobr-blocks-')));
+    const out = join(root, 'candidate');
+    runtimePackFixture(out);
+    const manifest = JSON.parse(readFileSync(join(out, 'player/manifest.json'), 'utf8')) as RuntimeRelease;
+    const payloads = new Map(manifest.blocks.map(spec => [`/data/h/${spec.sha256.slice(0, 16)}/${spec.path}`,
+      new Uint8Array(readFileSync(join(out, 'player', spec.path)))]));
+    const requests: string[] = [];
+    return { root, out, manifest, payloads, requests, fetchBytes: async (url: string) => {
+      requests.push(url);
+      const raw = payloads.get(url);
+      if (!raw) throw new Error(`unexpected fetch: ${url}`);
+      return raw;
+    } };
+  }
+
+  it('loads Python-produced blocks into the exact CLI materialized paths and bytes', async () => {
+    const f = fixture();
+    try {
+      const files = new Map<string, Uint8Array>();
+      const loaded = await loadDataPack({ manifest: f.manifest, fetchBytes: f.fetchBytes, digest,
+        stage: (name, raw) => files.set(name, raw), keep: name => name === 'overlay/trade_catalog.json' });
+      expect(loaded.verified).toBe(true);
+      expect([...loaded.kept.keys()]).toEqual(['overlay/trade_catalog.json']);
+      expect([...files.keys()].sort()).toEqual(f.manifest.files);
+      expect(f.requests).toHaveLength(3);
+      execFileSync('python3', ['../pipeline/runtime_pack.py', 'materialize', '--pack', join(f.out, 'runtime-pack.zip'),
+        '--out', join(f.root, 'cli'), '--expected-id', f.manifest.release_id]);
+      for (const [name, raw] of files) {
+        const path = name.startsWith('overlay-common/') ? join(f.root, 'cli/data', name) : join(f.root, 'cli/data/9.1', name);
+        expect(Buffer.from(raw)).toEqual(readFileSync(path));
+      }
+      expect(new TextDecoder().decode(files.get('base/skills.json'))).toContain('9223372036854775807');
+      expect(JSON.parse(new TextDecoder().decode(files.get('overlay/trade_catalog.json'))).gems).toHaveLength(1);
+      const recovered = await fetchReleaseFile(f.manifest, 'base/passive_trees/0_1.json', f.fetchBytes, digest);
+      expect(recovered).toEqual(files.get('base/passive_trees/0_1.json'));
+      // Repeat startup requests exactly the same immutable URLs; HTTP caching
+      // belongs to the browser/host and is not simulated as a timing result.
+      await loadDataPack({ manifest: f.manifest, fetchBytes: f.fetchBytes, digest, stage: () => {}, keep: () => false });
+      expect(f.requests.slice(-3)).toEqual(f.requests.slice(0, 3));
+    } finally { rmSync(f.root, { recursive: true, force: true }); }
+  });
+
+  it('rejects corrupt blocks, mixed targets, wrong inventories and missing digest support', async () => {
+    const f = fixture();
+    try {
+      const options = { manifest: f.manifest, fetchBytes: f.fetchBytes, digest, stage: () => {}, keep: () => false };
+      await expect(loadDataPack({ ...options, digest: null })).rejects.toThrow('require SHA-256');
+      const [url, raw] = [...f.payloads][0];
+      f.payloads.set(url, bytes('{}'));
+      await expect(loadDataPack(options)).rejects.toThrow('block SHA-256 mismatch');
+      f.payloads.set(url, raw);
+      const mixed = structuredClone(f.manifest);
+      mixed.target.game_patch = '9.2';
+      await expect(loadDataPack({ ...options, manifest: mixed })).rejects.toThrow('target mismatch');
+      const invalid = structuredClone(f.manifest);
+      invalid.blocks[0].files.push('overlay/trade_catalog.json');
+      await expect(validateRelease(invalid, digest)).rejects.toThrow('block specification');
+      const wrongId = { ...f.manifest, release_id: '0'.repeat(64) };
+      await expect(loadDataPack({ ...options, manifest: wrongId })).rejects.toThrow('release identity mismatch');
+      // Even a rehashed block/release cannot substitute another snapshot identity.
+      const localeSpec = f.manifest.blocks[2];
+      const localeUrl = `/data/h/${localeSpec.sha256.slice(0, 16)}/${localeSpec.path}`;
+      const block = JSON.parse(new TextDecoder().decode(f.payloads.get(localeUrl)));
+      const snapshot = JSON.parse(block.files['manifest.json']);
+      snapshot.poe_version = '9.2';
+      block.files['manifest.json'] = JSON.stringify(snapshot);
+      const changed = bytes(JSON.stringify(block));
+      const release = structuredClone(f.manifest);
+      release.digests['manifest.json'] = sha(bytes(block.files['manifest.json']));
+      Object.assign(release.blocks[2], { bytes: changed.length, sha256: sha(changed) });
+      const { release_id: _id, ...payload } = release;
+      release.release_id = sha(bytes(canonical(payload)));
+      f.payloads.set(`/data/h/${sha(changed).slice(0, 16)}/${localeSpec.path}`, changed);
+      await expect(loadDataPack({ ...options, manifest: release })).rejects.toThrow('snapshot identity/inventory mismatch');
+    } finally { rmSync(f.root, { recursive: true, force: true }); }
+  });
+
+  it.skipIf(!process.env.POBR_TEST_RUNTIME_PACK)('loads the fixed actual candidate through sync and compares every staged byte with CLI materialization', async () => {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'pobr-actual-blocks-')));
+    const packRoot = resolve(process.env.POBR_TEST_RUNTIME_PACK!);
+    const source = JSON.parse(readFileSync(join(packRoot, 'manifest.json'), 'utf8')) as RuntimeRelease;
+    try {
+      const destination = join(root, 'web-data');
+      const release = syncData({ packRoot, destRoot: destination, expectedId: source.release_id }) as RuntimeRelease;
+      execFileSync('python3', ['../pipeline/runtime_pack.py', 'materialize', '--pack', packRoot,
+        '--out', join(root, 'cli'), '--expected-id', release.release_id]);
+      const requests: string[] = [];
+      let count = 0;
+      const loaded = await loadDataPack({ manifest: release, digest, keep: name => name === 'overlay/trade_catalog.json',
+        fetchBytes: async url => {
+          requests.push(url);
+          return new Uint8Array(readFileSync(join(destination, url.replace(/^\/data\//, ''))));
+        },
+        stage: (name, raw) => {
+          const path = name.startsWith('overlay-common/') ? join(root, 'cli/data', name) : join(root, 'cli/data', release.version, name);
+          expect(Buffer.compare(Buffer.from(raw), readFileSync(path))).toBe(0);
+          count += 1;
+        },
+      });
+      expect(loaded.verified).toBe(true);
+      expect(requests).toHaveLength(3);
+      expect(count).toBe(release.files.length);
+      const trade = JSON.parse(new TextDecoder().decode(loaded.kept.get('overlay/trade_catalog.json')));
+      expect(trade.gems.length).toBeGreaterThan(0);
+      expect(release.files.filter(name => name.startsWith('base/passive_trees/'))).toHaveLength(4);
+      expect(release.locale).toBe('zh-CN');
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  }, 30_000);
 });

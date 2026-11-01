@@ -307,14 +307,14 @@ pub(crate) fn parse_args(args: impl Iterator<Item = String>) -> Result<Args, Str
         values.remove("--supplement"),
         values.remove("--supplement-manifest-sha256"),
     ) {
-        (Some(path), Some(sha256)) if matches!(domain, Domain::Catalysts | Domain::PassiveTree | Domain::PassiveJewelSlots | Domain::ItemGrants) => {
+        (Some(path), Some(sha256)) if matches!(domain, Domain::Catalysts | Domain::PassiveTree | Domain::PassiveJewelSlots | Domain::ItemGrants | Domain::BaseItems | Domain::StatDescriptions | Domain::Minions | Domain::Spectres) => {
             Some(BranchCodecArgs {
                 path: path.into(),
                 sha256,
             })
         }
         (None, None) if !matches!(domain, Domain::Catalysts | Domain::PassiveJewelSlots) => None,
-        _ => return Err("paired supplement arguments require catalysts, passive-tree, passive-jewel-slots or item-grants".into()),
+        _ => return Err("paired supplement arguments require catalysts, passive-tree, passive-jewel-slots, item-grants, base-items, stat-descriptions or actor catalogs".into()),
     };
     let catalog_policy = match (
         values.remove("--catalog-policy"),
@@ -427,6 +427,10 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
             &runtime_constants::PLAYER_TABLES
         } else if args.domain == Domain::ItemGrants && args.supplement.is_some() {
             &item_grants::LINK_TABLES
+        } else if matches!(args.domain, Domain::Minions | Domain::Spectres)
+            && args.supplement.is_some()
+        {
+            &actors::PREPARED_TABLES
         } else {
             args.domain.tables()
         },
@@ -437,6 +441,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
     let supplement = args
         .supplement
         .as_ref()
+        .filter(|_| args.domain != Domain::BaseItems)
         .map(|extra| {
             output.protect(&extra.path)?;
             reader::selected::open(&extra.path, &extra.sha256, &input.manifest)
@@ -578,6 +583,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 args.item_descriptions
                     .as_ref()
                     .ok_or("missing item descriptions")?,
+                supplement.as_ref(),
             )?;
             for parent in &converted.protected_parents {
                 output.protect(parent)?;
@@ -655,9 +661,25 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
         }
         Domain::BaseItems => {
             let mut converted = base_items::convert(&input)?;
+            let inheritance = args
+                .supplement
+                .as_ref()
+                .map(|source| {
+                    output.protect(&source.path)?;
+                    base_items::inheritance::convert(&input, &mut converted.bases, source)
+                })
+                .transpose()?;
             if let Some(codec) = &args.codec {
-                let compatibility =
-                    base_items::compatibility::convert(&input, &converted.bases, codec)?;
+                let compatibility = if inheritance.is_some() {
+                    base_items::compatibility::convert_with_inheritance(
+                        &input,
+                        &converted.bases,
+                        codec,
+                        inheritance.as_ref(),
+                    )?
+                } else {
+                    base_items::compatibility::convert(&input, &converted.bases, codec)?
+                };
                 for parent in &compatibility.protected_parents {
                     output.protect(parent)?;
                 }
@@ -666,17 +688,25 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 legacy_base_overrides_bytes = Some(compatibility.source_bytes);
                 converted.receipt["compatibility_overlay"] = compatibility.receipt;
             }
+            if let Some(inheritance) = inheritance {
+                converted.receipt["unmapped_fields"]["BaseItemTypes"]["columns"]
+                    .as_array_mut()
+                    .ok_or("missing base-item unmapped columns")?
+                    .retain(|column| column != "InheritsFrom");
+                converted.receipt["item_inheritance"] = inheritance.receipt;
+                extra_sidecars.extend(inheritance.sidecars);
+            }
             (
                 BTreeMap::from([("base_items.json".into(), pretty_bytes(&converted.bases)?)]),
                 converted.receipt,
                 "pobr_data::catalog::{BaseItemDef,WeaponBaseStats,ArmourBaseStats,UtilityBaseStats}",
                 vec![
-                    "Only base-item DTO fields and required joins from the selected eleven physical tables were converted; other foreign keys are not certified.",
+                    "Base-item DTO fields use the selected eleven physical tables; optional inheritance supplies Base.tag through a separately pinned community interpretation. Other fields are not certified.",
                     "Physical row references are distinct from stable IDs. Unmapped fields remain in the pinned source; the receipt lists their payload/column/row scope.",
                     "Charm inherent effects are unavailable in this slice; empty charm_buff is not a claim of no effect or complete base-item semantics.",
                     "Acquisition status/evidence is copied unchanged. Fingerprints and conversion do not upgrade draft acquisition, prove full runtime completeness or adopt data.",
                     if args.codec.is_some() {
-                        "Pinned legacy overlay retains only non-owned fields for target-matched bases; numeric fields come from target per-ID BaseItemDef. Unmatched entries remain explicit compatibility. No runtime manifest, download, CURRENT update or calculation-model change."
+                        "Pinned legacy overlay retains only non-owned fields for target-matched bases; numeric fields and explicitly delegated resolved inherited tags come from per-ID BaseItemDef. Unmatched entries and unresolved tag inheritance remain explicit compatibility. No runtime manifest, download, CURRENT update or calculation-model change."
                     } else {
                         "No runtime manifest, vendor fallback, download, CURRENT update, calculation model or schema-4 admission change."
                     },
@@ -870,7 +900,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 vec![
                     "Only the selected five target F tables were read. Raw-owned base multipliers use all actual positive primary stat-set levels and the existing 1 + raw/10000 expression, never old numeric values or defaults.",
                     "Legacy constants retain constant semantics only while target source is constant; target changes and new levels are emitted. GPL records pairing evidence without filtering or creating source/runtime levels.",
-                    "Fixed virtual and prepared community entries retain authored JSON and unknown fields. Actual branch codec membership and exact source-row/key exceptions are explicit; no new primary fallback, retargeting, law interpretation or diagnostic clearing.",
+                    "Unowned virtual and prepared community entries retain authored JSON and unknown fields; explicit v2 policy delegates raw-owned implicit-stat membership to existing ordinary-skills. Actual branch codec membership and exact source-row/key exceptions are explicit; no new primary fallback, retargeting, law interpretation or diagnostic clearing.",
                     "The original legacy source, branch codec and policy bytes are archived with their own identities; target numeric provenance remains separate. Existing DTO, loaders, merges and core behavior are unchanged.",
                     "Acquisition remains draft; full target rule applicability, remaining assets, complete runtime and ordinary BD/Web/accuracy acceptance are separate. No Lua/vendor execution, implicit input, CURRENT update or adoption.",
                 ],
@@ -886,7 +916,11 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
             } else {
                 actors::Catalog::Spectres
             };
-            let converted = actors::convert(&input, codec, catalog)?;
+            let converted = if supplement.is_some() {
+                actors::convert_with_prepared(&input, codec, catalog, supplement.as_ref())?
+            } else {
+                actors::convert(&input, codec, catalog)?
+            };
             for parent in &converted.protected_parents {
                 output.protect(parent)?;
             }
@@ -898,7 +932,7 @@ pub(crate) fn run(args: Args) -> Result<String, String> {
                 converted.receipt,
                 "pobr_data::catalog::actors::{MinionsDef,MinionEntryDef}",
                 vec![
-                    "Only target MonsterVarieties/MonsterTypes/MonsterResistances/Tags/GrantedEffects are read. The declared 22 actor fields use target facts through a fixed archived recipe, without legacy numeric/default fallback.",
+                    "Target actor tables, optional ItemClasses and a pinned MonsterCategories supplement are read only as declared. Declared actor fields use target facts through explicit v1/v2/v3 ownership and vocabulary policies, without legacy numeric/default fallback.",
                     "Curated catalog membership/aliases and every non-owned field remain fixed community interpretation with original metadata. Ordered tags, skill occurrences and resistance refs are preserved; no automatic creature admission, AI or new law is inferred.",
                     "This catalog uses the archived first-resistance-reference/first-array-element projection. Further occurrences remain explicit unapplied evidence. The independent normal-resistance sum/injection domain and consumers are unchanged.",
                     "Crit uses floor-based rounding with negative ties towards positive infinity; reservation preserves the original pow/sqrt/floor order and floating tails. Equality to old numeric text is never required.",
@@ -1143,6 +1177,10 @@ fn implementation_sha256() -> String {
             include_bytes!("ordinary_facts/stat_descriptions.rs").as_slice(),
         ),
         (
+            "ordinary_facts/stat_descriptions/lookups.rs",
+            include_bytes!("ordinary_facts/stat_descriptions/lookups.rs").as_slice(),
+        ),
+        (
             "catalog/stat_descriptions.rs",
             include_bytes!("../../../crates/pobr-data/src/catalog/stat_descriptions.rs").as_slice(),
         ),
@@ -1277,12 +1315,24 @@ fn implementation_sha256() -> String {
             include_bytes!("ordinary_facts/passive_tree/refresh.rs").as_slice(),
         ),
         (
+            "ordinary_facts/passive_tree/unlock.rs",
+            include_bytes!("ordinary_facts/passive_tree/unlock.rs").as_slice(),
+        ),
+        (
             "ordinary_facts/passive_tree/render.rs",
             include_bytes!("ordinary_facts/passive_tree/render.rs").as_slice(),
         ),
         (
             "ordinary_facts/passive_tree/render/number.rs",
             include_bytes!("ordinary_facts/passive_tree/render/number.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/passive_tree/render/catalog.rs",
+            include_bytes!("ordinary_facts/passive_tree/render/catalog.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/passive_tree/nonstat.rs",
+            include_bytes!("ordinary_facts/passive_tree/nonstat.rs").as_slice(),
         ),
         (
             "ordinary_facts/passive_tree/policy.rs",
@@ -1333,12 +1383,29 @@ fn implementation_sha256() -> String {
             include_bytes!("ordinary_facts/actors/projection.rs").as_slice(),
         ),
         (
+            "ordinary_facts/actors/prepared.rs",
+            include_bytes!("ordinary_facts/actors/prepared.rs").as_slice(),
+        ),
+        (
             "catalog/actors.rs",
             include_bytes!("../../../crates/pobr-data/src/catalog/actors.rs").as_slice(),
         ),
         (
             "ordinary_facts/base_items.rs",
             include_bytes!("ordinary_facts/base_items.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/base_items/inheritance.rs",
+            include_bytes!("ordinary_facts/base_items/inheritance.rs").as_slice(),
+        ),
+        (
+            "ordinary_facts/base_items/inheritance/source.rs",
+            include_bytes!("ordinary_facts/base_items/inheritance/source.rs").as_slice(),
+        ),
+        (
+            "fixtures/item-inheritance-producer.json",
+            include_bytes!("../tests/fixtures/ordinary-facts/item-inheritance-producer.json")
+                .as_slice(),
         ),
         (
             "ordinary_facts/base_items/compatibility.rs",

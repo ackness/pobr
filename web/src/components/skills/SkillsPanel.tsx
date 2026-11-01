@@ -1,4 +1,4 @@
-import { localizedName } from '../../lib/chinese';
+import { classDisplayName } from '../../lib/nativeDisplayNames';
 import { AppTooltip, AppButton, AppInput } from '../shared/controls';
 import { NamedSets } from '../shared/NamedSets';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
@@ -429,7 +429,7 @@ function SkillSets({ session, lang }: { session: BuildSession; lang: Lang }) {
       <span className="skill-sets-title">{tt('sets.title')}</span>
       {session.library.skillSets.map((set) => (
         <span key={set.id} className="skill-set-chip">
-          {localizedName(lang, set.name, session.classNames.ascendancies[set.name] ?? session.classNames.classes[set.name])}（{set.groups.length}）
+          {classDisplayName(session.classNames, set.name, lang)}（{set.groups.length}）
           <AppButton disabled={session.busy} onClick={() => session.applySkillSet(set.id)}>
             {tt('sets.apply')}
           </AppButton>

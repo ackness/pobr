@@ -607,17 +607,28 @@ mod tests {
 
     #[test]
     fn sanguimantic_rituals_redirects_scaled_arcane_surge_regeneration() {
-        let defs: pobr_data::catalog::buffs::BuffDefinitionsDef =
-            serde_json::from_str(include_str!(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/../../data/overlay-common/buff_definitions.json"
-            )))
-            .unwrap();
-        let def = defs
-            .buffs
-            .into_iter()
-            .find(|def| def.id == "ArcaneSurge")
-            .unwrap();
+        // Synthetic packet: this unit test exercises scaling and redirection,
+        // independently of the externally prepared game-data catalog.
+        let def: BuffDef = serde_json::from_value(serde_json::json!({
+            "id": "ArcaneSurge",
+            "trigger_flag": "Condition:ArcaneSurge",
+            "mode_gate": "combat",
+            "effect": {
+                "base": 1.0,
+                "inc_stats": ["ArcaneSurgeEffect", "BuffEffectOnSelf"],
+                "rounding": "none"
+            },
+            "mods": [
+                {"name": "Speed", "mod_type": "INC", "flags": ["Cast"],
+                 "value": {"kind": "scaled_rounded", "coeff": 15.0, "rounding": "none"}},
+                {"name": "ManaRegen", "mod_type": "MORE",
+                 "value": {"kind": "scaled_rounded", "coeff": 20.0, "rounding": "none"}}
+            ],
+            "conditions_set": ["AffectedByArcaneSurge"],
+            "verified": true,
+            "vendor_ref": vendor_ref()
+        }))
+        .unwrap();
         let cfg = CalcConfig::new();
         for redirect in [false, true] {
             let mut db = ModDb::new();

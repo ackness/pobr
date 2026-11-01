@@ -132,7 +132,7 @@ PoB 导出需要可靠的来源名称；无法恢复时会报错，不丢弃插�
 ## 语言支持
 
 界面支持英文、简体中文和繁体中文。游戏名词字典随数据版本保存；
-简中来自国服字典（`mise exec -- node pipeline/gen-zh-cn.mjs`），宝石选择器可搜索三种语言。
+词典由独立翻译库的精确锁定产物导入，宝石选择器可搜索三种语言。
 简中物品基底和词条通过模板转为英文再解析，`Rarity:` 等 PoB 结构行保留原格式。
 未知文本保留并给出诊断。繁中有名词字典，没有原生词条模板；显示可通过繁简转换回退，
 不能视为官方译名。界面翻译不改导入原文或稳定计算 id。
@@ -144,14 +144,15 @@ PoB 导出需要可靠的来源名称；无法恢复时会报错，不丢弃插�
 
 ```bash
 mise run setup
+mise run data:prepare
 mise run web build-wasm
 mise run web sync-data
 mise run web dev
 ```
 
 `setup` 只准备日常环境，不编译产品。oracle、浏览器与树图工具由各自任务按需自动准备。
-开发地址为 `http://localhost:5173`。
-没有 WASM／数据时可只开发界面：
+开发地址为 `http://localhost:5173`。`data:prepare`从独立仓库导入固定游戏／语言数据、辅助说明及历史API样本，
+只物化忽略的本地文件，不将完整数据存回PoBR。先准备这些输入，即可不构建WASM而只开发界面：
 
 ```bash
 VITE_POBR_BACKEND=mock mise run web dev
@@ -184,7 +185,8 @@ E2E 使用当前生产 `dist`，`build` 已包含 typecheck。
 普通 Rust 库测试与 PR CI 检查是否过期。其余类型保留在 `src/api/types.ts`，
 由 `apps/pobr-wasm/tests/contract_golden.rs` 检查。
 契约变化后用 `mise exec -- cargo test -p pobr-wasm --features diagnostics --test gen_fixtures -- --ignored`
-重生成 mock 数据。mock 只供界面开发，不验证引擎行为。
+重生成忽略的 mock 数据；完整样本应通过RePoE独立artifact发布并更新`pipeline/build-data.lock.json`，不提交到PoBR。
+mock 只供界面开发，不验证引擎行为。
 
 ## 结构与数据流
 

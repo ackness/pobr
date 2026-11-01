@@ -4,7 +4,7 @@ import { getBackend } from '../../api/backend';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useLocalizedLines } from '../../hooks/useLocalizedLines';
 import type { Lang } from '../../lib/i18n';
-import { baseDraftText, craftingCatalog, type CraftCatalog } from '../../lib/itemCrafting';
+import { baseDraftText, craftBaseDisplayName, craftingCatalog, type CraftCatalog } from '../../lib/itemCrafting';
 import { craftT } from '../../lib/itemCraftingText';
 import { loadTradeCatalog } from '../../lib/tradeOptimizer';
 import { AppSelect } from '../shared/AppSelect';
@@ -46,7 +46,7 @@ export function ItemCrafter({ session, lang }: { session: BuildSession; lang: La
         options={classes.map((value, i) => ({ value, label: classNames[i] ?? value }))}
         onChange={value => { reset(); setItemClass(value); setBaseId(''); }} /></label>
       <label>{t('base')}<AppSelect ariaLabel={t('base')} value={base?.id ?? ''}
-        options={bases.map((base, i) => ({ value: base.id, label: names[i] ?? base.name, hint: `${t('requirement')} ${base.level}` }))}
+        options={bases.map((base, i) => ({ value: base.id, label: craftBaseDisplayName(base, lang, names[i] ?? base.name), hint: `${t('requirement')} ${base.level}` }))}
         onChange={value => { reset(); setBaseId(value); }} /></label>
       <label>{t('rarity')}<AppSelect ariaLabel={t('rarity')} value={chosenRarity}
         options={rarities.map(value => ({ value, label: t(value) }))}

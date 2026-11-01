@@ -1,0 +1,57 @@
+{
+  "schema": "pobr-base-item-field-ownership/v2",
+  "version": "0.5.5.5",
+  "source_sha256": "5f6d40b302444becb5c379fa7bc46728d133461f48fba6d633f7e58f356a362c",
+  "source_metadata": {
+    "schema": "base_item_overrides/v1",
+    "generator": "sync-pob-catalog extract-bases",
+    "vendor": "PathOfBuilding-PoE2",
+    "vendor_commit": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+    "vendor_commit_subject": "bb52d6b368307457eb9c54bb13f1829993d390b1",
+    "extracted_files": [
+      "Data/Bases/amulet.lua",
+      "Data/Bases/axe.lua",
+      "Data/Bases/belt.lua",
+      "Data/Bases/body.lua",
+      "Data/Bases/boots.lua",
+      "Data/Bases/bow.lua",
+      "Data/Bases/claw.lua",
+      "Data/Bases/crossbow.lua",
+      "Data/Bases/dagger.lua",
+      "Data/Bases/fishing.lua",
+      "Data/Bases/flail.lua",
+      "Data/Bases/flask.lua",
+      "Data/Bases/focus.lua",
+      "Data/Bases/gloves.lua",
+      "Data/Bases/helmet.lua",
+      "Data/Bases/incursionlimb.lua",
+      "Data/Bases/jewel.lua",
+      "Data/Bases/mace.lua",
+      "Data/Bases/quiver.lua",
+      "Data/Bases/ring.lua",
+      "Data/Bases/sceptre.lua",
+      "Data/Bases/shield.lua",
+      "Data/Bases/spear.lua",
+      "Data/Bases/staff.lua",
+      "Data/Bases/sword.lua",
+      "Data/Bases/talisman.lua",
+      "Data/Bases/traptool.lua",
+      "Data/Bases/wand.lua"
+    ],
+    "regen_command": "cargo run -p sync-pob-catalog -- extract-bases --vendor-root vendor/PathOfBuilding-PoE2/src --files amulet,axe,belt,body,boots,bow,claw,crossbow,dagger,fishing,flail,flask,focus,gloves,helmet,incursionlimb,jewel,mace,quiver,ring,sceptre,shield,spear,staff,sword,talisman,traptool,wand --out data/0.5.5.4.2/overlay/base_item_overrides.json"
+  },
+  "delegated_fields": [
+    "req_str",
+    "req_dex",
+    "req_int",
+    "block_chance",
+    "spirit",
+    "reload_time_ms",
+    "tags"
+  ],
+  "statement": "Matched ordinary bases consume numeric fields solely from target BaseItemDef. Resolved inherited tags explicitly use pinned PyPoE community interpretation union target direct tags; not official client merge-law certification. Legacy tags are removed only when every same-name target has resolved inheritance. Unknown blocks/keys and rejected tag roots retain raw evidence and declared compatibility. Other fields/unmatched entries remain compatibility.",
+  "tag_ownership": {
+    "inheritance_manifest_sha256": "f8642243fc1d04cecb26c1bd770fb9bbfd70574b93c82969f737013be23c8f31",
+    "interpretation_policy_id": "pypoe-66d1d744-base-tag-child-first-ordered-union/v1"
+  }
+}

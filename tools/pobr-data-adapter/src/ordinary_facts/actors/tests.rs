@@ -229,6 +229,304 @@ pub(in crate::ordinary_facts) fn args(f: &Fixture, catalog: Catalog) -> Args {
 fn read(f: &Fixture, path: &str) -> Value {
     doc(f, &format!("out/{path}"))
 }
+
+fn skill_fixture(catalog: Catalog) -> Fixture {
+    let mut f = fixture(catalog);
+    let table = f.documents.get_mut("tables/MonsterVarieties.json").unwrap();
+    let source_column = table["columns"].as_array().unwrap().len();
+    table["physical_fields"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!("GrantedEffects"));
+    table["columns"].as_array_mut().unwrap().push(json!({"source_column":source_column,
+        "physical_fields":["GrantedEffects"],"schema":{"name":"GrantedEffects","type":"foreignrow","array":true,
+        "interval":false,"references":{"table":"GrantedEffects"}}}));
+    for row in table["rows"].as_array_mut().unwrap() {
+        row["values"]["GrantedEffects"] = if row["_row"] == 1 {
+            json!([2, 0, 2])
+        } else {
+            json!([])
+        };
+    }
+    let policy: Value = serde_json::from_slice(match catalog {
+        Catalog::Minions => {
+            include_bytes!("../../../../../pipeline/actors/0.5.5.5-minions-skills-policy.json")
+                .as_slice()
+        }
+        Catalog::Spectres => {
+            include_bytes!("../../../../../pipeline/actors/0.5.5.5-spectres-skills-policy.json")
+                .as_slice()
+        }
+    })
+    .unwrap();
+    write(&f, POLICY, &policy);
+    reseal(&mut f);
+    f
+}
+
+fn load_ordinary_actor(f: &Fixture, catalog: Catalog) -> MinionsDef {
+    let path = format!("overlay/{}", catalog.file());
+    let data = pobr_gamedata::GameData::from_memory(BTreeMap::from([(
+        path.clone(),
+        fs::read(f.root.join("out").join(path)).unwrap(),
+    )]));
+    match catalog {
+        Catalog::Minions => data.minions().unwrap().unwrap(),
+        Catalog::Spectres => data.spectres().unwrap().unwrap(),
+    }
+}
+
+fn prepared_fixture(catalog: Catalog) -> (Fixture, super::super::BranchCodecArgs) {
+    let mut f = skill_fixture(catalog);
+    let varieties = f.documents.get_mut("tables/MonsterVarieties.json").unwrap();
+    for (field, target) in [
+        ("MainHand_ItemClass", "ItemClasses"),
+        ("OffHand_ItemClass", "ItemClasses"),
+        ("MonsterCategory", "MonsterCategories"),
+    ] {
+        let n = varieties["columns"].as_array().unwrap().len();
+        varieties["physical_fields"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!(field));
+        varieties["columns"].as_array_mut().unwrap().push(json!({"source_column":n,"physical_fields":[field],"schema":{
+            "name":field,"type":"foreignrow","array":false,"interval":false,"references":{"table":target}}}));
+        for row in varieties["rows"].as_array_mut().unwrap() {
+            row["values"][field] = Value::Null;
+        }
+    }
+    f.values("MonsterVarieties", 1)["MainHand_ItemClass"] = json!(1);
+    f.values("MonsterVarieties", 1)["OffHand_ItemClass"] = json!(2);
+    f.values("MonsterVarieties", 1)["MonsterCategory"] = json!(0);
+    f.values("Tags", 0)["Id"] = json!("undead");
+    f.values("Tags", 1)["Id"] = json!("demon");
+    f.documents.insert(
+        "tables/ItemClasses.json".into(),
+        table(
+            "ItemClasses",
+            &[("Id", "string", false, None)],
+            json!([
+        {"Id":"Claw"},{"Id":"Sceptre"},{"Id":"Quiver"}]),
+        ),
+    );
+    let kinds = f.documents.get_mut("tables/MonsterTypes.json").unwrap();
+    for (position, name) in [(6, "Padding0"), (7, "Padding1")] {
+        kinds["columns"].as_array_mut().unwrap().insert(
+            position,
+            json!({"physical_fields":[name],"schema":{"name":null,"type":"i32"}}),
+        );
+        for row in kinds["rows"].as_array_mut().unwrap() {
+            row["values"][name] = json!(0);
+        }
+    }
+    let mut fields = Vec::new();
+    for (n, c) in kinds["columns"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .enumerate()
+    {
+        c["source_column"] = json!(n);
+        fields.push(c["physical_fields"][0].clone());
+    }
+    kinds["physical_fields"] = json!(fields);
+    kinds["columns"][8]["schema"]["name"] = Value::Null;
+    let mut categories = table(
+        "MonsterCategories",
+        &[
+            ("Tag", "foreignrow", false, Some("Tags")),
+            ("Name", "string", false, None),
+            ("Icon", "string", false, None),
+            ("Unknown0", "i32", false, None),
+        ],
+        json!([
+            {"Tag":0,"Name":"Localized category name","Icon":"raw-art","Unknown0":147},
+            {"Tag":1,"Name":"Other localized name","Icon":"raw-art-2","Unknown0":145}]),
+    );
+    categories["columns"][1]["schema"]["localized"] = json!(true);
+    f.seal();
+    let extra = super::super::tests::supplement(&f, &json!({"MonsterCategories":categories}));
+    let mut p: Value = serde_json::from_slice(match catalog {
+        Catalog::Minions => {
+            include_bytes!("../../../../../pipeline/actors/0.5.5.5-minions-prepared-policy.json")
+                .as_slice()
+        }
+        Catalog::Spectres => {
+            include_bytes!("../../../../../pipeline/actors/0.5.5.5-spectres-prepared-policy.json")
+                .as_slice()
+        }
+    })
+    .unwrap();
+    p["prepared_fields"]["category_manifest_sha256"] = json!(extra.sha256);
+    write(&f, POLICY, &p);
+    reseal(&mut f);
+    (f, extra)
+}
+
+#[test]
+fn prepared_actor_relationships_use_target_ids_in_existing_loaders_and_keep_raw_unknowns() {
+    for catalog in [Catalog::Minions, Catalog::Spectres] {
+        let (f, extra) = prepared_fixture(catalog);
+        let mut a = args(&f, catalog);
+        a.supplement = Some(extra);
+        run(a).unwrap();
+        let dto = load_ordinary_actor(&f, catalog);
+        let first = &dto.minions[0];
+        assert_eq!(first.monster_category.as_deref(), Some("Undead"));
+        assert_eq!(first.weapon_type1.as_deref(), Some("One Hand Mace"));
+        assert_eq!(first.weapon_type2, None);
+        assert!(
+            !first.base_damage_ignores_attack_speed,
+            "target false must clear old true"
+        );
+        let last = dto.minions.last().unwrap();
+        assert_eq!(last.monster_category, None);
+        assert_eq!(last.weapon_type1, None);
+        assert!(
+            last.base_damage_ignores_attack_speed,
+            "target true must materialize absent old flag"
+        );
+        let r = read(&f, "producer-receipt.json");
+        let prepared = &r["conversion"]["source_records"][0]["projection"]["prepared_fields"];
+        assert_eq!(prepared["category"]["source"]["raw"]["Unknown0"], 147);
+        assert_eq!(
+            prepared["category"]["source"]["raw"]["Name"],
+            "Localized category name"
+        );
+        assert_eq!(
+            prepared["damage_flag"]["official_semantics_certified"],
+            false
+        );
+    }
+}
+
+#[test]
+fn prepared_actor_source_relationship_changes_and_unknown_category_ids_reach_consumers() {
+    let (mut f, extra) = prepared_fixture(Catalog::Minions);
+    f.values("Tags", 0)["Id"] = json!("unknown_category_tag");
+    f.values("MonsterVarieties", 1)["MainHand_ItemClass"] = json!(0);
+    f.values("MonsterTypes", 1)["Flag0"] = json!(true);
+    reseal(&mut f);
+    let mut a = args(&f, Catalog::Minions);
+    a.supplement = Some(extra);
+    run(a).unwrap();
+    let dto = load_ordinary_actor(&f, Catalog::Minions);
+    assert_eq!(
+        dto.minions[0].monster_category.as_deref(),
+        Some("unknown_category_tag")
+    );
+    assert_eq!(dto.minions[0].weapon_type1.as_deref(), Some("Claw"));
+    assert!(dto.minions[0].base_damage_ignores_attack_speed);
+}
+
+#[test]
+fn malformed_prepared_actor_references_vocabulary_and_policy_fail_before_output() {
+    for case in 0..5 {
+        let (mut f, extra) = prepared_fixture(Catalog::Minions);
+        let mut p = doc(&f, POLICY);
+        match case {
+            0 => f.values("MonsterVarieties", 1)["MonsterCategory"] = json!(999),
+            1 => f.values("ItemClasses", 1)["Id"] = json!("UnknownWeaponClass"),
+            2 => f.values("MonsterTypes", 1)["Flag0"] = json!(1),
+            3 => {
+                p["prepared_fields"]["damage_flag_interpretation"] = json!("guessed-official-name")
+            }
+            _ => p["prepared_fields"]["category_manifest_sha256"] = json!("0".repeat(64)),
+        }
+        write(&f, POLICY, &p);
+        reseal(&mut f);
+        let mut a = args(&f, Catalog::Minions);
+        a.supplement = Some(extra);
+        assert!(!run(a).unwrap_err().is_empty());
+        assert!(!f.root.join("out").exists());
+    }
+}
+
+#[test]
+fn target_skill_lists_reach_existing_actor_loaders_with_aliases_duplicates_and_empty_membership() {
+    for catalog in [Catalog::Minions, Catalog::Spectres] {
+        let f = skill_fixture(catalog);
+        run(args(&f, catalog)).unwrap();
+        let loaded = load_ordinary_actor(&f, catalog);
+        assert_eq!(
+            loaded.minions[0].skill_list,
+            ["UnusedSkill", "SkillZ", "UnusedSkill"]
+        );
+        assert!(loaded.minions.last().unwrap().skill_list.is_empty());
+        assert_eq!(
+            loaded.minions[0].accuracy, 2.5,
+            "authored accuracy is not a raw target field"
+        );
+        let output = overlay(&f, catalog);
+        let old = doc(&f, SOURCE);
+        for (source, out) in old["minions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .zip(output["minions"].as_array().unwrap())
+        {
+            for (field, value) in source.as_object().unwrap() {
+                if field != "skill_list" && !OWNED_FIELDS.contains(&field.as_str()) {
+                    assert_eq!(&out[field], value, "{field}");
+                }
+            }
+        }
+        if catalog == Catalog::Minions {
+            assert_eq!(loaded.minions[0].skill_list, loaded.minions[1].skill_list);
+        }
+        let r = read(&f, "producer-receipt.json");
+        assert_eq!(r["conversion"]["retained_skill_occurrences"], 0);
+        assert_eq!(
+            r["conversion"]["target_skill_occurrences"],
+            if catalog == Catalog::Minions { 6 } else { 3 }
+        );
+        assert_eq!(
+            r["conversion"]["source_records"][0]["skill_occurrences"][0]["owner"]["field"],
+            "GrantedEffects"
+        );
+    }
+}
+
+#[test]
+fn changed_source_skills_replace_old_membership_and_preserve_exact_target_ids() {
+    let mut f = skill_fixture(Catalog::Minions);
+    f.values("MonsterVarieties", 1)["GrantedEffects"] = json!([1, 2]);
+    f.values("GrantedEffects", 1)["Id"] = json!("SkillA ");
+    let mut old = doc(&f, SOURCE);
+    old["minions"][0]["skill_list"] = json!(["HistoricalSkillMissingFromTarget"]);
+    write(&f, SOURCE, &old);
+    reseal(&mut f);
+    run(args(&f, Catalog::Minions)).unwrap();
+    let loaded = load_ordinary_actor(&f, Catalog::Minions);
+    assert_eq!(loaded.minions[0].skill_list, ["SkillA ", "UnusedSkill"]);
+    assert_eq!(loaded.minions[1].skill_list, ["SkillA ", "UnusedSkill"]);
+}
+
+#[test]
+fn malformed_source_skill_lists_and_unsupported_extra_skill_policies_fail_before_output() {
+    for case in 0..7 {
+        let mut f = skill_fixture(Catalog::Minions);
+        let mut p = doc(&f, POLICY);
+        match case {
+            0 => f.values("MonsterVarieties", 1)["GrantedEffects"] = json!([999]),
+            1 => f.values("MonsterVarieties", 1)["GrantedEffects"] = Value::Null,
+            2 => f.values("MonsterVarieties", 1)["GrantedEffects"] = json!(["SkillA"]),
+            3 => p["skill_list"]["authored_additions"] = json!(["guessed-extra"]),
+            4 => p["skill_list"]["authoring_reference"]["sha256"] = json!("0".repeat(64)),
+            5 => p["schema"] = json!("pobr-ordinary-actor-catalog-policy/v1"),
+            _ => {
+                f.documents.get_mut("tables/MonsterVarieties.json").unwrap()["columns"]
+                    .as_array_mut()
+                    .unwrap()
+                    .last_mut()
+                    .unwrap()["schema"]["references"]["table"] = json!("Tags")
+            }
+        }
+        write(&f, POLICY, &p);
+        reseal(&mut f);
+        rejects(&f, Catalog::Minions, "");
+    }
+}
 fn overlay(f: &Fixture, catalog: Catalog) -> Value {
     read(f, &format!("overlay/{}", catalog.file()))
 }

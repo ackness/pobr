@@ -8,8 +8,11 @@
 
 各文件的 `_meta.generator` 可核对来源；下面的路径均相对 `data/<版本>/`，共享规则另放 `data/overlay-common/`。
 PoB2 对照版本由 `devs/reference-sources.json` 独立固定，生产产物的 `_meta.vendor_commit` 仍记录其生成来源。
-固定官方树输入和独立 adapter 已有单独的候选入口；当前输入存在两处 Druid 替换引用缺口，
-尚未切换生产树或退出 vendor 补充，见[数据管线](../pipeline/README.md#固定来源与独立树候选)。
+下方依赖清单描述活动 `0.5.5.4.2` 及其旧再生成链。普通 `0.5.5.5` 候选已有自有 RePoE 的树、符文、
+催化剂、描述和其它字段生产者；具体已迁字段、保留依赖和固定候选证据见
+[架构现状矩阵](data-architecture.md#5-当前已有数据与实际缺口)。候选已生成和源码已合并，均不表示活动包已采用。
+较早[独立官方树候选](../pipeline/README.md#固定来源与独立树候选)的 Druid 引用诊断保留原入口边界，
+不能据此重判后来 Default 图的成员资格，也不能把它当当前普通树迁源的剩余总表。
 
 ### 直接来自游戏的数据
 
@@ -36,7 +39,7 @@ PoB2 对照版本由 `devs/reference-sources.json` 独立固定，生产产物�
 
 `overlay-common/buff_definitions.json`、`special_mods.json`、`high_precision_mods.json`、`local_mods.json` 包含项目维护的兼容规则及独立游戏规则，不能统称为 PoB2 语义。
 
-游戏来源手工表包括 `item_granted_skills.json`（`ItemInherentSkills.NoReservation` 的基底，adapter 支持该表后应生成）、`boss_poise_thresholds.json` 和 `totem_varieties.json`（保留游戏行／来源）。`energy_config_options.json` 等则是项目定义的外部事件／静态状态输入，合入配置目录。
+活动包的游戏来源手工表包括 `item_granted_skills.json`、`boss_poise_thresholds.json` 和 `totem_varieties.json`（保留游戏行／来源）。普通候选已有三者的目标事实 producer：授予技能仅迁可证字段，原始 `ItemInherentSkills.IsWeapon` 列按固定社区政策解释为 NoReservation，字段命名与官方语义未独立认证；Boss选择仍是显式模型。详见[授予技能契约](../tools/pobr-data-adapter/ordinary-item-grants.md)。`energy_config_options.json` 等则是项目定义的外部事件／静态状态输入，合入配置目录。
 
 `examples/demo-bd-test/builds/*/meta.json` 的回归对照值由 `tools/pob2-oracle` 重录。它们用于防回归，不是独立游戏真值。
 

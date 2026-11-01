@@ -1,0 +1,11 @@
+{
+  "schema": "pobr-ordinary-stat-descriptions-policy/v1",
+  "version": "0.5.5.5",
+  "source_sha256": "bed5ed56c8281e0c8ae1da2fb142e0f74ba1a3c79ffcee0011b3fbc3875f9b77",
+  "descriptions_sha256": "36e81ebea92d5970b727298ca455078462fe4e14458f943dcfaabe358b4bfe3e",
+  "descriptions_manifest_sha256": "922aece0ff2f8d9f86e306d7371060adaa4efc5fb4dda744e95134c2a3b41b25",
+  "compatibility_sha256": "b0b07fcc99c7343dfe28eefa34999a284730d2edd0ad52202bc3c206938a3f18",
+  "statement": "Own global, passive and aura ordinary CSD descriptors and source-verified lookup formats. Additionally own each unique explicit no_description directive as an unrendered diagnostic only when it cannot erase a legacy single, compound or descriptor. The diagnostic is not an effectless law and never authorizes complete effect packets to omit a stat. All other unresolvable/ambiguous records remain explicitly bound compatibility. Source acquisition remains draft; no source or adoption approval is inferred.",
+  "lookup_manifest_sha256": "b3927aab8321fa1bbb8922fca8d5535f182c63c9357630bece7e015dd147008b",
+  "diagnostic_ownership": "explicit-no-description/v1"
+}

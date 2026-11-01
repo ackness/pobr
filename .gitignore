@@ -59,3 +59,15 @@
 # ── Python bytecode cache ──
 __pycache__/
 *.pyc
+
+# External owner data is prepared temporarily for builds and real-data tests.
+/data/[0-9]*/
+/data/overlay-common/boss_poise_thresholds.json
+/data/overlay-common/buff_definitions.json
+/data/overlay-common/high_precision_mods.json
+/data/overlay-common/item_granted_skills.json
+/data/overlay-common/passive_jewel_slots.json
+/data/overlay-common/totem_varieties.json
+/data/overlay-common/vendor_name_aliases.json
+/web/src/lib/supportDescriptions.zh-CN.json
+/web/src/fixtures/*.json

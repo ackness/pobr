@@ -1,4 +1,6 @@
 import { GameTextLocalizer, type GameDisplayName } from '../lib/localizedGameText';
+import { nativeDisplayTexts } from '../lib/nativeDisplayTexts';
+import { nativeClassNames, nativeCraftBaseNames, nativeGemNames, type GemNameLink, type GemNameOverride } from '../lib/nativeDisplayNames';
 import type { Lang } from '../lib/i18n';
 import type { UniqueEntry, UniqueDraft } from './uniques';
 import type { CraftingMetadata } from './itemCrafting';
@@ -10,6 +12,8 @@ import type { CraftingMetadata } from './itemCrafting';
  */
 
 import { dataUrl, loadDataPack, type DataManifest } from './dataPack';
+import { fetchReleaseFile, validateRelease } from './runtimeRelease';
+import { nativeDigest } from './dataIntegrity';
 import { EXPECTED_SCHEMA_VERSION } from './types';
 import type {
   AttributionRequest,
@@ -103,14 +107,18 @@ async function fetchBytes(url: string): Promise<Uint8Array> {
 function readAgainAfterBoot(rel: string): boolean {
   return rel.startsWith('base/passive_trees/') || [
     'base/base_items.json',
+    'base/skill_gems.json',
     'base/passive_tree.json',
     'base/passive_tree_meta.json',
     'overlay/trade_catalog.json',
     'overlay/config_options.json',
+    'overlay/gem_effects.json',
     'i18n/zh-CN/classes.json',
     'i18n/zh-CN/base_items.json',
     'i18n/zh-TW/base_items.json',
     'i18n/zh-CN/words.json',
+    'i18n/zh-CN/display_texts.json',
+    'i18n/zh-TW/display_texts.json',
   ].includes(rel);
 }
 
@@ -150,7 +158,14 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     // Asked for by its digest where the manifest has one, so the browser keeps it.
     const pending = kept
       ? Promise.resolve(new TextDecoder().decode(kept))
-      : fetchText(dataUrl({ version, digests: manifest?.digests }, rel));
+      : manifest?.schema !== undefined
+        ? (async () => {
+          const digest = nativeDigest();
+          if (!digest) throw new Error('Runtime blocks require SHA-256 support');
+          const release = await validateRelease(manifest, digest);
+          return new TextDecoder().decode(await fetchReleaseFile(release, rel, fetchBytes, digest));
+        })()
+        : fetchText(dataUrl({ version, digests: manifest?.digests }, rel));
     pending.catch(() => fetchedFiles.delete(url));
     fetchedFiles.set(url, pending);
     return pending;
@@ -185,24 +200,41 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     onProgress?.('就绪');
   };
 
+  let nativeCatalogs: ReturnType<typeof loadNativeCatalogs> | undefined;
+  const loadNativeCatalogs = async () => {
+    if (!manifest) manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
+    const { version, files } = manifest;
+    const catalogs = await Promise.all((['zh-CN', 'zh-TW'] as const).map(async locale => {
+      const rel = `i18n/${locale}/display_texts.json`;
+      return files.includes(rel)
+        ? nativeDisplayTexts(JSON.parse(await fetchVersionFile(version, rel)), version, locale) : null;
+    }));
+    return catalogs.filter(value => value !== null);
+  };
+  const displayCatalogs = () => nativeCatalogs ??= loadNativeCatalogs().catch((error: unknown) => {
+    nativeCatalogs = undefined;
+    throw error;
+  });
+
   let displayLocalizer: Promise<GameTextLocalizer> | undefined;
   const loadDisplayLocalizer = async (): Promise<GameTextLocalizer> => {
     if (!manifest) manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
     const { version, files } = manifest;
     const optionalJson = async <T,>(path: string, fallback: T): Promise<T> =>
       files.includes(path) ? JSON.parse(await fetchVersionFile(version, path)) as T : fallback;
-    const [bases, cnBases, twBases, cnWords] = await Promise.all([
+    const [bases, cnBases, twBases, cnWords, catalogs] = await Promise.all([
       optionalJson<Array<{ id: string; name: string }>>('base/base_items.json', []),
       optionalJson<Record<string, string>>('i18n/zh-CN/base_items.json', {}),
       optionalJson<Record<string, string>>('i18n/zh-TW/base_items.json', {}),
       optionalJson<Record<string, string>>('i18n/zh-CN/words.json', {}),
+      displayCatalogs(),
     ]);
     const names: GameDisplayName[] = [
       ...Object.entries(cnWords).map(([name, name_zh_cn]) => ({ name, name_zh_cn })),
       ...bases.map(base => ({ name: base.name, name_zh_cn: cnBases[base.id], name_zh_tw: twBases[base.id] })),
       ...JSON.parse(wasm.gemCatalogJson()) as GemCatalogEntry[],
     ];
-    return new GameTextLocalizer(names);
+    return new GameTextLocalizer(names, catalogs);
   };
 
   const backend: PobrBackend = {
@@ -306,7 +338,13 @@ export async function createWasmBackend(): Promise<PobrBackend> {
       return JSON.parse(wasm.minionCatalogJson()) as MinionCatalog;
     },
     async gemCatalog() {
-      return JSON.parse(wasm.gemCatalogJson()) as GemCatalogEntry[];
+      const entries = JSON.parse(wasm.gemCatalogJson()) as GemCatalogEntry[];
+      const catalogs = await displayCatalogs();
+      if (!catalogs.length || !manifest!.files.includes('base/skill_gems.json')) return entries;
+      const gems = JSON.parse(await fetchVersionFile(manifest!.version, 'base/skill_gems.json')) as GemNameLink[];
+      const overrides = manifest!.files.includes('overlay/gem_effects.json')
+        ? (JSON.parse(await fetchVersionFile(manifest!.version, 'overlay/gem_effects.json')) as { gems: GemNameOverride[] }).gems : [];
+      return nativeGemNames(entries, gems, overrides, catalogs);
     },
     async translateLines(lines, lang: Lang = 'zh-CN') {
       if (lang === 'en-US' || lines.length === 0) return [...lines];
@@ -351,7 +389,8 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     async uniqueCatalog() { return JSON.parse(wasm.uniqueCatalogJson()) as UniqueEntry[]; },
     async uniqueItemDraft(selection) { return JSON.parse(wasm.uniqueItemDraftJson(JSON.stringify(selection))) as UniqueDraft; },
     async itemCraftingCatalog() {
-      return JSON.parse(wasm.itemCraftingCatalogJson()) as CraftingMetadata;
+      const data = JSON.parse(wasm.itemCraftingCatalogJson()) as CraftingMetadata;
+      return nativeCraftBaseNames(data, await displayCatalogs());
     },
     async normalizeItemDraft(text) {
       return (JSON.parse(wasm.normalizeItemDraftJson(text)) as { text: string }).text;
@@ -373,12 +412,13 @@ export async function createWasmBackend(): Promise<PobrBackend> {
       if (!manifest) {
         manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
       }
-      try {
-        const text = await fetchVersionFile(manifest.version, 'i18n/zh-CN/classes.json');
-        return JSON.parse(text) as ClassNames;
-      } catch {
-        return { classes: {}, ascendancies: {} };
-      }
+      const legacy = manifest.files.includes('i18n/zh-CN/classes.json')
+        ? JSON.parse(await fetchVersionFile(manifest.version, 'i18n/zh-CN/classes.json')) as ClassNames
+        : { classes: {}, ascendancies: {} };
+      const catalogs = await displayCatalogs();
+      if (!catalogs.length || !manifest.files.includes('base/passive_tree_meta.json')) return legacy;
+      const meta = JSON.parse(await fetchVersionFile(manifest.version, 'base/passive_tree_meta.json')) as PassiveTreeMeta;
+      return nativeClassNames(legacy, meta, catalogs);
     },
     async loadTreeMeta() {
       if (!manifest) {

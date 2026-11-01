@@ -1,5 +1,6 @@
 import { chineseScript, localizedName } from './chinese';
 import type { Lang } from './i18n';
+import type { NativeDisplayTexts } from './nativeDisplayTexts';
 
 export interface GameDisplayName {
   name: string;
@@ -16,8 +17,13 @@ export class GameTextLocalizer {
   private readonly byEnglish = new Map<string, GameDisplayName>();
   private readonly byName = new Map<string, GameDisplayName>();
   private readonly mentionedNames: RegExp | null;
+  private readonly nativeTexts = new Map<Lang, Readonly<Record<string, string | null>>>();
 
-  constructor(names: GameDisplayName[]) {
+  constructor(names: GameDisplayName[], catalogs: NativeDisplayTexts[] = []) {
+    for (const catalog of catalogs) {
+      if (this.nativeTexts.has(catalog.locale)) throw new Error('Duplicate native display locale');
+      this.nativeTexts.set(catalog.locale, catalog.entries);
+    }
     for (const entry of names) {
       const previous = this.byEnglish.get(entry.name);
       this.byEnglish.set(entry.name, {
@@ -44,6 +50,10 @@ export class GameTextLocalizer {
 
   localize(line: string, simplified: string, lang: Lang): string {
     if (lang === 'en-US') return line;
+    const native = this.nativeTexts.get(lang);
+    // A source-owned unresolved/colliding text must not silently resurrect an
+    // older dictionary translation. Never relabel an alternate-locale catalog.
+    if (native && Object.hasOwn(native, line)) return native[line] ?? line;
     const exact = this.byName.get(line.trim());
     if (exact) return localizedName(lang, exact.name, exact.name_zh_cn, exact.name_zh_tw);
     let display = chineseScript(simplified, lang);

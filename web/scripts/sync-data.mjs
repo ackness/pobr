@@ -1,5 +1,6 @@
 // Publish a complete browser data directory from the runtime snapshot contract.
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -39,7 +40,7 @@ function safePath(name) {
   return name;
 }
 
-export function snapshotFiles({ dataRoot = join(repoRoot, 'data'), version } = {}) {
+export function snapshotFiles({ dataRoot = process.env.POBR_DATA_ROOT ?? join(repoRoot, 'data'), version } = {}) {
   version ??= process.env.POBR_DATA_VERSION ?? readFileSync(join(dataRoot, 'CURRENT'), 'utf8').trim();
   if (!/^[0-9]+(?:\.[0-9]+)+$/.test(version)) throw new Error('Invalid data version');
   const src = join(dataRoot, version);
@@ -90,7 +91,9 @@ export function snapshotFiles({ dataRoot = join(repoRoot, 'data'), version } = {
   return { version, copies };
 }
 
-export function syncData({ dataRoot = join(repoRoot, 'data'), destRoot = join(webRoot, 'public', 'data'), version } = {}, rename = renameSync) {
+export function syncData({ dataRoot = process.env.POBR_DATA_ROOT ?? join(repoRoot, 'data'), destRoot = join(webRoot, 'public', 'data'), version,
+  packRoot = process.env.POBR_RUNTIME_PACK, expectedId = process.env.POBR_RUNTIME_RELEASE_ID } = {}, rename = renameSync) {
+  if (packRoot) return syncRelease({ packRoot, destRoot, expectedId }, rename);
   const snapshot = snapshotFiles({ dataRoot, version });
   version = snapshot.version;
   const copies = snapshot.copies;
@@ -140,8 +143,55 @@ export function syncData({ dataRoot = join(repoRoot, 'data'), destRoot = join(we
   return { version, files, digests: sortedDigests };
 }
 
+/** Publish only the verified release's four player files; evidence stays offline. */
+export function syncRelease({ packRoot, destRoot, expectedId }, rename = renameSync) {
+  const args = [join(repoRoot, 'pipeline/runtime_pack.py'), 'verify', '--pack', resolve(packRoot)];
+  if (expectedId) args.push('--expected-id', expectedId);
+  const checked = JSON.parse(execFileSync('python3', args, { encoding: 'utf8' }));
+  const manifestRaw = readFileSync(join(packRoot, 'manifest.json'));
+  const manifest = JSON.parse(manifestRaw);
+  if (manifest.release_id !== checked.release_id || createHash('sha256').update(manifestRaw).digest('hex') !== checked.manifest_sha256) {
+    throw new Error('Runtime release changed during sync');
+  }
+  mkdirSync(dirname(destRoot), { recursive: true });
+  const staging = mkdtempSync(join(dirname(destRoot), '.data-sync-'));
+  const stagedData = join(staging, 'data');
+  const previous = join(staging, 'previous');
+  let movedPrevious = false;
+  let preserveStaging = false;
+  try {
+    for (const spec of manifest.blocks) {
+      const raw = readFileSync(join(packRoot, safePath(spec.path)));
+      if (raw.length !== spec.bytes || createHash('sha256').update(raw).digest('hex') !== spec.sha256) {
+        throw new Error(`Runtime block changed during sync: ${spec.path}`);
+      }
+      const path = join(stagedData, ADDRESSED, spec.sha256.slice(0, ADDRESS_LENGTH), spec.path);
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, raw);
+    }
+    writeFileSync(join(stagedData, ADDRESSED, '404.html'), NOT_FOUND_PAGE);
+    writeFileSync(join(stagedData, 'manifest.json'), manifestRaw);
+    if (statSync(destRoot, { throwIfNoEntry: false })) {
+      rename(destRoot, previous);
+      movedPrevious = true;
+    }
+    try { rename(stagedData, destRoot); }
+    catch (error) {
+      if (movedPrevious) {
+        try { rename(previous, destRoot); }
+        catch (rollbackError) {
+          preserveStaging = true;
+          throw new Error(`Browser data rollback failed; original backup retained at ${previous}`, { cause: rollbackError });
+        }
+      }
+      throw error;
+    }
+  } finally { if (!preserveStaging) rmSync(staging, { recursive: true, force: true }); }
+  return manifest;
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const { version, files } = syncData();
-  console.log(`synced ${files.length} runtime files from data/${version}`);
+  console.log(`synced ${files.length} runtime files for ${version}`);
   syncBuildReferences();
 }

@@ -189,6 +189,89 @@ fn whole_socketable_fallback_never_keeps_a_partial_target_packet() {
 }
 
 #[test]
+fn absent_compound_context_is_never_zero_and_explicit_source_zero_can_render() {
+    for mode in 0..3 {
+        let (mut f, mut args) = fixture();
+        let csd_path = args.item_descriptions.as_ref().unwrap();
+        let mut csd: Value = crate::read_json(csd_path).unwrap();
+        let record = &mut csd["files"][GLOBAL]["records"][0];
+        record["ids"] = json!(["test_life", "test_context"]);
+        record["groups"][0]["branches"][0]["condition_tokens_raw"] = json!(["#", "0"]);
+        let csd_hash = write(csd_path, &csd);
+        let manifest_path = csd_path.with_file_name("manifest.json");
+        let mut manifest: Value = crate::read_json(&manifest_path).unwrap();
+        manifest["files"]["descriptions.json"] =
+            json!({"sha256":csd_hash,"bytes":fs::metadata(csd_path).unwrap().len()});
+        let manifest_hash = write(&manifest_path, &manifest);
+        let codec = args.codec.as_mut().unwrap();
+        let mut policy: Value = crate::read_json(&codec.policy).unwrap();
+        policy["descriptions_sha256"] = json!(csd_hash);
+        policy["descriptions_manifest_sha256"] = json!(manifest_hash);
+        codec.policy_sha256 = write(&codec.policy, &policy);
+        let stats = f.documents.get_mut("tables/Stats.json").unwrap();
+        stats["rows"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({"_row":2,"values":{"Id":"test_context"}}));
+        stats["validation"]["rows"] = json!(3);
+        if mode == 1 {
+            f.values("SoulCoreStats", 0)["StatsValues"] = json!([11]);
+        } else if mode == 2 {
+            for row in 0..2 {
+                f.values("SoulCoreStats", row)["Stats"]
+                    .as_array_mut()
+                    .unwrap()
+                    .push(json!(2));
+                f.values("SoulCoreStats", row)["StatsValues"]
+                    .as_array_mut()
+                    .unwrap()
+                    .push(json!(0));
+            }
+        }
+        reseal(&mut f, &mut args);
+        if mode == 1 {
+            rejects(&f, args, "unrenderable socketable effects changed");
+            continue;
+        }
+        run(args).unwrap();
+        let out = result(&f);
+        let receipt: Value = crate::read_json(&f.root.join("out/producer-receipt.json")).unwrap();
+        let record = &receipt["conversion"]["records"][0];
+        if mode == 0 {
+            assert_eq!(
+                out["runes"][0]["slots"]["weapon"]["lines"],
+                json!(["Old full effect"])
+            );
+            assert_eq!(
+                out["runes"][0]["slots"]["helmet"]["lines"],
+                json!(["Old full helmet effect"])
+            );
+            assert_eq!(record["selected_descriptions"], json!([]));
+            assert!(
+                record["unrenderable"][0]["error"]
+                    .as_str()
+                    .unwrap()
+                    .contains("incomplete compound CSD member test_context")
+            );
+            assert_eq!(
+                record["packets"][0][1]["normal"],
+                json!([["test_life", 10]])
+            );
+        } else {
+            assert_eq!(
+                out["runes"][0]["slots"]["weapon"]["lines"],
+                json!(["+10 to maximum Life", "Bonded: +4 to maximum Mana"])
+            );
+            assert_eq!(record["mode"], "target-csd");
+            assert_eq!(
+                record["packets"][0][1]["normal"],
+                json!([["test_life", 10], ["test_context", 0]])
+            );
+        }
+    }
+}
+
+#[test]
 fn unsupported_changed_values_cannot_reuse_old_text() {
     let (mut f, mut args) = fixture();
     f.values("Stats", 1)["Id"] = json!("unsupported");

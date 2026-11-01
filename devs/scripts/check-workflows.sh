@@ -13,8 +13,15 @@ python3 pipeline/test-data-update.py CompatibleUpdateTests
 python3 pipeline/test-data-snapshot.py
 python3 pipeline/test-native-candidate.py
 python3 pipeline/test-data-bundle.py
+python3 pipeline/check_data_ownership.py
+python3 pipeline/test-build-data.py
+python3 pipeline/test-display-assets.py
+python3 pipeline/test-runtime-pack.py
+python3 pipeline/test-runtime-ordinary.py
+python3 pipeline/test-data-imports.py
+python3 pipeline/test-ordinary-inputs.py
 python3 pipeline/test-client-sources.py
 python3 pipeline/test-client-source-draft.py
 python3 pipeline/test-client-index.py
 python3 tools/pobr-data-adapter/tests/test_smoke_native_facts.py
-node --test pipeline/test-dictionary-source.mjs pipeline/test-translation-source.mjs pipeline/test-native-name-translations.mjs pipeline/test-query-patch-version.mjs web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs web/scripts/bench-calc.test.mjs
+node --test pipeline/test-dictionary-source.mjs pipeline/test-translation-source.mjs pipeline/test-native-name-translations.mjs pipeline/test-native-display-texts.mjs pipeline/test-query-patch-version.mjs web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs web/scripts/bench-calc.test.mjs

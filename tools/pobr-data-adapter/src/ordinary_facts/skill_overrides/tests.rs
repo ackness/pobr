@@ -211,6 +211,132 @@ fn append(f: &mut Fixture, table: &str, row: Value) {
     d["validation"]["rows"] = json!(d["rows"].as_array().unwrap().len());
 }
 
+fn implicit_fixture() -> Fixture {
+    let mut f = fixture();
+    let tables: BTreeMap<String, Value> = serde_json::from_slice(include_bytes!(
+        "../../../tests/fixtures/ordinary-facts/skill-tables.json"
+    ))
+    .unwrap();
+    f.documents.retain(|p, _| p == "source-lock.json");
+    f.documents.extend(
+        tables
+            .into_iter()
+            .map(|(name, doc)| (format!("tables/{name}.json"), doc)),
+    );
+    let mut policy = doc(&f, POLICY);
+    policy["schema"] = json!("pobr-ordinary-skill-overrides-policy/v2");
+    policy["implicit_stat_ownership"] =
+        json!("ordinary-skills/GrantedEffectStatSets.ImplicitStats+IgnoredStats/v1");
+    policy["legacy_numeric_exceptions"] = json!([]);
+    policy["unbound_retained_entries"] = json!([]);
+    write(
+        &f,
+        SOURCE,
+        &json!({"_meta":policy["source"]["metadata"],"opaque_root":{"keep":null},"overrides":[
+        {"skill":"AttackPlayer","stat":"implicit_stat","stat_set":7,"stat_id":"flag","opaque":{"keep":true}}]}),
+    );
+    write(
+        &f,
+        CODEC,
+        &json!({"_meta":policy["branch_codec"]["metadata"],"labels":[
+        {"skill":"AttackPlayer","set_id":"AttackMain","set_index":7,"label":"Target main"}]}),
+    );
+    write(&f, POLICY, &policy);
+    reseal(&mut f);
+    f
+}
+
+#[test]
+fn target_implicit_membership_changes_reach_original_loader_without_old_reinjection() {
+    for (members, expected) in [
+        (json!([]), vec![]),
+        (json!([2]), vec!["minion_flag"]),
+        (json!([2, 1, 2]), vec!["minion_flag", "flag"]),
+    ] {
+        let mut f = implicit_fixture();
+        f.values("GrantedEffectStatSets", 1)["ImplicitStats"] = members;
+        reseal(&mut f);
+        let a = f.args();
+        let facts = reader::open(
+            &a.input,
+            &a.expected_manifest_sha256,
+            &a.version,
+            &super::super::skills::TABLES,
+        )
+        .unwrap();
+        // Exercise the existing ordinary source converter, not a manually filled base DTO.
+        let base = super::super::skills::convert(&facts).unwrap();
+        run(args(&f)).unwrap();
+        let overlay = read(&f, OVERLAY);
+        assert_eq!(overlay["overrides"], json!([]));
+        assert_eq!(overlay["opaque_root"], json!({"keep":null}));
+        let mut memory: BTreeMap<String, Vec<u8>> = base
+            .base
+            .into_iter()
+            .map(|(name, bytes)| (format!("base/{name}"), bytes))
+            .collect();
+        memory.insert(
+            OVERLAY.into(),
+            fs::read(f.root.join("out").join(OVERLAY)).unwrap(),
+        );
+        memory.insert(
+            "overlay/stat_set_labels.json".into(),
+            fs::read(f.root.join(CODEC)).unwrap(),
+        );
+        let data = pobr_gamedata::GameData::from_memory(memory);
+        let sets = data.skill_stat_sets().unwrap();
+        let main = sets
+            .iter()
+            .find(|d| d.effect_id == "AttackPlayer")
+            .unwrap()
+            .sets
+            .iter()
+            .find(|s| s.set_id == "AttackMain")
+            .unwrap();
+        assert_eq!(main.implicit_stats, expected);
+        let receipt = read(&f, "producer-receipt.json");
+        assert_eq!(receipt["conversion"]["delegated_implicit_entries"], 1);
+        assert_eq!(receipt["conversion"]["entry_records"][0]["emitted"], false);
+        assert_eq!(
+            read(&f, "legacy-skill-overrides.json")["overrides"][0]["opaque"],
+            json!({"keep":true})
+        );
+    }
+}
+
+#[test]
+fn delegated_implicit_old_id_is_archived_without_becoming_a_target_presence_gate() {
+    let mut f = implicit_fixture();
+    let mut old = doc(&f, SOURCE);
+    old["overrides"][0]["stat_id"] = json!("historical_missing_stat");
+    write(&f, SOURCE, &old);
+    reseal(&mut f);
+    run(args(&f)).unwrap();
+    assert_eq!(read(&f, OVERLAY)["overrides"], json!([]));
+    let receipt = read(&f, "producer-receipt.json");
+    assert_eq!(
+        receipt["conversion"]["entry_records"][0]["binding"]["legacy_stat_present_in_target"],
+        false
+    );
+}
+
+#[test]
+fn delegated_implicit_requires_valid_raw_members_and_explicit_policy() {
+    for case in 0..4 {
+        let mut f = implicit_fixture();
+        let mut p = doc(&f, POLICY);
+        match case {
+            0 => f.values("GrantedEffectStatSets", 1)["ImplicitStats"] = json!([999]),
+            1 => f.values("GrantedEffectStatSets", 1)["IgnoredStats"] = Value::Null,
+            2 => p["schema"] = json!("pobr-ordinary-skill-overrides-policy/v1"),
+            _ => p["implicit_stat_ownership"] = json!("guessed-merge-law"),
+        }
+        write(&f, POLICY, &p);
+        reseal(&mut f);
+        rejects(&f, "");
+    }
+}
+
 #[test]
 fn target_primary_numbers_rebuild_every_level_and_preserve_raw_prepared_values() {
     let f = fixture();

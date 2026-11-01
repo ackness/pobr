@@ -1,7 +1,7 @@
 # Ordinary minion and spectre catalogs
 
 `--ordinary-domain minions` and `--ordinary-domain spectres` use one shared actor
-producer and the original `MinionsDef` / `MinionEntryDef` schemas. They replace 22
+producer and the original `MinionsDef` / `MinionEntryDef` schemas. The v1 policies replace 22
 owned fields with target facts while retaining authored membership, aliases and
 all other raw JSON fields as fixed community compatibility. This is a catalog
 migration, not a new creature-admission rule, minion model or gameplay-law claim.
@@ -84,7 +84,7 @@ sums all its references, and its runtime injection is unchanged. Multiple refs,
 extra array elements, other rarities and unconsumed columns remain explicit in
 receipts; they are not declared effectless or merged under a new rule.
 
-Original accuracy, base_damage_ignores_attack_speed, skill_list, mod_list,
+Under v1, original accuracy, base_damage_ignores_attack_speed, skill_list, mod_list,
 weapon/category/location/limit/extra_flags and every other non-owned field remain
 raw Values, including nested unknown fields and absent-vs-default shape. The
 existing DTO validates source/output shape, but never reserializes these retained
@@ -156,3 +156,151 @@ target and fixed binary for both modes twice, independent complete-field/retaine
 JSON/receipt/oracle checks, source-limited input guards and old eleven-domain
 byte compatibility. No worker Cargo, producer, Lua, new target or core/WASM/corpus
 rebuild is performed.
+
+## Target-owned actor skill lists
+
+The optional [minions v2](../../pipeline/actors/0.5.5.5-minions-skills-policy.json)
+and [spectres v2](../../pipeline/actors/0.5.5.5-spectres-skills-policy.json)
+policies additionally own `skill_list`. They use the same invocation, five F
+tables, original DTO and ordinary loaders. Existing v1 policies preserve their
+original behavior. The v2 schema and projection ID must agree with the exact
+23-field ownership set and the explicit skill-list declaration.
+
+Each curated catalog ID still binds its exact `MonsterVarieties.Id` or alias.
+The target variety's `GrantedEffects` references now supply the complete ordered
+`GrantedEffects.Id` list, including duplicates and an explicit empty list.
+New membership, removal and ordering come from target facts; the previous list
+never limits the new list, fills an empty list or supplies a primary fallback.
+Unknown physical references, malformed arrays, changed consumed column contracts
+or unsupported additions fail before output is reserved. Exact source ID strings
+remain untrimmed. Old list bytes remain in the archived source and per-field
+comparison evidence, even when an old ID no longer exists in the target.
+
+These two fixed authored templates declare no extra skills. Their exact
+`Export/Minions/Minions.txt` and `Spectres.txt` identities are recorded separately
+from the target list, and the policy explicitly declares `authored_additions: []`.
+The producer neither reads nor executes those reference paths; this declaration
+was checked when authoring the policy. A future nonempty addition needs an
+explicit adapted contract, not a guessed difference between old and target lists.
+Target F currently supplies 84 ordered occurrences for 32 minions and 2,694 for
+617 spectres, all equal to the pre-v2 lists. These are source observations, not
+new consumer execution or full BuildData evidence.
+
+Receipts distinguish `target_skill_occurrences` from retained community skill
+occurrences, retain every physical owner/reference position, record the raw
+ordered reference array and remove the consumed column from unconsumed evidence.
+All other prepared fields and unknown JSON remain explicit compatibility.
+In particular, `accuracy = 1` in the archived exporter is a compatibility rule,
+not a missing client Accuracy multiplier; the v2 producer does not invent one.
+Synthetic regressions use the existing ordinary actor loaders to prove changed
+membership/order/duplicates/empty lists reach consumers while aliases, unknown
+fields and non-owned rules remain intact. They are worker-authored and UNRUN
+until the integration owner executes the focused actor tests.
+
+## Remaining source-backed prepared actor fields
+
+The [minions v3](../../pipeline/actors/0.5.5.5-minions-prepared-policy.json) and
+[spectres v3](../../pipeline/actors/0.5.5.5-spectres-prepared-policy.json) policies
+own 27 fields: the v2 fields plus `monster_category`, `weapon_type1`,
+`weapon_type2` and `base_damage_ignores_attack_speed`. They require paired
+`--supplement`/`--supplement-manifest-sha256` arguments for the exact selected
+MonsterCategories table, and select ItemClasses from the existing F alongside
+the original five actor tables. A supplement without the matching policy or a
+v3 policy without its supplement fails. V1 and v2 still select their five tables.
+
+Category joins follow `MonsterVarieties.MonsterCategory` to the supplemental
+row, then its `Tag` reference to the original F's `Tags.Id`. Six explicit stable
+tag-to-engine vocabulary entries preserve the existing category representation.
+Unknown stable category tags survive as the existing consumer's `Other` string,
+with an explicit receipt status. A null source reference removes the old category.
+MonsterCategories has **no `Id` or `Type` column**: its localized `Name`, `Icon`
+and `Unknown0` remain raw evidence. Neither the display name nor the observed
+unknown integers 144–149 define the engine category.
+
+Main/off-hand class references resolve to exact target `ItemClasses.Id` values.
+An explicit engine vocabulary supplies the existing weapon strings, including
+Sceptre → One Hand Mace and Unarmed → None. Null omits the field. Quiver is an
+explicit non-weapon class with its full identity retained in the receipt; another
+unmapped class fails rather than borrowing an old type or silently disappearing.
+These are representation rules for the existing consumer, not new raw columns.
+
+The target MonsterTypes column at zero-based position 8 is a boolean named
+`Flag0` by the pinned dat-schema. The separately pinned community
+`Export/spec.lua` calls that same position `BaseDamageIgnoresAttackSpeed`.
+V3 explicitly opts into that interpretation and preserves both identities and
+the source boolean in its receipt. True emits the existing boolean field; false
+omits it under the existing default-false DTO, clearing an old true value.
+This is fixed community schema interpretation, **not official confirmation of
+the anonymous raw field's meaning**. Changed source position/type or changed
+interpretation declarations fail.
+
+The category manifest and all original supplemental row values are retained in
+receipts alongside physical references, stable identities, vocabulary conversion
+and omissions. The source stays an acquisition draft. Focused worker-authored
+regressions cover both ordinary loaders, changed category/weapon/boolean sources,
+localized names that differ from category IDs, raw unknowns, absent references,
+unknown categories and rejection of unmapped weapons/bad references/policy drift.
+They remain UNRUN until integration validation. No core/DTO, actor OT, AI,
+summoning relationship, spawn history or mod-list interpretation is added.
+
+Remaining accuracy, catalog membership/aliases, limits, spawn labels, extra flags
+and mod lists retain their declared ownership. Accuracy is a compatibility rule;
+limits and extra flags are authored catalog rules. Mod lists mix DAT modifiers,
+actor metadata and authored additions and cannot be replaced with an item `.it`
+closure. Spawn labels require their own area/encounter source and interpretation.
+The historical export-index codec also remains separate from client facts.
+
+## Contract for the remaining mod-list source
+
+The international 0.5.5.5 fact manifest
+`050fcf93ce2cdc763d32fc9336516e25ee8791b0feb360bc811c835213712603`
+already contains the six ordered DAT groups `Mods`, `Mods2`, `Special_Mods`,
+`Part1_Mods`, `Part2_Mods` and `Endgame_Mods`. RePoE's
+`RePoE/native_actor_facts.py` retains them separately in `actors.json`.
+`tables/MonsterVarieties.json` is 7,492,728 bytes, SHA256
+`87f788a94347a4f30735f6d929b270a8075eda3b4a33ffc5127eacdcf7a2e4e4`.
+These groups are available facts; they do not close the actor OT or authored
+parts of `mod_list`.
+
+For the existing 649 catalog entries, the physical `InheritsFrom` column is an
+**ordered string array**, with 27 distinct arrays (including empty) and 26
+distinct nonempty literals. It is not a scalar actor root or a complete OT
+archive. An empty array does not certify an actor with no inherited modifiers.
+The item archive's 89 `.it` files do not supply those actor resources.
+
+The smallest source handoff that can replace a mod-list field requires:
+
+1. In RePoE, resolve exact actor resources from the indexed client inventory for
+   the selected variety IDs and ordered inheritance literals. Record the actual
+   resource mapping, target/observed patch and realm, raw bytes/SHA, unresolved
+   paths and the complete selected parent closure. Preserve source spellings;
+   do not assume appending an extension to every variety/alias proves a match.
+2. Export raw OT directives, ordered blocks/fields, duplicate occurrences,
+   literals and byte spans, separately from any proposed merge interpretation.
+   Include every dependency needed by the selected roots. An item-tag union
+   policy cannot define actor modifier inheritance or precedence.
+3. Bind the ordering, default/override/addition rules and applicability of OT
+   values and each DAT group. Account for all mod stat slots, flags, conditions
+   and any declared authored additions. Keep absent source, explicit zero,
+   unimplemented interpretation and intentional curation distinct.
+4. In PoBR, project only packets whose semantics are complete into the existing
+   `MinionModDef`, preserve other packets and provenance, and verify the actual
+   [definition-modifier reader](../../crates/pobr-core/src/calc/minion.rs).
+   That reader currently handles unconditional numeric `CritMultiplier`,
+   `PhysicalDamage`, `DamageTaken`, `EnemyCurseLimit` and attack `Speed` entries
+   under its existing flag/type guards. A count of transcribed `mod_list`
+   entries cannot establish a change to a supported static output.
+
+Membership, aliases, limits, extra flags and spawn labels remain separately
+owned curation or encounter interpretation. `accuracy = 1` remains a compatibility
+rule, and Flag0 retains its explicit community interpretation. None of these is
+automatically a missing raw client column. The next slice should name the
+supported output it changes before adding another actor rule or configuration.
+Changed numeric values, ordering, removal, conditions, incomplete closure and
+unchanged authored rules need regression coverage before ownership changes.
+
+Store and publish the raw/fact archive in RePoE. PoBR imports its exact revision
+and byte identities temporarily in CI or tests requiring real data; it retains
+code, pins, source metadata and small synthetic fixtures, with no complete
+archive in Git or a PoBR artifact ref. The existing 27-field catalog projection
+continues independently of this unimplemented mod-list handoff.

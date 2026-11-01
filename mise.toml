@@ -17,13 +17,15 @@ min_version = "2026.10.23"
 idiomatic_version_file_enable_tools = ["rust"]
 
 [tools]
-node = "26.13.0"
-pnpm = "12.16.1"
-# CI 从这里读取同一版本；版本记录在 WASM 构建凭据里，升级属于工具链变更。
-"aqua:wasm-bindgen/wasm-pack" = "0.15.1"
-python = "3.14.10"
-gh = "2.103.3"
-actionlint = "1.7.12"
+# Resolve latest stable releases explicitly with `mise lock --bump`.
+# Local execution and CI use the exact versions recorded in mise.lock.
+node = "latest"
+pnpm = "latest"
+# The resolved version is also recorded in WASM build receipts.
+"aqua:wasm-bindgen/wasm-pack" = "latest"
+python = "latest"
+gh = "latest"
+actionlint = "latest"
 
 [env]
 _.path = ["{{ config_root }}/.cache/runtime/bin"]
@@ -118,6 +120,22 @@ run = "python3 pipeline/data_snapshot.py bundle"
 [tasks."data:bundle:verify"]
 description = "Verify all bytes and identity of a portable runtime bundle (--bundle required)"
 run = "python3 pipeline/data_snapshot.py verify-bundle"
+
+[tasks."data:prepare"]
+description = "Temporarily import pinned RePoE/language packages for builds and real-data tests"
+run = "python3 pipeline/build_data.py --install data"
+
+[tasks."data:imports"]
+description = "Fetch pinned RePoE/translation inputs and project declared display needs (--out required; candidate only)"
+run = "python3 pipeline/data_imports.py"
+
+[tasks."data:pack"]
+description = "Assemble/verify/materialize candidate runtime blocks; no adoption (see pipeline/runtime-bundle.md)"
+run = "python3 pipeline/runtime_pack.py"
+
+[tasks."data:ordinary"]
+description = "Verify declared Git inputs and run existing ordinary domain producers (--out required; candidate only)"
+run = "python3 pipeline/ordinary_inputs.py"
 
 [tasks."data"]
 depends = ["setup:oracle"]

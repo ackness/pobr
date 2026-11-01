@@ -1,13 +1,14 @@
 import { createHash } from 'node:crypto';
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { syncData } from './sync-data.mjs';
+import { runtimePackFixture } from './runtime-pack-fixture.mjs';
 
 function fixture(t) {
-  const root = mkdtempSync(join(tmpdir(), 'pobr-sync-data-'));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'pobr-sync-data-')));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const write = (name, content) => {
     const path = join(root, name);
@@ -53,6 +54,20 @@ test('sync uses sealed runtime files and preserves patch/common layers', (t) => 
   assert.equal(result.files.includes('h/404.html'), false);
   // The listed files are the plain ones; the addressed copies are not part of the pack.
   assert.equal(result.files.some((rel) => rel.startsWith('h/')), false);
+});
+
+test('an explicit external data root is used and never falls back to repository data', (t) => {
+  const { root, options } = fixture(t);
+  const previous = process.env.POBR_DATA_ROOT;
+  t.after(() => {
+    if (previous === undefined) delete process.env.POBR_DATA_ROOT;
+    else process.env.POBR_DATA_ROOT = previous;
+  });
+  process.env.POBR_DATA_ROOT = options.dataRoot;
+  const result = syncData({ destRoot: options.destRoot });
+  assert.equal(result.version, '9.1');
+  process.env.POBR_DATA_ROOT = join(root, 'missing');
+  assert.throws(() => syncData({ destRoot: options.destRoot }), /ENOENT/);
 });
 
 test('sync rejects domain and language declarations missing from the inventory', (t) => {
@@ -110,4 +125,60 @@ test('failed publication and rollback retain the only original backup', (t) => {
   const staged = readdirSync(join(root, 'public')).find((name) => name.startsWith('.data-sync-'));
   assert.ok(staged);
   assert.equal(readFileSync(join(root, 'public', staged, 'previous/previous.json'), 'utf8'), '{"keep":true}');
+});
+
+test('runtime release sync publishes exactly the verified blocks with no legacy copies or evidence', (t) => {
+  const { root, options } = fixture(t);
+  runtimePackFixture(join(root, 'release'));
+  const packRoot = join(root, 'release/player');
+  const manifest = JSON.parse(readFileSync(join(packRoot, 'manifest.json')));
+  const result = syncData({ ...options, packRoot, expectedId: manifest.release_id });
+  assert.deepEqual(result, manifest);
+  assert.deepEqual(JSON.parse(readFileSync(join(options.destRoot, 'manifest.json'))), result);
+  for (const spec of manifest.blocks) {
+    assert.deepEqual(readFileSync(join(options.destRoot, 'h', spec.sha256.slice(0, 16), spec.path)), readFileSync(join(packRoot, spec.path)));
+  }
+  assert.deepEqual(readdirSync(options.destRoot).sort(), ['h', 'manifest.json']);
+  assert.equal(existsSync(join(options.destRoot, 'build-receipt.json')), false);
+  assert.equal(existsSync(join(options.destRoot, '9.1')), false);
+  assert.throws(() => syncData({ ...options, packRoot, expectedId: '0'.repeat(64) }), /Command failed/);
+  assert.deepEqual(JSON.parse(readFileSync(join(options.destRoot, 'manifest.json'))), result);
+  writeFileSync(join(packRoot, 'blocks/rules.json'), '{}');
+  assert.throws(() => syncData({ ...options, packRoot }), /Command failed/);
+  assert.deepEqual(JSON.parse(readFileSync(join(options.destRoot, 'manifest.json'))), result);
+});
+
+test('runtime release publication failure restores the previous directory', (t) => {
+  const { root, options } = fixture(t);
+  runtimePackFixture(join(root, 'release'));
+  let calls = 0;
+  assert.throws(() => syncData({ ...options, packRoot: join(root, 'release/player') }, (source, target) => {
+    calls += 1;
+    if (calls === 2) throw new Error('injected release publication failure');
+    renameSync(source, target);
+  }), /injected release publication failure/);
+  assert.equal(calls, 3);
+  assert.deepEqual(readdirSync(options.destRoot), ['previous.json']);
+  assert.equal(readFileSync(join(options.destRoot, 'previous.json'), 'utf8'), '{"keep":true}');
+  assert.equal(readdirSync(dirname(options.destRoot)).some((name) => name.startsWith('.data-sync-')), false);
+});
+
+test('runtime release rollback failure preserves the original backup for recovery', (t) => {
+  const { root, options } = fixture(t);
+  runtimePackFixture(join(root, 'release'));
+  let calls = 0;
+  assert.throws(() => syncData({ ...options, packRoot: join(root, 'release/player') }, (source, target) => {
+    calls += 1;
+    if (calls > 1) throw new Error('injected release rename failure');
+    renameSync(source, target);
+  }), /original backup retained/);
+  assert.equal(calls, 3);
+  assert.equal(existsSync(options.destRoot), false);
+  const staged = readdirSync(dirname(options.destRoot)).filter((name) => name.startsWith('.data-sync-'));
+  assert.equal(staged.length, 1);
+  const backup = join(dirname(options.destRoot), staged[0], 'previous');
+  assert.deepEqual(readdirSync(backup), ['previous.json']);
+  assert.equal(readFileSync(join(backup, 'previous.json'), 'utf8'), '{"keep":true}');
+  renameSync(backup, options.destRoot);
+  assert.equal(readFileSync(join(options.destRoot, 'previous.json'), 'utf8'), '{"keep":true}');
 });

@@ -12,6 +12,7 @@ import { slotLabel, statNameLabel, type Lang } from '../../lib/i18n';
 import { parsePobColorText } from '../../lib/pobColors';
 import { splitNotes } from '../../lib/annotations';
 import { skillDisplayName } from '../../lib/skillNames';
+import { classDisplayName } from '../../lib/nativeDisplayNames';
 import { PageHeader } from '../shared/PageHeader';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
 import './guidance.css';
@@ -72,7 +73,7 @@ export function BuildGuidancePanel({ session, lang, onSkills, onEquipment, onTre
 
   const byId = useMemo(() => new Map(catalog.map(gem => [gem.skill_id, gem])), [catalog]);
   const gemName = (id: string) => skillDisplayName(id, lang, byId);
-  const className = (name: string) => lang === 'en-US' ? name : session.classNames.ascendancies[name] ?? session.classNames.classes[name] ?? name;
+  const className = (name: string) => classDisplayName(session.classNames, name, lang);
   const request = session.currentRequest() ?? {};
   const current = buildProfile(request, byId);
   const groupIndex = request.main_socket_group;
