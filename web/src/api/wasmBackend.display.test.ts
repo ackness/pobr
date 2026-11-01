@@ -7,7 +7,8 @@ import { gemDisplayName } from '../lib/skillNames';
 
 const state = vi.hoisted(() => ({ gems: [] as GemCatalogEntry[], crafting: { bases: [] as unknown[], mods: [] as unknown[] } }));
 
-vi.mock('../wasm/pkg/pobr_wasm.js', () => ({
+// Match the runtime import URL even when no local WASM package exists.
+vi.mock('/src/wasm/pkg/pobr_wasm.js', () => ({
   default: async () => {}, schemaVersion: () => EXPECTED_SCHEMA_VERSION,
   gemCatalogJson: () => JSON.stringify(state.gems),
   itemCraftingCatalogJson: () => JSON.stringify(state.crafting),

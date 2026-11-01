@@ -3,6 +3,7 @@
 import importlib.util
 import json
 import os
+import re
 import sys
 from pathlib import Path
 import subprocess
@@ -105,6 +106,16 @@ class RustShardTests(unittest.TestCase):
 
 
 class ExternalDataShardTests(unittest.TestCase):
+    def test_web_data_imports_use_the_pinned_python(self):
+        for filename in ("pr.yml", "ci.yml"):
+            workflow = (HERE.parents[1] / ".github/workflows" / filename).read_text()
+            # Job boundaries have two spaces; nested blocks have at least four.
+            job = workflow.split("\n  web:\n", 1)[1]
+            job = re.split(r"\n  [a-z]+:", job, maxsplit=1)[0]
+            setup = job.split("uses: ./.github/actions/setup-tools", 1)[1].split("      - ", 1)[0]
+            self.assertIn("python: 'true'", setup, filename)
+            self.assertIn("pipeline/build_data.py --install data", job, filename)
+
     def test_every_rust_shard_prepares_data_and_only_one_publishes_candidates(self):
         workflow = (HERE.parents[1] / ".github/workflows/ci.yml").read_text()
         job = workflow.split("  ci:\n", 1)[1].split("\n  web:", 1)[0]

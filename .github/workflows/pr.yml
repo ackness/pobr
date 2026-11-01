@@ -89,7 +89,7 @@ jobs:
       - uses: ./.github/actions/setup-tools
         with:
           rust: 'true'
-          python: 'true'
+          python: 'false'
       - uses: Swatinem/rust-cache@v2.9.3
         with:
           shared-key: host-check
@@ -114,7 +114,7 @@ jobs:
       - uses: ./.github/actions/setup-tools
         with:
           node: 'true'
-          python: 'false'
+          python: 'true'
       - run: pnpm install --frozen-lockfile
       - name: Prepare pinned external data for Web integration tests
         working-directory: .
