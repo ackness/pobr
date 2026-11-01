@@ -268,10 +268,21 @@ distinct nonempty literals. It is not a scalar actor root or a complete OT
 archive. An empty array does not certify an actor with no inherited modifiers.
 The item archive's 89 `.it` files do not supply those actor resources.
 
+The same pinned MonsterVarieties table has a separate resource stem at source
+column 8, `BaseMonsterTypeIndex`. Its schema declares `files: [".ot", ".otc"]`.
+Use that stem and the declared extensions as resource-location candidates,
+separately from `InheritsFrom`; this is not permission to append an extension to
+a variety or catalog alias. For example, BearCompanion binds variety
+`Metadata/Monsters/CompanionBear/CompanionBearPlayerSummoned`, while its resource
+stem is `Metadata/Monsters/BearCompanion/BearCompanion`. Fixed-index resolution,
+actual bytes and the full selected parent closure still need evidence. The schema
+hint does not certify canonical path spelling, merge precedence or complete effects.
+
 The smallest source handoff that can replace a mod-list field requires:
 
 1. In RePoE, resolve exact actor resources from the indexed client inventory for
-   the selected variety IDs and ordered inheritance literals. Record the actual
+   the selected varieties' `BaseMonsterTypeIndex` stems, schema-declared file types
+   and ordered inheritance literals. Record the actual
    resource mapping, target/observed patch and realm, raw bytes/SHA, unresolved
    paths and the complete selected parent closure. Preserve source spellings;
    do not assume appending an extension to every variety/alias proves a match.
