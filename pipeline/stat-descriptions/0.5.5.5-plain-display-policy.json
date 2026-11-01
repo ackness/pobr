@@ -1,0 +1,12 @@
+{
+  "schema": "pobr-ordinary-stat-descriptions-policy/v1",
+  "version": "0.5.5.5",
+  "source_sha256": "bed5ed56c8281e0c8ae1da2fb142e0f74ba1a3c79ffcee0011b3fbc3875f9b77",
+  "descriptions_sha256": "36e81ebea92d5970b727298ca455078462fe4e14458f943dcfaabe358b4bfe3e",
+  "descriptions_manifest_sha256": "922aece0ff2f8d9f86e306d7371060adaa4efc5fb4dda744e95134c2a3b41b25",
+  "compatibility_sha256": "6aa632ca4ade822568b83e347fbaa77f304eadb5e06829f7827ce3d77210a93a",
+  "statement": "Own global, passive and aura ordinary CSD descriptors and source-verified lookup formats, plus explicit unrendered diagnostics under their existing policy. For this plain-text consumer only, equivalent owners may differ in display markup when every other English semantic field is identical; retain every owner's source pointer and raw hash. This does not choose between genuinely different text, conditions, handlers, restrictions or members, authorize incomplete effect packets, or certify source acquisition/adoption. All remaining unsupported records retain exact compatibility bindings.",
+  "lookup_manifest_sha256": "b3927aab8321fa1bbb8922fca8d5535f182c63c9357630bece7e015dd147008b",
+  "diagnostic_ownership": "explicit-no-description/v1",
+  "descriptor_equivalence": "ordinary-plain-display/v1"
+}

@@ -155,10 +155,10 @@ fn default_ailment_damage_types_match_rust_source_and_vendor() {
     );
 }
 
-/// The committed JSON is byte-identical to a serde-pretty round trip (the
-/// reproducibility rule: no hand edits, regenerating gives a zero byte-diff).
+/// Imported JSON preserves every value through the runtime DTO. Formatting
+/// belongs to the external producer; PoBR never rewrites it to serde key order.
 #[test]
-fn committed_json_is_serde_pretty_roundtrip_stable() {
+fn imported_json_roundtrip_preserves_all_values() {
     let path = repo_data_root()
         .join(version())
         .join("base/non_damaging_ailments.json");
@@ -166,8 +166,8 @@ fn committed_json_is_serde_pretty_roundtrip_stable() {
     let table = game_data().non_damaging_ailments().unwrap();
     let regenerated = serde_json::to_string_pretty(&table).expect("serialize");
     assert_eq!(
-        committed.trim_end(),
-        regenerated,
-        "non_damaging_ailments.json should be byte-identical to serde pretty output (including key order)"
+        serde_json::from_str::<serde_json::Value>(&committed).unwrap(),
+        serde_json::from_str::<serde_json::Value>(&regenerated).unwrap(),
+        "non_damaging_ailments values must survive the runtime DTO without loss"
     );
 }

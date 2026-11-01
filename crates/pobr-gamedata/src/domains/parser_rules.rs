@@ -53,8 +53,8 @@ mod tests {
     /// Repo real data: every section's entry count matches the blessed
     /// snapshot (a consumer-side mirror of the count self-check). Counts
     /// grow with vendor extraction — the actual numbers live in
-    /// `generated/test_pins.json` (refreshed with `POBR_BLESS_PINS=1`
-    /// after a regen, see [`crate::test_pins`]); this function only keeps
+    /// the reviewed repository test-pin fixture (bound to the external manifest,
+    /// see [`crate::test_pins`]); this function only keeps
     /// the structural guard (core form ids must be present).
     #[test]
     fn real_data_section_counts() {
@@ -66,7 +66,7 @@ mod tests {
             doc.forms.iter().map(|f| f.form.as_str()).collect();
         // flag_types includes a pobr-added entry `hindered`→`Condition:Hindered`,
         // so the count is always vendor + 1.
-        crate::test_pins::assert_pin(
+        crate::test_pins::assert_repository_pin(
             &data_dir(),
             "parser_rules.section_counts",
             serde_json::json!({
@@ -280,6 +280,10 @@ mod tests {
             handlers <= 15,
             "handler fallbacks {handlers} exceed the blueprint budget of ≤15"
         );
-        crate::test_pins::assert_pin(&data_dir(), "parser_rules.handler_fallbacks", handlers);
+        crate::test_pins::assert_repository_pin(
+            &data_dir(),
+            "parser_rules.handler_fallbacks",
+            handlers,
+        );
     }
 }

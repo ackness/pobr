@@ -27,6 +27,8 @@ pub(super) struct Policy {
     retained_interpretation_stats: Vec<String>,
     pub legacy_numeric_exceptions: Vec<NumericException>,
     pub unbound_retained_entries: Vec<Unbound>,
+    #[serde(default)]
+    implicit_stat_ownership: Option<String>,
     pub evidence: Evidence,
     pub statement: String,
 }
@@ -127,8 +129,17 @@ pub(super) struct Unbound {
 }
 
 impl Policy {
+    pub fn delegates_implicit(&self) -> bool {
+        self.implicit_stat_ownership.is_some()
+    }
+
     pub fn validate(&self, input: &VerifiedFacts) -> Result<(), String> {
-        if self.schema != "pobr-ordinary-skill-overrides-policy/v1" {
+        let v1 = self.schema == "pobr-ordinary-skill-overrides-policy/v1"
+            && self.implicit_stat_ownership.is_none();
+        let v2 = self.schema == "pobr-ordinary-skill-overrides-policy/v2"
+            && self.implicit_stat_ownership.as_deref()
+                == Some("ordinary-skills/GrantedEffectStatSets.ImplicitStats+IgnoredStats/v1");
+        if !v1 && !v2 {
             return Err("unsupported skill-overrides policy schema".into());
         }
         hex(

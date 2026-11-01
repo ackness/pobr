@@ -131,3 +131,37 @@ Parent uses its existing warm target and fixed binary for two source-limited
 productions, a complete independent numeric/retained-entry/receipt comparison,
 ten older domains and guards. No worker Cargo, producer, Lua, core/WASM rebuild,
 new target, source acquisition or CI is required for this handoff.
+
+## Raw-owned implicit-stat membership
+
+The optional [v2 implicit ownership policy](../../pipeline/skill-overrides/0.5.5.5-implicit-ownership-policy.json)
+delegates each target-bound `implicit_stat` entry to the existing ordinary-skills
+producer. That producer already fills `SkillStatSetDef.implicit_stats` from
+`GrantedEffectStatSets.ImplicitStats` and `IgnoredStats`, including its existing
+primary/additional-set normalization. Keeping an old overlay injection would add
+a removed source member back after loading the current base. V2 removes that
+injection; it does not create a new stat merge or an export-index mapping.
+
+The actual pinned codec must bind the entry to a set owned by the target effect.
+Raw primary and selected set arrays, every physical stat reference and ordered
+occurrence remain in the receipt. Their columns/types/references are checked.
+The old entry, including unknown fields, remains in the exact archived source;
+its original index/hash and explicit non-emission are recorded. Old stat presence
+is reported, not required for a delegated entry. The target may remove, replace
+or add members without a legacy equality gate. Unbound entries retain the same
+exact policy exceptions and unchanged compatibility behavior.
+
+Current-source inspection found 77 of the 84 implicit overlay entries already
+supplied by target ordinary base sets, and seven without a target codec binding.
+Under v2 those 77 are delegated and the seven remain explicit compatibility.
+The eight corpse flags, one attack-speed interpretation, one area flag and the
+virtual multiplier remain authored rules. The historical `(skill,index)` codec
+also retains its separate ownership; none is presented as a raw client field.
+
+The original v1 policy still preserves every prepared entry. V2 keeps the same
+output DTO and existing loaders; the receipt distinguishes source entry count,
+emitted entry count and delegated source indices. Focused regressions run the
+actual ordinary-skills source converter and `GameData::skill_stat_sets` together
+to demonstrate removed/replaced/duplicate source members without old
+re-injection, retained raw unknowns and invalid-source/policy rejection. These
+tests are authored but UNRUN by the worker; integration owns runtime validation.

@@ -43,6 +43,14 @@ is null. These are synthetic retention cases, not a claim that this F has those
 differences. Raw UtilityBuff references are copied only as unconverted facts;
 no referenced buff table or meaning is supplied by this fixture.
 
+`item-inheritance-producer.json` records the producer source hashes from the
+frozen RePoE `repoe-item-inheritance/v1` manifest
+`f8642243fc1d04cecb26c1bd770fb9bbfd70574b93c82969f737013be23c8f31`.
+It is producer identity, not client bytes. Inheritance tests construct small
+synthetic UTF-16LE item chains with ordered tag occurrences, unknown blocks and
+explicit rejected roots. Their checks use the existing ordinary loader; they do
+not certify official client inheritance semantics.
+
 ## Skill fixture
 
 `skill-tables.json` has 78 invented rows across the fifteen selected skill tables,

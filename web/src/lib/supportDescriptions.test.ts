@@ -10,9 +10,12 @@ const catalogBytes = readFileSync(new URL(`../../../data/${version}/overlay/trad
 const catalog = JSON.parse(catalogBytes.toString()) as TradeCatalog;
 const gems = new Map(catalog.gems!.map(gem => [gem.skill_id, gem]));
 
-it('keeps generation tied to the active catalog and its existing pinned dictionary', () => {
+it('binds the retained external asset to the active catalog without relabelling its source version', () => {
   const meta = JSON.parse(readFileSync(new URL(`../../../data/${version}/i18n/zh-CN/_meta.json`, import.meta.url), 'utf8'));
-  expect(generated._meta.data_version).toBe(version);
+  const lock = JSON.parse(readFileSync(new URL('../../../pipeline/build-data.lock.json', import.meta.url), 'utf8'));
+  expect(lock.target.game_patch).toBe(version);
+  expect(generated._meta.data_version).toBe(lock.support_display.source_data_version);
+  expect(generated._meta.catalog_sha256).toBe(lock.support_display.catalog_sha256);
   expect(generated._meta.source_commit).toBe(meta.source_commit);
   expect(generated._meta.catalog_sha256).toBe(createHash('sha256').update(catalogBytes).digest('hex'));
   expect(Object.keys(generated.entries).length).toBeGreaterThan(500);

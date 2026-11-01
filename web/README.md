@@ -175,7 +175,7 @@ for recovery; workspace persistence failures offer a backup download.
 ## Language support
 
 UI supports English, Simplified Chinese and Traditional Chinese. Game noun dictionaries
-are versioned; Simplified Chinese comes from the CN dictionary (`mise exec -- node pipeline/gen-zh-cn.mjs`).
+are versioned and imported from the pinned independent translation package.
 The gem picker searches all three languages. Simplified Chinese item bases and mod
 lines are translated through templates to canonical English before parsing; PoB
 structural lines such as `Rarity:` keep their format. Unknown text remains visible
@@ -191,6 +191,7 @@ reading the same pins.
 
 ```bash
 mise run setup
+mise run data:prepare
 mise run web build-wasm
 mise run web sync-data
 mise run web dev
@@ -198,7 +199,9 @@ mise run web dev
 
 Setup prepares the common environment without compiling the product. Optional
 oracle/browser/artwork dependencies are prepared by their own tasks. Dev serves
-`http://localhost:5173`. For UI-only work without WASM/data:
+`http://localhost:5173`. `data:prepare` imports pinned external game/language data,
+support descriptions and historical API samples into ignored local files; none
+are tracked in PoBR. For UI-only work without a WASM build (prepare inputs first):
 
 ```bash
 VITE_POBR_BACKEND=mock mise run web dev
@@ -233,7 +236,9 @@ output. Ordinary Rust library tests and PR CI check drift. Other types remain in
 `src/api/types.ts`, with assertions in `apps/pobr-wasm/tests/contract_golden.rs`.
 Regenerate mock fixtures after contract changes with
 `mise exec -- cargo test -p pobr-wasm --features diagnostics --test gen_fixtures -- --ignored`.
-Mocks support UI work; they do not verify engine behavior.
+Publish the resulting ignored samples through the independent RePoE fixture
+artifact and update `pipeline/build-data.lock.json`; do not commit complete API
+responses to PoBR. Mocks support UI work; they do not verify engine behavior.
 
 ## Layout and data flow
 

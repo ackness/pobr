@@ -160,3 +160,111 @@ fn later_numeric_handler_owns_format_but_preserves_the_scaled_value() {
     .unwrap();
     assert_eq!(values[0].display(false).unwrap(), "-2");
 }
+
+#[test]
+fn implicit_placeholders_exclusions_table_only_and_compound_order_are_source_semantics() {
+    let mut a = descriptor(&["a", "b"], "{1:+d} then {} then {0:-d} at 10%%");
+    a["groups"][0]["branches"][0]["template_raw"] = json!("{} then {:+d} at 10%%");
+    a["groups"][0]["branches"][0]["condition_tokens_raw"] = json!(["!0", "#"]);
+    let mut table = a["groups"][0]["branches"][0].clone();
+    table["restrictions_raw"] = json!(["table_only"]);
+    table["template_raw"] = json!("table@{0}");
+    a["groups"][0]["branches"]
+        .as_array_mut()
+        .unwrap()
+        .insert(0, table);
+    let d = doc(vec![a]);
+    let renderer = Renderer::global(&d).unwrap();
+    let (lines, evidence) = renderer
+        .render(&[("b".into(), 3), ("a".into(), 2)])
+        .unwrap();
+    assert_eq!(lines, vec!["2 then +3 at 10%"]);
+    assert_eq!(evidence[0]["branch"], 1);
+    assert!(
+        renderer
+            .render(&[("a".into(), 0), ("b".into(), 3)])
+            .unwrap_err()
+            .contains("no CSD branch")
+    );
+    assert!(
+        renderer
+            .render(&[("a".into(), 2)])
+            .unwrap_err()
+            .contains("incomplete")
+    );
+    let (catalog, _) = renderer.catalog("a").unwrap();
+    assert_eq!(catalog.branches[0].template, "{0} then {1:+d} at 10%");
+    assert_eq!(catalog.branches[0].conditions[0].not, Some(0));
+}
+
+#[test]
+fn offsets_and_composed_units_are_exact_and_unknowns_remain_errors() {
+    let mut number = Number::new(50);
+    number.transform("plus_two_hundred").unwrap();
+    number.transform("divide_by_one_hundred_2dp").unwrap();
+    assert_eq!(number.display(false).unwrap(), "2.50");
+    assert_eq!(number.format.offset, 200);
+    assert_eq!(number.format.divisor, 100);
+    let mut number = Number::new(-1550);
+    number.transform("milliseconds_to_seconds_0dp").unwrap();
+    assert_eq!(number.display(false).unwrap(), "-1");
+    assert!(number.transform("passive_hash").is_err());
+}
+
+#[test]
+fn client_string_arguments_and_escaped_braces_use_one_template_parser() {
+    assert_eq!(
+        format_template("Grants {0} Passive Skill Points", &["100"]).unwrap(),
+        "Grants 100 Passive Skill Points"
+    );
+    assert_eq!(
+        format_template("Grants Skill: <underline>{{{0}}}", &["Fire Spell on Hit"]).unwrap(),
+        "Grants Skill: <underline>{Fire Spell on Hit}"
+    );
+    assert_eq!(
+        format_template("{} {:+d}", &["raw{unparsed}", "-3"]).unwrap(),
+        "raw{unparsed} -3"
+    );
+    assert!(format_template("{0:unknown}", &["100"]).is_err());
+    assert!(format_template("{0:d}", &["Name"]).is_err());
+    assert!(format_template("{1}", &["Name"]).is_err());
+}
+
+#[test]
+fn supplied_relational_names_preserve_signed_keys_and_never_fall_back_to_numeric_ids() {
+    let mut d = descriptor(&["key", "amount"], "{1} for {0}");
+    d["groups"][0]["branches"][0]["quantifier_tokens_raw"] = json!(["passive_hash", "1"]);
+    d["groups"][0]["branches"][0]["quantifiers_lexical"] =
+        json!([{"name_raw":"passive_hash","argument_tokens_raw":["1"]}]);
+    let d = doc(vec![d]);
+    let values = BTreeMap::from([(
+        "passive_hash".into(),
+        BTreeMap::from([(-32768, "Named passive".into())]),
+    )]);
+    let renderer = Renderer::global(&d).unwrap().with_lookup_values(&values);
+    assert_eq!(
+        renderer
+            .render(&[("key".into(), -32768), ("amount".into(), 5)])
+            .unwrap()
+            .0,
+        vec!["5 for Named passive"]
+    );
+    assert!(
+        renderer
+            .render(&[("key".into(), 7), ("amount".into(), 5)])
+            .unwrap_err()
+            .contains("unknown CSD lookup key")
+    );
+    assert!(
+        Renderer::global(&d)
+            .unwrap()
+            .render(&[("key".into(), -32768), ("amount".into(), 5)])
+            .is_err()
+    );
+    let (catalog, _) = renderer.catalog("key").unwrap();
+    assert_eq!(
+        catalog.branches[0].lookups,
+        vec![Some("passive_hash".into()), None]
+    );
+    assert_eq!(catalog.branches[0].formats[0], Default::default());
+}

@@ -4,14 +4,18 @@
 （落在仓库根的 `data/<poe-version>/`）。GGG 数据提供物品与技能的原始定义，
 固定提交的 PoB2 Lua 提供解析规则、机制映射及补充目录；不在仓库存放大体积原始数据。
 
-## 数据来源（真源）
+目标存储职责：游戏数据归RePoE、语言数据归翻译库，PoBR只提交代码、需求／版本锁及小型夹具；CI构建和需要实物的测试在临时目录导入数据并生成发布资产。
+现有入库版本快照与PoBR数据artifact仍在迁出，不能作为最终存储方式；本地目标版本保持0.5.5.5。详见[存储边界](../docs/data-architecture.md#1-架构决策与三仓库职责)。
 
-| 域 | 真源 | 取法 |
-|----|------|------|
-| 物品基底 / 词缀 / Stat / 技能宝石 | 游戏 `Content.ggpk` 里的 `.dat` 表（GGG） | `pathofexile-dat` 按版本从 CDN 只下需要的表 bundle |
-| 宝石品质（从 `4.5.5.2` 起） | GGG `GrantedEffectQualityStats` / `GrantedEffects` / `Stats`，范围由版本收据固定 | `pobr-data-adapter --gem-quality`，见[品质生成说明](gem-quality/README.md) |
-| 词条显示文本 | 游戏的 `Data/StatDescriptions/*.csd`，当前产品仍消费 PoB2 导出 | `config.json` 尚未接入这些原始 `files`；独立描述适配待迁移 |
-| 被动天赋树 | GGG 官方 `github.com/grindinggear/poe2-skilltree-export` 的 `data.json` | 生产再生成仍有 vendor 补充；固定来源的独立树域候选见下文 |
+## 活动数据来源与生产
+
+| 域 | 当前来源 | 生产与保留边界 |
+| --- | --- | --- |
+| 物品基底／词缀／Stat／技能宝石 | 固定自有RePoE客户端DAT事实 | [普通领域adapter](../tools/pobr-data-adapter/ordinary-facts.md)接回原DTO；未拥有字段及旧编解码仍保留兼容 |
+| 宝石品质 | 目标GrantedEffectQualityStats／GrantedEffects／Stats事实 | [品质生成说明](gem-quality/README.md)；计算仍按固定effect-wide策略，不认证全部细分scope |
+| 词条显示文本 | 固定客户端CSD＋明确保留的兼容文本 | [普通描述生产者](../tools/pobr-data-adapter/ordinary-stat-descriptions.md)、树／符文renderer；未表达项保留诊断或整项回退 |
+| 被动天赋树 | 目标DAT／Default PSG事实与固定兼容字段 | 普通树已迁源；placement／armour等未拥有语义保留，历史官方Git树候选入口另列下文 |
+| 规则／目录／翻译 | PoBR自有规则、固定vendor／社区目录、固定语言库与客户端文本投影 | 逐项记录来源和适用边界；保留输入不代表全部自主生产，SC客户端身份与CN数值不因中文显示而认证 |
 
 `.dat` 存的是 **id / 数值 / 外键关系**（规范化数据库表）；显示文本在 `StatDescriptions` 里。
 列名/表名见 [poe-tool-dev/dat-schema](https://github.com/poe-tool-dev/dat-schema)。
@@ -23,12 +27,12 @@
 [严格重放](client-sources.md) → RePoE 事实导出与 PoBR 领域适配。
 这些步骤不自动提升来源锁，也不切换活动数据；下方旧表导出链仍独立保留。
 
-[sources.lock.json](sources.lock.json) 登记首个迁移域的官方树输入：仓库、完整提交、
-原始 SHA-256、上游版本、服务器、已知/未知游戏补丁及版权/使用范围。
-另已登记独立 `0.5.5.5` 客户端候选的八张原生表和默认 PSG：完整原始文件摘要、大小、
-官方 bundle URL、解压后切片位置及固定 decoder/schema 身份。该候选不等于活动 `0.5.5.4.2`；
-新源的实际获取、归档重放、领域适配与采用分别验收。当前树获取命令只消费树类来源。
-这些登记没有声称所有生产域已完成迁移，也没有固定旧表导出器的远端 schema；这些仍是后续工作。
+[sources.lock.json](sources.lock.json)保留历史官方树输入及固定客户端资源位置、原始SHA-256、大小、decoder／schema和采集证据。
+`acquisition_acceptances`分别接受F77、六DAT、91 tree／IT、10 CSD及12语言原生资源；
+`retained_input_acceptances`另记locale／shared／compat三类有界保留决定。各项只接受明确scope和pins，不认证全部机制、SC客户端身份或分发许可。
+本地活动版本现为`0.5.5.5`，完整双语runtime `d7ac23c5`；旧`0.5.5.4.2`保留。
+采集、领域解释、消费者验证、本地采用及远端发布仍分开；完整状态见[架构现状](../docs/data-architecture.md#5-当前已有数据与实际缺口)。
+下方`data:tree:source`／`data:tree:candidate`只消费历史树类来源，不是当前普通树的再生流程。
 PoB2 的测试参考版本独立登记在 [devs/reference-sources.json](../devs/reference-sources.json)，
 `mise run vendor` 不再读取生产 parser 元数据选择参考版本。
 
@@ -39,7 +43,7 @@ mise run data:tree:candidate --offline --out .cache/tree-proof/first
 mise run data:tree:candidate --offline --out .cache/tree-proof/second
 ```
 
-当前固定的 `bd87e651` 输入有已确认的来源缺口：Druid 的 `overridePairs` 引用了
+历史诊断入口固定的 `bd87e651` 输入有已确认的来源缺口：Druid 的 `overridePairs` 引用了
 `nodes` 中不存在的 `19680`、`55194`（分别指向替换项 `40837`、`57601`）。
 这些记录在已核对的多个官方版本中均悬空；是否属于游戏中已删除的节点尚未证实。
 直接将原始文件交给严格 adapter 仍会拒绝生成；旧完整再生成链也需要先解决其来源问题。
@@ -79,6 +83,25 @@ PoBR 领域候选，见[候选契约](../tools/pobr-data-adapter/native-facts.md
 保留完整原始事实引用和诊断；它不是运行时包，也未完成品质、几何或全部关系的语义验证。
 候选消费与旧生产再生入口仍分别存在，不能宣称生产链已退出 PoB2。
 
+### 普通完整 BuildData 候选
+
+`pobr-data-adapter --ordinary-facts` 已将固定自有 RePoE 事实接回原普通 DTO，见
+[普通生产入口与领域命令](../tools/pobr-data-adapter/ordinary-facts.md)。技能、基底、树、符文、
+描述、actor 与基础字段的目标来源和固定兼容按各领域 receipt 分开，不能将单个文件全部算作自主。
+这些领域输出经既有 schema-3 组包和封存后可由普通 GameData/BuildData 消费；
+上方独立树域与 schema-4 受限原生候选仍是不同入口，不代表普通完整路径的现行覆盖范围。
+
+本地活动快照`data/0.5.5.5`有67个清单文件及manifest，加18份未变shared；manifest `2a03ad79`／完整runtime `d7ac23c5`。
+它保留简繁两种词典和历史树，投影后的四个SC玩家文件与六域紧凑release `9932ea87`／runtime `ec4f3776`逐字节相同。
+六域双次生产、356条开发输入的TypeScript／WASM API流程及三对CLI结果沿用各自固定证据；完整双语候选另核一个CLI／WASM构筑和采用／回滚演练。
+本地激活后默认CLI读取新身份，默认Web同步86个运行文件；未重编译Rust／WASM、未重跑不变的356条，未跑浏览器全流程或远端CI。
+描述、继承tags、actor字段及保留兼容的分母和关闭条件见[架构现状](../docs/data-architecture.md#5-当前已有数据与实际缺口)。
+本地CURRENT采用已完成，设计分支尚未push／PR／部署；不把本地采用写成线上发布或整库准确性认证。
+
+语言库的完整显示目录可经[显示侧表投影](native-display-texts.md)接入普通 Web
+`translateLines`：精确来源查询、跨表同名冲突和缺译保留，不改原始构筑文本或计算。
+侧表已列入当前活动manifest；全部字段UI消费、真实审核译文及CN语义仍分别验收。审核补译入口只消费精确绑定的已审核记录，当前真实包为0条，草稿不生效。
+
 已有版本化事实、CSD 描述和官方树可通过[固定 recipe 的原生候选统一入口](native-candidate.md)
 与显式绑定的预编译 adapter 离线组包：`mise run data:native:candidate`。
 该入口只编排现有 `--native-runtime`，封存 recipe 与完成收据；不获取原始来源、不发布或切换活动数据。
@@ -86,6 +109,12 @@ PoBR 领域候选，见[候选契约](../tools/pobr-data-adapter/native-facts.md
 ## 运行时数据组合封存
 
 运行包的版本文件与共享规则可独立封存并核验，见[运行时数据组合封存](runtime-bundle.md)。
+PoBR 所需外部表/显示字段及固定 Git 产物分别由 JSON 需求与锁声明；
+目前已接通原生显示候选的 CI 获取/校验和精简投影，见[定向数据导入](data-imports.md)。
+[普通领域输入声明](ordinary-inputs.md)另行固定事实归档、CSD、政策和supplement，
+Full CI从Git获取压缩输入后顺序调用既有adapter生成六域候选；原始大表不进入玩家块。
+需求 JSON 的 `runtime_pack.ordinary` 指定六域可替换的八个路径；独立 CI 组包任务核对
+完成收据／领域收据及业务字节后，与固定保留输入、显示候选合成三块。远端CI及部署尚未执行，本地完整快照采用见上文。
 该入口保存已存在的完整运行组合，不替代下述领域来源与发布验收。
 
 ## 词条更新与回归检查
@@ -140,37 +169,15 @@ PoBR 沿用这个边界：提取器自动吸收可表达的规则，人工修正
 与原固定提交 `28d683c99600eb407b4e014ccaf8247532fb4607` 的十个生成输入逐字节一致。
 这是下载来源恢复，不是中文数据升版；`_meta.json` 继续保留真实来源提交和 2026-07-06 的生成时间。
 国际服导出提供繁中；完整游戏表的新版官方简中仍需相应 WeGame 客户端数据，不能用繁转简冒充。独立词表中的腾讯交易文本不等于完整客户端名词表。
-普通再生成复用 `_meta.json` 中的固定提交；主动更新或精确重放：
-
-```bash
-mise exec -- node pipeline/gen-zh-cn.mjs --refresh
-mise exec -- node pipeline/gen-zh-cn.mjs --version <version> --ref <full-commit-sha>
-```
-
-所有文件从同一提交下载，下载完整后才启用缓存；失败不会混入半份新版词典。
-离线输入可用 `--dict <directory>`，其元数据明确没有已验证的上游提交。
-`bump-version.sh` 在联网升级时刷新词典，并在词典生成和完整词条审计通过后才推进活动版本标记。
-词典缓存与下载失败测试运行 `mise exec -- node --test pipeline/test-dictionary-source.mjs pipeline/test-translation-source.mjs`，已接入 CI；
-升级失败保护由 `mise exec -- python3 devs/scripts/test_workflows.py` 覆盖。
+当前构建从独立翻译库的固定产物导入，执行 `mise run data:prepare`；完整词典和元数据保持原字节，不在PoBR内重新生成或跟踪上游HEAD。
+目标、Git修订、manifest及成员摘要见[构建锁](build-data.lock.json)，临时导入及回滚见[build-data](build-data.md)。
+`gen-zh-cn.mjs`及旧snapshot dictionary／bump路径尚作为历史再生工具留在PoBR，已不属于当前CI构建链；其处理代码归并至翻译库和旧入口退出仍待后续完成，不能据存储迁出宣称生产者全部迁完。
 
 ### 独立词表与人工翻译维护
 
-[ackness/poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats) 已公开，采集 GGG／腾讯交易词条、复用分裂词缀译文并从 PoE2DB 补缺。PoBR 在构建期读取该库 `data/CURRENT` 指向的 `generated/templates.json`，运行时不联网获取词典，也不需要访问 Token。
-
-普通再生成优先复用活动数据 `_meta.json.translation_source.commit`；尚无记录时使用 `pipeline/translation-source.json` 的固定提交。指针与导出文件始终来自同一提交，分开完整缓存；导出 schema、快照 ID、模板和参数集合验证失败即终止。元数据保留仓库、commit、snapshot 和导出 SHA-256。更新方式：
-
-```bash
-# 只选择独立词表的新版本；--ref 仍控制旧的基础词典
-mise exec -- node pipeline/gen-zh-cn.mjs --translations-ref <full-commit-sha>
-# 同时刷新两个来源，并记录各自固定提交
-mise exec -- node pipeline/gen-zh-cn.mjs --refresh
-# 离线开发：这里是独立词表仓库的根目录，不是旧 --dict 格式
-mise exec -- node pipeline/gen-zh-cn.mjs --translations-dir /path/to/poe2-zh-cn-stats
-# 两个来源均离线
-mise exec -- node pipeline/gen-zh-cn.mjs --dict /path/to/legacy/dictionary --translations-dir /path/to/poe2-zh-cn-stats
-```
-
-本地输入的来源模式为 `local`、commit 为 `null`，不会冒充固定远端提交。`--refresh` 不与固定 ref 或本地目录混用。
+[ackness/poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats)维护交易模板、语言来源、人工修正及固定语言产物。
+更新先在翻译库生成／审阅并发布不可变产物，再由PoBR更新精确锁及验证显示、导入和计算契约；运行时不联网取词典。
+现有简繁保留产物不证明官方客户端身份、国服数值或全部译文质量；原生成版本、未知字段及冲突诊断不因目标版本改变而重贴标签。
 
 维护职责已迁移：
 
@@ -178,12 +185,12 @@ mise exec -- node pipeline/gen-zh-cn.mjs --dict /path/to/legacy/dictionary --tra
 - 给已有交易 ID 补译，修改独立库的 `translations.json`；需要明确覆盖现有译文时使用 `overrides.json`；不属于交易目录的模板和已人工核验的多参数模板使用 `curated.json`。
 - 技能标签、物品结构行及导入语法仍由 PoBR 按上下文解释，不把 UI 文案或计算规则混入词条表。
 
-辅助定性说明由 `mise exec -- node pipeline/gen-support-descriptions.mjs` 单独生成 Web 显示映射
-`web/src/lib/supportDescriptions.zh-CN.json`（不改运行时数据快照）。它复用活动简中 `_meta.json` 的旧词典固定提交，
-读取此前未消费的 `tables/GemEffects.json` 的 `SupportText` 中英对照，剥除游戏链接标记后仅按完整英文匹配，
-保留辅助目录的稳定 ID。产物记录提交、源文件和目录 SHA-256，并列出所有未匹配 ID；英文正文变化时 UI 回退英文。
-这不是从交易词表或 native 描述候选取译文。`--check` 可验证再生成一致，纯生成逻辑用
-`mise exec -- node --test pipeline/test-support-descriptions.mjs` 验证。繁体为字形转换回退，不宣称官方繁中译文。
+辅助定性说明及其`GemEffects.SupportText`配对处理已归翻译库独立存储和维护。
+`build-data.lock.json`的`support_display`固定外部manifest、资产和目标catalog摘要；`mise run data:prepare`
+在构建／实物测试前导入，物化忽略的`web/src/lib/supportDescriptions.zh-CN.json`，不改GameData快照身份。
+当前保留资产的原生成版本仍为0.5.5.4.2；与目标目录SHA完全相同才允许使用，UI仍核`skill_id`和完整英文。
+换目录须重新由翻译库配对并更新锁，不能重贴旧版本标签。投影代码与合成测试归翻译库；PoBR验证导入pins、目录绑定和显示回退。
+繁体仍是字形转换回退，不宣称官方繁中译文；这些说明不是当前等级／品质数值或机制认证。
 
 自动模板仅支持已验证的零／单数值槽，以 `{0:d}` 避免误进入字符串捕获；多值参数、双向歧义、数值／符号不符等由独立库列为排除项。PoBR 再按实际翻译器的匹配骨架检查新模板与既有中英文模板、其他新模板的冲突，冲突不按输入顺序选第一条。审核过的迁移模板保留原行为，旧模板与七份名词表不因接入而删除。
 
@@ -196,7 +203,7 @@ mise exec -- node pipeline/gen-zh-cn.mjs --dict /path/to/legacy/dictionary --tra
 
 ## 版本钉定
 
-`config.json` 的 `"patch"` 钉定 PoE2 补丁版本。当前官方补丁使用 `0.*`（如 `0.5.5.4.2`），
+`config.json`的`"patch"`固定下述旧表导出链的输入，仍为`0.5.5.4.2`；它不是活动版本指针。当前活动`0.5.5.5`的固定输入见[ordinary-inputs](ordinary-inputs.md)与[data-imports](data-imports.md)，不能修改旧来源标签代替重新采集。PoE2补丁使用`0.*`（如`0.5.5.5`），
 历史版本使用 `4.*`；索引下载固定走 `patch-poe2.poecdn.com`，不再由主版本数字猜测游戏。
 表导出通过 `pipeline/pnpm-lock.yaml` 固定 `pathofexile-dat@15.2.0`，附带两处 `0.*` 识别补丁，
 使 bundle CDN 和 PoE2 表结构/语言目录选择一致。`export-tables.sh` 自动执行 frozen-lockfile 安装；

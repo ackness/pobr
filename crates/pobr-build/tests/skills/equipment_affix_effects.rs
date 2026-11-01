@@ -1098,7 +1098,8 @@ fn augments_in_equipment_are_counted_by_kind() {
 #[test]
 fn ancient_idol_with_rune_base_tag_does_not_penalize_resistance() {
     let data = data();
-    assert_eq!(data.base_items["Carved Majesty"].tags, ["rune"]);
+    // Native inheritance contributes default; the augment still carries rune.
+    assert_eq!(data.base_items["Carved Majesty"].tags, ["default", "rune"]);
     let mut gloves = item(
         "Secured Wraps",
         &[

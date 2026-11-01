@@ -4,6 +4,9 @@ import type { ItemLineJson } from '../api/types';
 import { affixRollLines, affixTier, availableAffixes, buildAffixItem, createAffixDraft, editableAffixPool, validateAffixDraft } from './marketAffixEditor';
 import type { TradeAffix, TradeBase, TradeCatalog } from './tradeOptimizer';
 
+const dataVersion = readFileSync(new URL('../../../data/CURRENT', import.meta.url), 'utf8').trim();
+const preparedCatalog = new URL(`../../../data/${dataVersion}/overlay/trade_catalog.json`, import.meta.url);
+
 const base: TradeBase = { name: 'Sapphire Ring', category: 'accessory.ring', tags: ['ring', 'default'], level: 10, implicits: [], domain: 'equipment', affix_limit: 3 };
 const mod = (id: string, lines: string[], extra: Partial<TradeAffix> = {}): TradeAffix => ({ id, group: id, kind: 'prefix', level: 1,
   lines: lines.map(line => line.replace(/\((\d+)-(\d+)\)/g, '$2')), roll_lines: lines, weights: [['ring', 1]], stats: [], domain: 'equipment', ...extra });
@@ -150,8 +153,8 @@ test('fractured modifiers remain fixed while still consuming their real affix sl
   expect(() => buildAffixItem(value, pool, 80)).toThrow('fractured');
 });
 
-test('the pinned PoB2 export has ranges for every tier and agrees with all existing maximum-roll lines', () => {
-  const catalog = JSON.parse(readFileSync(new URL('../../../data/4.5.5.2/overlay/trade_catalog.json', import.meta.url), 'utf8')) as TradeCatalog;
+test('the prepared trade catalog has ranges for every tier and agrees with all existing maximum-roll lines', () => {
+  const catalog = JSON.parse(readFileSync(preparedCatalog, 'utf8')) as TradeCatalog;
   expect(catalog.mods.length).toBeGreaterThan(3000);
   for (const entry of catalog.mods) expect(affixRollLines(entry, 1)).toEqual(entry.lines);
   const ring = catalog.bases.find(entry => entry.name === 'Sapphire Ring')!;
@@ -163,7 +166,7 @@ test('the pinned PoB2 export has ranges for every tier and agrees with all exist
 });
 
 test('merged physical and accuracy rolls from three real bow prefixes never become two confirmed prefixes', () => {
-  const catalog = JSON.parse(readFileSync(new URL('../../../data/4.5.5.2/overlay/trade_catalog.json', import.meta.url), 'utf8')) as TradeCatalog;
+  const catalog = JSON.parse(readFileSync(preparedCatalog, 'utf8')) as TradeCatalog;
   const bow = catalog.bases.find(entry => entry.name === 'Twin Bow')!;
   const candidates = editableAffixPool(catalog, bow);
   const physical = candidates.find(entry => entry.id === 'equipment:LocalIncreasedPhysicalDamagePercent2')!;

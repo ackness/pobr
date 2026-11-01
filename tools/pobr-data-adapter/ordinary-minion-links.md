@@ -125,3 +125,42 @@ Prior thirteen domains require old/new byte comparison, allowing only the true
 compiled receipt revision to differ. Source-limited read controls, candidate
 sealing and path guards remain parent validation. No unchanged core/WASM/corpus
 rebuild is required by this adapter slice.
+
+## Relationship and equipment gaps
+
+The remaining fields have different consumers and must not be inferred from a
+single `GrantedEffects.MinionType` FK:
+
+| Field | Current use and minimum closing evidence |
+| --- | --- |
+| `minion_list` | [Summon resolution](../../crates/pobr-core/src/skill_env/minions.rs) reads the selected active effect's ordered aliases. Obtain the effect/skill-to-variety relationship, variant and eligibility context, then bind the resulting variety identities to the existing catalog aliases. Preserve multiplicity and source order. |
+| `add_minion_list` | The sidecar and loader preserve it; the current summon resolver explicitly defers support-added minions. The fixed 181-entry sidecar has no nonempty list here. A future implementation needs a concrete support/active-skill output requirement as well as the relationship source; absent entries do not prove that no such game relationship exists. |
+| `minion_uses` | Manifest Weapon's `Weapon 1` entry makes the ordinary resolver require and copy the player's main-hand melee martial weapon. Obtain an explicit effect-to-equipment-slot/copy relationship and qualification rule; monster main/off-hand item classes describe the monster and do not prove player-slot borrowing. |
+| `minion_has_item_set` | The loader and DTO preserve it, but the current ordinary summon calculation does not read it to execute a separate item set. Keep this compatibility declaration; require a defined equipment-input/output contract before adding a model merely to migrate the flag. |
+
+For a concrete counterexample to using `MinionType` as the summon relation, the
+international 0.5.5.5 facts give both `SummonSkeletalArsonistsPlayer` and
+`SummonSkeletalBrutesPlayer` physical MinionType row 8. Their retained summon
+aliases are respectively `RaisedSkeletonArsonist` and `RaisedSkeletonBrute`.
+Six further skeletal effects share that type but select different aliases.
+The number 8 is a physical row in this input, not a stable type ID or a mapping
+policy. The same package's `DisplayMinionMonsterType` table has zero rows; its
+existence cannot supply the missing relationship.
+
+These observations use fact manifest
+`050fcf93ce2cdc763d32fc9336516e25ee8791b0feb360bc811c835213712603`.
+Its `tables/GrantedEffects.json` is 6,314,332 bytes, SHA256
+`528b7162a9f2efdffd7c92e698c3c903873e03ffc97bdef31f31ee6fcefd53e8`;
+`tables/DisplayMinionMonsterType.json` is 861 bytes, SHA256
+`2273139e09d446778d30a12f32ab95cc957b923222920207ddbfc04ee7ee3659`.
+The current sidecar has 31 nonempty `minion_list` entries and one equipment
+declaration (`ManifestWeaponPlayer`), not a complete client relationship table.
+
+RePoE owns newly located raw relationships and their versioned, byte-pinned
+closure. PoBR owns static-build interpretation, alias adaptation and consumption;
+curated membership need not become a fabricated client field. Replace a retained
+field only with its complete relationship and preserve unknowns and inactive
+conditions. Validate changed summons, alias selection and the existing borrowed
+weapon behavior through their consumers. Keep source packages in RePoE and
+temporary CI/test imports, outside PoBR Git and PoBR artifact refs. The existing
+IgnoreMinionTypes ownership and original field-preserving producer remain intact.

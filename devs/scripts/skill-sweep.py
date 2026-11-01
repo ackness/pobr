@@ -607,9 +607,13 @@ def main(argv=None):
     if not (VENDOR / "src/HeadlessWrapper.lua").is_file():
         parser.error("missing pinned PoB2 checkout; run mise run vendor")
     commit = run(["git", "-C", str(VENDOR), "rev-parse", "HEAD"]).strip()
-    pinned = read_json(directory / "overlay/skill_overrides.json")["_meta"]["vendor_commit"]
+    reference = read_json(REPO / "devs/reference-sources.json")
+    pinned = reference["pob2"]["commit"]
+    if (reference.get("schema_version") != 1 or not re.fullmatch(r"[0-9a-f]{40}", pinned)
+            or reference["pob2"].get("protocol") != "pob2-oracle/v1"):
+        parser.error("invalid independent PoB2 reference pin")
     if commit != pinned:
-        parser.error(f"vendor commit {commit} differs from the data's pin {pinned}")
+        parser.error(f"vendor commit {commit} differs from the independent reference pin {pinned}")
     vendor_gems, vendor_effects = vendor_metadata(VENDOR)
     cases, skipped, inventory = skill_cases(directory, vendor_gems, vendor_effects)
     if args.skill:

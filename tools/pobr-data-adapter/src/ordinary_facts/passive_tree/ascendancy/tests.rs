@@ -91,7 +91,338 @@ fn project(
     )?;
     let descriptions = refresh_tests::descriptions();
     let renderer = Renderer::new(&descriptions)?;
-    refresh::project(&input, &facts, &policy, old, r, &renderer, Some(&source))
+    refresh::project(
+        &input,
+        &facts,
+        &policy,
+        old,
+        r,
+        &renderer,
+        Some(refresh::Supplement {
+            ascendancy: &source,
+            input: extra,
+        }),
+    )
+}
+
+fn unlock_fixture() -> (Fixture, Value, Value, Value, selected::Input) {
+    let (mut f, mut policy, old, reference, extra) = fixture();
+    let doc = f.documents.get_mut("tables/PassiveSkills.json").unwrap();
+    for (field, kind, array, target) in [
+        ("UnlockedBy", "row", true, "PassiveSkills"),
+        ("VisibleForAscendancy", "foreignrow", false, "Ascendancy"),
+        ("Requirement", "foreignrow", false, "ClientStrings"),
+    ] {
+        let n = doc["columns"].as_array().unwrap().len();
+        doc["columns"].as_array_mut().unwrap().push(json!({"source_column":n,"physical_fields":[field],
+            "schema":{"name":field,"type":kind,"array":array,"interval":false,"references":{"table":target}}}));
+        doc["physical_fields"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!(field));
+        for row in doc["rows"].as_array_mut().unwrap() {
+            row["values"][field] = if array { json!([]) } else { Value::Null };
+        }
+    }
+    policy["schema"] = json!("pobr-ordinary-target-tree-policy/v3");
+    policy["base_policy"]["qualification"]["context_sha256"] = json!(sha256_hex(
+        &reader::json_bytes(&super::super::source::context(f.values("PassiveSkills", 0)).unwrap())
+            .unwrap()
+    ));
+    for row in doc_rows(&f) {
+        let raw = &row["values"];
+        let mut context = refresh::context(raw).unwrap();
+        for field in ["Ascendancy", "UnlockedBy", "VisibleForAscendancy"] {
+            context.as_object_mut().unwrap().remove(field);
+        }
+        policy["compatibility_bindings"][raw["Id"].as_str().unwrap()]["context_sha256"] =
+            json!(sha256_hex(&reader::json_bytes(&context).unwrap()));
+    }
+    (f, policy, old, reference, extra)
+}
+
+fn doc_rows(f: &Fixture) -> &[Value] {
+    f.documents["tables/PassiveSkills.json"]["rows"]
+        .as_array()
+        .unwrap()
+}
+
+fn text_fixture() -> (Fixture, Value, Value, Value, selected::Input) {
+    let (mut f, mut policy, old, reference, mut extra) = unlock_fixture();
+    let doc = f.documents.get_mut("tables/PassiveSkills.json").unwrap();
+    for (field, kind, array, target, value) in [
+        (
+            "GrantedSkill",
+            "foreignrow",
+            false,
+            Some("SkillGems"),
+            Value::Null,
+        ),
+        ("SkillPointsGranted", "i32", false, None, json!(0)),
+        ("WeaponPointsGranted", "i32", false, None, json!(0)),
+        (
+            "PassiveSkillBuffs",
+            "foreignrow",
+            true,
+            Some("BuffTemplates"),
+            json!([]),
+        ),
+    ] {
+        let n = doc["columns"].as_array().unwrap().len();
+        doc["columns"].as_array_mut().unwrap().push(json!({"source_column":n,"physical_fields":[field],
+            "schema":{"name":field,"type":kind,"array":array,"interval":false,"references":target.map(|t|json!({"table":t}))}}));
+        doc["physical_fields"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!(field));
+        for row in doc["rows"].as_array_mut().unwrap() {
+            row["values"][field] = value.clone();
+        }
+    }
+    extra.documents.insert(
+        "tables/SkillGems.json".into(),
+        table(
+            "SkillGems",
+            &[("BaseItemType", "foreignrow", false, Some("BaseItemTypes"))],
+            json!([{"BaseItemType":1},{"BaseItemType":0}]),
+        ),
+    );
+    extra.documents.insert("tables/BaseItemTypes.json".into(), table("BaseItemTypes", &[
+        ("Id", "string", false, None),("Name", "string", false, None)], json!([
+            {"Id":"Metadata/OtherSkill","Name":"Other source skill"},{"Id":"Metadata/GrantedSkill","Name":"Source skill {0}"}])));
+    extra.documents.insert(
+        "tables/ClientStrings.json".into(),
+        table(
+            "ClientStrings",
+            &[
+                ("Id", "string", false, None),
+                ("Text", "string", false, None),
+            ],
+            json!([
+            {"Id":"PassiveNodeGrantsPassivePoint","Text":"Grants {0} Passive Skill Point"},
+            {"Id":"PassiveNodeGrantsPassivePoints","Text":"Grants {0} Passive Skill Points"},
+            {"Id":"PassiveNodeGrantsSpecialisationPoint","Text":"{0} point becomes a weapon point"},
+            {"Id":"PassiveNodeGrantsSpecialisationPoints","Text":"{0} points become weapon points"},
+            {"Id":"ItemDisplayGrantedSkillNoScaling","Text":"Grants Skill: <underline>{{{0}}}"}]),
+        ),
+    );
+    for table in ["ClientStrings", "SkillGems", "BaseItemTypes"] {
+        let resource = format!("Data/Balance/{table}.datc64");
+        extra.manifest["source_identity"]["raw_resources"][&resource] =
+            f.manifest["source_identity"]["raw_resources"][&resource].clone();
+    }
+    policy["schema"] = json!("pobr-ordinary-target-tree-policy/v4");
+    policy["non_stat_manifest_sha256"] = json!(sha256_hex(&extra.manifest_bytes));
+    bind_text_contexts(&mut f, &mut policy);
+    (f, policy, old, reference, extra)
+}
+
+fn bind_text_contexts(f: &mut Fixture, policy: &mut Value) {
+    policy["base_policy"]["qualification"]["context_sha256"] = json!(sha256_hex(
+        &reader::json_bytes(&super::super::source::context(f.values("PassiveSkills", 0)).unwrap())
+            .unwrap()
+    ));
+    for row in doc_rows(f) {
+        let raw = &row["values"];
+        let mut context = refresh::context(raw).unwrap();
+        for field in ["Ascendancy", "UnlockedBy", "VisibleForAscendancy"] {
+            context.as_object_mut().unwrap().remove(field);
+        }
+        let binding = &mut policy["compatibility_bindings"][raw["Id"].as_str().unwrap()];
+        binding["context_sha256"] = json!(sha256_hex(&reader::json_bytes(&context).unwrap()));
+        for field in super::super::nonstat::OWNED_FIELDS {
+            context.as_object_mut().unwrap().remove(field);
+        }
+        binding["render_context_sha256"] =
+            json!(sha256_hex(&reader::json_bytes(&context).unwrap()));
+    }
+}
+
+#[test]
+fn complete_stats_points_and_skill_name_grants_propagate_together() {
+    let (mut f, p, old, r, mut extra) = text_fixture();
+    f.values("PassiveSkills", 2)["SkillPointsGranted"] = json!(2);
+    f.values("PassiveSkills", 2)["WeaponPointsGranted"] = json!(1);
+    f.values("PassiveSkills", 2)["GrantedSkill"] = json!(0);
+    let (tree, _, receipt) = project(&mut f, &p, &old, &r, &extra).unwrap();
+    assert_eq!(
+        tree[2]["stats"],
+        json!([
+            "-7% to Fire Resistance",
+            "22% increased Spell Damage",
+            "Grants 2 Passive Skill Points",
+            "1 point becomes a weapon point",
+            "Grants Skill: <underline>{Source skill {0}}"
+        ])
+    );
+    assert_eq!(
+        receipt["source_records"][2]["text"]["owner"],
+        "target-csd-and-client-strings"
+    );
+    assert_eq!(
+        receipt["source_records"][2]["text"]["non_stat"][2]["base_item_row"],
+        1
+    );
+    value(&mut extra, "BaseItemTypes", 0)["Name"] = json!("Renamed source skill");
+    f.values("PassiveSkills", 2)["GrantedSkill"] = json!(1);
+    f.values("PassiveSkills", 2)["SkillPointsGranted"] = json!(1);
+    f.values("PassiveSkills", 2)["WeaponPointsGranted"] = json!(0);
+    let (tree, _, _) = project(&mut f, &p, &old, &r, &extra).unwrap();
+    assert_eq!(
+        tree[2]["stats"],
+        json!([
+            "-7% to Fire Resistance",
+            "22% increased Spell Damage",
+            "Grants 1 Passive Skill Point",
+            "Grants Skill: <underline>{Renamed source skill}"
+        ])
+    );
+    f.values("PassiveSkills", 2)["GrantedSkill"] = Value::Null;
+    f.values("PassiveSkills", 2)["SkillPointsGranted"] = json!(0);
+    let (tree, _, _) = project(&mut f, &p, &old, &r, &extra).unwrap();
+    assert_eq!(
+        tree[2]["stats"],
+        json!(["-7% to Fire Resistance", "22% increased Spell Damage"])
+    );
+}
+
+#[test]
+fn buffs_or_unknown_stats_keep_whole_text_and_reject_changed_grants() {
+    for row in [1, 2] {
+        let (mut f, mut p, old, r, extra) = text_fixture();
+        f.values("PassiveSkills", row)["GrantedSkill"] = json!(0);
+        if row == 2 {
+            f.values("PassiveSkills", row)["PassiveSkillBuffs"] = json!([0]);
+        }
+        bind_text_contexts(&mut f, &mut p);
+        let (tree, _, receipt) = project(&mut f, &p, &old, &r, &extra).unwrap();
+        assert_eq!(tree[row]["stats"], old[row]["stats"]);
+        assert_eq!(
+            receipt["source_records"][row]["text"]["owner"],
+            "prepared-whole-text"
+        );
+        f.values("PassiveSkills", row)["GrantedSkill"] = json!(1);
+        let error = project(&mut f, &p, &old, &r, &extra).unwrap_err();
+        assert!(
+            error.contains("stale whole-text compatibility rejected"),
+            "row {row}: {error}"
+        );
+    }
+}
+
+#[test]
+fn tree_text_requires_same_raw_source_pinned_supplement_and_resolved_skill_fk() {
+    for mode in 0..4 {
+        let (mut f, p, old, r, mut extra) = text_fixture();
+        match mode {
+            0 => {
+                extra.manifest["source_identity"]["raw_resources"]["Data/Balance/SkillGems.datc64"]
+                    ["sha256"] = json!("0".repeat(64))
+            }
+            1 => extra.manifest_bytes = b"another source identity".to_vec(),
+            2 => f.values("PassiveSkills", 2)["GrantedSkill"] = json!(99),
+            _ => f.values("PassiveSkills", 2)["SkillPointsGranted"] = json!(-1),
+        }
+        assert!(
+            project(&mut f, &p, &old, &r, &extra).is_err(),
+            "mode {mode}"
+        );
+    }
+}
+
+#[test]
+fn source_unlock_members_order_visibility_and_removal_propagate() {
+    let (mut f, p, mut old, r, mut extra) = unlock_fixture();
+    old[2]["unlock_constraint"] = json!({"nodes":[101],"ascendancy":"Witch3","future":false});
+    f.values("PassiveSkills", 2)["UnlockedBy"] = json!([1, 0]);
+    f.values("PassiveSkills", 2)["VisibleForAscendancy"] = json!(0);
+    value(&mut extra, "Ascendancy", 0)["Id"] = json!("SourceAscendancy");
+    let (tree, _, receipt) = project(&mut f, &p, &old, &r, &extra).unwrap();
+    assert_eq!(
+        tree[2]["unlock_constraint"],
+        json!({"nodes":[202,101],"ascendancy":"SourceAscendancy","future":false})
+    );
+    assert_eq!(
+        receipt["source_records"][2]["unlock"]["nodes"][0]["target_row"],
+        1
+    );
+    assert!(tree[2]["native_stats"].is_null());
+    let doc = extra.documents.get_mut("tables/Ascendancy.json").unwrap();
+    doc["rows"].as_array_mut().unwrap().push(json!({"_row":1,"values":{
+        "Id":"OtherSourceAscendancy","Name":"Other source owner","Character":0,"Disabled":false,"BaseAscendancy":null}}));
+    doc["validation"]["rows"] = json!(2);
+    f.values("PassiveSkills", 2)["UnlockedBy"] = json!([0]);
+    f.values("PassiveSkills", 2)["VisibleForAscendancy"] = json!(1);
+    let (tree, _, _) = project(&mut f, &p, &old, &r, &extra).unwrap();
+    assert_eq!(
+        tree[2]["unlock_constraint"],
+        json!({"nodes":[101],"ascendancy":"OtherSourceAscendancy","future":false})
+    );
+    f.values("PassiveSkills", 2)["UnlockedBy"] = json!([]);
+    f.values("PassiveSkills", 2)["VisibleForAscendancy"] = Value::Null;
+    let (tree, _, _) = project(&mut f, &p, &old, &r, &extra).unwrap();
+    assert_eq!(tree[2]["unlock_constraint"], json!({"future":false}));
+    old[2].as_object_mut().unwrap().remove("unlock_constraint");
+    let (tree, _, _) = project(&mut f, &p, &old, &r, &extra).unwrap();
+    assert!(tree[2].get("unlock_constraint").is_none());
+}
+
+#[test]
+fn unresolved_unlock_nodes_owners_and_wrong_column_types_reject() {
+    for mode in 0..5 {
+        let (mut f, p, old, r, extra) = unlock_fixture();
+        match mode {
+            0 => f.values("PassiveSkills", 2)["UnlockedBy"] = json!([100]),
+            // Physical row exists, but its graph node is not an emitted member.
+            1 => f.values("PassiveSkills", 2)["UnlockedBy"] = json!([3]),
+            2 => f.values("PassiveSkills", 2)["VisibleForAscendancy"] = json!(100),
+            3 => f.values("PassiveSkills", 2)["UnlockedBy"] = json!(null),
+            _ => {
+                let doc = f.documents.get_mut("tables/PassiveSkills.json").unwrap();
+                let column = doc["columns"]
+                    .as_array_mut()
+                    .unwrap()
+                    .iter_mut()
+                    .find(|c| c["physical_fields"] == json!(["UnlockedBy"]))
+                    .unwrap();
+                column["schema"]["references"]["table"] = json!("ClientStrings");
+            }
+        }
+        assert!(
+            project(&mut f, &p, &old, &r, &extra).is_err(),
+            "mode {mode}"
+        );
+    }
+}
+
+#[test]
+fn requirement_and_unknown_context_never_become_unlock_predicates() {
+    for field in ["Requirement", "Opaque"] {
+        let (mut f, p, old, r, extra) = unlock_fixture();
+        f.values("PassiveSkills", 2)[field] = json!(99);
+        let error = project(&mut f, &p, &old, &r, &extra).unwrap_err();
+        assert!(
+            error.contains("unsupported source context change"),
+            "{field}: {error}"
+        );
+    }
+}
+
+#[test]
+fn source_unlock_ownership_never_waives_unrepresentable_variant_context() {
+    for field in ["UnlockedBy", "VisibleForAscendancy"] {
+        let (mut f, p, old, r, extra) = unlock_fixture();
+        f.values("PassiveSkills", 5)[field] = if field == "UnlockedBy" {
+            json!([0])
+        } else {
+            json!(0)
+        };
+        let error = project(&mut f, &p, &old, &r, &extra).unwrap_err();
+        assert!(
+            error.contains("variant unlock context cannot be represented"),
+            "{field}: {error}"
+        );
+    }
 }
 #[test]
 fn source_names_parent_node_and_override_values_propagate() {

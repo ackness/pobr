@@ -54,8 +54,8 @@ fn build_data_minion_def_zombie() {
     let zombie = data
         .minion_def("RaisedZombie")
         .expect("RaisedZombie is in the data pack");
-    // Values come from Minions.lua and drift with balance patches -> blessed snapshot (refresh with POBR_BLESS_PINS=1).
-    pobr_gamedata::test_pins::assert_pin(
+    // Values come from Minions.lua and drift with balance patches -> reviewed manifest-bound repository fixture.
+    pobr_gamedata::test_pins::assert_repository_pin(
         &repo_data_root().join(version()),
         "minions.raised_zombie",
         serde_json::json!({ "life": zombie.life, "damage": zombie.damage }),
@@ -71,7 +71,7 @@ fn build_data_minion_def_spectre_falls_back() {
         .minion_def("Metadata/Monsters/LeagueAbyss/Lightless/Cocoon3Spectre")
         .expect("Lightless Abomination is in the data pack (falls into spectres)");
     // Values come from Spectres.lua and drift with balance patches (0.5.4b: life 3.0->2.2) -> blessed snapshot.
-    pobr_gamedata::test_pins::assert_pin(
+    pobr_gamedata::test_pins::assert_repository_pin(
         &repo_data_root().join(version()),
         "minions.spectre_cocoon3",
         serde_json::json!({ "life": c.life, "armour": c.armour }),

@@ -3,7 +3,8 @@
 //!
 //! Produces `web/src/fixtures/*.json` from the real contract entry points,
 //! guaranteeing the mock backend's shape has zero drift from the real wasm
-//! backend. Rerun once and commit the output after any contract change.
+//! backend. After a contract change, publish the ignored output through the
+//! independent RePoE fixture artifact and update the build-data lock.
 
 use pobr_gamedata::repo_data_root;
 

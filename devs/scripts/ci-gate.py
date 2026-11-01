@@ -15,7 +15,7 @@ _spec.loader.exec_module(_policy)
 
 def check(needs, mode):
     if mode == "full":
-        expected = {name: True for name in ("lint", "ci", "web", "scripts")}
+        expected = {name: True for name in ("lint", "ci", "web", "runtime", "scripts")}
         if set(needs) != set(expected):
             raise ValueError("Full gate dependencies are missing or unexpected")
     else:

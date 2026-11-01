@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { CraftingMetadata } from '../api/itemCrafting';
-import { baseDraftText, craftingCatalog } from './itemCrafting';
+import { baseDraftText, craftBaseDisplayName, craftingCatalog } from './itemCrafting';
+import { nativeCraftBaseNames } from './nativeDisplayNames';
+import type { NativeDisplayTexts } from './nativeDisplayTexts';
 import { availableAffixes, createAffixDraft, editableAffixPool } from './marketAffixEditor';
 import type { TradeCatalog } from './tradeOptimizer';
 
@@ -21,6 +23,29 @@ const display: TradeCatalog = {
   mods: game.mods.filter(mod => mod.id !== 'missing').map(mod => ({ id: `equipment:${mod.id}`, group: 'wrong', kind: 'suffix', level: 99,
     lines: ['+10 to maximum Life'], roll_lines: ['+(5-10) to maximum Life'], weights: [['default', 0]], stats: [], domain: 'equipment' })),
 };
+it('uses the exact source-bound base name in the crafting selector and retains English blockers', () => {
+  const source: NativeDisplayTexts = { schema: 'pobr-native-display-texts/v1', game_patch: 'test',
+    realm: 'international', locale: 'zh-CN', catalog_sha256: 'a'.repeat(64), entries: { Ring: null },
+    scopes: { 'BaseItemTypes.Name': { ring: ['Ring', '戒指'], excluded: [null, null] } } };
+  const localized = nativeCraftBaseNames(game, [source]);
+  const bases = craftingCatalog(localized, display).bases;
+  const ring = bases.find(base => base.id === 'ring')!;
+  const blocked = bases.find(base => base.id === 'excluded')!;
+  expect(craftBaseDisplayName(ring, 'zh-CN', 'Ring')).toBe('戒指');
+  expect(craftBaseDisplayName(blocked, 'zh-CN', '旧译文')).toBe('Excluded Ring');
+  expect(craftBaseDisplayName(ring, 'zh-TW', '舊譯文')).toBe('舊譯文');
+  expect(craftBaseDisplayName(ring, 'en-US', ring.name)).toBe('Ring');
+  expect(baseDraftText(ring, 'NORMAL', 1, 0)).toContain('\nRing\n');
+  expect(game.bases[0]).not.toHaveProperty('display_names');
+  for (const pair of [['Different', '旧名'], ['Ring', null], [null, null]] as [string | null, string | null][]) {
+    source.scopes['BaseItemTypes.Name'].ring = pair;
+    const result = craftingCatalog(nativeCraftBaseNames(game, [source]), display).bases.find(base => base.id === 'ring')!;
+    expect(craftBaseDisplayName(result, 'zh-CN', '旧译文')).toBe('Ring');
+  }
+  delete source.scopes['BaseItemTypes.Name'].ring;
+  const unowned = craftingCatalog(nativeCraftBaseNames(game, [source]), display).bases.find(base => base.id === 'ring')!;
+  expect(craftBaseDisplayName(unowned, 'zh-CN', '兼容译文')).toBe('兼容译文');
+});
 
 describe('game-backed item crafting', () => {
   const catalog = craftingCatalog(game, display);

@@ -1,7 +1,9 @@
 //! Target graph/definition ownership with explicitly bounded compatibility fields.
 
 use super::super::stat_set_codec::read_pinned;
-use super::{Converted, ascendancy, policy, prepared, render::Renderer, source::Facts};
+use super::{
+    Converted, ascendancy, nonstat, policy, prepared, render::Renderer, source::Facts, unlock,
+};
 use crate::native_facts::reader::{self, VerifiedFacts};
 use crate::raw_source::sha256_hex;
 use pobr_data::catalog::{PassiveNodeDef, PassiveNodeKind, PassiveTreeMeta};
@@ -30,12 +32,16 @@ pub(super) struct Policy {
     pub statement: String,
     #[serde(default)]
     pub ascendancy: Option<ascendancy::Policy>,
+    #[serde(default)]
+    pub non_stat_manifest_sha256: Option<String>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Binding {
     pub context_sha256: String,
     pub stats_sha256: String,
+    #[serde(default)]
+    pub render_context_sha256: Option<String>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -50,6 +56,28 @@ pub(super) struct ClassBinding {
     pub class: String,
 }
 
+impl Policy {
+    pub(super) fn owns_unlocks(&self) -> bool {
+        matches!(
+            self.schema.as_str(),
+            "pobr-ordinary-target-tree-policy/v3" | "pobr-ordinary-target-tree-policy/v4"
+        )
+    }
+    fn owns_nonstat_text(&self) -> bool {
+        self.schema == "pobr-ordinary-target-tree-policy/v4"
+    }
+}
+
+pub(super) struct Supplement<'a> {
+    pub ascendancy: &'a ascendancy::Source,
+    pub input: &'a reader::selected::Input,
+}
+
+struct Effects<'a> {
+    ascendancy: Option<&'a ascendancy::Source>,
+    nonstat: Option<nonstat::Source<'a>>,
+}
+
 pub(super) fn convert(
     input: &VerifiedFacts,
     args: &super::super::CodecArgs,
@@ -60,15 +88,26 @@ pub(super) fn convert(
     let policy: Policy = serde_json::from_value(pinned.document).map_err(|e| e.to_string())?;
     if !matches!(
         policy.schema.as_str(),
-        "pobr-ordinary-target-tree-policy/v1" | "pobr-ordinary-target-tree-policy/v2"
+        "pobr-ordinary-target-tree-policy/v1"
+            | "pobr-ordinary-target-tree-policy/v2"
+            | "pobr-ordinary-target-tree-policy/v3"
+            | "pobr-ordinary-target-tree-policy/v4"
     ) || policy.statement.trim().is_empty()
     {
         return Err("unsupported target tree policy".into());
     }
-    if (policy.schema == "pobr-ordinary-target-tree-policy/v2") != policy.ascendancy.is_some()
+    if (policy.schema != "pobr-ordinary-target-tree-policy/v1") != policy.ascendancy.is_some()
         || policy.ascendancy.is_some() != supplement.is_some()
     {
         return Err("target tree policy/supplement scope mismatch".into());
+    }
+    if policy.non_stat_manifest_sha256.is_some() != policy.owns_nonstat_text()
+        || policy
+            .compatibility_bindings
+            .values()
+            .any(|b| b.render_context_sha256.is_some() != policy.owns_nonstat_text())
+    {
+        return Err("target tree render-context policy scope mismatch".into());
     }
     policy.base_policy.validate(input)?;
     if args.source_sha256 != policy.base_policy.source.sha256 {
@@ -126,7 +165,10 @@ pub(super) fn convert(
         &legacy.document,
         &reference.document,
         &renderer,
-        ascendancy.as_ref(),
+        ascendancy
+            .as_ref()
+            .zip(supplement)
+            .map(|(ascendancy, input)| Supplement { ascendancy, input }),
     )?;
     Ok(Converted {
         base: BTreeMap::from([
@@ -183,7 +225,22 @@ fn policy_context(policy: &Policy, raw: &Value) -> Result<Value, String> {
             .ok_or("invalid context")?
             .remove("Ascendancy");
     }
+    if policy.owns_unlocks() {
+        let object = value.as_object_mut().ok_or("invalid context")?;
+        object.remove("UnlockedBy");
+        object.remove("VisibleForAscendancy");
+    }
     Ok(value)
+}
+fn render_context(policy: &Policy, raw: &Value) -> Result<Value, String> {
+    let mut context = policy_context(policy, raw)?;
+    if policy.owns_nonstat_text() {
+        let object = context.as_object_mut().ok_or("invalid context")?;
+        for field in nonstat::OWNED_FIELDS {
+            object.remove(field);
+        }
+    }
+    Ok(context)
 }
 fn hash(value: &impl serde::Serialize) -> Result<String, String> {
     Ok(sha256_hex(&reader::json_bytes(value)?))
@@ -225,6 +282,7 @@ fn text(
     policy: &Policy,
     renderer: &Renderer<'_>,
     legacy: Option<&[String]>,
+    nonstat: Option<&nonstat::Source<'_>>,
 ) -> Result<(Vec<String>, Value), String> {
     let raw = facts.tables.row("PassiveSkills", row)?;
     let id = raw["Id"].as_str().ok_or("missing passive Id")?;
@@ -237,7 +295,18 @@ fn text(
             .as_array()
             .is_some_and(|v| !v.is_empty())
         || (stats.is_empty() && legacy.is_some_and(|v| !v.is_empty()));
-    let result = if extra_effect {
+    let mut non_stat_evidence = Vec::new();
+    let result = if let Some(source) = nonstat {
+        source.render(raw).and_then(|(extra_lines, evidence)| {
+            if stats.is_empty() && extra_lines.is_empty() && legacy.is_some_and(|v| !v.is_empty()) {
+                return Err("source has no effect text for nonempty prepared node".into());
+            }
+            let (mut lines, descriptions) = renderer.render(&stats)?;
+            lines.extend(extra_lines);
+            non_stat_evidence = evidence;
+            Ok((lines, descriptions))
+        })
+    } else if extra_effect {
         Err("non-stat effect requires complete compatibility text".into())
     } else {
         renderer.render(&stats)
@@ -245,7 +314,8 @@ fn text(
     match result {
         Ok((lines, evidence)) => Ok((
             lines,
-            json!({"owner":"target-csd","complete_stats":stats,"descriptions":evidence}),
+            json!({"owner":if non_stat_evidence.is_empty(){"target-csd"}else{"target-csd-and-client-strings"},
+                "complete_stats":stats,"descriptions":evidence,"non_stat":non_stat_evidence}),
         )),
         Err(reason) => {
             exact_compatibility(policy, id, raw, &stats)?;
@@ -267,8 +337,32 @@ pub(super) fn project(
     legacy: &Value,
     reference: &Value,
     renderer: &Renderer<'_>,
-    ascendancy: Option<&ascendancy::Source>,
+    supplement: Option<Supplement<'_>>,
 ) -> Result<(Value, Value, Value), String> {
+    let effects = Effects {
+        ascendancy: supplement.as_ref().map(|s| s.ascendancy),
+        nonstat: if policy.owns_nonstat_text() {
+            let extra = supplement
+                .as_ref()
+                .ok_or("non-stat text requires supplement")?
+                .input;
+            if policy.non_stat_manifest_sha256.as_deref()
+                != Some(sha256_hex(&extra.manifest_bytes).as_str())
+            {
+                return Err("non-stat text supplement differs from policy pin".into());
+            }
+            Some(nonstat::Source::read(input, extra)?)
+        } else {
+            None
+        },
+    };
+    let ascendancy = effects.ascendancy;
+    if policy.owns_unlocks() {
+        unlock::validate(input)?;
+        if ascendancy.is_none() {
+            return Err("source unlocks require target ascendancy identities".into());
+        }
+    }
     for field in [
         "IsNotable",
         "IsKeystone",
@@ -326,12 +420,17 @@ pub(super) fn project(
         let expected_context = policy
             .compatibility_bindings
             .get(id)
-            .map(|b| b.context_sha256.clone())
-            .unwrap_or(hash(&policy_context(
+            .map(|b| {
+                b.render_context_sha256
+                    .as_ref()
+                    .unwrap_or(&b.context_sha256)
+                    .clone()
+            })
+            .unwrap_or(hash(&render_context(
                 policy,
                 facts.tables.row("PassiveSkills", facts.reference_row)?,
             )?)?);
-        if expected_context != hash(&policy_context(policy, raw)?)? {
+        if expected_context != hash(&render_context(policy, raw)?)? {
             return Err(format!(
                 "{id}: unsupported source context change or new conditional identity"
             ));
@@ -362,8 +461,12 @@ pub(super) fn project(
             policy,
             renderer,
             previous.map(|(_, n)| n.stats.as_slice()),
+            effects.nonstat.as_ref(),
         )?;
-        if text_record["owner"] == "target-csd" {
+        if matches!(
+            text_record["owner"].as_str(),
+            Some("target-csd" | "target-csd-and-client-strings")
+        ) {
             rendered_count += 1;
             if raw["Stats"].as_array().is_some_and(|v| v.len() > 1) {
                 multi_count += 1;
@@ -407,7 +510,7 @@ pub(super) fn project(
             renderer,
             previous.map(|(_, n)| n),
             object,
-            ascendancy,
+            &effects,
         )?;
         // Keep the existing bounded mapper as an optimization only. Multi-stat
         // nodes use the same ordinary parser as every other rendered tree node.
@@ -447,10 +550,21 @@ pub(super) fn project(
         if let Some(source) = ascendancy {
             source.node(raw, object)?;
         }
+        let unlock_record = if policy.owns_unlocks() {
+            Some(unlock::project(
+                facts,
+                ascendancy.ok_or("source unlocks require target ascendancy identities")?,
+                row,
+                object,
+            )?)
+        } else {
+            None
+        };
         records.push(json!({"skill":skill,"id":id,"target_row":row,"previous_row":previous.map(|(i,_)|i),
             "name":name,"text":text_record,"geometry":geometry,"variants":variant_records,
+            "unlock":unlock_record,
             "source_connections":instance.connections,"excluded_connections":instance.connections.iter().filter(|id|excluded.contains(id)).collect::<Vec<_>>(),
-            "compatibility_fields":if ascendancy.is_some(){vec!["unlock_constraint","apply_to_armour","unknown prepared extension fields"]}else{vec!["ascendancy_id","unlock_constraint","apply_to_armour","unknown prepared extension fields"]},
+            "compatibility_fields":if policy.owns_unlocks(){vec!["apply_to_armour","unknown prepared extension fields"]}else if ascendancy.is_some(){vec!["unlock_constraint","apply_to_armour","unknown prepared extension fields"]}else{vec!["ascendancy_id","unlock_constraint","apply_to_armour","unknown prepared extension fields"]},
             "context_sha256":hash(&policy_context(policy, raw)?)?,"output_entry_sha256":hash(&entry)?}));
         output.push(entry);
     }
@@ -483,8 +597,8 @@ pub(super) fn project(
         json!({"entries":typed.len(),"graph_instances":instances.len(),"target_text_nodes":rendered_count,
         "target_multistat_nodes":multi_count,"native_packets":native_count,"source_records":records,"excluded":excluded_records,
         "removed_prepared_skills":removed,"class_records":classes,"class_override_inventory":facts.relations,
-        "ascendancy":ascendancy.map(|a|&a.receipt),"ownership":{"ascendancy":if ascendancy.is_some(){"target physical membership, names, character FK, node FK and replacement relations; geometry/unlock remain compatibility"}else{"compatibility"},"target":["membership minus source-bound eligibility exclusions","ordered emitted edges","id","name","kind","group","orbit","orbit_index","group centres","complete rendered stats","class override identities and rendered stats","base attributes"],
-            "compatibility":["whole unrenderable text with exact semantic binding","prepared planar placement/coordinate absence under exact reference group-orbit-slot binding; explicit reference offsets for new nodes","unlock predicates","armour","non-class variants when no supplement","unknown prepared fields"]}}),
+        "ascendancy":ascendancy.map(|a|&a.receipt),"non_stat_text":effects.nonstat.as_ref().map(|s|&s.receipt),"ownership":{"ascendancy":if ascendancy.is_some(){"target physical membership, names, character FK, node FK and replacement relations; geometry remains compatibility"}else{"compatibility"},"unlock":if policy.owns_unlocks(){"target UnlockedBy ordered node identities and VisibleForAscendancy stable identity; existing all-prerequisites DTO semantics; Requirement remains opaque context"}else{"prepared compatibility"},"target":["membership minus source-bound eligibility exclusions","ordered emitted edges","id","name","kind","group","orbit","orbit_index","group centres","complete rendered stats","class override identities and rendered stats","base attributes"],
+            "compatibility":["whole unrenderable text with exact semantic binding","prepared planar placement/coordinate absence under exact reference group-orbit-slot binding; explicit reference offsets for new nodes","unlock predicates in v1/v2 only; Requirement is never interpreted as a predicate","armour","non-class variants when no supplement","unknown prepared fields"]}}),
     ))
 }
 
@@ -606,8 +720,9 @@ fn variants(
     renderer: &Renderer<'_>,
     previous: Option<&PassiveNodeDef>,
     out: &mut serde_json::Map<String, Value>,
-    ascendancy: Option<&ascendancy::Source>,
+    effects: &Effects<'_>,
 ) -> Result<Vec<Value>, String> {
+    let ascendancy = effects.ascendancy;
     let id = out["id"]
         .as_str()
         .ok_or("missing output node identity")?
@@ -661,6 +776,9 @@ fn variants(
                 ));
             };
             let raw = facts.tables.row("PassiveSkills", *row)?;
+            if policy.owns_unlocks() {
+                unlock::validate_variant(raw)?;
+            }
             let variant_id = raw["Id"].as_str().ok_or("invalid variant Id")?;
             exact_compatibility(policy, variant_id, raw, &raw_stats(input, facts, *row)?)?;
             records.push(json!({"class":v["class"],"target":variant_id,"source_row":row,
@@ -704,12 +822,20 @@ fn variants(
             return Err(format!("{id}: repeated replacement selector {class}"));
         }
         let raw = facts.tables.row("PassiveSkills", row)?;
+        if policy.owns_unlocks() {
+            unlock::validate_variant(raw)?;
+        }
         let target = raw["Id"].as_str().ok_or("invalid replacement id")?;
         let binding = policy
             .compatibility_bindings
             .get(target)
             .ok_or_else(|| format!("{target}: missing variant context binding"))?;
-        if binding.context_sha256 != hash(&policy_context(policy, raw)?)? {
+        if binding
+            .render_context_sha256
+            .as_ref()
+            .unwrap_or(&binding.context_sha256)
+            != &hash(&render_context(policy, raw)?)?
+        {
             return Err(format!("{target}: changed variant context"));
         }
         let old_variant = previous.and_then(|n| {
@@ -723,7 +849,15 @@ fn variants(
         let compatible_text = old_variant
             .filter(|v| v.variant_skill == Some(target_skill))
             .map(|v| v.stats.as_slice());
-        let (stats, evidence) = text(input, facts, row, policy, renderer, compatible_text)?;
+        let (stats, evidence) = text(
+            input,
+            facts,
+            row,
+            policy,
+            renderer,
+            compatible_text,
+            effects.nonstat.as_ref(),
+        )?;
         let mut replacement = old_by_class
             .get(old_selector.unwrap_or(class))
             .cloned()

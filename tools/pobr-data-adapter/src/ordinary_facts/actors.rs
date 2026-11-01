@@ -1,6 +1,7 @@
 //! Shared minion/spectre catalogs: target fields and separately disclosed curated membership.
 
 mod policy;
+mod prepared;
 mod projection;
 #[cfg(all(test, any(target_os = "linux", target_os = "macos")))]
 pub(super) mod tests;
@@ -21,6 +22,15 @@ pub(super) const TABLES: [&str; 5] = [
     "MonsterResistances",
     "Tags",
     "GrantedEffects",
+];
+
+pub(super) const PREPARED_TABLES: [&str; 6] = [
+    "MonsterVarieties",
+    "MonsterTypes",
+    "MonsterResistances",
+    "Tags",
+    "GrantedEffects",
+    "ItemClasses",
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -69,10 +79,26 @@ pub(super) fn convert(
     args: &super::CodecArgs,
     catalog: Catalog,
 ) -> Result<Converted, String> {
+    convert_with_prepared(input, args, catalog, None)
+}
+
+pub(super) fn convert_with_prepared(
+    input: &VerifiedFacts,
+    args: &super::CodecArgs,
+    catalog: Catalog,
+    extra: Option<&reader::selected::Input>,
+) -> Result<Converted, String> {
     let pinned_policy = read_pinned(&args.policy, &args.policy_sha256, "actor policy")?;
     let policy: policy::Policy =
         serde_json::from_value(pinned_policy.document).map_err(|e| format!("actor policy: {e}"))?;
     policy.validate(input, catalog)?;
+    let owned_fields = policy.owned_fields();
+    let target_skills = policy.target_skills();
+    if policy.prepared_fields.is_some() != extra.is_some() {
+        return Err(
+            "prepared actor policy and category supplement must be supplied together".into(),
+        );
+    }
     if policy.source.sha256 != args.source_sha256 {
         return Err("actor source pin differs from policy identity".into());
     }
@@ -83,7 +109,14 @@ pub(super) fn convert(
     // Validate the existing consumer shape, while preserving all non-owned raw Values.
     let dto: MinionsDef = serde_json::from_value(legacy.document.clone())
         .map_err(|e| format!("actor source: {e}"))?;
-    let tables = Tables::selected(input, &TABLES)?;
+    let tables = Tables::selected(
+        input,
+        if extra.is_some() {
+            &PREPARED_TABLES
+        } else {
+            &TABLES
+        },
+    )?;
     projection::check_columns(input)?;
     let identities: BTreeMap<_, _> = TABLES
         .iter()
@@ -98,6 +131,7 @@ pub(super) fn convert(
     let mut records = Vec::new();
     let mut projected_fields = 0;
     let mut skill_occurrences = 0;
+    let mut target_skill_occurrences = 0;
     let mut numeric_differences = Vec::new();
     for (source_row, (entry, output)) in dto.minions.iter().zip(entries).enumerate() {
         if entry.id.is_empty() {
@@ -120,26 +154,41 @@ pub(super) fn convert(
         let &variety_row = identities["MonsterVarieties"]
             .get(variety_id)
             .ok_or_else(|| format!("catalog {}: missing target variety {variety_id}", entry.id))?;
-        let projected = projection::project(&tables, variety_row)
+        let mut projected = projection::project(&tables, variety_row)
             .map_err(|e| format!("catalog {} / MonsterVarieties/{variety_row}: {e}", entry.id))?;
-        let mut skills = Vec::new();
-        for (position, id) in entry.skill_list.iter().enumerate() {
-            let &row = identities["GrantedEffects"].get(id).ok_or_else(|| {
-                format!(
-                    "catalog {} skill_list[{position}]: missing target skill {id}",
-                    entry.id
-                )
-            })?;
-            skills.push(
-                json!({"position":position,"id":id,"source_row":row,"table":"GrantedEffects"}),
-            );
+        if let (Some(extra), Some(prepared_policy)) = (extra, &policy.prepared_fields) {
+            let prepared = prepared::project(input, &tables, extra, variety_row, prepared_policy)?;
+            projected.values.extend(prepared.values);
+            projected.receipt["prepared_fields"] = prepared.receipt;
         }
-        skill_occurrences += skills.len();
+        let skills = if target_skills {
+            let (ids, occurrences) = projection::skills(input, &tables, variety_row)?;
+            projected.values.insert("skill_list".into(), json!(ids));
+            projected.receipt["target_skill_references"] =
+                tables.row("MonsterVarieties", variety_row)?["GrantedEffects"].clone();
+            target_skill_occurrences += occurrences.len();
+            occurrences
+        } else {
+            let mut skills = Vec::new();
+            for (position, id) in entry.skill_list.iter().enumerate() {
+                let &row = identities["GrantedEffects"].get(id).ok_or_else(|| {
+                    format!(
+                        "catalog {} skill_list[{position}]: missing target skill {id}",
+                        entry.id
+                    )
+                })?;
+                skills.push(
+                    json!({"position":position,"id":id,"source_row":row,"table":"GrantedEffects"}),
+                );
+            }
+            skill_occurrences += skills.len();
+            skills
+        };
         let mut field_records = Vec::new();
         let object = output
             .as_object_mut()
             .ok_or("catalog entry must be an object")?;
-        for field in projection::OWNED_FIELDS {
+        for &field in &owned_fields {
             let value = projected.values.get(field);
             let old = raw.get(field);
             let numeric_equal = old
@@ -150,14 +199,14 @@ pub(super) fn convert(
                 numeric_differences.push(json!({"source_row":source_row,"id":entry.id,"field":field,"legacy":old,"target":value}));
             }
             field_records.push(json!({"field":field,"present":value.is_some(),"output":value,
-                "omission":if value.is_none(){Some("raw zero; existing optional-field omission, no default materialized")}else{None},
+                "omission":if value.is_none(){Some("source absent, zero optional scaling or declared non-weapon class; see field-specific source evidence; no old default materialized")}else{None},
                 "legacy_comparison":{"present":old.is_some(),"value":old,"json_value_equal":old==value,"f64_equal":numeric_equal}}));
             object.remove(field);
         }
         projected_fields += projected.values.len();
         object.extend(projected.values);
         let retained:Vec<_>=raw.as_object().ok_or("legacy entry must be object")?.iter()
-            .filter(|(field,_)|!projection::OWNED_FIELDS.contains(&field.as_str()))
+            .filter(|(field,_)|!owned_fields.contains(&field.as_str()))
             .map(|(field,value)|Ok(json!({"field":field,"source_pointer":format!("/minions/{source_row}/{}",pointer_token(field)),
                 "value_sha256":sha256_hex(&reader::json_bytes(value)?),"status":"retained unchanged fixed community input; not target acquisition or law certification"})))
             .collect::<Result<_,String>>()?;
@@ -174,7 +223,7 @@ pub(super) fn convert(
         "snapshot_version":policy.source.snapshot_version,"reference_path":policy.source.path,"metadata":policy.source.metadata,
         "scope":"curated catalog membership/aliases and all non-owned fields are fixed community inputs"});
     let policy_identity = json!({"file":"codec-policy.json","bytes":pinned_policy.bytes.len(),"sha256":sha256_hex(&pinned_policy.bytes)});
-    let target = json!({"facts_manifest_sha256":sha256_hex(&input.manifest_bytes),"source_identity":input.manifest["source_identity"],"owned_fields":projection::OWNED_FIELDS,
+    let target = json!({"facts_manifest_sha256":sha256_hex(&input.manifest_bytes),"source_identity":input.manifest["source_identity"],"owned_fields":owned_fields,
         "scope":"declared actor fields only; acquisition evidence/status unchanged"});
     let recipe = json!({"schema":policy.projection_schema,"references":policy.projection_references,
         "status":"fixed archived projection semantics, never implicitly read/executed or claimed as independent gameplay laws"});
@@ -183,14 +232,31 @@ pub(super) fn convert(
         "status":"domain-candidate; mixed target fields and fixed community interpretation; no complete runtime or adoption"});
     let _: MinionsDef = serde_json::from_value(document.clone())
         .map_err(|e| format!("converted actor catalog: {e}"))?;
+    let mut mapping = projection::mapping();
+    if target_skills {
+        mapping["skill_list"] = json!(
+            "MonsterVarieties.GrantedEffects -> ordered GrantedEffects.Id including duplicates; exact empty list retained; no primary fallback, old membership or appended skill default"
+        );
+    }
+    if policy.prepared_fields.is_some() {
+        mapping["monster_category"] = json!(
+            "MonsterVarieties.MonsterCategory -> MonsterCategories.Tag -> Tags.Id; explicit engine vocabulary, unknown stable tags retained; localized Name is not an enum"
+        );
+        mapping["weapon_type1/weapon_type2"] = json!(
+            "MainHand_ItemClass/OffHand_ItemClass -> ItemClasses.Id -> explicit existing engine weapon vocabulary; null omits, known non-weapon classes recorded, unknown class fails"
+        );
+        mapping["base_damage_ignores_attack_speed"] = json!(
+            "MonsterTypes.Flag0 at physical column 8 -> declared fixed community BaseDamageIgnoresAttackSpeed interpretation; true emitted, false omitted; official semantics not certified"
+        );
+    }
     let receipt = json!({"catalog":catalog.name(),"entries":records.len(),"projected_field_occurrences":projected_fields,
-        "retained_skill_occurrences":skill_occurrences,"source_records":records,"variety_aliases":aliases,
+        "retained_skill_occurrences":skill_occurrences,"target_skill_occurrences":target_skill_occurrences,"source_records":records,"variety_aliases":aliases,
         "legacy_source":legacy_identity,"codec_policy":policy_identity,"target_fields":target,"projection_recipe":recipe,
-        "mapping":projection::mapping(),"historical_source_evidence":policy.evidence,
+        "mapping":mapping,"historical_source_evidence":policy.evidence,
         "historically_observed_retained_fields":policy.retained_compatibility_fields_observed,"compatibility_statement":policy.statement,
         "legacy_f64_differences":numeric_differences,
         "comparison_scope":"legacy equality never gates projection; per-field parsed JSON/f64 comparisons are not raw text equality, mathematical equivalence or BD acceptance; exact companion formula tails are preserved",
-        "unconsumed_source":projection::unmapped(input,&tables)?,
+        "unconsumed_source":projection::unmapped(input,&tables,target_skills,policy.prepared_fields.is_some())?,
         "preservation":"catalog IDs/order/aliases and every non-owned Value/absent-field shape retained; owned fields and top metadata replaced, original input/policy bytes archived",
         "pending":"no automatic creature admission, AI/law/whole minion-model certification; remaining links/minion-level/tree/config assets, full target runtime, ordinary BD/Web/accuracy/source approval/adoption remain separate"});
     Ok(Converted {

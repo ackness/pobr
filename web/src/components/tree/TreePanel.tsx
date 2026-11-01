@@ -1,5 +1,5 @@
 import { ValueText } from '../shared/ValueText';
-import { localizedName } from '../../lib/chinese';
+import { classDisplayName } from '../../lib/nativeDisplayNames';
 import { useAppDialogs } from '../shared/AppDialogs';
 import { useSessionAction } from '../shared/useSessionAction';
 import { AppTooltip, AppButton, AppInput, AppTextarea, AppSelectControl } from '../shared/controls';
@@ -1035,7 +1035,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
           >
             {(session.treeMeta?.classes ?? []).map((c) => (
               <option key={c.name} value={c.name}>
-                {localizedName(lang, c.name, session.classNames.classes[c.name])}
+                {classDisplayName(session.classNames, c.name, lang, 'classes')}
               </option>
             ))}
           </AppSelectControl>
@@ -1054,7 +1054,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
               .find((c) => c.name === session.character?.class_name)
               ?.ascendancies?.map((a) => (
                 <option key={a.id} value={a.name}>
-                  {localizedName(lang, a.name, session.classNames.ascendancies[a.name])}
+                  {classDisplayName(session.classNames, a.name, lang, 'ascendancies')}
                 </option>
               ))}
           </AppSelectControl>

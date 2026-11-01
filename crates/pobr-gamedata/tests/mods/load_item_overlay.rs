@@ -49,9 +49,8 @@ fn mod_scalability_samples() {
     assert!(!unscalable.slots[0].is_scalable);
 }
 
-/// catalysts: 13 entries merged from parallel arrays
-/// (Classes/Item.lua:14-29, 0.5.4 added Necrotic/Minion); the 3rd entry =
-/// Carapace / Defence / {defences, armour, evasion, energyshield}.
+/// Target catalyst facts retain the thirteen historical codec identities;
+/// tags come from AlternateQualityTypes rather than expanded vendor aliases.
 #[test]
 fn catalysts_thirteen_entries() {
     let def = game_data()
@@ -65,10 +64,7 @@ fn catalysts_thirteen_entries() {
     let third = &def.catalysts[2];
     assert_eq!(third.name, "Carapace");
     assert_eq!(third.descriptor, "Defence");
-    assert_eq!(
-        third.tags,
-        ["defences", "armour", "evasion", "energyshield"]
-    );
+    assert_eq!(third.tags, ["defences"]);
     // A spot check on the first/last entries (Item.lua:14-15)
     assert_eq!(def.catalysts[0].name, "Flesh");
     assert_eq!(def.catalysts[0].descriptor, "Life");
@@ -109,8 +105,9 @@ fn runes_samples() {
             "Bonded: 30% increased Ignite Magnitude"
         ]
     );
-    // Base and bonded stat orders are combined in the same order as lines.
-    assert_eq!(weapon.stat_order, [832.0, 1077.0]);
+    // Target-rendered CSD keeps packet/line order, not vendor display ordinals.
+    // Whole-entry compatibility may still retain its separately pinned order.
+    assert!(weapon.stat_order.is_empty());
 }
 
 /// uniques: two layers — The Anvil's (Data/Uniques/amulet.lua:5-15) raw

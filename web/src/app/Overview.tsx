@@ -5,7 +5,7 @@ import type { AttributionResponse, SkillMetricsEntry } from '../api/types';
 import { Button } from '../components/ui/button';
 import type { BuildSession } from '../hooks/useBuildSession';
 import { useSkillCatalog } from '../hooks/useSkillName';
-import { chineseScript } from '../lib/chinese';
+import { classDisplayName } from '../lib/nativeDisplayNames';
 import { damageTypeLabel, slotLabel, statNameLabel, type Lang } from '../lib/i18n';
 import { activeSkillEffects } from '../lib/skillSelection';
 import { skillDisplayName } from '../lib/skillNames';
@@ -51,7 +51,7 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
   const main = calc?.main_skill ?? null;
   const findings = deriveFindings(calc, session.socketGroups.length > 0);
   const className = session.character?.ascendancy_name || session.character?.class_name || '';
-  const classLabel = lang === 'en-US' ? className : chineseScript((session.classNames.ascendancies[className] ?? session.classNames.classes[className]) ?? className, lang);
+  const classLabel = classDisplayName(session.classNames, className, lang);
 
   // Every active effect, calculated on its own: which skill actually carries the build.
   const [skills, setSkills] = useState<SkillMetricsEntry[] | null>(null);

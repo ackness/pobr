@@ -118,3 +118,43 @@ test('uses Rust unit-formatted literals in both languages without a second numer
     assert.throws(() => nativeSocketableTranslations([], selection, candidate), /formatted values/);
   }
 });
+
+test('implicit slots, explicit resets, signs and escapes follow the source renderer contract', () => {
+  const { candidate, selection, pair } = fixture();
+  const e = selection.conversion.records[0].selected_descriptions[0].evidence[0];
+  pair.stat_ids = ['a', 'b', 'c']; e.ids = pair.stat_ids;
+  e.values = [150, -3, 9]; e.formatted_values = ['2.5', '-3', '9'];
+  pair.default_template_raw = '{{Damage}} {1:d} {} {0:-d} {:+d} {2:+d} %%';
+  pair.chinese_template_raw = '{{伤害}} {1:d} {} {0:-d} {:+d} {2:+d} %%';
+  assert.deepEqual(nativeSocketableTranslations([], selection, candidate).pairs,
+    [{ en: '{Damage} -3 9 2.5 -3 +9 %', src: '{伤害} -3 9 2.5 -3 +9 %' }]);
+  pair.default_template_raw = '{} {} {}'; pair.chinese_template_raw = '伤害 {} {} {}';
+  assert.equal(nativeSocketableTranslations([], selection, candidate).pairs[0].en, '2.5 -3 9');
+});
+
+test('invalid or out-of-range source placeholders cannot borrow another value', () => {
+  for (const template of ['{} {}', '{1}', '{99999999999999999999999}', '{name}', '{0:f}', '{', '}']) {
+    const { candidate, selection, pair } = fixture();
+    pair.default_template_raw = template;
+    pair.chinese_template_raw = `护甲 ${template}`;
+    assert.throws(() => nativeSocketableTranslations([], selection, candidate), /placeholder|brace/);
+  }
+});
+
+test('mixed tree text selects only its CSD evidence and retains separate ClientStrings diagnostics', () => {
+  const { candidate, selection } = fixture();
+  const descriptions = selection.conversion.records[0].selected_descriptions[0].evidence;
+  const field = { owner: 'target-client-strings', id: 'PassiveNodeGrantsPassivePoint',
+    text: 'Grants 1 Passive Skill Point', source_row: 7, arguments: ['1'] };
+  selection.adapter.output_schema = 'pobr_data::catalog::{PassiveNodeDef[],PassiveTreeMeta}';
+  selection.conversion.projection = { source_records: [{ id: 'node', target_row: 5, variants: [],
+    text: { owner: 'target-csd-and-client-strings', descriptions, non_stat: [field] } }] };
+  const result = nativeSocketableTranslations([], selection, candidate);
+  assert.deepEqual(result.pairs, [{ en: '+12 to Armour', src: '+12 点护甲' }]);
+  assert.equal(result.report.excluded[0].reason, 'client-string-requires-separate-language-binding');
+  assert.deepEqual(result.report.excluded[0].evidence, field);
+  selection.conversion.projection.source_records[0].text.descriptions = [];
+  assert.deepEqual(nativeSocketableTranslations([], selection, candidate).pairs, []);
+  selection.conversion.projection.source_records[0].text.owner = 'prepared-whole-text';
+  assert.deepEqual(nativeSocketableTranslations([], selection, candidate).report.excluded, []);
+});

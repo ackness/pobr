@@ -13,12 +13,14 @@ Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/R
 
 先按 [mise 官方说明](https://mise.jdx.dev/getting-started.html) 安装/更新工具管理器。
 本地和 agent 使用当前稳定版 mise；仓库声明最低兼容版本。
-`mise.toml` 精确固定 Node、pnpm、Python、wasm-pack、actionlint 与 gh，
-`rust-toolchain.toml` 唯一声明 Rust、fmt/Clippy、wasm target；`mise.lock` 固定下载来源与校验和。
+`mise.toml` 以 `latest` 请求 Node、pnpm、Python、wasm-pack、actionlint 与 gh 的稳定版本，
+提交的 `mise.lock` 固定本次解析的精确版本、下载来源与校验和。
+`rust-toolchain.toml` 仍唯一声明精确 Rust 版本、fmt/Clippy 和 wasm target。
 本地命令用 `mise run <任务>`，没有命名任务时用 `mise exec -- <命令>`；
 不要由每个 agent 临时安装另一套 runtime。CI 可使用官方或受维护的工具 Action，
-由 [setup-tools](../.github/actions/setup-tools/action.yml) 读取同一份版本，CI 不安装 mise。
-测试套件使用这些固定版本；只做 stdlib 选路与结果汇总的 jobs 使用 runner Python，
+由 [setup-tools](../.github/actions/setup-tools/action.yml) 校验配置请求与锁文件的绑定后读取精确版本，CI 不安装 mise。
+锁项缺失、过时或含糊时直接失败；CI 不自行把 `latest` 解析成另一个版本。
+测试套件与临时数据导入使用这些固定版本；只做 stdlib 选路与结果汇总的 jobs 使用 runner Python，
 不重复安装测试工具链。host Rust job 不安装 WASM target，纯 Web 检查不恢复 Rust 缓存。
 
 新环境只需一次：
@@ -54,6 +56,16 @@ PoB2 的固定仓库与 commit 由 `devs/reference-sources.json` 管理，独立
 首次源码构建会自动处理 macOS deployment target；缺依赖的任务失败会给出具体原因。
 `mise run status` 只报告工具与数据状态，不下载、不构建。
 
+日常安装遵循已提交的锁文件。显式刷新常用工具时运行：
+
+```bash
+mise lock --bump --platform linux-x64,macos-arm64 node pnpm python gh actionlint aqua:wasm-bindgen/wasm-pack
+mise install --locked
+mise exec -- python3 devs/scripts/tool-versions.py --check
+```
+
+检查并提交新的 `mise.lock`；这不会修改 npm/pnpm/uv 的依赖锁或历史来源收据。
+固定采集解码器的旧虚拟环境保留供证据重放，普通工具升级不隐式重建它。
 同一输入下复用已通过检查；只有显式升级工具/依赖时才更新 pins 和 lock。
 工具链改动由完整 CI 验证，不把整套产品编译变成日常 setup 前提。
 
@@ -268,6 +280,7 @@ PR 不在 workflow 层过滤文档，以免必需检查永久 pending：只运�
 完整 Rust 测试按包分成 build/CLI、WASM、其余库和工具三组并行，保留每个包默认的单元、集成
 与 doctest；新 workspace 成员自动进入第三组。`ci-rust-tests.py` 和回归测试保证所有包恰好覆盖一次。
 分片 `fail-fast: false`，一个失败不会取消其他组；完整 gate 必须收到所有分片成功才通过。
+每个分片先用固定Python临时导入当前／回滚数据；ordinary候选只在libraries-tools分片生产和上传一次，供后续运行包组合消费。
 格式、Clippy、Web 与自动化契约彼此独立；产物发布仍等待全部验证。
 
 排查耗时可运行 `mise exec -- python3 devs/scripts/actions-timings.py --output .cache/ci-performance/latest`。
@@ -277,7 +290,8 @@ PR 不在 workflow 层过滤文档，以免必需检查永久 pending：只运�
 
 `PR gate` 要求检测器与每个选中的 job 成功，拒绝失败、取消、缺失与意外跳过。
 它在 PR 中证明轻量检查通过；master 中还要求完整 job 成功。
-`Full gate` 要求 Rust、Web、自动化全部成功。fork 和 Dependabot 使用同样的只读、无发布密钥路径；
+`Full gate` 要求 Rust、Web、自动化及声明式运行包组合全部成功。组合任务等待同次运行的普通领域
+和显示文本产物，校验后组包；其候选不切换站点活动数据。fork 和 Dependabot 使用同样的只读、无发布密钥路径；
 首次外部贡献是否批准执行由 GitHub 设置决定，执行许可不代表正确性批准。
 
 完整 CI 包括 fmt/Clippy（含诊断 features）、workspace tests/doctest、parity/reference 退步断言、
@@ -300,6 +314,12 @@ mise run full                             # 显式本地 Rust 全量检查，不
 工作流迁移用 `mise run check:workflows`，无需 Cargo / WASM / E2E。
 其 actionlint 1.7.12 尚不认识 GitHub 已支持的 `queue: max`，只豁免该特定未知键错误，
 其余语法与表达式检查仍启用；队列语义见 [GitHub 文档](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)。
+
+完整 Web CI 还按 [`pipeline/data-requirements.json`](../pipeline/data-requirements.json) 和独立的
+[`data-imports.lock.json`](../pipeline/data-imports.lock.json) 获取固定 RePoE/翻译 Git 输入，
+校验后上传精简显示候选与独立 receipt。此步尚不替换站点使用的完整已采用快照，
+也不将来源/绑定验证大表打进 `web-dist`；配置、离线重放及外部完整快照接线见
+[定向数据导入](../pipeline/data-imports.md)。
 
 ## Agent 提交、review 与合并
 

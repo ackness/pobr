@@ -4,6 +4,8 @@ import type { ConfigContext, ConfigOption } from '../api/types';
 import { configApplicability, configExistsInGame, configVisibilityInputs, showConfigOption } from './configVisibility';
 import gameRelevance from './configGameRelevance.json';
 
+const dataVersion = readFileSync(new URL('../../../data/CURRENT', import.meta.url), 'utf8').trim();
+
 const option: ConfigOption = { var: 'skillSetting', input_type: 'count', visibility: { if_skill: ['Fireball'] } };
 const context: ConfigContext = { main_skill: 'spark', skill_types: ['Spell'], predicates: {
   if_skill: { Spark: true, Fireball: false }, if_skill_type: { Spell: true, Attack: false },
@@ -85,7 +87,7 @@ test.each([
   ['SparkPlayer', []],
 ] as const)('Applicable view gates Energy controls for %s', (skill, expected) => {
   const native: { options: ConfigOption[] } = JSON.parse(readFileSync(new URL('../../../data/overlay-common/energy_config_options.json', import.meta.url), 'utf8'));
-  const snapshot: { options: ConfigOption[] } = JSON.parse(readFileSync(new URL('../../../data/0.5.5.4.2/overlay/config_options.json', import.meta.url), 'utf8'));
+  const snapshot: { options: ConfigOption[] } = JSON.parse(readFileSync(new URL(`../../../data/${dataVersion}/overlay/config_options.json`, import.meta.url), 'utf8'));
   const energyOptions = native.options.filter(option => option.var.startsWith('energy'));
   const options = snapshot.options.filter(option => energyOptions.some(energy => energy.var === option.var));
   expect(options).toEqual([...energyOptions].sort((a, b) => a.var.localeCompare(b.var)));

@@ -15,6 +15,7 @@ pub(super) struct Level {
 pub(super) struct Facts {
     pub stats: BTreeMap<String, usize>,
     pub effects: BTreeMap<String, usize>,
+    pub sets: BTreeMap<String, usize>,
     pub set_levels: BTreeMap<usize, BTreeMap<i32, Level>>,
     pub effect_levels: BTreeMap<usize, BTreeMap<i32, usize>>,
 }
@@ -67,7 +68,7 @@ pub(super) fn read(input: &VerifiedFacts, tables: &Tables<'_>) -> Result<Facts, 
     }
     let stats = identities(tables, "Stats")?;
     let effects = identities(tables, "GrantedEffects")?;
-    let _sets = identities(tables, "GrantedEffectStatSets")?;
+    let sets = identities(tables, "GrantedEffectStatSets")?;
     let mut set_levels: BTreeMap<usize, BTreeMap<i32, Level>> = BTreeMap::new();
     for source_row in 0..tables.len("GrantedEffectStatSetsPerLevel") {
         let row = tables.row("GrantedEffectStatSetsPerLevel", source_row)?;
@@ -117,9 +118,44 @@ pub(super) fn read(input: &VerifiedFacts, tables: &Tables<'_>) -> Result<Facts, 
     Ok(Facts {
         stats,
         effects,
+        sets,
         set_levels,
         effect_levels,
     })
+}
+
+pub(super) fn implicit_evidence(
+    input: &VerifiedFacts,
+    tables: &Tables<'_>,
+    primary: usize,
+    selected: usize,
+) -> Result<Value, String> {
+    let mut evidence = Vec::new();
+    for row in [primary, selected] {
+        let raw = tables.row("GrantedEffectStatSets", row)?;
+        let mut fields = BTreeMap::new();
+        for field in ["ImplicitStats", "IgnoredStats"] {
+            super::super::convert::column(
+                input,
+                "GrantedEffectStatSets",
+                &[field],
+                &json!({
+                "name":field,"type":"foreignrow","array":true,"interval":false,"references":{"table":"Stats"}}),
+            )?;
+            let refs = raw[field]
+                .as_array()
+                .ok_or("implicit/ignored stat refs must be arrays")?;
+            let occurrences = refs.iter().enumerate().map(|(position,value)| {
+                let source_row = reference(tables,"Stats",value)?;
+                Ok(json!({"position":position,"source_row":source_row,"id":tables.row("Stats",source_row)?["Id"]}))
+            }).collect::<Result<Vec<Value>,String>>()?;
+            fields.insert(field, json!({"raw":refs,"occurrences":occurrences}));
+        }
+        evidence.push(json!({"source_row":row,"id":raw["Id"],"fields":fields}));
+    }
+    Ok(json!({"primary_then_selected":evidence,
+        "consumer":"ordinary-skills -> existing SkillStatSetDef.implicit_stats; existing primary/additional inheritance and IgnoredStats normalization stays authoritative",
+        "scope":"raw arrays and occurrences only; no historical export-index inference or new stat merge law"}))
 }
 
 fn identities(tables: &Tables<'_>, table: &str) -> Result<BTreeMap<String, usize>, String> {
@@ -150,8 +186,14 @@ fn integer(value: &Value) -> Result<i32, String> {
         .ok_or_else(|| "exact i32 source value required".into())
 }
 
-pub(super) fn unmapped(input: &VerifiedFacts, tables: &Tables<'_>) -> Result<Vec<Value>, String> {
+pub(super) fn unmapped(
+    input: &VerifiedFacts,
+    tables: &Tables<'_>,
+    delegated_implicit: bool,
+) -> Result<Vec<Value>, String> {
     FIELDS.iter().map(|(table, used)| {
+        let mut used = used.to_vec();
+        if *table == "GrantedEffectStatSets" && delegated_implicit { used.extend(["ImplicitStats","IgnoredStats"]); }
         let path = format!("tables/{table}.json");
         let columns: Vec<_> = input.documents[&path]["columns"].as_array().ok_or("missing columns")?.iter()
             .filter(|c| c["physical_fields"].as_array().is_some_and(|fields|fields.iter().any(|f|!used.iter().any(|name| f.as_str()==Some(*name))))).collect();

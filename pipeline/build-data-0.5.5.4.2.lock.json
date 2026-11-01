@@ -1,0 +1,87 @@
+{
+  "schema": "pobr-build-data-lock/v1",
+  "target": {
+    "game": "poe2",
+    "game_patch": "0.5.5.4.2",
+    "realm": "international"
+  },
+  "snapshot_manifest": {
+    "bytes": 7587,
+    "sha256": "bfd31a4607da98af53b139ed101f31a67a3122e4520434fd2e3fda14672fcca4"
+  },
+  "runtime_identity": "dcfc32c2524e35ff7f9b1e948deac3c8bbea80c802acf61298bda998fe09af7a",
+  "packages": {
+    "game": {
+      "publication": "published",
+      "repository": "ackness/repoe",
+      "revision": "684d42ab67e912084e13bfbec5abde204e31bad3",
+      "path": "handoff/rollback-0.5.5.4.2/game-build-part.zip",
+      "bytes": 3699436,
+      "sha256": "c93d17a4bb5f55a531712489a81d3800bf74c43350b6154ee226a0f5b5da4c64",
+      "manifest": {
+        "bytes": 10266,
+        "sha256": "c3c65583d00d906e9de0591466e2d2084834158bda1c0b917f9ef83ac0349d8d"
+      },
+      "expanded_bytes": 51660129
+    },
+    "language": {
+      "publication": "published",
+      "repository": "ackness/poe2-zh-cn-stats",
+      "revision": "93d9e164ae1b081f1e632068df4efbf18050179b",
+      "path": "handoff/rollback-0.5.5.4.2/language-build-part.zip",
+      "bytes": 978662,
+      "sha256": "f26fac091dda1932e15a74842bb2693edf4d8ac9143e83ecfd9a929893e7facb",
+      "manifest": {
+        "bytes": 2736,
+        "sha256": "66a2e55dae21864e2eb95c6af75701080189131fe07dff7bfe1ecdb7eb56493f"
+      },
+      "expanded_bytes": 5485753
+    }
+  },
+  "shared_files": {
+    "archon_config_options.json": {
+      "bytes": 634,
+      "sha256": "bbea3295507df414cd6b523e4182a8f09c941965b3d8f31b8eed5424d781f425"
+    },
+    "beira_config_options.json": {
+      "bytes": 843,
+      "sha256": "867d5bb5c13dac8ed2faf7a739ce03bc18e47cee5bed17164cdfc04a3aa2add2"
+    },
+    "cadiro_config_options.json": {
+      "bytes": 1664,
+      "sha256": "da3ab5846ee1ab1ea8d1a25f6f3dd756ac6d741596fafa315fec16bc699de8d6"
+    },
+    "combo_config_options.json": {
+      "bytes": 875,
+      "sha256": "94d69cf06eb2f0bf2c57bfb0ccd665b1528f7d67e9dc590f1d10bd1a3448b0a1"
+    },
+    "consecrated_ground_config_options.json": {
+      "bytes": 1596,
+      "sha256": "463e7c0bf06a78b939cef9f1de912486051e73c0fc9fc65c62ccbca6ab971c65"
+    },
+    "enemy_type_and_consumption_config_options.json": {
+      "bytes": 4736,
+      "sha256": "19e32d452a2d8ba12cffc8421509154da506ce7a90766105523bc2078671e010"
+    },
+    "energy_config_options.json": {
+      "bytes": 4605,
+      "sha256": "ccb438995ce1c2b516970c24fe3af9ec6df6125be8cb313b12be822c3cb3aaa1"
+    },
+    "local_mods.json": {
+      "bytes": 1488,
+      "sha256": "0dc5c77d5cf94685ce930068d0da1dfa3b0f365a603dd275cbc45a5b22f198c4"
+    },
+    "remnant_pickup_config_options.json": {
+      "bytes": 2192,
+      "sha256": "53b69e7fb3e606a61b2acb2c8b54c9bf9f92e630c9619e3e6cd5217b76b29be4"
+    },
+    "special_mods.json": {
+      "bytes": 307737,
+      "sha256": "192fe636ec9bac09eba6f6712144bcc00d05f8bdde03fb8cc4a3e2637532df6b"
+    },
+    "volatility_config_options.json": {
+      "bytes": 1562,
+      "sha256": "58a5b894e828847c0a3bc9fe22391cb2394c30b65b425dd472b4c72f9da82427"
+    }
+  }
+}

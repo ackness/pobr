@@ -1,8 +1,12 @@
 import type { CraftingMetadata } from '../api/itemCrafting';
 import type { TradeBase, TradeCatalog } from './tradeOptimizer';
+import type { Lang } from './i18n';
 
-export interface CraftBase extends TradeBase { id: string; itemClass: string }
+export interface CraftBase extends TradeBase { id: string; itemClass: string; displayNames?: CraftingMetadata['bases'][number]['display_names'] }
 export interface CraftCatalog extends TradeCatalog { bases: CraftBase[]; missingMods: number }
+export function craftBaseDisplayName(base: CraftBase, lang: Lang, fallback: string): string {
+  return (lang === 'en-US' ? undefined : base.displayNames?.[lang]) ?? fallback;
+}
 
 /** Game IDs/tags/weights determine eligibility; the shared display catalogue supplies text. */
 export function craftingCatalog(game: CraftingMetadata, display: TradeCatalog): CraftCatalog {
@@ -11,7 +15,7 @@ export function craftingCatalog(game: CraftingMetadata, display: TradeCatalog): 
   const canonicalBases = [...new Map(game.bases.map(base => [base.name, base])).values()];
   const bases = canonicalBases.flatMap(base => {
     const shown = basesByName.get(base.name);
-    return shown ? [{ ...shown, id: base.id, itemClass: base.item_class,
+    return shown ? [{ ...shown, id: base.id, itemClass: base.item_class, displayNames: base.display_names,
       tags: [...new Set(['default', ...base.tags])], domain: String(base.mod_domain) }] : [];
   }).sort((a, b) => a.itemClass.localeCompare(b.itemClass) || a.level - b.level || a.name.localeCompare(b.name));
   const textById = new Map(display.mods.map(mod => [mod.id.slice(mod.id.indexOf(':') + 1), mod]));

@@ -79,7 +79,7 @@ node.22532	Enemies are [Intimidate|Intimidated] for 4 seconds when you [Immobili
 node.22541	Grants Skill: <underline>{Fire Spell on Hit}
 node.23265	Grants Skill: <underline>{Kelari's Deception}
 node.23362	[Unaffected] by [Chill] during Dodge Roll
-node.2344	[HitDamage|Hits] have 15% chance to treat Enemy Monster [ElementalDamage|Elemental] [Resistances|Resistance] values as inverted
+node.2344	[Hit|Hits] have 15% chance to treat Enemy Monster [ElementalDamage|Elemental] [Resistances|Resistance] values as inverted
 node.23508	Benefits from consuming [Charges|Frenzy Charges] for your Skills have 50% chance to be doubled
 node.23630	[Ignite|Ignites] you cause are reflected back to you
 node.24491	[Invoke|Invocated] [Spell|Spells] have 40% chance to consume half as much [Energy]
@@ -151,7 +151,7 @@ node.37846	[Blind] Enemies 3 metres in front of you every 0.25 seconds while you
 node.37967	Enemies standing on [ChilledGround|Chilled Ground] take 25% increased [Fire|Fire Damage]
 node.37967	Enemies standing on [IgnitedGround|Ignited Ground] take 25% increased [Cold|Cold Damage]
 node.38004	Grants Skill: <underline>{Explosive Concoction}
-node.38813	Grants Skill: Queen's Procession
+node.38813	Grants Skill: <underline>{Queen's Procession}
 node.39204	20% increased [BuffEffect|Effect] of [ArcaneSurge|Arcane Surge] on you per ten percent missing Mana
 node.39411	Grants Skill: <underline>{Ancestral Spirits}
 node.39552	• 1 Boots socket

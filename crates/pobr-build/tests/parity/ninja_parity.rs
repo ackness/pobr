@@ -56,8 +56,8 @@ fn discover_builds() -> Vec<PathBuf> {
 }
 
 fn load_data() -> BuildData {
-    // PoB2 reference values are recaptured for the active data version on every
-    // data update, so parity always measures the engine against current data.
+    // The main gate exercises current data. The historical COMBAT reference
+    // below keeps its explicitly declared data version until it is recaptured.
     let data = GameData::new(pobr_gamedata::current_data_dir());
     BuildData::load(&data).expect("load BuildData")
 }
@@ -80,15 +80,22 @@ fn golden_stats(dir: &Path) -> serde_json::Map<String, serde_json::Value> {
 /// COMBAT references recorded from the same pinned vendor and skill as the
 /// EFFECTIVE export. Comparing panel damage with EFFECTIVE values can reward
 /// incorrectly active enemy conditions and reject a correct scope fix.
-fn panel_golden_stats(dir: &Path) -> serde_json::Map<String, serde_json::Value> {
+fn panel_reference() -> &'static serde_json::Value {
     static PANEL: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-    let panel = PANEL.get_or_init(|| {
+    PANEL.get_or_init(|| {
         serde_json::from_str(include_str!(
             "../../../../examples/demo-bd-test/panel-golden.json"
         ))
         .expect("parse panel references")
-    });
-    assert_eq!(panel["data_version"], pobr_gamedata::data_version());
+    })
+}
+
+fn panel_golden_stats(dir: &Path, data: &BuildData) -> serde_json::Map<String, serde_json::Value> {
+    let panel = panel_reference();
+    assert_eq!(
+        panel["data_version"].as_str(),
+        data.native_data_version.as_deref()
+    );
     assert_eq!(panel["mode"], "COMBAT");
     let fixture = &panel["builds"][dir.file_name().unwrap().to_str().unwrap()];
     let text = std::fs::read_to_string(dir.join("meta.json")).expect("read fixture metadata");
@@ -485,7 +492,20 @@ fn compute_tallies_mode(
     verbose: bool,
     mode_effective: bool,
 ) -> (Tally, Tally, Tally, Tally, Vec<String>) {
-    let data = load_data();
+    let data = if mode_effective {
+        load_data()
+    } else {
+        let version = panel_reference()["data_version"]
+            .as_str()
+            .expect("panel data version");
+        let directory = pobr_gamedata::repo_data_root().join(version);
+        assert!(
+            directory.join("manifest.json").is_file(),
+            "prepare the panel reference data version"
+        );
+        let game = GameData::new(directory);
+        BuildData::load(&game).expect("load the exact panel reference data")
+    };
     let builds = discover_builds();
     assert!(!builds.is_empty(), "no builds discovered");
 
@@ -508,7 +528,7 @@ fn compute_tallies_mode(
         let off_golden = if mode_effective {
             g.clone()
         } else {
-            panel_golden_stats(dir)
+            panel_golden_stats(dir, &data)
         };
         let (def_rows, off_rows, dot_rows) = (
             defensive_rows(&out, &g),

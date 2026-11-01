@@ -261,6 +261,38 @@ pub(super) fn project(tables: &Tables<'_>, variety_row: usize) -> Result<Project
     })
 }
 
+/// The catalog selects actors; this source list selects their actual ordered skills.
+pub(super) fn skills(
+    input: &VerifiedFacts,
+    tables: &Tables<'_>,
+    variety_row: usize,
+) -> Result<(Vec<String>, Vec<Value>), String> {
+    column(
+        input,
+        "MonsterVarieties",
+        "GrantedEffects",
+        "foreignrow",
+        true,
+        Some("GrantedEffects"),
+    )?;
+    let variety = tables.row("MonsterVarieties", variety_row)?;
+    let mut ids = Vec::new();
+    let mut occurrences = Vec::new();
+    for (position, value) in array(&variety["GrantedEffects"], "GrantedEffects")?
+        .iter()
+        .enumerate()
+    {
+        let source_row = reference(tables, "GrantedEffects", value)?;
+        let id = tables.row("GrantedEffects", source_row)?["Id"]
+            .as_str()
+            .ok_or("invalid skill Id")?;
+        ids.push(id.to_owned());
+        occurrences.push(json!({"position":position,"id":id,"source_row":source_row,"table":"GrantedEffects",
+            "owner":{"table":"MonsterVarieties","source_row":variety_row,"field":"GrantedEffects"},"origin":"target-ordered-reference"}));
+    }
+    Ok((ids, occurrences))
+}
+
 fn integer(value: &Value, field: &str) -> Result<i32, String> {
     value
         .as_i64()
@@ -297,10 +329,21 @@ pub(super) fn mapping() -> Value {
         "companion_reservation":"(floor((MonsterVarieties.ExperienceMultiplier / 100.0).sqrt() * 100.0) / 100.0) * 30.0"})
 }
 
-pub(super) fn unmapped(input: &VerifiedFacts, tables: &Tables<'_>) -> Result<Vec<Value>, String> {
-    super::TABLES.iter().map(|table|{
+pub(super) fn unmapped(
+    input: &VerifiedFacts,
+    tables: &Tables<'_>,
+    target_skills: bool,
+    prepared: bool,
+) -> Result<Vec<Value>, String> {
+    let selected: &[&str] = if prepared {
+        &super::PREPARED_TABLES
+    } else {
+        &super::TABLES
+    };
+    selected.iter().map(|table|{
         let used:Vec<&str>=match *table {
-            "MonsterVarieties"=>VARIETY_FIELDS.to_vec(),"MonsterTypes"=>TYPE_FIELDS.to_vec(),
+            "MonsterVarieties"=>VARIETY_FIELDS.iter().copied().chain(target_skills.then_some("GrantedEffects")).chain(prepared.then_some(["MainHand_ItemClass","OffHand_ItemClass","MonsterCategory"]).into_iter().flatten()).collect(),
+            "MonsterTypes"=>TYPE_FIELDS.iter().copied().chain(prepared.then_some("Flag0")).collect(),
             "MonsterResistances"=>std::iter::once("Id").chain(RESISTANCES.iter().map(|(f,_)|*f)).collect(),_=>vec!["Id"],
         };
         let path=format!("tables/{table}.json");

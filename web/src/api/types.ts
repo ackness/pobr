@@ -239,9 +239,9 @@ export interface GemCatalogEntry {
   /** Canonical ordinal contributors: primary then granted active effects, never stat-set aliases. */
   active_effect_ids: string[];
   name: string;
-  /** 繁中名（数据包 i18n 边车）。 */
+  /** Display name from locale data; English explicitly blocks an unresolved native name. */
   name_zh_tw: string | null;
-  /** 简中名（国服词典转录边车，Phase 7.2）。 */
+  /** Display name from locale data; English explicitly blocks an unresolved native name. */
   name_zh_cn: string | null;
   /** 宝石颜色（红/绿/蓝 = str/dex/int；分类筛选用）。 */
   colour: 'str' | 'dex' | 'int' | null;
@@ -1109,6 +1109,11 @@ export interface TreeArt {
 export interface ClassNames {
   classes: Record<string, string>;
   ascendancies: Record<string, string>;
+  /** Display-only, source-bound names; null blocks older/script-converted text. */
+  locales?: Partial<Record<'zh-CN' | 'zh-TW', {
+    classes: Record<string, string | null>;
+    ascendancies: Record<string, string | null>;
+  }>>;
 }
 
 // ---------------------------------------------------------------------------

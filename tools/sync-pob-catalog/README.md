@@ -5,6 +5,9 @@
 完整列表（`extract-bases`、`check-buff-refs`、`gen-mirage-configs`、`gen-trigger-configs`、
 `gen-stat-id-map`、`gen-skill-types`、`parser-rules-drift`）见不带参数运行时打印的用法。
 
+`check-buff-refs` 比较固定行段的 FNV-1a 漂移信号，FNV 不是来源认证；行段移动时应先核对固定旧、新源码的实际字节及上下文，再决定是否更新引用。`--write` 只刷新现有行段的 hash，不会定位或审查新位置；任何引用越界时拒绝写回。
+`parser-rules-drift` 成功只说明重新抽取的文件与指定文件逐字节相同；抽取中的闭包推断失败、handler 回退和固定计数警告仍须单独审查，不能据此认定语义已认证。
+
 ## catalog 系（scan / check / diff / fixture-check）
 
 从 PoB2 核心 Lua 文件（`BuildDisplayStats.lua` / `CalcSections.lua` / `Calc*.lua`）
