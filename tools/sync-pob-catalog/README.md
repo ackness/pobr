@@ -74,3 +74,9 @@ vendor commit（读自 `.pob2-version.txt`）与 `regen_command`。
 `bb52d6b368307457eb9c54bb13f1829993d390b1` 中各有唯一、逐字节相同的行段。
 这消除了“旧源码无法取得”的证据缺口，但外部保留表仍记录旧来源／旧行号，默认漂移检查仍报告失败。
 引用元数据的外部修订、完整上下文适用和运行身份更新须分别处理；未改效果值，也未据此认证官方 buff 或 charm 语义。
+
+RePoE 的[固定来源对账](https://github.com/ackness/repoe/blob/e3cabf9bd008240e12a173c7233c2c48e56eb822/RePoE/docs/buff_source_reconciliation.md)
+进一步核对了七个完整上下文：`doActorMisc` 仅插入类型注释，Arcane 分支／前序相同，
+但调用者、defence 和 reservation 的上游条件已有变化，整体等价未确立。
+独立验证器保留 `guard_eligible=false`，默认退出 2；`--evidence-only` 退出 0 仅确认固定证据，
+不能作为兼容性通过或替代本工具的失败守卫。运行定义、数值和引用没有因此更新。

@@ -14,8 +14,11 @@ tests to resolve disagreements with any document.
 - `apps/` contains CLI and WASM/JSON bindings.
   `web/` is the React/TypeScript application; its backend consumes the
   `apps/pobr-wasm/src/build_api/` JSON contract.
-- `tools/` and `pipeline/` generate and verify versioned `data/` snapshots.
-  `web/public/` holds static assets and the Pages Worker.
+- `tools/` and `pipeline/` temporarily import pinned RePoE/game and translation
+  inputs, adapt them to PoBR contracts and verify runtime snapshots. Complete
+  game/language data stays outside PoBR Git; `data/` tracks `CURRENT` and owned
+  rules. Real-data tests/builds use `mise run data:prepare`; pure fixture tests
+  need only their declared inputs. `web/public/` holds static assets and the Pages Worker.
 - `devs/reference-sources.json` pins the PoB2 test reference independently of
   production data. Official tree domain candidates stay outside published `data/`.
 - Rust integration tests live in each crate's `tests/`; frontend unit tests

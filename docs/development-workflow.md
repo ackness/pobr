@@ -317,9 +317,11 @@ mise run full                             # 显式本地 Rust 全量检查，不
 
 完整 Web CI 还按 [`pipeline/data-requirements.json`](../pipeline/data-requirements.json) 和独立的
 [`data-imports.lock.json`](../pipeline/data-imports.lock.json) 获取固定 RePoE/翻译 Git 输入，
-校验后上传精简显示候选与独立 receipt。此步尚不替换站点使用的完整已采用快照，
-也不将来源/绑定验证大表打进 `web-dist`；配置、离线重放及外部完整快照接线见
-[定向数据导入](../pipeline/data-imports.md)。
+校验后上传精简显示候选与独立 receipt。完整运行输入另由
+[`build-data.lock.json`](../pipeline/build-data.lock.json) 临时组合；各实物消费者显式准备当前版本，
+多版本测试再准备固定回滚锁并保持 CURRENT。显示候选不自动采用，不将来源／绑定大表打进
+`web-dist`，也不把完整快照存回 PoBR Git；见[定向数据导入](../pipeline/data-imports.md)与
+[构建数据](../pipeline/build-data.md)。
 
 ## Agent 提交、review 与合并
 

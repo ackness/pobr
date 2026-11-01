@@ -110,13 +110,13 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 
 依赖方向：`pobr-data` 在最底层；`pobr-build` 组合计算、物品、树与数据加载；应用层使用它们。生产计算核心不读文件；测试辅助（`pobr-core` 的 `test-rules`、`pobr-gamedata` 的 `test-pins`）在 feature 后面，只由 dev-dependencies 启用。
 
-其他目录：`web/`（React / TypeScript / Vite；`src/api/` 定义 JSON 边界并默认在 module Worker 中运行 WASM，`public/` 是静态资源、同步数据与 Pages Worker，另有 `e2e/` 与 `worker-tests/`）、`data/`（按版本的 base / overlay / generated / i18n 与共享的 `overlay-common/`，默认版本见 `data/CURRENT`）、`pipeline/`（下载、抽取、再生与版本差异）、`examples/`（回归与参考语料）、`devs/`（开发脚本、CI 基线与 fixtures；差异登记在 `scripts/known-differences.json`）、`agent-docs/`（被代码引用的早期机制研究）。当前行为契约集中在 `docs/`。
+其他目录：`web/`（React / TypeScript / Vite；`src/api/` 定义 JSON 边界并默认在 module Worker 中运行 WASM，`public/` 是静态资源、同步数据与 Pages Worker，另有 `e2e/` 与 `worker-tests/`）、`data/`（Git 只跟踪 `CURRENT` 与十一份自有规则；版本目录和七份外部 shared 输入由独立锁临时准备）、`pipeline/`（下载、抽取、再生与版本差异）、`examples/`（回归与参考语料）、`devs/`（开发脚本、CI 基线与 fixtures；差异登记在 `scripts/known-differences.json`）、`agent-docs/`（被代码引用的早期机制研究）。当前行为契约集中在 `docs/`。
 
-**数据管线**：GGG `.dat` 导出 →（`pobr-data-adapter`）→ `data/<版本>/*.json`（schema = `pobr-data::catalog`，含 `overlay/` 修正层）→（`pobr-gamedata`）→ 计算。计算所需游戏数据的文件访问集中在 `pobr-gamedata`；下载、剪贴板与 HTTP 适配属于应用或工具边界。细节见[数据管线说明](../pipeline/README.md)与[版本升级结构](version-bump-architecture.md)。
+**数据管线**：RePoE 游戏事实／兼容输入与独立翻译库的固定产物 →（声明式临时导入与 PoBR 领域适配）→ schema 3 运行包 →（`pobr-gamedata`）→ 计算。完整游戏／语言数据不进入 PoBR Git；实物测试和构建按 `mise run data:prepare` 准备，来源缺失或 pin 不符即失败。计算所需游戏文件访问集中在 `pobr-gamedata`；语言生成／配对属于翻译库，PoBR 保留显示／输入与 DTO 解释边界。旧 raw／vendor 再生工具仍有明确未迁移范围，不作为完整自主再生证明。细节见[数据管线说明](../pipeline/README.md)与[版本升级结构](version-bump-architecture.md)。
 
 ## 运行时数据与会话
 
-- 活动数据版本在运行时解析：`POBR_DATA_VERSION` → `POBR_DATA_ROOT/CURRENT`（默认仓库的 `data/`），都缺失时报错；代码和测试不写具体版本号。测试与 PoB2 对照值都针对活动版本：数据升级时用 `examples/demo-bd-test/tools/recapture_golden.py` 与 `recapture_panel_golden.py` 重采，parity 不再达到基线时，需要排查引擎与新版 PoB2 的差距，修引擎而不是降基线。仓库只保留活动版本加最近入库的两个（`mise run data:prune`）。
+- 活动数据版本在运行时解析：`POBR_DATA_VERSION` → `POBR_DATA_ROOT/CURRENT`（默认仓库的 `data/`），都缺失时报错。普通测试按准备好的 CURRENT 取数据；固定历史对照必须显式绑定对应外部版本锁／manifest 与参考身份，不能给旧 golden 重贴当前版本。运行数据目录是忽略的临时物化物，不在 Git 保留多份完整快照；需要回滚或多版本实测时显式准备独立旧版锁。数据升级导致实际参考变化时，按证据选择 `examples/demo-bd-test/tools/recapture_golden.py`／`recapture_panel_golden.py`；parity 回退先排查引擎、来源和参考口径，不能降低基线换取通过。
 - schema 3 的 `manifest.json` 列出运行时文件与 SHA-256，未列的文件视为不存在；`patch/` 与 `overlay-common/` 是独立覆盖层。`GameData` 首次访问时验证并缓存不可变快照，替换磁盘数据后必须创建新实例。
 - `GameData::identity()` 用摘要标识快照、共享覆盖层与有效 patch，进入完整计算响应的 `provenance`（`engine_version`、`data_version`、`data_sha256`）。
 - 原生 schema 4 通过 `NativeData` 加载不可变目录；普通 `BuildData`／ruleset 完整计算仍拒绝它。原生存档绑定最终数据摘要、assembly、actor、policy 与稳定技能分支，每次重开／修改后重新准入。受限的条件命中入口复用共享 Rust 核心，不读取旧资源／敌人／服务器时序默认值，也不生成尚未准入的完整构筑结果。见[条件命中契约](native-skill-hit.md)。
