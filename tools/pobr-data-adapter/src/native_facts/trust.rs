@@ -534,7 +534,7 @@ fn no_symlink_components(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn read_regular(path: &Path) -> Result<Vec<u8>, String> {
+pub(super) fn read_regular(path: &Path) -> Result<Vec<u8>, String> {
     no_symlink_components(path)?;
     require(
         fs::symlink_metadata(path)
