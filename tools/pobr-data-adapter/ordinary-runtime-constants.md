@@ -83,7 +83,8 @@ status, proc, actor or time model is inferred from names or adjacent constants.
 
 ## Output and receipt
 
-The fresh directory has twelve files:
+The fresh directory has twelve files with the original three-file policy, or
+fourteen when the optional ailments file is selected:
 
 - `_domain_candidate.json` first
 - The selected ordinary files under `base/`, without added `_meta` wrappers
