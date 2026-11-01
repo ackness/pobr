@@ -275,8 +275,53 @@ separately from `InheritsFrom`; this is not permission to append an extension to
 a variety or catalog alias. For example, BearCompanion binds variety
 `Metadata/Monsters/CompanionBear/CompanionBearPlayerSummoned`, while its resource
 stem is `Metadata/Monsters/BearCompanion/BearCompanion`. Fixed-index resolution,
-actual bytes and the full selected parent closure still need evidence. The schema
-hint does not certify canonical path spelling, merge precedence or complete effects.
+actual bytes and the full selected parent closure require separate evidence. The
+schema hint does not certify canonical path spelling, merge precedence or complete
+effects.
+
+### Observed three-root OT draft
+
+RePoE's [pinned publication metadata](https://github.com/ackness/repoe/blob/a933f61d0096910e5e7808edce4aa0b1a980db64/publication/actor-templates-0.5.5.5-draft.json)
+now records six observed OT resources, 11,172 raw bytes, for three exact varieties.
+BearCompanion (row 1722) and LivingLightning (row 2309) extend
+PlayerFollowingMinionBase, then PlayerSummonedMinionBase and Monster;
+SummonedRagingSpirit (row 30) extends PlayerSummonedMinionBase and Monster.
+Monster ends at the literal `nothing`. These are the parser's explicit parent
+path convention and observed chains, not an official merge law. All three
+schema-declared OTC candidates remain unmatched in the selected index.
+
+The independent artifact is RePoE revision
+`9f20e64ca06c5402f34f02a3d45eac8ec8d3e6db`, path
+`handoff/actor-templates-draft-20261101/source-package.zip`, 425,944 bytes,
+SHA256 `8d4b4df40e59d5a5464456ed3621d3bc8f3809c16d360e1444ec455f13a19627`.
+Its outer manifest is 9,768 bytes, SHA256
+`71479cb3ddac65c92c6575019e70c54d56555b7960579dce9a125069114b4729`,
+with 8,098,823 expanded bytes across 62 members. It preserves raw resources,
+neutral facts, original receipts/failures, selected index evidence and the pinned
+MonsterVarieties table. It does not contain the entire prior client index/cache.
+The [producer/replay contract](https://github.com/ackness/repoe/blob/b41b3e84ecc0c747d4d38ca4826ed39b4036dee1/RePoE/docs/native_actor_templates.md)
+keeps physical UTF-16 lines/spans, duplicates, unknown blocks and opaque event
+RHS without execution. Unquoted unsupported C-style block comments reject the
+candidate before publication.
+
+Fresh remote Git retrieval verified every included member and producer blob;
+OS-denied-network raw-to-facts replay reproduced all three output files exactly.
+Independent review also replayed the six observed byte chains against the fixed
+index evidence and decoder. Acquisition remains `unreviewed-acquisition-draft`:
+observed hashes are not independent expected pins, official signatures, language
+identity, independent client-build identity or authoritative path casing. This
+does not cover other catalog roots or imply a successful all-candidates acquisition
+receipt for the missing OTC files.
+
+No `mod_list` is migrated by this handoff:
+
+| Existing candidate | Available literal/fact | Remaining interpretation and consumer boundary |
+| --- | --- | --- |
+| BearCompanion | OT `Stats.set_base_damage_taken_+% = -50` | `set_`, Stats scope and OT/DAT precedence need evidence before producing `DamageTaken INC -50`. Existing minion defence reads the DTO; the aggregate snapshot does not separately expose damage-taken/EHP. |
+| SummonedRagingSpirit | `Special_Mods` row 5367, `MonsterSummonedSkullFastAttack1`, has one nonempty stat slot: row 1908 `active_skill_attack_speed_+%_final`, min=max 40 | The old `Speed MORE 40`, attack flags 1, reaches attack action rate/DPS. Actor/selected-active-attack applicability and OT/DAT precedence still need an independent basis. Equal values alone do not close ownership. |
+| LivingLightning | OT `set_base_cannot_be_damaged = 1`, `set_base_maximum_life_is_one = 1` and immunity/charge literals | Old `DamageTaken MORE -100` is a model representation, not an observed raw scalar. Meaning/scope/precedence and equivalence need evidence. The current reader skips the old Life override and immunity flags; their presence does not justify adding models merely to increase migration counts. |
+
+### Conditions for a mod-list replacement
 
 The smallest source handoff that can replace a mod-list field requires:
 
@@ -314,4 +359,5 @@ Store and publish the raw/fact archive in RePoE. PoBR imports its exact revision
 and byte identities temporarily in CI or tests requiring real data; it retains
 code, pins, source metadata and small synthetic fixtures, with no complete
 archive in Git or a PoBR artifact ref. The existing 27-field catalog projection
-continues independently of this unimplemented mod-list handoff.
+continues independently of the observed OT draft and the unimplemented mod-list
+projection.
