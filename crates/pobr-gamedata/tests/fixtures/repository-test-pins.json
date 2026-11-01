@@ -1,0 +1,74 @@
+{
+  "0.5.5.4.2": {
+    "manifest_sha256": "bfd31a4607da98af53b139ed101f31a67a3122e4520434fd2e3fda14672fcca4",
+    "pins": {
+      "minions.raised_zombie": {
+        "damage": 0.75,
+        "life": 0.7
+      },
+      "minions.spectre_cocoon3": {
+        "armour": 0.4,
+        "life": 2.2
+      },
+      "parser_rules.handler_fallbacks": 3,
+      "parser_rules.section_counts": {
+        "base_cost_types": 34,
+        "cost_types_map": 34,
+        "damage_types": 5,
+        "degen_types": 34,
+        "distinct_forms": 29,
+        "flag_phrases": 207,
+        "flag_types": 26,
+        "forms": 95,
+        "name_map": 795,
+        "pen_types": 6,
+        "pre_flags": 218,
+        "regen_types": 34,
+        "suffix_types": 41,
+        "tag_phrases": 700,
+        "unsupported": [
+          "mirrored"
+        ],
+        "unsupported_pobr_extra": [
+          "split"
+        ]
+      }
+    }
+  },
+  "0.5.5.5": {
+    "manifest_sha256": "2a03ad79cc33b10e103895e2bae8b5984cadf341c0cc58425ac97dacb90348fd",
+    "pins": {
+      "minions.raised_zombie": {
+        "damage": 0.75,
+        "life": 0.7
+      },
+      "minions.spectre_cocoon3": {
+        "armour": 0.4,
+        "life": 2.2
+      },
+      "parser_rules.handler_fallbacks": 3,
+      "parser_rules.section_counts": {
+        "base_cost_types": 34,
+        "cost_types_map": 34,
+        "damage_types": 5,
+        "degen_types": 34,
+        "distinct_forms": 29,
+        "flag_phrases": 207,
+        "flag_types": 26,
+        "forms": 95,
+        "name_map": 795,
+        "pen_types": 6,
+        "pre_flags": 218,
+        "regen_types": 34,
+        "suffix_types": 41,
+        "tag_phrases": 700,
+        "unsupported": [
+          "mirrored"
+        ],
+        "unsupported_pobr_extra": [
+          "split"
+        ]
+      }
+    }
+  }
+}

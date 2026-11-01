@@ -1,23 +1,13 @@
-//! Test-pin snapshots: blessed snapshots for data-content-count pins (v0.0.3).
+//! Reviewed test-pin snapshots for data-content counts and statistics.
 //!
-//! Test pins of the form "asserted value = a count/statistic of the
-//! current data file's content" (section entry counts, coverage, a
-//! specific data value) necessarily change on every data regen, so
-//! manually re-pinning them is zero-information labor. This class of pin
-//! is stored uniformly in `data/<ver>/generated/test_pins.json` (a flat
-//! map: pin name → JSON value), checked by tests via [`assert_pin`];
-//! after a regen, rerunning the same tests with `POBR_BLESS_PINS=1`
-//! refreshes them explicitly after review. Regeneration does not bless them.
+//! Repository count/statistic baselines live in a small reviewed fixture,
+//! bound to the exact externally prepared manifest, and are checked through
+//! [`assert_repository_pin`]. They are test metadata, never runtime payloads.
+//! Missing versions, manifest changes and value drift require explicit review.
 //!
-//! Boundary: **structural guards** (a non-empty schema, monotonic
-//! ratchets, dedup invariants) still live hardcoded in the code, not in
-//! the snapshot — the snapshot only carries values that drift with data
-//! content, where the drift itself has no right or wrong answer.
-//!
-//! Note: bless write-back is serialized within a process (a global lock);
-//! concurrent bless across processes on the same file will clobber each
-//! other over the whole file. Use `cargo test` (single process, multiple
-//! threads) rather than nextest (per-process/per-test) to run bless commands.
+//! [`assert_pin`] retains the legacy generated-file API for explicit local or
+//! temporary snapshots; only that API supports opt-in `POBR_BLESS_PINS=1` writes.
+//! Structural guards remain in the tests independently of either snapshot API.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -79,6 +69,37 @@ pub fn assert_pin(version_dir: &Path, name: &str, actual: impl Into<Value>) {
     }
 }
 
+/// Checks reviewed repository regression metadata against an exact prepared pack.
+/// Update the fixture and manifest binding explicitly after reviewing a data
+/// change; this never writes into immutable imported runtime data.
+pub fn assert_repository_pin(version_dir: &Path, name: &str, actual: impl Into<Value>) {
+    let baselines: Value =
+        serde_json::from_str(include_str!("../tests/fixtures/repository-test-pins.json"))
+            .expect("parse reviewed repository test pins");
+    assert_repository_pin_in(version_dir, name, actual.into(), &baselines);
+}
+
+fn assert_repository_pin_in(version_dir: &Path, name: &str, actual: Value, baselines: &Value) {
+    let manifest = std::fs::read(version_dir.join("manifest.json"))
+        .expect("prepare the exact external data pack before testing");
+    let identity: Value = serde_json::from_slice(&manifest).expect("parse prepared manifest");
+    let version = identity["poe_version"].as_str().expect("manifest version");
+    let baseline = &baselines[version];
+    assert_eq!(
+        Some(crate::manifest::sha256_hex(&manifest).as_str()),
+        baseline["manifest_sha256"].as_str(),
+        "reviewed test-pin manifest binding for {version} differs"
+    );
+    let expected = baseline["pins"]
+        .as_object()
+        .and_then(|pins| pins.get(name))
+        .expect("missing reviewed repository test pin");
+    assert_eq!(
+        expected, &actual,
+        "reviewed repository test pin {version}/{name} differs; review the data change and fixture"
+    );
+}
+
 /// Reads the snapshot (a missing file → an empty map; a corrupt file →
 /// panics, not silenced).
 fn read_pins(path: &Path) -> BTreeMap<String, Value> {
@@ -99,6 +120,46 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    fn repository_fixture(tag: &str) -> (std::path::PathBuf, Value) {
+        let dir = temp_version_dir(tag);
+        let manifest = br#"{"poe_version":"fixture"}"#;
+        std::fs::write(dir.join("manifest.json"), manifest).unwrap();
+        let baseline = serde_json::json!({"fixture": {
+            "manifest_sha256": crate::manifest::sha256_hex(manifest),
+            "pins": {"a.count": 3}
+        }});
+        (dir, baseline)
+    }
+
+    #[test]
+    fn repository_pin_matches_exact_manifest_and_value() {
+        let (dir, baseline) = repository_fixture("repository-match");
+        assert_repository_pin_in(&dir, "a.count", 3.into(), &baseline);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "manifest binding")]
+    fn repository_pin_rejects_changed_manifest() {
+        let (dir, baseline) = repository_fixture("repository-manifest");
+        std::fs::write(dir.join("manifest.json"), br#"{ "poe_version":"fixture" }"#).unwrap();
+        assert_repository_pin_in(&dir, "a.count", 3.into(), &baseline);
+    }
+
+    #[test]
+    #[should_panic(expected = "repository test pin")]
+    fn repository_pin_rejects_changed_value() {
+        let (dir, baseline) = repository_fixture("repository-value");
+        assert_repository_pin_in(&dir, "a.count", 4.into(), &baseline);
+    }
+
+    #[test]
+    #[should_panic(expected = "missing reviewed repository test pin")]
+    fn repository_pin_never_treats_absent_as_null() {
+        let (dir, baseline) = repository_fixture("repository-missing");
+        assert_repository_pin_in(&dir, "missing", Value::Null, &baseline);
     }
 
     #[test]

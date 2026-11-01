@@ -103,3 +103,9 @@ original client identity, rather than current game-fact references. Preparation
 validates the archive, manifest, target and exact inventory before materializing
 ignored `web/src/fixtures/*.json`; complete fixture tables cannot be tracked.
 Small synthetic unit fixtures remain in the tests that own their behavior.
+
+Small reviewed regression statistics live in the gamedata test fixture
+`repository-test-pins.json`, bound to each exact external snapshot manifest. They
+are test metadata, not imported runtime files; tests never bless or mutate the
+immutable prepared bundle. Historical COMBAT references similarly select their
+declared rollback version; the current-data gate remains separate.

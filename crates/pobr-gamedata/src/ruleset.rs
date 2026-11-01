@@ -390,22 +390,41 @@ mod tests {
         );
     }
 
-    /// The repo data directory: the unarmed_data domain is wired up
-    /// (Some), and the **whole table** is value-equal to the Default
-    /// fallback (including the vendor-only class_id/weapon_type fields; a
-    /// migration invariant).
+    /// Historical fallback values are a compatibility contract, not an oracle
+    /// for target-source rows whose attack rate preserves source precision.
     #[test]
-    fn repo_data_ruleset_loads_unarmed_data_equal_to_default() {
-        let data = GameData::new(crate::current_data_dir());
-        let ruleset = data.load_ruleset().unwrap();
-        let loaded = ruleset
-            .unarmed_data
-            .expect("unarmed_data domain should be wired up");
+    fn historical_unarmed_data_equals_default() {
+        let data = GameData::new(crate::repo_data_root().join("0.5.5.4.2"));
+        let loaded = data.load_ruleset().unwrap().unarmed_data.unwrap();
         assert_eq!(
             loaded,
-            pobr_data::catalog::unarmed_data::UnarmedDataTable::default(),
-            "JSON must equal the Default fallback value-for-value (migration invariant)",
+            pobr_data::catalog::unarmed_data::UnarmedDataTable::default()
         );
+    }
+
+    #[test]
+    fn repo_data_unarmed_keeps_source_precision_and_legacy_scion() {
+        let data = GameData::new(crate::current_data_dir());
+        let loaded = data.load_ruleset().unwrap().unarmed_data.unwrap();
+        // Characters.WeaponSpeed=606ms; ordinary-unarmed.md specifies 1000/ms.
+        let druid = loaded.for_class("Druid").expect("target Druid");
+        assert_eq!(druid.attack_rate, 1000.0 / 606.0);
+        assert_eq!(
+            (druid.physical_min, druid.physical_max, druid.crit_chance),
+            (2.0, 6.0, 0.05)
+        );
+        let marauder = loaded.for_class("Marauder").expect("target-only Marauder");
+        let scion = loaded
+            .for_class("Scion")
+            .expect("retained compatibility Scion");
+        assert_eq!(marauder.class_id, scion.class_id);
+        assert_eq!(
+            scion,
+            pobr_data::catalog::unarmed_data::UnarmedDataTable::default()
+                .for_class("Scion")
+                .unwrap()
+        );
+        assert_ne!(druid.attack_rate, scion.attack_rate);
     }
 
     /// The repo data directory: the weapon_types domain is wired up
