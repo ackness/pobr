@@ -58,12 +58,17 @@ The renderer handles integer values, `#`, exact/range conditions, indexed intege
 placeholders and the explicitly supported integer transforms `negate`, `double`
 and `negate_and_double`. It verifies lexical handler coverage. Unknown syntax,
 restrictions, transforms, ambiguous descriptor ownership, missing compound
-members or overlapping coverage reject the whole node's rendering.
+members or overlapping coverage reject the whole node's rendering. Every compound
+member must select the same unique effective descriptor; a parent compound cannot
+consume a child-owned or ambiguous member, regardless of source stat order.
 `no_description` is not treated as an effectless law. Non-stat grants also
 require complete compatibility text.
 
 A fallback requires exact hashes of both the target non-owned context and the
-complete ordered stat/value list. A changed unsupported value is an error,
+complete ordered stat/value list. Class replacement fallback additionally requires
+the prepared variant alias to identify the current target. A changed target may
+use complete target rendering, but cannot borrow the previous target's text.
+A changed unsupported value is an error,
 never a silent old numeric line or partial native packet. A renderable value or
 name can change without passing an old-value equality gate. Unknown prepared
 node and variant fields retain their original JSON value/presence.

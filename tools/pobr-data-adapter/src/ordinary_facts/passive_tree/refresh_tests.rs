@@ -468,3 +468,115 @@ fn target_centres_translate_prepared_offsets_without_promoting_coordinate_less_n
     assert!(!tree[1].as_object().unwrap().contains_key("x"));
     assert!(!tree[1].as_object().unwrap().contains_key("y"));
 }
+
+#[test]
+fn class_target_swap_cannot_borrow_the_previous_targets_fallback_text() {
+    let (mut f, mut p, mut old, r) = fixture();
+    f.values("PassiveSkills", 6)["Stats"] = json!([1]);
+    p["compatibility_bindings"]["Variant"]["stats_sha256"] =
+        json!(hash(&json!([["unknown_stat", -7]])));
+    f.documents.insert(
+        "tables/ClassPassiveSkillOverrides.json".into(),
+        table(
+            "ClassPassiveSkillOverrides",
+            &[
+                (
+                    "CharacterToOverrideFor",
+                    "foreignrow",
+                    false,
+                    Some("Characters"),
+                ),
+                (
+                    "SkillToOverride",
+                    "foreignrow",
+                    false,
+                    Some("PassiveSkills"),
+                ),
+                ("Override", "foreignrow", false, Some("PassiveSkills")),
+            ],
+            json!([
+                {"CharacterToOverrideFor":1,"SkillToOverride":0,"Override":6},
+                {"CharacterToOverrideFor":1,"SkillToOverride":2,"Override":5}
+            ]),
+        ),
+    );
+    p["class_bindings"] = json!([
+        {"base_id":"maximum_resistances1","class":"Witch"},
+        {"base_id":"Multi","class":"Witch"}
+    ]);
+    old[0]["variants"] =
+        json!([{"class":"Witch","variant_skill":707,"stats":["unknown target's complete text"]}]);
+    old[2]["variants"] =
+        json!([{"class":"Witch","variant_skill":606,"stats":["+5% to Fire Resistance"]}]);
+    let baseline = project(&mut f, &p, &old, &r).unwrap().0;
+    assert_eq!(
+        baseline[0]["variants"][0]["stats"],
+        old[0]["variants"][0]["stats"]
+    );
+    // Both targets have valid semantic bindings, but their old text is not interchangeable.
+    f.values("ClassPassiveSkillOverrides", 0)["Override"] = json!(5);
+    f.values("ClassPassiveSkillOverrides", 1)["Override"] = json!(6);
+    assert!(
+        project(&mut f, &p, &old, &r)
+            .unwrap_err()
+            .contains("no complete compatibility text")
+    );
+    // A changed target with complete source rendering remains legal.
+    let table = f
+        .documents
+        .get_mut("tables/ClassPassiveSkillOverrides.json")
+        .unwrap();
+    table["rows"].as_array_mut().unwrap().pop();
+    table["validation"]["rows"] = json!(1);
+    let changed = project(&mut f, &p, &old, &r).unwrap().0;
+    assert_eq!(changed[0]["variants"][0]["variant_skill"], 606);
+    assert_eq!(
+        changed[0]["variants"][0]["stats"],
+        json!(["-7% to Fire Resistance"])
+    );
+}
+
+#[test]
+fn compound_csd_cannot_consume_a_members_child_owner_or_ambiguity() {
+    let mut d = descriptions();
+    let child = "Data/StatDescriptions/passive_skill_stat_descriptions.csd";
+    let parent = "Data/StatDescriptions/stat_descriptions.csd";
+    d["files"][parent]["records"] = json!([descriptor(&["a", "b"], "{0} and {1}")]);
+    let mut override_b = descriptor(&["b"], "{0} child");
+    override_b["groups"][0]["branches"][0]["quantifiers_lexical"] =
+        json!([{"name_raw":"unknown","argument_tokens_raw":["1"]}]);
+    override_b["groups"][0]["branches"][0]["quantifier_tokens_raw"] = json!(["unknown", "1"]);
+    d["files"][child]["records"]
+        .as_array_mut()
+        .unwrap()
+        .push(override_b.clone());
+    for stats in [
+        vec![("a".into(), 1), ("b".into(), 7)],
+        vec![("b".into(), 7), ("a".into(), 1)],
+    ] {
+        assert!(
+            Renderer::new(&d).unwrap().render(&stats).is_err(),
+            "child ownership must hold for both stat orders"
+        );
+    }
+    // Even a supported child or ambiguous child cannot be silently consumed by its parent.
+    override_b["groups"][0]["branches"][0]["quantifiers_lexical"] = json!([]);
+    override_b["groups"][0]["branches"][0]["quantifier_tokens_raw"] = json!([]);
+    d["files"][child]["records"][1] = override_b.clone();
+    assert!(
+        Renderer::new(&d)
+            .unwrap()
+            .render(&[("a".into(), 1), ("b".into(), 7)])
+            .is_err()
+    );
+    d["files"][child]["records"]
+        .as_array_mut()
+        .unwrap()
+        .push(override_b);
+    assert!(
+        Renderer::new(&d)
+            .unwrap()
+            .render(&[("a".into(), 1), ("b".into(), 7)])
+            .is_err()
+    );
+}

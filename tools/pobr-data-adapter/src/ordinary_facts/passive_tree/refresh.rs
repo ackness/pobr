@@ -639,20 +639,19 @@ fn variants(
             return Err(format!("{target}: changed variant context"));
         }
         let old_variant = previous.and_then(|n| n.variants.iter().find(|v| v.class == class));
-        let (stats, evidence) = text(
-            input,
-            facts,
-            row,
-            policy,
-            renderer,
-            old_variant.map(|v| v.stats.as_slice()),
-        )?;
+        let target_skill = super::source::graph_id(raw)?;
+        // A class slot can change its replacement. Its old text belongs only to
+        // the original target, even if the new target has a valid semantic guard.
+        let compatible_text = old_variant
+            .filter(|v| v.variant_skill == Some(target_skill))
+            .map(|v| v.stats.as_slice());
+        let (stats, evidence) = text(input, facts, row, policy, renderer, compatible_text)?;
         let mut replacement = old_by_class
             .get(class)
             .cloned()
             .unwrap_or_else(|| json!({}));
         replacement["class"] = json!(class);
-        replacement["variant_skill"] = json!(super::source::graph_id(raw)?);
+        replacement["variant_skill"] = json!(target_skill);
         replacement["name"] = raw["Name"].clone();
         replacement["stats"] = json!(stats);
         variants.retain(|v| v["class"] != class);

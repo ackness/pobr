@@ -89,6 +89,18 @@ impl<'a> Renderer<'a> {
                 .iter()
                 .map(|v| v.as_str().ok_or("invalid descriptor id"))
                 .collect::<Result<_, _>>()?;
+            // Every compound member must select this same unique descriptor.
+            // Otherwise a parent compound could consume a child-owned stat before
+            // the child's unsupported handler or ambiguity is examined.
+            for member in &ids {
+                let owners = self
+                    .descriptions
+                    .get(*member)
+                    .ok_or_else(|| format!("no CSD description for {member}"))?;
+                if !matches!(owners.as_slice(), [(_, owner)] if owner == pointer) {
+                    return Err(format!("conflicting CSD compound ownership for {member}"));
+                }
+            }
             let raw_values: Vec<_> = ids
                 .iter()
                 .map(|id| {
