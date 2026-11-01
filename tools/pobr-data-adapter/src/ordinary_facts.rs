@@ -974,6 +974,10 @@ fn implementation_sha256() -> String {
             include_bytes!("ordinary_facts/passive_tree/render.rs").as_slice(),
         ),
         (
+            "ordinary_facts/passive_tree/render/number.rs",
+            include_bytes!("ordinary_facts/passive_tree/render/number.rs").as_slice(),
+        ),
+        (
             "ordinary_facts/passive_tree/policy.rs",
             include_bytes!("ordinary_facts/passive_tree/policy.rs").as_slice(),
         ),

@@ -79,14 +79,27 @@ Requirement and other unknown conditions remain guarded.
 
 ## Complete text and compatibility
 
-The renderer handles integer values, `#`, exact/range conditions, indexed integer
-placeholders and the explicitly supported integer transforms `negate`, `double`
-and `negate_and_double`. It verifies lexical handler coverage. Unknown syntax,
-restrictions, transforms, ambiguous descriptor ownership, missing compound
-members or overlapping coverage reject the whole node's rendering. Every compound
-member must select the same unique effective descriptor; a parent compound cannot
-consume a child-owned or ambiguous member, regardless of source stat order.
-`no_description` is not treated as an effectless law. Non-stat grants also
+The renderer preserves signed source integers and selects `#` or exact/range
+conditions before formatting. It supports indexed placeholders, checked integer
+`negate`/`double`/`negate_and_double`, and these display-only unit handlers:
+`divide_by_one_hundred`, `divide_by_ten_1dp_if_required`,
+`per_minute_to_per_second`, `per_minute_to_per_second_2dp_if_required`,
+`milliseconds_to_seconds`, `milliseconds_to_seconds_1dp`, and
+`milliseconds_to_seconds_2dp_if_required`. Their precision follows the pinned
+PyPoE numeric-format definitions; the checked-in reference cases cover signed
+limits, rounding and zero. `canonical_line` is a zero-argument display marker.
+Raw values and formatted literals are both recorded. These are text formatting
+operations, not new calculation rules.
+
+Ordinary passive/item callers exclude only the known gem-quality-only branch.
+Unknown syntax, restrictions or transforms still reject the complete text.
+Duplicate descriptors can share an owner only when their complete English
+semantics agree after removing source positions; all original pointers/hashes
+remain in the receipt. Other language disagreements still go through the
+translation library's ambiguity checks. Every compound member must select the
+same effective descriptor; a parent compound cannot consume a child-owned or
+ambiguous member, regardless of source order. Missing compound values are never
+invented as zero. `no_description` is not an effectless law. Non-stat grants also
 require complete compatibility text.
 
 A fallback requires exact hashes of both the target non-owned context and the
@@ -98,8 +111,8 @@ never a silent old numeric line or partial native packet. A renderable value or
 name can change without passing an old-value equality gate. Unknown prepared
 node and variant fields retain their original JSON value/presence.
 
-For the fixed inputs, 4624 nodes use target CSD text (including empty-text layout
-icons), 1129 of those are multi-stat nodes, and 289 use guarded complete text.
+For the fixed inputs, 4803 nodes use target CSD text (including empty-text layout
+icons), 1228 of those are multi-stat nodes, and 110 use guarded complete text.
 These counts are production observations, not calculation-accuracy percentages.
 The existing mapper still produces 177 eligible single-stat native packets as
 an optimization. Multi-stat nodes use the same ordinary parser as other text;

@@ -14,7 +14,9 @@ per-augment limits. Exact target item-class lists guard those mappings against d
 Graphical descriptions, unknown fields and unconsumed socket rules remain in the
 fact package; they are not inferred as new runtime behavior.
 
-The existing strict CSD renderer selects only global item descriptions. Every
+The shared [strict CSD renderer](ordinary-passive-tree.md#complete-text-and-compatibility)
+selects only global item descriptions, with the same checked unit formatting and
+English-equivalent descriptor handling used by ordinary passive text. Every
 packet of a socketable must render. Otherwise its entire effect text comes from
 the separately pinned legacy entry, only when the complete target packet still
 matches an explicit policy binding and its slot set agrees. There is no partial
@@ -74,3 +76,8 @@ new snapshot/shared-layer identity before ordinary consumption. Regression scope
 mise exec -- cargo test --locked -p pobr-data-adapter --bin pobr-data-adapter ordinary_facts::socketables::
 mise exec -- node --test pipeline/test-native-socketable-translations.mjs
 ```
+
+New selection receipts include Rust-formatted numeric literals. Translation
+selection reuses these exact literals in both library templates after checking
+source identity, stat IDs and handlers; it does not duplicate the unit conversion
+in JavaScript. Historical integer-only receipts remain readable.

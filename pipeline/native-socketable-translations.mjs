@@ -13,9 +13,17 @@ const key = ref => JSON.stringify([ref.file, ref.record, ref.branch]);
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const required = (ok, message) => { if (!ok) throw new Error(message); };
 
-function format(template, rawValues, tokens) {
+function format(template, rawValues, tokens, formatted) {
   const values = [...rawValues];
   required(values.every(Number.isSafeInteger), 'unsafe source integer');
+  if (formatted !== undefined) {
+    // Unit conversion belongs to the pinned Rust renderer. A verified receipt
+    // supplies its decimal literals; both languages use precisely those values.
+    required(Array.isArray(formatted) && formatted.length === values.length
+      && formatted.every(v => typeof v === 'string' && /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:e[+-]\d+)?$/u.test(v)),
+    'invalid Rust formatted values');
+    return substitute(template, formatted);
+  }
   required(tokens.length % 2 === 0, 'unsupported translation handler arity');
   for (let i = 0; i < tokens.length; i += 2) {
     const index = Number(tokens[i + 1]) - 1;
@@ -25,10 +33,14 @@ function format(template, rawValues, tokens) {
     values[index] *= scale;
     required(Number.isSafeInteger(values[index]), 'translation integer overflow');
   }
+  return substitute(template, values.map(String));
+}
+
+function substitute(template, values) {
   const rendered = template.replace(/\{(\d+)(?::(\+?d))?\}/gu, (_, index, spec) => {
     required(Number(index) < values.length, 'translation placeholder outside packet');
     const value = values[Number(index)];
-    return spec === '+d' && value >= 0 ? `+${value}` : String(value);
+    return spec === '+d' && !value.startsWith('-') ? `+${value}` : value;
   });
   required(!/[{}]/u.test(rendered), 'unsupported translation placeholder');
   return plain(rendered);
@@ -81,7 +93,7 @@ export function nativeSelectedTranslations(legacy, selection, candidate) {
         required(match, 'invalid selected description pointer');
         const ref = { file: match[1].replace(/~1/gu, '/').replace(/~0/gu, '~'), record: Number(match[2]), branch: evidence.branch };
         const pair = index.get(key(ref));
-        const provenance = { id: record.id, packet: packet.packet, source_row: packet.source_row, reference: ref, values: evidence.values };
+        const provenance = { id: record.id, packet: packet.packet, source_row: packet.source_row, reference: ref, values: evidence.values, formatted_values: evidence.formatted_values, equivalent_english_descriptors: evidence.equivalent_english_descriptors };
         if (!pair) { excluded.push({ reason: 'no-library-pair-for-selected-branch', provenance }); continue; }
         required(pair.declared_chinese_language === 'Simplified Chinese'
           && /\p{Script=Han}/u.test(pair.chinese_template_raw), 'invalid selected Chinese wording');
@@ -92,8 +104,8 @@ export function nativeSelectedTranslations(legacy, selection, candidate) {
             || chinese.get(skeleton(plain(pair.chinese_template_raw))).size !== 1) {
           excluded.push({ reason: 'context-free-translation-would-be-ambiguous', provenance }); continue;
         }
-        const en = format(pair.default_template_raw, evidence.values, handlers).split('\n');
-        const src = format(pair.chinese_template_raw, evidence.values, handlers).split('\n');
+        const en = format(pair.default_template_raw, evidence.values, handlers, evidence.formatted_values).split('\n');
+        const src = format(pair.chinese_template_raw, evidence.values, handlers, evidence.formatted_values).split('\n');
         if (en.length !== src.length) { excluded.push({ reason: 'multiline-alignment-unproven', provenance }); continue; }
         // Bonded is an existing item syntax marker, not a newly authored translation.
         // Keep it intact; this producer owns only the library's effect wording.

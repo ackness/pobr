@@ -3,6 +3,11 @@
 //! This does not interpret game mechanics. Unknown syntax/handlers reject the
 //! entire node, so callers can require an exact, declared compatibility binding.
 
+mod number;
+#[cfg(test)]
+mod tests;
+
+use number::Number;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -13,6 +18,7 @@ const SCOPES: [&str; 2] = [
 
 pub(in crate::ordinary_facts) struct Renderer<'a> {
     descriptions: BTreeMap<String, Vec<(&'a Value, String)>>,
+    equivalents: BTreeMap<String, Vec<Value>>,
 }
 
 impl<'a> Renderer<'a> {
@@ -27,6 +33,7 @@ impl<'a> Renderer<'a> {
 
     fn scoped(document: &'a Value, scopes: &[&str]) -> Result<Self, String> {
         let mut descriptions: BTreeMap<String, Vec<(&Value, String)>> = BTreeMap::new();
+        let mut equivalents = BTreeMap::new();
         for &path in scopes {
             let file = &document["files"][path];
             if file["path"] != path {
@@ -50,8 +57,12 @@ impl<'a> Renderer<'a> {
             for (index, record) in records.iter().enumerate() {
                 match record["kind"].as_str() {
                     Some("description" | "no_description") => {
+                        let mut seen = BTreeSet::new();
                         for id in record["ids"].as_array().ok_or("missing description ids")? {
                             let id = id.as_str().ok_or("invalid description id")?;
+                            if !seen.insert(id) {
+                                return Err("duplicate CSD descriptor id".into());
+                            }
                             own.entry(id.into()).or_default().push((
                                 record,
                                 format!("/files/{}/records/{index}", super::prepared::token(path)),
@@ -63,11 +74,29 @@ impl<'a> Renderer<'a> {
                 }
             }
             // Explicit child scope owns a stat even when its handler is unsupported.
-            for (id, records) in own {
+            for (id, mut records) in own {
+                if records.len() > 1 && records.iter().all(|(r, _)| r["kind"] == "description") {
+                    let signature = english_semantics(records[0].0)?;
+                    let same = records
+                        .iter()
+                        .skip(1)
+                        .map(|(r, _)| english_semantics(r))
+                        .collect::<Result<Vec<_>, _>>()?
+                        .iter()
+                        .all(|s| *s == signature);
+                    if same {
+                        equivalents.insert(records[0].1.clone(), records.iter().map(|(r, p)|
+                            json!({"pointer":p,"raw_slice_sha256":r["raw_slice_sha256"]})).collect());
+                        records.truncate(1);
+                    }
+                }
                 descriptions.entry(id).or_insert(records);
             }
         }
-        Ok(Self { descriptions })
+        Ok(Self {
+            descriptions,
+            equivalents,
+        })
     }
 
     pub fn render(&self, stats: &[(String, i64)]) -> Result<(Vec<String>, Vec<Value>), String> {
@@ -136,6 +165,17 @@ impl<'a> Renderer<'a> {
             let branches = group["branches"].as_array().ok_or("missing CSD branches")?;
             let mut selected = None;
             for (i, branch) in branches.iter().enumerate() {
+                let restrictions = branch["restrictions_raw"]
+                    .as_array()
+                    .ok_or("missing CSD restrictions")?;
+                // Both callers render ordinary passive/item effects, never gem quality.
+                // Unknown restrictions remain an error, not a reason to try another line.
+                if restrictions == &[json!("gem_quality")] {
+                    continue;
+                }
+                if !restrictions.is_empty() {
+                    return Err(format!("unsupported CSD restrictions for {id}"));
+                }
                 let conditions = branch["condition_tokens_raw"]
                     .as_array()
                     .ok_or("missing CSD conditions")?;
@@ -163,7 +203,8 @@ impl<'a> Renderer<'a> {
             {
                 return Err(format!("unsupported CSD restrictions/syntax for {id}"));
             }
-            let mut formatted_values = raw_values.clone();
+            let mut formatted_values: Vec<_> =
+                raw_values.iter().copied().map(Number::new).collect();
             let handlers = branch["quantifiers_lexical"]
                 .as_array()
                 .ok_or("missing CSD handlers")?;
@@ -181,30 +222,7 @@ impl<'a> Renderer<'a> {
             if branch["quantifier_tokens_raw"] != json!(handler_tokens) {
                 return Err("unaccounted CSD handler tokens".into());
             }
-            for q in handlers {
-                let args = q["argument_tokens_raw"]
-                    .as_array()
-                    .ok_or("invalid CSD handler args")?;
-                let [arg] = args.as_slice() else {
-                    return Err("unsupported CSD handler arity".into());
-                };
-                let index = arg
-                    .as_str()
-                    .ok_or("invalid CSD handler index")?
-                    .parse::<usize>()
-                    .map_err(|e| e.to_string())?;
-                let v = index
-                    .checked_sub(1)
-                    .and_then(|i| formatted_values.get_mut(i))
-                    .ok_or("CSD handler index out of bounds")?;
-                *v = match q["name_raw"].as_str() {
-                    Some("negate") => v.checked_neg(),
-                    Some("double") => v.checked_mul(2),
-                    Some("negate_and_double") => v.checked_mul(-2),
-                    _ => return Err(format!("unsupported CSD handler {}", q["name_raw"])),
-                }
-                .ok_or("CSD integer transform overflow")?;
-            }
+            number::apply(&mut formatted_values, handlers)?;
             let text = template(
                 branch["template_raw"]
                     .as_str()
@@ -219,7 +237,9 @@ impl<'a> Renderer<'a> {
             evidence.push(
                 json!({"pointer":pointer,"raw_slice_sha256":record["raw_slice_sha256"],
                 "ids":ids,"values":raw_values,"branch":branch_index,"span":branch["span"],
-                "handlers":branch["quantifiers_lexical"]}),
+                "handlers":branch["quantifiers_lexical"],
+                "formatted_values":formatted_values.iter().map(|v|v.display(false)).collect::<Result<Vec<_>,_>>()?,
+                "equivalent_english_descriptors":self.equivalents.get(pointer).cloned().unwrap_or_default()}),
             );
         }
         Ok((lines, evidence))
@@ -253,7 +273,7 @@ fn condition(token: &str, value: i64) -> Result<bool, String> {
     }
 }
 
-fn template(text: &str, values: &[i64]) -> Result<String, String> {
+fn template(text: &str, values: &[Number]) -> Result<String, String> {
     let mut out = String::new();
     let mut rest = text;
     while let Some((before, after)) = rest.split_once('{') {
@@ -271,8 +291,8 @@ fn template(text: &str, values: &[i64]) -> Result<String, String> {
             )
             .ok_or("CSD placeholder out of bounds")?;
         match format {
-            "" | "d" => out.push_str(&value.to_string()),
-            "+d" => out.push_str(&format!("{value:+}")),
+            "" | "d" => out.push_str(&value.display(false)?),
+            "+d" => out.push_str(&value.display(true)?),
             _ => return Err(format!("unsupported CSD placeholder format {format}")),
         }
         rest = tail;
@@ -282,4 +302,42 @@ fn template(text: &str, values: &[i64]) -> Result<String, String> {
     }
     out.push_str(rest);
     Ok(out)
+}
+
+/// Equivalent owners must agree in all English semantics, including unknown fields.
+/// Only source positions and other languages are excluded; every original owner
+/// remains in the receipt. Different wording/conditions/handlers stay ambiguous.
+fn english_semantics(record: &Value) -> Result<Value, String> {
+    let mut signature = record.clone();
+    let object = signature.as_object_mut().ok_or("invalid CSD descriptor")?;
+    object.remove("raw_slice_sha256");
+    let groups = object
+        .get_mut("groups")
+        .and_then(Value::as_array_mut)
+        .ok_or("missing CSD groups")?;
+    groups
+        .retain(|g| g["language_origin"] == "implicit-default" && g["declared_language"].is_null());
+    if groups.len() != 1 {
+        return Err("ambiguous default CSD language".into());
+    }
+    strip_positions(&mut signature);
+    Ok(signature)
+}
+fn strip_positions(value: &mut Value) {
+    match value {
+        Value::Object(object) => {
+            for key in [
+                "span",
+                "language_declaration_span",
+                "template_character_span",
+            ] {
+                object.remove(key);
+            }
+            for value in object.values_mut() {
+                strip_positions(value);
+            }
+        }
+        Value::Array(values) => values.iter_mut().for_each(strip_positions),
+        _ => {}
+    }
 }
