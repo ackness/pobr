@@ -75,7 +75,7 @@ RePoE 发布 ───┐
 - **owner 发布。** 每个 owner 在默认分支的 `publication/index.json`（`owned-data-publication-index/v2`）登记通道序号，
   指向不可变的 release 描述（`owned-data-publication/v2`）。描述按角色列出精确 revision、路径、大小和 SHA-256。
   PoBR 消费 RePoE 的游戏、制作与测试夹具，以及翻译库的语言与辅助说明；owner 可声明更多角色，
-  翻译库还须声明它绑定的 RePoE 显示来源。序号单调递增、前驱精确；分叉、回退和缺少消费角色都是错误。
+  翻译库还须声明它绑定的 RePoE 显示来源。序号单调递增、前驱精确；分叉、回退和缺少消费角色都是错误，PoBR 不消费的角色由 owner 自行增减。
 - **寻址与保活。** 每个产物只按 40 位 commit SHA 寻址（浅拉取、不取 tag），再核对字节数与 SHA-256；锁中不写分支名。
   锁同时记录 owner 保活该 commit 的 tag `handoff/<name>`，CI 核验每个 tag 仍指向记录的 commit；
   被锁、plan、publication index 或证据文件引用的 tag 不得删除或移动；
@@ -119,7 +119,7 @@ RePoE 发布 ───┐
    官方版本观察只说明端点公布的版本；owner 尚无完整新发布时报告缺口，保留现有默认。
 3. **验证。** 候选在精确 head 上通过 PR gate 和 Full gate：完整快照按摘要导入、
    从同一快照组出的紧凑发行包，以及同次构建的 WASM 消费该包。PoBR 不在 CI 中重跑 owner 的领域生产。
-4. **采用。** 数据锁经受保护的 PR 合并更新；若运行输入改变，采用的修改同时写入 CI 构建出的 `release_id`。本地安装用 `data:update` 显式选择，并携带期望的旧身份做 CAS；
+4. **采用。** 数据锁经受保护的 PR 合并更新；运行输入改变时，候选在解析阶段就准备完整数据并写入精确的 `release_id`，Full CI 重建后必须一致。本地安装用 `data:update` 显式选择，并携带期望的旧身份做 CAS；
    源码合并不自动切换 `CURRENT`。
 5. **发版与部署。** 发版 tag 重新运行完整验证并发布同次产物；数据采用不会自动触发发版。
 

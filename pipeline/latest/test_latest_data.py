@@ -202,8 +202,8 @@ class LatestDataTests(unittest.TestCase):
             self.assertEqual(self.snapshot(), self.before)
 
     def test_role_change_without_sequence_advance_rejects(self):
-        document = self.next_publication()
-        document["components"]["workbench"]["sequence"] -= 1
+        document = self.next_publication(role="support_display")
+        document["components"]["support_display"]["sequence"] -= 1
         self.publish(document["owner"], document)
         with self.assertRaisesRegex(ValueError, "role regressed"):
             latest.discover(self.source, self.fetch, self.head)
@@ -495,16 +495,51 @@ class LatestDataTests(unittest.TestCase):
         self.assertEqual(lock["release_id"], self.lock["release_id"])
         self.assertEqual(self.snapshot(), self.before)
 
-    def test_runtime_input_change_recomputes_identity_and_defers_release_id(self):
+    def test_runtime_input_change_recomputes_identity_and_release_id(self):
         self.next_publication("ackness/repoe", "game", "e" * 40)
         self.owner_tags["ackness/repoe"]["handoff/game-next"] = "e" * 40
         expected = {"snapshot_manifest": {"bytes": 1, "sha256": "1" * 64}, "runtime_identity": "2" * 64}
-        with patch.object(latest, "build_expectations", return_value=(expected, {})):
+        with patch.object(latest, "build_expectations", return_value=(expected, {})), \
+                patch.object(latest, "compact_release", return_value="3" * 64) as release:
             latest.propose(self.source, self.root / "runtime", self.fetch, self.head, tags=self.tags)
         lock, _ = latest.read_lock(self.root / "runtime")
         self.assertEqual(lock["packages"]["game"]["tag"], "handoff/game-next")
         self.assertEqual(lock["runtime_identity"], "2" * 64)
-        self.assertIsNone(lock["release_id"])
+        self.assertEqual(lock["release_id"], "3" * 64)
+        # The release is computed from the candidate lock, not the adopted one.
+        self.assertEqual(release.call_args.args[0]["packages"]["game"]["revision"], "e" * 40)
+
+    def test_owner_may_retire_an_unconsumed_role_but_not_a_consumed_one(self):
+        owner = "ackness/poe2-zh-cn-stats"
+        document, previous = copy.deepcopy(self.descriptors[owner])
+        document.update(sequence=2, previous=previous)
+        del document["components"]["workbench"]
+        self.publish(owner, document)
+        status, _, _ = latest.discover(self.source, self.fetch, self.head)
+        self.assertEqual(status["status"], "update-available")
+        document, previous = copy.deepcopy(self.descriptors[owner])
+        document.update(sequence=3, previous=previous)
+        del document["components"]["support_display"]
+        self.publish(owner, document)
+        with self.assertRaisesRegex(ValueError, "Incomplete owner publication roles"):
+            latest.discover(self.source, self.fetch, self.head)
+        self.assertEqual(self.snapshot(), self.before)
+
+    def test_tag_listing_peels_annotated_tags_and_keeps_lightweight_tags(self):
+        listing = ("a" * 40 + "\trefs/tags/handoff/annotated\n"
+                   + "b" * 40 + "\trefs/tags/handoff/annotated^{}\n"
+                   + "c" * 40 + "\trefs/tags/handoff/light\n").encode()
+        with patch.object(latest.subprocess, "check_output", return_value=listing) as call:
+            tags = latest.resolve_tags("ackness/repoe")
+        self.assertEqual(tags, {"handoff/annotated": "b" * 40, "handoff/light": "c" * 40})
+        self.assertIn("refs/tags/handoff/*", call.call_args.args[0])
+        self.assertEqual(latest.tag_for("b" * 40, tags), "handoff/annotated")
+        with self.assertRaisesRegex(ValueError, "exactly one handoff"):
+            latest.tag_for("a" * 40, tags)
+        with self.assertRaisesRegex(ValueError, "exactly one handoff"):
+            latest.tag_for("c" * 40, {**tags, "handoff/second": "c" * 40})
+        with self.assertRaisesRegex(ValueError, "Untrusted owner"):
+            latest.resolve_tags("someone/else")
 
     def test_build_expectations_authenticate_metadata_and_require_language_alignment(self):
         version, wanted = "0.5.5.5", self.lock["target"]

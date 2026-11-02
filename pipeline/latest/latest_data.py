@@ -47,6 +47,12 @@ ROLES = {
         "support_display": ("support_display",),
     },
 }
+# Roles PoBR validates: the consumed ones plus the language catalog binding.
+# Owners may add or retire any other role without a PoBR change.
+CHECKED = {
+    "ackness/repoe": {*ROLES["ackness/repoe"], "display_source"},
+    "ackness/poe2-zh-cn-stats": {*ROLES["ackness/poe2-zh-cn-stats"], "display_catalog"},
+}
 
 
 def pin(raw):
@@ -94,10 +100,11 @@ def publication(document, owner):
     if previous is not None:
         metadata_pin(previous, owner)
     require(isinstance(document.get("components"), dict)
-            and set(ROLES[owner]) <= set(document["components"]), "Incomplete owner publication roles")
+            and CHECKED[owner] <= set(document["components"]), "Incomplete owner publication roles")
     scope = document.get("scope")
     require(isinstance(scope, dict) and bool(scope), "Publication scope must remain explicit")
-    for role, entry in document["components"].items():
+    for role in sorted(CHECKED[owner]):
+        entry = document["components"][role]
         require(isinstance(entry, dict) and set(entry) == {"sequence", "input"}
                 and isinstance(entry["input"], dict), f"Invalid publication role: {role}")
         sequence(entry["sequence"])
@@ -133,8 +140,8 @@ def transition(before, after):
     require(after["sequence"] == before["sequence"] + 1, "Nonconsecutive owner publication")
     require(after["owner"] == before["owner"] and after["target"]["game"] == before["target"]["game"]
             and after["target"]["realm"] == before["target"]["realm"], "Publication channel changed")
-    for role, old in before["components"].items():
-        new = after["components"].get(role)
+    for role in sorted(CHECKED[before["owner"]]):
+        old, new = before["components"][role], after["components"].get(role)
         require(new is not None, f"Owner publication dropped a role: {role}")
         changed = old["input"] != new["input"]
         require(new["sequence"] == old["sequence"] + int(changed),
@@ -503,6 +510,26 @@ def build_expectations(lock, cache, fetcher):
             "runtime_identity": sha(bundle.encoded(["pobr-data-pack-v1", 3, version, hashes]))}, shared
 
 
+def compact_release(lock, root, cache, fetcher):
+    """Prepare the candidate's complete data and return its compact release identity.
+
+    This authenticates every runtime byte the candidate names, so a proposal
+    carries an exact release_id instead of leaving it for a later manual change.
+    """
+    from pipeline.runtime import runtime_pack
+    version, locale = lock["target"]["game_patch"], lock["locale"]
+    with tempfile.TemporaryDirectory(prefix="pobr-latest-release-") as temporary:
+        temporary = Path(temporary).resolve()
+        write(temporary / "data.lock.json", encoded(lock))
+        build_data.prepare(temporary / "data.lock.json", temporary / "prepared", cache,
+                           shared_root=Path(root) / "data/overlay-common", fetcher=fetcher)
+        files, runtime_identity = bundle.snapshot_inputs(temporary / "prepared", version)
+        require(runtime_identity == lock["runtime_identity"], "Prepared candidate runtime identity differs")
+        display = files[f"data/{version}/i18n/{locale}/display_texts.json"]
+        release, _ = runtime_pack.assemble(files, version, lock["target"], locale, display)
+        return release["release_id"]
+
+
 def propose(root, output, fetcher, heads=resolve_head, *, official=None, cache=None, tags=resolve_tags):
     root, output = Path(root), build_data.safe_directory(output)
     require(not output.exists() and not output.is_relative_to(root / "data"), "Fresh candidate outside data required")
@@ -534,9 +561,7 @@ def propose(root, output, fetcher, heads=resolve_head, *, official=None, cache=N
         _, previous_shared = build_expectations(current, cache, fetcher)
         require(shared == previous_shared, "Shared data changed; explicit migration review required")
         proposed.update(expected)
-        # The candidate Full CI builds and reports the compact release; the
-        # adopting change records that identity once the build has passed.
-        proposed["release_id"] = None
+        proposed["release_id"] = compact_release(proposed, root, cache, fetcher)
     proposed.update(generation=current["generation"] + 1, previous_id=sha(old_raw),
                     owner_publications=status["published_frontier"])
     lock_valid(proposed)
