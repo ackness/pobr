@@ -3,6 +3,7 @@
 import copy
 import json
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 
@@ -95,6 +96,47 @@ class BuildDataTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build.install(self.out, install)
         self.assertEqual((install / "9.1/base/skills.json").read_bytes(), b"[]")
+
+    def test_install_preserves_excluded_local_patch_and_maintenance_only(self):
+        self.prepare()
+        data = self.root / "source/data"
+        local = {"patch/base/skills.json": b'[{"local":"patch"}]',
+                 "generated/parsed_mods.json": b'{"local":"derived cache"}'}
+        for name, raw in local.items():
+            path = data / self.version / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(raw)
+        build.install(self.out, data)
+        for name, raw in local.items():
+            self.assertEqual((data / self.version / name).read_bytes(), raw)
+        extra = data / self.version / "unlisted.json"
+        extra.write_bytes(b"{}")
+        with self.assertRaisesRegex(ValueError, "Existing installed data differs"):
+            build.install(self.out, data)
+        self.assertEqual(extra.read_bytes(), b"{}")
+
+    def test_declared_cache_named_runtime_file_remains_pinned(self):
+        self.prepare()
+        name = 'generated/parsed_mods.json'
+        raw = b'{"declared":"runtime bytes"}'
+        path = self.out / 'data' / self.version / name
+        path.parent.mkdir(parents=True)
+        path.write_bytes(raw)
+        manifest = self.out / 'data' / self.version / 'manifest.json'
+        document = json.loads(manifest.read_bytes())
+        document['files'][name] = bundle.sha256(raw)
+        manifest.write_bytes(pack.raw_json(document))
+        files, identity = bundle.snapshot_inputs(self.out, self.version)
+        (self.out / 'bundle.json').write_bytes(pack.raw_json(bundle.document(self.version, files, identity)))
+        data = self.root / 'installed/data'
+        data.mkdir(parents=True)
+        (data / 'CURRENT').write_bytes((self.version + '\n').encode())
+        shutil.copytree(self.shared, data / 'overlay-common')
+        build.install(self.out, data)
+        build.install(self.out, data)
+        (data / self.version / name).write_bytes(b'{"corrupt":true}')
+        with self.assertRaisesRegex(ValueError, 'Existing installed data differs'):
+            build.install(self.out, data)
 
     def test_missing_offline_and_corrupt_pin_never_use_existing_source_snapshot(self):
         with self.assertRaisesRegex(ValueError, "Offline cache miss"):

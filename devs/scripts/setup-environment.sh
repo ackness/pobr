@@ -10,6 +10,5 @@ if [[ "$(uname -s)" == Darwin ]]; then
 fi
 python3 devs/scripts/tool-versions.py --check
 pnpm --dir web install --frozen-lockfile
-pnpm --dir pipeline install --frozen-lockfile
 python3 devs/scripts/tool-versions.py
 echo "Everyday environment ready. Oracle, browser and artwork tools are prepared by their own tasks."

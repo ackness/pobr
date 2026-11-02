@@ -145,8 +145,6 @@ class SnapshotTests(unittest.TestCase):
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             with self.assertRaisesRegex(ValueError, "Another data update"):
                 snapshot.regenerate(self.root)
-            with self.assertRaisesRegex(ValueError, "Another data update"):
-                snapshot.export_tables(self.root)
 
     def test_configuration_change_during_generation_prevents_publication(self):
         before = snapshot.tree_fingerprint(self.root / "data")

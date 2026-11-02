@@ -101,9 +101,14 @@ def validate_declarations(manifest, inventory):
 
 
 def snapshot_inputs(root, version):
+    return data_inputs(root / "data", version)
+
+
+def data_inputs(data, version):
+    """Verify an explicit data directory, preserving canonical bundle paths."""
     if not isinstance(version, str) or not re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", version):
         raise ValueError(f"Invalid data version: {version!r}")
-    data = root / "data"
+    data = Path(data)
     source = data / version
     if (source / "_domain_candidate.json").exists() or (source / "_drift.json").exists():
         raise ValueError("Unaccepted domain/drift candidates cannot become runtime bundles")

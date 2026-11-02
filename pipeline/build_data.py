@@ -208,9 +208,19 @@ def install(prepared, data_root, keep_current=False):
         write(data_root / "overlay-common" / name, bundle.read_file(Path(prepared) / "data/overlay-common", name))
     destination = data_root / version
     if destination.exists():
-        actual = {p.relative_to(destination).as_posix() for p in destination.rglob("*") if p.is_file()}
+        from data_snapshot import MAINTENANCE_FILES
+        safe_directory(destination)
+        entries = list(destination.rglob("*"))
+        require(all(not p.is_symlink() and (p.is_dir() or p.is_file()) for p in entries),
+                "Unsafe installed data entry")
+        # These local layers are explicitly excluded from the sealed runtime.
+        # Reusing pinned data must not delete a user's patch or derived cache.
         wanted = {name.removeprefix(f"data/{version}/") for name in receipt["files"]
                   if name.startswith(f"data/{version}/")}
+        actual = {p.relative_to(destination).as_posix() for p in entries if p.is_file()}
+        local_only = {name for name in actual - wanted
+                      if name.startswith("patch/") or name in MAINTENANCE_FILES}
+        actual -= local_only
         require(actual == wanted and all(
             bundle.sha256(regular(data_root / name.removeprefix("data/"))) == digest
             for name, digest in receipt["files"].items() if not (keep_current and name == "data/CURRENT")), "Existing installed data differs")

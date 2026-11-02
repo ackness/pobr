@@ -108,7 +108,7 @@ def advance(raw, export, previous_receipt, previous_quality, patch):
             "previous_version": previous["poe_version"],
             "previous_receipt_sha256": digest(previous_receipt),
             "previous_quality_sha256": digest(previous_quality),
-            "validation": "Stable effect/stat IDs, order, main/alternate and stat-set scopes unchanged; numerical rates may change. Source attests successful exporter execution, not an independent CDN byte comparison.",
+            "validation": "Stable effect/stat IDs, order, main/alternate and stat-set scopes unchanged; numerical rates may change. Pinned caller-supplied export declaration; this consumer observes neither exporter execution nor an independent CDN byte comparison.",
             "changed_effect_values": sorted(changed),
         },
         "inputs": inputs, "compatibility": compatibility,
@@ -122,6 +122,7 @@ def main():
     record.add_argument("--config", type=Path, required=True)
     record.add_argument("--raw", type=Path, required=True)
     record.add_argument("--out", type=Path, required=True)
+    record.add_argument("--exporter", required=True, help="Caller-declared producer identity; execution is not observed here")
     update = sub.add_parser("advance")
     for name in ["raw", "export", "previous-receipt", "previous-quality", "out"]:
         update.add_argument(f"--{name}", type=Path, required=True)
@@ -131,15 +132,13 @@ def main():
         patch = read(args.config)["patch"]
         if not re.fullmatch(r"\d+(?:\.\d+)+", patch):
             raise ValueError("invalid export patch")
+        if not args.exporter.strip():
+            raise ValueError("missing declared exporter identity")
         document = {"schema": "official-table-export/v1", "patch": patch,
-                    "exporter": "pathofexile-dat@15.2.0 (PoE2 0.x routing patch)", "config_sha256": digest(args.config),
-                    "inputs": fingerprints(args.raw)}
-        # This record is written only after a successful export. Atomic replacement
-        # prevents an interrupted write from masquerading as a valid source receipt.
-        temp = args.out.with_suffix(".tmp")
-        args.out.parent.mkdir(parents=True, exist_ok=True)
-        temp.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
-        temp.replace(args.out)
+                    "exporter": args.exporter, "exporter_execution_observed": False,
+                    "identity_basis": "caller-declared legacy input; not source acceptance",
+                    "config_sha256": digest(args.config), "inputs": fingerprints(args.raw)}
+        write_new(args.out, document)
     else:
         write_new(args.out, advance(args.raw, args.export, args.previous_receipt,
                                     args.previous_quality, args.patch))

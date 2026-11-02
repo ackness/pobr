@@ -33,7 +33,7 @@ mise run setup
 
 支持当前 Unix 工具链：macOS 与 Debian/Ubuntu。主机包由 mise 原生 bootstrap 声明，
 setup 检查 Git、make、C 编译器；macOS 的 Apple SDK/Command Line Tools 仍由系统提供。
-工具核验会拒绝 PATH 中遮蔽 mise 版本的旧程序。setup 安装 Web 与 pipeline 的 frozen lockfile，
+工具核验会拒绝 PATH 中遮蔽 mise 版本的旧程序。setup 安装 Web 的 frozen lockfile，
 不下载浏览器、不编译 CLI、不默认获取大型参考数据。
 
 按工作需要自动准备额外依赖：
@@ -41,7 +41,7 @@ setup 检查 Git、make、C 编译器；macOS 的 Apple SDK/Command Line Tools �
 | 工作 | 入口与自动准备 |
 | --- | --- |
 | Web 日常开发/测试 | `mise run web <命令>`，例如 `mise run web test <文件>` |
-| 数据导出器 | `mise run pipeline test` |
+| 独立数据与普通DTO | `mise run data:prepare`临时导入固定owner输入；`data:ordinary`验证／适配，原料采集导出在RePoE |
 | 官方树域候选 | `data:tree:source` / `data:tree:candidate --out <新目录>`；固定来源、可离线重放，不准备 oracle，不发布产品数据 |
 | PoB2 对照、triage、完整数据生成 | 对应任务依赖 `setup:oracle`，自动准备固定 LuaJIT commit 与固定 vendor；重复运行复用缓存 |
 | 浏览器回归 | `mise run web:e2e <spec>`，自动安装 lockfile 对应的 Playwright 浏览器/系统依赖；仍须当前 dist/WASM/data |
@@ -52,7 +52,7 @@ setup 检查 Git、make、C 编译器；macOS 的 Apple SDK/Command Line Tools �
 默认安装使用固定上游 commit，保留显式 runtime override 的调试用途。
 PoB2 的固定仓库与 commit 由 `devs/reference-sources.json` 管理，独立于生产 parser 规则的来源；
 后者仍记录各自生成时使用的 vendor。官方表适配默认执行自有审计；需要 PoB2 解析对照时用
-`mise run data:adapt:reference`，不会将缺依赖的必需对照记为成功。
+`mise run data:adapt:reference`（历史本地原表诊断），不会将缺依赖的必需对照记为成功。
 首次源码构建会自动处理 macOS deployment target；缺依赖的任务失败会给出具体原因。
 `mise run status` 只报告工具与数据状态，不下载、不构建。
 

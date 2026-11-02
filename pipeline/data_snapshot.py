@@ -259,7 +259,7 @@ def manifest(data):
 
 
 def record_export(config, raw):
-    """Called only after the exporter succeeds; bind every configured table to its patch."""
+    """Bind explicit legacy arrays to their declared export config; no acquisition claim."""
     configuration = read_json(config)
     files = {f"{language}/{table['name']}.json": None
              for language in configuration["translations"] for table in configuration["tables"]}
@@ -346,20 +346,6 @@ def workspace_lock(root):
         yield
 
 
-def export_tables(root):
-    with workspace_lock(root):
-        config = root / "pipeline/config.json"
-        config_hash = digest(config)
-        run(["pnpm", "install", "--frozen-lockfile"], root / "pipeline", os.environ)
-        run(["pnpm", "exec", "pathofexile-dat"], root / "pipeline", os.environ)
-        if digest(config) != config_hash:
-            raise ValueError("Export configuration changed during download; refusing to record provenance")
-        record_export(config, root / "pipeline/tables")
-        run(["python3", "pipeline/gem-quality/advance-receipt.py", "record-export",
-             "--config", "pipeline/config.json", "--raw", "pipeline/tables/English",
-             "--out", "pipeline/tables/quality-export-source.json"], root, os.environ)
-
-
 def regenerate(root, activate=False, base_only=False, operation=None, arguments=(),
                reference_audit=None, locale_lock=None):
     with workspace_lock(root):
@@ -392,7 +378,7 @@ def _regenerate(root, activate=False, base_only=False, operation=None, arguments
             del arguments[index:index + 2]
     old = patch_version(os.environ.get("OLD_PATCH") or (root / "data/CURRENT").read_text(encoding="utf-8").strip())
     if (base_only or operation) and not (root / "data" / version).is_dir():
-        raise ValueError("Base adaptation requires an existing snapshot; use data:regen for a new version")
+        raise ValueError("Base adaptation requires an existing snapshot; use an independent owner build lock for a new version")
     watched = {root / "data" / name for name in {version, old, "overlay-common"}}
     original = {path: tree_fingerprint(path) for path in watched}
     with candidate(root, version) as data_root:
@@ -464,7 +450,6 @@ def main():
     adapt.add_argument("--locale-lock", type=Path, help="Explicit independent language-generation lock for this patch")
     adapt.add_argument("--reference-audit", action="store_true",
                        help="Also compare parser behavior with the installed PoB2 reference")
-    sub.add_parser("export")
     fetch = sub.add_parser("fetch-tree-source")
     fetch.add_argument("--source", default="official-passive-tree")
     fetch.add_argument("--offline", action="store_true")
@@ -494,8 +479,6 @@ def main():
         record_export(args.config, args.raw)
     elif args.command == "patch":
         print(patch_version(read_json(ROOT / "pipeline/config.json")["patch"]))
-    elif args.command == "export":
-        export_tables(ROOT)
     elif args.command == "fetch-tree-source":
         print(fetch_tree_source(ROOT, args.source, args.offline))
     elif args.command == "tree-candidate":

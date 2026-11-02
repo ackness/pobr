@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -116,6 +117,24 @@ class CompatibleUpdateTests(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             receipt.write_new(self.previous, self.advance())
         self.assertEqual(self.previous.read_bytes(), before)
+    def test_local_export_declaration_never_invents_observed_producer_identity(self):
+        config = self.root / 'config.json'
+        self.write(config, {'patch': '9.20.1'})
+        output = self.root / 'declared-export.json'
+        args = [sys.executable, '-B', str(ROOT / 'pipeline/gem-quality/advance-receipt.py'),
+                'record-export', '--config', str(config), '--raw', str(self.raw), '--out', str(output)]
+        refused = subprocess.run(args, capture_output=True, text=True)
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertFalse(output.exists())
+        result = subprocess.run([*args, '--exporter', 'synthetic/source@fixed'], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        declared = receipt.read(output)
+        self.assertEqual(declared['exporter'], 'synthetic/source@fixed')
+        self.assertIs(declared['exporter_execution_observed'], False)
+        before = output.read_bytes()
+        repeat = subprocess.run([*args, '--exporter', 'another-declaration'], capture_output=True, text=True)
+        self.assertNotEqual(repeat.returncode, 0)
+        self.assertEqual(output.read_bytes(), before)
 
 
 class VendorTreeTests(unittest.TestCase):
