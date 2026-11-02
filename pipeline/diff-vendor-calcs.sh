@@ -9,7 +9,7 @@
 # Usage:
 #   pipeline/diff-vendor-calcs.sh <old-sha> <new-sha> [--out <file>]
 #
-# Default output: devs/docs/audits/vendor-delta-<new-sha[:8]>.md
+# Default output: .cache/vendor-delta/reports/vendor-delta-<new-sha[:8]>.md
 #
 # Env knobs:
 #   MAX_HUNK_LINES=800   per-file calc hunk cap; larger diffs collapse to
@@ -105,7 +105,7 @@ while [ $# -gt 0 ]; do
 done
 [ -n "${OLD}" ] && [ -n "${NEW}" ] || { usage; exit 2; }
 [ -f "${HELPER}" ] || die "missing helper: ${HELPER}"
-OUT="${OUT:-${ROOT}/devs/docs/audits/vendor-delta-${NEW:0:8}.md}"
+OUT="${OUT:-${CACHE}/reports/vendor-delta-${NEW:0:8}.md}"
 
 # ---- fetch both pins -----------------------------------------------------
 echo "== [1/4] fetch vendor pins"

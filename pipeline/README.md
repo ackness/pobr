@@ -9,6 +9,16 @@
 
 [最新完整发布同步](latest-data.md)通过两owner发布索引发现候选，冻结完整组合，再由精确head的PR／Full门禁与实际最终包消费验证后条件采用。普通构建继续按不可变锁重放；索引bootstrap、官方版本观察和owner源码更新均不代表新数据已生成或已采用。
 
+| 文件类别 | 保留用途 |
+| --- | --- |
+| build／ordinary／display／latest 入口与锁 | 独立owner输入的固定导入、领域适配、运行组包和最新完整组合验证 |
+| native／tree 候选入口 | 显式的领域验证与诊断，不自动采用 |
+| 领域 policy、来源声明和小夹具 | PoBR 自有解释决定及可重复验证输入 |
+| raw／vendor 兼容入口 | 尚有明确调用方的旧再生与参考诊断流程 |
+
+临时脚本、报告、下载、测试目录和物化运行包放在忽略的 `.cache/`；
+本目录不保留已退休 exporter 的依赖安装或临时输出。
+
 ## 活动数据来源与生产
 
 | 域 | 当前来源 | 生产与保留边界 |
@@ -243,7 +253,7 @@ schema-3 manifest封存默认运行字节；维护报告和本地patch不进入�
 
 ```bash
 pipeline/diff-vendor-calcs.sh <old-sha> <new-sha> [--out <file>]
-# 默认输出：devs/docs/audits/vendor-delta-<new-sha[:8]>.md
+# 默认输出：.cache/vendor-delta/reports/vendor-delta-<new-sha[:8]>.md
 ```
 
 - 两个 vendor pin 各做一次 shallow git checkout 到 `.cache/vendor-delta/<sha>/`

@@ -243,10 +243,6 @@ run = "bash devs/scripts/driver.sh versions"
 description = "Check the committed data snapshot and explain regeneration"
 run = "bash devs/scripts/driver.sh data"
 
-[tasks."data:prune"]
-description = "Keep the active data version plus the two most recently added: `mise run data:prune [-- --apply]`"
-run = "python3 pipeline/prune-data.py"
-
 [tasks."data:diff"]
 description = "Diff two committed data versions: `mise run data:diff <verA> <verB> [--domain ...]`"
 run = "bash devs/scripts/driver.sh diff"
