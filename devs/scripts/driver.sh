@@ -422,10 +422,10 @@ cmd_data() {
   fi
   cat <<'EOF'
 
-数据只来自 ackness/repoe 与 ackness/poe2-zh-cn-stats 的固定发布（详见 pipeline/README.md）：
+数据只来自 pipeline/data.lock.json 固定的 ackness/repoe 与 ackness/poe2-zh-cn-stats 发布（详见 pipeline/README.md）：
   1) 当前固定输入       : mise run data:prepare（临时导入）；mise run data:check 离线确认工作树干净
-  2) 声明普通 DTO       : mise run data:regen --out <fresh> --adapter <prebuilt>
-  3) 新版本完整候选     : mise run data:update --lock <owner-lock> --out <fresh>
+  2) 精简发行包         : mise run data:pack build --out <fresh>
+  3) 新版本完整候选     : mise run data:update --lock <data-lock> --out <fresh>
   4) 显式本地采用       : 上一命令加 --activate --expected-current <old-version>
 采用前保留版本、GameData 和 parity 门禁；失败回滚，来源接受与部署另作决定。
 官方版本发现、原料采集与语言生成由 owner 仓库执行；PoBR 不读取原始表导出或 vendor Lua 生成数据。

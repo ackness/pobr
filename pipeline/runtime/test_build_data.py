@@ -226,22 +226,42 @@ class BuildDataTests(unittest.TestCase):
                           local_parts={"language": locale}, fetcher=self.fetch)
         self.assertEqual(result["runtime_identity"], self.lock["runtime_identity"])
 
-    def test_runtime_pack_uses_the_independent_build_lock(self):
-        requirements = {"target": self.target, "translation": {"locale": "zh-CN"},
-                        "runtime_pack": {"schema": pack.SCHEMA}}
-        rp = self.root / "requirements.json"; rp.write_bytes(pack.raw_json(requirements))
-        imports = self.root / "imports"
-        display = pack.raw_json({"schema": "pobr-native-display-texts/v1", "game_patch": self.version,
-                                "realm": "international", "locale": "zh-CN", "entries": {}})
-        for name, raw in {"runtime/display_texts.json": display,
-                          "runtime/receipt.json": pack.raw_json({"files": {"display_texts.json": pack.pin(display)}}),
-                          "import-receipt.json": pack.raw_json({"requirements_sha256": bundle.sha256(rp.read_bytes()),
-                              "target": self.target, "locale": "zh-CN"})}.items():
-            p = imports / name; p.parent.mkdir(parents=True, exist_ok=True); p.write_bytes(raw)
-        result = pack.import_pack(rp, self.lock_path, imports, self.root / "pack", self.cache,
-                                  fetcher=self.fetch, shared_root=self.shared)
-        release, _, _ = pack.read_release(self.root / "pack/player", result["release_id"])
-        self.assertEqual(release["target"], self.target)
+    def data_lock(self):
+        """Upgrade the crafting lock fixture to the single tagged data lock."""
+        self.enable_crafting()
+        for spec in self.lock["packages"].values():
+            spec["tag"] = "handoff/test-data"
+        self.lock["crafting"]["tag"] = "handoff/test-crafting"
+        publication = {"index_revision": "c" * 40, "sequence": 1,
+                       "descriptor": {"revision": "d" * 40, "path": "publication/releases/test/1.json",
+                                      "bytes": 1, "sha256": "e" * 64}}
+        self.lock.update(schema=build.DATA_LOCK_SCHEMA, generation=1, previous_id=None, locale="zh-CN",
+                         release_id=None, owner_publications={o: dict(publication) for o in build.OWNERS.values()},
+                         support_display={"tag": "handoff/test-display"}, test_fixtures={"tag": "handoff/test-fixtures"})
+        self.save()
+
+    def test_data_lock_prepares_the_same_identity_and_requires_owner_tags(self):
+        self.data_lock()
+        result = self.prepare()
+        self.assertEqual(result["runtime_identity"], self.lock["runtime_identity"])
+        for path, value in ((("packages", "game", "tag"), None), (("crafting", "tag"), "handoff/../x"),
+                            (("support_display", "tag"), "bad tag"), (("generation",), 2),
+                            (("release_id",), "not-a-digest")):
+            with self.subTest(path=path, value=value):
+                changed = copy.deepcopy(self.lock)
+                parent = changed
+                for key in path[:-1]:
+                    parent = parent[key]
+                if value is None:
+                    del parent[path[-1]]
+                else:
+                    parent[path[-1]] = value
+                with self.assertRaises(ValueError):
+                    build.validate(changed)
+        broken = copy.deepcopy(self.lock)
+        del broken["owner_publications"]["ackness/repoe"]
+        with self.assertRaisesRegex(ValueError, "Both owner publications"):
+            build.validate(broken)
 
     def enable_crafting(self, include_old=False):
         from pipeline.imports import crafting_inputs

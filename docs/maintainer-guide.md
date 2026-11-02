@@ -19,7 +19,7 @@
 | CLI / WASM 输出字段与 Calcs 明细 | [calc-outputs.md](calc-outputs.md) |
 | 构筑模型、导入、存档格式、计算步骤与缓存、Web 运行时 | [build-model.md](build-model.md) |
 | 数据来源、三仓库职责、存储边界与更新流程 | [数据架构](data-architecture.md) |
-| 活动数据组合、各领域缺口与近期顺序 | [数据现状](data-status.md) |
+| 当前数据锁、各领域缺口与近期顺序 | [数据现状](data-status.md) |
 | 仍依赖 PoB2 的数据与已知的有意差异 | [pob2-differences.md](pob2-differences.md) |
 | 诊断工具的输出、逐行台账、参考口径与语料 | [diagnostics.md](diagnostics.md) |
 | 各导入格式 / Web 界面行为 | [import-formats.md](import-formats.md) / [web-contracts.md](web-contracts.md) |
@@ -105,7 +105,7 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 | `crates/pobr-item` | 保留物品原文的编辑模型与序列化（`ItemDraft`，支持 BuildRaw 往返）；计算视图由 `pobr-core::item_text` + `ingest_item` 承担 |
 | `apps/pobr-cli` | CLI `pobr`：`calculate` / `calculate-build` / `parse-mod` / `explain-mod` / `parse-item` / `decode-code` / `encode-code`，命令逻辑在 lib |
 | `apps/pobr-wasm` | `build_api/` 的 JSON 契约；默认 features 可在宿主测试，`wasm` 启用绑定，`diagnostics` 启用计时与 fixture 生成目标 |
-| `tools/pobr-data-adapter` | 固定 RePoE owner 事实 → PoBR 运行 JSON：`--ordinary-facts`（含宝石品质，见[品质生成说明](../pipeline/policies/gem-quality/README.md)）、`--native-facts`、`--native-runtime`；`--tree` 读历史官方树包供 `data:tree:candidate`；`--emit-special-derived` 从已准备的天赋树派生基石规则。不读 vendor Lua 或本地原表 |
+| `tools/pobr-data-adapter` | 固定 RePoE owner 事实 → PoBR 运行 JSON：`--ordinary-facts`（含宝石品质，见[品质生成说明](../pipeline/policies/gem-quality/README.md)）、`--native-facts`、`--native-runtime`；`--tree` 读历史官方树包供 `data:tree:candidate`；`--emit-special-derived` 从已准备的天赋树派生基石规则（CI 的 regen-check 使用）。不读 vendor Lua 或本地原表；领域生产将迁往 RePoE，PoBR 的数据导入不再调用它 |
 | `tools/sync-pob-catalog` | PoB2 显示／输出 catalog 的扫描与对照（`scan` / `check` / `diff` / `fixture-check`），只作测试参考，不生成数据 |
 | `tools/lint-i18n` | 语言包完整性检查 |
 | `tools/precompile-mods` | 词条规则离线预编译、语料覆盖与审计（`generated/parsed_mods.json`、`modifier-audit.json`；`--check` 校验运行时合并后的规则集） |
@@ -113,9 +113,9 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 
 依赖方向：`pobr-data` 在最底层；`pobr-build` 组合计算、物品、树与数据加载；应用层使用它们。生产计算核心不读文件；测试辅助（`pobr-core` 的 `test-rules`、`pobr-gamedata` 的 `test-pins`）在 feature 后面，只由 dev-dependencies 启用。
 
-其他目录：`web/`（React / TypeScript / Vite；`src/api/` 定义 JSON 边界并默认在 module Worker 中运行 WASM，`public/` 是静态资源、同步数据与 Pages Worker，另有 `e2e/` 与 `worker-tests/`）、`data/`（Git 只跟踪 `CURRENT` 与十一份自有规则；版本目录和七份外部 shared 输入由独立锁临时准备）、`pipeline/`（固定输入声明、导入、组包、候选与诊断）、`examples/`（回归与参考语料）、`devs/`（开发脚本、CI 基线与 fixtures；差异登记在 `scripts/known-differences.json`）、`agent-docs/`（被代码引用的早期机制研究）。当前行为契约集中在 `docs/`。
+其他目录：`web/`（React / TypeScript / Vite；`src/api/` 定义 JSON 边界并默认在 module Worker 中运行 WASM，`public/` 是静态资源、同步数据与 Pages Worker，另有 `e2e/` 与 `worker-tests/`）、`data/`（Git 只跟踪 `CURRENT` 与十一份自有规则；版本目录和七份外部 shared 输入按 `pipeline/data.lock.json` 临时准备）、`pipeline/`（固定输入声明、导入、组包、候选与诊断）、`examples/`（回归与参考语料）、`devs/`（开发脚本、CI 基线与 fixtures；差异登记在 `scripts/known-differences.json`）、`agent-docs/`（被代码引用的早期机制研究）。当前行为契约集中在 `docs/`。
 
-**数据管线**：RePoE 游戏事实／兼容输入与独立翻译库的固定产物 →（声明式临时导入与 PoBR 领域适配）→ schema 3 运行包 →（`pobr-gamedata`）→ 计算。完整游戏／语言数据不进入 PoBR Git；实物测试和构建按 `mise run data:prepare` 准备，来源缺失或 pin 不符即失败；`mise run data:check` 离线确认 `data/` 只跟踪自有文件、导入后工作树干净。计算所需游戏文件访问集中在 `pobr-gamedata`；语言生成／配对属于翻译库，PoBR 保留显示／输入与 DTO 解释边界。PoB2 vendor 只作测试参考，不作为生产数据的写入来源；PoBR 不从 vendor Lua 或本地原表再生数据，owner 包中由 PoB2 转换的兼容文件也不算自主再生。设计见[数据架构](data-architecture.md)，现状见[数据现状](data-status.md)，命令见[数据管线说明](../pipeline/README.md)与[版本升级结构](version-bump-architecture.md)。
+**数据管线**：RePoE 游戏事实／兼容输入与独立翻译库的固定产物 →（按唯一数据锁 `pipeline/data.lock.json` 的 tag + commit + SHA-256 临时导入）→ schema 3 运行包与精简发行包 →（`pobr-gamedata`）→ 计算。缺数据或缺翻译时更新 owner 仓库的发布，不在 PoBR 内补数据。完整游戏／语言数据不进入 PoBR Git；实物测试和构建按 `mise run data:prepare` 准备，来源缺失或 pin 不符即失败；`mise run data:check` 离线确认 `data/` 只跟踪自有文件、导入后工作树干净。计算所需游戏文件访问集中在 `pobr-gamedata`；语言生成／配对属于翻译库，PoBR 保留显示／输入与 DTO 解释边界。PoB2 vendor 只作测试参考，不作为生产数据的写入来源；PoBR 不从 vendor Lua 或本地原表再生数据，owner 包中由 PoB2 转换的兼容文件也不算自主再生。设计见[数据架构](data-architecture.md)，现状见[数据现状](data-status.md)，命令见[数据管线说明](../pipeline/README.md)与[版本升级结构](version-bump-architecture.md)。
 
 ## 运行时数据与会话
 

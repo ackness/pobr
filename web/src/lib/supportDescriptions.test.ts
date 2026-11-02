@@ -12,7 +12,7 @@ const gems = new Map(catalog.gems!.map(gem => [gem.skill_id, gem]));
 
 it('binds the retained external asset to the active catalog without relabelling its source version', () => {
   const meta = JSON.parse(readFileSync(new URL(`../../../data/${version}/i18n/zh-CN/_meta.json`, import.meta.url), 'utf8'));
-  const lock = JSON.parse(readFileSync(new URL('../../../pipeline/runtime/build-data.lock.json', import.meta.url), 'utf8'));
+  const lock = JSON.parse(readFileSync(new URL('../../../pipeline/data.lock.json', import.meta.url), 'utf8'));
   expect(lock.target.game_patch).toBe(version);
   expect(generated._meta.data_version).toBe(lock.support_display.source_data_version);
   expect(generated._meta.catalog_sha256).toBe(lock.support_display.catalog_sha256);

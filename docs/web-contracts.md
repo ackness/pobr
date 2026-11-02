@@ -137,7 +137,7 @@ WeGame 魔法药剂／护符只用一条标准基底行，修饰名、恢复／�
 
 辅助推荐的效果说明可用键盘展开。可选目录 `description` 是钉定 PoB2 定义中的定性英文原文，
 只为辅助导出。中文正文和`GemEffects.SupportText`语言配对处理由翻译库独立维护，
-PoBR构建时按`build-data.lock.json`的`support_display`固定提交、manifest和资产摘要导入，
+PoBR构建时按`pipeline/data.lock.json`的`support_display`固定提交、manifest和资产摘要导入，
 核对目标目录完整SHA后生成忽略的Web显示输入，不在PoBR Git存储完整说明表。
 原资产生成版本、社区提交和来源摘要保留；当前目标适用绑定不改写原生成版本，不消费native描述候选。
 运行时再次核对 ID 与完整英文，防止目录更新后使用过时译文。简中采用词典译文，繁体采用现有字形转换回退并在说明中注明；

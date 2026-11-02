@@ -60,12 +60,12 @@ class SyncTests(unittest.TestCase):
             return [{"ref": "refs/heads/" + sync.BRANCH, "object": {"sha": self.head}}]
         if path == "git/commits/" + self.head:
             return {"message": sync.MARKER, "parents": [{"sha": self.base}]}
-        if path == f"contents/pipeline/latest/data-composition.json?ref={self.head}":
-            return {"content": base64.b64encode((self.candidate / "pipeline/latest/data-composition.json").read_bytes()).decode()}
+        if path == f"contents/{latest.LOCK}?ref={self.head}":
+            return {"content": base64.b64encode((self.candidate / latest.LOCK).read_bytes()).decode()}
         if path.startswith("pulls?"): return [self.pr]
         if path == "pulls/7": return copy.deepcopy(self.pr)
         if path == "branches/master/protection": return self.settings
-        if path.startswith("compare/"): return {"files": [{"filename": "pipeline/latest/data-composition.json", "status": "modified"}]}
+        if path.startswith("compare/"): return {"files": [{"filename": latest.LOCK, "status": "modified"}]}
         if path.startswith("actions/workflows/") and "/runs?" in path:
             return {"workflow_runs": copy.deepcopy(self.runs[path.split("/")[2]])}
         if path.startswith("actions/runs/"):
@@ -106,7 +106,7 @@ class SyncTests(unittest.TestCase):
             with patch.object(latest, "propose", side_effect=synthetic_propose):
                 return sync.accept(self.source, directory, self.fixture.fetch, self.official, request or self.request)
 
-    def test_only_both_exact_successful_gates_and_fresh_composition_allow_merge(self):
+    def test_only_both_exact_successful_gates_and_fresh_lock_allow_merge(self):
         result = self.accept()
         self.assertEqual(result["status"], "adopted")
         merges = [value for value in self.calls if value[0] == "PUT"]
@@ -164,7 +164,7 @@ class SyncTests(unittest.TestCase):
     def test_git_commit_preserves_default_code_and_uses_exact_parent(self):
         self.assertEqual(self.git("rev-parse", self.head + "^1").decode().strip(), self.base)
         files = self.git("diff-tree", "--no-commit-id", "--name-only", "-r", self.head).decode().splitlines()
-        self.assertEqual(set(files), {"pipeline/latest/data-composition.json", "pipeline/imports/data-imports.lock.json"})
+        self.assertEqual(set(files), {latest.LOCK})
 
     def test_next_schedule_recovers_a_failed_adoption_without_repeating_successful_ci(self):
         failed = False

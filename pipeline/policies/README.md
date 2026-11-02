@@ -15,8 +15,8 @@ Source acquisition and publication stay with the independent data owners.
 | `runtime-constants/`, `boss-poise/`, `unarmed/` | Explicit constants, representative presets and unarmed facts |
 | `socketables/`, `catalysts/`, `item-grants/` | Socketable, catalyst and item-granted skill decisions |
 
-The ordinary producer reads exact source paths and hashes through
-[`ordinary_policy.py`](../runtime/ordinary/ordinary_policy.py). Historical provenance
+These policies are inputs of the domain adapter, which is moving to RePoE; PoBR's
+data import no longer runs it, and the adapter's Rust tests still read them. Historical provenance
 fields inside a policy or source receipt retain their original paths and hashes;
 they describe the recorded input, rather than a path to resolve in today's checkout.
 

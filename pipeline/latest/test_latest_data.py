@@ -23,22 +23,32 @@ class LatestDataTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
         self.source = self.root / "repository"
-        for name in (*latest.FILES.values(), "data/CURRENT"):
+        for name in (latest.LOCK, latest.CHANNELS, "data/CURRENT"):
             path = self.source / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes((ROOT / name).read_bytes())
-        self.documents = {key: bundle.decode((self.source / name).read_bytes())
-                          for key, name in latest.FILES.items()}
+        self.lock = bundle.decode((self.source / latest.LOCK).read_bytes())
+        self.channels = bundle.decode((self.source / latest.CHANNELS).read_bytes())
         self.payloads, self.frontier, self.descriptors, self.calls = {}, {}, {}, []
         self.head_calls = []
+        # Owners publish more roles than PoBR consumes; these extras stay out of the lock.
+        source = {"repository": "ackness/repoe", "revision": "9" * 40, "path": "handoff/display/source.zip",
+                  "publication": "published", "bytes": 1, "sha256": "9" * 64,
+                  "manifest": {"bytes": 1, "sha256": "6" * 64}}
+        catalog = {"repository": "ackness/poe2-zh-cn-stats", "revision": "8" * 40,
+                   "path": "handoff/catalog/manifest.json", "publication": "published",
+                   "manifest": {"bytes": 1, "sha256": "8" * 64}}
+        workbench = {"repository": "ackness/poe2-zh-cn-stats", "revision": "7" * 40,
+                     "path": "src/translation-workbench.mjs", "publication": "published", "bytes": 1, "sha256": "7" * 64}
+        extras = {"ackness/repoe": {"display_source": source},
+                  "ackness/poe2-zh-cn-stats": {"display_catalog": catalog, "workbench": workbench}}
         for owner in latest.OWNERS:
+            inputs = {**latest.declarations(self.lock, owner), **extras[owner]}
             publication = {"schema": latest.PUBLICATION_SCHEMA, "owner": owner,
-                           "target": self.documents["build"]["target"], "sequence": 1, "previous": None,
-                           "components": {role: {"sequence": 1, "input": value}
-                                          for role, value in latest.declarations(self.documents, owner).items()},
+                           "target": self.lock["target"], "sequence": 1, "previous": None,
+                           "components": {role: {"sequence": 1, "input": value} for role, value in inputs.items()},
                            "scope": {"complete": True, "meaning": "Synthetic declaration only"}}
             if owner == "ackness/poe2-zh-cn-stats":
-                catalog = publication["components"]["display_catalog"]["input"]
                 validation = encoded({"format": "windows-fk-validation/v1", "manifest_sha256": catalog["manifest"]["sha256"],
                                       "independent_fk_recomputed": True, "boundaries": {"observed_patch": None,
                                       "observed_realm": None, "official_client_semantics_verified": False,
@@ -46,18 +56,26 @@ class LatestDataTests(unittest.TestCase):
                 publication.update(scope={"complete": "declared-dependency-closure-only",
                                           "freshness_certified": False, "official_client_certified": False,
                                           "translation_quality_certified": False},
-                                   bindings={"display_source": self.documents["display"]["packages"]["repoe"]},
+                                   bindings={"display_source": source},
                                    evidence={"catalog_validation": {"revision": catalog["revision"],
                                              "path": str(Path(catalog["path"]).parent / "validation.json"),
                                              **latest.pin(validation)}})
                 self.payloads[latest.git_address({"repository": owner, **publication["evidence"]["catalog_validation"]},
                               publication["evidence"]["catalog_validation"]["path"])] = validation
             self.publish(owner, publication)
-        self.composition = latest.bootstrap(self.source, self.fetch, self.head)
-        (self.source / "pipeline/latest/data-composition.json").write_bytes(encoded(self.composition))
+        self.lock = latest.bootstrap(self.source, self.fetch, self.head)
+        (self.source / latest.LOCK).write_bytes(encoded(self.lock))
+        self.owner_tags = {owner: {} for owner in latest.OWNERS}
+        for owner, roles in latest.ROLES.items():
+            for path in roles.values():
+                spec = latest.lookup(self.lock, path)
+                self.owner_tags[owner][spec["tag"]] = spec["revision"]
         self.before = self.snapshot()
         self.calls.clear()
         self.head_calls.clear()
+
+    def tags(self, owner):
+        return dict(self.owner_tags[owner])
 
     def snapshot(self):
         return {p.relative_to(self.source).as_posix(): p.read_bytes()
@@ -87,12 +105,12 @@ class LatestDataTests(unittest.TestCase):
         self.calls.append(address)
         return self.payloads[address]
 
-    def next_publication(self, owner="ackness/poe2-zh-cn-stats", role="workbench"):
+    def next_publication(self, owner="ackness/poe2-zh-cn-stats", role="workbench", revision="f" * 40):
         document, previous = copy.deepcopy(self.descriptors[owner])
         document.update(sequence=document["sequence"] + 1, previous=previous)
         value = document["components"][role]
         value["sequence"] += 1
-        value["input"]["revision"] = "f" * 40
+        value["input"]["revision"] = revision
         self.publish(owner, document)
         return document
 
@@ -109,16 +127,24 @@ class LatestDataTests(unittest.TestCase):
 
     def test_immutable_composition_verification_uses_recorded_heads_without_latest_discovery(self):
         self.next_publication()
-        result = latest.verify_composition(self.source, self.fetch)
+        result = latest.verify_composition(self.source, self.fetch, self.tags)
         self.assertEqual(result["status"], "verified-immutable-declarations")
+        self.assertEqual(result["tags"], "verified")
         self.assertEqual(result["freshness"], "not-checked")
         self.assertEqual(self.head_calls, [])
         self.assertEqual(self.snapshot(), self.before)
-        document = copy.deepcopy(self.composition)
+        moved = self.lock["test_fixtures"]["tag"]
+        self.owner_tags["ackness/repoe"][moved] = "0" * 40
+        with self.assertRaisesRegex(ValueError, "does not name its pinned revision"):
+            latest.verify_composition(self.source, self.fetch, self.tags)
+        del self.owner_tags["ackness/repoe"][moved]
+        with self.assertRaisesRegex(ValueError, "does not name its pinned revision"):
+            latest.verify_composition(self.source, self.fetch, self.tags)
+        document = copy.deepcopy(self.lock)
         document["owner_publications"]["ackness/repoe"]["sequence"] = 999
-        (self.source / "pipeline/latest/data-composition.json").write_bytes(encoded(document))
+        (self.source / latest.LOCK).write_bytes(encoded(document))
         with self.assertRaisesRegex(ValueError, "rollback"):
-            latest.verify_composition(self.source, self.fetch)
+            latest.verify_composition(self.source, self.fetch, self.tags)
 
     def test_source_code_only_index_revision_does_not_make_a_data_update(self):
         owner = "ackness/repoe"
@@ -128,7 +154,7 @@ class LatestDataTests(unittest.TestCase):
             (f"https://github.com/{owner}.git", before, "publication/index.json")]
         status, _, _ = latest.discover(self.source, self.fetch, self.head)
         self.assertEqual(status["status"], "no-new-publication")
-        self.assertEqual(status["published_frontier"], self.composition["owner_publications"])
+        self.assertEqual(status["published_frontier"], self.lock["owner_publications"])
 
     def test_same_patch_module_change_creates_complete_candidate_and_keeps_current(self):
         self.next_publication()
@@ -136,11 +162,14 @@ class LatestDataTests(unittest.TestCase):
         result = latest.propose(self.source, out, self.fetch, self.head)
         self.assertEqual(result["status"], "update-available")
         receipt = latest.verify_candidate(out)
-        composition, documents, _, _ = latest.read_composition(out)
-        self.assertEqual(composition["generation"], 2)
-        self.assertEqual(composition["previous_id"], sha(self.before["pipeline/latest/data-composition.json"]))
-        self.assertEqual(documents["display"]["workbench"]["revision"], "f" * 40)
-        self.assertEqual(composition["expected"], self.composition["expected"])
+        lock, _ = latest.read_lock(out)
+        self.assertEqual(lock["generation"], self.lock["generation"] + 1)
+        self.assertEqual(lock["previous_id"], sha(self.before[latest.LOCK]))
+        self.assertEqual(lock["owner_publications"]["ackness/poe2-zh-cn-stats"]["sequence"], 2)
+        # An extra owner role advances the publication without touching consumed inputs.
+        for key in ("packages", "crafting", "support_display", "test_fixtures", "snapshot_manifest",
+                    "runtime_identity", "release_id"):
+            self.assertEqual(lock[key], self.lock[key], key)
         self.assertEqual(receipt["status"], "resolved-not-validated")
         self.assertEqual(receipt["adoption"], "not-adopted")
         self.assertEqual(self.snapshot(), self.before)
@@ -216,7 +245,7 @@ class LatestDataTests(unittest.TestCase):
         self.next_publication()
         out = self.root / "candidate"
         latest.propose(self.source, out, self.fetch, self.head)
-        name = out / "pipeline/imports/data-imports.lock.json"
+        name = out / latest.LOCK
         raw = name.read_bytes()
         name.write_bytes(raw + b" ")
         with self.assertRaisesRegex(ValueError, "bytes/SHA256"):
@@ -226,15 +255,19 @@ class LatestDataTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Not a regular"):
             latest.verify_candidate(out)
 
-    def test_adopted_file_drift_and_current_mismatch_reject(self):
-        name = self.source / "pipeline/imports/sources.lock.json"
-        name.write_bytes(name.read_bytes() + b" ")
-        with self.assertRaisesRegex(ValueError, "bytes/SHA256"):
-            latest.read_composition(self.source)
-        name.write_bytes(self.before["pipeline/imports/sources.lock.json"])
+    def test_adopted_lock_drift_and_current_mismatch_reject(self):
+        for change in ("schema", "tag", "release"):
+            document = copy.deepcopy(self.lock)
+            if change == "schema": document["schema"] = "pobr-build-data-lock/v2"
+            elif change == "tag": del document["packages"]["game"]["tag"]
+            else: document["release_id"] = "unknown"
+            (self.source / latest.LOCK).write_bytes(encoded(document))
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                latest.read_lock(self.source)
+        (self.source / latest.LOCK).write_bytes(self.before[latest.LOCK])
         (self.source / "data/CURRENT").write_bytes(b"0.5.5.4.2\n")
         with self.assertRaisesRegex(ValueError, "CURRENT"):
-            latest.read_composition(self.source)
+            latest.read_lock(self.source)
 
     def test_local_only_role_cannot_enter_latest(self):
         owner = "ackness/repoe"
@@ -264,7 +297,7 @@ class LatestDataTests(unittest.TestCase):
         self.assertFalse((self.root / "too-old").exists())
 
     def test_existing_fresh_observation_preserves_scope_and_rejects_stale_or_other_code(self):
-        config = self.documents["channels"]
+        config = self.channels
         directory = self.root / "observation"
         directory.mkdir()
         response = b"Synthetic observer response, not a live TCP receipt"
@@ -320,7 +353,10 @@ class LatestDataTests(unittest.TestCase):
         latest.propose(self.source, output, self.fetch, self.head)
         latest.verify_candidate(output)
         self.assertEqual(language["components"], before)
-        self.assertEqual(latest.read_composition(output)[1]["display"]["packages"]["repoe"]["revision"], "f" * 40)
+        lock, _ = latest.read_lock(output)
+        self.assertEqual({owner: entry["sequence"] for owner, entry in lock["owner_publications"].items()},
+                         {owner: 2 for owner in latest.OWNERS})
+        self.assertEqual(lock["packages"], self.lock["packages"])
 
     def test_sequence_only_empty_publication_is_rejected(self):
         owner = "ackness/repoe"
@@ -348,19 +384,19 @@ class LatestDataTests(unittest.TestCase):
         marker = self.source / "data/0.5.5.5/untracked-runtime.json"
         marker.parent.mkdir(exist_ok=True)
         marker.write_bytes(b'"Installed data must stay unchanged"')
-        result = latest.apply_candidate(out, self.source, sha(self.before["pipeline/latest/data-composition.json"]))
+        result = latest.apply_candidate(out, self.source, sha(self.before[latest.LOCK]))
         self.assertEqual(result["status"], "metadata-staged-not-adopted")
         self.assertEqual(marker.read_bytes(), b'"Installed data must stay unchanged"')
         self.assertEqual((self.source / "data/CURRENT").read_bytes(), self.before["data/CURRENT"])
-        self.assertEqual(latest.read_composition(self.source)[0]["generation"], 2)
-        with self.assertRaisesRegex(ValueError, "Expected composition changed"):
-            latest.apply_candidate(out, self.source, sha(self.before["pipeline/latest/data-composition.json"]))
+        self.assertEqual(latest.read_lock(self.source)[0]["generation"], self.lock["generation"] + 1)
+        with self.assertRaisesRegex(ValueError, "Expected data lock changed"):
+            latest.apply_candidate(out, self.source, sha(self.before[latest.LOCK]))
 
     def test_discovery_cannot_rebind_an_old_frontier_to_a_newer_baseline(self):
         self.next_publication()
         middle = self.root / "middle"
         latest.propose(self.source, middle, self.fetch, self.head)
-        latest.apply_candidate(middle, self.source, sha(self.before["pipeline/latest/data-composition.json"]))
+        latest.apply_candidate(middle, self.source, sha(self.before[latest.LOCK]))
         document = self.next_publication()
         document["components"]["workbench"]["input"]["revision"] = "e" * 40
         self.publish(document["owner"], document)
@@ -370,57 +406,55 @@ class LatestDataTests(unittest.TestCase):
         for name, raw in self.before.items(): (self.source / name).write_bytes(raw)
         frozen = latest.discover(self.source, self.fetch, self.head)
         # Keep a valid B frontier (instead of the now published C).
-        middle_comp = latest.read_composition(middle)[0]
+        middle_comp = latest.read_lock(middle)[0]
         frozen[0]["published_frontier"] = middle_comp["owner_publications"]
         frozen[2]["ackness/poe2-zh-cn-stats"] = latest.Publications(self.fetch).descriptor(
             "ackness/poe2-zh-cn-stats", middle_comp["owner_publications"]["ackness/poe2-zh-cn-stats"]["descriptor"])
-        latest.apply_candidate(middle, self.source, sha(self.before["pipeline/latest/data-composition.json"]))
-        latest.apply_candidate(newest, self.source, sha(latest.regular(middle / "pipeline/latest/data-composition.json")))
+        latest.apply_candidate(middle, self.source, sha(self.before[latest.LOCK]))
+        latest.apply_candidate(newest, self.source, sha(latest.regular(middle / latest.LOCK)))
         current = self.snapshot()
         with patch.object(latest, "discover", return_value=frozen), self.assertRaisesRegex(ValueError, "changed during discovery"):
             latest.propose(self.source, self.root / "stale", self.fetch, self.head)
         self.assertFalse((self.root / "stale").exists())
         self.assertEqual(self.snapshot(), current)
-        self.assertEqual(latest.read_composition(self.source)[0]["owner_publications"]["ackness/poe2-zh-cn-stats"]["sequence"], 3)
+        self.assertEqual(latest.read_lock(self.source)[0]["owner_publications"]["ackness/poe2-zh-cn-stats"]["sequence"], 3)
 
-    def test_resealed_composition_owner_sequence_must_match_descriptor_before_apply(self):
+    def test_resealed_lock_owner_sequence_must_match_descriptor_before_apply(self):
         self.next_publication()
         out = self.root / "candidate"
         latest.propose(self.source, out, self.fetch, self.head)
-        path = out / "pipeline/latest/data-composition.json"
+        path = out / latest.LOCK
         document = bundle.decode(path.read_bytes())
         document["owner_publications"]["ackness/repoe"]["sequence"] = 999
         raw = encoded(document)
         path.write_bytes(raw)
         receipt_path = out / "resolution.json"
         receipt = bundle.decode(receipt_path.read_bytes())
-        receipt["composition_id"] = sha(raw)
-        receipt["files"]["pipeline/latest/data-composition.json"] = latest.pin(raw)
+        receipt["lock_id"] = sha(raw)
+        receipt["files"][latest.LOCK] = latest.pin(raw)
         receipt_path.write_bytes(encoded(receipt))
         with self.assertRaisesRegex(ValueError, "owner sequence differs"):
             latest.verify_candidate(out)
         with self.assertRaisesRegex(ValueError, "owner sequence differs"):
-            latest.apply_candidate(out, self.source, sha(self.before["pipeline/latest/data-composition.json"]))
+            latest.apply_candidate(out, self.source, sha(self.before[latest.LOCK]))
         self.assertEqual(self.snapshot(), self.before)
 
     def test_metadata_apply_rolls_back_mid_write_and_refuses_drift(self):
         self.next_publication()
         out = self.root / "candidate"
         latest.propose(self.source, out, self.fetch, self.head)
-        count = 0
-        def fail_second(source, target):
-            nonlocal count
-            count += 1
-            if count == 2:
-                raise OSError("Synthetic disk write failure")
+        def fail_after_write(source, target):
             os.replace(source, target)
+            raise OSError("Synthetic disk write failure")
         with self.assertRaisesRegex(OSError, "disk write failure"):
-            latest.apply_candidate(out, self.source, sha(self.before["pipeline/latest/data-composition.json"]), replace=fail_second)
+            latest.apply_candidate(out, self.source, sha(self.before[latest.LOCK]), replace=fail_after_write)
         for name, raw in self.before.items():
             self.assertEqual((self.source / name).read_bytes(), raw, name)
-        (self.source / "pipeline/imports/sources.lock.json").write_bytes(b"Changed after candidate resolution")
-        with self.assertRaisesRegex(ValueError, "bytes/SHA256"):
-            latest.apply_candidate(out, self.source, sha(self.before["pipeline/latest/data-composition.json"]))
+        drifted = copy.deepcopy(self.lock)
+        drifted["shared_files"] = dict(sorted(drifted["shared_files"].items(), reverse=True))
+        (self.source / latest.LOCK).write_bytes(encoded(drifted) + b"\n")
+        with self.assertRaisesRegex(ValueError, "Expected data lock changed"):
+            latest.apply_candidate(out, self.source, sha(self.before[latest.LOCK]))
 
     def test_recheck_rejects_superseded_candidate_and_allows_code_only_head_advance(self):
         self.next_publication()
@@ -442,8 +476,38 @@ class LatestDataTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "supersedes"):
             latest.recheck(out, self.source, self.fetch, self.head, official=official)
 
+    def test_consumed_role_change_records_its_single_owner_tag(self):
+        self.next_publication("ackness/repoe", "test_fixtures", "e" * 40)
+        with self.assertRaisesRegex(ValueError, "exactly one handoff/\\* tag"):
+            latest.propose(self.source, self.root / "untagged", self.fetch, self.head, tags=self.tags)
+        self.assertFalse((self.root / "untagged").exists())
+        self.owner_tags["ackness/repoe"].update({"handoff/fixtures-a": "e" * 40, "handoff/fixtures-b": "e" * 40})
+        with self.assertRaisesRegex(ValueError, "exactly one handoff/\\* tag"):
+            latest.propose(self.source, self.root / "ambiguous", self.fetch, self.head, tags=self.tags)
+        del self.owner_tags["ackness/repoe"]["handoff/fixtures-b"]
+        out = self.root / "tagged"
+        latest.propose(self.source, out, self.fetch, self.head, tags=self.tags)
+        latest.verify_candidate(out)
+        lock, _ = latest.read_lock(out)
+        self.assertEqual(lock["test_fixtures"]["revision"], "e" * 40)
+        self.assertEqual(lock["test_fixtures"]["tag"], "handoff/fixtures-a")
+        # Test fixtures are not runtime inputs: the release identity is unchanged.
+        self.assertEqual(lock["release_id"], self.lock["release_id"])
+        self.assertEqual(self.snapshot(), self.before)
+
+    def test_runtime_input_change_recomputes_identity_and_defers_release_id(self):
+        self.next_publication("ackness/repoe", "game", "e" * 40)
+        self.owner_tags["ackness/repoe"]["handoff/game-next"] = "e" * 40
+        expected = {"snapshot_manifest": {"bytes": 1, "sha256": "1" * 64}, "runtime_identity": "2" * 64}
+        with patch.object(latest, "build_expectations", return_value=(expected, {})):
+            latest.propose(self.source, self.root / "runtime", self.fetch, self.head, tags=self.tags)
+        lock, _ = latest.read_lock(self.root / "runtime")
+        self.assertEqual(lock["packages"]["game"]["tag"], "handoff/game-next")
+        self.assertEqual(lock["runtime_identity"], "2" * 64)
+        self.assertIsNone(lock["release_id"])
+
     def test_build_expectations_authenticate_metadata_and_require_language_alignment(self):
-        version, wanted = "0.5.5.5", self.documents["build"]["target"]
+        version, wanted = "0.5.5.5", self.lock["target"]
         prefix = "data/" + version + "/"
         content = {"base/skills.json": b'{"id":9223372036854775807}',
                    "i18n/zh-CN/display_texts.json": b'{"text":null}'}
@@ -480,33 +544,6 @@ class LatestDataTests(unittest.TestCase):
         payloads[latest.git_address(language, language["path"])] = locale
         with self.assertRaisesRegex(ValueError, "consumer-data-divergence"):
             latest.build_expectations(build, cache, payloads.__getitem__)
-
-    def test_ordinary_expectations_update_only_external_pins_and_request_checksums(self):
-        documents = copy.deepcopy(self.documents)
-        lock = documents["ordinary"]
-        original_policies = {name: copy.deepcopy(lock["inputs"][name]) for name in lock["policies"]}
-        files = {f"{unit}/{name}": {"bytes": spec["bytes"] + 1, "sha256": "f" * 64}
-                 for unit, unit_spec in lock["inputs"].items() if unit not in lock["policies"]
-                 for name, spec in unit_spec["files"].items()}
-        manifest = encoded({"schema": "repoe-data-publication/v1", "target": lock["target"], "files": files})
-        handle = io.BytesIO()
-        with zipfile.ZipFile(handle, "w") as archive: archive.writestr("manifest.json", manifest)
-        raw = handle.getvalue()
-        spec = lock["packages"]["repoe"]
-        spec.update(latest.pin(raw), manifest=latest.pin(manifest))
-        cache = self.root / "ordinary-cache"
-        cache.mkdir()
-        latest.ordinary_expectations(documents, cache, lambda address: raw)
-        self.assertEqual({name: lock["inputs"][name] for name in lock["policies"]}, original_policies)
-        for unit, unit_spec in lock["inputs"].items():
-            if unit not in lock["policies"]:
-                self.assertTrue(all(value["sha256"] == "f" * 64 for value in unit_spec["files"].values()))
-        for job in documents["ordinary_requirements"]["domains"]:
-            for flag, checksum in latest.ordinary_inputs.PROFILES[job["domain"]][0].items():
-                if checksum:
-                    unit = job["options"][flag]["input"]
-                    name = "manifest.json" if flag == "--supplement" else lock["inputs"][unit]["path"]
-                    self.assertEqual(job["options"][checksum], lock["inputs"][unit]["files"][name]["sha256"])
 
 
 if __name__ == "__main__":

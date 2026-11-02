@@ -1,7 +1,9 @@
-"""Resolve complete owner publications into immutable PoBR data candidates.
+"""Resolve complete owner publications into an immutable PoBR data-lock candidate.
 
-Mutable default branches locate small publication indexes only. Runtime inputs
-always retain full Git revisions and byte pins; discovery is not source approval.
+`pipeline/data.lock.json` is PoBR's only data declaration. Mutable owner default
+branches locate small publication indexes only; the lock keeps each consumed
+artifact's full Git revision, byte pin and the owner tag that keeps it alive.
+Discovery is not source approval.
 """
 
 import argparse
@@ -20,44 +22,29 @@ from pipeline.runtime import build_data
 from pipeline.runtime import data_bundle as bundle
 from pipeline.imports import data_imports as imports
 from pipeline.runtime import data_snapshot
-from pipeline.runtime.ordinary import ordinary_inputs
 from pipeline.imports.data_imports import encoded, git_address, pinned, regular, require, sha, validate_pin, write
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SCHEMA = "pobr-data-composition/v1"
+SCHEMA = build_data.DATA_LOCK_SCHEMA
+LOCK = "pipeline/data.lock.json"
+CHANNELS = "pipeline/latest/latest-channels.json"
+CANDIDATE_FILES = (LOCK, "data/CURRENT")
 INDEX_SCHEMA = "owned-data-publication-index/v2"
 PUBLICATION_SCHEMA = "owned-data-publication/v2"
-RESOLUTION_SCHEMA = "pobr-resolved-data-composition/v1"
+RESOLUTION_SCHEMA = "pobr-resolved-data-lock/v1"
 MAX_METADATA = 2 * 1024 * 1024
-FILES = {
-    "build": "pipeline/runtime/build-data.lock.json",
-    "ordinary": "pipeline/runtime/ordinary/ordinary-inputs.lock.json",
-    "ordinary_requirements": "pipeline/runtime/ordinary/ordinary-inputs.requirements.json",
-    "display": "pipeline/imports/data-imports.lock.json",
-    "requirements": "pipeline/runtime/data-requirements.json",
-    "decisions": "pipeline/imports/sources.lock.json",
-    "locale_generation": "pipeline/imports/locale-generation.lock.json",
-    "channels": "pipeline/latest/latest-channels.json",
-}
 OWNERS = {"ackness/repoe": "master", "ackness/poe2-zh-cn-stats": "main"}
+# Only the roles PoBR consumes; an owner publication may declare more.
 ROLES = {
     "ackness/repoe": {
-        "game": ("build", "packages", "game"),
-        "crafting": ("build", "crafting"),
-        "ordinary": ("ordinary", "packages", "repoe"),
-        "display_source": ("display", "packages", "repoe"),
-        "source_verifier": ("ordinary", "source_verifier"),
-        "test_fixtures": ("build", "test_fixtures"),
+        "game": ("packages", "game"),
+        "crafting": ("crafting",),
+        "test_fixtures": ("test_fixtures",),
     },
     "ackness/poe2-zh-cn-stats": {
-        "language": ("build", "packages", "language"),
-        "display_catalog": ("display", "packages", "translation"),
-        "display_library": ("display", "library"),
-        "reviewed_supplement": ("display", "packages", "supplement"),
-        "workbench": ("display", "workbench"),
-        "support_display": ("build", "support_display"),
-        "locale_generation": ("locale_generation",),
+        "language": ("packages", "language"),
+        "support_display": ("support_display",),
     },
 }
 
@@ -67,7 +54,7 @@ def pin(raw):
 
 
 def digest(value):
-    require(isinstance(value, str) and re.fullmatch(r"[a-f0-9]{64}", value), "Invalid composition digest")
+    require(isinstance(value, str) and re.fullmatch(r"[a-f0-9]{64}", value), "Invalid data lock digest")
 
 
 def sequence(value):
@@ -78,7 +65,7 @@ def target(value):
     require(isinstance(value, dict) and set(value) == {"game", "game_patch", "realm"}
             and value["game"] == "poe2" and value["realm"] in ("international", "china")
             and isinstance(value["game_patch"], str)
-            and re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", value["game_patch"]), "Invalid composition target")
+            and re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", value["game_patch"]), "Invalid data lock target")
 
 
 def lookup(documents, path):
@@ -86,10 +73,6 @@ def lookup(documents, path):
     for key in path:
         value = value[key]
     return value
-
-
-def declarations(documents, owner):
-    return {role: lookup(documents, path) for role, path in ROLES[owner].items()}
 
 
 def metadata_pin(value, owner):
@@ -111,7 +94,7 @@ def publication(document, owner):
     if previous is not None:
         metadata_pin(previous, owner)
     require(isinstance(document.get("components"), dict)
-            and set(document["components"]) == set(ROLES[owner]), "Incomplete owner publication roles")
+            and set(ROLES[owner]) <= set(document["components"]), "Incomplete owner publication roles")
     scope = document.get("scope")
     require(isinstance(scope, dict) and bool(scope), "Publication scope must remain explicit")
     for role, entry in document["components"].items():
@@ -137,6 +120,7 @@ def publication(document, owner):
         validate_pin(binding["manifest"])
         evidence = document["evidence"]["catalog_validation"]
         validate_pin(evidence)
+        require("display_catalog" in document["components"], "Language catalog publication missing")
         catalog = document["components"]["display_catalog"]["input"]
         require(evidence.get("revision") == catalog["revision"]
                 and evidence.get("path") == str(Path(catalog["path"]).parent / "validation.json"),
@@ -150,7 +134,8 @@ def transition(before, after):
     require(after["owner"] == before["owner"] and after["target"]["game"] == before["target"]["game"]
             and after["target"]["realm"] == before["target"]["realm"], "Publication channel changed")
     for role, old in before["components"].items():
-        new = after["components"][role]
+        new = after["components"].get(role)
+        require(new is not None, f"Owner publication dropped a role: {role}")
         changed = old["input"] != new["input"]
         require(new["sequence"] == old["sequence"] + int(changed),
                 f"Publication role regressed, forked or advanced without new input: {role}")
@@ -158,28 +143,80 @@ def transition(before, after):
             "Empty owner publication advance")
 
 
-def documents_valid(documents):
-    build, ordinary, display = (documents[name] for name in ("build", "ordinary", "display"))
-    require(build.get("schema") == build_data.LOCK_SCHEMA, "Latest requires the complete v2 build lock")
-    build_data.validate(build)
-    require(ordinary.get("schema") == "pobr-ordinary-input-lock/v2", "Latest requires v2 ordinary inputs")
-    ordinary_inputs.plan(documents["ordinary_requirements"], ordinary)
-    require(set(ordinary["packages"]) == {"repoe"}, "Unexpected ordinary owners")
-    require(len(documents["ordinary_requirements"]["domains"]) == 6, "Incomplete ordinary domain profile")
-    imports.validate(documents["requirements"], display)
-    require(documents["requirements"]["translation"].get("supplement") == {"mode": "reviewed-only"},
-            "Latest must preserve reviewed-only supplements")
-    wanted = build["target"]
-    require(all(documents[name]["target"] == wanted for name in
-                ("ordinary", "ordinary_requirements", "display", "requirements", "locale_generation")),
-            "Composition targets differ")
-    require(build["packages"]["game"]["publication"] == build["packages"]["language"]["publication"]
-            == build["crafting"]["publication"] == ordinary["packages"]["repoe"]["publication"] == "published",
-            "Latest requires published game, language, crafting and ordinary inputs")
-    require("support_display" in build and "test_fixtures" in build
-            and "source_verifier" in ordinary, "Required existing composition capability missing")
-    channel_config(documents["channels"])
-    return wanted
+def untagged(spec):
+    return {key: value for key, value in spec.items() if key != "tag"}
+
+
+def tagged(spec, tag):
+    """Keep the tag next to the revision it names."""
+    out = {}
+    for key, value in spec.items():
+        out[key] = value
+        if key == "revision":
+            out["tag"] = tag
+    return out
+
+
+def declarations(lock, owner):
+    return {role: untagged(lookup(lock, path)) for role, path in ROLES[owner].items()}
+
+
+def lock_valid(lock):
+    require(lock.get("schema") == SCHEMA, "Latest requires the data lock")
+    build_data.validate(lock)
+    require(all(lookup(lock, path).get("publication") == "published"
+                for roles in ROLES.values() for path in roles.values()),
+            "Latest requires published owner inputs")
+    return lock["target"]
+
+
+def read_lock(root):
+    raw = regular(Path(root) / LOCK)
+    lock = bundle.decode(raw)
+    wanted = lock_valid(lock)
+    require(regular(Path(root) / "data/CURRENT") == (wanted["game_patch"] + "\n").encode(),
+            "Data lock CURRENT differs")
+    return lock, raw
+
+
+def channels(root):
+    config = bundle.decode(regular(Path(root) / CHANNELS))
+    channel_config(config)
+    return config
+
+
+def resolve_tags(owner):
+    """Map each owner `handoff/*` tag to the commit it names (peeled)."""
+    require(owner in OWNERS, "Untrusted owner repository")
+    output = subprocess.check_output(["git", "ls-remote", "--tags", f"https://github.com/{owner}.git",
+                                      "refs/tags/handoff/*"],
+                                     timeout=30, env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
+    require(len(output) <= MAX_METADATA, "Oversized owner tag listing")
+    tags = {}
+    for line in output.decode().splitlines():
+        commit, ref = line.split("\t")
+        require(re.fullmatch(r"[a-f0-9]{40}", commit) and ref.startswith("refs/tags/"), "Invalid owner tag listing")
+        name = ref.removeprefix("refs/tags/")
+        if name.endswith("^{}"):
+            tags[name[:-3]] = commit
+        else:
+            tags.setdefault(name, commit)
+    return tags
+
+
+def tag_for(revision, tags):
+    names = sorted(name for name, commit in tags.items() if commit == revision and name.startswith("handoff/"))
+    require(len(names) == 1, f"Owner revision {revision} needs exactly one handoff/* tag")
+    return names[0]
+
+
+def verify_tags(lock, tags=resolve_tags):
+    for owner, roles in ROLES.items():
+        found = tags(owner)
+        for path in roles.values():
+            spec = lookup(lock, path)
+            require(found.get(spec["tag"]) == spec["revision"],
+                    f"Owner tag {spec['tag']} does not name its pinned revision")
 
 
 def channel_config(config):
@@ -243,38 +280,6 @@ def observe_official(config, output, cache, fetcher):
         for name, expected in spec["files"].items():
             pinned(regular(library / name), expected)
     return observation(output, config)
-
-
-def read_composition(root):
-    raw = regular(Path(root) / "pipeline/latest/data-composition.json")
-    composition = bundle.decode(raw)
-    require(composition.get("schema") == SCHEMA, "Unknown data composition schema")
-    sequence(composition["generation"])
-    if composition.get("previous_id") is not None:
-        digest(composition["previous_id"])
-    require((composition["generation"] == 1) == (composition.get("previous_id") is None),
-            "Composition predecessor missing")
-    require(set(composition["files"]) == set(FILES), "Incomplete composition file closure")
-    documents, payloads = {}, {}
-    for key, name in FILES.items():
-        spec = composition["files"][key]
-        require(spec.get("path") == name, "Composition path differs")
-        payloads[name] = pinned(regular(Path(root) / name), spec)
-        documents[key] = bundle.decode(payloads[name])
-    wanted = documents_valid(documents)
-    require(regular(Path(root) / "data/CURRENT") == (wanted["game_patch"] + "\n").encode(),
-            "Composition CURRENT differs")
-    require(composition["target"] == wanted and composition["locale"] == documents["display"]["locale"],
-            "Composition target/locale differs")
-    require(composition["expected"] == {key: documents["build"][key]
-                                        for key in ("snapshot_manifest", "runtime_identity")},
-            "Composition full runtime expectations differ")
-    require(set(composition["owner_publications"]) == set(OWNERS), "Both owner publications required")
-    for owner, entry in composition["owner_publications"].items():
-        sequence(entry["sequence"])
-        metadata_pin(entry["descriptor"], owner)
-        require(re.fullmatch(r"[a-f0-9]{40}", entry["index_revision"]), "Immutable index revision required")
-    return composition, documents, payloads, raw
 
 
 def resolve_head(owner, branch):
@@ -352,55 +357,46 @@ class Publications:
         return entry, latest
 
 
-def bind_publications(documents, publications):
+def bind_publications(lock, publications):
     for owner in OWNERS:
-        require(publications[owner]["target"] == documents["build"]["target"], "Owner target mismatch")
-        actual = {role: spec["input"] for role, spec in publications[owner]["components"].items()}
-        require(actual == declarations(documents, owner), "Owner publication and consumer declarations differ")
-    require(publications["ackness/poe2-zh-cn-stats"]["bindings"]["display_source"]
-            == documents["display"]["packages"]["repoe"], "Language display source binding differs")
-
-
-def composition_for(documents, payloads, publications, previous=None):
-    wanted = documents_valid(documents)
-    return {"schema": SCHEMA, "generation": 1 if previous is None else previous["generation"] + 1,
-            "previous_id": None if previous is None else sha(encoded(previous)), "target": wanted,
-            "locale": documents["display"]["locale"], "owner_publications": publications,
-            "files": {key: {"path": name, **pin(payloads[name])} for key, name in FILES.items()},
-            "expected": {key: documents["build"][key] for key in ("snapshot_manifest", "runtime_identity")}}
+        require(publications[owner]["target"] == lock["target"], "Owner target mismatch")
+        actual = {role: publications[owner]["components"][role]["input"] for role in ROLES[owner]}
+        require(actual == declarations(lock, owner), "Owner publication and data lock differ")
+    source = publications["ackness/repoe"]["components"].get("display_source")
+    require(source is not None
+            and publications["ackness/poe2-zh-cn-stats"]["bindings"]["display_source"] == source["input"],
+            "Language display source binding differs")
 
 
 def bootstrap(root, fetcher, heads=resolve_head):
-    root = Path(root)
-    payloads = {name: regular(root / name) for name in FILES.values()}
-    documents = {key: bundle.decode(payloads[name]) for key, name in FILES.items()}
-    wanted = documents_valid(documents)
-    require(regular(root / "data/CURRENT") == (wanted["game_patch"] + "\n").encode(), "Bootstrap CURRENT differs")
+    """Record the current owner frontiers for a lock whose inputs already match them."""
+    lock, _ = read_lock(root)
     library, entries, descriptors = Publications(fetcher), {}, {}
     revisions = {owner: heads(owner, branch) for owner, branch in OWNERS.items()}
     for owner in OWNERS:
-        entries[owner], descriptors[owner] = library.latest(owner, None, wanted,
+        entries[owner], descriptors[owner] = library.latest(owner, None, lock["target"],
                                                          lambda name, branch: revisions[name])
-    bind_publications(documents, descriptors)
-    return composition_for(documents, payloads, entries)
+    bind_publications(lock, descriptors)
+    return {**lock, "owner_publications": entries}
 
 
-def verify_composition(root, fetcher):
-    """Verify recorded immutable publications; do not discover a newer channel."""
-    composition, documents, _, raw = read_composition(root)
+def verify_composition(root, fetcher, tags=resolve_tags):
+    """Verify recorded immutable publications and owner tags; do not discover a newer channel."""
+    lock, raw = read_lock(root)
     library, descriptors = Publications(fetcher), {}
-    for owner, adopted in composition["owner_publications"].items():
-        entry, descriptors[owner] = library.latest(owner, adopted, composition["target"],
-                                                    lambda name, branch: composition["owner_publications"][name]["index_revision"])
-        require(entry == adopted, "Recorded publication index differs from composition")
-    bind_publications(documents, descriptors)
-    return {"schema": "pobr-immutable-composition-verification/v1", "status": "verified-immutable-declarations",
-            "composition_id": sha(raw), "owner_publications": composition["owner_publications"],
+    for owner, adopted in lock["owner_publications"].items():
+        entry, descriptors[owner] = library.latest(owner, adopted, lock["target"],
+                                                    lambda name, branch: lock["owner_publications"][name]["index_revision"])
+        require(entry == adopted, "Recorded publication index differs from the data lock")
+    bind_publications(lock, descriptors)
+    verify_tags(lock, tags)
+    return {"schema": "pobr-immutable-data-lock-verification/v1", "status": "verified-immutable-declarations",
+            "lock_id": sha(raw), "owner_publications": lock["owner_publications"], "tags": "verified",
             "freshness": "not-checked", "adoption": "unchanged"}
 
 
 def discover(root, fetcher, heads=resolve_head, *, official=None):
-    current, documents, payloads, raw = read_composition(root)
+    current, raw = read_lock(root)
     library, entries, descriptors, scope_preserved = Publications(fetcher), {}, {}, True
     revisions = {owner: heads(owner, branch) for owner, branch in OWNERS.items()}
     for owner in OWNERS:
@@ -408,15 +404,15 @@ def discover(root, fetcher, heads=resolve_head, *, official=None):
                                                          current["target"], lambda name, branch: revisions[name])
         before = library.descriptor(owner, current["owner_publications"][owner]["descriptor"])
         scope_preserved = scope_preserved and before["scope"] == descriptors[owner]["scope"]
-        require({role: value["input"] for role, value in before["components"].items()}
-                == declarations(documents, owner), "Adopted owner publication differs from its locks")
+        require({role: before["components"][role]["input"] for role in ROLES[owner]}
+                == declarations(current, owner), "Adopted owner publication differs from the data lock")
     changed = entries != current["owner_publications"]
     same_target = all(d["target"] == current["target"] for d in descriptors.values())
     fresh = official is not None
     waiting = fresh and any(d["target"]["game_patch"] != official["version"] for d in descriptors.values())
     status = "waiting-for-owner-publication" if waiting else ("update-available" if changed else "no-new-publication")
     return {"schema": "pobr-latest-data-status/v1", "status": status,
-            "adopted_composition": sha(raw), "target": current["target"], "published_frontier": entries,
+            "adopted_lock": sha(raw), "target": current["target"], "published_frontier": entries,
             "same_target": same_target, "scope_preserved": scope_preserved,
             "metadata_auto_eligible": same_target and scope_preserved,
             "auto_eligible": same_target and scope_preserved and fresh and not waiting,
@@ -436,15 +432,15 @@ def archive_metadata(spec, cache, fetcher):
         return bundle.decode(manifest_raw), raw
 
 
-def build_expectations(build, cache, fetcher):
+def build_expectations(lock, cache, fetcher):
     """Derive full expectations from the owner's declared snapshot/shared hashes.
 
     Preparation still verifies every actual runtime byte before this candidate can
     be adopted. A new language cannot be paired with an old full snapshot manifest.
     """
-    game = build["packages"]["game"]
+    game = lock["packages"]["game"]
     manifest, archive_raw = archive_metadata(game, cache, fetcher)
-    wanted, version = build["target"], build["target"]["game_patch"]
+    wanted, version = lock["target"], lock["target"]["game_patch"]
     require(manifest.get("schema") == build_data.PART_SCHEMA and manifest.get("kind") == "game"
             and manifest.get("target") == wanted, "Game publication target/schema differs")
     snapshot_path = f"data/{version}/manifest.json"
@@ -463,7 +459,7 @@ def build_expectations(build, cache, fetcher):
     for name, value in snapshot["files"].items():
         bundle.relative_path(name)
         digest(value)
-    language = build["packages"]["language"]
+    language = lock["packages"]["language"]
     if language.get("format") == "locale-git-files":
         value = imports.acquire(language, language["path"], language["manifest"], cache, False, fetcher)
         require(len(value) <= MAX_METADATA, "Oversized language manifest")
@@ -498,7 +494,7 @@ def build_expectations(build, cache, fetcher):
             require(build_data.member_kind(name, version) == "game", "Cross-owner game member")
             relative = name.removeprefix(f"data/{version}/")
             require(snapshot["files"].get(relative) == spec["sha256"], "Game part/snapshot hash differs")
-    for name, spec in build["shared_files"].items():
+    for name, spec in lock["shared_files"].items():
         key = "overlay-common/" + name
         require(key not in shared, "External/local shared ownership intersection")
         shared[key] = spec["sha256"]
@@ -507,65 +503,47 @@ def build_expectations(build, cache, fetcher):
             "runtime_identity": sha(bundle.encoded(["pobr-data-pack-v1", 3, version, hashes]))}, shared
 
 
-def ordinary_expectations(documents, cache, fetcher):
-    lock, request = documents["ordinary"], documents["ordinary_requirements"]
-    manifest, _ = archive_metadata(lock["packages"]["repoe"], cache, fetcher)
-    require(manifest.get("schema") == "repoe-data-publication/v1"
-            and manifest.get("target") == lock["target"], "Ordinary publication target/schema differs")
-    for unit, spec in lock["inputs"].items():
-        if unit in lock["policies"]:
-            continue
-        for name in spec["files"]:
-            key = f"{unit}/{name}"
-            require(key in manifest["files"], "New ordinary publication lacks a declared member")
-            validate_pin(manifest["files"][key])
-            spec["files"][name] = manifest["files"][key]
-    for job in request["domains"]:
-        for flag, checksum in ordinary_inputs.PROFILES[job["domain"]][0].items():
-            if checksum:
-                spec = lock["inputs"][job["options"][flag]["input"]]
-                name = "manifest.json" if flag == "--supplement" else spec["path"]
-                job["options"][checksum] = spec["files"][name]["sha256"]
-
-
-def propose(root, output, fetcher, heads=resolve_head, *, official=None, cache=None):
+def propose(root, output, fetcher, heads=resolve_head, *, official=None, cache=None, tags=resolve_tags):
     root, output = Path(root), build_data.safe_directory(output)
     require(not output.exists() and not output.is_relative_to(root / "data"), "Fresh candidate outside data required")
     status, library, descriptors = discover(root, fetcher, heads, official=official)
     require(status["status"] != "waiting-for-owner-publication", "Official version lacks complete owner publications")
     require(status["same_target"], "New patch requires compatible requirements and source decisions")
-    current, documents, payloads, old_raw = read_composition(root)
-    require(sha(old_raw) == status["adopted_composition"], "Adopted composition changed during discovery")
+    current, old_raw = read_lock(root)
+    require(sha(old_raw) == status["adopted_lock"], "Adopted data lock changed during discovery")
     if status["status"] == "no-new-publication":
         return status
-    proposed = copy.deepcopy(documents)
-    for owner in OWNERS:
-        for role, path in ROLES[owner].items():
-            parent = proposed
-            for key in path[:-1]:
-                parent = parent[key]
-            parent[path[-1]] = descriptors[owner]["components"][role]["input"]
+    proposed, found = copy.deepcopy(current), {}
+    for owner, roles in ROLES.items():
+        for role, path in roles.items():
+            value = descriptors[owner]["components"][role]["input"]
+            parent = lookup(proposed, path[:-1])
+            if untagged(parent[path[-1]]) == value:
+                continue
+            if owner not in found:
+                found[owner] = tags(owner)
+            parent[path[-1]] = tagged(value, tag_for(value["revision"], found[owner]))
     cache = build_data.safe_directory(cache or root / ".cache/data-import-downloads")
     cache.mkdir(parents=True, exist_ok=True)
-    if any(proposed["build"][key] != documents["build"][key] for key in ("packages", "crafting")):
-        expected, shared = build_expectations(proposed["build"], cache, fetcher)
-        _, previous_shared = build_expectations(documents["build"], cache, fetcher)
+
+    def runtime_inputs(lock):
+        return [untagged(lock["packages"]["game"]), untagged(lock["packages"]["language"]), untagged(lock["crafting"])]
+
+    if runtime_inputs(proposed) != runtime_inputs(current):
+        expected, shared = build_expectations(proposed, cache, fetcher)
+        _, previous_shared = build_expectations(current, cache, fetcher)
         require(shared == previous_shared, "Shared data changed; explicit migration review required")
-        proposed["build"].update(expected)
-    if proposed["ordinary"]["packages"] != documents["ordinary"]["packages"]:
-        ordinary_expectations(proposed, cache, fetcher)
-    documents_valid(proposed)
+        proposed.update(expected)
+        # The candidate Full CI builds and reports the compact release; the
+        # adopting change records that identity once the build has passed.
+        proposed["release_id"] = None
+    proposed.update(generation=current["generation"] + 1, previous_id=sha(old_raw),
+                    owner_publications=status["published_frontier"])
+    lock_valid(proposed)
     bind_publications(proposed, descriptors)
-    # The candidate Full CI authenticates all input bytes, runs existing policy
-    # bindings and checks actual full/compact consumers before any adoption.
-    proposed_raw = {name: encoded(proposed[key]) for key, name in FILES.items()}
-    for key, name in FILES.items():
-        if proposed[key] == documents[key]:
-            proposed_raw[name] = payloads[name]
-    composition = composition_for(proposed, proposed_raw, status["published_frontier"], current)
-    composition["previous_id"] = sha(old_raw)
-    proposed_raw["pipeline/latest/data-composition.json"] = encoded(composition)
-    proposed_raw["data/CURRENT"] = regular(root / "data/CURRENT")
+    # The candidate Full CI authenticates all input bytes and checks the actual
+    # full and compact consumers before any adoption.
+    proposed_raw = {LOCK: encoded(proposed), "data/CURRENT": regular(root / "data/CURRENT")}
     inventory = {name: pin(value) for name, value in proposed_raw.items()}
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".latest-candidate-", dir=output.parent) as temporary:
@@ -578,18 +556,14 @@ def propose(root, output, fetcher, heads=resolve_head, *, official=None, cache=N
             write(stage / name, value)
             evidence[name] = {"address": list(address), **pin(value)}
         result = {"schema": RESOLUTION_SCHEMA, "previous_id": sha(old_raw),
-                  "composition_id": sha(proposed_raw["pipeline/latest/data-composition.json"]),
-                  "files": inventory, "evidence": evidence,
-                  "auto_eligible": status["auto_eligible"],
-                  "official_observation": official,
+                  "lock_id": sha(proposed_raw[LOCK]), "files": inventory, "evidence": evidence,
+                  "auto_eligible": status["auto_eligible"], "official_observation": official,
                   "status": "resolved-not-validated", "adoption": "not-adopted"}
-        read_composition(stage)
-        require(regular(root / "pipeline/latest/data-composition.json") == old_raw
-                and all(regular(root / name) == value for name, value in payloads.items()),
-                "Adopted composition changed during resolution")
+        read_lock(stage)
+        require(regular(root / LOCK) == old_raw, "Adopted data lock changed during resolution")
         write(stage / "resolution.json", encoded(result))
         stage.rename(output)
-    return {**status, "candidate": str(output), "candidate_composition": result["composition_id"]}
+    return {**status, "candidate": str(output), "candidate_lock": result["lock_id"]}
 
 
 def verify_candidate(candidate):
@@ -597,15 +571,13 @@ def verify_candidate(candidate):
     receipt = bundle.decode(regular(candidate / "resolution.json"))
     require(receipt.get("schema") == RESOLUTION_SCHEMA and receipt.get("status") == "resolved-not-validated"
             and receipt.get("adoption") == "not-adopted", "Invalid latest candidate receipt")
-    allowed = {*FILES.values(), "pipeline/latest/data-composition.json", "data/CURRENT"}
+    allowed = set(CANDIDATE_FILES)
     require(set(receipt["files"]) == allowed, "Candidate metadata closure differs")
     for name, expected in receipt["files"].items():
         pinned(regular(candidate / name), expected)
-    comp, documents, _, raw = read_composition(candidate)
-    require(sha(raw) == receipt["composition_id"] and comp["previous_id"] == receipt["previous_id"],
-            "Candidate composition/predecessor differs")
-    require(regular(candidate / "data/CURRENT") == (comp["target"]["game_patch"] + "\n").encode(),
-            "Candidate CURRENT differs")
+    lock, raw = read_lock(candidate)
+    require(sha(raw) == receipt["lock_id"] and lock["previous_id"] == receipt["previous_id"],
+            "Candidate lock/predecessor differs")
     payloads = {}
     for name, spec in receipt["evidence"].items():
         address = spec["address"]
@@ -614,10 +586,10 @@ def verify_candidate(candidate):
         payloads[tuple(address)] = pinned(regular(candidate / name), spec)
     library = Publications(lambda address: payloads[address])
     publications = {owner: library.descriptor(owner, entry["descriptor"])
-                    for owner, entry in comp["owner_publications"].items()}
+                    for owner, entry in lock["owner_publications"].items()}
     require(all(entry["sequence"] == publications[owner]["sequence"]
-                for owner, entry in comp["owner_publications"].items()), "Composition owner sequence differs")
-    bind_publications(documents, publications)
+                for owner, entry in lock["owner_publications"].items()), "Data lock owner sequence differs")
+    bind_publications(lock, publications)
     actual = set()
     for path in candidate.rglob("*"):
         build_data.safe_directory(path)
@@ -629,12 +601,12 @@ def verify_candidate(candidate):
     return receipt
 
 
-def recheck(candidate, root, fetcher, heads=resolve_head, *, official):
+def recheck(candidate, root, fetcher, heads=resolve_head, *, official, tags=resolve_tags):
     """Recheck freshness and the adopted baseline; CI success is checked by the host."""
     receipt = verify_candidate(candidate)
-    current, _, _, current_raw = read_composition(root)
-    proposed, _, _, _ = read_composition(candidate)
-    require(sha(current_raw) == receipt["previous_id"], "Expected composition changed")
+    current, current_raw = read_lock(root)
+    proposed, _ = read_lock(candidate)
+    require(sha(current_raw) == receipt["previous_id"], "Expected data lock changed")
     require(proposed["generation"] == current["generation"] + 1, "Candidate generation differs")
     status, _, _ = discover(root, fetcher, heads, official=official)
     require(status["status"] == "update-available" and status["auto_eligible"],
@@ -643,43 +615,41 @@ def recheck(candidate, root, fetcher, heads=resolve_head, *, official):
                         for key in ("sequence", "descriptor")) for owner in OWNERS),
             "Newer owner publication supersedes the candidate")
     # Reconstruct the authorized metadata rather than trusting a PR's receipt.
-    # This also refuses policy/source/scope changes and modified expectations.
     with tempfile.TemporaryDirectory(prefix="pobr-latest-recheck-") as temporary:
         rebuilt = Path(temporary).resolve() / "candidate"
         propose(root, rebuilt, fetcher, heads=lambda owner, branch: proposed["owner_publications"][owner]["index_revision"],
-                official=official)
+                official=official, tags=tags)
         regenerated = verify_candidate(rebuilt)
         require(regenerated["files"] == receipt["files"], "Candidate differs from resolved owner declarations")
-    return {"status": "fresh-candidate-not-adopted", "composition_id": receipt["composition_id"],
+    return {"status": "fresh-candidate-not-adopted", "lock_id": receipt["lock_id"],
             "previous_id": receipt["previous_id"], "official_observation": official}
 
 
-def apply_candidate(candidate, root, expected_composition, *, replace=os.replace):
-    """Stage only frozen small metadata, with cooperative CAS and rollback.
+def apply_candidate(candidate, root, expected_lock, *, replace=os.replace):
+    """Stage only the frozen data lock, with cooperative CAS and rollback.
 
     This prepares a normal Git change. It neither selects installed data nor
     proves runtime validation or authorizes a default-branch merge.
     """
     candidate, root = (build_data.safe_directory(path) for path in (candidate, root))
     require(not candidate.is_relative_to(root / "data"), "Candidate overlaps installed data")
-    digest(expected_composition)
+    digest(expected_lock)
     receipt = verify_candidate(candidate)
-    require(receipt["previous_id"] == expected_composition, "Candidate predecessor differs")
+    require(receipt["previous_id"] == expected_lock, "Candidate predecessor differs")
     payloads = {name: pinned(regular(candidate / name), spec) for name, spec in receipt["files"].items()}
     with data_snapshot.workspace_lock(root):
-        current, _, originals, old_raw = read_composition(root)
-        require(sha(old_raw) == expected_composition, "Expected composition changed")
-        proposed = bundle.decode(payloads["pipeline/latest/data-composition.json"])
+        current, old_raw = read_lock(root)
+        require(sha(old_raw) == expected_lock, "Expected data lock changed")
+        proposed = bundle.decode(payloads[LOCK])
         require(proposed["generation"] == current["generation"] + 1, "Candidate generation differs")
-        originals.update({"pipeline/latest/data-composition.json": old_raw, "data/CURRENT": regular(root / "data/CURRENT")})
+        originals = {LOCK: old_raw, "data/CURRENT": regular(root / "data/CURRENT")}
         backup = Path(tempfile.mkdtemp(prefix="latest-metadata-", dir=root / ".cache"))
         changed = []
         try:
             for name, raw in originals.items():
                 write(backup / "original" / name, raw)
-            # Composition last: readers reject a partially changed closure.
-            names = sorted(set(payloads) - {"pipeline/latest/data-composition.json"}) + ["pipeline/latest/data-composition.json"]
-            for name in names:
+            # The lock last: readers reject a partially changed closure.
+            for name in ("data/CURRENT", LOCK):
                 require(regular(root / name) == originals[name], "Metadata changed while staging")
                 if payloads[name] == originals[name]:
                     continue
@@ -688,7 +658,7 @@ def apply_candidate(candidate, root, expected_composition, *, replace=os.replace
                 replace(backup / "new" / name, root / name)
             require(all(regular(root / name) == raw for name, raw in payloads.items()),
                     "Metadata changed during staging")
-            read_composition(root)
+            read_lock(root)
         except BaseException:
             for name in reversed(changed):
                 installed = regular(root / name)
@@ -702,8 +672,8 @@ def apply_candidate(candidate, root, expected_composition, *, replace=os.replace
         else:
             import shutil
             shutil.rmtree(backup)
-    return {"status": "metadata-staged-not-adopted", "composition_id": receipt["composition_id"],
-            "previous_id": expected_composition, "runtime_selection": "unchanged"}
+    return {"status": "metadata-staged-not-adopted", "lock_id": receipt["lock_id"],
+            "previous_id": expected_lock, "runtime_selection": "unchanged"}
 
 
 def main():
@@ -712,16 +682,16 @@ def main():
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--out", type=Path)
     parser.add_argument("--candidate", type=Path)
-    parser.add_argument("--expected-composition")
+    parser.add_argument("--expected-lock")
     parser.add_argument("--observation", type=Path, help="Existing fresh pinned observer receipt directory")
     parser.add_argument("--cache", type=Path, default=ROOT / ".cache/data-import-downloads")
     args = parser.parse_args()
     if args.action == "verify":
         result = verify_candidate(args.root)
     elif args.action == "apply":
-        require(args.candidate is not None and args.expected_composition is not None,
-                "Apply needs --candidate and --expected-composition")
-        result = apply_candidate(args.candidate, args.root, args.expected_composition)
+        require(args.candidate is not None and args.expected_lock is not None,
+                "Apply needs --candidate and --expected-lock")
+        result = apply_candidate(args.candidate, args.root, args.expected_lock)
     else:
         with tempfile.TemporaryDirectory(prefix="pobr-latest-git-") as temporary:
             fetcher = imports.GitInputs(Path(temporary), timeout=30)
@@ -732,7 +702,7 @@ def main():
                 result = bootstrap(args.root, fetcher)
                 write(args.out, encoded(result))
             else:
-                config = read_composition(args.root)[1]["channels"]
+                config = channels(args.root)
                 if args.observation is not None:
                     official = observation(args.observation, config)
                 else:

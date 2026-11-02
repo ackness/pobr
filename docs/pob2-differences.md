@@ -7,9 +7,9 @@
 ## 数据来源现状与退出顺序
 
 本地活动版本为 `0.5.5.5`；`0.5.5.4.2` 是由独立固定锁恢复的历史回滚输入。
-完整游戏与语言产物分别存于 RePoE 和翻译库，PoBR 按[构建锁](../pipeline/runtime/build-data.md)
-临时导入；[普通领域生产](../pipeline/runtime/ordinary/ordinary-inputs.md)再从声明的事实、CSD 和政策生成六域候选，
-由[运行包组合](../pipeline/runtime/runtime-bundle.md)验证后接入既有消费者。
+完整游戏与语言产物分别存于 RePoE 和翻译库，PoBR 按[数据锁](../pipeline/data.lock.json)
+临时导入（见[构建数据](../pipeline/runtime/build-data.md)），再由[运行包组合](../pipeline/runtime/runtime-bundle.md)
+打成精简发行包供既有消费者使用。
 本地采用和完整 CI 已完成，线上部署仍是单独动作；具体身份、已迁字段和剩余边界见
 [数据现状](data-status.md)。
 

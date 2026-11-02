@@ -14,10 +14,12 @@ tests to resolve disagreements with any document.
 - `apps/` contains CLI and WASM/JSON bindings.
   `web/` is the React/TypeScript application; its backend consumes the
   `apps/pobr-wasm/src/build_api/` JSON contract.
-- `tools/` and `pipeline/` temporarily import pinned RePoE/game and translation
-  inputs, adapt them to PoBR contracts and verify runtime snapshots. Complete
-  game/language data stays outside PoBR Git; `data/` tracks `CURRENT` and owned
-  rules. Real-data tests/builds use `mise run data:prepare`; pure fixture tests
+- `pipeline/data.lock.json` is the only data declaration: each RePoE and
+  translation artifact is a tag, full commit, path and SHA-256. `pipeline/`
+  imports exactly those artifacts, verifies the runtime snapshot and packages the
+  compact release; missing data or translations are fixed in the owner repos,
+  not in PoBR. Complete game/language data stays outside PoBR Git; `data/` tracks
+  `CURRENT` and owned rules. Real-data tests/builds use `mise run data:prepare`; pure fixture tests
   need only their declared inputs. `mise run data:check` verifies offline that
   `data/` tracks only owned files and that the import left the worktree clean.
   PoBR never produces data from PoB2 vendor Lua or local raw-table exports;

@@ -165,7 +165,7 @@ class CraftingProjectionTests(unittest.TestCase):
             root = Path(root).resolve()
             spec, _ = source_package(self.facts, self.target)
             lock = root / "lock.json"
-            lock.write_bytes(encoded({"schema": crafting.BUILD_SCHEMA, "target": self.target, "crafting": spec}))
+            lock.write_bytes(encoded({"schema": "pobr-build-data-lock/v2", "target": self.target, "crafting": spec}))
             output, cache = root / "output.json", root / "cache"
             run = subprocess.run([sys.executable, "-m", "pipeline.imports.crafting_inputs", "--build-lock", str(lock),
                                   "--patch", "9.2", "--out", str(output), "--cache", str(cache)], capture_output=True)

@@ -237,7 +237,7 @@ output. Ordinary Rust library tests and PR CI check drift. Other types remain in
 Regenerate mock fixtures after contract changes with
 `mise exec -- cargo test -p pobr-wasm --features diagnostics --test gen_fixtures -- --ignored`.
 Publish the resulting ignored samples through the independent RePoE fixture
-artifact and update `pipeline/runtime/build-data.lock.json`; do not commit complete API
+artifact and update `pipeline/data.lock.json`; do not commit complete API
 responses to PoBR. Mocks support UI work; they do not verify engine behavior.
 
 ## Layout and data flow

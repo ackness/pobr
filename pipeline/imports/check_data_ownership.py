@@ -20,4 +20,4 @@ def check(names, lock):
 if __name__ == "__main__":
     names = subprocess.check_output(["git", "ls-files", "-z", "--", "data",
                                      "web/src/lib/supportDescriptions.zh-CN.json", "web/src/fixtures"], cwd=ROOT).decode().split("\0")
-    check([name for name in names if name], decode(regular(ROOT / "pipeline/runtime/build-data.lock.json")))
+    check([name for name in names if name], decode(regular(ROOT / "pipeline/data.lock.json")))

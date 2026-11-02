@@ -16,7 +16,6 @@ from pipeline.imports.data_imports import GitInputs, acquire, encoded, git_addre
 ROOT = Path(__file__).resolve().parents[2]
 FORMAT = "repoe-native-crafting-facts/v1"
 POLICY = "pobr-trade-crafting-catalog/v1"
-BUILD_SCHEMA = "pobr-build-data-lock/v2"
 TABLES = ("BaseItemTypes", "ItemClasses", "Mods", "Stats", "Essences", "EssenceTargetItemCategories", "EssenceMods")
 PRODUCERS = {"RePoE/native_crafting_facts.py", "RePoE/native_descriptions.py"}
 
@@ -208,7 +207,7 @@ def record(cache, lock_raw, receipt):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--build-lock", type=Path, default=ROOT / "pipeline/runtime/build-data.lock.json")
+    parser.add_argument("--build-lock", type=Path, default=ROOT / "pipeline/data.lock.json")
     parser.add_argument("--patch", required=True)
     parser.add_argument("--check-lock", action="store_true")
     parser.add_argument("--out", type=Path)
@@ -218,7 +217,8 @@ def main():
     args = parser.parse_args()
     lock_raw = regular(args.build_lock)
     lock = decode(lock_raw)
-    require(lock.get("schema") == BUILD_SCHEMA and lock["target"]["game_patch"] == args.patch,
+    from pipeline.runtime.build_data import CRAFTING_SCHEMAS
+    require(lock.get("schema") in CRAFTING_SCHEMAS and lock["target"]["game_patch"] == args.patch,
             "Crafting build lock does not match requested patch")
     validate(lock["crafting"])
     if args.check_lock:

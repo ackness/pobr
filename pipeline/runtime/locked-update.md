@@ -9,12 +9,12 @@ no downloader, table exporter or vendor-based upgrade path.
 
 ```sh
 # Prepare a fresh complete candidate. CURRENT and installed data remain unchanged.
-mise run data:update --lock pipeline/runtime/build-data.lock.json --out .cache/update-review
+mise run data:update --lock pipeline/data.lock.json --out .cache/update-review
 # Optional --patch only checks the lock's target; it cannot relabel old data.
-mise run data:update --lock pipeline/runtime/build-data.lock.json \
+mise run data:update --lock pipeline/data.lock.json \
   --patch 0.5.5.5 --out .cache/update-review-2 --offline
 # Explicit local selection, including a same-version refresh:
-mise run data:update --lock pipeline/runtime/build-data.lock.json --out .cache/update-select \
+mise run data:update --lock pipeline/data.lock.json --out .cache/update-select \
   --activate --expected-current 0.5.5.5
 ```
 
