@@ -1,11 +1,12 @@
 //! Config options catalog domain schema (`overlay/config_options.json`).
 //!
 //! Data source: vendor PoB2 `src/Modules/ConfigOptions.lua` (542 static
-//! entries + dynamic questRewards entries), reduced by
-//! `sync-pob-catalog extract-lua --what config-options` from apply closures
-//! into declarative `effects[]` using **call interception plus multi-probe
+//! entries + dynamic questRewards entries), with apply closures reduced into
+//! declarative `effects[]` by **call interception plus multi-probe
 //! fitting**. Entries with real logic that can't be templated only carry a
-//! `handler_id` (target ≤54, architecture doc §5).
+//! `handler_id` (target ≤54, architecture doc §5). The file is PoB2-derived
+//! compatibility data shipped as fixed bytes in the RePoE owner package and
+//! imported by `mise run data:prepare`.
 //!
 //! Expression / predicate / tag types are shared with [`super::value_expr`]
 //! (the single restricted DSL, per decision §4-1); evaluation always goes

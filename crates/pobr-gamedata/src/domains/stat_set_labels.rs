@@ -3,9 +3,8 @@
 //! [`pobr_data::catalog::skills`]'s `StatSetLabelDef` section.
 //!
 //! Data source: vendor `Data/Skills/*.lua` (label text) joined with
-//! `Export/Skills/*.txt` templates (set id / export index),
-//! deterministically extracted by
-//! `sync-pob-catalog extract-lua --what stat-set-labels`.
+//! `Export/Skills/*.txt` templates (set id / export index), PoB2-derived
+//! compatibility data imported from the RePoE owner package.
 //!
 //! Consumption: [`crate::GameData::skill_stat_sets`] merges this by
 //! `(effect_id, set_id)` after loading the base multi-set domain, filling

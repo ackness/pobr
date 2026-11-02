@@ -4,12 +4,12 @@
 
 ## 数据来源
 
-PoB2 参考版本由活动数据的 `overlay/mod_parser_rules.json::_meta.vendor_commit` 指定。首次实现对照 `ce566eac45ea8a86477f513c7ee65a1ebe60014e` 的以下文件；这个旧 hash 不表示现在的上游 HEAD：
+活动数据中 PoB2 兼容文件的来源版本记录在 `overlay/mod_parser_rules.json::_meta.vendor_commit`。首次实现对照 `ce566eac45ea8a86477f513c7ee65a1ebe60014e` 的以下文件；这个旧 hash 不表示现在的上游 HEAD：
 
 - `TradeQueryGenerator.lua`：`InitMods`、`ProcessMod`、`canModSpawnForItemCategory`、`GenerateModWeights`。
 - `ModItem.lua`、`ModVeiled.lua`（亵渎）、`ModCorrupted.lua`、`ModJewel.lua`、`Essence.lua`、`TradeSiteStats.lua`。
 
-PoB2 除普通生成权重外，还补完美精华、Genesis Tree 制作和符文影响类别，但其初始化没有提供 Alloy 类别覆盖。PoBR 从同版本游戏 `EssenceMods`、`Essences`、`EssenceTargetItemCategories` 读取配方，包括 `OutcomeMods` 中真实的替代结果及腐化精华。表经现有 GGG 管线获取，`trade_crafting_sources.json` 保留 modifier ID、来源种类、物品类别、需求等级、stat ID 和取值范围；游戏配方类别优先于 PoB2 精华回退。
+PoB2 除普通生成权重外，还补完美精华、Genesis Tree 制作和符文影响类别，但其初始化没有提供 Alloy 类别覆盖。PoBR 从同版本游戏 `EssenceMods`、`Essences`、`EssenceTargetItemCategories` 读取配方，包括 `OutcomeMods` 中真实的替代结果及腐化精华。表由 RePoE 获取并发布，`trade_crafting_sources.json` 保留 modifier ID、来源种类、物品类别、需求等级、stat ID 和取值范围；游戏配方类别优先于 PoB2 精华回退。
 
 例如 `AlloyCastSpeedDamageAsExtraColdHybridOneHand1` 属于 Wand/Focus，更强的 `AlloyCastSpeedDamageAsExtraColdHybrid1` 属于 Staff。它们普通生成权重为零，仍可出现在成品搜索中。不能凭名字猜类别，也不能给所有武器。
 
@@ -45,7 +45,7 @@ PoB2 的 PoE2 pseudo-stat 映射有意留空，因为伪属性可能混入镶嵌
 
 参考组合搜索和手动词缀编辑器仍只使用与基底兼容的普通前／后缀池。特殊来源目录不是制作模拟器：不证明多种制作可共存、不估成本或成功率，也不保证搜索结果就是最优购买。
 
-## 数据再生与检查
+## 数据导入与检查
 
 游戏事实由 RePoE 独立保存和处理；PoBR 在构建或实物测试中临时导入固定产物。当前 [v2 构建锁](../pipeline/runtime/build-data.lock.json) 强制读取独立 `repoe-native-crafting-facts/v1` 包，游戏 part 不再携带旧 crafting 成品。PoBR 的[投影器](../pipeline/imports/crafting_inputs.py)只负责 UI 前缀筛选、类别聚合及已识别 regular-stat 目录；缺包或 pin 不符即失败。
 
@@ -59,14 +59,11 @@ RePoE 从同一 F77 快照中的 `BaseItemTypes`、`ItemClasses`、`Mods`、`Sta
 
 ```sh
 mise run data:prepare
-# For a separate regeneration candidate with a matching build lock:
+# For a separate projection candidate with a matching build lock:
 mise exec -- python3 -m pipeline.imports.crafting_inputs --patch 0.5.5.5 \
   --out "$POBR_CANDIDATE_OVERLAY/trade_crafting_sources.json"
-mise exec -- luajit pipeline/legacy/extract-trade-catalog.lua vendor/PathOfBuilding-PoE2/src "$POBR_CANDIDATE_OVERLAY/trade_catalog.json" "$POBR_CANDIDATE_OVERLAY/trade_crafting_sources.json"
 mise exec -- python3 -m pipeline.imports.test_trade_crafting
-mise exec -- luajit pipeline/legacy/test-trade-stats.lua
-mise exec -- luajit pipeline/legacy/test-trade-crafting-fallback.lua
 mise run web test src/lib/tradeCatalog.test.ts src/lib/equipmentScore.test.ts src/lib/tradeOptimizer.test.ts
 ```
 
-`pipeline/legacy/regen-all.sh` 在昂贵生成器前核对 crafting 目标，生成失败中止整个候选；后续 catalog 的文本／交易 hash 关联仍有独立固定 vendor 与回归边界。单独省略 catalog 提取器第三个参数只产生 vendor 覆盖，不证明已消费制作事实。完整数据只留在独立来源仓库或临时构建／测试目录。
+`trade_catalog.json` 与 `trade_stat_map.json` 是从固定 PoB2 转换的兼容数据，以固定字节随 RePoE owner 包导入；其文本／交易 hash 关联的变化属于 owner 仓库。PoBR 只投影 `trade_crafting_sources.json`，这不证明 catalog 已消费全部制作事实。完整数据只留在独立来源仓库或临时构建／测试目录。

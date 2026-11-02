@@ -118,8 +118,8 @@ fn tree_meta_lists_classes_and_ascendancies() {
     );
 }
 
-/// The anointment notable pool (backfilled by `--tree-anoints`, from
-/// vendor tree.lua's top-level nodes block): GGG's data.json doesn't
+/// The anointment notable pool (a PoB2-derived compatibility field in the
+/// imported tree data, from vendor tree.lua's top-level nodes block): GGG's data.json doesn't
 /// include anoint-exclusive notables that aren't on the main graph; once
 /// backfilled they should be consumable via granting by name (the
 /// `Allocates <name>` enchant → GrantedPassive, CalcSetup.lua:1322-1331).

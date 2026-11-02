@@ -16,13 +16,15 @@ Choose only the relevant source:
 - [Change recipes](../../../docs/recipes.md): files and focused check for common changes.
 - [Development workflow](../../../docs/development-workflow.md): setup, cache, CI and release operations.
 - [Diagnostics](../../../docs/diagnostics.md): triage, line usage and build comparisons.
-- [Data pipeline](../../../pipeline/README.md): generation and version updates.
+- [Data pipeline](../../../pipeline/README.md): pinned owner-data import, checks and version updates.
 - [Project workflow](../workflow/SKILL.md): proportionate PR/review handoff.
 
 Available entry points; choose what resolves the current uncertainty:
 
 ```bash
 mise run setup
+mise run data:prepare                                # Import pinned owner data
+mise run data:check                                  # Offline: tracked-data ownership, clean worktree
 mise run targets
 mise run cache
 mise exec -- cargo check --locked -p pobr-core --lib  # Optional compiler check

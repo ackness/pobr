@@ -160,6 +160,19 @@ class ExternalDataShardTests(unittest.TestCase):
             self.assertIn("matrix.shard == 'libraries-tools'", step)
 
 
+    def test_every_data_import_reuses_the_download_cache_and_leaves_a_clean_worktree(self):
+        for filename in ("pr.yml", "ci.yml"):
+            workflow = (HERE.parents[1] / ".github/workflows" / filename).read_text()
+            steps = workflow.split("      - name: ")
+            prepares = [i for i, step in enumerate(steps) if "pipeline.runtime.build_data --install data" in step]
+            self.assertTrue(prepares, filename)
+            for index in prepares:
+                self.assertIn("bash devs/scripts/check-data.sh", steps[index], filename)
+                self.assertTrue(steps[index - 1].startswith("Restore owner data downloads"), filename)
+                self.assertIn("path: .cache/data-import-downloads", steps[index - 1], filename)
+                self.assertIn("pipeline/latest/data-composition.json", steps[index - 1], filename)
+            self.assertNotIn("pipeline.legacy", workflow, filename)
+
 class RoutingTests(unittest.TestCase):
     def test_docs_only_and_known_areas(self):
         self.assertFalse(any(plan.classify([

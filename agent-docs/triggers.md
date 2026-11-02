@@ -77,7 +77,7 @@ PoB2 `isTriggered()` 把「被触发技能」识别为：`triggered` / `SkillTyp
 - 与 PoE1 不同：**独立于怪物生命**，改看异常阈值。
 - 游戏文本只说“按暴击将造成的伤害占敌人异常阈值的百分比修正”；“减免前伤害 ÷ 阈值、线性、不封顶”是玩家测得的公式[^poe2wiki-coc]，游戏没有公布。
 - **阈值数值以入库的游戏数据为准**：`data/<版本>/base/monster_scaling.json::ailment_threshold`（按怪物等级）。当前数据里 65 级 9,649、80 级 65,527、82 级 71,303；Wiki 表格里的 9,723 / 26,029 / 29,684 是旧版本的数值（1–60 级两边相同，高等级后来被上调）。首领比地图等级高 2 级。
-- 游戏 stat 表里有 `ailment_threshold_pluspercent_final_for_map_boss`，说明地图首领的阈值可能另有乘数，取值不在已入库数据里；PoBR 与 PoB2 都只按等级取表。
+- 游戏 stat 表里有 `ailment_threshold_pluspercent_final_for_map_boss`，说明地图首领的阈值可能另有乘数，取值不在当前数据里；PoBR 与 PoB2 都只按等级取表。
 
 **Cast on Ailment / Ignite 类**：`能量 = Monster Power × (点燃 magnitude / 阈值占比)`（点燃看强度，shock/freeze 多为定值）[^game8-trigger]。注意不同条件的 centienergy 基数差异很大（核对自 `act_int.lua`）：
 

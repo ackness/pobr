@@ -17,7 +17,7 @@
 //! | `stored_uses` | `StoredUses` | raw value (== 0 -> None) |
 //! | `attack_speed_multiplier` | `AttackSpeedMultiplier` | raw value (== 0 -> None) |
 //! | `crit_chance` | the two crit columns on the stat-set table (see [`super::stat_sets::crit_from_statset_levels`]) | `/100`, overridden by Offhand |
-//! | `level_requirement` | **no `.dat` column** (the real source `ItemExperiencePerLevel` isn't downloadable) | always None, filled in via extract-lua |
+//! | `level_requirement` | **no `.dat` column** (the real source `ItemExperiencePerLevel` isn't downloadable) | always None |
 
 use std::collections::BTreeMap;
 
@@ -121,7 +121,7 @@ pub(super) fn adapt_levels(
                 .filter(|&v| v != 100.0)
                 .map(|v| v - 100.0),
             stored_uses: raw.stored_uses.filter(|&v| v != 0).map(|v| v.max(0) as u32),
-            // PoE2's `.dat` has no PlayerLevelReq column (verified during W0); filled in via extract-lua.
+            // PoE2's `.dat` has no PlayerLevelReq column (verified during W0).
             level_requirement: None,
         });
     }

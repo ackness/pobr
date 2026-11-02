@@ -4,14 +4,14 @@ Game acquisition and export belong to RePoE; language production belongs to the
 translation repository. PoBR consumes a complete [build-data lock](build-data.md)
 with exact owner revisions, archive/member pins, snapshot and runtime identities.
 A patch number alone is insufficient. [Latest complete publication discovery](../latest/latest-data.md)
-is separate from this immutable local preparation/selection command. The old Node downloader, table exporter and
-implicit latest/vendor upgrade chain have been retired.
+is separate from this immutable local preparation/selection command. PoBR has
+no downloader, table exporter or vendor-based upgrade path.
 
 ```sh
 # Prepare a fresh complete candidate. CURRENT and installed data remain unchanged.
 mise run data:update --lock pipeline/runtime/build-data.lock.json --out .cache/update-review
 # Optional --patch only checks the lock's target; it cannot relabel old data.
-mise exec -- bash pipeline/legacy/bump-version.sh --lock pipeline/runtime/build-data.lock.json \
+mise run data:update --lock pipeline/runtime/build-data.lock.json \
   --patch 0.5.5.5 --out .cache/update-review-2 --offline
 # Explicit local selection, including a same-version refresh:
 mise run data:update --lock pipeline/runtime/build-data.lock.json --out .cache/update-select \

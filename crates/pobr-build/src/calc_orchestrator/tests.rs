@@ -274,7 +274,7 @@ fn selected_tree_controls_gem_properties_and_equipment_effects() {
 /// Anointed notables feed into the GemProperty scan (vendor: a granted node's
 /// modList joins the global modDB just like an allocated node,
 /// CalcSetup.lua:1322-1331 + applyGemMods): an amulet enchant "Allocates
-/// Paragon" → the anoint-pool node 20686 (backfilled via --tree-anoints) whose
+/// Paragon" → the anoint-pool node 20686 (from the imported tree data) whose
 /// `+5% to Quality of all Skills` should produce a Quality +5 catch-all mod.
 #[test]
 fn granted_anoint_notable_feeds_gem_property_scan() {

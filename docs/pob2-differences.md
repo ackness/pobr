@@ -45,17 +45,20 @@
 例如，`overlay/minions.json` 的目录身份不能仅由 monster hash 反推；
 目标 `GrantedEffects.Id` 与 actor 数值已有物理 FK 生产路径，完整 effect→variety／装备关系仍需独立依据。
 
-`sync-pob-catalog extract-lua` 仍可从固定 vendor 导出上述旧格式，
-供[解析规则更新](../pipeline/README.md#词条更新与回归检查)和显式本地
-`data:legacy:regen`／`data:adapt` 兼容诊断使用。
-旧入口仍能导出 `runes.json`、`catalysts.json` 或 `stat_descriptions.json`，
-不表示当前普通生产仍从 vendor 整体取得这些文件。
-完整版本候选通过[锁驱动更新](../pipeline/runtime/locked-update.md)导入独立 owner 的固定产物；
-旧本地诊断不会自动取得新原料或成为缺失来源时的回退。
+上述 PoB2 转换文件以固定字节随 RePoE owner 包导入，`_meta.generator` 仍记录历史抽取工具；
+PoBR 不从 vendor 生成或刷新它们，修改属于 owner 仓库。
+完整版本候选通过[锁驱动更新](../pipeline/runtime/locked-update.md)导入独立 owner 的固定产物，
+缺失来源时没有本地回退。解析规则与 PoB2 parser 的对照见[词条审计](../pipeline/README.md#词条审计)。
 
 ### 手工整理与回归数据
 
 `overlay-common/buff_definitions.json`、`special_mods.json`、`high_precision_mods.json`、`local_mods.json` 包含项目维护的兼容规则及独立游戏规则，不能统称为 PoB2 语义。
+
+`buff_definitions` 的 `vendor_ref` 记录 15 个 PoB2 行段，旧来源为 `ce8bffaba31f8e68cfce70579e1c96465e7c133c`；
+它们在当前参考 `bb52d6b368307457eb9c54bb13f1829993d390b1` 中各有唯一、逐字节相同的行段，引用元数据仍记旧来源和旧行号。
+RePoE 的[固定来源对账](https://github.com/ackness/repoe/blob/e3cabf9bd008240e12a173c7233c2c48e56eb822/RePoE/docs/buff_source_reconciliation.md)
+核对了七个完整上下文：调用者、defence 和 reservation 的上游条件已有变化，整体等价未确立，
+其验证器保持 `guard_eligible=false`。运行定义、数值和引用没有因此更新，也不据此认证官方 buff 或 charm 语义。
 
 `item_granted_skills.json`、`boss_poise_thresholds.json` 和 `totem_varieties.json` 已有目标事实 producer，完整版本通过独立 RePoE 产物临时导入；PoBR 保留筛选和解释责任。授予技能只迁可证字段，原始 `ItemInherentSkills.IsWeapon` 列按固定社区政策解释为 NoReservation，字段命名与官方语义未独立认证；Boss 选择仍是显式模型。详见[授予技能契约](../tools/pobr-data-adapter/ordinary-item-grants.md)。`energy_config_options.json` 等是项目定义的外部事件／静态状态输入，属于 PoBR 自有配置。
 
@@ -221,7 +224,7 @@ Cast on Critical 里的法术，PoBR 按宝石触发它的频率计算 DPS 和�
 - 每次暴击获得的能量 = `cast_on_crit_gain_X_centienergy_per_monster_power_on_crit = 100`（每点敌人 Power 1 点）× 敌人 Power × 暴击伤害占敌人异常阈值的比例 × 能量获取修正。独特怪 Power 为 20；修正来自 `energy_generated_+%`（“Meta Skills gain #% increased Energy”）。
 - 被触发的技能不产生能量。计算从角色自己使用的其他伤害技能中，取填满最快的一个作为来源；没有来源时法术保留自身速率，并报告缺少来源。
 
-触发频率 = 来源技能每秒暴击次数 ÷ ⌈上限 ÷ 每次暴击能量⌉。**没有游戏内实测**，以下是假设：比例按“减免前暴击伤害 ÷ 阈值”线性计算且不封顶（玩家测得的公式，游戏未公布）；每次暴击取平均暴击伤害；每次使用按命中一次算；首领的异常阈值只按等级取表（游戏 stat 表里有 `ailment_threshold_pluspercent_final_for_map_boss`，取值不在已入库数据里）；获得能量时视为“近期造成过暴击”。
+触发频率 = 来源技能每秒暴击次数 ÷ ⌈上限 ÷ 每次暴击能量⌉。**没有游戏内实测**，以下是假设：比例按“减免前暴击伤害 ÷ 阈值”线性计算且不封顶（玩家测得的公式，游戏未公布）；每次暴击取平均暴击伤害；每次使用按命中一次算；首领的异常阈值只按等级取表（游戏 stat 表里有 `ailment_threshold_pluspercent_final_for_map_boss`，取值不在当前数据里）；获得能量时视为“近期造成过暴击”。
 
 自动触发按整次事件充满，多出的 Energy 丢失；半额返还按概率加权下一轮的事件数（`calc::energy::triggers_per_second`）。`DataOrchestratorOptions::energy_triggers = false` 保留参考口径的自身速率或既有触发配置路径。
 

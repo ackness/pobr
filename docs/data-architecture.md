@@ -76,6 +76,9 @@ RePoE 发布 ───┐
   指向不可变的 release 描述（`owned-data-publication/v2`）。描述按角色列出精确 revision、路径、大小和 SHA-256：
   RePoE 提供游戏、制作、普通事实、显示来源、来源校验器和测试夹具；翻译库提供语言、显示目录与库、审核补译、
   工作台、辅助说明和语言生成，并声明它绑定的 RePoE 显示来源。序号单调递增、前驱精确；分叉、回退和缺角色都是错误。
+- **寻址与保活。** 每个产物只按 40 位 commit SHA 寻址（浅拉取、不取 tag），再核对字节数与 SHA-256；锁中不写分支名。
+  owner 用同名 tag `handoff/<name>` 保活产物 commit：被锁、plan、publication index 或证据文件引用的 tag 不得删除或移动；
+  owner 合并包含被下游钉住 commit 的 PR 时用 merge commit，不用 squash／rebase，否则该 SHA 会从历史中消失。
 - **组合锁。** [`pipeline/latest/data-composition.json`](../pipeline/latest/data-composition.json) 是 PoBR 唯一的数据输入声明，
   包括每个 owner 的一次 publication、目标游戏／补丁／服别／语言、PoBR 自有共享规则与需求文件的 pin，以及期望的运行身份。
   同补丁修订用 generation 和前驱摘要区分。导入脚本的输入应由组合与 owner 描述派生；

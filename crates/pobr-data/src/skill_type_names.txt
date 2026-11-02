@@ -1,6 +1,6 @@
-# PoB2 SkillType 全量枚举 name → id（1-based）。生成文件，勿手改。
-# 来源：vendor src/Data/Global.lua::SkillType（vendor 版本见 vendor/.pob2-version.txt）。
-# regen：cargo run -p sync-pob-catalog -- gen-skill-types --vendor-root vendor/PathOfBuilding-PoE2 --out crates/pobr-data/src/skill_type_names.txt
+# PoB2 SkillType 全量枚举 name → id（1-based），构筑码兼容用的冻结表。
+# 来源：固定 vendor 的 src/Data/Global.lua::SkillType；PoBR 不再从 vendor 再生，
+# 新增类型时按游戏 ActiveSkillType 数据与该枚举核对后手工追加。
 # 按 name 字典序；共 290 条，最大 id=290。消费端 pobr-data::skill_type_names（include_str! + 懒解析）。
 AND 74
 ActiveBlock 262

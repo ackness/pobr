@@ -2,9 +2,9 @@
 //! set (special excluded) + the §1.7 small lookup tables, schema in
 //! [`pobr_data::catalog::parser_rules`]
 //!
-//! Data source: vendor PoB2 `Modules/ModParser.lua`, extracted by
-//! `sync-pob-catalog extract-lua --what parser-rules` bootstrapping
-//! headless (schema id `mod_parser_rules/v1`). Consumer = the data-driven
+//! Data source: vendor PoB2 `Modules/ModParser.lua` (schema id
+//! `mod_parser_rules/v1`), PoB2-derived compatibility data imported from
+//! the RePoE owner package. Consumer = the data-driven
 //! scan engine (`CompiledParserRules::compile` lives in pobr-core; this
 //! loader has zero semantics, zero compilation, keeping the I/O boundary —
 //! gamedata only loads). Actually populating `RuleSet.parser_rules` is a

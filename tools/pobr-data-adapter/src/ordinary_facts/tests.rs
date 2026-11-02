@@ -473,26 +473,15 @@ fn explicit_mode_requires_pin_and_keeps_legacy_raw_dispatch() {
         )
         .is_err()
     );
-    let mode = crate::parse_args_from(
-        [
-            "--raw",
-            "legacy",
-            "--out",
-            "data",
-            "--patch",
-            "old-version",
-            "--strict-columns",
-        ]
-        .into_iter()
-        .map(String::from),
-    )
-    .unwrap_or_else(|e| panic!("{e}"));
-    let crate::Mode::BaseItems(args) = mode else {
-        panic!("legacy raw mode changed")
-    };
-    assert_eq!(args.raw, PathBuf::from("legacy"));
-    assert_eq!(args.patch, "old-version");
-    assert!(args.strict_columns);
+    // Local raw-table exports are not an input; only owner facts are adapted.
+    assert!(
+        crate::parse_args_from(
+            ["--raw", "legacy", "--out", "data", "--patch", "old-version"]
+                .into_iter()
+                .map(String::from),
+        )
+        .is_err()
+    );
     assert!(matches!(
         crate::parse_args_from(flags.into_iter().map(String::from)),
         Ok(crate::Mode::OrdinaryFacts(_))

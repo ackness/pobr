@@ -5,9 +5,9 @@
 //! procedural if-chain) — this section can't be extracted by serializing it
 //! through luajit, so it's stored via the overlay-channel exception
 //! approved by decision §4.2-4: each entry carries a `vendor_ref` (line
-//! numbers + a line-range hash) for drift alerts (reconciled by
-//! `sync-pob-catalog check-buff-refs`); correctness is established by
-//! oracle reconciliation / per-buff numeric unit tests.
+//! numbers + a line-range hash) recording the vendor revision it was read
+//! from; correctness is established by oracle reconciliation / per-buff
+//! numeric unit tests.
 //!
 //! The effect formula (the framework logic stays in Rust, see
 //! `pobr-core::rules::buff_expander`):

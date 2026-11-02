@@ -1,7 +1,7 @@
 //! `overlay/uniques.json` loader — unique-item raw text blocks + a
-//! pre-parsed index (two layers; extracted from vendor `Data/Uniques/*.lua`
-//! via `extract-lua --what uniques`, schema in
-//! [`pobr_data::catalog::item_overlay`]).
+//! pre-parsed index (two layers; PoB2-derived compatibility data from
+//! vendor `Data/Uniques/*.lua`, imported from the RePoE owner package;
+//! schema in [`pobr_data::catalog::item_overlay`]).
 //!
 //! The consumer loads it separately on demand — it isn't part of
 //! ItemRules; parsing the mod template lines is done at runtime by

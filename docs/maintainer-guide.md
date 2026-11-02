@@ -49,7 +49,7 @@
 | 改动 | 相关验收证据 |
 |------|------|
 | Rust 局部逻辑 / 算法 | 代码与调用方审阅、能复现变化的回归断言；需要时 `mise run verify <crate> <suite> [filter]` |
-| 词条规则 | 填写游戏来源与 `examples`；协调者整批运行一次 `mise run regen` 并提交生成产物 |
+| 词条规则 | 填写游戏来源与 `examples`；协调者整批运行一次 `mise run regen`，解析覆盖率上升时同步抬高 `devs/ci/parse-coverage-baseline.json` |
 | 计算 / Modifier / parser | 定向机制用例；远端完整 CI 的 parity / reference 基线；调查性 accuracy/triage 按批次另选 |
 | 跨 crate API / 数据结构 | 直接使用者的契约与回归用例；边界较广时在合并前手动运行远端完整 CI |
 | Web TS / React / Worker | typecheck、相关 Vitest / Worker 测试；交互风险需要时运行相关 Playwright spec |
@@ -73,6 +73,7 @@ mise run targets                                  # 测试目标，不编译
 mise run verify build skills support_gating::     # 定向测试 + fmt + Clippy
 mise run test core parser mod_parser::            # 一个套件 + filter（也接受原始 cargo test 参数）
 mise run regen                                    # 改了词条规则后：校验规则与示例、重生成产物
+mise run data:prepare && mise run data:check      # 导入固定 owner 数据；离线检查数据归属与工作树干净
 mise run gate [--only 步骤,...]                   # 批次门禁
 
 mise exec -- cargo run -p pobr-cli -- calculate-build --file <code.txt> [--breakdown TotalDPS,Life] [--usage] [--full-dps] [--reference-basis] [--json]
@@ -87,7 +88,7 @@ mise run accuracy [含 */code.txt 的目录]           # 构筑码对照自带�
 mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 ```
 
-各工具输出的含义见 [diagnostics.md](diagnostics.md)；参数、缓存和其余命令（基准、parity 报告、WASM 打包、数据与 vendor 任务）见[开发与 CI 工作流](development-workflow.md)。PoB2 oracle（无界面运行并输出计算结果的参考工具）是 `mise exec -- bash tools/pob2-oracle/run.sh <build.xml>`；从 vendor Lua 抽取 overlay 用 `mise exec -- cargo run -p sync-pob-catalog -- extract-lua --vendor-root "$PWD/vendor/PathOfBuilding-PoE2/src" --out <文件>`（`--vendor-root` 必须是绝对路径，需固定版本的 vendor 与 LuaJIT）。
+各工具输出的含义见 [diagnostics.md](diagnostics.md)；参数、缓存和其余命令（基准、parity 报告、WASM 打包、数据与 vendor 任务）见[开发与 CI 工作流](development-workflow.md)。PoB2 oracle（无界面运行并输出计算结果的参考工具）是 `mise exec -- bash tools/pob2-oracle/run.sh <build.xml>`；词条规则与 PoB2 parser 的对照审计是 `mise exec -- bash pipeline/diagnostics/modifier-audit.sh [--offline]`，只报告、不改写规则。
 
 ## Workspace 结构
 
@@ -104,17 +105,17 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 | `crates/pobr-item` | 保留物品原文的编辑模型与序列化（`ItemDraft`，支持 BuildRaw 往返）；计算视图由 `pobr-core::item_text` + `ingest_item` 承担 |
 | `apps/pobr-cli` | CLI `pobr`：`calculate` / `calculate-build` / `parse-mod` / `explain-mod` / `parse-item` / `decode-code` / `encode-code`，命令逻辑在 lib |
 | `apps/pobr-wasm` | `build_api/` 的 JSON 契约；默认 features 可在宿主测试，`wasm` 启用绑定，`diagnostics` 启用计时与 fixture 生成目标 |
-| `tools/pobr-data-adapter` | GGG `.dat` 导出 → `data/<版本>/` 入库 JSON；正式再生成使用 `--strict-columns`，检查原始表必需列和版本导出记录，宝石品质由 `--gem-quality` 生成（见[品质生成说明](../pipeline/policies/gem-quality/README.md)） |
-| `tools/sync-pob-catalog` | 从 PoB2 Lua 抽取 catalog 与 overlay（`extract-lua` 等子命令）、parity 检查 |
+| `tools/pobr-data-adapter` | 固定 RePoE owner 事实 → PoBR 运行 JSON：`--ordinary-facts`（含宝石品质，见[品质生成说明](../pipeline/policies/gem-quality/README.md)）、`--native-facts`、`--native-runtime`；`--tree` 读历史官方树包供 `data:tree:candidate`；`--emit-special-derived` 从已准备的天赋树派生基石规则。不读 vendor Lua 或本地原表 |
+| `tools/sync-pob-catalog` | PoB2 显示／输出 catalog 的扫描与对照（`scan` / `check` / `diff` / `fixture-check`），只作测试参考，不生成数据 |
 | `tools/lint-i18n` | 语言包完整性检查 |
 | `tools/precompile-mods` | 词条规则离线预编译、语料覆盖与审计（`generated/parsed_mods.json`、`modifier-audit.json`；`--check` 校验运行时合并后的规则集） |
 | `tools/pob2-oracle` | 非 workspace 成员（Lua wrapper）：无界面启动固定版本 PoB2，把完整计算分解输出为 JSON |
 
 依赖方向：`pobr-data` 在最底层；`pobr-build` 组合计算、物品、树与数据加载；应用层使用它们。生产计算核心不读文件；测试辅助（`pobr-core` 的 `test-rules`、`pobr-gamedata` 的 `test-pins`）在 feature 后面，只由 dev-dependencies 启用。
 
-其他目录：`web/`（React / TypeScript / Vite；`src/api/` 定义 JSON 边界并默认在 module Worker 中运行 WASM，`public/` 是静态资源、同步数据与 Pages Worker，另有 `e2e/` 与 `worker-tests/`）、`data/`（Git 只跟踪 `CURRENT` 与十一份自有规则；版本目录和七份外部 shared 输入由独立锁临时准备）、`pipeline/`（下载、抽取、再生与版本差异）、`examples/`（回归与参考语料）、`devs/`（开发脚本、CI 基线与 fixtures；差异登记在 `scripts/known-differences.json`）、`agent-docs/`（被代码引用的早期机制研究）。当前行为契约集中在 `docs/`。
+其他目录：`web/`（React / TypeScript / Vite；`src/api/` 定义 JSON 边界并默认在 module Worker 中运行 WASM，`public/` 是静态资源、同步数据与 Pages Worker，另有 `e2e/` 与 `worker-tests/`）、`data/`（Git 只跟踪 `CURRENT` 与十一份自有规则；版本目录和七份外部 shared 输入由独立锁临时准备）、`pipeline/`（固定输入声明、导入、组包、候选与诊断）、`examples/`（回归与参考语料）、`devs/`（开发脚本、CI 基线与 fixtures；差异登记在 `scripts/known-differences.json`）、`agent-docs/`（被代码引用的早期机制研究）。当前行为契约集中在 `docs/`。
 
-**数据管线**：RePoE 游戏事实／兼容输入与独立翻译库的固定产物 →（声明式临时导入与 PoBR 领域适配）→ schema 3 运行包 →（`pobr-gamedata`）→ 计算。完整游戏／语言数据不进入 PoBR Git；实物测试和构建按 `mise run data:prepare` 准备，来源缺失或 pin 不符即失败。计算所需游戏文件访问集中在 `pobr-gamedata`；语言生成／配对属于翻译库，PoBR 保留显示／输入与 DTO 解释边界。PoB2 vendor 只作测试参考，不作为生产数据的写入来源；仍保留的旧 raw／vendor 再生入口不能作为自主再生的证明。设计见[数据架构](data-architecture.md)，现状见[数据现状](data-status.md)，命令见[数据管线说明](../pipeline/README.md)与[版本升级结构](version-bump-architecture.md)。
+**数据管线**：RePoE 游戏事实／兼容输入与独立翻译库的固定产物 →（声明式临时导入与 PoBR 领域适配）→ schema 3 运行包 →（`pobr-gamedata`）→ 计算。完整游戏／语言数据不进入 PoBR Git；实物测试和构建按 `mise run data:prepare` 准备，来源缺失或 pin 不符即失败；`mise run data:check` 离线确认 `data/` 只跟踪自有文件、导入后工作树干净。计算所需游戏文件访问集中在 `pobr-gamedata`；语言生成／配对属于翻译库，PoBR 保留显示／输入与 DTO 解释边界。PoB2 vendor 只作测试参考，不作为生产数据的写入来源；PoBR 不从 vendor Lua 或本地原表再生数据，owner 包中由 PoB2 转换的兼容文件也不算自主再生。设计见[数据架构](data-architecture.md)，现状见[数据现状](data-status.md)，命令见[数据管线说明](../pipeline/README.md)与[版本升级结构](version-bump-architecture.md)。
 
 ## 运行时数据与会话
 
@@ -164,7 +165,7 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 方向（项目所有者，2026-10）：PoBR 是独立实现的引擎，不是 PoB2 的移植。PoB2 构筑码的导入导出是要保留的产品功能；它的代码和数据是要逐步减少的依赖。“逐步”是约束的一部分：不做一次性重写，每一步都保持门禁通过。
 
 - 机制以游戏自己的定义为依据：`data/<版本>/base/` 的 stat id、技能数据和常量，词条文本，官方 patch notes。代码和测试的出处写这些（例如 `attack_damage_final_permyriad_per_rage = 100`，范例见 `crates/pobr-core/src/calc/rage.rs`）；PoB2 只用于交叉核对。
-- 技能 stat 的含义写进 `crates/pobr-core/src/rules/skill_stats.rs`：以游戏 stat id 为键，用引擎自己的 modifier 表达。这张表先于抽取来的 `skill_stat_map.json` 查询；抽取映射拒绝或缺失的 stat（`mise run diagnose` 第 4 节）优先在这里补，不扩充按 PoB2 名称写的白名单。
+- 技能 stat 的含义写进 `crates/pobr-core/src/rules/skill_stats.rs`：以游戏 stat id 为键，用引擎自己的 modifier 表达。这张表先于随 owner 包导入、由 PoB2 转换的 `skill_stat_map.json` 查询；抽取映射拒绝或缺失的 stat（`mise run diagnose` 第 4 节）优先在这里补，不扩充按 PoB2 名称写的白名单。
 - 不新增“因为 vendor `X.lua:行号` 这样写”式的注释：行号随 vendor 升级失效，也说明不了游戏规则。改到旧代码时顺手换成规则本身的描述。
 - 结果不同时，先按游戏词条和数据判断谁对，不默认 PoB2 正确。PoBR 自有的词条规则声明 `exporter: "absent"`（导出工具没有实现）或 `"differs"`（口径不同），并填 `game_source`；absent 规则在参考口径下自动排除。确认的有意差异写进 [pob2-differences.md](pob2-differences.md)，逐行登记到 `devs/scripts/known-differences.json`。
 - 普通技能、树、基底、符文、actor 与描述已逐批由目标事实接回原消费者；parser、config、special、部分 stat-map／关系、暗金与兼容字段仍保留固定 PoB2／社区解释。按字段区分自主事实、策展与历史 codec，不把整个已迁域重新归为 PoB2 导出依赖。现存依赖和退出顺序见 [pob2-differences.md](pob2-differences.md#数据来源现状与退出顺序)；自有规则仍以游戏依据和实际输出需求实现。

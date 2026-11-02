@@ -45,8 +45,9 @@
    `examples`（游戏原文）。`source_note` 记录可追溯的来源或缺失机制。
    下一步会逐条匹配 `examples`，因此它们就是解析回归样本。
 4. 协调者在整批规则汇总后运行一次 `mise run regen`：校验规则与示例，重生成
-   `data/<version>/generated/parsed_mods.json` 和 `parse-coverage.json`，再测试
-   precompile-mods。提交变化的生成文件，不手工编辑它们。
+   已准备数据（忽略目录）中的 `generated/parsed_mods.json` 和 `parse-coverage.json`，再测试
+   precompile-mods。生成文件不提交；解析覆盖率上升时同步抬高
+   `devs/ci/parse-coverage-baseline.json`。
 5. 只有 modifier 名称没有读取方，或读取方需要新行为时，才添加读取代码，并在
    `crates/pobr-core/tests/<suite>/` 最近的现有文件中补引擎测试。需要提前运行时用
    `mise exec -- cargo test -q -p pobr-core --test <suite> <test name>`。
@@ -55,7 +56,7 @@
    构筑数值的情况，写入 [pob2-differences.md](pob2-differences.md) 和
    `devs/scripts/known-differences.json`。
 
-worker 可先提交实现和未运行用例，交接给协调者生成与验收；不手改或漏交最终生成产物。
+worker 可先提交实现和未运行用例，交接给协调者生成与验收；不手改生成产物。
 parity/reference 基线由远端完整 CI 验证，调查性逐行记录和 accuracy 按批次选择。
 
 <a id="add-one-calcs-display-field"></a>

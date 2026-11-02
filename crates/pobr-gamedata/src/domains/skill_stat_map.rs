@@ -3,9 +3,9 @@
 //! in [`pobr_data::catalog::stat_map`]
 //!
 //! Data source: vendor PoB2 `Data/SkillStatMap.lua` plus the `statMap`
-//! field of each statSet in `Data/Skills/*.lua`, deterministically
-//! extracted by `sync-pob-catalog extract-lua --what stat-map` (schema id
-//! `skill_stat_map/v1`). Loaded as a whole domain; consumer =
+//! field of each statSet in `Data/Skills/*.lua` (schema id
+//! `skill_stat_map/v1`), PoB2-derived compatibility data imported from the
+//! RePoE owner package. Loaded as a whole domain; consumer =
 //! `pobr-core::rules::stat_map_engine` (the merge formula + ModName
 //! translation + tag-support checks — this loader has zero semantics).
 

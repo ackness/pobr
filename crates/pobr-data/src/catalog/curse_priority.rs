@@ -1,11 +1,12 @@
 //! Schema for `overlay/curse_priority.json` (`curse_priority/v1`).
 //!
-//! Vendor source: the plain data table `data.cursePriority` starting at
-//! `Modules/Data.lua:274`, deterministically extracted by
-//! `sync-pob-catalog extract-lua --what curse-priority` (luajit evaluates
-//! the table literal; the output is byte-stable, `_meta` records the
-//! vendor commit, hand edits are forbidden). Vendor's flat `k=v` table is
-//! split into four sections by meaning, for easier lookup by the consumer.
+//! Vendor source: the plain data table `data.cursePriority` in
+//! `Modules/Data.lua`, evaluated as a table literal. The file is
+//! PoB2-derived compatibility data shipped as fixed bytes in the RePoE
+//! owner package and imported by `mise run data:prepare`; `_meta` records
+//! the vendor commit, and changes belong to the owner repository. Vendor's
+//! flat `k=v` table is split into four sections by meaning, for easier
+//! lookup by the consumer.
 //!
 //! Consumer (`calc/buff_pass.rs`) is equivalent to PoB2's
 //! `determineCursePriority` (CalcPerform.lua:454-485):

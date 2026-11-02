@@ -46,11 +46,11 @@ pub struct DataManifest {
 /// compatible with v1's flat array (treated as entirely the `base` section).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct DomainSections {
-    /// `base/`: domains fully auto-regenerated from `.dat` (produced by the
-    /// pipeline + adapter, hand edits forbidden).
+    /// `base/`: domains adapted from game facts (owner RePoE facts +
+    /// `pobr-data-adapter`, hand edits forbidden).
     pub base: Vec<String>,
-    /// `overlay/`: hand-curated domains extracted from vendor Lua
-    /// (produced by extract-lua, only tool-regeneration allowed).
+    /// `overlay/`: curated and PoB2-derived compatibility domains (fixed
+    /// bytes from the owner package; changes belong to the owner repository).
     pub overlay: Vec<String>,
     /// `generated/`: cached domains deterministically derived from base +
     /// overlay (produced by precompile).

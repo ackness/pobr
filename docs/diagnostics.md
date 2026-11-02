@@ -172,7 +172,7 @@ known 只适用于所选 stat set 的显示／无伤害规则、已写明的模�
 
 编译时递归校验特殊规则的 flag、tag 字段／对象、捕获、handler、运算。
 precompile-mods --check 校验运行时合并后的全规则，输出哈希、顺序和来源；
-refresh-modifiers.sh 在审计／发布前执行。StatId 是开放名，解析通过不证明计算支持。
+pipeline/diagnostics/modifier-audit.sh 在审计前先执行它。StatId 是开放名，解析通过不证明计算支持。
 见[规则验证说明](contributing-mods.md#7-validate-test-and-open-a-pr)。
 
 词条审计先用 strip_display_markup 展开游戏链接／样式，再去物品注记。

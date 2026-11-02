@@ -18,11 +18,18 @@ tests to resolve disagreements with any document.
   inputs, adapt them to PoBR contracts and verify runtime snapshots. Complete
   game/language data stays outside PoBR Git; `data/` tracks `CURRENT` and owned
   rules. Real-data tests/builds use `mise run data:prepare`; pure fixture tests
-  need only their declared inputs. `web/public/` holds static assets and the Pages Worker.
+  need only their declared inputs. `mise run data:check` verifies offline that
+  `data/` tracks only owned files and that the import left the worktree clean.
+  PoBR never produces data from PoB2 vendor Lua or local raw-table exports;
+  PoB2-derived compatibility files arrive as fixed bytes in the RePoE package.
+  `web/public/` holds static assets and the Pages Worker.
   The data design is [docs/data-architecture.md](docs/data-architecture.md); current
   gaps and order are in [docs/data-status.md](docs/data-status.md).
 - `devs/reference-sources.json` pins the PoB2 test reference independently of
-  production data. Official tree domain candidates stay outside published `data/`.
+  production data. The vendor serves only tests and diagnostics: the oracle,
+  `compare`/`triage`, `sync-pob-catalog` catalog parity and
+  `pipeline/diagnostics/modifier-audit.sh`. Official tree domain candidates stay
+  outside published `data/`.
 - Rust integration tests live in each crate's `tests/`; frontend unit tests
   accompany source files, with browser tests in `web/e2e/`.
 

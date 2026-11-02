@@ -1,7 +1,7 @@
 //! `overlay/curse_priority.json` loader — the curse priority data table
-//! (vendor `Modules/Data.lua:274`'s `data.cursePriority` plain data table,
-//! extracted via `extract-lua --what curse-priority`, schema in
-//! [`pobr_data::catalog::curse_priority`]).
+//! (vendor `Modules/Data.lua`'s `data.cursePriority` plain data table,
+//! PoB2-derived compatibility data imported from the RePoE owner package;
+//! schema in [`pobr_data::catalog::curse_priority`]).
 //!
 //! Consumer (`calc/buff_pass.rs`'s curse priority/limit, matching
 //! `determineCursePriority` in CalcPerform.lua:454-485) is wired in

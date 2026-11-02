@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::PathBuf;
 
 use pobr_data::catalog::{
     CostTypeDef, GrantedEffectDef, SkillGemDef, SkillLevelDef, SkillStatSetDef,
@@ -74,29 +73,6 @@ fn facts(f: &Fixture) -> reader::VerifiedFacts {
 
 fn read<T: serde::de::DeserializeOwned>(f: &Fixture, file: &str) -> T {
     crate::read_json(&f.root.join("out").join(file)).unwrap()
-}
-
-// Test only: compare the original Path wrappers with the same tiny authored rows.
-// Production never writes a flattened directory or reopens unauthenticated input.
-fn raw_fixture(f: &Fixture) -> PathBuf {
-    let dir = f.root.join("raw-fixture");
-    fs::create_dir(&dir).unwrap();
-    for (path, doc) in &f.documents {
-        if let Some(file) = path.strip_prefix("tables/") {
-            let rows: Vec<_> = doc["rows"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|raw| {
-                    let mut row = raw["values"].clone();
-                    row["_index"] = raw["_row"].clone();
-                    row
-                })
-                .collect();
-            fs::write(dir.join(file), serde_json::to_vec(&rows).unwrap()).unwrap();
-        }
-    }
-    dir
 }
 
 #[test]
@@ -323,49 +299,12 @@ fn additional_sets_pair_source_order_keep_duplicates_flags_and_scaling() {
 }
 
 #[test]
-fn physical_input_and_original_raw_wrappers_share_conversion_semantics() {
-    let f = fixture();
-    let dir = raw_fixture(&f);
-    let raw = crate::skills::adapt_skills(&dir, &dir).unwrap();
-    let raw_sets = crate::skills::adapt_stat_sets(&dir).unwrap();
-    let raw_costs = crate::skills::adapt_cost_types(&dir).unwrap();
-    run(args(&f)).unwrap();
-    let gems: Vec<SkillGemDef> = read(&f, "base/skill_gems.json");
-    let levels: BTreeMap<String, Vec<SkillLevelDef>> = read(&f, "base/granted_effect_levels.json");
-    let sets: Vec<SkillStatSetDef> = read(&f, "base/granted_effect_stat_sets.json");
-    let costs: Vec<CostTypeDef> = read(&f, "base/cost_types.json");
-    let mut effects: Vec<GrantedEffectDef> = read(&f, "base/granted_effects.json");
-    assert!(raw.effects.iter().all(|e| !e.ignore_minion_types));
-    for effect in &mut effects {
-        effect.ignore_minion_types = false;
-    }
-    assert_eq!(gems, raw.gems);
-    assert_eq!(effects, raw.effects);
-    assert_eq!(levels, raw.levels);
-    assert_eq!(sets, raw_sets.sets);
-    assert_eq!(costs, raw_costs);
-    assert!(raw.zh_skill_names.is_empty());
-}
-
-#[test]
-fn raw_tolerance_remains_while_physical_input_rejects_the_same_bad_values() {
+fn physical_input_rejects_bad_values_without_tolerant_defaults() {
     let mut f = fixture();
     f.values("GrantedEffectsPerLevel", 0)["CostAmounts"] = json!([-3, 120]);
     f.values("SkillGems", 1)["StrengthRequirementPercent"] = Value::Null;
     f.values("GemEffects", 0)["AdditionalGrantedEffects"] = json!([999]);
     f.seal();
-    let dir = raw_fixture(&f);
-    let raw = crate::skills::adapt_skills(&dir, &dir).unwrap();
-    assert_eq!(raw.gems[0].str_pct, 0);
-    assert_eq!(raw.levels["AttackPlayer"][1].cost_amounts, [0, 120]);
-    assert!(
-        raw.gems
-            .iter()
-            .find(|g| g.is_support)
-            .unwrap()
-            .additional_granted_effect_ids
-            .is_empty()
-    );
     rejects(&f, "expected signed i32");
 }
 

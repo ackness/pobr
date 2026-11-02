@@ -42,7 +42,7 @@
 | 升级游戏数据、候选校验与生成来源 | [数据管线](../pipeline/README.md)、[数据层结构](version-bump-architecture.md)、[宝石品质](../pipeline/policies/gem-quality/README.md) |
 | 了解数据来源、仓库职责与存储边界 | [数据架构](data-architecture.md) |
 | 查看活动组合、各领域缺口与近期顺序 | [数据现状](data-status.md) |
-| 使用参考引擎与抽取工具 | [PoB2 oracle](../tools/pob2-oracle/README.md)、[catalog 同步](../tools/sync-pob-catalog/README.md) |
+| 使用参考引擎与 catalog 对照 | [PoB2 oracle](../tools/pob2-oracle/README.md)、[PoB2 catalog 对照](../tools/sync-pob-catalog/README.md) |
 | 测量性能或发布包体积 | [按需性能检查](development-workflow.md#慢构建与按需报告)、[WASM 测量](wasm-package.md#runtime-performance-comparison) |
 
 ## 资料与文档维护

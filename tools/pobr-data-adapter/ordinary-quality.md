@@ -106,12 +106,11 @@ parent must already exist. No complete `manifest.json`, adoption, CURRENT change
 or source promotion occurs: acquisition remains draft, `complete_runtime: false`,
 `adoption: "not-adopted"`.
 
-The raw `--gem-quality` wrapper keeps its original source receipt schema/version/
-hash guards, output metadata and file behavior. Both entries call the extracted
-`skills::quality::{validate_compatibility,index,convert_rows}` helpers. Only new
-physical input performs the additional column/source representation checks.
-Other ordinary domains emit their original files and receipt fields; their
-compiled revision changes because it fingerprints the shared implementation.
+The conversion uses the shared
+`skills::quality::{validate_compatibility,index,convert_rows}` helpers; the
+physical input adds column/source representation checks. Other ordinary domains
+emit their original files and receipt fields; their compiled revision changes
+because it fingerprints the shared implementation.
 
 Coordinator verification (worker authored the regressions but did not execute
 Cargo or any producer):
@@ -122,8 +121,7 @@ mise exec -- cargo test --locked -p pobr-data-adapter --bin pobr-data-adapter sk
 # Coordinator may combine these and prior-domain checks in the adapter's one warm-target suite.
 ```
 
-The synthetic fixture asserts original DTO values and raw-wrapper equivalence,
-ordered duplicates, exclusions, metadata, source/policy/CLI failure boundaries,
-directory replacement, deterministic replay and isolation of the three previous
-domains. Actual F output vectors, excluded records, scope arrays and prior-domain
+The synthetic fixture asserts original DTO values, ordered duplicates, exclusions,
+metadata, source/policy/CLI failure boundaries, directory replacement,
+deterministic replay and isolation of the three previous domains. Actual F output vectors, excluded records, scope arrays and prior-domain
 byte compatibility remain for the coordinator to verify with a fixed binary.

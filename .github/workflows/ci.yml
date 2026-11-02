@@ -82,15 +82,19 @@ jobs:
       - name: Install Lua JSON module
         if: matrix.shard == 'libraries-tools'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends lua-dkjson
+      - name: Restore owner data downloads
+        uses: actions/cache@v6
+        with:
+          # Content-addressed by SHA-256; every hit is re-verified against the lock.
+          path: .cache/data-import-downloads
+          key: owner-data-${{ hashFiles('pipeline/latest/data-composition.json', 'pipeline/runtime/build-data*.lock.json') }}
+          restore-keys: owner-data-
       - name: Prepare pinned external data for real tests
         run: |
           python3 -m pipeline.runtime.build_data --install data
           python3 -m pipeline.runtime.build_data --lock pipeline/runtime/build-data-0.5.5.4.2.lock.json --install data --keep-current
           python3 -c 'import json; from pathlib import Path; assert Path("data/CURRENT").read_text().strip() == json.loads(Path("pipeline/runtime/build-data.lock.json").read_bytes())["target"]["game_patch"]'
-      # The compatible-update class already ran in automation contracts.
-      - name: Lua extraction compatibility
-        if: matrix.shard == 'libraries-tools'
-        run: python3 -m pipeline.legacy.test_data_update VendorTreeTests
+          bash devs/scripts/check-data.sh
       - name: Workspace tests (including doctests)
         env:
           CI_SHARD: ${{ matrix.shard }}
@@ -128,7 +132,7 @@ jobs:
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 3
-      - name: Generated data reproducibility
+      - name: Derived rules reproducibility and parse-coverage ratchet
         if: matrix.shard == 'libraries-tools'
         run: POBR_PATCH="$(cat data/CURRENT)" bash devs/scripts/regen-check.sh
       - name: Language catalog lint
@@ -172,9 +176,18 @@ jobs:
           key: wasm-bindings-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.wasm-key.outputs.key }}
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: Restore owner data downloads
+        uses: actions/cache@v6
+        with:
+          # Content-addressed by SHA-256; every hit is re-verified against the lock.
+          path: .cache/data-import-downloads
+          key: owner-data-${{ hashFiles('pipeline/latest/data-composition.json', 'pipeline/runtime/build-data*.lock.json') }}
+          restore-keys: owner-data-
       - name: Prepare pinned external data for Web tests and build
         working-directory: .
-        run: python3 -m pipeline.runtime.build_data --install data
+        run: |
+          python3 -m pipeline.runtime.build_data --install data
+          bash devs/scripts/check-data.sh
       - name: Typecheck (pre-wasm placeholder tolerated via ts-ignore)
         run: pnpm typecheck
       - name: Unit tests
@@ -265,6 +278,13 @@ jobs:
       - uses: ./.github/actions/setup-tools
         with:
           node: 'true'
+      - name: Restore owner data downloads
+        uses: actions/cache@v6
+        with:
+          # Content-addressed by SHA-256; every hit is re-verified against the lock.
+          path: .cache/data-import-downloads
+          key: owner-data-${{ hashFiles('pipeline/latest/data-composition.json', 'pipeline/runtime/build-data*.lock.json') }}
+          restore-keys: owner-data-
       - name: Verify the recorded complete publication composition
         run: |
           mkdir -p .cache
@@ -337,8 +357,17 @@ jobs:
       # Populate node_modules even when the pnpm store cache is an exact hit.
       - name: Install automation test dependencies
         run: pnpm --dir web install --frozen-lockfile
+      - name: Restore owner data downloads
+        uses: actions/cache@v6
+        with:
+          # Content-addressed by SHA-256; every hit is re-verified against the lock.
+          path: .cache/data-import-downloads
+          key: owner-data-${{ hashFiles('pipeline/latest/data-composition.json', 'pipeline/runtime/build-data*.lock.json') }}
+          restore-keys: owner-data-
       - name: Prepare pinned external data for automation integration tests
-        run: python3 -m pipeline.runtime.build_data --install data
+        run: |
+          python3 -m pipeline.runtime.build_data --install data
+          bash devs/scripts/check-data.sh
       - run: bash devs/scripts/check-workflows.sh
 
   gate:

@@ -2,9 +2,8 @@
 //! hand-curated overlay exception for doActorMisc), schema in
 //! [`pobr_data::catalog::buffs`].
 //!
-//! The drift guardrail lives on the tooling side:
-//! `sync-pob-catalog check-buff-refs` reconciles vendor_ref line-range
-//! hashes; consumer = `pobr-core::rules::buff_expander`.
+//! Each entry's `vendor_ref` records the vendor line range it was read
+//! from; consumer = `pobr-core::rules::buff_expander`.
 
 use pobr_data::catalog::buffs::BuffDefinitionsDef;
 

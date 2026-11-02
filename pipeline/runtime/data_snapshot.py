@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Generate and validate an isolated data snapshot before replacing a published one."""
+"""Install validated owner data and build diagnostic domain candidates.
+
+PoBR never regenerates a snapshot from raw tables or vendor Lua; complete
+snapshots come from the owner publications (see build_data / locked_update)."""
 
 import argparse
 from contextlib import contextmanager
@@ -190,10 +193,6 @@ def tree_candidate(root, source_id, output, offline=False):
     return output
 
 
-def tree_fingerprint(path):
-    return {p.relative_to(path).as_posix(): digest(p) for p in path.rglob("*") if p.is_file()}
-
-
 def patch_version(value):
     if not isinstance(value, str) or not re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", value):
         raise ValueError(f"Invalid data patch: {value!r}")
@@ -218,12 +217,10 @@ def runtime_files(data):
 
 
 def manifest(data):
-    """Seal actual runtime bytes; patches and shared curation remain separate layers."""
+    """Seal actual runtime bytes as schema 3 (fixtures and staged owner data)."""
     version = patch_version(data.name)
     if (data / "_domain_candidate.json").exists():
         raise ValueError("Domain candidates cannot be sealed as product snapshots")
-    if (data / "_drift.json").exists():
-        raise ValueError("Refusing to publish a snapshot with adapter column drift")
     files = {p.relative_to(data).as_posix(): digest(p) for p in runtime_files(data)}
     if not files:
         raise ValueError("Cannot seal an empty data snapshot")
@@ -238,44 +235,6 @@ def manifest(data):
                 "files": files}
     write_json(data / "manifest.json", document)
     return document
-
-
-def record_export(config, raw):
-    """Bind explicit legacy arrays to their declared export config; no acquisition claim."""
-    configuration = read_json(config)
-    files = {f"{language}/{table['name']}.json": None
-             for language in configuration["translations"] for table in configuration["tables"]}
-    for name in files:
-        path = raw / name
-        if not isinstance(read_json(path), list):
-            raise ValueError(f"Exported table must be an array: {name}")
-        files[name] = digest(path)
-    document = {"schema": "official-raw-export/v1", "patch": patch_version(configuration["patch"]),
-                "config_sha256": digest(config), "files": files}
-    write_json(raw / "export-source.json", document)
-
-
-@contextmanager
-def candidate(root, version):
-    """Copy every writable input. Historical snapshots are read-only validation inputs."""
-    source = root / "data"
-    cache = root / ".cache"
-    cache.mkdir(exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="data-update-", dir=cache) as temporary:
-        data_root = Path(temporary) / "data"
-        data_root.mkdir()
-        for path in source.iterdir():
-            destination = data_root / path.name
-            if path.name in {version, "overlay-common"}:
-                shutil.copytree(path, destination)
-            elif path.is_dir() and re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", path.name):
-                destination.symlink_to(path.resolve(), target_is_directory=True)
-        (data_root / version).mkdir(exist_ok=True)
-        (data_root / "CURRENT").write_text(version + "\n", encoding="utf-8")
-        # Corpus discovery derives examples/ from the data directory's parent.
-        if (root / "examples").is_dir():
-            (data_root.parent / "examples").symlink_to((root / "examples").resolve(), target_is_directory=True)
-        yield data_root
 
 
 def promote(data_root, destination_root, version, activate=False):
@@ -328,110 +287,9 @@ def workspace_lock(root):
         yield
 
 
-def regenerate(root, activate=False, base_only=False, operation=None, arguments=(),
-               reference_audit=None, locale_lock=None):
-    with workspace_lock(root):
-        _regenerate(root, activate, base_only, operation, arguments, reference_audit, locale_lock)
-
-
-def _regenerate(root, activate=False, base_only=False, operation=None, arguments=(),
-                reference_audit=None, locale_lock=None):
-    # Full legacy generation still extracts vendor data. Adapting official tables
-    # validates our effective rules without implicitly executing the reference.
-    if reference_audit is None:
-        reference_audit = not base_only
-    version = patch_version(read_json(root / "pipeline/legacy/config.json")["patch"])
-    config_hash = digest(root / "pipeline/legacy/config.json")
-    if not operation and os.environ.get("POBR_EXPECTED_PATCH", version) != version:
-        raise ValueError("Configured patch changed before generation")
-    arguments = list(arguments)
-    if operation == "dictionary":
-        version = patch_version(arguments[arguments.index("--version") + 1]) if "--version" in arguments else patch_version(
-            (root / "data/CURRENT").read_text(encoding="utf-8").strip())
-    elif operation == "modifiers":
-        source = Path(arguments[arguments.index("--data") + 1]) if "--data" in arguments else root / "data" / (
-            root / "data/CURRENT").read_text(encoding="utf-8").strip()
-        source = source.resolve()
-        version = patch_version(source.name)
-        if source != (root / "data" / version).resolve():
-            raise ValueError("Rule extraction requires a repository snapshot")
-        if "--data" in arguments:
-            index = arguments.index("--data")
-            del arguments[index:index + 2]
-    old = patch_version(os.environ.get("OLD_PATCH") or (root / "data/CURRENT").read_text(encoding="utf-8").strip())
-    if (base_only or operation) and not (root / "data" / version).is_dir():
-        raise ValueError("Base adaptation requires an existing snapshot; use an independent owner build lock for a new version")
-    watched = {root / "data" / name for name in {version, old, "overlay-common"}}
-    original = {path: tree_fingerprint(path) for path in watched}
-    with candidate(root, version) as data_root:
-        env = {**os.environ, "POBR_DATA_ROOT": str(data_root), "POBR_DATA_VERSION": version,
-               "POBR_CANDIDATE": "1", "POBR_DEFER_MODIFIER_AUDIT": "1", "OLD_PATCH": old}
-        # Golden snapshots linked above must never be blessed by generation.
-        env.pop("POBR_BLESS_PINS", None)
-        if operation != "modifiers":
-            selected_locale_lock = locale_lock or root / "pipeline/imports/locale-generation.lock.json"
-            if operation == "dictionary" and "--lock" in arguments:
-                index = arguments.index("--lock")
-                if index + 1 == len(arguments):
-                    raise ValueError("Missing independent locale lock path")
-                selected_locale_lock = arguments[index + 1]
-            # Refuse another patch before invoking expensive game generators.
-            run(["python3", "-m", "pipeline.imports.locale_inputs", "--lock", str(selected_locale_lock),
-                 "--version", version, "--check-lock"], root, env)
-        if operation == "dictionary":
-            run(["python3", "-m", "pipeline.imports.locale_inputs", "--candidate", str(data_root / version),
-                 *arguments], root, env)
-        elif operation == "modifiers":
-            run(["bash", "pipeline/legacy/refresh-modifiers.sh", "--data", str(data_root / version), *arguments], root, env)
-        elif base_only:
-            run(["cargo", "run", "--quiet", "-p", "pobr-data-adapter", "--", "--raw", "pipeline/tables",
-                 "--out", str(data_root), "--patch", version, "--strict-columns"], root, env)
-        else:
-            run(["bash", "pipeline/legacy/regen-all.sh"], root, env)
-        if not operation:
-            language = ["python3", "-m", "pipeline.imports.locale_inputs", "--candidate", str(data_root / version),
-                        "--version", version]
-            if locale_lock is not None:
-                language += ["--lock", str(locale_lock)]
-            run(language, root, env)
-        # Auditors use the normal hash-validating loader. Seal changed candidate
-        # runtime bytes before they read them; audit outputs are maintenance-only.
-        manifest(data_root / version)
-        audit = ["bash", "pipeline/legacy/refresh-modifiers.sh", "--data", str(data_root / version), "--audit-only"]
-        if not reference_audit:
-            audit.append("--offline")
-        baseline = root / "data" / old / "generated/modifier-audit.json"
-        if baseline.is_file():
-            audit += ["--baseline", str(baseline)]
-        if operation != "modifiers":
-            run(audit, root, env)
-        run(["bash", "devs/scripts/driver.sh", "versions"], root, env)
-        run(["cargo", "test", "--quiet", "-p", "pobr-gamedata"], root, env)
-        run(["cargo", "test", "--quiet", "-p", "pobr-build", "--test", "parity", "parity_no_regression"], root, env)
-        for path, fingerprint in original.items():
-            if tree_fingerprint(path) != fingerprint:
-                raise ValueError(f"Snapshot changed during generation; refusing to overwrite {path.name}")
-        if digest(root / "pipeline/legacy/config.json") != config_hash:
-            raise ValueError("Configured patch changed during generation; refusing publication")
-        promote(data_root, root / "data", version, activate)
-    print(f"Published validated data/{version}" + (" and advanced CURRENT" if activate else ""))
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-    seal = sub.add_parser("manifest")
-    seal.add_argument("--data", type=Path, required=True)
-    record = sub.add_parser("record-export")
-    record.add_argument("--config", type=Path, required=True)
-    record.add_argument("--raw", type=Path, required=True)
-    regen = sub.add_parser("regenerate")
-    regen.add_argument("--locale-lock", type=Path, help="Explicit independent language-generation lock for this patch")
-    regen.add_argument("--activate", action="store_true")
-    adapt = sub.add_parser("adapt")
-    adapt.add_argument("--locale-lock", type=Path, help="Explicit independent language-generation lock for this patch")
-    adapt.add_argument("--reference-audit", action="store_true",
-                       help="Also compare parser behavior with the installed PoB2 reference")
     fetch = sub.add_parser("fetch-tree-source")
     fetch.add_argument("--source", default="official-passive-tree")
     fetch.add_argument("--offline", action="store_true")
@@ -451,17 +309,8 @@ def main():
     check_bundle = sub.add_parser("verify-bundle")
     check_bundle.add_argument("--bundle", type=Path, required=True)
     check_bundle.add_argument("--expected-id", help="Trusted SHA-256 bundle identity from the selected source lock")
-    for name in ["dictionary", "modifiers"]:
-        sub.add_parser(name).add_argument("arguments", nargs=argparse.REMAINDER)
-    sub.add_parser("patch")
     args = parser.parse_args()
-    if args.command == "manifest":
-        manifest(args.data)
-    elif args.command == "record-export":
-        record_export(args.config, args.raw)
-    elif args.command == "patch":
-        print(patch_version(read_json(ROOT / "pipeline/legacy/config.json")["patch"]))
-    elif args.command == "fetch-tree-source":
+    if args.command == "fetch-tree-source":
         print(fetch_tree_source(ROOT, args.source, args.offline))
     elif args.command == "tree-candidate":
         tree_candidate(ROOT, args.source, args.out, args.offline)
@@ -480,16 +329,6 @@ def main():
         else:
             receipt = verify(args.bundle, args.expected_id)
         print(f"Runtime bundle: {receipt['bundle_id']} (byte integrity verified; not activated)")
-    else:
-        arguments = getattr(args, "arguments", [])
-        if arguments[:1] == ["--"]:
-            arguments = arguments[1:]
-        regenerate(ROOT, activate=getattr(args, "activate", False),
-                   base_only=args.command == "adapt",
-                   operation=args.command if args.command in {"dictionary", "modifiers"} else None,
-                   arguments=arguments,
-                   reference_audit=args.reference_audit if args.command == "adapt" else None,
-                   locale_lock=getattr(args, "locale_lock", None))
 
 
 if __name__ == "__main__":

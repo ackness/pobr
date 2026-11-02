@@ -4,8 +4,9 @@
 //! Data source: vendor PoB2 `Data/SkillStatMap.lua` (954 global stat →
 //! modifier-constructor mappings) plus the `statMap` field of each statSet
 //! in `Data/Skills/{act_*,sup_*,other}.lua` (per-set overrides;
-//! minion/spectre are deferred). Deterministically extracted by
-//! `sync-pob-catalog extract-lua --what stat-map`.
+//! minion/spectre are deferred). PoB2-derived compatibility data shipped as
+//! fixed bytes in the RePoE owner package and imported by
+//! `mise run data:prepare`.
 //!
 //! **Extraction-fidelity principle**: a mod constructor's tags / nested
 //! tables are turned into plain tables and stored in JSON **as-is** —

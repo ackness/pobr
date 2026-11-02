@@ -576,8 +576,8 @@ impl GameData {
     /// (`granted_effect_id -> ascending level array`, cost/cooldown/attack
     /// time), and merges `overlay/skill_overrides.json`'s per-level
     /// override values (crit_chance / attack_speed_multiplier /
-    /// base_multiplier — extracted from vendor PoB2, columns missing from
-    /// the `.dat` export) onto the plain base data (absent overlay = plain
+    /// base_multiplier — PoB2-derived compatibility data, columns missing
+    /// from the base game facts) onto the plain base data (absent overlay = plain
     /// base, see [`domains::skill_overrides`]).
     pub fn granted_effect_levels(
         &self,
@@ -744,11 +744,11 @@ impl GameData {
     }
 
     /// Loads a historical season's tree-version node table
-    /// (`base/passive_trees/<v>.json`, extracted from vendor
-    /// `TreeData/<v>/tree.lua` via `pobr-data-adapter --tree-full` — a
+    /// (`base/passive_trees/<v>.json`, PoB2-derived compatibility data from
+    /// vendor `TreeData/<v>/tree.lua` in the RePoE owner package — a
     /// minimal mod field set: skill/name/kind/stats/ascendancy, no
     /// topology/coordinates). Returns `Ok(None)` when the file is missing
-    /// (that version wasn't extracted / an old data pack) — the consumer
+    /// (the data pack doesn't carry that version) — the consumer
     /// falls back to the current default tree; other I/O / parse errors
     /// still propagate, not silenced.
     pub fn passive_nodes_versioned(

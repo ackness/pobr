@@ -2,7 +2,6 @@
 //! `GrantedEffectStatSetsPerLevel` -> `granted_effect_stat_sets.json`).
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::Path;
 
 use pobr_data::catalog::{
     SkillDamageStat, SkillStatSetDef, SkillStatSetLevel, StatSetDef, UserLevelScaling,
@@ -107,10 +106,6 @@ struct RawStatSetPerLevel {
 pub struct StatSetsBundle {
     /// Granted effects with at least one stat (main set + additional sets, T5.2), sorted by effect id.
     pub sets: Vec<SkillStatSetDef>,
-    /// Total `GrantedEffectStatSets` row count (for reporting).
-    pub sets_total: usize,
-    /// Total per-level rows stored (including additional sets).
-    pub damage_levels_total: usize,
 }
 
 fn adapt_labels(
@@ -282,10 +277,6 @@ pub(super) fn crit_from_statset_levels(
 /// (matches PoB's own parsed `Data/Skills/act_int.lua` byte-for-byte; the
 /// main set's content matches the single-set era value-for-value — the
 /// consumption side defaults to the main set, which is the migration invariant).
-pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
-    adapt_stat_sets_from(en)
-}
-
 pub(crate) fn adapt_stat_sets_from(
     en: &(impl super::SkillTables + ?Sized),
 ) -> Result<StatSetsBundle, String> {
@@ -299,7 +290,6 @@ pub(crate) fn adapt_stat_sets_from(
 
     let sets = en.read_table::<RawStatSet>("GrantedEffectStatSets")?;
     let labels = adapt_labels(en, &sets)?;
-    let sets_total = sets.len();
     let links = en.read_table::<RawGrantedEffectStatSetLink>("GrantedEffects")?;
 
     // Per-level rows are grouped by StatSet row index (file order = vendor's GetRowList order, the basis for positional pairing).
@@ -423,7 +413,6 @@ pub(crate) fn adapt_stat_sets_from(
     };
 
     let mut out = Vec::new();
-    let mut damage_levels_total = 0usize;
     for link in &links {
         if link.id.is_empty() {
             continue;
@@ -567,7 +556,6 @@ pub(crate) fn adapt_stat_sets_from(
         }) {
             continue;
         }
-        damage_levels_total += def_sets.iter().map(|s| s.levels.len()).sum::<usize>();
         out.push(SkillStatSetDef {
             effect_id: link.id.clone(),
             sets: def_sets,
@@ -575,11 +563,7 @@ pub(crate) fn adapt_stat_sets_from(
     }
     out.sort_by(|a, b| a.effect_id.cmp(&b.effect_id));
 
-    Ok(StatSetsBundle {
-        sets: out,
-        sets_total,
-        damage_levels_total,
-    })
+    Ok(StatSetsBundle { sets: out })
 }
 
 #[cfg(test)]
@@ -633,7 +617,7 @@ mod tests {
                 {"_index": 7, "Id": "PrimaryLabel", "Text": "Primary form"}
             ])),
         );
-        let bundle = adapt_stat_sets(&dir).unwrap();
+        let bundle = adapt_stat_sets_from(dir.as_path()).unwrap();
         let sets = &bundle.sets[0].sets;
         assert_eq!(bundle.sets[0].effect_id, "ExamplePlayer");
         assert_eq!(
@@ -660,7 +644,7 @@ mod tests {
             ]),
             None,
         );
-        let bundle = adapt_stat_sets(&dir).unwrap();
+        let bundle = adapt_stat_sets_from(dir.as_path()).unwrap();
         assert!(bundle.sets[0].sets.iter().all(|set| set.label.is_none()));
         fs::remove_dir_all(dir).unwrap();
     }
@@ -684,7 +668,7 @@ mod tests {
                 json!([{"Id": "Primary", "Label": 7}]),
                 labels,
             );
-            let error = adapt_stat_sets(&dir)
+            let error = adapt_stat_sets_from(dir.as_path())
                 .err()
                 .expect("invalid label input must fail");
             assert!(error.contains(expected), "{name}: {error}");
@@ -736,7 +720,7 @@ mod tests {
                 ),
             ],
         );
-        let bundle = adapt_stat_sets(&dir).unwrap();
+        let bundle = adapt_stat_sets_from(dir.as_path()).unwrap();
         let implicit = |effect: &str| -> Vec<Vec<String>> {
             let def = bundle
                 .sets

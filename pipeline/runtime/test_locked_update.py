@@ -45,10 +45,11 @@ class LockedUpdateTests(unittest.TestCase):
         return update.fingerprint(self.data)
 
     def cli(self, name, *args):
-        return subprocess.run(['bash', str(ROOT / 'pipeline/legacy/bump-version.sh'),
+        # Same entry as `mise run data:update`.
+        return subprocess.run([sys.executable, '-m', 'pipeline.runtime.locked_update',
             '--lock', str(self.f.lock_path), '--out', str(self.root / name),
             '--cache', str(self.f.cache), '--data-root', str(self.data), '--offline', *args],
-            cwd=self.root, capture_output=True, text=True, timeout=15)
+            cwd=ROOT, capture_output=True, text=True, timeout=15)
 
     def test_default_cli_prepares_candidate_without_mutating_current_or_inputs(self):
         before = self.tree()
@@ -57,7 +58,6 @@ class LockedUpdateTests(unittest.TestCase):
         self.assertIsNone(json.loads(result.stdout)['selection'])
         self.assertEqual(bundle.verify(self.root / 'candidate'), self.receipt)
         self.assertEqual(self.tree(), before)
-        self.assertFalse((self.root / 'pipeline/legacy/config.json').exists())
         self.assertFalse((self.root / 'vendor').exists())
 
     def test_cli_requires_exact_lock_patch_and_explicit_selection_pair(self):

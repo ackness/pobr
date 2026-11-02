@@ -68,9 +68,7 @@ mise exec -- python3 -m pipeline.runtime.test_build_data
 ```
 
 Output must be outside the canonical `data/` tree. A failed fetch/projection
-leaves the prior candidate file unchanged. `regen-all.sh` checks the target before
-costly generators and treats crafting generation failure as fatal. Published
-builds fetch exact Git blobs; an unpublished local handoff requires an explicit
+leaves the prior candidate file unchanged. Published builds fetch exact Git blobs; an unpublished local handoff requires an explicit
 `--crafting <zip>` (and `--game <zip>` for its paired game part), with the same
 byte checks. `--offline` alone never authorizes a local-only package or a fallback.
 

@@ -1,10 +1,9 @@
 //! StatDescriptions overlay domain schema
 //! (`overlay/stat_descriptions.json`, schema `stat_descriptions/v1`).
 //!
-//! The legacy catalog comes from vendor PoB2 `Data/StatDescriptions/*.lua`,
-//! deterministically extracted by
-//! `sync-pob-catalog extract-lua --what stat-descriptions`: luajit loads
-//! the description tables in a minimal environment, feeds each stat_id a
+//! The legacy catalog comes from vendor PoB2 `Data/StatDescriptions/*.lua`
+//! (PoB2-derived compatibility data shipped in the RePoE owner package):
+//! luajit loads the description tables in a minimal environment, feeds each stat_id a
 //! representative value (V=1) and renders a line of text; the Rust side
 //! groups the result by scope and serializes with a BTreeMap for
 //! byte-stable dictionary order.

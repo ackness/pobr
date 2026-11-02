@@ -3,7 +3,7 @@
 The explicit `base-items` domain of `--ordinary-facts` reads the same fixed F
 envelope through `reader::open` and `Tables::selected`. It emits the existing
 `BaseItemDef`, `WeaponBaseStats`, `ArmourBaseStats` and `UtilityBaseStats` shapes.
-It does not change the core, GameData/BuildData, DTOs or legacy converters.
+It does not change the core, GameData/BuildData or DTOs.
 
 ```sh
 mise exec -- cargo run --locked -p pobr-data-adapter -- \

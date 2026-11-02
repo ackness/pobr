@@ -4,13 +4,12 @@
 //! Data source: vendor PoB2 `Data/Minions.lua` (32 entries) /
 //! `Data/Spectres.lua` (593 entries) — both files are headed
 //! "automatically generated" and are themselves a deterministic projection
-//! of the `.dat` files, the actual input to PoB2's calc engine; faithfully
-//! extracted field by field by `sync-pob-catalog extract-lua --what
-//! minions|spectres` running under luajit in a minimal stub environment
-//! (schema id `minions/v1` / `spectres/v1`). Physically they live under
-//! `overlay/` (decision 1: production tooling owns the layer — extract-lua
-//! output goes to overlay, and migrates to base once the pipeline gains
-//! `.dat` table support, as a byte-equivalent migration commit).
+//! of the `.dat` files, the actual input to PoB2's calc engine. The
+//! field-by-field projection (schema id `minions/v1` / `spectres/v1`) is
+//! PoB2-derived compatibility data shipped as fixed bytes in the RePoE
+//! owner package and imported by `mise run data:prepare`; its
+//! `_meta.generator` still names the historical extractor. It lives under
+//! `overlay/`; changing it is the owner repository's job.
 //!
 //! Relationship to the existing `pobr_data::minion::MinionDef`
 //! (hand-transcribed constants + calc-consumption shape): this module is
@@ -24,8 +23,8 @@
 //! `overlay/granted_effect_minions.json` is the gem → minion foreign-key
 //! **sidecar** (owned per decision §4-10): `minionList` isn't in the
 //! `.dat`s — it comes from PoB2's Export template's hand-written
-//! `#minionList` directive (`Export/Scripts/skills.lua:771-776`), extracted
-//! by extract-lua alongside `Data/Skills/*.lua`; merging it into
+//! `#minionList` directive, shipped in the same owner package alongside the
+//! skill data; merging it into
 //! `GrantedEffectDef` is a wiring concern — this module only defines the
 //! sidecar's shape.
 

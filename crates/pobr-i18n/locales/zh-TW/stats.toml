@@ -1,7 +1,7 @@
 # zh-TW PoBR stat labels, using official game terms where available.
 # Keys MUST be a subset of en-US/stats.toml. Missing keys fall back to en-US.
 # Term sources: official 0.5.5.4.2 Traditional Chinese exports, verified against
-# pipeline/tables/export-source.json: ItemClasses, GemTags and ActiveSkills.
+# that export's ItemClasses, GemTags and ActiveSkills tables.
 # The shipped i18n/zh-TW/{skills,base_items,mods}.json catalogs contain names,
 # not corresponding complete PoBR stat labels. Composed labels are PoBR wording.
 

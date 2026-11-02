@@ -2,7 +2,6 @@
 //! -> the normal-rarity `Fire1` / `Cold1` / `Lightning1` / `Chaos1` values.
 
 use std::collections::BTreeMap;
-use std::path::Path;
 
 use pobr_data::catalog::{MonsterResistanceDef, MonsterResistancesDef};
 use serde::Deserialize;
@@ -33,14 +32,7 @@ pub(crate) struct RawResistance {
     chaos: Vec<i32>,
 }
 
-fn adapt(en: &Path) -> Result<MonsterResistancesDef, String> {
-    let varieties: Vec<RawVariety> = crate::read_json(&en.join("MonsterVarieties.json"))?;
-    let types: Vec<RawMonsterType> = crate::read_json(&en.join("MonsterTypes.json"))?;
-    let raw: Vec<RawResistance> = crate::read_json(&en.join("MonsterResistances.json"))?;
-    adapt_rows(varieties, &types, raw)
-}
-
-/// Join parsed rows from either the original raw loader or authenticated physical facts.
+/// Join parsed rows from authenticated physical facts.
 pub(crate) fn adapt_rows(
     varieties: Vec<RawVariety>,
     types: &[RawMonsterType],
@@ -103,30 +95,6 @@ pub(crate) fn adapt_rows(
     Ok(MonsterResistancesDef { monsters })
 }
 
-pub(crate) fn write(raw: &Path, base: &Path, patch: &str) -> Result<(), String> {
-    let data = adapt(&raw.join("English"))?;
-    let mut inputs = BTreeMap::new();
-    for table in ["MonsterVarieties", "MonsterTypes", "MonsterResistances"] {
-        let name = format!("English/{table}.json");
-        let bytes = std::fs::read(raw.join(&name)).map_err(|e| format!("{name}: {e}"))?;
-        inputs.insert(name, crate::raw_source::sha256_hex(&bytes));
-    }
-    let receipt = std::fs::read(raw.join("export-source.json")).map_err(|e| e.to_string())?;
-    crate::write_pretty(
-        &base.join("monster_resistances.json"),
-        &serde_json::json!({
-            "_meta": {
-                "schema": "monster-resistances/v1",
-                "generator": "pobr-data-adapter",
-                "poe_version": patch,
-                "source_receipt_sha256": crate::raw_source::sha256_hex(&receipt),
-                "inputs": inputs,
-            },
-            "monsters": data.monsters,
-        }),
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,10 +102,7 @@ mod tests {
 
     #[test]
     fn joins_all_type_resistances_and_preserves_vulnerabilities() {
-        let dir =
-            std::env::temp_dir().join(format!("pobr-monster-resistances-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        for (file, rows) in [
+        let tables: BTreeMap<&str, serde_json::Value> = BTreeMap::from([
             (
                 "MonsterVarieties",
                 json!([
@@ -163,10 +128,16 @@ mod tests {
                     {"Fire1": [0], "Cold1": [0], "Lightning1": [-30], "Chaos1": [0]}
                 ]),
             ),
-        ] {
-            std::fs::write(dir.join(format!("{file}.json")), rows.to_string()).unwrap();
-        }
-        let data = adapt(&dir).unwrap();
+        ]);
+        let adapt = |tables: &BTreeMap<&str, serde_json::Value>| {
+            let parse = |name: &str| tables[name].clone();
+            adapt_rows(
+                serde_json::from_value(parse("MonsterVarieties")).unwrap(),
+                &serde_json::from_value::<Vec<RawMonsterType>>(parse("MonsterTypes")).unwrap(),
+                serde_json::from_value(parse("MonsterResistances")).unwrap(),
+            )
+        };
+        let data = adapt(&tables).unwrap();
         assert_eq!(
             data.monsters["Metadata/Monsters/MudGolem/MudGolem"],
             MonsterResistanceDef {
@@ -182,15 +153,12 @@ mod tests {
         );
         assert_eq!(data.monsters["Metadata/Monsters/Skeletons/PlayerSummoned/SkeletonArsonistPlayerSummoned"].fire, 50);
 
-        let path = dir.join("MonsterResistances.json");
-        let mut rows: serde_json::Value = crate::read_json(&path).unwrap();
-        rows[0]["Cold1"] = json!([30, 50]);
-        std::fs::write(path, rows.to_string()).unwrap();
+        let mut changed = tables.clone();
+        changed.get_mut("MonsterResistances").unwrap()[0]["Cold1"] = json!([30, 50]);
         assert!(
-            adapt(&dir)
+            adapt(&changed)
                 .unwrap_err()
                 .contains("Cold1: expected one base value")
         );
-        std::fs::remove_dir_all(dir).unwrap();
     }
 }

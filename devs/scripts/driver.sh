@@ -13,7 +13,6 @@
 #   gate       optional local batch validation; reports every failing step
 #   regen      precompile-mods --report, then its tests
 #   warm       copy-on-write clone of another worktree's target/debug
-#   drill      version-bump-drill：数据可再生性 + 编译 + parity 可运行
 #   smoke      Quick representative aggregation, parser and codec checks.
 #   data       数据现状自检 + 再生管线说明（含云端约束）
 #   lua <pat>  在 vendor PoB2 Lua 里 grep 一个 pattern（公式/规则裁决用）
@@ -301,7 +300,7 @@ PoBR development commands (mise tasks; without mise run this script with the sam
 test/lint/timings also accept raw Cargo arguments (-p, --test, --lib, ...).
 Use --test/--lib to bound compilation; a test-name filter alone cannot do that.
 Full release CI runs on tags. Do not run an identical full gate locally first.
-Data/setup tasks: status, deps, vendor, bootstrap, data:status, versions, data:diff, drill, vendor:lua.
+Data/setup tasks: status, deps, vendor, bootstrap, data:prepare, data:check, data:status, versions, data:diff, vendor:lua.
 Script subcommands for the renamed tasks: data, diff, lua.
 EOF
 }
@@ -362,7 +361,7 @@ GATE_STEPS=(fmt regen clippy core build parity apps i18n web accuracy)
 gate_step() {
   case "$1" in
     fmt)      cargo fmt --all --check ;;
-    regen)    cmd_regen && git diff --exit-code --stat -- "$DATA_ROOT/$DATA_VER/generated" ;;
+    regen)    cmd_regen ;;
     clippy)   cargo clippy --workspace --lib --tests -- -D warnings ;;
     core)     cargo test -q -p pobr-core ;;
     build)    cargo test -q -p pobr-build --lib --test skills --test codec --test dualrun --test tree_convert ;;
@@ -406,8 +405,6 @@ cmd_gate() {
   fi
 }
 
-cmd_drill() { say "version-bump-drill（数据可再生 + 编译 + parity 可运行）"; bash devs/scripts/version-bump-drill.sh; }
-
 cmd_smoke() {
   say "Quick smoke: aggregation, parser and Build Code roundtrip"
   cargo test -p pobr-core --test aggregation mod_db:: &&
@@ -421,18 +418,17 @@ cmd_data() {
     echo "✓ data/$DATA_VER 已临时导入（base/overlay/generated/i18n）——来源按独立锁固定"
     ls "$DATA_ROOT/$DATA_VER" | sed 's/^/    /'
   else
-    echo "✗ data/$DATA_VER 缺失"
+    echo "✗ data/$DATA_VER 缺失（先运行 mise run data:prepare）"
   fi
   cat <<'EOF'
 
-独立数据入口（详见 pipeline/README.md）：
-  1) 当前固定输入       : mise run data:prepare（临时导入，不改变 CURRENT）
+数据只来自 ackness/repoe 与 ackness/poe2-zh-cn-stats 的固定发布（详见 pipeline/README.md）：
+  1) 当前固定输入       : mise run data:prepare（临时导入）；mise run data:check 离线确认工作树干净
   2) 声明普通 DTO       : mise run data:regen --out <fresh> --adapter <prebuilt>
   3) 新版本完整候选     : mise run data:update --lock <owner-lock> --out <fresh>
   4) 显式本地采用       : 上一命令加 --activate --expected-current <old-version>
 采用前保留版本、GameData 和 parity 门禁；失败回滚，来源接受与部署另作决定。
-官方版本发现与原料采集由独立 RePoE 执行，PoBR 不再下载原始索引或运行表导出器。
-历史原表兼容诊断：data:adapt / data:legacy:regen；只使用显式本地输入。
+官方版本发现、原料采集与语言生成由 owner 仓库执行；PoBR 不读取原始表导出或 vendor Lua 生成数据。
 EOF
 }
 
@@ -448,7 +444,7 @@ cmd_lua() {
 }
 
 cmd_versions() {
-  say "已入库数据版本 + 多版本无关性 smoke"
+  say "已准备数据版本 + 多版本无关性 smoke"
   echo "data/ 版本目录："; ls -d "$DATA_ROOT"/[0-9]*/ 2>/dev/null | sed 's#/$##; s#.*/##' | sed 's/^/    /'
   echo "本次数据版本：${DATA_VER}（测试与 PoB2 对照值都针对它）"
   echo "切到更新版本运行（零代码改动）：export POBR_DATA_VERSION=<ver>  或  写 data/CURRENT"
@@ -461,7 +457,7 @@ cmd_diff() {
   local a="${2:-}" b="${3:-}"
   if [ -z "$a" ] || [ -z "$b" ]; then
     echo "usage: driver.sh diff <verA> <verB> [--domain tree|mods|bases|skill_levels|skill_stats|special_mods|uniques] [--limit N]"
-    echo "已入库版本："; ls -d "$DATA_ROOT"/[0-9]*/ 2>/dev/null | sed 's#/$##; s#.*/##; s/^/    /'
+    echo "已准备版本："; ls -d "$DATA_ROOT"/[0-9]*/ 2>/dev/null | sed 's#/$##; s#.*/##; s/^/    /'
     return 2
   fi
   say "语义数据 diff: $a → ${b}（节点/技能/词条的增删改）"
@@ -481,7 +477,7 @@ cmd_status() {
     local have; have="$(git -C "$VENDOR_DIR" rev-parse HEAD 2>/dev/null)"
     [ "$have" = "$sha" ] && echo "✓ vendor: 钉定 commit $sha" || echo "~ vendor: 在 ${have}（钉定 ${sha}，driver.sh vendor 对齐）"
   else echo "✗ vendor 未克隆（driver.sh vendor）"; fi
-  [ -d "$DATA_ROOT/$DATA_VER" ] && echo "✓ data: $DATA_VER 已入库" || echo "✗ data: $DATA_VER 缺失"
+  [ -d "$DATA_ROOT/$DATA_VER" ] && echo "✓ data: $DATA_VER 已准备" || echo "✗ data: $DATA_VER 缺失（mise run data:prepare）"
   command -v cargo >/dev/null && echo "✓ cargo: $(cargo --version)" || echo "✗ cargo 缺失"
 }
 
@@ -511,7 +507,6 @@ case "${1:-}" in
   gate)      shift; cmd_gate "$@" ;;
   regen)     shift; cmd_regen "$@" ;;
   warm)      shift; cmd_warm "$@" ;;
-  drill)     cmd_drill ;;
   smoke)     cmd_smoke ;;
   data)      cmd_data ;;
   versions)  cmd_versions ;;

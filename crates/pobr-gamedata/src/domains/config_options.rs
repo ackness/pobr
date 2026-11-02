@@ -2,9 +2,9 @@
 //! (542+ entries of declarative effects DSL plus handler_id exceptions),
 //! schema in [`pobr_data::catalog::config_def`].
 //!
-//! Sourced from `sync-pob-catalog extract-lua --what config-options`
-//! (probe-based induction of ConfigOptions.lua's apply closures);
-//! consumer = `pobr-core::rules::config_interpreter`.
+//! PoB2-derived compatibility data (probe-based induction of
+//! ConfigOptions.lua's apply closures) imported from the RePoE owner
+//! package; consumer = `pobr-core::rules::config_interpreter`.
 
 use pobr_data::catalog::config_def::ConfigOptionsDef;
 

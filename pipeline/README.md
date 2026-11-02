@@ -2,7 +2,8 @@
 
 本目录声明 PoBR 构建所需的固定输入，将 RePoE 游戏事实、翻译库语言产物和 PoBR 自有政策
 适配、组合为既有 DTO／运行 schema。完整输入与 `data/<poe-version>/` 运行目录仅临时物化；
-尚未迁移的字段继续保留明确固定的 vendor／社区来源，不称为已从客户端自主再生。
+尚未迁移的字段以 PoB2／社区兼容数据的形式随 RePoE owner 包固定导入，不称为已从客户端自主再生。
+PoBR 不从 PoB2 vendor Lua 或本地原表导出生产数据。
 
 当前存储职责：游戏数据归RePoE、语言数据归翻译库，PoBR只提交代码、需求／版本锁、来源元数据及小型合成夹具；CI构建和需要实物的测试在临时目录导入数据并生成发布资产。
 四份完整快照、七份外部shared、历史大policy及完整语言／API样本已迁出当前Git tree；无旧PoBR数据artifact回退。本地活动目标保持0.5.5.5，Git历史不改写。详见[存储边界](../docs/data-architecture.md#4-存储边界)。
@@ -22,8 +23,7 @@
 | [native/](native/native-candidate.md) | 受限原生 recipe、显示侧表适配与对应测试；`data:native:candidate` |
 | [tree/](tree/tree-inputs.md) | 历史官方树包导入及诊断候选；`data:tree:source`、`data:tree:candidate` |
 | [policies/](policies/README.md) | 按游戏领域划分的 PoBR 解释政策与树修正；不是下载缓存 |
-| [diagnostics/](diagnostics/README.md) | 数据／vendor 差异和描述来源核对工具；不自动采用数据 |
-| [legacy/](legacy/README.md) | 仍有显式调用方的历史原表／vendor 兼容流程、旧品质收据和 Lua 桥接 |
+| [diagnostics/](diagnostics/README.md) | 数据版本差异、描述来源核对与词条审计；不自动采用数据 |
 
 各功能的说明、锁和测试与实现放在一起。Python 从仓库根目录以模块运行，
 例如 `mise exec -- python3 -m pipeline.runtime.runtime_pack --help`；日常优先使用上表中保持稳定的 mise 任务。
@@ -47,7 +47,7 @@ JSON 的职责各不相同：`*.lock.json` 固定输入身份，`*requirements.j
 | 词条显示文本 | 固定客户端CSD＋明确保留的兼容文本 | [普通描述生产者](../tools/pobr-data-adapter/ordinary-stat-descriptions.md)、树／符文renderer；未表达项保留诊断或整项回退 |
 | 被动天赋树 | 目标DAT／Default PSG事实与固定兼容字段 | 普通树已迁源；placement／armour等未拥有语义保留，历史官方Git树候选入口另列下文 |
 | 特殊制作目录 | 独立RePoE七表中立事实，PoBR筛选／聚合 | [必需临时输入](imports/crafting-inputs.md)保留八槽与未表达原值诊断；来源语言缺失保持unknown；新元数据已本地采用，不代表完整效果或概率 |
-| 规则／目录／翻译 | PoBR自有规则、固定vendor／社区目录、固定语言库与客户端文本投影 | 逐项记录来源和适用边界；保留输入不代表全部自主生产，SC客户端身份与CN数值不因中文显示而认证 |
+| 规则／目录／翻译 | PoBR自有规则、随owner包导入的PoB2／社区兼容目录、固定语言库与客户端文本投影 | 逐项记录来源和适用边界；保留输入不代表全部自主生产，SC客户端身份与CN数值不因中文显示而认证 |
 
 `.dat` 存的是 **id / 数值 / 外键关系**（规范化数据库表）；显示文本在 `StatDescriptions` 里。
 列名/表名见 [poe-tool-dev/dat-schema](https://github.com/poe-tool-dev/dat-schema)。
@@ -78,7 +78,7 @@ mise run data:tree:candidate --offline --out .cache/tree-proof/second
 历史诊断入口固定的 `bd87e651` 输入有已确认的来源缺口：Druid 的 `overridePairs` 引用了
 `nodes` 中不存在的 `19680`、`55194`（分别指向替换项 `40837`、`57601`）。
 这些记录在已核对的多个官方版本中均悬空；是否属于游戏中已删除的节点尚未证实。
-直接将原始文件交给严格 adapter 仍会拒绝生成；旧完整再生成链也需要先解决其来源问题。
+直接将原始文件交给严格 adapter 仍会拒绝生成。
 
 上面的诊断候选入口通过 [固定修正清单](policies/tree-corrections/bd87e6512c92b868542eddfb1ba4ea8b6dc2da36.json)
 隔离这两条无法应用的映射。清单同时绑定源提交、原始哈希和精确旧值，并进入来源 lock；
@@ -102,7 +102,7 @@ Cargo 使用 `--locked`；`--offline` 同时禁止源下载和 Cargo 联网，�
 生成时目录使用上游版本作为 adapter 标签，不表示已确认客户端补丁。
 这些命令不会覆盖活动数据或修改 `CURRENT`。生产切换还需补丁适配、完整域/消费者与数值验证。
 当前 native variants 仍沿用基础节点的拓扑和升华归属；替换后的独立升华归属、通用属性选择与
-vendor 推导的 armour 标记尚未迁移。历史树 adapter 继续保留，不能将此候选入口视为完整替代。
+vendor 推导的 armour 标记尚未迁移。当前普通树仍按 owner 包固定导入，此候选入口不是它的完整替代。
 
 ## 固定客户端原始资源与事实候选
 
@@ -112,7 +112,7 @@ vendor 推导的 armour 标记尚未迁移。历史树 adapter 继续保留，�
 RePoE 原生事实包另由 `pobr-data-adapter --native-facts` 验证外部 manifest 摘要后形成
 PoBR 领域候选，见[候选契约](../tools/pobr-data-adapter/native-facts.md)。当前只接通部分国际服事实，
 保留完整原始事实引用和诊断；它不是运行时包，也未完成品质、几何或全部关系的语义验证。
-候选消费与旧生产再生入口仍分别存在，不能宣称生产链已退出 PoB2。
+活动数据仍含随 owner 包导入的 PoB2 兼容字段，不能宣称数据已全部退出 PoB2。
 
 ### 普通完整 BuildData 候选
 
@@ -144,17 +144,17 @@ Full CI从Git获取压缩输入后顺序调用既有adapter生成六域候选；
 [精确提交663d9055的完整CI](https://github.com/ackness/pobr/actions/runs/41376591565)已通过六域生产、真实WASM／Web、声明运行组包及Full gate；部署仍未执行，本地完整快照采用见上文。
 该入口保存已存在的完整运行组合，不替代下述领域来源与发布验收。
 
-## 词条更新与回归检查
+## 词条审计
 
-普通解析修复或同步当前固定版本的 PoB2 规则：
+审计已准备数据中的词条规则，并与固定版本的 PoB2 parser 对照：
 
 ```bash
-mise exec -- bash pipeline/legacy/refresh-modifiers.sh
+mise exec -- bash pipeline/diagnostics/modifier-audit.sh
 ```
 
-命令依次提取普通规则与 `specialModList`、严格校验完整有效规则、用完整来源语料对照 PoB2、检查上一份审计，
-最后更新预解析缓存。它不下载游戏数据、不切换游戏版本，也不修改数值 golden。
-只检查已有数据和引擎时用 `--audit-only`；没有 vendor 时用 `--offline`，报告明确不含 PoB2 对照。
+命令先严格校验完整有效规则，再用完整来源语料对照 PoB2，并与上一份审计比较。
+它只做审计：不提取或改写规则，不下载游戏数据、不切换游戏版本，也不修改数值 golden。
+没有 vendor 时用 `--offline`，报告明确不含 PoB2 对照。
 可用 `--data data/<version>` 指定数据，`--baseline <audit.json>` 指定历史审计。
 
 语料来源包括 StatDescriptions 的稳定 stat ID、装备/珠宝/药剂/护符词缀、特殊制作词缀、
@@ -164,12 +164,12 @@ mise exec -- bash pipeline/legacy/refresh-modifiers.sh
 
 产物：
 
-- `data/<version>/generated/modifier-audit.json`：可重现的完整审计与来源，作为下一次比较的快照；不进入 Web 下载清单。
+- `data/<version>/generated/modifier-audit.json`（已准备的忽略目录）：可重现的完整审计与来源，作为下一次比较的快照；不进入 Web 下载清单。
 - `.cache/modifier-audit/<version>/validation.json`：严格校验报告，记录 common / version / patch / derived / vendor 文件的 SHA-256、有效规则顺序和覆盖来源；审计的 `rule_validation` 内嵌同一信息。
 - `.cache/modifier-audit/<version>/current.delta.json`：退化、新增缺口、已解决和移除条目。
 - 同目录的 `corpus.txt` / `oracle.jsonl`：本次 PoB2 对照的输入与输出。
 
-报告中的 `pobr_gap` 表示 PoB2 完整解析而 PoBR 未完整解析，优先检查提取器、枚举、标签映射。
+报告中的 `pobr_gap` 表示 PoB2 完整解析而 PoBR 未完整解析，优先检查 PoBR 规则、枚举、标签映射。
 `upstream_gap` 表示 PoB2 也不能完整解析，需查游戏机制并实现对应计算，不能靠空规则消除提示。
 `recognized_empty` 单列零 modifier 的规则；有残余文本或丢失条件标签也不计为完整支持。
 `no_effect` 是登记为不影响任何计算输出的 S0 规则（`"mods": []`、`"batch": "S0"`）匹配的行，与 `parsed` 一样计为完整支持：从 `parsed` 变成 `no_effect` 不算退化。
@@ -178,13 +178,13 @@ mise exec -- bash pipeline/legacy/refresh-modifiers.sh
 每条样本的 `special_rule_id` 关联规则文件来源，`matching_special_rules` 按优先级列出所有候选，多个 ID 表示后续规则被遮蔽。该检查只覆盖样本，不证明任意文本都无重叠。结构化 LIST 等未参与计算的字段在 `non_effective_fields` 单列；现有装备 / 天赋的 `SourceId` 不由规则来源替代。严格校验与合并契约见[维护者规则说明](../docs/contributing-mods.md#7-validate-test-and-open-a-pr)。
 
 以前完整解析的文本退化，或同一来源移除旧措辞后新增无法解析的措辞，会使命令失败。
-失败时保留 `.cache` 报告，丢弃候选目录，**不覆盖正式数据和上一份已通过的审计快照**；新增机制缺口单独列出。
+失败时保留 `.cache` 报告，**不覆盖上一份已通过的审计快照**；新增机制缺口单独列出。
 既有示例角色覆盖率及数值 parity 门禁仍独立保留。
 
 PoB2 本身把两层工作分开：`Data/StatDescriptions` 等从游戏数据导出文本，
 `Modules/ModParser.lua` 将文本映射到 modifier，`Modules/Calc*.lua` 消费这些 modifier。
-PoBR 沿用这个边界：提取器自动吸收可表达的规则，人工修正放在 `data/overlay-common/special_mods.json`，
-更新数据后自动继承；真正的新机制仍需要实现和数值回归测试。
+PoBR 沿用这个边界：从 PoB2 转换的解析规则（`mod_parser_rules.json`、`special_vendor.json`）随 RePoE owner 包固定导入，
+PoBR 的修正放在 `data/overlay-common/special_mods.json`，更新数据后自动继承；真正的新机制仍需要实现和数值回归测试。
 
 ### 中文词典来源
 
@@ -198,7 +198,7 @@ PoBR 沿用这个边界：提取器自动吸收可表达的规则，人工修正
 国际服导出提供繁中；完整游戏表的新版官方简中仍需相应 WeGame 客户端数据，不能用繁转简冒充。独立词表中的腾讯交易文本不等于完整客户端名词表。
 当前构建从独立翻译库的固定产物导入，执行 `mise run data:prepare`；完整词典和元数据保持原字节，不在PoBR内重新生成或跟踪上游HEAD。
 目标、Git修订、manifest及成员摘要见[构建锁](runtime/build-data.lock.json)，临时导入及回滚见[build-data](runtime/build-data.md)。
-旧简中生成、下载与合并实现已迁至翻译库；PoBR的dictionary／历史兼容生成只调用固定独立producer，当前完整候选／bump则导入owner已发布的固定语言文件，均不解析来源HEAD。九个 SC 成员与 140+2 分层按固定历史输入生成，TW 与紧凑 display 继续独立组合，见[语言生成契约](imports/locale-generation.md)。部分游戏 vendor 再生工具仍待按域退出，现有 processed 包的精确恢复不代表全部客户端自主再生。
+旧简中生成、下载与合并实现已迁至翻译库；PoBR 的完整候选只导入 owner 已发布的固定语言文件，不解析来源 HEAD。九个 SC 成员与 140+2 分层的固定历史重放见[语言生成契约](imports/locale-generation.md)，TW 与紧凑 display 继续独立组合。现有 processed 包的精确恢复不代表全部客户端自主再生。
 
 ### 独立词表与人工翻译维护
 
@@ -231,57 +231,30 @@ PoBR 沿用这个边界：提取器自动吸收可表达的规则，人工修正
 ## 固定输入、版本与候选
 
 当前输入由[build-data](runtime/build-data.md)、[ordinary](runtime/ordinary/ordinary-inputs.md)和[显示导入](imports/data-imports.md)的独立锁声明；
-`data/CURRENT`只选择本地运行版本。`legacy/config.json`仍绑定历史原表兼容诊断的旧输入，不是latest或活动指针。
+`data/CURRENT`只选择本地运行版本。
 PoBR不再安装`pathofexile-dat`、下载原始索引或导出官方原表。官方版本发现和资源采集在独立RePoE执行，
 语言在翻译库生成；成功观察到一个补丁号也不能认证全部原料、机制或改变CURRENT。
 
 ```sh
 mise run data:version                   # 本地选中版本
 mise run data:prepare                   # 临时导入当前固定目标，不更改 CURRENT
+mise run data:check                     # 离线检查：跟踪数据归属，导入后工作树干净
 mise run data:regen --out .cache/ordinary-produced --adapter target/debug/pobr-data-adapter
 mise run data:update --lock pipeline/runtime/build-data.lock.json --out .cache/update-review
 ```
 
-`data`和`data:fetch`是当前固定输入prepare的简短入口；不会发现最新版本或重贴旧数据标签。
+`data:check` 不联网、不导入：先由 `pipeline.imports.check_data_ownership` 确认 `data/` 只跟踪 `CURRENT`
+与锁中声明的自有共享规则，再断言导入后没有未忽略的新文件或被改动的跟踪文件。导入产物的忽略规则集中在根
+`.gitignore` 的同一区块。CI 中每个导入数据的 job 先恢复 `.cache/data-import-downloads` 的内容寻址缓存
+（命中后仍逐项校验摘要），导入后运行同一检查。
+
 `data:regen`只生成已声明的普通领域候选，完整封包仍使用`data:pack`，不把六域结果冒称全部自主数据。
 完整候选及显式本地采用见[锁驱动更新](runtime/locked-update.md)。采用须同时指定`--activate`和预期CURRENT，
 保留隔离的版本／GameData／parity门禁、原子选择、失败回滚及同版本目标patch；默认只准备候选。
 shared变更须另行迁移；不会自动修改vendor pin、来源接受、数值golden、构建锁或部署。
 
-## 历史本地 DTO 兼容诊断
-
-既有`data:adapt`／`data:adapt:reference`及`data:legacy:regen`保留，用于明确提供的历史原表和固定vendor，
-不再负责下载或安装上游导出器。它们不是当前独立来源生产链，旧输入须保持原patch、schema与来源收据。
-适配和规则计算仍属PoBR；不能因低层adapter可读取一个数组就把它登记为新的官方事实。
-这些命令仍在隔离候选中运行审计及回归，检查原目录和配置未并发改变后才替换本地目标，
-`data:adapt`不隐式运行PoB2，reference入口则明确要求已固定的参考环境。
-
 schema-3 manifest封存默认运行字节；维护报告和本地patch不进入玩家包。
-`manifest`子命令只封装已核对的本地修改，不替代来源或游戏语义验收。
 完整游戏／语言输入、运行目录与缓存均为临时或忽略内容，不进入PoBR Git／data artifact refs。
-
-## Vendor calc-delta 报告（`diff-vendor-calcs.sh`）
-
-版本升级后，用它把「这次补丁改了哪些计算公式 / 数据」变成一份 triage 清单，
-取代「翻黄金 → 看 parity 暴跌 → 逐 build 考古」的发现流程。
-
-```bash
-pipeline/diagnostics/diff-vendor-calcs.sh <old-sha> <new-sha> [--out <file>]
-# 默认输出：.cache/vendor-delta/reports/vendor-delta-<new-sha[:8]>.md
-```
-
-- 两个 vendor pin 各做一次 shallow git checkout 到 `.cache/vendor-delta/<sha>/`
-  （gitignore，命中缓存即跳过；用 git checkout 而非 codeload tarball——headless
-  抽取的 `HeadlessWrapper.lua` 引导需要完整工作树，tarball 缺文件会导致
-  `modLib.parseMod missing`）。
-- 报告三节：**Calc 模块 diff**（`Modules/Calc*.lua` + `ModParser.lua` 的 diffstat +
-  折叠 hunks）、**数据模块 diff**（`Data/` + `Modules/Data*.lua` 只给按改动量排名的
-  diffstat）、**抽取产物 diff**（对两个 pin 跑 `extract-lua --what
-  special-mods|parser-rules|uniques`，对生成 JSON 做条目级 add/remove/change 汇总）。
-- 软降级（沿用 `regen-all.sh` 的 `soft_step` 精神）：某个 `--what` 在旧 pin 上因
-  结构不兼容跑失败时，报告注明缺失原因，脚本不中止。
-- 旋钮：`MAX_HUNK_LINES`（单文件 hunk 超此行数只留 diffstat，默认 800）、
-  `DATA_TOP`（数据文件排名条数，默认 40）。
 
 ## 扩展 / 升版
 
@@ -300,21 +273,19 @@ pipeline/diagnostics/diff-vendor-calcs.sh <old-sha> <new-sha> [--out <file>]
   全部抗性记录，保留负数弱点；空链接为零。该文件的 `_meta` 保存原始导出收据与三张输入表的
   SHA-256；普通 BuildData 已将其写入 minion／spectre 定义并用于基础抗性计算，
   不代表其它召唤物语义已全部迁移或认证。
-- `GemEffects.GrantedEffectDisplayOrder` 在 `pathofexile-dat@15.2.0` 使用的社区 schema 中
-  尚未命名（2026-10-16 导出验证），不能按此列名导出。显示顺序继续由
-  `overlay/gem_effects.json` 提供；不为未命名列猜测 schema override。
+- `GemEffects.GrantedEffectDisplayOrder` 在社区 dat-schema 中尚未命名（2026-10-16 核对），
+  不能按此列名导出。显示顺序继续由 owner 包中的兼容 `overlay/gem_effects.json` 提供；
+  不为未命名列猜测 schema override。
 - **历史资源可用性**：已观察到部分旧补丁资源返回 404，不能据此断言所有旧资源必然下线。
-  固定归档可离线重放已保存的 DAT；未取得的整表／资源保持来源缺口。当前采集和新表生产归 RePoE，
-  不再通过 PoBR 旧 Node 下载器或修改历史 `config.json` 升版。固定 vendor 字段可作为显式保留依赖，
-  不能在采集失败时静默兜底为目标补丁的官方事实。
+  固定归档可离线重放已保存的 DAT；未取得的整表／资源保持来源缺口。采集和新表生产归 RePoE。
+  owner 包中的 PoB2 兼容字段可作为显式保留依赖，不能在采集失败时静默兜底为目标补丁的官方事实。
 
 ## 列名陷阱：社区 schema vs PoB2 spec.lua（M1-W0 2026-06-11 核验）
 
-`pathofexile-dat` 用 [poe-tool-dev/dat-schema](https://github.com/poe-tool-dev/dat-schema) 的列名；
-PoB2 `Export/spec.lua` 对**同一物理列**有不同命名。下表用于解释历史 `legacy/config.json`／DTO 兼容路径，
-不再是当前下载配置；新导出应在 RePoE 固定物理列／schema，再由 adapter 明确映射。历史核验对照（PoE2 段，validFor=2）：
+社区 [poe-tool-dev/dat-schema](https://github.com/poe-tool-dev/dat-schema) 与 PoB2 `Export/spec.lua`
+对**同一物理列**有不同命名。下表用于解释 DTO 兼容字段；新导出在 RePoE 固定物理列／schema，再由 adapter 明确映射。历史核验对照（PoE2 段，validFor=2）：
 
-| 表 | 社区 schema 列名（下载用） | PoB2 spec.lua 名（语义） |
+| 表 | 社区 schema 列名 | PoB2 spec.lua 名（语义） |
 |----|--------------------------|--------------------------|
 | GrantedEffects | `SupportsGemsOnly` | `SupportGemsOnly`（多个 s） |
 | GrantedEffects | `ExcludedActiveSkillTypes` | `ExcludeTypes` |

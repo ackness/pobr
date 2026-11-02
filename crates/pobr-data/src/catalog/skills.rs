@@ -331,11 +331,10 @@ pub struct SkillLevelDef {
     /// `PlayerLevelReq` column** — the real source is
     /// `SkillGems.ItemExperienceType → ItemExperiencePerLevel.PlayerLevel`
     /// (vendor `skills.lua:239-240`), and that table's bundle isn't
-    /// downloadable at pinned patch 4.5.0.3.4 (see `pipeline/legacy/config.json`'s
-    /// `_tablesUnavailableForPinnedPatch`). This is only a schema
+    /// downloadable at patch 4.5.0.3.4. This is only a schema
     /// placeholder for now (the adapter always writes `None` and nothing
-    /// consumes it); data reaches storage through the extract-lua fallback
-    /// channel (from createMinionSkills' level selection).
+    /// consumes it); data reaches storage only through the PoB2-derived
+    /// compatibility overlay (from createMinionSkills' level selection).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub level_requirement: Option<u32>,
 }
@@ -433,7 +432,7 @@ pub struct StatSetDef {
     /// `baseMods` entries like `skill("dotIsArea", true)`; PoB2 strips the
     /// corresponding ModFlag bits from dotCfg based on these,
     /// `CalcOffence.lua:5831-5860`). No GGG `.dat` column for this — merged
-    /// at load time via the extract-lua skill_overrides channel. Default
+    /// at load time from the `overlay/skill_overrides.json` compatibility table. Default
     /// all-false means conservatively don't strip any flag.
     #[serde(default, skip_serializing_if = "DotFlags::is_default")]
     pub dot_flags: DotFlags,
@@ -442,8 +441,8 @@ pub struct StatSetDef {
     /// act_int.lua:5287). PoB2 uses this to inject
     /// `monsterLife × skillData.corpseExplosionLifeMultiplier` into physical
     /// base damage (`CalcOffence.lua:2211-2217`). No GGG `.dat` column for
-    /// this — merged at load time via the extract-lua skill_overrides
-    /// channel. Default false means nothing is injected.
+    /// this — merged at load time from the `overlay/skill_overrides.json`
+    /// compatibility table. Default false means nothing is injected.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub explode_corpse: bool,
     /// The stats the set has without a value (the game's
@@ -635,8 +634,8 @@ pub struct GemQualityStatsDef {
 ///
 /// The game's `GemEffects` table holds these links; the adapter writes them
 /// onto each gem in `base/skill_gems.json`. `overlay/gem_effects.json` is
-/// the same table as PoB2 exports it (`sync-pob-catalog extract-lua --what
-/// gem-effects`), kept for snapshots adapted before the adapter read the
+/// the same table as PoB2 exports it (PoB2-derived compatibility data from
+/// the RePoE owner package), kept for snapshots adapted before the adapter read the
 /// table and for the effects that several gems grant, which an effect-keyed
 /// index cannot tell apart.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -686,8 +685,8 @@ pub struct GemEffectsDef {
 ///
 /// Sourced by joining the vendor `Export/Skills/*.txt` templates
 /// (`#skill`/`#set` lines → export order and set id) with vendor
-/// `Data/Skills/*.lua` (`statSets[i].label` text). Deterministically extracted
-/// by `sync-pob-catalog extract-lua --what stat-set-labels`; native labels
+/// `Data/Skills/*.lua` (`statSets[i].label` text); PoB2-derived compatibility
+/// data shipped in the RePoE owner package. Native labels
 /// from `GrantedEffectLabels` take precedence during loading.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StatSetLabelDef {
