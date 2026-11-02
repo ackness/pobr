@@ -4,9 +4,9 @@
 //! The output of the "second stat_id → Modifier channel" (stage B): feeds
 //! stage A's extracted `stat_descriptions.json` (stat_id → canonical text)
 //! through `parse_mod_engine` line by line, and bakes the stat_ids that
-//! parse successfully into modifier templates. Generated offline by
-//! `sync-pob-catalog gen-stat-id-map` (consuming two overlays:
-//! stat_descriptions + mod_parser_rules).
+//! parse successfully into modifier templates. Generated offline from two
+//! overlays (stat_descriptions + mod_parser_rules); the file ships as fixed
+//! bytes in the RePoE owner package.
 //!
 //! Runtime purpose: when the game data gives a `(stat_id, raw value)` pair,
 //! look it up in this table to get the pre-parsed modifier structure, and

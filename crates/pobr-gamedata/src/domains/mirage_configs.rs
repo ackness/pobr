@@ -1,6 +1,6 @@
 //! `overlay/mirage_configs.json` loader — the 5 kinds of mirage configs
 //! (a hand-transcription of vendor `Modules/CalcMirages.lua`'s five
-//! branches, generated embedded in `sync-pob-catalog gen-mirage-configs`;
+//! branches, shipped as fixed bytes in the RePoE owner package;
 //! schema in [`pobr_data::catalog::triggers`]).
 //!
 //! Consumer: once the orchestrator recognizes the trigger condition, it

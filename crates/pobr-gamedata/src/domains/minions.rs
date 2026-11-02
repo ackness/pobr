@@ -1,7 +1,6 @@
-//! `overlay/minions.json` loader — minion entries (extracted from vendor
-//! `Data/Minions.lua` via
-//! `sync-pob-catalog extract-lua --what minions`, schema in
-//! [`pobr_data::catalog::actors`], /A5).
+//! `overlay/minions.json` loader — minion entries (PoB2-derived
+//! compatibility data from vendor `Data/Minions.lua`, imported from the
+//! RePoE owner package; schema in [`pobr_data::catalog::actors`], /A5).
 //!
 //! Consumer (zero wiring): once the orchestrator recognizes a summon gem,
 //! it looks up the `MinionEntryDef` by id and builds the input for

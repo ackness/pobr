@@ -136,15 +136,15 @@ pub struct PassiveNodeDef {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unlock_constraint: Option<PassiveUnlockConstraint>,
     /// Per-class/ascendancy variants for an isSwitchable node (vendor
-    /// `tree.lua`'s `options`, backfilled by
-    /// `pobr-data-adapter --tree-variants`). The old catalog didn't have
+    /// `tree.lua`'s `options`, a PoB2-derived compatibility field in the
+    /// imported tree data). The old catalog didn't have
     /// this field, so `#[serde(default)]` keeps it compatible; always empty
     /// for non-switchable nodes.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub variants: Vec<PassiveNodeVariant>,
     /// Marks a notable that Smith of Kitava's body-armour connection bonus
-    /// counts (vendor `tree.lua`'s `applyToArmour`, backfilled by
-    /// `pobr-data-adapter --tree-coords`): the count of allocated ones feeds
+    /// counts (vendor `tree.lua`'s `applyToArmour`, a PoB2-derived
+    /// compatibility field in the imported tree data): the count of allocated ones feeds
     /// `Multiplier:AllocatedConnectedNotable` (vendor
     /// CalcSetup.lua:840-841, consumed by Masterwork's "+200 to Armour for
     /// each Connected Notable …").

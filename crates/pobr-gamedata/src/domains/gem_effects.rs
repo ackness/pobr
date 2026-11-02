@@ -3,11 +3,10 @@
 //! schema in [`pobr_data::catalog::skills`]'s `GemEffectDef` section (the
 //! data-plane + contract C5 source of `SkillGemDef`'s edges).
 //!
-//! Data source: vendor PoB2 `Data/Gems.lua`, deterministically extracted by
-//! `sync-pob-catalog extract-lua --what gem-effects` (schema id `gem_effects/v1`).
-//! The official `GemEffects` table is also in the pipeline export config,
-//! but its direct adapter join is not implemented; this overlay remains
-//! the runtime link source, including for older snapshots.
+//! Data source: vendor PoB2 `Data/Gems.lua` (schema id `gem_effects/v1`),
+//! PoB2-derived compatibility data imported from the RePoE owner package.
+//! This overlay remains the runtime link source, including for older
+//! snapshots.
 //!
 //! Consumption: [`crate::GameData::skill_gems`] merges this by `gem_id`
 //! after loading the base gem table, filling in

@@ -45,9 +45,9 @@ pub struct BaseItemDef {
     /// This table's bundle has been pruned from the CDN at the pinned
     /// patch (the `.dat` route is unavailable), so it's currently filled in
     /// via a gamedata merge from `overlay/base_item_overrides.json`
-    /// (deterministically extracted from vendor `Data/Bases/*.lua` by
-    /// `sync-pob-catalog extract-bases`) — the dual-route fallback from §6
-    /// open question 2. `None` for bases without Spirit.
+    /// (PoB2-derived compatibility data from vendor `Data/Bases/*.lua`,
+    /// imported from the RePoE owner package) — the dual-route fallback
+    /// from §6 open question 2. `None` for bases without Spirit.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spirit: Option<u32>,
     /// A charm base's inherent buff mod (vendor `Data/Bases/flask.lua`'s
@@ -59,8 +59,8 @@ pub struct BaseItemDef {
     /// the `CharmBuff` payload (vendor `Item.lua:838-844` runs each line of
     /// `base.charm.buff` through parseMod into `buffModList`). No GGG
     /// `.dat` column for this — filled in via a gamedata merge from
-    /// `overlay/base_item_overrides.json` (extracted from vendor
-    /// `Data/Bases/flask.lua` by `sync-pob-catalog extract-bases`) — the
+    /// `overlay/base_item_overrides.json` (PoB2-derived compatibility data
+    /// from vendor `Data/Bases/flask.lua`) — the
     /// same dual-route fallback as [`BaseItemDef::spirit`]. Empty for
     /// non-charms / charms without a buff.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -105,11 +105,10 @@ pub struct WeaponBaseStats {
     /// `WeaponTypes.dat`'s `ReloadTime` column (vendor
     /// `Export/spec.lua:62483`, `Export/Scripts/bases.lua:268-269`'s
     /// `ReloadTimeBase = ReloadTime/1000`, exported only when >0). While
-    /// the local pipeline/tables snapshot is missing it (drill F3/F8),
-    /// it's filled in via a gamedata merge from
-    /// `overlay/base_item_overrides.json` (vendor
+    /// the base facts don't carry it, it's filled in via a gamedata merge
+    /// from `overlay/base_item_overrides.json` (vendor
     /// `Data/Bases/crossbow.lua`'s `ReloadTimeBase` seconds value ×1000,
-    /// via `sync-pob-catalog extract-bases`) — the same dual-route
+    /// PoB2-derived compatibility data) — the same dual-route
     /// fallback as [`BaseItemDef::spirit`]. `None` for non-crossbows.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reload_time_ms: Option<u32>,

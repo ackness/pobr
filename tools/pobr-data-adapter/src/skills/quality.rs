@@ -1,36 +1,16 @@
-//! Official gem-quality tables -> the existing quality domain.
+//! Gem-quality rows -> the existing quality domain (shared by the ordinary
+//! physical-facts producer).
 //!
-//! A reviewed, versioned receipt pins all input bytes and the supported effect
-//! scope. Neither vendor Lua nor an old output is consulted during generation.
-//! Stat-set scope columns are retained as diagnostics: current consumers apply
-//! quality effect-wide, matching the pinned migration reference. Adding scope
-//! semantics or additional effects is a separate calculation change.
+//! A reviewed compatibility decision fixes the supported effect scope. Neither
+//! vendor Lua nor an old output is consulted. Stat-set scope columns are
+//! retained as diagnostics: current consumers apply quality effect-wide,
+//! matching the pinned migration reference. Adding scope semantics or
+//! additional effects is a separate calculation change.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs::{self, OpenOptions};
-use std::io::Write;
-use std::path::{Path, PathBuf};
 
 use pobr_data::catalog::{GemQualityStatDef, QualityStat};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
-
-pub(crate) struct QualityArgs {
-    pub raw: PathBuf,
-    pub source: PathBuf,
-    pub out: PathBuf,
-    pub patch: String,
-}
-
-#[derive(Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-struct Receipt {
-    schema: String,
-    poe_version: String,
-    provenance: serde_json::Value,
-    inputs: BTreeMap<String, String>,
-    compatibility: Compatibility,
-}
 
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -69,54 +49,9 @@ pub(crate) struct RawQuality {
 }
 
 #[derive(Serialize)]
-struct Document<'a> {
-    #[serde(rename = "_meta")]
-    meta: Metadata<'a>,
-    effects: Vec<GemQualityStatDef>,
-}
-
-#[derive(Serialize)]
-struct Metadata<'a> {
-    schema: &'static str,
-    generator: &'static str,
-    poe_version: &'a str,
-    source_receipt_sha256: String,
-    provenance: &'a serde_json::Value,
-    inputs: &'a BTreeMap<String, String>,
-    compatibility: &'a Compatibility,
-    /// Preserve the official columns without adding new runtime semantics.
-    unapplied_stat_set_scopes: BTreeMap<String, Scope>,
-    regen_command: String,
-}
-
-#[derive(Serialize)]
 pub(crate) struct Scope {
     pub main: Vec<u32>,
     pub alt: Vec<u32>,
-}
-
-fn sha256(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
-}
-
-fn checked_table<T: for<'de> Deserialize<'de>>(
-    raw: &Path,
-    inputs: &BTreeMap<String, String>,
-    name: &str,
-) -> Result<T, String> {
-    let expected = inputs
-        .get(name)
-        .ok_or_else(|| format!("source receipt is missing {name}"))?;
-    let bytes = fs::read(raw.join(name)).map_err(|e| format!("{name}: {e}"))?;
-    if sha256(&bytes) != *expected {
-        return Err(format!(
-            "{name}: input fingerprint differs from the reviewed source receipt"
-        ));
-    }
-    serde_json::from_slice(&bytes).map_err(|e| format!("{name}: {e}"))
 }
 
 pub(crate) fn index(rows: Vec<IndexedId>, table: &str) -> Result<BTreeMap<usize, String>, String> {
@@ -240,86 +175,6 @@ pub(crate) fn convert_rows(
         effects: result.into_values().collect(),
         scopes,
     })
-}
-
-fn build(args: &QualityArgs) -> Result<String, String> {
-    // Patch is used as a directory component and in the portable regen command.
-    if args.patch.is_empty()
-        || args.patch == "."
-        || args.patch == ".."
-        || !args
-            .patch
-            .bytes()
-            .all(|c| c.is_ascii_alphanumeric() || b"._-".contains(&c))
-    {
-        return Err("invalid patch directory component".into());
-    }
-    let receipt_bytes = fs::read(&args.source).map_err(|e| format!("source receipt: {e}"))?;
-    let receipt: Receipt =
-        serde_json::from_slice(&receipt_bytes).map_err(|e| format!("source receipt: {e}"))?;
-    if receipt.schema != "gem-quality-source/v1" || receipt.poe_version != args.patch {
-        return Err(
-            "source receipt schema / game version does not match the requested version".into(),
-        );
-    }
-    validate_compatibility(&receipt.compatibility)?;
-    let effects = index(
-        checked_table(&args.raw, &receipt.inputs, "GrantedEffects.json")?,
-        "GrantedEffects",
-    )?;
-    let stats = index(
-        checked_table(&args.raw, &receipt.inputs, "Stats.json")?,
-        "Stats",
-    )?;
-    let rows: Vec<RawQuality> =
-        checked_table(&args.raw, &receipt.inputs, "GrantedEffectQualityStats.json")?;
-    let converted = convert_rows(&effects, &stats, rows, &receipt.compatibility)?;
-    let doc = Document {
-        meta: Metadata {
-            schema: "gem_quality_stats/v1",
-            generator: "pobr-data-adapter --gem-quality",
-            poe_version: &args.patch,
-            source_receipt_sha256: sha256(&receipt_bytes),
-            provenance: &receipt.provenance,
-            inputs: &receipt.inputs,
-            compatibility: &receipt.compatibility,
-            unapplied_stat_set_scopes: converted.scopes,
-            regen_command: format!(
-                "cargo run -p pobr-data-adapter -- --gem-quality pipeline/tables/English --quality-source pipeline/legacy/gem-quality/{}.json --out data --patch {}",
-                args.patch, args.patch
-            ),
-        },
-        effects: converted.effects,
-    };
-    let json = serde_json::to_string_pretty(&doc).map_err(|e| e.to_string())?;
-    Ok(json + "\n")
-}
-
-pub(crate) fn run(args: QualityArgs) -> Result<String, String> {
-    // Complete all reads and validation before touching the destination.
-    let json = build(&args)?;
-    let dir = args.out.join(&args.patch).join("overlay");
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let dest = dir.join("gem_quality_stats.json");
-    let temp = dir.join(format!(".gem-quality-{}.tmp", std::process::id()));
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temp)
-        .map_err(|e| format!("{}: {e}", temp.display()))?;
-    let result = file
-        .write_all(json.as_bytes())
-        .and_then(|()| file.sync_all());
-    drop(file);
-    let result = result.and_then(|()| fs::rename(&temp, &dest));
-    if let Err(error) = result {
-        let _ = fs::remove_file(&temp);
-        return Err(format!("{}: {error}", dest.display()));
-    }
-    Ok(format!(
-        "gem quality: verified official inputs -> {}",
-        dest.display()
-    ))
 }
 
 #[cfg(test)]

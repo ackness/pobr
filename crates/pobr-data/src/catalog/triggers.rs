@@ -3,11 +3,10 @@
 //! Data source: vendor PoB2 `Modules/CalcMirages.lua`'s five branches
 //! (Mirage Archer / Saviour Mirage Warriors / Tawhoa's Chosen / Sacred Wisps
 //! / General's Cry) — the branch bodies are procedural closures that can't
-//! be serialized by luajit, so these 5 configs are stored by
-//! `sync-pob-catalog gen-mirage-configs` **embedding them in the tool's
-//! source** (satisfying "overlay files are never hand-edited, only
-//! tool-regenerated"; vendor drift is flagged by a coarse-grained
-//! fingerprint of CalcMirages.lua recorded in `_meta` — open question 2).
+//! be serialized by luajit, so these 5 configs are transcribed by hand
+//! (`_meta` records a coarse-grained fingerprint of CalcMirages.lua for the
+//! vendor revision they match — open question 2). The file ships as fixed
+//! bytes in the RePoE owner package; changes belong to the owner repository.
 //!
 //! Genuinely special branch logic (Tawhoa's trigger-cooldown model,
 //! General's Cry's exert rewrite, etc.) goes through `handler_id`

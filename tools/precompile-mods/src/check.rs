@@ -83,8 +83,8 @@ pub fn inspect(data_dir: &Path) -> Result<ValidationReport, String> {
         if !path.is_file() {
             if required {
                 errors.push(format!(
-                    "{}: missing (required; regenerate with `cargo run -p sync-pob-catalog -- \
-                     extract-lua --what special-mods ...`, see pipeline/legacy/regen-all.sh)",
+                    "{}: missing (required; it is part of the RePoE owner package, \
+                     run `mise run data:prepare`)",
                     path.display()
                 ));
             }

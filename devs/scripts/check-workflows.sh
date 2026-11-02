@@ -10,8 +10,6 @@ while IFS= read -r -d '' script; do bash -n "$script"; done < <(
 # https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency
 actionlint -ignore 'unexpected key "queue" for "concurrency" section'
 python3 -m unittest discover -s devs/scripts -p 'test_*.py'
-# The optional Lua/vendor extraction cases run in full CI with lua-dkjson.
-python3 -m pipeline.legacy.test_data_update CompatibleUpdateTests
 python3 -m pipeline.runtime.test_data_snapshot
 python3 -m pipeline.tree.test_tree_inputs
 python3 -m pipeline.native.test_native_candidate

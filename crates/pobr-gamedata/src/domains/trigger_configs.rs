@@ -1,7 +1,7 @@
 //! `overlay/trigger_configs.json` loader — the 61 trigger configs from
-//! vendor `Modules/CalcTriggers.lua`'s configTable (generated embedded in
-//! `sync-pob-catalog gen-trigger-configs` plus a vendor-key scan
-//! reconciliation; schema in [`pobr_data::catalog::triggers`]).
+//! vendor `Modules/CalcTriggers.lua`'s configTable (PoB2-derived
+//! compatibility data shipped as fixed bytes in the RePoE owner package;
+//! schema in [`pobr_data::catalog::triggers`]).
 //!
 //! Consumer: pobr-build's `BuildData::load` projects it into a recognition
 //! table indexed by `match_effect_ids`, which the orchestrator's trigger

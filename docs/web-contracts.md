@@ -51,8 +51,8 @@ stat 是游戏属性标识，stat set 是技能效果的一组数值，ModDb 是
 
 ### 目录与特殊来源
 
-`pipeline/legacy/extract-trade-catalog.lua` 从钉定的 PoB2 导出类别／基底生成权重、词缀组、
-原始范围、宝石族与逐级需求。它与 `trade_stat_map.json` 一同再生成，不能手改产物。
+`trade_catalog.json` 提供类别／基底生成权重、词缀组、原始范围、宝石族与逐级需求。
+它与 `trade_stat_map.json` 都是从钉定 PoB2 转换的兼容数据，以固定字节随 RePoE owner 包导入，不能在 PoBR 中手改。
 手动词缀模拟用完整阶级池，检查等级与前后缀容量；无法拆解的合并 stat 保留未解析状态，不能猜空位。
 中值只是数值估计，不是打造概率。
 
@@ -173,8 +173,8 @@ PoBR更新锁后运行`mise run data:prepare`；目录摘要不符时拒绝导�
 即使后来恢复相同加点也不复活。它不是持久编辑历史。
 
 珠宝授权与确定性变换共用后端 `tree_effects`。
-`overlay/passive_jewels.json` 的职业起点、环选择、征服者和替换 stat 由
-`pipeline/legacy/extract-passive-jewels.lua` 再生成。仅靠范围可分配的点不能延长路线，直到连到职业根。
+`overlay/passive_jewels.json` 的职业起点、环选择、征服者和替换 stat 来自随 owner 包导入的
+PoB2 兼容数据。仅靠范围可分配的点不能延长路线，直到连到职业根。
 未知种子变换保留诊断并保护自动退款。计算先筛选物品变体／版本，再解析范围值，编辑导出仍用原文。
 支持范围见[珠宝搜索](jewel-search.md)。
 

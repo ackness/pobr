@@ -13,7 +13,7 @@
 //!
 //! Already wired up: per-level cost / cooldown / attack time
 //! (`granted_effect_levels.json`) and per-level **damage stat values**
-//! (`granted_effect_stat_sets.json`, see [`adapt_stat_sets`]).
+//! (`granted_effect_stat_sets.json`, see [`adapt_stat_sets_from`]).
 //!
 //! Module boundary: this file only handles **orchestration and shared Raw
 //! types**; domain logic is split by table family across the five
@@ -33,9 +33,7 @@ use serde::{Deserialize, de::DeserializeOwned};
 
 use crate::read_json;
 
-pub use effects::adapt_cost_types;
 pub(crate) use effects::adapt_cost_types_from;
-pub use stat_sets::adapt_stat_sets;
 pub(crate) use stat_sets::adapt_stat_sets_from;
 
 /// Supply parsed rows to the existing skill converters. Physical facts implement
@@ -95,24 +93,10 @@ pub struct SkillsBundle {
     pub effects: Vec<GrantedEffectDef>,
     /// Per-level parameters: `granted_effect_id -> ascending level array`.
     pub levels: BTreeMap<String, Vec<SkillLevelDef>>,
-    /// Active skill display-name sidecar (`active_skill_id -> Traditional Chinese name`).
-    pub zh_skill_names: BTreeMap<String, String>,
-    pub gems_total: usize,
-    pub effects_total: usize,
-    pub level_rows_total: usize,
 }
 
-/// Adapts skill gems + granted effects + Traditional Chinese skill names from the raw tables (the orchestration entry point).
-pub fn adapt_skills(en: &Path, tw: &Path) -> Result<SkillsBundle, String> {
-    adapt_skills_from(en, Some(tw))
-}
-
-/// Use the same converters with authenticated in-memory rows; names are optional
-/// because an ordinary fact domain does not produce a translation sidecar.
-pub(crate) fn adapt_skills_from(
-    en: &(impl SkillTables + ?Sized),
-    tw: Option<&Path>,
-) -> Result<SkillsBundle, String> {
+/// Convert authenticated in-memory rows; translations come from the language owner.
+pub(crate) fn adapt_skills_from(en: &(impl SkillTables + ?Sized)) -> Result<SkillsBundle, String> {
     // Foreign-key resolution tables shared across submodules
     let base_rows = en.read_table::<RawBaseItemId>("BaseItemTypes")?;
     let base_ids = id_lookup_from_base(&base_rows);
@@ -124,25 +108,16 @@ pub(crate) fn adapt_skills_from(
         .map(|r| r.id)
         .collect();
 
-    let (effects, effects_total, effect_id_by_index) =
+    let (effects, _, effect_id_by_index) =
         effects::adapt_effects(en, &active_skills, &skill_type_names)?;
-    let (gems, gems_total) = gems::adapt_gems(en, &base_ids, &effect_id_by_index)?;
+    let (gems, _) = gems::adapt_gems(en, &base_ids, &effect_id_by_index)?;
     // Crit chance lives at the stat-set level, so build the lookup first and then join by (effect, level).
     let crit_by_effect = stat_sets::crit_from_statset_levels(en)?;
-    let (levels, level_rows_total) =
-        levels::adapt_levels(en, &effect_id_by_index, &crit_by_effect)?;
-    let zh_skill_names = match tw {
-        Some(tw) => effects::adapt_zh_skill_names(tw, &active_skills)?,
-        None => BTreeMap::new(),
-    };
+    let (levels, _) = levels::adapt_levels(en, &effect_id_by_index, &crit_by_effect)?;
 
     Ok(SkillsBundle {
         gems,
         effects,
         levels,
-        zh_skill_names,
-        gems_total,
-        effects_total,
-        level_rows_total,
     })
 }

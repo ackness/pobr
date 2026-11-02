@@ -1,4 +1,5 @@
-"""Offline tests for snapshot sealing, input provenance, and failure-safe publication."""
+"""Offline tests for tree-domain candidates and failure-safe publication."""
+from contextlib import contextmanager
 import fcntl
 import importlib.util
 import io
@@ -6,6 +7,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -19,19 +21,31 @@ snapshot = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(snapshot)
 
 
+def tree_fingerprint(path):
+    return {p.relative_to(path).as_posix(): snapshot.digest(p) for p in path.rglob("*") if p.is_file()}
+
+
+@contextmanager
+def staged(root, version):
+    """A writable copy of one version, as locked_update stages owner data."""
+    with tempfile.TemporaryDirectory(prefix="data-update-", dir=root / ".cache") as temporary:
+        data_root = Path(temporary) / "data"
+        shutil.copytree(root / "data" / version, data_root / version)
+        yield data_root
+
+
 class SnapshotTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="pobr snapshot tests ")
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
         self.write("data/CURRENT", "9.1\n")
-        self.write("pipeline/legacy/config.json", {"patch": "9.1"})
         self.write("data/9.1/base/skill_gems.json", [{"id": "original"}])
         self.write("data/9.1/patch/base/skill_gems.json", [{"id": "user patch"}])
         self.write("data/9.1/generated/modifier-audit.json", {"original": True})
         self.write("data/overlay-common/special_mods.json", {"curated": True})
         self.write("data/8.1/base/skill_gems.json", [{"id": "golden"}])
-        snapshot.manifest(self.root / "data/9.1")
+        (self.root / ".cache").mkdir()
 
     def write(self, name, value):
         path = self.root / name
@@ -39,141 +53,28 @@ class SnapshotTests(unittest.TestCase):
         path.write_text(value if isinstance(value, str) else json.dumps(value), encoding="utf-8")
         return path
 
-    def test_manifest_seals_actual_runtime_files_without_self_truncation(self):
-        data = self.root / "data/9.1"
-        self.write("data/9.1/generated/parsed_mods.json", {})
-        self.write("data/9.1/overlay/stat_id_map.json", {})
-        self.write("data/9.1/base/passive_trees/0_4.json", [])
-        self.write("data/9.1/i18n/zh-CN/skills.json", {})
-        doc = snapshot.manifest(data)
-        self.assertEqual(doc["schema_version"], 3)
-        self.assertEqual(doc["domains"], {"base": ["skill_gems"], "overlay": [], "generated": []})
-        self.assertEqual(set(doc["files"]), {"base/skill_gems.json", "base/passive_trees/0_4.json", "i18n/zh-CN/skills.json"})
-        self.assertEqual(doc["languages"], ["zh-CN"])
-        before = (data / "manifest.json").read_bytes()
-        snapshot.manifest(data)
-        self.assertEqual(before, (data / "manifest.json").read_bytes())
-        self.write("data/9.1/_drift.json", {})
-        with self.assertRaisesRegex(ValueError, "column drift"):
-            snapshot.manifest(data)
-
-    def test_export_receipt_binds_configured_files_and_rejects_partial_export(self):
-        config = self.write("pipeline/legacy/config.json", {"patch": "9.1", "translations": ["English"], "tables": [{"name": "Stats"}]})
-        table = self.write("pipeline/tables/English/Stats.json", [])
-        raw = self.root / "pipeline/tables"
-        snapshot.record_export(config, raw)
-        document = snapshot.read_json(raw / "export-source.json")
-        self.assertEqual(document["patch"], "9.1")
-        self.assertEqual(document["files"], {"English/Stats.json": snapshot.digest(table)})
-        original = (raw / "export-source.json").read_bytes()
-        table.unlink()
-        with self.assertRaises(FileNotFoundError):
-            snapshot.record_export(config, raw)
-        self.assertEqual(original, (raw / "export-source.json").read_bytes())
-
-    def test_candidate_dereferences_writable_symlinks_and_preserves_patch_and_common(self):
-        with snapshot.candidate(self.root, "9.1") as data:
-            self.assertFalse((data / "9.1").is_symlink())
-            self.assertFalse((data / "overlay-common").is_symlink())
-            self.assertTrue((data / "8.1").is_symlink())
-            self.assertEqual((data / "9.1/patch/base/skill_gems.json").read_bytes(),
-                             (self.root / "data/9.1/patch/base/skill_gems.json").read_bytes())
-            (data / "9.1/base/skill_gems.json").write_text("changed")
-        self.assertIn("original", (self.root / "data/9.1/base/skill_gems.json").read_text())
-
-    def test_every_generation_or_validation_failure_preserves_all_published_bytes(self):
-        for failed_step in range(6):
-            with self.subTest(failed_step=failed_step):
-                before = snapshot.tree_fingerprint(self.root / "data")
-                calls = []
-                def fake_run(command, root, env):
-                    data = Path(env["POBR_DATA_ROOT"])
-                    self.assertNotIn("POBR_BLESS_PINS", env)
-                    self.assertNotEqual(data, root / "data")
-                    (data / "9.1/base/skill_gems.json").write_text('[{"id":"candidate"}]')
-                    calls.append(command)
-                    if len(calls) - 1 == failed_step:
-                        raise ValueError("injected failure")
-                with patch.dict(os.environ, {"POBR_BLESS_PINS": "1"}), patch.object(snapshot, "run", fake_run):
-                    with self.assertRaisesRegex(ValueError, "injected failure"):
-                        snapshot.regenerate(self.root, activate=True)
-                self.assertEqual(before, snapshot.tree_fingerprint(self.root / "data"))
-                self.assertFalse(list((self.root / ".cache").glob("data-update-*")))
-
-    def test_successful_same_version_refresh_preserves_user_patch(self):
-        def fake_run(command, root, env):
-            (Path(env["POBR_DATA_ROOT"]) / "9.1/base/skill_gems.json").write_text('[{"id":"candidate"}]')
-        with patch.object(snapshot, "run", fake_run):
-            snapshot.regenerate(self.root, activate=True)
-        data = self.root / "data/9.1"
-        self.assertIn("candidate", (data / "base/skill_gems.json").read_text())
-        self.assertIn("user patch", (data / "patch/base/skill_gems.json").read_text())
-        self.assertEqual(snapshot.read_json(data / "manifest.json")["files"]["base/skill_gems.json"], snapshot.digest(data / "base/skill_gems.json"))
-
-    def test_base_adaptation_runs_own_audit_without_implicit_reference(self):
-        calls = []
-        with patch.object(snapshot, "run", side_effect=lambda command, root, env: calls.append(command)):
-            snapshot.regenerate(self.root, base_only=True)
-        audits = [command for command in calls if "pipeline/legacy/refresh-modifiers.sh" in command]
-        self.assertEqual(len(audits), 1)
-        self.assertIn("--offline", audits[0])
-        self.assertFalse((self.root / "vendor").exists())
-
-    def test_base_adaptation_can_explicitly_require_reference_audit(self):
-        calls = []
-        with patch.object(snapshot, "run", side_effect=lambda command, root, env: calls.append(command)):
-            snapshot.regenerate(self.root, base_only=True, reference_audit=True)
-        audit = next(command for command in calls if "pipeline/legacy/refresh-modifiers.sh" in command)
-        self.assertNotIn("--offline", audit)
-        before = snapshot.tree_fingerprint(self.root / "data")
-        def missing_reference(command, root, env):
-            if "pipeline/legacy/refresh-modifiers.sh" in command:
-                raise FileNotFoundError("required reference unavailable")
-        with patch.object(snapshot, "run", side_effect=missing_reference):
-            with self.assertRaisesRegex(FileNotFoundError, "required reference"):
-                snapshot.regenerate(self.root, base_only=True, reference_audit=True)
-        self.assertEqual(before, snapshot.tree_fingerprint(self.root / "data"))
-
-    def test_concurrent_user_changes_prevent_publication(self):
-        def fake_run(command, root, env):
-            self.write("data/9.1/base/skill_gems.json", [{"id": "new user edit"}])
-        with patch.object(snapshot, "run", fake_run):
-            with self.assertRaisesRegex(ValueError, "changed during generation"):
-                snapshot.regenerate(self.root)
-        self.assertIn("new user edit", (self.root / "data/9.1/base/skill_gems.json").read_text())
-
     def test_second_update_cannot_acquire_workspace_lock(self):
-        cache = self.root / ".cache"
-        cache.mkdir()
-        with (cache / "data-update.lock").open("a") as lock:
+        with (self.root / ".cache/data-update.lock").open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             with self.assertRaisesRegex(ValueError, "Another data update"):
-                snapshot.regenerate(self.root)
-
-    def test_configuration_change_during_generation_prevents_publication(self):
-        before = snapshot.tree_fingerprint(self.root / "data")
-        def fake_run(command, root, env):
-            self.write("pipeline/legacy/config.json", {"patch": "9.2"})
-        with patch.object(snapshot, "run", fake_run):
-            with self.assertRaisesRegex(ValueError, "Configured patch changed"):
-                snapshot.regenerate(self.root)
-        self.assertEqual(before, snapshot.tree_fingerprint(self.root / "data"))
+                with snapshot.workspace_lock(self.root):
+                    pass
 
     def test_failed_install_restores_original_target_and_current(self):
-        before = snapshot.tree_fingerprint(self.root / "data")
+        before = tree_fingerprint(self.root / "data")
         original_replace = Path.replace
-        with snapshot.candidate(self.root, "9.1") as data:
+        with staged(self.root, "9.1") as data:
             def replace(path, target):
                 if path == data / "9.1":
                     raise OSError("injected install failure")
                 return original_replace(path, target)
             with patch.object(Path, "replace", replace), self.assertRaisesRegex(OSError, "install failure"):
                 snapshot.promote(data, self.root / "data", "9.1", activate=True)
-        self.assertEqual(before, snapshot.tree_fingerprint(self.root / "data"))
+        self.assertEqual(before, tree_fingerprint(self.root / "data"))
 
     def test_failed_install_and_failed_rollback_retain_original_backup(self):
         original_replace = Path.replace
-        with snapshot.candidate(self.root, "9.1") as data:
+        with staged(self.root, "9.1") as data:
             def replace(path, target):
                 if path == data / "9.1" or path.parent.name.startswith("data-backup-"):
                     raise OSError("injected rename failure")
@@ -275,12 +176,12 @@ class OfficialTreeSourceTests(unittest.TestCase):
 
     def test_domain_replay_is_deterministic_and_cannot_be_sealed_or_promoted(self):
         self.cache_source()
-        before = snapshot.tree_fingerprint(self.root / "data")
+        before = tree_fingerprint(self.root / "data")
         outputs = [self.root / ".cache/tree-first/9.1", self.root / ".cache/tree-second/9.1"]
         with patch.dict(os.environ, {"POBR_BLESS_PINS": "1"}), patch.object(snapshot, "run", self.adapt):
             for out in outputs:
                 snapshot.tree_candidate(self.root, "official-passive-tree", out, offline=True)
-        self.assertEqual(snapshot.tree_fingerprint(outputs[0]), snapshot.tree_fingerprint(outputs[1]))
+        self.assertEqual(tree_fingerprint(outputs[0]), tree_fingerprint(outputs[1]))
         receipt = snapshot.read_json(outputs[0] / "_domain_candidate.json")
         self.assertIsNone(receipt["source"]["game_patch"])
         self.assertEqual(receipt["source_import"]["package"]["repository"], "ackness/repoe")
@@ -293,11 +194,11 @@ class OfficialTreeSourceTests(unittest.TestCase):
             snapshot.manifest(outputs[0])
         with self.assertRaisesRegex(ValueError, "cannot be published"):
             snapshot.promote(outputs[0].parent, self.root / "data", "9.1", activate=True)
-        self.assertEqual(before, snapshot.tree_fingerprint(self.root / "data"))
+        self.assertEqual(before, tree_fingerprint(self.root / "data"))
 
     def test_candidate_failure_or_changed_input_preserves_published_data_and_output(self):
         raw = self.cache_source()
-        before = snapshot.tree_fingerprint(self.root / "data")
+        before = tree_fingerprint(self.root / "data")
         for cause in ("adapter", "raw", "lock", "code", "preprocessor", "importer", "consumer-helper", "import-lock", "package"):
             with self.subTest(cause=cause):
                 output = self.root / f".cache/tree-{cause}"
@@ -328,7 +229,7 @@ class OfficialTreeSourceTests(unittest.TestCase):
                     snapshot.tree_candidate(self.root, "official-passive-tree", output, offline=True)
                 self.assertFalse(output.exists())
                 self.assertFalse(list(output.parent.glob(".tree-candidate-*")))
-                self.assertEqual(before, snapshot.tree_fingerprint(self.root / "data"))
+                self.assertEqual(before, tree_fingerprint(self.root / "data"))
                 raw.write_bytes(self.raw)
                 (self.root / "pipeline/imports/sources.lock.json").write_bytes(lock_before)
                 (self.root / "pipeline/tree/tree-inputs.lock.json").write_bytes(input_lock_before)
@@ -336,7 +237,7 @@ class OfficialTreeSourceTests(unittest.TestCase):
 
     def test_candidate_rejects_published_or_existing_outputs_before_running_adapter(self):
         self.cache_source()
-        before = snapshot.tree_fingerprint(self.root / "data")
+        before = tree_fingerprint(self.root / "data")
         with patch.object(snapshot, "run", side_effect=AssertionError("must not run")):
             with self.assertRaisesRegex(ValueError, "outside published"):
                 snapshot.tree_candidate(self.root, "official-passive-tree", self.root / "data/new")
@@ -344,7 +245,7 @@ class OfficialTreeSourceTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 snapshot.tree_candidate(self.root, "official-passive-tree", existing)
         self.assertEqual((existing / "keep.txt").read_text(), "user data")
-        self.assertEqual(before, snapshot.tree_fingerprint(self.root / "data"))
+        self.assertEqual(before, tree_fingerprint(self.root / "data"))
 
     def corrected_source(self, mutate=None):
         document = {"classes": [{"name": "Druid", "overridePairs": {"19680": 40837, "55194": 57601, "1": 2}}],

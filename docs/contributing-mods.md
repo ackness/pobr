@@ -15,8 +15,8 @@
 PoBR 把 `35% increased Fire Damage` 这样的文本解析成 `Modifier`，再由计算引擎汇总。
 解析分两层：
 
-1. **通用解析器**（`overlay/mod_parser_rules.json`）来自 PoB2 的
-   `Modules/ModParser.lua`。它处理 `N% increased X`、`+N to X`、`N% more X`、
+1. **通用解析器**（`overlay/mod_parser_rules.json`）由 PoB2 的
+   `Modules/ModParser.lua` 转换而来，随 RePoE owner 包固定导入。它处理 `N% increased X`、`+N to X`、`N% more X`、
    按属性缩放和条件后缀等常见句式。通常无需修改它，见第 3 节。
 2. **特殊规则**（`overlay/special_mods.json`）是人工维护的整行匹配表，处理通用语法
    无法表达的暗金、基石和特殊措辞。新增人工词条通常放在这里，见第 4 节。
@@ -36,7 +36,7 @@ PoBR 把 `35% increased Fire Damage` 这样的文本解析成 `Modifier`，再�
 | 文件 | 来源与语法 | 何时修改 |
 |------|------------|----------|
 | `special_mods.json` | 人工维护；Rust 正则与受限值表达式 | 添加或修复整行特殊词条 |
-| `mod_parser_rules.json` | 从 vendor Lua 抽取；Lua pattern | 维护者修改通用语法时使用，见第 3 节 |
+| `mod_parser_rules.json` | PoB2 转换的兼容数据，随 owner 包导入；Lua pattern | 只读；用于查明通用语法，见第 3 节 |
 
 **新增人工规则通常放在 `data/overlay-common/special_mods.json`。**
 `pobr-gamedata` 按两层合并：
@@ -47,7 +47,7 @@ PoBR 把 `35% increased Fire Damage` 这样的文本解析成 `Modifier`，再�
    相同 `id` 会整条替换共享条目，并保留原位置；新 `id` 追加到末尾。
    这里不做字段级递归合并。
 
-`regen-all.sh` 只把上一版的版本专用文件带到候选版本，供维护者对照新 vendor 审查。
+版本目录随 RePoE owner 包导入，修改其中的文件属于 owner 仓库；PoBR 的修正放在共享文件。
 设计背景见[版本升级记录的 P1-3](version-bump-architecture.md#p1-3-version-independent-curated-overlay-dataoverlay-common)。
 
 共享目录还包含 `buff_definitions.json`、`high_precision_mods.json`、`local_mods.json`、
@@ -67,14 +67,10 @@ patch 先覆盖版本文件，之后才合并共享层与版本层；共享文�
 
 ## 3. 阅读通用语法 `mod_parser_rules.json`
 
-**不要为新增词条手改这个文件。** 它从 vendor Lua 再生成，手改内容会被覆盖：
-
-```bash
-mise exec -- cargo run -p sync-pob-catalog -- extract-lua --what parser-rules --vendor-root "$PWD/vendor/PathOfBuilding-PoE2/src" --out "data/$(cat data/CURRENT)/overlay/mod_parser_rules.json"
-```
-
-具体命令也记录在 `_meta.regen_command`。扩展通用语法需要修改上游 Lua 或抽取器，
-由维护者处理。本节用于查明已有文本为什么这样解析。
+**不要为新增词条修改这个文件。** 它是 owner 包中的固定字节，manifest 记录其 SHA-256，
+本地修改会使数据校验失败。`_meta.generator` 与 `_meta.regen_command` 记录的是历史抽取命令，
+PoBR 不提供该命令。新词条写进 `special_mods.json`（第 4 节）；通用语法本身的变化属于 owner 仓库。
+本节用于查明已有文本为什么这样解析。
 
 顶层字段都是行数组；其中的 `pattern` 使用 **Lua pattern**，例如 `(%d+)`、`%%`。
 读取代码是 `crates/pobr-core/src/parse/mod_parser/compiled.rs`。
@@ -160,7 +156,7 @@ aho-corasick 预筛选使用的最长字面子串，后者记录 `^` 锚定。�
 | `handler_id` | 与非空 `mods` 互斥 | JSON 无法表达的 Rust handler，见第 6 节 |
 | `handler_args` | handler 所需参数 | 按顺序转交捕获，例如 `["$1","$2"]` |
 | `enums` | 可选 | `{"<capture#>": {"<word>": "<literal>"}}`，把封闭词集映射到完整名称 |
-| `vendor_pattern` | 可选 | 原 Lua pattern；抽取器据此跳过人工规则已覆盖的 vendor 行 |
+| `vendor_pattern` | 可选 | 该规则替代的原 Lua pattern，用于和 PoB2 行对照 |
 | `exporter` | 默认 `same` | PoB2 未实现用 `absent`，行为不同用 `differs`；`absent` 规则在参考口径中排除 |
 | `game_source` | `absent` / `differs` 必填 | 游戏 stat id、原文或来源链接 |
 | `verified` | 新条目填 `false` | 只有 oracle 差分确认后才设 `true`；不改变运行时是否使用规则 |
@@ -287,7 +283,7 @@ mise exec -- cargo run -p precompile-mods -- --data "data/$(cat data/CURRENT)" -
 ```
 
 它检查通用解析器格式与编译，以及 common、版本、patch、derived、vendor 合并后的特殊规则。
-`special_vendor.json` 必须存在；缺失的生成数据应再生成，不能跳过。
+`special_vendor.json` 随 owner 包导入，必须存在；缺失时重新运行 `mise run data:prepare`，不能跳过。
 人工规则之后依次追加 derived 和 vendor 规则，这两层的重复 id 是错误。
 原始文件或 patch 内重复 id 也会失败。删除版本覆盖后，共享条目会重新生效，
 所以必须检查整个有效快照。
@@ -310,7 +306,7 @@ mise exec -- cargo run -p precompile-mods -- --data "data/$(cat data/CURRENT)" -
 - 结构化 LIST 表和空名称的 PoB 配置发现标记会列为未参与计算的元数据。
   能识别文本不代表会计算。
 - 通用解析器平铺效果另有校验限制；特殊规则的严格标签检查不覆盖整套通用语言。
-- `refresh-modifiers.sh` 审计全部来源样本和规则示例。每行的 `special_rule_id` 关联
+- `pipeline/diagnostics/modifier-audit.sh` 审计全部来源样本和规则示例。每行的 `special_rule_id` 关联
   `rule_validation.effective_rules` 中的规则来源；`matching_special_rules` 按首次命中
   顺序列出候选，含被前面规则遮住的条目。这不证明所有可能输入都不会匹配多条正则。
   规则来源与装备、天赋的 `SourceId` 归因各自保留。
@@ -334,9 +330,10 @@ PoB2 的 `ItemCondition { Body Armour, NORMAL }` 对应现有的构筑条件
 mise exec -- cargo run -p precompile-mods -- --data "data/$(cat data/CURRENT)" --report
 ```
 
-发布产物使用 `data/CURRENT` 的活动版本，并提交变化的
-`generated/parsed_mods.json` 和 `parse-coverage.json`。活动版本的覆盖率产物有 golden
-检查，过期会导致 CI 失败；旧版本不为无关的解析器修改重生成。
+产物写入已准备数据的 `generated/parsed_mods.json` 和 `parse-coverage.json`，该目录被忽略，不提交。
+CI 的 regen-check 在隔离副本中重跑 `--report`，解析覆盖率不得低于
+[`devs/ci/parse-coverage-baseline.json`](../devs/ci/parse-coverage-baseline.json)；覆盖率上升时在同一 PR 抬高基线，
+预期的下降（例如语料扩面）也在同一 PR 更新并说明原因。
 运行时 `ParseCtx` 使用编译后的规则；`parsed_mods.json` 是离线回归产物，
 当前不作为运行时缓存加载。`ModCache` 是内存缓存，寿命只能覆盖一个不可变规则快照。
 

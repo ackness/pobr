@@ -8,7 +8,7 @@ PoBR 将应用版本、基础库版本和游戏数据版本分开。RePoE 独立
 | --- | --- |
 | `data/CURRENT` | 运行时默认使用的游戏数据版本 |
 | `data/<version>/base/` | 临时导入并适配的该版本游戏数据 |
-| `data/<version>/overlay/` | 该版本的补充与修正 |
+| `data/<version>/overlay/` | 该版本的补充、修正与 PoB2 转换的兼容数据，随 owner 包导入 |
 | `data/<version>/generated/` | 从固定输入生成的派生数据；maintenance 不进 runtime manifest |
 | `data/<version>/i18n/` | 独立语言产物的临时运行投影，保留来源和精确身份 |
 | `data/overlay-common/` | 十一份入 Git 的 PoBR 自有规则，以及七份临时导入的外部事实／兼容输入；按 loader 各自读取 |
@@ -34,8 +34,8 @@ PoBR 将应用版本、基础库版本和游戏数据版本分开。RePoE 独立
 ## 开发入口
 
 - 数据版本选择、manifest 校验、身份摘要及快照生命周期见[构筑模型](build-model.md#数据快照身份与会话)。
-- 当前／旧版的临时导入及完整身份校验见[构建数据](../pipeline/runtime/build-data.md)；候选适配和回滚保护见[数据管线](../pipeline/README.md)。
-- 语言生成由[独立 producer](../pipeline/imports/locale-generation.md)完成，新目标需显式匹配的 generation lock；代码合并不自动切换 CURRENT 或认证来源。
+- 当前／旧版的临时导入及完整身份校验见[构建数据](../pipeline/runtime/build-data.md)；候选适配、回滚保护和离线的 `mise run data:check` 见[数据管线](../pipeline/README.md)。
+- 语言产物由翻译库生成并发布，PoBR 经构建锁导入；[固定历史重放](../pipeline/imports/locale-generation.md)只作核对。代码合并不自动切换 CURRENT 或认证来源。
 - 历史 Git 树的[独立输入包](../pipeline/tree/tree-inputs.md)只用于诊断候选，不能据其旧版本标签切换活动数据。
 - 当前工具、缓存和验证范围见[开发工作流](development-workflow.md)。
 

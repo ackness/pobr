@@ -174,9 +174,8 @@ fn merged_levels_spot_values() {
 }
 
 /// Plain base doesn't contain overlay-exclusive fields — ensures these
-/// values only ever come from the merge, with no more hand-patched drift
-/// (the semantic equivalent of a zero regen-check byte-diff). The
-/// overlay-exclusive fields have since narrowed to base_multiplier (level
+/// values only ever come from the merge, with no more hand-patched drift.
+/// The overlay-exclusive fields have since narrowed to base_multiplier (level
 /// domain) + skill_attack_speed_more (statSet domain); crit / attspd are
 /// already base fields read directly from the table columns, so they're
 /// outside this assertion's scope.

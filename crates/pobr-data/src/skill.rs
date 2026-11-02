@@ -104,8 +104,8 @@ impl SkillTypes {
     }
 
     /// Builds from a PoB2 enum name (all 290 names of
-    /// `Global.lua::SkillType`, generated into the `skill_type_names.txt`
-    /// sidecar, regenerated on vendor upgrades) — the **single entry
+    /// `Global.lua::SkillType`, kept in the frozen `skill_type_names.txt`
+    /// compatibility table) — the **single entry
     /// point** for the SkillType name→bit mapping, shared by both the
     /// parser's tag side and the orchestration cfg side (data-driven per
     /// A1: replaces the hand-written whitelist copies that used to live in

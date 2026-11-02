@@ -2,9 +2,8 @@ min_version = "2026.10.23"
 
 # PoBR uses exact mise tools and frozen Web dependencies.
 # Game/language data are temporary imports from independent owner locks.
-# data/data:fetch/data:prepare install only the already selected locked target.
+# data:prepare installs only the already selected locked target.
 # data:regen produces declared ordinary DTO domains, without adoption.
-# data:legacy:regen and data:adapt retain explicit local compatibility diagnostics.
 
 # Rust 版本只在 rust-toolchain.toml 里写一份（本地与 CI 共用）；让 mise 读取它，
 # 而不是在这里重复钉一个版本号。
@@ -42,10 +41,6 @@ run = "mise bootstrap --only packages,tools,task"
 description = "显示本地选中版本；官方补丁发现请在 RePoE 运行 client:version"
 run = "cat data/CURRENT"
 
-[tasks."data:fetch"]
-description = "从独立固定锁临时导入当前数据；不发现最新版本或改变 CURRENT"
-run = "python3 -m pipeline.runtime.build_data --install data"
-
 [tasks."data:update"]
 description = "从明确外部 lock 准备候选；采用须显式 --activate --expected-current"
 run = "python3 -m pipeline.runtime.locked_update"
@@ -53,15 +48,6 @@ run = "python3 -m pipeline.runtime.locked_update"
 [tasks."data:latest"]
 description = "检查完整owner发布并冻结新候选；不把源码HEAD、离线重放或解析成功当成采用"
 run = "python3 -m pipeline.latest.latest_data"
-
-[tasks."data:adapt"]
-description = "历史本地原表的 DTO 兼容适配与校验；不采集、不隐式运行 PoB2"
-run = "python3 -m pipeline.runtime.data_snapshot adapt"
-
-[tasks."data:adapt:reference"]
-depends = ["setup:oracle"]
-description = "适配 base/i18n，并显式要求固定 PoB2 parser 对照审计"
-run = "python3 -m pipeline.runtime.data_snapshot adapt --reference-audit"
 
 [tasks."data:tree:source"]
 description = "临时导入固定 RePoE 历史树包；--offline 只读已验证包缓存，不获取上游游戏数据"
@@ -79,11 +65,6 @@ run = "python3 -m pipeline.runtime.data_snapshot native-candidate"
 description = "从外部固定输入生产声明普通 DTO（--out 和 --adapter 必填；不采用）"
 run = "python3 -m pipeline.runtime.ordinary.ordinary_inputs execute"
 
-[tasks."data:legacy:regen"]
-depends = ["setup:oracle"]
-description = "仅对已有历史原表/vendor 重放兼容快照；不下载或选择新来源"
-run = "bash pipeline/legacy/regen-all.sh"
-
 [tasks."data:bundle"]
 description = "Seal version data and shared rules into a new portable bundle (--out required)"
 run = "python3 -m pipeline.runtime.data_snapshot bundle"
@@ -96,6 +77,10 @@ run = "python3 -m pipeline.runtime.data_snapshot verify-bundle"
 description = "Temporarily import pinned RePoE/language packages for builds and real-data tests"
 run = "python3 -m pipeline.runtime.build_data --install data"
 
+[tasks."data:check"]
+description = "Offline check: tracked-data ownership and a clean worktree; no network or import"
+run = "bash devs/scripts/check-data.sh"
+
 [tasks."data:imports"]
 description = "Fetch pinned RePoE/translation inputs and project declared display needs (--out required; candidate only)"
 run = "python3 -m pipeline.imports.data_imports"
@@ -107,10 +92,6 @@ run = "python3 -m pipeline.runtime.runtime_pack"
 [tasks."data:ordinary"]
 description = "Verify declared Git inputs and run existing ordinary domain producers (--out required; candidate only)"
 run = "python3 -m pipeline.runtime.ordinary.ordinary_inputs"
-
-[tasks."data"]
-description = "临时导入当前独立数据锁，与 data:prepare 相同；不更改 CURRENT"
-run = "python3 -m pipeline.runtime.build_data --install data"
 
 # Development commands. These forward to the repository driver script; extra
 # arguments after the task name are passed through unchanged. The game CLI
@@ -192,7 +173,7 @@ description = "Explicit full local Rust gate: fmt, Clippy, workspace tests, doct
 run = "bash devs/scripts/driver.sh full"
 
 [tasks.gate]
-description = "Optional local batch validation on a warm checkout; remote full CI is preferred. Includes fmt, regen drift, Clippy, tests, parity, Web and accuracy (`--only step,...` reruns failures)"
+description = "Optional local batch validation on a warm checkout; remote full CI is preferred. Includes fmt, rule regeneration, Clippy, tests, parity, Web and accuracy (`--only step,...` reruns failures)"
 run = "bash devs/scripts/driver.sh gate"
 
 [tasks.regen]
@@ -231,20 +212,16 @@ run = "bash devs/scripts/driver.sh vendor"
 description = "Finish mise bootstrap: verify tools and install frozen Web dependencies; no product build"
 run = "bash devs/scripts/setup-environment.sh"
 
-[tasks.drill]
-description = "Version-bump drill: data regeneration, compile and parity"
-run = "bash devs/scripts/driver.sh drill"
-
 [tasks.versions]
-description = "List committed data versions and run the version-independence smoke"
+description = "List prepared data versions and run the version-independence smoke"
 run = "bash devs/scripts/driver.sh versions"
 
 [tasks."data:status"]
-description = "Check the committed data snapshot and explain regeneration"
+description = "Check the prepared data snapshot and explain the import entry points"
 run = "bash devs/scripts/driver.sh data"
 
 [tasks."data:diff"]
-description = "Diff two committed data versions: `mise run data:diff <verA> <verB> [--domain ...]`"
+description = "Diff two prepared data versions: `mise run data:diff <verA> <verB> [--domain ...]`"
 run = "bash devs/scripts/driver.sh diff"
 
 [tasks."vendor:lua"]
@@ -279,7 +256,7 @@ depends = ["vendor"]
 run = "pnpm --dir web build-tree-art"
 
 [tasks."setup:oracle"]
-description = "Prepare the pinned LuaJIT and PoB2 reference automatically for oracle/data-generation tasks"
+description = "Prepare the pinned LuaJIT and PoB2 test reference automatically for oracle tasks"
 run = [
   "bash devs/scripts/driver.sh deps",
   "bash devs/scripts/driver.sh vendor",

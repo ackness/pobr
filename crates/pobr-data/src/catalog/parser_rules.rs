@@ -15,9 +15,9 @@
 //! A batched data carrier for vendor PoB2's `Modules/ModParser.lua:2231-6150`
 //! `specialModList` (2085 whole-line-anchored special cases). This table is a
 //! **hand-curated domain** (`_meta.generator = "hand-curated"`; `regen_command`
-//! records the reconciliation command, not a regeneration command); vendor
-//! reconciliation is handled by the `vendor_pattern` column plus
-//! `sync-pob-catalog check --special-coverage`.
+//! records a planned reconciliation command, not a regeneration command);
+//! the `vendor_pattern` column keeps the matching vendor key for
+//! reconciliation.
 //!
 //! ## Hard limits of the restricted template DSL
 //!
@@ -51,10 +51,11 @@
 //!
 //! Data source: vendor PoB2 `Modules/ModParser.lua`'s parser rule tables
 //! (formList / modNameList / modFlagList / preFlagList / modTagList plus a
-//! few small lookup tables), deterministically extracted by
-//! `sync-pob-catalog extract-lua --what parser-rules`, which bootstraps
-//! headless luajit and dumps the **final loaded tables** (including derived
-//! tables like regen/cost, already expanded). specialModList isn't in this
+//! few small lookup tables), as the **final loaded tables** of a headless
+//! PoB2 run (including derived tables like regen/cost, already expanded).
+//! The file is PoB2-derived compatibility data shipped as fixed bytes in
+//! the RePoE owner package and imported by `mise run data:prepare`; its
+//! `_meta.generator` still names the historical extractor. specialModList isn't in this
 //! table (it lives in `overlay/special_mods.json`); skillNameList /
 //! preSkillNameList live in `generated/special_derived.json`.
 //!
@@ -265,8 +266,8 @@ pub struct SpecialTemplateDef {
     /// `(.+)` are forbidden (such entries go through `handler_id` instead).
     pub pattern: String,
     /// Vendor reconciliation metadata: the original Lua pattern literal
-    /// (used by `check --special-coverage` to diff for existence against
-    /// the vendor key). `None` means a pobr-only special case (no matching
+    /// (the vendor key this entry corresponds to). `None` means a pobr-only
+    /// special case (no matching
     /// key in vendor; see `source_note` for its origin).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vendor_pattern: Option<String>,

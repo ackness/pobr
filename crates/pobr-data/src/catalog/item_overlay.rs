@@ -7,11 +7,10 @@
 //! | `runes.json`           | overlay/ | `Data/ModRunes.lua` (a bare `return {...}`) |
 //! | `uniques.json`         | overlay/ | `Data/Uniques/*.lua` (arrays of raw text blocks) + `Special/race` |
 //!
-//! All deterministically extracted by `sync-pob-catalog extract-lua --what
-//! mod-scalability|catalysts|runes|uniques` (luajit executes vendor's
-//! serialization; the output is byte-stable, `_meta` records the vendor
-//! commit, and hand edits are forbidden). This module only defines the
-//! serde shape, zero logic, zero I/O.
+//! All four are PoB2-derived compatibility data shipped as fixed bytes in the
+//! RePoE owner package and imported by `mise run data:prepare` (`_meta`
+//! records the vendor commit; changes belong to the owner repository). This
+//! module only defines the serde shape, zero logic, zero I/O.
 //!
 //! Consumers:
 //! - `mod_scalability` / `catalysts` → injected via RuleSet `ItemRules`

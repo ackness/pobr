@@ -1,18 +1,14 @@
 //! Granted effect table adapter (`GrantedEffects` -> `granted_effects.json`)
-//! plus a Traditional Chinese skill-name sidecar plus resource cost types
-//! (`CostTypes` -> `cost_types.json`).
+//! plus resource cost types (`CostTypes` -> `cost_types.json`).
 //!
 //! A granted effect's `ActiveSkill` integer index -> `ActiveSkills.Id`;
 //! skill-type flags (Attack/Spell...) come from the linked ActiveSkills row,
 //! whose indices resolve to names via `ActiveSkillType`.
 
-use std::collections::BTreeMap;
-use std::path::Path;
-
 use pobr_data::catalog::{CostTypeDef, GrantedEffectDef};
 use serde::Deserialize;
 
-use crate::{is_placeholder, read_json, resolve};
+use crate::resolve;
 
 use super::RawActiveSkillName;
 
@@ -56,14 +52,6 @@ struct RawGrantedEffect {
     /// The list of cost-type foreign-key indices (e.g. `[0]`).
     #[serde(rename = "CostTypes", default)]
     cost_types: Vec<u32>,
-}
-
-#[derive(Deserialize)]
-struct RawActiveSkillTwName {
-    #[serde(rename = "_index")]
-    index: usize,
-    #[serde(rename = "DisplayedName", default)]
-    displayed_name: Option<String>,
 }
 
 /// Adapts the `GrantedEffects` table into id-sorted effect definitions.
@@ -188,32 +176,6 @@ pub(super) fn adapt_effects(
     Ok((effects, effects_total, effect_id_by_index))
 }
 
-/// Traditional Chinese skill display-name sidecar (key = ActiveSkills.Id, deduplicated against the English canonical name).
-pub(super) fn adapt_zh_skill_names(
-    tw: &Path,
-    active_skills: &[RawActiveSkillName],
-) -> Result<BTreeMap<String, String>, String> {
-    let tw_rows = read_json::<Vec<RawActiveSkillTwName>>(&tw.join("ActiveSkills.json"))?;
-    let tw_by_index: BTreeMap<usize, String> = tw_rows
-        .into_iter()
-        .filter_map(|r| r.displayed_name.map(|n| (r.index, n)))
-        .collect();
-    let mut zh_skill_names: BTreeMap<String, String> = BTreeMap::new();
-    for (index, a) in active_skills.iter().enumerate() {
-        let en_name = a.displayed_name.as_deref().unwrap_or_default();
-        if a.id.is_empty() || is_placeholder(en_name) {
-            continue;
-        }
-        if let Some(zh) = tw_by_index.get(&index)
-            && !zh.is_empty()
-            && zh != en_name
-        {
-            zh_skill_names.insert(a.id.clone(), zh.clone());
-        }
-    }
-    Ok(zh_skill_names)
-}
-
 // Resource cost types (the CostTypes domain)
 
 #[derive(Deserialize)]
@@ -228,12 +190,8 @@ struct RawCostType {
     per_minute: bool,
 }
 
-/// Adapts `CostTypes.dat` into an index-ascending resource-type array (the
-/// target table for the [`GrantedEffectDef::cost_types`] foreign key). Indices are contiguous, so this lands directly into an ordered Vec.
-pub fn adapt_cost_types(en: &Path) -> Result<Vec<CostTypeDef>, String> {
-    adapt_cost_types_from(en)
-}
-
+/// Adapts `CostTypes` into an index-ascending resource-type array (the target
+/// table for the [`GrantedEffectDef::cost_types`] foreign key). Indices are contiguous, so this lands directly into an ordered Vec.
 pub(crate) fn adapt_cost_types_from(
     en: &(impl super::SkillTables + ?Sized),
 ) -> Result<Vec<CostTypeDef>, String> {

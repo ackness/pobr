@@ -803,7 +803,6 @@ dependencies = [
  "pobr-data",
  "pobr-gamedata",
  "regex",
- "serde",
  "serde_json",
 ]
 

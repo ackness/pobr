@@ -1,3 +1,7 @@
+//! PoB2 reference catalog: scans the pinned PoB2 checkout's display and
+//! output keys and checks PoBR's display catalog against them (test reference
+//! only; it produces no runtime data).
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io;
@@ -5,25 +9,6 @@ use std::path::{Path, PathBuf};
 
 use pobr_data::prelude::*;
 use regex::Regex;
-
-pub mod buff_refs;
-pub mod extract_bases;
-pub mod extract_config_options;
-pub mod extract_curse_priority;
-pub mod extract_gem_effects;
-pub mod extract_item_overlay;
-pub mod extract_lua;
-pub mod extract_minions;
-pub mod extract_parser_rules;
-pub mod extract_quality;
-pub mod extract_special_mods;
-pub mod extract_stat_descriptions;
-pub mod extract_stat_map;
-pub mod extract_stat_set_labels;
-pub mod gen_skill_types;
-pub mod gen_stat_id_map;
-pub mod mirage_configs;
-pub mod trigger_configs;
 
 pub fn collect_catalog(pob_root: &Path) -> io::Result<PobCatalog> {
     let modules = pob_root.join("src").join("Modules");

@@ -38,7 +38,7 @@ pub(super) struct Converted {
 
 pub(super) fn convert(input: &VerifiedFacts) -> Result<Converted, String> {
     let source = validation::PhysicalSkills::checked(input)?;
-    let mut bundle = skills::adapt_skills_from(&source, None)?;
+    let mut bundle = skills::adapt_skills_from(&source)?;
     let sets = skills::adapt_stat_sets_from(&source)?;
     let costs = skills::adapt_cost_types_from(&source)?;
 

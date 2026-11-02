@@ -1,7 +1,7 @@
 //! Domain-file location logic across the three data-directory layers.
 //!
-//! `data/<version>/` uses a three-layer physical layout: `base/` (fully
-//! auto-regenerated from `.dat`), `overlay/` (vendor-extracted),
+//! `data/<version>/` uses a three-layer physical layout: `base/` (adapted
+//! game facts), `overlay/` (curated and PoB2-derived compatibility data),
 //! `generated/` (a deterministic cache). Domain-file location rule:
 //! **`base/` first, falling back to the version root** — compatible with
 //! the old layout not yet migrated (an old data pack puts domain JSON

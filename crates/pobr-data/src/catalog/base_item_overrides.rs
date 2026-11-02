@@ -6,9 +6,10 @@
 //! column, `ItemSpirit`'s `SpiritGranted` column) has been pruned from the
 //! CDN at the pinned patch, so the `.dat` route is unavailable; per the
 //! dual-route decision from open questions 1/2, this falls back to vendor
-//! extraction. Deterministically extracted by
-//! `sync-pob-catalog extract-bases` (schema id `base_item_overrides/v1`,
-//! shaped the same as the `skill_overrides` channel).
+//! data. The table (schema id `base_item_overrides/v1`, shaped the same as
+//! the `skill_overrides` channel) is PoB2-derived compatibility data shipped
+//! as fixed bytes in the RePoE owner package and imported by
+//! `mise run data:prepare`.
 //!
 //! Consumer: `pobr-gamedata` merges this table onto [`super::BaseItemDef`]
 //! by **English canonical name** while loading `base/base_items.json`

@@ -1,9 +1,0 @@
-# Temporary imported inputs, legacy local diagnostics and caches; never source data in Git.
-# Raw acquisition/export is owned by RePoE. Current and rollback roots use fixed owner locks.
-.cache/
-tables/
-files/
-# GGG 官方被动树导出原始 data.json（数 MB，绝不入库；适配后落 data/<patch>/passive_tree.json）
-/tree/data.json
-node_modules/
-*.log

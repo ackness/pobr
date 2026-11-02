@@ -1,7 +1,7 @@
 //! `overlay/mod_scalability.json` loader — the scalability + format
-//! conversion table for `{range:x}` mod values (extracted from vendor
-//! `Data/ModScalability.lua` via `extract-lua --what mod-scalability`,
-//! schema in [`pobr_data::catalog::item_overlay`]).
+//! conversion table for `{range:x}` mod values (PoB2-derived compatibility
+//! data from vendor `Data/ModScalability.lua`, imported from the RePoE
+//! owner package; schema in [`pobr_data::catalog::item_overlay`]).
 //!
 //! Size note: on the order of ~4MB, a lazily-loaded domain; consumer
 //! (`pobr-core::apply_range`) injects it via RuleSet `ItemRules`, zero

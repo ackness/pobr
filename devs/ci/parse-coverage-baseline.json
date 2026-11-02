@@ -2,14 +2,14 @@
   "_meta": {
     "schema": "parse-coverage-baseline/v1",
     "purpose": "M6-T7 解析覆盖率棘轮基线（蓝图 §6.3）。PR 不得降低 coverage_ratio；升高时同 PR 更新本文件。",
-    "regen": "cargo run -p precompile-mods -- --data data/4.5.4.3 --report，取 generated/parse-coverage.json::summary",
+    "regen": "mise run data:prepare 后运行 devs/scripts/regen-check.sh（隔离目录内 precompile-mods --report），取 generated/parse-coverage.json::summary",
     "parser_engine": "scan_engine+special",
-    "note": "golden 4.5.4.3（vendor ce8bffab）：special_vendor 全量抽取 + 策展移植后覆盖率 0.794962→0.801168；Mageblood `Legacy of X` handler 接入后 0.801168→0.803738（+11 行）。；存量 #7 摘除 also_grants_guard 幻影建模（vendor 不解析，2 行如实回到 unsupported）0.803738→0.803271"
+    "note": "0.5.5.5 owner 组合 + examples 语料：regen-check 改为在 CI 实际运行后实测 0.829856（旧基线 0.803271 记录于 4.5.4.3，此前 CI 因缺已提交产物一直跳过）"
   },
-  "patch": "4.5.4.3",
-  "total": 4280,
-  "parsed": 3438,
-  "unsupported": 842,
+  "patch": "0.5.5.5",
+  "total": 4361,
+  "parsed": 3619,
+  "unsupported": 742,
   "err": 0,
-  "coverage_ratio": 0.803271
+  "coverage_ratio": 0.829856
 }

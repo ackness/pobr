@@ -2,7 +2,7 @@
 //!
 //! The report feeds both the special-mods long-tail cleanup (10-G2) and the
 //! coverage-ratchet CI check. `parse-coverage.json` is a byte-stable
-//! artifact (checked in the regen-check generated section); the gap top-N is
+//! artifact (regen-check reruns it and enforces the ratchet); the gap top-N is
 //! truncated in lexicographic order (the corpus is already deduplicated, so
 //! "hit frequency" just means presence — a real frequency-weighted top-N
 //! needs C3/C4's counted corpus, deferred to later work).

@@ -1,6 +1,7 @@
-//! `overlay/spectres.json` loader — spectre entries (extracted from vendor
-//! `Data/Spectres.lua` via `extract-lua --what spectres`, the same schema
-//! as minions, keyed by the full metadata path; /A5).
+//! `overlay/spectres.json` loader — spectre entries (PoB2-derived
+//! compatibility data from vendor `Data/Spectres.lua`, imported from the
+//! RePoE owner package; the same schema as minions, keyed by the full
+//! metadata path; /A5).
 //!
 //! Size note: on the order of ~700KB, a lazily-loaded domain — only read
 //! from disk when the consumer explicitly calls it, not on the default hot

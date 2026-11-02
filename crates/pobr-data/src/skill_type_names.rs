@@ -1,14 +1,13 @@
 //! Full lookup table from PoB2 SkillType enum name → id (1-based) — the
 //! backing table for [`crate::skill::SkillTypes::from_pob2_name`].
 //!
-//! The actual data lives in the sidecar `skill_type_names.txt` (generated
-//! from vendor `Global.lua::SkillType` by `gen-skill-types`, embedded via
+//! The actual data lives in the sidecar `skill_type_names.txt` (a frozen
+//! copy of the pinned PoB2 `Global.lua::SkillType` enum, embedded via
 //! `include_str!` — the same pattern as pobr-i18n's locale tomls; the data
 //! table doesn't go in a `.rs` file, so it's outside the `no_embedded_data`
 //! guard's reach). Line format is `name id`, `#` lines are comments;
-//! generated output is already sorted by name, and this module sorts it
-//! again as a fallback (the binary search shouldn't have to depend on the
-//! generator's ordering convention).
+//! the file is sorted by name, and this module sorts it again as a fallback
+//! (the binary search shouldn't depend on the file's ordering).
 
 use std::sync::LazyLock;
 

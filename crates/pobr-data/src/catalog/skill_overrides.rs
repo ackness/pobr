@@ -2,12 +2,12 @@
 //! (`overlay/skill_overrides.json`).
 //!
 //! Data source: a hand-curated layer over vendor PoB2 `Data/Skills/*.lua`
-//! for per-level columns that **don't exist** in the GGG `.dat` export
-//! (pipeline/tables) — `critChance` / `attackSpeedMultiplier` /
-//! `baseMultiplier` — plus a statSet's inherent `baseMods` Speed MORE.
-//! Deterministically extracted by `sync-pob-catalog extract-lua` (schema id
-//! `skill_overrides/v1`; see that tool's `extract_lua` module for the
-//! generation side).
+//! for per-level columns that **don't exist** in the base game facts —
+//! `critChance` / `attackSpeedMultiplier` / `baseMultiplier` — plus a
+//! statSet's inherent `baseMods` Speed MORE. The table (schema id
+//! `skill_overrides/v1`) is PoB2-derived compatibility data shipped as
+//! fixed bytes in the RePoE owner package and imported by
+//! `mise run data:prepare`.
 //!
 //! Consumer: `pobr-gamedata` merges this table on top of the plain base
 //! data while loading `base/granted_effect_levels.json` /

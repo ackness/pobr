@@ -1,79 +1,44 @@
 #!/usr/bin/env bash
-# 可再生性检查（CI 数据防线 ①）
+# 已准备数据上 PoBR 自有派生步骤的可再生性检查（CI 数据防线）
 #
-# 用 pipeline/ 已有的本地输入重跑 tools/pobr-data-adapter，产物落到临时目录，
-# 与仓库已提交的 data/<patch>/ 入库 JSON 逐文件 byte-diff：
-#   - 任一文件不一致（或重生成产物在仓库中找不到对应文件）→ 退出码 1，并列出差异文件；
-#   - 本地缺少 pipeline 输入（tables/ 与 tree/ 都没有）→ 明确报 SKIP，退出码 0（不是失败）；
-#   - 全部一致 → 退出码 0。
-#
-# 布局兼容：已提交产物按存在性探测，优先 data/<patch>/base/<相对路径>（W1 之后的三层
-# 目录新布局），否则回退 data/<patch>/<相对路径>（旧平铺布局）。
-#
-# 已知排除：manifest.json 暂不参与 byte-diff——当前 manifest 是多个域步骤（--raw / --tree /
-# 手工合并）的合并产物，单独重跑 --raw 得到的 manifest 域列表不完整；待主线 W1 的
-# manifest v2（三段 domains）落地、由单一步骤幂等生成后，再纳入 diff（见 §5.1 收紧计划）。
+# 在临时目录重跑 PoBR 自有的派生步骤，不写入或恢复工作区文件：
+#   - keystone 派生 special 表：pobr-data-adapter --emit-special-derived base/passive_tree.json，
+#     与已准备的 generated/special_derived.json 逐字节比较；
+#   - 词条规则预编译：precompile-mods --report 必须成功，解析覆盖率不得低于
+#     devs/ci/parse-coverage-baseline.json（棘轮）。
+# 游戏事实与语言数据来自 owner 发布，由 data:prepare 按摘要校验，这里不重生成。
+# 缺少已准备数据时失败：先运行 mise run data:prepare。
 #
 # 用法：
-#   devs/scripts/regen-check.sh            # 自动从 pipeline/legacy/config.json 读 patch 版本
-#   POBR_PATCH=4.5.0.3.4 devs/scripts/regen-check.sh   # 显式指定版本
+#   devs/scripts/regen-check.sh                      # 版本取 data/CURRENT
+#   POBR_PATCH=0.5.5.5 devs/scripts/regen-check.sh   # 显式指定版本
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-# ---- 版本号：环境变量优先，否则从 pipeline/legacy/config.json 的 "patch" 字段读取 ----
 PATCH="${POBR_PATCH:-}"
-if [[ -z "$PATCH" ]]; then
-    PATCH="$(sed -n 's/.*"patch"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
-        "$ROOT/pipeline/legacy/config.json" | head -1)"
+if [[ -z "$PATCH" && -f "$ROOT/data/CURRENT" ]]; then
+    PATCH="$(head -1 "$ROOT/data/CURRENT" | tr -d '[:space:]')"
 fi
 if [[ -z "$PATCH" ]]; then
-    echo "regen-check: 无法确定 patch 版本（pipeline/legacy/config.json 缺 \"patch\"，也未设 POBR_PATCH）" >&2
+    echo "regen-check: 无法确定版本（缺 data/CURRENT，也未设 POBR_PATCH）" >&2
     exit 1
 fi
 
-# ---- 输入探测：两个域各自独立，缺哪个就跳过哪个 ----
-TABLES_DIR="$ROOT/pipeline/tables"
-TREE_JSON="$ROOT/pipeline/tree/data.json"
-
-HAVE_TABLES=0
-if [[ -f "$TABLES_DIR/English/BaseItemTypes.json" \
-   && -f "$TABLES_DIR/Traditional Chinese/BaseItemTypes.json" ]]; then
-    HAVE_TABLES=1
-fi
-HAVE_TREE=0
-if [[ -f "$TREE_JSON" ]]; then
-    HAVE_TREE=1
-fi
-QUALITY_SOURCE="$ROOT/pipeline/legacy/gem-quality/$PATCH.json"
-HAVE_QUALITY=0
-if [[ -f "$QUALITY_SOURCE" && -f "$TABLES_DIR/English/GrantedEffectQualityStats.json" ]]; then
-    HAVE_QUALITY=1
-fi
-
-# keystone 派生（M5b C-1）的输入是已提交的 passive_tree.json，无 pipeline 依赖——
-# 仓库有 data/<patch>/ 即可重跑，故不计入「无 pipeline 输入」的整体 SKIP 判定。
-HAVE_SPECIAL_DERIVED=0
-if [[ -d "$ROOT/data/$PATCH" ]]; then
-    HAVE_SPECIAL_DERIVED=1
-fi
-
-if [[ "$HAVE_TABLES" -eq 0 && "$HAVE_TREE" -eq 0 && "$HAVE_QUALITY" -eq 0 && "$HAVE_SPECIAL_DERIVED" -eq 0 ]]; then
-    echo "regen-check: SKIP — 本地没有 pipeline 输入（既无 pipeline/tables/ 的 .dat 导出，"
-    echo "也无 pipeline/tree/data.json）。重生成需要先按 pipeline/README.md 下载输入。"
-    exit 0
-fi
-
-# ---- 已提交产物根目录（兼容新旧布局）----
 COMMITTED_FLAT="$ROOT/data/$PATCH"
 COMMITTED_BASE="$ROOT/data/$PATCH/base"
 if [[ ! -d "$COMMITTED_FLAT" ]]; then
-    echo "regen-check: 仓库中不存在 data/$PATCH/ —— patch 版本与已提交数据不匹配？" >&2
+    echo "regen-check: data/$PATCH 不存在；先运行 mise run data:prepare" >&2
+    exit 1
+fi
+COMMITTED_TREE="$COMMITTED_BASE/passive_tree.json"
+if [[ ! -f "$COMMITTED_TREE" ]]; then
+    echo "regen-check: 缺 data/$PATCH/base/passive_tree.json；先运行 mise run data:prepare" >&2
     exit 1
 fi
 
-# 按存在性解析某个重生成文件对应的已提交文件路径；找不到则输出空串。
+# 按存在性解析某个重生成文件对应的已准备文件路径；找不到则输出空串。
 resolve_committed() {
     local rel="$1"
     if [[ -f "$COMMITTED_BASE/$rel" ]]; then
@@ -85,70 +50,28 @@ resolve_committed() {
     fi
 }
 
-# ---- 重生成到临时目录 ----
 TMP_OUT="$(mktemp -d "${TMPDIR:-/tmp}/pobr-regen-check.XXXXXX")"
 trap 'rm -rf "$TMP_OUT"' EXIT
-
 echo "regen-check: patch=${PATCH}，输出临时目录 ${TMP_OUT}"
 
-if [[ "$HAVE_TABLES" -eq 1 ]]; then
-    echo "regen-check: 重跑物品/词缀/技能域（--raw pipeline/tables）……"
-    cargo run --quiet -p pobr-data-adapter --manifest-path "$ROOT/Cargo.toml" -- \
-        --raw "$TABLES_DIR" --out "$TMP_OUT" --patch "$PATCH" --strict-columns
-else
-    echo "regen-check: SKIP 物品/词缀/技能域 —— 缺 pipeline/tables/{English,Traditional Chinese}/"
-fi
+echo "regen-check: 重跑 keystone 派生 special 表（--emit-special-derived passive_tree.json）……"
+cargo run --quiet -p pobr-data-adapter --manifest-path "$ROOT/Cargo.toml" -- \
+    --emit-special-derived "$COMMITTED_TREE" --out "$TMP_OUT" --patch "$PATCH"
 
-if [[ "$HAVE_TREE" -eq 1 ]]; then
-    echo "regen-check: 重跑被动天赋树域（--tree pipeline/tree/data.json）……"
-    cargo run --quiet -p pobr-data-adapter --manifest-path "$ROOT/Cargo.toml" -- \
-        --tree "$TREE_JSON" --out "$TMP_OUT" --patch "$PATCH"
-else
-    echo "regen-check: SKIP 被动天赋树域 —— 缺 pipeline/tree/data.json"
-fi
-
-# Official-quality snapshots have a reviewed input receipt; legacy snapshots
-# keep their vendor-generated artifact. The generator never reads the old output.
-if [[ "$HAVE_QUALITY" -eq 1 ]]; then
-    echo "regen-check: regenerating official gem quality with the reviewed receipt"
-    cargo run --quiet -p pobr-data-adapter --manifest-path "$ROOT/Cargo.toml" -- \
-        --gem-quality "$TABLES_DIR/English" --quality-source "$QUALITY_SOURCE" \
-        --out "$TMP_OUT" --patch "$PATCH"
-else
-    echo "regen-check: SKIP gem quality — no reviewed receipt or local quality table"
-fi
-
-# M5b C-1：keystone 派生 special 表（输入 = 已提交 passive_tree.json，无 pipeline 依赖）。
-COMMITTED_TREE="$(resolve_committed "passive_tree.json")"
-if [[ -n "$COMMITTED_TREE" ]]; then
-    echo "regen-check: 重跑 keystone 派生 special 表（--emit-special-derived passive_tree.json）……"
-    cargo run --quiet -p pobr-data-adapter --manifest-path "$ROOT/Cargo.toml" -- \
-        --emit-special-derived "$COMMITTED_TREE" --out "$TMP_OUT" --patch "$PATCH"
-else
-    echo "regen-check: SKIP keystone 派生 —— 缺已提交 passive_tree.json"
-fi
-
-# ---- byte-diff：只比对本次实际重生成出来的文件 ----
 declare -a DIFF_FILES=()
 declare -a MISSING_FILES=()
 CHECKED=0
-
 while IFS= read -r regen; do
     rel="${regen#"$TMP_OUT/$PATCH/"}"
-    # manifest.json 暂排除（理由见文件头注释）
-    if [[ "$rel" == "manifest.json" ]]; then
-        continue
-    fi
+    [[ "$rel" == "manifest.json" ]] && continue
     committed="$(resolve_committed "$rel")"
     if [[ -z "$committed" ]]; then
         MISSING_FILES+=("$rel")
         continue
     fi
     CHECKED=$((CHECKED + 1))
-    if ! cmp -s "$regen" "$committed"; then
-        DIFF_FILES+=("$rel")
-    fi
-done < <(find "$TMP_OUT/$PATCH" -type f -name '*.json' | sort)
+    cmp -s "$regen" "$committed" || DIFF_FILES+=("$rel")
+done < <(find "$TMP_OUT/$PATCH" -type f -name '*.json' 2>/dev/null | sort)
 
 if [[ "$CHECKED" -eq 0 && "${#MISSING_FILES[@]}" -eq 0 ]]; then
     echo "regen-check: 重生成没有产出任何文件 —— adapter 行为异常" >&2
@@ -159,96 +82,63 @@ STATUS=0
 if [[ "${#MISSING_FILES[@]}" -gt 0 ]]; then
     STATUS=1
     echo ""
-    echo "regen-check: 以下重生成文件在仓库 data/$PATCH/{base/,}** 中找不到对应已提交文件："
+    echo "regen-check: 以下重生成文件在已准备的 data/$PATCH/{base/,}** 中找不到："
     printf '  - %s\n' "${MISSING_FILES[@]}"
 fi
 if [[ "${#DIFF_FILES[@]}" -gt 0 ]]; then
     STATUS=1
     echo ""
-    echo "regen-check: 以下文件 byte-diff 不为零（已提交数据与重生成产物漂移）："
+    echo "regen-check: 以下文件与已准备数据不一致："
     printf '  - %s\n' "${DIFF_FILES[@]}"
-    echo ""
-    echo "处理方式：若漂移来自 adapter 行为变更，重跑 pipeline/README.md 第 3 步并提交新产物；"
-    echo "若来自手改 data/，撤销手改（data/ 只能由 adapter 生成）。"
+    echo "处理方式：派生规则变更时同步更新 owner 发布的数据；不要手改已准备的 data/。"
 fi
 
 # ============================================================================
-# generated 段：precompile-mods 重生一致 + 覆盖率棘轮（M6-T7，架构 §4 防线 ③）
+# 词条规则预编译与覆盖率棘轮
 # ----------------------------------------------------------------------------
-# precompile-mods 直接写 data/<patch>/generated/{parsed_mods.json,parse-coverage.json}。
-# Copy the current data inputs into an isolated layout, regenerate there, and
-# compare with the working tree. Never write or restore working-tree artifacts.
-# 输入 = 已提交 base/passive_tree.json + generated/special_derived.json + examples build XML，
-# 无 pipeline 依赖；仓库有 data/<patch>/ 即可重跑。
+# precompile-mods 写 <data>/generated/{parsed_mods.json,parse-coverage.json}。
+# 复制已准备数据到隔离目录后运行，避免改动工作区；dereference symlink，
+# 输出不能指回源目录。语料来自 examples/。
 # ============================================================================
-GEN_DIR="$COMMITTED_FLAT/generated"
-GEN_PARSED="$GEN_DIR/parsed_mods.json"
-GEN_COVERAGE="$GEN_DIR/parse-coverage.json"
 BASELINE="$ROOT/devs/ci/parse-coverage-baseline.json"
+echo ""
+echo "regen-check: 重跑 precompile-mods（词条规则预编译）……"
+PC_ROOT="$TMP_OUT/precompile"
+PC_DATA="$PC_ROOT/data/$PATCH"
+mkdir -p "$PC_DATA"
+cp -RL "$COMMITTED_FLAT/." "$PC_DATA/"
+if [[ -d "$ROOT/data/overlay-common" ]]; then
+    cp -RL "$ROOT/data/overlay-common" "$PC_ROOT/data/overlay-common"
+fi
+[[ ! -d "$ROOT/examples" ]] || ln -s "$ROOT/examples" "$PC_ROOT/examples"
 
-if [[ -f "$GEN_PARSED" ]]; then
+cargo run --quiet -p precompile-mods --manifest-path "$ROOT/Cargo.toml" -- \
+    --data "$PC_DATA" --report >/dev/null
+
+COVERAGE="$PC_DATA/generated/parse-coverage.json"
+if [[ ! -f "$COVERAGE" || ! -f "$BASELINE" ]]; then
+    echo "regen-check: 缺 parse-coverage.json 或覆盖率基线，无法检查棘轮" >&2
+    exit 1
+fi
+CUR_RATIO="$(sed -n 's/.*"coverage_ratio"[[:space:]]*:[[:space:]]*\([0-9.]*\).*/\1/p' "$COVERAGE" | head -1)"
+BASE_RATIO="$(sed -n 's/.*"coverage_ratio"[[:space:]]*:[[:space:]]*\([0-9.]*\).*/\1/p' "$BASELINE" | head -1)"
+if [[ -z "$CUR_RATIO" || -z "$BASE_RATIO" ]]; then
+    echo "regen-check: 无法读取 coverage_ratio" >&2
+    exit 1
+fi
+# 浮点比较走 awk。
+if awk "BEGIN { exit !(${CUR_RATIO} + 0.0000005 < ${BASE_RATIO}) }"; then
+    STATUS=1
     echo ""
-    echo "regen-check: 重跑 precompile-mods（generated 段）……"
-
-    # Preserve data/<patch>, sibling overlay-common and the C1 corpus lookup.
-    # Dereference copied symlinks so generated outputs cannot point into the source.
-    PC_ROOT="$TMP_OUT/precompile"
-    PC_DATA="$PC_ROOT/data/$PATCH"
-    mkdir -p "$PC_DATA"
-    cp -RL "$COMMITTED_FLAT/." "$PC_DATA/"
-    if [[ -d "$ROOT/data/overlay-common" ]]; then
-        cp -RL "$ROOT/data/overlay-common" "$PC_ROOT/data/overlay-common"
-    fi
-    [[ ! -d "$ROOT/examples" ]] || ln -s "$ROOT/examples" "$PC_ROOT/examples"
-
-    cargo run --quiet -p precompile-mods --manifest-path "$ROOT/Cargo.toml" -- \
-        --data "$PC_DATA" --report >/dev/null
-
-    GEN_DIFF=0
-    if ! cmp -s "$PC_DATA/generated/parsed_mods.json" "$GEN_PARSED"; then
-        GEN_DIFF=1
-        echo "regen-check: generated/parsed_mods.json byte-diff 不为零（precompile 漂移）。"
-    fi
-    if [[ -f "$GEN_COVERAGE" ]] \
-       && ! cmp -s "$PC_DATA/generated/parse-coverage.json" "$GEN_COVERAGE"; then
-        GEN_DIFF=1
-        echo "regen-check: generated/parse-coverage.json byte-diff 不为零（precompile 漂移）。"
-    fi
-
-    if [[ "$GEN_DIFF" -eq 1 ]]; then
-        STATUS=1
-        echo "处理方式：重跑 cargo run -p precompile-mods -- --data $COMMITTED_FLAT --report 并提交新产物；"
-        echo "data/<patch>/generated/ 只能由工具生成，禁手改。"
-    else
-        echo "regen-check: OK — generated 段（parsed_mods/parse-coverage）byte-diff 全零。"
-    fi
-
-    # 覆盖率棘轮：已提交报表的 coverage_ratio 不得低于 baseline。
-    if [[ -f "$BASELINE" && -f "$GEN_COVERAGE" ]]; then
-        CUR_RATIO="$(sed -n 's/.*"coverage_ratio"[[:space:]]*:[[:space:]]*\([0-9.]*\).*/\1/p' \
-            "$GEN_COVERAGE" | head -1)"
-        BASE_RATIO="$(sed -n 's/.*"coverage_ratio"[[:space:]]*:[[:space:]]*\([0-9.]*\).*/\1/p' \
-            "$BASELINE" | head -1)"
-        if [[ -n "$CUR_RATIO" && -n "$BASE_RATIO" ]]; then
-            # 浮点比较走 awk。
-            if awk "BEGIN { exit !(${CUR_RATIO} + 0.0000005 < ${BASE_RATIO}) }"; then
-                STATUS=1
-                echo ""
-                echo "regen-check: 覆盖率棘轮失败 —— 当前 ${CUR_RATIO} < 基线 ${BASE_RATIO}"
-                echo "解析覆盖率不得降低（蓝图 §6.3）；若属预期（语料扩面）请同 PR 更新"
-                echo "devs/ci/parse-coverage-baseline.json"
-            elif awk "BEGIN { exit !(${CUR_RATIO} > ${BASE_RATIO} + 0.0000005) }"; then
-                echo "regen-check: 提示 —— 覆盖率 ${CUR_RATIO} 高于基线 ${BASE_RATIO}，可同 PR 抬高 baseline"
-            else
-                echo "regen-check: OK — 覆盖率棘轮达标（当前 ${CUR_RATIO}，基线 ${BASE_RATIO}）"
-            fi
-        fi
-    fi
+    echo "regen-check: 覆盖率棘轮失败 —— 当前 ${CUR_RATIO} < 基线 ${BASE_RATIO}"
+    echo "解析覆盖率不得降低；若属预期（语料扩面）请同 PR 更新 devs/ci/parse-coverage-baseline.json"
+elif awk "BEGIN { exit !(${CUR_RATIO} > ${BASE_RATIO} + 0.0000005) }"; then
+    echo "regen-check: 提示 —— 覆盖率 ${CUR_RATIO} 高于基线 ${BASE_RATIO}，可同 PR 抬高 baseline"
 else
-    echo "regen-check: SKIP generated 段 —— 缺已提交 generated/parsed_mods.json（precompile 尚未产出）。"
+    echo "regen-check: OK — 覆盖率棘轮达标（当前 ${CUR_RATIO}，基线 ${BASE_RATIO}）"
 fi
 
 if [[ "$STATUS" -eq 0 ]]; then
-    echo "regen-check: OK — $CHECKED 个文件 byte-diff 全零（manifest.json 暂排除）。"
+    echo "regen-check: OK — keystone 派生 $CHECKED 个文件逐字节一致，预编译与覆盖率通过。"
 fi
 exit "$STATUS"

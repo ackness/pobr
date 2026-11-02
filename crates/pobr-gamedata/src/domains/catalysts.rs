@@ -1,7 +1,7 @@
 //! `overlay/catalysts.json` loader — the catalyst quality-tag matching
-//! table (extracted from vendor `Classes/Item.lua:14-29`'s three local
-//! table literals via `extract-lua --what catalysts`, schema in
-//! [`pobr_data::catalog::item_overlay`]).
+//! table (PoB2-derived compatibility data from vendor `Classes/Item.lua`'s
+//! three local table literals, imported from the RePoE owner package;
+//! schema in [`pobr_data::catalog::item_overlay`]).
 //!
 //! Consumer (equivalent to `getCatalystScalar`: a catalystTags ∩ mod tags
 //! match grants `(100+quality)/100`) injects it via RuleSet `ItemRules`,

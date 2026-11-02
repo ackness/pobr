@@ -9,8 +9,8 @@ The [input lock](tree-inputs.lock.json) uses
 full revision, archive path/bytes/SHA-256, manifest bytes/SHA-256 and expanded size.
 Publication metadata distinguishes a local handoff from a remotely available
 object; local-only pins do not prove remote CI can acquire it.
-The pinned package is published on RePoE's
-`handoff/historical-official-tree-0.5.5` ref; consumers still fetch its full revision.
+The pinned package's commit is kept alive by RePoE's
+`handoff/historical-official-tree-0.5.5` tag; consumers fetch its full revision, not the tag.
 
 The ZIP contains exactly `data.json` and `manifest.json`. The latter has schema
 `repoe-official-tree-input/v1`, status `historical-diagnostic-candidate`,

@@ -97,9 +97,9 @@ impl GameData {
     }
 
     /// Loads the batch-vendor-extracted special table
-    /// (`generated/special_vendor.json`, output of
-    /// `sync-pob-catalog extract-lua --what special-mods`, batch V0; same
-    /// schema as `special_mods/v1`). A missing table returns `Ok(None)`;
+    /// (`generated/special_vendor.json`, batch V0; PoB2-derived compatibility
+    /// data imported from the RePoE owner package; same schema as
+    /// `special_mods/v1`). A missing table returns `Ok(None)`;
     /// broken JSON still propagates.
     pub fn special_vendor(&self) -> Result<Option<SpecialModsDef>, LoadError> {
         match self.load_json_at::<SpecialModsDef>(self.generated_path("special_vendor.json")) {

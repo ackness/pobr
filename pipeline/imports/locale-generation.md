@@ -18,10 +18,6 @@ then rechecks all materialized inputs and the lock before exposing output.
 mise exec -- python3 -m pipeline.imports.locale_inputs --out .cache/locale-generated
 # Reuse the authenticated download cache, refusing any miss or corruption:
 mise exec -- python3 -m pipeline.imports.locale_inputs --offline --out .cache/locale-replay
-# Run inside the existing snapshot generation/validation transaction:
-mise exec -- python3 -m pipeline.runtime.data_snapshot dictionary -- --offline
-# Another target needs a reviewed, matching independent generation lock:
-mise run data:legacy:regen --locale-lock /path/to/locale-generation.lock.json
 ```
 
 The current `retained-selected` profile generates nine `i18n/zh-CN` files and
@@ -40,16 +36,15 @@ writes only the ten declared outputs plus a maintenance receipt at
 `generated/locale-generation-receipt.json`. Audit and receipt are excluded from
 the runtime manifest. The final snapshot identity is still checked separately.
 
-The explicit historical `data:legacy:regen` and base-adaptation transactions
-can invoke this consumer with a matching `--locale-lock`. Current complete build
-candidates instead use `data:update --lock <build-data.lock> --out <fresh>`: that
-lock pins the independent owner's published language files. It does not run a
-PoBR downloader or silently regenerate language from HEAD. A new language output
+This replay is a verification tool; builds do not run it. Complete build
+candidates use `data:update --lock <build-data.lock> --out <fresh>`: that lock
+pins the independent owner's published language files. It does not run a PoBR
+downloader or silently regenerate language from HEAD. A new language output
 must be published by its owner and bound into the complete snapshot lock.
-`--candidate` is restricted to the snapshot transaction and refuses the source
-`data/` tree. Failure leaves the published snapshot and `CURRENT` unchanged;
-the transaction seals and audits the candidate before promotion. Complete
-outputs must be published by their independent owners, never committed to PoBR.
+`--candidate` installs only into a disposable snapshot candidate under
+`POBR_DATA_ROOT` and refuses the source `data/` tree; failure leaves the
+published snapshot and `CURRENT` unchanged. Complete outputs must be published
+by their independent owners, never committed to PoBR.
 
 The adapter's synthetic checks cover acquisition, corrupt caches, immutable
 addresses, receipt/output tampering and candidate boundaries. The independent

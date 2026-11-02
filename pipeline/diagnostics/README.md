@@ -6,8 +6,7 @@ inputs and write reports; none selects `data/CURRENT` or publishes a dataset.
 | Tool | Purpose |
 | --- | --- |
 | `diff_data.py` | Compare prepared versions, including optional semantic summaries; also used by `mise run data:diff` |
-| `diff-vendor-calcs.sh` | Compare two pinned vendor revisions and their extracted catalogs |
-| `json_entry_diff.py` | Entry-level JSON helper used by the vendor comparison |
+| `modifier-audit.sh` | Audit the prepared modifier rules (`precompile-mods --check`/`--audit`) and compare them with the pinned PoB2 parser unless `--offline`. Writes `.cache/modifier-audit/<version>/` and the prepared `generated/modifier-audit.json`; never extracts or rewrites rules. See [modifier audit](../README.md#词条审计) |
 | `source_oracle.py` | Manually audit ordinary description ownership/compatibility against declared source and candidate files |
 
 For Python argument help, use `python3 -m pipeline.diagnostics.diff_data --help`

@@ -1001,9 +1001,9 @@ fn translate_vendor_name(name: &str, flags: &[String]) -> (String, Vec<String>) 
     }
 }
 
-/// Precheck for the offline extractor (`sync-pob-catalog extract-lua --what
-/// special-mods`): whether a tag can be faithfully mapped by
-/// [`compile_tag`]. Bulk extraction must skip entries with unsupported tags;
+/// Precheck for converting external special-mod entries into rules: whether
+/// a tag can be faithfully mapped by [`compile_tag`]. Bulk conversion must
+/// skip entries with unsupported tags;
 /// emitting a modifier without its scope would broaden its effect. The same
 /// field validation runs when compiling the resulting rules.
 pub fn tag_is_mappable(tag: &TemplateTagDef) -> bool {

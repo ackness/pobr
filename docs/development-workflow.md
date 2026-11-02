@@ -43,16 +43,16 @@ setup 检查 Git、make、C 编译器；macOS 的 Apple SDK/Command Line Tools �
 | Web 日常开发/测试 | `mise run web <命令>`，例如 `mise run web test <文件>` |
 | 独立数据与普通DTO | `mise run data:prepare`临时导入固定owner输入；`data:ordinary`验证／适配，原料采集导出在RePoE |
 | 官方树域候选 | `data:tree:source` / `data:tree:candidate --out <新目录>`；固定来源、可离线重放，不准备 oracle，不发布产品数据 |
-| PoB2 对照、triage、完整数据生成 | 对应任务依赖 `setup:oracle`，自动准备固定 LuaJIT commit 与固定 vendor；重复运行复用缓存 |
+| PoB2 对照、triage、词条审计 | 对应任务依赖 `setup:oracle`，自动准备固定 LuaJIT commit 与固定 vendor；重复运行复用缓存 |
 | 浏览器回归 | `mise run web:e2e <spec>`，自动安装 lockfile 对应的 Playwright 浏览器/系统依赖；仍须当前 dist/WASM/data |
 | 树图资源再生成 | `mise run web:tree-art`，按需由 mise conda backend 安装固定 ImageMagick 7/zstd，自动准备 vendor |
 
 `setup:oracle` 将兼容的 LuaJIT 暴露到 `.cache/runtime/bin`；mise 为任务配置 PATH、
 `POBR_LUAJIT` 与 vendor 的 `LUA_PATH`，无需各自修改 shell。
 默认安装使用固定上游 commit，保留显式 runtime override 的调试用途。
-PoB2 的固定仓库与 commit 由 `devs/reference-sources.json` 管理，独立于生产 parser 规则的来源；
-后者仍记录各自生成时使用的 vendor。官方表适配默认执行自有审计；需要 PoB2 解析对照时用
-`mise run data:adapt:reference`（历史本地原表诊断），不会将缺依赖的必需对照记为成功。
+PoB2 的固定仓库与 commit 由 `devs/reference-sources.json` 管理，独立于 owner 包中解析规则
+`_meta` 记录的历史 vendor 版本。PoBR 不从 vendor 生成数据；需要 PoB2 解析对照时运行
+`mise exec -- bash pipeline/diagnostics/modifier-audit.sh`，没有 vendor 时用 `--offline`，报告明确不含对照。
 首次源码构建会自动处理 macOS deployment target；缺依赖的任务失败会给出具体原因。
 `mise run status` 只报告工具与数据状态，不下载、不构建。
 
@@ -249,7 +249,7 @@ WASM 构建记录校验 Rust 源码、嵌入语言文件、共享配置 JSON、m
 无需另行登记缓存输入；
 游戏数据变化仍需 `mise run web sync-data`。
 
-这些设置减少后续产物，并非磁盘配额或自动清理器。`.cache/` 中历史诊断、vendor 差异副本、
+这些设置减少后续产物，并非磁盘配额或自动清理器。`.cache/` 中历史诊断、
 发布包以及旧 worktree 仍可能累积；先确认具体目录及保留需求，再显式清理。
 脚本不会自动删除发布资产、用户资料或其他 worktree。
 
@@ -267,7 +267,12 @@ CI 的 key 与构建都直接用 Node 执行，避免 pnpm 为脚本注入的临
 真实 WASM 契约、同步数据、站点构建、打包与解包后的真实计算每次照常执行。Rust 依赖缓存还保存 wasm-pack 下载的
 预编译 bindgen/Binaryen 工具；固定 LuaJIT 无官方二进制，只缓存源码 pin 对应的可执行文件，
 仅缺失时编译。工具安装不使用 `cargo install` / `go install`。
-按仓库 10 GiB 缓存预算控制存储，不缓存 dist、node_modules、游戏数据或历史诊断产物。
+按仓库 10 GiB 缓存预算控制存储，不缓存 dist、node_modules、已导入的 `data/<版本>/` 或历史诊断产物。
+
+每个执行 `python3 -m pipeline.runtime.build_data --install data` 的 job 先用 `actions/cache` 恢复 `.cache/data-import-downloads`。
+这些 owner 下载按内容寻址，命中后导入仍逐项校验摘要，损坏或不符即失败。导入后运行
+`bash devs/scripts/check-data.sh`（即 `mise run data:check`）：离线确认 `data/` 只跟踪 `CURRENT`
+与自有共享规则，且导入没有留下未忽略的新文件或改动跟踪文件。
 
 `setup-node` 恢复 pnpm store，不恢复 `node_modules`。相关 job 仍须运行
 `pnpm install --frozen-lockfile`，再执行项目脚本；恢复缓存不能替代依赖安装。
@@ -331,8 +336,8 @@ PR 不在 workflow 层过滤文档，以免必需检查永久 pending：只运�
 自动数据采用的[完整契约](../pipeline/latest/latest-data.md)另要求专用App／PAT凭据、远端严格且含管理员的必需`PR gate`保护，以及当前两owner完整发布frontier。默认token的PR事件可能仍需执行批准；建PR或dispatch成功不能当作CI通过。缺凭据／保护或任一gate未完成时保持原锁和CURRENT；本地文件不等于托管设置已启用。
 
 完整 CI 包括 fmt/Clippy（含诊断 features）、workspace tests/doctest、parity/reference 退步断言、
-活动数据生成产物的 byte-diff、i18n、数据兼容、Web 类型/单测/Worker、真实 WASM 契约与打包计算。
-缺少本地原始导出输入或 vendor 的项目会明确跳过，不能将其描述为已验收。
+已准备数据上派生规则的逐字节复现与解析覆盖率棘轮、i18n、数据兼容、Web 类型/单测/Worker、真实 WASM 契约与打包计算。
+缺少 vendor 的项目会明确跳过，不能将其描述为已验收。
 它不等同于本地 `mise run gate` 的额外 accuracy 报告和全部本地输入。
 E2E 只在显式手动输入时运行；交互风险需要时选择相关本地 spec 或云端 E2E。
 
@@ -487,7 +492,7 @@ mise exec -- cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakd
 - `mise run smoke`：聚合、解析、Build Code 的代表测试，不先构建整个工作区；不能替代完整门禁。
 - 本地 `.agents/skills/run-pobr/driver.sh` 转发到同一驱动（`.agents` 按仓库规则不入库）。`smoke` 是环境检查，已有相关测试通过后无需再补一次。
 - `mise exec -- python3 devs/scripts/test_workflows.py`：检查脚本失败传递、临时目录清理与工作区保护，以及 `compare` 的来源对齐和 `lookup` 的查找（用合成数据），不调用真实 Cargo。
-- `devs/scripts/regen-check.sh` 在临时副本中重生成，保留 `overlay-common` 与 examples 语料，不写入或恢复工作区文件。
+- `devs/scripts/regen-check.sh`（CI 步骤 “Derived rules reproducibility and parse-coverage ratchet”）在临时目录重跑 `--emit-special-derived`，与已准备的 `generated/special_derived.json` 逐字节比较；再在隔离副本中运行 `precompile-mods --report`，解析覆盖率不得低于 `devs/ci/parse-coverage-baseline.json`。它不写入或恢复工作区文件。
 - `mise exec -- node web/scripts/bench-calc.mjs`：用三个已提交构筑测真实 WASM 的非缓存计算和 16 项批量计算。
   需要先构建 WASM、同步数据；`--reference <old-pkg>` 另检查完整输出是否一致，适用于保持行为的优化。
   v2 报告另记录数据读取/校验、WASM 初始化各阶段、任何预热前的首次计算、实际构建收据和进程峰值 RSS。

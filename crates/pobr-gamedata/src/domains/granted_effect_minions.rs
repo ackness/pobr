@@ -1,7 +1,7 @@
 //! `overlay/granted_effect_minions.json` loader — the granted-effect →
 //! minion foreign-key sidecar (owned per decision §4-10; vendor
 //! `Data/Skills/*.lua`'s `minionList`/`minionUses`/`minionHasItemSet`,
-//! extracted via `extract-lua --what minion-list`).
+//! PoB2-derived compatibility data imported from the RePoE owner package).
 //!
 //! Merging this into `GrantedEffectDef` (filling in `minion_list` and
 //! other fields in the in-memory shape) is an A3 wiring concern; this

@@ -2,7 +2,7 @@
  * Affix probes live in tradeOptimizer.ts; gem upgrade planning lives in tradeMarket.ts.
  */
 
-/** 数字骨架化（与 pipeline/legacy/extract-trade-map.lua 同规则）：先剥 {…} 标注再归一数字。 */
+/** 数字骨架化（与 owner 发布的 trade_stat_map.json 生成规则一致）：先剥 {…} 标注再归一数字。 */
 export function normalizeTradeLine(line: string): string {
   return line
     .replace(/\{[^}]*\}/g, '')

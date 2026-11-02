@@ -1,6 +1,6 @@
 //! `overlay/runes.json` loader — the rune / soul-core socketed-mod table
-//! (extracted from vendor `Data/ModRunes.lua` via
-//! `extract-lua --what runes`, schema in
+//! (PoB2-derived compatibility data from vendor `Data/ModRunes.lua`,
+//! imported from the RePoE owner package; schema in
 //! [`pobr_data::catalog::item_overlay`]).
 //!
 //! The consumer loads it separately on demand — it isn't part of ItemRules.

@@ -63,9 +63,8 @@ The output parent must exist; the leaf must not exist, even as an empty director
 or dangling symlink. Linux/macOS directory handles enforce the existing native
 adapter's input and production `data/` protections. Use a path outside `data/`,
 such as `.cache/ordinary-stats-mods`. Arguments are required, cannot repeat, and
-cannot be combined with `--raw`, `--native-facts`, `--native-runtime` or vendor
-adapter modes. The legacy `--raw … --patch …` interface and conversions remain
-unchanged.
+cannot be combined with another adapter mode (`--native-facts`, `--native-runtime`,
+`--tree`, `--emit-special-derived`).
 
 An invalid, missing-value or repeated `--ordinary-domain` is an error. Omitting
 it preserves the Stats/Mods JSON, marker and receipt content except for the
@@ -125,7 +124,7 @@ unrelated native projection fields.
 | `StatDef.id` | `Stats.Id`, never `_row` |
 | `is_local` | Required `IsLocal` boolean; null is an error |
 | `semantic`, `category` | `Semantic`, `Category`: optional raw unsigned metadata, including zero; no classification lookup or semantic inference |
-| `ModDef.id`, `name` | `Mods.Id`, `Name`; empty/null name becomes absent, as in the legacy converter |
+| `ModDef.id`, `name` | `Mods.Id`, `Name`; empty/null name becomes absent |
 | `mod_type`, `group` | Optional raw `ModType` row number retained for schema compatibility; that physical row's `ModType.Name` becomes `group` |
 | `domain`, `generation_type`, `level` | `Domain`, optional `GenerationType`, `Level`; checked unsigned conversions, no clamp or invented zero |
 | `stats` | All `Stat1` through `Stat8` join **Stats.Id**; signed `StatNMin` and `StatNMax` become the range in source slot order |
@@ -204,12 +203,11 @@ The synthetic fixture reuses the existing v4 trust envelope and only provides
 the selected files. Assertions deserialize output into the **original DTOs**,
 check eight slots, signed/zero/null values, family/group separation, sorted IDs
 versus physical references, receipt hashes, determinism, source failures and
-output protection. Existing `mods::tests` retain legacy converter coverage.
+output protection.
 
 Coordinator commands (not run by the implementation worker):
 
 ```sh
 mise exec -- cargo test --locked -p pobr-data-adapter --bin pobr-data-adapter ordinary_facts::tests
-mise exec -- cargo test --locked -p pobr-data-adapter --bin pobr-data-adapter mods::tests
 mise exec -- cargo test --locked -p pobr-data-adapter --bin pobr-data-adapter native_facts::
 ```
