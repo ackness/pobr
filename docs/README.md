@@ -40,7 +40,8 @@
 | 改一条词条、一个输出或一种机制 | [改动配方](recipes.md)、[词条规则指南](contributing-mods.md) |
 | 排查数值差异、输入损失和未支持效果 | [诊断与逐行台账](diagnostics.md) |
 | 升级游戏数据、候选校验与生成来源 | [数据管线](../pipeline/README.md)、[数据层结构](version-bump-architecture.md)、[宝石品质](../pipeline/policies/gem-quality/README.md) |
-| 查看数据迁移结果、保留依赖和活动版本 | [当前迁移状态](data-architecture.md#5-当前已有数据与实际缺口)、[剩余字段与关闭条件](data-architecture.md#51-剩余字段与关闭条件)、[采用与验证范围](data-architecture.md#52-源码候选采用与玩家验收分别记账) |
+| 了解数据来源、仓库职责与存储边界 | [数据架构](data-architecture.md) |
+| 查看活动组合、各领域缺口与近期顺序 | [数据现状](data-status.md) |
 | 使用参考引擎与抽取工具 | [PoB2 oracle](../tools/pob2-oracle/README.md)、[catalog 同步](../tools/sync-pob-catalog/README.md) |
 | 测量性能或发布包体积 | [按需性能检查](development-workflow.md#慢构建与按需报告)、[WASM 测量](wasm-package.md#runtime-performance-comparison) |
 

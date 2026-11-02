@@ -11,7 +11,7 @@
 临时导入；[普通领域生产](../pipeline/runtime/ordinary/ordinary-inputs.md)再从声明的事实、CSD 和政策生成六域候选，
 由[运行包组合](../pipeline/runtime/runtime-bundle.md)验证后接入既有消费者。
 本地采用和完整 CI 已完成，线上部署仍是单独动作；具体身份、已迁字段和剩余边界见
-[架构现状矩阵](data-architecture.md#5-当前已有数据与实际缺口)。
+[数据现状](data-status.md)。
 
 下面的路径相对 `data/<版本>/`，共享输入位于 `data/overlay-common/`。
 字段来源以固定 owner 输入、领域转换收据和实际消费契约共同核对；
@@ -41,7 +41,7 @@
 | 符文、催化剂与描述 | 当前有各自的客户端事实／CSD adapter；未完整表示的符文整项回退、描述分支和 scoped 解释继续保留。`stat_id_map.json` 是派生维护资料，不是独立游戏语义来源 |
 | gem 与召唤物关系 | `gem_effects.json` 的历史显示顺序、owner 兼容，以及 minion／spectre 目录成员、effect→variety aliases、限制和装备关系等策展；目标效果链接、actor 字段和抗性已分别迁源 |
 
-各域的字段及退出条件见[剩余字段清单](data-architecture.md#51-剩余字段与关闭条件)。
+各域的剩余缺口见[数据现状](data-status.md#领域现状)，退出条件见[数据架构](data-architecture.md#8-质量目标与领域退出条件)。
 例如，`overlay/minions.json` 的目录身份不能仅由 monster hash 反推；
 目标 `GrantedEffects.Id` 与 actor 数值已有物理 FK 生产路径，完整 effect→variety／装备关系仍需独立依据。
 

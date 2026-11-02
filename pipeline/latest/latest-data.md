@@ -90,7 +90,7 @@ describes metadata/freshness eligibility only, not credential readiness or adopt
 
 The remaining work is owner-side new-input production and publication, dedicated
 sync authentication, the real new-publication exercise and the source/semantic
-limits in the [current architecture](../../docs/data-architecture.md#51-剩余字段与关闭条件).
+limits in the [current data status](../../docs/data-status.md#领域现状).
 Do not repeat bootstrap registration or decode unchanged large inputs to establish
 that progress.
 

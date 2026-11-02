@@ -18,6 +18,8 @@
 | 某个机制的游戏出处、实现与假设 | [机制约定](mechanics/README.md) |
 | CLI / WASM 输出字段与 Calcs 明细 | [calc-outputs.md](calc-outputs.md) |
 | 构筑模型、导入、存档格式、计算步骤与缓存、Web 运行时 | [build-model.md](build-model.md) |
+| 数据来源、三仓库职责、存储边界与更新流程 | [数据架构](data-architecture.md) |
+| 活动数据组合、各领域缺口与近期顺序 | [数据现状](data-status.md) |
 | 仍依赖 PoB2 的数据与已知的有意差异 | [pob2-differences.md](pob2-differences.md) |
 | 诊断工具的输出、逐行台账、参考口径与语料 | [diagnostics.md](diagnostics.md) |
 | 各导入格式 / Web 界面行为 | [import-formats.md](import-formats.md) / [web-contracts.md](web-contracts.md) |
@@ -112,7 +114,7 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 
 其他目录：`web/`（React / TypeScript / Vite；`src/api/` 定义 JSON 边界并默认在 module Worker 中运行 WASM，`public/` 是静态资源、同步数据与 Pages Worker，另有 `e2e/` 与 `worker-tests/`）、`data/`（Git 只跟踪 `CURRENT` 与十一份自有规则；版本目录和七份外部 shared 输入由独立锁临时准备）、`pipeline/`（下载、抽取、再生与版本差异）、`examples/`（回归与参考语料）、`devs/`（开发脚本、CI 基线与 fixtures；差异登记在 `scripts/known-differences.json`）、`agent-docs/`（被代码引用的早期机制研究）。当前行为契约集中在 `docs/`。
 
-**数据管线**：RePoE 游戏事实／兼容输入与独立翻译库的固定产物 →（声明式临时导入与 PoBR 领域适配）→ schema 3 运行包 →（`pobr-gamedata`）→ 计算。完整游戏／语言数据不进入 PoBR Git；实物测试和构建按 `mise run data:prepare` 准备，来源缺失或 pin 不符即失败。计算所需游戏文件访问集中在 `pobr-gamedata`；语言生成／配对属于翻译库，PoBR 保留显示／输入与 DTO 解释边界。旧 raw／vendor 再生工具仍有明确未迁移范围，不作为完整自主再生证明。细节见[数据管线说明](../pipeline/README.md)与[版本升级结构](version-bump-architecture.md)。
+**数据管线**：RePoE 游戏事实／兼容输入与独立翻译库的固定产物 →（声明式临时导入与 PoBR 领域适配）→ schema 3 运行包 →（`pobr-gamedata`）→ 计算。完整游戏／语言数据不进入 PoBR Git；实物测试和构建按 `mise run data:prepare` 准备，来源缺失或 pin 不符即失败。计算所需游戏文件访问集中在 `pobr-gamedata`；语言生成／配对属于翻译库，PoBR 保留显示／输入与 DTO 解释边界。PoB2 vendor 只作测试参考，不作为生产数据的写入来源；仍保留的旧 raw／vendor 再生入口不能作为自主再生的证明。设计见[数据架构](data-architecture.md)，现状见[数据现状](data-status.md)，命令见[数据管线说明](../pipeline/README.md)与[版本升级结构](version-bump-architecture.md)。
 
 ## 运行时数据与会话
 
