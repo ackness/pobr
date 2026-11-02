@@ -42,7 +42,6 @@ setup 检查 Git、make、C 编译器；macOS 的 Apple SDK/Command Line Tools �
 | --- | --- |
 | Web 日常开发/测试 | `mise run web <命令>`，例如 `mise run web test <文件>` |
 | 独立数据 | `mise run data:prepare`按`pipeline/data.lock.json`临时导入固定owner输入；`data:check`离线检查；原料采集、导出与领域生产在owner仓库 |
-| 官方树域候选 | `data:tree:source` / `data:tree:candidate --out <新目录>`；固定来源、可离线重放，不准备 oracle，不发布产品数据 |
 | PoB2 对照、triage、词条审计 | 对应任务依赖 `setup:oracle`，自动准备固定 LuaJIT commit 与固定 vendor；重复运行复用缓存 |
 | 浏览器回归 | `mise run web:e2e <spec>`，自动安装 lockfile 对应的 Playwright 浏览器/系统依赖；仍须当前 dist/WASM/data |
 | 树图资源再生成 | `mise run web:tree-art`，按需由 mise conda backend 安装固定 ImageMagick 7/zstd，自动准备 vendor |
@@ -489,7 +488,7 @@ mise exec -- cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakd
 - `mise run smoke`：聚合、解析、Build Code 的代表测试，不先构建整个工作区；不能替代完整门禁。
 - 本地 `.agents/skills/run-pobr/driver.sh` 转发到同一驱动（`.agents` 按仓库规则不入库）。`smoke` 是环境检查，已有相关测试通过后无需再补一次。
 - `mise exec -- python3 devs/scripts/test_workflows.py`：检查脚本失败传递、临时目录清理与工作区保护，以及 `compare` 的来源对齐和 `lookup` 的查找（用合成数据），不调用真实 Cargo。
-- `devs/scripts/regen-check.sh`（CI 步骤 “Derived rules reproducibility and parse-coverage ratchet”）在临时目录重跑 `--emit-special-derived`，与已准备的 `generated/special_derived.json` 逐字节比较；再在隔离副本中运行 `precompile-mods --report`，解析覆盖率不得低于 `devs/ci/parse-coverage-baseline.json`。它不写入或恢复工作区文件。
+- `devs/scripts/regen-check.sh`（CI 步骤 “Parse-coverage ratchet”）在已准备数据的隔离副本中运行 `precompile-mods --report`，解析覆盖率不得低于 `devs/ci/parse-coverage-baseline.json`。它不写入或恢复工作区文件。`generated/special_derived.json` 随 owner 包导入，它与天赋树的逐字节一致由 RePoE 的 `mise run adapter:keystones` 检查。
 - `mise exec -- node web/scripts/bench-calc.mjs`：用三个已提交构筑测真实 WASM 的非缓存计算和 16 项批量计算。
   需要先构建 WASM、同步数据；`--reference <old-pkg>` 另检查完整输出是否一致，适用于保持行为的优化。
   v2 报告另记录数据读取/校验、WASM 初始化各阶段、任何预热前的首次计算、实际构建收据和进程峰值 RSS。

@@ -1,7 +1,9 @@
 # PoBR 数据管线（pipeline）
 
-本目录声明 PoBR 构建所需的固定输入，将 RePoE 游戏事实、翻译库语言产物和 PoBR 自有政策
-适配、组合为既有 DTO／运行 schema。完整输入与 `data/<poe-version>/` 运行目录仅临时物化；
+本目录声明 PoBR 构建所需的固定输入：按唯一数据锁临时导入 RePoE 游戏数据包与翻译库语言产物，
+封存为运行目录与精简发行包。把 RePoE 事实转换成运行 JSON 的
+[`pobr-data-adapter`](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/README.md) 及其领域政策在 RePoE，PoBR 不生产数据。
+完整输入与 `data/<poe-version>/` 运行目录仅临时物化；
 尚未迁移的字段以 PoB2／社区兼容数据的形式随 RePoE owner 包固定导入，不称为已从客户端自主再生。
 PoBR 不从 PoB2 vendor Lua 或本地原表导出生产数据。
 
@@ -20,16 +22,12 @@ PoBR 不从 PoB2 vendor Lua 或本地原表导出生产数据。
 | [runtime/](runtime/build-data.md) | 按锁临时导入、回滚锁、快照封存、精简发行包和显式采用；`data:prepare`、`data:update`、`data:pack` |
 | [imports/](imports/crafting-inputs.md) | 固定 Git 传输、来源接受记录、制作目录与辅助说明投影、数据归属检查 |
 | [latest/](latest/latest-data.md) | owner 通道、候选发现与 CI 后条件采用；`data:latest` |
-| [native/](native/native-candidate.md) | 受限原生 recipe 与对应测试（schema 4 冻结）；`data:native:candidate` |
-| [tree/](tree/tree-inputs.md) | 历史官方树包导入及诊断候选；`data:tree:source`、`data:tree:candidate` |
-| [policies/](policies/README.md) | 按游戏领域划分的 PoBR 解释政策与树修正；不是下载缓存 |
 | [diagnostics/](diagnostics/README.md) | 数据版本差异、描述来源核对与词条审计；不自动采用数据 |
 
 各功能的说明、锁和测试与实现放在一起。Python 从仓库根目录以模块运行，
 例如 `mise exec -- python3 -m pipeline.runtime.runtime_pack --help`；日常优先使用上表中保持稳定的 mise 任务。
 
-JSON 的职责各不相同：`data.lock.json` 是唯一的生产数据声明，`runtime/build-data-0.5.5.4.2.lock.json` 只用于冻结回滚，
-`policies/` 固定解释决定，`native/*example.json` 是显式候选 recipe 示例。
+JSON 的职责各不相同：`data.lock.json` 是唯一的生产数据声明，`runtime/build-data-0.5.5.4.2.lock.json` 只用于冻结回滚。
 测试夹具只供测试读取，不能代替真实来源或运行验收。
 
 历史来源收据中的路径按记录时的 Git 版本解释，不为整理目录重写原始 pins、命令或接受范围。
@@ -42,17 +40,17 @@ JSON 的职责各不相同：`data.lock.json` 是唯一的生产数据声明，`
 
 | 域 | 当前来源 | 生产与保留边界 |
 | --- | --- | --- |
-| 物品基底／词缀／Stat／技能宝石 | 固定自有RePoE客户端DAT事实 | [普通领域adapter](../tools/pobr-data-adapter/ordinary-facts.md)接回原DTO；未拥有字段及旧编解码仍保留兼容 |
-| 宝石品质 | 目标GrantedEffectQualityStats／GrantedEffects／Stats事实 | [品质生成说明](policies/gem-quality/README.md)；计算仍按固定effect-wide策略，不认证全部细分scope |
-| 词条显示文本 | 固定客户端CSD＋明确保留的兼容文本 | [普通描述生产者](../tools/pobr-data-adapter/ordinary-stat-descriptions.md)、树／符文renderer；未表达项保留诊断或整项回退 |
-| 被动天赋树 | 目标DAT／Default PSG事实与固定兼容字段 | 普通树已迁源；placement／armour等未拥有语义保留，历史官方Git树候选入口另列下文 |
+| 物品基底／词缀／Stat／技能宝石 | 固定自有RePoE客户端DAT事实 | [普通领域adapter](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-facts.md)接回原DTO；未拥有字段及旧编解码仍保留兼容 |
+| 宝石品质 | 目标GrantedEffectQualityStats／GrantedEffects／Stats事实 | [品质生成说明](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/gem-quality/README.md)；计算仍按固定effect-wide策略，不认证全部细分scope |
+| 词条显示文本 | 固定客户端CSD＋明确保留的兼容文本 | [普通描述生产者](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-stat-descriptions.md)、树／符文renderer；未表达项保留诊断或整项回退 |
+| 被动天赋树 | 目标DAT／Default PSG事实与固定兼容字段 | 普通树已迁源；placement／armour等未拥有语义保留 |
 | 特殊制作目录 | 独立RePoE七表中立事实，PoBR筛选／聚合 | [必需临时输入](imports/crafting-inputs.md)保留八槽与未表达原值诊断；来源语言缺失保持unknown；新元数据已本地采用，不代表完整效果或概率 |
 | 规则／目录／翻译 | PoBR自有规则、随owner包导入的PoB2／社区兼容目录、固定语言库与客户端文本投影 | 逐项记录来源和适用边界；保留输入不代表全部自主生产，SC客户端身份与CN数值不因中文显示而认证 |
 
 `.dat` 存的是 **id / 数值 / 外键关系**（规范化数据库表）；显示文本在 `StatDescriptions` 里。
 列名/表名见 [poe-tool-dev/dat-schema](https://github.com/poe-tool-dev/dat-schema)。
 
-## 固定来源与独立树候选
+## 固定来源
 
 独立客户端候选的可重复流程是[固定补丁索引定位](imports/client-index.md) →
 [未审阅原始采集](imports/client-source-draft.md) → 来源审阅与固定 →
@@ -64,63 +62,31 @@ JSON 的职责各不相同：`data.lock.json` 是唯一的生产数据声明，`
 `retained_input_acceptances`另记locale／shared／compat三类有界保留决定。各项只接受明确scope和pins，不认证全部机制、SC客户端身份或分发许可。
 旧`0.5.5.4.2`由独立回滚锁按需恢复，不改变 `CURRENT`。
 采集、领域解释、消费者验证、本地采用及远端发布仍分开；完整状态见[数据现状](../docs/data-status.md)。
-下方`data:tree:source`／`data:tree:candidate`按[独立历史树输入锁](tree/tree-inputs.md)消费 RePoE 包，不是当前普通树的再生流程。
 PoB2 的测试参考版本独立登记在 [devs/reference-sources.json](../devs/reference-sources.json)，
 `mise run vendor` 不再读取生产 parser 元数据选择参考版本。
 
-```bash
-mise run data:tree:source
-mise run data:tree:source --offline
-mise run data:tree:candidate --offline --out .cache/tree-proof/first
-mise run data:tree:candidate --offline --out .cache/tree-proof/second
-```
-
-历史诊断入口固定的 `bd87e651` 输入有已确认的来源缺口：Druid 的 `overridePairs` 引用了
-`nodes` 中不存在的 `19680`、`55194`（分别指向替换项 `40837`、`57601`）。
-这些记录在已核对的多个官方版本中均悬空；是否属于游戏中已删除的节点尚未证实。
-直接将原始文件交给严格 adapter 仍会拒绝生成。
-
-上面的诊断候选入口通过 [固定修正清单](policies/tree-corrections/bd87e6512c92b868542eddfb1ba4ea8b6dc2da36.json)
-隔离这两条无法应用的映射。清单同时绑定源提交、原始哈希和精确旧值，并进入来源 lock；
-只有基础节点在节点表、替换表、边、分组和解锁引用中均不存在时才可应用。
-原始缓存与替换定义完整保留，不补造节点、位置或新 ID。其他缺失引用继续由 adapter 报错。
-候选 receipt 保存 `quarantined_override_pairs`、未解决状态、修正文件与规范化输入的摘要，
-也记录预处理代码摘要并检查生成期间是否变化。这只允许继续研究已有图，不计作完整来源验收。
-最终确认需要匹配补丁的客户端 `.psg`、`PassiveSkills` 与 `ClassPassiveSkillOverrides`；
-本候选没有因此获得生产发布资格。
-
-导入命令按[精确 Git 锁](tree/tree-inputs.lock.json)获取 RePoE 的 `data.json`／`manifest.json` 包，校验归属、原来源身份、ZIP／成员 pins 和完整成员集合，临时物化到 `.cache/tree-inputs/<lock-sha256>/`。原 `.cache/sources/` 裸文件不能代替该包，损坏的导入不会联网修复。
-`--offline` 不联网；缺包、错 pin 或下载失败即失败，不回退到官方 URL、latest 或其它版本。
-候选命令用 Rust adapter 生成 `base/passive_tree.json` 与 `base/passive_tree_meta.json`，
-记录来源 lock、adapter/数据类型与构建输入的摘要；重放结果不包含机器路径或当前时间。
-Cargo 使用 `--locked`；`--offline` 同时禁止源下载和 Cargo 联网，不会为生成候选更新 lockfile。
-这些任务不准备 vendor、LuaJIT 或 PoB2 oracle。
-
-`--out` 必须是不存在且位于正式 `data/` 之外的路径。候选只含树域，带有
-`_domain_candidate.json`，没有产品 manifest；封存和发布入口也会拒绝此标记。
-当前固定输入的上游说明是 0.5.5，其与产品活动补丁的精确适配关系尚未核实，`game_patch` 保持 null。
-生成时目录使用上游版本作为 adapter 标签，不表示已确认客户端补丁。
-这些命令不会覆盖活动数据或修改 `CURRENT`。生产切换还需补丁适配、完整域/消费者与数值验证。
-当前 native variants 仍沿用基础节点的拓扑和升华归属；替换后的独立升华归属、通用属性选择与
-vendor 推导的 armour 标记尚未迁移。当前普通树仍按 owner 包固定导入，此候选入口不是它的完整替代。
+PoBR 不再提供历史官方树的诊断候选入口（原 `data:tree:source`／`data:tree:candidate`，已退役）。
+RePoE 的 `tree:input` 导出固定的历史 Git 树，`pobr-data-adapter --tree` 可直接生成树域候选。
+`bd87e651` 输入中 Druid 的两条悬空 `overridePairs`（`19680`→`40837`、`55194`→`57601`）仍会被严格
+adapter 拒绝；原隔离清单保留在 RePoE adapter 的 `policies/tree-corrections/`，没有执行入口。
 
 ## 固定客户端原始资源与事实候选
 
 原始客户端采集、索引定位及来源包生成请在独立RePoE运行其`client:source`、`client:draft`、`client:locate`、`source:rebind`任务。
 入口、默认strict及显式diagnostic边界见[客户端资源获取](imports/client-sources.md)。
 
-RePoE 原生事实包另由 `pobr-data-adapter --native-facts` 验证外部 manifest 摘要后形成
-PoBR 领域候选，见[候选契约](../tools/pobr-data-adapter/native-facts.md)。当前只接通部分国际服事实，
+RePoE 原生事实包另由 RePoE 的 `pobr-data-adapter --native-facts` 验证外部 manifest 摘要后形成
+PoBR 领域候选，见[候选契约](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/native-facts.md)；schema 4 分支已冻结。当前只接通部分国际服事实，
 保留完整原始事实引用和诊断；它不是运行时包，也未完成品质、几何或全部关系的语义验证。
 活动数据仍含随 owner 包导入的 PoB2 兼容字段，不能宣称数据已全部退出 PoB2。
 
 ### 普通完整 BuildData 候选
 
-`pobr-data-adapter --ordinary-facts` 已将固定自有 RePoE 事实接回原普通 DTO，见
-[普通生产入口与领域命令](../tools/pobr-data-adapter/ordinary-facts.md)。技能、基底、树、符文、
+RePoE 的 `pobr-data-adapter --ordinary-facts` 已将固定自有 RePoE 事实接回原普通 DTO，见
+[普通生产入口与领域命令](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-facts.md)。技能、基底、树、符文、
 描述、actor 与基础字段的目标来源和固定兼容按各领域 receipt 分开，不能将单个文件全部算作自主。
 这些领域输出经既有 schema-3 组包和封存后可由普通 GameData/BuildData 消费；
-上方独立树域与 schema-4 受限原生候选仍是不同入口，不代表普通完整路径的现行覆盖范围。
+树域候选与 schema-4 受限原生候选是不同入口，不代表普通完整路径的现行覆盖范围。
 
 活动组合的身份、各领域保留兼容的分母和关闭条件统一维护在[数据现状](../docs/data-status.md#领域现状)，本页不复制阶段记录。
 
@@ -128,9 +94,8 @@ PoBR 领域候选，见[候选契约](../tools/pobr-data-adapter/native-facts.md
 `translateLines`：精确来源查询、跨表同名冲突和缺译保留，不改原始构筑文本或计算。
 侧表已列入当前活动manifest；全部字段UI消费、真实审核译文及CN语义仍分别验收。审核补译入口只消费精确绑定的已审核记录，当前真实包为0条，草稿不生效。
 
-已有版本化事实、CSD 描述和官方树可通过[固定 recipe 的原生候选统一入口](native/native-candidate.md)
-与显式绑定的预编译 adapter 离线组包：`mise run data:native:candidate`。
-该入口只编排现有 `--native-runtime`，封存 recipe 与完成收据；不获取原始来源、不发布或切换活动数据。
+原生候选的 recipe 重放入口（原 `data:native:candidate`）已退役；`--native-runtime` 随 adapter 冻结在
+RePoE，见[原生运行组装](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/native-runtime.md)。
 
 ## 运行时数据组合封存
 

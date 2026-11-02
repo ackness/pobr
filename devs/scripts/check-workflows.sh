@@ -11,8 +11,6 @@ while IFS= read -r -d '' script; do bash -n "$script"; done < <(
 actionlint -ignore 'unexpected key "queue" for "concurrency" section'
 python3 -m unittest discover -s devs/scripts -p 'test_*.py'
 python3 -m pipeline.runtime.test_data_snapshot
-python3 -m pipeline.tree.test_tree_inputs
-python3 -m pipeline.native.test_native_candidate
 python3 -m pipeline.runtime.test_data_bundle
 python3 -m pipeline.imports.check_data_ownership
 python3 -m pipeline.runtime.test_build_data
@@ -23,5 +21,4 @@ python3 -m pipeline.imports.test_trade_crafting
 python3 -m pipeline.imports.test_display_assets
 python3 -m pipeline.runtime.test_runtime_pack
 python3 -m pipeline.imports.test_data_imports
-python3 tools/pobr-data-adapter/tests/test_smoke_native_facts.py
 node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs web/scripts/bench-calc.test.mjs web/scripts/smoke-runtime-candidate.test.mjs

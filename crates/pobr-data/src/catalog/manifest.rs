@@ -47,7 +47,7 @@ pub struct DataManifest {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct DomainSections {
     /// `base/`: domains adapted from game facts (owner RePoE facts +
-    /// `pobr-data-adapter`, hand edits forbidden).
+    /// RePoE's `pobr-data-adapter`, hand edits forbidden).
     pub base: Vec<String>,
     /// `overlay/`: curated and PoB2-derived compatibility domains (fixed
     /// bytes from the owner package; changes belong to the owner repository).

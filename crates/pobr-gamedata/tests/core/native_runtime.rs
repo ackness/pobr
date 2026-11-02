@@ -527,7 +527,7 @@ fn native_contract_does_not_inherit_ambient_common() {
 
 fn player_pack() -> BTreeMap<String, Vec<u8>> {
     let fixture: Value = serde_json::from_slice(include_bytes!(
-        "../../../../tools/pobr-data-adapter/tests/fixtures/native-runtime/player-synthetic.json"
+        "../fixtures/native_runtime/player-synthetic.json"
     ))
     .unwrap();
     let mut files = pack();

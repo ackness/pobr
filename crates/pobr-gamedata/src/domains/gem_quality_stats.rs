@@ -3,7 +3,7 @@
 //! [`pobr_data::catalog::skills`]'s `GemQualityStatsDef` section.
 //!
 //! Current source: target quality facts from the RePoE owner package,
-//! projected by `pobr-data-adapter --ordinary-domain gem-quality` under a
+//! projected by RePoE's `pobr-data-adapter --ordinary-domain gem-quality` under a
 //! pinned quality policy. Older snapshots carry PoB2-derived compatibility
 //! data. Both retain the `gem_quality_stats/v1` schema and historical overlay path.
 //! This table is a plain lookup table (no merge

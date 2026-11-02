@@ -18,7 +18,7 @@
 `_meta.generator`／`_meta.vendor_commit` 保留原生成身份，不能单凭文件名或旧 metadata
 把混合来源文件整体算作客户端事实或 PoB2 输出。PoB2 测试参考由
 `devs/reference-sources.json` 独立固定，不决定生产数据版本。
-较早[独立官方树候选](../pipeline/README.md#固定来源与独立树候选)的 Druid 引用诊断保留原入口边界，
+较早[独立官方树候选](../pipeline/README.md#固定来源)的 Druid 引用诊断保留原入口边界（该入口已退役），
 不能据此重判后来 Default 图的成员资格，也不能把它当当前普通树迁源的剩余总表。
 
 ### 直接来自游戏的数据
@@ -60,7 +60,7 @@ RePoE 的[固定来源对账](https://github.com/ackness/repoe/blob/e3cabf9bd008
 核对了七个完整上下文：调用者、defence 和 reservation 的上游条件已有变化，整体等价未确立，
 其验证器保持 `guard_eligible=false`。运行定义、数值和引用没有因此更新，也不据此认证官方 buff 或 charm 语义。
 
-`item_granted_skills.json`、`boss_poise_thresholds.json` 和 `totem_varieties.json` 已有目标事实 producer，完整版本通过独立 RePoE 产物临时导入；PoBR 保留筛选和解释责任。授予技能只迁可证字段，原始 `ItemInherentSkills.IsWeapon` 列按固定社区政策解释为 NoReservation，字段命名与官方语义未独立认证；Boss 选择仍是显式模型。详见[授予技能契约](../tools/pobr-data-adapter/ordinary-item-grants.md)。`energy_config_options.json` 等是项目定义的外部事件／静态状态输入，属于 PoBR 自有配置。
+`item_granted_skills.json`、`boss_poise_thresholds.json` 和 `totem_varieties.json` 已有目标事实 producer，完整版本通过独立 RePoE 产物临时导入；PoBR 保留筛选和解释责任。授予技能只迁可证字段，原始 `ItemInherentSkills.IsWeapon` 列按固定社区政策解释为 NoReservation，字段命名与官方语义未独立认证；Boss 选择仍是显式模型。详见[授予技能契约](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-item-grants.md)。`energy_config_options.json` 等是项目定义的外部事件／静态状态输入，属于 PoBR 自有配置。
 
 `examples/demo-bd-test/builds/*/meta.json` 的回归对照值由 `tools/pob2-oracle` 重录。它们用于防回归，不是独立游戏真值。
 
@@ -116,7 +116,7 @@ Bonestorm（“Channel to conjure a swarm of bone spikes in the air, then releas
 
 ### 不保留精魄的物品授予
 
-Lament / Portent / Absent Amulet 授予的技能不保留精魄（`ItemInherentSkills.IsWeapon` 按固定[社区解释政策](../pipeline/policies/item-grants/0.5.5.5-community-semantics-policy.json)映射为 `NoReservation`，官方字段语义未独立认证；三个基底列在 `overlay-common/item_granted_skills.json`）。PoB2 导入角色时把这个技能再列成一个普通宝石组并按宝石保留 30 / 60 / 100 精魄，所以这类构筑码自带的 `SpiritUnreserved` 常为负数，而游戏里保留量不可能超过精魄总量。
+Lament / Portent / Absent Amulet 授予的技能不保留精魄（`ItemInherentSkills.IsWeapon` 按固定[社区解释政策](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/item-grants/0.5.5.5-community-semantics-policy.json)映射为 `NoReservation`，官方字段语义未独立认证；三个基底列在 `overlay-common/item_granted_skills.json`）。PoB2 导入角色时把这个技能再列成一个普通宝石组并按宝石保留 30 / 60 / 100 精魄，所以这类构筑码自带的 `SpiritUnreserved` 常为负数，而游戏里保留量不可能超过精魄总量。
 
 PoBR 把“排在组首、等级与授予等级相同、无品质、未腐化”的那个普通组认作被授予的技能本身，不计保留，也按授予技能的需求降级（见[授予技能](mechanics/items.md#宝石等级品质与授予技能)）；其余同名宝石照常保留（`calc_orchestrator/granted_skills.rs`）。其他物品授予、需要保留精魄的技能也是这样认出的同一个技能，只保留一次；PoB2 的物品组和宝石组各保留一次（tuned 组 Gemling Legionnaire Frostbolt 与 Oracle Grim Pillars 胸甲授予的 Blink：PoB2 120，PoBR 60）。
 

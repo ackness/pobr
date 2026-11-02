@@ -99,7 +99,7 @@ jobs:
         env:
           CI_SHARD: ${{ matrix.shard }}
         run: python3 devs/scripts/ci-rust-tests.py "$CI_SHARD"
-      - name: Derived rules reproducibility and parse-coverage ratchet
+      - name: Parse-coverage ratchet
         if: matrix.shard == 'libraries-tools'
         run: POBR_PATCH="$(cat data/CURRENT)" bash devs/scripts/regen-check.sh
       - name: Language catalog lint

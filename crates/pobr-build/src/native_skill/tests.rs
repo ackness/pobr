@@ -85,9 +85,9 @@ fn reseal(files: &mut BTreeMap<String, Vec<u8>>) {
 }
 
 fn pack() -> BTreeMap<String, Vec<u8>> {
-    // Reuse the source worker's complete synthetic player archive rather than copy 6.5k lines.
+    // Reuse pobr-gamedata's complete synthetic player archive rather than copy 6.5k lines.
     let player: Value = serde_json::from_slice(include_bytes!(
-        "../../../../tools/pobr-data-adapter/tests/fixtures/native-runtime/player-synthetic.json"
+        "../../../pobr-gamedata/tests/fixtures/native_runtime/player-synthetic.json"
     ))
     .unwrap();
     let skill: Value = serde_json::from_slice(include_bytes!("tests/skill-facts.json")).unwrap();
