@@ -19,12 +19,12 @@ quality flags are rejected, as are duplicate, missing and mixed-mode arguments.
   --version 0.5.5.5 --ordinary-domain granted-effect-minions \
   --codec-source /absolute/path/to/data/0.5.5.4.2/overlay/granted_effect_minions.json \
   --codec-source-sha256 356efcf25802787c52de25e5e34700ebb2cada2d6cafc71895e7fcf41a95e16c \
-  --codec-policy /absolute/path/to/pipeline/actors/0.5.5.5-minion-links-policy.json \
+  --codec-policy /absolute/path/to/pipeline/policies/actors/0.5.5.5-minion-links-policy.json \
   --codec-policy-sha256 ad8f713e7686e9a0a91d510468689ee64313bcb9fba0175b3cf4859df3ef7ce3 \
   --out /absolute/existing/external-parent/fresh-minion-links
 ```
 
-The initial [policy](../../pipeline/actors/0.5.5.5-minion-links-policy.json) is the
+The initial [policy](../../pipeline/policies/actors/0.5.5.5-minion-links-policy.json) is the
 verbatim frozen applicability template. It binds target patch/manifest,
 domain/file/schema, one owned field, original source hash/version/metadata,
 supported projection and an explicit alias inventory. Unknown policy schema,

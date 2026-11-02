@@ -121,7 +121,7 @@ pub(in crate::ordinary_facts) fn fixture() -> Fixture {
         fs::create_dir(f.root.join(dir)).unwrap();
     }
     let mut policy: Value = serde_json::from_slice(include_bytes!(
-        "../../../../../pipeline/skill-overrides/0.5.5.5-facts-compat-policy.json"
+        "../../../../../pipeline/policies/skill-overrides/0.5.5.5-facts-compat-policy.json"
     ))
     .unwrap();
     policy["legacy_numeric_exceptions"] = json!([{"source_row":3,"key":{"skill":"Ghost","stat":"base_multiplier"},"reason":"Fixture virtual effect; retain as community-only."}]);

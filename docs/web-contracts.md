@@ -6,7 +6,7 @@
 stat 是游戏属性标识，stat set 是技能效果的一组数值，ModDb 是计算词条数据库。数值定义见[计算输出](calc-outputs.md)，
 导入差异见[导入格式](import-formats.md)，数据和计算编排见[构筑模型](build-model.md)。
 
-候选运行时可使用[三块 JSON 发行包](../pipeline/runtime-bundle.md#三块-json-发行包)：
+候选运行时可使用[三块 JSON 发行包](../pipeline/runtime/runtime-bundle.md#三块-json-发行包)：
 核心、规则／共享兼容与选定语言共用一份 release manifest。Web 校验 release、块和文件摘要后，
 将原有相对路径及精确 UTF-8 文本送入既有 WASM staging，CLI materialize 得到相同字节。
 `trade_catalog.gems`、历史天赋节点、原始文本与 null 翻译阻断保持可用。
@@ -51,7 +51,7 @@ stat 是游戏属性标识，stat set 是技能效果的一组数值，ModDb 是
 
 ### 目录与特殊来源
 
-`pipeline/extract-trade-catalog.lua` 从钉定的 PoB2 导出类别／基底生成权重、词缀组、
+`pipeline/legacy/extract-trade-catalog.lua` 从钉定的 PoB2 导出类别／基底生成权重、词缀组、
 原始范围、宝石族与逐级需求。它与 `trade_stat_map.json` 一同再生成，不能手改产物。
 手动词缀模拟用完整阶级池，检查等级与前后缀容量；无法拆解的合并 stat 保留未解析状态，不能猜空位。
 中值只是数值估计，不是打造概率。
@@ -174,7 +174,7 @@ PoBR更新锁后运行`mise run data:prepare`；目录摘要不符时拒绝导�
 
 珠宝授权与确定性变换共用后端 `tree_effects`。
 `overlay/passive_jewels.json` 的职业起点、环选择、征服者和替换 stat 由
-`pipeline/extract-passive-jewels.lua` 再生成。仅靠范围可分配的点不能延长路线，直到连到职业根。
+`pipeline/legacy/extract-passive-jewels.lua` 再生成。仅靠范围可分配的点不能延长路线，直到连到职业根。
 未知种子变换保留诊断并保护自动退款。计算先筛选物品变体／版本，再解析范围值，编辑导出仍用原文。
 支持范围见[珠宝搜索](jewel-search.md)。
 

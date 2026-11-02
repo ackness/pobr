@@ -4,6 +4,6 @@
 tables/
 files/
 # GGG 官方被动树导出原始 data.json（数 MB，绝不入库；适配后落 data/<patch>/passive_tree.json）
-tree/
+/tree/data.json
 node_modules/
 *.log

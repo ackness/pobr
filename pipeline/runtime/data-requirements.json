@@ -1,0 +1,126 @@
+{
+  "schema": "pobr-data-requirements/v1",
+  "target": {
+    "game": "poe2",
+    "game_patch": "0.5.5.5",
+    "realm": "international"
+  },
+  "purpose": "candidate-runtime-imports",
+  "repoe": {
+    "usage": "text-applicability-only",
+    "tables": {
+      "ActiveSkills": {
+        "key": "Id",
+        "display_fields": [
+          "DisplayedName",
+          "Description",
+          "ShortDescription",
+          "WebsiteDescription"
+        ]
+      },
+      "AlternateQualityTypes": {
+        "key": "Id",
+        "display_fields": [
+          "Description"
+        ]
+      },
+      "Ascendancy": {
+        "key": "Id",
+        "display_fields": [
+          "Name",
+          "FlavourText"
+        ]
+      },
+      "BaseItemTypes": {
+        "key": "Id",
+        "display_fields": [
+          "Name",
+          "Inflection"
+        ]
+      },
+      "Characters": {
+        "key": "Id",
+        "display_fields": [
+          "Name",
+          "Description",
+          "TraitDescription"
+        ]
+      },
+      "ItemClasses": {
+        "key": "Id",
+        "display_fields": [
+          "Name"
+        ]
+      },
+      "Mods": {
+        "key": "Id",
+        "display_fields": [
+          "Name"
+        ]
+      },
+      "PassiveSkills": {
+        "key": "Id",
+        "display_fields": [
+          "Name",
+          "FlavourText"
+        ]
+      },
+      "Words": {
+        "key": "HASH32",
+        "display_fields": [
+          "Text2",
+          "Inflection"
+        ]
+      }
+    }
+  },
+  "translation": {
+    "locale": "zh-CN",
+    "scopes": [
+      "BaseItemTypes.Name",
+      "Characters.Name",
+      "Ascendancy.Name"
+    ],
+    "literals": "all-catalog-conflict-participants",
+    "supplement": {
+      "mode": "reviewed-only"
+    }
+  },
+  "runtime_pack": {
+    "schema": "pobr-runtime-release/v1",
+    "core_input_lock": "pipeline/runtime/build-data.lock.json",
+    "blocks": [
+      "core",
+      "rules",
+      "locale"
+    ],
+    "ordinary": {
+      "requirements": "ordinary/ordinary-inputs.requirements.json",
+      "lock": "ordinary/ordinary-inputs.lock.json",
+      "outputs": {
+        "stat-descriptions": [
+          "overlay/stat_descriptions.json"
+        ],
+        "passive-tree": [
+          "base/passive_tree.json",
+          "base/passive_tree_meta.json"
+        ],
+        "base-items": [
+          "base/base_items.json",
+          "overlay/base_item_overrides.json"
+        ],
+        "minions": [
+          "overlay/minions.json"
+        ],
+        "spectres": [
+          "overlay/spectres.json"
+        ],
+        "skill-overrides": [
+          "overlay/skill_overrides.json"
+        ]
+      }
+    },
+    "selection": "all sealed core/shared rules/compatibility and historical nodes; selected translation locale",
+    "projection": "compact exact JSON numbers and strings; omit document _meta headers and SpecialTemplateDef vendor_pattern/source_note/examples; retain runtime native provenance and diagnostic fields"
+  }
+}

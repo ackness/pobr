@@ -110,7 +110,7 @@ v1/v2 policies keep their earlier behavior and original pins.
 
 ## Complete non-stat grant text
 
-The current policy is materialized by [`ordinary_policy.py`](../../pipeline/ordinary-inputs.md)
+The current policy is materialized by [`ordinary_policy.py`](../../pipeline/runtime/ordinary/ordinary-inputs.md)
 from a small PoBR template and the pinned external retained version bindings.
 The old complete v1-v4 mapping files are absent from PoBR Git. Its generated
 `inputs/passive-tree/codec-policy/0.5.5.5-complete-text-tree-policy.json` uses v4.

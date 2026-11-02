@@ -18,7 +18,7 @@ mise exec -- cargo run --locked -p pobr-data-adapter -- \
   --ordinary-facts /absolute/F --facts-manifest-sha256 "$FACTS_SHA" \
   --version 0.5.5.5 --ordinary-domain catalysts \
   --supplement /absolute/selected-tables --supplement-manifest-sha256 "$SUPPLEMENT_SHA" \
-  --catalog-policy pipeline/catalysts/0.5.5.5-policy.json --catalog-policy-sha256 "$POLICY_SHA" \
+  --catalog-policy pipeline/policies/catalysts/0.5.5.5-policy.json --catalog-policy-sha256 "$POLICY_SHA" \
   --out /absolute/existing-parent/fresh-catalysts
 ```
 

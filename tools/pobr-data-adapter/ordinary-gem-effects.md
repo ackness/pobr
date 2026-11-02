@@ -12,7 +12,7 @@ mise exec -- cargo run --locked -p pobr-data-adapter -- \
   --facts-manifest-sha256 56e71e00a72c8079d100b64861fc030206b12aaeb5ad655ccb4ab4e6726332d0 \
   --codec-source data/0.5.5.4.2/overlay/gem_effects.json \
   --codec-source-sha256 6bee113b2068e80caece3d15db1c521d98f507c56c4726f5b927d9f259bd4f13 \
-  --codec-policy pipeline/skill-codec/0.5.5.5-gem-effects-policy.json \
+  --codec-policy pipeline/policies/skill-codec/0.5.5.5-gem-effects-policy.json \
   --codec-policy-sha256 483cdb9d48c194e5a0277fa571bcda699e114babbf69a20600ee0ecc884d57ef \
   --version 0.5.5.5 \
   --out /absolute/path/to/existing-parent/fresh-gem-links

@@ -25,6 +25,8 @@ class WorkflowTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="pobr script tests ")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
+        for name in ["pipeline/runtime", "pipeline/imports"]:
+            (self.root / name).mkdir(parents=True)
         scripts = ["devs/scripts/regen-check.sh", "devs/scripts/cache-report.py",
                    "devs/scripts/driver.sh", "devs/scripts/pob2-luajit.sh",
                    ".claude/skills/run-pobr/driver.sh"]
@@ -35,7 +37,7 @@ class WorkflowTests(unittest.TestCase):
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(REPO / rel, dest)
         self.write("Cargo.toml", "")
-        self.write("pipeline/config.json", '{"patch":"test"}')
+        self.write("pipeline/legacy/config.json", '{"patch":"test"}')
         self.write("data/CURRENT", "test")
         self.write("data/test/base/passive_tree.json", "[]")
         self.write("data/test/generated/special_derived.json", "{}")
@@ -124,25 +126,25 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
 
     def test_quality_regeneration_uses_receipt_and_preserves_sources(self):
         self.write("pipeline/tables/English/GrantedEffectQualityStats.json", "[]")
-        self.write("pipeline/gem-quality/test.json", "{}")
+        self.write("pipeline/legacy/gem-quality/test.json", "{}")
         self.write("data/test/overlay/gem_quality_stats.json", "{}")
         self.assert_regen_preserves_tree(0)
         quality = [args for args in self.calls() if "--gem-quality" in args]
         self.assertEqual(len(quality), 1)
         self.assertEqual(quality[0][quality[0].index("--quality-source") + 1],
-                         str(self.root / "pipeline/gem-quality/test.json"))
+                         str(self.root / "pipeline/legacy/gem-quality/test.json"))
 
     def test_quality_failure_aborts_full_regeneration_before_other_generators(self):
-        shutil.copyfile(REPO / "pipeline/regen-all.sh", self.root / "pipeline/regen-all.sh")
-        shutil.copyfile(REPO / "pipeline/data_snapshot.py", self.root / "pipeline/data_snapshot.py")
-        self.write("pipeline/config.json", '{"patch":"9.1"}')
+        shutil.copyfile(REPO / "pipeline/legacy/regen-all.sh", self.root / "pipeline/legacy/regen-all.sh")
+        shutil.copyfile(REPO / "pipeline/runtime/data_snapshot.py", self.root / "pipeline/runtime/data_snapshot.py")
+        self.write("pipeline/legacy/config.json", '{"patch":"9.1"}')
         # Isolate the first game generator after successful input preflights.
-        self.write("pipeline/locale_inputs.py", "import sys\nassert '--check-lock' in sys.argv\n")
-        self.write("pipeline/crafting_inputs.py", "import sys\nassert '--check-lock' in sys.argv\n")
+        self.write("pipeline/imports/locale_inputs.py", "import sys\nassert '--check-lock' in sys.argv\n")
+        self.write("pipeline/imports/crafting_inputs.py", "import sys\nassert '--check-lock' in sys.argv\n")
         self.write("data/CURRENT", "9.1\n")
         self.write("data/9.1/overlay/gem_quality_stats.json", "previous quality data")
         self.env["FAIL_QUALITY"] = "1"
-        result = self.run_script("pipeline/regen-all.sh")
+        result = self.run_script("pipeline/legacy/regen-all.sh")
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertEqual(len(self.calls()), 1)
         self.assertIn("--gem-quality", self.calls()[0])
@@ -150,15 +152,17 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
                          "previous quality data")
 
     def test_foreign_crafting_target_aborts_regeneration_before_game_generators(self):
-        for name in ("regen-all.sh", "data_snapshot.py", "crafting_inputs.py", "data_imports.py", "data_bundle.py"):
-            shutil.copyfile(REPO / "pipeline" / name, self.root / "pipeline" / name)
-        self.write("pipeline/config.json", '{"patch":"9.1"}')
-        self.write("pipeline/locale_inputs.py", "import sys\nassert '--check-lock' in sys.argv\n")
-        self.write("pipeline/build-data.lock.json", json.dumps({"schema": "pobr-build-data-lock/v2",
+        for name in ("pipeline/legacy/regen-all.sh", "pipeline/runtime/data_snapshot.py",
+                     "pipeline/imports/crafting_inputs.py", "pipeline/imports/data_imports.py",
+                     "pipeline/runtime/data_bundle.py"):
+            shutil.copyfile(REPO / name, self.root / name)
+        self.write("pipeline/legacy/config.json", '{"patch":"9.1"}')
+        self.write("pipeline/imports/locale_inputs.py", "import sys\nassert '--check-lock' in sys.argv\n")
+        self.write("pipeline/runtime/build-data.lock.json", json.dumps({"schema": "pobr-build-data-lock/v2",
                                                               "target": {"game_patch": "9.2"}}))
         self.write("data/CURRENT", "9.1\n")
         self.write("data/9.1/overlay/gem_quality_stats.json", "previous quality data")
-        result = self.run_script("pipeline/regen-all.sh")
+        result = self.run_script("pipeline/legacy/regen-all.sh")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Crafting build lock does not match requested patch", result.stderr)
         self.assertFalse((self.root / "calls.jsonl").exists())
@@ -386,9 +390,9 @@ class ModifierWorkflowTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="pobr modifier workflow ")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        for directory in ["pipeline", "data/test/generated", "bin"]:
+        for directory in ["pipeline/legacy", "data/test/generated", "bin"]:
             (self.root / directory).mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(REPO / "pipeline/refresh-modifiers.sh", self.root / "pipeline/refresh-modifiers.sh")
+        shutil.copyfile(REPO / "pipeline/legacy/refresh-modifiers.sh", self.root / "pipeline/legacy/refresh-modifiers.sh")
         (self.root / "data/CURRENT").write_text("test", encoding="utf-8")
         self.snapshot = self.root / "data/test/generated/modifier-audit.json"
         self.snapshot.write_text("previous snapshot", encoding="utf-8")
@@ -410,7 +414,7 @@ sys.exit(int(os.environ.get("AUDIT_EXIT", "0")))
         self.cargo.chmod(0o755)
 
     def run_audit(self, code, check_code=0):
-        return subprocess.run(["bash", "pipeline/refresh-modifiers.sh", "--offline"],
+        return subprocess.run(["bash", "pipeline/legacy/refresh-modifiers.sh", "--offline"],
             cwd=self.root, env={**os.environ, "PATH": f"{self.root / 'bin'}{os.pathsep}{os.environ['PATH']}",
                 "AUDIT_EXIT": str(code), "CHECK_EXIT": str(check_code)}, capture_output=True, text=True, timeout=15)
 
@@ -447,7 +451,7 @@ sys.exit(int(os.environ.get("AUDIT_EXIT", "0")))
         oracle = self.root / "tools/pob2-oracle/run-parsemod.sh"
         oracle.parent.mkdir(parents=True)
         oracle.write_text("#!/usr/bin/env bash\nprintf '{}\\n'\n")
-        return subprocess.run(["bash", "pipeline/refresh-modifiers.sh", *([] if mutates else ["--audit-only"])],
+        return subprocess.run(["bash", "pipeline/legacy/refresh-modifiers.sh", *([] if mutates else ["--audit-only"])],
             cwd=self.root, env={**os.environ, "PATH": f"{self.root / 'bin'}{os.pathsep}{os.environ['PATH']}",
                 "POBR_CANDIDATE": "1"}, capture_output=True, text=True, timeout=15)
 
@@ -474,14 +478,15 @@ sys.exit(int(os.environ.get("AUDIT_EXIT", "0")))
 
 class VersionPromotionTests(unittest.TestCase):
     def test_foreign_language_lock_aborts_before_game_generation(self):
-        spec = importlib.util.spec_from_file_location("snapshot_preflight_test", REPO / "pipeline/data_snapshot.py")
+        spec = importlib.util.spec_from_file_location("snapshot_preflight_test", REPO / "pipeline/runtime/data_snapshot.py")
         snapshot = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(snapshot)
         with tempfile.TemporaryDirectory(prefix="pobr locale preflight ") as directory:
             root = Path(directory).resolve()
-            (root / "pipeline").mkdir()
-            (root / "pipeline/config.json").write_text('{"patch":"1.2.4"}')
-            shutil.copyfile(REPO / "pipeline/locale-generation.lock.json", root / "pipeline/locale-generation.lock.json")
+            (root / "pipeline/legacy").mkdir(parents=True)
+            (root / "pipeline/imports").mkdir()
+            (root / "pipeline/legacy/config.json").write_text('{"patch":"1.2.4"}')
+            shutil.copyfile(REPO / "pipeline/imports/locale-generation.lock.json", root / "pipeline/imports/locale-generation.lock.json")
             data = root / "data/1.2.3/base"
             data.mkdir(parents=True)
             (data / "items.json").write_text("[]")
@@ -492,8 +497,8 @@ class VersionPromotionTests(unittest.TestCase):
             def run(command, cwd, env):
                 commands.append(command)
                 self.assertIn("--check-lock", command, "no game generator may run before this refusal")
-                subprocess.run([command[0], str(REPO / command[1]), *command[2:]],
-                               cwd=cwd, env=env, check=True, capture_output=True, text=True)
+                subprocess.run(command,
+                               cwd=cwd, env={**env, "PYTHONPATH": str(REPO)}, check=True, capture_output=True, text=True)
 
             with patch.object(snapshot, "run", run), self.assertRaises(subprocess.CalledProcessError) as raised:
                 snapshot.regenerate(root)
@@ -503,7 +508,7 @@ class VersionPromotionTests(unittest.TestCase):
             self.assertEqual(list((root / ".cache").glob("data-update-*")), [])
 
     def test_updated_dictionary_is_sealed_before_audit_reads_candidate(self):
-        spec = importlib.util.spec_from_file_location("snapshot_test", REPO / "pipeline/data_snapshot.py")
+        spec = importlib.util.spec_from_file_location("snapshot_test", REPO / "pipeline/runtime/data_snapshot.py")
         snapshot = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(snapshot)
         with tempfile.TemporaryDirectory(prefix="pobr dictionary manifest ") as directory:
@@ -514,8 +519,9 @@ class VersionPromotionTests(unittest.TestCase):
             target = data / relative
             target.parent.mkdir(parents=True)
             target.write_text('[{"src":"旧词条","en":"Old line"}]\n', encoding="utf-8")
-            (root / "pipeline").mkdir()
-            (root / "pipeline/config.json").write_text(json.dumps({"patch": version}), encoding="utf-8")
+            (root / "pipeline/legacy").mkdir(parents=True)
+            (root / "pipeline/imports").mkdir()
+            (root / "pipeline/legacy/config.json").write_text(json.dumps({"patch": version}), encoding="utf-8")
             (root / "data/CURRENT").write_text(version + "\n", encoding="utf-8")
             snapshot.manifest(data)
             updated = '[{"src":"新词条","en":"New line"}]\n'
@@ -523,10 +529,10 @@ class VersionPromotionTests(unittest.TestCase):
 
             def run(command, cwd, env):
                 candidate = Path(env["POBR_DATA_ROOT"]) / version
-                if "pipeline/locale_inputs.py" in command and "--check-lock" not in command:
+                if "pipeline.imports.locale_inputs" in command and "--check-lock" not in command:
                     self.assertIn("--candidate", command)
                     (candidate / relative).write_text(updated, encoding="utf-8")
-                elif "pipeline/refresh-modifiers.sh" in command:
+                elif "pipeline/legacy/refresh-modifiers.sh" in command:
                     manifest = snapshot.read_json(candidate / "manifest.json")
                     self.assertEqual(manifest["files"][relative], snapshot.digest(candidate / relative))
                     self.assertEqual((candidate / relative).read_text(encoding="utf-8"), updated)
@@ -541,9 +547,9 @@ class VersionPromotionTests(unittest.TestCase):
     def test_bump_forwards_exact_locked_update_arguments_without_other_tools(self):
         with tempfile.TemporaryDirectory(prefix="pobr locked wrapper ") as directory:
             root = Path(directory)
-            script = root / "pipeline/bump-version.sh"
-            script.parent.mkdir()
-            script.write_bytes((REPO / "pipeline/bump-version.sh").read_bytes())
+            script = root / "pipeline/legacy/bump-version.sh"
+            script.parent.mkdir(parents=True)
+            script.write_bytes((REPO / "pipeline/legacy/bump-version.sh").read_bytes())
             binary = root / "bin"
             binary.mkdir()
             capture = root / "called.json"
@@ -561,7 +567,7 @@ class VersionPromotionTests(unittest.TestCase):
                 env={**os.environ, 'PATH': str(binary) + os.pathsep + os.environ['PATH']},
                 capture_output=True, text=True, timeout=10)
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual(json.loads(capture.read_text()), [str(root / 'pipeline/locked_update.py'), *args])
+            self.assertEqual(json.loads(capture.read_text()), ['-m', 'pipeline.runtime.locked_update', *args])
             self.assertFalse((root / 'data').exists())
             self.assertFalse((root / 'vendor').exists())
 
@@ -574,7 +580,7 @@ class VendorRepositoryIsolationTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.real_git = shutil.which("git")
         assert self.real_git is not None
-        for rel in ["devs/scripts/driver.sh", "pipeline/bump-version.sh"]:
+        for rel in ["devs/scripts/driver.sh", "pipeline/legacy/bump-version.sh"]:
             self.write(rel, (REPO / rel).read_text(encoding="utf-8"))
         self.write("data/CURRENT", "1.2.3\n")
         self.sha = "a" * 40
@@ -583,7 +589,7 @@ class VendorRepositoryIsolationTests(unittest.TestCase):
             "protocol": "pob2-oracle/v1"}}))
         self.write("data/1.2.3/overlay/mod_parser_rules.json",
                    json.dumps({"_meta": {"vendor_commit": "b" * 40}}))
-        self.write("pipeline/config.json", '{"patch": "1.2.3"}\n')
+        self.write("pipeline/legacy/config.json", '{"patch": "1.2.3"}\n')
         self.write("vendor/.pob2-version.txt", "previous\n")
         self.write("bin/git", '''#!/usr/bin/env python3
 import os, pathlib, subprocess, sys

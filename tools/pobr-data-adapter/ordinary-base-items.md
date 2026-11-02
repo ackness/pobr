@@ -124,7 +124,7 @@ Passing this domain does not establish complete-package or BD/Web adoption.
 When assembling a package containing the historical base override overlay, supply
 all four `--codec-source`, `--codec-source-sha256`, `--codec-policy` and
 `--codec-policy-sha256` options. The versioned ownership policy is
-[`pipeline/base-items/0.5.5.5-overlay-policy.json`](../../pipeline/base-items/0.5.5.5-overlay-policy.json).
+[`pipeline/policies/base-items/0.5.5.5-overlay-policy.json`](../../pipeline/policies/base-items/0.5.5.5-overlay-policy.json).
 Pins are checked before parsing; the policy also fixes the legacy metadata and
 exact delegated field set. Without these options the original base-only output
 is unchanged.
@@ -182,7 +182,7 @@ This is a fixed community parser interpretation, **not official client merge-law
 certification**, raw unique coverage or an actor inheritance implementation.
 
 When a legacy override is also supplied, use the explicit
-[v2 ownership policy](../../pipeline/base-items/0.5.5.5-inherited-tags-policy.json).
+[v2 ownership policy](../../pipeline/policies/base-items/0.5.5.5-inherited-tags-policy.json).
 It binds the inheritance manifest and interpretation ID in addition to the six
 existing numeric fields. Old `tags` are removed only when every target with that
 display name has resolved inheritance, allowing each ID's own tags to reach the

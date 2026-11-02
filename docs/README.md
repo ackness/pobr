@@ -24,7 +24,7 @@
 | Build、导入、存档、数据快照和计算会话 | [构筑模型](build-model.md) |
 | 原生数据集绑定、存档和受限计算 | [原生构筑文档](native-build-document.md)、[条件命中](native-skill-hit.md)、[CLI](native-cli.md)、[WASM](native-wasm.md) |
 | JSON / CLI 输出、单位与解释字段 | [计算输出](calc-outputs.md) |
-| 固定原生候选、受限条件命中和精确存档绑定 | [候选重放](../pipeline/native-candidate.md)、[条件命中](native-skill-hit.md)、[原生存档](native-build-document.md)、[CLI](native-cli.md)、[WASM](native-wasm.md) |
+| 固定原生候选、受限条件命中和精确存档绑定 | [候选重放](../pipeline/native/native-candidate.md)、[条件命中](native-skill-hit.md)、[原生存档](native-build-document.md)、[CLI](native-cli.md)、[WASM](native-wasm.md) |
 | 页面操作、持久化与 API 消费约定 | [Web 契约](web-contracts.md) |
 | 当前支持的计算范围和假设 | [机制约定](mechanics/README.md)、[PoB2 差异](pob2-differences.md) |
 
@@ -36,9 +36,10 @@
 | 工作 | 文档 |
 | --- | --- |
 | 环境、定向测试、缓存、CI、review 与发版 | [开发工作流](development-workflow.md) |
+| 区分源码、数据、参考资料与可重建产物 | [目录用途](development-workflow.md#repository-layout) |
 | 改一条词条、一个输出或一种机制 | [改动配方](recipes.md)、[词条规则指南](contributing-mods.md) |
 | 排查数值差异、输入损失和未支持效果 | [诊断与逐行台账](diagnostics.md) |
-| 升级游戏数据、候选校验与生成来源 | [数据管线](../pipeline/README.md)、[数据层结构](version-bump-architecture.md)、[宝石品质](../pipeline/gem-quality/README.md) |
+| 升级游戏数据、候选校验与生成来源 | [数据管线](../pipeline/README.md)、[数据层结构](version-bump-architecture.md)、[宝石品质](../pipeline/policies/gem-quality/README.md) |
 | 查看数据迁移结果、保留依赖和活动版本 | [当前迁移状态](data-architecture.md#5-当前已有数据与实际缺口)、[剩余字段与关闭条件](data-architecture.md#51-剩余字段与关闭条件)、[采用与验证范围](data-architecture.md#52-源码候选采用与玩家验收分别记账) |
 | 使用参考引擎与抽取工具 | [PoB2 oracle](../tools/pob2-oracle/README.md)、[catalog 同步](../tools/sync-pob-catalog/README.md) |
 | 测量性能或发布包体积 | [按需性能检查](development-workflow.md#慢构建与按需报告)、[WASM 测量](wasm-package.md#runtime-performance-comparison) |

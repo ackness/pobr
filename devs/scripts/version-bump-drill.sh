@@ -55,10 +55,10 @@ done
 
 if [[ -z "$VERSION" ]]; then
     VERSION="$(sed -n 's/.*"patch"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
-        "$ROOT/pipeline/config.json" 2>/dev/null | head -1)"
+        "$ROOT/pipeline/legacy/config.json" 2>/dev/null | head -1)"
 fi
 if [[ -z "$VERSION" || ! -d "$ROOT/data/$VERSION" ]]; then
-    echo "version-bump-drill: 无法确定版本（--version / pipeline/config.json \"patch\"），或 data/$VERSION 不存在" >&2
+    echo "version-bump-drill: 无法确定版本（--version / pipeline/legacy/config.json \"patch\"），或 data/$VERSION 不存在" >&2
     exit 2
 fi
 

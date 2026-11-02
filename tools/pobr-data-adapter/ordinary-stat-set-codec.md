@@ -13,7 +13,7 @@ mise exec -- cargo run --locked -p pobr-data-adapter -- \
   --facts-manifest-sha256 56e71e00a72c8079d100b64861fc030206b12aaeb5ad655ccb4ab4e6726332d0 \
   --codec-source data/0.5.5.4.2/overlay/stat_set_labels.json \
   --codec-source-sha256 825e594f43f07a4115ee29e57622670688e5d1c099f7e11a30ba66b3b80cca06 \
-  --codec-policy pipeline/skill-codec/0.5.5.5-legacy-stat-set-policy.json \
+  --codec-policy pipeline/policies/skill-codec/0.5.5.5-legacy-stat-set-policy.json \
   --codec-policy-sha256 eab2e71feeed825f0b745970cfaa41c61e22ac260dbb35f1bc55e2b83eb8fb2c \
   --version 0.5.5.5 \
   --out /absolute/path/to/existing-parent/fresh-codec-candidate

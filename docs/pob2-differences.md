@@ -7,9 +7,9 @@
 ## 数据来源现状与退出顺序
 
 本地活动版本为 `0.5.5.5`；`0.5.5.4.2` 是由独立固定锁恢复的历史回滚输入。
-完整游戏与语言产物分别存于 RePoE 和翻译库，PoBR 按[构建锁](../pipeline/build-data.md)
-临时导入；[普通领域生产](../pipeline/ordinary-inputs.md)再从声明的事实、CSD 和政策生成六域候选，
-由[运行包组合](../pipeline/runtime-bundle.md)验证后接入既有消费者。
+完整游戏与语言产物分别存于 RePoE 和翻译库，PoBR 按[构建锁](../pipeline/runtime/build-data.md)
+临时导入；[普通领域生产](../pipeline/runtime/ordinary/ordinary-inputs.md)再从声明的事实、CSD 和政策生成六域候选，
+由[运行包组合](../pipeline/runtime/runtime-bundle.md)验证后接入既有消费者。
 本地采用和完整 CI 已完成，线上部署仍是单独动作；具体身份、已迁字段和剩余边界见
 [架构现状矩阵](data-architecture.md#5-当前已有数据与实际缺口)。
 
@@ -50,7 +50,7 @@
 `data:legacy:regen`／`data:adapt` 兼容诊断使用。
 旧入口仍能导出 `runes.json`、`catalysts.json` 或 `stat_descriptions.json`，
 不表示当前普通生产仍从 vendor 整体取得这些文件。
-完整版本候选通过[锁驱动更新](../pipeline/locked-update.md)导入独立 owner 的固定产物；
+完整版本候选通过[锁驱动更新](../pipeline/runtime/locked-update.md)导入独立 owner 的固定产物；
 旧本地诊断不会自动取得新原料或成为缺失来源时的回退。
 
 ### 手工整理与回归数据
@@ -113,7 +113,7 @@ Bonestorm（“Channel to conjure a swarm of bone spikes in the air, then releas
 
 ### 不保留精魄的物品授予
 
-Lament / Portent / Absent Amulet 授予的技能不保留精魄（游戏表 `ItemInherentSkills` 的 `NoReservation`，三个基底列在 `overlay-common/item_granted_skills.json`）。PoB2 导入角色时把这个技能再列成一个普通宝石组并按宝石保留 30 / 60 / 100 精魄，所以这类构筑码自带的 `SpiritUnreserved` 常为负数，而游戏里保留量不可能超过精魄总量。
+Lament / Portent / Absent Amulet 授予的技能不保留精魄（`ItemInherentSkills.IsWeapon` 按固定[社区解释政策](../pipeline/policies/item-grants/0.5.5.5-community-semantics-policy.json)映射为 `NoReservation`，官方字段语义未独立认证；三个基底列在 `overlay-common/item_granted_skills.json`）。PoB2 导入角色时把这个技能再列成一个普通宝石组并按宝石保留 30 / 60 / 100 精魄，所以这类构筑码自带的 `SpiritUnreserved` 常为负数，而游戏里保留量不可能超过精魄总量。
 
 PoBR 把“排在组首、等级与授予等级相同、无品质、未腐化”的那个普通组认作被授予的技能本身，不计保留，也按授予技能的需求降级（见[授予技能](mechanics/items.md#宝石等级品质与授予技能)）；其余同名宝石照常保留（`calc_orchestrator/granted_skills.rs`）。其他物品授予、需要保留精魄的技能也是这样认出的同一个技能，只保留一次；PoB2 的物品组和宝石组各保留一次（tuned 组 Gemling Legionnaire Frostbolt 与 Oracle Grim Pillars 胸甲授予的 Blink：PoB2 120，PoBR 60）。
 

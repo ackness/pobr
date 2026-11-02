@@ -108,7 +108,7 @@ policies remain unsupported; no PoE1 relation is guessed for PoE2.
 A bounded observation now supplies two exact PoE2 table resources, accepted only
 for their acquisition bytes and existing physical payload by the separate
 `description-relations-0.5.5.5-international` entry in
-[`sources.lock.json`](../../pipeline/sources.lock.json). RePoE package `80feccaf`
+[`sources.lock.json`](../../pipeline/imports/sources.lock.json). RePoE package `80feccaf`
 preserves their recovery inputs: `IndexableSupportGems` is 12 bytes with zero rows;
 `AfflictionRewardTypeVisuals` is 98 bytes with only signed raw key `0`,
 `DeliriumRewardGeneric`, `Delirium`. `IndexableNonActiveSupportGems` was not matched
@@ -151,7 +151,7 @@ mise exec -- cargo run --locked -p pobr-data-adapter -- \
   --version 0.5.5.5 --ordinary-domain stat-descriptions \
   --codec-source data/0.5.5.4.2/overlay/stat_descriptions.json \
   --codec-source-sha256 "$LEGACY_SHA" \
-  --codec-policy pipeline/stat-descriptions/0.5.5.5-policy.json \
+  --codec-policy pipeline/policies/stat-descriptions/0.5.5.5-policy.json \
   --codec-policy-sha256 "$POLICY_SHA" \
   --item-descriptions /absolute/aura-closure/descriptions.json \
   --out /absolute/existing-parent/fresh-descriptions
@@ -166,7 +166,7 @@ The independent stdlib oracle inventories source ownership and compares a real
 producer's complete target membership and compatibility bindings:
 
 ```sh
-mise exec -- python3 pipeline/stat-descriptions/source_oracle.py \
+mise exec -- python3 -m pipeline.diagnostics.source_oracle \
   --source /absolute/aura-closure/descriptions.json \
   --legacy data/0.5.5.4.2/overlay/stat_descriptions.json \
   --candidate /absolute/fresh-descriptions --out /absolute/fresh-oracle

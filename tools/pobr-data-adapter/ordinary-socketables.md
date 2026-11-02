@@ -35,7 +35,7 @@ mise exec -- cargo run --locked -p pobr-data-adapter -- \
   --ordinary-facts /absolute/F --facts-manifest-sha256 "$FACTS_SHA" \
   --version 0.5.5.5 --ordinary-domain socketables \
   --codec-source data/0.5.5.4.2/overlay/runes.json --codec-source-sha256 "$RUNES_SHA" \
-  --codec-policy pipeline/socketables/0.5.5.5-policy.json --codec-policy-sha256 "$POLICY_SHA" \
+  --codec-policy pipeline/policies/socketables/0.5.5.5-policy.json --codec-policy-sha256 "$POLICY_SHA" \
   --item-descriptions /absolute/native-descriptions/descriptions.json \
   --out /absolute/existing-parent/fresh-socketables
 ```
@@ -45,7 +45,7 @@ its manifest. [Ordinary fact verification](ordinary-facts.md) applies unchanged.
 
 ## Translation-library boundary
 
-`pipeline/native-socketable-translations.mjs` consumes the own translation
+`pipeline/native/native-socketable-translations.mjs` consumes the own translation
 repository's pinned `poe2-native-localization-candidate/v1` export. It follows
 the exact file/record/branch selected by the socketable receipt and checks source
 manifest, stat IDs and formatting handlers. It renders only actual consumed
@@ -58,7 +58,7 @@ item syntax marker is preserved. This adds selected effect translations, not a
 complete target-language approval, name catalog or Chinese-server numeric proof.
 
 ```sh
-mise exec -- node pipeline/native-socketable-translations.mjs \
+mise exec -- node pipeline/native/native-socketable-translations.mjs \
   --selection /absolute/socketables/producer-receipt.json --selection-sha256 "$RECEIPT_SHA" \
   --native /absolute/translation-library/fixed-candidate.json --native-sha256 "$LANGUAGE_SHA" \
   --legacy data/0.5.5.4.2/i18n/zh-CN/stat_lines.json --legacy-sha256 "$LINES_SHA" \
@@ -74,7 +74,7 @@ new snapshot/shared-layer identity before ordinary consumption. Regression scope
 
 ```sh
 mise exec -- cargo test --locked -p pobr-data-adapter --bin pobr-data-adapter ordinary_facts::socketables::
-mise exec -- node --test pipeline/test-native-socketable-translations.mjs
+mise exec -- node --test pipeline/native/test-native-socketable-translations.mjs
 ```
 
 New selection receipts include Rust-formatted numeric literals. Translation

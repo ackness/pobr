@@ -43,7 +43,7 @@ jobs:
           SYNC_ACTION: ${{ github.event_name == 'workflow_run' && 'accept' || 'propose' }}
         run: |
           mkdir -p .cache/latest-sync
-          python3 pipeline/latest_sync.py "$SYNC_ACTION" --out .cache/latest-sync/result.json
+          python3 -m pipeline.latest.latest_sync "$SYNC_ACTION" --out .cache/latest-sync/result.json
       - name: Preserve freshness, gate and adoption outcome
         if: always()
         uses: actions/upload-artifact@v7.0.2

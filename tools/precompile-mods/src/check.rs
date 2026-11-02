@@ -84,7 +84,7 @@ pub fn inspect(data_dir: &Path) -> Result<ValidationReport, String> {
             if required {
                 errors.push(format!(
                     "{}: missing (required; regenerate with `cargo run -p sync-pob-catalog -- \
-                     extract-lua --what special-mods ...`, see pipeline/regen-all.sh)",
+                     extract-lua --what special-mods ...`, see pipeline/legacy/regen-all.sh)",
                     path.display()
                 ));
             }

@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { dataUrl, loadDataPack, type DataManifest } from './dataPack';
 import { canonical, fetchReleaseFile, validateRelease, type RuntimeRelease } from './runtimeRelease';
@@ -14,6 +15,7 @@ import { syncData } from '../../scripts/sync-data.mjs';
 const sha = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 const digest = async (bytes: Uint8Array) => sha(bytes);
 const bytes = (text: string) => new TextEncoder().encode(text);
+const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
 
 /** A pack of files with a schema-3 snapshot manifest listing all of them but itself. */
 function pack(contents: Record<string, string>, extra: Record<string, unknown> = {}) {
@@ -146,8 +148,8 @@ describe('runtime release transport', () => {
       expect([...loaded.kept.keys()]).toEqual(['overlay/trade_catalog.json']);
       expect([...files.keys()].sort()).toEqual(f.manifest.files);
       expect(f.requests).toHaveLength(3);
-      execFileSync('python3', ['../pipeline/runtime_pack.py', 'materialize', '--pack', join(f.out, 'runtime-pack.zip'),
-        '--out', join(f.root, 'cli'), '--expected-id', f.manifest.release_id]);
+      execFileSync('python3', ['-m', 'pipeline.runtime.runtime_pack', 'materialize', '--pack', join(f.out, 'runtime-pack.zip'),
+        '--out', join(f.root, 'cli'), '--expected-id', f.manifest.release_id], { cwd: repoRoot });
       for (const [name, raw] of files) {
         const path = name.startsWith('overlay-common/') ? join(f.root, 'cli/data', name) : join(f.root, 'cli/data/9.1', name);
         expect(Buffer.from(raw)).toEqual(readFileSync(path));
@@ -205,8 +207,8 @@ describe('runtime release transport', () => {
     try {
       const destination = join(root, 'web-data');
       const release = syncData({ packRoot, destRoot: destination, expectedId: source.release_id }) as RuntimeRelease;
-      execFileSync('python3', ['../pipeline/runtime_pack.py', 'materialize', '--pack', packRoot,
-        '--out', join(root, 'cli'), '--expected-id', release.release_id]);
+      execFileSync('python3', ['-m', 'pipeline.runtime.runtime_pack', 'materialize', '--pack', packRoot,
+        '--out', join(root, 'cli'), '--expected-id', release.release_id], { cwd: repoRoot });
       const requests: string[] = [];
       let count = 0;
       const loaded = await loadDataPack({ manifest: release, digest, keep: name => name === 'overlay/trade_catalog.json',

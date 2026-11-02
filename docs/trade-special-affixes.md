@@ -47,11 +47,11 @@ PoB2 的 PoE2 pseudo-stat 映射有意留空，因为伪属性可能混入镶嵌
 
 ## 数据再生与检查
 
-游戏事实由 RePoE 独立保存和处理；PoBR 在构建或实物测试中临时导入固定产物。当前 [v2 构建锁](../pipeline/build-data.lock.json) 强制读取独立 `repoe-native-crafting-facts/v1` 包，游戏 part 不再携带旧 crafting 成品。PoBR 的[投影器](../pipeline/crafting_inputs.py)只负责 UI 前缀筛选、类别聚合及已识别 regular-stat 目录；缺包或 pin 不符即失败。
+游戏事实由 RePoE 独立保存和处理；PoBR 在构建或实物测试中临时导入固定产物。当前 [v2 构建锁](../pipeline/runtime/build-data.lock.json) 强制读取独立 `repoe-native-crafting-facts/v1` 包，游戏 part 不再携带旧 crafting 成品。PoBR 的[投影器](../pipeline/imports/crafting_inputs.py)只负责 UI 前缀筛选、类别聚合及已识别 regular-stat 目录；缺包或 pin 不符即失败。
 
 RePoE 从同一 F77 快照中的 `BaseItemTypes`、`ItemClasses`、`Mods`、`Stats`、`Essences`、`EssenceTargetItemCategories`、`EssenceMods` 导出中立关系，保留七表原字节、schema／decoder／producer 与原输入 manifest。原生 Mods 使用 `Stat1`–`Stat8`、`StatNMin/Max` 及 hardmode 通道，不使用旧四槽 `StatNValue` 视图。目标 0.5.5.5 international 是继承的声明；该导出不新增观测客户端身份或扩大来源接受。F77 缺失的语言声明保持未知，不默认 English；物理 ID／数值关联不推断来源语言。
 
-`Mod`、`DisplayMod`、有序 `OutcomeMods` 与原权重分别保留。仅在 PoBR 目录政策中，非空 `OutcomeMods` 优先于非空 `Mod`，不使用 `DisplayMod` 替代。目录保留八槽已识别 stat 的零／负数区间；null stat 的非零原值、hardmode 未投影和源诊断写入运行包外的构建输入收据。它不是完整效果包、制作概率或全部适用性认证，见[详细契约](../pipeline/crafting-inputs.md)。
+`Mod`、`DisplayMod`、有序 `OutcomeMods` 与原权重分别保留。仅在 PoBR 目录政策中，非空 `OutcomeMods` 优先于非空 `Mod`，不使用 `DisplayMod` 替代。目录保留八槽已识别 stat 的零／负数区间；null stat 的非零原值、hardmode 未投影和源诊断写入运行包外的构建输入收据。它不是完整效果包、制作概率或全部适用性认证，见[详细契约](../pipeline/imports/crafting-inputs.md)。
 
 当前有界对比从 89 个源行得到 92 条目录记录，业务字段与历史基线一致。7 处权重不齐位于未选取的普通精华，仍保留源诊断；`AlloyBallistaLimit1` 的 null stat 槽带 `-20/-20` 原值，保持未表达诊断，不补 ID／0 或宣称 effectless。新文件使用准确来源元数据，快照身份相应更新，不强留旧生成命令。
 
@@ -60,13 +60,13 @@ RePoE 从同一 F77 快照中的 `BaseItemTypes`、`ItemClasses`、`Mods`、`Sta
 ```sh
 mise run data:prepare
 # For a separate regeneration candidate with a matching build lock:
-mise exec -- python3 pipeline/crafting_inputs.py --patch 0.5.5.5 \
+mise exec -- python3 -m pipeline.imports.crafting_inputs --patch 0.5.5.5 \
   --out "$POBR_CANDIDATE_OVERLAY/trade_crafting_sources.json"
-mise exec -- luajit pipeline/extract-trade-catalog.lua vendor/PathOfBuilding-PoE2/src "$POBR_CANDIDATE_OVERLAY/trade_catalog.json" "$POBR_CANDIDATE_OVERLAY/trade_crafting_sources.json"
-mise exec -- python3 pipeline/test-trade-crafting.py
-mise exec -- luajit pipeline/test-trade-stats.lua
-mise exec -- luajit pipeline/test-trade-crafting-fallback.lua
+mise exec -- luajit pipeline/legacy/extract-trade-catalog.lua vendor/PathOfBuilding-PoE2/src "$POBR_CANDIDATE_OVERLAY/trade_catalog.json" "$POBR_CANDIDATE_OVERLAY/trade_crafting_sources.json"
+mise exec -- python3 -m pipeline.imports.test_trade_crafting
+mise exec -- luajit pipeline/legacy/test-trade-stats.lua
+mise exec -- luajit pipeline/legacy/test-trade-crafting-fallback.lua
 mise run web test src/lib/tradeCatalog.test.ts src/lib/equipmentScore.test.ts src/lib/tradeOptimizer.test.ts
 ```
 
-`pipeline/regen-all.sh` 在昂贵生成器前核对 crafting 目标，生成失败中止整个候选；后续 catalog 的文本／交易 hash 关联仍有独立固定 vendor 与回归边界。单独省略 catalog 提取器第三个参数只产生 vendor 覆盖，不证明已消费制作事实。完整数据只留在独立来源仓库或临时构建／测试目录。
+`pipeline/legacy/regen-all.sh` 在昂贵生成器前核对 crafting 目标，生成失败中止整个候选；后续 catalog 的文本／交易 hash 关联仍有独立固定 vendor 与回归边界。单独省略 catalog 提取器第三个参数只产生 vendor 覆盖，不证明已消费制作事实。完整数据只留在独立来源仓库或临时构建／测试目录。

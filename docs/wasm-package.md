@@ -85,7 +85,7 @@ CI 会测试打包脚本、构建 WASM、打包，再解压到临时目录，计
 手动触发会保存 `wasm-release` Actions artifact 和大小报告。
 
 组包后的 runtime 候选另用以下窄检查，输入为同次 CI 的 standalone artifact 目录和
-`pipeline/runtime_pack.py materialize` 的新输出根（含 `bundle.json`、`data/CURRENT`）：
+`pipeline/runtime/runtime_pack.py materialize` 的新输出根（含 `bundle.json`、`data/CURRENT`）：
 
 ```bash
 node web/scripts/smoke-runtime-candidate.mjs --package <wasm-release-dir> --data <materialized-root> --expected-runtime <release.runtime_identity> --out <fresh-receipt.json>

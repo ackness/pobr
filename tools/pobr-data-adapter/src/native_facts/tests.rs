@@ -10,7 +10,7 @@ use crate::raw_source::sha256_hex;
 
 const ACTUAL_MANIFEST: &[u8] =
     include_bytes!("../../tests/fixtures/native-facts/final-manifest.json");
-const SOURCE_LOCK: &[u8] = include_bytes!("../../../../pipeline/sources.lock.json");
+const SOURCE_LOCK: &[u8] = include_bytes!("../../../../pipeline/imports/sources.lock.json");
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
 pub(super) struct Fixture {

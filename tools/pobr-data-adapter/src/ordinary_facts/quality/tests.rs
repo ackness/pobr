@@ -108,7 +108,7 @@ pub(in crate::ordinary_facts) fn fixture() -> Fixture {
     }
     fs::create_dir(f.root.join("policy")).unwrap();
     let mut policy: Value = serde_json::from_slice(include_bytes!(
-        "../../../../../pipeline/gem-quality/0.5.5.5-facts-policy.json"
+        "../../../../../pipeline/policies/gem-quality/0.5.5.5-facts-policy.json"
     ))
     .unwrap();
     policy["target"]["facts_manifest_sha256"] = f.args().expected_manifest_sha256.into();
@@ -672,7 +672,7 @@ fn same_rows_keep_legacy_raw_quality_vectors_scopes_metadata_and_guards() {
             "schema":"gem_quality_stats/v1", "generator":"pobr-data-adapter --gem-quality", "poe_version":"test",
             "source_receipt_sha256":sha256_hex(&fs::read(&source).unwrap()),"provenance":old["provenance"],"inputs":inputs,
             "compatibility":p["compatibility"],"unapplied_stat_set_scopes":new["_meta"]["unapplied_stat_set_scopes"],
-            "regen_command":"cargo run -p pobr-data-adapter -- --gem-quality pipeline/tables/English --quality-source pipeline/gem-quality/test.json --out data --patch test"
+            "regen_command":"cargo run -p pobr-data-adapter -- --gem-quality pipeline/tables/English --quality-source pipeline/legacy/gem-quality/test.json --out data --patch test"
         })
     );
     for (key, value) in [("schema", "wrong"), ("poe_version", "wrong")] {

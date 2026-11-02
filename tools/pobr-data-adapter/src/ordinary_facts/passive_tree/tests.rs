@@ -110,7 +110,7 @@ pub(in crate::ordinary_facts) fn fixture() -> Fixture {
     fs::create_dir(f.root.join("legacy")).unwrap();
     fs::create_dir(f.root.join("policy")).unwrap();
     let mut p: Value = serde_json::from_slice(include_bytes!(
-        "../../../../../pipeline/passive-tree/0.5.5.5-prepared-compat-policy.json"
+        "../../../../../pipeline/policies/passive-tree/0.5.5.5-prepared-compat-policy.json"
     ))
     .unwrap();
     p["legacy_metadata"]["value"] = json!({"tree":"Default","unknown_meta":[null,0,false],"classes":[

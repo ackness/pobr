@@ -8,7 +8,7 @@ Required inputs are `--ordinary-facts`, `--facts-manifest-sha256`, `--version`,
 `--out`, all four `--codec-source`/SHA256/`--codec-policy`/SHA256 arguments,
 and paired `--player-context`/`--player-manifest-sha256`. The codec source is the
 exact legacy unarmed array, and the policy is
-[`0.5.5.5-facts-policy.json`](../../pipeline/unarmed/0.5.5.5-facts-policy.json).
+[`0.5.5.5-facts-policy.json`](../../pipeline/policies/unarmed/0.5.5.5-facts-policy.json).
 The policy also pins the player source lock. All pins and semantic validation
 complete before reserving a fresh output; every input directory is protected.
 

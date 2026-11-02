@@ -9,8 +9,8 @@ export function runtimePackFixture(out) {
 import importlib.util
 from pathlib import Path
 import sys
-sys.path.insert(0, str(Path(sys.argv[1]) / 'pipeline'))
-spec = importlib.util.spec_from_file_location('fixture', Path(sys.argv[1]) / 'pipeline/test-runtime-pack.py')
+sys.path.insert(0, sys.argv[1])
+spec = importlib.util.spec_from_file_location('fixture', Path(sys.argv[1]) / 'pipeline/runtime/test_runtime_pack.py')
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 case = module.RuntimePackTests()

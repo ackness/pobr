@@ -123,6 +123,39 @@ Web 纯 TS/CSS 修改复用已有 WASM，按风险选择相关 Vitest、typechec
 `mise run web build` 已含 typecheck，普通文档不需要 Web 构建。
 自动化修改使用 `mise run check:workflows`，不编译 Rust；安装顺序变化还要验证冷依赖环境。
 
+<a id="repository-layout"></a>
+
+## 目录用途
+
+仓库按维护职责组织。先确认文件的读取方，再决定移动或清理；目录名称或文件日期不能证明它已经无用。
+
+| 目录 | 维护的内容 |
+| --- | --- |
+| `crates/`、`apps/`、`web/src/` | 计算引擎、应用与 Web 源码；Web 的生成输入另见下表 |
+| [tools/](../tools/README.md) | 有固定入口的 Rust 工具与 Lua 参考引擎桥接 |
+| [pipeline/](../pipeline/README.md) | 数据锁、组合声明、导入/适配程序及其测试 |
+| [devs/](../devs/README.md) | 开发/CI 命令、有效基线与 fixtures |
+| [data/](data-directory.md) | 活动版本指针与自有规则；外部完整数据按锁临时准备 |
+| [examples/](../examples/README.md) | 构筑输入、来源和回归语料；保留仍被动态遍历的组 |
+| [docs/](README.md)、[agent-docs/](../agent-docs/README.md) | 当前指南/契约，以及保留出处的早期机制资料 |
+| [.assets/](../.assets/README.md)、[docs/screenshots/](screenshots/README.md)、`web/public/` | README 图片、带来源的界面说明、应用静态资源；不是临时截图目录 |
+| `.github/`、`.claude/skills/` | CI 与贡献流程、可复现的代理操作入口 |
+
+下面这些是本地准备物，不随 PoBR Git 提交。它们仍可能是下一次开发或验证需要的输入，
+不能将整个目录当作已完成任务的垃圾删除。
+
+| 本地路径 | 用途与恢复入口 |
+| --- | --- |
+| `target/` | 本 worktree 的编译复用目录；按下文存储决策保留 warm 产物 |
+| `web/node_modules/` | frozen Web 依赖；`mise run setup` 准备 |
+| `data/<版本>/`、外部 shared 文件、`web/src/fixtures/*.json` | 固定 owner 输入；`mise run data:prepare` 准备当前组合，旧版仅按显式历史锁准备 |
+| `web/src/wasm/pkg/`、`web/public/data/`、`web/public/build-references/` | Web 构建、数据同步与打包准备物；入口见 [Web 安装说明](../web/README.md) |
+| `vendor/` | 按 `devs/reference-sources.json` 固定的 PoB2 参考检出；`mise run vendor` 准备 |
+| `.cache/`、可选的 `study/` | 临时导入、报告与本地研究；不维护第二份“当前产品说明” |
+
+完成的个人计划和历史收据需要长期保留时，可以移至仓库外的本地归档并保留路径索引；
+将有效约定更新到相应指南或测试。归档中的旧进度记录不作为当前状态，公开文档也不链接机器专属的归档路径。
+
 ## 缓存与磁盘占用
 
 本地由 mise 提供工具，CI 由官方或受维护的 Actions 安装；两者读取相同的版本声明，
@@ -295,7 +328,7 @@ PR 不在 workflow 层过滤文档，以免必需检查永久 pending：只运�
 和显示文本产物，要求完整与紧凑消费者的投影业务数据一致，再用同次WASM实际消费最终物化候选；其候选不切换站点活动数据。fork 和 Dependabot 使用同样的只读、无发布密钥路径；
 首次外部贡献是否批准执行由 GitHub 设置决定，执行许可不代表正确性批准。
 
-自动数据采用的[完整契约](../pipeline/latest-data.md)另要求专用App／PAT凭据、远端严格且含管理员的必需`PR gate`保护，以及当前两owner完整发布frontier。默认token的PR事件可能仍需执行批准；建PR或dispatch成功不能当作CI通过。缺凭据／保护或任一gate未完成时保持原锁和CURRENT；本地文件不等于托管设置已启用。
+自动数据采用的[完整契约](../pipeline/latest/latest-data.md)另要求专用App／PAT凭据、远端严格且含管理员的必需`PR gate`保护，以及当前两owner完整发布frontier。默认token的PR事件可能仍需执行批准；建PR或dispatch成功不能当作CI通过。缺凭据／保护或任一gate未完成时保持原锁和CURRENT；本地文件不等于托管设置已启用。
 
 完整 CI 包括 fmt/Clippy（含诊断 features）、workspace tests/doctest、parity/reference 退步断言、
 活动数据生成产物的 byte-diff、i18n、数据兼容、Web 类型/单测/Worker、真实 WASM 契约与打包计算。
@@ -318,13 +351,13 @@ mise run full                             # 显式本地 Rust 全量检查，不
 其 actionlint 1.7.12 尚不认识 GitHub 已支持的 `queue: max`，只豁免该特定未知键错误，
 其余语法与表达式检查仍启用；队列语义见 [GitHub 文档](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)。
 
-完整 Web CI 还按 [`pipeline/data-requirements.json`](../pipeline/data-requirements.json) 和独立的
-[`data-imports.lock.json`](../pipeline/data-imports.lock.json) 获取固定 RePoE/翻译 Git 输入，
+完整 Web CI 还按 [`pipeline/runtime/data-requirements.json`](../pipeline/runtime/data-requirements.json) 和独立的
+[`data-imports.lock.json`](../pipeline/imports/data-imports.lock.json) 获取固定 RePoE/翻译 Git 输入，
 校验后上传精简显示候选与独立 receipt。完整运行输入另由
-[`build-data.lock.json`](../pipeline/build-data.lock.json) 临时组合；各实物消费者显式准备当前版本，
+[`build-data.lock.json`](../pipeline/runtime/build-data.lock.json) 临时组合；各实物消费者显式准备当前版本，
 多版本测试再准备固定回滚锁并保持 CURRENT。显示候选不自动采用，不将来源／绑定大表打进
-`web-dist`，也不把完整快照存回 PoBR Git；见[定向数据导入](../pipeline/data-imports.md)与
-[构建数据](../pipeline/build-data.md)。
+`web-dist`，也不把完整快照存回 PoBR Git；见[定向数据导入](../pipeline/imports/data-imports.md)与
+[构建数据](../pipeline/runtime/build-data.md)。
 
 ## Agent 提交、review 与合并
 

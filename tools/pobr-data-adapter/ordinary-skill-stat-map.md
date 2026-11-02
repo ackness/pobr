@@ -15,7 +15,7 @@ mise exec -- cargo run --locked -p pobr-data-adapter -- \
   --version 0.5.5.5 \
   --codec-source data/0.5.5.4.2/overlay/skill_stat_map.json \
   --codec-source-sha256 944e86eb729899a547daedc8eab6741d773eb40ec1f64a380a9acd2c20054661 \
-  --codec-policy pipeline/skill-stat-map/0.5.5.5-legacy-policy.json \
+  --codec-policy pipeline/policies/skill-stat-map/0.5.5.5-legacy-policy.json \
   --codec-policy-sha256 72b2c0503d5127eecd74743b6a81a180fe50b2fc51bead1245620f3665d8e6a7 \
   --branch-codec data/0.5.5.4.2/overlay/stat_set_labels.json \
   --branch-codec-sha256 825e594f43f07a4115ee29e57622670688e5d1c099f7e11a30ba66b3b80cca06 \

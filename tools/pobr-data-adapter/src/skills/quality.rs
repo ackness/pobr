@@ -285,7 +285,7 @@ fn build(args: &QualityArgs) -> Result<String, String> {
             compatibility: &receipt.compatibility,
             unapplied_stat_set_scopes: converted.scopes,
             regen_command: format!(
-                "cargo run -p pobr-data-adapter -- --gem-quality pipeline/tables/English --quality-source pipeline/gem-quality/{}.json --out data --patch {}",
+                "cargo run -p pobr-data-adapter -- --gem-quality pipeline/tables/English --quality-source pipeline/legacy/gem-quality/{}.json --out data --patch {}",
                 args.patch, args.patch
             ),
         },

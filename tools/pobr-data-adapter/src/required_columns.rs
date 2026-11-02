@@ -495,7 +495,7 @@ mod tests {
             );
         }
         let config: serde_json::Value =
-            serde_json::from_str(include_str!("../../../pipeline/config.json")).unwrap();
+            serde_json::from_str(include_str!("../../../pipeline/legacy/config.json")).unwrap();
         for (table, column) in [("Mods", "Families"), ("ModFamily", "Id")] {
             assert!(
                 config["tables"]

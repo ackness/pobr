@@ -134,10 +134,12 @@ pub(in crate::ordinary_facts) fn fixture(catalog: Catalog) -> Fixture {
     }
     let policy: Value = serde_json::from_slice(match catalog {
         Catalog::Minions => {
-            include_bytes!("../../../../../pipeline/actors/0.5.5.5-minions-policy.json").as_slice()
+            include_bytes!("../../../../../pipeline/policies/actors/0.5.5.5-minions-policy.json")
+                .as_slice()
         }
         Catalog::Spectres => {
-            include_bytes!("../../../../../pipeline/actors/0.5.5.5-spectres-policy.json").as_slice()
+            include_bytes!("../../../../../pipeline/policies/actors/0.5.5.5-spectres-policy.json")
+                .as_slice()
         }
     })
     .unwrap();
@@ -249,14 +251,14 @@ fn skill_fixture(catalog: Catalog) -> Fixture {
         };
     }
     let policy: Value = serde_json::from_slice(match catalog {
-        Catalog::Minions => {
-            include_bytes!("../../../../../pipeline/actors/0.5.5.5-minions-skills-policy.json")
-                .as_slice()
-        }
-        Catalog::Spectres => {
-            include_bytes!("../../../../../pipeline/actors/0.5.5.5-spectres-skills-policy.json")
-                .as_slice()
-        }
+        Catalog::Minions => include_bytes!(
+            "../../../../../pipeline/policies/actors/0.5.5.5-minions-skills-policy.json"
+        )
+        .as_slice(),
+        Catalog::Spectres => include_bytes!(
+            "../../../../../pipeline/policies/actors/0.5.5.5-spectres-skills-policy.json"
+        )
+        .as_slice(),
     })
     .unwrap();
     write(&f, POLICY, &policy);
@@ -347,14 +349,14 @@ fn prepared_fixture(catalog: Catalog) -> (Fixture, super::super::BranchCodecArgs
     f.seal();
     let extra = super::super::tests::supplement(&f, &json!({"MonsterCategories":categories}));
     let mut p: Value = serde_json::from_slice(match catalog {
-        Catalog::Minions => {
-            include_bytes!("../../../../../pipeline/actors/0.5.5.5-minions-prepared-policy.json")
-                .as_slice()
-        }
-        Catalog::Spectres => {
-            include_bytes!("../../../../../pipeline/actors/0.5.5.5-spectres-prepared-policy.json")
-                .as_slice()
-        }
+        Catalog::Minions => include_bytes!(
+            "../../../../../pipeline/policies/actors/0.5.5.5-minions-prepared-policy.json"
+        )
+        .as_slice(),
+        Catalog::Spectres => include_bytes!(
+            "../../../../../pipeline/policies/actors/0.5.5.5-spectres-prepared-policy.json"
+        )
+        .as_slice(),
     })
     .unwrap();
     p["prepared_fields"]["category_manifest_sha256"] = json!(extra.sha256);

@@ -20,7 +20,7 @@ or change this mode's partial-candidate contract.
 mise exec -- cargo run -p pobr-data-adapter -- \
   --native-facts /path/to/repoe-facts \
   --expected-manifest-sha256 <externally-trusted-64-lowercase-hex-digest> \
-  --source-lock pipeline/sources.lock.json \
+  --source-lock pipeline/imports/sources.lock.json \
   --out .cache/new-native-candidate
 ```
 

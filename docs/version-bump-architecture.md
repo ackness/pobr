@@ -23,12 +23,20 @@ PoBR 将应用版本、基础库版本和游戏数据版本分开。RePoE 独立
 其余保留共享项；整文件回退的数据域在版本文件存在时使用版本文件，缺失时读取共享文件。
 具体选择以 `pobr-gamedata` 各域的加载器为准，不能把一种合并方式推广到所有文件。
 
+## 当前实现与后续工作
+
+三仓库的固定输入、普通六域生产、完整／紧凑组包、当前 `0.5.5.5` 本地采用与旧版恢复均已接通。
+两 owner 发布索引和 PoBR latest 控制器已合并；默认构建仍重放锁，发布索引只负责发现候选。
+自动采用还缺专用凭据与一次真实新发布的全链演练，owner 新原料生产也不由索引自动完成。
+字段／语义和玩家流程的剩余范围统一维护在[架构现状](data-architecture.md#5-当前已有数据与实际缺口)，
+托管启用条件见[latest](../pipeline/latest/latest-data.md#verified-rollout-status-2026-11-02-utc)，不在本页复制阶段待办。
+
 ## 开发入口
 
 - 数据版本选择、manifest 校验、身份摘要及快照生命周期见[构筑模型](build-model.md#数据快照身份与会话)。
-- 当前／旧版的临时导入及完整身份校验见[构建数据](../pipeline/build-data.md)；候选适配和回滚保护见[数据管线](../pipeline/README.md)。
-- 语言生成由[独立 producer](../pipeline/locale-generation.md)完成，新目标需显式匹配的 generation lock；代码合并不自动切换 CURRENT 或认证来源。
-- 历史 Git 树的[独立输入包](../pipeline/tree-inputs.md)只用于诊断候选，不能据其旧版本标签切换活动数据。
+- 当前／旧版的临时导入及完整身份校验见[构建数据](../pipeline/runtime/build-data.md)；候选适配和回滚保护见[数据管线](../pipeline/README.md)。
+- 语言生成由[独立 producer](../pipeline/imports/locale-generation.md)完成，新目标需显式匹配的 generation lock；代码合并不自动切换 CURRENT 或认证来源。
+- 历史 Git 树的[独立输入包](../pipeline/tree/tree-inputs.md)只用于诊断候选，不能据其旧版本标签切换活动数据。
 - 当前工具、缓存和验证范围见[开发工作流](development-workflow.md)。
 
 本页说明当前目录职责；操作步骤和 schema 细节由上述文档分别维护。
