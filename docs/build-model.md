@@ -12,8 +12,9 @@ INC 表示相加的 increased／reduced，MORE 表示相乘的 more／less。
 
 `pobr_gamedata::data_version()` 按以下顺序选择活动版本：先读 `POBR_DATA_VERSION`，
 再读 `POBR_DATA_ROOT/CURRENT`；根目录默认是仓库的 `data/`。两者都没有时报错，代码不内置版本号。
-仓库保留活动版本及最近入库的两个版本，使用 `mise run data:prune` 清理。
-国服与国际服版本号规则不同，所以“最近”按入库顺序，不比较版本字符串。
+完整游戏／语言快照通过独立来源的不可变锁临时物化，不进入 PoBR Git。
+当前版本由默认锁准备；历史回滚按明确的旧版本锁恢复，见[固定数据准备与选择](../pipeline/locked-update.md)。
+清理已结束任务的临时目录前，先确认进程占用和证据保留需求，不按版本号或目录日期自动删除。
 
 schema 3 的 `manifest.json` 列出运行时文件和 SHA-256 摘要。
 原生文件与 WASM 内存数据都只承认清单中的文件，历史树枚举也受清单约束。
