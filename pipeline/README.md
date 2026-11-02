@@ -8,6 +8,8 @@
 四份完整快照、七份外部shared、历史大policy及完整语言／API样本已迁出当前Git tree；无旧PoBR数据artifact回退。本地活动目标保持0.5.5.5，Git历史不改写。详见[存储边界](../docs/data-architecture.md#1-架构决策与三仓库职责)。
 
 [最新完整发布同步](latest/latest-data.md)通过两owner发布索引发现候选，冻结完整组合，再由精确head的PR／Full门禁与实际最终包消费验证后条件采用。普通构建继续按不可变锁重放；索引bootstrap、官方版本观察和owner源码更新均不代表新数据已生成或已采用。
+两 owner 索引及 PoBR 控制器均已合并；严格 PR gate／管理员保护已配置，专用同步凭据与真实新发布的端到端采用仍待完成。
+当前核对与优化顺序以[架构现状](../docs/data-architecture.md#5-当前已有数据与实际缺口)和 [latest 启用状态](latest/latest-data.md#verified-rollout-status-2026-11-02-utc)为准。
 
 ## 功能目录
 
@@ -234,7 +236,7 @@ PoBR 沿用这个边界：提取器自动吸收可表达的规则，人工修正
 ## 固定输入、版本与候选
 
 当前输入由[build-data](runtime/build-data.md)、[ordinary](runtime/ordinary/ordinary-inputs.md)和[显示导入](imports/data-imports.md)的独立锁声明；
-`data/CURRENT`只选择本地运行版本。`config.json`仍绑定历史原表兼容诊断的旧输入，不是latest或活动指针。
+`data/CURRENT`只选择本地运行版本。`legacy/config.json`仍绑定历史原表兼容诊断的旧输入，不是latest或活动指针。
 PoBR不再安装`pathofexile-dat`、下载原始索引或导出官方原表。官方版本发现和资源采集在独立RePoE执行，
 语言在翻译库生成；成功观察到一个补丁号也不能认证全部原料、机制或改变CURRENT。
 
@@ -301,21 +303,21 @@ pipeline/diagnostics/diff-vendor-calcs.sh <old-sha> <new-sha> [--out <file>]
   `MonsterResistances.Fire1/Cold1/Lightning1/Chaos1` 导出到 `base/monster_resistances.json`，
   按 monster variety id 索引。使用普通稀有度的基础值（0.5 每列只有一个值），合并类型链接的
   全部抗性记录，保留负数弱点；空链接为零。该文件的 `_meta` 保存原始导出收据与三张输入表的
-  SHA-256；它目前只提供数据，不改变召唤物计算。
+  SHA-256；普通 BuildData 已将其写入 minion／spectre 定义并用于基础抗性计算，
+  不代表其它召唤物语义已全部迁移或认证。
 - `GemEffects.GrantedEffectDisplayOrder` 在 `pathofexile-dat@15.2.0` 使用的社区 schema 中
   尚未命名（2026-10-16 导出验证），不能按此列名导出。显示顺序继续由
   `overlay/gem_effects.json` 提供；不为未命名列猜测 schema override。
-- **CDN 只保留当前补丁**：GGG patch CDN 会下线旧版本，旧补丁请求返回 404。`.cache/`
-  里已缓存的 bundle 可继续离线导出**既有表的全部列**（整张 `.datc64` 在同一 bundle 里）；
-  但**新增整表**若其 bundle 未缓存则无法补下——这类表记录在 `config.json` 的
-  `_tablesUnavailableForPinnedPatch`，数据改走 `sync-pob-catalog extract-lua` 兜底
-  （vendor Lua → `overlay/`），版本升级重下时再移回 `tables` 数组。
+- **历史资源可用性**：已观察到部分旧补丁资源返回 404，不能据此断言所有旧资源必然下线。
+  固定归档可离线重放已保存的 DAT；未取得的整表／资源保持来源缺口。当前采集和新表生产归 RePoE，
+  不再通过 PoBR 旧 Node 下载器或修改历史 `config.json` 升版。固定 vendor 字段可作为显式保留依赖，
+  不能在采集失败时静默兜底为目标补丁的官方事实。
 
 ## 列名陷阱：社区 schema vs PoB2 spec.lua（M1-W0 2026-06-11 核验）
 
 `pathofexile-dat` 用 [poe-tool-dev/dat-schema](https://github.com/poe-tool-dev/dat-schema) 的列名；
-PoB2 `Export/spec.lua` 对**同一物理列**有不同命名。`config.json` 必须用社区名下载，
-adapter 落库时按 PoB2 语义重命名。已核验对照（PoE2 段，validFor=2）：
+PoB2 `Export/spec.lua` 对**同一物理列**有不同命名。下表用于解释历史 `legacy/config.json`／DTO 兼容路径，
+不再是当前下载配置；新导出应在 RePoE 固定物理列／schema，再由 adapter 明确映射。历史核验对照（PoE2 段，validFor=2）：
 
 | 表 | 社区 schema 列名（下载用） | PoB2 spec.lua 名（语义） |
 |----|--------------------------|--------------------------|

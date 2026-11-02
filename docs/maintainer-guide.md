@@ -165,7 +165,7 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 - 技能 stat 的含义写进 `crates/pobr-core/src/rules/skill_stats.rs`：以游戏 stat id 为键，用引擎自己的 modifier 表达。这张表先于抽取来的 `skill_stat_map.json` 查询；抽取映射拒绝或缺失的 stat（`mise run diagnose` 第 4 节）优先在这里补，不扩充按 PoB2 名称写的白名单。
 - 不新增“因为 vendor `X.lua:行号` 这样写”式的注释：行号随 vendor 升级失效，也说明不了游戏规则。改到旧代码时顺手换成规则本身的描述。
 - 结果不同时，先按游戏词条和数据判断谁对，不默认 PoB2 正确。PoBR 自有的词条规则声明 `exporter: "absent"`（导出工具没有实现）或 `"differs"`（口径不同），并填 `game_source`；absent 规则在参考口径下自动排除。确认的有意差异写进 [pob2-differences.md](pob2-differences.md)，逐行登记到 `devs/scripts/known-differences.json`。
-- 仍从 PoB2 抽取的数据（词条解析规则、技能 stat 映射、配置项、暗金、符文、召唤物映射、stat 描述等）与建议的退出顺序见 [pob2-differences.md](pob2-differences.md#数据来源现状与退出顺序)。这些数据域的更新仍依赖 PoB2 导出；PoBR 自有机制规则可独立实现，不能据此把 PoB2 覆盖当作上限。
+- 普通技能、树、基底、符文、actor 与描述已逐批由目标事实接回原消费者；parser、config、special、部分 stat-map／关系、暗金与兼容字段仍保留固定 PoB2／社区解释。按字段区分自主事实、策展与历史 codec，不把整个已迁域重新归为 PoB2 导出依赖。现存依赖和退出顺序见 [pob2-differences.md](pob2-differences.md#数据来源现状与退出顺序)；自有规则仍以游戏依据和实际输出需求实现。
 
 `vendor/PathOfBuilding-PoE2/` 是固定 commit 的完整检出（gitignore；`mise run vendor` 按 `devs/reference-sources.json` 的独立参考 pin 克隆，`mise run vendor:lua "<pattern>"` 搜索）。核对公式时读本地 Lua，不去网上找。生产数据的来源与参考测试版本分别维护；独立树域候选不会发布或覆盖活动快照，见[数据管线](../pipeline/README.md#固定来源与独立树候选)。
 

@@ -70,6 +70,30 @@ compact pack and runs `smoke-runtime-candidate.mjs` against that candidate alone
 The package's old embedded data is never a fallback. Calculation provenance,
 worked builds, editing/reopening and preserved diagnostics enter its receipt.
 
+## Verified rollout status (2026-11-02 UTC)
+
+RePoE PR14 and translation PR6 are merged; both default indexes remain at sequence 1.
+PoBR PR231 is merged, and its [exact-head Full validation](https://github.com/ackness/pobr/actions/runs/41393972787)
+passed at `cf573c26`, including the same-run final compact candidate consumed by real WASM.
+The [current master integration](https://github.com/ackness/pobr/actions/runs/41402088234)
+also passed at `23341f06`. Immutable composition verification and both owner declaration
+checks passed in this audit. A fresh official observation at 09:01 UTC advertised
+`0.5.5.5`; `check` returned `no-new-publication`, preserving the selected composition.
+
+Read-only hosted checks confirm master requires an up-to-date `PR gate` and enforces
+it for administrators. The repository-level `DATA_SYNC_TOKEN` secret is absent;
+unattended proposal/adoption remains inactive. The observed `workflow_run` callback
+for ordinary master work was skipped by its branch filter, which does not verify a
+scheduled proposal or a successful adoption. A genuinely new owner publication still
+needs an end-to-end proposal/gates/adoption exercise. `auto_eligible` from `check`
+describes metadata/freshness eligibility only, not credential readiness or adoption.
+
+The remaining work is owner-side new-input production and publication, dedicated
+sync authentication, the real new-publication exercise and the source/semantic
+limits in the [current architecture](../../docs/data-architecture.md#51-剩余字段与关闭条件).
+Do not repeat bootstrap registration or decode unchanged large inputs to establish
+that progress.
+
 ## Automatic proposal and adoption
 
 [data-sync.yml](../../.github/workflows/data-sync.yml) checks every six hours, on
