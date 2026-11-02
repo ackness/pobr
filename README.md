@@ -137,6 +137,7 @@ The seven internal libraries keep independent versions.
 | I want to… | Start here |
 | --- | --- |
 | Find a guide | [Documentation index](docs/README.md) |
+| Understand the folders | [Source, data and local artifacts](docs/development-workflow.md#repository-layout) |
 | Contribute code | [CONTRIBUTING.md](CONTRIBUTING.md), [AGENTS.md](AGENTS.md), [maintainer guide](docs/maintainer-guide.md) |
 | Add or fix a modifier | [Modifier guide](docs/contributing-mods.md), [change recipes](docs/recipes.md) |
 | Understand the API | [Build model](docs/build-model.md), [calculation outputs](docs/calc-outputs.md), [WASM package](docs/wasm-package.md) |

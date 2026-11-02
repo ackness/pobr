@@ -123,6 +123,39 @@ Web 纯 TS/CSS 修改复用已有 WASM，按风险选择相关 Vitest、typechec
 `mise run web build` 已含 typecheck，普通文档不需要 Web 构建。
 自动化修改使用 `mise run check:workflows`，不编译 Rust；安装顺序变化还要验证冷依赖环境。
 
+<a id="repository-layout"></a>
+
+## 目录用途
+
+仓库按维护职责组织。先确认文件的读取方，再决定移动或清理；目录名称或文件日期不能证明它已经无用。
+
+| 目录 | 维护的内容 |
+| --- | --- |
+| `crates/`、`apps/`、`web/src/` | 计算引擎、应用与 Web 源码；Web 的生成输入另见下表 |
+| [tools/](../tools/README.md) | 有固定入口的 Rust 工具与 Lua 参考引擎桥接 |
+| [pipeline/](../pipeline/README.md) | 数据锁、组合声明、导入/适配程序及其测试 |
+| [devs/](../devs/README.md) | 开发/CI 命令、有效基线与 fixtures |
+| [data/](../data/README.md) | 活动版本指针与自有规则；外部完整数据按锁临时准备 |
+| [examples/](../examples/README.md) | 构筑输入、来源和回归语料；保留仍被动态遍历的组 |
+| [docs/](README.md)、[agent-docs/](../agent-docs/README.md) | 当前指南/契约，以及保留出处的早期机制资料 |
+| [.assets/](../.assets/README.md)、[docs/screenshots/](screenshots/README.md)、`web/public/` | README 图片、带来源的界面说明、应用静态资源；不是临时截图目录 |
+| `.github/`、`.claude/skills/` | CI 与贡献流程、可复现的代理操作入口 |
+
+下面这些是本地准备物，不随 PoBR Git 提交。它们仍可能是下一次开发或验证需要的输入，
+不能将整个目录当作已完成任务的垃圾删除。
+
+| 本地路径 | 用途与恢复入口 |
+| --- | --- |
+| `target/` | 本 worktree 的编译复用目录；按下文存储决策保留 warm 产物 |
+| `web/node_modules/` | frozen Web 依赖；`mise run setup` 准备 |
+| `data/<版本>/`、外部 shared 文件、`web/src/fixtures/*.json` | 固定 owner 输入；`mise run data:prepare` 准备当前组合，旧版仅按显式历史锁准备 |
+| `web/src/wasm/pkg/`、`web/public/data/`、`web/public/build-references/` | Web 构建、数据同步与打包准备物；入口见 [Web 安装说明](../web/README.md) |
+| `vendor/` | 按 `devs/reference-sources.json` 固定的 PoB2 参考检出；`mise run vendor` 准备 |
+| `.cache/`、可选的 `study/` | 临时导入、报告与本地研究；不维护第二份“当前产品说明” |
+
+完成的个人计划和历史收据需要长期保留时，可以移至仓库外的本地归档并保留路径索引；
+将有效约定更新到相应指南或测试。归档中的旧进度记录不作为当前状态，公开文档也不链接机器专属的归档路径。
+
 ## 缓存与磁盘占用
 
 本地由 mise 提供工具，CI 由官方或受维护的 Actions 安装；两者读取相同的版本声明，

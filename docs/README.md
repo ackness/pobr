@@ -36,6 +36,7 @@
 | 工作 | 文档 |
 | --- | --- |
 | 环境、定向测试、缓存、CI、review 与发版 | [开发工作流](development-workflow.md) |
+| 区分源码、数据、参考资料与可重建产物 | [目录用途](development-workflow.md#repository-layout) |
 | 改一条词条、一个输出或一种机制 | [改动配方](recipes.md)、[词条规则指南](contributing-mods.md) |
 | 排查数值差异、输入损失和未支持效果 | [诊断与逐行台账](diagnostics.md) |
 | 升级游戏数据、候选校验与生成来源 | [数据管线](../pipeline/README.md)、[数据层结构](version-bump-architecture.md)、[宝石品质](../pipeline/gem-quality/README.md) |
