@@ -61,7 +61,7 @@ def activate(prepared, data_root, expected_current, validator=None):
         receipt = bundle.verify(prepared)
         version = receipt["data_version"]
         # Require a usable installed previous snapshot for rollback.
-        bundle.snapshot_inputs(data_root.parent, expected_current)
+        bundle.data_inputs(data_root, expected_current)
         shared = fingerprint(data_root / "overlay-common")
         wanted_shared = {name.removeprefix("data/overlay-common/"): digest
                          for name, digest in receipt["files"].items()

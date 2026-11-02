@@ -27,8 +27,9 @@ observation runs in the independent RePoE checkout with `mise run client:version
 An observed version never edits PoBR locks or selects CURRENT.
 
 Selection requires an installed, hash-valid schema-3 previous snapshot. It verifies the
-candidate and requires the entire shared layer to match the installed one. A
-change to shared rules/facts requires a separate reviewed migration; this command
+candidate and requires the entire shared layer to match the installed one. A custom
+`--data-root` names that installed directory directly, regardless of its basename.
+A change to shared rules/facts requires a separate reviewed migration; this command
 does not overwrite them or claim arbitrary cross-version shared compatibility.
 Current and fixed rollback packages use the already verified common bytes.
 

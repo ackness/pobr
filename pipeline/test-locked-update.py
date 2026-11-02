@@ -99,6 +99,34 @@ class LockedUpdateTests(unittest.TestCase):
         self.assertEqual(bundle.snapshot_inputs(self.data.parent, '9.1')[1], self.receipt['runtime_identity'])
         self.assertEqual(bundle.verify(self.f.out), self.receipt)
 
+    def test_custom_data_directory_can_select_and_roll_back(self):
+        rollback = self.root / 'rollback'
+        old = bundle.create(self.data.parent, rollback)
+        directory = self.data.with_name('runtime-store')
+        self.data.rename(directory)
+        self.data = directory
+        self.patch = self.data / '9.1/patch/base/skills.json'
+        update.activate(self.f.out, self.data, '8.1', self.validate)
+        self.assertEqual((self.data / 'CURRENT').read_bytes(), b'9.1\n')
+        self.before_validation_marker = b'9.1\n'
+        update.activate(rollback, self.data, '9.1', self.validate)
+        self.assertEqual((self.data / 'CURRENT').read_bytes(), b'8.1\n')
+        self.assertEqual(bundle.data_inputs(self.data, '8.1')[1], old['runtime_identity'])
+        self.assertEqual(len(self.validation_calls), 2)
+        self.assertEqual(self.patch.read_bytes(), b'[{"user":"keep target patch"}]\n')
+        self.assertFalse((self.data / '8.1/patch').exists())
+
+    def test_custom_data_directory_checks_its_previous_snapshot_not_a_sibling(self):
+        directory = self.data.with_name('runtime-store')
+        shutil.copytree(self.data, directory)
+        self.data = directory
+        (self.data / '8.1/base/skills.json').write_bytes(b'[]')
+        before = self.tree()
+        with self.assertRaisesRegex(ValueError, 'hash mismatch'):
+            update.activate(self.f.out, self.data, '8.1', self.validate)
+        self.assertEqual(self.tree(), before)
+        self.assertFalse(self.validation_calls)
+
     def test_failed_marker_publication_restores_previous_target_and_current(self):
         before = self.tree()
         original = Path.replace

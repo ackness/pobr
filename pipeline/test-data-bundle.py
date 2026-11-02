@@ -58,6 +58,16 @@ class BundleTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 bundle.create(self.root, output)
 
+    def test_explicit_data_directory_keeps_canonical_paths_and_integrity_checks(self):
+        expected = bundle.snapshot_inputs(self.root, "9.1")
+        directory = self.root / "runtime-store"
+        (self.root / "data").rename(directory)
+        self.assertEqual(bundle.data_inputs(directory, "9.1"), expected)
+        self.assertTrue(all(name.startswith("data/") for name in expected[0]))
+        (directory / "9.1/base/skills.json").write_text("[]")
+        with self.assertRaisesRegex(ValueError, "hash mismatch"):
+            bundle.data_inputs(directory, "9.1")
+
     def test_corrupt_snapshot_or_domain_candidate_never_completes(self):
         self.write("data/9.1/base/skills.json", "[]")
         with self.assertRaisesRegex(ValueError, "hash mismatch"):
