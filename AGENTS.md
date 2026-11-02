@@ -19,6 +19,8 @@ tests to resolve disagreements with any document.
   game/language data stays outside PoBR Git; `data/` tracks `CURRENT` and owned
   rules. Real-data tests/builds use `mise run data:prepare`; pure fixture tests
   need only their declared inputs. `web/public/` holds static assets and the Pages Worker.
+  The data design is [docs/data-architecture.md](docs/data-architecture.md); current
+  gaps and order are in [docs/data-status.md](docs/data-status.md).
 - `devs/reference-sources.json` pins the PoB2 test reference independently of
   production data. Official tree domain candidates stay outside published `data/`.
 - Rust integration tests live in each crate's `tests/`; frontend unit tests

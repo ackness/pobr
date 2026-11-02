@@ -5,11 +5,11 @@
 尚未迁移的字段继续保留明确固定的 vendor／社区来源，不称为已从客户端自主再生。
 
 当前存储职责：游戏数据归RePoE、语言数据归翻译库，PoBR只提交代码、需求／版本锁、来源元数据及小型合成夹具；CI构建和需要实物的测试在临时目录导入数据并生成发布资产。
-四份完整快照、七份外部shared、历史大policy及完整语言／API样本已迁出当前Git tree；无旧PoBR数据artifact回退。本地活动目标保持0.5.5.5，Git历史不改写。详见[存储边界](../docs/data-architecture.md#1-架构决策与三仓库职责)。
+四份完整快照、七份外部shared、历史大policy及完整语言／API样本已迁出当前Git tree；无旧PoBR数据artifact回退。本地活动目标保持0.5.5.5，Git历史不改写。详见[存储边界](../docs/data-architecture.md#4-存储边界)。
 
 [最新完整发布同步](latest/latest-data.md)通过两owner发布索引发现候选，冻结完整组合，再由精确head的PR／Full门禁与实际最终包消费验证后条件采用。普通构建继续按不可变锁重放；索引bootstrap、官方版本观察和owner源码更新均不代表新数据已生成或已采用。
 两 owner 索引及 PoBR 控制器均已合并；严格 PR gate／管理员保护已配置，专用同步凭据与真实新发布的端到端采用仍待完成。
-当前核对与优化顺序以[架构现状](../docs/data-architecture.md#5-当前已有数据与实际缺口)和 [latest 启用状态](latest/latest-data.md#verified-rollout-status-2026-11-02-utc)为准。
+当前核对与优化顺序以[数据现状](../docs/data-status.md)和 [latest 启用状态](latest/latest-data.md#verified-rollout-status-2026-11-02-utc)为准。
 
 ## 功能目录
 
@@ -62,8 +62,8 @@ JSON 的职责各不相同：`*.lock.json` 固定输入身份，`*requirements.j
 [sources.lock.json](imports/sources.lock.json)保留历史官方树输入及固定客户端资源位置、原始SHA-256、大小、decoder／schema和采集证据。
 `acquisition_acceptances`分别接受F77、六DAT、91 tree／IT、10 CSD、12语言原生资源，以及精确六OT／两描述DAT字节；
 `retained_input_acceptances`另记locale／shared／compat三类有界保留决定。各项只接受明确scope和pins，不认证全部机制、SC客户端身份或分发许可。
-本地活动版本现为`0.5.5.5`，完整双语runtime `dba0615e`；旧`0.5.5.4.2`由独立回滚锁按需恢复。
-采集、领域解释、消费者验证、本地采用及远端发布仍分开；完整状态见[架构现状](../docs/data-architecture.md#5-当前已有数据与实际缺口)。
+旧`0.5.5.4.2`由独立回滚锁按需恢复，不改变 `CURRENT`。
+采集、领域解释、消费者验证、本地采用及远端发布仍分开；完整状态见[数据现状](../docs/data-status.md)。
 下方`data:tree:source`／`data:tree:candidate`按[独立历史树输入锁](tree/tree-inputs.md)消费 RePoE 包，不是当前普通树的再生流程。
 PoB2 的测试参考版本独立登记在 [devs/reference-sources.json](../devs/reference-sources.json)，
 `mise run vendor` 不再读取生产 parser 元数据选择参考版本。
@@ -122,12 +122,7 @@ PoBR 领域候选，见[候选契约](../tools/pobr-data-adapter/native-facts.md
 这些领域输出经既有 schema-3 组包和封存后可由普通 GameData/BuildData 消费；
 上方独立树域与 schema-4 受限原生候选仍是不同入口，不代表普通完整路径的现行覆盖范围。
 
-本地活动快照`data/0.5.5.5`有67个清单文件及manifest，加18份未变shared；manifest `73b2d77e`／完整runtime `dba0615e`。制作目录现为必需的独立事实投影；92条业务记录与原基线相同，仅来源元数据改变。
-它保留简繁两种词典和历史树。精确7e4d0c23完整CI将当前组合投影为同一SC紧凑release `9932ea87`／runtime `ec4f3776`（82个虚拟文件）；产物归档摘要与block身份已核验，新来源锁保留在构建收据。
-六域双次生产、356条开发输入的TypeScript／WASM API流程及三对CLI结果沿用各自固定证据；完整双语候选另核一个CLI／WASM构筑和采用／回滚演练。
-本地默认CLI读取新身份，Web同步86个运行文件；本地复用固定CLI，未重编译Rust／WASM或重跑原356条API流程。精确7e4d0c23的完整CI另执行Rust分片、真实WASM／Web与运行组包，E2E未选。
-描述、继承tags、actor字段及保留兼容的分母和关闭条件见[架构现状](../docs/data-architecture.md#5-当前已有数据与实际缺口)。
-本地CURRENT采用已完成；PoBR218／219／221、翻译库5和RePoE7／8已合并，仍未部署。新增制作投影的独立审阅语言P2已修复，artifact已发布；新组合经fresh远端Git、禁网重放与默认固定CLI等价检查后本地采用。PR221轻量及完整CI通过；原浏览器／WASM与356语料证据保留原身份。
+活动组合的身份、各领域保留兼容的分母和关闭条件统一维护在[数据现状](../docs/data-status.md#领域现状)，本页不复制阶段记录。
 
 语言库的完整显示目录可经[显示侧表投影](native/native-display-texts.md)接入普通 Web
 `translateLines`：精确来源查询、跨表同名冲突和缺译保留，不改原始构筑文本或计算。
