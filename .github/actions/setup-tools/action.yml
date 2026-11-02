@@ -46,9 +46,7 @@ runs:
       with:
         node-version: ${{ steps.versions.outputs.node }}
         cache: pnpm
-        cache-dependency-path: |
-          ${{ inputs.root }}/web/pnpm-lock.yaml
-          ${{ inputs.root }}/pipeline/pnpm-lock.yaml
+        cache-dependency-path: ${{ inputs.root }}/web/pnpm-lock.yaml
     - name: Pinned Rust toolchain
       if: inputs.rust == 'true' || inputs.wasm == 'true'
       shell: bash

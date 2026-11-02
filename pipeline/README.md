@@ -161,7 +161,7 @@ PoBR 沿用这个边界：提取器自动吸收可表达的规则，人工修正
 
 ### 中文词典来源
 
-先运行 `mise run setup` 准备精确工具与 frozen 依赖，命令使用 `mise run pipeline <命令>` 或 `mise exec -- <命令>`；导出器使用 pnpm 的 frozen lockfile 与仓库内补丁，不依赖未声明的全局包管理器。
+先运行`mise run setup`准备精确工具和frozen Web依赖；独立语言消费者使用`mise exec --`，不需要PoBR内的npm导出器依赖。
 
 基础名词与既有游戏模板使用 [poe2-en-cn-dict 的存档](https://github.com/vagrant-soul/poe2-en-cn-dict)；新增词条与 PoBR 自维护模板使用下面的独立公开词表。
 2026-10-12 原 `addohm/poe2-en-cn-dict` 仓库、API 和固定提交原文件均返回 404；
@@ -171,7 +171,7 @@ PoBR 沿用这个边界：提取器自动吸收可表达的规则，人工修正
 国际服导出提供繁中；完整游戏表的新版官方简中仍需相应 WeGame 客户端数据，不能用繁转简冒充。独立词表中的腾讯交易文本不等于完整客户端名词表。
 当前构建从独立翻译库的固定产物导入，执行 `mise run data:prepare`；完整词典和元数据保持原字节，不在PoBR内重新生成或跟踪上游HEAD。
 目标、Git修订、manifest及成员摘要见[构建锁](build-data.lock.json)，临时导入及回滚见[build-data](build-data.md)。
-旧简中生成、下载与合并实现已迁至翻译库；PoBR 的 dictionary／regen／bump 仅调用固定独立 producer，不再解析语言来源 HEAD。九个 SC 成员与 140+2 分层按固定历史输入生成，TW 与紧凑 display 继续独立组合，见[语言生成契约](locale-generation.md)。部分游戏 vendor 再生工具仍待按域退出，现有 processed 包的精确恢复不代表全部客户端自主再生。
+旧简中生成、下载与合并实现已迁至翻译库；PoBR的dictionary／历史兼容生成只调用固定独立producer，当前完整候选／bump则导入owner已发布的固定语言文件，均不解析来源HEAD。九个 SC 成员与 140+2 分层按固定历史输入生成，TW 与紧凑 display 继续独立组合，见[语言生成契约](locale-generation.md)。部分游戏 vendor 再生工具仍待按域退出，现有 processed 包的精确恢复不代表全部客户端自主再生。
 
 ### 独立词表与人工翻译维护
 
@@ -201,59 +201,37 @@ PoBR 沿用这个边界：提取器自动吸收可表达的规则，人工修正
 首次接入 `0.5.5.4.2` 保留全部 26,074 条原模板和七份原名词表，增加 1,822 条无冲突模板，合计 27,896 条。其中 17 条原模板的中文改用官方译法，总数不变。翻译可用不等于机制已计算：新增英文语料仍由 modifier audit 报告解析缺口，不通过补译掩盖。
 
 
-## 版本钉定
+## 固定输入、版本与候选
 
-`config.json`的`"patch"`固定下述旧表导出链的输入，仍为`0.5.5.4.2`；它不是活动版本指针。当前活动`0.5.5.5`的固定输入见[ordinary-inputs](ordinary-inputs.md)与[data-imports](data-imports.md)，不能修改旧来源标签代替重新采集。PoE2补丁使用`0.*`（如`0.5.5.5`），
-历史版本使用 `4.*`；索引下载固定走 `patch-poe2.poecdn.com`，不再由主版本数字猜测游戏。
-表导出通过 `pipeline/pnpm-lock.yaml` 固定 `pathofexile-dat@15.2.0`，附带两处 `0.*` 识别补丁，
-使 bundle CDN 和 PoE2 表结构/语言目录选择一致。`export-tables.sh` 自动执行 frozen-lockfile 安装；
-不要绕过它运行未打补丁的全局/npx 导出器。路由与版本查询回归：`mise run pipeline test`。
-当前 PoE2 版本可向 GGG patch 协议服务器查询：
+当前输入由[build-data](build-data.md)、[ordinary](ordinary-inputs.md)和[显示导入](data-imports.md)的独立锁声明；
+`data/CURRENT`只选择本地运行版本。`config.json`仍绑定历史原表兼容诊断的旧输入，不是latest或活动指针。
+PoBR不再安装`pathofexile-dat`、下载原始索引或导出官方原表。官方版本发现和资源采集在独立RePoE执行，
+语言在翻译库生成；成功观察到一个补丁号也不能认证全部原料、机制或改变CURRENT。
 
-```bash
-# patch.pathofexile2.com:13060，握手 [0x01,0x07]，返回形如 https://patch-poe2.poecdn.com/0.5.5.4.2/
-mise exec -- node pipeline/query-patch-version.mjs   # 从仓库根运行
+```sh
+mise run data:version                   # 本地选中版本
+mise run data:prepare                   # 临时导入当前固定目标，不更改 CURRENT
+mise run data:regen --out .cache/ordinary-produced --adapter target/debug/pobr-data-adapter
+mise run data:update --lock pipeline/build-data.lock.json --out .cache/update-review
 ```
 
-> **不需要下载完整的 `Content.ggpk`。** pathofexile-dat 只按 `config.json` 点名的表从 CDN 取对应 bundle。
-> 也可在 `config.json` 用 `"steam"` 指向本地 PoE2 安装目录，完全离线。
+`data`和`data:fetch`是当前固定输入prepare的简短入口；不会发现最新版本或重贴旧数据标签。
+`data:regen`只生成已声明的普通领域候选，完整封包仍使用`data:pack`，不把六域结果冒称全部自主数据。
+完整候选及显式本地采用见[锁驱动更新](locked-update.md)。采用须同时指定`--activate`和预期CURRENT，
+保留隔离的版本／GameData／parity门禁、原子选择、失败回滚及同版本目标patch；默认只准备候选。
+shared变更须另行迁移；不会自动修改vendor pin、来源接受、数值golden、构建锁或部署。
 
-## 运行（再生成数据）
+## 历史本地 DTO 兼容诊断
 
-```bash
-# Run from the repository root.
-mise -C pipeline exec -- node download-index.mjs
-mise exec -- bash pipeline/export-tables.sh
-mise exec -- bash pipeline/regen-all.sh
-# Adapt base tables into an existing snapshot, with our audit and regression checks.
-mise run data:adapt
-# Explicitly require the pinned PoB2 parser comparison as well.
-mise run data:adapt:reference
-```
+既有`data:adapt`／`data:adapt:reference`及`data:legacy:regen`保留，用于明确提供的历史原表和固定vendor，
+不再负责下载或安装上游导出器。它们不是当前独立来源生产链，旧输入须保持原patch、schema与来源收据。
+适配和规则计算仍属PoBR；不能因低层adapter可读取一个数组就把它登记为新的官方事实。
+这些命令仍在隔离候选中运行审计及回归，检查原目录和配置未并发改变后才替换本地目标，
+`data:adapt`不隐式运行PoB2，reference入口则明确要求已固定的参考环境。
 
-`export-tables.sh` 在全部配置表导出成功后记录补丁、配置哈希和每张表的 SHA-256。
-原始表缺失、改变或目标补丁不匹配时，adapter 在写入前失败；旧导出目录应重新执行导出。
-正式再生成强制检查必需列，在独立候选目录完成词典、规则审计、manifest 和回归检查，
-成功后才替换正式快照。同版本刷新使用相同路径，不会原地截断 manifest。
-候选词典修改后先根据候选字节重新封装 manifest，再让使用正常哈希校验加载器的审计读取；审计报告属于维护文件，不会反过来改变运行时校验和。审计与回归全部通过后才发布，不跳过 SHA-256 校验。
-更新锁防止两个生成器同时发布；发布前还会检查原快照是否被其他编辑改动。
-失败回滚若遇到文件系统错误，保留备份并报告位置。
-
-新快照的 schema 3 manifest 是运行时文件清单与 SHA-256 校验契约；
-Web 同步沿用该清单，维护报告不进入浏览器包。共享人工规则和用户 patch 仍单独加载。
-旧 schema 1/2 快照继续兼容。`manifest` 子命令仅用于人工维护后重新封装已核验数据，
-不会代替生成器的语料、来源和数值验证。
-
-脚本回归检查：`mise exec -- python3 pipeline/test-data-snapshot.py`、
-`mise exec -- python3 pipeline/test-data-update.py`、`mise exec -- node --test web/scripts/sync-data.test.mjs`。
-
-`./.cache/`（~113MB bundle 索引）、`./tables/`、`./files/` 均为中间物，**已 gitignore，不入库**。
-仓库保存配置、脚本、说明、受审的来源收据，以及产出的 `data/<version>/` 最小适配数据。
-`data:adapt` 只适配原始表，不生成品质域；完整 `regen-all.sh` 包含品质，独立更新可使用[独立生成命令](gem-quality/README.md#独立生成)。
-`data:adapt` 默认用 `refresh-modifiers.sh --offline` 校验候选的有效规则与语料，不隐式执行 PoB2。
-这只解除了适配验证对 reference 进程的依赖，现有快照仍含旧的 PoB2 派生规则。
-`data:adapt:reference` 自动准备 oracle 并显式要求对照；缺少依赖或比较失败会阻止发布。
-完整旧管线仍执行 vendor 抽取和对照，不以这一改动宣称已能自主生成全部产品数据。
+schema-3 manifest封存默认运行字节；维护报告和本地patch不进入玩家包。
+`manifest`子命令只封装已核对的本地修改，不替代来源或游戏语义验收。
+完整游戏／语言输入、运行目录与缓存均为临时或忽略内容，不进入PoBR Git／data artifact refs。
 
 ## Vendor calc-delta 报告（`diff-vendor-calcs.sh`）
 
@@ -280,17 +258,11 @@ pipeline/diff-vendor-calcs.sh <old-sha> <new-sha> [--out <file>]
 
 ## 扩展 / 升版
 
-- 新 PoE2 版本：**`mise exec -- bash pipeline/bump-version.sh` 一条命令**自动查询最新补丁，已是最新时直接退出；
-  有更新则下载 → 树/vendor 对齐 → 品质兼容检查 → 候选目录内 regen-all、zh-CN / 完整词条审计 →
-  manifest 封装、多版本、gamedata 与 parity 回归验证 → 发布目录、推进 `data/CURRENT` → Web 同步。
-  活动版本在运行时读取 `data/CURRENT`，数据更新无需重编译基础 crate；可用 `POBR_DATA_ROOT` / `POBR_DATA_VERSION` 覆盖。
-  不自动修改 count pins 或 PoB2 对照值（升级后用 recapture 脚本重采），失败时保留正式快照。
-  vendor 树路径由其 `GameVersions.lua` 选择，升级不再修改 `TreeData/0_5` 字面量。
-  品质数值变化和表内索引变动自动继承已验证的稳定 ID / 作用域决定，生成新[来源收据](gem-quality/README.md#更新版本或原始表)。
-  新效果、属性身份或作用域变化会输出诊断并中止，核对后用 `--patch <version> --skip-download` 重跑。
-  数值 / 词条文本更新复用已实现机制；新的计算语义仍需实现。vendor pin 和数值 golden 保持显式选择，
-  脚本不会把最新社区提交自动当作与游戏补丁匹配，也不在应用启动时联网改写数据。
-- 新数据域：在 `config.json` 的 `tables` 增表/列，并在 `pobr-data-adapter` 增对应适配器。
+- 新PoE2版本：在独立RePoE观察并取得精确来源、导出和发布游戏输入；翻译库独立准备语言。
+  PoBR审阅并更新对应需求与完整owner锁，先用`data:update --lock <lock> --out <fresh>`准备候选，
+  验证来源／消费者／CI后再显式选择CURRENT。计算语义、vendor参考与golden更新分别维护。
+- 新数据域：在RePoE固定schema／事实导出器中补齐来源，在PoBR领域adapter中接既有DTO和消费者；
+  不再通过PoBR Node导出器或修改旧配置将历史数组冒充新目标。
 - stat-set 标签由 `GrantedEffectStatSets.Label` → `GrantedEffectLabels.Text` 直接连接，
   以原始 `_index` 查外键，不按数组位置或显示文字猜测；有引用却缺表、缺行或行号重复时拒绝适配。
   标签为空的旧快照仍可从 `overlay/stat_set_labels.json` 回退；该兼容表继续提供 PoB 构筑码的

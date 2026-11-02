@@ -66,15 +66,15 @@ schema 的 `latest` URL 会变化；精确重放应使用按收据指纹保存�
 
 ## 更新版本或原始表
 
-通常运行 `mise exec -- bash pipeline/bump-version.sh` 即可。下载器成功导出官方表后，
-`advance-receipt.py record-export` 记录目标补丁、配置指纹和三张表的 SHA-256；
-仅目标版本还没有收据时，`advance` 核对上一版收据与品质产物，并以稳定 ID 比较语义。
-效果集合、主 / 备用属性 ID 及顺序、stat-set 作用域不变时，数值斜率可自动更新，
-表内 `_index` 重排也无需修改代码。原有启用 / 排除决定和原始对照依据保持不变。
-新收据注明它证明成功的 exporter 执行与输入字节绑定，不冒充首次迁移的独立 CDN 字节比对。
+当前品质事实由独立RePoE提供，PoBR保留主／备用属性、数值与作用域的解释和消费。
+更新来源先在RePoE固定补丁、schema、完整原值与证据，再更新PoBR声明输入和品质政策。
+[锁驱动候选与显式采用](../locked-update.md)不会在PoBR下载原表或自动推进品质决定。
 
-新效果、效果删除、属性身份或作用域变化会停止自动推进，避免未知机制静默参与计算。
-已有受审收据不会被覆盖；`--skip-download` 复用缓存时仍必须通过补丁和输入字节核验。
+`advance-receipt.py`保留为明确历史原表的本地兼容工具：`record-export --exporter <明确的生产者声明>`绑定调用方提供的旧格式表与声明，
+不执行导出器，输出明确标记`exporter_execution_observed: false`，不将声明升级为官方身份认证；输出须为新文件。`advance`仅在稳定ID、主／备用属性顺序和stat-set作用域相同时
+继承既有启用／排除决定及对照；新效果、删除或scope变化仍中止，不能只改hash消除诊断。
+已有受审收据不会被覆盖；不同补丁的旧表不能重新标记为当前来源。
+
 需要新兼容决定或同版本输入变化时：
 
 1. 从目标补丁导出表，记录 exporter、实际 schema、bundle 与表的指纹。
@@ -87,9 +87,8 @@ schema 的 `latest` URL 会变化；精确重放应使用按收据指纹保存�
    跑 adapter、品质 / 保留和相关完整 Build 回归，再更新版本产物。
 5. 完成完整数据更新、词条审计和项目要求的检查后，再通过现有流程推进活动版本。
 
-直接运行 `regen-all.sh` 仍要求已有匹配收据，不负责下载或推断来源。
-自动兼容检查未通过时，准备并验证收据后，可使用
-`mise exec -- bash pipeline/bump-version.sh --patch <patch> --skip-download` 重跑。
+历史`data:legacy:regen`仍要求已有匹配收据，不负责下载或推断来源。
+兼容检查未通过时先核对并固定决定，再对明确的历史输入重放诊断。
 原始表必须已经对应目标版本，不能将上一版输入重新标记为新版。
 此门禁只保证品质域的输入与输出；不使整个升级脚本成为跨域事务。
 
@@ -102,7 +101,6 @@ mise exec -- cargo test -p pobr-build --test skills spirit_reservation::
 mise exec -- cargo test -p pobr-wasm --test contract_golden memory_backend_matches_dir_backend
 mise exec -- python3 devs/scripts/test_workflows.py
 mise exec -- python3 pipeline/test-data-update.py
-mise exec -- node --test pipeline/test-query-patch-version.mjs
 ```
 
 主机契约测试覆盖历史和活动数据版本、三份完整 Build 的 q0/q19/q20，比较文件和内存加载。

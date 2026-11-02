@@ -1,15 +1,10 @@
 min_version = "2026.10.23"
 
-# PoBR 开发环境与数据管线（mise-en-place）
-#
-# 环境：`mise run setup` 准备精确工具（Rust 来自 rust-toolchain.toml）、wasm target、wasm-pack、
-# Python/Node/pnpm 与 Web/pipeline 依赖；可选工具由对应任务自动准备。
-# 取数据（一键）：`mise run data:fetch` —— 索引（首次 ~113MB，之后跳过）→ 抽取 .dat 为原始 JSON。
-# data:adapt updates base/i18n in a candidate; data:regen regenerates all domains.
-# Both validate before publishing. Full regeneration needs vendor + LuaJIT.
-#
-# All export/adaptation entry points resolve the patch from pipeline/config.json.
-# 原始 JSON / 索引缓存均在 pipeline/ 下且 gitignore，不入库；入库的只有 data/<version>/。
+# PoBR uses exact mise tools and frozen Web dependencies.
+# Game/language data are temporary imports from independent owner locks.
+# data/data:fetch/data:prepare install only the already selected locked target.
+# data:regen produces declared ordinary DTO domains, without adoption.
+# data:legacy:regen and data:adapt retain explicit local compatibility diagnostics.
 
 # Rust 版本只在 rust-toolchain.toml 里写一份（本地与 CI 共用）；让 mise 读取它，
 # 而不是在这里重复钉一个版本号。
@@ -44,27 +39,19 @@ description = "Prepare everyday tools and frozen package dependencies with mise 
 run = "mise bootstrap --only packages,tools,task"
 
 [tasks."data:version"]
-description = "查询 GGG 当前 PoE2 patch 版本号（CDN 版本）"
-dir = "pipeline"
-run = "node query-patch-version.mjs"
-
-[tasks."data:index"]
-description = "弹性分块下载 bundle 索引到缓存（规避大文件单流中断；已缓存则跳过）"
-dir = "pipeline"
-run = "node download-index.mjs"
-
-[tasks."data:export"]
-description = "从 GGG CDN 抽取 .dat 表为原始 JSON（→ pipeline/tables/，gitignore）"
-dir = "pipeline"
-run = "bash export-tables.sh"
+description = "显示本地选中版本；官方补丁发现请在 RePoE 运行 client:version"
+run = "cat data/CURRENT"
 
 [tasks."data:fetch"]
-description = "一键取数：索引 → 抽取（原始 JSON）"
-dir = "pipeline"
-run = ["node download-index.mjs", "bash export-tables.sh"]
+description = "从独立固定锁临时导入当前数据；不发现最新版本或改变 CURRENT"
+run = "python3 pipeline/build_data.py --install data"
+
+[tasks."data:update"]
+description = "从明确外部 lock 准备候选；采用须显式 --activate --expected-current"
+run = "python3 pipeline/locked_update.py"
 
 [tasks."data:adapt"]
-description = "候选目录适配 base/i18n，运行自有审计与回归后发布；不隐式运行 PoB2"
+description = "历史本地原表的 DTO 兼容适配与校验；不采集、不隐式运行 PoB2"
 run = "python3 pipeline/data_snapshot.py adapt"
 
 [tasks."data:adapt:reference"]
@@ -85,8 +72,12 @@ description = "Replay a pinned native recipe with explicit local artifacts and p
 run = "python3 pipeline/data_snapshot.py native-candidate"
 
 [tasks."data:regen"]
+description = "从外部固定输入生产声明普通 DTO（--out 和 --adapter 必填；不采用）"
+run = "python3 pipeline/ordinary_inputs.py execute"
+
+[tasks."data:legacy:regen"]
 depends = ["setup:oracle"]
-description = "候选目录完整再生成、审计、验证后发布（需 vendor 检出 + luajit）"
+description = "仅对已有历史原表/vendor 重放兼容快照；不下载或选择新来源"
 run = "bash pipeline/regen-all.sh"
 
 [tasks."data:bundle"]
@@ -114,10 +105,8 @@ description = "Verify declared Git inputs and run existing ordinary domain produ
 run = "python3 pipeline/ordinary_inputs.py"
 
 [tasks."data"]
-depends = ["setup:oracle"]
-description = "取数 + 候选快照完整再生成、验证后发布"
-dir = "pipeline"
-run = ["node download-index.mjs", "bash export-tables.sh", "cd .. && bash pipeline/regen-all.sh"]
+description = "临时导入当前独立数据锁，与 data:prepare 相同；不更改 CURRENT"
+run = "python3 pipeline/build_data.py --install data"
 
 # Development commands. These forward to the repository driver script; extra
 # arguments after the task name are passed through unchanged. The game CLI
@@ -235,7 +224,7 @@ description = "Clone or align the pinned PoB2 vendor checkout"
 run = "bash devs/scripts/driver.sh vendor"
 
 [tasks.bootstrap]
-description = "Finish mise bootstrap: verify tools and install frozen Web/pipeline dependencies; no product build"
+description = "Finish mise bootstrap: verify tools and install frozen Web dependencies; no product build"
 run = "bash devs/scripts/setup-environment.sh"
 
 [tasks.drill]
@@ -273,10 +262,6 @@ run = "python3 devs/scripts/pr-ready.py"
 [tasks.web]
 description = "Run a web package command under the project environment: mise run web <command> [args]"
 run = "pnpm --dir web"
-
-[tasks.pipeline]
-description = "Run a pipeline package command under the project environment"
-run = "pnpm --dir pipeline"
 
 [tasks."setup:e2e"]
 description = "Install the locked Playwright browser and required OS libraries (explicit opt-in)"

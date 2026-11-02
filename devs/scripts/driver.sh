@@ -418,22 +418,21 @@ cmd_smoke() {
 cmd_data() {
   say "数据现状自检"
   if [ -d "$DATA_ROOT/$DATA_VER" ]; then
-    echo "✓ data/$DATA_VER 已入库（base/overlay/generated/i18n）——测试无需联网下载"
+    echo "✓ data/$DATA_VER 已临时导入（base/overlay/generated/i18n）——来源按独立锁固定"
     ls "$DATA_ROOT/$DATA_VER" | sed 's/^/    /'
   else
     echo "✗ data/$DATA_VER 缺失"
   fi
   cat <<'EOF'
 
-数据再生管线（仅版本升级时需要；详见 pipeline/README.md + pipeline/regen-all.sh）：
-  1) GGG .dat 下载    : (cd pipeline && node download-index.mjs) && bash pipeline/export-tables.sh
-  2) 仅刷新 base JSON : mise run data:adapt（候选目录生成和校验）
-  3) 完整再生成       : bash pipeline/regen-all.sh（需 luajit + vendor 检出，校验后发布）
-  4) precompile 缓存  : cargo run -p precompile-mods -- --data data/<ver> --report
-云端约束（本会话实测）：
-  - GGG patch CDN 对旧 pin 版本（4.5.0.3.4）返回 404 → .dat 下载步不可跑；
-  - extract-lua（步骤 3）与旧版 4.5.0.3.4 的 vendor commit（2df5a74）不兼容（modLib.parseMod 非全局）；
-  - 故云端只用"已入库 data + precompile（步骤 4，可跑且 byte-diff=0，见 drill 步骤 4）"。
+独立数据入口（详见 pipeline/README.md）：
+  1) 当前固定输入       : mise run data:prepare（临时导入，不改变 CURRENT）
+  2) 声明普通 DTO       : mise run data:regen --out <fresh> --adapter <prebuilt>
+  3) 新版本完整候选     : mise run data:update --lock <owner-lock> --out <fresh>
+  4) 显式本地采用       : 上一命令加 --activate --expected-current <old-version>
+采用前保留版本、GameData 和 parity 门禁；失败回滚，来源接受与部署另作决定。
+官方版本发现与原料采集由独立 RePoE 执行，PoBR 不再下载原始索引或运行表导出器。
+历史原表兼容诊断：data:adapt / data:legacy:regen；只使用显式本地输入。
 EOF
 }
 

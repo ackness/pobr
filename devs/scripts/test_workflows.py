@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
@@ -537,56 +538,33 @@ class VersionPromotionTests(unittest.TestCase):
             self.assertEqual(target.read_text(encoding="utf-8"), updated)
             self.assertEqual(snapshot.read_json(data / "manifest.json")["files"][relative], snapshot.digest(target))
 
-    def test_candidate_checks_gate_promotion_without_editing_rust(self):
-        for failure in ["dictionary", "audit", "versions", "gamedata", "parity", None]:
-            with self.subTest(failure=failure), tempfile.TemporaryDirectory(prefix="pobr version gate ") as directory:
-                root = Path(directory)
-                def write(rel, text):
-                    destination = root / rel
-                    destination.parent.mkdir(parents=True, exist_ok=True)
-                    destination.write_text(text, encoding="utf-8")
-                    return destination
-                write("pipeline/bump-version.sh", (REPO / "pipeline/bump-version.sh").read_text(encoding="utf-8"))
-                write("pipeline/data_snapshot.py", (REPO / "pipeline/data_snapshot.py").read_text(encoding="utf-8"))
-                write("pipeline/regen-all.sh", '''#!/usr/bin/env bash
-mkdir -p "$POBR_DATA_ROOT/1.2.4/base"
-printf '[]\\n' > "$POBR_DATA_ROOT/1.2.4/base/skill_gems.json"
-''').chmod(0o755)
-                write("pipeline/locale_inputs.py", f"import sys\nsys.exit({19 if failure == 'dictionary' else 0})\n")
-                write("pipeline/refresh-modifiers.sh", f"#!/usr/bin/env bash\nexit {17 if failure == 'audit' else 0}\n")
-                # Simulate resuming after a different failed candidate.
-                write("pipeline/config.json", '{"patch": "1.2.99"}')
-                write("pipeline/gem-quality/1.2.4.json", "{}")
-                write("pipeline/tree/data.json", "{}")
-                write("data/CURRENT", "1.2.3\n")
-                rust = 'pub const DATA_VERSION: &str = include_str!("../../../data/CURRENT").trim_ascii();\n'
-                write("crates/pobr-data/src/lib.rs", rust)
-                write("devs/scripts/driver.sh", f"#!/usr/bin/env bash\nexit {17 if failure == 'versions' else 0}\n")
-                write("bin/cargo", f'''#!/usr/bin/env python3
-import sys
-args = sys.argv[1:]
-failure = {failure!r}
-sys.exit(17 if (failure == "gamedata" and "pobr-gamedata" in args) or (failure == "parity" and "parity_no_regression" in args) else 0)
-''').chmod(0o755)
-                (root / "web/node_modules").mkdir(parents=True)
-                write("bin/pnpm", "#!/usr/bin/env bash\nexit 0\n").chmod(0o755)
-                write("bin/node", f"#!/usr/bin/env bash\nexit {19 if failure == 'dictionary' else 0}\n").chmod(0o755)
-                write("bin/curl", '''#!/usr/bin/env python3
-import pathlib, sys
-pathlib.Path(sys.argv[sys.argv.index("-o") + 1]).write_text("{}", encoding="utf-8")
-''').chmod(0o755)
-                result = subprocess.run(["bash", "pipeline/bump-version.sh", "--patch", "1.2.4", "--skip-download"],
-                    cwd=root, env={**os.environ, "PATH": f"{root / 'bin'}{os.pathsep}{os.environ['PATH']}"},
-                    capture_output=True, text=True, timeout=15)
-                self.assertEqual(result.returncode == 0, failure is None, result.stdout + result.stderr)
-                self.assertEqual((root / "data/CURRENT").read_text(encoding="utf-8"),
-                                 "1.2.3\n" if failure else "1.2.4\n")
-                self.assertEqual((root / "crates/pobr-data/src/lib.rs").read_text(encoding="utf-8"), rust)
-                self.assertEqual(json.loads((root / "pipeline/config.json").read_text(encoding="utf-8"))["patch"], "1.2.4")
-                if failure:
-                    expected = {"dictionary": "locale_inputs.py", "audit": "refresh-modifiers.sh",
-                                "versions": "driver.sh", "gamedata": "pobr-gamedata", "parity": "parity_no_regression"}
-                    self.assertIn(expected[failure], result.stderr)
+    def test_bump_forwards_exact_locked_update_arguments_without_other_tools(self):
+        with tempfile.TemporaryDirectory(prefix="pobr locked wrapper ") as directory:
+            root = Path(directory)
+            script = root / "pipeline/bump-version.sh"
+            script.parent.mkdir()
+            script.write_bytes((REPO / "pipeline/bump-version.sh").read_bytes())
+            binary = root / "bin"
+            binary.mkdir()
+            capture = root / "called.json"
+            python = binary / "python3"
+            python.write_text("#!" + sys.executable + "\nimport json,sys\nfrom pathlib import Path\n"
+                              + "Path(" + repr(str(capture)) + ").write_text(json.dumps(sys.argv[1:]))\n")
+            python.chmod(0o755)
+            for command in ('node', 'git', 'cargo', 'curl', 'pnpm'):
+                executable = binary / command
+                executable.write_text('#!/bin/sh\nexit 91\n')
+                executable.chmod(0o755)
+            args = ['--lock', 'owner lock.json', '--out', 'fresh candidate',
+                    '--activate', '--expected-current', '1.2.3']
+            result = subprocess.run(['bash', str(script), *args], cwd=root,
+                env={**os.environ, 'PATH': str(binary) + os.pathsep + os.environ['PATH']},
+                capture_output=True, text=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(capture.read_text()), [str(root / 'pipeline/locked_update.py'), *args])
+            self.assertFalse((root / 'data').exists())
+            self.assertFalse((root / 'vendor').exists())
+
 
 
 class VendorRepositoryIsolationTests(unittest.TestCase):
@@ -686,14 +664,6 @@ pathlib.Path(sys.argv[sys.argv.index("-o") + 1]).write_text("{}", encoding="utf-
         self.assertIn("Invalid reference source", result.stderr)
         self.assertFalse((self.root / "vendor/PathOfBuilding-PoE2").exists())
         self.assertFalse((self.root / "fetch-root").exists())
-
-    def test_bump_vendor_initializes_own_repo_and_does_not_promote_on_fetch_failure(self):
-        result = subprocess.run(["bash", "pipeline/bump-version.sh", "--patch", "1.2.4",
-                                 "--skip-download", "--vendor-sha", self.sha], cwd=self.root,
-                                env=self.env, capture_output=True, text=True, timeout=10)
-        self.assert_failed_fetch_is_isolated(result)
-        self.assertEqual((self.root / "data/CURRENT").read_text(encoding="utf-8"), "1.2.3\n")
-        self.assertNotIn("vendor →", result.stdout)
 
     def test_driver_preserves_existing_vendor_changes(self):
         vendor = self.root / "vendor/PathOfBuilding-PoE2"

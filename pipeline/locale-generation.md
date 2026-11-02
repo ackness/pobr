@@ -21,7 +21,7 @@ mise exec -- python3 pipeline/locale_inputs.py --offline --out .cache/locale-rep
 # Run inside the existing snapshot generation/validation transaction:
 mise exec -- python3 pipeline/data_snapshot.py dictionary -- --offline
 # Another target needs a reviewed, matching independent generation lock:
-mise run data:regen --locale-lock /path/to/locale-generation.lock.json
+mise run data:legacy:regen --locale-lock /path/to/locale-generation.lock.json
 ```
 
 The current `retained-selected` profile generates nine `i18n/zh-CN` files and
@@ -40,9 +40,12 @@ writes only the ten declared outputs plus a maintenance receipt at
 `generated/locale-generation-receipt.json`. Audit and receipt are excluded from
 the runtime manifest. The final snapshot identity is still checked separately.
 
-Normal `data:regen`, base adaptation and `bump-version.sh` use the same pinned
-consumer inside the isolated candidate. `bump-version.sh --locale-lock <lock>`
-selects another fixed bundle; it no longer refreshes language sources from HEAD.
+The explicit historical `data:legacy:regen` and base-adaptation transactions
+can invoke this consumer with a matching `--locale-lock`. Current complete build
+candidates instead use `data:update --lock <build-data.lock> --out <fresh>`: that
+lock pins the independent owner's published language files. It does not run a
+PoBR downloader or silently regenerate language from HEAD. A new language output
+must be published by its owner and bound into the complete snapshot lock.
 `--candidate` is restricted to the snapshot transaction and refuses the source
 `data/` tree. Failure leaves the published snapshot and `CURRENT` unchanged;
 the transaction seals and audits the candidate before promotion. Complete

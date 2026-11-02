@@ -28,10 +28,3 @@ updates:
     groups:
       web:
         patterns: ["*"]
-  - package-ecosystem: npm
-    directory: /pipeline
-    schedule:
-      interval: monthly
-    groups:
-      pipeline:
-        patterns: ["*"]
