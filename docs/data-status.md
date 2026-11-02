@@ -26,7 +26,7 @@
 | CI 缓存下载内容；导入后断言工作树干净 | 已完成（`mise run data:check`） |
 | CI 不再重跑 owner 的普通领域与显示生产；精简发行包直接从已准备的快照组装 | 已完成 |
 | 分域锁收敛为一份按 tag 引用两个 owner 发布的 JSON（`pipeline/data.lock.json`）；删除只为重放生产保留的锁、普通领域与显示生成脚本及候选任务 | 已完成 |
-| 领域转换工具（`tools/pobr-data-adapter`、`pipeline/policies/`）迁往 RePoE | 待做；PoBR 已不再调用它们生产数据 |
+| 领域转换工具（`tools/pobr-data-adapter`、`pipeline/policies/`）迁往 RePoE；语言生产者迁往翻译库；退役 `data:tree:*`／`data:native:candidate` | 已完成（ackness/repoe#17、ackness/poe2-zh-cn-stats#8）；keystone 字节检查改在 RePoE |
 
 ## 领域现状
 
@@ -34,12 +34,12 @@
 
 | 领域 | 已接入普通消费者 | 剩余缺口与关闭条件 | 契约 |
 | --- | --- | --- | --- |
-| 基底／词缀／制作 | 源 Stats／Mods 全八槽、Families、基底数值与继承 tags；制作七表投影保留原值诊断 | 13 个 charm 缺 Flag／Unknown／MergeMode 的完整解释，完整 packet 迁移 0/13；socket、subtype、权重与资格未全部迁源 | [基底](../tools/pobr-data-adapter/ordinary-base-items.md#remaining-source-and-consumer-contracts)、[制作](../pipeline/imports/crafting-inputs.md) |
-| 技能／品质 | effect→stat-set→等级／品质、gem 与 effect 关系、可证倍率；77 项旧 implicit 注入已移除 | `stat_set_index` 仍是 PoB 1-based 编号；7 项旧 implicit 惰性保留；corpse／speed／area、虚拟倍率与品质作用域按实际输出逐项处理 | [技能覆盖](../tools/pobr-data-adapter/ordinary-skill-overrides.md)、[品质](../pipeline/policies/gem-quality/README.md) |
-| 天赋 | 4913 节点中 4823 使用 CSD、51 混合、39 整文本兼容；72 个 variant 中 70 使用 CSD | 39 个兼容节点缺当前 scope 描述、owner 歧义、buff 表示或 compound；placement／armour、Requirement／QuestFlag 需独立依据与范围珠宝、加点消费者验证 | [天赋树](../tools/pobr-data-adapter/ordinary-passive-tree.md) |
-| 符文／魂核 | 305 项中 296 项使用目标 CSD | 9 项整项兼容：5 项缺 compound 上下文，4 项缺当前 CSD；需按精确资源补完整 packet | [符文](../tools/pobr-data-adapter/ordinary-socketables.md) |
-| 描述／tier | plain-display 政策、完整分支与原始条件、显示缩放与 lookup、TierIndex 区间反解 | 37 个 scoped 兼容 ID：8 个 owner 歧义、13 个缺关系 handler、16 个无普通分支；25 项未渲染保留诊断 | [描述](../tools/pobr-data-adapter/ordinary-stat-descriptions.md) |
-| actor／常量／关系 | 649 个 actor 的 27 个字段、技能有序引用、怪物抗性与成长、图腾、玩家与徒手常量、Boss 数值、珠宝槽与装备授予技能 | OT 的 merge／`set_`／Stats 作用域与 `mod_list`；目录成员、别名、上限与 effect→variety 等策展需要独立依据 | [actor](../tools/pobr-data-adapter/ordinary-actors.md#observed-three-root-ot-draft) |
+| 基底／词缀／制作 | 源 Stats／Mods 全八槽、Families、基底数值与继承 tags；制作七表投影保留原值诊断 | 13 个 charm 缺 Flag／Unknown／MergeMode 的完整解释，完整 packet 迁移 0/13；socket、subtype、权重与资格未全部迁源 | [基底](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-base-items.md#remaining-source-and-consumer-contracts)、[制作](../pipeline/imports/crafting-inputs.md) |
+| 技能／品质 | effect→stat-set→等级／品质、gem 与 effect 关系、可证倍率；77 项旧 implicit 注入已移除 | `stat_set_index` 仍是 PoB 1-based 编号；7 项旧 implicit 惰性保留；corpse／speed／area、虚拟倍率与品质作用域按实际输出逐项处理 | [技能覆盖](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-skill-overrides.md)、[品质](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/gem-quality/README.md) |
+| 天赋 | 4913 节点中 4823 使用 CSD、51 混合、39 整文本兼容；72 个 variant 中 70 使用 CSD | 39 个兼容节点缺当前 scope 描述、owner 歧义、buff 表示或 compound；placement／armour、Requirement／QuestFlag 需独立依据与范围珠宝、加点消费者验证 | [天赋树](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-passive-tree.md) |
+| 符文／魂核 | 305 项中 296 项使用目标 CSD | 9 项整项兼容：5 项缺 compound 上下文，4 项缺当前 CSD；需按精确资源补完整 packet | [符文](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-socketables.md) |
+| 描述／tier | plain-display 政策、完整分支与原始条件、显示缩放与 lookup、TierIndex 区间反解 | 37 个 scoped 兼容 ID：8 个 owner 歧义、13 个缺关系 handler、16 个无普通分支；25 项未渲染保留诊断 | [描述](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-stat-descriptions.md) |
+| actor／常量／关系 | 649 个 actor 的 27 个字段、技能有序引用、怪物抗性与成长、图腾、玩家与徒手常量、Boss 数值、珠宝槽与装备授予技能 | OT 的 merge／`set_`／Stats 作用域与 `mod_list`；目录成员、别名、上限与 effect→variety 等策展需要独立依据 | [actor](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-actors.md#observed-three-root-ot-draft) |
 | 暗金 | 65 个授予技能关系中 4 个有显式变体绑定 | 需要一份固定的独立 unique→base→mods／roll／variant 关系，再接物品编辑与计算消费者 | — |
 | PoB2 解释与 buff | 各域保留项已按字段登记 | parser／config／special、部分 stat 映射与关系仍用社区解释；buff 的 15 处引用上下文未证等价，保持 `guard_eligible=false` | [PoB2 依赖](pob2-differences.md#数据来源现状与退出顺序) |
 | 语言／显示 | 繁中与简中 FK v3 及紧凑侧表接入普通后端；两种语言各 1073 个 gem 中 1053 个源译、20 个英文阻断；职业与升华路由、打造名称、辅助说明、审核补译导入已接线 | 简中客户端补丁与服别未确认；真实审核补译 0 条；45 个候选是否有当前 UI 收益需先核 caller；国服数值未认证 | 翻译库的语言发布 |

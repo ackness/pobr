@@ -1,7 +1,7 @@
 //! `MinionDef` storage schema — pure data, zero logic, zero I/O.
 //!
 //! Aligned with the other domains in `catalog.rs`; written offline to
-//! `data/<poe_version>/minions.json` by `pobr-data-adapter`, deserialized at
+//! `data/<poe_version>/minions.json` by RePoE's `pobr-data-adapter`, deserialized at
 //! runtime by `pobr-gamedata`.
 //!
 //! Design mirrors PoB2 `src/Data/Minions.lua`: each `MinionDef` corresponds

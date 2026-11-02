@@ -9,7 +9,7 @@
 //! `SkillStatSetDef` array) — the shape doesn't fit key-level recursive
 //! merge, so this domain has its own merge functions, locked in by unit tests.
 //!
-//! Merge semantics (aligned with `tools/pobr-data-adapter`'s field
+//! Merge semantics (aligned with RePoE `tools/pobr-data-adapter`'s field
 //! normalization rules, so "plain base + overlay merge" is value-equal to
 //! the historical hand-patched base):
 //!

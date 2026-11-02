@@ -21,12 +21,14 @@ PoBR Git 不保存数据副本。上游未及时实现的字段和修正由拥�
 
 | 仓库 | 唯一主要职责 | 边界 |
 | --- | --- | --- |
-| [ackness/repoe](https://github.com/ackness/repoe) | 客户端资源解码、游戏事实和关系导出、通用字段补全、版本化数据产物及来源记录 | 不实现 PoBR 的伤害计算、敌人场景默认值或构筑配置语义 |
+| [ackness/repoe](https://github.com/ackness/repoe) | 客户端资源解码、游戏事实和关系导出、通用字段补全；把事实转换成 PoBR 运行 JSON 的 `tools/pobr-data-adapter` 与领域政策；版本化数据产物及来源记录 | 不实现 PoBR 的伤害计算、敌人场景默认值或构筑配置语义 |
 | [ackness/poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats) | 国服/国际服词条模板、必要的术语补充、匹配来源和人工修正 | 不以翻译替代游戏 stat 身份；现有词条库不冒充完整游戏名词库 |
-| [ackness/pobr](https://github.com/ackness/pobr) | 统一接入、领域规范化、数据筛选、Rust 语义与计算、玩家使用流程和数据包发布 | Rust/Web 消费 PoBR 数据契约，不直接拼接多个站点的私有格式 |
+| [ackness/pobr](https://github.com/ackness/pobr) | 数据契约（`pobr-data` 等类型）、按锁导入、Rust 语义与计算、玩家使用流程和精简发行包 | 不生产数据；Rust/Web 消费 PoBR 数据契约，不直接拼接多个站点的私有格式 |
 
-- **自有规则留在 PoBR。** `data/overlay-common/` 中入库的规则、`pipeline/policies/` 的领域解释政策和
-  Rust 规则表达构筑语义，属于 PoBR 的职责，不迁往数据仓库。
+- **构筑语义留在 PoBR，数据转换归 RePoE。** `data/overlay-common/` 中入库的规则和 Rust 规则表达构筑语义，
+  属于 PoBR 的职责。把游戏事实转换成运行 JSON 的领域政策与 `pobr-data-adapter` 在 RePoE，
+  经不可移动的 tag `engine-crates/<日期>` 依赖 PoBR 的数据类型；随包发布的 PoB2 派生 parser／special
+  规则字节已冻结，新的解析能力写进 PoBR 的 Rust 规则。
 - **PoB2 只作测试参考。** `vendor/` 的固定检出供 oracle、parity、`compare`／`triage` 与构筑码兼容使用，
   不作为生产数据的写入来源。仍保留的 PoB2 解释按字段登记在
   [与 PoB2 的差异](pob2-differences.md#数据来源现状与退出顺序)，逐项退出。
@@ -98,7 +100,7 @@ RePoE 发布 ───┐
 | 内容 | 位置 | Git |
 | --- | --- | --- |
 | 代码、契约、数据锁、来源接受记录 | `crates/`、`tools/`、`pipeline/` | 跟踪 |
-| PoBR 自有规则与领域政策 | `data/overlay-common/` 中的自有文件、`pipeline/policies/` | 跟踪 |
+| PoBR 自有规则 | `data/overlay-common/` 中的自有文件 | 跟踪 |
 | 活动版本标记 | `data/CURRENT` | 跟踪 |
 | 小型合成夹具 | 各 crate 与工具的 `tests/fixtures/` | 跟踪 |
 | 运行快照 | `data/<版本>/` | 忽略 |

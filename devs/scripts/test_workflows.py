@@ -58,10 +58,6 @@ if os.environ.get("FAIL_COMMAND") == args[0]:
     sys.exit(17)
 if os.environ.get("FAIL_TEST") and args[0] == "test":
     sys.exit(19)
-if "pobr-data-adapter" in args:
-    dest = pathlib.Path(args[args.index("--out") + 1]) / "test/generated"
-    dest.mkdir(parents=True, exist_ok=True)
-    (dest / "special_derived.json").write_text("{}", encoding="utf-8")
 if "precompile-mods" in args and "--data" in args:
     dest = pathlib.Path(args[args.index("--data") + 1])
     assert dest != pathlib.Path(os.environ["SOURCE_DATA"])
@@ -117,15 +113,13 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
     def test_regen_success_preserves_sources(self):
         self.assert_regen_preserves_tree(0)
 
-    def test_regen_runs_both_derivations_without_touching_prepared_data(self):
+    def test_regen_runs_only_the_precompile_ratchet_without_touching_prepared_data(self):
+        # Keystone rules arrive in the owner package; RePoE checks them against its tree.
+        self.write("data/test/generated/special_derived.json", '{"changed": true}')
         self.assert_regen_preserves_tree(0)
         calls = self.calls()
-        self.assertTrue(any("--emit-special-derived" in call for call in calls))
         self.assertTrue(any("precompile-mods" in call and "--report" in call for call in calls))
-
-    def test_regen_fails_when_keystone_derivation_differs(self):
-        self.write("data/test/generated/special_derived.json", '{"changed": true}')
-        self.assert_regen_preserves_tree(1)
+        self.assertFalse(any("pobr-data-adapter" in call or "--emit-special-derived" in call for call in calls))
 
     def test_regen_requires_prepared_data(self):
         shutil.rmtree(self.root / "data/test")

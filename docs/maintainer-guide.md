@@ -92,7 +92,7 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 
 ## Workspace 结构
 
-以根 [Cargo.toml](../Cargo.toml)、各 crate 的 `src/lib.rs` 和契约 / 回归测试为准。13 个成员：7 个库、2 个应用、4 个 Rust 工具；`web/` 与 Lua oracle 不在 Cargo workspace 里。
+以根 [Cargo.toml](../Cargo.toml)、各 crate 的 `src/lib.rs` 和契约 / 回归测试为准。12 个成员：7 个库、2 个应用、3 个 Rust 工具；`web/` 与 Lua oracle 不在 Cargo workspace 里。把 RePoE 事实转换成运行 JSON 的 `pobr-data-adapter` 及其领域政策在 [ackness/repoe](https://github.com/ackness/repoe/tree/master/tools/pobr-data-adapter)，经不可移动的 tag `engine-crates/<日期>` 依赖本仓库的数据类型；改动 `pobr-data` 等运行时类型时，在 RePoE 一侧用新 tag 跟进。
 
 | 成员 | 职责 |
 |------|------|
@@ -105,7 +105,6 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 | `crates/pobr-item` | 保留物品原文的编辑模型与序列化（`ItemDraft`，支持 BuildRaw 往返）；计算视图由 `pobr-core::item_text` + `ingest_item` 承担 |
 | `apps/pobr-cli` | CLI `pobr`：`calculate` / `calculate-build` / `parse-mod` / `explain-mod` / `parse-item` / `decode-code` / `encode-code`，命令逻辑在 lib |
 | `apps/pobr-wasm` | `build_api/` 的 JSON 契约；默认 features 可在宿主测试，`wasm` 启用绑定，`diagnostics` 启用计时与 fixture 生成目标 |
-| `tools/pobr-data-adapter` | 固定 RePoE owner 事实 → PoBR 运行 JSON：`--ordinary-facts`（含宝石品质，见[品质生成说明](../pipeline/policies/gem-quality/README.md)）、`--native-facts`、`--native-runtime`；`--tree` 读历史官方树包供 `data:tree:candidate`；`--emit-special-derived` 从已准备的天赋树派生基石规则（CI 的 regen-check 使用）。不读 vendor Lua 或本地原表；领域生产将迁往 RePoE，PoBR 的数据导入不再调用它 |
 | `tools/sync-pob-catalog` | PoB2 显示／输出 catalog 的扫描与对照（`scan` / `check` / `diff` / `fixture-check`），只作测试参考，不生成数据 |
 | `tools/lint-i18n` | 语言包完整性检查 |
 | `tools/precompile-mods` | 词条规则离线预编译、语料覆盖与审计（`generated/parsed_mods.json`、`modifier-audit.json`；`--check` 校验运行时合并后的规则集） |
@@ -170,7 +169,7 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 - 结果不同时，先按游戏词条和数据判断谁对，不默认 PoB2 正确。PoBR 自有的词条规则声明 `exporter: "absent"`（导出工具没有实现）或 `"differs"`（口径不同），并填 `game_source`；absent 规则在参考口径下自动排除。确认的有意差异写进 [pob2-differences.md](pob2-differences.md)，逐行登记到 `devs/scripts/known-differences.json`。
 - 普通技能、树、基底、符文、actor 与描述已逐批由目标事实接回原消费者；parser、config、special、部分 stat-map／关系、暗金与兼容字段仍保留固定 PoB2／社区解释。按字段区分自主事实、策展与历史 codec，不把整个已迁域重新归为 PoB2 导出依赖。现存依赖和退出顺序见 [pob2-differences.md](pob2-differences.md#数据来源现状与退出顺序)；自有规则仍以游戏依据和实际输出需求实现。
 
-`vendor/PathOfBuilding-PoE2/` 是固定 commit 的完整检出（gitignore；`mise run vendor` 按 `devs/reference-sources.json` 的独立参考 pin 克隆，`mise run vendor:lua "<pattern>"` 搜索）。核对公式时读本地 Lua，不去网上找。生产数据的来源与参考测试版本分别维护；独立树域候选不会发布或覆盖活动快照，见[数据管线](../pipeline/README.md#固定来源与独立树候选)。
+`vendor/PathOfBuilding-PoE2/` 是固定 commit 的完整检出（gitignore；`mise run vendor` 按 `devs/reference-sources.json` 的独立参考 pin 克隆，`mise run vendor:lua "<pattern>"` 搜索）。核对公式时读本地 Lua，不去网上找。生产数据的来源与参考测试版本分别维护，见[数据管线](../pipeline/README.md)。
 
 ## Parity 体系（回归基准）
 

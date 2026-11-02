@@ -1,6 +1,6 @@
 //! Schema for the adapted, stored game-data catalog.
 //!
-//! This is PoBR's **own minimal JSON schema**. `pobr-data-adapter
+//! This is PoBR's **own minimal JSON schema**. RePoE's `pobr-data-adapter
 //! --ordinary-facts` produces it from the RePoE owner's game facts by
 //! resolving foreign keys and denormalizing; `mise run data:prepare`
 //! imports the result into the ignored `data/<poe_version>/` (a

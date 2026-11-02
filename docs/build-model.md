@@ -32,8 +32,8 @@ schema 3 的 `manifest.json` 列出运行时文件和 SHA-256 摘要。
 `examples/demo-bd-test/tools/recapture_golden.py`、`recapture_panel_golden.py` 重采对照值。
 parity 下降说明需要调查新版差异，不能为通过而降低基线。
 
-宝石品质由 adapter 的 `--ordinary-domain gem-quality` 从固定 RePoE 目标事实与品质政策生成，沿用 `overlay/` 路径。
-它严格校验三张输入表与政策摘要，不从 vendor 或旧产物猜范围。见[品质生成说明](../pipeline/policies/gem-quality/README.md)。
+宝石品质由 RePoE `pobr-data-adapter` 的 `--ordinary-domain gem-quality` 从固定目标事实与品质政策生成，沿用 `overlay/` 路径。
+它严格校验三张输入表与政策摘要，不从 vendor 或旧产物猜范围。见[品质生成说明](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/gem-quality/README.md)。
 
 ### 受保护的 native 运行时契约
 
