@@ -6,40 +6,58 @@
 
 ## 数据来源现状与退出顺序
 
-各文件的 `_meta.generator` 可核对来源；下面的路径均相对 `data/<版本>/`，共享规则另放 `data/overlay-common/`。
-PoB2 对照版本由 `devs/reference-sources.json` 独立固定，生产产物的 `_meta.vendor_commit` 仍记录其生成来源。
-下方依赖清单描述活动 `0.5.5.4.2` 及其旧再生成链。普通 `0.5.5.5` 候选已有自有 RePoE 的树、符文、
-催化剂、描述和其它字段生产者；具体已迁字段、保留依赖和固定候选证据见
-[架构现状矩阵](data-architecture.md#5-当前已有数据与实际缺口)。候选已生成和源码已合并，均不表示活动包已采用。
+本地活动版本为 `0.5.5.5`；`0.5.5.4.2` 是由独立固定锁恢复的历史回滚输入。
+完整游戏与语言产物分别存于 RePoE 和翻译库，PoBR 按[构建锁](../pipeline/build-data.md)
+临时导入；[普通领域生产](../pipeline/ordinary-inputs.md)再从声明的事实、CSD 和政策生成六域候选，
+由[运行包组合](../pipeline/runtime-bundle.md)验证后接入既有消费者。
+本地采用和完整 CI 已完成，线上部署仍是单独动作；具体身份、已迁字段和剩余边界见
+[架构现状矩阵](data-architecture.md#5-当前已有数据与实际缺口)。
+
+下面的路径相对 `data/<版本>/`，共享输入位于 `data/overlay-common/`。
+字段来源以固定 owner 输入、领域转换收据和实际消费契约共同核对；
+`_meta.generator`／`_meta.vendor_commit` 保留原生成身份，不能单凭文件名或旧 metadata
+把混合来源文件整体算作客户端事实或 PoB2 输出。PoB2 测试参考由
+`devs/reference-sources.json` 独立固定，不决定生产数据版本。
 较早[独立官方树候选](../pipeline/README.md#固定来源与独立树候选)的 Druid 引用诊断保留原入口边界，
 不能据此重判后来 Default 图的成员资格，也不能把它当当前普通树迁源的剩余总表。
 
 ### 直接来自游戏的数据
 
-- `base/` 的物品基底、词缀、stat、天赋树、技能及等级。`ActiveSkills.DisplayedName` 用于 buff 名、`AffectedBy<名字>` 条件和诅咒优先级（`skill_env::buff_skill_name`）。
+- 普通领域 adapter 从固定 RePoE 客户端事实生成物品基底、词缀、stat、技能及等级；普通天赋树使用 DAT／PSG、CSD 与明确保留的兼容字段。字段所有权和未知项分别记录，不把整个 `base/` 目录视为已完成自主迁源。`ActiveSkills.DisplayedName` 用于 buff 名、`AffectedBy<名字>` 条件和诅咒优先级（`skill_env::buff_skill_name`）。
 - stat set 保留 `base_is_projectile` 等无值 stat；召唤物技能另保留按使用者等级成长的效能。
 - `base/skill_gems.json` 的效果链接、宝石标签来自 `GemEffects` / `GemTags`；各宝石等级所需角色等级来自 `ItemExperiencePerLevel`。品质另由 `overlay/gem_quality_stats.json` 提供。
 - `base/monster_resistances.json` 连接 `MonsterVarieties → MonsterTypes → MonsterResistances`，取普通稀有度的 `Fire1/Cold1/Lightning1/Chaos1`，合并链接并保留负弱点，供召唤物基础抗性使用。
 
-### 仍从 PoB2 抽取的数据
+### 保留的 PoB2 解释与兼容输入
 
-`sync-pob-catalog` 读取钉定 Lua 版本，主要产物如下：
+独立存储保留输入不会改变其原始出处。当前仍按字段保留以下依赖：
 
-- 解析：`mod_parser_rules.json`、`generated/special_vendor.json`、`mod_scalability.json`。
-- 技能：`skill_stat_map.json`、`skill_overrides.json`、`stat_set_labels.json`；以及触发、幻影配置。
-- 配置：`config_options.json`，其中 `if*` 与 `tooltip` 只决定界面可见性／说明，不证明选项已参与计算。
-- 物品：`uniques.json`、`base_item_overrides.json`、`runes.json`、`catalysts.json`；另有 `curse_priority.json`。
-- 描述：`stat_descriptions.json` 与派生的 `stat_id_map.json`。它们来自 PoB2 导出，不是直接从游戏客户端提取。
+| 范围 | 保留内容与边界 |
+| --- | --- |
+| 解析与 stat 解释 | `mod_parser_rules.json`、`generated/special_vendor.json`、`mod_scalability.json`，以及 `skill_stat_map.json` 的 stat→modifier 解释。客户端数值和稳定 ID 不直接证明单位、作用域或引擎映射 |
+| 技能与历史编号 | `skill_overrides.json` 中未迁移的 prepared 解释、`stat_set_labels.json`、分支 codec、触发及幻影配置；已经由目标事实拥有的倍率与 implicit 不再算作整文件 vendor 依赖 |
+| 配置与条件 | `config_options.json` 和 `curse_priority.json` 等保留解释。`if*`／`tooltip` 只决定界面可见性或说明，不证明选项已参与计算 |
+| 物品与暗金 | `uniques.json` 的完整词缀归属、roll／变体，以及基底覆盖中尚未拥有的字段。部分基底数值、装备授予技能和制作目录已有目标事实生产者，不能据旧文件名归为全部未迁 |
+| 符文、催化剂与描述 | 当前有各自的客户端事实／CSD adapter；未完整表示的符文整项回退、描述分支和 scoped 解释继续保留。`stat_id_map.json` 是派生维护资料，不是独立游戏语义来源 |
+| gem 与召唤物关系 | `gem_effects.json` 的历史显示顺序、owner 兼容，以及 minion／spectre 目录成员、effect→variety aliases、限制和装备关系等策展；目标效果链接、actor 字段和抗性已分别迁源 |
 
-`gem_effects.json` 仍服务旧快照、几颗宝石共用的效果和显示顺序 `GemEffects.GrantedEffectDisplayOrder`。虽然原生效果链接已在 `base/skill_gems.json`，`pathofexile-dat@15.2.0` 的社区 schema 尚未命名显示顺序列，所以顺序仍由此 overlay 提供。
+各域的字段及退出条件见[剩余字段清单](data-architecture.md#51-剩余字段与关闭条件)。
+例如，`overlay/minions.json` 的目录身份不能仅由 monster hash 反推；
+目标 `GrantedEffects.Id` 与 actor 数值已有物理 FK 生产路径，完整 effect→variety／装备关系仍需独立依据。
 
-`overlay/minions.json` 的 `monster_variety_id` 来自 `Export/Minions/Minions.txt` 的 `#monster` 映射。已入库的召唤 stat 只有 monster hash 等数值，不能反查 variety；幽魂／驯兽 ID 本身已是 variety ID。这里借用的是身份映射，抗性值仍读游戏表。
+`sync-pob-catalog extract-lua` 仍可从固定 vendor 导出上述旧格式，
+供[解析规则更新](../pipeline/README.md#词条更新与回归检查)和显式本地
+`data:legacy:regen`／`data:adapt` 兼容诊断使用。
+旧入口仍能导出 `runes.json`、`catalysts.json` 或 `stat_descriptions.json`，
+不表示当前普通生产仍从 vendor 整体取得这些文件。
+完整版本候选通过[锁驱动更新](../pipeline/locked-update.md)导入独立 owner 的固定产物；
+旧本地诊断不会自动取得新原料或成为缺失来源时的回退。
 
 ### 手工整理与回归数据
 
 `overlay-common/buff_definitions.json`、`special_mods.json`、`high_precision_mods.json`、`local_mods.json` 包含项目维护的兼容规则及独立游戏规则，不能统称为 PoB2 语义。
 
-活动包的游戏来源手工表包括 `item_granted_skills.json`、`boss_poise_thresholds.json` 和 `totem_varieties.json`（保留游戏行／来源）。普通候选已有三者的目标事实 producer：授予技能仅迁可证字段，原始 `ItemInherentSkills.IsWeapon` 列按固定社区政策解释为 NoReservation，字段命名与官方语义未独立认证；Boss选择仍是显式模型。详见[授予技能契约](../tools/pobr-data-adapter/ordinary-item-grants.md)。`energy_config_options.json` 等则是项目定义的外部事件／静态状态输入，合入配置目录。
+`item_granted_skills.json`、`boss_poise_thresholds.json` 和 `totem_varieties.json` 已有目标事实 producer，完整版本通过独立 RePoE 产物临时导入；PoBR 保留筛选和解释责任。授予技能只迁可证字段，原始 `ItemInherentSkills.IsWeapon` 列按固定社区政策解释为 NoReservation，字段命名与官方语义未独立认证；Boss 选择仍是显式模型。详见[授予技能契约](../tools/pobr-data-adapter/ordinary-item-grants.md)。`energy_config_options.json` 等是项目定义的外部事件／静态状态输入，属于 PoBR 自有配置。
 
 `examples/demo-bd-test/builds/*/meta.json` 的回归对照值由 `tools/pob2-oracle` 重录。它们用于防回归，不是独立游戏真值。
 
