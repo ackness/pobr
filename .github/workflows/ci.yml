@@ -263,6 +263,12 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-tools
+        with:
+          node: 'true'
+      - name: Verify the recorded complete publication composition
+        run: |
+          mkdir -p .cache
+          python3 pipeline/latest_data.py verify-composition > .cache/runtime-composition-verify.json
       - uses: actions/download-artifact@v8.0.2
         with:
           name: ordinary-domain-candidates
@@ -274,15 +280,44 @@ jobs:
       - name: Compose completed domains and verified display into three runtime blocks
         run: |
           python3 pipeline/runtime_pack.py import --imports .cache/ci-data-imports \
-            --ordinary .cache/ci-ordinary --out .cache/ci-runtime-pack \
+            --ordinary .cache/ci-ordinary --out .cache/ci-runtime-pack --require-full-alignment \
             > .cache/runtime-pack-status.json
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          name: wasm-release
+          path: .cache/ci-wasm-release
+      - name: Verify and materialize this run's completed runtime candidate
+        id: runtime-candidate
+        run: |
+          python3 pipeline/runtime_pack.py verify --pack .cache/ci-runtime-pack/player \
+            > .cache/runtime-candidate-verify.json
+          python3 pipeline/runtime_pack.py materialize --pack .cache/ci-runtime-pack/player \
+            --out .cache/ci-runtime-materialized > .cache/runtime-candidate-materialized.json
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+          release = json.loads(Path('.cache/ci-runtime-pack/player/manifest.json').read_text())
+          print('runtime=' + release['runtime_identity'])
+          PY
+      - name: Consume this runtime candidate with the same run's standalone WASM
+        env:
+          EXPECTED_RUNTIME: ${{ steps.runtime-candidate.outputs.runtime }}
+        run: |
+          node web/scripts/smoke-runtime-candidate.mjs \
+            --package .cache/ci-wasm-release --data .cache/ci-runtime-materialized \
+            --expected-runtime "$EXPECTED_RUNTIME" --out .cache/runtime-candidate-smoke.json
       - name: Preserve runtime candidate and build evidence
+        if: always()
         uses: actions/upload-artifact@v7.0.2
         with:
           name: runtime-pack-candidate
           path: |
             .cache/runtime-pack-status.json
+            .cache/runtime-composition-verify.json
             .cache/ci-runtime-pack/
+            .cache/runtime-candidate-verify.json
+            .cache/runtime-candidate-materialized.json
+            .cache/runtime-candidate-smoke.json
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 3

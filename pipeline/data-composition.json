@@ -1,0 +1,82 @@
+{
+  "schema": "pobr-data-composition/v1",
+  "generation": 1,
+  "previous_id": null,
+  "target": {
+    "game": "poe2",
+    "game_patch": "0.5.5.5",
+    "realm": "international"
+  },
+  "locale": "zh-CN",
+  "owner_publications": {
+    "ackness/repoe": {
+      "index_revision": "aa737740b07809d5454fb2cf406a057fcae193b2",
+      "sequence": 1,
+      "descriptor": {
+        "bytes": 4746,
+        "path": "publication/releases/poe2-international/1.json",
+        "revision": "154913f41a9a57491d01098e988adaa17ca67140",
+        "sha256": "6fe94764dd39270d1f5b3139b4c8c5a0b798f140b3e95b4ecdc474fd4c7d3bdd"
+      }
+    },
+    "ackness/poe2-zh-cn-stats": {
+      "index_revision": "cec78f1af75142734238018035da883a2549dd2f",
+      "sequence": 1,
+      "descriptor": {
+        "revision": "ece9cfe0057256c81d3b374a960c9370c94d7717",
+        "path": "publication/releases/poe2-international/1.json",
+        "bytes": 6327,
+        "sha256": "bb9ec6a13f142974f5df902b45c33d5eecf3e8547eeb5a9b768bcc07e84c7df7"
+      }
+    }
+  },
+  "files": {
+    "build": {
+      "path": "pipeline/build-data.lock.json",
+      "bytes": 5202,
+      "sha256": "e8892d6d05a7d24d2eb4f67c975333bebc6ccc73559a82a4cb6ed741b1f96e07"
+    },
+    "ordinary": {
+      "path": "pipeline/ordinary-inputs.lock.json",
+      "bytes": 11565,
+      "sha256": "c025b56d7306794c19b2bbf4ffeeaebfc3b0551c83657beff15ba32eb8fc9c20"
+    },
+    "ordinary_requirements": {
+      "path": "pipeline/ordinary-inputs.requirements.json",
+      "bytes": 6037,
+      "sha256": "b98a714521466ddbc01a5ab470f5ca1952cef5174db8e1a44441fd0f5140e53b"
+    },
+    "display": {
+      "path": "pipeline/data-imports.lock.json",
+      "bytes": 2948,
+      "sha256": "2c6f854acce2f87a9ed467c9361fa4404c8b07c0f8083234fcf7e6af4b7b36ac"
+    },
+    "requirements": {
+      "path": "pipeline/data-requirements.json",
+      "bytes": 2934,
+      "sha256": "bfd15893bcee76ba31ed3612ef9eccf8eefa3c41746714159bb8d6169c5cb79b"
+    },
+    "decisions": {
+      "path": "pipeline/sources.lock.json",
+      "bytes": 267040,
+      "sha256": "a5843e8eefc92dc4d4e7db1492914cbcc5bbd1c2b586db7d0d6769af8a19d922"
+    },
+    "locale_generation": {
+      "path": "pipeline/locale-generation.lock.json",
+      "bytes": 993,
+      "sha256": "a0081af02775711df393ec034132fc217b40458bf10259bdc0eb820fdcd83ecf"
+    },
+    "channels": {
+      "path": "pipeline/latest-channels.json",
+      "bytes": 1094,
+      "sha256": "c518dd7b32a7bafb8d4bf29243179c696b83280aae63d5ef481d2e5031d09298"
+    }
+  },
+  "expected": {
+    "snapshot_manifest": {
+      "bytes": 8234,
+      "sha256": "73b2d77e669743ced67df5cf6e0245f79e333bb9b2a481b796da7099d8f63a06"
+    },
+    "runtime_identity": "dba0615e55471570b22cb7759b3906b1db9e78629a2a6846a743e070708f0e72"
+  }
+}

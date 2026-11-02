@@ -7,6 +7,7 @@ display package, not a complete game snapshot or source-admission operation.
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -118,11 +119,15 @@ def git_address(source, name):
 class GitInputs:
     """Fetch only fixed shallow commits and requested blobs, without a checkout."""
 
-    def __init__(self, root):
+    def __init__(self, root, timeout=None):
+        require(timeout is None or (type(timeout) in (int, float) and math.isfinite(timeout) and timeout > 0),
+                "Invalid Git input timeout")
         self.root = root
         self.repositories = {}
+        self.timeout = timeout
 
-    def __call__(self, address):
+    def __call__(self, address, *, max_bytes=None):
+        require(max_bytes is None or (type(max_bytes) is int and max_bytes > 0), "Invalid Git blob size limit")
         url, revision, name = address
         key = (url, revision)
         env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
@@ -131,17 +136,22 @@ class GitInputs:
             root.mkdir(parents=True)
             def git(*args):
                 subprocess.run(["git", "-C", str(root), *args], env=env, check=True,
-                               stdout=subprocess.DEVNULL)
+                               stdout=subprocess.DEVNULL, timeout=self.timeout)
             git("init", "--bare", "--quiet")
             git("remote", "add", "origin", url)
             git("config", "remote.origin.promisor", "true")
             git("config", "remote.origin.partialclonefilter", "blob:none")
             git("fetch", "--quiet", "--no-tags", "--depth=1", "--filter=blob:none", "origin", revision)
-            actual = subprocess.check_output(["git", "-C", str(root), "rev-parse", "FETCH_HEAD"], env=env)
+            actual = subprocess.check_output(["git", "-C", str(root), "rev-parse", "FETCH_HEAD"],
+                                             env=env, timeout=self.timeout)
             require(actual.decode().strip() == revision, "Git revision mismatch")
             self.repositories[key] = root
+        if max_bytes is not None:
+            size = subprocess.check_output(["git", "-C", str(self.repositories[key]), "cat-file", "-s",
+                                            f"{revision}:{name}"], env=env, timeout=self.timeout)
+            require(int(size) <= max_bytes, "Git metadata blob exceeds size limit")
         return subprocess.check_output(["git", "-C", str(self.repositories[key]), "cat-file", "blob",
-                                        f"{revision}:{name}"], env=env)
+                                        f"{revision}:{name}"], env=env, timeout=self.timeout)
 
 
 def acquire(source, name, pin, cache, offline, fetcher):

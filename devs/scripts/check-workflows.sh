@@ -17,6 +17,8 @@ python3 pipeline/test-data-bundle.py
 python3 pipeline/check_data_ownership.py
 python3 pipeline/test-build-data.py
 python3 pipeline/test-locked-update.py
+python3 pipeline/test-latest-data.py
+python3 pipeline/test-latest-sync.py
 python3 pipeline/test-trade-crafting.py
 python3 pipeline/test-display-assets.py
 python3 pipeline/test-runtime-pack.py
@@ -26,4 +28,4 @@ python3 pipeline/test-locale-inputs.py
 python3 pipeline/test-ordinary-inputs.py
 python3 pipeline/test-source-verifier.py
 python3 tools/pobr-data-adapter/tests/test_smoke_native_facts.py
-node --test pipeline/test-native-name-translations.mjs pipeline/test-native-display-texts.mjs web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs web/scripts/bench-calc.test.mjs
+node --test pipeline/test-native-name-translations.mjs pipeline/test-native-display-texts.mjs web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs web/scripts/bench-calc.test.mjs web/scripts/smoke-runtime-candidate.test.mjs

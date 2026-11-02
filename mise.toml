@@ -50,6 +50,10 @@ run = "python3 pipeline/build_data.py --install data"
 description = "从明确外部 lock 准备候选；采用须显式 --activate --expected-current"
 run = "python3 pipeline/locked_update.py"
 
+[tasks."data:latest"]
+description = "检查完整owner发布并冻结新候选；不把源码HEAD、离线重放或解析成功当成采用"
+run = "python3 pipeline/latest_data.py"
+
 [tasks."data:adapt"]
 description = "历史本地原表的 DTO 兼容适配与校验；不采集、不隐式运行 PoB2"
 run = "python3 pipeline/data_snapshot.py adapt"

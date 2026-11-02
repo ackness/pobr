@@ -1,0 +1,34 @@
+{
+  "schema": "pobr-latest-data-channels/v1",
+  "channels": {
+    "ackness/repoe": {
+      "branch": "master",
+      "index": "publication/index.json"
+    },
+    "ackness/poe2-zh-cn-stats": {
+      "branch": "main",
+      "index": "publication/index.json"
+    }
+  },
+  "official_observer": {
+    "repository": "ackness/repoe",
+    "revision": "e19f28605bc51ead31c2d5d9ec611b3f43ad1bda",
+    "module": "RePoE.client_version",
+    "files": {
+      "RePoE/__init__.py": {
+        "bytes": 269,
+        "sha256": "a4b5da428da8625b74d47b5600b596502f7bb77ca5c3015c30f00b6c9a892f0c"
+      },
+      "RePoE/source_io.py": {
+        "bytes": 3404,
+        "sha256": "a58636dbcc495e862de164cf54af64fcce74d70472f85afbf01b29224fc8a64d"
+      },
+      "RePoE/client_version.py": {
+        "bytes": 8669,
+        "sha256": "322130fdd24dce10c266f4ef1c87193faf10a00bc402f104a485393994b9bd88"
+      }
+    }
+  },
+  "max_observation_age_seconds": 86400,
+  "adoption": "Same target and preserved scope only, after exact-head PR gate, Full gate and candidate consumer checks; otherwise preserve accepted defaults"
+}

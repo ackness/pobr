@@ -368,8 +368,24 @@ def git_handoff(artifact_dir):
     return result
 
 
+def require_full_alignment(original, candidate, version, locale, display):
+    """Full and compact consumers must receive the same projected business data."""
+    prefix = f"data/{version}/"
+    require(set(original) == set(candidate), "consumer-data-divergence: runtime member closure differs")
+    for name, raw in candidate.items():
+        if original[name] != raw:
+            relative = name.removeprefix(prefix).removeprefix("data/")
+            require(project(relative, original[name]) == project(relative, raw),
+                    f"consumer-data-divergence: full snapshot differs at {relative}")
+    relative = f"i18n/{locale}/display_texts.json"
+    require(prefix + relative in original
+            and project(relative, original[prefix + relative]) == project(relative, display),
+            "consumer-data-divergence: full snapshot display sidecar differs")
+
+
 def import_pack(requirements_path, lock_path, imports_path, output, cache, offline=False,
-                allow_unpublished=False, fetcher=None, ordinary_path=None, local_parts=None, shared_root=None):
+                allow_unpublished=False, fetcher=None, ordinary_path=None, local_parts=None, shared_root=None,
+                full_alignment=False):
     requirements = bundle.decode(regular(requirements_path))
     lock = bundle.decode(regular(lock_path))
     from build_data import LOCK_SCHEMAS as BUILD_LOCK_SCHEMAS
@@ -423,6 +439,7 @@ def import_pack(requirements_path, lock_path, imports_path, output, cache, offli
             require(source_id == lock["source_runtime_identity"]
                     and bundle.sha256(files[f"data/{version}/manifest.json"]) == lock["source_manifest_sha256"],
                     "Portable core snapshot mismatch")
+        original_files = files
         ordinary_evidence = None
         if "ordinary" in config:
             from runtime_ordinary import overlay
@@ -438,6 +455,8 @@ def import_pack(requirements_path, lock_path, imports_path, output, cache, offli
         require(import_receipt["requirements_sha256"] == bundle.sha256(regular(requirements_path))
                 and import_receipt["target"] == requirements["target"]
                 and import_receipt["locale"] == requirements["translation"]["locale"], "Display import requirements mismatch")
+        if full_alignment:
+            require_full_alignment(original_files, files, version, requirements["translation"]["locale"], display)
         release, payloads = assemble(files, version, requirements["target"], requirements["translation"]["locale"], display)
         inspect_release(payloads)
         stage = temp / "result"
@@ -447,6 +466,7 @@ def import_pack(requirements_path, lock_path, imports_path, output, cache, offli
         evidence = {"core_input_lock": lock, "source": manifest,
               "display_input": pin(display), "import_receipt": pin(regular(imports / "import-receipt.json")),
               "release_id": release["release_id"], "adoption": "not-adopted"}
+        evidence["full_consumer_alignment"] = "verified-projection-equivalence" if full_alignment else "not-checked"
         if ordinary_evidence is not None:
             evidence["ordinary"] = ordinary_evidence
         write(stage / "build-receipt.json", raw_json(evidence))
@@ -475,6 +495,8 @@ def main():
     p.add_argument("--lock", type=Path, default=ROOT / "pipeline/build-data.lock.json")
     p.add_argument("--imports", type=Path, required=True)
     p.add_argument("--ordinary", type=Path, help="Completed declared ordinary outputs (or CI output artifact)")
+    p.add_argument("--require-full-alignment", action="store_true",
+                   help="Reject full/compact business data divergence before runtime acceptance")
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--cache", type=Path, default=ROOT / ".cache/data-import-downloads")
     p.add_argument("--offline", action="store_true")
@@ -501,6 +523,7 @@ def main():
     else:
         result = import_pack(args.requirements, args.lock, args.imports, args.out, args.cache,
                              args.offline, args.allow_unpublished, ordinary_path=args.ordinary,
+                             full_alignment=args.require_full_alignment,
                              local_parts={k: p for k in ("game", "language") if (p := getattr(args, k)) is not None})
     print(json.dumps(result, ensure_ascii=False))
 

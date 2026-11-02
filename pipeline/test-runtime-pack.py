@@ -148,6 +148,22 @@ class RuntimePackTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 pack.project("base/skills.json", invalid)
 
+    def test_full_alignment_ignores_only_existing_projection_audit_fields(self):
+        prefix = "data/0.5.5.5/"
+        name = prefix + "base/passive_tree.json"
+        sidecar = prefix + "i18n/zh-CN/display_texts.json"
+        original = {name: b'{"_meta":{"audit":1},"nodes":[{"value":9223372036854775807,"rate":1.00e-09}]}',
+                    sidecar: b'{"text":null}'}
+        candidate = {**original, name: b'{"nodes":[{"rate":1.00e-09,"value":9223372036854775807}]}'}
+        pack.require_full_alignment(original, candidate, "0.5.5.5", "zh-CN", original[sidecar])
+        for changed in (b'{"nodes":[{"rate":1.00e-09,"value":9223372036854775806}]}',
+                        b'{"nodes":[{"rate":0.000000001,"value":9223372036854775807}]}',
+                        b'{"nodes":[{"rate":1.00e-09,"value":9223372036854775807,"provenance":null}]}'):
+            with self.subTest(changed=changed), self.assertRaisesRegex(ValueError, "consumer-data-divergence"):
+                pack.require_full_alignment(original, {**candidate, name: changed}, "0.5.5.5", "zh-CN", original[sidecar])
+        with self.assertRaisesRegex(ValueError, "display sidecar"):
+            pack.require_full_alignment(original, candidate, "0.5.5.5", "zh-CN", b'{"text":"new"}')
+
     def test_source_recipe_display_identity_and_symlinks_reject_without_output(self):
         with self.assertRaisesRegex(ValueError, "separate from input"):
             self.create(self.source / "new-parent/nested-output")
