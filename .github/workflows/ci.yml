@@ -166,7 +166,7 @@ jobs:
       - name: WASM build identity
         id: wasm-key
         run: node scripts/wasm-cache-key.mjs
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: web/src/wasm/pkg
           key: wasm-bindings-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.wasm-key.outputs.key }}
