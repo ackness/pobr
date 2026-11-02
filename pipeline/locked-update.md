@@ -3,7 +3,8 @@
 Game acquisition and export belong to RePoE; language production belongs to the
 translation repository. PoBR consumes a complete [build-data lock](build-data.md)
 with exact owner revisions, archive/member pins, snapshot and runtime identities.
-A patch number alone is insufficient. The old Node downloader, table exporter and
+A patch number alone is insufficient. [Latest complete publication discovery](latest-data.md)
+is separate from this immutable local preparation/selection command. The old Node downloader, table exporter and
 implicit latest/vendor upgrade chain have been retired.
 
 ```sh
@@ -47,6 +48,15 @@ refresh. It stays outside the sealed runtime identity and must pass the normal
 consumer gates. An old version's patch is not inferred to apply to another patch.
 Ordinary pinned installs also preserve that explicit local layer and recognized
 maintenance caches, while rejecting unknown extra runtime files or changed pins.
+
+For a selection based on a previously observed installed runtime, also pass
+`--expected-runtime <64-hex-runtime-identity>`. It requires `--activate`, checks
+the previous snapshot before preparation, and checks it again under the selection
+lock before validation/publication. This distinguishes two installed compositions
+with the same patch number: a late candidate cannot replace a different runtime
+that was selected first. The selection receipt records the previous runtime.
+It does not replace the separate comparison of default lock/composition metadata
+when adopting a candidate in Git.
 
 This operation selects local data only. Source acceptance, interpretation review,
 CI, app assets/deployment and rollback of application code remain separate. After

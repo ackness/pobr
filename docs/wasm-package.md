@@ -83,6 +83,25 @@ mise run web smoke-wasm-package
 
 CI 会测试打包脚本、构建 WASM、打包，再解压到临时目录，计算新角色和已有构筑。
 手动触发会保存 `wasm-release` Actions artifact 和大小报告。
+
+组包后的 runtime 候选另用以下窄检查，输入为同次 CI 的 standalone artifact 目录和
+`pipeline/runtime_pack.py materialize` 的新输出根（含 `bundle.json`、`data/CURRENT`）：
+
+```bash
+node web/scripts/smoke-runtime-candidate.mjs --package <wasm-release-dir> --data <materialized-root> --expected-runtime <release.runtime_identity> --out <fresh-receipt.json>
+```
+
+四个参数必填，输出父目录须已存在。脚本核对包归档、JS/WASM 摘要及编译 schema，
+复用 `snapshotFiles` 映射候选，逐次核对计算 provenance；不会解出或加载包内旧数据 gzip。
+它运行三份现有 worked build、既有 `+100 Life` 编辑检查，并用明确 synthetic 的未支持
+词条哨兵核对原文与保存重开的诊断保留：`extra_modifiers` 直接返回原文，保存到 custom block
+后重开带 `Config:` 来源；除此来源转换外，未支持／物品诊断逐项相等。
+非空诊断不使检查失败。路径穿越、symlink、错误摘要、输入在运行中变化或输出已存在均拒绝；
+全部检查通过后才写 `pobr-runtime-candidate-smoke/v1` 收据，记录代码／包 pins、候选身份、
+staging 清单、请求摘要和结果／诊断。收据不证明数值准确率，也不单独认证 artifact 来自同次 CI；
+同 run 下载与候选 `verify/materialize` 的接线由 CI 调用方保证。聚焦测试中的微型 WASM 只导出
+schema，计算器为明确标记的 synthetic fixture，不能替代真实候选消费证据。
+
 推送 `v*` tag 时，由 [release.yml](../.github/workflows/release.yml) 校验发布身份，
 并在完整 Rust、Web、自动化检查都通过后附加 Release 资产；
 Release 不存在时创建，已有说明则保留。tag 必须与 Cargo workspace 版本一致。

@@ -44,7 +44,7 @@ def validate_candidate(data_root, version):
         subprocess.run(command, cwd=ROOT, env=env, stdout=sys.stderr, check=True)
 
 
-def activate(prepared, data_root, expected_current, validator=None):
+def activate(prepared, data_root, expected_current, validator=None, *, expected_runtime_identity=None):
     """Select a verified bundle without downloading or changing shared rules.
 
     Cross-version patch migration is separate; only a patch already belonging
@@ -61,7 +61,11 @@ def activate(prepared, data_root, expected_current, validator=None):
         receipt = bundle.verify(prepared)
         version = receipt["data_version"]
         # Require a usable installed previous snapshot for rollback.
-        bundle.data_inputs(data_root, expected_current)
+        previous_runtime = bundle.data_inputs(data_root, expected_current)[1]
+        if expected_runtime_identity is not None:
+            require(isinstance(expected_runtime_identity, str)
+                    and re.fullmatch(r"[a-f0-9]{64}", expected_runtime_identity), "Invalid expected runtime identity")
+            require(previous_runtime == expected_runtime_identity, "Expected runtime changed")
         shared = fingerprint(data_root / "overlay-common")
         wanted_shared = {name.removeprefix("data/overlay-common/"): digest
                          for name, digest in receipt["files"].items()
@@ -111,6 +115,7 @@ def activate(prepared, data_root, expected_current, validator=None):
             bundle.verify(prepared, receipt["bundle_id"])
             data_snapshot.promote(stage, data_root, version, activate=True)
     return {"schema": "pobr-locked-data-selection/v1", "previous": expected_current,
+            "previous_runtime_identity": previous_runtime,
             "selected": version, "bundle_id": receipt["bundle_id"],
             "runtime_identity": receipt["runtime_identity"],
             "user_patch": "Target's local patch preserved; cross-version migration not inferred",
@@ -128,10 +133,14 @@ def main():
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--activate", action="store_true", help="Explicitly select the candidate locally")
     parser.add_argument("--expected-current", help="Required for selection; rejects a changed marker")
+    parser.add_argument("--expected-runtime", help="Optional selection guard for the previously installed runtime identity")
     for kind in (*build_data.OWNERS, "crafting"):
         parser.add_argument("--" + kind, type=Path, help="Explicit local owner input; all pins still apply")
     args = parser.parse_args()
     require(args.activate == (args.expected_current is not None), "Selection needs --activate and --expected-current together")
+    require(args.expected_runtime is None or args.activate, "Expected runtime requires selection")
+    if args.expected_runtime is not None:
+        require(re.fullmatch(r"[a-f0-9]{64}", args.expected_runtime), "Invalid expected runtime identity")
     data_root, output = (build_data.safe_directory(path) for path in (args.data_root, args.out))
     require(not output.is_relative_to(data_root) and not data_root.is_relative_to(output),
             "Candidate and installed data overlap")
@@ -140,12 +149,16 @@ def main():
     require(args.patch is None or args.patch == version, "Requested patch differs from the independent lock")
     if args.activate:
         require(regular(data_root / "CURRENT") == (args.expected_current + "\n").encode(), "Expected CURRENT changed")
+        if args.expected_runtime is not None:
+            require(bundle.data_inputs(data_root, args.expected_current)[1] == args.expected_runtime,
+                    "Expected runtime changed")
     local = {kind: value for kind in (*build_data.OWNERS, "crafting") if (value := getattr(args, kind)) is not None}
     receipt = build_data.prepare(args.lock, output, args.cache, args.shared or data_root / "overlay-common",
                                  args.offline, local)
     result = {"candidate": receipt, "selection": None}
     if args.activate:
-        result["selection"] = activate(output, data_root, args.expected_current)
+        result["selection"] = activate(output, data_root, args.expected_current,
+                                       expected_runtime_identity=args.expected_runtime)
     print(encoded(result).decode(), end="")
 
 

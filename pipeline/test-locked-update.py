@@ -64,6 +64,8 @@ class LockedUpdateTests(unittest.TestCase):
     def test_cli_requires_exact_lock_patch_and_explicit_selection_pair(self):
         for args in (('--patch', '9.2'), ('--activate',), ('--expected-current', '8.1'),
                      ('--activate', '--expected-current', '7.1'), ('--skip-download',),
+                     ('--expected-runtime', 'a' * 64),
+                     ('--activate', '--expected-current', '8.1', '--expected-runtime', 'not-a-runtime'),
                      ('--vendor-sha', 'a' * 40)):
             before = self.tree()
             with self.subTest(args=args):
@@ -92,12 +94,36 @@ class LockedUpdateTests(unittest.TestCase):
         self.before_validation_marker = b'9.1\n'
         (self.data / '9.1/base/skills.json').write_bytes(b'[{"old":true}]\n')
         snapshot.manifest(self.data / '9.1')
-        update.activate(self.f.out, self.data, '9.1', self.validate)
+        previous_runtime = bundle.data_inputs(self.data, '9.1')[1]
+        result = update.activate(self.f.out, self.data, '9.1', self.validate,
+                                 expected_runtime_identity=previous_runtime)
+        self.assertEqual(result['previous_runtime_identity'], previous_runtime)
         self.assertEqual((self.data / '9.1/base/skills.json').read_bytes(),
                          self.f.contents['data/9.1/base/skills.json'])
         self.assertEqual(self.patch.read_bytes(), b'[{"user":"keep target patch"}]\n')
         self.assertEqual(bundle.snapshot_inputs(self.data.parent, '9.1')[1], self.receipt['runtime_identity'])
         self.assertEqual(bundle.verify(self.f.out), self.receipt)
+
+    def test_same_patch_changed_runtime_refuses_late_candidate_without_validation(self):
+        (self.data / 'CURRENT').write_bytes(b'9.1\n')
+        expected = bundle.data_inputs(self.data, '9.1')[1]
+        (self.data / '9.1/base/skills.json').write_bytes(b'[{"newer":true}]\n')
+        snapshot.manifest(self.data / '9.1')
+        before = self.tree()
+        with self.assertRaisesRegex(ValueError, 'Expected runtime changed'):
+            update.activate(self.f.out, self.data, '9.1', self.validate,
+                            expected_runtime_identity=expected)
+        self.assertEqual(self.tree(), before)
+        self.assertFalse(self.validation_calls)
+
+    def test_cli_runtime_mismatch_fails_before_preparing_candidate(self):
+        before = self.tree()
+        result = self.cli('stale-runtime', '--activate', '--expected-current', '8.1',
+                          '--expected-runtime', 'a' * 64)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Expected runtime changed', result.stderr)
+        self.assertEqual(self.tree(), before)
+        self.assertFalse((self.root / 'stale-runtime').exists())
 
     def test_custom_data_directory_can_select_and_roll_back(self):
         rollback = self.root / 'rollback'
