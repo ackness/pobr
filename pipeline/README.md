@@ -26,14 +26,14 @@
 独立客户端候选的可重复流程是[固定补丁索引定位](client-index.md) →
 [未审阅原始采集](client-source-draft.md) → 来源审阅与固定 →
 [严格重放](client-sources.md) → RePoE 事实导出与 PoBR 领域适配。
-索引定位、采集、重放与来源包生成由独立RePoE实现并测试；PoBR只按固定三文件验包接口验证输入，见[ordinary接入](ordinary-inputs.md)。这些步骤不自动提升来源锁，也不切换活动数据；下方旧表导出链仍独立保留。
+索引定位、采集、重放与来源包生成由独立RePoE实现并测试；PoBR只按固定三文件验包接口验证输入，见[ordinary接入](ordinary-inputs.md)。这些步骤不自动提升来源锁，也不切换活动数据。历史 Git 树也由 RePoE 独立保存和发布，PoBR 不再直接获取官方原始树。
 
 [sources.lock.json](sources.lock.json)保留历史官方树输入及固定客户端资源位置、原始SHA-256、大小、decoder／schema和采集证据。
 `acquisition_acceptances`分别接受F77、六DAT、91 tree／IT、10 CSD、12语言原生资源，以及精确六OT／两描述DAT字节；
 `retained_input_acceptances`另记locale／shared／compat三类有界保留决定。各项只接受明确scope和pins，不认证全部机制、SC客户端身份或分发许可。
 本地活动版本现为`0.5.5.5`，完整双语runtime `dba0615e`；旧`0.5.5.4.2`由独立回滚锁按需恢复。
 采集、领域解释、消费者验证、本地采用及远端发布仍分开；完整状态见[架构现状](../docs/data-architecture.md#5-当前已有数据与实际缺口)。
-下方`data:tree:source`／`data:tree:candidate`只消费历史树类来源，不是当前普通树的再生流程。
+下方`data:tree:source`／`data:tree:candidate`按[独立历史树输入锁](tree-inputs.md)消费 RePoE 包，不是当前普通树的再生流程。
 PoB2 的测试参考版本独立登记在 [devs/reference-sources.json](../devs/reference-sources.json)，
 `mise run vendor` 不再读取生产 parser 元数据选择参考版本。
 
@@ -58,8 +58,8 @@ mise run data:tree:candidate --offline --out .cache/tree-proof/second
 最终确认需要匹配补丁的客户端 `.psg`、`PassiveSkills` 与 `ClassPassiveSkillOverrides`；
 本候选没有因此获得生产发布资格。
 
-获取命令将原始字节放在 `.cache/sources/<sha256>/data.json`，每次重用均验证哈希。
-`--offline` 不联网；缺缓存、内容不符或下载失败即失败，不回退到 latest 或别的版本。
+导入命令按[精确 Git 锁](tree-inputs.lock.json)获取 RePoE 的 `data.json`／`manifest.json` 包，校验归属、原来源身份、ZIP／成员 pins 和完整成员集合，临时物化到 `.cache/tree-inputs/<lock-sha256>/`。原 `.cache/sources/` 裸文件不能代替该包，损坏的导入不会联网修复。
+`--offline` 不联网；缺包、错 pin 或下载失败即失败，不回退到官方 URL、latest 或其它版本。
 候选命令用 Rust adapter 生成 `base/passive_tree.json` 与 `base/passive_tree_meta.json`，
 记录来源 lock、adapter/数据类型与构建输入的摘要；重放结果不包含机器路径或当前时间。
 Cargo 使用 `--locked`；`--offline` 同时禁止源下载和 Cargo 联网，不会为生成候选更新 lockfile。

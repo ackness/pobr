@@ -60,11 +60,11 @@ description = "适配 base/i18n，并显式要求固定 PoB2 parser 对照审计
 run = "python3 pipeline/data_snapshot.py adapt --reference-audit"
 
 [tasks."data:tree:source"]
-description = "获取/校验固定官方树输入；--offline 只读哈希缓存，不准备 PoB2"
+description = "临时导入固定 RePoE 历史树包；--offline 只读已验证包缓存，不获取上游游戏数据"
 run = "python3 pipeline/data_snapshot.py fetch-tree-source"
 
 [tasks."data:tree:candidate"]
-description = "从固定官方输入独立生成树域候选（--out 必填；不会发布或更新 CURRENT）"
+description = "从固定 RePoE 历史树包生成领域候选（--out 必填；不发布或更新 CURRENT）"
 run = "python3 pipeline/data_snapshot.py tree-candidate"
 
 [tasks."data:native:candidate"]

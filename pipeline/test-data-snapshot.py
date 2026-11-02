@@ -9,6 +9,10 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
+import zipfile
+
+import tree_inputs
+from data_imports import encoded, sha
 
 SPEC = importlib.util.spec_from_file_location("data_snapshot", Path(__file__).with_name("data_snapshot.py"))
 snapshot = importlib.util.module_from_spec(SPEC)
@@ -19,7 +23,7 @@ class SnapshotTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="pobr snapshot tests ")
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = Path(temporary.name).resolve()
         self.write("data/CURRENT", "9.1\n")
         self.write("pipeline/config.json", {"patch": "9.1"})
         self.write("data/9.1/base/skill_gems.json", [{"id": "original"}])
@@ -196,14 +200,37 @@ class OfficialTreeSourceTests(unittest.TestCase):
         for name in ["Cargo.toml", "Cargo.lock", "rust-toolchain.toml",
                      "tools/pobr-data-adapter/Cargo.toml", "crates/pobr-data/Cargo.toml",
                      "tools/pobr-data-adapter/src/main.rs", "crates/pobr-data/src/lib.rs",
-                     "pipeline/data_snapshot.py"]:
+                     "pipeline/data_snapshot.py", "pipeline/tree_inputs.py",
+                     "pipeline/build_data.py", "pipeline/data_bundle.py", "pipeline/data_imports.py"]:
             self.write(name, "fixture build input")
+        self.package_source()
+
+    def package_source(self):
+        pin = lambda raw: {"bytes": len(raw), "sha256": sha(raw)}
+        manifest = encoded({"schema": tree_inputs.PACKAGE_SCHEMA,
+            "status": "historical-diagnostic-candidate", "production_ready": False,
+            "source": {key: value for key, value in self.source.items() if key != "corrections"},
+            "files": {"data.json": pin(self.raw)}, "plan": pin(b"synthetic source plan"),
+            "producer": {"repository": "ackness/repoe", "revision": "a" * 40,
+                "module": "RePoE.official_tree_input",
+                "files": {"RePoE/official_tree_input.py": pin(b"synthetic producer")}}})
+        with io.BytesIO() as stream:
+            with zipfile.ZipFile(stream, "w", compression=zipfile.ZIP_STORED) as archive:
+                for name, raw in (("data.json", self.raw), ("manifest.json", manifest)):
+                    archive.writestr(zipfile.ZipInfo(name, (2000, 1, 1, 0, 0, 0)), raw)
+            self.archive = stream.getvalue()
+        self.input_lock = {"schema": tree_inputs.LOCK_SCHEMA, "source_id": "official-passive-tree",
+            "package": {"repository": "ackness/repoe", "revision": "b" * 40,
+                "path": "handoff/synthetic-tree/input.zip", **pin(self.archive),
+                "manifest": pin(manifest), "expanded_bytes": len(manifest) + len(self.raw)}}
+        self.write("pipeline/tree-inputs.lock.json", self.input_lock)
 
     def cache_source(self):
-        path = self.root / ".cache/sources" / self.source["sha256"] / "data.json"
+        self.package_source()
+        path = self.root / ".cache/data-import-downloads" / sha(self.archive)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(self.raw)
-        return path
+        path.write_bytes(self.archive)
+        return snapshot.fetch_tree_source(self.root, "official-passive-tree", offline=True)
 
     def adapt(self, command, root, env):
         self.assertEqual(command[:6], ["cargo", "run", "--locked", "--quiet", "-p", "pobr-data-adapter"])
@@ -214,25 +241,25 @@ class OfficialTreeSourceTests(unittest.TestCase):
         (out / "passive_tree.json").write_text('[{"skill":1,"x":3,"y":4}]')
         (out / "passive_tree_meta.json").write_text('{"tree":"Default","classes":[]}')
 
-    def test_source_download_and_offline_replay_are_hash_bound(self):
-        with patch.object(snapshot, "urlopen", return_value=io.BytesIO(self.raw)) as network:
+    def test_repoe_package_import_and_offline_replay_are_hash_bound(self):
+        with patch.object(tree_inputs.GitInputs, "__call__", return_value=self.archive) as network:
             cached = snapshot.fetch_tree_source(self.root, "official-passive-tree")
-        self.assertIn(self.source["revision"], network.call_args.args[0])
+        self.assertEqual(network.call_args.args[0][0], "https://github.com/ackness/repoe.git")
         self.assertEqual(cached.read_bytes(), self.raw)
-        with patch.object(snapshot, "urlopen", side_effect=AssertionError("offline network")):
+        with patch.object(tree_inputs.GitInputs, "__call__", side_effect=AssertionError("offline network")):
             self.assertEqual(snapshot.fetch_tree_source(self.root, "official-passive-tree", offline=True), cached)
         cached.write_bytes(b"corrupt")
-        with patch.object(snapshot, "urlopen", side_effect=AssertionError("must not silently repair")):
-            with self.assertRaisesRegex(ValueError, "Cached source hash"):
+        with patch.object(tree_inputs.GitInputs, "__call__", side_effect=AssertionError("must not silently repair")):
+            with self.assertRaisesRegex(ValueError, "bytes/SHA256"):
                 snapshot.fetch_tree_source(self.root, "official-passive-tree")
         self.assertEqual(cached.read_bytes(), b"corrupt")
 
     def test_missing_offline_source_and_wrong_download_never_publish(self):
-        with patch.object(snapshot, "urlopen", side_effect=AssertionError("offline network")):
-            with self.assertRaisesRegex(FileNotFoundError, "offline replay"):
+        with patch.object(tree_inputs.GitInputs, "__call__", side_effect=AssertionError("offline network")):
+            with self.assertRaisesRegex(ValueError, "Offline cache miss"):
                 snapshot.fetch_tree_source(self.root, "official-passive-tree", offline=True)
-        with patch.object(snapshot, "urlopen", return_value=io.BytesIO(b"changed bytes")):
-            with self.assertRaisesRegex(ValueError, "Downloaded source"):
+        with patch.object(tree_inputs.GitInputs, "__call__", return_value=b"changed bytes"):
+            with self.assertRaisesRegex(ValueError, "bytes/SHA256"):
                 snapshot.fetch_tree_source(self.root, "official-passive-tree")
         self.assertFalse((self.root / ".cache/sources").exists())
 
@@ -240,7 +267,7 @@ class OfficialTreeSourceTests(unittest.TestCase):
         self.source["revision"] = "master"
         self.write("pipeline/sources.lock.json", {"schema_version": 1,
                    "sources": {"official-passive-tree": self.source}})
-        with patch.object(snapshot, "urlopen", side_effect=AssertionError("invalid source network")):
+        with patch.object(tree_inputs.GitInputs, "__call__", side_effect=AssertionError("invalid source network")):
             with self.assertRaisesRegex(ValueError, "immutable digest"):
                 snapshot.fetch_tree_source(self.root, "official-passive-tree")
 
@@ -254,6 +281,9 @@ class OfficialTreeSourceTests(unittest.TestCase):
         self.assertEqual(snapshot.tree_fingerprint(outputs[0]), snapshot.tree_fingerprint(outputs[1]))
         receipt = snapshot.read_json(outputs[0] / "_domain_candidate.json")
         self.assertIsNone(receipt["source"]["game_patch"])
+        self.assertEqual(receipt["source_import"]["package"]["repository"], "ackness/repoe")
+        self.assertEqual(receipt["source_import"]["adoption"], "not-adopted")
+        self.assertNotIn("corrections", receipt["source_import"]["source"])
         self.assertEqual(receipt["adapter_inputs"]["Cargo.lock"], snapshot.digest(self.root / "Cargo.lock"))
         self.assertIn("blocked", receipt["publication"])
         self.assertFalse((outputs[0] / "manifest.json").exists())
@@ -266,10 +296,12 @@ class OfficialTreeSourceTests(unittest.TestCase):
     def test_candidate_failure_or_changed_input_preserves_published_data_and_output(self):
         raw = self.cache_source()
         before = snapshot.tree_fingerprint(self.root / "data")
-        for cause in ("adapter", "raw", "lock", "code", "preprocessor"):
+        for cause in ("adapter", "raw", "lock", "code", "preprocessor", "importer", "consumer-helper", "import-lock", "package"):
             with self.subTest(cause=cause):
                 output = self.root / f".cache/tree-{cause}"
                 lock_before = (self.root / "pipeline/sources.lock.json").read_bytes()
+                input_lock_before = (self.root / "pipeline/tree-inputs.lock.json").read_bytes()
+                manifest_before = (raw.parent / "manifest.json").read_bytes()
                 def fail(command, root, env):
                     self.adapt(command, root, env)
                     if cause == "adapter":
@@ -280,8 +312,16 @@ class OfficialTreeSourceTests(unittest.TestCase):
                         (root / "pipeline/sources.lock.json").write_text("{}")
                     elif cause == "code":
                         self.write("tools/pobr-data-adapter/src/new_module.rs", "new source")
-                    else:
+                    elif cause == "preprocessor":
                         self.write("pipeline/data_snapshot.py", "changed preprocessing")
+                    elif cause == "importer":
+                        self.write("pipeline/tree_inputs.py", "changed input code")
+                    elif cause == "consumer-helper":
+                        self.write("pipeline/data_imports.py", "changed shared input code")
+                    elif cause == "import-lock":
+                        self.write("pipeline/tree-inputs.lock.json", self.input_lock | {"changed": True})
+                    else:
+                        (raw.parent / "manifest.json").write_text("{}")
                 with patch.object(snapshot, "run", fail), self.assertRaises(ValueError):
                     snapshot.tree_candidate(self.root, "official-passive-tree", output, offline=True)
                 self.assertFalse(output.exists())
@@ -289,6 +329,8 @@ class OfficialTreeSourceTests(unittest.TestCase):
                 self.assertEqual(before, snapshot.tree_fingerprint(self.root / "data"))
                 raw.write_bytes(self.raw)
                 (self.root / "pipeline/sources.lock.json").write_bytes(lock_before)
+                (self.root / "pipeline/tree-inputs.lock.json").write_bytes(input_lock_before)
+                (raw.parent / "manifest.json").write_bytes(manifest_before)
 
     def test_candidate_rejects_published_or_existing_outputs_before_running_adapter(self):
         self.cache_source()
