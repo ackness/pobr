@@ -22,10 +22,6 @@ python3 -m pipeline.latest.test_latest_sync
 python3 -m pipeline.imports.test_trade_crafting
 python3 -m pipeline.imports.test_display_assets
 python3 -m pipeline.runtime.test_runtime_pack
-python3 -m pipeline.runtime.ordinary.test_runtime_ordinary
 python3 -m pipeline.imports.test_data_imports
-python3 -m pipeline.imports.test_locale_inputs
-python3 -m pipeline.runtime.ordinary.test_ordinary_inputs
-python3 -m pipeline.imports.test_source_verifier
 python3 tools/pobr-data-adapter/tests/test_smoke_native_facts.py
-node --test pipeline/native/test-native-name-translations.mjs pipeline/native/test-native-display-texts.mjs pipeline/native/test-native-socketable-translations.mjs web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs web/scripts/bench-calc.test.mjs web/scripts/smoke-runtime-candidate.test.mjs
+node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs web/scripts/bench-calc.test.mjs web/scripts/smoke-runtime-candidate.test.mjs

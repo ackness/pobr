@@ -44,8 +44,8 @@ patch 合并类型冲突或快照摘要错误会拒绝 WASM 初始化，保留�
 
 `runtime_pack.py` 在已封存的完整 schema-3 组合上做传输投影，复用原有
 `GameData` 文件路径、覆盖顺序与 DTO。它不读取原始客户端表，不实现另一套计算加载器。
-`data-requirements.json.runtime_pack` 声明发行格式、块选择和投影；
-[`build-data.lock.json`](build-data.md)分别锁住RePoE游戏数据、翻译库语言和PoBR本地政策代码。
+[`data.lock.json`](../data.lock.json) 固定目标、locale、RePoE 游戏数据、翻译库语言、PoBR 本地规则
+以及期望的发行身份 `release_id`；发行格式与块选择由 `runtime_pack.py` 固定。
 选定 locale 的 `display_texts` 随翻译库的语言发布进入完整快照，组包时直接读取。
 
 玩家目录恰有四个文件：`manifest.json` 与 `blocks/{core,rules,locale}.json`。
@@ -113,8 +113,8 @@ Web sync 验证后只发布 manifest 与三个按 SHA-256 寻址的块，不复�
 
 完整运行输入由 [`build_data.py`](build-data.md) 在临时目录组合：RePoE游戏包、
 翻译库语言及PoBR自有解释规则逐一认证，必须恢复锁中的完整snapshot/runtime身份。
-PoBR自己的Git/artifact ref不能供应完整数据；旧`ackness/pobr`核心输入锁已移除并显式拒绝。
-旧组合封存与本地`export-inputs`工具仅用于诊断，不是正式外部数据发布或默认获取通道。
+PoBR自己的Git/artifact ref不能供应完整数据。本地组合封存（`data:bundle`）只用于诊断，
+不是正式外部数据发布或默认获取通道。
 
 ```sh
 mise run data:prepare
@@ -122,10 +122,10 @@ mise run data:pack build --out .cache/runtime-pack     # 从已准备的 owner �
 mise run data:pack verify --pack .cache/runtime-pack/player
 ```
 
-`build` 逐项校验已安装快照的 schema-3 清单摘要，再投影成三块；可加 `--expected-id` 固定发行身份。
-它不重跑普通领域生产或显示生成：这些字节已在 owner 发布中，PoBR 只负责打包。
-新build lock同时固定game与language的真实仓库、完整commit、路径和摘要。
-`import` 子命令仍可按需求与锁重放声明的普通领域与显示候选，只用于诊断。
+`build` 逐项校验已安装快照的 schema-3 清单摘要，确认其运行身份等于数据锁，再投影成三块；
+锁中记录了 `release_id` 时结果必须一致（`--expected-id` 可另行指定）。
+它不重跑任何领域生产或显示生成：这些字节已在 owner 发布中，PoBR 只负责打包。
+数据锁同时固定 game 与 language 的真实仓库、完整 commit、tag、路径和摘要。
 
 Full CI在需要实物的Rust、Web和自动化测试前显式prepare；Rust多版本测试还显式安装
 固定旧回退包，保持活动CURRENT不变。`runtime`任务等待同次WASM构建，自己prepare并从快照组精简三块，
@@ -133,6 +133,6 @@ Full CI在需要实物的Rust、Web和自动化测试前显式prepare；Rust多�
 游戏／语言源表、verification与版本binding不进入Web玩家包。
 远端CI、来源准入、完整消费者验收和采用仍须分别确认。
 
-定向验证：`test-build-data.py`覆盖两owner组合、临时安装、回退版本、缺失／损坏pin和禁网cache；
-`test_runtime_pack.py`覆盖三块传输、从快照组包与CLI物化；`test_runtime_ordinary.py`覆盖诊断用的领域替换。
+定向验证：`test_build_data.py`覆盖两owner组合、数据锁schema与tag、临时安装、回退版本、缺失／损坏pin和禁网cache；
+`test_runtime_pack.py`覆盖三块传输、从快照组包与CLI物化。
 这些合成契约不等于Rust真实生产、数值parity或远端CI证据。

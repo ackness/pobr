@@ -1,7 +1,9 @@
 """Temporarily compose pinned external game/language data for builds and real tests.
 
-The source tree owns rules and locks. Data owners publish the two parts; PoBR
+`pipeline/data.lock.json` is PoBR's only data declaration: each owner artifact
+is a tagged commit plus path and SHA-256. Data owners publish the parts; PoBR
 never creates a data Git ref. Downloads are hash-addressed, disposable inputs.
+The older build-lock schemas remain only for the frozen rollback lock.
 """
 
 import argparse
@@ -15,11 +17,36 @@ from pipeline.runtime import data_bundle as bundle
 from pipeline.imports.data_imports import GitInputs, acquire, encoded, pinned, regular, require, unpack, write
 
 ROOT = Path(__file__).resolve().parents[2]
+DATA_LOCK = ROOT / "pipeline/data.lock.json"
+DATA_LOCK_SCHEMA = "pobr-data-lock/v1"
 LOCK_SCHEMA = "pobr-build-data-lock/v2"
 LEGACY_LOCK_SCHEMA = "pobr-build-data-lock/v1"
-LOCK_SCHEMAS = (LEGACY_LOCK_SCHEMA, LOCK_SCHEMA)
+LOCK_SCHEMAS = (LEGACY_LOCK_SCHEMA, LOCK_SCHEMA, DATA_LOCK_SCHEMA)
+# Schemas whose prepare projects the RePoE crafting facts.
+CRAFTING_SCHEMAS = (LOCK_SCHEMA, DATA_LOCK_SCHEMA)
 PART_SCHEMA = "pobr-build-data-part/v1"
 OWNERS = {"game": "ackness/repoe", "language": "ackness/poe2-zh-cn-stats"}
+TAG = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*")
+
+
+def validate_tag(spec):
+    """A tag names and keeps alive the pinned commit; fetches still use the revision."""
+    tag = spec.get("tag")
+    require(isinstance(tag, str) and TAG.fullmatch(tag) and ".." not in tag
+            and not tag.endswith(".lock"), "Every external data artifact needs a safe owner tag")
+    return tag
+
+
+def validate_owner_publications(value):
+    require(isinstance(value, dict) and set(value) == set(OWNERS.values()), "Both owner publications required")
+    from pipeline.imports.data_imports import validate_pin
+    for entry in value.values():
+        require(isinstance(entry, dict) and type(entry.get("sequence")) is int and entry["sequence"] > 0
+                and re.fullmatch(r"[a-f0-9]{40}", entry.get("index_revision", "")), "Invalid owner publication")
+        descriptor = entry.get("descriptor")
+        validate_pin(descriptor)
+        require(re.fullmatch(r"[a-f0-9]{40}", descriptor.get("revision", ""))
+                and str(descriptor.get("path", "")).startswith("publication/"), "Invalid owner publication descriptor")
 
 
 def safe_directory(path):
@@ -42,12 +69,23 @@ def member_kind(name, version):
 def validate(lock):
     from pipeline.imports.data_imports import validate_pin
     require(lock.get("schema") in LOCK_SCHEMAS, "Unknown build data lock")
-    if lock["schema"] == LOCK_SCHEMA:
+    if lock["schema"] in CRAFTING_SCHEMAS:
         from pipeline.imports import crafting_inputs
-        require(isinstance(lock.get("crafting"), dict), "The v2 build lock requires crafting facts")
+        require(isinstance(lock.get("crafting"), dict), "The data lock requires crafting facts")
         crafting_inputs.validate(lock["crafting"])
     else:
-        require("crafting" not in lock, "Crafting projection requires the v2 build lock")
+        require("crafting" not in lock, "Crafting projection requires the data lock")
+    if lock["schema"] == DATA_LOCK_SCHEMA:
+        require(type(lock.get("generation")) is int and lock["generation"] > 0
+                and (lock["generation"] == 1) == (lock.get("previous_id") is None)
+                and (lock.get("previous_id") is None or re.fullmatch(r"[a-f0-9]{64}", lock["previous_id"])),
+                "Invalid data lock generation")
+        require(lock.get("locale") in ("zh-CN", "zh-TW"), "Invalid data lock locale")
+        require(lock.get("release_id") is None or re.fullmatch(r"[a-f0-9]{64}", lock["release_id"]),
+                "Invalid compact release identity")
+        validate_owner_publications(lock.get("owner_publications"))
+        for spec in (*lock["packages"].values(), lock["crafting"], lock["support_display"], lock["test_fixtures"]):
+            validate_tag(spec)
     target = lock["target"]
     require(set(target) == {"game", "game_patch", "realm"} and target["game"] == "poe2"
             and re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", target["game_patch"])
@@ -94,7 +132,7 @@ def prepare(lock_path, output, cache, shared_root=ROOT / "data/overlay-common",
     require(not output.exists(), f"Fresh data output required: {output}")
     require(not output.is_relative_to(ROOT / "data"), "Prepare outside source data; use --install")
     local_parts = local_parts or {}
-    require(set(local_parts) <= set(OWNERS) | ({"crafting"} if lock["schema"] == LOCK_SCHEMA else set()),
+    require(set(local_parts) <= set(OWNERS) | ({"crafting"} if lock["schema"] in CRAFTING_SCHEMAS else set()),
             "Unknown local data part")
     cache.mkdir(parents=True, exist_ok=True)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -149,7 +187,7 @@ def prepare(lock_path, output, cache, shared_root=ROOT / "data/overlay-common",
                     require(name not in files, "Duplicate external data member")
                     files[name] = regular(part / name)
         crafting_receipt = None
-        if lock["schema"] == LOCK_SCHEMA:
+        if lock["schema"] in CRAFTING_SCHEMAS:
             from pipeline.imports import crafting_inputs
             name = f"data/{version}/overlay/trade_crafting_sources.json"
             require(name not in files, "Game part contains PoBR-projected crafting data")
@@ -240,7 +278,7 @@ def install(prepared, data_root, keep_current=False):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--lock", type=Path, default=ROOT / "pipeline/runtime/build-data.lock.json")
+    parser.add_argument("--lock", type=Path, default=DATA_LOCK)
     parser.add_argument("--out", type=Path, help="Fresh complete bundle; omitted for temporary prepare/install")
     parser.add_argument("--install", type=Path, help="Install the ignored version directory into an existing data root")
     parser.add_argument("--keep-current", action="store_true", help="Install a fixed rollback/test version without selecting it")

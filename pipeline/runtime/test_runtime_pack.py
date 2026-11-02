@@ -4,7 +4,6 @@ import copy
 import json
 from pathlib import Path
 import tempfile
-import subprocess
 import unittest
 
 from pipeline.runtime import data_bundle as bundle
@@ -87,11 +86,14 @@ class RuntimePackTests(unittest.TestCase):
         snapshot = json.loads((source / "manifest.json").read_bytes())
         snapshot["files"]["i18n/zh-CN/display_texts.json"] = bundle.sha256(display)
         self.write("source/data/9.1/manifest.json", pack.raw_json(snapshot))
-        requirements = self.write("requirements.json", pack.raw_json(
-            {"target": self.target, "translation": {"locale": "zh-CN"}}))
+        _, runtime_identity = bundle.data_inputs(self.root / "source/data", self.version)
+        lock = {"schema": "pobr-data-lock/v1", "target": self.target, "locale": "zh-CN",
+                "runtime_identity": runtime_identity, "release_id": None}
+        requirements = self.write("data.lock.json", pack.raw_json(lock))
         first = pack.build_release(requirements, self.root / "source/data", self.root / "built")
-        again = pack.build_release(requirements, self.root / "source/data", self.root / "built-again",
-                                   expected_id=first["release_id"])
+        lock["release_id"] = first["release_id"]
+        requirements.write_bytes(pack.raw_json(lock))
+        again = pack.build_release(requirements, self.root / "source/data", self.root / "built-again")
         self.assertEqual(first, again)
         release, _, payloads = pack.read_release(self.root / "built/player", first["release_id"])
         self.assertEqual(release["runtime_identity"], first["runtime_identity"])
@@ -99,6 +101,10 @@ class RuntimePackTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unexpected release identity"):
             pack.build_release(requirements, self.root / "source/data", self.root / "wrong", expected_id="0" * 64)
         self.assertFalse((self.root / "wrong").exists())
+        requirements.write_bytes(pack.raw_json({**lock, "runtime_identity": "0" * 64}))
+        with self.assertRaisesRegex(ValueError, "differs from the data lock"):
+            pack.build_release(requirements, self.root / "source/data", self.root / "other")
+        requirements.write_bytes(pack.raw_json(lock))
         self.write("source/data/9.1/i18n/zh-CN/display_texts.json", display + b" ")
         with self.assertRaisesRegex(ValueError, "Snapshot hash mismatch"):
             pack.build_release(requirements, self.root / "source/data", self.root / "tampered")
@@ -170,22 +176,6 @@ class RuntimePackTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 pack.project("base/skills.json", invalid)
 
-    def test_full_alignment_ignores_only_existing_projection_audit_fields(self):
-        prefix = "data/0.5.5.5/"
-        name = prefix + "base/passive_tree.json"
-        sidecar = prefix + "i18n/zh-CN/display_texts.json"
-        original = {name: b'{"_meta":{"audit":1},"nodes":[{"value":9223372036854775807,"rate":1.00e-09}]}',
-                    sidecar: b'{"text":null}'}
-        candidate = {**original, name: b'{"nodes":[{"rate":1.00e-09,"value":9223372036854775807}]}'}
-        pack.require_full_alignment(original, candidate, "0.5.5.5", "zh-CN", original[sidecar])
-        for changed in (b'{"nodes":[{"rate":1.00e-09,"value":9223372036854775806}]}',
-                        b'{"nodes":[{"rate":0.000000001,"value":9223372036854775807}]}',
-                        b'{"nodes":[{"rate":1.00e-09,"value":9223372036854775807,"provenance":null}]}'):
-            with self.subTest(changed=changed), self.assertRaisesRegex(ValueError, "consumer-data-divergence"):
-                pack.require_full_alignment(original, {**candidate, name: changed}, "0.5.5.5", "zh-CN", original[sidecar])
-        with self.assertRaisesRegex(ValueError, "display sidecar"):
-            pack.require_full_alignment(original, candidate, "0.5.5.5", "zh-CN", b'{"text":"new"}')
-
     def test_source_recipe_display_identity_and_symlinks_reject_without_output(self):
         with self.assertRaisesRegex(ValueError, "separate from input"):
             self.create(self.source / "new-parent/nested-output")
@@ -200,53 +190,6 @@ class RuntimePackTests(unittest.TestCase):
         alias.symlink_to(self.display)
         with self.assertRaisesRegex(ValueError, "Symlink"):
             pack.regular(alias)
-
-    def test_portable_core_import_is_exact_and_pending_publication_has_no_fallback(self):
-        exported = self.root / "handoff"
-        lock = pack.export_inputs(self.source, self.recipe, exported)
-        requirements = {"target": self.target, "translation": {"locale": "zh-CN"}, "runtime_pack": {"schema": pack.SCHEMA}}
-        requirements_path = self.write("requirements.json", pack.raw_json(requirements))
-        lock_path = exported / "runtime-inputs.lock.json"
-        args = (requirements_path, lock_path, self.root / "imports", self.root / "imported", self.root / "downloads")
-        with self.assertRaisesRegex(ValueError, "unpublished"):
-            pack.import_pack(*args)
-        pending = pack.import_pack(*args, allow_unpublished=True)
-        self.assertEqual(pending["status"], "pending-core-publication")
-        self.assertFalse((self.root / "imported").exists())
-        lock.update(publication="published", repository="example/core-inputs", revision="a" * 40)
-        lock_path.write_bytes(pack.raw_json(lock))
-        self.write("imports/runtime/display_texts.json", self.display.read_bytes())
-        self.write("imports/runtime/receipt.json", pack.raw_json({"files": {"display_texts.json": pack.pin(self.display.read_bytes())}}))
-        self.write("imports/import-receipt.json", pack.raw_json({"requirements_sha256": bundle.sha256(requirements_path.read_bytes()),
-                   "target": self.target, "locale": "zh-CN"}))
-        calls = []
-
-        def fetch(address):
-            calls.append(address)
-            return (exported / "core-inputs.zip").read_bytes()
-
-        result = pack.import_pack(*args, fetcher=fetch)
-        self.assertEqual(result["status"], "assembled")
-        self.assertEqual(len(calls), 1)
-        self.create()
-        self.assertEqual((self.root / "imported/runtime-pack.zip").read_bytes(), (self.output / "runtime-pack.zip").read_bytes())
-        replay_args = (*args[:3], self.root / "offline", args[4])
-        pack.import_pack(*replay_args, offline=True, fetcher=lambda _: self.fail("network during replay"))
-        cached = args[4] / lock["sha256"]
-        cached.write_bytes(b"broken")
-        with self.assertRaisesRegex(ValueError, "bytes/SHA256"):
-            pack.import_pack(*(*args[:3], self.root / "corrupt", args[4]), offline=True)
-
-    def test_local_bare_git_handoff_contains_the_exact_portable_artifact(self):
-        output = self.root / "git-artifact"
-        lock = pack.export_inputs(self.source, self.recipe, output)
-        handoff = pack.git_handoff(output)
-        raw = subprocess.check_output(["git", "--git-dir", str(output / "handoff.git"), "cat-file", "blob",
-                                       f"{handoff['revision']}:{handoff['path']}"])
-        self.assertEqual(pack.pin(raw), {k: lock[k] for k in ("bytes", "sha256")})
-        self.assertEqual(raw, (output / "core-inputs.zip").read_bytes())
-        self.assertFalse((output / "handoff.git/.git").exists())
-        self.assertIsNone(bundle.decode((output / "runtime-inputs.lock.json").read_bytes())["revision"])
 
 
 if __name__ == "__main__":

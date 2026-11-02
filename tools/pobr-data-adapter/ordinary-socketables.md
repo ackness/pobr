@@ -45,36 +45,16 @@ its manifest. [Ordinary fact verification](ordinary-facts.md) applies unchanged.
 
 ## Translation-library boundary
 
-`pipeline/native/native-socketable-translations.mjs` consumes the own translation
-repository's pinned `poe2-native-localization-candidate/v1` export. It follows
-the exact file/record/branch selected by the socketable receipt and checks source
-manifest, stat IDs and formatting handlers. It renders only actual consumed
-literal values into the existing `stat_lines.json` pairs. It never flattens the
-entire contextual archive into a dictionary or invents Chinese wording.
+Selected effect translations for socketables come from the translation
+repository's own publication; PoBR does not render or pair them. Existing pairs
+remain intact; ambiguous, missing or unproven multiline mappings stay
+untranslated, and the `Bonded:` item syntax marker is preserved.
 
-Existing pairs remain intact. Ambiguous context-free mappings, missing pairs and
-unproven multiline alignment are reported and left untranslated. The `Bonded:`
-item syntax marker is preserved. This adds selected effect translations, not a
-complete target-language approval, name catalog or Chinese-server numeric proof.
-
-```sh
-mise exec -- node pipeline/native/native-socketable-translations.mjs \
-  --selection /absolute/socketables/producer-receipt.json --selection-sha256 "$RECEIPT_SHA" \
-  --native /absolute/translation-library/fixed-candidate.json --native-sha256 "$LANGUAGE_SHA" \
-  --legacy data/0.5.5.4.2/i18n/zh-CN/stat_lines.json --legacy-sha256 "$LINES_SHA" \
-  --out /absolute/existing-parent/fresh-translations
-```
-
-The same selector accepts the target ordinary tree receipt and follows complete
-node/variant CSD evidence, including source-owned ascendancy replacements.
-Prepared text is never given a target-language claim.
-
-Both commands require fresh outputs. Assembly remains explicit and records the
+The producer requires a fresh output. Assembly remains explicit and records the
 new snapshot/shared-layer identity before ordinary consumption. Regression scope:
 
 ```sh
 mise exec -- cargo test --locked -p pobr-data-adapter --bin pobr-data-adapter ordinary_facts::socketables::
-mise exec -- node --test pipeline/native/test-native-socketable-translations.mjs
 ```
 
 New selection receipts include Rust-formatted numeric literals. Translation

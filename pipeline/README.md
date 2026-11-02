@@ -5,10 +5,10 @@
 尚未迁移的字段以 PoB2／社区兼容数据的形式随 RePoE owner 包固定导入，不称为已从客户端自主再生。
 PoBR 不从 PoB2 vendor Lua 或本地原表导出生产数据。
 
-当前存储职责：游戏数据归RePoE、语言数据归翻译库，PoBR只提交代码、需求／版本锁、来源元数据及小型合成夹具；CI构建和需要实物的测试在临时目录导入数据并生成发布资产。
+当前存储职责：游戏数据归RePoE、语言数据归翻译库，PoBR只提交代码、唯一数据锁 [`data.lock.json`](data.lock.json)、来源元数据及小型合成夹具；CI构建和需要实物的测试在临时目录导入数据并生成发布资产。
 四份完整快照、七份外部shared、历史大policy及完整语言／API样本已迁出当前Git tree；无旧PoBR数据artifact回退。本地活动目标保持0.5.5.5，Git历史不改写。详见[存储边界](../docs/data-architecture.md#4-存储边界)。
 
-[最新完整发布同步](latest/latest-data.md)通过两owner发布索引发现候选，冻结完整组合，再由精确head的PR／Full门禁与实际最终包消费验证后条件采用。普通构建继续按不可变锁重放；索引bootstrap、官方版本观察和owner源码更新均不代表新数据已生成或已采用。
+[最新完整发布同步](latest/latest-data.md)通过两owner发布索引发现候选，冻结为新的数据锁，再由精确head的PR／Full门禁与实际最终包消费验证后条件采用。普通构建继续按不可变锁重放；索引bootstrap、官方版本观察和owner源码更新均不代表新数据已生成或已采用。
 两 owner 索引及 PoBR 控制器均已合并；严格 PR gate／管理员保护已配置，专用同步凭据与真实新发布的端到端采用仍待完成。
 当前核对与优化顺序以[数据现状](../docs/data-status.md)和 [latest 启用状态](latest/latest-data.md#verified-rollout-status-2026-11-02-utc)为准。
 
@@ -16,11 +16,11 @@ PoBR 不从 PoB2 vendor Lua 或本地原表导出生产数据。
 
 | 目录 | 内容与入口 |
 | --- | --- |
-| [runtime/](runtime/build-data.md) | 当前／回滚构建锁、快照封存、运行组包和显式采用；`data:prepare`、`data:update`、`data:pack` |
-| [runtime/ordinary/](runtime/ordinary/ordinary-inputs.md) | 普通领域需求与锁、policy 物化、六域生产及组包接入；`data:ordinary`、`data:regen` |
-| [imports/](imports/data-imports.md) | Git 固定输入、来源接受记录、语言／显示／制作投影及来源校验；`data:imports` |
-| [latest/](latest/latest-data.md) | owner 通道、完整组合清单、候选发现与 CI 后条件采用；`data:latest` |
-| [native/](native/native-candidate.md) | 受限原生 recipe、显示侧表适配与对应测试；`data:native:candidate` |
+| [data.lock.json](data.lock.json) | 唯一数据锁：两个 owner 的固定 tag、commit、路径与 SHA-256，目标、自有规则 pin 与期望身份 |
+| [runtime/](runtime/build-data.md) | 按锁临时导入、回滚锁、快照封存、精简发行包和显式采用；`data:prepare`、`data:update`、`data:pack` |
+| [imports/](imports/crafting-inputs.md) | 固定 Git 传输、来源接受记录、制作目录与辅助说明投影、数据归属检查 |
+| [latest/](latest/latest-data.md) | owner 通道、候选发现与 CI 后条件采用；`data:latest` |
+| [native/](native/native-candidate.md) | 受限原生 recipe 与对应测试（schema 4 冻结）；`data:native:candidate` |
 | [tree/](tree/tree-inputs.md) | 历史官方树包导入及诊断候选；`data:tree:source`、`data:tree:candidate` |
 | [policies/](policies/README.md) | 按游戏领域划分的 PoBR 解释政策与树修正；不是下载缓存 |
 | [diagnostics/](diagnostics/README.md) | 数据版本差异、描述来源核对与词条审计；不自动采用数据 |
@@ -28,8 +28,8 @@ PoBR 不从 PoB2 vendor Lua 或本地原表导出生产数据。
 各功能的说明、锁和测试与实现放在一起。Python 从仓库根目录以模块运行，
 例如 `mise exec -- python3 -m pipeline.runtime.runtime_pack --help`；日常优先使用上表中保持稳定的 mise 任务。
 
-JSON 的职责各不相同：`*.lock.json` 固定输入身份，`*requirements.json` 声明消费范围，
-`policies/` 固定解释决定，`latest/data-composition.json` 绑定完整组合，`native/*example.json` 是显式候选 recipe 示例。
+JSON 的职责各不相同：`data.lock.json` 是唯一的生产数据声明，`runtime/build-data-0.5.5.4.2.lock.json` 只用于冻结回滚，
+`policies/` 固定解释决定，`native/*example.json` 是显式候选 recipe 示例。
 测试夹具只供测试读取，不能代替真实来源或运行验收。
 
 历史来源收据中的路径按记录时的 Git 版本解释，不为整理目录重写原始 pins、命令或接受范围。
@@ -57,7 +57,7 @@ JSON 的职责各不相同：`*.lock.json` 固定输入身份，`*requirements.j
 独立客户端候选的可重复流程是[固定补丁索引定位](imports/client-index.md) →
 [未审阅原始采集](imports/client-source-draft.md) → 来源审阅与固定 →
 [严格重放](imports/client-sources.md) → RePoE 事实导出与 PoBR 领域适配。
-索引定位、采集、重放与来源包生成由独立RePoE实现并测试；PoBR只按固定三文件验包接口验证输入，见[ordinary接入](runtime/ordinary/ordinary-inputs.md)。这些步骤不自动提升来源锁，也不切换活动数据。历史 Git 树也由 RePoE 独立保存和发布，PoBR 不再直接获取官方原始树。
+索引定位、采集、重放与来源包生成由独立RePoE实现并测试；PoBR只导入 owner 已发布的固定产物。这些步骤不自动提升来源锁，也不切换活动数据。历史 Git 树也由 RePoE 独立保存和发布，PoBR 不再直接获取官方原始树。
 
 [sources.lock.json](imports/sources.lock.json)保留历史官方树输入及固定客户端资源位置、原始SHA-256、大小、decoder／schema和采集证据。
 `acquisition_acceptances`分别接受F77、六DAT、91 tree／IT、10 CSD、12语言原生资源，以及精确六OT／两描述DAT字节；
@@ -124,7 +124,7 @@ PoBR 领域候选，见[候选契约](../tools/pobr-data-adapter/native-facts.md
 
 活动组合的身份、各领域保留兼容的分母和关闭条件统一维护在[数据现状](../docs/data-status.md#领域现状)，本页不复制阶段记录。
 
-语言库的完整显示目录可经[显示侧表投影](native/native-display-texts.md)接入普通 Web
+选定 locale 的显示侧表 `i18n/<locale>/display_texts.json` 由翻译库生成，随语言发布导入，接入普通 Web
 `translateLines`：精确来源查询、跨表同名冲突和缺译保留，不改原始构筑文本或计算。
 侧表已列入当前活动manifest；全部字段UI消费、真实审核译文及CN语义仍分别验收。审核补译入口只消费精确绑定的已审核记录，当前真实包为0条，草稿不生效。
 
@@ -135,14 +135,8 @@ PoBR 领域候选，见[候选契约](../tools/pobr-data-adapter/native-facts.md
 ## 运行时数据组合封存
 
 运行包的版本文件与共享规则可独立封存并核验，见[运行时数据组合封存](runtime/runtime-bundle.md)。
-PoBR 所需外部表/显示字段及固定 Git 产物分别由 JSON 需求与锁声明；
-目前已接通原生显示候选的 CI 获取/校验和精简投影，见[定向数据导入](imports/data-imports.md)。
-[普通领域输入声明](runtime/ordinary/ordinary-inputs.md)另行固定事实归档、CSD、政策和supplement，
-Full CI从Git获取压缩输入后顺序调用既有adapter生成六域候选；原始大表不进入玩家块。
-需求 JSON 的 `runtime_pack.ordinary` 指定六域可替换的八个路径；独立 CI 组包任务核对
-完成收据／领域收据及业务字节后，与固定保留输入、显示候选合成三块。
-[精确提交663d9055的完整CI](https://github.com/ackness/pobr/actions/runs/41376591565)已通过六域生产、真实WASM／Web、声明运行组包及Full gate；部署仍未执行，本地完整快照采用见上文。
-该入口保存已存在的完整运行组合，不替代下述领域来源与发布验收。
+精简发行包由 `mise run data:pack build` 直接从已准备的 owner 快照组装，发行身份记录在数据锁的 `release_id`；
+PoBR 不再在 CI 中重跑普通领域生产或显示生成。
 
 ## 词条审计
 
@@ -197,8 +191,8 @@ PoBR 的修正放在 `data/overlay-common/special_mods.json`，更新数据后�
 这是下载来源恢复，不是中文数据升版；`_meta.json` 继续保留真实来源提交和 2026-07-06 的生成时间。
 国际服导出提供繁中；完整游戏表的新版官方简中仍需相应 WeGame 客户端数据，不能用繁转简冒充。独立词表中的腾讯交易文本不等于完整客户端名词表。
 当前构建从独立翻译库的固定产物导入，执行 `mise run data:prepare`；完整词典和元数据保持原字节，不在PoBR内重新生成或跟踪上游HEAD。
-目标、Git修订、manifest及成员摘要见[构建锁](runtime/build-data.lock.json)，临时导入及回滚见[build-data](runtime/build-data.md)。
-旧简中生成、下载与合并实现已迁至翻译库；PoBR 的完整候选只导入 owner 已发布的固定语言文件，不解析来源 HEAD。九个 SC 成员与 140+2 分层的固定历史重放见[语言生成契约](imports/locale-generation.md)，TW 与紧凑 display 继续独立组合。现有 processed 包的精确恢复不代表全部客户端自主再生。
+目标、Git修订、tag、manifest及成员摘要见[数据锁](data.lock.json)，临时导入及回滚见[build-data](runtime/build-data.md)。
+简中生成、下载与合并在翻译库；PoBR 只导入 owner 已发布的固定语言文件，不解析来源 HEAD。现有 processed 包的精确恢复不代表全部客户端自主再生。
 
 ### 独立词表与人工翻译维护
 
@@ -213,7 +207,7 @@ PoBR 的修正放在 `data/overlay-common/special_mods.json`，更新数据后�
 - 技能标签、物品结构行及导入语法仍由 PoBR 按上下文解释，不把 UI 文案或计算规则混入词条表。
 
 辅助定性说明及其`GemEffects.SupportText`配对处理已归翻译库独立存储和维护。
-`build-data.lock.json`的`support_display`固定外部manifest、资产和目标catalog摘要；`mise run data:prepare`
+`data.lock.json`的`support_display`固定外部manifest、资产和目标catalog摘要；`mise run data:prepare`
 在构建／实物测试前导入，物化忽略的`web/src/lib/supportDescriptions.zh-CN.json`，不改GameData快照身份。
 当前保留资产的原生成版本仍为0.5.5.4.2；与目标目录SHA完全相同才允许使用，UI仍核`skill_id`和完整英文。
 换目录须重新由翻译库配对并更新锁，不能重贴旧版本标签。投影代码与合成测试归翻译库；PoBR验证导入pins、目录绑定和显示回退。
@@ -230,7 +224,7 @@ PoBR 的修正放在 `data/overlay-common/special_mods.json`，更新数据后�
 
 ## 固定输入、版本与候选
 
-当前输入由[build-data](runtime/build-data.md)、[ordinary](runtime/ordinary/ordinary-inputs.md)和[显示导入](imports/data-imports.md)的独立锁声明；
+当前输入只由[数据锁](data.lock.json)声明（导入细节见[build-data](runtime/build-data.md)）；
 `data/CURRENT`只选择本地运行版本。
 PoBR不再安装`pathofexile-dat`、下载原始索引或导出官方原表。官方版本发现和资源采集在独立RePoE执行，
 语言在翻译库生成；成功观察到一个补丁号也不能认证全部原料、机制或改变CURRENT。
@@ -240,8 +234,7 @@ mise run data:version                   # 本地选中版本
 mise run data:prepare                   # 临时导入当前固定目标，不更改 CURRENT
 mise run data:check                     # 离线检查：跟踪数据归属，导入后工作树干净
 mise run data:pack build --out .cache/runtime-pack   # 从已准备的快照组精简发行包
-mise run data:regen --out .cache/ordinary-produced --adapter target/debug/pobr-data-adapter
-mise run data:update --lock pipeline/runtime/build-data.lock.json --out .cache/update-review
+mise run data:update --lock pipeline/data.lock.json --out .cache/update-review
 ```
 
 `data:check` 不联网、不导入：先由 `pipeline.imports.check_data_ownership` 确认 `data/` 只跟踪 `CURRENT`
@@ -249,7 +242,6 @@ mise run data:update --lock pipeline/runtime/build-data.lock.json --out .cache/u
 `.gitignore` 的同一区块。CI 中每个导入数据的 job 先恢复 `.cache/data-import-downloads` 的内容寻址缓存
 （命中后仍逐项校验摘要），导入后运行同一检查。
 
-`data:regen`只生成已声明的普通领域候选，完整封包仍使用`data:pack`，不把六域结果冒称全部自主数据。
 完整候选及显式本地采用见[锁驱动更新](runtime/locked-update.md)。采用须同时指定`--activate`和预期CURRENT，
 保留隔离的版本／GameData／parity门禁、原子选择、失败回滚及同版本目标patch；默认只准备候选。
 shared变更须另行迁移；不会自动修改vendor pin、来源接受、数值golden、构建锁或部署。
@@ -260,7 +252,7 @@ schema-3 manifest封存默认运行字节；维护报告和本地patch不进入�
 ## 扩展 / 升版
 
 - 新PoE2版本：在独立RePoE观察并取得精确来源、导出和发布游戏输入；翻译库独立准备语言。
-  PoBR审阅并更新对应需求与完整owner锁，先用`data:update --lock <lock> --out <fresh>`准备候选，
+  PoBR审阅并更新`pipeline/data.lock.json`，先用`data:update --lock <lock> --out <fresh>`准备候选，
   验证来源／消费者／CI后再显式选择CURRENT。计算语义、vendor参考与golden更新分别维护。
 - 新数据域：在RePoE固定schema／事实导出器中补齐来源，在PoBR领域adapter中接既有DTO和消费者；
   不再通过PoBR Node导出器或修改旧配置将历史数组冒充新目标。
@@ -305,7 +297,3 @@ schema-3 manifest封存默认运行字节；维护报告和本地patch不进入�
 （199 条直接命中 `SpellCritChance/100`；2 条位于 AdditionalStatSets 指向的附加 set，同列命中）。
 另注：PoE2 的 `GrantedEffectsPerLevel` **没有** `PlayerLevelReq` 列（PoE1 才有）；等级需求
 走 `SkillGems.ItemExperienceType → ItemExperiencePerLevel` 链（PoB2 `Export/Scripts/skills.lua:240`）。
-
-Target-language proper names can be adapted from the independent translation repository
-with the [native name sidecar adapter](native/native-name-translations.md). It preserves
-exact locale/source identity and does not activate data.

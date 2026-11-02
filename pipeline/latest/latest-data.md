@@ -1,24 +1,25 @@
 # Latest complete data publications
 
-Normal builds consume immutable locks. `data:latest` separately discovers the
-latest complete publication from RePoE `master` and translation `main`, each at
-`publication/index.json`. These branches locate metadata; runtime inputs still
-use full Git revisions, sizes and SHA-256 pins. Handoff branches retain immutable
-artifacts and do not select the active dataset.
+Normal builds consume the immutable [`pipeline/data.lock.json`](../data.lock.json).
+`data:latest` separately discovers the latest complete publication from RePoE
+`master` and translation `main`, each at `publication/index.json`. These branches
+locate metadata; runtime inputs still use full Git revisions, sizes and SHA-256
+pins. Owner `handoff/*` tags keep the pinned commits alive and do not select the
+active dataset.
 
 The owner index (`owned-data-publication-index/v2`) points to an immutable
-`owned-data-publication/v2` descriptor. RePoE declares game, required crafting,
-ordinary facts, display source, source verifier and fixtures. Translation
-declares retained language, display catalog/library, reviewed supplements,
-workbench, support display and locale generation, plus its exact display-source
-binding and catalog-validation evidence. Scope remains verbatim. Dependency
+`owned-data-publication/v2` descriptor. An owner may declare more roles than
+PoBR consumes. PoBR reads RePoE `game`, `crafting` and `test_fixtures`, and
+translation `language` and `support_display`; the translation descriptor's
+display-source binding must equal RePoE's `display_source` role, and its
+catalog-validation evidence is checked. Scope remains verbatim. Dependency
 completeness does not certify client identity, game semantics or translation
 quality. The old v1 RePoE handoff table lacks crafting and cannot be a latest
 channel.
 
-`data-composition.json` pins both owner publications and every consumer lock,
-request, source decision and channel configuration. Its generation and previous
-composition digest distinguish updates within the same patch. Each owner and
+The data lock records both owner publications next to the consumed artifacts.
+Its generation and previous lock digest distinguish updates within the same patch;
+`latest-channels.json` is a separate small configuration validated on every run. Each owner and
 role has a monotonic sequence with an exact predecessor; forks, regressions,
 empty publication advances and incomplete roles fail. Code-only owner commits
 with unchanged publication metadata do not create data updates.
@@ -32,17 +33,17 @@ mise run data:latest resolve --out .cache/latest-review
 mise run data:latest verify --root .cache/latest-review
 # Verify the accepted immutable declarations, without resolving current heads.
 mise run data:latest verify-composition
-# Stage only that frozen small metadata with an exact baseline guard.
+# Stage only the frozen data lock with an exact baseline guard.
 mise run data:latest apply --candidate .cache/latest-review \
-  --expected-composition <previous-composition-sha256>
+  --expected-lock <previous-data-lock-sha256>
 ```
 
-`bootstrap --out pipeline/latest/data-composition.json` is a one-time registration of
-already accepted locks against published, reachable owner indexes. It requires
+`bootstrap --out <fresh-file>` records the current owner frontiers for a data
+lock whose consumed artifacts already match published, reachable owner indexes. It requires
 every declaration to match; it does not choose new data. Bootstrap output must
 be fresh. The initial descriptor commits must remain reachable through merge
-history or persistent publication refs. Squashing them away and deleting their
-only branch would break fixed Git inputs.
+history or `handoff/*` tags. Squashing them away or deleting the tag would break
+fixed Git inputs.
 
 Discovery resolves each owner head once before reading either index. The official
 version observer is the pinned independent RePoE module, with a bounded invocation
@@ -53,20 +54,19 @@ stale, corrupt or missing metadata never falls back to an old "latest" result.
 `--observation <directory>` permits reuse of an existing fresh observer receipt;
 it still checks its pins, producer and age.
 
-Same-target candidates preserve source decisions, local policies, shared rules
-and owner scopes. Changed game/language inputs derive expectations from pinned
-package metadata, followed by actual preparation in Full CI. Ordinary input
-checksums follow the new authenticated manifest. Existing source/policy guards
-still apply. A new patch requires compatible owned requirements and source
+Same-target candidates preserve local policies, shared rules and owner scopes.
+Each changed consumed artifact must have exactly one owner `handoff/*` tag naming
+its revision; the candidate records it. Changed game, language or crafting inputs
+derive the snapshot manifest and runtime identity from pinned package metadata
+and clear `release_id`; the candidate Full CI then prepares the data and builds
+the compact release, and the adopting change records that release identity. A new patch requires compatible owned requirements and source
 decisions through a reviewed migration; patch strings cannot relabel old data.
 
-Full CI verifies the complete snapshot and recorded immutable owner declarations
-(without a new official query or mutable channel lookup), produces all ordinary
-domains and the display sidecar, then requires projection equivalence between the full and compact
-consumers. Only existing audit-header projection is allowed; missing members,
-numeric token changes, runtime provenance or display differences reject the
-candidate. It downloads the same run's standalone WASM, materializes the final
-compact pack and runs `smoke-runtime-candidate.mjs` against that candidate alone.
+Full CI verifies the complete snapshot, the recorded immutable owner declarations
+and owner tags (without a new official query or mutable channel lookup), then
+builds the compact release from the prepared snapshot. It downloads the same
+run's standalone WASM, materializes the final compact pack and runs
+`smoke-runtime-candidate.mjs` against that candidate alone.
 The package's old embedded data is never a fallback. Calculation provenance,
 worked builds, editing/reopening and preserved diagnostics enter its receipt.
 
@@ -76,9 +76,8 @@ RePoE PR14 and translation PR6 are merged; both default indexes remain at sequen
 PoBR PR231 is merged, and its [exact-head Full validation](https://github.com/ackness/pobr/actions/runs/41393972787)
 passed at `cf573c26`, including the same-run final compact candidate consumed by real WASM.
 The [current master integration](https://github.com/ackness/pobr/actions/runs/41402088234)
-also passed at `23341f06`. Immutable composition verification and both owner declaration
-checks passed in this audit. A fresh official observation at 09:01 UTC advertised
-`0.5.5.5`; `check` returned `no-new-publication`, preserving the selected composition.
+also passed at `23341f06`. Immutable owner declaration checks passed in this audit. A fresh official observation at 09:01 UTC advertised
+`0.5.5.5`; `check` returned `no-new-publication`, preserving the selected data lock.
 
 Read-only hosted checks confirm master requires an up-to-date `PR gate` and enforces
 it for administrators. The repository-level `DATA_SYNC_TOKEN` secret is absent;
@@ -98,13 +97,13 @@ that progress.
 
 [data-sync.yml](../../.github/workflows/data-sync.yml) checks every six hours, on
 manual dispatch or `owned-data-published` repository dispatch. One reserved branch,
-`automation/data-latest`, carries only the small metadata closure. Proposal uses
+`automation/data-latest`, carries only the data lock. Proposal uses
 the exact current default commit as parent and an expected-SHA branch lease;
 interrupted PR creation or Full dispatch can be retried without a second branch.
 There is no automatic app release or deployment.
 
 The controller uses trusted default-branch code. A `workflow_run` completion for
-the reserved branch rechecks its PR, exact head, baseline composition, current
+the reserved branch rechecks its PR, exact head, baseline data lock, current
 owner frontier and official observation. The latest `Contribution checks` PR
 run must contain a successful `PR gate`; a separate exact-head dispatched
 `Full validation` run must contain a successful `Full gate`. Missing, queued,
@@ -136,7 +135,7 @@ for unrelated documentation PRs.
 adoption changes default metadata through the normal protected PR merge. Existing
 local installations select accepted data explicitly via
 [locked update](../runtime/locked-update.md), including `--expected-runtime` for same-patch
-CAS. Git history retains prior compositions for rollback.
+CAS. Git history retains prior data locks for rollback.
 
 Owner publication indexes register completed production. Their bootstrap alone
 does not implement upstream discovery, new client collection, translation review

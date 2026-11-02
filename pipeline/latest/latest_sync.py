@@ -1,7 +1,7 @@
 """Propose and conditionally merge latest-data changes using trusted default code.
 
 No candidate code is executed with credentials. Completed workflow callbacks
-recheck both exact-head gates, owner freshness and the adopted composition.
+recheck both exact-head gates, owner freshness and the adopted data lock.
 """
 
 import argparse
@@ -21,7 +21,7 @@ from pipeline.imports.data_imports import encoded, regular, require, sha, write
 REPOSITORY = "ackness/pobr"
 DEFAULT = "master"
 BRANCH = "automation/data-latest"
-ALLOWED = {*latest.FILES.values(), "pipeline/latest/data-composition.json", "data/CURRENT"}
+ALLOWED = set(latest.CANDIDATE_FILES)
 MARKER = "chore: synchronize complete data publication"
 
 
@@ -116,7 +116,7 @@ def read_tree(root, revision, directory):
         raw = git(root, "show", revision + ":" + name)
         require(len(raw) <= latest.MAX_METADATA, "Oversized candidate metadata")
         write(directory / name, raw)
-    return latest.read_composition(directory)
+    return latest.read_lock(directory)
 
 
 def changed_files(base, head, request=api):
@@ -146,8 +146,8 @@ def create_commit(root, candidate, base):
             checksum = oid(git(root, "hash-object", "-w", "--stdin", payload=raw, env=env).decode().strip())
             git(root, "update-index", "--add", "--cacheinfo", f"100644,{checksum},{name}", env=env)
         tree = oid(git(root, "write-tree", env=env).decode().strip())
-        message = (MARKER + "\n\nData-composition: " + receipt["composition_id"]
-                   + "\nPrevious-composition: " + receipt["previous_id"] + "\n")
+        message = (MARKER + "\n\nData-lock: " + receipt["lock_id"]
+                   + "\nPrevious-data-lock: " + receipt["previous_id"] + "\n")
         return oid(git(root, "commit-tree", tree, "-p", base, payload=message.encode(), env=env).decode().strip())
 
 
@@ -187,11 +187,11 @@ def propose(root, temporary, fetcher, official, request=api):
         require(commit["message"].splitlines()[0] == MARKER and len(commit["parents"]) == 1,
                 "Automation branch contains an unowned commit")
         if commit["parents"][0]["sha"] == base:
-            previous = request("GET", endpoint(f"contents/pipeline/latest/data-composition.json?ref={old}"))
+            previous = request("GET", endpoint(f"contents/{latest.LOCK}?ref={old}"))
             import base64
-            if sha(base64.b64decode(previous["content"], validate=False)) == status["candidate_composition"]:
+            if sha(base64.b64decode(previous["content"], validate=False)) == status["candidate_lock"]:
                 head = old
-    # Recheck the default composition and branch lease immediately before push.
+    # Recheck the default data lock and branch lease immediately before push.
     latest.recheck(output, root, fetcher, official=official)
     require(request("GET", endpoint("git/ref/heads/" + DEFAULT))["object"]["sha"] == base,
             "Default branch advanced during proposal")
@@ -200,7 +200,7 @@ def propose(root, temporary, fetcher, official, request=api):
         push(root, head, old)
     prs = pull_requests(request)
     body = ("Synchronize the complete immutable owner publication combination.\n\n"
-            f"Composition: `{status['candidate_composition']}`. Previous: `{status['adopted_composition']}`.\n\n"
+            f"Data lock: `{status['candidate_lock']}`. Previous: `{status['adopted_lock']}`.\n\n"
             "PR gate and separately dispatched Full gate must pass at this exact head. Full validation includes "
             "the final compact candidate with this run's WASM. Adoption rechecks source frontiers, official "
             "version and the baseline. Source semantic certification and upstream generation remain separate.")
@@ -233,9 +233,9 @@ def accept(root, temporary, fetcher, official, request=api):
     # Fetch one immutable object, never a candidate script or installation step.
     git(root, "-c", "protocol.file.allow=never", "fetch", "--no-tags", "--depth=1", "origin", head)
     proposed = temporary / "candidate-tree"
-    composition, _, _, raw = read_tree(root, head, proposed)
-    current = latest.read_composition(root)
-    require(composition["previous_id"] == sha(current[3]), "Expected composition changed")
+    composition, raw = read_tree(root, head, proposed)
+    current = latest.read_lock(root)
+    require(composition["previous_id"] == sha(current[1]), "Expected data lock changed")
     regenerated = temporary / "resolved"
     status = latest.propose(root, regenerated, fetcher, official=official)
     require(status["status"] == "update-available" and status["auto_eligible"], "Candidate freshness/scope no longer eligible")
@@ -249,7 +249,7 @@ def accept(root, temporary, fetcher, official, request=api):
     latest.propose(root, regenerated, fetcher,
                    heads=lambda owner, branch: frozen[owner]["index_revision"], official=official)
     wanted = latest.verify_candidate(regenerated)
-    require(sha(raw) == wanted["composition_id"] and all(regular(proposed / name) == regular(regenerated / name)
+    require(sha(raw) == wanted["lock_id"] and all(regular(proposed / name) == regular(regenerated / name)
             for name in ALLOWED), "Candidate metadata differs from trusted resolver")
     write_access()
     after = request("GET", endpoint(f"pulls/{pr['number']}"))
@@ -261,7 +261,7 @@ def accept(root, temporary, fetcher, official, request=api):
             "Checks changed during acceptance")
     result = request("PUT", endpoint(f"pulls/{pr['number']}/merge"), {"sha": head, "merge_method": "squash"})
     require(result.get("merged") is True, "Host rejected protected conditional merge")
-    return {"status": "adopted", "composition_id": wanted["composition_id"], "head": head,
+    return {"status": "adopted", "lock_id": wanted["lock_id"], "head": head,
             "merge": oid(result["sha"]), "checks": gates, "pr": pr["html_url"],
             "runtime_selection": "Accepted default metadata; local installations update explicitly"}
 
@@ -276,7 +276,7 @@ def main():
         temporary = Path(temporary).resolve()
         fetcher = imports.GitInputs(temporary / "git", timeout=30)
         try:
-            config = latest.read_composition(root)[1]["channels"]
+            config = latest.channels(root)
             official = latest.observe_official(config, temporary / "observation", temporary / "cache", fetcher)
             result = globals()[args.action](root, temporary, fetcher, official)
         except (ValueError, KeyError, OSError, subprocess.SubprocessError) as error:

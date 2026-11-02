@@ -41,7 +41,7 @@ setup 检查 Git、make、C 编译器；macOS 的 Apple SDK/Command Line Tools �
 | 工作 | 入口与自动准备 |
 | --- | --- |
 | Web 日常开发/测试 | `mise run web <命令>`，例如 `mise run web test <文件>` |
-| 独立数据与普通DTO | `mise run data:prepare`临时导入固定owner输入；`data:ordinary`验证／适配，原料采集导出在RePoE |
+| 独立数据 | `mise run data:prepare`按`pipeline/data.lock.json`临时导入固定owner输入；`data:check`离线检查；原料采集、导出与领域生产在owner仓库 |
 | 官方树域候选 | `data:tree:source` / `data:tree:candidate --out <新目录>`；固定来源、可离线重放，不准备 oracle，不发布产品数据 |
 | PoB2 对照、triage、词条审计 | 对应任务依赖 `setup:oracle`，自动准备固定 LuaJIT commit 与固定 vendor；重复运行复用缓存 |
 | 浏览器回归 | `mise run web:e2e <spec>`，自动安装 lockfile 对应的 Playwright 浏览器/系统依赖；仍须当前 dist/WASM/data |
@@ -356,13 +356,10 @@ mise run full                             # 显式本地 Rust 全量检查，不
 其 actionlint 1.7.12 尚不认识 GitHub 已支持的 `queue: max`，只豁免该特定未知键错误，
 其余语法与表达式检查仍启用；队列语义见 [GitHub 文档](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)。
 
-完整 Web CI 还按 [`pipeline/runtime/data-requirements.json`](../pipeline/runtime/data-requirements.json) 和独立的
-[`data-imports.lock.json`](../pipeline/imports/data-imports.lock.json) 获取固定 RePoE/翻译 Git 输入，
-校验后上传精简显示候选与独立 receipt。完整运行输入另由
-[`build-data.lock.json`](../pipeline/runtime/build-data.lock.json) 临时组合；各实物消费者显式准备当前版本，
-多版本测试再准备固定回滚锁并保持 CURRENT。显示候选不自动采用，不将来源／绑定大表打进
-`web-dist`，也不把完整快照存回 PoBR Git；见[定向数据导入](../pipeline/imports/data-imports.md)与
-[构建数据](../pipeline/runtime/build-data.md)。
+完整运行输入由唯一的 [`pipeline/data.lock.json`](../pipeline/data.lock.json) 临时组合；各实物消费者显式准备当前版本，
+多版本测试再准备固定回滚锁并保持 CURRENT。`runtime` 作业从已准备的快照组出精简发行包，由同次 WASM 消费；
+不把来源大表打进 `web-dist`，也不把完整快照存回 PoBR Git；见[构建数据](../pipeline/runtime/build-data.md)与
+[运行时数据组合封存](../pipeline/runtime/runtime-bundle.md)。
 
 ## Agent 提交、review 与合并
 

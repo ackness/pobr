@@ -8,21 +8,18 @@ import argparse
 import gzip
 import io
 import json
-import os
 from pathlib import Path
 import re
-import subprocess
 import tempfile
 import zipfile
 
 from pipeline.runtime import data_bundle as bundle
-from pipeline.imports.data_imports import GitInputs, acquire, pinned, regular, require, write
+from pipeline.imports.data_imports import pinned, regular, require, write
 
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = "pobr-runtime-release/v1"
 BLOCK_SCHEMA = "pobr-runtime-block/v1"
 INPUT_SCHEMA = "pobr-runtime-inputs/v1"
-LOCK_SCHEMA = "pobr-runtime-input-lock/v1"
 HEX = re.compile(r"[0-9a-f]{64}")
 SPECIAL = {"overlay/special_mods.json", "generated/special_derived.json",
            "generated/special_vendor.json", "overlay-common/special_mods.json"}
@@ -320,174 +317,25 @@ def create(source, recipe_path, display_path, output, target, locale):
     return release
 
 
-def export_inputs(source, recipe, output):
-    """Make a portable Git blob without copying any source/verification cache."""
-    output = fresh_output(output)
-    require(not output.is_relative_to(Path(source).resolve()), "Output must be separate from input bundle")
-    files, evidence = frozen_inputs(source, recipe)
-    manifest_raw = raw_json({**evidence, "files": {name: pin(raw) for name, raw in sorted(files.items())}})
-    archive = archive_bytes({**files, "manifest.json": manifest_raw})
-    lock = {"schema": LOCK_SCHEMA, "publication": "pending", "repository": None, "revision": None,
-            "path": f"handoff/runtime-{evidence['version']}/core-inputs.zip", **pin(archive),
-            "manifest": pin(manifest_raw), "expanded_bytes": sum(map(len, files.values())) + len(manifest_raw),
-            "source_manifest_sha256": evidence["source_manifest_sha256"],
-            "source_runtime_identity": evidence["source_runtime_identity"],
-            "recipe": evidence["recipe"]}
-    output.mkdir(parents=True)
-    write(output / "core-inputs.zip", archive)
-    write(output / "runtime-inputs.lock.json", raw_json(lock))
-    return lock
-
-
-def git_handoff(artifact_dir):
-    """A local bare Git artifact, with no checkout, remote or publication."""
-    artifact_dir = Path(artifact_dir).absolute()
-    lock = bundle.decode(regular(artifact_dir / "runtime-inputs.lock.json"))
-    archive = pinned(regular(artifact_dir / "core-inputs.zip"), lock)
-    bare = artifact_dir / "handoff.git"
-    require(not bare.exists(), "Fresh local Git handoff required")
-    subprocess.run(["git", "init", "--quiet", "--bare", str(bare)], check=True)
-    env = {**os.environ, "GIT_AUTHOR_NAME": "PoBR runtime packaging", "GIT_AUTHOR_EMAIL": "runtime@pobr.invalid",
-           "GIT_COMMITTER_NAME": "PoBR runtime packaging", "GIT_COMMITTER_EMAIL": "runtime@pobr.invalid",
-           "GIT_AUTHOR_DATE": "2000-01-01T00:00:00Z", "GIT_COMMITTER_DATE": "2000-01-01T00:00:00Z"}
-
-    def git(*args, raw=None):
-        return subprocess.check_output(["git", "--git-dir", str(bare), *args], input=raw, env=env).decode().strip()
-
-    oid = git("hash-object", "-w", "--stdin", raw=archive)
-    parts = list(bundle.relative_path(lock["path"]).parts)
-    tree = git("mktree", raw=f"100644 blob {oid}\t{parts.pop()}\n".encode())
-    for part in reversed(parts):
-        tree = git("mktree", raw=f"040000 tree {tree}\t{part}\n".encode())
-    revision = git("commit-tree", tree, raw=b"Freeze complete PoBR runtime packaging inputs\n")
-    git("update-ref", "refs/heads/runtime-inputs", revision)
-    result = {"schema": "pobr-local-git-handoff/v1", "revision": revision, "tree": tree,
-              "blob": oid, "ref": "refs/heads/runtime-inputs", "path": lock["path"],
-              "sha256": lock["sha256"], "publication": "local-only", "repository": None}
-    write(artifact_dir / "git-handoff.json", raw_json(result))
-    return result
-
-
-def require_full_alignment(original, candidate, version, locale, display):
-    """Full and compact consumers must receive the same projected business data."""
-    prefix = f"data/{version}/"
-    require(set(original) == set(candidate), "consumer-data-divergence: runtime member closure differs")
-    for name, raw in candidate.items():
-        if original[name] != raw:
-            relative = name.removeprefix(prefix).removeprefix("data/")
-            require(project(relative, original[name]) == project(relative, raw),
-                    f"consumer-data-divergence: full snapshot differs at {relative}")
-    relative = f"i18n/{locale}/display_texts.json"
-    require(prefix + relative in original
-            and project(relative, original[prefix + relative]) == project(relative, display),
-            "consumer-data-divergence: full snapshot display sidecar differs")
-
-
-def import_pack(requirements_path, lock_path, imports_path, output, cache, offline=False,
-                allow_unpublished=False, fetcher=None, ordinary_path=None, local_parts=None, shared_root=None,
-                full_alignment=False):
-    requirements = bundle.decode(regular(requirements_path))
-    lock = bundle.decode(regular(lock_path))
-    from pipeline.runtime.build_data import LOCK_SCHEMAS as BUILD_LOCK_SCHEMAS
-    config = requirements["runtime_pack"]
-    require(config["schema"] == SCHEMA, "Unknown required runtime pack")
-    require(config.get("blocks", ["core", "rules", "locale"]) == ["core", "rules", "locale"],
-            "Unsupported required runtime blocks")
-    require(lock.get("schema") in (LOCK_SCHEMA, *BUILD_LOCK_SCHEMAS), "Unknown runtime input lock")
-    if lock["schema"] == LOCK_SCHEMA:
-        require(lock.get("repository") != "ackness/pobr", "PoBR cannot store external runtime data")
-        from pipeline.imports.data_imports import validate_pin
-        validate_pin(lock)
-        validate_pin(lock["manifest"])
-        require(type(lock["expanded_bytes"]) is int and lock["expanded_bytes"] > 0
-                and HEX.fullmatch(lock["source_manifest_sha256"])
-                and HEX.fullmatch(lock["source_runtime_identity"]), "Invalid portable core lock")
-        validate_pin(lock["recipe"])
-        if lock.get("publication") == "pending":
-            require(lock.get("repository") is None and lock.get("revision") is None, "Pending lock has Git address")
-            require(allow_unpublished, "Core runtime Git artifact is unpublished; publish the pinned core-inputs.zip and lock its repository/revision")
-            return {"status": "pending-core-publication", "expected_artifact": {k: lock[k] for k in ("path", "bytes", "sha256")},
-                    "adoption": "not-adopted"}
-        require(lock.get("publication") == "published", "Invalid runtime publication status")
-        require(not local_parts, "Local split packages need a build data lock")
-    output = fresh_output(output)
-    cache = Path(cache).absolute()
-    require(".." not in cache.parts and all(not p.is_symlink() for p in (cache, *cache.parents)), "Unsafe cache path")
-    cache.mkdir(parents=True, exist_ok=True)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=".pack-import-", dir=output.parent) as temp:
-        temp = Path(temp)
-        fetcher = fetcher or GitInputs(temp / "git")
-        if lock["schema"] in BUILD_LOCK_SCHEMAS:
-            from pipeline.runtime.build_data import prepare
-            require(lock["target"] == requirements["target"], "Build data target mismatch")
-            receipt = prepare(lock_path, temp / "input", cache, shared_root or ROOT / "data/overlay-common", offline=offline,
-                              local_parts=local_parts, fetcher=fetcher)
-            version = receipt["data_version"]
-            files, _ = bundle.snapshot_inputs(temp / "input", version)
-            manifest = {"schema": lock["schema"], "bundle": receipt}
-        else:
-            archive = acquire(lock, lock["path"], lock, cache, offline, fetcher)
-            from pipeline.imports.data_imports import unpack
-            manifest = unpack(archive, lock, temp / "input")
-            require(manifest.get("schema") == INPUT_SCHEMA
-                    and manifest["source_manifest_sha256"] == lock["source_manifest_sha256"]
-                    and manifest["source_runtime_identity"] == lock["source_runtime_identity"]
-                    and manifest["recipe"] == lock["recipe"], "Portable core input identity mismatch")
-            version = manifest["version"]
-            files, source_id = bundle.snapshot_inputs(temp / "input", version)
-            require(source_id == lock["source_runtime_identity"]
-                    and bundle.sha256(files[f"data/{version}/manifest.json"]) == lock["source_manifest_sha256"],
-                    "Portable core snapshot mismatch")
-        original_files = files
-        ordinary_evidence = None
-        if "ordinary" in config:
-            from pipeline.runtime.ordinary.runtime_ordinary import overlay
-            files, ordinary_evidence = overlay(files, version, requirements["target"], config["ordinary"],
-                                               Path(requirements_path).parent, ordinary_path)
-        else:
-            require(ordinary_path is None, "Ordinary input was not declared")
-        imports = Path(imports_path)
-        display = regular(imports / "runtime/display_texts.json")
-        display_receipt = bundle.decode(regular(imports / "runtime/receipt.json"))
-        pinned(display, display_receipt["files"]["display_texts.json"])
-        import_receipt = bundle.decode(regular(imports / "import-receipt.json"))
-        require(import_receipt["requirements_sha256"] == bundle.sha256(regular(requirements_path))
-                and import_receipt["target"] == requirements["target"]
-                and import_receipt["locale"] == requirements["translation"]["locale"], "Display import requirements mismatch")
-        if full_alignment:
-            require_full_alignment(original_files, files, version, requirements["translation"]["locale"], display)
-        release, payloads = assemble(files, version, requirements["target"], requirements["translation"]["locale"], display)
-        inspect_release(payloads)
-        stage = temp / "result"
-        for name, raw in payloads.items():
-            write(stage / "player" / name, raw)
-        write(stage / "runtime-pack.zip", archive_bytes(payloads))
-        evidence = {"core_input_lock": lock, "source": manifest,
-              "display_input": pin(display), "import_receipt": pin(regular(imports / "import-receipt.json")),
-              "release_id": release["release_id"], "adoption": "not-adopted"}
-        evidence["full_consumer_alignment"] = "verified-projection-equivalence" if full_alignment else "not-checked"
-        if ordinary_evidence is not None:
-            evidence["ordinary"] = ordinary_evidence
-        write(stage / "build-receipt.json", raw_json(evidence))
-        stage.rename(output)
-    return {"status": "assembled", "release_id": release["release_id"], "adoption": "not-adopted"}
-
-
-def build_release(requirements_path, data, output, expected_id=None):
+def build_release(lock_path, data, output, expected_id=None):
     """Assemble the compact release from a prepared owner snapshot.
 
     The owner game and language publications already contain every runtime file,
     including the selected locale's display texts; nothing is reproduced here.
+    The data lock fixes target, locale, the snapshot runtime identity and, once
+    adopted, the release identity.
     """
-    requirements = bundle.decode(regular(requirements_path))
-    target, locale = requirements["target"], requirements["translation"]["locale"]
+    lock = bundle.decode(regular(lock_path))
+    require(lock.get("schema") == "pobr-data-lock/v1", "Release build requires the data lock")
+    target, locale = lock["target"], lock["locale"]
     version = target["game_patch"]
     files, runtime_identity = bundle.data_inputs(data, version)
+    require(runtime_identity == lock["runtime_identity"], "Prepared data differs from the data lock")
     display_name = f"data/{version}/i18n/{locale}/display_texts.json"
     require(display_name in files, "Prepared snapshot lacks the selected locale display texts")
     release, payloads = assemble(files, version, target, locale, files[display_name])
     inspect_release(payloads)
+    expected_id = expected_id or lock.get("release_id")
     require(expected_id is None or release["release_id"] == expected_id, "Unexpected release identity")
     output = fresh_output(output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -508,63 +356,27 @@ def build_release(requirements_path, data, output, expected_id=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-    create_parser = sub.add_parser("create")
-    for name in ("bundle", "recipe", "display", "out"):
-        create_parser.add_argument(f"--{name}", type=Path, required=True)
-    create_parser.add_argument("--requirements", type=Path, default=ROOT / "pipeline/runtime/data-requirements.json")
+    p = sub.add_parser("build", help="Assemble the compact release from prepared owner data")
+    p.add_argument("--lock", type=Path, default=ROOT / "pipeline/data.lock.json")
+    p.add_argument("--data", type=Path, default=ROOT / "data")
+    p.add_argument("--out", type=Path, required=True)
+    p.add_argument("--expected-id", help="Defaults to the data lock's release_id when recorded")
     for command in ("verify", "materialize"):
         p = sub.add_parser(command)
         p.add_argument("--pack", type=Path, required=True)
         p.add_argument("--expected-id")
         if command == "materialize":
             p.add_argument("--out", type=Path, required=True)
-    p = sub.add_parser("build", help="Assemble the compact release from prepared owner data")
-    p.add_argument("--requirements", type=Path, default=ROOT / "pipeline/runtime/data-requirements.json")
-    p.add_argument("--data", type=Path, default=ROOT / "data")
-    p.add_argument("--out", type=Path, required=True)
-    p.add_argument("--expected-id")
-    p = sub.add_parser("export-inputs")
-    for name in ("bundle", "recipe", "out"):
-        p.add_argument(f"--{name}", type=Path, required=True)
-    p = sub.add_parser("import")
-    p.add_argument("--requirements", type=Path, default=ROOT / "pipeline/runtime/data-requirements.json")
-    p.add_argument("--lock", type=Path, default=ROOT / "pipeline/runtime/build-data.lock.json")
-    p.add_argument("--imports", type=Path, required=True)
-    p.add_argument("--ordinary", type=Path, help="Completed declared ordinary outputs (or CI output artifact)")
-    p.add_argument("--require-full-alignment", action="store_true",
-                   help="Reject full/compact business data divergence before runtime acceptance")
-    p.add_argument("--out", type=Path, required=True)
-    p.add_argument("--cache", type=Path, default=ROOT / ".cache/data-import-downloads")
-    p.add_argument("--offline", action="store_true")
-    p.add_argument("--allow-unpublished", action="store_true")
-    p.add_argument("--game", type=Path, help="Explicit local game package")
-    p.add_argument("--language", type=Path, help="Explicit local language package")
-    p = sub.add_parser("git-handoff")
-    p.add_argument("--artifacts", type=Path, required=True)
     args = parser.parse_args()
-    if args.command == "create":
-        request = bundle.decode(regular(args.requirements))
-        result = create(args.bundle, args.recipe, args.display, args.out, request["target"], request["translation"]["locale"])
-        result = {"release_id": result["release_id"], "runtime_identity": result["runtime_identity"]}
+    if args.command == "build":
+        result = build_release(args.lock, args.data, args.out, args.expected_id)
     elif args.command == "verify":
         release, _, payloads = read_release(args.pack, args.expected_id)
         result = {"release_id": release["release_id"], "runtime_identity": release["runtime_identity"],
                   "manifest_sha256": bundle.sha256(payloads["manifest.json"])}
-    elif args.command == "materialize":
-        result = materialize(args.pack, args.out, args.expected_id)
-    elif args.command == "build":
-        result = build_release(args.requirements, args.data, args.out, args.expected_id)
-    elif args.command == "export-inputs":
-        result = export_inputs(args.bundle, args.recipe, args.out)
-    elif args.command == "git-handoff":
-        result = git_handoff(args.artifacts)
     else:
-        result = import_pack(args.requirements, args.lock, args.imports, args.out, args.cache,
-                             args.offline, args.allow_unpublished, ordinary_path=args.ordinary,
-                             full_alignment=args.require_full_alignment,
-                             local_parts={k: p for k in ("game", "language") if (p := getattr(args, k)) is not None})
+        result = materialize(args.pack, args.out, args.expected_id)
     print(json.dumps(result, ensure_ascii=False))
-
 
 if __name__ == "__main__":
     main()

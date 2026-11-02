@@ -1,7 +1,7 @@
 # Temporary build and real-test data
 
-PoBR tracks code, interpretation rules, contracts and exact input locks. Complete
-version directories, dictionaries and seven external shared files are ignored;
+PoBR tracks code, interpretation rules, contracts and one data declaration.
+Complete version directories, dictionaries and external shared files are ignored;
 `data/CURRENT` selects the intended version but supplies no payload fallback.
 
 Run before a build or a test that reads real game data:
@@ -17,24 +17,28 @@ CI explicitly prepares data before Rust runtime tests, Web tests/builds and
 script tests that inspect the real catalog. Quick Rust format/check does not need
 complete data. Pure importer/archive/cache tests use small synthetic fixtures.
 The previous version is installed without changing `CURRENT`; it is a byte-bound
-compatibility test input, not newly certified official source data. Ordinary
-production, display validation and compact release assembly remain separate gates.
+compatibility test input, not newly certified official source data. The compact
+release is packaged separately from the prepared snapshot.
 
-[`build-data.lock.json`](build-data.lock.json) fixes the current target,
-snapshot manifest bytes/SHA and full runtime identity. Its two owners use
-`GitInputs`: repository, full immutable Git commit, path and exact bytes/SHA. ZIP
+[`pipeline/data.lock.json`](../data.lock.json) is the only data declaration. It
+fixes the target, locale, snapshot manifest bytes/SHA, full runtime identity, the
+compact `release_id`, and each owner artifact's repository, full immutable Git
+commit, tag, path and exact bytes/SHA. The tag names and keeps alive the pinned
+commit; fetching still uses the 40-character revision. `verify-composition` checks
+that every recorded tag still names its revision. ZIP
 parts additionally pin their embedded manifest and expanded size. The retained
 language Git tree pins its original manifest, then authenticates every listed
 file, including evidence, before projecting only `i18n/` into runtime data.
 Evidence, reviewed supplement packages and verification sidecars are never player
 payloads. Existing v3 and reviewed-only display guards remain independent.
 
-The current v2 build lock additionally requires the separate RePoE crafting facts
-package. PoBR projects its category/identified-regular-stat catalog temporarily;
+The data lock additionally requires the separate RePoE crafting facts package. PoBR projects its category/identified-regular-stat catalog temporarily;
 the game part must omit that processed file. Missing facts cannot fall back to
 the retained catalog. [Crafting inputs](../imports/crafting-inputs.md) defines the eight-slot
 projection, raw-value diagnostics and build receipt outside the runtime bundle.
-The explicitly selected v1 rollback lock retains its historical processed bytes.
+The frozen `build-data-0.5.5.4.2.lock.json` remains a v1 rollback lock with its
+historical processed bytes; the older v2 schema is accepted only for such frozen
+files, and every new or updated declaration uses the data lock.
 
 A ZIP part has schema `pobr-build-data-part/v1`, exact `target`, `kind` and a
 `files` map of canonical paths to `{bytes, sha256}`. Game members use
@@ -58,7 +62,7 @@ Shared ownership follows the original per-file provenance:
 | RePoE retained compatibility | `high_precision_mods`, `vendor_name_aliases`, `buff_definitions` |
 | PoBR interpretation/configuration code | `special_mods`, `local_mods`, nine `*_config_options` files |
 
-The lock pins PoBR's eleven local rule files. The composer reads only that list;
+The data lock pins PoBR's eleven local rule files. The composer reads only that list;
 external/local intersections fail. The four game facts retain their original
 patch and source metadata; the three compatibility files retain their vendor
 pins and limitations, including the unresolved buff-reference drift. Game part
@@ -96,7 +100,7 @@ the locks. The older 4.5.5.2/4.5.5.3 directories are no longer current-tree
 inputs; historical Git objects are not rewritten or used as runtime fallbacks.
 `check_data_ownership.py` rejects full payloads forced into PoBR's Git index.
 
-The optional `support_display` lock also imports the translation owner's support
+The `support_display` entry also imports the translation owner's support
 description asset before Web builds/tests. Its manifest, asset and complete target
 trade-catalog hashes must match; the asset's original generation version and source
 provenance remain unchanged. The ignored Web JSON is installed atomically only for
@@ -105,9 +109,9 @@ The complete table and its language projection code are maintained in the
 translation repository. PoBR retains import and display guards; this auxiliary
 asset is outside the GameData bundle and does not change its runtime identity.
 
-Focused tests: `test-build-data.py` covers owner/path separation, retained language
-evidence, shared intersections, exact identity, archive/cache corruption,
-missing/unpublished pins, rollback installation, compact runtime consumption and
+Focused tests: `test_build_data.py` covers owner/path separation, retained language
+evidence, shared intersections, exact identity, data-lock schema and tag rules,
+archive/cache corruption, missing/unpublished pins, rollback installation and
 tracked-data rejection. These synthetic contracts are not Rust calculation or
 remote CI evidence.
 

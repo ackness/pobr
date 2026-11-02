@@ -47,7 +47,7 @@ PoB2 的 PoE2 pseudo-stat 映射有意留空，因为伪属性可能混入镶嵌
 
 ## 数据导入与检查
 
-游戏事实由 RePoE 独立保存和处理；PoBR 在构建或实物测试中临时导入固定产物。当前 [v2 构建锁](../pipeline/runtime/build-data.lock.json) 强制读取独立 `repoe-native-crafting-facts/v1` 包，游戏 part 不再携带旧 crafting 成品。PoBR 的[投影器](../pipeline/imports/crafting_inputs.py)只负责 UI 前缀筛选、类别聚合及已识别 regular-stat 目录；缺包或 pin 不符即失败。
+游戏事实由 RePoE 独立保存和处理；PoBR 在构建或实物测试中临时导入固定产物。当前[数据锁](../pipeline/data.lock.json)强制读取独立 `repoe-native-crafting-facts/v1` 包，游戏 part 不再携带旧 crafting 成品。PoBR 的[投影器](../pipeline/imports/crafting_inputs.py)只负责 UI 前缀筛选、类别聚合及已识别 regular-stat 目录；缺包或 pin 不符即失败。
 
 RePoE 从同一 F77 快照中的 `BaseItemTypes`、`ItemClasses`、`Mods`、`Stats`、`Essences`、`EssenceTargetItemCategories`、`EssenceMods` 导出中立关系，保留七表原字节、schema／decoder／producer 与原输入 manifest。原生 Mods 使用 `Stat1`–`Stat8`、`StatNMin/Max` 及 hardmode 通道，不使用旧四槽 `StatNValue` 视图。目标 0.5.5.5 international 是继承的声明；该导出不新增观测客户端身份或扩大来源接受。F77 缺失的语言声明保持未知，不默认 English；物理 ID／数值关联不推断来源语言。
 

@@ -170,7 +170,7 @@ class ExternalDataShardTests(unittest.TestCase):
                 self.assertIn("bash devs/scripts/check-data.sh", steps[index], filename)
                 self.assertTrue(steps[index - 1].startswith("Restore owner data downloads"), filename)
                 self.assertIn("path: .cache/data-import-downloads", steps[index - 1], filename)
-                self.assertIn("pipeline/latest/data-composition.json", steps[index - 1], filename)
+                self.assertIn("pipeline/data.lock.json", steps[index - 1], filename)
             self.assertNotIn("pipeline.legacy", workflow, filename)
 
 class RoutingTests(unittest.TestCase):
@@ -203,7 +203,7 @@ class RoutingTests(unittest.TestCase):
         self.assertTrue(plan.classify(["data/test/manifest.json"])["rust"])
         self.assertTrue(plan.classify(["web/e2e/fixtures/item.md"])["web"])
         self.assertTrue(plan.classify(["crates/pobr-core/tests/fixtures/mod.md"])["rust"])
-        for name in ("pipeline/runtime/ordinary/fixtures/input.md", "pipeline/runtime/ordinary/fixtures/input.txt",
+        for name in ("pipeline/runtime/fixtures/input.md", "pipeline/runtime/fixtures/input.txt",
                      "devs/fixtures/input.md", "devs/fixtures/input.txt"):
             with self.subTest(name=name):
                 self.assertTrue(plan.classify([name])["full"])
