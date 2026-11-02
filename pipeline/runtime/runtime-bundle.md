@@ -46,7 +46,7 @@ patch 合并类型冲突或快照摘要错误会拒绝 WASM 初始化，保留�
 `GameData` 文件路径、覆盖顺序与 DTO。它不读取原始客户端表，不实现另一套计算加载器。
 `data-requirements.json.runtime_pack` 声明发行格式、块选择和投影；
 [`build-data.lock.json`](build-data.md)分别锁住RePoE游戏数据、翻译库语言和PoBR本地政策代码。
-显示输入仍由 `data-imports.lock.json` 固定的 RePoE / 翻译库生成。
+选定 locale 的 `display_texts` 随翻译库的语言发布进入完整快照，组包时直接读取。
 
 玩家目录恰有四个文件：`manifest.json` 与 `blocks/{core,rules,locale}.json`。
 核心包含全部 base 域及历史 `passive_trees`；规则块包含 overlay、generated、共享规则与兼容表，
@@ -118,24 +118,21 @@ PoBR自己的Git/artifact ref不能供应完整数据；旧`ackness/pobr`核心�
 
 ```sh
 mise run data:prepare
-mise run data:imports --out .cache/declared-display
-mise run data:ordinary execute --adapter target/debug/pobr-data-adapter --out .cache/declared-ordinary
-mise run data:pack import --imports .cache/declared-display --ordinary .cache/declared-ordinary \
-  --out .cache/declared-runtime
+mise run data:pack build --out .cache/runtime-pack     # 从已准备的 owner 快照组精简三块
+mise run data:pack verify --pack .cache/runtime-pack/player
 ```
 
-后续重放加`--offline`，只读认证后的内容寻址缓存；不回退到tracked快照或其它版本。
+`build` 逐项校验已安装快照的 schema-3 清单摘要，再投影成三块；可加 `--expected-id` 固定发行身份。
+它不重跑普通领域生产或显示生成：这些字节已在 owner 发布中，PoBR 只负责打包。
 新build lock同时固定game与language的真实仓库、完整commit、路径和摘要。
-`runtime_pack.ordinary`仍声明六域生产需求／锁及八个业务替换路径。
-声明普通生产就必须提供`--ordinary`；完成状态、目标、需求／锁、source handoff、
-producer receipt及业务文件均重新核验，不能静默沿用旧领域文件。
+`import` 子命令仍可按需求与锁重放声明的普通领域与显示候选，只用于诊断。
 
 Full CI在需要实物的Rust、Web和自动化测试前显式prepare；Rust多版本测试还显式安装
-固定旧回退包，保持活动CURRENT不变。`runtime`任务等待同次普通生产与显示校验，
-接收outputs-only artifact后组合精简三块；失败／跳过会阻止Full gate。
+固定旧回退包，保持活动CURRENT不变。`runtime`任务等待同次WASM构建，自己prepare并从快照组精简三块，
+再由同次WASM消费；失败／跳过会阻止Full gate。
 游戏／语言源表、verification与版本binding不进入Web玩家包。
 远端CI、来源准入、完整消费者验收和采用仍须分别确认。
 
 定向验证：`test-build-data.py`覆盖两owner组合、临时安装、回退版本、缺失／损坏pin和禁网cache；
-`test-runtime-pack.py`与`test-runtime-ordinary.py`覆盖三块传输、领域替换及CLI物化。
+`test_runtime_pack.py`覆盖三块传输、从快照组包与CLI物化；`test_runtime_ordinary.py`覆盖诊断用的领域替换。
 这些合成契约不等于Rust真实生产、数值parity或远端CI证据。

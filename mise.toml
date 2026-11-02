@@ -86,7 +86,7 @@ description = "Fetch pinned RePoE/translation inputs and project declared displa
 run = "python3 -m pipeline.imports.data_imports"
 
 [tasks."data:pack"]
-description = "Assemble/verify/materialize candidate runtime blocks; no adoption (see pipeline/runtime/runtime-bundle.md)"
+description = "Build the compact release from prepared owner data, or verify/materialize it; no adoption (see pipeline/runtime/runtime-bundle.md)"
 run = "python3 -m pipeline.runtime.runtime_pack"
 
 [tasks."data:ordinary"]

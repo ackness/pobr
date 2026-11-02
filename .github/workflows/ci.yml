@@ -99,39 +99,6 @@ jobs:
         env:
           CI_SHARD: ${{ matrix.shard }}
         run: python3 devs/scripts/ci-rust-tests.py "$CI_SHARD"
-      - name: Build ordinary domain adapter
-        if: matrix.shard == 'libraries-tools'
-        run: cargo build --locked -p pobr-data-adapter --bin pobr-data-adapter
-      - name: Produce declared ordinary candidates from pinned Git inputs
-        if: matrix.shard == 'libraries-tools'
-        run: |
-          python3 -m pipeline.runtime.ordinary.ordinary_inputs execute --out .cache/ci-ordinary \
-            --adapter target/debug/pobr-data-adapter
-      - name: Preserve ordinary runtime outputs and production evidence
-        if: matrix.shard == 'libraries-tools'
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          name: ordinary-domain-candidates
-          # Expanded source/CSD/verification data stay out of player artifacts.
-          path: |
-            .cache/ci-ordinary/completed.json
-            .cache/ci-ordinary/inputs/handoff.json/handoff.json
-            .cache/ci-ordinary/logs/
-            .cache/ci-ordinary/*/producer-receipt.json
-            .cache/ci-ordinary/*/base/
-            .cache/ci-ordinary/*/overlay/
-          include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 3
-      - name: Preserve failed ordinary command logs
-        if: failure() && matrix.shard == 'libraries-tools'
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          name: ordinary-domain-failure
-          path: .cache/ci-ordinary/logs/
-          include-hidden-files: true
-          if-no-files-found: ignore
-          retention-days: 3
       - name: Derived rules reproducibility and parse-coverage ratchet
         if: matrix.shard == 'libraries-tools'
         run: POBR_PATCH="$(cat data/CURRENT)" bash devs/scripts/regen-check.sh
@@ -194,22 +161,6 @@ jobs:
         run: pnpm test
       - name: Worker runtime smoke
         run: pnpm test:worker
-      - name: Validate declared external data imports
-        working-directory: .
-        # Source/candidate verification stays in CI. The current display-only
-        # import does not replace the complete adopted runtime snapshot below.
-        run: python3 -m pipeline.imports.data_imports --out .cache/ci-data-imports
-      - name: Preserve generated display candidate
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          name: external-display-candidate
-          path: |
-            .cache/ci-data-imports/runtime/display_texts.json
-            .cache/ci-data-imports/runtime/receipt.json
-            .cache/ci-data-imports/import-receipt.json
-          include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 3
       - name: Build wasm
         # Binaryen's Linux release workers can exhaust their small musl stacks
         # on this module. Keep all optimization passes, but use the main thread.
@@ -268,7 +219,7 @@ jobs:
 
   runtime:
     name: declared runtime composition
-    needs: [ci, web]
+    needs: [web]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -278,6 +229,7 @@ jobs:
       - uses: ./.github/actions/setup-tools
         with:
           node: 'true'
+          python: 'true'
       - name: Restore owner data downloads
         uses: actions/cache@v6
         with:
@@ -285,22 +237,18 @@ jobs:
           path: .cache/data-import-downloads
           key: owner-data-${{ hashFiles('pipeline/latest/data-composition.json', 'pipeline/runtime/build-data*.lock.json') }}
           restore-keys: owner-data-
+      - name: Prepare pinned external data for the compact release
+        run: |
+          python3 -m pipeline.runtime.build_data --install data
+          bash devs/scripts/check-data.sh
       - name: Verify the recorded complete publication composition
         run: |
           mkdir -p .cache
           python3 -m pipeline.latest.latest_data verify-composition > .cache/runtime-composition-verify.json
-      - uses: actions/download-artifact@v8.0.2
-        with:
-          name: ordinary-domain-candidates
-          path: .cache/ci-ordinary
-      - uses: actions/download-artifact@v8.0.2
-        with:
-          name: external-display-candidate
-          path: .cache/ci-data-imports
-      - name: Compose completed domains and verified display into three runtime blocks
+      # The owner snapshot already holds every runtime file; PoBR only packages it.
+      - name: Assemble the compact release from the prepared owner snapshot
         run: |
-          python3 -m pipeline.runtime.runtime_pack import --imports .cache/ci-data-imports \
-            --ordinary .cache/ci-ordinary --out .cache/ci-runtime-pack --require-full-alignment \
+          python3 -m pipeline.runtime.runtime_pack build --data data --out .cache/ci-runtime-pack \
             > .cache/runtime-pack-status.json
       - uses: actions/download-artifact@v8.0.2
         with:
