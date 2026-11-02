@@ -1,0 +1,17 @@
+{
+  "schema": "pobr-historical-tree-input-lock/v1",
+  "source_id": "official-passive-tree",
+  "package": {
+    "repository": "ackness/repoe",
+    "revision": "26cceab3d12835730e1866da97900ef821e6a786",
+    "path": "historical/official-tree/0.5.5/bd87e6512c92b868542eddfb1ba4ea8b6dc2da36/data.zip",
+    "bytes": 5143272,
+    "sha256": "109b150850b431450dd06aa9ed8335db1978be909982ddbd583a5873fd3c9181",
+    "manifest": {
+      "bytes": 2233,
+      "sha256": "63b1c1649a69831d8d82e28ca68ca73bec12741ebef551d280d65fed8ba863a5"
+    },
+    "expanded_bytes": 5143054,
+    "publication": "published"
+  }
+}

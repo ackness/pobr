@@ -12,7 +12,6 @@ import re
 import shutil
 import subprocess
 import tempfile
-from urllib.request import urlopen
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -57,29 +56,8 @@ def locked_tree_source(root, source_id):
 
 
 def fetch_tree_source(root, source_id, offline=False):
-    source = locked_tree_source(root, source_id)
-    cached = root / ".cache/sources" / source["sha256"] / "data.json"
-    if cached.exists():
-        if digest(cached) != source["sha256"]:
-            raise ValueError("Cached source hash differs from sources.lock.json")
-        return cached
-    if offline:
-        raise FileNotFoundError(f"Source not cached for offline replay: {source_id}")
-    url = f"https://raw.githubusercontent.com/grindinggear/poe2-skilltree-export/{source['revision']}/data.json"
-    # Bound the download, then verify before exposing it to any producer.
-    with urlopen(url, timeout=45) as response:
-        raw = response.read(25_000_001)
-    if len(raw) > 25_000_000 or hashlib.sha256(raw).hexdigest() != source["sha256"]:
-        raise ValueError("Downloaded source size/hash differs from sources.lock.json")
-    cached.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(dir=cached.parent, prefix=".download-", delete=False) as file:
-        temporary = Path(file.name)
-        file.write(raw)
-    try:
-        temporary.replace(cached)
-    finally:
-        temporary.unlink(missing_ok=True)
-    return cached
+    from tree_inputs import prepare
+    return prepare(root, source_id, locked_tree_source(root, source_id), offline)[0]
 
 
 def tree_adapter_inputs(root):
@@ -87,6 +65,8 @@ def tree_adapter_inputs(root):
         "Cargo.toml", "Cargo.lock", "rust-toolchain.toml",
         "tools/pobr-data-adapter/Cargo.toml", "crates/pobr-data/Cargo.toml",
         "tools/pobr-data-adapter/src/main.rs", "crates/pobr-data/src/lib.rs",
+        "pipeline/data_snapshot.py", "pipeline/tree_inputs.py", "pipeline/tree-inputs.lock.json",
+        "pipeline/build_data.py", "pipeline/data_bundle.py", "pipeline/data_imports.py",
     ]]
     inputs = set(required)
     inputs.update((root / "tools/pobr-data-adapter/src").rglob("*.rs"))
@@ -163,11 +143,10 @@ def tree_candidate(root, source_id, output, offline=False):
     lock = root / "pipeline/sources.lock.json"
     lock_hash = digest(lock)
     source = locked_tree_source(root, source_id)
-    raw = fetch_tree_source(root, source_id, offline)
+    import tree_inputs
+    raw, imported = tree_inputs.prepare(root, source_id, source, offline)
     # Include the adapter's schema and build inputs, not a timestamp or local path.
     fingerprints = tree_adapter_inputs(root)
-    # Preprocessing is part of this producer too; it must not drift unnoticed.
-    fingerprints["pipeline/data_snapshot.py"] = digest(root / "pipeline/data_snapshot.py")
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".tree-candidate-", dir=output.parent) as temporary:
         staging = Path(temporary)
@@ -188,9 +167,9 @@ def tree_candidate(root, source_id, output, offline=False):
         if digest(lock) != lock_hash or digest(raw) != source["sha256"]:
             raise ValueError("Source changed during candidate generation")
         current_inputs = tree_adapter_inputs(root)
-        current_inputs["pipeline/data_snapshot.py"] = digest(root / "pipeline/data_snapshot.py")
         if current_inputs != fingerprints:
             raise ValueError("Adapter inputs changed during candidate generation")
+        tree_inputs.verify(raw.parent, imported["package"], imported["source"], imported)
         if corrections is not None and digest(root / corrections["path"]) != corrections["sha256"]:
             raise ValueError("Tree corrections changed during candidate generation")
         if corrections is not None and digest(adapted_input) != corrections["normalized_sha256"]:
@@ -198,6 +177,7 @@ def tree_candidate(root, source_id, output, offline=False):
         write_json(data / "_domain_candidate.json", {
             "schema": "pobr-domain-candidate/v1", "domain": "passive-tree",
             "source_id": source_id, "source": source, "source_lock_sha256": lock_hash,
+            "source_import": imported,
             "source_corrections": corrections,
             "adapter_inputs": fingerprints, "files": files,
             "publication": "blocked: domain-only candidate; patch applicability and full product validation required",
