@@ -11,7 +11,7 @@ mise exec -- cargo run --locked -p pobr-data-adapter -- \
   --ordinary-facts /absolute/path/to/F \
   --ordinary-domain gem-quality \
   --facts-manifest-sha256 56e71e00a72c8079d100b64861fc030206b12aaeb5ad655ccb4ab4e6726332d0 \
-  --quality-policy pipeline/gem-quality/0.5.5.5-facts-policy.json \
+  --quality-policy pipeline/policies/gem-quality/0.5.5.5-facts-policy.json \
   --quality-policy-sha256 334907c02b15e2303f9a6f550dfedaf80d889046048fe97d309ceba2182848da \
   --version 0.5.5.5 \
   --out /absolute/path/to/existing-parent/fresh-quality-candidate

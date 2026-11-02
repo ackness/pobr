@@ -13,7 +13,7 @@ fn fixture() -> (Fixture, Policy, NativeMetadataFile, BTreeMap<String, Value>) {
     }
     f.seal();
     let p: Value = serde_json::from_slice(include_bytes!(
-        "../../../../../../pipeline/runtime-constants/0.5.5.5-with-player-baselines-policy.json"
+        "../../../../../../pipeline/policies/runtime-constants/0.5.5.5-with-player-baselines-policy.json"
     ))
     .unwrap();
     let policy: Policy = serde_json::from_value(p["player"].clone()).unwrap();

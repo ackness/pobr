@@ -145,9 +145,9 @@ export function syncData({ dataRoot = process.env.POBR_DATA_ROOT ?? join(repoRoo
 
 /** Publish only the verified release's four player files; evidence stays offline. */
 export function syncRelease({ packRoot, destRoot, expectedId }, rename = renameSync) {
-  const args = [join(repoRoot, 'pipeline/runtime_pack.py'), 'verify', '--pack', resolve(packRoot)];
+  const args = ['-m', 'pipeline.runtime.runtime_pack', 'verify', '--pack', resolve(packRoot)];
   if (expectedId) args.push('--expected-id', expectedId);
-  const checked = JSON.parse(execFileSync('python3', args, { encoding: 'utf8' }));
+  const checked = JSON.parse(execFileSync('python3', args, { cwd: repoRoot, encoding: 'utf8' }));
   const manifestRaw = readFileSync(join(packRoot, 'manifest.json'));
   const manifest = JSON.parse(manifestRaw);
   if (manifest.release_id !== checked.release_id || createHash('sha256').update(manifestRaw).digest('hex') !== checked.manifest_sha256) {

@@ -60,7 +60,7 @@ pub(in crate::ordinary_facts) fn fixture() -> Fixture {
     fs::create_dir(f.root.join("legacy")).unwrap();
     fs::create_dir(f.root.join("policy")).unwrap();
     let mut p: Value = serde_json::from_slice(include_bytes!(
-        "../../../../../pipeline/actors/0.5.5.5-minion-links-policy.json"
+        "../../../../../pipeline/policies/actors/0.5.5.5-minion-links-policy.json"
     ))
     .unwrap();
     p["alias_catalog"]["aliases"] = json!([

@@ -6,7 +6,7 @@
 //! **Channel note**: originally planned to come from the `.dat` table
 //! `GemEffects` via the adapter into `base/`, but the bundle containing that
 //! table is no longer downloadable at the pinned patch 4.5.0.3.4 (verified —
-//! see `_tablesUnavailableForPinnedPatch` in `pipeline/config.json`). Per the
+//! see `_tablesUnavailableForPinnedPatch` in `pipeline/legacy/config.json`). Per the
 //! owner's call to "let the producing tool define the layer," it's extracted
 //! via extract-lua into **overlay/** instead. Vendor's `Data/Gems.lua` is
 //! itself an export of that table (`Export/Scripts/skills.lua:898-925`), so

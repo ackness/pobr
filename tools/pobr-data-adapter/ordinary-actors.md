@@ -18,8 +18,8 @@ the frozen applicability templates:
 | minions | `338aa6da92aa85143b3e4f0478c9c498ad52a154826ed1c15754573dee20799a` | `9fda2d0b8293e1d04c65684cdc486b5625ad8f22c8d3db40e7356465245c2efe` |
 | spectres | `50b98756c340cadbaba1ff5d503e79cc06e744d5a100719941c6e1fc765fdd94` | `24118a1eebc7d46e03887f2332c983c6143c9f27ce265129ec70a3803336ead0` |
 
-Policies: [minions](../../pipeline/actors/0.5.5.5-minions-policy.json) and
-[spectres](../../pipeline/actors/0.5.5.5-spectres-policy.json). They bind the mode,
+Policies: [minions](../../pipeline/policies/actors/0.5.5.5-minions-policy.json) and
+[spectres](../../pipeline/policies/actors/0.5.5.5-spectres-policy.json). They bind the mode,
 file/schema, variety identity field, 22-field projection version, original source
 hash/metadata/version/path and exact target patch/manifest. Archived projection
 reference hashes describe the fixed recipe; neither those files nor evidence
@@ -34,7 +34,7 @@ oracle, other candidate or implicit source path is consulted.
   --version 0.5.5.5 --ordinary-domain minions \
   --codec-source /absolute/path/to/data/0.5.5.4.2/overlay/minions.json \
   --codec-source-sha256 338aa6da92aa85143b3e4f0478c9c498ad52a154826ed1c15754573dee20799a \
-  --codec-policy /absolute/path/to/pipeline/actors/0.5.5.5-minions-policy.json \
+  --codec-policy /absolute/path/to/pipeline/policies/actors/0.5.5.5-minions-policy.json \
   --codec-policy-sha256 9fda2d0b8293e1d04c65684cdc486b5625ad8f22c8d3db40e7356465245c2efe \
   --out /absolute/path/to/existing-parent/fresh-minions
 ```
@@ -159,8 +159,8 @@ rebuild is performed.
 
 ## Target-owned actor skill lists
 
-The optional [minions v2](../../pipeline/actors/0.5.5.5-minions-skills-policy.json)
-and [spectres v2](../../pipeline/actors/0.5.5.5-spectres-skills-policy.json)
+The optional [minions v2](../../pipeline/policies/actors/0.5.5.5-minions-skills-policy.json)
+and [spectres v2](../../pipeline/policies/actors/0.5.5.5-spectres-skills-policy.json)
 policies additionally own `skill_list`. They use the same invocation, five F
 tables, original DTO and ordinary loaders. Existing v1 policies preserve their
 original behavior. The v2 schema and projection ID must agree with the exact
@@ -199,8 +199,8 @@ until the integration owner executes the focused actor tests.
 
 ## Remaining source-backed prepared actor fields
 
-The [minions v3](../../pipeline/actors/0.5.5.5-minions-prepared-policy.json) and
-[spectres v3](../../pipeline/actors/0.5.5.5-spectres-prepared-policy.json) policies
+The [minions v3](../../pipeline/policies/actors/0.5.5.5-minions-prepared-policy.json) and
+[spectres v3](../../pipeline/policies/actors/0.5.5.5-spectres-prepared-policy.json) policies
 own 27 fields: the v2 fields plus `monster_category`, `weapon_type1`,
 `weapon_type2` and `base_damage_ignores_attack_speed`. They require paired
 `--supplement`/`--supplement-manifest-sha256` arguments for the exact selected
@@ -309,7 +309,7 @@ OS-denied-network raw-to-facts replay reproduced all three output files exactly.
 Independent review also replayed the six observed byte chains against the fixed
 index evidence and decoder. The original `unreviewed-acquisition-draft` envelope
 is frozen; the separate `actor-ot-0.5.5.5-international` decision in
-[`sources.lock.json`](../../pipeline/sources.lock.json) accepts exactly these six
+[`sources.lock.json`](../../pipeline/imports/sources.lock.json) accepts exactly these six
 acquisition-byte identities and their lexical physical payload. Observed hashes
 are not independent expected pins, official signatures, language identity,
 independent client-build identity or authoritative path casing. This does not

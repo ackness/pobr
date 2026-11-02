@@ -13,7 +13,7 @@ formulas and Rust defaults are unchanged.
   --version 0.5.5.5 --ordinary-domain runtime-constants \
   --codec-source /absolute/path/to/data/0.5.5.4.2/manifest.json \
   --codec-source-sha256 bfd31a4607da98af53b139ed101f31a67a3122e4520434fd2e3fda14672fcca4 \
-  --codec-policy /absolute/path/to/pipeline/runtime-constants/0.5.5.5-facts-compat-policy.json \
+  --codec-policy /absolute/path/to/pipeline/policies/runtime-constants/0.5.5.5-facts-compat-policy.json \
   --codec-policy-sha256 49908ceb0454dac8904524e0a66cd16f9c0a038583b003f31a5cdc78483ee448 \
   --out /absolute/path/to/existing-parent/fresh-constants-candidate
 ```
@@ -118,7 +118,7 @@ measure complete-package or ordinary BD/Web coverage.
 ## Optional existing ailment domain
 
 The original three-file policy remains unchanged and replayable. The separate
-[`0.5.5.5-with-ailments-policy.json`](../../pipeline/runtime-constants/0.5.5.5-with-ailments-policy.json)
+[`0.5.5.5-with-ailments-policy.json`](../../pipeline/policies/runtime-constants/0.5.5.5-with-ailments-policy.json)
 selects the same three files plus `base/non_damaging_ailments.json` (pin verified
 against the supplied legacy manifest). Use that policy and its SHA256 with the
 same command. It adds these six destinations, for37 total:
@@ -142,7 +142,7 @@ byte-identical outputs for the original three domains.
 
 ## Optional verified player baselines
 
-[`0.5.5.5-with-player-baselines-policy.json`](../../pipeline/runtime-constants/0.5.5.5-with-player-baselines-policy.json) retains the 37 existing GameConstants
+[`0.5.5.5-with-player-baselines-policy.json`](../../pipeline/policies/runtime-constants/0.5.5.5-with-player-baselines-policy.json) retains the 37 existing GameConstants
 bindings and adds 16 leaves in the **existing** character/game constant DTOs.
 Supply `--player-context <root> --player-manifest-sha256 <sha>` together; the
 policy also fixes that archive's source-lock SHA. Omitting context continues the

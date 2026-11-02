@@ -102,7 +102,7 @@ pub(in crate::ordinary_facts) fn fixture() -> Fixture {
     fs::create_dir(f.root.join("codec")).unwrap();
     fs::create_dir(f.root.join("policy")).unwrap();
     let p: Value = serde_json::from_slice(include_bytes!(
-        "../../../../../pipeline/skill-codec/0.5.5.5-gem-effects-policy.json"
+        "../../../../../pipeline/policies/skill-codec/0.5.5.5-gem-effects-policy.json"
     ))
     .unwrap();
     write_codec(

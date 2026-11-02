@@ -185,7 +185,7 @@ E2E 使用当前生产 `dist`，`build` 已包含 typecheck。
 普通 Rust 库测试与 PR CI 检查是否过期。其余类型保留在 `src/api/types.ts`，
 由 `apps/pobr-wasm/tests/contract_golden.rs` 检查。
 契约变化后用 `mise exec -- cargo test -p pobr-wasm --features diagnostics --test gen_fixtures -- --ignored`
-重生成忽略的 mock 数据；完整样本应通过RePoE独立artifact发布并更新`pipeline/build-data.lock.json`，不提交到PoBR。
+重生成忽略的 mock 数据；完整样本应通过RePoE独立artifact发布并更新`pipeline/runtime/build-data.lock.json`，不提交到PoBR。
 mock 只供界面开发，不验证引擎行为。
 
 ## 结构与数据流

@@ -7,7 +7,7 @@ calculation, rarity modifier or percent conversion changes.
 
 Use the usual `--ordinary-facts`, `--facts-manifest-sha256`, `--version`, and fresh
 `--out` arguments with `--catalog-policy` and `--catalog-policy-sha256` pointing
-to the pinned [preset policy](../../pipeline/boss-poise/0.5.5.5-preset-policy.json).
+to the pinned [preset policy](../../pipeline/policies/boss-poise/0.5.5.5-preset-policy.json).
 The target patch must match the policy. The existing reader verifies the selected
 physical table and source lock. The policy is copied verbatim to the candidate.
 

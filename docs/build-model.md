@@ -13,7 +13,7 @@ INC 表示相加的 increased／reduced，MORE 表示相乘的 more／less。
 `pobr_gamedata::data_version()` 按以下顺序选择活动版本：先读 `POBR_DATA_VERSION`，
 再读 `POBR_DATA_ROOT/CURRENT`；根目录默认是仓库的 `data/`。两者都没有时报错，代码不内置版本号。
 完整游戏／语言快照通过独立来源的不可变锁临时物化，不进入 PoBR Git。
-当前版本由默认锁准备；历史回滚按明确的旧版本锁恢复，见[固定数据准备与选择](../pipeline/locked-update.md)。
+当前版本由默认锁准备；历史回滚按明确的旧版本锁恢复，见[固定数据准备与选择](../pipeline/runtime/locked-update.md)。
 清理已结束任务的临时目录前，先确认进程占用和证据保留需求，不按版本号或目录日期自动删除。
 
 schema 3 的 `manifest.json` 列出运行时文件和 SHA-256 摘要。
@@ -34,7 +34,7 @@ parity 下降说明需要调查新版差异，不能为通过而降低基线。
 
 宝石品质自 `4.5.5.2` 起由 adapter 的 `--gem-quality` 独立生成，沿用 `overlay/` 路径。
 它始终严格校验三张官方输入表和版本记录，不受通用 `--strict-columns` 开关影响，
-不从 vendor 或旧产物猜范围。见[品质生成说明](../pipeline/gem-quality/README.md)。
+不从 vendor 或旧产物猜范围。见[品质生成说明](../pipeline/policies/gem-quality/README.md)。
 
 ### 受保护的 native 运行时契约
 

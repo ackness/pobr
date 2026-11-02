@@ -465,7 +465,7 @@ cmd_diff() {
     return 2
   fi
   say "语义数据 diff: $a → ${b}（节点/技能/词条的增删改）"
-  python3 pipeline/diff-data.py "$DATA_ROOT/$a" "$DATA_ROOT/$b" --semantic "${@:4}"
+  python3 -m pipeline.diagnostics.diff_data "$DATA_ROOT/$a" "$DATA_ROOT/$b" --semantic "${@:4}"
 }
 
 cmd_status() {

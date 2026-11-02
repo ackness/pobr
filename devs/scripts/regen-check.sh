@@ -15,21 +15,21 @@
 # manifest v2（三段 domains）落地、由单一步骤幂等生成后，再纳入 diff（见 §5.1 收紧计划）。
 #
 # 用法：
-#   devs/scripts/regen-check.sh            # 自动从 pipeline/config.json 读 patch 版本
+#   devs/scripts/regen-check.sh            # 自动从 pipeline/legacy/config.json 读 patch 版本
 #   POBR_PATCH=4.5.0.3.4 devs/scripts/regen-check.sh   # 显式指定版本
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-# ---- 版本号：环境变量优先，否则从 pipeline/config.json 的 "patch" 字段读取 ----
+# ---- 版本号：环境变量优先，否则从 pipeline/legacy/config.json 的 "patch" 字段读取 ----
 PATCH="${POBR_PATCH:-}"
 if [[ -z "$PATCH" ]]; then
     PATCH="$(sed -n 's/.*"patch"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
-        "$ROOT/pipeline/config.json" | head -1)"
+        "$ROOT/pipeline/legacy/config.json" | head -1)"
 fi
 if [[ -z "$PATCH" ]]; then
-    echo "regen-check: 无法确定 patch 版本（pipeline/config.json 缺 \"patch\"，也未设 POBR_PATCH）" >&2
+    echo "regen-check: 无法确定 patch 版本（pipeline/legacy/config.json 缺 \"patch\"，也未设 POBR_PATCH）" >&2
     exit 1
 fi
 
@@ -46,7 +46,7 @@ HAVE_TREE=0
 if [[ -f "$TREE_JSON" ]]; then
     HAVE_TREE=1
 fi
-QUALITY_SOURCE="$ROOT/pipeline/gem-quality/$PATCH.json"
+QUALITY_SOURCE="$ROOT/pipeline/legacy/gem-quality/$PATCH.json"
 HAVE_QUALITY=0
 if [[ -f "$QUALITY_SOURCE" && -f "$TABLES_DIR/English/GrantedEffectQualityStats.json" ]]; then
     HAVE_QUALITY=1

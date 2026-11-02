@@ -18,7 +18,7 @@ fn fixture() -> Fixture {
         .collect();
     f.documents.retain(|p, _| p == "source-lock.json");
     let p: Value = serde_json::from_slice(include_bytes!(
-        "../../../../../pipeline/runtime-constants/0.5.5.5-facts-compat-policy.json"
+        "../../../../../pipeline/policies/runtime-constants/0.5.5.5-facts-compat-policy.json"
     ))
     .unwrap();
     let ids: BTreeSet<_> = p["bindings"]
@@ -187,7 +187,7 @@ fn ailment_fixture() -> Fixture {
     p["source_files"].as_array_mut().unwrap().push(json!({"file":"non_damaging_ailments.json","relative_path":"base/non_damaging_ailments.json",
         "schema":"pobr_data::catalog::non_damaging_ailments::NonDamagingAilmentsDef","sha256":"0".repeat(64)}));
     let actual: Value = serde_json::from_slice(include_bytes!(
-        "../../../../../pipeline/runtime-constants/0.5.5.5-with-ailments-policy.json"
+        "../../../../../pipeline/policies/runtime-constants/0.5.5.5-with-ailments-policy.json"
     ))
     .unwrap();
     p["bindings"].as_array_mut().unwrap().extend(
@@ -1057,7 +1057,7 @@ fn player_policy_requires_explicit_context_and_cli_pair_is_scoped() {
     let mut f = fixture();
     let mut p = doc(&f, POLICY);
     let source: Value = serde_json::from_slice(include_bytes!(
-        "../../../../../pipeline/runtime-constants/0.5.5.5-with-player-baselines-policy.json"
+        "../../../../../pipeline/policies/runtime-constants/0.5.5.5-with-player-baselines-policy.json"
     ))
     .unwrap();
     p["player"] = source["player"].clone();

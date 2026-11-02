@@ -331,7 +331,7 @@ pub struct SkillLevelDef {
     /// `PlayerLevelReq` column** — the real source is
     /// `SkillGems.ItemExperienceType → ItemExperiencePerLevel.PlayerLevel`
     /// (vendor `skills.lua:239-240`), and that table's bundle isn't
-    /// downloadable at pinned patch 4.5.0.3.4 (see `pipeline/config.json`'s
+    /// downloadable at pinned patch 4.5.0.3.4 (see `pipeline/legacy/config.json`'s
     /// `_tablesUnavailableForPinnedPatch`). This is only a schema
     /// placeholder for now (the adapter always writes `None` and nothing
     /// consumes it); data reaches storage through the extract-lua fallback

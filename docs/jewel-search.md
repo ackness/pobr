@@ -43,7 +43,7 @@ Time-Lost（时迭）范围词缀搜索不等于 Timeless 种子搜索，不能�
 恢复等小数词缀复用 `high_precision_mods.json`，伤害区间的两端都参与缩放。
 新机制仍需有实际读取它的计算逻辑与验证；能解析不代表有数值效果。
 
-`overlay/passive_jewels.json` 由 `pipeline/extract-passive-jewels.lua` 从固定的 PoB2
+`overlay/passive_jewels.json` 由 `pipeline/legacy/extract-passive-jewels.lua` 从固定的 PoB2
 源代码快照导出，已接入 `regen-all.sh`。职业起点以稳定 ID 匹配所选树，环带选择、
 征服者、基石名称和词条都来自数据。普通数值／文本变化随数据再生生效；上游程序性
 变换结构变化会使提取失败，保留旧产物并要求复核，不能静默沿用旧常数。

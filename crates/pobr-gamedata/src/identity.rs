@@ -21,7 +21,7 @@ pub struct DataIdentity {
 }
 
 // Keep legacy packs consistent with the runtime inventory published by
-// pipeline/data_snapshot.py. Schema 3 uses its explicit inventory instead.
+// pipeline/runtime/data_snapshot.py. Schema 3 uses its explicit inventory instead.
 const MAINTENANCE_FILES: &[&str] = &[
     "generated/modifier-audit.json",
     "generated/parsed_mods.json",

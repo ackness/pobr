@@ -111,7 +111,7 @@ class ExternalDataShardTests(unittest.TestCase):
         runtime = workflow.split("\n  runtime:\n", 1)[1].split("\n  scripts:", 1)[0]
         self.assertIn("needs: [ci, web]", runtime)
         self.assertIn("--require-full-alignment", runtime)
-        self.assertIn("latest_data.py verify-composition", runtime)
+        self.assertIn("pipeline.latest.latest_data verify-composition", runtime)
         self.assertIn("name: wasm-release", runtime)
         self.assertNotIn("run-id:", runtime)
         self.assertIn("verify --pack .cache/ci-runtime-pack/player", runtime)
@@ -133,7 +133,7 @@ class ExternalDataShardTests(unittest.TestCase):
         self.assertNotIn("contents: write", workflow)
         self.assertNotIn("pull_request_target", workflow)
         self.assertNotIn("github.event.workflow_run.head_sha", workflow)
-        self.assertIn("pipeline/latest_sync.py", workflow)
+        self.assertIn("pipeline.latest.latest_sync", workflow)
 
     def test_web_data_imports_use_the_pinned_python(self):
         for filename in ("pr.yml", "ci.yml"):
@@ -143,7 +143,7 @@ class ExternalDataShardTests(unittest.TestCase):
             job = re.split(r"\n  [a-z]+:", job, maxsplit=1)[0]
             setup = job.split("uses: ./.github/actions/setup-tools", 1)[1].split("      - ", 1)[0]
             self.assertIn("python: 'true'", setup, filename)
-            self.assertIn("pipeline/build_data.py --install data", job, filename)
+            self.assertIn("pipeline.runtime.build_data --install data", job, filename)
 
     def test_every_rust_shard_prepares_data_and_only_one_publishes_candidates(self):
         workflow = (HERE.parents[1] / ".github/workflows/ci.yml").read_text()
@@ -171,7 +171,7 @@ class RoutingTests(unittest.TestCase):
         ]).values()))
         self.assertTrue(plan.classify(["crates/pobr-core/src/calc.rs"])["rust"])
         self.assertTrue(plan.classify(["web/src/App.tsx"])["web"])
-        self.assertTrue(plan.classify(["pipeline/data_snapshot.py"])["full"])
+        self.assertTrue(plan.classify(["pipeline/runtime/data_snapshot.py"])["full"])
         self.assertTrue(plan.classify(["web/public/_worker.js"])["scripts"])
 
     def test_shared_or_unknown_inputs_select_full_without_duplicate_light_checks(self):
@@ -190,7 +190,7 @@ class RoutingTests(unittest.TestCase):
         self.assertTrue(plan.classify(["data/test/manifest.json"])["rust"])
         self.assertTrue(plan.classify(["web/e2e/fixtures/item.md"])["web"])
         self.assertTrue(plan.classify(["crates/pobr-core/tests/fixtures/mod.md"])["rust"])
-        for name in ("pipeline/fixtures/input.md", "pipeline/fixtures/input.txt",
+        for name in ("pipeline/runtime/ordinary/fixtures/input.md", "pipeline/runtime/ordinary/fixtures/input.txt",
                      "devs/fixtures/input.md", "devs/fixtures/input.txt"):
             with self.subTest(name=name):
                 self.assertTrue(plan.classify([name])["full"])

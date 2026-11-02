@@ -102,7 +102,7 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 | `crates/pobr-item` | 保留物品原文的编辑模型与序列化（`ItemDraft`，支持 BuildRaw 往返）；计算视图由 `pobr-core::item_text` + `ingest_item` 承担 |
 | `apps/pobr-cli` | CLI `pobr`：`calculate` / `calculate-build` / `parse-mod` / `explain-mod` / `parse-item` / `decode-code` / `encode-code`，命令逻辑在 lib |
 | `apps/pobr-wasm` | `build_api/` 的 JSON 契约；默认 features 可在宿主测试，`wasm` 启用绑定，`diagnostics` 启用计时与 fixture 生成目标 |
-| `tools/pobr-data-adapter` | GGG `.dat` 导出 → `data/<版本>/` 入库 JSON；正式再生成使用 `--strict-columns`，检查原始表必需列和版本导出记录，宝石品质由 `--gem-quality` 生成（见[品质生成说明](../pipeline/gem-quality/README.md)） |
+| `tools/pobr-data-adapter` | GGG `.dat` 导出 → `data/<版本>/` 入库 JSON；正式再生成使用 `--strict-columns`，检查原始表必需列和版本导出记录，宝石品质由 `--gem-quality` 生成（见[品质生成说明](../pipeline/policies/gem-quality/README.md)） |
 | `tools/sync-pob-catalog` | 从 PoB2 Lua 抽取 catalog 与 overlay（`extract-lua` 等子命令）、parity 检查 |
 | `tools/lint-i18n` | 语言包完整性检查 |
 | `tools/precompile-mods` | 词条规则离线预编译、语料覆盖与审计（`generated/parsed_mods.json`、`modifier-audit.json`；`--check` 校验运行时合并后的规则集） |

@@ -7,9 +7,9 @@
 ## 数据来源现状与退出顺序
 
 本地活动版本为 `0.5.5.5`；`0.5.5.4.2` 是由独立固定锁恢复的历史回滚输入。
-完整游戏与语言产物分别存于 RePoE 和翻译库，PoBR 按[构建锁](../pipeline/build-data.md)
-临时导入；[普通领域生产](../pipeline/ordinary-inputs.md)再从声明的事实、CSD 和政策生成六域候选，
-由[运行包组合](../pipeline/runtime-bundle.md)验证后接入既有消费者。
+完整游戏与语言产物分别存于 RePoE 和翻译库，PoBR 按[构建锁](../pipeline/runtime/build-data.md)
+临时导入；[普通领域生产](../pipeline/runtime/ordinary/ordinary-inputs.md)再从声明的事实、CSD 和政策生成六域候选，
+由[运行包组合](../pipeline/runtime/runtime-bundle.md)验证后接入既有消费者。
 本地采用和完整 CI 已完成，线上部署仍是单独动作；具体身份、已迁字段和剩余边界见
 [架构现状矩阵](data-architecture.md#5-当前已有数据与实际缺口)。
 
@@ -50,7 +50,7 @@
 `data:legacy:regen`／`data:adapt` 兼容诊断使用。
 旧入口仍能导出 `runes.json`、`catalysts.json` 或 `stat_descriptions.json`，
 不表示当前普通生产仍从 vendor 整体取得这些文件。
-完整版本候选通过[锁驱动更新](../pipeline/locked-update.md)导入独立 owner 的固定产物；
+完整版本候选通过[锁驱动更新](../pipeline/runtime/locked-update.md)导入独立 owner 的固定产物；
 旧本地诊断不会自动取得新原料或成为缺失来源时的回退。
 
 ### 手工整理与回归数据

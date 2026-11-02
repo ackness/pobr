@@ -10,7 +10,7 @@ Use the ordinary `--ordinary-facts`, `--facts-manifest-sha256`, `--version` and
 fresh `--out` arguments, plus both `--supplement <directory>` and
 `--supplement-manifest-sha256 <pin>`. The supplement is a matching-patch English
 RePoE selected-table export; acquisition and export commands are documented in
-[client discovery](../../pipeline/client-index.md) and the RePoE selected-table
+[client discovery](../../pipeline/imports/client-index.md) and the RePoE selected-table
 guide. Missing pins, partial arguments and unrelated codec/policy arguments fail.
 
 Every physical slot row is emitted in source order. Its exact `Slot` FK supplies

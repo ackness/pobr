@@ -91,7 +91,7 @@ pub(in crate::ordinary_facts) fn fixture() -> Fixture {
     fs::create_dir(f.root.join("codec")).unwrap();
     fs::create_dir(f.root.join("policy")).unwrap();
     let mut p: Value = serde_json::from_slice(include_bytes!(
-        "../../../../../pipeline/skill-codec/0.5.5.5-legacy-stat-set-policy.json"
+        "../../../../../pipeline/policies/skill-codec/0.5.5.5-legacy-stat-set-policy.json"
     ))
     .unwrap();
     let ghost = json!({"skill":"AOwner","set_id":"GhostSet","set_index":1});

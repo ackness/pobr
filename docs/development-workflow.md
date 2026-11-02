@@ -135,7 +135,7 @@ Web 纯 TS/CSS 修改复用已有 WASM，按风险选择相关 Vitest、typechec
 | [tools/](../tools/README.md) | 有固定入口的 Rust 工具与 Lua 参考引擎桥接 |
 | [pipeline/](../pipeline/README.md) | 数据锁、组合声明、导入/适配程序及其测试 |
 | [devs/](../devs/README.md) | 开发/CI 命令、有效基线与 fixtures |
-| [data/](../data/README.md) | 活动版本指针与自有规则；外部完整数据按锁临时准备 |
+| [data/](data-directory.md) | 活动版本指针与自有规则；外部完整数据按锁临时准备 |
 | [examples/](../examples/README.md) | 构筑输入、来源和回归语料；保留仍被动态遍历的组 |
 | [docs/](README.md)、[agent-docs/](../agent-docs/README.md) | 当前指南/契约，以及保留出处的早期机制资料 |
 | [.assets/](../.assets/README.md)、[docs/screenshots/](screenshots/README.md)、`web/public/` | README 图片、带来源的界面说明、应用静态资源；不是临时截图目录 |
@@ -328,7 +328,7 @@ PR 不在 workflow 层过滤文档，以免必需检查永久 pending：只运�
 和显示文本产物，要求完整与紧凑消费者的投影业务数据一致，再用同次WASM实际消费最终物化候选；其候选不切换站点活动数据。fork 和 Dependabot 使用同样的只读、无发布密钥路径；
 首次外部贡献是否批准执行由 GitHub 设置决定，执行许可不代表正确性批准。
 
-自动数据采用的[完整契约](../pipeline/latest-data.md)另要求专用App／PAT凭据、远端严格且含管理员的必需`PR gate`保护，以及当前两owner完整发布frontier。默认token的PR事件可能仍需执行批准；建PR或dispatch成功不能当作CI通过。缺凭据／保护或任一gate未完成时保持原锁和CURRENT；本地文件不等于托管设置已启用。
+自动数据采用的[完整契约](../pipeline/latest/latest-data.md)另要求专用App／PAT凭据、远端严格且含管理员的必需`PR gate`保护，以及当前两owner完整发布frontier。默认token的PR事件可能仍需执行批准；建PR或dispatch成功不能当作CI通过。缺凭据／保护或任一gate未完成时保持原锁和CURRENT；本地文件不等于托管设置已启用。
 
 完整 CI 包括 fmt/Clippy（含诊断 features）、workspace tests/doctest、parity/reference 退步断言、
 活动数据生成产物的 byte-diff、i18n、数据兼容、Web 类型/单测/Worker、真实 WASM 契约与打包计算。
@@ -351,13 +351,13 @@ mise run full                             # 显式本地 Rust 全量检查，不
 其 actionlint 1.7.12 尚不认识 GitHub 已支持的 `queue: max`，只豁免该特定未知键错误，
 其余语法与表达式检查仍启用；队列语义见 [GitHub 文档](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)。
 
-完整 Web CI 还按 [`pipeline/data-requirements.json`](../pipeline/data-requirements.json) 和独立的
-[`data-imports.lock.json`](../pipeline/data-imports.lock.json) 获取固定 RePoE/翻译 Git 输入，
+完整 Web CI 还按 [`pipeline/runtime/data-requirements.json`](../pipeline/runtime/data-requirements.json) 和独立的
+[`data-imports.lock.json`](../pipeline/imports/data-imports.lock.json) 获取固定 RePoE/翻译 Git 输入，
 校验后上传精简显示候选与独立 receipt。完整运行输入另由
-[`build-data.lock.json`](../pipeline/build-data.lock.json) 临时组合；各实物消费者显式准备当前版本，
+[`build-data.lock.json`](../pipeline/runtime/build-data.lock.json) 临时组合；各实物消费者显式准备当前版本，
 多版本测试再准备固定回滚锁并保持 CURRENT。显示候选不自动采用，不将来源／绑定大表打进
-`web-dist`，也不把完整快照存回 PoBR Git；见[定向数据导入](../pipeline/data-imports.md)与
-[构建数据](../pipeline/build-data.md)。
+`web-dist`，也不把完整快照存回 PoBR Git；见[定向数据导入](../pipeline/imports/data-imports.md)与
+[构建数据](../pipeline/runtime/build-data.md)。
 
 ## Agent 提交、review 与合并
 

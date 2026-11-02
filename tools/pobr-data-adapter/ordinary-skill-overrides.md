@@ -22,14 +22,14 @@ quality flags are rejected. Duplicate, missing or cross-domain options fail.
   --version 0.5.5.5 --ordinary-domain skill-overrides \
   --codec-source /absolute/path/to/skill_overrides.json \
   --codec-source-sha256 02948c49387a0c83fb5bc013552b8bcc1b98edfc1027ceb743de3288d7652397 \
-  --codec-policy /absolute/path/to/pipeline/skill-overrides/0.5.5.5-facts-compat-policy.json \
+  --codec-policy /absolute/path/to/pipeline/policies/skill-overrides/0.5.5.5-facts-compat-policy.json \
   --codec-policy-sha256 fc913c22431fbcd4865c7fea66d72acfcba38e5dac1bfadcfd28153810d6de2b \
   --branch-codec /absolute/path/to/stat_set_labels.json \
   --branch-codec-sha256 825e594f43f07a4115ee29e57622670688e5d1c099f7e11a30ba66b3b80cca06 \
   --out /absolute/path/to/existing-parent/fresh-overrides
 ```
 
-The initial [policy](../../pipeline/skill-overrides/0.5.5.5-facts-compat-policy.json)
+The initial [policy](../../pipeline/policies/skill-overrides/0.5.5.5-facts-compat-policy.json)
 is the frozen target applicability template verbatim. It binds the target patch
 and exact manifest, both archival hashes, original metadata, snapshot versions
 and archived paths. The two legacy files retain their `0.5.5.4.2` / `bb52d6b3…`
@@ -134,7 +134,7 @@ new target, source acquisition or CI is required for this handoff.
 
 ## Raw-owned implicit-stat membership
 
-The optional [v2 implicit ownership policy](../../pipeline/skill-overrides/0.5.5.5-implicit-ownership-policy.json)
+The optional [v2 implicit ownership policy](../../pipeline/policies/skill-overrides/0.5.5.5-implicit-ownership-policy.json)
 delegates each target-bound `implicit_stat` entry to the existing ordinary-skills
 producer. That producer already fills `SkillStatSetDef.implicit_stats` from
 `GrantedEffectStatSets.ImplicitStats` and `IgnoredStats`, including its existing

@@ -9,7 +9,7 @@ or calculation code changes.
 
 The raw schema calls the third physical boolean **IsWeapon**. Fixed community
 PoB schema/export code calls that same position **NoReservation**. The
-[explicit interpretation policy](../../pipeline/item-grants/0.5.5.5-community-semantics-policy.json)
+[explicit interpretation policy](../../pipeline/policies/item-grants/0.5.5.5-community-semantics-policy.json)
 binds both schema identities and the three community evidence file hashes.
 This is a retained community semantic interpretation, **not independently
 confirmed official naming**. RePoE raw fields and source locks are not renamed

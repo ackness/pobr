@@ -110,7 +110,7 @@ fn args(f: &Fixture, old: &Value) -> Args {
     let bytes = super::super::pretty_bytes(old).unwrap();
     fs::write(dir.join("old.json"), &bytes).unwrap();
     let mut policy: Value = serde_json::from_slice(include_bytes!(
-        "../../../../../pipeline/item-grants/0.5.5.5-community-semantics-policy.json"
+        "../../../../../pipeline/policies/item-grants/0.5.5.5-community-semantics-policy.json"
     ))
     .unwrap();
     policy["source_sha256"] = json!(sha256_hex(&bytes));
