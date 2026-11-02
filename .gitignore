@@ -78,6 +78,7 @@ __pycache__/
 /web/src/lib/supportDescriptions.zh-CN.json
 # 旧版本地原表、树导出与缓存目录：已无读取方，仅防止残留被误提交。
 /pipeline/.cache/
+/pipeline/node_modules/
 /pipeline/tables/
 /pipeline/files/
 /pipeline/tree/data.json
