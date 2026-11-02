@@ -474,6 +474,37 @@ def import_pack(requirements_path, lock_path, imports_path, output, cache, offli
     return {"status": "assembled", "release_id": release["release_id"], "adoption": "not-adopted"}
 
 
+def build_release(requirements_path, data, output, expected_id=None):
+    """Assemble the compact release from a prepared owner snapshot.
+
+    The owner game and language publications already contain every runtime file,
+    including the selected locale's display texts; nothing is reproduced here.
+    """
+    requirements = bundle.decode(regular(requirements_path))
+    target, locale = requirements["target"], requirements["translation"]["locale"]
+    version = target["game_patch"]
+    files, runtime_identity = bundle.data_inputs(data, version)
+    display_name = f"data/{version}/i18n/{locale}/display_texts.json"
+    require(display_name in files, "Prepared snapshot lacks the selected locale display texts")
+    release, payloads = assemble(files, version, target, locale, files[display_name])
+    inspect_release(payloads)
+    require(expected_id is None or release["release_id"] == expected_id, "Unexpected release identity")
+    output = fresh_output(output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".pack-build-", dir=output.parent) as temp:
+        stage = Path(temp) / "result"
+        for name, raw in payloads.items():
+            write(stage / "player" / name, raw)
+        write(stage / "runtime-pack.zip", archive_bytes(payloads))
+        write(stage / "build-receipt.json", raw_json({
+            "source": "prepared owner snapshot", "data_version": version,
+            "source_runtime_identity": runtime_identity, "release_id": release["release_id"],
+            "adoption": "not-adopted"}))
+        stage.rename(output)
+    return {"status": "assembled", "release_id": release["release_id"],
+            "runtime_identity": release["runtime_identity"], "source_runtime_identity": runtime_identity}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -487,6 +518,11 @@ def main():
         p.add_argument("--expected-id")
         if command == "materialize":
             p.add_argument("--out", type=Path, required=True)
+    p = sub.add_parser("build", help="Assemble the compact release from prepared owner data")
+    p.add_argument("--requirements", type=Path, default=ROOT / "pipeline/runtime/data-requirements.json")
+    p.add_argument("--data", type=Path, default=ROOT / "data")
+    p.add_argument("--out", type=Path, required=True)
+    p.add_argument("--expected-id")
     p = sub.add_parser("export-inputs")
     for name in ("bundle", "recipe", "out"):
         p.add_argument(f"--{name}", type=Path, required=True)
@@ -516,6 +552,8 @@ def main():
                   "manifest_sha256": bundle.sha256(payloads["manifest.json"])}
     elif args.command == "materialize":
         result = materialize(args.pack, args.out, args.expected_id)
+    elif args.command == "build":
+        result = build_release(args.requirements, args.data, args.out, args.expected_id)
     elif args.command == "export-inputs":
         result = export_inputs(args.bundle, args.recipe, args.out)
     elif args.command == "git-handoff":

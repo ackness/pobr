@@ -109,9 +109,12 @@ class ExternalDataShardTests(unittest.TestCase):
     def test_final_candidate_consumes_same_run_wasm_and_its_materialized_data(self):
         workflow = (HERE.parents[1] / ".github/workflows/ci.yml").read_text()
         runtime = workflow.split("\n  runtime:\n", 1)[1].split("\n  scripts:", 1)[0]
-        self.assertIn("needs: [ci, web]", runtime)
-        self.assertIn("--require-full-alignment", runtime)
+        self.assertIn("needs: [web]", runtime)
         self.assertIn("pipeline.latest.latest_data verify-composition", runtime)
+        # The compact release is packaged from the prepared owner snapshot only.
+        self.assertIn("runtime_pack build --data data --out .cache/ci-runtime-pack", runtime)
+        self.assertLess(runtime.index("build_data --install data"), runtime.index("runtime_pack build"))
+        self.assertNotIn("download-artifact@v8.0.2\n        with:\n          name: ordinary", runtime)
         self.assertIn("name: wasm-release", runtime)
         self.assertNotIn("run-id:", runtime)
         self.assertIn("verify --pack .cache/ci-runtime-pack/player", runtime)
@@ -145,7 +148,7 @@ class ExternalDataShardTests(unittest.TestCase):
             self.assertIn("python: 'true'", setup, filename)
             self.assertIn("pipeline.runtime.build_data --install data", job, filename)
 
-    def test_every_rust_shard_prepares_data_and_only_one_publishes_candidates(self):
+    def test_every_rust_shard_prepares_data_and_ci_does_not_reproduce_owner_data(self):
         workflow = (HERE.parents[1] / ".github/workflows/ci.yml").read_text()
         job = workflow.split("  ci:\n", 1)[1].split("\n  web:", 1)[0]
         steps = job.split("      - name: ")
@@ -154,11 +157,8 @@ class ExternalDataShardTests(unittest.TestCase):
         self.assertIn("--install data", prepare)
         self.assertIn("--keep-current", prepare)
         self.assertLess(job.index("Prepare pinned external data"), job.index("Workspace tests"))
-        for name in ("Build ordinary domain adapter", "Produce declared ordinary candidates",
-                     "Preserve ordinary runtime outputs", "Preserve failed ordinary command logs"):
-            step = next(step for step in steps if step.startswith(name))
-            self.assertIn("matrix.shard == 'libraries-tools'", step)
-
+        for retired in ("ordinary_inputs", "pipeline.imports.data_imports", "pobr-data-adapter --bin"):
+            self.assertNotIn(retired, workflow)
 
     def test_every_data_import_reuses_the_download_cache_and_leaves_a_clean_worktree(self):
         for filename in ("pr.yml", "ci.yml"):

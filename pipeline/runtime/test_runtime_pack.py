@@ -80,6 +80,30 @@ class RuntimePackTests(unittest.TestCase):
         self.assertEqual(rule["entries"][0]["game_source"], "stat_id")
         self.assertNotEqual(release["runtime_identity"], bundle.verify(self.source)["runtime_identity"])
 
+    def test_release_builds_directly_from_prepared_owner_snapshot(self):
+        display = self.display.read_bytes()
+        source = self.root / "source/data/9.1"
+        self.write("source/data/9.1/i18n/zh-CN/display_texts.json", display)
+        snapshot = json.loads((source / "manifest.json").read_bytes())
+        snapshot["files"]["i18n/zh-CN/display_texts.json"] = bundle.sha256(display)
+        self.write("source/data/9.1/manifest.json", pack.raw_json(snapshot))
+        requirements = self.write("requirements.json", pack.raw_json(
+            {"target": self.target, "translation": {"locale": "zh-CN"}}))
+        first = pack.build_release(requirements, self.root / "source/data", self.root / "built")
+        again = pack.build_release(requirements, self.root / "source/data", self.root / "built-again",
+                                   expected_id=first["release_id"])
+        self.assertEqual(first, again)
+        release, _, payloads = pack.read_release(self.root / "built/player", first["release_id"])
+        self.assertEqual(release["runtime_identity"], first["runtime_identity"])
+        self.assertEqual((self.root / "built/runtime-pack.zip").read_bytes(), pack.archive_bytes(payloads))
+        with self.assertRaisesRegex(ValueError, "Unexpected release identity"):
+            pack.build_release(requirements, self.root / "source/data", self.root / "wrong", expected_id="0" * 64)
+        self.assertFalse((self.root / "wrong").exists())
+        self.write("source/data/9.1/i18n/zh-CN/display_texts.json", display + b" ")
+        with self.assertRaisesRegex(ValueError, "Snapshot hash mismatch"):
+            pack.build_release(requirements, self.root / "source/data", self.root / "tampered")
+        self.assertFalse((self.root / "tampered").exists())
+
     def test_archive_materializes_a_complete_existing_bundle_with_matching_identity(self):
         release = self.create()
         destination = self.root / "materialized"

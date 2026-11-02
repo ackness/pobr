@@ -239,6 +239,7 @@ PoBR不再安装`pathofexile-dat`、下载原始索引或导出官方原表。�
 mise run data:version                   # 本地选中版本
 mise run data:prepare                   # 临时导入当前固定目标，不更改 CURRENT
 mise run data:check                     # 离线检查：跟踪数据归属，导入后工作树干净
+mise run data:pack build --out .cache/runtime-pack   # 从已准备的快照组精简发行包
 mise run data:regen --out .cache/ordinary-produced --adapter target/debug/pobr-data-adapter
 mise run data:update --lock pipeline/runtime/build-data.lock.json --out .cache/update-review
 ```
