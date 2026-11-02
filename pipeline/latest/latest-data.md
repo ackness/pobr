@@ -57,9 +57,11 @@ it still checks its pins, producer and age.
 Same-target candidates preserve local policies, shared rules and owner scopes.
 Each changed consumed artifact must have exactly one owner `handoff/*` tag naming
 its revision; the candidate records it. Changed game, language or crafting inputs
-derive the snapshot manifest and runtime identity from pinned package metadata
-and clear `release_id`; the candidate Full CI then prepares the data and builds
-the compact release, and the adopting change records that release identity. A new patch requires compatible owned requirements and source
+derive the snapshot manifest and runtime identity from pinned package metadata;
+the resolver then prepares the candidate's complete data and records its exact
+compact `release_id`, which the candidate Full CI rebuilds and must match.
+Owners may add or retire roles PoBR does not consume; a consumed role, the RePoE
+display source and the language catalog binding must stay present. A new patch requires compatible owned requirements and source
 decisions through a reviewed migration; patch strings cannot relabel old data.
 
 Full CI verifies the complete snapshot, the recorded immutable owner declarations
