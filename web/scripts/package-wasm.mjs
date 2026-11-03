@@ -89,10 +89,10 @@ export function packageWasm({ root = repoRoot, outDir = join(root, '.cache/wasm-
       files: [...packageFiles, 'pobr-data.json.gz', 'api-types.ts', 'generated', 'manifest.json', 'example.mjs', 'README.md', 'LICENSE', 'skills'] }));
     for (const [source, dest] of [
       ['web/src/api/types.ts', 'api-types.ts'], ['LICENSE', 'LICENSE'],
-      ['docs/wasm-package.md', 'README.md'], ['.claude/skills/use-pobr-wasm/scripts/demo.mjs', 'example.mjs'],
+      ['docs/wasm-package.md', 'README.md'], ['.agents/skills/use-pobr-wasm/scripts/demo.mjs', 'example.mjs'],
     ]) cpSync(join(root, source), join(stage, dest));
     cpSync(join(root, 'web/src/api/generated'), join(stage, 'generated'), { recursive: true });
-    cpSync(join(root, '.claude/skills/use-pobr-wasm'), join(stage, 'skills/use-pobr-wasm'), { recursive: true });
+    cpSync(join(root, '.agents/skills/use-pobr-wasm'), join(stage, 'skills/use-pobr-wasm'), { recursive: true });
     const commit = build.commit;
     const manifest = { packageVersion: pkg.version, schemaVersion, dataVersion: version, commit, build,
       target: 'web', dataFileCount: dataManifest.files.length,

@@ -45,7 +45,7 @@ function fixture(t) {
     mkdirSync(dirname(join(root, file)), { recursive: true });
     cpSync(join(repo, file), join(root, file));
   }
-  cpSync(join(repo, '.claude/skills/use-pobr-wasm'), join(root, '.claude/skills/use-pobr-wasm'), { recursive: true });
+  cpSync(join(repo, '.agents/skills/use-pobr-wasm'), join(root, '.agents/skills/use-pobr-wasm'), { recursive: true });
   cpSync(join(repo, 'web/src/api/generated'), join(root, 'web/src/api/generated'), { recursive: true });
   const pkgRoot = join(root, 'web/src/wasm/pkg');
   write('web/src/wasm/pkg/build-receipt.json', {

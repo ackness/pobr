@@ -40,8 +40,8 @@ schema 编号没变，不代表游戏计算没变，也不代表已覆盖 PoB2 �
 
 归档中的 `skills/use-pobr-wasm/references/api.md` 说明浏览器 / Web Worker 用法、
 初始化顺序、JSON 示例、错误处理和限制。仓库原件是
-[SKILL.md](https://github.com/ackness/pobr/blob/master/.claude/skills/use-pobr-wasm/SKILL.md)
-和 [API 指南](https://github.com/ackness/pobr/blob/master/.claude/skills/use-pobr-wasm/references/api.md)。
+[SKILL.md](https://github.com/ackness/pobr/blob/master/.agents/skills/use-pobr-wasm/SKILL.md)
+和 [API 指南](https://github.com/ackness/pobr/blob/master/.agents/skills/use-pobr-wasm/references/api.md)。
 生成的 `pobr_wasm.d.ts` 描述 JS 导出；`api-types.ts` 提供 JSON 请求和响应类型，
 其依赖的 `generated/request.ts` 也随包附带。类型使用 `import type` 引入。
 完整计算响应的 `provenance` 包括引擎版本、数据版本和有效数据包 SHA-256；

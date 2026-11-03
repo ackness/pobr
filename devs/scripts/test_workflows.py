@@ -29,9 +29,9 @@ class WorkflowTests(unittest.TestCase):
             (self.root / name).mkdir(parents=True)
         scripts = ["devs/scripts/regen-check.sh", "devs/scripts/cache-report.py",
                    "devs/scripts/driver.sh", "devs/scripts/pob2-luajit.sh",
-                   ".claude/skills/run-pobr/driver.sh"]
-        if (REPO / ".agents/skills/run-pobr/driver.sh").is_file():
-            scripts.append(".agents/skills/run-pobr/driver.sh")
+                   ".agents/skills/run-pobr/driver.sh"]
+        if (REPO / ".claude/skills/run-pobr/driver.sh").is_file():
+            scripts.append(".claude/skills/run-pobr/driver.sh")
         for rel in scripts:
             dest = self.root / rel
             dest.parent.mkdir(parents=True, exist_ok=True)
@@ -248,8 +248,6 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         return [json.loads(line) for line in
                 (self.root / "calls.jsonl").read_text(encoding="utf-8").splitlines()]
 
-    @unittest.skipUnless((REPO / ".agents/skills/run-pobr/driver.sh").is_file(),
-                         "Optional local agent alias is not present in fresh checkouts")
     def test_agent_alias_preserves_arguments_and_failure(self):
         self.env["FAIL_TEST"] = "1"
         args = ["-p", "pobr-build", "--test", "skills", "a filter with spaces"]
