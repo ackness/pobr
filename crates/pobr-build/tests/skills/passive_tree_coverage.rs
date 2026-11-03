@@ -12,9 +12,6 @@ use pobr_data::prelude::{ModName, ModType};
 
 use crate::test_data as data;
 
-// The 0.5.5.5 source changes link/style markup for nodes 2344 and 38813;
-// their visible text and existing unsupported status are unchanged. Preserve
-// those diagnostics rather than interpreting a formatting change as support.
 const SNAPSHOT: &str = include_str!("../fixtures/passive_tree_unparsed.txt");
 const SNAPSHOT_PATH: &str = "tests/fixtures/passive_tree_unparsed.txt";
 

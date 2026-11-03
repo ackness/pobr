@@ -5,6 +5,32 @@ use pobr_core::{CalcConfig, ModDb, ModTag, ModValue};
 use pobr_data::prelude::*;
 
 #[test]
+fn elemental_resistance_inversion_chance_is_a_fraction() {
+    for (text, expected) in [
+        (
+            "[Hit|Hits] have 15% chance to treat Enemy Monster [ElementalDamage|Elemental] [Resistances|Resistance] values as inverted",
+            0.15,
+        ),
+        (
+            "Hits have 100% chance to treat Enemy Monster Elemental Resistance values as inverted",
+            1.0,
+        ),
+        (
+            "Hits have 0.5% chance to treat Enemy Monster Elemental Resistance values as inverted",
+            0.005,
+        ),
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert!(parsed.is_complete(), "{text}: {parsed:?}");
+        assert_eq!(parsed.mods.len(), 1, "{text}: {parsed:?}");
+        let modifier = &parsed.mods[0];
+        assert_eq!(modifier.name.as_str(), "HitsInvertEleResChance");
+        assert_eq!(modifier.mod_type, ModType::Base);
+        assert_eq!(modifier.value.as_number(), Some(expected), "{text}");
+    }
+}
+
+#[test]
 fn splinter_poison_rules_remain_local_until_the_weapon_slot_is_known() {
     use pobr_core::item::apply_weapon_hand_conditions;
     use pobr_data::item::EquipmentSlot;

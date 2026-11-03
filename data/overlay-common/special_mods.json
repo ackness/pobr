@@ -1371,6 +1371,32 @@
       "source_note": "Eldritch Battery 型；pobr 准源 mod_parser.rs:533-538；vendor ModParser.lua:2395"
     },
     {
+      "id": "hits_invert_enemy_elemental_resistance_chance",
+      "pattern": "^hits have (\\d+(?:\\.\\d+)?)% chance to treat enemy monster elemental resistance values as inverted$",
+      "mods": [
+        {
+          "name": "HitsInvertEleResChance",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "div": 100
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "game_source": "treat_enemy_resistances_as_negated_on_elemental_damage_hit_%_chance; base/passive_tree.json: Dimensional Weakspot (2344)",
+      "source_note": "A share of elemental hits treats the enemy's resistance as negated. Convert the percentage to a fraction; the hit calculation resolves penetration and ignore rules separately for ordinary and inverted hits before averaging. Damage over time retains the original resistance.",
+      "examples": [
+        "Hits have 15% chance to treat Enemy Monster Elemental Resistance values as inverted",
+        "Hits have 100% chance to treat Enemy Monster Elemental Resistance values as inverted"
+      ]
+    },
+    {
       "id": "critical_hits_ignore_non_negative_enemy_monster_elemental_resistances",
       "pattern": "critical hits ignore non-negative enemy monster elemental resistances",
       "vendor_pattern": "critical hits ignore non%-negative enemy monster elemental resistances",

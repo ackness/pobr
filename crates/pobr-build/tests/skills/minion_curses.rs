@@ -167,6 +167,63 @@ fn ribrattle_applies_three_curses_and_the_strongest_despair_wins() {
 }
 
 #[test]
+fn ribrattle_enfeeble_reduces_pinnacle_damage_without_changing_player_pools() {
+    let data = data();
+    let calculate = |summoned: bool, toggle: &str| {
+        let spectre = if summoned {
+            format!(
+                r#"<Skill enabled="true"><Gem skillId="SummonSpectrePlayer" level="20" enabled="true" skillMinion="{RIBRATTLE}"/></Skill>"#
+            )
+        } else {
+            String::new()
+        };
+        let xml = format!(
+            r#"<PathOfBuilding2>
+<Build level="80" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="EssenceDrainPlayer" level="20" enabled="true"/></Skill>{spectre}</Skills>
+<Config><Input name="enemyCritChance" number="0"/>{toggle}</Config></PathOfBuilding2>"#
+        );
+        calculate_with_data(
+            &parse_build(&xml).unwrap(),
+            &data,
+            &DataOrchestratorOptions {
+                mode_effective: true,
+                enemy_tier: pobr_data::monster::EnemyTier::Pinnacle,
+                extra_modifier_texts: vec!["+1000 to Evasion Rating".into()],
+                ..Default::default()
+            },
+        )
+        .unwrap()
+    };
+    let off = calculate(
+        true,
+        r#"<Input name="raiseSpectreEnableCurses" boolean="false"/>"#,
+    );
+    let absent = calculate(false, "");
+    let default = calculate(true, "");
+    let on = calculate(
+        true,
+        r#"<Input name="raiseSpectreEnableCurses" boolean="true"/>"#,
+    );
+    assert_eq!(off.total_ehp, absent.total_ehp);
+    assert_eq!(default.total_ehp, on.total_ehp);
+    assert!(on.total_ehp > off.total_ehp);
+    assert!(on.evade_chance > off.evade_chance);
+    assert_eq!(
+        (on.life, on.energy_shield, on.armour, on.evasion),
+        (off.life, off.energy_shield, off.armour, off.evasion),
+    );
+    // Monster Enfeeble has -60% damage with no unique-target alternative;
+    // a Pinnacle's 50% less curse effect leaves 30% less incoming damage.
+    let cursed = on.ehp_terms.as_ref().unwrap();
+    let plain = off.ehp_terms.as_ref().unwrap();
+    for (cursed, plain) in cursed.enemy_damage.iter().zip(plain.enemy_damage) {
+        assert!(plain > 0.0);
+        assert!((cursed / plain - 0.7).abs() < 1e-9, "{cursed} / {plain}");
+    }
+}
+
+#[test]
 fn a_support_on_the_summoning_gem_scales_each_compatible_minion_curse_once() {
     let data = data();
     let bare = calculate(&data, "SummonSpectrePlayer", RIBRATTLE, "", "", &[]);

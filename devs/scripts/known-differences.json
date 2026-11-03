@@ -2,6 +2,14 @@
   "_doc": "Reference rows `mise run triage` files as known: differences the repository already explains, so a triage lists only what is left to look at. `build` is a fragment of the build folder's name (or a synthetic skill-sweep case id), `xml_sha256`, when present, binds an entry to the exact decoded UTF-8 XML so short rank names cannot match another snapshot; `stats` the rows it explains, `reason` where the explanation is. Synthetic case entries document sweep findings; skill-sweep does not yet consume this registry. Add an entry when a difference is documented as deliberate; remove it when the engine changes.",
   "differences": [
     {
+      "build": "warrior-smith-of-kitava-frostbolt-e08a678c10e1",
+      "xml_sha256": "ff6431d438f30bfe4e2cfbb8b2e411d6e13a99eea2aed5e45079ed9ef07caccf",
+      "stats": [
+        "TotalEHP"
+      ],
+      "reason": "Ribrattle has its own three-curse limit and native Enfeeble has no separate Unique-target damage value. Pinnacle curse reduction leaves 30% less incoming damage and 30% reduced accuracy. Disabling only spectre curses changes reference-basis EHP from 2012602.479924 to 871515.519403, exactly reproducing this frozen export without changing player pools or ratings. Preserve the active curse snapshot (docs/pob2-differences.md, Ribrattle)."
+    },
+    {
       "build": "lich-essence-drain-27c94",
       "xml_sha256": "850c516087fec6728872e1dc25508ad4fc54c15cb656e5df11296d237ffc71be",
       "stats": [

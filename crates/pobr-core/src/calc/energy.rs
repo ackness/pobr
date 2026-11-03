@@ -171,7 +171,7 @@ pub(crate) fn source_ailments(env: &Env) -> AilmentSourceStats {
         .0;
     }
     let cold =
-        ailment::cross_type_source_hit(AilmentType::Chill, &out.damage_components, player, cfg);
+        ailment::cross_type_source_hit(AilmentType::Freeze, &out.damage_components, player, cfg);
     let buildup = cold * out.freeze_buildup_pct;
     if buildup > 0.0 {
         result.freeze_chance = 1.0 / (100.0 / buildup - 1e-9).ceil().max(1.0);
@@ -514,6 +514,41 @@ pub fn apply_energy_trigger(env: &mut Env) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn chill_permission_does_not_create_freeze_energy_events() {
+        use crate::Modifier;
+        use crate::calc::{Actor, ActorBaseStats, DamageComponent};
+
+        for (damage_type, prefix) in [
+            (DamageType::Physical, "Physical"),
+            (DamageType::Fire, "Fire"),
+            (DamageType::Lightning, "Lightning"),
+            (DamageType::Chaos, "Chaos"),
+        ] {
+            let mut env = Env::new(Actor::new(80, ActorBaseStats::default()));
+            env.player.output.damage_components =
+                vec![DamageComponent::new(damage_type, 100.0, 100.0)];
+            env.player.output.freeze_buildup_pct = 1.0;
+            assert_eq!(source_ailments(&env).freeze_chance, 0.0, "{damage_type:?}");
+
+            // Spirit of the Primate's all_damage_can_chill does not permit Freeze.
+            env.player
+                .mod_db
+                .add_mod(Modifier::flag(format!("{prefix}CanChill")));
+            assert_eq!(source_ailments(&env).freeze_chance, 0.0, "{damage_type:?}");
+
+            env.player
+                .mod_db
+                .add_mod(Modifier::flag(format!("{prefix}CanFreeze")));
+            assert_eq!(source_ailments(&env).freeze_chance, 1.0, "{damage_type:?}");
+        }
+        let mut cold = Env::new(Actor::new(80, ActorBaseStats::default()));
+        cold.player.output.damage_components =
+            vec![DamageComponent::new(DamageType::Cold, 100.0, 100.0)];
+        cold.player.output.freeze_buildup_pct = 1.0;
+        assert_eq!(source_ailments(&cold).freeze_chance, 1.0);
+    }
 
     const COMET: SocketedSpell = SocketedSpell {
         cast_time_ms: 1000.0,

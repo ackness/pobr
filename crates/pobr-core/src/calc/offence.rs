@@ -1827,13 +1827,9 @@ fn enemy_mitigation_terms(
         // meets this damage with.
         let resisting = enemy_resisting_element(enemy_db, &type_cfg, damage_type);
         let mut resist = enemy_resist;
-        // A hit treats enemy elemental resistance as inverted (Rakiata's
-        // Flow etc., vendor CalcOffence.lua:4145-4148):
-        // `invertChance = clamp(Sum(CHANCE, "HitsInvertEleResChance"), 0, 1)`,
-        // elemental types only;
-        // `resist = (1-c)*resist + c*(-resist) = resist - 2*c*resist`.
-        // Applied after the resistance clamp, before penetration (matching
-        // vendor's order: `:4135` reads pen, `:4145` inversion, `:4163` deducts pen inside effMult).
+        // Dimensional Weakspot and Rakiata's Flow negate the resistance for
+        // a share of elemental hits. Keep the mean resistance for diagnostics;
+        // penetration and ignore rules must resolve each outcome separately.
         if damage_type.is_elemental() {
             let invert = player_db
                 .sum(
@@ -1869,17 +1865,22 @@ fn enemy_mitigation_terms(
             && !player_db.flag(&type_cfg, "CannotElePenIgnore");
         let effective_resist = if ignores_resist {
             0.0
-        } else if ignores_non_negative {
+        } else {
             let against = |resist: f64| {
-                if resist >= 0.0 {
+                if ignores_non_negative && resist >= 0.0 {
                     0.0
                 } else {
                     apply_penetration(player_db, &type_cfg, resisting, resist)
                 }
             };
-            (1.0 - invert_share) * against(enemy_resist) + invert_share * against(-enemy_resist)
-        } else {
-            apply_penetration(player_db, &type_cfg, resisting, resist)
+            let normal = against(enemy_resist);
+            if invert_share > 0.0 {
+                // Penetration cannot lower a resistance past its floor.
+                // Averaging first would incorrectly share it between hits.
+                (1.0 - invert_share) * normal + invert_share * against(-enemy_resist)
+            } else {
+                normal
+            }
         };
         // Diagnostics: dumps the enemy mitigation breakdown per type when
         // POBR_DBG_ENEMYMIT=1 (for comparison against the oracle's
