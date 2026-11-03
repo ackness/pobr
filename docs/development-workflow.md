@@ -377,9 +377,9 @@ mise run full                             # 显式本地 Rust 全量检查，不
 授权合并前可以运行 `mise run pr-ready <N>`：它只读 PR 当前状态、`PR gate`、其他失败/待定检查
 与冲突，并再次核对 head/base，输出带 `--match-head-commit` 的准确命令。它不评论、不合并、
 不验证“是否有独立推理”。这是减少误操作的辅助入口；维护者也可以直接核对同样的事实。
-合并默认用 merge commit：owner 的发布 plan 按完整 SHA 钉住 PoBR 提交（例如 RePoE
-`publication/0.5.5.5-ordinary.plan.json` 的 `ackness/pobr` 来源），squash／rebase 会让未打 tag 的
-分支提交不再被任何 ref 保留，之后无法按 SHA 取回。
+合并默认用 merge commit，让分支原始提交继续可从 master 到达。owner 的发布 plan 可能按完整
+SHA 钉住这些提交；squash／rebase 后若删除原分支且没有其他保留 ref，原提交可能无法再按 SHA
+取回。发布输入仍须由不可变 tag 保留；merge commit 不能替代 `handoff/*` 等发布保留约定。
 `pr-ready` 不要求每个普通 PR 都有合并前 full。若风险需要手动 full，单独核对该 run 的
 `head_sha`、结果与当前 base；分支 head 的结果不证明之后变化的 merge commit。
 base 更新后的保障取决于已配置的服务端规则和必要复验，不能从本地文件推断 strict 已启用。
