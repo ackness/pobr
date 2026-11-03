@@ -754,6 +754,58 @@ fn hits_invert_partial_chance_resolves_penetration_before_averaging() {
 }
 
 #[test]
+fn elemental_penetration_prohibition_preserves_inversion_and_chaos_penetration() {
+    for (resistance, inversion, expected) in [
+        (50.0, 0.0, 50.0),
+        (50.0, 0.15, 65.0),
+        (50.0, 1.0, 150.0),
+        (-20.0, 0.15, 114.0),
+    ] {
+        let mut player = fire_only_player();
+        for name in [
+            "CannotElePenIgnore",
+            "IgnoreElementalResistances",
+            "IgnoreNonNegativeEleRes",
+        ] {
+            player.add_mod(Modifier::flag(name));
+        }
+        player.add_mod(Modifier::number("FirePenetration", ModType::Base, 8.0));
+        player.add_mod(Modifier::number(
+            "ElementalPenetration",
+            ModType::Base,
+            30.0,
+        ));
+        player.add_mod(Modifier::number(
+            "HitsInvertEleResChance",
+            ModType::Base,
+            inversion,
+        ));
+        let mut enemy = ModDb::new();
+        enemy.add_mod(Modifier::number("FireResist", ModType::Base, resistance));
+        let out =
+            calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+        assert!(
+            (out.dps - expected).abs() < 1e-6,
+            "{resistance}/{inversion}: {} != {expected}",
+            out.dps
+        );
+    }
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::flag("CannotElePenIgnore"));
+    player.add_mod(Modifier::number("ChaosDamageMin", ModType::Base, 100.0));
+    player.add_mod(Modifier::number("ChaosDamageMax", ModType::Base, 100.0));
+    player.add_mod(Modifier::number("ChaosPenetration", ModType::Base, 8.0));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("ChaosResist", ModType::Base, 50.0));
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 58.0).abs() < 1e-6,
+        "chaos penetration remains effective: {}",
+        out.dps
+    );
+}
+
+#[test]
 fn hits_invert_does_not_touch_chaos_or_panel_mode() {
     // Elemental-only (vendor's isElemental gate): chaos resist is never inverted; panel mode skips the enemy mitigation stage entirely.
     let mut player = ModDb::new();

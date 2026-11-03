@@ -2619,6 +2619,7 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
     let components = &env.player.output.damage_components;
     let cold_hit = cross_type_source_hit(AilmentType::Chill, components, player, cfg);
     let lightning_hit = cross_type_source_hit(AilmentType::Shock, components, player, cfg);
+    let freeze_hit = cross_type_source_hit(AilmentType::Freeze, components, player, cfg);
 
     let mut non_damaging_terms = Vec::new();
     // The critical share of the hit's ailments: "with Critical Hits"
@@ -2650,7 +2651,9 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
             env.player.output.chill_effect_mod = terms.effect_mod();
             non_damaging_terms.push((AilmentType::Chill, terms));
         }
-        // Lane B: freeze poise buildup (% per hit).
+    }
+    if freeze_hit > 0.0 {
+        // Freeze permission is independent of Chill, including non-Cold sources.
         let (freeze_buildup, _) = freeze_poise_buildup_traced(poise_thr, player, cfg, &mut trace);
         env.player.output.freeze_buildup_pct = freeze_buildup;
     }

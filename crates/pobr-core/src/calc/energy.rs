@@ -560,6 +560,53 @@ mod tests {
     };
 
     #[test]
+    fn non_cold_freeze_permission_reaches_buildup_and_energy_without_chill() {
+        use crate::calc::{Actor, ActorBaseStats, perform};
+        use crate::{CalcConfig, Modifier};
+
+        for (damage_type, prefix) in [
+            (DamageType::Fire, "Fire"),
+            (DamageType::Lightning, "Lightning"),
+        ] {
+            for (can_chill, can_freeze, cannot_freeze) in [
+                (false, false, false),
+                (false, true, false),
+                (true, false, false),
+                (false, true, true),
+            ] {
+                let mut env = Env::new(Actor::new(1, ActorBaseStats::default()));
+                env.cfg = CalcConfig::attack().with_damage_type(damage_type);
+                for bound in ["Min", "Max"] {
+                    env.player.mod_db.add_mod(Modifier::number(
+                        format!("{prefix}Damage{bound}"),
+                        ModType::Base,
+                        200_000.0,
+                    ));
+                }
+                for (enabled, flag) in [
+                    (can_chill, format!("{prefix}CanChill")),
+                    (can_freeze, format!("{prefix}CanFreeze")),
+                    (cannot_freeze, "CannotFreeze".to_owned()),
+                ] {
+                    if enabled {
+                        env.player.mod_db.add_mod(Modifier::flag(flag));
+                    }
+                }
+                perform(&mut env).unwrap();
+                let freezes = can_freeze && !cannot_freeze;
+                assert_eq!(env.player.output.chill_effect > 0.0, can_chill);
+                assert_eq!(
+                    env.player.output.freeze_buildup_pct > 0.0,
+                    freezes,
+                    "{prefix}: chill={can_chill}, freeze={can_freeze}, prohibited={cannot_freeze}"
+                );
+                assert_eq!(env.player.output.freeze_buildup_avg > 0.0, freezes);
+                assert_eq!(source_ailments(&env).freeze_chance > 0.0, freezes);
+            }
+        }
+    }
+
+    #[test]
     fn a_spells_own_addition_to_its_cast_time_counts_twice() {
         assert_eq!(maximum_energy(&[SPARK], 10.0), 70.0);
         assert_eq!(maximum_energy(&[COMET], 10.0), 300.0);

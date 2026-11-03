@@ -2178,26 +2178,19 @@ fn enemy_max_resist_for(
 /// Reduces **already-clamped** enemy resistance by player penetration
 /// (elemental/chaos only, hits only).
 ///
-/// Reads the player db: elemental `<Type>Penetration` + shared
-/// `ElementalPenetration`; chaos `ChaosPenetration`. Formula (PoB2
-/// CalcOffence.lua:4163): `effective = if resist > minPen { max(resist - pen, minPen) } else { resist }`
-/// -- `minPen = Σ BASE(<El>PenetrationMinimum, ElementalPenetrationMinimum)`
-/// (vendor `:4140`/`:4144`, "penetration can push down to at most N"-type
-/// mods; chaos has no minimum name, always 0). Without a minimum mod, this
-/// degenerates to the old form: penetration only takes effect when
-/// resistance is positive and can never push resistance below 0; when
-/// resistance is already ≤ minPen (including negative resistance),
-/// penetration is entirely wasted.
-///
-/// Source: agent-docs/damage-scaling.md §Penetration (penetration doesn't
-/// break 0, is mutually exclusive with negative resistance, hits only);
-///       damage-defence-order.md §Step 4; PoB2 `<Type>Penetration`/`ElementalPenetration`.
+/// Typed and shared elemental penetration stop at their combined minimum,
+/// normally zero; an already lower resistance is unchanged. The game stat
+/// `cannot_penetrate_or_ignore_elemental_resistances` blocks elemental
+/// penetration, while chaos penetration retains its zero floor.
 fn apply_penetration(
     player_db: &ModDb,
     type_cfg: &CalcConfig,
     damage_type: DamageType,
     resist: f64,
 ) -> f64 {
+    if damage_type.is_elemental() && player_db.flag(type_cfg, "CannotElePenIgnore") {
+        return resist;
+    }
     let pen = penetration_value(player_db, type_cfg, damage_type);
     let min_pen = penetration_minimum(player_db, type_cfg, damage_type);
     if resist > min_pen {
