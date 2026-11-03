@@ -1,6 +1,8 @@
 """Small synthetic tests for split-owner, fail-closed build data preparation."""
 
+import contextlib
 import copy
+import io
 import json
 import os
 from pathlib import Path
@@ -274,7 +276,8 @@ class BuildDataTests(unittest.TestCase):
             build.install(self.out, data)
         self.assertEqual(extra.read_bytes(), b"{}")
 
-    def test_differing_external_shared_refreshes_while_owned_or_unlisted_rejects(self):
+    def external_shared(self):
+        """Add an owner-published shared file to the game part and re-pin the lock."""
         external = b'{"retained":"external fact"}'
         game = {n: r for n, r in self.contents.items() if "/i18n/" not in n}
         self.set_part("game", {**game, "data/overlay-common/external.json": external})
@@ -284,6 +287,10 @@ class BuildDataTests(unittest.TestCase):
                        "overlay-common/external.json": bundle.sha256(external)})
         self.lock["runtime_identity"] = pack.identity("9.1", hashes)
         self.save()
+        return external
+
+    def test_differing_external_shared_refreshes_while_owned_or_unlisted_rejects(self):
+        external = self.external_shared()
         self.prepare()
         data = self.installed()
         stale = data / "overlay-common/external.json"
@@ -299,6 +306,49 @@ class BuildDataTests(unittest.TestCase):
         (data / "overlay-common/stray.json").write_bytes(b"{}")
         with self.assertRaisesRegex(ValueError, "unlisted shared rules"):
             build.install(self.out, data, {"own.json"})
+
+    def test_rejected_install_leaves_shared_and_version_files_untouched(self):
+        self.external_shared()
+        self.prepare()
+        data = self.installed()
+        stale_shared = data / "overlay-common/external.json"
+        stale_shared.write_bytes(b'{"stale":1}')
+        edited = data / self.version / "base/skills.json"
+        edited.write_bytes(b'[{"id":"edited"}]')
+        with self.assertRaisesRegex(ValueError, "edited, corrupt or has unlisted"):
+            build.install(self.out, data, {"own.json"})
+        self.assertEqual(stale_shared.read_bytes(), b'{"stale":1}')
+        self.assertEqual(edited.read_bytes(), b'[{"id":"edited"}]')
+
+    def test_missing_listed_runtime_file_rejects_without_changes(self):
+        self.prepare()
+        data = self.installed()
+        victim = data / self.version / "i18n/zh-TW/skills.json"
+        victim.unlink()
+        other = data / self.version / "base/skills.json"
+        before = other.read_bytes()
+        with self.assertRaisesRegex(ValueError, "edited, corrupt or has unlisted"):
+            build.install(self.out, data)
+        self.assertFalse(victim.exists())
+        self.assertEqual(other.read_bytes(), before)
+
+    def test_replace_reports_the_pre_install_runtime_identity(self):
+        external = self.external_shared()
+        self.prepare()
+        data = self.installed()
+        stale_shared = data / "overlay-common/external.json"
+        stale_shared.write_bytes(b'{"stale":1}')
+        target = data / self.version / "base/skills.json"
+        target.write_bytes(b'[{"id":"stale"}]')
+        data_snapshot.manifest(data / self.version)
+        expected_old = bundle.data_inputs(data, self.version)[1]
+        stream = io.StringIO()
+        with contextlib.redirect_stderr(stream):
+            build.install(self.out, data, {"own.json"})
+        self.assertIn(f"replaced installed {self.version} runtime {expected_old[:12]} → ",
+                      stream.getvalue())
+        self.assertEqual(stale_shared.read_bytes(), external)
+        self.assertEqual(target.read_bytes(), self.contents["data/9.1/base/skills.json"])
 
     def test_download_cache_honors_the_environment_override(self):
         with patch.dict(os.environ, {"POBR_DATA_CACHE": "~/pobr-shared-cache"}):
