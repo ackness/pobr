@@ -42,6 +42,12 @@ patch 合并类型冲突或快照摘要错误会拒绝 WASM 初始化，保留�
 
 ## 三块 JSON 发行包
 
+正式 Web（不带 `POBR_RUNTIME_PACK` 的 `pnpm sync-data`）与独立 WASM 包
+（`web/scripts/package-wasm.mjs`）目前仍发布逐文件的 schema-3 快照；三块发行包只在
+Full CI `runtime` 任务中由同次 WASM 消费，数据锁的 `release_id` 固定该候选格式。
+切换正式加载路径前须先在目标设备测量冷加载与数据更新时的重下载：逐文件按文件内容寻址、
+可并发加载；三块顺序加载，任一文件变化都会重下整块。
+
 `runtime_pack.py` 在已封存的完整 schema-3 组合上做传输投影，复用原有
 `GameData` 文件路径、覆盖顺序与 DTO。它不读取原始客户端表，不实现另一套计算加载器。
 [`data.lock.json`](../data.lock.json) 固定目标、locale、RePoE 游戏数据、翻译库语言、PoBR 本地规则
@@ -66,33 +72,24 @@ native passive provenance。最后一项是当前 Rust 的运行时校验和 mod
 
 release manifest 固定 target、locale、全部虚拟文件 SHA-256、每块 SHA-256／长度／成员清单，
 以及 `runtime_identity` 与 `release_id`。前者按原有 `GameData::identity` 算法标识**投影后的**字节；
-后者封住整个发行契约。投影前的 snapshot/runtime 身份、recipe 所有权、producer receipt pin
-只在 `build-receipt.json` 保存一次。保留兼容输入仍标为保留兼容，不能声称由 RePoE 新导出。
+后者封住整个发行契约。投影前的 snapshot runtime 身份只在 `build-receipt.json` 保存一次。
+保留兼容输入仍标为保留兼容，不能声称由 RePoE 新导出。
 
-构建已有完整组合（`--bundle` 是包含 `bundle.json` 与 `data/` 的目录）：
-
-```sh
-mise run data:pack create --bundle "$FROZEN_BUNDLE" --recipe "$FROZEN_RECIPE" \
-  --display "$VERIFIED_DISPLAY_JSON" --out .cache/runtime-release-a
-mise run data:pack verify --pack .cache/runtime-release-a/player --expected-id "$RELEASE_ID"
-mise run data:pack verify --pack .cache/runtime-release-a/runtime-pack.zip --expected-id "$RELEASE_ID"
-```
-
-`create` 对 recipe 的完整版本文件／共享规则 inventory 与原 bundle 身份逐一核对，
-不访问 recipe 中历史绝对来源路径。输出必须是新目录，不能指向正式 `data/`。
-ZIP 使用固定文件顺序、时间、权限和 deflate 参数，里面是同一份四文件发行包的原始字节。
-raw 和逐文件 gzip-9 分解写入 build receipt；这些是本地大小，不是 HTTP 时间或实际传输测量。
+发行包由 `mise run data:pack build` 从已准备的 owner 快照组装（见下文「独立数据仓库输入与 CI」）。
+输出必须是新目录，不能指向正式 `data/`。`build` 同时写出 `runtime-pack.zip`：
+固定文件顺序、时间、权限和 deflate 参数，里面是同一份四文件发行包的原始字节。
 
 ## 既有 CLI / WASM 适配
 
 ```sh
-mise run data:pack materialize --pack .cache/runtime-release-a/runtime-pack.zip \
-  --expected-id "$RELEASE_ID" --out .cache/runtime-materialized-a
+mise run data:pack build --out .cache/runtime-pack
+mise run data:pack materialize --pack .cache/runtime-pack/runtime-pack.zip \
+  --expected-id "$RELEASE_ID" --out .cache/runtime-materialized
 # Existing CLI resolves data/CURRENT and the existing schema-3 loader:
-POBR_DATA_ROOT="$PWD/.cache/runtime-materialized-a/data" mise exec -- ./target/debug/pobr \
+POBR_DATA_ROOT="$PWD/.cache/runtime-materialized/data" mise exec -- ./target/debug/pobr \
   calculate-build --file "$BUILD_CODE_FILE" --json
 # Explicit candidate Web sync; normal sync continues to select adopted data:
-POBR_RUNTIME_PACK="$PWD/.cache/runtime-release-a/player" \
+POBR_RUNTIME_PACK="$PWD/.cache/runtime-pack/player" \
 POBR_RUNTIME_RELEASE_ID="$RELEASE_ID" mise exec -- node web/scripts/sync-data.mjs
 ```
 
@@ -127,12 +124,12 @@ mise run data:pack verify --pack .cache/runtime-pack/player
 它不重跑任何领域生产或显示生成：这些字节已在 owner 发布中，PoBR 只负责打包。
 数据锁同时固定 game 与 language 的真实仓库、完整 commit、tag、路径和摘要。
 
-Full CI在需要实物的Rust、Web和自动化测试前显式prepare；Rust多版本测试还显式安装
-固定旧回退包，保持活动CURRENT不变。`runtime`任务等待同次WASM构建，自己prepare并从快照组精简三块，
+Full CI在需要实物的Rust、Web和自动化测试前显式prepare。`runtime`任务等待同次WASM构建，
+自己prepare并从快照组精简三块，
 再由同次WASM消费；失败／跳过会阻止Full gate。
 游戏／语言源表、verification与版本binding不进入Web玩家包。
 远端CI、来源准入、完整消费者验收和采用仍须分别确认。
 
-定向验证：`test_build_data.py`覆盖两owner组合、数据锁schema与tag、临时安装、回退版本、缺失／损坏pin和禁网cache；
+定向验证：`test_build_data.py`覆盖两owner组合、数据锁schema与tag、临时安装与同补丁完整陈旧安装的原位刷新、回退版本、缺失／损坏pin和禁网cache；
 `test_runtime_pack.py`覆盖三块传输、从快照组包与CLI物化。
 这些合成契约不等于Rust真实生产、数值parity或远端CI证据。

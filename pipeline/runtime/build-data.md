@@ -32,7 +32,7 @@ payloads. Existing v3 and reviewed-only display guards remain independent.
 
 The game part carries `trade_crafting_sources.json`, which RePoE projects from
 its neutral crafting facts ([catalog projection](https://github.com/ackness/repoe/blob/master/RePoE/docs/pobr_crafting_catalog.md)); PoBR projects no data,
-and a lock with a `crafting` input is rejected. The frozen
+and a lock with a `crafting` input is rejected.
 A lock with any other schema is rejected, so there is one declaration format.
 
 A ZIP part has schema `pobr-build-data-part/v1`, exact `target`, `kind` and a
@@ -70,16 +70,24 @@ All inputs are authenticated before a fresh complete bundle is published.
 An interrupted import leaves no complete output. Explicit `--out` retains a
 verified bundle; `--install data` uses temporary expanded inputs and installs only
 the ignored version/external shared files. It never rewrites `CURRENT` or local
-rules. Existing corrupt/different files reject rather than being repaired or
-silently selected. The default loader and all CLI/WASM DTOs stay unchanged.
+rules. An intact stale same-version install — every runtime file still listed in
+and matching its own manifest — is replaced in place, preserving the local
+`patch/` and maintenance layers; an owner-published shared file that differs is
+refreshed the same way. Edited, corrupt or unlisted installs and changed
+PoBR-owned shared rules still reject rather than being repaired or silently
+selected; remove `data/<version>` to re-import. The default loader and all
+CLI/WASM DTOs stay unchanged.
 
-Downloads live in an ignored hash-addressed cache. `--offline` rejects a cache
+Downloads live in an ignored hash-addressed cache; set `POBR_DATA_CACHE` to
+share one cache across worktrees — every cache hit is still pin-verified.
+`--offline` rejects a cache
 miss or corruption and never consults tracked/history snapshots, local hints,
 latest revisions or another data version. Explicit `--game` / `--language`
 paths authenticate unpublished local handoffs against exactly the same lock;
 `local-only` inputs cannot be fetched as if they had been published. Local paths
 are command arguments, never version-lock fields. Deleting an ignored prepared
-version and rerunning prepare rebuilds it from its external owner pins.
+version and rerunning prepare rebuilds it from its external owner pins;
+rerunning prepare on an intact stale same-version install refreshes it in place.
 
 The source-derived 0.5.5.5 composition uses snapshot `73b2d77e...` and runtime
 `dba0615e...`; only crafting source metadata changes from the previous

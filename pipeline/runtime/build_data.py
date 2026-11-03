@@ -11,9 +11,12 @@ import json
 from pathlib import Path
 import re
 import shutil
+import sys
 import tempfile
 
 from pipeline.runtime import data_bundle as bundle
+from pipeline.runtime import data_snapshot
+from pipeline.imports import data_imports
 from pipeline.imports.data_imports import GitInputs, acquire, encoded, pinned, regular, require, unpack, write
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -201,11 +204,13 @@ def prepare(lock_path, output, cache, shared_root=ROOT / "data/overlay-common",
     return receipt
 
 
-def install(prepared, data_root):
+def install(prepared, data_root, owned_shared=frozenset()):
     """Install only the ignored version directory; never rewrite CURRENT/rules.
 
-    Existing files are accepted only if the complete bundle matches. A partial,
-    corrupt or different version fails and is left intact for diagnosis.
+    An intact stale same-version snapshot — every runtime file listed in and
+    matching its own manifest — is replaced, preserving the local patch and
+    maintenance layers. An edited, corrupt or unlisted install still fails and
+    is left intact for diagnosis.
     """
     receipt = bundle.verify(prepared)
     version = receipt["data_version"]
@@ -218,39 +223,82 @@ def install(prepared, data_root):
                        for name, digest in receipt["files"].items() if name.startswith("data/overlay-common/")}
     existing_shared = set(bundle.json_paths(data_root / "overlay-common"))
     require(existing_shared <= set(expected_shared), "Install has unlisted shared rules")
-    for name in existing_shared:
-        require(bundle.sha256(bundle.read_file(data_root / "overlay-common", name)) == expected_shared[name],
-                "Install shared rules differ")
-    for name in expected_shared.keys() - existing_shared:
-        write(data_root / "overlay-common" / name, bundle.read_file(Path(prepared) / "data/overlay-common", name))
+    # Check everything before writing anything: a rejected install must leave
+    # every installed byte untouched.
+    refresh_shared, write_shared = [], sorted(expected_shared.keys() - existing_shared)
+    for name in sorted(existing_shared):
+        raw = bundle.read_file(data_root / "overlay-common", name)
+        if bundle.sha256(raw) == expected_shared[name]:
+            continue
+        # An owner-published external shared file may be refreshed; a pinned
+        # PoBR-owned rule still rejects rather than being silently rewritten.
+        require(name not in owned_shared, "Install shared rules differ")
+        refresh_shared.append(name)
     destination = data_root / version
+    action, local_only, old_identity = "install", set(), None
     if destination.exists():
-        from pipeline.runtime.data_snapshot import MAINTENANCE_FILES
         safe_directory(destination)
         entries = list(destination.rglob("*"))
         require(all(not p.is_symlink() and (p.is_dir() or p.is_file()) for p in entries),
                 "Unsafe installed data entry")
         # These local layers are explicitly excluded from the sealed runtime.
         # Reusing pinned data must not delete a user's patch or derived cache.
-        wanted = {name.removeprefix(f"data/{version}/") for name in receipt["files"]
+        wanted = {name.removeprefix(f"data/{version}/"): digest for name, digest in receipt["files"].items()
                   if name.startswith(f"data/{version}/")}
         actual = {p.relative_to(destination).as_posix() for p in entries if p.is_file()}
-        local_only = {name for name in actual - wanted
-                      if name.startswith("patch/") or name in MAINTENANCE_FILES}
+        local_only = {name for name in actual - set(wanted)
+                      if name.startswith("patch/") or name in data_snapshot.MAINTENANCE_FILES}
         actual -= local_only
-        require(actual == wanted and all(
-            bundle.sha256(regular(data_root / name.removeprefix("data/"))) == digest
-            for name, digest in receipt["files"].items()), "Existing installed data differs")
-    else:
-        with tempfile.TemporaryDirectory(prefix=".install-data-", dir=data_root) as temporary:
-            stage = Path(temporary) / version
-            shutil.copytree(Path(prepared) / "data" / version, stage)
-            prefix = f"data/{version}/"
-            for name, expected in receipt["files"].items():
-                if name.startswith(prefix):
-                    require(bundle.sha256(regular(stage / name.removeprefix(prefix))) == expected,
-                            "Prepared data changed during install")
-            stage.rename(destination)
+        if actual == set(wanted) and all(
+                bundle.sha256(regular(destination / name)) == digest for name, digest in wanted.items()):
+            action = "keep"
+        else:
+            intact = False
+            try:
+                _, old_identity = bundle.data_inputs(data_root, version)
+                manifest = bundle.decode(regular(destination / "manifest.json"))
+                intact = actual <= {"manifest.json", *manifest["files"]}
+            except (KeyError, OSError, TypeError, ValueError):
+                intact = False
+            require(intact, "Existing installed data was edited, corrupt or has unlisted "
+                            f"files; remove {destination} to re-import")
+            action = "replace"
+    if refresh_shared or write_shared or action != "keep":
+        from pipeline.imports import display_assets
+        with data_snapshot.workspace_lock(data_root.parent):
+            for name in refresh_shared:
+                display_assets.install(bundle.read_file(Path(prepared) / "data/overlay-common", name),
+                                       data_root / "overlay-common" / name)
+            for name in write_shared:
+                write(data_root / "overlay-common" / name,
+                      bundle.read_file(Path(prepared) / "data/overlay-common", name))
+            if action == "replace":
+                stage_root = data_root.parent / ".cache"
+                stage_root.mkdir(parents=True, exist_ok=True)
+                with tempfile.TemporaryDirectory(prefix="install-data-", dir=stage_root) as temporary:
+                    staged = Path(temporary) / "data"
+                    shutil.copytree(Path(prepared) / "data" / version, staged / version)
+                    for name in local_only:
+                        target = staged / version / name
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(destination / name, target)
+                    for name, expected in wanted.items():
+                        require(bundle.sha256(regular(staged / version / name)) == expected,
+                                "Prepared data changed during install")
+                    data_snapshot.promote(staged, data_root, version)
+                print(f"replaced installed {version} runtime {old_identity[:12]} → "
+                      f"{receipt['runtime_identity'][:12]}, kept {len(local_only)} local files",
+                      file=sys.stderr)
+            elif action == "install":
+                with tempfile.TemporaryDirectory(prefix=".install-data-", dir=data_root) as temporary:
+                    stage = Path(temporary) / version
+                    shutil.copytree(Path(prepared) / "data" / version, stage)
+                    prefix = f"data/{version}/"
+                    for name, expected in receipt["files"].items():
+                        if name.startswith(prefix):
+                            require(bundle.sha256(regular(stage / name.removeprefix(prefix))) == expected,
+                                    "Prepared data changed during install")
+                    stage.rename(destination)
     require(regular(data_root / "CURRENT") == current, "CURRENT changed during install")
     return receipt
 
@@ -260,7 +308,7 @@ def main():
     parser.add_argument("--lock", type=Path, default=DATA_LOCK)
     parser.add_argument("--out", type=Path, help="Fresh complete bundle; omitted for temporary prepare/install")
     parser.add_argument("--install", type=Path, help="Install the ignored version directory into an existing data root")
-    parser.add_argument("--cache", type=Path, default=ROOT / ".cache/data-import-downloads")
+    parser.add_argument("--cache", type=Path, default=data_imports.download_cache())
     parser.add_argument("--shared", type=Path, default=ROOT / "data/overlay-common")
     parser.add_argument("--game", type=Path, help="Explicit local game ZIP for an unpublished handoff")
     parser.add_argument("--language", type=Path, help="Explicit local language ZIP for an unpublished handoff")
@@ -274,7 +322,8 @@ def main():
         display = display_assets.prepare(args.lock, output, args.cache, args.offline)
         fixtures = display_assets.prepare_test_fixtures(args.lock, args.cache, args.offline)
         if args.install:
-            install(output, args.install)
+            owned = set(bundle.decode(regular(args.lock))["shared_files"])
+            install(output, args.install, owned)
             display_assets.install(display)
             display_assets.install_test_fixtures(fixtures)
         return result

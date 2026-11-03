@@ -224,15 +224,150 @@ class LatestDataTests(unittest.TestCase):
         self.assertFalse(status["auto_eligible"])
         self.assertFalse(status["scope_preserved"])
 
+    def zipped(self, members):
+        handle = io.BytesIO()
+        with zipfile.ZipFile(handle, "w") as archive:
+            for name, raw in members.items():
+                archive.writestr(name, raw)
+        return handle.getvalue()
+
+    def new_patch_publication(self, version="0.5.5.6"):
+        """Publish a real consumable new-target candidate from both owners."""
+        target = {**self.lock["target"], "game_patch": version}
+        prefix = f"data/{version}/"
+        content = {"base/skills.json": b'{"id":9223372036854775807}',
+                   "overlay/trade_catalog.json": b'{"gems":[]}',
+                   "i18n/zh-CN/skills.json": '{"raw":"技能"}'.encode(),
+                   "i18n/zh-CN/display_texts.json": encoded(
+                       {"schema": "pobr-native-display-texts/v1", "game_patch": version,
+                        "realm": target["realm"], "locale": "zh-CN", "entries": {}, "scopes": {}})}
+        snapshot = encoded({"schema_version": 3, "poe_version": version, "languages": ["zh-CN"],
+                            "domains": {"base": ["skills"], "overlay": ["trade_catalog"]},
+                            "files": {name: sha(raw) for name, raw in content.items()}})
+        members = {prefix + "manifest.json": snapshot,
+                   **{prefix + name: raw for name, raw in content.items() if not name.startswith("i18n/")}}
+        manifest = encoded({"schema": latest.build_data.PART_SCHEMA, "kind": "game", "target": target,
+                            "files": {name: latest.pin(raw) for name, raw in members.items()}})
+        archive = self.zipped({**members, "manifest.json": manifest})
+        game = {"repository": "ackness/repoe", "revision": "1" * 40, "path": "handoff/new/game.zip",
+                "publication": "published", **latest.pin(archive), "manifest": latest.pin(manifest),
+                "expanded_bytes": len(manifest) + sum(map(len, members.values()))}
+        locale = encoded({"schema": "poe2-retained-locale-publication/v1", "target": target,
+                          "files": {name: latest.pin(raw) for name, raw in content.items()
+                                    if name.startswith("i18n/")}})
+        language = {"repository": "ackness/poe2-zh-cn-stats", "revision": "2" * 40,
+                    "path": "handoff/new/locale.json", "format": "locale-git-files",
+                    "publication": "published", "manifest": latest.pin(locale)}
+        catalog_sha = sha(members[prefix + "overlay/trade_catalog.json"])
+        provenance = {"generation_data_version": "synthetic-9.9", "source": "synthetic",
+                      "source_commit": "3" * 40, "source_file": "source.json", "source_sha256": "4" * 64}
+        asset = encoded({"_meta": {"data_version": "synthetic-9.9", "catalog_sha256": catalog_sha,
+                                   **{k: provenance[k] for k in
+                                      ("source", "source_commit", "source_file", "source_sha256")}},
+                         "entries": {}})
+        display_manifest = encoded({"schema": "poe2-support-display-publication/v1",
+                                    "target": {"game": target["game"], "version": version,
+                                               "realm": target["realm"]},
+                                    "locale": "zh-CN", "catalog_sha256": catalog_sha,
+                                    "files": {"supportDescriptions.zh-CN.json": latest.pin(asset)},
+                                    "provenance": provenance})
+        support = {"repository": "ackness/poe2-zh-cn-stats", "revision": "5" * 40,
+                   "path": "handoff/new/display/manifest.json", "publication": "published",
+                   "manifest": latest.pin(display_manifest), "asset": latest.pin(asset),
+                   "catalog_sha256": catalog_sha, "source_data_version": "synthetic-9.9"}
+        fixture_files = {"api-sample.json": b'{"sample":1}'}
+        fixture_manifest = encoded({"schema": "repoe-data-publication/v1", "target": target,
+                                    "files": {name: latest.pin(raw) for name, raw in fixture_files.items()}})
+        fixture_archive = self.zipped({**fixture_files, "manifest.json": fixture_manifest})
+        fixtures = {"repository": "ackness/repoe", "revision": "6" * 40,
+                    "path": "handoff/new/fixtures.zip", "publication": "published",
+                    **latest.pin(fixture_archive), "manifest": latest.pin(fixture_manifest),
+                    "expanded_bytes": len(fixture_manifest) + sum(map(len, fixture_files.values())),
+                    "files": list(fixture_files)}
+        for spec, raw in ((game, archive), (language, locale), (support, display_manifest),
+                          (fixtures, fixture_archive)):
+            self.payloads[latest.git_address(spec, spec["path"])] = raw
+        for name, raw in content.items():
+            if name.startswith("i18n/"):
+                self.payloads[latest.git_address(language, f"handoff/new/{name}")] = raw
+        self.payloads[latest.git_address(
+            support, str(Path(support["path"]).parent / "supportDescriptions.zh-CN.json"))] = asset
+        inputs = {"ackness/repoe": {"game": game, "test_fixtures": fixtures},
+                  "ackness/poe2-zh-cn-stats": {"language": language, "support_display": support}}
+        for owner in latest.OWNERS:
+            document, previous = copy.deepcopy(self.descriptors[owner])
+            document.update(sequence=document["sequence"] + 1, previous=previous, target=target)
+            for role, value in inputs[owner].items():
+                component = document["components"][role]
+                document["components"][role] = {"sequence": component["sequence"] + 1, "input": value}
+            self.publish(owner, document)
+        self.owner_tags["ackness/repoe"].update({"handoff/new-game": game["revision"],
+                                               "handoff/new-fixtures": fixtures["revision"]})
+        self.owner_tags["ackness/poe2-zh-cn-stats"].update(
+            {"handoff/new-language": language["revision"], "handoff/new-display": support["revision"]})
+        # compact_release reads the adopted shared rules from the candidate root.
+        for name in self.lock["shared_files"]:
+            path = self.source / "data/overlay-common" / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes((ROOT / "data/overlay-common" / name).read_bytes())
+        return target, snapshot
+
     def test_new_patch_is_visible_but_cannot_relabel_current_requirements(self):
         document = self.next_publication()
         document["target"] = {**document["target"], "game_patch": "0.5.5.6"}
         self.publish(document["owner"], document)
         status, _, _ = latest.discover(self.source, self.fetch, self.head)
         self.assertFalse(status["same_target"])
-        with self.assertRaisesRegex(ValueError, "New patch requires"):
+        self.assertFalse(status["auto_eligible"])
+        with self.assertRaisesRegex(ValueError, "--new-target"):
             latest.propose(self.source, self.root / "new-patch", self.fetch, self.head)
         self.assertFalse((self.root / "new-patch").exists())
+
+    def test_new_target_candidate_is_explicit_and_applies_both_files(self):
+        target, snapshot = self.new_patch_publication()
+        shared = {"overlay-common/" + name: spec["sha256"]
+                  for name, spec in self.lock["shared_files"].items()}
+        real_expectations = latest.build_expectations
+        # The adopted lock's real archives are not in the synthetic fetcher; its
+        # local shared layer is identical, which is all the comparison needs.
+        def expectations(lock, cache, fetcher):
+            if lock["target"]["game_patch"] == target["game_patch"]:
+                return real_expectations(lock, cache, fetcher)
+            return {}, shared
+        out = self.root / "new-patch"
+        with self.assertRaisesRegex(ValueError, "--new-target"):
+            latest.propose(self.source, out, self.fetch, self.head, tags=self.tags)
+        self.assertFalse(out.exists())
+        with patch.object(latest, "build_expectations", side_effect=expectations):
+            result = latest.propose(self.source, out, self.fetch, self.head, tags=self.tags,
+                                    allow_new_target=True)
+        change = {"previous": self.lock["target"]["game_patch"], "proposed": target["game_patch"]}
+        self.assertEqual(result["target_change"], change)
+        self.assertFalse(result["auto_eligible"])
+        receipt = latest.verify_candidate(out)
+        self.assertEqual(receipt["target_change"], change)
+        lock, _ = latest.read_lock(out)
+        self.assertEqual(lock["target"], target)
+        self.assertEqual(lock["generation"], self.lock["generation"] + 1)
+        self.assertEqual(lock["snapshot_manifest"], latest.pin(snapshot))
+        self.assertNotEqual(lock["runtime_identity"], self.lock["runtime_identity"])
+        self.assertNotEqual(lock["release_id"], self.lock["release_id"])
+        self.assertEqual((out / "data/CURRENT").read_bytes(), (target["game_patch"] + "\n").encode())
+        applied = latest.apply_candidate(out, self.source, sha(self.before[latest.LOCK]))
+        self.assertEqual(applied["status"], "metadata-staged-not-adopted")
+        self.assertEqual((self.source / "data/CURRENT").read_bytes(), (target["game_patch"] + "\n").encode())
+        self.assertEqual(latest.read_lock(self.source)[0]["target"], target)
+
+    def test_new_target_requires_identical_owner_targets(self):
+        self.next_publication()
+        repoe, previous = copy.deepcopy(self.descriptors["ackness/repoe"])
+        repoe.update(sequence=repoe["sequence"] + 1, previous=previous,
+                     target={**repoe["target"], "game_patch": "0.5.5.6"})
+        self.publish("ackness/repoe", repoe)
+        with self.assertRaisesRegex(ValueError, "different targets"):
+            latest.propose(self.source, self.root / "mixed", self.fetch, self.head,
+                           tags=self.tags, allow_new_target=True)
+        self.assertFalse((self.root / "mixed").exists())
 
     def test_unavailable_index_does_not_replay_old_data_as_latest(self):
         def unavailable(address):

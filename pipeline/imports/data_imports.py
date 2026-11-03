@@ -18,6 +18,15 @@ import zipfile
 from pipeline.runtime.data_bundle import decode, relative_path
 
 
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def download_cache():
+    override = os.environ.get("POBR_DATA_CACHE")
+    if override:
+        return Path(override).expanduser()
+    return ROOT / ".cache/data-import-downloads"
+
 
 def require(condition, message):
     if not condition:

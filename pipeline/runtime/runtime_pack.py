@@ -5,7 +5,6 @@ are JSON strings: JS must never round an i64 or rewrite a source float on stagin
 """
 
 import argparse
-import gzip
 import io
 import json
 from pathlib import Path
@@ -19,7 +18,6 @@ from pipeline.imports.data_imports import pinned, regular, require, write
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = "pobr-runtime-release/v1"
 BLOCK_SCHEMA = "pobr-runtime-block/v1"
-INPUT_SCHEMA = "pobr-runtime-inputs/v1"
 HEX = re.compile(r"[0-9a-f]{64}")
 SPECIAL = {"overlay/special_mods.json", "generated/special_derived.json",
            "generated/special_vendor.json", "overlay-common/special_mods.json"}
@@ -257,64 +255,6 @@ def materialize(source, output, expected_id=None):
         bundle.verify(stage, receipt["bundle_id"])
         stage.rename(output)
     return receipt
-
-
-def frozen_inputs(source, recipe_path):
-    source = Path(source)
-    receipt = bundle.verify(source)
-    version = receipt["data_version"]
-    files, source_id = bundle.snapshot_inputs(source, version)
-    recipe_raw = regular(recipe_path)
-    recipe = bundle.decode(recipe_raw)
-    require(recipe.get("schema") == "pobr-remaining-domain-integration/v1"
-            and recipe["runtime_identity"] == source_id and recipe["bundle_id"] == receipt["bundle_id"]
-            and recipe["snapshot_manifest_sha256"] == bundle.sha256(files[f"data/{version}/manifest.json"]),
-            "Frozen recipe identity mismatch")
-    snapshot = bundle.decode(files[f"data/{version}/manifest.json"])
-    require(set(recipe["files"]) == set(snapshot["files"]), "Frozen recipe inventory mismatch")
-    owners = {}
-    for name, entry in recipe["files"].items():
-        require(entry["sha256"] == snapshot["files"][name], f"Recipe hash mismatch: {name}")
-        # The already sealed bundle supplies bytes; historical absolute paths
-        # in the recipe are evidence, never input fallbacks.
-        owners[name] = {key: value for key, value in entry.items() if key != "path"}
-    shared = {name.removeprefix("data/overlay-common/"): {"sha256": bundle.sha256(raw)}
-              for name, raw in files.items() if name.startswith("data/overlay-common/")}
-    require(shared == recipe["shared_files"], "Recipe shared-rule mismatch")
-    evidence = {"schema": INPUT_SCHEMA, "version": version, "source_bundle_id": receipt["bundle_id"],
-                "source_runtime_identity": source_id, "source_manifest_sha256": recipe["snapshot_manifest_sha256"],
-                "recipe": pin(recipe_raw), "owners": owners, "shared_files": shared,
-                "producer_receipts": {k: {"sha256": v["sha256"]} for k, v in recipe["producer_receipts"].items()},
-                "language_receipt_sha256": recipe["language_receipt_sha256"],
-                "scope": recipe["scope"], "adoption": "not-adopted"}
-    return files, evidence
-
-
-def create(source, recipe_path, display_path, output, target, locale):
-    output = fresh_output(output)
-    require(not output.is_relative_to(Path(source).resolve()), "Output must be separate from input bundle")
-    files, evidence = frozen_inputs(source, recipe_path)
-    display = regular(display_path)
-    release, payloads = assemble(files, evidence["version"], target, locale, display)
-    inspect_release(payloads, release["release_id"])
-    archive = archive_bytes(payloads)
-    sizes = {name: {**pin(raw), "gzip9_bytes": len(gzip.compress(raw, compresslevel=9, mtime=0))}
-             for name, raw in sorted(payloads.items())}
-    evidence.update(display_input=pin(display), release_id=release["release_id"],
-                    runtime_identity=release["runtime_identity"], player_files=sizes,
-                    player_totals={"bytes": sum(s["bytes"] for s in sizes.values()),
-                                   "gzip9_bytes": sum(s["gzip9_bytes"] for s in sizes.values())},
-                    cli_archive=pin(archive),
-                    measurement="Local raw bytes and independent gzip level 9; no HTTP timing or transfer measurement")
-    output.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=".runtime-pack-", dir=output.parent) as temp:
-        stage = Path(temp) / "result"
-        for name, raw in payloads.items():
-            write(stage / "player" / name, raw)
-        write(stage / "runtime-pack.zip", archive)
-        write(stage / "build-receipt.json", raw_json(evidence))
-        stage.rename(output)
-    return release
 
 
 def build_release(lock_path, data, output, expected_id=None):

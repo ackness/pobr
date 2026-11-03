@@ -13,7 +13,7 @@ PoBR 不从 PoB2 vendor Lua 或本地原表导出生产数据。
 
 [最新完整发布同步](latest/latest-data.md)通过两owner发布索引发现候选，冻结为新的数据锁，再由精确head的PR／Full门禁与实际最终包消费验证后条件采用。普通构建继续按不可变锁重放；索引bootstrap、官方版本观察和owner源码更新均不代表新数据已生成或已采用。
 两 owner 索引及 PoBR 控制器均已合并；严格 PR gate／管理员保护已配置，专用同步凭据与真实新发布的端到端采用仍待完成。
-当前核对与优化顺序以[数据现状](../docs/data-status.md)和 [latest 启用状态](latest/latest-data.md#verified-rollout-status-2026-11-02-utc)为准。
+当前核对与优化顺序以[数据现状](../docs/data-status.md)为准。
 
 ## 功能目录
 
@@ -34,8 +34,8 @@ JSON 的职责各不相同：`data.lock.json` 是唯一的生产数据声明；C
 历史来源收据中的路径按记录时的 Git 版本解释，不为整理目录重写原始 pins、命令或接受范围。
 当前文件定位与组合清单则使用本页列出的路径。
 
-RePoE 在 2026-11-03 截断 fork 前历史后，活动锁、回滚锁和官方版本观察模块采用迁移后的 Git 提交；
-两个 owner 的发布声明推进到 sequence 2，数据包字节、运行时身份与发行身份保持不变。
+RePoE 在 2026-11-03 截断 fork 前历史后，活动锁和官方版本观察模块采用迁移后的 Git 提交；
+数据包字节、运行时身份与发行身份保持不变，两个 owner 的当前发布序号见锁的 `owner_publications`。
 历史收据中的原始 producer ID 保留，通过 RePoE 的[提交映射](https://github.com/ackness/repoe/blob/master/publication/history-rewrite-20261103.json)
 定位字节相同的源码；它们不作为新的运行时下载位置。详见[历史迁移说明](https://github.com/ackness/repoe/blob/master/RePoE/docs/history.md)。
 
@@ -225,9 +225,12 @@ schema-3 manifest封存默认运行字节；维护报告和本地patch不进入�
 
 ## 扩展 / 升版
 
-- 新PoE2版本：在独立RePoE观察并取得精确来源、导出和发布游戏输入；翻译库独立准备语言。
-  PoBR审阅并更新`pipeline/data.lock.json`，先用`data:update --lock <lock> --out <fresh>`准备候选，
-  验证来源／消费者／CI后再显式选择CURRENT。计算语义、vendor参考与golden更新分别维护。
+- 新PoE2版本：两个 owner 发布同一新目标后，`mise run data:latest resolve --new-target --out <fresh>`
+  冻结显式候选，`mise run data:latest apply --candidate <dir> --expected-lock <sha>` 暂存数据锁与新 CURRENT，
+  随后 `mise run data:prepare` 导入新版本目录；消费者迁移在同一审阅改动中完成。
+  按补丁登记的现有消费者例如 `crates/pobr-gamedata/tests/fixtures/repository-test-pins.json`、
+  `devs/ci/parse-coverage-baseline.json` 与示例 golden（如 `examples/demo-bd-test/panel-golden.json`
+  的 `data_version`）；计算语义、vendor参考与golden更新分别维护。
 - 新数据域：在RePoE固定schema／事实导出器中补齐来源，由其`pobr-data-adapter`接既有DTO；PoBR验证数据契约和消费者；
   不再通过PoBR Node导出器或修改旧配置将历史数组冒充新目标。
 - stat-set 标签由 `GrantedEffectStatSets.Label` → `GrantedEffectLabels.Text` 直接连接，

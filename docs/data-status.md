@@ -16,6 +16,7 @@
 | --- | --- |
 | master 严格 required `PR gate`，对管理员生效 | 已启用 |
 | 仓库 secret `DATA_SYNC_TOKEN` | 未配置，无人值守的提案与采用未启用 |
+| owner 发布后的 `owned-data-published` 通知 | 未接线：两个 owner 都不发送，按 6 小时轮询 |
 
 ## 仓库改造进度
 
@@ -30,6 +31,8 @@
 | 领域转换工具（`tools/pobr-data-adapter`、`pipeline/policies/`）迁往 RePoE；语言生产者迁往翻译库；退役 `data:tree:*`／`data:native:candidate` | 已完成（ackness/repoe#17、ackness/poe2-zh-cn-stats#8）；keystone 字节检查改在 RePoE |
 | 删除入库的天赋树美术（`web/public/tree-art/`，533 个由 vendor 生成的文件）与生成任务；树查看器只画节点圆点和连线 | 已完成；节点美术以后作为独立功能接入 owner 发布 |
 | 特殊制作目录的投影（原 `pipeline/imports/crafting_inputs.py`）迁往 RePoE，由游戏 part 携带；数据锁去掉 `crafting` 输入 | 已完成（ackness/repoe#21，发布序号 3）；输出字节、快照与运行／release 身份不变 |
+| `data:prepare` 原位刷新完整的同补丁陈旧安装（保留本地 patch／维护文件），可用 `POBR_DATA_CACHE` 共享下载缓存 | 已完成 |
+| `data:latest resolve --new-target` 生成显式新补丁候选（`target_change` 收据，永非自动采用） | 已完成；尚无真实新补丁演练 |
 
 adapter 的 30 份 JSON 策略已完整迁入 RePoE，内容与迁移前一致；Cargo 依赖、工具链、任务与 CI 也由 RePoE 维护。
 PoBR 留下的 11 份自有 shared 规则／构筑配置属于引擎语义，继续随本仓库代码维护，不作为领域适配策略迁移。
@@ -50,7 +53,7 @@ PoBR 留下的 11 份自有 shared 规则／构筑配置属于引擎语义，继
 | PoB2 解释与 buff | 各域保留项已按字段登记 | parser／config／special、部分 stat 映射与关系仍用社区解释；buff 的 15 处引用上下文未证等价，保持 `guard_eligible=false` | [PoB2 依赖](pob2-differences.md#数据来源现状与退出顺序) |
 | 语言／显示 | 繁中与简中 FK v3 及紧凑侧表接入普通后端；两种语言各 1073 个 gem 中 1053 个源译、20 个英文阻断；职业与升华路由、打造名称、辅助说明、审核补译导入已接线 | 简中客户端补丁与服别未确认；真实审核补译 0 条；45 个候选是否有当前 UI 收益需先核 caller；国服数值未认证 | 翻译库的语言发布 |
 | 新发布与持续更新 | owner 索引、latest 控制器、显式采用、失败恢复与数据锁／运行身份 CAS | owner 完成一次有实际收益的新生产与发布；配置凭据后用它验证提案、精确 head 的 PR／Full、最终包消费、采用和完整回滚 | [最新发布同步](../pipeline/latest/latest-data.md) |
-| 玩家验收与性能 | 完整 CI 用同次 WASM 消费当前数据锁的紧凑发行包 | 下一次新数据用普通 Web 入口验证导入、技能／辅助、装备／打造、加点、保存重开与回滚；在目标设备测冷加载、首次计算、内存与包体 | [WASM 测量](wasm-package.md#runtime-performance-comparison) |
+| 玩家验收与性能 | 完整 CI 用同次 WASM 消费当前数据锁的紧凑发行包；正式 Web 与独立 WASM 包仍发布逐文件快照，紧凑包仅 CI 验证 | 下一次新数据用普通 Web 入口验证导入、技能／辅助、装备／打造、加点、保存重开与回滚；在目标设备测冷加载、首次计算、内存与包体 | [WASM 测量](wasm-package.md#runtime-performance-comparison) |
 
 ## 已知例外
 

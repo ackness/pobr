@@ -30,6 +30,8 @@ with unchanged publication metadata do not create data updates.
 mise run data:latest check
 # Freeze a fresh metadata candidate; installed files and defaults stay unchanged.
 mise run data:latest resolve --out .cache/latest-review
+# A different game_patch additionally requires the explicit --new-target flag.
+mise run data:latest resolve --new-target --out .cache/latest-review-next
 # Offline byte/evidence replay, without a freshness claim or runtime acceptance.
 mise run data:latest verify --root .cache/latest-review
 # Verify the accepted immutable declarations, without resolving current heads.
@@ -64,6 +66,12 @@ compact `release_id`, which the candidate Full CI rebuilds and must match.
 Owners may add or retire roles PoBR does not consume; a consumed role, the RePoE
 display source and the language catalog binding must stay present. A new patch requires compatible owned requirements and source
 decisions through a reviewed migration; patch strings cannot relabel old data.
+When both owner publications name the identical new `game_patch` for the same
+game and realm, `resolve --new-target` freezes an explicit candidate carrying
+that target, the new `data/CURRENT`, the recomputed identities and the
+`target_change` receipt entry. It is never automatic: `auto_eligible` is false
+for a changed target, so scheduled proposal and `recheck` never adopt it, and
+the consumer migration lands in the same reviewed change.
 
 Full CI verifies the complete snapshot, the recorded immutable owner declarations
 and owner tags (without a new official query or mutable channel lookup), then
@@ -73,28 +81,14 @@ run's standalone WASM, materializes the final compact pack and runs
 The package's old embedded data is never a fallback. Calculation provenance,
 worked builds, editing/reopening and preserved diagnostics enter its receipt.
 
-## Verified rollout status (2026-11-02 UTC)
+## Rollout status
 
-RePoE PR14 and translation PR6 are merged; both default indexes remain at sequence 1.
-PoBR PR231 is merged, and its [exact-head Full validation](https://github.com/ackness/pobr/actions/runs/41393972787)
-passed at `cf573c26`, including the same-run final compact candidate consumed by real WASM.
-The [current master integration](https://github.com/ackness/pobr/actions/runs/41402088234)
-also passed at `23341f06`. Immutable owner declaration checks passed in this audit. A fresh official observation at 09:01 UTC advertised
-`0.5.5.5`; `check` returned `no-new-publication`, preserving the selected data lock.
-
-Read-only hosted checks confirm master requires an up-to-date `PR gate` and enforces
-it for administrators. The repository-level `DATA_SYNC_TOKEN` secret is absent;
-unattended proposal/adoption remains inactive. The observed `workflow_run` callback
-for ordinary master work was skipped by its branch filter, which does not verify a
-scheduled proposal or a successful adoption. A genuinely new owner publication still
-needs an end-to-end proposal/gates/adoption exercise. `auto_eligible` from `check`
-describes metadata/freshness eligibility only, not credential readiness or adoption.
-
-The remaining work is owner-side new-input production and publication, dedicated
-sync authentication, the real new-publication exercise and the source/semantic
-limits in the [current data status](../../docs/data-status.md#领域现状).
-Do not repeat bootstrap registration or decode unchanged large inputs to establish
-that progress.
+Current owner publication sequences, hosted activation conditions and the
+remaining end-to-end exercise live in
+[the current data status](../../docs/data-status.md#当前数据锁与托管条件).
+`auto_eligible` from `check` describes metadata/freshness eligibility only, not
+credential readiness or adoption. Do not repeat bootstrap registration or decode
+unchanged large inputs to establish progress.
 
 ## Automatic proposal and adoption
 
@@ -103,6 +97,8 @@ manual dispatch or `owned-data-published` repository dispatch. One reserved bran
 `automation/data-latest`, carries only the data lock. Proposal uses
 the exact current default commit as parent and an expected-SHA branch lease;
 interrupted PR creation or Full dispatch can be retried without a second branch.
+Neither owner repository sends the `owned-data-published` repository dispatch
+yet, so the six-hour schedule is the effective trigger.
 There is no automatic app release or deployment.
 
 The controller uses trusted default-branch code. A `workflow_run` completion for

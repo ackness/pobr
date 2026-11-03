@@ -15,7 +15,8 @@ class RuntimePackTests(unittest.TestCase):
         self.root = Path(temporary.name).resolve()
         self.version = "9.1"
         self.target = {"game": "poe2", "game_patch": self.version, "realm": "international"}
-        self.write("source/data/CURRENT", b"9.1\n")
+        self.data = self.root / "data"
+        self.write("data/CURRENT", b"9.1\n")
         contents = {
             "base/skills.json": b'[{"id":"raw","stats":[3,2,1],"i64":9223372036854775807,"value":0.10000000149011612,"text":"a\\r\\nb"}]',
             "base/passive_trees/0_1.json": b'[{"skill":42,"stats":["old build"]}]',
@@ -23,27 +24,23 @@ class RuntimePackTests(unittest.TestCase):
             "generated/special_vendor.json": b'{"_meta":{"build":"only"},"entries":[{"id":"rule","batch":"S0","verified":false,"game_source":"stat_id","examples":["audit"],"vendor_pattern":"audit","source_note":"audit","mods":[]}]}',
             "i18n/zh-CN/skills.json": '{"raw":"技能"}'.encode(),
             "i18n/zh-CN/_meta.json": b'{"build":"only"}',
+            "i18n/zh-CN/display_texts.json": pack.raw_json({"schema": "pobr-native-display-texts/v1",
+                "game_patch": self.version, "realm": "international", "locale": "zh-CN",
+                "entries": {"blocked": None},
+                "scopes": {"BaseItemTypes.Name": {"id": ["raw", None]}}}),
             "i18n/zh-TW/skills.json": '{"raw":"技能TW"}'.encode(),
         }
         for name, raw in contents.items():
-            self.write(f"source/data/9.1/{name}", raw)
+            self.write(f"data/9.1/{name}", raw)
         snapshot = {"schema_version": 3, "poe_version": self.version, "languages": ["zh-CN", "zh-TW"],
                     "domains": {"base": ["skills"], "overlay": ["trade_catalog"], "generated": ["special_vendor"]},
                     "files": {name: bundle.sha256(raw) for name, raw in contents.items()}}
-        self.write("source/data/9.1/manifest.json", pack.raw_json(snapshot))
-        self.write("source/data/overlay-common/special_mods.json", b'{"_meta":{"audit":true},"entries":[]}')
-        self.source = self.root / "sealed"
-        receipt = bundle.create(self.root / "source", self.source)
-        recipe = {"schema": "pobr-remaining-domain-integration/v1", "runtime_identity": receipt["runtime_identity"],
-                  "bundle_id": receipt["bundle_id"], "snapshot_manifest_sha256": bundle.sha256(pack.raw_json(snapshot)),
-                  "files": {name: {"sha256": bundle.sha256(raw), "owner": "retained-test-input", "path": "/unavailable/original"}
-                            for name, raw in contents.items()},
-                  "shared_files": {"special_mods.json": {"sha256": bundle.sha256(b'{"_meta":{"audit":true},"entries":[]}')}},
-                  "producer_receipts": {}, "language_receipt_sha256": "a" * 64, "scope": "Frozen test compatibility"}
-        self.recipe = self.write("recipe.json", pack.raw_json(recipe))
-        self.display = self.write("display.json", pack.raw_json({"schema": "pobr-native-display-texts/v1",
-            "game_patch": self.version, "realm": "international", "locale": "zh-CN", "entries": {"blocked": None},
-            "scopes": {"BaseItemTypes.Name": {"id": ["raw", None]}}}))
+        self.write("data/9.1/manifest.json", pack.raw_json(snapshot))
+        self.write("data/overlay-common/special_mods.json", b'{"_meta":{"audit":true},"entries":[]}')
+        _, runtime_identity = bundle.data_inputs(self.data, self.version)
+        self.lock = self.write("data.lock.json", pack.raw_json(
+            {"schema": "pobr-data-lock/v1", "target": self.target, "locale": "zh-CN",
+             "runtime_identity": runtime_identity}))
         self.output = self.root / "candidate"
 
     def write(self, name, raw):
@@ -53,7 +50,7 @@ class RuntimePackTests(unittest.TestCase):
         return path
 
     def create(self, output=None):
-        return pack.create(self.source, self.recipe, self.display, output or self.output, self.target, "zh-CN")
+        return pack.build_release(self.lock, self.data, output or self.output)
 
     def test_real_assembly_is_deterministic_and_archive_uses_same_block_bytes(self):
         first = self.create()
@@ -77,37 +74,34 @@ class RuntimePackTests(unittest.TestCase):
         self.assertNotIn("examples", rule["entries"][0])
         self.assertEqual(rule["entries"][0]["batch"], "S0")
         self.assertEqual(rule["entries"][0]["game_source"], "stat_id")
-        self.assertNotEqual(release["runtime_identity"], bundle.verify(self.source)["runtime_identity"])
+        self.assertNotEqual(release["runtime_identity"], bundle.data_inputs(self.data, self.version)[1])
 
-    def test_release_builds_directly_from_prepared_owner_snapshot(self):
-        display = self.display.read_bytes()
-        source = self.root / "source/data/9.1"
-        self.write("source/data/9.1/i18n/zh-CN/display_texts.json", display)
-        snapshot = json.loads((source / "manifest.json").read_bytes())
-        snapshot["files"]["i18n/zh-CN/display_texts.json"] = bundle.sha256(display)
-        self.write("source/data/9.1/manifest.json", pack.raw_json(snapshot))
-        _, runtime_identity = bundle.data_inputs(self.root / "source/data", self.version)
-        lock = {"schema": "pobr-data-lock/v1", "target": self.target, "locale": "zh-CN",
-                "runtime_identity": runtime_identity, "release_id": None}
-        requirements = self.write("data.lock.json", pack.raw_json(lock))
-        first = pack.build_release(requirements, self.root / "source/data", self.root / "built")
+    def test_release_identity_lock_and_snapshot_pins_fail_closed(self):
+        first = self.create()
+        lock = bundle.decode(self.lock.read_bytes())
         lock["release_id"] = first["release_id"]
-        requirements.write_bytes(pack.raw_json(lock))
-        again = pack.build_release(requirements, self.root / "source/data", self.root / "built-again")
-        self.assertEqual(first, again)
-        release, _, payloads = pack.read_release(self.root / "built/player", first["release_id"])
+        self.lock.write_bytes(pack.raw_json(lock))
+        self.assertEqual(first, self.create(self.root / "built-again"))
+        release, _, payloads = pack.read_release(self.root / "built-again/player", first["release_id"])
         self.assertEqual(release["runtime_identity"], first["runtime_identity"])
-        self.assertEqual((self.root / "built/runtime-pack.zip").read_bytes(), pack.archive_bytes(payloads))
+        self.assertEqual((self.root / "built-again/runtime-pack.zip").read_bytes(),
+                         pack.archive_bytes(payloads))
         with self.assertRaisesRegex(ValueError, "Unexpected release identity"):
-            pack.build_release(requirements, self.root / "source/data", self.root / "wrong", expected_id="0" * 64)
+            pack.build_release(self.lock, self.data, self.root / "wrong", expected_id="0" * 64)
         self.assertFalse((self.root / "wrong").exists())
-        requirements.write_bytes(pack.raw_json({**lock, "runtime_identity": "0" * 64}))
+        self.lock.write_bytes(pack.raw_json({**lock, "runtime_identity": "0" * 64}))
         with self.assertRaisesRegex(ValueError, "differs from the data lock"):
-            pack.build_release(requirements, self.root / "source/data", self.root / "other")
-        requirements.write_bytes(pack.raw_json(lock))
-        self.write("source/data/9.1/i18n/zh-CN/display_texts.json", display + b" ")
-        with self.assertRaisesRegex(ValueError, "Snapshot hash mismatch"):
-            pack.build_release(requirements, self.root / "source/data", self.root / "tampered")
+            self.create(self.root / "other")
+        self.assertFalse((self.root / "other").exists())
+        self.lock.write_bytes(pack.raw_json(lock))
+        display = self.data / "9.1/i18n/zh-CN/display_texts.json"
+        original = display.read_bytes()
+        try:
+            display.write_bytes(original + b" ")
+            with self.assertRaisesRegex(ValueError, "Snapshot hash mismatch"):
+                self.create(self.root / "tampered")
+        finally:
+            display.write_bytes(original)
         self.assertFalse((self.root / "tampered").exists())
 
     def test_archive_materializes_a_complete_existing_bundle_with_matching_identity(self):
@@ -176,18 +170,12 @@ class RuntimePackTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 pack.project("base/skills.json", invalid)
 
-    def test_source_recipe_display_identity_and_symlinks_reject_without_output(self):
-        with self.assertRaisesRegex(ValueError, "separate from input"):
-            self.create(self.source / "new-parent/nested-output")
-        self.assertFalse((self.source / "new-parent").exists())
-        recipe = bundle.decode(self.recipe.read_bytes())
-        recipe["runtime_identity"] = "0" * 64
-        self.recipe.write_bytes(pack.raw_json(recipe))
-        with self.assertRaisesRegex(ValueError, "recipe identity"):
+    def test_existing_output_and_symlinked_paths_reject(self):
+        self.create()
+        with self.assertRaisesRegex(ValueError, "Fresh output"):
             self.create()
-        self.assertFalse(self.output.exists())
         alias = self.root / "alias"
-        alias.symlink_to(self.display)
+        alias.symlink_to(self.lock)
         with self.assertRaisesRegex(ValueError, "Symlink"):
             pack.regular(alias)
 
