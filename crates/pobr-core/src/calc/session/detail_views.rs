@@ -979,30 +979,49 @@ impl CalculationSession {
                         let prefix = if i == 0 { "Primary" } else { "Secondary" };
                         let (suffix, value) = if terms.stacks > 0.0 {
                             ("EstimatedStacks", terms.stacks)
+                        } else if terms.max_stacks == 0.0 {
+                            ("SingleInstance", 1.0)
                         } else {
                             ("MaximumStacks", terms.max_stacks)
                         };
                         rows.push((format!("{prefix}{suffix}"), value));
                     }
                     (
-                        format!(
-                            "max(0, {})",
+                        if t.passes.iter().any(|(_, terms)| terms.max_stacks == 0.0) {
                             rows.iter()
                                 .map(|(id, _)| id.as_str())
                                 .collect::<Vec<_>>()
-                                .join(", ")
-                        ),
+                                .join(" + ")
+                        } else {
+                            format!(
+                                "max(0, {})",
+                                rows.iter()
+                                    .map(|(id, _)| id.as_str())
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            )
+                        },
                         rows,
                     )
                 } else if let Some(merge) = t.stacked_merge {
-                    ("round(StrongerAilmentDPS * StrongerAilmentShare + WeakerAilmentDPS * (1 - StrongerAilmentShare), 9)".into(), vec![
-                        ("StrongerAilmentDPS".into(), merge.stronger), ("WeakerAilmentDPS".into(), merge.weaker),
+                    let mut inputs = vec![
+                        ("StrongerAilmentDPS".into(), merge.stronger),
+                        ("WeakerAilmentDPS".into(), merge.weaker),
                         ("StrongerAilmentShare".into(), merge.stronger_share),
-                    ])
+                        ("WeakerAilmentShare".into(), merge.weaker_share),
+                    ];
+                    let sum = "StrongerAilmentDPS * StrongerAilmentShare + WeakerAilmentDPS * WeakerAilmentShare";
+                    let formula = if let Some(cap) = merge.cap {
+                        inputs.push(("DotDpsCap".into(), cap));
+                        format!("round(min({sum}, DotDpsCap), 9)")
+                    } else {
+                        format!("round({sum}, 9)")
+                    };
+                    (formula, inputs)
                 } else {
                     let terms = &t.passes.first()?.1;
                     let id = format!("{prefix}DPS");
-                    if terms.stacks > 0.0 {
+                    if terms.stacks > 0.0 || terms.max_stacks == 0.0 {
                         one(&id, terms.dps)
                     } else {
                         (

@@ -263,7 +263,7 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<DerivedDetail> {
                 let active = if t.stacks > 0.0 {
                     t.stacks
                 } else {
-                    t.max_stacks
+                    t.max_stacks.max(1.0)
                 };
                 context.extend([
                     ("AilmentHitChance".into(), t.hit_chance),
@@ -272,8 +272,12 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<DerivedDetail> {
                     ("AilmentHitsPerSecond".into(), t.hits_per_second),
                 ]);
                 let formula = if suffix == "StackPotentialPercent" {
-                    "EstimatedAilmentStacks / MaximumAilmentStacks * 100"
-                } else if active > t.max_stacks {
+                    if t.max_stacks == 0.0 {
+                        "0 * EstimatedAilmentStacks"
+                    } else {
+                        "EstimatedAilmentStacks / MaximumAilmentStacks * 100"
+                    }
+                } else if t.max_stacks > 0.0 && active > t.max_stacks {
                     "min(100, max(0, (EstimatedAilmentStacks - (MaximumAilmentStacks - 1) / 2) / (EstimatedAilmentStacks + 1) * 100))"
                 } else {
                     "50 + 0 * EstimatedAilmentStacks"

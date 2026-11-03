@@ -434,7 +434,8 @@ pub struct OutputTable {
     pub ignite_stacked_dps: f64,
     pub ignite_active_stacks: f64,
     /// Stack ceiling for each damaging ailment (`max_stacks`; 1 = cannot
-    /// stack). Used for diagnostics/panel.
+    /// stack). Zero with an applying ailment means uncapped (finite JSON
+    /// representation); an absent ailment also has zero DPS and active stacks.
     pub bleed_max_stacks: f64,
     pub poison_max_stacks: f64,
     pub ignite_max_stacks: f64,

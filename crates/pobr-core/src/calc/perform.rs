@@ -2063,6 +2063,7 @@ struct AilmentPassResult {
 fn damaging_ailment_for_pass(
     kind: AilmentType,
     ctx: &AilmentPassCtx,
+    speed: f64,
     player: &ModDb,
     enemy: &ModDb,
     cfg: &CalcConfig,
@@ -2076,6 +2077,9 @@ fn damaging_ailment_for_pass(
         AilmentType::Poison => "Poison",
         _ => return None,
     };
+    if player.flag(cfg, &format!("Cannot{name}")) {
+        return None;
+    }
     // `AilmentsAreNeverFromCrit`: the crit source is set to the non-crit damage and the crit
     // chance is zeroed (same semantics as `AilmentSource::new`; the Stored path constructs this
     // directly, with the crit leg coming from real crit-leg aggregation).
@@ -2129,15 +2133,15 @@ fn damaging_ailment_for_pass(
         ctx.hit_chance,
         probe_out.chance,
         duration,
-        ctx.speed,
+        speed,
     );
     let sp = stack_potential(&stack);
     if dbg_env!("POBR_DBG_AILMENT").is_some() {
         eprintln!(
-            "[POBR_AILMENT] {name}: hit50={hit50:.2} crit50={crit50:.2} probe_chance={:.4} duration={:.4} speed={:.4} hit_chance={:.4} active={:.4} max={} sp={sp:.4}",
+            "[POBR_AILMENT] {name}: hit50={hit50:.2} crit50={crit50:.2} probe_chance={:.4} duration={:.4} speed={:.4} hit_chance={:.4} active={:.4} max={:?} sp={sp:.4}",
             probe_out.chance,
             duration,
-            ctx.speed,
+            speed,
             ctx.hit_chance,
             stack.active_stacks,
             stack.max_stacks,
@@ -2177,12 +2181,12 @@ fn damaging_ailment_for_pass(
         duration,
         duration_before_rate,
         stack_potential: sp,
-        hits_per_second: ctx.speed,
+        hits_per_second: speed,
         base_duration: super::ailment::resolved_ailment_base_duration(kind, player, cfg)
             .unwrap_or(0.0),
         enemy_duration: debuff_duration_mult(enemy, cfg),
         stacks: stack.active_stacks,
-        max_stacks: stack.max_stacks as f64,
+        max_stacks: stack.displayed_max(),
         effect: ailment_effect_mod(player, cfg),
         rate,
         cap: cfg.constants.game().dot_dps_cap,
@@ -2203,7 +2207,7 @@ fn damaging_ailment_for_pass(
         // vendor's uptime convention (`:5189-5193`): activeAilments = min(stacks, max).
         // magnitude_dps already includes percentBase × AilmentMagnitude × effMult;
         // finalize adds effectMod × rateMod + DotDpsCap.
-        let active_ailments = stack.active_stacks.min(stack.max_stacks as f64);
+        let active_ailments = stack.active();
         let dps = finalize_ailment_dps(
             out.magnitude_dps * active_ailments,
             name,
@@ -2218,7 +2222,7 @@ fn damaging_ailment_for_pass(
             stacked_dps: dps,
             active_stacks_panel: stack.active_stacks,
             stacks_estimate: stack.active_stacks,
-            max_stacks: stack.max_stacks as f64,
+            max_stacks: stack.displayed_max(),
             hand: ctx.hand,
             terms: AilmentTerms { dps, ..terms },
             source_parts,
@@ -2233,7 +2237,7 @@ fn damaging_ailment_for_pass(
             stacked_dps: apply_dot_dps_cap(stacked, cfg.constants.game().dot_dps_cap),
             active_stacks_panel: active_stacks_of(&stack),
             stacks_estimate: 0.0,
-            max_stacks: stack.max_stacks as f64,
+            max_stacks: stack.displayed_max(),
             hand: ctx.hand,
             terms: AilmentTerms { dps, ..terms },
             source_parts,
@@ -2260,12 +2264,34 @@ fn merge_ailment_passes(
         )),
         [a, b, ..] => {
             let stacks = a.stacks_estimate.max(b.stacks_estimate);
-            let max_stacks = a.max_stacks.max(b.max_stacks);
-            let merge = HandAilmentMerge::new(a.dps, b.dps, stacks, max_stacks);
+            // local_hits_with_this_weapon_ignore_poison_limit bypasses the
+            // cap only for that weapon. Its poisons coexist with the other
+            // hand's (still capped) contribution, rather than competing for
+            // the strongest instance across both hands.
+            let independent = a.max_stacks == 0.0 || b.max_stacks == 0.0;
+            let max_stacks = if independent {
+                0.0
+            } else {
+                a.max_stacks.max(b.max_stacks)
+            };
+            let merge = if independent {
+                HandAilmentMerge::independent(a.dps, b.dps, a.terms.cap)
+            } else {
+                HandAilmentMerge::new(a.dps, b.dps, stacks, max_stacks)
+            };
+            let stacked = if independent {
+                HandAilmentMerge::independent(a.stacked_dps, b.stacked_dps, a.terms.cap).dps()
+            } else {
+                merge_hand_ailment_dps(a.stacked_dps, b.stacked_dps, stacks, max_stacks)
+            };
             Some((
                 merge.dps(),
-                merge_hand_ailment_dps(a.stacked_dps, b.stacked_dps, stacks, max_stacks),
-                a.active_stacks_panel.max(b.active_stacks_panel),
+                stacked,
+                if independent {
+                    a.active_stacks_panel + b.active_stacks_panel
+                } else {
+                    a.active_stacks_panel.max(b.active_stacks_panel)
+                },
                 max_stacks,
                 Some(merge),
             ))
@@ -2446,6 +2472,25 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
 
     let player = &env.player.mod_db;
     let enemy = &env.enemy.mod_db;
+    // Reuse the offence scopes, including each hand's weapon flags. Explicitly
+    // clear the opposite hand (and both for spells) before querying local mods.
+    let scopes: Vec<_> = pass_scopes(env)
+        .into_iter()
+        .map(|(hand, scope, _)| {
+            let hand = if hand == crate::HandTag::Single && !env.hand_sources.is_empty() {
+                crate::HandTag::MainHand
+            } else {
+                hand
+            };
+            let scope = scope
+                .with_condition("MainHandAttack", hand == crate::HandTag::MainHand)
+                .with_condition("OffHandAttack", hand == crate::HandTag::OffHand);
+            (hand, scope)
+        })
+        .collect();
+    let has_unlimited_poison = scopes
+        .iter()
+        .any(|(_, scope)| player.flag(scope, "PoisonStacksUnlimited"));
 
     // The enemy ailment threshold (a monster-level lookup table × the EnemyAilmentThreshold mod);
     // falls back to the bare table with no enemy config.
@@ -2466,12 +2511,29 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
         let results: Vec<AilmentPassResult> = passes
             .iter()
             .filter_map(|ctx| {
+                let pass_cfg = &scopes.iter().find(|(hand, _)| *hand == ctx.hand)?.1;
+                let speed =
+                    if kind == AilmentType::Poison && has_unlimited_poison && passes.len() == 2 {
+                        // Alternating attacks use each weapon every second action;
+                        // simultaneous dual hits use both each action. Summing
+                        // uncapped instances must not double the application rate.
+                        hit_speed
+                            * ailment_dps_mult
+                            * if env.double_hits_when_dual_wielding {
+                                1.0
+                            } else {
+                                0.5
+                            }
+                    } else {
+                        ctx.speed
+                    };
                 damaging_ailment_for_pass(
                     kind,
                     ctx,
+                    speed,
                     player,
                     enemy,
-                    cfg,
+                    pass_cfg,
                     threshold,
                     never_from_crit,
                     &mut trace,
@@ -2496,12 +2558,17 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
                     .map(|pass| pass.source_parts.clone())
                     .collect(),
                 stacked_merge: results.get(1).map(|b| {
-                    HandAilmentMerge::new(
-                        results[0].stacked_dps,
-                        b.stacked_dps,
-                        results[0].stacks_estimate.max(b.stacks_estimate),
-                        results[0].max_stacks.max(b.max_stacks),
-                    )
+                    let a = &results[0];
+                    if a.max_stacks == 0.0 || b.max_stacks == 0.0 {
+                        HandAilmentMerge::independent(a.stacked_dps, b.stacked_dps, a.terms.cap)
+                    } else {
+                        HandAilmentMerge::new(
+                            a.stacked_dps,
+                            b.stacked_dps,
+                            a.stacks_estimate.max(b.stacks_estimate),
+                            a.max_stacks.max(b.max_stacks),
+                        )
+                    }
                 }),
                 merge,
             },
@@ -2630,21 +2697,12 @@ fn finalize_ailment_dps(
     apply_dot_dps_cap(scaled, cfg.constants.game().dot_dps_cap)
 }
 
-/// Resolves a damaging ailment's stacking config from the ModDb (`<Ailment>Stacks` BASE →
-/// max_stacks) + estimates the average active stack count (05-01:
-/// `ailmentStacks = hitChance × applyChance × duration × speed`).
-///
-/// - `max_stacks`: `1 + Σ<Ailment>Stacks BASE` (PoB2 only goes >1 when `<Ailment>CanStack` is
-///   present; approximated here by whether the `<Ailment>Stacks` mod exists; with no mod,
-///   max_stacks=1, no stacking).
-/// - `active_stacks`: the [`estimate_active_stacks`] estimate. **0 when the panel signal is
-///   missing** (no attack/cast rate, e.g. a pure single-hit build), and
-///   [`active_stacks_of`]/`stacking_ailment_dps` fall back to max_stacks as the upper bound
-///   (the old "always full stacks" placeholder convention, backward compatible). When there is a
-///   rate, the estimate genuinely takes effect, allowing StackPotential to exceed 1 and trigger
-///   the over-stacking crit amplification and the RollAverage high-end bias.
-///
-/// Source: PoB2 `CalcOffence.lua` L5021-5069.
+/// Resolves the stack ceiling and the existing rate × duration estimate.
+/// Poisons normally have one affecting instance, with additional stacks
+/// explicitly enabled by modifiers. Splinter of Lorrata's
+/// local_hits_with_this_weapon_ignore_poison_limit bypasses that ceiling for
+/// its own hand only. Without a rate, uncapped poison reports a single
+/// instance, never an invented infinite population.
 #[allow(clippy::too_many_arguments)]
 fn resolve_stack_config(
     db: &ModDb,
@@ -2655,11 +2713,11 @@ fn resolve_stack_config(
     duration_secs: f64,
     hit_speed: f64,
 ) -> StackConfig {
-    // vendor's formula (CalcOffence.lua:5021-5025): `maxStacks = 1`; only when the
-    // `<Ailment>CanStack` flag is present does `maxStacks = Override(<Ailment>Stacks) or
-    // ((1 + ΣBASE) × More)`. Replaces the old "stacking happens iff the <Ailment>Stacks mod
-    // exists" approximation with a flag gate + the Override/MORE leg (Escalating Poison and
-    // similar statmap sources inject `PoisonStacks BASE + PoisonCanStack flag` as a pair).
+    let active_stacks =
+        estimate_active_stacks(hit_chance_frac, apply_chance_frac, duration_secs, hit_speed);
+    if ailment == "Poison" && db.flag(cfg, "PoisonStacksUnlimited") {
+        return StackConfig::unlimited(active_stacks);
+    }
     let stacks_name = ModName::from(format!("{ailment}Stacks"));
     let can_stack = db.flag(cfg, &format!("{ailment}CanStack"));
     let max_stacks = if can_stack {
@@ -2674,18 +2732,12 @@ fn resolve_stack_config(
     } else {
         1
     };
-    let active_stacks =
-        estimate_active_stacks(hit_chance_frac, apply_chance_frac, duration_secs, hit_speed);
     StackConfig::new(max_stacks, active_stacks)
 }
 
-/// The estimated active stack count (panel convention): takes active_stacks if >0, otherwise max_stacks as the upper bound.
+/// The potential instance count, with a single-instance fallback when uncapped.
 fn active_stacks_of(cfg: &StackConfig) -> f64 {
-    if cfg.active_stacks > 0.0 {
-        cfg.active_stacks
-    } else {
-        cfg.max_stacks as f64
-    }
+    cfg.estimated_stacks()
 }
 
 /// The effective enemy poise threshold = `enemy_poise_threshold(level) × mod(...)`, then floored.
