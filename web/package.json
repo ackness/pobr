@@ -14,7 +14,6 @@
     "sync-data": "node scripts/sync-data.mjs",
     "package-wasm": "node scripts/package-wasm.mjs",
     "smoke-wasm-package": "node scripts/smoke-wasm-package.mjs",
-    "build-tree-art": "python3 scripts/build-tree-art.py",
     "build-wasm": "node scripts/build-wasm.mjs"
   },
   "dependencies": {

@@ -177,7 +177,6 @@ E2E 使用当前生产 `dist`，`build` 已包含 typecheck。
 | `mise run web exec playwright test e2e/build-roundtrip.spec.ts` | 使用当前 dist／WASM／数据的定向浏览器回归。 |
 | `mise run web build-wasm` / `mise run web sync-data` | 准备 WASM／复制版本数据到 public。 |
 | `mise run web package-wasm` / `mise run web smoke-wasm-package` | 打包／验证 `.cache/wasm-release/` 中的独立包。 |
-| `mise run web:tree-art` | 按需准备 vendor、ImageMagick 7/zstd 后再生成树图像。 |
 
 七个共用请求 DTO（传输数据结构）由 Rust 经钉定的宿主开发依赖 `ts-rs` 生成到
 `src/api/generated/request.ts`。修改后运行

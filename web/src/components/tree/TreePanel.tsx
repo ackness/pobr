@@ -7,7 +7,7 @@ import { TreeConversionControls, useTreeConversion } from './TreeConversionContr
 import { formatApiError } from '../../api/error';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { getBackend } from '../../api/backend';
-import type { AttributeChoice, PassiveNode, TreeArt, TreeAllocationMode } from '../../api/types';
+import type { AttributeChoice, PassiveNode, TreeAllocationMode } from '../../api/types';
 import { useTreeEditPreview } from '../../hooks/useTreeEditPreview';
 import { treeAllocationRequest } from '../../lib/weaponSets';
 import type { BuildSession } from '../../hooks/useBuildSession';
@@ -39,20 +39,6 @@ interface Props {
   focusPlanner?: { nonce: number };
   onJewelSearch?: (socket: number) => void;
 }
-
-/** 节点内技能图标半径 = 圆半径 × 此系数。 */
-const ICON_SCALE = 1.05;
-/** 精通徽记是自带外框的整盘，铺满节点。 */
-const MASTERY_ICON_SCALE = 1.5;
-/** 外框半径 = 圆半径 × 此系数（外框美术含透明留白，放大到可见环对齐圆点；逐类型微调）。 */
-const FRAME_SCALE: Record<string, number> = {
-  normal: 1.95,
-  notable: 1.55,
-  keystone: 1.45,
-  mastery: 1.6,
-  jewel_socket: 1.7,
-  ascendancy_start: 1.6,
-};
 
 const JEWEL_TEMPLATE = 'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
 
@@ -91,7 +77,6 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
     return change ? { ...node, name: change.name,
       stats: change.replace ? change.stats : [...(node.stats ?? []), ...change.stats] } : node;
   }) ?? [], [rawNodes, treeEffects]);
-  const [art, setArt] = useState<TreeArt | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [plannedNodes, setPlannedNodes] = useState<PassivePlan | null>(null);
   const byId = useMemo(() => new Map(nodes.map(node => [node.skill, node])), [nodes]);
@@ -110,11 +95,8 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
   useEffect(() => {
     let cancelled = false;
     getBackend()
-      .then(b => Promise.all([b.loadPassiveTree(), b.loadTreeArt()]))
-      .then(([loadedNodes, loadedArt]) => {
-        if (cancelled) return;
-        setNodes(loadedNodes); setArt(loadedArt);
-      })
+      .then(b => b.loadPassiveTree())
+      .then(loadedNodes => { if (!cancelled) setNodes(loadedNodes); })
       .catch(err => { if (!cancelled) setError(formatApiError(err)); });
     return () => { cancelled = true; };
   }, []);
@@ -124,7 +106,7 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
     session.activeLoadout, session.activeWeaponSet, session.socketGroupRevision,
     session.character?.class_name, session.character?.ascendancy_name]);
   return <TreeCanvas key={canvasContext} session={session} lang={lang} onJewelSearch={onJewelSearch}
-    allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} nodeNames={nodeNames} art={art} error={error} plannedNodes={plannedNodes} planner={planner} conversion={conversion} overlayReset={overlayReset} />;
+    allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} nodeNames={nodeNames} error={error} plannedNodes={plannedNodes} planner={planner} conversion={conversion} overlayReset={overlayReset} />;
 }
 
 interface CanvasProps {
@@ -135,7 +117,6 @@ interface CanvasProps {
   onJewelSearch?: (socket: number) => void;
   nodes: PassiveNode[] | null;
   nodeNames: PassiveNodeNames;
-  art: TreeArt | null;
   error: string | null;
   plannedNodes: PassivePlan | null;
   planner: TreeOptimizerState;
@@ -145,7 +126,7 @@ interface CanvasProps {
   overlayReset: number;
 }
 
-function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, art, error, plannedNodes, planner, conversion, overlayReset }: CanvasProps) {
+function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, error, plannedNodes, planner, conversion, overlayReset }: CanvasProps) {
   const tt = bindT(lang);
   /** Whether the planner / details column beside the canvas is shown. */
   const [sideOpen, setSideOpen] = useState(true);
@@ -612,47 +593,13 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
       return `hsl(${Math.round(20 + t * 25)} ${Math.round(70 + t * 30)}% ${Math.round(28 + t * 32)}%)`;
     };
     return (
-      <g className={`tree-nodes${art ? ' has-art' : ''}`}>
+      <g className="tree-nodes">
         {placed.map((node) => {
           const r = NODE_RADIUS[node.kind] ?? 40;
           const isAlloc = allocated.has(node.skill);
-          const isMastery = node.kind === 'mastery';
-          // 精通节点用通用徽记（自带外框，不叠外框、不压暗）；其余用各自技能图标。
-          const icon = isMastery
-            ? art?.masteryIcon
-            : art?.nodeIcons[String(node.skill)];
-          const frameSet = isMastery ? undefined : art?.frames[node.kind];
-          const frame = frameSet
-            ? isAlloc
-              ? frameSet.alloc ?? frameSet.unalloc
-              : frameSet.unalloc ?? frameSet.alloc
-            : undefined;
-          const iconR = r * (isMastery ? MASTERY_ICON_SCALE : ICON_SCALE);
-          const frameR = r * (FRAME_SCALE[node.kind] ?? 1.7);
           const heat = heatFill(node.skill);
           return (
             <g key={node.skill}>
-              {icon && (
-                <image
-                  href={icon}
-                  x={node.x! - iconR}
-                  y={node.y! - iconR}
-                  width={iconR * 2}
-                  height={iconR * 2}
-                  clipPath="url(#tree-icon-clip)"
-                  className={`node-icon${!isMastery && !isAlloc ? ' node-icon-dim' : ''}`}
-                />
-              )}
-              {frame && (
-                <image
-                  href={frame}
-                  x={node.x! - frameR}
-                  y={node.y! - frameR}
-                  width={frameR * 2}
-                  height={frameR * 2}
-                  className="node-frame"
-                />
-              )}
               <circle
                 data-skill-id={node.skill}
                 data-weapon-set={owner.get(node.skill) ?? (isAlloc ? 0 : undefined)}
@@ -660,7 +607,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
                 cy={node.y}
                 r={r}
                 style={heat ? { fill: heat } : undefined}
-                className={`node node-${node.kind}${icon || frame ? ' node-art' : ''}${node.ascendancy_id ? ' node-asc' : ''}${isAlloc ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewelSockets.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}${selectedSkill === node.skill ? ' node-selected' : ''}${freeNodes.has(node.skill) ? ' node-jewel-allocatable' : ''}${treeEffects?.nodes[String(node.skill)] ? ' node-transformed' : ''}${plannedNodes?.allocate.includes(node.skill) ? ' node-planned-add' : ''}${plannedNodes?.deallocate.includes(node.skill) ? ' node-planned-remove' : ''}${owner.has(node.skill) ? ` node-weapon-${owner.get(node.skill)}` : ''}${previewNodes.added.has(node.skill) ? ' node-preview-add' : ''}${previewNodes.promoted.has(node.skill) ? ' node-preview-promote' : ''}${previewNodes.removed.has(node.skill) ? ' node-preview-refund' : ''}`}
+                className={`node node-${node.kind}${node.ascendancy_id ? ' node-asc' : ''}${isAlloc ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewelSockets.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}${selectedSkill === node.skill ? ' node-selected' : ''}${freeNodes.has(node.skill) ? ' node-jewel-allocatable' : ''}${treeEffects?.nodes[String(node.skill)] ? ' node-transformed' : ''}${plannedNodes?.allocate.includes(node.skill) ? ' node-planned-add' : ''}${plannedNodes?.deallocate.includes(node.skill) ? ' node-planned-remove' : ''}${owner.has(node.skill) ? ` node-weapon-${owner.get(node.skill)}` : ''}${previewNodes.added.has(node.skill) ? ' node-preview-add' : ''}${previewNodes.promoted.has(node.skill) ? ' node-preview-promote' : ''}${previewNodes.removed.has(node.skill) ? ' node-preview-refund' : ''}`}
                 onPointerEnter={(e) => {
                   if (dragRef.current?.moved) return;
                   setHover(node);
@@ -680,7 +627,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
         })}
       </g>
     );
-  }, [placed, allocated, pulse, filledJewelSockets, searchHits, selectedSkill, heatStat, heatData, heatMax, handleNodeClick, art, plannedNodes, freeNodes, treeEffects, owner, previewNodes]);
+  }, [placed, allocated, pulse, filledJewelSockets, searchHits, selectedSkill, heatStat, heatData, heatMax, handleNodeClick, plannedNodes, freeNodes, treeEffects, owner, previewNodes]);
 
   const fullExtent = useMemo(() => treeExtent(placed), [placed]);
 
@@ -1095,12 +1042,6 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
           role="img"
           aria-label={tt('tree.title')}
         >
-          <defs>
-            {/* 技能图标裁成圆形（美术是方图，避免方角戳出外框） */}
-            <clipPath id="tree-icon-clip" clipPathUnits="objectBoundingBox">
-              <circle cx="0.5" cy="0.5" r="0.5" />
-            </clipPath>
-          </defs>
           <g ref={sceneRef} className="tree-scene">
           {ascExtent && (
             <circle

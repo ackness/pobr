@@ -35,7 +35,7 @@ test('the files that must be revalidated every visit are not matched', () => {
   assert.equal(immutable(`/data/h/${digest}/base/mods.json`), true);
   assert.equal(immutable('/assets/entry-DlLWRb60.js'), true);
   for (const path of ['/', '/index.html', '/build', '/data/manifest.json', '/data/0.5.5.4.2/base/mods.json',
-    '/data/0.5.5.4.2/manifest.json', '/tree-art/0.5/manifest.json', '/_worker.js', '/_routes.json']) {
+    '/data/0.5.5.4.2/manifest.json', '/_worker.js', '/_routes.json']) {
     assert.equal(immutable(path), false, path);
   }
 });
