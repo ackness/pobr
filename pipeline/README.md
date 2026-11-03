@@ -21,7 +21,7 @@ PoBR 不从 PoB2 vendor Lua 或本地原表导出生产数据。
 | --- | --- |
 | [data.lock.json](data.lock.json) | 唯一数据锁：两个 owner 的固定 tag、commit、路径与 SHA-256，目标、自有规则 pin 与期望身份 |
 | [runtime/](runtime/build-data.md) | 按锁临时导入、快照封存、精简发行包和显式采用；`data:prepare`、`data:update`、`data:pack` |
-| [imports/](imports/client-sources.md) | 固定 Git 传输、来源接受记录、辅助说明投影、数据归属检查 |
+| [imports/](imports/sources.lock.json) | 固定 Git 传输、辅助说明投影、数据归属检查；台账仅存消费范围接受决定 |
 | [latest/](latest/latest-data.md) | owner 通道、候选发现与 CI 后条件采用；`data:latest` |
 | [diagnostics/](diagnostics/README.md) | 数据版本差异、描述来源核对与词条审计；不自动采用数据 |
 
@@ -58,14 +58,18 @@ RePoE 在 2026-11-03 截断 fork 前历史后，活动锁、回滚锁和官方�
 
 ## 固定来源
 
-独立客户端候选的可重复流程是[固定补丁索引定位](imports/client-index.md) →
-[未审阅原始采集](imports/client-source-draft.md) → 来源审阅与固定 →
-[严格重放](imports/client-sources.md) → RePoE 事实导出与其 `pobr-data-adapter` 领域适配。
-索引定位、采集、重放与来源包生成由独立RePoE实现并测试；PoBR只导入 owner 已发布的固定产物。这些步骤不自动提升来源锁，也不切换活动数据。历史 Git 树也由 RePoE 独立保存和发布，PoBR 不再直接获取官方原始树。
+独立客户端候选的可重复流程——补丁索引定位、未审阅采集、来源审阅与固定、
+严格重放、事实导出与 `pobr-data-adapter` 领域适配——由独立 RePoE 实现、
+测试并保存记录；PoBR 只导入 owner 已发布的固定产物，这些步骤不自动提升
+来源锁，也不切换活动数据。历史 Git 树由 RePoE 独立保存和发布，PoBR 不再
+直接获取官方原始树。
 
-[sources.lock.json](imports/sources.lock.json)保留历史官方树输入及固定客户端资源位置、原始SHA-256、大小、decoder／schema和采集证据。
-`acquisition_acceptances`分别接受F77、六DAT、91 tree／IT、10 CSD、12语言原生资源，以及精确六OT／两描述DAT字节；
-`retained_input_acceptances`另记locale／shared／compat三类有界保留决定。各项只接受明确scope和pins，不认证全部机制、SC客户端身份或分发许可。
+原料来源、采集证据与语言策展台账归位在 owner 仓库：游戏侧见 RePoE
+[`sources/`](https://github.com/ackness/repoe/tree/master/sources)，语言侧见翻译库
+[`sources/`](https://github.com/ackness/poe2-zh-cn-stats/tree/main/sources)。
+[sources.lock.json](imports/sources.lock.json)只保留 PoBR 消费范围的接受决定
+（shared、compat 两类保留输入）与迁移去向，不认证全部机制、SC客户端身份
+或分发许可。
 采集、领域解释、消费者验证、本地采用及远端发布仍分开；完整状态见[数据现状](../docs/data-status.md)。
 PoB2 的测试参考版本独立登记在 [devs/reference-sources.json](../devs/reference-sources.json)，
 `mise run vendor` 不再读取生产 parser 元数据选择参考版本。
@@ -78,7 +82,7 @@ adapter 拒绝；原隔离清单保留在 RePoE adapter 的 `policies/tree-corre
 ## 固定客户端原始资源与事实候选
 
 原始客户端采集、索引定位及来源包生成请在独立RePoE运行其`client:source`、`client:draft`、`client:locate`、`source:rebind`任务。
-入口、默认strict及显式diagnostic边界见[客户端资源获取](imports/client-sources.md)。
+入口、默认strict及显式diagnostic边界见 RePoE [客户端资源获取](https://github.com/ackness/repoe/blob/master/RePoE/docs/client-sources.md)。
 
 RePoE 原生事实包另由 RePoE 的 `pobr-data-adapter --native-facts` 验证外部 manifest 摘要后形成
 PoBR 领域候选，见[候选契约](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/native-facts.md)；schema 4 分支已冻结。当前只接通部分国际服事实，

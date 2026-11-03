@@ -54,14 +54,11 @@ PoBR 留下的 11 份自有 shared 规则／构筑配置属于引擎语义，继
 
 ## 已知例外
 
-| 例外 | 退出条件 |
-| --- | --- |
-| `pipeline/imports/sources.lock.json` 仍混合保存原始来源／采集证据与下游保留输入接受决定 | 原料与采集台账归 RePoE，语言策展归翻译库，PoBR 保留消费范围的接受决定；迁移保留历史摘要与出处，不将整份台账当作 adapter 配置 |
+无。来源台账已归位：原料与采集记录迁入 [RePoE `sources/`](https://github.com/ackness/repoe/tree/master/sources)，语言策展记录迁入[翻译库 `sources/`](https://github.com/ackness/poe2-zh-cn-stats/tree/main/sources)，`pipeline/imports/sources.lock.json` 只保留 PoBR 消费范围的接受决定。
 
 ## 近期顺序
 
 1. 由 owner 完成一次有实际收益的新生产与发布，配置 `DATA_SYNC_TOKEN` 后用它演练提案、门禁、采用与回滚。不要重复登记 bootstrap。
-   来源台账（`pipeline/imports/sources.lock.json`）归位仍未完成。
 2. 对影响现有 BD 的 charm、actor、描述与分支问题，先复用已有原料和诊断补语义或精确资源，再做最小的消费者修改。
 3. 对新数据锁补普通 Web 流程验收；翻译优先接实际 caller，并保留英文或空值回退。
 4. 固定目标设备与冷热输入测量后，再针对已测瓶颈优化。
