@@ -42,7 +42,7 @@ def main():
         raise SystemExit(f"PR not ready: {error}") from error
     head = after["head"]["sha"]
     print(f"Current head: {head}\nBase: {after['base']['sha']}")
-    print(f"If merging is authorized: gh pr merge {number} --squash --match-head-commit {head}")
+    print(f"If merging is authorized: gh pr merge {number} --merge --match-head-commit {head}")
 
 
 if __name__ == "__main__":
