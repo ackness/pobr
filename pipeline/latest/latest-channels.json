@@ -12,7 +12,7 @@
   },
   "official_observer": {
     "repository": "ackness/repoe",
-    "revision": "e19f28605bc51ead31c2d5d9ec611b3f43ad1bda",
+    "revision": "e6362c114804c0a04fdbfdb3d839580581093f8e",
     "module": "RePoE.client_version",
     "files": {
       "RePoE/__init__.py": {

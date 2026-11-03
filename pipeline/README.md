@@ -34,6 +34,11 @@ JSON 的职责各不相同：`data.lock.json` 是唯一的生产数据声明，`
 历史来源收据中的路径按记录时的 Git 版本解释，不为整理目录重写原始 pins、命令或接受范围。
 当前文件定位与组合清单则使用本页列出的路径。
 
+RePoE 在 2026-11-03 截断 fork 前历史后，活动锁、回滚锁和官方版本观察模块采用迁移后的 Git 提交；
+两个 owner 的发布声明推进到 sequence 2，数据包字节、运行时身份与发行身份保持不变。
+历史收据中的原始 producer ID 保留，通过 RePoE 的[提交映射](https://github.com/ackness/repoe/blob/master/publication/history-rewrite-20261103.json)
+定位字节相同的源码；它们不作为新的运行时下载位置。详见[历史迁移说明](https://github.com/ackness/repoe/blob/master/RePoE/docs/history.md)。
+
 临时脚本、报告、下载、测试目录和物化运行包放在忽略的 `.cache/`；
 本目录不保留已退休 exporter 的依赖安装或临时输出。
 

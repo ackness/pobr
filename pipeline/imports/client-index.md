@@ -1,7 +1,7 @@
 # Fixed client index discovery
 
 The implementation, source processing and regression tests now belong to the
-independent RePoE repository. See the [pinned upstream contract](https://github.com/ackness/repoe/blob/a27c0a795728bb64d988519ccebe7faeacf9edf7/RePoE/docs/client-index.md).
+independent RePoE repository. See the [pinned upstream contract](https://github.com/ackness/repoe/blob/6b65ade6ac8731515b28aac2aa3c38f160d0bffd/RePoE/docs/client-index.md).
 PoBR has no local acquisition or envelope-creation implementation.
 
 Run in the independent RePoE checkout:

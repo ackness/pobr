@@ -12,7 +12,7 @@
     "game": {
       "publication": "published",
       "repository": "ackness/repoe",
-      "revision": "2c664da43c2cc850e98a4fdba0e875a0acd5c3b1",
+      "revision": "adc17c6e6d28b49e334c4d4a8df3afc8bec15baf",
       "tag": "handoff/native-crafting-20261101",
       "path": "handoff/native-crafting-20261101/game-build-part.zip",
       "bytes": 4419797,
@@ -39,7 +39,7 @@
   "crafting": {
     "publication": "published",
     "repository": "ackness/repoe",
-    "revision": "2c664da43c2cc850e98a4fdba0e875a0acd5c3b1",
+    "revision": "adc17c6e6d28b49e334c4d4a8df3afc8bec15baf",
     "tag": "handoff/native-crafting-20261101",
     "path": "handoff/native-crafting-20261101/crafting-facts.zip",
     "bytes": 2319239,
@@ -156,23 +156,23 @@
   "release_id": "9932ea879de65e182184e3c60b0ddaaaff89319a63fbdddca25c6f6d8bf8b687",
   "owner_publications": {
     "ackness/repoe": {
-      "index_revision": "aa737740b07809d5454fb2cf406a057fcae193b2",
-      "sequence": 1,
+      "index_revision": "60df85bca7ef7beb845e83b446049a386d6672a4",
+      "sequence": 2,
       "descriptor": {
-        "bytes": 4746,
-        "path": "publication/releases/poe2-international/1.json",
-        "revision": "154913f41a9a57491d01098e988adaa17ca67140",
-        "sha256": "6fe94764dd39270d1f5b3139b4c8c5a0b798f140b3e95b4ecdc474fd4c7d3bdd"
+        "bytes": 4969,
+        "path": "publication/releases/poe2-international/2.json",
+        "revision": "7f658f254791e42919a835aa6a29c5f1a2e78fb5",
+        "sha256": "48ac9314cb85de0d44fc9e50fc61856379cfc7de433437d13c6566abfc377556"
       }
     },
     "ackness/poe2-zh-cn-stats": {
-      "index_revision": "cec78f1af75142734238018035da883a2549dd2f",
-      "sequence": 1,
+      "index_revision": "320d30fef8fabab28696f3a8713834bfae8e070b",
+      "sequence": 2,
       "descriptor": {
-        "revision": "ece9cfe0057256c81d3b374a960c9370c94d7717",
-        "path": "publication/releases/poe2-international/1.json",
-        "bytes": 6327,
-        "sha256": "bb9ec6a13f142974f5df902b45c33d5eecf3e8547eeb5a9b768bcc07e84c7df7"
+        "revision": "dd8f99dbc48cfb2279a1bbd30d261b46acab4561",
+        "path": "publication/releases/poe2-international/2.json",
+        "bytes": 6550,
+        "sha256": "b9aea36f065be73c4d26e015581f2e7b6713bb9ac2d25b167ae170045df12f24"
       }
     }
   }

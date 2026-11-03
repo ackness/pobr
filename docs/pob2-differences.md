@@ -56,7 +56,7 @@ PoBR 不从 vendor 生成或刷新它们，修改属于 owner 仓库。
 
 `buff_definitions` 的 `vendor_ref` 记录 15 个 PoB2 行段，旧来源为 `ce8bffaba31f8e68cfce70579e1c96465e7c133c`；
 它们在当前参考 `bb52d6b368307457eb9c54bb13f1829993d390b1` 中各有唯一、逐字节相同的行段，引用元数据仍记旧来源和旧行号。
-RePoE 的[固定来源对账](https://github.com/ackness/repoe/blob/e3cabf9bd008240e12a173c7233c2c48e56eb822/RePoE/docs/buff_source_reconciliation.md)
+RePoE 的[固定来源对账](https://github.com/ackness/repoe/blob/db7f3d5d129d82e5788990658795d5a4ad15a4df/RePoE/docs/buff_source_reconciliation.md)
 核对了七个完整上下文：调用者、defence 和 reservation 的上游条件已有变化，整体等价未确立，
 其验证器保持 `guard_eligible=false`。运行定义、数值和引用没有因此更新，也不据此认证官方 buff 或 charm 语义。
 
