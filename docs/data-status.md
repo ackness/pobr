@@ -1,6 +1,6 @@
 # 数据现状
 
-最后核对：2026-11-02 UTC。本页原地更新：状态变化时直接改写，不追加历史。
+最后核对：2026-11-03 UTC。本页原地更新：状态变化时直接改写，不追加历史。
 长期设计与规则见[数据架构](data-architecture.md)，命令见[数据管线](../pipeline/README.md)。
 
 ## 当前数据锁与托管条件
@@ -28,6 +28,9 @@
 | 分域锁收敛为一份按 tag 引用两个 owner 发布的 JSON（`pipeline/data.lock.json`）；删除只为重放生产保留的锁、普通领域与显示生成脚本及候选任务 | 已完成 |
 | 领域转换工具（`tools/pobr-data-adapter`、`pipeline/policies/`）迁往 RePoE；语言生产者迁往翻译库；退役 `data:tree:*`／`data:native:candidate` | 已完成（ackness/repoe#17、ackness/poe2-zh-cn-stats#8）；keystone 字节检查改在 RePoE |
 
+adapter 的 30 份 JSON 策略已完整迁入 RePoE，内容与迁移前一致；Cargo 依赖、工具链、任务与 CI 也由 RePoE 维护。
+PoBR 留下的 11 份自有 shared 规则／构筑配置属于引擎语义，继续随本仓库代码维护，不作为领域适配策略迁移。
+
 ## 领域现状
 
 下表的数量描述最近一次固定产物，不是全游戏覆盖率。
@@ -51,11 +54,14 @@
 | 例外 | 退出条件 |
 | --- | --- |
 | `web/public/tree-art/` 入库的天赋树美术由 vendor 生成 | RePoE 发布客户端树美术后改为导入 |
+| `pipeline/imports/crafting_inputs.py` 仍在准备阶段将七表事实投影为 `trade_crafting_sources.json`，内含币种前缀、OutcomeMods 选择与聚合策略 | 将目录生产及策略迁往 RePoE，发布固定投影并调整 PoBR 消费契约；用完整输出、诊断和消费者验证保持原行为 |
+| `pipeline/imports/sources.lock.json` 仍混合保存原始来源／采集证据与下游保留输入接受决定 | 原料与采集台账归 RePoE，语言策展归翻译库，PoBR 保留消费范围的接受决定；迁移保留历史摘要与出处，不将整份台账当作 adapter 配置 |
 | 冻结的 `0.5.5.4.2` 回滚锁不经数据锁 | 两个 owner 发布对应的 recovery 描述后改为第二份数据锁 |
 
 ## 近期顺序
 
 1. 由 owner 完成一次有实际收益的新生产与发布，配置 `DATA_SYNC_TOKEN` 后用它演练提案、门禁、采用与回滚。不要重复登记 bootstrap。
+   制作目录的本地投影及来源台账归位仍未完成；前者需要 owner 固定产物与消费契约一起迁移，不能只搬脚本或配置。
 2. 对影响现有 BD 的 charm、actor、描述与分支问题，先复用已有原料和诊断补语义或精确资源，再做最小的消费者修改。
 3. 对新数据锁补普通 Web 流程验收；翻译优先接实际 caller，并保留英文或空值回退。
 4. 固定目标设备与冷热输入测量后，再针对已测瓶颈优化。
