@@ -357,6 +357,12 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         return Some(mods);
     }
     match stat {
+        // A skill's poison prohibition takes precedence over a weapon's guarantee.
+        "cannot_poison" | "virtual_cannot_poison" => Some(if value != 0.0 {
+            vec![Modifier::flag("CannotPoison")]
+        } else {
+            Vec::new()
+        }),
         // GrantedEffectStatSetsPerLevel associates these damage IDs with the
         // pre-resolved player-level amounts, not the effectiveness coefficients.
         // The generic stat descriptions pair the Fire/Cold minimum and maximum
@@ -1841,6 +1847,27 @@ mod tests {
                 ),
                 30.0
             );
+        }
+    }
+
+    #[test]
+    fn native_poison_prohibition_overrides_guaranteed_application() {
+        use crate::calc::ailment::{AilmentSource, poison_instance};
+
+        let source = AilmentSource {
+            hit_avg: 100.0,
+            crit_avg: 100.0,
+            crit_chance: 0.0,
+        };
+        for stat in ["cannot_poison", "virtual_cannot_poison"] {
+            for prohibited in [0.0, 1.0] {
+                let mut player = ModDb::new();
+                player.add_mod(Modifier::number("PoisonChance", ModType::Override, 100.0));
+                player.add_list(skill_modifiers(stat, prohibited).unwrap());
+                let poison =
+                    poison_instance(&source, &player, &ModDb::new(), &CalcConfig::attack());
+                assert_eq!(poison.magnitude_dps > 0.0, prohibited == 0.0, "{stat}");
+            }
         }
     }
 
