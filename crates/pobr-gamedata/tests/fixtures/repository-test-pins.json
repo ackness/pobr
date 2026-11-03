@@ -1,6 +1,6 @@
 {
   "0.5.5.5": {
-    "manifest_sha256": "73b2d77e669743ced67df5cf6e0245f79e333bb9b2a481b796da7099d8f63a06",
+    "manifest_sha256": "5d41f3284186bbe5a5d48b4270404fb903132cd9ef8e9fc0883264daf92fbf17",
     "pins": {
       "minions.raised_zombie": {
         "damage": 0.75,

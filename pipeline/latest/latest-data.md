@@ -113,6 +113,21 @@ if a completion callback failed temporarily, the next check can adopt the same
 still-fresh head using its successful gates, without repeating Full CI. Incomplete
 gates keep the candidate waiting.
 
+Completion callbacks report `candidate-awaiting-gates` when either gate is not
+successful, including its observed run status and conclusion. This is a normal
+refusal to adopt: the failing validation run remains failed, and no merge occurs.
+Invalid protection, changed inputs, authentication and infrastructure errors
+still fail the synchronization run.
+
+Some repository tests bind reviewed facts to the complete snapshot manifest.
+A game update can therefore require explicit review of
+`crates/pobr-gamedata/tests/fixtures/repository-test-pins.json`, even when those
+particular facts are unchanged. Keep the automatic branch restricted to the
+frozen data declaration. Review the changed members and update any affected
+test bindings through a normal PR with the candidate lock; do not automatically
+bless values or bypass a failed Full gate. Manual merges need the same validation
+judgment: the required `PR gate` alone proves only the quick checks.
+
 Unattended PR checks require an App installation token or PAT configured as
 `DATA_SYNC_TOKEN`, with repository contents, pull requests and Actions permissions
 needed by the controller. A default `GITHUB_TOKEN` is sufficient for read-only

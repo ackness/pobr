@@ -90,7 +90,8 @@ def gate(workflow, expected, event, name, request=api):
         raise GateIncomplete(f"Missing {name} run at candidate SHA")
     run = max(runs, key=lambda value: int(value["id"]))
     if run.get("status") != "completed" or run.get("conclusion") != "success":
-        raise GateIncomplete(f"{name} is incomplete, failed, cancelled or approval-required")
+        raise GateIncomplete(f"{name} is incomplete (run {run['id']}: "
+                             f"{run.get('status')}/{run.get('conclusion')})")
     query = urlencode({"filter": "latest", "per_page": 100})
     jobs = request("GET", endpoint(f"actions/runs/{run['id']}/jobs?{query}"))
     require(jobs["total_count"] <= 100, "Unexpectedly large workflow job graph")
@@ -279,6 +280,11 @@ def main():
             config = latest.channels(root)
             official = latest.observe_official(config, temporary / "observation", temporary / "cache", fetcher)
             result = globals()[args.action](root, temporary, fetcher, official)
+        except GateIncomplete as error:
+            # A completion callback can arrive while the other gate is pending
+            # or failed. Refusing adoption is the expected controller outcome.
+            result = {"status": "candidate-awaiting-gates", "adoption": "unchanged",
+                      "reason": str(error)}
         except (ValueError, KeyError, OSError, subprocess.SubprocessError) as error:
             write(args.out, encoded({"schema": "pobr-latest-sync-result/v1", "status": "incomplete",
                                     "adoption": "unchanged", "reason": str(error)}))
