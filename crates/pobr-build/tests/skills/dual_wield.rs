@@ -150,6 +150,50 @@ fn splinter_poison_follows_the_inflicting_hand_and_keeps_finite_calcs() {
 }
 
 #[test]
+fn splinter_mixed_hand_cap_display_uses_the_merged_ceiling() {
+    use pobr_build::calculate_with_data_session;
+    use pobr_core::display_catalog::display_value;
+
+    let data = load_build_data();
+    for (slot, base) in [
+        (EquipmentSlot::Weapon1, "Wooden Club"),
+        (EquipmentSlot::Weapon2, "Shortsword"),
+    ] {
+        let build = dual_build(Some(weapon("Shortsword", &[])))
+            .set_item(slot, weapon(base, &SPLINTER_POISON));
+        let session =
+            calculate_with_data_session(&build, data, &opts(&["100% chance to Poison on Hit"]))
+                .unwrap();
+        let stage = session.ailment_stage_terms("PoisonDPS").unwrap();
+        assert_eq!(stage.passes.len(), 2);
+        if slot == EquipmentSlot::Weapon1 {
+            assert_eq!(stage.passes.last().unwrap().1.max_stacks, 1.0);
+        }
+        assert_eq!(session.output().poison_max_stacks, 0.0);
+        assert_eq!(display_value(session.output(), "PoisonStacksMax"), 0.0);
+        let detail = session.derived_detail("PoisonStacksMax").unwrap();
+        assert_eq!(detail.formula, "MaximumAilmentStacks");
+        assert_eq!(
+            detail.inputs,
+            vec![("MaximumAilmentStacks".to_owned(), 0.0)]
+        );
+    }
+
+    let finite = calculate_with_data_session(
+        &dual_build(Some(weapon("Shortsword", &[]))),
+        data,
+        &opts(&["100% chance to Poison on Hit"]),
+    )
+    .unwrap();
+    assert_eq!(finite.output().poison_max_stacks, 1.0);
+    assert_eq!(display_value(finite.output(), "PoisonStacksMax"), 1.0);
+    assert_eq!(
+        finite.derived_detail("PoisonStacksMax").unwrap().inputs,
+        vec![("MaximumAilmentStacks".to_owned(), 1.0)],
+    );
+}
+
+#[test]
 fn splinter_poison_does_not_follow_spells_shields_minions_or_inactive_weapons() {
     use pobr_build::calculate_with_data_session;
     use pobr_data::skill::SkillTypes;

@@ -3,6 +3,8 @@ use pobr_build::{
     Build, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
     parse_build,
 };
+use pobr_data::constants::{AilmentType, DOT_DPS_CAP};
+use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
 
 use crate::test_data as data;
 fn group(skill: &str, count: u32) -> SocketGroup {
@@ -23,6 +25,161 @@ fn close(a: f64, b: f64) {
         (a - b).abs() < 1e-7 * a.abs().max(b.abs()).max(1.0),
         "{a} != {b}"
     );
+}
+
+const UNLIMITED_POISON: &str =
+    "Any number of Poisons from this Weapon can affect a target at the same time";
+
+fn poison_weapon(base: &str, mods: &[&str]) -> Item {
+    Item {
+        base: ItemBaseId::from(base),
+        rarity: ItemRarity::Normal,
+        quality: 0,
+        corrupted: false,
+        implicit_texts: vec![],
+        modifier_texts: mods.iter().map(|text| text.to_string()).collect(),
+        enchant_texts: vec![],
+        rolled_defence: RolledDefence::default(),
+        socketed: vec![],
+        parsed_stats: vec![],
+    }
+}
+
+fn poison_group(count: f64) -> SocketGroup {
+    let mut group = SocketGroup::new().with_active_skill("AxeChopPlayer", 1);
+    group.include_in_full_dps = true;
+    group.group_count = Some(count);
+    group
+}
+
+fn poison_options() -> DataOrchestratorOptions {
+    DataOrchestratorOptions {
+        inject_character_base: true,
+        enemy_level: 0,
+        enemy_tier: pobr_data::monster::EnemyTier::None,
+        mode_effective: false,
+        // Both hands can poison; only the hand owning UNLIMITED_POISON
+        // bypasses the cap. The speed ensures the finite pool can fill.
+        extra_modifier_texts: vec![
+            "100% chance to Poison on Hit".into(),
+            "200% increased Attack Speed".into(),
+        ],
+        ..Default::default()
+    }
+}
+
+#[test]
+fn full_dps_keeps_two_unlimited_poison_sources_counts_and_summed_dot_cap() {
+    let options = poison_options();
+    let mut build = base_build()
+        .set_item(
+            EquipmentSlot::Weapon1,
+            poison_weapon("Wooden Club", &[UNLIMITED_POISON]),
+        )
+        .add_socket_group(poison_group(0.5))
+        .add_socket_group(poison_group(3.0));
+    let single = calculate_with_data(&build, data(), &options).unwrap();
+    assert!(single.poison_stacked_dps > 0.0);
+    assert_eq!(single.poison_max_stacks, 0.0);
+    let full = full_dps::calculate(&build, data(), &options).unwrap();
+    assert_eq!(full.skills.len(), 2);
+    close(full.skills[0].dot_dps, single.poison_stacked_dps * 0.5);
+    close(full.skills[1].dot_dps, single.poison_stacked_dps * 3.0);
+    close(full.dot_dps, single.poison_stacked_dps * 3.5);
+    close(full.dps, single.dps * 3.5 + full.dot_dps);
+
+    build.socket_groups[0].group_count = Some(1e8);
+    build.socket_groups[1].group_count = Some(2e8);
+    let capped = full_dps::calculate(&build, data(), &options).unwrap();
+    close(capped.dot_dps, DOT_DPS_CAP);
+    close(capped.skills[0].dot_dps, DOT_DPS_CAP / 3.0);
+    close(capped.skills[1].dot_dps, DOT_DPS_CAP * 2.0 / 3.0);
+    assert!(capped.skills.iter().all(|row| row.dps.is_finite()));
+}
+
+#[test]
+fn full_dps_unlimited_poison_does_not_consume_or_expand_the_finite_pool() {
+    let options = poison_options();
+    let mut ordinary = poison_group(2.0);
+    ordinary.weapon_set = Some(2);
+    let mut build = base_build()
+        .set_item(
+            EquipmentSlot::Weapon1,
+            poison_weapon("Wooden Club", &[UNLIMITED_POISON]),
+        )
+        .add_socket_group(poison_group(1.0))
+        .add_socket_group(ordinary.clone())
+        .add_socket_group(ordinary);
+    build
+        .other_weapons
+        .insert(EquipmentSlot::Weapon1, poison_weapon("Wooden Club", &[]));
+    let unlimited = calculate_with_data(&build, data(), &options).unwrap();
+    let limited =
+        calculate_with_data(&build.clone().with_main_socket_group(2), data(), &options).unwrap();
+    assert_eq!(unlimited.poison_max_stacks, 0.0);
+    assert_eq!(limited.poison_max_stacks, 1.0);
+    assert!(limited.poison_active_stacks > 1.0);
+    let full = full_dps::calculate(&build, data(), &options).unwrap();
+    assert_eq!(full.skills.len(), 3);
+    assert!(full.skills.iter().all(|row| row.error.is_none()));
+    close(full.skills[0].dot_dps, unlimited.poison_stacked_dps);
+    close(full.skills[1].dot_dps, limited.poison_stacked_dps);
+    close(full.skills[2].dot_dps, 0.0);
+    close(
+        full.dot_dps,
+        unlimited.poison_stacked_dps + limited.poison_stacked_dps,
+    );
+}
+
+#[test]
+fn full_dps_mixed_hand_skills_share_only_the_finite_hands_poison_cap() {
+    let options = poison_options();
+    for unlimited_slot in [EquipmentSlot::Weapon1, EquipmentSlot::Weapon2] {
+        let mut build = base_build()
+            .set_item(EquipmentSlot::Weapon1, poison_weapon("Wooden Club", &[]))
+            .set_item(EquipmentSlot::Weapon2, poison_weapon("Shortsword", &[]))
+            .add_socket_group(poison_group(1.0))
+            .add_socket_group(poison_group(3.0));
+        build
+            .items
+            .get_mut(&unlimited_slot)
+            .unwrap()
+            .modifier_texts
+            .push(UNLIMITED_POISON.into());
+        let single = calculate_with_data(&build, data(), &options).unwrap();
+        assert_eq!(single.poison_max_stacks, 0.0);
+        let stage = &single
+            .ailment_terms
+            .iter()
+            .find(|(kind, _)| *kind == AilmentType::Poison)
+            .unwrap()
+            .1;
+        assert_eq!(stage.passes.len(), 2);
+        let unlimited = &stage
+            .passes
+            .iter()
+            .find(|(_, terms)| terms.max_stacks == 0.0)
+            .unwrap()
+            .1;
+        let limited = &stage
+            .passes
+            .iter()
+            .find(|(_, terms)| terms.max_stacks > 0.0)
+            .unwrap()
+            .1;
+        assert_eq!(limited.max_stacks, 1.0);
+        assert!(limited.stacks > 1.0);
+        close(single.poison_stacked_dps, unlimited.dps + limited.dps);
+        let full = full_dps::calculate(&build, data(), &options).unwrap();
+        assert_eq!(full.skills.len(), 2);
+        // The first skill fills the shared ordinary poison slot. The
+        // second retains all of its uncapped hand, but not three extra
+        // ordinary slots just because its merged ceiling is zero.
+        close(full.skills[0].dot_dps, unlimited.dps + limited.dps);
+        close(full.skills[1].dot_dps, unlimited.dps * 3.0);
+        close(full.dot_dps, unlimited.dps * 4.0 + limited.dps);
+        close(full.dps, single.dps * 4.0 + full.dot_dps);
+    }
 }
 
 #[test]

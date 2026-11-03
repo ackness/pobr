@@ -2,8 +2,10 @@
 
 use std::collections::BTreeMap;
 
+use pobr_core::calc::AilmentStageTerms;
+use pobr_core::calc::ailment::apply_dot_dps_cap;
 use pobr_core::calc::output::{FullDpsOutput, FullDpsSkill};
-use pobr_data::constants::DOT_DPS_CAP;
+use pobr_data::constants::{AilmentType, DOT_DPS_CAP};
 use pobr_data::item::EquipmentSlot::{Weapon1, Weapon2};
 
 use super::{
@@ -183,42 +185,69 @@ pub(super) fn calculate_prepared(
                         row.hit_dps = minions.iter().map(|minion| minion.dps).sum();
                     } else {
                         row.hit_dps = out.dps;
-                        for (sources, (dps, stacked, active, cap)) in ailments.iter_mut().zip([
-                            (
-                                out.bleed_dps,
-                                out.bleed_stacked_dps,
-                                out.bleed_active_stacks,
-                                out.bleed_max_stacks,
-                            ),
-                            (
-                                out.ignite_dps,
-                                out.ignite_stacked_dps,
-                                out.ignite_active_stacks,
-                                out.ignite_max_stacks,
-                            ),
-                            (
-                                out.poison_dps,
-                                out.poison_stacked_dps,
-                                out.poison_active_stacks,
-                                out.poison_max_stacks,
-                            ),
-                        ]) {
+                        for (sources, (kind, dps, stacked, active, cap)) in
+                            ailments.iter_mut().zip([
+                                (
+                                    AilmentType::Bleed,
+                                    out.bleed_dps,
+                                    out.bleed_stacked_dps,
+                                    out.bleed_active_stacks,
+                                    out.bleed_max_stacks,
+                                ),
+                                (
+                                    AilmentType::Ignite,
+                                    out.ignite_dps,
+                                    out.ignite_stacked_dps,
+                                    out.ignite_active_stacks,
+                                    out.ignite_max_stacks,
+                                ),
+                                (
+                                    AilmentType::Poison,
+                                    out.poison_dps,
+                                    out.poison_stacked_dps,
+                                    out.poison_active_stacks,
+                                    out.poison_max_stacks,
+                                ),
+                            ])
+                        {
+                            // A merged uncapped result can still include a finite
+                            // other hand. Keep those contributions separate so only
+                            // the weapon ignoring the limit bypasses the shared pool.
+                            if cap == 0.0
+                                && let Some((_, stage)) = out
+                                    .ailment_terms
+                                    .iter()
+                                    .find(|(ailment, _)| *ailment == kind)
+                            {
+                                sources.extend(uncapped_ailment_sources(
+                                    stage,
+                                    index,
+                                    count,
+                                    stacked.max(dps),
+                                ));
+                                continue;
+                            }
                             // The ailment pass already applies magnitude, duration and
                             // chance. Keep its estimate; more sources can fill the same
                             // limit, but cannot create a new limit for each skill.
                             if stacked > 0.0 && active > 0.0 {
+                                let affecting = if cap == 0.0 {
+                                    active
+                                } else {
+                                    active.min(cap.max(1.0))
+                                };
                                 sources.push(StackSource {
                                     index,
-                                    dps: stacked / active.min(cap.max(1.0)),
+                                    dps: stacked / affecting,
                                     stacks: active * count,
-                                    cap: cap.max(1.0),
+                                    cap: if cap == 0.0 { 0.0 } else { cap.max(1.0) },
                                 });
                             } else if dps > 0.0 {
                                 sources.push(StackSource {
                                     index,
                                     dps,
-                                    stacks: 1.0,
-                                    cap: cap.max(1.0),
+                                    stacks: if cap == 0.0 { count } else { 1.0 },
+                                    cap: if cap == 0.0 { 0.0 } else { cap.max(1.0) },
                                 });
                             }
                         }
@@ -258,6 +287,7 @@ pub(super) fn calculate_prepared(
     // Bleeding/Ignite/Poison each share an enemy-wide active limit. The game's
     // `number_of_additional_poison_stacks` increases that limit, not the number
     // of independent poison pools. Only the strongest allowed instances damage.
+    // A weapon's uncapped poisons coexist outside that finite shared pool.
     for sources in ailments.iter_mut().chain(skill_dots.values_mut()) {
         allocate_stacks(sources, &mut result.skills);
     }
@@ -280,13 +310,72 @@ struct StackSource {
     index: usize,
     dps: f64,
     stacks: f64,
+    /// Zero means this source bypasses the finite shared stack pool.
     cap: f64,
+}
+
+/// Project an uncapped skill snapshot into independently capped hand sources.
+/// A finite-only skill keeps its existing strongest-hand merge instead.
+fn uncapped_ailment_sources(
+    stage: &AilmentStageTerms,
+    index: usize,
+    count: f64,
+    merged_dps: f64,
+) -> Vec<StackSource> {
+    let mut total = 0.0;
+    let mut sources = Vec::new();
+    for (_, terms) in &stage.passes {
+        let stacks = if terms.stacks > 0.0 {
+            terms.stacks
+        } else {
+            // Same missing-rate fallback as the selected-skill calculation:
+            // the finite ceiling, or a single instance when uncapped.
+            terms.max_stacks.max(1.0)
+        };
+        let affecting = if terms.max_stacks == 0.0 {
+            stacks
+        } else {
+            stacks.min(terms.max_stacks)
+        };
+        let dps = if terms.stacks > 0.0 {
+            terms.dps
+        } else {
+            apply_dot_dps_cap(terms.dps * affecting, terms.cap)
+        };
+        if dps > 0.0 && affecting > 0.0 {
+            total += dps;
+            sources.push(StackSource {
+                index,
+                dps: dps / affecting,
+                stacks: stacks * count,
+                cap: terms.max_stacks,
+            });
+        }
+    }
+    // Each hand was capped already, and their merged snapshot may hit the
+    // DoT cap again. Preserve that snapshot before count scaling and the
+    // existing summed Full DPS cap, without exempting its finite hand.
+    if total > merged_dps {
+        let scale = merged_dps / total;
+        for source in &mut sources {
+            source.dps *= scale;
+        }
+    }
+    sources
 }
 
 fn allocate_stacks(sources: &mut [StackSource], rows: &mut [FullDpsSkill]) {
     sources.sort_by(|a, b| b.dps.total_cmp(&a.dps));
-    let mut remaining = sources.iter().map(|source| source.cap).fold(0.0, f64::max);
+    let mut remaining = sources
+        .iter()
+        .filter(|source| source.cap > 0.0)
+        .map(|source| source.cap)
+        .fold(0.0, f64::max);
     for source in sources {
+        if source.cap == 0.0 {
+            rows[source.index].dot_dps += source.dps * source.stacks;
+            continue;
+        }
         let active = source.stacks.min(source.cap).min(remaining);
         rows[source.index].dot_dps += source.dps * active;
         remaining -= active;
