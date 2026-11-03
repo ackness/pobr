@@ -2,14 +2,18 @@
 
 import copy
 import json
+import os
 from pathlib import Path
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from pipeline.runtime import build_data as build
 from pipeline.runtime import data_bundle as bundle
+from pipeline.runtime import data_snapshot
 from pipeline.runtime import runtime_pack as pack
+from pipeline.imports import data_imports
 class BuildDataTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="pobr split data ")
@@ -78,6 +82,14 @@ class BuildDataTests(unittest.TestCase):
     def prepare(self, **kwargs):
         return build.prepare(self.lock_path, self.out, self.cache, self.shared, fetcher=self.fetch, **kwargs)
 
+    def installed(self, destination="installed/data"):
+        data = self.root / destination
+        data.mkdir(parents=True)
+        (data / "CURRENT").write_bytes((self.version + "\n").encode())
+        shutil.copytree(self.shared, data / "overlay-common")
+        build.install(self.out, data)
+        return data
+
     def test_exact_bundle_cache_replay_and_install(self):
         first = self.prepare()
         self.assertEqual(first, bundle.verify(self.out))
@@ -112,7 +124,7 @@ class BuildDataTests(unittest.TestCase):
             self.assertEqual((data / self.version / name).read_bytes(), raw)
         extra = data / self.version / "unlisted.json"
         extra.write_bytes(b"{}")
-        with self.assertRaisesRegex(ValueError, "Existing installed data differs"):
+        with self.assertRaisesRegex(ValueError, "edited, corrupt or has unlisted"):
             build.install(self.out, data)
         self.assertEqual(extra.read_bytes(), b"{}")
 
@@ -136,7 +148,7 @@ class BuildDataTests(unittest.TestCase):
         build.install(self.out, data)
         build.install(self.out, data)
         (data / self.version / name).write_bytes(b'{"corrupt":true}')
-        with self.assertRaisesRegex(ValueError, 'Existing installed data differs'):
+        with self.assertRaisesRegex(ValueError, 'edited, corrupt or has unlisted'):
             build.install(self.out, data)
 
     def test_missing_offline_and_corrupt_pin_never_use_existing_source_snapshot(self):
@@ -229,6 +241,76 @@ class BuildDataTests(unittest.TestCase):
             build.prepare(self.lock_path, self.root / "bad-evidence", self.cache, self.shared,
                           local_parts={"language": locale}, fetcher=self.fetch)
         self.assertEqual(result["runtime_identity"], self.lock["runtime_identity"])
+
+    def test_intact_stale_same_version_install_is_replaced_keeping_local_layers(self):
+        self.prepare()
+        data = self.installed()
+        local = {"patch/base/skills.json": b'[{"local":"patch"}]',
+                 "generated/parsed_mods.json": b'{"local":"maintenance"}'}
+        for name, raw in local.items():
+            path = data / self.version / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(raw)
+        target = data / self.version / "base/skills.json"
+        target.write_bytes(b'[{"id":"stale"}]')
+        data_snapshot.manifest(data / self.version)
+        build.install(self.out, data, {"own.json"})
+        self.assertEqual(target.read_bytes(), self.contents["data/9.1/base/skills.json"])
+        for name, raw in local.items():
+            self.assertEqual((data / self.version / name).read_bytes(), raw)
+        self.assertEqual((data / "CURRENT").read_bytes(), (self.version + "\n").encode())
+
+    def test_edited_or_unlisted_installed_files_reject_byte_identical(self):
+        self.prepare()
+        data = self.installed()
+        target = data / self.version / "base/skills.json"
+        target.write_bytes(b'[{"id":"edited"}]')
+        with self.assertRaisesRegex(ValueError, "edited, corrupt or has unlisted"):
+            build.install(self.out, data)
+        self.assertEqual(target.read_bytes(), b'[{"id":"edited"}]')
+        extra = data / self.version / "base/extra.json"
+        extra.write_bytes(b"{}")
+        with self.assertRaisesRegex(ValueError, "edited, corrupt or has unlisted"):
+            build.install(self.out, data)
+        self.assertEqual(extra.read_bytes(), b"{}")
+
+    def test_differing_external_shared_refreshes_while_owned_or_unlisted_rejects(self):
+        external = b'{"retained":"external fact"}'
+        game = {n: r for n, r in self.contents.items() if "/i18n/" not in n}
+        self.set_part("game", {**game, "data/overlay-common/external.json": external})
+        hashes = {name.removeprefix("data/9.1/"): bundle.sha256(raw)
+                  for name, raw in self.contents.items() if not name.endswith("manifest.json")}
+        hashes.update({"overlay-common/own.json": self.lock["shared_files"]["own.json"]["sha256"],
+                       "overlay-common/external.json": bundle.sha256(external)})
+        self.lock["runtime_identity"] = pack.identity("9.1", hashes)
+        self.save()
+        self.prepare()
+        data = self.installed()
+        stale = data / "overlay-common/external.json"
+        stale.write_bytes(b'{"stale":1}')
+        build.install(self.out, data, {"own.json"})
+        self.assertEqual(stale.read_bytes(), external)
+        owned = data / "overlay-common/own.json"
+        owned.write_bytes(b'{"rule":"edited"}')
+        with self.assertRaisesRegex(ValueError, "Install shared rules differ"):
+            build.install(self.out, data, {"own.json"})
+        self.assertEqual(owned.read_bytes(), b'{"rule":"edited"}')
+        owned.write_bytes((self.shared / "own.json").read_bytes())
+        (data / "overlay-common/stray.json").write_bytes(b"{}")
+        with self.assertRaisesRegex(ValueError, "unlisted shared rules"):
+            build.install(self.out, data, {"own.json"})
+
+    def test_download_cache_honors_the_environment_override(self):
+        with patch.dict(os.environ, {"POBR_DATA_CACHE": "~/pobr-shared-cache"}):
+            self.assertEqual(data_imports.download_cache(), Path("~/pobr-shared-cache").expanduser())
+        for value in (None, ""):
+            with self.subTest(value=value), patch.dict(os.environ) as env:
+                if value is None:
+                    env.pop("POBR_DATA_CACHE", None)
+                else:
+                    env["POBR_DATA_CACHE"] = value
+                self.assertEqual(data_imports.download_cache(),
+                                 data_imports.ROOT / ".cache/data-import-downloads")
 
     def data_lock(self):
         """The owner's game part carries the crafting catalog its snapshot declares."""

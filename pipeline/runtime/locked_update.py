@@ -12,6 +12,7 @@ import tempfile
 from pipeline.runtime import build_data
 from pipeline.runtime import data_bundle as bundle
 from pipeline.runtime import data_snapshot
+from pipeline.imports import data_imports
 from pipeline.imports.data_imports import encoded, regular, require
 
 
@@ -127,7 +128,7 @@ def main():
     parser.add_argument("--lock", type=Path, required=True, help="Exact independent game/language build lock")
     parser.add_argument("--out", type=Path, required=True, help="Fresh complete candidate; retained after selection")
     parser.add_argument("--patch", help="Optional assertion of the lock target, never a relabeling input")
-    parser.add_argument("--cache", type=Path, default=ROOT / ".cache/data-import-downloads")
+    parser.add_argument("--cache", type=Path, default=data_imports.download_cache())
     parser.add_argument("--data-root", type=Path, default=ROOT / "data")
     parser.add_argument("--shared", type=Path, help="Pinned rules; defaults to data-root/overlay-common")
     parser.add_argument("--offline", action="store_true")

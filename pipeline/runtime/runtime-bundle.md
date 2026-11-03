@@ -130,6 +130,6 @@ Full CI在需要实物的Rust、Web和自动化测试前显式prepare。`runtime
 游戏／语言源表、verification与版本binding不进入Web玩家包。
 远端CI、来源准入、完整消费者验收和采用仍须分别确认。
 
-定向验证：`test_build_data.py`覆盖两owner组合、数据锁schema与tag、临时安装、回退版本、缺失／损坏pin和禁网cache；
+定向验证：`test_build_data.py`覆盖两owner组合、数据锁schema与tag、临时安装与同补丁完整陈旧安装的原位刷新、回退版本、缺失／损坏pin和禁网cache；
 `test_runtime_pack.py`覆盖三块传输、从快照组包与CLI物化。
 这些合成契约不等于Rust真实生产、数值parity或远端CI证据。

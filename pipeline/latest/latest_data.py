@@ -706,7 +706,7 @@ def main():
     parser.add_argument("--candidate", type=Path)
     parser.add_argument("--expected-lock")
     parser.add_argument("--observation", type=Path, help="Existing fresh pinned observer receipt directory")
-    parser.add_argument("--cache", type=Path, default=ROOT / ".cache/data-import-downloads")
+    parser.add_argument("--cache", type=Path, default=imports.download_cache())
     args = parser.parse_args()
     if args.action == "verify":
         result = verify_candidate(args.root)
