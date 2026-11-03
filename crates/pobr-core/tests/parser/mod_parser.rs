@@ -5,6 +5,44 @@ use pobr_core::{CalcConfig, ModDb, ModTag, ModValue};
 use pobr_data::prelude::*;
 
 #[test]
+fn wildsurge_requires_the_whole_block_and_scopes_each_modifier() {
+    // Native keystone_wildsurge_incantation, passive node 49363.
+    let lines = [
+        "[Storm|Storm] and [Plant|Plant] [Spell|Spells]:",
+        "• deal 50% more damage",
+        "• cost 50% less",
+        "• have 75% less duration",
+    ];
+    for line in lines {
+        assert!(!parse_mod(line).unwrap().is_complete(), "{line}");
+    }
+    let parsed = parse_mod(&lines.join(" ")).unwrap();
+    assert!(parsed.is_complete(), "{parsed:?}");
+    assert_eq!(parsed.mods.len(), 3);
+    let mut db = ModDb::new();
+    db.add_list(parsed.mods);
+    let storm = SkillTypes::from_pob2_name("Storm").unwrap();
+    let plant = SkillTypes::from_pob2_name("Plant").unwrap();
+    for (types, applies) in [
+        (SkillTypes::SPELL | storm, true),
+        (SkillTypes::SPELL | plant, true),
+        (SkillTypes::SPELL | storm | plant, true),
+        (SkillTypes::SPELL, false),
+        (SkillTypes::ATTACK | plant, false),
+        (storm, false),
+    ] {
+        let cfg = CalcConfig::default().with_skill_types(types);
+        for (name, factor) in [("Damage", 1.5), ("Cost", 0.5), ("Duration", 0.25)] {
+            assert_eq!(
+                db.more(&cfg, &[ModName::from(name)]),
+                if applies { factor } else { 1.0 },
+                "{types:?} {name}"
+            );
+        }
+    }
+}
+
+#[test]
 fn elemental_resistance_inversion_chance_is_a_fraction() {
     for (text, expected) in [
         (
