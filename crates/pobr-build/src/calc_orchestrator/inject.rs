@@ -25,7 +25,7 @@ use super::EXPOSURE_MAGNITUDE;
 use super::collect::{
     append_granted_passives, character_base, engine_ctx, filter_item_parseable, gate_parses,
     keystone_mod_map, parse_grant_line, passive_effect_copies, radius_jewel_grant_modifiers,
-    resolve_gems, resolve_passive_nodes, vendor_scale_mod_value,
+    resolve_gems, resolve_passive_nodes,
 };
 use super::conditions::grenade_type_count;
 use super::context::CalculationContext;
@@ -34,7 +34,7 @@ use super::item::defence::{
     item_ward_modifiers, parse_has_per_level_defence, per_slot_defence_multipliers,
     per_slot_socket_multipliers, shield_base_block, shield_block_modifiers,
 };
-use super::item::mirror::{kalandra_reflected_ring, slot_bonus_effect_scales};
+use super::item::mirror::{kalandra_reflected_ring, scale_item_bonuses, slot_bonus_effect_scales};
 use super::item::weapon::{
     clean_item_text, is_weapon_local_mod, parse_adds_with_suffix, parse_local_defence_flat,
     parse_local_defence_inc, parse_weapon_local_crit,
@@ -854,8 +854,8 @@ pub(super) fn inject_character_base(
 }
 
 /// Stage 2: equipment attribution path injection — per-item filter / Kalandra mirror /
-/// local mod (weapon·defence·Spirit) stripping / add_item / slot bonus-effect numeric
-/// copies. `off_weapon_active` = whether the off-hand weapon source is consumed;
+/// local mod (weapon·defence·Spirit) stripping / slot bonus-effect scaling.
+/// `off_weapon_active` = whether the off-hand weapon source is consumed;
 /// `main_weapon_active` = whether the main skill uses Weapon1 as its damage source (a weapon attack).
 pub(super) fn inject_items(
     session: &mut SourceWriter,
@@ -864,10 +864,8 @@ pub(super) fn inject_items(
     off_weapon_active: bool,
     main_weapon_active: bool,
 ) -> Result<(), BuildError> {
-    // Slot bonus effect ("N% increased bonuses gained from Equipped Rings and Amulets",
-    // the Ritualist ascendancy etc.): the corresponding slot's item mods get an
-    // additional scaled copy appended (matching PoB2 CalcPerform.lua:1326-1370's
-    // `EffectOfBonusesFrom<Slot>` ScaleAddMod semantics; only takes effect when scale>0).
+    // "Increased bonuses gained from" scales the corresponding item's numeric
+    // modifiers, including bonuses it grants to enemies or minions.
     let bonus_scales = slot_bonus_effect_scales(build, data);
     let granted_skill_texts = super::granted_skills::resolved_granted_skill_texts(build, data);
     for (slot, item) in build.equipped_items() {
@@ -1042,49 +1040,23 @@ pub(super) fn inject_items(
                 LineFate::ReadBy("local to the weapon, its own Critical Hit chance"),
                 |t| parse_weapon_local_crit(t).is_some(),
             );
-            session
-                .add_weapon_item(slot, &filtered)
-                .map_err(|e| BuildError::Parse(e.to_string()))?;
-        } else {
-            session
-                .add_item(slot, &filtered)
-                .map_err(|e| BuildError::Parse(e.to_string()))?;
         }
 
-        // Slot bonus-effect copy: when this slot has an `EffectOfBonusesFrom<Slot>`
-        // INC, appends a **numeric delta copy** of this item's already-injected mods
-        // (matching vendor CalcPerform.lua:1347-1369, which groups BASE/INC numeric
-        // mods and applies `ScaleAddMod(mod, slotEffectMod)` — the numeric scaling uses
-        // [`vendor_scale_mod_value`]'s truncation semantics, delta =
-        // trunc(round(v×(1+s),2))−v; a flag copy is a no-op and skipped). The Kalandra
-        // mirror already replaced `filtered` above, matching vendor :1328-1334's
-        // taking mods from the opposite slot. A negative scale (e.g. a foci's -50%,
-        // CalcSetup.lua:1209-1220) follows the same path: full value + negative copy =
-        // net ×(1+scale), equivalent to vendor's combinedList+ScaleAddList merge
-        // (vendor truncates the scaled copy via `m_modf(round(v*scale,2))`; here the
-        // float is kept as-is, with a per-item deviation of ≤0.5).
+        // Parse once after local stripping and reflection, then preserve the
+        // weapon's hand conditions while scaling numeric bonuses in place.
+        // Keep the original source text for the received-line ledger.
+        let mut ingest = pobr_core::ingest_item_with_ctx(slot, &filtered, engine_ctx(data))
+            .map_err(|e| BuildError::Parse(e.to_string()))?;
+        if is_weapon_item {
+            pobr_core::apply_weapon_hand_conditions(&mut ingest.modifiers, slot);
+        }
         if let Some(&(_, scale)) = bonus_scales
             .iter()
             .find(|(s, scale)| *s == slot && *scale != 0.0)
         {
-            let ingest = pobr_core::ingest_item_with_ctx(slot, &filtered, engine_ctx(data))
-                .map_err(|e| BuildError::Parse(e.to_string()))?;
-            let scaled: Vec<Modifier> = ingest
-                .modifiers
-                .into_iter()
-                .filter_map(|m| match m.value {
-                    pobr_core::ModValue::Number(v) => {
-                        let delta = vendor_scale_mod_value(v, 1.0 + scale) - v;
-                        (delta != 0.0).then_some(Modifier {
-                            value: pobr_core::ModValue::Number(delta),
-                            ..m
-                        })
-                    }
-                    _ => None,
-                })
-                .collect();
-            session.add_modifiers(scaled);
+            scale_item_bonuses(&mut ingest.modifiers, 1.0 + scale);
         }
+        session.add_item_ingest(slot, &filtered, ingest);
     }
     Ok(())
 }
