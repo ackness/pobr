@@ -799,7 +799,8 @@ const BLIND_EFFECT: &str = "blind_effect_+%";
 
 /// The build's strongest Blind, as `(skill, increased effect)`: the enabled
 /// active skill whose own stats and those of the supports that apply to it
-/// increase the effect of its Blinds the most (`blind_effect_+%`). Blind
+/// or one of its summoned minion's skills increase Blind effect the most
+/// (`blind_effect_+%`). Blind
 /// does not stack, so the enemy carries one skill's Blind, the strongest.
 /// `None` when no skill has such a stat.
 pub fn strongest_skill_blind(
@@ -825,23 +826,32 @@ pub fn strongest_skill_blind(
                 if data.effect(skill_id).is_none_or(|effect| effect.is_support) {
                     continue;
                 }
-                let by_supports: f64 = group_judgement(&group, data, skill_id)
-                    .compatible
-                    .iter()
-                    .map(|sup| {
-                        let host = &group.gems[sup.gem_index];
-                        increase(
-                            &sup.effect_id,
-                            host.gem_level,
-                            host.quality,
-                            support_stat_set_index(sup, group.gems),
-                        )
-                    })
-                    .sum();
-                let total = increase(skill_id, gem.gem_level, gem.quality, gem.stat_set_index)
-                    + by_supports;
-                if total != 0.0 && strongest.as_ref().is_none_or(|(_, best)| total > *best) {
-                    strongest = Some((skill_id.to_string(), total));
+                // Blind II supports attacks made by a summoned Wolf/Wild
+                // Protector, not the non-damaging summoning action. Resolve
+                // each minion skill separately: incompatible support payloads
+                // on different attacks must not be summed into one Blind.
+                let judgements = std::iter::once(group_judgement(&group, data, skill_id)).chain(
+                    super::minions::minion_support_judgements(&group, data, skill_id),
+                );
+                for judgement in judgements {
+                    let by_supports: f64 = judgement
+                        .compatible
+                        .iter()
+                        .map(|sup| {
+                            let host = &group.gems[sup.gem_index];
+                            increase(
+                                &sup.effect_id,
+                                host.gem_level,
+                                host.quality,
+                                support_stat_set_index(sup, group.gems),
+                            )
+                        })
+                        .sum();
+                    let total = increase(skill_id, gem.gem_level, gem.quality, gem.stat_set_index)
+                        + by_supports;
+                    if total != 0.0 && strongest.as_ref().is_none_or(|(_, best)| total > *best) {
+                        strongest = Some((skill_id.to_string(), total));
+                    }
                 }
             }
         }
