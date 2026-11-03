@@ -2,11 +2,18 @@
 
 `crafting_inputs.py` owns PoBR's UI selection and catalog projection. RePoE owns
 the neutral seven-table facts, original exported bytes and their publication.
-The current `pobr-build-data-lock/v2` requires both the external game/language
+The current `pipeline/data.lock.json` requires both the external game/language
 parts and this separate crafting package. A missing or corrupt crafting input
 fails preparation; the game part must omit `trade_crafting_sources.json`, even
 if a processed copy would have identical bytes. The previous-version v1 lock
 remains an explicitly selected retained compatibility input.
+
+This import-time production remains a migration exception. To make PoBR only
+import fixed runtime artifacts, move the projection and its selection/aggregation
+policies to RePoE, publish the fixed catalog, and update the consumer contract
+together. Moving the JSON domain policies with `pobr-data-adapter` did not move
+this Python projector. Until that migration, the behavior and diagnostics below
+remain active; see [current data status](../../docs/data-status.md#已知例外).
 
 The crafting ZIP has RePoE format `repoe-native-crafting-facts/v1`. Its immutable
 Git address, archive bytes/SHA-256, embedded manifest, expanded size, original

@@ -2,7 +2,8 @@
 
 本目录声明 PoBR 构建所需的固定输入：按唯一数据锁临时导入 RePoE 游戏数据包与翻译库语言产物，
 封存为运行目录与精简发行包。把 RePoE 事实转换成运行 JSON 的
-[`pobr-data-adapter`](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/README.md) 及其领域政策在 RePoE，PoBR 不生产数据。
+[`pobr-data-adapter`](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/README.md) 及其领域政策在 RePoE。
+PoBR 的目标是只导入固定产物；[特殊制作目录](imports/crafting-inputs.md)仍在导入时本地投影，属于待迁移的生产例外。
 完整输入与 `data/<poe-version>/` 运行目录仅临时物化；
 尚未迁移的字段以 PoB2／社区兼容数据的形式随 RePoE owner 包固定导入，不称为已从客户端自主再生。
 PoBR 不从 PoB2 vendor Lua 或本地原表导出生产数据。
@@ -54,7 +55,7 @@ JSON 的职责各不相同：`data.lock.json` 是唯一的生产数据声明，`
 
 独立客户端候选的可重复流程是[固定补丁索引定位](imports/client-index.md) →
 [未审阅原始采集](imports/client-source-draft.md) → 来源审阅与固定 →
-[严格重放](imports/client-sources.md) → RePoE 事实导出与 PoBR 领域适配。
+[严格重放](imports/client-sources.md) → RePoE 事实导出与其 `pobr-data-adapter` 领域适配。
 索引定位、采集、重放与来源包生成由独立RePoE实现并测试；PoBR只导入 owner 已发布的固定产物。这些步骤不自动提升来源锁，也不切换活动数据。历史 Git 树也由 RePoE 独立保存和发布，PoBR 不再直接获取官方原始树。
 
 [sources.lock.json](imports/sources.lock.json)保留历史官方树输入及固定客户端资源位置、原始SHA-256、大小、decoder／schema和采集证据。
@@ -219,7 +220,7 @@ schema-3 manifest封存默认运行字节；维护报告和本地patch不进入�
 - 新PoE2版本：在独立RePoE观察并取得精确来源、导出和发布游戏输入；翻译库独立准备语言。
   PoBR审阅并更新`pipeline/data.lock.json`，先用`data:update --lock <lock> --out <fresh>`准备候选，
   验证来源／消费者／CI后再显式选择CURRENT。计算语义、vendor参考与golden更新分别维护。
-- 新数据域：在RePoE固定schema／事实导出器中补齐来源，在PoBR领域adapter中接既有DTO和消费者；
+- 新数据域：在RePoE固定schema／事实导出器中补齐来源，由其`pobr-data-adapter`接既有DTO；PoBR验证数据契约和消费者；
   不再通过PoBR Node导出器或修改旧配置将历史数组冒充新目标。
 - stat-set 标签由 `GrantedEffectStatSets.Label` → `GrantedEffectLabels.Text` 直接连接，
   以原始 `_index` 查外键，不按数组位置或显示文字猜测；有引用却缺表、缺行或行号重复时拒绝适配。
