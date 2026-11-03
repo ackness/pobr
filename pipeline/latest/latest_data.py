@@ -514,12 +514,18 @@ def compact_release(lock, root, cache, fetcher):
     carries an exact release_id instead of leaving it for a later manual change.
     """
     from pipeline.runtime import runtime_pack
+    from pipeline.imports import display_assets
     version, locale = lock["target"]["game_patch"], lock["locale"]
     with tempfile.TemporaryDirectory(prefix="pobr-latest-release-") as temporary:
         temporary = Path(temporary).resolve()
         write(temporary / "data.lock.json", encoded(lock))
         build_data.prepare(temporary / "data.lock.json", temporary / "prepared", cache,
                            shared_root=Path(root) / "data/overlay-common", fetcher=fetcher)
+        # A support-display catalog mismatch or stale test-fixture target fails
+        # here at resolve time instead of in CI; nothing is installed.
+        display_assets.prepare(temporary / "data.lock.json", temporary / "prepared", cache,
+                               fetcher=fetcher)
+        display_assets.prepare_test_fixtures(temporary / "data.lock.json", cache, fetcher=fetcher)
         files, runtime_identity = bundle.snapshot_inputs(temporary / "prepared", version)
         require(runtime_identity == lock["runtime_identity"], "Prepared candidate runtime identity differs")
         display = files[f"data/{version}/i18n/{locale}/display_texts.json"]
@@ -527,17 +533,31 @@ def compact_release(lock, root, cache, fetcher):
         return release["release_id"]
 
 
-def propose(root, output, fetcher, heads=resolve_head, *, official=None, cache=None, tags=resolve_tags):
+def propose(root, output, fetcher, heads=resolve_head, *, official=None, cache=None, tags=resolve_tags,
+            allow_new_target=False):
     root, output = Path(root), build_data.safe_directory(output)
     require(not output.exists() and not output.is_relative_to(root / "data"), "Fresh candidate outside data required")
     status, library, descriptors = discover(root, fetcher, heads, official=official)
     require(status["status"] != "waiting-for-owner-publication", "Official version lacks complete owner publications")
-    require(status["same_target"], "New patch requires compatible requirements and source decisions")
     current, old_raw = read_lock(root)
     require(sha(old_raw) == status["adopted_lock"], "Adopted data lock changed during discovery")
     if status["status"] == "no-new-publication":
         return status
     proposed, found = copy.deepcopy(current), {}
+    target_change = None
+    if not status["same_target"]:
+        require(allow_new_target, "New patch requires rerunning resolve with --new-target "
+                                "and a reviewed consumer migration")
+        new_target = descriptors["ackness/repoe"]["target"]
+        require(all(descriptor["target"] == new_target for descriptor in descriptors.values()),
+                "Owner publications name different targets")
+        require(new_target["game"] == current["target"]["game"]
+                and new_target["realm"] == current["target"]["realm"]
+                and new_target["game_patch"] != current["target"]["game_patch"],
+                "A new target must differ from the adopted lock only in game_patch")
+        proposed["target"] = new_target
+        target_change = {"previous": current["target"]["game_patch"],
+                         "proposed": new_target["game_patch"]}
     for owner, roles in ROLES.items():
         for role, path in roles.items():
             value = descriptors[owner]["components"][role]["input"]
@@ -565,7 +585,8 @@ def propose(root, output, fetcher, heads=resolve_head, *, official=None, cache=N
     bind_publications(proposed, descriptors)
     # The candidate Full CI authenticates all input bytes and checks the actual
     # full and compact consumers before any adoption.
-    proposed_raw = {LOCK: encoded(proposed), "data/CURRENT": regular(root / "data/CURRENT")}
+    proposed_raw = {LOCK: encoded(proposed),
+                    "data/CURRENT": (proposed["target"]["game_patch"] + "\n").encode()}
     inventory = {name: pin(value) for name, value in proposed_raw.items()}
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".latest-candidate-", dir=output.parent) as temporary:
@@ -579,13 +600,15 @@ def propose(root, output, fetcher, heads=resolve_head, *, official=None, cache=N
             evidence[name] = {"address": list(address), **pin(value)}
         result = {"schema": RESOLUTION_SCHEMA, "previous_id": sha(old_raw),
                   "lock_id": sha(proposed_raw[LOCK]), "files": inventory, "evidence": evidence,
+                  "target_change": target_change,
                   "auto_eligible": status["auto_eligible"], "official_observation": official,
                   "status": "resolved-not-validated", "adoption": "not-adopted"}
         read_lock(stage)
         require(regular(root / LOCK) == old_raw, "Adopted data lock changed during resolution")
         write(stage / "resolution.json", encoded(result))
         stage.rename(output)
-    return {**status, "candidate": str(output), "candidate_lock": result["lock_id"]}
+    return {**status, "candidate": str(output), "candidate_lock": result["lock_id"],
+            "target_change": target_change}
 
 
 def verify_candidate(candidate):
@@ -706,6 +729,8 @@ def main():
     parser.add_argument("--candidate", type=Path)
     parser.add_argument("--expected-lock")
     parser.add_argument("--observation", type=Path, help="Existing fresh pinned observer receipt directory")
+    parser.add_argument("--new-target", action="store_true",
+                        help="Permit resolve to freeze a different game_patch; never automatic")
     parser.add_argument("--cache", type=Path, default=imports.download_cache())
     args = parser.parse_args()
     if args.action == "verify":
@@ -734,7 +759,8 @@ def main():
                     result = recheck(args.candidate, args.root, fetcher, official=official)
                 elif args.action == "resolve":
                     require(args.out is not None, "Resolve needs a fresh candidate output")
-                    result = propose(args.root, args.out, fetcher, official=official, cache=args.cache)
+                    result = propose(args.root, args.out, fetcher, official=official, cache=args.cache,
+                                     allow_new_target=args.new_target)
                 else:
                     result = discover(args.root, fetcher, official=official)[0]
     print(encoded(result).decode(), end="")

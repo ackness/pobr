@@ -30,6 +30,8 @@ with unchanged publication metadata do not create data updates.
 mise run data:latest check
 # Freeze a fresh metadata candidate; installed files and defaults stay unchanged.
 mise run data:latest resolve --out .cache/latest-review
+# A different game_patch additionally requires the explicit --new-target flag.
+mise run data:latest resolve --new-target --out .cache/latest-review-next
 # Offline byte/evidence replay, without a freshness claim or runtime acceptance.
 mise run data:latest verify --root .cache/latest-review
 # Verify the accepted immutable declarations, without resolving current heads.
@@ -64,6 +66,12 @@ compact `release_id`, which the candidate Full CI rebuilds and must match.
 Owners may add or retire roles PoBR does not consume; a consumed role, the RePoE
 display source and the language catalog binding must stay present. A new patch requires compatible owned requirements and source
 decisions through a reviewed migration; patch strings cannot relabel old data.
+When both owner publications name the identical new `game_patch` for the same
+game and realm, `resolve --new-target` freezes an explicit candidate carrying
+that target, the new `data/CURRENT`, the recomputed identities and the
+`target_change` receipt entry. It is never automatic: `auto_eligible` is false
+for a changed target, so scheduled proposal and `recheck` never adopt it, and
+the consumer migration lands in the same reviewed change.
 
 Full CI verifies the complete snapshot, the recorded immutable owner declarations
 and owner tags (without a new official query or mutable channel lookup), then

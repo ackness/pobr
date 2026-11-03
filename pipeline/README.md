@@ -225,9 +225,12 @@ schema-3 manifest封存默认运行字节；维护报告和本地patch不进入�
 
 ## 扩展 / 升版
 
-- 新PoE2版本：在独立RePoE观察并取得精确来源、导出和发布游戏输入；翻译库独立准备语言。
-  PoBR审阅并更新`pipeline/data.lock.json`，先用`data:update --lock <lock> --out <fresh>`准备候选，
-  验证来源／消费者／CI后再显式选择CURRENT。计算语义、vendor参考与golden更新分别维护。
+- 新PoE2版本：两个 owner 发布同一新目标后，`mise run data:latest resolve --new-target --out <fresh>`
+  冻结显式候选，`mise run data:latest apply --candidate <dir> --expected-lock <sha>` 暂存数据锁与新 CURRENT，
+  随后 `mise run data:prepare` 导入新版本目录；消费者迁移在同一审阅改动中完成。
+  按补丁登记的现有消费者例如 `crates/pobr-gamedata/tests/fixtures/repository-test-pins.json`、
+  `devs/ci/parse-coverage-baseline.json` 与示例 golden（如 `examples/demo-bd-test/panel-golden.json`
+  的 `data_version`）；计算语义、vendor参考与golden更新分别维护。
 - 新数据域：在RePoE固定schema／事实导出器中补齐来源，由其`pobr-data-adapter`接既有DTO；PoBR验证数据契约和消费者；
   不再通过PoBR Node导出器或修改旧配置将历史数组冒充新目标。
 - stat-set 标签由 `GrantedEffectStatSets.Label` → `GrantedEffectLabels.Text` 直接连接，
