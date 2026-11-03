@@ -1211,6 +1211,45 @@ class TriageTests(unittest.TestCase):
             self.assertAlmostEqual(row["pob2"], 2.84)
         self.assertEqual(self.triage.enemy_leads(entries, {}), [])
 
+    def test_enemy_leads_include_attack_hand_mitigation(self):
+        entries = {"TotalDPS": {"breakdown": {"mitigation": [
+            {"damage_type": "Cold", "multiplier": 0.868},
+        ]}}}
+        hand = {"ColdStoredHitAvg": 37835.5, "ColdHitAverage": 37532.816}
+        for key in ("mainHandOutput", "offHandOutput"):
+            with self.subTest(hand=key):
+                found = self.triage.enemy_leads(entries, {
+                    "mainOutput": {"TotalDPS": 214838.5095},
+                    key: hand,
+                })
+                self.assertEqual(len(found), 1)
+                self.assertEqual(found[0]["key"], "Cold")
+                self.assertAlmostEqual(found[0]["pob2"], 0.992)
+
+    def test_enemy_leads_do_not_guess_weights_for_different_hands(self):
+        oracle = {
+            "mainHandOutput": {"ColdStoredHitAvg": 10, "ColdHitAverage": 6},
+            "offHandOutput": {"ColdStoredHitAvg": 30, "ColdHitAverage": 24},
+        }
+        multiplier = self.triage.oracle_enemy_multiplier
+        self.assertIsNone(multiplier(oracle, "Cold"))
+        oracle["offHandOutput"]["ColdHitAverage"] = 18
+        self.assertAlmostEqual(multiplier(oracle, "Cold"), 0.6)
+        oracle["mainOutput"] = {"ColdStoredHitAvg": 20, "ColdHitAverage": 15}
+        self.assertAlmostEqual(multiplier(oracle, "Cold"), 0.75)
+
+    def test_enemy_multiplier_ignores_empty_or_nonfinite_hits(self):
+        multiplier = self.triage.oracle_enemy_multiplier
+        for stored, hit in [(0, 0), (None, 1), (1, None), ("NaN", 1),
+                            ("Infinity", 1), (1, "Infinity"), (1e-308, 1e308)]:
+            with self.subTest(stored=stored, hit=hit):
+                self.assertIsNone(multiplier({
+                    "mainHandOutput": {"ColdStoredHitAvg": stored, "ColdHitAverage": hit},
+                }, "Cold"))
+        self.assertEqual(multiplier({
+            "mainHandOutput": {"ColdStoredHitAvg": 10, "ColdHitAverage": 0},
+        }, "Cold"), 0)
+
     def test_lines_meet_across_rolls_and_places(self):
         template = self.triage.template
         self.assertEqual(template("Tree:5332: 22% Chance to gain a Charge"),

@@ -47,6 +47,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -262,6 +263,33 @@ def comparison_leads(comparison, scope: str) -> list:
     return found
 
 
+def oracle_enemy_multiplier(oracle: dict, damage_type: str):
+    """Use the combined hit, or an unambiguous attack-hand multiplier.
+
+    The CLI's mitigation rows have no hand identity. Different hand ratios
+    cannot be combined without their hit/crit weights; leave that case unknown.
+    """
+    def ratio(key):
+        output = compare.as_dict(oracle.get(key))
+        stored = compare.number(output.get(damage_type + "StoredHitAvg"))
+        hit = compare.number(output.get(damage_type + "HitAverage"))
+        if (stored is None or hit is None or not math.isfinite(stored)
+                or not math.isfinite(hit) or stored <= 0):
+            return None
+        value = hit / stored
+        return value if math.isfinite(value) else None
+
+    combined = ratio("mainOutput")
+    if combined is not None:
+        return combined
+    hands = [value for key in ("mainHandOutput", "offHandOutput")
+             if (value := ratio(key)) is not None]
+    if hands and all(math.isclose(value, hands[0], rel_tol=1e-6, abs_tol=1e-9)
+                     for value in hands[1:]):
+        return hands[0]
+    return None
+
+
 def enemy_leads(entries: dict, oracle: dict) -> list:
     """The enemy's resistance, penetration and damage taken per type, where the
     engine's DPS breakdown and PoB2 differ."""
@@ -272,17 +300,14 @@ def enemy_leads(entries: dict, oracle: dict) -> list:
     # raw-aggregate shape. An oracle's raw resistance sum can miss overrides
     # and lowest-resistance selection (Doryani's Prototype + Sacred Flame).
     # Its pre/post-mitigation hit averages retain their actual combined effect.
-    output = compare.as_dict(oracle.get("mainOutput"))
     for row in compare.as_list(breakdown.get("mitigation")):
         damage_type = row.get("damage_type")
         if damage_type not in (*compare.ELEMENTS, "Chaos"):
             continue  # Armour depends on hit size and crits; no scalar comparison.
-        stored = compare.number(output.get(damage_type + "StoredHitAvg"))
-        hit = compare.number(output.get(damage_type + "HitAverage"))
+        effective = oracle_enemy_multiplier(oracle, damage_type)
         mine = compare.number(row.get("multiplier"))
-        if stored is None or stored <= 0 or hit is None or mine is None:
+        if effective is None or mine is None:
             continue
-        effective = hit / stored
         if not compare.agrees(mine, effective):
             found.append(lead("enemy", "enemy", "effective multiplier", damage_type,
                               pobr=mine, pob2=effective))
