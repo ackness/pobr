@@ -167,7 +167,7 @@ class LatestDataTests(unittest.TestCase):
         self.assertEqual(lock["previous_id"], sha(self.before[latest.LOCK]))
         self.assertEqual(lock["owner_publications"]["ackness/poe2-zh-cn-stats"]["sequence"], 2)
         # An extra owner role advances the publication without touching consumed inputs.
-        for key in ("packages", "crafting", "support_display", "test_fixtures", "snapshot_manifest",
+        for key in ("packages", "support_display", "test_fixtures", "snapshot_manifest",
                     "runtime_identity", "release_id"):
             self.assertEqual(lock[key], self.lock[key], key)
         self.assertEqual(receipt["status"], "resolved-not-validated")
@@ -187,15 +187,15 @@ class LatestDataTests(unittest.TestCase):
         self.assertEqual(len(self.head_calls), 2)
         latest.verify_candidate(out)
 
-    def test_missing_crafting_or_cross_owner_role_rejects_without_candidate(self):
+    def test_missing_game_or_cross_owner_role_rejects_without_candidate(self):
         owner = "ackness/repoe"
         original = copy.deepcopy(self.descriptors[owner][0])
         for failure in ("missing", "wrong-owner"):
             document = copy.deepcopy(original)
             if failure == "missing":
-                del document["components"]["crafting"]
+                del document["components"]["game"]
             else:
-                document["components"]["crafting"]["input"]["repository"] = "ackness/pobr"
+                document["components"]["game"]["input"]["repository"] = "ackness/pobr"
             self.publish(owner, document)
             with self.subTest(failure=failure), self.assertRaises(ValueError):
                 latest.propose(self.source, self.root / failure, self.fetch, self.head)
@@ -544,10 +544,13 @@ class LatestDataTests(unittest.TestCase):
     def test_build_expectations_authenticate_metadata_and_require_language_alignment(self):
         version, wanted = "0.5.5.5", self.lock["target"]
         prefix = "data/" + version + "/"
+        # The owner's game part carries the crafting catalog like any other game file.
         content = {"base/skills.json": b'{"id":9223372036854775807}',
+                   "overlay/trade_crafting_sources.json": b'{"mods":[]}',
                    "i18n/zh-CN/display_texts.json": b'{"text":null}'}
         snapshot = encoded({"schema_version": 3, "poe_version": version, "languages": ["zh-CN"],
-                            "domains": {"base": ["skills"]}, "files": {n: sha(v) for n, v in content.items()}})
+                            "domains": {"base": ["skills"], "overlay": ["trade_crafting_sources"]},
+                            "files": {n: sha(v) for n, v in content.items()}})
         files = {prefix + n: v for n, v in content.items() if not n.startswith("i18n/")}
         files[prefix + "manifest.json"] = snapshot
         manifest = encoded({"schema": latest.build_data.PART_SCHEMA, "kind": "game", "target": wanted,

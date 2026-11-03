@@ -39,7 +39,6 @@ OWNERS = {"ackness/repoe": "master", "ackness/poe2-zh-cn-stats": "main"}
 ROLES = {
     "ackness/repoe": {
         "game": ("packages", "game"),
-        "crafting": ("crafting",),
         "test_fixtures": ("test_fixtures",),
     },
     "ackness/poe2-zh-cn-stats": {
@@ -451,8 +450,6 @@ def build_expectations(lock, cache, fetcher):
     require(manifest.get("schema") == build_data.PART_SCHEMA and manifest.get("kind") == "game"
             and manifest.get("target") == wanted, "Game publication target/schema differs")
     snapshot_path = f"data/{version}/manifest.json"
-    require(f"data/{version}/overlay/trade_crafting_sources.json" not in manifest["files"],
-            "Latest game part contains projected crafting fallback")
     with zipfile.ZipFile(io.BytesIO(archive_raw)) as archive:
         spec = manifest["files"][snapshot_path]
         validate_pin(spec)
@@ -554,7 +551,7 @@ def propose(root, output, fetcher, heads=resolve_head, *, official=None, cache=N
     cache.mkdir(parents=True, exist_ok=True)
 
     def runtime_inputs(lock):
-        return [untagged(lock["packages"]["game"]), untagged(lock["packages"]["language"]), untagged(lock["crafting"])]
+        return [untagged(lock["packages"]["game"]), untagged(lock["packages"]["language"])]
 
     if runtime_inputs(proposed) != runtime_inputs(current):
         expected, shared = build_expectations(proposed, cache, fetcher)

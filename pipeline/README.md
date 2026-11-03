@@ -3,7 +3,7 @@
 本目录声明 PoBR 构建所需的固定输入：按唯一数据锁临时导入 RePoE 游戏数据包与翻译库语言产物，
 封存为运行目录与精简发行包。把 RePoE 事实转换成运行 JSON 的
 [`pobr-data-adapter`](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/README.md) 及其领域政策在 RePoE。
-PoBR 的目标是只导入固定产物；[特殊制作目录](imports/crafting-inputs.md)仍在导入时本地投影，属于待迁移的生产例外。
+PoBR 只导入固定产物：[特殊制作目录](https://github.com/ackness/repoe/blob/master/RePoE/docs/pobr_crafting_catalog.md)也由 RePoE 投影后放进游戏 part。
 完整输入与 `data/<poe-version>/` 运行目录仅临时物化；
 尚未迁移的字段以 PoB2／社区兼容数据的形式随 RePoE owner 包固定导入，不称为已从客户端自主再生。
 PoBR 不从 PoB2 vendor Lua 或本地原表导出生产数据。
@@ -21,7 +21,7 @@ PoBR 不从 PoB2 vendor Lua 或本地原表导出生产数据。
 | --- | --- |
 | [data.lock.json](data.lock.json) | 唯一数据锁：两个 owner 的固定 tag、commit、路径与 SHA-256，目标、自有规则 pin 与期望身份 |
 | [runtime/](runtime/build-data.md) | 按锁临时导入、回滚锁、快照封存、精简发行包和显式采用；`data:prepare`、`data:update`、`data:pack` |
-| [imports/](imports/crafting-inputs.md) | 固定 Git 传输、来源接受记录、制作目录与辅助说明投影、数据归属检查 |
+| [imports/](imports/client-sources.md) | 固定 Git 传输、来源接受记录、辅助说明投影、数据归属检查 |
 | [latest/](latest/latest-data.md) | owner 通道、候选发现与 CI 后条件采用；`data:latest` |
 | [diagnostics/](diagnostics/README.md) | 数据版本差异、描述来源核对与词条审计；不自动采用数据 |
 
@@ -50,7 +50,7 @@ RePoE 在 2026-11-03 截断 fork 前历史后，活动锁、回滚锁和官方�
 | 宝石品质 | 目标GrantedEffectQualityStats／GrantedEffects／Stats事实 | [品质生成说明](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/gem-quality/README.md)；计算仍按固定effect-wide策略，不认证全部细分scope |
 | 词条显示文本 | 固定客户端CSD＋明确保留的兼容文本 | [普通描述生产者](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-stat-descriptions.md)、树／符文renderer；未表达项保留诊断或整项回退 |
 | 被动天赋树 | 目标DAT／Default PSG事实与固定兼容字段 | 普通树已迁源；placement／armour等未拥有语义保留 |
-| 特殊制作目录 | 独立RePoE七表中立事实，PoBR筛选／聚合 | [必需临时输入](imports/crafting-inputs.md)保留八槽与未表达原值诊断；来源语言缺失保持unknown；新元数据已本地采用，不代表完整效果或概率 |
+| 特殊制作目录 | 独立RePoE七表中立事实，RePoE按PoBR目录政策筛选／聚合后放进游戏 part | [目录投影](https://github.com/ackness/repoe/blob/master/RePoE/docs/pobr_crafting_catalog.md)保留八槽与未表达原值诊断；来源语言缺失保持unknown；不代表完整效果或概率 |
 | 规则／目录／翻译 | PoBR自有规则、随owner包导入的PoB2／社区兼容目录、固定语言库与客户端文本投影 | 逐项记录来源和适用边界；保留输入不代表全部自主生产，SC客户端身份与CN数值不因中文显示而认证 |
 
 `.dat` 存的是 **id / 数值 / 外键关系**（规范化数据库表）；显示文本在 `StatDescriptions` 里。
