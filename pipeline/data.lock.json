@@ -1,7 +1,7 @@
 {
   "schema": "pobr-data-lock/v1",
-  "generation": 2,
-  "previous_id": "485b1f07ca4c0028b67b8fefec77a03480850ec39d1d6a90fd855bddc7a70a0e",
+  "generation": 3,
+  "previous_id": "b3d43c9819dbffb21c9f78bdaacaddec7fc4de34524ca045bd010803184b803c",
   "target": {
     "game": "poe2",
     "game_patch": "0.5.5.5",
@@ -134,13 +134,13 @@
   "release_id": "9932ea879de65e182184e3c60b0ddaaaff89319a63fbdddca25c6f6d8bf8b687",
   "owner_publications": {
     "ackness/repoe": {
-      "index_revision": "74e6f9008c0efa4c376d9065654de9bdc91cc896",
-      "sequence": 3,
+      "index_revision": "5cb624d9264c6adccc73d2aad429deaa71b4e757",
+      "sequence": 4,
       "descriptor": {
-        "bytes": 4967,
-        "path": "publication/releases/poe2-international/3.json",
-        "revision": "0c97143f06c34cc10b23f93e47a34276563fcf37",
-        "sha256": "ff785ca75bf521b1c0ec193f03a57fa97ecb001d5dcd3e4240658203646c4cee"
+        "bytes": 4972,
+        "path": "publication/releases/poe2-international/4.json",
+        "revision": "a0d57c461d9e59ad02e3d4c15604be25af857399",
+        "sha256": "82cbc76e771f6b5a8a41c5a6c3c05e66b637a5e3b526824082113de4ebcd186b"
       }
     },
     "ackness/poe2-zh-cn-stats": {
