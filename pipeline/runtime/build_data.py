@@ -3,8 +3,7 @@
 `pipeline/data.lock.json` is PoBR's only data declaration: each owner artifact
 is a tagged commit plus path and SHA-256. Data owners publish the parts; PoBR
 never creates a data Git ref or projects data. Downloads are hash-addressed,
-disposable inputs. The legacy build-lock schema remains only for the frozen
-rollback lock.
+disposable inputs.
 """
 
 import argparse
@@ -20,8 +19,6 @@ from pipeline.imports.data_imports import GitInputs, acquire, encoded, pinned, r
 ROOT = Path(__file__).resolve().parents[2]
 DATA_LOCK = ROOT / "pipeline/data.lock.json"
 DATA_LOCK_SCHEMA = "pobr-data-lock/v1"
-LEGACY_LOCK_SCHEMA = "pobr-build-data-lock/v1"
-LOCK_SCHEMAS = (LEGACY_LOCK_SCHEMA, DATA_LOCK_SCHEMA)
 PART_SCHEMA = "pobr-build-data-part/v1"
 OWNERS = {"game": "ackness/repoe", "language": "ackness/poe2-zh-cn-stats"}
 TAG = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*")
@@ -66,20 +63,19 @@ def member_kind(name, version):
 
 def validate(lock):
     from pipeline.imports.data_imports import validate_pin
-    require(lock.get("schema") in LOCK_SCHEMAS, "Unknown build data lock")
+    require(lock.get("schema") == DATA_LOCK_SCHEMA, "Unknown build data lock")
     # The RePoE game part carries the crafting catalog; PoBR projects nothing.
     require("crafting" not in lock, "Crafting facts are not a PoBR input; the game part carries the catalog")
-    if lock["schema"] == DATA_LOCK_SCHEMA:
-        require(type(lock.get("generation")) is int and lock["generation"] > 0
-                and (lock["generation"] == 1) == (lock.get("previous_id") is None)
-                and (lock.get("previous_id") is None or re.fullmatch(r"[a-f0-9]{64}", lock["previous_id"])),
-                "Invalid data lock generation")
-        require(lock.get("locale") in ("zh-CN", "zh-TW"), "Invalid data lock locale")
-        require(lock.get("release_id") is None or re.fullmatch(r"[a-f0-9]{64}", lock["release_id"]),
-                "Invalid compact release identity")
-        validate_owner_publications(lock.get("owner_publications"))
-        for spec in (*lock["packages"].values(), lock["support_display"], lock["test_fixtures"]):
-            validate_tag(spec)
+    require(type(lock.get("generation")) is int and lock["generation"] > 0
+            and (lock["generation"] == 1) == (lock.get("previous_id") is None)
+            and (lock.get("previous_id") is None or re.fullmatch(r"[a-f0-9]{64}", lock["previous_id"])),
+            "Invalid data lock generation")
+    require(lock.get("locale") in ("zh-CN", "zh-TW"), "Invalid data lock locale")
+    require(lock.get("release_id") is None or re.fullmatch(r"[a-f0-9]{64}", lock["release_id"]),
+            "Invalid compact release identity")
+    validate_owner_publications(lock.get("owner_publications"))
+    for spec in (*lock["packages"].values(), lock["support_display"], lock["test_fixtures"]):
+        validate_tag(spec)
     target = lock["target"]
     require(set(target) == {"game", "game_patch", "realm"} and target["game"] == "poe2"
             and re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", target["game_patch"])
@@ -205,7 +201,7 @@ def prepare(lock_path, output, cache, shared_root=ROOT / "data/overlay-common",
     return receipt
 
 
-def install(prepared, data_root, keep_current=False):
+def install(prepared, data_root):
     """Install only the ignored version directory; never rewrite CURRENT/rules.
 
     Existing files are accepted only if the complete bundle matches. A partial,
@@ -215,7 +211,7 @@ def install(prepared, data_root, keep_current=False):
     version = receipt["data_version"]
     data_root = safe_directory(data_root)
     current = regular(data_root / "CURRENT")
-    require(keep_current or current == (version + "\n").encode(), "Install CURRENT mismatch")
+    require(current == (version + "\n").encode(), "Install CURRENT mismatch")
     # Verify both local policies and externally retained shared files against
     # the exact prepared identity; ownership remains in the input manifests.
     expected_shared = {name.removeprefix("data/overlay-common/"): digest
@@ -244,7 +240,7 @@ def install(prepared, data_root, keep_current=False):
         actual -= local_only
         require(actual == wanted and all(
             bundle.sha256(regular(data_root / name.removeprefix("data/"))) == digest
-            for name, digest in receipt["files"].items() if not (keep_current and name == "data/CURRENT")), "Existing installed data differs")
+            for name, digest in receipt["files"].items()), "Existing installed data differs")
     else:
         with tempfile.TemporaryDirectory(prefix=".install-data-", dir=data_root) as temporary:
             stage = Path(temporary) / version
@@ -264,7 +260,6 @@ def main():
     parser.add_argument("--lock", type=Path, default=DATA_LOCK)
     parser.add_argument("--out", type=Path, help="Fresh complete bundle; omitted for temporary prepare/install")
     parser.add_argument("--install", type=Path, help="Install the ignored version directory into an existing data root")
-    parser.add_argument("--keep-current", action="store_true", help="Install a fixed rollback/test version without selecting it")
     parser.add_argument("--cache", type=Path, default=ROOT / ".cache/data-import-downloads")
     parser.add_argument("--shared", type=Path, default=ROOT / "data/overlay-common")
     parser.add_argument("--game", type=Path, help="Explicit local game ZIP for an unpublished handoff")
@@ -272,7 +267,6 @@ def main():
     parser.add_argument("--offline", action="store_true")
     args = parser.parse_args()
     require(args.out is not None or args.install is not None, "Use --out or --install")
-    require(not args.keep_current or args.install is not None, "--keep-current needs --install")
     local = {kind: path for kind in OWNERS if (path := getattr(args, kind)) is not None}
     def run(output):
         result = prepare(args.lock, output, args.cache, args.shared, args.offline, local)
@@ -280,10 +274,9 @@ def main():
         display = display_assets.prepare(args.lock, output, args.cache, args.offline)
         fixtures = display_assets.prepare_test_fixtures(args.lock, args.cache, args.offline)
         if args.install:
-            install(output, args.install, args.keep_current)
-            if not args.keep_current:
-                display_assets.install(display)
-                display_assets.install_test_fixtures(fixtures)
+            install(output, args.install)
+            display_assets.install(display)
+            display_assets.install_test_fixtures(fixtures)
         return result
     if args.out:
         result = run(args.out)

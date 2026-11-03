@@ -14,8 +14,9 @@ See the [pipeline guide](../pipeline/README.md) for the source and adoption boun
 Prepare the selected combination with `mise run data:prepare`. This imports pinned
 inputs; it does not discover a new upstream release or adopt a candidate.
 The [build-data guide](../pipeline/runtime/build-data.md) describes explicit candidate and
-historical-lock preparation. The fixed `0.5.5.4.2` lock remains an input to CI's
-compatibility checks; that snapshot does not replace `CURRENT`.
+historical-lock preparation. CI prepares only the version that
+[`pipeline/data.lock.json`](../pipeline/data.lock.json) declares; a historical
+snapshot never replaces `CURRENT`.
 
 Edit owned rules in their tracked files. Keep generated snapshots, source downloads
 and validation reports out of Git. Temporary outputs belong in `.cache/`; preserve

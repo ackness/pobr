@@ -28,7 +28,7 @@ PoBR 不从 PoB2 vendor Lua 或本地原表导出生产数据。
 各功能的说明、锁和测试与实现放在一起。Python 从仓库根目录以模块运行，
 例如 `mise exec -- python3 -m pipeline.runtime.runtime_pack --help`；日常优先使用上表中保持稳定的 mise 任务。
 
-JSON 的职责各不相同：`data.lock.json` 是唯一的生产数据声明，`runtime/build-data-0.5.5.4.2.lock.json` 只用于冻结回滚。
+JSON 的职责各不相同：`data.lock.json` 是唯一的生产数据声明；CI 与本地准备都只读它。
 测试夹具只供测试读取，不能代替真实来源或运行验收。
 
 历史来源收据中的路径按记录时的 Git 版本解释，不为整理目录重写原始 pins、命令或接受范围。
@@ -66,7 +66,6 @@ RePoE 在 2026-11-03 截断 fork 前历史后，活动锁、回滚锁和官方�
 [sources.lock.json](imports/sources.lock.json)保留历史官方树输入及固定客户端资源位置、原始SHA-256、大小、decoder／schema和采集证据。
 `acquisition_acceptances`分别接受F77、六DAT、91 tree／IT、10 CSD、12语言原生资源，以及精确六OT／两描述DAT字节；
 `retained_input_acceptances`另记locale／shared／compat三类有界保留决定。各项只接受明确scope和pins，不认证全部机制、SC客户端身份或分发许可。
-旧`0.5.5.4.2`由独立回滚锁按需恢复，不改变 `CURRENT`。
 采集、领域解释、消费者验证、本地采用及远端发布仍分开；完整状态见[数据现状](../docs/data-status.md)。
 PoB2 的测试参考版本独立登记在 [devs/reference-sources.json](../devs/reference-sources.json)，
 `mise run vendor` 不再读取生产 parser 元数据选择参考版本。

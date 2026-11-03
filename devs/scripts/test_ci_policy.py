@@ -155,7 +155,6 @@ class ExternalDataShardTests(unittest.TestCase):
         prepare = next(step for step in steps if step.startswith("Prepare pinned external data"))
         self.assertNotIn("        if:", prepare)
         self.assertIn("--install data", prepare)
-        self.assertIn("--keep-current", prepare)
         self.assertLess(job.index("Prepare pinned external data"), job.index("Workspace tests"))
         for retired in ("ordinary_inputs", "pipeline.imports.data_imports", "pobr-data-adapter --bin"):
             self.assertNotIn(retired, workflow)

@@ -34,9 +34,16 @@ class BuildDataTests(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(raw)
         _, identity = bundle.snapshot_inputs(self.root / "source", self.version)
-        self.lock = {"schema": build.LEGACY_LOCK_SCHEMA, "target": self.target,
+        self.publication = {"index_revision": "c" * 40, "sequence": 1,
+                            "descriptor": {"revision": "d" * 40, "path": "publication/releases/test/1.json",
+                                           "bytes": 1, "sha256": "e" * 64}}
+        self.lock = {"schema": build.DATA_LOCK_SCHEMA, "generation": 1, "previous_id": None,
+                     "target": self.target, "locale": "zh-CN", "release_id": None,
                      "snapshot_manifest": pack.pin(self.contents["data/9.1/manifest.json"]),
                      "runtime_identity": identity, "packages": {},
+                     "owner_publications": {o: dict(self.publication) for o in build.OWNERS.values()},
+                     "support_display": {"tag": "handoff/test-display"},
+                     "test_fixtures": {"tag": "handoff/test-fixtures"},
                      "shared_files": {"own.json": pack.pin((self.shared / "own.json").read_bytes())}}
         self.archives = {}
         for kind in build.OWNERS:
@@ -51,7 +58,7 @@ class BuildDataTests(unittest.TestCase):
         manifest = pack.raw_json({"schema": build.PART_SCHEMA, "kind": kind, "target": self.target,
                                   "files": {n: pack.pin(r) for n, r in files.items()}, **changes})
         archive = pack.archive_bytes({**files, "manifest.json": manifest})
-        spec = {**pack.pin(archive), "manifest": pack.pin(manifest),
+        spec = {**pack.pin(archive), "manifest": pack.pin(manifest), "tag": "handoff/test-data",
                 "expanded_bytes": len(manifest) + sum(map(len, files.values())),
                 "path": f"data/9.1/{kind}.zip", "publication": "published",
                 "repository": build.OWNERS[kind], "revision": "a" * 40}
@@ -212,7 +219,8 @@ class BuildDataTests(unittest.TestCase):
         for name, value in {**members, "manifest.json": raw}.items():
             p = locale / name; p.parent.mkdir(parents=True, exist_ok=True); p.write_bytes(value)
         self.lock["packages"]["language"] = {"format": "locale-git-files", "publication": "pending",
-            "repository": None, "revision": None, "path": "handoff/locale/manifest.json", "manifest": pack.pin(raw)}
+            "repository": None, "revision": None, "tag": "handoff/test-locale",
+            "path": "handoff/locale/manifest.json", "manifest": pack.pin(raw)}
         self.save()
         result = self.prepare(local_parts={"language": locale})
         self.assertFalse((self.out / "evidence").exists())
@@ -223,17 +231,8 @@ class BuildDataTests(unittest.TestCase):
         self.assertEqual(result["runtime_identity"], self.lock["runtime_identity"])
 
     def data_lock(self):
-        """Upgrade the fixture to the single tagged data lock with a catalog-carrying game part."""
+        """The owner's game part carries the crafting catalog its snapshot declares."""
         self.add_catalog()
-        for spec in self.lock["packages"].values():
-            spec["tag"] = "handoff/test-data"
-        publication = {"index_revision": "c" * 40, "sequence": 1,
-                       "descriptor": {"revision": "d" * 40, "path": "publication/releases/test/1.json",
-                                      "bytes": 1, "sha256": "e" * 64}}
-        self.lock.update(schema=build.DATA_LOCK_SCHEMA, generation=1, previous_id=None, locale="zh-CN",
-                         release_id=None, owner_publications={o: dict(publication) for o in build.OWNERS.values()},
-                         support_display={"tag": "handoff/test-display"}, test_fixtures={"tag": "handoff/test-fixtures"})
-        self.save()
 
     def add_catalog(self, in_game_part=True):
         """The owner's game part carries the crafting catalog its snapshot declares."""
@@ -281,12 +280,10 @@ class BuildDataTests(unittest.TestCase):
 
     def test_crafting_facts_are_no_input_and_a_part_without_the_catalog_fails(self):
         self.data_lock()
-        for schema in (build.DATA_LOCK_SCHEMA, build.LEGACY_LOCK_SCHEMA):
-            with self.subTest(schema=schema):
-                changed = copy.deepcopy(self.lock)
-                changed.update(schema=schema, crafting={"repository": "ackness/repoe"})
-                with self.assertRaisesRegex(ValueError, "not a PoBR input"):
-                    build.validate(changed)
+        changed = copy.deepcopy(self.lock)
+        changed["crafting"] = {"repository": "ackness/repoe"}
+        with self.assertRaisesRegex(ValueError, "not a PoBR input"):
+            build.validate(changed)
         with self.assertRaisesRegex(ValueError, "Unknown local data part"):
             self.prepare(local_parts={"crafting": self.root / "crafting.zip"})
         self.add_catalog(in_game_part=False)
@@ -296,7 +293,7 @@ class BuildDataTests(unittest.TestCase):
             self.prepare()
         self.assertFalse(self.out.exists())
 
-    def test_rollback_install_keeps_active_current_and_ownership_guard_rejects_forced_data(self):
+    def test_install_requires_current_and_ownership_guard_rejects_forced_data(self):
         self.prepare()
         import shutil
         installed = self.root / "install/data"
@@ -305,9 +302,7 @@ class BuildDataTests(unittest.TestCase):
         shutil.copytree(self.shared, installed / "overlay-common")
         with self.assertRaisesRegex(ValueError, "CURRENT mismatch"):
             build.install(self.out, installed)
-        build.install(self.out, installed, keep_current=True)
-        build.install(self.out, installed, keep_current=True)
-        self.assertEqual((installed / "CURRENT").read_bytes(), b"9.2\n")
+        self.assertFalse((installed / "9.1").exists())
         from pipeline.imports.check_data_ownership import check
         declared = {"shared_files": {"own.json": pack.pin((self.shared / "own.json").read_bytes())}}
         check(["data/CURRENT", "data/overlay-common/own.json"], declared)
