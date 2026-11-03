@@ -317,7 +317,7 @@ PR 不在 workflow 层过滤文档，以免必需检查永久 pending：只运�
 完整 Rust 测试按包分成 build/CLI、WASM、其余库和工具三组并行，保留每个包默认的单元、集成
 与 doctest；新 workspace 成员自动进入第三组。`ci-rust-tests.py` 和回归测试保证所有包恰好覆盖一次。
 分片 `fail-fast: false`，一个失败不会取消其他组；完整 gate 必须收到所有分片成功才通过。
-每个分片先用固定Python临时导入当前／回滚数据；ordinary候选只在libraries-tools分片生产和上传一次，供后续运行包组合消费。
+每个分片先用固定Python临时导入当前数据；ordinary候选只在libraries-tools分片生产和上传一次，供后续运行包组合消费。
 格式、Clippy、Web 与自动化契约彼此独立；产物发布仍等待全部验证。
 
 排查耗时可运行 `mise exec -- python3 devs/scripts/actions-timings.py --output .cache/ci-performance/latest`。
@@ -355,7 +355,7 @@ mise run full                             # 显式本地 Rust 全量检查，不
 其余语法与表达式检查仍启用；队列语义见 [GitHub 文档](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)。
 
 完整运行输入由唯一的 [`pipeline/data.lock.json`](../pipeline/data.lock.json) 临时组合；各实物消费者显式准备当前版本，
-多版本测试再准备固定回滚锁并保持 CURRENT。`runtime` 作业从已准备的快照组出精简发行包，由同次 WASM 消费；
+需要多版本实测时，按明确的旧版本锁另行准备并保持 CURRENT。`runtime` 作业从已准备的快照组出精简发行包，由同次 WASM 消费；
 不把来源大表打进 `web-dist`，也不把完整快照存回 PoBR Git；见[构建数据](../pipeline/runtime/build-data.md)与
 [运行时数据组合封存](../pipeline/runtime/runtime-bundle.md)。
 

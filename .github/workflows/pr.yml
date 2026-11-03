@@ -121,7 +121,7 @@ jobs:
         with:
           # Content-addressed by SHA-256; every hit is re-verified against the lock.
           path: .cache/data-import-downloads
-          key: owner-data-${{ hashFiles('pipeline/data.lock.json', 'pipeline/runtime/build-data-*.lock.json') }}
+          key: owner-data-${{ hashFiles('pipeline/data.lock.json') }}
           restore-keys: owner-data-
       - name: Prepare pinned external data for Web integration tests
         working-directory: .
@@ -155,7 +155,7 @@ jobs:
         with:
           # Content-addressed by SHA-256; every hit is re-verified against the lock.
           path: .cache/data-import-downloads
-          key: owner-data-${{ hashFiles('pipeline/data.lock.json', 'pipeline/runtime/build-data-*.lock.json') }}
+          key: owner-data-${{ hashFiles('pipeline/data.lock.json') }}
           restore-keys: owner-data-
       - name: Prepare pinned external data for automation integration tests
         run: |

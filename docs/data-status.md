@@ -8,9 +8,8 @@
 - 活动目标为 `0.5.5.5`／international。消费产物的 tag + commit + SHA-256、两个 owner 的 publication、
   期望 manifest、运行身份与紧凑 release 身份都以[数据锁](../pipeline/data.lock.json)为准。
 - RePoE 发布序号 3：序号 2 是 fork 历史截断后的位置迁移，序号 3 只换游戏 part，改为携带 RePoE 投影的
-  `trade_crafting_sources.json`。翻译库仍是序号 1。序号 3 由 latest 控制器生成候选、经完整 CI 后手动采用；
+  `trade_crafting_sources.json`。翻译库是序号 2。序号 3 由 latest 控制器生成候选、经完整 CI 后手动采用；
   无人值守的提案与采用仍未启用。
-- 旧版 `0.5.5.4.2` 由冻结的[回滚锁](../pipeline/runtime/build-data-0.5.5.4.2.lock.json)恢复，不改变 `CURRENT`。
 - 当前数据锁已经本地采用并通过主线完整 CI，尚未部署。
 
 | 托管条件 | 状态 |
@@ -58,7 +57,6 @@ PoBR 留下的 11 份自有 shared 规则／构筑配置属于引擎语义，继
 | 例外 | 退出条件 |
 | --- | --- |
 | `pipeline/imports/sources.lock.json` 仍混合保存原始来源／采集证据与下游保留输入接受决定 | 原料与采集台账归 RePoE，语言策展归翻译库，PoBR 保留消费范围的接受决定；迁移保留历史摘要与出处，不将整份台账当作 adapter 配置 |
-| 冻结的 `0.5.5.4.2` 回滚锁不经数据锁 | 两个 owner 发布对应的 recovery 描述后改为第二份数据锁 |
 
 ## 近期顺序
 

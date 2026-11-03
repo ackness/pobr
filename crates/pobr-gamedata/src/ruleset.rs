@@ -390,18 +390,6 @@ mod tests {
         );
     }
 
-    /// Historical fallback values are a compatibility contract, not an oracle
-    /// for target-source rows whose attack rate preserves source precision.
-    #[test]
-    fn historical_unarmed_data_equals_default() {
-        let data = GameData::new(crate::repo_data_root().join("0.5.5.4.2"));
-        let loaded = data.load_ruleset().unwrap().unarmed_data.unwrap();
-        assert_eq!(
-            loaded,
-            pobr_data::catalog::unarmed_data::UnarmedDataTable::default()
-        );
-    }
-
     #[test]
     fn repo_data_unarmed_keeps_source_precision_and_legacy_scion() {
         let data = GameData::new(crate::current_data_dir());

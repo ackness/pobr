@@ -8,17 +8,15 @@ Run before a build or a test that reads real game data:
 
 ```sh
 mise run data:prepare
-# Full Rust integration also exercises the exact previous version:
-mise exec -- python3 -m pipeline.runtime.build_data \
-  --lock pipeline/runtime/build-data-0.5.5.4.2.lock.json --install data --keep-current
 ```
 
 CI explicitly prepares data before Rust runtime tests, Web tests/builds and
 script tests that inspect the real catalog. Quick Rust format/check does not need
 complete data. Pure importer/archive/cache tests use small synthetic fixtures.
-The previous version is installed without changing `CURRENT`; it is a byte-bound
-compatibility test input, not newly certified official source data. The compact
-release is packaged separately from the prepared snapshot.
+A historical snapshot is prepared only through an explicit older lock; it never
+replaces `CURRENT` and is a byte-bound comparison input rather than newly
+certified official source data. The compact release is packaged separately from
+the prepared snapshot.
 
 [`pipeline/data.lock.json`](../data.lock.json) is the only data declaration. It
 fixes the target, locale, snapshot manifest bytes/SHA, full runtime identity, the
@@ -35,8 +33,7 @@ payloads. Existing v3 and reviewed-only display guards remain independent.
 The game part carries `trade_crafting_sources.json`, which RePoE projects from
 its neutral crafting facts ([catalog projection](https://github.com/ackness/repoe/blob/master/RePoE/docs/pobr_crafting_catalog.md)); PoBR projects no data,
 and a lock with a `crafting` input is rejected. The frozen
-`build-data-0.5.5.4.2.lock.json` remains a v1 rollback lock with its historical
-processed bytes; every new or updated declaration uses the data lock.
+A lock with any other schema is rejected, so there is one declaration format.
 
 A ZIP part has schema `pobr-build-data-part/v1`, exact `target`, `kind` and a
 `files` map of canonical paths to `{bytes, sha256}`. Game members use
@@ -94,24 +91,23 @@ replay and local adoption are verified; the frozen CLI reads the new identity wi
 identical business output/diagnostics. [Full integration CI](https://github.com/ackness/pobr/actions/runs/41348105556)
 passes at exact head `7e4d0c23`, including real WASM and runtime composition. Its
 compact release remains `9932ea87...` / `ec4f3776...`; the source lock is retained
-in the build receipt. Gameplay/source certification and unselected E2E stay separate. The [rollback lock](build-data-0.5.5.4.2.lock.json)
-preserves snapshot `bfd31a46...` and runtime `dcfc32c2...`. Full hashes live in
-the locks. The older 4.5.5.2/4.5.5.3 directories are no longer current-tree
-inputs; historical Git objects are not rewritten or used as runtime fallbacks.
+in the build receipt. Gameplay/source certification and unselected E2E stay separate. The retired 0.5.5.4.2 rollback lock preserved snapshot
+`bfd31a46...` and runtime `dcfc32c2...`; it is no longer an input to CI. The older
+4.5.5.2/4.5.5.3 directories are no longer current-tree inputs; historical Git objects are not rewritten or used as runtime fallbacks.
 `check_data_ownership.py` rejects full payloads forced into PoBR's Git index.
 
 The `support_display` entry also imports the translation owner's support
 description asset before Web builds/tests. Its manifest, asset and complete target
 trade-catalog hashes must match; the asset's original generation version and source
 provenance remain unchanged. The ignored Web JSON is installed atomically only for
-the selected version, never when installing rollback data with `--keep-current`.
+the selected version.
 The complete table and its language projection code are maintained in the
 translation repository. PoBR retains import and display guards; this auxiliary
 asset is outside the GameData bundle and does not change its runtime identity.
 
 Focused tests: `test_build_data.py` covers owner/path separation, retained language
 evidence, shared intersections, exact identity, data-lock schema and tag rules,
-archive/cache corruption, missing/unpublished pins, rollback installation and
+archive/cache corruption, missing/unpublished pins, CURRENT gating and
 tracked-data rejection. These synthetic contracts are not Rust calculation or
 remote CI evidence.
 

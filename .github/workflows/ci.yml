@@ -87,12 +87,11 @@ jobs:
         with:
           # Content-addressed by SHA-256; every hit is re-verified against the lock.
           path: .cache/data-import-downloads
-          key: owner-data-${{ hashFiles('pipeline/data.lock.json', 'pipeline/runtime/build-data-*.lock.json') }}
+          key: owner-data-${{ hashFiles('pipeline/data.lock.json') }}
           restore-keys: owner-data-
       - name: Prepare pinned external data for real tests
         run: |
           python3 -m pipeline.runtime.build_data --install data
-          python3 -m pipeline.runtime.build_data --lock pipeline/runtime/build-data-0.5.5.4.2.lock.json --install data --keep-current
           python3 -c 'import json; from pathlib import Path; assert Path("data/CURRENT").read_text().strip() == json.loads(Path("pipeline/data.lock.json").read_bytes())["target"]["game_patch"]'
           bash devs/scripts/check-data.sh
       - name: Workspace tests (including doctests)
@@ -148,7 +147,7 @@ jobs:
         with:
           # Content-addressed by SHA-256; every hit is re-verified against the lock.
           path: .cache/data-import-downloads
-          key: owner-data-${{ hashFiles('pipeline/data.lock.json', 'pipeline/runtime/build-data-*.lock.json') }}
+          key: owner-data-${{ hashFiles('pipeline/data.lock.json') }}
           restore-keys: owner-data-
       - name: Prepare pinned external data for Web tests and build
         working-directory: .
@@ -235,7 +234,7 @@ jobs:
         with:
           # Content-addressed by SHA-256; every hit is re-verified against the lock.
           path: .cache/data-import-downloads
-          key: owner-data-${{ hashFiles('pipeline/data.lock.json', 'pipeline/runtime/build-data-*.lock.json') }}
+          key: owner-data-${{ hashFiles('pipeline/data.lock.json') }}
           restore-keys: owner-data-
       - name: Prepare pinned external data for the compact release
         run: |
@@ -310,7 +309,7 @@ jobs:
         with:
           # Content-addressed by SHA-256; every hit is re-verified against the lock.
           path: .cache/data-import-downloads
-          key: owner-data-${{ hashFiles('pipeline/data.lock.json', 'pipeline/runtime/build-data-*.lock.json') }}
+          key: owner-data-${{ hashFiles('pipeline/data.lock.json') }}
           restore-keys: owner-data-
       - name: Prepare pinned external data for automation integration tests
         run: |
