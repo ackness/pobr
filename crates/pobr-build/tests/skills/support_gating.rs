@@ -496,6 +496,10 @@ fn assert_same_skill_outputs(
         output.req_str = 0.0;
         output.req_dex = 0.0;
         output.req_int = 0.0;
+        // Contagion adds a target-debuff spec, so a curse-pass receipt exists
+        // even without curses. Compare its resolved limit, already retained
+        // in limit_views, rather than the no-pass placeholder.
+        output.enemy_curse_limit = output.limit_views.enemy_curse_limit;
         output
     };
     assert_eq!(without_requirements(left), without_requirements(right));

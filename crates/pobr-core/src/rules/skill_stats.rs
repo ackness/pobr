@@ -1852,7 +1852,7 @@ mod tests {
 
     #[test]
     fn native_poison_prohibition_overrides_guaranteed_application() {
-        use crate::calc::ailment::{AilmentSource, poison_instance};
+        use crate::calc::ailment::{AilmentSource, poison_traced};
 
         let source = AilmentSource {
             hit_avg: 100.0,
@@ -1864,8 +1864,13 @@ mod tests {
                 let mut player = ModDb::new();
                 player.add_mod(Modifier::number("PoisonChance", ModType::Override, 100.0));
                 player.add_list(skill_modifiers(stat, prohibited).unwrap());
-                let poison =
-                    poison_instance(&source, &player, &ModDb::new(), &CalcConfig::attack());
+                let (poison, _) = poison_traced(
+                    &source,
+                    &player,
+                    &ModDb::new(),
+                    &CalcConfig::attack(),
+                    &mut crate::TraceGraph::default(),
+                );
                 assert_eq!(poison.magnitude_dps > 0.0, prohibited == 0.0, "{stat}");
             }
         }

@@ -240,18 +240,30 @@ fn splinter_poison_does_not_follow_spells_shields_minions_or_inactive_weapons() 
     let second = calculate_with_data(&swapped, data, &opts(&[])).unwrap();
     assert_eq!(
         second.poison_dps, 0.0,
-        "the bound skill swaps away from Splinter"
+        "a skill bound to the inactive set does not use Splinter"
+    );
+    swapped.weapon_set = pobr_build::WeaponSet::Second;
+    std::mem::swap(
+        swapped.items.get_mut(&EquipmentSlot::Weapon1).unwrap(),
+        swapped
+            .other_weapons
+            .get_mut(&EquipmentSlot::Weapon1)
+            .unwrap(),
+    );
+    assert_eq!(
+        calculate_with_data(&swapped, data, &opts(&[]))
+            .unwrap()
+            .poison_dps,
+        0.0,
+        "the active plain weapon does not inherit the other set's Splinter"
     );
     swapped
         .items
-        .insert(EquipmentSlot::Weapon1, weapon("Wooden Club", &[]));
-    swapped
-        .other_weapons
         .insert(EquipmentSlot::Weapon1, local_weapon.clone());
     let other = calculate_with_data(&swapped, data, &opts(&[])).unwrap();
     assert!(
         other.poison_dps > 0.0,
-        "the bound skill now swaps to Splinter"
+        "Splinter applies when equipped in the selected active set"
     );
 
     let zombie = Build::new()

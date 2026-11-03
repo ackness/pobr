@@ -83,7 +83,10 @@ fn selected_shock_uses_game_default_and_character_magnitude_without_a_hit_estima
         // main skill has Elemental Focus. Do not invent chance or uptime.
         env.player.mod_db.add_mod(Modifier::flag("CannotShock"));
         perform(&mut env).expect("selected shock calculation");
-        assert_eq!(env.applied_ailments.shock.current, expected);
+        assert_eq!(
+            pobr_core::display_catalog::display_value(&env.player.output, "CurrentShock"),
+            expected
+        );
         assert!((env.player.output.dps - 150.0 * (1.0 + expected / 100.0)).abs() < 1e-9);
         assert_eq!(env.player.output.shock_effect, 0.0, "no hit-derived shock");
         assert_eq!(enemy_inc(&env, "DamageTaken"), expected);
@@ -130,7 +133,8 @@ fn selected_shock_preserves_guaranteed_sources_and_does_not_stack_duplicates() {
         }
         apply_nondamaging_ailments(&mut env);
         assert_eq!(
-            env.applied_ailments.shock.current, expected,
+            enemy_inc(&env, "DamageTaken"),
+            expected,
             "{name}: strongest Base/Override, summed Minimum, no default floor"
         );
         let count = env.enemy.mod_db.iter_mods().count();
@@ -156,7 +160,6 @@ fn selected_shock_is_not_inferred_from_recent_events_stacks_or_player_shock() {
         .mod_db
         .add_mod(Modifier::number("EnemyShockMagnitude", ModType::Inc, 25.0));
     apply_nondamaging_ailments(&mut env);
-    assert!(!env.applied_ailments.shock.applied);
     assert_eq!(enemy_inc(&env, "DamageTaken"), 0.0);
     assert_eq!(env.enemy.mod_db.iter_mods().count(), 0);
 
@@ -173,14 +176,22 @@ fn selected_shock_respects_effective_mode_and_native_selected_state() {
     panel.cfg.conditions.insert("EnemyShocked".into(), true);
     panel.cfg.mode_effective = false;
     perform(&mut panel).expect("panel calculation");
-    assert!(!panel.applied_ailments.shock.applied);
+    assert!(
+        !panel
+            .enemy
+            .mod_db
+            .flag(&panel.cfg, "Condition:AlreadyShocked")
+    );
     assert_eq!(panel.player.output.dps, 150.0);
     assert_eq!(enemy_inc(&panel, "DamageTaken"), 0.0);
 
     let mut native = effective_env();
     native.cfg.conditions.insert("EnemyShocked".into(), true);
     perform(&mut native).expect("native selected state");
-    assert_eq!(native.applied_ailments.shock.current, 20.0);
+    assert_eq!(
+        pobr_core::display_catalog::display_value(&native.player.output, "CurrentShock"),
+        20.0
+    );
     assert_eq!(native.player.output.dps, 180.0);
     let count = native.enemy.mod_db.iter_mods().count();
     apply_nondamaging_ailments(&mut native);
@@ -201,7 +212,6 @@ fn selected_shock_scales_target_magnitude_and_clamps_each_side_before_multiplyin
             .mod_db
             .add_mod(Modifier::number("SelfShockMagnitude", ModType::Inc, target));
         apply_nondamaging_ailments(&mut env);
-        assert_eq!(env.applied_ailments.shock.current, expected);
         assert_eq!(enemy_inc(&env, "DamageTaken"), expected);
     }
 }

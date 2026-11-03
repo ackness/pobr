@@ -63,6 +63,9 @@ fn poison_options() -> DataOrchestratorOptions {
         extra_modifier_texts: vec![
             "100% chance to Poison on Hit".into(),
             "200% increased Attack Speed".into(),
+            // Axe Chop has native Bleed chance. Isolate the poison pool:
+            // converted Chaos remains poison-eligible but cannot cause Bleed.
+            "100% of Physical Damage Converted to Chaos Damage".into(),
         ],
         ..Default::default()
     }
@@ -79,6 +82,7 @@ fn full_dps_keeps_two_unlimited_poison_sources_counts_and_summed_dot_cap() {
         .add_socket_group(poison_group(0.5))
         .add_socket_group(poison_group(3.0));
     let single = calculate_with_data(&build, data(), &options).unwrap();
+    assert_eq!(single.bleed_dps, 0.0);
     assert!(single.poison_stacked_dps > 0.0);
     assert_eq!(single.poison_max_stacks, 0.0);
     let full = full_dps::calculate(&build, data(), &options).unwrap();
@@ -114,8 +118,20 @@ fn full_dps_unlimited_poison_does_not_consume_or_expand_the_finite_pool() {
         .other_weapons
         .insert(EquipmentSlot::Weapon1, poison_weapon("Wooden Club", &[]));
     let unlimited = calculate_with_data(&build, data(), &options).unwrap();
-    let limited =
-        calculate_with_data(&build.clone().with_main_socket_group(2), data(), &options).unwrap();
+    // The panel evaluates the active set; Full DPS switches contexts itself.
+    let mut limited_build = build.clone().with_main_socket_group(2);
+    limited_build.weapon_set = pobr_build::WeaponSet::Second;
+    std::mem::swap(
+        limited_build
+            .items
+            .get_mut(&EquipmentSlot::Weapon1)
+            .unwrap(),
+        limited_build
+            .other_weapons
+            .get_mut(&EquipmentSlot::Weapon1)
+            .unwrap(),
+    );
+    let limited = calculate_with_data(&limited_build, data(), &options).unwrap();
     assert_eq!(unlimited.poison_max_stacks, 0.0);
     assert_eq!(limited.poison_max_stacks, 1.0);
     assert!(limited.poison_active_stacks > 1.0);
