@@ -101,7 +101,7 @@ RePoE 发布 ───┐
 
 | 内容 | 位置 | Git |
 | --- | --- | --- |
-| 代码、契约、数据锁、来源接受记录 | `crates/`、`tools/`、`pipeline/` | 跟踪 |
+| 代码、契约、数据锁、消费范围接受决定 | `crates/`、`tools/`、`pipeline/` | 跟踪 |
 | PoBR 自有规则 | `data/overlay-common/` 中的自有文件 | 跟踪 |
 | 活动版本标记 | `data/CURRENT` | 跟踪 |
 | 小型合成夹具 | 各 crate 与工具的 `tests/fixtures/` | 跟踪 |
