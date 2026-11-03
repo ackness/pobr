@@ -962,15 +962,17 @@ pub fn support_buff_specs(
             // the support is on.
             let mut buffs: Vec<(String, Vec<Modifier>)> = Vec::new();
             for (stat, modifier) in mods {
-                let name = ctx
-                    .catalog
-                    .and_then(|catalog| {
-                        stat_map_engine::player_buff_effect_name(
-                            catalog,
-                            &effect_id,
-                            set_key.as_deref(),
-                            &stat,
-                        )
+                let name = skill_stats::player_buff_effect_name(&stat)
+                    .map(str::to_owned)
+                    .or_else(|| {
+                        ctx.catalog.and_then(|catalog| {
+                            stat_map_engine::player_buff_effect_name(
+                                catalog,
+                                &effect_id,
+                                set_key.as_deref(),
+                                &stat,
+                            )
+                        })
                     })
                     .unwrap_or_else(|| buff_name.clone());
                 match buffs.iter_mut().find(|(known, _)| *known == name) {

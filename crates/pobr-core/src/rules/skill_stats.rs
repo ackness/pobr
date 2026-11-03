@@ -9,7 +9,7 @@
 use pobr_data::catalog::SkillDamageStat;
 use pobr_data::prelude::*;
 
-use crate::{ModTag, ModValue, Modifier};
+use crate::{CalcConfig, ModTag, ModValue, Modifier};
 
 /// Coverage of PoBR-owned stat rules. Unlisted game stats retain `same`.
 /// The stat id itself is the game source; use the same metadata for every channel.
@@ -762,6 +762,8 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         stat if corpse_explosion_damage(stat, 0.0).is_some() => Some(Vec::new()),
         // Put on the enemy as the skill's debuff (`debuff_modifiers`).
         stat if debuff_modifiers(stat, 0.0).is_some() => Some(Vec::new()),
+        // Ice Bite grants a player buff, not an additional skill-local gain.
+        ICE_BITE_GAIN_AS_COLD => Some(Vec::new()),
         // Raise the buff of the Offering, or the effect of the Remnants, of
         // the skill they are on, where that buff is made
         // (`skill_env::buff_specs`).
@@ -1069,6 +1071,50 @@ fn per_minion_in_presence(maximum: Option<f64>) -> ModTag {
 /// Armour (Refraction III).
 pub const ELEMENTAL_EXPOSURE_PER_1000_ARMOUR: &str = "BannerElementalExposurePer1000Armour";
 
+/// Ice Bite's current description grants Damage as Cold, not just Attack
+/// Damage, despite the historical suffix in the game stat ID.
+const ICE_BITE_GAIN_AS_COLD: &str = "support_ice_bite_buff_grant_%_added_cold_attack_damage";
+
+/// A named buff remains the same buff when granted by different supported skills.
+pub(crate) fn player_buff_effect_name(stat: &str) -> Option<&'static str> {
+    match stat {
+        ICE_BITE_GAIN_AS_COLD => Some("Ice Bite"),
+        _ => None,
+    }
+}
+
+/// The flat damage a projectile gains by passing through the selected Flame Wall.
+///
+/// The projectile-buff stat set grants Fire, plus Lightning only through an
+/// explicitly infused wall. Neither the wall's own damage nor its damage
+/// supports scale this outgoing payload. Resolve the snapshot before merging
+/// buffs so equivalent party and local walls have the same modifier identity.
+pub(crate) fn flame_wall_projectile_modifier(
+    stat: &str,
+    value: f64,
+    cfg: &CalcConfig,
+) -> Option<Modifier> {
+    if !cfg.condition("FlameWallAddedDamage") {
+        return None;
+    }
+    let name = match stat {
+        "flame_wall_minimum_added_fire_damage" => "FireDamageMin",
+        "flame_wall_maximum_added_fire_damage" => "FireDamageMax",
+        "flame_wall_minimum_added_lightning_damage_to_add_to_projectile"
+            if cfg.condition("FlameWallInfused") =>
+        {
+            "LightningDamageMin"
+        }
+        "flame_wall_maximum_added_lightning_damage_to_add_to_projectile"
+            if cfg.condition("FlameWallInfused") =>
+        {
+            "LightningDamageMax"
+        }
+        _ => return None,
+    };
+    Some(Modifier::number(name, ModType::Base, value).with_flags(ModFlags::PROJECTILE))
+}
+
 /// The player modifiers the stat of the buff skill `skill` grants at `value`,
 /// when this table defines the stat. `None` leaves the stat to the extracted
 /// stat map.
@@ -1078,6 +1124,14 @@ pub fn player_buff_modifiers(stat: &str, value: f64, skill: BuffSkill) -> Option
 
 fn player_buff_modifiers_impl(stat: &str, value: f64, skill: BuffSkill) -> Option<Vec<Modifier>> {
     match stat {
+        // Ice Bite II: "Gain 30% of Damage as Cold Damage for 6 seconds on
+        // Freezing an enemy with Supported Skills" (30 / 6000 ms in the game
+        // stat set). FrozenEnemyRecently selects that buff snapshot; it does
+        // not infer that the supported skill froze or calculate its uptime.
+        ICE_BITE_GAIN_AS_COLD => Some(vec![
+            Modifier::number("DamageGainAsCold", ModType::Base, value)
+                .with_tag(ModTag::condition("FrozenEnemyRecently", false)),
+        ]),
         // War Banner's planted aura grants attack speed to you and nearby
         // allies. The aura pass handles magnitude and recipient forwarding,
         // just as for its attack damage and accuracy grants.
@@ -1699,6 +1753,95 @@ mod tests {
             )
         };
         assert_eq!(mapped(Some(&catalog)), mapped(None));
+    }
+
+    #[test]
+    fn ice_bite_is_a_native_conditional_player_buff_for_attacks_and_spells() {
+        use crate::rules::stat_map_engine::StatMapCatalog;
+        use crate::skill_env::{EffectStats, StatMapCtx, StatMapMode, player_buff_stat_modifiers};
+
+        let stat = "support_ice_bite_buff_grant_%_added_cold_attack_damage";
+        let duration = "support_ice_bite_base_buff_duration";
+        let stats = EffectStats {
+            base: [(stat, 30.0), (duration, 6000.0)]
+                .map(|(stat, value)| SkillDamageStat {
+                    stat: stat.into(),
+                    value,
+                })
+                .into(),
+            quality: Vec::new(),
+        };
+        // Owned semantics must work without the translated catalog and take
+        // priority over a rejected entry. Duration remains diagnostic: this
+        // snapshot does not calculate a freezing rate or six-second uptime.
+        let catalog = StatMapCatalog::new(
+            serde_json::from_value(serde_json::json!({
+                "global": {
+                    (stat): {"_unextractable": true},
+                    (duration): {"_unextractable": true}
+                }
+            }))
+            .expect("synthetic catalog"),
+        );
+        let mut records = Vec::new();
+        let mapped = player_buff_stat_modifiers(
+            &mut StatMapCtx {
+                catalog: Some(&catalog),
+                mode: StatMapMode::Compare,
+                records: Some(&mut records),
+            },
+            &stats,
+            "SupportIceBitePlayerTwo",
+            None,
+            BuffSkill::default(),
+        );
+        assert_eq!(
+            mapped,
+            player_buff_stat_modifiers(
+                &mut StatMapCtx::data(None),
+                &stats,
+                "SupportIceBitePlayerTwo",
+                None,
+                BuffSkill::default(),
+            )
+        );
+        assert_eq!(mapped.len(), 1);
+        assert!(
+            mapped[0].flags.is_empty(),
+            "the historical stat ID is not attack scope"
+        );
+        assert!(mapped[0].keyword_flags.is_empty());
+        let origin = mapped[0].origin.as_ref().expect("buff stat provenance");
+        assert_eq!(
+            origin.source_id.id,
+            format!("buff.SupportIceBitePlayerTwo.{stat}")
+        );
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0].stat, stat);
+        assert_eq!(records[0].classification, "mapped");
+        assert_eq!(records[1].stat, duration);
+        assert_eq!(records[1].classification, "unsupported");
+        assert!(
+            skill_modifiers(stat, 30.0)
+                .expect("buff-only rule")
+                .is_empty(),
+            "do not also apply the support's buff as skill-local damage"
+        );
+
+        let mut db = ModDb::new();
+        db.add_list(mapped);
+        for cfg in [CalcConfig::spell(), CalcConfig::attack()] {
+            let names = [ModName::from("DamageGainAsCold")];
+            assert_eq!(db.sum(ModType::Base, &cfg, &names), 0.0);
+            assert_eq!(
+                db.sum(
+                    ModType::Base,
+                    &cfg.with_condition("FrozenEnemyRecently", true),
+                    &names,
+                ),
+                30.0
+            );
+        }
     }
 
     #[test]

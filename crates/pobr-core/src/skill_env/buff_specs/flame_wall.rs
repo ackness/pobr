@@ -1,13 +1,12 @@
 //! Flame Wall's explicit projectile-through-wall snapshot. Only the projectile
-//! set's added fire belongs to the recipient; the wall's damage/ignite, quality
-//! damage multipliers and damage supports do not modify that outgoing flat buff.
-
-use pobr_data::modifier::ModFlags;
+//! set's added fire (and lightning for an explicitly infused wall) belongs to
+//! the recipient; the wall's damage/ignite, quality damage multipliers and
+//! damage supports do not modify that outgoing flat buff.
 
 use super::*;
 use crate::CalcConfig;
 
-/// Builds Flame Wall's added-fire buff only when the existing config declares
+/// Builds Flame Wall's added-damage buff only when the existing config declares
 /// that the projectile passed through an available wall. No wall lifetime,
 /// Lightning Infusion consumption or lingering ignite is inferred.
 pub fn flame_wall_buff_specs(
@@ -49,11 +48,8 @@ pub fn flame_wall_buff_specs(
                 .stats
                 .into_iter()
                 .filter_map(|stat| {
-                    let name = match stat.stat.as_str() {
-                        "flame_wall_minimum_added_fire_damage" => "FireDamageMin",
-                        "flame_wall_maximum_added_fire_damage" => "FireDamageMax",
-                        _ => return None,
-                    };
+                    let modifier =
+                        skill_stats::flame_wall_projectile_modifier(&stat.stat, stat.value, cfg)?;
                     let origin = ModifierSource::new(SourceId::new(
                         SourceKind::SkillGem,
                         format!("buff.{}.{}", gem.skill_id, stat.stat),
@@ -62,13 +58,7 @@ pub fn flame_wall_buff_specs(
                         "Flame Wall level {level}: {} ({})",
                         stat.stat, stat.value
                     ));
-                    // Passage gated creation above. A second payload tag would
-                    // stop an equivalent imported party buff from merging.
-                    Some(
-                        Modifier::number(name, ModType::Base, stat.value)
-                            .with_flags(ModFlags::PROJECTILE)
-                            .with_origin(origin),
-                    )
+                    Some(modifier.with_origin(origin))
                 })
                 .collect::<Vec<_>>();
             if mods.is_empty() {

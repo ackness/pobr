@@ -212,6 +212,167 @@ fn ordinary_buff_copies_preserve_wind_dancer_stack_limit() {
 }
 
 #[test]
+fn ice_bite_on_ice_nova_grants_conditional_cold_damage_to_frost_darts_once() {
+    use pobr_build::{Build, SocketGroup, calculate_with_data_session};
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+    use pobr_data::source::SourceKind;
+
+    // Ice Bite II's game stats grant 30% of Damage as Cold for 6000 ms
+    // on freezing with a supported skill. The configured recent freeze
+    // selects that snapshot; Elemental Focus on the recipient cannot grant
+    // the buff itself, but must not prevent another skill's buff benefiting it.
+    let host = |skill, support| {
+        SocketGroup::new()
+            .with_gem_skill(skill, 20)
+            .with_gem_skill(support, 1)
+    };
+    let nova = host("IceNovaPlayer", "SupportIceBitePlayerTwo");
+    let frostbolt = host("FrostboltPlayer", "SupportIceBitePlayerTwo");
+    let weaker = host("IceNovaPlayer", "SupportIceBitePlayer");
+    let main = SocketGroup::new()
+        .with_gem_skill("FrostDartsPlayer", 20)
+        .with_gem_skill("SupportElementalFocusPlayer", 1);
+    let base = Build::new()
+        .add_socket_group(main)
+        .with_main_socket_group(1);
+    let calculate = |build: &Build| {
+        calculate_with_data_session(
+            build,
+            crate::test_data(),
+            &DataOrchestratorOptions::against_reference_enemy(),
+        )
+        .unwrap()
+    };
+    let baseline = calculate(&base);
+    assert!(baseline.output().total_hit_avg > 0.0);
+    let mut group_disabled = nova.clone();
+    group_disabled.enabled = false;
+    let mut skill_disabled = nova.clone();
+    skill_disabled.gem_skills[0].enabled = false;
+    let mut support_disabled = nova.clone();
+    support_disabled.gem_skills[1].enabled = false;
+    for (groups, gain) in [
+        (vec![], 0.0),
+        (
+            vec![SocketGroup::new().with_gem_skill("IceNovaPlayer", 20)],
+            0.0,
+        ),
+        (
+            vec![SocketGroup::new().with_gem_skill("SupportIceBitePlayerTwo", 1)],
+            0.0,
+        ),
+        (vec![group_disabled], 0.0),
+        (vec![skill_disabled], 0.0),
+        (vec![support_disabled], 0.0),
+        (
+            vec![host("WindDancerPlayer", "SupportIceBitePlayerTwo")],
+            0.0,
+        ),
+        (vec![weaker.clone()], 25.0),
+        (vec![nova.clone()], 30.0),
+        (vec![nova.clone(), nova.clone()], 30.0),
+        (vec![nova, frostbolt.clone()], 30.0),
+        (vec![weaker.clone(), frostbolt.clone()], 30.0),
+        (vec![frostbolt, weaker], 30.0),
+    ] {
+        for frozen in [None, Some(false), Some(true)] {
+            let mut build = base.clone();
+            build.socket_groups.extend(groups.clone());
+            if let Some(value) = frozen {
+                build.config.raw_inputs.values.insert(
+                    "conditionFrozenEnemyRecently".into(),
+                    ConfigInputValue::Bool(value),
+                );
+            }
+            let session = calculate(&build);
+            let expected = if frozen == Some(true) { gain } else { 0.0 };
+            assert_eq!(
+                session.base_sum("DamageGainAsCold"),
+                expected,
+                "{frozen:?}, gain={gain}"
+            );
+            assert!(
+                (session.output().total_hit_avg / baseline.output().total_hit_avg
+                    - (1.0 + expected / 100.0))
+                    .abs()
+                    < 1e-8,
+                "{frozen:?}, gain={gain}: {} vs {}",
+                session.output().total_hit_avg,
+                baseline.output().total_hit_avg
+            );
+            assert_eq!(session.output().action_rate, baseline.output().action_rate);
+            let rows = session.evaluated_stat_mods("DamageGainAsCold");
+            assert_eq!(
+                rows.len(),
+                usize::from(gain > 0.0),
+                "one named buff, not one per skill"
+            );
+            if let Some(row) = rows.first() {
+                assert_eq!(
+                    row.active,
+                    frozen == Some(true),
+                    "keep inactive conditional diagnostics"
+                );
+                let origin = row.modifier.origin.as_ref().expect("support buff source");
+                assert_eq!(origin.source_id.kind, SourceKind::SkillGem);
+                assert!(origin.source_id.id.starts_with("buff.SupportIceBitePlayer"));
+                assert!(
+                    origin
+                        .source_id
+                        .id
+                        .ends_with("support_ice_bite_buff_grant_%_added_cold_attack_damage")
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn ice_bite_native_buff_identity_deduplicates_without_a_catalog_and_respects_buff_mode() {
+    use pobr_build::{Build, SocketGroup};
+    use pobr_core::CalcConfig;
+    use pobr_core::calc::{CalculationSession, MinimalInput};
+    use pobr_core::skill_env::{StatMapCtx, support_buff_specs};
+
+    let build = Build::new()
+        .add_socket_group(
+            SocketGroup::new()
+                .with_gem_skill("IceNovaPlayer", 20)
+                .with_gem_skill("SupportIceBitePlayer", 1),
+        )
+        .add_socket_group(
+            SocketGroup::new()
+                .with_gem_skill("FrostboltPlayer", 20)
+                .with_gem_skill("SupportIceBitePlayerTwo", 1),
+        );
+    let specs = support_buff_specs(&mut StatMapCtx::data(None), &build, crate::test_data());
+    assert_eq!(specs.len(), 2);
+    assert!(specs.iter().all(|spec| spec.name == "Ice Bite"));
+    for mode_buffs in [false, true] {
+        for frozen in [false, true] {
+            let mut session = CalculationSession::new(MinimalInput::default()).with_config(
+                CalcConfig::spell()
+                    .with_mode_buffs(mode_buffs)
+                    .with_condition("FrozenEnemyRecently", frozen),
+            );
+            for spec in &specs {
+                session.add_buff_skill(spec.clone());
+            }
+            session.perform_minimal().unwrap();
+            assert_eq!(
+                session.base_sum("DamageGainAsCold"),
+                if mode_buffs && frozen { 30.0 } else { 0.0 },
+                "buffs={mode_buffs}, frozen={frozen}"
+            );
+            assert_eq!(
+                session.mods_named("DamageGainAsCold").len(),
+                usize::from(mode_buffs)
+            );
+        }
+    }
+}
+
+#[test]
 fn mana_remnants_persistent_regen_does_not_scale_with_remnant_effect() {
     use pobr_build::{Build, SocketGroup, calculate_with_data_session};
     use pobr_core::calc::{CalculationSession, MinimalInput};
