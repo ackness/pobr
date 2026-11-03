@@ -7,7 +7,9 @@
 
 - 活动目标为 `0.5.5.5`／international。消费产物的 tag + commit + SHA-256、两个 owner 的 publication、
   期望 manifest、运行身份与紧凑 release 身份都以[数据锁](../pipeline/data.lock.json)为准。
-- 两个 owner 的发布序号都还是 1（bootstrap 登记）。真正新的发布还没有走过提案、门禁到采用的全链。
+- RePoE 发布序号 3：序号 2 是 fork 历史截断后的位置迁移，序号 3 只换游戏 part，改为携带 RePoE 投影的
+  `trade_crafting_sources.json`。翻译库仍是序号 1。序号 3 由 latest 控制器生成候选、经完整 CI 后手动采用；
+  无人值守的提案与采用仍未启用。
 - 旧版 `0.5.5.4.2` 由冻结的[回滚锁](../pipeline/runtime/build-data-0.5.5.4.2.lock.json)恢复，不改变 `CURRENT`。
 - 当前数据锁已经本地采用并通过主线完整 CI，尚未部署。
 
@@ -28,6 +30,7 @@
 | 分域锁收敛为一份按 tag 引用两个 owner 发布的 JSON（`pipeline/data.lock.json`）；删除只为重放生产保留的锁、普通领域与显示生成脚本及候选任务 | 已完成 |
 | 领域转换工具（`tools/pobr-data-adapter`、`pipeline/policies/`）迁往 RePoE；语言生产者迁往翻译库；退役 `data:tree:*`／`data:native:candidate` | 已完成（ackness/repoe#17、ackness/poe2-zh-cn-stats#8）；keystone 字节检查改在 RePoE |
 | 删除入库的天赋树美术（`web/public/tree-art/`，533 个由 vendor 生成的文件）与生成任务；树查看器只画节点圆点和连线 | 已完成；节点美术以后作为独立功能接入 owner 发布 |
+| 特殊制作目录的投影（原 `pipeline/imports/crafting_inputs.py`）迁往 RePoE，由游戏 part 携带；数据锁去掉 `crafting` 输入 | 已完成（ackness/repoe#21，发布序号 3）；输出字节、快照与运行／release 身份不变 |
 
 adapter 的 30 份 JSON 策略已完整迁入 RePoE，内容与迁移前一致；Cargo 依赖、工具链、任务与 CI 也由 RePoE 维护。
 PoBR 留下的 11 份自有 shared 规则／构筑配置属于引擎语义，继续随本仓库代码维护，不作为领域适配策略迁移。
@@ -38,7 +41,7 @@ PoBR 留下的 11 份自有 shared 规则／构筑配置属于引擎语义，继
 
 | 领域 | 已接入普通消费者 | 剩余缺口与关闭条件 | 契约 |
 | --- | --- | --- | --- |
-| 基底／词缀／制作 | 源 Stats／Mods 全八槽、Families、基底数值与继承 tags；制作七表投影保留原值诊断 | 13 个 charm 缺 Flag／Unknown／MergeMode 的完整解释，完整 packet 迁移 0/13；socket、subtype、权重与资格未全部迁源 | [基底](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-base-items.md#remaining-source-and-consumer-contracts)、[制作](../pipeline/imports/crafting-inputs.md) |
+| 基底／词缀／制作 | 源 Stats／Mods 全八槽、Families、基底数值与继承 tags；制作七表投影保留原值诊断 | 13 个 charm 缺 Flag／Unknown／MergeMode 的完整解释，完整 packet 迁移 0/13；socket、subtype、权重与资格未全部迁源 | [基底](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-base-items.md#remaining-source-and-consumer-contracts)、[制作](https://github.com/ackness/repoe/blob/master/RePoE/docs/pobr_crafting_catalog.md) |
 | 技能／品质 | effect→stat-set→等级／品质、gem 与 effect 关系、可证倍率；77 项旧 implicit 注入已移除 | `stat_set_index` 仍是 PoB 1-based 编号；7 项旧 implicit 惰性保留；corpse／speed／area、虚拟倍率与品质作用域按实际输出逐项处理 | [技能覆盖](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-skill-overrides.md)、[品质](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/gem-quality/README.md) |
 | 天赋 | 4913 节点中 4823 使用 CSD、51 混合、39 整文本兼容；72 个 variant 中 70 使用 CSD | 39 个兼容节点缺当前 scope 描述、owner 歧义、buff 表示或 compound；placement／armour、Requirement／QuestFlag 需独立依据与范围珠宝、加点消费者验证 | [天赋树](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-passive-tree.md) |
 | 符文／魂核 | 305 项中 296 项使用目标 CSD | 9 项整项兼容：5 项缺 compound 上下文，4 项缺当前 CSD；需按精确资源补完整 packet | [符文](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-socketables.md) |
@@ -54,14 +57,13 @@ PoBR 留下的 11 份自有 shared 规则／构筑配置属于引擎语义，继
 
 | 例外 | 退出条件 |
 | --- | --- |
-| `pipeline/imports/crafting_inputs.py` 仍在准备阶段将七表事实投影为 `trade_crafting_sources.json`，内含币种前缀、OutcomeMods 选择与聚合策略 | 将目录生产及策略迁往 RePoE，发布固定投影并调整 PoBR 消费契约；用完整输出、诊断和消费者验证保持原行为 |
 | `pipeline/imports/sources.lock.json` 仍混合保存原始来源／采集证据与下游保留输入接受决定 | 原料与采集台账归 RePoE，语言策展归翻译库，PoBR 保留消费范围的接受决定；迁移保留历史摘要与出处，不将整份台账当作 adapter 配置 |
 | 冻结的 `0.5.5.4.2` 回滚锁不经数据锁 | 两个 owner 发布对应的 recovery 描述后改为第二份数据锁 |
 
 ## 近期顺序
 
 1. 由 owner 完成一次有实际收益的新生产与发布，配置 `DATA_SYNC_TOKEN` 后用它演练提案、门禁、采用与回滚。不要重复登记 bootstrap。
-   制作目录的本地投影及来源台账归位仍未完成；前者需要 owner 固定产物与消费契约一起迁移，不能只搬脚本或配置。
+   来源台账（`pipeline/imports/sources.lock.json`）归位仍未完成。
 2. 对影响现有 BD 的 charm、actor、描述与分支问题，先复用已有原料和诊断补语义或精确资源，再做最小的消费者修改。
 3. 对新数据锁补普通 Web 流程验收；翻译优先接实际 caller，并保留英文或空值回退。
 4. 固定目标设备与冷热输入测量后，再针对已测瓶颈优化。

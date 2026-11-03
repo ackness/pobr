@@ -32,13 +32,11 @@ file, including evidence, before projecting only `i18n/` into runtime data.
 Evidence, reviewed supplement packages and verification sidecars are never player
 payloads. Existing v3 and reviewed-only display guards remain independent.
 
-The data lock additionally requires the separate RePoE crafting facts package. PoBR projects its category/identified-regular-stat catalog temporarily;
-the game part must omit that processed file. Missing facts cannot fall back to
-the retained catalog. [Crafting inputs](../imports/crafting-inputs.md) defines the eight-slot
-projection, raw-value diagnostics and build receipt outside the runtime bundle.
-The frozen `build-data-0.5.5.4.2.lock.json` remains a v1 rollback lock with its
-historical processed bytes; the older v2 schema is accepted only for such frozen
-files, and every new or updated declaration uses the data lock.
+The game part carries `trade_crafting_sources.json`, which RePoE projects from
+its neutral crafting facts ([catalog projection](https://github.com/ackness/repoe/blob/master/RePoE/docs/pobr_crafting_catalog.md)); PoBR projects no data,
+and a lock with a `crafting` input is rejected. The frozen
+`build-data-0.5.5.4.2.lock.json` remains a v1 rollback lock with its historical
+processed bytes; every new or updated declaration uses the data lock.
 
 A ZIP part has schema `pobr-build-data-part/v1`, exact `target`, `kind` and a
 `files` map of canonical paths to `{bytes, sha256}`. Game members use
@@ -89,6 +87,8 @@ version and rerunning prepare rebuilds it from its external owner pins.
 The source-derived 0.5.5.5 composition uses snapshot `73b2d77e...` and runtime
 `dba0615e...`; only crafting source metadata changes from the previous
 `2a03ad79...` / `d7ac23c5...` baseline. All 92 catalog business records match.
+Moving the projection to RePoE (publication sequence 3) kept these identities and
+the compact `release_id` `9932ea87...`.
 The immutable inputs are published. Fresh remote Git composition, denied-network
 replay and local adoption are verified; the frozen CLI reads the new identity with
 identical business output/diagnostics. [Full integration CI](https://github.com/ackness/pobr/actions/runs/41348105556)

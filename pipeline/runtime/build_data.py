@@ -2,8 +2,9 @@
 
 `pipeline/data.lock.json` is PoBR's only data declaration: each owner artifact
 is a tagged commit plus path and SHA-256. Data owners publish the parts; PoBR
-never creates a data Git ref. Downloads are hash-addressed, disposable inputs.
-The older build-lock schemas remain only for the frozen rollback lock.
+never creates a data Git ref or projects data. Downloads are hash-addressed,
+disposable inputs. The legacy build-lock schema remains only for the frozen
+rollback lock.
 """
 
 import argparse
@@ -19,11 +20,8 @@ from pipeline.imports.data_imports import GitInputs, acquire, encoded, pinned, r
 ROOT = Path(__file__).resolve().parents[2]
 DATA_LOCK = ROOT / "pipeline/data.lock.json"
 DATA_LOCK_SCHEMA = "pobr-data-lock/v1"
-LOCK_SCHEMA = "pobr-build-data-lock/v2"
 LEGACY_LOCK_SCHEMA = "pobr-build-data-lock/v1"
-LOCK_SCHEMAS = (LEGACY_LOCK_SCHEMA, LOCK_SCHEMA, DATA_LOCK_SCHEMA)
-# Schemas whose prepare projects the RePoE crafting facts.
-CRAFTING_SCHEMAS = (LOCK_SCHEMA, DATA_LOCK_SCHEMA)
+LOCK_SCHEMAS = (LEGACY_LOCK_SCHEMA, DATA_LOCK_SCHEMA)
 PART_SCHEMA = "pobr-build-data-part/v1"
 OWNERS = {"game": "ackness/repoe", "language": "ackness/poe2-zh-cn-stats"}
 TAG = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*")
@@ -69,12 +67,8 @@ def member_kind(name, version):
 def validate(lock):
     from pipeline.imports.data_imports import validate_pin
     require(lock.get("schema") in LOCK_SCHEMAS, "Unknown build data lock")
-    if lock["schema"] in CRAFTING_SCHEMAS:
-        from pipeline.imports import crafting_inputs
-        require(isinstance(lock.get("crafting"), dict), "The data lock requires crafting facts")
-        crafting_inputs.validate(lock["crafting"])
-    else:
-        require("crafting" not in lock, "Crafting projection requires the data lock")
+    # The RePoE game part carries the crafting catalog; PoBR projects nothing.
+    require("crafting" not in lock, "Crafting facts are not a PoBR input; the game part carries the catalog")
     if lock["schema"] == DATA_LOCK_SCHEMA:
         require(type(lock.get("generation")) is int and lock["generation"] > 0
                 and (lock["generation"] == 1) == (lock.get("previous_id") is None)
@@ -84,7 +78,7 @@ def validate(lock):
         require(lock.get("release_id") is None or re.fullmatch(r"[a-f0-9]{64}", lock["release_id"]),
                 "Invalid compact release identity")
         validate_owner_publications(lock.get("owner_publications"))
-        for spec in (*lock["packages"].values(), lock["crafting"], lock["support_display"], lock["test_fixtures"]):
+        for spec in (*lock["packages"].values(), lock["support_display"], lock["test_fixtures"]):
             validate_tag(spec)
     target = lock["target"]
     require(set(target) == {"game", "game_patch", "realm"} and target["game"] == "poe2"
@@ -132,8 +126,7 @@ def prepare(lock_path, output, cache, shared_root=ROOT / "data/overlay-common",
     require(not output.exists(), f"Fresh data output required: {output}")
     require(not output.is_relative_to(ROOT / "data"), "Prepare outside source data; use --install")
     local_parts = local_parts or {}
-    require(set(local_parts) <= set(OWNERS) | ({"crafting"} if lock["schema"] in CRAFTING_SCHEMAS else set()),
-            "Unknown local data part")
+    require(set(local_parts) <= set(OWNERS), "Unknown local data part")
     cache.mkdir(parents=True, exist_ok=True)
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".build-data-", dir=output.parent) as temporary:
@@ -186,14 +179,6 @@ def prepare(lock_path, output, cache, shared_root=ROOT / "data/overlay-common",
                         require(member_kind(name, version) == kind, "Cross-owner data member")
                     require(name not in files, "Duplicate external data member")
                     files[name] = regular(part / name)
-        crafting_receipt = None
-        if lock["schema"] in CRAFTING_SCHEMAS:
-            from pipeline.imports import crafting_inputs
-            name = f"data/{version}/overlay/trade_crafting_sources.json"
-            require(name not in files, "Game part contains PoBR-projected crafting data")
-            files[name], crafting_receipt = crafting_inputs.materialize(
-                lock["crafting"], lock["target"], cache, temp / "crafting", offline, fetcher,
-                local_archive=local_parts.get("crafting"))
         snapshot_path = f"data/{version}/manifest.json"
         snapshot = bundle.decode(pinned(files[snapshot_path], lock["snapshot_manifest"]))
         require(snapshot.get("schema_version") == 3 and snapshot.get("poe_version") == version,
@@ -216,8 +201,6 @@ def prepare(lock_path, output, cache, shared_root=ROOT / "data/overlay-common",
         write(stage / "bundle.json", encoded(receipt))
         bundle.verify(stage, receipt["bundle_id"])
         require(regular(lock_path) == lock_raw, "Build data lock changed during prepare")
-        if crafting_receipt is not None:
-            crafting_inputs.record(cache, lock_raw, crafting_receipt)
         stage.rename(output)
     return receipt
 
@@ -286,12 +269,11 @@ def main():
     parser.add_argument("--shared", type=Path, default=ROOT / "data/overlay-common")
     parser.add_argument("--game", type=Path, help="Explicit local game ZIP for an unpublished handoff")
     parser.add_argument("--language", type=Path, help="Explicit local language ZIP for an unpublished handoff")
-    parser.add_argument("--crafting", type=Path, help="Explicit local crafting ZIP for an unpublished handoff")
     parser.add_argument("--offline", action="store_true")
     args = parser.parse_args()
     require(args.out is not None or args.install is not None, "Use --out or --install")
     require(not args.keep_current or args.install is not None, "--keep-current needs --install")
-    local = {kind: path for kind in (*OWNERS, "crafting") if (path := getattr(args, kind)) is not None}
+    local = {kind: path for kind in OWNERS if (path := getattr(args, kind)) is not None}
     def run(output):
         result = prepare(args.lock, output, args.cache, args.shared, args.offline, local)
         from pipeline.imports import display_assets

@@ -9,13 +9,14 @@ active dataset.
 
 The owner index (`owned-data-publication-index/v2`) points to an immutable
 `owned-data-publication/v2` descriptor. An owner may declare more roles than
-PoBR consumes. PoBR reads RePoE `game`, `crafting` and `test_fixtures`, and
+PoBR consumes. PoBR reads RePoE `game` and `test_fixtures`, and
 translation `language` and `support_display`; the translation descriptor's
 display-source binding must equal RePoE's `display_source` role, and its
 catalog-validation evidence is checked. Scope remains verbatim. Dependency
 completeness does not certify client identity, game semantics or translation
-quality. The old v1 RePoE handoff table lacks crafting and cannot be a latest
-channel.
+quality. RePoE also publishes the neutral `crafting` facts; its game part
+already carries the catalog projected from them, so PoBR does not read that role.
+The old v1 RePoE handoff table cannot be a latest channel.
 
 The data lock records both owner publications next to the consumed artifacts.
 Its generation and previous lock digest distinguish updates within the same patch;
@@ -56,7 +57,7 @@ it still checks its pins, producer and age.
 
 Same-target candidates preserve local policies, shared rules and owner scopes.
 Each changed consumed artifact must have exactly one owner `handoff/*` tag naming
-its revision; the candidate records it. Changed game, language or crafting inputs
+its revision; the candidate records it. Changed game or language inputs
 derive the snapshot manifest and runtime identity from pinned package metadata;
 the resolver then prepares the candidate's complete data and records its exact
 compact `release_id`, which the candidate Full CI rebuilds and must match.

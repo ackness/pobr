@@ -102,7 +102,7 @@ closure/count warnings. Neither result certifies semantics. Local activation is 
 separate user-authorized operation, not an effect of these registry entries.
 
 The historical crafting-table decision keeps its original execution identity
-unknown. The current [required crafting projection](crafting-inputs.md) instead
+unknown. The current [crafting catalog projection](https://github.com/ackness/repoe/blob/master/RePoE/docs/pobr_crafting_catalog.md) instead
 uses seven already pinned F77 tables and a separate neutral RePoE package; it
 preserves unknown language, raw intervals and scope diagnostics. This new
 consumer/source publication does not rewrite the old decision or expand raw

@@ -134,7 +134,7 @@ def main():
     parser.add_argument("--activate", action="store_true", help="Explicitly select the candidate locally")
     parser.add_argument("--expected-current", help="Required for selection; rejects a changed marker")
     parser.add_argument("--expected-runtime", help="Optional selection guard for the previously installed runtime identity")
-    for kind in (*build_data.OWNERS, "crafting"):
+    for kind in build_data.OWNERS:
         parser.add_argument("--" + kind, type=Path, help="Explicit local owner input; all pins still apply")
     args = parser.parse_args()
     require(args.activate == (args.expected_current is not None), "Selection needs --activate and --expected-current together")
@@ -152,7 +152,7 @@ def main():
         if args.expected_runtime is not None:
             require(bundle.data_inputs(data_root, args.expected_current)[1] == args.expected_runtime,
                     "Expected runtime changed")
-    local = {kind: value for kind in (*build_data.OWNERS, "crafting") if (value := getattr(args, kind)) is not None}
+    local = {kind: value for kind in build_data.OWNERS if (value := getattr(args, kind)) is not None}
     receipt = build_data.prepare(args.lock, output, args.cache, args.shared or data_root / "overlay-common",
                                  args.offline, local)
     result = {"candidate": receipt, "selection": None}
