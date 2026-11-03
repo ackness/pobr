@@ -1,7 +1,7 @@
 {
   "schema": "pobr-data-lock/v1",
-  "generation": 4,
-  "previous_id": "e2317e5d24f2daf3f5824c96a734778ae3f40dbb3d22501f0af63d4afe856b55",
+  "generation": 5,
+  "previous_id": "1e05facc4f993d0f744c69067db733622aaa783898c1c42ae45a791c4bfb4ad7",
   "target": {
     "game": "poe2",
     "game_patch": "0.5.5.5",
@@ -10,18 +10,18 @@
   "locale": "zh-CN",
   "packages": {
     "game": {
-      "bytes": 4411146,
-      "expanded_bytes": 64550349,
+      "bytes": 4415275,
+      "expanded_bytes": 64578696,
       "manifest": {
-        "bytes": 10606,
-        "sha256": "34c75f0646fc44b067aa26190995d9f5ab518b713b31465fafc16c16f89e5c07"
+        "bytes": 33083,
+        "sha256": "8bfeaefeceb30eb70245e9b6735b2fd02a8e32cb16850b05058e04fa3527d59b"
       },
-      "path": "handoff/game-crafting-20261103/game-build-part.zip",
+      "path": "handoff/historical-tree-attributes-20261103/game-build-part.zip",
       "publication": "published",
       "repository": "ackness/repoe",
-      "revision": "c804bfc764da2cb9eebcb6d418744e09bf5c005d",
-      "tag": "handoff/game-crafting-20261103",
-      "sha256": "09824050a7a0552a2feea7ff4f29454fed7028b2a6ea8535792d7eff8c333639"
+      "revision": "f909f917809699ac7a8e8f9c1eadfd45fd98297a",
+      "tag": "handoff/historical-tree-attributes-20261103",
+      "sha256": "cafd8e0ec5c9300dd2eefb2f9743c793b7e4ff2849d48d4e886e9e6f80521c1a"
     },
     "language": {
       "format": "locale-git-files",
@@ -128,19 +128,19 @@
   },
   "snapshot_manifest": {
     "bytes": 8234,
-    "sha256": "73b2d77e669743ced67df5cf6e0245f79e333bb9b2a481b796da7099d8f63a06"
+    "sha256": "5d41f3284186bbe5a5d48b4270404fb903132cd9ef8e9fc0883264daf92fbf17"
   },
-  "runtime_identity": "f9b79d291b3ed1b15c8843e016e2cda705e19ff22096af747b25e3d5be09963d",
-  "release_id": "06cda3222beda1b6b6f2ae657b7923cab53ea8aa66f4f9be0830d35cb1448939",
+  "runtime_identity": "ace21c864f34e095220090ba988ec8af4976d6fea15725b62c6ab89627274e15",
+  "release_id": "90d894199b0146cb9168052771885e45949ac21800175c9cf544c564373a8e40",
   "owner_publications": {
     "ackness/repoe": {
-      "index_revision": "5cb624d9264c6adccc73d2aad429deaa71b4e757",
-      "sequence": 4,
+      "index_revision": "dc64b90ab5afe81824dbd933ac640fa37fce34aa",
+      "sequence": 5,
       "descriptor": {
-        "bytes": 4972,
-        "path": "publication/releases/poe2-international/4.json",
-        "revision": "a0d57c461d9e59ad02e3d4c15604be25af857399",
-        "sha256": "82cbc76e771f6b5a8a41c5a6c3c05e66b637a5e3b526824082113de4ebcd186b"
+        "bytes": 4985,
+        "path": "publication/releases/poe2-international/5.json",
+        "revision": "977b453be8c5649c00ceb14548a04872527e5164",
+        "sha256": "38fd5d1754cbddc83e72fe073f3f1eb5d8dbc2bab879a29745cc65e07892c6f3"
       }
     },
     "ackness/poe2-zh-cn-stats": {
