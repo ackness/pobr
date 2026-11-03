@@ -27,6 +27,7 @@
 | CI 不再重跑 owner 的普通领域与显示生产；精简发行包直接从已准备的快照组装 | 已完成 |
 | 分域锁收敛为一份按 tag 引用两个 owner 发布的 JSON（`pipeline/data.lock.json`）；删除只为重放生产保留的锁、普通领域与显示生成脚本及候选任务 | 已完成 |
 | 领域转换工具（`tools/pobr-data-adapter`、`pipeline/policies/`）迁往 RePoE；语言生产者迁往翻译库；退役 `data:tree:*`／`data:native:candidate` | 已完成（ackness/repoe#17、ackness/poe2-zh-cn-stats#8）；keystone 字节检查改在 RePoE |
+| 删除入库的天赋树美术（`web/public/tree-art/`，533 个由 vendor 生成的文件）与生成任务；树查看器只画节点圆点和连线 | 已完成；节点美术以后作为独立功能接入 owner 发布 |
 
 adapter 的 30 份 JSON 策略已完整迁入 RePoE，内容与迁移前一致；Cargo 依赖、工具链、任务与 CI 也由 RePoE 维护。
 PoBR 留下的 11 份自有 shared 规则／构筑配置属于引擎语义，继续随本仓库代码维护，不作为领域适配策略迁移。
@@ -53,7 +54,6 @@ PoBR 留下的 11 份自有 shared 规则／构筑配置属于引擎语义，继
 
 | 例外 | 退出条件 |
 | --- | --- |
-| `web/public/tree-art/` 入库的天赋树美术由 vendor 生成 | RePoE 发布客户端树美术后改为导入 |
 | `pipeline/imports/crafting_inputs.py` 仍在准备阶段将七表事实投影为 `trade_crafting_sources.json`，内含币种前缀、OutcomeMods 选择与聚合策略 | 将目录生产及策略迁往 RePoE，发布固定投影并调整 PoBR 消费契约；用完整输出、诊断和消费者验证保持原行为 |
 | `pipeline/imports/sources.lock.json` 仍混合保存原始来源／采集证据与下游保留输入接受决定 | 原料与采集台账归 RePoE，语言策展归翻译库，PoBR 保留消费范围的接受决定；迁移保留历史摘要与出处，不将整份台账当作 adapter 配置 |
 | 冻结的 `0.5.5.4.2` 回滚锁不经数据锁 | 两个 owner 发布对应的 recovery 描述后改为第二份数据锁 |

@@ -44,7 +44,6 @@ setup 检查 Git、make、C 编译器；macOS 的 Apple SDK/Command Line Tools �
 | 独立数据 | `mise run data:prepare`按`pipeline/data.lock.json`临时导入固定owner输入；`data:check`离线检查；原料采集、导出与领域生产在owner仓库 |
 | PoB2 对照、triage、词条审计 | 对应任务依赖 `setup:oracle`，自动准备固定 LuaJIT commit 与固定 vendor；重复运行复用缓存 |
 | 浏览器回归 | `mise run web:e2e <spec>`，自动安装 lockfile 对应的 Playwright 浏览器/系统依赖；仍须当前 dist/WASM/data |
-| 树图资源再生成 | `mise run web:tree-art`，按需由 mise conda backend 安装固定 ImageMagick 7/zstd，自动准备 vendor |
 
 `setup:oracle` 将兼容的 LuaJIT 暴露到 `.cache/runtime/bin`；mise 为任务配置 PATH、
 `POBR_LUAJIT` 与 vendor 的 `LUA_PATH`，无需各自修改 shell。
