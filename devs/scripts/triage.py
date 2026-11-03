@@ -309,8 +309,18 @@ def enemy_leads(entries: dict, oracle: dict) -> list:
         if effective is None or mine is None:
             continue
         if not compare.agrees(mine, effective):
-            found.append(lead("enemy", "enemy", "effective multiplier", damage_type,
-                              pobr=mine, pob2=effective))
+            entry = lead("enemy", "enemy", "effective multiplier", damage_type,
+                         pobr=mine, pob2=effective)
+            names = {"DamageTaken", damage_type + "DamageTaken"}
+            if damage_type in compare.ELEMENTS:
+                names.add("ElementalDamageTaken")
+            # Reference contributions are evidence to inspect, not PoBR lines
+            # or proof that a different enemy multiplier is wrong.
+            entry["reference_taken_mods"] = [
+                mod for mod in compare.as_list(theirs.get("takenMods"))
+                if mod.get("name") in names
+            ]
+            found.append(entry)
     for row in compare.as_list(breakdown.get("enemy")):
         damage_type = row.get("damage_type")
         other = compare.as_dict(theirs.get(damage_type))
@@ -827,8 +837,13 @@ def lead_text(found: dict) -> str:
         return (f"{found['kind']} {found['key']}: PoBR {value(found, 'pobr')} · "
                 f"PoB2 {value(found, 'pob2')}")
     if found["kind"] == "enemy":
+        sources = ", ".join(
+            f"{mod.get('source', '?')} ({mod.get('name')}: {mod.get('value')})"
+            for mod in found.get("reference_taken_mods", [])[:3]
+        )
         return (f"enemy {found['key']} {found['type']}: PoBR {value(found, 'pobr')} · "
-                f"PoB2 {value(found, 'pob2')}")
+                f"PoB2 {value(found, 'pob2')}"
+                + (f" · PoB2 taken: {sources}" if sources else ""))
     return (f"{found['kind']} {found['type']} {found['key']} ({found['scope']}): "
             f"PoBR {value(found, 'pobr')} · PoB2 {value(found, 'pob2')}")
 

@@ -1226,6 +1226,24 @@ class TriageTests(unittest.TestCase):
                 self.assertEqual(found[0]["key"], "Cold")
                 self.assertAlmostEqual(found[0]["pob2"], 0.992)
 
+    def test_enemy_leads_keep_reference_taken_sources_separate_from_engine_lines(self):
+        entries = {"TotalDPS": {"breakdown": {"mitigation": [
+            {"damage_type": "Cold", "multiplier": 1.5},
+        ]}}}
+        mark = {"name": "DamageTaken", "value": 28, "source": "Skill:WolfPounceMarkPlayer"}
+        oracle = {
+            "mainHandOutput": {"ColdStoredHitAvg": 100, "ColdHitAverage": 192},
+            "enemyMitigation": {"takenMods": [
+                mark, {"name": "FireDamageTaken", "value": 10, "source": "Fire-only"},
+            ]},
+        }
+        found, = self.triage.enemy_leads(entries, oracle)
+        self.assertEqual(found["reference_taken_mods"], [mark])
+        self.assertEqual(found["lines"], [])
+        rendered = self.triage.lead_text(found)
+        self.assertIn("PoB2 taken: Skill:WolfPounceMarkPlayer", rendered)
+        self.assertNotIn("Fire-only", rendered)
+
     def test_enemy_leads_do_not_guess_weights_for_different_hands(self):
         oracle = {
             "mainHandOutput": {"ColdStoredHitAvg": 10, "ColdHitAverage": 6},
