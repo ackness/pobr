@@ -306,6 +306,8 @@ Wolf Pack 召唤的狼数按游戏的 `skill_wolf_pack_size` 随有效宝石等�
 
 Evergrasping Ring 的 “Enemies in your Presence Gain (6-12)% of Damage as Extra Chaos Damage”（游戏 stat `enemies_in_presence_non_skill_base_all_damage_%_to_gain_as_chaos`）按 stat 名是敌人全部伤害的份额：敌人的每种伤害都按这个比例额外获得混沌伤害，再按敌人对两种类型的加成缩放（`calc::ehp::assemble_enemy_damage`）。PoB2 只从物理伤害获得，所以有这枚戒指的构筑 EHP 比参考值低：tuned 组的 Ritualist Purity of Fire 三枚戒指共 39%，TotalEHP 140,103 对参考值 174,152；Stormweaver Frost Bomb 14%，12,061 对 14,185。
 
+该敌人词条同样受戒指增幅影响，包括 Mystic Attunement、Ingenuity 和 Kalandra 反射；不能因为它嵌套在 `EnemyModifier` 内就漏掉缩放。例如原值 14、反射的 14、第三戒指 10，在全局 25% 与左／右 33%／32% 增幅下分别为 22、21、12，总计 55%。纠正漏算会进一步降低 EHP，不以接近参考值为目标。
+
 ### 最强致盲效果
 
 技能自己或它的辅助宝石带的 “increased Blind Effect”（`blind_effect_+%`，例如 Blind II 的 20%）只作用于这个技能施加的致盲。致盲不叠加，敌人身上只有一个，PoBR 取角色和已启用召唤技能所产生的最强致盲（`skill_env::strongest_skill_blind`），转给敌人，与角色自己的 “increased Blind Effect” 相加。Wolf Pack、Wild Protector 的辅助兼容性按召唤物的每个攻击单独检查，不能用不造成伤害的召唤动作排除 Blind II，也不能跨不同攻击合并辅助或按召唤数量叠加效果。此处仍要求选定敌人已致盲，不推算召唤物命中频率或覆盖率。PoB2 把这条加成按每个被辅助的技能各算一次、全部加到角色身上：tuned 组的 Amazon（Rain of Arrows）有五个技能带 Blind II，PoB2 的致盲是 −40% 命中，PoBR 是 −24%，闪避率 72% 对参考值 76%，TotalEHP 随之较低。

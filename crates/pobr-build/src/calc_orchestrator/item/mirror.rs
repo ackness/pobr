@@ -10,6 +10,24 @@ use super::super::skill::resolve::clean_grant_text;
 use crate::build::Build;
 use crate::build_data::BuildData;
 
+/// Scale each numeric item bonus once, including bonuses granted to another
+/// actor. Keep LIST wrappers, flags, text, conditions and attribution intact.
+/// A delta copy is not equivalent for MORE or OVERRIDE modifiers.
+pub(crate) fn scale_item_bonuses(modifiers: &mut [pobr_core::Modifier], scale: f64) {
+    if scale == 1.0 {
+        return;
+    }
+    for modifier in modifiers {
+        match &mut modifier.value {
+            pobr_core::ModValue::Number(value) => {
+                *value = super::super::collect::vendor_scale_mod_value(*value, scale);
+            }
+            pobr_core::ModValue::NestedMods(inner) => scale_item_bonuses(inner, scale),
+            pobr_core::ModValue::Bool(_) | pobr_core::ModValue::Text(_) => {}
+        }
+    }
+}
+
 pub(crate) fn kalandra_reflected_ring<'a>(
     build: &'a Build,
     slot: EquipmentSlot,
@@ -202,9 +220,8 @@ fn compute_slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(Equ
         // variant (`EffectOfBonusesFromQuiver`, consumed at CalcSetup.lua:1366-1373's
         // Weapon 2 quiver special case) + :4867's focus variant
         // (`EffectOfBonusesFromFocus` INC -N, consumed at CalcSetup.lua:1209-1220's
-        // Focus item special case — only numeric BASE/INC/MORE mods are scaled;
-        // LIST/FLAG mods have their scaled copy dropped via
-        // MergeMod(skipNonAdditive), keeping the full value, matching this consumer's Number-only filter).
+        // Focus item special case. Numeric values, including nested actor
+        // bonuses, are scaled once at item ingestion; flags remain unchanged.
         match (target, sign > 0.0) {
             ("equipped rings and amulets", true) => {
                 add(&[Ring1, Ring2, Ring3, Amulet], num / 100.0)
@@ -218,4 +235,52 @@ fn compute_slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(Equ
         }
     }
     scales
+}
+
+#[cfg(test)]
+mod tests {
+    use super::scale_item_bonuses;
+    use pobr_core::{ModTag, ModValue, Modifier};
+    use pobr_data::modifier::ModType;
+    use pobr_data::source::{ModifierSource, SourceId, SourceKind};
+
+    #[test]
+    fn slot_scaling_preserves_wrappers_flags_sources_and_conditions() {
+        let origin =
+            ModifierSource::new(SourceId::new(SourceKind::ItemAffix, "item.ring1.explicit"))
+                .with_slot("ring1")
+                .with_raw_text("Original item text");
+        let payload = |base, more, override_value| {
+            vec![
+                Modifier::number("Damage", ModType::Inc, base),
+                Modifier::number("Damage", ModType::More, more),
+                Modifier::number("Accuracy", ModType::Override, override_value),
+                Modifier::flag("CannotBeEvaded"),
+                Modifier::new("Label", ModType::List, ModValue::Text("unchanged".into())),
+            ]
+        };
+        let wrap = |inner| {
+            Modifier::new(
+                "ExtraAura",
+                ModType::List,
+                ModValue::NestedMods(vec![Modifier::new(
+                    "MinionModifier",
+                    ModType::List,
+                    ModValue::NestedMods(inner),
+                )]),
+            )
+            .with_tag(ModTag::condition("TestCondition", false))
+            .with_origin(origin.clone())
+        };
+        for (scale, expected) in [
+            (1.0, payload(3.0, -20.0, 100.0)),
+            (1.5, payload(4.0, -30.0, 150.0)),
+            (0.5, payload(1.0, -10.0, 50.0)),
+            (0.0, payload(0.0, 0.0, 0.0)),
+        ] {
+            let mut mods = vec![wrap(payload(3.0, -20.0, 100.0))];
+            scale_item_bonuses(&mut mods, scale);
+            assert_eq!(mods, vec![wrap(expected)]);
+        }
+    }
 }

@@ -145,14 +145,17 @@ impl SourceWriter {
         self.session.add_modifier_texts(texts)
     }
 
-    pub fn add_item(&mut self, slot: EquipmentSlot, item: &Item) -> Result<(), ParseError> {
+    pub fn add_item_ingest(
+        &mut self,
+        slot: EquipmentSlot,
+        item: &Item,
+        ingest: pobr_core::ItemIngest,
+    ) {
         self.note_item_lines(slot.id(), item);
-        self.session.add_item(slot, item)
-    }
-
-    pub fn add_weapon_item(&mut self, slot: EquipmentSlot, item: &Item) -> Result<(), ParseError> {
-        self.note_item_lines(slot.id(), item);
-        self.session.add_weapon_item(slot, item)
+        self.session.add_modifiers(ingest.modifiers);
+        for text in ingest.unsupported {
+            self.session.record_unsupported_modifier_text(text);
+        }
     }
 
     pub fn add_limb(&mut self, slot: LimbSlot, item: &Item) -> Result<(), ParseError> {

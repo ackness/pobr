@@ -274,6 +274,109 @@ fn extracted_ring_effects_preserve_left_and_right_slot_scaling() {
 }
 
 #[test]
+fn ring_bonus_effect_scales_nested_enemy_payloads_and_reflections() {
+    use pobr_core::ModValue;
+    use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
+
+    let data = data();
+    let gain = |n| format!("Enemies in your Presence Gain {n}% of Damage as Extra Chaos Damage");
+    let base = build("SparkPlayer")
+        .set_item(EquipmentSlot::Ring1, item("Sapphire Ring", &[&gain(14)]))
+        .set_item(EquipmentSlot::Ring2, item("Ruby Ring", &[&gain(10)]))
+        .set_item(
+            EquipmentSlot::Belt,
+            item(
+                "Linen Belt",
+                &[
+                    "33% increased bonuses gained from left Equipped Ring",
+                    "32% increased bonuses gained from right Equipped Ring",
+                ],
+            ),
+        );
+    let gains = |build: &Build| {
+        let result = run(build, data);
+        let mut rows = Vec::new();
+        for outer in result.mod_db().named("EnemyModifier") {
+            let ModValue::NestedMods(inner) = &outer.value else {
+                continue;
+            };
+            for modifier in inner {
+                if modifier.name.as_str() == "DamageGainAsChaos" {
+                    rows.push((
+                        outer.origin.as_ref().unwrap().source_id.id.clone(),
+                        modifier.value.as_number().unwrap(),
+                    ));
+                }
+            }
+        }
+        rows.sort_by(|a, b| a.0.cmp(&b.0));
+        rows
+    };
+    assert_eq!(
+        gains(&base),
+        vec![
+            ("item.ring1.explicit".into(), 18.0),
+            ("item.ring2.explicit".into(), 13.0),
+        ]
+    );
+    let reflected = base.set_item(
+        EquipmentSlot::Ring2,
+        item("Unset Ring", &["Reflects opposite Ring"]),
+    );
+    assert_eq!(
+        gains(&reflected),
+        vec![
+            ("item.ring1.explicit".into(), 18.0),
+            ("item.ring2.explicit".into(), 18.0),
+        ]
+    );
+    let mystic = data
+        .passive_nodes
+        .values()
+        .find(|node| node.name.as_deref() == Some("Mystic Attunement"))
+        .unwrap()
+        .skill;
+    let three = reflected
+        .with_character(CharacterIdentity {
+            level: 85,
+            class_name: "Huntress".into(),
+            ascendancy_name: "Ritualist".into(),
+        })
+        .with_tree(PassiveTreeSpec {
+            allocated_nodes: vec![NodeId(mystic), NodeId(34785)],
+            ..Default::default()
+        })
+        .set_item(EquipmentSlot::Ring3, item("Sapphire Ring", &[&gain(10)]));
+    assert_eq!(
+        gains(&three),
+        vec![
+            ("item.ring1.explicit".into(), 22.0),
+            ("item.ring2.explicit".into(), 21.0),
+            ("item.ring3.explicit".into(), 12.0),
+        ]
+    );
+}
+
+#[test]
+fn slot_bonus_effect_scales_more_once_instead_of_multiplying_delta_copies() {
+    let data = data();
+    let plain = build("SparkPlayer").set_item(
+        EquipmentSlot::Ring1,
+        item("Sapphire Ring", &["20% more Damage"]),
+    );
+    let scaled = plain.clone().set_item(
+        EquipmentSlot::Belt,
+        item(
+            "Linen Belt",
+            &["50% increased bonuses gained from left Equipped Ring"],
+        ),
+    );
+    let plain = run(&plain, data);
+    let scaled = run(&scaled, data);
+    close(scaled.output().dps / plain.output().dps, 1.3 / 1.2);
+}
+
+#[test]
 fn ordinary_jewel_scales_quiver_like_other_global_sources() {
     let data = data();
     let baseline = build("IceShotPlayer")
