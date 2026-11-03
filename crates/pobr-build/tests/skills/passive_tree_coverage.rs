@@ -15,6 +15,47 @@ use crate::test_data as data;
 const SNAPSHOT: &str = include_str!("../fixtures/passive_tree_unparsed.txt");
 const SNAPSHOT_PATH: &str = "tests/fixtures/passive_tree_unparsed.txt";
 
+#[test]
+fn wildsurge_native_block_changes_only_storm_and_plant_spells() {
+    let data = data();
+    for (skill, applies) in [
+        ("EntanglePlayer", true),
+        ("ThunderstormPlayer", true),
+        ("CometPlayer", false),
+    ] {
+        let run = |allocated: bool| {
+            let nodes = if allocated { "49363" } else { "" };
+            let build = parse_build(&format!(
+                r#"<PathOfBuilding2><Build level="85" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="{skill}" level="20" enabled="true"/></Skill></Skills>
+<Tree activeSpec="1"><Spec nodes="{nodes}"/></Tree></PathOfBuilding2>"#
+            ))
+            .unwrap();
+            calculate_with_data_session(&build, data, &DataOrchestratorOptions::default()).unwrap()
+        };
+        let plain = run(false);
+        let allocated = run(true);
+        for (name, factor) in [("Damage", 1.5), ("Cost", 0.5), ("Duration", 0.25)] {
+            let query = |session: &pobr_core::calc::CompletedCalculationSession| {
+                session
+                    .mod_db()
+                    .more(session.config(), &[ModName::from(name)])
+            };
+            assert_eq!(
+                query(&allocated) / query(&plain),
+                if applies { factor } else { 1.0 },
+                "{skill} {name}"
+            );
+        }
+        assert!(plain.output().dps > 0.0, "{skill}");
+        let ratio = allocated.output().dps / plain.output().dps;
+        assert!(
+            (ratio - if applies { 1.5 } else { 1.0 }).abs() < 1e-9,
+            "{skill}: {ratio}"
+        );
+    }
+}
+
 fn dropped_lines() -> BTreeSet<String> {
     let data = data();
     let mut nodes: Vec<u32> = data

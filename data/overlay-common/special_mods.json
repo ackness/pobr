@@ -12,6 +12,29 @@
   },
   "entries": [
     {
+      "id": "wildsurge_incantation",
+      "pattern": "^storm and plant spells: • deal (\\d+(?:\\.\\d+)?)% more damage • cost (\\d+(?:\\.\\d+)?)% less • have (\\d+(?:\\.\\d+)?)% less duration$",
+      "mods": [
+        {
+          "name": "Damage", "type": "MORE", "value": "$1",
+          "tags": [{"type": "SkillType", "skillType": "Spell"}, {"type": "SkillType", "skillTypeList": ["Storm", "Plant"]}]
+        },
+        {
+          "name": "Cost", "type": "MORE", "value": {"ref": "$2", "ops": [{"negate": {}}]},
+          "tags": [{"type": "SkillType", "skillType": "Spell"}, {"type": "SkillType", "skillTypeList": ["Storm", "Plant"]}]
+        },
+        {
+          "name": "Duration", "type": "MORE", "value": {"ref": "$3", "ops": [{"negate": {}}]},
+          "tags": [{"type": "SkillType", "skillType": "Spell"}, {"type": "SkillType", "skillTypeList": ["Storm", "Plant"]}]
+        }
+      ],
+      "batch": "S2",
+      "verified": false,
+      "game_source": "keystone_wildsurge_incantation; base/passive_tree.json node 49363",
+      "source_note": "The native heading and all three bullets form one scoped block. Existing wrapped-line ingestion joins them; isolated bullets remain unsupported, never unconditional. Spell AND (Storm OR Plant), applied once even when both types are present.",
+      "examples": ["Storm and Plant Spells: • deal 50% more damage • cost 50% less • have 75% less duration"]
+    },
+    {
       "id": "glory_generation",
       "pattern": "^(\\d+(?:\\.\\d+)?)% (?:increased|reduced) glory generation(?: for banner skills)?$",
       "mods": [],
