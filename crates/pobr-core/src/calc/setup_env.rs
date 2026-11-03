@@ -14,7 +14,8 @@
 //!
 //! Design highlights (doc12 §4.2 / §5, accuracy-and-enemy.md §4,§5,§6):
 //! - **Monster scaling**: `accuracy/evasion/armour` come from [`EnemyTierDefaults`] (tier multiplier already included).
-//! - **Resistances**: `{Fire/Cold/Lightning}Resist BASE`, `ChaosResist BASE`.
+//! - **Resistances**: `{Fire/Cold/Lightning}Resist BASE`, `ChaosResist BASE`;
+//!   explicit enemy base-resistance inputs replace the corresponding preset.
 //! - **Uber damage-taken penalty**: `DamageTaken MORE -70`.
 //! - **Boss common debuff resistance**: `CurseEffectOnSelf/ExposureEffectOnSelf/SlowEffectOnSelf
 //!   MORE -50` etc., weakening the effectiveness of our curses/exposure/slows against a Boss.
@@ -167,6 +168,10 @@ fn tier_defaults_from_constants(
 /// (the injection pipeline) -- the caller must call this function **after**
 /// `set_constants` (`calculate_with_data` already follows this order; without
 /// injection, the Default fallback is value-for-value equal to the JSON, so output is unchanged).
+///
+/// Add interpreted enemy configuration before this step: an explicit
+/// `config.enemy<Type>Resist` BASE, including zero, replaces only that
+/// resistance's preset. Exposure, curses and final OVERRIDE mods remain separate.
 pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
     let constants = &env.cfg.constants;
     let resolved_level = if config_level == 0 {
@@ -186,9 +191,47 @@ pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
     env.enemy.base.accuracy = defaults.accuracy as f64;
     env.enemy.base.evasion = defaults.evasion;
     env.enemy.base.armour = defaults.armour;
-    env.enemy.base.fire_resistance = defaults.elemental_resist;
-    env.enemy.base.cold_resistance = defaults.elemental_resist;
-    env.enemy.base.lightning_resistance = defaults.elemental_resist;
+    // These are base-resistance inputs, not additional resistances and not
+    // final overrides. Exposure/curses must still lower them; Rakiata's Flow
+    // then inverts the resulting resistance for hits, never for ignite.
+    let [fire, cold, lightning, _chaos] = [
+        ("FireResist", "fire_resist", defaults.elemental_resist),
+        ("ColdResist", "cold_resist", defaults.elemental_resist),
+        (
+            "LightningResist",
+            "lightning_resist",
+            defaults.elemental_resist,
+        ),
+        ("ChaosResist", "chaos_resist", defaults.chaos_resist),
+    ]
+    .map(|(name, id, preset)| {
+        let input_id = format!("config.enemy{name}");
+        let configured = env
+            .enemy
+            .mod_db
+            .named(name)
+            .filter(|modifier| {
+                modifier.mod_type == ModType::Base
+                    && modifier.matches(&env.cfg)
+                    && modifier.origin.as_ref().is_some_and(|origin| {
+                        origin.source_id.kind == SourceKind::EnemyConfig
+                            && origin.source_id.id == input_id
+                    })
+            })
+            .filter_map(|modifier| modifier.effective_number(&env.cfg))
+            .fold(None, |sum, value| Some(sum.unwrap_or(0.0) + value));
+        if let Some(value) = configured {
+            value
+        } else {
+            if preset != 0.0 {
+                push_enemy_number(&mut env.enemy.mod_db, name, ModType::Base, preset, id);
+            }
+            preset
+        }
+    });
+    env.enemy.base.fire_resistance = fire;
+    env.enemy.base.cold_resistance = cold;
+    env.enemy.base.lightning_resistance = lightning;
     inject_enemy_mods(&mut env.enemy.mod_db, &defaults, tier, constants);
     inject_ehp_damage_placeholder(&mut env.enemy.mod_db, constants, defaults.level, tier);
 
@@ -240,7 +283,7 @@ pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
     // injection was a reversed, spurious compensation and has been removed.
 }
 
-/// Writes [`EnemyTierDefaults`] + tier bonuses into the enemy modDB (doesn't touch the base scalars).
+/// Writes monster ratings and non-resistance tier bonuses into the enemy modDB.
 ///
 /// Boss poise combines unique rarity with the representative game monster's
 /// variety percentage. Both are Effective-gated. The vendor preset's extra
@@ -261,40 +304,6 @@ fn inject_enemy_mods(
     );
     push_enemy_number(db, "Evasion", ModType::Base, defaults.evasion, "evasion");
     push_enemy_number(db, "Armour", ModType::Base, defaults.armour, "armour");
-
-    // Elemental resistances (Boss tier bonus).
-    if defaults.elemental_resist != 0.0 {
-        push_enemy_number(
-            db,
-            "FireResist",
-            ModType::Base,
-            defaults.elemental_resist,
-            "fire_resist",
-        );
-        push_enemy_number(
-            db,
-            "ColdResist",
-            ModType::Base,
-            defaults.elemental_resist,
-            "cold_resist",
-        );
-        push_enemy_number(
-            db,
-            "LightningResist",
-            ModType::Base,
-            defaults.elemental_resist,
-            "lightning_resist",
-        );
-    }
-    if defaults.chaos_resist != 0.0 {
-        push_enemy_number(
-            db,
-            "ChaosResist",
-            ModType::Base,
-            defaults.chaos_resist,
-            "chaos_resist",
-        );
-    }
 
     // Uber: DamageTaken MORE -70 (reduced damage taken).
     if defaults.damage_taken_more != 0.0 {

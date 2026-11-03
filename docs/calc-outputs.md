@@ -253,11 +253,13 @@ The Vertex 的“装备没有属性需求”是 100% less GlobalItemAttributeReq
 
 MaximumChill／MaximumShock 来自 ailment_apply::maximum_terms；CurrentChill／CurrentShock
 来自 Env::applied_ailments。基础最大为 Chill 50、Shock 100，加 ChillMax／ShockMax 或覆盖。
-Shock 的 100 来自 PoB2 派生常数 SHOCK_MAX_EFFECT，未核对游戏。
-有施加来源时当前值为 `floor(min(max(来源幅度, 敌人已有幅度), 最大值))`，无来源为 0。
+Shock 的默认幅度 20、最大幅度 100 与游戏 `non_damaging_ailments.json` 一致。
+有施加来源时当前值为 `floor(min(max(来源幅度, 敌人已有幅度), 最大值))`；有效模式明确选中敌人感电且未给幅度时补入默认幅度，再应用角色和目标缩放。无来源、未声明状态时为 0。
 PoB2 无条件加敌人基础 30 Chill，所以 worked 样本 CurrentChill 都不一致；PoBR 不虚构冰缓来源。
-CurrentShock 两边为 0，最大值一致。
+`CurrentShock` 表示选定目标状态的实际幅度；所选主技能不能感电，不会取消由其他技能施加的选中状态。
 LowLifePercentage、LowestAttribute、四种异常视图及以下保留／持续／目标数为 derived，其余相应项用来源查询。
+
+已有中毒的 `PoisonStacksMax` 和异常明细 `max_stacks` 为 0 时表示没有层数上限，仍是有限 JSON 数值。实际层数与 DPS 保持有限；Calcs 将该上限显示为 `∞`。缺少异常的默认零须结合 `PoisonChance`／异常阶段是否存在区分，不能独立解释成无限。Full DPS 不把无限来源放进有限毒层共享池，混合双手保留各手各自的上限。
 
 ### 永久保留、满资源与打击目标
 

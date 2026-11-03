@@ -613,7 +613,7 @@ export interface AilmentDetail {
   hits_per_second: number;
   /** `hit_chance × apply_chance × duration × hits_per_second`; 0 when the skill has no hit rate. */
   stacks: number;
-  /** Most instances that deal damage at once; the `active_stacks` step uses the smaller of the two. */
+  /** Most instances that deal damage at once; 0 means no limit for this existing ailment. */
   max_stacks: number;
   /** `source_hit` and `source_crit` per damage type that can apply the ailment; the rows add up to the two totals. */
   source: { damage_type: string; hit: number; crit: number }[];

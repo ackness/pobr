@@ -308,6 +308,16 @@ Evergrasping Ring 的 “Enemies in your Presence Gain (6-12)% of Damage as Extr
 
 “Enemies in your Presence Resist Elemental Damage based on their Lowest Resistance”（`enemies_in_presence_elemental_damage_resisted_by_lowest_elemental_resistance`）是敌人的属性：Presence 内的敌人承受火、冰、电伤害时都用三种元素抗性中最低的那个，穿透按所用的那种抗性取（穿透降低的是它写明的抗性），命中、持续伤害和异常都经过 `calc::offence::enemy_resist_final`。游戏另有一条 “Elemental Damage from your Hits is Resisted by the enemy's lowest Elemental Resistance” 才限于命中。PoB2 把两条都只用于命中，所以点燃这类持续伤害在敌人某一抗性被降低时比参考值高：tuned 组的 Gemling Legionnaire Twister 点燃为参考值的 1.22 倍。**没有游戏内实测**。
 
+### 黑暗雕像的命中与中毒
+
+Vile Effusion 按目标上不同混沌 DoT 类型数发射，类型与状态假设见[黑暗雕像](mechanics/offence.md#黑暗雕像)。原生额外投射物的 targeting 数值不是单目标命中次数，也没有额外基础一发。不能用某份参考结果的四倍关系代替类型检查。
+
+[公开 Lich 样本 `27c94`](https://poe.ninja/poe2/pob/27c94) 的原始配置有四种有效类型，修复后的单图腾命中 DPS 为 50,262.84，与原参考接近。该样本的原生 Vile Effusion 混沌命中还能由兼容的 Poison II（`base_chance_to_poison_on_hit_% = 60`）施加中毒；游戏技能没有禁止中毒的 stat。[技能与辅助说明](https://www.poe2wiki.net/wiki/Dark_Effegy)也允许这一组合。PoBR 保留 2,464.24 的中毒 DPS，原参考和钉定 PoB2 此项为零。原生禁止中毒、无有效伤害或零持续时间仍使结果为零；回归见 `tests/skills/dark_effigy.rs`。这里的持续状态假设不证明实际战斗中的覆盖率。
+
+### 护符生效与参考口径
+
+熊灵的 `SpiritOfTheBearPossessedPlayer` 提供 20% increased maximum Life，`SpiritPossessedStrPlayer` 提供 20% reduced Damage taken，数值来自 owner 的 `base/mods.json`。在护符生效的选定状态下，PoBR 保留这两项；规则为 `exporter: absent`，参考口径才排除它们。公开驱炎使样本 `2491d` 的标准 EHP 为 24,772.22，参考口径为 19,053.87，原存档参考为 18,540.74。较高的标准 EHP 不能仅因不接近参考而下调，也不代表护符永久生效。
+
 ## 冻结语料中逐行解释的参考值差异
 
 以下数字保留原调查的冻结语料含义，本次文档审查没有重跑数值。详细豁免仍以 `known-differences.json` 的构筑、stat 和输入 hash 为准；解释一行不能推及整个 DPS 或 EHP。

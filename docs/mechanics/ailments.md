@@ -12,7 +12,15 @@ Calcs 直接读取异常计算阶段留下的输入，不另算一遍伤害：
 - 每种伤害型异常的 `Duration`、`EffMult`、`MagnitudeEffect`、`RollAverage`、`StacksMax`、`StackPotentialPercent`。持续时间用秒，效果与减免用倍率，取值分位和潜在层数比例用百分比。潜在层数不封顶；缺少命中频率估计时沿用满层回退。
 - 来源区间：`Ignite{Fire,Cold,Lightning}{Min,Max}`、`BleedPhysical{Min,Max}`、`Poison{Physical,Chaos}{Min,Max}`。这些是非暴击命中伤害经过对应异常累积倍率后、选择高伤害实例前的值。
 
-全局异常视图沿用最后一个可施加手别的输入，DPS 则沿用强／弱手合并；这两个口径不能混为一谈。没有该异常时，数值及倍率均报零。派生明细复用同一组输入和敌人减免项，必须能还原展示值。`ShockChance` 仍采用非暴击来源近似；`FreezeBuildupPct` 是每点伤害的冻结累积百分比，不是 `FreezeBuildupAvg` 的别名。
+除几率和层数上限外，全局异常视图沿用最后一个可施加手别的输入；`StacksMax` 读取合并后的上限，DPS 读取各手实际贡献。这些口径不能混为一谈。没有该异常时，数值及倍率均报零。派生明细复用同一组输入和敌人减免项，必须能还原展示值。`ShockChance` 仍采用非暴击来源近似；`FreezeBuildupPct` 是每点伤害的冻结累积百分比，不是 `FreezeBuildupAvg` 的别名。
+
+### 武器保证中毒与无限层
+
+Splinter of Lorrata 的 `local_poison_on_hit` 保证这把武器击中时中毒，按 `PoisonChance OVERRIDE 100` 处理；`local_hits_with_this_weapon_ignore_poison_limit` 让这把武器施加的毒不受层数上限限制。两条均只读实际来源手，不作用于法术、非武器攻击、另一手或召唤物。禁止施毒优先；保证中毒也不允许本来不符合条件的伤害类型施毒。依据为[物品原文](https://poe2db.tw/us/Splinter_of_Lorrata)和游戏原生 stat。
+
+无限层仍按应用频率与持续时间估计实例数，但全部实例生效，因此使用平均伤害掷值和原有暴击占比，不做有限层溢出时的强实例筛选。缺少频率输入只回退单实例。交替攻击各手各占一半应用频率，同时双手命中则各用完整频率。无限来源与有限来源相加，后者仍受自己的上限约束；Full DPS 按手拆分并保留跨技能的有限共享池，最终仍受总 DoT 上限限制。
+
+JSON 的 `max_stacks`／`PoisonStacksMax` 用有限数值 0 表示已有异常没有上限，Calcs 显示 `∞`；没有异常时的默认零不表示无限层。Arakaali 的逐敌人毒层命中增伤仍保留未支持诊断，不把本次估计的毒层反向灌入自身命中。
 
 ### Incision
 
@@ -27,6 +35,8 @@ PoBR 在有效模式读取 `multiplierIncisionStackCount`，写入敌人的 `Mul
 Crimson Assault 先把流血基础持续时间改为 1 秒，再应用持续时间 INC/MORE 和伤害加速。单实例伤害、保留输入与来源视图共用这一基础值。Shattering Spite 的 `active_skill_damaging_ailment_effect_+%_final` 通过异常效果施加 −50%，不会推算 Bloodstone Lance 数量或条件偷取。后者在钉定导出器中缺失，只在参考口径关闭；这两项不能解释所有存档中的 `BleedDPS` 差异。
 
 ## 冰缓、感电与冻结
+
+有效模式明确选择敌人感电、且没有幅度来源时，采用游戏默认 20% 承伤增加，再按角色与目标的幅度修正缩放，例如 Power Conduction 的 25% increased 得到 25%。这是由角色施加的选定快照；外部感电应提供最终幅度。已有 `ShockVal`（包括原生零值）、`ShockBase`／`ShockOverride`／`ShockMinimum` 时不补默认值。敌人感电使用 `EnemyShocked`，不激活玩家自身 `Shocked` 的词条；近期事件、几率和层数不自动声明目标已感电。来源为游戏 `non_damaging_ailments.Shock.default` 和 [Shock 关键词](https://poe2db.tw/us/Keywords)。
 
 `ShockDuration`、`ChillDuration` 对非玩家目标取 8 秒基础时间（`GameMechanicsConstantsDef::shock_base_duration` / `chill_base_duration`），`FreezeDuration` 取 4 秒（`freeze_base_duration`）。依据是[游戏关键词](https://poe2db.tw/us/Keywords)。统一公式在 `calc::ailment::ailment_duration_terms`：基础时间 × (1 + 持续时间 INC / 100) × MORE × 敌人减益持续倍率。
 

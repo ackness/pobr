@@ -17,6 +17,7 @@ mod configured_damage;
 pub mod crit;
 pub mod crit_pass;
 pub mod damage;
+pub(crate) mod dark_effigy;
 pub mod defence;
 pub mod defence_panels;
 pub mod effect_views;

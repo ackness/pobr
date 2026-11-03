@@ -6495,6 +6495,58 @@
       ]
     },
     {
+      "id": "weapon_always_poison",
+      "pattern": "^always poison on hit with this weapon$",
+      "mods": [
+        {
+          "name": "PoisonChance",
+          "type": "OVERRIDE",
+          "value": 100,
+          "flags": ["Attack"],
+          "tags": [
+            {"type": "Condition", "var": "{Hand}Attack"},
+            {"type": "SkillType", "skillType": "SkillType:NonWeaponAttack", "neg": true}
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "game_source": "base/stats.json: local_poison_on_hit; base/mods.json: LocalPoisonOnHit; https://poe2db.tw/us/Splinter_of_Lorrata",
+      "source_note": "Guaranteed application from this weapon, not additive global chance. The item slot resolves {Hand}Attack. Does not enable ineligible damage types or bypass CannotPoison.",
+      "examples": ["Always Poison on Hit with this weapon"]
+    },
+    {
+      "id": "weapon_poison_ignores_stack_limit",
+      "pattern": "^any number of poisons from this weapon can affect a target at the same time$",
+      "mods": [
+        {
+          "name": "PoisonStacksUnlimited",
+          "type": "FLAG",
+          "value": true,
+          "flags": ["Attack"],
+          "tags": [
+            {"type": "Condition", "var": "{Hand}Attack"},
+            {"type": "SkillType", "skillType": "SkillType:NonWeaponAttack", "neg": true}
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "game_source": "base/stats.json: local_hits_with_this_weapon_ignore_poison_limit; base/mods.json: UniqueLocalInfinitePoisonStackCount1; https://poe2db.tw/us/Splinter_of_Lorrata",
+      "source_note": "Only poisons inflicted by this weapon ignore the cap. Uses the existing rate/duration estimate, without strongest-instance selection. No infinity is stored in a numeric modifier or output.",
+      "examples": ["Any number of Poisons from this Weapon can affect a target at the same time"]
+    },
+    {
+      "id": "cannot_poison",
+      "pattern": "^(?:supported skills )?cannot poison$",
+      "mods": [{"name": "CannotPoison", "type": "FLAG", "value": true}],
+      "verified": false,
+      "batch": "S2",
+      "game_source": "base/stats.json: cannot_poison, virtual_cannot_poison",
+      "source_note": "Prohibits poison even with a guaranteed application source.",
+      "examples": ["Cannot Poison", "Supported Skills cannot Poison"]
+    },
+    {
       "id": "weapon_all_damage_contributes_to_pin",
       "pattern": "^all damage from hits with this weapon contributes to pin buildup$",
       "mods": [

@@ -137,11 +137,23 @@ fn source_range(stage: &AilmentStageTerms, suffix: &str) -> f64 {
         .sum()
 }
 
+fn merged_max_stacks(out: &OutputTable, kind: AilmentType) -> f64 {
+    match kind {
+        AilmentType::Bleed => out.bleed_max_stacks,
+        AilmentType::Ignite => out.ignite_max_stacks,
+        AilmentType::Poison => out.poison_max_stacks,
+        _ => 0.0,
+    }
+}
+
 pub(crate) fn display_value(out: &OutputTable, stat: &str) -> Option<f64> {
     if stat == "ShockChance" {
         return Some(out.shock_chance * 100.0);
     }
     let (kind, suffix) = split_stat(stat)?;
+    if suffix == "StacksMax" {
+        return Some(merged_max_stacks(out, kind));
+    }
     let Some(stage) = stage(out, kind) else {
         return Some(0.0);
     };
@@ -164,7 +176,6 @@ pub(crate) fn display_value(out: &OutputTable, stat: &str) -> Option<f64> {
         "EffMult" => t.enemy,
         "MagnitudeEffect" => (1.0 + t.magnitude_inc / 100.0) * t.magnitude_more,
         "RollAverage" => t.damage_roll,
-        "StacksMax" => t.max_stacks,
         "StackPotentialPercent" => t.stack_potential * 100.0,
         _ => source_range(stage, suffix),
     })
@@ -184,6 +195,13 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<DerivedDetail> {
         )
     } else {
         let (kind, suffix) = split_stat(stat)?;
+        if suffix == "StacksMax" {
+            return Some(DerivedDetail {
+                formula: "MaximumAilmentStacks".into(),
+                inputs: vec![("MaximumAilmentStacks".into(), merged_max_stacks(out, kind))],
+                context,
+            });
+        }
         let Some(stage) = stage(out, kind) else {
             return Some(DerivedDetail {
                 formula: "0 * AilmentInstances".into(),
@@ -258,12 +276,11 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<DerivedDetail> {
                     ("AilmentMagnitudeMore".into(), t.magnitude_more),
                 ],
             ),
-            "StacksMax" => one("MaximumAilmentStacks", t.max_stacks),
             "StackPotentialPercent" | "RollAverage" => {
                 let active = if t.stacks > 0.0 {
                     t.stacks
                 } else {
-                    t.max_stacks
+                    t.max_stacks.max(1.0)
                 };
                 context.extend([
                     ("AilmentHitChance".into(), t.hit_chance),
@@ -272,8 +289,12 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<DerivedDetail> {
                     ("AilmentHitsPerSecond".into(), t.hits_per_second),
                 ]);
                 let formula = if suffix == "StackPotentialPercent" {
-                    "EstimatedAilmentStacks / MaximumAilmentStacks * 100"
-                } else if active > t.max_stacks {
+                    if t.max_stacks == 0.0 {
+                        "0 * EstimatedAilmentStacks"
+                    } else {
+                        "EstimatedAilmentStacks / MaximumAilmentStacks * 100"
+                    }
+                } else if t.max_stacks > 0.0 && active > t.max_stacks {
                     "min(100, max(0, (EstimatedAilmentStacks - (MaximumAilmentStacks - 1) / 2) / (EstimatedAilmentStacks + 1) * 100))"
                 } else {
                     "50 + 0 * EstimatedAilmentStacks"

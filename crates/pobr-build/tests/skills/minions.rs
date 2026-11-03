@@ -577,6 +577,45 @@ fn cackling_companions_creates_as_many_hyenas_as_it_says() {
     assert_eq!(session.base_sum("Multiplier:MinionPresenceCount"), 7.0);
 }
 
+/// Predator's Mark has Duration, Mark and `triggerable_in_any_set`, separate
+/// from Pounce's attack requirements. Preserve the selected mark snapshot in
+/// another weapon context without inferring a recasting rate or uptime.
+#[test]
+fn pounce_mark_snapshot_reaches_other_weapon_contexts() {
+    let data = load_data();
+    let options = DataOrchestratorOptions::against_reference_enemy();
+    let mut build = Build::new()
+        .with_character(CharacterIdentity {
+            level: 90,
+            class_name: "Witch".into(),
+            ascendancy_name: String::new(),
+        })
+        .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20))
+        .add_socket_group(SocketGroup::new().with_gem_skill("HyenaCacklePlayer", 7));
+    let base = calculate_with_data(&build, &data, &options).unwrap();
+    build
+        .socket_groups
+        .push(SocketGroup::new().with_gem_skill("WolfPouncePlayer", 20));
+    let selected = calculate_with_data(&build, &data, &options).unwrap();
+    // The mark uses the seven existing hyenas; Pounce's own wolves do not
+    // increase its damage-taken effect (`skill_wolf_mark_damage_taken_+%_per_nearby_enemy`
+    // is 3% before quality; the 45% cap does not bind here).
+    assert!(
+        (selected.dps / base.dps - 1.21).abs() < 1e-6,
+        "{} -> {}",
+        base.dps,
+        selected.dps
+    );
+    build.socket_groups[2].weapon_set = Some(2);
+    let other_weapon = calculate_with_data(&build, &data, &options).unwrap();
+    assert_eq!(other_weapon.dps, selected.dps);
+    build.socket_groups[2].enabled = false;
+    assert_eq!(
+        calculate_with_data(&build, &data, &options).unwrap().dps,
+        base.dps
+    );
+}
+
 /// The zombie's Life with `lines` among the character's modifiers.
 fn zombie_life_with(data: &BuildData, lines: &[&str]) -> f64 {
     let mut options = default_opts();

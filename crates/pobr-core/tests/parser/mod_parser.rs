@@ -5,6 +5,50 @@ use pobr_core::{CalcConfig, ModDb, ModTag, ModValue};
 use pobr_data::prelude::*;
 
 #[test]
+fn splinter_poison_rules_remain_local_until_the_weapon_slot_is_known() {
+    use pobr_core::item::apply_weapon_hand_conditions;
+    use pobr_data::item::EquipmentSlot;
+    use pobr_data::skill::SkillTypes;
+
+    for (text, name, kind) in [
+        (
+            "Always Poison on Hit with this weapon",
+            "PoisonChance",
+            ModType::Override,
+        ),
+        (
+            "Any number of Poisons from this Weapon can affect a target at the same time",
+            "PoisonStacksUnlimited",
+            ModType::Flag,
+        ),
+    ] {
+        let parsed = parse_mod(text).unwrap();
+        assert!(parsed.is_complete(), "{text}: {parsed:?}");
+        assert_eq!(parsed.mods.len(), 1);
+        assert_eq!(parsed.mods[0].name.as_str(), name);
+        assert_eq!(parsed.mods[0].mod_type, kind);
+        assert!(!parsed.mods[0].matches(&CalcConfig::attack()));
+        for (slot, matching, other) in [
+            (EquipmentSlot::Weapon1, "MainHandAttack", "OffHandAttack"),
+            (EquipmentSlot::Weapon2, "OffHandAttack", "MainHandAttack"),
+        ] {
+            let mut mods = parsed.mods.clone();
+            apply_weapon_hand_conditions(&mut mods, slot);
+            let attack = CalcConfig::attack().with_condition(matching, true);
+            assert!(mods[0].matches(&attack), "{text}: {slot:?}");
+            assert!(!mods[0].matches(&CalcConfig::attack().with_condition(other, true)));
+            assert!(!mods[0].matches(&CalcConfig::spell().with_condition(matching, true)));
+            let shield =
+                attack.with_skill_types(SkillTypes::from_pob2_name("NonWeaponAttack").unwrap());
+            assert!(
+                !mods[0].matches(&shield),
+                "{text} must not apply to a shield attack"
+            );
+        }
+    }
+}
+
+#[test]
 fn final_static_loreweave_exclusivity_requires_its_paired_rarity_source() {
     let exclusion = "Your other Modifiers to Rarity of Items found do not apply";
     for value in ["84", "+84.5", "-12.5"] {

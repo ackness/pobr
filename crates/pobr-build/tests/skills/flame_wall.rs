@@ -1,5 +1,6 @@
 //! Native FlameWallProjectileBuffPlayer: projectiles through the wall gain
 //! 27..41 fire at level 20, 34..51 at level 23, and 71..107 at level 34.
+//! At level 27, an explicitly infused wall grants 45..68 fire and 6..108 lightning.
 //! The snapshot is opt-in; neither the wall's ignite nor an infusion is assumed.
 
 use pobr_build::{Build, DataOrchestratorOptions, SocketGroup, calculate_with_data_session};
@@ -38,13 +39,227 @@ fn calculate(build: &Build) -> CompletedCalculationSession {
 }
 
 fn fire(session: &CompletedCalculationSession) -> SourceTerms {
+    source(session, DamageType::Fire)
+}
+
+fn source(session: &CompletedCalculationSession, damage_type: DamageType) -> SourceTerms {
     session
         .hit_damage_terms(0)
         .unwrap()
         .sources
         .into_iter()
-        .find(|source| source.damage_type == DamageType::Fire)
+        .find(|source| source.damage_type == damage_type)
         .unwrap()
+}
+
+fn infused(mut build: Build, value: bool) -> Build {
+    build
+        .config
+        .raw_inputs
+        .values
+        .insert("flameWallInfused".into(), ConfigInputValue::Bool(value));
+    build
+}
+
+#[test]
+fn infused_flame_wall_requires_both_explicit_states_and_an_enabled_wall() {
+    for passage in [None, Some(false), Some(true)] {
+        for infusion in [None, Some(false), Some(true)] {
+            let mut build = build("FrostDartsPlayer", passage, vec![wall(27)]);
+            if let Some(value) = infusion {
+                build = infused(build, value);
+            }
+            let session = calculate(&build);
+            let fire = source(&session, DamageType::Fire);
+            let lightning = source(&session, DamageType::Lightning);
+            let expected_fire = if passage == Some(true) {
+                (45.0, 68.0)
+            } else {
+                (0.0, 0.0)
+            };
+            let expected_lightning = if passage == Some(true) && infusion == Some(true) {
+                (6.0, 108.0)
+            } else {
+                (0.0, 0.0)
+            };
+            assert_eq!((fire.added_min, fire.added_max), expected_fire);
+            assert_eq!(
+                (lightning.added_min, lightning.added_max),
+                expected_lightning
+            );
+        }
+    }
+    let mut group_disabled = wall(27);
+    group_disabled.enabled = false;
+    let mut gem_disabled = wall(27);
+    gem_disabled.gem_skills[0].enabled = false;
+    let mut alternate_only = wall(27);
+    alternate_only.weapon_set = Some(2);
+    for walls in [
+        vec![],
+        vec![group_disabled],
+        vec![gem_disabled],
+        vec![alternate_only],
+    ] {
+        let session = calculate(&infused(build("FrostDartsPlayer", Some(true), walls), true));
+        assert_eq!(source(&session, DamageType::Lightning).added_max, 0.0);
+        assert_eq!(fire(&session).added_max, 0.0);
+        assert!(!session.config().condition("AffectedByFlameWall"));
+    }
+    let mut off = infused(build("FrostDartsPlayer", Some(true), vec![wall(27)]), false);
+    off.config
+        .conditions
+        .insert("FlameWallInfused".into(), true);
+    assert_eq!(
+        source(&calculate(&off), DamageType::Lightning).added_max,
+        0.0
+    );
+}
+
+#[test]
+fn infused_flame_wall_damage_keeps_projectile_level_support_and_copy_scope() {
+    let reference = infused(build("FrostDartsPlayer", Some(true), vec![wall(27)]), true);
+    let baseline = calculate(&infused(reference.clone(), false));
+    let active = calculate(&reference);
+    let lightning = source(&active, DamageType::Lightning);
+    assert_eq!((lightning.added_min, lightning.added_max), (6.0, 108.0));
+    assert_eq!(lightning.min, 6.0 * lightning.added_effect);
+    assert_eq!(lightning.max, 108.0 * lightning.added_effect);
+    assert!(active.output().total_hit_avg > baseline.output().total_hit_avg);
+    assert_eq!(active.output().action_rate, baseline.output().action_rate);
+    let rows = active.hit_source_mods(0, &[DamageType::Lightning]);
+    for mods in [&rows[0].added_min, &rows[0].added_max] {
+        let applied: Vec<_> = mods
+            .iter()
+            .filter(|row| row.active && row.value.is_some_and(|value| value > 0.0))
+            .collect();
+        assert_eq!(applied.len(), 1);
+        let origin = applied[0].modifier.origin.as_ref().unwrap();
+        assert_eq!(origin.source_id.kind, SourceKind::SkillGem);
+        assert!(
+            origin
+                .source_id
+                .id
+                .starts_with("buff.FlameWallPlayer.flame_wall_")
+        );
+        assert!(origin.raw_text.as_deref().unwrap().contains("level 27"));
+    }
+
+    let mut supported = wall(24)
+        .with_gem_skill("SupportFireMasteryPlayer", 1)
+        .with_gem_skill("SupportConsideredCastingPlayer", 1);
+    supported.gem_skills[0].quality = 20;
+    let mut with_levels = infused(build("FrostDartsPlayer", Some(true), vec![supported]), true);
+    with_levels
+        .config
+        .global_modifier_texts
+        .push("+2 to Level of all Fire Skills".into());
+    assert_eq!(
+        calculate(&with_levels).output().damage_components,
+        active.output().damage_components
+    );
+    for levels in [[20, 27], [27, 20], [27, 27]] {
+        for selection in [None, Some(2), Some(3)] {
+            let walls = levels
+                .into_iter()
+                .map(|level| {
+                    let mut wall = wall(level);
+                    wall.gem_skills[0].stat_set_index = selection;
+                    wall
+                })
+                .collect();
+            let copies = calculate(&infused(build("FrostDartsPlayer", Some(true), walls), true));
+            assert_eq!(
+                copies.output().damage_components,
+                active.output().damage_components
+            );
+        }
+    }
+    let nova = build("IceNovaPlayer", Some(true), vec![wall(27)]);
+    assert_eq!(
+        calculate(&infused(nova.clone(), true))
+            .output()
+            .damage_components,
+        calculate(&infused(nova, false)).output().damage_components,
+        "non-projectiles receive neither fire nor infused lightning"
+    );
+    let mut gain = reference;
+    gain.config
+        .global_modifier_texts
+        .push("Gain 50% of Damage as Extra Cold Damage".into());
+    let gained = calculate(&gain);
+    let terms = gained.hit_damage_terms(0).unwrap();
+    let cold = terms
+        .parts
+        .iter()
+        .find(|part| part.damage_type == DamageType::Cold)
+        .unwrap();
+    let pre_gain_min: f64 = terms.sources.iter().map(|source| source.min).sum();
+    let pre_gain_max: f64 = terms.sources.iter().map(|source| source.max).sum();
+    let cold_source = source(&gained, DamageType::Cold);
+    assert!((cold.base_min - cold_source.min - pre_gain_min * 0.5).abs() < 1e-8);
+    assert!((cold.base_max - cold_source.max - pre_gain_max * 0.5).abs() < 1e-8);
+}
+
+#[test]
+fn infused_flame_wall_uses_the_buff_mode_gate_and_shares_only_with_projectiles() {
+    use pobr_core::CalcConfig;
+    use pobr_core::calc::{CalculationSession, MinimalInput};
+    use pobr_core::skill_env::flame_wall_buff_specs;
+    use pobr_data::modifier::ModFlags;
+
+    let build = infused(build("FrostDartsPlayer", Some(true), vec![wall(27)]), true);
+    for mode_buffs in [false, true] {
+        let cfg = CalcConfig::spell()
+            .with_flags(ModFlags::SPELL | ModFlags::PROJECTILE)
+            .with_mode_buffs(mode_buffs)
+            .with_condition("FlameWallAddedDamage", true)
+            .with_condition("FlameWallInfused", true);
+        let specs = flame_wall_buff_specs(&build, crate::test_data(), &[], &cfg);
+        let mut session = CalculationSession::new(MinimalInput::default()).with_config(cfg);
+        for spec in specs {
+            session.add_buff_skill(spec);
+        }
+        session.perform_minimal().unwrap();
+        assert_eq!(
+            session.base_sum("LightningDamageMin"),
+            if mode_buffs { 6.0 } else { 0.0 }
+        );
+        assert_eq!(
+            session.base_sum("LightningDamageMax"),
+            if mode_buffs { 108.0 } else { 0.0 }
+        );
+    }
+    let mut recipients = with_melee_minions(with_sniper(build));
+    let allies = calculate(&recipients);
+    for (index, expected) in [(0, (6.0, 108.0)), (1, (0.0, 0.0)), (2, (0.0, 0.0))] {
+        assert_eq!(
+            (
+                allies.minion_stat_totals(index, "LightningDamageMin").0,
+                allies.minion_stat_totals(index, "LightningDamageMax").0,
+            ),
+            expected
+        );
+    }
+    recipients.party.members.push(pobr_build::party::PartyMember {
+        blocks: std::collections::BTreeMap::from([(
+            "Aura".into(),
+            "otherEffects\nFlame Wall|100|6|Skill:FlameWallPlayer|LightningDamageMin|BASE|Projectile|-|-\nFlame Wall|100|108|Skill:FlameWallPlayer|LightningDamageMax|BASE|Projectile|-|-\n---".into(),
+        )]),
+        ..Default::default()
+    });
+    let copies = calculate(&recipients);
+    assert_eq!(
+        copies.output().damage_components,
+        allies.output().damage_components
+    );
+    for index in 0..3 {
+        assert_eq!(
+            copies.minion_output(index).unwrap().damage_components,
+            allies.minion_output(index).unwrap().damage_components,
+            "equivalent local and party infusion must not stack"
+        );
+    }
 }
 
 #[test]

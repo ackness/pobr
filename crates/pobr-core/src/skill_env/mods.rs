@@ -130,7 +130,17 @@ pub fn skill_base_modifiers(
                 .with_raw_text("main skill statSet base attack speed MORE");
         mods.push(Modifier::number("AttackSpeed", ModType::More, more).with_origin(origin));
     }
-    let _ = skill_id; // reserved for future per-skill attribution
+    if skill_id == "DarkEffigyProjectilePlayer" {
+        mods.push(
+            Modifier::flag(crate::calc::dark_effigy::SKILL).with_origin(
+                ModifierSource::new(SourceId::new(
+                    SourceKind::SkillGem,
+                    "skill.DarkEffigyProjectilePlayer.targeting",
+                ))
+                .with_raw_text("Vile Effusion fires once per distinct Chaos DoT on its target"),
+            ),
+        );
+    }
     mods
 }
 

@@ -350,6 +350,17 @@ pub struct ProjectileCountResult {
 ///
 /// Source: `agent-docs/skill-mechanics.md` §Projectile count; PoB2 `CalcOffence.lua` L1286-1291.
 pub fn calc_projectile_count(db: &ModDb, cfg: &CalcConfig) -> ProjectileCountResult {
+    if let Some(count) = db.override_(cfg, super::dark_effigy::PROJECTILES) {
+        // Vile Effusion's per-target count comes only from distinct Chaos
+        // DoTs. Neither its raw targeting capacity (100) nor additional
+        // projectile modifiers are extra hits against that target.
+        return ProjectileCountResult {
+            projectile_count: count,
+            base_count: count,
+            more_factor: 1.0,
+            additional_count: 0.0,
+        };
+    }
     // NoAdditionalProjectiles: locks to 1 shot
     if db.flag(cfg, "NoAdditionalProjectiles") {
         return ProjectileCountResult {
@@ -1066,12 +1077,18 @@ pub fn projectile_behavior_counts(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig) -
     let projectile = cfg.flags.intersects(ModFlags::PROJECTILE) || sum("ProjectileCount") > 0.0;
     // Conversions use additional projectiles even when the launched count is
     // locked to one by "modifiers ... instead apply to chaining/splitting".
-    let additional = ((sum("ProjectileCount")
-        + 2.0 * sum("TwoAdditionalProjectilesChance") / 100.0
-        + sum("SurpassingProjectileChance") / 100.0
-        - 1.0)
-        * db.more(cfg, &[ModName::from("ProjectileCount")]))
-    .max(0.0);
+    let additional = if flag(super::dark_effigy::SKILL) {
+        // Effigy's targeting capacity and DoT-specific shots are not
+        // additional-projectile modifiers that can convert into chains.
+        0.0
+    } else {
+        ((sum("ProjectileCount")
+            + 2.0 * sum("TwoAdditionalProjectilesChance") / 100.0
+            + sum("SurpassingProjectileChance") / 100.0
+            - 1.0)
+            * db.more(cfg, &[ModName::from("ProjectileCount")]))
+        .max(0.0)
+    };
     let chain_names = if projectile {
         vec![ModName::from("ChainCountMax")]
     } else {

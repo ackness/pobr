@@ -450,7 +450,7 @@ function AilmentView({ ailment, lang }: { ailment: AilmentDetail; lang: Lang }) 
     ['duration', seconds(ailment.duration)],
     ['hitsPerSecond', fmtNum(ailment.hits_per_second)],
     ...(ailment.stacks > 0 ? [['stacks', fmtNum(ailment.stacks)] as [Key, string]] : []),
-    ['maxStacks', fmtNum(ailment.max_stacks)],
+    ['maxStacks', ailment.max_stacks === 0 ? '∞' : fmtNum(ailment.max_stacks)],
   ];
   const lineGroups = (
     [
@@ -668,20 +668,23 @@ function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
   );
 }
 
-export function BreakdownTable({ breakdown, lang }: { breakdown: Breakdown; lang: Lang }) {
+export function BreakdownTable({ breakdown, lang, unboundedStacks = false }: { breakdown: Breakdown; lang: Lang; unboundedStacks?: boolean }) {
   const tt = bindT(lang);
   if (breakdown.derived) {
     const derived = breakdown.derived;
     const sourceHints = derived.context.filter(input => input.id.startsWith('EnergyNeeds'));
     const context = derived.context.filter(input => !input.id.startsWith('EnergyNeeds'));
+    const inputValue = (input: { id: string; value: number | null }) =>
+      unboundedStacks && input.id === 'MaximumAilmentStacks' && input.value === 0
+        ? '∞' : formatStatValue(input.value, 'float2');
     return <div className="breakdown-detail breakdown-derived">
       {sourceHints.map(hint => <p className="breakdown-note" key={hint.id}>{statNameLabel(lang, hint.id)}</p>)}
       <p className="derived-formula">{detailFormula(derived.formula, derived.inputs, lang)}</p>
       <table className="breakdown-table"><caption>{tt('calcs.inputs')}</caption><tbody>
-        {derived.inputs.map(input => <tr key={input.id}><th scope="row">{statNameLabel(lang, input.id)}</th><td>{formatStatValue(input.value, 'float2')}</td></tr>)}
+        {derived.inputs.map(input => <tr key={input.id}><th scope="row">{statNameLabel(lang, input.id)}</th><td>{inputValue(input)}</td></tr>)}
       </tbody></table>
       {context.length > 0 && <table className="breakdown-table"><caption>{tt('calcs.context')}</caption><tbody>
-        {context.map(input => <tr key={input.id}><th scope="row">{statNameLabel(lang, input.id)}</th><td>{formatStatValue(input.value, 'float2')}</td></tr>)}
+        {context.map(input => <tr key={input.id}><th scope="row">{statNameLabel(lang, input.id)}</th><td>{inputValue(input)}</td></tr>)}
       </tbody></table>}
     </div>;
   }
@@ -1129,6 +1132,10 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
   const values = selectedMinion ? new Map(Object.entries(selectedMinion.stats)) : statMap(calc?.stats ?? []);
   const rowFormat = (name: string) => selectedMinion ? 'float2' as const
     : STAT_SECTIONS.flatMap(section => section.rows).find(row => row.id === name)?.format ?? 'float2';
+  // A missing poison also has a zero cap; only a calculated poison uses it as no limit.
+  const unboundedPoison = values.get('PoisonStacksMax') === 0 && (values.get('PoisonChance') ?? 0) > 0;
+  const metricValue = (name: string) => name === 'PoisonStacksMax' && unboundedPoison
+    ? '∞' : formatStatValue(values.get(name) ?? null, rowFormat(name), lang);
   const actorLabel = selectedMinion ? `${tt('minion.title')}: ${selectedMinion.name || tt('minion.unavailable')} · ${selectedMinion.index + 1}` : tt('minion.player');
   const actorPicker = (calc?.minions?.length ?? 0) > 0 && <label className="calcs-actor-picker">
     <span>{tt('minion.actor')}</span>
@@ -1146,7 +1153,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
     const breakdown = actorBreakdowns[name] ?? current?.detail;
     if (session.busy && !breakdown) return <p role="status" className="breakdown-detail">{calcsLabel(lang, 'stale')}</p>;
     return kind === 'none' ? <p className="breakdown-detail" role="status">{tt('calcs.noBreakdown')}</p>
-      : breakdown ? <BreakdownTable breakdown={breakdown} lang={lang} />
+      : breakdown ? <BreakdownTable breakdown={breakdown} lang={lang} unboundedStacks={unboundedPoison && name.startsWith('Poison')} />
       : current?.error ? <div className="breakdown-detail" role="alert">{current.error} <AppButton onClick={() => { setLoaded(null); setRetry(value => value + 1); }}>{tt('calcs.retry')}</AppButton></div>
       : <p className="breakdown-detail" role="status">{tt(current ? 'calcs.noBreakdown' : 'calcs.loadingDetail')}</p>;
   };
@@ -1208,7 +1215,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
                     if (window.matchMedia('(max-width: 760px)').matches) heading?.scrollIntoView({ block: 'start' });
                   }); }}>
                   <span>{statNameLabel(lang, name)}</span>
-                  <strong>{formatStatValue(values.get(name) ?? null, rowFormat(name), lang)}</strong>
+                  <strong>{metricValue(name)}</strong>
                 </AppButton>)}
               </section>)}
             </div>
@@ -1218,7 +1225,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
               <AppButton className="calcs-back-to-list hidden max-[760px]:inline-flex" onClick={() => { const browser = document.getElementById('calcs-metric-browser'); browser?.focus(); browser?.scrollIntoView({ block: 'start' }); }}>{calcsLabel(lang, 'back')}</AppButton>
               {open && <p className="calcs-eyebrow">{actorLabel}</p>}
               <h3 id="calcs-detail-heading" tabIndex={-1}>{open ? statNameLabel(lang, open) : calcsLabel(lang, 'choose')}</h3>
-              {open && <div className="calcs-detail-value"><strong>{formatStatValue(values.get(open) ?? null, rowFormat(open), lang)}</strong><span>{calcsLabel(lang, detailKind(scope!, open))}</span></div>}
+              {open && <div className="calcs-detail-value"><strong>{metricValue(open)}</strong><span>{calcsLabel(lang, detailKind(scope!, open))}</span></div>}
             </div>
             {open && detail(open)}
           </section>

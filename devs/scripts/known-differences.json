@@ -2,6 +2,15 @@
   "_doc": "Reference rows `mise run triage` files as known: differences the repository already explains, so a triage lists only what is left to look at. `build` is a fragment of the build folder's name (or a synthetic skill-sweep case id), `xml_sha256`, when present, binds an entry to the exact decoded UTF-8 XML so short rank names cannot match another snapshot; `stats` the rows it explains, `reason` where the explanation is. Synthetic case entries document sweep findings; skill-sweep does not yet consume this registry. Add an entry when a difference is documented as deliberate; remove it when the engine changes.",
   "differences": [
     {
+      "build": "lich-essence-drain-27c94",
+      "xml_sha256": "850c516087fec6728872e1dc25508ad4fc54c15cb656e5df11296d237ffc71be",
+      "stats": [
+        "TotalDotDPS",
+        "PoisonDPS"
+      ],
+      "reason": "Vile Effusion has an eligible Chaos hit and compatible Poison II (base_chance_to_poison_on_hit_% = 60), with no native poison prohibition. PoBR retains that poison in the selected sustained snapshot; this export and the pinned PoB2 report zero. The distinct-DoT hit count is not an unconditional four-projectile multiplier (docs/pob2-differences.md, Dark Effigy)."
+    },
+    {
       "build": "blood-mage-01",
       "xml_sha256": "6731ace4053ed644fad71db58df00dd53f95f6134ab82400f20dfe38c41a8592",
       "stats": [

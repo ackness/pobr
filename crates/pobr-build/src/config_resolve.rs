@@ -63,6 +63,9 @@ const EXPLICIT_BOOLEAN_CONDITIONS: &[(&str, &str)] = &[
     ("conditionFinality", "Finality"),
     ("conditionFullMana", "FullMana"),
     ("flameWallAddedDamage", "FlameWallAddedDamage"),
+    // Buff assembly reads the infusion before the tagged FLAG could be applied.
+    ("flameWallInfused", "FlameWallInfused"),
+    ("conditionFrozenEnemyRecently", "FrozenEnemyRecently"),
     ("conditionBeiraIgniteActive", "BeiraIgniteActive"),
     ("conditionOnConsecratedGround", "OnConsecratedGround"),
     ("conditionAncestrallyBoosted", "AncestrallyBoosted"),
@@ -75,6 +78,7 @@ const EXPLICIT_BOOLEAN_CONDITIONS: &[(&str, &str)] = &[
     ("conditionEnemyLightningExposure", "EnemyLightningExposure"),
     ("conditionEnemyArmourBroken", "EnemyArmourBroken"),
     ("conditionEnemyIgnited", "EnemyIgnited"),
+    ("conditionEnemyPoisoned", "EnemyPoisoned"),
     ("conditionEnemyChilled", "EnemyChilled"),
     ("conditionEnemyFrozen", "EnemyFrozen"),
     ("conditionEnemyShocked", "EnemyShocked"),
@@ -773,6 +777,34 @@ mod tests {
         assert_eq!(conditions.get("EnemyFrozen"), Some(&true));
         assert_eq!(conditions.get("EnemyImmobilised"), Some(&true));
         assert_ne!(conditions.get("EnemyChilled"), Some(&true));
+    }
+
+    #[test]
+    fn selected_damage_buff_inputs_override_stale_conditions_before_buff_assembly() {
+        let catalog = load_catalog();
+        for (input, condition) in [
+            ("flameWallInfused", "FlameWallInfused"),
+            ("conditionFrozenEnemyRecently", "FrozenEnemyRecently"),
+        ] {
+            for catalog in [None, Some(&catalog)] {
+                for enabled in [false, true] {
+                    let mut build = build_with_inputs(
+                        RawConfigInputs::new().with(input, ConfigInputValue::Bool(enabled)),
+                    );
+                    build.config.conditions.insert(condition.into(), !enabled);
+                    let resolved = resolve_config(&build, catalog);
+                    assert_eq!(
+                        resolved.config.conditions.get(condition),
+                        Some(&enabled),
+                        "{input}={enabled}"
+                    );
+                    assert_eq!(
+                        resolved.config.raw_inputs.values.get(input),
+                        Some(&ConfigInputValue::Bool(enabled))
+                    );
+                }
+            }
+        }
     }
 
     /// An unchecked primary ailment input must not hide the same ailment supplied by

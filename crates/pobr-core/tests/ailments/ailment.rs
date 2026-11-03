@@ -14,6 +14,215 @@ use pobr_core::calc::ailment::{
 use pobr_core::{CalcConfig, ModDb, ModTag, Modifier, TraceGraph, TraceOperation};
 use pobr_data::prelude::*;
 
+/// local_poison_on_hit and local_hits_with_this_weapon_ignore_poison_limit:
+/// equivalent modifiers to Splinter of Lorrata's two lines, after item scoping.
+fn weapon_poison_env(dual: bool) -> pobr_core::calc::Env {
+    use pobr_core::calc::{Actor, ActorBaseStats, Env, HandSource, WeaponBase};
+    let mut env = Env::new(Actor::new(
+        80,
+        ActorBaseStats {
+            life: 100.0,
+            action_rate: 2.0,
+            ..Default::default()
+        },
+    ));
+    env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+    let weapon = WeaponBase {
+        hit_min: 100.0,
+        hit_max: 100.0,
+        attack_rate: Some(2.0),
+        ..Default::default()
+    };
+    env.hand_sources.push(HandSource::main_hand(weapon));
+    if dual {
+        env.hand_sources.push(HandSource::off_hand(weapon));
+    }
+    env.player.mod_db.add_list([
+        Modifier::flag("NeverCrit"),
+        Modifier::flag("CannotBeEvaded"),
+        Modifier::number("PoisonChance", ModType::Override, 100.0)
+            .with_flags(ModFlags::ATTACK)
+            .with_tag(ModTag::condition("MainHandAttack", false)),
+        Modifier::flag("PoisonStacksUnlimited")
+            .with_flags(ModFlags::ATTACK)
+            .with_tag(ModTag::condition("MainHandAttack", false)),
+    ]);
+    env
+}
+
+fn poison_terms(out: &pobr_core::calc::OutputTable) -> &pobr_core::calc::AilmentStageTerms {
+    &out.ailment_terms
+        .iter()
+        .find(|(kind, _)| *kind == AilmentType::Poison)
+        .expect("poison applied")
+        .1
+}
+
+#[test]
+fn unlimited_poison_keeps_all_instances_without_strongest_roll_or_crit_bias() {
+    use pobr_core::calc::perform;
+    let mut env = weapon_poison_env(false);
+    env.hand_sources[0].weapon.hit_max = 300.0;
+    // A guarantee survives reduced chance; ordinary +100% base chance would not.
+    env.player
+        .mod_db
+        .add_mod(Modifier::number("PoisonChance", ModType::Inc, -90.0));
+    perform(&mut env).unwrap();
+    let out = &env.player.output;
+    let terms = &poison_terms(out).passes[0].1;
+    assert_eq!(terms.apply_chance, 1.0);
+    assert_eq!(terms.damage_roll, 50.0);
+    assert_eq!(terms.stack_potential, 0.0);
+    assert_eq!(terms.source_hit, 200.0);
+    assert_eq!(terms.max_stacks, 0.0); // finite wire representation of no ceiling
+    assert_eq!(terms.stacks, 4.0); // 2 hits/s × 2 seconds
+    assert_eq!(out.poison_dps, 160.0); // 200 × 20% × 4
+    assert_eq!(out.poison_stacked_dps, out.poison_dps);
+    assert_eq!(out.poison_active_stacks, 4.0);
+    assert_eq!(out.poison_max_stacks, 0.0);
+    assert_eq!(terms.formula().value, out.poison_dps);
+
+    let unbounded = StackConfig::unlimited(100.0);
+    assert_eq!(roll_average(&unbounded), 50.0);
+    assert_eq!(ailment_crit_chance(0.25, stack_potential(&unbounded)), 0.25);
+    let finite = StackConfig::new(1, 100.0);
+    assert!(roll_average(&finite) > 50.0);
+    assert!(ailment_crit_chance(0.25, stack_potential(&finite)) > 0.25);
+    let missing_rate = StackConfig::unlimited(0.0);
+    assert_eq!(missing_rate.active(), 1.0);
+    assert_eq!(stacking_ailment_dps(20.0, &missing_rate), 20.0);
+
+    let mut no_rate = weapon_poison_env(false);
+    no_rate.player.base.action_rate = 0.0;
+    no_rate.hand_sources[0].weapon.attack_rate = None;
+    perform(&mut no_rate).unwrap();
+    assert_eq!(no_rate.player.output.poison_dps, 20.0);
+    assert_eq!(no_rate.player.output.poison_active_stacks, 1.0);
+    assert_eq!(no_rate.player.output.poison_max_stacks, 0.0);
+
+    // Removing only the uncapped rule restores the existing strongest-one
+    // model, not four simultaneously affecting poisons.
+    let mut finite = weapon_poison_env(false);
+    finite.hand_sources[0].weapon.hit_max = 300.0;
+    let mods: Vec<_> = finite
+        .player
+        .mod_db
+        .iter_mods()
+        .filter(|m| m.name.as_str() != "PoisonStacksUnlimited")
+        .cloned()
+        .collect();
+    finite.player.mod_db = ModDb::new();
+    finite.player.mod_db.add_list(mods);
+    perform(&mut finite).unwrap();
+    let terms = &poison_terms(&finite.player.output).passes[0].1;
+    assert_eq!(terms.max_stacks, 1.0);
+    assert_eq!(terms.damage_roll, 80.0);
+    assert_eq!(finite.player.output.poison_dps, 52.0); // (100 + 200 × .8) × .2
+}
+
+#[test]
+fn unlimited_weapon_poison_does_not_enable_the_other_hand_or_lift_its_cap() {
+    use pobr_core::calc::perform;
+    let mut local = weapon_poison_env(true);
+    perform(&mut local).unwrap();
+    let terms = poison_terms(&local.player.output);
+    assert_eq!(terms.pass_count, 2);
+    assert_eq!(terms.passes.len(), 1);
+    assert_eq!(terms.passes[0].0, pobr_core::HandTag::MainHand);
+    assert_eq!(terms.passes[0].1.stacks, 2.0); // alternate hands, not 2 hits/s each
+    assert_eq!(local.player.output.poison_dps, 40.0);
+
+    for (extra_stacks, expected) in [(0.0, 60.0), (2.0, 80.0)] {
+        let mut env = weapon_poison_env(true);
+        env.player.mod_db.add_list([
+            Modifier::number("PoisonChance", ModType::Base, 100.0),
+            Modifier::flag("PoisonCanStack"),
+            Modifier::number("PoisonStacks", ModType::Base, extra_stacks),
+        ]);
+        perform(&mut env).unwrap();
+        let terms = poison_terms(&env.player.output);
+        assert_eq!(terms.passes.len(), 2);
+        assert_eq!(terms.passes[0].1.max_stacks, 0.0);
+        assert_eq!(terms.passes[1].1.max_stacks, 1.0 + extra_stacks);
+        assert_eq!(terms.passes[0].1.dps, 40.0);
+        assert_eq!(env.player.output.poison_dps, expected);
+        assert_eq!(terms.merge.unwrap().dps(), expected);
+        assert_eq!(terms.stacked_merge.unwrap().dps(), expected);
+    }
+    let mut simultaneous = weapon_poison_env(true);
+    simultaneous.double_hits_when_dual_wielding = true;
+    perform(&mut simultaneous).unwrap();
+    assert_eq!(simultaneous.player.output.poison_dps, 80.0);
+
+    let mut both = weapon_poison_env(true);
+    both.player.mod_db.add_list([
+        Modifier::number("PoisonChance", ModType::Override, 100.0)
+            .with_tag(ModTag::condition("OffHandAttack", false)),
+        Modifier::flag("PoisonStacksUnlimited").with_tag(ModTag::condition("OffHandAttack", false)),
+    ]);
+    perform(&mut both).unwrap();
+    assert_eq!(both.player.output.poison_dps, 80.0);
+    assert_eq!(both.player.output.poison_active_stacks, 4.0);
+}
+
+#[test]
+fn poison_guarantee_does_not_bypass_prohibitions_or_damage_eligibility() {
+    use pobr_core::calc::perform;
+    for prohibition in ["CannotPoison", "DealNoChaos", "DealNoDamage"] {
+        let mut env = weapon_poison_env(false);
+        env.player.mod_db.add_mod(Modifier::flag(prohibition));
+        perform(&mut env).unwrap();
+        assert_eq!(env.player.output.poison_dps, 0.0, "{prohibition}");
+        assert_eq!(env.player.output.poison_active_stacks, 0.0, "{prohibition}");
+    }
+    for (prefix, eligible) in [("Physical", true), ("Chaos", true), ("Lightning", false)] {
+        let mut env = weapon_poison_env(false);
+        // WeaponBase's numeric range is always Physical; typed added damage
+        // is needed to create a genuinely pure Chaos/Lightning hit.
+        env.hand_sources[0].weapon.hit_min = 0.0;
+        env.hand_sources[0].weapon.hit_max = 0.0;
+        env.player.mod_db.add_list([
+            Modifier::number(format!("{prefix}DamageMin"), ModType::Base, 100.0),
+            Modifier::number(format!("{prefix}DamageMax"), ModType::Base, 100.0),
+        ]);
+        perform(&mut env).unwrap();
+        assert_eq!(env.player.output.poison_dps > 0.0, eligible, "{prefix}");
+    }
+    let mut enabled_type = weapon_poison_env(false);
+    enabled_type.hand_sources[0].weapon.hit_min = 0.0;
+    enabled_type.hand_sources[0].weapon.hit_max = 0.0;
+    enabled_type.player.mod_db.add_list([
+        Modifier::number("LightningDamageMin", ModType::Base, 100.0),
+        Modifier::number("LightningDamageMax", ModType::Base, 100.0),
+        Modifier::flag("LightningCanPoison"),
+    ]);
+    perform(&mut enabled_type).unwrap();
+    assert!(enabled_type.player.output.poison_dps > 0.0);
+
+    let mut no_chance = weapon_poison_env(false);
+    no_chance
+        .player
+        .mod_db
+        .add_mod(Modifier::number("PoisonChance", ModType::Override, 0.0));
+    perform(&mut no_chance).unwrap();
+    assert_eq!(no_chance.player.output.poison_dps, 0.0);
+    assert_eq!(no_chance.player.output.poison_active_stacks, 0.0);
+    let mut spell = weapon_poison_env(false);
+    spell.hand_sources.clear();
+    spell.player.base.hit_min = 100.0;
+    spell.player.base.hit_max = 100.0;
+    // Even stale hand conditions must not make a non-weapon pass use this weapon.
+    spell.cfg = CalcConfig::spell()
+        .with_damage_type(DamageType::Physical)
+        .with_condition("MainHandAttack", true);
+    perform(&mut spell).unwrap();
+    assert_eq!(spell.player.output.poison_dps, 0.0);
+
+    // The sum of independent hands still obeys the game's DoT safety cap.
+    let merged = pobr_core::calc::HandAilmentMerge::independent(80.0, 60.0, 100.0);
+    assert_eq!(merged.dps(), 100.0);
+}
+
 #[test]
 fn zero_chance_ailments_do_not_report_active_stacks() {
     use pobr_core::calc::{Actor, ActorBaseStats, Env, perform};

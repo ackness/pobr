@@ -1,4 +1,4 @@
-//! Raw incoming-hit inputs must replace the preset and reach EHP/max-hit output.
+//! Explicit enemy inputs replace presets and selected states reach damage/EHP output.
 use pobr_build::breakdown::detail::{DetailKind, stat_detail};
 use pobr_build::breakdown::stat_breakdown;
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data_session, parse_build};
@@ -38,6 +38,188 @@ fn single_hit(kind: &str, damage: f64) -> String {
 
 fn close(actual: f64, expected: f64) {
     assert!((actual - expected).abs() < 0.01, "{actual} != {expected}");
+}
+
+fn offensive_build(inputs: &str, support: &str) -> pobr_build::Build {
+    // An inactive old config set must not provide either a resistance or Shock.
+    // The secondary Spark can supply the selected state independently of the
+    // main skill; no skill's presence alone asserts that it actually did.
+    parse_build(&format!(
+        r#"<PathOfBuilding2>
+<Build level="85" className="Sorceress" mainSocketGroup="1"/>
+<Skills activeSkillSet="1"><SkillSet id="1">
+  <Skill enabled="true">
+    <Gem skillId="FireballPlayer" level="20" quality="0" enabled="true"/>
+    <Gem skillId="{support}" level="1" quality="0" enabled="true"/>
+  </Skill>
+  <Skill enabled="true"><Gem skillId="SparkPlayer" level="20" enabled="true"/></Skill>
+</SkillSet></Skills>
+<Config activeConfigSet="2">
+  <ConfigSet id="1">
+    <Input name="enemyFireResist" number="75"/>
+    <Input name="conditionEnemyShocked" boolean="true"/>
+    <Input name="conditionShockEffect" number="80"/>
+  </ConfigSet>
+  <ConfigSet id="2">{inputs}</ConfigSet>
+</Config>
+</PathOfBuilding2>"#
+    ))
+    .expect("synthetic enemy state build")
+}
+
+#[test]
+fn base_resistance_input_precedes_preset_exposure_and_rakiatas_hit_inversion() {
+    use pobr_core::display_value;
+    use pobr_data::monster::EnemyTier;
+
+    let data = data();
+    // Exposure is -20, halved by the selected boss. Rakiata's Flow applies
+    // only to elemental hits, not ignite: explicit zero => -10 resistance,
+    // +10 for the hit, so hit ×0.9 and ignite ×1.1.
+    for (input, hit_mult, ignite_mult) in [
+        (None, 1.4, 0.6),
+        (Some(0.0), 0.9, 1.1),
+        (Some(30.0), 1.2, 0.8),
+        (Some(-20.0), 0.7, 1.3),
+    ] {
+        let resistance = input
+            .map(|value| format!(r#"<Input name="enemyFireResist" number="{value}"/>"#))
+            .unwrap_or_default();
+        let build = offensive_build(
+            &format!(
+                r#"{resistance}<Placeholder name="enemyFireResist" number="50"/>
+<Input name="conditionEnemyFireExposure" boolean="true"/>"#
+            ),
+            "SupportRakiatasFlowPlayer",
+        );
+        let mut options = DataOrchestratorOptions {
+            enemy_tier: EnemyTier::Pinnacle,
+            extra_modifier_texts: vec!["Inflict Fire Exposure on Hit".into()],
+            ..Default::default()
+        };
+        let panel = calculate_with_data_session(&build, data, &options).unwrap();
+        options.mode_effective = true;
+        let effective = calculate_with_data_session(&build, data, &options).unwrap();
+        assert!(panel.output().dps > 0.0 && effective.output().ignite_dps > 0.0);
+        assert!(
+            (effective.output().dps / panel.output().dps - hit_mult).abs() < 1e-9,
+            "{input:?}: hit multiplier"
+        );
+        assert_eq!(
+            display_value(effective.output(), "IgniteEffMult"),
+            ignite_mult,
+            "{input:?}: ignite multiplier"
+        );
+        assert_eq!(display_value(effective.output(), "CurrentShock"), 0.0);
+    }
+}
+
+#[test]
+fn selected_shock_defaults_only_without_a_supplied_effect_and_ignores_main_skill_prohibition() {
+    use pobr_core::display_value;
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+
+    let data = data();
+    for (increased, default_effect) in [(0, 20.0), (25, 25.0)] {
+        let mut options = DataOrchestratorOptions {
+            mode_effective: true,
+            extra_modifier_texts: vec![format!(
+                "{increased}% increased Magnitude of Shock you inflict"
+            )],
+            ..Default::default()
+        };
+        let off = offensive_build(
+            r#"<Input name="conditionEnemyShocked" boolean="false"/>
+<Input name="conditionShockedEnemyRecently" boolean="true"/>
+<Input name="ShockStacks" number="2"/>"#,
+            "SupportElementalFocusPlayer",
+        );
+        let baseline = calculate_with_data_session(&off, data, &options).unwrap();
+        assert_eq!(display_value(baseline.output(), "CurrentShock"), 0.0);
+        for (input, expected) in [
+            (None, default_effect),
+            // The imported "count" field treats zero as unset, unlike a
+            // native zero-valued ShockVal modifier (covered in core tests).
+            (Some(0.0), default_effect),
+            (Some(10.0), 10.0),
+            (Some(33.0), 33.0),
+        ] {
+            let effect = input
+                .map(|value| format!(r#"<Input name="conditionShockEffect" number="{value}"/>"#))
+                .unwrap_or_default();
+            let mut build = offensive_build(
+                &format!(r#"<Input name="conditionEnemyShocked" boolean="true"/>{effect}"#),
+                "SupportElementalFocusPlayer",
+            );
+            let selected = calculate_with_data_session(&build, data, &options).unwrap();
+            assert_eq!(display_value(selected.output(), "CurrentShock"), expected);
+            assert_eq!(selected.output().shock_effect, 0.0, "Elemental Focus");
+            assert!(
+                (selected.output().dps / baseline.output().dps - (1.0 + expected / 100.0)).abs()
+                    < 1e-9
+            );
+
+            // A raw edit to false must retire the imported state, even when
+            // a numeric magnitude remains stored in the input.
+            build.config.raw_inputs.values.insert(
+                "conditionEnemyShocked".into(),
+                ConfigInputValue::Bool(false),
+            );
+            let cleared = calculate_with_data_session(&build, data, &options).unwrap();
+            assert_eq!(display_value(cleared.output(), "CurrentShock"), 0.0);
+            assert!((cleared.output().dps - baseline.output().dps).abs() < 1e-9);
+        }
+        options.mode_effective = false;
+        let selected = offensive_build(
+            r#"<Input name="conditionEnemyShocked" boolean="true"/>"#,
+            "SupportElementalFocusPlayer",
+        );
+        let panel = calculate_with_data_session(&selected, data, &options).unwrap();
+        let panel_off = calculate_with_data_session(&off, data, &options).unwrap();
+        assert_eq!(display_value(panel.output(), "CurrentShock"), 0.0);
+        assert_eq!(panel.output().dps, panel_off.output().dps);
+    }
+}
+
+#[test]
+fn selected_shock_adds_damage_taken_without_changing_yokes_ailment_count() {
+    use pobr_core::display_value;
+
+    let data = data();
+    let mut options = DataOrchestratorOptions {
+        mode_effective: true,
+        ..Default::default()
+    };
+    let baseline = calculate_with_data_session(
+        &offensive_build("", "SupportElementalFocusPlayer"),
+        data,
+        &options,
+    )
+    .unwrap();
+    options.extra_modifier_texts = vec![
+        "Enemies take 20% increased Damage for each Elemental Ailment type among your Ailments on them".into(),
+    ];
+    let selected = calculate_with_data_session(
+        &offensive_build(
+            r#"<Input name="conditionEnemyShocked" boolean="true"/>
+<Input name="conditionEnemyChilled" boolean="true"/>"#,
+            "SupportElementalFocusPlayer",
+        ),
+        data,
+        &options,
+    )
+    .unwrap();
+    assert_eq!(display_value(selected.output(), "CurrentShock"), 20.0);
+    assert_eq!(
+        selected
+            .config()
+            .multipliers
+            .get("EnemyElementalAilmentCount"),
+        Some(&2.0)
+    );
+    // Yoke contributes 20 + 20; Shock is a separate additive +20, not a
+    // third ailment type and not a separate ×1.2 multiplier.
+    assert!((selected.output().dps / baseline.output().dps - 1.6).abs() < 1e-9);
 }
 
 #[test]

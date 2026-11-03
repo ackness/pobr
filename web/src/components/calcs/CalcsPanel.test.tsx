@@ -5,8 +5,38 @@ import { BreakdownTable, CalcsPanel } from './CalcsPanel';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { UiProvider } from '../shared/UiContext';
 import { TooltipProvider } from '../ui/tooltip';
+import details from '../../fixtures/stat_details.json';
 
 const empty: Breakdown = { base_total: 0, inc_total: 0, more_total: 1, mods: [], formula: null };
+
+test.each([[0, '∞'], [3, '3']] as const)('ailment details show the stack ceiling %s', (cap, displayed) => {
+  const fixture = details.IgniteDPS as Breakdown;
+  const breakdown = { ...fixture, ailment: { ...fixture.ailment!, max_stacks: cap } };
+  const html = renderToStaticMarkup(<BreakdownTable breakdown={breakdown} lang="zh-CN" />);
+  expect(html).toMatch(new RegExp(`class="ailment-maxStacks"><th[^>]*>[^<]*</th><td[^>]*>${displayed}</td>`));
+});
+
+test.each([[100, '∞'], [0, '0']] as const)('poison cap distinguishes an unlimited source from no poison (%s)', (chance, displayed) => {
+  const cap: Breakdown = { ...empty, kind: 'derived', derived: {
+    formula: 'MaximumAilmentStacks',
+    inputs: [{ id: 'MaximumAilmentStacks', value: 0 }],
+    context: [],
+  } };
+  const session = { calc: {
+    stats: [
+      { id: 'PoisonStacksMax', category: 'Ailment', value: 0 },
+      { id: 'PoisonChance', category: 'Ailment', value: chance },
+    ],
+    breakdowns: { PoisonStacksMax: cap },
+    breakdown_descriptors: { PoisonStacksMax: 'derived' },
+    minions: [],
+  }, socketGroups: [], calcParams: {} } as unknown as BuildSession;
+  const html = renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider>
+    <CalcsPanel session={session} lang="en-US" />
+  </TooltipProvider></UiProvider>);
+  expect(html).toContain(`<div class="calcs-detail-value"><strong>${displayed}</strong>`);
+  expect(html).toContain(`<td>${displayed}</td>`);
+});
 
 test('recalculation retains the metric list and settled detail instead of collapsing the page', () => {
   const settled = { stats: [{ id: 'Life', category: 'Resource', value: 1234 }],

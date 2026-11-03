@@ -738,6 +738,7 @@ pub struct AilmentTerms {
     pub enemy_duration: f64,
     /// The estimate (0 = no hit rate to estimate from) and the most that can be active.
     pub stacks: f64,
+    /// Zero denotes an uncapped ailment, not an infinite JSON number.
     pub max_stacks: f64,
     /// The `AilmentEffect` multiplier and the faster / slower damage rate.
     pub effect: f64,
@@ -763,7 +764,11 @@ impl AilmentTerms {
 
     /// The instances counted as active: the estimate, limited to `max_stacks`.
     pub fn active(&self) -> f64 {
-        self.stacks.min(self.max_stacks)
+        if self.max_stacks == 0.0 {
+            self.stacks
+        } else {
+            self.stacks.min(self.max_stacks)
+        }
     }
 
     pub fn formula(&self) -> super::StatFormula {
@@ -1010,6 +1015,17 @@ fn flat_chance_traced(
 ) -> (f64, TraceNodeId) {
     // Keyword scope: chance mods with the corresponding KeywordFlag apply only to this ailment.
     let cfg = &ailment_scoped_cfg(cfg, ailment_type_of(ailment));
+    // "Always Poison" is a guarantee, not +100% base chance that can be
+    // reduced again. CannotPoison is checked by compute_damaging_ailment.
+    let (chance_override, override_node) = player.override_traced(
+        cfg,
+        &format!("{ailment}Chance"),
+        trace,
+        format!("{ailment}Chance OVERRIDE"),
+    );
+    if let Some(chance) = chance_override {
+        return (chance.clamp(0.0, 100.0), override_node);
+    }
     let chance_names = chance_mod_names(ailment, false);
     let self_chance = [ModName::from(format!("Self{ailment}Chance"))];
 
@@ -1120,6 +1136,7 @@ fn compute_damaging_ailment(
     // its resolved Chaos type here, while ordinary Ignite deals Fire.
     let scoped = ailment_scoped_cfg(cfg, ailment);
     for flag in [
+        &format!("Cannot{ailment:?}"),
         "DealNoDamage",
         &format!("DealNo{}", type_prefix(damage_type)),
     ] {
@@ -1934,18 +1951,18 @@ fn poise_buildup_traced(
 #[derive(Debug, Clone, Copy)]
 pub struct StackConfig {
     /// Max stack count (`maxStacks = Override or (1 + ΣbaseStacks) * more(Stacks)`).
-    /// Defaults to 1 (no stacking).
-    pub max_stacks: u32,
-    /// Active stack count (from the `ailmentStacks` estimate, or overridden by the
-    /// `Multiplier:<Ailment>Stacks` config). Used for the StackPotential calculation. If 0,
-    /// `max_stacks` is used as the upper bound.
+    /// Defaults to Some(1) (no stacking); None means every instance can affect the target.
+    pub max_stacks: Option<u32>,
+    /// Potential instances from the application-rate × duration estimate.
+    /// Zero means the rate signal is missing: use the finite cap, or one
+    /// instance when uncapped, rather than inventing an application history.
     pub active_stacks: f64,
 }
 
 impl Default for StackConfig {
     fn default() -> Self {
         Self {
-            max_stacks: 1,
+            max_stacks: Some(1),
             active_stacks: 0.0,
         }
     }
@@ -1960,9 +1977,39 @@ impl StackConfig {
     /// Specifies a stacking config. When `active_stacks=0`, `max_stacks` is used as the active-stack upper bound.
     pub fn new(max_stacks: u32, active_stacks: f64) -> Self {
         Self {
-            max_stacks,
+            max_stacks: Some(max_stacks),
             active_stacks,
         }
+    }
+
+    /// Splinter of Lorrata's poisons ignore the stack limit. The rate estimate
+    /// remains finite; missing rate information never implies infinite stacks.
+    pub fn unlimited(active_stacks: f64) -> Self {
+        Self {
+            max_stacks: None,
+            active_stacks,
+        }
+    }
+
+    /// Potential instances, with the legacy full-cap fallback only for finite caps.
+    pub fn estimated_stacks(&self) -> f64 {
+        if self.active_stacks > 0.0 {
+            self.active_stacks
+        } else {
+            self.max_stacks.map_or(1.0, f64::from)
+        }
+    }
+
+    /// Finite display contract: zero means no ceiling for an applying ailment.
+    pub fn displayed_max(&self) -> f64 {
+        self.max_stacks.map_or(0.0, f64::from)
+    }
+
+    /// Instances doing damage, rather than potential instances competing for a cap.
+    pub fn active(&self) -> f64 {
+        let estimate = self.estimated_stacks();
+        self.max_stacks
+            .map_or(estimate, |max| estimate.min(f64::from(max)))
     }
 }
 
@@ -2013,15 +2060,13 @@ pub fn estimate_active_stacks(
 /// clamp** this, allowing > 1 (stack overflow) — this is the trigger condition for the
 /// over-stacking crit amplification (`ailment_crit_chance`) and the RollAverage high-end bias.
 /// Only a lower-bound guard (non-negative) is applied here.
+/// Uncapped instances have zero stack pressure: none are discarded in favour
+/// of a stronger damage roll or a critical hit.
 ///
 /// Source: PoB2 `CalcOffence.lua` `StackPotential = ailmentStacks / maxStacks`.
 pub fn stack_potential(cfg: &StackConfig) -> f64 {
-    let active = if cfg.active_stacks > 0.0 {
-        cfg.active_stacks
-    } else {
-        cfg.max_stacks as f64
-    };
-    let max = cfg.max_stacks as f64;
+    let active = cfg.estimated_stacks();
+    let max = cfg.displayed_max();
     if max <= 0.0 {
         return 0.0;
     }
@@ -2055,12 +2100,12 @@ pub fn ailment_crit_chance(crit_chance: f64, stack_potential: f64) -> f64 {
 ///
 /// Source: PoB2 `CalcOffence.lua` RollAverage section.
 pub fn roll_average(cfg: &StackConfig) -> f64 {
-    let active = if cfg.active_stacks > 0.0 {
-        cfg.active_stacks
-    } else {
-        cfg.max_stacks as f64
+    let Some(max) = cfg.max_stacks else {
+        // Every poison contributes: there is no strongest-instance selection.
+        return 50.0;
     };
-    let max = cfg.max_stacks as f64;
+    let active = cfg.estimated_stacks();
+    let max = f64::from(max);
     if active > max && active + 1.0 > 0.0 {
         // Overflow: roll biases toward the high end.
         ((active - (max - 1.0) / 2.0) / (active + 1.0) * 100.0).clamp(0.0, 100.0)
@@ -2083,11 +2128,7 @@ pub fn roll_average(cfg: &StackConfig) -> f64 {
 ///
 /// Source: agent-docs/ailments.md §Stacking and weighted average, PoB2 `CalcOffence.lua` ailmentDPS section.
 pub fn stacking_ailment_dps(single_layer_dps: f64, stack_cfg: &StackConfig) -> f64 {
-    let active = if stack_cfg.active_stacks > 0.0 {
-        stack_cfg.active_stacks
-    } else {
-        stack_cfg.max_stacks as f64
-    };
+    let active = stack_cfg.estimated_stacks();
     round(single_layer_dps * active)
 }
 
@@ -2107,11 +2148,7 @@ pub fn stacking_ailment_dps_traced(
         stacked,
         TraceOperation::Aggregate,
     );
-    let active = if stack_cfg.active_stacks > 0.0 {
-        stack_cfg.active_stacks
-    } else {
-        stack_cfg.max_stacks as f64
-    };
+    let active = stack_cfg.estimated_stacks();
     let stacks_node = trace.add_node(
         format!("{ailment:?}ActiveStacks"),
         active,
@@ -2434,24 +2471,43 @@ pub struct HandAilmentMerge {
     pub weaker: f64,
     /// `min(1, stacks / max_stacks)` (fraction).
     pub stronger_share: f64,
+    /// Normally the complement of stronger_share; independent uncapped
+    /// weapon poisons contribute alongside the other hand instead.
+    pub weaker_share: f64,
+    /// The combined DoT ceiling for independent contributions.
+    pub cap: Option<f64>,
 }
 
 impl HandAilmentMerge {
     pub fn new(mh_dps: f64, oh_dps: f64, stacks: f64, max_stacks: f64) -> Self {
+        let stronger_share = if stacks > 0.0 && max_stacks > 0.0 {
+            (stacks / max_stacks).min(1.0)
+        } else {
+            1.0
+        };
         Self {
             stronger: mh_dps.max(oh_dps),
             weaker: mh_dps.min(oh_dps),
-            stronger_share: if stacks > 0.0 && max_stacks > 0.0 {
-                (stacks / max_stacks).min(1.0)
-            } else {
-                1.0
-            },
+            stronger_share,
+            weaker_share: 1.0 - stronger_share,
+            cap: None,
+        }
+    }
+
+    /// Each hand has already applied its own stack ceiling and application rate.
+    pub fn independent(mh_dps: f64, oh_dps: f64, cap: f64) -> Self {
+        Self {
+            stronger: mh_dps.max(oh_dps),
+            weaker: mh_dps.min(oh_dps),
+            stronger_share: 1.0,
+            weaker_share: 1.0,
+            cap: Some(cap),
         }
     }
 
     pub fn dps(&self) -> f64 {
-        let s = self.stronger_share;
-        round(self.stronger * s + self.weaker * (1.0 - s))
+        let dps = self.stronger * self.stronger_share + self.weaker * self.weaker_share;
+        round(self.cap.map_or(dps, |cap| dps.min(cap)))
     }
 
     pub(crate) fn formula(&self) -> super::StatFormula {
@@ -2461,11 +2517,16 @@ impl HandAilmentMerge {
         b.set(FormulaOp::StrongerHand, self.stronger, self.stronger);
         if s != 1.0 {
             b.set(FormulaOp::StrongerShare, s * 100.0, self.stronger * s);
+        }
+        if self.weaker_share != 0.0 {
             b.set(
                 FormulaOp::WeakerHand,
                 self.weaker,
-                self.stronger * s + self.weaker * (1.0 - s),
+                self.stronger * s + self.weaker * self.weaker_share,
             );
+        }
+        if let Some(cap) = self.cap {
+            b.at_most(FormulaOp::Cap, cap);
         }
         b.finish(self.dps())
     }

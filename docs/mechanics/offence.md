@@ -30,6 +30,8 @@ Brutality 的禁止元素／混沌 stat 经玩家和召唤物共用映射进入 
 
 ## 敌人抗性、曝露与承伤
 
+显式 `enemyFireResist`／`enemyColdResist`／`enemyLightningResist`／`enemyChaosResist` 替换对应敌人等级预设的基础抗性，包括明确填写的零；未填写的类型仍用预设。它们不是最终抗性覆盖，诅咒、曝露和其他增减仍正常生效。Rakiata 的反转只用于元素命中，持续伤害读取未反转的抗性。
+
 Doryani's Prototype（`enemies_in_presence_lightning_resist_equal_to_yours`、`UniqueNearbyEnemyLightningResistanceEqual1`）用玩家经过 buff、充能和资源派生后的最终电抗，覆盖附近敌人的电抗及诅咒／曝露减抗。召唤物、DoT、Sacred Flame 都读取同一敌人值。`EnemyInPresence = false` 关闭它；显式敌人覆盖与敌人最大抗性仍优先。玩家 +80%、敌人封顶 +75% 的正抗性交互是保守实现假设，未实测。冻结 `chronomancer-10` 的玩家电抗为 −184%，不涉及此上限。
 
 The Coming Calamity 的敌人抗性覆盖保留 `EnemyInPresence` 条件，嵌套词条也不能变成 `EnemyEnemyInPresence`。Legacy of Northpaw 的 7% 武器基础暴击率先替换本地修正后的基础，再加额外暴击率与全局增加；每把实际武器分别处理。空手、盾牌、法术及自带技能基础暴击率的攻击保留各自基值。
@@ -98,7 +100,19 @@ Focused Thrust（9227，`projectile_damage_+%_with_spears_while_there_no_enemies
 
 所选战吼用 `WarcrySpeed` 计算动作率和明细；通用 Skill Speed 已并入一次，Cast Speed 不适用。游戏基础时间、行动速度、冷却恢复和明确忽略战吼冷却仍各自生效。冻结 Warbringer05 在去掉冷却后，以 800 ms 基时、868% increased 速度得到每秒 12.1 次。
 
-`FlameWallAddedDamage` 只取已启用 Flame Wall 的投射物 stat set 固定火伤。先解来源有效等级，再走受益投射物自己的伤害效用和伤害流程；本地／队伍同名副本取最强。选择该状态不代表模拟穿墙、持续点燃、灌注或覆盖率。
+`FlameWallAddedDamage` 取已启用、当前武器组可用的 Flame Wall 投射物 buff：固定火伤始终参与；明确选择 `FlameWallInfused` 才另加其闪电伤害。先解来源有效等级，再走受益投射物自己的伤害效用和伤害流程；同名副本取最强。墙自身的伤害与辅助不能直接加到受益技能。两项开关在 buff 构造前解析，表示所选穿墙／灌注快照，不模拟穿墙事件或覆盖率。
+
+Ice Bite 的 `support_ice_bite_buff_grant_%_added_cold_attack_damage` 虽有历史 `attack_damage` 后缀，游戏效果是全局获得冰冷伤害，法术与攻击都受益。兼容的辅助来源在 `FrozenEnemyRecently` 明确选中时提供同名 Ice Bite buff，多份只取最强；不会由配置推断具体冻结来源或六秒覆盖率。
+
+### 黑暗雕像
+
+Vile Effusion（`DarkEffigyProjectilePlayer`）按目标上不同混沌 DoT 类型数 `N` 发射，对单个图腾的命中 DPS 取 `N` 倍，没有额外基础一发。原生 targeting 数据的额外投射物 100 不表示单目标命中 101 次；普通额外投射物、连锁转换不能改写此数量。依据为 [Dark Effigy 游戏说明](https://poe2db.tw/us/Dark_Effigy)与 [Wiki 交互说明](https://www.poe2wiki.net/wiki/Dark_Effegy)。
+
+类型来自实际进入既有减益／诅咒流程的 Contagion、Essence Drain、Soulrend、Profane Ritual 和 Decaying Hex。需要正值混沌 DoT、有效来源与兼容辅助；Decaying Hex 随通过限制、最强副本和 Hexproof 检查的诅咒生效。同一类型不重复计数，中毒不论多少层只计一种。
+
+DoT 类型标记只来自当前武器组可用的来源；这项筛选不删除既有的跨武器组诅咒／印记快照。猛扑的掠食者印记有独立的持续效果与 `triggerable_in_any_set`，换回弓或盾后仍按所选状态影响承伤。若较强的另一武器组诅咒在既有选择流程中胜出，较弱副本上的 Decaying Hex 标记也不能留下；此模型不推断换武器前施加的 DoT 是否仍在持续。
+
+显式 `EnemyPoisoned` 的 true／false 优先。未声明时，已有其他 DoT 目标且雕像能造成正几率、正伤害、正持续时间的中毒，按持续状态快照再计一种；没有初始 DoT 不能靠自身中毒几率启动。此处假设不证明中毒满覆盖，也不模拟时间线。面板模式显示一个假想投射物；标准 DPS 仍为单图腾，保存的数量只由 Full DPS 汇总。
 
 ### 基础投射物数量
 

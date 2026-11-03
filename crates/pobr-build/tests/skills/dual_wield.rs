@@ -74,6 +74,220 @@ fn opts(extra: &[&str]) -> DataOrchestratorOptions {
     }
 }
 
+const SPLINTER_POISON: [&str; 2] = [
+    "Always Poison on Hit with this weapon",
+    "Any number of Poisons from this Weapon can affect a target at the same time",
+];
+
+#[test]
+fn splinter_poison_follows_the_inflicting_hand_and_keeps_finite_calcs() {
+    use pobr_build::calculate_with_data_session;
+    use pobr_core::HandTag;
+    use pobr_core::display_catalog::display_value;
+
+    let data = load_build_data();
+    for (slot, base, hand) in [
+        (EquipmentSlot::Weapon1, "Wooden Club", HandTag::MainHand),
+        (EquipmentSlot::Weapon2, "Shortsword", HandTag::OffHand),
+    ] {
+        let build = dual_build(Some(weapon("Shortsword", &[])))
+            .set_item(slot, weapon(base, &SPLINTER_POISON));
+        let session = calculate_with_data_session(&build, data, &opts(&[])).unwrap();
+        assert!(session.unsupported_modifier_texts().is_empty());
+        let output = session.output();
+        let stage = session.ailment_stage_terms("PoisonDPS").unwrap();
+        assert_eq!(stage.pass_count, 2);
+        assert_eq!(
+            stage.passes.len(),
+            1,
+            "only the weapon granting chance can poison"
+        );
+        assert_eq!(stage.passes[0].0, hand);
+        assert_eq!(stage.passes[0].1.max_stacks, 0.0);
+        assert_eq!(stage.passes[0].1.damage_roll, 50.0);
+        assert_eq!(display_value(output, "PoisonChance"), 50.0);
+        assert!(output.poison_dps > 0.0);
+        assert_eq!(
+            session.stat_formula("PoisonDPS").unwrap().value,
+            output.poison_dps
+        );
+        for stat in [
+            "PoisonChance",
+            "PoisonStacksMax",
+            "PoisonStackPotentialPercent",
+            "PoisonDPS",
+            "PoisonStackedDPS",
+            "PoisonActiveStacks",
+            "PoisonRollAverage",
+        ] {
+            let value = display_value(output, stat);
+            assert!(value.is_finite(), "{stat}={value}");
+            let json = serde_json::to_value(value).unwrap();
+            assert!(json.is_number(), "{stat} must not become JSON null");
+            if let Some(detail) = session.derived_detail(stat) {
+                for (name, input) in detail.inputs.iter().chain(&detail.context) {
+                    assert!(input.is_finite(), "{stat}.{name}={input}");
+                }
+            }
+        }
+        let prohibited = calculate_with_data(&build, data, &opts(&["Cannot Poison"])).unwrap();
+        assert_eq!(prohibited.poison_dps, 0.0);
+        assert_eq!(prohibited.poison_active_stacks, 0.0);
+    }
+
+    // The affected production skill is a weapon attack despite its lightning
+    // theme: remaining Physical and Chaos hits can supply poison.
+    let spear = Build::new()
+        .add_socket_group(SocketGroup::new().with_gem_skill("StormLancePlayer", 20))
+        .set_item(
+            EquipmentSlot::Weapon1,
+            weapon("Hardwood Spear", &SPLINTER_POISON),
+        );
+    let output = calculate_with_data(&spear, data, &opts(&[])).unwrap();
+    assert_eq!(display_value(&output, "PoisonChance"), 100.0);
+    assert!(output.poison_dps > 0.0);
+    assert_eq!(output.poison_max_stacks, 0.0);
+}
+
+#[test]
+fn splinter_mixed_hand_cap_display_uses_the_merged_ceiling() {
+    use pobr_build::calculate_with_data_session;
+    use pobr_core::display_catalog::display_value;
+
+    let data = load_build_data();
+    for (slot, base) in [
+        (EquipmentSlot::Weapon1, "Wooden Club"),
+        (EquipmentSlot::Weapon2, "Shortsword"),
+    ] {
+        let build = dual_build(Some(weapon("Shortsword", &[])))
+            .set_item(slot, weapon(base, &SPLINTER_POISON));
+        let session =
+            calculate_with_data_session(&build, data, &opts(&["100% chance to Poison on Hit"]))
+                .unwrap();
+        let stage = session.ailment_stage_terms("PoisonDPS").unwrap();
+        assert_eq!(stage.passes.len(), 2);
+        if slot == EquipmentSlot::Weapon1 {
+            assert_eq!(stage.passes.last().unwrap().1.max_stacks, 1.0);
+        }
+        assert_eq!(session.output().poison_max_stacks, 0.0);
+        assert_eq!(display_value(session.output(), "PoisonStacksMax"), 0.0);
+        let detail = session.derived_detail("PoisonStacksMax").unwrap();
+        assert_eq!(detail.formula, "MaximumAilmentStacks");
+        assert_eq!(
+            detail.inputs,
+            vec![("MaximumAilmentStacks".to_owned(), 0.0)]
+        );
+    }
+
+    let finite = calculate_with_data_session(
+        &dual_build(Some(weapon("Shortsword", &[]))),
+        data,
+        &opts(&["100% chance to Poison on Hit"]),
+    )
+    .unwrap();
+    assert_eq!(finite.output().poison_max_stacks, 1.0);
+    assert_eq!(display_value(finite.output(), "PoisonStacksMax"), 1.0);
+    assert_eq!(
+        finite.derived_detail("PoisonStacksMax").unwrap().inputs,
+        vec![("MaximumAilmentStacks".to_owned(), 1.0)],
+    );
+}
+
+#[test]
+fn splinter_poison_does_not_follow_spells_shields_minions_or_inactive_weapons() {
+    use pobr_build::calculate_with_data_session;
+    use pobr_data::skill::SkillTypes;
+
+    let data = load_build_data();
+    let local_weapon = weapon("Wooden Club", &SPLINTER_POISON);
+    let spell = Build::new()
+        .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20))
+        .set_item(EquipmentSlot::Weapon1, local_weapon.clone());
+    let shield = Build::new()
+        .add_socket_group(SocketGroup::new().with_gem_skill("ShieldWallPlayer", 20))
+        .set_item(EquipmentSlot::Weapon1, local_weapon.clone())
+        .set_item(EquipmentSlot::Weapon2, weapon("Crucible Tower Shield", &[]));
+    for build in [spell, shield] {
+        let options = opts(&["Adds 100 to 100 Physical Damage"]);
+        let out = calculate_with_data(&build, data, &options).unwrap();
+        assert_eq!(out.poison_dps, 0.0);
+        let global = calculate_with_data(
+            &build,
+            data,
+            &opts(&[
+                "Adds 100 to 100 Physical Damage",
+                "100% chance to Poison on Hit",
+            ]),
+        )
+        .unwrap();
+        assert!(
+            global.poison_dps > 0.0,
+            "control: this skill has an eligible source"
+        );
+        assert_eq!(
+            global.poison_max_stacks, 1.0,
+            "weapon's unlimited flag must not leak"
+        );
+    }
+
+    let mut swapped = dual_build(None).set_item(EquipmentSlot::Weapon1, local_weapon.clone());
+    swapped
+        .other_weapons
+        .insert(EquipmentSlot::Weapon1, weapon("Wooden Club", &[]));
+    let first = calculate_with_data(&swapped, data, &opts(&[])).unwrap();
+    assert!(first.poison_dps > 0.0);
+    swapped.socket_groups[0].weapon_set = Some(2);
+    let second = calculate_with_data(&swapped, data, &opts(&[])).unwrap();
+    assert_eq!(
+        second.poison_dps, 0.0,
+        "a skill bound to the inactive set does not use Splinter"
+    );
+    swapped.weapon_set = pobr_build::WeaponSet::Second;
+    std::mem::swap(
+        swapped.items.get_mut(&EquipmentSlot::Weapon1).unwrap(),
+        swapped
+            .other_weapons
+            .get_mut(&EquipmentSlot::Weapon1)
+            .unwrap(),
+    );
+    assert_eq!(
+        calculate_with_data(&swapped, data, &opts(&[]))
+            .unwrap()
+            .poison_dps,
+        0.0,
+        "the active plain weapon does not inherit the other set's Splinter"
+    );
+    swapped
+        .items
+        .insert(EquipmentSlot::Weapon1, local_weapon.clone());
+    let other = calculate_with_data(&swapped, data, &opts(&[])).unwrap();
+    assert!(
+        other.poison_dps > 0.0,
+        "Splinter applies when equipped in the selected active set"
+    );
+
+    let zombie = Build::new()
+        .add_socket_group(SocketGroup::new().with_gem_skill("RaiseZombiePlayer", 20))
+        .set_item(EquipmentSlot::Weapon1, local_weapon);
+    let session = calculate_with_data_session(&zombie, data, &opts(&[])).unwrap();
+    assert!(session.minion_count() > 0);
+    // Minion poison DPS is not modelled by its hit-only pass. Check the
+    // actual source boundary instead of asserting a vacuous zero DPS.
+    for name in ["PoisonChance", "PoisonStacksUnlimited"] {
+        assert!(!session.mods_named(name).is_empty(), "player owns {name}");
+        assert!(
+            session.minion_stat_mods(0, name).is_empty(),
+            "minion must not inherit {name}"
+        );
+        assert!(
+            session
+                .minion_modifiers_for(SkillTypes::from_pob2_name("Attack").unwrap())
+                .iter()
+                .all(|entry| entry.inner.name.as_str() != name)
+        );
+    }
+}
+
 #[test]
 fn mana_added_cold_and_mace_conversion_keep_their_weapon_scope() {
     use pobr_data::constants::DamageType;

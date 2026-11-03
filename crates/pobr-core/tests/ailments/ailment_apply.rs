@@ -52,6 +52,170 @@ fn enemy_base(env: &Env, name: &str) -> f64 {
         .sum(ModType::Base, &env.cfg, &[ModName::from(name)])
 }
 
+fn selected_shock_env() -> Env {
+    let mut env = effective_env();
+    for condition in ["Shocked", "ShockedConfig"] {
+        env.enemy.mod_db.add_mod(
+            Modifier::flag(format!("Condition:{condition}"))
+                .with_tag(pobr_core::ModTag::condition("Effective", false)),
+        );
+    }
+    env
+}
+
+#[test]
+fn selected_shock_uses_game_default_and_character_magnitude_without_a_hit_estimate() {
+    // Game keyword Shock / non_damaging_ailments.Shock.default: 20%.
+    // Power Conduction: "25% increased Magnitude of Shock you inflict".
+    for (increased, expected) in [(0.0, 20.0), (25.0, 25.0)] {
+        let mut env = selected_shock_env();
+        env.cfg.conditions.insert("Shocked".into(), false);
+        env.player.mod_db.add_mod(Modifier::number(
+            "EnemyShockMagnitude",
+            ModType::Inc,
+            increased,
+        ));
+        env.player.mod_db.add_mod(
+            Modifier::number("Damage", ModType::Inc, 100.0)
+                .with_tag(pobr_core::ModTag::condition("Shocked", false)),
+        );
+        // The selected enemy state may come from another skill, even if the
+        // main skill has Elemental Focus. Do not invent chance or uptime.
+        env.player.mod_db.add_mod(Modifier::flag("CannotShock"));
+        perform(&mut env).expect("selected shock calculation");
+        assert_eq!(
+            pobr_core::display_catalog::display_value(&env.player.output, "CurrentShock"),
+            expected
+        );
+        assert!((env.player.output.dps - 150.0 * (1.0 + expected / 100.0)).abs() < 1e-9);
+        assert_eq!(env.player.output.shock_effect, 0.0, "no hit-derived shock");
+        assert_eq!(enemy_inc(&env, "DamageTaken"), expected);
+        assert!(env.cfg.condition("EnemyShocked"));
+        assert!(!env.cfg.condition("Shocked"), "the player is not Shocked");
+    }
+}
+
+#[test]
+fn selected_shock_does_not_replace_or_scale_an_explicit_final_magnitude() {
+    for value in [0.0, 10.0, 33.7, 120.0] {
+        let mut env = selected_shock_env();
+        env.player
+            .mod_db
+            .add_mod(Modifier::number("EnemyShockMagnitude", ModType::Inc, 100.0));
+        env.enemy
+            .mod_db
+            .add_mod(Modifier::number("SelfShockMagnitude", ModType::Inc, 100.0));
+        // ShockVal represents a supplied final magnitude, including an ally's
+        // shock. Character magnitude cannot change it or establish a floor.
+        env.enemy
+            .mod_db
+            .add_mod(Modifier::number("ShockVal", ModType::Base, value));
+        apply_nondamaging_ailments(&mut env);
+        assert_eq!(enemy_inc(&env, "DamageTaken"), value.min(100.0).floor());
+    }
+}
+
+#[test]
+fn selected_shock_preserves_guaranteed_sources_and_does_not_stack_duplicates() {
+    for (name, expected) in [
+        ("ShockBase", 12.0),
+        ("ShockMinimum", 25.0),
+        ("ShockOverride", 10.0),
+    ] {
+        let mut env = selected_shock_env();
+        env.player
+            .mod_db
+            .add_mod(Modifier::number("EnemyShockMagnitude", ModType::Inc, 25.0));
+        for _ in 0..2 {
+            env.player
+                .mod_db
+                .add_mod(Modifier::number(name, ModType::Base, 10.0));
+        }
+        apply_nondamaging_ailments(&mut env);
+        assert_eq!(
+            enemy_inc(&env, "DamageTaken"),
+            expected,
+            "{name}: strongest Base/Override, summed Minimum, no default floor"
+        );
+        let count = env.enemy.mod_db.iter_mods().count();
+        apply_nondamaging_ailments(&mut env);
+        assert_eq!(env.enemy.mod_db.iter_mods().count(), count);
+        assert_eq!(enemy_inc(&env, "DamageTaken"), expected);
+    }
+}
+
+#[test]
+fn selected_shock_is_not_inferred_from_recent_events_stacks_or_player_shock() {
+    let mut env = effective_env();
+    env.cfg.conditions.insert("EnemyShocked".into(), false);
+    env.cfg
+        .conditions
+        .insert("ShockedEnemyRecently".into(), true);
+    env.cfg.conditions.insert("Shocked".into(), true);
+    env.cfg.multipliers.insert("ShockStack".into(), 2.0);
+    env.player
+        .mod_db
+        .add_mod(Modifier::number("ShockChance", ModType::Base, 100.0));
+    env.player
+        .mod_db
+        .add_mod(Modifier::number("EnemyShockMagnitude", ModType::Inc, 25.0));
+    apply_nondamaging_ailments(&mut env);
+    assert_eq!(enemy_inc(&env, "DamageTaken"), 0.0);
+    assert_eq!(env.enemy.mod_db.iter_mods().count(), 0);
+
+    // Nor does a generic target predicate identify who inflicted it. It
+    // needs a selected snapshot or an actual magnitude source.
+    enemy_condition(&mut env, "Shocked");
+    apply_nondamaging_ailments(&mut env);
+    assert_eq!(enemy_inc(&env, "DamageTaken"), 0.0);
+}
+
+#[test]
+fn selected_shock_respects_effective_mode_and_native_selected_state() {
+    let mut panel = selected_shock_env();
+    panel.cfg.conditions.insert("EnemyShocked".into(), true);
+    panel.cfg.mode_effective = false;
+    perform(&mut panel).expect("panel calculation");
+    assert!(
+        !panel
+            .enemy
+            .mod_db
+            .flag(&panel.cfg, "Condition:AlreadyShocked")
+    );
+    assert_eq!(panel.player.output.dps, 150.0);
+    assert_eq!(enemy_inc(&panel, "DamageTaken"), 0.0);
+
+    let mut native = effective_env();
+    native.cfg.conditions.insert("EnemyShocked".into(), true);
+    perform(&mut native).expect("native selected state");
+    assert_eq!(
+        pobr_core::display_catalog::display_value(&native.player.output, "CurrentShock"),
+        20.0
+    );
+    assert_eq!(native.player.output.dps, 180.0);
+    let count = native.enemy.mod_db.iter_mods().count();
+    apply_nondamaging_ailments(&mut native);
+    assert_eq!(native.enemy.mod_db.iter_mods().count(), count);
+    assert_eq!(enemy_inc(&native, "DamageTaken"), 20.0);
+}
+
+#[test]
+fn selected_shock_scales_target_magnitude_and_clamps_each_side_before_multiplying() {
+    for (attacker, target, expected) in [(25.0, -20.0, 20.0), (-200.0, -200.0, 0.0)] {
+        let mut env = selected_shock_env();
+        env.player.mod_db.add_mod(Modifier::number(
+            "EnemyShockMagnitude",
+            ModType::Inc,
+            attacker,
+        ));
+        env.enemy
+            .mod_db
+            .add_mod(Modifier::number("SelfShockMagnitude", ModType::Inc, target));
+        apply_nondamaging_ailments(&mut env);
+        assert_eq!(enemy_inc(&env, "DamageTaken"), expected);
+    }
+}
+
 // 1. End-to-end: enemy ShockVal 20 -> effective DPS x1.20
 
 #[test]
@@ -118,9 +282,10 @@ fn override_and_val_take_max() {
         "an Override source sets enemy Condition:Shocked"
     );
     assert!(
-        env.cfg.condition("Shocked"),
-        "condition bridges back into cfg"
+        env.cfg.condition("EnemyShocked"),
+        "condition bridges to the enemy's config namespace"
     );
+    assert!(!env.cfg.condition("Shocked"), "not an incoming Shock");
 
     // Val(40) > override(30) -> 40.
     let mut env = effective_env();

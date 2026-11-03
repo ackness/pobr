@@ -275,7 +275,8 @@ const BASELINES: [Baseline; 3] = [
         // Damage Taken: Martial Artist Ice Shot 71a879f43f2f TotalEHP (-1 row) only agreed
         // through the former +21 on every damage type; it is now 87997 against the pinned
         // PoB2's 88825, while the code's 81145 is from another exporter version.
-        agreeing_rows: 660,
+        // Measured after the enemy-state, selected-buff and weapon-poison batch.
+        agreeing_rows: 661,
     },
     // Was 22 builds and 1024 rows. A code whose main skill summons a minion
     // also carries `<MinionStat>` values for that minion, which were not
