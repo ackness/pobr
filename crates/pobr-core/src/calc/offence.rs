@@ -1827,13 +1827,9 @@ fn enemy_mitigation_terms(
         // meets this damage with.
         let resisting = enemy_resisting_element(enemy_db, &type_cfg, damage_type);
         let mut resist = enemy_resist;
-        // A hit treats enemy elemental resistance as inverted (Rakiata's
-        // Flow etc., vendor CalcOffence.lua:4145-4148):
-        // `invertChance = clamp(Sum(CHANCE, "HitsInvertEleResChance"), 0, 1)`,
-        // elemental types only;
-        // `resist = (1-c)*resist + c*(-resist) = resist - 2*c*resist`.
-        // Applied after the resistance clamp, before penetration (matching
-        // vendor's order: `:4135` reads pen, `:4145` inversion, `:4163` deducts pen inside effMult).
+        // Dimensional Weakspot and Rakiata's Flow negate the resistance for
+        // a share of elemental hits. Keep the mean resistance for diagnostics;
+        // penetration and ignore rules must resolve each outcome separately.
         if damage_type.is_elemental() {
             let invert = player_db
                 .sum(
@@ -1869,17 +1865,22 @@ fn enemy_mitigation_terms(
             && !player_db.flag(&type_cfg, "CannotElePenIgnore");
         let effective_resist = if ignores_resist {
             0.0
-        } else if ignores_non_negative {
+        } else {
             let against = |resist: f64| {
-                if resist >= 0.0 {
+                if ignores_non_negative && resist >= 0.0 {
                     0.0
                 } else {
                     apply_penetration(player_db, &type_cfg, resisting, resist)
                 }
             };
-            (1.0 - invert_share) * against(enemy_resist) + invert_share * against(-enemy_resist)
-        } else {
-            apply_penetration(player_db, &type_cfg, resisting, resist)
+            let normal = against(enemy_resist);
+            if invert_share > 0.0 {
+                // Penetration cannot lower a resistance past its floor.
+                // Averaging first would incorrectly share it between hits.
+                (1.0 - invert_share) * normal + invert_share * against(-enemy_resist)
+            } else {
+                normal
+            }
         };
         // Diagnostics: dumps the enemy mitigation breakdown per type when
         // POBR_DBG_ENEMYMIT=1 (for comparison against the oracle's
@@ -2177,26 +2178,19 @@ fn enemy_max_resist_for(
 /// Reduces **already-clamped** enemy resistance by player penetration
 /// (elemental/chaos only, hits only).
 ///
-/// Reads the player db: elemental `<Type>Penetration` + shared
-/// `ElementalPenetration`; chaos `ChaosPenetration`. Formula (PoB2
-/// CalcOffence.lua:4163): `effective = if resist > minPen { max(resist - pen, minPen) } else { resist }`
-/// -- `minPen = Σ BASE(<El>PenetrationMinimum, ElementalPenetrationMinimum)`
-/// (vendor `:4140`/`:4144`, "penetration can push down to at most N"-type
-/// mods; chaos has no minimum name, always 0). Without a minimum mod, this
-/// degenerates to the old form: penetration only takes effect when
-/// resistance is positive and can never push resistance below 0; when
-/// resistance is already ≤ minPen (including negative resistance),
-/// penetration is entirely wasted.
-///
-/// Source: agent-docs/damage-scaling.md §Penetration (penetration doesn't
-/// break 0, is mutually exclusive with negative resistance, hits only);
-///       damage-defence-order.md §Step 4; PoB2 `<Type>Penetration`/`ElementalPenetration`.
+/// Typed and shared elemental penetration stop at their combined minimum,
+/// normally zero; an already lower resistance is unchanged. The game stat
+/// `cannot_penetrate_or_ignore_elemental_resistances` blocks elemental
+/// penetration, while chaos penetration retains its zero floor.
 fn apply_penetration(
     player_db: &ModDb,
     type_cfg: &CalcConfig,
     damage_type: DamageType,
     resist: f64,
 ) -> f64 {
+    if damage_type.is_elemental() && player_db.flag(type_cfg, "CannotElePenIgnore") {
+        return resist;
+    }
     let pen = penetration_value(player_db, type_cfg, damage_type);
     let min_pen = penetration_minimum(player_db, type_cfg, damage_type);
     if resist > min_pen {

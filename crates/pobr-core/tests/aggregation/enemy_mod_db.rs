@@ -648,10 +648,8 @@ fn penetration_skipped_when_resist_at_or_below_min_pen() {
     );
 }
 
-// Hits treat enemy elemental resist as inverted (Rakiata's Flow
-// `treat_enemy_resistances_as_negated_…` → HitsInvertEleResChance CHANCE,
-// SkillStatMap.lua:941-944; consumed by vendor CalcOffence.lua:4145-4148
-// `resist = resist - 2 * invertChance * resist`, after clamp and before penetration).
+// Dimensional Weakspot / Rakiata's Flow negate enemy elemental resistance
+// for a share of hits. Penetration is evaluated for each hit outcome.
 
 #[test]
 fn hits_invert_ele_res_chance_inverts_enemy_resist() {
@@ -675,7 +673,7 @@ fn hits_invert_ele_res_chance_inverts_enemy_resist() {
 
 #[test]
 fn hits_invert_partial_chance_blends_resist() {
-    // Resist 50, chance 0.5 → resist = 50 - 2*0.5*50 = 0 → fire damage 100 (vendor's linear blend).
+    // Half the hits meet +50 resistance and half meet -50: (50 + 150) / 2.
     let mut player = fire_only_player();
     player.add_mod(Modifier::number(
         "HitsInvertEleResChance",
@@ -695,9 +693,7 @@ fn hits_invert_partial_chance_blends_resist() {
 
 #[test]
 fn hits_invert_applies_before_penetration() {
-    // Inversion happens first (vendor :4145 runs before the :4163 effMult penetration step):
-    // resist 50 inverts to -50, so resist ≤ minPen(0) and penetration is skipped entirely
-    // (wasted), still yielding 1.5×.
+    // A negated resistance is already below penetration's floor of zero.
     let mut player = fire_only_player();
     player.add_mod(Modifier::number(
         "HitsInvertEleResChance",
@@ -712,6 +708,99 @@ fn hits_invert_applies_before_penetration() {
     assert!(
         (out.dps - 150.0).abs() < 1e-6,
         "penetration skipped under negative resist -> 100*1.5 = 150, got {}",
+        out.dps
+    );
+}
+
+#[test]
+fn hits_invert_partial_chance_resolves_penetration_before_averaging() {
+    for (resistance, penetration, chance, expected) in [
+        (50.0, 8.0, 0.15, 71.8),
+        (50.0, 30.0, 0.5, 115.0),
+        (-20.0, 30.0, 0.5, 110.0),
+        (50.0, 30.0, 0.0, 80.0),
+        (50.0, 30.0, 1.0, 150.0),
+        (50.0, 30.0, 2.0, 150.0),
+        (50.0, 30.0, -1.0, 80.0),
+    ] {
+        let mut player = fire_only_player();
+        player.add_mod(Modifier::number(
+            "HitsInvertEleResChance",
+            ModType::Base,
+            chance,
+        ));
+        player.add_mod(Modifier::number(
+            "FirePenetration",
+            ModType::Base,
+            penetration,
+        ));
+        let mut enemy = ModDb::new();
+        enemy.add_mod(Modifier::number("FireResist", ModType::Base, resistance));
+
+        let out =
+            calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+        assert!(
+            (out.dps - expected).abs() < 1e-6,
+            "resistance {resistance}, penetration {penetration}, chance {chance}: {} != {expected}",
+            out.dps
+        );
+        let panel =
+            calculate_minimal_vs_enemy(&player, &enemy, &CalcConfig::attack(), &fire_only_input());
+        assert!(
+            (panel.dps - 100.0).abs() < 1e-6,
+            "panel mode has no enemy mitigation"
+        );
+    }
+}
+
+#[test]
+fn elemental_penetration_prohibition_preserves_inversion_and_chaos_penetration() {
+    for (resistance, inversion, expected) in [
+        (50.0, 0.0, 50.0),
+        (50.0, 0.15, 65.0),
+        (50.0, 1.0, 150.0),
+        (-20.0, 0.15, 114.0),
+    ] {
+        let mut player = fire_only_player();
+        for name in [
+            "CannotElePenIgnore",
+            "IgnoreElementalResistances",
+            "IgnoreNonNegativeEleRes",
+        ] {
+            player.add_mod(Modifier::flag(name));
+        }
+        player.add_mod(Modifier::number("FirePenetration", ModType::Base, 8.0));
+        player.add_mod(Modifier::number(
+            "ElementalPenetration",
+            ModType::Base,
+            30.0,
+        ));
+        player.add_mod(Modifier::number(
+            "HitsInvertEleResChance",
+            ModType::Base,
+            inversion,
+        ));
+        let mut enemy = ModDb::new();
+        enemy.add_mod(Modifier::number("FireResist", ModType::Base, resistance));
+        let out =
+            calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+        assert!(
+            (out.dps - expected).abs() < 1e-6,
+            "{resistance}/{inversion}: {} != {expected}",
+            out.dps
+        );
+    }
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::flag("CannotElePenIgnore"));
+    player.add_mod(Modifier::number("ChaosDamageMin", ModType::Base, 100.0));
+    player.add_mod(Modifier::number("ChaosDamageMax", ModType::Base, 100.0));
+    player.add_mod(Modifier::number("ChaosPenetration", ModType::Base, 8.0));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("ChaosResist", ModType::Base, 50.0));
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 58.0).abs() < 1e-6,
+        "chaos penetration remains effective: {}",
         out.dps
     );
 }

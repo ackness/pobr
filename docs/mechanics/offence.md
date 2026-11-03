@@ -32,6 +32,10 @@ Brutality 的禁止元素／混沌 stat 经玩家和召唤物共用映射进入 
 
 显式 `enemyFireResist`／`enemyColdResist`／`enemyLightningResist`／`enemyChaosResist` 替换对应敌人等级预设的基础抗性，包括明确填写的零；未填写的类型仍用预设。它们不是最终抗性覆盖，诅咒、曝露和其他增减仍正常生效。Rakiata 的反转只用于元素命中，持续伤害读取未反转的抗性。
 
+Dimensional Weakspot（2344，`treat_enemy_resistances_as_negated_on_elemental_damage_hit_%_chance`）让 15% 的元素命中反转抗性。普通命中与反转命中各自处理穿透和忽略抗性，再按概率汇总；穿透不能低于其下限，因此不能先平均抗性再穿透。敌人抗性 50%、穿透 8%、反转概率 15% 时，伤害倍率为 `0.85 × 0.58 + 0.15 × 1.5 = 0.718`。
+
+`cannot_penetrate_or_ignore_elemental_resistances` 同时阻止元素穿透与忽略抗性，仍允许反转，混沌穿透不受影响。上述例子在禁止元素穿透时为 `0.85 × 0.5 + 0.15 × 1.5 = 0.65`。
+
 Doryani's Prototype（`enemies_in_presence_lightning_resist_equal_to_yours`、`UniqueNearbyEnemyLightningResistanceEqual1`）用玩家经过 buff、充能和资源派生后的最终电抗，覆盖附近敌人的电抗及诅咒／曝露减抗。召唤物、DoT、Sacred Flame 都读取同一敌人值。`EnemyInPresence = false` 关闭它；显式敌人覆盖与敌人最大抗性仍优先。玩家 +80%、敌人封顶 +75% 的正抗性交互是保守实现假设，未实测。冻结 `chronomancer-10` 的玩家电抗为 −184%，不涉及此上限。
 
 The Coming Calamity 的敌人抗性覆盖保留 `EnemyInPresence` 条件，嵌套词条也不能变成 `EnemyEnemyInPresence`。Legacy of Northpaw 的 7% 武器基础暴击率先替换本地修正后的基础，再加额外暴击率与全局增加；每把实际武器分别处理。空手、盾牌、法术及自带技能基础暴击率的攻击保留各自基值。

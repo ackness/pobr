@@ -90,6 +90,12 @@ PoB2 用自己的符文表覆盖物品原文；PoBR 以物品原文为准。同�
 
 同一个诅咒由两个技能组施加时，敌人身上只有最强的那一份（“Debuffs of the same type do not stack, and only the copy with the strongest effect applies”，[Curse](https://www.poe2wiki.net/wiki/Curse)），比较的是各份自身与其辅助宝石的诅咒效果（`skill_env::buff_specs::curse_strength`）。PoB2 按自己的优先级表挑，光环来源优先：tuned 组的 Acolyte of Chayula（Decompose）有 Doedre's Undoing 组和 Blasphemy 组两份 Despair，PoB2 用后者（敌人混沌抗性 −31），PoBR 用更强的前者（−58）。
 
+### Ribrattle 的弱化与防御
+
+Ribrattle 自身可施加三个诅咒，不能借用玩家的诅咒上限。其怪物 Enfeeble 的原生 stat 是 `accuracy_rating_+% = -60` 与 `base_skill_buff_damage_+%_final_to_apply = -60`，没有另一条 Unique 目标数值；Pinnacle 的 50% less curse effect 使它提供 30% reduced Accuracy 和 30% less Damage。当前参考工具按玩家上限选择幽魂诅咒，并把该伤害降低限定到非 Unique 目标，低估了这一选定状态的防御。
+
+2026-11-03 固定的 Smith of Kitava 构筑（XML SHA-256 `ff6431d438f30bfe4e2cfbb8b2e411d6e13a99eea2aed5e45079ed9ef07caccf`）在参考口径下 EHP 为 2,012,602；只关闭 `raiseSpectreEnableCurses` 后为 871,516，准确复现原导出值，生命、能盾、护甲、闪避值与抗性都不变。诅咒降低来袭伤害，同时改善护甲减伤和闪避率，所以 EHP 增幅大于单独除以 0.7。这里假设幽魂在场且诅咒已经施加，不表示实战始终覆盖。原生怪物数值来自 `base/granted_effect_stat_sets.json`，幽魂技能与上限来自 `overlay/spectres.json`；回归见 `tests/skills/minion_curses.rs`。
+
 ### 尸体伤害类型
 
 尸体爆炸的伤害类型取自游戏 stat：`corpse_explosion_monster_life_permillage_<类型>` 与 `corpse_explosion_monster_life_%_<类型>` 写明类型；不带类型的 `corpse_explosion_monster_life_%`（Fiery Death）按它的文本 “Explosion deals base Fire Damage equal to {0}% of the Corpse's Maximum Life” 是火焰伤害（`skill_stats::corpse_explosion_damage`），PoB2 按物理计。

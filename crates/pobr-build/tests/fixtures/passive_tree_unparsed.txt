@@ -79,7 +79,6 @@ node.22532	Enemies are [Intimidate|Intimidated] for 4 seconds when you [Immobili
 node.22541	Grants Skill: <underline>{Fire Spell on Hit}
 node.23265	Grants Skill: <underline>{Kelari's Deception}
 node.23362	[Unaffected] by [Chill] during Dodge Roll
-node.2344	[Hit|Hits] have 15% chance to treat Enemy Monster [ElementalDamage|Elemental] [Resistances|Resistance] values as inverted
 node.23508	Benefits from consuming [Charges|Frenzy Charges] for your Skills have 50% chance to be doubled
 node.23630	[Ignite|Ignites] you cause are reflected back to you
 node.24491	[Invoke|Invocated] [Spell|Spells] have 40% chance to consume half as much [Energy]
