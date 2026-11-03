@@ -6,6 +6,9 @@
 //! increased Cast Speed", "25% increased Totem Damage". The same lines say
 //! nothing of a spell the character casts.
 
+#[path = "dark_effigy.rs"]
+mod dark_effigy;
+
 use pobr_build::{
     Build, BuildData, DataOrchestratorOptions, calculate_with_data, diagnose, parse_build,
 };

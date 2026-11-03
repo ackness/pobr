@@ -264,14 +264,24 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // point), `run_hand_passes` passes straight through to `calculate_minimal_vs_enemy`, behavior
     // unchanged bit-for-bit; once the orchestration layer assembles a HandSource, it goes through
     // the per-hand pipeline + combineStat merge.
-    let hand_pass = super::hand_pass::run_hand_passes(
-        &env.player.mod_db,
-        &env.enemy.mod_db,
-        &env.cfg,
-        &env.hand_sources,
-        &input,
-        env.double_hits_when_dual_wielding,
-    );
+    let calculate_hit = |env: &Env| {
+        super::hand_pass::run_hand_passes(
+            &env.player.mod_db,
+            &env.enemy.mod_db,
+            &env.cfg,
+            &env.hand_sources,
+            &input,
+            env.double_hits_when_dual_wielding,
+        )
+    };
+    let mut hand_pass = calculate_hit(env);
+    // Effigy's own Poison eligibility needs the resolved hit, but its
+    // target count changes DPS (including ailment application count), not
+    // hit damage. Only that skill can require a second, pure hit query;
+    // no buffs or environment-finalization stages are run twice.
+    if super::dark_effigy::apply(env, &hand_pass.combined) {
+        hand_pass = calculate_hit(env);
+    }
     let output = hand_pass.combined;
     // The ailment Stored-family fallback source when there's no hand pass (spell / old-entry-point
     // single "Skill" pass) — crit_pass produces Stored for spells too (vendor spells also go
@@ -2388,12 +2398,13 @@ fn copy_projectile_speed_as_damage(
 }
 
 fn no_trigger_events(env: &Env) -> bool {
-    env.player.output.effective_action_rate == 0.0
-        && (env.player.output.energy_trigger.is_some()
-            || env
-                .player
-                .mod_db
-                .flag(&env.cfg, super::trigger::EVENT_RATE_UNMODELLED))
+    super::dark_effigy::has_no_target(env)
+        || env.player.output.effective_action_rate == 0.0
+            && (env.player.output.energy_trigger.is_some()
+                || env
+                    .player
+                    .mod_db
+                    .flag(&env.cfg, super::trigger::EVENT_RATE_UNMODELLED))
 }
 
 fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {

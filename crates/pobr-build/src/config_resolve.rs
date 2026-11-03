@@ -78,6 +78,7 @@ const EXPLICIT_BOOLEAN_CONDITIONS: &[(&str, &str)] = &[
     ("conditionEnemyLightningExposure", "EnemyLightningExposure"),
     ("conditionEnemyArmourBroken", "EnemyArmourBroken"),
     ("conditionEnemyIgnited", "EnemyIgnited"),
+    ("conditionEnemyPoisoned", "EnemyPoisoned"),
     ("conditionEnemyChilled", "EnemyChilled"),
     ("conditionEnemyFrozen", "EnemyFrozen"),
     ("conditionEnemyShocked", "EnemyShocked"),

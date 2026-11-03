@@ -30,6 +30,7 @@ use crate::skill_env::stat_map::{
 use crate::skill_env::support::{GroupSupportJudgement, SupportCandidate, judge_group_supports};
 use crate::skill_env::{EnabledGroup, GemInput};
 
+mod chaos_dot;
 mod flame_wall;
 mod minions;
 pub use flame_wall::flame_wall_buff_specs;
@@ -428,14 +429,23 @@ pub fn buff_skill_specs(
                 let is_aura = has_type("Aura");
                 let is_mark = has_type("Mark");
                 let is_curse = is_mark || has_type("AppliesCurse");
+                // Unlike a persistent reservation, applying a curse needs
+                // this weapon set. Do not let a dormant stronger copy win
+                // curse selection (or carry its Decaying Hex to the enemy).
+                if is_curse && !group.active_in_weapon_set {
+                    continue;
+                }
                 let socket_index = (idx + 1) as u32;
                 if !is_aura && !is_curse {
                     // Debuff branch + player-side Buff branch (see the orchestrator's
                     // doc for the vendor mapping; both payloads are empty for most skills).
                     let es_buff = effect_stats(skill_id, level, gem.quality, gem.stat_set_index);
                     let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
-                    let debuff_mods =
+                    let mut debuff_mods =
                         debuff_stat_modifiers(ctx, &es_buff, skill_id, set_key.as_deref());
+                    let chaos_dot = chaos_dot::skill(&group, data, gem, skill_id, level);
+                    let has_chaos_dot = chaos_dot.is_some();
+                    debuff_mods.extend(chaos_dot);
                     let buff_skill = BuffSkill {
                         consumed_charge_benefit_double_chance: stat_on_skill_and_supports(
                             &group,
@@ -460,7 +470,7 @@ pub fn buff_skill_specs(
                     // Keep the existing debuff selection. Ordinary player buffs
                     // must reach the same-name strongest-modifier merger with
                     // every usable copy, including its value and source.
-                    if first_copy && !debuff_mods.is_empty() {
+                    if (first_copy || has_chaos_dot) && !debuff_mods.is_empty() {
                         specs.push(BuffSpec {
                             name: buff_skill_name(data, skill_id),
                             kind: BuffKind::Debuff,
@@ -621,7 +631,8 @@ pub fn buff_skill_specs(
                     {
                         continue;
                     }
-                    let mods = curse_stat_modifiers(ctx, &es, skill_id, set_key.as_deref());
+                    let mut mods = curse_stat_modifiers(ctx, &es, skill_id, set_key.as_deref());
+                    mods.extend(chaos_dot::curse(&group, data, skill_id, level));
                     // The skill-local CurseEffect segment (vendor's curse multiplier
                     // zone, reads skillModList): the curse gem's own quality segment +
                     // the **compatible** supports in the group's payload, pre-scaled
