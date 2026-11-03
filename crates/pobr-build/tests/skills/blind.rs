@@ -155,3 +155,113 @@ fn a_support_strengthens_the_blind_of_the_skill_it_supports() {
     let two = calculate_with(&data, &[&supported, &supported], true, true, &[]);
     assert_eq!(two.evade_chance, increased.evade_chance);
 }
+
+#[test]
+fn compatible_minion_attacks_can_supply_the_strongest_blind() {
+    let data = data();
+    let increased = calculate(&data, true, true, &["20% increased Blind Effect"]);
+    let plain = calculate(&data, true, true, &[]);
+    for skill in ["WolfPackPlayer", "WildProtectorPlayer"] {
+        let summon = format!(r#"<Gem skillId="{skill}" level="20" enabled="true"/>"#);
+        let supported = format!("{summon}{BLIND_II}");
+        let one = calculate_with(&data, &[ICE_SHOT, &supported], true, true, &[]);
+        assert_eq!(one.evade_chance, increased.evade_chance, "{skill}");
+        assert_eq!(one.deflect_chance, increased.deflect_chance, "{skill}");
+        assert_eq!(one.hit_chance, increased.hit_chance, "{skill}");
+        let duplicate = calculate_with(&data, &[ICE_SHOT, &supported, &supported], true, true, &[]);
+        assert_eq!(duplicate.deflect_chance, one.deflect_chance);
+        assert_eq!(duplicate.evade_chance, one.evade_chance);
+
+        for inactive in [
+            format!(
+                "{summon}{}",
+                BLIND_II.replace("enabled=\"true\"", "enabled=\"false\"")
+            ),
+            format!(
+                "{}{BLIND_II}",
+                summon.replace("enabled=\"true\"", "enabled=\"false\"")
+            ),
+        ] {
+            let unused = calculate_with(&data, &[ICE_SHOT, &inactive], true, true, &[]);
+            assert_eq!(unused.deflect_chance, plain.deflect_chance, "{skill}");
+        }
+        for (blinded, effective) in [(false, true), (true, false)] {
+            let control = calculate(&data, blinded, effective, &[]);
+            let unused = calculate_with(&data, &[ICE_SHOT, &supported], blinded, effective, &[]);
+            assert_eq!(unused.deflect_chance, control.deflect_chance);
+            assert_eq!(unused.evade_chance, control.evade_chance);
+        }
+        let disabled = parse_build(&format!(
+            r#"<PathOfBuilding2><Build level="80" className="Ranger"/>
+<Skills><Skill enabled="false">{supported}</Skill></Skills></PathOfBuilding2>"#
+        ))
+        .unwrap();
+        assert_eq!(
+            pobr_core::skill_env::strongest_skill_blind(&disabled, data),
+            None
+        );
+    }
+    // A non-damaging buff cannot borrow an unrelated minion's attack types.
+    let incompatible =
+        format!(r#"<Gem skillId="WindDancerPlayer" level="20" enabled="true"/>{BLIND_II}"#);
+    let unused = calculate_with(&data, &[ICE_SHOT, &incompatible], true, true, &[]);
+    assert_eq!(unused.deflect_chance, plain.deflect_chance);
+}
+
+#[test]
+fn minion_blind_does_not_combine_supports_from_different_attacks() {
+    use pobr_core::skill_env::{MinionLookup, strongest_skill_blind};
+
+    let mut data = data().clone();
+    let minion_id = data.effect_minion_list("WolfPackPlayer")[0].clone();
+    let attack_id = data.minions[&minion_id].skill_list[0].clone();
+    for (id, skill_type, value) in [
+        ("BlindTestMelee", "Melee", 20.0),
+        ("BlindTestProjectile", "Projectile", 30.0),
+    ] {
+        let mut attack = data.granted_effects[&attack_id].clone();
+        attack.id = id.into();
+        attack.skill_types = vec!["Attack".into(), "Damage".into(), skill_type.into()];
+        data.granted_effects.insert(id.into(), attack);
+        let support_id = format!("{id}Support");
+        let mut support = data.granted_effects["SupportBlindPlayerTwo"].clone();
+        support.id = support_id.clone();
+        support.require_skill_types = vec![skill_type.into()];
+        support.exclude_skill_types.clear();
+        data.granted_effects.insert(support_id.clone(), support);
+        let mut stats = data.skill_stat_sets["SupportBlindPlayerTwo"].clone();
+        for stat in &mut stats.sets[0].constant_stats {
+            if stat.stat == "blind_effect_+%" {
+                stat.value = value;
+            }
+        }
+        data.skill_stat_sets.insert(support_id, stats);
+    }
+    data.minions.get_mut(&minion_id).unwrap().skill_list =
+        vec!["BlindTestMelee".into(), "BlindTestProjectile".into()];
+    let build = parse_build(
+        r#"<PathOfBuilding2><Build level="80" className="Ranger"/>
+<Skills><Skill><Gem skillId="WolfPackPlayer" level="20"/>
+<Gem skillId="BlindTestMeleeSupport" level="1"/>
+<Gem skillId="BlindTestProjectileSupport" level="1"/>
+</Skill></Skills></PathOfBuilding2>"#,
+    )
+    .unwrap();
+    assert_eq!(strongest_skill_blind(&build, &data).unwrap().1, 30.0);
+    data.minions
+        .get_mut(&minion_id)
+        .unwrap()
+        .skill_list
+        .reverse();
+    assert_eq!(strongest_skill_blind(&build, &data).unwrap().1, 30.0);
+    data.granted_effects
+        .get_mut("BlindTestProjectile")
+        .unwrap()
+        .cannot_be_supported = true;
+    assert_eq!(strongest_skill_blind(&build, &data).unwrap().1, 20.0);
+    data.granted_effects
+        .get_mut("WolfPackPlayer")
+        .unwrap()
+        .cannot_be_supported = true;
+    assert!(strongest_skill_blind(&build, &data).is_none());
+}

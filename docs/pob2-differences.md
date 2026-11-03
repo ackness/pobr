@@ -308,7 +308,7 @@ Evergrasping Ring 的 “Enemies in your Presence Gain (6-12)% of Damage as Extr
 
 ### 最强致盲效果
 
-技能自己或它的辅助宝石带的 “increased Blind Effect”（`blind_effect_+%`，例如 Blind II 的 20%）只作用于这个技能施加的致盲。致盲不叠加，敌人身上只有一个，PoBR 取角色的技能里最强的那个（`skill_env::strongest_skill_blind`），转给敌人，与角色自己的 “increased Blind Effect” 相加。PoB2 把这条加成按每个被辅助的技能各算一次、全部加到角色身上：tuned 组的 Amazon（Rain of Arrows）有五个技能带 Blind II，PoB2 的致盲是 −40% 命中，PoBR 是 −24%，闪避率 72% 对参考值 76%，TotalEHP 随之较低。
+技能自己或它的辅助宝石带的 “increased Blind Effect”（`blind_effect_+%`，例如 Blind II 的 20%）只作用于这个技能施加的致盲。致盲不叠加，敌人身上只有一个，PoBR 取角色和已启用召唤技能所产生的最强致盲（`skill_env::strongest_skill_blind`），转给敌人，与角色自己的 “increased Blind Effect” 相加。Wolf Pack、Wild Protector 的辅助兼容性按召唤物的每个攻击单独检查，不能用不造成伤害的召唤动作排除 Blind II，也不能跨不同攻击合并辅助或按召唤数量叠加效果。此处仍要求选定敌人已致盲，不推算召唤物命中频率或覆盖率。PoB2 把这条加成按每个被辅助的技能各算一次、全部加到角色身上：tuned 组的 Amazon（Rain of Arrows）有五个技能带 Blind II，PoB2 的致盲是 −40% 命中，PoBR 是 −24%，闪避率 72% 对参考值 76%，TotalEHP 随之较低。
 
 ### 最低元素抗性
 
