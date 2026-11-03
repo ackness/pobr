@@ -32,7 +32,6 @@ candidate and requires the entire shared layer to match the installed one. A cus
 `--data-root` names that installed directory directly, regardless of its basename.
 A change to shared rules/facts requires a separate reviewed migration; this command
 does not overwrite them or claim arbitrary cross-version shared compatibility.
-Current and fixed rollback packages use the already verified common bytes.
 
 The isolated validation root includes the target, common layer and read-only
 historical snapshot links. Sequential version, GameData and parity gates run on

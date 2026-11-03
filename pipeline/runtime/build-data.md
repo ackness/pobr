@@ -32,7 +32,7 @@ payloads. Existing v3 and reviewed-only display guards remain independent.
 
 The game part carries `trade_crafting_sources.json`, which RePoE projects from
 its neutral crafting facts ([catalog projection](https://github.com/ackness/repoe/blob/master/RePoE/docs/pobr_crafting_catalog.md)); PoBR projects no data,
-and a lock with a `crafting` input is rejected. The frozen
+and a lock with a `crafting` input is rejected.
 A lock with any other schema is rejected, so there is one declaration format.
 
 A ZIP part has schema `pobr-build-data-part/v1`, exact `target`, `kind` and a

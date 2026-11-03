@@ -29,7 +29,7 @@ PoBR 将应用版本、基础库版本和游戏数据版本分开。RePoE 独立
 两 owner 发布索引和 PoBR latest 控制器已合并；默认构建仍重放锁，发布索引只负责发现候选。
 自动采用还缺专用凭据与一次真实新发布的全链演练，owner 新原料生产也不由索引自动完成。
 字段／语义和玩家流程的剩余范围统一维护在[数据现状](data-status.md)，
-托管启用条件见[latest](../pipeline/latest/latest-data.md#verified-rollout-status-2026-11-02-utc)，不在本页复制阶段待办。
+托管启用条件见[数据现状](data-status.md#当前数据锁与托管条件)，不在本页复制阶段待办。
 
 ## 开发入口
 
