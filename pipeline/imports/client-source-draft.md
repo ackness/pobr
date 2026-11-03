@@ -2,7 +2,7 @@
 
 First acquisition now runs in the independent RePoE repository, using
 `mise run client:draft -- --help` or `python -B -m RePoE.client_source_draft`.
-The [pinned upstream acquisition contract](https://github.com/ackness/repoe/blob/a27c0a795728bb64d988519ccebe7faeacf9edf7/RePoE/docs/client-source-draft.md)
+The [pinned upstream acquisition contract](https://github.com/ackness/repoe/blob/6b65ade6ac8731515b28aac2aa3c38f160d0bffd/RePoE/docs/client-source-draft.md)
 owns the selection schema, range/cache/decoder guards, completion-last draft
 receipt and regression tests. [Discovery](client-index.md), collection and
 [strict replay](client-sources.md) are not implemented in PoBR.
