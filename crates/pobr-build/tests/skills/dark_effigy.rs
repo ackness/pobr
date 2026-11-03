@@ -333,7 +333,10 @@ fn curse_limit_and_strongest_copy_selection_gate_decay() {
     }
     let mut dormant = stronger;
     dormant.weapon_set = Some(2);
-    assert_count(&calculate(&effigy(&[], [dormant, supported])), 1.0);
+    // Existing cross-weapon curse snapshots still participate in strongest-copy
+    // selection. The stronger unlinked curse supplies no Decay; the rejected
+    // supported copy must not leave its presence marker behind.
+    assert_count(&calculate(&effigy(&[], [dormant, supported])), 0.0);
 
     let duplicates = calculate_with_data(
         &effigy(

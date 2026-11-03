@@ -429,12 +429,10 @@ pub fn buff_skill_specs(
                 let is_aura = has_type("Aura");
                 let is_mark = has_type("Mark");
                 let is_curse = is_mark || has_type("AppliesCurse");
-                // Unlike a persistent reservation, applying a curse needs
-                // this weapon set. Do not let a dormant stronger copy win
-                // curse selection (or carry its Decaying Hex to the enemy).
-                if is_curse && !group.active_in_weapon_set {
-                    continue;
-                }
+                // Keep the selected curse/mark snapshot across weapon contexts.
+                // Castability is not its lifetime (Pounce's additional mark, for
+                // example, still affects another weapon's attacks). Chaos DoT
+                // markers apply their own source-availability checks below.
                 let socket_index = (idx + 1) as u32;
                 if !is_aura && !is_curse {
                     // Debuff branch + player-side Buff branch (see the orchestrator's
