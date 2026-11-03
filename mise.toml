@@ -224,12 +224,6 @@ description = "Run Playwright with automatically prepared browser dependencies; 
 depends = ["setup:e2e"]
 run = "pnpm --dir web exec playwright test"
 
-[tasks."web:tree-art"]
-description = "Regenerate tree artwork with automatically installed, pinned ImageMagick 7 and zstd"
-tools = { "conda:imagemagick" = "7.1.2_31", "conda:zstd" = "1.5.7" }
-depends = ["vendor"]
-run = "pnpm --dir web build-tree-art"
-
 [tasks."setup:oracle"]
 description = "Prepare the pinned LuaJIT and PoB2 test reference automatically for oracle tasks"
 run = [

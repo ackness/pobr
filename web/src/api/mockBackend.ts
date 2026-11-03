@@ -98,9 +98,6 @@ export function createMockBackend(): PobrBackend {
     async loadPassiveTree() {
       return treeFixture as unknown as PassiveNode[];
     },
-    async loadTreeArt() {
-      return null;
-    },
     async loadTreeMeta() {
       return treeMetaFixture as unknown as PassiveTreeMeta;
     },

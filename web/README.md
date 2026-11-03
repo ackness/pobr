@@ -227,7 +227,6 @@ clearing Cargo caches.
 | `mise run web exec playwright test e2e/build-roundtrip.spec.ts` | Focused browser regression with current dist/WASM/data. |
 | `mise run web build-wasm` / `mise run web sync-data` | Prepare WASM / copy versioned data into public. |
 | `mise run web package-wasm` / `mise run web smoke-wasm-package` | Package / verify the standalone archive in `.cache/wasm-release/`. |
-| `mise run web:tree-art` | Regenerate tree art with automatically prepared vendor, ImageMagick 7 and zstd. |
 
 Seven shared request DTOs are generated from Rust into `src/api/generated/request.ts`
 using the pinned host-only `ts-rs` dev dependency. After changing them, run

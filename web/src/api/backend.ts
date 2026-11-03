@@ -31,7 +31,6 @@ import type {
   OptimizeVariantsResponse,
   PassiveNode,
   PassiveTreeMeta,
-  TreeArt,
   RuneCatalogEntry,
   ItemAugmentInfo,
 } from './types';
@@ -101,7 +100,6 @@ export interface PobrBackend {
   normalizeItemDraft(text: string): Promise<string>;
   loadJewelBases(): Promise<JewelBase[]>;
   /** 天赋树节点美术边车（未生成时返回 null，界面回退纯 SVG 圆点）。 */
-  loadTreeArt(): Promise<TreeArt | null>;
   /** 职业/升华元数据（新建 build 选择器）。 */
   loadTreeMeta(): Promise<PassiveTreeMeta>;
   /** 加载职业/升华名的简中对照表（数据包缺该文件时返回空表，界面显示英文原名）。 */
