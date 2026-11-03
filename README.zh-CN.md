@@ -113,7 +113,7 @@ Rust 使用 **edition 2024**；应用与工具继承 workspace 发布版本，�
 | 使用 JSON 接口 | [构筑模型](docs/build-model.md)、[计算输出](docs/calc-outputs.md)、[WASM 包](docs/wasm-package.md) |
 | 核对机制 | [机制约定](docs/mechanics/README.md)、[有意保留的差异](docs/pob2-differences.md) |
 
-工作区包含七个 Rust 库、两个应用和三个 Rust 工具，React / TypeScript 界面在 `web/`。
+工作区包含七个 Rust 库、两个应用和四个 Rust 工具，React / TypeScript 界面在 `web/`。
 维护者指南说明了架构与数据流。`agent-docs/` 中的历史研究资料需要结合当前游戏数据和测试使用，
 不能当作当前实现的说明。
 
@@ -128,6 +128,6 @@ Rust 使用 **edition 2024**；应用与工具继承 workspace 发布版本，�
 
 代码以 [MIT](LICENSE) 协议发布。
 
-本项目与 Grinding Gear Games 无任何关联，亦未获其背书。`data/` 下的游戏数据
+本项目与 Grinding Gear Games 无任何关联，亦未获其背书。应用消费的游戏数据
 派生自 Path of Exile 2 客户端资源，版权归 Grinding Gear Games 所有，仅用于
 构建计算的互操作目的（与 Path of Building 社区惯例一致）。

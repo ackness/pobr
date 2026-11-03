@@ -1,6 +1,6 @@
 ---
 name: workflow
-description: "Operate PoBR's agent-authored PR, risk-based review, CI and release handoff with its focused validation budget. Use for preparing/reviewing a PoBR PR or changing this repository's development automation."
+description: "Operate PoBR's agent-authored PR, risk-based review, CI and release handoff with its focused validation budget, and route data work across the pobr/repoe/zh-cn-stats three-repository framework. Use for preparing/reviewing a PoBR PR, deciding which repository owns a change, or modifying development automation."
 ---
 
 # PoBR workflow adapter
@@ -14,6 +14,42 @@ Read [AGENTS.md](../../../AGENTS.md) and the full
 is [development-workflow.md](../../../docs/development-workflow.md); contributor
 expectations are in [CONTRIBUTING.md](../../../CONTRIBUTING.md). Do not copy those
 policies into another checklist here.
+
+## Repository framework
+
+PoBR is one of three owned repositories; data work crosses repo boundaries:
+
+- `ackness/pobr` (this repo): engine, data contracts, the single data lock
+  [`pipeline/data.lock.json`](../../../pipeline/data.lock.json) and the pinned
+  import/release pipeline. Game data does not live in Git.
+- `ackness/repoe`: client resource decoding, game facts and the
+  `tools/pobr-data-adapter` domain policies that project facts into PoBR's
+  runtime JSON. Publishes game parts and test fixtures.
+- `ackness/poe2-zh-cn-stats`: locale/term curation, translation sources and
+  language artifacts.
+
+Each owner publishes immutable artifacts through `publication/index.json`.
+PoBR consumes them only through the lock: a 40-character commit + path +
+bytes/SHA-256 pin per artifact, kept alive upstream by `handoff/<name>` tags.
+`mise run data:prepare` fetches exact commits by partial clone into ignored
+`data/<version>/`; `mise run data:latest` discovers owner publications and
+freezes candidate locks; adoption is an explicit lock update on master, never
+a branch-tracked pull. The published PoB2-derived compatibility bytes are
+frozen inputs, not a source PoBR regenerates.
+
+Put each fix in the owning repository: decoding, raw facts and adapter
+policies → RePoE; term templates and translations → zh-cn-stats; stat meaning,
+modifier rules, build semantics, engine and display wiring → PoBR. A
+cross-repo handoff records producer commit, artifact digests, changed
+semantics and consumer impact. Current ownership boundaries and remaining
+gaps: [data-architecture.md](../../../docs/data-architecture.md) and
+[data-status.md](../../../docs/data-status.md).
+
+Keep one checkout per repository. Parallel agent work uses separate
+worktrees/branches; when a branch merges, remove its worktree and any
+orchestration checkpoint refs instead of accumulating local debris. Refs
+outside `refs/heads|remotes|tags` that the project deliberately keeps
+(`refs/artifacts/*` in the translation repo) are retention pins, not debris.
 
 ## Apply the current contract
 

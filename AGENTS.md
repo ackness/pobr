@@ -7,6 +7,13 @@ tests to resolve disagreements with any document.
 
 ## Project Structure & Module Organization
 
+- PoBR is the consumer repository of a three-repository split.
+  `ackness/repoe` decodes client resources, exports game facts and projects
+  them into runtime JSON with `tools/pobr-data-adapter`;
+  `ackness/poe2-zh-cn-stats` owns locale/term curation and language artifacts.
+  Put each fix in the owning repository: decoding, raw facts and adapter
+  policies go to RePoE; term templates and translations to zh-cn-stats; stat
+  meaning, modifier rules, engine and display wiring stay here.
 - `crates/` contains seven libraries: data definitions, game-data loading,
   localization, modifier calculation, passive trees, item editing, and build
   orchestration. `crates/pobr-core/src/` separates `model`, `parse`, `rules`, `ingest`,
@@ -36,7 +43,7 @@ tests to resolve disagreements with any document.
   accompany source files, with browser tests in `web/e2e/`.
 
 The project-specific workflow adapter is
-[.claude/skills/workflow/SKILL.md](.claude/skills/workflow/SKILL.md).
+[.agents/skills/workflow/SKILL.md](.agents/skills/workflow/SKILL.md).
 
 ## Build, Test, and Development Commands
 

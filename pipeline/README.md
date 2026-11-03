@@ -20,7 +20,7 @@ PoBR 不从 PoB2 vendor Lua 或本地原表导出生产数据。
 | 目录 | 内容与入口 |
 | --- | --- |
 | [data.lock.json](data.lock.json) | 唯一数据锁：两个 owner 的固定 tag、commit、路径与 SHA-256，目标、自有规则 pin 与期望身份 |
-| [runtime/](runtime/build-data.md) | 按锁临时导入、回滚锁、快照封存、精简发行包和显式采用；`data:prepare`、`data:update`、`data:pack` |
+| [runtime/](runtime/build-data.md) | 按锁临时导入、快照封存、精简发行包和显式采用；`data:prepare`、`data:update`、`data:pack` |
 | [imports/](imports/client-sources.md) | 固定 Git 传输、来源接受记录、辅助说明投影、数据归属检查 |
 | [latest/](latest/latest-data.md) | owner 通道、候选发现与 CI 后条件采用；`data:latest` |
 | [diagnostics/](diagnostics/README.md) | 数据版本差异、描述来源核对与词条审计；不自动采用数据 |
