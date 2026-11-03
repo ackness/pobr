@@ -696,6 +696,8 @@ impl CalculationSession {
     /// Initializes the enemy from `(config_level, tier)` (monster scaling +
     /// tier bonuses), writing the scalar base and modDB into `Env.enemy`
     /// (attributed to [`SourceKind::EnemyConfig`]).
+    /// Add explicit enemy base-resistance configuration before this call,
+    /// so only absent values receive the preset.
     ///
     /// Only affects effective DPS / hit chance / enemy mitigation when
     /// `CalcConfig::mode_effective == true` (set via
@@ -714,9 +716,9 @@ impl CalculationSession {
     /// like `conditionEnemy<X>` into enemy-bucket output (mirroring vendor's
     /// `enemyModList:NewMod` semantics for each enemy entry in
     /// ConfigOptions.lua; attributed to `SourceKind::EnemyConfig`), injected
-    /// by the orchestration layer through this. Must be called after
-    /// [`setup_enemy`](Self::setup_enemy) (matching vendor's enemy modDB
-    /// assembly order; the BASE sum itself is order-independent).
+    /// by the orchestration layer through this. Explicit base-resistance
+    /// inputs must precede [`setup_enemy`](Self::setup_enemy); ordinary
+    /// additive debuffs can be added before or after it.
     pub fn add_enemy_modifiers(&mut self, modifiers: impl IntoIterator<Item = Modifier>) {
         self.env.enemy.mod_db.add_list(modifiers);
     }
@@ -2009,7 +2011,7 @@ pub const CONDITIONS_SET_BY_A_PASS: [&str; 28] = [
     "HaveMaximumRage",
     // `calc::ailment_apply`: Chill and Shock on the enemy.
     "Chilled",
-    "Shocked",
+    "EnemyShocked",
     // `calc::buff_pass`: curses and marks on the enemy.
     "EnemyCursed",
     "EnemyMarked",

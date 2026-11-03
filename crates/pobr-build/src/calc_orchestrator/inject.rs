@@ -586,6 +586,10 @@ pub(super) fn inject_enemy(
     // Use the build's resolved level, also used for corpse Life; the
     // calculation session's actor does not carry the character's level.
     let enemy_level = resolved_enemy_level(build, data, options, enemy_tier);
+    // Base-resistance inputs replace the tier's placeholders, including zero.
+    // Setup must see these before deciding which defaults are still absent.
+    // Other enemy effects retain their own Effective/condition tags.
+    session.add_enemy_modifiers(resolved_config.enemy_mods.clone());
     session.setup_enemy(enemy_level, enemy_tier);
     session.add_enemy_modifiers(super::enemy_config::modifiers(build));
     // Config "Disable EHP gain on block/suppress" (vendor CalcDefence.lua:3261).
@@ -594,15 +598,6 @@ pub(super) fn inject_enemy(
         Some(pobr_core::rules::config_interpreter::ConfigInputValue::Bool(true))
     ) {
         session.set_condition("DisableEHPGainOnBlock", true);
-    }
-
-    // 5a'. Output of the config interpreter's enemy bucket: actor-ized enemy condition
-    //      entries (matching vendor's `enemyModList:NewMod("Condition:<X>", FLAG, ...)`,
-    //      carrying a `Condition:Effective` tag + EnemyConfig attribution). Naturally
-    //      inert under `mode_effective=false`; the cfg-side `Enemy<X>` condition is
-    //      kept alive by `config_resolve`'s reverse bridge, preserving existing semantics.
-    if !resolved_config.enemy_mods.is_empty() {
-        session.add_enemy_modifiers(resolved_config.enemy_mods.clone());
     }
 
     // 5b. Player-applied elemental exposure (build config's `conditionEnemy*Exposure`)

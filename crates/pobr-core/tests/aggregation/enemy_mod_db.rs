@@ -149,6 +149,119 @@ fn fire_only_player() -> ModDb {
     player
 }
 
+fn configured_base_resistance(element: &str, value: f64) -> Modifier {
+    Modifier::number(format!("{element}Resist"), ModType::Base, value).with_origin(
+        ModifierSource::new(SourceId::new(
+            SourceKind::EnemyConfig,
+            format!("config.enemy{element}Resist"),
+        )),
+    )
+}
+
+#[test]
+fn configured_base_resistance_replaces_only_its_preset_including_zero() {
+    let elements = ["Fire", "Cold", "Lightning", "Chaos"];
+    for selected in elements {
+        for value in [0.0, 30.0, -20.0] {
+            let mut env = Env::new(Actor::new(85, ActorBaseStats::default()));
+            env.cfg = effective_attack();
+            env.enemy
+                .mod_db
+                .add_mod(configured_base_resistance(selected, value));
+            // An independent resistance deduction is not a preset/input.
+            env.enemy.mod_db.add_mod(Modifier::number(
+                format!("{selected}Resist"),
+                ModType::Base,
+                -5.0,
+            ));
+            setup_enemy(&mut env, 85, EnemyTier::Pinnacle);
+            for element in elements {
+                let expected = if element == selected {
+                    value - 5.0
+                } else if element == "Chaos" {
+                    0.0
+                } else {
+                    50.0
+                };
+                assert_eq!(
+                    env.enemy.mod_db.sum(
+                        ModType::Base,
+                        &env.cfg,
+                        &[ModName::from(format!("{element}Resist"))],
+                    ),
+                    expected,
+                    "input {selected}={value}, resistance {element}"
+                );
+            }
+            if selected == "Fire" {
+                assert_eq!(env.enemy.base.fire_resistance, value);
+            }
+        }
+    }
+}
+
+#[test]
+fn configured_base_resistance_keeps_exposure_hit_inversion_and_final_override() {
+    use pobr_core::calc::ailment::effmult_for_ailment;
+
+    // Rakiata's Flow: elemental hits treat resistance as inverted
+    // (`treat_enemy_resistances_as_negated_on_elemental_damage_hit_%_chance`).
+    // Ignite is damage over time, so it still sees the non-inverted resistance.
+    for (input, resistance) in [(None, 40.0), (Some(0.0), -10.0), (Some(30.0), 20.0)] {
+        let mut env = Env::new(Actor::new(85, ActorBaseStats::default()));
+        env.cfg = effective_attack();
+        env.player.mod_db = fire_only_player();
+        env.player.mod_db.add_mod(Modifier::number(
+            "HitsInvertEleResChance",
+            ModType::Base,
+            1.0,
+        ));
+        if let Some(value) = input {
+            env.enemy
+                .mod_db
+                .add_mod(configured_base_resistance("Fire", value));
+        }
+        env.enemy
+            .mod_db
+            .add_mod(Modifier::number("FireExposure", ModType::Base, 20.0));
+        setup_enemy(&mut env, 85, EnemyTier::Pinnacle);
+        reduce_enemy_exposure(&mut env.enemy.mod_db, &env.player.mod_db, &env.cfg);
+        let hit = calculate_minimal_vs_enemy(
+            &env.player.mod_db,
+            &env.enemy.mod_db,
+            &env.cfg,
+            &fire_only_input(),
+        );
+        assert!(
+            (hit.dps / 100.0 - (1.0 + resistance / 100.0)).abs() < 1e-9,
+            "{input:?}: hit inversion must follow exposure, got {}",
+            hit.dps
+        );
+        assert!(
+            (effmult_for_ailment(&env.enemy.mod_db, &env.cfg, DamageType::Fire, true)
+                - (1.0 - resistance / 100.0))
+                .abs()
+                < 1e-9,
+            "{input:?}: ignite must retain the exposure without hit inversion"
+        );
+        // A real final override still wins over the configured base AND exposure.
+        env.enemy
+            .mod_db
+            .add_mod(Modifier::number("FireResist", ModType::Override, 15.0));
+        let overridden = calculate_minimal_vs_enemy(
+            &env.player.mod_db,
+            &env.enemy.mod_db,
+            &env.cfg,
+            &fire_only_input(),
+        );
+        assert!((overridden.dps - 115.0).abs() < 1e-9);
+        assert_eq!(
+            effmult_for_ailment(&env.enemy.mod_db, &env.cfg, DamageType::Fire, true),
+            0.85
+        );
+    }
+}
+
 // Final resistance semantics match vendor calcResistForType (CalcOffence.lua:530-543).
 
 #[test]

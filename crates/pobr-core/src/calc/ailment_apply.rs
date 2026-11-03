@@ -7,6 +7,15 @@
 //! `DamageTaken` consumption chain (offence.rs's `enemy_damage_multiplier`,
 //! gated by `mode_effective`).
 //!
+//! An explicitly selected Shock without any magnitude source uses the game's
+//! default 20% increased damage taken (`game_constants.shock_default_effect`,
+//! `non_damaging_ailments.Shock.default`, [game keyword Shock](https://poe2db.tw/us/Keywords)).
+//! The selected snapshot assumes the character inflicted it, so the existing attacker/target
+//! magnitude modifiers apply. A supplied `ShockVal` or Base/Override/Minimum
+//! source instead defines the magnitude; an external/final value is not scaled.
+//! The selected main skill need not inflict it (another skill may have done so).
+//! No hit chance, recent event, stack count or uptime creates this state.
+//!
 //! ## Formulas (CalcPerform.lua line numbers verified against vendor 0.18.0)
 //!
 //! - **Source aggregation** (:3128-3151): enemy db `<X>Val` (a config enemy
@@ -25,12 +34,12 @@
 //!   Chill and Shock), i.e. an integer floor — no new magic number introduced
 //!   (see the data channel below).
 //! - **Writing the enemy db** (:3078-3124 + :3165-3168):
-//!   - Shock → `DamageTaken INC Current {Condition:Shocked}` (:3120);
+//!   - Shock → `DamageTaken INC Current {Condition:EnemyShocked}`;
 //!   - Chill → `ActionSpeed INC -Current {Condition:Chilled}` (:3089) plus the
 //!     Bonechill branch's `ColdDamageTaken INC Current {Condition:Chilled}` (:3092-3094);
 //!   - An Override source sets `Condition:Shocked/Chilled` (:3136-3138);
-//!   - After applying, sets `Condition:Already<cond>` (tagged with
-//!     `{Condition:<cond>}`, :3168, to prevent a minion applying it twice).
+//!   - After applying, sets `Condition:Already<cond>` gated by the same
+//!     target state, to prevent a minion applying it twice.
 //! - **`Multiplier:ChillEffect/ShockEffect` incremental update** (:3172-3180):
 //!   tops up the difference when the existing Σ BASE is less than Current.
 //!
@@ -50,7 +59,7 @@
 //! ## Division of responsibility with `fill_ailments` (calc/ailment.rs, runs after offence)
 //!
 //! This stage **only consumes `<X>Val/Base/Override/Minimum` mods and
-//! config** (same as PoB2 — vendor's version of this section also doesn't
+//! config**, including the selected Shock fallback (vendor's version also doesn't
 //! depend on this perform's DPS); its output is a debuff mod on the enemy
 //! db. `fill_ailments` is the **panel-view** magnitude estimate (cold hit
 //! damage / thresholds → `chill_effect`, `shock_effect` output fields), which
@@ -75,15 +84,13 @@
 //! - Vendor's outer gate's second operand is always truthy because Lua's `0`
 //!   is truthy (:3128-3129), so the effective behavior is "write a zero-value
 //!   mod plus the Already flag even with no source"; pobr uses an explicit
-//!   existence gate instead (the enemy `<X>Val` aggregate is > 0, or the
-//!   player has a Base/Override/Minimum mod present), which keeps things
+//!   existence gate instead (the enemy `<X>Val` aggregate is > 0, or a
+//!   Base/Override/Minimum source or selected Shock fallback exists), which keeps things
 //!   no-op safe (env/db is bit-for-bit unchanged when there's no source).
-//! - Condition bridging: vendor's `{Condition:<cond>}` tag looks up
-//!   enemyDB.conditions; pobr routes all conditions through `cfg.conditions`
-//!   (a single namespace), so when applying, if the enemy db holds a
-//!   `Condition:<cond>` flag (or there's an Override source this time), it's
-//!   copied back into `cfg.conditions`, so the debuff mod just written is
-//!   picked up during offence aggregation.
+//! - Condition bridging: enemy Shock writes `EnemyShocked` in the shared
+//!   config namespace, never the player's `Shocked` state. The older Chill
+//!   path still uses unprefixed `Chilled`. An enemy condition flag or an
+//!   Override source activates the derived debuff in offence aggregation.
 
 use pobr_data::monster::SHOCK_MAX_EFFECT;
 use pobr_data::prelude::*;
@@ -99,15 +106,19 @@ struct AilmentSpec {
     name: &'static str,
     /// Enemy condition name (`Condition:<X>`): "Chilled" / "Shocked".
     condition: &'static str,
+    /// Condition used by derived mods in the shared calculation namespace.
+    config_condition: &'static str,
 }
 
 const CHILL: AilmentSpec = AilmentSpec {
     name: "Chill",
     condition: "Chilled",
+    config_condition: "Chilled",
 };
 const SHOCK: AilmentSpec = AilmentSpec {
     name: "Shock",
     condition: "Shocked",
+    config_condition: "EnemyShocked",
 };
 
 impl AilmentSpec {
@@ -174,7 +185,7 @@ pub struct AppliedAilments {
 
 /// env_finalize stage 7 entry point: applies Chill/Shock, then does the
 /// `Multiplier:ChillEffect/ShockEffect` incremental update. Bit-for-bit no-op
-/// on the enemy and conditions when there's no source mod at all.
+/// on the enemy and conditions when there's no source or selected Shock.
 pub fn apply_nondamaging_ailments(env: &mut Env) {
     let chill = apply_ailment(env, &CHILL);
     let shock = apply_ailment(env, &SHOCK);
@@ -205,8 +216,25 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> AppliedAilment {
     let val_name = ModName::from(format!("{}Val", spec.name));
     let enemy_val = enemy.sum(ModType::Base, &cfg, std::slice::from_ref(&val_name));
 
-    // vendor Tabulate("BASE", nil, <X>Base, <X>Override, <X>Minimum) (:3131).
-    let sources = collect_player_sources(player, &cfg, spec);
+    let mut sources = collect_player_sources(player, &cfg, spec);
+    let selected_shock = spec.name == "Shock"
+        && cfg.mode_effective
+        && (cfg.condition("EnemyShocked") || enemy.flag(&cfg, "Condition:ShockedConfig"));
+    // Default only when the selected snapshot supplies no magnitude. In
+    // particular, a weaker explicit/external Shock must not be raised to the
+    // character's inferred magnitude, and guaranteed sources still take their
+    // existing strongest-wins path. Presence matters even for a zero-valued mod.
+    let has_enemy_value = enemy.named(val_name.as_str()).any(|modifier| {
+        modifier.mod_type == ModType::Base
+            && modifier.matches(&cfg)
+            && modifier.effective_number(&cfg).is_some()
+    });
+    if selected_shock && sources.is_empty() && !has_enemy_value {
+        sources.push((
+            SourceKind3::Base,
+            cfg.constants.game().shock_default_effect * 100.0,
+        ));
+    }
     let terms = maximum_terms(player, &cfg, spec.name);
     let maximum = terms.value();
     let not_applied = AppliedAilment {
@@ -262,7 +290,8 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> AppliedAilment {
 
     // Condition-bridging decision must read before writing (override source / existing enemy db condition flag).
     let cond_flag_name = ModName::from(format!("Condition:{}", spec.condition));
-    let condition_active = override_seen || enemy.flag(&cfg, cond_flag_name.as_str());
+    let condition_active =
+        selected_shock || override_seen || enemy.flag(&cfg, cond_flag_name.as_str());
 
     // Bonechill branch decision (Chill-only, :3092-3094; see the module doc's "Known differences" for the approximation).
     let bonechill = spec.name == "Chill"
@@ -272,7 +301,7 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> AppliedAilment {
     // Write stage (all writes to the enemy db / cfg.conditions are applied together after reads are done)
     let origin_id = format!("ailment.{}", spec.name.to_lowercase());
     let origin = || ModifierSource::new(SourceId::new(SourceKind::Derived, origin_id.clone()));
-    let cond_tag = || ModTag::condition(spec.condition, false);
+    let cond_tag = || ModTag::condition(spec.config_condition, false);
 
     let mut new_mods: Vec<Modifier> = Vec::new();
     // An Override source sets enemy `Condition:<cond>` (:3136-3138; merged into a single flag).
@@ -284,7 +313,7 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> AppliedAilment {
         );
     }
     match spec.name {
-        // Shock → DamageTaken INC Current {Condition:Shocked} (:3120).
+        // Shock increases damage taken by the enemy, not the player.
         "Shock" => new_mods.push(
             Modifier::number(ModName::from("DamageTaken"), ModType::Inc, current)
                 .with_tag(cond_tag())
@@ -309,7 +338,7 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> AppliedAilment {
             }
         }
     }
-    // `Condition:Already<cond>` {Condition:<cond>} (:3168, prevents a minion applying it twice).
+    // The same target-state gate prevents another actor applying it twice.
     new_mods.push(
         Modifier::flag(already_name)
             .with_tag(cond_tag())
@@ -318,10 +347,12 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> AppliedAilment {
     );
     env.enemy.mod_db.add_list(new_mods);
 
-    // Condition bridging (pobr's single condition namespace, see the module
-    // doc): makes the {Condition:<cond>}-tagged debuff mods above match during offence/defence aggregation.
+    // Keep enemy Shock separate from the player's own Shock: a selected
+    // target state must not activate "while you are Shocked" player modifiers.
     if condition_active {
-        env.cfg.conditions.insert(spec.condition.to_string(), true);
+        env.cfg
+            .conditions
+            .insert(spec.config_condition.to_string(), true);
     }
 
     AppliedAilment {
@@ -376,7 +407,7 @@ fn ailment_magnitude(player: &ModDb, enemy: &ModDb, cfg: &CalcConfig, spec: &Ail
         * player.more(cfg, &skill_names);
     let enemy_side =
         (1.0 + enemy.sum(ModType::Inc, cfg, &enemy_names) / 100.0) * enemy.more(cfg, &enemy_names);
-    skill_side * enemy_side
+    skill_side.max(0.0) * enemy_side.max(0.0)
 }
 
 /// `Multiplier:<X>Effect` incremental update (:3173-3180): tops up the difference when the existing Σ BASE < Current.
