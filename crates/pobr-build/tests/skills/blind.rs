@@ -210,7 +210,7 @@ fn compatible_minion_attacks_can_supply_the_strongest_blind() {
 
 #[test]
 fn minion_blind_does_not_combine_supports_from_different_attacks() {
-    use pobr_core::skill_env::{MinionLookup, strongest_skill_blind};
+    use pobr_core::skill_env::strongest_skill_blind;
 
     let mut data = data().clone();
     let minion_id = data.effect_minion_list("WolfPackPlayer")[0].clone();
