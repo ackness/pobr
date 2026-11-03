@@ -143,7 +143,7 @@ The seven internal libraries keep independent versions.
 | Understand the API | [Build model](docs/build-model.md), [calculation outputs](docs/calc-outputs.md), [WASM package](docs/wasm-package.md) |
 | Check mechanics | [Mechanics](docs/mechanics/README.md), [deliberate differences](docs/pob2-differences.md) |
 
-The workspace has seven Rust libraries, two apps and three Rust tools. The React /
+The workspace has seven Rust libraries, two apps and four Rust tools. The React /
 TypeScript app lives in `web/`. The maintainer guide describes the architecture
 and data flow. Historical research in `agent-docs/` needs checking against current
 game data and tests; it is not the current behavior contract.
@@ -163,6 +163,7 @@ game data and tests; it is not the current behavior contract.
 The code is released under the [MIT](LICENSE) license.
 
 This project is not affiliated with or endorsed by Grinding Gear Games. The
-game data under `data/` is derived from Path of Exile 2 client assets and is
-copyrighted by Grinding Gear Games; it is included solely for build-calculation
-interoperability, in line with Path of Building community practice.
+game data the application consumes is derived from Path of Exile 2 client
+assets and is copyrighted by Grinding Gear Games; it is distributed solely for
+build-calculation interoperability, in line with Path of Building community
+practice.

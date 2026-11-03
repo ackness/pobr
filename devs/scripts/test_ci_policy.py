@@ -177,7 +177,7 @@ class RoutingTests(unittest.TestCase):
         self.assertFalse(any(plan.classify([
             "docs/new-guide.md", "web/README.md", "crates/pobr-core/README.md",
             "apps/pobr-wasm/README.md", "examples/reference-builds/README.md",
-            "tools/pob2-oracle/README.md", ".claude/skills/workflow/SKILL.md",
+            "tools/pob2-oracle/README.md", ".agents/skills/workflow/SKILL.md",
             "apps/pobr-wasm/tests/fixtures/pob2-planner.md",
             "web/worker-tests/fixtures/README.md",
         ]).values()))

@@ -4,7 +4,7 @@
 
 开发命令是根 `mise.toml` 中的 mise task：`mise tasks` 列出全部，`mise run <task> [参数]` 执行，
 任务名之后的参数原样传递。它们转发到 `devs/scripts/driver.sh`；
-`.claude/skills/run-pobr/driver.sh` 仅保留为兼容转发入口。
+run skill 正本在 `.agents/skills/`，`.claude/skills/` 下的同名软链仅保留为兼容入口。
 游戏 CLI（`mise exec -- cargo run -p pobr-cli`，二进制 `pobr`）只提供游戏计算命令，不包含任何开发命令。
 本文维护构建、测试、缓存和 CI 操作；验证范围与计算约定见 [maintainer-guide.md](maintainer-guide.md)，
 Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/README.md](../pipeline/README.md)。
@@ -137,7 +137,7 @@ Web 纯 TS/CSS 修改复用已有 WASM，按风险选择相关 Vitest、typechec
 | [examples/](../examples/README.md) | 构筑输入、来源和回归语料；保留仍被动态遍历的组 |
 | [docs/](README.md)、[agent-docs/](../agent-docs/README.md) | 当前指南/契约，以及保留出处的早期机制资料 |
 | [.assets/](../.assets/README.md)、[docs/screenshots/](screenshots/README.md)、`web/public/` | README 图片、带来源的界面说明、应用静态资源；不是临时截图目录 |
-| `.github/`、`.claude/skills/` | CI 与贡献流程、可复现的代理操作入口 |
+| `.github/`、`.agents/skills/` | CI 与贡献流程、可复现的代理操作入口 |
 
 下面这些是本地准备物，不随 PoBR Git 提交。它们仍可能是下一次开发或验证需要的输入，
 不能将整个目录当作已完成任务的垃圾删除。
@@ -282,7 +282,7 @@ E2E 默认未选中，显式开启才运行。
 缓存命中不会跳过这些正确性检查。更新 PR 后旧 run 的取消可由新 run 接替，
 确认结果时始终核对当前 head，以及 gate 是否成功验证了所有应运行的 jobs。
 
-项目专属 [.claude/skills/workflow](../.claude/skills/workflow/SKILL.md) 将本页适配给 agent。
+项目专属 [.agents/skills/workflow](../.agents/skills/workflow/SKILL.md) 将本页适配给 agent。
 本页与仓库内的 skill 足够完成日常开发，不依赖贡献者的个人 skills 或委派工具。
 
 ## CI 的责任与触发
@@ -485,7 +485,7 @@ mise exec -- cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakd
 ## 其他按需检查
 
 - `mise run smoke`：聚合、解析、Build Code 的代表测试，不先构建整个工作区；不能替代完整门禁。
-- 本地 `.agents/skills/run-pobr/driver.sh` 转发到同一驱动（`.agents` 按仓库规则不入库）。`smoke` 是环境检查，已有相关测试通过后无需再补一次。
+- `.claude/skills/run-pobr/driver.sh` 是指向 `.agents` 正本的兼容软链；`.agents/skills/` 之外的本地 agent 配置仍不入库。`smoke` 是环境检查，已有相关测试通过后无需再补一次。
 - `mise exec -- python3 devs/scripts/test_workflows.py`：检查脚本失败传递、临时目录清理与工作区保护，以及 `compare` 的来源对齐和 `lookup` 的查找（用合成数据），不调用真实 Cargo。
 - `devs/scripts/regen-check.sh`（CI 步骤 “Parse-coverage ratchet”）在已准备数据的隔离副本中运行 `precompile-mods --report`，解析覆盖率不得低于 `devs/ci/parse-coverage-baseline.json`。它不写入或恢复工作区文件。`generated/special_derived.json` 随 owner 包导入，它与天赋树的逐字节一致由 RePoE 的 `mise run adapter:keystones` 检查。
 - `mise exec -- node web/scripts/bench-calc.mjs`：用三个已提交构筑测真实 WASM 的非缓存计算和 16 项批量计算。
