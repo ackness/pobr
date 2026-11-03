@@ -143,7 +143,7 @@ The seven internal libraries keep independent versions.
 | Understand the API | [Build model](docs/build-model.md), [calculation outputs](docs/calc-outputs.md), [WASM package](docs/wasm-package.md) |
 | Check mechanics | [Mechanics](docs/mechanics/README.md), [deliberate differences](docs/pob2-differences.md) |
 
-The workspace has seven Rust libraries, two apps and four Rust tools. The React /
+The workspace has seven Rust libraries, two apps and three Rust tools. The React /
 TypeScript app lives in `web/`. The maintainer guide describes the architecture
 and data flow. Historical research in `agent-docs/` needs checking against current
 game data and tests; it is not the current behavior contract.

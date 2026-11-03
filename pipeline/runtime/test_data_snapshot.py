@@ -79,6 +79,18 @@ class SnapshotTests(unittest.TestCase):
         self.assertEqual(len(backups), 1)
         self.assertIn("original", backups[0].read_text())
 
+    def test_domain_candidates_are_neither_sealed_nor_promoted(self):
+        # RePoE's pobr-data-adapter marks its per-domain outputs this way; they are never product data.
+        before = tree_fingerprint(self.root / "data")
+        with staged(self.root, "9.1") as data:
+            self.write(f"{data.relative_to(self.root)}/9.1/_domain_candidate.json", {"candidate": True})
+            with self.assertRaisesRegex(ValueError, "cannot be sealed"):
+                snapshot.manifest(data / "9.1")
+            self.assertFalse((data / "9.1/manifest.json").exists())
+            with self.assertRaisesRegex(ValueError, "cannot be published"):
+                snapshot.promote(data, self.root / "data", "9.1", activate=True)
+        self.assertEqual(before, tree_fingerprint(self.root / "data"))
+
 
 if __name__ == "__main__":
     unittest.main()
