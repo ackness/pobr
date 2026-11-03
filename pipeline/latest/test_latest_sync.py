@@ -3,6 +3,8 @@
 import copy
 import base64
 import importlib.util
+import io
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -186,6 +188,41 @@ class SyncTests(unittest.TestCase):
         result = self.scheduled()
         self.assertEqual(result["status"], "candidate-proposed-awaiting-gates")
         self.assertIn("PR gate", result["reason"])
+        self.assertFalse(any(value[0] == "PUT" for value in self.calls))
+
+    def accept_cli(self, output):
+        accept = sync.accept
+        with patch.object(latest, "ROOT", self.source), \
+             patch.object(latest, "channels", return_value={}), \
+             patch.object(latest, "observe_official", return_value=self.official), \
+             patch.object(sync, "accept", side_effect=lambda root, temp, fetch, official:
+                          accept(root, temp, fetch, official, self.request)), \
+             patch("sys.argv", ["latest_sync", "accept", "--out", str(output)]), \
+             patch("sys.stdout", new_callable=io.StringIO):
+            sync.main()
+
+    def test_callback_cli_records_unready_gates_without_adopting(self):
+        for status, conclusion in (("in_progress", None), ("completed", "failure"),
+                                   ("completed", "cancelled"), ("completed", "action_required")):
+            output = self.root / f"callback-{status}-{conclusion}.json"
+            self.runs["ci.yml"][0].update(status=status, conclusion=conclusion)
+            with self.subTest(status=status, conclusion=conclusion):
+                self.accept_cli(output)
+                result = json.loads(output.read_bytes())
+                self.assertEqual(result["status"], "candidate-awaiting-gates")
+                self.assertEqual(result["adoption"], "unchanged")
+                self.assertIn(f"run 21: {status}/{conclusion}", result["reason"])
+        self.assertFalse(any(value[0] == "PUT" for value in self.calls))
+        self.assertEqual(self.git("rev-parse", "HEAD").decode().strip(), self.base)
+
+    def test_callback_cli_still_fails_for_invalid_protection(self):
+        output = self.root / "callback-invalid.json"
+        self.settings["required_status_checks"]["strict"] = False
+        with self.assertRaisesRegex(ValueError, "needs-strict-branch-checks"):
+            self.accept_cli(output)
+        result = json.loads(output.read_bytes())
+        self.assertEqual(result["status"], "incomplete")
+        self.assertEqual(result["adoption"], "unchanged")
         self.assertFalse(any(value[0] == "PUT" for value in self.calls))
 
 
