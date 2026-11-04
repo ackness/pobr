@@ -430,6 +430,40 @@ impl GameData {
         Ok(self.locale_file(lang, file)?.unwrap_or_default())
     }
 
+    /// The languages the data pack provides, in a fixed order: the
+    /// manifest's `languages`, or, for a pack without a manifest, the
+    /// `i18n/<lang>/` directories present (sorted). Empty when the snapshot
+    /// is invalid.
+    pub fn languages(&self) -> Vec<String> {
+        match self.snapshot_manifest() {
+            Ok(Some(manifest)) => return manifest.languages.clone(),
+            Ok(None) => {}
+            Err(_) => return Vec::new(),
+        }
+        let mut found: Vec<String> = match &self.files {
+            Some(table) => table
+                .keys()
+                .iter()
+                .filter_map(|key| {
+                    let (lang, file) = key.strip_prefix("i18n/")?.split_once('/')?;
+                    (!file.is_empty()).then(|| lang.to_string())
+                })
+                .collect(),
+            None => fs::read_dir(self.root.join("i18n"))
+                .into_iter()
+                .flatten()
+                .filter_map(|entry| {
+                    let entry = entry.ok()?;
+                    entry.file_type().ok()?.is_dir().then_some(())?;
+                    entry.file_name().into_string().ok()
+                })
+                .collect(),
+        };
+        found.sort();
+        found.dedup();
+        found
+    }
+
     /// Loads one file of a language's package (`i18n/<lang>/<file>`, with
     /// the user patch layer). Returns `Ok(None)` when the package has no such
     /// file; other I/O / parse errors propagate.

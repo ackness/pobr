@@ -183,6 +183,31 @@ mod tests {
     }
 
     #[test]
+    fn languages_come_from_the_manifest_or_the_i18n_directories() {
+        let words = br#"{"Doom":"Fato"}"#.to_vec();
+        let mut files = strict_files();
+        let mut manifest: serde_json::Value =
+            serde_json::from_slice(&files["manifest.json"]).unwrap();
+        manifest["languages"] = serde_json::json!(["zh-TW", "aa"]);
+        manifest["files"]["i18n/zh-TW/words.json"] = sha256_hex(&words).into();
+        manifest["files"]["i18n/aa/words.json"] = sha256_hex(&words).into();
+        files.insert(
+            "manifest.json".into(),
+            serde_json::to_vec(&manifest).unwrap(),
+        );
+        files.insert("i18n/zh-TW/words.json".into(), words.clone());
+        files.insert("i18n/aa/words.json".into(), words.clone());
+        assert_eq!(GameData::from_memory(files).languages(), ["zh-TW", "aa"]);
+        let bare = BTreeMap::from([
+            ("i18n/zh-TW/words.json".to_string(), words.clone()),
+            ("i18n/aa/stat_lines.json".to_string(), b"[]".to_vec()),
+            ("i18n/aa/words.json".to_string(), words),
+            ("base/stats.json".to_string(), b"[]".to_vec()),
+        ]);
+        assert_eq!(GameData::from_memory(bare).languages(), ["aa", "zh-TW"]);
+    }
+
+    #[test]
     fn strict_snapshot_rejects_missing_or_changed_quality() {
         let files = strict_files();
         GameData::from_memory(files.clone())
