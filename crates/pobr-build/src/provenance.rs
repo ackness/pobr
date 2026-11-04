@@ -1,4 +1,4 @@
-//! Reproducibility metadata shared by native and WASM calculation reports.
+//! Reproducibility metadata shared by CLI and WASM calculation reports.
 
 use pobr_gamedata::{GameData, LoadError};
 use serde::Serialize;

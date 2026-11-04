@@ -85,7 +85,7 @@ adapter 拒绝；原隔离清单保留在 RePoE adapter 的 `policies/tree-corre
 入口、默认strict及显式diagnostic边界见 RePoE [客户端资源获取](https://github.com/ackness/repoe/blob/master/RePoE/docs/client-sources.md)。
 
 RePoE 原生事实包另由 RePoE 的 `pobr-data-adapter --native-facts` 验证外部 manifest 摘要后形成
-PoBR 领域候选，见[候选契约](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/native-facts.md)；schema 4 分支已冻结。当前只接通部分国际服事实，
+PoBR 领域候选，见[候选契约](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/native-facts.md)；PoBR 已删除 schema-4 原生计算路径。当前只接通部分国际服事实，
 保留完整原始事实引用和诊断；它不是运行时包，也未完成品质、几何或全部关系的语义验证。
 活动数据仍含随 owner 包导入的 PoB2 兼容字段，不能宣称数据已全部退出 PoB2。
 
@@ -95,7 +95,7 @@ RePoE 的 `pobr-data-adapter --ordinary-facts` 已将固定自有 RePoE 事实�
 [普通生产入口与领域命令](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-facts.md)。技能、基底、树、符文、
 描述、actor 与基础字段的目标来源和固定兼容按各领域 receipt 分开，不能将单个文件全部算作自主。
 这些领域输出经既有 schema-3 组包和封存后可由普通 GameData/BuildData 消费；
-树域候选与 schema-4 受限原生候选是不同入口，不代表普通完整路径的现行覆盖范围。
+树域候选是单独入口，不代表普通完整路径的现行覆盖范围。
 
 活动组合的身份、各领域保留兼容的分母和关闭条件统一维护在[数据现状](../docs/data-status.md#领域现状)，本页不复制阶段记录。
 
@@ -103,8 +103,8 @@ RePoE 的 `pobr-data-adapter --ordinary-facts` 已将固定自有 RePoE 事实�
 `translateLines`：精确来源查询、跨表同名冲突和缺译保留，不改原始构筑文本或计算。
 侧表已列入当前活动manifest；全部字段UI消费、真实审核译文及CN语义仍分别验收。审核补译入口只消费精确绑定的已审核记录，当前真实包为0条，草稿不生效。
 
-原生候选的 recipe 重放入口（原 `data:native:candidate`）已退役；`--native-runtime` 随 adapter 冻结在
-RePoE，见[原生运行组装](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/native-runtime.md)。
+原生候选的 recipe 重放入口（原 `data:native:candidate`）已退役；PoBR 不再加载 schema-4 包，
+RePoE adapter 的 `--native-runtime` 组装随之待删除。
 
 ## 运行时数据组合封存
 

@@ -17,7 +17,6 @@ quick-xml = "0.42"
 thiserror = "2"
 serde.workspace = true
 serde_json = { workspace = true, features = ["float_roundtrip"] }
-sha2 = { version = "0.11", default-features = false }
 criterion = { version = "0.8", default-features = false, optional = true }
 
 [dev-dependencies]

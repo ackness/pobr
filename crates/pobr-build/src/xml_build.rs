@@ -153,7 +153,7 @@ fn parse_build_with_allocated_nodes_impl(
 ) -> Result<ImportedBuild, XmlError> {
     if xml.trim_start().starts_with('{') {
         return Err(XmlError::Parse(
-            "structured build documents require their native document decoder".into(),
+            "structured JSON build documents are not a build XML import".into(),
         ));
     }
     let header = parse_build_header(xml)?;
