@@ -236,10 +236,9 @@ dist、WASM 包和同步数据。不编译、不删除、不跟随符号链接�
 本仓库沿用已有 wrapper，不安装缓存服务或修改全局设置。
 
 `build-wasm` 使用 `wasm-release`：继承 release 的速度优化，启用 ThinLTO 和单个 codegen unit。
-这只影响 WASM 发布构建，不改变日常 dev/test 缓存。固定 locale TOML 在主机构建时解析成字符串表，
-TOML parser 不进入 WASM；不要在运行时重新解析这些静态文件。
+这只影响 WASM 发布构建，不改变日常 dev/test 缓存。
 
-WASM 构建记录校验 Rust 源码、嵌入语言文件、共享配置 JSON、manifest/lockfile、JSON 契约、
+WASM 构建记录校验 Rust 源码、共享配置 JSON、manifest/lockfile、JSON 契约、
 工具版本、相关环境/Cargo 配置，以及绑定哈希与实际 schema。
 输入和产物未变时跳过 wasm-pack，保留原编译 commit 与 dirty 标记；
 缺失、损坏或旧格式记录需要一次正常重建。普通 UI、文档和运行时游戏数据修改不会触发 WASM 重编译；

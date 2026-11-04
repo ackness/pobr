@@ -15,7 +15,8 @@ tests to resolve disagreements with any document.
   policies go to RePoE; term templates and translations to zh-cn-stats; stat
   meaning, modifier rules, engine and display wiring stay here.
 - `crates/` contains six libraries: data definitions, game-data loading,
-  modifier calculation, passive trees, item editing, and build orchestration. `crates/pobr-core/src/` separates `model`, `parse`, `rules`, `ingest`,
+  modifier calculation, passive trees, item editing, and build orchestration.
+  `crates/pobr-core/src/` separates `model`, `parse`, `rules`, `ingest`,
   `aggregate`, `calc`, and `attribute`.
 - `apps/` contains CLI and WASM/JSON bindings.
   `web/` is the React/TypeScript application; its backend consumes the
