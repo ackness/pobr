@@ -474,6 +474,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "pobr-i18n"
+version = "0.0.29"
+dependencies = [
+ "pobr-data",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "pobr-item"
 version = "0.0.29"
 dependencies = [
@@ -498,6 +507,7 @@ dependencies = [
  "pobr-core",
  "pobr-data",
  "pobr-gamedata",
+ "pobr-i18n",
  "pobr-item",
  "pobr-tree",
  "serde",

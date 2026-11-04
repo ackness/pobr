@@ -398,7 +398,7 @@ Dependabot 每日分组检查 Actions 更新；Cargo、Rust toolchain、Web 与�
 
 ## 发布与部署
 
-应用版本由 `[workspace.package].version` 管理；六个基础库与 `data/CURRENT` 独立版本。
+应用版本由 `[workspace.package].version` 管理；七个基础库与 `data/CURRENT` 独立版本。
 更新应用版本后用 `mise exec -- cargo metadata --format-version 1 > /dev/null` 刷新锁文件。
 [release-policy.py](../devs/scripts/release-policy.py) 按 SemVer 判断升级，检查所有继承 workspace
 版本的应用/工具锁版本；远端 tag 查询失败会报错，不能当作“tag 不存在”。

@@ -57,7 +57,7 @@ export function sourceFingerprint(root) {
       collect(`${shared}/${name}`);
     }
   }
-  // All six libraries are dependencies of the WASM engine; tests are excluded.
+  // All seven libraries are dependencies of the WASM engine; tests are excluded.
   if (existsSync(join(root, 'crates'))) {
     for (const crate of readdirSync(join(root, 'crates')).sort()) {
       for (const path of ['Cargo.toml', 'build.rs', 'src']) collect(`crates/${crate}/${path}`);

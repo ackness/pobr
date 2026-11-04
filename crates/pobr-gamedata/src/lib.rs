@@ -427,13 +427,58 @@ impl GameData {
         lang: &str,
         file: &str,
     ) -> Result<std::collections::BTreeMap<String, String>, LoadError> {
+        Ok(self.locale_file(lang, file)?.unwrap_or_default())
+    }
+
+    /// The languages the data pack provides, in a fixed order: the
+    /// manifest's `languages`, or, for a pack without a manifest, the
+    /// `i18n/<lang>/` directories present (sorted). Empty when the snapshot
+    /// is invalid.
+    pub fn languages(&self) -> Vec<String> {
+        match self.snapshot_manifest() {
+            Ok(Some(manifest)) => return manifest.languages.clone(),
+            Ok(None) => {}
+            Err(_) => return Vec::new(),
+        }
+        let mut found: Vec<String> = match &self.files {
+            Some(table) => table
+                .keys()
+                .iter()
+                .filter_map(|key| {
+                    let (lang, file) = key.strip_prefix("i18n/")?.split_once('/')?;
+                    (!file.is_empty()).then(|| lang.to_string())
+                })
+                .collect(),
+            None => fs::read_dir(self.root.join("i18n"))
+                .into_iter()
+                .flatten()
+                .filter_map(|entry| {
+                    let entry = entry.ok()?;
+                    entry.file_type().ok()?.is_dir().then_some(())?;
+                    entry.file_name().into_string().ok()
+                })
+                .collect(),
+        };
+        found.sort();
+        found.dedup();
+        found
+    }
+
+    /// Loads one file of a language's package (`i18n/<lang>/<file>`, with
+    /// the user patch layer). Returns `Ok(None)` when the package has no such
+    /// file; other I/O / parse errors propagate.
+    pub fn locale_file<T: for<'de> serde::Deserialize<'de>>(
+        &self,
+        lang: &str,
+        file: &str,
+    ) -> Result<Option<T>, LoadError> {
         let path = self.root.join(format!("i18n/{lang}/{file}"));
         match self.load_json_at(path) {
-            Ok(map) => Ok(map),
+            Ok(value) => Ok(Some(value)),
             Err(LoadError::Io { ref source, .. })
                 if source.kind() == std::io::ErrorKind::NotFound =>
             {
-                Ok(Default::default())
+                Ok(None)
             }
             Err(e) => Err(e),
         }
@@ -699,16 +744,7 @@ impl GameData {
         &self,
         lang: &str,
     ) -> Result<Option<Vec<pobr_data::catalog::StatLineTemplate>>, LoadError> {
-        let path = self.root.join(format!("i18n/{lang}/stat_lines.json"));
-        match self.load_json_at::<Vec<pobr_data::catalog::StatLineTemplate>>(path) {
-            Ok(v) => Ok(Some(v)),
-            Err(LoadError::Io { ref source, .. })
-                if source.kind() == std::io::ErrorKind::NotFound =>
-            {
-                Ok(None)
-            }
-            Err(e) => Err(e),
-        }
+        self.locale_file(lang, "stat_lines.json")
     }
 
     /// Loads passive tree nodes (from the adapted GGG official tree

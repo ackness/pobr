@@ -1,0 +1,9 @@
+[package]
+name = "pobr-i18n"
+version = "0.0.29"
+edition.workspace = true
+
+[dependencies]
+pobr-data.workspace = true
+serde.workspace = true
+serde_json.workspace = true
