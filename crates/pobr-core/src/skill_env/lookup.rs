@@ -127,9 +127,21 @@ pub struct EffectStats {
 }
 
 impl EffectStats {
-    /// A merged view chaining base + quality in order (for consumers that don't need attribution).
+    /// Chain base and quality segments; use [`Self::merged`] before nonlinear mapping.
     pub fn all(&self) -> impl Iterator<Item = &SkillDamageStat> {
         self.base.iter().chain(self.quality.iter())
+    }
+
+    /// Add quality to each raw stat before mapping, preserving first-seen order.
+    pub fn merged(&self) -> Vec<SkillDamageStat> {
+        let mut merged: Vec<SkillDamageStat> = Vec::new();
+        for stat in self.all() {
+            match merged.iter_mut().find(|total| total.stat == stat.stat) {
+                Some(total) => total.value += stat.value,
+                None => merged.push(stat.clone()),
+            }
+        }
+        merged
     }
 }
 

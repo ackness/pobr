@@ -62,8 +62,8 @@ pub use resolve::{
 };
 pub use stat_map::{
     StatMapCompareRecord, StatMapCtx, StatMapMode, curse_stat_modifiers, debuff_stat_modifiers,
-    has_debuff_payload, has_exposure_inflict_stats, mapped_stat_modifiers,
-    player_buff_stat_modifiers,
+    has_debuff_payload, has_exposure_inflict_stats, mapped_effect_stat_modifiers,
+    mapped_stat_modifiers, player_buff_stat_modifiers,
 };
 pub use support::{
     CompatibleSupport, GroupSupportJudgement, SupportCandidate, judge_group_supports,

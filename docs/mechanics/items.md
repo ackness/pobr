@@ -64,6 +64,10 @@ Undying Hate 的明确“小型天赋额外获得”与种子特定显著天赋�
 
 ## 宝石等级、品质与授予技能
 
+技能的已解析等级值、普通品质和 Advanced Thaumaturgy 额外品质，按原始 stat id 相加后只映射一次；每条品质先执行 `trunc(rate × quality)`。同一 stat 的品质不能再注入一个独立 MORE：Wind Dancer 反击在三层、q20 额外品质下为 `1 + 3 × (50 + 50) / 100 = 4`；Whirling Slash 的 Whirlwind 分支在第二个额外阶段、q20 时为 `1 + 2 × (150 + 40) / 100 = 4.8`。Whirling Slash 未选中的 Whirlwind 分支不向近战命中注入这条局部伤害。合并词条保留 `GemQuality` 来源、基础技能／辅助的父来源，以及原文中的基础值和品质值；来源明细归入品质的是整个合并词条，不表示品质的精确边际贡献。
+
+主动宝石授予的辅助效果继承原宝石的有效品质，仍须通过同组、启用状态和兼容性判定。Blasphemy 的额外品质增加其所辅助诅咒的局部效果，保留原有 less 惩罚；Spell Totem 的额外品质按配置的已召唤图腾数增加该图腾法术的施法速度，不推算图腾覆盖率。Lightning Arrow / Gathering Storm 的 `chance_for_extra_damage_roll_with_lightning_damage_%` 接入已有闪电命中幸运掷值计算，不改变其他伤害类型或暴击几率。依据为 `0.5.5.5` 的 `base/granted_effect_stat_sets.json` 与 `overlay/gem_quality_stats.json`；回归见 [gem_quality_consumers.rs](../../crates/pobr-build/tests/skills/gem_quality_consumers.rs) 和 [totem_skills.rs](../../crates/pobr-build/tests/skills/totem_skills.rs)。
+
 Uhtred 系辅助（“+2 to Level of Supported Skills if exactly one other Support is modifying them”）只把辅助宝石算作辅助：meta 宝石（Cast on Elemental Ailment）的触发效果是技能宝石的第二个效果，不算；只辅助 meta 宝石的辅助（Boundless Energy II 要求 `GeneratesEnergy`）也不修改被触发的技能（`skill_env::resolve::support_granted_gem_levels`）。“Skills from Corrupted Gems have …” 在主技能取等级的那颗宝石已腐化时生效（条件 `GemCorrupted`，`calc_orchestrator::skill::resolve::from_corrupted_gem`）。
 
 宝石等级与品质加成（“+1 to Level of all Spell Skills”“+2% to Quality of all Skills”）按文本读取，不经过 ModDb：技能等级要在任何 modifier 存入之前确定。读取面是角色的全部词条来源：装备与珠宝、已分配和被物品授予的天赋、配置行（任务奖励、自定义词条），以及调用方传入的 `extra_modifier_texts`（由 `prepared_build_view` 并入构筑视图，主面板、逐技能总览和触发子计算共用）。新增一条文本通道时要同时接入 `skill::resolve::gem_property_bonuses`，否则这类词条在该通道里既不生效也不报未支持。被这样读取的行不计入未支持清单，也不再交给解析规则（规则会把“with an Intelligence requirement”误读成属性需求）。

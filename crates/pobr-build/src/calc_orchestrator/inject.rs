@@ -45,8 +45,7 @@ use super::skill::buffs::{
 };
 use super::skill::mods::{
     corpse_explosion_modifiers, crossbow_reload_modifiers, dot_flag_modifiers,
-    main_skill_quality_modifiers, resolved_enemy_level, skill_base_modifiers, support_modifiers,
-    unselected_set_global_modifiers,
+    main_skill_modifiers, resolved_enemy_level, support_modifiers, unselected_set_global_modifiers,
 };
 use super::skill::resolve::parse_gem_property_bonus;
 use super::skill::triggers::trigger_modifiers;
@@ -639,17 +638,18 @@ pub(super) fn inject_main_skill_mods(
     if let Some((skill, group, skill_id)) = main_skill {
         // Use the resolved instance's set: repeated effect ids can select different
         // forms, and additional effects need not have their own gem_skills entry.
-        let main_set_key = data.selected_set_key(skill_id, ctx.main.main_stat_set_index);
         if let Some((gem_level, bonus_levels)) =
             super::skill::resolve::selected_effect_levels(build, data, group)
         {
             session.set_main_skill_level(gem_level, bonus_levels);
         }
-        session.add_modifiers(skill_base_modifiers(
+        session.add_modifiers(main_skill_modifiers(
             context,
             skill,
+            group,
+            data,
             skill_id,
-            main_set_key.as_deref(),
+            super::skill::resolve::gemling_quality_flag(build, data),
         ));
         session.add_modifiers(super::skill::mods::skill_timing_modifiers(
             data,
@@ -663,16 +663,6 @@ pub(super) fn inject_main_skill_mods(
             group,
             skill_id,
             &ctx.main.main_skill_types,
-        ));
-        // 1b-i-q. Main skill gem's quality stats (T1.7): the quality segment is
-        //         mapped via stat-map and injected with SourceKind::GemQuality
-        //         attribution (id prefix gem.<effect id>.q<Q>).
-        session.add_modifiers(main_skill_quality_modifiers(
-            context,
-            group,
-            data,
-            skill_id,
-            super::skill::resolve::gemling_quality_flag(build, data),
         ));
         // 1b-i-g. Main skill's unselected statSet global-only merge (CalcActiveSkill.lua:124-140).
         session.add_modifiers(unselected_set_global_modifiers(
@@ -713,6 +703,7 @@ pub(super) fn inject_main_skill_mods(
             data,
             skill_id,
             ctx.main.main_stat_set_index,
+            super::skill::resolve::gemling_quality_flag(build, data),
         ));
 
         // 1b-iii. Trigger chain:

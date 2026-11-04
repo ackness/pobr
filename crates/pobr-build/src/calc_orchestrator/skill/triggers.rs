@@ -433,7 +433,14 @@ mod support_judgement_tests {
         let group = SocketGroup::new()
             .with_gem_skill("MainSpell", 20)
             .with_gem_skill("SupMelee", 20);
-        let mods = support_modifiers(&mut test_context(&data), &group, &data, "MainSpell", None);
+        let mods = support_modifiers(
+            &mut test_context(&data),
+            &group,
+            &data,
+            "MainSpell",
+            None,
+            false,
+        );
         assert!(
             mods.is_empty(),
             "a rejected support must not inject any modifier"

@@ -357,6 +357,13 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         return Some(mods);
     }
     match stat {
+        // GrantedEffectQualityStats (Lightning Arrow / Gathering Storm):
+        // "Lightning Damage with Hits has {0}% chance to be Lucky".
+        "chance_for_extra_damage_roll_with_lightning_damage_%" => Some(vec![Modifier::number(
+            "LightningLuckyHitsChance",
+            ModType::Base,
+            value,
+        )]),
         // A skill's poison prohibition takes precedence over a weapon's guarantee.
         "cannot_poison" | "virtual_cannot_poison" => Some(if value != 0.0 {
             vec![Modifier::flag("CannotPoison")]

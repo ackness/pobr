@@ -148,9 +148,8 @@ pub fn resolve_skill_level(
 
     // Skill stat (base damage value + damage% scaling): the selected set's per-level
     // row + level-independent constants, for mapping and injection. The quality
-    // segment isn't handled here (the main skill's quality is fetched and injected
-    // separately by the orchestrator via effect_stats's quality segment, preserving
-    // SourceKind::GemQuality attribution granularity), so quality is passed as 0.
+    // segment is added to these resolved base values before mapping by the
+    // orchestrator, so quality is passed as 0 here.
     let base_damage = data.effect_stats(skill_id, gem_level, 0, set_index).base;
 
     // Skill damage multiplier (PoB baseMultiplier): prefers the row from the

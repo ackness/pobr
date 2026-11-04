@@ -133,8 +133,8 @@ impl BuildData {
     /// Applies equally to active and **support** effects (no `is_support` guard) —
     /// support gems' multiplier / added-damage stats are fetched through here, then
     /// mapped and injected into the supported skill by the statmap data engine
-    /// (`pobr-core::rules::stat_map_engine`) (support gems have no quality table entries
-    /// at all — PoB2 skips them at export, so the quality segment is naturally empty).
+    /// (`pobr-core::rules::stat_map_engine`). Additional support effects inherit their
+    /// originating gem's effective quality; some have their own quality rows.
     /// Out-of-range levels fall back to the closest row ≤ the level; the base segment is
     /// empty when there's no stat-set data.
     pub fn effect_stats(

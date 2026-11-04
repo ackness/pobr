@@ -9,7 +9,7 @@ use super::skill::buffs::{
     buff_skill_specs, herald_skill_names, self_buff_offensive_modifiers, support_buff_specs,
 };
 use super::skill::mods::{
-    main_skill_quality_modifiers, skill_base_modifiers, unselected_set_global_modifiers,
+    main_skill_modifiers, skill_base_modifiers, unselected_set_global_modifiers,
 };
 use super::skill::resolve::{
     GemPropertyBonus, GemPropertyKind, gem_property_bonuses, pick_group_main_skill,
@@ -1235,6 +1235,29 @@ fn mark_gem_injects_offensive_gain_as_buff() {
     );
 }
 
+// Inspect quality-bearing totals through the complete selected-skill path.
+fn main_skill_quality_modifiers(
+    context: &mut CalculationContext,
+    group: &SocketGroup,
+    data: &BuildData,
+    skill_id: &str,
+    use_alt_quality: bool,
+) -> Vec<Modifier> {
+    let selected = super::skill::resolve::selected_group_effect(data, group).unwrap();
+    let skill = data
+        .resolve_skill_level_with_set(skill_id, selected.gem_level, selected.stat_set_index)
+        .unwrap();
+    main_skill_modifiers(context, &skill, group, data, skill_id, use_alt_quality)
+        .into_iter()
+        .filter(|modifier| {
+            modifier
+                .origin
+                .as_ref()
+                .is_some_and(|origin| origin.source_id.kind == SourceKind::GemQuality)
+        })
+        .collect()
+}
+
 /// T1.7: the main skill's quality tier is injected via the stat-map, with
 /// trunc truncation + `SourceKind::GemQuality` attribution (id prefix
 /// `gem.<effect id>.q<Q>`). Uses a synthetic quality entry (damage_+% is
@@ -1454,6 +1477,8 @@ fn selected_set_key_threads_per_set_override() {
         &skill,
         "SynthEff",
         set_key.as_deref(),
+        0,
+        Vec::new(),
     );
     let mapped: Vec<&str> = mods
         .iter()
@@ -1469,6 +1494,8 @@ fn selected_set_key_threads_per_set_override() {
         &skill,
         "SynthEff",
         set_key.as_deref(),
+        0,
+        Vec::new(),
     );
     let mapped: Vec<&str> = mods
         .iter()

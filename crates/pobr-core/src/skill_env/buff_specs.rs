@@ -24,8 +24,8 @@ use crate::skill_env::resolve::{
     support_stat_set_index,
 };
 use crate::skill_env::stat_map::{
-    StatMapCtx, curse_stat_modifiers, debuff_stat_modifiers, mapped_stat_modifiers,
-    mapped_stat_modifiers_observed, player_buff_stat_modifiers, player_buff_stat_modifiers_by_stat,
+    StatMapCtx, curse_stat_modifiers, debuff_stat_modifiers, mapped_effect_stat_modifiers_observed,
+    mapped_stat_modifiers, player_buff_stat_modifiers, player_buff_stat_modifiers_by_stat,
 };
 use crate::skill_env::support::{GroupSupportJudgement, SupportCandidate, judge_group_supports};
 use crate::skill_env::{EnabledGroup, GemInput};
@@ -149,19 +149,22 @@ pub fn support_modifiers(
     data: &dyn BuffEnv,
     active_skill_id: &str,
 ) -> Vec<Modifier> {
-    support_modifiers_observed(ctx, group, data, active_skill_id, None, None)
+    support_modifiers_observed(ctx, group, data, active_skill_id, None, false, None)
 }
 
 /// Maps the calculated host's complete compatible support payload and records
 /// confirmed unmodeled effects in the existing unsupported-text shape.
 /// The no-limit entry point remains useful for partial/auxiliary consumers such as
 /// warcry spec assembly; those callers must not disclose whole-host coverage.
+/// Supports inherit the originating gem's effective quality; `use_alt_quality`
+/// enables its additional quality rows alongside the ordinary ones.
 pub fn support_modifiers_with_limits(
     ctx: &mut StatMapCtx<'_>,
     group: &EnabledGroup<'_>,
     data: &dyn BuffEnv,
     active_skill_id: &str,
     host_stat_set_index: Option<u32>,
+    use_alt_quality: bool,
     limits: &mut Vec<String>,
 ) -> Vec<Modifier> {
     support_modifiers_observed(
@@ -170,6 +173,7 @@ pub fn support_modifiers_with_limits(
         data,
         active_skill_id,
         host_stat_set_index,
+        use_alt_quality,
         Some(limits),
     )
 }
@@ -180,6 +184,7 @@ fn support_modifiers_observed(
     data: &dyn BuffEnv,
     active_skill_id: &str,
     host_stat_set_index: Option<u32>,
+    use_alt_quality: bool,
     mut limits: Option<&mut Vec<String>>,
 ) -> Vec<Modifier> {
     let judgement = group_judgement(group, data, active_skill_id);
@@ -203,11 +208,12 @@ fn support_modifiers_observed(
     for sup in &judgement.compatible {
         let gem = &group.gems[sup.gem_index];
         let set_index = support_stat_set_index(sup, group.gems);
-        // TODO(T1, add after rebasing post-T3.6 merge): change the quality argument to
-        // gem.quality — supports have no quality table entries (PoB2 skips them at
-        // export), so this segment is currently always empty and passing 0 is
-        // equivalent to passing gem.quality.
-        let stats = data.effect_stats(&sup.effect_id, gem.gem_level, 0, set_index);
+        let mut stats = data.effect_stats(&sup.effect_id, gem.gem_level, gem.quality, set_index);
+        if use_alt_quality {
+            stats
+                .quality
+                .extend(data.alt_quality_stats(&sup.effect_id, gem.quality));
+        }
         // A support's set_key is taken from its own selected set (per-set overrides are
         // located by the support's effect id). Note: vendor doesn't pass a statSet for
         // support effects (CalcActiveSkill.lua:130 does a full merge across all sets) —
@@ -218,7 +224,7 @@ fn support_modifiers_observed(
             // These are the granted skill's intrinsic facts, not changes to the
             // supported host. Retain their source and deferred scope rather than
             // turning them into host modifiers or globally effectless stats.
-            for stat in stats.base.iter().filter(|stat| stat.value != 0.0) {
+            for stat in stats.merged().iter().filter(|stat| stat.value != 0.0) {
                 let detail = format!(
                     "Support:{}:set={}:stat={}:value={}:host={active_skill_id}: secondary-effect={secondary}; payload belongs to the separately granted skill and is not applied through support ingestion",
                     sup.effect_id,
@@ -237,13 +243,13 @@ fn support_modifiers_observed(
                 }
             }
         } else {
-            mods.extend(mapped_stat_modifiers_observed(
+            mods.extend(mapped_effect_stat_modifiers_observed(
             ctx,
-            &stats.base,
-            SourceKind::SupportGem,
-            &sup.effect_id,
+            &stats,
+            SourceId::new(SourceKind::SupportGem, &sup.effect_id),
             &sup.effect_id,
             set_key.as_deref(),
+            gem.quality,
             |stat, outcome| {
                 if let Some(limits) = limits.as_deref_mut()
                     && let Some(reason) = crate::skill_env::stat_map::support_stat_limit(
@@ -635,8 +641,15 @@ pub fn buff_skill_specs(
                     // zone, reads skillModList): the curse gem's own quality segment +
                     // the **compatible** supports in the group's payload, pre-scaled
                     // via the statmap global segment `curse_local_effect`.
-                    let (local_effect_inc, local_effect_more) =
-                        curse_local_effect_scale(ctx, &group, data, gem, skill_id, level);
+                    let (local_effect_inc, local_effect_more) = curse_local_effect_scale(
+                        ctx,
+                        &group,
+                        data,
+                        gem,
+                        skill_id,
+                        level,
+                        use_alt_quality,
+                    );
                     let spec = BuffSpec {
                         name: buff_skill_name(data, skill_id),
                         kind: BuffKind::Curse,
@@ -873,15 +886,20 @@ fn curse_local_effect_scale(
     gem: &GemInput,
     skill_id: &str,
     curse_level: u32,
+    use_alt_quality: bool,
 ) -> (f64, f64) {
     let Some(catalog) = ctx.catalog else {
         return (0.0, 1.0);
     };
     let (mut inc, mut more) = (0.0, 1.0);
     let mut absorb = |effect_id: &str, level: u32, quality: u32, set_index: Option<u32>| {
-        let es = data.effect_stats(effect_id, level, quality, set_index);
+        let mut es = data.effect_stats(effect_id, level, quality, set_index);
+        if use_alt_quality {
+            es.quality
+                .extend(data.alt_quality_stats(effect_id, quality));
+        }
         let set_key = data.selected_set_key(effect_id, set_index);
-        for ds in es.all() {
+        for ds in es.merged() {
             if ds.value == 0.0 {
                 continue;
             }
@@ -920,10 +938,12 @@ fn curse_local_effect_scale(
 /// seven Companions is seven buffs, and on one skill in two groups is one.
 /// Applicability is data-driven: [`judge_group_supports`] is checked against
 /// every enabled active skill in the group.
+/// `use_alt_quality` includes the support effect's additional quality rows.
 pub fn support_buff_specs(
     ctx: &mut StatMapCtx<'_>,
     groups: &dyn SocketGroupView,
     data: &dyn BuffEnv,
+    use_alt_quality: bool,
 ) -> Vec<BuffSpec> {
     use std::collections::HashSet;
     let mut specs = Vec::new();
@@ -968,7 +988,11 @@ pub fn support_buff_specs(
             let set_index = (gem.skill_id == effect_id)
                 .then_some(gem.stat_set_index)
                 .flatten();
-            let es = data.effect_stats(&effect_id, gem.gem_level, gem.quality, set_index);
+            let mut es = data.effect_stats(&effect_id, gem.gem_level, gem.quality, set_index);
+            if use_alt_quality {
+                es.quality
+                    .extend(data.alt_quality_stats(&effect_id, gem.quality));
+            }
             let set_key = data.selected_set_key(&effect_id, set_index);
             let mods = player_buff_stat_modifiers_by_stat(
                 ctx,
