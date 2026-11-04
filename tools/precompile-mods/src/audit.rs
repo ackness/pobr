@@ -6,9 +6,9 @@ use std::path::Path;
 
 use pobr_core::apply_range::apply_range;
 use pobr_core::item_text::{parse_pob_xml_item, strip_pob_annotations};
-use pobr_core::mod_parser::engine::strip_display_markup;
 use pobr_core::mod_parser::{ParseStatus, parse_mod_engine_diag};
 use pobr_core::skill_env::parse_gem_property_bonus;
+use pobr_data::text::strip_display_markup;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

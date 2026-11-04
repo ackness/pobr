@@ -50,11 +50,11 @@ fn same_node(old: &PassiveNodeDef, new: &PassiveNodeDef) -> bool {
     }
     old.name
         .as_deref()
-        .map(pobr_core::mod_parser::engine::strip_display_markup)
+        .map(pobr_data::text::strip_display_markup)
         == new
             .name
             .as_deref()
-            .map(pobr_core::mod_parser::engine::strip_display_markup)
+            .map(pobr_data::text::strip_display_markup)
         && old.ascendancy_id.is_some() == new.ascendancy_id.is_some()
 }
 fn attrs(e: &BytesStart<'_>) -> Result<BTreeMap<String, String>, String> {
