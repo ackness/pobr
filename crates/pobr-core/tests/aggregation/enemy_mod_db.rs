@@ -174,6 +174,7 @@ fn configured_base_resistance_replaces_only_its_preset_including_zero() {
                 ModType::Base,
                 -5.0,
             ));
+            crate::support::add_game_tables(&mut env.cfg);
             setup_enemy(&mut env, 85, EnemyTier::Pinnacle);
             for element in elements {
                 let expected = if element == selected {
@@ -224,6 +225,7 @@ fn configured_base_resistance_keeps_exposure_hit_inversion_and_final_override() 
         env.enemy
             .mod_db
             .add_mod(Modifier::number("FireExposure", ModType::Base, 20.0));
+        crate::support::add_game_tables(&mut env.cfg);
         setup_enemy(&mut env, 85, EnemyTier::Pinnacle);
         reduce_enemy_exposure(&mut env.enemy.mod_db, &env.player.mod_db, &env.cfg);
         let hit = calculate_minimal_vs_enemy(
@@ -857,6 +859,7 @@ fn exposure_takes_strongest_single_source() {
 fn a_banner_applies_exposure_per_thousand_armour() {
     let actor = Actor::new(85, ActorBaseStats::default());
     let mut env = Env::new(actor);
+    crate::support::add_game_tables(&mut env.cfg);
     setup_enemy(&mut env, 0, EnemyTier::Pinnacle);
     env.player.mod_db.add_mod(Modifier::number(
         pobr_core::rules::skill_stats::ELEMENTAL_EXPOSURE_PER_1000_ARMOUR,
@@ -884,6 +887,7 @@ fn exposure_effect_inc_scales_magnitude_before_effect_on_self() {
     // dump of −16).
     let actor = Actor::new(85, ActorBaseStats::default());
     let mut env = Env::new(actor);
+    crate::support::add_game_tables(&mut env.cfg);
     setup_enemy(&mut env, 0, EnemyTier::Pinnacle);
     env.enemy
         .mod_db
@@ -936,6 +940,7 @@ fn exposure_effect_on_self_halves_magnitude_only_in_effective() {
 
     // Effective mode: setup_enemy(Pinnacle) injects ExposureEffectOnSelf MORE -50 (gated by Condition:Effective).
     let mut env = Env::new(player.clone());
+    crate::support::add_game_tables(&mut env.cfg);
     setup_enemy(&mut env, 0, EnemyTier::Pinnacle);
     env.enemy
         .mod_db
@@ -956,6 +961,7 @@ fn exposure_effect_on_self_halves_magnitude_only_in_effective() {
 
     // Panel mode: ExposureEffectOnSelf is gated by Condition:Effective → factor 1.0, exposure isn't halved.
     let mut env2 = Env::new(player);
+    crate::support::add_game_tables(&mut env2.cfg);
     setup_enemy(&mut env2, 0, EnemyTier::Pinnacle);
     env2.enemy
         .mod_db
@@ -979,6 +985,7 @@ fn exposure_effect_on_self_halves_magnitude_only_in_effective() {
 fn boss_debuff_effect_on_self_gated_by_effective() {
     let player = Actor::new(85, ActorBaseStats::default());
     let mut env = Env::new(player);
+    crate::support::add_game_tables(&mut env.cfg);
     setup_enemy(&mut env, 0, EnemyTier::Pinnacle);
     let db = &env.enemy.mod_db;
 
@@ -1011,6 +1018,7 @@ fn boss_identity_and_poise_are_effective_only_for_every_tier() {
         EnemyTier::Uber,
     ] {
         let mut env = Env::new(Actor::new(85, ActorBaseStats::default()));
+        crate::support::add_game_tables(&mut env.cfg);
         setup_enemy(&mut env, 85, tier);
         let db = &env.enemy.mod_db;
         let panel = CalcConfig::attack();
@@ -1244,6 +1252,7 @@ fn setup_enemy_injects_pinnacle_defaults() {
 fn setup_enemy_uber_injects_damage_taken_penalty() {
     let player = Actor::new(80, ActorBaseStats::default());
     let mut env = Env::new(player);
+    crate::support::add_game_tables(&mut env.cfg);
     setup_enemy(&mut env, 0, EnemyTier::Uber);
     let cfg = CalcConfig::attack();
     let dt = env.enemy.mod_db.more(&cfg, &[ModName::from("DamageTaken")]);
@@ -1279,6 +1288,7 @@ fn setup_enemy_uber_injects_damage_taken_penalty() {
 fn setup_enemy_none_tier_has_no_resist_or_boss_debuff() {
     let player = Actor::new(60, ActorBaseStats::default());
     let mut env = Env::new(player);
+    crate::support::add_game_tables(&mut env.cfg);
     setup_enemy(&mut env, 0, EnemyTier::None);
     let cfg = CalcConfig::attack();
     let db = &env.enemy.mod_db;
@@ -1308,7 +1318,12 @@ fn setup_enemy_none_tier_has_no_resist_or_boss_debuff() {
 #[test]
 fn enemy_mods_carry_enemy_config_origin() {
     let player = Actor::new(85, ActorBaseStats::default());
-    let env = env_with_enemy(player, 0, EnemyTier::Pinnacle);
+    let env = env_with_enemy(
+        player,
+        crate::support::test_constants(),
+        0,
+        EnemyTier::Pinnacle,
+    );
 
     // Every enemy modifier should carry an EnemyConfig origin, so TraceGraph can distinguish innate enemy stats from our own debuffs on them.
     let mut count = 0;
@@ -1722,6 +1737,7 @@ fn setup_enemy_preserves_preexisting_enemy_mods() {
         12.0,
     ));
 
+    crate::support::add_game_tables(&mut env.cfg);
     setup_enemy(&mut env, 0, EnemyTier::Pinnacle);
 
     // The old implementation (env.enemy = Actor::new(...), a wholesale replace) would read 0 here; the new incremental-append implementation keeps it at 12.

@@ -345,6 +345,7 @@ fn perform_enemy_crit_effect_scales_with_reduction() {
             ));
         }
         let mut env = Env::new(actor);
+        crate::support::add_game_tables(&mut env.cfg);
         setup_enemy(&mut env, 1, EnemyTier::None);
         // Inject enemy crit.
         env.enemy

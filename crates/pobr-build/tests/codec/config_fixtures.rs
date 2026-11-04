@@ -348,8 +348,12 @@ fn custom_mods_feed_calculation_end_to_end() {
     );
 
     // Missing catalog (BuildData::empty) -> tolerant fallback: customMods isn't consumed, so it matches the control group.
-    let empty_with = calculate_with_data(&build, &BuildData::empty(), &opts).expect("calc empty");
-    let empty_plain = calculate_with_data(&plain, &BuildData::empty(), &opts).expect("calc empty");
+    // The per-level monster table has no Rust copy, so it is injected separately.
+    let mut empty = BuildData::empty();
+    std::sync::Arc::make_mut(&mut empty.constants).monster_scaling =
+        pobr_core::mod_parser::test_monster_scaling();
+    let empty_with = calculate_with_data(&build, &empty, &opts).expect("calc empty");
+    let empty_plain = calculate_with_data(&plain, &empty, &opts).expect("calc empty");
     assert_eq!(
         empty_with.life, empty_plain.life,
         "missing catalog falls back to the legacy path, customMods has no effect"

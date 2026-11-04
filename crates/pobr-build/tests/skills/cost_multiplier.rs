@@ -9,7 +9,7 @@
 //! multiplier doesn't count (matches PoB2's rejection behaviour).
 
 use pobr_build::{
-    Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
+    Build, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
     parse_build_from_code,
 };
 use pobr_data::catalog::{GrantedEffectDef, SkillLevelDef};
@@ -85,7 +85,7 @@ fn oracle_druid_comet_mana_cost_with_support_multipliers() {
 /// gating) multiplier does **not**.
 #[test]
 fn incompatible_support_multiplier_is_not_applied() {
-    let mut data = BuildData::empty();
+    let mut data = crate::empty_data_with_monster_scaling();
     let active: GrantedEffectDef = serde_json::from_value(json!({
         "id": "TestSpell",
         "is_support": false,
@@ -167,7 +167,7 @@ fn incompatible_support_multiplier_is_not_applied() {
 /// floor(100 × 0.5) = 50.
 #[test]
 fn negative_support_multiplier_reduces_cost() {
-    let mut data = BuildData::empty();
+    let mut data = crate::empty_data_with_monster_scaling();
     let active: GrantedEffectDef = serde_json::from_value(json!({
         "id": "TestSpell",
         "is_support": false,

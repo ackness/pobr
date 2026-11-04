@@ -120,8 +120,7 @@ fn push_enemy_condition(db: &mut ModDb, condition: &str, id: &str) {
 /// The formula follows the **exact same operation order** as the old path
 /// (level is clamped to the tier's floor first, then the MaxEnemyLevel
 /// ceiling; multipliers divide by 100 first, then multiply the table value),
-/// and the `Default` fallback is value-for-value equal to the JSON -- both
-/// paths produce bit-identical output (a migration invariant, zero parity change).
+/// so it reproduces the old output bit for bit from the imported table.
 ///
 /// Falls back to the `Default` tier presets (the old Rust tier constants)
 /// when the injected data is missing a tier (corrupted enemy_presets),
@@ -184,14 +183,19 @@ fn tier_defaults(
 ///
 /// Data source: the per-level table/tier presets read from `env.cfg.constants`
 /// (the injection pipeline) -- the caller must call this function **after**
-/// `set_constants` (`calculate_with_data` already follows this order; without
-/// injection, the Default fallback is value-for-value equal to the JSON, so output is unchanged).
+/// `set_constants` (`calculate_with_data` already follows this order). The
+/// per-level table has no Rust copy: without injection it is empty and every
+/// enemy stat would be 0, which debug builds reject here.
 ///
 /// Add interpreted enemy configuration before this step: an explicit
 /// `config.enemy<Type>Resist` BASE, including zero, replaces only that
 /// resistance's preset. Exposure, curses and final OVERRIDE mods remain separate.
 pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
     let constants = &env.cfg.constants;
+    debug_assert!(
+        constants.monster_scaling.is_loaded(),
+        "setup_enemy needs the imported monster_scaling table (set_constants first)"
+    );
     let resolved_level = if config_level == 0 {
         (env.player.level as u32).min(constants.enemy_presets.max_enemy_level)
     } else {
@@ -671,12 +675,19 @@ fn with_exposure_sources(db: &ModDb, player_db: &ModDb, cfg: &CalcConfig) -> Cal
     cfg
 }
 
-/// Convenience constructor: builds a complete `Env` from a player [`Actor`] (player + enemy scaling + cfg).
+/// Convenience constructor: builds a complete `Env` from a player [`Actor`] and
+/// the imported runtime constants (player + enemy scaling + cfg).
 ///
 /// Only the enemy side is populated, by [`setup_enemy`]. Nothing is written to
 /// the player modDB here — equipment, tree and gem sources are the caller's job.
-pub fn env_with_enemy(player: Actor, config_level: u32, tier: EnemyTier) -> Env {
+pub fn env_with_enemy(
+    player: Actor,
+    constants: impl Into<std::sync::Arc<RuntimeConstants>>,
+    config_level: u32,
+    tier: EnemyTier,
+) -> Env {
     let mut env = Env::new(player);
+    env.cfg.constants = constants.into();
     setup_enemy(&mut env, config_level, tier);
     env
 }

@@ -52,7 +52,7 @@ fn add_effect(data: &mut BuildData, id: &str, stats: &[(&str, f64)]) {
 }
 
 fn data(count: Option<f64>) -> BuildData {
-    let mut data = BuildData::empty();
+    let mut data = crate::empty_data_with_monster_scaling();
     // The game's base_number_of_projectiles is a total ("Fires {0} Projectiles").
     // 4 is the stored AdditionalStats amount in the native skill-stat proof;
     // perturbing it verifies this path consumes the amount rather than a skill id.
