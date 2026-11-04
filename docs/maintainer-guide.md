@@ -110,7 +110,7 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 | `tools/precompile-mods` | 词条规则离线预编译、语料覆盖与审计（`generated/parsed_mods.json`、`modifier-audit.json`；`--check` 校验运行时合并后的规则集） |
 | `tools/pob2-oracle` | 非 workspace 成员（Lua wrapper）：无界面启动固定版本 PoB2，把完整计算分解输出为 JSON |
 
-依赖方向：`pobr-data` 在最底层；`pobr-build` 组合计算、物品、树与数据加载；应用层使用它们。生产计算核心不读文件；测试辅助（`pobr-core` 的 `test-rules`、`pobr-gamedata` 的 `test-pins`）在 feature 后面，只由 dev-dependencies 启用。
+依赖方向：`pobr-data` 在最底层；`pobr-build` 组合计算、物品、树与数据加载；应用层使用它们。生产计算核心不读文件；测试辅助（`pobr-core` 的 `test-rules`、`pobr-gamedata` 的 `test-pins`、`pobr-data` 的 `test-fixtures`）在 feature 后面，只由 dev-dependencies 启用。
 
 其他目录：`web/`（React / TypeScript / Vite；`src/api/` 定义 JSON 边界并默认在 module Worker 中运行 WASM，`public/` 是静态资源、同步数据与 Pages Worker，另有 `e2e/` 与 `worker-tests/`）、`data/`（Git 只跟踪 `CURRENT` 与十一份自有规则；版本目录和七份外部 shared 输入按 `pipeline/data.lock.json` 临时准备）、`pipeline/`（固定输入声明、导入、组包、候选与诊断）、`examples/`（回归与参考语料）、`devs/`（开发脚本、CI 基线与 fixtures；差异登记在 `scripts/known-differences.json`）、`agent-docs/`（被代码引用的早期机制研究）。当前行为契约集中在 `docs/`。
 
