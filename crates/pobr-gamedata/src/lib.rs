@@ -427,13 +427,24 @@ impl GameData {
         lang: &str,
         file: &str,
     ) -> Result<std::collections::BTreeMap<String, String>, LoadError> {
+        Ok(self.locale_file(lang, file)?.unwrap_or_default())
+    }
+
+    /// Loads one file of a language's package (`i18n/<lang>/<file>`, with
+    /// the user patch layer). Returns `Ok(None)` when the package has no such
+    /// file; other I/O / parse errors propagate.
+    pub fn locale_file<T: for<'de> serde::Deserialize<'de>>(
+        &self,
+        lang: &str,
+        file: &str,
+    ) -> Result<Option<T>, LoadError> {
         let path = self.root.join(format!("i18n/{lang}/{file}"));
         match self.load_json_at(path) {
-            Ok(map) => Ok(map),
+            Ok(value) => Ok(Some(value)),
             Err(LoadError::Io { ref source, .. })
                 if source.kind() == std::io::ErrorKind::NotFound =>
             {
-                Ok(Default::default())
+                Ok(None)
             }
             Err(e) => Err(e),
         }
@@ -699,16 +710,7 @@ impl GameData {
         &self,
         lang: &str,
     ) -> Result<Option<Vec<pobr_data::catalog::StatLineTemplate>>, LoadError> {
-        let path = self.root.join(format!("i18n/{lang}/stat_lines.json"));
-        match self.load_json_at::<Vec<pobr_data::catalog::StatLineTemplate>>(path) {
-            Ok(v) => Ok(Some(v)),
-            Err(LoadError::Io { ref source, .. })
-                if source.kind() == std::io::ErrorKind::NotFound =>
-            {
-                Ok(None)
-            }
-            Err(e) => Err(e),
-        }
+        self.locale_file(lang, "stat_lines.json")
     }
 
     /// Loads passive tree nodes (from the adapted GGG official tree
