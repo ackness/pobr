@@ -14,7 +14,20 @@
 //! - [`lines`]: [`LineParser`] (localized line -> English canonical line, for
 //!   the English parser) and [`LineRenderer`] (English line -> localized
 //!   display). Whether a line is in the locale is decided from the pack's
-//!   templates and names, not from a character set.
+//!   templates and names (letters only that side uses, or, for a pack that
+//!   declares `shares_english_script`, its template/name spelling), not
+//!   from a fixed character set.
+//!
+//! Known limits (follow-ups for the locale package format):
+//!
+//! - Magic and rare item names are composed by the zh-CN client's
+//!   conventions: magic = suffix + prefix + base with no separator, rare =
+//!   the two words joined by a space (`LineTranslator`'s magic/rare name
+//!   fallbacks). Another locale needs a composition rule declared by its pack.
+//! - [`NameKind::Affix`] is read as English affix name -> localized name,
+//!   which is what zh-CN `mods.json` holds; zh-TW `mods.json` is keyed by
+//!   mod id instead, so its entries never match. The package format should
+//!   settle one key per table.
 
 pub mod fallback;
 pub mod lines;

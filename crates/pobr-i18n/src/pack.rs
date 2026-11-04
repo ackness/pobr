@@ -46,6 +46,7 @@ pub enum NameKind {
     /// Active skills: active skill id -> name.
     Skill,
     /// Affix names (prefix/suffix, from the Mods table): English -> name.
+    /// (zh-TW's `mods.json` is keyed by mod id instead; see the crate docs.)
     Affix,
     /// Passive node names: English -> name.
     PassiveNode,
