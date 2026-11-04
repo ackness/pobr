@@ -220,7 +220,9 @@ schema-3 manifest封存默认运行字节；维护报告和本地patch不进入�
 
 - 新PoE2版本：两个 owner 发布同一新目标后，在审阅分支中一次 bump 两者
   （`mise run data:bump repoe game/<patch>-1 poe2-zh-cn-stats locale/<patch>-1`），它同时改写 `data/CURRENT` 并导入新版本目录；
-  消费者迁移在同一审阅改动中完成。
+  消费者迁移在同一审阅改动中完成。只 bump 一个 owner 到新目标会被拒绝。语言侧的 `locale/<patch>-<n>` Release
+  （`kind: "language"` 的 `pobr-build-data-part/v1` ZIP + `SHA256SUMS` + `receipt.json`）待翻译库完成 3.1。
+  `data:bump` 先原子替换锁与 CURRENT；随后的 `data:prepare` 失败时恢复原字节并以非零退出。
   按补丁登记的现有消费者例如 `crates/pobr-gamedata/tests/fixtures/repository-test-pins.json`、
   `devs/ci/parse-coverage-baseline.json` 与示例 golden（如 `examples/demo-bd-test/panel-golden.json`
   的 `data_version`）；计算语义、vendor参考与golden更新分别维护。
