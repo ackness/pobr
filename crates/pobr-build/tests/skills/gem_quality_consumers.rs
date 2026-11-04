@@ -7,7 +7,7 @@ use pobr_build::{
 use pobr_core::calc::damage::lucky_hit_chance;
 use pobr_core::calc::{CompletedCalculationSession, DamageComponent};
 use pobr_core::skill_env::{EffectStats, StatMapCtx, mapped_effect_stat_modifiers};
-use pobr_core::{CalcConfig, EvalContext, ModDb, Modifier};
+use pobr_core::{CalcConfig, ModDb, Modifier};
 use pobr_data::catalog::SkillDamageStat;
 use pobr_data::passive_tree::NodeId;
 use pobr_data::prelude::*;
@@ -173,19 +173,22 @@ fn arc_quality_reads_remaining_chains_and_resolved_level_values() {
             assert_eq!(mods.len(), usize::from(node && quality != 0));
             let mut db = ModDb::new();
             db.add_list(mods);
-            let cfg = CalcConfig::new().with_flags(ModFlags::PROJECTILE | ModFlags::HIT);
+            let cfg = CalcConfig::new()
+                .with_flags(ModFlags::PROJECTILE | ModFlags::HIT)
+                .with_keyword_flags(KeywordFlags::HIT);
             for remaining in [0.0, 3.0, 9.0] {
-                let lookup = |stat: &str| (stat == "ChainRemaining").then_some(remaining);
-                let factor = db.more(
-                    EvalContext::with_stat_lookup(&cfg, &lookup),
-                    &[ModName::from("Damage")],
-                );
+                let selected = cfg.clone().with_multiplier("ChainRemaining", remaining);
+                let factor = db.more(&selected, &[ModName::from("Damage")]);
                 let value = if node {
                     (0.15 * f64::from(quality)).trunc()
                 } else {
                     0.0
                 };
-                close(factor, 1.0 + remaining * value / 100.0);
+                assert!(
+                    (factor - (1.0 + remaining * value / 100.0)).abs() < 1e-9,
+                    "q{quality} node={node} remaining={remaining}: {factor}; {:?}",
+                    db.named("Damage").collect::<Vec<_>>()
+                );
             }
         }
     }

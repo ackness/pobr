@@ -65,8 +65,10 @@ fn pillars(data: &BuildData, build: &Build, lines: &[&str]) -> (f64, f64) {
 }
 
 fn assert_ratio(value: f64, base: f64, expected: f64) {
+    // Both reported rates are rounded to 9 decimals; dividing them can amplify
+    // that quantization. Compare amounts within their combined rounding bound.
     assert!(
-        (value / base - expected).abs() < 1e-9,
+        (value - base * expected).abs() <= 0.5e-9 * (1.0 + expected.abs()) + 1e-12,
         "{value} / {base} = {}, expected {expected}",
         value / base
     );
@@ -156,7 +158,7 @@ fn spell_totem_additional_quality_uses_the_host_gem_and_configured_totem_count()
             let session =
                 pobr_build::calculate_with_data_session(&host, data, &Default::default()).unwrap();
             let quality_mods: Vec<_> = session
-                .mods_named("Speed")
+                .mods_named("CastSpeed")
                 .into_iter()
                 .filter(|modifier| {
                     modifier.origin.as_ref().is_some_and(|origin| {

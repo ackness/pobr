@@ -77,10 +77,21 @@ Implicits: 0
                     diagnosis.session.config().condition("UsingLifeFlask"),
                     rarity != "UNIQUE"
                 );
-                assert_eq!(
-                    diagnosis.session.base_sum("FireResistance"),
-                    if rarity == "UNIQUE" { 0.0 } else { 40.0 }
-                );
+                // Campaign rewards also contribute FireResistance. Isolate
+                // the flask's merged payload rather than the character total.
+                let flask_fire: f64 = diagnosis
+                    .session
+                    .mods_named("FireResistance")
+                    .iter()
+                    .filter(|modifier| {
+                        modifier
+                            .origin
+                            .as_ref()
+                            .is_some_and(|origin| origin.source_id.id == "flask.flask1")
+                    })
+                    .filter_map(|modifier| modifier.value.as_number())
+                    .sum();
+                assert_eq!(flask_fire, if rarity == "UNIQUE" { 0.0 } else { 40.0 });
                 let usage = line_usage(&diagnosis, &build, data);
                 let row = usage.lines.iter().find(|row| row.text.as_deref() == Some("Recovery from your Life Flasks cannot be applied to anything other than you")).unwrap();
                 assert_eq!(row.status, LineStatus::Unmodelled, "{row:?}");
