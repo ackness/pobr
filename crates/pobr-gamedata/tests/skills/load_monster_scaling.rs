@@ -187,3 +187,61 @@ fn hidden_damage_fixup_inputs_are_derivable() {
         "lv100 hiddenDamageFixup ≈ 8.98, got {lv100_fixup}"
     );
 }
+
+/// Switch-over invariant for the engine consumers that still call
+/// `pobr_data::monster`'s lookup functions directly (minion baselines,
+/// poise/ailment thresholds): the shipped JSON gives the same value as every
+/// one of the nine lookups at every level, including the clamp below 1 and
+/// above 100, so reading the imported table instead is value-preserving.
+#[test]
+fn shipped_json_equals_every_hardcoded_lookup_at_every_level() {
+    use pobr_data::monster;
+    let t = game_data().monster_scaling().unwrap();
+    let at = |lv: u32| (lv.clamp(1, MONSTER_TABLE_LEN as u32) - 1) as usize;
+    for lv in 0..=120u32 {
+        let i = at(lv);
+        assert_eq!(
+            t.accuracy[i],
+            monster::monster_accuracy(lv),
+            "lv{lv} accuracy"
+        );
+        assert_eq!(t.evasion[i], monster::monster_evasion(lv), "lv{lv} evasion");
+        assert_eq!(t.armour[i], monster::monster_armour(lv), "lv{lv} armour");
+        assert_eq!(t.life[i], monster::monster_life(lv), "lv{lv} life");
+        assert_eq!(
+            t.ally_life[i],
+            monster::monster_ally_life(lv),
+            "lv{lv} ally_life"
+        );
+        assert_eq!(t.damage[i], monster::monster_damage(lv), "lv{lv} damage");
+        assert_eq!(
+            t.ally_damage[i],
+            monster::monster_ally_damage(lv),
+            "lv{lv} ally_damage"
+        );
+        assert_eq!(
+            t.ailment_threshold[i],
+            monster::enemy_ailment_threshold(lv),
+            "lv{lv} ailment_threshold"
+        );
+        assert_eq!(
+            t.poise_threshold[i],
+            monster::enemy_poise_threshold(lv),
+            "lv{lv} poise_threshold"
+        );
+        // The accessors the consumers switch to.
+        assert_eq!(t.accuracy_at(lv), monster::monster_accuracy(lv));
+        assert_eq!(t.evasion_at(lv), monster::monster_evasion(lv));
+        assert_eq!(t.armour_at(lv), monster::monster_armour(lv));
+        assert_eq!(t.life_at(lv), monster::monster_life(lv));
+        assert_eq!(t.damage_at(lv), monster::monster_damage(lv));
+        assert_eq!(
+            t.ailment_threshold_at(lv),
+            monster::enemy_ailment_threshold(lv)
+        );
+        assert_eq!(t.poise_threshold_at(lv), monster::enemy_poise_threshold(lv));
+    }
+    // The whole table, both ally tables included, equals the legacy arrays.
+    assert_eq!(t.ally_life, monster::MONSTER_ALLY_LIFE_TABLE.to_vec());
+    assert_eq!(t.ally_damage, monster::MONSTER_ALLY_DAMAGE_TABLE.to_vec());
+}
