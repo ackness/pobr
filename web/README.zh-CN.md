@@ -193,6 +193,9 @@ mock 只供界面开发，不验证引擎行为。
 `src/hooks/useBuildSession.ts` 管理编辑、导入和计算。`src/api/` 保存 JSON 类型、生成请求与
 WASM／mock 后端，`src/lib/` 放工具，`src/fixtures/` 放 mock 数据，`src/styles/` 放共用样式。
 新界面使用共用控件与应用对话框。
+界面文字放在 `src/locales/<语言>.json`（按命名空间分组的键值，经 `src/lib/i18n.ts` 的
+`t`／`messages` 读取）；`en-US.json` 是完整键集，其他语言缺的键显示英文。新增语言只需新增文件并在
+`src/locales/index.ts` 登记；`mise run i18n:check` 检查键集与 `{占位符}`。游戏名词与词条文本来自本地化数据。
 
 后端默认在专用 module Worker 中运行，只有一个引擎，按顺序处理调用。
 启动失败时回退页面线程；`?engine=main` 或构建时 `VITE_POBR_WORKER=0` 可强制回退。
