@@ -20,4 +20,4 @@ python3 -m pipeline.latest.test_latest_sync
 python3 -m pipeline.imports.test_display_assets
 python3 -m pipeline.runtime.test_runtime_pack
 python3 -m pipeline.imports.test_data_imports
-node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs web/scripts/bench-calc.test.mjs web/scripts/smoke-runtime-candidate.test.mjs
+node --test web/scripts/check-locales.test.mjs web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs web/scripts/bench-calc.test.mjs web/scripts/smoke-runtime-candidate.test.mjs
