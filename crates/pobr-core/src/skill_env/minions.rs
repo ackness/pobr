@@ -166,6 +166,7 @@ pub fn spawn_minions(
     gem_level_bonuses: &[crate::skill_env::GemPropertyBonus],
     equipment: &dyn crate::skill_env::EquipmentView,
     main_skill: Option<(usize, crate::skill_env::ActiveEffect<'_>)>,
+    use_alt_quality: bool,
 ) {
     use std::collections::BTreeSet;
 
@@ -291,8 +292,14 @@ pub fn spawn_minions(
             }
             if umbral_well
                 && let Some(soul) = Soul::of_skill(&skill_id)
-                && let Some(magnitude) =
-                    soul_magnitude(data, &skill_id, gem_level, quality, stat_set_index)
+                && let Some(magnitude) = soul_magnitude(
+                    data,
+                    &skill_id,
+                    gem_level,
+                    quality,
+                    stat_set_index,
+                    use_alt_quality,
+                )
             {
                 for minion_id in minion_ids {
                     if !seen.insert(minion_id.clone()) {
@@ -344,6 +351,7 @@ pub fn spawn_minions(
                 quality,
                 stat_set_index,
                 session,
+                use_alt_quality,
             );
             // Manifest Weapon is a Companion despite being undamageable.
             // Only the companion life pool needs the damageability exclusion.
@@ -414,30 +422,42 @@ pub fn spawn_minions(
             };
             // What the summoning skill's own stats, and those of the supports
             // that apply to it, grant its minions.
-            let own_stats =
-                data.effect_stats(&skill_id, effective_gem_level, quality, stat_set_index);
+            let own_stats = data.effect_stats_with_quality(
+                &skill_id,
+                effective_gem_level,
+                quality,
+                stat_set_index,
+                use_alt_quality,
+            );
             group_minion_modifiers.extend(stat_minion_modifiers(
                 &skill_id,
                 SourceKind::SkillGem,
-                own_stats.all(),
+                &own_stats,
+                quality,
                 facts,
             ));
             for sup in &judgement.compatible {
                 let sup_gem = &group.gems[sup.gem_index];
                 let set_index = support_stat_set_index(sup, group.gems);
-                // Quality passed as 0, matching support_modifiers's semantics (supports have no quality table entries).
-                let stats = data.effect_stats(&sup.effect_id, sup_gem.gem_level, 0, set_index);
+                let stats = data.effect_stats_with_quality(
+                    &sup.effect_id,
+                    sup_gem.gem_level,
+                    sup_gem.quality,
+                    set_index,
+                    use_alt_quality,
+                );
                 group_minion_modifiers.extend(stat_minion_modifiers(
                     &sup.effect_id,
                     SourceKind::SupportGem,
-                    stats.all(),
+                    &stats,
+                    sup_gem.quality,
                     facts,
                 ));
                 let Some(catalog) = data.stat_map_catalog() else {
                     continue;
                 };
                 let set_key = data.selected_set_key(&sup.effect_id, set_index);
-                for ds in stats.all() {
+                for ds in stats.merged() {
                     if ds.value == 0.0 || skill_stats::is_minion_stat(&ds.stat) {
                         continue;
                     }
@@ -449,11 +469,12 @@ pub fn spawn_minions(
                         ds.value,
                     ) {
                         group_minion_modifiers.push(MinionModifierEntry {
-                            inner: inner.with_origin(stat_origin(
+                            inner: inner.with_origin(minion_effect_stat_origin(
                                 &sup.effect_id,
                                 SourceKind::SupportGem,
-                                &ds.stat,
-                                ds.value,
+                                &stats,
+                                &ds,
+                                sup_gem.quality,
                             )),
                             minion_type: None,
                         });
@@ -496,6 +517,7 @@ pub fn spawn_minions(
                     &skill_id,
                     &skill,
                     minion_level,
+                    use_alt_quality,
                 ));
                 // `add_minion_from_def` internally maps gem level to monster level via
                 // `minion_level_from_gem_level` (the default rule at
@@ -533,9 +555,13 @@ pub fn spawn_minions(
                     false
                 };
                 if curses_enabled {
-                    for spec in
-                        super::buff_specs::minion_curse_specs(data, &group, &def, minion_level)
-                    {
+                    for spec in super::buff_specs::minion_curse_specs(
+                        data,
+                        &group,
+                        &def,
+                        minion_level,
+                        use_alt_quality,
+                    ) {
                         session.add_last_minion_buff_skill(spec);
                     }
                 }
@@ -582,16 +608,50 @@ fn stat_origin(effect_id: &str, kind: SourceKind, stat: &str, value: f64) -> Mod
         .with_raw_text(format!("minion {effect_id} {stat} ({value})"))
 }
 
-/// What the stats `stats` of the skill `effect_id` grant its minions
-/// ([`skill_stats::minion_modifiers`]).
-fn stat_minion_modifiers<'a>(
+/// Keep minion-specific mappings' quality provenance as well as their raw total.
+fn minion_effect_stat_origin(
     effect_id: &str,
     kind: SourceKind,
-    stats: impl Iterator<Item = &'a pobr_data::catalog::SkillDamageStat>,
+    stats: &crate::skill_env::EffectStats,
+    stat: &pobr_data::catalog::SkillDamageStat,
+    quality: u32,
+) -> ModifierSource {
+    let quality_value: f64 = stats
+        .quality
+        .iter()
+        .filter(|row| row.stat == stat.stat)
+        .map(|row| row.value)
+        .sum();
+    if quality_value == 0.0 {
+        return stat_origin(effect_id, kind, &stat.stat, stat.value);
+    }
+    ModifierSource::new(SourceId::new(
+        SourceKind::GemQuality,
+        format!("gem.{effect_id}.q{quality}.{}", stat.stat),
+    ))
+    .with_parent(SourceId::new(
+        kind,
+        format!("minion.{effect_id}.{}", stat.stat),
+    ))
+    .with_raw_text(format!(
+        "minion {effect_id} {} (base {} + quality {quality_value} = {})",
+        stat.stat,
+        stat.value - quality_value,
+        stat.value
+    ))
+}
+
+/// What the stats `stats` of the skill `effect_id` grant its minions
+/// ([`skill_stats::minion_modifiers`]).
+fn stat_minion_modifiers(
+    effect_id: &str,
+    kind: SourceKind,
+    stats: &crate::skill_env::EffectStats,
+    quality: u32,
     facts: skill_stats::SummonedMinions,
 ) -> Vec<MinionModifierEntry> {
     let mut entries = Vec::new();
-    for ds in stats {
+    for ds in stats.merged() {
         if ds.value == 0.0 {
             continue;
         }
@@ -611,11 +671,12 @@ fn stat_minion_modifiers<'a>(
         };
         for modifier in modifiers {
             entries.push(MinionModifierEntry {
-                inner: modifier.with_origin(stat_origin(
+                inner: modifier.with_origin(minion_effect_stat_origin(
                     effect_id,
                     kind.clone(),
-                    &ds.stat,
-                    ds.value,
+                    stats,
+                    &ds,
+                    quality,
                 )),
                 minion_type: None,
             });
@@ -728,6 +789,7 @@ fn minion_skill_modifiers(
     summon_skill_id: &str,
     skill: &crate::calc::MinionSkill,
     minion_level: u32,
+    use_alt_quality: bool,
 ) -> Vec<MinionModifierEntry> {
     if !skill.is_known() {
         return Vec::new();
@@ -808,19 +870,21 @@ fn minion_skill_modifiers(
     for sup in &judgement.compatible {
         let gem = &group.gems[sup.gem_index];
         let set_index = support_stat_set_index(sup, group.gems);
-        let stats: Vec<_> = data
-            .effect_stats(&sup.effect_id, gem.gem_level, 0, set_index)
-            .all()
-            .cloned()
-            .collect();
+        let stats = data.effect_stats_with_quality(
+            &sup.effect_id,
+            gem.gem_level,
+            gem.quality,
+            set_index,
+            use_alt_quality,
+        );
         let set_key = data.selected_set_key(&sup.effect_id, set_index);
-        modifiers.extend(crate::skill_env::mapped_stat_modifiers(
+        modifiers.extend(crate::skill_env::mapped_effect_stat_modifiers(
             &mut ctx,
             &stats,
-            SourceKind::SupportGem,
-            &sup.effect_id,
+            SourceId::new(SourceKind::SupportGem, &sup.effect_id),
             &sup.effect_id,
             set_key.as_deref(),
+            gem.quality,
         ));
     }
     modifiers
@@ -979,9 +1043,10 @@ fn soul_magnitude(
     level: u32,
     quality: u32,
     set_index: Option<u32>,
+    use_alt_quality: bool,
 ) -> Option<f64> {
     let magnitude: f64 = data
-        .effect_stats(skill_id, level, quality, set_index)
+        .effect_stats_with_quality(skill_id, level, quality, set_index, use_alt_quality)
         .all()
         .filter(|ds| ds.stat == umbral_souls::SOUL_MAGNITUDE)
         .map(|ds| ds.value)
@@ -998,6 +1063,7 @@ fn own_minion_count(
     quality: u32,
     set_index: Option<u32>,
     session: &dyn MinionSession,
+    use_alt_quality: bool,
 ) -> Option<u32> {
     // The game's skill_cross_slash_triggered_summon_+_wolves stats add
     // wolves to the one summoned per activation: +0 for a Rare, +1 for
@@ -1011,7 +1077,7 @@ fn own_minion_count(
             return Some(1);
         };
         let extra: f64 = data
-            .effect_stats(skill_id, level, quality, set_index)
+            .effect_stats_with_quality(skill_id, level, quality, set_index, use_alt_quality)
             .all()
             .filter(|ds| ds.stat == rarity_stat)
             .map(|ds| ds.value)
@@ -1020,7 +1086,10 @@ fn own_minion_count(
     }
     let mut count = None;
     let mut limit_bonus = 0.0;
-    for ds in data.effect_stats(skill_id, level, quality, set_index).all() {
+    for ds in data
+        .effect_stats_with_quality(skill_id, level, quality, set_index, use_alt_quality)
+        .all()
+    {
         if skill_stats::is_summoned_minion_count(&ds.stat) {
             *count.get_or_insert(0.0) += ds.value;
             // This stat is a base cap, unlike a pack size or spawn count.

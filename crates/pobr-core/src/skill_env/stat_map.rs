@@ -67,6 +67,33 @@ impl<'a> StatMapCtx<'a> {
         }
     }
 
+    /// Retain unresolved quality facts even when eligibility omits their payload.
+    /// Multiple consumer channels can inspect the same effect; report each issue once.
+    pub fn record_quality_issues(
+        &mut self,
+        effect_id: &str,
+        quality: u32,
+        issues: Vec<crate::skill_env::QualityApplicabilityIssue>,
+    ) {
+        if self.mode != StatMapMode::Compare {
+            return;
+        }
+        let Some(records) = self.records.as_deref_mut() else {
+            return;
+        };
+        for issue in issues {
+            let record = StatMapCompareRecord {
+                stat: issue.stat,
+                label: format!("gem.{effect_id}.q{quality}"),
+                classification: "unsupported",
+                detail: format!("unsupported:quality-applicability: {}", issue.detail),
+            };
+            if !records.contains(&record) {
+                records.push(record);
+            }
+        }
+    }
+
     pub(super) fn record(
         &mut self,
         stat: &str,

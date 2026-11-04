@@ -666,7 +666,11 @@ pub(super) fn inject_main_skill_mods(
         ));
         // 1b-i-g. Main skill's unselected statSet global-only merge (CalcActiveSkill.lua:124-140).
         session.add_modifiers(unselected_set_global_modifiers(
-            context, group, data, skill_id,
+            context,
+            group,
+            data,
+            skill_id,
+            super::skill::resolve::gemling_quality_flag(build, data),
         ));
         // 1b-i-d. The selected statSet's dotIs* flags → `DotIs<X>` FLAG (booleans hung
         //         directly on statSet baseMods; calc::skill_dot preserves the dotCfg

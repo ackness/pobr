@@ -167,25 +167,7 @@ impl BuildData {
             })
             .unwrap_or_default();
 
-        let quality_stats = if quality > 0 {
-            self.gem_quality_stats
-                .get(skill_id)
-                .map(|rows| {
-                    rows.iter()
-                        // alt quality stats only apply to GemlingQuality builds, added by
-                        // the consumer under that flag via [`Self::alt_quality_stats`].
-                        .filter(|q| !q.alt)
-                        .map(|q| SkillDamageStat {
-                            stat: q.stat.clone(),
-                            // trunc (toward zero), matching math.modf's integer part.
-                            value: (q.per_quality_rate * f64::from(quality)).trunc(),
-                        })
-                        .collect()
-                })
-                .unwrap_or_default()
-        } else {
-            Vec::new()
-        };
+        let quality_stats = self.quality_stats_for_set(skill_id, quality, set_index, false);
 
         EffectStats {
             base,
@@ -203,21 +185,7 @@ impl BuildData {
     // Consumers: Spirit reservation efficiency, buff skill payloads
     // (`skill_env::buff_skill_specs`) and the main skill's quality segment.
     pub fn alt_quality_stats(&self, skill_id: &str, quality: u32) -> Vec<SkillDamageStat> {
-        if quality == 0 {
-            return Vec::new();
-        }
-        self.gem_quality_stats
-            .get(skill_id)
-            .map(|rows| {
-                rows.iter()
-                    .filter(|q| q.alt)
-                    .map(|q| SkillDamageStat {
-                        stat: q.stat.clone(),
-                        value: (q.per_quality_rate * f64::from(quality)).trunc(),
-                    })
-                    .collect()
-            })
-            .unwrap_or_default()
+        self.alt_quality_stats_for_set(skill_id, quality, None)
     }
 
     /// Gets the stat snapshot of a granted effect's **unselected sets** at a given (gem
@@ -233,8 +201,8 @@ impl BuildData {
     ///   `grantedEffect.statSets` list and **don't participate** in global merge, so
     ///   they're excluded here too;
     /// - Each set's stats are built following vendor's `buildSkillInstanceStats`
-    ///   (CalcTools.lua:138-200) **table semantics**: the quality segment (truncated;
-    ///   the quality table is shared per effect and stacked first for every set) + the
+    ///   (CalcTools.lua:138-200) **table semantics**: the quality segment (truncated
+    ///   and filtered by this set's native applicability) + the
     ///   per-level row (the highest row ≤ gem_level, falling back to the first row when
     ///   out of range) + level-independent constants, with **same-stat values added
     ///   together**, keys sorted lexically (deterministic). This differs from
@@ -253,6 +221,19 @@ impl BuildData {
         quality: u32,
         set_index: Option<u32>,
     ) -> Vec<UnselectedSetStats> {
+        self.unselected_set_stats_with_quality(skill_id, gem_level, quality, set_index, false)
+    }
+
+    /// Unselected global candidates with independently eligible additional quality.
+    /// The caller still filters each set through the global-only mapping channel.
+    pub fn unselected_set_stats_with_quality(
+        &self,
+        skill_id: &str,
+        gem_level: u32,
+        quality: u32,
+        set_index: Option<u32>,
+        use_alt_quality: bool,
+    ) -> Vec<UnselectedSetStats> {
         let Some(def) = self.skill_stat_sets.get(skill_id) else {
             return Vec::new();
         };
@@ -270,13 +251,12 @@ impl BuildData {
             }
             // buildSkillInstanceStats table semantics: same-stat values are added together (BTreeMap gives deterministic lexical order).
             let mut acc: BTreeMap<String, f64> = BTreeMap::new();
-            if quality > 0
-                && let Some(rows) = self.gem_quality_stats.get(skill_id)
+            for alt in [false, true]
+                .into_iter()
+                .filter(|alt| !*alt || use_alt_quality)
             {
-                for q in rows.iter().filter(|q| !q.alt) {
-                    // trunc (toward zero), same semantics as effect_stats's quality segment.
-                    *acc.entry(q.stat.clone()).or_default() +=
-                        (q.per_quality_rate * f64::from(quality)).trunc();
+                for stat in self.quality_stats_for_set(skill_id, quality, Some(idx), alt) {
+                    *acc.entry(stat.stat).or_default() += stat.value;
                 }
             }
             if let Some(level) = set
@@ -418,25 +398,29 @@ impl pobr_core::skill_env::StatSetLookup for BuildData {
     }
 
     fn quality_stats(&self, effect_id: &str, quality: u32) -> Vec<SkillDamageStat> {
-        if quality == 0 {
-            return Vec::new();
-        }
-        self.gem_quality_stats
-            .get(effect_id)
-            .map(|rows| {
-                rows.iter()
-                    .filter(|q| !q.alt)
-                    .map(|q| SkillDamageStat {
-                        stat: q.stat.clone(),
-                        value: (q.per_quality_rate * f64::from(quality)).trunc(),
-                    })
-                    .collect()
-            })
-            .unwrap_or_default()
+        self.quality_stats_for_set(effect_id, quality, None, false)
     }
 
     fn alt_quality_stats(&self, effect_id: &str, quality: u32) -> Vec<SkillDamageStat> {
         self.alt_quality_stats(effect_id, quality)
+    }
+
+    fn alt_quality_stats_for_set(
+        &self,
+        effect_id: &str,
+        quality: u32,
+        set_index: Option<u32>,
+    ) -> Vec<SkillDamageStat> {
+        self.alt_quality_stats_for_set(effect_id, quality, set_index)
+    }
+
+    fn quality_applicability_issues(
+        &self,
+        effect_id: &str,
+        quality: u32,
+        use_alt_quality: bool,
+    ) -> Vec<pobr_core::skill_env::QualityApplicabilityIssue> {
+        self.quality_applicability_issues(effect_id, quality, use_alt_quality)
     }
 
     fn unselected_set_stats(

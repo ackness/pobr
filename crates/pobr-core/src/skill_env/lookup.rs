@@ -38,6 +38,25 @@ pub trait StatSetLookup {
         set_index: Option<u32>,
     ) -> EffectStats;
 
+    /// Resolve both quality channels with the same selected-set eligibility.
+    /// The caller supplies the originating build's Advanced Thaumaturgy state.
+    fn effect_stats_with_quality(
+        &self,
+        effect_id: &str,
+        level: u32,
+        quality: u32,
+        set_index: Option<u32>,
+        use_alt_quality: bool,
+    ) -> EffectStats {
+        let mut stats = self.effect_stats(effect_id, level, quality, set_index);
+        if use_alt_quality {
+            stats
+                .quality
+                .extend(self.alt_quality_stats_for_set(effect_id, quality, set_index));
+        }
+        stats
+    }
+
     /// Returns the main set's stats for `effect_id` at `level`, used by an
     /// actor of `user_level`: a set resolved at its user's level (a minion's
     /// skill) has the stats that grow with effectiveness resolved at
@@ -81,6 +100,29 @@ pub trait StatSetLookup {
         Vec::new()
     }
 
+    /// Additional quality eligible for the selected set. Legacy implementations
+    /// without native scope metadata retain effect-wide behavior.
+    fn alt_quality_stats_for_set(
+        &self,
+        effect_id: &str,
+        quality: u32,
+        set_index: Option<u32>,
+    ) -> Vec<SkillDamageStat> {
+        let _ = set_index;
+        self.alt_quality_stats(effect_id, quality)
+    }
+
+    /// Unresolved native applicability or explicitly excluded quality data.
+    fn quality_applicability_issues(
+        &self,
+        effect_id: &str,
+        quality: u32,
+        use_alt_quality: bool,
+    ) -> Vec<QualityApplicabilityIssue> {
+        let _ = (effect_id, quality, use_alt_quality);
+        Vec::new()
+    }
+
     /// Returns the unselected statSets' merged stat snapshots for `effect_id`
     /// (the data source for the global-only merge; empty when there's no stat-set data).
     fn unselected_set_stats(
@@ -105,6 +147,15 @@ pub trait StatSetLookup {
         let _ = (effect_id, level, set_index);
         None
     }
+}
+
+/// A quality fact that could not be assigned to a known runtime stat set.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QualityApplicabilityIssue {
+    /// Source stat identity, or `gem_quality` when the producer omitted its rows.
+    pub stat: String,
+    /// The unresolved source relationship, without claiming the stat is effectless.
+    pub detail: String,
 }
 
 /// The selected statSet's per-level row projection (the fields `resolve_skill_level`

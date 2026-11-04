@@ -670,6 +670,7 @@ pub fn crossbow_reload_modifiers(
     stat_sets: &dyn crate::skill_env::StatSetLookup,
     gems: &[GemInput],
     skill_id: &str,
+    use_alt_quality: bool,
 ) -> Vec<Modifier> {
     let Some(effect) = effects.effect(skill_id) else {
         return Vec::new();
@@ -731,10 +732,23 @@ pub fn crossbow_reload_modifiers(
                     .effect(eid)
                     .is_some_and(|e| e.skill_types.iter().any(|t| t == "CrossbowAmmoSkill"))
             })
-            .map(|eid| (eid.to_string(), g.gem_level, g.quality))
+            .map(|eid| {
+                (
+                    eid.to_string(),
+                    g.gem_level,
+                    g.quality,
+                    (eid == g.skill_id).then_some(g.stat_set_index).flatten(),
+                )
+            })
     });
-    if let Some((ammo_id, gem_level, quality)) = ammo {
-        let stats = stat_sets.effect_stats(&ammo_id, gem_level, quality, None);
+    if let Some((ammo_id, gem_level, quality, set_index)) = ammo {
+        let stats = stat_sets.effect_stats_with_quality(
+            &ammo_id,
+            gem_level,
+            quality,
+            set_index,
+            use_alt_quality,
+        );
         // The reload action owns both the magazine and its reload-speed stats;
         // selecting the shot must retain these parts of the ammunition cycle.
         let reload_stat = "active_skill_reload_speed_+%_final";

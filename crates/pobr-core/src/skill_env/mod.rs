@@ -40,8 +40,8 @@ pub use item_text::{
 pub use lookup::{
     ArmourBaseLookup, BaseItemLookup, CostTypeLookup, CostTypeRef, EffectLookup, EffectStats,
     EnabledGroup, EquipmentView, GemDefLookup, MinionLookup, ParserRulesLookup, PassiveNodeLookup,
-    SelectedSetLevelRow, SocketGroupView, StatMapLookup, StatSetLookup, TriggerConfigLookup,
-    UnarmedDataLookup, UnselectedSetStats, WeaponBaseLookup, WeaponTypeLookup,
+    QualityApplicabilityIssue, SelectedSetLevelRow, SocketGroupView, StatMapLookup, StatSetLookup,
+    TriggerConfigLookup, UnarmedDataLookup, UnselectedSetStats, WeaponBaseLookup, WeaponTypeLookup,
 };
 pub use minions::{MinionEnv, MinionSession, spawn_minions};
 pub use mods::{

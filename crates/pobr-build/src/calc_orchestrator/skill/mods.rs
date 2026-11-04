@@ -7,6 +7,7 @@ use super::super::skill::resolve::config_enemy_level;
 use pobr_core::Modifier;
 use pobr_core::rules::config_interpreter::ConfigInputValue;
 use pobr_core::rules::stat_map_engine::{self, MappedItem, MappedOutcome};
+use pobr_core::skill_env::StatSetLookup;
 use pobr_data::modifier::ModType;
 use pobr_data::monster::EnemyTier;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
@@ -265,7 +266,15 @@ pub(crate) fn crossbow_reload_modifiers(
     skill_id: &str,
 ) -> Vec<Modifier> {
     let gems = group.gem_inputs();
-    pobr_core::skill_env::crossbow_reload_modifiers(data, data, build, data, &gems, skill_id)
+    pobr_core::skill_env::crossbow_reload_modifiers(
+        data,
+        data,
+        build,
+        data,
+        &gems,
+        skill_id,
+        super::resolve::gemling_quality_flag(build, data),
+    )
 }
 
 /// Map the resolved selected skill's stats with ordinary and enabled additional
@@ -283,13 +292,15 @@ pub(crate) fn main_skill_modifiers(
         .filter(|effect| effect.skill_id == skill_id);
     let quality = selected.as_ref().map_or(0, |gem| gem.quality);
     let set_index = selected.as_ref().and_then(|gem| gem.stat_set_index);
-    let mut quality_stats = selected.map_or_else(Vec::new, |gem| {
-        data.effect_stats(skill_id, gem.gem_level, quality, set_index)
+    let quality_stats = selected.map_or_else(Vec::new, |gem| {
+        data.effect_stats_with_quality(skill_id, gem.gem_level, quality, set_index, use_alt_quality)
             .quality
     });
-    if use_alt_quality {
-        quality_stats.extend(data.alt_quality_stats(skill_id, quality));
-    }
+    context.stat_map_ctx().record_quality_issues(
+        skill_id,
+        quality,
+        data.quality_applicability_issues(skill_id, quality, use_alt_quality),
+    );
     let set_key = data.selected_set_key(skill_id, set_index);
     skill_base_modifiers(
         context,
@@ -324,14 +335,20 @@ pub(crate) fn unselected_set_global_modifiers(
     group: &SocketGroup,
     data: &BuildData,
     skill_id: &str,
+    use_alt_quality: bool,
 ) -> Vec<Modifier> {
     let Some(gem) = super::resolve::selected_group_effect(data, group)
         .filter(|effect| effect.skill_id == skill_id)
     else {
         return Vec::new();
     };
-    let unselected =
-        data.unselected_set_stats(gem.skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
+    let unselected = data.unselected_set_stats_with_quality(
+        gem.skill_id,
+        gem.gem_level,
+        gem.quality,
+        gem.stat_set_index,
+        use_alt_quality,
+    );
     if unselected.is_empty() {
         return Vec::new();
     }
@@ -343,8 +360,13 @@ pub(crate) fn unselected_set_global_modifiers(
     // unselected sets (the onlyGlobals stage's accounting is unchanged, the stat-level
     // skip is equivalent to :107).
     let selected_key = data.selected_set_key(gem.skill_id, gem.stat_set_index);
-    let selected_stats =
-        data.effect_stats(gem.skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
+    let selected_stats = data.effect_stats_with_quality(
+        gem.skill_id,
+        gem.gem_level,
+        gem.quality,
+        gem.stat_set_index,
+        use_alt_quality,
+    );
     let selected_globals: std::collections::HashSet<&str> = selected_stats
         .all()
         .filter(|ds| {
@@ -363,14 +385,32 @@ pub(crate) fn unselected_set_global_modifiers(
             if ds.value == 0.0 || selected_globals.contains(ds.stat.as_str()) {
                 continue;
             }
-            let MappedOutcome::Mapped(items) = stat_map_engine::map_stat_global_only(
+            let outcome = stat_map_engine::map_stat_global_only(
                 &catalog,
                 skill_id,
                 Some(&set.set_key),
                 &ds.stat,
                 ds.value,
-            ) else {
-                continue; // Unsupported (including the GlobalEffect tag's first-batch boundary) / Unknown: skipped.
+            );
+            let items = match outcome {
+                MappedOutcome::Mapped(items) => items,
+                MappedOutcome::Unsupported(reason) => {
+                    if context.mode == super::super::StatMapMode::Compare {
+                        context
+                            .compare_records
+                            .push(super::super::StatMapCompareRecord {
+                                stat: ds.stat.clone(),
+                                label: format!(
+                                    "skill.{skill_id}.set{}.unselected-global",
+                                    set.set_key
+                                ),
+                                classification: "unsupported",
+                                detail: format!("unsupported:{}: {reason:?}", reason.category()),
+                            });
+                    }
+                    continue;
+                }
+                MappedOutcome::Unknown => continue,
             };
             for item in items {
                 let MappedItem::Modifier(modifier) = item else {
@@ -550,7 +590,13 @@ pub(crate) fn totem_base_modifiers(
     // The totem gem's `base_number_of_totems_allowed` (a constant or a level
     // stat: 1 for Shockwave Totem, 2 for a level-20 Spell Totem) is the base
     // of the totem limit, whichever skill the totem uses.
-    let stats = data.effect_stats(&gem.skill_id, level, gem.quality, None);
+    let stats = data.effect_stats_with_quality(
+        &gem.skill_id,
+        level,
+        gem.quality,
+        gem.stat_set_index,
+        super::resolve::gemling_quality_flag(build, data),
+    );
     let limit: f64 = stats
         .all()
         .filter(|stat| stat.stat == "base_number_of_totems_allowed")

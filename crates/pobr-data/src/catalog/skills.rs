@@ -603,9 +603,8 @@ fn is_false(v: &bool) -> bool {
 /// The reviewed compatibility scope preserves the existing exported effects;
 /// it must not blanket-filter `IsSupport` (non-gem support effects can have quality).
 /// Alt stats are preserved and gated by the existing GemlingQuality consumers.
-/// `ApplyToStatSets` / `AltApplyToStatSets` are retained in generation metadata,
-/// not applied by current effect-wide consumers. Adding their semantics is a
-/// separate behavior change, not part of the data-source migration.
+/// `ApplyToStatSets` / `AltApplyToStatSets` live in [`GemQualityMetadata`].
+/// They select native stat-set positions, independently for the two channels.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GemQualityStatDef {
     /// Granted effect id (aligned with [`GrantedEffectDef::id`], e.g.
@@ -617,11 +616,48 @@ pub struct GemQualityStatDef {
     pub stats: Vec<QualityStat>,
 }
 
-/// Top level of `overlay/gem_quality_stats.json` (from the consumer's
-/// perspective: the `_meta` provenance header is ignored by default serde;
-/// consumers just take the `effects` list, ascending by `effect_id`).
+/// Native quality eligibility for one effect's ordinary and additional channels.
+///
+/// Positions are zero-based in `GrantedEffects.StatSet` followed by
+/// `AdditionalStatSets`, not foreign keys or PoB's curated display indices.
+/// An empty array means all sets. A missing channel inside a scope record is
+/// unknown, unlike an absent record (older effect-wide artifacts, or both
+/// channels unrestricted in the current projection).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+pub struct QualityStatSetScopes {
+    /// `GrantedEffectQualityStats.ApplyToStatSets`.
+    #[serde(default)]
+    pub main: Option<Vec<u32>>,
+    /// `GrantedEffectQualityStats.AltApplyToStatSets`.
+    #[serde(default)]
+    pub alt: Option<Vec<u32>>,
+}
+
+/// Producer exclusions retained for diagnostics; exclusion does not mean no effect.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+pub struct GemQualityCompatibility {
+    /// Effects with source quality rows deliberately omitted by the producer policy.
+    #[serde(default)]
+    pub excluded_effects: std::collections::BTreeMap<String, String>,
+}
+
+/// Consumer-relevant fields of the quality artifact's provenance header.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+pub struct GemQualityMetadata {
+    /// Native applicability facts under the producer's historical field name.
+    #[serde(default)]
+    pub unapplied_stat_set_scopes: std::collections::BTreeMap<String, QualityStatSetScopes>,
+    /// Explicit publication limits, not a completeness claim.
+    #[serde(default)]
+    pub compatibility: GemQualityCompatibility,
+}
+
+/// Top level of `overlay/gem_quality_stats.json`, including native eligibility.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct GemQualityStatsDef {
+    /// Old snapshots without this header preserve effect-wide quality semantics.
+    #[serde(default, rename = "_meta")]
+    pub metadata: GemQualityMetadata,
     /// Quality-stat tables, ascending by `effect_id`.
     pub effects: Vec<GemQualityStatDef>,
 }

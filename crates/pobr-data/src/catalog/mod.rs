@@ -106,8 +106,9 @@ pub use parser_rules::{
 };
 pub use runtime::RuntimeConstants;
 pub use skills::{
-    CostTypeDef, DotFlags, GemEffectDef, GemEffectsDef, GemQualityStatDef, GemQualityStatsDef,
-    GrantedEffectDef, QualityStat, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
+    CostTypeDef, DotFlags, GemEffectDef, GemEffectsDef, GemQualityCompatibility,
+    GemQualityMetadata, GemQualityStatDef, GemQualityStatsDef, GrantedEffectDef, QualityStat,
+    QualityStatSetScopes, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
     SkillStatSetLevel, StatSetDef, StatSetLabelDef, StatSetLabelsDef, UserLevelScaling,
 };
 pub use tree::{

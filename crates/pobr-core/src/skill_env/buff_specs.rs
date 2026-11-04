@@ -208,12 +208,18 @@ fn support_modifiers_observed(
     for sup in &judgement.compatible {
         let gem = &group.gems[sup.gem_index];
         let set_index = support_stat_set_index(sup, group.gems);
-        let mut stats = data.effect_stats(&sup.effect_id, gem.gem_level, gem.quality, set_index);
-        if use_alt_quality {
-            stats
-                .quality
-                .extend(data.alt_quality_stats(&sup.effect_id, gem.quality));
-        }
+        ctx.record_quality_issues(
+            &sup.effect_id,
+            gem.quality,
+            data.quality_applicability_issues(&sup.effect_id, gem.quality, use_alt_quality),
+        );
+        let stats = data.effect_stats_with_quality(
+            &sup.effect_id,
+            gem.gem_level,
+            gem.quality,
+            set_index,
+            use_alt_quality,
+        );
         // A support's set_key is taken from its own selected set (per-set overrides are
         // located by the support's effect id). Note: vendor doesn't pass a statSet for
         // support effects (CalcActiveSkill.lua:130 does a full merge across all sets) —
@@ -385,11 +391,7 @@ pub fn buff_skill_specs(
     // GemlingQuality builds also apply each gem's altQualityStats
     // (CalcTools.lua:169-174 `includeAltQualityStats`).
     let effect_stats = |skill_id: &str, level: u32, quality: u32, set_index: Option<u32>| {
-        let mut es = data.effect_stats(skill_id, level, quality, set_index);
-        if use_alt_quality {
-            es.quality.extend(data.alt_quality_stats(skill_id, quality));
-        }
-        es
+        data.effect_stats_with_quality(skill_id, level, quality, set_index, use_alt_quality)
     };
     groups.for_each_enabled_group(&mut |group| {
         for (idx, gem) in group.gems.iter().enumerate() {
@@ -404,8 +406,8 @@ pub fn buff_skill_specs(
             // activeSkill for each gem's additionalGrantedEffectId1..N — e.g. a
             // banner's buff-side DefianceBannerPlayer (Aura) is in the additional slot,
             // while the primary slot is the reservation-side ReservationPlayer). Level/
-            // quality/set follow the host gem instance (PoB2's additional effects share
-            // the same gemInstance as the host).
+            // quality follow the host gem instance. Each additional effect uses its
+            // own primary stat set; a host's display index is not a child identity.
             let effect_ids: Vec<&str> = std::iter::once(gem.skill_id.as_str())
                 .chain(
                     data.additional_effects(&gem.skill_id)
@@ -420,6 +422,14 @@ pub fn buff_skill_specs(
                 if effect.is_support {
                     continue;
                 }
+                let set_index = (skill_id == gem.skill_id)
+                    .then_some(gem.stat_set_index)
+                    .flatten();
+                ctx.record_quality_issues(
+                    skill_id,
+                    gem.quality,
+                    data.quality_applicability_issues(skill_id, gem.quality, use_alt_quality),
+                );
                 // The level the effect runs at: the gem's, with every
                 // applicable "+N to Level of all <X> Skills" and the levels
                 // the group's supports grant it ("+3 to level of Supported
@@ -443,8 +453,8 @@ pub fn buff_skill_specs(
                 if !is_aura && !is_curse {
                     // Debuff branch + player-side Buff branch (see the orchestrator's
                     // doc for the vendor mapping; both payloads are empty for most skills).
-                    let es_buff = effect_stats(skill_id, level, gem.quality, gem.stat_set_index);
-                    let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
+                    let es_buff = effect_stats(skill_id, level, gem.quality, set_index);
+                    let set_key = data.selected_set_key(skill_id, set_index);
                     let mut debuff_mods =
                         debuff_stat_modifiers(ctx, &es_buff, skill_id, set_key.as_deref());
                     let chaos_dot = chaos_dot::skill(&group, data, gem, skill_id, level);
@@ -532,7 +542,7 @@ pub fn buff_skill_specs(
                     // attribution as aura_buff_modifiers (buff_pass scaling preserves
                     // origin, not dropped in trace).
                     // An aura gem gains levels like any other skill gem.
-                    let es = effect_stats(skill_id, level, gem.quality, gem.stat_set_index);
+                    let es = effect_stats(skill_id, level, gem.quality, set_index);
                     // Quality adds to the stat the gem already has. The two
                     // are one value: as separate modifiers of one name the
                     // weaker would be dropped as a duplicate buff.
@@ -564,7 +574,7 @@ pub fn buff_skill_specs(
                     // allowlist's (Accuracy) GlobalEffect Buff/Aura payload (e.g. War
                     // Banner's `base_skill_buff_banner_accuracy_+%_to_apply` → Accuracy
                     // INC, with the Condition:BannerPlanted tag preserved as-is).
-                    let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
+                    let set_key = data.selected_set_key(skill_id, set_index);
                     mods.extend(player_buff_stat_modifiers(
                         ctx,
                         &es,
@@ -595,8 +605,8 @@ pub fn buff_skill_specs(
                     // domain into enemy-side modifiers, applied by buff_pass's
                     // CurseEffect multiplier zone + Condition:Effective before entering
                     // the enemy db, at the effect's level.
-                    let es = effect_stats(skill_id, level, gem.quality, gem.stat_set_index);
-                    let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
+                    let es = effect_stats(skill_id, level, gem.quality, set_index);
+                    let set_key = data.selected_set_key(skill_id, set_index);
                     if is_mark {
                         let mods = super::buffs::mark_self_buff_modifiers(skill_id, &es);
                         if !mods.is_empty() {
@@ -893,11 +903,8 @@ fn curse_local_effect_scale(
     };
     let (mut inc, mut more) = (0.0, 1.0);
     let mut absorb = |effect_id: &str, level: u32, quality: u32, set_index: Option<u32>| {
-        let mut es = data.effect_stats(effect_id, level, quality, set_index);
-        if use_alt_quality {
-            es.quality
-                .extend(data.alt_quality_stats(effect_id, quality));
-        }
+        let es =
+            data.effect_stats_with_quality(effect_id, level, quality, set_index, use_alt_quality);
         let set_key = data.selected_set_key(effect_id, set_index);
         for ds in es.merged() {
             if ds.value == 0.0 {
@@ -914,7 +921,10 @@ fn curse_local_effect_scale(
             more *= dm;
         }
     };
-    absorb(skill_id, curse_level, gem.quality, gem.stat_set_index);
+    let set_index = (skill_id == gem.skill_id)
+        .then_some(gem.stat_set_index)
+        .flatten();
+    absorb(skill_id, curse_level, gem.quality, set_index);
     let judgement = group_judgement(group, data, skill_id);
     for sup in &judgement.compatible {
         let host = &group.gems[sup.gem_index];
@@ -988,11 +998,18 @@ pub fn support_buff_specs(
             let set_index = (gem.skill_id == effect_id)
                 .then_some(gem.stat_set_index)
                 .flatten();
-            let mut es = data.effect_stats(&effect_id, gem.gem_level, gem.quality, set_index);
-            if use_alt_quality {
-                es.quality
-                    .extend(data.alt_quality_stats(&effect_id, gem.quality));
-            }
+            ctx.record_quality_issues(
+                &effect_id,
+                gem.quality,
+                data.quality_applicability_issues(&effect_id, gem.quality, use_alt_quality),
+            );
+            let es = data.effect_stats_with_quality(
+                &effect_id,
+                gem.gem_level,
+                gem.quality,
+                set_index,
+                use_alt_quality,
+            );
             let set_key = data.selected_set_key(&effect_id, set_index);
             let mods = player_buff_stat_modifiers_by_stat(
                 ctx,
@@ -1082,6 +1099,7 @@ pub fn warcry_skill_specs(
     groups: &dyn SocketGroupView,
     data: &dyn WarcryEnv,
     gem_level_bonuses: &[GemPropertyBonus],
+    use_alt_quality: bool,
 ) -> Vec<WarcrySpec> {
     use std::collections::HashSet;
     let mut specs = Vec::new();
@@ -1108,9 +1126,20 @@ pub fn warcry_skill_specs(
                     group.gems,
                     data,
                 );
-            let es = data.effect_stats(&gem.skill_id, level, gem.quality, gem.stat_set_index);
+            let es = data.effect_stats_with_quality(
+                &gem.skill_id,
+                level,
+                gem.quality,
+                gem.stat_set_index,
+                use_alt_quality,
+            );
+            ctx.record_quality_issues(
+                &gem.skill_id,
+                gem.quality,
+                data.quality_applicability_issues(&gem.skill_id, gem.quality, use_alt_quality),
+            );
             let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
-            let stats: Vec<pobr_data::catalog::SkillDamageStat> = es.all().cloned().collect();
+            let stats = es.merged();
             if crate::dbg_env!("POBR_DBG_WARCRY").is_some() {
                 eprintln!(
                     "[POBR_DBG_WARCRY] specs {} level={level} q={} set_key={set_key:?} stats={:?}",
@@ -1122,15 +1151,23 @@ pub fn warcry_skill_specs(
                         .collect::<Vec<_>>()
                 );
             }
-            let mut mods = mapped_stat_modifiers(
+            let mut mods = crate::skill_env::mapped_effect_stat_modifiers(
                 ctx,
-                &stats,
-                SourceKind::SkillGem,
-                &gem.skill_id,
+                &es,
+                SourceId::new(SourceKind::SkillGem, &gem.skill_id),
                 &gem.skill_id,
                 set_key.as_deref(),
+                gem.quality,
             );
-            mods.extend(support_modifiers(ctx, &group, data, &gem.skill_id));
+            mods.extend(support_modifiers_observed(
+                ctx,
+                &group,
+                data,
+                &gem.skill_id,
+                gem.stat_set_index,
+                use_alt_quality,
+                None,
+            ));
             if let Some(ms) = effect.cast_time {
                 mods.push(
                     Modifier::number("WarcryCastTime", ModType::Base, f64::from(ms) / 1000.0)
@@ -1214,7 +1251,7 @@ pub fn exposure_support_modifiers(
             let set_index = (gem.skill_id == effect_id)
                 .then_some(gem.stat_set_index)
                 .flatten();
-            // Quality passed as 0, matching support_modifiers's semantics (supports have no quality table entries).
+            // Current quality-bearing support owners have no exposure-effect stats.
             let stats = data.effect_stats(&effect_id, gem.gem_level, 0, set_index);
             let set_key = data.selected_set_key(&effect_id, set_index);
             mods.extend(
@@ -1268,7 +1305,7 @@ fn hosts_exposure(
         )
         || judgement.compatible.iter().any(|sup| {
             let host = &group.gems[sup.gem_index];
-            // Quality passed as 0, matching support_modifiers's semantics.
+            // Current quality-bearing support owners have no exposure-infliction stats.
             let set_index = support_stat_set_index(sup, group.gems);
             let sup_stats = data.effect_stats(&sup.effect_id, host.gem_level, 0, set_index);
             let sup_key = data.selected_set_key(&sup.effect_id, set_index);

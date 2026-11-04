@@ -1544,8 +1544,13 @@ fn unselected_set_global_merge_does_not_inject_flame_wall_payloads() {
         "FlameWallPlayer should have an unselected set (set 2 = projectile buff form)"
     );
     let group = SocketGroup::new().with_gem_skill("FlameWallPlayer", 20);
-    let mods =
-        unselected_set_global_modifiers(&mut test_context(&data), &group, &data, "FlameWallPlayer");
+    let mods = unselected_set_global_modifiers(
+        &mut test_context(&data),
+        &group,
+        &data,
+        "FlameWallPlayer",
+        false,
+    );
     assert!(
         mods.is_empty(),
         "Flame Wall must use its scoped buff path, got generic mods {mods:?}"
@@ -1557,10 +1562,75 @@ fn unselected_set_global_merge_does_not_inject_flame_wall_payloads() {
             &mut test_context(&data),
             &empty_group,
             &data,
-            "FlameWallPlayer"
+            "FlameWallPlayer",
+            false,
         )
         .is_empty()
     );
+}
+
+#[test]
+fn unselected_global_additional_quality_reaches_mapper_and_deduplicates() {
+    use pobr_data::catalog::{QualityStat, QualityStatSetScopes};
+    let mut data = repo_data().clone();
+    data.gem_quality_stats.insert(
+        "GasArrowPlayer".into(),
+        vec![QualityStat {
+            stat: "synthetic_quality_global".into(),
+            per_quality_rate: 1.0,
+            alt: true,
+        }],
+    );
+    data.stat_map_catalog = Some(std::sync::Arc::new(StatMapCatalog::new(
+        serde_json::from_str(
+            r#"{
+        "global": { "synthetic_quality_global": { "mods": [{
+            "kind": "mod", "name": "Damage", "mod_type": "INC",
+            "tags": [{ "type": "GlobalEffect", "effectType": "Buff" }]
+        }] } }
+    }"#,
+        )
+        .unwrap(),
+    )));
+    for selected_also in [false, true] {
+        data.gem_quality_metadata.unapplied_stat_set_scopes.insert(
+            "GasArrowPlayer".into(),
+            QualityStatSetScopes {
+                main: Some(vec![]),
+                alt: Some(if selected_also { vec![0, 2] } else { vec![2] }),
+            },
+        );
+        for quality in [0, 20] {
+            let group = SocketGroup::new().with_gem_skill_quality("GasArrowPlayer", 20, quality);
+            for alt in [false, true] {
+                let mut context = test_context(&data);
+                context.mode = StatMapMode::Compare;
+                let mods = unselected_set_global_modifiers(
+                    &mut context,
+                    &group,
+                    &data,
+                    "GasArrowPlayer",
+                    alt,
+                );
+                assert!(
+                    mods.is_empty(),
+                    "GlobalEffect translation remains unsupported"
+                );
+                let observations: Vec<_> = context
+                    .compare_records
+                    .iter()
+                    .filter(|row| row.stat == "synthetic_quality_global")
+                    .collect();
+                let expected = usize::from(quality > 0 && alt && !selected_also);
+                assert_eq!(observations.len(), expected);
+                if expected == 1 {
+                    assert_eq!(observations[0].classification, "unsupported");
+                    assert!(observations[0].label.ends_with("set3.unselected-global"));
+                    assert!(observations[0].detail.contains("GlobalEffect"));
+                }
+            }
+        }
+    }
 }
 
 #[test]
