@@ -215,6 +215,10 @@ run = "pnpm --dir web"
 description = "Install the locked Playwright browser and required OS libraries (explicit opt-in)"
 run = ["pnpm --dir web install --frozen-lockfile", "pnpm --dir web exec playwright install --with-deps chromium"]
 
+[tasks."i18n:check"]
+description = "Check Web interface copy (web/src/locales): every registered language has the en-US key set, placeholders and a valid fallback list"
+run = "node web/scripts/check-locales.mjs"
+
 [tasks."web:e2e"]
 description = "Run Playwright with automatically prepared browser dependencies; requires current dist/WASM/data"
 depends = ["setup:e2e"]

@@ -4,10 +4,9 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { AttributeChoice, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { formatApiError } from '../../api/error';
-import { statNameLabel, type Lang } from '../../lib/i18n';
+import { messages, statNameLabel, type Lang } from '../../lib/i18n';
 import { passivePlanningContext, withTravelAttributes } from '../../lib/passivePlanner';
 import { evaluateNodePower, filterPowerRows, powerCandidates, rankPowerRows, type PowerRow, type PowerSort } from '../../lib/nodePower';
-import { powerLabels } from './nodePowerLabels';
 import { passiveNodeMatches, passiveNodeName, type PassiveNodeNames } from './passiveNodeNames';
 import './nodePower.css';
 
@@ -24,7 +23,7 @@ interface Props {
 const PAGE_SIZE = 50;
 
 export function NodePowerTable({ session, nodes, nodeNames, lang, stat, stats, onStat, onFocus }: Props) {
-  const t = powerLabels[lang];
+  const t = messages(lang, 'nodePower');
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [small, setSmall] = useState(false);

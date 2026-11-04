@@ -8,6 +8,7 @@ import { words, pageNames } from './text';
 import { ROUTES, type Route } from './routes';
 import type { Preferences } from './preferences';
 import { displayModeOptions, type DisplayMode } from '../lib/displayModes';
+import { LANGS, messages } from '../lib/i18n';
 
 export function Settings({ open, onOpenChange, preferences: p, onChange, version }: {
   open: boolean; onOpenChange: (open: boolean) => void; preferences: Preferences; onChange: (next: Preferences) => void; version: string;
@@ -35,7 +36,7 @@ export function Settings({ open, onOpenChange, preferences: p, onChange, version
       </fieldset>
       <details className="display-page-overrides"><summary>{w('Customize individual pages', '为个别页面单独设置', '個別頁面設定')}{Object.keys(p.pageDisplayModes).length > 0 && ` (${Object.keys(p.pageDisplayModes).length})`}</summary>
         {ROUTES.map(page => <div className="display-page-option" key={page}>
-          <Label htmlFor={`display-page-${page}`}>{pageNames[p.lang][page]}</Label>
+          <Label htmlFor={`display-page-${page}`}>{pageNames(p.lang)[page]}</Label>
           <AppSelectControl id={`display-page-${page}`} value={p.pageDisplayModes[page] ?? 'inherit'} onChange={event => setPageMode(page, event.target.value)}>
             <option value="inherit">{w('Follow global setting', '跟随全局', '跟隨全域設定')}</option>
             {modes.map(mode => <option key={mode.value} value={mode.value}>{mode.label}</option>)}
@@ -48,7 +49,7 @@ export function Settings({ open, onOpenChange, preferences: p, onChange, version
           <Button key={theme} variant={p.theme === theme ? 'default' : 'outline'} aria-pressed={p.theme === theme} onClick={() => onChange({ ...p, theme })}><Icon />{label}</Button>)}
       </div></fieldset>
       <div><Label htmlFor="shell-language">{w('Language', '界面语言', '介面語言')}</Label><AppSelectControl id="shell-language" value={p.lang} onChange={e => onChange({ ...p, lang: e.target.value as Preferences['lang'] })}>
-        <option value="zh-CN">简体中文</option><option value="zh-TW">繁體中文</option><option value="en-US">English</option>
+        {LANGS.map(lang => <option key={lang} value={lang}>{messages(lang, 'language').name}</option>)}
       </AppSelectControl></div>
       <div><Label htmlFor="shell-font">{w('Typeface', '字体', '字體')}</Label><AppSelectControl id="shell-font" value={p.font} onChange={e => onChange({ ...p, font: e.target.value as Preferences['font'] })}>
         <option value="system">{w('System default', '系统默认', '系統預設')}</option><option value="sans">{w('Sans serif', '无衬线', '無襯線')}</option><option value="serif">{w('Serif', '衬线', '襯線')}</option>

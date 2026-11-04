@@ -246,6 +246,13 @@ panels and shared shadcn/Radix controls. `src/hooks/useBuildSession.ts` manages 
 imports and calculations. `src/api/` contains JSON types, generated requests and
 WASM/mock backends; `src/lib/` holds helpers, `src/fixtures/` mock data and
 `src/styles/` shared styles. Use shared controls and application dialogs for new UI.
+Interface copy lives in `src/locales/<lang>.json` (namespaces of keyed strings, read
+through `t`/`messages` in `src/lib/i18n.ts`). `en-US.json` is the key set, and every
+language registered in `src/locales/index.ts` ships, so `mise run i18n:check` requires
+it to be complete, with the same `{placeholders}`. A file may list `language.fallback`
+(zh-TW lists zh-CN); a key it still omits resolves through that list, then English.
+While translating a new language, `node web/scripts/check-locales.mjs --allow-missing`
+reports its gaps as warnings. Game names and modifier text come from the localization data.
 
 The backend normally runs in a dedicated module Worker with one engine and ordered
 calls. Startup failure falls back to the page thread; `?engine=main` or build-time
