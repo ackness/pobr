@@ -96,7 +96,7 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 
 | 成员 | 职责 |
 |------|------|
-| `crates/pobr-data` | 纯数据定义（入库 JSON 格式在 `catalog/`，另有 damage / build_config / display_stat / stat / monster 等类型），不含计算或 I/O，是所有 crate 的底层 |
+| `crates/pobr-data` | 纯数据定义（入库 JSON 格式在 `catalog/`，另有 damage / build_config / display_stat / stat / monster 等类型，以及数据仓库 adapter 也用的纯文本工具 `text`），不含计算或 I/O，是所有 crate 的底层 |
 | `crates/pobr-core` | Modifier 解析、存储、汇总、计算与来源归因；不做 I/O |
 | `crates/pobr-gamedata` | 运行时数据加载器；计算所需游戏数据的文件 I/O 集中在此：`GameData::new(version_dir)` 按域懒加载，WASM 用 `GameData::from_memory` |
 | `crates/pobr-i18n` | 与语言无关的游戏文本引擎：`LocalePack` 读入一种语言的翻译库语言包（调用方传入内容，不做 I/O），回退链由语言包 `_meta.json` 的 `fallback` 声明；`lines::LineParser`（目标语言词条行 → 英文规范行）与 `LineRenderer`（英文 → 目标语言显示）按语言包模板匹配，是否为目标语言也由模板与名词判断；只依赖 `pobr-data` |
