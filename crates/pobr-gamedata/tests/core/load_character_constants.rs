@@ -1,16 +1,12 @@
-//! `base/character_constants.json` load + migration-invariant regression.
+//! `base/character_constants.json` load regression.
 //!
 //! Assertion strategy:
-//! - The 10 values with a pobr Rust source of truth
-//!   (`crates/pobr-core/src/character.rs`'s consts) are asserted
-//!   value-for-value against literals matching the source of truth —
-//!   pobr-gamedata doesn't depend on pobr-core, so it can't reference the
-//!   private consts directly; the source-of-truth values are hardcoded
-//!   in the test with the const name noted, and this test goes red if the
-//!   source of truth's value changes.
+//! - The shipped JSON equals `CharacterConstantsDef::default()`, the fallback
+//!   used by paths without GameData.
+//! - The 10 derivation constants are asserted value-for-value, with the
+//!   documented level-99 / level-1 oracle values recomputed below.
 //! - The 3 vendor-only values are spot-checked, with the value hardcoded
-//!   and the vendor file:line referenced (commit `2df5a74`, see
-//!   `vendor/.pob2-version.txt`).
+//!   and the vendor file:line referenced (commit `2df5a74`).
 
 use pobr_gamedata::{GameData, repo_data_root};
 
@@ -36,31 +32,41 @@ fn manifest_registers_character_constants_in_base() {
     );
 }
 
-/// Value-for-value assertion = pobr-core/src/character.rs's existing
-/// consts (a migration invariant: the JSON must equal the existing Rust
-/// values; aligning behavior with vendor is a separate follow-up commit).
+/// Paths without GameData use `CharacterConstantsDef::default()`; it must
+/// equal the shipped table so both paths calculate the same values.
 #[test]
-fn values_match_pobr_core_character_rs_constants() {
+fn default_matches_shipped_character_constants() {
+    use pobr_data::catalog::character_constants::CharacterConstantsDef;
+
+    let shipped = game_data()
+        .character_constants()
+        .expect("character_constants should load");
+    assert_eq!(shipped, CharacterConstantsDef::default());
+}
+
+/// Value-for-value assertion of the derivation constants.
+#[test]
+fn values_match_character_derivation_constants() {
     let c = game_data()
         .character_constants()
         .expect("character_constants should load");
 
-    // Life: character.rs's BASE_LIFE_CONSTANT / LIFE_PER_LEVEL / LIFE_PER_STRENGTH
+    // Life
     assert_eq!(c.base_life_constant, 16.0);
     assert_eq!(c.life_per_level, 12.0);
     assert_eq!(c.life_per_strength, 2.0);
 
-    // Mana: character.rs's BASE_MANA_CONSTANT / MANA_PER_LEVEL / MANA_PER_INTELLIGENCE
+    // Mana
     assert_eq!(c.base_mana_constant, 30.0);
     assert_eq!(c.mana_per_level, 4.0);
     assert_eq!(c.mana_per_intelligence, 2.0);
 
-    // Accuracy: character.rs's BASE_ACCURACY_CONSTANT / ACCURACY_PER_LEVEL / ACCURACY_PER_DEXTERITY
+    // Accuracy
     assert_eq!(c.base_accuracy_constant, -6.0);
     assert_eq!(c.accuracy_per_level, 6.0);
     assert_eq!(c.accuracy_per_dexterity, 6.0);
 
-    // Evasion: character.rs's BASE_EVASION
+    // Evasion
     assert_eq!(c.base_evasion, 7.0);
 }
 
@@ -79,7 +85,7 @@ fn vendor_only_per_level_attributes_match_vendor() {
 }
 
 /// Recomputes the derived formulas against the documented oracle values
-/// (character.rs's module doc notes: L99 Life base 1204 = 12×99+16, Mana
+/// (L99 Life base 1204 = 12×99+16, Mana
 /// base 426 = 4×99+30; L1 Accuracy base 0 = 6×1−6) — confirms feeding this
 /// table's values into the existing formulas produces the same output.
 #[test]

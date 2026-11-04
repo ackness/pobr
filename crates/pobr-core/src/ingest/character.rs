@@ -22,42 +22,6 @@ use pobr_data::prelude::*;
 
 use crate::Modifier;
 
-/// Fallback anchor for the source of truth (a migration invariant, now downgraded to test-only use).
-///
-/// The values have been moved out to `data/<version>/base/character_constants.json`
-/// (schema = `pobr_data::catalog::character_constants::CharacterConstantsDef`),
-/// whose `Default` is value-equal to this set of constants (locked by this
-/// file's tests; pobr-data's dependency direction disallows referencing back,
-/// so `Default` is hardcoded as literals and anchored by the test here).
-/// **Do not add new calc-path consumers** — derivation formulas must always
-/// read the injected `CharacterConstantsDef`.
-#[allow(dead_code)] // Only consumed by the cfg(test) lock test; no reference from the lib target (kept intentionally).
-mod legacy_anchor {
-    /// Character's innate base life constant (PoB2 `Life BASE 12 × Level + 16`).
-    pub(super) const BASE_LIFE_CONSTANT: f64 = 16.0;
-    /// Max life granted per player level.
-    pub(super) const LIFE_PER_LEVEL: f64 = 12.0;
-    /// Max life granted per point of Strength.
-    pub(super) const LIFE_PER_STRENGTH: f64 = 2.0;
-
-    /// Character's innate base mana constant (PoB2 `Mana BASE 4 × Level + 30`).
-    pub(super) const BASE_MANA_CONSTANT: f64 = 30.0;
-    /// Max mana granted per player level.
-    pub(super) const MANA_PER_LEVEL: f64 = 4.0;
-    /// Max mana granted per point of Intelligence.
-    pub(super) const MANA_PER_INTELLIGENCE: f64 = 2.0;
-
-    /// Character's innate accuracy constant (PoB2 `Accuracy BASE 6 × Level − 6`).
-    pub(super) const BASE_ACCURACY_CONSTANT: f64 = -6.0;
-    /// Accuracy granted per player level.
-    pub(super) const ACCURACY_PER_LEVEL: f64 = 6.0;
-    /// Accuracy granted per point of Dexterity.
-    pub(super) const ACCURACY_PER_DEXTERITY: f64 = 6.0;
-
-    /// Character's innate base evasion (PoB2 `characterConstants.base_evasion_rating`).
-    pub(super) const BASE_EVASION: f64 = 7.0;
-}
-
 /// PoE2 character base value entry point.
 ///
 /// Attributes should be passed in as totals (class starting values + tree +
@@ -141,29 +105,4 @@ fn base_modifier(stat: &str, value: f64, label: &str) -> Modifier {
     ))
     .with_raw_text(label);
     Modifier::number(stat, ModType::Base, value).with_origin(origin)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::legacy_anchor::*;
-    use super::*;
-
-    /// Migration invariant lock: the injected domain's `Default` fallback must
-    /// be value-equal to this module's source-of-truth constants (pobr-data's
-    /// dependency direction can't reference the source of truth back, so this
-    /// test is what locks it — changing the source of truth fails this test).
-    #[test]
-    fn default_constants_match_legacy_character_source() {
-        let c = CharacterConstantsDef::default();
-        assert_eq!(c.base_life_constant, BASE_LIFE_CONSTANT);
-        assert_eq!(c.life_per_level, LIFE_PER_LEVEL);
-        assert_eq!(c.life_per_strength, LIFE_PER_STRENGTH);
-        assert_eq!(c.base_mana_constant, BASE_MANA_CONSTANT);
-        assert_eq!(c.mana_per_level, MANA_PER_LEVEL);
-        assert_eq!(c.mana_per_intelligence, MANA_PER_INTELLIGENCE);
-        assert_eq!(c.base_accuracy_constant, BASE_ACCURACY_CONSTANT);
-        assert_eq!(c.accuracy_per_level, ACCURACY_PER_LEVEL);
-        assert_eq!(c.accuracy_per_dexterity, ACCURACY_PER_DEXTERITY);
-        assert_eq!(c.base_evasion, BASE_EVASION);
-    }
 }
