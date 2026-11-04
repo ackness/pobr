@@ -236,10 +236,9 @@ dist、WASM 包和同步数据。不编译、不删除、不跟随符号链接�
 本仓库沿用已有 wrapper，不安装缓存服务或修改全局设置。
 
 `build-wasm` 使用 `wasm-release`：继承 release 的速度优化，启用 ThinLTO 和单个 codegen unit。
-这只影响 WASM 发布构建，不改变日常 dev/test 缓存。固定 locale TOML 在主机构建时解析成字符串表，
-TOML parser 不进入 WASM；不要在运行时重新解析这些静态文件。
+这只影响 WASM 发布构建，不改变日常 dev/test 缓存。
 
-WASM 构建记录校验 Rust 源码、嵌入语言文件、共享配置 JSON、manifest/lockfile、JSON 契约、
+WASM 构建记录校验 Rust 源码、共享配置 JSON、manifest/lockfile、JSON 契约、
 工具版本、相关环境/Cargo 配置，以及绑定哈希与实际 schema。
 输入和产物未变时跳过 wasm-pack，保留原编译 commit 与 dirty 标记；
 缺失、损坏或旧格式记录需要一次正常重建。普通 UI、文档和运行时游戏数据修改不会触发 WASM 重编译；
@@ -334,7 +333,7 @@ PR 不在 workflow 层过滤文档，以免必需检查永久 pending：只运�
 自动数据采用的[完整契约](../pipeline/latest/latest-data.md)另要求专用App／PAT凭据、远端严格且含管理员的必需`PR gate`保护，以及当前两owner完整发布frontier。默认token的PR事件可能仍需执行批准；建PR或dispatch成功不能当作CI通过。缺凭据／保护或任一gate未完成时保持原锁和CURRENT；本地文件不等于托管设置已启用。
 
 完整 CI 包括 fmt/Clippy（含诊断 features）、workspace tests/doctest、parity/reference 退步断言、
-已准备数据上派生规则的逐字节复现与解析覆盖率棘轮、i18n、数据兼容、Web 类型/单测/Worker、真实 WASM 契约与打包计算。
+已准备数据上派生规则的逐字节复现与解析覆盖率棘轮、数据兼容、Web 类型/单测/Worker、真实 WASM 契约与打包计算。
 缺少 vendor 的项目会明确跳过，不能将其描述为已验收。
 它不等同于本地 `mise run gate` 的额外 accuracy 报告和全部本地输入。
 E2E 只在显式手动输入时运行；交互风险需要时选择相关本地 spec 或云端 E2E。
@@ -399,7 +398,7 @@ Dependabot 每日分组检查 Actions 更新；Cargo、Rust toolchain、Web 与�
 
 ## 发布与部署
 
-应用版本由 `[workspace.package].version` 管理；七个基础库与 `data/CURRENT` 独立版本。
+应用版本由 `[workspace.package].version` 管理；六个基础库与 `data/CURRENT` 独立版本。
 更新应用版本后用 `mise exec -- cargo metadata --format-version 1 > /dev/null` 刷新锁文件。
 [release-policy.py](../devs/scripts/release-policy.py) 按 SemVer 判断升级，检查所有继承 workspace
 版本的应用/工具锁版本；远端 tag 查询失败会报错，不能当作“tag 不存在”。

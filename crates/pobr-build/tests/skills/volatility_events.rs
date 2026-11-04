@@ -317,8 +317,6 @@ fn volatility_details_rebuild_values_and_retain_source_and_config_wiring() {
         ),
         &data,
     );
-    let labels_en = include_str!("../../../pobr-i18n/locales/en-US/stats.toml");
-    let labels_tw = include_str!("../../../pobr-i18n/locales/zh-TW/stats.toml");
     let labels_web = include_str!("../../../../web/src/lib/detailLabels.ts");
     for id in STATS {
         let entry = pobr_core::display_catalog()
@@ -326,7 +324,7 @@ fn volatility_details_rebuild_values_and_retain_source_and_config_wiring() {
             .find(|s| s.id.as_str() == *id)
             .unwrap();
         assert!(entry.pob_key.is_none());
-        assert!(labels_en.contains(&format!("{id} =")) && labels_tw.contains(&format!("{id} =")));
+        assert!(labels_web.contains(&format!("{id}:")), "{id}");
         let detail = pobr_build::breakdown::detail::stat_detail(&session, id).unwrap();
         if *id == "VolatilityRefreshChance" {
             assert_eq!(
