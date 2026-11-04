@@ -39,7 +39,7 @@ class RuntimePackTests(unittest.TestCase):
         self.write("data/overlay-common/special_mods.json", b'{"_meta":{"audit":true},"entries":[]}')
         _, runtime_identity = bundle.data_inputs(self.data, self.version)
         self.lock = self.write("data.lock.json", pack.raw_json(
-            {"schema": "pobr-data-lock/v1", "target": self.target, "locale": "zh-CN",
+            {"schema": "pobr-data-lock/v2", "target": self.target, "locale": "zh-CN",
              "runtime_identity": runtime_identity}))
         self.output = self.root / "candidate"
 

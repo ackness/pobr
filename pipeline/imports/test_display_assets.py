@@ -34,7 +34,7 @@ class DisplayAssetsTests(unittest.TestCase):
                          "catalog_sha256": bundle.sha256(catalog), "provenance": provenance}
         self.lock = {"target": {"game": "poe2", "game_patch": "9.1", "realm": "international"},
                      "runtime_identity": receipt["runtime_identity"],
-                     "support_display": {"repository": "ackness/poe2-zh-cn-stats", "publication": "published",
+                     "support_display": {"repository": "ackness/poe2-zh-cn-stats", 
                          "revision": "a" * 40, "path": "display/manifest.json",
                          "catalog_sha256": bundle.sha256(catalog), "source_data_version": "8.1"}}
         self.lock_path, self.cache = self.root / "lock.json", self.root / "downloads"
@@ -112,7 +112,7 @@ class DisplayAssetsTests(unittest.TestCase):
                                   "files": {"catalog.json": self.pin(raw)}})
         archive = pack.archive_bytes({"manifest.json": manifest, "catalog.json": raw})
         self.lock["test_fixtures"] = {"repository": "ackness/repoe", "revision": "a" * 40,
-            "publication": "published", "path": "fixtures.zip", **self.pin(archive),
+            "path": "fixtures.zip", **self.pin(archive),
             "manifest": self.pin(manifest), "expanded_bytes": len(raw) + len(manifest), "files": ["catalog.json"]}
         self.lock_path.write_bytes(bundle.encoded(self.lock))
         return archive, raw

@@ -1,9 +1,10 @@
 """Temporarily compose pinned external game/language data for builds and real tests.
 
 `pipeline/data.lock.json` is PoBR's only data declaration: each owner artifact
-is a tagged commit plus path and SHA-256. Data owners publish the parts; PoBR
-never creates a data Git ref or projects data. Downloads are hash-addressed,
-disposable inputs.
+is a GitHub Release asset (repository + tag + asset name) or, for artifacts
+locked before Releases, a tagged commit plus path, always with bytes/SHA-256.
+Data owners publish the parts; PoBR never creates a data Git ref or projects
+data. Downloads are hash-addressed, disposable inputs.
 """
 
 import argparse
@@ -17,14 +18,14 @@ import tempfile
 from pipeline.runtime import data_bundle as bundle
 from pipeline.runtime import data_snapshot
 from pipeline.imports import data_imports
-from pipeline.imports.data_imports import GitInputs, acquire, encoded, pinned, regular, require, unpack, write
+from pipeline.imports.data_imports import (OwnerInputs, acquire, encoded, pinned, regular, require, source_address,
+                                           unpack, validate_pin, write)
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA_LOCK = ROOT / "pipeline/data.lock.json"
-DATA_LOCK_SCHEMA = "pobr-data-lock/v1"
+DATA_LOCK_SCHEMA = "pobr-data-lock/v2"
 PART_SCHEMA = "pobr-build-data-part/v1"
 OWNERS = {"game": "ackness/repoe", "language": "ackness/poe2-zh-cn-stats"}
-TAG = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*")
 CONTRACT_SOURCE = ROOT / "crates/pobr-data/src/lib.rs"
 # Snapshot manifests locked before packages declared a data contract. They keep
 # preparing as pinned; any other snapshot must declare this build's contract.
@@ -52,24 +53,21 @@ def require_contract(snapshot, digest, expected=None):
             f"{expected}: lock a package whose producer pins pobr-data at a contract/{expected}.<m> tag")
 
 
-def validate_tag(spec):
-    """A tag names and keeps alive the pinned commit; fetches still use the revision."""
-    tag = spec.get("tag")
-    require(isinstance(tag, str) and TAG.fullmatch(tag) and ".." not in tag
-            and not tag.endswith(".lock"), "Every external data artifact needs a safe owner tag")
-    return tag
-
-
-def validate_owner_publications(value):
-    require(isinstance(value, dict) and set(value) == set(OWNERS.values()), "Both owner publications required")
-    from pipeline.imports.data_imports import validate_pin
-    for entry in value.values():
-        require(isinstance(entry, dict) and type(entry.get("sequence")) is int and entry["sequence"] > 0
-                and re.fullmatch(r"[a-f0-9]{40}", entry.get("index_revision", "")), "Invalid owner publication")
-        descriptor = entry.get("descriptor")
-        validate_pin(descriptor)
-        require(re.fullmatch(r"[a-f0-9]{40}", descriptor.get("revision", ""))
-                and str(descriptor.get("path", "")).startswith("publication/"), "Invalid owner publication descriptor")
+def validate_source(spec, repository):
+    """An owner artifact: a Release asset, or a Git path at a tagged commit."""
+    require(spec.get("repository") == repository, "Data artifact repository violates ownership")
+    data_imports.valid_tag(spec.get("tag"))
+    if "revision" not in spec:
+        source_address(spec)
+        if "receipt" in spec:
+            validate_pin(spec["receipt"])
+        require(spec.get("producer_commit") is None or re.fullmatch(r"[a-f0-9]{40}", spec["producer_commit"]),
+                "Invalid producer commit")
+        require(spec.get("contract_version") is None or type(spec["contract_version"]) is int,
+                "Invalid producer contract version")
+    else:
+        bundle.relative_path(spec.get("path", ""))
+        source_address(spec, spec["path"])
 
 
 def safe_directory(path):
@@ -89,21 +87,22 @@ def member_kind(name, version):
     return "language" if parts[2] == "i18n" else "game"
 
 
+# Publisher-internal state (publication indexes, descriptor chains, lock
+# generations) lives in the owners' Release lists, not in the lock.
+RETIRED_LOCK_FIELDS = frozenset({"generation", "previous_id", "owner_publications", "crafting"})
+
+
 def validate(lock):
-    from pipeline.imports.data_imports import validate_pin
     require(lock.get("schema") == DATA_LOCK_SCHEMA, "Unknown build data lock")
     # The RePoE game part carries the crafting catalog; PoBR projects nothing.
     require("crafting" not in lock, "Crafting facts are not a PoBR input; the game part carries the catalog")
-    require(type(lock.get("generation")) is int and lock["generation"] > 0
-            and (lock["generation"] == 1) == (lock.get("previous_id") is None)
-            and (lock.get("previous_id") is None or re.fullmatch(r"[a-f0-9]{64}", lock["previous_id"])),
-            "Invalid data lock generation")
+    require(not RETIRED_LOCK_FIELDS & set(lock), "Retired publisher state in the data lock")
     require(lock.get("locale") in ("zh-CN", "zh-TW"), "Invalid data lock locale")
     require(lock.get("release_id") is None or re.fullmatch(r"[a-f0-9]{64}", lock["release_id"]),
             "Invalid compact release identity")
-    validate_owner_publications(lock.get("owner_publications"))
     for spec in (*lock["packages"].values(), lock["support_display"], lock["test_fixtures"]):
-        validate_tag(spec)
+        require(isinstance(spec, dict) and "publication" not in spec, "Retired publication status in the data lock")
+        data_imports.valid_tag(spec.get("tag"))
     target = lock["target"]
     require(set(target) == {"game", "game_patch", "realm"} and target["game"] == "poe2"
             and re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", target["game_patch"])
@@ -120,15 +119,8 @@ def validate(lock):
                     "Invalid expanded data size")
         else:
             require(kind == "language", "Git file projection is language-only")
-        bundle.relative_path(spec["path"])
-        require(spec.get("publication") in ("pending", "local-only", "published"), "Invalid data publication status")
-        if spec["publication"] in ("published", "local-only"):
-            require(spec.get("repository") == OWNERS[kind], "Data package repository violates ownership")
-            from pipeline.imports.data_imports import git_address
-            git_address(spec, spec["path"])
-        else:
-            require(spec.get("repository") is None and spec.get("revision") is None,
-                    "Unpublished data must not invent a remote pin")
+        validate_source(spec, OWNERS[kind])
+        require(spec.get("format", "zip") == "zip" or "revision" in spec, "A Release asset is a ZIP part")
     require(isinstance(lock.get("shared_files"), dict), "Missing pinned local shared rules")
     for name, expected in lock["shared_files"].items():
         require(len(bundle.relative_path(name).parts) == 1 and name.endswith(".json"), "Invalid shared rule name")
@@ -137,11 +129,13 @@ def validate(lock):
 
 
 def prepare(lock_path, output, cache, shared_root=ROOT / "data/overlay-common",
-            offline=False, local_parts=None, fetcher=None):
+            offline=False, local_parts=None, fetcher=None, expect_identity=True):
     """Verify both owners before publishing a complete, exact schema-3 bundle.
 
-    Explicit local parts authenticate pending handoffs only. No path search or
-    tracked snapshot fallback occurs. Offline mode only uses authenticated cache.
+    Explicit local parts replace a download and must still match every pin. No
+    path search or tracked snapshot fallback occurs. Offline mode only uses
+    authenticated cache. `expect_identity=False` is for `data:bump`, which
+    computes the runtime identity of a candidate lock instead of checking it.
     """
     lock_raw = regular(lock_path)
     lock = bundle.decode(lock_raw)
@@ -155,7 +149,7 @@ def prepare(lock_path, output, cache, shared_root=ROOT / "data/overlay-common",
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".build-data-", dir=output.parent) as temporary:
         temp = Path(temporary)
-        fetcher = fetcher or GitInputs(temp / "git")
+        fetcher = fetcher or OwnerInputs(temp / "git")
         files = {}
         for kind, spec in lock["packages"].items():
             part = temp / kind
@@ -163,10 +157,7 @@ def prepare(lock_path, output, cache, shared_root=ROOT / "data/overlay-common",
                 # Retained language publication is already a pinned Git tree.
                 # Authenticate all evidence, but project only exact i18n bytes.
                 from pipeline.runtime.data_bundle import relative_path
-                from pipeline.imports.data_imports import validate_pin
                 local = Path(local_parts[kind]) if kind in local_parts else None
-                require(local is not None or spec["publication"] == "published",
-                        "Unpublished language package: explicit local handoff required")
                 def get(name, expected):
                     return pinned(regular(local / relative_path(name)), expected) if local is not None else acquire(
                         spec, (Path(spec["path"]).parent / name).as_posix(), expected, cache, offline, fetcher)
@@ -190,8 +181,7 @@ def prepare(lock_path, output, cache, shared_root=ROOT / "data/overlay-common",
                 if kind in local_parts:
                     archive = pinned(regular(local_parts[kind]), spec)
                 else:
-                    require(spec["publication"] == "published", f"Unpublished {kind} package: explicit local handoff required")
-                    archive = acquire(spec, spec["path"], spec, cache, offline, fetcher)
+                    archive = acquire(spec, spec.get("path"), spec, cache, offline, fetcher)
                 manifest = unpack(archive, spec, part)
                 require(manifest.get("schema") == PART_SCHEMA and manifest.get("kind") == kind
                         and manifest.get("target") == lock["target"], "External data part target/kind mismatch")
@@ -221,7 +211,8 @@ def prepare(lock_path, output, cache, shared_root=ROOT / "data/overlay-common",
         for name, raw in files.items():
             write(stage / name, raw)
         _, runtime_identity = bundle.snapshot_inputs(stage, version)
-        require(runtime_identity == lock["runtime_identity"], "Prepared runtime identity mismatch")
+        require(not expect_identity or runtime_identity == lock["runtime_identity"],
+                "Prepared runtime identity mismatch")
         receipt = bundle.document(version, files, runtime_identity)
         write(stage / "bundle.json", encoded(receipt))
         bundle.verify(stage, receipt["bundle_id"])
