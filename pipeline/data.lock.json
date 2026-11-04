@@ -8,17 +8,22 @@
   "locale": "zh-CN",
   "packages": {
     "game": {
+      "repository": "ackness/repoe",
+      "tag": "game/0.5.5.5-1",
+      "asset": "pobr-game-0.5.5.5.zip",
       "bytes": 4452510,
-      "expanded_bytes": 64774702,
+      "sha256": "3edc9b1eb3e813781ef63dcc7db5be29cfd6a15ef29b92773eaa7fb45082df4d",
       "manifest": {
         "bytes": 227054,
         "sha256": "6cd3cf5c1c1d2c28734bdf2429d03c3a82b52a073907bdbc97b4ce192525068f"
       },
-      "path": "handoff/quality-family-20261103/game-build-part.zip",
-      "repository": "ackness/repoe",
-      "revision": "99c14eb5a50876aae749cb9cd4850a04d8a997a1",
-      "tag": "handoff/quality-family-20261103",
-      "sha256": "3edc9b1eb3e813781ef63dcc7db5be29cfd6a15ef29b92773eaa7fb45082df4d"
+      "expanded_bytes": 64774702,
+      "receipt": {
+        "bytes": 41116,
+        "sha256": "3098c4c994bb611272c37fff7950aa5d9f2e90c5b566f3a6f4e5243591a9f2ca"
+      },
+      "producer_commit": "407ed52b2f3490e4bb32f6d55a45ae37870bc409",
+      "contract_version": 1
     },
     "language": {
       "format": "locale-git-files",
