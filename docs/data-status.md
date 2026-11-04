@@ -3,7 +3,7 @@
 最后核对：2026-11-03 UTC。本页原地更新：状态变化时直接改写，不追加历史。
 长期设计与规则见[数据架构](data-architecture.md)，命令见[数据管线](../pipeline/README.md)。
 
-## 当前数据锁与托管条件
+## 当前数据锁
 
 - 活动目标为 `0.5.5.5`／international。消费产物的 tag + commit + SHA-256、两个 owner 的 publication、
   期望 manifest、运行身份与 CI 候选包身份都以[数据锁](../pipeline/data.lock.json)为准。
@@ -14,12 +14,6 @@
 - 固定测试已在复核游戏成员差异后绑定新 manifest，召唤物和解析器的数值断言保持原值。
   数据采用需要同时检查这类显式测试绑定；必需的 `PR gate` 只证明快速检查通过。
 
-| 托管条件 | 状态 |
-| --- | --- |
-| master 严格 required `PR gate`，对管理员生效 | 已启用 |
-| 仓库 secret `DATA_SYNC_TOKEN` | 已配置；实测推分支和合并 PR 均返回 HTTP 403，需修正该 PAT 对 `ackness/pobr` 的写权限后重验 |
-| owner 发布后的 `owned-data-published` 通知 | 未接线：两个 owner 都不发送，按 6 小时轮询 |
-
 品质发布策略在 [RePoE #29](https://github.com/ackness/repoe/pull/29)，
 发布记录在 [RePoE #30](https://github.com/ackness/repoe/pull/30)。
 保留 tag `handoff/quality-family-20261103` 指向 `99c14eb5…`；
@@ -28,12 +22,8 @@
 真实 `data:prepare` 已完成从 runtime `5e785e78…` 到 `e73febc0…` 的同补丁刷新，
 保留两个本地维护文件。历史树可选属性修复及已发布的语言组合继续保留。
 
-数据采用必须同时通过准确提交的 PR 检查与完整 CI，再确认合并后的主线完整 CI。
-等待或未通过另一道门禁的自动回调
-现在记录 `candidate-awaiting-gates`，保持不采用；原验证的失败状态保留。
-凭据、来源与分支保护错误仍使同步作业失败。此前序号 4 已验证本地控制器双门禁采用、
-旧锁离线恢复及真实 WASM 的修改／保存重开；托管写权限尚未证明可用。
-真实新补丁迁移、线上回退与应用部署仍未验证。
+数据采用是一次人工审阅的锁修改：通过准确提交的 PR 检查与完整 CI，再确认合并后的主线完整 CI。
+自动同步控制器（`pipeline/latest/`）已删除。真实新补丁迁移、线上回退与应用部署仍未验证。
 
 ## 仓库改造进度
 
@@ -49,7 +39,7 @@
 | 删除入库的天赋树美术（`web/public/tree-art/`，533 个由 vendor 生成的文件）与生成任务；树查看器只画节点圆点和连线 | 已完成；节点美术以后作为独立功能接入 owner 发布 |
 | 特殊制作目录的投影（原 `pipeline/imports/crafting_inputs.py`）迁往 RePoE，由游戏 part 携带；数据锁去掉 `crafting` 输入 | 已完成（ackness/repoe#21，发布序号 3）；输出字节、快照与运行／release 身份不变 |
 | `data:prepare` 原位刷新完整的同补丁陈旧安装（保留本地 patch／维护文件），可用 `POBR_DATA_CACHE` 共享下载缓存 | 已完成 |
-| `data:latest resolve --new-target` 生成显式新补丁候选（`target_change` 收据，永非自动采用） | 已完成；尚无真实新补丁演练 |
+| 删除自动同步控制器 `pipeline/latest/` 与 `data-sync.yml`；换数据改为人工审阅的锁修改 | 已完成 |
 
 adapter 的 30 份 JSON 策略已完整迁入 RePoE，内容与迁移前一致；Cargo 依赖、工具链、任务与 CI 也由 RePoE 维护。
 PoBR 留下的 11 份自有 shared 规则／构筑配置属于引擎语义，继续随本仓库代码维护，不作为领域适配策略迁移。
@@ -69,7 +59,7 @@ PoBR 留下的 11 份自有 shared 规则／构筑配置属于引擎语义，继
 | 暗金 | 65 个授予技能关系中 4 个有显式变体绑定；RePoE 已从固定兼容目录投影 `unique_relations` 领域候选 | 关系候选尚未进入游戏 part，仍需 DTO、物品编辑与计算消费者接入；兼容关系不等于官方事实认证 | [暗金关系候选](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-uniques.md) |
 | PoB2 解释与 buff | 各域保留项已按字段登记 | parser／config／special、部分 stat 映射与关系仍用社区解释；buff 的 15 处引用上下文未证等价，保持 `guard_eligible=false` | [PoB2 依赖](pob2-differences.md#数据来源现状与退出顺序) |
 | 语言／显示 | 繁中与简中 FK v3 及紧凑侧表接入普通后端；两种语言各 1073 个 gem 中 1053 个源译、20 个英文阻断；职业与升华路由、打造名称、辅助说明、审核补译导入已接线 | 简中客户端补丁与服别未确认；真实审核补译 0 条；45 个候选是否有当前 UI 收益需先核 caller；国服数值未认证 | 翻译库的语言发布 |
-| 新发布与持续更新 | 序号 4 验证受控采用和旧锁离线恢复；序号 5 已发布真实历史树修复并验证同补丁安装刷新、组合与 WASM 消费 | 修正托管 PAT 写权限后重验无人值守写入；新快照须复核固定测试绑定，真实新补丁与线上回退仍待对应场景 | [最新发布同步](../pipeline/latest/latest-data.md) |
+| 新发布与持续更新 | 序号 5 已发布真实历史树修复并验证同补丁安装刷新、组合与 WASM 消费 | 新快照须复核固定测试绑定，真实新补丁与线上回退仍待对应场景 | [锁驱动更新](../pipeline/runtime/locked-update.md) |
 | 玩家验收与性能 | 完整 CI 用同次 WASM 消费当前数据锁的紧凑发行包；正式 Web 与独立 WASM 包仍发布逐文件快照，紧凑包仅 CI 验证 | 下一次新数据用普通 Web 入口验证导入、技能／辅助、装备／打造、加点、保存重开与回滚；在目标设备测冷加载、首次计算、内存与包体 | [WASM 测量](wasm-package.md#runtime-performance-comparison) |
 
 `0.5.5.5` 品质来源核对：原始 429 个 owner（普通 442／额外 273 条）中，当前发布 424 个（437／273 条、340 个不同 stat ID）；已发布向量的 ID、顺序、倍率、通道和全部 82 条作用域记录均与固定原始表一致。`AddTypes`／`AddMinionTypes` 在本批 429 个 owner 中均为空，4 个辅助品质 owner 的作用域也均为空。原始 1191 个宝石投影为 1120 个，71 个省略项均标记为 DNT 占位，已发布宝石关系逐项一致。
@@ -82,8 +72,7 @@ PoBR 留下的 11 份自有 shared 规则／构筑配置属于引擎语义，继
 
 ## 近期顺序
 
-1. 修正 `DATA_SYNC_TOKEN` 对 `ackness/pobr` 的写权限；下一次真实 owner 发布重验托管提案与采用。
-   真实新补丁和线上回退仍需对应场景，不重复登记 bootstrap 或制造空序号更新。
+1. 下一次真实 owner 发布按人工改锁流程采用；真实新补丁和线上回退仍需对应场景。
 2. 对影响现有 BD 的 charm、actor、描述与分支问题，先复用已有原料和诊断补语义或精确资源，再做最小的消费者修改。
 3. 对新数据锁补普通 Web 流程验收；翻译优先接实际 caller，并保留英文或空值回退。
 4. 固定目标设备与冷热输入测量后，再针对已测瓶颈优化。

@@ -22,8 +22,7 @@ the prepared snapshot.
 fixes the target, locale, snapshot manifest bytes/SHA, full runtime identity, the
 compact `release_id`, and each owner artifact's repository, full immutable Git
 commit, tag, path and exact bytes/SHA. The tag names and keeps alive the pinned
-commit; fetching still uses the 40-character revision. `verify-composition` checks
-that every recorded tag still names its revision. ZIP
+commit; fetching still uses the 40-character revision. ZIP
 parts additionally pin their embedded manifest and expanded size. The retained
 language Git tree pins its original manifest, then authenticates every listed
 file, including evidence, before projecting only `i18n/` into runtime data.

@@ -11,8 +11,7 @@ PoBR 不从 PoB2 vendor Lua 或本地原表导出生产数据。
 当前存储职责：游戏数据归RePoE、语言数据归翻译库，PoBR只提交代码、唯一数据锁 [`data.lock.json`](data.lock.json)、来源元数据及小型合成夹具；CI构建和需要实物的测试在临时目录导入数据并生成发布资产。
 四份完整快照、七份外部shared、历史大policy及完整语言／API样本已迁出当前Git tree；无旧PoBR数据artifact回退。本地活动目标保持0.5.5.5，Git历史不改写。详见[存储边界](../docs/data-architecture.md#4-存储边界)。
 
-[最新完整发布同步](latest/latest-data.md)通过两owner发布索引发现候选，冻结为新的数据锁，再由精确head的PR／Full门禁与实际最终包消费验证后条件采用。普通构建继续按不可变锁重放；索引bootstrap、官方版本观察和owner源码更新均不代表新数据已生成或已采用。
-两 owner 索引及 PoBR 控制器均已合并；严格 PR gate／管理员保护已配置，专用同步凭据与真实新发布的端到端采用仍待完成。
+换数据是一次人工审阅的数据锁修改：更新锁、`mise run data:prepare` 导入，再经 PR 与完整 CI 合并。PoBR 不自动发现或采用 owner 发布。
 当前核对与优化顺序以[数据现状](../docs/data-status.md)为准。
 
 ## 功能目录
@@ -22,7 +21,6 @@ PoBR 不从 PoB2 vendor Lua 或本地原表导出生产数据。
 | [data.lock.json](data.lock.json) | 唯一数据锁：两个 owner 的固定 tag、commit、路径与 SHA-256，目标、自有规则 pin 与期望身份 |
 | [runtime/](runtime/build-data.md) | 按锁临时导入、快照封存、精简发行包和显式采用；`data:prepare`、`data:update`、`data:pack` |
 | [imports/](imports/sources.lock.json) | 固定 Git 传输、辅助说明投影、数据归属检查；台账仅存消费范围接受决定 |
-| [latest/](latest/latest-data.md) | owner 通道、候选发现与 CI 后条件采用；`data:latest` |
 | [diagnostics/](diagnostics/README.md) | 数据版本差异、描述来源核对与词条审计；不自动采用数据 |
 
 各功能的说明、锁和测试与实现放在一起。Python 从仓库根目录以模块运行，
@@ -219,9 +217,9 @@ schema-3 manifest封存默认运行字节；维护报告和本地patch不进入�
 
 ## 扩展 / 升版
 
-- 新PoE2版本：两个 owner 发布同一新目标后，`mise run data:latest resolve --new-target --out <fresh>`
-  冻结显式候选，`mise run data:latest apply --candidate <dir> --expected-lock <sha>` 暂存数据锁与新 CURRENT，
-  随后 `mise run data:prepare` 导入新版本目录；消费者迁移在同一审阅改动中完成。
+- 新PoE2版本：两个 owner 发布同一新目标后，在审阅分支中更新数据锁与 `data/CURRENT`，
+  用 `mise run data:update --lock <新锁> --out <fresh>` 准备并核对候选，再 `mise run data:prepare` 导入新版本目录；
+  消费者迁移在同一审阅改动中完成。
   按补丁登记的现有消费者例如 `crates/pobr-gamedata/tests/fixtures/repository-test-pins.json`、
   `devs/ci/parse-coverage-baseline.json` 与示例 golden（如 `examples/demo-bd-test/panel-golden.json`
   的 `data_version`）；计算语义、vendor参考与golden更新分别维护。

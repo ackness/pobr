@@ -295,7 +295,6 @@ workflow 负责事件、环境、权限；`mise.toml` / `devs/scripts` 负责命
 | [pr.yml](../.github/workflows/pr.yml) | PR 按整个变更范围运行相关轻量检查；master 代码 push 调用完整集成 | `PR gate` |
 | [ci.yml](../.github/workflows/ci.yml) | 可复用完整门禁、手动 dispatch、每日 19:00 UTC 的 master 回归 | `Full gate` |
 | [release.yml](../.github/workflows/release.yml) | `v*` tag；校验发布身份、完整验证后发布同次产物并按条件部署 | Release / deploy jobs |
-| [data-sync.yml](../.github/workflows/data-sync.yml) | 每六小时／手动／owner通知发现完整数据候选；PR及Full完成回调重新核对后条件采用 | 精确head双gate、组合CAS与最新来源复核 |
 
 PR 比较被测试的 merge commit 与 base parent，包含整个 PR；master 比较 push 的 before/after，
 覆盖一次推送的全部提交，重命名按删除和新增两侧处理。PR 无法读取比较基线时快速失败，
@@ -330,8 +329,6 @@ PR 不在 workflow 层过滤文档，以免必需检查永久 pending：只运�
 `Full gate` 要求 Rust、Web、自动化及声明式运行包组合全部成功。组合任务等待同次运行的普通领域
 和显示文本产物，要求完整与紧凑消费者的投影业务数据一致，再用同次WASM实际消费最终物化候选；其候选不切换站点活动数据。fork 和 Dependabot 使用同样的只读、无发布密钥路径；
 首次外部贡献是否批准执行由 GitHub 设置决定，执行许可不代表正确性批准。
-
-自动数据采用的[完整契约](../pipeline/latest/latest-data.md)另要求专用App／PAT凭据、远端严格且含管理员的必需`PR gate`保护，以及当前两owner完整发布frontier。默认token的PR事件可能仍需执行批准；建PR或dispatch成功不能当作CI通过。缺凭据／保护或任一gate未完成时保持原锁和CURRENT；本地文件不等于托管设置已启用。
 
 完整 CI 包括 fmt/Clippy（含诊断 features）、workspace tests/doctest、parity/reference 退步断言、
 已准备数据上派生规则的逐字节复现与解析覆盖率棘轮、数据兼容、Web 类型/单测/Worker、真实 WASM 契约与打包计算。

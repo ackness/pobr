@@ -7,7 +7,7 @@
 <a id="51-剩余字段与关闭条件"></a>
 <a id="52-源码候选采用与玩家验收分别记账"></a>
 
-当前接入情况、剩余缺口、托管条件和近期顺序见[数据现状](data-status.md)。
+当前接入情况、剩余缺口和近期顺序见[数据现状](data-status.md)。
 命令与文件格式以[数据管线](../pipeline/README.md)、[构筑模型](build-model.md)和代码为准；
 本文与实现不一致时，先核对代码，再修正其中一方。
 
@@ -81,13 +81,13 @@ RePoE 发布 ───┐
   PoBR 消费 RePoE 的游戏、制作与测试夹具，以及翻译库的语言与辅助说明；owner 可声明更多角色，
   翻译库还须声明它绑定的 RePoE 显示来源。序号单调递增、前驱精确；分叉、回退和缺少消费角色都是错误，PoBR 不消费的角色由 owner 自行增减。
 - **寻址与保活。** 每个产物只按 40 位 commit SHA 寻址（浅拉取、不取 tag），再核对字节数与 SHA-256；锁中不写分支名。
-  锁同时记录 owner 保活该 commit 的 tag `handoff/<name>`，CI 核验每个 tag 仍指向记录的 commit；
+  锁同时记录 owner 保活该 commit 的 tag `handoff/<name>`；
   被锁、plan、publication index 或证据文件引用的 tag 不得删除或移动；
   owner 合并包含被下游钉住 commit 的 PR 时用 merge commit，不用 squash／rebase，否则该 SHA 会从历史中消失。
 - **唯一数据锁。** [`pipeline/data.lock.json`](../pipeline/data.lock.json) 是 PoBR 唯一的数据输入声明：
   目标游戏／补丁／服别、语言、每个消费产物的 tag + commit + 路径 + SHA-256、PoBR 自有共享规则的 pin、
   期望的快照 manifest、运行身份与紧凑发行身份，以及采用时两个 owner 的 publication。
-  同补丁修订用 generation 和前驱摘要区分；导入、组包和最新发布控制器都只读这一个文件。
+  同补丁修订用 generation 和前驱摘要区分；导入和组包都只读这一个文件。
 - **身份。** schema-3 `manifest.json` 列出全部运行文件及 SHA-256，未列出的文件视为不存在；
   `GameData::identity()` 标识快照、共享覆盖层和有效 patch，并进入计算结果的 `provenance`。
   完整快照与紧凑 release 是不同投影，身份分别记录，不能互换。
@@ -149,17 +149,13 @@ RePoE 发布 ───┐
 ## 5. 更新、采用与发布
 
 1. **owner 生产。** RePoE 与翻译库按固定来源生产、运行各自的完整 guard、发布不可变描述后推进索引。PoBR 不代为生产。
-2. **发现与冻结。** `mise run data:latest check|resolve` 读取两个索引并冻结候选数据锁。
-   官方版本观察只说明端点公布的版本；owner 尚无完整新发布时报告缺口，保留现有默认。
+2. **改锁。** 维护者在审阅分支中把数据锁改到 owner 的新发布，用 `data:prepare` 导入并核对身份差异。
+   PoBR 不自动发现或采用 owner 发布；owner 尚无完整新发布时保留现有默认。
 3. **验证。** 候选在精确 head 上通过 PR gate 和 Full gate：完整快照按摘要导入、
    从同一快照组出的紧凑发行包，以及同次构建的 WASM 消费该包。PoBR 不在 CI 中重跑 owner 的领域生产。
-4. **采用。** 数据锁经受保护的 PR 合并更新；运行输入改变时，候选在解析阶段就准备完整数据并写入精确的 `release_id`，Full CI 重建后必须一致。本地安装用 `data:update` 显式选择，并携带期望的旧身份做 CAS；
+4. **采用。** 数据锁经受保护的 PR 合并更新；运行输入改变时，改锁时准备完整数据并写入精确的 `release_id`，Full CI 重建后必须一致。本地安装用 `data:update` 显式选择，并携带期望的旧身份做 CAS；
    源码合并不自动切换 `CURRENT`。
 5. **发版与部署。** 发版 tag 重新运行完整验证并发布同次产物；数据采用不会自动触发发版。
-
-无人值守的提案与采用需要两项托管条件：仓库 secret `DATA_SYNC_TOKEN`（contents、pull requests 和 Actions 权限，
-并可读取分支保护），以及 master 对管理员同样生效的严格 required `PR gate`。缺少任一项时控制器报告原因并保留默认；
-提交工作流文件本身不代表这些条件已经启用。细节见[最新发布同步](../pipeline/latest/latest-data.md)。
 
 每次失败都保留上一套已验证数据。不用版本字符串、源码合并日期或部分新表冒充完整更新；
 翻译未变化时可复用旧修订，不为每个补丁制造空提交；数据修复不要求同步升级引擎，除非 schema、语义或消费者行为改变。

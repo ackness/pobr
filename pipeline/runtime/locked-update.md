@@ -3,9 +3,9 @@
 Game acquisition and export belong to RePoE; language production belongs to the
 translation repository. PoBR consumes a complete [build-data lock](build-data.md)
 with exact owner revisions, archive/member pins, snapshot and runtime identities.
-A patch number alone is insufficient. [Latest complete publication discovery](../latest/latest-data.md)
-is separate from this immutable local preparation/selection command. PoBR has
-no downloader, table exporter or vendor-based upgrade path.
+A patch number alone is insufficient: the lock is edited in a reviewed change,
+and this command only prepares or selects it. PoBR has no table exporter or
+vendor-based upgrade path.
 
 ```sh
 # Prepare a fresh complete candidate. CURRENT and installed data remain unchanged.
