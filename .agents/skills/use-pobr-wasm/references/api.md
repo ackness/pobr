@@ -85,6 +85,13 @@ does not estimate peak memory.
 | `attributionJson(json)` | `AttributionRequest` JSON | Source contribution JSON string |
 | `gemCatalogJson()` | No argument; data initialized | Gem catalog JSON string |
 | `encodeBuildJson(json)` | Calculation request with `character.class_name` required | PoB2 code string, not JSON |
+| `translateLines(lang, json)` | Locale code and a JSON array of English mod lines | JSON array of display lines in that locale |
+| `parseLocalizedLines(lang, json)` | Locale code and a JSON array of lines in that locale | JSON array of English canonical lines |
+
+Translation uses the data pack's `i18n/<lang>/` templates and names (and the
+fallbacks its `_meta.json` declares). A line nothing recognizes, or every line
+for a locale without templates, comes back unchanged; calculation requests always
+take English canonical lines, and item text in a pack locale is parsed on input.
 
 For an imported code, use `{ pob_code: code }` as the calculation request.
 For a new build, use `{ character: { class_name: 'Warrior', level: 90 } }`.
