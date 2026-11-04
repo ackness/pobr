@@ -16,6 +16,15 @@ fn test_data() -> &'static pobr_build::BuildData {
     &DATA
 }
 
+/// Empty synthetic data with the imported per-level monster table, which has no
+/// Rust copy: `setup_enemy` needs it.
+fn empty_data_with_monster_scaling() -> pobr_build::BuildData {
+    let mut data = pobr_build::BuildData::empty();
+    std::sync::Arc::make_mut(&mut data.constants).monster_scaling =
+        pobr_core::mod_parser::test_monster_scaling();
+    data
+}
+
 #[path = "skills/passive_tree_coverage.rs"]
 mod passive_tree_coverage;
 

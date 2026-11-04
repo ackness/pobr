@@ -12,7 +12,7 @@
 //! | JSON field | pobr source of truth | vendor source |
 //! |---|---|---|
 //! | `max_enemy_level` | `monster.rs::MAX_ENEMY_LEVEL` (85) | Data.lua `data.misc.MaxEnemyLevel` |
-//! | `ehp_base_damage_mult` | the inline `1.5` in `monster.rs::EnemyTierDefaults::compute` | ConfigOptions.lua L1982/L2023/L2065/L2106 `monsterDamageTable[lv] * 1.5 * DPSMult` |
+//! | `ehp_base_damage_mult` | the inline `1.5` of the former `EnemyTierDefaults::compute` | ConfigOptions.lua L1982/L2023/L2065/L2106 `monsterDamageTable[lv] * 1.5 * DPSMult` |
 //! | `default_enemy_crit_damage_bonus` | `monster.rs::MONSTER_BASE_CRIT_DAMAGE_BONUS` (30) | ConfigOptions.lua L1967 (`data.monsterConstants["base_critical_hit_damage_bonus"]`) |
 //! | `tiers[].min_level` | `EnemyTier::min_level()` (Pinnacle/Uber = `PINNACLE_MIN_LEVEL` 82) | ConfigOptions.lua `defaultLevel = 82` + `m_max(...)` |
 //! | `tiers[].elemental_resist_bonus` | `EnemyTier::elemental_resist_bonus()` (0/30/50/50) | ConfigOptions.lua each tier's `defaultEleResist` |
@@ -98,7 +98,7 @@ pub struct EnemyPresetsTable {
     /// Base damage multiplier for EHP:
     /// `damage = monsterDamageTable[lv] * ehp_base_damage_mult * dps_mult`
     /// (the inline `1.5` at ConfigOptions.lua L1982 etc.; pobr's
-    /// `EnemyTierDefaults::compute` inlines the same value).
+    /// the former `EnemyTierDefaults::compute` inlined the same value).
     pub ehp_base_damage_mult: f64,
     /// Default placeholder for the enemy's attack interval
     /// (ConfigOptions.lua L1965 `enemySpeed` placeholder = 700, in ms;
@@ -349,7 +349,7 @@ impl Default for EnemyPresetsTable {
         Self {
             max_enemy_level: MAX_ENEMY_LEVEL,
             // pobr source of truth: the 1.5 inlined in
-            // `EnemyTierDefaults::compute`'s `damage * 1.5 * dps_mult`.
+            // the former `EnemyTierDefaults::compute`'s `damage * 1.5 * dps_mult`.
             ehp_base_damage_mult: 1.5,
             // vendor-only: ConfigOptions.lua L1965 / L1966 placeholders.
             default_enemy_speed: 700.0,

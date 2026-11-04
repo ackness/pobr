@@ -20,6 +20,8 @@ sha2 = { version = "0.11", default-features = false }
 test-pins = []
 
 [dev-dependencies]
+# Test-only: hand-written MinionDef fixtures compared against the loaded minions.
+pobr-data = { workspace = true, features = ["test-fixtures"] }
 # 仅测试用：load_jewel_radii 逐值对照 pobr-tree 现有 Rust 准源常量（搬迁不变式）。
 pobr-tree.workspace = true
 # 仅测试用：load_base_player_mods 逐值对照 pobr-core 现有 Rust 准源（搬迁不变式）。

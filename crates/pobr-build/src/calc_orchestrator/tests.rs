@@ -98,7 +98,7 @@ mod ring3_tests {
         BuildData {
             passive_nodes,
             parser_rules: Some(test_parser_rules()),
-            ..BuildData::empty()
+            ..data_with_monster_scaling()
         }
     }
 
@@ -364,6 +364,15 @@ fn granted_anoint_notable_feeds_gem_property_scan() {
     );
 }
 
+/// `data_with_monster_scaling()` with the imported per-level monster table: it has no
+/// Rust copy, so enemy stats are 0 without it.
+fn data_with_monster_scaling() -> BuildData {
+    let mut data = BuildData::empty();
+    std::sync::Arc::make_mut(&mut data.constants).monster_scaling =
+        pobr_core::mod_parser::test_monster_scaling();
+    data
+}
+
 fn repo_data() -> BuildData {
     let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
     BuildData::load(&data).expect("load repo build data")
@@ -524,7 +533,7 @@ fn data_path_item_life_matches_text_path() {
     let build = Build::new().set_item(EquipmentSlot::Ring1, life_item("50"));
     let data = BuildData {
         parser_rules: Some(test_parser_rules()),
-        ..BuildData::empty()
+        ..data_with_monster_scaling()
     };
     let opts = DataOrchestratorOptions {
         base_input: MinimalInput {
@@ -552,7 +561,7 @@ fn character_base_injects_life_from_class_and_level() {
     );
     let data = BuildData {
         class_attributes,
-        ..BuildData::empty()
+        ..data_with_monster_scaling()
     };
     let build = Build::new().with_character(CharacterIdentity {
         level: 10,
@@ -607,7 +616,7 @@ fn passive_node_contributes_attributed_life() {
     let data = BuildData {
         passive_nodes,
         parser_rules: Some(test_parser_rules()),
-        ..BuildData::empty()
+        ..data_with_monster_scaling()
     };
 
     let build = Build::new().with_tree(PassiveTreeSpec {
@@ -697,7 +706,7 @@ fn radius_small_grant_excludes_attribute_nodes() {
     let data = BuildData {
         passive_nodes,
         parser_rules: Some(test_parser_rules()),
-        ..BuildData::empty()
+        ..data_with_monster_scaling()
     };
 
     let jewel = RadiusJewel {
@@ -797,7 +806,7 @@ fn radius_notable_grant_includes_notables_allocated_by_items() {
 #[test]
 fn unknown_passive_node_is_skipped() {
     // Allocating a node absent from the node table → skipped, no error, life stays at base.
-    let data = BuildData::empty();
+    let data = data_with_monster_scaling();
     let build = Build::new().with_tree(PassiveTreeSpec {
         allocated_nodes: vec![NodeId(99999)],
         ..Default::default()
@@ -856,7 +865,7 @@ fn gems_classified_and_do_not_error() {
     );
     let data = BuildData {
         skill_gems,
-        ..BuildData::empty()
+        ..data_with_monster_scaling()
     };
     let build = Build::new().add_socket_group(
         SocketGroup::new()
@@ -881,7 +890,7 @@ fn mode_effective_changes_hit_chance_vs_panel() {
     // non-attack) skips the accuracy/evasion check, and both hit_chance readings
     // are 1 (vendor CalcOffence.lua:2611-2612
     // `if not isAttack then output.AccuracyHitChance = 100`).
-    let data = BuildData::empty();
+    let data = data_with_monster_scaling();
     let build = Build::new();
     let base = MinimalInput {
         base_accuracy: 1000.0,
@@ -916,6 +925,7 @@ fn mode_effective_changes_hit_chance_vs_panel() {
     // acc*1.25/(acc+eva*0.3), CalcDefence.lua:32-38).
     let mut session =
         CalculationSession::new(base).with_config(CalcConfig::attack().with_mode_effective(true));
+    session.set_constants(data.constants.clone());
     session.setup_enemy(80, EnemyTier::Pinnacle);
     let out = session.perform_minimal().expect("perform");
     assert!(
@@ -1021,6 +1031,7 @@ fn setup_enemy_session_method_is_exposed() {
         ..MinimalInput::default()
     })
     .with_config(CalcConfig::attack().with_mode_effective(true));
+    session.set_constants(data_with_monster_scaling().constants);
     session.setup_enemy(80, EnemyTier::Pinnacle);
     let out = session.perform_minimal().expect("perform");
     assert!(out.hit_chance <= 1.0);
@@ -1119,7 +1130,7 @@ fn xml_enemy_tier_overrides_orchestrator_option() {
     // non-attack and always hits, so hit_chance no longer distinguishes
     // tiers; physical damage reduction hits the same DR cap at both tiers, so
     // incoming enemy damage is used as the observation point instead.)
-    let data = BuildData::empty();
+    let data = data_with_monster_scaling();
     let base = MinimalInput {
         base_accuracy: 1000.0,
         base_hit_min: 100.0,
@@ -1954,7 +1965,7 @@ fn slot_bonus_effect_scales_covers_equipped_quiver() {
     let data = BuildData {
         passive_nodes,
         base_items,
-        ..BuildData::empty()
+        ..data_with_monster_scaling()
     };
     let quiver = Item {
         base: ItemBaseId::from("Visceral Quiver"),
@@ -2490,6 +2501,7 @@ fn curse_effect_amplifies_and_limit_truncates_end_to_end() {
                 .with_mode_buffs(true)
                 .with_mode_effective(true),
         );
+        session.set_constants(data.constants.clone());
         if let Some(priority) = data.curse_priority.clone() {
             session.set_curse_priority(priority);
         }
@@ -2762,7 +2774,7 @@ fn meta_gem_expands_additional_granted_effect_as_main_skill() {
     let data = BuildData {
         granted_effects,
         gem_effects,
-        ..BuildData::empty()
+        ..data_with_monster_scaling()
     };
     let group = SocketGroup::new()
         .with_gem_skill("SummonShellPlayer", 12)
@@ -2777,7 +2789,7 @@ fn meta_gem_expands_additional_granted_effect_as_main_skill() {
     // Missing foreign key makes ordinal 2 invalid, never clamped to the shell.
     let data_no_link = BuildData {
         granted_effects: data.granted_effects.clone(),
-        ..BuildData::empty()
+        ..data_with_monster_scaling()
     };
     assert_eq!(pick_group_main_skill(&data_no_link, &group), None);
     let shell = group.clone().with_main_active_skill(1);
@@ -2876,7 +2888,7 @@ fn trigger_modifiers_gates_on_triggered_skill_type() {
     );
     let data = BuildData {
         granted_effects,
-        ..BuildData::empty()
+        ..data_with_monster_scaling()
     };
     let build = Build::new();
     let group = SocketGroup::new();
@@ -3389,7 +3401,7 @@ fn trigger_subcalc_recursion_guards() {
 /// (vendor's disable semantics, panel stays at 0), and it doesn't fall into the built-in path.
 #[test]
 fn trigger_config_requires_condition_gates_injection() {
-    let mut data = BuildData::empty();
+    let mut data = data_with_monster_scaling();
     data.granted_effects.insert(
         "UnseenStrikePlayer".to_string(),
         pobr_data::catalog::GrantedEffectDef {
@@ -3490,11 +3502,11 @@ fn trigger_config_requires_condition_gates_injection() {
 // Unarmed base / weapon-type table-lookup switchover (migration-invariant regression)
 
 /// After switching the unarmed base to the injected table, values still
-/// match the old hardcoded match arm-for-arm (`BuildData::empty()` takes the
+/// match the old hardcoded match arm-for-arm (`data_with_monster_scaling()` takes the
 /// Default fallback, = the JSON values value-for-value; covers all 9 classes + the unknown-class fallback).
 #[test]
 fn unarmed_contribution_matches_legacy_hardcoded_values() {
-    let data = BuildData::empty();
+    let data = data_with_monster_scaling();
     let legacy: &[(&str, f64)] = &[
         ("Warrior", 8.0),
         ("Scion", 6.0),
@@ -3550,7 +3562,7 @@ fn weapon_base_item(name: &str, item_class: &str) -> pobr_data::catalog::BaseIte
 /// non-martial entries and an unmapped caster Staff.
 #[test]
 fn weapon_type_conditions_match_vendor_type_info() {
-    let mut data = BuildData::empty();
+    let mut data = data_with_monster_scaling();
     let cases: &[(&str, &[&str])] = &[
         // GGG `Warstaff` (quarterstaff) → table key `Staff` (label=Quarterstaff).
         (
@@ -3626,7 +3638,7 @@ fn weapon_type_conditions_match_vendor_type_info() {
 /// gating as the Using* conditions).
 #[test]
 fn weapon_cfg_flags_dual_write_channel() {
-    let mut data = BuildData::empty();
+    let mut data = data_with_monster_scaling();
     let base_name = "Test One Hand Mace".to_string();
     data.base_items.insert(
         base_name.clone(),
@@ -3916,4 +3928,35 @@ fn a_reduced_focus_level_bonus_stays_at_least_one() {
         .map(|b| b.value)
         .collect();
     assert_eq!(levels, vec![1, 1]);
+}
+
+/// The text-only path injects the imported runtime constants: the monster-level
+/// ailment and poise tables have no Rust copy, so without them the enemy's
+/// thresholds are 0 and threshold-scaled ailments vanish. The text path's enemy
+/// is level 1, whose `base/monster_scaling.json` ailment threshold is 15.
+#[test]
+fn text_path_reads_the_imported_monster_tables() {
+    let options = OrchestratorOptions {
+        base_input: MinimalInput {
+            base_hit_min: 100.0,
+            base_hit_max: 200.0,
+            base_action_rate: 1.0,
+            ..MinimalInput::default()
+        },
+        extra_modifier_texts: vec![
+            "Adds 100 to 200 Cold Damage".into(),
+            "Adds 100 to 200 Fire Damage".into(),
+            "100% chance to Ignite".into(),
+        ],
+    };
+    let mut session = super::text_session(&Build::new(), &options).expect("text session");
+    session.perform_minimal().expect("perform");
+    let out = session.output();
+    assert_eq!(out.enemy_ailment_threshold, 15.0);
+    assert!(out.ignite_dps > 0.0, "ignite_dps={}", out.ignite_dps);
+    assert!(
+        out.freeze_buildup_pct > 0.0,
+        "freeze_buildup_pct={}",
+        out.freeze_buildup_pct
+    );
 }

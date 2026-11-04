@@ -169,6 +169,12 @@ pub const BLOCK_CHANCE_CAP: f64 = 90.0;
 pub const SHOCK_MIN_EFFECT: f64 = 20.0;
 
 /// Maximum Rage before modifiers: the game constant `BaseMaximumRage`.
+///
+/// Known exception to the "no new calc-path consumers" rule above:
+/// `pobr-core`'s `calc/rage.rs` reads this and [`ATTACK_DAMAGE_MORE_PER_RAGE`]
+/// directly because the data package does not carry them yet (neither is in
+/// `base/game_constants.json`; `stats.json` only defines the stat ids). Move
+/// the consumer to `cfg.constants` once RePoE exports them.
 pub const BASE_MAXIMUM_RAGE: f64 = 30.0;
 
 /// Percent more Attack damage per effective Rage: the character's inherent

@@ -529,9 +529,8 @@ pub(crate) fn totem_base_modifiers(
             &gem.skill_id,
         ));
     let monster_level = pobr_core::calc::minion_level_from_gem_level(level);
-    let life = (f64::from(pobr_data::monster::monster_ally_life(monster_level))
-        * totem.life_multiplier)
-        .floor();
+    let ally_life = data.constants.monster_scaling.ally_life_at(monster_level);
+    let life = (f64::from(ally_life) * totem.life_multiplier).floor();
     let origin = |name: &str, text: String| {
         ModifierSource::new(SourceId::new(
             SourceKind::SkillGem,
@@ -544,8 +543,7 @@ pub(crate) fn totem_base_modifiers(
             "TotemLifeBase",
             format!(
                 "level {monster_level} totem: AllyLife {} x LifeMultiplier {}",
-                pobr_data::monster::monster_ally_life(monster_level),
-                totem.life_multiplier
+                ally_life, totem.life_multiplier
             ),
         )),
     ];

@@ -27,7 +27,7 @@ fn synthetic_data(
     support_spirit_flat: Option<f64>,
     support_reservation_multiplier: Option<f64>,
 ) -> BuildData {
-    let mut data = BuildData::empty();
+    let mut data = crate::empty_data_with_monster_scaling();
     let aura: GrantedEffectDef = serde_json::from_value(json!({
         "id": "TestAura",
         "is_support": false,

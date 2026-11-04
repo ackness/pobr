@@ -13,7 +13,9 @@ use pobr_data::prelude::*;
 fn environment(base: ActorBaseStats, mods: Vec<Modifier>) -> Env {
     let mut actor = Actor::new(1, base);
     actor.mod_db.add_list(mods);
-    Env::new(actor)
+    let mut env = Env::new(actor);
+    crate::support::add_game_tables(&mut env.cfg);
+    env
 }
 
 fn hitting() -> ActorBaseStats {
@@ -132,7 +134,8 @@ fn reservation_multiplier_uses_the_strongest_reserved_life() {
             Modifier::number("LifeReservationPercent", ModType::Base, 20.0),
             Modifier::number("LifeReservationPercent", ModType::Base, 40.0),
         ]);
-        env.cfg = CalcConfig::spell().with_mode_effective(effective);
+        env.cfg =
+            crate::support::with_game_tables(CalcConfig::spell().with_mode_effective(effective));
         perform(&mut env).unwrap();
         env.player.output.reservation_dps_multiplier
     };
@@ -171,7 +174,8 @@ fn average_burst_hits_count_the_repeats_and_the_flickers() {
         1.0,
     ));
     let mut env = Env::new(actor);
-    env.cfg = CalcConfig::spell().with_multiplier("PowerCharge", 3.0);
+    env.cfg =
+        crate::support::with_game_tables(CalcConfig::spell().with_multiplier("PowerCharge", 3.0));
     perform(&mut env).unwrap();
     assert_eq!(env.player.output.average_burst_hits, 13.0);
 }
@@ -439,8 +443,11 @@ fn loreweave_rarity_preserves_only_the_combined_source_in_both_modes() {
                 assert_eq!(origin.raw_text, marker_origin.raw_text);
                 assert_ne!(origin.mod_type, marker_origin.mod_type);
                 assert_ne!(origin.stat_id, marker_origin.stat_id);
-                let mut session = crate::support::session(MinimalInput::default())
-                    .with_config(CalcConfig::attack().with_condition("ExclusiveRarity", enabled));
+                let mut session = crate::support::session(MinimalInput::default()).with_config(
+                    crate::support::with_game_tables(
+                        CalcConfig::attack().with_condition("ExclusiveRarity", enabled),
+                    ),
+                );
                 session.set_exporter_rules(native, Default::default());
                 session.add_modifiers(ingest.modifiers);
                 session.add_modifiers([Modifier::number("LootRarity", ModType::Inc, 15.0)

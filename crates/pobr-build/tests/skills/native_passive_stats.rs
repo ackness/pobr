@@ -600,3 +600,29 @@ fn native_passive_optional_schema_and_decoded_fallback_are_distinct() {
             .all(|modifier| { modifier.origin.as_ref().unwrap().native_stat.is_none() })
     );
 }
+
+/// The per-level monster table has no Rust copy, so `BuildData::load` refuses a
+/// snapshot without `base/monster_scaling.json` instead of calculating every
+/// enemy and minion stat as 0: absent from the inventory, or listed but missing.
+#[test]
+fn build_data_requires_the_monster_scaling_table() {
+    let path = "base/monster_scaling.json";
+    let mut unlisted = pack();
+    let mut manifest: serde_json::Value =
+        serde_json::from_slice(&unlisted["manifest.json"]).unwrap();
+    manifest["files"].as_object_mut().unwrap().remove(path);
+    unlisted.insert(
+        "manifest.json".into(),
+        serde_json::to_vec(&manifest).unwrap(),
+    );
+    let mut missing = pack();
+    missing.remove(path);
+    for files in [unlisted, missing] {
+        let error = BuildData::load(&GameData::from_memory(files)).unwrap_err();
+        assert!(error.to_string().contains("monster_scaling"), "{error}");
+    }
+    assert!(
+        data(false).constants.monster_scaling.is_loaded(),
+        "the sealed pack ships its controlled table"
+    );
+}
