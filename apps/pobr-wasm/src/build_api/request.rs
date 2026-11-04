@@ -284,10 +284,16 @@ pub(crate) fn validate_utilities(utilities: &[UtilitySlotInput]) -> Result<(), A
         if !matches!(
             utility.slot.as_str(),
             "Flask 1" | "Flask 2" | "Charm 1" | "Charm 2" | "Charm 3"
-        ) || !slots.insert(utility.slot.as_str())
-        {
+        ) {
             return Err(ApiError::bad_request(format!(
-                "invalid or duplicate flask/charm slot: {}",
+                "unknown flask/charm slot: {}",
+                utility.slot
+            ))
+            .with_slot(utility.slot.as_str()));
+        }
+        if !slots.insert(utility.slot.as_str()) {
+            return Err(ApiError::bad_request(format!(
+                "duplicate flask/charm slot: {}",
                 utility.slot
             ))
             .with_slot(utility.slot.as_str()));
