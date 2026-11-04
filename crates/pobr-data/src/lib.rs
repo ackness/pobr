@@ -13,6 +13,7 @@ pub mod skill;
 mod skill_type_names;
 pub mod source;
 pub mod stat;
+pub mod text;
 
 pub mod prelude {
     pub use crate::build_config::*;

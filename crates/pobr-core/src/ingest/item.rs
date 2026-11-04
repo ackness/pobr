@@ -154,7 +154,7 @@ fn ingest_item_in(slot: &str, item: &Item, ctx: ParseCtx<'_>) -> Result<ItemInge
 /// section. Ingest and the received-line ledger use this same boundary;
 /// imported text is borrowed unchanged except for the joined pair's newline.
 pub fn join_loreweave_rarity(texts: &[String]) -> impl Iterator<Item = std::borrow::Cow<'_, str>> {
-    use crate::mod_parser::engine::strip_display_markup;
+    use pobr_data::text::strip_display_markup;
 
     static RARITY: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
         regex::Regex::new(r"(?i)^[+-]?\d+(?:\.\d+)?% increased rarity of items found$")

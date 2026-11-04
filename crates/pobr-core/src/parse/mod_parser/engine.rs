@@ -34,6 +34,12 @@ use crate::{ModTag, ModValue, Modifier};
 use pobr_data::modifier::{KeywordFlags, ModFlags};
 use pobr_data::skill::SkillTypes;
 
+// Compatibility re-export: the text helper now lives in the contract crate
+// (`pobr_data::text`). Kept so the RePoE adapter's pinned `engine-crates/*` tag
+// and other external callers still compile; new code uses the `pobr_data` path.
+#[doc(hidden)]
+pub use pobr_data::text::strip_display_markup;
+
 /// Silent-degradation diagnostics from engine parsing (surfaced for A2): returned alongside
 /// [`parse_mod_engine_diag`] and aggregated per line in the corpus report. Not carried on
 /// [`ParseOutcome`] (would touch all 40 construction sites) and not part of canonical (the C1
@@ -709,75 +715,10 @@ fn tail_unparsed(work: &str) -> Option<String> {
     }
 }
 
-// ---- pre-pass reuses legacy's semantics (step 1, no maintaining two implementations — these
-//      two functions are private to legacy, so the engine side replicates the same logic and
+// ---- pre-pass reuses legacy's semantics (step 1, no maintaining two implementations — markup
+//      stripping is the shared `pobr_data::text::strip_display_markup`; whitespace
+//      normalization is private to legacy, so the engine side replicates the same logic and
 //      keeps it byte-for-byte identical; dual-run catches any drift) ----
-
-/// The game's display markup reduced to the text it shows: a link
-/// `[Hit|Hits]` shows its last part, a style `<underline>{Sorcery Ward}` the
-/// text in its braces (the passive tree words "Grants Skill: <underline>{Sorcery
-/// Ward}" this way).
-pub fn strip_display_markup(text: &str) -> String {
-    strip_pob_brackets(&strip_style_markup(text))
-}
-
-/// `<style>{text}` → `text`, where the style is a word such as `underline`.
-/// Any other `<` stays as it is.
-fn strip_style_markup(text: &str) -> String {
-    if !text.contains(">{") {
-        return text.to_string();
-    }
-    let mut out = String::with_capacity(text.len());
-    let mut rest = text;
-    while let Some(open) = rest.find('<') {
-        let after = &rest[open + 1..];
-        let styled = after.find(">{").filter(|&close| {
-            close > 0
-                && after[..close]
-                    .chars()
-                    .all(|c| c.is_ascii_alphanumeric() || c == '_')
-        });
-        let inner = styled.and_then(|close| {
-            let start = close + 2;
-            let len = after[start..].find('}')?;
-            Some((start, len))
-        });
-        let Some((start, len)) = inner else {
-            out.push_str(&rest[..=open]);
-            rest = after;
-            continue;
-        };
-        out.push_str(&rest[..open]);
-        out.push_str(&after[start..start + len]);
-        rest = &after[start + len + 1..];
-    }
-    out.push_str(rest);
-    out
-}
-
-fn strip_pob_brackets(text: &str) -> String {
-    if !text.contains('[') {
-        return text.to_string();
-    }
-    let mut out = String::with_capacity(text.len());
-    let mut chars = text.chars().peekable();
-    while let Some(c) = chars.next() {
-        if c == '[' {
-            let mut inner = String::new();
-            for ic in chars.by_ref() {
-                if ic == ']' {
-                    break;
-                }
-                inner.push(ic);
-            }
-            let display = inner.rsplit('|').next().unwrap_or(&inner);
-            out.push_str(display);
-        } else {
-            out.push(c);
-        }
-    }
-    out
-}
 
 fn normalize_spaces(text: &str) -> String {
     // legacy's normalize_spaces also lowercases — but the engine needs to keep the original
