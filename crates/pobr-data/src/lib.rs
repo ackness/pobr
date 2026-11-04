@@ -16,9 +16,10 @@
 /// (`#[serde(default)]`, absent in old packages and meaning what its absence
 /// meant before) does not bump it.
 ///
-/// The PoBR commit that defines contract `n` carries the immutable tag
-/// `contract/<n>`; data repositories pin their `pobr-data` dependency to it
-/// (docs/data-architecture.md §3.1).
+/// Released as immutable tags `contract/<n>.<m>`: `n` is this number, `m` an
+/// additive revision (new optional fields, `pobr-data` helper fixes) starting
+/// at 0. Data repositories pin their `pobr-data` dependency to the latest
+/// `<n>.<m>` they need (docs/data-architecture.md §3.1).
 pub const CONTRACT_VERSION: u32 = 1;
 
 pub mod build_config;
