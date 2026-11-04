@@ -27,7 +27,7 @@ PoBR Git 不保存数据副本。上游未及时实现的字段和修正由拥�
 
 - **构筑语义留在 PoBR，数据转换归 RePoE。** `data/overlay-common/` 中入库的规则和 Rust 规则表达构筑语义，
   属于 PoBR 的职责。把游戏事实转换成运行 JSON 的领域政策与 `pobr-data-adapter` 在 RePoE，
-  经不可移动的 tag `engine-crates/<日期>` 依赖 PoBR 的数据类型；随包发布的 PoB2 派生 parser／special
+  经不可移动的 tag `contract/<n>.<m>` 依赖 PoBR 的数据契约 `pobr-data`（见 [§3.1](#31-数据契约版本)）；随包发布的 PoB2 派生 parser／special
   规则字节已冻结，新的解析能力写进 PoBR 的 Rust 规则。
 - **PoB2 只作测试参考。** `vendor/` 的固定检出供 oracle、parity、`compare`／`triage` 与构筑码兼容使用，
   不作为生产数据的写入来源。仍保留的 PoB2 解释按字段登记在
@@ -96,6 +96,36 @@ RePoE 发布 ───┐
   用户 `patch/` 是单独的本地覆盖身份，回滚后重新校验，不兼容时拒绝该数据锁并保留原文件。
 - **owner 代码。** 需要运行 owner 提供的生成或校验代码时，只按 pin 取回声明的文件并校验字节；
   运行包不携带这些代码，收据保留其身份。
+
+### 3.1 数据契约版本
+
+数据包里的运行 JSON 由 `pobr-data` 的类型定义，`pobr-gamedata` 读取；两边对"一个包是什么意思"的约定
+用 `pobr_data::CONTRACT_VERSION`（`crates/pobr-data/src/lib.rs`）表示，当前为 **1**。
+
+- **何时加 1。** 数据包所含任一序列化类型发生不兼容变化，或加载器对已有字节的解释改变：字段改名、删除、
+  改类型、由可选变必填、枚举拼写改变、已有取值含义改变。只新增可选字段（`#[serde(default)]`，旧包里缺失、
+  缺失时含义与以前一致）不加 1。加 1 的 PR 同时更新本节与测试。
+- **manifest 声明。** 快照 `data/<patch>/manifest.json` 的顶层字段 `contract_version`（整数）记录生产方构建时
+  依赖的契约版本。加载器先单独读取这个字段，再解析完整 manifest（契约不同的包即使外壳形状已变，也报告契约不符）：
+  声明了且不等于本构建的 `CONTRACT_VERSION` 就拒绝加载，错误信息给出两个数字，并提示在 `pipeline/data.lock.json`
+  换用按本契约构建的数据包；未声明则照旧接受——该字段出现之前发布的包（包括当前锁定的包）都没有它，它们的字节和
+  运行身份由锁固定。`contract_version` 不进入 `GameData::identity()` 的指纹，所以加上它不改变已有快照的身份；
+  紧凑发行包（`pipeline/runtime/runtime_pack.py`）与重新封存（`data_snapshot.manifest`）原样保留这个字段，
+  浏览器里的加载器同样检查。
+- **采用新数据。** `build_data.prepare`（`data:prepare`／`data:update`）要求锁定的快照 manifest 声明的
+  `contract_version` 等于 `crates/pobr-data/src/lib.rs` 里的 `CONTRACT_VERSION`；只有字段出现之前锁定的快照
+  （`PRE_CONTRACT_SNAPSHOTS` 按 SHA-256 列出）例外。锁一旦固定声明了该字段的包，就删除这个例外，并让加载器也
+  拒绝未声明的 manifest。
+- **tag 约定。** tag 名为 `contract/<n>.<m>`：`n` 等于 `CONTRACT_VERSION`；`m` 是同一契约内的增量修订，从 0 开始
+  （`contract/1.0`），用于数据仓库应当产出的新可选字段，或 `pobr-data` 里供数据仓库调用的辅助代码修正（如
+  `pobr_data::text`）。契约加 1 时 `m` 归零。两者都不可移动、不删除。tag 打在 master 上"`pobr-data` 已完整包含该
+  契约修订"的那个提交上——不一定是引入版本号的 PR 的合并提交，修订依赖的改动全部合并之后再打。只改引擎、
+  不改契约的提交不需要 tag，数据仓库也不需要跟进；增量的契约改动打下一个 `.m`。数据仓库把 `pobr-data` 依赖固定在
+  它需要的最新 `contract/<n>.<m>` 上。旧的 `engine-crates/<日期>` tag（如 `engine-crates/20261102`）不再新建，
+  已有 tag 保留不动，现有的依赖固定可以继续使用，直到数据仓库升级到 `contract/<n>.<m>`。
+- **RePoE 一侧。** `pobr-data-adapter` 与 release build 封存快照 manifest 时写入
+  `"contract_version": <所依赖 pobr-data 的 CONTRACT_VERSION>`，数值取自依赖本身（例如由 adapter 读取
+  `pobr_data::CONTRACT_VERSION` 输出），不手写；契约加 1 时先把依赖升到新的 `contract/<n>.0`，再重新生成并发布。
 
 ## 4. 存储边界
 

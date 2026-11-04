@@ -32,6 +32,11 @@ pub struct DataManifest {
     /// remain separate layers and are not hashed as snapshot contents.
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub files: std::collections::BTreeMap<String, String>,
+    /// The [`crate::CONTRACT_VERSION`] the producer built this package for.
+    /// Packages published before the contract was versioned omit it; the
+    /// loader accepts those and rejects any declared number but its own.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contract_version: Option<u32>,
 }
 
 /// Manifest v2's three-section domains (corresponds to
@@ -150,6 +155,30 @@ mod tests {
         assert!(manifest.domains.generated.is_empty());
     }
 
+    /// `contract_version` is optional: absent stays absent through a round trip
+    /// (old packages keep their bytes), present is read and written back.
+    #[test]
+    fn contract_version_is_optional() {
+        let absent =
+            r#"{"schema_version":3,"poe_version":"0.5.5.5","languages":[],"domains":{"base":[]}}"#;
+        let manifest: DataManifest = serde_json::from_str(absent).unwrap();
+        assert_eq!(manifest.contract_version, None);
+        assert!(
+            !serde_json::to_string(&manifest)
+                .unwrap()
+                .contains("contract_version")
+        );
+
+        let present = r#"{"schema_version":3,"poe_version":"0.5.5.5","languages":[],"domains":{"base":[]},"contract_version":1}"#;
+        let manifest: DataManifest = serde_json::from_str(present).unwrap();
+        assert_eq!(manifest.contract_version, Some(1));
+        assert!(
+            serde_json::to_string(&manifest)
+                .unwrap()
+                .contains(r#""contract_version":1"#)
+        );
+    }
+
     /// Serialization always uses the v2 three-section object shape, and the round trip is lossless.
     #[test]
     fn serializes_v2_shape_roundtrip() {
@@ -157,6 +186,7 @@ mod tests {
             schema_version: CATALOG_SCHEMA_VERSION,
             poe_version: "test-version".into(),
             files: Default::default(),
+            contract_version: None,
             languages: vec!["zh-TW".into()],
             domains: DomainSections {
                 base: vec!["base_items".into()],

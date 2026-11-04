@@ -242,6 +242,7 @@ class LatestDataTests(unittest.TestCase):
                        {"schema": "pobr-native-display-texts/v1", "game_patch": version,
                         "realm": target["realm"], "locale": "zh-CN", "entries": {}, "scopes": {}})}
         snapshot = encoded({"schema_version": 3, "poe_version": version, "languages": ["zh-CN"],
+                            "contract_version": latest.build_data.contract_version(),
                             "domains": {"base": ["skills"], "overlay": ["trade_catalog"]},
                             "files": {name: sha(raw) for name, raw in content.items()}})
         members = {prefix + "manifest.json": snapshot,

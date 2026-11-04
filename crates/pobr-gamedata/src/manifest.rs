@@ -3,6 +3,7 @@
 //! Schemas 1/2 preserve legacy domain layouts; schema 3 adds required file hashes.
 //! The manifest lives at the version root and is never overlaid by user patches.
 
+use pobr_data::CONTRACT_VERSION;
 use pobr_data::catalog::{CATALOG_SCHEMA_VERSION, DataManifest};
 use sha2::{Digest, Sha256};
 
@@ -16,15 +17,63 @@ pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
         .collect()
 }
 
+/// Only the contract declaration; every other field is ignored, so this reads
+/// manifests of any envelope shape.
+#[derive(serde::Deserialize)]
+struct ContractDeclaration {
+    #[serde(default)]
+    contract_version: Option<u32>,
+}
+
+/// Refuses a manifest declaring a data contract other than this build's.
+/// Packages published before the contract was versioned omit the field and are
+/// accepted as they are: the lock pins their bytes and runtime identity.
+/// Bytes that don't even have the declaration's shape are left to the full parse.
+fn check_contract(path: &std::path::Path, bytes: &[u8]) -> Result<(), LoadError> {
+    let Ok(ContractDeclaration {
+        contract_version: Some(declared),
+    }) = serde_json::from_slice(bytes)
+    else {
+        return Ok(());
+    };
+    if declared == CONTRACT_VERSION {
+        return Ok(());
+    }
+    Err(LoadError::Integrity {
+        path: path.to_owned(),
+        message: format!(
+            "data contract mismatch: the package declares contract_version {declared}, \
+             this PoBR build implements data contract {CONTRACT_VERSION}; pin a data \
+             package built for contract {CONTRACT_VERSION} in pipeline/data.lock.json \
+             (its producer depends on pobr-data at a contract/{CONTRACT_VERSION}.<m> tag)"
+        ),
+    })
+}
+
+/// The text cached for a failed snapshot, which is re-raised as
+/// [`LoadError::Integrity`]: an integrity error keeps only its message, so the
+/// re-raised error carries the "invalid data snapshot" prefix once.
+fn cached_message(error: LoadError) -> String {
+    match error {
+        LoadError::Integrity { message, .. } => message,
+        other => other.to_string(),
+    }
+}
+
 impl GameData {
     /// Loads the data-pack envelope (a v1 flat `domains` is automatically
     /// filed under the `base` section).
+    ///
+    /// The data-contract declaration is read on its own first, so a package
+    /// built for another contract — whose envelope may no longer parse as this
+    /// build's [`DataManifest`] — is reported as a contract mismatch.
     pub fn manifest(&self) -> Result<DataManifest, LoadError> {
         let path = self.root().join("manifest.json");
         let bytes = self.read_bytes(&path).map_err(|source| LoadError::Io {
             path: path.clone(),
             source,
         })?;
+        check_contract(&path, &bytes)?;
         serde_json::from_slice(&bytes).map_err(|source| LoadError::Parse { path, source })
     }
 
@@ -48,11 +97,11 @@ impl GameData {
             Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
                 Ok(None)
             }
-            Err(error) => Err(error.to_string()),
+            Err(error) => Err(cached_message(error)),
             Ok(manifest) => self
                 .validate_snapshot(manifest)
                 .map(Some)
-                .map_err(|error| error.to_string()),
+                .map_err(cached_message),
         }) {
             Ok(manifest) => Ok(manifest.as_ref()),
             Err(message) => Err(LoadError::Integrity {
@@ -205,6 +254,98 @@ mod tests {
             ("base/stats.json".to_string(), b"[]".to_vec()),
         ]);
         assert_eq!(GameData::from_memory(bare).languages(), ["aa", "zh-TW"]);
+    }
+
+    /// `strict_files` with `contract_version` set (or removed for `None`).
+    fn with_contract(version: Option<serde_json::Value>) -> BTreeMap<String, Vec<u8>> {
+        let mut files = strict_files();
+        let mut manifest: serde_json::Value =
+            serde_json::from_slice(&files["manifest.json"]).unwrap();
+        match version {
+            Some(version) => manifest["contract_version"] = version,
+            None => {
+                manifest.as_object_mut().unwrap().remove("contract_version");
+            }
+        }
+        files.insert(
+            "manifest.json".into(),
+            serde_json::to_vec(&manifest).unwrap(),
+        );
+        files
+    }
+
+    /// A package built for this contract loads and reports the version it declares.
+    #[test]
+    fn a_matching_contract_version_loads() {
+        let data = GameData::from_memory(with_contract(Some(pobr_data::CONTRACT_VERSION.into())));
+        let manifest = data.validate_manifest().unwrap();
+        assert_eq!(manifest.contract_version, Some(pobr_data::CONTRACT_VERSION));
+    }
+
+    /// A package declaring another contract is refused, before any domain loads,
+    /// with both numbers and the way out in the message.
+    #[test]
+    fn a_mismatched_contract_version_is_refused() {
+        for declared in [pobr_data::CONTRACT_VERSION + 1, 0] {
+            let data = GameData::from_memory(with_contract(Some(declared.into())));
+            let message = data.validate_manifest().unwrap_err().to_string();
+            assert!(
+                message.contains(&format!("declares contract_version {declared}"))
+                    && message.contains(&format!(
+                        "implements data contract {}",
+                        pobr_data::CONTRACT_VERSION
+                    ))
+                    && message.contains("pipeline/data.lock.json"),
+                "{message}"
+            );
+            assert!(data.identity().is_err());
+            assert_eq!(
+                message.matches("invalid data snapshot").count(),
+                1,
+                "{message}"
+            );
+        }
+    }
+
+    /// A package from another contract whose envelope no longer parses as this
+    /// build's manifest still gets the contract guidance, not a parse error.
+    #[test]
+    fn a_mismatched_contract_is_reported_before_the_envelope_parses() {
+        let manifest = serde_json::json!({
+            "contract_version": pobr_data::CONTRACT_VERSION + 1,
+            "schema_version": "four", "domains": 7,
+        });
+        let files = BTreeMap::from([(
+            "manifest.json".to_string(),
+            serde_json::to_vec(&manifest).unwrap(),
+        )]);
+        let data = GameData::from_memory(files);
+        let direct = data.manifest().unwrap_err();
+        assert!(
+            matches!(direct, crate::LoadError::Integrity { .. }),
+            "{direct}"
+        );
+        let message = data.validate_manifest().unwrap_err().to_string();
+        assert!(message.contains("data contract mismatch"), "{message}");
+        assert_eq!(
+            message.matches("invalid data snapshot").count(),
+            1,
+            "{message}"
+        );
+    }
+
+    /// Packages published before the contract was versioned omit the field and
+    /// load as before, with the same runtime identity.
+    #[test]
+    fn an_absent_contract_version_is_accepted_unchanged() {
+        let absent = with_contract(None);
+        assert_eq!(absent, strict_files());
+        let data = GameData::from_memory(absent);
+        assert_eq!(data.validate_manifest().unwrap().contract_version, None);
+        let declared =
+            GameData::from_memory(with_contract(Some(pobr_data::CONTRACT_VERSION.into())));
+        // The declaration is not part of the identity fingerprint.
+        assert_eq!(data.identity().unwrap(), declared.identity().unwrap());
     }
 
     #[test]

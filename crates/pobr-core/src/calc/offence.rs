@@ -442,8 +442,7 @@ fn shared_fire_resistance(db: &ModDb, cfg: &CalcConfig, element: &str) -> Shared
                         .and_then(|origin| origin.raw_text.as_deref())
                 });
                 text.is_none_or(|text| {
-                    let text =
-                        crate::mod_parser::engine::strip_display_markup(text).to_ascii_lowercase();
+                    let text = pobr_data::text::strip_display_markup(text).to_ascii_lowercase();
                     !text.contains("all elemental resistances") && !text.contains("all resistances")
                 })
             })

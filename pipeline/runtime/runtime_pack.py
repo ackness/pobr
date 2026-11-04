@@ -128,6 +128,9 @@ def assemble(files, version, target, locale, display):
     inventory = {name: bundle.sha256(raw) for name, raw in sorted(selected.items())
                  if not name.startswith("overlay-common/")}
     manifest = {key: snapshot[key] for key in ("schema_version", "poe_version", "domains")}
+    if "contract_version" in snapshot:
+        # The producer's data-contract declaration; the WASM loader checks it too.
+        manifest["contract_version"] = snapshot["contract_version"]
     manifest.update(languages=[locale], files=inventory)
     bundle.validate_declarations(manifest, inventory)
     selected["manifest.json"] = raw_json(manifest)

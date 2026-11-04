@@ -801,9 +801,8 @@ mod tests {
         assert_eq!(parse_grants_skill("+50 to maximum Life"), None);
         assert_eq!(parse_grants_skill("Grants Skill:"), None);
         // The passive tree words the skill with a style; its markup is reduced to the shown text first.
-        let shown = pobr_core::mod_parser::engine::strip_display_markup(
-            "Grants Skill: <underline>{Mirage Deadeye}",
-        );
+        let shown =
+            pobr_data::text::strip_display_markup("Grants Skill: <underline>{Mirage Deadeye}");
         assert_eq!(
             parse_grants_skill(&shown),
             Some(("mirage deadeye".to_string(), None))

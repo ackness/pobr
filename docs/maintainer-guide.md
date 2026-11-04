@@ -92,11 +92,11 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 
 ## Workspace 结构
 
-以根 [Cargo.toml](../Cargo.toml)、各 crate 的 `src/lib.rs` 和契约 / 回归测试为准。11 个成员：7 个库、2 个应用、2 个 Rust 工具；`web/` 与 Lua oracle 不在 Cargo workspace 里。把 RePoE 事实转换成运行 JSON 的 `pobr-data-adapter` 及其领域政策在 [ackness/repoe](https://github.com/ackness/repoe/tree/master/tools/pobr-data-adapter)，经不可移动的 tag `engine-crates/<日期>` 依赖本仓库的数据类型；改动 `pobr-data` 等运行时类型时，在 RePoE 一侧用新 tag 跟进。
+以根 [Cargo.toml](../Cargo.toml)、各 crate 的 `src/lib.rs` 和契约 / 回归测试为准。11 个成员：7 个库、2 个应用、2 个 Rust 工具；`web/` 与 Lua oracle 不在 Cargo workspace 里。把 RePoE 事实转换成运行 JSON 的 `pobr-data-adapter` 及其领域政策在 [ackness/repoe](https://github.com/ackness/repoe/tree/master/tools/pobr-data-adapter)，经不可移动的 tag `contract/<n>.<m>` 依赖本仓库的数据契约 `pobr-data`（`n` 为 `pobr_data::CONTRACT_VERSION`，`m` 为增量修订）。不兼容地改动数据包类型或加载解释时把 `CONTRACT_VERSION` 加 1（tag 从 `contract/<n>.0` 起）；新增数据仓库应产出的可选字段或修正 `pobr-data` 辅助代码时打下一个 `.m`；只改引擎不需要 tag。tag 打在 master 上 `pobr-data` 已完整包含该修订的提交上，RePoE 再升级依赖；规则、tag 约定与 manifest 的 `contract_version` 字段见[数据契约版本](data-architecture.md#31-数据契约版本)。旧的 `engine-crates/<日期>` tag 不再新建，已有的保留。
 
 | 成员 | 职责 |
 |------|------|
-| `crates/pobr-data` | 纯数据定义（入库 JSON 格式在 `catalog/`，另有 damage / build_config / display_stat / stat / monster 等类型），不含计算或 I/O，是所有 crate 的底层 |
+| `crates/pobr-data` | 纯数据定义（入库 JSON 格式在 `catalog/`，另有 damage / build_config / display_stat / stat / monster 等类型，以及数据仓库 adapter 也用的纯文本工具 `text`），不含计算或 I/O，是所有 crate 的底层 |
 | `crates/pobr-core` | Modifier 解析、存储、汇总、计算与来源归因；不做 I/O |
 | `crates/pobr-gamedata` | 运行时数据加载器；计算所需游戏数据的文件 I/O 集中在此：`GameData::new(version_dir)` 按域懒加载，WASM 用 `GameData::from_memory` |
 | `crates/pobr-i18n` | 与语言无关的游戏文本引擎：`LocalePack` 读入一种语言的翻译库语言包（调用方传入内容，不做 I/O），回退链由语言包 `_meta.json` 的 `fallback` 声明；`lines::LineParser`（目标语言词条行 → 英文规范行）与 `LineRenderer`（英文 → 目标语言显示）按语言包模板匹配，是否为目标语言也由模板与名词判断；只依赖 `pobr-data` |

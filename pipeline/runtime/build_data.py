@@ -25,6 +25,31 @@ DATA_LOCK_SCHEMA = "pobr-data-lock/v1"
 PART_SCHEMA = "pobr-build-data-part/v1"
 OWNERS = {"game": "ackness/repoe", "language": "ackness/poe2-zh-cn-stats"}
 TAG = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*")
+CONTRACT_SOURCE = ROOT / "crates/pobr-data/src/lib.rs"
+# Snapshot manifests locked before packages declared a data contract. They keep
+# preparing as pinned; any other snapshot must declare this build's contract.
+# Sunset: drop this set (and accept no undeclared snapshot in the loader) once
+# the lock pins a package that declares contract_version.
+PRE_CONTRACT_SNAPSHOTS = frozenset({"2cfb21030f93d72bdb469e0df0ff52820c5d2bc54adfe0e5fa90d8654148649e"})
+
+
+def contract_version(source=CONTRACT_SOURCE):
+    """`pobr_data::CONTRACT_VERSION`, read from the crate that defines it."""
+    found = re.findall(r"^pub const CONTRACT_VERSION: u32 = ([0-9]+);$",
+                       Path(source).read_text(encoding="utf-8"), re.MULTILINE)
+    require(len(found) == 1, f"Cannot read CONTRACT_VERSION from {source}")
+    return int(found[0])
+
+
+def require_contract(snapshot, digest, expected=None):
+    """A newly locked snapshot must declare the data contract this PoBR implements."""
+    if digest in PRE_CONTRACT_SNAPSHOTS:
+        return
+    expected = contract_version() if expected is None else expected
+    declared = snapshot.get("contract_version")
+    require(type(declared) is int and declared == expected,
+            f"Snapshot manifest declares data contract {declared!r}; this PoBR implements contract "
+            f"{expected}: lock a package whose producer pins pobr-data at a contract/{expected}.<m> tag")
 
 
 def validate_tag(spec):
@@ -180,6 +205,7 @@ def prepare(lock_path, output, cache, shared_root=ROOT / "data/overlay-common",
                     files[name] = regular(part / name)
         snapshot_path = f"data/{version}/manifest.json"
         snapshot = bundle.decode(pinned(files[snapshot_path], lock["snapshot_manifest"]))
+        require_contract(snapshot, lock["snapshot_manifest"]["sha256"])
         require(snapshot.get("schema_version") == 3 and snapshot.get("poe_version") == version,
                 "External snapshot version/schema mismatch")
         expected = {snapshot_path, *(f"data/{version}/{name}" for name in snapshot["files"])}

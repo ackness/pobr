@@ -91,6 +91,14 @@ class SnapshotTests(unittest.TestCase):
                 snapshot.promote(data, self.root / "data", "9.1", activate=True)
         self.assertEqual(before, tree_fingerprint(self.root / "data"))
 
+    def test_resealing_keeps_a_declared_contract_version(self):
+        version = self.root / "data/9.1"
+        self.assertNotIn("contract_version", snapshot.manifest(version))
+        self.write("data/9.1/manifest.json", {**snapshot.read_json(version / "manifest.json"),
+                                              "contract_version": 3})
+        self.assertEqual(snapshot.manifest(version)["contract_version"], 3)
+        self.assertEqual(snapshot.read_json(version / "manifest.json")["contract_version"], 3)
+
 
 if __name__ == "__main__":
     unittest.main()
