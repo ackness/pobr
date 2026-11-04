@@ -3,6 +3,7 @@
 //! Schemas 1/2 preserve legacy domain layouts; schema 3 adds required file hashes.
 //! The manifest lives at the version root and is never overlaid by user patches.
 
+use pobr_data::CONTRACT_VERSION;
 use pobr_data::catalog::{CATALOG_SCHEMA_VERSION, DataManifest};
 use sha2::{Digest, Sha256};
 
@@ -96,6 +97,19 @@ impl GameData {
         }
         if manifest.poe_version.trim().is_empty() {
             return Err(invalid("empty data version".into()));
+        }
+        // Packages published before the contract was versioned omit the field
+        // and are accepted as they are: their bytes and runtime identity stay
+        // pinned by the lock. A declared number must be this build's.
+        if let Some(declared) = manifest.contract_version
+            && declared != CONTRACT_VERSION
+        {
+            return Err(invalid(format!(
+                "data contract mismatch: the package declares contract_version {declared}, \
+                 this PoBR build implements data contract {CONTRACT_VERSION}; pin a data \
+                 package built for contract {CONTRACT_VERSION} in pipeline/data.lock.json \
+                 (the producer depends on pobr-data at tag contract/{CONTRACT_VERSION})"
+            )));
         }
         if manifest.schema_version < 3 {
             return Ok(manifest);
@@ -205,6 +219,66 @@ mod tests {
             ("base/stats.json".to_string(), b"[]".to_vec()),
         ]);
         assert_eq!(GameData::from_memory(bare).languages(), ["aa", "zh-TW"]);
+    }
+
+    /// `strict_files` with `contract_version` set (or removed for `None`).
+    fn with_contract(version: Option<serde_json::Value>) -> BTreeMap<String, Vec<u8>> {
+        let mut files = strict_files();
+        let mut manifest: serde_json::Value =
+            serde_json::from_slice(&files["manifest.json"]).unwrap();
+        match version {
+            Some(version) => manifest["contract_version"] = version,
+            None => {
+                manifest.as_object_mut().unwrap().remove("contract_version");
+            }
+        }
+        files.insert(
+            "manifest.json".into(),
+            serde_json::to_vec(&manifest).unwrap(),
+        );
+        files
+    }
+
+    /// A package built for this contract loads and reports the version it declares.
+    #[test]
+    fn a_matching_contract_version_loads() {
+        let data = GameData::from_memory(with_contract(Some(pobr_data::CONTRACT_VERSION.into())));
+        let manifest = data.validate_manifest().unwrap();
+        assert_eq!(manifest.contract_version, Some(pobr_data::CONTRACT_VERSION));
+    }
+
+    /// A package declaring another contract is refused, before any domain loads,
+    /// with both numbers and the way out in the message.
+    #[test]
+    fn a_mismatched_contract_version_is_refused() {
+        for declared in [pobr_data::CONTRACT_VERSION + 1, 0] {
+            let data = GameData::from_memory(with_contract(Some(declared.into())));
+            let message = data.validate_manifest().unwrap_err().to_string();
+            assert!(
+                message.contains(&format!("declares contract_version {declared}"))
+                    && message.contains(&format!(
+                        "implements data contract {}",
+                        pobr_data::CONTRACT_VERSION
+                    ))
+                    && message.contains("pipeline/data.lock.json"),
+                "{message}"
+            );
+            assert!(data.identity().is_err());
+        }
+    }
+
+    /// Packages published before the contract was versioned omit the field and
+    /// load as before, with the same runtime identity.
+    #[test]
+    fn an_absent_contract_version_is_accepted_unchanged() {
+        let absent = with_contract(None);
+        assert_eq!(absent, strict_files());
+        let data = GameData::from_memory(absent);
+        assert_eq!(data.validate_manifest().unwrap().contract_version, None);
+        let declared =
+            GameData::from_memory(with_contract(Some(pobr_data::CONTRACT_VERSION.into())));
+        // The declaration is not part of the identity fingerprint.
+        assert_eq!(data.identity().unwrap(), declared.identity().unwrap());
     }
 
     #[test]

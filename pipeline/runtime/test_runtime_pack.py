@@ -75,6 +75,14 @@ class RuntimePackTests(unittest.TestCase):
         self.assertEqual(rule["entries"][0]["batch"], "S0")
         self.assertEqual(rule["entries"][0]["game_source"], "stat_id")
         self.assertNotEqual(release["runtime_identity"], bundle.data_inputs(self.data, self.version)[1])
+        self.assertNotIn("contract_version", json.loads(files["manifest.json"]))
+
+    def test_a_declared_contract_version_reaches_the_pack_manifest(self):
+        path = self.data / "9.1/manifest.json"
+        snapshot = json.loads(path.read_bytes())
+        path.write_bytes(pack.raw_json({**snapshot, "contract_version": 7}))
+        _, files, _ = pack.read_release(self.output / "player", self.create()["release_id"])
+        self.assertEqual(json.loads(files["manifest.json"])["contract_version"], 7)
 
     def test_release_identity_lock_and_snapshot_pins_fail_closed(self):
         first = self.create()
