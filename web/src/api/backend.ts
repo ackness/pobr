@@ -132,7 +132,6 @@ export interface PobrBackend {
   /** 重插符文：重写物品文本的 Rune 命名行 + {rune} 词条行；`sockets` 给定时
    *  同步加减孔（重写/新增/移除 `Sockets:` 行）。非法输入抛错。 */
   reforgeRunes(text: string, runes: string[], sockets?: number): Promise<string>;
-  translate(lang: string, key: string): string;
 }
 
 let backendPromise: Promise<PobrBackend> | null = null;

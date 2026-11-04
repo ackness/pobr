@@ -80,7 +80,7 @@ impl BoundarySpec {
     }
 }
 
-/// Translation key for a [`StatId`]. The key-to-text mapping lives in `pobr-i18n`.
+/// Translation key for a [`StatId`]. Display text comes from the Web UI labels and the imported locale packages.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct StatTextKey(pub String);

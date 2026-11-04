@@ -1,4 +1,4 @@
-//! pobr-wasm: the Web/WASM API (calculation / i18n / build contracts).
+//! pobr-wasm: the Web/WASM API (calculation / localized line / build contracts).
 //!
 //! Core capabilities are wrapped as pure Rust functions taking/returning
 //! either JSON strings or plain strings. Under the default features,
@@ -14,7 +14,6 @@
 //! The shapes are pinned by `tests/contract_golden.rs`.
 
 pub mod build_api;
-pub mod i18n;
 pub mod session;
 pub mod state;
 mod xml_write;
@@ -32,7 +31,6 @@ pub use build_api::{
 pub use build_api::{
     preview_tree_conversion_json, preview_tree_edit_json, support_groups_compatible_json,
 };
-pub use i18n::translate;
 pub use session::calculate_json;
 pub use state::{
     init_data_from_dir, init_staged_data, init_staged_data_verified, is_data_ready,
@@ -63,12 +61,6 @@ pub mod wasm {
     #[wasm_bindgen(js_name = calculateJson)]
     pub fn calculate_json(input_json: &str) -> Result<String, JsError> {
         crate::session::calculate_json(input_json).map_err(|err| JsError::new(&err))
-    }
-
-    /// JS entry point: `translate(lang, key) -> string`.
-    #[wasm_bindgen(js_name = translate)]
-    pub fn translate(lang: &str, key: &str) -> String {
-        crate::i18n::translate(lang, key)
     }
 
     /// JS entry point: `stageDataFile(path, content)` — injects data files one at a time (from JS fetch results).

@@ -334,7 +334,7 @@ PR 不在 workflow 层过滤文档，以免必需检查永久 pending：只运�
 自动数据采用的[完整契约](../pipeline/latest/latest-data.md)另要求专用App／PAT凭据、远端严格且含管理员的必需`PR gate`保护，以及当前两owner完整发布frontier。默认token的PR事件可能仍需执行批准；建PR或dispatch成功不能当作CI通过。缺凭据／保护或任一gate未完成时保持原锁和CURRENT；本地文件不等于托管设置已启用。
 
 完整 CI 包括 fmt/Clippy（含诊断 features）、workspace tests/doctest、parity/reference 退步断言、
-已准备数据上派生规则的逐字节复现与解析覆盖率棘轮、i18n、数据兼容、Web 类型/单测/Worker、真实 WASM 契约与打包计算。
+已准备数据上派生规则的逐字节复现与解析覆盖率棘轮、数据兼容、Web 类型/单测/Worker、真实 WASM 契约与打包计算。
 缺少 vendor 的项目会明确跳过，不能将其描述为已验收。
 它不等同于本地 `mise run gate` 的额外 accuracy 报告和全部本地输入。
 E2E 只在显式手动输入时运行；交互风险需要时选择相关本地 spec 或云端 E2E。
@@ -399,7 +399,7 @@ Dependabot 每日分组检查 Actions 更新；Cargo、Rust toolchain、Web 与�
 
 ## 发布与部署
 
-应用版本由 `[workspace.package].version` 管理；七个基础库与 `data/CURRENT` 独立版本。
+应用版本由 `[workspace.package].version` 管理；六个基础库与 `data/CURRENT` 独立版本。
 更新应用版本后用 `mise exec -- cargo metadata --format-version 1 > /dev/null` 刷新锁文件。
 [release-policy.py](../devs/scripts/release-policy.py) 按 SemVer 判断升级，检查所有继承 workspace
 版本的应用/工具锁版本；远端 tag 查询失败会报错，不能当作“tag 不存在”。

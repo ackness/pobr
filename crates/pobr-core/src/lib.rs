@@ -22,8 +22,8 @@
 //!
 //! Calculations use only stable IDs internally
 //! ([`ModName`](pobr_data::modifier::ModName) / `StatId` / `SourceId`); display
-//! text goes through `pobr-i18n`. Mutable writes to `Env` in calc functions are
-//! concentrated in `perform`, with parallelism only unrolled over read-only
+//! text is resolved at the display boundary (Web labels, imported locale
+//! packages). Mutable writes to `Env` in calc functions are concentrated in `perform`, with parallelism only unrolled over read-only
 //! snapshots (immutable / deterministic).
 
 // Diagnostic env-var snapshot macro. `#[macro_use]` must precede the other mod

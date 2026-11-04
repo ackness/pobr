@@ -122,7 +122,7 @@ impl EquipmentSlot {
         Self::Belt,
     ];
 
-    /// Stable id used inside the engine. Display text comes from `pobr-i18n`.
+    /// Stable id used inside the engine. Display text comes from the imported locale packages.
     pub fn id(self) -> &'static str {
         match self {
             Self::Weapon1 => "weapon1",
