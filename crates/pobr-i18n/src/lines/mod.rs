@@ -69,9 +69,10 @@ impl LineParser {
                     .or_insert_with(|| english.clone());
             }
         }
-        Some(Self {
-            translator: LineTranslator::new(&templates, names),
-        })
+        let mut translator = LineTranslator::new(&templates, names);
+        translator
+            .enable_source_detection(packs.iter().any(|pack| pack.meta().shares_english_script));
+        Some(Self { translator })
     }
 
     /// Whether `line` is written in the chain's language (see
@@ -96,18 +97,43 @@ impl LineParser {
     }
 
     /// Parses every localized line of `text`; other lines, and localized
-    /// lines no template recognizes, are kept. Text with no localized line
-    /// is returned unchanged.
+    /// lines no template recognizes, are kept. Text in which no line changes
+    /// is returned unchanged, byte for byte (line endings included).
     pub fn parse_text<'t>(&self, text: &'t str) -> Cow<'t, str> {
-        if !text.lines().any(|line| self.is_localized(line)) {
-            return Cow::Borrowed(text);
-        }
-        Cow::Owned(
-            text.lines()
-                .map(|line| self.parse_line(line).unwrap_or_else(|| line.to_string()))
-                .collect::<Vec<_>>()
-                .join("\n"),
-        )
+        parse_text_with(text, |line| self.parse_line(line))
+    }
+}
+
+/// Whether `text` can hold a line of a locale at all, without loading one:
+/// a locale that does not share English's script is recognized only by
+/// letters English never uses, and English canonical text uses every ASCII
+/// letter, so text with no non-ASCII letter holds no such line. Pass whether
+/// any candidate locale declares [`crate::LocaleMeta::shares_english_script`].
+pub fn may_contain_localized_text(text: &str, shares_english_script: bool) -> bool {
+    shares_english_script || text.chars().any(|c| c.is_alphabetic() && !c.is_ascii())
+}
+
+/// Replaces each line `parse` translates; text in which no line changes is
+/// returned unchanged, byte for byte. A changed text is re-joined with `\n`.
+pub fn parse_text_with<'t>(
+    text: &'t str,
+    mut parse: impl FnMut(&str) -> Option<String>,
+) -> Cow<'t, str> {
+    let mut changed = false;
+    let lines: Vec<Cow<'t, str>> = text
+        .lines()
+        .map(|line| match parse(line) {
+            Some(parsed) if parsed != line => {
+                changed = true;
+                Cow::Owned(parsed)
+            }
+            _ => Cow::Borrowed(line),
+        })
+        .collect();
+    if changed {
+        Cow::Owned(lines.join("\n"))
+    } else {
+        Cow::Borrowed(text)
     }
 }
 

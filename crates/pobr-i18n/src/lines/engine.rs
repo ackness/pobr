@@ -189,13 +189,18 @@ pub struct LineTranslator {
     /// The RARE random-name word table (prefix word/suffix word ->
     /// localized word; only injected for the English -> locale display direction).
     rare_words: HashMap<String, String>,
-    /// Characters the source side's literals and names use and the target
-    /// side's never do (for a CJK locale: its ideographs and full-width
-    /// punctuation; for a Latin-script locale: its accented letters, if any).
-    source_only_chars: HashSet<char>,
-    /// Skeletons of the target-side templates.
+    /// Letters the source side's literals and names use and the target
+    /// side's never do (for a CJK locale: its ideographs; for a Latin-script
+    /// locale: its accented letters, if any). Punctuation and symbols never
+    /// count: English flavour text uses curly quotes and dashes too.
+    source_only_letters: HashSet<char>,
+    /// Whether the source side is written in the target side's script, so a
+    /// line can be the source's without any letter of its own (see
+    /// [`Self::enable_source_detection`]).
+    shares_target_script: bool,
+    /// Skeletons of the target-side templates (only for a shared script).
     target_skeletons: HashSet<String>,
-    /// Target-side whole names.
+    /// Target-side whole names (only for a shared script).
     target_names: HashSet<String>,
 }
 
@@ -205,19 +210,10 @@ impl LineTranslator {
         let mut buckets: HashMap<String, Vec<usize>> = HashMap::new();
         let mut prefix_index: HashMap<String, Vec<usize>> = HashMap::new();
         let mut suffix_index: HashMap<String, Vec<usize>> = HashMap::new();
-        let mut source_chars: HashSet<char> = HashSet::new();
-        let mut target_chars: HashSet<char> = HashSet::new();
-        let mut target_skeletons: HashSet<String> = HashSet::new();
         for pair in templates {
-            if let Some(en_segments) = parse_template(&pair.en) {
-                let skel = template_skeleton(&en_segments);
-                target_chars.extend(skel.chars());
-                target_skeletons.insert(skel);
-            }
             let Some(src_segments) = parse_template(&pair.src) else {
                 continue;
             };
-            source_chars.extend(template_skeleton(&src_segments).chars());
             let idx = compiled.len();
             buckets
                 .entry(template_skeleton(&src_segments))
@@ -248,11 +244,6 @@ impl LineTranslator {
                 en: pair.en.clone(),
             });
         }
-        for (source, target) in &base_names {
-            source_chars.extend(skeleton(source).chars());
-            target_chars.extend(skeleton(target).chars());
-        }
-        let target_names = base_names.values().cloned().collect();
         Self {
             templates: compiled,
             buckets,
@@ -261,23 +252,73 @@ impl LineTranslator {
             base_names,
             affix_names: HashMap::new(),
             rare_words: HashMap::new(),
-            source_only_chars: source_chars.difference(&target_chars).copied().collect(),
-            target_skeletons,
-            target_names,
+            source_only_letters: HashSet::new(),
+            shares_target_script: false,
+            target_skeletons: HashSet::new(),
+            target_names: HashSet::new(),
+        }
+    }
+
+    /// Prepares [`Self::is_source_text`] (an input-direction translator
+    /// needs it; a display one does not). `shares_target_script` declares
+    /// that the source side is written in the target side's script (a
+    /// Latin-script locale against English): a line is then also the
+    /// source's when it is spelled like a source template or name and
+    /// unlike every target one.
+    pub fn enable_source_detection(&mut self, shares_target_script: bool) {
+        let mut source: HashSet<char> = HashSet::new();
+        let mut target: HashSet<char> = HashSet::new();
+        let mut target_skeletons = HashSet::new();
+        for template in &self.templates {
+            for segment in &template.src_segments {
+                if let Segment::Literal(lit) = segment {
+                    source.extend(lit.chars().filter(|c| c.is_alphabetic()));
+                }
+            }
+            if let Some(segments) = parse_template(&template.en) {
+                for segment in &segments {
+                    if let Segment::Literal(lit) = segment {
+                        target.extend(lit.chars().filter(|c| c.is_alphabetic()));
+                    }
+                }
+                if shares_target_script {
+                    target_skeletons.insert(template_skeleton(&segments));
+                }
+            }
+        }
+        for (source_name, target_name) in &self.base_names {
+            source.extend(source_name.chars().filter(|c| c.is_alphabetic()));
+            target.extend(target_name.chars().filter(|c| c.is_alphabetic()));
+        }
+        let lower = |set: HashSet<char>| -> HashSet<char> {
+            set.into_iter().map(|c| c.to_ascii_lowercase()).collect()
+        };
+        let (source, target) = (lower(source), lower(target));
+        self.source_only_letters = source.difference(&target).copied().collect();
+        self.shares_target_script = shares_target_script;
+        if shares_target_script {
+            self.target_skeletons = target_skeletons;
+            self.target_names = self.base_names.values().cloned().collect();
         }
     }
 
     /// Whether `line` reads as source-side text, decided by the template
-    /// data rather than by a character set: it uses a character only the
-    /// source side uses, or it is spelled like a source template or name and
-    /// unlike every target template and name (a line in a script both sides
-    /// share). A target-side line is never rewritten by an input pass.
+    /// data rather than by a fixed character set: it uses a letter only the
+    /// source side uses, or (for a source sharing the target's script) it is
+    /// spelled like a source template or name and unlike every target
+    /// template and name. A target-side line is never rewritten by an input pass.
     pub fn is_source_text(&self, line: &str) -> bool {
         let line = line.trim();
-        let skel = skeleton(line);
-        if skel.chars().any(|c| self.source_only_chars.contains(&c)) {
+        if line
+            .chars()
+            .any(|c| self.source_only_letters.contains(&c.to_ascii_lowercase()))
+        {
             return true;
         }
+        if !self.shares_target_script {
+            return false;
+        }
+        let skel = skeleton(line);
         (self.buckets.contains_key(&skel) || self.base_names.contains_key(line))
             && !self.target_skeletons.contains(&skel)
             && !self.target_names.contains(line)

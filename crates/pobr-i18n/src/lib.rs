@@ -20,6 +20,6 @@ pub mod fallback;
 pub mod lines;
 pub mod pack;
 
-pub use fallback::{LocaleSet, resolve_chain};
+pub use fallback::{LocaleSet, chain_codes, resolve_chain};
 pub use lines::{LineParser, LineRenderer, LineTranslator};
 pub use pack::{LocaleMeta, LocalePack, META_FILE, NameKey, NameKind, PackError, STAT_LINES_FILE};

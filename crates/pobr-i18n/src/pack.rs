@@ -29,6 +29,13 @@ pub struct LocaleMeta {
     /// chain: a lookup that no pack answers keeps the English text.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub fallback: Vec<String>,
+    /// Whether the locale is written in English's (ASCII Latin) script, so
+    /// a line of it may contain no letter English lacks. Such a locale's
+    /// lines are also recognized by matching its templates and names (see
+    /// [`crate::LineTranslator::is_source_text`]); otherwise only a letter
+    /// English never uses marks a line as the locale's.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub shares_english_script: bool,
 }
 
 /// A name table of a locale pack.

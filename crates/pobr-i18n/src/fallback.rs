@@ -18,7 +18,7 @@ where
     F: FnMut(&str) -> Option<LocalePack>,
 {
     let mut chain = Vec::new();
-    walk(code, extra, |next| {
+    chain_codes(code, extra, |next| {
         let pack = load(next)?;
         let fallback = pack.fallback().to_vec();
         chain.push(pack);
@@ -27,9 +27,10 @@ where
     chain
 }
 
-/// The chain's codes, in order; `visit` returns a present locale's declared
-/// fallbacks, or `None` for a locale that is not available.
-fn walk<F>(code: &str, extra: &[&str], mut visit: F) -> Vec<String>
+/// The chain's codes, in the order of [`resolve_chain`]; `visit` returns a
+/// present locale's declared fallbacks, or `None` for a locale that is not
+/// available (it is then left out). `visit` is called at most once per code.
+pub fn chain_codes<F>(code: &str, extra: &[&str], mut visit: F) -> Vec<String>
 where
     F: FnMut(&str) -> Option<Vec<String>>,
 {
@@ -80,7 +81,7 @@ impl LocaleSet {
 
     /// The packs that answer for `code`, in order (see [`resolve_chain`]).
     pub fn chain(&self, code: &str, extra: &[&str]) -> Vec<&LocalePack> {
-        let codes = walk(code, extra, |c| {
+        let codes = chain_codes(code, extra, |c| {
             self.packs.get(c).map(|p| p.fallback().to_vec())
         });
         codes.iter().filter_map(|c| self.packs.get(c)).collect()
@@ -103,6 +104,7 @@ mod tests {
         let mut pack = LocalePack::new(code).unwrap();
         pack.set_meta(LocaleMeta {
             fallback: fallback.iter().map(|s| s.to_string()).collect(),
+            ..LocaleMeta::default()
         });
         if let Some((en, text)) = word {
             pack.set_names(NameKind::Word, [(en.into(), text.into())].into());

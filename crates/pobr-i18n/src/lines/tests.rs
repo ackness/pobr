@@ -2,6 +2,7 @@
 //! the zh-CN translator unchanged) are in `engine.rs`.
 
 use super::*;
+use crate::LocaleMeta;
 
 /// A synthetic Latin-script locale written only in ASCII: nothing about its
 /// characters tells it apart from English, so the parser must recognize it
@@ -10,6 +11,10 @@ fn latin_pack() -> LocalePack {
     LocalePack::from_files(
         "xx-XX",
         [
+            (
+                "_meta.json",
+                br#"{"shares_english_script":true}"#.as_slice(),
+            ),
             (
                 "stat_lines.json",
                 br#"[
@@ -193,4 +198,52 @@ fn a_cjk_locale_is_recognized_by_its_own_characters() {
         parser.parse_text("+50 生命上限\n+5 to Strength"),
         "+50 to maximum Life\n+5 to Strength"
     );
+}
+
+#[test]
+fn a_latin_script_locale_that_does_not_say_so_is_recognized_by_its_own_letters() {
+    let mut pack = latin_pack();
+    pack.set_meta(LocaleMeta::default());
+    pack.set_stat_lines(
+        [
+            pack.stat_lines().to_vec(),
+            vec![StatLineTemplate {
+                src: "{0}% erhöhter Schaden".into(),
+                en: "{0}% increased Damage".into(),
+            }],
+        ]
+        .concat(),
+    );
+    let parser = LineParser::new(&[&pack], BASES).unwrap();
+    assert_eq!(
+        parser.parse_line("12% erhöhter Schaden").as_deref(),
+        Some("12% increased Damage")
+    );
+    // Spelled only with letters English uses: not recognized without the declaration.
+    assert_eq!(parser.parse_line("Saphirring"), None);
+    assert!(!may_contain_localized_text("Saphirring", false));
+    assert!(may_contain_localized_text("Saphirring", true));
+    assert!(may_contain_localized_text("12% erhöhter Schaden", false));
+}
+
+#[test]
+fn punctuation_alone_does_not_mark_a_line_and_unchanged_text_keeps_its_bytes() {
+    let pack = LocalePack::from_files(
+        "zz",
+        [(
+            "stat_lines.json",
+            r#"[{"src":"“{0}”，生命：{1}？","en":"{0} {1} Life"}]"#.as_bytes(),
+        )],
+    )
+    .unwrap();
+    let parser = LineParser::new(&[&pack], []).unwrap();
+    let flavour = "“Bow before me”，she said：why？";
+    assert!(!parser.is_localized(flavour));
+    assert!(!may_contain_localized_text(flavour, false));
+    let text = "Rarity: Unique\r\n“Bow before me”\r\n";
+    assert!(matches!(parser.parse_text(text), Cow::Borrowed(t) if t == text));
+    // A localized line that no template recognizes leaves the text as it was.
+    let text = "Rarity: Rare\r\n生命 很多\r\n";
+    assert!(parser.is_localized("生命 很多"));
+    assert!(matches!(parser.parse_text(text), Cow::Borrowed(t) if t == text));
 }
