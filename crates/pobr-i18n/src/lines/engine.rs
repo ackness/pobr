@@ -158,6 +158,79 @@ fn accept_capture(capture: &str, allow_string: bool) -> Option<String> {
     None
 }
 
+/// Template text without its `{...}` placeholders (format specs such as
+/// `{0:+d}` hold letters that are not text).
+fn strip_placeholders(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut depth = 0usize;
+    for c in text.chars() {
+        match c {
+            '{' => depth += 1,
+            '}' => depth = depth.saturating_sub(1),
+            _ if depth == 0 => out.push(c),
+            _ => {}
+        }
+    }
+    out
+}
+
+/// A set of letters, ASCII lowercased: a bitmap over the Basic Multilingual
+/// Plane (one bit per letter, cheap to build from tens of thousands of
+/// template literals) and a sorted set above it.
+#[derive(Debug, Clone, Default)]
+struct LetterSet {
+    bmp: Vec<u64>,
+    other: std::collections::BTreeSet<char>,
+}
+
+impl LetterSet {
+    fn insert_letters(&mut self, text: &str) {
+        for c in text.chars() {
+            if c.is_alphabetic() {
+                self.insert(c.to_ascii_lowercase());
+            }
+        }
+    }
+
+    fn insert(&mut self, c: char) {
+        let i = c as usize;
+        if i < 0x10000 {
+            if self.bmp.is_empty() {
+                self.bmp = vec![0; 0x10000 / 64];
+            }
+            self.bmp[i / 64] |= 1 << (i % 64);
+        } else {
+            self.other.insert(c);
+        }
+    }
+
+    fn contains(&self, c: char) -> bool {
+        let c = c.to_ascii_lowercase();
+        let i = c as usize;
+        if i < 0x10000 {
+            self.bmp
+                .get(i / 64)
+                .is_some_and(|word| word & (1 << (i % 64)) != 0)
+        } else {
+            self.other.contains(&c)
+        }
+    }
+
+    /// The letters in `self` and not in `other`.
+    fn difference(&self, other: &LetterSet) -> LetterSet {
+        let bmp = self
+            .bmp
+            .iter()
+            .enumerate()
+            .map(|(i, word)| word & !other.bmp.get(i).copied().unwrap_or(0))
+            .collect();
+        LetterSet {
+            bmp,
+            other: self.other.difference(&other.other).copied().collect(),
+        }
+    }
+}
+
 /// A single compiled template pair.
 #[derive(Debug, Clone)]
 struct CompiledTemplate {
@@ -193,7 +266,7 @@ pub struct LineTranslator {
     /// side's never do (for a CJK locale: its ideographs; for a Latin-script
     /// locale: its accented letters, if any). Punctuation and symbols never
     /// count: English flavour text uses curly quotes and dashes too.
-    source_only_letters: HashSet<char>,
+    source_only_letters: LetterSet,
     /// Whether the source side is written in the target side's script, so a
     /// line can be the source's without any letter of its own (see
     /// [`Self::enable_source_detection`]).
@@ -252,7 +325,7 @@ impl LineTranslator {
             base_names,
             affix_names: HashMap::new(),
             rare_words: HashMap::new(),
-            source_only_letters: HashSet::new(),
+            source_only_letters: LetterSet::default(),
             shares_target_script: false,
             target_skeletons: HashSet::new(),
             target_names: HashSet::new(),
@@ -266,38 +339,29 @@ impl LineTranslator {
     /// source's when it is spelled like a source template or name and
     /// unlike every target one.
     pub fn enable_source_detection(&mut self, shares_target_script: bool) {
-        let mut source: HashSet<char> = HashSet::new();
-        let mut target: HashSet<char> = HashSet::new();
-        let mut target_skeletons = HashSet::new();
+        let mut source = LetterSet::default();
+        let mut target = LetterSet::default();
         for template in &self.templates {
             for segment in &template.src_segments {
                 if let Segment::Literal(lit) = segment {
-                    source.extend(lit.chars().filter(|c| c.is_alphabetic()));
+                    source.insert_letters(lit);
                 }
             }
-            if let Some(segments) = parse_template(&template.en) {
-                for segment in &segments {
-                    if let Segment::Literal(lit) = segment {
-                        target.extend(lit.chars().filter(|c| c.is_alphabetic()));
-                    }
-                }
-                if shares_target_script {
-                    target_skeletons.insert(template_skeleton(&segments));
-                }
-            }
+            target.insert_letters(&strip_placeholders(&template.en));
         }
         for (source_name, target_name) in &self.base_names {
-            source.extend(source_name.chars().filter(|c| c.is_alphabetic()));
-            target.extend(target_name.chars().filter(|c| c.is_alphabetic()));
+            source.insert_letters(source_name);
+            target.insert_letters(target_name);
         }
-        let lower = |set: HashSet<char>| -> HashSet<char> {
-            set.into_iter().map(|c| c.to_ascii_lowercase()).collect()
-        };
-        let (source, target) = (lower(source), lower(target));
-        self.source_only_letters = source.difference(&target).copied().collect();
+        self.source_only_letters = source.difference(&target);
         self.shares_target_script = shares_target_script;
         if shares_target_script {
-            self.target_skeletons = target_skeletons;
+            self.target_skeletons = self
+                .templates
+                .iter()
+                .filter_map(|t| parse_template(&t.en))
+                .map(|segments| template_skeleton(&segments))
+                .collect();
             self.target_names = self.base_names.values().cloned().collect();
         }
     }
@@ -309,10 +373,7 @@ impl LineTranslator {
     /// template and name. A target-side line is never rewritten by an input pass.
     pub fn is_source_text(&self, line: &str) -> bool {
         let line = line.trim();
-        if line
-            .chars()
-            .any(|c| self.source_only_letters.contains(&c.to_ascii_lowercase()))
-        {
+        if line.chars().any(|c| self.source_only_letters.contains(c)) {
             return true;
         }
         if !self.shares_target_script {
