@@ -76,18 +76,17 @@ RePoE 发布 ───┐
 
 ## 3. 发布与导入契约
 
-- **owner 发布。** 每个 owner 在默认分支的 `publication/index.json`（`owned-data-publication-index/v2`）登记通道序号，
-  指向不可变的 release 描述（`owned-data-publication/v2`）。描述按角色列出精确 revision、路径、大小和 SHA-256。
-  PoBR 消费 RePoE 的游戏、制作与测试夹具，以及翻译库的语言与辅助说明；owner 可声明更多角色，
-  翻译库还须声明它绑定的 RePoE 显示来源。序号单调递增、前驱精确；分叉、回退和缺少消费角色都是错误，PoBR 不消费的角色由 owner 自行增减。
-- **寻址与保活。** 每个产物只按 40 位 commit SHA 寻址（浅拉取、不取 tag），再核对字节数与 SHA-256；锁中不写分支名。
-  锁同时记录 owner 保活该 commit 的 tag `handoff/<name>`；
-  被锁、plan、publication index 或证据文件引用的 tag 不得删除或移动；
-  owner 合并包含被下游钉住 commit 的 PR 时用 merge commit，不用 squash／rebase，否则该 SHA 会从历史中消失。
-- **唯一数据锁。** [`pipeline/data.lock.json`](../pipeline/data.lock.json) 是 PoBR 唯一的数据输入声明：
-  目标游戏／补丁／服别、语言、每个消费产物的 tag + commit + 路径 + SHA-256、PoBR 自有共享规则的 pin、
-  期望的快照 manifest、运行身份与紧凑发行身份，以及采用时两个 owner 的 publication。
-  同补丁修订用 generation 和前驱摘要区分；导入和组包都只读这一个文件。
+- **owner 发布。** 新发布是 owner 仓库的 GitHub Release：tag（`game/<patch>-<n>`、`locale/<patch>-<n>`）打在生成它的
+  master 提交上，附件为包、GNU 格式的 `SHA256SUMS` 与 `receipt.json`（生产提交、契约版本、全部输入）。
+  发布方的历史由它自己的 Release 列表承担，PoBR 锁不复制发布索引、序号或描述哈希链。
+- **寻址。** Release 产物按 `repository` + `tag` + `asset` 下载（匿名 HTTPS；私有仓库设
+  `POBR_RELEASE_TRANSPORT=gh` 用 `gh` 的登录），按锁中的字节数与 SHA-256 校验后按内容缓存。
+  已锁定的旧 `handoff/*` 产物继续按 40 位 commit SHA + 路径浅拉取；这些 tag 保活被钉住的 commit，不得删除或移动，
+  owner 合并包含被下游钉住 commit 的 PR 时用 merge commit。锁中不写分支名。
+- **唯一数据锁。** [`pipeline/data.lock.json`](../pipeline/data.lock.json)（`pobr-data-lock/v2`）是 PoBR 唯一的数据输入声明：
+  目标游戏／补丁／服别、语言、每个消费产物的来源与字节 pin（ZIP 另有内嵌 manifest pin 与展开大小；Release 产物另记
+  `receipt` pin、`producer_commit` 与 `contract_version`）、PoBR 自有共享规则的 pin、期望的快照 manifest、
+  运行身份与紧凑发行身份。导入和组包都只读这一个文件；`mise run data:bump <owner> <tag>` 改写它。
 - **身份。** schema-3 `manifest.json` 列出全部运行文件及 SHA-256，未列出的文件视为不存在；
   `GameData::identity()` 标识快照、共享覆盖层和有效 patch，并进入计算结果的 `provenance`。
   完整快照与紧凑 release 是不同投影，身份分别记录，不能互换。
@@ -149,8 +148,9 @@ RePoE 发布 ───┐
 ## 5. 更新、采用与发布
 
 1. **owner 生产。** RePoE 与翻译库按固定来源生产、运行各自的完整 guard、发布不可变描述后推进索引。PoBR 不代为生产。
-2. **改锁。** 维护者在审阅分支中把数据锁改到 owner 的新发布，用 `data:prepare` 导入并核对身份差异。
-   PoBR 不自动发现或采用 owner 发布；owner 尚无完整新发布时保留现有默认。
+2. **改锁。** 维护者在审阅分支中运行 `mise run data:bump <owner> <tag>`：下载并按 `SHA256SUMS` 校验附件，
+   读取 `receipt.json`，替换该 owner 的锁条目，重算快照 pin、运行身份与紧凑发行身份，再 `data:prepare` 导入并打印身份差异。
+   新补丁两个 owner 一起 bump。PoBR 不自动发现或采用 owner 发布；owner 尚无完整新发布时保留现有默认。
 3. **验证。** 候选在精确 head 上通过 PR gate 和 Full gate：完整快照按摘要导入、
    从同一快照组出的紧凑发行包，以及同次构建的 WASM 消费该包。PoBR 不在 CI 中重跑 owner 的领域生产。
 4. **采用。** 数据锁经受保护的 PR 合并更新；运行输入改变时，改锁时准备完整数据并写入精确的 `release_id`，Full CI 重建后必须一致。本地安装用 `data:update` 显式选择，并携带期望的旧身份做 CAS；

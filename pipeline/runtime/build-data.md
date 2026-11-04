@@ -20,10 +20,17 @@ the prepared snapshot.
 
 [`pipeline/data.lock.json`](../data.lock.json) is the only data declaration. It
 fixes the target, locale, snapshot manifest bytes/SHA, full runtime identity, the
-compact `release_id`, and each owner artifact's repository, full immutable Git
-commit, tag, path and exact bytes/SHA. The tag names and keeps alive the pinned
-commit; fetching still uses the 40-character revision. ZIP
-parts additionally pin their embedded manifest and expanded size. The retained
+compact `release_id`, and each owner artifact's source and exact bytes/SHA.
+A source is either a GitHub Release asset (`repository`, `tag`, `asset`;
+downloaded from `https://github.com/<repository>/releases/download/<tag>/<asset>`,
+or through `gh release download` with `POBR_RELEASE_TRANSPORT=gh`) or, for an
+artifact locked before Releases, a full immutable Git commit, its `handoff/*`
+tag and a path; Git fetches use the 40-character revision. Release entries also
+record the owner's `receipt.json` pin, `producer_commit` and `contract_version`,
+written by `mise run data:bump` (`pipeline/imports/data_bump.py`). ZIP
+parts additionally pin their embedded manifest and expanded size. The lock holds
+no publisher-internal state (publication indexes, descriptor chains, lock
+generations): `validate` rejects those retired fields. The retained
 language Git tree pins its original manifest, then authenticates every listed
 file, including evidence, before projecting only `i18n/` into runtime data.
 Evidence, reviewed supplement packages and verification sidecars are never player
@@ -82,8 +89,7 @@ share one cache across worktrees — every cache hit is still pin-verified.
 `--offline` rejects a cache
 miss or corruption and never consults tracked/history snapshots, local hints,
 latest revisions or another data version. Explicit `--game` / `--language`
-paths authenticate unpublished local handoffs against exactly the same lock;
-`local-only` inputs cannot be fetched as if they had been published. Local paths
+paths replace a download for one owner and must match exactly the same pins. Local paths
 are command arguments, never version-lock fields. Deleting an ignored prepared
 version and rerunning prepare rebuilds it from its external owner pins;
 rerunning prepare on an intact stale same-version install refreshes it in place.

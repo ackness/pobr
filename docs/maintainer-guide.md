@@ -74,6 +74,7 @@ mise run verify build skills support_gating::     # 定向测试 + fmt + Clippy
 mise run test core parser mod_parser::            # 一个套件 + filter（也接受原始 cargo test 参数）
 mise run regen                                    # 改了词条规则后：校验规则与示例、重生成产物
 mise run data:prepare && mise run data:check      # 导入固定 owner 数据；离线检查数据归属与工作树干净
+mise run data:bump repoe game/<patch>-<n>         # 换数据：锁改到 owner 的 Release（校验 SHA256SUMS），导入并打印身份差异
 mise run gate [--only 步骤,...]                   # 批次门禁
 
 mise exec -- cargo run -p pobr-cli -- calculate-build --file <code.txt> [--breakdown TotalDPS,Life] [--usage] [--full-dps] [--reference-basis] [--json]
@@ -113,7 +114,7 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 
 其他目录：`web/`（React / TypeScript / Vite；`src/api/` 定义 JSON 边界并默认在 module Worker 中运行 WASM，`public/` 是静态资源、同步数据与 Pages Worker，另有 `e2e/` 与 `worker-tests/`）、`data/`（Git 只跟踪 `CURRENT` 与十一份自有规则；版本目录和七份外部 shared 输入按 `pipeline/data.lock.json` 临时准备）、`pipeline/`（固定输入声明、导入、组包、候选与诊断）、`examples/`（回归与参考语料）、`devs/`（开发脚本、CI 基线与 fixtures；差异登记在 `scripts/known-differences.json`）、`agent-docs/`（被代码引用的早期机制研究）。当前行为契约集中在 `docs/`。
 
-**数据管线**：RePoE 游戏事实／兼容输入与独立翻译库的固定产物 →（按唯一数据锁 `pipeline/data.lock.json` 的 tag + commit + SHA-256 临时导入）→ schema 3 运行包与精简发行包 →（`pobr-gamedata`）→ 计算。缺数据或缺翻译时更新 owner 仓库的发布，不在 PoBR 内补数据。完整游戏／语言数据不进入 PoBR Git；实物测试和构建按 `mise run data:prepare` 准备，来源缺失或 pin 不符即失败；`mise run data:check` 离线确认 `data/` 只跟踪自有文件、导入后工作树干净。计算所需游戏文件访问集中在 `pobr-gamedata`；语言生成／配对属于翻译库，PoBR 保留显示／输入与 DTO 解释边界。PoB2 vendor 只作测试参考，不作为生产数据的写入来源；PoBR 不从 vendor Lua 或本地原表再生数据，owner 包中由 PoB2 转换的兼容文件也不算自主再生。设计见[数据架构](data-architecture.md)，现状见[数据现状](data-status.md)，命令见[数据管线说明](../pipeline/README.md)与[版本升级结构](version-bump-architecture.md)。
+**数据管线**：RePoE 游戏事实／兼容输入与独立翻译库的固定产物 →（按唯一数据锁 `pipeline/data.lock.json` 的 Release 附件或 tag + commit，及 SHA-256 临时导入；`mise run data:bump` 改锁）→ schema 3 运行包与精简发行包 →（`pobr-gamedata`）→ 计算。缺数据或缺翻译时更新 owner 仓库的发布，不在 PoBR 内补数据。完整游戏／语言数据不进入 PoBR Git；实物测试和构建按 `mise run data:prepare` 准备，来源缺失或 pin 不符即失败；`mise run data:check` 离线确认 `data/` 只跟踪自有文件、导入后工作树干净。计算所需游戏文件访问集中在 `pobr-gamedata`；语言生成／配对属于翻译库，PoBR 保留显示／输入与 DTO 解释边界。PoB2 vendor 只作测试参考，不作为生产数据的写入来源；PoBR 不从 vendor Lua 或本地原表再生数据，owner 包中由 PoB2 转换的兼容文件也不算自主再生。设计见[数据架构](data-architecture.md)，现状见[数据现状](data-status.md)，命令见[数据管线说明](../pipeline/README.md)与[版本升级结构](version-bump-architecture.md)。
 
 ## 运行时数据与会话
 

@@ -23,7 +23,9 @@ tests to resolve disagreements with any document.
   `web/` is the React/TypeScript application; its backend consumes the
   `apps/pobr-wasm/src/build_api/` JSON contract.
 - `pipeline/data.lock.json` is the only data declaration: each RePoE and
-  translation artifact is a tag, full commit, path and SHA-256. `pipeline/`
+  translation artifact is a GitHub Release asset (repository, tag, asset) or,
+  for older `handoff/*` artifacts, a tag, full commit and path, always with
+  SHA-256; `mise run data:bump <owner> <tag>` moves it to a new Release. `pipeline/`
   imports exactly those artifacts, verifies the runtime snapshot and packages the
   compact release; missing data or translations are fixed in the owner repos,
   not in PoBR. Complete game/language data stays outside PoBR Git; `data/` tracks

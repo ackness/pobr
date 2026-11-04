@@ -28,10 +28,12 @@ PoBR is one of three owned repositories; data work crosses repo boundaries:
 - `ackness/poe2-zh-cn-stats`: locale/term curation, translation sources and
   language artifacts.
 
-Each owner publishes immutable artifacts through `publication/index.json`.
-PoBR consumes them only through the lock: a 40-character commit + path +
-bytes/SHA-256 pin per artifact, kept alive upstream by `handoff/<name>` tags.
-`mise run data:prepare` fetches exact commits by partial clone into ignored
+Each owner publishes immutable artifacts as GitHub Releases (`game/<patch>-<n>`,
+`locale/<patch>-<n>`: package + `SHA256SUMS` + `receipt.json`). PoBR consumes
+them only through the lock: repository + tag + asset + bytes/SHA-256 per
+artifact (older `handoff/*` artifacts: a 40-character commit + path).
+`mise run data:bump <owner> <tag>` rewrites the lock entry and prepares it;
+`mise run data:prepare` imports the locked artifacts into ignored
 `data/<version>/`; adoption is an explicit, reviewed lock update merged to
 master, never a branch-tracked pull or automatic sync. The published PoB2-derived compatibility bytes are
 frozen inputs, not a source PoBR regenerates.
