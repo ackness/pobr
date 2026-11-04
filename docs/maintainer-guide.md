@@ -92,7 +92,7 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 
 ## Workspace 结构
 
-以根 [Cargo.toml](../Cargo.toml)、各 crate 的 `src/lib.rs` 和契约 / 回归测试为准。11 个成员：7 个库、2 个应用、2 个 Rust 工具；`web/` 与 Lua oracle 不在 Cargo workspace 里。把 RePoE 事实转换成运行 JSON 的 `pobr-data-adapter` 及其领域政策在 [ackness/repoe](https://github.com/ackness/repoe/tree/master/tools/pobr-data-adapter)，经不可移动的 tag `engine-crates/<日期>` 依赖本仓库的数据类型；改动 `pobr-data` 等运行时类型时，在 RePoE 一侧用新 tag 跟进。
+以根 [Cargo.toml](../Cargo.toml)、各 crate 的 `src/lib.rs` 和契约 / 回归测试为准。11 个成员：7 个库、2 个应用、2 个 Rust 工具；`web/` 与 Lua oracle 不在 Cargo workspace 里。把 RePoE 事实转换成运行 JSON 的 `pobr-data-adapter` 及其领域政策在 [ackness/repoe](https://github.com/ackness/repoe/tree/master/tools/pobr-data-adapter)，经不可移动的 tag `contract/<n>` 依赖本仓库的数据契约 `pobr-data`。不兼容地改动数据包类型或加载解释时把 `pobr_data::CONTRACT_VERSION` 加 1，合并后在合并提交上打 `contract/<n>`，RePoE 再升级依赖；规则、tag 约定与 manifest 的 `contract_version` 字段见[数据契约版本](data-architecture.md#31-数据契约版本)。旧的 `engine-crates/<日期>` tag 不再新建，已有的保留。
 
 | 成员 | 职责 |
 |------|------|
