@@ -424,6 +424,7 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
                     read_gate: (status == ModifierStatus::Inactive)
                         .then(|| {
                             enemy_distance_gate(modifier, context.cfg)
+                                .or_else(|| utility_carrier_gate(modifier))
                                 .or_else(|| missing_slot_base_gate(modifier, &slot_bases))
                                 .or_else(|| {
                                     diagnosis
@@ -823,6 +824,24 @@ fn missing_slot_base_gate(
     })
 }
 
+/// A flask/charm payload is explicitly counted by the effect merge only after
+/// selection, constant-effect eligibility and player/slot gates pass.
+fn utility_carrier_gate(modifier: &Modifier) -> Option<ReadGate> {
+    use pobr_core::item::{
+        CHARM_BUFF_LIST_NAME, FLASK_BUFF_LIST_NAME, INACTIVE_FLASK_BUFF_LIST_NAME,
+    };
+    (modifier.mod_type == ModType::List
+        && modifier.value.as_nested_mods().is_some()
+        && matches!(
+            modifier.name.as_str(),
+            FLASK_BUFF_LIST_NAME | INACTIVE_FLASK_BUFF_LIST_NAME | CHARM_BUFF_LIST_NAME
+        ))
+    .then_some(ReadGate {
+        state: Cow::Borrowed("its flask or charm effect is admitted in the selected combat state"),
+        config_option: None,
+    })
+}
+
 /// A modifier the calculation read and correctly discarded: a `MAX` query's
 /// loser or a beaten `OVERRIDE`. The stronger value won, so the ledger files
 /// it as state-gated rather than dropped. Mirrors two of [`uncounted_reason`]'s
@@ -983,6 +1002,9 @@ fn judge(
     }
     if reads.counted(modifier) {
         return (ModifierStatus::Applied, None);
+    }
+    if let Some(gate) = utility_carrier_gate(modifier) {
+        return (ModifierStatus::Inactive, Some(gate.reason()));
     }
     if let Some(judged) = variables.judge(name)
         && (judged.0 == ModifierStatus::Outside || !reads.sites.contains_key(name))

@@ -422,6 +422,9 @@ pub fn merge_flasks_charms(env: &mut Env) {
         } else if flasks_do_not_apply {
             continue; // :1561 (buff and conditions share this gate).
         }
+        // `named()` enumerates rejected carriers too. The ledger needs the
+        // actual admission decision, not an inference from that enumeration.
+        db.note_used(carrier);
         let nested = carrier.value.as_nested_mods().unwrap_or(&[]);
         let local_inc: f64 = nested
             .iter()

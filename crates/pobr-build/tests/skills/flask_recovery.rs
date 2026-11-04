@@ -1,6 +1,6 @@
 //! Reverie item lines and the real Azmeri Brew node reach the utility path.
 
-use pobr_build::usage::{LineStatus, line_usage};
+use pobr_build::usage::{LineStatus, ModifierStatus, line_usage};
 use pobr_build::{DataOrchestratorOptions, diagnose, parse_build};
 
 #[test]
@@ -93,9 +93,55 @@ Implicits: 0
                     .sum();
                 assert_eq!(flask_fire, if rarity == "UNIQUE" { 0.0 } else { 40.0 });
                 let usage = line_usage(&diagnosis, &build, data);
+                let carrier = usage
+                    .lines
+                    .iter()
+                    .filter(|row| row.source_id.as_deref() == Some("flask.flask1"))
+                    .flat_map(|row| &row.modifiers)
+                    .find(|modifier| {
+                        matches!(modifier.name.as_str(), "FlaskBuff" | "InactiveFlaskBuff")
+                    })
+                    .expect("flask payload");
+                assert_eq!(
+                    carrier.status,
+                    if rarity == "UNIQUE" {
+                        ModifierStatus::Inactive
+                    } else {
+                        ModifierStatus::Applied
+                    },
+                    "{rarity} selected={selected}: {carrier:?}"
+                );
                 let row = usage.lines.iter().find(|row| row.text.as_deref() == Some("Recovery from your Life Flasks cannot be applied to anything other than you")).unwrap();
                 assert_eq!(row.status, LineStatus::Unmodelled, "{row:?}");
             }
         }
     }
+}
+
+#[test]
+fn unselected_flask_without_constant_effect_is_not_an_applied_payload() {
+    let data = crate::test_data();
+    let build = parse_build(
+        r#"<PathOfBuilding2>
+<Build level="80" className="Witch"/>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Ultimate Life Flask
+Implicits: 0
++40% to Fire Resistance during effect
+</Item><ItemSet id="1"><Slot name="Flask 1" itemId="1" active="false"/></ItemSet></Items>
+</PathOfBuilding2>"#,
+    )
+    .unwrap();
+    let diagnosis = diagnose(&build, data, &Default::default()).unwrap();
+    let usage = line_usage(&diagnosis, &build, data);
+    let carrier = usage
+        .lines
+        .iter()
+        .flat_map(|row| &row.modifiers)
+        .find(|modifier| modifier.name == "InactiveFlaskBuff")
+        .unwrap();
+    assert_eq!(carrier.status, ModifierStatus::Inactive, "{carrier:?}");
+    assert!(carrier.read_gate.is_some());
+    assert!(carrier.used_in.is_empty());
+    assert!(!diagnosis.session.config().condition("UsingLifeFlask"));
 }
