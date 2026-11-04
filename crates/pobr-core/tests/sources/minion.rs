@@ -224,10 +224,10 @@ fn weapon_data_respects_base_damage_ignores_attack_speed() {
     let ignoring = derive_minion_base_stats(20, &data, &scaling());
 
     data.base_damage_ignores_attack_speed = false;
-    let scaling = derive_minion_base_stats(20, &data, &scaling());
+    let with_speed = derive_minion_base_stats(20, &data, &scaling());
 
-    assert!(scaling.weapon.physical_max < ignoring.weapon.physical_max);
-    assert!((scaling.weapon.physical_max - ignoring.weapon.physical_max * 0.5).abs() < 1e-6);
+    assert!(with_speed.weapon.physical_max < ignoring.weapon.physical_max);
+    assert!((with_speed.weapon.physical_max - ignoring.weapon.physical_max * 0.5).abs() < 1e-6);
     assert!((ignoring.weapon.attack_rate - 2.0).abs() < 1e-9);
 }
 

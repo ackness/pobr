@@ -46,7 +46,8 @@ use super::unarmed_data::UnarmedDataTable;
 use super::weapon_types::WeaponTypeTable;
 
 /// The runtime constants bundle injected into calc. `Default` = the
-/// fallback used when there's no GameData (value-equal to the JSON).
+/// fallback used when there's no GameData: value-equal to the JSON for every
+/// domain except `monster_scaling`, which is empty (no Rust copy).
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct RuntimeConstants {
     /// The three-section global game constants table (`base/game_constants.json`).
