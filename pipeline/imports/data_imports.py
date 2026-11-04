@@ -8,6 +8,7 @@ Downloads are build inputs, never player assets.
 """
 
 import hashlib
+import http.client
 import json
 import math
 import os
@@ -16,7 +17,9 @@ import re
 import stat
 import subprocess
 import tempfile
+import time
 from typing import NamedTuple
+from urllib.error import HTTPError
 from urllib.parse import quote
 import urllib.request
 import zipfile
@@ -161,11 +164,12 @@ class ReleaseInputs:
     `https://github.com` (a mirror, or a local fixture server in tests).
     """
 
-    def __init__(self, base=None, transport=None, timeout=120):
+    def __init__(self, base=None, transport=None, timeout=120, attempts=3, backoff=1.0):
         self.base = (base or os.environ.get("POBR_RELEASE_BASE_URL") or "https://github.com").rstrip("/")
         self.transport = transport or os.environ.get("POBR_RELEASE_TRANSPORT") or "https"
         require(self.transport in ("https", "gh"), "POBR_RELEASE_TRANSPORT must be https or gh")
-        self.timeout = timeout
+        require(type(attempts) is int and attempts > 0, "Invalid download attempt count")
+        self.timeout, self.attempts, self.backoff = timeout, attempts, backoff
 
     def url(self, address):
         return (f"{self.base}/{address.repository}/releases/download/"
@@ -181,18 +185,37 @@ class ReleaseInputs:
                 env={**os.environ, "GH_PROMPT_DISABLED": "1"}, timeout=self.timeout)
             require(max_bytes is None or len(raw) <= max_bytes, f"Release asset exceeds size limit: {address.asset}")
             return raw
+        for attempt in range(1, self.attempts + 1):
+            try:
+                return self.download(address, max_bytes)
+            except TransientDownload as error:
+                if attempt == self.attempts:
+                    raise ValueError(f"Cannot download {address.repository} {address.tag} {address.asset} "
+                                     f"after {attempt} attempts: {error}") from error
+                time.sleep(self.backoff * 2 ** (attempt - 1))
+
+    def download(self, address, max_bytes):
         request = urllib.request.Request(self.url(address), headers={"User-Agent": "pobr-data-import"})
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 declared = response.headers.get("Content-Length")
                 raw = response.read() if max_bytes is None else response.read(max_bytes + 1)
-        except OSError as error:  # URLError/HTTPError: missing asset, network, TLS
-            if hasattr(error, "close"):
-                error.close()
+        except HTTPError as error:
+            error.close()
+            if error.code == 429 or error.code >= 500:
+                raise TransientDownload(error) from error
+            # 404 and other client errors are answers, not outages: never retried.
             raise ValueError(f"Cannot download {address.repository} {address.tag} {address.asset}: {error}") from error
+        except (OSError, http.client.HTTPException) as error:  # URLError, reset, timeout, IncompleteRead
+            raise TransientDownload(error) from error
         require(max_bytes is None or len(raw) <= max_bytes, f"Release asset exceeds size limit: {address.asset}")
-        require(declared is None or int(declared) == len(raw), f"Truncated Release download: {address.asset}")
+        if declared is not None and int(declared) != len(raw):
+            raise TransientDownload(f"truncated: {len(raw)} of {declared} bytes")
         return raw
+
+
+class TransientDownload(Exception):
+    """A download failure worth retrying (network, 5xx/429, truncated body)."""
 
 
 class OwnerInputs:
@@ -230,7 +253,9 @@ def acquire(source, name, pin, cache, offline, fetcher):
     if path.exists() or path.is_symlink():
         return pinned(regular(path), pin)
     require(not offline, f"Offline cache miss: {name}")
-    raw = pinned(fetcher(address), pin)
+    # A Release download is bounded by its pin; Git blobs are read whole by the Git transport.
+    raw = pinned(fetcher(address, max_bytes=pin["bytes"]) if isinstance(address, ReleaseAsset) else fetcher(address),
+                 pin)
     # Verify the complete blob before caching. Any interrupted cache write fails
     # its pin on reuse. Declared size is checked without an arbitrary byte cap.
     write(path, raw)

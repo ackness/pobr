@@ -26,6 +26,8 @@ class ReleaseServer:
 
     def __init__(self, root):
         self.root, self.requests = Path(root), []
+        # Asset name → faults served before the real file: "503" or "short" (body cut below Content-Length).
+        self.faults = {}
         server = self
 
         class Handler(SimpleHTTPRequestHandler):
@@ -34,6 +36,19 @@ class ReleaseServer:
 
             def do_GET(self):
                 server.requests.append(self.path)
+                faults = server.faults.get(self.path.rsplit("/", 1)[-1])
+                if faults:
+                    fault = faults.pop(0)
+                    if fault == "503":
+                        self.send_error(503)
+                        return
+                    body = (server.root / self.path.lstrip("/")).read_bytes()
+                    self.send_response(200)
+                    self.send_header("Content-Length", str(len(body) + 10))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    self.close_connection = True
+                    return
                 super().do_GET()
 
             def log_message(self, *args):
@@ -140,7 +155,7 @@ class ReleaseTransportTests(unittest.TestCase):
         self.root = Path(temporary.name)
         self.server = ReleaseServer(self.root / "srv")
         self.addCleanup(self.server.close)
-        self.releases = imports.ReleaseInputs(base=self.server.base)
+        self.releases = imports.ReleaseInputs(base=self.server.base, backoff=0)
         self.cache = self.root / "cache"
         self.cache.mkdir()
 
@@ -158,7 +173,7 @@ class ReleaseTransportTests(unittest.TestCase):
         good = {"repository": "ackness/repoe", "tag": TAG, "asset": ASSET}
         for name, pin in (("size", {"bytes": 6, "sha256": hashlib.sha256(b"payload").hexdigest()}),
                           ("sha", {"bytes": 7, "sha256": "0" * 64})):
-            with self.subTest(name), self.assertRaisesRegex(ValueError, "bytes/SHA256"):
+            with self.subTest(name), self.assertRaisesRegex(ValueError, "bytes/SHA256|size limit"):
                 imports.acquire({**good, **pin}, None, pin, self.cache, False, self.releases)
             self.assertFalse((self.cache / pin["sha256"]).exists())
         missing = {**good, "asset": "absent.zip", "bytes": 1, "sha256": "1" * 64}
@@ -166,6 +181,31 @@ class ReleaseTransportTests(unittest.TestCase):
             imports.acquire(missing, None, missing, self.cache, False, self.releases)
         with self.assertRaisesRegex(ValueError, "size limit"):
             self.releases(imports.release_address(good), max_bytes=3)
+
+    def test_outages_and_short_bodies_retry_but_missing_assets_do_not(self):
+        self.server.publish("ackness/repoe", TAG, {ASSET: b"payload"})
+        address = imports.release_address({"repository": "ackness/repoe", "tag": TAG, "asset": ASSET})
+        self.server.faults[ASSET] = ["503", "short"]
+        self.assertEqual(self.releases(address), b"payload")
+        self.assertEqual(len(self.server.requests), 3)
+        self.server.faults[ASSET] = ["short", "short", "503"]
+        with self.assertRaisesRegex(ValueError, "after 3 attempts"):
+            self.releases(address)
+        self.assertEqual(len(self.server.requests), 6)
+        with self.assertRaisesRegex(ValueError, "Cannot download.*404"):
+            self.releases(address._replace(asset="absent.zip"))
+        self.assertEqual(len(self.server.requests), 7)
+
+    def test_acquire_bounds_a_release_download_by_its_pin(self):
+        self.server.publish("ackness/repoe", TAG, {ASSET: b"payload" * 100})
+        calls = []
+        def fetch(address, **options):
+            calls.append(options)
+            return self.releases(address, **options)
+        spec = {"repository": "ackness/repoe", "tag": TAG, "asset": ASSET, "bytes": 7, "sha256": "0" * 64}
+        with self.assertRaisesRegex(ValueError, "size limit"):
+            imports.acquire(spec, None, spec, self.cache, False, fetch)
+        self.assertEqual(calls, [{"max_bytes": 7}])
 
     def test_addresses_reject_unsafe_names_and_mixed_transports(self):
         for spec in ({"repository": "../x", "tag": TAG, "asset": ASSET},
