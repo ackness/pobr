@@ -249,17 +249,48 @@ fn snipe_keeps_known_scope_matches_and_reports_unresolved_source_positions() {
 }
 
 #[test]
-fn producer_excluded_quality_is_visible_for_an_enabled_gem() {
+fn restored_quality_owners_reach_the_ordinary_quality_path() {
+    // The RePoE v2 publication restored these owners the legacy PoB whitelist
+    // had dropped. A producer regression would already fail the pinned manifest;
+    // keep them exercised through the real consumer path as well.
     let data = crate::test_data();
+    for effect_id in ["FlammabilityPlayer", "BindSpectrePlayer"] {
+        let stats = data.effect_stats(effect_id, 20, 20, None).quality;
+        assert!(
+            !stats.is_empty(),
+            "{effect_id} lost its published ordinary quality"
+        );
+    }
+    let flammability = &data.gem_quality_stats["FlammabilityPlayer"];
     assert!(
-        data.gem_quality_metadata
-            .compatibility
-            .excluded_effects
-            .contains_key("FlammabilityPlayer")
+        flammability
+            .iter()
+            .any(|row| row.stat == "curse_effect_+%" && row.per_quality_rate == 0.5)
     );
+    let spectre = &data.gem_quality_stats["BindSpectrePlayer"];
+    assert!(
+        spectre
+            .iter()
+            .any(|row| row.alt && row.per_quality_rate == 1.0)
+    );
+}
+
+#[test]
+fn legacy_producer_excluded_quality_is_visible_for_an_enabled_gem() {
+    let mut data = crate::test_data().clone();
+    // Recreate the legacy producer omission without requiring current data to
+    // keep dropping a real gem's quality.
+    data.gem_quality_stats.remove("FlammabilityPlayer");
+    data.gem_quality_metadata
+        .compatibility
+        .excluded_effects
+        .insert(
+            "FlammabilityPlayer".into(),
+            "legacy fixture policy exclusion".into(),
+        );
     let report = calculate_with_data_report(
         &selected("FlammabilityPlayer", 20, 1, false),
-        data,
+        &data,
         &DataOrchestratorOptions {
             stat_map_mode: StatMapMode::Compare,
             ..Default::default()

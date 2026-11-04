@@ -6,13 +6,12 @@
 ## 当前数据锁与托管条件
 
 - 活动目标为 `0.5.5.5`／international。消费产物的 tag + commit + SHA-256、两个 owner 的 publication、
-  期望 manifest、运行身份与紧凑 release 身份都以[数据锁](../pipeline/data.lock.json)为准。
-- RePoE 发布序号 5，`game` 角色序号 4：恢复 `0_1` 至 `0_4` 历史树的可选属性，
-  固定属性节点与其他游戏成员保持原值。其他五个角色不变，翻译库仍为序号 2。
-- 数据锁 generation 为 5，已随 [PoBR #254](https://github.com/ackness/pobr/pull/254) 手动合并；
-  runtime 为 `ace21c86…`，尚未部署应用。该 PR 的快速检查通过，但合并前的 Full gate
-  因测试仍绑定旧快照而失败，不能记为控制器通过双门禁后的自动采用。
-- 固定测试已在复核游戏成员差异后绑定新 manifest `5d41f328…`，四组数值断言保持原值。
+  期望 manifest、运行身份与 CI 候选包身份都以[数据锁](../pipeline/data.lock.json)为准。
+- RePoE 发布序号 7，`game` 角色序号 6：补回 14 个真实宝石的品质效果，
+  按原生宝石关系验证五个 DNT 占位排除项。其他角色保持原有输入，翻译库为序号 3。
+- 当前数据声明 generation 为 10，runtime 为 `e73febc0…`，snapshot manifest 为 `2cfb2103…`。
+  Web 与独立 WASM 继续使用逐文件快照；紧凑候选包用于 CI 验证。
+- 固定测试已在复核游戏成员差异后绑定新 manifest，召唤物和解析器的数值断言保持原值。
   数据采用需要同时检查这类显式测试绑定；必需的 `PR gate` 只证明快速检查通过。
 
 | 托管条件 | 状态 |
@@ -21,16 +20,16 @@
 | 仓库 secret `DATA_SYNC_TOKEN` | 已配置；实测推分支和合并 PR 均返回 HTTP 403，需修正该 PAT 对 `ackness/pobr` 的写权限后重验 |
 | owner 发布后的 `owned-data-published` 通知 | 未接线：两个 owner 都不发送，按 6 小时轮询 |
 
-历史树修复在 [RePoE #26](https://github.com/ackness/repoe/pull/26)，
-发布在 [RePoE #27](https://github.com/ackness/repoe/pull/27)。
-新 tag `handoff/historical-tree-attributes-20261103` 指向 `f909f917…`；
-从全新远端对象库取回后，包、manifest 与 62 个成员摘要均通过核对。
-游戏 part 只改变四个历史树文件及其 snapshot manifest。
-真实 `data:prepare` 已把同补丁安装从 runtime `f9b79d29…` 替换为 `ace21c86…`，
-保留两个本地维护文件。
+品质发布策略在 [RePoE #29](https://github.com/ackness/repoe/pull/29)，
+发布记录在 [RePoE #30](https://github.com/ackness/repoe/pull/30)。
+保留 tag `handoff/quality-family-20261103` 指向 `99c14eb5…`；
+全新远端对象库取回后，包、manifest 与 62 个成员摘要均通过核对。
+游戏 part 只改变品质文件及其 snapshot manifest，其他 60 个游戏成员和 13 个语言摘要保持一致。
+真实 `data:prepare` 已完成从 runtime `5e785e78…` 到 `e73febc0…` 的同补丁刷新，
+保留两个本地维护文件。历史树可选属性修复及已发布的语言组合继续保留。
 
-本次数据候选的固定组合、同次 WASM、Web 和打包检查通过；
-Rust 门禁准确拦下了未复核的测试快照绑定。等待或未通过另一道门禁的自动回调
+数据采用必须同时通过准确提交的 PR 检查与完整 CI，再确认合并后的主线完整 CI。
+等待或未通过另一道门禁的自动回调
 现在记录 `candidate-awaiting-gates`，保持不采用；原验证的失败状态保留。
 凭据、来源与分支保护错误仍使同步作业失败。此前序号 4 已验证本地控制器双门禁采用、
 旧锁离线恢复及真实 WASM 的修改／保存重开；托管写权限尚未证明可用。
@@ -62,7 +61,7 @@ PoBR 留下的 11 份自有 shared 规则／构筑配置属于引擎语义，继
 | 领域 | 已接入普通消费者 | 剩余缺口与关闭条件 | 契约 |
 | --- | --- | --- | --- |
 | 基底／词缀／制作 | 源 Stats／Mods 全八槽、Families、基底数值与继承 tags；制作七表投影保留原值诊断 | 13 个 charm 缺 Flag／Unknown／MergeMode 的完整解释，完整 packet 迁移 0/13；socket、subtype、权重与资格未全部迁源 | [基底](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-base-items.md#remaining-source-and-consumer-contracts)、[制作](https://github.com/ackness/repoe/blob/master/RePoE/docs/pobr_crafting_catalog.md) |
-| 技能／品质 | effect→stat-set→等级／品质、gem 与 effect 关系、普通／额外品质原生作用域；77 项旧 implicit 注入已移除 | `stat_set_index` 仍是 PoB 1-based 编号；7 项旧 implicit 惰性保留；19 个品质 owner 被生产端排除，Snipe 有越界作用域；未选分支 GlobalEffect、具体 stat 消费者仍有限制 | [技能覆盖](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-skill-overrides.md)、[品质](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/gem-quality/README.md) |
+| 技能／品质 | effect→stat-set→等级／品质、gem 与 effect 关系、普通／额外品质原生作用域；424 个品质 owner；77 项旧 implicit 注入已移除 | `stat_set_index` 仍是 PoB 1-based 编号；7 项旧 implicit 惰性保留；五个 DNT 品质 owner 排除，Snipe 有越界作用域；未选分支 GlobalEffect、具体 stat 消费者仍有限制 | [技能覆盖](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-skill-overrides.md)、[品质](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/gem-quality/README.md) |
 | 天赋 | 4913 节点中 4823 使用 CSD、51 混合、39 整文本兼容；72 个 variant 中 70 使用 CSD | 39 个兼容节点缺当前 scope 描述、owner 歧义、buff 表示或 compound；placement／armour、Requirement／QuestFlag 需独立依据与范围珠宝、加点消费者验证 | [天赋树](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-passive-tree.md) |
 | 符文／魂核 | 305 项中 296 项使用目标 CSD | 9 项整项兼容：5 项缺 compound 上下文，4 项缺当前 CSD；需按精确资源补完整 packet | [符文](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-socketables.md) |
 | 描述／tier | plain-display 政策、完整分支与原始条件、显示缩放与 lookup、TierIndex 区间反解 | 37 个 scoped 兼容 ID：8 个 owner 歧义、13 个缺关系 handler、16 个无普通分支；25 项未渲染保留诊断 | [描述](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-stat-descriptions.md) |
@@ -73,9 +72,9 @@ PoBR 留下的 11 份自有 shared 规则／构筑配置属于引擎语义，继
 | 新发布与持续更新 | 序号 4 验证受控采用和旧锁离线恢复；序号 5 已发布真实历史树修复并验证同补丁安装刷新、组合与 WASM 消费 | 修正托管 PAT 写权限后重验无人值守写入；新快照须复核固定测试绑定，真实新补丁与线上回退仍待对应场景 | [最新发布同步](../pipeline/latest/latest-data.md) |
 | 玩家验收与性能 | 完整 CI 用同次 WASM 消费当前数据锁的紧凑发行包；正式 Web 与独立 WASM 包仍发布逐文件快照，紧凑包仅 CI 验证 | 下一次新数据用普通 Web 入口验证导入、技能／辅助、装备／打造、加点、保存重开与回滚；在目标设备测冷加载、首次计算、内存与包体 | [WASM 测量](wasm-package.md#runtime-performance-comparison) |
 
-`0.5.5.5` 品质来源核对：原始 429 个 owner（普通 442／额外 273 条）中，当前发布 410 个（423／268 条、337 个不同 stat ID）；已发布向量的 ID、顺序、倍率、通道和全部 82 条作用域记录均与固定原始表一致。78 个已发布 owner 带非空作用域，130 个有多个原生 set；`AddTypes`／`AddMinionTypes` 在本批 429 个 owner 中均为空。396 个已发布 owner 可从宝石主／附加 effect 关系到达；4 个辅助品质 owner 的作用域均为空。原始 1191 个宝石投影为 1120 个，71 个省略项均标记为 DNT 占位，已发布宝石关系逐项一致。
+`0.5.5.5` 品质来源核对：原始 429 个 owner（普通 442／额外 273 条）中，当前发布 424 个（437／273 条、340 个不同 stat ID）；已发布向量的 ID、顺序、倍率、通道和全部 82 条作用域记录均与固定原始表一致。`AddTypes`／`AddMinionTypes` 在本批 429 个 owner 中均为空，4 个辅助品质 owner 的作用域也均为空。原始 1191 个宝石投影为 1120 个，71 个省略项均标记为 DNT 占位，已发布宝石关系逐项一致。
 
-这不是完整性通过：19 个品质排除项沿用历史 PoB 目录策略，其中 14 个仍有当前已发布宝石关系，需 RePoE 以当前游戏事实重新分类并发布，消费者不能从本地原始表补造缺失行。其余 5 个只关联占位宝石。现有作用域无需等待新 owner schema 即可消费。另有 ExplosiveConcoctionSecondPlayer 和 SiegeBallistaProjectileExplodePlayer 的有效品质原生分支没有兼容显示编号；Snipe 普通作用域 `[1,2,3]` 的位置 3 越界。这些事实／选择边界与[具体计算消费者限制](mechanics/items.md#宝石等级品质与授予技能)分别保留。
+生产端 v2 策略已替代历史 PoB 目录筛选：每个原始 owner 必须明确归入发布或排除，排除项须由 `SkillGems → GemEffects → BaseItemTypes` 的原生引用证明只关联 DNT 占位宝石。真实、混合、无关联或缺失引用均不能据此排除；旧 v1 策略仍能重放原产物。品质事实齐全不代表全部消费者已实现：ExplosiveConcoctionSecondPlayer 和 SiegeBallistaProjectileExplodePlayer 的有效品质原生分支仍没有兼容显示编号；Snipe 普通作用域 `[1,2,3]` 的位置 3 越界。这些选择边界与[具体计算消费者限制](mechanics/items.md#宝石等级品质与授予技能)继续保留，消费者不从本地原始表补造缺失行。
 
 ## 已知例外
 

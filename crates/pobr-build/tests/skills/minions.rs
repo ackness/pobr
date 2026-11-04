@@ -403,7 +403,9 @@ fn storm_mage_quality_gains_es_from_its_own_life() {
             assert_eq!(detail.formula.unwrap().value, mage.energy_shield);
             assert_eq!(detail.base_total, 709.35 + gained);
             assert_eq!(detail.inc_total, f64::from(es_inc));
-            let origin = format!("minion.{SUMMON}.{STAT}");
+            // A merged base+quality stat attributes the whole contribution to
+            // the gem's quality source; the minion source stays its parent.
+            let origin = format!("gem.{SUMMON}.q{quality}.{STAT}");
             let contribution = detail
                 .mods
                 .iter()
@@ -415,7 +417,7 @@ fn storm_mage_quality_gains_es_from_its_own_life() {
                     contribution.expect("quality is attributed in the selected minion's ES");
                 assert_eq!(contribution.value, Some(gained));
                 assert!(contribution.active);
-                assert_eq!(contribution.origin_kind.as_deref(), Some("SkillGem"));
+                assert_eq!(contribution.origin_kind.as_deref(), Some("GemQuality"));
             }
         }
     }
