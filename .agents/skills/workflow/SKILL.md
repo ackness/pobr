@@ -32,9 +32,8 @@ Each owner publishes immutable artifacts through `publication/index.json`.
 PoBR consumes them only through the lock: a 40-character commit + path +
 bytes/SHA-256 pin per artifact, kept alive upstream by `handoff/<name>` tags.
 `mise run data:prepare` fetches exact commits by partial clone into ignored
-`data/<version>/`; `mise run data:latest` discovers owner publications and
-freezes candidate locks; adoption is an explicit lock update on master, never
-a branch-tracked pull. The published PoB2-derived compatibility bytes are
+`data/<version>/`; adoption is an explicit, reviewed lock update merged to
+master, never a branch-tracked pull or automatic sync. The published PoB2-derived compatibility bytes are
 frozen inputs, not a source PoBR regenerates.
 
 Put each fix in the owning repository: decoding, raw facts and adapter

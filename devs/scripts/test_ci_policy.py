@@ -110,7 +110,6 @@ class ExternalDataShardTests(unittest.TestCase):
         workflow = (HERE.parents[1] / ".github/workflows/ci.yml").read_text()
         runtime = workflow.split("\n  runtime:\n", 1)[1].split("\n  scripts:", 1)[0]
         self.assertIn("needs: [web]", runtime)
-        self.assertIn("pipeline.latest.latest_data verify-composition", runtime)
         # The compact release is packaged from the prepared owner snapshot only.
         self.assertIn("runtime_pack build --data data --out .cache/ci-runtime-pack", runtime)
         self.assertLess(runtime.index("build_data --install data"), runtime.index("runtime_pack build"))
@@ -124,19 +123,6 @@ class ExternalDataShardTests(unittest.TestCase):
         self.assertIn("--expected-runtime", runtime)
         self.assertLess(runtime.index("materialize --pack"), runtime.index("smoke-runtime-candidate.mjs"))
         self.assertNotIn("cargo ", runtime)
-
-    def test_privileged_sync_uses_default_code_and_separate_auth_and_callback_gates(self):
-        root = HERE.parents[1]
-        workflow = (root / ".github/workflows/data-sync.yml").read_text()
-        self.assertIn("workflows: [Contribution checks, Full validation]", workflow)
-        self.assertIn("ref: master", workflow)
-        self.assertIn("persist-credentials: false", workflow)
-        self.assertIn("secrets.DATA_SYNC_TOKEN || github.token", workflow)
-        self.assertIn("DATA_SYNC_AUTH_READY:", workflow)
-        self.assertNotIn("contents: write", workflow)
-        self.assertNotIn("pull_request_target", workflow)
-        self.assertNotIn("github.event.workflow_run.head_sha", workflow)
-        self.assertIn("pipeline.latest.latest_sync", workflow)
 
     def test_web_data_imports_use_the_pinned_python(self):
         for filename in ("pr.yml", "ci.yml"):

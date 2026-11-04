@@ -15,8 +15,6 @@ python3 -m pipeline.runtime.test_data_bundle
 python3 -m pipeline.imports.check_data_ownership
 python3 -m pipeline.runtime.test_build_data
 python3 -m pipeline.runtime.test_locked_update
-python3 -m pipeline.latest.test_latest_data
-python3 -m pipeline.latest.test_latest_sync
 python3 -m pipeline.imports.test_display_assets
 python3 -m pipeline.runtime.test_runtime_pack
 python3 -m pipeline.imports.test_data_imports

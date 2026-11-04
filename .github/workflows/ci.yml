@@ -237,13 +237,10 @@ jobs:
         run: |
           python3 -m pipeline.runtime.build_data --install data
           bash devs/scripts/check-data.sh
-      - name: Verify the recorded complete publication composition
-        run: |
-          mkdir -p .cache
-          python3 -m pipeline.latest.latest_data verify-composition > .cache/runtime-composition-verify.json
       # The owner snapshot already holds every runtime file; PoBR only packages it.
       - name: Assemble the compact release from the prepared owner snapshot
         run: |
+          mkdir -p .cache
           python3 -m pipeline.runtime.runtime_pack build --data data --out .cache/ci-runtime-pack \
             > .cache/runtime-pack-status.json
       - uses: actions/download-artifact@v8.0.2
@@ -277,7 +274,6 @@ jobs:
           name: runtime-pack-candidate
           path: |
             .cache/runtime-pack-status.json
-            .cache/runtime-composition-verify.json
             .cache/ci-runtime-pack/
             .cache/runtime-candidate-verify.json
             .cache/runtime-candidate-materialized.json
