@@ -12,6 +12,17 @@ pub struct UtilityItemSpec {
     pub base: UtilityBaseStats,
     pub quality: f64,
     pub is_charm: bool,
+    pub rarity: ItemRarity,
+}
+
+impl UtilityItemSpec {
+    /// Reverie's constant effect applies only to equipped non-Unique Life flasks.
+    pub(crate) fn has_constant_life_effect(&self, db: &ModDb, cfg: &CalcConfig) -> bool {
+        !self.is_charm
+            && self.base.life > 0.0
+            && self.rarity != ItemRarity::Unique
+            && db.flag(cfg, "NonUniqueLifeFlasksConstant")
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -54,6 +65,13 @@ pub const FLASK_STATS: &[&str] = &[
     "EnergyShieldRecovery",
     "EnergyShieldInstantRecovery",
     "EnergyShieldRecoveryPerSecond",
+    // Additional recovery of the other resource (Azmeri Brew).
+    "LifeRecovery",
+    "LifeInstantRecovery",
+    "LifeRecoveryPerSecond",
+    "ManaRecovery",
+    "ManaInstantRecovery",
+    "ManaRecoveryPerSecond",
     // The other resource a use takes away (game stats
     // local_flask_removes_%_of_life_recovery_from_mana_on_use and
     // local_flask_removes_%_of_mana_recovery_from_life_on_use).
@@ -343,7 +361,8 @@ pub fn calculate(env: &mut Env) {
                 ("UtilityChargesUsedMod", used_mod),
             ],
         );
-        let can_use = !db.flag(cfg, &local_name(&slot, "UtilityCannotBeUsed"));
+        let can_use = !db.flag(cfg, &local_name(&slot, "UtilityCannotBeUsed"))
+            && !(!item.is_charm && item.base.life > 0.0 && db.flag(cfg, "CannotUseLifeFlasks"));
         let uses = if can_use && charges_used > 0.0 {
             (charges_max / charges_used).floor()
         } else {
@@ -435,8 +454,13 @@ pub fn calculate(env: &mut Env) {
             format!("{resource}FlaskInstantRecovery"),
         ];
         instant_names.extend(local("FlaskInstantRecovery"));
-        let instant_fraction =
-            (sum(db, cfg, ModType::Base, &instant_names) / 100.0).clamp(0.0, 1.0);
+        // The restriction follows the Life flask, including its Mana/ES copies.
+        // Mana flasks that also restore Life keep their own instant fraction.
+        let instant_fraction = if item.base.life > 0.0 && db.flag(cfg, "LifeFlaskCannotBeInstant") {
+            0.0
+        } else {
+            (sum(db, cfg, ModType::Base, &instant_names) / 100.0).clamp(0.0, 1.0)
+        };
         let instant = recovery * instant_fraction;
         let resource_rate = factor(db, cfg, &global(&format!("{resource}RecoveryRate")));
         let gradual = recovery * (1.0 - instant_fraction) * duration_global * resource_rate;
@@ -516,6 +540,65 @@ pub fn calculate(env: &mut Env) {
                 ("UtilityDuration", duration),
             ],
         );
+        // life_mana_flasks_restore_mana_life copies each flask once, before
+        // receiver modifiers. The copied result is never a source for another copy.
+        for (receiver, applies) in [
+            (
+                "Mana",
+                item.base.life > 0.0 && db.flag(cfg, "LifeFlaskAppliesToMana"),
+            ),
+            (
+                "Life",
+                item.base.mana > 0.0 && db.flag(cfg, "ManaFlaskAppliesToLife"),
+            ),
+        ] {
+            let applies = applies
+                && !db.flag(cfg, &format!("CannotGain{receiver}"))
+                && !(receiver == "Life" && db.flag(cfg, "CannotRecoverLifeOutsideLeech"));
+            let receiver_rate = if applies {
+                factor(db, cfg, &global(&format!("{receiver}RecoveryRate")))
+            } else {
+                0.0
+            };
+            let copied_instant = if applies { instant } else { 0.0 };
+            let copied_gradual =
+                recovery * (1.0 - instant_fraction) * duration_global * receiver_rate;
+            write(
+                &format!("{receiver}Recovery"),
+                copied_instant + copied_gradual,
+                "UtilityCopiedInstant + UtilityRecoveryBeforeDuration * (1 - UtilityInstantFraction) * UtilityDurationMod * UtilityReceiverRecoveryMod",
+                &[
+                    ("UtilityCopiedInstant", copied_instant),
+                    ("UtilityRecoveryBeforeDuration", recovery),
+                    ("UtilityInstantFraction", instant_fraction),
+                    ("UtilityDurationMod", duration_global),
+                    ("UtilityReceiverRecoveryMod", receiver_rate),
+                ],
+            );
+            write(
+                &format!("{receiver}InstantRecovery"),
+                copied_instant,
+                "UtilityCopiedInstant",
+                &[("UtilityCopiedInstant", copied_instant)],
+            );
+            write(
+                &format!("{receiver}RecoveryPerSecond"),
+                if duration > 0.0 {
+                    copied_gradual / duration
+                } else {
+                    0.0
+                },
+                if duration > 0.0 {
+                    "UtilityCopiedGradual / UtilityDuration"
+                } else {
+                    "0 * UtilityDuration"
+                },
+                &[
+                    ("UtilityCopiedGradual", copied_gradual),
+                    ("UtilityDuration", duration),
+                ],
+            );
+        }
         // life_recovery_from_flasks_also_recovers_energy_shield copies the
         // flask's recovery. The destination has its own recovery-rate modifier;
         // LifeRecoveryRate must not be applied a second time to Energy Shield.

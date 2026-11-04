@@ -7,8 +7,10 @@ import type { BuildSession } from '../../../hooks/useBuildSession';
 import { useSkillName } from '../../../hooks/useSkillName';
 import { originKindLabel, originLabel, slotLabel, statNameLabel, type Lang } from '../../../lib/i18n';
 import { words } from '../../text';
+import { configLabel } from '../../../lib/configLabels';
+import type { ConfigOption } from '../../../api/types';
 import {
-  ATTENTION, NO_FILTER, SOURCE_GROUPS, STATUS_ORDER, filterLedger, lineText, sourceGroupLabel, statusHint, statusLabel,
+  ATTENTION, NO_FILTER, SOURCE_GROUPS, STATUS_ORDER, filterLedger, ledgerDisplayText, ledgerReason, sourceGroupLabel, statusHint, statusLabel,
   statusTone, summarise, toggleStatus, type LedgerFilter, type SourceGroup,
 } from './ledger';
 
@@ -39,11 +41,12 @@ function useTranslated(texts: readonly string[], lang: Lang): (text: string) => 
   return text => lang === 'en-US' || cache.lang !== lang ? text : cache.map[text] ?? text;
 }
 
-function sourceLabel(lang: Lang, line: LineUsageLine): string {
+function sourceLabel(lang: Lang, line: LineUsageLine, configLabels: Readonly<Record<string, string>>): string {
   const w = (en: string, cn: string, tw = cn) => words(lang, en, cn, tw);
   const id = line.source_id ?? '';
   if (id === 'quest') return w('Campaign reward', '任务奖励', '任務獎勵');
   if (id === 'config.custom') return w('Custom modifier', '自定义词条', '自訂詞綴');
+  if (id.startsWith('config.') && configLabels[id.slice(7)]) return configLabels[id.slice(7)];
   if (/^(item|flask|node|jewel|config|base)\./.test(id)) return originLabel(lang, id);
   return line.source_kind ? originKindLabel(lang, line.source_kind) : id;
 }
@@ -51,7 +54,7 @@ function sourceLabel(lang: Lang, line: LineUsageLine): string {
 export function LedgerView({ session, lang }: { session: BuildSession; lang: Lang }) {
   const w = (en: string, cn: string, tw = cn) => words(lang, en, cn, tw);
   const skillName = useSkillName(lang);
-  const [done, setDone] = useState<{ version: number; response: LineUsageResponse } | null>(null);
+  const [done, setDone] = useState<{ version: number; response: LineUsageResponse; options: ConfigOption[] } | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<LedgerFilter>(NO_FILTER);
@@ -70,7 +73,9 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
   // Rows keep their place in the engine's list, so an opened row stays open while the filters change.
   const position = useMemo(() => new Map((usage?.lines ?? []).map((line, index) => [line, index])), [usage]);
   const visible = shown.slice(0, limit);
-  const translate = useTranslated(visible.map(lineText), lang);
+  const configLabels = useMemo(() => Object.fromEntries((done?.options ?? [])
+    .map(option => [option.var, configLabel(lang, option)])), [done?.options, lang]);
+  const translate = useTranslated(visible.flatMap(line => [ledgerDisplayText(line, lang, configLabels), line.holder ?? '']), lang);
 
   const run = async () => {
     if (running || session.busy || !session.calc) return;
@@ -83,9 +88,10 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
       // The check is heavier than a calculation and blocks the page while it runs; let the busy state paint first.
       await new Promise(resolve => setTimeout(resolve, 40));
       if (current !== sequence.current) return;
-      const response = await (await getBackend()).lineUsage(request);
+      const backend = await getBackend();
+      const [response, options] = await Promise.all([backend.lineUsage(request), backend.loadConfigOptions()]);
       if (current !== sequence.current) return;
-      setDone({ version, response }); setFilter(NO_FILTER); setLimit(PAGE); setOpen(new Set());
+      setDone({ version, response, options }); setFilter(NO_FILTER); setLimit(PAGE); setOpen(new Set());
     } catch (err) {
       if (current === sequence.current) setError(formatApiError(err));
     } finally {
@@ -159,13 +165,15 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
           const index = position.get(line) ?? 0;
           const tone = statusTone(line.status);
           const expanded = open.has(index);
-          const owner = [...new Set([line.holder, sourceLabel(lang, line)].filter(Boolean))].join(' · ');
+          const owner = [...new Set([line.holder ? translate(line.holder) : null, sourceLabel(lang, line, configLabels)].filter(Boolean))].join(' · ');
+          const reason = ledgerReason(line, lang);
           return <li key={index} className="ledger-row" data-status={line.status} data-tone={tone}>
             <span className="ledger-status"><i aria-hidden="true" />{statusLabel(lang, line.status)}</span>
             <div className="ledger-body">
-              <p className="ledger-text">{translate(lineText(line))}</p>
+              <p className="ledger-text">{translate(ledgerDisplayText(line, lang, configLabels))}</p>
               {owner && <p className="ledger-meta">{owner}</p>}
-              {line.reason && <p className="ledger-reason">{line.reason}</p>}
+              {reason && <p className="ledger-reason"
+                title={line.reason ?? (line.modifiers.map(mod => mod.reason).filter(Boolean).join(' · ') || undefined)}>{reason}</p>}
               {line.used_in.length > 0 && <p className="ledger-meta">{w('Counts in', '计入', '計入')}: {line.used_in.map(id => statNameLabel(lang, id)).join(' · ')}</p>}
               {line.modifiers.length > 0 && <>
                 <button type="button" className="ledger-toggle" aria-expanded={expanded} onClick={() => toggleRow(index)}>

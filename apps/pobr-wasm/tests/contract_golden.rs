@@ -3049,7 +3049,7 @@ fn materialized_request_matches_pob_code_calculation() {
         "attribute_choices": decoded["tree"]["attribute_choices"],
         "socket_groups": socket_groups,
         "items": map_slot_text(&decoded["items"]["equipped"]),
-        "flasks": map_slot_text(&decoded["items"]["flasks"]),
+        "flasks": decoded["items"]["flasks"],
         "jewels": jewels,
         "main_socket_group": decoded["main_socket_group"],
         "config_inputs": decoded["config_inputs"],

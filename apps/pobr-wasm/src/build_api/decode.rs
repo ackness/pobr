@@ -54,6 +54,13 @@ struct SlotItemJson {
 }
 
 #[derive(Debug, Serialize)]
+struct UtilitySlotJson {
+    slot: String,
+    text: String,
+    active: bool,
+}
+
+#[derive(Debug, Serialize)]
 struct SocketJewelJson {
     /// The tree node's skill id for the jewel socket.
     socket_node: u32,
@@ -67,7 +74,7 @@ struct ItemsJson {
     /// Tree-socketed jewels (editable: maintained per-socket on the passive tree page).
     socket_jewels: Vec<SocketJewelJson>,
     equipment_jewels: Vec<SlotItemJson>,
-    flasks: Vec<SlotItemJson>,
+    flasks: Vec<UtilitySlotJson>,
     /// Transcendent limbs, by stable slot id (`arm1` … `leg2`).
     limbs: Vec<SlotItemJson>,
 }
@@ -281,7 +288,21 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
             flasks: raw_items
                 .flasks
                 .into_iter()
-                .map(|(slot, text)| SlotItemJson { slot, text })
+                .map(|(slot, text)| UtilitySlotJson {
+                    slot,
+                    text,
+                    active: true,
+                })
+                .chain(
+                    raw_items
+                        .inactive_flasks
+                        .into_iter()
+                        .map(|(slot, text)| UtilitySlotJson {
+                            slot,
+                            text,
+                            active: false,
+                        }),
+                )
                 .collect(),
             limbs: raw_items
                 .limbs

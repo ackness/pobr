@@ -56,15 +56,19 @@ mod tests {
         assert!(loaded.is_none());
     }
 
-    /// Normal load: the `_meta` header is ignored, the effects list read out in order.
+    /// Unrelated provenance stays optional; source eligibility must survive loading.
     #[test]
-    fn loads_effects_and_ignores_meta() {
+    fn loads_effects_and_quality_applicability() {
         let dir = temp_dir("loads");
         std::fs::create_dir_all(dir.join("overlay")).unwrap();
         std::fs::write(
             dir.join("overlay/gem_quality_stats.json"),
             r#"{
-              "_meta": { "schema": "gem_quality_stats/v1" },
+              "_meta": {
+                "schema": "gem_quality_stats/v1",
+                "unapplied_stat_set_scopes": { "CometPlayer": { "main": [0], "alt": [] } },
+                "compatibility": { "excluded_effects": { "OtherPlayer": "outside producer policy" } }
+              },
               "effects": [
                 { "effect_id": "CometPlayer",
                   "stats": [ { "stat": "base_spell_%_chance_to_echo", "per_quality_rate": 0.5 } ] }
@@ -80,6 +84,13 @@ mod tests {
         assert_eq!(def.effects[0].effect_id, "CometPlayer");
         assert_eq!(def.effects[0].stats[0].stat, "base_spell_%_chance_to_echo");
         assert_eq!(def.effects[0].stats[0].per_quality_rate, 0.5);
+        let scopes = &def.metadata.unapplied_stat_set_scopes["CometPlayer"];
+        assert_eq!(scopes.main.as_deref(), Some([0].as_slice()));
+        assert_eq!(scopes.alt.as_deref(), Some([].as_slice()));
+        assert_eq!(
+            def.metadata.compatibility.excluded_effects["OtherPlayer"],
+            "outside producer policy"
+        );
     }
 
     /// Invalid JSON → a Parse error, not silenced.

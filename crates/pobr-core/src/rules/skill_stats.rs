@@ -357,6 +357,13 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         return Some(mods);
     }
     match stat {
+        // GrantedEffectQualityStats (Lightning Arrow / Gathering Storm):
+        // "Lightning Damage with Hits has {0}% chance to be Lucky".
+        "chance_for_extra_damage_roll_with_lightning_damage_%" => Some(vec![Modifier::number(
+            "LightningLuckyHitsChance",
+            ModType::Base,
+            value,
+        )]),
         // A skill's poison prohibition takes precedence over a weapon's guarantee.
         "cannot_poison" | "virtual_cannot_poison" => Some(if value != 0.0 {
             vec![Modifier::flag("CannotPoison")]
@@ -775,14 +782,15 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         // (`skill_env::buff_specs`).
         OFFERING_BUFF_EFFECT | REMNANT_EFFECT => Some(Vec::new()),
         "all_damage_gained_as_cold_instead" => Some(vec![Modifier::flag(GAINS_ONLY_COLD)]),
-        // "{0}% increased Projectile Speed" (Spark's quality) and Projectile
-        // Acceleration's "Supported Skills have {0}% more Projectile Speed".
+        // "{0}% increased Projectile Speed" (Spark's quality), Twister's
+        // additional quality, and Projectile Acceleration's more speed.
         "base_projectile_speed_+%" => Some(vec![Modifier::number(
             "ProjectileSpeed",
             ModType::Inc,
             value,
         )]),
-        "support_faster_projectiles_projectile_speed_+%_final" => Some(vec![Modifier::number(
+        "active_skill_projectile_speed_+%_final"
+        | "support_faster_projectiles_projectile_speed_+%_final" => Some(vec![Modifier::number(
             "ProjectileSpeed",
             ModType::More,
             value,

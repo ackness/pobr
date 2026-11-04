@@ -553,6 +553,8 @@ const DICT = {
   "items.apply": {"en-US": "Apply changes", "zh-TW": "套用變更", "zh-CN": "应用修改"},
   'items.cancel': { 'en-US': 'Cancel', 'zh-TW': '取消', 'zh-CN': '取消' },
   'items.empty': { 'en-US': '(empty)', 'zh-TW': '（空）', 'zh-CN': '（空）' },
+  'items.utilitySelected': { 'en-US': 'Selected for use', 'zh-TW': '選用此藥劑／護符', 'zh-CN': '选用此药剂／护符' },
+  'items.utilitySelectionHint': { 'en-US': 'Selection is subject to item rules. Constant effects can keep an unselected flask active.', 'zh-TW': '是否生效仍取決於物品規則。常駐效果可讓未選用的藥劑持續生效。', 'zh-CN': '是否生效仍取决于物品规则。常驻效果可让未选用的药剂持续生效。' },
   "items.flasks": {"en-US": "Flasks / Charms", "zh-TW": "藥劑 / 護符", "zh-CN": "药剂 / 护符"},
   'items.limbs': { 'en-US': 'Limbs', 'zh-TW': '肢體', 'zh-CN': '肢体' },
   'items.switcher': { 'en-US': 'Switch item', 'zh-TW': '切換裝備', 'zh-CN': '切换装备' },

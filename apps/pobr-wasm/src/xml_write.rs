@@ -76,8 +76,8 @@ pub(crate) struct XmlInput<'a> {
     pub attribute_choices: &'a BTreeMap<u32, String>,
     /// `(PoB slot name, raw text)`, e.g. `("Ring 1", "Rarity: ...")`.
     pub items: Vec<(String, String)>,
-    /// Active flasks/charms as `(slot name, raw text)` (`Flask 1/2`, `Charm 1..3`).
-    pub flasks: Vec<(String, String)>,
+    /// Equipped flasks/charms, including their selection.
+    pub flasks: Vec<crate::build_api::UtilitySlotInput>,
     /// Tree-socketed jewels as `(socket node id, raw text)`.
     pub jewels: Vec<(u32, String)>,
     pub socket_groups: Vec<XmlSkillGroup>,
@@ -146,12 +146,13 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
             item_blocks.len()
         ));
     }
-    for (slot, text) in &input.flasks {
-        item_blocks.push(text);
+    for utility in &input.flasks {
+        item_blocks.push(&utility.text);
         slot_lines.push(format!(
-            r#"      <Slot name="{}" itemId="{}" active="true"/>"#,
-            esc_attr(slot),
-            item_blocks.len()
+            r#"      <Slot name="{}" itemId="{}" active="{}"/>"#,
+            esc_attr(&utility.slot),
+            item_blocks.len(),
+            utility.active
         ));
     }
     let mut socket_lines: Vec<String> = Vec::new();

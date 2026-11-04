@@ -130,6 +130,38 @@ fn native_calculation_requires_explicit_native_initialization() {
 }
 
 #[test]
+fn shaman_mantle_single_lines_and_original_block_use_published_locale_templates() {
+    let ordinary_dir = pobr_gamedata::current_data_dir();
+    pobr_wasm::init_data_from_dir(&ordinary_dir.to_string_lossy()).expect("ordinary data");
+    let english = [
+        "Cannot use Life Flasks",
+        "Non-Unique Life Flasks apply their Effects constantly",
+        "Recovery from Life Flasks cannot be Instant",
+        "Recovery from your Life Flasks cannot be applied to anything other than you",
+    ];
+    let chinese = [
+        "无法使用生命药剂",
+        "非传奇生命药剂的效果持续生效",
+        "生命药剂的回复效果无法瞬间完成",
+        "你的生命药剂回复效果仅对你自己生效",
+    ];
+    let mut input: Vec<String> = english.iter().map(|line| (*line).into()).collect();
+    input.extend([
+        english.join("\n"),
+        "45% less Life Flask Recovery".into(),
+        "untranslated future flask restriction".into(),
+    ]);
+    let translated: Vec<String> = serde_json::from_str(
+        &pobr_wasm::translate_lines_to_zh_cn_json(&serde_json::to_string(&input).unwrap()).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(&translated[..4], &chinese);
+    assert_eq!(translated[4], chinese.join("\n"));
+    assert_eq!(translated[5], "生命药剂回复总降 45%");
+    assert_eq!(translated[6], input[6], "unknown originals remain visible");
+}
+
+#[test]
 fn ordinary_translation_rejects_native_mode_and_recovers_after_switching_back() {
     let lines = r#"["+50 to maximum Life","untranslated custom line"]"#;
     assert_eq!(

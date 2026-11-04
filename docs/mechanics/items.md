@@ -64,6 +64,19 @@ Undying Hate 的明确“小型天赋额外获得”与种子特定显著天赋�
 
 ## 宝石等级、品质与授予技能
 
+技能的已解析等级值、普通品质和 Advanced Thaumaturgy 额外品质，按原始 stat id 相加后只映射一次；每条品质先执行 `trunc(rate × quality)`。同一 stat 的品质不能再注入一个独立 MORE：Wind Dancer 反击在三层、q20 额外品质下为 `1 + 3 × (50 + 50) / 100 = 4`；Whirling Slash 的 Whirlwind 分支在第二个额外阶段、q20 普通品质时为 `1 + 2 × (150 + 40) / 100 = 4.8`。Whirling Slash 未选中的 Whirlwind 分支不向近战命中注入这条局部伤害。合并词条保留 `GemQuality` 来源、基础技能／辅助的父来源，以及原文中的基础值和品质值；来源明细归入品质的是整个合并词条，不表示品质的精确边际贡献。
+
+主动宝石授予的辅助效果继承原宝石的有效品质，仍须通过同组、启用状态和兼容性判定。Blasphemy 的额外品质增加其所辅助诅咒的局部效果，保留原有 less 惩罚；Spell Totem 的额外品质按配置的已召唤图腾数增加该图腾法术的施法速度，不推算图腾覆盖率。Lightning Arrow / Gathering Storm 的 `chance_for_extra_damage_roll_with_lightning_damage_%` 接入已有闪电命中幸运掷值计算，不改变其他伤害类型或暴击几率。依据为 `0.5.5.5` 的 `base/granted_effect_stat_sets.json` 与 `overlay/gem_quality_stats.json`；回归见 [gem_quality_consumers.rs](../../crates/pobr-build/tests/skills/gem_quality_consumers.rs) 和 [totem_skills.rs](../../crates/pobr-build/tests/skills/totem_skills.rs)。
+
+
+品质的普通、额外通道分别按原生 stat-set 关系过滤。`ApplyToStatSets` / `AltApplyToStatSets` 的编号是 `GrantedEffects.StatSet` 后接 `AdditionalStatSets` 的零基位置；先解析成 `GrantedEffectStatSets.Id`，再与当前选中的 set 比对，不把 PoB 的显示编号当作原生位置。Gas Arrow 普通品质 `[0,1]` 只增加箭矢／毒云范围，额外品质 `[2]` 只增加爆炸火焰伤害。Whirling Slash 普通品质 `[1]` 只增加 Whirlwind 的每阶段伤害，额外品质空数组则对各分支提供攻击速度。
+
+空作用域表示该 effect 的所有分支；没有 metadata 的旧包保留 effect-wide 行为。显式记录内缺少某个通道、原生关系不一致或重复时，该通道停止注入并在 Compare 报告保留 `quality-applicability` 未支持原因。越界位置不否定同一数组中已明确匹配的位置：Snipe 普通品质 `[1,2,3]` 的 1、2 有效，3 无对应原生 set，单独报告。生产端 `_meta.compatibility.excluded_effects` 的原因也进入该诊断；排除不代表无效果。q0 不产生品质值或品质适用性诊断。TimeSnap／MetaMirageArcher 虽没有投影出的基础 stat set，空作用域品质仍可读取。
+
+主技能、辅助、辅助授予效果、buff／诅咒／光环、预留、召唤物与战吼使用相同的品质适用性查询；额外 effect 继承原宝石有效品质，但使用自己的主分支。召唤物本体和其兼容辅助在已有静态伤害／生命映射前合并原始 stat，保留品质与父来源；Raging Spirits 的额外品质进入已有召唤物伤害 MORE。战吼本体和辅助也接收额外品质，已有冷却 modifier 能读取 Lunar Blessing 的品质值。装填 effect 的额外品质进入射击技能的既有装填速度和弹匣容量，图腾本体品质进入已有数量上限；不把上限当作同时输出数量。这里没有推导召唤频率、战吼覆盖率或新的 stat 映射。回归见 [gem_quality_applicability.rs](../../crates/pobr-build/tests/skills/gem_quality_applicability.rs)。
+
+未选分支按各自作用域合并普通和额外品质，再执行既有 global-only 筛选与已选分支去重。该通用 mapper 仍不翻译 `GlobalEffect` 标签，Compare 会报告未支持，不能据此宣称已有全局 buff 输出；没有兼容显示编号的原生分支仍不参与这条路径。完整的品质事实也不等于全部品质机制已实现：Twister 的额外旋风重叠、Ghost Dance 层数上限、Combat Frenzy 冷却、Trinity 共鸣供给、Barrage 弹幕时序，以及没有既有映射的召唤物攻击速度／生命 final 等，仍按各自消费者边界处理，不据此新增事件历史。
+
 Uhtred 系辅助（“+2 to Level of Supported Skills if exactly one other Support is modifying them”）只把辅助宝石算作辅助：meta 宝石（Cast on Elemental Ailment）的触发效果是技能宝石的第二个效果，不算；只辅助 meta 宝石的辅助（Boundless Energy II 要求 `GeneratesEnergy`）也不修改被触发的技能（`skill_env::resolve::support_granted_gem_levels`）。“Skills from Corrupted Gems have …” 在主技能取等级的那颗宝石已腐化时生效（条件 `GemCorrupted`，`calc_orchestrator::skill::resolve::from_corrupted_gem`）。
 
 宝石等级与品质加成（“+1 to Level of all Spell Skills”“+2% to Quality of all Skills”）按文本读取，不经过 ModDb：技能等级要在任何 modifier 存入之前确定。读取面是角色的全部词条来源：装备与珠宝、已分配和被物品授予的天赋、配置行（任务奖励、自定义词条），以及调用方传入的 `extra_modifier_texts`（由 `prepared_build_view` 并入构筑视图，主面板、逐技能总览和触发子计算共用）。新增一条文本通道时要同时接入 `skill::resolve::gem_property_bonuses`，否则这类词条在该通道里既不生效也不报未支持。被这样读取的行不计入未支持清单，也不再交给解析规则（规则会把“with an Intelligence requirement”误读成属性需求）。
@@ -115,6 +128,12 @@ Culling Strike I/II 原生的稀有／独特敌人条件，需同时处于 Effec
 ## 药剂与护符
 
 `life_recovery_from_flasks_also_recovers_energy_shield`（Shavronne's Satchel）追加 `Flask{1,2}EnergyShieldRecovery`、`EnergyShieldInstantRecovery`、`EnergyShieldRecoveryPerSecond`。复用生命药剂总量、品质、药剂恢复和瞬间比例，缓回部分使用 ES 恢复速率；魔力药剂不复制，`CannotGainEnergyShield` 禁止复制回复。
+
+`life_mana_flasks_restore_mana_life`（Azmeri Brew，节点 47312）把生命药剂恢复复制到本人魔力、魔力药剂恢复复制到本人生命。`Flask<N>ManaRecovery` / `LifeRecovery` 及各自的 `InstantRecovery`、`RecoveryPerSecond` 后缀只表示**额外复制的资源**；药剂原来的资源仍用 `Flask<N>Recovery`。两条通道各从药剂自身恢复量出发，保留来源药剂的瞬间比例与持续时间，缓回部分只乘接收资源的恢复速率；复制结果不再互相复制，也不作为生命药剂再复制到 ES。目标 `CannotGainLife` / `CannotGainMana` 与生命的 `CannotRecoverLifeOutsideLeech` 会阻止对应复制。没有使用次数、当前资源、满资源停止恢复或覆盖率假设，不加到再生输出。
+
+Reverie（Shaman Mantle）的 `unique_body_armour_life_flask_life_recovery_+%_final` 以 `FlaskLifeRecovery` MORE 缩放生命药剂自身恢复量：45% less 为 ×0.55，包含它复制到魔力／ES 的恢复，不影响魔力药剂复制到生命。`non_unique_life_flasks_always_applied_with_no_instant_recovery_only_to_you` 的前三行分别限制使用、允许常驻、禁止瞬回：所有生命药剂可用次数为零；Combat 模式下非传奇生命药剂即使槽未勾选仍准入效果，传奇不获得常驻准入；生命药剂的瞬间比例置零，恢复全部转为缓回。原有 `FlasksDoNotApplyToPlayer` 接收限制仍生效。不能使用／未勾选的药剂仍有单瓶属性读数，不能把这些数字当成持续覆盖或实际每秒所得。
+
+“Recovery from your Life Flasks cannot be applied to anything other than you” 保留明确 `unmodelled`：当前没有非玩家药剂恢复接收路径，不能把它标为无效果，也不能误阻止本人跨资源回复。普通物品导入后的前三个独立行可应用；直接把四行当作一个解析输入时整块保留未建模，不部分应用后宣称完整支持。上述新增规则均为 `absent`，未做游戏内实测。
 
 ### 启用状态与单次使用
 

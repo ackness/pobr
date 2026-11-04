@@ -389,6 +389,50 @@ pub const READ_UNDER_A_STATE: &[(&str, ReadGate)] = &[
             config_option: Some(Cow::Borrowed("enemyKillsPerSecond")),
         },
     ),
+    // Utility facts need the matching equipped flask. Constant effects also
+    // enter the combat buff merge; no flask is manufactured by these flags.
+    (
+        "CannotUseLifeFlasks",
+        ReadGate {
+            state: Cow::Borrowed("a Life Flask is equipped"),
+            config_option: None,
+        },
+    ),
+    (
+        "NonUniqueLifeFlasksConstant",
+        ReadGate {
+            state: Cow::Borrowed("a non-Unique Life Flask is equipped in combat"),
+            config_option: None,
+        },
+    ),
+    (
+        "LifeFlaskCannotBeInstant",
+        ReadGate {
+            state: Cow::Borrowed("a Life Flask is equipped"),
+            config_option: None,
+        },
+    ),
+    (
+        "LifeFlaskAppliesToMana",
+        ReadGate {
+            state: Cow::Borrowed("a Life Flask is equipped"),
+            config_option: None,
+        },
+    ),
+    (
+        "ManaFlaskAppliesToLife",
+        ReadGate {
+            state: Cow::Borrowed("a Mana Flask is equipped"),
+            config_option: None,
+        },
+    ),
+    (
+        "FlaskInstantRecovery",
+        ReadGate {
+            state: Cow::Borrowed("the equipped flask can apply instant recovery"),
+            config_option: None,
+        },
+    ),
 ];
 
 pub(crate) fn read_under_a_state(name: &str) -> Option<ReadGate> {

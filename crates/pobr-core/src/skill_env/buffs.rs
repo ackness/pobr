@@ -388,7 +388,7 @@ pub fn spirit_reservation_modifiers(
                 "base_spirit_reservation_efficiency_+%",
             ];
             let alt_quality = if use_alt_quality {
-                data.alt_quality_stats(&gem.skill_id, gem.quality)
+                data.alt_quality_stats_for_set(&gem.skill_id, gem.quality, gem.stat_set_index)
             } else {
                 Vec::new()
             };

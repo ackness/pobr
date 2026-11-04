@@ -40,8 +40,8 @@ pub use item_text::{
 pub use lookup::{
     ArmourBaseLookup, BaseItemLookup, CostTypeLookup, CostTypeRef, EffectLookup, EffectStats,
     EnabledGroup, EquipmentView, GemDefLookup, MinionLookup, ParserRulesLookup, PassiveNodeLookup,
-    SelectedSetLevelRow, SocketGroupView, StatMapLookup, StatSetLookup, TriggerConfigLookup,
-    UnarmedDataLookup, UnselectedSetStats, WeaponBaseLookup, WeaponTypeLookup,
+    QualityApplicabilityIssue, SelectedSetLevelRow, SocketGroupView, StatMapLookup, StatSetLookup,
+    TriggerConfigLookup, UnarmedDataLookup, UnselectedSetStats, WeaponBaseLookup, WeaponTypeLookup,
 };
 pub use minions::{MinionEnv, MinionSession, spawn_minions};
 pub use mods::{
@@ -62,8 +62,8 @@ pub use resolve::{
 };
 pub use stat_map::{
     StatMapCompareRecord, StatMapCtx, StatMapMode, curse_stat_modifiers, debuff_stat_modifiers,
-    has_debuff_payload, has_exposure_inflict_stats, mapped_stat_modifiers,
-    player_buff_stat_modifiers,
+    has_debuff_payload, has_exposure_inflict_stats, mapped_effect_stat_modifiers,
+    mapped_stat_modifiers, player_buff_stat_modifiers,
 };
 pub use support::{
     CompatibleSupport, GroupSupportJudgement, SupportCandidate, judge_group_supports,

@@ -24,8 +24,8 @@ use pobr_data::catalog::item_granted_skills::ItemGrantedSkillVariant;
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
 use pobr_data::catalog::local_mods::LocalModsDef;
 use pobr_data::catalog::{
-    BaseItemDef, CostTypeDef, GemEffectDef, GrantedEffectDef, PassiveNodeDef, QualityStat,
-    RuntimeConstants, SkillGemDef, SkillLevelDef, SkillStatSetDef, TriggerConfigDef,
+    BaseItemDef, CostTypeDef, GemEffectDef, GemQualityMetadata, GrantedEffectDef, PassiveNodeDef,
+    QualityStat, RuntimeConstants, SkillGemDef, SkillLevelDef, SkillStatSetDef, TriggerConfigDef,
 };
 use pobr_data::minion::MinionDef;
 use pobr_gamedata::ruleset::ConfigCatalog;
@@ -33,6 +33,7 @@ use pobr_gamedata::{GameData, LoadError};
 
 mod equipment;
 mod passives;
+mod quality;
 mod rules;
 mod skills;
 
@@ -102,6 +103,8 @@ pub struct BuildData {
     /// `GrantedEffects.Id`. Empty when an old data pack lacks this overlay domain
     /// (quality produces no stats, backward compatible).
     pub gem_quality_stats: HashMap<String, Vec<QualityStat>>,
+    /// Native quality stat-set eligibility and explicit producer exclusions.
+    pub gem_quality_metadata: GemQualityMetadata,
     /// Gem → granted-effect links, keyed by the **primary effect id**
     /// (`granted_effect_id`) — used by meta/composite gem expansion (T5.6) to look up
     /// additional effects forward from a socket group's gem `skill_id` (= the primary
@@ -535,13 +538,15 @@ impl BuildData {
             });
 
         // Quality stat slopes (overlay domain): missing file = empty table (quality produces no stats, backward compatible).
-        let gem_quality_stats = data
+        let (gem_quality_stats, gem_quality_metadata) = data
             .gem_quality_stats()?
             .map(|def| {
-                def.effects
+                let stats = def
+                    .effects
                     .into_iter()
                     .map(|e| (e.effect_id, e.stats))
-                    .collect()
+                    .collect();
+                (stats, def.metadata)
             })
             .unwrap_or_default();
 
@@ -778,6 +783,7 @@ impl BuildData {
             skill_stat_sets,
             stat_sets_mark_hits,
             gem_quality_stats,
+            gem_quality_metadata,
             gem_effects,
             cost_types,
             base_items,
@@ -817,6 +823,7 @@ impl BuildData {
             skill_stat_sets: HashMap::new(),
             stat_sets_mark_hits: false,
             gem_quality_stats: HashMap::new(),
+            gem_quality_metadata: GemQualityMetadata::default(),
             gem_effects: HashMap::new(),
             cost_types: Vec::new(),
             base_items: HashMap::new(),

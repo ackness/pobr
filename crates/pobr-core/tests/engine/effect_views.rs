@@ -42,6 +42,28 @@ fn close(actual: f64, expected: f64) {
 }
 
 #[test]
+fn crippling_toxins_maim_requires_a_poisoned_enemy_and_an_attack() {
+    // Crippling Toxins (43677), maim_on_hit_%_vs_poisoned_enemies.
+    let text = "25% chance for Attacks to Maim on Hit against Poisoned Enemies";
+    for (attack, poisoned, expected) in [(true, true, 25.0), (true, false, 0.0), (false, true, 0.0)]
+    {
+        let cfg = if attack {
+            CalcConfig::attack()
+        } else {
+            CalcConfig::spell()
+        }
+        .with_condition("EnemyPoisoned", poisoned);
+        let mut s = session(cfg, &[text]);
+        s.perform_minimal().unwrap();
+        close(input(&s, "MaimUptime", "DebuffChance"), expected);
+        assert!(
+            !s.config().condition("EnemyMaimed"),
+            "a chance must not enable the enemy state"
+        );
+    }
+}
+
+#[test]
 fn pin_application_uses_primed_thresholds_without_granting_buildup() {
     for (rarity, threshold) in [
         (None, 40.0),

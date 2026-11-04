@@ -8,6 +8,7 @@ pub(in crate::skill_env) fn minion_curse_specs(
     group: &EnabledGroup<'_>,
     def: &pobr_data::minion::MinionDef,
     minion_level: u32,
+    use_alt_quality: bool,
 ) -> Vec<BuffSpec> {
     let mut ctx = StatMapCtx::data(data.stat_map_catalog());
     def.skill_list
@@ -41,7 +42,7 @@ pub(in crate::skill_env) fn minion_curse_specs(
             if let Some(catalog) = ctx.catalog {
                 let mut absorb =
                     |effect_id: &str, key: Option<&str>, stats: &crate::skill_env::EffectStats| {
-                        for stat in stats.all() {
+                        for stat in stats.merged() {
                             let (inc, more) = stat_map_engine::curse_local_effect(
                                 catalog, effect_id, key, &stat.stat, stat.value,
                             );
@@ -53,8 +54,13 @@ pub(in crate::skill_env) fn minion_curse_specs(
                 for support in group_judgement_from(group, data, id, false).compatible {
                     let gem = &group.gems[support.gem_index];
                     let set = support_stat_set_index(&support, group.gems);
-                    let stats =
-                        data.effect_stats(&support.effect_id, gem.gem_level, gem.quality, set);
+                    let stats = data.effect_stats_with_quality(
+                        &support.effect_id,
+                        gem.gem_level,
+                        gem.quality,
+                        set,
+                        use_alt_quality,
+                    );
                     let key = data.selected_set_key(&support.effect_id, set);
                     absorb(&support.effect_id, key.as_deref(), &stats);
                 }

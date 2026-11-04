@@ -3,7 +3,6 @@
 use super::context::CalculationContext;
 
 use pobr_core::Modifier;
-use pobr_data::source::SourceKind;
 
 use crate::build::{Build, SocketGroup};
 use crate::build_data::BuildData;
@@ -11,40 +10,6 @@ use crate::build_data::BuildData;
 /// A single mapping-level outcome observation record produced by Compare mode.
 /// Re-exported from `pobr-core::skill_env`.
 pub use pobr_core::skill_env::StatMapCompareRecord;
-
-/// Maps a set of resolved stats into modifiers attributed with `source_kind` — the
-/// statmap channel's dispatch point: Data goes through the
-/// [`stat_map_engine::map_stat`] data engine; Compare = the Data computation + recording
-/// a mapping outcome observation per stat (**output identical to Data**, pure
-/// observation that doesn't change the result; records are retrieved via
-/// [`CalculationReport::stat_map_records`]). Stats that can't be mapped (Unsupported /
-/// Unknown) are silently skipped; zero values are skipped.
-///
-/// `effect_id`: the granted effect the stat belongs to, for per-statSet override lookup.
-/// `set_key`: the decimal string of the **selected** statSet's vendor 1-based export
-/// index ([`BuildData::selected_set_key`]); `None` = the engine automatically uses the
-/// default set "1" override (matching PoB2's default statSetIndex=1, vendor
-/// `SkillsTab.lua:354`; across the 18 ninja builds, statSetIndex is always nil, which
-/// is equivalent to None). The global-only merge for unselected sets goes through
-/// [`unselected_set_global_modifiers`], not this dispatch point.
-pub(crate) fn mapped_stat_modifiers(
-    context: &mut CalculationContext,
-    stats: &[pobr_data::catalog::SkillDamageStat],
-    source_kind: SourceKind,
-    label_prefix: &str,
-    effect_id: &str,
-    set_key: Option<&str>,
-) -> Vec<Modifier> {
-    let mut ctx = context.stat_map_ctx();
-    pobr_core::skill_env::mapped_stat_modifiers(
-        &mut ctx,
-        stats,
-        source_kind,
-        label_prefix,
-        effect_id,
-        set_key,
-    )
-}
 
 /// The injection surface for exposure-effect supports outside the main group (noted as
 /// h3, same root cause as Potent Exposure).

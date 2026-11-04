@@ -171,6 +171,13 @@ Infernalist Comet d7afa87a05ea 的生命／MoM 池随[符文原文差异](pob2-d
 槽位数值用实际输入公式；CLI utility_stats 与 WASM 同源。
 只算单次使用和充能，不推触发／覆盖率，启用效果见[药剂护符](mechanics/items.md#药剂与护符)。
 
+Azmeri Brew 的额外跨资源恢复使用 `Flask<N>LifeRecovery` / `ManaRecovery`，以及
+`LifeInstantRecovery` / `ManaInstantRecovery`、`LifeRecoveryPerSecond` / `ManaRecoveryPerSecond`。
+这些字段只包含复制到另一资源的量；原资源仍用 `Recovery` / `InstantRecovery` /
+`RecoveryPerSecond`，不能把复制字段递归作为另一瓶药剂的输入。
+Reverie 禁止生命药剂使用时 `Uses` 为零，单瓶恢复属性仍保留；非传奇生命药剂的常驻效果
+可在未勾选槽中准入，但不将属性读数加进 `Net*Regen`。
+
 分组侧栏明细覆盖全部字段。NumberOfDamagingHits／NumberOfMitigatedHits 为 none，尚无耗尽模拟迭代轨迹。
 最大承伤复用求解值、敌人倍率、资源池，不重跑求解器。sources 只解释查询，不保证等于含基础值的最终输出。
 ChannelTimeToTrigger 为 Cast While Channelling 从空 Energy 到首次触发的秒数（总容量／持续获取速率，含增益），

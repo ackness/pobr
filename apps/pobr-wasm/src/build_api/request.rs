@@ -162,6 +162,22 @@ pub struct SlotItemInput {
     pub(crate) text: String,
 }
 
+/// An equipped flask/charm and its selection, independent of effective application.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct UtilitySlotInput {
+    pub(crate) slot: String,
+    pub(crate) text: String,
+    #[serde(default = "utility_active_default")]
+    #[cfg_attr(test, ts(as = "Option<bool>", optional))]
+    pub(crate) active: bool,
+}
+
+fn utility_active_default() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 #[cfg_attr(test, derive(ts_rs::TS))]
@@ -226,9 +242,9 @@ pub struct CalculateBuildRequest {
     pub(crate) socket_groups: Option<Vec<SocketGroupInput>>,
     /// The equipment override (manual editing: wholesale replaces every equipment slot).
     pub(crate) items: Option<Vec<SlotItemInput>>,
-    /// The active-flask/charm override (wholesale replaces
-    /// `utility_slots`; slot names are `Flask 1/2`, `Charm 1..3`).
-    pub(crate) flasks: Option<Vec<SlotItemInput>>,
+    /// Equipped utilities: omission keeps both imported collections; an explicit
+    /// list replaces both, partitioned by selection. Empty clears every utility.
+    pub(crate) flasks: Option<Vec<UtilitySlotInput>>,
     /// The Transcendent limb override (wholesale replaces `limbs`; slots are
     /// `arm1`, `arm2`, `leg1`, `leg2`).
     pub(crate) limbs: Option<Vec<SlotItemInput>>,
@@ -260,6 +276,30 @@ pub struct CalculateBuildRequest {
     /// Defaults to generating a single set from scratch.
     #[serde(default)]
     pub(crate) base_code: Option<String>,
+}
+
+pub(crate) fn validate_utilities(utilities: &[UtilitySlotInput]) -> Result<(), ApiError> {
+    let mut slots = std::collections::HashSet::new();
+    for utility in utilities {
+        if !matches!(
+            utility.slot.as_str(),
+            "Flask 1" | "Flask 2" | "Charm 1" | "Charm 2" | "Charm 3"
+        ) {
+            return Err(ApiError::bad_request(format!(
+                "unknown flask/charm slot: {}",
+                utility.slot
+            ))
+            .with_slot(utility.slot.as_str()));
+        }
+        if !slots.insert(utility.slot.as_str()) {
+            return Err(ApiError::bad_request(format!(
+                "duplicate flask/charm slot: {}",
+                utility.slot
+            ))
+            .with_slot(utility.slot.as_str()));
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn validate_equipment_jewels(jewels: &[SlotItemInput]) -> Result<(), ApiError> {
@@ -451,20 +491,20 @@ pub(crate) fn apply_request_overrides(
         }
     }
     if let Some(flasks) = &req.flasks {
+        validate_utilities(flasks)?;
         build.utility_slots.clear();
+        build.inactive_utility_slots.clear();
         for flask in flasks {
-            // Same semantics as XML import: only active slots go into the
-            // list; slot names are restricted to PoB's Flask/Charm family.
-            if !(flask.slot.starts_with("Flask ") || flask.slot.starts_with("Charm ")) {
-                return Err(ApiError::bad_request(format!(
-                    "unknown flask/charm slot: {}",
-                    flask.slot
-                ))
-                .with_slot(flask.slot.as_str()));
-            }
             let text = localize_input_text(&flask.text);
             match parse_pob_xml_item(&text) {
-                Ok(parsed) => build.utility_slots.push((flask.slot.clone(), parsed)),
+                Ok(parsed) => {
+                    let slots = if flask.active {
+                        &mut build.utility_slots
+                    } else {
+                        &mut build.inactive_utility_slots
+                    };
+                    slots.push((flask.slot.clone(), parsed));
+                }
                 Err(e) => issues.push(SlotIssue {
                     slot: flask.slot.clone(),
                     message: format!("{e:?}"),

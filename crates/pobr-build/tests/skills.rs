@@ -82,6 +82,8 @@ mod equipment_conditions;
 mod event_triggered_hits;
 #[path = "skills/flame_wall.rs"]
 mod flame_wall;
+#[path = "skills/flask_recovery.rs"]
+mod flask_recovery;
 #[path = "skills/gem_quality.rs"]
 mod gem_quality;
 #[path = "skills/grand_spectrum.rs"]

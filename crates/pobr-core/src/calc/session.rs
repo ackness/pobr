@@ -467,18 +467,25 @@ impl CalculationSession {
                 quality: item.quality as f64,
                 is_charm: crate::item::classify_utility_item(item)
                     == crate::item::UtilityItemKind::Charm,
+                rarity: item.rarity,
             });
     }
 
-    /// Stores only local properties for an equipped utility item with its effects disabled.
+    /// Stores local properties and retains unselected flask payloads for constant effects.
     pub fn add_inactive_utility_properties(&mut self, slot_name: &str, item: &Item) {
         let ingest = crate::item::ingest_flask_charm_with_ctx(slot_name, item, self.parse_ctx());
-        self.env.player.mod_db.add_list(
-            ingest
-                .modifiers
-                .into_iter()
-                .filter(|modifier| modifier.name.as_str().starts_with("LocalUtility:")),
-        );
+        for mut modifier in ingest.modifiers {
+            if modifier.name.as_str() == crate::item::FLASK_BUFF_LIST_NAME {
+                modifier.name = ModName::from(crate::item::INACTIVE_FLASK_BUFF_LIST_NAME);
+            } else if !modifier.name.as_str().starts_with("LocalUtility:") {
+                continue;
+            }
+            self.env.player.mod_db.add_mod(modifier);
+        }
+        // Inactive flasks may still apply constantly; do not lose unsupported lines.
+        if crate::item::classify_utility_item(item) == crate::item::UtilityItemKind::Flask {
+            self.unsupported_modifier_texts.extend(ingest.unsupported);
+        }
     }
 
     /// Wires in an **active-state** flask/charm: its mods are packed by

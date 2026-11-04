@@ -213,6 +213,28 @@ describe('saved-session validation', () => {
     expect(materialize(decoded()).limbs).toEqual([]);
   });
 
+  test('utility selection survives materialization, persistence and requests without source resurrection', () => {
+    const flasks = [
+      { slot: 'Flask 1', text: 'Rarity: NORMAL\nUltimate Life Flask', active: false },
+      { slot: 'Charm 1', text: 'Rarity: NORMAL\nRuby Charm', active: false },
+    ];
+    const decoded = { tree: {}, socket_groups: [], config_inputs: {}, items: { equipped: [], flasks } } as unknown as BuildJson;
+    const state = { ...saved.state, ...materialize(decoded), pobCode: 'old source containing utilities' };
+    expect(state.flasks).toEqual(flasks);
+    const restored = parseSaved(JSON.stringify({ ...saved, state }))!.state;
+    expect(toRequest(backfillFromDecoded(restored, decoded)).flasks).toEqual(flasks);
+    // [] could be deliberate removal or an old lossy save: neither permits backfill.
+    for (const sourceBackfillComplete of [undefined, true]) {
+      const cleared = parseSaved(JSON.stringify({ ...saved, state: { ...state, flasks: [], sourceBackfillComplete } }))!.state;
+      expect(toRequest(backfillFromDecoded(cleared, decoded)).flasks).toEqual([]);
+    }
+    expect(parseState({ flasks: [{ slot: 'Flask 1', text: 'legacy' }] })?.state.flasks)
+      .toEqual([{ slot: 'Flask 1', text: 'legacy', active: true }]);
+    for (const active of ['false', 0, null, {}]) expect(parseState({ flasks: [{ ...flasks[0], active }] })).toBeNull();
+    expect(parseState({ flasks: [flasks[0], flasks[0]] })).toBeNull();
+    expect(parseState({ flasks: [{ ...flasks[0], slot: 'Flask 3' }] })).toBeNull();
+  });
+
   test('equipment jewels survive old saves, tree edits and explicit removal', () => {
     const jewel = { slot: 'Gloves Jewel Socket 1', text: 'Rarity: RARE\nKraken Eye\nRuby\n+20 to maximum Life' };
     const decoded = { tree: {}, socket_groups: [], items: { equipped: [], equipment_jewels: [jewel] } } as unknown as BuildJson;

@@ -761,6 +761,14 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
             }
             "ArchonEffect" => "50% reduced effect of Archon Buffs on you",
             "FlaskChargeOnKillChance" => "25% Chance to gain a Charge when you kill an enemy",
+            "CannotUseLifeFlasks" => "Cannot use Life Flasks",
+            "NonUniqueLifeFlasksConstant" => {
+                "Non-Unique Life Flasks apply their Effects constantly"
+            }
+            "LifeFlaskCannotBeInstant" => "Recovery from Life Flasks cannot be Instant",
+            "LifeFlaskAppliesToMana" => "Life flasks also recover Mana",
+            "ManaFlaskAppliesToLife" => "Mana flasks also recover Life",
+            "FlaskInstantRecovery" => "50% of Recovery applied Instantly",
             _ => panic!("new registered reader {name} needs an off/on fixture"),
         };
         for active in [false, true] {
@@ -784,7 +792,31 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
             } else {
                 "FireballPlayer"
             };
-            let is_charge_on_kill = name == "FlaskChargeOnKillChance";
+            let is_local_flask_reader =
+                matches!(name, "FlaskChargeOnKillChance" | "FlaskInstantRecovery");
+            let is_flask_flag = matches!(
+                name,
+                "CannotUseLifeFlasks"
+                    | "NonUniqueLifeFlasksConstant"
+                    | "LifeFlaskCannotBeInstant"
+                    | "LifeFlaskAppliesToMana"
+                    | "ManaFlaskAppliesToLife"
+            );
+            let flask = if is_flask_flag && active {
+                let base = if name == "ManaFlaskAppliesToLife" {
+                    "Ultimate Mana Flask"
+                } else {
+                    "Ultimate Life Flask"
+                };
+                format!(
+                    r#"<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+{base}
+Implicits: 0
+</Item><ItemSet id="1"><Slot name="Flask 1" itemId="1" active="false"/></ItemSet></Items>"#
+                )
+            } else {
+                String::new()
+            };
             let config = gate
                 .config_option
                 .as_deref()
@@ -813,7 +845,7 @@ fn every_registered_state_reader_is_inactive_off_and_applied_on() {
                     }
                 })
                 .unwrap_or_default();
-            let build = if is_charge_on_kill {
+            let build = if is_local_flask_reader {
                 parse_build(&format!(
                     r#"<PathOfBuilding2>
 <Build level="80" className="Witch" mainSocketGroup="1"/>
@@ -831,20 +863,25 @@ Implicits: 0
                     r#"<PathOfBuilding2>
 <Build level="80" className="Witch" mainSocketGroup="1"/>
 <Skills><Skill enabled="true"><Gem skillId="{skill}" level="20" enabled="true"/></Skill></Skills>
-{config}</PathOfBuilding2>"#
+{config}{flask}</PathOfBuilding2>"#
                 ))
                 .unwrap()
             };
             let mut options = DataOrchestratorOptions {
                 mode_effective: name.starts_with("ArmourBreak")
                     || name == "ArmourDefenseAgainstProjectileAttacks",
-                extra_modifier_texts: if is_charge_on_kill {
+                extra_modifier_texts: if is_local_flask_reader {
                     Vec::new()
                 } else {
                     vec![text.to_string()]
                 },
                 ..Default::default()
             };
+            if name == "FlaskInstantRecovery" && !active {
+                options
+                    .extra_modifier_texts
+                    .push("Recovery from Life Flasks cannot be Instant".into());
+            }
             if active && matches!(name, "UnaffectedBySlows" | "SlowEffectOnSelf") {
                 options
                     .extra_modifier_texts
@@ -876,8 +913,8 @@ Implicits: 0
                 .iter()
                 .flat_map(|line| &line.modifiers)
                 .find(|modifier| {
-                    if is_charge_on_kill {
-                        modifier.name.ends_with(":FlaskChargeOnKillChance")
+                    if is_local_flask_reader {
+                        modifier.name.ends_with(&format!(":{name}"))
                     } else {
                         modifier.name == name
                     }
@@ -895,11 +932,11 @@ Implicits: 0
             assert_eq!(modifier.read_gate.is_some(), !active, "{name}");
             if active {
                 assert!(
-                    if is_charge_on_kill {
+                    if is_local_flask_reader {
                         ledger
                             .reads
                             .keys()
-                            .any(|key| key.ends_with(":FlaskChargeOnKillChance"))
+                            .any(|key| key.ends_with(&format!(":{name}")))
                     } else {
                         ledger.reads.contains_key(name)
                     },
@@ -907,8 +944,8 @@ Implicits: 0
                 );
             } else {
                 assert!(!diagnosis.unread_modifiers.iter().any(|modifier| {
-                    if is_charge_on_kill {
-                        modifier.name.ends_with(":FlaskChargeOnKillChance")
+                    if is_local_flask_reader {
+                        modifier.name.ends_with(&format!(":{name}"))
                     } else {
                         modifier.name == name
                     }
@@ -1176,6 +1213,73 @@ Implicits: 0
             }
         }
         assert!(ledger.condition_states.contains(condition));
+    }
+}
+
+#[test]
+fn body_armour_defence_ledger_explains_absent_base_without_claiming_use() {
+    let mut data = data().clone();
+    // Exercise the existing conversion engine directly through a fixture
+    // config entry: this text conversion has no game parser rule.
+    data.config_catalog = Some(std::sync::Arc::new(
+        pobr_gamedata::ruleset::ConfigCatalog::new(vec![
+            serde_json::from_value(serde_json::json!({
+                "var": "testDefenceConversion", "input_type": "check", "section": "Test",
+                "effects": [{"target": "player", "name": "ArmourConvertToEvasion",
+                    "mod_type": "BASE", "value": {"kind": "literal", "value": 100.0}}]
+            }))
+            .unwrap(),
+        ]),
+    ));
+    let text = "Evasion Rating from Equipped Body Armour is halved";
+    for (base, convert, applied) in [
+        ("Shaman Mantle", false, false),
+        ("Slipstrike Vest", false, true),
+        // Converted slot bases must not be mistaken for absent Evasion.
+        ("Shaman Mantle", true, true),
+    ] {
+        let mut build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="80" className="Huntress"/>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Test Body
+{base}
+Implicits: 0
+</Item><ItemSet id="1"><Slot name="Body Armour" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#
+        ))
+        .unwrap();
+        build.config.raw_inputs.values.insert(
+            "testDefenceConversion".into(),
+            pobr_core::rules::config_interpreter::ConfigInputValue::Bool(convert),
+        );
+        let options = DataOrchestratorOptions {
+            extra_modifier_texts: vec![text.into()],
+            ..Default::default()
+        };
+        let diagnosis = diagnose(&build, &data, &options).unwrap();
+        let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        let row = ledger
+            .lines
+            .iter()
+            .find(|line| line.text.as_deref() == Some(text))
+            .unwrap();
+        if applied {
+            assert_eq!(
+                row.status,
+                LineStatus::Applied,
+                "{base} conversion={convert}: {row:?}"
+            );
+        } else {
+            assert_eq!(row.status, LineStatus::Inactive, "{row:?}");
+            assert!(row.used_in.is_empty(), "{row:?}");
+            let modifier = &row.modifiers[0];
+            assert!(modifier.used_in.is_empty(), "{modifier:?}");
+            assert_eq!(
+                modifier.read_gate.as_ref().unwrap().state,
+                "the equipped body armour has no base Evasion"
+            );
+        }
     }
 }
 
@@ -1720,14 +1824,15 @@ fn self_debuff_modifier_views_read_each_previously_unmodelled_line() {
 }
 
 /// A flask line the parser read only in part applies nothing and is listed as
-/// unparsed. These two lines still parse to a wrong modifier plus leftover text:
-/// "3% more Life Flask Recovery" to 3% more maximum Life and "2% more Mana Flask Recovery"
-/// to 2% more maximum Mana. ("10% increased speed of Recoup Effects" used to be a third, read as a
-/// `LocalEffect` increase; it now has a rule and applies `RecoupSpeed`.)
+/// unparsed. The Life flask recovery prefix now has a rule, but an unknown
+/// trailing condition must not turn either line into an unconditional effect.
 #[test]
 fn partially_parsed_flask_lines_are_unparsed_and_apply_nothing() {
     let data = data();
-    let lines = ["3% more Life Flask Recovery", "2% more Mana Flask Recovery"];
+    let lines = [
+        "3% more Life Flask Recovery while testing an unknown condition",
+        "2% more Mana Flask Recovery while testing an unknown condition",
+    ];
     let build = parse_build(&format!(
         r#"<PathOfBuilding2>
 <Build level="80" className="Witch" mainSocketGroup="1"/>

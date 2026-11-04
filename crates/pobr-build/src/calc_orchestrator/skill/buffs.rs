@@ -96,7 +96,12 @@ pub(crate) fn support_buff_specs(
     data: &BuildData,
 ) -> Vec<BuffSpec> {
     let mut ctx = context.stat_map_ctx();
-    pobr_core::skill_env::support_buff_specs(&mut ctx, build, data)
+    pobr_core::skill_env::support_buff_specs(
+        &mut ctx,
+        build,
+        data,
+        super::resolve::gemling_quality_flag(build, data),
+    )
 }
 
 /// Maps the **self offensive buff** every **enabled gem** grants the player (the
@@ -198,5 +203,11 @@ pub(crate) fn warcry_skill_specs(
 ) -> Vec<pobr_core::calc::WarcrySpec> {
     let bonuses = super::resolve::gem_property_bonuses(build, data);
     let mut ctx = context.stat_map_ctx();
-    pobr_core::skill_env::warcry_skill_specs(&mut ctx, build, data, &bonuses)
+    pobr_core::skill_env::warcry_skill_specs(
+        &mut ctx,
+        build,
+        data,
+        &bonuses,
+        super::resolve::gemling_quality_flag(build, data),
+    )
 }

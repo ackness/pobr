@@ -424,6 +424,7 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
                     read_gate: (status == ModifierStatus::Inactive)
                         .then(|| {
                             enemy_distance_gate(modifier, context.cfg)
+                                .or_else(|| utility_carrier_gate(modifier))
                                 .or_else(|| missing_slot_base_gate(modifier, &slot_bases))
                                 .or_else(|| {
                                     diagnosis
@@ -452,10 +453,17 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
                         .flatten(),
                     status,
                     reason,
-                    used_in: uses
-                        .get(&std::ptr::from_ref(modifier))
-                        .cloned()
-                        .unwrap_or_default(),
+                    // A generic breakdown can list a slot-scoped modifier even
+                    // when that slot has no base to scale. The actual read log,
+                    // not this display enumeration, decides whether it counted.
+                    used_in: if matches!(status, ModifierStatus::Applied | ModifierStatus::Outside)
+                    {
+                        uses.get(&std::ptr::from_ref(modifier))
+                            .cloned()
+                            .unwrap_or_default()
+                    } else {
+                        Vec::new()
+                    },
                 }
             })
             .collect();
@@ -783,9 +791,8 @@ fn enemy_distance_gate(modifier: &Modifier, cfg: &pobr_core::CalcConfig) -> Opti
 /// A slot-scoped defence increase with no base to scale: the shield-local
 /// query for that defence never runs when the equipped shield has no base of
 /// it (the per-slot loop iterates the slot bases). Reports as inactive with a
-/// state gate so the gap queue files it as state-gated, not dropped. Only the
-/// off-hand slot (`weapon2`, the shield/focus slot) is covered: other slots'
-/// missing-base lines keep the existing classification.
+/// state gate so the gap queue files it as state-gated, not dropped. Applied
+/// conversions are judged by the read log before reaching this fallback.
 fn missing_slot_base_gate(
     modifier: &Modifier,
     bases: &BTreeSet<(String, String)>,
@@ -794,14 +801,18 @@ fn missing_slot_base_gate(
         return None;
     }
     let slot = modifier.slot_name()?;
-    if slot != "weapon2" {
-        return None;
-    }
     let name = modifier.name.as_str();
-    let state: Cow<'static, str> = match name {
-        "Armour" => Cow::Borrowed("the equipped shield has no base Armour"),
-        "Evasion" => Cow::Borrowed("the equipped shield has no base Evasion"),
-        "EnergyShield" => Cow::Borrowed("the equipped shield has no base Energy Shield"),
+    let state: Cow<'static, str> = match (slot, name) {
+        ("weapon2", "Armour") => Cow::Borrowed("the equipped shield has no base Armour"),
+        ("weapon2", "Evasion") => Cow::Borrowed("the equipped shield has no base Evasion"),
+        ("weapon2", "EnergyShield") => {
+            Cow::Borrowed("the equipped shield has no base Energy Shield")
+        }
+        ("bodyarmour", "Armour") => Cow::Borrowed("the equipped body armour has no base Armour"),
+        ("bodyarmour", "Evasion") => Cow::Borrowed("the equipped body armour has no base Evasion"),
+        ("bodyarmour", "EnergyShield") => {
+            Cow::Borrowed("the equipped body armour has no base Energy Shield")
+        }
         _ => return None,
     };
     if bases.contains(&(slot.to_string(), name.to_string())) {
@@ -809,6 +820,24 @@ fn missing_slot_base_gate(
     }
     Some(ReadGate {
         state,
+        config_option: None,
+    })
+}
+
+/// A flask/charm payload is explicitly counted by the effect merge only after
+/// selection, constant-effect eligibility and player/slot gates pass.
+fn utility_carrier_gate(modifier: &Modifier) -> Option<ReadGate> {
+    use pobr_core::item::{
+        CHARM_BUFF_LIST_NAME, FLASK_BUFF_LIST_NAME, INACTIVE_FLASK_BUFF_LIST_NAME,
+    };
+    (modifier.mod_type == ModType::List
+        && modifier.value.as_nested_mods().is_some()
+        && matches!(
+            modifier.name.as_str(),
+            FLASK_BUFF_LIST_NAME | INACTIVE_FLASK_BUFF_LIST_NAME | CHARM_BUFF_LIST_NAME
+        ))
+    .then_some(ReadGate {
+        state: Cow::Borrowed("its flask or charm effect is admitted in the selected combat state"),
         config_option: None,
     })
 }
@@ -974,6 +1003,9 @@ fn judge(
     if reads.counted(modifier) {
         return (ModifierStatus::Applied, None);
     }
+    if let Some(gate) = utility_carrier_gate(modifier) {
+        return (ModifierStatus::Inactive, Some(gate.reason()));
+    }
     if let Some(judged) = variables.judge(name)
         && (judged.0 == ModifierStatus::Outside || !reads.sites.contains_key(name))
     {
@@ -989,7 +1021,7 @@ fn judge(
         return (ModifierStatus::Inactive, Some(reason));
     }
     if let Some(gate) = missing_slot_base_gate(modifier, slot_bases) {
-        return (ModifierStatus::Inactive, Some(gate.reason()));
+        return (ModifierStatus::Inactive, Some(gate.state.into_owned()));
     }
     // It would count in the main skill's context. A consumer that inspects
     // the modifiers itself is taken to use one that does.

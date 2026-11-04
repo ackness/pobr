@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { LineUsageLine, LineUsageStatus } from '../../../api/types';
+import { configLabel } from '../../../lib/configLabels';
 import {
-  ATTENTION, NO_FILTER, STATUS_ORDER, cleanLineText, filterLedger, lineText, sortLedger, sourceGroup, statusHint, statusLabel,
+  ATTENTION, NO_FILTER, STATUS_ORDER, cleanLineText, filterLedger, ledgerDisplayText, ledgerReason, lineText, sortLedger, sourceGroup, statusHint, statusLabel,
   statusRank, statusTone, summarise, toggleStatus,
 } from './ledger';
 
@@ -59,6 +60,63 @@ describe('lineText', () => {
   it('falls back to the first modifier name for lines without original text', () => {
     expect(lineText(line('applied', { text: null, modifiers: [{ name: 'GemLevel', mod_type: 'BASE', value: 1, applied: 1, status: 'applied', reason: null, used_in: [] }] }))).toBe('GemLevel');
     expect(lineText(line('applied', { text: null }))).toBe('—');
+  });
+
+  it('names synthetic config rows without replacing actual custom modifier text', () => {
+    const config = line('inactive', { source_kind: 'Config', source_id: 'config.GamblesprintMovementSpeed', text: 'Config' });
+    expect(ledgerDisplayText(config, 'zh-CN')).toBe('配置：赌命疾奔移动速度');
+    expect(ledgerDisplayText(config, 'zh-CN')).not.toBe('Config');
+    expect(ledgerDisplayText(config, 'en-US', { GamblesprintMovementSpeed: 'Gamblesprint Movement Speed' }))
+      .toBe('Configuration: Gamblesprint Movement Speed');
+    expect(ledgerDisplayText({ ...config, text: '10% increased Damage' }, 'zh-CN')).toBe('10% increased Damage');
+    expect(ledgerDisplayText({ ...config, source_id: 'config.future' }, 'zh-CN')).toBe('配置：config.future');
+    const generated = { ...config, source_id: 'config.raiseSpectreEnableCurses', text: 'SpectreCursesEnabled',
+      modifiers: [{ name: 'SpectreCursesEnabled', mod_type: 'FLAG', value: true, applied: null,
+        status: 'unread' as const, reason: null, used_in: [] }] };
+    expect(ledgerDisplayText(generated, 'zh-CN', {
+      raiseSpectreEnableCurses: configLabel('zh-CN', { var: 'raiseSpectreEnableCurses', label: 'Enable curses:' }),
+    })).toBe('配置：启用幽魂的诅咒');
+    expect(ledgerDisplayText(generated, 'zh-CN')).toBe('SpectreCursesEnabled');
+  });
+
+  it('localizes the full engine-owned ancestral description, not a mixture of terms', () => {
+    const boost = line('inactive', {
+      source_id: 'base.AncestralBoost',
+      text: 'Ancestral Boost: 2 additional Strike targets; 30% more Slam damage and 25% increased Slam area',
+    });
+    expect(ledgerDisplayText(boost, 'zh-CN')).toBe('先祖增幅：打击额外以 2 个敌人为目标；猛击伤害总增 30%，范围扩大 25%');
+    expect(ledgerDisplayText(boost, 'en-US')).toBe(boost.text);
+    expect(ledgerDisplayText({ ...boost, text: 'Different future description' }, 'zh-CN')).toBe('Different future description');
+  });
+
+  it('does not describe unsupported text as having no effect in the game', () => {
+    expect(statusHint('zh-CN', 'unparsed')).toContain('本次计算未计入');
+    expect(statusLabel('zh-CN', 'inactive')).toBe('当前不生效');
+  });
+
+  it('shows the inactive modifier reason at row level and explains missing slot bases', () => {
+    const inactive = line('inactive', { reason: null, modifiers: [
+      { name: 'Evasion', mod_type: 'MORE', value: -50, applied: null, status: 'inactive',
+        reason: 'the equipped body armour has no base Evasion', used_in: [] },
+    ] });
+    expect(ledgerReason(inactive, 'zh-CN')).toBe('当前胸甲没有可缩放的闪避基值。');
+    expect(ledgerReason(inactive, 'en-US')).toBe('the equipped body armour has no base Evasion');
+    expect(ledgerReason(line('unread', { reason: 'Unknown future reason' }), 'zh-CN')).toBe('Unknown future reason');
+  });
+
+  it('localizes known engine reasons without changing status or discarding unknown diagnostics', () => {
+    const inactive = line('inactive', { reason: 'Condition Combat not met' });
+    expect(ledgerReason(inactive, 'zh-CN')).toBe('当前未满足条件：战斗状态。');
+    expect(ledgerReason(inactive, 'en-US')).toBe(inactive.reason);
+    expect(inactive.status).toBe('inactive');
+    const unmodelled = line('unmodelled', { reason: 'rule life_flask_self_only recognises it and stores nothing' });
+    expect(ledgerReason(unmodelled, 'zh-CN')).toBe('已识别，但该机制尚未实现。');
+    expect(unmodelled.reason).toContain('life_flask_self_only');
+    expect(ledgerReason({ ...unmodelled, status: 'no_effect' }, 'zh-CN')).toBe(unmodelled.reason);
+    expect(ledgerReason(line('no_effect', { reason: 'a config option nothing in this build asks for' }), 'zh-TW'))
+      .toBe('目前構築沒有使用此配置項。');
+    expect(ledgerReason(line('inactive', { reason: 'Condition FutureCondition not met' }), 'zh-CN'))
+      .toBe('Condition FutureCondition not met');
   });
 });
 

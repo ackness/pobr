@@ -65,8 +65,10 @@ fn pillars(data: &BuildData, build: &Build, lines: &[&str]) -> (f64, f64) {
 }
 
 fn assert_ratio(value: f64, base: f64, expected: f64) {
+    // Both reported rates are rounded to 9 decimals; dividing them can amplify
+    // that quantization. Compare amounts within their combined rounding bound.
     assert!(
-        (value / base - expected).abs() < 1e-9,
+        (value - base * expected).abs() <= 0.5e-9 * (1.0 + expected.abs()) + 1e-12,
         "{value} / {base} = {}, expected {expected}",
         value / base
     );
@@ -130,6 +132,91 @@ fn urgent_totems_speeds_up_the_spell_the_totem_casts() {
     let (own_rate, _) = pillars(&data, &build(false, ""), &[]);
     let (own_urgent_rate, _) = pillars(&data, &build(false, URGENT_TOTEMS), &[]);
     assert_eq!(own_urgent_rate, own_rate);
+}
+
+#[test]
+fn spell_totem_additional_quality_uses_the_host_gem_and_configured_totem_count() {
+    use pobr_data::passive_tree::NodeId;
+    let data = data();
+    for quality in [0, 20, 26, 40] {
+        for count in [1, 4] {
+            let config = format!(r#"<Input name="TotemsSummoned" number="{count}"/>"#);
+            let mut host = build_with(true, "", &config);
+            host.socket_groups[0].gem_skills[0].quality = quality;
+            let (base_rate, base_hit) = pillars(data, &host, &[]);
+            host.tree.allocated_nodes.push(NodeId(14429));
+            let (rate, hit) = pillars(data, &host, &[]);
+            // GrantedEffectQualityStats: 0.5% cast speed per summoned totem
+            // per quality, on SupportMetaTotemSpellTotemPlayer.
+            assert_ratio(
+                rate,
+                base_rate,
+                1.0 + 0.5 * f64::from(quality * count) / 100.0,
+            );
+            assert_eq!(hit, base_hit);
+
+            let session =
+                pobr_build::calculate_with_data_session(&host, data, &Default::default()).unwrap();
+            let quality_mods: Vec<_> = session
+                .mods_named("CastSpeed")
+                .into_iter()
+                .filter(|modifier| {
+                    modifier.origin.as_ref().is_some_and(|origin| {
+                        origin
+                            .source_id
+                            .id
+                            .ends_with("totems_spells_cast_speed_+%_per_active_totem")
+                    })
+                })
+                .collect();
+            assert_eq!(quality_mods.len(), usize::from(quality != 0));
+            if let Some(modifier) = quality_mods.first() {
+                let origin = modifier.origin.as_ref().unwrap();
+                assert_eq!(
+                    origin.source_id.kind,
+                    pobr_data::source::SourceKind::GemQuality
+                );
+                assert_eq!(
+                    origin.parent_source_id.as_ref().unwrap().kind,
+                    pobr_data::source::SourceKind::SupportGem
+                );
+                assert!(
+                    origin
+                        .source_id
+                        .id
+                        .starts_with(&format!("gem.SupportMetaTotemSpellTotemPlayer.q{quality}."))
+                );
+            }
+        }
+    }
+    // A host in another group, or disabled, cannot turn self-cast into a
+    // totem skill or leak its quality onto the character's spell.
+    let own = build(false, "");
+    let (own_rate, own_hit) = pillars(data, &own, &[]);
+    let mut elsewhere = own.clone();
+    elsewhere.tree.allocated_nodes.push(NodeId(14429));
+    elsewhere
+        .socket_groups
+        .push(pobr_build::SocketGroup::new().with_gem_skill_quality(
+            "SummonMetaTotemSpellTotemPlayer",
+            20,
+            40,
+        ));
+    assert_eq!(pillars(data, &elsewhere, &[]), (own_rate, own_hit));
+    let mut disabled = build(true, "");
+    disabled.tree.allocated_nodes.push(NodeId(14429));
+    disabled.socket_groups[0].gem_skills[0].quality = 40;
+    disabled.socket_groups[0].gem_skills[0].enabled = false;
+    disabled.socket_groups[0].main_active_skill = Some(1);
+    assert_eq!(pillars(data, &disabled, &[]), (own_rate, own_hit));
+
+    // The support half receives effective quality, including global bonuses.
+    let mut boosted = build(true, "");
+    boosted.socket_groups[0].gem_skills[0].quality = 20;
+    boosted.tree.allocated_nodes.push(NodeId(14429));
+    let (q20, _) = pillars(data, &boosted, &[]);
+    let (q26, _) = pillars(data, &boosted, &["+6% to Quality of all Skills"]);
+    assert_ratio(q26, q20, 1.13 / 1.10);
 }
 
 /// For a totem to be using a skill the character has summoned it.

@@ -3,11 +3,11 @@
 use super::super::DataOrchestratorOptions;
 use super::super::context::CalculationContext;
 use super::super::skill::resolve::config_enemy_level;
-use super::super::stat_map::mapped_stat_modifiers;
 
 use pobr_core::Modifier;
 use pobr_core::rules::config_interpreter::ConfigInputValue;
 use pobr_core::rules::stat_map_engine::{self, MappedItem, MappedOutcome};
+use pobr_core::skill_env::StatSetLookup;
 use pobr_data::modifier::ModType;
 use pobr_data::monster::EnemyTier;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
@@ -16,19 +16,22 @@ use crate::build::{Build, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
 
 /// Builds the main skill's per-level parameters (cost / cooldown / **stat set**) into
-/// SkillGem-attributed modifiers: cost/cooldown are read by `fill_skill_mechanics` via
+/// attributed modifiers: cost/cooldown are read by `fill_skill_mechanics` via
 /// `SkillManaCostBase` / `SkillCooldownBase`; the stat set is mapped via
 /// [`map_skill_stat`] (base damage BASE, `damage_+%` INC, `_final` MORE), feeding into
-/// offence's damage component pipeline.
+/// offence's damage component pipeline. Quality is added before stat mapping and
+/// retains its source together with the base stat's parent source.
 ///
 /// Use time isn't handled here (it goes through `base_input.base_action_rate`, see
 /// [`calculate_with_data`]). `set_key` = the selected statSet's per-set override key
-/// (wired through, see [`mapped_stat_modifiers`]).
+/// (wired through to [`pobr_core::skill_env::mapped_effect_stat_modifiers`]).
 pub(crate) fn skill_base_modifiers(
     context: &mut CalculationContext,
     skill: &ResolvedSkillLevel,
     skill_id: &str,
     set_key: Option<&str>,
+    quality: u32,
+    quality_stats: Vec<pobr_data::catalog::SkillDamageStat>,
 ) -> Vec<Modifier> {
     let mut mods = pobr_core::skill_env::skill_base_modifiers(
         skill_id,
@@ -60,13 +63,20 @@ pub(crate) fn skill_base_modifiers(
         .filter(|ds| !is_off_hand_weapon_base_stat(&ds.stat))
         .cloned()
         .collect();
-    mods.extend(mapped_stat_modifiers(
-        context,
-        &base_damage,
-        SourceKind::SkillGem,
-        "skill",
+    let stats = pobr_core::skill_env::EffectStats {
+        base: base_damage,
+        quality: quality_stats
+            .into_iter()
+            .filter(|stat| !is_off_hand_weapon_base_stat(&stat.stat))
+            .collect(),
+    };
+    mods.extend(pobr_core::skill_env::mapped_effect_stat_modifiers(
+        &mut context.stat_map_ctx(),
+        &stats,
+        SourceId::new(SourceKind::SkillGem, "skill"),
         skill_id,
         set_key,
+        quality,
     ));
     mods
 }
@@ -256,94 +266,50 @@ pub(crate) fn crossbow_reload_modifiers(
     skill_id: &str,
 ) -> Vec<Modifier> {
     let gems = group.gem_inputs();
-    pobr_core::skill_env::crossbow_reload_modifiers(data, data, build, data, &gems, skill_id)
+    pobr_core::skill_env::crossbow_reload_modifiers(
+        data,
+        data,
+        build,
+        data,
+        &gems,
+        skill_id,
+        super::resolve::gemling_quality_flag(build, data),
+    )
 }
 
-/// Maps the main skill gem's **quality stat segment** into `SourceKind::GemQuality`
-/// attributed modifiers via [`mapped_stat_modifiers`] (T1.7, matching PoB2's
-/// `buildSkillInstanceStats` up-front quality stacking, CalcTools.lua:140-145:
-/// `stats[stat] += math.modf(rate × quality)`).
-///
-/// Quality and stat-set provenance follow the exact selected active effect,
-/// including additional effects granted by support gems. The
-/// attribution id prefix is `gem.<effect id>.q<Q>`, matching `skill_source.rs`'s
-/// existing convention (`quality_source_id`); [`mapped_stat_modifiers`] appends
-/// `.<stat>` to further split it to a single stat. `use_alt_quality` is the build's
-/// GemlingQuality flag. Returns empty for quality 0 / no
-/// quality table entry (e.g. supports, which are skipped at export).
-pub(crate) fn main_skill_quality_modifiers(
+/// Map the resolved selected skill's stats with ordinary and enabled additional
+/// quality added before mapping. Use the resolved base values: effective gem
+/// levels can differ from the originating gem's level, including granted effects.
+pub(crate) fn main_skill_modifiers(
     context: &mut CalculationContext,
+    skill: &ResolvedSkillLevel,
     group: &SocketGroup,
     data: &BuildData,
     skill_id: &str,
     use_alt_quality: bool,
 ) -> Vec<Modifier> {
-    let Some(gem) = super::resolve::selected_group_effect(data, group)
-        .filter(|effect| effect.skill_id == skill_id)
-    else {
-        return Vec::new();
-    };
-    if gem.quality == 0 {
-        return Vec::new();
-    }
-    let mut stats = data.effect_stats(gem.skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
-    // GemlingQuality builds also apply the gem's altQualityStats
-    // (CalcTools.lua:169-174 `includeAltQualityStats`).
-    if use_alt_quality {
-        stats
+    let selected = super::resolve::selected_group_effect(data, group)
+        .filter(|effect| effect.skill_id == skill_id);
+    let quality = selected.as_ref().map_or(0, |gem| gem.quality);
+    let set_index = selected.as_ref().and_then(|gem| gem.stat_set_index);
+    let quality_stats = selected.map_or_else(Vec::new, |gem| {
+        data.effect_stats_with_quality(skill_id, gem.gem_level, quality, set_index, use_alt_quality)
             .quality
-            .extend(data.alt_quality_stats(gem.skill_id, gem.quality));
-    }
-    // The quality segment belongs to the selected set's stats table (PoB2 stacks then
-    // maps), the per-set override key matches the primary path.
-    let set_key = data.selected_set_key(gem.skill_id, gem.stat_set_index);
-    let label = format!("gem.{skill_id}.q{}", gem.quality);
-    let mut map = |stats: &[pobr_data::catalog::SkillDamageStat]| {
-        mapped_stat_modifiers(
-            context,
-            stats,
-            SourceKind::GemQuality,
-            &label,
-            skill_id,
-            set_key.as_deref(),
-        )
-    };
-    // Quality adds to the set's stat before mapping. Map that difference so an
-    // intrinsic total is not injected again and any catalog offset applies only
-    // once to the combined stat.
-    let mut mods = Vec::new();
-    for quality in &stats.quality {
-        let in_set: f64 = stats
-            .base
-            .iter()
-            .filter(|base| base.stat == quality.stat)
-            .map(|base| base.value)
-            .sum();
-        if in_set == 0.0 {
-            mods.extend(map(std::slice::from_ref(quality)));
-            continue;
-        }
-        let stat = |value: f64| pobr_data::catalog::SkillDamageStat {
-            stat: quality.stat.clone(),
-            value,
-        };
-        let without = map(&[stat(in_set)]);
-        for (index, modifier) in map(&[stat(in_set + quality.value)]).into_iter().enumerate() {
-            let before = without
-                .get(index)
-                .filter(|other| other.name == modifier.name && other.mod_type == modifier.mod_type)
-                .and_then(|other| other.value.as_number());
-            match (modifier.value.as_number(), before) {
-                (Some(after), Some(before)) => {
-                    let mut modifier = modifier;
-                    modifier.value = pobr_core::ModValue::Number(after - before);
-                    mods.push(modifier);
-                }
-                _ => mods.push(modifier),
-            }
-        }
-    }
-    mods
+    });
+    context.stat_map_ctx().record_quality_issues(
+        skill_id,
+        quality,
+        data.quality_applicability_issues(skill_id, quality, use_alt_quality),
+    );
+    let set_key = data.selected_set_key(skill_id, set_index);
+    skill_base_modifiers(
+        context,
+        skill,
+        skill_id,
+        set_key.as_deref(),
+        quality,
+        quality_stats,
+    )
 }
 
 /// The main skill's **unselected statSet** global-only merge (matching PoB2's
@@ -369,14 +335,20 @@ pub(crate) fn unselected_set_global_modifiers(
     group: &SocketGroup,
     data: &BuildData,
     skill_id: &str,
+    use_alt_quality: bool,
 ) -> Vec<Modifier> {
     let Some(gem) = super::resolve::selected_group_effect(data, group)
         .filter(|effect| effect.skill_id == skill_id)
     else {
         return Vec::new();
     };
-    let unselected =
-        data.unselected_set_stats(gem.skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
+    let unselected = data.unselected_set_stats_with_quality(
+        gem.skill_id,
+        gem.gem_level,
+        gem.quality,
+        gem.stat_set_index,
+        use_alt_quality,
+    );
     if unselected.is_empty() {
         return Vec::new();
     }
@@ -388,8 +360,13 @@ pub(crate) fn unselected_set_global_modifiers(
     // unselected sets (the onlyGlobals stage's accounting is unchanged, the stat-level
     // skip is equivalent to :107).
     let selected_key = data.selected_set_key(gem.skill_id, gem.stat_set_index);
-    let selected_stats =
-        data.effect_stats(gem.skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
+    let selected_stats = data.effect_stats_with_quality(
+        gem.skill_id,
+        gem.gem_level,
+        gem.quality,
+        gem.stat_set_index,
+        use_alt_quality,
+    );
     let selected_globals: std::collections::HashSet<&str> = selected_stats
         .all()
         .filter(|ds| {
@@ -408,14 +385,32 @@ pub(crate) fn unselected_set_global_modifiers(
             if ds.value == 0.0 || selected_globals.contains(ds.stat.as_str()) {
                 continue;
             }
-            let MappedOutcome::Mapped(items) = stat_map_engine::map_stat_global_only(
+            let outcome = stat_map_engine::map_stat_global_only(
                 &catalog,
                 skill_id,
                 Some(&set.set_key),
                 &ds.stat,
                 ds.value,
-            ) else {
-                continue; // Unsupported (including the GlobalEffect tag's first-batch boundary) / Unknown: skipped.
+            );
+            let items = match outcome {
+                MappedOutcome::Mapped(items) => items,
+                MappedOutcome::Unsupported(reason) => {
+                    if context.mode == super::super::StatMapMode::Compare {
+                        context
+                            .compare_records
+                            .push(super::super::StatMapCompareRecord {
+                                stat: ds.stat.clone(),
+                                label: format!(
+                                    "skill.{skill_id}.set{}.unselected-global",
+                                    set.set_key
+                                ),
+                                classification: "unsupported",
+                                detail: format!("unsupported:{}: {reason:?}", reason.category()),
+                            });
+                    }
+                    continue;
+                }
+                MappedOutcome::Unknown => continue,
             };
             for item in items {
                 let MappedItem::Modifier(modifier) = item else {
@@ -464,6 +459,7 @@ pub(crate) fn support_modifiers(
     data: &BuildData,
     active_skill_id: &str,
     host_stat_set_index: Option<u32>,
+    use_alt_quality: bool,
 ) -> Vec<Modifier> {
     let gems = group.gem_inputs();
     let eg = group.enabled_group(&gems);
@@ -475,6 +471,7 @@ pub(crate) fn support_modifiers(
         data,
         active_skill_id,
         host_stat_set_index,
+        use_alt_quality,
         &mut limits,
     );
     if context.is_trigger_source {
@@ -593,7 +590,13 @@ pub(crate) fn totem_base_modifiers(
     // The totem gem's `base_number_of_totems_allowed` (a constant or a level
     // stat: 1 for Shockwave Totem, 2 for a level-20 Spell Totem) is the base
     // of the totem limit, whichever skill the totem uses.
-    let stats = data.effect_stats(&gem.skill_id, level, gem.quality, None);
+    let stats = data.effect_stats_with_quality(
+        &gem.skill_id,
+        level,
+        gem.quality,
+        gem.stat_set_index,
+        super::resolve::gemling_quality_flag(build, data),
+    );
     let limit: f64 = stats
         .all()
         .filter(|stat| stat.stat == "base_number_of_totems_allowed")

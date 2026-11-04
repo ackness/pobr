@@ -57,6 +57,7 @@ fn wegame_preserves_calculation_inputs_and_roundtrips() {
     assert_eq!(decoded["tree"]["attribute_choices"]["7960"], "dex");
     assert_eq!(decoded["items"]["equipped"].as_array().unwrap().len(), 2);
     assert_eq!(decoded["items"]["flasks"][0]["slot"], "Flask 1");
+    assert_eq!(decoded["items"]["flasks"][0]["active"], true);
     // The right arm and leg are the build's first.
     let limbs = decoded["items"]["limbs"].as_array().unwrap();
     assert_eq!(limbs.len(), 2);

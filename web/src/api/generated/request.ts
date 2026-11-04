@@ -51,6 +51,8 @@ source?: string | null, gems: Array<GemInput>, };
 
 export type SlotItemInput = { slot: string, text: string, };
 
+export type UtilitySlotInput = { slot: string, text: string, active?: boolean, };
+
 export type WeaponSwap = {
 /**
  * The weapon set in use, 1 or 2.

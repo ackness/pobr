@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { affixPool, basesForSlot, categoryAffixPool, categorySearchMods, referenceBase, combinationLegal, tradeItemVariant, optimizeTradeAffixes, type TradeAffix, type TradeBase, type TradeSearchMod } from './tradeOptimizer';
+import { replaceUtility } from './utilityItems';
 import type { EvaluateOptions, EvaluateResult } from './optimize';
 import { scoreEquipment } from './equipmentScore';
 import { buildTradeQuery, type WeightedStat } from './trade';
@@ -156,6 +157,20 @@ test('jewels enforce two affixes of each kind and preserve other sockets', async
     { socket_node: 20, text: 'keep' }, { socket_node: 10, text: 'new' },
   ]);
   expect(tradeItemVariant({ flasks: [{ slot: 'Flask 2', text: 'keep' }] }, 'Flask 1', 'new').flasks).toHaveLength(2);
+});
+
+test('editor and trade utility replacements retain selection while new utilities default selected', () => {
+  const flasks = [{ slot: 'Flask 1', text: 'original', active: false }, { slot: 'Charm 1', text: 'charm', active: false }];
+  const edited = replaceUtility(flasks, 'Flask 1', 'edited');
+  expect(edited).toEqual([flasks[1], { slot: 'Flask 1', text: 'edited', active: false }]);
+  expect(tradeItemVariant({ flasks }, 'Flask 1', 'edited').flasks).toEqual(edited);
+  expect(tradeItemVariant({ flasks }, 'Charm 1', 'replacement').flasks)
+    .toContainEqual({ slot: 'Charm 1', text: 'replacement', active: false });
+  const cleared = replaceUtility(edited, 'Flask 1', null);
+  expect(cleared).toEqual([flasks[1]]);
+  expect(replaceUtility(cleared, 'Flask 1', 'new')).toContainEqual({ slot: 'Flask 1', text: 'new', active: true });
+  expect(tradeItemVariant({}, 'Flask 2', 'new').flasks).toEqual([{ slot: 'Flask 2', text: 'new', active: true }]);
+  expect(flasks[0]).toEqual({ slot: 'Flask 1', text: 'original', active: false });
 });
 
 test('a cancellation arriving after the last probe still invalidates score-only results', async () => {

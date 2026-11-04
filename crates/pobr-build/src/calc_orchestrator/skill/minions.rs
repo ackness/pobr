@@ -21,7 +21,15 @@ pub(crate) fn spawn_minions(session: &mut CalculationSession, build: &Build, dat
             let effect = super::resolve::selected_group_effect(data, selected_group)?;
             Some((group_index, effect))
         });
-    pobr_core::skill_env::spawn_minions(session, build, data, &bonuses, build, main_skill);
+    pobr_core::skill_env::spawn_minions(
+        session,
+        build,
+        data,
+        &bonuses,
+        build,
+        main_skill,
+        super::resolve::gemling_quality_flag(build, data),
+    );
     // "... equal to ... your main hand Weapon's damage" includes its local
     // elemental and chaos damage, as well as physical damage.
     if let Some(item) =

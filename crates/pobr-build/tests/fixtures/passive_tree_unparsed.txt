@@ -187,7 +187,6 @@ node.43426	Grants Skill: <underline>{Navira's Well}
 node.4367	Dodging can expend up to 3 Owl Feathers, granting Primal Bounty 100% more
 node.4367	Gain Owl Feathers 50% faster
 node.4367	[Empowered|Empowerment] effect per additional Feather expended
-node.43677	25% chance for [Attack|Attacks] to [Maim|Maim] on [Hit] against [Poison|Poisoned] Enemies
 node.43791	When a [Banner] expires, recover 15% of the [Glory] required for that Banner
 node.43939	Enemies [Ignite|Ignited] by you permanently take 1% increased [Fire] Damage for each second they have ever been [Ignite|Ignited] by you, up to a maximum of 10%
 node.44005	6% increased Cast Speed for each different [Spell] you've Cast in the last eight seconds
@@ -207,8 +206,6 @@ node.4661	[Banner|Banners] also grant +25% to all [ElementalDamage|Elemental] [R
 node.46683	[Warcry|Warcries] have 15% chance to [Empowered|Empower] 3 additional [Attack|Attacks]
 node.47097	[Warcry|Warcries] Explode [Corpse|Corpses] dealing 25% of their Life as [Physical] Damage
 node.47184	Grants Skill: <underline>{Manifest Weapon}
-node.47312	Life [Flask|Flasks] also recover Mana
-node.47312	Mana [Flask|Flasks] also recover Life
 node.47418	Remove a [Curse] when you use a Mana [Flask]
 node.47441	Recover 3% of maximum Life when you create an [Offering]
 node.48925	8% increased Skill Effect Duration per Enemy you've [Freeze|Frozen] in the last 8 seconds, up to 40%

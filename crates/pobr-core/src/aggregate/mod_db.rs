@@ -430,7 +430,9 @@ impl ModDb {
     /// Notes that a query used `modifier` as stored (a flag that sets, the
     /// winning override, a listed value), when reads are tracked.
     #[inline]
-    fn note_used(&self, modifier: &Modifier) {
+    /// Record actual consumption, including a non-numeric payload admitted by a
+    /// calculation stage. Merely enumerating a payload is not consumption.
+    pub(crate) fn note_used(&self, modifier: &Modifier) {
         if let Some(reads) = &self.reads {
             reads.count(modifier);
         }

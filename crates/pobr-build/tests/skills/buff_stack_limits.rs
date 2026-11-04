@@ -345,7 +345,12 @@ fn ice_bite_native_buff_identity_deduplicates_without_a_catalog_and_respects_buf
                 .with_gem_skill("FrostboltPlayer", 20)
                 .with_gem_skill("SupportIceBitePlayerTwo", 1),
         );
-    let specs = support_buff_specs(&mut StatMapCtx::data(None), &build, crate::test_data());
+    let specs = support_buff_specs(
+        &mut StatMapCtx::data(None),
+        &build,
+        crate::test_data(),
+        false,
+    );
     assert_eq!(specs.len(), 2);
     assert!(specs.iter().all(|spec| spec.name == "Ice Bite"));
     for mode_buffs in [false, true] {

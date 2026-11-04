@@ -1,7 +1,7 @@
 {
   "schema": "pobr-data-lock/v1",
-  "generation": 7,
-  "previous_id": "27a08fcefbd4f756275cbe550b1051bd56b7c217807b69117bc9fe8091f53f33",
+  "generation": 10,
+  "previous_id": "4af8333a142b624cd14953e8136db68df1620e1c704545075dc6d4af2572ecc2",
   "target": {
     "game": "poe2",
     "game_patch": "0.5.5.5",
@@ -10,30 +10,30 @@
   "locale": "zh-CN",
   "packages": {
     "game": {
-      "bytes": 4415275,
-      "expanded_bytes": 64578696,
+      "bytes": 4452510,
+      "expanded_bytes": 64774702,
       "manifest": {
-        "bytes": 33083,
-        "sha256": "8bfeaefeceb30eb70245e9b6735b2fd02a8e32cb16850b05058e04fa3527d59b"
+        "bytes": 227054,
+        "sha256": "6cd3cf5c1c1d2c28734bdf2429d03c3a82b52a073907bdbc97b4ce192525068f"
       },
-      "path": "handoff/historical-tree-attributes-20261103/game-build-part.zip",
+      "path": "handoff/quality-family-20261103/game-build-part.zip",
       "publication": "published",
       "repository": "ackness/repoe",
-      "revision": "f909f917809699ac7a8e8f9c1eadfd45fd98297a",
-      "tag": "handoff/historical-tree-attributes-20261103",
-      "sha256": "cafd8e0ec5c9300dd2eefb2f9743c793b7e4ff2849d48d4e886e9e6f80521c1a"
+      "revision": "99c14eb5a50876aae749cb9cd4850a04d8a997a1",
+      "tag": "handoff/quality-family-20261103",
+      "sha256": "3edc9b1eb3e813781ef63dcc7db5be29cfd6a15ef29b92773eaa7fb45082df4d"
     },
     "language": {
       "format": "locale-git-files",
+      "manifest": {
+        "bytes": 4088,
+        "sha256": "730222f0cb7a777534243f3b4aff480ae31b2756c8e4ece574b0c4f44f0693a3"
+      },
+      "path": "handoff/locale-shaman-mantle-20261103/manifest.json",
       "publication": "published",
       "repository": "ackness/poe2-zh-cn-stats",
-      "revision": "a4bd9b5b0534d706a7b19975dae5cfa43a1d57fb",
-      "tag": "handoff/locale-retained-20261101",
-      "path": "handoff/locale-retained-20261101/manifest.json",
-      "manifest": {
-        "bytes": 3274,
-        "sha256": "f90362c7bca642267ce9906c2a060336a8d2c472c73053707909d497eb22a551"
-      }
+      "revision": "9aba3687e6366597bc69a0795c63a20090cb02f5",
+      "tag": "handoff/shaman-mantle-20261103"
     }
   },
   "support_display": {
@@ -118,8 +118,8 @@
       "sha256": "53b69e7fb3e606a61b2acb2c8b54c9bf9f92e630c9619e3e6cd5217b76b29be4"
     },
     "special_mods.json": {
-      "bytes": 312733,
-      "sha256": "93af43cb755fae917dd28f523fc0f3abc774af674d48c080186813e0b2810a7b"
+      "bytes": 320277,
+      "sha256": "ac9a9f39f4bda84118fa1f86cf87988f8ab981b6d908586d9f5a5cb72b7a6132"
     },
     "volatility_config_options.json": {
       "bytes": 1562,
@@ -128,29 +128,29 @@
   },
   "snapshot_manifest": {
     "bytes": 8234,
-    "sha256": "5d41f3284186bbe5a5d48b4270404fb903132cd9ef8e9fc0883264daf92fbf17"
+    "sha256": "2cfb21030f93d72bdb469e0df0ff52820c5d2bc54adfe0e5fa90d8654148649e"
   },
-  "runtime_identity": "c1bd2f65b8be45608fe114a3f0996e9e772ede7a26b9d86f594263a3955935a3",
-  "release_id": "94b2828ca815a902790c2c1da102a1e8d8e52b2dd00f46e6d38bcebacfa9f993",
+  "runtime_identity": "e73febc0ba0993f5adcacb3f0f0767120b210913f46e1a8be56d8cd5e9f77796",
+  "release_id": "c726228603fa43be322524bcc76bb7adbf6481282449a5f95b759842c9c5c9ab",
   "owner_publications": {
     "ackness/repoe": {
-      "index_revision": "dc64b90ab5afe81824dbd933ac640fa37fce34aa",
-      "sequence": 5,
+      "index_revision": "a179ad17df89c791879024b68c333cbf61e62323",
+      "sequence": 7,
       "descriptor": {
-        "bytes": 4985,
-        "path": "publication/releases/poe2-international/5.json",
-        "revision": "977b453be8c5649c00ceb14548a04872527e5164",
-        "sha256": "38fd5d1754cbddc83e72fe073f3f1eb5d8dbc2bab879a29745cc65e07892c6f3"
+        "bytes": 4974,
+        "path": "publication/releases/poe2-international/7.json",
+        "revision": "ad592661de4f21fa4ce94b792636fd857450a838",
+        "sha256": "55d461740e6c23656fc4ba529845d4a3306b4d99de0c60319980306ca7e8d573"
       }
     },
     "ackness/poe2-zh-cn-stats": {
-      "index_revision": "320d30fef8fabab28696f3a8713834bfae8e070b",
-      "sequence": 2,
+      "index_revision": "d53afe51a733de51569811d134558e5fe9ea50d0",
+      "sequence": 3,
       "descriptor": {
-        "revision": "dd8f99dbc48cfb2279a1bbd30d261b46acab4561",
-        "path": "publication/releases/poe2-international/2.json",
-        "bytes": 6550,
-        "sha256": "b9aea36f065be73c4d26e015581f2e7b6713bb9ac2d25b167ae170045df12f24"
+        "revision": "40d1b2858e274ada52a3ec014be80a827672c8a6",
+        "path": "publication/releases/poe2-international/3.json",
+        "bytes": 6569,
+        "sha256": "317ff30b3b4fd4ffdf9433d24cd54339af686f42828553cab29223707bb15028"
       }
     }
   }

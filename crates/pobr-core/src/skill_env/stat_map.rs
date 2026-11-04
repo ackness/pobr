@@ -67,6 +67,33 @@ impl<'a> StatMapCtx<'a> {
         }
     }
 
+    /// Retain unresolved quality facts even when eligibility omits their payload.
+    /// Multiple consumer channels can inspect the same effect; report each issue once.
+    pub fn record_quality_issues(
+        &mut self,
+        effect_id: &str,
+        quality: u32,
+        issues: Vec<crate::skill_env::QualityApplicabilityIssue>,
+    ) {
+        if self.mode != StatMapMode::Compare {
+            return;
+        }
+        let Some(records) = self.records.as_deref_mut() else {
+            return;
+        };
+        for issue in issues {
+            let record = StatMapCompareRecord {
+                stat: issue.stat,
+                label: format!("gem.{effect_id}.q{quality}"),
+                classification: "unsupported",
+                detail: format!("unsupported:quality-applicability: {}", issue.detail),
+            };
+            if !records.contains(&record) {
+                records.push(record);
+            }
+        }
+    }
+
     pub(super) fn record(
         &mut self,
         stat: &str,
@@ -141,6 +168,86 @@ pub fn mapped_stat_modifiers(
         set_key,
         |_, _| {},
     )
+}
+
+/// Map each effect stat once after adding its level and quality contributions.
+/// A quality-bearing total keeps its gem-quality source and its base source as
+/// parent; raw text records both values, rather than claiming an additive delta
+/// for a MORE modifier whose tags may scale it later.
+pub fn mapped_effect_stat_modifiers(
+    ctx: &mut StatMapCtx<'_>,
+    stats: &EffectStats,
+    source: SourceId,
+    effect_id: &str,
+    set_key: Option<&str>,
+    quality: u32,
+) -> Vec<Modifier> {
+    mapped_effect_stat_modifiers_observed(
+        ctx,
+        stats,
+        source,
+        effect_id,
+        set_key,
+        quality,
+        |_, _| {},
+    )
+}
+
+pub(super) fn mapped_effect_stat_modifiers_observed(
+    ctx: &mut StatMapCtx<'_>,
+    stats: &EffectStats,
+    source: SourceId,
+    effect_id: &str,
+    set_key: Option<&str>,
+    quality: u32,
+    mut observe: impl FnMut(&SkillDamageStat, &MappedOutcome),
+) -> Vec<Modifier> {
+    let mut mods = Vec::new();
+    let quality_label = format!("gem.{effect_id}.q{quality}");
+    for stat in stats.merged() {
+        let quality_value: f64 = stats
+            .quality
+            .iter()
+            .filter(|row| row.stat == stat.stat)
+            .map(|row| row.value)
+            .sum();
+        let (kind, label) = if quality_value != 0.0 {
+            (SourceKind::GemQuality, quality_label.as_str())
+        } else {
+            (source.kind.clone(), source.id.as_str())
+        };
+        let mut mapped = mapped_stat_modifiers_observed(
+            ctx,
+            std::slice::from_ref(&stat),
+            kind,
+            label,
+            effect_id,
+            set_key,
+            &mut observe,
+        );
+        if quality_value != 0.0 {
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::GemQuality,
+                format!("{quality_label}.{}", stat.stat),
+            ))
+            .with_parent(SourceId::new(
+                source.kind.clone(),
+                format!("{}.{}", source.id, stat.stat),
+            ))
+            .with_raw_text(format!(
+                "{quality_label} {} (base {} + quality {quality_value} = {})",
+                stat.stat,
+                stat.value - quality_value,
+                stat.value
+            ));
+            mapped = mapped
+                .into_iter()
+                .map(|modifier| modifier.with_origin(origin.clone()))
+                .collect();
+        }
+        mods.extend(mapped);
+    }
+    mods
 }
 
 /// Shares the actual primary mapping outcome with a scoped payload observer.
@@ -415,7 +522,7 @@ fn curse_stat_modifiers_owned(
     set_key: Option<&str>,
     minion: bool,
 ) -> Vec<Modifier> {
-    let merged = merged_stats(stats);
+    let merged = stats.merged();
     let mut mods = Vec::new();
     for ds in &merged {
         if ds.value == 0.0 {
@@ -462,19 +569,6 @@ fn curse_stat_modifiers_owned(
         }
     }
     mods
-}
-
-/// `stats` with the quality of each stat added to the value its level has:
-/// one entry per stat, in the order the stats first appear.
-fn merged_stats(stats: &EffectStats) -> Vec<SkillDamageStat> {
-    let mut merged: Vec<SkillDamageStat> = Vec::new();
-    for ds in stats.all() {
-        match merged.iter_mut().find(|total| total.stat == ds.stat) {
-            Some(total) => total.value += ds.value,
-            None => merged.push(ds.clone()),
-        }
-    }
-    merged
 }
 
 /// The debuff-effect mod fetch point: maps every stat in a debuff skill's statset,

@@ -32,6 +32,12 @@ use std::path::Path;
 
 use crate::test_data as load_data;
 
+#[path = "gem_quality_consumers.rs"]
+mod consumers;
+
+#[path = "gem_quality_applicability.rs"]
+mod applicability;
+
 /// Build code for the stormweaver-comet fixture (15 q20 gems).
 fn stormweaver_code() -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))

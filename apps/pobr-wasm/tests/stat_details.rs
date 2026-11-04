@@ -594,6 +594,22 @@ fn unticked_utility_items_keep_their_properties_without_activating_their_buffs()
     let inactive = calculate(
         json!({"pob_code":pobr_build::encode_pob_code(&xml.replace("active=\"true\"", "active=\"false\"")).unwrap(),"breakdowns":["Flask1Recovery"]}),
     );
+    let decoded: Value = serde_json::from_str(
+        &pobr_wasm::decode_build_json(
+            &pobr_build::encode_pob_code(&xml.replace("active=\"true\"", "active=\"false\""))
+                .unwrap(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let overridden = calculate(json!({
+        "pob_code":pobr_build::encode_pob_code(&xml).unwrap(),
+        "flasks":decoded["items"]["flasks"], "breakdowns":["Flask1Recovery"]
+    }));
+    assert_eq!(
+        overridden, inactive,
+        "explicit unselected utilities replace the active baseline without losing properties"
+    );
     let figures = |result: &Value| -> std::collections::BTreeMap<String, Value> {
         result["stats"]
             .as_array()

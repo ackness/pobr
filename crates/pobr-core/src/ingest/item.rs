@@ -339,6 +339,8 @@ fn substitute_slot_placeholder(modifier: &mut Modifier, slot_id: &str) {
 
 /// The List mod name for a flask's modifier payload (consumed by `merge_flasks_charms`).
 pub const FLASK_BUFF_LIST_NAME: &str = "FlaskBuff";
+/// Unselected flask payloads, considered only by an explicit constant-effect rule.
+pub const INACTIVE_FLASK_BUFF_LIST_NAME: &str = "InactiveFlaskBuff";
 /// The List mod name for a charm's modifier payload (consumed by `merge_flasks_charms`).
 pub const CHARM_BUFF_LIST_NAME: &str = "CharmBuff";
 /// The name of the "this item's local effect inc" modifier inside the
