@@ -5,14 +5,14 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { checkLocales } from './check-locales.mjs';
 
-function locales(files, registry = Object.keys(files)) {
+function locales(files, { registry = Object.keys(files), allowMissing = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'pobr-locales-'));
   for (const [name, content] of Object.entries(files)) {
     writeFileSync(join(dir, name), typeof content === 'string' ? content : JSON.stringify(content));
   }
   const index = registry.map((name, i) => `import l${i} from './${name}';`).join('\n');
   try {
-    return checkLocales(dir, index);
+    return checkLocales(dir, { registry: index, allowMissing });
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -26,12 +26,25 @@ test('the shipped locale files pass', () => {
   assert.ok(summary.find(row => row.lang === 'en-US').keys > 2000);
 });
 
-test('missing keys are warnings that count the English fallbacks', () => {
-  const result = locales({ 'en-US.json': en, 'ja-JP.json': { ui: { hello: 'こんにちは {name}' } } });
-  assert.deepEqual(result.errors, []);
-  assert.equal(result.warnings.length, 1);
-  assert.match(result.warnings[0], /ja-JP\.json: 2 keys fall back to en-US: ui\/bye, slot\/ring1/);
-  assert.deepEqual(result.summary.map(row => [row.lang, row.missing]), [['en-US', 0], ['ja-JP', 2]]);
+test('a registered language must be complete unless missing keys are allowed', () => {
+  const files = { 'en-US.json': en, 'ja-JP.json': { ui: { hello: 'こんにちは {name}' } } };
+  const strict = locales(files);
+  assert.deepEqual(strict.errors, ['ja-JP.json: 2 keys missing: ui/bye, slot/ring1']);
+  assert.deepEqual(strict.warnings, []);
+  const draft = locales(files, { allowMissing: true });
+  assert.deepEqual(draft.errors, []);
+  assert.deepEqual(draft.warnings, ['ja-JP.json: 2 keys missing: ui/bye, slot/ring1']);
+  assert.deepEqual(draft.summary.map(row => [row.lang, row.missing]), [['en-US', 0], ['ja-JP', 2]]);
+});
+
+test('language.fallback lists other registered languages', () => {
+  const zh = (fallback) => ({ ...en, language: { name: 'x', fallback } });
+  const base = { 'en-US.json': { ...en, language: { name: 'English' } }, 'zh-CN.json': { ...en, language: { name: 'x' } } };
+  assert.deepEqual(locales({ ...base, 'zh-TW.json': zh(['zh-CN']) }).errors, []);
+  for (const fallback of [['zh-TW'], ['ko-KR'], 'zh-CN', [3]]) {
+    assert.deepEqual(locales({ ...base, 'zh-TW.json': zh(fallback) }).errors,
+      ['zh-TW.json: language/fallback must list other registered languages'], JSON.stringify(fallback));
+  }
 });
 
 test('extra keys, non-strings, placeholders and invalid JSON are errors', () => {
@@ -48,9 +61,9 @@ test('extra keys, non-strings, placeholders and invalid JSON are errors', () => 
 });
 
 test('every file must be registered and named by its language tag', () => {
-  const unregistered = locales({ 'en-US.json': en, 'ko-KR.json': {} }, ['en-US.json', 'pt-BR.json']);
+  const unregistered = locales({ 'en-US.json': en, 'ko-KR.json': en }, { registry: ['en-US.json', 'pt-BR.json'] });
   assert.deepEqual(unregistered.errors, ['ko-KR.json: not registered in index.ts', 'pt-BR.json: registered in index.ts but missing']);
-  const badName = locales({ 'en-US.json': en, 'chinese.json': {} });
+  const badName = locales({ 'en-US.json': en, 'chinese.json': en });
   assert.deepEqual(badName.errors, ['chinese.json: file name is not a language tag such as zh-CN']);
   assert.deepEqual(locales({ 'zh-CN.json': {} }).errors, ['en-US.json is missing']);
 });

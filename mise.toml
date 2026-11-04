@@ -220,7 +220,7 @@ description = "Install the locked Playwright browser and required OS libraries (
 run = ["pnpm --dir web install --frozen-lockfile", "pnpm --dir web exec playwright install --with-deps chromium"]
 
 [tasks."i18n:check"]
-description = "Check Web interface copy (web/src/locales): key set, placeholders and registration against en-US; missing translations are reported, not failed"
+description = "Check Web interface copy (web/src/locales): every registered language has the en-US key set, placeholders and a valid fallback list"
 run = "node web/scripts/check-locales.mjs"
 
 [tasks."web:e2e"]
