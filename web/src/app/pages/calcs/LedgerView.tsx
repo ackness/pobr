@@ -172,7 +172,8 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
             <div className="ledger-body">
               <p className="ledger-text">{translate(ledgerDisplayText(line, lang, configLabels))}</p>
               {owner && <p className="ledger-meta">{owner}</p>}
-              {reason && <p className="ledger-reason">{reason}</p>}
+              {reason && <p className="ledger-reason"
+                title={line.reason ?? (line.modifiers.map(mod => mod.reason).filter(Boolean).join(' · ') || undefined)}>{reason}</p>}
               {line.used_in.length > 0 && <p className="ledger-meta">{w('Counts in', '计入', '計入')}: {line.used_in.map(id => statNameLabel(lang, id)).join(' · ')}</p>}
               {line.modifiers.length > 0 && <>
                 <button type="button" className="ledger-toggle" aria-expanded={expanded} onClick={() => toggleRow(index)}>

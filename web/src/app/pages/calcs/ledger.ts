@@ -103,9 +103,13 @@ export function lineText(line: LineUsageLine): string {
 /** Engine-generated descriptions are UI text, not imported game-text templates. */
 export function ledgerDisplayText(line: LineUsageLine, lang: Lang, configLabels: Readonly<Record<string, string>> = {}): string {
   const text = lineText(line);
-  if (text === 'Config' && line.source_id?.startsWith('config.')) {
-    const label = configLabels[line.source_id.slice(7)] ?? originLabel(lang, line.source_id);
-    return words(lang, `Configuration: ${label}`, `配置：${label}`, `配置：${label}`);
+  if (line.source_id?.startsWith('config.')) {
+    const knownLabel = configLabels[line.source_id.slice(7)];
+    // A known option's bare modifier id is a generated placeholder, not game text.
+    if (text === 'Config' || (knownLabel && line.modifiers.some(mod => mod.name === text))) {
+      const label = knownLabel ?? originLabel(lang, line.source_id);
+      return words(lang, `Configuration: ${label}`, `配置：${label}`, `配置：${label}`);
+    }
   }
   if (line.source_id === 'base.AncestralBoost'
     && text === 'Ancestral Boost: 2 additional Strike targets; 30% more Slam damage and 25% increased Slam area') {
@@ -122,6 +126,28 @@ export function ledgerReason(line: LineUsageLine, lang: Lang): string | null {
     .filter(mod => mod.status === 'inactive' || mod.status === 'unread')
     .flatMap(mod => mod.reason ? [mod.reason] : []);
   return [...new Set(reasons)].map(reason => {
+    if (lang !== 'en-US') {
+      if (line.status === 'unmodelled' && /^rule \S+ recognises it and stores nothing$/.test(reason)) {
+        return statusHint(lang, 'unmodelled');
+      }
+      if (reason === 'a config option nothing in this build asks for') {
+        return words(lang, reason, '当前构筑没有使用此配置项。', '目前構築沒有使用此配置項。');
+      }
+      const condition = /^Condition (Combat|Buffs|Effective|AncestralBoost|EnemyPoisoned) not met$/.exec(reason);
+      if (condition) {
+        const labels: Record<string, string> = {
+          Combat: words(lang, 'Combat', '战斗状态', '戰鬥狀態'),
+          Buffs: words(lang, 'Buffs', '增益效果', '增益效果'),
+          Effective: words(lang, 'Effective', '有效战斗配置', '有效戰鬥配置'),
+          AncestralBoost: words(lang, 'Ancestral Boost', '先祖增幅', '先祖增幅'),
+          EnemyPoisoned: words(lang, 'Enemy poisoned', '敌人中毒', '敵人中毒'),
+        };
+        return words(lang, reason, `当前未满足条件：${labels[condition[1]]}。`, `目前未滿足條件：${labels[condition[1]]}。`);
+      }
+      if (reason === 'read only while its flask or charm effect is admitted in the selected combat state') {
+        return words(lang, reason, '当前战斗状态未启用此药剂或护符效果。', '目前戰鬥狀態未啟用此藥劑或護符效果。');
+      }
+    }
     const missing = /(?:read only while )?the equipped (body armour|shield) has no base (Armour|Evasion|Energy Shield)$/.exec(reason);
     if (!missing || lang === 'en-US') return reason;
     const slot = missing[1] === 'shield' ? '盾牌' : words(lang, 'Body armour', '胸甲', '胸甲');

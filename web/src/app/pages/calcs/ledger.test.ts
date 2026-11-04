@@ -69,6 +69,11 @@ describe('lineText', () => {
       .toBe('Configuration: Gamblesprint Movement Speed');
     expect(ledgerDisplayText({ ...config, text: '10% increased Damage' }, 'zh-CN')).toBe('10% increased Damage');
     expect(ledgerDisplayText({ ...config, source_id: 'config.future' }, 'zh-CN')).toBe('配置：config.future');
+    const generated = { ...config, source_id: 'config.enableSpectreCurses', text: 'SpectreCursesEnabled',
+      modifiers: [{ name: 'SpectreCursesEnabled', mod_type: 'FLAG', value: true, applied: null,
+        status: 'unread' as const, reason: null, used_in: [] }] };
+    expect(ledgerDisplayText(generated, 'zh-CN', { enableSpectreCurses: '启用诅咒：' })).toBe('配置：启用诅咒：');
+    expect(ledgerDisplayText(generated, 'zh-CN')).toBe('SpectreCursesEnabled');
   });
 
   it('localizes the full engine-owned ancestral description, not a mixture of terms', () => {
@@ -94,6 +99,21 @@ describe('lineText', () => {
     expect(ledgerReason(inactive, 'zh-CN')).toBe('当前胸甲没有可缩放的闪避基值。');
     expect(ledgerReason(inactive, 'en-US')).toBe('the equipped body armour has no base Evasion');
     expect(ledgerReason(line('unread', { reason: 'Unknown future reason' }), 'zh-CN')).toBe('Unknown future reason');
+  });
+
+  it('localizes known engine reasons without changing status or discarding unknown diagnostics', () => {
+    const inactive = line('inactive', { reason: 'Condition Combat not met' });
+    expect(ledgerReason(inactive, 'zh-CN')).toBe('当前未满足条件：战斗状态。');
+    expect(ledgerReason(inactive, 'en-US')).toBe(inactive.reason);
+    expect(inactive.status).toBe('inactive');
+    const unmodelled = line('unmodelled', { reason: 'rule life_flask_self_only recognises it and stores nothing' });
+    expect(ledgerReason(unmodelled, 'zh-CN')).toBe('已识别，但该机制尚未实现。');
+    expect(unmodelled.reason).toContain('life_flask_self_only');
+    expect(ledgerReason({ ...unmodelled, status: 'no_effect' }, 'zh-CN')).toBe(unmodelled.reason);
+    expect(ledgerReason(line('no_effect', { reason: 'a config option nothing in this build asks for' }), 'zh-TW'))
+      .toBe('目前構築沒有使用此配置項。');
+    expect(ledgerReason(line('inactive', { reason: 'Condition FutureCondition not met' }), 'zh-CN'))
+      .toBe('Condition FutureCondition not met');
   });
 });
 
