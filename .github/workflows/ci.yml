@@ -101,9 +101,6 @@ jobs:
       - name: Parse-coverage ratchet
         if: matrix.shard == 'libraries-tools'
         run: POBR_PATCH="$(cat data/CURRENT)" bash devs/scripts/regen-check.sh
-      - name: Language catalog lint
-        if: matrix.shard == 'libraries-tools'
-        run: cargo run --locked -p lint-i18n
 
   # Independent Web gate: script tests, typecheck, unit tests and Worker checks.
   # Then build real WASM, sync data and bundle the site once. The standalone

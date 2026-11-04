@@ -23,15 +23,6 @@ thread_local! {
     static BUILD_DATA: RefCell<Option<Rc<BuildData>>> = const { RefCell::new(None) };
     /// The GameData backing the built BuildData (used for on-demand queries like i18n name sidecars).
     static GAME_DATA: RefCell<Option<Rc<GameData>>> = const { RefCell::new(None) };
-    /// The Chinese mod-line translator (lazily built; `None` = not attempted
-    /// yet, `Some(None)` = the data pack has no zh-CN templates).
-    static ZH_TRANSLATOR: RefCell<Option<Option<Rc<crate::zh::LineTranslator>>>> =
-        const { RefCell::new(None) };
-    /// The reverse (English -> Simplified Chinese) display translator: built
-    /// by swapping the direction of the same templates (consumed by tree mod
-    /// tooltips / config list options and other display surfaces).
-    static EN_TO_ZH_TRANSLATOR: RefCell<Option<Option<Rc<crate::zh::LineTranslator>>>> =
-        const { RefCell::new(None) };
     /// The affix-tier reverse-lookup index (lazily built; `Some(None)` = the
     /// data pack lacks pool data/templates, so tiers are left unlabeled).
     static TIER_INDEX: RefCell<Option<Option<Rc<pobr_item::TierIndex>>>> =
@@ -123,8 +114,7 @@ pub fn response_cache_hits() -> u64 {
 /// Clears the response cache whenever data is (re-)initialized — results are sensitive to the data version.
 fn clear_data_caches() {
     crate::build_api::clear_snapshots();
-    ZH_TRANSLATOR.with_borrow_mut(|slot| *slot = None);
-    EN_TO_ZH_TRANSLATOR.with_borrow_mut(|slot| *slot = None);
+    crate::locales::clear();
     TIER_INDEX.with_borrow_mut(|slot| *slot = None);
     RESPONSE_CACHE.with_borrow_mut(|c| {
         c.entries.clear();
@@ -258,71 +248,6 @@ pub fn game_data() -> Result<Rc<GameData>, String> {
     })
 }
 
-/// Gets the Chinese mod-line translator (built and cached on first call;
-/// `None` if the data pack has no zh-CN templates — consumers degrade to
-/// "no translation applied", so Chinese lines pass through the parser as-is and land in unsupported).
-pub fn zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
-    ZH_TRANSLATOR.with_borrow_mut(|slot| {
-        if slot.is_none() {
-            *slot = Some(build_zh_translator());
-        }
-        slot.as_ref().and_then(Clone::clone)
-    })
-}
-
-/// Gets the English -> Simplified Chinese display translator (lazily built, same as above).
-pub fn en_to_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
-    EN_TO_ZH_TRANSLATOR.with_borrow_mut(|slot| {
-        if slot.is_none() {
-            let built = (|| {
-                let game = game_data().ok()?;
-                let templates = game.stat_line_templates("zh-CN").ok().flatten()?;
-                // Swap direction: src=the English template, and the en field
-                // holds the Simplified Chinese template -> translate_line becomes en->zh.
-                let swapped: Vec<pobr_data::catalog::StatLineTemplate> = templates
-                    .into_iter()
-                    .map(|t| pobr_data::catalog::StatLineTemplate {
-                        src: t.en,
-                        en: t.src,
-                    })
-                    .collect();
-                // The noun direct-translation table (English -> Simplified
-                // Chinese): base names (i18n id->zh joined with base English
-                // name->id) plus Words nouns (unique item names, etc). Item
-                // name / base-type lines get a whole-line hit via this table.
-                let mut names = std::collections::HashMap::new();
-                if let (Ok(zh_by_id), Ok(data)) = (game.base_item_names("zh-CN"), build_data()) {
-                    for (en_name, def) in &data.base_items {
-                        if let Some(zh) = zh_by_id.get(def.id.as_str()) {
-                            names.insert(en_name.clone(), zh.clone());
-                        }
-                    }
-                }
-                if let Ok(words) = game.word_names("zh-CN") {
-                    names.extend(words);
-                }
-                if let Ok(passives) = game.passive_node_names("zh-CN") {
-                    names.extend(passives);
-                }
-                let mut translator = crate::zh::LineTranslator::new(&swapped, names);
-                // The affix name table (the Mods table): enables translating
-                // magic item names composed of "suffix + prefix + base".
-                if let Ok(affixes) = game.affix_names("zh-CN") {
-                    translator.set_affix_names(affixes.into_iter().collect());
-                }
-                // The RARE random-name word table: enables translating
-                // two-word names written together.
-                if let Ok(words) = game.rare_name_words("zh-CN") {
-                    translator.set_rare_words(words.into_iter().collect());
-                }
-                Some(Rc::new(translator))
-            })();
-            *slot = Some(built);
-        }
-        slot.as_ref().and_then(Clone::clone)
-    })
-}
-
 /// Gets the affix-tier reverse-lookup index (built and cached on first call;
 /// returns `None` for old data packs whose mods lack group/spawn_weights or
 /// have no StatDescriptions overlay — consumers then leave tiers unlabeled).
@@ -349,31 +274,6 @@ pub fn base_item_tags(base_name: &str) -> Option<(Vec<String>, u32)> {
     Some((def.tags.clone(), def.mod_domain))
 }
 
-fn build_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
-    let game = game_data().ok()?;
-    let templates = game.stat_line_templates("zh-CN").ok().flatten()?;
-    // The base-name reverse-lookup table: i18n (id -> Simplified Chinese
-    // name) joined with base (English name -> def.id).
-    let mut base_names = std::collections::HashMap::new();
-    if let (Ok(zh_by_id), Ok(data)) = (game.base_item_names("zh-CN"), build_data()) {
-        for (en_name, def) in &data.base_items {
-            if let Some(zh) = zh_by_id.get(def.id.as_str()) {
-                base_names.insert(zh.clone(), en_name.clone());
-            }
-        }
-    }
-    // Words-noun reverse lookup (Simplified Chinese unique item name ->
-    // English); the name lines of China-server item text go through this.
-    if let Ok(words) = game.word_names("zh-CN") {
-        for (en, zh) in words {
-            base_names.entry(zh).or_insert(en);
-        }
-    }
-    Some(Rc::new(crate::zh::LineTranslator::new(
-        &templates, base_names,
-    )))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -384,8 +284,8 @@ mod tests {
         init_data_from_dir(&dir.to_string_lossy()).expect("ordinary data");
         let ordinary = build_data().unwrap();
         let game = game_data().unwrap();
-        assert!(zh_translator().is_some());
-        assert!(en_to_zh_translator().is_some());
+        assert!(crate::locales::line_parser("zh-CN").is_some());
+        assert!(crate::locales::line_renderer("zh-CN").is_some());
         assert!(tier_index().is_some());
         for _ in 0..2 {
             assert_eq!(
@@ -400,26 +300,44 @@ mod tests {
         assert!(Rc::ptr_eq(&ordinary, &build_data().unwrap()));
         assert!(Rc::ptr_eq(&game, &game_data().unwrap()));
         assert_eq!(response_cache_hits(), 1, "failed init keeps old responses");
-        ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_some()));
-        EN_TO_ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_some()));
+        let (parsers, renderers) = crate::locales::cached();
+        assert_eq!(
+            (parsers, renderers),
+            (vec!["zh-CN".into()], vec!["zh-CN".into()])
+        );
         TIER_INDEX.with_borrow(|slot| assert!(slot.is_some()));
     }
 
     #[test]
     fn initialization_recovers_preinit_misses_and_invalidates_derived_indexes() {
         // A caller may request translation before loading the game data.
-        assert!(zh_translator().is_none());
-        assert!(en_to_zh_translator().is_none());
+        assert!(crate::locales::line_parser("zh-CN").is_none());
+        assert!(crate::locales::line_renderer("zh-CN").is_none());
         assert!(tier_index().is_none());
         let dir = pobr_gamedata::repo_data_root().join(pobr_gamedata::data_version());
         init_data_from_dir(dir.to_str().unwrap()).unwrap();
-        assert!(zh_translator().is_some());
-        assert!(en_to_zh_translator().is_some());
+        assert!(crate::locales::line_parser("zh-CN").is_some());
+        assert!(crate::locales::line_renderer("zh-CN").is_some());
+        // A locale without templates has nothing to translate with.
+        assert!(crate::locales::line_renderer("zh-TW").is_none());
+        assert!(crate::locales::line_parser("no-such-locale").is_none());
+        let (parsers, renderers) = crate::locales::cached();
+        assert_eq!(parsers, ["zh-CN"], "an undeclared code is not cached");
+        assert_eq!(renderers, ["zh-CN", "zh-TW"]);
+        let tables = crate::locales::loaded_tables();
+        // zh-TW has no templates, so none of its name tables are read; nothing reads skills.
+        let zh_tw: Vec<&str> = tables
+            .iter()
+            .filter(|(c, _)| c == "zh-TW")
+            .map(|(_, f)| *f)
+            .collect();
+        assert_eq!(zh_tw, ["stat_lines.json"]);
+        assert!(tables.iter().all(|(_, file)| *file != "skills.json"));
+        assert!(crate::locales::load_errors().is_empty());
         assert!(tier_index().is_some());
         // Reloading replaces all data-dependent caches, including cached misses.
         init_data_from_dir(dir.to_str().unwrap()).unwrap();
-        ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_none()));
-        EN_TO_ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_none()));
+        assert_eq!(crate::locales::cached(), (vec![], vec![]));
         TIER_INDEX.with_borrow(|slot| assert!(slot.is_none()));
     }
 }

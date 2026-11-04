@@ -78,7 +78,6 @@ interface WasmModule {
   previewTreeEditJson(requestJson: string): string;
   optimizeVariantsJson(requestJson: string): string;
   supportGroupsCompatibleJson(requestJson: string): string;
-  translate(lang: string, key: string): string;
 }
 
 async function fetchText(url: string): Promise<string> {
@@ -397,9 +396,6 @@ export async function createWasmBackend(): Promise<PobrBackend> {
       }
       const text = await fetchVersionFile(manifest.version, 'base/passive_tree_meta.json');
       return JSON.parse(text) as PassiveTreeMeta;
-    },
-    translate(lang, key) {
-      return wasm.translate(lang, key);
     },
   };
   return backend;

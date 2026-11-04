@@ -6,8 +6,4 @@ edition.workspace = true
 [dependencies]
 pobr-data.workspace = true
 serde.workspace = true
-thiserror = "2"
-
-[build-dependencies]
-# Locale files are fixed build inputs; no TOML parser is needed at runtime.
-toml = { version = "1", default-features = false, features = ["std", "parse", "serde"] }
+serde_json.workspace = true

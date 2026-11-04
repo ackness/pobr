@@ -287,7 +287,6 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
             ["clippy", "--workspace", "--all-targets", "--features",
              "pobr-core/benchmarks,pobr-build/benchmarks,pobr-wasm/diagnostics", "--", "-D", "warnings"],
             ["test", "--workspace"],
-            ["run", "-p", "lint-i18n"],
         ])
 
     def test_full_stops_at_failure_without_retrying_tests(self):

@@ -121,7 +121,7 @@ test('reject same-version source and binding changes, including new embedded inp
   write('apps/pobr-wasm/src/lib.rs', 'pub const SCHEMA_VERSION: u32 = 5;');
   assert.throws(() => packageWasm({ root }), /Stale WASM source snapshot/);
   write('apps/pobr-wasm/src/lib.rs', 'pub const SCHEMA_VERSION: u32 = 4;');
-  write('crates/pobr-i18n/locales/en-US/ui.toml', 'new = "embedded"');
+  write('crates/pobr-data/src/skill_type_names.txt', 'new embedded');
   assert.throws(() => packageWasm({ root }), /Stale WASM source snapshot/);
   rmSync(join(root, 'crates'), { recursive: true });
   const generated = 'web/src/api/generated/request.ts';
@@ -211,7 +211,7 @@ test('build wrapper reuses verified inputs and rebuilds only changed build input
   assert.equal(readFileSync(receiptPath, 'utf8'), originalReceipt);
   for (const [path, content] of [
     ['apps/pobr-wasm/src/lib.rs', 'changed source'],
-    ['crates/pobr-i18n/locales/en-US/ui.toml', 'embedded = "changed"'],
+    ['crates/pobr-data/src/skill_type_names.txt', 'embedded changed'],
     ['data/overlay-common/archon_config_options.json', '{"options":[]}'],
     ['data/overlay-common/new_mechanic_config_options.json', '{"options":[]}'],
     ['rustc-version', 'rustc fixture\nhost: changed-host'],
