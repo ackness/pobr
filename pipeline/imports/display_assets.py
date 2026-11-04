@@ -17,8 +17,7 @@ def prepare(lock_path, prepared, cache, offline=False, fetcher=None):
     if "support_display" not in lock:
         return None
     spec = lock["support_display"]
-    require(spec.get("repository") == "ackness/poe2-zh-cn-stats"
-            and spec.get("publication") == "published", "Independent display publication required")
+    require(spec.get("repository") == "ackness/poe2-zh-cn-stats", "Independent display publication required")
     git_address(spec, spec["path"])
     validate_pin(spec["manifest"])
     validate_pin(spec["asset"])
@@ -75,8 +74,7 @@ def prepare_test_fixtures(lock_path, cache, offline=False, fetcher=None):
     if "test_fixtures" not in lock:
         return None
     spec = lock["test_fixtures"]
-    require(spec.get("repository") == "ackness/repoe" and spec.get("publication") == "published",
-            "Independent test fixture publication required")
+    require(spec.get("repository") == "ackness/repoe", "Independent test fixture publication required")
     git_address(spec, spec["path"])
     validate_pin(spec)
     validate_pin(spec["manifest"])

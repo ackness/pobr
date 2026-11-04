@@ -269,7 +269,7 @@ def build_release(lock_path, data, output, expected_id=None):
     adopted, the release identity.
     """
     lock = bundle.decode(regular(lock_path))
-    require(lock.get("schema") == "pobr-data-lock/v1", "Release build requires the data lock")
+    require(lock.get("schema") == "pobr-data-lock/v2", "Release build requires the data lock")
     target, locale = lock["target"], lock["locale"]
     version = target["game_patch"]
     files, runtime_identity = bundle.data_inputs(data, version)

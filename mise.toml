@@ -44,6 +44,10 @@ run = "cat data/CURRENT"
 description = "从明确外部 lock 准备候选；采用须显式 --activate --expected-current"
 run = "python3 -m pipeline.runtime.locked_update"
 
+[tasks."data:bump"]
+description = "Move the data lock to an owner GitHub Release (`data:bump repoe game/<patch>-<n>`), verify SHA256SUMS, then data:prepare"
+run = "python3 -m pipeline.imports.data_bump"
+
 [tasks."data:bundle"]
 description = "Seal version data and shared rules into a new portable bundle (--out required)"
 run = "python3 -m pipeline.runtime.data_snapshot bundle"

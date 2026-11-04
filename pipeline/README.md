@@ -11,16 +11,16 @@ PoBR 不从 PoB2 vendor Lua 或本地原表导出生产数据。
 当前存储职责：游戏数据归RePoE、语言数据归翻译库，PoBR只提交代码、唯一数据锁 [`data.lock.json`](data.lock.json)、来源元数据及小型合成夹具；CI构建和需要实物的测试在临时目录导入数据并生成发布资产。
 四份完整快照、七份外部shared、历史大policy及完整语言／API样本已迁出当前Git tree；无旧PoBR数据artifact回退。本地活动目标保持0.5.5.5，Git历史不改写。详见[存储边界](../docs/data-architecture.md#4-存储边界)。
 
-换数据是一次人工审阅的数据锁修改：更新锁、`mise run data:prepare` 导入，再经 PR 与完整 CI 合并。PoBR 不自动发现或采用 owner 发布。
+换数据是一次人工审阅的数据锁修改：`mise run data:bump <owner> <tag>` 改锁并导入，再经 PR 与完整 CI 合并。PoBR 不自动发现或采用 owner 发布。
 当前核对与优化顺序以[数据现状](../docs/data-status.md)为准。
 
 ## 功能目录
 
 | 目录 | 内容与入口 |
 | --- | --- |
-| [data.lock.json](data.lock.json) | 唯一数据锁：两个 owner 的固定 tag、commit、路径与 SHA-256，目标、自有规则 pin 与期望身份 |
+| [data.lock.json](data.lock.json) | 唯一数据锁：两个 owner 的 Release 附件（或旧 `handoff/*` 的 commit + 路径）与 SHA-256，目标、自有规则 pin 与期望身份 |
 | [runtime/](runtime/build-data.md) | 按锁临时导入、快照封存、精简发行包和显式采用；`data:prepare`、`data:update`、`data:pack` |
-| [imports/](imports/sources.lock.json) | 固定 Git 传输、辅助说明投影、数据归属检查；台账仅存消费范围接受决定 |
+| [imports/](imports/sources.lock.json) | Release 附件与固定 Git 传输、`data:bump`、辅助说明投影、数据归属检查；台账仅存消费范围接受决定 |
 | [diagnostics/](diagnostics/README.md) | 数据版本差异、描述来源核对与词条审计；不自动采用数据 |
 
 各功能的说明、锁和测试与实现放在一起。Python 从仓库根目录以模块运行，
@@ -33,7 +33,7 @@ JSON 的职责各不相同：`data.lock.json` 是唯一的生产数据声明；C
 当前文件定位与组合清单则使用本页列出的路径。
 
 RePoE 在 2026-11-03 截断 fork 前历史后，活动锁和官方版本观察模块采用迁移后的 Git 提交；
-数据包字节、运行时身份与发行身份保持不变，两个 owner 的当前发布序号见锁的 `owner_publications`。
+数据包字节、运行时身份与发行身份保持不变。
 历史收据中的原始 producer ID 保留，通过 RePoE 的[提交映射](https://github.com/ackness/repoe/blob/master/publication/history-rewrite-20261103.json)
 定位字节相同的源码；它们不作为新的运行时下载位置。详见[历史迁移说明](https://github.com/ackness/repoe/blob/master/RePoE/docs/history.md)。
 
@@ -196,6 +196,7 @@ PoBR不再安装`pathofexile-dat`、下载原始索引或导出官方原表。�
 语言在翻译库生成；成功观察到一个补丁号也不能认证全部原料、机制或改变CURRENT。
 
 ```sh
+mise run data:bump repoe game/0.5.5.5-1 # 把锁改到 owner 的 Release，校验 SHA256SUMS 后导入
 mise run data:version                   # 本地选中版本
 mise run data:prepare                   # 临时导入当前固定目标，不更改 CURRENT
 mise run data:check                     # 离线检查：跟踪数据归属，导入后工作树干净
@@ -217,9 +218,11 @@ schema-3 manifest封存默认运行字节；维护报告和本地patch不进入�
 
 ## 扩展 / 升版
 
-- 新PoE2版本：两个 owner 发布同一新目标后，在审阅分支中更新数据锁与 `data/CURRENT`，
-  用 `mise run data:update --lock <新锁> --out <fresh>` 准备并核对候选，再 `mise run data:prepare` 导入新版本目录；
-  消费者迁移在同一审阅改动中完成。
+- 新PoE2版本：两个 owner 发布同一新目标后，在审阅分支中一次 bump 两者
+  （`mise run data:bump repoe game/<patch>-1 poe2-zh-cn-stats locale/<patch>-1`），它同时改写 `data/CURRENT` 并导入新版本目录；
+  消费者迁移在同一审阅改动中完成。只 bump 一个 owner 到新目标会被拒绝。语言侧的 `locale/<patch>-<n>` Release
+  （`kind: "language"` 的 `pobr-build-data-part/v1` ZIP + `SHA256SUMS` + `receipt.json`）待翻译库完成 3.1。
+  `data:bump` 先原子替换锁与 CURRENT；随后的 `data:prepare` 失败时恢复原字节并以非零退出。
   按补丁登记的现有消费者例如 `crates/pobr-gamedata/tests/fixtures/repository-test-pins.json`、
   `devs/ci/parse-coverage-baseline.json` 与示例 golden（如 `examples/demo-bd-test/panel-golden.json`
   的 `data_version`）；计算语义、vendor参考与golden更新分别维护。

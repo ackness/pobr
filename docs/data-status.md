@@ -5,11 +5,12 @@
 
 ## 当前数据锁
 
-- 活动目标为 `0.5.5.5`／international。消费产物的 tag + commit + SHA-256、两个 owner 的 publication、
+- 活动目标为 `0.5.5.5`／international。消费产物的来源与 SHA-256、
   期望 manifest、运行身份与 CI 候选包身份都以[数据锁](../pipeline/data.lock.json)为准。
+  当前产物仍是 Release 化之前的 `handoff/*` Git 产物；下一次 owner Release 用 `data:bump` 采用。
 - RePoE 发布序号 7，`game` 角色序号 6：补回 14 个真实宝石的品质效果，
   按原生宝石关系验证五个 DNT 占位排除项。其他角色保持原有输入，翻译库为序号 3。
-- 当前数据声明 generation 为 10，runtime 为 `e73febc0…`，snapshot manifest 为 `2cfb2103…`。
+- 当前 runtime 为 `e73febc0…`，snapshot manifest 为 `2cfb2103…`。
   Web 与独立 WASM 继续使用逐文件快照；紧凑候选包用于 CI 验证。
 - 固定测试已在复核游戏成员差异后绑定新 manifest，召唤物和解析器的数值断言保持原值。
   数据采用需要同时检查这类显式测试绑定；必需的 `PR gate` 只证明快速检查通过。

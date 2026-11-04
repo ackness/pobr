@@ -1,7 +1,5 @@
 {
-  "schema": "pobr-data-lock/v1",
-  "generation": 10,
-  "previous_id": "4af8333a142b624cd14953e8136db68df1620e1c704545075dc6d4af2572ecc2",
+  "schema": "pobr-data-lock/v2",
   "target": {
     "game": "poe2",
     "game_patch": "0.5.5.5",
@@ -17,7 +15,6 @@
         "sha256": "6cd3cf5c1c1d2c28734bdf2429d03c3a82b52a073907bdbc97b4ce192525068f"
       },
       "path": "handoff/quality-family-20261103/game-build-part.zip",
-      "publication": "published",
       "repository": "ackness/repoe",
       "revision": "99c14eb5a50876aae749cb9cd4850a04d8a997a1",
       "tag": "handoff/quality-family-20261103",
@@ -30,14 +27,12 @@
         "sha256": "730222f0cb7a777534243f3b4aff480ae31b2756c8e4ece574b0c4f44f0693a3"
       },
       "path": "handoff/locale-shaman-mantle-20261103/manifest.json",
-      "publication": "published",
       "repository": "ackness/poe2-zh-cn-stats",
       "revision": "9aba3687e6366597bc69a0795c63a20090cb02f5",
       "tag": "handoff/shaman-mantle-20261103"
     }
   },
   "support_display": {
-    "publication": "published",
     "repository": "ackness/poe2-zh-cn-stats",
     "revision": "5046a18af9974e8914fa1ea1b2b0db9202b2908b",
     "tag": "handoff/support-display-20261101",
@@ -65,7 +60,6 @@
       "sha256": "4509c9d3c83b09fa48f4bdf354c9ec0b14e4a0cd5da86864756ac1bc5ce53e5a"
     },
     "expanded_bytes": 1836840,
-    "publication": "published",
     "files": [
       "attribution.json",
       "calculate.json",
@@ -131,27 +125,5 @@
     "sha256": "2cfb21030f93d72bdb469e0df0ff52820c5d2bc54adfe0e5fa90d8654148649e"
   },
   "runtime_identity": "e73febc0ba0993f5adcacb3f0f0767120b210913f46e1a8be56d8cd5e9f77796",
-  "release_id": "c726228603fa43be322524bcc76bb7adbf6481282449a5f95b759842c9c5c9ab",
-  "owner_publications": {
-    "ackness/repoe": {
-      "index_revision": "a179ad17df89c791879024b68c333cbf61e62323",
-      "sequence": 7,
-      "descriptor": {
-        "bytes": 4974,
-        "path": "publication/releases/poe2-international/7.json",
-        "revision": "ad592661de4f21fa4ce94b792636fd857450a838",
-        "sha256": "55d461740e6c23656fc4ba529845d4a3306b4d99de0c60319980306ca7e8d573"
-      }
-    },
-    "ackness/poe2-zh-cn-stats": {
-      "index_revision": "d53afe51a733de51569811d134558e5fe9ea50d0",
-      "sequence": 3,
-      "descriptor": {
-        "revision": "40d1b2858e274ada52a3ec014be80a827672c8a6",
-        "path": "publication/releases/poe2-international/3.json",
-        "bytes": 6569,
-        "sha256": "317ff30b3b4fd4ffdf9433d24cd54339af686f42828553cab29223707bb15028"
-      }
-    }
-  }
+  "release_id": "c726228603fa43be322524bcc76bb7adbf6481282449a5f95b759842c9c5c9ab"
 }

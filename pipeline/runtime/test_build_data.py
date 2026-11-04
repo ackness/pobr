@@ -41,14 +41,10 @@ class BuildDataTests(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(raw)
         _, identity = bundle.snapshot_inputs(self.root / "source", self.version)
-        self.publication = {"index_revision": "c" * 40, "sequence": 1,
-                            "descriptor": {"revision": "d" * 40, "path": "publication/releases/test/1.json",
-                                           "bytes": 1, "sha256": "e" * 64}}
-        self.lock = {"schema": build.DATA_LOCK_SCHEMA, "generation": 1, "previous_id": None,
+        self.lock = {"schema": build.DATA_LOCK_SCHEMA,
                      "target": self.target, "locale": "zh-CN", "release_id": None,
                      "snapshot_manifest": pack.pin(self.contents["data/9.1/manifest.json"]),
                      "runtime_identity": identity, "packages": {},
-                     "owner_publications": {o: dict(self.publication) for o in build.OWNERS.values()},
                      "support_display": {"tag": "handoff/test-display"},
                      "test_fixtures": {"tag": "handoff/test-fixtures"},
                      "shared_files": {"own.json": pack.pin((self.shared / "own.json").read_bytes())}}
@@ -67,7 +63,7 @@ class BuildDataTests(unittest.TestCase):
         archive = pack.archive_bytes({**files, "manifest.json": manifest})
         spec = {**pack.pin(archive), "manifest": pack.pin(manifest), "tag": "handoff/test-data",
                 "expanded_bytes": len(manifest) + sum(map(len, files.values())),
-                "path": f"data/9.1/{kind}.zip", "publication": "published",
+                "path": f"data/9.1/{kind}.zip",
                 "repository": build.OWNERS[kind], "revision": "a" * 40}
         self.lock["packages"][kind] = spec
         self.archives[kind] = archive
@@ -171,17 +167,18 @@ class BuildDataTests(unittest.TestCase):
             build.prepare(self.lock_path, self.root / "bad", self.cache, self.shared,
                           fetcher=lambda _: self.fail("must not fetch over corrupt cache"))
 
-    def test_pending_requires_explicit_exact_local_parts(self):
+    def test_explicit_local_parts_replace_downloads_but_keep_every_pin(self):
         paths = {}
-        for kind, spec in self.lock["packages"].items():
-            spec.update(publication="pending", repository=None, revision=None)
+        for kind in self.lock["packages"]:
             paths[kind] = self.root / f"{kind}.zip"
             paths[kind].write_bytes(self.archives[kind])
-        self.save()
-        with self.assertRaisesRegex(ValueError, "Unpublished"):
-            self.prepare()
-        self.assertFalse(self.out.exists())
-        self.assertEqual(self.prepare(local_parts=paths)["runtime_identity"], self.lock["runtime_identity"])
+        result = build.prepare(self.lock_path, self.out, self.cache, self.shared, local_parts=paths,
+                               fetcher=lambda _: self.fail("local parts must not download"))
+        self.assertEqual(result["runtime_identity"], self.lock["runtime_identity"])
+        paths["game"].write_bytes(self.archives["game"] + b"x")
+        with self.assertRaisesRegex(ValueError, "bytes/SHA256"):
+            build.prepare(self.lock_path, self.root / "bad", self.cache, self.shared, local_parts=paths,
+                          fetcher=lambda _: self.fail("local parts must not download"))
 
     def test_cross_owner_mixed_target_unlisted_and_identity_mismatch_fail(self):
         original, archives = copy.deepcopy(self.lock), self.archives.copy()
@@ -233,8 +230,8 @@ class BuildDataTests(unittest.TestCase):
                              "files": {n: pack.pin(r) for n, r in members.items()}})
         for name, value in {**members, "manifest.json": raw}.items():
             p = locale / name; p.parent.mkdir(parents=True, exist_ok=True); p.write_bytes(value)
-        self.lock["packages"]["language"] = {"format": "locale-git-files", "publication": "pending",
-            "repository": None, "revision": None, "tag": "handoff/test-locale",
+        self.lock["packages"]["language"] = {"format": "locale-git-files",
+            "repository": build.OWNERS["language"], "revision": "a" * 40, "tag": "handoff/test-locale",
             "path": "handoff/locale/manifest.json", "manifest": pack.pin(raw)}
         self.save()
         result = self.prepare(local_parts={"language": locale})
@@ -394,7 +391,7 @@ class BuildDataTests(unittest.TestCase):
                          ["files"]["overlay/trade_crafting_sources.json"])
         self.assertFalse((self.cache / "build-input-receipts").exists())
         for path, value in ((("packages", "game", "tag"), None), (("support_display", "tag"), "bad tag"),
-                            (("generation",), 2), (("release_id",), "not-a-digest")):
+                            (("release_id",), "not-a-digest"), (("packages", "game", "revision"), "master")):
             with self.subTest(path=path, value=value):
                 changed = copy.deepcopy(self.lock)
                 parent = changed
@@ -406,10 +403,14 @@ class BuildDataTests(unittest.TestCase):
                     parent[path[-1]] = value
                 with self.assertRaises(ValueError):
                     build.validate(changed)
-        broken = copy.deepcopy(self.lock)
-        del broken["owner_publications"]["ackness/repoe"]
-        with self.assertRaisesRegex(ValueError, "Both owner publications"):
-            build.validate(broken)
+        # Publisher-internal state stays in the owners' Release lists.
+        for field, value in (("generation", 1), ("previous_id", None), ("owner_publications", {})):
+            with self.subTest(retired=field), self.assertRaisesRegex(ValueError, "Retired publisher state"):
+                build.validate({**self.lock, field: value})
+        changed = copy.deepcopy(self.lock)
+        changed["packages"]["game"]["publication"] = "published"
+        with self.assertRaisesRegex(ValueError, "Retired publication status"):
+            build.validate(changed)
 
     def test_contract_version_is_read_from_pobr_data(self):
         source = (build.ROOT / "crates/pobr-data/src/lib.rs").read_text(encoding="utf-8")
