@@ -74,6 +74,12 @@ def manifest(data):
                                           if Path(name).parts[0] == layer and len(Path(name).parts) == 2)
                             for layer in ["base", "overlay", "generated"]},
                 "files": files}
+    previous = data / "manifest.json"
+    if previous.is_file():
+        # Resealing keeps the producer's data-contract declaration.
+        declared = read_json(previous).get("contract_version")
+        if declared is not None:
+            document["contract_version"] = declared
     write_json(data / "manifest.json", document)
     return document
 

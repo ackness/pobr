@@ -32,6 +32,7 @@ class BuildDataTests(unittest.TestCase):
             "data/9.1/i18n/zh-TW/skills.json": '{"raw":"技能TW"}'.encode(),
         }
         snapshot = {"schema_version": 3, "poe_version": self.version,
+                    "contract_version": build.contract_version(),
                     "domains": {"base": ["skills"]}, "languages": ["zh-CN", "zh-TW"],
                     "files": {k.removeprefix("data/9.1/"): bundle.sha256(v) for k, v in self.contents.items()}}
         self.contents["data/9.1/manifest.json"] = pack.raw_json(snapshot)
@@ -409,6 +410,41 @@ class BuildDataTests(unittest.TestCase):
         del broken["owner_publications"]["ackness/repoe"]
         with self.assertRaisesRegex(ValueError, "Both owner publications"):
             build.validate(broken)
+
+    def test_contract_version_is_read_from_pobr_data(self):
+        source = (build.ROOT / "crates/pobr-data/src/lib.rs").read_text(encoding="utf-8")
+        version = build.contract_version()
+        self.assertIn(f"pub const CONTRACT_VERSION: u32 = {version};", source)
+        with self.assertRaisesRegex(ValueError, "Cannot read CONTRACT_VERSION"):
+            build.contract_version(self.write_text("lib.rs", "pub const OTHER: u32 = 1;\n"))
+
+    def test_a_newly_locked_snapshot_must_declare_this_contract(self):
+        current = 4
+        build.require_contract({"contract_version": current}, "0" * 64, current)
+        for declared in (None, current + 1, str(current), True):
+            with self.subTest(declared=declared), self.assertRaisesRegex(ValueError, "data contract"):
+                build.require_contract({} if declared is None else {"contract_version": declared},
+                                       "0" * 64, current)
+        # The snapshot locked before packages declared a contract keeps preparing.
+        locked = bundle.decode((build.DATA_LOCK).read_bytes())["snapshot_manifest"]["sha256"]
+        self.assertIn(locked, build.PRE_CONTRACT_SNAPSHOTS)
+        build.require_contract({}, locked, current)
+
+    def test_prepare_rejects_a_snapshot_without_a_contract(self):
+        snapshot = bundle.decode(self.contents["data/9.1/manifest.json"])
+        del snapshot["contract_version"]
+        self.contents["data/9.1/manifest.json"] = pack.raw_json(snapshot)
+        self.lock["snapshot_manifest"] = pack.pin(self.contents["data/9.1/manifest.json"])
+        self.set_part("game", {n: r for n, r in self.contents.items() if "/i18n/" not in n})
+        self.save()
+        with self.assertRaisesRegex(ValueError, "declares data contract None"):
+            self.prepare()
+        self.assertFalse(self.out.exists())
+
+    def write_text(self, name, text):
+        path = self.root / name
+        path.write_text(text, encoding="utf-8")
+        return path
 
     def test_crafting_facts_are_no_input_and_a_part_without_the_catalog_fails(self):
         self.data_lock()
