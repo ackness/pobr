@@ -15,7 +15,6 @@ use std::rc::Rc;
 
 use pobr_build::BuildData;
 use pobr_gamedata::GameData;
-use pobr_i18n::{LineParser, LineRenderer, LocaleMeta, LocalePack, NameKind};
 
 thread_local! {
     /// The staging area for data files injected in batches (`relative path -> bytes`).
@@ -24,14 +23,6 @@ thread_local! {
     static BUILD_DATA: RefCell<Option<Rc<BuildData>>> = const { RefCell::new(None) };
     /// The GameData backing the built BuildData (used for on-demand queries like i18n name sidecars).
     static GAME_DATA: RefCell<Option<Rc<GameData>>> = const { RefCell::new(None) };
-    /// Localized -> English mod-line parsers by locale (lazily built; a
-    /// missing key = not attempted yet, `None` = that locale has no templates).
-    static LINE_PARSERS: RefCell<BTreeMap<String, Option<Rc<LineParser>>>> =
-        const { RefCell::new(BTreeMap::new()) };
-    /// English -> localized display renderers by locale (same caching; used
-    /// by tree mod tooltips, config list options and other display surfaces).
-    static LINE_RENDERERS: RefCell<BTreeMap<String, Option<Rc<LineRenderer>>>> =
-        const { RefCell::new(BTreeMap::new()) };
     /// The affix-tier reverse-lookup index (lazily built; `Some(None)` = the
     /// data pack lacks pool data/templates, so tiers are left unlabeled).
     static TIER_INDEX: RefCell<Option<Option<Rc<pobr_item::TierIndex>>>> =
@@ -123,8 +114,7 @@ pub fn response_cache_hits() -> u64 {
 /// Clears the response cache whenever data is (re-)initialized — results are sensitive to the data version.
 fn clear_data_caches() {
     crate::build_api::clear_snapshots();
-    LINE_PARSERS.with_borrow_mut(BTreeMap::clear);
-    LINE_RENDERERS.with_borrow_mut(BTreeMap::clear);
+    crate::locales::clear();
     TIER_INDEX.with_borrow_mut(|slot| *slot = None);
     RESPONSE_CACHE.with_borrow_mut(|c| {
         c.entries.clear();
@@ -258,92 +248,6 @@ pub fn game_data() -> Result<Rc<GameData>, String> {
     })
 }
 
-/// The locales the data pack declares, in manifest order (empty before
-/// initialization or for a pack without a manifest).
-pub fn locale_codes() -> Vec<String> {
-    game_data()
-        .ok()
-        .and_then(|game| game.validate_manifest().ok())
-        .map(|manifest| manifest.languages)
-        .unwrap_or_default()
-}
-
-/// Gets the mod-line parser for `lang` (built and cached on first call;
-/// `None` when the locale has no templates — consumers degrade to "no
-/// translation applied", so localized lines pass through the parser as-is
-/// and land in unsupported).
-pub fn line_parser(lang: &str) -> Option<Rc<LineParser>> {
-    cached_translator(&LINE_PARSERS, lang, |packs, bases| {
-        LineParser::new(packs, bases)
-    })
-}
-
-/// Gets the English -> `lang` display renderer (lazily built, same as above).
-pub fn line_renderer(lang: &str) -> Option<Rc<LineRenderer>> {
-    cached_translator(&LINE_RENDERERS, lang, |packs, bases| {
-        LineRenderer::new(packs, bases)
-    })
-}
-
-/// The parsers of every declared locale that has templates, for input text
-/// whose language is not known in advance.
-pub fn input_parsers() -> Vec<Rc<LineParser>> {
-    locale_codes()
-        .iter()
-        .filter_map(|lang| line_parser(lang))
-        .collect()
-}
-
-type TranslatorCache<T> = std::thread::LocalKey<RefCell<BTreeMap<String, Option<Rc<T>>>>>;
-
-fn cached_translator<T>(
-    cache: &'static TranslatorCache<T>,
-    lang: &str,
-    build: impl FnOnce(&[&LocalePack], Vec<(&str, &str)>) -> Option<T>,
-) -> Option<Rc<T>> {
-    if let Some(hit) = cache.with_borrow(|map| map.get(lang).cloned()) {
-        return hit;
-    }
-    let built = (|| {
-        let game = game_data().ok()?;
-        let data = build_data().ok()?;
-        let chain = locale_chain(&game, lang);
-        let packs: Vec<&LocalePack> = chain.iter().collect();
-        let bases = data
-            .base_items
-            .values()
-            .map(|def| (def.id.as_str(), def.name.as_str()))
-            .collect();
-        build(&packs, bases).map(Rc::new)
-    })();
-    cache.with_borrow_mut(|map| map.insert(lang.to_string(), built.clone()));
-    built
-}
-
-/// The packs answering for `lang`: its own, then the fallbacks its
-/// `_meta.json` declares.
-fn locale_chain(game: &GameData, lang: &str) -> Vec<LocalePack> {
-    pobr_i18n::resolve_chain(lang, &[], |code| load_locale_pack(game, code))
-}
-
-/// Loads one locale's pack through the data loader (so the snapshot
-/// inventory and user patch layer apply); missing files are empty tables.
-fn load_locale_pack(game: &GameData, lang: &str) -> Option<LocalePack> {
-    let mut pack = LocalePack::new(lang).ok()?;
-    if let Ok(Some(meta)) = game.locale_file::<LocaleMeta>(lang, pobr_i18n::META_FILE) {
-        pack.set_meta(meta);
-    }
-    if let Ok(Some(templates)) = game.stat_line_templates(lang) {
-        pack.set_stat_lines(templates);
-    }
-    for kind in NameKind::ALL {
-        if let Ok(Some(table)) = game.locale_file(lang, kind.file_name()) {
-            pack.set_names(kind, table);
-        }
-    }
-    (!pack.is_empty()).then_some(pack)
-}
-
 /// Gets the affix-tier reverse-lookup index (built and cached on first call;
 /// returns `None` for old data packs whose mods lack group/spawn_weights or
 /// have no StatDescriptions overlay — consumers then leave tiers unlabeled).
@@ -380,8 +284,8 @@ mod tests {
         init_data_from_dir(&dir.to_string_lossy()).expect("ordinary data");
         let ordinary = build_data().unwrap();
         let game = game_data().unwrap();
-        assert!(line_parser("zh-CN").is_some());
-        assert!(line_renderer("zh-CN").is_some());
+        assert!(crate::locales::line_parser("zh-CN").is_some());
+        assert!(crate::locales::line_renderer("zh-CN").is_some());
         assert!(tier_index().is_some());
         for _ in 0..2 {
             assert_eq!(
@@ -396,29 +300,44 @@ mod tests {
         assert!(Rc::ptr_eq(&ordinary, &build_data().unwrap()));
         assert!(Rc::ptr_eq(&game, &game_data().unwrap()));
         assert_eq!(response_cache_hits(), 1, "failed init keeps old responses");
-        LINE_PARSERS.with_borrow(|map| assert!(map.contains_key("zh-CN")));
-        LINE_RENDERERS.with_borrow(|map| assert!(map.contains_key("zh-CN")));
+        let (parsers, renderers) = crate::locales::cached();
+        assert_eq!(
+            (parsers, renderers),
+            (vec!["zh-CN".into()], vec!["zh-CN".into()])
+        );
         TIER_INDEX.with_borrow(|slot| assert!(slot.is_some()));
     }
 
     #[test]
     fn initialization_recovers_preinit_misses_and_invalidates_derived_indexes() {
         // A caller may request translation before loading the game data.
-        assert!(line_parser("zh-CN").is_none());
-        assert!(line_renderer("zh-CN").is_none());
+        assert!(crate::locales::line_parser("zh-CN").is_none());
+        assert!(crate::locales::line_renderer("zh-CN").is_none());
         assert!(tier_index().is_none());
         let dir = pobr_gamedata::repo_data_root().join(pobr_gamedata::data_version());
         init_data_from_dir(dir.to_str().unwrap()).unwrap();
-        assert!(line_parser("zh-CN").is_some());
-        assert!(line_renderer("zh-CN").is_some());
+        assert!(crate::locales::line_parser("zh-CN").is_some());
+        assert!(crate::locales::line_renderer("zh-CN").is_some());
         // A locale without templates has nothing to translate with.
-        assert!(line_renderer("zh-TW").is_none());
-        assert!(line_parser("no-such-locale").is_none());
+        assert!(crate::locales::line_renderer("zh-TW").is_none());
+        assert!(crate::locales::line_parser("no-such-locale").is_none());
+        let (parsers, renderers) = crate::locales::cached();
+        assert_eq!(parsers, ["zh-CN"], "an undeclared code is not cached");
+        assert_eq!(renderers, ["zh-CN", "zh-TW"]);
+        let tables = crate::locales::loaded_tables();
+        // zh-TW has no templates, so none of its name tables are read; nothing reads skills.
+        let zh_tw: Vec<&str> = tables
+            .iter()
+            .filter(|(c, _)| c == "zh-TW")
+            .map(|(_, f)| *f)
+            .collect();
+        assert_eq!(zh_tw, ["stat_lines.json"]);
+        assert!(tables.iter().all(|(_, file)| *file != "skills.json"));
+        assert!(crate::locales::load_errors().is_empty());
         assert!(tier_index().is_some());
         // Reloading replaces all data-dependent caches, including cached misses.
         init_data_from_dir(dir.to_str().unwrap()).unwrap();
-        LINE_PARSERS.with_borrow(|map| assert!(map.is_empty()));
-        LINE_RENDERERS.with_borrow(|map| assert!(map.is_empty()));
+        assert_eq!(crate::locales::cached(), (vec![], vec![]));
         TIER_INDEX.with_borrow(|slot| assert!(slot.is_none()));
     }
 }

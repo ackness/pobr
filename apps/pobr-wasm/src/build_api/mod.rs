@@ -152,20 +152,25 @@ fn limb_slot_from_id(id: &str) -> Result<LimbSlot, String> {
 /// "template reverse lookup -> canonical English" translation; if
 /// unrecognized, or no locale has templates, it's kept as-is (the parser
 /// marks it unsupported, visible to the frontend).
+///
+/// Text that no declared locale could have written (no letter English lacks,
+/// and no locale sharing English's script) is returned without loading any
+/// locale; text in which no line changes is returned byte for byte.
 fn localize_input_text(text: &str) -> String {
-    let parsers = state::input_parsers();
-    let parser_for = |line: &str| parsers.iter().find(|parser| parser.is_localized(line));
-    if !text.lines().any(|line| parser_for(line).is_some()) {
+    let locales = crate::locales::input_locales();
+    if locales.codes.is_empty()
+        || !pobr_i18n::lines::may_contain_localized_text(text, locales.shares_english_script)
+    {
         return text.to_string();
     }
-    text.lines()
-        .map(|line| {
-            parser_for(line)
-                .and_then(|parser| parser.parse_line(line))
-                .unwrap_or_else(|| line.to_string())
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
+    let parsers = crate::locales::input_parsers();
+    pobr_i18n::lines::parse_text_with(text, |line| {
+        parsers
+            .iter()
+            .filter(|parser| parser.is_localized(line))
+            .find_map(|parser| parser.translate_line(line))
+    })
+    .into_owned()
 }
 
 mod tree_edit;
@@ -180,4 +185,27 @@ pub fn import_party_member_json(code: &str) -> Result<String, String> {
     let member = pobr_build::party::import_member(code, &data)
         .map_err(|e| ApiError::decode_error(e.to_string()).into_json())?;
     serde_json::to_string(&member).map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod localize_tests {
+    use super::localize_input_text;
+
+    #[test]
+    fn input_text_is_parsed_only_where_a_locale_wrote_it() {
+        let dir = pobr_gamedata::current_data_dir();
+        crate::init_data_from_dir(&dir.to_string_lossy()).unwrap();
+        // English text, curly quotes and full-width punctuation included, loads no
+        // locale and keeps its bytes.
+        let english = "Rarity: Unique\r\nSapphire Ring\r\n+50 to maximum Life\r\n“Bow before me”，she said：why？\r\n";
+        assert_eq!(localize_input_text(english), english);
+        assert_eq!(crate::locales::cached(), (vec![], vec![]));
+        // A localized line that no template recognizes changes nothing either.
+        let unknown = "Rarity: Rare\r\n不认识的词条\r\n";
+        assert_eq!(localize_input_text(unknown), unknown);
+        assert_eq!(
+            localize_input_text("Rarity: Rare\r\n蓝玉戒指\r\n+50 生命上限\r\n“Bow”"),
+            "Rarity: Rare\nSapphire Ring\n+50 to maximum Life\n“Bow”"
+        );
+    }
 }

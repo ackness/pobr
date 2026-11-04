@@ -14,6 +14,7 @@
 //! The shapes are pinned by `tests/contract_golden.rs`.
 
 pub mod build_api;
+pub mod locales;
 pub mod session;
 pub mod state;
 mod xml_write;

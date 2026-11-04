@@ -346,9 +346,11 @@ fn gem_catalog_entries(
 /// output are JSON string arrays. Everything passes through unchanged when
 /// the locale has no templates or before initialization.
 pub fn translate_lines_json(lang: &str, lines_json: &str) -> Result<String, String> {
-    map_lines(lines_json, |lines| match state::line_renderer(lang) {
-        Some(renderer) => renderer.render_lines(lines),
-        None => lines,
+    map_lines(lines_json, |lines| {
+        match crate::locales::line_renderer(lang) {
+            Some(renderer) => renderer.render_lines(lines),
+            None => lines,
+        }
     })
     .map_err(super::ApiError::into_json)
 }
@@ -362,12 +364,14 @@ pub fn translate_lines_to_zh_cn_json(lines_json: &str) -> Result<String, String>
 /// is not in that locale, or that no template recognizes, passes through
 /// unchanged, as does everything when the locale has no templates.
 pub fn parse_localized_lines_json(lang: &str, lines_json: &str) -> Result<String, String> {
-    map_lines(lines_json, |lines| match state::line_parser(lang) {
-        Some(parser) => lines
-            .into_iter()
-            .map(|line| parser.parse_line(&line).unwrap_or(line))
-            .collect(),
-        None => lines,
+    map_lines(lines_json, |lines| {
+        match crate::locales::line_parser(lang) {
+            Some(parser) => lines
+                .into_iter()
+                .map(|line| parser.parse_line(&line).unwrap_or(line))
+                .collect(),
+            None => lines,
+        }
     })
     .map_err(super::ApiError::into_json)
 }

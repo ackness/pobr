@@ -82,11 +82,7 @@ fn normalize_input(text: &str, data: &BuildData, game: &GameData) -> Result<Stri
         .get(base_index)
         .ok_or_else(|| ApiError::bad_request("invalid_item"))?
         .clone();
-    let locales = game
-        .validate_manifest()
-        .map(|manifest| manifest.languages)
-        .unwrap_or_default();
-    let translations: Vec<BTreeMap<String, String>> = locales
+    let translations: Vec<BTreeMap<String, String>> = crate::locales::locale_codes()
         .iter()
         .map(|lang| game.base_item_names(lang).unwrap_or_default())
         .collect();
