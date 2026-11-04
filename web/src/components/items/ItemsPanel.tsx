@@ -1,4 +1,5 @@
 import { localizedName } from '../../lib/chinese';
+import { replaceUtility } from '../../lib/utilityItems';
 import { AppButton, AppInput, AppTextarea } from '../shared/controls';
 import { UniqueCatalog } from './UniqueCatalog';
 import { uniqueT } from '../../lib/uniqueCatalogText';
@@ -93,7 +94,7 @@ const ITEM_TEMPLATE = 'Rarity: RARE\nNew Item\nSapphire Ring\n+50 to maximum Lif
 const FLASK_TEMPLATE = 'Rarity: MAGIC\nUltimate Life Flask';
 const CHARM_TEMPLATE = 'Rarity: MAGIC\nRuby Charm';
 
-/** PoB 药剂/护符槽（激活态；与 wasm 契约的 utility 槽名一致）。 */
+/** Equipped PoB utility slots, including unselected items. */
 const UTILITY_SLOTS = ['Flask 1', 'Flask 2', 'Charm 1', 'Charm 2', 'Charm 3'];
 const isUtilitySlot = (slot: string) => slot.startsWith('Flask') || slot.startsWith('Charm');
 /** 超越肢体槽（与 wasm 契约的 limb 槽 id 一致）：与装备并列的一组栏位，没有符文孔，不进市集。 */
@@ -129,6 +130,10 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
   const textOf = (slot: string) => listOf(slot)[0].find((item) => item.slot === slot)?.text;
   /** Puts `text` in `slot`, or empties it with `null`. */
   const equip = (slot: string, text: string | null) => {
+    if (isUtilitySlot(slot)) {
+      session.setFlasks(replaceUtility(session.flasks, slot, text));
+      return;
+    }
     const [list, setList] = listOf(slot);
     const rest = list.filter((item) => item.slot !== slot);
     setList(text === null ? rest : [...rest, { slot, text }]);
@@ -435,6 +440,18 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
               )}
             </span>
           </header>
+          {selectedText && isUtilitySlot(selected) && (
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2">
+                <AppInput type="checkbox" checked={session.flasks.find(item => item.slot === selected)?.active ?? true}
+                  disabled={session.busy} aria-describedby="utility-selection-hint"
+                  onChange={event => session.setFlasks(session.flasks.map(item => item.slot === selected
+                    ? { ...item, active: event.target.checked } : item))} />
+                {tt('items.utilitySelected')}
+              </label>
+              <p id="utility-selection-hint" className="items-hint">{tt('items.utilitySelectionHint')}</p>
+            </div>
+          )}
           {editing ? (
             <div className="item-editor">
               <p className="items-hint">{tt('items.hint')}</p>
@@ -613,7 +630,8 @@ function LibrarySection({
   const withEntry = (entry: LibraryItem) => {
     const request = session.currentRequest();
     if (!request || !selectedSlot) return null;
-    const field = isUtilitySlot(selectedSlot) ? 'flasks' : isLimbSlot(selectedSlot) ? 'limbs' : 'items';
+    if (isUtilitySlot(selectedSlot)) return { ...request, flasks: replaceUtility(request.flasks ?? [], selectedSlot, entry.text) };
+    const field = isLimbSlot(selectedSlot) ? 'limbs' : 'items';
     const rest = (request[field] ?? []).filter((it) => it.slot !== selectedSlot);
     return { ...request, [field]: [...rest, { slot: selectedSlot, text: entry.text }] };
   };

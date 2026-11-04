@@ -517,7 +517,11 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
             text: item_text(&item, &mut warnings)?,
         };
         if entry.slot.starts_with("Flask ") || entry.slot.starts_with("Charm ") {
-            flasks.push(entry);
+            flasks.push(UtilitySlotJson {
+                slot: entry.slot,
+                text: entry.text,
+                active: true,
+            });
         } else if pobr_data::item::LimbSlot::from_id(&entry.slot).is_some() {
             limbs.push(entry);
         } else {

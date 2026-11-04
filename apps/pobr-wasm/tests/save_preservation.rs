@@ -76,6 +76,224 @@ fn assert_roundtrip(request: &Value) -> Value {
     reopened
 }
 
+fn utility_code() -> String {
+    pobr_build::encode_pob_code(include_str!("fixtures/utility-selection.xml")).unwrap()
+}
+
+fn stat(response: &Value, id: &str) -> f64 {
+    response["stats"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["id"] == id)
+        .unwrap()["value"]
+        .as_f64()
+        .unwrap()
+}
+
+#[test]
+fn equipped_utility_selection_survives_materialization_and_export() {
+    init();
+    let code = utility_code();
+    let decoded = decode(&code);
+    let utilities = decoded["items"]["flasks"].as_array().unwrap();
+    assert_eq!(utilities.len(), 3);
+    for (slot, active) in [("Flask 1", false), ("Flask 2", true), ("Charm 1", false)] {
+        assert_eq!(
+            utilities.iter().find(|item| item["slot"] == slot).unwrap()["active"],
+            active
+        );
+    }
+    let original = materialized(&decoded);
+    let calculated = calculate(&original);
+    assert_eq!(
+        calculated,
+        calculate(&json!({"pob_code":code, "full_dps":false, "breakdowns":[]}))
+    );
+    for id in ["Flask1Recovery", "Flask1ManaRecovery"] {
+        assert!((stat(&calculated, id) - 506.0).abs() < 1e-8, "{id}");
+    }
+    assert_eq!(stat(&calculated, "FireResist"), -10.0);
+    let usage: Value =
+        serde_json::from_str(&pobr_wasm::line_usage_json(&original.to_string()).unwrap()).unwrap();
+    assert!(
+        usage["usage"]["lines"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|line| line["modifiers"].as_array().unwrap())
+            .any(|modifier| modifier["name"] == "LifeFlaskAppliesToMana"
+                && modifier["status"] == "applied")
+    );
+    for with_base in [false, true] {
+        let mut request = original.clone();
+        if with_base {
+            request["base_code"] = json!(code);
+        }
+        let reopened = assert_roundtrip(&request);
+        let restored = reopened["items"]["flasks"].as_array().unwrap();
+        assert_eq!(restored.len(), utilities.len());
+        for item in utilities {
+            let after = restored
+                .iter()
+                .find(|entry| entry["slot"] == item["slot"])
+                .unwrap();
+            assert_eq!(after["active"], item["active"]);
+            assert_eq!(
+                after["text"].as_str().unwrap().trim(),
+                item["text"].as_str().unwrap().trim()
+            );
+        }
+    }
+}
+
+#[test]
+fn utility_omission_clear_and_replacement_cover_both_baseline_collections() {
+    init();
+    let code = utility_code();
+    let original = materialized(&decode(&code));
+    for with_base in [false, true] {
+        let mut request = original.clone();
+        request["pob_code"] = json!(code);
+        if with_base {
+            request["base_code"] = json!(code);
+        }
+        request.as_object_mut().unwrap().remove("flasks");
+        assert_eq!(calculate(&request), calculate(&original));
+        let inherited = decode(&pobr_wasm::encode_build_json(&request.to_string()).unwrap());
+        assert_eq!(inherited["items"]["flasks"].as_array().unwrap().len(), 3);
+        assert_eq!(calculate(&materialized(&inherited)), calculate(&original));
+        // Exercise an export whose only baseline is base_code as well.
+        if with_base {
+            let mut base_only = request.clone();
+            base_only.as_object_mut().unwrap().remove("pob_code");
+            assert_eq!(
+                decode(&pobr_wasm::encode_build_json(&base_only.to_string()).unwrap())["items"]["flasks"],
+                inherited["items"]["flasks"]
+            );
+        }
+        for replacement in [
+            json!([]),
+            json!([{
+                "slot":"Flask 1", "text":"Rarity: NORMAL\nUltimate Life Flask\nImplicits: 0\n+12% to Fire Resistance during effect", "active":false
+            }]),
+            json!([{"slot":"Charm 1", "text":"Rarity: NORMAL\nRuby Charm", "active":true}]),
+        ] {
+            request["flasks"] = replacement.clone();
+            let mut fresh = request.clone();
+            fresh.as_object_mut().unwrap().remove("pob_code");
+            assert_eq!(
+                calculate(&request),
+                calculate(&fresh),
+                "baseline must not retain stale utilities"
+            );
+            let variant: Value = serde_json::from_str(
+                &pobr_wasm::optimize_variants_json(
+                    &json!({
+                        "request": {"pob_code":code}, "stats":["FireResist"],
+                        "variants":[{"flasks":replacement}]
+                    })
+                    .to_string(),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+            assert!(variant["variants"][0]["error"].is_null(), "{variant}");
+            assert_eq!(
+                variant["variants"][0]["stats"]["FireResist"],
+                stat(&calculate(&fresh), "FireResist")
+            );
+            let exported = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+            let parsed =
+                pobr_build::parse_build(&pobr_build::decode_pob_code(&exported).unwrap()).unwrap();
+            let entries = replacement.as_array().unwrap();
+            assert_eq!(
+                parsed.utility_slots.len(),
+                entries.iter().filter(|item| item["active"] == true).count()
+            );
+            assert_eq!(
+                parsed.inactive_utility_slots.len(),
+                entries
+                    .iter()
+                    .filter(|item| item["active"] == false)
+                    .count()
+            );
+            let reopened = assert_roundtrip(&request);
+            assert_eq!(
+                reopened["items"]["flasks"].as_array().unwrap().len(),
+                entries.len()
+            );
+        }
+    }
+}
+
+#[test]
+fn utility_selection_keeps_engine_gates_and_validates_legacy_inputs() {
+    init();
+    let mut request = materialized(&decode(&utility_code()));
+    let fire = |request: &Value| stat(&calculate(request), "FireResist");
+    let life = request["flasks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .position(|item| item["slot"] == "Flask 1")
+        .unwrap();
+    let charm = request["flasks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .position(|item| item["slot"] == "Charm 1")
+        .unwrap();
+    let mut unique = request.clone();
+    unique["flasks"][life]["text"] = json!(
+        request["flasks"][life]["text"]
+            .as_str()
+            .unwrap()
+            .replace("Rarity: NORMAL", "Rarity: UNIQUE\nFixture Unique")
+    );
+    assert_eq!(fire(&unique), -50.0, "Reverie excludes unique flasks");
+    assert_roundtrip(&unique);
+    request["items"]
+        .as_array_mut()
+        .unwrap()
+        .retain(|item| item["slot"] != "bodyarmour");
+    assert_eq!(
+        fire(&request),
+        -50.0,
+        "without Reverie, the unselected flask stays off"
+    );
+    assert_eq!(stat(&calculate(&request), "Flask1Recovery"), 920.0);
+    assert_roundtrip(&request);
+    request["flasks"][life]["active"] = json!(true);
+    assert_eq!(fire(&request), -10.0);
+    request["flasks"][life]
+        .as_object_mut()
+        .unwrap()
+        .remove("active");
+    assert_eq!(fire(&request), -10.0, "legacy omission means selected");
+    request["flasks"][charm]["active"] = json!(true);
+    assert_eq!(
+        fire(&request),
+        15.0,
+        "the equipped Ruby Charm has budget but needs selection"
+    );
+    assert_roundtrip(&request);
+    for invalid in [json!(null), json!("false"), json!(0), json!({})] {
+        request["flasks"][life]["active"] = invalid;
+        assert!(pobr_wasm::calculate_build_json(&request.to_string()).is_err());
+        assert!(pobr_wasm::encode_build_json(&request.to_string()).is_err());
+    }
+    request["flasks"][life]["active"] = json!(false);
+    for slot in ["Flask 3", "Charm 4", "Flask 2"] {
+        request["flasks"][life]["slot"] = json!(slot);
+        assert!(
+            pobr_wasm::calculate_build_json(&request.to_string()).is_err(),
+            "invalid/duplicate {slot}"
+        );
+        assert!(pobr_wasm::encode_build_json(&request.to_string()).is_err());
+    }
+}
+
 #[test]
 fn equipment_jewels_survive_materialization_tree_edits_and_save() {
     init();

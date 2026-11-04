@@ -32,6 +32,7 @@ import type {
   SetSelection,
   PassiveTreeMeta,
   SlotItemInput,
+  UtilitySlotInput,
   SocketGroupInput,
   WeaponSwap,
 } from '../api/types';
@@ -71,8 +72,8 @@ interface BuildState {
   socketGroups: SocketGroupInput[];
   /** 装备槽原始文本（同上）。 */
   items: SlotItemInput[];
-  /** 激活态药剂/护符（槽名 `Flask 1/2`、`Charm 1..3` + PoB 文本；整份覆盖上行）。 */
-  flasks: SlotItemInput[];
+  /** 已装备药剂/护符及选用状态（槽名 `Flask 1/2`、`Charm 1..3` + PoB 文本；整份覆盖上行）。 */
+  flasks: UtilitySlotInput[];
   /** 超越肢体（槽 `arm1`/`arm2`/`leg1`/`leg2` + PoB 文本；与装备并列的一组栏位，整份覆盖上行）。 */
   limbs: SlotItemInput[];
   /** 树插槽珠宝（插槽号 + PoB 文本；插槽加点才生效）。 */
@@ -178,7 +179,7 @@ export interface BuildSession {
   /** Ownership epoch for wholesale skill-set replacement or group compaction. */
   socketGroupRevision: number;
   items: SlotItemInput[];
-  flasks: SlotItemInput[];
+  flasks: UtilitySlotInput[];
   limbs: SlotItemInput[];
   jewels: JewelInput[];
   calc: CalculateBuildResponse | null;
@@ -255,8 +256,8 @@ export interface BuildSession {
   setSocketGroups: (groups: SocketGroupInput[]) => void;
   /** 整份替换装备（Items 编辑器）。 */
   setItems: (items: SlotItemInput[]) => void;
-  /** 整份替换激活态药剂/护符（Items 编辑器）。 */
-  setFlasks: (flasks: SlotItemInput[]) => void;
+  /** 整份替换已装备药剂/护符及选用状态（Items 编辑器）。 */
+  setFlasks: (flasks: UtilitySlotInput[]) => void;
   /** 整份替换超越肢体（Items 编辑器）。 */
   setLimbs: (limbs: SlotItemInput[]) => void;
   /** 整份替换树插槽珠宝（Tree 页珠宝编辑器）。 */
@@ -431,6 +432,9 @@ export function parseSaved(json: string): SavedSession | null {
     const textMap = (value: unknown) => record(value) && Object.values(value).every(entry => typeof entry === 'string');
     const itemList = (value: unknown, slots: RegExp): value is SlotItemInput[] => Array.isArray(value)
       && value.every(item => record(item) && typeof item.slot === 'string' && slots.test(item.slot) && typeof item.text === 'string');
+    const utilityList = (value: unknown): value is UtilitySlotInput[] => itemList(value, /^(Flask [12]|Charm [123])$/)
+      && new Set(value.map(item => item.slot)).size === value.length
+      && value.every(item => !('active' in item) || typeof item.active === 'boolean');
     const parsed: unknown = JSON.parse(json);
     if (!record(parsed) || parsed.version !== 1 || !record(parsed.state)) return null;
     const state = parsed.state;
@@ -483,7 +487,7 @@ export function parseSaved(json: string): SavedSession | null {
     const annotations = state.annotations ?? {};
     const attributeChoices = state.attributeChoices ?? {};
     const params = state.params ?? {};
-    if (!itemList(flasks, /^(Flask [12]|Charm [123])$/) || !itemList(limbs, /^(arm|leg)[12]$/)
+    if (!utilityList(flasks) || !itemList(limbs, /^(arm|leg)[12]$/)
       || !Array.isArray(jewels) || !jewels.every(jewel => record(jewel) && uint(jewel.socket_node) && typeof jewel.text === 'string')
       || equipmentJewels !== undefined && !itemList(equipmentJewels, /^(?!Jewel).*Socket/)
       || !textMap(annotations) || !record(attributeChoices)
@@ -518,7 +522,7 @@ export function parseSaved(json: string): SavedSession | null {
         socketGroups,
         items: state.items,
         weaponSwap,
-        flasks,
+        flasks: flasks.map(item => ({ ...item, active: item.active ?? true })),
         limbs,
         jewels: jewels as JewelInput[],
         ...(equipmentJewels !== undefined ? { equipmentJewels } : {}),
@@ -642,7 +646,7 @@ export function materialize(
     })),
     items: decoded.items.equipped.map((item) => ({ slot: item.slot, text: item.text })),
     equipmentJewels: (decoded.items.equipment_jewels ?? []).map(item => ({ slot: item.slot, text: item.text })),
-    flasks: (decoded.items.flasks ?? []).map((f) => ({ slot: f.slot, text: f.text })),
+    flasks: (decoded.items.flasks ?? []).map((f) => ({ slot: f.slot, text: f.text, active: f.active ?? true })),
     limbs: (decoded.items.limbs ?? []).map((limb) => ({ slot: limb.slot, text: limb.text })),
     jewels: (decoded.items.socket_jewels ?? []).map((j) => ({
       socket_node: j.socket_node,
@@ -1211,7 +1215,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
   );
 
   const setFlasks = useCallback(
-    (flasks: SlotItemInput[]) => {
+    (flasks: UtilitySlotInput[]) => {
       if (!state) return;
       apply({ ...state, flasks });
     },

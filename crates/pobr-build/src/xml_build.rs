@@ -1211,6 +1211,8 @@ pub struct RawItemsView {
     pub equipment_jewels: Vec<(String, String)>,
     /// Active Flask/Charm: `(slot name, raw text block)`.
     pub flasks: Vec<(String, String)>,
+    /// Equipped but unselected Flask/Charm, retaining the original text.
+    pub inactive_flasks: Vec<(String, String)>,
     /// Transcendent limbs: `(slot's stable id, raw text block)`, in slot order.
     pub limbs: Vec<(String, String)>,
     /// The inactive weapon pair, kept separately from shared equipment.
@@ -1295,6 +1297,7 @@ pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
         jewels: jewel_ids,
         equipment_jewels: equipment_jewel_ids,
         flask_charms: flask_charm_ids,
+        inactive_flask_charms: inactive_flask_charm_ids,
         limbs: mut limb_ids,
         ..
     } = parse_item_set_for_weapons(xml, Some(second))?;
@@ -1353,6 +1356,10 @@ pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
         .into_iter()
         .filter_map(|(slot, id)| Some((slot, texts.get(&id)?.clone())))
         .collect();
+    let inactive_flasks = inactive_flask_charm_ids
+        .into_iter()
+        .filter_map(|(slot, id)| Some((slot, texts.get(&id)?.clone())))
+        .collect();
     limb_ids.sort();
     let limbs = limb_ids
         .into_iter()
@@ -1364,6 +1371,7 @@ pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
         socket_jewels,
         equipment_jewels,
         flasks,
+        inactive_flasks,
         limbs,
         alternate_weapons,
         active_weapon_set: if second { 2 } else { 1 },
@@ -2430,6 +2438,11 @@ Implicits: 0
         let build = parse_build(xml).expect("parse");
         assert_eq!(build.inactive_utility_slots.len(), 1);
         assert_eq!(build.inactive_utility_slots[0].0, "Flask 2");
+        let raw = parse_raw_items_view(xml).expect("raw utility view");
+        assert_eq!(raw.flasks.len(), 2);
+        assert_eq!(raw.inactive_flasks.len(), 1);
+        assert_eq!(raw.inactive_flasks[0].0, "Flask 2");
+        assert_eq!(raw.inactive_flasks[0].1, raw.flasks[1].1);
         let names: Vec<(String, String)> = build
             .utility_slots
             .iter()

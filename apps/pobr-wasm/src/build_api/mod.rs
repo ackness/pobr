@@ -55,7 +55,8 @@ pub use decode::{
 };
 pub use encode::encode_build_json;
 pub use request::{
-    CalculateBuildRequest, CharacterOverride, GemInput, JewelInput, SlotItemInput, SocketGroupInput,
+    CalculateBuildRequest, CharacterOverride, GemInput, JewelInput, SlotItemInput,
+    SocketGroupInput, UtilitySlotInput,
 };
 
 use pobr_data::item::{EquipmentSlot, LimbSlot};

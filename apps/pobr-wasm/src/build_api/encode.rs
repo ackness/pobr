@@ -6,7 +6,7 @@ use pobr_build::{decode_pob_code, encode_pob_code, merge_active_sets};
 use pobr_data::build_config::CustomModifierBlock;
 use pobr_data::item::EquipmentSlot;
 
-use super::request::CalculateBuildRequest;
+use super::request::{CalculateBuildRequest, UtilitySlotInput, validate_utilities};
 use super::slot_from_id;
 use crate::state;
 
@@ -147,17 +147,43 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
             .map_err(|e| super::ApiError::bad_request(e).with_slot(limb.slot.as_str()))?;
         items.push((slot.pob_name().into(), limb.text.clone()));
     }
-    let mut flasks: Vec<(String, String)> = Vec::new();
-    for flask in req.flasks.as_deref().unwrap_or_default() {
-        if !(flask.slot.starts_with("Flask ") || flask.slot.starts_with("Charm ")) {
-            return Err(super::ApiError::bad_request(format!(
-                "unknown flask/charm slot: {}",
-                flask.slot
-            ))
-            .with_slot(flask.slot.as_str()));
-        }
-        flasks.push((flask.slot.clone(), flask.text.clone()));
-    }
+    let flasks =
+        match &req.flasks {
+            Some(flasks) => flasks.clone(),
+            None => {
+                // Only omission inherits source utilities. An explicit empty list
+                // must never resurrect an item removed in the editor.
+                let baseline = req
+                    .base_code
+                    .as_deref()
+                    .filter(|code| !code.trim().is_empty())
+                    .unwrap_or(&req.pob_code);
+                if baseline.trim().is_empty() {
+                    Vec::new()
+                } else {
+                    let xml = decode_pob_code(baseline)
+                        .map_err(|e| super::ApiError::decode_error(e.to_string()))?;
+                    let raw = pobr_build::parse_raw_items_view(&xml)
+                        .map_err(|e| super::ApiError::decode_error(e.to_string()))?;
+                    raw.flasks
+                        .into_iter()
+                        .map(|(slot, text)| UtilitySlotInput {
+                            slot,
+                            text,
+                            active: true,
+                        })
+                        .chain(raw.inactive_flasks.into_iter().map(|(slot, text)| {
+                            UtilitySlotInput {
+                                slot,
+                                text,
+                                active: false,
+                            }
+                        }))
+                        .collect()
+                }
+            }
+        };
+    validate_utilities(&flasks)?;
     let jewels: Vec<(u32, String)> = req
         .jewels
         .as_deref()

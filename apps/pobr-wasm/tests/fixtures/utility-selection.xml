@@ -1,0 +1,51 @@
+<!-- Synthetic regression: Reverie + Azmeri Brew (47312), with an unselected Life Flask and in-budget Ruby Charm. -->
+<PathOfBuilding2>
+<Build level="80" className="Huntress" ascendClassName="Amazon" mainSocketGroup="1" characterName="Utility selection regression fixture"/>
+<Tree activeSpec="1"><Spec nodes="47312,43677,63254" treeVersion="0_5"/></Tree>
+<Config><Input name="conditionEnemyPoisoned" boolean="true"/></Config>
+<Skills><Skill enabled="true"><Gem skillId="SpearThrowPlayer" level="20" quality="0" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1">
+<Item id="1">Rarity: UNIQUE
+Reverie
+Shaman Mantle
+Implicits: 0
+Cannot use Life Flasks
+Non-Unique Life Flasks apply their Effects constantly
+Recovery from Life Flasks cannot be Instant
+Recovery from your Life Flasks cannot be applied to anything other than you
+45% less Life Flask Recovery
+</Item>
+<Item id="2">Rarity: NORMAL
+Ultimate Life Flask
+Implicits: 0
+50% of Recovery applied Instantly
++40% to Fire Resistance during effect
+</Item>
+<Item id="3">Rarity: NORMAL
+Ultimate Mana Flask
+Implicits: 0
+</Item>
+<Item id="4">Rarity: RARE
+Fixture Spear
+Grand Spear
+Implicits: 0
+Adds 10 to 20 Physical Damage
+</Item>
+<Item id="5">Rarity: NORMAL
+Heavy Belt
+Implicits: 1
+Has 3 Charm Slots
+</Item>
+<Item id="6">Rarity: NORMAL
+Ruby Charm
+Implicits: 0
+</Item>
+<ItemSet id="1">
+<Slot name="Belt" itemId="5"/>
+<Slot name="Charm 1" itemId="6" active="false"/>
+<Slot name="Body Armour" itemId="1"/>
+<Slot name="Flask 1" itemId="2" active="false"/>
+<Slot name="Flask 2" itemId="3" active="true"/>
+<Slot name="Weapon 1" itemId="4"/>
+</ItemSet></Items>
+</PathOfBuilding2>

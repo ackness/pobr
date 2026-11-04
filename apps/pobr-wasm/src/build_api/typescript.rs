@@ -6,7 +6,7 @@ use ts_rs::{Config, TS};
 
 use super::request::{
     CharacterOverride, GemInput, JewelInput, SlotIssue, SlotItemInput, SocketGroupInput,
-    WeaponSwapInput,
+    UtilitySlotInput, WeaponSwapInput,
 };
 
 fn destination() -> PathBuf {
@@ -25,6 +25,7 @@ fn declarations() -> String {
         GemInput::decl(&config),
         SocketGroupInput::decl(&config),
         SlotItemInput::decl(&config),
+        UtilitySlotInput::decl(&config),
         WeaponSwapInput::decl(&config),
         JewelInput::decl(&config),
     ] {

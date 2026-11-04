@@ -1,3 +1,4 @@
+import { replaceUtility } from './utilityItems';
 import { getBackend } from '../api/backend';
 import { situationalAffix, type SituationalAffix } from './tradeMechanics';
 import type { CalculateBuildRequest, VariantInput } from '../api/types';
@@ -140,7 +141,7 @@ export function tradeItemVariant(request: CalculateBuildRequest, slot: string, t
     return { jewels: [...(request.jewels ?? []).filter(jewel => jewel.socket_node !== socket_node), { socket_node, text }] };
   }
   if (/^(Flask|Charm) /.test(slot)) {
-    return { flasks: [...(request.flasks ?? []).filter(item => item.slot !== slot), { slot, text }] };
+    return { flasks: replaceUtility(request.flasks ?? [], slot, text) };
   }
   return { set_items: [{ slot, text }] };
 }

@@ -5,9 +5,11 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { env } from 'node:process';
 import { deflateSync } from 'node:zlib';
-import { materialize, paramsFromDecoded, toRequest, type SavedSession } from './useBuildSession';
+import { backfillFromDecoded, materialize, paramsFromDecoded, parseSaved, toRequest, type SavedSession } from './useBuildSession';
+import { replaceUtility } from '../lib/utilityItems';
+import { tradeItemVariant } from '../lib/tradeOptimizer';
 import { switchWeapons } from '../lib/weaponSets';
-import { EXPECTED_SCHEMA_VERSION, type BuildJson, type CalculateBuildRequest, type CalculateBuildResponse, type SkillMetricsResponse } from '../api/types';
+import { EXPECTED_SCHEMA_VERSION, type BuildJson, type CalculateBuildRequest, type CalculateBuildResponse, type LineUsageResponse, type SkillMetricsResponse } from '../api/types';
 
 const gem = (id: string) => `<Gem skillId="${id}" level="20" quality="0" enabled="true"/>`;
 const source = `<PathOfBuilding2>
@@ -45,6 +47,7 @@ describe.skipIf(env.POBR_WASM_CONTRACT !== '1')('real TS request to WASM weapon 
   let decode: (code: string) => BuildJson;
   let encode: (request: CalculateBuildRequest & { base_code?: string }) => string;
   let metrics: (request: CalculateBuildRequest) => SkillMetricsResponse;
+  let usage: (request: CalculateBuildRequest) => LineUsageResponse;
   let state: SavedSession['state'];
 
   beforeAll(async () => {
@@ -61,6 +64,7 @@ describe.skipIf(env.POBR_WASM_CONTRACT !== '1')('real TS request to WASM weapon 
     decode = code => JSON.parse(wasm.decodeBuildJson(code));
     encode = request => wasm.encodeBuildJson(JSON.stringify(request));
     metrics = request => JSON.parse(wasm.skillMetricsJson(JSON.stringify(request)));
+    usage = request => JSON.parse(wasm.lineUsageJson(JSON.stringify(request)));
     const decoded = decode(code);
     state = {
       ...materialize(decoded), pobCode: code, character: decoded.character,
@@ -68,6 +72,58 @@ describe.skipIf(env.POBR_WASM_CONTRACT !== '1')('real TS request to WASM weapon 
       annotations: {}, params: { ...paramsFromDecoded(decoded), main_socket_group: decoded.main_socket_group ?? undefined },
     };
   }, 120_000);
+
+  test('equipped unselected utilities survive the real edit, save, reload, request and XML workflow', async () => {
+    const xml = await readFile(new URL('../../../apps/pobr-wasm/tests/fixtures/utility-selection.xml', import.meta.url), 'utf8');
+    const importedCode = deflateSync(xml).toString('base64url');
+    const decoded = decode(importedCode);
+    const imported: SavedSession['state'] = {
+      ...materialize(decoded), pobCode: importedCode, character: decoded.character,
+      allocatedNodes: decoded.tree.allocated_nodes, attributeChoices: decoded.tree.attribute_choices,
+      annotations: {}, params: paramsFromDecoded(decoded),
+    };
+    const restore = (state: SavedSession['state']) => {
+      const saved = parseSaved(JSON.stringify({ version: 1, state, notes: '' }));
+      expect(saved).not.toBeNull();
+      return backfillFromDecoded(saved!.state, decoded);
+    };
+    const restored = restore(imported);
+    expect(restored.flasks.find(item => item.slot === 'Flask 1')?.active).toBe(false);
+    expect(restored.flasks.find(item => item.slot === 'Charm 1')?.active).toBe(false);
+    const request = { ...toRequest(restored), breakdowns: [] };
+    const calculated = calculate(request);
+    expect(calculated).toEqual(calculate({ pob_code: importedCode, breakdowns: [] }));
+    expect(stat(calculated, 'Flask1Recovery')).toBeCloseTo(506);
+    expect(stat(calculated, 'Flask1ManaRecovery')).toBeCloseTo(506);
+    expect(stat(calculated, 'FireResist')).toBe(-10);
+    expect(usage(request).usage.lines.flatMap(line => line.modifiers))
+      .toContainEqual(expect.objectContaining({ name: 'LifeFlaskAppliesToMana', status: 'applied' }));
+    const life = restored.flasks.find(item => item.slot === 'Flask 1')!;
+    const edited = restore({ ...restored, flasks: replaceUtility(restored.flasks, life.slot, life.text.replace('+40%', '+12%')) });
+    expect(edited.flasks.find(item => item.slot === life.slot)?.active).toBe(false);
+    expect(stat(calculate(toRequest(edited)), 'FireResist')).toBe(-38);
+    const traded = restore({ ...edited, flasks: tradeItemVariant(toRequest(edited), life.slot, life.text).flasks! });
+    expect(calculate({ ...toRequest(traded), breakdowns: [] })).toEqual(calculated);
+    const withoutReverie = { ...restored, items: restored.items.filter(item => item.slot !== 'bodyarmour') };
+    const unique = { ...restored, flasks: replaceUtility(restored.flasks, life.slot, life.text.replace('Rarity: NORMAL', 'Rarity: UNIQUE\nFixture Unique')) };
+    const cleared = restore({ ...restored, flasks: [] });
+    const selected = { ...withoutReverie, flasks: withoutReverie.flasks.map(item => ({ ...item, active: true })) };
+    expect(stat(calculate(toRequest(withoutReverie)), 'FireResist')).toBe(-50);
+    expect(stat(calculate(toRequest(unique)), 'FireResist')).toBe(-50);
+    expect(stat(calculate(toRequest(selected)), 'FireResist')).toBe(15);
+    expect(cleared.flasks).toEqual([]);
+    for (const snapshot of [restored, edited, traded, withoutReverie, unique, selected, cleared]) {
+      const current = { ...toRequest(restore(snapshot)), breakdowns: [] };
+      for (const base_code of [undefined, importedCode]) {
+        const exported = encode({ ...current, base_code });
+        const reopened = decode(exported);
+        const normalized = (items: typeof current.flasks) => items?.map(item => ({ ...item, text: item.text.trim() })).sort((a, b) => a.slot.localeCompare(b.slot));
+        expect(normalized(reopened.items.flasks)).toEqual(normalized(current.flasks));
+        expect(calculate({ pob_code: exported, breakdowns: [] })).toEqual(calculate(current));
+        expect(calculate({ ...current, pob_code: importedCode })).toEqual(calculate(current));
+      }
+    }
+  });
 
   test('worked build codes agree with real frontend requests and optional native CLI', async () => {
     const directory = new URL('../../../examples/wasm-benchmark/builds/', import.meta.url);

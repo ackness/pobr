@@ -6,17 +6,17 @@
  */
 
 import type {
-  CharacterOverride, GemInput, JewelInput, SlotIssue, SlotItemInput, SocketGroupInput, WeaponSwap,
+  CharacterOverride, GemInput, JewelInput, SlotIssue, SlotItemInput, SocketGroupInput, UtilitySlotInput, WeaponSwap,
 } from './generated/request.js';
 export type {
-  CharacterOverride, GemInput, JewelInput, SlotIssue, SlotItemInput, SocketGroupInput, WeaponSwap,
+  CharacterOverride, GemInput, JewelInput, SlotIssue, SlotItemInput, SocketGroupInput, UtilitySlotInput, WeaponSwap,
 } from './generated/request.js';
 
 /**
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 17;
+export const EXPECTED_SCHEMA_VERSION = 18;
 
 // ---------------------------------------------------------------------------
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
@@ -95,7 +95,7 @@ export interface ItemsJson {
   socket_jewels: SocketJewelJson[];
   /** Equipment socket jewels retain their exact PoB ItemSet slot names. */
   equipment_jewels?: SlotItemJson[];
-  flasks: SlotItemJson[];
+  flasks: (SlotItemJson & { active: boolean })[];
   /** 超越肢体（槽 `arm1`/`arm2`/`leg1`/`leg2`）：与装备并列的一组栏位，词条为全局词条。 */
   limbs: SlotItemJson[];
 }
@@ -308,7 +308,7 @@ export interface VariantInput {
   set_items?: SlotItemInput[];
   /** Whole-list replacements, preserving the ordinary edit/import validation. */
   jewels?: JewelInput[];
-  flasks?: SlotItemInput[];
+  flasks?: UtilitySlotInput[];
   socket_groups?: SocketGroupInput[];
   /** 追加加点（不验证连通性——假设性试算）。 */
   allocate_nodes?: number[];
@@ -396,8 +396,8 @@ export interface CalculateBuildRequest {
    * 另一组武器与武器组专属天赋只用于导出。省略时沿用构筑码的武器组（新构筑为 1）。
    */
   weapon_swap?: WeaponSwap | null;
-  /** 整份替换激活态药剂/护符（槽名 `Flask 1/2`、`Charm 1..3`）。 */
-  flasks?: SlotItemInput[];
+  /** Omitted keeps baseline utilities; [] clears all. Selection defaults true for legacy entries. */
+  flasks?: UtilitySlotInput[];
   /** 整份替换超越肢体（槽 `arm1`/`arm2`/`leg1`/`leg2`）。 */
   limbs?: SlotItemInput[];
   /** 整份替换树插槽珠宝。 */

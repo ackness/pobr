@@ -18,7 +18,7 @@ use pobr_data::passive_tree::NodeId;
 use serde::{Deserialize, Serialize};
 
 use super::request::{
-    CalculateBuildRequest, GemInput, JewelInput, SlotItemInput, SocketGroupInput,
+    CalculateBuildRequest, GemInput, JewelInput, SlotItemInput, SocketGroupInput, UtilitySlotInput,
     apply_request_overrides, orchestrator_options, parse_build_from_request, run_session_for_build,
 };
 use super::{localize_input_text, slot_from_id};
@@ -309,7 +309,7 @@ struct VariantInput {
     set_items: Vec<SlotItemInput>,
     /// Whole-list replacements use the same validation and socket gating as normal edits.
     jewels: Option<Vec<JewelInput>>,
-    flasks: Option<Vec<SlotItemInput>>,
+    flasks: Option<Vec<UtilitySlotInput>>,
     socket_groups: Option<Vec<SocketGroupInput>>,
     /// Additional allocated nodes (connectivity isn't validated — this is a
     /// hypothetical what-if, so pathing is the caller's responsibility).
