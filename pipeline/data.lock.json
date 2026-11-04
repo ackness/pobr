@@ -1,7 +1,7 @@
 {
   "schema": "pobr-data-lock/v1",
-  "generation": 7,
-  "previous_id": "27a08fcefbd4f756275cbe550b1051bd56b7c217807b69117bc9fe8091f53f33",
+  "generation": 8,
+  "previous_id": "1d65e361468c8cbfff0545c53b9da9560c42ef3d30759f6431b900e94b4652a0",
   "target": {
     "game": "poe2",
     "game_patch": "0.5.5.5",
@@ -118,8 +118,8 @@
       "sha256": "53b69e7fb3e606a61b2acb2c8b54c9bf9f92e630c9619e3e6cd5217b76b29be4"
     },
     "special_mods.json": {
-      "bytes": 312733,
-      "sha256": "93af43cb755fae917dd28f523fc0f3abc774af674d48c080186813e0b2810a7b"
+      "bytes": 320277,
+      "sha256": "ac9a9f39f4bda84118fa1f86cf87988f8ab981b6d908586d9f5a5cb72b7a6132"
     },
     "volatility_config_options.json": {
       "bytes": 1562,
@@ -130,8 +130,8 @@
     "bytes": 8234,
     "sha256": "5d41f3284186bbe5a5d48b4270404fb903132cd9ef8e9fc0883264daf92fbf17"
   },
-  "runtime_identity": "c1bd2f65b8be45608fe114a3f0996e9e772ede7a26b9d86f594263a3955935a3",
-  "release_id": "94b2828ca815a902790c2c1da102a1e8d8e52b2dd00f46e6d38bcebacfa9f993",
+  "runtime_identity": "c327d4f059628d1c1d622a9cde8e1f82cc4d450acd954fb36637d92550f04493",
+  "release_id": "16facd99b299772c01b964700818024c2a42615d50d614f70af8d945cfaf5c5c",
   "owner_publications": {
     "ackness/repoe": {
       "index_revision": "dc64b90ab5afe81824dbd933ac640fa37fce34aa",
