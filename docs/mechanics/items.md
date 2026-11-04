@@ -116,6 +116,12 @@ Culling Strike I/II 原生的稀有／独特敌人条件，需同时处于 Effec
 
 `life_recovery_from_flasks_also_recovers_energy_shield`（Shavronne's Satchel）追加 `Flask{1,2}EnergyShieldRecovery`、`EnergyShieldInstantRecovery`、`EnergyShieldRecoveryPerSecond`。复用生命药剂总量、品质、药剂恢复和瞬间比例，缓回部分使用 ES 恢复速率；魔力药剂不复制，`CannotGainEnergyShield` 禁止复制回复。
 
+`life_mana_flasks_restore_mana_life`（Azmeri Brew，节点 47312）把生命药剂恢复复制到本人魔力、魔力药剂恢复复制到本人生命。`Flask<N>ManaRecovery` / `LifeRecovery` 及各自的 `InstantRecovery`、`RecoveryPerSecond` 后缀只表示**额外复制的资源**；药剂原来的资源仍用 `Flask<N>Recovery`。两条通道各从药剂自身恢复量出发，保留来源药剂的瞬间比例与持续时间，缓回部分只乘接收资源的恢复速率；复制结果不再互相复制，也不作为生命药剂再复制到 ES。目标 `CannotGainLife` / `CannotGainMana` 与生命的 `CannotRecoverLifeOutsideLeech` 会阻止对应复制。没有使用次数、当前资源、满资源停止恢复或覆盖率假设，不加到再生输出。
+
+Reverie（Shaman Mantle）的 `unique_body_armour_life_flask_life_recovery_+%_final` 以 `FlaskLifeRecovery` MORE 缩放生命药剂自身恢复量：45% less 为 ×0.55，包含它复制到魔力／ES 的恢复，不影响魔力药剂复制到生命。`non_unique_life_flasks_always_applied_with_no_instant_recovery_only_to_you` 的前三行分别限制使用、允许常驻、禁止瞬回：所有生命药剂可用次数为零；Combat 模式下非传奇生命药剂即使槽未勾选仍准入效果，传奇不获得常驻准入；生命药剂的瞬间比例置零，恢复全部转为缓回。原有 `FlasksDoNotApplyToPlayer` 接收限制仍生效。不能使用／未勾选的药剂仍有单瓶属性读数，不能把这些数字当成持续覆盖或实际每秒所得。
+
+“Recovery from your Life Flasks cannot be applied to anything other than you” 保留明确 `unmodelled`：当前没有非玩家药剂恢复接收路径，不能把它标为无效果，也不能误阻止本人跨资源回复。普通物品导入后的前三个独立行可应用；直接把四行当作一个解析输入时整块保留未建模，不部分应用后宣称完整支持。上述新增规则均为 `absent`，未做游戏内实测。
+
 ### 启用状态与单次使用
 
 护符／药剂的“Used when ...”（`local_flask_use_on_*`、`local_charm_trigger_when_cursed`）按启用物品约定识别，不计算触发频率。只有启用且未超槽位的护符才视为当前生效；`charm_effect_+%` 不放大关闭护符。

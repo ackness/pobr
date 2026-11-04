@@ -255,10 +255,10 @@ fn dedup_seed(m: &Modifier) -> DedupSeed {
 /// are scaled by the effect factor and merged into the player db (mirrors
 /// vendor `CalcPerform.lua:1429-1663` mergeFlasks/mergeCharms; line numbers verified against source).
 ///
-/// The input is the `FlaskBuff`/`CharmBuff` payload produced by
-/// [`crate::item::ingest_flask_charm`] (`ModValue::NestedMods`; only
-/// **active** slots are wired up by the build layer -- vendor
-/// CalcSetup.lua:1014-1028's `slot.active` gates env.flasks/charms, with flasks and charms sharing the same semantics).
+/// Selected slots supply `FlaskBuff`/`CharmBuff` payloads. Unselected flasks
+/// retain an `InactiveFlaskBuff` payload, admitted only when the equipped
+/// base and rarity satisfy Reverie's explicit constant-effect rule. A Life
+/// flask that cannot be used needs that constant effect even when selected.
 ///
 /// Vendor mirror (line numbers):
 /// - `:1656-1663` gates the whole section on `env.mode_combat` →
@@ -286,17 +286,9 @@ fn dedup_seed(m: &Modifier) -> DedupSeed {
 ///   don't land on the player at all.
 ///
 /// Per-item duration, charges and recovery are calculated by `calc::utility`.
-/// Known differences: Mageblood special behavior and
-/// `MagicUtilityFlaskEffect`/`MagicCharmEffect`
-/// (`:1406`/`:1588`, needs a rarity channel) and the minion-side application
-/// (`:1568-1586`) aren't implemented (the earlier "highPrecisionMods'
-/// per-mod precision override table isn't implemented" gap has since been
-/// eliminated during deduplication -- vendor's ScaleAddMod already looks up
-/// that table, so the earlier name-blind scaling was the actual deviation);
-/// a charm base's always-on buff (vendor `item.base.charm.buff`, e.g. Ruby
-/// Charm's `+25% to Fire Resistance`) depends on a base data column (this
-/// column is not yet exported), so currently only the item's own text mod is
-/// included.
+/// Mageblood, `MagicUtilityFlaskEffect`/`MagicCharmEffect` and non-player
+/// flask recipients remain unmodelled. The build layer includes a charm
+/// base's inherent buff in its payload before merging.
 ///
 /// Attribution: both the carrier and its inner mods carry
 /// `SourceId(SourceKind::Flask, "flask.<slot>")` (attached during ingest),
@@ -318,7 +310,10 @@ pub fn merge_flasks_charms(env: &mut Env) {
     use std::collections::BTreeMap;
 
     use crate::ModValue;
-    use crate::item::{CHARM_BUFF_LIST_NAME, FLASK_BUFF_LIST_NAME, LOCAL_UTILITY_EFFECT_NAME};
+    use crate::item::{
+        CHARM_BUFF_LIST_NAME, FLASK_BUFF_LIST_NAME, INACTIVE_FLASK_BUFF_LIST_NAME,
+        LOCAL_UTILITY_EFFECT_NAME,
+    };
 
     /// Vendor's mergeBuff (CalcPerform.lua:41-63): when an entry with the
     /// same params (name/type/flags/keywordFlags/tags) already exists, takes
@@ -368,6 +363,7 @@ pub fn merge_flasks_charms(env: &mut Env) {
         .player
         .mod_db
         .named(flask_list.as_str())
+        .chain(env.player.mod_db.named(INACTIVE_FLASK_BUFF_LIST_NAME))
         .chain(env.player.mod_db.named(charm_list.as_str()))
         .filter(|m| {
             m.mod_type == ModType::List && m.matches(&env.cfg) && m.value.as_nested_mods().is_some()
@@ -400,6 +396,24 @@ pub fn merge_flasks_charms(env: &mut Env) {
     let mut conditions: Vec<String> = Vec::new();
     for carrier in &carriers {
         let is_charm = carrier.name == charm_list;
+        let spec = env.utility_items.iter().find(|item| {
+            carrier.origin.as_ref().is_some_and(|origin| {
+                origin.source_id == crate::item::flask_charm_source(&item.slot)
+            })
+        });
+        let constant = spec.is_some_and(|item| item.has_constant_life_effect(db, cfg));
+        if carrier.name.as_str() == INACTIVE_FLASK_BUFF_LIST_NAME && !constant {
+            continue;
+        }
+        let base_name = carrier.source.clone().unwrap_or_default();
+        let is_life_flask = !is_charm
+            && spec.map_or_else(
+                || base_name.contains("Life Flask"),
+                |item| item.base.life > 0.0,
+            );
+        if is_life_flask && db.flag(cfg, "CannotUseLifeFlasks") && !constant {
+            continue;
+        }
         if is_charm {
             if charm_budget < 1.0 {
                 continue; // :1640-1643 over the charm limit.
@@ -421,14 +435,13 @@ pub fn merge_flasks_charms(env: &mut Env) {
         };
         let effect_mod = 1.0 + (global_inc + local_inc) / 100.0;
 
-        let base_name = carrier.source.clone().unwrap_or_default();
         conditions.push(if is_charm { "UsingCharm" } else { "UsingFlask" }.to_string());
         if !base_name.is_empty() {
             let compact: String = base_name.chars().filter(|c| !c.is_whitespace()).collect();
             conditions.push(format!("Using{compact}"));
         }
         if !is_charm {
-            if base_name.contains("Life Flask") && !cannot_recover_life {
+            if is_life_flask && !cannot_recover_life {
                 conditions.push("UsingLifeFlask".to_string());
             }
             if base_name.contains("Mana Flask") {

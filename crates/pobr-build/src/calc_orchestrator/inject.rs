@@ -78,19 +78,12 @@ pub(super) fn inject_defence_base(session: &mut SourceWriter, build: &Build, dat
     session.add_modifiers(item_ward_modifiers(build, data));
 }
 
-/// Stage 2b'': active flask/charm payload injection (consumed by env_finalize stage 3's merge).
+/// Supplies utility bases and payloads; finalization selects active or constant effects.
 pub(super) fn inject_flasks_charms(session: &mut SourceWriter, build: &Build, data: &BuildData) {
-    // 2b''. Active flasks/charms (PoB's `<Slot name="Flask N|Charm N" active="true">`,
-    //       already gated by `active` in xml_build — matching vendor
-    //       CalcSetup.lua:1014-1028's `slot.active` deciding env.flasks/charms):
-    //       packaged via `ingest_flask_charm` into FlaskBuff/CharmBuff payloads and
-    //       injected into the session (a channel switch, replacing the old "inject the
-    //       raw value directly" path), merged by env_finalize stage 3's
-    //       merge_flasks_charms under the mode_combat gate, applying the effect
-    //       multiplier zone + setting UsingFlask/UsingCharm conditions (matching vendor
-    //       CalcPerform.lua:1429-1663). A charm needs a CharmLimit source (a belt
-    //       implicit etc.) to enter the budget (:1589); unparseable lines (trigger/
-    //       recovery lines) are skip-and-collected.
+    // Both selected and unselected slots supply per-item properties. Unselected
+    // flask payloads are retained for explicit constant effects such as Reverie;
+    // merge_flasks_charms checks their base and rarity after all sources arrive.
+    // Charms still require a selected slot and an available CharmLimit.
     for (active, (slot_name, item)) in build.utility_slots.iter().map(|item| (true, item)).chain(
         build
             .inactive_utility_slots

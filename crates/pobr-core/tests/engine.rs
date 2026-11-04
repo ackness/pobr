@@ -55,6 +55,9 @@ mod recoup_transfer;
 #[path = "engine/utility.rs"]
 mod utility;
 
+#[path = "engine/flask_recovery.rs"]
+mod flask_recovery;
+
 #[path = "engine/thresholds_onkill.rs"]
 mod thresholds_onkill;
 

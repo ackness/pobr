@@ -5980,6 +5980,106 @@
       ]
     },
     {
+      "id": "less_life_flask_recovery",
+      "pattern": "(\\d+(?:\\.\\d+)?)% less life flask recovery",
+      "mods": [
+        {
+          "name": "FlaskLifeRecovery",
+          "type": "MORE",
+          "value": { "ref": "$1", "ops": [{ "negate": {} }] }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "unique_body_armour_life_flask_life_recovery_+%_final; overlay/uniques.json: Reverie (Shaman Mantle), current variant",
+      "source_note": "The game's less Life Flask Recovery scales the life flask's own recovery before receiver recovery-rate modifiers, including copies to other resources. Read by calc::utility; it does not reduce maximum Life or Mana flask recovery. No use frequency is inferred.",
+      "examples": ["45% less Life Flask Recovery"]
+    },
+    {
+      "id": "cannot_use_life_flasks",
+      "pattern": "cannot use life flasks",
+      "mods": [{ "name": "CannotUseLifeFlasks", "type": "FLAG", "value": true }],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "non_unique_life_flasks_always_applied_with_no_instant_recovery_only_to_you; overlay/uniques.json: Reverie",
+      "source_note": "Zero available uses in calc::utility and block selected Life flask payloads in env_finalize::merge_flasks_charms. An explicit constant effect can still apply; per-flask recovery property figures remain available.",
+      "examples": ["Cannot use Life Flasks"]
+    },
+    {
+      "id": "non_unique_life_flasks_constant",
+      "pattern": "non-unique life flasks apply their effects constantly",
+      "mods": [{ "name": "NonUniqueLifeFlasksConstant", "type": "FLAG", "value": true }],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "non_unique_life_flasks_always_applied_with_no_instant_recovery_only_to_you; overlay/uniques.json: Reverie",
+      "source_note": "Equipped non-Unique Life flask specs admit their payload even when the slot is unselected or Life flasks cannot be used. Uses the existing combat-mode effect path and per-slot recovery rate, not regeneration or a charge/use timeline. Unique flasks and Mana flasks do not gain constant effects.",
+      "examples": ["Non-Unique Life Flasks apply their Effects constantly"]
+    },
+    {
+      "id": "life_flask_recovery_cannot_be_instant",
+      "pattern": "recovery from life flasks cannot be instant",
+      "mods": [{ "name": "LifeFlaskCannotBeInstant", "type": "FLAG", "value": true }],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "non_unique_life_flasks_always_applied_with_no_instant_recovery_only_to_you; overlay/uniques.json: Reverie",
+      "source_note": "calc::utility sets the source Life flask's instant fraction to zero, leaving all its recovery gradual, including copies to the same player's Mana or Energy Shield. Mana flask recovery copied to Life keeps its own instant fraction.",
+      "examples": ["Recovery from Life Flasks cannot be Instant"]
+    },
+    {
+      "id": "life_flask_recovery_only_to_you_unmodelled",
+      "pattern": "(?:cannot use life flasks non-unique life flasks apply their effects constantly recovery from life flasks cannot be instant )?recovery from your life flasks cannot be applied to anything other than you",
+      "mods": [],
+      "verified": false,
+      "batch": "unmodelled",
+      "exporter": "absent",
+      "game_source": "non_unique_life_flasks_always_applied_with_no_instant_recovery_only_to_you; overlay/uniques.json: Reverie",
+      "source_note": "Non-player flask-recovery recipient routing is not modelled. The existing utility figures describe the player only; copies to the player's Mana/ES are still self recovery. Do not label the restriction effectless or override FlasksDoNotApplyToPlayer. The combined four-line block remains unmodelled because partially understood blocks must not apply; ordinary item imports split the actionable lines.",
+      "examples": [
+        "Recovery from your Life Flasks cannot be applied to anything other than you",
+        "Cannot use Life Flasks\nNon-Unique Life Flasks apply their Effects constantly\nRecovery from Life Flasks cannot be Instant\nRecovery from your Life Flasks cannot be applied to anything other than you"
+      ]
+    },
+    {
+      "id": "azmeri_brew_reciprocal_recovery",
+      "pattern": "life flasks also recover mana mana flasks also recover life",
+      "mods": [
+        { "name": "LifeFlaskAppliesToMana", "type": "FLAG", "value": true },
+        { "name": "ManaFlaskAppliesToLife", "type": "FLAG", "value": true }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "life_mana_flasks_restore_mana_life; base/passive_tree.json: Azmeri Brew, node 47312",
+      "source_note": "Whole two-line stat equivalent to the two individual Azmeri Brew lines. calc::utility copies original flask recovery independently to the other resource without recursion or use-frequency assumptions.",
+      "examples": ["Life Flasks also recover Mana\nMana Flasks also recover Life"]
+    },
+    {
+      "id": "life_flasks_also_recover_mana",
+      "pattern": "life flasks also recover mana",
+      "mods": [{ "name": "LifeFlaskAppliesToMana", "type": "FLAG", "value": true }],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "life_mana_flasks_restore_mana_life; base/passive_tree.json: Azmeri Brew, node 47312",
+      "source_note": "Copies the life flask's recovery to the same player's Mana in calc::utility, before resource-specific recovery-rate modifiers. Uses the source flask's instant fraction and duration, and the receiver's ManaRecoveryRate. Copies never become sources for reciprocal copying; per-slot figures do not infer use frequency or uptime.",
+      "examples": ["Life Flasks also recover Mana"]
+    },
+    {
+      "id": "mana_flasks_also_recover_life",
+      "pattern": "mana flasks also recover life",
+      "mods": [{ "name": "ManaFlaskAppliesToLife", "type": "FLAG", "value": true }],
+      "verified": false,
+      "batch": "S2",
+      "exporter": "absent",
+      "game_source": "life_mana_flasks_restore_mana_life; base/passive_tree.json: Azmeri Brew, node 47312",
+      "source_note": "Copies the mana flask's recovery to the same player's Life in calc::utility, before resource-specific recovery-rate modifiers. Uses the source flask's instant fraction and duration, and the receiver's LifeRecoveryRate. Copies never become sources for reciprocal copying; per-slot figures do not infer use frequency or uptime.",
+      "examples": ["Mana Flasks also recover Life"]
+    },
+    {
       "id": "flask_constant_effect",
       "pattern": "this flask cannot be used but applies its effect constantly",
       "mods": [
