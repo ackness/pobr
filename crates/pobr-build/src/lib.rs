@@ -57,7 +57,9 @@ pub mod xml_serde;
 pub use build::{Build, CharacterIdentity, SocketGroup, WeaponSet};
 pub use build_code::{decode_pob_code, encode_pob_code};
 pub use build_config::BuildConfig;
-pub use build_data::{BuildData, ClassBaseAttributes, EffectStats, ResolvedSkillLevel};
+pub use build_data::{
+    BuildData, ClassBaseAttributes, EffectStats, ResolvedSkillLevel, load_runtime_constants,
+};
 pub use calc_cache::{CalcCache, DataCalcCache};
 pub use calc_orchestrator::{
     CalculationReport, DataOrchestratorOptions, Diagnosis, LineFate, MainSkillSummary, ModifierRef,

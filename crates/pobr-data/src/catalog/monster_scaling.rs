@@ -112,6 +112,21 @@ fn lookup_f64(table: &[f64], level: u32) -> f64 {
 }
 
 impl MonsterScalingTable {
+    /// Whether the table holds data (every one of the nine tables is
+    /// non-empty), i.e. it was loaded from `base/monster_scaling.json` rather
+    /// than left at the empty `Default`.
+    pub fn is_loaded(&self) -> bool {
+        !(self.accuracy.is_empty()
+            || self.evasion.is_empty()
+            || self.armour.is_empty()
+            || self.life.is_empty()
+            || self.ally_life.is_empty()
+            || self.damage.is_empty()
+            || self.ally_damage.is_empty()
+            || self.ailment_threshold.is_empty()
+            || self.poise_threshold.is_empty())
+    }
+
     /// Looks up monster base accuracy (level 1..=100, out-of-range
     /// clamped).
     pub fn accuracy_at(&self, level: u32) -> u32 {
@@ -173,6 +188,7 @@ mod tests {
     #[test]
     fn default_is_empty_and_looks_up_zero() {
         let t = MonsterScalingTable::default();
+        assert!(!t.is_loaded());
         assert!(t.accuracy.is_empty() && t.ally_life.is_empty() && t.poise_threshold.is_empty());
         assert_eq!(t.life_at(50), 0);
         assert_eq!(t.ally_life_at(50), 0);
@@ -188,6 +204,7 @@ mod tests {
             ally_damage: vec![1.5, 2.5, 3.5],
             ..MonsterScalingTable::default()
         };
+        assert!(!t.is_loaded(), "seven tables are still empty");
         assert_eq!(t.ally_life_at(0), 10);
         assert_eq!(t.ally_life_at(1), 10);
         assert_eq!(t.ally_life_at(2), 20);
