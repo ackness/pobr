@@ -2,9 +2,9 @@ import { CONFIG_LABEL_ZH, CONFIG_LABEL_ZH_TW } from './configLabels';
 /** UI copy only (src/locales/<lang>.json). Game names and modifier text use the versioned localization data. */
 
 import { STAT_SECTIONS } from './statDisplay';
-import { lookup, messages, type Lang, type Messages } from '../locales';
+import { lookup, messages, translated, type Lang, type Messages } from '../locales';
 
-export { LANGS, isLang, lookup, messages, type Lang } from '../locales';
+export { LANGS, isLang, lookup, messages, translated, type Lang } from '../locales';
 
 export type UiKey = keyof Messages['ui'];
 
@@ -135,7 +135,8 @@ export function statNameLabel(lang: Lang, id: string): string {
     const row = section.rows.find((r) => r.id === id);
     if (row) return row.label[lang];
   }
-  const extra = lookup(lang, 'statExtra', id);
+  // statExtra only translates: English keeps reading detail, then the ID.
+  const extra = translated(lang, 'statExtra', id);
   if (extra) return extra;
   return lookup(lang, 'detail', id) ?? id;
 }

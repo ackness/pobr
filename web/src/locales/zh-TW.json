@@ -2851,6 +2851,9 @@
     "compare": "階段比較"
   },
   "language": {
-    "name": "繁體中文"
+    "name": "繁體中文",
+    "fallback": [
+      "zh-CN"
+    ]
   }
 }
