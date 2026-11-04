@@ -1,5 +1,25 @@
 import { describe, expect, test } from 'vitest';
 import { formatStatValue, statMap, STAT_SECTIONS } from './statDisplay';
+import { statNameLabel } from './i18n';
+
+describe('copied flask recovery labels', () => {
+  test('both resources and their detail inputs have localized labels', () => {
+    for (const resource of ['Life', 'Mana']) {
+      for (const field of ['Recovery', 'InstantRecovery', 'RecoveryPerSecond']) {
+        const id = `Flask1${resource}${field}`;
+        for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
+          expect(statNameLabel(lang, id)).not.toContain(id);
+          if (lang !== 'en-US') expect(statNameLabel(lang, id)).not.toMatch(/[A-Za-z]/);
+        }
+      }
+    }
+    expect(statNameLabel('zh-CN', 'Flask1ManaRecoveryPerSecond')).toBe('药剂 1 · 每秒额外恢复的魔力');
+    for (const id of ['UtilityCopiedInstant', 'UtilityCopiedGradual', 'UtilityReceiverRecoveryMod']) {
+      expect(statNameLabel('zh-CN', id)).not.toMatch(/[A-Za-z]/);
+    }
+    expect(statNameLabel('zh-CN', 'Flask1UnknownFutureRecovery')).toBe('Flask1UnknownFutureRecovery');
+  });
+});
 
 describe('formatStatValue', () => {
   test('int 取整加千分位', () => {
