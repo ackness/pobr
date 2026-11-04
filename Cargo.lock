@@ -452,7 +452,6 @@ dependencies = [
  "quick-xml",
  "serde",
  "serde_json",
- "sha2",
  "thiserror",
 ]
 
@@ -499,7 +498,6 @@ dependencies = [
  "pobr-data",
  "pobr-tree",
  "serde",
- "serde_ignored",
  "serde_json",
  "sha2",
 ]
