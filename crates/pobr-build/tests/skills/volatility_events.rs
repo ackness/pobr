@@ -317,14 +317,15 @@ fn volatility_details_rebuild_values_and_retain_source_and_config_wiring() {
         ),
         &data,
     );
-    let labels_web = include_str!("../../../../web/src/lib/detailLabels.ts");
+    let locale: serde_json::Value =
+        serde_json::from_str(include_str!("../../../../web/src/locales/en-US.json")).unwrap();
     for id in STATS {
         let entry = pobr_core::display_catalog()
             .into_iter()
             .find(|s| s.id.as_str() == *id)
             .unwrap();
         assert!(entry.pob_key.is_none());
-        assert!(labels_web.contains(&format!("{id}:")), "{id}");
+        assert!(locale["detail"][*id].is_string(), "{id}");
         let detail = pobr_build::breakdown::detail::stat_detail(&session, id).unwrap();
         if *id == "VolatilityRefreshChance" {
             assert_eq!(
@@ -362,7 +363,7 @@ fn volatility_details_rebuild_values_and_retain_source_and_config_wiring() {
         };
         close(rebuilt, display_value(session.output(), id));
         for i in d.inputs {
-            assert!(labels_web.contains(&format!("{}:", i.id)), "{}", i.id);
+            assert!(locale["detail"][i.id.as_str()].is_string(), "{}", i.id);
         }
     }
     let catalog = GameData::new(repo_data_root().join(data_version()))
