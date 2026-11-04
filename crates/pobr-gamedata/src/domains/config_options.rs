@@ -10,59 +10,128 @@ use pobr_data::catalog::config_def::ConfigOptionsDef;
 
 use crate::{GameData, LoadError};
 
+/// PoBR-owned config options (`data/overlay-common/*_config_options.json`),
+/// bundled so native and staged-memory loaders see the same set. Each file
+/// replaces catalog entries with the same `var`. Every such file in
+/// `data/overlay-common/` must be listed here (checked by a unit test).
+const OWNED_CONFIG_OPTIONS: &[(&str, &str)] = &[
+    (
+        "archon_config_options.json",
+        include_str!("../../../../data/overlay-common/archon_config_options.json"),
+    ),
+    // Standing on ground is per actor, not inferred for the player's allies.
+    (
+        "consecrated_ground_config_options.json",
+        include_str!("../../../../data/overlay-common/consecrated_ground_config_options.json"),
+    ),
+    (
+        "beira_config_options.json",
+        include_str!("../../../../data/overlay-common/beira_config_options.json"),
+    ),
+    (
+        "cadiro_config_options.json",
+        include_str!("../../../../data/overlay-common/cadiro_config_options.json"),
+    ),
+    (
+        "combo_config_options.json",
+        include_str!("../../../../data/overlay-common/combo_config_options.json"),
+    ),
+    (
+        "energy_config_options.json",
+        include_str!("../../../../data/overlay-common/energy_config_options.json"),
+    ),
+    (
+        "remnant_pickup_config_options.json",
+        include_str!("../../../../data/overlay-common/remnant_pickup_config_options.json"),
+    ),
+    (
+        "volatility_config_options.json",
+        include_str!("../../../../data/overlay-common/volatility_config_options.json"),
+    ),
+    (
+        "enemy_type_and_consumption_config_options.json",
+        include_str!(
+            "../../../../data/overlay-common/enemy_type_and_consumption_config_options.json"
+        ),
+    ),
+];
+
 impl GameData {
     /// Loads the config options catalog (always resolved under
-    /// `overlay/`; `_meta` is ignored by serde).
+    /// `overlay/`; `_meta` is ignored by serde) and applies the PoBR-owned
+    /// options on top of it.
     ///
     /// When the table is missing, the caller tolerates it and falls back
     /// to the old path (`xml_build::parse_config`'s existing branch).
     pub fn config_options(&self) -> Result<ConfigOptionsDef, LoadError> {
         let mut catalog: ConfigOptionsDef =
             self.load_json_at(self.overlay_path("config_options.json"))?;
-        // PoBR-owned options are bundled for native and staged-memory loaders alike.
-        let own: ConfigOptionsDef = serde_json::from_str(include_str!(
-            "../../../../data/overlay-common/archon_config_options.json"
-        ))
-        .expect("bundled Archon config options");
-        catalog.options = crate::paths::merge_by_key(own.options, catalog.options, |o| &o.var);
-        // Standing on ground is per actor, not inferred for the player's allies.
-        let ground: ConfigOptionsDef = serde_json::from_str(include_str!(
-            "../../../../data/overlay-common/consecrated_ground_config_options.json"
-        ))
-        .expect("bundled Consecrated Ground config options");
-        catalog.options = crate::paths::merge_by_key(catalog.options, ground.options, |o| &o.var);
-        let beira: ConfigOptionsDef = serde_json::from_str(include_str!(
-            "../../../../data/overlay-common/beira_config_options.json"
-        ))
-        .expect("bundled Beira config options");
-        catalog.options = crate::paths::merge_by_key(catalog.options, beira.options, |o| &o.var);
-        let arrows: ConfigOptionsDef = serde_json::from_str(include_str!(
-            "../../../../data/overlay-common/cadiro_config_options.json"
-        ))
-        .expect("bundled Cadiro arrow config options");
-        catalog.options = crate::paths::merge_by_key(catalog.options, arrows.options, |o| &o.var);
-        let combo: ConfigOptionsDef = serde_json::from_str(include_str!(
-            "../../../../data/overlay-common/combo_config_options.json"
-        ))
-        .expect("bundled Combo config options");
-        catalog.options = crate::paths::merge_by_key(catalog.options, combo.options, |o| &o.var);
-        let remnants: ConfigOptionsDef = serde_json::from_str(include_str!(
-            "../../../../data/overlay-common/remnant_pickup_config_options.json"
-        ))
-        .expect("bundled Remnant pickup config options");
-        catalog.options = crate::paths::merge_by_key(catalog.options, remnants.options, |o| &o.var);
-        let volatility: ConfigOptionsDef = serde_json::from_str(include_str!(
-            "../../../../data/overlay-common/volatility_config_options.json"
-        ))
-        .expect("bundled Volatility config options");
-        catalog.options =
-            crate::paths::merge_by_key(catalog.options, volatility.options, |o| &o.var);
-        let state: ConfigOptionsDef = serde_json::from_str(include_str!(
-            "../../../../data/overlay-common/enemy_type_and_consumption_config_options.json"
-        ))
-        .expect("bundled enemy type and consumption config options");
-        catalog.options = crate::paths::merge_by_key(catalog.options, state.options, |o| &o.var);
+        for (name, text) in OWNED_CONFIG_OPTIONS {
+            let own: ConfigOptionsDef = serde_json::from_str(text)
+                .unwrap_or_else(|err| panic!("bundled {name} is invalid: {err}"));
+            catalog.options = crate::paths::merge_by_key(catalog.options, own.options, |o| &o.var);
+        }
         catalog.options.sort_by(|a, b| a.var.cmp(&b.var));
         Ok(catalog)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::OWNED_CONFIG_OPTIONS;
+    use crate::GameData;
+
+    /// A new `*_config_options.json` in `data/overlay-common/` that is not
+    /// bundled would silently have no runtime effect.
+    #[test]
+    fn every_owned_config_options_file_is_bundled() {
+        let dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/overlay-common");
+        let mut on_disk: Vec<String> = std::fs::read_dir(&dir)
+            .expect("data/overlay-common is readable")
+            .map(|entry| {
+                entry
+                    .expect("directory entry")
+                    .file_name()
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .filter(|name| name.ends_with("_config_options.json"))
+            .collect();
+        on_disk.sort();
+        let mut bundled: Vec<String> = OWNED_CONFIG_OPTIONS
+            .iter()
+            .map(|(name, _)| (*name).to_owned())
+            .collect();
+        bundled.sort();
+        assert_eq!(on_disk, bundled);
+    }
+
+    /// Owned options replace a catalog entry with the same `var`.
+    #[test]
+    fn owned_options_override_the_catalog() {
+        let catalog = r#"{"options":[
+            {"var":"energyMinionPower","input_type":"check","section":"Old","label":"stale catalog copy","effects":[]},
+            {"var":"conditionAffectedByArchon","input_type":"check","section":"Old","label":"stale catalog copy","effects":[]},
+            {"var":"zzCatalogOnly","input_type":"check","section":"Old","label":"catalog only","effects":[]}
+        ]}"#;
+        let data = GameData::from_memory(std::collections::BTreeMap::from([(
+            "overlay/config_options.json".to_owned(),
+            catalog.as_bytes().to_vec(),
+        )]));
+        let options = data.config_options().expect("config options load").options;
+        let label = |var: &str| {
+            options
+                .iter()
+                .find(|o| o.var == var)
+                .unwrap_or_else(|| panic!("missing {var}"))
+                .label
+                .clone()
+        };
+        let stale = Some("stale catalog copy".to_owned());
+        assert_ne!(label("energyMinionPower"), stale);
+        assert_ne!(label("conditionAffectedByArchon"), stale);
+        assert_eq!(label("zzCatalogOnly").as_deref(), Some("catalog only"));
+        assert!(options.windows(2).all(|pair| pair[0].var <= pair[1].var));
     }
 }

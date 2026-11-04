@@ -141,7 +141,7 @@ Reverie（Shaman Mantle）的 `unique_body_armour_life_flask_life_recovery_+%_fi
 
 `charm_recover_X_mana_when_used`（`Mods.CharmGainManaOnUse1..8`）给 `Charm<N>ManaRecoveryOnUse`；生命同类 `charm_recover_X_life_when_used`（`CharmGainLifeOnUse1..8`）给 `Charm<N>LifeRecoveryOnUse`。两者是每次使用的局部量，不受品质或再生影响。魔力药剂溢出最大魔力的 `local_unique_flask_mana_flask_recovery_can_overcap_mana_during_flask_effect` 暂不改输出，因为已有恢复量未封顶，也未模拟当前魔力。
 
-`local_%_chance_to_gain_flask_charge_on_kill` 为局部 `FlaskChargeOnKillChance`：`*ChargeGen` 增加“每秒击杀 × 几率 / 100 × 充能获取倍率”。频率必须由 `enemyKillsPerSecond`（`Multiplier:EnemyKillsPerSecond`，`append_energy_options` 合入）提供，留空则台账报缺该条件，不假设击杀率。规则 `absent`。Lavianga 的 `local_flask_always_drinking` 显示可用次数零，但保留常驻恢复率。
+`local_%_chance_to_gain_flask_charge_on_kill` 为局部 `FlaskChargeOnKillChance`：`*ChargeGen` 增加“每秒击杀 × 几率 / 100 × 充能获取倍率”。频率必须由 `enemyKillsPerSecond`（`Multiplier:EnemyKillsPerSecond`，定义在 `data/overlay-common/energy_config_options.json`）提供，留空则台账报缺该条件，不假设击杀率。规则 `absent`。Lavianga 的 `local_flask_always_drinking` 显示可用次数零，但保留常驻恢复率。
 
 ### 药剂吸纳与资源扣除
 
