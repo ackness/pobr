@@ -3,6 +3,7 @@ members = [
     "crates/pobr-data",
     "crates/pobr-core",
     "crates/pobr-gamedata",
+    "crates/pobr-i18n",
     "crates/pobr-tree",
     "crates/pobr-item",
     "crates/pobr-build",
@@ -23,6 +24,7 @@ edition = "2024"
 pobr-data = { path = "crates/pobr-data" }
 pobr-core = { path = "crates/pobr-core" }
 pobr-gamedata = { path = "crates/pobr-gamedata" }
+pobr-i18n = { path = "crates/pobr-i18n" }
 pobr-tree = { path = "crates/pobr-tree" }
 pobr-item = { path = "crates/pobr-item" }
 pobr-build = { path = "crates/pobr-build" }

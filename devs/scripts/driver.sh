@@ -365,7 +365,7 @@ gate_step() {
     core)     cargo test -q -p pobr-core ;;
     build)    cargo test -q -p pobr-build --lib --test skills --test codec --test dualrun --test tree_convert ;;
     parity)   cargo test -q -p pobr-build --test parity ;;
-    apps)     cargo test -q -p pobr-data -p pobr-gamedata -p pobr-tree -p pobr-item \
+    apps)     cargo test -q -p pobr-data -p pobr-gamedata -p pobr-i18n -p pobr-tree -p pobr-item \
                 -p pobr-wasm -p pobr-cli ;;
     web)      pnpm --dir web typecheck && pnpm --dir web test ;;
     accuracy) cmd_accuracy ;;

@@ -1,5 +1,5 @@
 //! Safe socket editing. Capacity and augment restrictions come from pinned PoB2 data.
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use pobr_build::BuildData;
 use pobr_data::catalog::{BaseItemDef, RuneDef, RuneSlotDef};
@@ -82,10 +82,26 @@ fn normalize_input(text: &str, data: &BuildData, game: &GameData) -> Result<Stri
         .get(base_index)
         .ok_or_else(|| ApiError::bad_request("invalid_item"))?
         .clone();
-    let translations = [
-        game.base_item_names("zh-CN").unwrap_or_default(),
-        game.base_item_names("zh-TW").unwrap_or_default(),
-    ];
+    let locales = game
+        .validate_manifest()
+        .map(|manifest| manifest.languages)
+        .unwrap_or_default();
+    let translations: Vec<BTreeMap<String, String>> = locales
+        .iter()
+        .map(|lang| game.base_item_names(lang).unwrap_or_default())
+        .collect();
+    // A localized alias spelled with characters no English base name uses
+    // (an ideographic script, say) has no English word boundaries to check.
+    let english_chars = std::cell::OnceCell::new();
+    let unspaced = |alias: &str| {
+        let english: &HashSet<char> = english_chars.get_or_init(|| {
+            data.base_items
+                .keys()
+                .flat_map(|name| name.chars())
+                .collect()
+        });
+        alias.chars().any(|c| !english.contains(&c))
+    };
     let resolve = |name: &str, allow_affixed: bool| -> Option<String> {
         if data.base_items.contains_key(name) {
             return Some(name.to_string());
@@ -111,7 +127,7 @@ fn normalize_input(text: &str, data: &BuildData, game: &GameData) -> Result<Stri
                 aliases
                     .filter(|alias| {
                         name.match_indices(alias).any(|(at, found)| {
-                            crate::zh::has_cjk(found)
+                            unspaced(found)
                                 || (at == 0 || name[..at].ends_with(' '))
                                     && (at + found.len() == name.len()
                                         || name[at + found.len()..].starts_with(' '))

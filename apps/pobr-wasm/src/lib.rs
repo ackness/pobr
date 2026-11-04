@@ -17,7 +17,6 @@ pub mod build_api;
 pub mod session;
 pub mod state;
 mod xml_write;
-pub mod zh;
 
 pub use build_api::{
     attribution_json, breakdown_descriptors_json, calculate_build_json, classify_item_lines_json,
@@ -25,8 +24,9 @@ pub use build_api::{
     encode_build_json, gem_catalog_json, import_party_member_json, import_trade_items_json,
     item_augment_info_json, item_crafting_catalog_json, line_usage_json, manage_loadout_json,
     minion_catalog_json, node_power_json, normalize_item_draft_json, optimize_variants_json,
-    reforge_runes_json, rune_catalog_json, skill_metrics_json, translate_lines_to_zh_cn_json,
-    unique_catalog_json, unique_item_draft_json,
+    parse_localized_lines_json, reforge_runes_json, rune_catalog_json, skill_metrics_json,
+    translate_lines_json, translate_lines_to_zh_cn_json, unique_catalog_json,
+    unique_item_draft_json,
 };
 pub use build_api::{
     preview_tree_conversion_json, preview_tree_edit_json, support_groups_compatible_json,
@@ -198,6 +198,19 @@ pub mod wasm {
     #[wasm_bindgen(js_name = translateLinesToZhCn)]
     pub fn translate_lines_to_zh_cn_json(lines_json: &str) -> Result<String, JsError> {
         crate::build_api::translate_lines_to_zh_cn_json(lines_json)
+            .map_err(|err| JsError::new(&err))
+    }
+
+    /// JS entry point: `translateLines(lang, linesJson) -> string` (English mod lines -> `lang` display).
+    #[wasm_bindgen(js_name = translateLines)]
+    pub fn translate_lines_json(lang: &str, lines_json: &str) -> Result<String, JsError> {
+        crate::build_api::translate_lines_json(lang, lines_json).map_err(|err| JsError::new(&err))
+    }
+
+    /// JS entry point: `parseLocalizedLines(lang, linesJson) -> string` (`lang` mod lines -> English canonical lines).
+    #[wasm_bindgen(js_name = parseLocalizedLines)]
+    pub fn parse_localized_lines_json(lang: &str, lines_json: &str) -> Result<String, JsError> {
+        crate::build_api::parse_localized_lines_json(lang, lines_json)
             .map_err(|err| JsError::new(&err))
     }
 

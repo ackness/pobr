@@ -46,7 +46,8 @@ pub use augments::{item_augment_info_json, reforge_runes_json, rune_catalog_json
 pub(crate) use calculate::clear_snapshots;
 pub use calculate::{breakdown_descriptors_json, calculate_build_json, skill_metrics_json};
 pub use catalog::{
-    classify_item_lines_json, gem_catalog_json, minion_catalog_json, translate_lines_to_zh_cn_json,
+    classify_item_lines_json, gem_catalog_json, minion_catalog_json, parse_localized_lines_json,
+    translate_lines_json, translate_lines_to_zh_cn_json,
 };
 pub use crafting::{item_crafting_catalog_json, normalize_item_draft_json};
 pub use decode::{
@@ -146,26 +147,22 @@ fn limb_slot_from_id(id: &str) -> Result<LimbSlot, String> {
     LimbSlot::from_id(id).ok_or_else(|| format!("unknown limb slot: {id}"))
 }
 
-/// Chinese input preprocessing (Phase 7.1): a line containing CJK attempts
+/// Localized input preprocessing: a line written in one of the data pack's
+/// locales (decided by that locale's templates and names) attempts
 /// "template reverse lookup -> canonical English" translation; if
-/// unrecognized or there's no zh-CN data, it's kept as-is (the parser marks
-/// it unsupported, visible to the frontend).
+/// unrecognized, or no locale has templates, it's kept as-is (the parser
+/// marks it unsupported, visible to the frontend).
 fn localize_input_text(text: &str) -> String {
-    if !crate::zh::has_cjk(text) {
+    let parsers = state::input_parsers();
+    let parser_for = |line: &str| parsers.iter().find(|parser| parser.is_localized(line));
+    if !text.lines().any(|line| parser_for(line).is_some()) {
         return text.to_string();
     }
-    let Some(translator) = state::zh_translator() else {
-        return text.to_string();
-    };
     text.lines()
         .map(|line| {
-            if crate::zh::has_cjk(line) {
-                translator
-                    .translate_line(line)
-                    .unwrap_or_else(|| line.to_string())
-            } else {
-                line.to_string()
-            }
+            parser_for(line)
+                .and_then(|parser| parser.parse_line(line))
+                .unwrap_or_else(|| line.to_string())
         })
         .collect::<Vec<_>>()
         .join("\n")
