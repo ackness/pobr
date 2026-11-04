@@ -125,8 +125,14 @@ export function ledgerReason(line: LineUsageLine, lang: Lang): string | null {
   const reasons = line.reason ? [line.reason] : line.modifiers
     .filter(mod => mod.status === 'inactive' || mod.status === 'unread')
     .flatMap(mod => mod.reason ? [mod.reason] : []);
-  return [...new Set(reasons)].map(reason => {
+  const localized = [...new Set(reasons)].map(reason => {
     if (lang !== 'en-US') {
+      if (reason === 'its value is 0') {
+        return words(lang, reason, '数值为 0。', '數值為 0。');
+      }
+      if (/^SkillType \w+(?: · SkillType \w+)*$/.test(reason)) {
+        return words(lang, reason, '当前技能类型不满足词条要求。', '目前技能類型不滿足詞綴要求。');
+      }
       if (line.status === 'unmodelled' && /^rule \S+ recognises it and stores nothing$/.test(reason)) {
         return statusHint(lang, 'unmodelled');
       }
@@ -147,6 +153,9 @@ export function ledgerReason(line: LineUsageLine, lang: Lang): string | null {
       if (reason === 'read only while its flask or charm effect is admitted in the selected combat state') {
         return words(lang, reason, '当前战斗状态未启用此药剂或护符效果。', '目前戰鬥狀態未啟用此藥劑或護符效果。');
       }
+      if (reason === 'read only while the equipped flask can apply instant recovery') {
+        return words(lang, reason, '当前药剂无法应用立即回复效果。', '目前藥劑無法套用立即回復效果。');
+      }
     }
     const missing = /(?:read only while )?the equipped (body armour|shield) has no base (Armour|Evasion|Energy Shield)$/.exec(reason);
     if (!missing || lang === 'en-US') return reason;
@@ -154,7 +163,8 @@ export function ledgerReason(line: LineUsageLine, lang: Lang): string | null {
     const defence = { Armour: words(lang, 'Armour', '护甲', '護甲'), Evasion: words(lang, 'Evasion', '闪避', '閃避'),
       'Energy Shield': words(lang, 'Energy Shield', '能量护盾', '能量護盾') }[missing[2]];
     return words(lang, reason, `当前${slot}没有可缩放的${defence}基值。`, `目前${slot}沒有可縮放的${defence}基值。`);
-  }).join(' · ') || null;
+  });
+  return [...new Set(localized)].join(' · ') || null;
 }
 
 export interface LedgerFilter {

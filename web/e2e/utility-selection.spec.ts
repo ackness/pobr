@@ -18,7 +18,7 @@ test('unselected utilities survive import, text editing, undo, reload and share-
   await importAndOpen(page, code);
   await openSlot(page, 'Flask 1');
   await expect(selected(page)).not.toBeChecked();
-  await expect(page.locator('#utility-selection-hint')).toContainText('Reverie');
+  await expect(page.locator('#utility-selection-hint')).toContainText('unselected flask');
   const original = (await utilities(page)).find(item => item.slot === 'Flask 1')!;
   expect(original.active).toBe(false);
 

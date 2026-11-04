@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { LineUsageLine, LineUsageStatus } from '../../../api/types';
+import { configLabel } from '../../../lib/configLabels';
 import {
   ATTENTION, NO_FILTER, STATUS_ORDER, cleanLineText, filterLedger, ledgerDisplayText, ledgerReason, lineText, sortLedger, sourceGroup, statusHint, statusLabel,
   statusRank, statusTone, summarise, toggleStatus,
@@ -69,10 +70,12 @@ describe('lineText', () => {
       .toBe('Configuration: Gamblesprint Movement Speed');
     expect(ledgerDisplayText({ ...config, text: '10% increased Damage' }, 'zh-CN')).toBe('10% increased Damage');
     expect(ledgerDisplayText({ ...config, source_id: 'config.future' }, 'zh-CN')).toBe('配置：config.future');
-    const generated = { ...config, source_id: 'config.enableSpectreCurses', text: 'SpectreCursesEnabled',
+    const generated = { ...config, source_id: 'config.raiseSpectreEnableCurses', text: 'SpectreCursesEnabled',
       modifiers: [{ name: 'SpectreCursesEnabled', mod_type: 'FLAG', value: true, applied: null,
         status: 'unread' as const, reason: null, used_in: [] }] };
-    expect(ledgerDisplayText(generated, 'zh-CN', { enableSpectreCurses: '启用诅咒：' })).toBe('配置：启用诅咒：');
+    expect(ledgerDisplayText(generated, 'zh-CN', {
+      raiseSpectreEnableCurses: configLabel('zh-CN', { var: 'raiseSpectreEnableCurses', label: 'Enable curses:' }),
+    })).toBe('配置：启用幽魂的诅咒');
     expect(ledgerDisplayText(generated, 'zh-CN')).toBe('SpectreCursesEnabled');
   });
 
