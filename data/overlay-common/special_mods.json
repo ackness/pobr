@@ -6717,6 +6717,25 @@
       "exporter": "absent"
     },
     {
+      "id": "maim_on_hit_%_vs_poisoned_enemies",
+      "pattern": "(\\d+(?:\\.\\d+)?)% chance for attacks to maim on hit against poisoned enemies",
+      "mods": [
+        {
+          "name": "MaimChance",
+          "type": "BASE",
+          "value": "$1",
+          "flags": ["Attack"],
+          "tags": [{"type": "Condition", "var": "EnemyPoisoned"}]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "game_source": "base/stats.json: maim_on_hit_%_vs_poisoned_enemies; base/passive_tree.json: Crippling Toxins (43677)",
+      "source_note": "The selected poisoned-enemy state gates the existing attack-hit Maim chance view. Does not set EnemyMaimed or assume poison/maim application history.",
+      "examples": ["25% chance for Attacks to Maim on Hit against Poisoned Enemies"],
+      "exporter": "absent"
+    },
+    {
       "id": "attack_maim_chance_unmodelled",
       "pattern": "attacks have (\\d+(?:\\.\\d+)?)% chance to maim on hit",
       "mods": [

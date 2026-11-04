@@ -334,6 +334,57 @@ fn owned_totals_keep_priority_and_exporter_policy_with_catalog_fallback() {
 }
 
 #[test]
+fn twister_additional_quality_scales_projectile_speed_but_not_acceleration_damage() {
+    // GrantedEffectQualityStats: Twister's additional quality is
+    // active_skill_projectile_speed_+%_final = 1 per quality. Projectile
+    // Acceleration III transfers increases/reductions, never MORE speed.
+    let data = crate::test_data();
+    for support in [
+        "",
+        r#"<Gem skillId="SupportProjectileAccelerationPlayerThree" level="1" enabled="true"/>"#,
+    ] {
+        for quality in [0, 20, 26, 40] {
+            let run = |node: bool| {
+                let nodes = if node { "14429" } else { "" };
+                let build = pobr_build::parse_build(&format!(r#"<PathOfBuilding2>
+<Build level="80" className="Mercenary" ascendClassName="Gemling Legionnaire" mainSocketGroup="1"/>
+<Tree activeSpec="1"><Spec nodes="{nodes}" treeVersion="0_5"/></Tree>
+<Skills><Skill enabled="true"><Gem skillId="TwisterPlayer" level="20" quality="{quality}" enabled="true"/>{support}</Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Test Spear
+Grand Spear
+Implicits: 0
+Adds 10 to 20 Physical Damage
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#)).unwrap();
+                calculate_with_data_session(&build, data, &DataOrchestratorOptions::default())
+                    .unwrap()
+            };
+            let off = run(false);
+            let on = run(true);
+            assert!(off.output().projectile_speed_mod > 0.0);
+            // MORE entries sharing a name use the engine's two-decimal bucket
+            // rounding: 1.4 * 1.26 = 1.764 is displayed/consumed as 1.76.
+            let expected =
+                (off.output().projectile_speed_mod * (1.0 + quality as f64 / 100.0) * 100.0)
+                    .round()
+                    / 100.0;
+            assert!(
+                (on.output().projectile_speed_mod - expected).abs() < 1e-9,
+                "q{quality}: expected {expected}, got {}",
+                on.output().projectile_speed_mod
+            );
+            assert!(on.output().total_hit_avg > 0.0);
+            assert_eq!(on.output().total_hit_avg, off.output().total_hit_avg);
+            assert_eq!(
+                pobr_core::display_value(on.output(), "TotalDPS"),
+                pobr_core::display_value(off.output(), "TotalDPS")
+            );
+        }
+    }
+}
+
+#[test]
 fn quality_additions_do_not_duplicate_an_intrinsic_total() {
     let mut data = data(Some(4.0));
     data.gem_quality_stats.insert(

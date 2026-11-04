@@ -1,4 +1,4 @@
-import type { Lang } from '../../../lib/i18n';
+import { originLabel, type Lang } from '../../../lib/i18n';
 import type { LineUsage, LineUsageLine, LineUsageStatus } from '../../../api/types';
 import { words } from '../../text';
 
@@ -35,7 +35,7 @@ export function statusLabel(lang: Lang, status: LineUsageStatus): string {
   switch (status) {
     case 'applied': return w('Applied', '已生效', '已生效');
     case 'partial': return w('Partly applied', '部分生效', '部分生效');
-    case 'inactive': return w('Inactive', '未触发', '未觸發');
+    case 'inactive': return w('Inactive', '当前不生效', '目前不生效');
     case 'unread': return w('Not read', '无人读取', '無人讀取');
     case 'outside': return w('Used elsewhere', '其他途径使用', '其他途徑使用');
     case 'no_effect': return w('No effect', '无计算影响', '無計算影響');
@@ -55,7 +55,7 @@ export function statusHint(lang: Lang, status: LineUsageStatus): string {
     case 'outside': return w('Used by a step outside the modifier store: item defences, gem levels, jewel radius.', '由词条库之外的环节使用：装备自身防御、宝石等级、珠宝范围等。', '由詞綴庫之外的環節使用：裝備自身防禦、寶石等級、珠寶範圍等。');
     case 'no_effect': return w('Recognised and known not to change any output.', '已识别，且确认不影响任何输出。', '已識別，且確認不影響任何輸出。');
     case 'unmodelled': return w('Recognised, but the mechanic is not implemented yet.', '已识别，但该机制尚未实现。', '已識別，但該機制尚未實現。');
-    case 'unparsed': return w('No rule could read this line, so it has no effect.', '没有规则能解析这一行，因此它没有任何效果。', '沒有規則能解析這一行，因此它沒有任何效果。');
+    case 'unparsed': return w('No rule could read this line, so this calculation does not include its effect.', '没有规则能解析这一行，本次计算未计入其效果。', '沒有規則能解析這一行，本次計算未計入其效果。');
     case 'no_modifier': return w('Read into a modifier, but it was not stored for the calculation.', '已解析出词条，但没有存入计算。', '已解析出詞綴，但沒有存入計算。');
   }
 }
@@ -98,6 +98,37 @@ export function cleanLineText(text: string): string {
 export function lineText(line: LineUsageLine): string {
   if (line.text) return cleanLineText(line.text);
   return line.modifiers[0]?.name ?? '—';
+}
+
+/** Engine-generated descriptions are UI text, not imported game-text templates. */
+export function ledgerDisplayText(line: LineUsageLine, lang: Lang, configLabels: Readonly<Record<string, string>> = {}): string {
+  const text = lineText(line);
+  if (text === 'Config' && line.source_id?.startsWith('config.')) {
+    const label = configLabels[line.source_id.slice(7)] ?? originLabel(lang, line.source_id);
+    return words(lang, `Configuration: ${label}`, `配置：${label}`, `配置：${label}`);
+  }
+  if (line.source_id === 'base.AncestralBoost'
+    && text === 'Ancestral Boost: 2 additional Strike targets; 30% more Slam damage and 25% increased Slam area') {
+    return words(lang, text,
+      '先祖增幅：打击额外以 2 个敌人为目标；猛击伤害总增 30%，范围扩大 25%',
+      '先祖增幅：打擊額外以 2 個敵人為目標；重擊傷害總增 30%，範圍增加 25%');
+  }
+  return text;
+}
+
+/** Explain an inactive row without making the user expand its modifier table. */
+export function ledgerReason(line: LineUsageLine, lang: Lang): string | null {
+  const reasons = line.reason ? [line.reason] : line.modifiers
+    .filter(mod => mod.status === 'inactive' || mod.status === 'unread')
+    .flatMap(mod => mod.reason ? [mod.reason] : []);
+  return [...new Set(reasons)].map(reason => {
+    const missing = /(?:read only while )?the equipped (body armour|shield) has no base (Armour|Evasion|Energy Shield)$/.exec(reason);
+    if (!missing || lang === 'en-US') return reason;
+    const slot = missing[1] === 'shield' ? '盾牌' : words(lang, 'Body armour', '胸甲', '胸甲');
+    const defence = { Armour: words(lang, 'Armour', '护甲', '護甲'), Evasion: words(lang, 'Evasion', '闪避', '閃避'),
+      'Energy Shield': words(lang, 'Energy Shield', '能量护盾', '能量護盾') }[missing[2]];
+    return words(lang, reason, `当前${slot}没有可缩放的${defence}基值。`, `目前${slot}沒有可縮放的${defence}基值。`);
+  }).join(' · ') || null;
 }
 
 export interface LedgerFilter {

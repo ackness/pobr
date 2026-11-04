@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LineUsageLine, LineUsageStatus } from '../../../api/types';
 import {
-  ATTENTION, NO_FILTER, STATUS_ORDER, cleanLineText, filterLedger, lineText, sortLedger, sourceGroup, statusHint, statusLabel,
+  ATTENTION, NO_FILTER, STATUS_ORDER, cleanLineText, filterLedger, ledgerDisplayText, ledgerReason, lineText, sortLedger, sourceGroup, statusHint, statusLabel,
   statusRank, statusTone, summarise, toggleStatus,
 } from './ledger';
 
@@ -59,6 +59,41 @@ describe('lineText', () => {
   it('falls back to the first modifier name for lines without original text', () => {
     expect(lineText(line('applied', { text: null, modifiers: [{ name: 'GemLevel', mod_type: 'BASE', value: 1, applied: 1, status: 'applied', reason: null, used_in: [] }] }))).toBe('GemLevel');
     expect(lineText(line('applied', { text: null }))).toBe('—');
+  });
+
+  it('names synthetic config rows without replacing actual custom modifier text', () => {
+    const config = line('inactive', { source_kind: 'Config', source_id: 'config.GamblesprintMovementSpeed', text: 'Config' });
+    expect(ledgerDisplayText(config, 'zh-CN')).toBe('配置：赌命疾奔移动速度');
+    expect(ledgerDisplayText(config, 'zh-CN')).not.toBe('Config');
+    expect(ledgerDisplayText(config, 'en-US', { GamblesprintMovementSpeed: 'Gamblesprint Movement Speed' }))
+      .toBe('Configuration: Gamblesprint Movement Speed');
+    expect(ledgerDisplayText({ ...config, text: '10% increased Damage' }, 'zh-CN')).toBe('10% increased Damage');
+    expect(ledgerDisplayText({ ...config, source_id: 'config.future' }, 'zh-CN')).toBe('配置：config.future');
+  });
+
+  it('localizes the full engine-owned ancestral description, not a mixture of terms', () => {
+    const boost = line('inactive', {
+      source_id: 'base.AncestralBoost',
+      text: 'Ancestral Boost: 2 additional Strike targets; 30% more Slam damage and 25% increased Slam area',
+    });
+    expect(ledgerDisplayText(boost, 'zh-CN')).toBe('先祖增幅：打击额外以 2 个敌人为目标；猛击伤害总增 30%，范围扩大 25%');
+    expect(ledgerDisplayText(boost, 'en-US')).toBe(boost.text);
+    expect(ledgerDisplayText({ ...boost, text: 'Different future description' }, 'zh-CN')).toBe('Different future description');
+  });
+
+  it('does not describe unsupported text as having no effect in the game', () => {
+    expect(statusHint('zh-CN', 'unparsed')).toContain('本次计算未计入');
+    expect(statusLabel('zh-CN', 'inactive')).toBe('当前不生效');
+  });
+
+  it('shows the inactive modifier reason at row level and explains missing slot bases', () => {
+    const inactive = line('inactive', { reason: null, modifiers: [
+      { name: 'Evasion', mod_type: 'MORE', value: -50, applied: null, status: 'inactive',
+        reason: 'the equipped body armour has no base Evasion', used_in: [] },
+    ] });
+    expect(ledgerReason(inactive, 'zh-CN')).toBe('当前胸甲没有可缩放的闪避基值。');
+    expect(ledgerReason(inactive, 'en-US')).toBe('the equipped body armour has no base Evasion');
+    expect(ledgerReason(line('unread', { reason: 'Unknown future reason' }), 'zh-CN')).toBe('Unknown future reason');
   });
 });
 

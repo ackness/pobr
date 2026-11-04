@@ -1180,6 +1180,73 @@ Implicits: 0
 }
 
 #[test]
+fn body_armour_defence_ledger_explains_absent_base_without_claiming_use() {
+    let mut data = data().clone();
+    // Exercise the existing conversion engine directly through a fixture
+    // config entry: this text conversion has no game parser rule.
+    data.config_catalog = Some(std::sync::Arc::new(
+        pobr_gamedata::ruleset::ConfigCatalog::new(vec![
+            serde_json::from_value(serde_json::json!({
+                "var": "testDefenceConversion", "input_type": "check", "section": "Test",
+                "effects": [{"target": "player", "name": "ArmourConvertToEvasion",
+                    "mod_type": "BASE", "value": {"kind": "literal", "value": 100.0}}]
+            }))
+            .unwrap(),
+        ]),
+    ));
+    let text = "Evasion Rating from Equipped Body Armour is halved";
+    for (base, convert, applied) in [
+        ("Shaman Mantle", false, false),
+        ("Slipstrike Vest", false, true),
+        // Converted slot bases must not be mistaken for absent Evasion.
+        ("Shaman Mantle", true, true),
+    ] {
+        let mut build = parse_build(&format!(
+            r#"<PathOfBuilding2>
+<Build level="80" className="Huntress"/>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Test Body
+{base}
+Implicits: 0
+</Item><ItemSet id="1"><Slot name="Body Armour" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#
+        ))
+        .unwrap();
+        build.config.raw_inputs.values.insert(
+            "testDefenceConversion".into(),
+            pobr_core::rules::config_interpreter::ConfigInputValue::Bool(convert),
+        );
+        let options = DataOrchestratorOptions {
+            extra_modifier_texts: vec![text.into()],
+            ..Default::default()
+        };
+        let diagnosis = diagnose(&build, &data, &options).unwrap();
+        let ledger = pobr_build::usage::line_usage(&diagnosis, &build, &data);
+        let row = ledger
+            .lines
+            .iter()
+            .find(|line| line.text.as_deref() == Some(text))
+            .unwrap();
+        if applied {
+            assert_eq!(
+                row.status,
+                LineStatus::Applied,
+                "{base} conversion={convert}: {row:?}"
+            );
+        } else {
+            assert_eq!(row.status, LineStatus::Inactive, "{row:?}");
+            assert!(row.used_in.is_empty(), "{row:?}");
+            let modifier = &row.modifiers[0];
+            assert!(modifier.used_in.is_empty(), "{modifier:?}");
+            assert_eq!(
+                modifier.read_gate.as_ref().unwrap().state,
+                "the equipped body armour has no base Evasion"
+            );
+        }
+    }
+}
+
+#[test]
 fn shield_defence_ledger_gates_missing_bases() {
     let data = data();
     let text = "100% increased Armour, Evasion and Energy Shield from Equipped Shield";
