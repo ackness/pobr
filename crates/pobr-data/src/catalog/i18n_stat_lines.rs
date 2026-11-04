@@ -1,7 +1,7 @@
 //! Mod-line input translation templates (`i18n/<lang>/stat_lines.json`, TODO Phase 7.1).
 //!
 //! Source = localized template pairs from GGG's stat descriptions
-//! (transcribed from the CN client's dictionary via `pipeline/gen-zh-cn.mjs`).
+//! (produced by the translation repository, ackness/poe2-zh-cn-stats).
 //! The consumer (pobr-wasm's contract layer) reverse-looks-up a localized
 //! mod line against its template, substitutes the numbers back in, and gets
 //! an English canonical line to feed into the existing parser — the engine

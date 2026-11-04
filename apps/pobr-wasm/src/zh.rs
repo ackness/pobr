@@ -2,7 +2,7 @@
 //!
 //! Data = the `i18n/zh-CN/stat_lines.json` template pairs (GGG stat
 //! descriptions' Simplified Chinese templates, transcribed from the
-//! China-server client dictionary via `pipeline/gen-zh-cn.mjs`) plus a
+//! China-server client dictionary by ackness/poe2-zh-cn-stats) plus a
 //! base-name sidecar reverse-lookup table. Pipeline: an input line
 //! containing CJK -> skeleton bucket locates candidate templates ->
 //! segment-by-segment literal matching extracts numeric values -> substitute
