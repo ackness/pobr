@@ -148,7 +148,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
     const pop = () => { setRoute(readRoute(location.pathname)); setMenuOpen(false); setStatsOpen(false); };
     addEventListener('popstate', pop); return () => removeEventListener('popstate', pop);
   }, []);
-  useEffect(() => { main.current?.scrollTo(0, 0); document.title = `${pageNames[lang][route]} · PoBR`; }, [route, lang]);
+  useEffect(() => { main.current?.scrollTo(0, 0); document.title = `${pageNames(lang)[route]} · PoBR`; }, [route, lang]);
   const navigate = (next: Route) => {
     const commit = () => { if (next !== route) history.pushState(null, '', routePath(next)); setRoute(next); setMenuOpen(false); setStatsOpen(false); };
     if (next === route) commit(); else withViewTransition(commit);

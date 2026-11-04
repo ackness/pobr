@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject }
 import { formatApiError } from '../../api/error';
 import type { AttributeChoice, CalculateBuildRequest, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { bindT, type Lang } from '../../lib/i18n';
+import { bindT, messages, type Lang } from '../../lib/i18n';
 import { scoreOf, type Objective } from '../../lib/optimize';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import {
@@ -77,77 +77,6 @@ export interface TreeOptimizerState {
   jewelPlanner: JewelPassivePlannerState;
 }
 
-const COPY = {
-  'en-US': {
-    title: 'Plan passive upgrades', hint: 'Find connected routes from your current tree. Travel points are included, and each complete plan is recalculated with your current equipment and selected skill.',
-    mode: 'Plan', allocate: 'Spend new points', reallocate: 'Reallocate existing points', points: 'Point budget', refundPoints: 'Maximum refunds',
-    attribute: 'New travel attributes', str: 'Strength', dex: 'Dexterity', int: 'Intelligence',
-    run: 'Find upgrade routes', preview: 'Show on tree', apply: 'Apply plan', clear: 'Clear preview',
-    applied: 'Passive plan applied',
-    scope: 'Plans change the shared main tree. Ascendancy, mastery choices, weapon-set-only nodes and the value of an empty jewel socket are excluded. Attribute travel points use the choice above.',
-    refundUnavailable: 'Automatic refunds are unavailable with weapon-set passives, mastery or unknown nodes, or when the imported tree cannot be fully connected to the class start.',
-    noResults: 'No improving legal plan was found within this budget and search range.',
-    bounded: 'Bounded search, not a global optimum. It compares connected routes and combinations; review the route before spending or refunding points.',
-    skipped: 'Skipped plans with new unmodeled effects', evaluated: 'Plans evaluated', add: 'Allocate', remove: 'Refund', cost: 'Net points', score: 'Goal gain',
-    needsBuild: 'Import or create a build to plan upgrades.', route: 'Complete route', baseline: 'Evaluated baseline',
-    unavailable: 'The class start or passive graph is unavailable.',
-    refresh: 'After the first search, changes refresh this open planner automatically. Cancel or collapse to pause.',
-    waiting: 'Waiting for the current build calculation, then searching the updated tree…',
-    limits: 'At most 8 new or refunded points and 512 full-plan evaluations per search. Refund mode moves terminal branches within the current total point count.',
-    limited: 'The search limit was reached; results cover only the evaluated routes.',
-    data: 'Data version', tree: 'Tree version', defaultTree: 'Default', unknownVersion: 'Unavailable',
-    baselineLimits: 'Baseline calculation limits', baselineLimitsHint: 'These engine-reported effects are already present in the evaluated baseline. They are not new route effects; calculated gains do not resolve these limits.',
-    excluded: 'Excluded complete routes', excludedHint: 'These evaluated edits are excluded from recommendations and cannot be applied.',
-    newLimits: 'New unsupported effects', engineError: 'Engine error', invalidStats: 'The engine returned non-finite calculated values.',
-    previewHint: 'The tree preview highlights a proposed route, not the current allocation. Gains compare the recalculated route with the evaluated baseline.',
-  },
-  'zh-TW': {
-    title: '天賦提升規劃', hint: '自動尋找目前天賦樹可連接的路線，過路點計入預算。每個完整方案都按目前裝備和主技能重新計算。',
-    mode: '規劃方式', allocate: '投入新天賦點', reallocate: '原點數內洗點', points: '可投入點數', refundPoints: '最多退還點數',
-    attribute: '新增過路屬性點', str: '力量', dex: '敏捷', int: '智慧',
-    run: '尋找提升路線', preview: '在樹上查看', apply: '套用方案', clear: '清除預覽',
-    applied: '已套用天賦方案',
-    scope: '規劃共用主樹，排除昇華、精通選項、武器組專屬點及空珠寶孔的未知收益。新增過路屬性點使用上方選擇。',
-    refundUnavailable: '存在武器組專屬點、精通或未知節點，或匯入樹無法完整連接到職業起點時，暫不自動洗點。',
-    noResults: '在本次點數預算和搜尋範圍內，未找到合法且優於目前配置的方案。',
-    bounded: '這是有限範圍的路線與組合搜尋，不保證全域最優。請先查看路線，再投入或退還天賦點。',
-    skipped: '已排除含新增未建模效果的方案', evaluated: '已重算方案', add: '新增', remove: '退還', cost: '淨投入', score: '目標提升',
-    needsBuild: '匯入或新建角色後可規劃天賦提升。', route: '完整路線', baseline: '評估基準',
-    unavailable: '缺少職業起點或天賦連接資料。',
-    refresh: '首次搜尋後，修改配置會自動更新已展開的規劃。取消或收起可暫停。',
-    waiting: '等待目前角色重算完成，再搜尋修改後的天賦樹…',
-    limits: '每次最多投入或退還 8 點、重算 512 個完整方案。洗點模式在目前總點數內搬移末端分支。',
-    limited: '已達搜尋上限；結果僅涵蓋本次已評估的路線。',
-    data: '資料版本', tree: '天賦樹版本', defaultTree: '預設', unknownVersion: '無法取得',
-    baselineLimits: '基準計算限制', baselineLimitsHint: '這些引擎回報的效果已存在於評估基準，並非路線新增效果；計算出的提升不代表已解決這些限制。',
-    excluded: '已排除的完整路線', excludedHint: '這些已評估的變更不列入推薦，也無法套用。',
-    newLimits: '新增未支援效果', engineError: '引擎錯誤', invalidStats: '引擎回傳了非有限數值的計算結果。',
-    previewHint: '樹上預覽標示的是提案路線，而非目前配置。提升數值比較重算路線與評估基準。',
-  },
-  'zh-CN': {
-    title: '天赋提升规划', hint: '自动寻找当前天赋树可连接的路线，过路点计入预算。每个完整方案都按当前装备和主技能重新计算。',
-    mode: '规划方式', allocate: '投入新天赋点', reallocate: '原点数内洗点', points: '可投入点数', refundPoints: '最多退还点数',
-    attribute: '新增过路属性点', str: '力量', dex: '敏捷', int: '智慧',
-    run: '寻找提升路线', preview: '在树上查看', apply: '应用方案', clear: '清除预览',
-    applied: '已应用天赋方案',
-    scope: '规划共用主树，排除升华、精通选项、武器组专属点及空珠宝孔的未知收益。新增过路属性点使用上方选择。',
-    refundUnavailable: '存在武器组专属点、精通或未知节点，或导入树无法完整连接到职业起点时，暂不自动洗点。',
-    noResults: '在本次点数预算和搜索范围内，未找到合法且优于当前配置的方案。',
-    bounded: '这是有限范围的路线与组合搜索，不保证全局最优。请先查看路线，再投入或退还天赋点。',
-    skipped: '已排除含新增未建模效果的方案', evaluated: '已重算方案', add: '新增', remove: '退还', cost: '净投入', score: '目标提升',
-    needsBuild: '导入或新建角色后可规划天赋提升。', route: '完整路线', baseline: '评估基准',
-    unavailable: '缺少职业起点或天赋连接数据。',
-    refresh: '首次搜索后，修改配置会自动更新已展开的规划。取消或收起可暂停。',
-    waiting: '等待当前角色重算完成，再搜索修改后的天赋树…',
-    limits: '每次最多投入或退还 8 点、重算 512 个完整方案。洗点模式在当前总点数内搬移末端分支。',
-    limited: '已达搜索上限；结果仅涵盖本次已评估的路线。',
-    data: '数据版本', tree: '天赋树版本', defaultTree: '默认', unknownVersion: '无法取得',
-    baselineLimits: '基准计算限制', baselineLimitsHint: '这些引擎报告的效果已存在于评估基准，并非路线新增效果；计算出的提升不代表已解决这些限制。',
-    excluded: '已排除的完整路线', excludedHint: '这些已评估的变更不列入推荐，也无法应用。',
-    newLimits: '新增未支持效果', engineError: '引擎错误', invalidStats: '引擎返回了非有限数值的计算结果。',
-    previewHint: '树上预览标示的是提案路线，而非当前配置。提升数值比较重算路线与评估基准。',
-  },
-};
 
 export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onPreview, onRun, focusPlanner }: Props): TreeOptimizerState {
   const [expanded, setExpanded] = useState(Boolean(focusPlanner));
@@ -318,7 +247,7 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
   const { session, lang, nodeLabel, containerRef, expanded, setExpanded, mode, setMode, points, setPoints,
     goal, setGoal, attribute, setAttribute, context, tracking, progress, error, completed, evaluated, preview, applied,
     run, cancel, show, apply, jewelPlanner } = planner;
-  const text = COPY[lang];
+  const text = messages(lang, 'treeOptimizer');
   const tt = bindT(lang);
   const number = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 2 });
   const delta = (value: number, baseline: number) => baseline > 0
