@@ -17,11 +17,15 @@ TAG = "game/9.1-1"
 ASSET = "pobr-game-9.1.zip"
 
 
-def receipt(commit="b" * 40, **producer):
-    return json.dumps({"schema": "repoe-release-receipt/v1",
-                       "producer": {"repository": "ackness/repoe", "commit": commit, "dirty": False,
-                                    "contract": {"version": build.contract_version(), "tag": "contract/1.0"},
-                                    **producer}}).encode()
+TARGET = {"game": "poe2", "game_patch": "9.1", "realm": "international"}
+
+
+def receipt(commit="b" * 40, target=TARGET, drop=(), **producer):
+    found = {"repository": "ackness/repoe", "commit": commit, "dirty": False,
+             "contract": {"version": build.contract_version(), "tag": "contract/1.0"}, **producer}
+    for key in drop:
+        del found[key]
+    return json.dumps({"schema": "repoe-release-receipt/v1", "target": target, "producer": found}).encode()
 
 
 class DataBumpTests(BuildDataTests):
@@ -104,7 +108,7 @@ class DataBumpTests(BuildDataTests):
                 {ASSET: self.archives["game"], "other.zip": b"x", "receipt.json": receipt()}),
         }
         messages = {"checksum": "does not match SHA256SUMS", "receipt-unlisted": "does not list receipt.json",
-                    "dirty": "dirty producer", "commit": "producer commit", "asset-missing": "Cannot download",
+                    "dirty": "clean producer", "commit": "producer commit", "asset-missing": "Cannot download",
                     "two-packages": "exactly one .zip"}
         for name, publish in cases.items():
             with self.subTest(name):
@@ -116,6 +120,81 @@ class DataBumpTests(BuildDataTests):
                 with self.assertRaisesRegex(ValueError, messages[name]):
                     self.run_bump()
                 self.assertEqual(self.lock_path.read_bytes(), original)
+
+    def test_receipt_must_describe_the_package(self):
+        original = self.lock_path.read_bytes()
+        game = {n: r for n, r in self.contents.items() if "/i18n/" not in n}
+        good = receipt()
+        cases = {
+            "target": ({"target": {**TARGET, "realm": "china"}}, None, "target differs"),
+            "contract": ({"contract": {"version": build.contract_version() + 1}}, None, "Snapshot declares contract"),
+            "dirty-missing": ({"drop": ("dirty",)}, None, "clean producer"),
+            "repository-missing": ({"drop": ("repository",)}, None, "producer repository"),
+            "release-build-pin": ({}, {"receipt": {"path": "receipt.json", **pack.pin(b"other")}}, "another receipt"),
+            "release-build-commit": ({}, {"receipt": {"path": "receipt.json", **pack.pin(good)},
+                                          "producer": {"commit": "c" * 40}}, "another producer commit"),
+        }
+        for name, (fields, built, message) in cases.items():
+            with self.subTest(name):
+                self.set_part("game", game, **({"release_build": built} if built else {}))
+                self.server.publish("ackness/repoe", TAG, {ASSET: self.archives["game"],
+                                                           "receipt.json": receipt(**fields)})
+                with self.assertRaisesRegex(ValueError, message):
+                    self.run_bump()
+                self.assertEqual(self.lock_path.read_bytes(), original)
+        # A fresh root manifest that pins this very receipt is accepted.
+        self.set_part("game", game, release_build={"receipt": {"path": "receipt.json", **pack.pin(good)},
+                                                   "producer": {"repository": "ackness/repoe", "commit": "b" * 40}})
+        self.server.publish("ackness/repoe", TAG, {ASSET: self.archives["game"], "receipt.json": good})
+        self.run_bump()
+        self.assertEqual(bundle.decode(self.lock_path.read_bytes())["packages"]["game"]["receipt"], pack.pin(good))
+
+    def test_failed_prepare_restores_the_previous_lock_and_current(self):
+        self.publish_game()
+        data = self.root / "source/data"
+        before = {path: path.read_bytes() for path in (self.lock_path, data / "CURRENT")}
+        def install():
+            self.assertNotEqual(self.lock_path.read_bytes(), before[self.lock_path])
+            raise RuntimeError("prepare failed")
+        with self.assertRaisesRegex(RuntimeError, "prepare failed"):
+            bump.adopt(self.lock_path, [("ackness/repoe", TAG)], self.cache, data,
+                       fetcher=self.owner_inputs(), install=install)
+        self.assertEqual({path: path.read_bytes() for path in before}, before)
+        self.assertEqual(list(self.lock_path.parent.glob(f".{self.lock_path.name}.*")), [])
+
+    def publish_new_patch(self, version="9.2"):
+        target = {**TARGET, "game_patch": version}
+        contents = {n.replace("data/9.1/", f"data/{version}/"): r for n, r in self.contents.items()}
+        snapshot = {**bundle.decode(self.contents["data/9.1/manifest.json"]), "poe_version": version}
+        contents[f"data/{version}/manifest.json"] = pack.raw_json(snapshot)
+        for kind, owner, tag, asset in (("game", "ackness/repoe", f"game/{version}-1", f"pobr-game-{version}.zip"),
+                                        ("language", "ackness/poe2-zh-cn-stats", f"locale/{version}-1",
+                                         f"pobr-locale-{version}.zip")):
+            self.set_part(kind, {n: r for n, r in contents.items() if ("/i18n/" in n) == (kind == "language")},
+                          target=target)
+            self.server.publish(owner, tag, {asset: self.archives[kind],
+                                             "receipt.json": receipt(target=target, repository=owner)})
+        return target
+
+    def test_new_patch_needs_every_owner_and_rewrites_current(self):
+        target = self.publish_new_patch()
+        data = self.root / "source/data"
+        original = self.lock_path.read_bytes()
+        with self.assertRaisesRegex(ValueError, "needs every owner bumped"):
+            bump.adopt(self.lock_path, [("ackness/repoe", "game/9.2-1")], self.cache, data,
+                       fetcher=self.owner_inputs())
+        self.assertEqual(self.lock_path.read_bytes(), original)
+        self.assertEqual((data / "CURRENT").read_bytes(), b"9.1\n")
+        result = bump.adopt(self.lock_path, [("ackness/repoe", "game/9.2-1"),
+                                             ("ackness/poe2-zh-cn-stats", "locale/9.2-1")],
+                            self.cache, data, fetcher=self.owner_inputs())
+        after = bundle.decode(self.lock_path.read_bytes())
+        self.assertEqual(after["target"], target)
+        self.assertEqual({spec["tag"] for spec in after["packages"].values()}, {"game/9.2-1", "locale/9.2-1"})
+        self.assertEqual((data / "CURRENT").read_bytes(), b"9.2\n")
+        self.assertTrue(result["identity_changed"])
+        self.assertEqual(build.prepare(self.lock_path, self.out, self.cache, self.shared,
+                                       fetcher=self.owner_inputs())["runtime_identity"], after["runtime_identity"])
 
     def test_wrong_part_kind_and_unknown_owner_reject(self):
         self.server.publish("ackness/repoe", TAG, {ASSET: self.archives["language"], "receipt.json": receipt()})

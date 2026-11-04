@@ -13,6 +13,7 @@ Bump both owners in one call when a new game patch changes the target.
 import argparse
 import io
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -72,8 +73,8 @@ def producer(receipt, owner):
     """Producer commit and contract version from the owner's build receipt."""
     found = receipt.get("producer") if isinstance(receipt, dict) else None
     require(isinstance(found, dict), "receipt.json lacks a producer")
-    require(found.get("repository", owner) == owner, "receipt.json names another producer repository")
-    require(found.get("dirty") is not True, "receipt.json records a dirty producer checkout")
+    require(found.get("repository") == owner, "receipt.json must name this owner as producer repository")
+    require(found.get("dirty") is False, "receipt.json must record a clean producer checkout (dirty: false)")
     commit = found.get("commit")
     require(isinstance(commit, str) and re.fullmatch(r"[a-f0-9]{40}", commit), "receipt.json lacks a producer commit")
     contract = found.get("contract")
@@ -90,7 +91,8 @@ def resolve(owner, tag, cache, fetcher, asset=None):
     require(RECEIPT in sums, f"SHA256SUMS does not list {RECEIPT}")
     receipt_raw = fetch_verified(imports.release_address(source, RECEIPT), sums[RECEIPT], cache, fetcher,
                                  imports.MAX_METADATA)
-    commit, contract = producer(bundle.decode(receipt_raw), owner)
+    receipt = bundle.decode(receipt_raw)
+    commit, contract = producer(receipt, owner)
     archive = fetch_verified(imports.release_address(source, asset), sums[asset], cache, fetcher, MAX_PACKAGE)
     with tempfile.TemporaryDirectory(prefix=".bump-part-", dir=cache.parent) as temporary:
         # Read the embedded manifest first: unpack checks it against the entry.
@@ -102,13 +104,35 @@ def resolve(owner, tag, cache, fetcher, asset=None):
                 "receipt": pin(receipt_raw), "producer_commit": commit,
                 "contract_version": contract}
         part = imports.unpack(archive, spec, Path(temporary) / "part")
-    require(part.get("schema") == build_data.PART_SCHEMA and part.get("kind") == ROLES[owner],
-            f"{asset} is not a {ROLES[owner]} part")
+        require(part.get("schema") == build_data.PART_SCHEMA and part.get("kind") == ROLES[owner],
+                f"{asset} is not a {ROLES[owner]} part")
+        check_receipt(receipt, receipt_raw, commit, contract, part, Path(temporary) / "part")
     return spec, part
+
+
+def check_receipt(receipt, raw, commit, contract, part, unpacked):
+    """The receipt must describe this package, not merely sit next to it."""
+    require(receipt.get("target") == part.get("target"), "receipt.json target differs from the package target")
+    built = part.get("release_build")
+    if built is not None:
+        # A freshly built root manifest pins the receipt it was built with.
+        require(isinstance(built, dict) and isinstance(built.get("receipt"), dict)
+                and {k: built["receipt"].get(k) for k in ("bytes", "sha256")} == pin(raw),
+                "Package manifest pins another receipt.json")
+        require(built.get("producer", {}).get("commit", commit) == commit,
+                "Package manifest names another producer commit")
+    if part["kind"] == "game":
+        name = f'data/{part["target"]["game_patch"]}/manifest.json'
+        require(name in part["files"], "Game part lacks the snapshot manifest")
+        snapshot = bundle.decode(regular(unpacked / name))
+        if "contract_version" in snapshot:
+            require(snapshot["contract_version"] == contract,
+                    f"Snapshot declares contract {snapshot['contract_version']!r}; receipt.json records {contract!r}")
 
 
 def candidate(lock, releases):
     """The lock with each released owner entry replaced; identities still to compute."""
+    original_target = lock["target"]
     lock = json.loads(json.dumps(lock))
     for owner, (spec, part) in releases.items():
         lock["packages"][ROLES[owner]] = spec
@@ -119,6 +143,9 @@ def candidate(lock, releases):
             lock["snapshot_manifest"] = part["files"][snapshot]
     targets = {json.dumps(part["target"], sort_keys=True) for _, part in releases.values()}
     require(len(targets) == 1, "Released parts name different targets")
+    if lock["target"] != original_target:
+        missing = sorted(set(build_data.OWNERS.values()) - set(releases))
+        require(not missing, f"A new target {lock['target']['game_patch']} needs every owner bumped; also bump {missing}")
     return lock
 
 
@@ -134,6 +161,18 @@ def member_diff(before, after):
     changed = sorted(n for n in before.keys() & after.keys() if before[n] != after[n])
     return {"changed": changed, "added": sorted(after.keys() - before.keys()),
             "removed": sorted(before.keys() - after.keys())}
+
+
+def replace_atomically(path, raw):
+    """Write `raw` beside `path`, then rename over it: readers see old or new bytes, never a mix."""
+    path = Path(path)
+    with tempfile.NamedTemporaryFile(prefix=f".{path.name}.", dir=path.parent, delete=False) as handle:
+        handle.write(raw)
+        temporary = Path(handle.name)
+    try:
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def bump(lock_path, pairs, cache, shared, fetcher=None, asset=None, data_root=None):
@@ -172,15 +211,32 @@ def bump(lock_path, pairs, cache, shared, fetcher=None, asset=None, data_root=No
                 before_files = None
         after_files = receipt["files"]
     require(regular(lock_path) == lock_raw, "Data lock changed during bump")
-    Path(lock_path).write_bytes(encoded(new))
     version_changed = new["target"]["game_patch"] != lock["target"]["game_patch"]
+    replace_atomically(lock_path, encoded(new))
     if version_changed and data_root is not None:
-        (Path(data_root) / "CURRENT").write_text(new["target"]["game_patch"] + "\n", encoding="utf-8")
+        replace_atomically(Path(data_root) / "CURRENT", (new["target"]["game_patch"] + "\n").encode())
     result = {"schema": "pobr-data-bump/v1", "before": summary(lock), "after": summary(new),
               "identity_changed": new["runtime_identity"] != lock["runtime_identity"]}
     if before_files is not None:
         # Member paths include the version directory, so a new patch lists every file as moved.
         result["members"] = member_diff(before_files, after_files)
+    return result
+
+
+def adopt(lock_path, pairs, cache, data_root, *, asset=None, fetcher=None, install=None):
+    """Bump, then install; a failed install restores the previous lock and CURRENT bytes."""
+    lock_path, current = Path(lock_path), Path(data_root) / "CURRENT"
+    previous = {path: regular(path) for path in (lock_path, current) if path.exists()}
+    result = bump(lock_path, pairs, cache, Path(data_root) / "overlay-common", fetcher=fetcher, asset=asset,
+                  data_root=data_root)
+    if install is not None:
+        try:
+            install()
+        except BaseException:
+            for path, raw in previous.items():
+                replace_atomically(path, raw)
+            print("data:bump: data:prepare failed; restored the previous lock and CURRENT", file=sys.stderr)
+            raise
     return result
 
 
@@ -196,13 +252,14 @@ def main():
     require(len(args.release) % 2 == 0, "Give <owner> <tag> pairs")
     pairs = [(owner_name(args.release[i]), args.release[i + 1]) for i in range(0, len(args.release), 2)]
     require(args.asset is None or len(pairs) == 1, "--asset applies to a single owner")
-    result = bump(args.lock, pairs, args.cache, args.data_root / "overlay-common", asset=args.asset,
-                  data_root=args.data_root)
-    print(encoded(result).decode(), end="")
-    if not args.no_prepare:
+    def install():
         subprocess.run([sys.executable, "-m", "pipeline.runtime.build_data", "--lock", str(args.lock),
                         "--install", str(args.data_root), "--cache", str(args.cache)],
                        cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
+    result = adopt(args.lock, pairs, args.cache, args.data_root, asset=args.asset,
+                   install=None if args.no_prepare else install)
+    print(encoded(result).decode(), end="")
+    if not args.no_prepare:
         print("data:prepare: installed the bumped lock", file=sys.stderr)
 
 
