@@ -107,4 +107,14 @@ mod tests {
     fn unterminated_link_keeps_its_display_part() {
         assert_eq!(strip_display_markup("x [a|b"), "x b");
     }
+
+    #[test]
+    fn nested_styles_strip_only_the_outer_layer() {
+        // Pins current output for nested styles found in shipped mod text, so a
+        // change here shows up as a deliberate decision rather than drift.
+        assert_eq!(
+            strip_display_markup("<italic>{<rgb(110,87,66)>{Monsters gain:}}"),
+            "<rgb(110,87,66)>{Monsters gain:}"
+        );
+    }
 }

@@ -35,8 +35,8 @@ use pobr_data::modifier::{KeywordFlags, ModFlags};
 use pobr_data::skill::SkillTypes;
 
 // Compatibility re-export: the text helper now lives in the contract crate
-// (`pobr_data::text`). Kept so the RePoE adapter's pinned `engine-crates/*` tag
-// and other external callers still compile; new code uses the `pobr_data` path.
+// (`pobr_data::text`). Kept so the RePoE adapter still compiles when it moves
+// to the next pobr tag; remove once it calls `pobr_data::text` directly.
 #[doc(hidden)]
 pub use pobr_data::text::strip_display_markup;
 
