@@ -364,6 +364,15 @@ fn granted_anoint_notable_feeds_gem_property_scan() {
     );
 }
 
+/// `BuildData::empty()` with the imported per-level monster table: it has no
+/// Rust copy, so enemy stats are 0 without it.
+fn data_with_monster_scaling() -> BuildData {
+    let mut data = BuildData::empty();
+    std::sync::Arc::make_mut(&mut data.constants).monster_scaling =
+        pobr_core::mod_parser::test_monster_scaling();
+    data
+}
+
 fn repo_data() -> BuildData {
     let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
     BuildData::load(&data).expect("load repo build data")
@@ -881,7 +890,7 @@ fn mode_effective_changes_hit_chance_vs_panel() {
     // non-attack) skips the accuracy/evasion check, and both hit_chance readings
     // are 1 (vendor CalcOffence.lua:2611-2612
     // `if not isAttack then output.AccuracyHitChance = 100`).
-    let data = BuildData::empty();
+    let data = data_with_monster_scaling();
     let build = Build::new();
     let base = MinimalInput {
         base_accuracy: 1000.0,
@@ -916,6 +925,7 @@ fn mode_effective_changes_hit_chance_vs_panel() {
     // acc*1.25/(acc+eva*0.3), CalcDefence.lua:32-38).
     let mut session =
         CalculationSession::new(base).with_config(CalcConfig::attack().with_mode_effective(true));
+    session.set_constants(data.constants.clone());
     session.setup_enemy(80, EnemyTier::Pinnacle);
     let out = session.perform_minimal().expect("perform");
     assert!(
@@ -1119,7 +1129,7 @@ fn xml_enemy_tier_overrides_orchestrator_option() {
     // non-attack and always hits, so hit_chance no longer distinguishes
     // tiers; physical damage reduction hits the same DR cap at both tiers, so
     // incoming enemy damage is used as the observation point instead.)
-    let data = BuildData::empty();
+    let data = data_with_monster_scaling();
     let base = MinimalInput {
         base_accuracy: 1000.0,
         base_hit_min: 100.0,

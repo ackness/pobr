@@ -1021,8 +1021,7 @@ fn stage_create_session(ctx: &StageCtx<'_>, cfg: CalcConfig) -> SourceWriter {
     let data = ctx.data;
     let mut session = CalculationSession::new(ctx.weapons.base_input).with_config(cfg);
     // The injection pipeline: injects the runtime constants bundle loaded by GameData
-    // into calc (must come after with_config — with_config replaces cfg wholesale). The
-    // data is value-for-value equal to the Default fallback, zero behavior change.
+    // into calc (must come after with_config — with_config replaces cfg wholesale).
     session.set_constants(data.constants.clone());
     session.set_exporter_rules(
         ctx.options.exporter_absent_rules,

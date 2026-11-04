@@ -1518,7 +1518,10 @@ pub(crate) fn heavy_stun_terms(env: &super::Env, combined: &[(DamageType, f64)])
         ["HeavyStunBuildup", "StunBuildup", "ImmobilisationBuildup"].map(ModName::from);
     let thresholds =
         ["PoiseThreshold", "HeavyStunThreshold", "EnemyStunThreshold"].map(ModName::from);
-    let threshold = (pobr_data::monster::enemy_poise_threshold(env.enemy.level as u32) as f64
+    let threshold = (cfg
+        .constants
+        .monster_scaling
+        .poise_threshold_at(env.enemy.level as u32) as f64
         * (1.0 + enemy.sum(ModType::Inc, &cfg, &thresholds) / 100.0)
         * enemy.more(&cfg, &thresholds))
     .floor();
@@ -1745,7 +1748,10 @@ pub(crate) fn pin_terms(
     let names = ["EnemyPinBuildup", "EnemyImmobilisationBuildup"].map(ModName::from);
     let enemy_names = ["PinBuildup", "ImmobilisationBuildup"].map(ModName::from);
     let thresholds = ["PoiseThreshold"].map(ModName::from);
-    let threshold = (pobr_data::monster::enemy_poise_threshold(env.enemy.level as u32) as f64
+    let threshold = (cfg
+        .constants
+        .monster_scaling
+        .poise_threshold_at(env.enemy.level as u32) as f64
         * (1.0 + enemy.sum(ModType::Inc, &cfg, &thresholds) / 100.0)
         * enemy.more(&cfg, &thresholds))
     .floor();

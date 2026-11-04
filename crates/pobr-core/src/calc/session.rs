@@ -263,7 +263,8 @@ impl CalculationSession {
 
     /// Injects the runtime constants pack (the injection pipeline): writes
     /// to `env.cfg.constants`, threaded through every calc function via cfg.
-    /// Defaults to `Default` when not called (a fallback, value-for-value equal to the catalog JSON).
+    /// Defaults to `Default` when not called (a fallback, value-for-value equal to the catalog JSON,
+    /// except the per-level monster table, which is empty without data).
     ///
     /// **Ordering constraint**: [`with_config`](Self::with_config) overwrites
     /// cfg wholesale (including this field), so this must be called

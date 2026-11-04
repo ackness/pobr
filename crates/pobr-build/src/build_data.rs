@@ -598,6 +598,9 @@ impl BuildData {
         if let Some(character_constants) = ruleset.character_constants {
             constants.character_constants = character_constants;
         }
+        // The per-level monster table has no Rust copy: a snapshot without
+        // `base/monster_scaling.json` (only sealed test fixtures; every published
+        // package ships it) keeps the empty table, so enemy and minion stats are 0.
         if let Some(monster_scaling) = ruleset.monster_scaling {
             constants.monster_scaling = monster_scaling;
         }

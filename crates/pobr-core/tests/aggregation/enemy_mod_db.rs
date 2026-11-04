@@ -1181,6 +1181,8 @@ fn legacy_three_arg_entry_equals_empty_enemy() {
 fn setup_enemy_injects_pinnacle_defaults() {
     let player = Actor::new(85, ActorBaseStats::default());
     let mut env = Env::new(player);
+    let scaling = crate::support::test_monster_scaling();
+    std::sync::Arc::make_mut(&mut env.cfg.constants).monster_scaling = scaling.clone();
     setup_enemy(&mut env, 0, EnemyTier::Pinnacle); // level 0 → follows the character level, min(85,85)=85
 
     let cfg = CalcConfig::attack();
@@ -1191,7 +1193,8 @@ fn setup_enemy_injects_pinnacle_defaults() {
     assert_eq!(fire, 50.0, "Pinnacle fire resist +50");
     // Accuracy = monsterAccuracyTable[85] = 2357.
     let acc = db.sum(ModType::Base, &cfg, &[ModName::from("Accuracy")]);
-    assert_eq!(acc, monster_accuracy(85) as f64);
+    assert_eq!(acc, scaling.accuracy_at(85) as f64);
+    assert_eq!(acc, 2357.0);
     // Generic boss debuff resistances (gated by `Condition:Effective`):
     // - Panel mode (mode_effective=false) doesn't match → factor 1.0 (keeps raw DPS clean).
     let curse_panel = db.more(&cfg, &[ModName::from("CurseEffectOnSelf")]);

@@ -5,30 +5,27 @@
 //! GGG's `DefaultMonsterStats.dat`, and the adapter will eventually be able
 //! to regenerate an equivalent JSON directly from the `.dat`):
 //!
-//! | JSON field | PoB2 Lua table (Misc.lua line) | pobr source of truth (pre-migration) |
-//! |---|---|---|
-//! | `accuracy` | `data.monsterAccuracyTable` (L6) | `monster.rs::MONSTER_ACCURACY_TABLE` |
-//! | `evasion` | `data.monsterEvasionTable` (L5) | `monster.rs::MONSTER_EVASION_TABLE` |
-//! | `armour` | `data.monsterArmourTable` (L11) | `monster.rs::MONSTER_ARMOUR_TABLE` |
-//! | `life` | `data.monsterLifeTable` (L7) | `monster.rs::MONSTER_LIFE_TABLE` |
-//! | `ally_life` | `data.monsterAllyLifeTable` (L8) | none (vendor-only) |
-//! | `damage` | `data.monsterDamageTable` (L9) | `monster.rs::MONSTER_DAMAGE_TABLE` |
-//! | `ally_damage` | `data.monsterAllyDamageTable` (L10) | none (vendor-only) |
-//! | `ailment_threshold` | `data.monsterAilmentThresholdTable` (L12) | `monster.rs::MONSTER_AILMENT_THRESHOLD_TABLE` |
-//! | `poise_threshold` | `data.monsterPoiseThresholdTable` (L13) | `monster.rs::MONSTER_POISE_THRESHOLD_TABLE` |
+//! | JSON field | PoB2 Lua table (Misc.lua line) |
+//! |---|---|
+//! | `accuracy` | `data.monsterAccuracyTable` (L6) |
+//! | `evasion` | `data.monsterEvasionTable` (L5) |
+//! | `armour` | `data.monsterArmourTable` (L11) |
+//! | `life` | `data.monsterLifeTable` (L7) |
+//! | `ally_life` | `data.monsterAllyLifeTable` (L8) |
+//! | `damage` | `data.monsterDamageTable` (L9) |
+//! | `ally_damage` | `data.monsterAllyDamageTable` (L10) |
+//! | `ailment_threshold` | `data.monsterAilmentThresholdTable` (L12) |
+//! | `poise_threshold` | `data.monsterPoiseThresholdTable` (L13) |
 //!
-//! Value conventions:
-//! - For the seven tables that have a pobr Rust source of truth, the JSON
-//!   is value-equal to the Rust table (a migration invariant); `damage`
-//!   keeps pobr's existing convention — vendor's noisy f32 values (e.g.
-//!   `9.1599998474121`) are rounded to 2 decimal places (`9.16`), matching
-//!   vendor value-for-value at that precision.
-//! - `ally_life` / `ally_damage` are vendor-only fields (not previously
-//!   migrated in pobr), extracted from
-//!   `vendor/PathOfBuilding-PoE2/src/Data/Misc.lua` L8 / L10; `ally_damage`
-//!   is likewise rounded to 2 decimal places (matching `damage`'s
-//!   convention, and also matching the `round(..., 2)` precision handling
-//!   in PoB2 `CalcActiveSkill.lua:907`'s hiddenDamageFixup derivation).
+//! The imported JSON is the only source of these values: the engine reads
+//! them through `RuntimeConstants.monster_scaling` (the copy of the nine
+//! tables that `pobr_data::monster` used to carry was deleted after a
+//! level-by-level equality check against the shipped JSON).
+//!
+//! Value conventions: `damage` / `ally_damage` keep vendor's noisy f32
+//! values (e.g. `9.1599998474121`) rounded to 2 decimal places (`9.16`),
+//! matching the `round(..., 2)` precision handling in PoB2
+//! `CalcActiveSkill.lua:907`'s hiddenDamageFixup derivation.
 //!
 //! Consumers (PoB2-side usage; pobr's counterparts are `setup_env` / EHP /
 //! minion assembly):
@@ -50,11 +47,6 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::monster::{
-    MONSTER_ACCURACY_TABLE, MONSTER_AILMENT_THRESHOLD_TABLE, MONSTER_ARMOUR_TABLE,
-    MONSTER_DAMAGE_TABLE, MONSTER_EVASION_TABLE, MONSTER_LIFE_TABLE, MONSTER_POISE_THRESHOLD_TABLE,
-};
-
 /// Length of the monster per-level tables (level 1..=100; every array is
 /// always 100 entries).
 pub const MONSTER_SCALING_TABLE_LEN: usize = 100;
@@ -66,7 +58,14 @@ pub const MONSTER_SCALING_TABLE_LEN: usize = 100;
 /// `DefaultMonsterStats.dat`, so the adapter can regenerate it by copying
 /// each table verbatim; every array's length is always
 /// [`MONSTER_SCALING_TABLE_LEN`], enforced by a loader-side test.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+///
+/// `Default` is **empty** (every lookup returns 0), not a copy of the game
+/// table: it exists only because [`super::RuntimeConstants`] needs a value
+/// before data is injected (zero-I/O engine construction, `BuildData::empty`
+/// engine unit tests, and sealed fixture packs without the file). Every
+/// published package ships `base/monster_scaling.json`; tests that need
+/// monster values load it from the data directory.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct MonsterScalingTable {
     /// Monster base accuracy (`data.monsterAccuracyTable`).
     pub accuracy: Vec<u32>,
@@ -95,9 +94,8 @@ pub struct MonsterScalingTable {
 /// A generic level lookup (u32 table): the level is clamped to
 /// `[1, table length]`, index = level - 1; an empty table returns 0 (a
 /// loader-side test enforces every table is always 100 entries, so this
-/// path shouldn't trigger under normal operation). Matches
-/// `monster.rs::level_to_index`'s clamp semantics value-for-value (a
-/// migration invariant).
+/// path shouldn't trigger under normal operation, only for the empty
+/// `Default` used without GameData).
 fn lookup_u32(table: &[u32], level: u32) -> u32 {
     if table.is_empty() {
         return 0;
@@ -115,126 +113,87 @@ fn lookup_f64(table: &[f64], level: u32) -> f64 {
 
 impl MonsterScalingTable {
     /// Looks up monster base accuracy (level 1..=100, out-of-range
-    /// clamped; corresponds to `monster_accuracy`).
+    /// clamped).
     pub fn accuracy_at(&self, level: u32) -> u32 {
         lookup_u32(&self.accuracy, level)
     }
 
-    /// Looks up monster base evasion (corresponds to `monster_evasion`).
+    /// Looks up monster base evasion.
     pub fn evasion_at(&self, level: u32) -> u32 {
         lookup_u32(&self.evasion, level)
     }
 
-    /// Looks up monster base armour (corresponds to `monster_armour`).
+    /// Looks up monster base armour.
     pub fn armour_at(&self, level: u32) -> u32 {
         lookup_u32(&self.armour, level)
     }
 
-    /// Looks up monster base life (corresponds to `monster_life`).
+    /// Looks up monster base life.
     pub fn life_at(&self, level: u32) -> u32 {
         lookup_u32(&self.life, level)
     }
 
-    /// Looks up monster base damage (for EHP; corresponds to `monster_damage`).
+    /// Looks up ally (non-hostile summon: minion, totem) base life.
+    pub fn ally_life_at(&self, level: u32) -> u32 {
+        lookup_u32(&self.ally_life, level)
+    }
+
+    /// Looks up monster base damage (for EHP).
     pub fn damage_at(&self, level: u32) -> f64 {
         lookup_f64(&self.damage, level)
     }
 
-    /// Looks up the monster ailment threshold (raw table value;
-    /// corresponds to `enemy_ailment_threshold`).
+    /// Looks up ally (minion) base damage.
+    pub fn ally_damage_at(&self, level: u32) -> f64 {
+        lookup_f64(&self.ally_damage, level)
+    }
+
+    /// Looks up the monster ailment threshold (raw table value, for
+    /// Ignite/Shock chance and Chill's minimum; the caller applies
+    /// `EnemyAilmentThreshold`).
     pub fn ailment_threshold_at(&self, level: u32) -> u32 {
         lookup_u32(&self.ailment_threshold, level)
     }
 
-    /// Looks up the monster poise threshold (raw table value; corresponds
-    /// to `enemy_poise_threshold`).
+    /// Looks up the monster poise threshold (raw table value, for
+    /// Freeze/Electrocute/HeavyStun/Pin; the caller applies `PoiseThreshold`
+    /// and floors).
     pub fn poise_threshold_at(&self, level: u32) -> u32 {
         lookup_u32(&self.poise_threshold, level)
-    }
-}
-
-/// The fallback (used when no GameData is injected): **value-equal** to
-/// `base/monster_scaling.json` field by field (a migration invariant; the
-/// W2 test already locks JSON == this Rust source of truth).
-///
-/// Every table references `crate::monster`'s consts directly (zero literal
-/// duplication); `ally_life` and `ally_damage` are what minions are derived
-/// from.
-impl Default for MonsterScalingTable {
-    fn default() -> Self {
-        Self {
-            accuracy: MONSTER_ACCURACY_TABLE.to_vec(),
-            evasion: MONSTER_EVASION_TABLE.to_vec(),
-            armour: MONSTER_ARMOUR_TABLE.to_vec(),
-            life: MONSTER_LIFE_TABLE.to_vec(),
-            ally_life: crate::monster::MONSTER_ALLY_LIFE_TABLE.to_vec(),
-            damage: MONSTER_DAMAGE_TABLE.to_vec(),
-            ally_damage: crate::monster::MONSTER_ALLY_DAMAGE_TABLE.to_vec(),
-            ailment_threshold: MONSTER_AILMENT_THRESHOLD_TABLE.to_vec(),
-            poise_threshold: MONSTER_POISE_THRESHOLD_TABLE.to_vec(),
-        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::monster;
 
-    /// Fallback invariant: `Default`'s seven source-of-truth tables agree
-    /// with `monster.rs`'s lookup functions at every level (including
-    /// clamp semantics: 0 → lv1, >100 → lv100).
+    /// Without GameData there is no monster scaling: `Default` is empty
+    /// rather than a second copy of the game table, and every lookup is 0.
+    /// Published packages ship `base/monster_scaling.json`.
     #[test]
-    fn default_lookups_match_legacy_monster_tables() {
+    fn default_is_empty_and_looks_up_zero() {
         let t = MonsterScalingTable::default();
-        for lv in 0..=120u32 {
-            assert_eq!(
-                t.accuracy_at(lv),
-                monster::monster_accuracy(lv),
-                "lv{lv} accuracy"
-            );
-            assert_eq!(
-                t.evasion_at(lv),
-                monster::monster_evasion(lv),
-                "lv{lv} evasion"
-            );
-            assert_eq!(
-                t.armour_at(lv),
-                monster::monster_armour(lv),
-                "lv{lv} armour"
-            );
-            assert_eq!(t.life_at(lv), monster::monster_life(lv), "lv{lv} life");
-            assert_eq!(
-                t.damage_at(lv),
-                monster::monster_damage(lv),
-                "lv{lv} damage"
-            );
-            assert_eq!(
-                t.ailment_threshold_at(lv),
-                monster::enemy_ailment_threshold(lv),
-                "lv{lv} ailment_threshold"
-            );
-            assert_eq!(
-                t.poise_threshold_at(lv),
-                monster::enemy_poise_threshold(lv),
-                "lv{lv} poise_threshold"
-            );
-        }
+        assert!(t.accuracy.is_empty() && t.ally_life.is_empty() && t.poise_threshold.is_empty());
+        assert_eq!(t.life_at(50), 0);
+        assert_eq!(t.ally_life_at(50), 0);
+        assert_eq!(t.damage_at(50), 0.0);
+        assert_eq!(t.ally_damage_at(50), 0.0);
     }
 
-    /// Spot checks for the two vendor-only ally tables (matching
-    /// `base/monster_scaling.json` / Misc.lua L8, L10).
+    /// Lookups clamp the level to `[1, table length]` (index = level - 1).
     #[test]
-    fn default_ally_tables_spot_checks() {
-        let t = MonsterScalingTable::default();
-        assert_eq!(t.ally_life.len(), MONSTER_SCALING_TABLE_LEN);
-        assert_eq!(t.ally_damage.len(), MONSTER_SCALING_TABLE_LEN);
-        assert_eq!(t.ally_life[0], 51, "lv1 ally_life");
-        assert_eq!(t.ally_life[84], 11708, "lv85 ally_life");
-        assert_eq!(t.ally_life[99], 17980, "lv100 ally_life");
-        assert_eq!(t.ally_damage[0], 3.11, "lv1 ally_damage");
-        assert_eq!(t.ally_damage[84], 2271.56, "lv85 ally_damage");
-        assert_eq!(t.ally_damage[99], 4661.93, "lv100 ally_damage");
+    fn lookups_clamp_to_table_bounds() {
+        let t = MonsterScalingTable {
+            ally_life: vec![10, 20, 30],
+            ally_damage: vec![1.5, 2.5, 3.5],
+            ..MonsterScalingTable::default()
+        };
+        assert_eq!(t.ally_life_at(0), 10);
+        assert_eq!(t.ally_life_at(1), 10);
+        assert_eq!(t.ally_life_at(2), 20);
+        assert_eq!(t.ally_life_at(99), 30);
+        assert_eq!(t.ally_damage_at(0), 1.5);
+        assert_eq!(t.ally_damage_at(3), 3.5);
     }
 
     /// Empty-table defense: a lookup against an empty Vec returns 0 (no panic).

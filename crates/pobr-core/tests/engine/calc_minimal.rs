@@ -161,9 +161,11 @@ fn blackflame_covenant_converts_only_fire_spells_and_preserves_ignite_magnitude(
                 ..Default::default()
             },
         ));
-        env.cfg = CalcConfig::spell()
-            .with_skill_types(types)
-            .with_mode_effective(true);
+        env.cfg = crate::support::with_game_tables(
+            CalcConfig::spell()
+                .with_skill_types(types)
+                .with_mode_effective(true),
+        );
         for line in lines {
             let parsed = crate::support::parse_mod(line).unwrap();
             assert!(parsed.is_complete(), "{line}: {parsed:?}");
@@ -230,7 +232,7 @@ fn blackflame_covenant_converts_only_fire_spells_and_preserves_ignite_magnitude(
         assert_eq!(env.player.mod_db.flag(&env.cfg, "ChaosCanIgnite"), enabled);
         let mut session =
             pobr_core::calc::CalculationSession::new(MinimalInput::from(env.player.base))
-                .with_config(env.cfg.clone());
+                .with_config(crate::support::with_game_tables(env.cfg.clone()));
         session.add_modifiers(env.player.mod_db.iter_mods().cloned());
         session.add_enemy_modifiers(env.enemy.mod_db.iter_mods().cloned());
         session.perform_minimal().unwrap();

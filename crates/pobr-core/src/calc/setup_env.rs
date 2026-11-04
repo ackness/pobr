@@ -8,9 +8,9 @@
 //! **Data source**: the per-level table and tier presets are read from the
 //! injected [`RuntimeConstants`] (`cfg.constants.monster_scaling` /
 //! `.enemy_presets`, sourced from `base/monster_scaling.json` +
-//! `base/enemy_presets.json`); without GameData, falls back to `Default`
-//! (value-for-value equal to the JSON, referencing the old
-//! `pobr_data::monster` canonical source) -- both paths produce identical output (a migration invariant).
+//! `base/enemy_presets.json`); without GameData the presets fall back to
+//! `Default` (value-for-value equal to the JSON) and the per-level table is
+//! empty (all monster stats 0) -- the table has no Rust copy.
 //!
 //! Design highlights (doc12 §4.2 / §5, accuracy-and-enemy.md §4,§5,§6):
 //! - **Monster scaling**: `accuracy/evasion/armour` come from [`EnemyTierDefaults`] (tier multiplier already included).
@@ -29,6 +29,8 @@
 //!   actual debuff injection is appended by a downstream wave after calling
 //!   [`setup_enemy`], which then calls [`reduce_enemy_exposure`].
 
+use pobr_data::catalog::enemy_presets::{EnemyPresetsTable, EnemyTierPreset};
+use pobr_data::catalog::monster_scaling::MonsterScalingTable;
 use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb, ModTag, Modifier};
@@ -112,8 +114,8 @@ fn push_enemy_condition(db: &mut ModDb, condition: &str, id: &str) {
 
 /// Computes tier defaults from the injected runtime constants pack
 /// (`cfg.constants`'s `monster_scaling` + `enemy_presets`), replacing the old
-/// `EnemyTierDefaults::compute`'s direct lookup into `pobr_data::monster`'s
-/// hardcoded table.
+/// `EnemyTierDefaults::compute`'s direct lookup into a hardcoded copy of the
+/// table (deleted).
 ///
 /// The formula follows the **exact same operation order** as the old path
 /// (level is clamped to the tier's floor first, then the MaxEnemyLevel
@@ -121,19 +123,35 @@ fn push_enemy_condition(db: &mut ModDb, condition: &str, id: &str) {
 /// and the `Default` fallback is value-for-value equal to the JSON -- both
 /// paths produce bit-identical output (a migration invariant, zero parity change).
 ///
-/// Falls back to the old Rust canonical source `compute` (same values as
-/// Default) when the injected data is missing a tier (corrupted
-/// enemy_presets), staying computable with zero I/O.
+/// Falls back to the `Default` tier presets (the old Rust tier constants)
+/// when the injected data is missing a tier (corrupted enemy_presets),
+/// still reading the injected per-level table, staying computable with zero I/O.
 fn tier_defaults_from_constants(
     constants: &RuntimeConstants,
     config_level: u32,
     tier: EnemyTier,
 ) -> EnemyTierDefaults {
-    let presets = &constants.enemy_presets;
-    let Some(preset) = presets.tier_for(tier) else {
-        return EnemyTierDefaults::compute(config_level, tier);
-    };
-    let scaling = &constants.monster_scaling;
+    if let Some(preset) = constants.enemy_presets.tier_for(tier) {
+        return tier_defaults(
+            &constants.enemy_presets,
+            preset,
+            &constants.monster_scaling,
+            config_level,
+        );
+    }
+    let presets = EnemyPresetsTable::default();
+    let preset = presets
+        .tier_for(tier)
+        .expect("the default enemy presets cover every tier");
+    tier_defaults(&presets, preset, &constants.monster_scaling, config_level)
+}
+
+fn tier_defaults(
+    presets: &EnemyPresetsTable,
+    preset: &EnemyTierPreset,
+    scaling: &MonsterScalingTable,
+    config_level: u32,
+) -> EnemyTierDefaults {
     // Ensures the level meets the tier's minimum requirement, and clamps it to MaxEnemyLevel (same order as the old compute).
     let level = config_level
         .max(preset.min_level)

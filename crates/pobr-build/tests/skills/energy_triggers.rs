@@ -10,7 +10,7 @@
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::OutputTable;
-use pobr_data::monster::{EnemyTier, enemy_ailment_threshold};
+use pobr_data::monster::EnemyTier;
 
 /// Enemy level of every calculation here: the lowest a Pinnacle boss has.
 const ENEMY_LEVEL: u32 = 82;
@@ -148,10 +148,21 @@ fn assert_rate(actual: f64, expected: f64) {
     assert!((actual - expected).abs() < 1e-9, "{actual} != {expected}");
 }
 
+/// The game's monster ailment threshold at the enemy level
+/// (`base/monster_scaling.json`).
+fn enemy_ailment_threshold() -> f64 {
+    f64::from(
+        data()
+            .constants
+            .monster_scaling
+            .ailment_threshold_at(ENEMY_LEVEL),
+    )
+}
+
 /// Energy one critical hit of `source` gives a gem.
 fn energy_per_hit(source: &OutputTable, enemy_power: f64, gain: f64) -> f64 {
     assert!(source.crit_hit_avg > 0.0);
-    let threshold = f64::from(enemy_ailment_threshold(ENEMY_LEVEL));
+    let threshold = enemy_ailment_threshold();
     enemy_power * source.crit_hit_avg / threshold * gain
 }
 
@@ -815,7 +826,7 @@ fn ailment_energy_counts_ignite_damage_and_freeze_buildup_but_not_chill() {
     let out = calculate(&data, &xml, &options);
     assert_rate(
         out.energy_per_trigger_event,
-        20.0 * 1.57 * stats.ignite_damage / f64::from(enemy_ailment_threshold(ENEMY_LEVEL)),
+        20.0 * 1.57 * stats.ignite_damage / enemy_ailment_threshold(),
     );
     assert!(out.skill_trigger_rate > 0.0);
 

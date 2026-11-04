@@ -307,7 +307,14 @@ fn summon_zombie_life_matches_core_derivation() {
     let def = data
         .minion_def("RaisedZombie")
         .expect("RaisedZombie is in the data pack");
-    let ctx = build_minion_context_from_def(def, 20, vec![], vec![], AttributeInfusion::default());
+    let ctx = build_minion_context_from_def(
+        def,
+        20,
+        vec![],
+        vec![],
+        AttributeInfusion::default(),
+        &data.constants.monster_scaling,
+    );
     let core_life = ctx.base.life;
     assert_eq!(zombie_out.level, resolve_minion_level(20));
     // OutputTable.minions' life is emitted by the defence pipeline (life pool) and shares the same order as base.life;
@@ -437,6 +444,7 @@ fn storm_mage_quality_life_snapshot_matches_offence_details() {
             base_life: 1000.0,
             ..Default::default()
         });
+        session.set_constants(data.constants.clone());
         session.set_stat("Life", 1000.0);
         let mut modifiers = vec![Modifier::number("MaximumLife", ModType::Inc, 213.0)];
         if with_life_damage {

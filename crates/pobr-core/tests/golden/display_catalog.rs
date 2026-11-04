@@ -21,8 +21,8 @@ fn shock_effect_displays_the_magnitude_modifier_and_its_enemy_sources() {
     use pobr_core::calc::MinimalInput;
     use pobr_core::{CalcConfig, Modifier};
 
-    let mut session =
-        super::support::session(MinimalInput::default()).with_config(CalcConfig::spell());
+    let mut session = super::support::session(MinimalInput::default())
+        .with_config(crate::support::with_game_tables(CalcConfig::spell()));
     session.setup_enemy(80, pobr_data::monster::EnemyTier::None);
     session
         .add_modifier_texts(&["Adds 1 to 1 Lightning Damage to Spells"])

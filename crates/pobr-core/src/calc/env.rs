@@ -209,6 +209,7 @@ impl Env {
             ally_buff_mods,
             infusion,
             origin.picked_monster,
+            &self.cfg.constants.monster_scaling,
         );
         super::write_summoned_minion_multipliers(&mut self.player.mod_db, limit, &def.id);
         let kind_count = def.limit.to_pob2_str();
