@@ -45,6 +45,21 @@ fn volume_and_sorted_by_var() {
     }
 }
 
+/// Every var appears once: the interpreter applies every entry, so a repeated
+/// var would apply both entries' effects from one input.
+#[test]
+fn vars_are_unique() {
+    let doc = load();
+    let mut seen = std::collections::BTreeSet::new();
+    for option in &doc.options {
+        assert!(
+            seen.insert(option.var.as_str()),
+            "duplicate var {}",
+            option.var
+        );
+    }
+}
+
 /// The handler budget: handler_id entries ≤60 (architecture doc §5
 /// estimates ~10%; the registry-side ≤54 assertion lives in handlers.rs).
 #[test]
