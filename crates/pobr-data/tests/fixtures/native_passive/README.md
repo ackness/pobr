@@ -2,8 +2,10 @@
 
 This is a **synthetic baseline containing one real selected passive fact**, not a
 production data pack or an old active dataset relabelled as a newer patch. The
-schema-3 version is `controlled-native-passive-0.5.5.5`. Empty item/gem/effect tables
-and the zero-attribute `Fixture` class are controlled inputs. There are no parser
+schema-3 version is `controlled-native-passive-0.5.5.5`. Empty item/gem/effect tables,
+the zero-attribute `Fixture` class and a one-level monster table of ones
+(`base/monster_scaling.json`, required by every `BuildData` load; not game values)
+are controlled inputs. There are no parser
 rules. Tests import allocation 62518 and run the ordinary full build calculation
 with character injection and imported default quest rewards disabled: FireResist
 is 0 without allocation and 5 with it. A synthetic effect passive proves 100%
@@ -43,7 +45,7 @@ Its declared upstream version is **0.5.5** and exact game patch is **UNKNOWN**.
 The matching node does not prove patch-wide equivalence with native 0.5.5.5.
 The active 0.5.5.4.2 pack was neither copied nor changed.
 
-Only `manifest.json` and its six inventoried `base/` files form the runtime pack.
+Only `manifest.json` and its seven inventoried `base/` files form the runtime pack.
 The loader validates their hashes on disk and in memory. `evidence.json` and this
 README are documentation. Core tests deserialize the same selected node to check
 source attribution without I/O inside the engine. Build tests load the sealed pack

@@ -1,19 +1,29 @@
-//! Source-preserving player context and the separate, bounded PoBR applicability policy.
+//! Source-preserving player context facts (character row, starting relations and
+//! metadata archive) as produced by the RePoE adapter.
 //!
-//! Deserializing these DTOs does not validate or admit an actor. `NativeData::load`
-//! is the immutable catalog boundary; build admission is a separate operation.
+//! Deserializing these DTOs validates only their shape; they carry no PoBR actor
+//! applicability policy. The adapter's ordinary unarmed and runtime-constant
+//! projections read the generic character metadata through these types.
 
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::native_runtime::{NativeGame, NativeRealm};
+/// Game supported by the player context format.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NativeGame {
+    #[serde(rename = "poe2")]
+    Poe2,
+}
 
-/// Sealed source context location.
-pub const NATIVE_PLAYER_CONTEXT_PATH: &str = "base/native_player_context.json";
-/// Sealed PoBR interpretation location, separate from source facts.
-pub const NATIVE_ACTOR_BINDING_PATH: &str = "base/native_actor_binding.json";
+/// Numerical source realm; a display language never implies another realm.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NativeRealm {
+    #[serde(rename = "INTERNATIONAL")]
+    International,
+}
+
 /// Stable selected actor; sharing its base class never selects another character.
 pub const NATIVE_PLAYER_ID: &str = "Metadata/Characters/Int/IntFourb";
 /// Case-exact AO root, independent of the generic OT root.
@@ -206,139 +216,6 @@ pub struct NativePlayerContextDef {
     pub source_archive: BTreeMap<String, String>,
 }
 
-/// Bounded applicability policies; neither asserts source inheritance or allocation legality.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum NativeActorPolicy {
-    #[serde(rename = "selected-player-generic-ot-v1")]
-    SelectedPlayerGenericOtV1,
-    #[serde(rename = "selected-player-generic-ot-ordinary-damage-passives-v1")]
-    SelectedPlayerGenericOtOrdinaryDamagePassivesV1,
-    #[serde(rename = "selected-player-generic-ot-primary-spell-hit-passives-v1")]
-    SelectedPlayerGenericOtPrimarySpellHitPassivesV1,
-}
-
-/// Required predicate for explicitly selected passive sources in the conditional model.
-pub const NATIVE_PASSIVES_ACTIVE_CONDITION: &str =
-    "selected-ordinary-damage-passives-assumed-active";
-/// Every allocation outside the complete ordinary damage-packet scope stays excluded.
-pub const NATIVE_OTHER_ALLOCATIONS_EXCLUSION: &str =
-    "allocations-other-than-explicit-ordinary-damage-passives";
-/// Required limitation of the passive policy, also retained in consumer result assumptions.
-pub const NATIVE_ALLOCATION_ASSUMPTION: &str = "Explicitly selected eligible ordinary damage passives are assumed active for conditional comparison; allocation-legality (point budget, reachability and progression) is unavailable. Starting choices never grant nodes automatically.";
-/// Selected gem levels are source rows, independently of the fixed actor's level.
-pub const NATIVE_PRIMARY_SPELL_CONDITION: &str = "primary-spell-exact-authored-level-q0";
-/// Requirement/obtainability rules are outside this conditional hit selection.
-pub const NATIVE_GEM_LEVEL_ASSUMPTION: &str = "Selected gem levels are exact authored source rows, independently of actor level; gem requirements and obtainability are not certified.";
-
-/// Explicit evaluation contract, independent of any particular skill's implementation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum NativeEvaluationKind {
-    #[serde(rename = "conditional-skill-hit-v1")]
-    ConditionalSkillHitV1,
-    #[serde(rename = "conditional-skill-hit-v2")]
-    ConditionalSkillHitV2,
-}
-
-/// Honest status of applying generic OT facts to the selected player.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum NativeModelStatus {
-    #[serde(rename = "conditional-model")]
-    ConditionalModel,
-}
-
-/// Address of one source assignment, preserving path and order rather than collapsing keys.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct NativeAssignmentSelector {
-    pub path: String,
-    pub assignment: usize,
-}
-
-/// Explicit finite bonus in percentage points, never a total multiplier or default bundle.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct NativeCriticalBonus {
-    pub bonus_percent: f64,
-    pub source: NativeAssignmentSelector,
-    pub stat: NativePlayerReference,
-    /// Raw glossary meaning remains retained in the physical table and archive.
-    pub meaning: Vec<NativePlayerReference>,
-}
-
-/// Finite dispositions are local to this exact profile, never globally effectless.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum NativeFactDispositionKind {
-    Consumed,
-    Inactive,
-    OutsideOutputScope,
-    Unresolved,
-}
-
-/// Per-fact interpretation evidence; unresolved relevant input blocks later admission.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct NativeFactDisposition {
-    /// JSON pointer into the typed context artifact.
-    pub selector: String,
-    pub disposition: NativeFactDispositionKind,
-    pub relevant_to_conditional_hit: bool,
-    pub reason: String,
-}
-
-/// Separate PoBR applicability policy and normalized actor quantity.
-/// Public DTO fields carry declarations, not admission authority.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct NativeActorBinding {
-    pub schema_version: u32,
-    pub policy: NativeActorPolicy,
-    pub evaluation: NativeEvaluationKind,
-    pub model_status: NativeModelStatus,
-    pub context_sha256: String,
-    pub actor_id: String,
-    pub actor_level: u32,
-    pub critical_bonus: NativeCriticalBonus,
-    pub required_conditions: Vec<String>,
-    pub excluded_sources: Vec<String>,
-    pub dispositions: Vec<NativeFactDisposition>,
-    pub assumptions: Vec<String>,
-}
-
-impl NativeActorBinding {
-    /// Declared applicability model; validity comes from the containing NativeData.
-    pub fn policy(&self) -> NativeActorPolicy {
-        self.policy
-    }
-    /// Declared bounded evaluation contract.
-    pub fn evaluation(&self) -> NativeEvaluationKind {
-        self.evaluation
-    }
-    /// Exact selected character stable ID.
-    pub fn actor_id(&self) -> &str {
-        &self.actor_id
-    }
-    /// Explicit selected actor level.
-    pub fn actor_level(&self) -> u32 {
-        self.actor_level
-    }
-    /// Explicit source-derived extra-damage bonus and its provenance.
-    pub fn critical_bonus(&self) -> &NativeCriticalBonus {
-        &self.critical_bonus
-    }
-    /// Complete retained per-fact interpretation record.
-    pub fn dispositions(&self) -> &[NativeFactDisposition] {
-        &self.dispositions
-    }
-    /// Later admission must reject a packet with unresolved relevant inputs.
-    pub fn has_unresolved_hit_inputs(&self) -> bool {
-        self.dispositions.iter().any(|fact| {
-            fact.relevant_to_conditional_hit
-                && fact.disposition == NativeFactDispositionKind::Unresolved
-        })
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -354,19 +231,5 @@ mod tests {
         missing.as_object_mut().unwrap().remove("id");
         assert!(serde_json::from_value::<NativePlayerReference>(missing).is_err());
         assert_ne!(NATIVE_PLAYER_ID, "Metadata/Characters/Int/IntFourB");
-    }
-
-    #[test]
-    fn explicit_bonus_and_finite_disposition_contracts_have_no_implicit_defaults() {
-        let missing = json!({"source":{"path":NATIVE_GENERIC_OT,"assignment":15},
-            "stat":{"origin":"parent","table":"Stats","row":595,"id":"base_critical_hit_damage_bonus",
-                "payload":"tables/Stats.json","pointer":"/rows/595/values"},"meaning":[]});
-        assert!(serde_json::from_value::<NativeCriticalBonus>(missing).is_err());
-        for name in ["effectless", "ignored", "default"] {
-            assert!(serde_json::from_value::<NativeFactDispositionKind>(json!(name)).is_err());
-        }
-        assert!(
-            serde_json::from_value::<NativeActorPolicy>(json!("infer-ao-ot-inheritance")).is_err()
-        );
     }
 }

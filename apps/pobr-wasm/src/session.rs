@@ -102,6 +102,11 @@ pub fn calculate_json(input_json: &str) -> Result<String, String> {
 
     let input = MinimalInput::from(&request);
     let mut session = CalculationSession::new(input);
+    // The imported runtime constants whenever data is initialized (the
+    // monster-level ailment / poise tables have no Rust copy).
+    if let Ok(data) = crate::state::build_data() {
+        session.set_constants(data.constants.clone());
+    }
     if !request.modifiers.is_empty() {
         let data = crate::state::build_data()
             .map_err(|e| format!("cannot parse modifiers without game data: {e}"))?;

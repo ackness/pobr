@@ -21,7 +21,6 @@
 pub mod domains;
 mod identity;
 pub mod manifest;
-mod native;
 pub mod overlay;
 pub mod paths;
 pub mod ruleset;
@@ -33,12 +32,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use pobr_data::catalog::{
-    BaseItemDef, CostTypeDef, GrantedEffectDef, ModDef, PassiveNodeDef, PassiveTreeMeta,
-    SkillGemDef, SkillLevelDef, SkillStatSetDef, StatDef,
+    BaseItemDef, CostTypeDef, DataManifest, GrantedEffectDef, ModDef, PassiveNodeDef,
+    PassiveTreeMeta, SkillGemDef, SkillLevelDef, SkillStatSetDef, StatDef,
 };
 
 pub use identity::DataIdentity;
-pub use native::NativeData;
 pub use overlay::{MergeError, merge};
 pub use ruleset::RuleSet;
 
@@ -170,9 +168,8 @@ impl std::ops::Deref for FileBytes {
 /// The backing snapshot must remain unchanged for the loader's lifetime.
 /// Manifest validation (including absence or failure) is cached on first
 /// domain access and shared by clones. After replacing or repairing files,
-/// construct a new loader. Schemas 3/4 expose only inventoried snapshot files.
-/// Shared `overlay-common` remains a separate layer for legacy packs; native
-/// schema 4 ignores it and requires an immutable native contract.
+/// construct a new loader. Schema 3 exposes only inventoried snapshot files;
+/// shared `overlay-common` remains a separate layer.
 #[derive(Debug, Clone)]
 pub struct GameData {
     root: PathBuf,
@@ -182,13 +179,12 @@ pub struct GameData {
     files: Option<std::sync::Arc<MemoryFiles>>,
     /// Validation and inventory are fixed on first access, shared by clones.
     /// Create a new loader after replacing a snapshot on disk.
-    snapshot:
-        std::sync::Arc<std::sync::OnceLock<Result<Option<manifest::ValidatedSnapshot>, String>>>,
+    snapshot: std::sync::Arc<std::sync::OnceLock<Result<Option<DataManifest>, String>>>,
     /// Effective input-pack fingerprint, fixed on first request and shared by clones.
     identity: std::sync::Arc<std::sync::OnceLock<Result<DataIdentity, String>>>,
     /// The caller has already compared every inventoried file with its manifest
-    /// digest ([`Self::from_memory_prechecked`]), so legacy validation skips that
-    /// comparison. Native schema 4 always verifies bytes in this loader.
+    /// digest ([`Self::from_memory_prechecked`]), so validation skips that
+    /// comparison.
     prechecked: bool,
 }
 
@@ -252,8 +248,6 @@ impl GameData {
     /// digest format, every listed file present); only the byte comparison is left to
     /// the caller, who must have made it against this manifest's digests. The pack's
     /// identity is unchanged: it is built from the manifest's digests, not from hashing.
-    /// Schema 4 still verifies every digest here; the legacy staging handshake cannot
-    /// certify required native semantics.
     pub fn from_memory_prechecked(files: std::collections::BTreeMap<String, Vec<u8>>) -> Self {
         Self::memory(files, true, false)
     }
@@ -433,13 +427,58 @@ impl GameData {
         lang: &str,
         file: &str,
     ) -> Result<std::collections::BTreeMap<String, String>, LoadError> {
+        Ok(self.locale_file(lang, file)?.unwrap_or_default())
+    }
+
+    /// The languages the data pack provides, in a fixed order: the
+    /// manifest's `languages`, or, for a pack without a manifest, the
+    /// `i18n/<lang>/` directories present (sorted). Empty when the snapshot
+    /// is invalid.
+    pub fn languages(&self) -> Vec<String> {
+        match self.snapshot_manifest() {
+            Ok(Some(manifest)) => return manifest.languages.clone(),
+            Ok(None) => {}
+            Err(_) => return Vec::new(),
+        }
+        let mut found: Vec<String> = match &self.files {
+            Some(table) => table
+                .keys()
+                .iter()
+                .filter_map(|key| {
+                    let (lang, file) = key.strip_prefix("i18n/")?.split_once('/')?;
+                    (!file.is_empty()).then(|| lang.to_string())
+                })
+                .collect(),
+            None => fs::read_dir(self.root.join("i18n"))
+                .into_iter()
+                .flatten()
+                .filter_map(|entry| {
+                    let entry = entry.ok()?;
+                    entry.file_type().ok()?.is_dir().then_some(())?;
+                    entry.file_name().into_string().ok()
+                })
+                .collect(),
+        };
+        found.sort();
+        found.dedup();
+        found
+    }
+
+    /// Loads one file of a language's package (`i18n/<lang>/<file>`, with
+    /// the user patch layer). Returns `Ok(None)` when the package has no such
+    /// file; other I/O / parse errors propagate.
+    pub fn locale_file<T: for<'de> serde::Deserialize<'de>>(
+        &self,
+        lang: &str,
+        file: &str,
+    ) -> Result<Option<T>, LoadError> {
         let path = self.root.join(format!("i18n/{lang}/{file}"));
         match self.load_json_at(path) {
-            Ok(map) => Ok(map),
+            Ok(value) => Ok(Some(value)),
             Err(LoadError::Io { ref source, .. })
                 if source.kind() == std::io::ErrorKind::NotFound =>
             {
-                Ok(Default::default())
+                Ok(None)
             }
             Err(e) => Err(e),
         }
@@ -705,16 +744,7 @@ impl GameData {
         &self,
         lang: &str,
     ) -> Result<Option<Vec<pobr_data::catalog::StatLineTemplate>>, LoadError> {
-        let path = self.root.join(format!("i18n/{lang}/stat_lines.json"));
-        match self.load_json_at::<Vec<pobr_data::catalog::StatLineTemplate>>(path) {
-            Ok(v) => Ok(Some(v)),
-            Err(LoadError::Io { ref source, .. })
-                if source.kind() == std::io::ErrorKind::NotFound =>
-            {
-                Ok(None)
-            }
-            Err(e) => Err(e),
-        }
+        self.locale_file(lang, "stat_lines.json")
     }
 
     /// Loads passive tree nodes (from the adapted GGG official tree

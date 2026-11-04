@@ -2,11 +2,9 @@
 //!
 //! The wasm environment has no filesystem: data files are fetched by JS,
 //! injected one at a time via [`stage_data_file`], then loaded by
-//! [`init_staged_data`] for ordinary builds or [`init_native_staged_data`]
-//! for the bounded native API. Host callers supply an explicit directory to
-//! [`init_data_from_dir`] or [`init_native_data_from_dir`]. Only one mode is
-//! active at a time. Successful initialization replaces the previous mode and
-//! clears derived caches; failure preserves the active data and caches.
+//! [`init_staged_data`]. Host callers supply an explicit directory to
+//! [`init_data_from_dir`]. Successful initialization replaces the previous
+//! data and clears derived caches; failure preserves the active data and caches.
 //!
 //! The wasm target is single-threaded, so thread_local is effectively
 //! global; host tests just need to init once before calling, on the same thread.
@@ -16,7 +14,7 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use pobr_build::BuildData;
-use pobr_gamedata::{GameData, NativeData};
+use pobr_gamedata::GameData;
 
 thread_local! {
     /// The staging area for data files injected in batches (`relative path -> bytes`).
@@ -25,17 +23,6 @@ thread_local! {
     static BUILD_DATA: RefCell<Option<Rc<BuildData>>> = const { RefCell::new(None) };
     /// The GameData backing the built BuildData (used for on-demand queries like i18n name sidecars).
     static GAME_DATA: RefCell<Option<Rc<GameData>>> = const { RefCell::new(None) };
-    /// Immutable native catalogs; mutually exclusive with ordinary BuildData/GameData.
-    static NATIVE_DATA: RefCell<Option<Rc<NativeData>>> = const { RefCell::new(None) };
-    /// The Chinese mod-line translator (lazily built; `None` = not attempted
-    /// yet, `Some(None)` = the data pack has no zh-CN templates).
-    static ZH_TRANSLATOR: RefCell<Option<Option<Rc<crate::zh::LineTranslator>>>> =
-        const { RefCell::new(None) };
-    /// The reverse (English -> Simplified Chinese) display translator: built
-    /// by swapping the direction of the same templates (consumed by tree mod
-    /// tooltips / config list options and other display surfaces).
-    static EN_TO_ZH_TRANSLATOR: RefCell<Option<Option<Rc<crate::zh::LineTranslator>>>> =
-        const { RefCell::new(None) };
     /// The affix-tier reverse-lookup index (lazily built; `Some(None)` = the
     /// data pack lacks pool data/templates, so tiers are left unlabeled).
     static TIER_INDEX: RefCell<Option<Option<Rc<pobr_item::TierIndex>>>> =
@@ -127,8 +114,7 @@ pub fn response_cache_hits() -> u64 {
 /// Clears the response cache whenever data is (re-)initialized — results are sensitive to the data version.
 fn clear_data_caches() {
     crate::build_api::clear_snapshots();
-    ZH_TRANSLATOR.with_borrow_mut(|slot| *slot = None);
-    EN_TO_ZH_TRANSLATOR.with_borrow_mut(|slot| *slot = None);
+    crate::locales::clear();
     TIER_INDEX.with_borrow_mut(|slot| *slot = None);
     RESPONSE_CACHE.with_borrow_mut(|c| {
         c.entries.clear();
@@ -182,7 +168,6 @@ fn init_staged(prechecked: bool) -> Result<(), String> {
     let build_data = BuildData::load(&data).map_err(|e| format!("load BuildData: {e}"))?;
     BUILD_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(build_data)));
     GAME_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(data)));
-    NATIVE_DATA.with_borrow_mut(|slot| *slot = None);
     clear_data_caches();
     Ok(())
 }
@@ -238,62 +223,13 @@ pub fn init_data_from_dir(version_dir: &str) -> Result<(), String> {
     let build_data = BuildData::load(&data).map_err(|e| format!("load BuildData: {e}"))?;
     BUILD_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(build_data)));
     GAME_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(data)));
-    NATIVE_DATA.with_borrow_mut(|slot| *slot = None);
     clear_data_caches();
     Ok(())
 }
 
-/// Loads explicitly staged native bytes, verifying integrity before replacing the active mode.
-///
-/// Consumes the staging area, including on failure, as the ordinary initializer does.
-/// Only immutable native catalogs are retained; no BuildData, ruleset or legacy
-/// constants are constructed. Loading a v1 catalog does not admit calculation.
-///
-/// # Errors
-/// Rejects empty staging, legacy packs and invalid native data. The active mode
-/// and its caches remain unchanged on failure; retry by staging a complete pack.
-pub fn init_native_staged_data() -> Result<(), String> {
-    let files = STAGED.with_borrow_mut(std::mem::take);
-    if files.is_empty() {
-        return Err("no data files staged; call stage_data_file first".to_string());
-    }
-    install_native_data(&GameData::from_memory(files))
-}
-
-/// Loads native catalogs from an explicit host directory without CURRENT or environment discovery.
-///
-/// # Errors
-/// Rejects missing, legacy or invalid native packs, preserving the active mode and caches.
-/// Filesystem access is unavailable on WASM; use [`init_native_staged_data`] there.
-pub fn init_native_data_from_dir(version_dir: &str) -> Result<(), String> {
-    install_native_data(&GameData::new(version_dir))
-}
-
-fn install_native_data(data: &GameData) -> Result<(), String> {
-    let native = NativeData::load(data).map_err(|e| format!("load NativeData: {e}"))?;
-    NATIVE_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(native)));
-    BUILD_DATA.with_borrow_mut(|slot| *slot = None);
-    GAME_DATA.with_borrow_mut(|slot| *slot = None);
-    clear_data_caches();
-    Ok(())
-}
-
-/// Whether ordinary BuildData is available; native initialization leaves this false.
+/// Whether BuildData is available.
 pub fn is_data_ready() -> bool {
     BUILD_DATA.with_borrow(|slot| slot.is_some())
-}
-
-/// Whether immutable native catalogs are available, independently of request admission.
-pub fn is_native_data_ready() -> bool {
-    NATIVE_DATA.with_borrow(|slot| slot.is_some())
-}
-
-pub(crate) fn native_data() -> Result<Rc<NativeData>, String> {
-    NATIVE_DATA.with_borrow(|slot| {
-        slot.clone().ok_or_else(|| {
-            "native data not initialized; call init_native_staged_data first".to_string()
-        })
-    })
 }
 
 /// Gets the initialized BuildData; if uninitialized, returns an error message safe to pass through to the frontend.
@@ -309,71 +245,6 @@ pub fn game_data() -> Result<Rc<GameData>, String> {
     GAME_DATA.with_borrow(|slot| {
         slot.clone()
             .ok_or_else(|| "game data not initialized; call init first".to_string())
-    })
-}
-
-/// Gets the Chinese mod-line translator (built and cached on first call;
-/// `None` if the data pack has no zh-CN templates — consumers degrade to
-/// "no translation applied", so Chinese lines pass through the parser as-is and land in unsupported).
-pub fn zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
-    ZH_TRANSLATOR.with_borrow_mut(|slot| {
-        if slot.is_none() {
-            *slot = Some(build_zh_translator());
-        }
-        slot.as_ref().and_then(Clone::clone)
-    })
-}
-
-/// Gets the English -> Simplified Chinese display translator (lazily built, same as above).
-pub fn en_to_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
-    EN_TO_ZH_TRANSLATOR.with_borrow_mut(|slot| {
-        if slot.is_none() {
-            let built = (|| {
-                let game = game_data().ok()?;
-                let templates = game.stat_line_templates("zh-CN").ok().flatten()?;
-                // Swap direction: src=the English template, and the en field
-                // holds the Simplified Chinese template -> translate_line becomes en->zh.
-                let swapped: Vec<pobr_data::catalog::StatLineTemplate> = templates
-                    .into_iter()
-                    .map(|t| pobr_data::catalog::StatLineTemplate {
-                        src: t.en,
-                        en: t.src,
-                    })
-                    .collect();
-                // The noun direct-translation table (English -> Simplified
-                // Chinese): base names (i18n id->zh joined with base English
-                // name->id) plus Words nouns (unique item names, etc). Item
-                // name / base-type lines get a whole-line hit via this table.
-                let mut names = std::collections::HashMap::new();
-                if let (Ok(zh_by_id), Ok(data)) = (game.base_item_names("zh-CN"), build_data()) {
-                    for (en_name, def) in &data.base_items {
-                        if let Some(zh) = zh_by_id.get(def.id.as_str()) {
-                            names.insert(en_name.clone(), zh.clone());
-                        }
-                    }
-                }
-                if let Ok(words) = game.word_names("zh-CN") {
-                    names.extend(words);
-                }
-                if let Ok(passives) = game.passive_node_names("zh-CN") {
-                    names.extend(passives);
-                }
-                let mut translator = crate::zh::LineTranslator::new(&swapped, names);
-                // The affix name table (the Mods table): enables translating
-                // magic item names composed of "suffix + prefix + base".
-                if let Ok(affixes) = game.affix_names("zh-CN") {
-                    translator.set_affix_names(affixes.into_iter().collect());
-                }
-                // The RARE random-name word table: enables translating
-                // two-word names written together.
-                if let Ok(words) = game.rare_name_words("zh-CN") {
-                    translator.set_rare_words(words.into_iter().collect());
-                }
-                Some(Rc::new(translator))
-            })();
-            *slot = Some(built);
-        }
-        slot.as_ref().and_then(Clone::clone)
     })
 }
 
@@ -403,121 +274,70 @@ pub fn base_item_tags(base_name: &str) -> Option<(Vec<String>, u32)> {
     Some((def.tags.clone(), def.mod_domain))
 }
 
-fn build_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
-    let game = game_data().ok()?;
-    let templates = game.stat_line_templates("zh-CN").ok().flatten()?;
-    // The base-name reverse-lookup table: i18n (id -> Simplified Chinese
-    // name) joined with base (English name -> def.id).
-    let mut base_names = std::collections::HashMap::new();
-    if let (Ok(zh_by_id), Ok(data)) = (game.base_item_names("zh-CN"), build_data()) {
-        for (en_name, def) in &data.base_items {
-            if let Some(zh) = zh_by_id.get(def.id.as_str()) {
-                base_names.insert(zh.clone(), en_name.clone());
-            }
-        }
-    }
-    // Words-noun reverse lookup (Simplified Chinese unique item name ->
-    // English); the name lines of China-server item text go through this.
-    if let Ok(words) = game.word_names("zh-CN") {
-        for (en, zh) in words {
-            base_names.entry(zh).or_insert(en);
-        }
-    }
-    Some(Rc::new(crate::zh::LineTranslator::new(
-        &templates, base_names,
-    )))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn native_mode_switches_transactionally_and_clears_ordinary_caches() {
-        let legacy_dir = pobr_gamedata::current_data_dir();
-        init_data_from_dir(&legacy_dir.to_string_lossy()).expect("ordinary data");
+    fn failed_initialization_keeps_the_active_data_and_caches() {
+        let dir = pobr_gamedata::current_data_dir();
+        init_data_from_dir(&dir.to_string_lossy()).expect("ordinary data");
         let ordinary = build_data().unwrap();
         let game = game_data().unwrap();
-        assert!(zh_translator().is_some());
-        assert!(en_to_zh_translator().is_some());
+        assert!(crate::locales::line_parser("zh-CN").is_some());
+        assert!(crate::locales::line_renderer("zh-CN").is_some());
         assert!(tier_index().is_some());
         for _ in 0..2 {
             assert_eq!(
-                cached_response("native_mode_test", "{}", || Ok("legacy response".into())).unwrap(),
-                "legacy response"
+                cached_response("failed_init_test", "{}", || Ok("response".into())).unwrap(),
+                "response"
             );
         }
         assert_eq!(response_cache_hits(), 1);
 
         stage_data_file("manifest.json", "{}");
-        assert!(init_native_staged_data().is_err());
+        assert!(init_staged_data().is_err());
         assert!(Rc::ptr_eq(&ordinary, &build_data().unwrap()));
         assert!(Rc::ptr_eq(&game, &game_data().unwrap()));
-        assert!(!is_native_data_ready());
         assert_eq!(response_cache_hits(), 1, "failed init keeps old responses");
-        ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_some()));
-        EN_TO_ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_some()));
-        TIER_INDEX.with_borrow(|slot| assert!(slot.is_some()));
-
-        let native_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../crates/pobr-gamedata/tests/fixtures/native_runtime");
-        init_native_data_from_dir(&native_dir.to_string_lossy()).expect("native catalogs");
-        assert!(is_native_data_ready());
-        assert!(!is_data_ready());
-        assert!(build_data().is_err());
-        assert!(game_data().is_err());
-        ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_none()));
-        EN_TO_ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_none()));
-        TIER_INDEX.with_borrow(|slot| assert!(slot.is_none()));
-        RESPONSE_CACHE.with_borrow(|cache| {
-            assert!(cache.entries.is_empty());
-            assert!(cache.order.is_empty());
-            assert_eq!(cache.hits, 0);
-        });
-        // A previously successful ordinary response cannot bypass the mode guard.
-        assert!(
-            cached_response("native_mode_test", "{}", || {
-                build_data().map(|_| "unexpected ordinary response".into())
-            })
-            .is_err()
+        let (parsers, renderers) = crate::locales::cached();
+        assert_eq!(
+            (parsers, renderers),
+            (vec!["zh-CN".into()], vec!["zh-CN".into()])
         );
-        let native = native_data().unwrap();
-        let error = init_data_from_dir(&native_dir.to_string_lossy()).unwrap_err();
-        assert!(error.contains("native-profile-not-admitted:"), "{error}");
-        assert!(Rc::ptr_eq(&native, &native_data().unwrap()));
-
-        // Populate cached misses in native mode. Ordinary reinitialization must
-        // invalidate those misses as well as the native catalogs themselves.
-        assert!(zh_translator().is_none());
-        assert!(en_to_zh_translator().is_none());
-        assert!(tier_index().is_none());
-        init_data_from_dir(&legacy_dir.to_string_lossy()).expect("back to ordinary data");
-        assert!(is_data_ready());
-        assert!(!is_native_data_ready());
-        assert!(native_data().is_err());
-        ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_none()));
-        EN_TO_ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_none()));
-        TIER_INDEX.with_borrow(|slot| assert!(slot.is_none()));
-        assert!(zh_translator().is_some());
-        assert!(en_to_zh_translator().is_some());
-        assert!(tier_index().is_some());
+        TIER_INDEX.with_borrow(|slot| assert!(slot.is_some()));
     }
 
     #[test]
     fn initialization_recovers_preinit_misses_and_invalidates_derived_indexes() {
         // A caller may request translation before loading the game data.
-        assert!(zh_translator().is_none());
-        assert!(en_to_zh_translator().is_none());
+        assert!(crate::locales::line_parser("zh-CN").is_none());
+        assert!(crate::locales::line_renderer("zh-CN").is_none());
         assert!(tier_index().is_none());
         let dir = pobr_gamedata::repo_data_root().join(pobr_gamedata::data_version());
         init_data_from_dir(dir.to_str().unwrap()).unwrap();
-        assert!(zh_translator().is_some());
-        assert!(en_to_zh_translator().is_some());
+        assert!(crate::locales::line_parser("zh-CN").is_some());
+        assert!(crate::locales::line_renderer("zh-CN").is_some());
+        // A locale without templates has nothing to translate with.
+        assert!(crate::locales::line_renderer("zh-TW").is_none());
+        assert!(crate::locales::line_parser("no-such-locale").is_none());
+        let (parsers, renderers) = crate::locales::cached();
+        assert_eq!(parsers, ["zh-CN"], "an undeclared code is not cached");
+        assert_eq!(renderers, ["zh-CN", "zh-TW"]);
+        let tables = crate::locales::loaded_tables();
+        // zh-TW has no templates, so none of its name tables are read; nothing reads skills.
+        let zh_tw: Vec<&str> = tables
+            .iter()
+            .filter(|(c, _)| c == "zh-TW")
+            .map(|(_, f)| *f)
+            .collect();
+        assert_eq!(zh_tw, ["stat_lines.json"]);
+        assert!(tables.iter().all(|(_, file)| *file != "skills.json"));
+        assert!(crate::locales::load_errors().is_empty());
         assert!(tier_index().is_some());
         // Reloading replaces all data-dependent caches, including cached misses.
         init_data_from_dir(dir.to_str().unwrap()).unwrap();
-        ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_none()));
-        EN_TO_ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_none()));
+        assert_eq!(crate::locales::cached(), (vec![], vec![]));
         TIER_INDEX.with_borrow(|slot| assert!(slot.is_none()));
     }
 }

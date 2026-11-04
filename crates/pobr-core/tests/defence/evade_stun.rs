@@ -513,6 +513,7 @@ fn perform_fills_stun_with_enemy_taken_hit() {
         ..ActorBaseStats::default()
     };
     let mut env = Env::new(Actor::new(1, base));
+    crate::support::add_game_tables(&mut env.cfg);
     pobr_core::calc::setup_enemy(&mut env, 82, pobr_data::monster::EnemyTier::Pinnacle);
     perform(&mut env).unwrap();
 

@@ -92,25 +92,24 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 
 ## Workspace 结构
 
-以根 [Cargo.toml](../Cargo.toml)、各 crate 的 `src/lib.rs` 和契约 / 回归测试为准。12 个成员：7 个库、2 个应用、3 个 Rust 工具；`web/` 与 Lua oracle 不在 Cargo workspace 里。把 RePoE 事实转换成运行 JSON 的 `pobr-data-adapter` 及其领域政策在 [ackness/repoe](https://github.com/ackness/repoe/tree/master/tools/pobr-data-adapter)，经不可移动的 tag `engine-crates/<日期>` 依赖本仓库的数据类型；改动 `pobr-data` 等运行时类型时，在 RePoE 一侧用新 tag 跟进。
+以根 [Cargo.toml](../Cargo.toml)、各 crate 的 `src/lib.rs` 和契约 / 回归测试为准。11 个成员：7 个库、2 个应用、2 个 Rust 工具；`web/` 与 Lua oracle 不在 Cargo workspace 里。把 RePoE 事实转换成运行 JSON 的 `pobr-data-adapter` 及其领域政策在 [ackness/repoe](https://github.com/ackness/repoe/tree/master/tools/pobr-data-adapter)，经不可移动的 tag `engine-crates/<日期>` 依赖本仓库的数据类型；改动 `pobr-data` 等运行时类型时，在 RePoE 一侧用新 tag 跟进。
 
 | 成员 | 职责 |
 |------|------|
 | `crates/pobr-data` | 纯数据定义（入库 JSON 格式在 `catalog/`，另有 damage / build_config / display_stat / stat / monster 等类型，以及数据仓库 adapter 也用的纯文本工具 `text`），不含计算或 I/O，是所有 crate 的底层 |
 | `crates/pobr-core` | Modifier 解析、存储、汇总、计算与来源归因；不做 I/O |
 | `crates/pobr-gamedata` | 运行时数据加载器；计算所需游戏数据的文件 I/O 集中在此：`GameData::new(version_dir)` 按域懒加载，WASM 用 `GameData::from_memory` |
-| `crates/pobr-i18n` | 语言包与显示文本；`en-US` 是基准与缺译回退，另含 `zh-TW`，构建期校验并生成内嵌字符串表 |
+| `crates/pobr-i18n` | 与语言无关的游戏文本引擎：`LocalePack` 读入一种语言的翻译库语言包（调用方传入内容，不做 I/O），回退链由语言包 `_meta.json` 的 `fallback` 声明；`lines::LineParser`（目标语言词条行 → 英文规范行）与 `LineRenderer`（英文 → 目标语言显示）按语言包模板匹配，是否为目标语言也由模板与名词判断；只依赖 `pobr-data` |
 | `crates/pobr-tree` | 天赋树拓扑、已分配节点的词条收集、范围珠宝、加点编辑（`allocation::AllocationTree::edit`） |
 | `crates/pobr-build` | Build 状态、PoB 构筑码编解码、导入识别、`calc_orchestrator/` 编排（`calculate_with_data` / `calculate_skill_metrics`）、诊断与逐行台账、构筑对比；parity 测试的主战场 |
 | `crates/pobr-item` | 保留物品原文的编辑模型与序列化（`ItemDraft`，支持 BuildRaw 往返）；计算视图由 `pobr-core::item_text` + `ingest_item` 承担 |
 | `apps/pobr-cli` | CLI `pobr`：`calculate` / `calculate-build` / `parse-mod` / `explain-mod` / `parse-item` / `decode-code` / `encode-code`，命令逻辑在 lib |
 | `apps/pobr-wasm` | `build_api/` 的 JSON 契约；默认 features 可在宿主测试，`wasm` 启用绑定，`diagnostics` 启用计时与 fixture 生成目标 |
 | `tools/sync-pob-catalog` | PoB2 显示／输出 catalog 的扫描与对照（`scan` / `check` / `diff` / `fixture-check`），只作测试参考，不生成数据 |
-| `tools/lint-i18n` | 语言包完整性检查 |
 | `tools/precompile-mods` | 词条规则离线预编译、语料覆盖与审计（`generated/parsed_mods.json`、`modifier-audit.json`；`--check` 校验运行时合并后的规则集） |
 | `tools/pob2-oracle` | 非 workspace 成员（Lua wrapper）：无界面启动固定版本 PoB2，把完整计算分解输出为 JSON |
 
-依赖方向：`pobr-data` 在最底层；`pobr-build` 组合计算、物品、树与数据加载；应用层使用它们。生产计算核心不读文件；测试辅助（`pobr-core` 的 `test-rules`、`pobr-gamedata` 的 `test-pins`）在 feature 后面，只由 dev-dependencies 启用。
+依赖方向：`pobr-data` 在最底层；`pobr-build` 组合计算、物品、树与数据加载；应用层使用它们。生产计算核心不读文件；测试辅助（`pobr-core` 的 `test-rules`、`pobr-gamedata` 的 `test-pins`、`pobr-data` 的 `test-fixtures`）在 feature 后面，只由 dev-dependencies 启用。
 
 其他目录：`web/`（React / TypeScript / Vite；`src/api/` 定义 JSON 边界并默认在 module Worker 中运行 WASM，`public/` 是静态资源、同步数据与 Pages Worker，另有 `e2e/` 与 `worker-tests/`）、`data/`（Git 只跟踪 `CURRENT` 与十一份自有规则；版本目录和七份外部 shared 输入按 `pipeline/data.lock.json` 临时准备）、`pipeline/`（固定输入声明、导入、组包、候选与诊断）、`examples/`（回归与参考语料）、`devs/`（开发脚本、CI 基线与 fixtures；差异登记在 `scripts/known-differences.json`）、`agent-docs/`（被代码引用的早期机制研究）。当前行为契约集中在 `docs/`。
 
@@ -121,7 +120,6 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 - 活动数据版本在运行时解析：`POBR_DATA_VERSION` → `POBR_DATA_ROOT/CURRENT`（默认仓库的 `data/`），都缺失时报错。普通测试按准备好的 CURRENT 取数据；固定历史对照必须显式绑定对应外部版本锁／manifest 与参考身份，不能给旧 golden 重贴当前版本。运行数据目录是忽略的临时物化物，不在 Git 保留多份完整快照；需要回滚或多版本实测时显式准备独立旧版锁。数据升级导致实际参考变化时，按证据选择 `examples/demo-bd-test/tools/recapture_golden.py`／`recapture_panel_golden.py`；parity 回退先排查引擎、来源和参考口径，不能降低基线换取通过。
 - schema 3 的 `manifest.json` 列出运行时文件与 SHA-256，未列的文件视为不存在；`patch/` 与 `overlay-common/` 是独立覆盖层。`GameData` 首次访问时验证并缓存不可变快照，替换磁盘数据后必须创建新实例。
 - `GameData::identity()` 用摘要标识快照、共享覆盖层与有效 patch，进入完整计算响应的 `provenance`（`engine_version`、`data_version`、`data_sha256`）。
-- 原生 schema 4 通过 `NativeData` 加载不可变目录；普通 `BuildData`／ruleset 完整计算仍拒绝它。原生存档绑定最终数据摘要、assembly、actor、policy 与稳定技能分支，每次重开／修改后重新准入。受限的条件命中入口复用共享 Rust 核心，不读取旧资源／敌人／服务器时序默认值，也不生成尚未准入的完整构筑结果。见[条件命中契约](native-skill-hit.md)。
 - `CalculationSession` / `Env` 只执行一次（再次 `perform` 返回 `AlreadyPerformed`）；构筑入口返回只读的 `CompletedCalculationSession`。重算创建新会话，避免再次应用资源转换。
 - CLI 与 WASM 结果里的未支持词条、`missing_items`、`item_errors` 是诊断，调用方必须保留，不能当作零效果。
 
@@ -229,7 +227,7 @@ PoBR 主要计算静态构筑及选定条件下的结果，不追求还原游戏
 
 ## 关键约定
 
-- **计算内部只用稳定 ID**（`StatId` / `ModName` / `SourceId`），显示文本走 `pobr-i18n`。代码与注释用英文。
+- **计算内部只用稳定 ID**（`StatId` / `ModName` / `SourceId`），显示文本在显示边界解析：界面文字在 Web，游戏名词与词条译文来自翻译库的语言包。代码与注释用英文。
 - **确定性**：同一输入的结果逐字节相同；不依赖 HashMap 遍历顺序之类的偶然顺序。
 - **保留原文并保持兼容**：Build Code 走 XML → deflate → URL-safe Base64；导入的物品原文、未知配置、扩展属性原样保留，JSON 契约保持兼容。WASM 握手版本 `pobr_wasm::SCHEMA_VERSION` 与 Web 的 `EXPECTED_SCHEMA_VERSION` 必须一起改。
 - **发布产物只含游戏计算能力**：`POBR_DBG_*` / `POBR_GATE_DENY` 诊断开关（`dbg_env!`）只在调试构建存在；测试辅助在 feature 后面。新增诊断或测试辅助沿用这两种方式。

@@ -10,10 +10,12 @@ fn chain_remaining_hand_details_match_damage_and_source_terms() {
 
     for used in [0.0, 1.0, 3.0] {
         let mut s = CalculationSession::new(MinimalInput::default()).with_config(
-            CalcConfig::attack()
-                .with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE)
-                .with_multiplier("Chain", used)
-                .with_mode_effective(true),
+            crate::support::with_game_tables(
+                CalcConfig::attack()
+                    .with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE)
+                    .with_multiplier("Chain", used)
+                    .with_mode_effective(true),
+            ),
         );
         let weapon = WeaponBase {
             hit_min: 100.0,
@@ -98,9 +100,11 @@ fn chain_remaining_minion_details_use_its_capacity_instead_of_the_players() {
         let build =
             |bonus| {
                 let mut s = CalculationSession::new(MinimalInput::default()).with_config(
-                    CalcConfig::attack()
-                        .with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE)
-                        .with_multiplier("Chain", used),
+                    crate::support::with_game_tables(
+                        CalcConfig::attack()
+                            .with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE)
+                            .with_multiplier("Chain", used),
+                    ),
                 );
                 s.add_modifiers([Modifier::number("ChainCountMax", ModType::Base, 9.0)]);
                 s.add_minion_from_def(
@@ -162,7 +166,7 @@ fn per_attribute_modifiers_use_final_attributes_with_class_and_inc_more() {
         base_hit_max: 100.0,
         ..Default::default()
     })
-    .with_config(CalcConfig::spell());
+    .with_config(crate::support::with_game_tables(CalcConfig::spell()));
     s.add_modifiers(class.modifiers(&Default::default()));
     for attribute in ["Strength", "Dexterity", "Intelligence"] {
         s.add_modifiers([
@@ -209,7 +213,7 @@ fn per_lowest_attribute_modifiers_read_the_least_final_attribute() {
         base_hit_max: 100.0,
         ..Default::default()
     })
-    .with_config(CalcConfig::spell());
+    .with_config(crate::support::with_game_tables(CalcConfig::spell()));
     s.add_modifiers(class.modifiers(&Default::default()));
     // Final attributes: 40 Strength, 26 Dexterity, 30 Intelligence.
     s.add_modifiers([
@@ -243,7 +247,9 @@ fn minions_in_presence_are_the_minions_created_or_the_configured_number() {
             base_hit_max: 100.0,
             ..Default::default()
         })
-        .with_config(CalcConfig::attack().with_mode_combat(true));
+        .with_config(crate::support::with_game_tables(
+            CalcConfig::attack().with_mode_combat(true),
+        ));
         s.add_modifier_texts([
             "5% increased Attack Damage for each Minion in your Presence, up to a maximum of 80%",
         ])
@@ -404,7 +410,7 @@ fn player_condition_bridge_preserves_explicit_low_life_choice() {
             base_life: 100.0,
             ..Default::default()
         })
-        .with_config(cfg);
+        .with_config(crate::support::with_game_tables(cfg));
         session.add_modifiers([Modifier::number("LifeReserved", ModType::Base, 70.0)]);
         session
             .add_modifier_texts(["+20 to maximum Mana while on Low Life"])
@@ -436,7 +442,8 @@ fn player_condition_bridge_derives_surrounded_from_the_required_enemies() {
         if let Some(value) = configured {
             cfg = cfg.with_condition("Surrounded", value);
         }
-        let mut s = session(MinimalInput::default()).with_config(cfg);
+        let mut s =
+            session(MinimalInput::default()).with_config(crate::support::with_game_tables(cfg));
         let lines = fewer
             .map(|n| format!("Require {n} fewer enemies to be Surrounded"))
             .into_iter()
@@ -715,7 +722,7 @@ fn projectile_speed_applies_to_projectile_damage_conversion() {
         CalcConfig::attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE | ModFlags::HIT);
 
     // No flag: ProjectileSpeed has no consumer, so this is a no-op.
-    let mut without = session(input).with_config(cfg.clone());
+    let mut without = session(input).with_config(crate::support::with_game_tables(cfg.clone()));
     without
         .add_modifier_texts(["8% increased Projectile Speed"])
         .unwrap();
@@ -723,7 +730,7 @@ fn projectile_speed_applies_to_projectile_damage_conversion() {
     assert_eq!(base.total_hit_avg, 100.0);
 
     // Flag active: 8% Projectile Speed -> 8% increased Damage (Projectile).
-    let mut with = session(input).with_config(cfg);
+    let mut with = session(input).with_config(crate::support::with_game_tables(cfg));
     with.add_modifier_texts(["8% increased Projectile Speed"])
         .unwrap();
     with.add_modifiers([Modifier::flag("ProjectileSpeedAppliesToProjectileDamage")]);
@@ -738,9 +745,9 @@ fn projectile_speed_applies_to_projectile_damage_conversion() {
         base_action_rate: 1.0,
         ..MinimalInput::default()
     })
-    .with_config(
+    .with_config(crate::support::with_game_tables(
         CalcConfig::attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE | ModFlags::HIT),
-    );
+    ));
     scoped
         .add_modifier_texts(["8% increased Projectile Speed for Spell Skills"])
         .unwrap();
@@ -770,7 +777,7 @@ fn projectile_speed_applies_to_bow_damage_conversion() {
 
     // End-to-end through the parser: notable text -> flag -> conversion applies
     // (46% proj speed -> +46% Damage).
-    let mut with = session(input).with_config(bow_cfg.clone());
+    let mut with = session(input).with_config(crate::support::with_game_tables(bow_cfg.clone()));
     with.add_modifier_texts([
         "46% increased Projectile Speed",
         "Increases and Reductions to [Projectile|Projectile] Speed also apply to Damage with [Bow|Bows]",
@@ -781,9 +788,9 @@ fn projectile_speed_applies_to_bow_damage_conversion() {
 
     // Non-bow skill cfg (no BOW bit): the copy's flags=Bow|Hit are not a subset of
     // cfg -> no match.
-    let mut non_bow = session(input).with_config(
+    let mut non_bow = session(input).with_config(crate::support::with_game_tables(
         CalcConfig::attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE | ModFlags::HIT),
-    );
+    ));
     non_bow
         .add_modifier_texts(["46% increased Projectile Speed"])
         .unwrap();
@@ -896,12 +903,12 @@ fn session_reports_conditions_nothing_decided() {
         base_life: 100.0,
         ..Default::default()
     })
-    .with_config(
+    .with_config(crate::support::with_game_tables(
         CalcConfig::attack()
             .with_damage_type(DamageType::Physical)
             .with_condition("SwitchedOff", false)
             .with_actor_multiplier(ActorRef::Player, "InThePlayerSnapshot", 1.0),
-    );
+    ));
     s.set_condition("SwitchedOn", true);
     s.add_modifiers([
         life(1.0, ModTag::condition("NothingSetsThis", false)),
@@ -1008,7 +1015,9 @@ fn summoned_count_snapshot_is_idempotent_and_honors_zero_and_combat_overrides() 
             base_hit_max: 100.0,
             ..Default::default()
         })
-        .with_config(CalcConfig::attack().with_mode_combat(combat));
+        .with_config(crate::support::with_game_tables(
+            CalcConfig::attack().with_mode_combat(combat),
+        ));
         s.add_modifiers([Modifier::number(
             "Multiplier:SummonedMinion",
             ModType::Base,

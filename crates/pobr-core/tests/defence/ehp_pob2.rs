@@ -27,7 +27,9 @@ use pobr_data::prelude::*;
 fn player_with(base: ActorBaseStats, mods: Vec<Modifier>) -> Env {
     let mut actor = Actor::new(85, base);
     actor.mod_db.add_list(mods);
-    Env::new(actor)
+    let mut env = Env::new(actor);
+    crate::support::add_game_tables(&mut env.cfg);
+    env
 }
 
 fn default_params() -> EhpLoopParams {
@@ -457,7 +459,7 @@ fn hits_to_die_recovers_on_block_between_hits() {
 #[test]
 fn enemy_damage_placeholder_matches_vendor_formula() {
     // Arrange
-    let constants = RuntimeConstants::default();
+    let constants = crate::support::test_constants();
 
     // Act
     let pinnacle = enemy_damage_placeholder(&constants, 82, EnemyTier::Pinnacle);
@@ -1148,7 +1150,9 @@ fn perform_fills_pob2_ehp_fields_with_enemy() {
         ..ActorBaseStats::default()
     };
     let mut env = player_with(base, vec![]);
-    env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+    env.cfg = crate::support::with_game_tables(
+        CalcConfig::attack().with_damage_type(DamageType::Physical),
+    );
     setup_enemy(&mut env, 82, EnemyTier::Pinnacle);
 
     // Act

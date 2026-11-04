@@ -339,34 +339,50 @@ fn gem_catalog_entries(
     entries
 }
 
-// translate_lines_json (English -> Simplified Chinese display translation: tree mod tooltips / config options, etc)
+// Mod-line translation between English and a locale (tree mod tooltips, config options, item input, etc)
 
-/// Batch-translates English mod lines into Simplified Chinese display text
-/// (template reverse lookup; unrecognized lines pass through unchanged).
-/// Both input and output are JSON string arrays. Everything passes through
-/// unchanged when the data pack has no zh-CN templates or before initialization.
-/// Native mode rejects this ordinary catalog operation as `not_initialized`.
-pub fn translate_lines_to_zh_cn_json(lines_json: &str) -> Result<String, String> {
-    translate_lines_impl(lines_json).map_err(super::ApiError::into_json)
+/// Batch-translates English mod lines into `lang` display text (template
+/// reverse lookup; unrecognized lines pass through unchanged). Both input and
+/// output are JSON string arrays. Everything passes through unchanged when
+/// the locale has no templates or before initialization.
+pub fn translate_lines_json(lang: &str, lines_json: &str) -> Result<String, String> {
+    map_lines(lines_json, |lines| {
+        match crate::locales::line_renderer(lang) {
+            Some(renderer) => renderer.render_lines(lines),
+            None => lines,
+        }
+    })
+    .map_err(super::ApiError::into_json)
 }
 
-fn translate_lines_impl(lines_json: &str) -> Result<String, super::ApiError> {
+/// [`translate_lines_json`] for `zh-CN` (the Web app's existing entry point).
+pub fn translate_lines_to_zh_cn_json(lines_json: &str) -> Result<String, String> {
+    translate_lines_json("zh-CN", lines_json)
+}
+
+/// Batch-parses `lang` mod lines into English canonical lines. A line that
+/// is not in that locale, or that no template recognizes, passes through
+/// unchanged, as does everything when the locale has no templates.
+pub fn parse_localized_lines_json(lang: &str, lines_json: &str) -> Result<String, String> {
+    map_lines(lines_json, |lines| {
+        match crate::locales::line_parser(lang) {
+            Some(parser) => lines
+                .into_iter()
+                .map(|line| parser.parse_line(&line).unwrap_or(line))
+                .collect(),
+            None => lines,
+        }
+    })
+    .map_err(super::ApiError::into_json)
+}
+
+fn map_lines(
+    lines_json: &str,
+    map: impl FnOnce(Vec<String>) -> Vec<String>,
+) -> Result<String, super::ApiError> {
     let lines: Vec<String> = serde_json::from_str(lines_json)
         .map_err(|e| super::ApiError::bad_request(format!("invalid lines json: {e}")))?;
-    if state::is_native_data_ready() {
-        return Err(super::ApiError::not_initialized(
-            "ordinary translation unavailable in native mode".into(),
-        ));
-    }
-    let translator = state::en_to_zh_translator();
-    let out: Vec<String> = lines
-        .into_iter()
-        .map(|line| match &translator {
-            Some(t) => t.translate_line(&line).unwrap_or(line),
-            None => line,
-        })
-        .collect();
-    Ok(serde_json::to_string(&out).map_err(|e| format!("serialize: {e}"))?)
+    Ok(serde_json::to_string(&map(lines)).map_err(|e| format!("serialize: {e}"))?)
 }
 
 /// The engine's monster identities and the ordered skills it can resolve.
@@ -589,5 +605,60 @@ Implicits: 2
     #[test]
     fn classify_item_lines_json_empty_on_blank() {
         assert_eq!(classify_item_lines_json("  \n").unwrap(), "[]");
+    }
+
+    #[test]
+    fn mod_lines_translate_by_locale_code() {
+        let dir = pobr_gamedata::current_data_dir();
+        crate::init_data_from_dir(&dir.to_string_lossy()).unwrap();
+        let english = r#"["+50 to maximum Life","33% increased maximum Energy Shield","An unknown mod line"]"#;
+        let rendered: Vec<String> =
+            serde_json::from_str(&translate_lines_json("zh-CN", english).unwrap()).unwrap();
+        assert_eq!(
+            rendered,
+            [
+                "+50 生命上限",
+                "能量护盾上限提高 33%",
+                "An unknown mod line"
+            ]
+        );
+        assert_eq!(
+            translate_lines_to_zh_cn_json(english).unwrap(),
+            translate_lines_json("zh-CN", english).unwrap()
+        );
+        // A locale with no templates, an unknown one and a malformed code pass through.
+        for lang in ["zh-TW", "xx-XX", "../base"] {
+            let out: Vec<String> =
+                serde_json::from_str(&translate_lines_json(lang, english).unwrap()).unwrap();
+            assert_eq!(
+                out,
+                [
+                    "+50 to maximum Life",
+                    "33% increased maximum Energy Shield",
+                    "An unknown mod line"
+                ]
+            );
+        }
+
+        let localized = serde_json::to_string(&[
+            "+50 生命上限",
+            "能量护盾上限提高 33%",
+            "+50 to maximum Life",
+            "不认识的词条",
+        ])
+        .unwrap();
+        let parsed: Vec<String> =
+            serde_json::from_str(&parse_localized_lines_json("zh-CN", &localized).unwrap())
+                .unwrap();
+        assert_eq!(
+            parsed,
+            [
+                "+50 to maximum Life",
+                "33% increased maximum Energy Shield",
+                "+50 to maximum Life",
+                "不认识的词条"
+            ]
+        );
+        assert!(translate_lines_json("zh-CN", "{}").is_err());
     }
 }

@@ -125,10 +125,9 @@ impl GameData {
     /// returns `None` (the consumer falls back to `Default`); a JSON parse
     /// error (`LoadError::Parse`) propagates upward instead — a file that
     /// exists but is broken isn't allowed to silently fall back.
-    /// Guarded native candidates are rejected before aggregation until their
-    /// profile is admitted; querying individual domains remains available.
+    /// An invalid snapshot manifest is rejected before aggregation.
     pub fn load_ruleset(&self) -> Result<RuleSet, LoadError> {
-        self.validate_calculation_admission()?;
+        self.snapshot_manifest()?;
         let game_constants = match self.game_constants() {
             Ok(v) => Some(v),
             Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
@@ -373,20 +372,32 @@ mod tests {
     }
 
     /// The repo data directory: the monster_scaling domain is wired up
-    /// (Some), and the **whole table** is value-equal to the Default
-    /// fallback (including the two vendor-only ally tables; a migration
-    /// invariant: both the injected/fallback paths produce the same output).
+    /// (Some) with all nine 100-level tables; it is the only copy (the
+    /// `Default` is empty, so production loading must find this file).
     #[test]
-    fn repo_data_ruleset_loads_monster_scaling_equal_to_default() {
+    fn repo_data_ruleset_loads_monster_scaling() {
         let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
         let loaded = ruleset
             .monster_scaling
             .expect("monster_scaling domain should be wired up");
-        assert_eq!(
+        let len = pobr_data::catalog::monster_scaling::MONSTER_SCALING_TABLE_LEN;
+        for (name, n) in [
+            ("accuracy", loaded.accuracy.len()),
+            ("evasion", loaded.evasion.len()),
+            ("armour", loaded.armour.len()),
+            ("life", loaded.life.len()),
+            ("ally_life", loaded.ally_life.len()),
+            ("damage", loaded.damage.len()),
+            ("ally_damage", loaded.ally_damage.len()),
+            ("ailment_threshold", loaded.ailment_threshold.len()),
+            ("poise_threshold", loaded.poise_threshold.len()),
+        ] {
+            assert_eq!(n, len, "{name} length");
+        }
+        assert_ne!(
             loaded,
-            pobr_data::catalog::monster_scaling::MonsterScalingTable::default(),
-            "JSON must equal the Default fallback value-for-value (migration invariant)",
+            pobr_data::catalog::monster_scaling::MonsterScalingTable::default()
         );
     }
 

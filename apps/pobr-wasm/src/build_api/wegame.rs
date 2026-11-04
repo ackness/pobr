@@ -82,10 +82,13 @@ fn clean(input: &str) -> String {
     result
 }
 
+/// WeGame profiles come from the zh-CN (Tencent) client: their text is in that locale.
+const WEGAME_LOCALE: &str = "zh-CN";
+
 fn canonical(input: &str) -> String {
     let line = clean(input);
-    state::zh_translator()
-        .and_then(|t| t.translate_line(&line))
+    crate::locales::line_parser(WEGAME_LOCALE)
+        .and_then(|parser| parser.translate_line(&line))
         .unwrap_or(line)
 }
 

@@ -41,8 +41,8 @@ pub fn detect_import(input: &str) -> Option<ImportKind> {
     if trimmed.is_empty() {
         return None;
     }
-    // Structured documents have their own decoder. Item/XML markers inside a
-    // JSON string must not redirect a native document into compatibility import.
+    // Structured JSON documents are not an import format. Item/XML markers inside
+    // a JSON string must not redirect the document into compatibility import.
     if trimmed.starts_with('{') {
         return None;
     }

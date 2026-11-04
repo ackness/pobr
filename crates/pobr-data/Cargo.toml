@@ -6,6 +6,9 @@ edition.workspace = true
 [features]
 # Enables thread-local query observation for cross-crate calculation regressions.
 runtime-constant-query-probe = []
+# Hand-written `MinionDef` fixtures (`minion::minion_def_*`) for other crates'
+# tests; off by default, enabled only from dev-dependencies.
+test-fixtures = []
 
 [dependencies]
 serde.workspace = true

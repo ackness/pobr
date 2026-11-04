@@ -104,9 +104,4 @@ describe('engine RPC', () => {
     client.fail(new Error('Engine worker failed'));
     await expect(stuck).rejects.toThrow('Engine worker failed');
   });
-
-  it('translates nothing itself: the key comes back', () => {
-    const client = connect({});
-    expect(client.backend.translate('zh-CN', 'some.key')).toBe('some.key');
-  });
 });

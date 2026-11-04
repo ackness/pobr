@@ -60,7 +60,7 @@ export function sourceFingerprint(root) {
   // All seven libraries are dependencies of the WASM engine; tests are excluded.
   if (existsSync(join(root, 'crates'))) {
     for (const crate of readdirSync(join(root, 'crates')).sort()) {
-      for (const path of ['Cargo.toml', 'build.rs', 'src', 'locales']) collect(`crates/${crate}/${path}`);
+      for (const path of ['Cargo.toml', 'build.rs', 'src']) collect(`crates/${crate}/${path}`);
     }
   }
   return sha256(JSON.stringify(files.sort().map(path => [path, sha256(readFileSync(join(root, path)))])));

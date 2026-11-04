@@ -11,7 +11,8 @@ use std::sync::LazyLock;
 
 #[path = "../../src/parse/mod_parser/test_data.rs"]
 mod test_data;
-pub use test_data::test_data_dir;
+#[allow(unused_imports)]
+pub use test_data::{test_constants, test_data_dir, test_monster_scaling};
 
 use pobr_core::mod_parser::{
     CompiledParserRules, ParseCtx, ParseError, ParseOutcome, parse_mod_engine,
@@ -62,11 +63,13 @@ pub fn rules_arc() -> std::sync::Arc<CompiledParserRules> {
     RULES.clone()
 }
 
-/// A [`pobr_core::calc::CalculationSession`] wired up with the real engine rules.
+/// A [`pobr_core::calc::CalculationSession`] wired up with the real engine rules and
+/// the imported monster table (a later `with_config` replaces the constants).
 #[allow(dead_code)]
 pub fn session(input: pobr_core::calc::MinimalInput) -> pobr_core::calc::CalculationSession {
     let mut s = pobr_core::calc::CalculationSession::new(input);
     s.set_parser_rules(rules_arc());
+    s.set_constants(test_constants());
     s
 }
 
@@ -82,4 +85,19 @@ pub fn ctx() -> ParseCtx<'static> {
 #[allow(dead_code)]
 pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
     Ok(parse_mod_engine(text, &RULES))
+}
+
+/// Gives `cfg` the imported per-level monster table
+/// (`base/monster_scaling.json`): it has no Rust copy, so enemy and minion
+/// stats are 0 under `RuntimeConstants::default()`.
+#[allow(dead_code)]
+pub fn add_game_tables(cfg: &mut pobr_core::CalcConfig) {
+    std::sync::Arc::make_mut(&mut cfg.constants).monster_scaling = test_monster_scaling();
+}
+
+/// [`add_game_tables`] for a config passed by value (`with_config`).
+#[allow(dead_code)]
+pub fn with_game_tables(mut cfg: pobr_core::CalcConfig) -> pobr_core::CalcConfig {
+    add_game_tables(&mut cfg);
+    cfg
 }

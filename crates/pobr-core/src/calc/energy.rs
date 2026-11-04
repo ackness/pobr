@@ -576,6 +576,7 @@ mod tests {
             ] {
                 let mut env = Env::new(Actor::new(1, ActorBaseStats::default()));
                 env.cfg = CalcConfig::attack().with_damage_type(damage_type);
+                env.cfg.constants = std::sync::Arc::new(crate::mod_parser::test_constants());
                 for bound in ["Min", "Max"] {
                     env.player.mod_db.add_mod(Modifier::number(
                         format!("{prefix}Damage{bound}"),

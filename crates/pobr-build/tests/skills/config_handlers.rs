@@ -624,6 +624,7 @@ mod beira_ignited_ground {
             ..Default::default()
         })
         .with_config(cfg);
+        session.set_constants(data.constants.clone());
         session.set_parser_rules(data.parser_rules.as_ref().unwrap().clone());
         let item = Item {
             base: "Dousing Charm".into(),

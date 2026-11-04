@@ -5,6 +5,9 @@
 //! Each submodule is `tests/aggregation/<name>.rs`; test cases and assertions are kept as-is.
 #![allow(clippy::all)]
 
+#[path = "support/parse.rs"]
+mod support;
+
 #[path = "aggregation/enemy_mod_db.rs"]
 mod enemy_mod_db;
 #[path = "aggregation/mod_db.rs"]
