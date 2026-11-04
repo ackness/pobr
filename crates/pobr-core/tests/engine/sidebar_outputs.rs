@@ -89,7 +89,8 @@ fn ailment_total_damage_uses_its_effective_duration() {
         Modifier::number("PoisonDuration", ModType::Inc, 100.0),
     ]);
     let mut env = Env::new(actor);
-    env.cfg = CalcConfig::spell().with_damage_type(DamageType::Chaos);
+    env.cfg =
+        crate::support::with_game_tables(CalcConfig::spell().with_damage_type(DamageType::Chaos));
     perform(&mut env).unwrap();
     let out = &env.player.output;
     assert!(out.poison_dps > 0.0);
@@ -114,7 +115,8 @@ fn skill_average_display_uses_damage_per_use_and_full_ailment_damage() {
         .mod_db
         .add_mod(Modifier::number("PoisonChance", ModType::Base, 100.0));
     let mut env = Env::new(actor);
-    env.cfg = CalcConfig::spell().with_damage_type(DamageType::Chaos);
+    env.cfg =
+        crate::support::with_game_tables(CalcConfig::spell().with_damage_type(DamageType::Chaos));
     perform(&mut env).unwrap();
     let out = &env.player.output;
     assert_eq!(out.average_damage, 100.0);
@@ -149,7 +151,8 @@ fn flicker_burst_counts_consumed_charges_and_their_double_benefit() {
         1.0,
     ));
     let mut env = Env::new(actor);
-    env.cfg = CalcConfig::spell().with_multiplier("PowerCharge", 3.0);
+    env.cfg =
+        crate::support::with_game_tables(CalcConfig::spell().with_multiplier("PowerCharge", 3.0));
     perform(&mut env).unwrap();
     assert_eq!(env.player.output.average_burst_damage, 1300.0);
 }
@@ -194,7 +197,7 @@ fn skill_data_durations_reach_each_scoped_output() {
         Modifier::number("SecondaryDuration", ModType::More, -50.0),
     ]);
     let mut env = Env::new(actor);
-    env.cfg = CalcConfig::spell();
+    env.cfg = crate::support::with_game_tables(CalcConfig::spell());
     perform(&mut env).unwrap();
     let out = &env.player.output;
     assert_eq!(out.duration, 10.032);
@@ -266,7 +269,7 @@ fn stackable_skill_dot_uses_its_resolved_duration() {
         Modifier::flag("DotCanStack"),
     ]);
     let mut env = Env::new(actor);
-    env.cfg = CalcConfig::spell();
+    env.cfg = crate::support::with_game_tables(CalcConfig::spell());
     perform(&mut env).unwrap();
     assert_eq!(env.player.output.duration, 2.013);
     assert_eq!(env.player.output.skill_total_dot, 60.39);
@@ -307,7 +310,7 @@ fn game_radius_and_scoped_additions_reach_metres_display() {
         Modifier::number("AreaOfEffect", ModType::Inc, 100.0).with_flags(ModFlags::ATTACK),
     ]);
     let mut env = Env::new(actor);
-    env.cfg = CalcConfig::spell().with_multiplier("Stage", 3.0);
+    env.cfg = crate::support::with_game_tables(CalcConfig::spell().with_multiplier("Stage", 3.0));
     perform(&mut env).unwrap();
     // 34 base units, sqrt(1.5) -> 122%, then 20% more radius -> 146%.
     assert_eq!(env.player.output.aoe_radius, 49.0);
@@ -451,7 +454,7 @@ fn cost_rate_counts_casts_and_reloads_instead_of_projectile_hits() {
         Modifier::number("SkillWardPercentCostBase", ModType::Base, 3.0),
     ]);
     let mut env = Env::new(actor);
-    env.cfg = CalcConfig::spell();
+    env.cfg = crate::support::with_game_tables(CalcConfig::spell());
     perform(&mut env).unwrap();
     assert_eq!(env.player.output.effective_action_rate, 10.0);
     assert_eq!(env.player.output.mana_per_second_cost, 20.0);
@@ -472,7 +475,7 @@ fn cost_rate_counts_casts_and_reloads_instead_of_projectile_hits() {
         Modifier::number("CrossbowBoltCount", ModType::Base, 2.0),
     ]);
     let mut env = Env::new(actor);
-    env.cfg = CalcConfig::attack();
+    env.cfg = crate::support::with_game_tables(CalcConfig::attack());
     perform(&mut env).unwrap();
     assert_eq!(env.player.output.mana_per_second_cost, 5.0);
 }
@@ -522,7 +525,7 @@ fn proxy_costs_are_paid_when_placing_it_and_respect_cooldown() {
         Modifier::number("TotemPlacementSpeed", ModType::Inc, 100.0),
     ]);
     let mut env = Env::new(actor.clone());
-    env.cfg = CalcConfig::spell();
+    env.cfg = crate::support::with_game_tables(CalcConfig::spell());
     perform(&mut env).unwrap();
     assert_eq!(env.player.output.total_totem_placement_time, 0.25);
     assert_eq!(env.player.output.mana_per_second_cost, 40.0);
@@ -530,7 +533,7 @@ fn proxy_costs_are_paid_when_placing_it_and_respect_cooldown() {
         .mod_db
         .add_mod(Modifier::number("SkillCooldownBase", ModType::Base, 1.0));
     let mut env = Env::new(actor);
-    env.cfg = CalcConfig::spell();
+    env.cfg = crate::support::with_game_tables(CalcConfig::spell());
     perform(&mut env).unwrap();
     assert!((env.player.output.mana_per_second_cost - 10.0 / 1.023).abs() < 1e-6);
 }
@@ -553,7 +556,9 @@ fn attack_channel_display_reuses_the_use_cycles_stage_time() {
         Modifier::number("SkillManaCostBase", ModType::Base, 10.0),
     ]);
     let mut env = Env::new(actor);
-    env.cfg = CalcConfig::attack().with_multiplier("ChannelStages", 2.0);
+    env.cfg = crate::support::with_game_tables(
+        CalcConfig::attack().with_multiplier("ChannelStages", 2.0),
+    );
     perform(&mut env).unwrap();
     assert_eq!(env.player.output.channel_time, 0.5);
     assert!((env.player.output.mana_per_second_cost - 10.0 / 0.7).abs() < 1e-6);
@@ -613,7 +618,7 @@ fn double_critical_roll_multiplier_stores_one_plus_conditional_probability() {
             ..ActorBaseStats::default()
         },
     ));
-    env.cfg = CalcConfig::spell();
+    env.cfg = crate::support::with_game_tables(CalcConfig::spell());
     env.cfg.mode_effective = true;
     env.player.mod_db.add_list(vec![
         Modifier::number("SkillBaseCritChance", ModType::Base, 50.0),
@@ -753,7 +758,8 @@ fn slower_buff_expiry_divides_elapsed_time_and_does_not_change_non_buff_duration
         if buff {
             cfg.skill_types = SkillTypes::from_pob2_name("Buff").unwrap();
         }
-        let mut session = super::support::session(MinimalInput::default()).with_config(cfg);
+        let mut session = super::support::session(MinimalInput::default())
+            .with_config(crate::support::with_game_tables(cfg));
         // Prolonged Assault: buff_time_passed_+%_only_buff_category = -10.
         session
             .add_modifier_texts(&[
@@ -792,11 +798,11 @@ fn ailment_calcs_expose_retained_chance_duration_roll_and_source_ranges() {
             base_action_rate: 2.0,
             ..Default::default()
         })
-        .with_config(
+        .with_config(crate::support::with_game_tables(
             CalcConfig::spell()
                 .with_damage_type(damage_type)
                 .with_mode_effective(true),
-        );
+        ));
         if damage_type != DamageType::Physical {
             session.add_modifiers([Modifier::number(
                 "PhysicalDamageConvertTo".to_string() + damage_name,
@@ -912,7 +918,9 @@ fn hit_calcs_keep_fractional_bounds_and_reuse_noncritical_mitigation() {
             base_hit_max: 12.5,
             ..Default::default()
         })
-        .with_config(CalcConfig::spell().with_mode_effective(true));
+        .with_config(crate::support::with_game_tables(
+            CalcConfig::spell().with_mode_effective(true),
+        ));
         session.add_modifiers([
             Modifier::number("Damage", ModType::Inc, 20.0),
             Modifier::number("Damage", ModType::More, 50.0),
@@ -988,8 +996,9 @@ fn hit_calcs_keep_fractional_bounds_and_reuse_noncritical_mitigation() {
 #[test]
 fn hit_calcs_keep_each_hands_range_and_combine_only_dps_multiplier() {
     for double_hits in [false, true] {
-        let mut session = super::support::session(MinimalInput::default())
-            .with_config(CalcConfig::attack().with_mode_effective(true));
+        let mut session = super::support::session(MinimalInput::default()).with_config(
+            crate::support::with_game_tables(CalcConfig::attack().with_mode_effective(true)),
+        );
         session.set_hand_sources(
             vec![
                 HandSource::main_hand(WeaponBase {
@@ -1080,11 +1089,11 @@ fn freeze_duration_uses_the_keyword_base_and_inflicted_duration_modifiers() {
             base_action_rate: 2.0,
             ..Default::default()
         })
-        .with_config(
+        .with_config(crate::support::with_game_tables(
             CalcConfig::spell()
                 .with_damage_type(DamageType::Cold)
                 .with_mode_effective(true),
-        );
+        ));
         session.add_modifiers([Modifier::number(
             "PhysicalDamageConvertToCold",
             ModType::Base,

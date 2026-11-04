@@ -22,6 +22,9 @@
 //!   than duplicating literals), so "no GameData → Default" and "GameData
 //!   present → injected" produce value-identical output — the structural
 //!   guarantee behind the migration invariant (zero parity change).
+//!   **Exception**: `monster_scaling`'s `Default` is empty — the per-level
+//!   tables are game data with no Rust copy; every published package ships
+//!   `base/monster_scaling.json`, and tests that need monster values load it.
 //! - **How to extend (phase 2)**: for each new data domain wired in, **add
 //!   a field** to this struct (typed as the corresponding catalog Def, with
 //!   the `Default` impl living in pobr-data and referencing the existing
@@ -43,7 +46,8 @@ use super::unarmed_data::UnarmedDataTable;
 use super::weapon_types::WeaponTypeTable;
 
 /// The runtime constants bundle injected into calc. `Default` = the
-/// fallback used when there's no GameData (value-equal to the JSON).
+/// fallback used when there's no GameData: value-equal to the JSON for every
+/// domain except `monster_scaling`, which is empty (no Rust copy).
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct RuntimeConstants {
     /// The three-section global game constants table (`base/game_constants.json`).
@@ -56,7 +60,8 @@ pub struct RuntimeConstants {
     /// per-level / per-attribute derivation coefficients for life/mana/accuracy.
     pub character_constants: super::character_constants::CharacterConstantsDef,
     /// Monster per-level scaling table (`base/monster_scaling.json`;
-    /// consumed by `setup_env`'s enemy assembly).
+    /// consumed by `setup_env`'s enemy assembly, enemy ailment/poise
+    /// thresholds, EHP and minion/totem baselines). `Default` is empty.
     pub monster_scaling: MonsterScalingTable,
     /// Enemy tier presets (`base/enemy_presets.json`; consumed by
     /// `setup_env`'s tier bonuses/penetration).
@@ -206,22 +211,16 @@ mod tests {
         assert_eq!(c.game().shock_default_effect, legacy.shock_default_effect);
     }
 
-    /// Fallback-invariant spot check (monster-scaling domain): the per-level
-    /// table / tier presets' `Default` is value-equal to the old Rust
-    /// source of truth (the full comparison lives in each catalog module's
-    /// own tests plus `pobr-gamedata/tests/load_monster_scaling.rs` /
-    /// `load_enemy_presets.rs`).
+    /// Fallback-invariant spot check (monster domains): the tier presets'
+    /// `Default` is value-equal to the old Rust source of truth (the full
+    /// comparison lives in `pobr-gamedata/tests/load_enemy_presets.rs`); the
+    /// per-level table's `Default` is empty (see `MonsterScalingTable`).
     #[test]
     fn default_monster_domains_match_legacy_rust_sources() {
         let c = RuntimeConstants::default();
-        assert_eq!(
-            c.monster_scaling.accuracy_at(85),
-            crate::monster::monster_accuracy(85)
-        );
-        assert_eq!(
-            c.monster_scaling.damage_at(85),
-            crate::monster::monster_damage(85)
-        );
+        // The per-level table has no Rust copy: without GameData it is empty.
+        assert_eq!(c.monster_scaling.accuracy_at(85), 0);
+        assert_eq!(c.monster_scaling.damage_at(85), 0.0);
         assert_eq!(
             c.enemy_presets.max_enemy_level,
             crate::monster::MAX_ENEMY_LEVEL

@@ -144,7 +144,7 @@ description = "Representative aggregation, parser and Build Code checks"
 run = "bash devs/scripts/driver.sh smoke"
 
 [tasks.full]
-description = "Explicit full local Rust gate: fmt, Clippy, workspace tests, doctests, i18n"
+description = "Explicit full local Rust gate: fmt, Clippy, workspace tests, doctests"
 run = "bash devs/scripts/driver.sh full"
 
 [tasks.gate]

@@ -1,36 +1,38 @@
-//! pobr-i18n: localization for PoBR's display layer.
+//! pobr-i18n: the language-neutral game-text engine.
 //!
-//! The calc engine works purely in stable IDs (`StatId`, skill IDs,
-//! `ItemBaseId`) and stable UI/error keys. This crate maps those keys to
-//! user-facing text for the supported languages.
+//! Game text (names, mod lines) comes from the translation repository's locale
+//! packages; this crate interprets them for any locale code and never embeds
+//! a translation. Calculation keeps using stable ids and English canonical
+//! lines; translation happens only at the input and display boundaries.
 //!
-//! - `en-US` is the canonical source of truth and the universal fallback.
-//! - `zh-TW` covers the canonical keys; any future key it omits falls back to `en-US`,
-//!   and a key absent from both resolves to the key (or stat id) itself.
+//! - [`LocalePack`]: one locale's files, passed in as bytes or parsed values
+//!   (no file I/O here; the caller loads them, as with `GameData::from_memory`).
+//! - [`fallback`]: chains declared by each pack's `_meta.json` (`fallback`)
+//!   and extended by the caller; English ends every chain.
+//! - [`LocalePack::name`] / [`LocaleSet::name`]: names by stable id or
+//!   English text ([`NameKind`]).
+//! - [`lines`]: [`LineParser`] (localized line -> English canonical line, for
+//!   the English parser) and [`LineRenderer`] (English line -> localized
+//!   display). Whether a line is in the locale is decided from the pack's
+//!   templates and names (letters only that side uses, or, for a pack that
+//!   declares `shares_english_script`, its template/name spelling), not
+//!   from a fixed character set.
 //!
-//! All six locale files become embedded string tables at build time, so there
-//! is no runtime parser or path dependency.
+//! Known limits (follow-ups for the locale package format):
 //!
-//! ```
-//! use pobr_i18n::{LanguageId, Translator, I18nValue};
-//!
-//! let t = Translator::new(LanguageId::new("zh-TW")).unwrap();
-//! assert_eq!(t.text("build.copy_code"), "複製 BD");      // translated
-//! assert_eq!(t.text("build.new_build"), "新增構築");     // translated
-//! let msg = t.format(
-//!     "item.unknown_base",
-//!     &[("base", I18nValue::Text("Iron Ring".into()))],
-//! );
-//! assert_eq!(msg, "未知的物品基底：Iron Ring");
-//! ```
+//! - Magic and rare item names are composed by the zh-CN client's
+//!   conventions: magic = suffix + prefix + base with no separator, rare =
+//!   the two words joined by a space (`LineTranslator`'s magic/rare name
+//!   fallbacks). Another locale needs a composition rule declared by its pack.
+//! - [`NameKind::Affix`] is read as English affix name -> localized name,
+//!   which is what zh-CN `mods.json` holds; zh-TW `mods.json` is keyed by
+//!   mod id instead, so its entries never match. The package format should
+//!   settle one key per table.
 
-mod errors;
-mod language;
-mod loader;
-mod stat_text;
-mod translator;
+pub mod fallback;
+pub mod lines;
+pub mod pack;
 
-pub use errors::I18nError;
-pub use language::{CANONICAL_LANGUAGE, LanguageId, LanguagePack};
-pub use stat_text::{DISPLAY_STAT_PREFIX, STAT_PREFIX, display_stat_text_key, stat_text_key};
-pub use translator::{I18nValue, Translator};
+pub use fallback::{LocaleSet, chain_codes, resolve_chain};
+pub use lines::{LineParser, LineRenderer, LineTranslator};
+pub use pack::{LocaleMeta, LocalePack, META_FILE, NameKey, NameKind, PackError, STAT_LINES_FILE};

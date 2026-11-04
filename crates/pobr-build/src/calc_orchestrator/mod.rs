@@ -262,15 +262,47 @@ fn default_parser_rules()
         .map_err(BuildError::Parse)
 }
 
+/// The runtime constants for the text-only path ([`calculate`]): loaded once from the
+/// same default data directory as [`default_parser_rules`] (missing = error), so the
+/// monster-level tables (ailment / poise thresholds) are the imported ones.
+fn default_constants() -> Result<std::sync::Arc<pobr_data::catalog::RuntimeConstants>, BuildError> {
+    use std::sync::{Arc, OnceLock};
+    static CONSTANTS: OnceLock<Result<Arc<pobr_data::catalog::RuntimeConstants>, String>> =
+        OnceLock::new();
+    CONSTANTS
+        .get_or_init(|| {
+            let data = pobr_gamedata::GameData::new(pobr_gamedata::current_data_dir());
+            crate::load_runtime_constants(&data)
+                .map(Arc::new)
+                .map_err(|e| format!("failed to load runtime constants: {e}"))
+        })
+        .clone()
+        .map_err(BuildError::Parse)
+}
+
 /// Runs a minimal calculation on a [`Build`], returning a scalar [`OutputTable`].
 ///
 /// **The text-only path** (backward compatible): item mods are fed in as text, losing
 /// attribution; passives / gems / character base / enemy are all unparsed. Mod parsing
-/// goes through [`default_parser_rules`] (the default data directory; missing = error).
+/// goes through [`default_parser_rules`] and the constants through
+/// [`default_constants`] (the default data directory; missing = error).
 /// For end-to-end attribution, use [`calculate_with_data`].
 pub fn calculate(build: &Build, options: &OrchestratorOptions) -> Result<OutputTable, BuildError> {
+    let mut session = text_session(build, options)?;
+    let minimal = session
+        .perform_minimal()
+        .map_err(|e| BuildError::Calc(e.to_string()))?;
+    Ok(OutputTable::from(&minimal))
+}
+
+/// The text-only path's session, with every source added and not yet performed.
+fn text_session(
+    build: &Build,
+    options: &OrchestratorOptions,
+) -> Result<CalculationSession, BuildError> {
     let cfg = build.config.to_calc_config();
     let mut session = CalculationSession::new(options.base_input).with_config(cfg);
+    session.set_constants(default_constants()?);
     session.set_parser_rules(default_parser_rules()?);
 
     // Item mods: injected in enchant → implicit → explicit order (matching PoB's source layering).
@@ -284,11 +316,7 @@ pub fn calculate(build: &Build, options: &OrchestratorOptions) -> Result<OutputT
             .add_modifier_texts(options.extra_modifier_texts.iter())
             .map_err(|e| BuildError::Parse(e.to_string()))?;
     }
-
-    let minimal = session
-        .perform_minimal()
-        .map_err(|e| BuildError::Calc(e.to_string()))?;
-    Ok(OutputTable::from(&minimal))
+    Ok(session)
 }
 
 /// Passive tree version reconciliation diagnostic (gap B): the build's recorded
@@ -1021,8 +1049,7 @@ fn stage_create_session(ctx: &StageCtx<'_>, cfg: CalcConfig) -> SourceWriter {
     let data = ctx.data;
     let mut session = CalculationSession::new(ctx.weapons.base_input).with_config(cfg);
     // The injection pipeline: injects the runtime constants bundle loaded by GameData
-    // into calc (must come after with_config — with_config replaces cfg wholesale). The
-    // data is value-for-value equal to the Default fallback, zero behavior change.
+    // into calc (must come after with_config — with_config replaces cfg wholesale).
     session.set_constants(data.constants.clone());
     session.set_exporter_rules(
         ctx.options.exporter_absent_rules,

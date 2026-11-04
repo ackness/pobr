@@ -3,7 +3,7 @@
 //!
 //! Located via the `base/`-first, version-root-fallback domain location
 //! (see [`crate::paths`]); no i18n sidecar (`label` is PoB's English
-//! display alias — localization goes through `pobr-i18n` later).
+//! display alias, localized at the display boundary).
 
 use pobr_data::catalog::weapon_types::WeaponTypeDef;
 

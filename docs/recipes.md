@@ -71,8 +71,7 @@ parity/reference 基线由远端完整 CI 验证，调查性逐行记录和 accu
    - 明细：在 `crates/pobr-core/src/calc/session/detail_views.rs` 添加派生公式，并把 id
      加入 `DERIVED_STATS`；公式输入必须能重建结果。也可使用与原计算相同的 ModDb 查询
      提供来源分组。`pobr_build::breakdown::detail::detail_kind` 必须与之对应。
-   - 标签：`crates/pobr-i18n/locales/en-US/stats.toml`、
-     `crates/pobr-i18n/locales/zh-TW/stats.toml`、`web/src/locales/<lang>.json` 的 `detail` 命名空间。
+   - 标签：`web/src/locales/<lang>.json` 的 `detail` 命名空间。
    - 不固定 catalog 的条目数。现有检查会验证活动数据版本上的 id 唯一性、标签、数值和明细连接。
 3. 添加能验证数值正确、派生输入能重建它的引擎用例。需要提前检查 catalog 时可运行
    `mise exec -- cargo test -q -p pobr-core --test golden display_catalog`。

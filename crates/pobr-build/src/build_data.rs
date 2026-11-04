@@ -119,10 +119,11 @@ pub struct BuildData {
     /// equipped item's `Item.base` name to its weapon/armour base stats).
     pub base_items: HashMap<String, BaseItemDef>,
     /// Runtime constants injected into calc (the injection pipeline): assembled by
-    /// merging the domains `GameData::load_ruleset()` has data-driven; domains not yet
-    /// data-driven, or with a missing file, fall back to `Default` (value-for-value
-    /// equal to the JSON). Injected into pobr-core by `calculate_with_data` via
-    /// `CalculationSession::set_constants`.
+    /// [`load_runtime_constants`] from the domains `GameData::load_ruleset()` has
+    /// data-driven; optional domains with a missing file fall back to `Default`
+    /// (value-for-value equal to the JSON), while `base/monster_scaling.json` is
+    /// required (its `Default` is empty). Injected into pobr-core by
+    /// `calculate_with_data` via `CalculationSession::set_constants`.
     pub constants: Arc<RuntimeConstants>,
     /// Radius jewel ring tier table (`base/jewel_radii.json`): distance multipliers +
     /// tier label→inner/outer. Consumed by this crate's tree geometry
@@ -239,6 +240,57 @@ pub(crate) fn normalize_gem_name(name: &str) -> String {
         .filter(char::is_ascii_alphanumeric)
         .map(|c| c.to_ascii_lowercase())
         .collect()
+}
+
+/// Loads the [`RuntimeConstants`] a calculation injects with
+/// `CalculationSession::set_constants`, as [`BuildData::load`] assembles them:
+/// for paths that calculate without a full `BuildData` (the text-only
+/// `calculate`, the CLI's `calculate`).
+///
+/// `base/monster_scaling.json` is required: the per-level monster table has no
+/// Rust copy (its `Default` is empty), so a snapshot without it (missing file
+/// or absent from the schema-3 inventory) is a load error rather than a
+/// calculation with every enemy and minion stat at 0.
+pub fn load_runtime_constants(data: &GameData) -> Result<RuntimeConstants, LoadError> {
+    runtime_constants_from(data, &mut data.load_ruleset()?)
+}
+
+/// Merges the RuleSet's data-driven domains into the constants bundle; optional
+/// domains that are None keep the Default fallback (equal to the JSON
+/// value-for-value). Takes the merged domains out of `ruleset`.
+fn runtime_constants_from(
+    data: &GameData,
+    ruleset: &mut pobr_gamedata::RuleSet,
+) -> Result<RuntimeConstants, LoadError> {
+    let mut constants = RuntimeConstants::default();
+    if let Some(game_constants) = ruleset.game_constants.take() {
+        constants.game_constants = game_constants;
+    }
+    if let Some(character_constants) = ruleset.character_constants.take() {
+        constants.character_constants = character_constants;
+    }
+    constants.monster_scaling = match ruleset.monster_scaling.take() {
+        Some(monster_scaling) => monster_scaling,
+        // Reload to return the loader's own error (path, NotFound / not in inventory).
+        None => data.monster_scaling()?,
+    };
+    if let Some(enemy_presets) = ruleset.enemy_presets.take() {
+        constants.enemy_presets = enemy_presets;
+    }
+    // Curated game rows until the adapter exports MonsterVarieties.PoiseThreshold.
+    // Old packs retain the game-sourced defaults; malformed files still fail loading.
+    match data.boss_poise_thresholds() {
+        Ok(def) => constants.boss_poise_thresholds = def,
+        Err(LoadError::Io { ref source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => return Err(e),
+    }
+    if let Some(unarmed_data) = ruleset.unarmed_data.take() {
+        constants.unarmed_data = unarmed_data;
+    }
+    if let Some(weapon_types) = ruleset.weapon_types.take() {
+        constants.weapon_types = weapon_types;
+    }
+    Ok(constants)
 }
 
 impl BuildData {
@@ -458,7 +510,6 @@ impl BuildData {
     /// return value rather than reloading the same version directory repeatedly.
     pub fn load(data: &GameData) -> Result<Self, LoadError> {
         data.validate_manifest()?;
-        data.validate_calculation_admission()?;
         // Pin report provenance alongside the immutable data used by this build.
         data.identity()?;
         // A domain's file is released as soon as it is parsed (a data pack staged in memory to
@@ -587,37 +638,8 @@ impl BuildData {
             .map(|b| (b.name.clone(), b))
             .collect();
 
-        // Merge the RuleSet's already data-driven domains into the constants bundle;
-        // domains that are None keep the Default fallback (equal to the JSON
-        // value-for-value, so the injected and fallback paths produce the same output).
-        let ruleset = data.load_ruleset()?;
-        let mut constants = RuntimeConstants::default();
-        if let Some(game_constants) = ruleset.game_constants {
-            constants.game_constants = game_constants;
-        }
-        if let Some(character_constants) = ruleset.character_constants {
-            constants.character_constants = character_constants;
-        }
-        if let Some(monster_scaling) = ruleset.monster_scaling {
-            constants.monster_scaling = monster_scaling;
-        }
-        if let Some(enemy_presets) = ruleset.enemy_presets {
-            constants.enemy_presets = enemy_presets;
-        }
-        // Curated game rows until the adapter exports MonsterVarieties.PoiseThreshold.
-        // Old packs retain the game-sourced defaults; malformed files still fail loading.
-        match data.boss_poise_thresholds() {
-            Ok(def) => constants.boss_poise_thresholds = def,
-            Err(LoadError::Io { ref source, .. })
-                if source.kind() == std::io::ErrorKind::NotFound => {}
-            Err(e) => return Err(e),
-        }
-        if let Some(unarmed_data) = ruleset.unarmed_data {
-            constants.unarmed_data = unarmed_data;
-        }
-        if let Some(weapon_types) = ruleset.weapon_types {
-            constants.weapon_types = weapon_types;
-        }
+        let mut ruleset = data.load_ruleset()?;
+        let constants = runtime_constants_from(data, &mut ruleset)?;
         // Radius jewel tier table: overridden when the data-driven domain is Some, falls back to Default when None (equal to the JSON value-for-value).
         let jewel_radii = ruleset.jewel_radii.unwrap_or_default();
         // Rounding-precision exception table: missing overlay file = Default (no exception table).

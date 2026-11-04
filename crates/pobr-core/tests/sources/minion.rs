@@ -9,11 +9,17 @@ use pobr_core::calc::minion::{
     minion_modifier_applies, write_summoned_minion_multipliers,
 };
 use pobr_core::{CalcConfig, ModDb, Modifier};
+use pobr_data::catalog::monster_scaling::MonsterScalingTable;
 use pobr_data::minion::{
     minion_def_raging_spirit, minion_def_skeletal_storm_mage, minion_def_skeletal_warrior,
     minion_def_zombie,
 };
 use pobr_data::prelude::*;
+
+/// The imported `base/monster_scaling.json` (minion baselines read it).
+fn scaling() -> MonsterScalingTable {
+    crate::support::test_monster_scaling()
+}
 
 fn empty_input(gem_level: u32, data: MinionData) -> MinionInput {
     MinionInput {
@@ -43,15 +49,15 @@ fn base_stats_use_ally_life_table_times_normalizer() {
         life: 0.7,
         ..MinionData::default()
     };
-    let base = derive_minion_base_stats(20, &data);
-    let expected = (pobr_data::monster::monster_ally_life(40) as f64 * 0.7).floor();
+    let base = derive_minion_base_stats(20, &data, &scaling());
+    let expected = (scaling().ally_life_at(40) as f64 * 0.7).floor();
     assert!((base.life - expected).abs() < 1e-6);
     assert!(base.life > 0.0);
 }
 
 #[test]
 fn crit_multiplier_base_is_100_not_player_default() {
-    let ctx = build_minion_context(&empty_input(20, MinionData::default()));
+    let ctx = build_minion_context(&empty_input(20, MinionData::default()), &scaling());
     let cfg = CalcConfig::attack();
     let crit_mult = ctx
         .mod_db
@@ -66,7 +72,7 @@ fn base_crit(ctx: &pobr_core::calc::minion::MinionContext) -> f64 {
 
 #[test]
 fn minion_always_hit_flag_present() {
-    let ctx = build_minion_context(&empty_input(20, MinionData::default()));
+    let ctx = build_minion_context(&empty_input(20, MinionData::default()), &scaling());
     assert!(ctx.mod_db.flag(&CalcConfig::attack(), "CannotBeEvaded"));
     assert!(ctx.base.always_hit);
 }
@@ -79,7 +85,7 @@ fn channel_1_minion_modifier_injected_and_queryable() {
         inner,
         minion_type: None,
     }];
-    let ctx = build_minion_context(&input);
+    let ctx = build_minion_context(&input, &scaling());
     let inc = ctx.mod_db.sum(
         ModType::Inc,
         &CalcConfig::attack(),
@@ -96,7 +102,7 @@ fn channel_1_type_limited_modifier_filtered_out() {
         inner,
         minion_type: Some("Zombie".into()),
     }];
-    let ctx = build_minion_context(&input);
+    let ctx = build_minion_context(&input, &scaling());
     let inc = ctx.mod_db.sum(
         ModType::Inc,
         &CalcConfig::attack(),
@@ -110,7 +116,7 @@ fn channel_1_type_limited_modifier_filtered_out() {
         minion_type: Some("Zombie".into()),
     }];
     input.minion_type = Some("Zombie".into());
-    let ctx2 = build_minion_context(&input);
+    let ctx2 = build_minion_context(&input, &scaling());
     let inc2 = ctx2.mod_db.sum(
         ModType::Inc,
         &CalcConfig::attack(),
@@ -141,7 +147,7 @@ fn applies_predicate_matches_pob2_semantics() {
 fn channel_2_ally_buff_mods_injected() {
     let mut input = empty_input(20, MinionData::default());
     input.ally_buff_mods = vec![Modifier::number("AttackSpeed", ModType::Inc, 20.0)];
-    let ctx = build_minion_context(&input);
+    let ctx = build_minion_context(&input, &scaling());
     let spd = ctx.mod_db.sum(
         ModType::Inc,
         &CalcConfig::attack(),
@@ -160,7 +166,7 @@ fn channel_3_strength_infusion_injects_base_str() {
         half_strength_added: false,
         dexterity_added: false,
     };
-    let ctx = build_minion_context(&input);
+    let ctx = build_minion_context(&input, &scaling());
     let str_base = ctx.mod_db.sum(
         ModType::Base,
         &CalcConfig::attack(),
@@ -186,7 +192,7 @@ fn channel_3_half_strength_infusion() {
         half_strength_added: true,
         dexterity_added: false,
     };
-    let ctx = build_minion_context(&input);
+    let ctx = build_minion_context(&input, &scaling());
     let str_base = ctx.mod_db.sum(
         ModType::Base,
         &CalcConfig::attack(),
@@ -197,7 +203,7 @@ fn channel_3_half_strength_infusion() {
 
 #[test]
 fn player_ordinary_mods_do_not_leak_into_minion() {
-    let ctx = build_minion_context(&empty_input(20, MinionData::default()));
+    let ctx = build_minion_context(&empty_input(20, MinionData::default()), &scaling());
     let inc = ctx.mod_db.sum(
         ModType::Inc,
         &CalcConfig::attack(),
@@ -215,13 +221,13 @@ fn weapon_data_respects_base_damage_ignores_attack_speed() {
         base_damage_ignores_attack_speed: true,
         ..MinionData::default()
     };
-    let ignoring = derive_minion_base_stats(20, &data);
+    let ignoring = derive_minion_base_stats(20, &data, &scaling());
 
     data.base_damage_ignores_attack_speed = false;
-    let scaling = derive_minion_base_stats(20, &data);
+    let with_speed = derive_minion_base_stats(20, &data, &scaling());
 
-    assert!(scaling.weapon.physical_max < ignoring.weapon.physical_max);
-    assert!((scaling.weapon.physical_max - ignoring.weapon.physical_max * 0.5).abs() < 1e-6);
+    assert!(with_speed.weapon.physical_max < ignoring.weapon.physical_max);
+    assert!((with_speed.weapon.physical_max - ignoring.weapon.physical_max * 0.5).abs() < 1e-6);
     assert!((ignoring.weapon.attack_rate - 2.0).abs() < 1e-9);
 }
 
@@ -232,7 +238,7 @@ fn energy_shield_derived_from_life_fraction() {
         energy_shield: 0.15,
         ..MinionData::default()
     };
-    let base = derive_minion_base_stats(20, &data);
+    let base = derive_minion_base_stats(20, &data, &scaling());
     assert!((base.energy_shield - base.life * 0.15).abs() < 1e-6);
     assert!(base.energy_shield > 0.0);
 }
@@ -242,11 +248,17 @@ fn energy_shield_derived_from_life_fraction() {
 
 #[test]
 fn build_context_from_zombie_def_matches_manual() {
-    // build_minion_context_from_def(zombie, gem=20) matches a manually filled
+    // build_minion_context_from_def(zombie, gem=20, &scaling()) matches a manually filled
     // MinionData.
     let def = minion_def_zombie();
-    let ctx_def =
-        build_minion_context_from_def(&def, 20, vec![], vec![], AttributeInfusion::default());
+    let ctx_def = build_minion_context_from_def(
+        &def,
+        20,
+        vec![],
+        vec![],
+        AttributeInfusion::default(),
+        &scaling(),
+    );
     let data = MinionData {
         life: 0.7,
         damage: 0.75,
@@ -256,7 +268,7 @@ fn build_context_from_zombie_def_matches_manual() {
         base_damage_ignores_attack_speed: true,
         ..MinionData::default()
     };
-    let ctx_manual = build_minion_context(&empty_input(20, data));
+    let ctx_manual = build_minion_context(&empty_input(20, data), &scaling());
 
     assert_eq!(ctx_def.base.life, ctx_manual.base.life);
     assert_eq!(ctx_def.base.level, ctx_manual.base.level);
@@ -272,7 +284,14 @@ fn build_context_from_zombie_def_matches_manual() {
 fn build_context_from_storm_mage_def_has_es_and_lightning_resist() {
     // Skeletal storm mage: energyShield=0.15, lightningResist=50.
     let def = minion_def_skeletal_storm_mage();
-    let ctx = build_minion_context_from_def(&def, 20, vec![], vec![], AttributeInfusion::default());
+    let ctx = build_minion_context_from_def(
+        &def,
+        20,
+        vec![],
+        vec![],
+        AttributeInfusion::default(),
+        &scaling(),
+    );
     assert!(ctx.base.energy_shield > 0.0);
     let cfg = CalcConfig::attack();
     let lr = ctx
@@ -288,9 +307,16 @@ fn build_context_from_storm_mage_def_has_es_and_lightning_resist() {
 fn build_context_from_raging_spirit_life_matches_pob2() {
     // Raging spirit: life=0.25, gem_level=20 -> monster level 40.
     let def = minion_def_raging_spirit();
-    let ctx = build_minion_context_from_def(&def, 20, vec![], vec![], AttributeInfusion::default());
+    let ctx = build_minion_context_from_def(
+        &def,
+        20,
+        vec![],
+        vec![],
+        AttributeInfusion::default(),
+        &scaling(),
+    );
     // #12: life goes through the ally table + floor (vendor CalcPerform.lua:1046).
-    let expected = (pobr_data::monster::monster_ally_life(40) as f64 * 0.25).floor();
+    let expected = (scaling().ally_life_at(40) as f64 * 0.25).floor();
     assert!(
         (ctx.base.life - expected).abs() < 1e-6,
         "RagingSpirit life: expected {expected}, got {}",
@@ -302,9 +328,15 @@ fn build_context_from_raging_spirit_life_matches_pob2() {
 fn build_context_from_skeletal_warrior_armour_normalizer() {
     // Skeletal warrior: armour=0.5.
     let def = minion_def_skeletal_warrior();
-    let ctx = build_minion_context_from_def(&def, 20, vec![], vec![], AttributeInfusion::default());
-    let row = MonsterScalingRow::at_level(40);
-    let expected = (row.armour as f64 * 0.5 * 1e9).round() / 1e9;
+    let ctx = build_minion_context_from_def(
+        &def,
+        20,
+        vec![],
+        vec![],
+        AttributeInfusion::default(),
+        &scaling(),
+    );
+    let expected = (scaling().armour_at(40) as f64 * 0.5 * 1e9).round() / 1e9;
     assert!(
         (ctx.base.armour - expected).abs() < 1e-6,
         "SkeletalWarrior armour: expected {expected}, got {}",
@@ -329,6 +361,7 @@ fn build_context_from_def_type_filter_works() {
         vec![entry.clone()],
         vec![],
         AttributeInfusion::default(),
+        &scaling(),
     );
     let inc_warrior = ctx_warrior.mod_db.sum(
         ModType::Inc,
@@ -343,6 +376,7 @@ fn build_context_from_def_type_filter_works() {
         vec![entry],
         vec![],
         AttributeInfusion::default(),
+        &scaling(),
     );
     let inc_zombie = ctx_zombie.mod_db.sum(
         ModType::Inc,
@@ -413,7 +447,7 @@ fn minion_context_inherits_reference_rule_policy_before_calculation() {
             .set_exporter_rules(include_absent, Default::default());
         let mut input = empty_input(20, MinionData::default());
         input.ally_buff_mods.push(modifier.clone());
-        env.add_minion(build_minion_context(&input));
+        env.add_minion(build_minion_context(&input, &scaling()));
         let db = &env.minions[0].mod_db;
         assert_eq!(
             db.named("Life").any(|m| m.exporter_rule.is_some()),

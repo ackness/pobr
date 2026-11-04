@@ -35,67 +35,8 @@ parity 下降说明需要调查新版差异，不能为通过而降低基线。
 宝石品质由 RePoE `pobr-data-adapter` 的 `--ordinary-domain gem-quality` 从固定目标事实与品质政策生成，沿用 `overlay/` 路径。
 它严格校验三张输入表与政策摘要，不从 vendor 或旧产物猜范围。见[品质生成说明](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/gem-quality/README.md)。
 
-### 受保护的 native 运行时契约
-
-兼容包生成器继续使用 schema 3；显式 native 候选必须使用运行时 manifest schema 4，
-现有领域 JSON 的结构不变。schema 4 强制声明并封存 `base/native_runtime.json`、
-`base/native_coverage.json`、`base/native_reference_index.json` 和固定输入域：
-`passive_tree`、`passive_tree_meta`、`base_items`、`skill_gems`、`granted_effects`、
-`granted_effect_levels`、`granted_effect_stat_sets`、`cost_types`。缺少声明、文件或摘要均失败。
-空领域可用于中间 assembler 验证，不表示游戏没有记录，也不证明计算闭包完整。
-schema 1–3 不接受 native 契约；缺少 manifest 而仍有保留的 native 契约路径时也拒绝，
-不会退回旧规则或默认值。未携带该保留路径的旧式无 manifest 规则目录仍可读取。
-旧加载器会拒绝 schema 4，不能把必需语义作为可忽略字段发布。
-
-契约类型是 [`NativeRuntimeContract`](../crates/pobr-data/src/catalog/native_runtime.rs)，
-支持 query-only v1 与显式 player-context v2。v1 的 `player` 扩展省略时，原序列化与 assembly key 不变；v2 必需该字段。未知字段／profile／版本报错：
-
-| 字段 | 约束与身份作用 |
-| --- | --- |
-| `game` / `realm` / `game_patch` | `poe2` / `INTERNATIONAL`；显式数字点分 patch 必须等于 manifest 的 `poe_version` |
-| `source_lock_sha256` / `descriptions_manifest_sha256` / `compiler_revision` | 不可变输入锁、描述输入和编译器 revision；不追随当前 registry |
-| `tree` / `allowed_source_manifests` | 精确原始图资源地址、资源摘要及被允许的来源 manifest；`compatibility_tag` 固定 `0_5`，不据此推导 patch |
-| `normalization` / `rules` | 显式 `spark-level1-q0` profile、与 native 契约相同的版本（1 或 2）和各自解释／证据工件摘要 |
-| `input_profile` / `output_profile` | 输入为 `sorceress-spark-level1-q0-v1`；输出 v1 为 `spark-single-hit-cast-cost-v1`、v2 为 `conditional-skill-hit-v1`，只是所需范围 |
-| `coverage_sha256` / `reference_index_sha256` | 必须分别等于 manifest 中两个固定 sidecar 文件的摘要 |
-| `acquisition` / `supplements` | 获取状态及证据摘要；显式补充列表，只允许树坐标／渲染元数据，patch 未知时必须写 `null` |
-| `player`（仅 v2 必需） | 分别封存 `NativePlayerContextDef` 与 `NativeActorBinding`，以及 player/parent manifest 与 source-lock 的精确摘要；v1 禁止夹带这两个工件 |
-| `assembly_key` | `native_assembly_key` 对完整 typed 契约（本字段置空）及 `pobr-native-assembly-v1` 标签的确定性 SHA-256 |
-
-固定输入 profile 限定 level-1 Sorceress 的 Spark 主分支 level 1 / quality 0，
-没有装备、辅助、天赋分配、升华、infusion 或事件条件；输出范围只有单次命中／施法／消耗，
-不含投射物命中次数或遭遇频率。常量与规则闭包尚未完成，契约没有假造完整默认常量。
-来源摘要和 reviewed 状态是字节身份与声明，不是获取认证、语义批准或生产提升。
-
-`GameData::native_runtime()` 返回缓存的、未打 patch 的有效契约，供 assembler 查询。
-契约禁止用户 patch；schema 4 不继承 ambient `overlay-common`，这些未选输入也不参与身份。
-schema 4 即使通过 prechecked 内存入口也重新校验全部快照摘要。
-契约原字节及所有封存文件参与 `GameData::identity()`，磁盘／内存一致；
-最终运行时摘要不回写进契约，避免自引用。
-
-`pobr_gamedata::NativeData::load(&GameData)` 返回私有状态的不可变 typed catalogs、
-契约和最终 `DataIdentity`；v2 还提供完整 player context 与独立 actor binding，v1 的两者为 `None`。
-该入口直接读取封存域，拒绝 patch，不读取旧 overlay、不构造 `RuntimeConstants`、
-`BuildData` 或 ruleset。v2 的 source context、actor policy、输入锁、normalization、rules、
-获取证据及树匹配证据均必须在 inventory 中封存。所有原始 player JSON 文本、
-99 条 plain Stats、scoped/unknown metadata、六组 starting relations 和十二个 options 均保留。
-Starting options 不是免费分配或自动属性；Character7 不继承 Character1 的 class overrides。
-
-`selected-player-generic-ot-v1` 只把独立 generic OT 的唯一有限 lexical critical **bonus**
-应用到精确 actor/profile。它是 `conditional-model` 的 PoBR applicability assumption，
-并不证明 AO→OT 继承。policy 单独记录 identity、来源选择器、UTF-16 assignment、glossary 引用、
-条件／排除项和逐项 dispositions。未知且相关的输入在 build admission 阶段阻断；
-加载成功不等于准入。成本只表示 Mana/use，成功 damaging hit 不保证 projectile contact。
-
-**普通完整计算的 native 准入仍关闭。** `GameData::load_ruleset()` 和 `BuildData::load()`
-在默认常量、旧文本规则或领域释放之前返回既有 `LoadError::Integrity`，
-路径指向契约，原因以 `native-profile-not-admitted:` 开头。完整构筑所需的角色资源、命中、
-防御等闭包尚未准入，不能从旧默认值补齐。单独的
-[`native_skill`](native-skill-hit.md) 入口对完整原生存档逐次验证精确 dataset、actor、policy
-和稳定技能分支，再调用共享 Rust 条件命中计算。它提供本次命中及固有使用时间／成本／
-投射物属性，不产生完整 DPS、资源、需求或生存结果。存档与独立 CLI 入口见
-[原生存档](native-build-document.md)、[原生 CLI](native-cli.md)和显式
-[原生 WASM 导出](native-wasm.md)。Web UI、生产包切换与 CN 数值事实尚未接通。
+加载器只接受 manifest schema 1–3。曾用于受限原生候选的 schema 4 及其 `NativeData`、
+原生存档、CLI 与 WASM 入口已删除（无产品调用方）；schema 4 包按未知 schema 拒绝，需要时从 Git 历史恢复。
 
 ### 可选 native 天赋 stat
 

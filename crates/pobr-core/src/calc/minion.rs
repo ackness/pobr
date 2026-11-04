@@ -22,6 +22,7 @@
 //! - PoB2 `src/Modules/CalcActiveSkill.lua` (minion level resolution, lifeTable/damageTable, virtual weapon).
 //! - PoB2 `src/Data/Misc.lua` (minionLevelTable={2,4,…,80}, playerMinionIntrinsicStats).
 
+use pobr_data::catalog::monster_scaling::MonsterScalingTable;
 use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb, Modifier};
@@ -65,9 +66,20 @@ pub const SPECTRE_TAMED_BEAST_INHERENT_DAMAGE: f64 = 25.0;
 /// the game's `DefaultMonsterStats`) and by
 /// [`SPECTRE_TAMED_BEAST_INHERENT_DAMAGE`]. Applying the scaling as more
 /// damage, it scales all their damage, added damage included.
-pub fn monster_minion_damage_scaling(level: u32) -> [(&'static str, f64); 2] {
-    let level_scaling =
-        pobr_data::monster::monster_ally_damage(level) / pobr_data::monster::monster_damage(level);
+///
+/// `scaling` is the imported `base/monster_scaling.json`
+/// (`cfg.constants.monster_scaling`); without it (an empty table) there is
+/// no level scaling.
+pub fn monster_minion_damage_scaling(
+    level: u32,
+    scaling: &MonsterScalingTable,
+) -> [(&'static str, f64); 2] {
+    let monster_damage = scaling.damage_at(level);
+    let level_scaling = if monster_damage > 0.0 {
+        scaling.ally_damage_at(level) / monster_damage
+    } else {
+        1.0
+    };
     [
         ("minion.level_scaling", (level_scaling - 1.0) * 100.0),
         (
@@ -468,22 +480,26 @@ pub struct MinionContext {
 
 /// Monster level baseline + normalization multipliers → minion base stats + intrinsic stats + virtual weapon.
 ///
-/// Reuses `pobr-data::monster`'s monster table (`MonsterScalingRow`): the
+/// Reads the game's per-level monster table (`scaling`, the imported
+/// `base/monster_scaling.json`, i.e. `cfg.constants.monster_scaling`): the
 /// minion's level is mapped via `minion_level_from_gem_level`, then looked
 /// up in the table and multiplied by the normalization multipliers.
 /// Source: agent-docs/minions.md §1; PoB2 CalcActiveSkill.lua / CalcPerform.lua.
-pub fn derive_minion_base_stats(gem_level: u32, data: &MinionData) -> MinionBaseStats {
+pub fn derive_minion_base_stats(
+    gem_level: u32,
+    data: &MinionData,
+    scaling: &MonsterScalingTable,
+) -> MinionBaseStats {
     let level = minion_level_from_gem_level(gem_level);
-    let row = MonsterScalingRow::at_level(level);
 
     // Life uses the **ally table** (vendor CalcPerform.lua:1046
     // `m_floor(monsterAllyLifeTable[level] × minionData.life)` -- PoBR
     // minions are always the player's allies; hostile minions (hostile
     // spectres, which use monsterLifeTable × mapLevelLifeMult) are not modeled).
     // wolf-pack pinned value: ally[44]=2938 × 1.1 = 3231 (oracle Life BASE 3231).
-    let life = (pobr_data::monster::monster_ally_life(level) as f64 * data.life).floor();
-    let armour = round(row.armour as f64 * data.armour);
-    let evasion = round(row.evasion as f64 * data.evasion);
+    let life = (scaling.ally_life_at(level) as f64 * data.life).floor();
+    let armour = round(scaling.armour_at(level) as f64 * data.armour);
+    let evasion = round(scaling.evasion_at(level) as f64 * data.evasion);
     // Life-to-ES: the energy_shield share × 100 = LifeConvertToEnergyShield BASE; folded directly into the ES base here.
     let energy_shield = round(life * data.energy_shield);
 
@@ -492,9 +508,9 @@ pub fn derive_minion_base_stats(gem_level: u32, data: &MinionData) -> MinionBase
     // multiplied by the attack interval when
     // base_damage_ignores_attack_speed=false.
     let table = if data.picked_monster {
-        pobr_data::monster::monster_damage(level)
+        scaling.damage_at(level)
     } else {
-        pobr_data::monster::monster_ally_damage(level)
+        scaling.ally_damage_at(level)
     };
     let mut damage = table * data.damage;
     if !data.base_damage_ignores_attack_speed {
@@ -627,14 +643,17 @@ pub fn minion_modifier_applies(entry: &MinionModifierEntry, minion_type: Option<
 /// This is the minion domain's high-level entry point: a pure function
 /// taking player-controlled channels + normalization data as input,
 /// producing minion Actor data ready to run offence/defence directly.
-pub fn build_minion_context(input: &MinionInput) -> MinionContext {
-    let base = derive_minion_base_stats(input.gem_level, &input.data);
+///
+/// `scaling` is the imported per-level monster table
+/// (`cfg.constants.monster_scaling`).
+pub fn build_minion_context(input: &MinionInput, scaling: &MonsterScalingTable) -> MinionContext {
+    let base = derive_minion_base_stats(input.gem_level, &input.data, scaling);
     let mut db = ModDb::new();
 
     // Intrinsics + monster-style base stats.
     write_intrinsics(&mut db, &base);
     if input.data.picked_monster {
-        for (id, more) in monster_minion_damage_scaling(base.level) {
+        for (id, more) in monster_minion_damage_scaling(base.level, scaling) {
             db.add_mod(
                 Modifier::number("Damage", ModType::More, more).with_origin(
                     ModifierSource::new(SourceId::new(SourceKind::GameConstant, id))
@@ -824,6 +843,7 @@ pub fn build_minion_context_from_def(
     minion_modifiers: Vec<MinionModifierEntry>,
     ally_buff_mods: Vec<Modifier>,
     attribute_infusion: AttributeInfusion,
+    scaling: &MonsterScalingTable,
 ) -> MinionContext {
     picked_minion_context(
         def,
@@ -832,6 +852,7 @@ pub fn build_minion_context_from_def(
         ally_buff_mods,
         attribute_infusion,
         false,
+        scaling,
     )
 }
 
@@ -844,6 +865,7 @@ pub(crate) fn picked_minion_context(
     ally_buff_mods: Vec<Modifier>,
     attribute_infusion: AttributeInfusion,
     picked_monster: bool,
+    scaling: &MonsterScalingTable,
 ) -> MinionContext {
     let input = MinionInput {
         gem_level,
@@ -856,7 +878,7 @@ pub(crate) fn picked_minion_context(
         attribute_infusion,
         minion_type: Some(def.id.clone()),
     };
-    let mut ctx = build_minion_context(&input);
+    let mut ctx = build_minion_context(&input, scaling);
     ctx.mod_db.add_list(definition_modifiers(def));
     ctx
 }
@@ -865,6 +887,10 @@ pub(crate) fn picked_minion_context(
 mod tests {
     use super::*;
     use crate::CalcConfig;
+
+    fn scaling() -> MonsterScalingTable {
+        crate::mod_parser::test_monster_scaling()
+    }
 
     #[test]
     fn gem_level_maps_to_monster_level() {
@@ -889,13 +915,13 @@ mod tests {
             picked_monster: true,
             ..MinionData::default()
         };
-        let monster = derive_minion_base_stats(gem_level, &picked)
+        let monster = derive_minion_base_stats(gem_level, &picked, &scaling())
             .weapon
             .physical_max;
-        let minion = derive_minion_base_stats(gem_level, &MinionData::default())
+        let minion = derive_minion_base_stats(gem_level, &MinionData::default(), &scaling())
             .weapon
             .physical_max;
-        let more: f64 = monster_minion_damage_scaling(level)
+        let more: f64 = monster_minion_damage_scaling(level, &scaling())
             .iter()
             .map(|(_, value)| 1.0 + value / 100.0)
             .product();
@@ -961,21 +987,24 @@ mod tests {
 
     #[test]
     fn minion_crit_multiplier_base_is_monster_plus_intrinsic() {
-        let base = derive_minion_base_stats(20, &MinionData::default());
+        let base = derive_minion_base_stats(20, &MinionData::default(), &scaling());
         // 30 (monster) + 70 (intrinsic) = 100, not equal to the player's default.
         assert_eq!(base.crit_multiplier_base, 100.0);
     }
 
     #[test]
     fn minion_always_hits_by_default() {
-        let ctx = build_minion_context(&MinionInput {
-            gem_level: 20,
-            data: MinionData::default(),
-            minion_modifiers: vec![],
-            ally_buff_mods: vec![],
-            attribute_infusion: AttributeInfusion::default(),
-            minion_type: None,
-        });
+        let ctx = build_minion_context(
+            &MinionInput {
+                gem_level: 20,
+                data: MinionData::default(),
+                minion_modifiers: vec![],
+                ally_buff_mods: vec![],
+                attribute_infusion: AttributeInfusion::default(),
+                minion_type: None,
+            },
+            &scaling(),
+        );
         assert!(ctx.mod_db.flag(&CalcConfig::attack(), "CannotBeEvaded"));
     }
 
@@ -1010,8 +1039,14 @@ mod tests {
     fn build_context_from_def_zombie_crit_is_100() {
         use pobr_data::minion::minion_def_zombie;
         let def = minion_def_zombie();
-        let ctx =
-            build_minion_context_from_def(&def, 20, vec![], vec![], AttributeInfusion::default());
+        let ctx = build_minion_context_from_def(
+            &def,
+            20,
+            vec![],
+            vec![],
+            AttributeInfusion::default(),
+            &scaling(),
+        );
         // Crit damage base = 30 (monster) + 70 (intrinsic) = 100
         let cfg = CalcConfig::attack();
         let crit_mult = ctx
@@ -1039,6 +1074,7 @@ mod tests {
             vec![entry],
             vec![],
             AttributeInfusion::default(),
+            &scaling(),
         );
         let inc = ctx.mod_db.sum(
             ModType::Inc,
@@ -1063,6 +1099,7 @@ mod tests {
             vec![entry],
             vec![],
             AttributeInfusion::default(),
+            &scaling(),
         );
         let inc = ctx.mod_db.sum(
             ModType::Inc,

@@ -161,6 +161,8 @@ class ExternalDataShardTests(unittest.TestCase):
             self.assertIn("run: pnpm i18n:check", job, filename)
             self.assertLess(job.index("pnpm i18n:check"), job.index("pnpm typecheck"), filename)
         self.assertIn("web/scripts/check-locales.test.mjs", (root / "devs/scripts/check-workflows.sh").read_text())
+        driver = (root / "devs/scripts/driver.sh").read_text()
+        self.assertIn("web)      pnpm --dir web i18n:check && pnpm --dir web typecheck", driver)
 
     def test_every_rust_shard_prepares_data_and_ci_does_not_reproduce_owner_data(self):
         workflow = (HERE.parents[1] / ".github/workflows/ci.yml").read_text()

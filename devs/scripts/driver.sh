@@ -9,7 +9,7 @@
 #   build      Build the application CLI, or forward explicit Cargo selectors.
 #   test <args> Forward targeted cargo test arguments (package, suite, filter).
 #   lint <args> Format check plus Clippy for explicitly selected Cargo targets.
-#   full       fmt + clippy + all workspace tests + i18n lint
+#   full       fmt + clippy + all workspace tests
 #   gate       optional local batch validation; reports every failing step
 #   regen      precompile-mods --report, then its tests
 #   warm       copy-on-write clone of another worktree's target/debug
@@ -306,11 +306,10 @@ EOF
 }
 
 cmd_full() {
-  say "Full workspace gate: fmt, clippy, tests (including doctests), i18n"
+  say "Full workspace gate: fmt, clippy, tests (including doctests)"
   cargo fmt --all --check &&
     cargo clippy --workspace --all-targets --features pobr-core/benchmarks,pobr-build/benchmarks,pobr-wasm/diagnostics -- -D warnings &&
-    cargo test --workspace &&
-    cargo run -p lint-i18n
+    cargo test --workspace
 }
 
 # Regenerate the parser artifacts after a rule change, then test the generator.
@@ -356,7 +355,7 @@ cmd_warm() {
 # The batch gate a coordinator runs once after merging several changes: every
 # step runs even after a failure, so one pass shows all failures, and
 # `--only <step,...>` reruns just the failed ones.
-GATE_STEPS=(fmt regen clippy core build parity apps i18n web accuracy)
+GATE_STEPS=(fmt regen clippy core build parity apps web accuracy)
 
 gate_step() {
   case "$1" in
@@ -368,8 +367,7 @@ gate_step() {
     parity)   cargo test -q -p pobr-build --test parity ;;
     apps)     cargo test -q -p pobr-data -p pobr-gamedata -p pobr-i18n -p pobr-tree -p pobr-item \
                 -p pobr-wasm -p pobr-cli ;;
-    i18n)     cargo run -q -p lint-i18n ;;
-    web)      pnpm --dir web typecheck && pnpm --dir web test ;;
+    web)      pnpm --dir web i18n:check && pnpm --dir web typecheck && pnpm --dir web test ;;
     accuracy) cmd_accuracy ;;
   esac
 }

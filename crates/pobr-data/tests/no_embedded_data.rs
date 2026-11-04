@@ -18,11 +18,13 @@ const MAX_CONSECUTIVE_LITERAL_LINES: usize = 200;
 
 /// A filename allowlist: existing embedded tables not yet migrated out.
 ///
-/// TODO(/W3): once monster.rs / minion.rs / constants.rs's embedded tables
-/// are migrated into `data/<ver>/`'s L1 constant JSON (monster_scaling /
-/// game_constants, etc.), this list must be emptied. New files **must
-/// not** be added to it.
-const ALLOWLIST: &[&str] = &["monster.rs", "minion.rs", "constants.rs"];
+/// TODO(/W3): once constants.rs's embedded constants are migrated into
+/// `data/<ver>/`'s L1 constant JSON (game_constants, etc.), this list must be
+/// emptied (monster.rs's per-level tables now live only in
+/// `base/monster_scaling.json`; minion.rs's hand-written `MinionDef`s are
+/// test fixtures behind the `test-fixtures` feature). New files **must not**
+/// be added to it.
+const ALLOWLIST: &[&str] = &["constants.rs"];
 
 /// Judges whether a line looks like "a data table's literal-element line":
 /// after trimming, it starts with a literal (a digit / minus sign / string

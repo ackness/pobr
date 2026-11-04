@@ -1,4 +1,4 @@
-//! pobr-wasm: the Web/WASM API (calculation / i18n / build contracts).
+//! pobr-wasm: the Web/WASM API (calculation / localized line / build contracts).
 //!
 //! Core capabilities are wrapped as pure Rust functions taking/returning
 //! either JSON strings or plain strings. Under the default features,
@@ -14,12 +14,10 @@
 //! The shapes are pinned by `tests/contract_golden.rs`.
 
 pub mod build_api;
-pub mod i18n;
-mod native_api;
+pub mod locales;
 pub mod session;
 pub mod state;
 mod xml_write;
-pub mod zh;
 
 pub use build_api::{
     attribution_json, breakdown_descriptors_json, calculate_build_json, classify_item_lines_json,
@@ -27,19 +25,17 @@ pub use build_api::{
     encode_build_json, gem_catalog_json, import_party_member_json, import_trade_items_json,
     item_augment_info_json, item_crafting_catalog_json, line_usage_json, manage_loadout_json,
     minion_catalog_json, node_power_json, normalize_item_draft_json, optimize_variants_json,
-    reforge_runes_json, rune_catalog_json, skill_metrics_json, translate_lines_to_zh_cn_json,
-    unique_catalog_json, unique_item_draft_json,
+    parse_localized_lines_json, reforge_runes_json, rune_catalog_json, skill_metrics_json,
+    translate_lines_json, translate_lines_to_zh_cn_json, unique_catalog_json,
+    unique_item_draft_json,
 };
 pub use build_api::{
     preview_tree_conversion_json, preview_tree_edit_json, support_groups_compatible_json,
 };
-pub use i18n::translate;
-pub use native_api::calculate_native_build_json;
 pub use session::calculate_json;
 pub use state::{
-    init_data_from_dir, init_native_data_from_dir, init_native_staged_data, init_staged_data,
-    init_staged_data_verified, is_data_ready, is_native_data_ready, stage_data_bytes,
-    stage_data_file,
+    init_data_from_dir, init_staged_data, init_staged_data_verified, is_data_ready,
+    stage_data_bytes, stage_data_file,
 };
 
 /// The JSON contract version. **Any** breaking change to a response or
@@ -66,12 +62,6 @@ pub mod wasm {
     #[wasm_bindgen(js_name = calculateJson)]
     pub fn calculate_json(input_json: &str) -> Result<String, JsError> {
         crate::session::calculate_json(input_json).map_err(|err| JsError::new(&err))
-    }
-
-    /// JS entry point: `translate(lang, key) -> string`.
-    #[wasm_bindgen(js_name = translate)]
-    pub fn translate(lang: &str, key: &str) -> String {
-        crate::i18n::translate(lang, key)
     }
 
     /// JS entry point: `stageDataFile(path, content)` — injects data files one at a time (from JS fetch results).
@@ -105,24 +95,6 @@ pub mod wasm {
     #[wasm_bindgen(js_name = isDataReady)]
     pub fn is_data_ready() -> bool {
         crate::state::is_data_ready()
-    }
-
-    /// JS entry point: `initNativeStagedData()` — validates explicitly staged native catalogs.
-    #[wasm_bindgen(js_name = initNativeStagedData)]
-    pub fn init_native_staged_data() -> Result<(), JsError> {
-        crate::state::init_native_staged_data().map_err(|err| JsError::new(&err))
-    }
-
-    /// JS entry point: `isNativeDataReady() -> bool` (catalog availability, not admission).
-    #[wasm_bindgen(js_name = isNativeDataReady)]
-    pub fn is_native_data_ready() -> bool {
-        crate::state::is_native_data_ready()
-    }
-
-    /// JS entry point: `calculateNativeBuildJson(requestJson) -> string` (strict native document).
-    #[wasm_bindgen(js_name = calculateNativeBuildJson)]
-    pub fn calculate_native_build_json(request_json: &str) -> Result<String, JsError> {
-        crate::calculate_native_build_json(request_json).map_err(|err| JsError::new(&err))
     }
 
     /// JS entry point: `decodeBuildJson(pobCode) -> string` (structured build JSON).
@@ -227,6 +199,19 @@ pub mod wasm {
     #[wasm_bindgen(js_name = translateLinesToZhCn)]
     pub fn translate_lines_to_zh_cn_json(lines_json: &str) -> Result<String, JsError> {
         crate::build_api::translate_lines_to_zh_cn_json(lines_json)
+            .map_err(|err| JsError::new(&err))
+    }
+
+    /// JS entry point: `translateLines(lang, linesJson) -> string` (English mod lines -> `lang` display).
+    #[wasm_bindgen(js_name = translateLines)]
+    pub fn translate_lines_json(lang: &str, lines_json: &str) -> Result<String, JsError> {
+        crate::build_api::translate_lines_json(lang, lines_json).map_err(|err| JsError::new(&err))
+    }
+
+    /// JS entry point: `parseLocalizedLines(lang, linesJson) -> string` (`lang` mod lines -> English canonical lines).
+    #[wasm_bindgen(js_name = parseLocalizedLines)]
+    pub fn parse_localized_lines_json(lang: &str, lines_json: &str) -> Result<String, JsError> {
+        crate::build_api::parse_localized_lines_json(lang, lines_json)
             .map_err(|err| JsError::new(&err))
     }
 

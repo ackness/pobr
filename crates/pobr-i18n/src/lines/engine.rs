@@ -1,20 +1,20 @@
-//! Input translation layer: Chinese mod lines -> canonical English (TODO Phase 7.1).
+//! The template matcher: translates a line written in one language's mod-line
+//! templates into the paired template of another.
 //!
-//! Data = the `i18n/zh-CN/stat_lines.json` template pairs (GGG stat
-//! descriptions' Simplified Chinese templates, transcribed from the
-//! China-server client dictionary via `pipeline/gen-zh-cn.mjs`) plus a
-//! base-name sidecar reverse-lookup table. Pipeline: an input line
-//! containing CJK -> skeleton bucket locates candidate templates ->
-//! segment-by-segment literal matching extracts numeric values -> substitute
-//! back into the English template -> feed the existing English parser. The
-//! engine (pobr-core) stays pure English, unchanged.
+//! Data = template pairs (`src` -> `en`, e.g. a locale's `stat_lines.json`
+//! with either side as the source) plus a whole-name table. Pipeline: the
+//! line's skeleton bucket locates candidate templates -> segment-by-segment
+//! literal matching extracts the values -> the values are substituted into
+//! the paired template. Nothing here knows a language: which side is the
+//! locale, and which names apply, is chosen by [`super::LineParser`] /
+//! [`super::LineRenderer`].
 //!
 //! Matching avoids regex: a template is parsed into a segment sequence of
 //! "literal / `{N}`, `{N:+d}` placeholder", scanned in order; captured
 //! values must be purely numeric-shaped (`[0-9+.-]`), to guard against
 //! false matches from skeleton collisions.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use pobr_data::catalog::StatLineTemplate;
 
@@ -70,9 +70,9 @@ fn parse_template(text: &str) -> Option<Vec<Segment>> {
 /// key. Digits within literals (e.g. "per 15 Evasion") are stripped by the
 /// same rule on both the input and template sides, so alignment still
 /// holds. ASCII is uniformly lowercased: the upstream dictionary's English
-/// templates have case variants (`increased damage`), and the en->zh
-/// display direction aligns by a lowercased skeleton bucket; Chinese
-/// characters are unaffected.
+/// templates have case variants (`increased damage`), and the English ->
+/// locale display direction aligns by a lowercased skeleton bucket;
+/// non-ASCII characters are unaffected.
 fn skeleton(text: &str) -> String {
     text.chars()
         .filter(|c| {
@@ -101,17 +101,22 @@ fn is_numeric_capture(value: &str) -> bool {
             .all(|c| c.is_ascii_digit() || matches!(c, '+' | '-' | '.'))
 }
 
-fn is_cjk(c: char) -> bool {
-    ('\u{4E00}'..='\u{9FFF}').contains(&c) || ('\u{3400}'..='\u{4DBF}').contains(&c)
+/// Whether a character belongs to a script where one character carries about
+/// a word: CJK ideographs (Unified, Extension A), kana and Hangul syllables.
+fn is_dense_script(c: char) -> bool {
+    ('\u{4E00}'..='\u{9FFF}').contains(&c)
+        || ('\u{3400}'..='\u{4DBF}').contains(&c)
+        || ('\u{3040}'..='\u{30FF}').contains(&c)
+        || ('\u{AC00}'..='\u{D7AF}').contains(&c)
 }
 
 /// Whether a literal anchor is "strong enough" — only a strong anchor may
 /// gate a string-capture fallback match.
-/// Rule: skeleton has >=3 characters, or contains CJK and has >=2
-/// characters (a single CJK character carries a lot of information, e.g. "配置").
+/// Rule: skeleton has >=3 characters, or has >=2 characters one of which is
+/// from a dense script (a single ideograph carries a lot of information, e.g. "配置").
 fn is_strong_anchor(skel: &str) -> bool {
     let n = skel.chars().count();
-    n >= 3 || (n >= 2 && skel.chars().any(is_cjk))
+    n >= 3 || (n >= 2 && skel.chars().any(is_dense_script))
 }
 
 /// Whether a template has a formatted placeholder (`{N:...}`, e.g. `{0:+d}`)
@@ -153,6 +158,79 @@ fn accept_capture(capture: &str, allow_string: bool) -> Option<String> {
     None
 }
 
+/// Template text without its `{...}` placeholders (format specs such as
+/// `{0:+d}` hold letters that are not text).
+fn strip_placeholders(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut depth = 0usize;
+    for c in text.chars() {
+        match c {
+            '{' => depth += 1,
+            '}' => depth = depth.saturating_sub(1),
+            _ if depth == 0 => out.push(c),
+            _ => {}
+        }
+    }
+    out
+}
+
+/// A set of letters, ASCII lowercased: a bitmap over the Basic Multilingual
+/// Plane (one bit per letter, cheap to build from tens of thousands of
+/// template literals) and a sorted set above it.
+#[derive(Debug, Clone, Default)]
+struct LetterSet {
+    bmp: Vec<u64>,
+    other: std::collections::BTreeSet<char>,
+}
+
+impl LetterSet {
+    fn insert_letters(&mut self, text: &str) {
+        for c in text.chars() {
+            if c.is_alphabetic() {
+                self.insert(c.to_ascii_lowercase());
+            }
+        }
+    }
+
+    fn insert(&mut self, c: char) {
+        let i = c as usize;
+        if i < 0x10000 {
+            if self.bmp.is_empty() {
+                self.bmp = vec![0; 0x10000 / 64];
+            }
+            self.bmp[i / 64] |= 1 << (i % 64);
+        } else {
+            self.other.insert(c);
+        }
+    }
+
+    fn contains(&self, c: char) -> bool {
+        let c = c.to_ascii_lowercase();
+        let i = c as usize;
+        if i < 0x10000 {
+            self.bmp
+                .get(i / 64)
+                .is_some_and(|word| word & (1 << (i % 64)) != 0)
+        } else {
+            self.other.contains(&c)
+        }
+    }
+
+    /// The letters in `self` and not in `other`.
+    fn difference(&self, other: &LetterSet) -> LetterSet {
+        let bmp = self
+            .bmp
+            .iter()
+            .enumerate()
+            .map(|(i, word)| word & !other.bmp.get(i).copied().unwrap_or(0))
+            .collect();
+        LetterSet {
+            bmp,
+            other: self.other.difference(&other.other).copied().collect(),
+        }
+    }
+}
+
 /// A single compiled template pair.
 #[derive(Debug, Clone)]
 struct CompiledTemplate {
@@ -160,8 +238,8 @@ struct CompiledTemplate {
     en: String,
 }
 
-/// The Chinese input-line translator (cached thread_local in
-/// [`crate::state`], built once).
+/// A one-direction line translator over a set of template pairs.
+#[derive(Debug, Clone)]
 pub struct LineTranslator {
     /// All compiled templates (`buckets`/`*_index` store index references,
     /// avoiding duplicate memory from cloning).
@@ -179,11 +257,24 @@ pub struct LineTranslator {
     /// for an item text's base-type line).
     base_names: HashMap<String, String>,
     /// The affix-name direct-translation table (for magic item name
-    /// composition; only injected for the en->zh display direction, empty by default).
+    /// composition; only injected for the English -> locale display direction, empty by default).
     affix_names: HashMap<String, String>,
     /// The RARE random-name word table (prefix word/suffix word ->
-    /// Chinese; only injected for the en->zh display direction).
+    /// localized word; only injected for the English -> locale display direction).
     rare_words: HashMap<String, String>,
+    /// Letters the source side's literals and names use and the target
+    /// side's never do (for a CJK locale: its ideographs; for a Latin-script
+    /// locale: its accented letters, if any). Punctuation and symbols never
+    /// count: English flavour text uses curly quotes and dashes too.
+    source_only_letters: LetterSet,
+    /// Whether the source side is written in the target side's script, so a
+    /// line can be the source's without any letter of its own (see
+    /// [`Self::enable_source_detection`]).
+    shares_target_script: bool,
+    /// Skeletons of the target-side templates (only for a shared script).
+    target_skeletons: HashSet<String>,
+    /// Target-side whole names (only for a shared script).
+    target_names: HashSet<String>,
 }
 
 impl LineTranslator {
@@ -234,17 +325,74 @@ impl LineTranslator {
             base_names,
             affix_names: HashMap::new(),
             rare_words: HashMap::new(),
+            source_only_letters: LetterSet::default(),
+            shares_target_script: false,
+            target_skeletons: HashSet::new(),
+            target_names: HashSet::new(),
         }
     }
 
+    /// Prepares [`Self::is_source_text`] (an input-direction translator
+    /// needs it; a display one does not). `shares_target_script` declares
+    /// that the source side is written in the target side's script (a
+    /// Latin-script locale against English): a line is then also the
+    /// source's when it is spelled like a source template or name and
+    /// unlike every target one.
+    pub fn enable_source_detection(&mut self, shares_target_script: bool) {
+        let mut source = LetterSet::default();
+        let mut target = LetterSet::default();
+        for template in &self.templates {
+            for segment in &template.src_segments {
+                if let Segment::Literal(lit) = segment {
+                    source.insert_letters(lit);
+                }
+            }
+            target.insert_letters(&strip_placeholders(&template.en));
+        }
+        for (source_name, target_name) in &self.base_names {
+            source.insert_letters(source_name);
+            target.insert_letters(target_name);
+        }
+        self.source_only_letters = source.difference(&target);
+        self.shares_target_script = shares_target_script;
+        if shares_target_script {
+            self.target_skeletons = self
+                .templates
+                .iter()
+                .filter_map(|t| parse_template(&t.en))
+                .map(|segments| template_skeleton(&segments))
+                .collect();
+            self.target_names = self.base_names.values().cloned().collect();
+        }
+    }
+
+    /// Whether `line` reads as source-side text, decided by the template
+    /// data rather than by a fixed character set: it uses a letter only the
+    /// source side uses, or (for a source sharing the target's script) it is
+    /// spelled like a source template or name and unlike every target
+    /// template and name. A target-side line is never rewritten by an input pass.
+    pub fn is_source_text(&self, line: &str) -> bool {
+        let line = line.trim();
+        if line.chars().any(|c| self.source_only_letters.contains(c)) {
+            return true;
+        }
+        if !self.shares_target_script {
+            return false;
+        }
+        let skel = skeleton(line);
+        (self.buckets.contains_key(&skel) || self.base_names.contains_key(line))
+            && !self.target_skeletons.contains(&skel)
+            && !self.target_names.contains(line)
+    }
+
     /// Injects the affix-name direct-translation table (enables magic item
-    /// name composition for the en->zh display direction).
+    /// name composition for the English -> locale display direction).
     pub fn set_affix_names(&mut self, affix_names: HashMap<String, String>) {
         self.affix_names = affix_names;
     }
 
     /// Injects the RARE random-name word table (enables two-word
-    /// composition for the en->zh display direction).
+    /// composition for the English -> locale display direction).
     pub fn set_rare_words(&mut self, rare_words: HashMap<String, String>) {
         self.rare_words = rare_words;
     }
@@ -285,8 +433,8 @@ impl LineTranslator {
 
     /// RARE random-name composition translation: when exactly two words are
     /// present and at least one word hits the word table, joins them with a
-    /// space, preserving word order (Storm Bite -> 风暴 慧齿), matching
-    /// China-server convention; a word missing from the table keeps its
+    /// space, preserving word order (Storm Bite -> 风暴 慧齿, the zh-CN
+    /// client's convention); a word missing from the table keeps its
     /// original English form (Storm Wibble -> 风暴 Wibble). A mod line has
     /// far more than two space-separated words, so it never falls in here
     /// by accident; this function runs as a last-resort fallback, after the
@@ -312,7 +460,7 @@ impl LineTranslator {
     }
 
     /// Magic item name composition translation: `[prefix ]base[ of suffix]`
-    /// -> "suffix+prefix+base" (China-server magic-name order; Chinese
+    /// -> "suffix+prefix+base" (the zh-CN client's magic-name order; its
     /// affix names carry their own trailing "...的/...之"). The prefix and
     /// suffix must each hit the affix-name table exactly, and the base must
     /// hit the base-name table exactly, to guard against false positives on mod lines.
@@ -506,11 +654,6 @@ fn render_en(template: &str, values: &HashMap<usize, String>) -> String {
         }
     }
     out
-}
-
-/// Whether the line contains any CJK character (the gate that triggers a translation attempt).
-pub fn has_cjk(text: &str) -> bool {
-    text.chars().any(is_cjk)
 }
 
 #[cfg(test)]

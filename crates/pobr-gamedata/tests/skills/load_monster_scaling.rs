@@ -1,15 +1,10 @@
 //! `base/monster_scaling.json` load tests.
 //!
-//! Migration-invariant checks: the seven tables with a Rust source of
-//! truth (`pobr_data::monster`) are **checked value-for-value in a loop
-//! across all 100 levels**; the two vendor-only ally tables are
-//! spot-checked against vendor `Misc.lua` line numbers (values hardcoded).
+//! The JSON is the only copy of these tables (the engine's former Rust copy
+//! was deleted after a level-by-level equality check); these tests pin the
+//! shape and spot values the calculation and its golden tests rely on.
 
-use pobr_data::monster::{
-    MONSTER_ACCURACY_TABLE, MONSTER_AILMENT_THRESHOLD_TABLE, MONSTER_ARMOUR_TABLE,
-    MONSTER_DAMAGE_TABLE, MONSTER_EVASION_TABLE, MONSTER_LIFE_TABLE, MONSTER_POISE_THRESHOLD_TABLE,
-    MONSTER_TABLE_LEN,
-};
+use pobr_data::catalog::monster_scaling::MONSTER_SCALING_TABLE_LEN as MONSTER_TABLE_LEN;
 use pobr_gamedata::{GameData, repo_data_root};
 
 fn version() -> String {
@@ -45,57 +40,52 @@ fn all_tables_have_100_levels() {
     );
 }
 
-/// Migration invariant: the six integer tables are value-equal to
-/// `pobr_data::monster`'s existing Rust tables (asserted in a loop across
-/// all 100 levels).
+/// Spot values of the seven enemy tables at levels 1 / 20 / 65 / 85 / 100
+/// (`DefaultMonsterStats`; the same values the former Rust copy held).
 #[test]
-fn integer_tables_match_rust_source_at_every_level() {
+fn enemy_tables_spot_checks() {
     let t = game_data().monster_scaling().unwrap();
-    for lv in 1..=MONSTER_TABLE_LEN {
-        let i = lv - 1;
-        assert_eq!(
-            t.accuracy[i], MONSTER_ACCURACY_TABLE[i],
-            "lv{lv} accuracy differs from MONSTER_ACCURACY_TABLE"
-        );
-        assert_eq!(
-            t.evasion[i], MONSTER_EVASION_TABLE[i],
-            "lv{lv} evasion differs from MONSTER_EVASION_TABLE"
-        );
-        assert_eq!(
-            t.armour[i], MONSTER_ARMOUR_TABLE[i],
-            "lv{lv} armour differs from MONSTER_ARMOUR_TABLE"
-        );
-        assert_eq!(
-            t.life[i], MONSTER_LIFE_TABLE[i],
-            "lv{lv} life differs from MONSTER_LIFE_TABLE"
-        );
-        assert_eq!(
-            t.ailment_threshold[i], MONSTER_AILMENT_THRESHOLD_TABLE[i],
-            "lv{lv} ailment_threshold differs from MONSTER_AILMENT_THRESHOLD_TABLE"
-        );
-        assert_eq!(
-            t.poise_threshold[i], MONSTER_POISE_THRESHOLD_TABLE[i],
-            "lv{lv} poise_threshold differs from MONSTER_POISE_THRESHOLD_TABLE"
-        );
+    let at = |lv: usize| lv - 1;
+    let levels = [1, 20, 65, 85, 100];
+    let rows: [(&str, Vec<u32>, [u32; 5]); 6] = [
+        ("accuracy", t.accuracy.clone(), [32, 140, 1114, 2357, 4011]),
+        ("evasion", t.evasion.clone(), [24, 160, 663, 996, 1304]),
+        ("armour", t.armour.clone(), [3, 89, 2023, 6355, 14441]),
+        ("life", t.life.clone(), [15, 249, 6555, 36012, 56106]),
+        (
+            "ailment_threshold",
+            t.ailment_threshold.clone(),
+            [15, 275, 9649, 79967, 123287],
+        ),
+        (
+            "poise_threshold",
+            t.poise_threshold.clone(),
+            [30, 542, 26703, 271810, 446335],
+        ),
+    ];
+    for (name, table, expected) in rows {
+        for (lv, want) in levels.into_iter().zip(expected) {
+            assert_eq!(table[at(lv)], want, "lv{lv} {name}");
+        }
+    }
+    for (lv, want) in levels
+        .into_iter()
+        .zip([9.16, 37.29, 212.36, 385.42, 584.05])
+    {
+        assert_eq!(t.damage[at(lv)], want, "lv{lv} damage");
     }
 }
 
-/// Migration invariant: the damage table is value-equal (bit-level) to the
-/// Rust table (asserted in a loop across all 100 levels).
-///
-/// The Rust table and the JSON both use the 2-decimal-place convention
-/// (vendor's noisy f32 values rounded to 2 places), so they should be
-/// bit-level equal — hence `==` rather than a tolerance comparison.
+/// The accessors clamp below 1 and above 100 to the table edges.
 #[test]
-fn damage_table_matches_rust_source_at_every_level() {
+fn accessors_clamp_to_table_edges() {
     let t = game_data().monster_scaling().unwrap();
-    for lv in 1..=MONSTER_TABLE_LEN {
-        let i = lv - 1;
-        assert_eq!(
-            t.damage[i], MONSTER_DAMAGE_TABLE[i],
-            "lv{lv} damage differs from MONSTER_DAMAGE_TABLE"
-        );
-    }
+    assert_eq!(t.accuracy_at(0), t.accuracy[0]);
+    assert_eq!(t.accuracy_at(999), t.accuracy[99]);
+    assert_eq!(t.ally_life_at(0), 51);
+    assert_eq!(t.ally_life_at(120), 17980);
+    assert_eq!(t.ally_damage_at(40), t.ally_damage[39]);
+    assert_eq!(t.poise_threshold_at(85), 271810);
 }
 
 /// vendor-only: spot checks on ally_life (pobr has no Rust source of truth for it).

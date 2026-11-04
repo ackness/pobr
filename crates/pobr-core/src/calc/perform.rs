@@ -2754,13 +2754,16 @@ fn active_stacks_of(cfg: &StackConfig) -> f64 {
     cfg.estimated_stacks()
 }
 
-/// The effective enemy poise threshold = `enemy_poise_threshold(level) × mod(...)`, then floored.
+/// The effective enemy poise threshold = `poise_threshold_at(level) × mod(...)`, then floored.
 ///
 /// The mod set matches the Lane B spec: `PoiseThreshold` / `FreezeThreshold` /
 /// `EnemyAilmentThreshold`, INC/MORE aggregated into a multiplier. Degenerates to the bare table
 /// value with no enemy mod_db.
 fn enemy_poise_threshold_effective(enemy: &ModDb, cfg: &CalcConfig, level: u8) -> f64 {
-    let base = enemy_poise_threshold(level as u32) as f64;
+    let base = cfg
+        .constants
+        .monster_scaling
+        .poise_threshold_at(level as u32) as f64;
     let names = [
         ModName::from("PoiseThreshold"),
         ModName::from("FreezeThreshold"),
@@ -2771,7 +2774,7 @@ fn enemy_poise_threshold_effective(enemy: &ModDb, cfg: &CalcConfig, level: u8) -
     (base * (1.0 + inc / 100.0) * more).floor()
 }
 
-/// The effective enemy ailment threshold = `enemy_ailment_threshold(level) × mod(EnemyAilmentThreshold)`.
+/// The effective enemy ailment threshold = `ailment_threshold_at(level) × mod(EnemyAilmentThreshold)`.
 ///
 /// `EnemyAilmentThreshold` is aggregated as INC/MORE into a multiplier (PoB2's `calcLib.mod`).
 /// Degenerates to the bare table value with no enemy mod_db (compatible with old entry points
@@ -2802,7 +2805,10 @@ pub(crate) fn enemy_ailment_threshold_terms(
 ) -> EnemyAilmentThresholdTerms {
     let names = [ModName::from("EnemyAilmentThreshold")];
     EnemyAilmentThresholdTerms {
-        table: enemy_ailment_threshold(level as u32) as f64,
+        table: cfg
+            .constants
+            .monster_scaling
+            .ailment_threshold_at(level as u32) as f64,
         increased: enemy.sum(ModType::Inc, cfg, &names),
         more: enemy.more(cfg, &names),
     }

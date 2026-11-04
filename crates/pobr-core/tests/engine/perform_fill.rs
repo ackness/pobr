@@ -8,10 +8,16 @@ use pobr_core::calc::{
 use pobr_core::{CalcConfig, ModTag, Modifier};
 use pobr_data::prelude::*;
 
+fn monster_scaling() -> pobr_data::catalog::monster_scaling::MonsterScalingTable {
+    crate::support::test_monster_scaling()
+}
+
 fn player_with(base: ActorBaseStats, mods: Vec<Modifier>) -> Env {
     let mut actor = Actor::new(1, base);
     actor.mod_db.add_list(mods);
-    Env::new(actor)
+    let mut env = Env::new(actor);
+    crate::support::add_game_tables(&mut env.cfg);
+    env
 }
 
 #[test]
@@ -180,9 +186,11 @@ fn perform_ignite_dps_drops_with_enemy_fire_resist() {
             .mod_db
             .add_mod(Modifier::number("FireDamageMax", ModType::Base, 2000.0));
         let mut env = Env::new(actor);
-        env.cfg = CalcConfig::attack()
-            .with_damage_type(DamageType::Fire)
-            .with_mode_effective(true);
+        env.cfg = crate::support::with_game_tables(
+            CalcConfig::attack()
+                .with_damage_type(DamageType::Fire)
+                .with_mode_effective(true),
+        );
         setup_enemy(&mut env, 1, EnemyTier::None);
         // Inject enemy fire resist (overrides the default).
         if fire_resist != 0.0 {
@@ -337,6 +345,7 @@ fn perform_enemy_crit_effect_scales_with_reduction() {
             ));
         }
         let mut env = Env::new(actor);
+        crate::support::add_game_tables(&mut env.cfg);
         setup_enemy(&mut env, 1, EnemyTier::None);
         // Inject enemy crit.
         env.enemy
@@ -383,7 +392,9 @@ fn perform_runs_minion_offence_and_defence() {
         ..ActorBaseStats::default()
     };
     let mut env = player_with(base, vec![]);
-    env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+    env.cfg = crate::support::with_game_tables(
+        CalcConfig::attack().with_damage_type(DamageType::Physical),
+    );
 
     // An attacking minion: has virtual weapon damage (normalized damage > 0).
     let data = MinionData {
@@ -391,14 +402,17 @@ fn perform_runs_minion_offence_and_defence() {
         attack_time: 1.0,
         ..MinionData::default()
     };
-    let ctx = build_minion_context(&MinionInput {
-        gem_level: 20,
-        data,
-        minion_modifiers: vec![],
-        ally_buff_mods: vec![],
-        attribute_infusion: AttributeInfusion::default(),
-        minion_type: None,
-    });
+    let ctx = build_minion_context(
+        &MinionInput {
+            gem_level: 20,
+            data,
+            minion_modifiers: vec![],
+            ally_buff_mods: vec![],
+            attribute_infusion: AttributeInfusion::default(),
+            minion_type: None,
+        },
+        &monster_scaling(),
+    );
     env.add_minion(ctx);
 
     perform(&mut env).unwrap();
@@ -425,14 +439,17 @@ fn perform_minion_modifier_channel_scales_minion_life() {
 
     let make = |mods: Vec<MinionModifierEntry>| {
         let mut env = player_with(base, vec![]);
-        let ctx = build_minion_context(&MinionInput {
-            gem_level: 20,
-            data: MinionData::default(),
-            minion_modifiers: mods,
-            ally_buff_mods: vec![],
-            attribute_infusion: AttributeInfusion::default(),
-            minion_type: None,
-        });
+        let ctx = build_minion_context(
+            &MinionInput {
+                gem_level: 20,
+                data: MinionData::default(),
+                minion_modifiers: mods,
+                ally_buff_mods: vec![],
+                attribute_infusion: AttributeInfusion::default(),
+                minion_type: None,
+            },
+            &monster_scaling(),
+        );
         env.add_minion(ctx);
         perform(&mut env).unwrap();
         env.player.output.minions[0].life
@@ -602,7 +619,8 @@ fn cold_hit_env(extra: Vec<Modifier>) -> Env {
         .add_mod(Modifier::number("ColdDamageMax", ModType::Base, 200000.0));
     actor.mod_db.add_list(extra);
     let mut env = Env::new(actor);
-    env.cfg = CalcConfig::attack().with_damage_type(DamageType::Cold);
+    env.cfg =
+        crate::support::with_game_tables(CalcConfig::attack().with_damage_type(DamageType::Cold));
     env
 }
 
@@ -633,7 +651,9 @@ fn perform_chill_zero_without_cold_hit() {
         ..ActorBaseStats::default()
     };
     let mut env = player_with(base, vec![]);
-    env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+    env.cfg = crate::support::with_game_tables(
+        CalcConfig::attack().with_damage_type(DamageType::Physical),
+    );
     perform(&mut env).unwrap();
     assert_eq!(env.player.output.chill_effect, 0.0);
     assert_eq!(env.player.output.freeze_buildup_pct, 0.0);
@@ -658,7 +678,9 @@ fn perform_fills_electrocute_buildup_from_lightning_hit() {
         5000.0,
     ));
     let mut env = Env::new(actor);
-    env.cfg = CalcConfig::attack().with_damage_type(DamageType::Lightning);
+    env.cfg = crate::support::with_game_tables(
+        CalcConfig::attack().with_damage_type(DamageType::Lightning),
+    );
     perform(&mut env).unwrap();
 
     assert!(
@@ -744,7 +766,9 @@ fn perform_overstacking_amplifies_bleed_dps_with_speed_and_crit() {
         let mut actor = Actor::new(1, no_speed);
         actor.mod_db.add_list(crit_bleed_mods());
         let mut env = Env::new(actor);
-        env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+        env.cfg = crate::support::with_game_tables(
+            CalcConfig::attack().with_damage_type(DamageType::Physical),
+        );
         env
     };
     perform(&mut baseline).unwrap();
@@ -761,7 +785,9 @@ fn perform_overstacking_amplifies_bleed_dps_with_speed_and_crit() {
         let mut actor = Actor::new(1, base);
         actor.mod_db.add_list(crit_bleed_mods());
         let mut env = Env::new(actor);
-        env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+        env.cfg = crate::support::with_game_tables(
+            CalcConfig::attack().with_damage_type(DamageType::Physical),
+        );
         env
     };
     perform(&mut overstack).unwrap();
@@ -797,7 +823,9 @@ fn perform_ignite_stacking_multiplies_dps() {
         ];
         mods.extend(extra);
         let mut env = player_with(base, mods);
-        env.cfg = CalcConfig::attack().with_damage_type(DamageType::Fire);
+        env.cfg = crate::support::with_game_tables(
+            CalcConfig::attack().with_damage_type(DamageType::Fire),
+        );
         env
     };
 
@@ -1211,7 +1239,9 @@ fn bleed_env(extra: Vec<Modifier>) -> Env {
     let mut mods = vec![Modifier::number("BleedChance", ModType::Base, 100.0)];
     mods.extend(extra);
     let mut env = player_with(base, mods);
-    env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+    env.cfg = crate::support::with_game_tables(
+        CalcConfig::attack().with_damage_type(DamageType::Physical),
+    );
     env
 }
 
@@ -1249,7 +1279,7 @@ fn shattering_spite_native_stat_halves_damaging_ailments_only() {
             base_action_rate: 10.0,
             ..Default::default()
         })
-        .with_config(CalcConfig::attack());
+        .with_config(crate::support::with_game_tables(CalcConfig::attack()));
         session.add_modifiers([
             Modifier::number("FireDamageMin", ModType::Base, 1000.0),
             Modifier::number("FireDamageMax", ModType::Base, 1000.0),
@@ -1363,8 +1393,8 @@ fn crimson_assault_base_bleeding_duration_keeps_scaling_and_sources() {
             poison_instance(1000.0, &env.player.mod_db, &env.cfg).duration_secs,
             2.0
         );
-        let mut session =
-            CalculationSession::new(MinimalInput::from(env.player.base)).with_config(env.cfg);
+        let mut session = CalculationSession::new(MinimalInput::from(env.player.base))
+            .with_config(crate::support::with_game_tables(env.cfg));
         session.add_modifiers(env.player.mod_db.iter_mods().cloned());
         session.perform_minimal().unwrap();
         let terms = &session.ailment_stage_terms("BleedDPS").unwrap().passes[0].1;
@@ -1445,7 +1475,9 @@ fn perform_cross_type_fire_can_bleed() {
             mods.push(Modifier::flag("FireCanBleed"));
         }
         let mut env = player_with(base, mods);
-        env.cfg = CalcConfig::attack().with_damage_type(DamageType::Fire);
+        env.cfg = crate::support::with_game_tables(
+            CalcConfig::attack().with_damage_type(DamageType::Fire),
+        );
         perform(&mut env).unwrap();
         env.player.output.bleed_dps
     };
@@ -1470,7 +1502,9 @@ fn perform_minion_from_def_with_limit() {
         ..ActorBaseStats::default()
     };
     let mut env = player_with(base, vec![]);
-    env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+    env.cfg = crate::support::with_game_tables(
+        CalcConfig::attack().with_damage_type(DamageType::Physical),
+    );
 
     let def = minion_def_zombie();
     env.add_minion_from_def(
@@ -1558,7 +1592,9 @@ fn perform_minion_damage_per_summoned_minion_uses_limit() {
 
     let make = |limit: u32| {
         let mut env = player_with(base, vec![]);
-        env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+        env.cfg = crate::support::with_game_tables(
+            CalcConfig::attack().with_damage_type(DamageType::Physical),
+        );
         let def = minion_def_zombie();
         // Channel 1: minion "+X% damage per summoned minion" (Multiplier:SummonedMinion references the count).
         let entry = MinionModifierEntry {
@@ -1739,7 +1775,9 @@ fn perform_ailment_uptime_saturates_chance() {
             base,
             vec![Modifier::number("BleedChance", ModType::Base, chance)],
         );
-        env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+        env.cfg = crate::support::with_game_tables(
+            CalcConfig::attack().with_damage_type(DamageType::Physical),
+        );
         perform(&mut env).unwrap();
         env.player.output.bleed_dps
     };
@@ -1777,7 +1815,9 @@ fn perform_ignite_source_uses_real_crit_leg() {
         let mut mods = fire_crit_mods();
         mods.extend(extra);
         let mut env = player_with(base, mods);
-        env.cfg = CalcConfig::attack().with_damage_type(DamageType::Fire);
+        env.cfg = crate::support::with_game_tables(
+            CalcConfig::attack().with_damage_type(DamageType::Fire),
+        );
         perform(&mut env).unwrap();
         env.player.output.ignite_dps
     };
@@ -1820,7 +1860,7 @@ fn perform_snapshots_defence_output_stats_before_offence() {
     };
     let run = |mods: Vec<Modifier>| {
         let mut env = player_with(base, mods);
-        env.cfg = CalcConfig::attack();
+        env.cfg = crate::support::with_game_tables(CalcConfig::attack());
         perform(&mut env).unwrap();
         env
     };

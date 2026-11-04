@@ -17,7 +17,7 @@ fn session(cfg: CalcConfig, lines: &[&str]) -> CalculationSession {
         base_action_rate: 1.0,
         ..Default::default()
     })
-    .with_config(cfg);
+    .with_config(crate::support::with_game_tables(cfg));
     session.add_modifier_texts(lines).unwrap();
     assert!(
         session.unsupported_modifier_texts().is_empty(),

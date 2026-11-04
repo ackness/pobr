@@ -46,7 +46,8 @@ pub use augments::{item_augment_info_json, reforge_runes_json, rune_catalog_json
 pub(crate) use calculate::clear_snapshots;
 pub use calculate::{breakdown_descriptors_json, calculate_build_json, skill_metrics_json};
 pub use catalog::{
-    classify_item_lines_json, gem_catalog_json, minion_catalog_json, translate_lines_to_zh_cn_json,
+    classify_item_lines_json, gem_catalog_json, minion_catalog_json, parse_localized_lines_json,
+    translate_lines_json, translate_lines_to_zh_cn_json,
 };
 pub use crafting::{item_crafting_catalog_json, normalize_item_draft_json};
 pub use decode::{
@@ -146,29 +147,30 @@ fn limb_slot_from_id(id: &str) -> Result<LimbSlot, String> {
     LimbSlot::from_id(id).ok_or_else(|| format!("unknown limb slot: {id}"))
 }
 
-/// Chinese input preprocessing (Phase 7.1): a line containing CJK attempts
+/// Localized input preprocessing: a line written in one of the data pack's
+/// locales (decided by that locale's templates and names) attempts
 /// "template reverse lookup -> canonical English" translation; if
-/// unrecognized or there's no zh-CN data, it's kept as-is (the parser marks
-/// it unsupported, visible to the frontend).
+/// unrecognized, or no locale has templates, it's kept as-is (the parser
+/// marks it unsupported, visible to the frontend).
+///
+/// Text that no declared locale could have written (no letter English lacks,
+/// and no locale sharing English's script) is returned without loading any
+/// locale; text in which no line changes is returned byte for byte.
 fn localize_input_text(text: &str) -> String {
-    if !crate::zh::has_cjk(text) {
+    let locales = crate::locales::input_locales();
+    if locales.codes.is_empty()
+        || !pobr_i18n::lines::may_contain_localized_text(text, locales.shares_english_script)
+    {
         return text.to_string();
     }
-    let Some(translator) = state::zh_translator() else {
-        return text.to_string();
-    };
-    text.lines()
-        .map(|line| {
-            if crate::zh::has_cjk(line) {
-                translator
-                    .translate_line(line)
-                    .unwrap_or_else(|| line.to_string())
-            } else {
-                line.to_string()
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
+    let parsers = crate::locales::input_parsers();
+    pobr_i18n::lines::parse_text_with(text, |line| {
+        parsers
+            .iter()
+            .filter(|parser| parser.is_localized(line))
+            .find_map(|parser| parser.translate_line(line))
+    })
+    .into_owned()
 }
 
 mod tree_edit;
@@ -183,4 +185,27 @@ pub fn import_party_member_json(code: &str) -> Result<String, String> {
     let member = pobr_build::party::import_member(code, &data)
         .map_err(|e| ApiError::decode_error(e.to_string()).into_json())?;
     serde_json::to_string(&member).map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod localize_tests {
+    use super::localize_input_text;
+
+    #[test]
+    fn input_text_is_parsed_only_where_a_locale_wrote_it() {
+        let dir = pobr_gamedata::current_data_dir();
+        crate::init_data_from_dir(&dir.to_string_lossy()).unwrap();
+        // English text, curly quotes and full-width punctuation included, loads no
+        // locale and keeps its bytes.
+        let english = "Rarity: Unique\r\nSapphire Ring\r\n+50 to maximum Life\r\n“Bow before me”，she said：why？\r\n";
+        assert_eq!(localize_input_text(english), english);
+        assert_eq!(crate::locales::cached(), (vec![], vec![]));
+        // A localized line that no template recognizes changes nothing either.
+        let unknown = "Rarity: Rare\r\n不认识的词条\r\n";
+        assert_eq!(localize_input_text(unknown), unknown);
+        assert_eq!(
+            localize_input_text("Rarity: Rare\r\n蓝玉戒指\r\n+50 生命上限\r\n“Bow”"),
+            "Rarity: Rare\nSapphire Ring\n+50 to maximum Life\n“Bow”"
+        );
+    }
 }

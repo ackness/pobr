@@ -11,7 +11,9 @@ fn session(lines: &[&str]) -> CalculationSession {
         base_action_rate: 1.0,
         ..Default::default()
     })
-    .with_config(CalcConfig::spell().with_mode_effective(true));
+    .with_config(crate::support::with_game_tables(
+        CalcConfig::spell().with_mode_effective(true),
+    ));
     session.add_modifier_texts(lines).unwrap();
     session
 }
@@ -188,12 +190,12 @@ fn fully_broken_armour_extends_the_scaled_hit_vulnerability_to_granted_elements(
         (MOLTEN_GIFT, DamageType::Physical, 123.0),
     ] {
         let mut session = session(&[line, "15% increased effect of Fully Broken Armour"])
-            .with_config(
+            .with_config(crate::support::with_game_tables(
                 CalcConfig::spell()
                     .with_damage_type(damage_type)
                     .with_mode_effective(true)
                     .with_condition("EnemyArmourFullyBroken", true),
-            );
+            ));
         if damage_type != DamageType::Physical {
             session.add_modifiers([Modifier::number(
                 format!("PhysicalDamageConvertTo{damage_type:?}"),
@@ -226,9 +228,11 @@ fn fully_broken_armour_elemental_grants_require_an_effective_nonimmune_full_brea
         (true, true, true, false, 0.0, None, 120.0),
     ] {
         let mut session = session(if grant { &[MOLTEN_GIFT] } else { &[] }).with_config(
-            CalcConfig::spell()
-                .with_mode_effective(effective)
-                .with_condition("EnemyArmourFullyBroken", broken),
+            crate::support::with_game_tables(
+                CalcConfig::spell()
+                    .with_mode_effective(effective)
+                    .with_condition("EnemyArmourFullyBroken", broken),
+            ),
         );
         session.add_modifiers([Modifier::number(
             "PhysicalDamageConvertToFire",
@@ -269,11 +273,11 @@ fn fully_broken_armour_elemental_hits_scale_once_and_leave_damage_over_time_unch
             "Adds 100 to 100 Lightning Damage",
             "Adds 100 to 100 Chaos Damage",
         ])
-        .with_config(
+        .with_config(crate::support::with_game_tables(
             CalcConfig::spell()
                 .with_mode_effective(true)
                 .with_condition("EnemyArmourFullyBroken", broken),
-        );
+        ));
         session.add_modifiers([
             Modifier::number("FullyBrokenArmourEffect", ModType::Inc, increased_effect),
             Modifier::number("FullyBrokenArmourEffect", ModType::More, 20.0),
@@ -357,7 +361,9 @@ fn fully_broken_armour_elemental_debuff_is_shared_with_minion_hits_and_retains_i
                 .mod_db
                 .add_mod(Modifier::flag("ArmourBreakFireDamageTaken"));
         }
-        let mut env = Env::new(player).with_config(CalcConfig::spell().with_mode_effective(true));
+        let mut env = Env::new(player).with_config(crate::support::with_game_tables(
+            CalcConfig::spell().with_mode_effective(true),
+        ));
         env.enemy
             .mod_db
             .add_mod(Modifier::flag("Condition:ArmourFullyBroken"));
@@ -400,12 +406,12 @@ fn heavy_stun_uses_eligible_crit_weighted_hits_and_shared_poise_scaling() {
             "Adds 100 to 100 Lightning Damage",
             "Adds 100 to 100 Chaos Damage",
         ])
-        .with_config(
+        .with_config(crate::support::with_game_tables(
             CalcConfig::spell()
                 .with_flags(ModFlags::SPELL | ModFlags::MELEE)
                 .with_multiplier("enemyDistance", distance)
                 .with_mode_effective(true),
-        );
+        ));
         session.setup_enemy(10, pobr_data::monster::EnemyTier::None);
         session.add_modifiers([
             Modifier::number("SkillBaseCritChance", ModType::Base, 50.0),
@@ -471,8 +477,10 @@ fn heavy_stun_uses_eligible_crit_weighted_hits_and_shared_poise_scaling() {
             0.0
         );
     }
-    let mut non_hit = session(&["Adds 100 to 100 Fire Damage"])
-        .with_config(CalcConfig::spell().with_skill_name(Some("Non-hit skill".into())));
+    let mut non_hit =
+        session(&["Adds 100 to 100 Fire Damage"]).with_config(crate::support::with_game_tables(
+            CalcConfig::spell().with_skill_name(Some("Non-hit skill".into())),
+        ));
     non_hit.perform_minimal().unwrap();
     assert_eq!(non_hit.output().heavy_stun_buildup_avg, 0.0);
     for damage_type in [DamageType::Physical, DamageType::Cold] {
@@ -481,7 +489,7 @@ fn heavy_stun_uses_eligible_crit_weighted_hits_and_shared_poise_scaling() {
             base_hit_max: 0.0,
             ..Default::default()
         })
-        .with_config(CalcConfig::spell());
+        .with_config(crate::support::with_game_tables(CalcConfig::spell()));
         if damage_type == DamageType::Cold {
             session
                 .add_modifier_texts(&["Adds 100 to 100 Cold Damage"])
@@ -552,7 +560,9 @@ fn heavy_stun_keeps_damage_types_that_only_occur_on_critical_hits() {
 #[test]
 fn heavy_stun_daze_bonus_follows_the_effective_enemy_condition() {
     let run = |effective, dazed| {
-        let mut s = session(&[]).with_config(CalcConfig::spell().with_mode_effective(effective));
+        let mut s = session(&[]).with_config(crate::support::with_game_tables(
+            CalcConfig::spell().with_mode_effective(effective),
+        ));
         s.setup_enemy(10, pobr_data::monster::EnemyTier::None);
         s.add_enemy_modifiers([Modifier::number("Armour", ModType::Override, 0.0)]);
         if dazed {
@@ -569,11 +579,11 @@ fn heavy_stun_daze_bonus_follows_the_effective_enemy_condition() {
 }
 
 fn pin_session(lines: &[&str], flags: ModFlags) -> CalculationSession {
-    let mut session = session(lines).with_config(
+    let mut session = session(lines).with_config(crate::support::with_game_tables(
         CalcConfig::spell()
             .with_flags(flags)
             .with_mode_effective(true),
-    );
+    ));
     session.setup_enemy(10, pobr_data::monster::EnemyTier::None);
     session.add_enemy_modifiers([Modifier::number("Armour", ModType::Override, 0.0)]);
     session

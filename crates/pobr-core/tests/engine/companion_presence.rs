@@ -27,7 +27,7 @@ fn session(pair: bool, exclusion: &str, effect: f64) -> CalculationSession {
         base_action_rate: 1.0,
         ..Default::default()
     })
-    .with_config(cfg);
+    .with_config(crate::support::with_game_tables(cfg));
     if pair {
         for (text, id) in [(GAIN, "rune.gain"), (RESIST, "rune.resist")] {
             let parsed = crate::support::parse_mod(text).unwrap();

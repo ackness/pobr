@@ -74,7 +74,7 @@ fn top_level_defaults_match_rust_sources() {
         MONSTER_BASE_CRIT_DAMAGE_BONUS
     );
     // pobr's source of truth: the 1.5 inlined in
-    // EnemyTierDefaults::compute's `damage * 1.5 * dps_mult`.
+    // setup_env's `damage * ehp_base_damage_mult * dps_mult`.
     assert_eq!(t.ehp_base_damage_mult, 1.5);
     // vendor-only: ConfigOptions.lua L1965 (enemySpeed placeholder 700) /
     // L1966 (crit 5%).

@@ -13,7 +13,7 @@ fn calculate(extra: &[&str]) -> OutputTable {
             ..Default::default()
         },
     ));
-    env.cfg = CalcConfig::spell();
+    env.cfg = crate::support::with_game_tables(CalcConfig::spell());
     for text in [
         // A generic slow at the game's default maximum Chill magnitude.
         "50% reduced Action Speed",
@@ -141,9 +141,11 @@ fn outgoing_debuff_slow_never_creates_an_enemy_debuff_from_damage() {
     for combat in [false, true] {
         let run = |bonus| {
             let mut env = Env::new(Actor::new(80, ActorBaseStats::default()));
-            env.cfg = CalcConfig::spell()
-                .with_mode_combat(combat)
-                .with_mode_effective(combat);
+            env.cfg = crate::support::with_game_tables(
+                CalcConfig::spell()
+                    .with_mode_combat(combat)
+                    .with_mode_effective(combat),
+            );
             env.player.mod_db.add_list([
                 Modifier::number("ColdDamageMin", ModType::Base, 1_000_000.0),
                 Modifier::number("ColdDamageMax", ModType::Base, 1_000_000.0),
@@ -193,10 +195,12 @@ fn outgoing_debuff_slow_scales_only_active_chill_sources_before_the_cap() {
         (true, true, true, 45.0, 50.0),
     ] {
         let mut env = Env::new(Actor::new(80, ActorBaseStats::default()));
-        env.cfg = CalcConfig::spell()
-            .with_mode_combat(effective)
-            .with_mode_effective(effective)
-            .with_condition("EnemyChilled", active);
+        env.cfg = crate::support::with_game_tables(
+            CalcConfig::spell()
+                .with_mode_combat(effective)
+                .with_mode_effective(effective)
+                .with_condition("EnemyChilled", active),
+        );
         env.player
             .mod_db
             .set_exporter_rules(include_absent, Default::default());
@@ -246,7 +250,7 @@ fn outgoing_debuff_slow_preserves_final_magnitudes_and_non_slow_components() {
 
     for source in ["ChillBase", "ChillMinimum", "ChillOverride", "ChillVal"] {
         let mut env = Env::new(Actor::new(80, ActorBaseStats::default()));
-        env.cfg = CalcConfig::spell().with_mode_effective(true);
+        env.cfg = crate::support::with_game_tables(CalcConfig::spell().with_mode_effective(true));
         env.player.mod_db.add_list(outgoing_slow_mods());
         env.enemy
             .mod_db

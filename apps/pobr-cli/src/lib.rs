@@ -13,8 +13,6 @@
 //! - [`encode_code`] / [`decode_code`]: wrap PoB Build Code encoding/decoding.
 //! - [`calculate_build_detailed`]: a full build from its code, with the
 //!   breakdowns of the stats asked for ([`render_breakdowns`] prints them).
-//! - [`native::calculate_native_document`]: strict native JSON and explicit game data,
-//!   returning the complete conditional skill result as JSON after fresh admission.
 
 use std::path::PathBuf;
 
@@ -36,7 +34,6 @@ use serde::Serialize;
 use thiserror::Error;
 
 mod breakdown;
-pub mod native;
 mod usage;
 
 pub use breakdown::{BuildDetail, StatBreakdownEntry, render_breakdowns};
@@ -62,12 +59,6 @@ pub enum CliError {
     /// Game data failed to load (missing data dir / JSON deserialization failure).
     #[error("game data load error: {0}")]
     GameData(#[from] pobr_gamedata::LoadError),
-    /// Strict native JSON decoding or document validation failed.
-    #[error("native build document error: {0}")]
-    NativeDocument(#[from] pobr_build::native_document::NativeDocumentError),
-    /// Native admission or the shared conditional skill calculation failed.
-    #[error("native skill error: {0}")]
-    NativeSkill(String),
 }
 
 // calculate
@@ -124,22 +115,15 @@ pub struct CalculateResult {
 }
 
 /// Runs the minimal calculation: builds a [`CalculationSession`] (injecting
-/// the engine rules from the default data directory), applies the modifier
-/// text, then calls `perform_minimal`.
+/// the engine rules and runtime constants from the default data directory),
+/// applies the modifier text, then calls `perform_minimal`.
 ///
 /// The engine **never errors** on unrecognized text — it's collected into
 /// `unsupported` without blocking the calculation; [`CliError::ModParse`] is
 /// only returned when the default data directory is missing or rule
 /// compilation fails.
 pub fn calculate(req: &CalculateRequest) -> Result<CalculateResult, CliError> {
-    let mut session = CalculationSession::new(req.input);
-    // Inject the engine rules (the sole parser) — fail-fast if the default
-    // data directory is missing, rather than silently treating every mod line as Unsupported.
-    session.set_parser_rules(default_rules()?.rules.clone());
-    session
-        .add_modifier_texts(&req.modifier_texts)
-        .map_err(|e| CliError::ModParse(e.to_string()))?;
-
+    let mut session = minimal_session(req)?;
     let output = session
         .perform_minimal()
         .map_err(|e| CliError::ModParse(e.to_string()))?;
@@ -149,6 +133,21 @@ pub fn calculate(req: &CalculateRequest) -> Result<CalculateResult, CliError> {
         output: CalculateOutput::from(&output),
         unsupported,
     })
+}
+
+/// [`calculate`]'s session with the modifier text applied, not yet performed.
+fn minimal_session(req: &CalculateRequest) -> Result<CalculationSession, CliError> {
+    let mut session = CalculationSession::new(req.input);
+    // The imported runtime constants (the monster-level ailment / poise tables
+    // have no Rust copy) and the engine rules (the sole parser) — fail-fast if
+    // the default data directory is missing, rather than silently computing
+    // zero thresholds or treating every mod line as Unsupported.
+    session.set_constants(default_constants()?);
+    session.set_parser_rules(default_rules()?.rules.clone());
+    session
+        .add_modifier_texts(&req.modifier_texts)
+        .map_err(|e| CliError::ModParse(e.to_string()))?;
+    Ok(session)
 }
 
 /// Renders a [`CalculateResult`] as a pretty-printed JSON string.
@@ -237,6 +236,23 @@ fn default_rules() -> Result<&'static ParseModRules, CliError> {
     RULES
         .as_ref()
         .map_err(|e| CliError::ModParse(format!("failed to load default parse rules: {e}")))
+}
+
+/// The default data directory's runtime constants, loaded once.
+fn default_constants() -> Result<std::sync::Arc<pobr_data::catalog::RuntimeConstants>, CliError> {
+    use std::sync::LazyLock;
+    static CONSTANTS: LazyLock<
+        Result<std::sync::Arc<pobr_data::catalog::RuntimeConstants>, String>,
+    > = LazyLock::new(|| {
+        let data = GameData::new(pobr_gamedata::current_data_dir());
+        pobr_build::load_runtime_constants(&data)
+            .map(std::sync::Arc::new)
+            .map_err(|e| e.to_string())
+    });
+    CONSTANTS
+        .as_ref()
+        .cloned()
+        .map_err(|e| CliError::ModParse(format!("failed to load runtime constants: {e}")))
 }
 
 /// Parses a single modifier text (using the default data directory's rules).
@@ -1886,5 +1902,37 @@ mod marginal_tests {
         let text = render_marginal(&report);
         assert!(text.contains("Marginal contribution"));
         assert!(text.contains("no visible impact"));
+    }
+}
+
+#[cfg(test)]
+mod calculate_tests {
+    use super::*;
+
+    /// `pobr calculate` injects the imported runtime constants: the
+    /// monster-level ailment and poise tables have no Rust copy, so without
+    /// them the enemy's thresholds are 0. Its enemy is level 1, whose
+    /// `base/monster_scaling.json` ailment threshold is 15.
+    #[test]
+    fn calculate_reads_the_imported_monster_tables() {
+        let req = CalculateRequest {
+            input: MinimalInput {
+                base_hit_min: 100.0,
+                base_hit_max: 200.0,
+                base_action_rate: 1.0,
+                ..MinimalInput::default()
+            },
+            modifier_texts: vec![
+                "Adds 100 to 200 Cold Damage".into(),
+                "Adds 100 to 200 Fire Damage".into(),
+                "100% chance to Ignite".into(),
+            ],
+        };
+        let mut session = minimal_session(&req).expect("session");
+        session.perform_minimal().expect("perform");
+        let out = session.output();
+        assert_eq!(out.enemy_ailment_threshold, 15.0);
+        assert!(out.ignite_dps > 0.0, "ignite_dps={}", out.ignite_dps);
+        assert!(out.freeze_buildup_pct > 0.0);
     }
 }

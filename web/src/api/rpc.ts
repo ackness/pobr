@@ -114,8 +114,6 @@ export function createRpcClient(endpoint: Endpoint): RpcClient {
       // Not a thenable: the backend is returned from async functions and awaited.
       if (typeof property === 'symbol' || property === 'then') return undefined;
       if (property === 'dataVersion') return dataVersion;
-      // Synchronous in the interface and used by nothing; there is no engine here to ask.
-      if (property === 'translate') return (_lang: string, key: string) => key;
       if (property === 'init') return (onProgress?: (message: string) => void) => send('init', [], onProgress).then(() => undefined);
       return (...args: unknown[]) => send(property, args);
     },
