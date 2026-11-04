@@ -252,7 +252,7 @@ Energy 的来源近似是按基础频率预选最多六个玩家自用、非触�
 
 ### Energy 输出
 
-CLI/WASM 的 `energy_trigger` 给出储能、每轮消耗、来源、事件率、每事件 Energy、返还和频率上限。六族缺来源时带 `at_own_rate: true`、`source: null` 与稳定的 `missing_source`，命中与持续伤害保留自身速率；`SkillTriggerRate` / `TriggerRateCap` 的明细给出自身速率与补充输入提示，原始触发率字段仍为未解出的 0。有来源时 CoC 的 `TriggerRateCap` 是来源暴击事件率。`ActionRate` / `TotalDPS` 的派生公式包含 Energy 调整，Full DPS 使用调整后的输出；CLI 保留 `energy_per_critical_hit` 兼容字段。四个配置项由 `data/overlay-common/energy_config_options.json` 经 `extract_config_options::append_energy_options` 合入目录，按稳定 meta id 的 `if_skill` 筛选，重新生成不重复。
+CLI/WASM 的 `energy_trigger` 给出储能、每轮消耗、来源、事件率、每事件 Energy、返还和频率上限。六族缺来源时带 `at_own_rate: true`、`source: null` 与稳定的 `missing_source`，命中与持续伤害保留自身速率；`SkillTriggerRate` / `TriggerRateCap` 的明细给出自身速率与补充输入提示，原始触发率字段仍为未解出的 0。有来源时 CoC 的 `TriggerRateCap` 是来源暴击事件率。`ActionRate` / `TotalDPS` 的派生公式包含 Energy 调整，Full DPS 使用调整后的输出；CLI 保留 `energy_per_critical_hit` 兼容字段。配置项由 PoBR 自有的 `data/overlay-common/energy_config_options.json` 提供，加载时（`pobr-gamedata` 的 `config_options()`）按 `var` 覆盖目录中的同名项，按稳定 meta id 的 `if_skill` 筛选。
 
 ### 图腾数量与层数
 

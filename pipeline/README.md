@@ -85,7 +85,7 @@ adapter 拒绝；原隔离清单保留在 RePoE adapter 的 `policies/tree-corre
 入口、默认strict及显式diagnostic边界见 RePoE [客户端资源获取](https://github.com/ackness/repoe/blob/master/RePoE/docs/client-sources.md)。
 
 RePoE 原生事实包另由 RePoE 的 `pobr-data-adapter --native-facts` 验证外部 manifest 摘要后形成
-PoBR 领域候选，见[候选契约](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/native-facts.md)；schema 4 分支已冻结。当前只接通部分国际服事实，
+PoBR 领域候选，见[候选契约](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/native-facts.md)；PoBR 已删除 schema-4 原生计算路径。当前只接通部分国际服事实，
 保留完整原始事实引用和诊断；它不是运行时包，也未完成品质、几何或全部关系的语义验证。
 活动数据仍含随 owner 包导入的 PoB2 兼容字段，不能宣称数据已全部退出 PoB2。
 
@@ -95,7 +95,7 @@ RePoE 的 `pobr-data-adapter --ordinary-facts` 已将固定自有 RePoE 事实�
 [普通生产入口与领域命令](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-facts.md)。技能、基底、树、符文、
 描述、actor 与基础字段的目标来源和固定兼容按各领域 receipt 分开，不能将单个文件全部算作自主。
 这些领域输出经既有 schema-3 组包和封存后可由普通 GameData/BuildData 消费；
-树域候选与 schema-4 受限原生候选是不同入口，不代表普通完整路径的现行覆盖范围。
+树域候选是单独入口，不代表普通完整路径的现行覆盖范围。
 
 活动组合的身份、各领域保留兼容的分母和关闭条件统一维护在[数据现状](../docs/data-status.md#领域现状)，本页不复制阶段记录。
 
@@ -103,8 +103,8 @@ RePoE 的 `pobr-data-adapter --ordinary-facts` 已将固定自有 RePoE 事实�
 `translateLines`：精确来源查询、跨表同名冲突和缺译保留，不改原始构筑文本或计算。
 侧表已列入当前活动manifest；全部字段UI消费、真实审核译文及CN语义仍分别验收。审核补译入口只消费精确绑定的已审核记录，当前真实包为0条，草稿不生效。
 
-原生候选的 recipe 重放入口（原 `data:native:candidate`）已退役；`--native-runtime` 随 adapter 冻结在
-RePoE，见[原生运行组装](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/native-runtime.md)。
+原生候选的 recipe 重放入口（原 `data:native:candidate`）已退役；PoBR 不再加载 schema-4 包，
+RePoE adapter 的 `--native-runtime` 组装随之待删除。
 
 ## 运行时数据组合封存
 
@@ -187,13 +187,7 @@ PoBR 的修正放在 `data/overlay-common/special_mods.json`，更新数据后�
 换目录须重新由翻译库配对并更新锁，不能重贴旧版本标签。投影代码与合成测试归翻译库；PoBR验证导入pins、目录绑定和显示回退。
 繁体仍是字形转换回退，不宣称官方繁中译文；这些说明不是当前等级／品质数值或机制认证。
 
-自动模板仅支持已验证的零／单数值槽，以 `{0:d}` 避免误进入字符串捕获；多值参数、双向歧义、数值／符号不符等由独立库列为排除项。PoBR 再按实际翻译器的匹配骨架检查新模板与既有中英文模板、其他新模板的冲突，冲突不按输入顺序选第一条。审核过的迁移模板保留原行为，旧模板与七份名词表不因接入而删除。
-
-同一英文模板在旧词典与独立词表中的中文不一致时，采用独立词表的官方译法：只替换中文措辞，保留旧条目的英文模板和各参数槽的格式（符号显示、字符串捕获行为不变）。仅在新模板无歧义、英文除参数格式和空白外完全相同、且新中文不与其他既有模板冲突时替换；人工审核模板、含换行的旧模板、仅字面数值不同的模板不替换。被替换的条目列在 `translation-audit.json` 的 `replaced_legacy`。
-
-`generated/translation-audit.json` 记录新增、替换、重复、排除和稀有名补丁采用情况；它属于维护报告，不进入运行时 manifest 或浏览器包。`i18n/zh-CN/_meta.json.translation_source` 记录实际版本；原 `source` 字段仍指基础名词和模板的真实来源。
-
-首次接入 `0.5.5.4.2` 保留全部 26,074 条原模板和七份原名词表，增加 1,822 条无冲突模板，合计 27,896 条。其中 17 条原模板的中文改用官方译法，总数不变。翻译可用不等于机制已计算：新增英文语料仍由 modifier audit 报告解析缺口，不通过补译掩盖。
+模板的自动配对、冲突检查、与旧词典的替换规则以及 `translation-audit.json` 报告都在翻译库生成和维护，见[翻译库 README](https://github.com/ackness/poe2-zh-cn-stats#readme)。PoBR 只导入其固定产物；`generated/translation-audit.json` 属于维护报告，不进入运行时 manifest 或浏览器包。翻译可用不等于机制已计算：新增英文语料仍由 modifier audit 报告解析缺口。
 
 
 ## 固定输入、版本与候选
