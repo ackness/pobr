@@ -3,7 +3,7 @@ import { AppButton, AppTextarea } from '../shared/controls';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { AttributeChoice, CalculateBuildRequest, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { bindT, type Lang } from '../../lib/i18n';
+import { bindT, messages, type Lang } from '../../lib/i18n';
 import { normalizeCopiedItem } from '../../lib/itemReplacement';
 import {
   JEWEL_PASSIVE_CANDIDATE_LIMIT, planJewelPassiveUpgrades,
@@ -15,50 +15,6 @@ import { feasibleOf, type Objective } from '../../lib/optimize';
 import { AppSelect } from '../shared/AppSelect';
 import { OptimizerProgress } from '../shared/OptimizerControls';
 
-const COPY = {
-  'en-US': {
-    title: 'Jewels and passive routes',
-    hint: 'Paste a jewel and add the sockets to compare. Each plan combines one candidate placement with passive changes, using the goal, point budget and travel attributes above. Paths to empty sockets cost points.',
-    text: 'Candidate jewel text', socket: 'Candidate socket', add: 'Add jewel placement', remove: 'Remove placement', run: 'Find jewel and passive plans',
-    empty: 'Add a jewel placement to compare it with keeping your current jewels.',
-    limit: 'Up to 8 placements and 512 route evaluations per placement, plus current jewels. Search is bounded; the global optimum is not guaranteed.',
-    exclusive: 'Joint jewel planning requires a shared tree without weapon-set-only passives.',
-    current: 'Keep current jewels', preview: 'Show joint route on tree', apply: 'Apply jewel and passive plan', clear: 'Clear joint preview',
-    applied: 'Jewel and passive plan applied',
-    evaluated: 'Plans evaluated', bounded: 'Search was limited; only evaluated routes are covered.', none: 'No improving legal plan was found.',
-    addNodes: 'Allocate', removeNodes: 'Refund', route: 'Complete route and jewel', diagnostics: 'Excluded or unmodeled candidates',
-    invalid: 'Paste one complete jewel item.', stale: 'The build changed. Run the search again.', skipped: 'Plans with new unmodeled effects skipped',
-    socketCost: 'new points to reach socket', full: 'The placement list is full.', noSockets: 'No socket within the point budget',
-  },
-  'zh-CN': {
-    title: '珠宝与天赋联合规划',
-    hint: '粘贴珠宝，添加要比较的珠宝孔。每个方案联合评估一个珠宝位置和多个天赋点，沿用上方目标、点数预算及过路属性。通往空珠宝孔的路径也计入点数。',
-    text: '候选珠宝文本', socket: '候选珠宝孔', add: '添加珠宝位置', remove: '移除位置', run: '寻找珠宝与天赋方案',
-    empty: '添加珠宝位置后，与保留当前珠宝的天赋方案一起比较。',
-    limit: '最多比较 8 个珠宝位置，每个位置及当前珠宝分别评估最多 512 条路线。搜索范围有限，不保证全局最优。',
-    exclusive: '联合珠宝规划仅支持没有武器组专属天赋的共用主树。',
-    current: '保留当前珠宝', preview: '在树上查看联合路线', apply: '应用珠宝与天赋方案', clear: '清除联合预览',
-    applied: '已应用珠宝与天赋方案',
-    evaluated: '已重算方案', bounded: '已达搜索上限，结果仅涵盖已评估路线。', none: '未找到合法且优于当前配置的方案。',
-    addNodes: '新增', removeNodes: '退还', route: '完整路线与珠宝', diagnostics: '排除原因与未建模效果',
-    invalid: '请粘贴一件完整珠宝的物品文本。', stale: '角色配置已变化，请重新搜索。', skipped: '已排除含新增未建模效果的方案',
-    socketCost: '到达珠宝孔所需新点数', full: '候选位置已满。', noSockets: '点数预算内没有可达珠宝孔',
-  },
-  'zh-TW': {
-    title: '珠寶與天賦聯合規劃',
-    hint: '貼上珠寶，加入要比較的珠寶孔。每個方案聯合評估一個珠寶位置與多個天賦點，沿用上方目標、點數預算及過路屬性。通往空珠寶孔的路徑也計入點數。',
-    text: '候選珠寶文字', socket: '候選珠寶孔', add: '加入珠寶位置', remove: '移除位置', run: '尋找珠寶與天賦方案',
-    empty: '加入珠寶位置後，與保留目前珠寶的天賦方案一起比較。',
-    limit: '最多比較 8 個珠寶位置，每個位置及目前珠寶分別評估最多 512 條路線。搜尋範圍有限，不保證全域最優。',
-    exclusive: '聯合珠寶規劃僅支援沒有武器組專屬天賦的共用主樹。',
-    current: '保留目前珠寶', preview: '在樹上查看聯合路線', apply: '套用珠寶與天賦方案', clear: '清除聯合預覽',
-    applied: '已套用珠寶與天賦方案',
-    evaluated: '已重算方案', bounded: '已達搜尋上限，結果僅涵蓋已評估路線。', none: '未找到合法且優於目前配置的方案。',
-    addNodes: '新增', removeNodes: '退還', route: '完整路線與珠寶', diagnostics: '排除原因與未建模效果',
-    invalid: '請貼上一件完整珠寶的物品文字。', stale: '角色配置已變更，請重新搜尋。', skipped: '已排除含新增未建模效果的方案',
-    socketCost: '到達珠寶孔所需新點數', full: '候選位置已滿。', noSockets: '點數預算內沒有可達珠寶孔',
-  },
-};
 
 interface Props {
   session: BuildSession; lang: Lang; nodes: PassiveNode[]; nodeLabel: (id: number) => string;
@@ -103,7 +59,7 @@ export interface JewelPassivePlannerState {
 }
 
 export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, active, mode, points, attribute, objective, onPreview, onStart }: Props): JewelPassivePlannerState {
-  const text = COPY[lang];
+  const text = messages(lang, 'jewelPlanner');
   const [raw, setRaw] = useState('');
   const [socket, setSocket] = useState('');
   const [candidates, setCandidates] = useState<JewelPassiveCandidate[]>([]);
@@ -216,7 +172,7 @@ export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, active
 export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerState }) {
   const { session, lang, nodeLabel, raw, setRaw, selectedSocket, setSocket, sockets,
     candidates, remove, completed, result, progress, error, preview, exclusive, applied, add, run, apply, stop, show } = planner;
-  const text = COPY[lang];
+  const text = messages(lang, 'jewelPlanner');
   const tt = bindT(lang);
   const format = (value: number) => value.toLocaleString(lang, { maximumFractionDigits: 2 });
   const delta = (value: number, baseline: number) => baseline === 0 ? `${value >= 0 ? '+' : ''}${format(value)}`

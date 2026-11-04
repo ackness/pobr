@@ -4,16 +4,11 @@ import { AlertDialog, AlertDialogTitle, AlertDialogDescription, AlertDialogCance
 import { Dialog, DialogTitle, DialogDescription, DialogOverlay, DialogPortal } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import type { Lang } from '../../lib/i18n';
+import { messages, type Lang } from '../../lib/i18n';
 import { DialogRequests, type DialogRequest } from './dialogRequests';
 import './appDialogs.css';
 
 const DialogContext = createContext<DialogRequests | null>(null);
-const labels = {
-  'en-US': { confirm: 'Confirm action', prompt: 'Enter a name', cancel: 'Cancel', accept: 'Confirm', save: 'Save' },
-  'zh-CN': { confirm: '确认操作', prompt: '输入名称', cancel: '取消', accept: '确认', save: '保存' },
-  'zh-TW': { confirm: '確認操作', prompt: '輸入名稱', cancel: '取消', accept: '確認', save: '儲存' },
-};
 
 export function AppDialogsProvider({ children, scope }: { children: ReactNode; scope?: string }) {
   const requests = useMemo(() => new DialogRequests(), [scope]);
@@ -40,7 +35,7 @@ export function useAppDialogs(lang: Lang): {
 }
 
 function RequestDialog({ request, requests }: { request: DialogRequest; requests: DialogRequests }) {
-  const text = labels[request.lang];
+  const text = messages(request.lang, 'appDialog');
   const [value, setValue] = useState(request.defaultValue);
   const inputId = useId();
   const style = 'app-dialog shell-dialog';

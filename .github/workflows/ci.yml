@@ -151,6 +151,8 @@ jobs:
         run: |
           python3 -m pipeline.runtime.build_data --install data
           bash devs/scripts/check-data.sh
+      - name: Interface copy (locale key sets and placeholders)
+        run: pnpm i18n:check
       - name: Typecheck (pre-wasm placeholder tolerated via ts-ignore)
         run: pnpm typecheck
       - name: Unit tests

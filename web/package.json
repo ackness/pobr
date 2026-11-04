@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "i18n:check": "node scripts/check-locales.mjs",
     "test": "vitest run",
     "test:wasm-contract": "POBR_WASM_CONTRACT=1 vitest run src/hooks/useBuildSession.wasm.test.ts",
     "test:worker": "node --test worker-tests/*.test.mjs",

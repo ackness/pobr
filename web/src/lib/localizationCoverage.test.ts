@@ -6,9 +6,8 @@ import type { ConfigCatalogFile, ConfigOption, GemCatalogEntry } from '../api/ty
 import gemFixture from '../fixtures/gem_catalog.json';
 import calculateFixture from '../fixtures/calculate.json';
 import declaredInputs from '../fixtures/detail_inputs.json';
-import { DETAIL_LABELS } from './detailLabels';
 import { STAT_SECTIONS } from './statDisplay';
-import { statNameLabel, originKindLabel, modTypeLabel, originLabel, bootMessageLabel, t, type Lang, type UiKey } from './i18n';
+import { statNameLabel, originKindLabel, modTypeLabel, originLabel, bootMessageLabel, messages, t, type Lang, type UiKey } from './i18n';
 import { configLabel, configListOptionLabel, configTooltip, stripConfigMarkup } from './configLabels';
 import { chineseScript } from './chinese';
 import { gemDisplayName } from './skillNames';
@@ -91,7 +90,7 @@ describe('current data localization coverage', () => {
 
   test('Simplified stat/UI copy does not contain accidental Traditional text', () => {
     const labels = [
-      ...Object.entries(DETAIL_LABELS).map(([id, labels]) => [id, labels['zh-CN']]),
+      ...Object.entries(messages('zh-CN', 'detail')),
       ...STAT_SECTIONS.flatMap(section => section.rows.map(row => [row.id, row.label['zh-CN']])),
       ...options.map(option => [option.var, configLabel('zh-CN', option)]),
       ...Object.entries(helpTranslations),
@@ -122,8 +121,7 @@ describe('current data localization coverage', () => {
   });
 
   test('every UI dictionary entry has complete locale copy and the intended script', () => {
-    const source = read('web/src/lib/i18n.ts').split('const DICT = {')[1].split('} as const')[0];
-    const keys = [...source.matchAll(/^  ['"]([^'"]+)['"]:\s*\{/gm)].map(match => match[1] as UiKey);
+    const keys = Object.keys(messages('en-US', 'ui')) as UiKey[];
     expect(keys.length).toBeGreaterThan(700);
     const wrongScript: string[] = [];
     for (const key of keys) {

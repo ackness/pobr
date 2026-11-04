@@ -41,6 +41,7 @@ setup 检查 Git、make、C 编译器；macOS 的 Apple SDK/Command Line Tools �
 | 工作 | 入口与自动准备 |
 | --- | --- |
 | Web 日常开发/测试 | `mise run web <命令>`，例如 `mise run web test <文件>` |
+| Web 界面文字 | `mise run i18n:check`：`web/src/locales/` 每种已登记语言的键集须与 `en-US.json` 一致、`{占位符}` 相同；PR、完整 CI 与 gate 的 Web 步骤都运行。新语言未译完时本地用 `node web/scripts/check-locales.mjs --allow-missing` |
 | 独立数据 | `mise run data:prepare`按`pipeline/data.lock.json`临时导入固定owner输入；`data:check`离线检查；原料采集、导出与领域生产在owner仓库 |
 | PoB2 对照、triage、词条审计 | 对应任务依赖 `setup:oracle`，自动准备固定 LuaJIT commit 与固定 vendor；重复运行复用缓存 |
 | 浏览器回归 | `mise run web:e2e <spec>`，自动安装 lockfile 对应的 Playwright 浏览器/系统依赖；仍须当前 dist/WASM/data |
@@ -340,6 +341,7 @@ E2E 只在显式手动输入时运行；交互风险需要时选择相关本地 
 
 ```bash
 mise run check:workflows                   # 自动化契约，不编译 Rust
+mise run i18n:check                        # Web 界面文字的键集、占位符与语言登记
 mise run ci feature/my-change              # 先推送目标提交；只请求检查，不推送代码
 mise run ci feature/my-change --e2e        # 显式启用 E2E
 mise run ci-status --branch feature/my-change
