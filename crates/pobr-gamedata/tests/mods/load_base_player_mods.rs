@@ -7,7 +7,7 @@
 //!   (`DEFAULT_MAX_CHARGES` / `DEFAULT_CHARGE_DURATION_SECONDS`);
 //! - Curse/mark limits: `pobr-core/src/calc/buff_pass.rs`
 //!   (`DEFAULT_ENEMY_CURSE_LIMIT` / `DEFAULT_ENEMY_MARK_LIMIT`);
-//! - Level-derived baselines: `pobr-core/src/character.rs` (`CharacterBase`
+//! - Level-derived baselines: `pobr-core/src/ingest/character.rs` (`CharacterBase`
 //!   formula constants);
 //! - Crit damage baseline: `pobr-data/src/constants.rs`
 //!   (`PLAYER_BASE_CRIT_DAMAGE_BONUS`);

@@ -66,6 +66,10 @@ impl GameData {
     pub fn config_options(&self) -> Result<ConfigOptionsDef, LoadError> {
         let mut catalog: ConfigOptionsDef =
             self.load_json_at(self.overlay_path("config_options.json"))?;
+        // The imported catalog repeats `conditionEnemyExitedPresenceRecently`
+        // (PoB2 gives the "exited" and "entered" Presence checks one input).
+        // Keep one entry per var; the later entry wins.
+        catalog.options = crate::paths::merge_by_key(Vec::new(), catalog.options, |o| &o.var);
         for (name, text) in OWNED_CONFIG_OPTIONS {
             let own: ConfigOptionsDef = serde_json::from_str(text)
                 .unwrap_or_else(|err| panic!("bundled {name} is invalid: {err}"));
@@ -107,13 +111,16 @@ mod tests {
         assert_eq!(on_disk, bundled);
     }
 
-    /// Owned options replace a catalog entry with the same `var`.
+    /// Owned options replace a catalog entry with the same `var`, and a var
+    /// repeated in the catalog keeps a single entry.
     #[test]
     fn owned_options_override_the_catalog() {
         let catalog = r#"{"options":[
             {"var":"energyMinionPower","input_type":"check","section":"Old","label":"stale catalog copy","effects":[]},
             {"var":"conditionAffectedByArchon","input_type":"check","section":"Old","label":"stale catalog copy","effects":[]},
-            {"var":"zzCatalogOnly","input_type":"check","section":"Old","label":"catalog only","effects":[]}
+            {"var":"zzCatalogOnly","input_type":"check","section":"Old","label":"catalog only","effects":[]},
+            {"var":"zzRepeated","input_type":"check","section":"Old","label":"first","effects":[]},
+            {"var":"zzRepeated","input_type":"check","section":"Old","label":"second","effects":[]}
         ]}"#;
         let data = GameData::from_memory(std::collections::BTreeMap::from([(
             "overlay/config_options.json".to_owned(),
@@ -132,6 +139,9 @@ mod tests {
         assert_ne!(label("energyMinionPower"), stale);
         assert_ne!(label("conditionAffectedByArchon"), stale);
         assert_eq!(label("zzCatalogOnly").as_deref(), Some("catalog only"));
+        // A var repeated in the catalog keeps only its later entry.
+        assert_eq!(options.iter().filter(|o| o.var == "zzRepeated").count(), 1);
+        assert_eq!(label("zzRepeated").as_deref(), Some("second"));
         assert!(options.windows(2).all(|pair| pair[0].var <= pair[1].var));
     }
 }
