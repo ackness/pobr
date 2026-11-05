@@ -159,7 +159,8 @@ RePoE 发布 ───┐
    读取 `receipt.json`，替换该 owner 的锁条目，重算快照 pin、运行身份与紧凑发行身份，再 `data:prepare` 导入并打印身份差异。
    新补丁两个 owner 一起 bump。PoBR 不自动发现或采用 owner 发布；owner 尚无完整新发布时保留现有默认。
 3. **验证。** 候选在精确 head 上通过 PR gate 和 Full gate：完整快照按摘要导入、
-   从同一快照组出的紧凑发行包，以及同次构建的 WASM 消费该包。PoBR 不在 CI 中重跑 owner 的领域生产。
+   从同一快照组出的紧凑发行包，以及同次构建的 WASM 消费该包。对 bump 分支运行 `mise run ci <分支>`，
+   完整 CI 因数据锁改变而自动加跑普通 Web 流程的冒烟 E2E（[开发工作流](development-workflow.md)）。PoBR 不在 CI 中重跑 owner 的领域生产。
 4. **采用。** 数据锁经受保护的 PR 合并更新；运行输入改变时，改锁时准备完整数据并写入精确的 `release_id`，Full CI 重建后必须一致。本地安装用 `data:update` 显式选择，并携带期望的旧身份做 CAS；
    源码合并不自动切换 `CURRENT`。
 5. **发版与部署。** 发版 tag 重新运行完整验证并发布同次产物；数据采用不会自动触发发版。
