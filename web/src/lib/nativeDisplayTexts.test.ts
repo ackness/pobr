@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { nativeDisplayTexts } from './nativeDisplayTexts';
+import { listedOrigin, nativeDisplayTexts } from './nativeDisplayTexts';
 import { GameTextLocalizer } from './localizedGameText';
 
 const data = (locale = 'zh-TW') => ({
@@ -58,7 +58,13 @@ test('supplement origins are optional; a listed literal keeps its origin, every 
     .toEqual([{ text: '我方', origin: 'agent' }, { text: '傷害', origin: 'human' }]);
   expect(localizer.localize('Ours', 'Ours', 'zh-TW')).toBe('我方');
   expect(localizer.localize('Ours', '官方', 'zh-TW')).toBe('官方');
-  for (const origins of [[], { entries: { Ours: 'mine' } }, { scopes: { a: { b: 1 } } }, { scopes: [] }]) {
+  for (const origins of [[], { entries: [] }, { scopes: { a: [] } }, { scopes: [] }]) {
     expect(() => nativeDisplayTexts({ ...value, origins }, 'test', 'zh-TW')).toThrow(/shape/);
   }
+  // An origin value the web does not know keeps the catalog and reads as a supplement, never official.
+  const unknown = nativeDisplayTexts({ ...value, origins: { entries: { Ours: 'mine' }, scopes: { a: { b: 1 } } } }, 'test', 'zh-TW');
+  expect(listedOrigin(unknown.origins?.entries, 'Ours')).toBe('agent');
+  expect(listedOrigin(unknown.origins?.scopes?.a, 'b')).toBe('agent');
+  expect(listedOrigin({ x: 'official', y: 'human' }, 'x')).toBeNull();
+  expect(listedOrigin({ x: 'official', y: 'human' }, 'y')).toBe('human');
 });

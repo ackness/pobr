@@ -181,7 +181,7 @@ PoBR更新锁后运行`mise run data:prepare`；目录摘要不符时拒绝导�
 
 译文来源（origin）：`display_texts.json` 可带可选顶层 `origins`，形如
 `{ "entries": { 英文: origin }, "scopes": { 作用域: { id: origin } } }`，origin 为 `agent` 或 `human`，表示该译文是翻译
-仓库自己的补译；未列出（包括没有 `origins`）即官方文本，`official` 也按官方处理，其他取值是格式错误。
+仓库自己的补译；未列出（包括没有 `origins`）即官方文本，`official` 也按官方处理，其他未知取值按 `agent` 读取（与 `stat_lines.json` 一致，不丢弃整份目录，也不当作官方）。
 `stat_lines.json` 的模板行同样可带 `origin`。WASM `translateLinesDetailed(lang, json)` 与 `translateLines`
 输入相同，返回 `[{ text, origin }]`，`text` 与 `translateLines` 逐字节相同；`origin` 为 null（官方、保持英文、
 多行描述的续行空串）或渲染所用模板的来源，取值里有多个模板（值本身再翻译）时有 `agent` 取 `agent`，否则有

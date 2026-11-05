@@ -9,12 +9,12 @@ export type TextOrigin = 'agent' | 'human';
 export interface DisplayText { text: string; origin: TextOrigin | null }
 
 /** Which texts of a catalog are the library's own supplement. Absent, or a text it does not
- * list, means official. */
+ * list, means official. Read values through {@link listedOrigin}. */
 export interface NativeDisplayOrigins {
   /** Literal English text -> origin of its `entries` translation. */
-  entries?: Record<string, TextOrigin>;
+  entries?: Record<string, unknown>;
   /** `Table.Field` -> id -> origin of that scope record's translation. */
-  scopes?: Record<string, Record<string, TextOrigin>>;
+  scopes?: Record<string, Record<string, unknown>>;
 }
 
 /** A display-only projection of the translation library's source-bound catalog.
@@ -33,13 +33,15 @@ export interface NativeDisplayTexts {
 const object = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
-/** `origin` values a catalog may list; `official` is the same as not listing the text. */
-const ORIGINS: readonly unknown[] = ['agent', 'human', 'official'];
-const originMap = (value: unknown) => object(value) && Object.values(value).every(origin => ORIGINS.includes(origin));
+/** An origin map: text or id -> origin. Values are not checked here: see {@link listedOrigin}. */
+const originMap = (value: unknown) => object(value);
 
-/** The catalog's origin record for one text (`null` = official). */
-export const listedOrigin = (origins: Record<string, TextOrigin> | undefined, key: string): TextOrigin | null =>
-  origins && Object.hasOwn(origins, key) && (origins[key] === 'agent' || origins[key] === 'human') ? origins[key] : null;
+/** The catalog's origin record for one text (`null` = official). `official` is the same as not
+ * listing the text; any other value the web does not know reads as `agent`, as in `stat_lines.json`,
+ * so a new or misspelt origin never passes supplement text off as official nor drops the catalog. */
+export const listedOrigin = (origins: Record<string, unknown> | undefined, key: string): TextOrigin | null =>
+  !origins || !Object.hasOwn(origins, key) || origins[key] === 'official' ? null
+    : origins[key] === 'human' ? 'human' : 'agent';
 
 export function nativeDisplayTexts(value: unknown, version: string, locale: Lang): NativeDisplayTexts {
   if (!object(value) || value.schema !== 'pobr-native-display-texts/v1' || value.game_patch !== version

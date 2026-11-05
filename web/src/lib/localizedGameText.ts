@@ -1,6 +1,6 @@
 import { chineseScript, localizedName } from './chinese';
 import type { Lang } from './i18n';
-import { listedOrigin, type DisplayText, type NativeDisplayTexts, type TextOrigin } from './nativeDisplayTexts';
+import { listedOrigin, type DisplayText, type NativeDisplayTexts } from './nativeDisplayTexts';
 
 export interface GameDisplayName {
   name: string;
@@ -18,7 +18,7 @@ export class GameTextLocalizer {
   private readonly byName = new Map<string, GameDisplayName>();
   private readonly mentionedNames: RegExp | null;
   private readonly nativeTexts = new Map<Lang, Readonly<Record<string, string | null>>>();
-  private readonly nativeOrigins = new Map<Lang, Readonly<Record<string, TextOrigin>> | undefined>();
+  private readonly nativeOrigins = new Map<Lang, Readonly<Record<string, unknown>> | undefined>();
 
   constructor(names: GameDisplayName[], catalogs: NativeDisplayTexts[] = []) {
     for (const catalog of catalogs) {
