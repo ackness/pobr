@@ -117,12 +117,31 @@ export function localizeStructLine(line: string, lang: Lang): string | null {
   return entry ? `${entry[lang]}: ${value}` : null;
 }
 
-/** What {@link useLocalizedLines} sends `translateLines` for `lines`: one entry per line. 符文命名行只送
- * 名称部分（"Rune: X" 整行不在词条模板里，X 是基底名可直译）。A blank line, or one translated locally, is
- * sent blank: it still separates its neighbours, so lines that were not adjacent never translate
- * as one description. */
+/** A rune's `Bonded: <effect>` line. The language pack owns its whole translation (official
+ * whole-line rows, or a `Bonded: {0}` template whose value is the effect's own translation). */
+const BONDED = /^Bonded:\s*/;
+/** Sent once with a batch that has a `Bonded:` line: the pack's own rendering of the prefix. */
+const BONDED_PREFIX_PROBE = 'Bonded: {0}';
+
+/** What {@link useLocalizedLines} sends `translateLines` for `lines`: one entry per line, in order.
+ * 符文命名行只送名称部分（"Rune: X" 整行不在词条模板里，X 是基底名可直译）。A blank line, or one
+ * translated locally, is sent blank: it still separates its neighbours, so lines that were not
+ * adjacent never translate as one description. A `Bonded:` line is sent whole; after the lines,
+ * each one's effect and {@link BONDED_PREFIX_PROBE} follow (each after a blank), for a line the
+ * pack has no whole-line translation of. */
 export function linesToTranslate(lines: readonly string[], lang: Lang): string[] {
-  return lines.map((l) => (!l || localizeStructLine(l, lang) ? '' : runeLineParts(l)?.name ?? l.replace(/^Bonded:\s*/, '')));
+  const sent = lines.map((l) => (!l || localizeStructLine(l, lang) ? '' : runeLineParts(l)?.name ?? l));
+  const bonded = lines.filter((l, index) => sent[index] && BONDED.test(l));
+  if (!bonded.length) return sent;
+  return [...sent, ...bonded.flatMap((l) => ['', l.replace(BONDED, '')]), '', BONDED_PREFIX_PROBE];
+}
+
+/** The pack's display of `Bonded: <effect>` when it has no whole-line translation: its rendering of
+ * the prefix around the effect's own translation; English when either is missing. */
+function composedBonded(line: string, effect: string | undefined, prefix: string | undefined): string {
+  const bare = line.replace(BONDED, '');
+  return effect && effect !== bare && prefix && prefix !== BONDED_PREFIX_PROBE && prefix.includes('{0}')
+    ? prefix.replace('{0}', effect) : line;
 }
 
 /** The display of `lines` given `translated`, the backend's answer to {@link linesToTranslate}
@@ -131,6 +150,8 @@ export function linesToTranslate(lines: readonly string[], lang: Lang): string[]
  * en-US the result is `lines` itself, so it stays the same array while `lines` does. */
 export function localizedLines(lines: string[], lang: Lang, translated: readonly (string | undefined)[]): string[] {
   if (lang === 'en-US') return lines;
+  let extra = lines.length;
+  const prefix = translated.at(-1);
   return lines.map((l, index) => {
     const struct = localizeStructLine(l, lang);
     if (struct) return struct;
@@ -139,9 +160,9 @@ export function localizedLines(lines: string[], lang: Lang, translated: readonly
     if (rune) {
       return `${RUNE_PREFIXES[rune.prefix][lang]}: ${lineText(rune.name, out)}`;
     }
-    if (l.startsWith('Bonded:')) {
-      const effect = l.replace(/^Bonded:\s*/, '');
-      return `${lang === 'zh-CN' ? '纽带' : '紐帶'}: ${lineText(effect, out)}`;
+    if (BONDED.test(l)) {
+      extra += 2;
+      return out === undefined || out === l ? composedBonded(l, translated[extra - 1], prefix) : out;
     }
     return out ?? l;
   });
