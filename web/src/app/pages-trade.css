@@ -16,11 +16,11 @@
   .shell-root .trade-page .up-num { display: grid; place-items: center; flex: none; width: 1.35rem; height: 1.35rem; border: 1px solid var(--input); border-radius: 50%; font-size: .6875rem; letter-spacing: 0; font-variant-numeric: tabular-nums; color: var(--foreground); }
 
   /* Controls that open a result are primary (gold); everything else stays an outline. */
-  .shell-root .trade-page .trade-primary { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: var(--control-height); padding: .45rem 1rem; border: 1px solid var(--primary); border-radius: .5rem; background: var(--primary); color: var(--primary-foreground); font-size: var(--text-sm); font-weight: 600; white-space: normal; text-decoration: none; }
+  .shell-root .trade-page .trade-primary { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: var(--control-height); padding: .45rem 1rem; border: 1px solid var(--primary); border-radius: var(--radius-2xl); background: var(--primary); color: var(--primary-foreground); font-size: var(--text-sm); font-weight: 600; white-space: normal; text-decoration: none; }
   .shell-root .trade-page .trade-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 88%, var(--foreground)); border-color: transparent; }
   .shell-root .trade-page .trade-primary:disabled { border-color: var(--border); background: transparent; color: var(--muted-foreground); font-weight: 500; opacity: 1; }
   .shell-root .trade-page a.trade-primary { color: var(--primary-foreground); }
-  .shell-root .trade-page .trade-secondary { display: inline-flex; align-items: center; min-height: var(--control-height); padding: .45rem .9rem; border: 1px solid var(--input); border-radius: .5rem; background: transparent; color: var(--foreground); font-size: var(--text-sm); white-space: normal; }
+  .shell-root .trade-page .trade-secondary { display: inline-flex; align-items: center; min-height: var(--control-height); padding: .45rem .9rem; border: 1px solid var(--input); border-radius: var(--radius-2xl); background: transparent; color: var(--foreground); font-size: var(--text-sm); white-space: normal; }
   .shell-root .trade-page .trade-secondary:hover { background: var(--muted); }
   .shell-root .trade-page .trade-notice { margin: 0 0 1rem; padding: .6rem .9rem; border: 0; border-left: 3px solid var(--primary); border-radius: .3rem; background: var(--muted); font-size: var(--text-sm); line-height: 1.55; color: var(--foreground); overflow-wrap: anywhere; }
   .shell-root .trade-page .trade-notice summary { color: var(--primary); }
@@ -29,7 +29,7 @@
   .shell-root .trade-page .ui-card { padding: 0; border: 0; border-radius: 0; background: none; }
 
   /* ── 1 · Goal ───────────────────────────────────────────────────────────── */
-  .shell-root .trade-page .upgrade-evaluation { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1.1rem 2.5rem; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
+  .shell-root .trade-page .upgrade-evaluation { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 1.1rem 2.5rem; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
   .shell-root .trade-page .upgrade-evaluation > * { margin: 0; min-width: 0; }
   .shell-root .trade-page .trade-objectives { flex: 1 0 100%; }
   .shell-root .trade-page .trade-objectives > div { display: inline-flex; flex-wrap: wrap; gap: .25rem; max-width: 100%; padding: .2rem; border: 0; border-radius: .55rem; background: var(--muted); }
@@ -115,7 +115,7 @@
 
   .shell-root .trade-page .up-paste { margin-bottom: 0; }
   .shell-root .trade-page .trade-workspace { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.5rem; align-items: start; margin: 0; border: 0; border-radius: 0; background: none; overflow: visible; }
-  .shell-root .trade-page .trade-position-panel { position: sticky; top: 0; align-self: start; max-height: calc(100dvh - 2rem); padding: 0; border: 0; overflow-y: auto; scrollbar-width: thin; }
+  .shell-root .trade-page .trade-position-panel { position: sticky; top: 0; align-self: start; max-height: calc(100dvh - var(--topbar-height) - 3rem); padding: 0; border: 0; overflow-y: auto; scrollbar-width: thin; }
   .shell-root .trade-page .trade-position-panel > .trade-section-label { padding: 0 .5rem .4rem; }
   .shell-root .trade-page .trade-position-list { display: flex; flex-direction: column; gap: 0; max-height: none; overflow: visible; }
   .shell-root .trade-page .trade-position { position: relative; display: flex; align-items: center; justify-content: flex-start; gap: .6rem; width: 100%; height: auto; padding: .5rem .5rem; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; text-align: left; white-space: normal; transition: background var(--dur-fast) linear; }
