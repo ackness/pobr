@@ -23,7 +23,11 @@ vi.mock('react', async original => {
 });
 vi.mock('../../hooks/useUpgradeGoal', () => ({ useUpgradeGoal: () => ({ goal: { preset: 'life', cStat: '', cMin: '', cMax: '' }, setGoal: vi.fn() }) }));
 vi.mock('../../hooks/useSkillName', () => ({ useSkillCatalog: () => new Map() }));
-vi.mock('../../hooks/useLocalizedLines', () => ({ useItemDisplayNames: () => [], useLocalizedLines: (lines: string[]) => lines }));
+vi.mock('../../hooks/useLocalizedLines', () => ({
+  useItemDisplayNames: () => [],
+  useLocalizedLines: (lines: string[]) => lines,
+  useLocalizedNames: (names: readonly { name: string }[]) => names.map(entry => entry.name),
+}));
 vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
 vi.mock('../shared/PreviewContext', () => ({ usePreview: () => null }));
 vi.mock('./ItemReplacementCheck', () => ({ ItemReplacementCheck: () => null }));

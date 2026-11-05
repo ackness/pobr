@@ -24,7 +24,8 @@ test('known passive names and Chinese search preserve raw IDs, build state and e
   const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
   const before = await saved();
   const report = page.locator('.node-power');
-  await report.locator(':scope > summary').click();
+  await expect(report).toHaveAttribute('open', '');
+  await expect(report).toContainText('开始评估后查看候选排名');
   const search = report.getByRole('searchbox');
   for (const [id, english, chinese] of [
     [6898, 'Relentless Vindicator', '无休仲裁者'],
@@ -33,19 +34,24 @@ test('known passive names and Chinese search preserve raw IDs, build state and e
     const row = report.locator(`tr[data-node-id="${id}"]`);
     for (const query of [chinese, english, String(id)]) {
       await search.fill(query);
+      if (await report.locator('tbody').count() === 0) {
+        await report.getByRole('button', { name: '评估接下来 128 个节点', exact: true }).click();
+        await expect(row).toHaveAttribute('data-status', 'ready', { timeout: 60_000 });
+      }
       await expect(row.getByRole('button', { name: chinese, exact: true })).toBeVisible();
-      await expect(row.locator('td').first()).toContainText(`#${id}`);
+      await expect(row.locator('td').first()).not.toContainText(`#${id}`);
     }
   }
   await search.fill('6898');
   const row = report.locator('tr[data-node-id="6898"]');
-  await report.getByRole('button', { name: '评估接下来 128 个节点', exact: true }).click();
   await expect(row).toHaveAttribute('data-status', 'ready', { timeout: 60_000 });
+  await expect(report.getByRole('button', { name: '评估接下来 128 个节点', exact: true })).toBeDisabled();
   const values = await row.locator('td').allTextContents();
   await language(page, '繁體中文');
   await expect(row.getByRole('button', { name: '無休仲裁者', exact: true })).toBeVisible();
   await expect(row).toHaveAttribute('data-status', 'ready');
-  expect((await row.locator('td').allTextContents()).slice(1, 4)).toEqual(values.slice(1, 4));
+  const numeric = (cells: string[]) => cells.slice(1, 4).map(value => value.match(/[+−-]?[\d,.]+/g));
+  expect(numeric(await row.locator('td').allTextContents())).toEqual(numeric(values));
   await search.fill('無休仲裁者');
   await row.getByRole('button', { name: '無休仲裁者', exact: true }).click();
   await expect(page.locator('.tree-node-details')).toHaveAttribute('data-skill-id', '6898');

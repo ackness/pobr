@@ -232,7 +232,7 @@ test('editing passives automatically replans from the new tree and applying neve
   await caster(page);
   const before = await settledText(dps(page));
   await goTo(page, 'Tree');
-  await page.locator('.tree-planner-toggle').click();
+  await page.locator('.tree-planner > .tree-planner-toggle').click();
   await page.getByRole('button', { name: 'Find upgrade routes', exact: true }).click();
   const plans = page.locator('.tree-planner-results > li');
   await expect(plans.first()).toBeVisible({ timeout: 30_000 });
@@ -257,9 +257,9 @@ test('editing passives automatically replans from the new tree and applying neve
   await expect(page.getByRole('spinbutton', { name: 'Maximum refunds' })).toHaveValue('3');
   await expect(page.locator('.tree-planner-summary')).toBeVisible({ timeout: 30_000 });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state.allocatedNodes)).toEqual(applied);
-  await page.locator('.tree-planner-toggle').click();
+  await page.locator('.tree-planner > .tree-planner-toggle').click();
   await page.locator('circle[data-skill-id="4739"]').dispatchEvent('click');
-  await page.locator('.tree-planner-toggle').click();
+  await page.locator('.tree-planner > .tree-planner-toggle').click();
   await expect(page.locator('.tree-planner-summary')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Find upgrade routes', exact: true })).toBeEnabled();
   await expect(page.locator('.shell-alert')).toHaveCount(0);

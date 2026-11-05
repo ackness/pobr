@@ -130,7 +130,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const [calcsFocus, setCalcsFocus] = useState<{ id: string } | null>(null);
   const [upgradeFocus, setUpgradeFocus] = useState<{ slot: string; nonce: number; jewelType?: 'base' | 'radius' }>();
   const [skillFocus, setSkillFocus] = useState<{ group: number; nonce: number }>();
-  const [treeFocus, setTreeFocus] = useState<{ nonce: number }>();
+  const [treeFocus, setTreeFocus] = useState<{ nonce: number; node?: number }>();
   const [reviewStage, setReviewStage] = useState<{ scope: string | null } | null>(null);
   const previousStage = useRef(stageKey);
   const stageChanged = previousStage.current !== stageKey;
@@ -235,7 +235,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
             {route === 'compare' && <Suspense fallback={panelLoading}><ComparePanel session={session} lang={lang} /></Suspense>}
             {retained('tree') && <div hidden={route !== 'tree'}><PanelActivity active={route === 'tree'}><Suspense fallback={panelLoading}><TreePanel session={session} lang={lang} active={route === 'tree'} focusPlanner={stageChanged ? undefined : treeFocus} onJewelSearch={socket => { setUpgradeFocus({ slot: `Jewel@${socket}`, nonce: Date.now(), jewelType: 'radius' }); navigate('trade'); }} /></Suspense></PanelActivity></div>}
             {retained('skills') && <div hidden={route !== 'skills'}><PanelActivity active={route === 'skills'}><SkillsPanel session={session} lang={lang} active={route === 'skills'} focusOptimizer={stageChanged ? undefined : skillFocus} /></PanelActivity></div>}
-            {retained('trade') && <div hidden={route !== 'trade'}><PanelActivity active={route === 'trade'}><Suspense fallback={panelLoading}><TradePanel session={session} lang={lang} active={route === 'trade'} focus={stageChanged ? undefined : upgradeFocus} onSkills={group => { setSkillFocus({ group, nonce: Date.now() }); navigate('skills'); }} onTree={() => { setTreeFocus({ nonce: Date.now() }); navigate('tree'); }} /></Suspense></PanelActivity></div>}
+            {retained('trade') && <div hidden={route !== 'trade'}><PanelActivity active={route === 'trade'}><Suspense fallback={panelLoading}><TradePanel session={session} lang={lang} active={route === 'trade'} focus={stageChanged ? undefined : upgradeFocus} onSkills={group => { setSkillFocus({ group, nonce: Date.now() }); navigate('skills'); }} onTree={node => { setTreeFocus({ nonce: Date.now(), node }); navigate('tree'); }} /></Suspense></PanelActivity></div>}
         </div></UiProvider>
       </main>
       <ChangeBar lang={lang} />
