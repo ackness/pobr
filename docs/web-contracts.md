@@ -169,11 +169,26 @@ PoBR更新锁后运行`mise run data:prepare`；目录摘要不符时拒绝导�
 天赋节点名按节点 `id`（PassiveSkills Id）查 `PassiveSkills.Name`，Items 的基底行（分类为 `base` 的行、稀有／传奇名称里的基底行）
 和逐行台账里物品的持有者按 `base_items.json` 同名的全部 ID 查 `BaseItemTypes.Name`，各 ID 须一致；入口是后端 `translateNames`。
 作用域英文与当前名不同（珠宝变换后的名字或过时数据）或作用域没有该 ID 时，走原来的 `translateLines` 文本路径；
-有该 ID 但译文为 null 时显示英文。只用所选语言自己的目录，zh-TW 没有目录时保持原有字形转换路径；
+有该 ID 但译文为 null 时显示英文。召唤物名只按 `monster_variety_id`（游戏 MonsterVarieties Id，`minionCatalogJson`
+的怪物和计算结果的 `minions` 都带）查 `MonsterVarieties.Name`，英文须与当前名相同；没有该作用域、没有记录、
+没有 variety id 或译文为 null 时显示英文，不走文本路径（Calcs 的召唤物选项、技能页的召唤物选择）。
+只用所选语言自己的目录，zh-TW 没有目录时保持原有字形转换路径；
 文本路径的 `translateLines` 不会因为一行文字等于某个基底名就当作基底。`mise run audit:display` 用同一套函数核对。
 选择器、摘要与技能集共用显示入口，
 不改计算 ID、选择值、导入原文或保存格式。明确未决／冲突保留英文并阻断旧译文与繁简转换补回；
 未被该语言目录覆盖的记录保留原兼容路径。目录身份或格式错误会报错。
+
+译文来源（origin）：`display_texts.json` 可带可选顶层 `origins`，形如
+`{ "entries": { 英文: origin }, "scopes": { 作用域: { id: origin } } }`，origin 为 `agent` 或 `human`，表示该译文是翻译
+仓库自己的补译；未列出（包括没有 `origins`）即官方文本，`official` 也按官方处理，其他取值是格式错误。
+`stat_lines.json` 的模板行同样可带 `origin`。WASM `translateLinesDetailed(lang, json)` 与 `translateLines`
+输入相同，返回 `[{ text, origin }]`，`text` 与 `translateLines` 逐字节相同；`origin` 为 null（官方、保持英文、
+多行描述的续行空串）或渲染所用模板的来源，取值里有多个模板（值本身再翻译）时有 `agent` 取 `agent`，否则有
+`human` 取 `human`。后端的 `translateLinesDetailed` / `translateNamesDetailed` 返回同样的 `{ text, origin }`：
+本地目录给出的字面与作用域记录取 `origins` 的标注，经模板渲染的行取 `translateLinesDetailed` 的标注；
+旧 WASM 没有该导出时全部为 null。`translateLines` / `translateNames` 只取 `text`，显示不变；界面暂不标注来源。
+CLI `--lang` 的 JSON 报告在有补译时多一个 `origins` 映射（显示文本 → origin），文本输出在补译行后加 `†`
+并在末尾加脚注 `† 非官方译文（本项目补译）`；没有补译时输出与以前相同。
 
 游戏文本与界面文字的回退分开声明。界面文字只走 `web/src/locales/<lang>.json` 的 `language.fallback`
 （zh-TW → zh-CN，zh-CN 直接回退英文）。游戏文本的回退链（`lib/gameLocales.ts`）是：所选语言、数据包
@@ -440,7 +455,8 @@ Full DPS 假设计数来源同时生效，不模拟轮转；叠层规则见[输�
 ### 召唤物与导出
 
 `MinionSelection.tsx` 让召唤宝石选择怪物与技能。
-`minionCatalogJson` 返回怪物 id、name、beast、spectre、可解析技能（index 从 1 起），
+`minionCatalogJson` 返回怪物 id、name、beast、spectre、可解析技能（index 从 1 起）、
+可选 `monster_variety_id`（有游戏怪物变种时；幽魂即其 id），
 以及召唤技能的 `skill_id`、choice（beast／spectre）、固定 `minion_ids`。
 同伴选带 beast 的幽魂，幽魂选 spectre 定义，其余用自身列表；搜索保持已选怪物可见。
 宝石 `minion`、`minion_skill` 经 `skillMinion`／`skillMinionSkill` 往返，顺序只数求值器可解析效果。
@@ -590,7 +606,7 @@ ConfigSet 可选择、新建、复制、重命名、删除，至少留一组；�
 
 `StatDetailCache` 按计算版本与 actor 缓存，旧请求不能覆盖新编辑。侧栏打开 Calcs 时清除冲突搜索。
 公式与输入 id 仅显示时翻译。技能总览、归因、召唤物与手别保持同一工作区。
-`minions` 列实际创建的每个召唤物：index、minion_id、name、summoned_by、skill_id、level、dps、
+`minions` 列实际创建的每个召唤物：index、minion_id、可选 monster_variety_id、name、summoned_by、skill_id、level、dps、
 life、armour、evasion、energy_shield、stats、breakdowns、breakdown_descriptors。
 `main_minion_index` 按准确宝石和召唤来源定位，同名宝石各保留结果，禁用主组则无主召唤物。
 每项是一个实例，不乘数量，不模拟怪物技能轮转。火冰电混沌抗性、上限、超上限用角色同名 id；
