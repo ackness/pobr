@@ -21,7 +21,7 @@ PoBR 一侧的换数据、发版与回退步骤见 [RELEASING.md](../RELEASING.m
 | PoBR 自有规则 | `local_mods.json`、`special_mods.json` 在锁的 `shared_files`；九份构筑配置选项编译进 `crates/pobr-gamedata/src/domains/config_options/`，计入引擎身份 | 无 |
 | 采用流程 | 人工审阅的锁修改：精确 head 通过 PR gate 与 Full CI，合并后再确认主线 Full CI。固定测试绑定组合 manifest 的游戏部分，换游戏包时需复核成员差异再重绑 | 无 |
 | 新补丁迁移与回退 | 步骤见 [RELEASING.md](../RELEASING.md)，尚未用真实新补丁走过 | 一次真实新补丁：两个 owner 一起发布并 bump，发版后验证线上回退 |
-| 部署 | 锁合并到 master 只跑 Full CI；生产站点只由稳定 `v0.x.y` tag 部署。线上最新的 `v0.0.43` 早于三仓库拆分，尚未使用从 Release 采用的数据 | 下一次发版：单独的升版 PR 合并后推 tag（[RELEASING.md](../RELEASING.md)） |
+| 部署 | 锁合并到 master 只跑 Full CI；生产站点只由稳定 `v0.x.y` tag 部署（[RELEASING.md](../RELEASING.md)）。线上为 `v0.0.44`，使用锁中的 `game/0.5.5.5-2` 与 `locale/0.5.5.5-2` | 无 |
 | 发行包 | Web 与独立 WASM 发布逐文件快照；紧凑发行包只在 CI 中由同次 WASM 消费验证 | 见下表“玩家验收与性能” |
 
 ## 领域现状
