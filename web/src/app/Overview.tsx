@@ -9,6 +9,7 @@ import { classDisplayName } from '../lib/nativeDisplayNames';
 import { damageTypeLabel, slotLabel, statNameLabel, type Lang } from '../lib/i18n';
 import { activeSkillEffects } from '../lib/skillSelection';
 import { skillDisplayName } from '../lib/skillNames';
+import { unsupportedLineLabel } from '../lib/diagnosticText';
 import { formatStatValue, statMap } from '../lib/statDisplay';
 import { deriveFindings, type Finding } from './findings';
 import { AnimatedNumber } from './motion/AnimatedNumber';
@@ -183,7 +184,7 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
             {calc?.provenance?.engine_version && <div><dt>{w('Engine', '计算引擎', '計算引擎')}</dt><dd>{calc.provenance.engine_version}</dd></div>}
           </dl>
           {calc && calc.unsupported_modifiers.length > 0 && <details className="ov-details"><summary>{w('Show the lines', '查看这些词条', '查看這些詞綴')}</summary>
-            <ul>{calc.unsupported_modifiers.map((line, index) => <li key={index}>{line}</li>)}</ul></details>}
+            <ul>{calc.unsupported_modifiers.map((line, index) => <li key={index} title={line}>{unsupportedLineLabel(line, lang)}</li>)}</ul></details>}
           <p className="ov-hint">{w('Results reflect modeled effects. Review the uncalculated effects above.', '数值仅反映已支持的效果。未计算的内容见上方明细。', '數值僅反映已支援的效果。未計算的內容見上方明細。')}</p>
         </section>
       </div>

@@ -8,6 +8,7 @@ import { useSkillName } from '../../../hooks/useSkillName';
 import { originKindLabel, originLabel, slotLabel, statNameLabel, type Lang } from '../../../lib/i18n';
 import { words } from '../../text';
 import { configLabel } from '../../../lib/configLabels';
+import { ledgerReasonLabel, ownerLabel } from '../../../lib/diagnosticText';
 import type { ConfigOption } from '../../../api/types';
 import {
   ATTENTION, NO_FILTER, SOURCE_GROUPS, STATUS_ORDER, filterLedger, ledgerDisplayText, ledgerReason, sourceGroupLabel, statusHint, statusLabel,
@@ -203,8 +204,9 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
         </details>}
         {rejected.length > 0 && <details>
           <summary>{w(`Skill stats the engine did not use (${rejected.length})`, `引擎没有使用的技能 stat（${rejected.length}）`, `引擎沒有使用的技能 stat（${rejected.length}）`)}</summary>
-          <ul>{rejected.map(item => <li key={`${item.owner}:${item.stat}`}><b>{item.stat}</b><span>{item.owner}</span>
-            <small>{item.status === 'unmapped' ? w('Mapped, but rejected', '有映射但被拒绝', '有映射但被拒絕') : w('No mapping', '没有映射', '沒有映射')}{item.reason ? ` · ${item.reason}` : ''}</small></li>)}</ul>
+          <ul>{rejected.map(item => <li key={`${item.owner}:${item.stat}`} title={`${item.stat} · ${item.owner}${item.reason ? ` · ${item.reason}` : ''}`}><span>{ownerLabel(item.owner, skillName)}</span>
+            <small>{item.status === 'unmapped' ? w('Mapped, but rejected', '有映射但被拒绝', '有映射但被拒絕') : w('No mapping', '没有映射', '沒有映射')}{item.reason ? ` · ${ledgerReasonLabel(item.reason, lang) ?? item.reason}` : ''}</small>
+            <code className="ledger-raw-id">{item.stat}</code></li>)}</ul>
         </details>}
       </div>}
       {done.response.item_errors.length > 0 && <ul className="ledger-errors">

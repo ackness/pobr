@@ -461,6 +461,8 @@
     "items.unequip": "(unequip)",
     "items.currentItem": "(current item)",
     "items.jewels": "Jewels (edit on the Tree tab by clicking a socket)",
+    "skill.synthetic.ThornsPlayer": "Thorns",
+    "skill.synthetic.EnemyExplode": "Explode",
     "calcs.title": "Calculations",
     "calcs.mods": "mods",
     "calcs.baseTotal": "Base total",
