@@ -189,8 +189,8 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     ?? selected?.variant.jewels?.find(jewel => `Jewel@${jewel.socket_node}` === selected.slot)?.text ?? applied?.text ?? text;
   return <section className="upgrade-item-check ui-card" aria-labelledby="replacement-heading">
     {candidate ? <header><h3 id="replacement-heading">{craftT(lang, 'preview')}</h3><p>{craftT(lang, 'previewHint')}</p></header> : <header className="replacement-heading"><div>
-      <h3 id="replacement-heading">{words(lang, 'Paste an item to compare it', '粘贴物品来对比', '貼上物品來比較')}</h3><p>{ut('checkHint')}</p></div><div className="replacement-context"><span className="ui-badge">{ut('localComparison')}</span>
-      <AppButton className="replacement-goal" aria-label={`${ut('comparisonGoal')}: ${goalLabel}`} onClick={onEditGoal}>{goalLabel} <span aria-hidden>↗</span></AppButton></div></header>}
+      <h3 id="replacement-heading">{words(lang, 'Paste an item to compare it', '粘贴物品来对比', '貼上物品來比較')}</h3><p>{ut('checkHint')}</p></div><div className="replacement-context">
+      <AppButton className="replacement-goal" onClick={onEditGoal}>{ut('comparisonGoal')}{lang === 'en-US' ? ': ' : '：'}{goalLabel}{lang === 'en-US' ? ` (${ut('changeGoal')})` : `（${ut('changeGoal')}）`}</AppButton></div></header>}
     <div className="replacement-input"><label htmlFor="replacement-text">{ut('itemText')}</label>
       <AppTextarea readOnly={!!candidate} ref={inputRef} id="replacement-text" rows={report ? 3 : 5} value={text} placeholder={ut('pastePlaceholder')}
         onChange={event => { if (candidate || !latest.current.active) return; stop(); setApplied(null); setSnapshot(null); setChosenSlot(null); setAffixDirty(false); setAugmentPlans({}); setText(event.target.value); }}

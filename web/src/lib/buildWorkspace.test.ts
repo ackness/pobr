@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parseSaved, type SavedSession } from '../hooks/useBuildSession';
-import { activeWorkspaceStage, addWorkspaceBuild, createWorkspace, duplicateWorkspaceStage, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope } from './buildWorkspace';
+import { activeWorkspaceStage, addWorkspaceBuild, appendImportedBuild, createWorkspace, defaultStarterSession, duplicateWorkspaceStage, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope } from './buildWorkspace';
 
 const saved: SavedSession = {
   version: 1, notes: 'Leveling route', state: {
@@ -184,3 +184,57 @@ describe('removing a build or a stage', () => {
   });
 });
 
+
+
+describe('first successful import', () => {
+  const blank = defaultStarterSession('Druid');
+  const reload = (workspace: ReturnType<typeof createWorkspace>) =>
+    parseWorkspace(JSON.parse(workspaceEnvelope(workspace)).workspace, parseSaved)!;
+
+  it('replaces the default starter after reload, including multi-stage imports', () => {
+    const original = createWorkspace(blank), workspace = reload(original);
+    expect(workspace.builds[0]).not.toBe(original.builds[0]);
+    const imported = addWorkspaceBuild(workspace, 'Imported', saved, blank);
+    expect(imported.builds).toHaveLength(1);
+    expect(activeWorkspaceStage(imported).saved).toBe(saved);
+    expect(workspace.builds).toHaveLength(1);
+    expect(addWorkspaceBuild(imported, 'Second import', saved, blank).builds).toHaveLength(2);
+    const multiStage = duplicateWorkspaceStage(createWorkspace(saved), 'Maps').builds[0];
+    expect(appendImportedBuild(workspace, multiStage, blank).builds).toEqual([multiStage]);
+    expect(addWorkspaceBuild(createWorkspace(blank), 'Fresh import', saved, blank).builds).toHaveLength(1);
+  });
+
+  it('keeps an edited starter after reload and preserves every nondefault field', () => {
+    const workspace = createWorkspace(blank);
+    const patches: Partial<SavedSession['state']>[] = [
+      { character: { ...blank.state.character, level: 2 } },
+      { character: { ...blank.state.character, class_name: 'Ranger' } },
+      { character: { ...blank.state.character, ascendancy_name: 'Oracle' } },
+      { items: saved.state.items }, { socketGroups: [{ enabled: true, gems: [] }] },
+      { allocatedNodes: [12] }, { attributeChoices: { '12': 'dex' } },
+      { params: { config_inputs: { conditionFullLife: false } } },
+      { params: { config_inputs: {}, enemy_tier: 'boss' } },
+      { annotations: { 'item:ring1': 'Keep' } }, { equipmentJewels: [{ slot: 'Weapon 1 Abyssal Socket 1', text: 'Keep' }] },
+      { flasks: [{ slot: 'Flask 1', text: 'Keep' }] }, { limbs: [{ slot: 'arm1', text: 'Keep' }] },
+      { jewels: [{ socket_node: 12, text: 'Keep' }] },
+      { weaponSwap: { active: 2, alternate_items: [], exclusive_nodes: [[], []] } },
+      { pobCode: 'Imported' }, { treeVersion: '0_4' }, { plannerSource: '{}' },
+    ];
+    const changed = patches.map(patch => updateWorkspaceStage(workspace, { ...blank, state: { ...blank.state, ...patch } }, {}));
+    for (const current of [
+      ...changed,
+      updateWorkspaceStage(workspace, blank, { 'item:ring1': 'Unapplied' }),
+      updateWorkspaceStage(workspace, { ...blank, notes: 'Keep' }, {}),
+      renameWorkspaceEntry(workspace, 'build', 'My build'),
+      renameWorkspaceEntry(workspace, 'stage', 'My stage'),
+      duplicateWorkspaceStage(workspace, 'Maps'),
+    ]) {
+      const restored = reload(current);
+      expect(restored).not.toBeNull();
+      const next = addWorkspaceBuild(restored, 'Imported', saved, blank);
+      expect(next.builds).toHaveLength(2);
+      expect(next.builds[0]).toBe(restored.builds[0]);
+    }
+    expect(addWorkspaceBuild(workspace, 'No default metadata available', saved).builds).toHaveLength(2);
+  });
+});

@@ -147,10 +147,10 @@ test('whole-build summary keeps absent main-skill outputs unavailable', () => {
 test('sidebar multiplier formats use percentage-point deltas and pierce all-target sentinel stays unbounded', () => {
   const movement = compareStats(stats([['EffectiveMovementSpeedMod', 1]]), stats([['EffectiveMovementSpeedMod', 1.1]]))[0];
   expect(movement.percent).toBeNull();
-  expect(formatComparisonDelta(movement.delta, 'modifier', 'en-US')).toBe('+10%');
-  expect(formatComparisonDelta(-0.5, 'chanceMultiplier', 'en-US')).toBe('-50%');
+  expect(formatComparisonDelta(movement.delta, 'modifier', 'en-US')).toBe('+10 pp');
+  expect(formatComparisonDelta(-0.5, 'chanceMultiplier', 'en-US')).toBe('-50 pp');
   const chance = compareStats(stats([['CritBifurcates', 1.2]]), stats([['CritBifurcates', 1.3]]))[0];
-  expect(chance.percent).toBeCloseTo(50);
+  expect(chance.percent).toBeNull();
   expect(compareStats(stats([['PierceCount', 1]]), stats([['PierceCount', 100]]))[0]).toMatchObject({ delta: null, percent: null, changed: true });
 });
 
@@ -196,3 +196,82 @@ test('shared comparison configuration includes party effects without changing ei
   expect(shared.party).toEqual(party);
   expect(comparisonRequests({ party }, {}, 'own')[1].party).toBeUndefined();
 });
+
+
+import { nearestCompareStage, hasComparisonSource, comparisonGemForm } from './compare';
+import type { GemCatalogEntry } from '../api/types';
+
+test('default B stays within the same build and prefers the closest previous stage', () => {
+  const entries = [{ buildId: 'unrelated', stageId: 'blank' }, ...['first', 'middle', 'last'].map(stageId => ({ buildId: 'current', stageId }))];
+  expect(nearestCompareStage(entries, entries[3])).toBe(entries[2]);
+  expect(nearestCompareStage(entries, entries[2])).toBe(entries[1]);
+  expect(nearestCompareStage(entries, entries[1])).toBe(entries[2]);
+  expect(nearestCompareStage(entries, entries[0])).toBeUndefined();
+  expect(nearestCompareStage(entries, undefined)).toBeUndefined();
+});
+
+test('missing, unknown and failed outputs cannot be assumed to be zero', () => {
+  const rows = compareStats(stats([['Flask1LifeRecovery', 0], ['Charm2Duration', 10], ['Unknown', 0], ['ChaosMaxHit', 0]]), stats([['ChaosMaxHit', null]]));
+  expect(rows[0]).toMatchObject({ after: undefined, changed: true, delta: null });
+  expect(rows[1]).toMatchObject({ after: undefined, changed: true, delta: null });
+  expect(rows[2]).toMatchObject({ after: undefined, changed: true, delta: null });
+  expect(rows[3]).toMatchObject({ after: null, changed: true, delta: null });
+  expect(compareStats(stats([['Flask1LifeRecovery', 0]]), stats([['Flask1LifeRecovery', null]]))[0].changed).toBe(true);
+});
+
+test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('percentage stats show point differences without relative percentages in %s', lang => {
+  const row = compareStats(stats([['FireResist', -30]]), stats([['FireResist', 20]]))[0];
+  expect(row).toMatchObject({ delta: 50, percent: null });
+  expect(formatComparisonDelta(row.delta, 'percent', lang)).toBe(lang === 'en-US' ? '+50 pp' : lang === 'zh-TW' ? '+50 個百分點' : '+50 个百分点');
+  expect(compareStats(stats([['FireResist', 0]]), stats([['FireResist', 0]]))[0]).toMatchObject({ delta: 0, percent: null, changed: false });
+  expect(formatComparisonDelta(null, 'percent', lang)).toBe('—');
+});
+
+test('copy availability rejects absent equipment, weapons, skills and config without rejecting zero or false', () => {
+  const b = { ...state(), items: [], socketGroups: [], params: { config_inputs: { zero: 0, flag: false } } };
+  for (const section of [
+    { kind: 'item', section: 'items', slot: 'ring1' }, { kind: 'weapon', set: 1, slot: 'weapon1' },
+    { kind: 'skill', index: 0 }, { kind: 'config', key: 'missing' }, { kind: 'enemy' }, { kind: 'modifiers' },
+  ] as const) expect(hasComparisonSource(b, section)).toBe(false);
+  expect(hasComparisonSource(b, { kind: 'config', key: 'zero' })).toBe(true);
+  expect(hasComparisonSource(b, { kind: 'config', key: 'flag' })).toBe(true);
+  expect(hasComparisonSource(state(), { kind: 'item', section: 'items', slot: 'ring1' })).toBe(true);
+});
+
+test('gem comparisons hide unchanged default forms and name both sides of a form change', () => {
+  const gem = { skill_id: 'SparkPlayer', level: 20, quality: 0 };
+  const catalog = new Map([['SparkPlayer', { effect_forms: [{ skill_id: 'SparkPlayer', stat_sets: [
+    { index: 1, label: 'Normal', id: 'normal', stage: null }, { index: 2, label: 'Empowered', id: 'empowered', stage: null },
+  ] }] } as GemCatalogEntry]]);
+  const alternate = { ...gem, stat_set_index: 2 };
+  expect(comparisonGemForm(gem, { ...gem, level: 21, stat_set_index: 1 }, catalog, 'en-US')).toBeNull();
+  expect(comparisonGemForm(gem, undefined, catalog, 'en-US')).toBeNull();
+  expect(comparisonGemForm(gem, alternate, catalog, 'en-US')).toBe('Normal');
+  expect(comparisonGemForm(alternate, gem, catalog, 'en-US')).toBe('Empowered');
+  expect(comparisonGemForm(alternate, alternate, catalog, 'en-US')).toBe('Empowered');
+  expect(comparisonGemForm(alternate, gem, new Map(), 'en-US')).toBe('Form 2');
+});
+
+
+test('form labels use the selected secondary active effect supplied by a gem', () => {
+  const gem = { skill_id: 'MultiEffectPlayer', level: 20, quality: 0, stat_set_index: 2 };
+  const catalog = new Map([[gem.skill_id, { effect_forms: [{ skill_id: 'SecondaryPlayer', stat_sets: [
+    { index: 2, label: 'Secondary empowered form', id: 'secondary', stage: null },
+  ] }] } as GemCatalogEntry]]);
+  expect(comparisonGemForm(gem, undefined, catalog, 'en-US', 'SecondaryPlayer')).toBe('Secondary empowered form');
+});
+
+
+test.each([['en-US', 'Form'], ['zh-CN', '形态'], ['zh-TW', '形態']] as const)(
+  'unlabeled form changes keep distinct form numbers in %s', (lang, label) => {
+    const a = { skill_id: 'SparkPlayer', level: 20, quality: 0, stat_set_index: 2 };
+    const b = { ...a, stat_set_index: 3 };
+    const catalog = new Map([[a.skill_id, { effect_forms: [{ skill_id: a.skill_id, stat_sets: [
+      { index: 2, label: null, id: 'second', stage: null }, { index: 3, label: null, id: 'third', stage: null },
+    ] }] } as GemCatalogEntry]]);
+    expect(comparisonGemForm(a, b, catalog, lang)).toBe(`${label} 2`);
+    expect(comparisonGemForm(b, a, catalog, lang)).toBe(`${label} 3`);
+    expect(comparisonGemForm(a, b, new Map(), lang)).toBe(`${label} 2`);
+    expect(comparisonGemForm(b, a, new Map(), lang)).toBe(`${label} 3`);
+  },
+);

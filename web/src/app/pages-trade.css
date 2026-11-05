@@ -166,7 +166,7 @@
   .shell-root .trade-page .trade-results-heading p { margin-top: .15rem; font-size: var(--text-xs); color: var(--muted-foreground); }
   .shell-root .trade-page .trade-count { font-size: var(--text-xs); color: var(--muted-foreground); }
   .shell-root .trade-page .trade-score-table { overflow-x: auto; }
-  .shell-root .trade-page .trade-score-row { display: grid; grid-template-columns: minmax(14rem, 1fr) 8.5rem 5.5rem 4.5rem; gap: 1rem; align-items: center; min-width: 34rem; padding: .6rem 0; border-bottom: 1px solid var(--border); font-size: var(--text-sm); }
+  .shell-root .trade-page .trade-score-row { display: grid; grid-template-columns: minmax(14rem, 1fr) 8.5rem 5.5rem; gap: 1rem; align-items: center; min-width: 34rem; padding: .6rem 0; border-bottom: 1px solid var(--border); font-size: var(--text-sm); }
   .shell-root .trade-page .trade-score-labels { padding-block: .3rem; border-bottom: 1px solid var(--border); font-size: var(--text-xs); color: var(--muted-foreground); }
   .shell-root .trade-page .trade-affix { display: flex; align-items: baseline; gap: .75rem; overflow-wrap: anywhere; }
   .shell-root .trade-page .trade-bar { height: .35rem; border-radius: 999px; background: var(--muted); }

@@ -63,7 +63,7 @@
 .trade-results-heading p { color: var(--text-secondary); font-size: var(--text-xs); margin-top: var(--space-1); }
 .trade-count { white-space: nowrap; color: var(--text-secondary); font-size: var(--text-xs); }
 .trade-score-table { overflow-x: auto; }
-.trade-score-row { display: grid; grid-template-columns: minmax(240px, 1fr) 125px 100px 80px; gap: var(--space-4); align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border-subtle); min-width: 590px; font-size: var(--text-sm); }
+.trade-score-row { display: grid; grid-template-columns: minmax(240px, 1fr) 125px 100px; gap: var(--space-4); align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border-subtle); min-width: 590px; font-size: var(--text-sm); }
 .trade-score-labels { padding-top: 0; color: var(--text-secondary); font-size: var(--text-xs); }
 .trade-score-labels > span:nth-last-child(-n+2) { text-align: right; }
 .trade-affix { display: flex; align-items: baseline; gap: var(--space-3); }
