@@ -59,7 +59,8 @@
   .shell-root .config-page .config-group-nav > [data-slot='button'] { justify-content: space-between; gap: .75rem; min-height: 0; padding: .35rem 0; border: 0; border-radius: 0; background: none; font-size: var(--text-sm); font-weight: 450; text-align: left; color: var(--muted-foreground); }
   .shell-root .config-page .config-group-nav > [data-slot='button']:hover { background: none; color: var(--foreground); }
   .shell-root .config-page .config-group-nav > [data-slot='button'] > span:last-child { font-size: var(--text-xs); font-variant-numeric: tabular-nums; color: var(--muted-foreground); opacity: .8; }
-  .shell-root .config-page .config-option-groups { min-width: 0; max-width: 60rem; }
+  /* At least a screen tall, so a short group never pulls the page back up when it replaces a long one. */
+  .shell-root .config-page .config-option-groups { min-width: 0; max-width: 60rem; min-height: calc(100dvh - var(--topbar-height) - 5rem); }
   .shell-root .config-page .config-section { margin: 0 0 2.25rem; border: 0; border-radius: 0; background: none; scroll-margin-top: 1rem; }
   .shell-root .config-page .config-section-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; height: auto; min-height: 0; padding: .45rem 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; text-align: left; color: var(--muted-foreground); }
   .shell-root .config-page .config-section-header:hover:not(:disabled) { background: none; color: var(--foreground); }
