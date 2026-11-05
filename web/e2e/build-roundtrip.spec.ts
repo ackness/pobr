@@ -63,7 +63,7 @@ Body Armour grants Hits against you have 100% reduced Critical Damage Bonus</Ite
 
   for (const rarity of ['MAGIC', 'RARE', 'UNIQUE', 'NORMAL']) {
     await page.locator('.paper-doll').getByRole('button', { name: 'Body Armour', exact: true }).click();
-    await page.locator('.item-detail').getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.locator('.item-detail').getByRole('button', { name: 'Edit text (advanced)', exact: true }).click();
     await page.getByRole('textbox', { name: 'bodyarmour item text' }).fill(
       `Rarity: ${rarity}\n${['NORMAL', 'MAGIC'].includes(rarity) ? '' : 'Rule Acceptance Chest\n'}Plate Vest\nImplicits: 0`,
     );
