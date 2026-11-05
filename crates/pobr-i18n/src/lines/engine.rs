@@ -705,11 +705,15 @@ impl LineTranslator {
         if candidates.is_empty() {
             return None;
         }
-        // Deterministic order: strongest anchor first, ties broken by ascending index.
-        let mut ordered: Vec<(usize, usize)> =
-            candidates.into_iter().map(|(i, len)| (len, i)).collect();
-        ordered.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
-        for (_, i) in ordered {
+        // Deterministic order: every official template before any supplement (a
+        // supplement only fills what no official template renders), then the
+        // strongest anchor, ties broken by ascending index.
+        let mut ordered: Vec<(bool, usize, usize)> = candidates
+            .into_iter()
+            .map(|(i, len)| (self.templates[i].origin.is_some(), len, i))
+            .collect();
+        ordered.sort_by(|a, b| a.0.cmp(&b.0).then(b.1.cmp(&a.1)).then(a.2.cmp(&b.2)));
+        for (_, _, i) in ordered {
             let candidate = &self.templates[i];
             if candidate.lines != lines {
                 continue;

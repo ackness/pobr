@@ -858,6 +858,24 @@ fn an_official_template_wins_over_a_supplement_listed_before_it() {
 }
 
 #[test]
+fn an_official_string_template_wins_over_a_supplement_with_a_longer_anchor() {
+    let pack = templates_pack(
+        "zz",
+        serde_json::json!([
+            {"src": "配置 {0}", "en": "Allocates {0}"},
+            {"src": "我方配置 {0}", "en": "Allocates the {0}", "origin": "agent"},
+            {"src": "官方值", "en": "the Bar"},
+            {"src": "补值", "en": "Bar"}
+        ]),
+    );
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    assert_eq!(
+        renderer.render_line_with_origin("Allocates the Bar"),
+        Some(("配置 官方值".into(), None))
+    );
+}
+
+#[test]
 fn official_templates_of_the_whole_chain_rank_before_its_supplements() {
     let primary = templates_pack(
         "zz",

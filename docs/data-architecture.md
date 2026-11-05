@@ -158,7 +158,7 @@ RePoE 发布 ───┐
   下一个修订（合并后打 `contract/1.2`）：`i18n/<locale>/stat_lines.json` 的行可带可选 `origin`
   （`"agent"`／`"human"`：翻译仓库自己的补译；缺省、`null` 或 `"official"` 为官方或历史词典）；
   其他取值按 `agent` 读取，这一行照常可用但不算官方，也不会让整个文件失效。
-  整条回退链的官方模板排在全部补译之前（各自保持链与文件顺序），同一行官方与补译都能匹配时取官方，
+  整条回退链的官方模板排在全部补译之前（各自保持链与文件顺序），同一行官方与补译都能匹配时取官方（锚点更长的补译也不例外），
   补译行只填空缺。`display_texts.json` 可带可选顶层 `origins`，见[Web 契约](web-contracts.md)。
 - **RePoE 一侧。** `pobr-data-adapter` 与 release build 封存快照 manifest 时写入
   `"contract_version": <所依赖 pobr-data 的 CONTRACT_VERSION>`，数值取自依赖本身（例如由 adapter 读取
