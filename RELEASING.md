@@ -147,7 +147,8 @@ gh pr create --fill
   里的包 tag 应是预期的 Release。界面上的数据版本（悬停顶栏版本或看概览）只显示游戏补丁号，同一补丁的新包不会改变它。
 
 - 显示检查：`mise run builds:fetch .cache/ninja-<日期>` 抓当前赛季的 poe.ninja 构筑，再运行
-  `mise run audit:display --release v0.x.y --strict .cache/ninja-<日期>`。Errors 与 Raw ids 两节应为空。
+  `mise run audit:display --release v0.x.y --strict .cache/ninja-<日期>`。应以 0 退出：Errors 与 Raw ids 两节为空，
+  宝石目录的原始 ID 名为 0。
   想在打 tag 前先看，对本地 `mise run web build` 的结果运行同一命令，去掉 `--release`。
   报告各节的含义见 [diagnostics.md](docs/diagnostics.md#前端显示审计)。
 

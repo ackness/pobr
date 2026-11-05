@@ -4,16 +4,17 @@
 // errors, raw ids in names, untranslated text and unsupported lines.
 //
 //   node web/scripts/display-audit.mjs [--release <tag> | --package <dir | .tar.gz>]
-//        [--langs en-US,zh-CN,zh-TW] [--json FILE] [--samples N] [--no-lines] [--strict]
+//        [--refresh] [--langs en-US,zh-CN,zh-TW] [--json FILE] [--samples N] [--no-lines] [--strict]
 //        <set dir | build dir | code.txt ...>
 //
 // Engine: by default the current Web build (web/src/wasm/pkg + web/public/data, from
 // `mise run web build`); --package takes a standalone WASM package (a release asset or
-// `pnpm --dir web package-wasm` output); --release downloads that release's package.
+// `pnpm --dir web package-wasm` output); --release downloads that release's package once
+// (--refresh downloads it again, e.g. after a re-run replaced the asset).
 // Builds: a set dir from `mise run builds:fetch` (builds/<name>/code.txt), a dir of
 // <name>/code.txt, a build dir or code files. --strict exits 1 on errors or raw-id names.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -32,6 +33,7 @@ const { values: opt, positionals } = parseArgs({
     'no-lines': { type: 'boolean', default: false },
     samples: { type: 'string', default: '5' },
     strict: { type: 'boolean', default: false },
+    refresh: { type: 'boolean', default: false },
   },
 });
 if (!positionals.length || (opt.package && opt.release)) {
@@ -39,6 +41,7 @@ if (!positionals.length || (opt.package && opt.release)) {
   process.exit(2);
 }
 const SAMPLES = Number(opt.samples);
+if (!Number.isInteger(SAMPLES) || SAMPLES < 0) { console.error(`--samples must be a whole number, got ${opt.samples}`); process.exit(2); }
 const LANGS = opt.langs.split(',');
 
 // ---- the Web's display modules, loaded as the browser bundle runs them ----
@@ -62,14 +65,16 @@ const [{ nativeGemNames }, { nativeDisplayTexts }, { skillDisplayName }, { setGa
 // ---- engine and data ----
 function extract(archive) {
   const out = join(repoRoot, '.cache/display-audit', basename(archive).replace(/\.tar\.gz$/, ''));
+  rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
   execFileSync('tar', ['-xzf', archive, '-C', out, '--strip-components=1']);
   return out;
 }
 function releasePackage(tag) {
   const dir = join(repoRoot, '.cache/display-audit', tag);
-  const archive = existsSync(dir) && readdirSync(dir).find(name => name.endsWith('-web.tar.gz'));
+  const archive = !opt.refresh && existsSync(dir) && readdirSync(dir).find(name => name.endsWith('-web.tar.gz'));
   if (!archive) {
+    rmSync(dir, { recursive: true, force: true });
     mkdirSync(dir, { recursive: true });
     execFileSync('gh', ['release', 'download', tag, '--repo', 'ackness/pobr', '--pattern', 'pobr-wasm-*-web.tar.gz',
       '--dir', dir, '--clobber'], { stdio: 'inherit' });
@@ -89,13 +94,26 @@ function loadEngineSource() {
     throw new Error('No Web build found: run `mise run web build`, or pass --package / --release');
   }
   const manifest = JSON.parse(readFileSync(join(dataRoot, 'manifest.json'), 'utf8'));
+  if (!Array.isArray(manifest.files)) {
+    throw new Error('web/public/data holds a release pack, not per-file data: re-sync it with `mise run web build`, or pass --package');
+  }
+  // The same bytes the browser fetches under h/<digest>/, read from the plain version directory.
   const files = Object.fromEntries(manifest.files.map(rel => [rel, readFileSync(join(dataRoot, manifest.version, rel), 'utf8')]));
   const version = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).version;
-  return { dir, label: `web build ${version}`, version: manifest.version, files };
+  return { dir, label: `web build ${version}`, version: manifest.version, files, local: true };
 }
 const source = loadEngineSource();
 const engine = await import(pathToFileURL(join(source.dir, 'pobr_wasm.js')).href);
 engine.initSync({ module: readFileSync(join(source.dir, 'pobr_wasm_bg.wasm')) });
+// The display modules come from this checkout; they must speak the engine's JSON schema.
+const expectedSchema = Number(readFileSync(join(webDir, 'src/api/types.ts'), 'utf8')
+  .match(/EXPECTED_SCHEMA_VERSION\s*=\s*(\d+)/)?.[1]);
+const engineSchema = typeof engine.schemaVersion === 'function' ? engine.schemaVersion() : undefined;
+if (engineSchema !== expectedSchema) {
+  const message = `engine schema ${engineSchema ?? 'unknown'} != this checkout's web schema ${expectedSchema}`;
+  if (source.local) throw new Error(`${message}: web/src/wasm/pkg is stale, rebuild it with \`mise run web build\``);
+  console.error(`warning: ${message}; names come from this checkout's web/src/lib, not that release's`);
+}
 for (const [path, content] of Object.entries(source.files)) engine.stageDataFile(path, content);
 engine.initStagedData();
 if (!engine.isDataReady()) throw new Error('game data init failed');
@@ -143,14 +161,15 @@ const tree = new Map((file('base/passive_tree.json') ?? []).map(node => [node.sk
 
 // ---- checks ----
 const CJK = /[㐀-鿿]/;
-const PLACEHOLDER = /\?\?\?|coming soon|敬请期待|敬請期待|\bundefined\b|\bnull\b|\bNaN\b|\[object Object\]|\{\d\}/i;
+const PLACEHOLDER = /\?\?\?|coming soon|敬请期待|敬請期待|\{\d\}/i;
+const LEAKED_VALUE = /\bundefined\b|\bnull\b|\bNaN\b|\[object Object\]/;
 function rawIdReason(text, skillId) {
   if (!text?.trim()) return 'empty';
   if (/^Metadata\//.test(text)) return 'metadata id';
   if (text === skillId) return 'skill id';
   if (/^[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+){2,}$/.test(text)) return 'CamelCase id';
   if (/^[a-z0-9]+(?:_[a-z0-9+%]+)+$/.test(text)) return 'snake_case key';
-  if (PLACEHOLDER.test(text)) return 'placeholder';
+  if (PLACEHOLDER.test(text) || LEAKED_VALUE.test(text)) return 'placeholder';
   return null;
 }
 /** Text that should be Chinese but is not: Latin words and no CJK at all. */
@@ -290,7 +309,8 @@ const SECTIONS = [
   { title: 'Errors', strict: true, test: kind => /error|exception|unresolved$|non-finite|<= 0|missing item/.test(kind) },
   { title: 'Raw ids and placeholders in names', strict: true, test: kind => / is (metadata id|skill id|CamelCase id|snake_case key|placeholder|empty)| shows /.test(kind) },
   { title: 'Names and lines left untranslated', test: kind => /untranslated|in English/.test(kind) },
-  { title: 'Calculation coverage', test: kind => /^unsupported|^unparsed|^gem stat|not in tree/.test(kind) },
+  { title: 'Calculation coverage', test: kind => /^unsupported|^unparsed|^gem stat|not in tree|^0 DPS/.test(kind) },
+  // Unresolved gems ("· (unresolved)" on the Skills page) and catalog fallbacks.
   { title: 'Other', test: () => true },
 ];
 const sectionOf = kind => SECTIONS.find(section => section.test(kind));

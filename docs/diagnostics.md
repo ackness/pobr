@@ -173,18 +173,26 @@ known 只适用于所选 stat set 的显示／无伤害规则、已写明的模�
 加上 `web/src/lib` 的显示模块（`nativeGemNames`、`skillDisplayName`、`GameTextLocalizer`），
 所以报告里的名字就是界面上的名字。
 
-- 引擎来源：默认用本地 `mise run web build` 的结果（`web/src/wasm/pkg` 与 `web/public/data`）；
-  `--package` 用独立 WASM 包；`--release v0.x.y` 下载该 Release 的包到 `.cache/display-audit/`，即线上版本。
+- 引擎来源：
+  - 默认用本地 `mise run web build` 的结果（`web/src/wasm/pkg` 与 `web/public/data`）；
+    构建过旧（schema 与本 checkout 的 `EXPECTED_SCHEMA_VERSION` 不符）时直接报错。
+  - `--package` 用独立 WASM 包。
+  - `--release v0.x.y` 下载该 Release 的包到 `.cache/display-audit/`，即线上版本；
+    `--refresh` 重新下载（重跑覆盖了附件之后）。
+  - 名字总是由本 checkout 的 `web/src/lib` 生成；审计旧 Release 时 schema 不同会给出警告。
 - 构筑：`mise run builds:fetch <集合目录>` 抓的 poe.ninja 构筑（每个升华一个），或任何含 `<名字>/code.txt` 的目录。
 - 报告分节，严重的在前：
-  - Errors：导出报错、主技能无法解析、非有限数值、生命与护盾都不大于 0。
+  - Errors：导出报错、物品错误、主技能无法解析、非有限数值、生命与护盾都不大于 0、召唤物生命不大于 0。
   - Raw ids：名字里出现原始 ID 或占位文本，按 en-US／zh-CN／zh-TW 分别检查。
   - 未翻译的名字与词条行。
-  - 计算覆盖：未支持与未解析的行、未用上的宝石 stat。
-  - 其他。
-- `--strict`：Errors 或 Raw ids 非空，或宝石目录里有原始 ID 名时，以 1 退出。`--json` 写出逐构筑明细。
+  - 计算覆盖：未支持与未解析的行、未用上的宝石 stat；主技能、召唤物与 Full DPS 合计为 0（主组是 buff／光环时属正常）。
+  - 其他：未解析的宝石（技能页显示 “(unresolved)”）、目录里没有的技能。
+- `--strict`：Errors 或 Raw ids 非空，或宝石目录（全部技能，不限于这些构筑）里有原始 ID 名时，以 1 退出。
+  `--json` 写出逐构筑明细；`--langs` 限定语言，`--samples N` 每项示例数，`--no-lines` 跳过逐行翻译检查。
 - 局限：
   - 计算请求只带 `pob_code`，不重建网页会话里的完整请求。
+  - 数据从内存读取，不经过浏览器的摘要路径（`h/<digest>/`）和发行块加载。
+  - 天赋行由脚本自己从 `passive_tree.json` 生成（去掉 `[a|b]` 标记），与界面送去翻译的文本可能略有不同。
   - “未翻译”是启发式判断：没有中文字符、含拉丁单词。
   - 配置页、交易和对比界面不在检查范围内。
 
