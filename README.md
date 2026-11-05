@@ -91,7 +91,11 @@ item before buying.
 Found a calculation mismatch or an unsupported modifier?
 [Open an issue](https://github.com/ackness/pobr/issues/new) with a minimal build
 you can share publicly, the relevant item or skill, and expected versus actual
-results. UI feedback and translation corrections are welcome too.
+results. UI feedback is welcome too. Corrections to Chinese game text (affix
+wording, item and skill names) belong in
+[poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats/issues), which
+publishes PoBR's translations; see
+[which repository owns a fix](CONTRIBUTING.md#which-repository-owns-the-fix).
 
 For implementation work, start with [the contributor guide](CONTRIBUTING.md) or
 [adding modifier rules](docs/contributing-mods.md). If PoBR is useful to you,
@@ -103,9 +107,18 @@ release notifications.
 The calculation engine is written in Rust and shared by the WebAssembly app and
 CLI. Modifier parsing supports offline precompilation; calculation tracing and
 source attribution are exposed through `TraceGraph` and `AttributionReport`.
-Stable IDs separate calculation from translated display text, and versioned
-JSON snapshots supply game data. PoB2 parity tests guard the recorded regression
-baseline; they do not imply complete mechanic coverage.
+Stable IDs separate calculation from translated display text. PoB2 parity tests
+guard the recorded regression baseline; they do not imply complete mechanic
+coverage.
+
+Game and language data are not stored in this repository. Two companion
+repositories publish them as versioned GitHub Releases:
+[ackness/repoe](https://github.com/ackness/repoe) the game package decoded from
+the PoE2 client (including its English text), and
+[ackness/poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats) the
+Simplified and Traditional Chinese language package. PoBR pins both
+in `pipeline/data.lock.json` and imports them with `mise run data:prepare`
+([data architecture](docs/data-architecture.md)).
 
 Calculation runs locally in the browser; WeGame and market HTTP adapters use a
 Pages Worker. The WASM/JSON API and CLI are still evolving and may change
@@ -118,6 +131,7 @@ and run the project-pinned tools. From the repository root:
 
 ```bash
 mise bootstrap --only packages,tools,task
+mise run data:prepare                 # Import the pinned game and language data
 mise exec -- cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
 mise run verify build codec           # Optional focused test/lint check
 mise run targets                      # List suites without compiling
@@ -152,10 +166,15 @@ game data and tests; it is not the current behavior contract.
 ## References & acknowledgements
 
 - [PathOfBuildingCommunity/PathOfBuilding-PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)
-  (MIT) supplies reference data and regression comparisons. Game data and item
-  wording define the intended rules. The pinned Lua checkout under `vendor/` is
-  a cross-check, not the authority when it disagrees with game evidence.
-  [Remaining dependencies](docs/pob2-differences.md).
+  (MIT) is the test reference: a pinned Lua checkout under `vendor/` runs the
+  parity comparisons and the calculation oracle. Game data and item wording
+  define the intended rules; the Lua checkout is a cross-check, not the
+  authority when it disagrees with game evidence. Fields still derived from PoB2
+  reach PoBR only as frozen files inside the RePoE game package
+  ([remaining dependencies](docs/pob2-differences.md)).
+- [ackness/repoe](https://github.com/ackness/repoe), a fork of RePoE, and
+  [ackness/poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats) —
+  the game and language data packages PoBR consumes.
 - [poe2db.tw](https://poe2db.tw/) and the PoE2 Wiki — sources for game
   mechanics and text translations.
 

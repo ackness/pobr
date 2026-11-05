@@ -70,7 +70,9 @@ PoBR 是以 [Path of Building for PoE2](https://github.com/PathOfBuildingCommuni
 ## 参与改进与关注更新
 
 发现计算差异或未支持词条？欢迎[提交 Issue](https://github.com/ackness/pobr/issues/new)，
-附上可公开分享的最小复现构筑、相关物品或技能，以及预期值与实际值。界面反馈和翻译修正也很有帮助。
+附上可公开分享的最小复现构筑、相关物品或技能，以及预期值与实际值。界面反馈也很有帮助。
+游戏文本的中文翻译（词缀措辞、物品与技能名）由 [poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats/issues)
+发布，翻译修正请到那里反馈；见[问题归哪个仓库](CONTRIBUTING.md#which-repository-owns-the-fix)。
 
 想参与开发，可以从[贡献指南](CONTRIBUTING.md)或[添加词条规则](docs/contributing-mods.md)开始。
 如果 PoBR 对你有用，可以 **Star 收藏仓库**；希望收到发版通知，可选择 **Watch → Custom → Releases**。
@@ -78,8 +80,13 @@ PoBR 是以 [Path of Building for PoE2](https://github.com/PathOfBuildingCommuni
 ## 开发者入口
 
 Rust 计算引擎由 WebAssembly 应用和 CLI 共用，支持词条离线预编译，并通过 `TraceGraph`
-和 `AttributionReport` 提供计算追踪与来源归因。计算使用稳定 ID，与显示翻译分离；游戏数据
-使用版本化 JSON 快照。PoB2 parity 测试保护已记录的回归基线，不代表所有机制均已覆盖。
+和 `AttributionReport` 提供计算追踪与来源归因。计算使用稳定 ID，与显示翻译分离。
+PoB2 parity 测试保护已记录的回归基线，不代表所有机制均已覆盖。
+
+游戏与语言数据不存放在本仓库，而是由两个配套仓库以带版本的 GitHub Release 发布：
+[ackness/repoe](https://github.com/ackness/repoe) 发布从 PoE2 客户端解码的游戏包（含英文文本），
+[ackness/poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats) 发布简体与繁体中文语言包。
+PoBR 在 `pipeline/data.lock.json` 中固定两者，用 `mise run data:prepare` 导入（[数据架构](docs/data-architecture.md)）。
 
 计算在浏览器内完成；WeGame 和市集 HTTP 适配由 Pages Worker 提供。
 WASM/JSON API 与 CLI 仍在迭代，可能随版本变更。
@@ -91,6 +98,7 @@ WASM/JSON API 与 CLI 仍在迭代，可能随版本变更。
 
 ```bash
 mise bootstrap --only packages,tools,task
+mise run data:prepare                 # 导入固定版本的游戏与语言数据
 mise exec -- cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
 mise run verify build codec           # 按需定向测试与 lint
 mise run targets                      # 只列测试目标，不编译
@@ -120,9 +128,12 @@ Rust 使用 **edition 2024**；应用与工具继承 workspace 发布版本，�
 
 ## 参考与致谢
 
-- [PathOfBuildingCommunity/PathOfBuilding-PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)（MIT）提供部分参考数据，
-  并用于回归比较。游戏数据和词条原文是规则依据；`vendor/` 中固定版本的 Lua 用于交叉核对，
-  与游戏证据冲突时不默认 Lua 正确。[仍依赖哪些数据](docs/pob2-differences.md)。
+- [PathOfBuildingCommunity/PathOfBuilding-PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)（MIT）是测试参考：
+  `vendor/` 中固定版本的 Lua 运行 parity 对照与计算 oracle。游戏数据和词条原文是规则依据，Lua 用于交叉核对，
+  与游戏证据冲突时不默认 Lua 正确。仍由 PoB2 转换的字段只以 RePoE 游戏包中的冻结文件进入 PoBR
+  （[仍依赖哪些数据](docs/pob2-differences.md)）。
+- [ackness/repoe](https://github.com/ackness/repoe)（RePoE 的 fork）与 [ackness/poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats)——
+  PoBR 使用的游戏与语言数据包。
 - [poe2db.tw](https://poe2db.tw/) 与 PoE2 Wiki——游戏机制与文本翻译的查证来源。
 
 ## License
