@@ -1010,9 +1010,87 @@ fn a_range_never_lets_a_mixed_line_through() {
     ] {
         assert_eq!(renderer.render_line(line), None, "{line}");
     }
-    // A range in a slot that already takes words is kept as it was.
+    // A plain `{0}%` slot takes a range through the rolled line's skeleton
+    // bucket, ahead of the string channel that took it before.
     assert_eq!(
         renderer.render_line("(1-2)% increased Damage").as_deref(),
         Some("伤害提高 (1-2)%")
+    );
+}
+
+#[test]
+fn a_range_on_the_first_line_of_a_description_joins_the_next_line() {
+    let pack = templates_pack(
+        "zz",
+        serde_json::json!([
+            {"src": "对元素异常状态的敌人的暴击伤害加成 {0:+d}%",
+             "en": "{0:+d}% to Critical Damage Bonus against Enemies that are affected\nby Elemental Ailments"}
+        ]),
+    );
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    for (value, shown) in [("+15", "+15"), ("+(10-20)", "+(10-20)")] {
+        assert_eq!(
+            render(
+                &renderer,
+                &[
+                    &format!("{value}% to Critical Damage Bonus against Enemies that are affected"),
+                    "by Elemental Ailments",
+                ]
+            ),
+            [
+                format!("对元素异常状态的敌人的暴击伤害加成 {shown}%"),
+                String::new()
+            ],
+            "{value}"
+        );
+    }
+}
+
+#[test]
+fn a_whole_line_supplement_wins_over_an_official_composition_for_ranges_too() {
+    use pobr_data::catalog::TextOrigin::Agent;
+    // A per-skill row is more specific than the generic composition: the
+    // numeric channel comes before the string one, as for the rolled line.
+    // (The translation library never gives a supplement an official row's English.)
+    let pack = templates_pack(
+        "zz",
+        serde_json::json!([
+            {"src": "获得技能：{0} 级 {1}", "en": "Grants Skill: Level {0} {1}"},
+            {"src": "获得技能: 等级 {0:d} 电球", "en": "Grants Skill: Level {0:d} Spark", "origin": "agent"},
+            {"src": "电球", "en": "Spark"}
+        ]),
+    );
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    for (line, expected) in [
+        ("Grants Skill: Level 20 Spark", "获得技能: 等级 20 电球"),
+        (
+            "Grants Skill: Level (1-20) Spark",
+            "获得技能: 等级 (1-20) 电球",
+        ),
+    ] {
+        assert_eq!(
+            renderer.render_line_with_origin(line),
+            Some((expected.into(), Some(Agent))),
+            "{line}"
+        );
+    }
+}
+
+#[test]
+fn an_official_rolled_template_wins_over_a_supplement_written_with_parentheses() {
+    // "+(1-2) to Foo" fits both a supplement whose literal holds the
+    // parentheses (its own skeleton bucket) and the official rolled-line
+    // template (the bucket without them): official first, as within a bucket.
+    let pack = templates_pack(
+        "zz",
+        serde_json::json!([
+            {"src": "补译 +({0}-{1}) 某物", "en": "+({0}-{1}) to Foo", "origin": "agent"},
+            {"src": "某物 {0:+d}", "en": "{0:+d} to Foo"}
+        ]),
+    );
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    assert_eq!(
+        renderer.render_line_with_origin("+(1-2) to Foo"),
+        Some(("某物 +(1-2)".into(), None))
     );
 }

@@ -156,6 +156,9 @@ fn is_range_capture(value: &str) -> bool {
 /// -> `grant 1-2% more`), so that its skeleton is the rolled line's; `None`
 /// when it holds no range.
 fn without_range_parentheses(text: &str) -> Option<String> {
+    if !text.contains('(') {
+        return None;
+    }
     let mut out = String::with_capacity(text.len());
     let mut found = false;
     let mut rest = text;
@@ -552,18 +555,20 @@ impl LineTranslator {
     /// The first template in the skeleton bucket `skel` that `text` (of
     /// `lines` lines) matches with numeric captures, rendered, with its
     /// origin. With [`Self::accept_range_values`], a text holding a roll
-    /// range that matches nothing as written also tries the bucket of its
-    /// skeleton without the range's parentheses (the rolled line's).
+    /// range also tries the bucket of its skeleton without the range's
+    /// parentheses (the rolled line's). Official templates of both buckets
+    /// come before any supplement, as within one bucket; each group tries
+    /// the bucket as written first.
     fn translate_numeric(
         &self,
         text: &str,
         skel: &str,
         lines: usize,
     ) -> Option<(String, Option<TextOrigin>)> {
-        let in_bucket = |skel: &str| {
+        let in_bucket = |skel: &str, official: bool| {
             self.buckets.get(skel)?.iter().find_map(|&i| {
                 let candidate = &self.templates[i];
-                if candidate.lines != lines {
+                if candidate.lines != lines || candidate.origin.is_none() != official {
                     return None;
                 }
                 let values =
@@ -571,11 +576,13 @@ impl LineTranslator {
                 Some((render_en(&candidate.en, &values), candidate.origin))
             })
         };
-        in_bucket(skel).or_else(|| {
-            if !self.range_values {
-                return None;
-            }
-            in_bucket(&skeleton(&without_range_parentheses(text)?))
+        let rolled = self
+            .range_values
+            .then(|| without_range_parentheses(text))
+            .flatten()
+            .map(|rolled| skeleton(&rolled));
+        [true, false].into_iter().find_map(|official| {
+            in_bucket(skel, official).or_else(|| in_bucket(rolled.as_deref()?, official))
         })
     }
 
@@ -648,7 +655,8 @@ impl LineTranslator {
     /// when no multi-line template can begin with it (or `line` itself holds
     /// a line break). Joining adjacent lines from `line` on is worth trying
     /// only up to this many, so text with no multi-line description costs
-    /// one lookup per line.
+    /// one lookup per line (two for a line holding a roll range, whose
+    /// rolled skeleton is looked up too).
     pub fn span_from(&self, line: &str) -> usize {
         let line = line.trim();
         if self.max_lines == 1 || line.contains('\n') {
