@@ -40,7 +40,10 @@ mod locale;
 mod usage;
 
 pub use breakdown::{BuildDetail, StatBreakdownEntry, render_breakdowns};
-pub use locale::{Locale, SOURCE_LANGUAGE, TypedInput, available_languages};
+pub use locale::{
+    Locale, SOURCE_LANGUAGE, SUPPLEMENT_FOOTNOTE, SUPPLEMENT_MARKER, TypedInput,
+    available_languages, render_build_text,
+};
 
 /// The unified error type for the CLI library layer.
 #[derive(Debug, Error)]
@@ -860,6 +863,11 @@ pub struct ParseItemReport {
     pub modifiers: Vec<ParsedModEntry>,
     /// Mod line text that `mod_parser` couldn't recognize (kept verbatim, never errors).
     pub unsupported: Vec<String>,
+    /// The texts above shown in a `--lang` locale that are not official:
+    /// rendered text -> who wrote it (`agent` / `human`, the translation
+    /// repository's own supplement). Absent when every shown text is official.
+    #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub origins: std::collections::BTreeMap<String, pobr_data::catalog::TextOrigin>,
 }
 
 /// Parses raw item text, outputting a structured [`ParseItemReport`].
@@ -927,6 +935,7 @@ pub fn parse_item(req: &ParseItemRequest) -> Result<ParseItemReport, CliError> {
         quality: item.quality,
         modifiers,
         unsupported: ingest.unsupported,
+        origins: Default::default(),
     })
 }
 
@@ -1235,6 +1244,11 @@ pub struct CalculateBuildReport {
     /// With --usage: isolated per-rule differences on the reference model basis.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub beyond_pob2: Vec<pobr_build::exporter_impact::ExporterRuleImpact>,
+    /// The texts above shown in a `--lang` locale that are not official:
+    /// rendered text -> who wrote it (`agent` / `human`, the translation
+    /// repository's own supplement). Absent when every shown text is official.
+    #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub origins: std::collections::BTreeMap<String, pobr_data::catalog::TextOrigin>,
 }
 
 fn is_false(value: &bool) -> bool {
@@ -1506,6 +1520,7 @@ pub fn calculate_build_detailed(
         main_skill,
         usage,
         beyond_pob2,
+        origins: Default::default(),
     })
 }
 
@@ -1585,6 +1600,11 @@ pub struct MarginalReport {
     /// are omitted; an empty list means the mod line has no visible impact
     /// on the key outputs).
     pub deltas: Vec<OutputDelta>,
+    /// The texts above shown in a `--lang` locale that are not official:
+    /// rendered text -> who wrote it (`agent` / `human`, the translation
+    /// repository's own supplement). Absent when every shown text is official.
+    #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub origins: std::collections::BTreeMap<String, pobr_data::catalog::TextOrigin>,
 }
 
 /// Computes a candidate mod line's marginal contribution to a build:
@@ -1632,6 +1652,7 @@ pub fn marginal_contribution(req: &MarginalRequest) -> Result<MarginalReport, Cl
         build: build_summary(&build),
         added_mod_texts: req.mod_texts.clone(),
         deltas: build_deltas(before.output(), after.output()),
+        origins: Default::default(),
     })
 }
 
@@ -1771,9 +1792,13 @@ pub fn explain_mod_with_marginal_text(
     let data = GameData::new(req.data_dir.clone());
     let rules = ParseModRules::from_game_data(&data)?;
     let explain = explain_mod_localized(text, &rules, locale)?;
-    let marginal = localized_marginal(req, locale)?;
+    let mut marginal = localized_marginal(req, locale)?;
+    let marked = locale::mark_marginal_for_text(&mut marginal);
     let mut s = render_explain(&explain);
     s.push_str(&render_marginal(&marginal));
+    if marked {
+        locale::push_supplement_footnote(&mut s);
+    }
     Ok(s)
 }
 
@@ -1993,6 +2018,7 @@ mod marginal_tests {
             },
             added_mod_texts: vec!["+5 to Fishing Line Strength".to_string()],
             deltas: Vec::new(),
+            origins: Default::default(),
         };
         let text = render_marginal(&report);
         assert!(text.contains("Marginal contribution"));

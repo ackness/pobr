@@ -57,7 +57,7 @@ pub mod stat_map;
 pub mod stat_descriptions;
 // Phase 7.1: mod-line input translation templates (i18n/<lang>/stat_lines.json)
 pub mod i18n_stat_lines;
-pub use i18n_stat_lines::StatLineTemplate;
+pub use i18n_stat_lines::{StatLineTemplate, TextOrigin};
 //  StatId→Modifier mapping table (stat_descriptions baked by the engine's parser)
 pub mod stat_id_map;
 

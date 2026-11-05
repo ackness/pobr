@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { nativeDisplayTexts } from './nativeDisplayTexts';
+import { listedOrigin, nativeDisplayTexts } from './nativeDisplayTexts';
 import { GameTextLocalizer } from './localizedGameText';
 
 const data = (locale = 'zh-TW') => ({
@@ -36,4 +36,36 @@ test('whole literal descriptions are not substituted or converted across locales
   const localizer = new GameTextLocalizer([], [nativeDisplayTexts(value, 'test', 'zh-TW')]);
   expect(localizer.localize('Fire a [Projectile].', 'Old', 'zh-TW')).toBe('發射一枚 [Projectile|投射物]。');
   expect(localizer.localize('Fire a [Projectile]. Changed', 'Old', 'zh-TW')).toBe('Old');
+});
+
+test('supplement origins are optional; a listed literal keeps its origin, every other text is official', () => {
+  // Absent: exactly today's catalogs.
+  expect(nativeDisplayTexts(data(), 'test', 'zh-TW').origins).toBeUndefined();
+  const value = { ...data(), entries: { ...data().entries, Ours: '我方' },
+    origins: { entries: { Ours: 'agent' }, scopes: { 'ItemClasses.Name': { id: 'human' } } } };
+  const catalog = nativeDisplayTexts(value, 'test', 'zh-TW');
+  const localizer = new GameTextLocalizer([], [catalog]);
+  expect(localizer.localizeDetailed('Ours', { text: 'Ours', origin: null }, 'zh-TW')).toEqual({ text: '我方', origin: 'agent' });
+  // A supplement never overrides official text: an official, translated rendering wins over the literal.
+  expect(localizer.localizeDetailed('Ours', { text: '官方', origin: null }, 'zh-TW')).toEqual({ text: '官方', origin: null });
+  expect(localizer.localizeDetailed('Ours', { text: '补译', origin: 'human' }, 'zh-TW')).toEqual({ text: '我方', origin: 'agent' });
+  expect(localizer.localizeDetailed('Known', { text: 'x', origin: null }, 'zh-TW')).toEqual({ text: '原生', origin: null });
+  // Unresolved stays English and official; an unowned line keeps the rendered line's origin.
+  expect(localizer.localizeDetailed('Missing', { text: 'x', origin: 'agent' }, 'zh-TW')).toEqual({ text: 'Missing', origin: null });
+  expect(localizer.localizeDetailed('Unowned', { text: '伤害', origin: 'agent' }, 'zh-TW')).toEqual({ text: '傷害', origin: 'agent' });
+  expect(localizer.localizeDetailed('Ours', { text: 'x', origin: 'agent' }, 'en-US')).toEqual({ text: 'Ours', origin: null });
+  expect(localizer.localizeLinesDetailed(['Ours', 'Unowned'], [{ text: 'Ours', origin: null }, { text: '伤害', origin: 'human' }], 'zh-TW'))
+    .toEqual([{ text: '我方', origin: 'agent' }, { text: '傷害', origin: 'human' }]);
+  expect(localizer.localize('Ours', 'Ours', 'zh-TW')).toBe('我方');
+  expect(localizer.localize('Ours', '官方', 'zh-TW')).toBe('官方');
+  for (const origins of [[], { entries: [] }, { scopes: { a: [] } }, { scopes: [] }]) {
+    expect(() => nativeDisplayTexts({ ...value, origins }, 'test', 'zh-TW')).toThrow(/shape/);
+  }
+  // An origin value the web does not know keeps the catalog and reads as a supplement, never official.
+  const unknown = nativeDisplayTexts({ ...value, origins: { entries: { Ours: 'mine' }, scopes: { a: { b: 1 } } } }, 'test', 'zh-TW');
+  expect(listedOrigin(unknown.origins?.entries, 'Ours')).toBe('agent');
+  expect(listedOrigin(unknown.origins?.scopes?.a, 'b')).toBe('agent');
+  expect(listedOrigin({ x: 'official', y: 'human' }, 'x')).toBeNull();
+  expect(listedOrigin({ x: null }, 'x')).toBeNull();
+  expect(listedOrigin({ x: 'official', y: 'human' }, 'y')).toBe('human');
 });

@@ -165,3 +165,89 @@ test('base lines resolve through every BaseItemTypes id with that English, never
   expect(index.resolve(base('Sapphire'), 'zh-TW')).toBeUndefined();
   expect(new NativeNameIndex([catalog({})], bases).resolve(base('Sapphire'), 'zh-CN')).toBeUndefined();
 });
+
+const monster = (id: string | undefined, name: string) => ({ kind: 'monster' as const, id, name });
+
+test('minion names come only from MonsterVarieties.Name by variety id, mixing official and supplement records', () => {
+  const source = { ...catalog({ 'MonsterVarieties.Name': {
+    'Metadata/Monsters/A': ['Raging Spirit', '愤怒之灵'], 'Metadata/Monsters/B': ['Skeletal Warrior', '骷髅战士'],
+    'Metadata/Monsters/C': ['Unresolved', null],
+  } }), origins: { entries: {}, scopes: { 'MonsterVarieties.Name': { 'Metadata/Monsters/B': 'agent' as const } } } };
+  const index = new NativeNameIndex([source]);
+  expect(index.resolveDetailed(monster('Metadata/Monsters/A', 'Raging Spirit'), 'zh-CN')).toEqual({ text: '愤怒之灵', origin: null });
+  expect(index.resolveDetailed(monster('Metadata/Monsters/B', 'Skeletal Warrior'), 'zh-CN')).toEqual({ text: '骷髅战士', origin: 'agent' });
+  // No record, no variety id, other English or no scope: English, never the text path.
+  for (const request of [monster('Metadata/Monsters/C', 'Unresolved'), monster('Metadata/Monsters/Z', 'Zombie'),
+    monster(undefined, 'Raging Spirit'), monster('Metadata/Monsters/A', 'Renamed')]) {
+    expect(index.resolveDetailed(request, 'zh-CN')).toBeNull();
+  }
+  expect(new NativeNameIndex([catalog({})]).resolve(monster('Metadata/Monsters/A', 'Raging Spirit'), 'zh-CN')).toBeNull();
+  expect(new NativeNameIndex([]).resolve(monster('Metadata/Monsters/A', 'Raging Spirit'), 'zh-CN')).toBeNull();
+  const { pending, mergeDetailed } = index.split([monster('Metadata/Monsters/B', 'Skeletal Warrior'),
+    monster('Metadata/Monsters/Z', 'Zombie'), passive('p', 'Life')], 'zh-CN');
+  expect(pending).toEqual(['Life']);
+  expect(mergeDetailed([{ text: '生命', origin: 'human' }])).toEqual([
+    { text: '骷髅战士', origin: 'agent' }, { text: 'Zombie', origin: null }, { text: '生命', origin: 'human' }]);
+});
+
+test('passive and base names carry their scope record origin; absent origins are official', () => {
+  const scopes = { 'PassiveSkills.Name': { mana10: ['Mana Regeneration', '魔力再生'] as [string, string] },
+    'BaseItemTypes.Name': { B1: ['Agreed', '同'] as [string, string], B2: ['Agreed', '同'] as [string, string] } };
+  const bases = [{ id: 'B1', name: 'Agreed' }, { id: 'B2', name: 'Agreed' }];
+  const official = new NativeNameIndex([catalog(scopes)], bases);
+  expect(official.resolveDetailed(passive('mana10', 'Mana Regeneration'), 'zh-CN')).toEqual({ text: '魔力再生', origin: null });
+  const ours = new NativeNameIndex([{ ...catalog(scopes), origins: { entries: {}, scopes: {
+    'PassiveSkills.Name': { mana10: 'human' as const }, 'BaseItemTypes.Name': { B2: 'agent' as const } } } }], bases);
+  expect(ours.resolveDetailed(passive('mana10', 'Mana Regeneration'), 'zh-CN')).toEqual({ text: '魔力再生', origin: 'human' });
+  expect(ours.resolveDetailed({ kind: 'base', name: 'Agreed' }, 'zh-CN')).toEqual({ text: '同', origin: 'agent' });
+  expect(ours.resolve({ kind: 'base', name: 'Agreed' }, 'zh-CN')).toBe('同');
+});
+
+test('zh-TW minion names convert the zh-CN record unless a zh-TW catalog names the variety itself', () => {
+  const cn = { ...catalog({ 'MonsterVarieties.Name': {
+    'Metadata/Monsters/A': ['Raging Spirit', '愤怒之灵'], 'Metadata/Monsters/B': ['Skeletal Warrior', '骷髅战士'],
+    'Metadata/Monsters/C': ['Skeletal Brute', '骷髅蛮兵'],
+  } }), origins: { entries: {}, scopes: { 'MonsterVarieties.Name': { 'Metadata/Monsters/B': 'agent' as const } } } };
+  const cnOnly = new NativeNameIndex([cn]);
+  // A converted supplement is still a supplement.
+  expect(cnOnly.resolveDetailed(monster('Metadata/Monsters/A', 'Raging Spirit'), 'zh-TW')).toEqual({ text: '憤怒之靈', origin: null });
+  expect(cnOnly.resolveDetailed(monster('Metadata/Monsters/B', 'Skeletal Warrior'), 'zh-TW')).toEqual({ text: '骷髏戰士', origin: 'agent' });
+  expect(cnOnly.resolveDetailed(monster('Metadata/Monsters/A', 'Renamed'), 'zh-TW')).toBeNull();
+  expect(cnOnly.resolveDetailed(monster(undefined, 'Raging Spirit'), 'zh-TW')).toBeNull();
+  // A zh-TW record wins as written; its explicit null keeps English; an id it lacks falls back to zh-CN.
+  const tw = catalog({ 'MonsterVarieties.Name': {
+    'Metadata/Monsters/A': ['Raging Spirit', '狂怒之靈'], 'Metadata/Monsters/B': ['Skeletal Warrior', null],
+  } }, 'zh-TW');
+  const both = new NativeNameIndex([cn, tw]);
+  expect(both.resolveDetailed(monster('Metadata/Monsters/A', 'Raging Spirit'), 'zh-TW')).toEqual({ text: '狂怒之靈', origin: null });
+  expect(both.resolveDetailed(monster('Metadata/Monsters/B', 'Skeletal Warrior'), 'zh-TW')).toBeNull();
+  expect(both.resolveDetailed(monster('Metadata/Monsters/C', 'Skeletal Brute'), 'zh-TW')).toEqual({ text: '骷髏蠻兵', origin: null });
+  // zh-CN keeps its own record and script.
+  expect(both.resolveDetailed(monster('Metadata/Monsters/A', 'Raging Spirit'), 'zh-CN')).toEqual({ text: '愤怒之灵', origin: null });
+});
+
+test('a supplement scope record yields to an official text-path translation, never the reverse', () => {
+  const source = { ...catalog({ 'PassiveSkills.Name': {
+    a: ['Mana Regeneration', '我方魔力再生'], b: ['Life', '我方生命'], c: ['Official Node', '官方节点'],
+  } }), origins: { entries: {}, scopes: { 'PassiveSkills.Name': { a: 'agent' as const, b: 'human' as const } } } };
+  const index = new NativeNameIndex([source]);
+  const { pending, mergeDetailed } = index.split([passive('a', 'Mana Regeneration'), passive('b', 'Life'),
+    passive('c', 'Official Node'), passive('a', 'Mana Regeneration')], 'zh-CN');
+  // Supplement records also ask the text path; official ones do not.
+  expect(pending).toEqual(['Mana Regeneration', 'Life']);
+  expect(mergeDetailed([{ text: '魔力再生', origin: null }, { text: 'Life', origin: null }])).toEqual([
+    { text: '魔力再生', origin: null }, // official text path wins
+    { text: '我方生命', origin: 'human' }, // the text path left it English
+    { text: '官方节点', origin: null },
+    { text: '魔力再生', origin: null },
+  ]);
+  // A supplement text path never replaces a supplement record.
+  expect(mergeDetailed([{ text: '另一补译', origin: 'agent' }, { text: '生命', origin: 'agent' }]).slice(0, 2))
+    .toEqual([{ text: '我方魔力再生', origin: 'agent' }, { text: '我方生命', origin: 'human' }]);
+  // A minion's supplement record stays: minions have no text path.
+  const minions = new NativeNameIndex([{ ...catalog({ 'MonsterVarieties.Name': { m: ['Wolf', '狼'] } }),
+    origins: { entries: {}, scopes: { 'MonsterVarieties.Name': { m: 'agent' as const } } } }]);
+  const split = minions.split([monster('m', 'Wolf')], 'zh-CN');
+  expect(split.pending).toEqual([]);
+  expect(split.mergeDetailed([])).toEqual([{ text: '狼', origin: 'agent' }]);
+});

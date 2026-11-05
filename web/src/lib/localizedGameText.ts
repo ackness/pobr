@@ -1,6 +1,6 @@
 import { chineseScript, localizedName } from './chinese';
 import type { Lang } from './i18n';
-import type { NativeDisplayTexts } from './nativeDisplayTexts';
+import { listedOrigin, type DisplayText, type NativeDisplayTexts } from './nativeDisplayTexts';
 
 export interface GameDisplayName {
   name: string;
@@ -18,11 +18,13 @@ export class GameTextLocalizer {
   private readonly byName = new Map<string, GameDisplayName>();
   private readonly mentionedNames: RegExp | null;
   private readonly nativeTexts = new Map<Lang, Readonly<Record<string, string | null>>>();
+  private readonly nativeOrigins = new Map<Lang, Readonly<Record<string, unknown>> | undefined>();
 
   constructor(names: GameDisplayName[], catalogs: NativeDisplayTexts[] = []) {
     for (const catalog of catalogs) {
       if (this.nativeTexts.has(catalog.locale)) throw new Error('Duplicate native display locale');
       this.nativeTexts.set(catalog.locale, catalog.entries);
+      this.nativeOrigins.set(catalog.locale, catalog.origins?.entries);
     }
     for (const entry of names) {
       const previous = this.byEnglish.get(entry.name);
@@ -48,14 +50,33 @@ export class GameTextLocalizer {
       : null;
   }
 
+  /** {@link localizeDetailed} of a rendering taken as official. */
   localize(line: string, simplified: string, lang: Lang): string {
-    if (lang === 'en-US') return line;
+    return this.localizeDetailed(line, { text: simplified, origin: null }, lang).text;
+  }
+
+  /** {@link localize} with who wrote the shown text: a catalog literal's own origin, otherwise the
+   * rendered line's (`rendered`, from `translateLinesDetailed`); a whole name or English is official.
+   * A supplement never overrides official text: a literal the catalog lists as a supplement yields to
+   * a rendering that is official and actually translated. */
+  localizeDetailed(line: string, rendered: DisplayText, lang: Lang): DisplayText {
+    if (lang === 'en-US') return { text: line, origin: null };
     const native = this.nativeTexts.get(lang);
     // A source-owned unresolved/colliding text must not silently resurrect an
     // older dictionary translation. Never relabel an alternate-locale catalog.
-    if (native && Object.hasOwn(native, line)) return native[line] ?? line;
+    if (native && Object.hasOwn(native, line)) {
+      const text = native[line];
+      if (text === null) return { text: line, origin: null };
+      const origin = listedOrigin(this.nativeOrigins.get(lang), line);
+      if (!origin || rendered.origin !== null || rendered.text === line) return { text, origin };
+    }
     const exact = this.byName.get(line.trim());
-    if (exact) return localizedName(lang, exact.name, exact.name_zh_cn, exact.name_zh_tw);
+    if (exact) return { text: localizedName(lang, exact.name, exact.name_zh_cn, exact.name_zh_tw), origin: null };
+    return { text: this.mentioning(line, rendered.text, lang), origin: rendered.origin };
+  }
+
+  /** `simplified` in `lang`'s script, with the names `line` mentions replaced by `lang`'s. */
+  private mentioning(line: string, simplified: string, lang: Lang): string {
     let display = chineseScript(simplified, lang);
     if (!this.mentionedNames) return display;
     const replacements = new Map<string, string>();
@@ -77,5 +98,9 @@ export class GameTextLocalizer {
 
   localizeLines(lines: readonly string[], simplified: readonly string[], lang: Lang): string[] {
     return lines.map((line, index) => this.localize(line, simplified[index] ?? line, lang));
+  }
+
+  localizeLinesDetailed(lines: readonly string[], rendered: readonly DisplayText[], lang: Lang): DisplayText[] {
+    return lines.map((line, index) => this.localizeDetailed(line, rendered[index] ?? { text: line, origin: null }, lang));
   }
 }

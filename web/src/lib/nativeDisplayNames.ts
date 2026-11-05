@@ -1,7 +1,8 @@
 import type { ClassNames, GemCatalogEntry, PassiveTreeMeta } from '../api/types';
-import { localizedName } from './chinese';
+import { chineseScript, localizedName } from './chinese';
+import { gameTextChain } from './gameLocales';
 import type { Lang } from './i18n';
-import type { NativeDisplayTexts } from './nativeDisplayTexts';
+import { listedOrigin, type DisplayText, type NativeDisplayTexts, type TextOrigin } from './nativeDisplayTexts';
 import type { CraftingMetadata } from '../api/itemCrafting';
 
 /** The same gem -> effect links consumed by GameData, including its overlay. */
@@ -41,7 +42,19 @@ export type GameNameRequest =
   /** A passive node: its PassiveSkills Id (`passive_tree.json` `id`) and its current effective name. */
   | { kind: 'passive'; id: string; name: string }
   /** A line the item classifier or the item format marks as the base type. */
-  | { kind: 'base'; name: string };
+  | { kind: 'base'; name: string }
+  /** A minion: its game MonsterVarieties Id (the WASM `monster_variety_id`) and English name. Only the
+   * `MonsterVarieties.Name` scope names it, the first along the game-text chain that has the record (in
+   * the shown script, origin kept); without a record it stays English (no text path). */
+  | { kind: 'monster'; id?: string | null; name: string };
+
+/** The supplement origin of a resolved name: the scope record's, or for a base line the first linked
+ * id's that lists one (`null` = official). */
+function scopeOrigin(catalog: NativeDisplayTexts, scope: string, ids: readonly string[]): TextOrigin | null {
+  const origins = catalog.origins?.scopes?.[scope];
+  const listed = ids.map(id => listedOrigin(origins, id));
+  return listed.includes('agent') ? 'agent' : listed.includes('human') ? 'human' : null;
+}
 
 /** One id-scoped record checked against the English being shown. A different
  * English means the id now shows another text (a transformed node or stale
@@ -53,8 +66,9 @@ function scopedName(scope: Scope | undefined, id: string, english: string): stri
   return source === english && translated?.trim() ? translated : null;
 }
 
-/** Id-scoped names from each locale's own catalog; never another locale's.
- * undefined means unowned (use the text path), null means explicitly unresolved (show English). */
+/** Id-scoped names from each locale's own catalog (a minion's along its game-text chain, converted to
+ * its script). undefined means unowned (use the text path), null means explicitly unresolved (show
+ * English). */
 export class NativeNameIndex {
   private readonly catalogs = new Map<Lang, NativeDisplayTexts>();
   private readonly baseIds = new Map<string, string[]>();
@@ -72,24 +86,69 @@ export class NativeNameIndex {
   }
 
   resolve(request: GameNameRequest, lang: Lang): string | null | undefined {
-    const catalog = this.catalogs.get(lang);
-    if (!catalog || !request.name) return undefined;
-    if (request.kind === 'passive') return scopedName(catalog.scopes['PassiveSkills.Name'], request.id, request.name);
-    const scope = catalog.scopes['BaseItemTypes.Name'];
-    return scope ? linkedName(scope, this.baseIds.get(request.name) ?? [], request.name) : undefined;
+    const resolved = this.resolveDetailed(request, lang);
+    return resolved && resolved.text;
   }
 
-  /** `translateNames` in two steps: `pending` are the distinct English names the catalog does not own;
-   * `merge` takes their text-path translations, in `pending` order, and returns every displayed name. */
-  split(requests: readonly GameNameRequest[], lang: Lang): { pending: string[]; merge: (texts: readonly string[]) => string[] } {
-    const scoped = requests.map(request => this.resolve(request, lang));
+  /** {@link resolve} with the origin of the record that named it: `{text, origin}` when the catalog
+   * names it, `null` when it owns it but leaves it unresolved (show English), undefined when unowned. */
+  resolveDetailed(request: GameNameRequest, lang: Lang): DisplayText | null | undefined {
+    const catalog = this.catalogs.get(lang);
+    if (request.kind === 'monster') {
+      // Minion names were never translated by text; only an exact variety record names one. A locale
+      // without its own record takes its chain's next one converted to its script, as other game
+      // text does; a record left unresolved (null) keeps English.
+      if (lang === 'en-US' || !request.name) return undefined;
+      if (!request.id) return null;
+      for (const code of gameTextChain(lang)) {
+        const source = this.catalogs.get(code as Lang);
+        const text = source && scopedName(source.scopes['MonsterVarieties.Name'], request.id, request.name);
+        if (text === null) return null;
+        if (text) return { text: code === lang ? text : chineseScript(text, lang),
+          origin: scopeOrigin(source!, 'MonsterVarieties.Name', [request.id]) };
+      }
+      return null;
+    }
+    if (!catalog || !request.name) return undefined;
+    if (request.kind === 'passive') {
+      const text = scopedName(catalog.scopes['PassiveSkills.Name'], request.id, request.name);
+      return typeof text === 'string' ? { text, origin: scopeOrigin(catalog, 'PassiveSkills.Name', [request.id]) } : text;
+    }
+    const scope = catalog.scopes['BaseItemTypes.Name'];
+    if (!scope) return undefined;
+    const ids = this.baseIds.get(request.name) ?? [];
+    const text = linkedName(scope, ids, request.name);
+    return typeof text === 'string' ? { text, origin: scopeOrigin(catalog, 'BaseItemTypes.Name', ids.filter(id => own(scope, id))) } : text;
+  }
+
+  /** `translateNames` in two steps: `pending` are the distinct English names the catalog does not own,
+   * and those it names with a supplement (a passive or base record with an origin); `merge` takes their
+   * text-path translations, in `pending` order, and returns every displayed name (`mergeDetailed` the
+   * same with origins: a text-path name keeps its line's origin). A supplement never overrides
+   * official text: a supplement record yields to a text-path translation that is official. */
+  split(requests: readonly GameNameRequest[], lang: Lang): {
+    pending: string[];
+    merge: (texts: readonly string[]) => string[];
+    mergeDetailed: (texts: readonly DisplayText[]) => DisplayText[];
+  } {
+    const scoped = requests.map(request => this.resolveDetailed(request, lang));
+    // Minion names have no text path.
+    const textPath = requests.map((request, index) => scoped[index] === undefined
+      || (request.kind !== 'monster' && !!scoped[index]?.origin));
     // A tree repeats names (many "Mana Regeneration" nodes): translate each once.
-    const pending = [...new Set(requests.filter((_, index) => scoped[index] === undefined).map(request => request.name))];
-    return { pending, merge: texts => {
-      const byName = new Map(pending.map((name, index) => [name, texts[index] ?? name]));
-      return requests.map((request, index) => scoped[index] === undefined
-        ? byName.get(request.name) ?? request.name : scoped[index] ?? request.name);
-    } };
+    const pending = [...new Set(requests.filter((_, index) => textPath[index]).map(request => request.name))];
+    const mergeDetailed = (texts: readonly DisplayText[]) => {
+      const byName = new Map(pending.map((name, index) => [name, texts[index] ?? { text: name, origin: null }]));
+      return requests.map((request, index) => {
+        const english = { text: request.name, origin: null };
+        const rendered = textPath[index] ? byName.get(request.name) ?? english : undefined;
+        const record = scoped[index];
+        if (record === undefined) return rendered!;
+        return record && rendered && rendered.origin === null && rendered.text !== request.name ? rendered : record ?? english;
+      });
+    };
+    return { pending, mergeDetailed,
+      merge: texts => mergeDetailed(texts.map(text => ({ text, origin: null }))).map(name => name.text) };
   }
 }
 

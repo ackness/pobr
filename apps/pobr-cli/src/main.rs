@@ -283,7 +283,7 @@ fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
                 );
             }
             if as_text {
-                return Ok(pobr_cli::render_breakdowns(&report));
+                return Ok(pobr_cli::render_build_text(report));
             }
             Ok(serde_json::to_string_pretty(&report)?)
         }

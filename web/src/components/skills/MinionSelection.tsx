@@ -1,8 +1,9 @@
 import { AppInput } from '../shared/controls';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { MinionCatalog } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
+import { useLocalizedNames } from '../../hooks/useLocalizedLines';
 import { bindT, type Lang } from '../../lib/i18n';
 import { AppSelect } from '../shared/AppSelect';
 import './skills.css';
@@ -21,6 +22,10 @@ export function MinionSelection({ session, lang, groupIndex, gemIndex, gemName }
     catalogPromise.then(value => { if (active) setCatalog(value); }).catch(() => { if (active) setFailed(true); });
     return () => { active = false; };
   }, []);
+  // Monster names by game variety id; English without a MonsterVarieties.Name record.
+  const names = useLocalizedNames(useMemo(() => (catalog?.monsters ?? []).map(row =>
+    ({ kind: 'monster' as const, id: row.monster_variety_id, name: row.name })), [catalog]), lang);
+  const shownName = useMemo(() => new Map((catalog?.monsters ?? []).map((row, index) => [row.id, names[index] ?? row.name])), [catalog, names]);
   const group = session.socketGroups[groupIndex];
   const gem = group?.gems[gemIndex];
   const summoner = catalog?.summoners.find(row => row.skill_id === gem?.skill_id);
@@ -34,14 +39,16 @@ export function MinionSelection({ session, lang, groupIndex, gemIndex, gemName }
   const selectedSkill = Math.min(Math.max(gem.minion_skill ?? 1, 1), monster?.skills.length || 1);
   const update = (patch: { minion?: string; minion_skill?: number }) => session.setSocketGroups(session.socketGroups.map((item, index) => index === groupIndex
     ? { ...item, gems: item.gems.map((value, indexGem) => indexGem === gemIndex ? { ...value, ...patch } : value) } : item));
-  const visible = choices.filter(row => row.id === id || row.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const label = (row: MinionCatalog['monsters'][number]) => shownName.get(row.id) ?? row.name;
+  const needle = query.trim().toLowerCase();
+  const visible = choices.filter(row => row.id === id || row.name.toLowerCase().includes(needle) || label(row).toLowerCase().includes(needle));
   return <div className="minion-controls" role="group" aria-label={`${tt('minion.title')}: ${gemName}`}>
     <h4>{gemName} · {tt('minion.title')}</h4>
     {choices.length > 8 && <AppInput type="search" value={query} placeholder={tt('minion.search')} aria-label={tt('minion.search')}
       onChange={event => setQuery(event.target.value)} />}
     <label>{tt('minion.identity')}<AppSelect ariaLabel={tt('minion.identity')} value={id ?? ''}
       placeholder={id ? tt('minion.unavailable') : tt('minion.choose')} disabled={session.busy}
-      options={visible.map(row => ({ value: row.id, label: row.name }))}
+      options={visible.map(row => ({ value: row.id, label: label(row) }))}
       onChange={value => { update({ minion: value, minion_skill: undefined }); setQuery(''); }} /></label>
     {monster && (monster.skills.length ? <label>{tt('minion.skill')}<AppSelect ariaLabel={tt('minion.skill')}
       value={String(selectedSkill)} disabled={session.busy}

@@ -151,19 +151,24 @@ const localizer = new GameTextLocalizer([
   ...bases.map(base => ({ name: base.name, name_zh_cn: cnBases[base.id], name_zh_tw: twBases[base.id] })),
   ...rawGems,
 ], catalogs);
+// Each text with its origin: null for official text, 'agent' / 'human' for the translation
+// repository's own supplement. A package without translateLinesDetailed has only official text.
 function translate(lines, lang) {
-  if (lang === 'en-US' || !lines.length) return [...lines];
+  const official = text => ({ text, origin: null });
+  if (lang === 'en-US' || !lines.length) return lines.map(official);
   const templates = lineTemplateLocale(lang);
-  const rendered = templates ? JSON.parse(engine.translateLines(templates, JSON.stringify(lines))) : [...lines];
-  return localizer.localizeLines(lines, rendered, lang);
+  const rendered = !templates ? lines.map(official)
+    : engine.translateLinesDetailed ? JSON.parse(engine.translateLinesDetailed(templates, JSON.stringify(lines)))
+      : JSON.parse(engine.translateLines(templates, JSON.stringify(lines))).map(official);
+  return localizer.localizeLinesDetailed(lines, rendered, lang);
 }
 // Names of known identity as wasmBackend.translateNames shows them: passive node names by
 // PassiveSkills id, classified base lines by base identity, the rest through translate().
 const nameIndex = new NativeNameIndex(catalogs, bases);
 function translateEntries(entries, lang) {
   const named = entries.filter(entry => entry.name).map(entry => entry.name);
-  const { pending, merge } = nameIndex.split(named, lang);
-  const names = lang === 'en-US' ? named.map(name => name.name) : merge(translate(pending, lang));
+  const { pending, mergeDetailed } = nameIndex.split(named, lang);
+  const names = lang === 'en-US' ? named.map(name => ({ text: name.name, origin: null })) : mergeDetailed(translate(pending, lang));
   const texts = translate(entries.filter(entry => !entry.name).map(entry => entry.text), lang);
   let n = 0, t = 0;
   return entries.map(entry => entry.name ? names[n++] : texts[t++]);
@@ -261,9 +266,14 @@ function auditBuild(name, code) {
     const why = rawIdReason(minion.name, minion.minion_id);
     if (why) add(`minion name is ${why}`, `${minion.minion_id} → "${minion.name}"`);
     if (!(minion.life > 0)) add('minion Life <= 0', `${minion.name} life=${minion.life}`);
-    // Results, Calcs and the inspector print minion.name as is, in every language.
-    if (LANGS.some(lang => lang !== 'en-US') && untranslated(minion.name ?? '')) {
+    // Calcs shows the MonsterVarieties.Name record of the minion's variety, else minion.name.
+    const shown = LANGS.filter(lang => lang !== 'en-US').map(lang => [lang, nameIndex.resolveDetailed(
+      { kind: 'monster', id: minion.monster_variety_id, name: minion.name ?? '' }, lang) ?? { text: minion.name ?? '', origin: null }]);
+    if (shown.some(([, name]) => untranslated(name.text))) {
       add('minion name shown in English', `${minion.minion_id} → "${minion.name}"`);
+    }
+    for (const [lang, name] of shown) {
+      if (name.origin && !untranslated(name.text)) add(`minion name is supplement text [${lang}]`, `${minion.minion_id} → "${name.text}" (${name.origin})`);
     }
   }
   for (const skill of out.full_dps?.skills ?? []) {
@@ -315,21 +325,29 @@ function auditBuild(name, code) {
         let rendered;
         try { rendered = groups.flatMap(group => translateEntries(group, lang)); } catch (error) { add(`translateLines error [${lang}]`, String(error)); continue; }
         const lines = groups.flat();
-        let missed = 0, counted = 0;
-        rendered.forEach((text, i) => {
+        let missed = 0, counted = 0, supplement = 0;
+        rendered.forEach(({ text, origin }, i) => {
           if (lines[i].separator) return;
           counted++;
           // A line a multi-line description translated into the line above shows no row.
           if (isContinuation(lines[i].text, text)) return;
           const why = rawIdReason(text);
           if (why && why !== 'empty') add(`${kind} line shows ${why} [${lang}]`, `${lines[i].where}: "${text}"`);
-          else if (untranslated(text)) {
-            missed++;
+          else {
             const what = kind === 'item' ? `item ${lines[i].kind} line` : lines[i].kind === 'passive name' ? 'passive name' : 'passive line';
-            add(`${what} untranslated [${lang}]`, `${lines[i].where}: ${text}`);
+            if (untranslated(text)) {
+              missed++;
+              add(`${what} untranslated [${lang}]`, `${lines[i].where}: ${text}`);
+            } else if (origin) {
+              // Translated, but by the translation repository rather than the official client.
+              supplement++;
+              add(`${what} is supplement text [${lang}]`, `${lines[i].where}: ${text} (${origin})`);
+            }
           }
         });
+        // `translated/counted`; the supplement share of the translated lines only when there is one.
         r.counts[`${kind}_lines_${lang}`] = `${counted - missed}/${counted}`;
+        if (supplement) r.counts[`${kind}_supplement_lines_${lang}`] = `${supplement}/${counted - missed}`;
       }
     }
   }
@@ -341,6 +359,8 @@ const SECTIONS = [
   { title: 'Errors', strict: true, test: kind => /error|exception|unresolved$|non-finite|<= 0|missing item/.test(kind) },
   { title: 'Raw ids and placeholders in names', strict: true, test: kind => / is (metadata id|skill id|CamelCase id|snake_case key|placeholder|empty)| shows /.test(kind) },
   { title: 'Names and lines left untranslated', test: kind => /untranslated|in English/.test(kind) },
+  // Translated lines and names whose text is the translation repository's own, not the client's.
+  { title: 'Supplement (non-official) text', test: kind => / is supplement text /.test(kind) },
   { title: 'Calculation coverage', test: kind => /^unsupported|^unparsed|^gem stat|not in tree|^0 DPS/.test(kind) },
   // Unresolved gems ("· (unresolved)" on the Skills page) and catalog fallbacks.
   { title: 'Other', test: () => true },

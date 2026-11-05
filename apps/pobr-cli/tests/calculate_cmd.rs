@@ -1059,6 +1059,90 @@ fn lang_shows_a_build_reports_mod_lines_in_the_locale() {
 }
 
 #[test]
+fn lang_marks_the_translation_repositorys_own_text() {
+    let request = CalculateBuildRequest {
+        code: DEADEYE_CODE.to_string(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    let detail = BuildDetail {
+        breakdown: vec!["Life".into()],
+        ..BuildDetail::default()
+    };
+    let english = calculate_build_detailed(&request, &detail).unwrap();
+
+    // Today's pack is official text only: nothing is marked, and the report
+    // and its text form are what they were.
+    let mut official = english.clone();
+    zh_cn().localize_build(&mut official);
+    assert!(official.origins.is_empty());
+    let json = serde_json::to_value(&official).unwrap();
+    assert!(json.get("origins").is_none(), "{json}");
+    assert_eq!(
+        pobr_cli::render_build_text(official.clone()),
+        render_breakdowns(&official)
+    );
+
+    // A pack whose flat Life row is a supplement, and one official row.
+    let stat_lines = serde_json::json!([
+        {"src": "{0:+d} 生命上限", "en": "{0:+d} to maximum Life", "origin": "agent"},
+        {"src": "生命上限提高 {0}%", "en": "{0}% increased maximum Life"}
+    ]);
+    let pack = pobr_i18n::LocalePack::from_files(
+        "zh-CN",
+        [("stat_lines.json", stat_lines.to_string().into_bytes())],
+    )
+    .unwrap();
+    let locale = pobr_cli::Locale::from_packs("zh-CN", vec![pack], vec![]);
+    let mut localized = english.clone();
+    locale.localize_build(&mut localized);
+    let shown: Vec<String> = localized.breakdowns[0]
+        .breakdown
+        .as_ref()
+        .unwrap()
+        .mods
+        .iter()
+        .filter_map(|line| line.source_text.clone())
+        .filter(|text| text.ends_with(" 生命上限") && text.starts_with('+'))
+        .collect();
+    assert!(!shown.is_empty(), "the build has a flat Life line");
+    for text in &shown {
+        assert_eq!(
+            localized.origins.get(text),
+            Some(&pobr_i18n::TextOrigin::Agent)
+        );
+    }
+    assert!(
+        localized
+            .origins
+            .keys()
+            .all(|text| text.ends_with(" 生命上限")),
+        "only the supplement's lines: {:?}",
+        localized.origins
+    );
+    let json = serde_json::to_value(&localized).unwrap();
+    assert_eq!(json["origins"][&shown[0]], "agent");
+    let text = pobr_cli::render_build_text(localized.clone());
+    assert!(
+        text.contains(&format!("{}{}", shown[0], pobr_cli::SUPPLEMENT_MARKER)),
+        "{text}"
+    );
+    assert!(text.ends_with(&format!("{}\n", pobr_cli::SUPPLEMENT_FOOTNOTE)));
+    // Official lines are not marked; JSON lines are never marked.
+    assert_eq!(
+        text.matches(pobr_cli::SUPPLEMENT_MARKER).count(),
+        shown.len() + 1
+    );
+    assert!(
+        !serde_json::to_string(&json)
+            .unwrap()
+            .contains(pobr_cli::SUPPLEMENT_MARKER)
+    );
+}
+
+#[test]
 fn lang_reads_a_description_written_on_two_lines_together() {
     let locale = zh_cn();
     // Mind Over Matter: the pack keys the two lines as one description, and

@@ -360,6 +360,39 @@ pub fn translate_lines_json(lang: &str, lines_json: &str) -> Result<String, Stri
     .map_err(super::ApiError::into_json)
 }
 
+/// One [`translate_lines_detailed_json`] output: the text `translate_lines_json`
+/// gives, and who wrote it when it is not official.
+#[derive(Serialize)]
+struct DetailedLine {
+    text: String,
+    /// `agent` / `human` for the translation repository's own supplement
+    /// text; `null` for official text and for a line kept as given.
+    origin: Option<pobr_i18n::TextOrigin>,
+}
+
+/// [`translate_lines_json`] with each line's origin: a JSON array of
+/// `{text, origin}`, one per input, whose texts are exactly the ones
+/// [`translate_lines_json`] returns.
+pub fn translate_lines_detailed_json(lang: &str, lines_json: &str) -> Result<String, String> {
+    (|| {
+        let lines: Vec<String> = serde_json::from_str(lines_json)
+            .map_err(|e| super::ApiError::bad_request(format!("invalid lines json: {e}")))?;
+        let detailed: Vec<DetailedLine> = match crate::locales::line_renderer(lang) {
+            Some(renderer) => renderer
+                .render_lines_with_origins(lines)
+                .into_iter()
+                .map(|(text, origin)| DetailedLine { text, origin })
+                .collect(),
+            None => lines
+                .into_iter()
+                .map(|text| DetailedLine { text, origin: None })
+                .collect(),
+        };
+        Ok(serde_json::to_string(&detailed).map_err(|e| format!("serialize: {e}"))?)
+    })()
+    .map_err(super::ApiError::into_json)
+}
+
 /// Batch-parses `lang` mod lines into English canonical lines. A line that
 /// is not in that locale, or that no template recognizes, passes through
 /// unchanged, as does everything when the locale has no templates. Both
@@ -421,6 +454,9 @@ pub fn minion_catalog_json() -> Result<String, String> {
     #[derive(Serialize)]
     struct Monster {
         id: String,
+        /// The game's `MonsterVarieties.Id` display names are keyed by.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        monster_variety_id: Option<String>,
         name: String,
         beast: bool,
         spectre: bool,
@@ -437,6 +473,7 @@ pub fn minion_catalog_json() -> Result<String, String> {
         .values()
         .map(|minion| Monster {
             id: minion.id.clone(),
+            monster_variety_id: minion.monster_variety_id.clone(),
             name: minion.name.clone(),
             beast: minion.monster_tags.iter().any(|tag| tag == "beast"),
             spectre: minion.id.starts_with("Metadata/Monsters/"),
