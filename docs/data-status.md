@@ -12,7 +12,7 @@
 
 | 能力 | 状态 | 阻塞项 |
 | --- | --- | --- |
-| 游戏包 | 锁指向 `game/0.5.5.5-2`，目前按本地模拟 Release 写入。这一批计算结果不变：新增 `base/active_skill_types.json`，`base/game_constants.json` 增加 `base_maximum_rage`，天赋树节点携带原生 stat packet；引擎不再内嵌这些表（保留项见 `crates/pobr-data/tests/no_embedded_data.rs`） | 正式发布 `game/0.5.5.5-2`（RePoE 已依赖 `contract/1.1` 并复现期望字节），再对真实 Release 重跑 `data:bump` |
+| 游戏包 | `game/0.5.5.5-2`，从 Release 采用。这一批计算结果不变：新增 `base/active_skill_types.json`，`base/game_constants.json` 增加 `base_maximum_rage`，天赋树节点携带原生 stat packet；引擎不再内嵌这些表（保留项见 `crates/pobr-data/tests/no_embedded_data.rs`） | 无 |
 | 语言包 | `locale/0.5.5.5-1`，从 Release 采用。只换语言发布不需要新的游戏发布；锁的 `locale` 须是语言包提供的语言（当前支持英文、简中、繁中） | 无 |
 | 辅助显示 | `support_display` 仍按 `handoff/*` tag + commit 拉取；`data:bump` 已能在语言 Release 带附件时一并替换 | 翻译库在 `locale/0.5.5.5-2` 发布辅助显示附件 |
 | 测试夹具 | `test_fixtures` 按 `handoff/*` tag + commit 拉取，换目标时保留 | 无 |
