@@ -171,6 +171,12 @@ fn traditional_chinese_mod_names_available() {
     );
     // Keyed by English affix name, like zh-CN (Strength1's name "of the
     // Brute"). The zh-TW client uses the "X之" word order since 0.5.4.
-    assert_eq!(names.get("of the Brute").map(String::as_str), Some("野蠻之"));
-    assert!(!names.contains_key("Strength1"), "zh-TW mods.json is no longer keyed by mod id");
+    assert_eq!(
+        names.get("of the Brute").map(String::as_str),
+        Some("野蠻之")
+    );
+    assert!(
+        !names.contains_key("Strength1"),
+        "zh-TW mods.json is no longer keyed by mod id"
+    );
 }
