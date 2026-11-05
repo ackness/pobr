@@ -121,7 +121,7 @@ fn dump_untranslated_lines() {
     // 3. Batch-translate, collecting misses (the input text returned unchanged).
     let inputs: Vec<&String> = lines.keys().collect();
     let payload = serde_json::to_string(&inputs).unwrap();
-    let out = pobr_wasm::translate_lines_to_zh_cn_json(&payload).expect("translate");
+    let out = pobr_wasm::translate_lines_json("zh-CN", &payload).expect("translate");
     let translated: Vec<String> = serde_json::from_str(&out).expect("parse out");
 
     let mut misses: Vec<(&str, &str)> = Vec::new();

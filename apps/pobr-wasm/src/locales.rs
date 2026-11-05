@@ -1,5 +1,5 @@
-//! The data pack's locales: descriptors, shared pack tables, and the mod-line
-//! parsers / renderers built from them.
+//! The data pack's locales: descriptors, shared pack tables, the mod-line
+//! parsers / renderers built from them, and name lookups.
 //!
 //! Everything is lazy and per data initialization ([`clear`] runs on every
 //! successful init). Only locales the pack declares ([`GameData::languages`])
@@ -46,6 +46,9 @@ struct Locales {
     parsers: BTreeMap<String, Option<Rc<LineParser>>>,
     renderers: BTreeMap<String, Option<Rc<LineRenderer>>>,
     input_parsers: Option<Rc<[Rc<LineParser>]>>,
+    /// Name tables read for [`game_name`], kept apart from the translators'
+    /// packs (which are let go once built).
+    name_tables: BTreeMap<(String, NameKind), BTreeMap<String, String>>,
     errors: Vec<String>,
 }
 
@@ -99,6 +102,79 @@ pub fn input_parsers() -> Rc<[Rc<LineParser>]> {
         LOCALES.with_borrow_mut(|locales| locales.input_parsers = Some(parsers.clone()));
     }
     parsers
+}
+
+/// One locale the data pack declares, as [`available_locales`] reports it.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct LocaleInfo {
+    /// The locale code (`zh-CN`, ...).
+    pub code: String,
+    /// The fallbacks its `_meta.json` declares, in order.
+    pub fallback: Vec<String>,
+    /// The locales that answer for it: itself, then its declared fallbacks
+    /// followed through the other declared locales (English ends every chain
+    /// implicitly and is not listed).
+    pub chain: Vec<String>,
+    /// Whether its own pack publishes mod-line templates (`stat_lines.json`).
+    pub templates: bool,
+}
+
+/// The locales the data pack declares, in declaration order, with their
+/// fallback chains. Reads only the `_meta.json` descriptors (and the manifest's
+/// file list). Empty before initialization.
+pub fn available_locales() -> Vec<LocaleInfo> {
+    let Ok(game) = game_data() else {
+        return Vec::new();
+    };
+    let listed = game
+        .validate_manifest()
+        .ok()
+        .filter(|manifest| !manifest.files.is_empty())
+        .map(|manifest| manifest.files);
+    LOCALES.with_borrow_mut(|locales| {
+        let codes = locales.input(&game).codes.clone();
+        codes
+            .iter()
+            .map(|code| {
+                let templates = match &listed {
+                    Some(files) => files.contains_key(&format!("i18n/{code}/{STAT_LINES_FILE}")),
+                    // A pack without a file inventory: look for the file itself.
+                    None => game
+                        .stat_line_templates(code)
+                        .ok()
+                        .flatten()
+                        .is_some_and(|templates| !templates.is_empty()),
+                };
+                LocaleInfo {
+                    code: code.clone(),
+                    fallback: locales.meta(&game, code).fallback.clone(),
+                    chain: locales.chain(&game, code),
+                    templates,
+                }
+            })
+            .collect()
+    })
+}
+
+/// The name `lang`'s chain has for `key` in the `kind` table (a stable id for
+/// base items and skills, the English text otherwise; see
+/// [`NameKind::key`]). `None` for a locale the pack does not declare, a key
+/// no pack in the chain names, or before initialization.
+pub fn game_name(lang: &str, kind: NameKind, key: &str) -> Option<String> {
+    let game = game_data().ok()?;
+    LOCALES.with_borrow_mut(|locales| {
+        if !locales.input(&game).codes.iter().any(|code| code == lang) {
+            return None;
+        }
+        let chain = locales.chain(&game, lang);
+        chain.iter().find_map(|code| {
+            locales
+                .name_table(&game, code, kind)
+                .get(key)
+                .filter(|name| !name.is_empty())
+                .cloned()
+        })
+    })
 }
 
 /// Locale files that exist but could not be read (`i18n/<lang>/<file>: error`);
@@ -261,6 +337,28 @@ impl Locales {
                 .any(|c| c == code)
                 .then(|| self.meta(game, code).fallback.clone())
         })
+    }
+
+    /// `code`'s `kind` name table for [`game_name`], read once.
+    fn name_table(
+        &mut self,
+        game: &GameData,
+        code: &str,
+        kind: NameKind,
+    ) -> &BTreeMap<String, String> {
+        let key = (code.to_string(), kind);
+        if !self.name_tables.contains_key(&key) {
+            let table = match game.locale_file(code, kind.file_name()) {
+                Ok(table) => table.unwrap_or_default(),
+                Err(error) => {
+                    self.errors
+                        .push(format!("i18n/{code}/{}: {error}", kind.file_name()));
+                    BTreeMap::new()
+                }
+            };
+            self.name_tables.insert(key.clone(), table);
+        }
+        &self.name_tables[&key]
     }
 
     /// Loads one table of `code`'s pack, once.

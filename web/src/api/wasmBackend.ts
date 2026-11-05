@@ -1,6 +1,7 @@
 import { GameTextLocalizer, type GameDisplayName } from '../lib/localizedGameText';
 import { nativeDisplayTexts } from '../lib/nativeDisplayTexts';
 import { nativeClassNames, nativeCraftBaseNames, nativeGemNames, type GemNameLink, type GemNameOverride } from '../lib/nativeDisplayNames';
+import { lineTemplateLocale, setGameLocales, type GameLocaleInfo } from '../lib/gameLocales';
 import type { Lang } from '../lib/i18n';
 import type { UniqueEntry, UniqueDraft } from './uniques';
 import type { CraftingMetadata } from './itemCrafting';
@@ -64,7 +65,10 @@ interface WasmModule {
   lineUsageJson(requestJson: string): string;
   gemCatalogJson(): string;
   minionCatalogJson(): string;
-  translateLinesToZhCn(linesJson: string): string;
+  /** English mod lines -> `lang` display lines (JSON arrays); lines nothing recognizes come back as given. */
+  translateLines(lang: string, linesJson: string): string;
+  /** The data pack's locales with their declared fallback chains (JSON `GameLocaleInfo[]`). */
+  availableLocales(): string;
   classifyItemLinesJson(text: string): string;
   runeCatalogJson(itemText: string): string;
   itemAugmentInfoJson(itemText: string): string;
@@ -103,21 +107,17 @@ async function fetchBytes(url: string): Promise<Uint8Array> {
  * fetched again if something asks for it.
  */
 function readAgainAfterBoot(rel: string): boolean {
-  return rel.startsWith('base/passive_trees/') || [
-    'base/base_items.json',
-    'base/skill_gems.json',
-    'base/passive_tree.json',
-    'base/passive_tree_meta.json',
-    'overlay/trade_catalog.json',
-    'overlay/config_options.json',
-    'overlay/gem_effects.json',
-    'i18n/zh-CN/classes.json',
-    'i18n/zh-CN/base_items.json',
-    'i18n/zh-TW/base_items.json',
-    'i18n/zh-CN/words.json',
-    'i18n/zh-CN/display_texts.json',
-    'i18n/zh-TW/display_texts.json',
-  ].includes(rel);
+  return rel.startsWith('base/passive_trees/')
+    || /^i18n\/[^/]+\/(?:classes|base_items|words|display_texts)\.json$/.test(rel)
+    || [
+      'base/base_items.json',
+      'base/skill_gems.json',
+      'base/passive_tree.json',
+      'base/passive_tree_meta.json',
+      'overlay/trade_catalog.json',
+      'overlay/config_options.json',
+      'overlay/gem_effects.json',
+    ].includes(rel);
 }
 
 export async function createWasmBackend(): Promise<PobrBackend> {
@@ -173,6 +173,14 @@ export async function createWasmBackend(): Promise<PobrBackend> {
   // 后一次只带残缺文件表构建 → “file not in memory data”。共享同一个 Promise 根治。
   let initPromise: Promise<void> | null = null;
 
+  /** Hands the loaded pack's locales and fallbacks to the game-text chain, once per load. */
+  let localesSynced = false;
+  const syncGameLocales = () => {
+    if (localesSynced || !wasm.isDataReady()) return;
+    setGameLocales(JSON.parse(wasm.availableLocales()) as GameLocaleInfo[]);
+    localesSynced = true;
+  };
+
   const doInit = async (onProgress?: (message: string) => void): Promise<void> => {
     if (wasm.isDataReady()) return;
     onProgress?.('加载数据清单…');
@@ -195,6 +203,8 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     else wasm.initStagedData();
     for (const [rel, bytes] of pack.kept) keptBytes.set(`/data/${version}/${rel}`, bytes);
     loadedDataVersion = version;
+    localesSynced = false;
+    syncGameLocales();
     onProgress?.('就绪');
   };
 
@@ -318,13 +328,21 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async translateLines(lines, lang: Lang = 'zh-CN') {
       if (lang === 'en-US' || lines.length === 0) return [...lines];
-      const simplified = JSON.parse(wasm.translateLinesToZhCn(JSON.stringify(lines))) as string[];
+      // Mod lines render in the first locale of `lang`'s chain whose pack has templates;
+      // the localizer then writes them in `lang`'s script and names.
+      syncGameLocales();
+      const templates = lineTemplateLocale(lang);
+      const rendered = templates
+        ? JSON.parse(wasm.translateLines(templates, JSON.stringify(lines))) as string[] : [...lines];
       displayLocalizer ??= loadDisplayLocalizer().catch((error: unknown) => {
         displayLocalizer = undefined;
         throw error;
       });
       const localizer = await displayLocalizer;
-      return localizer.localizeLines(lines, simplified, lang);
+      return localizer.localizeLines(lines, rendered, lang);
+    },
+    async gameLocales() {
+      return wasm.isDataReady() ? JSON.parse(wasm.availableLocales()) as GameLocaleInfo[] : [];
     },
     async classifyItemLines(text) {
       return JSON.parse(wasm.classifyItemLinesJson(text)) as ItemLineJson[];

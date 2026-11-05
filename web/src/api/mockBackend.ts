@@ -114,6 +114,9 @@ export function createMockBackend(): PobrBackend {
     async translateLines(lines) {
       return lines;
     },
+    async gameLocales() {
+      return [];
+    },
     async classifyItemLines() {
       // mock 不分类；返回 [] 让面板回落到无区分渲染。
       return [];
