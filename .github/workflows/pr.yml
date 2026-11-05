@@ -128,6 +128,13 @@ jobs:
         run: |
           python3 -m pipeline.runtime.build_data --install data
           bash devs/scripts/check-data.sh
+      - name: Game-text translation coverage (report only)
+        working-directory: .
+        # Missing translations show English and never fail; only a broken script or data does.
+        run: |
+          python3 devs/scripts/translation-coverage.py > "$RUNNER_TEMP/translation-coverage.md"
+          cat "$RUNNER_TEMP/translation-coverage.md" >> "$GITHUB_STEP_SUMMARY"
+          cat "$RUNNER_TEMP/translation-coverage.md"
       - run: pnpm i18n:check
       - run: pnpm typecheck
       - run: pnpm test

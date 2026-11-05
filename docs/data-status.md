@@ -61,7 +61,7 @@ PoBR 留下的 11 份自有 shared 规则／构筑配置属于引擎语义，继
 | actor／常量／关系 | 649 个 actor 的 27 个字段、技能有序引用、怪物抗性与成长、图腾、玩家与徒手常量、Boss 数值、珠宝槽与装备授予技能 | OT 的 merge／`set_`／Stats 作用域与 `mod_list`；目录成员、别名、上限与 effect→variety 等策展需要独立依据 | [actor](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-actors.md#observed-three-root-ot-draft) |
 | 暗金 | 65 个授予技能关系中 4 个有显式变体绑定；RePoE 已从固定兼容目录投影 `unique_relations` 领域候选 | 关系候选尚未进入游戏 part，仍需 DTO、物品编辑与计算消费者接入；兼容关系不等于官方事实认证 | [暗金关系候选](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-uniques.md) |
 | PoB2 解释与 buff | 各域保留项已按字段登记 | parser／config／special、部分 stat 映射与关系仍用社区解释；buff 的 15 处引用上下文未证等价，保持 `guard_eligible=false` | [PoB2 依赖](pob2-differences.md#数据来源现状与退出顺序) |
-| 语言／显示 | 繁中与简中 FK v3 及紧凑侧表接入普通后端；两种语言各 1073 个 gem 中 1053 个源译、20 个英文阻断；职业与升华路由、打造名称、辅助说明、审核补译导入已接线 | 简中客户端补丁与服别未确认；真实审核补译 0 条；45 个候选是否有当前 UI 收益需先核 caller；国服数值未认证 | 翻译库的语言发布 |
+| 语言／显示 | 繁中与简中 FK v3 及紧凑侧表接入普通后端；两种语言各 1073 个 gem 中 1053 个源译、20 个英文阻断；职业与升华路由、打造名称、辅助说明、审核补译导入已接线 | 简中客户端补丁与服别未确认；真实审核补译 0 条；45 个候选是否有当前 UI 收益需先核 caller；国服数值未认证 | 翻译库的语言发布；逐语言缺译统计见 `mise run i18n:coverage`（CI 作业摘要同样打印） |
 | 新发布与持续更新 | 序号 5 已发布真实历史树修复并验证同补丁安装刷新、组合与 WASM 消费 | 新快照须复核固定测试绑定，真实新补丁与线上回退仍待对应场景 | [锁驱动更新](../pipeline/runtime/locked-update.md) |
 | 玩家验收与性能 | 完整 CI 用同次 WASM 消费当前数据锁的紧凑发行包；正式 Web 与独立 WASM 包仍发布逐文件快照，紧凑包仅 CI 验证 | 数据锁改变时完整 CI 自动运行普通 Web 流程冒烟（导入、技能／辅助、打造、加点、保存重开）；回滚仍需手动验证；在目标设备测冷加载、首次计算、内存与包体 | [WASM 测量](wasm-package.md#runtime-performance-comparison) |
 
