@@ -247,3 +247,306 @@ fn punctuation_alone_does_not_mark_a_line_and_unchanged_text_keeps_its_bytes() {
     assert!(parser.is_localized("生命 很多"));
     assert!(matches!(parser.parse_text(text), Cow::Borrowed(t) if t == text));
 }
+
+/// A CJK pack whose stat descriptions include ones the game writes on
+/// several lines (shapes taken from the zh-CN pack's `stat_lines.json`).
+fn multiline_pack() -> LocalePack {
+    let templates = serde_json::json!([
+        {"src": "{0:+d} 生命上限", "en": "{0:+d} to maximum Life"},
+        {"src": "能量护盾无法充能", "en": "Energy Shield does not Recharge"},
+        // The first line of the next template is also a template of its own.
+        {"src": "受到的所有伤害在扣除生命前优先从魔力扣除",
+         "en": "All Damage is taken from Mana before Life"},
+        {"src": "受到的所有伤害在扣除生命前优先从魔力扣除\n魔力回复速度总降 50%",
+         "en": "All Damage is taken from Mana before Life\n50% less Mana Recovery Rate"},
+        {"src": "每点敌人威力值使被阻挡的物理伤害的 {0}% 吸纳为能量护盾\n能量护盾不会充能\n能量护盾不能通过再生回复",
+         "en": "{0}% of Physical Damage prevented Recouped as Energy Shield per enemy Power\nEnergy Shield does not Recharge\nYou cannot Recover Energy Shield from Regeneration"},
+        // Two English lines, one localized line.
+        {"src": "过去 8 秒内每发射一种不同的榴弹，获得相当于伤害 {0}% 的额外火焰伤害",
+         "en": "Gain {0}% of Damage as Extra Fire Damage for\nevery different Grenade fired in the past 8 seconds"},
+        // The description indents its second line; item text does not.
+        {"src": "总共消耗 2000 点魔力后，能量护盾充能开始，每 2 秒最多触发一次",
+         "en": "Energy Shield Recharge starts after spending a total of\n 2000 Mana, no more than once every 2 seconds"},
+        // One English line, two localized lines.
+        {"src": "力量的固有加成改为\n每 1 点力量 +{0} 命中值",
+         "en": "Inherent bonus of Strength grants +{0} to Accuracy Rating per Strength instead"},
+        // A name capture, alone and on the first of two lines.
+        {"src": "{0}范围内的天赋可以配置", "en": "Passives in Radius of {0} can be Allocated"},
+        {"src": "{}范围内的天赋可以在\n未连结至天赋树的情况下配置",
+         "en": "Passives in Radius of {} can be Allocated\nwithout being connected to your tree"}
+    ]);
+    LocalePack::from_files(
+        "zz",
+        [
+            ("stat_lines.json", templates.to_string().into_bytes()),
+            (
+                "passive_names.json",
+                r#"{"Iron Reflexes":"霸体"}"#.as_bytes().to_vec(),
+            ),
+        ],
+    )
+    .unwrap()
+}
+
+fn render(renderer: &LineRenderer, lines: &[&str]) -> Vec<String> {
+    renderer.render_lines(lines.iter().map(|line| line.to_string()))
+}
+
+#[test]
+fn adjacent_lines_of_one_description_render_together() {
+    let pack = multiline_pack();
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    // Only a line that can begin a multi-line template is joined onward.
+    assert_eq!(
+        renderer.span_from("All Damage is taken from Mana before Life"),
+        2
+    );
+    assert_eq!(
+        renderer.span_from(
+            "12% of Physical Damage prevented Recouped as Energy Shield per enemy Power"
+        ),
+        3
+    );
+    assert_eq!(renderer.span_from("+5 to maximum Life"), 1);
+    assert_eq!(
+        renderer.span_from("Passives in Radius of Iron Reflexes can be Allocated"),
+        2
+    );
+    assert_eq!(renderer.span_from("50% less Mana Recovery Rate"), 1);
+    // Two lines, the first of which also translates alone: the longer match
+    // wins, and the translation has as many lines, so each keeps its own.
+    assert_eq!(
+        render(
+            &renderer,
+            &[
+                "+5 to maximum Life",
+                "All Damage is taken from Mana before Life",
+                "50% less Mana Recovery Rate",
+                "+6 to maximum Life",
+            ]
+        ),
+        [
+            "+5 生命上限",
+            "受到的所有伤害在扣除生命前优先从魔力扣除",
+            "魔力回复速度总降 50%",
+            "+6 生命上限",
+        ]
+    );
+    // Three lines, with a value; the middle line alone also translates.
+    assert_eq!(
+        render(
+            &renderer,
+            &[
+                "5% of Physical Damage prevented Recouped as Energy Shield per enemy Power",
+                "Energy Shield does not Recharge",
+                "You cannot Recover Energy Shield from Regeneration",
+            ]
+        ),
+        [
+            "每点敌人威力值使被阻挡的物理伤害的 5% 吸纳为能量护盾",
+            "能量护盾不会充能",
+            "能量护盾不能通过再生回复",
+        ]
+    );
+    // A name capture on the first line; that line alone is a template too.
+    assert_eq!(
+        render(
+            &renderer,
+            &[
+                "Passives in Radius of Iron Reflexes can be Allocated",
+                "without being connected to your tree",
+                "Passives in Radius of Iron Reflexes can be Allocated",
+            ]
+        ),
+        [
+            "霸体范围内的天赋可以在",
+            "未连结至天赋树的情况下配置",
+            "霸体范围内的天赋可以配置",
+        ]
+    );
+}
+
+#[test]
+fn a_joined_translation_with_another_line_count_goes_to_the_first_line() {
+    let pack = multiline_pack();
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    assert_eq!(
+        render(
+            &renderer,
+            &[
+                "Gain 4% of Damage as Extra Fire Damage for",
+                "every different Grenade fired in the past 8 seconds",
+                "Energy Shield Recharge starts after spending a total of",
+                "2000 Mana, no more than once every 2 seconds",
+            ]
+        ),
+        [
+            "过去 8 秒内每发射一种不同的榴弹，获得相当于伤害 4% 的额外火焰伤害",
+            "",
+            "总共消耗 2000 点魔力后，能量护盾充能开始，每 2 秒最多触发一次",
+            "",
+        ]
+    );
+    // The other way: two localized lines read as one English line.
+    let parser = LineParser::new(&[&pack], []).unwrap();
+    let typed = ["力量的固有加成改为", "每 1 点力量 +5 命中值"];
+    assert_eq!(
+        parser.parse_lines(&typed),
+        [
+            Some(
+                "Inherent bonus of Strength grants +5 to Accuracy Rating per Strength instead"
+                    .into()
+            ),
+            Some(String::new()),
+        ]
+    );
+    assert_eq!(
+        parser.parse_text("Rarity: Rare\n力量的固有加成改为\n每 1 点力量 +5 命中值\n+5 生命上限"),
+        "Rarity: Rare\nInherent bonus of Strength grants +5 to Accuracy Rating per Strength instead\n+5 to maximum Life"
+    );
+}
+
+#[test]
+fn a_line_holding_a_line_break_translates_whole() {
+    let pack = multiline_pack();
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    for line in [
+        "All Damage is taken from Mana before Life\n50% less Mana Recovery Rate",
+        "All Damage is taken from Mana before Life\r\n50% less Mana Recovery Rate",
+        "All Damage is taken from Mana before Life \n  50% less Mana Recovery Rate",
+    ] {
+        assert_eq!(
+            renderer.render_line(line).as_deref(),
+            Some("受到的所有伤害在扣除生命前优先从魔力扣除\n魔力回复速度总降 50%"),
+            "{line:?}"
+        );
+    }
+    assert_eq!(
+        render(
+            &renderer,
+            &[
+                "Energy Shield Recharge starts after spending a total of\n2000 Mana, no more than once every 2 seconds",
+                "+5 to maximum Life",
+            ]
+        ),
+        [
+            "总共消耗 2000 点魔力后，能量护盾充能开始，每 2 秒最多触发一次",
+            "+5 生命上限",
+        ]
+    );
+    // An element holding a line break is not joined with its neighbour.
+    assert_eq!(
+        render(
+            &renderer,
+            &[
+                "All Damage is taken from Mana before Life",
+                "50% less Mana Recovery Rate\n+5 to maximum Life",
+            ]
+        ),
+        [
+            "受到的所有伤害在扣除生命前优先从魔力扣除",
+            "50% less Mana Recovery Rate\n+5 to maximum Life",
+        ]
+    );
+}
+
+#[test]
+fn unrelated_neighbours_are_not_joined() {
+    let pack = multiline_pack();
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    // Each line translates alone; no template covers them together.
+    assert_eq!(
+        render(
+            &renderer,
+            &["+5 to maximum Life", "Energy Shield does not Recharge"]
+        ),
+        ["+5 生命上限", "能量护盾无法充能"]
+    );
+    // The lines of a description out of order, or apart, are not it.
+    assert_eq!(
+        render(
+            &renderer,
+            &[
+                "50% less Mana Recovery Rate",
+                "All Damage is taken from Mana before Life",
+                "",
+                "50% less Mana Recovery Rate",
+            ]
+        ),
+        [
+            "50% less Mana Recovery Rate",
+            "受到的所有伤害在扣除生命前优先从魔力扣除",
+            "",
+            "50% less Mana Recovery Rate",
+        ]
+    );
+    // A text spanning lines never matches a one-line template (nor a name).
+    assert_eq!(
+        renderer.render_line("Energy Shield does\nnot Recharge"),
+        None
+    );
+    assert_eq!(renderer.render_line("+5 to maximum\nLife"), None);
+    assert!(render(&renderer, &[]).is_empty());
+}
+
+#[test]
+fn localized_lines_of_one_description_parse_together() {
+    let pack = multiline_pack();
+    let parser = LineParser::new(&[&pack], []).unwrap();
+    let typed = [
+        "受到的所有伤害在扣除生命前优先从魔力扣除",
+        "魔力回复速度总降 50%",
+        "+5 生命上限",
+    ];
+    assert_eq!(
+        parser.parse_lines(&typed),
+        [
+            Some("All Damage is taken from Mana before Life".into()),
+            Some("50% less Mana Recovery Rate".into()),
+            Some("+5 to maximum Life".into()),
+        ]
+    );
+    // A lone first line keeps its own translation; an unknown line stays `None`.
+    assert_eq!(
+        parser.parse_lines(&["受到的所有伤害在扣除生命前优先从魔力扣除", "不认识"]),
+        [
+            Some("All Damage is taken from Mana before Life".into()),
+            None
+        ]
+    );
+    // One localized line read as two English lines (as before).
+    assert_eq!(
+        parser.parse_text(
+            "过去 8 秒内每发射一种不同的榴弹，获得相当于伤害 4% 的额外火焰伤害\r\n+5 to Strength"
+        ),
+        "Gain 4% of Damage as Extra Fire Damage for\nevery different Grenade fired in the past 8 seconds\n+5 to Strength"
+    );
+    assert_eq!(
+        parser.parse_text("受到的所有伤害在扣除生命前优先从魔力扣除\n魔力回复速度总降 50%"),
+        "All Damage is taken from Mana before Life\n50% less Mana Recovery Rate"
+    );
+}
+
+#[test]
+fn runs_cover_every_line_once_in_order() {
+    let lines = ["a", "b", "c", "d", "e"];
+    // Only "b\nc" is recognized as a whole.
+    let runs = translate_runs(
+        &lines,
+        |_| 4,
+        |text| (text == "b\nc").then(|| "B\nC".to_string()),
+    );
+    assert_eq!(
+        runs.iter()
+            .map(|run| (run.start, run.len))
+            .collect::<Vec<_>>(),
+        [(0, 1), (1, 2), (3, 1), (4, 1)]
+    );
+    assert_eq!(
+        spread_runs(&runs, lines.len()),
+        [None, Some("B".into()), Some("C".into()), None, None]
+    );
+    // A one-line stretch that renders as two lines keeps them in its slot.
+    let runs = translate_runs(&["x"], |_| 3, |_| Some("X\nY".to_string()));
+    assert_eq!(spread_runs(&runs, 1), [Some("X\nY".to_string())]);
+}

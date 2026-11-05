@@ -1059,6 +1059,38 @@ fn lang_shows_a_build_reports_mod_lines_in_the_locale() {
 }
 
 #[test]
+fn lang_reads_a_description_written_on_two_lines_together() {
+    let locale = zh_cn();
+    // Mind Over Matter: the pack keys the two lines as one description, and
+    // its second line alone would read as a different line.
+    let english = [
+        "All Damage is taken from Mana before Life",
+        "50% less Mana Recovery Rate",
+        "+50 to maximum Life",
+    ];
+    let typed = [
+        "受到的所有伤害在扣除生命前优先从魔力扣除",
+        "魔力回复速度总降 50%",
+        "+50 生命上限",
+    ];
+    let lines = |lines: &[&str]| {
+        lines
+            .iter()
+            .map(|line| line.to_string())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(locale.parse_lines(&lines(&typed)).lines, english);
+    let request = |texts: &[&str]| CalculateRequest {
+        input: base_input(),
+        modifier_texts: lines(texts),
+    };
+    assert_eq!(
+        pobr_cli::calculate_json(&request(&typed), Some(&locale)).unwrap(),
+        pobr_cli::calculate_json(&request(&english), None).unwrap()
+    );
+}
+
+#[test]
 fn lang_reports_unsupported_lines_as_typed() {
     let locale = zh_cn();
     // Recognised by the zh-CN templates (so it reaches the parser in English),

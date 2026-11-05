@@ -164,7 +164,8 @@ fn localize_input_text(text: &str) -> String {
         return text.to_string();
     }
     let parsers = crate::locales::input_parsers();
-    pobr_i18n::lines::parse_text_with(text, |line| {
+    let span = |line: &str| parsers.iter().map(|p| p.span_from(line)).max().unwrap_or(1);
+    pobr_i18n::lines::parse_text_with(text, span, |line| {
         parsers
             .iter()
             .filter(|parser| parser.is_localized(line))
