@@ -28,6 +28,17 @@ def receipt(commit="b" * 40, target=TARGET, drop=(), extra=None, schema="repoe-r
     return json.dumps({"schema": schema, "target": target, "producer": found, **(extra or {})}).encode()
 
 
+LOCALE_RECEIPT = "poe2-locale-release-receipt/v1"
+
+
+def locale_receipt(spec, archive, target=TARGET, extra=None, package=True):
+    """The translation repository's receipt: no contract, always a `package` pin."""
+    pinned = {"asset": spec["asset"] if "asset" in spec else "pobr-locale-9.1.zip", **pack.pin(archive),
+              "expanded_bytes": spec["expanded_bytes"], "manifest": spec["manifest"], "members": {}, "index": {}}
+    return receipt(target=target, repository="ackness/poe2-zh-cn-stats", drop=("contract",), schema=LOCALE_RECEIPT,
+                   extra={**({"package": pinned} if package else {}), **(extra or {})})
+
+
 def support_display(target, catalog, drift=None):
     """A language owner's support display assets for `target` and trade catalog bytes."""
     provenance = {"kind": "generated-asset", "generation_data_version": target["game_patch"],
@@ -183,7 +194,7 @@ class DataBumpTests(BuildDataTests):
             "malformed": ("pobr-game-9.1.zip", "malformed"),
         }
         v2 = "repoe-release-receipt/v2"
-        cases["v2-without-package"] = (None, "v2 receipt.json lacks its package pin")
+        cases["v2-without-package"] = (None, "'repoe-release-receipt/v2'\\) lacks its package pin")
         cases["v2-mismatch"] = ({**repoe, **pack.pin(b"other zip")}, "another package zip")
         for name, (package, message) in cases.items():
             with self.subTest(name):
@@ -203,14 +214,22 @@ class DataBumpTests(BuildDataTests):
         # The language owner's shape (Release asset name, expanded size) too.
         language = {n: r for n, r in self.contents.items() if "/i18n/" in n}
         self.set_part("language", language)
-        locale = {"asset": "pobr-locale-9.1.zip", **pack.pin(self.archives["language"]),
-                  "expanded_bytes": self.lock["packages"]["language"]["expanded_bytes"],
-                  "manifest": self.lock["packages"]["language"]["manifest"], "members": {}, "index": {}}
-        self.server.publish("ackness/poe2-zh-cn-stats", "locale/9.1-2", {
-            "pobr-locale-9.1.zip": self.archives["language"],
-            "receipt.json": receipt(repository="ackness/poe2-zh-cn-stats", extra={"package": locale})})
+        spec = self.lock["packages"]["language"]
+        def publish_locale(raw):
+            self.server.publish("ackness/poe2-zh-cn-stats", "locale/9.1-2", {
+                "pobr-locale-9.1.zip": self.archives["language"], "receipt.json": raw})
+        # Only RePoE's v1 receipt may omit the package pin: not the locale schema, a missing or an unknown one.
+        for name, raw in {"locale": locale_receipt(spec, self.archives["language"], package=False),
+                          "missing": receipt(repository="ackness/poe2-zh-cn-stats", schema=None),
+                          "unknown": receipt(repository="ackness/poe2-zh-cn-stats", schema="other/v1")}.items():
+            with self.subTest(name):
+                publish_locale(raw)
+                with self.assertRaisesRegex(ValueError, "lacks its package pin"):
+                    self.run_bump([("ackness/poe2-zh-cn-stats", "locale/9.1-2")])
+        publish_locale(locale_receipt(spec, self.archives["language"]))
         self.run_bump([("ackness/poe2-zh-cn-stats", "locale/9.1-2")])
-        self.assertEqual(bundle.decode(self.lock_path.read_bytes())["packages"]["language"]["tag"], "locale/9.1-2")
+        after = bundle.decode(self.lock_path.read_bytes())["packages"]["language"]
+        self.assertEqual((after["tag"], after["contract_version"]), ("locale/9.1-2", None))
 
     def test_failed_prepare_restores_the_previous_lock_and_current(self):
         self.publish_game()
@@ -241,8 +260,12 @@ class DataBumpTests(BuildDataTests):
             assets = {asset: self.archives[kind]}
             if kind == "language" and shown:
                 assets.update(support_display(target, catalog, drift))
-            assets["receipt.json"] = receipt(target=target, repository=owner,
-                                             extra=extra(assets) if extra and kind == "language" else None)
+            if kind == "language":
+                assets["receipt.json"] = locale_receipt({**self.lock["packages"][kind], "asset": asset},
+                                                        self.archives[kind], target,
+                                                        extra=extra(assets) if extra else None)
+            else:
+                assets["receipt.json"] = receipt(target=target)
             self.server.publish(owner, tag, assets)
         return target
 
@@ -291,6 +314,8 @@ class DataBumpTests(BuildDataTests):
             "receipt": ({"extra": lambda assets: {"support_display": {
                 "manifest": pack.pin(b"other"), "asset": pack.pin(assets[display.ASSET])}}},
                         "pins another support display"),
+            "receipt-without-assets": ({"shown": False, "extra": lambda assets: {"support_display": {
+                "manifest": pack.pin(b"m"), "asset": pack.pin(b"a")}}}, "lists neither"),
         }
         for name, (options, message) in cases.items():
             with self.subTest(name):
@@ -311,6 +336,18 @@ class DataBumpTests(BuildDataTests):
             "asset": {"asset": display.ASSET, **pack.pin(assets[display.ASSET])}}})
         self.run_bump(self.NEW_PATCH)
         self.assertEqual(bundle.decode(self.lock_path.read_bytes())["support_display"]["tag"], "locale/9.2-1")
+
+    def test_a_kept_git_support_display_must_match_a_changed_catalog(self):
+        original = self.lock_path.read_bytes()
+        self.contents["data/9.1/overlay/trade_catalog.json"] = b'{"gems":[{"skill_id":"new"}]}'
+        snapshot = bundle.decode(self.contents["data/9.1/manifest.json"])
+        snapshot["files"]["overlay/trade_catalog.json"] = bundle.sha256(self.contents["data/9.1/overlay/trade_catalog.json"])
+        self.contents["data/9.1/manifest.json"] = pack.raw_json(snapshot)
+        self.set_part("game", {n: r for n, r in self.contents.items() if "/i18n/" not in n})
+        self.publish_game(self.archives["game"])
+        with self.assertRaisesRegex(ValueError, "bound to trade catalog"):
+            self.run_bump()
+        self.assertEqual(self.lock_path.read_bytes(), original)
 
     def test_a_kept_support_display_must_match_the_new_catalog(self):
         """A game re-release that changes the trade catalog needs a new support display."""

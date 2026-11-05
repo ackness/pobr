@@ -43,11 +43,14 @@ ALIASES = {"repoe": "ackness/repoe", "game": "ackness/repoe",
            "poe2-zh-cn-stats": "ackness/poe2-zh-cn-stats", "locale": "ackness/poe2-zh-cn-stats",
            "language": "ackness/poe2-zh-cn-stats"}
 SUMS, RECEIPT = "SHA256SUMS", "receipt.json"
-# Receipt schemas that must pin their package zip and manifest (`package`).
-RECEIPTS_WITH_PACKAGE = frozenset({"repoe-release-receipt/v2"})
+# The only receipt schema that may omit its `package` pin (zip + root manifest):
+# RePoE's v1 receipts, e.g. game/0.5.5.5-1, which pins neither `package` nor
+# `release_build` and stays lockable. Every other schema, a missing or unknown
+# one included, must carry it; the translation repository's
+# `poe2-locale-release-receipt/v1` always has.
+RECEIPTS_WITHOUT_PACKAGE = frozenset({"repoe-release-receipt/v1"})
 # A package asset has no pin until this command records one; bound the download.
 MAX_PACKAGE = 1024 * 1024 * 1024
-MAX_DISPLAY = 64 * 1024 * 1024
 
 
 def pin(raw):
@@ -131,6 +134,9 @@ def support_display(source, sums, receipt, target, cache, fetcher):
     """
     listed = {display.MANIFEST, display.ASSET} & set(sums)
     if not listed:
+        require(receipt.get("support_display") is None,
+                f"receipt.json pins a support display, but SHA256SUMS lists neither {display.MANIFEST} "
+                f"nor {display.ASSET}")
         return None
     require(len(listed) == 2, f"SHA256SUMS lists {sorted(listed)} without "
                               f"{sorted({display.MANIFEST, display.ASSET} - listed)}")
@@ -143,7 +149,7 @@ def support_display(source, sums, receipt, target, cache, fetcher):
     asset_pin = display.check_manifest(manifest, target, manifest["catalog_sha256"])
     require(asset_pin["sha256"] == sums[display.ASSET], f"{display.MANIFEST} pins another {display.ASSET}")
     asset_raw = fetch_verified(imports.release_address(source, display.ASSET), sums[display.ASSET],
-                               cache, fetcher, MAX_DISPLAY)
+                               cache, fetcher, max(1, asset_pin["bytes"]))
     require(pin(asset_raw) == asset_pin, f"{display.ASSET} differs from {display.MANIFEST}")
     display.check_asset(asset_raw, manifest)
     entry = {"repository": source["repository"], "tag": source["tag"], "manifest": pin(manifest_raw),
@@ -169,9 +175,8 @@ def check_receipt(receipt, raw, spec, part, unpacked):
     commit, contract = spec["producer_commit"], spec["contract_version"]
     require(receipt.get("target") == part.get("target"), "receipt.json target differs from the package target")
     package = receipt.get("package")
-    # RePoE's v2 receipts always pin the package; older ones may not.
-    require(package is not None or receipt.get("schema") not in RECEIPTS_WITH_PACKAGE,
-            f"{receipt.get('schema')} receipt.json lacks its package pin")
+    require(package is not None or receipt.get("schema") in RECEIPTS_WITHOUT_PACKAGE,
+            f"receipt.json ({receipt.get('schema')!r}) lacks its package pin")
     if package is not None:
         # Both owners' release tools pin the zip and its root manifest in the
         # receipt (the root manifest itself stays commit-independent).
@@ -228,9 +233,8 @@ def candidate(lock, releases):
 
 def check_display(lock, prepared, draft, cache, fetcher, adopted):
     """The support display must match the prepared trade catalog; an adopted one is imported in full."""
-    spec = lock.get("support_display")
-    if spec is None or "catalog_sha256" not in spec:
-        return
+    spec = lock["support_display"]
+    require(isinstance(spec.get("catalog_sha256"), str), "support_display lacks its catalog_sha256")
     version = lock["target"]["game_patch"]
     try:
         catalog = bundle.sha256(bundle.read_file(Path(prepared), f"data/{version}/overlay/trade_catalog.json"))

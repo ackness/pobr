@@ -231,6 +231,7 @@ schema-3 manifest封存默认运行字节；维护报告和本地patch不进入�
     新目标的语言 Release 缺这两件附件、只列其一，或 receipt 的 `support_display` pin 与附件不符时拒绝。
     同目标只 bump 游戏包而交易目录变了时，保留的辅助显示不再绑定，同样拒绝：请语言 owner 发布
     `locale/<patch>-<n+1>`（语言包字节可不变）并一起 bump。
+    翻译库目前还不发布这两件附件（已计划）；在它发布之前，换目标的 bump 会被拒绝。
   - **测试夹具**：`test_fixtures` 是与补丁无关的 API 响应样本；换目标时保留，条目加 `target` 记录它们发布时的目标。
   - **receipt 绑定**：receipt 的 `package`（ZIP 与根 manifest 的字节数与 SHA-256）存在时必须与下载的包一致；
     `repoe-release-receipt/v2` 必须带它；旧 receipt 不带时仍可读。

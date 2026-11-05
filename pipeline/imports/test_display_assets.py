@@ -108,6 +108,12 @@ class DisplayAssetsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "no Git path"):
             self.prepare(fetcher=fetch)
 
+    def test_asset_must_be_a_json_object(self):
+        self.asset = ["not", "an", "object"]
+        self.save()
+        with self.assertRaisesRegex(ValueError, "not a JSON object"):
+            self.prepare()
+
     def test_lock_entry_must_match_its_manifest(self):
         self.lock["support_display"]["source_data_version"] = "8.0"
         self.lock_path.write_bytes(bundle.encoded(self.lock))

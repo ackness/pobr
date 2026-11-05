@@ -61,6 +61,7 @@ def check_manifest(manifest, target, catalog_sha256):
 
 def check_asset(raw, manifest):
     asset = bundle.decode(raw)
+    require(isinstance(asset, dict), f"{ASSET} is not a JSON object")
     meta, provenance = asset.get("_meta"), manifest["provenance"]
     require(isinstance(meta, dict) and meta.get("data_version") == provenance["generation_data_version"]
             and meta.get("catalog_sha256") == manifest["catalog_sha256"], "Display provenance binding mismatch")
@@ -142,7 +143,7 @@ def prepare_test_fixtures(lock_path, cache, offline=False, fetcher=None):
     with tempfile.TemporaryDirectory(prefix=".fixture-import-", dir=cache.parent) as temporary:
         temp = Path(temporary)
         fetcher = fetcher or OwnerInputs(temp / "git")
-        archive = acquire(spec, spec.get("path"), spec, cache, offline, fetcher)
+        archive = acquire(spec, spec.get("path") or spec.get("asset"), spec, cache, offline, fetcher)
         manifest = unpack(archive, spec, temp / "unpacked")
         require(manifest.get("schema") == "repoe-data-publication/v1"
                 and manifest.get("target") == published
