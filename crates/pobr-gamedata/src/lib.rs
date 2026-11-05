@@ -550,7 +550,8 @@ impl GameData {
         self.load_json_at(path).map(Some)
     }
 
-    /// Loads the mod-name sidecar for a language (`id -> localized name`).
+    /// Loads the affix-name table for a language (`English affix name ->
+    /// localized name`, the same file as [`Self::affix_names`]).
     pub fn mod_names(
         &self,
         lang: &str,

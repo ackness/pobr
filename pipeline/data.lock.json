@@ -27,28 +27,26 @@
     },
     "language": {
       "repository": "ackness/poe2-zh-cn-stats",
-      "tag": "locale/0.5.5.5-1",
+      "tag": "locale/0.5.5.5-2",
       "asset": "pobr-locale-0.5.5.5.zip",
-      "bytes": 7165092,
-      "sha256": "bd7ba6ce955c9aa604a1a9721c7e28ca3a005a29c0d23f4e99af736cf540d5a7",
+      "bytes": 6925862,
+      "sha256": "bdfb38f4f8db84f0f16544756fab3fcfc7bf6fee17fd24592f603bc87331be37",
       "manifest": {
-        "bytes": 2517,
-        "sha256": "bc9694ffcb577b397c45a3f1d49d49aa6fa28f09ff7aa29303aeea6443733885"
+        "bytes": 2675,
+        "sha256": "362937e5f915e7cff36846b8873916329182f0005730eec13aa9e251a68e12f5"
       },
-      "expanded_bytes": 7163020,
+      "expanded_bytes": 6923790,
       "receipt": {
-        "bytes": 7918,
-        "sha256": "a6c8b88ecb58cbd9b80e7cdaa73315d4adcddfc8795872fd0ecb494847dc02bd"
+        "bytes": 52428,
+        "sha256": "7edcfdb3918b5de04f67871412dbf0b4d30c5e31f8f828fbe93158c22322366f"
       },
-      "producer_commit": "9d08035c8a05a98eb435eb783ef60520b421e218",
+      "producer_commit": "b831e31ed2b6325c1aeefedb2918905486e75d6a",
       "contract_version": null
     }
   },
   "support_display": {
     "repository": "ackness/poe2-zh-cn-stats",
-    "revision": "5046a18af9974e8914fa1ea1b2b0db9202b2908b",
-    "tag": "handoff/support-display-20261101",
-    "path": "handoff/support-display-20261101/manifest.json",
+    "tag": "locale/0.5.5.5-2",
     "manifest": {
       "bytes": 1062,
       "sha256": "88aef08b06b2b2987dd21db5c6ac276ce0a9411830b86a548729f5f2f10fe0d7"
@@ -100,6 +98,6 @@
     "bytes": 7045,
     "sha256": "54c7595a2f37cee132f072d2d5a58d78a4b4779a748a63c05b21310605618715"
   },
-  "runtime_identity": "0ea72e06785afbe00f5baa973a4fdb31040229660f63982638fdc0eb77249fe8",
+  "runtime_identity": "b3a335dc8a339d6776bc8baa91981817785c7ffa99200629080638d5c6339e69",
   "release_id": "eda2e570dda487cbd17ce954f187da2d7e1137315dca05db87a4487491f3fd02"
 }
