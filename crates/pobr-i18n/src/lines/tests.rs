@@ -913,3 +913,184 @@ fn a_rejected_candidate_leaves_no_origin_on_the_one_accepted_after_it() {
         Some(("授予全部 5% 某物，给泽德".into(), None))
     );
 }
+
+/// Templates as the zh-CN pack writes them for lines the unique-item catalog
+/// shows with roll ranges.
+fn range_pack() -> LocalePack {
+    templates_pack(
+        "zz",
+        serde_json::json!([
+            {"src": "所有召唤生物技能等级 {0:+d}", "en": "{0:+d} to Level of all Minion Skills"},
+            {"src": "+ {0} 维金灌注上限", "en": "+{0} to maximum Verisium Infusions"},
+            {"src": "火焰抗性 {0:+d}%", "en": "{0:+d}% to Fire Resistance"},
+            {"src": "{0:d} 生命上限", "en": "{0:d} to maximum Life"},
+            {"src": "附加 {0} - {1} 基础火焰伤害", "en": "Adds {0} to {1} Fire Damage"},
+            {"src": "范围内的核心天赋还会获得：{0}", "en": "Notable Passive Skills in Radius also grant {0}"},
+            {"src": "战矛的攻击速度提高 {0:d}%", "en": "{0:d}% increased Attack Speed with Spears"},
+            {"src": "冻结阈值提高 {0:d}%", "en": "{0:d}% increased Freeze Threshold", "origin": "agent"},
+            {"src": "伤害提高 {0}%", "en": "{0}% increased Damage"}
+        ]),
+    )
+}
+
+#[test]
+fn a_range_display_renders_through_its_rolled_lines_template() {
+    use pobr_data::catalog::TextOrigin::Agent;
+    let pack = range_pack();
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    let render = |line: &str| renderer.render_line_with_origin(line);
+    // A slot with a format spec takes the range as it takes the rolled number,
+    // sign included: the line's own `+` is shown once.
+    for (line, expected) in [
+        (
+            "+2 to Level of all Minion Skills",
+            "所有召唤生物技能等级 +2",
+        ),
+        (
+            "+(1-2) to Level of all Minion Skills",
+            "所有召唤生物技能等级 +(1-2)",
+        ),
+        ("+(10-20)% to Fire Resistance", "火焰抗性 +(10-20)%"),
+        ("+(-10-10)% to Fire Resistance", "火焰抗性 +(-10-10)%"),
+        ("+(0.5-1.5)% to Fire Resistance", "火焰抗性 +(0.5-1.5)%"),
+        ("+(40-60) to maximum Life", "+(40-60) 生命上限"),
+        // A sign the template writes itself stays outside the value.
+        (
+            "+(1-2) to maximum Verisium Infusions",
+            "+ (1-2) 维金灌注上限",
+        ),
+        (
+            "Adds (1-2) to (3-4) Fire Damage",
+            "附加 (1-2) - (3-4) 基础火焰伤害",
+        ),
+    ] {
+        assert_eq!(render(line), Some((expected.into(), None)), "{line}");
+    }
+    // A captured line holding a range renders through its own template, and
+    // brings that template's origin.
+    assert_eq!(
+        render(
+            "Notable Passive Skills in Radius also grant (1-2)% increased Attack Speed with Spears"
+        ),
+        Some((
+            "范围内的核心天赋还会获得：战矛的攻击速度提高 (1-2)%".into(),
+            None
+        ))
+    );
+    assert_eq!(
+        render("Notable Passive Skills in Radius also grant (2-4)% increased Freeze Threshold"),
+        Some((
+            "范围内的核心天赋还会获得：冻结阈值提高 (2-4)%".into(),
+            Some(Agent)
+        ))
+    );
+    // The parser is unchanged: input text holds rolled values.
+    let parser = LineParser::new(&[&pack], BASES).unwrap();
+    assert_eq!(
+        parser.parse_line("所有召唤生物技能等级 +2").as_deref(),
+        Some("+2 to Level of all Minion Skills")
+    );
+    assert_eq!(parser.parse_line("所有召唤生物技能等级 +(1-2)"), None);
+}
+
+#[test]
+fn a_range_never_lets_a_mixed_line_through() {
+    let pack = range_pack();
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    for line in [
+        // A `{0}%` slot never takes words, with a range beside them or not.
+        "Bonded: (1-2)% increased Damage",
+        // A captured line whose own template is missing keeps the line English.
+        "Notable Passive Skills in Radius also grant (1-2)% increased Wibble",
+        // Only a whole range fills a numeric slot.
+        "(40-60) Wibble to maximum Life",
+        "+(40-60 to maximum Life",
+        "+(40-) to maximum Life",
+        "+(-60) to maximum Life",
+    ] {
+        assert_eq!(renderer.render_line(line), None, "{line}");
+    }
+    // A plain `{0}%` slot takes a range through the rolled line's skeleton
+    // bucket, ahead of the string channel that took it before.
+    assert_eq!(
+        renderer.render_line("(1-2)% increased Damage").as_deref(),
+        Some("伤害提高 (1-2)%")
+    );
+}
+
+#[test]
+fn a_range_on_the_first_line_of_a_description_joins_the_next_line() {
+    let pack = templates_pack(
+        "zz",
+        serde_json::json!([
+            {"src": "对元素异常状态的敌人的暴击伤害加成 {0:+d}%",
+             "en": "{0:+d}% to Critical Damage Bonus against Enemies that are affected\nby Elemental Ailments"}
+        ]),
+    );
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    for (value, shown) in [("+15", "+15"), ("+(10-20)", "+(10-20)")] {
+        assert_eq!(
+            render(
+                &renderer,
+                &[
+                    &format!("{value}% to Critical Damage Bonus against Enemies that are affected"),
+                    "by Elemental Ailments",
+                ]
+            ),
+            [
+                format!("对元素异常状态的敌人的暴击伤害加成 {shown}%"),
+                String::new()
+            ],
+            "{value}"
+        );
+    }
+}
+
+#[test]
+fn a_whole_line_supplement_wins_over_an_official_composition_for_ranges_too() {
+    use pobr_data::catalog::TextOrigin::Agent;
+    // A per-skill row is more specific than the generic composition: the
+    // numeric channel comes before the string one, as for the rolled line.
+    // (The translation library never gives a supplement an official row's English.)
+    let pack = templates_pack(
+        "zz",
+        serde_json::json!([
+            {"src": "获得技能：{0} 级 {1}", "en": "Grants Skill: Level {0} {1}"},
+            {"src": "获得技能: 等级 {0:d} 电球", "en": "Grants Skill: Level {0:d} Spark", "origin": "agent"},
+            {"src": "电球", "en": "Spark"}
+        ]),
+    );
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    for (line, expected) in [
+        ("Grants Skill: Level 20 Spark", "获得技能: 等级 20 电球"),
+        (
+            "Grants Skill: Level (1-20) Spark",
+            "获得技能: 等级 (1-20) 电球",
+        ),
+    ] {
+        assert_eq!(
+            renderer.render_line_with_origin(line),
+            Some((expected.into(), Some(Agent))),
+            "{line}"
+        );
+    }
+}
+
+#[test]
+fn an_official_rolled_template_wins_over_a_supplement_written_with_parentheses() {
+    // "+(1-2) to Foo" fits both a supplement whose literal holds the
+    // parentheses (its own skeleton bucket) and the official rolled-line
+    // template (the bucket without them): official first, as within a bucket.
+    let pack = templates_pack(
+        "zz",
+        serde_json::json!([
+            {"src": "补译 +({0}-{1}) 某物", "en": "+({0}-{1}) to Foo", "origin": "agent"},
+            {"src": "某物 {0:+d}", "en": "{0:+d} to Foo"}
+        ]),
+    );
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    assert_eq!(
+        renderer.render_line_with_origin("+(1-2) to Foo"),
+        Some(("某物 +(1-2)".into(), None))
+    );
+}

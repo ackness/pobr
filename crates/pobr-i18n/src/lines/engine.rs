@@ -12,7 +12,9 @@
 //! Matching avoids regex: a template is parsed into a segment sequence of
 //! "literal / `{N}`, `{N:+d}` placeholder", scanned in order; captured
 //! values must be purely numeric-shaped (`[0-9+.-]`), to guard against
-//! false matches from skeleton collisions.
+//! false matches from skeleton collisions. A display translator also takes a
+//! roll range (`(1-2)`, `+(1.5-2)`) wherever it takes a number (see
+//! [`LineTranslator::accept_range_values`]).
 //!
 //! A template may span several lines (`"A\nB"`: one stat description the
 //! game writes on two lines). A text matches only templates with as many
@@ -109,6 +111,76 @@ fn is_numeric_capture(value: &str) -> bool {
             .all(|c| c.is_ascii_digit() || matches!(c, '+' | '-' | '.'))
 }
 
+/// The byte length of a number at the start of `text` (`-`? digits, then
+/// `.` digits optionally); 0 when it does not start with one.
+fn number_len(text: &str) -> usize {
+    let bytes = text.as_bytes();
+    let mut i = usize::from(bytes.first() == Some(&b'-'));
+    let digits = |i: usize| bytes[i..].iter().take_while(|b| b.is_ascii_digit()).count();
+    let whole = digits(i);
+    if whole == 0 {
+        return 0;
+    }
+    i += whole;
+    if bytes.get(i) == Some(&b'.') {
+        let fraction = digits(i + 1);
+        if fraction > 0 {
+            i += 1 + fraction;
+        }
+    }
+    i
+}
+
+/// The byte length of a roll range at the start of `text`, the way item text
+/// writes one: `(low-high)` with two numbers, either of them negative or
+/// decimal (`(1-2)`, `(-10-10)`, `(0.5-1.5)`); `None` when it does not start
+/// with one.
+fn range_len(text: &str) -> Option<usize> {
+    let rest = text.strip_prefix('(')?;
+    let low = number_len(rest);
+    let rest = rest[low..].strip_prefix('-').filter(|_| low > 0)?;
+    let high = number_len(rest);
+    (high > 0 && rest[high..].starts_with(')')).then_some(1 + low + 1 + high + 1)
+}
+
+/// Whether a captured value is one roll range, signed or not (`(1-2)`,
+/// `+(1-2)`, `-(10-5)`): the value a range display holds where the rolled
+/// line holds a number.
+fn is_range_capture(value: &str) -> bool {
+    let value = value.trim();
+    let unsigned = value.strip_prefix(['+', '-']).unwrap_or(value);
+    range_len(unsigned) == Some(unsigned.len())
+}
+
+/// `text` without the parentheses of its roll ranges (`grant (1-2)% more`
+/// -> `grant 1-2% more`), so that its skeleton is the rolled line's; `None`
+/// when it holds no range.
+fn without_range_parentheses(text: &str) -> Option<String> {
+    if !text.contains('(') {
+        return None;
+    }
+    let mut out = String::with_capacity(text.len());
+    let mut found = false;
+    let mut rest = text;
+    while let Some(open) = rest.find('(') {
+        out.push_str(&rest[..open]);
+        rest = &rest[open..];
+        match range_len(rest) {
+            Some(len) => {
+                out.push_str(&rest[1..len - 1]);
+                rest = &rest[len..];
+                found = true;
+            }
+            None => {
+                out.push('(');
+                rest = &rest[1..];
+            }
+        }
+    }
+    out.push_str(rest);
+    found.then_some(out)
+}
+
 /// Whether a character belongs to a script where one character carries about
 /// a word: CJK ideographs (Unified, Extension A), kana and Hangul syllables.
 fn is_dense_script(c: char) -> bool {
@@ -149,15 +221,24 @@ fn has_numeric_format(text: &str) -> bool {
     false
 }
 
+/// Which captured values a match accepts besides numeric-shaped ones.
+#[derive(Debug, Clone, Copy)]
+struct Captures {
+    /// Non-empty strings without newlines (for string-placeholder templates
+    /// like "Allocates {0}").
+    strings: bool,
+    /// One roll range (see [`is_range_capture`]).
+    ranges: bool,
+}
+
 /// Validates a captured text span: numeric-shaped values are always
-/// accepted; with `allow_string`, non-empty strings without newlines are
-/// also accepted (for string-placeholder templates like "Allocates {0}").
-/// Returns the normalized captured value.
-fn accept_capture(capture: &str, allow_string: bool) -> Option<String> {
-    if is_numeric_capture(capture) {
+/// accepted, the others as `captures` allows. Returns the normalized
+/// captured value.
+fn accept_capture(capture: &str, captures: Captures) -> Option<String> {
+    if is_numeric_capture(capture) || (captures.ranges && is_range_capture(capture)) {
         return Some(capture.trim().to_string());
     }
-    if allow_string {
+    if captures.strings {
         let trimmed = capture.trim();
         if !trimmed.is_empty() && !trimmed.contains('\n') {
             return Some(trimmed.to_string());
@@ -323,6 +404,9 @@ pub struct LineTranslator {
     /// Whether a string capture holding letters must translate (see
     /// [`Self::require_translated_captures`]).
     translated_captures_only: bool,
+    /// Whether a roll range fills a numeric slot (see
+    /// [`Self::accept_range_values`]).
+    range_values: bool,
 }
 
 impl LineTranslator {
@@ -430,6 +514,7 @@ impl LineTranslator {
             target_skeletons: HashSet::new(),
             target_names: HashSet::new(),
             translated_captures_only: false,
+            range_values: false,
         }
     }
 
@@ -445,6 +530,60 @@ impl LineTranslator {
     /// whole, never a mixture.
     pub fn require_translated_captures(&mut self) {
         self.translated_captures_only = true;
+    }
+
+    /// Lets a roll range fill any slot a number fills, so a range display
+    /// (`+(1-2) to Level of all Minion Skills`, as the unique-item catalog
+    /// writes it) matches the template its rolled line (`+2 to ...`) does,
+    /// at the top level and in a captured line (`... also grant (1-2)%
+    /// increased ...`). The range is kept as written, sign included, exactly
+    /// as a rolled number is: a `{0:+d}` slot holds the line's own `+`, so
+    /// the translation shows `+(1-2)` once. The display direction asks for
+    /// this; input text holds rolled values.
+    pub fn accept_range_values(&mut self) {
+        self.range_values = true;
+    }
+
+    /// The captured values a numeric match accepts.
+    fn numeric_captures(&self) -> Captures {
+        Captures {
+            strings: false,
+            ranges: self.range_values,
+        }
+    }
+
+    /// The first template in the skeleton bucket `skel` that `text` (of
+    /// `lines` lines) matches with numeric captures, rendered, with its
+    /// origin. With [`Self::accept_range_values`], a text holding a roll
+    /// range also tries the bucket of its skeleton without the range's
+    /// parentheses (the rolled line's). Official templates of both buckets
+    /// come before any supplement, as within one bucket; each group tries
+    /// the bucket as written first.
+    fn translate_numeric(
+        &self,
+        text: &str,
+        skel: &str,
+        lines: usize,
+    ) -> Option<(String, Option<TextOrigin>)> {
+        let in_bucket = |skel: &str, official: bool| {
+            self.buckets.get(skel)?.iter().find_map(|&i| {
+                let candidate = &self.templates[i];
+                if candidate.lines != lines || candidate.origin.is_none() != official {
+                    return None;
+                }
+                let values =
+                    match_segments(text, &candidate.src_segments, self.numeric_captures())?;
+                Some((render_en(&candidate.en, &values), candidate.origin))
+            })
+        };
+        let rolled = self
+            .range_values
+            .then(|| without_range_parentheses(text))
+            .flatten()
+            .map(|rolled| skeleton(&rolled));
+        [true, false].into_iter().find_map(|official| {
+            in_bucket(skel, official).or_else(|| in_bucket(rolled.as_deref()?, official))
+        })
     }
 
     /// Prepares [`Self::is_source_text`] (an input-direction translator
@@ -516,7 +655,8 @@ impl LineTranslator {
     /// when no multi-line template can begin with it (or `line` itself holds
     /// a line break). Joining adjacent lines from `line` on is worth trying
     /// only up to this many, so text with no multi-line description costs
-    /// one lookup per line.
+    /// one lookup per line (two for a line holding a roll range, whose
+    /// rolled skeleton is looked up too).
     pub fn span_from(&self, line: &str) -> usize {
         let line = line.trim();
         if self.max_lines == 1 || line.contains('\n') {
@@ -526,6 +666,12 @@ impl LineTranslator {
         // first line filled with numbers has its template's skeleton.
         let skel = skeleton(line);
         let mut span = self.first_lines.get(&skel).copied().unwrap_or(1);
+        if self.range_values
+            && let Some(rolled) = without_range_parentheses(line)
+            && let Some(&most) = self.first_lines.get(&skeleton(&rolled))
+        {
+            span = span.max(most);
+        }
         for (head, tail, lines) in &self.open_first_lines {
             if *lines > span && skel.starts_with(head.as_str()) && skel.ends_with(tail.as_str()) {
                 span = *lines;
@@ -565,16 +711,8 @@ impl LineTranslator {
         // Primary channel: strict numeric matching against the exact
         // skeleton bucket. Numeric-line behaviour is completely unchanged
         // (a hit returns immediately, never entering the fallback).
-        if let Some(idxs) = self.buckets.get(&line_skel) {
-            for &i in idxs {
-                let candidate = &self.templates[i];
-                if candidate.lines != lines {
-                    continue;
-                }
-                if let Some(values) = match_segments(line, &candidate.src_segments, false) {
-                    return Some((render_en(&candidate.en, &values), candidate.origin));
-                }
-            }
+        if let Some(out) = self.translate_numeric(line, &line_skel, lines) {
+            return Some(out);
         }
         // Fallback: string-placeholder templates. The skeleton bucket
         // misses (the capture contains name characters, so the skeleton no
@@ -718,7 +856,11 @@ impl LineTranslator {
             if candidate.lines != lines {
                 continue;
             }
-            if let Some(mut values) = match_segments(line, &candidate.src_segments, true) {
+            let captures = Captures {
+                strings: true,
+                ..self.numeric_captures()
+            };
+            if let Some(mut values) = match_segments(line, &candidate.src_segments, captures) {
                 // Renderer only: a slot written `{0}%` holds a number, never words (in
                 // `Bonded: 12% increased Damage`, `{0}% increased Damage` must not take
                 // `Bonded: 12`).
@@ -738,7 +880,7 @@ impl LineTranslator {
                 let mut origin = candidate.origin;
                 let mut untranslated_word = false;
                 for value in values.values_mut() {
-                    if is_numeric_capture(value) {
+                    if is_numeric_capture(value) || (self.range_values && is_range_capture(value)) {
                         continue;
                     }
                     match self.translate_value(value) {
@@ -760,24 +902,15 @@ impl LineTranslator {
 
     /// Second-pass translation of a captured value: only tries the
     /// base-name table plus the exact numeric bucket (no recursive
-    /// fallback, to rule out infinite recursion); returns `None` on a miss
-    /// (the caller keeps the original English name).
+    /// fallback, to rule out infinite recursion), a roll range taken as at
+    /// the top level; returns `None` on a miss (the caller keeps the
+    /// original English name).
     fn translate_value(&self, value: &str) -> Option<(String, Option<TextOrigin>)> {
         let value = value.trim();
         if let Some(en) = self.base_names.get(value) {
             return Some((en.clone(), None));
         }
-        let idxs = self.buckets.get(&skeleton(value))?;
-        for &i in idxs {
-            let candidate = &self.templates[i];
-            if candidate.lines != 1 {
-                continue;
-            }
-            if let Some(values) = match_segments(value, &candidate.src_segments, false) {
-                return Some((render_en(&candidate.en, &values), candidate.origin));
-            }
-        }
-        None
+        self.translate_numeric(value, &skeleton(value), 1)
     }
 }
 
@@ -809,17 +942,17 @@ fn find_ignore_ascii_case(haystack: &str, needle: &str) -> Option<usize> {
 }
 
 /// Matches segments one by one: literals align in order, and the text
-/// between placeholders becomes a captured value. With `allow_string=false`,
-/// captures must be numeric-shaped (primary channel); with `true`, non-empty
-/// strings without newlines are also accepted (the fallback channel, where
-/// candidates are already gated by strong anchors). A placeholder that
-/// appears more than once (the same value on two lines of a description)
-/// must capture the same text each time. Returns `placeholder index ->
+/// between placeholders becomes a captured value, which must be
+/// numeric-shaped or of a kind `captures` accepts: a roll range (display
+/// direction), or, in the fallback channel (where candidates are already
+/// gated by strong anchors), a non-empty string without newlines. A
+/// placeholder that appears more than once (the same value on two lines of
+/// a description) must capture the same text each time. Returns `placeholder index ->
 /// captured text` on success.
 fn match_segments(
     line: &str,
     segments: &[Segment],
-    allow_string: bool,
+    captures: Captures,
 ) -> Option<HashMap<usize, String>> {
     let mut values: HashMap<usize, String> = HashMap::new();
     let mut pos = 0usize;
@@ -837,7 +970,7 @@ fn match_segments(
             Segment::Literal(lit) => {
                 let found = find_ignore_ascii_case(&line[pos..], lit)?;
                 if let Some(index) = pending.take() {
-                    let value = accept_capture(&line[pos..pos + found], allow_string)?;
+                    let value = accept_capture(&line[pos..pos + found], captures)?;
                     insert_capture(&mut values, index, value)?;
                 } else if found != 0 {
                     return None;
@@ -847,7 +980,7 @@ fn match_segments(
         }
     }
     if let Some(index) = pending {
-        let value = accept_capture(&line[pos..], allow_string)?;
+        let value = accept_capture(&line[pos..], captures)?;
         insert_capture(&mut values, index, value)?;
     } else if pos != line.len() {
         return None;
