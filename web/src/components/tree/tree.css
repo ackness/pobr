@@ -44,8 +44,8 @@
 }
 
 .edge-active {
-  stroke: var(--accent-gold-dim);
-  stroke-width: 20;
+  stroke: var(--accent-gold-bright);
+  stroke-width: 30;
 }
 
 .node {
