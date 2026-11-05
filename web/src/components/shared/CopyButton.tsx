@@ -25,7 +25,7 @@ export function CopyButton({ text, lang, label, compact }: Props) {
       <AppButton
         type="button"
         title={label ?? tt('common.copy')}
-        aria-live="polite"
+        aria-live={compact ? undefined : 'polite'}
         className={compact ? 'copy-compact-button' : undefined}
         onClick={async (e) => {
           e.stopPropagation();
@@ -42,6 +42,7 @@ export function CopyButton({ text, lang, label, compact }: Props) {
         {compact ? <span aria-hidden>{status === 'done' ? '✓' : '⧉'}</span>
           : status === 'done' ? tt('common.copied') : (label ?? tt('common.copy'))}
       </AppButton>
+      {compact && <span className="sr-only" aria-live="polite">{status === 'done' ? tt('common.copied') : ''}</span>}
       {status === 'error' && <span className="copy-fallback">
         <span role="alert">{tt('common.copyFailed')}</span>
         <AppTextarea readOnly value={text} rows={3} aria-label={tt('common.manualCopy')}

@@ -2,6 +2,15 @@
    A list of socket groups on the left, the selected group's gems on the right. Rows are divided
    by hairlines; nothing here is a card. On a narrow page the selected group opens under its row. */
 @layer app {
+  /* Keep gem-name copy icons on the text line, including titles and support descriptions. */
+  .shell-root .copy-control-compact { flex: none; flex-wrap: nowrap; vertical-align: middle; }
+  .shell-root .copy-control-compact .copy-compact-button {
+    min-width: 0; min-height: 0; width: 1.25rem; height: 1.25rem; padding: 0; line-height: 1;
+    border-color: transparent; background: transparent; color: var(--muted-foreground); font-size: var(--text-xs); font-weight: 400;
+  }
+  .shell-root .copy-control-compact .copy-compact-button:hover,
+  .shell-root .copy-control-compact .copy-compact-button:focus-visible { color: var(--foreground); }
+
   .shell-root .skills-page { container: skills-page / inline-size; }
 
   /* ── Skill set picker: a quiet bar, not a panel ─────────────────────────── */

@@ -558,12 +558,3 @@
 .skill-gem .gem-corrupted { width: auto; gap: var(--space-1); font-size: var(--text-xs); }
 
 /* Each gem's controls stay together as the available panel width changes. */
-
-/* 宝石名旁的图标尺寸复制按钮：不撑高行。 */
-.copy-control-compact { flex: none; flex-wrap: nowrap; vertical-align: middle; }
-.copy-control-compact .copy-compact-button {
-  min-width: 0; height: 1.25rem; padding: 0 .3rem; line-height: 1;
-  border-color: transparent; background: transparent; color: var(--muted-foreground); font-size: var(--text-xs);
-}
-.copy-control-compact .copy-compact-button:hover,
-.copy-control-compact .copy-compact-button:focus-visible { color: var(--foreground); }

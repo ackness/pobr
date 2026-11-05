@@ -485,10 +485,12 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
           setOpenSections(previous => new Set([...previous, section.name]));
           requestAnimationFrame(() => {
             const group = document.getElementById(`config-section-${section.name.replace(/\s+/g, '-')}`);
-            // Scroll only when the reader is already past the group's top. Otherwise the page stays
-            // put, so the list under the pointer does not move.
+            const header = group?.querySelector<HTMLButtonElement>('.config-section-header');
+            // Align a group we've scrolled past; otherwise reveal only its header so a tall group
+            // does not move the list under the pointer when the header is already visible.
             if (group && nav && group.getBoundingClientRect().top < nav.getBoundingClientRect().top) group.scrollIntoView({ block: 'start' });
-            group?.querySelector<HTMLButtonElement>('.config-section-header')?.focus({ preventScroll: true });
+            else header?.scrollIntoView({ block: 'nearest' });
+            header?.focus({ preventScroll: true });
           });
         }}><span>{groupTitle(section.name)}</span><span>{section.options.length}</span></AppButton>)}
       </nav>}
