@@ -21,9 +21,7 @@ pub fn apply_companion_damage_to_player(env: &mut Env) {
     if !db.flag(&env.cfg, "CompanionDamageAppliesToPlayer") {
         return;
     }
-    let Some(companion) = SkillTypes::from_pob2_name("CreatesCompanion") else {
-        return;
-    };
+    let companion = SkillTypes::CREATES_COMPANION;
     // A Companion modifier is scoped to Companion skills. Its other
     // conditions are the player's, so evaluate them as a Companion skill would.
     let mut companion_cfg = env.cfg.clone();
@@ -168,7 +166,7 @@ mod tests {
     use crate::calc::{Actor, ActorBaseStats};
 
     fn companion_types() -> SkillTypes {
-        SkillTypes::from_pob2_name("CreatesCompanion").unwrap()
+        SkillTypes::CREATES_COMPANION
     }
 
     /// "Companions deal `value`% increased `name`".

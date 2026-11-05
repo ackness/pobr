@@ -86,7 +86,7 @@ test.each([
   ['MetaCastOnCritPlayer', []],
   ['SparkPlayer', []],
 ] as const)('Applicable view gates Energy controls for %s', (skill, expected) => {
-  const native: { options: ConfigOption[] } = JSON.parse(readFileSync(new URL('../../../data/overlay-common/energy_config_options.json', import.meta.url), 'utf8'));
+  const native: { options: ConfigOption[] } = JSON.parse(readFileSync(new URL('../../../crates/pobr-gamedata/src/domains/config_options/energy_config_options.json', import.meta.url), 'utf8'));
   const snapshot: { options: ConfigOption[] } = JSON.parse(readFileSync(new URL(`../../../data/${dataVersion}/overlay/config_options.json`, import.meta.url), 'utf8'));
   const energyOptions = native.options.filter(option => option.var.startsWith('energy'));
   const options = snapshot.options.filter(option => energyOptions.some(energy => energy.var === option.var));

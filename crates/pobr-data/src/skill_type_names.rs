@@ -48,7 +48,7 @@ pub(crate) fn lookup(name: &str) -> Option<u32> {
 
 /// The engine's named [`SkillTypes`](crate::skill::SkillTypes) constants, by
 /// the type name their bit stands for. An installed table must agree.
-fn named_constants() -> [(&'static str, crate::skill::SkillTypes); 46] {
+fn named_constants() -> [(&'static str, crate::skill::SkillTypes); 48] {
     use crate::skill::SkillTypes as T;
     [
         ("Attack", T::ATTACK),
@@ -97,13 +97,15 @@ fn named_constants() -> [(&'static str, crate::skill::SkillTypes); 46] {
         ("Lightning", T::LIGHTNING),
         ("Retaliation", T::RETALIATION),
         ("SpecialAncestralBoost", T::SPECIAL_ANCESTRAL_BOOST),
+        ("NonWeaponAttack", T::NON_WEAPON_ATTACK),
+        ("Companion", T::COMPANION),
     ]
 }
 
 /// Validates a data package's `ActiveSkillType` rows as the engine's table.
-fn validate(rows: &[ActiveSkillTypeDef]) -> Result<Table, String> {
+fn validate(rows: &[ActiveSkillTypeDef]) -> Result<Vec<(&str, u32)>, String> {
     let capacity = crate::skill::SkillTypes::CAPACITY;
-    let mut table: Vec<(&'static str, u32)> = Vec::with_capacity(rows.len());
+    let mut table: Vec<(&str, u32)> = Vec::with_capacity(rows.len());
     for (position, row) in rows.iter().enumerate() {
         let expected =
             u32::try_from(position + 1).map_err(|_| "too many skill types".to_string())?;
@@ -122,8 +124,7 @@ fn validate(rows: &[ActiveSkillTypeDef]) -> Result<Table, String> {
         if row.id.is_empty() || row.id.contains(char::is_whitespace) {
             return Err(format!("invalid skill type name {:?}", row.id));
         }
-        // Leaked once per process: the table lives as long as the engine.
-        table.push((Box::leak(row.id.clone().into_boxed_str()), row.index));
+        table.push((row.id.as_str(), row.index));
     }
     if table.is_empty() {
         return Err("the skill type table is empty".into());
@@ -153,7 +154,14 @@ fn validate(rows: &[ActiveSkillTypeDef]) -> Result<Table, String> {
 /// table that is malformed or disagrees with the engine's named constants.
 pub fn install(rows: &[ActiveSkillTypeDef]) -> Result<(), String> {
     let table = validate(rows)?;
-    let installed = INSTALLED.get_or_init(|| table.clone());
+    // Only the install that wins copies the names out; they are leaked once
+    // per process, since the table lives as long as the engine.
+    let installed = INSTALLED.get_or_init(|| {
+        table
+            .iter()
+            .map(|(name, id)| (&*Box::leak(Box::<str>::from(*name)), *id))
+            .collect()
+    });
     if installed.len() == table.len()
         && installed
             .iter()
@@ -230,6 +238,17 @@ mod tests {
         assert_eq!(crate::skill::SkillTypes::NONE.index(), None);
         let two = crate::skill::SkillTypes::ATTACK | crate::skill::SkillTypes::SPELL;
         assert_eq!(two.index(), None);
+    }
+
+    /// PoB2 tests these names, but the game's table has no such rows, so the
+    /// engine drops them (calc/warcry.rs, cadiro_arrows.rs, preparation.rs).
+    /// If a package adds one, give it a named constant and use it there.
+    #[test]
+    fn vendor_names_the_engine_skips_are_absent_from_the_package_table() {
+        let rows = package_rows();
+        for name in ["NeverExertable", "OtherThingUsesSkill"] {
+            assert!(rows.iter().all(|row| row.id != name), "{name}");
+        }
     }
 
     #[test]

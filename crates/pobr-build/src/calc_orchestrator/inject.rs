@@ -761,8 +761,7 @@ fn ancestral_boost_modifiers() -> Vec<Modifier> {
                 None,
             ))
             .with_tag(pobr_core::ModTag::SkillTypes(
-                pobr_data::skill::SkillTypes::from_pob2_name("MeleeSingleTarget")
-                    .expect("MeleeSingleTarget is a game skill type"),
+                pobr_data::skill::SkillTypes::MELEE_SINGLE_TARGET,
             ))
             .with_tag(pobr_core::ModTag::condition("AncestrallyBoosted", false))
             .with_origin(origin.clone()),
@@ -779,8 +778,7 @@ fn ancestral_boost_modifiers() -> Vec<Modifier> {
                     None,
                 ))
                 .with_tag(pobr_core::ModTag::SkillTypes(
-                    pobr_data::skill::SkillTypes::from_pob2_name("Slam")
-                        .expect("Slam is a game skill type"),
+                    pobr_data::skill::SkillTypes::SLAM,
                 ))
                 .with_tag(pobr_core::ModTag::condition(
                     "AncestralBoostSnapshot",

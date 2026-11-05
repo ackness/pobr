@@ -369,12 +369,9 @@ pub fn spawn_minions(
             // What the character grants this skill's minions: every
             // `MinionModifier` from its items, tree, jewels and
             // configuration whose own tags hold for this skill.
-            let skill_types = data.effect(&skill_id).map_or(SkillTypes::NONE, |e| {
-                e.skill_types
-                    .iter()
-                    .filter_map(|name| SkillTypes::from_pob2_name(name))
-                    .fold(SkillTypes::NONE, |all, one| all | one)
-            });
+            let skill_types = data
+                .effect(&skill_id)
+                .map_or(SkillTypes::NONE, |e| e.skill_type_bits());
             let mut group_minion_modifiers = session.minion_modifiers_for(skill_types);
             if let Some(item) = copied_item {
                 for text in crate::skill_env::item_text::weapon_mod_texts(item) {
@@ -738,6 +735,7 @@ fn minion_skill(
             crate::calc::MinionSkill {
                 id: (*id).clone(),
                 types: effect.skill_types.clone(),
+                skill_types: effect.skill_type_bits(),
                 projectile_hit,
                 cast_time: effect.cast_time.map_or(0.0, |ms| f64::from(ms) / 1000.0),
                 damage_multiplier: {

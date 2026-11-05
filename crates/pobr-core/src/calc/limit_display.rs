@@ -137,9 +137,7 @@ pub(super) fn fill(env: &mut Env) {
     views.duration_increased = duration.increased;
     views.duration_more = duration.more;
     views.duration_mod = duration.value();
-    views.strike_skill = cfg
-        .skill_types
-        .intersects(SkillTypes::from_pob2_name("MeleeSingleTarget").unwrap());
+    views.strike_skill = cfg.skill_types.intersects(SkillTypes::MELEE_SINGLE_TARGET);
     views.additional_strike_targets = db.sum(
         ModType::Base,
         cfg,

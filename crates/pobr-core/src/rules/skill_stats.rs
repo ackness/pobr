@@ -1218,8 +1218,8 @@ fn player_buff_modifiers_impl(stat: &str, value: f64, skill: BuffSkill) -> Optio
         // added to the spell's own after its supports' cost multipliers,
         // which are multipliers of the gem's cost.
         "archmage_max_mana_permyriad_to_add_to_non_channelled_spell_mana_cost" => {
-            let spell = SkillTypes::from_pob2_name("Spell")?;
-            let channel = SkillTypes::from_pob2_name("Channel")?;
+            let spell = SkillTypes::SPELL;
+            let channel = SkillTypes::CHANNEL;
             Some(vec![
                 Modifier::number("ManaCostNoMult", ModType::Base, value / 100.0)
                     .with_tag(ModTag::SkillTypes(spell))

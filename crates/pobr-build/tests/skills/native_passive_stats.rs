@@ -676,3 +676,37 @@ fn build_data_requires_the_monster_scaling_table() {
         "the sealed pack ships its controlled table"
     );
 }
+
+/// A packet with a stat this engine does not map is never used, so the load
+/// drops it instead of keeping it resident; mapped packets stay.
+#[test]
+fn the_load_keeps_only_native_packets_the_engine_maps() {
+    let raw = GameData::new(pobr_gamedata::current_data_dir())
+        .passive_nodes()
+        .unwrap();
+    let with_packet = raw
+        .iter()
+        .filter(|node| node.native_stats.is_some())
+        .count();
+    let mapped: std::collections::BTreeSet<u32> = raw
+        .iter()
+        .filter(|node| {
+            node.native_stats
+                .as_ref()
+                .is_some_and(pobr_core::passive::native_packet_known)
+        })
+        .map(|node| node.skill)
+        .collect();
+    assert!(
+        mapped.len() < with_packet,
+        "the current pack carries packets with unmapped stats ({} of {with_packet} mapped)",
+        mapped.len()
+    );
+    let loaded: std::collections::BTreeSet<u32> = super::test_data()
+        .passive_nodes
+        .values()
+        .filter(|node| node.native_stats.is_some())
+        .map(|node| node.skill)
+        .collect();
+    assert_eq!(loaded, mapped);
+}

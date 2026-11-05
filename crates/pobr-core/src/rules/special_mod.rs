@@ -1660,7 +1660,7 @@ mod tests {
         let m = r.try_match("not channelled", &reg).unwrap();
         assert!(matches!(
             &m.mods[0].tags[0],
-            ModTag::SkillTypesNeg(types) if Some(*types) == SkillTypes::from_pob2_name("Channel")
+            ModTag::SkillTypesNeg(types) if *types == SkillTypes::CHANNEL
         ));
     }
 

@@ -998,10 +998,7 @@ pub fn duration_terms(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig, stat: &str) -
         modifier: duration_modifier_terms(db, cfg, scope).value(),
         expiration: if db.flag(cfg, debuff) {
             super::ailment::debuff_duration_mult(enemy, cfg)
-        } else if cfg
-            .skill_types
-            .intersects(SkillTypes::from_pob2_name("Buff").unwrap())
-        {
+        } else if cfg.skill_types.intersects(SkillTypes::BUFF) {
             buff_expiration_mult(db, cfg)
         } else {
             1.0
@@ -1119,8 +1116,7 @@ pub fn projectile_behavior_counts(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig) -
         })
     .max(0.0);
     let pierce = (sum("PierceCount") + sum("PierceChance") / 100.0).max(0.0);
-    let projectile_number = SkillTypes::from_pob2_name("ProjectileNumber")
-        .is_some_and(|kind| cfg.skill_types.intersects(kind));
+    let projectile_number = cfg.skill_types.intersects(SkillTypes::PROJECTILE_NUMBER);
     let input = ProjectileBehaviorInput {
         cannot_split: !projectile || flag("CannotSplit") || projectile_number,
         split_count: split.ceil() as u32,

@@ -138,7 +138,7 @@ pub(crate) struct TotemLimitTerms {
 pub(crate) fn limit_cfg(cfg: &CalcConfig) -> CalcConfig {
     let mut cfg = cfg.clone();
     if cfg.condition("BallistaSkill") {
-        cfg.skill_types |= SkillTypes::from_pob2_name("TotemsAreBallistae").unwrap_or_default();
+        cfg.skill_types |= SkillTypes::TOTEMS_ARE_BALLISTAE;
     }
     cfg
 }

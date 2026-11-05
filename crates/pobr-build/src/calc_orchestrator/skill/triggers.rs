@@ -271,6 +271,7 @@ mod support_judgement_tests {
             minion_has_item_set: false,
             ignore_minion_types: false,
             skill_types: v(skill_types),
+            skill_type_set: Default::default(),
         }
     }
 

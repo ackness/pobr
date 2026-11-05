@@ -253,26 +253,24 @@ pub(in crate::calc) fn bridge_ancestral_boost(env: &mut Env) {
         // Strike target count. New Slam/Cry effects are game-only below.
         (source, 2.0)
     } else {
-        let has_type =
-            |name| SkillTypes::from_pob2_name(name).is_some_and(|ty| cfg.skill_types.contains(ty));
-        let strike = has_type("MeleeSingleTarget");
-        let slam = has_type("Slam");
-        let special = has_type("SpecialAncestralBoost");
+        let has_type = |ty: SkillTypes| cfg.skill_types.contains(ty);
+        let strike = has_type(SkillTypes::MELEE_SINGLE_TARGET);
+        let slam = has_type(SkillTypes::SLAM);
+        let special = has_type(SkillTypes::SPECIAL_ANCESTRAL_BOOST);
         // Native callers can select an attack through CalcConfig::attack()
         // while supplying only its Strike/Slam subtype.
-        let eligible = (cfg.flags.intersects(ModFlags::ATTACK) || has_type("Attack"))
+        // Vendor also excludes OtherThingUsesSkill, which the game's
+        // ActiveSkillType table does not have (no skill carries it).
+        let eligible = (cfg.flags.intersects(ModFlags::ATTACK) || has_type(SkillTypes::ATTACK))
             && (strike || slam || special)
-            && ![
-                "Triggered",
-                "UsedByProxy",
-                "OtherThingUsesSkill",
-                "UsedByTotem",
-                "SummonsTotem",
-                "Trapped",
-                "RemoteMined",
-            ]
-            .into_iter()
-            .any(has_type);
+            && !cfg.skill_types.intersects(
+                SkillTypes::TRIGGERED
+                    | SkillTypes::USED_BY_PROXY
+                    | SkillTypes::USED_BY_TOTEM
+                    | SkillTypes::SUMMONS_TOTEM
+                    | SkillTypes::TRAPPED
+                    | SkillTypes::REMOTE_MINED,
+            );
         // Use the tracked accessor even when the input is absent: config
         // discovery needs to know this condition can select the snapshot.
         let requested_value = cfg.condition("AncestrallyBoosted");

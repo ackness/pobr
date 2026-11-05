@@ -488,6 +488,21 @@ fn totem_defs(
 /// a single newline-joined entry for some nodes (most keystones, some notables)
 /// and writes one entry per line for the rest; every reader of `stats` parses
 /// an entry as one modifier line, so a packed entry parsed as nothing.
+/// Drops a node's native stat packet when this engine does not map every
+/// stat in it ([`pobr_core::passive::native_packet_known`]). Such a packet is
+/// never used (the node is parsed from its text either way), so keeping it
+/// would only hold dead data for the life of the [`BuildData`].
+fn without_unmapped_native_packet(mut node: PassiveNodeDef) -> PassiveNodeDef {
+    if node
+        .native_stats
+        .as_ref()
+        .is_some_and(|packet| !pobr_core::passive::native_packet_known(packet))
+    {
+        node.native_stats = None;
+    }
+    node
+}
+
 fn one_stat_per_line(mut node: PassiveNodeDef) -> PassiveNodeDef {
     if node.stats.iter().any(|stat| stat.contains('\n')) {
         node.stats = node
@@ -520,7 +535,12 @@ impl BuildData {
         let passive_nodes = data
             .passive_nodes()?
             .into_iter()
-            .map(|node| (node.skill, one_stat_per_line(node)))
+            .map(|node| {
+                (
+                    node.skill,
+                    one_stat_per_line(without_unmapped_native_packet(node)),
+                )
+            })
             .collect();
         data.release_domain("passive_tree.json");
 
@@ -565,10 +585,15 @@ impl BuildData {
             })
             .collect();
 
+        // Resolve each effect's type names now, with the pack's table installed
+        // above, so no calculation looks a skill type up by name.
         let granted_effects = data
             .granted_effects()?
             .into_iter()
-            .map(|effect| (effect.id.clone(), effect))
+            .map(|effect| {
+                effect.skill_type_bits();
+                (effect.id.clone(), effect)
+            })
             .collect();
         data.release_domain("granted_effects.json");
 
@@ -903,6 +928,7 @@ mod tests {
             minion_has_item_set: false,
             ignore_minion_types: false,
             skill_types: vec![],
+            skill_type_set: Default::default(),
         }
     }
 

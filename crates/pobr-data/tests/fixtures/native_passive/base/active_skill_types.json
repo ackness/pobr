@@ -1,0 +1,1162 @@
+[
+  {
+    "id": "Attack",
+    "index": 1
+  },
+  {
+    "id": "Spell",
+    "index": 2
+  },
+  {
+    "id": "Projectile",
+    "index": 3
+  },
+  {
+    "id": "DualWieldOnly",
+    "index": 4
+  },
+  {
+    "id": "Buff",
+    "index": 5
+  },
+  {
+    "id": "Minion",
+    "index": 6
+  },
+  {
+    "id": "Damage",
+    "index": 7
+  },
+  {
+    "id": "Area",
+    "index": 8
+  },
+  {
+    "id": "Duration",
+    "index": 9
+  },
+  {
+    "id": "RequiresShield",
+    "index": 10
+  },
+  {
+    "id": "ProjectileSpeed",
+    "index": 11
+  },
+  {
+    "id": "HasReservation",
+    "index": 12
+  },
+  {
+    "id": "ReservationBecomesCost",
+    "index": 13
+  },
+  {
+    "id": "Trappable",
+    "index": 14
+  },
+  {
+    "id": "Totemable",
+    "index": 15
+  },
+  {
+    "id": "Mineable",
+    "index": 16
+  },
+  {
+    "id": "ElementalStatus",
+    "index": 17
+  },
+  {
+    "id": "MinionsCanExplode",
+    "index": 18
+  },
+  {
+    "id": "Chains",
+    "index": 19
+  },
+  {
+    "id": "Melee",
+    "index": 20
+  },
+  {
+    "id": "MeleeSingleTarget",
+    "index": 21
+  },
+  {
+    "id": "Multicastable",
+    "index": 22
+  },
+  {
+    "id": "TotemCastsAlone",
+    "index": 23
+  },
+  {
+    "id": "CausesBurning",
+    "index": 24
+  },
+  {
+    "id": "SummonsTotem",
+    "index": 25
+  },
+  {
+    "id": "TotemCastsWhenNotDetached",
+    "index": 26
+  },
+  {
+    "id": "Physical",
+    "index": 27
+  },
+  {
+    "id": "Fire",
+    "index": 28
+  },
+  {
+    "id": "Cold",
+    "index": 29
+  },
+  {
+    "id": "Lightning",
+    "index": 30
+  },
+  {
+    "id": "Triggerable",
+    "index": 31
+  },
+  {
+    "id": "Triggers",
+    "index": 32
+  },
+  {
+    "id": "Trapped",
+    "index": 33
+  },
+  {
+    "id": "Movement",
+    "index": 34
+  },
+  {
+    "id": "DamageOverTime",
+    "index": 35
+  },
+  {
+    "id": "RemoteMined",
+    "index": 36
+  },
+  {
+    "id": "Triggered",
+    "index": 37
+  },
+  {
+    "id": "Vaal",
+    "index": 38
+  },
+  {
+    "id": "Aura",
+    "index": 39
+  },
+  {
+    "id": "CanTargetUnusableCorpse",
+    "index": 40
+  },
+  {
+    "id": "RangedAttack",
+    "index": 41
+  },
+  {
+    "id": "Chaos",
+    "index": 42
+  },
+  {
+    "id": "FixedSpeedProjectile",
+    "index": 43
+  },
+  {
+    "id": "ThresholdJewelArea",
+    "index": 44
+  },
+  {
+    "id": "ThresholdJewelProjectile",
+    "index": 45
+  },
+  {
+    "id": "ThresholdJewelDuration",
+    "index": 46
+  },
+  {
+    "id": "ThresholdJewelRangedAttack",
+    "index": 47
+  },
+  {
+    "id": "Channel",
+    "index": 48
+  },
+  {
+    "id": "DegenOnlySpellDamage",
+    "index": 49
+  },
+  {
+    "id": "InbuiltTrigger",
+    "index": 50
+  },
+  {
+    "id": "Golem",
+    "index": 51
+  },
+  {
+    "id": "Herald",
+    "index": 52
+  },
+  {
+    "id": "AuraAffectsEnemies",
+    "index": 53
+  },
+  {
+    "id": "NoRuthless",
+    "index": 54
+  },
+  {
+    "id": "ThresholdJewelSpellDamage",
+    "index": 55
+  },
+  {
+    "id": "Cascadable",
+    "index": 56
+  },
+  {
+    "id": "ProjectilesFromUser",
+    "index": 57
+  },
+  {
+    "id": "MirageArcherCanUse",
+    "index": 58
+  },
+  {
+    "id": "ProjectileSpiral",
+    "index": 59
+  },
+  {
+    "id": "SingleMainProjectile",
+    "index": 60
+  },
+  {
+    "id": "MinionsPersistWhenSkillRemoved",
+    "index": 61
+  },
+  {
+    "id": "ProjectileNumber",
+    "index": 62
+  },
+  {
+    "id": "Warcry",
+    "index": 63
+  },
+  {
+    "id": "Instant",
+    "index": 64
+  },
+  {
+    "id": "Brand",
+    "index": 65
+  },
+  {
+    "id": "TargetsDestructibleCorpses",
+    "index": 66
+  },
+  {
+    "id": "NonHitChill",
+    "index": 67
+  },
+  {
+    "id": "ChillingArea",
+    "index": 68
+  },
+  {
+    "id": "AppliesCurse",
+    "index": 69
+  },
+  {
+    "id": "Barrageable",
+    "index": 70
+  },
+  {
+    "id": "AuraDuration",
+    "index": 71
+  },
+  {
+    "id": "AreaSpell",
+    "index": 72
+  },
+  {
+    "id": "OR",
+    "index": 73
+  },
+  {
+    "id": "AND",
+    "index": 74
+  },
+  {
+    "id": "NOT",
+    "index": 75
+  },
+  {
+    "id": "AppliesMaim",
+    "index": 76
+  },
+  {
+    "id": "CreatesMinion",
+    "index": 77
+  },
+  {
+    "id": "Guard",
+    "index": 78
+  },
+  {
+    "id": "Travel",
+    "index": 79
+  },
+  {
+    "id": "Blink",
+    "index": 80
+  },
+  {
+    "id": "CanHaveBlessing",
+    "index": 81
+  },
+  {
+    "id": "ProjectilesNotFromUser",
+    "index": 82
+  },
+  {
+    "id": "AttackInPlace",
+    "index": 83
+  },
+  {
+    "id": "AttackInPlaceIsDefault",
+    "index": 84
+  },
+  {
+    "id": "Nova",
+    "index": 85
+  },
+  {
+    "id": "InstantNoRepeatWhenHeld",
+    "index": 86
+  },
+  {
+    "id": "InstantShiftAttackForLeftMouse",
+    "index": 87
+  },
+  {
+    "id": "AuraNotOnCaster",
+    "index": 88
+  },
+  {
+    "id": "Banner",
+    "index": 89
+  },
+  {
+    "id": "Rain",
+    "index": 90
+  },
+  {
+    "id": "Cooldown",
+    "index": 91
+  },
+  {
+    "id": "ThresholdJewelChaining",
+    "index": 92
+  },
+  {
+    "id": "Slam",
+    "index": 93
+  },
+  {
+    "id": "Stance",
+    "index": 94
+  },
+  {
+    "id": "NonRepeatable",
+    "index": 95
+  },
+  {
+    "id": "UsedByTotem",
+    "index": 96
+  },
+  {
+    "id": "Steel",
+    "index": 97
+  },
+  {
+    "id": "Hex",
+    "index": 98
+  },
+  {
+    "id": "Mark",
+    "index": 99
+  },
+  {
+    "id": "Aegis",
+    "index": 100
+  },
+  {
+    "id": "Orb",
+    "index": 101
+  },
+  {
+    "id": "KillNoDamageModifiers",
+    "index": 102
+  },
+  {
+    "id": "RandomElement",
+    "index": 103
+  },
+  {
+    "id": "LateConsumeCooldown",
+    "index": 104
+  },
+  {
+    "id": "Arcane",
+    "index": 105
+  },
+  {
+    "id": "FixedCastTime",
+    "index": 106
+  },
+  {
+    "id": "RequiresOffHandNotWeapon",
+    "index": 107
+  },
+  {
+    "id": "Link",
+    "index": 108
+  },
+  {
+    "id": "Blessing",
+    "index": 109
+  },
+  {
+    "id": "DynamicCooldown",
+    "index": 110
+  },
+  {
+    "id": "Microtransaction",
+    "index": 111
+  },
+  {
+    "id": "OwnerCannotUse",
+    "index": 112
+  },
+  {
+    "id": "ProjectilesNumberModifiersNotApplied",
+    "index": 113
+  },
+  {
+    "id": "TotemsAreBallistae",
+    "index": 114
+  },
+  {
+    "id": "SkillGrantedBySupport",
+    "index": 115
+  },
+  {
+    "id": "CrossbowSkill",
+    "index": 116
+  },
+  {
+    "id": "CrossbowAmmoSkill",
+    "index": 117
+  },
+  {
+    "id": "UseGlobalStats",
+    "index": 118
+  },
+  {
+    "id": "ModifiesNextSkill",
+    "index": 119
+  },
+  {
+    "id": "OngoingSkill",
+    "index": 120
+  },
+  {
+    "id": "UsableWhileShapeshifted",
+    "index": 121
+  },
+  {
+    "id": "Meta",
+    "index": 122
+  },
+  {
+    "id": "Bear",
+    "index": 123
+  },
+  {
+    "id": "Wolf",
+    "index": 124
+  },
+  {
+    "id": "Invokable",
+    "index": 125
+  },
+  {
+    "id": "CreatesSkeletonMinion",
+    "index": 126
+  },
+  {
+    "id": "CreatesUndeadMinion",
+    "index": 127
+  },
+  {
+    "id": "CreatesDemonMinion",
+    "index": 128
+  },
+  {
+    "id": "CommandsMinions",
+    "index": 129
+  },
+  {
+    "id": "ReservesManually",
+    "index": 130
+  },
+  {
+    "id": "ConsumesCharges",
+    "index": 131
+  },
+  {
+    "id": "ManualCooldownConsumption",
+    "index": 132
+  },
+  {
+    "id": "SupportedByHourglass",
+    "index": 133
+  },
+  {
+    "id": "SupportedByBreachlordsAmalgam",
+    "index": 134
+  },
+  {
+    "id": "ConsumesFullyBrokenArmour",
+    "index": 135
+  },
+  {
+    "id": "SkillConsumesFreeze",
+    "index": 136
+  },
+  {
+    "id": "SkillConsumesIgnite",
+    "index": 137
+  },
+  {
+    "id": "SkillConsumesShock",
+    "index": 138
+  },
+  {
+    "id": "Wall",
+    "index": 139
+  },
+  {
+    "id": "Persistent",
+    "index": 140
+  },
+  {
+    "id": "UsableWhileMoving",
+    "index": 141
+  },
+  {
+    "id": "CanBecomeArrowRain",
+    "index": 142
+  },
+  {
+    "id": "MultipleReservation",
+    "index": 143
+  },
+  {
+    "id": "SupportedByElementalDischarge",
+    "index": 144
+  },
+  {
+    "id": "Limit",
+    "index": 145
+  },
+  {
+    "id": "Singlular",
+    "index": 146
+  },
+  {
+    "id": "GeneratesCharges",
+    "index": 147
+  },
+  {
+    "id": "EmpowersOtherSkill",
+    "index": 148
+  },
+  {
+    "id": "PerformsFinalStrike",
+    "index": 149
+  },
+  {
+    "id": "PerfectTiming",
+    "index": 150
+  },
+  {
+    "id": "CanHaveMultipleOngoingSkillInstances",
+    "index": 151
+  },
+  {
+    "id": "Sustained",
+    "index": 152
+  },
+  {
+    "id": "ComboStacking",
+    "index": 153
+  },
+  {
+    "id": "SupportedByComboFinisher",
+    "index": 154
+  },
+  {
+    "id": "Offering",
+    "index": 155
+  },
+  {
+    "id": "Retaliation",
+    "index": 156
+  },
+  {
+    "id": "Shapeshift",
+    "index": 157
+  },
+  {
+    "id": "Invocation",
+    "index": 158
+  },
+  {
+    "id": "Grenade",
+    "index": 159
+  },
+  {
+    "id": "NoDualWield",
+    "index": 160
+  },
+  {
+    "id": "Jumping",
+    "index": 161
+  },
+  {
+    "id": "CannotChain",
+    "index": 162
+  },
+  {
+    "id": "CreatesGroundRune",
+    "index": 163
+  },
+  {
+    "id": "CreatesFissure",
+    "index": 164
+  },
+  {
+    "id": "SummonsAttackTotem",
+    "index": 165
+  },
+  {
+    "id": "NonWeaponAttack",
+    "index": 166
+  },
+  {
+    "id": "CreatesGroundEffect",
+    "index": 167
+  },
+  {
+    "id": "SupportedByComboMastery",
+    "index": 168
+  },
+  {
+    "id": "IceCrystal",
+    "index": 169
+  },
+  {
+    "id": "SkillConsumesPowerChargesOnUse",
+    "index": 170
+  },
+  {
+    "id": "SkillConsumesFrenzyChargesOnUse",
+    "index": 171
+  },
+  {
+    "id": "SkillConsumesEnduranceChargesOnUse",
+    "index": 172
+  },
+  {
+    "id": "SupportedByFerocity",
+    "index": 173
+  },
+  {
+    "id": "SupportedByPotential",
+    "index": 174
+  },
+  {
+    "id": "ProjectileNoCollision",
+    "index": 175
+  },
+  {
+    "id": "SupportedByExcise",
+    "index": 176
+  },
+  {
+    "id": "SupportedByExpanse",
+    "index": 177
+  },
+  {
+    "id": "SupportedByExecrate",
+    "index": 178
+  },
+  {
+    "id": "IsBlasphemy",
+    "index": 179
+  },
+  {
+    "id": "PersistentShowsCastTime",
+    "index": 180
+  },
+  {
+    "id": "GeneratesEnergy",
+    "index": 181
+  },
+  {
+    "id": "GeneratesRemnants",
+    "index": 182
+  },
+  {
+    "id": "CommandableMinion",
+    "index": 183
+  },
+  {
+    "id": "Bow",
+    "index": 184
+  },
+  {
+    "id": "AffectsPresence",
+    "index": 185
+  },
+  {
+    "id": "GainsStages",
+    "index": 186
+  },
+  {
+    "id": "HasSeals",
+    "index": 187
+  },
+  {
+    "id": "SupportedByExpand",
+    "index": 188
+  },
+  {
+    "id": "SupportedByUnleash",
+    "index": 189
+  },
+  {
+    "id": "SupportedBySalvo",
+    "index": 190
+  },
+  {
+    "id": "Spear",
+    "index": 191
+  },
+  {
+    "id": "GroundTargetedProjectile",
+    "index": 192
+  },
+  {
+    "id": "SupportedByFusillade",
+    "index": 193
+  },
+  {
+    "id": "HasUsageCondition",
+    "index": 194
+  },
+  {
+    "id": "SupportedByMobileAssault",
+    "index": 195
+  },
+  {
+    "id": "RequiresBuckler",
+    "index": 196
+  },
+  {
+    "id": "UsableWhileMounted",
+    "index": 197
+  },
+  {
+    "id": "Companion",
+    "index": 198
+  },
+  {
+    "id": "ConsumesInstillment",
+    "index": 199
+  },
+  {
+    "id": "CanCancelActions",
+    "index": 200
+  },
+  {
+    "id": "SupportedByUnmoving",
+    "index": 201
+  },
+  {
+    "id": "SupportedByCleanse",
+    "index": 202
+  },
+  {
+    "id": "Hazard",
+    "index": 203
+  },
+  {
+    "id": "SupportedByRally",
+    "index": 204
+  },
+  {
+    "id": "SupportedByFlamepierce",
+    "index": 205
+  },
+  {
+    "id": "SupportedByStormchain",
+    "index": 206
+  },
+  {
+    "id": "SupportedByFreezefork",
+    "index": 207
+  },
+  {
+    "id": "Palm",
+    "index": 208
+  },
+  {
+    "id": "CannotSpiritStrike",
+    "index": 209
+  },
+  {
+    "id": "SkillConsumesBleeding",
+    "index": 210
+  },
+  {
+    "id": "SkillConsumesPoison",
+    "index": 211
+  },
+  {
+    "id": "TargetsDestructibleRareCorpses",
+    "index": 212
+  },
+  {
+    "id": "SupportedByAncestralAid",
+    "index": 213
+  },
+  {
+    "id": "MinionsAreUndamagable",
+    "index": 214
+  },
+  {
+    "id": "GeneratesInfusion",
+    "index": 215
+  },
+  {
+    "id": "SkillConsumesParried",
+    "index": 216
+  },
+  {
+    "id": "DetonatesAfterTime",
+    "index": 217
+  },
+  {
+    "id": "NoAttackOrCastTime",
+    "index": 218
+  },
+  {
+    "id": "CreatesCompanion",
+    "index": 219
+  },
+  {
+    "id": "CannotTerrainChain",
+    "index": 220
+  },
+  {
+    "id": "SupportedByTumult",
+    "index": 221
+  },
+  {
+    "id": "RequiresCharges",
+    "index": 222
+  },
+  {
+    "id": "CannotConsumeCharges",
+    "index": 223
+  },
+  {
+    "id": "ConsumesRage",
+    "index": 224
+  },
+  {
+    "id": "NonDamageArmourBreak",
+    "index": 225
+  },
+  {
+    "id": "Necrotic",
+    "index": 226
+  },
+  {
+    "id": "Nature",
+    "index": 227
+  },
+  {
+    "id": "NoAttackInPlace",
+    "index": 228
+  },
+  {
+    "id": "DodgeReplacement",
+    "index": 229
+  },
+  {
+    "id": "SupportedByDurationThree",
+    "index": 230
+  },
+  {
+    "id": "ToggleSpawnedObjectTargetable_DefaultOn",
+    "index": 231
+  },
+  {
+    "id": "ToggleSpawnedObjectTargetable_DefaultOff",
+    "index": 232
+  },
+  {
+    "id": "ReserveInAllSets",
+    "index": 233
+  },
+  {
+    "id": "Unleashable",
+    "index": 234
+  },
+  {
+    "id": "CannotCreateJaggedGround",
+    "index": 235
+  },
+  {
+    "id": "SingleLevelSkill",
+    "index": 236
+  },
+  {
+    "id": "SupportedByZarokh",
+    "index": 237
+  },
+  {
+    "id": "SupportedByGarukhan",
+    "index": 238
+  },
+  {
+    "id": "FrozenSpite",
+    "index": 239
+  },
+  {
+    "id": "ObjectDurability",
+    "index": 240
+  },
+  {
+    "id": "Detonator",
+    "index": 241
+  },
+  {
+    "id": "UnlimitedTotems",
+    "index": 242
+  },
+  {
+    "id": "SupportedByHaemoCrystals",
+    "index": 243
+  },
+  {
+    "id": "SupportedByFlamePillar",
+    "index": 244
+  },
+  {
+    "id": "CanCreateStoneElementals",
+    "index": 245
+  },
+  {
+    "id": "RemnantCannotBeShared",
+    "index": 246
+  },
+  {
+    "id": "GamepadDoNotForceSkillAtLocation",
+    "index": 247
+  },
+  {
+    "id": "GamepadDeflectable",
+    "index": 248
+  },
+  {
+    "id": "GamepadForceAllowInteraction",
+    "index": 249
+  },
+  {
+    "id": "Wyvern",
+    "index": 250
+  },
+  {
+    "id": "Plant",
+    "index": 251
+  },
+  {
+    "id": "Wind",
+    "index": 252
+  },
+  {
+    "id": "SupportedByHayoxi",
+    "index": 253
+  },
+  {
+    "id": "Storm",
+    "index": 254
+  },
+  {
+    "id": "DisableUpdateActionLocationAfterRelease",
+    "index": 255
+  },
+  {
+    "id": "InteractsWithElementalGround",
+    "index": 256
+  },
+  {
+    "id": "SupportedByNovaProjectiles",
+    "index": 257
+  },
+  {
+    "id": "UsedByProxy",
+    "index": 258
+  },
+  {
+    "id": "SupportedByEchoingCry",
+    "index": 259
+  },
+  {
+    "id": "SpecialAncestralBoost",
+    "index": 260
+  },
+  {
+    "id": "Runic",
+    "index": 261
+  },
+  {
+    "id": "ActiveBlock",
+    "index": 262
+  },
+  {
+    "id": "SupportedByVruunsInevitablity",
+    "index": 263
+  },
+  {
+    "id": "SupportedByTulsAvalanche",
+    "index": 264
+  },
+  {
+    "id": "IndeterminateEmpowermentAmount",
+    "index": 265
+  },
+  {
+    "id": "GamepadDoNotChannelSkillAtLocation",
+    "index": 266
+  },
+  {
+    "id": "AffectedByCooldownRate",
+    "index": 267
+  },
+  {
+    "id": "UsedByClone",
+    "index": 268
+  },
+  {
+    "id": "SupportedByAncestralWarriorTotem",
+    "index": 269
+  },
+  {
+    "id": "SupportedBySpellTotem",
+    "index": 270
+  },
+  {
+    "id": "SupportedByBallistaTotem",
+    "index": 271
+  },
+  {
+    "id": "SupportedByMortarTotem",
+    "index": 272
+  },
+  {
+    "id": "SupportedByFeralInvocation",
+    "index": 273
+  },
+  {
+    "id": "SupportedByMirageArcher",
+    "index": 274
+  },
+  {
+    "id": "SupportedByMirageDeadeye",
+    "index": 275
+  },
+  {
+    "id": "SupportedByHollowForm",
+    "index": 276
+  },
+  {
+    "id": "SupportedByAnimusSplinters",
+    "index": 277
+  },
+  {
+    "id": "HasNoCost",
+    "index": 278
+  },
+  {
+    "id": "SupportedByBattershout",
+    "index": 279
+  },
+  {
+    "id": "SupportedByRuneforgedBlades",
+    "index": 280
+  },
+  {
+    "id": "SupportedByExploitWeakness",
+    "index": 281
+  },
+  {
+    "id": "SupportedByDrainedAilment",
+    "index": 282
+  },
+  {
+    "id": "SkillConsumesDazed",
+    "index": 283
+  },
+  {
+    "id": "SupportedByDazzle",
+    "index": 284
+  },
+  {
+    "id": "SupportedByFrostfire",
+    "index": 285
+  },
+  {
+    "id": "SupportedByBitingFrost",
+    "index": 286
+  },
+  {
+    "id": "SupportedByJaggedGround",
+    "index": 287
+  },
+  {
+    "id": "SupportedByAbidingHex",
+    "index": 288
+  },
+  {
+    "id": "SupportedByFrenziedRiposte",
+    "index": 289
+  },
+  {
+    "id": "SupportedByCreepingChill",
+    "index": 290
+  }
+]

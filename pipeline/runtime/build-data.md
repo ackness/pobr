@@ -147,7 +147,9 @@ ignored `web/src/fixtures/*.json`; complete fixture tables cannot be tracked.
 Small synthetic unit fixtures remain in the tests that own their behavior.
 
 Small reviewed regression statistics live in the gamedata test fixture
-`repository-test-pins.json`, bound to each exact external snapshot manifest. They
+`repository-test-pins.json`, bound to the game part of each prepared manifest
+(`game_manifest_sha256`: the manifest without `languages` and the `i18n/` entries,
+compact with sorted keys), so a language-only release needs no rebind. They
 are test metadata, not imported runtime files; tests never bless or mutate the
 immutable prepared bundle. Historical COMBAT references similarly select their
 declared rollback version; the current-data gate remains separate.

@@ -18,7 +18,6 @@ use crate::skill_env::lookup::{
     EffectLookup, MinionLookup, SocketGroupView, StatMapLookup, StatSetLookup,
 };
 use crate::skill_env::mods::GemPropertyBonus;
-use crate::skill_env::mods::skill_type_bits;
 use crate::skill_env::resolve::{
     GemPropertyLookup, SkillLevelLookup, resolve_skill_level, support_granted_gem_levels,
     support_stat_set_index,
@@ -527,7 +526,7 @@ pub fn buff_skill_specs(
                             })
                             .sum(),
                             local_effect_more: 1.0,
-                            skill_types: skill_type_bits(&effect.skill_types),
+                            skill_types: effect.skill_type_bits(),
                         });
                     }
                     continue;
@@ -598,7 +597,7 @@ pub fn buff_skill_specs(
                         // matches domain-scoped mods — e.g. the SkillTypes(Banner) tag
                         // on "Banner Skills have N% increased Aura Magnitudes" — against
                         // this effect's own type bits).
-                        skill_types: skill_type_bits(&effect.skill_types),
+                        skill_types: effect.skill_type_bits(),
                     });
                 } else {
                     // Curse effect mods: statset stats mapped through the statmap curse
@@ -622,7 +621,7 @@ pub fn buff_skill_specs(
                                 ignore_curse_limit: false,
                                 local_effect_inc: 0.0,
                                 local_effect_more: 1.0,
-                                skill_types: skill_type_bits(&effect.skill_types),
+                                skill_types: effect.skill_type_bits(),
                             });
                         }
                     }
@@ -1195,7 +1194,7 @@ pub fn warcry_skill_specs(
                 skill_id: gem.skill_id.clone(),
                 cooldown_base_s,
                 stored_uses,
-                skill_types: skill_type_bits(&effect.skill_types),
+                skill_types: effect.skill_type_bits(),
                 mods,
             });
         }

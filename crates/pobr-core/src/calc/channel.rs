@@ -306,9 +306,8 @@ mod tests {
                 ("channel_skill_end_animation_duration_override_ms", 35.0),
             ],
         );
-        let cfg = CalcConfig::attack().with_skill_types(
-            SkillTypes::ATTACK | SkillTypes::from_pob2_name("ActiveBlock").unwrap(),
-        );
+        let cfg =
+            CalcConfig::attack().with_skill_types(SkillTypes::ATTACK | SkillTypes::ACTIVE_BLOCK);
         let input = super::super::MinimalInput {
             base_action_rate: 1.0 / 0.55,
             ..Default::default()

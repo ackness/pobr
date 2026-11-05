@@ -135,6 +135,10 @@ impl SkillTypes {
     pub const RETALIATION: Self = Self::bit(155);
     /// PoB2 SkillType.SpecialAncestralBoost = 260
     pub const SPECIAL_ANCESTRAL_BOOST: Self = Self::bit(259);
+    /// PoB2 SkillType.NonWeaponAttack = 166
+    pub const NON_WEAPON_ATTACK: Self = Self::bit(165);
+    /// PoB2 SkillType.Companion = 198
+    pub const COMPANION: Self = Self::bit(197);
 
     /// A mask with bit `index` (0-based) set (const-constructible).
     const fn bit(index: u32) -> Self {

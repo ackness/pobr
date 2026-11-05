@@ -81,7 +81,7 @@ pub fn flame_wall_buff_specs(
                 local_effect_more: 1.0,
                 skill_types: data
                     .effect(&gem.skill_id)
-                    .map(|effect| skill_type_bits(&effect.skill_types))
+                    .map(|effect| effect.skill_type_bits())
                     .unwrap_or_default(),
             });
         }

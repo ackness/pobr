@@ -30,24 +30,20 @@ pub(super) fn apply(env: &mut Env) {
         return;
     };
     let cfg = &env.cfg;
-    let excluded =
-        |name| SkillTypes::from_pob2_name(name).is_some_and(|kind| cfg.skill_types.contains(kind));
+    // Vendor also names OtherThingUsesSkill, which the game's ActiveSkillType
+    // table does not have (no skill carries it).
+    let excluded = SkillTypes::MINION
+        | SkillTypes::NON_WEAPON_ATTACK
+        | SkillTypes::USED_BY_PROXY
+        | SkillTypes::USED_BY_TOTEM
+        | SkillTypes::SUMMONS_TOTEM
+        | SkillTypes::TRAPPED
+        | SkillTypes::REMOTE_MINED;
     if !cfg.mode_combat
         || !(ModFlags::ATTACK | ModFlags::BOW).is_subset_of(cfg.flags)
         || !cfg.keyword_flags.intersects(KeywordFlags::ARROW)
         || env.player.minion.is_some()
-        || [
-            "Minion",
-            "NonWeaponAttack",
-            "UsedByProxy",
-            "OtherThingUsesSkill",
-            "UsedByTotem",
-            "SummonsTotem",
-            "Trapped",
-            "RemoteMined",
-        ]
-        .into_iter()
-        .any(excluded)
+        || cfg.skill_types.intersects(excluded)
     {
         return;
     }

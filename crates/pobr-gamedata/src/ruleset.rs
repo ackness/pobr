@@ -238,11 +238,37 @@ impl GameData {
 mod tests {
     use crate::GameData;
 
-    /// When the data directory doesn't exist: load_ruleset still succeeds,
-    /// with every domain unfilled (None) → the consumer falls back to Default.
+    /// A version directory holding only the current pack's skill type table.
+    fn table_only(root: &std::path::Path) {
+        let _ = std::fs::remove_dir_all(root);
+        std::fs::create_dir_all(root.join("base")).unwrap();
+        std::fs::copy(
+            crate::current_data_dir().join("base/active_skill_types.json"),
+            root.join("base/active_skill_types.json"),
+        )
+        .unwrap();
+    }
+
+    /// A directory without the skill type table is refused: the rules name
+    /// skill types and the engine has no copy of the table.
     #[test]
-    fn missing_dir_ruleset_loads_with_all_domains_unfilled() {
-        let ruleset = GameData::new("nonexistent-dir").load_ruleset().unwrap();
+    fn missing_dir_ruleset_is_refused_for_its_skill_type_table() {
+        let error = GameData::new("nonexistent-dir").load_ruleset().unwrap_err();
+        assert!(
+            error.to_string().contains(crate::MISSING_SKILL_TYPES),
+            "{error}"
+        );
+    }
+
+    /// With only the skill type table: load_ruleset succeeds with every
+    /// other domain unfilled (None) → the consumer falls back to Default.
+    #[test]
+    fn a_table_only_ruleset_loads_with_all_domains_unfilled() {
+        let root = std::env::temp_dir().join(format!("pobr-ruleset-empty-{}", std::process::id()));
+        table_only(&root);
+        let ruleset = GameData::new(&root).load_ruleset();
+        std::fs::remove_dir_all(&root).unwrap();
+        let ruleset = ruleset.unwrap();
         assert!(ruleset.parser_rules.is_none());
         assert!(ruleset.game_constants.is_none());
         assert!(ruleset.character_constants.is_none());
@@ -259,6 +285,7 @@ mod tests {
     #[test]
     fn existing_unreadable_domain_does_not_use_legacy_fallback() {
         let root = std::env::temp_dir().join(format!("pobr-ruleset-io-{}", std::process::id()));
+        table_only(&root);
         std::fs::create_dir_all(root.join("game_constants.json")).unwrap();
         let result = GameData::new(&root).load_ruleset();
         std::fs::remove_dir_all(root).unwrap();

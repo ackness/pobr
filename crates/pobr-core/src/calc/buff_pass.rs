@@ -676,8 +676,7 @@ pub fn buff_pass(env: &mut Env) {
                     * spec.local_effect_more;
                 // The persistent Mana Remnants buff is not a pickup effect.
                 if spec.skill_id != "ManaRemnantsPlayer"
-                    && SkillTypes::from_pob2_name("GeneratesRemnants")
-                        .is_some_and(|remnants| spec.skill_types.contains(remnants))
+                    && spec.skill_types.contains(SkillTypes::GENERATES_REMNANTS)
                 {
                     let names = [ModName::from("RemnantEffect")];
                     inc += env.player.mod_db.sum(ModType::Inc, &env.cfg, &names);

@@ -1536,6 +1536,8 @@ fn main_hand_shares_evaluate_sources_once_in_their_own_actor_scope() {
                 skill: MinionSkill {
                     id: "MinionMeleeStep".into(),
                     types: vec!["Attack".into(), "Melee".into()],
+                    skill_types: pobr_data::skill::SkillTypes::ATTACK
+                        | pobr_data::skill::SkillTypes::MELEE,
                     ..Default::default()
                 },
                 ..Default::default()

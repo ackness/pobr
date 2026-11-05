@@ -416,6 +416,16 @@ mod tests {
         );
         write("test/generated/special_vendor.json", json!({"entries":[]}));
         write(
+            "test/base/active_skill_types.json",
+            serde_json::from_slice(
+                &std::fs::read(
+                    pobr_gamedata::current_data_dir().join("base/active_skill_types.json"),
+                )
+                .unwrap(),
+            )
+            .unwrap(),
+        );
+        write(
             "overlay-common/special_mods.json",
             json!({"entries":[entry("shared",1),entry("later",2)]}),
         );

@@ -201,6 +201,12 @@ pub struct GrantedEffectDef {
     /// skill's hit damage comes from the weapon base).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub skill_types: Vec<String>,
+    /// [`Self::skill_types`] as engine bits ([`Self::skill_type_bits`]).
+    /// Not part of the data file: the loader fills it once the pack's skill
+    /// type table is installed (`BuildData::load`), so calculations never
+    /// resolve these names. An effect built by hand fills it on first use.
+    #[serde(skip)]
+    pub skill_type_set: std::sync::OnceLock<crate::skill::SkillTypes>,
     /// Ids of minions this skill summons (from PoB2 Export template's
     /// hand-written `#minionList` directive, not in the `.dat` files).
     /// **Merged in-memory shape**: the base `granted_effects.json` doesn't
@@ -232,6 +238,17 @@ pub struct GrantedEffectDef {
 }
 
 impl GrantedEffectDef {
+    /// The skill's types as the bitset a calculation context carries; names
+    /// outside the installed table are dropped.
+    pub fn skill_type_bits(&self) -> crate::skill::SkillTypes {
+        *self.skill_type_set.get_or_init(|| {
+            self.skill_types
+                .iter()
+                .filter_map(|name| crate::skill::SkillTypes::from_pob2_name(name))
+                .fold(crate::skill::SkillTypes::NONE, |all, one| all | one)
+        })
+    }
+
     /// Whether this is an attack skill (type names include `Attack`) — an
     /// attack skill's hit damage comes from the weapon base.
     pub fn is_attack(&self) -> bool {

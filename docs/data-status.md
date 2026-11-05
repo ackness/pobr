@@ -22,7 +22,7 @@
 - 加载器拒绝 schema 3 但未声明 `contract_version` 的 manifest，契约前例外已删除。
 - RePoE 发布序号 7，`game` 角色序号 6：补回 14 个真实宝石的品质效果，
   按原生宝石关系验证五个 DNT 占位排除项。其他角色保持原有输入，翻译库为序号 3。
-- 当前 runtime 为 `0ea72e06…`（此前 `e73febc0…`），release 为 `eda2e570…`，snapshot manifest 为 `54c7595a…`（组合后的运行 manifest 由固定测试绑定为 `bbe6c9c2…`）。
+- 当前 runtime 为 `0ea72e06…`（此前 `e73febc0…`），release 为 `eda2e570…`，snapshot manifest 为 `54c7595a…`（固定测试绑定组合 manifest 的游戏部分 `e9804a9b…`，只换语言发布无需重新绑定）。
   Web 与独立 WASM 继续使用逐文件快照；紧凑候选包用于 CI 验证。
 - 固定测试已在复核游戏成员差异后绑定新 manifest，召唤物和解析器的数值断言保持原值。
   数据采用需要同时检查这类显式测试绑定；必需的 `PR gate` 只证明快速检查通过。

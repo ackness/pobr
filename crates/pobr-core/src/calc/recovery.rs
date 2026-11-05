@@ -134,8 +134,8 @@ pub(super) fn proxy(cfg: &CalcConfig) -> bool {
     cfg.skill_types.intersects(
         SkillTypes::TRAPPED
             | SkillTypes::REMOTE_MINED
-            | SkillTypes::from_pob2_name("UsedByTotem").unwrap_or_default()
-            | SkillTypes::from_pob2_name("UsedByProxy").unwrap_or_default(),
+            | SkillTypes::USED_BY_TOTEM
+            | SkillTypes::USED_BY_PROXY,
     )
 }
 
@@ -357,7 +357,7 @@ pub(super) fn net_recovery_terms(env: &Env) -> NetRecoveryTerms {
     let percent = base(db, cfg, "ChaosSkillLifeAndEnergyShieldLossPercent").max(0.0);
     let applies = cfg
         .skill_types
-        .contains(pobr_data::skill::SkillTypes::from_pob2_name("Chaos").unwrap_or_default())
+        .contains(pobr_data::skill::SkillTypes::CHAOS)
         && !cfg
             .skill_types
             .contains(pobr_data::skill::SkillTypes::TRIGGERED)

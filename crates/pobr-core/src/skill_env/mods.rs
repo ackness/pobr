@@ -218,25 +218,24 @@ pub fn skill_type_flags(skill_types: &[String]) -> pobr_data::modifier::ModFlags
 /// flags ([`skill_type_flags`]); Hit, Arrow and Totem are set where the hit,
 /// the arrows and the totem are known.
 pub fn skill_keyword_flags(types: pobr_data::skill::SkillTypes) -> KeywordFlags {
-    const BY_TYPE: [(&str, KeywordFlags); 12] = [
-        ("Aura", KeywordFlags::AURA),
-        ("AppliesCurse", KeywordFlags::CURSE),
-        ("Warcry", KeywordFlags::WARCRY),
-        ("Movement", KeywordFlags::MOVEMENT),
-        ("Vaal", KeywordFlags::VAAL),
-        ("Physical", KeywordFlags::PHYSICAL),
-        ("Fire", KeywordFlags::FIRE),
-        ("Cold", KeywordFlags::COLD),
-        ("Lightning", KeywordFlags::LIGHTNING),
-        ("Chaos", KeywordFlags::CHAOS),
-        ("Trapped", KeywordFlags::TRAP),
-        ("RemoteMined", KeywordFlags::MINE),
+    use pobr_data::skill::SkillTypes as T;
+    const BY_TYPE: [(T, KeywordFlags); 12] = [
+        (T::AURA, KeywordFlags::AURA),
+        (T::APPLIES_CURSE, KeywordFlags::CURSE),
+        (T::WARCRY, KeywordFlags::WARCRY),
+        (T::MOVEMENT, KeywordFlags::MOVEMENT),
+        (T::VAAL, KeywordFlags::VAAL),
+        (T::PHYSICAL, KeywordFlags::PHYSICAL),
+        (T::FIRE, KeywordFlags::FIRE),
+        (T::COLD, KeywordFlags::COLD),
+        (T::LIGHTNING, KeywordFlags::LIGHTNING),
+        (T::CHAOS, KeywordFlags::CHAOS),
+        (T::TRAPPED, KeywordFlags::TRAP),
+        (T::REMOTE_MINED, KeywordFlags::MINE),
     ];
     BY_TYPE
         .iter()
-        .filter(|(name, _)| {
-            pobr_data::skill::SkillTypes::from_pob2_name(name).is_some_and(|t| types.intersects(t))
-        })
+        .filter(|(ty, _)| types.intersects(*ty))
         .fold(KeywordFlags::NONE, |flags, (_, keyword)| flags | *keyword)
 }
 

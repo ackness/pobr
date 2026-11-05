@@ -77,7 +77,7 @@ pub(in crate::skill_env) fn minion_curse_specs(
                 ignore_curse_limit: false,
                 local_effect_inc,
                 local_effect_more,
-                skill_types: skill_type_bits(&effect.skill_types),
+                skill_types: effect.skill_type_bits(),
             })
         })
         .collect()

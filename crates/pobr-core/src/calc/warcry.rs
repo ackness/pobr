@@ -236,16 +236,10 @@ pub fn apply_warcry_uptime(env: &mut Env) {
         return;
     }
     // :3205 -- main skill must be exertable (not
-    // NeverExertable/Triggered/OtherThingUsesSkill/Retaliation).
-    let excluded = [
-        "NeverExertable",
-        "Triggered",
-        "OtherThingUsesSkill",
-        "Retaliation",
-    ]
-    .iter()
-    .filter_map(|n| SkillTypes::from_pob2_name(n))
-    .fold(SkillTypes::NONE, |acc, t| acc | t);
+    // NeverExertable/Triggered/OtherThingUsesSkill/Retaliation). The game's
+    // ActiveSkillType table has no NeverExertable or OtherThingUsesSkill row
+    // (`skill_type_names` tests pin their absence), so no skill carries them.
+    let excluded = SkillTypes::TRIGGERED | SkillTypes::RETALIATION;
     if env.cfg.skill_types.intersects(excluded) {
         return;
     }
