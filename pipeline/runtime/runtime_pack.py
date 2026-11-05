@@ -102,7 +102,7 @@ def block_kind(name):
 
 def assemble(files, version, target, locale, display):
     target_valid(target, version)
-    require(locale in ("zh-CN", "zh-TW"), "Unsupported pack locale")
+    require(isinstance(locale, str) and bundle.LANGUAGE_TAG.fullmatch(locale), "Unsupported pack locale")
     snapshot = bundle.decode(files[f"data/{version}/manifest.json"])
     require(locale in snapshot["languages"], "Selected locale missing from snapshot")
     selected = {}
@@ -153,7 +153,7 @@ def inspect_release(payloads, expected_id=None):
     version, locale, target = release["version"], release["locale"], release["target"]
     require(isinstance(version, str) and re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", version), "Invalid pack version")
     target_valid(target, version)
-    require(locale in ("zh-CN", "zh-TW"), "Unsupported pack locale")
+    require(isinstance(locale, str) and bundle.LANGUAGE_TAG.fullmatch(locale), "Unsupported pack locale")
     require(expected_id is None or release.get("release_id") == expected_id, "Unexpected release identity")
     digests, blocks = release["digests"], release["blocks"]
     require(isinstance(digests, dict) and all(isinstance(v, str) and HEX.fullmatch(v) for v in digests.values()),

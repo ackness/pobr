@@ -31,12 +31,18 @@ class BuildDataTests(unittest.TestCase):
             "data/9.1/i18n/zh-CN/skills.json": '{"raw":"技能"}'.encode(),
             "data/9.1/i18n/zh-TW/skills.json": '{"raw":"技能TW"}'.encode(),
         }
+        # The game owner's snapshot lists only game members; prepare composes
+        # the language package's i18n/ entries and languages into it.
         snapshot = {"schema_version": 3, "poe_version": self.version,
-                    "contract_version": build.contract_version(),
-                    "domains": {"base": ["skills"]}, "languages": ["zh-CN", "zh-TW"],
-                    "files": {k.removeprefix("data/9.1/"): bundle.sha256(v) for k, v in self.contents.items()}}
+                    "contract_version": build.contract_version(), "domains": {"base": ["skills"]},
+                    "files": {k.removeprefix("data/9.1/"): bundle.sha256(v) for k, v in self.contents.items()
+                              if "/i18n/" not in k}}
         self.contents["data/9.1/manifest.json"] = pack.raw_json(snapshot)
-        for name, raw in {**self.contents, "data/CURRENT": b"9.1\n"}.items():
+        composed = {**snapshot, "languages": ["zh-CN", "zh-TW"],
+                    "files": {k.removeprefix("data/9.1/"): bundle.sha256(v) for k, v in self.contents.items()
+                              if not k.endswith("manifest.json")}}
+        source = {**self.contents, "data/9.1/manifest.json": pack.raw_json(composed)}
+        for name, raw in {**source, "data/CURRENT": b"9.1\n"}.items():
             path = self.root / "source" / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(raw)
@@ -373,6 +379,7 @@ class BuildDataTests(unittest.TestCase):
         snapshot["files"]["overlay/trade_crafting_sources.json"] = bundle.sha256(raw)
         self.contents["data/9.1/manifest.json"] = pack.raw_json(snapshot)
         hashes = snapshot["files"] | {"overlay-common/own.json": self.lock["shared_files"]["own.json"]["sha256"]}
+        hashes |= {n.removeprefix("data/9.1/"): bundle.sha256(r) for n, r in self.contents.items() if "/i18n/" in n}
         self.lock.update(runtime_identity=pack.identity("9.1", hashes),
                          snapshot_manifest=pack.pin(self.contents["data/9.1/manifest.json"]))
         game = {n: r for n, r in self.contents.items() if "/i18n/" not in n}
@@ -419,17 +426,13 @@ class BuildDataTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Cannot read CONTRACT_VERSION"):
             build.contract_version(self.write_text("lib.rs", "pub const OTHER: u32 = 1;\n"))
 
-    def test_a_newly_locked_snapshot_must_declare_this_contract(self):
+    def test_a_locked_snapshot_must_declare_this_contract(self):
         current = 4
-        build.require_contract({"contract_version": current}, "0" * 64, current)
+        build.require_contract({"contract_version": current}, current)
         for declared in (None, current + 1, str(current), True):
             with self.subTest(declared=declared), self.assertRaisesRegex(ValueError, "data contract"):
-                build.require_contract({} if declared is None else {"contract_version": declared},
-                                       "0" * 64, current)
-        # The snapshot locked before packages declared a contract keeps preparing.
-        locked = bundle.decode((build.DATA_LOCK).read_bytes())["snapshot_manifest"]["sha256"]
-        self.assertIn(locked, build.PRE_CONTRACT_SNAPSHOTS)
-        build.require_contract({}, locked, current)
+                build.require_contract({} if declared is None else {"contract_version": declared}, current)
+        self.assertFalse(hasattr(build, "PRE_CONTRACT_SNAPSHOTS"))
 
     def test_prepare_rejects_a_snapshot_without_a_contract(self):
         snapshot = bundle.decode(self.contents["data/9.1/manifest.json"])
@@ -441,6 +444,95 @@ class BuildDataTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "declares data contract None"):
             self.prepare()
         self.assertFalse(self.out.exists())
+
+    def test_a_language_release_needs_no_game_release(self):
+        """New language members and changed bytes prepare against the same game part."""
+        before = self.prepare()
+        game_archive = self.archives["game"]
+        language = {n: r for n, r in self.contents.items() if "/i18n/" in n}
+        language["data/9.1/i18n/zh-TW/skills.json"] = '{"raw":"技能TW2"}'.encode()
+        language["data/9.1/i18n/zh-TW/_meta.json"] = b'{"locale":"zh-TW"}'
+        language["data/9.1/i18n/ja/skills.json"] = '{"raw":"スキル"}'.encode()
+        self.set_part("language", language)
+        hashes = {n.removeprefix("data/9.1/"): bundle.sha256(r) for n, r in {**self.contents, **language}.items()
+                  if not n.endswith("manifest.json")}
+        hashes["overlay-common/own.json"] = self.lock["shared_files"]["own.json"]["sha256"]
+        self.lock["runtime_identity"] = pack.identity("9.1", hashes)
+        self.save()
+        shutil.rmtree(self.out)
+        after = self.prepare()
+        self.assertEqual(self.archives["game"], game_archive)
+        self.assertNotEqual(before["runtime_identity"], after["runtime_identity"])
+        manifest = bundle.decode((self.out / "data/9.1/manifest.json").read_bytes())
+        self.assertEqual(manifest["languages"], ["ja", "zh-CN", "zh-TW"])
+        self.assertEqual(manifest["files"]["i18n/zh-TW/_meta.json"], bundle.sha256(b'{"locale":"zh-TW"}'))
+        self.assertEqual(list(manifest["files"]), sorted(manifest["files"]))
+        self.assertEqual(bundle.verify(self.out), after)
+        # The lock may select any language the package provides, and only those.
+        for locale, ok in (("ja", True), ("pt-BR", False)):
+            with self.subTest(locale=locale):
+                self.lock["locale"] = locale
+                self.save()
+                shutil.rmtree(self.out, ignore_errors=True)
+                if ok:
+                    self.prepare()
+                else:
+                    with self.assertRaisesRegex(ValueError, "not the lock locale pt-BR"):
+                        self.prepare()
+
+    def test_the_composed_manifest_is_deterministic_and_keeps_the_identity(self):
+        first = self.prepare()
+        raw = (self.out / "data/9.1/manifest.json").read_bytes()
+        shutil.rmtree(self.out)
+        self.assertEqual(self.prepare(), first)
+        self.assertEqual((self.out / "data/9.1/manifest.json").read_bytes(), raw)
+        # Same inventory as a single-owner manifest: the runtime identity is unchanged.
+        self.assertEqual(first["runtime_identity"], self.lock["runtime_identity"])
+
+    def test_a_game_part_or_snapshot_carrying_language_members_is_rejected(self):
+        original, archives = copy.deepcopy(self.lock), self.archives.copy()
+        game = {n: r for n, r in self.contents.items() if "/i18n/" not in n}
+        with self.subTest(case="member"):
+            self.set_part("game", {**game, "data/9.1/i18n/zh-TW/_meta.json": b"{}"})
+            self.save()
+            with self.assertRaisesRegex(ValueError, "Cross-owner data member"):
+                self.prepare()
+        for field in ("files", "languages"):
+            with self.subTest(case=field):
+                self.lock, self.archives = copy.deepcopy(original), archives.copy()
+                snapshot = bundle.decode(self.contents["data/9.1/manifest.json"])
+                if field == "files":
+                    snapshot["files"]["i18n/zh-CN/skills.json"] = bundle.sha256(
+                        self.contents["data/9.1/i18n/zh-CN/skills.json"])
+                else:
+                    snapshot["languages"] = ["zh-CN", "zh-TW"]
+                raw = pack.raw_json(snapshot)
+                self.lock["snapshot_manifest"] = pack.pin(raw)
+                self.set_part("game", {**game, "data/9.1/manifest.json": raw})
+                self.save()
+                with self.assertRaisesRegex(ValueError, "declares language members"):
+                    self.prepare()
+                self.assertFalse(self.out.exists())
+
+    def test_language_members_need_a_language_directory(self):
+        language = {n: r for n, r in self.contents.items() if "/i18n/" in n}
+        for name in ("data/9.1/i18n/stray.json", "data/9.1/i18n/Not_A_Tag/x.json"):
+            with self.subTest(name=name):
+                self.set_part("language", {**language, name: b"{}"})
+                self.save()
+                with self.assertRaisesRegex(ValueError, "outside i18n/<language>/"):
+                    self.prepare()
+
+    def test_lock_locale_is_any_language_tag(self):
+        for locale, ok in (("zh-CN", True), ("ja", True), ("pt-BR", True), ("", False), ("../x", False),
+                           ("ZH", False), (None, False)):
+            with self.subTest(locale=locale):
+                lock = {**self.lock, "locale": locale}
+                if ok:
+                    build.validate(lock)
+                else:
+                    with self.assertRaisesRegex(ValueError, "Invalid data lock locale"):
+                        build.validate(lock)
 
     def write_text(self, name, text):
         path = self.root / name

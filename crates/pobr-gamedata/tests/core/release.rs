@@ -19,6 +19,7 @@ fn pack() -> BTreeMap<String, Vec<u8>> {
     let stats = b"[]".to_vec();
     let manifest = json!({
         "schema_version": 3, "poe_version": "1.2.3", "languages": [],
+        "contract_version": pobr_data::CONTRACT_VERSION,
         "domains": { "base": ["stats", "cost_types"], "overlay": [], "generated": [] },
         "files": { "base/cost_types.json": hash(&costs), "base/stats.json": hash(&stats) }
     });

@@ -42,7 +42,7 @@ fn fill_regeneration(env: &mut Env) {
     let out = &mut env.player.output;
     // base_rage_regeneration_rate_per_minute_% refers to maximum Rage,
     // not the player's currently selected number of Rage stacks.
-    let maximum_rage = (pobr_data::constants::BASE_MAXIMUM_RAGE + base(db, cfg, "MaximumRage"))
+    let maximum_rage = (cfg.constants.game().base_maximum_rage + base(db, cfg, "MaximumRage"))
         * factor(db, cfg, "MaximumRage");
     let pools = [
         out.life,

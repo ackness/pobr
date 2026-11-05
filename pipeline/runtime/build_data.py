@@ -27,11 +27,6 @@ DATA_LOCK_SCHEMA = "pobr-data-lock/v2"
 PART_SCHEMA = "pobr-build-data-part/v1"
 OWNERS = {"game": "ackness/repoe", "language": "ackness/poe2-zh-cn-stats"}
 CONTRACT_SOURCE = ROOT / "crates/pobr-data/src/lib.rs"
-# Snapshot manifests locked before packages declared a data contract. They keep
-# preparing as pinned; any other snapshot must declare this build's contract.
-# Sunset: drop this set (and accept no undeclared snapshot in the loader) once
-# the lock pins a package that declares contract_version.
-PRE_CONTRACT_SNAPSHOTS = frozenset({"2cfb21030f93d72bdb469e0df0ff52820c5d2bc54adfe0e5fa90d8654148649e"})
 
 
 def contract_version(source=CONTRACT_SOURCE):
@@ -42,10 +37,8 @@ def contract_version(source=CONTRACT_SOURCE):
     return int(found[0])
 
 
-def require_contract(snapshot, digest, expected=None):
-    """A newly locked snapshot must declare the data contract this PoBR implements."""
-    if digest in PRE_CONTRACT_SNAPSHOTS:
-        return
+def require_contract(snapshot, expected=None):
+    """The locked snapshot must declare the data contract this PoBR implements."""
     expected = contract_version() if expected is None else expected
     declared = snapshot.get("contract_version")
     require(type(declared) is int and declared == expected,
@@ -97,7 +90,10 @@ def validate(lock):
     # The RePoE game part carries the crafting catalog; PoBR projects nothing.
     require("crafting" not in lock, "Crafting facts are not a PoBR input; the game part carries the catalog")
     require(not RETIRED_LOCK_FIELDS & set(lock), "Retired publisher state in the data lock")
-    require(lock.get("locale") in ("zh-CN", "zh-TW"), "Invalid data lock locale")
+    # Any language tag: which languages exist is the language package's
+    # inventory, checked in prepare, not a list in PoBR code.
+    require(isinstance(lock.get("locale"), str) and bundle.LANGUAGE_TAG.fullmatch(lock["locale"]),
+            "Invalid data lock locale")
     require(lock.get("release_id") is None or re.fullmatch(r"[a-f0-9]{64}", lock["release_id"]),
             "Invalid compact release identity")
     for spec in (*lock["packages"].values(), lock["support_display"], lock["test_fixtures"]):
@@ -194,13 +190,8 @@ def prepare(lock_path, output, cache, shared_root=ROOT / "data/overlay-common",
                     require(name not in files, "Duplicate external data member")
                     files[name] = regular(part / name)
         snapshot_path = f"data/{version}/manifest.json"
-        snapshot = bundle.decode(pinned(files[snapshot_path], lock["snapshot_manifest"]))
-        require_contract(snapshot, lock["snapshot_manifest"]["sha256"])
-        require(snapshot.get("schema_version") == 3 and snapshot.get("poe_version") == version,
-                "External snapshot version/schema mismatch")
-        expected = {snapshot_path, *(f"data/{version}/{name}" for name in snapshot["files"])}
-        version_files = {n for n in files if not n.startswith("data/overlay-common/")}
-        require(version_files == expected, "Combined data part inventory differs from snapshot")
+        files[snapshot_path] = compose_manifest(
+            bundle.decode(pinned(files[snapshot_path], lock["snapshot_manifest"])), files, version, lock["locale"])
         files["data/CURRENT"] = (version + "\n").encode()
         for name, expected in lock["shared_files"].items():
             destination = f"data/overlay-common/{name}"
@@ -219,6 +210,42 @@ def prepare(lock_path, output, cache, shared_root=ROOT / "data/overlay-common",
         require(regular(lock_path) == lock_raw, "Build data lock changed during prepare")
         stage.rename(output)
     return receipt
+
+
+def compose_manifest(snapshot, files, version, locale):
+    """The runtime snapshot manifest: the game owner's snapshot plus the language package.
+
+    Each owner declares only its own members. The game snapshot (pinned by the
+    lock) lists the game part's files, domains and contract; the language part's
+    members supply the `i18n/` entries and `languages`. So a language release
+    never needs a game re-release. The result is canonical JSON, and the runtime
+    identity (computed from inventory hashes, not manifest bytes) depends only on
+    the two pinned parts and the shared rules.
+    """
+    require_contract(snapshot)
+    require(snapshot.get("schema_version") == 3 and snapshot.get("poe_version") == version,
+            "External snapshot version/schema mismatch")
+    inventory = snapshot.get("files")
+    require(isinstance(inventory, dict) and inventory, "Game snapshot inventory is missing or empty")
+    # A game snapshot from before the owner split (repoe game/0.5.5.5-1) pins
+    # the language owner's files; it cannot be composed with another language part.
+    require("languages" not in snapshot and not any(name.startswith("i18n/") for name in inventory),
+            "Game snapshot manifest declares language members (i18n/ or languages); lock a game package "
+            "whose snapshot leaves them to the language package (repoe game/0.5.5.5-2 or later)")
+    prefix = f"data/{version}/"
+    language = {name for name in files if name.startswith(prefix + "i18n/")}
+    game = {name for name in files if name.startswith(prefix)} - language - {prefix + "manifest.json"}
+    require(game == {prefix + name for name in inventory}, "Combined data part inventory differs from snapshot")
+    entries, languages = dict(inventory), set()
+    for name in sorted(language):
+        parts = bundle.relative_path(name.removeprefix(prefix)).parts
+        require(len(parts) >= 3 and bundle.LANGUAGE_TAG.fullmatch(parts[1]),
+                f"Language member outside i18n/<language>/: {name}")
+        languages.add(parts[1])
+        entries[name.removeprefix(prefix)] = bundle.sha256(files[name])
+    require(locale in languages, f"The language package provides {sorted(languages)}, not the lock locale {locale}")
+    composed = {**snapshot, "languages": sorted(languages), "files": dict(sorted(entries.items()))}
+    return bundle.encoded(composed) + b"\n"
 
 
 def install(prepared, data_root, owned_shared=frozenset()):

@@ -9,20 +9,20 @@
   "packages": {
     "game": {
       "repository": "ackness/repoe",
-      "tag": "game/0.5.5.5-1",
+      "tag": "game/0.5.5.5-2",
       "asset": "pobr-game-0.5.5.5.zip",
-      "bytes": 4452510,
-      "sha256": "3edc9b1eb3e813781ef63dcc7db5be29cfd6a15ef29b92773eaa7fb45082df4d",
+      "bytes": 4559501,
+      "sha256": "8938b99a338b8980ea67f450b881c83bc9699838d2a3c8ac033166b0951cdd06",
       "manifest": {
-        "bytes": 227054,
-        "sha256": "6cd3cf5c1c1d2c28734bdf2429d03c3a82b52a073907bdbc97b4ce192525068f"
+        "bytes": 9169,
+        "sha256": "74e4b44faeda43c47cbf0d91f957b9809882ff49acfd1a26814979783bb0328c"
       },
-      "expanded_bytes": 64774702,
+      "expanded_bytes": 66880168,
       "receipt": {
-        "bytes": 41116,
-        "sha256": "3098c4c994bb611272c37fff7950aa5d9f2e90c5b566f3a6f4e5243591a9f2ca"
+        "bytes": 39565,
+        "sha256": "ef32a0326e6a685f7b972777b458a7d8cddb9c8893f555c91fc040e8f4558e01"
       },
-      "producer_commit": "407ed52b2f3490e4bb32f6d55a45ae37870bc409",
+      "producer_commit": "58a044fbf9dc9d9b917c2654a5718a7f3c732bdb",
       "contract_version": 1
     },
     "language": {
@@ -87,55 +87,19 @@
     ]
   },
   "shared_files": {
-    "archon_config_options.json": {
-      "bytes": 634,
-      "sha256": "bbea3295507df414cd6b523e4182a8f09c941965b3d8f31b8eed5424d781f425"
-    },
-    "beira_config_options.json": {
-      "bytes": 843,
-      "sha256": "867d5bb5c13dac8ed2faf7a739ce03bc18e47cee5bed17164cdfc04a3aa2add2"
-    },
-    "cadiro_config_options.json": {
-      "bytes": 1664,
-      "sha256": "da3ab5846ee1ab1ea8d1a25f6f3dd756ac6d741596fafa315fec16bc699de8d6"
-    },
-    "combo_config_options.json": {
-      "bytes": 875,
-      "sha256": "94d69cf06eb2f0bf2c57bfb0ccd665b1528f7d67e9dc590f1d10bd1a3448b0a1"
-    },
-    "consecrated_ground_config_options.json": {
-      "bytes": 1596,
-      "sha256": "463e7c0bf06a78b939cef9f1de912486051e73c0fc9fc65c62ccbca6ab971c65"
-    },
-    "enemy_type_and_consumption_config_options.json": {
-      "bytes": 4736,
-      "sha256": "19e32d452a2d8ba12cffc8421509154da506ce7a90766105523bc2078671e010"
-    },
-    "energy_config_options.json": {
-      "bytes": 4605,
-      "sha256": "ccb438995ce1c2b516970c24fe3af9ec6df6125be8cb313b12be822c3cb3aaa1"
-    },
     "local_mods.json": {
-      "bytes": 1488,
-      "sha256": "0dc5c77d5cf94685ce930068d0da1dfa3b0f365a603dd275cbc45a5b22f198c4"
-    },
-    "remnant_pickup_config_options.json": {
-      "bytes": 2192,
-      "sha256": "53b69e7fb3e606a61b2acb2c8b54c9bf9f92e630c9619e3e6cd5217b76b29be4"
+      "bytes": 1669,
+      "sha256": "bab112b9b43f89e28ced1674902ca12e573ab6ea379153280124bbb1d25cf746"
     },
     "special_mods.json": {
-      "bytes": 320277,
-      "sha256": "ac9a9f39f4bda84118fa1f86cf87988f8ab981b6d908586d9f5a5cb72b7a6132"
-    },
-    "volatility_config_options.json": {
-      "bytes": 1562,
-      "sha256": "58a5b894e828847c0a3bc9fe22391cb2394c30b65b425dd472b4c72f9da82427"
+      "bytes": 320255,
+      "sha256": "268854b3f3170fe076f344cd910756f5b62b4c786aba156b315abb47b1829678"
     }
   },
   "snapshot_manifest": {
-    "bytes": 8234,
-    "sha256": "2cfb21030f93d72bdb469e0df0ff52820c5d2bc54adfe0e5fa90d8654148649e"
+    "bytes": 7045,
+    "sha256": "54c7595a2f37cee132f072d2d5a58d78a4b4779a748a63c05b21310605618715"
   },
-  "runtime_identity": "e73febc0ba0993f5adcacb3f0f0767120b210913f46e1a8be56d8cd5e9f77796",
-  "release_id": "c726228603fa43be322524bcc76bb7adbf6481282449a5f95b759842c9c5c9ab"
+  "runtime_identity": "0ea72e06785afbe00f5baa973a4fdb31040229660f63982638fdc0eb77249fe8",
+  "release_id": "eda2e570dda487cbd17ce954f187da2d7e1137315dca05db87a4487491f3fd02"
 }

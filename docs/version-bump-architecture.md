@@ -11,7 +11,7 @@ PoBR 将应用版本、基础库版本和游戏数据版本分开。RePoE 独立
 | `data/<version>/overlay/` | 该版本的补充、修正与 PoB2 转换的兼容数据，随 owner 包导入 |
 | `data/<version>/generated/` | 从固定输入生成的派生数据；maintenance 不进 runtime manifest |
 | `data/<version>/i18n/` | 独立语言产物的临时运行投影，保留来源和精确身份 |
-| `data/overlay-common/` | 十一份入 Git 的 PoBR 自有规则，以及七份临时导入的外部事实／兼容输入；按 loader 各自读取 |
+| `data/overlay-common/` | 两份入 Git 的 PoBR 自有规则（`special_mods`、`local_mods`），以及七份临时导入的外部事实／兼容输入；按 loader 各自读取。PoBR 的九份 `*_config_options.json` 编译进 `pobr-gamedata` |
 | `data/<version>/patch/` | manifest 清单之外的补丁层，镜像版本目录的相对路径 |
 
 <a id="p1-3-version-independent-curated-overlay-dataoverlay-common"></a>

@@ -2,9 +2,10 @@
 //! multiplier + per-tree-version label/inner/outer bands), schema in
 //! [`pobr_data::catalog::jewel_radii`].
 //!
-//! Sourced from PoB2 `src/Modules/Data.lua:595-611` + `src/Data/Misc.lua:36`;
-//! pobr's Rust source of truth is `crates/pobr-tree/src/radius_jewel.rs`
-//! (the 4 named bands match value-for-value).
+//! Sourced from PoB2 `src/Modules/Data.lua:595-611` + `src/Data/Misc.lua:36`.
+//! `crates/pobr-tree/src/radius_jewel.rs` reads radii from this table (no
+//! engine copy); `JewelRadiiDef::default` is only the fallback for a table
+//! that lacks a band.
 
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
 

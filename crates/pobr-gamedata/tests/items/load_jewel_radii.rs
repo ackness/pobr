@@ -1,18 +1,13 @@
 //! `base/jewel_radii.json` load tests.
 //!
-//! Migration-invariant checks: the 4 named bands
-//! (Small/Medium/Large/Very Large) plus the distance multiplier are
-//! **value-equal** to pobr's existing Rust source-of-truth consts in
-//! `crates/pobr-tree/src/radius_jewel.rs`; the vendor-only parts (inner /
-//! colour / the 8 Variable bands) are spot-checked against hardcoded
-//! expected values per vendor PoB2 `src/Modules/Data.lua:595-611`.
+//! The 4 named bands (Small/Medium/Large/Very Large), the distance
+//! multiplier and the vendor-only parts (inner / colour / the 8 Variable
+//! bands) are spot-checked against vendor PoB2 `src/Modules/Data.lua:595-611`,
+//! and the built-in `JewelRadiiDef::default` must equal the file.
 
 use pobr_data::catalog::jewel_radii::{JewelRadiiDef, JewelRadiusBandDef};
 use pobr_gamedata::{GameData, repo_data_root};
-use pobr_tree::{
-    JEWEL_RADIUS_LARGE, JEWEL_RADIUS_MEDIUM, JEWEL_RADIUS_SMALL, JEWEL_RADIUS_VERY_LARGE,
-    JewelRadius, PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER,
-};
+use pobr_tree::JewelRadius;
 
 fn version() -> String {
     pobr_gamedata::data_version()
@@ -45,43 +40,32 @@ fn default_fallback_equals_loaded_json() {
     );
 }
 
-/// The distance multiplier is value-equal to pobr-tree's source-of-truth
-/// const (= 1.2, sourced from GameConstants.dat).
+/// The distance multiplier (= 1.2, sourced from GameConstants.dat).
 #[test]
-fn distance_multiplier_matches_pobr_tree_constant() {
-    let def = load();
-    assert_eq!(
-        def.distance_multiplier,
-        PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER
-    );
-    assert_eq!(def.distance_multiplier, 1.2);
+fn distance_multiplier_is_the_game_constant() {
+    assert_eq!(load().distance_multiplier, 1.2);
 }
 
-/// The 4 named bands' outer × multiplier is value-equal to pobr-tree's
-/// `JEWEL_RADIUS_*` consts, and matches `JewelRadius::units()`'s behavior
-/// (a migration invariant).
+/// The 4 named bands' outer × multiplier is PoB2's effective radius, and
+/// what `JewelRadius::units_with_radii` resolves from the file.
 #[test]
-fn named_bands_match_pobr_tree_radius_constants() {
+fn named_bands_resolve_to_pob2_effective_radii() {
     let def = load();
     let m = def.distance_multiplier;
     let cases: [(&str, f64, JewelRadius); 4] = [
-        ("Small", JEWEL_RADIUS_SMALL, JewelRadius::Small),
-        ("Medium", JEWEL_RADIUS_MEDIUM, JewelRadius::Medium),
-        ("Large", JEWEL_RADIUS_LARGE, JewelRadius::Large),
-        (
-            "Very Large",
-            JEWEL_RADIUS_VERY_LARGE,
-            JewelRadius::VeryLarge,
-        ),
+        ("Small", 1200.0, JewelRadius::Small),
+        ("Medium", 1380.0, JewelRadius::Medium),
+        ("Large", 1560.0, JewelRadius::Large),
+        ("Very Large", 1800.0, JewelRadius::VeryLarge),
     ];
     for (label, expect_units, radius) in cases {
         let band = named_band(&def, label);
         assert_eq!(
             f64::from(band.outer) * m,
             expect_units,
-            "{label} tier's outer × multiplier should equal the pobr-tree constant"
+            "{label} tier's outer × multiplier should equal PoB2's effective radius"
         );
-        assert_eq!(f64::from(band.outer) * m, radius.units());
+        assert_eq!(f64::from(band.outer) * m, radius.units_with_radii(&def));
         // Named bands are solid circles, inner=0 (vendor Data.lua:597-600 is also 0).
         assert_eq!(band.inner, 0, "{label} tier's inner should be 0");
     }

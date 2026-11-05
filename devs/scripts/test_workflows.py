@@ -2257,15 +2257,17 @@ class ConfigCoverageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             version = Path(temporary) / "9.9"
             (version / "overlay").mkdir(parents=True)
-            (Path(temporary) / "overlay-common").mkdir()
+            owned = Path(temporary) / "owned"
+            owned.mkdir()
             (version / "overlay/config_options.json").write_text(json.dumps({"options": [{"var": "a"}]}))
             for name in ("one", "two"):
-                (Path(temporary) / f"overlay-common/{name}_config_options.json").write_text(
+                (owned / f"{name}_config_options.json").write_text(
                     json.dumps({"options": [{"var": "a", "owner": name}]}))
             with self.assertRaisesRegex(ValueError, "a is owned by both one_config_options.json"):
-                self.coverage.config_relevance.catalog_options(version)
-            (Path(temporary) / "overlay-common/two_config_options.json").unlink()
-            self.assertEqual(self.coverage.config_relevance.catalog_options(version), [{"var": "a", "owner": "one"}])
+                self.coverage.config_relevance.catalog_options(version, owned)
+            (owned / "two_config_options.json").unlink()
+            self.assertEqual(self.coverage.config_relevance.catalog_options(version, owned),
+                             [{"var": "a", "owner": "one"}])
 
     def test_registry_only_counts_registrations_not_comments_or_stubs(self):
         text = '''

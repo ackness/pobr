@@ -19,7 +19,7 @@
 //! modifier, the `Rage` and `RageEffect` multipliers, the `Rage` stat and the
 //! `HaveMaximumRage` condition.
 
-use pobr_data::constants::{ATTACK_DAMAGE_MORE_PER_RAGE, BASE_MAXIMUM_RAGE};
+use pobr_data::constants::ATTACK_DAMAGE_MORE_PER_RAGE;
 use pobr_data::prelude::*;
 
 use crate::Modifier;
@@ -55,7 +55,7 @@ pub fn apply_rage(env: &mut Env) {
             * (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0)
             * db.more(cfg, &names)
     };
-    let maximum = scaled("MaximumRage", BASE_MAXIMUM_RAGE).max(0.0);
+    let maximum = scaled("MaximumRage", cfg.constants.game().base_maximum_rage).max(0.0);
     let minimum = db
         .sum(ModType::Base, cfg, &[ModName::from("MinimumRage")])
         .clamp(0.0, maximum);
@@ -171,7 +171,10 @@ mod tests {
     #[test]
     fn stated_rage_is_held_between_minimum_and_maximum() {
         let over = run(50.0, vec![can_gain()]);
-        assert_eq!(over.cfg.multiplier("Rage"), BASE_MAXIMUM_RAGE);
+        assert_eq!(
+            over.cfg.multiplier("Rage"),
+            over.cfg.constants.game().base_maximum_rage
+        );
 
         let raised = run(
             50.0,

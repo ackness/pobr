@@ -94,6 +94,14 @@ RePoE 发布 ───┐
   目标游戏／补丁／服别、语言、每个消费产物的来源与字节 pin（ZIP 另有内嵌 manifest pin 与展开大小；Release 产物另记
   `receipt` pin、`producer_commit` 与 `contract_version`）、PoBR 自有共享规则的 pin、期望的快照 manifest、
   运行身份与紧凑发行身份。导入和组包都只读这一个文件；`mise run data:bump <owner> <tag>` 改写它。
+- **快照 manifest 按 owner 组合。** 每个 owner 只声明自己的成员。游戏包的 `data/<patch>/manifest.json`
+  （锁的 `snapshot_manifest` 钉住它）列出游戏成员、`domains` 与 `contract_version`，不列 `i18n/` 文件、
+  不写 `languages`；`build_data.prepare` 把语言包的 `i18n/<语言>/…` 成员及其 SHA-256 并入，`languages` 取语言包里
+  出现的语言目录，写出运行时的 manifest（键排序的紧凑 JSON）。于是语言 owner 改字节、加成员或加语言都不需要
+  游戏包重新发布；运行身份只由两个包与共享规则决定，和 manifest 的格式无关，同内容时与单 owner manifest 相同。
+  仍列 `i18n/` 或写 `languages` 的游戏快照（`game/0.5.5.5-1` 及更早）被拒绝，提示改锁到 `game/0.5.5.5-2` 及以后；
+  游戏包里出现 `i18n/` 成员按跨 owner 成员拒绝。锁的 `locale` 可以是任何语言标签（`zh-CN`、`ja`、`pt-BR` 形状），
+  只要语言包提供该语言；加语言不需要改 PoBR 代码，只有显示包（`support_display`）需要有该语言的条目。
 - **身份。** schema-3 `manifest.json` 列出全部运行文件及 SHA-256，未列出的文件视为不存在；
   `GameData::identity()` 标识快照、共享覆盖层和有效 patch，并进入计算结果的 `provenance`。
   完整快照与紧凑 release 是不同投影，身份分别记录，不能互换。
@@ -114,14 +122,13 @@ RePoE 发布 ───┐
 - **manifest 声明。** 快照 `data/<patch>/manifest.json` 的顶层字段 `contract_version`（整数）记录生产方构建时
   依赖的契约版本。加载器先单独读取这个字段，再解析完整 manifest（契约不同的包即使外壳形状已变，也报告契约不符）：
   声明了且不等于本构建的 `CONTRACT_VERSION` 就拒绝加载，错误信息给出两个数字，并提示在 `pipeline/data.lock.json`
-  换用按本契约构建的数据包；未声明则照旧接受——该字段出现之前发布的包（包括当前锁定的包）都没有它，它们的字节和
-  运行身份由锁固定。`contract_version` 不进入 `GameData::identity()` 的指纹，所以加上它不改变已有快照的身份；
+  换用按本契约构建的数据包；schema 3 的 manifest 未声明也拒绝（锁定的 `game/0.5.5.5-2` 起每个包都声明它）。
+  `contract_version` 不进入 `GameData::identity()` 的指纹；
   紧凑发行包（`pipeline/runtime/runtime_pack.py`）与重新封存（`data_snapshot.manifest`）原样保留这个字段，
   浏览器里的加载器同样检查。
 - **采用新数据。** `build_data.prepare`（`data:prepare`／`data:update`）要求锁定的快照 manifest 声明的
-  `contract_version` 等于 `crates/pobr-data/src/lib.rs` 里的 `CONTRACT_VERSION`；只有字段出现之前锁定的快照
-  （`PRE_CONTRACT_SNAPSHOTS` 按 SHA-256 列出）例外。锁一旦固定声明了该字段的包，就删除这个例外，并让加载器也
-  拒绝未声明的 manifest。
+  `contract_version` 等于 `crates/pobr-data/src/lib.rs` 里的 `CONTRACT_VERSION`，没有例外（字段出现之前的
+  `PRE_CONTRACT_SNAPSHOTS` 例外已随锁升到 `game/0.5.5.5-2` 删除）。
 - **tag 约定。** tag 名为 `contract/<n>.<m>`：`n` 等于 `CONTRACT_VERSION`；`m` 是同一契约内的增量修订，从 0 开始
   （`contract/1.0`），用于数据仓库应当产出的新可选字段，或 `pobr-data` 里供数据仓库调用的辅助代码修正（如
   `pobr_data::text`）。契约加 1 时 `m` 归零。两者都不可移动、不删除。tag 打在 master 上"`pobr-data` 已完整包含该
@@ -134,6 +141,9 @@ RePoE 发布 ───┐
   `base/active_skill_types.json`（`active_skill_types/v1`，客户端 `ActiveSkillType` 表，按行序给出技能类型名与
   1 起的序号；加载时以 `pobr_data::skill::install_skill_type_names` 安装为进程内的类型名表，与引擎具名常量不符即拒绝）；
   天赋节点原生 stat 包里有引擎不认识的 stat 时按没有包处理（数据仓库因此可以给全部符合条件的节点发包）。
+  消费这一修订的引擎不再内嵌技能类型名表（`skill_type_names.txt` 已删）：契约 1 的包必须带
+  `active_skill_types.json`，引擎只认得自己具名常量（`SkillTypes::ATTACK` 等）的名字，其余名字要等加载器安装
+  数据包的表；最大怒气读 `game.base_maximum_rage`。
 - **RePoE 一侧。** `pobr-data-adapter` 与 release build 封存快照 manifest 时写入
   `"contract_version": <所依赖 pobr-data 的 CONTRACT_VERSION>`，数值取自依赖本身（例如由 adapter 读取
   `pobr_data::CONTRACT_VERSION` 输出），不手写；契约加 1 时先把依赖升到新的 `contract/<n>.0`，再重新生成并发布。

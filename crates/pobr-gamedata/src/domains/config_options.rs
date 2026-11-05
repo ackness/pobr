@@ -10,49 +10,49 @@ use pobr_data::catalog::config_def::ConfigOptionsDef;
 
 use crate::{GameData, LoadError};
 
-/// PoBR-owned config options (`data/overlay-common/*_config_options.json`),
-/// bundled so native and staged-memory loaders see the same set. Each file
-/// replaces catalog entries with the same `var`. Every such file in
-/// `data/overlay-common/` must be listed here (checked by a unit test).
+/// PoBR-owned config options (`config_options/*_config_options.json` next to
+/// this module), compiled in so native and staged-memory loaders see the same
+/// set. They are engine code, not data-pack input: they count toward the
+/// engine identity, not the data identity. Each file replaces catalog entries
+/// with the same `var`. Every such file in that directory must be listed here
+/// (checked by a unit test).
 const OWNED_CONFIG_OPTIONS: &[(&str, &str)] = &[
     (
         "archon_config_options.json",
-        include_str!("../../../../data/overlay-common/archon_config_options.json"),
+        include_str!("config_options/archon_config_options.json"),
     ),
     // Standing on ground is per actor, not inferred for the player's allies.
     (
         "consecrated_ground_config_options.json",
-        include_str!("../../../../data/overlay-common/consecrated_ground_config_options.json"),
+        include_str!("config_options/consecrated_ground_config_options.json"),
     ),
     (
         "beira_config_options.json",
-        include_str!("../../../../data/overlay-common/beira_config_options.json"),
+        include_str!("config_options/beira_config_options.json"),
     ),
     (
         "cadiro_config_options.json",
-        include_str!("../../../../data/overlay-common/cadiro_config_options.json"),
+        include_str!("config_options/cadiro_config_options.json"),
     ),
     (
         "combo_config_options.json",
-        include_str!("../../../../data/overlay-common/combo_config_options.json"),
+        include_str!("config_options/combo_config_options.json"),
     ),
     (
         "energy_config_options.json",
-        include_str!("../../../../data/overlay-common/energy_config_options.json"),
+        include_str!("config_options/energy_config_options.json"),
     ),
     (
         "remnant_pickup_config_options.json",
-        include_str!("../../../../data/overlay-common/remnant_pickup_config_options.json"),
+        include_str!("config_options/remnant_pickup_config_options.json"),
     ),
     (
         "volatility_config_options.json",
-        include_str!("../../../../data/overlay-common/volatility_config_options.json"),
+        include_str!("config_options/volatility_config_options.json"),
     ),
     (
         "enemy_type_and_consumption_config_options.json",
-        include_str!(
-            "../../../../data/overlay-common/enemy_type_and_consumption_config_options.json"
-        ),
+        include_str!("config_options/enemy_type_and_consumption_config_options.json"),
     ),
 ];
 
@@ -85,14 +85,14 @@ mod tests {
     use super::OWNED_CONFIG_OPTIONS;
     use crate::GameData;
 
-    /// A new `*_config_options.json` in `data/overlay-common/` that is not
+    /// A new `*_config_options.json` in `config_options/` that is not
     /// bundled would silently have no runtime effect.
     #[test]
     fn every_owned_config_options_file_is_bundled() {
         let dir =
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/overlay-common");
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/domains/config_options");
         let mut on_disk: Vec<String> = std::fs::read_dir(&dir)
-            .expect("data/overlay-common is readable")
+            .expect("config_options/ is readable")
             .map(|entry| {
                 entry
                     .expect("directory entry")

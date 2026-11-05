@@ -25,7 +25,7 @@
 
 `multiplierEnduranceChargesConsumedRecently` 表示近期已经消耗的耐力球数量，不是当前持球数或最大球数。[Recently 的游戏定义](https://poe2db.tw/us/Recently)是过去 4 秒。活动树节点 1865 / 15494 / 54934 每球增加 3% 火伤，[Flare（43584）](https://poe2db.tw/us/Flare)每球额外获得 2% 火伤；输入 4 分别给 12% 和 8%；缺失／零没有收益。游戏天赋文本与 stat 是来源，配置只是显式状态；不推算获球、消耗频率或再次触发。
 
-实现位于 `overlay-common/enemy_type_and_consumption_config_options.json` 和 `special_mods.json`，新规则为 `exporter: "absent"`。回归见 [passive_tree_coverage.rs](../../crates/pobr-build/tests/skills/passive_tree_coverage.rs)。`multiplier<X>` 的显式 Input 只计一次：已经从 XML 写入 multiplier 表时，不再重复加上 Combat/Effective 标签对应的配置效果。Placeholder 默认值仍按原路径补入；例如近期异常数输入 4，不会变成 8。
+实现位于 `crates/pobr-gamedata/src/domains/config_options/enemy_type_and_consumption_config_options.json` 和 `special_mods.json`，新规则为 `exporter: "absent"`。回归见 [passive_tree_coverage.rs](../../crates/pobr-build/tests/skills/passive_tree_coverage.rs)。`multiplier<X>` 的显式 Input 只计一次：已经从 XML 写入 multiplier 表时，不再重复加上 Combat/Effective 标签对应的配置效果。Placeholder 默认值仍按原路径补入；例如近期异常数输入 4，不会变成 8。
 
 ### 识别但没有事件模型的词条
 

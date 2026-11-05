@@ -94,7 +94,8 @@ def source_index(root, directory):
                 stubs.update(constant(text, "STUB_HANDLER_IDS"))
                 gated.update(constant(text, "CTX_GATED_HANDLER_IDS"))
             pass_conditions.update(constant(text, "CONDITIONS_SET_BY_A_PASS"))
-    for base in (directory, directory.parent / "overlay-common"):
+    owned = root / config_relevance.OWNED_CONFIG_OPTIONS_PATH
+    for base in (directory, directory.parent / "overlay-common", owned):
         for path in sorted(base.rglob("*.json")):
             if path.name.endswith("config_options.json"):
                 for name in config_tag_reads(json.loads(path.read_text())):

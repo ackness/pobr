@@ -1,18 +1,28 @@
 # 数据现状
 
-最后核对：2026-11-03 UTC。本页原地更新：状态变化时直接改写，不追加历史。
+最后核对：2026-11-05 UTC。本页原地更新：状态变化时直接改写，不追加历史。
 长期设计与规则见[数据架构](data-architecture.md)，命令见[数据管线](../pipeline/README.md)。
 
 ## 当前数据锁
 
 - 活动目标为 `0.5.5.5`／international。消费产物的来源与 SHA-256、
   期望 manifest、运行身份与 CI 候选包身份都以[数据锁](../pipeline/data.lock.json)为准。
-  两个 owner 包都来自 Release：游戏 `ackness/repoe` `game/0.5.5.5-1`，语言 `ackness/poe2-zh-cn-stats`
-  `locale/0.5.5.5-1`，均由 `data:bump` 采用，字节与之前的 `handoff/*` 产物相同，运行身份不变。
-  `support_display` 与 `test_fixtures` 仍按 `handoff/*` tag + commit 拉取。
+  两个 owner 包都来自 Release：游戏 `ackness/repoe` `game/0.5.5.5-2`，语言 `ackness/poe2-zh-cn-stats`
+  `locale/0.5.5.5-1`，均由 `data:bump` 采用。`support_display` 与 `test_fixtures` 仍按 `handoff/*` tag + commit 拉取。
+- 待发布：本分支的锁按本地模拟 Release 采用 `game/0.5.5.5-2`（包 `8938b99a…`，生产提交 `58a044fb…`）。
+  正式采用须先合并契约 1.1 并打 `contract/1.1`，RePoE 改依赖该 tag 后发布，再对真实 Release 重跑 `data:bump`。
+- `game/0.5.5.5-2` 是一次有意的游戏数据批次，计算结果不变，只改数据身份：
+  新增 `base/active_skill_types.json`（290 行 `ActiveSkillType`，替代引擎的技能类型 sidecar）；
+  `base/game_constants.json` 增加 `base_maximum_rage`（30，替代引擎常量）；
+  `base/passive_tree.json` 为 4913 个节点中的 2106 个携带原生 stat packet（文件约 1.96 MB → 4.26 MB）；
+  snapshot manifest 声明 `contract_version: 1`，并不再列出 `i18n/**` 与 `languages`。
+- 运行 manifest 按 owner 组合：游戏 snapshot 只列游戏成员，`data:prepare` 加入语言包的 `i18n/**` 摘要，
+  并由 `i18n/<语言>/` 目录推出 `languages`。只换语言发布不再需要新的游戏发布；
+  仍列出语言成员的旧游戏 snapshot（`game/0.5.5.5-1` 及更早）被明确拒绝。锁的 `locale` 可为任意语言 tag，须由语言包提供。
+- 加载器拒绝 schema 3 但未声明 `contract_version` 的 manifest，契约前例外已删除。
 - RePoE 发布序号 7，`game` 角色序号 6：补回 14 个真实宝石的品质效果，
   按原生宝石关系验证五个 DNT 占位排除项。其他角色保持原有输入，翻译库为序号 3。
-- 当前 runtime 为 `e73febc0…`，snapshot manifest 为 `2cfb2103…`。
+- 当前 runtime 为 `0ea72e06…`（此前 `e73febc0…`），release 为 `eda2e570…`，snapshot manifest 为 `54c7595a…`（组合后的运行 manifest 由固定测试绑定为 `bbe6c9c2…`）。
   Web 与独立 WASM 继续使用逐文件快照；紧凑候选包用于 CI 验证。
 - 固定测试已在复核游戏成员差异后绑定新 manifest，召唤物和解析器的数值断言保持原值。
   数据采用需要同时检查这类显式测试绑定；必需的 `PR gate` 只证明快速检查通过。
@@ -43,9 +53,12 @@
 | 特殊制作目录的投影（原 `pipeline/imports/crafting_inputs.py`）迁往 RePoE，由游戏 part 携带；数据锁去掉 `crafting` 输入 | 已完成（ackness/repoe#21，发布序号 3）；输出字节、快照与运行／release 身份不变 |
 | `data:prepare` 原位刷新完整的同补丁陈旧安装（保留本地 patch／维护文件），可用 `POBR_DATA_CACHE` 共享下载缓存 | 已完成 |
 | 删除自动同步控制器 `pipeline/latest/` 与 `data-sync.yml`；换数据改为人工审阅的锁修改 | 已完成 |
+| 引擎内嵌游戏表退出（4.2–4.4）：技能类型 sidecar、`BASE_MAXIMUM_RAGE`、`JEWEL_RADIUS_*` 改由游戏 part 提供 | 本分支完成，待 `game/0.5.5.5-2` 正式发布；保留项及理由见 `crates/pobr-data/tests/no_embedded_data.rs` |
+| 构筑配置选项移入引擎 crate（2.6） | 本分支完成 |
+| 快照 manifest 按 owner 组合；加载器强制 `contract_version`（2.5） | 本分支完成，待 `contract/1.1` 与 `game/0.5.5.5-2` 正式发布 |
 
 adapter 的 30 份 JSON 策略已完整迁入 RePoE，内容与迁移前一致；Cargo 依赖、工具链、任务与 CI 也由 RePoE 维护。
-PoBR 留下的 11 份自有 shared 规则／构筑配置属于引擎语义，继续随本仓库代码维护，不作为领域适配策略迁移。
+PoBR 留下的自有规则属于引擎语义，继续随本仓库代码维护，不作为领域适配策略迁移：两份 shared 规则文件（`local_mods.json`、`special_mods.json`）仍在数据锁 `shared_files`；九份构筑配置选项已移入 `crates/pobr-gamedata/src/domains/config_options/` 并编译进引擎，计入引擎身份而不计入运行数据身份。
 
 ## 领域现状
 

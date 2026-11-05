@@ -11,6 +11,8 @@ import tempfile
 
 SCHEMA = "pobr-data-bundle/v1"
 LAYERS = {"base", "overlay", "generated", "i18n"}
+# A language directory name under i18n/ (BCP 47 shape: zh-CN, zh-TW, ja, pt-BR).
+LANGUAGE_TAG = re.compile(r"[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*")
 
 
 def encoded(document):

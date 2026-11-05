@@ -211,9 +211,8 @@ test('build wrapper reuses verified inputs and rebuilds only changed build input
   assert.equal(readFileSync(receiptPath, 'utf8'), originalReceipt);
   for (const [path, content] of [
     ['apps/pobr-wasm/src/lib.rs', 'changed source'],
-    ['crates/pobr-data/src/skill_type_names.txt', 'embedded changed'],
-    ['data/overlay-common/archon_config_options.json', '{"options":[]}'],
-    ['data/overlay-common/new_mechanic_config_options.json', '{"options":[]}'],
+    ['crates/pobr-gamedata/src/domains/config_options/archon_config_options.json', '{"options":[]}'],
+    ['crates/pobr-gamedata/src/domains/config_options/new_mechanic_config_options.json', '{"options":[]}'],
     ['rustc-version', 'rustc fixture\nhost: changed-host'],
     ['tool-version', 'wasm-pack changed'],
     ['.cargo/config.toml', '[build]\njobs = 2\n'],

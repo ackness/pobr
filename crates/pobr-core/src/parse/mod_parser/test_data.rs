@@ -22,6 +22,25 @@ pub fn test_data_dir() -> PathBuf {
     root.join(version.trim())
 }
 
+/// Installs the prepared data package's skill type names
+/// (`base/active_skill_types.json`) for the rest of the test process, as
+/// `GameData::load_ruleset` / `BuildData::load` do. Tests that resolve a
+/// skill type name outside the engine's named constants without loading
+/// `GameData` call this first. Idempotent.
+#[allow(dead_code)]
+pub fn install_test_skill_types() {
+    static INSTALLED: std::sync::Once = std::sync::Once::new();
+    INSTALLED.call_once(|| {
+        let path = test_data_dir().join("base/active_skill_types.json");
+        let json = std::fs::read_to_string(&path).unwrap_or_else(|e| {
+            panic!("read {}: {e} (run `mise run data:prepare`)", path.display())
+        });
+        let rows: pobr_data::catalog::skill_types::ActiveSkillTypesDef =
+            serde_json::from_str(&json).expect("deserialize base/active_skill_types.json");
+        pobr_data::skill::install_skill_type_names(&rows).expect("install the skill type names");
+    });
+}
+
 /// The imported per-level monster table (`base/monster_scaling.json`) for
 /// tests that compute enemies or minions without loading `GameData`: the
 /// table has no Rust copy and `RuntimeConstants::default()` leaves it empty.
@@ -37,6 +56,7 @@ pub fn test_monster_scaling() -> pobr_data::catalog::monster_scaling::MonsterSca
 /// ([`test_monster_scaling`]) for tests that compute enemies or minions.
 #[allow(dead_code)]
 pub fn test_constants() -> pobr_data::catalog::RuntimeConstants {
+    install_test_skill_types();
     pobr_data::catalog::RuntimeConstants {
         monster_scaling: test_monster_scaling(),
         ..Default::default()

@@ -58,98 +58,66 @@ const LONG_TABLES: &[Allowed] = &[Allowed {
 }];
 
 /// Allowed `include_str!` / `include_bytes!` sidecar tables.
-const SIDECARS: &[Allowed] = &[Allowed {
-    file: "crates/pobr-data/src/skill_type_names.rs",
-    item: "skill_type_names.txt",
-    reason: "frozen PoB2 SkillType names, needed for build-code compatibility",
-    removed_by: "roadmap 4.3: ship with the RePoE compatibility package",
-}];
+const SIDECARS: &[Allowed] = &[];
 
 /// Known small game tables (`const` / `static` items) still in engine source.
 const SMALL_TABLES: &[Allowed] = &[
     Allowed {
         file: "crates/pobr-data/src/constants.rs",
-        item: "BASE_MAXIMUM_RAGE",
-        reason: "game constant BaseMaximumRage, absent from the data package",
-        removed_by: "roadmap 4.2: read the imported game constant",
-    },
-    Allowed {
-        file: "crates/pobr-data/src/constants.rs",
         item: "ATTACK_DAMAGE_MORE_PER_RAGE",
-        reason: "inherent stat attack_damage_final_permyriad_per_rage, absent from the data package",
-        removed_by: "roadmap 4.2: read the imported game constant",
+        reason: "inherent player stat attack_damage_final_permyriad_per_rage from Character.ot, \
+                 which no pinned RePoE input carries (PlayerMinionIntrinsicStats is the minions' copy)",
+        removed_by: "roadmap 4.2: once RePoE exports the player's inherent stats",
     },
     Allowed {
         file: "crates/pobr-core/src/calc/charm_spirits.rs",
         item: "SPIRIT_DEFINITIONS",
-        reason: "Rite of Passage possession buffs from the Mods table",
-        removed_by: "roadmap 4.4",
+        reason: "the engine's modifiers for the Rite of Passage possession buffs; the values are \
+                 the Mods rows' stats, checked against base/mods.json by a test",
+        removed_by: "roadmap 4.4: a stat-to-modifier mapping for these Mods rows",
     },
     Allowed {
         file: "crates/pobr-core/src/calc/charm_spirits.rs",
         item: "SPIRIT_FAMILY_STATS",
-        reason: "Rite of Passage attribute-family bonuses from the Mods table",
-        removed_by: "roadmap 4.4",
+        reason: "the engine's modifiers for the Rite of Passage family bonuses (Mods rows)",
+        removed_by: "roadmap 4.4: a stat-to-modifier mapping for these Mods rows",
     },
     Allowed {
         file: "crates/pobr-core/src/calc/mageblood.rs",
         item: "LEGACIES",
-        reason: "Mageblood legacy effects",
-        removed_by: "roadmap 4.4",
+        reason: "Mageblood legacy effects; no pinned RePoE table carries them",
+        removed_by: "roadmap 4.4: needs a client source",
     },
     Allowed {
         file: "crates/pobr-core/src/rules/umbral_souls.rs",
         item: "SOULS",
-        reason: "Soul buff definitions by summoning skill",
-        removed_by: "roadmap 4.4",
+        reason: "Soul buffs by summoning skill; no client table pairs the skill with its buff",
+        removed_by: "roadmap 4.4: needs a client source",
     },
     Allowed {
         file: "crates/pobr-core/src/calc/effect_views.rs",
         item: "DAZE_BASE_DURATION",
-        reason: "KeywordPopups base duration",
-        removed_by: "roadmap 4.4",
+        reason: "KeywordPopups base duration; KeywordPopups is not a pinned RePoE input",
+        removed_by: "roadmap 4.4: pin KeywordPopups in RePoE",
     },
     Allowed {
         file: "crates/pobr-core/src/calc/effect_views.rs",
         item: "MAIM_BASE_DURATION",
-        reason: "KeywordPopups base duration",
-        removed_by: "roadmap 4.4",
+        reason: "KeywordPopups base duration; KeywordPopups is not a pinned RePoE input",
+        removed_by: "roadmap 4.4: pin KeywordPopups in RePoE",
     },
     Allowed {
         file: "crates/pobr-core/src/calc/effect_views.rs",
         item: "BLIND_BASE_DURATION",
-        reason: "KeywordPopups base duration",
-        removed_by: "roadmap 4.4",
-    },
-    Allowed {
-        file: "crates/pobr-tree/src/radius_jewel.rs",
-        item: "JEWEL_RADIUS_SMALL",
-        reason: "fallback jewel radius",
-        removed_by: "roadmap 4.4",
-    },
-    Allowed {
-        file: "crates/pobr-tree/src/radius_jewel.rs",
-        item: "JEWEL_RADIUS_MEDIUM",
-        reason: "fallback jewel radius",
-        removed_by: "roadmap 4.4",
-    },
-    Allowed {
-        file: "crates/pobr-tree/src/radius_jewel.rs",
-        item: "JEWEL_RADIUS_LARGE",
-        reason: "fallback jewel radius",
-        removed_by: "roadmap 4.4",
-    },
-    Allowed {
-        file: "crates/pobr-tree/src/radius_jewel.rs",
-        item: "JEWEL_RADIUS_VERY_LARGE",
-        reason: "fallback jewel radius",
-        removed_by: "roadmap 4.4",
+        reason: "KeywordPopups base duration; KeywordPopups is not a pinned RePoE input",
+        removed_by: "roadmap 4.4: pin KeywordPopups in RePoE",
     },
     Allowed {
         file: "crates/pobr-build/src/xml_build.rs",
         item: "DEFAULT_QUEST_STAT_REWARDS",
-        reason: "quest Stat rewards that default to taken in build codes",
-        removed_by: "roadmap 4.4",
+        reason: "quest Stat rewards a PoB build code treats as taken, keyed by PoB2's input names \
+                 (no QuestRewards table is pinned)",
+        removed_by: "stays: build-code compatibility default",
     },
     Allowed {
         file: "crates/pobr-build/src/xml_build.rs",

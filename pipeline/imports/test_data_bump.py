@@ -3,7 +3,6 @@
 import hashlib
 import json
 import unittest
-from unittest.mock import patch
 
 from pipeline.imports import data_bump as bump
 from pipeline.imports import data_imports as imports
@@ -204,7 +203,7 @@ class DataBumpTests(BuildDataTests):
             bump.owner_name("ackness/pobr")
         self.assertEqual(bump.owner_name("repoe"), "ackness/repoe")
 
-    def test_pre_contract_snapshot_is_allowed_by_sha_not_by_tag(self):
+    def test_a_snapshot_without_a_contract_is_rejected(self):
         snapshot = bundle.decode(self.contents["data/9.1/manifest.json"])
         del snapshot["contract_version"]
         self.contents["data/9.1/manifest.json"] = pack.raw_json(snapshot)
@@ -216,10 +215,6 @@ class DataBumpTests(BuildDataTests):
         with self.assertRaisesRegex(ValueError, "declares data contract None"):
             self.run_bump()
         self.assertEqual(self.lock_path.read_bytes(), original)
-        digest = self.lock["snapshot_manifest"]["sha256"]
-        with patch.object(build, "PRE_CONTRACT_SNAPSHOTS", frozenset({digest})):
-            self.run_bump()
-        self.assertEqual(bundle.decode(self.lock_path.read_bytes())["snapshot_manifest"]["sha256"], digest)
 
 
 # BuildDataTests' own cases already run in test_build_data.

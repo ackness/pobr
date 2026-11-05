@@ -7,7 +7,7 @@
 /// repository (RePoE's `pobr-data-adapter` and release build) produces from
 /// these types. Its `manifest.json` records the contract it was built for as
 /// `contract_version`, and the loader refuses a package that declares any
-/// other number (see `pobr-gamedata`'s manifest validation).
+/// other number or none (see `pobr-gamedata`'s manifest validation).
 ///
 /// Bump this by 1 for a breaking change to any serialized type a data package
 /// contains, or to how the loader interprets existing bytes: a renamed,

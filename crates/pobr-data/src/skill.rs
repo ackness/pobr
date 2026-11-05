@@ -92,11 +92,71 @@ impl SkillTypes {
     /// DPS multiplier, vendor CalcOffence.lua:962-976)
     pub const BARRAGEABLE: Self = Self::bit(69);
 
+    // Types the engine's own rules name (calc/rule code tests them by name).
+    // Like the constants above, an installed `ActiveSkillType` table must
+    // agree with each index (`skill_type_names::validate`).
+    /// PoB2 SkillType.Chaos = 42
+    pub const CHAOS: Self = Self::bit(41);
+    /// PoB2 SkillType.MeleeSingleTarget = 21
+    pub const MELEE_SINGLE_TARGET: Self = Self::bit(20);
+    /// PoB2 SkillType.ProjectileNumber = 62
+    pub const PROJECTILE_NUMBER: Self = Self::bit(61);
+    /// PoB2 SkillType.AppliesCurse = 69
+    pub const APPLIES_CURSE: Self = Self::bit(68);
+    /// PoB2 SkillType.Slam = 93
+    pub const SLAM: Self = Self::bit(92);
+    /// PoB2 SkillType.UsedByTotem = 96
+    pub const USED_BY_TOTEM: Self = Self::bit(95);
+    /// PoB2 SkillType.TotemsAreBallistae = 114
+    pub const TOTEMS_ARE_BALLISTAE: Self = Self::bit(113);
+    /// PoB2 SkillType.UsableWhileMoving = 141
+    pub const USABLE_WHILE_MOVING: Self = Self::bit(140);
+    /// PoB2 SkillType.GeneratesRemnants = 182
+    pub const GENERATES_REMNANTS: Self = Self::bit(181);
+    /// PoB2 SkillType.CreatesCompanion = 219
+    pub const CREATES_COMPANION: Self = Self::bit(218);
+    /// PoB2 SkillType.UsedByProxy = 258
+    pub const USED_BY_PROXY: Self = Self::bit(257);
+    /// PoB2 SkillType.ActiveBlock = 262
+    pub const ACTIVE_BLOCK: Self = Self::bit(261);
+    /// PoB2 SkillType.Movement = 34
+    pub const MOVEMENT: Self = Self::bit(33);
+    /// PoB2 SkillType.Vaal = 38
+    pub const VAAL: Self = Self::bit(37);
+    /// PoB2 SkillType.Physical = 27
+    pub const PHYSICAL: Self = Self::bit(26);
+    /// PoB2 SkillType.Fire = 28
+    pub const FIRE: Self = Self::bit(27);
+    /// PoB2 SkillType.Cold = 29
+    pub const COLD: Self = Self::bit(28);
+    /// PoB2 SkillType.Lightning = 30
+    pub const LIGHTNING: Self = Self::bit(29);
+    /// PoB2 SkillType.Retaliation = 156
+    pub const RETALIATION: Self = Self::bit(155);
+    /// PoB2 SkillType.SpecialAncestralBoost = 260
+    pub const SPECIAL_ANCESTRAL_BOOST: Self = Self::bit(259);
+
     /// A mask with bit `index` (0-based) set (const-constructible).
     const fn bit(index: u32) -> Self {
         let mut words = [0u64; SKILL_TYPE_WORDS];
         words[(index / 64) as usize] = 1u64 << (index % 64);
         Self(words)
+    }
+
+    /// The PoB2 enum value (1-based) of a single type; `None` unless exactly
+    /// one bit is set.
+    pub(crate) fn index(self) -> Option<u32> {
+        let mut found = None;
+        for (word, bits) in self.0.iter().enumerate() {
+            if *bits == 0 {
+                continue;
+            }
+            if found.is_some() || bits.count_ones() != 1 {
+                return None;
+            }
+            found = Some(word as u32 * 64 + bits.trailing_zeros() + 1);
+        }
+        found
     }
 
     /// Builds a `SkillTypes` from a PoB2 enum value (1-based), for types
