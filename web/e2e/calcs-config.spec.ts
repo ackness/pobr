@@ -72,7 +72,7 @@ test('overview, Full DPS and attribution remain separate and attribution is requ
   await page.getByRole('tab', { name: 'Full DPS', exact: true }).click();
   await expect(page.locator('.full-dps-table')).toBeVisible();
   await expect(page.locator('.skill-metrics-table')).toHaveCount(0);
-  await expect(page.locator('.full-dps-view')).toContainText('does not simulate a rotation');
+  await expect(page.locator('.full-dps-view')).toContainText('does not simulate skill rotations');
   await page.getByRole('tab', { name: 'Source contributions', exact: true }).click();
   expect(await page.evaluate(() => window.calcsConfigProbe.attribution)).toBe(0);
   await page.getByRole('button', { name: 'Source contributions', exact: true }).click();
