@@ -672,7 +672,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
       .then((translated) => {
         if (!translated || cancelled || generation !== canvasGeneration.current) return;
         setHoverName(translated[0] !== name ? translated[0] : null);
-        setHoverStats(translated.slice(1));
+        setHoverStats(translated.slice(1).filter(line => line !== ''));
       })
       .catch(() => {
         if (cancelled || generation !== canvasGeneration.current) return;
@@ -1126,7 +1126,8 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
             {(selectedAllocated || owner.has(selectedNode.skill)) && <> · {tt(owner.get(selectedNode.skill) === 1 ? 'tree.set1' : owner.get(selectedNode.skill) === 2 ? 'tree.set2' : 'tree.shared')}</>}
           </p>
           <ul className="tree-node-details-stats">
-            {displayedDetails.slice(1).map((line, index) => <li key={index}><ValueText text={line} /></li>)}
+            {/* A stat written on several lines may translate as one; its later lines come back empty. */}
+            {displayedDetails.slice(1).filter(line => line !== '').map((line, index) => <li key={index}><ValueText text={line} /></li>)}
           </ul>
           {isAttrNode(selectedNode) && (selectedAllocated || selectedNeedsAttribute) && (
             <label className="tree-node-attribute">

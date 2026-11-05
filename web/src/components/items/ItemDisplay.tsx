@@ -51,7 +51,11 @@ export function ItemDisplayContent({ text, lang, lines, translated }: {
   text: string; lang: Lang; lines: readonly ItemLineJson[]; translated: readonly string[];
 }) {
   const { displayMode: style } = useUi();
-  const model = itemDisplaySections(lines, translated);
+  // A stat description the game writes on several lines can translate as one:
+  // its later lines come back empty because their text is in the line above.
+  const continued = (index: number) => translated[index] === '' && (lines[index]?.text.trim() ?? '') !== '';
+  const model = itemDisplaySections(lines.filter((_, index) => !continued(index)),
+    translated.filter((_, index) => !continued(index)));
   const w = (en: string, cn: string, tw = cn) => lang === 'en-US' ? en : lang === 'zh-TW' ? tw : cn;
   const rarity = rarityOf(text);
   const fixedAffixes = rarity === 'unique' || rarity === 'relic';
