@@ -7,7 +7,8 @@
 run skill 正本在 `.agents/skills/`，`.claude/skills/` 下的同名软链仅保留为兼容入口。
 游戏 CLI（`mise exec -- cargo run -p pobr-cli`，二进制 `pobr`）只提供游戏计算命令，不包含任何开发命令。
 本文维护构建、测试、缓存和 CI 操作；验证范围与计算约定见 [maintainer-guide.md](maintainer-guide.md)，
-Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/README.md](../pipeline/README.md)。
+Web 初次准备见 [Web README](../web/README.md)，数据管线见 [pipeline/README.md](../pipeline/README.md)，
+换数据与发版的步骤见 [RELEASING.md](../RELEASING.md)。
 
 ## 环境：本地统一 mise，CI 使用原生安装 Action
 
@@ -405,6 +406,9 @@ Dependabot 每日分组检查 Actions 更新；Cargo、Rust toolchain、Web 与�
 
 ## 发布与部署
 
+发版是单独的升版 PR，只改 workspace 版本，不与功能或数据 bump 混在一起；从开 PR 到推 tag、核对部署和回退的步骤见
+[RELEASING.md](../RELEASING.md)。本节说明这些步骤背后的检查与 workflow。
+
 应用版本由 `[workspace.package].version` 管理；七个基础库与 `data/CURRENT` 独立版本。
 更新应用版本后用 `mise exec -- cargo metadata --format-version 1 > /dev/null` 刷新锁文件。
 [release-policy.py](../devs/scripts/release-policy.py) 按 SemVer 判断升级，检查所有继承 workspace
@@ -523,4 +527,3 @@ mise exec -- cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakd
     优化前先测当前版本，保留输入、工具链、主机与原始采样，避免沿用旧版热点结论。
 - `mise run web package-wasm`：将已准备 WASM 与同步数据打包到 `.cache/wasm-release/`；`mise run web smoke-wasm-package` 解压后执行真实计算。`build-wasm` 校验源码、工具链、构建设置和产物记录，未变时直接复用；`mise run web build-wasm --force` 显式重建但不清 Cargo 缓存。打包继续校验源码 / 绑定指纹、实际 schema 和数据快照，来源 commit 保留编译时值。脚本改动运行 `mise exec -- node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`；发布流程见 [WASM 打包说明](wasm-package.md)。release workflow 在完整门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
 - `mise run web test:worker`：在实际 workerd 运行时测试 Worker，使用合成上游响应，无外网依赖。E2E 失败的截图与 trace 由 CI 上传为 `playwright-failure`。
-- 计划发版时，在功能 PR 中一并更新 workspace 版本。按风险完成审阅和 PR 检查，必要时先手动 full；合并后 master 自动全量，发布 tag 仍须通过对应提交的完整验证。稳定 v0 版本按部署规则上线，不把旧分支的通过结果冒充为 tag 验证。

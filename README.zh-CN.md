@@ -109,6 +109,7 @@ Rust 使用 **edition 2024**；应用与工具继承 workspace 发布版本，�
 | 找文档 | [文档目录](docs/README.md) |
 | 了解各目录放什么 | [源码、数据与本地产物](docs/development-workflow.md#repository-layout) |
 | 参与开发 | [贡献要求](CONTRIBUTING.md)、[AGENTS.md](AGENTS.md)、[维护者指南](docs/maintainer-guide.md) |
+| 换游戏数据或发版 | [换数据与发版](RELEASING.md) |
 | 添加或修复词条 | [词条指南](docs/contributing-mods.md)、[常见改动步骤](docs/recipes.md) |
 | 使用 JSON 接口 | [构筑模型](docs/build-model.md)、[计算输出](docs/calc-outputs.md)、[WASM 包](docs/wasm-package.md) |
 | 核对机制 | [机制约定](docs/mechanics/README.md)、[有意保留的差异](docs/pob2-differences.md) |

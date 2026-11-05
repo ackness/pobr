@@ -37,7 +37,8 @@
 | 区分源码、数据、参考资料与可重建产物 | [目录用途](development-workflow.md#repository-layout) |
 | 改一条词条、一个输出或一种机制 | [改动配方](recipes.md)、[词条规则指南](contributing-mods.md) |
 | 排查数值差异、输入损失和未支持效果 | [诊断与逐行台账](diagnostics.md) |
-| 升级游戏数据、候选校验与生成来源 | [数据管线](../pipeline/README.md)、[数据层结构](version-bump-architecture.md)、[宝石品质](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/gem-quality/README.md) |
+| 换游戏数据、发版上线与回退 | [RELEASING.md](../RELEASING.md) |
+| 数据锁、导入、组包与本地选择 | [数据管线](../pipeline/README.md)、[数据层结构](version-bump-architecture.md)、[宝石品质](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/gem-quality/README.md) |
 | 了解数据来源、仓库职责与存储边界 | [数据架构](data-architecture.md) |
 | 查看活动组合、各领域缺口与近期顺序 | [数据现状](data-status.md) |
 | 使用参考引擎与 catalog 对照 | [PoB2 oracle](../tools/pob2-oracle/README.md)、[PoB2 catalog 对照](../tools/sync-pob-catalog/README.md) |

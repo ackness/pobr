@@ -180,8 +180,10 @@ RePoE 发布 ───┐
 
 ## 5. 更新、采用与发布
 
+本节是规则；新补丁、只换语言、发版与回退的操作步骤只写在 [RELEASING.md](../RELEASING.md)。
+
 1. **owner 生产。** RePoE 与翻译库从固定输入生产、运行各自的完整检查，再发布不可变的 GitHub Release。PoBR 不代为生产。
-2. **改锁。** 维护者在审阅分支中运行 `mise run data:bump <owner> <tag>`：下载并按 `SHA256SUMS` 校验附件，
+2. **改锁。** 维护者在审阅分支中运行 `mise run data:bump <owner> <tag> [<owner> <tag>]`：下载并按 `SHA256SUMS` 校验附件，
    读取 `receipt.json`，替换该 owner 的锁条目（语言 Release 带辅助显示附件时一并替换 `support_display`），
    重算快照 pin、运行身份与紧凑发行身份，再 `data:prepare` 导入并打印身份差异。
    新补丁两个 owner 一起 bump，语言 Release 须带新目标与新交易目录的辅助显示。PoBR 不自动发现或采用 owner 发布；owner 尚无完整新发布时保留现有默认。
@@ -191,9 +193,9 @@ RePoE 发布 ───┐
 4. **采用。** 采用就是合并第 2 步的 bump PR：数据锁只经受保护的 PR 改变；`data:bump` 写入精确的 `release_id`，Full CI 重建后必须一致。
    `data:update` 不是采用路径：它只在本地按另一份锁准备候选或显式选择（回退演练、多版本实测），并携带期望的旧身份做 CAS，
    见[锁驱动的本地选择](../pipeline/runtime/locked-update.md)。
-5. **发版与部署。** 发版 tag 重新运行完整验证并发布同次产物；数据采用不会自动触发发版。
-   锁变化合并到 master 只运行完整 CI，不部署网站：生产站点只由稳定 `v0.x.y` tag 的 release workflow 部署
-   （见[发布与部署](development-workflow.md#发布与部署)）。要让新数据上线，在 data:bump PR 中一并升 workspace patch 版本，合并后推送对应 tag。
+5. **发版与部署。** 数据采用与发版分开：bump PR 不升版本，锁变化合并到 master 只运行完整 CI，不部署网站。
+   发版是单独的升版 PR，发布 master 上当时已有的数据与代码；合并后在该提交推送稳定 `v0.x.y` tag，
+   release workflow 重新运行完整验证、发布同次产物并部署（[发布与部署](development-workflow.md#发布与部署)）。
 
 每次失败都保留上一套已验证数据。不用版本字符串、源码合并日期或部分新表冒充完整更新；
 翻译未变化时可复用旧修订，不为每个补丁制造空提交；数据修复不要求同步升级引擎，除非 schema、语义或消费者行为改变。

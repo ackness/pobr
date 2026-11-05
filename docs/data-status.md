@@ -6,7 +6,8 @@
 活动目标为 `0.5.5.5`／international。包、manifest、运行身份与紧凑发行身份都以[数据锁](../pipeline/data.lock.json)为准，
 换数据用 `mise run data:bump`。每个 owner Release 的 `receipt.json` 记录它的全部来源 pin，
 见 [RePoE Releases](https://github.com/ackness/repoe/releases)（`game/<patch>-<n>`，流程见 [RELEASING.md](https://github.com/ackness/repoe/blob/master/RELEASING.md)）
-与[翻译库 Releases](https://github.com/ackness/poe2-zh-cn-stats/releases)（`locale/<patch>-<n>`）；本页不复制哈希与发布记录。
+与[翻译库 Releases](https://github.com/ackness/poe2-zh-cn-stats/releases)（`locale/<patch>-<n>`，流程见 [RELEASING.md](https://github.com/ackness/poe2-zh-cn-stats/blob/main/RELEASING.md)）；本页不复制哈希与发布记录。
+PoBR 一侧的换数据、发版与回退步骤见 [RELEASING.md](../RELEASING.md)。
 
 ## 发布与采用
 
@@ -19,8 +20,8 @@
 | 运行 manifest | 按 owner 组合：游戏 snapshot 只列游戏成员，`data:prepare` 加入语言包的 `i18n/**` 并推出 `languages`。仍列语言成员的旧游戏 snapshot（`game/0.5.5.5-1` 及更早）和未声明 `contract_version` 的 schema 3 manifest 都被拒绝 | 无（已生效；真实 Release 的采用见“游戏包”） |
 | PoBR 自有规则 | `local_mods.json`、`special_mods.json` 在锁的 `shared_files`；九份构筑配置选项编译进 `crates/pobr-gamedata/src/domains/config_options/`，计入引擎身份 | 无 |
 | 采用流程 | 人工审阅的锁修改：精确 head 通过 PR gate 与 Full CI，合并后再确认主线 Full CI。固定测试绑定组合 manifest 的游戏部分，换游戏包时需复核成员差异再重绑 | 无 |
-| 新补丁迁移与回退 | 流程已写在[锁驱动更新](../pipeline/runtime/locked-update.md)，尚未用真实新补丁走过 | 一次真实新补丁：两个 owner 一起发布并 bump，验证线上回退 |
-| 部署 | 锁合并到 master 只跑 Full CI；生产站点只由稳定 `v0.x.y` tag 部署（[发布与采用](data-architecture.md#5-更新采用与发布)） | 新数据上线须在 `data:bump` PR 里升 patch 版本，合并后推 tag |
+| 新补丁迁移与回退 | 步骤见 [RELEASING.md](../RELEASING.md)，尚未用真实新补丁走过 | 一次真实新补丁：两个 owner 一起发布并 bump，发版后验证线上回退 |
+| 部署 | 锁合并到 master 只跑 Full CI；生产站点只由稳定 `v0.x.y` tag 部署。线上最新的 `v0.0.43` 早于三仓库拆分，尚未使用从 Release 采用的数据 | 下一次发版：单独的升版 PR 合并后推 tag（[RELEASING.md](../RELEASING.md)） |
 | 发行包 | Web 与独立 WASM 发布逐文件快照；紧凑发行包只在 CI 中由同次 WASM 消费验证 | 见下表“玩家验收与性能” |
 
 ## 领域现状

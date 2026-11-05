@@ -97,8 +97,9 @@ PRs run relevant quick checks. Master code pushes, nightly and release tags run
 full validation. A risky batch may use `mise run ci <pushed-ref> [--e2e]` before
 merge; verify its exact SHA, result and relevant base. `PR gate` on a PR proves
 quick checks, not full integration. E2E stays opt-in; validation does not publish.
-Use the release runbook for application/independent library/data versions, immutable
-tags, SemVer/lock checks, same-run artifacts and stable-v0 deployment ordering.
+Data bumps and releases follow [RELEASING.md](../../../RELEASING.md): a bump PR
+changes only the lock, and a separate version-bump PR plus an immutable `v0.x.y`
+tag ships whatever master holds.
 
 When changing process, update executable policy and tests first, then the owning
 workflow guide plus affected entry points/templates. Do not claim GitHub enforcement
