@@ -102,6 +102,24 @@ impl NameKind {
     pub fn from_file_name(file: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|kind| kind.file_name() == file)
     }
+
+    /// The kind's stable name in APIs (`base_item`, `skill`, `affix`,
+    /// `passive_node`, `word`, `rare_word`).
+    pub fn id(self) -> &'static str {
+        match self {
+            NameKind::BaseItem => "base_item",
+            NameKind::Skill => "skill",
+            NameKind::Affix => "affix",
+            NameKind::PassiveNode => "passive_node",
+            NameKind::Word => "word",
+            NameKind::RareWord => "rare_word",
+        }
+    }
+
+    /// The kind named `id` (see [`Self::id`]).
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|kind| kind.id() == id)
+    }
 }
 
 /// Why a locale pack could not be built.
@@ -315,7 +333,9 @@ mod tests {
     fn name_kinds_round_trip_their_file_names() {
         for kind in NameKind::ALL {
             assert_eq!(NameKind::from_file_name(kind.file_name()), Some(kind));
+            assert_eq!(NameKind::from_id(kind.id()), Some(kind));
         }
+        assert_eq!(NameKind::from_id("base_items"), None);
         assert_eq!(NameKind::BaseItem.key(), NameKey::Id);
         assert_eq!(NameKind::Word.key(), NameKey::English);
     }

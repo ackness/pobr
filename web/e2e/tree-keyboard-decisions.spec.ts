@@ -224,7 +224,7 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
           line.replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2').replace(/\[([^\]]*)\]/g, '$1'));
         // The game-text layer translates to Simplified; Traditional is that translation converted by script.
         const expectedText: string[] = lang === 'en-US' ? raw
-          : (JSON.parse((await replayBackend()).translateLinesToZhCn(JSON.stringify(raw))) as string[])
+          : (JSON.parse((await replayBackend()).translateLines('zh-CN', JSON.stringify(raw))) as string[])
             .map(line => chineseScript(line, lang));
         await expect(details.getByRole('heading')).toHaveText(expectedText[0]);
         await expect(details.locator('.tree-node-details-stats > li')).toHaveText(expectedText.slice(1));
@@ -704,7 +704,7 @@ test('selected conquered keystone details refresh to the real original text afte
   expect(await capture(page)).toEqual(original);
   await language(page, 'zh-CN');
   details = page.getByRole('group', { name: bindT('zh-CN')('tree.nodeDetails'), exact: true });
-  const translated = JSON.parse((await replayBackend()).translateLinesToZhCn(JSON.stringify([replacement.name])));
+  const translated = JSON.parse((await replayBackend()).translateLines('zh-CN', JSON.stringify([replacement.name])));
   await expect(details.getByRole('heading')).toHaveText(translated[0]);
   await pointerNode(page, pair.socket.skill);
   await page.getByRole('button', { name: bindT('zh-CN')('items.remove'), exact: true }).click();

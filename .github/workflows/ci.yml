@@ -151,6 +151,15 @@ jobs:
         run: |
           python3 -m pipeline.runtime.build_data --install data
           bash devs/scripts/check-data.sh
+      - name: Game-text translation coverage (report only)
+        working-directory: .
+        # A report, never a gate: gaps and unreadable tables are printed, and even a broken
+        # script must not fail the job.
+        continue-on-error: true
+        run: |
+          python3 devs/scripts/translation-coverage.py > "$RUNNER_TEMP/translation-coverage.md"
+          cat "$RUNNER_TEMP/translation-coverage.md" >> "$GITHUB_STEP_SUMMARY"
+          cat "$RUNNER_TEMP/translation-coverage.md"
       - name: Interface copy (locale key sets and placeholders)
         run: pnpm i18n:check
       - name: Typecheck (pre-wasm placeholder tolerated via ts-ignore)
@@ -184,14 +193,42 @@ jobs:
           path: web/dist
           if-no-files-found: error
           retention-days: 3
-      # E2E is opt-in: it runs only for a manual dispatch with `e2e` enabled
-      # (`mise run ci <ref> --e2e`), never on tags or release PRs.
+      # The full E2E suite is opt-in: it runs only for a manual dispatch with `e2e` enabled
+      # (`mise run ci <ref> --e2e`), never on tags or release PRs. A range that changes the
+      # data lock (master push, or a manual run on a branch whose lock differs from the
+      # default branch) runs the one data-bump spec instead: the ordinary player flow on
+      # the new data. ci-plan.py decides; an unknown branch range selects it.
+      - name: Select data-bump smoke
+        id: data-smoke
+        working-directory: .
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          PUSH_BASE: ${{ github.event.before }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          base=""
+          if [ "$REF_TYPE" = branch ]; then
+            case "$EVENT_NAME" in
+              push) target="$PUSH_BASE" ;;
+              workflow_dispatch) target="refs/heads/$DEFAULT_BRANCH" ;;
+              *) target="" ;;
+            esac
+            # A failed fetch leaves no base: the planner then treats the range as unknown.
+            if [ -n "$target" ] && git fetch --no-tags --depth=1 origin "$target"; then
+              base="$(git rev-parse FETCH_HEAD)"
+            fi
+          fi
+          python3 devs/scripts/ci-plan.py --data-smoke "$base"
       - name: Install Playwright
-        if: inputs.e2e
+        if: inputs.e2e || steps.data-smoke.outputs.run == 'true'
         run: pnpm exec playwright install --with-deps chromium
       - name: E2E smoke
         if: inputs.e2e
         run: pnpm exec playwright test
+      - name: Data-bump smoke
+        if: ${{ !inputs.e2e && steps.data-smoke.outputs.run == 'true' }}
+        run: pnpm exec playwright test data-bump-smoke.spec.ts
       - name: Package standalone WASM and report size
         run: |
           pnpm package-wasm

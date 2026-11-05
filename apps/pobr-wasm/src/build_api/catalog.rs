@@ -1,8 +1,9 @@
 //! Catalog/text-oriented read-only endpoints: per-line item coloring
 //! (`classify_item_lines_json`), the gem picker's catalog
 //! (`gem_catalog_json`), the rune/soul core catalog plus re-socketing
-//! (`rune_catalog_json` / `reforge_runes_json`), and English -> Simplified
-//! Chinese display translation (`translate_lines_to_zh_cn_json`).
+//! (`rune_catalog_json` / `reforge_runes_json`), and the data pack's locales:
+//! mod-line translation (`translate_lines_json` / `parse_localized_lines_json`),
+//! names (`game_name`) and the declared locales (`available_locales_json`).
 
 use std::collections::BTreeMap;
 
@@ -355,11 +356,6 @@ pub fn translate_lines_json(lang: &str, lines_json: &str) -> Result<String, Stri
     .map_err(super::ApiError::into_json)
 }
 
-/// [`translate_lines_json`] for `zh-CN` (the Web app's existing entry point).
-pub fn translate_lines_to_zh_cn_json(lines_json: &str) -> Result<String, String> {
-    translate_lines_json("zh-CN", lines_json)
-}
-
 /// Batch-parses `lang` mod lines into English canonical lines. A line that
 /// is not in that locale, or that no template recognizes, passes through
 /// unchanged, as does everything when the locale has no templates.
@@ -374,6 +370,24 @@ pub fn parse_localized_lines_json(lang: &str, lines_json: &str) -> Result<String
         }
     })
     .map_err(super::ApiError::into_json)
+}
+
+/// The locales the data pack declares, with their fallback chains, as a JSON
+/// array of [`crate::locales::LocaleInfo`] (`[]` before initialization).
+pub fn available_locales_json() -> Result<String, String> {
+    serde_json::to_string(&crate::locales::available_locales()).map_err(|e| e.to_string())
+}
+
+/// The `lang` name for `key` in the `kind` name table (`base_item` / `skill`,
+/// keyed by stable id; `affix` / `passive_node` / `word` / `rare_word`, keyed
+/// by English text), following the locale's declared fallbacks. `None` when no
+/// locale in the chain names it (show the English name); an unknown `kind` is
+/// a bad request.
+pub fn game_name(lang: &str, kind: &str, key: &str) -> Result<Option<String>, String> {
+    let kind = pobr_i18n::NameKind::from_id(kind).ok_or_else(|| {
+        super::ApiError::bad_request(format!("unknown name kind: {kind}")).into_json()
+    })?;
+    Ok(crate::locales::game_name(lang, kind, key))
 }
 
 fn map_lines(
@@ -622,10 +636,6 @@ Implicits: 2
                 "An unknown mod line"
             ]
         );
-        assert_eq!(
-            translate_lines_to_zh_cn_json(english).unwrap(),
-            translate_lines_json("zh-CN", english).unwrap()
-        );
         // A locale with no templates, an unknown one and a malformed code pass through.
         for lang in ["zh-TW", "xx-XX", "../base"] {
             let out: Vec<String> =
@@ -660,5 +670,55 @@ Implicits: 2
             ]
         );
         assert!(translate_lines_json("zh-CN", "{}").is_err());
+    }
+
+    #[test]
+    fn locales_and_names_come_from_the_data_pack() {
+        let dir = pobr_gamedata::current_data_dir();
+        crate::init_data_from_dir(&dir.to_string_lossy()).unwrap();
+        let locales: Vec<serde_json::Value> =
+            serde_json::from_str(&available_locales_json().unwrap()).unwrap();
+        let zh_cn = locales
+            .iter()
+            .find(|locale| locale["code"] == "zh-CN")
+            .expect("the data pack declares zh-CN");
+        assert_eq!(zh_cn["templates"], true);
+        assert_eq!(zh_cn["chain"][0], "zh-CN");
+        let zh_tw = locales
+            .iter()
+            .find(|locale| locale["code"] == "zh-TW")
+            .expect("the data pack declares zh-TW");
+        // The zh-TW pack publishes names but no mod-line templates.
+        assert_eq!(zh_tw["templates"], false);
+        // Every declared fallback is in the chain after the locale itself.
+        for locale in &locales {
+            let chain = locale["chain"].as_array().unwrap();
+            assert_eq!(chain[0], locale["code"]);
+            for fallback in locale["fallback"].as_array().unwrap() {
+                assert!(chain.contains(fallback), "{locale}");
+            }
+        }
+
+        let ring = "Metadata/Items/Rings/FourRing4";
+        assert_eq!(
+            game_name("zh-CN", "base_item", ring).unwrap().as_deref(),
+            Some("蓝玉戒指")
+        );
+        assert_eq!(
+            game_name("zh-TW", "base_item", ring).unwrap().as_deref(),
+            Some("藍玉戒指")
+        );
+        assert_eq!(
+            game_name("zh-CN", "word", "Abyssal Apparition")
+                .unwrap()
+                .as_deref(),
+            Some("深渊幻象")
+        );
+        assert_eq!(
+            game_name("zh-CN", "base_item", "No/Such/Base").unwrap(),
+            None
+        );
+        assert_eq!(game_name("xx-XX", "base_item", ring).unwrap(), None);
+        assert!(game_name("zh-CN", "base_items", ring).is_err());
     }
 }

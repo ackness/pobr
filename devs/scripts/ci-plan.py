@@ -22,6 +22,8 @@ FULL_FILES = {
     "devs/scripts/setup-environment.sh", "devs/scripts/pob2-luajit.sh",
 }
 DOCUMENTATION_SIDECARS = {"apps/pobr-wasm/tests/fixtures/pob2-planner.md"}
+DATA_LOCK = "pipeline/data.lock.json"
+DATA_SMOKE_EVENTS = ("push", "workflow_dispatch")
 # Web files generated from game data; the automation contracts check them
 # against the prepared snapshot (test_workflows.py).
 DATA_DERIVED_WEB = {"web/src/lib/configGameRelevance.json"}
@@ -90,6 +92,19 @@ def plan_for_event(files, event):
     return {area: area == "full" for area in AREAS}
 
 
+def data_smoke(files, event, ref_type):
+    """Whether full CI also runs the data-bump Playwright smoke (web/e2e/data-bump-smoke.spec.ts).
+
+    It runs when the tested range changes the data lock: a branch push (master integration)
+    or a manual run on a branch (`mise run ci <ref>`, compared with the default branch).
+    Tags, nightly runs and calls without a branch range never select it; an unknown range on
+    a branch does, because a data bump must not slip through unchecked.
+    """
+    if ref_type != "branch" or event not in DATA_SMOKE_EVENTS:
+        return False
+    return files is None or DATA_LOCK in files
+
+
 def changed_files(base, head="HEAD", cwd=None):
     if not base or set(base) == {"0"}:
         return None
@@ -104,7 +119,7 @@ def changed_files(base, head="HEAD", cwd=None):
             for name in result.stdout.split(b"\0") if name]
 
 
-def emit(plan):
+def emit(plan, title="Selected checks"):
     lines = [f"{key}={str(value).lower()}" for key, value in plan.items()]
     print("\n".join(lines))
     if os.environ.get("GITHUB_OUTPUT"):
@@ -112,15 +127,23 @@ def emit(plan):
             out.write("\n".join(lines) + "\n")
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as out:
-            out.write("### Selected checks\n\n" + "\n".join(f"- `{line}`" for line in lines) + "\n")
+            out.write(f"### {title}\n\n" + "\n".join(f"- `{line}`" for line in lines) + "\n")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--event", type=Path, default=os.environ.get("GITHUB_EVENT_PATH"))
+    parser.add_argument("--data-smoke", metavar="BASE", nargs="?", const="",
+                        help="instead of the check plan, decide the data-bump smoke against BASE")
     args = parser.parse_args()
     event = json.loads(args.event.read_text()) if args.event else {}
     event_name = os.environ.get("GITHUB_EVENT_NAME")
+    if args.data_smoke is not None:
+        ref_type = os.environ.get("GITHUB_REF_TYPE")
+        ranged = ref_type == "branch" and event_name in DATA_SMOKE_EVENTS
+        files = changed_files(args.data_smoke) if ranged else []
+        emit({"run": data_smoke(files, event_name, ref_type)}, "Data-bump smoke")
+        return
     if event_name == "pull_request":
         # HEAD is the synthetic merge under test; its first parent is its base.
         base, head = "HEAD^1", "HEAD"

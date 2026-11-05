@@ -20,14 +20,14 @@ pub mod state;
 mod xml_write;
 
 pub use build_api::{
-    attribution_json, breakdown_descriptors_json, calculate_build_json, classify_item_lines_json,
-    decode_build_file_json, decode_build_json, decode_build_loadout_json, encode_build_file_json,
-    encode_build_json, gem_catalog_json, import_party_member_json, import_trade_items_json,
-    item_augment_info_json, item_crafting_catalog_json, line_usage_json, manage_loadout_json,
-    minion_catalog_json, node_power_json, normalize_item_draft_json, optimize_variants_json,
-    parse_localized_lines_json, reforge_runes_json, rune_catalog_json, skill_metrics_json,
-    translate_lines_json, translate_lines_to_zh_cn_json, unique_catalog_json,
-    unique_item_draft_json,
+    attribution_json, available_locales_json, breakdown_descriptors_json, calculate_build_json,
+    classify_item_lines_json, decode_build_file_json, decode_build_json, decode_build_loadout_json,
+    encode_build_file_json, encode_build_json, game_name, gem_catalog_json,
+    import_party_member_json, import_trade_items_json, item_augment_info_json,
+    item_crafting_catalog_json, line_usage_json, manage_loadout_json, minion_catalog_json,
+    node_power_json, normalize_item_draft_json, optimize_variants_json, parse_localized_lines_json,
+    reforge_runes_json, rune_catalog_json, skill_metrics_json, translate_lines_json,
+    unique_catalog_json, unique_item_draft_json,
 };
 pub use build_api::{
     preview_tree_conversion_json, preview_tree_edit_json, support_groups_compatible_json,
@@ -44,7 +44,7 @@ pub use state::{
 /// compares them at boot (see [`wasm::schema_version`]); a mismatch prompts
 /// a hard refresh — closing the door on "stale frontend cache + new wasm
 /// assets" silently breaking.
-pub const SCHEMA_VERSION: u32 = 18;
+pub const SCHEMA_VERSION: u32 = 19;
 
 /// wasm-bindgen bindings: compiled only under the `wasm` feature, exposing
 /// functions with the same names as the host API to JS.
@@ -195,13 +195,6 @@ pub mod wasm {
         crate::build_api::import_trade_items_json(input).map_err(|err| JsError::new(&err))
     }
 
-    /// JS entry point: `translateLinesToZhCn(linesJson) -> string` (English mod lines -> Simplified Chinese display).
-    #[wasm_bindgen(js_name = translateLinesToZhCn)]
-    pub fn translate_lines_to_zh_cn_json(lines_json: &str) -> Result<String, JsError> {
-        crate::build_api::translate_lines_to_zh_cn_json(lines_json)
-            .map_err(|err| JsError::new(&err))
-    }
-
     /// JS entry point: `translateLines(lang, linesJson) -> string` (English mod lines -> `lang` display).
     #[wasm_bindgen(js_name = translateLines)]
     pub fn translate_lines_json(lang: &str, lines_json: &str) -> Result<String, JsError> {
@@ -213,6 +206,20 @@ pub mod wasm {
     pub fn parse_localized_lines_json(lang: &str, lines_json: &str) -> Result<String, JsError> {
         crate::build_api::parse_localized_lines_json(lang, lines_json)
             .map_err(|err| JsError::new(&err))
+    }
+
+    /// JS entry point: `availableLocales() -> string` (JSON `[{code, fallback, chain, templates}]`:
+    /// the locales the data pack declares, with their fallback chains).
+    #[wasm_bindgen(js_name = availableLocales)]
+    pub fn available_locales() -> Result<String, JsError> {
+        crate::build_api::available_locales_json().map_err(|err| JsError::new(&err))
+    }
+
+    /// JS entry point: `gameName(lang, kind, id) -> string | undefined` (a name from the
+    /// locale's `kind` table, following its declared fallbacks; undefined when none names it).
+    #[wasm_bindgen(js_name = gameName)]
+    pub fn game_name(lang: &str, kind: &str, id: &str) -> Result<Option<String>, JsError> {
+        crate::build_api::game_name(lang, kind, id).map_err(|err| JsError::new(&err))
     }
 
     /// JS entry point: `classifyItemLinesJson(text) -> string` (item text -> per-line categories, for Items panel coloring).

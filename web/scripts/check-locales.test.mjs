@@ -47,6 +47,18 @@ test('language.fallback lists other registered languages', () => {
   }
 });
 
+test('language.gameTextFallback lists other language tags, registered or not', () => {
+  const zh = (gameTextFallback) => ({ ...en, language: { name: 'x', gameTextFallback } });
+  const base = { 'en-US.json': { ...en, language: { name: 'English' } }, 'zh-CN.json': { ...en, language: { name: 'x' } } };
+  for (const ok of [['zh-CN'], ['ja-JP'], []]) {
+    assert.deepEqual(locales({ ...base, 'zh-TW.json': zh(ok) }).errors, [], JSON.stringify(ok));
+  }
+  for (const bad of [['zh-TW'], ['en-US'], ['chinese'], 'zh-CN', [3]]) {
+    assert.deepEqual(locales({ ...base, 'zh-TW.json': zh(bad) }).errors,
+      ['zh-TW.json: language/gameTextFallback must list other language tags (not en-US)'], JSON.stringify(bad));
+  }
+});
+
 test('extra keys, non-strings, placeholders and invalid JSON are errors', () => {
   const { errors } = locales({
     'en-US.json': en,
