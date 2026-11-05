@@ -22,6 +22,36 @@ async function inspectFromRail(page: Page, label: string | RegExp, heading: stri
   return inspector;
 }
 
+test('View minion selects its actor and default metric and focuses the detail heading', async ({ page }) => {
+  await importBuild(page, code);
+  await pageLink(page, 'Calcs').click();
+  const actor = page.getByRole('combobox', { name: 'Actor', exact: true });
+  await expect(actor).toHaveText('Player');
+
+  // A zero character result has no breakdown table, which openStat waits for.
+  await page.locator('#breakdown-CombinedDPS').click();
+  const detail = page.locator('#calcs-detail');
+  const heading = detail.getByRole('heading', { name: 'Combined DPS', exact: true });
+  await expect(heading).toBeVisible();
+  await expect(detailValue(detail)).toHaveText('0');
+  await expect(detail.getByText(/^Your character deals no damage: .+'s damage comes from your minion\.$/)).toBeVisible();
+  const viewMinion = detail.getByRole('button', { name: 'View Wolf Companion', exact: true });
+  await viewMinion.focus();
+  await expect(viewMinion).toBeFocused();
+  await viewMinion.click();
+
+  await expect(actor).toHaveText(/^Minion: Wolf Companion · \d+$/);
+  await expect(detail.locator('.calcs-eyebrow')).toHaveText(/^Showing: Minion · Wolf Companion #\d+$/);
+  const minionHeading = detail.getByRole('heading', { name: 'Total DPS', exact: true });
+  await expect(minionHeading).toBeVisible();
+  const minionDps = page.locator('#breakdown-TotalDPS');
+  await expect(minionDps).toHaveAttribute('aria-pressed', 'true');
+  await expect(detailValue(detail)).toHaveText((await minionDps.locator('strong').innerText()).trim());
+  expect(num(await detailValue(detail).textContent())).toBeGreaterThan(0);
+  await expect(minionHeading).toBeFocused();
+  await expect(viewMinion).toHaveCount(0);
+});
+
 test('a stat breakdown counts only the lines the calculation applies', async ({ page }) => {
   await importBuild(page, code);
   const armour = await openStat(page, 'Armour');
@@ -29,7 +59,7 @@ test('a stat breakdown counts only the lines the calculation applies', async ({ 
   const inactive = armour.locator('tr.is-inactive');
   await expect(inactive).not.toHaveCount(0);
   await expect(inactive.first().locator('.mod-inactive-tag')).toHaveText('not active');
-  await expect(armour.locator('.breakdown-note:not(.breakdown-totals-note)')).toBeVisible();
+  await expect(armour.locator('.breakdown-note', { hasText: 'Dimmed lines are not counted' })).toBeVisible();
 
   // The steps count the equipped items' armour, the increases and the more multiplier, and
   // end at the value shown.
@@ -301,7 +331,7 @@ test('on-demand details cover steps, sources, derived inputs and an explicit emp
   await expect(page.locator('#breakdown-TotalEHP')).toHaveAttribute('data-detail-kind', 'derived');
   await expect(ehp.locator('.derived-formula')).toBeVisible({ timeout: 90_000 });
   await expect(ehp.locator('.breakdown-derived')).toContainText('Enemy damage per hit');
-  await expect(ehp.locator('.breakdown-derived')).toContainText('Resource pools used upstream');
+  await expect(ehp.locator('.breakdown-derived')).toContainText('Resource pools used here');
   await ehp.scrollIntoViewIfNeeded();
   await ehp.screenshot({ path: 'test-results/calcs-derived.png' });
 
@@ -320,7 +350,7 @@ test('on-demand details cover steps, sources, derived inputs and an explicit emp
 
   const simulation = await openStat(page, 'NumberOfDamagingHits');
   await expect(page.locator('#breakdown-NumberOfDamagingHits')).toHaveAttribute('data-detail-kind', 'none');
-  await expect(simulation.getByRole('status')).toHaveText('No breakdown available for this stat.');
+  await expect(simulation.getByRole('status')).toHaveText('This value has no breakdown yet; only the result is shown.');
   // A result without a calculation behind it is not offered as a click target in the results panel.
   for (const label of await page.locator('.calcs-metric-row[data-detail-kind="none"] > span').allTextContents()) {
     const row = statRow(page, new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));

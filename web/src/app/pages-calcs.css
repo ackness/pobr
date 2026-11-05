@@ -41,13 +41,12 @@
   /* The inspector: name, then the value large, then how it is made. */
   .shell-root .calcs-page.calcs-workspace .calcs-detail-pane { position: static; min-width: 0; max-height: none; overflow: visible; padding: 0; border: 0; border-radius: 0; background: none; }
   .shell-root .calcs-page.calcs-workspace .calcs-detail-header { margin: 0 0 1.25rem; padding: 0 0 1.1rem; border-bottom: 1px solid var(--border); }
-  .shell-root .calcs-page.calcs-workspace .calcs-eyebrow { margin: 0; font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-foreground); overflow-wrap: anywhere; }
+  .shell-root .calcs-page.calcs-workspace .calcs-eyebrow { margin: 0; font-size: .6875rem; font-weight: 600; letter-spacing: .07em; color: var(--muted-foreground); overflow-wrap: anywhere; }
   .shell-root .calcs-page.calcs-workspace .calcs-detail-header h3 { margin: .25rem 0 .15rem; font-size: var(--text-lg); font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; scroll-margin-top: 1rem; }
   .shell-root .calcs-page.calcs-workspace .calcs-detail-header h3:focus { outline: none; }
   .shell-root .calcs-page.calcs-workspace .calcs-detail-header h3:focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; border-radius: 2px; }
   .shell-root .calcs-page.calcs-workspace .calcs-detail-value { display: flex; align-items: baseline; flex-wrap: wrap; gap: .1rem 1rem; }
   .shell-root .calcs-page.calcs-workspace .calcs-detail-value strong { max-width: 100%; font-size: 2.3rem; font-weight: 600; letter-spacing: -.025em; line-height: 1.15; font-variant-numeric: tabular-nums; color: var(--foreground); overflow-wrap: anywhere; }
-  .shell-root .calcs-page.calcs-workspace .calcs-detail-value span { font-size: var(--text-xs); color: var(--muted-foreground); }
   /* Nothing selected: a single quiet line, not a placeholder panel. */
   .shell-root .calcs-page.calcs-workspace .calcs-detail-pane[data-empty] .calcs-detail-header { margin: 0; padding: .4rem 0 0; border: 0; }
   .shell-root .calcs-page.calcs-workspace .calcs-detail-pane[data-empty] h3 { margin: 0; font-size: var(--text-sm); font-weight: 400; color: var(--muted-foreground); }
