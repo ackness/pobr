@@ -1,3 +1,4 @@
+import { GemNameCopy } from './GemNameCopy';
 import type { Lang } from '../../lib/i18n';
 import { supportDescription } from '../../lib/supportDescriptions';
 import { supportText } from '../../lib/supportI18n';
@@ -13,7 +14,7 @@ export function SupportDescriptions({ gems, lang }: {
     <ul>{gems.map(gem => {
       const description = supportDescription(gem, lang);
       return <li key={gem.skill_id}>
-        <strong>{gem.name}</strong>
+        <strong>{gem.name}</strong><GemNameCopy skillId={gem.skill_id} name={gem.name} lang={lang} />
         {lang !== 'en-US' && description.source === 'english' && <span className="skills-hint"> · {supportText(lang, 'descriptionEnglish')}</span>}
         <p lang={description.lang}>{description.text || supportText(lang, 'descriptionUnavailable')}</p>
       </li>;

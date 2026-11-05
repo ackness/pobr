@@ -241,6 +241,7 @@
     "skills.emptyGroup": "（空組）",
     "skills.unresolved": "未解析寶石",
     "skills.unresolvedHint": "保留匯入插槽以供分享。缺少穩定技能 ID，不納入本次計算。",
+    "skills.copyName": "複製名稱",
     "skills.main": "計算技能",
     "skills.setMain": "用於計算",
     "minion.title": "召喚物",

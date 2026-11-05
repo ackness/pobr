@@ -241,6 +241,7 @@
     "skills.emptyGroup": "(empty)",
     "skills.unresolved": "Unresolved gem",
     "skills.unresolvedHint": "Imported slot preserved for sharing. No stable skill ID; not included in this calculation.",
+    "skills.copyName": "Copy name",
     "skills.main": "Calculation skill",
     "skills.setMain": "Use for calculations",
     "minion.title": "Minion",
