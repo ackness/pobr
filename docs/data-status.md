@@ -12,7 +12,7 @@
 
 | 能力 | 状态 | 阻塞项 |
 | --- | --- | --- |
-| 游戏包 | 锁指向 `game/0.5.5.5-2`，目前按本地模拟 Release 写入。这一批计算结果不变：新增 `base/active_skill_types.json`，`base/game_constants.json` 增加 `base_maximum_rage`，天赋树节点携带原生 stat packet；引擎不再内嵌这些表（保留项见 `crates/pobr-data/tests/no_embedded_data.rs`） | 合并契约 1.1 并打 `contract/1.1`；RePoE 改依赖该 tag 后正式发布 `game/0.5.5.5-2`；再对真实 Release 重跑 `data:bump` |
+| 游戏包 | 锁指向 `game/0.5.5.5-2`，目前按本地模拟 Release 写入。这一批计算结果不变：新增 `base/active_skill_types.json`，`base/game_constants.json` 增加 `base_maximum_rage`，天赋树节点携带原生 stat packet；引擎不再内嵌这些表（保留项见 `crates/pobr-data/tests/no_embedded_data.rs`） | 正式发布 `game/0.5.5.5-2`（RePoE 已依赖 `contract/1.1` 并复现期望字节），再对真实 Release 重跑 `data:bump` |
 | 语言包 | `locale/0.5.5.5-1`，从 Release 采用。只换语言发布不需要新的游戏发布 | 无 |
 | 辅助显示 | `support_display` 仍按 `handoff/*` tag + commit 拉取；`data:bump` 已能在语言 Release 带附件时一并替换 | 翻译库在 `locale/0.5.5.5-2` 发布辅助显示附件 |
 | 测试夹具 | `test_fixtures` 按 `handoff/*` tag + commit 拉取，换目标时保留 | 无 |
@@ -40,8 +40,8 @@
 | actor／常量／关系 | actor 字段、技能有序引用、怪物抗性与成长、图腾、玩家与徒手常量、Boss 数值、珠宝槽与装备授予技能（[actor](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-actors.md#observed-three-root-ot-draft)） | OT 的 merge／`set_`／Stats 作用域与 `mod_list`；目录成员、别名、上限与 effect→variety 等策展需要独立依据 |
 | 暗金 | RePoE 从固定兼容目录投影 `unique_relations` 候选（[暗金关系候选](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-uniques.md)） | 候选尚未进入游戏 part，仍需 DTO、物品编辑与计算消费者接入；兼容关系不等于官方事实认证 |
 | PoB2 解释与 buff | 各域保留项已按字段登记 | 按[冻结输入清单](pob2-differences.md#数据来源现状与退出顺序)的顺序退出；buff 的引用上下文未证等价，保持 `guard_eligible=false` |
-| 语言／显示 | 繁中与简中 FK v3 及紧凑侧表接入普通后端；职业与升华路由、打造名称、辅助说明、审核补译导入已接线（[翻译库 `docs/`](https://github.com/ackness/poe2-zh-cn-stats/tree/main/docs)） | 每种语言 20 个 gem 名英文阻断；简中客户端补丁与服别未确认；真实审核补译 0 条；45 个候选是否有当前 UI 收益需先核 caller；国服数值未认证 |
-| 玩家验收与性能 | 完整 CI 用同次 WASM 消费当前锁的紧凑发行包（[WASM 测量](wasm-package.md#runtime-performance-comparison)） | 下一次新数据用普通 Web 入口验证导入、技能／辅助、装备／打造、加点、保存重开与回滚；在目标设备测冷加载、首次计算、内存与包体 |
+| 语言／显示 | 繁中与简中 FK v3 及紧凑侧表接入普通后端；职业与升华路由、打造名称、辅助说明、审核补译导入已接线（[翻译库 `docs/`](https://github.com/ackness/poe2-zh-cn-stats/tree/main/docs)；逐语言缺译统计见 `mise run i18n:coverage`，CI 作业摘要同样打印） | 每种语言 20 个 gem 名英文阻断；简中客户端补丁与服别未确认；真实审核补译 0 条；45 个候选是否有当前 UI 收益需先核 caller；国服数值未认证 |
+| 玩家验收与性能 | 完整 CI 用同次 WASM 消费当前锁的紧凑发行包；数据锁改变时完整 CI 自动运行普通 Web 流程冒烟（导入、技能／辅助、打造、加点、保存重开）；正式 Web 与独立 WASM 包继续发布逐文件快照（紧凑包少约 9% 传输，但快 CPU 下首次结果慢约 0.3 s，4G 下只快约 2%；[Web 数据加载对比](wasm-package.md#web-data-load-comparison)） | 回滚仍需手动验证；真实玩家设备的冷加载、首次计算、内存与包体未测 |
 
 品质的剩余边界：五个 DNT 占位 owner 按 `SkillGems → GemEffects → BaseItemTypes` 的原生引用排除；
 Snipe 普通作用域 `[1,2,3]` 的位置 3 越界；ExplosiveConcoctionSecondPlayer 与 SiegeBallistaProjectileExplodePlayer 的有效品质分支没有兼容显示编号。

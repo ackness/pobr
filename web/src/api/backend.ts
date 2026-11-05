@@ -109,8 +109,10 @@ export interface PobrBackend {
   minionCatalog(): Promise<MinionCatalog>;
   /** 内置配置目录（Config 页分区开关）。 */
   loadConfigOptions(): Promise<ConfigOption[]>;
-  /** 英文词条行 → 简中显示（模板反查；不认识原样返回）。 */
+  /** 英文词条行 → `lang` 显示（数据包语言包的模板反查，按回退链；不认识原样返回）。 */
   translateLines(lines: string[], lang?: import('../lib/i18n').Lang): Promise<string[]>;
+  /** 数据包声明的语言及其回退链（初始化前为空）；页面据此解析游戏文本的回退。 */
+  gameLocales(): Promise<import('../lib/gameLocales').GameLocaleInfo[]>;
   /** 物品文本 → 逐行类别（Items 面板上色；空/异常返回 []，调用方回落无区分渲染）。 */
   classifyItemLines(text: string): Promise<ItemLineJson[]>;
   /** 树节点威力热力图（PoB2 PowerBuilder 语义：深度内单点试加求目标属性增量）。 */

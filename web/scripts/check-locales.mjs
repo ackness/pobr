@@ -4,7 +4,8 @@
 //   errors:   a key a language omits; invalid JSON; a value that is not a
 //             string; a namespace or key absent from en-US; a {placeholder}
 //             set that differs from English; a language.fallback that is not
-//             a list of other registered languages; a file name that is not a
+//             a list of other registered languages; a language.gameTextFallback
+//             that is not a list of other language tags; a file name that is not a
 //             language tag; a file that index.ts does not register (or a
 //             registered file that is missing)
 //   --allow-missing reports omitted keys as warnings instead, for local work
@@ -32,10 +33,11 @@ function parse(file, errors) {
     return null;
   }
   const entries = new Map();
-  const fallback = data.language?.fallback;
-  if (fallback !== undefined) {
-    entries.fallback = fallback;
-    delete data.language.fallback;
+  for (const field of ['fallback', 'gameTextFallback']) {
+    const value = data.language?.[field];
+    if (value === undefined) continue;
+    entries[field] = value;
+    delete data.language[field];
   }
   for (const [ns, table] of Object.entries(data)) {
     if (!table || typeof table !== 'object' || Array.isArray(table)) {
@@ -71,6 +73,12 @@ export function checkLocales(dir, { registry = readFileSync(join(dir, 'index.ts'
       const valid = Array.isArray(entries.fallback) && entries.fallback.every(code =>
         typeof code === 'string' && code !== lang && registered.has(`${code}.json`) && files.includes(`${code}.json`));
       if (!valid) errors.push(`${name}: language/fallback must list other registered languages`);
+    }
+    if (entries.gameTextFallback !== undefined) {
+      // Game-text locales come from the data pack, so they need not have an interface file.
+      const valid = Array.isArray(entries.gameTextFallback) && entries.gameTextFallback.every(code =>
+        typeof code === 'string' && code !== lang && code !== SOURCE && TAG.test(code));
+      if (!valid) errors.push(`${name}: language/gameTextFallback must list other language tags (not ${SOURCE})`);
     }
     for (const [key, text] of entries) {
       if (!source.has(key)) errors.push(`${name}: ${key} is not in ${SOURCE}.json`);
