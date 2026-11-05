@@ -11,9 +11,10 @@ import { useSkillName } from '../../hooks/useSkillName';
 import { bindT, configSectionLabel, damageTypeLabel, t, type Lang } from '../../lib/i18n';
 import { CONFIG_LABEL_ZH, configLabel, configListOptionLabel, configTooltip } from '../../lib/configLabels';
 import { configDefaultValue, configValueDiffers } from '../../lib/configDefaults';
-import { configApplicability, configExistsInGame, configVisibilityInputs, showConfigOption, type Applicability } from '../../lib/configVisibility';
+import { configApplicability, configExistsInGame, configVisibilityInputs, type Applicability } from '../../lib/configVisibility';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { workflowLabel } from './workflowLabels';
+import { ConfigScopeControl, matchesConfigScope, type ConfigScope } from './ConfigScope';
 import { RawConfigValue } from './RawConfigValue';
 import { ScenarioBar } from '../../app/pages/config/ScenarioBar';
 import { confirmedByBuild, partitionRelevant } from '../../app/pages/config/scenario';
@@ -216,9 +217,8 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
   const [options, setOptions] = useState<ConfigOption[]>([]);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadAttempt, setLoadAttempt] = useState(0);
-  const [query, setQuery] = useState('');
-  const [configuredOnly, setConfiguredOnly] = useState(false);
-  const [allOptions, setAllOptions] = useState(false);
+  const [query, updateQuery] = useState('');
+  const [scope, updateScope] = useState<ConfigScope>('relevant');
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(DEFAULT_OPEN_SECTIONS));
   // Where each option the reader changed sat (in the leading group or not) when they changed it. Which group an
@@ -227,9 +227,23 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
   const [placed, setPlaced] = useState<Record<string, boolean>>({});
   const active = usePanelActive();
   const stage = session.workspace?.builds.find(build => build.id === session.workspace?.activeBuild)?.activeStage;
-  useEffect(() => { setPlaced(current => Object.keys(current).length ? {} : current); }, [active, stage, session.workspace?.activeBuild]);
   // 词条文本型 list 选项（如任务奖励 "+5 to all Attributes"）的反查翻译缓存。
   const [listLabels, setListLabels] = useState<Record<string, string>>({});
+  // Keep an edited Modified row available even after it returns to its default.
+  // Reapply the filter only when the reader changes scope or search text.
+  const [modifiedEdits, setModifiedEdits] = useState<Set<string>>(new Set());
+  const setQuery = (value: string) => {
+    if (value !== query) setModifiedEdits(new Set());
+    updateQuery(value);
+  };
+  const setScope = (value: ConfigScope) => {
+    if (value !== scope) setModifiedEdits(new Set());
+    updateScope(value);
+  };
+  useEffect(() => {
+    setPlaced(current => Object.keys(current).length ? {} : current);
+    setModifiedEdits(new Set());
+  }, [active, stage, session.workspace?.activeBuild]);
 
   useEffect(() => {
     let cancelled = false;
@@ -298,8 +312,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
   });
   const openSetting = (option: ConfigOption) => {
     setQuery('');
-    setConfiguredOnly(false);
-    setAllOptions(true);
+    setScope('all');
     setSelectedSection(groups.find(group => group.options.some(entry => entry.var === option.var))?.name ?? option.section ?? 'General');
     setOpenSections(previous => new Set([...previous, option.section ?? 'General', RELEVANT_SECTION]));
     setFocusTarget(option.var);
@@ -311,8 +324,9 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
       (o) =>
         o.var !== 'customMods' && o.var !== 'enemyIsBoss' &&
         configExistsInGame(o, session.dataVersion) &&
-        showConfigOption(o, configApplicability(o, context, visibilityInputs), inputs, allOptions) &&
-        (!configuredOnly || effective(o.var) !== undefined) && (q === '' ||
+        ((scope === 'modified' && modifiedEdits.has(o.var)) ||
+          matchesConfigScope(o, configApplicability(o, context, visibilityInputs), inputs, scope)) &&
+        (q === '' ||
         (o.label ?? '').toLowerCase().includes(q) ||
         o.var.toLowerCase().includes(q) ||
         optionLabel(lang, o).toLowerCase().includes(q) ||
@@ -327,7 +341,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
     const known = SECTION_ORDER.filter((s) => bySection.has(s));
     const rest = [...bySection.keys()].filter((s) => !SECTION_ORDER.includes(s)).sort();
     return [...known, ...rest].map((name) => ({ name, options: bySection.get(name)! }));
-  }, [options, query, configuredOnly, lang, context, inputs, visibilityInputs, allOptions, session.dataVersion]);
+  }, [options, query, scope, lang, context, inputs, modifiedEdits, visibilityInputs, session.dataVersion]);
 
   // The options the calculation has confirmed for this build form their own leading group, and
   // appear nowhere else, so every control (and its #config-<var> id) is still on the page once.
@@ -339,8 +353,11 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
       ...sections.map(section => ({ ...section, options: section.options.filter(option => kept.has(option.var)) }))
         .filter(section => section.options.length > 0)];
   }, [sections, context, placed]);
-  const settle = (variable: string) => setPlaced(current => variable in current ? current
-    : { ...current, [variable]: !!groups.find(group => group.name === RELEVANT_SECTION)?.options.some(option => option.var === variable) });
+  const settle = (variable: string) => {
+    setPlaced(current => variable in current ? current
+      : { ...current, [variable]: !!groups.find(group => group.name === RELEVANT_SECTION)?.options.some(option => option.var === variable) });
+    if (scope === 'modified') setModifiedEdits(current => new Set([...current, variable]));
+  };
   const groupTitle = (name: string) => name === RELEVANT_SECTION
     ? words(lang, 'Relevant to this build', '与此 BD 相关', '與此 BD 相關') : configSectionLabel(lang, name);
 
@@ -354,11 +371,11 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
     setFocusTarget(null);
   }, [focusTarget, groups, session.busy]);
 
-  const searching = query.trim() !== '' || configuredOnly;
+  const searching = query.trim() !== '';
   const activeSection = groups.find(group => group.name === selectedSection)?.name ?? groups[0]?.name;
   const configuredCount = options.filter(option =>
     option.var !== 'customMods' && option.var !== 'enemyIsBoss' &&
-    configExistsInGame(option, session.dataVersion) && effective(option.var) !== undefined).length;
+    configExistsInGame(option, session.dataVersion) && matchesConfigScope(option, 'applicable', inputs, 'modified')).length;
 
   // Unknown and game-excluded inputs remain editable, including cleared source
   // keys so their original values can still be restored with Reset.
@@ -444,16 +461,9 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
           onChange={(e) => setQuery(e.target.value)}
           aria-label={tt('config.search')}
         />
-        <label className="config-filter"><AppInput type="checkbox" checked={configuredOnly}
-          onChange={event => setConfiguredOnly(event.target.checked)} />{tt('config.configuredOnly')} ({configuredCount})</label>
       </div>
   );
-  const viewToggle = (
-      <div className="config-view" role="group" aria-label={tt('config.view')}>
-        <AppButton className="aria-pressed:bg-accent aria-pressed:text-accent-foreground" type="button" aria-pressed={!allOptions} onClick={() => setAllOptions(false)}>{tt('config.applicable')}</AppButton>
-        <AppButton className="aria-pressed:bg-accent aria-pressed:text-accent-foreground" type="button" aria-pressed={allOptions} onClick={() => setAllOptions(true)}>{tt('config.showAll')}</AppButton>
-      </div>
-  );
+  const viewToggle = <ConfigScopeControl scope={scope} count={configuredCount} lang={lang} onChange={setScope} />;
 
   const catalog = (<>
       <div className="config-controls">{searchToolbar}{viewToggle}</div>
@@ -470,7 +480,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
     {groups.length > 0 && <label className="config-mobile-category">
       <span>{words(lang, 'Category', '分类', '分類')}</span>
       <AppSelectControl aria-label={words(lang, 'Configuration category', '配置分类', '設定分類')} value={searching ? 'search' : activeSection}
-        onChange={event => { setQuery(''); setConfiguredOnly(false); setSelectedSection(event.target.value); setOpenSections(previous => new Set([...previous, event.target.value])); }}>
+        onChange={event => { setQuery(''); setSelectedSection(event.target.value); setOpenSections(previous => new Set([...previous, event.target.value])); }}>
         {searching && <option value="search">{words(lang, 'Search results', '搜索结果', '搜尋結果')}</option>}
         {groups.map(group => <option key={group.name} value={group.name}>{groupTitle(group.name)} ({group.options.length})</option>)}
       </AppSelectControl>
@@ -481,7 +491,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
         {groups.map(section => <AppButton className="h-auto min-h-10 justify-between whitespace-normal text-left" key={section.name}
           aria-pressed={!searching && activeSection === section.name} onClick={(event) => {
           const nav = event.currentTarget.closest('nav');
-          setQuery(''); setConfiguredOnly(false); setSelectedSection(section.name);
+          setQuery(''); setSelectedSection(section.name);
           setOpenSections(previous => new Set([...previous, section.name]));
           requestAnimationFrame(() => {
             const group = document.getElementById(`config-section-${section.name.replace(/\s+/g, '-')}`);
@@ -495,9 +505,9 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
         }}><span>{groupTitle(section.name)}</span><span>{section.options.length}</span></AppButton>)}
       </nav>}
       <div className="config-option-groups">
-      {loadState === 'ready' && searching && groups.length === 0 && <div className="search-empty" role="status">
+      {loadState === 'ready' && groups.length === 0 && <div className="search-empty" role="status">
         <p>{tt('common.noResults')}</p>
-        <AppButton onClick={() => { setQuery(''); setConfiguredOnly(false); setAllOptions(true); }}>{tt('config.showAll')}</AppButton>
+        <AppButton onClick={() => { setQuery(''); setScope('all'); }}>{tt('config.showAll')}</AppButton>
       </div>}
 
       {groups.map(({ name, options: sectionOptions }) => {
@@ -581,7 +591,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
               key={block.text}
               rows={4}
               spellCheck={false}
-              placeholder={'20% increased Fire Damage\n+50 to maximum Life'}
+              placeholder={tt('config.extraModsPlaceholder')}
               defaultValue={block.text}
               disabled={session.busy}
               aria-label={`${tt('config.groupText')}: ${block.title || index + 1}`}

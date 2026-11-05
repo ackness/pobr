@@ -1,3 +1,4 @@
+import { buildDisplayName, stageDisplayName } from '../../lib/workspaceNames';
 import { AppButton, AppInput, AppSelectControl } from '../shared/controls';
 import { Tabs as TabsPrimitive } from 'radix-ui';
 import { useEffect, useMemo, useState } from 'react';
@@ -24,9 +25,9 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
   const goTo = useNavigateToPage();
   const tt = bindT(lang);
   const catalog = useSkillCatalog();
-  const entries = useMemo(() => session.workspace?.builds.flatMap(build => build.stages.map(stage => ({
+  const entries = useMemo(() => session.workspace?.builds.flatMap((build, buildIndex) => build.stages.map((stage, stageIndex) => ({
     buildId: build.id, stageId: stage.id, saved: stage.saved, drafts: stage.drafts,
-    label: `${build.name || words(lang, 'Build', '构筑', 'BD')} / ${stage.name || words(lang, 'Current stage', '当前阶段', '目前階段')}`,
+    label: `${buildDisplayName(build, buildIndex, lang)} / ${stageDisplayName(stage, stageIndex, lang)}`,
   }))) ?? [], [session.workspace, lang]);
   const active = session.workspace?.builds.find(build => build.id === session.workspace?.activeBuild)?.activeStage;
   const [aId, setAId] = useState(active);

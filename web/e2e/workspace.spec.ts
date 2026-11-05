@@ -91,7 +91,7 @@ test('tabs of one browser follow each other and merge what a tab missed', async 
   await expect(other.locator('#build-heading')).toBeVisible({ timeout: 90_000 });
   // The list on the Build page shows what each tab holds; the header's select only renders the open one.
   const shown = (tab: Page) => tab.getByRole('group', { name: 'Saved builds', exact: true }).locator('li strong');
-  const names = (tab: Page, list: string[]) => expect(shown(tab)).toHaveText(list.map(name => name || 'My build'));
+  const names = (tab: Page, list: string[]) => expect(shown(tab)).toHaveText(list.map((name, index) => name || `Build ${index + 1}`));
   const notice = (tab: Page) => tab.locator('.shell-notice[data-sync]');
   const create = async (tab: Page, value: string) => {
     await tab.getByRole('button', { name: 'New build', exact: true }).last().click();

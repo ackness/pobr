@@ -103,7 +103,7 @@ test('config preserves unknown and saved-inapplicable values, commits numeric dr
   await page.getByRole('option', { name: 'Alternate', exact: true }).click();
   await idle(page);
   expect(await input(page, 'TestList')).toBe('alternate');
-  await page.getByRole('button', { name: 'Show all options', exact: true }).click();
+  await page.getByRole('radio', { name: 'All', exact: true }).click();
   await expect(page.getByLabel('Unsaved inapplicable', { exact: true })).toBeVisible();
   const last = (await requests(page)).at(-1)!;
   expect(last).toMatchObject({ config_context: true, breakdowns: [] });

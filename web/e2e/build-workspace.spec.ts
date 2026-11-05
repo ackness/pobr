@@ -252,7 +252,7 @@ test('new imports keep the current build and replacement requires an explicit de
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   const original = await snapshot(page);
   // A new build is the default destination of an import.
-  await expect(page.getByRole('group', { name: 'Import into', exact: true }).getByRole('button').first()).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('group', { name: 'Import as', exact: true }).getByRole('button').first()).toHaveAttribute('aria-pressed', 'true');
   await importCode(page, code(80, '1,2', 'Imported notes'));
   const imported = await snapshot(page);
   expect(imported.workspace.builds).toHaveLength(2);

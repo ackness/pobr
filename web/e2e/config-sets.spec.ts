@@ -13,14 +13,14 @@ test('config sets save edits independently and survive copy, export, reload and 
   await importCode(page, code);
   await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
   await go(page, 'Config');
-  const sets = page.getByRole('region', { name: 'Config set', exact: true });
+  const sets = page.getByRole('region', { name: 'Configuration set', exact: true });
   const selector = sets.getByRole('combobox');
   // The picker shows set titles; the set numbers live in the hidden native select behind it.
   const selected = (id: string) => expect.poll(() => pickerValue(selector), { timeout: 90_000 }).toBe(id);
   await selected('7');
   await expect(selector).toBeEnabled();
-  await sets.getByRole('button', { name: 'Config set actions', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Copy set', exact: true }).click();
+  await sets.getByRole('button', { name: 'Configuration set actions', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Duplicate configuration set', exact: true }).click();
   await sets.getByRole('textbox', { name: 'Set name' }).fill('Copy');
   await sets.getByRole('button', { name: 'Save name' }).click();
   await selected('8');
