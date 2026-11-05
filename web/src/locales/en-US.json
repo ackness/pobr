@@ -719,7 +719,7 @@
     "tree.attr.dex": "Dexterity",
     "tree.attr.int": "Intelligence",
     "tree.attrDistribute": "Attribute passive choices",
-    "tree.attrUnassigned": "unassigned",
+    "tree.attrUnassigned": "Unassigned",
     "tree.jewel": "Jewel socket",
     "tree.unallocSocket": "Unallocate socket",
     "tree.jewelSeedMissing": "Known jewel transformations are shown. Seed-dependent passives remain unresolved and are excluded from upgrade recommendations.",

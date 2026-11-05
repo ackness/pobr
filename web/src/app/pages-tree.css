@@ -94,7 +94,7 @@
   .shell-root .tree-panel .attr-distribute-title { grid-column: 1 / -1; font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-foreground); }
   .shell-root .tree-panel .attr-distribute .attr-count { display: grid; gap: .2rem; font-size: var(--text-xs); }
   .shell-root .tree-panel .attr-distribute .attr-count input[type='number'] { width: 100%; }
-  .shell-root .tree-panel .attr-distribute-rest, .shell-root .tree-panel .attr-distribute > .tree-hint { grid-column: 1 / -1; font-size: var(--text-xs); color: var(--muted-foreground); }
+  .shell-root .tree-panel .attr-distribute-rest, .shell-root .tree-panel .attr-distribute > :is(.tree-hint, .tree-shortcuts) { grid-column: 1 / -1; font-size: var(--text-xs); color: var(--muted-foreground); }
   .shell-root .tree-panel .attr-quest { grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: .35rem .9rem; padding: 0; border: 0; font-size: var(--text-xs); color: var(--muted-foreground); }
   .shell-root .tree-panel .attr-quest-options { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .9rem; }
   .shell-root .tree-panel .attr-quest .attr-count { display: inline-flex; align-items: center; gap: .35rem; }
@@ -163,8 +163,16 @@
     .shell-root .tree-panel .tree-side-toggle { align-self: stretch; justify-content: flex-start; }
     .shell-root .tree-panel .tree-bar-view { order: 2; border-width: 1px 0 0; }
     .shell-root .tree-panel .tree-bar-top, .shell-root .tree-panel .tree-bar-view { padding: .5rem .9rem; }
-    .shell-root .tree-panel .tree-asc-picker { flex: 0 0 auto; flex-wrap: nowrap; white-space: nowrap; }
-    .shell-root .tree-panel .tree-asc-picker [data-slot='select-trigger'] { min-width: 8rem; max-width: none; flex-shrink: 0; white-space: nowrap; }
+    /* The ascendancy name stays on one line; with large text the label moves above the picker instead of overflowing. */
+    .shell-root .tree-panel .tree-asc-picker { flex: 0 1 auto; flex-wrap: wrap; min-width: 0; max-width: 100%; white-space: nowrap; }
+    .shell-root .tree-panel .tree-asc-picker [data-slot='select-trigger'] { min-width: min(8rem, 100%); max-width: 100%; flex-shrink: 0; white-space: nowrap; }
+    /* The reserved space for the hover change only matters with a pointer; let the count wrap on narrow screens. */
+    .shell-root .tree-panel .tree-count { white-space: normal; }
+    .shell-root .tree-panel .tree-count-change { min-width: 0; }
+    /* Quest rewards: the title sits above its options, so long titles or large text cannot push them out. */
+    .shell-root .tree-panel .attr-quest { grid-template-columns: minmax(0, 1fr); }
+    /* Three attribute columns when they fit; fewer per row with large text, so names never break mid-word. */
+    .shell-root .tree-panel .attr-distribute { grid-template-columns: repeat(auto-fit, minmax(min(100%, 5.5rem), 1fr)); }
     .shell-root .tree-panel .tree-asc-picker [data-slot='select-value'] { white-space: nowrap; }
     .shell-root .tree-panel .tree-search { flex: 1 1 100%; min-width: 0; }
     .shell-root .tree-panel .tree-search input { flex: 1 1 0; width: 0; min-width: 0; max-width: none; }
