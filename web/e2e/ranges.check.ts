@@ -1,7 +1,8 @@
 import { expect, test, type Locator } from '@playwright/test';
 
 test(`item roll ranges preserve keyboard edits, endpoints and disabled state`, async ({ page }, testInfo) => {
-  await page.goto('/e2e/fixtures/ranges.html');
+  // The fixture patches one backend method; the worker backend is an RPC proxy that ignores patches, so run on the page.
+  await page.goto('/e2e/fixtures/ranges.html?engine=main');
   const catalogue = page.getByRole('region', { name: 'Unique catalogue', exact: true });
   await catalogue.getByRole('searchbox', { name: 'Search unique names and modifiers' }).fill('Astramentis');
   await catalogue.getByRole('combobox', { name: 'Choose a unique', exact: true }).click();
@@ -51,11 +52,17 @@ test(`item roll ranges preserve keyboard edits, endpoints and disabled state`, a
   await expect(page.locator('input[type=range]')).toHaveCount(0);
   await expect(page.locator('[data-slot=slider-track]')).toHaveCount(3);
   const fill = catalogue.locator('[data-slot=slider-range]').first();
-  await expect(fill).toHaveCSS('background-color', 'rgb(208, 180, 124)');
+  // The filled range uses the theme's primary colour in both themes.
+  const primary = () => page.evaluate(() => {
+    const probe = document.createElement('span'); probe.style.color = 'var(--primary)'; document.body.append(probe);
+    const colour = getComputedStyle(probe).color; probe.remove(); return colour;
+  });
+  await expect(fill).toHaveCSS('background-color', await primary());
   await catalogue.screenshot({ path: testInfo.outputPath('ranges-dark.png') });
   await life.screenshot({ path: testInfo.outputPath('affix-range-dark.png') });
   await page.getByRole('button', { name: 'Toggle theme' }).click();
-  await expect(fill).toHaveCSS('background-color', 'rgb(129, 97, 36)');
+  await expect(page.locator('html')).not.toHaveClass(/(^|\s)dark(\s|$)/);
+  await expect(fill).toHaveCSS('background-color', await primary());
   await page.setViewportSize({ width: 390, height: 844 });
   const track = await catalogue.locator('[data-slot=slider-track]').first().boundingBox();
   expect(track!.width).toBeGreaterThan(80);

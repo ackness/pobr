@@ -577,7 +577,7 @@ test('adjacent unallocated Attribute draft and cancellation are read-only; expli
     expect(await capture(page)).toEqual(original);
     await details.press('Escape');
     details = await keyboardResult(page, 'Attribute', attr.skill);
-    await expect(details.getByRole('combobox', { name: 'Attribute choice', exact: true })).toHaveText('unassigned');
+    await expect(details.getByRole('combobox', { name: 'Attribute choice', exact: true })).toHaveText('Unassigned');
     await expect(allocate).toBeDisabled();
     expect(await capture(page)).toEqual(original);
     await choose(page, details.getByRole('combobox', { name: 'Attribute choice', exact: true }), 'Strength');

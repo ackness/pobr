@@ -23,7 +23,7 @@ test('global modes, page overrides and languages preserve the saved build and cu
   await pageLink(page, 'Skills').click();
   await expect(page.locator('.skill-detail')).toBeVisible();
   await expect(page.locator('main')).toHaveAttribute('data-display-mode', 'compact');
-  const selected = await page.locator('.skill-detail-title').innerText();
+  const selected = (await page.locator('.skill-detail-title').textContent())!;
   const before = await page.evaluate(() => ({ saved: localStorage.getItem('pobr-v2-build-state'), calculations: window.itemDisplayProbe.calculations }));
   for (const mode of ['grouped', 'game', 'compact']) {
     await openSettings(page);
