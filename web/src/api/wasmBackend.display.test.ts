@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, expect, test, vi } from 'vitest';
 import { EXPECTED_SCHEMA_VERSION } from './types';
 import { createWasmBackend } from './wasmBackend';
@@ -159,6 +160,45 @@ test('names of known identity use the id-scoped catalog, and every other name th
   serve(sidecar({}));
   backend = await createWasmBackend();
   expect(await backend.translateNames(names, 'zh-CN')).toEqual(await backend.translateLines(names.map(name => name.name), 'zh-CN'));
+});
+
+// The active data version's own zh-CN catalog (a -3 pack: no MonsterVarieties.Name, no origins), when prepared.
+const activeCatalog = (() => {
+  try {
+    const version = readFileSync('../data/CURRENT', 'utf8').trim();
+    return JSON.parse(readFileSync(`../data/${version}/i18n/zh-CN/display_texts.json`, 'utf8')) as { game_patch: string;
+      scopes: Record<string, Record<string, [string | null, string | null]>>; origins?: unknown };
+  } catch { return null; }
+})();
+
+test.skipIf(!activeCatalog)('minion names through translateNamesDetailed: English on the active catalog, the variety record once listed', async () => {
+  const catalog = activeCatalog!;
+  const serve = (display: unknown) => vi.stubGlobal('fetch', async (url: string) => {
+    const files: Record<string, unknown> = { 'i18n/zh-CN/display_texts.json': display };
+    if (url === '/data/manifest.json') return new Response(JSON.stringify({ version: catalog.game_patch, files: Object.keys(files) }));
+    return new Response(JSON.stringify(files[url.replace(`/data/${catalog.game_patch}/`, '')]));
+  });
+  const passiveId = Object.keys(catalog.scopes['PassiveSkills.Name'] ?? {})
+    .find(id => catalog.scopes['PassiveSkills.Name'][id].every(Boolean))!;
+  const [passiveName, passiveText] = catalog.scopes['PassiveSkills.Name'][passiveId] as [string, string];
+  const requests = [{ kind: 'monster', id: 'Metadata/Monsters/Wolves/WolfCompanionPlayerSummoned', name: 'Wolf Companion' },
+    { kind: 'monster', name: 'Raging Spirit' }, { kind: 'passive', id: passiveId, name: passiveName }] as const;
+  serve(catalog);
+  let backend = await createWasmBackend();
+  for (const lang of ['zh-CN', 'zh-TW'] as const) {
+    const names = await backend.translateNamesDetailed(requests, lang);
+    expect(names.slice(0, 2)).toEqual([{ text: 'Wolf Companion', origin: null }, { text: 'Raging Spirit', origin: null }]);
+    expect(names.every(name => name.origin === null)).toBe(true);
+  }
+  expect((await backend.translateNamesDetailed(requests, 'zh-CN'))[2]).toEqual({ text: passiveText, origin: null });
+  // The same catalog with the variety record and its origin (a -4 shape).
+  serve({ ...catalog, scopes: { ...catalog.scopes, 'MonsterVarieties.Name': {
+    'Metadata/Monsters/Wolves/WolfCompanionPlayerSummoned': ['Wolf Companion', '狼伙伴'] } },
+  origins: { entries: {}, scopes: { 'MonsterVarieties.Name': { 'Metadata/Monsters/Wolves/WolfCompanionPlayerSummoned': 'agent' } } } });
+  backend = await createWasmBackend();
+  expect((await backend.translateNamesDetailed(requests, 'zh-CN')).slice(0, 2))
+    .toEqual([{ text: '狼伙伴', origin: 'agent' }, { text: 'Raging Spirit', origin: null }]);
+  expect((await backend.translateNamesDetailed(requests, 'zh-TW'))[0]).toEqual({ text: '狼夥伴', origin: 'agent' });
 });
 
 test('unlisted class compatibility data is absent while listed invalid data is reported', async () => {

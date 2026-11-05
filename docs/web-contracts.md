@@ -173,7 +173,7 @@ PoBR更新锁后运行`mise run data:prepare`；目录摘要不符时拒绝导�
 的怪物和计算结果的 `minions` 都带）查 `MonsterVarieties.Name`，英文须与当前名相同；所选语言的目录没有该记录时
 沿游戏文本回退链取下一个目录的记录并转换字形（zh-TW 用 zh-CN 记录转繁体），origin 随之保留；记录译文为 null 时
 显示英文；整条链都没有记录或没有 variety id 时也显示英文，不走文本路径（Calcs 的召唤物选项、技能页的召唤物选择）。
-只用所选语言自己的目录，zh-TW 没有目录时保持原有字形转换路径；
+除召唤物名外，作用域与字面只用所选语言自己的目录，zh-TW 没有目录时保持原有字形转换路径；
 文本路径的 `translateLines` 不会因为一行文字等于某个基底名就当作基底。`mise run audit:display` 用同一套函数核对。
 选择器、摘要与技能集共用显示入口，
 不改计算 ID、选择值、导入原文或保存格式。明确未决／冲突保留英文并阻断旧译文与繁简转换补回；
@@ -187,7 +187,11 @@ PoBR更新锁后运行`mise run data:prepare`；目录摘要不符时拒绝导�
 多行描述的续行空串）或渲染所用模板的来源，取值里有多个模板（值本身再翻译）时有 `agent` 取 `agent`，否则有
 `human` 取 `human`。后端的 `translateLinesDetailed` / `translateNamesDetailed` 返回同样的 `{ text, origin }`：
 本地目录给出的字面与作用域记录取 `origins` 的标注，经模板渲染的行取 `translateLinesDetailed` 的标注；
-旧 WASM 没有该导出时全部为 null。`translateLines` / `translateNames` 只取 `text`，显示不变；界面暂不标注来源。
+旧 WASM 没有该导出时全部为 null。`translateLines` / `translateNames` 只取 `text`；界面暂不标注来源。
+补译不覆盖官方：没有 origin 的 `stat_lines` 模板与 `passive_names` 名称是官方文本。目录字面标为补译时，
+若该行的模板渲染是官方且确有译文（origin 为 null 且不等于英文原文）就显示渲染结果；天赋与基底的作用域记录
+标为补译时同样再走一次文本路径，文本路径给出官方译文就用它，否则用补译记录。召唤物名没有文本路径，补译记录照用。
+宝石名、职业／升华名和制作基底名虽然也读作用域，这些名字暂不携带来源（`origins` 对它们不生效）。
 CLI `--lang` 的 JSON 报告在有补译时多一个 `origins` 映射（显示文本 → origin），文本输出在补译行后加 `†`
 并在末尾加脚注 `† 非官方译文（本项目补译）`；没有补译时输出与以前相同。
 

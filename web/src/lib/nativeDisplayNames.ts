@@ -66,8 +66,9 @@ function scopedName(scope: Scope | undefined, id: string, english: string): stri
   return source === english && translated?.trim() ? translated : null;
 }
 
-/** Id-scoped names from each locale's own catalog; never another locale's.
- * undefined means unowned (use the text path), null means explicitly unresolved (show English). */
+/** Id-scoped names from each locale's own catalog (a minion's along its game-text chain, converted to
+ * its script). undefined means unowned (use the text path), null means explicitly unresolved (show
+ * English). */
 export class NativeNameIndex {
   private readonly catalogs = new Map<Lang, NativeDisplayTexts>();
   private readonly baseIds = new Map<string, string[]>();
@@ -120,22 +121,31 @@ export class NativeNameIndex {
     return typeof text === 'string' ? { text, origin: scopeOrigin(catalog, 'BaseItemTypes.Name', ids.filter(id => own(scope, id))) } : text;
   }
 
-  /** `translateNames` in two steps: `pending` are the distinct English names the catalog does not own;
-   * `merge` takes their text-path translations, in `pending` order, and returns every displayed name
-   * (`mergeDetailed` the same with origins: a text-path name keeps its line's origin). */
+  /** `translateNames` in two steps: `pending` are the distinct English names the catalog does not own,
+   * and those it names with a supplement (a passive or base record with an origin); `merge` takes their
+   * text-path translations, in `pending` order, and returns every displayed name (`mergeDetailed` the
+   * same with origins: a text-path name keeps its line's origin). A supplement never overrides
+   * official text: a supplement record yields to a text-path translation that is official. */
   split(requests: readonly GameNameRequest[], lang: Lang): {
     pending: string[];
     merge: (texts: readonly string[]) => string[];
     mergeDetailed: (texts: readonly DisplayText[]) => DisplayText[];
   } {
     const scoped = requests.map(request => this.resolveDetailed(request, lang));
+    // Minion names have no text path.
+    const textPath = requests.map((request, index) => scoped[index] === undefined
+      || (request.kind !== 'monster' && !!scoped[index]?.origin));
     // A tree repeats names (many "Mana Regeneration" nodes): translate each once.
-    const pending = [...new Set(requests.filter((_, index) => scoped[index] === undefined).map(request => request.name))];
+    const pending = [...new Set(requests.filter((_, index) => textPath[index]).map(request => request.name))];
     const mergeDetailed = (texts: readonly DisplayText[]) => {
       const byName = new Map(pending.map((name, index) => [name, texts[index] ?? { text: name, origin: null }]));
-      return requests.map((request, index) => scoped[index] === undefined
-        ? byName.get(request.name) ?? { text: request.name, origin: null }
-        : scoped[index] ?? { text: request.name, origin: null });
+      return requests.map((request, index) => {
+        const english = { text: request.name, origin: null };
+        const rendered = textPath[index] ? byName.get(request.name) ?? english : undefined;
+        const record = scoped[index];
+        if (record === undefined) return rendered!;
+        return record && rendered && rendered.origin === null && rendered.text !== request.name ? rendered : record ?? english;
+      });
     };
     return { pending, mergeDetailed,
       merge: texts => mergeDetailed(texts.map(text => ({ text, origin: null }))).map(name => name.text) };

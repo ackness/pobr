@@ -50,12 +50,15 @@ export class GameTextLocalizer {
       : null;
   }
 
+  /** {@link localizeDetailed} of a rendering taken as official. */
   localize(line: string, simplified: string, lang: Lang): string {
     return this.localizeDetailed(line, { text: simplified, origin: null }, lang).text;
   }
 
   /** {@link localize} with who wrote the shown text: a catalog literal's own origin, otherwise the
-   * rendered line's (`rendered`, from `translateLinesDetailed`); a whole name or English is official. */
+   * rendered line's (`rendered`, from `translateLinesDetailed`); a whole name or English is official.
+   * A supplement never overrides official text: a literal the catalog lists as a supplement yields to
+   * a rendering that is official and actually translated. */
   localizeDetailed(line: string, rendered: DisplayText, lang: Lang): DisplayText {
     if (lang === 'en-US') return { text: line, origin: null };
     const native = this.nativeTexts.get(lang);
@@ -63,7 +66,9 @@ export class GameTextLocalizer {
     // older dictionary translation. Never relabel an alternate-locale catalog.
     if (native && Object.hasOwn(native, line)) {
       const text = native[line];
-      return text === null ? { text: line, origin: null } : { text, origin: listedOrigin(this.nativeOrigins.get(lang), line) };
+      if (text === null) return { text: line, origin: null };
+      const origin = listedOrigin(this.nativeOrigins.get(lang), line);
+      if (!origin || rendered.origin !== null || rendered.text === line) return { text, origin };
     }
     const exact = this.byName.get(line.trim());
     if (exact) return { text: localizedName(lang, exact.name, exact.name_zh_cn, exact.name_zh_tw), origin: null };

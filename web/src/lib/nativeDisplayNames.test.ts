@@ -225,3 +225,29 @@ test('zh-TW minion names convert the zh-CN record unless a zh-TW catalog names t
   // zh-CN keeps its own record and script.
   expect(both.resolveDetailed(monster('Metadata/Monsters/A', 'Raging Spirit'), 'zh-CN')).toEqual({ text: '愤怒之灵', origin: null });
 });
+
+test('a supplement scope record yields to an official text-path translation, never the reverse', () => {
+  const source = { ...catalog({ 'PassiveSkills.Name': {
+    a: ['Mana Regeneration', '我方魔力再生'], b: ['Life', '我方生命'], c: ['Official Node', '官方节点'],
+  } }), origins: { entries: {}, scopes: { 'PassiveSkills.Name': { a: 'agent' as const, b: 'human' as const } } } };
+  const index = new NativeNameIndex([source]);
+  const { pending, mergeDetailed } = index.split([passive('a', 'Mana Regeneration'), passive('b', 'Life'),
+    passive('c', 'Official Node'), passive('a', 'Mana Regeneration')], 'zh-CN');
+  // Supplement records also ask the text path; official ones do not.
+  expect(pending).toEqual(['Mana Regeneration', 'Life']);
+  expect(mergeDetailed([{ text: '魔力再生', origin: null }, { text: 'Life', origin: null }])).toEqual([
+    { text: '魔力再生', origin: null }, // official text path wins
+    { text: '我方生命', origin: 'human' }, // the text path left it English
+    { text: '官方节点', origin: null },
+    { text: '魔力再生', origin: null },
+  ]);
+  // A supplement text path never replaces a supplement record.
+  expect(mergeDetailed([{ text: '另一补译', origin: 'agent' }, { text: '生命', origin: 'agent' }]).slice(0, 2))
+    .toEqual([{ text: '我方魔力再生', origin: 'agent' }, { text: '我方生命', origin: 'human' }]);
+  // A minion's supplement record stays: minions have no text path.
+  const minions = new NativeNameIndex([{ ...catalog({ 'MonsterVarieties.Name': { m: ['Wolf', '狼'] } }),
+    origins: { entries: {}, scopes: { 'MonsterVarieties.Name': { m: 'agent' as const } } } }]);
+  const split = minions.split([monster('m', 'Wolf')], 'zh-CN');
+  expect(split.pending).toEqual([]);
+  expect(split.mergeDetailed([])).toEqual([{ text: '狼', origin: 'agent' }]);
+});

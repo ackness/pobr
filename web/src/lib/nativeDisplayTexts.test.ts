@@ -45,15 +45,19 @@ test('supplement origins are optional; a listed literal keeps its origin, every 
     origins: { entries: { Ours: 'agent' }, scopes: { 'ItemClasses.Name': { id: 'human' } } } };
   const catalog = nativeDisplayTexts(value, 'test', 'zh-TW');
   const localizer = new GameTextLocalizer([], [catalog]);
-  expect(localizer.localizeDetailed('Ours', { text: 'x', origin: null }, 'zh-TW')).toEqual({ text: '我方', origin: 'agent' });
+  expect(localizer.localizeDetailed('Ours', { text: 'Ours', origin: null }, 'zh-TW')).toEqual({ text: '我方', origin: 'agent' });
+  // A supplement never overrides official text: an official, translated rendering wins over the literal.
+  expect(localizer.localizeDetailed('Ours', { text: '官方', origin: null }, 'zh-TW')).toEqual({ text: '官方', origin: null });
+  expect(localizer.localizeDetailed('Ours', { text: '补译', origin: 'human' }, 'zh-TW')).toEqual({ text: '我方', origin: 'agent' });
   expect(localizer.localizeDetailed('Known', { text: 'x', origin: null }, 'zh-TW')).toEqual({ text: '原生', origin: null });
   // Unresolved stays English and official; an unowned line keeps the rendered line's origin.
   expect(localizer.localizeDetailed('Missing', { text: 'x', origin: 'agent' }, 'zh-TW')).toEqual({ text: 'Missing', origin: null });
   expect(localizer.localizeDetailed('Unowned', { text: '伤害', origin: 'agent' }, 'zh-TW')).toEqual({ text: '傷害', origin: 'agent' });
   expect(localizer.localizeDetailed('Ours', { text: 'x', origin: 'agent' }, 'en-US')).toEqual({ text: 'Ours', origin: null });
-  expect(localizer.localizeLinesDetailed(['Ours', 'Unowned'], [{ text: 'x', origin: null }, { text: '伤害', origin: 'human' }], 'zh-TW'))
+  expect(localizer.localizeLinesDetailed(['Ours', 'Unowned'], [{ text: 'Ours', origin: null }, { text: '伤害', origin: 'human' }], 'zh-TW'))
     .toEqual([{ text: '我方', origin: 'agent' }, { text: '傷害', origin: 'human' }]);
-  expect(localizer.localize('Ours', 'x', 'zh-TW')).toBe('我方');
+  expect(localizer.localize('Ours', 'Ours', 'zh-TW')).toBe('我方');
+  expect(localizer.localize('Ours', '官方', 'zh-TW')).toBe('官方');
   for (const origins of [[], { entries: { Ours: 'mine' } }, { scopes: { a: { b: 1 } } }, { scopes: [] }]) {
     expect(() => nativeDisplayTexts({ ...value, origins }, 'test', 'zh-TW')).toThrow(/shape/);
   }
