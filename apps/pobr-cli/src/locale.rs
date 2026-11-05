@@ -15,6 +15,9 @@ use pobr_i18n::{LineParser, LineRenderer, LocaleMeta, LocalePack, NameKind};
 
 use crate::{CalculateBuildReport, CalculateResult, CliError, MarginalReport, ParseItemReport};
 
+// Untranslated report lines are what the user typed already; translated ones
+// are mapped back to it ([`TypedInput`]), never re-rendered.
+
 /// The language the parser and the game data are written in. Asking for it
 /// translates nothing.
 pub const SOURCE_LANGUAGE: &str = "en-US";
@@ -80,6 +83,9 @@ impl Locale {
             return Ok(locale);
         }
         let data = GameData::new(data_dir);
+        // A missing or corrupt pack is reported as what it is, not as a
+        // language it no longer lists.
+        data.validate_manifest()?;
         let declared = data.languages();
         if !declared.iter().any(|c| c == code) {
             return Err(CliError::UnknownLanguage {
@@ -148,13 +154,28 @@ impl Locale {
             .unwrap_or_else(|| line.to_string())
     }
 
-    /// [`Self::parse_line`] for each line of `text` (item text); text in
-    /// which no line changes comes back byte for byte.
-    pub fn parse_text(&self, text: &str) -> String {
-        match self.parser() {
-            Some(parser) => parser.parse_text(text).into_owned(),
-            None => text.to_string(),
-        }
+    /// [`Self::parse_line`] for each line, remembering what was typed.
+    pub fn parse_lines(&self, lines: &[String]) -> TypedInput {
+        let mut typed = TypedInput::default();
+        typed.lines = lines
+            .iter()
+            .map(|line| typed.read(line, self.parse_line(line)))
+            .collect();
+        typed
+    }
+
+    /// [`Self::parse_line`] for each line of `text` (item text), remembering
+    /// what was typed; text in which no line changes comes back byte for byte.
+    pub fn parse_text(&self, text: &str) -> (String, TypedInput) {
+        let mut typed = TypedInput::default();
+        let Some(parser) = self.parser() else {
+            return (text.to_string(), typed);
+        };
+        let parsed = pobr_i18n::lines::parse_text_with(text, |line| {
+            let canonical = parser.parse_line(line)?;
+            Some(typed.read(line, canonical))
+        });
+        (parsed.into_owned(), typed)
     }
 
     /// The locale's display form of an English line; a line nothing
@@ -174,14 +195,17 @@ impl Locale {
         }
     }
 
-    /// Renders the lines of a `calculate` result in the locale.
-    pub fn localize_calculate(&self, result: &mut CalculateResult) {
-        self.render_all(&mut result.unsupported);
+    /// A `calculate` result's unsupported lines as they were typed (`typed`
+    /// is the request's lines read through [`Self::parse_lines`]).
+    pub fn localize_calculate(&self, result: &mut CalculateResult, typed: &TypedInput) {
+        typed.restore(&mut result.unsupported);
     }
 
-    /// Renders the base and the lines of a `parse-item` report in the locale.
-    pub fn localize_item(&self, report: &mut ParseItemReport) {
-        self.render_all(std::iter::once(&mut report.base).chain(&mut report.unsupported));
+    /// A `parse-item` report's base in the locale and its unsupported lines
+    /// as they were typed (`typed` from [`Self::parse_text`]).
+    pub fn localize_item(&self, report: &mut ParseItemReport, typed: &TypedInput) {
+        self.render_all(std::iter::once(&mut report.base));
+        typed.restore(&mut report.unsupported);
     }
 
     /// Renders the mod lines and item names of a `calculate-build` report
@@ -202,11 +226,68 @@ impl Locale {
         }
     }
 
-    /// Renders the mod lines of an `explain-mod --build` report in the locale.
-    pub fn localize_marginal(&self, report: &mut MarginalReport) {
+    /// An `explain-mod --build` report: the candidate lines as they were
+    /// typed (`typed` from [`Self::parse_lines`]), the build's own lines in
+    /// the locale.
+    pub fn localize_marginal(&self, report: &mut MarginalReport, typed: &TypedInput) {
         self.render_all(&mut report.baseline_unsupported_modifiers);
-        self.render_all(&mut report.unsupported_modifiers);
-        self.render_all(&mut report.added_mod_texts);
+        for line in &mut report.unsupported_modifiers {
+            *line = match typed.typed(line) {
+                Some(original) => original.to_string(),
+                None => self.render_line(line),
+            };
+        }
+        typed.restore(&mut report.added_mod_texts);
+    }
+}
+
+/// Input lines as the parser reads them, with the line each translated one
+/// was typed as, so a report can show the user's own text back.
+#[derive(Debug, Clone, Default)]
+pub struct TypedInput {
+    /// The lines as the parser reads them ([`Locale::parse_lines`] only).
+    pub lines: Vec<String>,
+    /// Canonical line (trimmed) -> the line as typed, for lines that changed.
+    originals: BTreeMap<String, String>,
+}
+
+impl TypedInput {
+    /// Records `typed` -> `canonical` and returns the canonical line.
+    fn read(&mut self, typed: &str, canonical: String) -> String {
+        if canonical != typed {
+            self.originals
+                .entry(canonical.trim().to_string())
+                .or_insert_with(|| typed.trim().to_string());
+        }
+        canonical
+    }
+
+    /// The line `canonical` was typed as, when it was translated. A line the
+    /// parser reports with an annotation stripped is matched by the one
+    /// translated line that contains it.
+    pub fn typed(&self, canonical: &str) -> Option<&str> {
+        let canonical = canonical.trim();
+        if let Some(original) = self.originals.get(canonical) {
+            return Some(original);
+        }
+        let mut containing = self
+            .originals
+            .iter()
+            .filter(|(line, _)| !canonical.is_empty() && line.contains(canonical));
+        match (containing.next(), containing.next()) {
+            (Some((_, original)), None) => Some(original),
+            _ => None,
+        }
+    }
+
+    /// Replaces each translated line in `lines` with what was typed; the
+    /// others were not translated, so they already are.
+    pub fn restore(&self, lines: &mut [String]) {
+        for line in lines {
+            if let Some(original) = self.typed(line) {
+                *line = original.to_string();
+            }
+        }
     }
 }
 

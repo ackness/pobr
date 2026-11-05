@@ -40,7 +40,7 @@ mod locale;
 mod usage;
 
 pub use breakdown::{BuildDetail, StatBreakdownEntry, render_breakdowns};
-pub use locale::{Locale, SOURCE_LANGUAGE, available_languages};
+pub use locale::{Locale, SOURCE_LANGUAGE, TypedInput, available_languages};
 
 /// The unified error type for the CLI library layer.
 #[derive(Debug, Error)]
@@ -167,21 +167,18 @@ fn minimal_session(req: &CalculateRequest) -> Result<CalculationSession, CliErro
 
 /// Renders a [`CalculateResult`] as a pretty-printed JSON string. With a
 /// `locale`, mod lines written in it are read as their English canonical
-/// lines and the result's lines are shown in it.
+/// lines, and unsupported lines are reported as they were typed.
 pub fn calculate_json(req: &CalculateRequest, locale: Option<&Locale>) -> Result<String, CliError> {
     let Some(locale) = locale else {
         return Ok(serde_json::to_string_pretty(&calculate(req)?)?);
     };
+    let typed = locale.parse_lines(&req.modifier_texts);
     let req = CalculateRequest {
         input: req.input,
-        modifier_texts: req
-            .modifier_texts
-            .iter()
-            .map(|line| locale.parse_line(line))
-            .collect(),
+        modifier_texts: typed.lines.clone(),
     };
     let mut result = calculate(&req)?;
-    locale.localize_calculate(&mut result);
+    locale.localize_calculate(&mut result, &typed);
     Ok(serde_json::to_string_pretty(&result)?)
 }
 
@@ -931,7 +928,7 @@ pub fn parse_item(req: &ParseItemRequest) -> Result<ParseItemReport, CliError> {
 /// Renders a [`ParseItemReport`] as a pretty-printed JSON string.
 ///
 /// With a `locale`, the item's lines written in it are read as their English
-/// canonical lines, and the report's base and lines are shown in it.
+/// canonical lines; the base is shown in it and unsupported lines as typed.
 pub fn parse_item_json(
     req: &ParseItemRequest,
     locale: Option<&Locale>,
@@ -939,10 +936,9 @@ pub fn parse_item_json(
     let Some(locale) = locale else {
         return Ok(serde_json::to_string_pretty(&parse_item(req)?)?);
     };
-    let mut report = parse_item(&ParseItemRequest {
-        text: locale.parse_text(&req.text),
-    })?;
-    locale.localize_item(&mut report);
+    let (text, typed) = locale.parse_text(&req.text);
+    let mut report = parse_item(&ParseItemRequest { text })?;
+    locale.localize_item(&mut report, &typed);
     Ok(serde_json::to_string_pretty(&report)?)
 }
 
@@ -1776,8 +1772,8 @@ pub fn explain_mod_with_marginal_text(
     Ok(s)
 }
 
-/// [`marginal_contribution`] with the candidate lines read through `locale`
-/// and the report's lines shown in it.
+/// [`marginal_contribution`] with the candidate lines read through `locale`:
+/// they are reported as typed, the build's own lines in the locale.
 fn localized_marginal(
     req: &MarginalRequest,
     locale: Option<&Locale>,
@@ -1785,16 +1781,13 @@ fn localized_marginal(
     let Some(locale) = locale else {
         return marginal_contribution(req);
     };
+    let typed = locale.parse_lines(&req.mod_texts);
     let req = MarginalRequest {
-        mod_texts: req
-            .mod_texts
-            .iter()
-            .map(|line| locale.parse_line(line))
-            .collect(),
+        mod_texts: typed.lines.clone(),
         ..req.clone()
     };
     let mut report = marginal_contribution(&req)?;
-    locale.localize_marginal(&mut report);
+    locale.localize_marginal(&mut report, &typed);
     Ok(report)
 }
 

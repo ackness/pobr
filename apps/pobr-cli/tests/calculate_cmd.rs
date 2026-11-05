@@ -977,6 +977,18 @@ fn lang_reads_localized_item_text_and_shows_the_base_in_the_locale() {
     assert_eq!(localized["base"], "蓝玉戒指");
     assert_eq!(localized["modifiers"], english["modifiers"]);
     assert_eq!(localized["unsupported"], english["unsupported"]);
+
+    // Unsupported item lines come back as typed: an unrecognised localized
+    // line, and a recognised one the parser does not support.
+    let unsupported = as_json(
+        "Rarity: Rare\nGloom Coil\n蓝玉戒指\n--------\n+40 生命上限\n不认识的词条\n1 个稀有怪物被替换为一个随机地图首领",
+        Some(&locale),
+    );
+    assert_eq!(
+        unsupported["unsupported"],
+        serde_json::json!(["不认识的词条", "1 个稀有怪物被替换为一个随机地图首领"])
+    );
+    assert_eq!(unsupported["modifiers"], english["modifiers"]);
     assert!(
         english["modifiers"]
             .as_array()
@@ -1044,6 +1056,50 @@ fn lang_shows_a_build_reports_mod_lines_in_the_locale() {
             .any(has_han),
         "usage lines are shown in the locale"
     );
+}
+
+#[test]
+fn lang_reports_unsupported_lines_as_typed() {
+    let locale = zh_cn();
+    // Recognised by the zh-CN templates (so it reaches the parser in English),
+    // but not supported by the parser.
+    let recognised = "1 个稀有怪物被替换为一个随机地图首领";
+    assert_eq!(
+        locale.parse_line(recognised),
+        "1 Rare Monster is replaced by a random Map Boss"
+    );
+    let lines = ["+50 生命上限", "不认识的词条", recognised, "mirrored"];
+    let json = pobr_cli::calculate_json(
+        &CalculateRequest {
+            input: base_input(),
+            modifier_texts: lines.iter().map(|line| line.to_string()).collect(),
+        },
+        Some(&locale),
+    )
+    .unwrap();
+    let result: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(result["output"]["life"], 1050.0);
+    assert_eq!(
+        result["unsupported"],
+        serde_json::json!(["不认识的词条", recognised, "mirrored"])
+    );
+}
+
+#[test]
+fn lang_reports_a_broken_data_pack_as_a_data_error() {
+    let root = std::env::temp_dir().join(format!("pobr-cli-lang-{}", std::process::id()));
+    let corrupt = root.join("corrupt");
+    std::fs::create_dir_all(&corrupt).unwrap();
+    std::fs::write(corrupt.join("manifest.json"), "{ not json").unwrap();
+    for dir in [root.join("missing"), corrupt] {
+        let error = pobr_cli::Locale::load(&dir, "zh-CN").unwrap_err();
+        assert!(
+            matches!(error, pobr_cli::CliError::GameData(_)),
+            "{dir:?}: {error}"
+        );
+        assert!(!error.to_string().contains("unknown language"), "{error}");
+    }
+    std::fs::remove_dir_all(&root).unwrap();
 }
 
 #[test]
