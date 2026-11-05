@@ -35,7 +35,7 @@ test('synthetic historical conversion previews, confirms, undoes and exports eac
   const before = await saved(page);
   expect(before.treeVersion).toBe('0_4');
   await nav(page, 'Tree').click();
-  const convert = page.getByRole('button', { name: 'Convert to current tree', exact: true });
+  const convert = page.getByRole('button', { name: /^Convert (to current tree|\(all passive specs\))$/ });
   const confirm = page.getByRole('button', { name: 'Confirm conversion', exact: true });
   const undo = page.getByRole('button', { name: 'Undo tree edit', exact: true });
   const preview = page.getByRole('region', { name: 'Conversion preview', exact: true });
@@ -63,6 +63,8 @@ test('synthetic historical conversion previews, confirms, undoes and exports eac
   await undo.click();
   await idle(page);
   expect(await saved(page)).toEqual(before);
+  const options = page.locator('.tree-conversion-options');
+  if (!await options.evaluate(element => (element as HTMLDetailsElement).open)) await options.locator('summary').click();
   await page.getByRole('checkbox', { name: 'All passive specs', exact: true }).check();
   await convert.click();
   await expect(preview.locator('article')).toHaveCount(2);
@@ -73,7 +75,9 @@ test('synthetic historical conversion previews, confirms, undoes and exports eac
   await undo.click();
   await idle(page);
   expect(await saved(page)).toEqual(before);
+  if (!await options.evaluate(element => (element as HTMLDetailsElement).open)) await options.locator('summary').click();
   await page.getByRole('checkbox', { name: 'All passive specs', exact: true }).check();
+  await expect(convert).toHaveText('Convert (all passive specs)');
   await convert.click();
   await confirm.click();
   await idle(page);

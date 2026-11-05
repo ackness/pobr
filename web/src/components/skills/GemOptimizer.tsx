@@ -163,7 +163,9 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
 
   const hint = <p className="skills-hint">{st('hint')}</p>;
   const poolSummary = <div className="support-pool-summary"><strong>{candidateCount}</strong> {st('eligible')}
-    <span>{st('excluded')} {pool.unknown} / {pool.levelBlocked} / {pool.incompatible}</span>
+    <span>{st('excluded').replace('{total}', String(pool.unknown + pool.levelBlocked + pool.incompatible))
+      .replace('{unknown}', String(pool.unknown)).replace('{level}', String(pool.levelBlocked))
+      .replace('{incompatible}', String(pool.incompatible))}</span>
   </div>;
   const poolFilter = <details className="support-pool-details"><summary>{st('filterTitle')}</summary>
     <p className="skills-hint">{st('filterHint')}</p>
@@ -212,8 +214,10 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     <div className="support-baseline"><strong>{st('baseline')}</strong>
       <span>DPS {number(result.baseline.TotalDPS ?? 0)}</span><span>EHP {number(result.baseline.TotalEHP ?? 0)}</span>
     </div>
+    <details className="support-calculation-details">
+    <summary>{st('calculationDetails')}</summary>
     <p className="skills-hint">{st('results')} {result.evaluated} · {st('unsupported')} {result.unmodeled}</p>
-    <p className="skills-hint">{st('data')}: {result.dataVersion ?? st('unknownVersion')} · {st('tree')}: {result.request.tree_version ?? st('defaultTree')}</p>
+    <p className="skills-hint">{st('data')}{lang === 'en-US' ? ': ' : '：'}{result.dataVersion ?? st('unknownVersion')} · {st('tree')}{lang === 'en-US' ? ': ' : '：'}{result.request.tree_version ?? st('defaultTree')}</p>
     {result.baselineUnsupported.length > 0 && <details className="support-diagnostics support-baseline-unsupported">
       <summary>{st('baselineLimits')}: {result.baselineUnsupported.length}</summary>
       <p className="skills-hint">{st('baselineLimitsHint')}</p>
@@ -235,6 +239,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
         </details>
       </li>)}</ol>
     </details>}
+    </details>
     {!result.plans.length && <p className="skills-hint">{st('noGain')}</p>}
     {result.plans.map((plan, index) => {
       // Resting on a recommendation shows what it would do, without applying it (only where a preview provider is mounted; handlers add no attributes).
@@ -246,7 +251,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
       <div className="support-plan-gems">{plan.supports.map(gem => <span className="opt-chip" key={gem.skill_id} data-skill-id={gem.skill_id}
         data-level={gem.level} data-quality={gem.quality} data-stat-set-index={gem.stat_set_index ?? undefined}>
         {gemName(gem.skill_id)}{byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
-        <small>{st('level')} {gem.level} · {st('quality')} {gem.quality}{gem.stat_set_index != null && <> · {st('statSet')} {gem.stat_set_index}</>}</small>
+        <small>{st('level')} {gem.level} · {st('quality')} {gem.quality}</small>
         <AppButton className="support-exclude-button" aria-label={`${st('exclude')} ${gemName(gem.skill_id)}`}
           title={`${st('exclude')} ${gemName(gem.skill_id)}`} onClick={() => exclude(gem.skill_id)}><span aria-hidden>×</span></AppButton>
       </span>)}</div>

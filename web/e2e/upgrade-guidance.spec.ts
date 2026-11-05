@@ -31,12 +31,12 @@ test('current market Sum is a reference; complete replacement detects a downgrad
   await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
   const reference = page.locator('.upgrade-score-reference');
   await expect(reference).toBeVisible();
-  await expect(reference).toContainText('Current item · market Sum');
+  await expect(reference).toContainText('Current equipment score');
   const sum = Number((await reference.locator('div > strong').first().innerText()).replaceAll(',', ''));
   const href = await page.locator('.trade-market-link').first().getAttribute('href');
   const query = JSON.parse(new URL(href!).searchParams.get('q')!);
   expect(sum).toBeGreaterThan(0);
-  expect(query.query.stats[0].value.min).toBeCloseTo(sum, 3);
+  expect(Math.round(query.query.stats[0].value.min)).toBe(sum);
   await page.getByRole('textbox', { name: 'Complete item text' }).fill('Rarity: NORMAL\nSapphire Ring');
   await page.getByRole('button', { name: 'Calculate replacement' }).click();
   await expect(page.locator('.upgrade-replacement-result')).toContainText('DPS decreases after this replacement');
@@ -232,7 +232,7 @@ test('editing passives automatically replans from the new tree and applying neve
   await caster(page);
   const before = await settledText(dps(page));
   await goTo(page, 'Tree');
-  await page.locator('.tree-planner-toggle').click();
+  await page.locator('.tree-planner > .tree-planner-toggle').click();
   await page.getByRole('button', { name: 'Find upgrade routes', exact: true }).click();
   const plans = page.locator('.tree-planner-results > li');
   await expect(plans.first()).toBeVisible({ timeout: 30_000 });
@@ -257,9 +257,9 @@ test('editing passives automatically replans from the new tree and applying neve
   await expect(page.getByRole('spinbutton', { name: 'Maximum refunds' })).toHaveValue('3');
   await expect(page.locator('.tree-planner-summary')).toBeVisible({ timeout: 30_000 });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state.allocatedNodes)).toEqual(applied);
-  await page.locator('.tree-planner-toggle').click();
+  await page.locator('.tree-planner > .tree-planner-toggle').click();
   await page.locator('circle[data-skill-id="4739"]').dispatchEvent('click');
-  await page.locator('.tree-planner-toggle').click();
+  await page.locator('.tree-planner > .tree-planner-toggle').click();
   await expect(page.locator('.tree-planner-summary')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Find upgrade routes', exact: true })).toBeEnabled();
   await expect(page.locator('.shell-alert')).toHaveCount(0);

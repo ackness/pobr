@@ -174,7 +174,7 @@ test('hovering a library item previews its effect without changing the build', a
   await page.locator('.doll-cell[data-slot="ring1"] .doll-slot').click();
   // An empty slot opens its editor straight away, already holding a template item.
   await page.getByRole('button', { name: 'Apply changes', exact: true }).click();
-  await page.getByRole('button', { name: 'Save to library', exact: true }).click();
+  await page.getByRole('button', { name: 'Save to item library', exact: true }).click();
   await expect(page.locator('.shell-save-state')).toHaveText('Saved in this browser');
   await page.locator('.doll-cell[data-slot="ring2"] .doll-slot').click();
   const before = await page.evaluate(() => localStorage.getItem('pobr-v2-build-state'));

@@ -34,9 +34,10 @@ interface ComparisonSnapshot {
 }
 
 /** One visible clipboard flow; choosing a destination never mutates the build. */
-export function ItemReplacementCheck({ session, lang, active, objective, catalog, jewelSockets, goalLabel, onEditGoal, initialItemText, candidate }: {
+export function ItemReplacementCheck({ session, lang, active, objective, catalog, jewelSockets, goalLabel, onEditGoal, initialItemText, candidate, socketLabel }: {
   session: BuildSession; lang: Lang; active: boolean; objective: Objective; catalog: TradeCatalog | null; jewelSockets: number[];
   goalLabel: string; onEditGoal: () => void;
+  socketLabel?: (id: number) => string;
   initialItemText?: string;
   candidate?: { kind: 'item' | 'jewel' };
 }) {
@@ -60,9 +61,11 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   const controller = useRef<AbortController | null>(null);
   const timerRef = useRef<number | undefined>(undefined);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  // Only allocated sockets can be replacement destinations. Loading other tree sockets must not invalidate an item comparison.
+  const allocatedJewelSockets = useMemo(() => jewelSockets.filter(id => session.allocatedNodes.includes(id)), [jewelSockets, session.allocatedNodes]);
   const contextKey = useMemo(() => JSON.stringify([
-    session.activeWeaponSet, session.currentRequest(), objective, session.dataVersion, session.treeVersion, jewelSockets,
-  ]), [session.currentRequest, session.activeWeaponSet, objective, session.dataVersion, session.treeVersion, jewelSockets]);
+    session.activeWeaponSet, session.currentRequest(), objective, session.dataVersion, session.treeVersion, allocatedJewelSockets,
+  ]), [session.currentRequest, session.activeWeaponSet, objective, session.dataVersion, session.treeVersion, allocatedJewelSockets]);
   const key = useMemo(() => JSON.stringify([contextKey, text, augmentPlans]), [contextKey, text, augmentPlans]);
   const latest = useRef({ active, contextKey, key, catalog });
   latest.current = { active, contextKey, key, catalog };
@@ -85,7 +88,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     candidate.itemId === report.text && candidate.slot === selectedItem.slot && candidate.text === selectedItem.text);
   const format = (value: number) => value.toLocaleString(lang, { maximumFractionDigits: 2 });
   const deltaText = (value: number) => `${value > 0 ? '+' : ''}${format(value)}`;
-  const positionLabel = (slot: string) => slot.startsWith('Jewel@') ? `${ut('jewelPosition')} ${slot.slice(6)}` : slotLabel(lang, slot);
+  const positionLabel = (slot: string) => slot.startsWith('Jewel@') ? socketLabel?.(Number(slot.slice(6))) ?? ut('jewelPosition') : slotLabel(lang, slot);
   const errorText = useCallback((message: string) => ({
     'unknown-required-level': craftT(lang, 'unknownRequirement'),
     'invalid-item': upgradeT(lang, 'invalidItem'), 'unknown-base': upgradeT(lang, 'unknownBase'),
@@ -113,7 +116,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
 
   const run = useCallback(async (input: string, plans: Record<string, AugmentSelection> = {}, keepSlot?: string) => {
     const request = session.currentRequest();
-    const context = JSON.stringify([session.activeWeaponSet, request, objective, session.dataVersion, session.treeVersion, jewelSockets]);
+    const context = JSON.stringify([session.activeWeaponSet, request, objective, session.dataVersion, session.treeVersion, allocatedJewelSockets]);
     if (!active || !latest.current.active || session.busy || !request || !catalog
       || latest.current.contextKey !== context || latest.current.catalog !== catalog) return;
     stop();
@@ -126,7 +129,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     if (!keepSlot) { setSnapshot(null); setChosenSlot(null); setAffixDirty(false); }
     else setChosenSlot(keepSlot);
     try {
-      const next = await compareReplacementPositions(request, input, abort.signal, { catalog, jewelSocketNodes: jewelSockets, augmentPlans: plans, includeEmptySlots: !!candidate });
+      const next = await compareReplacementPositions(request, input, abort.signal, { catalog, jewelSocketNodes: allocatedJewelSockets, augmentPlans: plans, includeEmptySlots: !!candidate });
       if (current()) setSnapshot({ report: next, key: nextKey, request, input, objective, catalog,
         dataVersion: session.dataVersion, treeVersion: session.treeVersion, augmentPlans: plans });
     } catch (error) {
@@ -135,7 +138,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
       if (controller.current === abort) { setBusy(false); controller.current = null; }
     }
   }, [active, session.currentRequest, session.activeWeaponSet, session.dataVersion, session.treeVersion,
-    session.busy, objective, catalog, jewelSockets, errorText, stop, candidate?.kind]);
+    session.busy, objective, catalog, allocatedJewelSockets, errorText, stop, candidate?.kind]);
   // Only an explicit paste owns a debounce; returning to this page never restarts work.
   useEffect(() => {
     if (!active || pendingPaste === null || session.busy || !catalog) return;
@@ -154,7 +157,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   const receiptCurrent = () => snapshot !== null && snapshot.catalog === catalog && latest.current.catalog === catalog
     && snapshot.key === latest.current.key
     && snapshot.key === JSON.stringify([JSON.stringify([session.activeWeaponSet, session.currentRequest(), objective,
-      session.dataVersion, session.treeVersion, jewelSockets]), text, augmentPlans]);
+      session.dataVersion, session.treeVersion, allocatedJewelSockets]), text, augmentPlans]);
 
   const apply = () => {
     if (!active || !latest.current.active || busy || affixDirty || session.busy || !report || !selected || !receiptCurrent()) return;
@@ -186,8 +189,8 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     ?? selected?.variant.jewels?.find(jewel => `Jewel@${jewel.socket_node}` === selected.slot)?.text ?? applied?.text ?? text;
   return <section className="upgrade-item-check ui-card" aria-labelledby="replacement-heading">
     {candidate ? <header><h3 id="replacement-heading">{craftT(lang, 'preview')}</h3><p>{craftT(lang, 'previewHint')}</p></header> : <header className="replacement-heading"><div>
-      <h3 id="replacement-heading">{words(lang, 'Paste an item to compare it', '粘贴物品来对比', '貼上物品來比較')}</h3><p>{ut('checkHint')}</p></div><div className="replacement-context"><span className="ui-badge">{ut('localComparison')}</span>
-      <AppButton className="replacement-goal" aria-label={`${ut('comparisonGoal')}: ${goalLabel}`} onClick={onEditGoal}>{goalLabel} <span aria-hidden>↗</span></AppButton></div></header>}
+      <h3 id="replacement-heading">{words(lang, 'Paste an item to compare it', '粘贴物品来对比', '貼上物品來比較')}</h3><p>{ut('checkHint')}</p></div><div className="replacement-context">
+      <AppButton className="replacement-goal" onClick={onEditGoal}>{ut('comparisonGoal')}{lang === 'en-US' ? ': ' : '：'}{goalLabel}{lang === 'en-US' ? ` (${ut('changeGoal')})` : `（${ut('changeGoal')}）`}</AppButton></div></header>}
     <div className="replacement-input"><label htmlFor="replacement-text">{ut('itemText')}</label>
       <AppTextarea readOnly={!!candidate} ref={inputRef} id="replacement-text" rows={report ? 3 : 5} value={text} placeholder={ut('pastePlaceholder')}
         onChange={event => { if (candidate || !latest.current.active) return; stop(); setApplied(null); setSnapshot(null); setChosenSlot(null); setAffixDirty(false); setAugmentPlans({}); setText(event.target.value); }}

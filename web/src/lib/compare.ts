@@ -6,9 +6,10 @@
 import { hasPosition, isAttributeNode } from './treeGeometry';
 import { classStartSkill } from './passiveGraph';
 import { STAT_SECTIONS, formatStatValue, type StatFormat, type Lang } from './statDisplay';
+import { t } from './i18n';
 import { switchWeapons } from './weaponSets';
 import { getBackend } from '../api/backend';
-import type { CalculateBuildRequest, CalculateBuildResponse, DisplayStatValue } from '../api/types';
+import type { CalculateBuildRequest, CalculateBuildResponse, DisplayStatValue, GemCatalogEntry, SocketGroupInput } from '../api/types';
 
 export interface DiffEntry {
   id: string;
@@ -45,7 +46,11 @@ export interface StatComparison {
 
 const statFormats = new Map(STAT_SECTIONS.flatMap(section => section.rows.map(row => [row.id, row.format] as const)));
 
-/** A missing or unbounded result is never converted to zero, including % from zero. */
+export function isPercentageStat(format: StatFormat | undefined): boolean {
+  return format === 'percent' || format === 'modifier' || format === 'chanceMultiplier';
+}
+
+/** Unknown, explicit null and unbounded results remain unavailable. */
 export function compareStats(before: DisplayStatValue[], after: DisplayStatValue[]): StatComparison[] {
   const a = new Map(before.map(stat => [stat.id, stat.value]));
   const b = new Map(after.map(stat => [stat.id, stat.value]));
@@ -56,8 +61,7 @@ export function compareStats(before: DisplayStatValue[], after: DisplayStatValue
     const finite = !unboundedPierce && typeof before === 'number' && Number.isFinite(before)
       && typeof after === 'number' && Number.isFinite(after);
     const delta = finite ? after! - before! : null;
-    const percentBase = typeof before === 'number' && (format === 'modifier' || format === 'chanceMultiplier') ? before - 1 : before;
-    return { id, before, after, delta, percent: delta === null || percentBase === 0 ? null : delta / Math.abs(percentBase!) * 100,
+    return { id, before, after, delta, percent: delta === null || before === 0 || isPercentageStat(format) ? null : delta / Math.abs(before!) * 100,
       changed: delta === null ? !Object.is(before, after) : Math.abs(delta) >= 0.005 };
   });
 }
@@ -66,7 +70,8 @@ export function compareStats(before: DisplayStatValue[], after: DisplayStatValue
 export function formatComparisonDelta(delta: number | null, format: StatFormat, lang: Lang): string {
   if (delta === null) return '—';
   const modifier = format === 'modifier' || format === 'chanceMultiplier';
-  return `${delta > 0 ? '+' : ''}${formatStatValue(modifier ? delta * 100 : delta, modifier ? 'percent' : format === 'pierce' ? 'int' : format, lang)}`;
+  const value = formatStatValue(modifier ? delta * 100 : delta, modifier ? 'percent' : format === 'pierce' ? 'int' : format, lang);
+  return `${delta > 0 ? '+' : ''}${isPercentageStat(format) ? value.replace(/%$/, '') + t(lang, 'compare.pointUnit') : value}`;
 }
 
 export type StageState = import('../hooks/useBuildSession').SavedSession['state'];
@@ -263,4 +268,33 @@ export function treeAllocationTotals(state: StageState, nodes: import('../api/ty
     if (isAttributeNode(node)) totals.attributes[state.attributeChoices[String(id)] ?? 'unassigned']++;
   }
   return totals;
+}
+
+/** A comparison starts with the closest previous stage of A, then its next stage. */
+export function nearestCompareStage<T extends { buildId: string; stageId: string }>(entries: T[], a: T | undefined): T | undefined {
+  if (!a) return undefined;
+  const stages = entries.filter(entry => entry.buildId === a.buildId);
+  const index = stages.findIndex(entry => entry.stageId === a.stageId);
+  return stages[index - 1] ?? stages[index + 1];
+}
+
+/** Empty B is not a removal action. Explicit false and zero config values are copyable. */
+export function hasComparisonSource(b: StageState, section: CopySection): boolean {
+  switch (section.kind) {
+    case 'item': return !!b[section.section].find(item => item.slot === section.slot)?.text.trim();
+    case 'weapon': return !!switchWeapons(b, section.set).items.find(item => item.slot === section.slot)?.text.trim();
+    case 'skill': return b.socketGroups[section.index] !== undefined;
+    case 'config': return b.params.config_inputs[section.key] !== undefined;
+    case 'enemy': return b.params.enemy_tier !== undefined;
+    case 'modifiers': return !!(b.params.custom_modifier_blocks?.length || b.params.extra_modifiers?.length);
+  }
+}
+
+/** Default forms add no information unless this gem changed form across the comparison. */
+export function comparisonGemForm(gem: SocketGroupInput['gems'][number], other: SocketGroupInput['gems'][number] | undefined,
+  catalog: ReadonlyMap<string, GemCatalogEntry>, lang: Lang, effectId = gem.skill_id): string | null {
+  const index = gem.stat_set_index ?? 1;
+  if (index === 1 && (!other || other.skill_id !== gem.skill_id || (other.stat_set_index ?? 1) === 1)) return null;
+  const forms = catalog.get(gem.skill_id)?.effect_forms?.find(effect => effect.skill_id === effectId)?.stat_sets;
+  return forms?.find(form => form.index === index)?.label || `${t(lang, 'compare.form')} ${index}`;
 }

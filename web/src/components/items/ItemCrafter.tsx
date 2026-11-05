@@ -12,6 +12,67 @@ import { AppSelect } from '../shared/AppSelect';
 import { ItemDraftWorkbench } from './ItemDraftWorkbench';
 import './itemCrafter.css';
 
+interface EquippedItemDraft {
+  source: string;
+  text: string;
+  catalog: CraftCatalog;
+  base: CraftCatalog['bases'][number] | undefined;
+}
+
+/** Resolve only the item header, preserving every property and modifier line. */
+function craftingHeader(text: string, catalog: CraftCatalog) {
+  const lines = text.split('\n');
+  const rarityIndex = lines.findIndex(line => /^Rarity:\s*(NORMAL|MAGIC|RARE|UNIQUE|RELIC)\s*$/i.test(line.trim()));
+  if (rarityIndex < 0) return;
+  const rarity = lines[rarityIndex].trim().split(/:\s*/)[1].toUpperCase();
+  const headers = lines.flatMap((line, index) => index > rarityIndex && line.trim() ? [index] : []);
+  const index = headers[rarity === 'NORMAL' || rarity === 'MAGIC' ? 0 : 1];
+  if (index === undefined) return;
+  const name = lines[index].trim();
+  const base = catalog.bases.find(base => base.name === name)
+    ?? (rarity === 'MAGIC' ? [...catalog.bases].sort((a, b) => b.name.length - a.name.length).find(base =>
+      name.endsWith(` ${base.name}`) || name.startsWith(`${base.name} of `)
+      || name.includes(` ${base.name} of `)) : undefined);
+  if (!base) return;
+  // The normalizer accepts exact base names, including for decorated magic items.
+  lines[index] = base.name;
+  return { text: lines.join('\n'), base };
+}
+
+/** Prepare the selected item before enabling its crafter entry. */
+export function useEquippedItemDraft(text: string | undefined) {
+  const [loaded, setLoaded] = useState<EquippedItemDraft | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setLoaded(null);
+    setFailed(null);
+    if (!text) return;
+    Promise.all([getBackend().then(async backend => ({ backend, game: await backend.itemCraftingCatalog() })),
+      loadTradeCatalog()]).then(async ([{ backend, game }, display]) => {
+      if (cancelled) return;
+      const catalog = craftingCatalog(game, display);
+      const header = craftingHeader(text, catalog);
+      if (!header) {
+        setLoaded({ source: text, text, catalog, base: undefined });
+        return;
+      }
+      const normalized = await backend.normalizeItemDraft(header.text);
+      if (!cancelled) setLoaded({ source: text, text: normalized, catalog, base: header.base });
+    }).catch(() => { if (!cancelled) setFailed(text); });
+    return () => { cancelled = true; };
+  }, [text]);
+  return { draft: loaded?.source === text ? loaded : null, error: !!text && failed === text };
+}
+
+/** Edit a copy of the equipped item; the workbench previews changes before applying them. */
+export function EquippedItemCrafter({ draft, session, lang }: { draft: EquippedItemDraft; session: BuildSession; lang: Lang }) {
+  if (!draft.base) return <p className="items-hint">{craftT(lang, 'editUnavailable')}</p>;
+  return <section className="item-crafter ui-card" aria-label={craftT(lang, 'craft')}>
+    <ItemDraftWorkbench initialText={draft.text} base={draft.base} catalog={draft.catalog} session={session} lang={lang} />
+  </section>;
+}
+
 export function ItemCrafter({ session, lang }: { session: BuildSession; lang: Lang }) {
   const t = (key: Parameters<typeof craftT>[1]) => craftT(lang, key);
   const [catalog, setCatalog] = useState<CraftCatalog | null>(null);
