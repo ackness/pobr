@@ -129,9 +129,15 @@ def catalog_options(directory):
     catalog = json.loads((directory / "overlay/config_options.json").read_text())
     options = {option["var"]: option for option in catalog["options"]}
     # Match GameData::config_options: every PoBR-owned `*_config_options.json`
-    # replaces the catalog entry with the same var.
+    # replaces the catalog entry with the same var. A var owned twice would make
+    # the result depend on file order, which differs from the Rust loader's list.
+    owner = {}
     for own in sorted((directory.parent / "overlay-common").glob("*_config_options.json")):
-        options.update((o["var"], o) for o in json.loads(own.read_text())["options"])
+        for option in json.loads(own.read_text())["options"]:
+            if option["var"] in owner:
+                raise ValueError(f"{option['var']} is owned by both {owner[option['var']]} and {own.name}")
+            owner[option["var"]] = own.name
+            options[option["var"]] = option
     return sorted(options.values(), key=lambda option: option["var"])
 
 
