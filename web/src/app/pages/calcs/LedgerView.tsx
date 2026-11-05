@@ -3,6 +3,7 @@ import { AppButton, AppInput, AppSelectControl } from '../../../components/share
 import { getBackend } from '../../../api/backend';
 import { formatApiError } from '../../../api/error';
 import type { LineUsageLine, LineUsageResponse, LineUsageStatus } from '../../../api/types';
+import type { GameNameRequest } from '../../../lib/nativeDisplayNames';
 import type { BuildSession } from '../../../hooks/useBuildSession';
 import { useSkillName } from '../../../hooks/useSkillName';
 import { originKindLabel, originLabel, slotLabel, statNameLabel, type Lang } from '../../../lib/i18n';
@@ -16,30 +17,49 @@ import {
 } from './ledger';
 
 const PAGE = 80;
+const NO_NODE_IDS: ReadonlyMap<number, string> = new Map();
 
-/** Lines are translated in batches the way Calcs does for modifier lines; English is shown as is. */
-function useTranslated(texts: readonly string[], lang: Lang): (text: string) => string {
+/** Lines are translated in batches the way Calcs does for modifier lines; English is shown as is.
+ * A text item goes through `translateLines`, a name of known identity through `translateNames`. */
+function useTranslated(items: readonly (string | GameNameRequest)[], lang: Lang): (item: string | GameNameRequest) => string {
   const [cache, setCache] = useState<{ lang: Lang; map: Record<string, string> }>({ lang, map: {} });
-  const key = texts.join('\n');
+  const id = (item: string | GameNameRequest) => typeof item === 'string' ? item : JSON.stringify(item);
+  const english = (item: string | GameNameRequest) => typeof item === 'string' ? item : item.name;
+  const key = items.map(id).join('\n');
   useEffect(() => {
     if (lang === 'en-US') return;
     const known = cache.lang === lang ? cache.map : {};
-    const pending = [...new Set(texts)].filter(text => text && !(text in known));
+    const pending = [...new Map(items.map(item => [id(item), item])).values()]
+      .filter(item => english(item) && !(id(item) in known));
     if (pending.length === 0) return;
+    const texts = pending.filter(item => typeof item === 'string');
+    const names = pending.filter(item => typeof item !== 'string');
     let cancelled = false;
-    getBackend().then(backend => backend.translateLines(pending, lang)).then(translated => {
+    getBackend().then(backend => Promise.all([
+      texts.length ? backend.translateLines(texts, lang) : [],
+      names.length ? backend.translateNames(names, lang) : [],
+    ])).then(([translatedTexts, translatedNames]) => {
       if (cancelled) return;
       setCache(previous => {
         const base = previous.lang === lang ? previous.map : {};
         const map = { ...base };
-        pending.forEach((en, index) => { map[en] = translated[index] ?? en; });
+        texts.forEach((text, index) => { map[text] = translatedTexts[index] ?? text; });
+        names.forEach((name, index) => { map[id(name)] = translatedNames[index] ?? name.name; });
         return { lang, map };
       });
     }).catch(() => {});
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, lang]);
-  return text => lang === 'en-US' || cache.lang !== lang ? text : cache.map[text] ?? text;
+  return item => lang === 'en-US' || cache.lang !== lang ? english(item) : cache.map[id(item)] ?? english(item);
+}
+
+/** A holder is a passive node's name for `node.<skill>` sources and the item's base type otherwise
+ * (`usage::holder_name`). An unknown node id leaves the name to the text path. */
+function holderName(line: LineUsageLine, nodeIds: ReadonlyMap<number, string>): GameNameRequest | null {
+  if (!line.holder) return null;
+  if (!line.source_id?.startsWith('node.')) return { kind: 'base', name: line.holder };
+  return { kind: 'passive', id: nodeIds.get(Number(line.source_id.slice(5))) ?? '', name: line.holder };
 }
 
 function sourceLabel(lang: Lang, line: LineUsageLine, configLabels: Readonly<Record<string, string>>): string {
@@ -55,7 +75,7 @@ function sourceLabel(lang: Lang, line: LineUsageLine, configLabels: Readonly<Rec
 export function LedgerView({ session, lang }: { session: BuildSession; lang: Lang }) {
   const w = (en: string, cn: string, tw = cn) => words(lang, en, cn, tw);
   const skillName = useSkillName(lang);
-  const [done, setDone] = useState<{ version: number; response: LineUsageResponse; options: ConfigOption[] } | null>(null);
+  const [done, setDone] = useState<{ version: number; response: LineUsageResponse; options: ConfigOption[]; nodeIds: ReadonlyMap<number, string> } | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<LedgerFilter>(NO_FILTER);
@@ -76,7 +96,8 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
   const visible = shown.slice(0, limit);
   const configLabels = useMemo(() => Object.fromEntries((done?.options ?? [])
     .map(option => [option.var, configLabel(lang, option)])), [done?.options, lang]);
-  const translate = useTranslated(visible.flatMap(line => [ledgerDisplayText(line, lang, configLabels), line.holder ?? '']), lang);
+  const nodeIds = done?.nodeIds ?? NO_NODE_IDS;
+  const translate = useTranslated(visible.flatMap(line => [ledgerDisplayText(line, lang, configLabels), holderName(line, nodeIds) ?? '']), lang);
 
   const run = async () => {
     if (running || session.busy || !session.calc) return;
@@ -90,9 +111,11 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
       await new Promise(resolve => setTimeout(resolve, 40));
       if (current !== sequence.current) return;
       const backend = await getBackend();
-      const [response, options] = await Promise.all([backend.lineUsage(request), backend.loadConfigOptions()]);
+      const [response, options, nodes] = await Promise.all([backend.lineUsage(request), backend.loadConfigOptions(),
+        // Node holders are named from the request's tree; without it they keep the text path.
+        backend.loadPassiveTree(request.tree_version).catch(() => [])]);
       if (current !== sequence.current) return;
-      setDone({ version, response, options }); setFilter(NO_FILTER); setLimit(PAGE); setOpen(new Set());
+      setDone({ version, response, options, nodeIds: new Map(nodes.map(node => [node.skill, node.id])) }); setFilter(NO_FILTER); setLimit(PAGE); setOpen(new Set());
     } catch (err) {
       if (current === sequence.current) setError(formatApiError(err));
     } finally {
@@ -166,7 +189,8 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
           const index = position.get(line) ?? 0;
           const tone = statusTone(line.status);
           const expanded = open.has(index);
-          const owner = [...new Set([line.holder ? translate(line.holder) : null, sourceLabel(lang, line, configLabels)].filter(Boolean))].join(' · ');
+          const holder = holderName(line, nodeIds);
+          const owner = [...new Set([holder ? translate(holder) : null, sourceLabel(lang, line, configLabels)].filter(Boolean))].join(' · ');
           const reason = ledgerReason(line, lang);
           return <li key={index} className="ledger-row" data-status={line.status} data-tone={tone}>
             <span className="ledger-status"><i aria-hidden="true" />{statusLabel(lang, line.status)}</span>

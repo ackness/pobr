@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../api/backend';
 import type { Lang } from '../lib/i18n';
+import type { GameNameRequest } from '../lib/nativeDisplayNames';
 
 /** PoB 结构标注行的键 → 本地化（词条模板翻译层不认识这些行）。 */
 const STRUCT_LINE_KEYS: Record<string, { 'zh-TW': string; 'zh-CN': string }> = {
@@ -97,16 +98,11 @@ export function nameParts(text: string): string[] {
  * 库行/槽位按钮/切换下拉等所有名称展示点共用。 */
 export function useItemDisplayNames(texts: (string | undefined)[], lang: Lang): string[] {
   const parts = texts.map((t) => (t ? nameParts(t) : []));
-  const translated = useLocalizedLines(
-    parts.flatMap((p) => p),
-    lang,
-  );
-  let offset = 0;
-  return parts.map((p) => {
-    const segment = translated.slice(offset, offset + p.length);
-    offset += p.length;
-    return segment.join('·');
-  });
+  // The second part of a rare/unique pair is the item format's base line, resolved by base identity.
+  const translated = useLocalizedLines(parts.flatMap((p) => p.slice(0, 1)), lang);
+  const bases = useLocalizedNames(parts.flatMap((p) => p.slice(1).map((name) => ({ kind: 'base' as const, name }))), lang);
+  let name = 0, base = 0;
+  return parts.map((p) => p.map((_, index) => index === 0 ? translated[name++] : bases[base++]).join('·'));
 }
 
 /** 结构行本地化：`Item Level: 83` → `物品等级: 83`；非结构行返回 null。 */
@@ -169,4 +165,28 @@ export function useLocalizedLines(lines: string[], lang: Lang): string[] {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [key, lang, translated],
   );
+}
+
+/** Names whose identity is known (passive node id, item base line) → display, batched like
+ * `useLocalizedLines`. Until the backend answers, and on failure, the English name is shown. */
+export function useLocalizedNames(names: readonly GameNameRequest[], lang: Lang): string[] {
+  const key = useMemo(() => JSON.stringify(names), [names]);
+  const [result, setResult] = useState<{ key: string; lang: Lang; values: string[] } | null>(null);
+  useEffect(() => {
+    if (lang === 'en-US' || names.length === 0) return;
+    let cancelled = false;
+    getBackend()
+      .then((b) => b.translateNames(names, lang))
+      .then((values) => { if (!cancelled) setResult({ key, lang, values }); })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, lang]);
+  return useMemo(() => {
+    const values = lang !== 'en-US' && result?.key === key && result.lang === lang ? result.values : [];
+    return names.map((name, index) => values[index] ?? name.name);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, lang, result]);
 }

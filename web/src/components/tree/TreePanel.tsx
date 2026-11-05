@@ -30,7 +30,7 @@ import { NodePowerTable } from './NodePowerTable';
 import { plannedEdgeClass } from './plannedRoute';
 import { words } from '../../app/text';
 import { PanelRightClose, PanelRightOpen } from 'lucide-react';
-import { passiveNodeMatches, passiveNodeName, usePassiveNodeNames, type PassiveNodeNames } from './passiveNodeNames';
+import { passiveNodeMatches, passiveNodeName, translatePassiveCard, usePassiveNodeNames, type PassiveNodeNames } from './passiveNodeNames';
 
 interface Props {
   session: BuildSession;
@@ -420,7 +420,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
     const generation = canvasGeneration.current;
     getBackend()
       .then(backend => !cancelled && generation === canvasGeneration.current
-        ? backend.translateLines(detailsLines, lang) : null)
+        ? translatePassiveCard(backend, selectedNode, detailsLines.slice(1), lang) : null)
       .then(translated => {
         if (!translated || cancelled || generation !== canvasGeneration.current) return;
         setTranslatedDetails({ key: detailsTextKey,
@@ -668,7 +668,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
     let cancelled = false;
     const generation = canvasGeneration.current;
     getBackend()
-      .then(b => !cancelled && generation === canvasGeneration.current ? b.translateLines([name, ...raw], lang) : null)
+      .then(b => !cancelled && generation === canvasGeneration.current ? translatePassiveCard(b, hover, raw, lang) : null)
       .then((translated) => {
         if (!translated || cancelled || generation !== canvasGeneration.current) return;
         setHoverName(translated[0] !== name ? translated[0] : null);

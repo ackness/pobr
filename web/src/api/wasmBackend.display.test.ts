@@ -107,6 +107,34 @@ test('ordinary gem and class APIs share verified catalogs and source links witho
   expect(requests.filter(url => url.endsWith('/display_texts.json'))).toEqual(['/data/test/i18n/zh-CN/display_texts.json']);
 });
 
+test('names of known identity use the id-scoped catalog, and every other name the translateLines path', async () => {
+  const sidecar = (scopes: Record<string, unknown>) => ({ schema: 'pobr-native-display-texts/v1', game_patch: 'test',
+    realm: 'international', locale: 'zh-CN', catalog_sha256: 'a'.repeat(64),
+    entries: { 'Mana Regeneration': null, Sapphire: null, 'Seeing Stars': null }, scopes });
+  const serve = (display: unknown) => vi.stubGlobal('fetch', async (url: string) => {
+    const files: Record<string, unknown> = { 'base/base_items.json': [{ id: 'Metadata/Items/Jewels/JewelInt', name: 'Sapphire' }],
+      'i18n/zh-CN/display_texts.json': display };
+    if (url === '/data/manifest.json') return new Response(JSON.stringify({ version: 'test', files: Object.keys(files) }));
+    return new Response(JSON.stringify(files[url.replace('/data/test/', '')]));
+  });
+  const names = [{ kind: 'passive', id: 'mana10', name: 'Mana Regeneration' },
+    { kind: 'passive', id: 'energy_shield_recovery10', name: 'Mana Regeneration' },
+    { kind: 'passive', id: 'seeing_stars', name: 'Seeing Stars' }, { kind: 'passive', id: 'absent', name: 'Other' },
+    { kind: 'base', name: 'Sapphire' }] as const;
+  serve(sidecar({ 'BaseItemTypes.Name': { 'Metadata/Items/Jewels/JewelInt': ['Sapphire', '蓝玉'] },
+    'PassiveSkills.Name': { mana10: ['Mana Regeneration', '魔力再生'],
+      energy_shield_recovery10: ['Mana Regeneration', '魔力回复'], seeing_stars: ['Seeing Stars', null] } }));
+  let backend = await createWasmBackend();
+  // The unowned name takes the mocked template path ('旧译文'); colliding literals stay English as text.
+  expect(await backend.translateNames(names, 'zh-CN')).toEqual(['魔力再生', '魔力回复', 'Seeing Stars', '旧译文', '蓝玉']);
+  expect(await backend.translateNames(names, 'en-US')).toEqual(names.map(name => name.name));
+  expect(await backend.translateLines(['Sapphire'], 'zh-CN')).toEqual(['Sapphire']);
+  // Without the scopes, translateNames is exactly translateLines.
+  serve(sidecar({}));
+  backend = await createWasmBackend();
+  expect(await backend.translateNames(names, 'zh-CN')).toEqual(await backend.translateLines(names.map(name => name.name), 'zh-CN'));
+});
+
 test('unlisted class compatibility data is absent while listed invalid data is reported', async () => {
   vi.stubGlobal('fetch', async (url: string) => {
     if (url !== '/data/manifest.json') throw new Error(`Unexpected fetch: ${url}`);

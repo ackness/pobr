@@ -170,7 +170,8 @@ known 只适用于所选 stat set 的显示／无伤害规则、已写明的模�
 `mise run audit:display [--release <tag> | --package <目录或 .tar.gz>] [--strict] <构筑集 | 构筑目录 | code.txt ...>`
 不开浏览器，检查网页对真实构筑会显示什么。
 它运行前端自己的路径：WASM 导出（decode、calculate、lineUsage、skillMetrics、gemCatalog、translateLines）
-加上 `web/src/lib` 的显示模块（`nativeGemNames`、`skillDisplayName`、`GameTextLocalizer`），
+加上 `web/src/lib` 的显示模块（`nativeGemNames`、`skillDisplayName`、`GameTextLocalizer`，
+以及 `translateNames` 用的 `NativeNameIndex`：天赋节点名按节点 ID、物品基底行按基底身份，职业与升华名用 `nativeClassNames`），
 所以报告里的名字就是界面上的名字。
 
 - 引擎来源：
@@ -184,7 +185,7 @@ known 只适用于所选 stat set 的显示／无伤害规则、已写明的模�
 - 报告分节，严重的在前：
   - Errors：导出报错、物品错误、主技能无法解析、非有限数值、生命与护盾都不大于 0、召唤物生命不大于 0。
   - Raw ids：名字里出现原始 ID 或占位文本，按 en-US／zh-CN／zh-TW 分别检查。
-  - 未翻译的名字与词条行。
+  - 未翻译的名字与词条行：天赋节点名（passive name）与天赋词条行（passive line）分开统计，另有职业／升华名。
   - 计算覆盖：未支持与未解析的行、未用上的宝石 stat；主技能、召唤物与 Full DPS 合计为 0（主组是 buff／光环时属正常）。
   - 其他：未解析的宝石（技能页显示 “(unresolved)”）、目录里没有的技能。
 - `--strict`：Errors 或 Raw ids 非空，或宝石目录（全部技能，不限于这些构筑）里有原始 ID 名时，以 1 退出。
