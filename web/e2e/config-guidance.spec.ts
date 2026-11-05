@@ -148,7 +148,7 @@ test('review and keyboard jump clear both filters, preserve the request and keep
   await ready(page);
   await importCode(page, syntheticCode(['Comet']));
   await openConfig(page);
-  const allOptions = page.locator('.config-view').getByRole('button', { name: 'Show all options', exact: true });
+  const allOptions = page.locator('.config-view').getByRole('radio', { name: 'All', exact: true });
   await allOptions.click();
   const headers = page.locator('.config-section-header');
   for (let index = 0; index < await headers.count(); index++) {
@@ -159,16 +159,16 @@ test('review and keyboard jump clear both filters, preserve the request and keep
   // An uncertain mechanic remains in the original catalog, not just quick entries.
   await page.locator('.config-search').fill('onLeyline');
   await expect(control(page, 'onLeyline')).toBeVisible();
-  await page.getByRole('button', { name: 'Applicable to this build', exact: true }).click();
+  await page.getByRole('radio', { name: 'Relevant to this build', exact: true }).click();
   await page.locator('.config-search').fill('no-such-guidance-option');
-  await page.locator('.config-filter input').check();
+  await page.getByRole('radio', { name: /^Modified/ }).click();
   await expect(control(page, 'enemyColdResist')).toHaveCount(0);
   const before = await savedState(page);
   const baseline = await hitDps(page).innerText();
   await openSetting(page, 'enemyColdResist', true);
   await expect(page.locator('.config-search')).toHaveValue('');
-  await expect(page.locator('.config-filter input')).not.toBeChecked();
-  await expect(allOptions).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('radio', { name: /^Modified/ })).not.toBeChecked();
+  await expect(allOptions).toHaveAttribute('aria-checked', 'true');
   await expect(row(page, 'enemyColdResist').locator('..').locator('..').locator('.config-section-header'))
     .toHaveAttribute('aria-expanded', 'true');
   const afterIds = await controlIds(page);
@@ -423,7 +423,7 @@ for (const planner of ['support', 'replacement'] as const) {
     const baseline = await hitDps(page).innerText();
     await openConfig(page);
     await page.locator('.config-search').fill('nothing-matches-this');
-    await page.locator('.config-filter input').check();
+    await page.getByRole('radio', { name: /^Modified/ }).click();
     await openSetting(page, 'conditionEnemyShocked', true);
     expect(await savedState(page)).toEqual(before);
     // Leaving an untouched absent number is still navigation, not Reset/apply.

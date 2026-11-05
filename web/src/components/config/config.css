@@ -36,7 +36,7 @@
 .config-source, .config-applicability { display: block; font-size: var(--text-xs); color: var(--text-secondary); margin-top: var(--space-1); }
 .config-applicability { color: var(--accent-gold); }
 .config-view { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-2); }
-.config-view button[aria-pressed="true"] { border-color: var(--accent-gold); color: var(--accent-gold); }
+.config-view button[aria-checked="true"] { border-color: var(--accent-gold); color: var(--accent-gold); }
 
 .config-key {
   flex: 1;

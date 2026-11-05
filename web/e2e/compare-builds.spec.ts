@@ -93,14 +93,14 @@ for (const activeStage of ['stage-a', 'stage-b']) {
     };
     const config = async () => {
       await pageLink(page, 'Config').click();
-      await expect(page.getByRole('combobox', { name: 'Config set', exact: true })).toHaveText('Imported', { timeout: 90_000 });
+      await expect(page.getByRole('combobox', { name: 'Configuration set', exact: true })).toHaveText('Imported', { timeout: 90_000 });
       await expect(busy(page)).toHaveCount(0);
     };
     const row = (key: string) => page.locator(`.config-item[data-config-var="${key}"]`);
     // The row's help also carries a "source" note ("Internal key"); the value source is the one that names the saved value.
     const source = (key: string) => row(key).locator('.config-source').filter({ hasText: /saved value/i });
     const findControl = async (key: string) => {
-      await page.getByRole('button', { name: 'Show all options', exact: true }).click();
+      await page.getByRole('radio', { name: 'All', exact: true }).click();
       await page.getByLabel('Search config options…').fill(key);
       await expect(row(key).locator('input')).toBeEnabled();
     };
@@ -120,9 +120,9 @@ for (const activeStage of ['stage-a', 'stage-b']) {
     await expect(row(shockKey).locator('.config-reset')).toBeVisible();
     await expect(page.locator(`.config-quick-entry[data-config-var="${shockKey}"]`)).toContainText('Catalog default');
     await expect(page.locator(`.config-quick-entry[data-config-var="${shockKey}"] output`)).toContainText('false');
-    await page.getByRole('checkbox', { name: /^Configured only/ }).check();
+    await page.getByRole('radio', { name: /^Modified/ }).click();
     await expect(row(shockKey)).toHaveCount(0);
-    await page.getByRole('checkbox', { name: /^Configured only/ }).uncheck();
+    await page.getByRole('radio', { name: 'All', exact: true }).click();
     // Unset must resolve a true catalog default as well as shock's false default.
     await findControl(questKey);
     await expect(row(questKey).locator('input')).toBeChecked();
@@ -147,7 +147,7 @@ for (const activeStage of ['stage-a', 'stage-b']) {
     await copyUnset(shockKey);
     await copyUnset(questKey);
     await config();
-    const sets = page.getByRole('combobox', { name: 'Config set', exact: true });
+    const sets = page.getByRole('combobox', { name: 'Configuration set', exact: true });
     // Saving and leaving a named set makes its cleared values the new baseline.
     await choose(page, sets, 'Other');
     await expect(sets).toHaveText('Other');

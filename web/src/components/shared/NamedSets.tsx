@@ -16,26 +16,27 @@ export function NamedSets({ session, lang, kind = 'config' }: { session: BuildSe
   const sets = (kind === 'config' ? session.build?.config_sets : session.build?.skill_sets) ?? [{ id: 1, title: 'Default' }];
   const active = (kind === 'config' ? session.build?.active_config_set : session.build?.active_skill_set) ?? 1;
   const label = tt(kind === 'config' ? 'namedSets.config' : 'namedSets.skill');
+  const title = (raw: string) => kind === 'config' && raw === 'Default' ? tt('namedSets.default') : raw;
   const [name, setName] = useState('');
   const [editing, setEditing] = useState<'create' | 'duplicate' | 'rename' | null>(null);
   return <section className="named-sets" aria-label={label}>
     <label>{label}
       <AppSelectControl aria-label={label} value={active} disabled={session.busy}
         onChange={event => { setEditing(null); void session.changeNamedSet(kind, 'select', Number(event.target.value)); }}>
-        {sets.map(set => <option key={set.id} value={set.id}>{set.title}</option>)}
+        {sets.map(set => <option key={set.id} value={set.id}>{title(set.title)}</option>)}
       </AppSelectControl>
     </label>
     <DropdownMenu><DropdownMenuTrigger asChild><AppButton disabled={session.busy}
       aria-label={words(lang, `${label} actions`, `${label}操作`, `${label}操作`)}><MoreHorizontal aria-hidden="true" /></AppButton></DropdownMenuTrigger>
       <DropdownMenuContent align="end">
     {(['create', 'duplicate', 'rename'] as const).map(op => <DropdownMenuItem key={op}
-      onSelect={() => { setEditing(op); setName(op === 'rename' ? sets.find(set => set.id === active)?.title ?? '' : ''); }}>
-      {tt(`namedSets.${op}`)}
+      onSelect={() => { setEditing(op); setName(op === 'rename' ? title(sets.find(set => set.id === active)?.title ?? '') : ''); }}>
+      {tt(`namedSets.${op}${kind === 'config' ? 'Config' : ''}`)}
     </DropdownMenuItem>)}
     <DropdownMenuItem variant="destructive" disabled={sets.length < 2} onSelect={async () => {
       const valid = captureAction();
       if (await dialogs.confirm(tt('namedSets.confirmDelete')) && valid()) { setEditing(null); void session.changeNamedSet(kind, 'remove', active); }
-    }}>{tt('namedSets.remove')}</DropdownMenuItem>
+    }}>{tt(kind === 'config' ? 'namedSets.removeConfig' : 'namedSets.remove')}</DropdownMenuItem>
       </DropdownMenuContent></DropdownMenu>
     {editing && <form onSubmit={event => {
       event.preventDefault();

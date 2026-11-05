@@ -24,7 +24,6 @@ import { formatStatValue, statFormat, statMap } from '../../lib/statDisplay';
 import {
   bindT,
   damageTypeLabel,
-  grantedSourceLabel,
   originKindLabel,
   originLabel,
   modTypeLabel,
@@ -44,7 +43,8 @@ import { AppSelectControl } from '../shared/controls';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { calcsLabel } from './calcsLabels';
 import { SkillFormControls } from '../skills/SkillFormControls';
-import { highestDpsSkill } from '../../lib/skillSelection';
+import { SkillMetricsTable } from './SkillMetricsTable';
+import { useNavigateToPage } from '../../app/pages/navigate';
 import { LedgerView } from '../../app/pages/calcs/LedgerView';
 import { words } from '../../app/text';
 
@@ -788,14 +788,15 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
   );
 }
 
-function FullDpsView({ calc, lang }: { calc: CalculateBuildResponse | null; lang: Lang }) {
+export function FullDpsView({ calc, lang }: { calc: CalculateBuildResponse | null; lang: Lang }) {
   const tt = bindT(lang);
   const skillName = useSkillName(lang);
   const full = calc?.full_dps;
+  const goTo = useNavigateToPage();
   return <section className="full-dps-view" aria-labelledby="full-dps-heading">
     <h3 id="full-dps-heading">{calcsLabel(lang, 'fullDps')}</h3>
-    <p className="calcs-hint">{tt('skills.fullDpsHint')}</p>
-    {full ? <>
+    {full && full.skills.length > 0 ? <>
+      <p className="calcs-hint">{tt('skills.fullDpsHint')}</p>
       <div className="breakdown-summary">
         <span>{statNameLabel(lang, 'FullDPS')}: <strong>{fmtNum(full.dps)}</strong></span>
         <span>{statNameLabel(lang, 'FullDotDPS')}: <strong>{fmtNum(full.dot_dps)}</strong></span>
@@ -809,7 +810,10 @@ function FullDpsView({ calc, lang }: { calc: CalculateBuildResponse | null; lang
             <ul>{row.unsupported_modifiers.map((issue, index) => <li key={index}>{issue}</li>)}</ul></details>}</td>
         </tr>)}</tbody>
       </table></div>
-    </> : <p role="status" className="calcs-hint">{calcsLabel(lang, 'fullDpsEmpty')}</p>}
+    </> : <>
+      <p role="status" className="calcs-hint">{calcsLabel(lang, 'fullDpsEmpty')}</p>
+      <AppButton onClick={() => goTo('skills')}>{tt('calcs.goToSkills')}</AppButton>
+    </>}
   </section>;
 }
 
@@ -845,18 +849,8 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
     };
   }, [stateVersion, runSkillMetrics]);
 
-  const skillName = useSkillName(lang);
   const catalog = useSkillCatalog();
   const mainIndex = session.calcParams.main_socket_group;
-  const highest = report ? highestDpsSkill(report.skills, session.socketGroups) : null;
-  const columns = [
-    ['combined_dps', 'sidebar.combinedDps'],
-    ['average_hit', 'calcs.averageHit'],
-    ['action_rate', 'calcs.actionRate'],
-    ['mana_cost', 'calcs.manaCost'],
-    ['life_cost', 'calcs.lifeCost'],
-    ['cooldown', 'calcs.cooldown'],
-  ] as const;
 
   return (
     <section className="ui-card attribution-view" aria-labelledby="skill-metrics-heading" aria-busy={running}>
@@ -864,66 +858,20 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
       <p className="calcs-hint">{tt('calcs.skillMetricsHint')}</p>
       {mainIndex !== undefined && <SkillFormControls session={session} lang={lang} groupIndex={mainIndex} catalog={catalog} />}
       {running && <p className="calcs-hint" role="status">{tt('calcs.running')}</p>}
-      {error && <div className="calc-error" role="alert">{error}</div>}
+      {error && <div className="calc-error" role="alert">
+        <p>{tt('calcs.overviewFailed')}</p>
+        <details><summary>{tt('calcs.errorDetails')}</summary><p>{error}</p></details>
+      </div>}
       {report?.item_errors.map((issue, index) => (
-        <p className="calc-error" key={`${issue.slot}-${index}`}>{slotLabel(lang, issue.slot)}: {issue.message}</p>
+        <div className="calc-error" key={`${issue.slot}-${index}`}>
+          <p>{slotLabel(lang, issue.slot)}{lang === 'en-US' ? ': ' : '：'}{tt('calcs.itemExcluded')}</p>
+          <details><summary>{tt('calcs.errorDetails')}</summary><p>{issue.message}</p></details>
+        </div>
       ))}
       {displayed && (displayed.skills.length === 0 ? (
         <p className="calcs-hint">{tt('calcs.skillMetricsEmpty')}</p>
       ) : (
-        <div className="breakdown-scroll">
-          <table className="breakdown-table skill-metrics-table">
-            <thead>
-              <tr>
-                <th scope="col">{tt('calcs.skill')}</th>
-                {columns.map(([key, label]) => <th scope="col" key={key}>{tt(label)}</th>)}
-                <th scope="col">{tt('calcs.diagnostics')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayed.skills.map(entry => {
-                const group = session.socketGroups[entry.group_index];
-                const granted = grantedSourceLabel(lang, group?.source);
-                const selected = entry.group_index === mainIndex
-                  && entry.active_skill_index === (group?.main_active_skill ?? 1);
-                const available = !!report && entry.status === 'calculated' && entry.metrics !== null;
-                const disabled = !report || session.busy || !group?.enabled;
-                const inspect = () => {
-                  if (!disabled) session.inspectSkill(entry.group_index, entry.active_skill_index, stateVersion);
-                };
-                return (
-                  <tr key={`${entry.group_index}-${entry.active_skill_index}`}
-                    className={`skill-metrics-row${selected ? ' is-main' : ''}${granted ? ' is-granted' : ''}`}
-                    onClick={inspect}>
-                    <td>
-                      <AppButton className="calcs-skill-button h-auto justify-start whitespace-normal text-left" aria-pressed={selected}
-                        title={group?.gems.map(gem => skillName(gem.skill_id)).join(' + ')}
-                        aria-disabled={disabled}
-                        onClick={event => { event.stopPropagation(); inspect(); }}>
-                        {tt('calcs.group')} {entry.group_index + 1} · {entry.active_skill_index} · {skillName(entry.skill_id)}
-                      </AppButton>
-                      {granted && <span className="granted-badge">{granted}</span>}
-                      {entry === highest && entry.metrics!.combined_dps > 0 && <span className="granted-badge">{tt('calcs.highestDps')}</span>}
-                    </td>
-                    {columns.map(([key]) => (
-                      <td className="mod-value" key={key}>{available ? formatStatValue(entry.metrics![key], 'float2') : '—'}</td>
-                    ))}
-                    <td className="skill-metrics-diagnostics">
-                      {report && !available && <p className="calc-error">{tt('calcs.unavailable')}: {entry.error || tt('calcs.unavailableHint')}</p>}
-                      {available && entry.error && <p className="calc-error">{entry.error}</p>}
-                      {report && entry.unsupported_modifiers.length > 0 && (
-                        <details onClick={event => event.stopPropagation()}>
-                          <summary>{tt('calcs.unsupported')} ({entry.unsupported_modifiers.length})</summary>
-                          <ul>{entry.unsupported_modifiers.map((modifier, index) => <li key={index}>{modifier}</li>)}</ul>
-                        </details>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <SkillMetricsTable session={session} lang={lang} report={report} displayed={displayed} />
       ))}
     </section>
   );

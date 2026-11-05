@@ -345,9 +345,10 @@
   .bd-import { padding-top: 1.5rem; }
   .bd-import textarea { width: 100%; min-height: 7rem; padding: .8rem 1rem; resize: vertical; font-family: var(--font-mono); font-size: var(--text-sm); line-height: 1.5; background: var(--card); border-radius: .5rem; }
   .bd-import-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin-top: .75rem; }
-  .bd-segment { display: inline-flex; margin-left: auto; padding: .15rem; border-radius: .5rem; background: var(--muted); }
+  .bd-segment { display: inline-flex; align-items: center; flex-wrap: wrap; max-width: 100%; margin-left: auto; padding: .15rem; border-radius: .5rem; background: var(--muted); }
   .bd-segment button, .bd-list button, .bd-chips button { min-height: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; }
-  .bd-segment button { padding: .3rem .8rem; border-radius: .35rem; font-size: var(--text-sm); color: var(--muted-foreground); }
+  .bd-segment > span { padding: .3rem .5rem; font-size: var(--text-sm); color: var(--muted-foreground); }
+  .bd-segment button { overflow-wrap: anywhere; padding: .3rem .8rem; border-radius: .35rem; font-size: var(--text-sm); color: var(--muted-foreground); }
   .bd-segment button[aria-pressed='true'] { background: var(--card); color: var(--foreground); box-shadow: 0 0 0 1px var(--border); }
   .bd-list { display: grid; margin: 0; padding: 0; list-style: none; }
   .bd-list li + li { border-top: 1px solid var(--border); }

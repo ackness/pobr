@@ -38,27 +38,32 @@ for (const width of [390, 1440]) {
   });
 }
 
-test('configured-only filtering includes imported false values, composes with search and follows reset', async ({ page }) => {
-  const code = deflateSync('<PathOfBuilding2><Build level="40" className="Witch"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree><Skills/><Items/><Config><Input name="buffOnslaught" boolean="false"/><Input name="enemyLevel" number="82"/></Config></PathOfBuilding2>').toString('base64url');
+test('modified filtering excludes defaults, composes with search and follows reset', async ({ page }) => {
+  const code = deflateSync('<PathOfBuilding2><Build level="40" className="Witch"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree><Skills/><Items/><Config><Input name="buffOnslaught" boolean="false"/><Input name="conditionEnemyShocked" boolean="true"/></Config></PathOfBuilding2>').toString('base64url');
   await start(page, code);
   await goTo(page, 'Config');
-  await page.getByRole('checkbox', { name: /Configured only/ }).check();
-  await expect(page.locator('#config-buffOnslaught')).toBeVisible();
-  await expect(page.locator('#config-buffOnslaught')).not.toBeChecked();
-  await expect(page.locator('#config-enemyLevel')).toHaveValue('82');
+  await page.getByRole('radio', { name: /^Modified/ }).click();
+  await expect(page.locator('#config-buffOnslaught')).toHaveCount(0);
   const search = page.getByRole('searchbox', { name: 'Search config options…' });
-  await search.fill('buffOnslaught');
+  await search.fill('conditionEnemyShocked');
   await expect(page.locator('.config-item')).toHaveCount(1);
-  await page.locator('#config-buffOnslaught').check();
+  await expect(page.locator('#config-conditionEnemyShocked')).toBeChecked();
+  await page.locator('#config-conditionEnemyShocked').uncheck();
+  await expect(page.locator('#config-conditionEnemyShocked')).toBeVisible();
+  await expect(page.locator('#config-conditionEnemyShocked')).not.toBeChecked();
+  await page.getByRole('radio', { name: 'All', exact: true }).click();
+  await page.getByRole('radio', { name: /^Modified/ }).click();
+  await expect(page.locator('#config-conditionEnemyShocked')).toHaveCount(0);
+  await page.getByRole('radio', { name: 'All', exact: true }).click();
+  await expect(page.locator('#config-conditionEnemyShocked')).not.toBeChecked();
   await page.getByRole('button', { name: /Restore imported\/default value/ }).click();
-  await expect(page.locator('#config-buffOnslaught')).not.toBeChecked();
-  await expect(page.locator('#config-buffOnslaught')).toBeVisible();
+  await page.getByRole('radio', { name: /^Modified/ }).click();
+  await expect(page.locator('#config-conditionEnemyShocked')).toBeChecked();
   await search.fill('no-such-condition');
-  // The view switch above the list has a button of the same name; this one is in the empty-search notice.
-  await page.locator('.search-empty').getByRole('button', { name: 'Show all options', exact: true }).click();
+  await page.locator('.search-empty').getByRole('button', { name: 'All', exact: true }).click();
   await expect(search).toHaveValue('');
-  await expect(page.getByRole('checkbox', { name: /Configured only/ })).not.toBeChecked();
-  expect((await saved(page)).params.config_inputs.buffOnslaught).toBe(false);
+  await expect(page.getByRole('radio', { name: 'All', exact: true })).toBeChecked();
+  expect((await saved(page)).params.config_inputs).toMatchObject({ buffOnslaught: false, conditionEnemyShocked: true });
 });
 
 test('editing and analysis shortcuts reach their target without changing the current build', async ({ page }) => {
@@ -107,13 +112,15 @@ test('a build without a main selection defaults to its highest-DPS skill and can
   const spark = rows.filter({ hasText: 'Spark' });
   await expect(spark).toBeVisible();
   const curse = rows.filter({ hasText: 'Elemental Weakness' });
-  await expect(curse.locator('.mod-value').first()).toHaveText('0');
-  await expect(curse).not.toContainText('Unavailable');
+  await expect(curse.locator('.mod-value').first()).toHaveText('—');
+  await expect(curse).toContainText('Non-damaging skill');
+  await expect(curse).not.toContainText('Not supported yet');
   await expect(rows.filter({ hasText: /Doom Blast|DoomBlast/ })).toBeVisible();
   const unavailable = rows.filter({ hasText: /Unknown Overview Skill|UnknownOverviewSkill/ });
-  await expect(unavailable).toContainText('Unavailable');
+  await expect(unavailable).toContainText('Not supported yet');
   await expect(unavailable.locator('.mod-value').first()).toHaveText('—');
-  await expect(unavailable.locator('.calc-error')).not.toHaveText('Unavailable:');
+  await expect(unavailable.locator('details')).not.toHaveAttribute('open');
+  await expect(unavailable.locator('summary')).toHaveText('Details');
   await expect(rows.filter({ hasText: 'Highest DPS' })).toHaveCount(1);
   expect((await saved(page)).params.main_socket_group).toBe(0);
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);

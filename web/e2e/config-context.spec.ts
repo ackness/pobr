@@ -58,15 +58,15 @@ test('applicable view hides irrelevant controls, all options exposes them, impor
   const search = page.getByLabel('Search config options…');
   const stacks = page.locator('.config-item[data-config-var="demonFormStacks"]');
   await search.fill('demonFormStacks');
-  await expect(page.getByRole('button', { name: 'Applicable to this build', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('radio', { name: 'Relevant to this build', exact: true })).toHaveAttribute('aria-checked', 'true');
   await expect(stacks).toHaveCount(0);
-  await page.locator('.config-view').getByRole('button', { name: 'Show all options', exact: true }).click();
+  await page.locator('.config-view').getByRole('radio', { name: 'All', exact: true }).click();
   await expect(stacks).toBeVisible();
   await expect(stacks).toContainText('Default · no saved value');
   await stacks.locator('input').fill('0');
   await stacks.locator('input').blur();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Applicable to this build', exact: true }).click();
+  await page.getByRole('radio', { name: 'Relevant to this build', exact: true }).click();
   await expect(stacks).toContainText('Saved value kept visible');
   await expect(stacks.locator('input')).toHaveValue('0');
 
@@ -74,7 +74,7 @@ test('applicable view hides irrelevant controls, all options exposes them, impor
   await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible();
   await go(page, 'Config');
   await search.fill('demonFormStacks');
-  await expect(stacks).toContainText('Not applicable to this build');
+  await expect(stacks).toContainText('Not relevant to this build');
   await expect(stacks.locator('input')).toHaveValue('0');
   await search.fill('BrandsInLastHalf');
   const half = page.locator('.config-item[data-config-var="BrandsInLastHalf"]');
@@ -151,7 +151,7 @@ test('read tracking is requested only while Config is open, including edits and 
   await expect(page.locator('.config-item[data-config-var="demonFormStacks"]')).toHaveCount(0);
 
   await clear();
-  await page.locator('.config-view').getByRole('button', { name: 'Show all options', exact: true }).click();
+  await page.locator('.config-view').getByRole('radio', { name: 'All', exact: true }).click();
   const stacks = page.locator('.config-item[data-config-var="demonFormStacks"] input');
   await stacks.fill('0');
   await stacks.blur();
@@ -179,7 +179,7 @@ test('an option that depends on the one just set appears in its own group, not i
   await importCode(page, code());
   await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
   await go(page, 'Config');
-  await page.locator('.config-view').getByRole('button', { name: 'Show all options', exact: true }).click();
+  await page.locator('.config-view').getByRole('radio', { name: 'All', exact: true }).click();
   const dependent = page.locator('#config-section-When-In-Combat .config-item[data-config-var="conditionChilledEffect"]');
   const promoted = page.locator('#config-section-Relevant-to-this-build .config-item[data-config-var="conditionChilledEffect"]');
   await expect(dependent).toBeVisible();
