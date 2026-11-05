@@ -135,6 +135,10 @@ run = "bash devs/scripts/driver.sh accuracy"
 description = "One poe.ninja build per ascendancy into a reference set: `mise run builds:fetch <set dir> [--pick first|last]`"
 run = "python3 devs/scripts/fetch-reference-builds.py"
 
+[tasks."audit:display"]
+description = "What the Web would show for real builds, without a browser: errors, raw ids in names, untranslated text and unsupported lines: `mise run audit:display [--release <tag> | --package <dir>] [--strict] <set dir | code.txt ...>`"
+run = "node web/scripts/display-audit.mjs"
+
 [tasks.build]
 description = "Build the game CLI, or forward explicit Cargo selectors"
 run = "bash devs/scripts/driver.sh build"

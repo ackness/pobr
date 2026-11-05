@@ -165,6 +165,29 @@ known 只适用于所选 stat set 的显示／无伤害规则、已写明的模�
 --oracle-cache 只读 compare 共用缓存，--refresh-missing 补缺。
 没有样本不等于通过，大量零值吻合也不证明非零机制正确。
 
+### 前端显示审计
+
+`mise run audit:display [--release <tag> | --package <目录或 .tar.gz>] [--strict] <构筑集 | 构筑目录 | code.txt ...>`
+不开浏览器，检查网页对真实构筑会显示什么。
+它运行前端自己的路径：WASM 导出（decode、calculate、lineUsage、skillMetrics、gemCatalog、translateLines）
+加上 `web/src/lib` 的显示模块（`nativeGemNames`、`skillDisplayName`、`GameTextLocalizer`），
+所以报告里的名字就是界面上的名字。
+
+- 引擎来源：默认用本地 `mise run web build` 的结果（`web/src/wasm/pkg` 与 `web/public/data`）；
+  `--package` 用独立 WASM 包；`--release v0.x.y` 下载该 Release 的包到 `.cache/display-audit/`，即线上版本。
+- 构筑：`mise run builds:fetch <集合目录>` 抓的 poe.ninja 构筑（每个升华一个），或任何含 `<名字>/code.txt` 的目录。
+- 报告分节，严重的在前：
+  - Errors：导出报错、主技能无法解析、非有限数值、生命与护盾都不大于 0。
+  - Raw ids：名字里出现原始 ID 或占位文本，按 en-US／zh-CN／zh-TW 分别检查。
+  - 未翻译的名字与词条行。
+  - 计算覆盖：未支持与未解析的行、未用上的宝石 stat。
+  - 其他。
+- `--strict`：Errors 或 Raw ids 非空，或宝石目录里有原始 ID 名时，以 1 退出。`--json` 写出逐构筑明细。
+- 局限：
+  - 计算请求只带 `pob_code`，不重建网页会话里的完整请求。
+  - “未翻译”是启发式判断：没有中文字符、含拉丁单词。
+  - 配置页、交易和对比界面不在检查范围内。
+
 ## 读取方、登记与解析边界
 
 ### 完整解析与规则分类
