@@ -13,6 +13,8 @@
 //! - [`encode_code`] / [`decode_code`]: wrap PoB Build Code encoding/decoding.
 //! - [`calculate_build_detailed`]: a full build from its code, with the
 //!   breakdowns of the stats asked for ([`render_breakdowns`] prints them).
+//! - [`Locale`]: `--lang`, mod and item lines in one of the data pack's
+//!   locales on input, and the reports' English lines shown in it.
 
 use std::path::PathBuf;
 
@@ -34,9 +36,11 @@ use serde::Serialize;
 use thiserror::Error;
 
 mod breakdown;
+mod locale;
 mod usage;
 
 pub use breakdown::{BuildDetail, StatBreakdownEntry, render_breakdowns};
+pub use locale::{Locale, SOURCE_LANGUAGE, available_languages};
 
 /// The unified error type for the CLI library layer.
 #[derive(Debug, Error)]
@@ -59,6 +63,17 @@ pub enum CliError {
     /// Game data failed to load (missing data dir / JSON deserialization failure).
     #[error("game data load error: {0}")]
     GameData(#[from] pobr_gamedata::LoadError),
+    /// `--lang` names a language the data pack does not provide.
+    #[error("unknown language {code:?}; available: {}", .available.join(", "))]
+    UnknownLanguage {
+        /// The code asked for.
+        code: String,
+        /// English and the locales the data pack declares.
+        available: Vec<String>,
+    },
+    /// A locale package could not be read.
+    #[error("locale error: {0}")]
+    Locale(String),
 }
 
 // calculate
@@ -150,9 +165,23 @@ fn minimal_session(req: &CalculateRequest) -> Result<CalculationSession, CliErro
     Ok(session)
 }
 
-/// Renders a [`CalculateResult`] as a pretty-printed JSON string.
-pub fn calculate_json(req: &CalculateRequest) -> Result<String, CliError> {
-    let result = calculate(req)?;
+/// Renders a [`CalculateResult`] as a pretty-printed JSON string. With a
+/// `locale`, mod lines written in it are read as their English canonical
+/// lines and the result's lines are shown in it.
+pub fn calculate_json(req: &CalculateRequest, locale: Option<&Locale>) -> Result<String, CliError> {
+    let Some(locale) = locale else {
+        return Ok(serde_json::to_string_pretty(&calculate(req)?)?);
+    };
+    let req = CalculateRequest {
+        input: req.input,
+        modifier_texts: req
+            .modifier_texts
+            .iter()
+            .map(|line| locale.parse_line(line))
+            .collect(),
+    };
+    let mut result = calculate(&req)?;
+    locale.localize_calculate(&mut result);
     Ok(serde_json::to_string_pretty(&result)?)
 }
 
@@ -300,11 +329,17 @@ pub fn parse_mod_with_data(text: &str, rules: &ParseModRules) -> Result<ParseMod
 
 /// Renders a [`ParseModReport`] as a pretty-printed JSON string.
 ///
-/// `data_dir` points at a version data directory; parser rules are compiled from it once.
-pub fn parse_mod_json(text: &str, data_dir: &std::path::Path) -> Result<String, CliError> {
+/// `data_dir` points at a version data directory; parser rules are compiled
+/// from it once. With a `locale`, a line written in it is parsed as its
+/// English canonical line.
+pub fn parse_mod_json(
+    text: &str,
+    data_dir: &std::path::Path,
+    locale: Option<&Locale>,
+) -> Result<String, CliError> {
     let data = GameData::new(data_dir);
     let rules = ParseModRules::from_game_data(&data)?;
-    let report = parse_mod_with_data(text, &rules)?;
+    let report = parse_mod_with_data(&canonical_line(text, locale), &rules)?;
     Ok(serde_json::to_string_pretty(&report)?)
 }
 
@@ -744,19 +779,45 @@ pub fn render_explain(report: &ExplainModReport) -> String {
     s
 }
 
+/// `text` as the parser reads it: its English canonical line when it is
+/// written in `locale`, otherwise as given.
+fn canonical_line(text: &str, locale: Option<&Locale>) -> String {
+    locale.map_or_else(|| text.to_string(), |locale| locale.parse_line(text))
+}
+
+/// [`explain_mod`] of `text` read through `locale`; the report's `input`
+/// stays the text as given.
+fn explain_mod_localized(
+    text: &str,
+    rules: &ParseModRules,
+    locale: Option<&Locale>,
+) -> Result<ExplainModReport, CliError> {
+    let mut report = explain_mod(&canonical_line(text, locale), rules)?;
+    report.input = text.to_string();
+    Ok(report)
+}
+
 /// The `explain-mod` JSON output (`--json`): compiles rules from game data once, then dissects.
-pub fn explain_mod_json(text: &str, data_dir: &std::path::Path) -> Result<String, CliError> {
+pub fn explain_mod_json(
+    text: &str,
+    data_dir: &std::path::Path,
+    locale: Option<&Locale>,
+) -> Result<String, CliError> {
     let data = GameData::new(data_dir);
     let rules = ParseModRules::from_game_data(&data)?;
-    let report = explain_mod(text, &rules)?;
+    let report = explain_mod_localized(text, &rules, locale)?;
     Ok(serde_json::to_string_pretty(&report)?)
 }
 
 /// The `explain-mod` human-readable text output (the CLI default): compiles rules from game data once, then dissects.
-pub fn explain_mod_text(text: &str, data_dir: &std::path::Path) -> Result<String, CliError> {
+pub fn explain_mod_text(
+    text: &str,
+    data_dir: &std::path::Path,
+    locale: Option<&Locale>,
+) -> Result<String, CliError> {
     let data = GameData::new(data_dir);
     let rules = ParseModRules::from_game_data(&data)?;
-    let report = explain_mod(text, &rules)?;
+    let report = explain_mod_localized(text, &rules, locale)?;
     Ok(render_explain(&report))
 }
 
@@ -868,8 +929,20 @@ pub fn parse_item(req: &ParseItemRequest) -> Result<ParseItemReport, CliError> {
 }
 
 /// Renders a [`ParseItemReport`] as a pretty-printed JSON string.
-pub fn parse_item_json(req: &ParseItemRequest) -> Result<String, CliError> {
-    let report = parse_item(req)?;
+///
+/// With a `locale`, the item's lines written in it are read as their English
+/// canonical lines, and the report's base and lines are shown in it.
+pub fn parse_item_json(
+    req: &ParseItemRequest,
+    locale: Option<&Locale>,
+) -> Result<String, CliError> {
+    let Some(locale) = locale else {
+        return Ok(serde_json::to_string_pretty(&parse_item(req)?)?);
+    };
+    let mut report = parse_item(&ParseItemRequest {
+        text: locale.parse_text(&req.text),
+    })?;
+    locale.localize_item(&mut report);
     Ok(serde_json::to_string_pretty(&report)?)
 }
 
@@ -1692,25 +1765,49 @@ pub struct ExplainWithMarginal {
 pub fn explain_mod_with_marginal_text(
     text: &str,
     req: &MarginalRequest,
+    locale: Option<&Locale>,
 ) -> Result<String, CliError> {
     let data = GameData::new(req.data_dir.clone());
     let rules = ParseModRules::from_game_data(&data)?;
-    let explain = explain_mod(text, &rules)?;
-    let marginal = marginal_contribution(req)?;
+    let explain = explain_mod_localized(text, &rules, locale)?;
+    let marginal = localized_marginal(req, locale)?;
     let mut s = render_explain(&explain);
     s.push_str(&render_marginal(&marginal));
     Ok(s)
+}
+
+/// [`marginal_contribution`] with the candidate lines read through `locale`
+/// and the report's lines shown in it.
+fn localized_marginal(
+    req: &MarginalRequest,
+    locale: Option<&Locale>,
+) -> Result<MarginalReport, CliError> {
+    let Some(locale) = locale else {
+        return marginal_contribution(req);
+    };
+    let req = MarginalRequest {
+        mod_texts: req
+            .mod_texts
+            .iter()
+            .map(|line| locale.parse_line(line))
+            .collect(),
+        ..req.clone()
+    };
+    let mut report = marginal_contribution(&req)?;
+    locale.localize_marginal(&mut report);
+    Ok(report)
 }
 
 /// `explain-mod --build --json`: the anatomy plus marginal contribution, combined into one JSON object.
 pub fn explain_mod_with_marginal_json(
     text: &str,
     req: &MarginalRequest,
+    locale: Option<&Locale>,
 ) -> Result<String, CliError> {
     let data = GameData::new(req.data_dir.clone());
     let rules = ParseModRules::from_game_data(&data)?;
-    let explain = explain_mod(text, &rules)?;
-    let marginal = marginal_contribution(req)?;
+    let explain = explain_mod_localized(text, &rules, locale)?;
+    let marginal = localized_marginal(req, locale)?;
     Ok(serde_json::to_string_pretty(&ExplainWithMarginal {
         explain,
         marginal,

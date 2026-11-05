@@ -25,6 +25,7 @@ CLI 完整构筑和 marginal（逐来源边际贡献）结果带数据版本、�
 | `output.ehp` | 实际 EHP 输入与过程量：逐类型敌人伤害、转换后承伤、资源池、命中次数、伤害概率与避开概率。 |
 | `--reference-basis` | output 与分解改用参考口径，并标 reference_basis。 |
 | `--usage` | 返回逐行 usage，始终用全部模型开启的游戏口径，不随 reference-basis 改变。 |
+| `--lang <code>`（全局） | 输入的词条行／物品文本若是该语言，先转成英文规范行再解析；输出里的词条行（`unsupported*`、分解的 `source_text`、usage 行）、物品名与基底名改用该语言显示。语言包来自数据包 `i18n/<code>/` 及其 `_meta.json` 声明的回退；数值、ID 与计算不变。`en-US` 不翻译；数据包没有的语言报错并列出可用语言；该语言链上没有词条模板时警告并保持英文。 |
 
 WASM `{ pob_code }` 请求把同类失败物品放入 `item_errors`。
 `line_usage_json`（JS `lineUsageJson`）接受与完整计算相同的请求，返回 `{ usage, item_errors }`，不缓存。

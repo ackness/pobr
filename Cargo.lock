@@ -435,6 +435,7 @@ dependencies = [
  "pobr-core",
  "pobr-data",
  "pobr-gamedata",
+ "pobr-i18n",
  "serde",
  "serde_json",
  "thiserror",
