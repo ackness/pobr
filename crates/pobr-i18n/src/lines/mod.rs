@@ -328,6 +328,7 @@ impl LineRenderer {
             }
         }
         let mut translator = LineTranslator::new(&templates, names);
+        translator.require_translated_captures();
         translator.set_affix_names(affixes);
         translator.set_rare_words(rare_words);
         Some(Self { translator })
