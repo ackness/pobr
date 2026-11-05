@@ -121,7 +121,8 @@ pub struct BuildData {
     /// one entry here; look a name up by id with [`Self::base_item_names`].
     pub base_items: HashMap<String, BaseItemDef>,
     /// The English canonical name of every base item, keyed by its id. Unlike
-    /// `base_items`, no base is lost when several share a name.
+    /// `base_items`, no base is lost when several share a name. Built from the
+    /// same list at load; a caller that edits `base_items` updates this too.
     pub base_item_names: BTreeMap<String, String>,
     /// Runtime constants injected into calc (the injection pipeline): assembled by
     /// [`load_runtime_constants`] from the domains `GameData::load_ruleset()` has
@@ -306,8 +307,9 @@ impl BuildData {
         self.derived = DerivedIndexes::default();
     }
 
-    /// Gem display name (lowercase) to primary effect id (same source as the gem
-    /// catalog: base items' gem name joined with the gem effects' gem id link).
+    /// Gem display name (lowercase) to primary effect id (the name-keyed base
+    /// items joined with the gem effects' gem id link; item-granted variants
+    /// decide a name shared by several effects).
     pub fn skill_id_by_gem_name(&self) -> &HashMap<String, String> {
         self.derived.skill_id_by_gem_name.get_or_init(|| {
             let gem_to_skill: HashMap<&str, &str> = self

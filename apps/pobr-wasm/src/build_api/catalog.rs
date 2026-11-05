@@ -247,13 +247,13 @@ fn gem_catalog_entries(
         })
     };
     // Several gem bases can grant the same effect. Prefer a named base with an
-    // attribute colour (the public gem; an ascendancy or internal copy is
-    // colourless), then any named base, then native minimum level and stable id.
-    // Placeholder names do not identify a public gem. Derive all metadata from
-    // the winner.
+    // attribute requirement (the public gem; the ascendancy, unique-granted and
+    // internal copies require no attributes), then any named base, then native
+    // minimum level and stable id. Placeholder names do not identify a public
+    // gem. Derive all metadata from the winner.
     let rank = |gem: &pobr_data::catalog::SkillGemDef| {
-        let coloured = matches!(gem.gem_colour, Some(1..=3));
-        match (has_display_name(&gem.id), coloured) {
+        let has_attributes = gem.str_pct + gem.dex_pct + gem.int_pct > 0;
+        match (has_display_name(&gem.id), has_attributes) {
             (true, true) => 0,
             (true, false) => 1,
             (false, _) => 2,
@@ -479,7 +479,7 @@ mod tests {
         // Herald of Ice shares its base name with the unique-granted copy; the
         // ordinary gem must still get its name instead of its metadata id.
         let game = pobr_gamedata::GameData::new(pobr_gamedata::current_data_dir());
-        let data = pobr_build::BuildData::load(&game).unwrap();
+        let mut data = pobr_build::BuildData::load(&game).unwrap();
         let zh_names = game.base_item_names("zh-TW").unwrap();
         let cn_names = game.base_item_names("zh-CN").unwrap();
         let entries = gem_catalog_entries(&data, &zh_names, &cn_names);
@@ -510,13 +510,23 @@ mod tests {
             assert_eq!(row.name, name, "{skill_id}");
             assert_eq!(row.name_zh_cn.as_ref(), cn_names.get(gem_id), "{skill_id}");
         }
-        // The public staff Unleash (Intelligence) beats the colourless
-        // ascendancy copy that grants the same effect.
+        // The public staff Unleash (Intelligence) beats the ascendancy copy,
+        // which grants the same effect but requires no attributes.
         let unleash = entries
             .iter()
             .find(|row| row.skill_id == "UnleashPlayer")
             .unwrap();
         assert_eq!(unleash.colour, Some("int"));
+
+        // A named base beats an unnamed one that would win on id.
+        data.base_item_names
+            .remove("Metadata/Items/Gems/SupportGemEmpoweredSparks");
+        let entries = gem_catalog_entries(&data, &zh_names, &cn_names);
+        let sparks = entries
+            .iter()
+            .find(|row| row.skill_id == "SupportEmpoweredSparksPlayer")
+            .unwrap();
+        assert_eq!(sparks.name, "Empowered Sparks II");
     }
 
     #[test]
@@ -542,10 +552,13 @@ mod tests {
             .cloned()
             .collect::<Vec<_>>();
         const PUBLIC_UNLEASH: &str = "Metadata/items/Gems/SkillGemStaffUnleash";
-        const PUBLIC_SNIPER: &str = "Metadata/Items/Gems/SkillGemSkeletalWarrior";
-        // These real-data pairs tie on level. Raise only the named candidates'
-        // requirements in this fixture so lower-level internal/ascendancy gems
-        // must still lose, with the entire public gem row preserved.
+        // Two bases with identical data (both "Skeletal Sniper"); the stable id
+        // decides, and either gives the same row.
+        const PUBLIC_SNIPER: &str = "Metadata/Items/Gems/SkillGemSkeletalSniper";
+        // These real-data pairs tie on level. Raise only the public Unleash's
+        // requirement in this fixture: the lower-level ascendancy copy, which
+        // requires no attributes, must still lose, with the entire public gem
+        // row preserved.
         let named_candidates = duplicate_families
             .iter()
             .filter(|gem| {
@@ -556,7 +569,7 @@ mod tests {
             })
             .cloned()
             .map(|mut gem| {
-                if matches!(gem.id.as_str(), PUBLIC_UNLEASH | PUBLIC_SNIPER) {
+                if gem.id == PUBLIC_UNLEASH {
                     gem.min_level_req = 20;
                 }
                 gem
