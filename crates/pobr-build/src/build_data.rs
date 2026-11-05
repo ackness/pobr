@@ -13,7 +13,7 @@
 //! and passed in by the caller; this module only reads its per-domain loaders and lands
 //! the result as a deterministic in-memory structure.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, OnceLock};
 
 use pobr_core::HighPrecisionRules;
@@ -116,8 +116,14 @@ pub struct BuildData {
     /// data pack lacks this domain).
     pub cost_types: Vec<CostTypeDef>,
     /// Item base table, keyed by the English canonical name (used to resolve an
-    /// equipped item's `Item.base` name to its weapon/armour base stats).
+    /// equipped item's `Item.base` name to its weapon/armour base stats). Bases
+    /// that share a name (an ordinary gem and the one a unique grants) keep only
+    /// one entry here; look a name up by id with [`Self::base_item_names`].
     pub base_items: HashMap<String, BaseItemDef>,
+    /// The English canonical name of every base item, keyed by its id. Unlike
+    /// `base_items`, no base is lost when several share a name. Built from the
+    /// same list at load; a caller that edits `base_items` updates this too.
+    pub base_item_names: BTreeMap<String, String>,
     /// Runtime constants injected into calc (the injection pipeline): assembled by
     /// [`load_runtime_constants`] from the domains `GameData::load_ruleset()` has
     /// data-driven; optional domains with a missing file fall back to `Default`
@@ -301,8 +307,9 @@ impl BuildData {
         self.derived = DerivedIndexes::default();
     }
 
-    /// Gem display name (lowercase) to primary effect id (same source as the gem
-    /// catalog: base items' gem name joined with the gem effects' gem id link).
+    /// Gem display name (lowercase) to primary effect id (the name-keyed base
+    /// items joined with the gem effects' gem id link; item-granted variants
+    /// decide a name shared by several effects).
     pub fn skill_id_by_gem_name(&self) -> &HashMap<String, String> {
         self.derived.skill_id_by_gem_name.get_or_init(|| {
             let gem_to_skill: HashMap<&str, &str> = self
@@ -659,11 +666,12 @@ impl BuildData {
 
         let cost_types = data.cost_types()?;
 
-        let base_items = data
-            .base_items()?
-            .into_iter()
-            .map(|b| (b.name.clone(), b))
+        let all_bases = data.base_items()?;
+        let base_item_names = all_bases
+            .iter()
+            .map(|b| (b.id.clone(), b.name.clone()))
             .collect();
+        let base_items = all_bases.into_iter().map(|b| (b.name.clone(), b)).collect();
 
         let mut ruleset = data.load_ruleset()?;
         let constants = runtime_constants_from(data, &mut ruleset)?;
@@ -836,6 +844,7 @@ impl BuildData {
             gem_effects,
             cost_types,
             base_items,
+            base_item_names,
             constants: Arc::new(constants),
             jewel_radii,
             passive_jewels: data.passive_jewels()?.unwrap_or_default(),
@@ -876,6 +885,7 @@ impl BuildData {
             gem_effects: HashMap::new(),
             cost_types: Vec::new(),
             base_items: HashMap::new(),
+            base_item_names: BTreeMap::new(),
             constants: Arc::default(),
             jewel_radii: JewelRadiiDef::default(),
             passive_jewels: Default::default(),

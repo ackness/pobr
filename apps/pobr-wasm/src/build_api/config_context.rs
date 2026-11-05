@@ -30,18 +30,14 @@ pub(super) fn collect(
         .map(|n| n.to_string())
         .collect();
     let mut skills = BTreeSet::new();
-    let base_names: BTreeMap<_, _> = data
-        .base_items
-        .values()
-        .map(|base| (base.id.as_str(), base.name.as_str()))
-        .collect();
+    let base_names = &data.base_item_names;
     let mut gem_names: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
     for gem in data.skill_gems.values() {
         if let (Some(effect), Some(name)) = (
             gem.granted_effect_id.as_deref(),
             base_names.get(gem.id.as_str()),
         ) {
-            gem_names.entry(effect).or_default().insert(name);
+            gem_names.entry(effect).or_default().insert(name.as_str());
         }
     }
     let mut types: BTreeSet<String> = cfg

@@ -268,9 +268,9 @@ fn translator(lang: &str, direction: Direction) -> Option<Translator> {
         }
         let packs: Vec<&LocalePack> = chain.iter().filter_map(|c| locales.packs.get(c)).collect();
         let bases = data
-            .base_items
-            .values()
-            .map(|def| (def.id.as_str(), def.name.as_str()));
+            .base_item_names
+            .iter()
+            .map(|(id, name)| (id.as_str(), name.as_str()));
         let built = match direction {
             Direction::Parse => {
                 let parser = has_templates
