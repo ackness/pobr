@@ -116,8 +116,15 @@ pub fn calculate_json(input_json: &str) -> Result<String, String> {
             .ok_or("game data has no parser rules (overlay/mod_parser_rules.json)")?;
         session.set_parser_rules(rules);
     }
+    // A blank line holds no modifier (`parseLocalizedLines` returns one for a
+    // line whose text a multi-line description put into the line before it).
     session
-        .add_modifier_texts(&request.modifiers)
+        .add_modifier_texts(
+            request
+                .modifiers
+                .iter()
+                .filter(|text| !text.trim().is_empty()),
+        )
         .map_err(|err| format!("failed to parse modifier: {err}"))?;
 
     let output = session

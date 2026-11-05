@@ -240,6 +240,12 @@ pub fn translate_runs<S: AsRef<str>>(
     runs
 }
 
+/// Whether `translated` is the `""` [`spread_runs`] gives a non-blank
+/// `source` line whose text went into the line before it.
+pub fn is_continuation(source: &str, translated: &str) -> bool {
+    translated.is_empty() && !source.trim().is_empty()
+}
+
 /// One output per input line from `runs` over `len` lines: a run of one
 /// line gives its translation; a joined run whose translation has as many
 /// lines gives one translated line to each of its inputs; otherwise the

@@ -1091,6 +1091,39 @@ fn lang_reads_a_description_written_on_two_lines_together() {
 }
 
 #[test]
+fn lang_never_joins_lines_whose_repeated_values_differ() {
+    let locale = zh_cn();
+    // The pack has "附加 {0} - {1} 冰霜伤害\n玩家及其召唤生物附加 {0} - {1} 冰霜伤害"
+    // (one value pair on both lines); these lines carry two different pairs.
+    let typed = [
+        "附加 5 - 10 冰霜伤害",
+        "玩家及其召唤生物附加 3 - 4 冰霜伤害",
+    ];
+    let request = |texts: &[&str]| CalculateRequest {
+        input: pobr_core::calc::MinimalInput {
+            base_hit_min: 1.0,
+            base_hit_max: 1.0,
+            base_action_rate: 1.0,
+            ..base_input()
+        },
+        modifier_texts: texts.iter().map(|line| line.to_string()).collect(),
+    };
+    let hit = |json: String| {
+        serde_json::from_str::<serde_json::Value>(&json).unwrap()["output"]["total_hit_avg"]
+            .as_f64()
+            .unwrap()
+    };
+    let localized = hit(pobr_cli::calculate_json(&request(&typed), Some(&locale)).unwrap());
+    let first_alone = hit(pobr_cli::calculate_json(&request(&typed[..1]), Some(&locale)).unwrap());
+    assert_eq!(localized, first_alone);
+    assert_eq!(localized, 8.5);
+    // A blank line holds no modifier and is not reported.
+    let json = pobr_cli::calculate_json(&request(&["", "Adds 5 to 10 Cold Damage"]), None).unwrap();
+    let value: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(value["unsupported"], serde_json::json!([]));
+}
+
+#[test]
 fn lang_reports_unsupported_lines_as_typed() {
     let locale = zh_cn();
     // Recognised by the zh-CN templates (so it reaches the parser in English),

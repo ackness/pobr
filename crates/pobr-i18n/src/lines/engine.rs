@@ -732,8 +732,10 @@ fn find_ignore_ascii_case(haystack: &str, needle: &str) -> Option<usize> {
 /// between placeholders becomes a captured value. With `allow_string=false`,
 /// captures must be numeric-shaped (primary channel); with `true`, non-empty
 /// strings without newlines are also accepted (the fallback channel, where
-/// candidates are already gated by strong anchors). Returns
-/// `placeholder index -> captured text` on success.
+/// candidates are already gated by strong anchors). A placeholder that
+/// appears more than once (the same value on two lines of a description)
+/// must capture the same text each time. Returns `placeholder index ->
+/// captured text` on success.
 fn match_segments(
     line: &str,
     segments: &[Segment],
@@ -756,7 +758,7 @@ fn match_segments(
                 let found = find_ignore_ascii_case(&line[pos..], lit)?;
                 if let Some(index) = pending.take() {
                     let value = accept_capture(&line[pos..pos + found], allow_string)?;
-                    values.insert(index, value);
+                    insert_capture(&mut values, index, value)?;
                 } else if found != 0 {
                     return None;
                 }
@@ -766,11 +768,25 @@ fn match_segments(
     }
     if let Some(index) = pending {
         let value = accept_capture(&line[pos..], allow_string)?;
-        values.insert(index, value);
+        insert_capture(&mut values, index, value)?;
     } else if pos != line.len() {
         return None;
     }
     Some(values)
+}
+
+/// Records a placeholder's captured value; `None` when the placeholder
+/// already captured a different one (so a template repeating `{0}` on two
+/// lines does not join two lines with different values, the second silently
+/// replacing the first).
+fn insert_capture(values: &mut HashMap<usize, String>, index: usize, value: String) -> Option<()> {
+    match values.get(&index) {
+        Some(previous) if *previous != value => None,
+        _ => {
+            values.insert(index, value);
+            Some(())
+        }
+    }
 }
 
 /// Substitutes captured values back into the English template (`{N}` /

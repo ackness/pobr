@@ -210,7 +210,9 @@ impl Locale {
     }
 
     /// Renders `lines` as one list (adjacent lines one multi-line template
-    /// covers are rendered together; see [`LineRenderer::render_lines`]).
+    /// covers are rendered together; see [`LineRenderer::render_lines`]). A
+    /// report row is never left blank: a line whose text went into the one
+    /// before it keeps its English text.
     fn render_all<'a>(&self, lines: impl IntoIterator<Item = &'a mut String>) {
         let Some(renderer) = self.renderer() else {
             return;
@@ -218,7 +220,9 @@ impl Locale {
         let mut lines: Vec<&mut String> = lines.into_iter().collect();
         let rendered = renderer.render_lines(lines.iter().map(|line| line.to_string()));
         for (line, rendered) in lines.iter_mut().zip(rendered) {
-            **line = rendered;
+            if !pobr_i18n::lines::is_continuation(line, &rendered) {
+                **line = rendered;
+            }
         }
     }
 

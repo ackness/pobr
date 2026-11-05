@@ -270,6 +270,10 @@ fn multiline_pack() -> LocalePack {
         // One English line, two localized lines.
         {"src": "力量的固有加成改为\n每 1 点力量 +{0} 命中值",
          "en": "Inherent bonus of Strength grants +{0} to Accuracy Rating per Strength instead"},
+        // The same values on both lines (a placeholder repeated across lines).
+        {"src": "附加 {0} - {1} 冰霜伤害", "en": "Adds {0} to {1} Cold Damage"},
+        {"src": "附加 {0} - {1} 冰霜伤害\n玩家及其召唤生物附加 {0} - {1} 冰霜伤害",
+         "en": "{0} to {1} added Cold Damage\nPlayers and their Minions have {0} to {1} added Cold Damage"},
         // A name capture, alone and on the first of two lines.
         {"src": "{0}范围内的天赋可以配置", "en": "Passives in Radius of {0} can be Allocated"},
         {"src": "{}范围内的天赋可以在\n未连结至天赋树的情况下配置",
@@ -549,4 +553,36 @@ fn runs_cover_every_line_once_in_order() {
     // A one-line stretch that renders as two lines keeps them in its slot.
     let runs = translate_runs(&["x"], |_| 3, |_| Some("X\nY".to_string()));
     assert_eq!(spread_runs(&runs, 1), [Some("X\nY".to_string())]);
+}
+
+#[test]
+fn a_repeated_placeholder_joins_only_lines_with_the_same_value() {
+    let pack = multiline_pack();
+    let parser = LineParser::new(&[&pack], []).unwrap();
+    // Different values: two separate lines, the first read alone (the
+    // second has no template of its own), never one with the second's values.
+    assert_eq!(
+        parser.parse_lines(&[
+            "附加 5 - 10 冰霜伤害",
+            "玩家及其召唤生物附加 3 - 4 冰霜伤害"
+        ]),
+        [Some("Adds 5 to 10 Cold Damage".into()), None]
+    );
+    assert_eq!(
+        parser.parse_lines(&[
+            "附加 5 - 10 冰霜伤害",
+            "玩家及其召唤生物附加 5 - 10 冰霜伤害"
+        ]),
+        [
+            Some("5 to 10 added Cold Damage".into()),
+            Some("Players and their Minions have 5 to 10 added Cold Damage".into()),
+        ]
+    );
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    assert_eq!(
+        renderer.render_line(
+            "5 to 10 added Cold Damage\nPlayers and their Minions have 3 to 4 added Cold Damage"
+        ),
+        None
+    );
 }
