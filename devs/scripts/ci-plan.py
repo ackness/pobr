@@ -22,6 +22,9 @@ FULL_FILES = {
     "devs/scripts/setup-environment.sh", "devs/scripts/pob2-luajit.sh",
 }
 DOCUMENTATION_SIDECARS = {"apps/pobr-wasm/tests/fixtures/pob2-planner.md"}
+# Web files generated from game data; the automation contracts check them
+# against the prepared snapshot (test_workflows.py).
+DATA_DERIVED_WEB = {"web/src/lib/configGameRelevance.json"}
 
 
 def documentation(name):
@@ -54,7 +57,8 @@ def classify(files):
             if name in {"web/README.md", "web/README.zh-CN.md"}:
                 continue
             plan["web"] = True
-            if name.startswith(("web/scripts/", "web/public/", "web/worker-tests/")):
+            if (name.startswith(("web/scripts/", "web/public/", "web/worker-tests/"))
+                    or name in DATA_DERIVED_WEB):
                 plan["scripts"] = True
         elif name.endswith(".txt") and "/fixtures/" not in name:
             continue

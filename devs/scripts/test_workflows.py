@@ -2253,6 +2253,20 @@ class ConfigCoverageTests(unittest.TestCase):
         self.assertEqual(actual, self.coverage.config_relevance.web_manifest(directory),
                          "regenerate with python3 devs/scripts/config_relevance.py")
 
+    def test_owned_config_options_may_not_share_a_var(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            version = Path(temporary) / "9.9"
+            (version / "overlay").mkdir(parents=True)
+            (Path(temporary) / "overlay-common").mkdir()
+            (version / "overlay/config_options.json").write_text(json.dumps({"options": [{"var": "a"}]}))
+            for name in ("one", "two"):
+                (Path(temporary) / f"overlay-common/{name}_config_options.json").write_text(
+                    json.dumps({"options": [{"var": "a", "owner": name}]}))
+            with self.assertRaisesRegex(ValueError, "a is owned by both one_config_options.json"):
+                self.coverage.config_relevance.catalog_options(version)
+            (Path(temporary) / "overlay-common/two_config_options.json").unlink()
+            self.assertEqual(self.coverage.config_relevance.catalog_options(version), [{"var": "a", "owner": "one"}])
+
     def test_registry_only_counts_registrations_not_comments_or_stubs(self):
         text = '''
         // registry.register("config:comment", stub);

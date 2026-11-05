@@ -12,6 +12,7 @@ PoBR 不从 PoB2 vendor Lua 或本地原表导出生产数据。
 四份完整快照、七份外部shared、历史大policy及完整语言／API样本已迁出当前Git tree；无旧PoBR数据artifact回退。本地活动目标保持0.5.5.5，Git历史不改写。详见[存储边界](../docs/data-architecture.md#4-存储边界)。
 
 换数据是一次人工审阅的数据锁修改：`mise run data:bump <owner> <tag>` 改锁并导入，再经 PR 与完整 CI 合并。PoBR 不自动发现或采用 owner 发布。
+合并本身不部署网站；新数据随下一个稳定 `v0.x.y` tag 上线（见[更新、采用与发布](../docs/data-architecture.md#5-更新采用与发布)）。
 当前核对与优化顺序以[数据现状](../docs/data-status.md)为准。
 
 ## 功能目录
