@@ -377,7 +377,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
         <WeaponSetControl session={session} lang={lang} />
         <AppButton aria-expanded={crafting} onClick={() => { setCrafting(value => !value); setUniques(false); }}>{craftT(lang, crafting ? 'close' : 'craft')}</AppButton>
         <AppButton aria-expanded={uniques} onClick={() => { setUniques(value => !value); setCrafting(false); }}>{uniqueT(lang, uniques ? 'close' : 'title')}</AppButton>
-        {onUpgrade && <AppButton onClick={() => onUpgrade(selected && !isLimbSlot(selected) ? selected : "weapon1")}>{tt("trade.findBetter")} ↗</AppButton>}
+        {onUpgrade && <AppButton onClick={() => onUpgrade(selected && !isLimbSlot(selected) ? selected : "weapon1")}>{tt("trade.findBetter")}</AppButton>}
       </PageHeader>
       <p className="weapon-set-hint">{tt('weapons.hint')}</p>
       {uniques && <UniqueCatalog session={session} lang={lang} />}

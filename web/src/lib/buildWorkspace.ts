@@ -51,9 +51,37 @@ export function selectWorkspaceStage(workspace: BuildWorkspace, buildId: string,
   }) };
 }
 
-export function addWorkspaceBuild(workspace: BuildWorkspace, name: string, saved: SavedSession): BuildWorkspace {
+/** The same initial content is used for a fresh session and first-import cleanup. */
+export function defaultStarterSession(className: string): SavedSession {
+  return { version: 1, notes: '', state: {
+    pobCode: null, character: { level: 1, class_name: className, ascendancy_name: '' },
+    allocatedNodes: [], attributeChoices: {}, socketGroups: [], items: [], flasks: [], limbs: [], jewels: [],
+    annotations: {}, params: { config_inputs: {} },
+  } };
+}
+
+/** Ignore object key order and the empty optional fields materialized on reload. */
+function starterContent(saved: SavedSession): string {
+  const state = saved.state;
+  return JSON.stringify({ ...saved, state: { ...state,
+    treeVersion: state.treeVersion ?? null, weaponSwap: state.weaponSwap ?? null,
+    equipmentJewels: state.equipmentJewels ?? [],
+  } }, (_key, value) => value && typeof value === 'object' && !Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined).sort(([a], [b]) => a.localeCompare(b))) : value);
+}
+
+/** Identify the sole, unnamed default by content, including after a reload. */
+export function appendImportedBuild(workspace: BuildWorkspace, build: LocalBuild, defaultStarter?: SavedSession | null): BuildWorkspace {
+  const starter = workspace.builds[0], stage = starter.stages[0];
+  const replaceStarter = !!defaultStarter && workspace.builds.length === 1 && starter.name === ''
+    && starter.stages.length === 1 && stage.name === '' && Object.keys(stage.drafts).length === 0
+    && starterContent(stage.saved) === starterContent(defaultStarter);
+  return { ...workspace, activeBuild: build.id, builds: [...(replaceStarter ? [] : workspace.builds), build] };
+}
+
+export function addWorkspaceBuild(workspace: BuildWorkspace, name: string, saved: SavedSession, defaultStarter?: SavedSession | null): BuildWorkspace {
   const added = createWorkspace(saved);
-  return { ...workspace, activeBuild: added.activeBuild, builds: [...workspace.builds, { ...added.builds[0], name: name.trim() }] };
+  return appendImportedBuild(workspace, { ...added.builds[0], name: name.trim() }, defaultStarter);
 }
 
 export function duplicateWorkspaceStage(workspace: BuildWorkspace, name: string): BuildWorkspace {

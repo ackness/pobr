@@ -38,7 +38,7 @@ Implicits: 0</Item>
     await page.locator('.trade-position').filter({ hasText: 'Body Armour' }).click();
     await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
     const reference = page.locator('.upgrade-score-reference');
-    await expect(reference).toContainText('Comparable stat score', { timeout: 60_000 });
+    await expect(reference).toContainText('All recognised modifiers scored', { timeout: 60_000 });
     const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
     const sum = query.query.stats[0];
     const value = (id: string) => sum.filters.find((filter: { id: string }) => filter.id === id)?.value.weight;
@@ -47,7 +47,7 @@ Implicits: 0</Item>
     if (nodes) expect(goring).toBeUndefined();
     else expect(goring).toBeGreaterThan(0);
     expect(sum.value.min).toBeCloseTo(97 * life + (goring ?? 0), 3);
-    await expect(page.locator('.trade-minimum')).toContainText('Minimum Sum in this search');
+    await expect(page.locator('.trade-minimum')).toContainText('Minimum ranking score in this search');
     if (!nodes) await openLibrary(page);
   }
   await page.locator('.trade-position').filter({ hasText: /^Main Hand/ }).click();
@@ -82,7 +82,7 @@ test('alloy hybrid effects enter real-WASM weights and the crafted item market m
   await page.locator('.trade-position').filter({ hasText: /^Main Hand/ }).click();
   await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
   const reference = page.locator('.upgrade-score-reference');
-  await expect(reference).toContainText('Comparable stat score');
+  await expect(reference).toContainText('All recognised modifiers scored');
   const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
   const sum = query.query.stats[0];
   const value = (id: string) => sum.filters.find((filter: { id: string }) => filter.id === id)?.value.weight;
@@ -139,7 +139,7 @@ test('imported PoB armour and belt use their full explicit Sum as the market min
     await page.locator('.trade-position').filter({ hasText: slot }).click();
     await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
     const reference = page.locator('.upgrade-score-reference');
-    await expect(reference).toContainText('Comparable stat score', { timeout: 60_000 });
+    await expect(reference).toContainText('All recognised modifiers scored', { timeout: 60_000 });
     const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
     const sum = query.query.stats[0];
     const lifeWeight = sum.filters.find((filter: { id: string }) => filter.id === 'explicit.stat_3299347043').value.weight;
@@ -147,7 +147,7 @@ test('imported PoB armour and belt use their full explicit Sum as the market min
     const percent = slot === 'Body Armour' ? sum.filters.find((filter: { id: string }) => filter.id === 'explicit.stat_983749596')?.value.weight : 0;
     if (slot === 'Body Armour') expect(percent).toBeGreaterThan(0);
     expect(sum.value.min).toBeCloseTo(life * lifeWeight + 8 * percent, 3);
-    expect(Number((await reference.locator('div > strong').first().innerText()).replaceAll(',', ''))).toBeCloseTo(life * lifeWeight + 8 * percent, 3);
+    expect(Number((await reference.locator('div > strong').first().innerText()).replaceAll(',', ''))).toBe(Math.round(life * lifeWeight + 8 * percent));
   }
 });
 
@@ -398,14 +398,18 @@ Small Passive Skills in Radius also grant 2% increased Spell Damage</Item><ItemS
     await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
     await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
     await expect(page.locator('.upgrade-score-reference')).toBeVisible({ timeout: 60_000 });
-    const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
-    const weights = query.query.stats.find((group: { type: string }) => group.type === 'weight')?.filters ?? [];
-    const spell = weights.find((stat: { id: string }) => stat.id === 'explicit.stat_1137305356');
     if (nodes.includes('9583')) {
+      const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
+      const weights = query.query.stats.find((group: { type: string }) => group.type === 'weight')?.filters ?? [];
+      const spell = weights.find((stat: { id: string }) => stat.id === 'explicit.stat_1137305356');
       expect(spell.value.weight).toBeGreaterThan(0);
       expect(weights.some((stat: { id: string }) => stat.id === 'explicit.stat_1022759479')).toBe(true);
       await page.screenshot({ path: test.info().outputPath('time-lost-search.png'), fullPage: true });
-    } else expect(weights).toHaveLength(0);
+    } else {
+      await expect(page.locator('.trade-market-link')).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Browse matching items', exact: true })).toBeDisabled();
+      await expect(page.getByText('No equipment scores are available for this calculation target; a trade search cannot be generated.')).toBeVisible();
+    }
     await openLibrary(page);
   }
 });
