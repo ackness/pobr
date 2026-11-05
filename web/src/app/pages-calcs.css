@@ -199,6 +199,7 @@
   .shell-root .calcs-page.calcs-workspace .ledger-extra ul { margin: 0 0 .5rem; padding: 0; list-style: none; border-top: 1px solid var(--border); }
   .shell-root .calcs-page.calcs-workspace .ledger-extra li { display: grid; grid-template-columns: minmax(8rem, 16rem) minmax(0, 1fr) auto; gap: .2rem 1rem; padding: .45rem 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
   .shell-root .calcs-page.calcs-workspace .ledger-extra li > span, .shell-root .calcs-page.calcs-workspace .ledger-extra li > small { color: var(--muted-foreground); }
+  .shell-root .calcs-page.calcs-workspace .ledger-extra li > .ledger-raw-id { grid-column: 1 / -1; font-family: var(--font-mono, monospace); font-size: var(--text-xs, .75rem); color: var(--muted-foreground); }
   .shell-root .calcs-page.calcs-workspace .ledger-errors { margin: 0; padding: 0; list-style: none; }
 
   /* ── Smaller screens and larger text ───────────────────────────────────── */

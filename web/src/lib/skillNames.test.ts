@@ -30,3 +30,15 @@ test('summoner gem names omit the unresolved monster template in each language',
   expect(gemDisplayName({ ...summoner, name: 'Spectre: {0}' }, 'en-US')).toBe('Spectre');
   expect(gemDisplayName({ ...summoner, name: 'Command: Charge' }, 'en-US')).toBe('Command: Charge');
 });
+
+test('synthetic Thorns and Explode groups get interface labels, only for those ids', () => {
+  expect(skillDisplayName('ThornsPlayer', 'en-US', catalog)).toBe('Thorns');
+  expect(skillDisplayName('ThornsPlayer', 'zh-CN', catalog)).toBe('荆棘');
+  expect(skillDisplayName('ThornsPlayer', 'zh-TW', catalog)).toBe('荊棘');
+  expect(skillDisplayName('EnemyExplode', 'en-US', catalog)).toBe('Explode');
+  expect(skillDisplayName('EnemyExplode', 'zh-CN', catalog)).toBe('爆炸');
+  expect(skillDisplayName('EnemyExplode', 'zh-TW', catalog)).toBe('爆炸');
+  expect(skillDisplayName('OtherEnemyThing', 'zh-CN', catalog)).toBe('Other Enemy Thing');
+  const gem = { ...wind, skill_id: 'ThornsPlayer', name: 'Real Thorns', name_zh_cn: '真荆棘' };
+  expect(skillDisplayName('ThornsPlayer', 'zh-CN', new Map([[gem.skill_id, gem]]))).toBe('真荆棘');
+});

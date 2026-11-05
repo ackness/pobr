@@ -1,6 +1,12 @@
 import { localizedName } from './chinese';
 import type { GemCatalogEntry } from '../api/types';
-import type { Lang } from './i18n';
+import { t, type Lang } from './i18n';
+
+/** Groups the build decoder synthesizes from PoB (not gems), so the gem catalog never has them. */
+const SYNTHETIC_SKILL_LABELS = {
+  ThornsPlayer: 'skill.synthetic.ThornsPlayer',
+  EnemyExplode: 'skill.synthetic.EnemyExplode',
+} as const;
 
 export function prettySkillId(id: string): string {
   return id.replace(/Player(Two)?$/, '').replace(/^Support/, '').replace(/([a-z0-9])([A-Z])/g, '$1 $2');
@@ -26,5 +32,6 @@ export function skillDisplayName(id: string, lang: Lang, byId: ReadonlyMap<strin
       return `${gemDisplayName(gem, lang)}（${lang === 'zh-TW' ? kind.replace('属', '屬') : kind}${suffix}）`;
     }
   }
+  if (Object.hasOwn(SYNTHETIC_SKILL_LABELS, id)) return t(lang, SYNTHETIC_SKILL_LABELS[id as keyof typeof SYNTHETIC_SKILL_LABELS]);
   return prettySkillId(id);
 }

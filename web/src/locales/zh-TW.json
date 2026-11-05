@@ -461,6 +461,8 @@
     "items.unequip": "（卸下）",
     "items.currentItem": "（當前物品）",
     "items.jewels": "珠寶（在天賦樹頁點插槽編輯）",
+    "skill.synthetic.ThornsPlayer": "荊棘",
+    "skill.synthetic.EnemyExplode": "爆炸",
     "calcs.title": "計算明細",
     "calcs.mods": "條",
     "calcs.baseTotal": "基礎合計",
