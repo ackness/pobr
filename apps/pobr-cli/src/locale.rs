@@ -11,9 +11,19 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use pobr_gamedata::GameData;
-use pobr_i18n::{LineParser, LineRenderer, LocaleMeta, LocalePack, NameKind};
+use pobr_i18n::{LineParser, LineRenderer, LocaleMeta, LocalePack, NameKind, TextOrigin};
 
 use crate::{CalculateBuildReport, CalculateResult, CliError, MarginalReport, ParseItemReport};
+
+/// Appended in text output to a line the translation repository's own
+/// supplement text renders (a report's `origins`), never to official text.
+pub const SUPPLEMENT_MARKER: &str = "†";
+
+/// The line text output ends with when it marked any line.
+pub const SUPPLEMENT_FOOTNOTE: &str = "† 非官方译文（本项目补译）";
+
+/// Who wrote each rendered text that is not official.
+type Origins = BTreeMap<String, TextOrigin>;
 
 // Untranslated report lines are what the user typed already; translated ones
 // are mapped back to it ([`TypedInput`]), never re-rendered.
@@ -113,6 +123,19 @@ impl Locale {
         Ok(locale)
     }
 
+    /// A locale over packs the caller loaded: `packs` is the chain (the
+    /// locale's own pack first), `bases` the `(base item id, English name)`
+    /// pairs its base names are joined through.
+    pub fn from_packs(code: &str, packs: Vec<LocalePack>, bases: Vec<(String, String)>) -> Self {
+        Self {
+            code: code.to_string(),
+            packs,
+            bases,
+            parser: OnceCell::new(),
+            renderer: OnceCell::new(),
+        }
+    }
+
     /// The locale code.
     pub fn code(&self) -> &str {
         &self.code
@@ -204,23 +227,37 @@ impl Locale {
     /// The locale's display form of an English line; a line nothing
     /// recognizes comes back as given.
     pub fn render_line(&self, line: &str) -> String {
+        self.render_line_with_origin(line).0
+    }
+
+    /// [`Self::render_line`] and who wrote the text when it is not official.
+    pub fn render_line_with_origin(&self, line: &str) -> (String, Option<TextOrigin>) {
         self.renderer()
-            .and_then(|renderer| renderer.render_line(line))
-            .unwrap_or_else(|| line.to_string())
+            .and_then(|renderer| renderer.render_line_with_origin(line))
+            .unwrap_or_else(|| (line.to_string(), None))
     }
 
     /// Renders `lines` as one list (adjacent lines one multi-line template
-    /// covers are rendered together; see [`LineRenderer::render_lines`]). A
+    /// covers are rendered together; see [`LineRenderer::render_lines`]),
+    /// recording the rendered texts that are not official in `origins`. A
     /// report row is never left blank: a line whose text went into the one
     /// before it keeps its English text.
-    fn render_all<'a>(&self, lines: impl IntoIterator<Item = &'a mut String>) {
+    fn render_all<'a>(
+        &self,
+        lines: impl IntoIterator<Item = &'a mut String>,
+        origins: &mut Origins,
+    ) {
         let Some(renderer) = self.renderer() else {
             return;
         };
         let mut lines: Vec<&mut String> = lines.into_iter().collect();
-        let rendered = renderer.render_lines(lines.iter().map(|line| line.to_string()));
-        for (line, rendered) in lines.iter_mut().zip(rendered) {
+        let rendered =
+            renderer.render_lines_with_origins(lines.iter().map(|line| line.to_string()));
+        for (line, (rendered, origin)) in lines.iter_mut().zip(rendered) {
             if !pobr_i18n::lines::is_continuation(line, &rendered) {
+                if let Some(origin) = origin {
+                    record(origins, &rendered, origin);
+                }
                 **line = rendered;
             }
         }
@@ -235,41 +272,131 @@ impl Locale {
     /// A `parse-item` report's base in the locale and its unsupported lines
     /// as they were typed (`typed` from [`Self::parse_text`]).
     pub fn localize_item(&self, report: &mut ParseItemReport, typed: &TypedInput) {
-        self.render_all(std::iter::once(&mut report.base));
+        let mut origins = Origins::new();
+        self.render_all(std::iter::once(&mut report.base), &mut origins);
+        report.origins.extend(origins);
         typed.restore(&mut report.unsupported);
     }
 
     /// Renders the mod lines and item names of a `calculate-build` report
     /// (and so of its text form) in the locale.
     pub fn localize_build(&self, report: &mut CalculateBuildReport) {
-        self.render_all(&mut report.unsupported_modifiers);
-        self.render_all(report.missing_items.iter_mut().map(|item| &mut item.name));
-        let breakdown_lines = report
-            .breakdowns
-            .iter_mut()
-            .filter_map(|entry| entry.breakdown.as_mut())
-            .flat_map(|breakdown| &mut breakdown.mods)
-            .filter_map(|line| line.source_text.as_mut());
-        self.render_all(breakdown_lines);
-        if let Some(usage) = report.usage.as_mut() {
-            self.render_all(usage.lines.iter_mut().filter_map(|line| line.text.as_mut()));
-            self.render_all(usage.unparsed.iter_mut().map(|line| &mut line.text));
+        let mut origins = Origins::new();
+        for group in build_lines(report) {
+            self.render_all(group, &mut origins);
         }
+        report.origins.extend(origins);
     }
 
     /// An `explain-mod --build` report: the candidate lines as they were
     /// typed (`typed` from [`Self::parse_lines`]), the build's own lines in
     /// the locale.
     pub fn localize_marginal(&self, report: &mut MarginalReport, typed: &TypedInput) {
-        self.render_all(&mut report.baseline_unsupported_modifiers);
+        let mut origins = Origins::new();
+        self.render_all(&mut report.baseline_unsupported_modifiers, &mut origins);
         for line in &mut report.unsupported_modifiers {
             *line = match typed.typed(line) {
                 Some(original) => original.to_string(),
-                None => self.render_line(line),
+                None => {
+                    let (rendered, origin) = self.render_line_with_origin(line);
+                    if let Some(origin) = origin {
+                        record(&mut origins, &rendered, origin);
+                    }
+                    rendered
+                }
             };
         }
+        report.origins.extend(origins);
         typed.restore(&mut report.added_mod_texts);
     }
+}
+
+/// Records that `text` is `origin`'s; a text two origins rendered keeps the
+/// one [`TextOrigin::combine`] gives.
+fn record(origins: &mut Origins, text: &str, origin: TextOrigin) {
+    let entry = origins.entry(text.to_string()).or_insert(origin);
+    *entry = TextOrigin::combine(Some(*entry), Some(origin)).unwrap_or(origin);
+}
+
+/// The rendered lines of a `calculate-build` report, one group per list (a
+/// multi-line description is only joined within one).
+fn build_lines(report: &mut CalculateBuildReport) -> Vec<Vec<&mut String>> {
+    let mut groups: Vec<Vec<&mut String>> = vec![
+        report.unsupported_modifiers.iter_mut().collect(),
+        report
+            .missing_items
+            .iter_mut()
+            .map(|item| &mut item.name)
+            .collect(),
+        report
+            .breakdowns
+            .iter_mut()
+            .filter_map(|entry| entry.breakdown.as_mut())
+            .flat_map(|breakdown| &mut breakdown.mods)
+            .filter_map(|line| line.source_text.as_mut())
+            .collect(),
+    ];
+    if let Some(usage) = report.usage.as_mut() {
+        groups.push(
+            usage
+                .lines
+                .iter_mut()
+                .filter_map(|line| line.text.as_mut())
+                .collect(),
+        );
+        groups.push(
+            usage
+                .unparsed
+                .iter_mut()
+                .map(|line| &mut line.text)
+                .collect(),
+        );
+    }
+    groups
+}
+
+/// Appends [`SUPPLEMENT_MARKER`] to each line in `lines` that `origins`
+/// lists; whether any was.
+fn mark<'a>(lines: impl IntoIterator<Item = &'a mut String>, origins: &Origins) -> bool {
+    let mut marked = false;
+    for line in lines {
+        if origins.contains_key(line.as_str()) {
+            line.push_str(SUPPLEMENT_MARKER);
+            marked = true;
+        }
+    }
+    marked
+}
+
+/// Ends text output with [`SUPPLEMENT_FOOTNOTE`].
+pub(crate) fn push_supplement_footnote(text: &mut String) {
+    if !text.is_empty() && !text.ends_with('\n') {
+        text.push('\n');
+    }
+    text.push_str(SUPPLEMENT_FOOTNOTE);
+    text.push('\n');
+}
+
+/// The text form of a `calculate-build` report ([`crate::render_breakdowns`]),
+/// each line shown in a locale's supplement text marked with
+/// [`SUPPLEMENT_MARKER`] and explained by a closing [`SUPPLEMENT_FOOTNOTE`].
+/// Without supplement text it is [`crate::render_breakdowns`] byte for byte.
+pub fn render_build_text(mut report: CalculateBuildReport) -> String {
+    let origins = std::mem::take(&mut report.origins);
+    let marked = build_lines(&mut report)
+        .into_iter()
+        .fold(false, |marked, group| mark(group, &origins) | marked);
+    let mut text = crate::render_breakdowns(&report);
+    if marked {
+        push_supplement_footnote(&mut text);
+    }
+    text
+}
+
+/// Marks the lines an `explain-mod --build` text shows (its unsupported
+/// lines) that are supplement text; whether any was.
+pub(crate) fn mark_marginal_for_text(report: &mut MarginalReport) -> bool {
+    mark(&mut report.unsupported_modifiers, &report.origins)
 }
 
 /// Input lines as the parser reads them, with the line each translated one
