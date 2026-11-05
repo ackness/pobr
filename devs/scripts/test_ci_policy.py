@@ -187,6 +187,9 @@ class RoutingTests(unittest.TestCase):
         self.assertTrue(plan.classify(["web/src/App.tsx"])["web"])
         self.assertTrue(plan.classify(["pipeline/runtime/data_snapshot.py"])["full"])
         self.assertTrue(plan.classify(["web/public/_worker.js"])["scripts"])
+        # Generated from game data and checked against it by the automation contracts.
+        self.assertTrue(plan.classify(["web/src/lib/configGameRelevance.json"])["scripts"])
+        self.assertTrue(plan.classify(["web/src/lib/configGameRelevance.json"])["web"])
 
     def test_shared_or_unknown_inputs_select_full_without_duplicate_light_checks(self):
         for name in ["Cargo.lock", "crates/new/Cargo.toml", "mise.toml", "web/package.json",
@@ -233,6 +236,56 @@ class RoutingTests(unittest.TestCase):
             plan.plan_for_event(None, "pull_request")
         self.assertEqual(plan.plan_for_event(None, "push"),
                          {area: area == "full" for area in plan.AREAS})
+
+    def test_data_bump_smoke_follows_the_data_lock_on_branch_ranges_only(self):
+        lock = ["web/src/App.tsx", plan.DATA_LOCK]
+        for event in ("push", "workflow_dispatch"):
+            with self.subTest(event=event):
+                self.assertTrue(plan.data_smoke(lock, event, "branch"))
+                self.assertFalse(plan.data_smoke(["web/src/App.tsx", "pipeline/README.md"], event, "branch"))
+                self.assertFalse(plan.data_smoke([], event, "branch"))
+                # An unknown range must not let a data bump through unchecked.
+                self.assertTrue(plan.data_smoke(None, event, "branch"))
+                # Release tags were verified on master; the full suite is opt-in there too.
+                self.assertFalse(plan.data_smoke(lock, event, "tag"))
+                self.assertFalse(plan.data_smoke(None, event, "tag"))
+        for event in ("schedule", "pull_request", None):
+            with self.subTest(event=event):
+                self.assertFalse(plan.data_smoke(lock, event, "branch"))
+                self.assertFalse(plan.data_smoke(None, event, "branch"))
+
+    def test_data_bump_smoke_cli_compares_the_given_base(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            def git(*args):
+                return subprocess.check_output(["git", *args], cwd=root, text=True).strip()
+            git("init", "-q")
+            git("config", "user.email", "fixture@example.invalid")
+            git("config", "user.name", "Fixture")
+            (root / "pipeline").mkdir()
+            (root / "pipeline/data.lock.json").write_text("{}")
+            git("add", ".")
+            git("commit", "-qm", "base")
+            base = git("rev-parse", "HEAD")
+            (root / "pipeline/data.lock.json").write_text('{"bumped": true}')
+            git("add", ".")
+            git("commit", "-qm", "bump")
+            bumped = git("rev-parse", "HEAD")
+            (root / "web.txt").write_text("code")
+            git("add", ".")
+            git("commit", "-qm", "code after the bump")
+
+            def run(base, event="workflow_dispatch", ref_type="branch"):
+                env = {**os.environ, "GITHUB_EVENT_NAME": event, "GITHUB_REF_TYPE": ref_type}
+                for name in ("GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_EVENT_PATH"):
+                    env.pop(name, None)
+                return subprocess.check_output([sys.executable, str(HERE / "ci-plan.py"), "--data-smoke", base],
+                                               cwd=root, env=env, text=True).strip()
+            self.assertEqual(run(base), "run=true")
+            self.assertEqual(run(bumped), "run=false")
+            self.assertEqual(run(""), "run=true")
+            self.assertEqual(run(base, "schedule"), "run=false")
+            self.assertEqual(run(base, "push", "tag"), "run=false")
 
     def test_git_ranges_include_early_commits_deletions_and_both_rename_sides(self):
         with tempfile.TemporaryDirectory() as temp:
