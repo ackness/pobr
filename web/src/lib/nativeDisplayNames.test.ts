@@ -142,6 +142,13 @@ test('without a PassiveSkills.Name scope every passive name keeps the current te
   }
 });
 
+test('the text path gets each repeated name once and every node gets its translation back', () => {
+  const requests = [passive('a', 'Life'), passive('b', 'Mana'), passive('c', 'Life'), passive('d', 'Life')];
+  const { pending, merge } = new NativeNameIndex([]).split(requests, 'zh-CN');
+  expect(pending).toEqual(['Life', 'Mana']);
+  expect(merge(['生命', '魔力'])).toEqual(['生命', '魔力', '生命', '生命']);
+});
+
 test('base lines resolve through every BaseItemTypes id with that English, never by order', () => {
   const bases = [{ id: 'Metadata/Items/Jewels/JewelInt', name: 'Sapphire' }, { id: 'A1', name: 'Twin' }, { id: 'A2', name: 'Twin' },
     { id: 'B1', name: 'Agreed' }, { id: 'B2', name: 'Agreed' }, { id: 'U', name: 'Unowned' }];

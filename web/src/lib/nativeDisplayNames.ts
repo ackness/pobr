@@ -79,15 +79,16 @@ export class NativeNameIndex {
     return scope ? linkedName(scope, this.baseIds.get(request.name) ?? [], request.name) : undefined;
   }
 
-  /** `translateNames` in two steps: `pending` are the English names the catalog does not own;
-   * `merge` takes their text-path translations, in order, and returns every displayed name. */
+  /** `translateNames` in two steps: `pending` are the distinct English names the catalog does not own;
+   * `merge` takes their text-path translations, in `pending` order, and returns every displayed name. */
   split(requests: readonly GameNameRequest[], lang: Lang): { pending: string[]; merge: (texts: readonly string[]) => string[] } {
     const scoped = requests.map(request => this.resolve(request, lang));
-    const pending = requests.filter((_, index) => scoped[index] === undefined).map(request => request.name);
+    // A tree repeats names (many "Mana Regeneration" nodes): translate each once.
+    const pending = [...new Set(requests.filter((_, index) => scoped[index] === undefined).map(request => request.name))];
     return { pending, merge: texts => {
-      let next = 0;
+      const byName = new Map(pending.map((name, index) => [name, texts[index] ?? name]));
       return requests.map((request, index) => scoped[index] === undefined
-        ? texts[next++] ?? request.name : scoped[index] ?? request.name);
+        ? byName.get(request.name) ?? request.name : scoped[index] ?? request.name);
     } };
   }
 }
