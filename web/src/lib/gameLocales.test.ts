@@ -4,7 +4,7 @@ import { localizedName } from './chinese';
 
 afterEach(() => setGameLocales([]));
 
-test('without a data pack, game text falls back through the interface files only', () => {
+test("without a data pack, game text falls back through the interface files' gameTextFallback only", () => {
   expect(gameTextChain('en-US')).toEqual([]);
   expect(gameTextChain('zh-CN')).toEqual(['zh-CN', 'zh-TW']);
   expect(gameTextChain('zh-TW')).toEqual(['zh-TW', 'zh-CN']);

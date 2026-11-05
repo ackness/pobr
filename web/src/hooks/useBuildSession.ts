@@ -915,7 +915,8 @@ export function useBuildSession(configContextActive = false): BuildSession {
       .then(async (backend) => {
         await backend.init((msg) => !cancelled && setBootMessage(msg));
         // Game-text fallbacks the data pack declares (the engine may run in a worker).
-        void Promise.resolve().then(() => backend.gameLocales()).then(setGameLocales).catch(() => {});
+        void Promise.resolve().then(() => backend.gameLocales()).then(setGameLocales)
+          .catch((error: unknown) => console.warn('Game-text locales unavailable; using the interface fallbacks.', error));
         const meta = await backend.loadTreeMeta();
         if (!cancelled) setDataVersion(backend.dataVersion ?? null);
         backend

@@ -2854,6 +2854,9 @@
     "name": "繁體中文",
     "fallback": [
       "zh-CN"
+    ],
+    "gameTextFallback": [
+      "zh-CN"
     ]
   }
 }

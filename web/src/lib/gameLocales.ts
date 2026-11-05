@@ -1,4 +1,4 @@
-import { fallbackChain, SOURCE_LANG, type Lang } from '../locales';
+import { gameTextFallback, SOURCE_LANG, type Lang } from '../locales';
 
 /** One locale the data pack declares (WASM `availableLocales()`). */
 export interface GameLocaleInfo {
@@ -21,13 +21,14 @@ export function setGameLocales(locales: readonly GameLocaleInfo[]): void {
 /**
  * The locales whose game text answers for `lang`, in order: `lang`, the
  * fallbacks the data pack declares for it, then the interface file's
- * `language.fallback` entries (each followed by its own declared fallbacks).
- * English is the implicit end and is not listed. Before a data pack is loaded,
- * only the interface fallbacks are known.
+ * `language.gameTextFallback` entries (each followed by its own declared
+ * fallbacks). English is the implicit end and is not listed. Before a data pack
+ * is loaded, only the interface file's entries are known. The interface-copy
+ * fallback (`language.fallback`) plays no part.
  */
 export function gameTextChain(lang: Lang): readonly string[] {
   if (lang === SOURCE_LANG) return [];
-  const extra: string[] = fallbackChain(lang).filter(code => code !== lang && code !== SOURCE_LANG);
+  const extra = gameTextFallback(lang).filter(code => code !== lang && code !== SOURCE_LANG);
   const seen = new Set<string>();
   const chain: string[] = [];
   const pending = [...extra].reverse();

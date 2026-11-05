@@ -2852,7 +2852,7 @@
   },
   "language": {
     "name": "简体中文",
-    "fallback": [
+    "gameTextFallback": [
       "zh-TW"
     ]
   }
