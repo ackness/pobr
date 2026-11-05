@@ -20,7 +20,7 @@ import type {
   CalculateBuildResponse,
 } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { STAT_SECTIONS, formatStatValue, statMap } from '../../lib/statDisplay';
+import { formatStatValue, statFormat, statMap } from '../../lib/statDisplay';
 import {
   bindT,
   damageTypeLabel,
@@ -39,7 +39,7 @@ import { useEffect } from 'react';
 import { useSkillName, useSkillCatalog } from '../../hooks/useSkillName';
 import { useLocalizedNames } from '../../hooks/useLocalizedLines';
 import './calcs.css';
-import { detailKind, detailFormula, StatDetailCache } from '../../lib/statDetails';
+import { detailKind, detailFormula, detailInputLabel, detailInputValue, detailEmptyKey, StatDetailCache } from '../../lib/statDetails';
 import { AppSelectControl } from '../shared/controls';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { calcsLabel } from './calcsLabels';
@@ -624,8 +624,15 @@ function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
     };
   }, [mods, lang]);
 
-  const modText = (raw: string | null) => {
-    if (!raw) return tt('calcs.baseDerived');
+  const modText = (raw: string | null, origin: string | null) => {
+    if (!raw) {
+      switch (origin) {
+        case 'CharacterBase': return tt('calcs.baseFrom.CharacterBase');
+        case 'GameConstant': return tt('calcs.baseFrom.GameConstant');
+        case 'SupportGem': return tt('calcs.baseFrom.SupportGem');
+        default: return tt('calcs.baseDerived');
+      }
+    }
     const cleaned = cleanModText(raw);
     return lang !== 'en-US' ? (zhLines[cleaned] ?? cleaned) : cleaned;
   };
@@ -652,8 +659,8 @@ function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
                 <td className={`mod-type mod-type-${mod.mod_type.toLowerCase()}`}>{modTypeLabel(lang, mod.mod_type)}</td>
                 <td className="mod-value">{mod.value === null ? '—' : fmtNum(mod.value)}</td>
                 <td className="mod-text">
-                  {modText(mod.source_text)}
-                  {!mod.active && <span className="mod-inactive-tag">{tt('calcs.inactive')}</span>}
+                  {modText(mod.source_text, mod.origin_kind)}
+                  {!mod.active && <> <span className="mod-inactive-tag">{tt('calcs.inactive')}</span></>}
                 </td>
                 <td className="mod-origin">
                   {mod.origin_kind
@@ -670,7 +677,7 @@ function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
   );
 }
 
-export function BreakdownTable({ breakdown, lang, unboundedStacks = false }: { breakdown: Breakdown; lang: Lang; unboundedStacks?: boolean }) {
+export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false, nested = false }: { breakdown: Breakdown; lang: Lang; stat?: string; unboundedStacks?: boolean; nested?: boolean }) {
   const tt = bindT(lang);
   if (breakdown.derived) {
     const derived = breakdown.derived;
@@ -678,12 +685,14 @@ export function BreakdownTable({ breakdown, lang, unboundedStacks = false }: { b
     const context = derived.context.filter(input => !input.id.startsWith('EnergyNeeds'));
     const inputValue = (input: { id: string; value: number | null }) =>
       unboundedStacks && input.id === 'MaximumAilmentStacks' && input.value === 0
-        ? '∞' : formatStatValue(input.value, 'float2');
+        ? '∞' : detailInputValue(input, lang);
     return <div className="breakdown-detail breakdown-derived">
+      <h4 className="breakdown-heading">{calcsLabel(lang, 'derived')}</h4>
+      <p className="breakdown-note">{tt('calcs.derivedHint')}</p>
       {sourceHints.map(hint => <p className="breakdown-note" key={hint.id}>{statNameLabel(lang, hint.id)}</p>)}
       <p className="derived-formula">{detailFormula(derived.formula, derived.inputs, lang)}</p>
       <table className="breakdown-table"><caption>{tt('calcs.inputs')}</caption><tbody>
-        {derived.inputs.map(input => <tr key={input.id}><th scope="row">{statNameLabel(lang, input.id)}</th><td>{inputValue(input)}</td></tr>)}
+        {derived.inputs.map(input => <tr key={input.id}><th scope="row">{detailInputLabel(input.id, derived.inputs, lang)}</th><td>{inputValue(input)}</td></tr>)}
       </tbody></table>
       {context.length > 0 && <table className="breakdown-table"><caption>{tt('calcs.context')}</caption><tbody>
         {context.map(input => <tr key={input.id}><th scope="row">{statNameLabel(lang, input.id)}</th><td>{inputValue(input)}</td></tr>)}
@@ -693,12 +702,14 @@ export function BreakdownTable({ breakdown, lang, unboundedStacks = false }: { b
   if (breakdown.kind === 'sources' && breakdown.actor?.kind !== 'minion') {
     const groups = breakdown.sources?.filter(group => group.mods.length > 0) ?? [];
     return <div className="breakdown-detail breakdown-sources">
+      <h4 className="breakdown-heading">{calcsLabel(lang, 'sources')}</h4>
       <p className="breakdown-note">{tt('calcs.sourcesNote')}</p>
+      {groups.length > 0 && <p className="breakdown-note breakdown-totals-note">{tt('calcs.totalsNote')}</p>}
       {groups.length === 0 && <p>{tt('calcs.noSources')}</p>}
       {groups.map(group => <section key={group.name}>
-        <h4>{statNameLabel(lang, group.name)}</h4>
+        <h5>{statNameLabel(lang, group.name)}</h5>
         {group.mods.some(mod => mod.active && mod.mod_type === 'MORE') && <p className="breakdown-note">{tt(group.more_precision === null ? 'calcs.moreRounded' : 'calcs.moreFloored')} {group.more_precision ?? 2}</p>}
-        <BreakdownTable breakdown={{ ...group, formula: null }} lang={lang} />
+        <BreakdownTable breakdown={{ ...group, formula: null }} lang={lang} nested />
       </section>)}
     </div>;
   }
@@ -713,24 +724,27 @@ export function BreakdownTable({ breakdown, lang, unboundedStacks = false }: { b
     <div className="breakdown-detail">
       {breakdown.damage && <HitDamageView damage={breakdown.damage} lang={lang} />}
       {breakdown.skill_dot && <SkillDotView rows={breakdown.skill_dot} lang={lang} />}
-      {breakdown.formula ? (
-        <table className="breakdown-formula" aria-label={tt('calcs.formula')}>
-          <caption>{tt('calcs.formula')}</caption>
-          <tbody>
-            {breakdown.formula.steps.map((step, i) => (
-              <tr key={i} className={`formula-step formula-${step.op}`}>
-                <th scope="row">{tt(`calcs.step.${step.op}`)}</th>
-                <td className="formula-operand">{formulaOperand(step)}</td>
-                <td className="formula-result">{fmtNum(step.result)}</td>
+      {breakdown.formula && breakdown.formula.steps.length > 0 ? (
+        <>
+          <h4 className="breakdown-heading">{calcsLabel(lang, 'steps')}</h4>
+          <p className="breakdown-note">{tt('calcs.stepsHint')}</p>
+          <table className="breakdown-formula" aria-label={tt('calcs.formula')}>
+            <tbody>
+              {breakdown.formula.steps.map((step, i) => (
+                <tr key={i} className={`formula-step formula-${step.op}`}>
+                  <th scope="row">{tt(`calcs.step.${step.op}`)}</th>
+                  <td className="formula-operand">{formulaOperand(step)}</td>
+                  <td className="formula-result">{fmtNum(step.result)}</td>
+                </tr>
+              ))}
+              <tr className="formula-final">
+                <th scope="row">{tt('calcs.formulaResult')}</th>
+                <td />
+                <td className="formula-result">{formatStatValue(breakdown.formula.value, statFormat(stat ?? ''), lang)}</td>
               </tr>
-            ))}
-            <tr className="formula-final">
-              <th scope="row">{tt('calcs.formulaResult')}</th>
-              <td />
-              <td className="formula-result">{fmtNum(breakdown.formula.value)}</td>
-            </tr>
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </>
       ) : (
         <>
           <div className="breakdown-summary">
@@ -746,7 +760,7 @@ export function BreakdownTable({ breakdown, lang, unboundedStacks = false }: { b
               </span>
             )}
           </div>
-          <p className="breakdown-note breakdown-totals-note">{tt('calcs.totalsNote')}</p>
+          {!nested && <p className="breakdown-note breakdown-totals-note">{tt('calcs.totalsNote')}</p>}
         </>
       )}
       {breakdown.mitigation && breakdown.mitigation.length > 0 && (
@@ -762,7 +776,7 @@ export function BreakdownTable({ breakdown, lang, unboundedStacks = false }: { b
       {hands.map((hand) => (
         <section key={hand.hand} className={`breakdown-hand breakdown-hand-${hand.hand}`} aria-label={tt(`calcs.hand.${hand.hand}`)}>
           <h4 className="breakdown-hand-title">{tt(`calcs.hand.${hand.hand}`)}</h4>
-          <BreakdownTable breakdown={hand} lang={lang} />
+          <BreakdownTable breakdown={hand} lang={lang} stat={stat} nested />
         </section>
       ))}
       {!linesPerHand && [...breakdown.mods, ...damageLines].some((m) => !m.active) && (
@@ -1031,6 +1045,8 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
   const calc = session.calcError ? null : session.calc ?? settledCalc ?? null;
   const [open, setOpen] = useState<string | null>(() => defaultMetric(calc?.stats ?? [], !!calc?.main_skill));
   const [actor, setActor] = useState('player');
+  const detailHeading = useRef<HTMLHeadingElement>(null);
+  const focusMinionDetail = useRef(false);
   const actorKey = (minion: MinionOutput) =>
     `${minion.index}:${minion.minion_id}:${minion.summoned_by}`;
   const selectedMinion = calc?.minions?.find(minion => actorKey(minion) === actor);
@@ -1050,6 +1066,11 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
       setOpen(null);
     }
   }, [calc, actor, selectedMinion]);
+  useEffect(() => {
+    if (!focusMinionDetail.current || !selectedMinion || !open) return;
+    focusMinionDetail.current = false;
+    detailHeading.current?.focus({ preventScroll: true });
+  }, [selectedMinion, open]);
   const cache = useRef(new StatDetailCache());
   const [loaded, setLoaded] = useState<{ calc: typeof calc; id: string; actor: string; detail: Breakdown | null; error?: string } | null>(null);
   const [retry, setRetry] = useState(0);
@@ -1136,13 +1157,12 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
   }, [calc, query, lang, selectedMinion]);
 
   const values = selectedMinion ? new Map(Object.entries(selectedMinion.stats)) : statMap(calc?.stats ?? []);
-  const rowFormat = (name: string) => selectedMinion ? 'float2' as const
-    : STAT_SECTIONS.flatMap(section => section.rows).find(row => row.id === name)?.format ?? 'float2';
   // A missing poison also has a zero cap; only a calculated poison uses it as no limit.
   const unboundedPoison = values.get('PoisonStacksMax') === 0 && (values.get('PoisonChance') ?? 0) > 0;
   const metricValue = (name: string) => name === 'PoisonStacksMax' && unboundedPoison
-    ? '∞' : formatStatValue(values.get(name) ?? null, rowFormat(name), lang);
-  const actorLabel = selectedMinion ? `${tt('minion.title')}: ${minionName(selectedMinion) || tt('minion.unavailable')} · ${selectedMinion.index + 1}` : tt('minion.player');
+    ? '∞' : formatStatValue(values.get(name) ?? null, statFormat(name), lang);
+  const actorName = selectedMinion ? `${tt('minion.title')} · ${minionName(selectedMinion) || tt('minion.unavailable')} #${selectedMinion.index + 1}` : tt('minion.player');
+  const actorLabel = tt('calcs.actorEyebrow').replace('{actor}', actorName);
   const actorPicker = (calc?.minions?.length ?? 0) > 0 && <label className="calcs-actor-picker">
     <span>{tt('minion.actor')}</span>
     <AppSelectControl aria-label={tt('minion.actor')} value={selectedMinion ? actorKey(selectedMinion) : 'player'}
@@ -1157,13 +1177,20 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
     const kind = detailKind(selectedMinion ?? calc!, name);
     const current = loaded?.calc === calc && loaded.actor === actor && loaded.id === name ? loaded : null;
     const breakdown = actorBreakdowns[name] ?? current?.detail;
+    const emptyKey = detailEmptyKey(kind, values.get(name), breakdown);
     if (session.busy && !breakdown) return <p role="status" className="breakdown-detail">{calcsLabel(lang, 'stale')}</p>;
     return kind === 'none' ? <p className="breakdown-detail" role="status">{tt('calcs.noBreakdown')}</p>
-      : breakdown ? <BreakdownTable breakdown={breakdown} lang={lang} unboundedStacks={unboundedPoison && name.startsWith('Poison')} />
+      : breakdown ? emptyKey ? <p className="breakdown-detail" role="status">{tt(emptyKey)}</p>
+        : <BreakdownTable breakdown={breakdown} lang={lang} stat={name} unboundedStacks={unboundedPoison && name.startsWith('Poison')} />
       : current?.error ? <div className="breakdown-detail" role="alert">{current.error} <AppButton onClick={() => { setLoaded(null); setRetry(value => value + 1); }}>{tt('calcs.retry')}</AppButton></div>
-      : <p className="breakdown-detail" role="status">{tt(current ? 'calcs.noBreakdown' : 'calcs.loadingDetail')}</p>;
+      : <p className="breakdown-detail" role="status">{tt(current ? emptyKey! : 'calcs.loadingDetail')}</p>;
   };
 
+  const mainMinion = calc?.main_minion_index == null ? undefined : calc.minions?.find(minion => minion.index === calc.main_minion_index);
+  const playerDps = calc?.stats.filter(stat => stat.id === 'CombinedDPS' || stat.id === 'TotalDPS') ?? [];
+  const noPlayerDamage = playerDps.length > 0 && playerDps.every(stat => stat.value === 0);
+  const minionDamage = !selectedMinion && mainMinion && noPlayerDamage && open && values.get(open) === 0
+    && (open.endsWith('DPS') || open === 'AverageDamage');
   const scope = selectedMinion ?? calc;
   const skillId = selectedMinion?.skill_id ?? calc?.main_skill?.skill_id;
   const tabs = [
@@ -1230,9 +1257,17 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
             <div className="calcs-detail-header">
               <AppButton className="calcs-back-to-list hidden max-[760px]:inline-flex" onClick={() => { const browser = document.getElementById('calcs-metric-browser'); browser?.focus(); browser?.scrollIntoView({ block: 'start' }); }}>{calcsLabel(lang, 'back')}</AppButton>
               {open && <p className="calcs-eyebrow">{actorLabel}</p>}
-              <h3 id="calcs-detail-heading" tabIndex={-1}>{open ? statNameLabel(lang, open) : calcsLabel(lang, 'choose')}</h3>
-              {open && <div className="calcs-detail-value"><strong>{metricValue(open)}</strong><span>{calcsLabel(lang, detailKind(scope!, open))}</span></div>}
+              <h3 id="calcs-detail-heading" ref={detailHeading} tabIndex={-1}>{open ? statNameLabel(lang, open) : calcsLabel(lang, 'choose')}</h3>
+              {open && <div className="calcs-detail-value"><strong>{metricValue(open)}</strong></div>}
             </div>
+            {minionDamage && <div className="calcs-minion-damage">
+              <p className="breakdown-note">{tt('calcs.minionDamage').replace('{skill}', skillName(calc!.main_skill?.skill_id ?? mainMinion.summoned_by))}</p>
+              <AppButton onClick={() => {
+                focusMinionDetail.current = true;
+                setActor(actorKey(mainMinion));
+                setOpen(defaultMetric(Object.entries(mainMinion.stats).map(([id, value]) => ({ id, value })), !!(mainMinion.skill_id ?? calc?.main_skill)));
+              }}>{tt('calcs.viewMinion').replace('{minion}', minionName(mainMinion) || tt('minion.unavailable'))}</AppButton>
+            </div>}
             {open && detail(open)}
           </section>
         </div>}
