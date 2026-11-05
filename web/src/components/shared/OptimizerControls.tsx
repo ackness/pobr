@@ -68,8 +68,8 @@ export function statLabel(id: string, lang: Lang): string {
   return id;
 }
 
-function fmtNum(value: number): string {
-  return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
+function fmtNum(value: number, lang: Lang): string {
+  return value.toLocaleString(lang, { maximumFractionDigits: 0 });
 }
 
 interface EditorProps {
@@ -194,10 +194,18 @@ export function OptimizerResults({
       : '—';
   return (
     <table className="opt-table">
+      <thead>
+        <tr>
+          <th scope="col">{tt('opt.option')}</th>
+          <th scope="col" className="opt-score">{objective.secondaryStat ? tt('opt.balancedScore') : tt('opt.score')}</th>
+          <th scope="col" className="opt-delta">{tt('opt.changeFromCurrent')}</th>
+          <th scope="col"><span className="sr-only">{tt('opt.apply')}</span></th>
+        </tr>
+      </thead>
       <tbody>
         <tr className="opt-baseline">
           <td>{tt('opt.baseline')}</td>
-          <td className="opt-score">{fmtNum(baseScore)}</td>
+          <td className="opt-score">{fmtNum(baseScore, lang)}</td>
           <td>—</td>
           <td />
         </tr>
@@ -221,11 +229,11 @@ export function OptimizerResults({
                 {variant.label ?? `#${variant.index}`}
                 {!feasible && <span className="opt-infeasible">（{tt('opt.infeasible')}）</span>}
               </td>
-              <td className="opt-score">{fmtNum(score)}</td>
-              <td className="opt-delta">{deltaPct(score)}</td>
+              <td className="opt-score">{fmtNum(score, lang)}</td>
+              <td className={`opt-delta${baseScore > 0 && score !== baseScore ? score > baseScore ? ' is-positive' : ' is-negative' : ''}`}>{deltaPct(score)}</td>
               <td>
                 <AppButton disabled={disabled} onClick={() => onApply(variant)}>
-                  {tt('opt.apply')}
+                  {tt(score < baseScore ? 'opt.equipAnyway' : 'opt.apply')}
                 </AppButton>
               </td>
             </tr>

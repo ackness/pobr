@@ -31,7 +31,7 @@ test('unselected utilities survive import, text editing, undo, reload and share-
   await expect(selected(page)).not.toBeChecked();
   await expect(busy(page)).toHaveCount(0);
 
-  await page.locator('.item-detail-header').getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.locator('.item-detail-header').getByRole('button', { name: 'Edit text (advanced)', exact: true }).click();
   const text = page.getByRole('textbox', { name: 'Flask 1 item text', exact: true });
   await text.fill(original.text.replace('+40%', '+12%'));
   await page.getByRole('button', { name: 'Apply changes', exact: true }).click();
