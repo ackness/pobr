@@ -113,10 +113,10 @@ RePoE 发布 ───┐
     }
     ```
 
-    `scopes` 恰好这两个键，值都是非空字符串。只收玩家宝石能到达的行：`GemEffects.SupportText` 的 id 是同一游戏包
+    `scopes` 恰好这两个键，每个作用域把 id 映射到非空字符串。只收玩家宝石能到达的行：`GemEffects.SupportText` 的 id 是同一游戏包
     `overlay/gem_effects.json` 里出现的 `variant_id`（即 GemEffects.Id，只有辅助有文本）；`ActiveSkills.Description`
     的 id 是 `base/granted_effects.json` 里 `id` 等于这些条目 `granted_effect_id` 的记录的 `active_skill`
-    （即 ActiveSkills.Id）。客户端文本为空的行不写。英文保留客户端原文：`[A]`／`[A|B]` 标记、末尾空格和 `\r\n` 都不改，
+    （即 ActiveSkills.Id）。客户端文本为空或只有空白的行不写。英文保留客户端原文：`[A]`／`[A|B]` 标记、末尾空格和 `\r\n` 都不改，
     语言 owner 据此逐字节比对英文。标记只有这两种形式（不嵌套，没有 `<…>`、`{…}`），出现别的形式时生产方拒绝构建，
     而不是发布显示不了的文本。`_meta` 只作审计（紧凑发行包会去掉它），消费方只读 `scopes`。
     包里没有这个文件表示没有说明（`game/0.5.5.5-3` 之前的包），不是错误；引擎不读取它，只校验 manifest pin。
@@ -174,10 +174,11 @@ RePoE 发布 ───┐
 - **采用新数据。** `build_data.prepare`（`data:prepare`／`data:update`）要求锁定的快照 manifest 声明的
   `contract_version` 等于 `crates/pobr-data/src/lib.rs` 里的 `CONTRACT_VERSION`，没有例外。
 - **tag 约定。** tag 名为 `contract/<n>.<m>`：`n` 等于 `CONTRACT_VERSION`；`m` 是同一契约内的增量修订，从 0 开始
-  （`contract/1.0`），用于数据仓库应当产出的新可选字段，或 `pobr-data` 里供数据仓库调用的辅助代码修正（如
-  `pobr_data::text`）。契约加 1 时 `m` 归零。两者都不可移动、不删除。tag 打在 master 上"`pobr-data` 已完整包含该
-  契约修订"的那个提交上——不一定是引入版本号的 PR 的合并提交，修订依赖的改动全部合并之后再打。只改引擎、
-  不改契约的提交不需要 tag，数据仓库也不需要跟进；增量的契约改动打下一个 `.m`。数据仓库把 `pobr-data` 依赖固定在
+  （`contract/1.0`），用于数据仓库应当产出的新可选字段、可选文件或作用域，或 `pobr-data` 里供数据仓库调用的
+  辅助代码修正（如 `pobr_data::text`）。契约加 1 时 `m` 归零。两者都不可移动、不删除。tag 打在 master 上
+  "`pobr-data` 已完整包含该契约修订"的那个提交上——不一定是引入版本号的 PR 的合并提交，修订依赖的改动全部合并
+  之后再打；只定义可选文件或作用域、不需要 `pobr-data` 代码的修订，在定义它的文档合并后即可打，数据仓库也不必
+  为它升级依赖。只改引擎、不改契约的提交不需要 tag，数据仓库也不需要跟进；增量的契约改动打下一个 `.m`。数据仓库把 `pobr-data` 依赖固定在
   它需要的最新 `contract/<n>.<m>` 上。旧的 `engine-crates/<日期>` tag 不再新建，已有的保留不动。
 - **修订记录。** `contract/1.0`：首个契约 tag。`contract/1.1`（RePoE 的 adapter 当前固定于此）：新增可选字段
   `base/game_constants.json` 的 `game.base_maximum_rage`（游戏常量 `BaseMaximumRage`，缺省 30）与可选文件
