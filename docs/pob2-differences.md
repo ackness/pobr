@@ -6,68 +6,63 @@
 
 ## 数据来源现状与退出顺序
 
-本地活动版本为 `0.5.5.5`，由唯一数据锁准备；不保留第二份版本快照。
-完整游戏与语言产物分别存于 RePoE 和翻译库，PoBR 按[数据锁](../pipeline/data.lock.json)
-临时导入（见[构建数据](../pipeline/runtime/build-data.md)），再由[运行包组合](../pipeline/runtime/runtime-bundle.md)
-打成精简发行包供既有消费者使用。
-本地采用和完整 CI 已完成，线上部署仍是单独动作；具体身份、已迁字段和剩余边界见
-[数据现状](data-status.md)。
-
-下面的路径相对 `data/<版本>/`，共享输入位于 `data/overlay-common/`。
-字段来源以固定 owner 输入、领域转换收据和实际消费契约共同核对；
+本地活动版本为 `0.5.5.5`，由唯一[数据锁](../pipeline/data.lock.json)从 RePoE 与翻译库的 Release 临时导入
+（见[构建数据](../pipeline/runtime/build-data.md)），再由[运行包组合](../pipeline/runtime/runtime-bundle.md)打成精简发行包；
+发布与采用状态见[数据现状](data-status.md)。下面的路径相对 `data/<版本>/`，共享输入位于 `data/overlay-common/`。
 `_meta.generator`／`_meta.vendor_commit` 保留原生成身份，不能单凭文件名或旧 metadata
-把混合来源文件整体算作客户端事实或 PoB2 输出。PoB2 测试参考由
-`devs/reference-sources.json` 独立固定，不决定生产数据版本。
-较早[独立官方树候选](../pipeline/README.md#固定来源)的 Druid 引用诊断保留原入口边界（该入口已退役），
-不能据此重判后来 Default 图的成员资格，也不能把它当当前普通树迁源的剩余总表。
+把混合来源文件整体算作客户端事实或 PoB2 输出。PoB2 测试参考由 `devs/reference-sources.json` 独立固定，不决定生产数据版本。
 
 ### 直接来自游戏的数据
 
 - 普通领域 adapter 从固定 RePoE 客户端事实生成物品基底、词缀、stat、技能及等级；普通天赋树使用 DAT／PSG、CSD 与明确保留的兼容字段。字段所有权和未知项分别记录，不把整个 `base/` 目录视为已完成自主迁源。`ActiveSkills.DisplayedName` 用于 buff 名、`AffectedBy<名字>` 条件和诅咒优先级（`skill_env::buff_skill_name`）。
 - stat set 保留 `base_is_projectile` 等无值 stat；召唤物技能另保留按使用者等级成长的效能。
 - `base/skill_gems.json` 的效果链接、宝石标签来自 `GemEffects` / `GemTags`；各宝石等级所需角色等级来自 `ItemExperiencePerLevel`。品质另由 `overlay/gem_quality_stats.json` 提供。
-- 技能类型名表来自 `base/active_skill_types.json`（`ActiveSkillType` 行序，PoB2 `SkillType.<Id>` = 行号 + 1），引擎不再内嵌副本；基础最大怒气来自 `base/game_constants.json` 的 `base_maximum_rage`。珠宝范围也改读数据包的 `base/jewel_radii.json`，但它的数值仍转录自 PoB2 `Data.lua`，不是客户端事实。引擎仍保留的表及理由见 `crates/pobr-data/tests/no_embedded_data.rs`。
+- 技能类型名表来自 `base/active_skill_types.json`（`ActiveSkillType` 行序，PoB2 `SkillType.<Id>` = 行号 + 1），引擎不再内嵌副本；基础最大怒气来自 `base/game_constants.json` 的 `base_maximum_rage`。珠宝范围读数据包的 `base/jewel_radii.json`，但数值仍转录自 PoB2（见下表）。引擎仍保留的表及理由见 `crates/pobr-data/tests/no_embedded_data.rs`。
 - `base/monster_resistances.json` 连接 `MonsterVarieties → MonsterTypes → MonsterResistances`，取普通稀有度的 `Fire1/Cold1/Lightning1/Chaos1`，合并链接并保留负弱点，供召唤物基础抗性使用。
+- `item_granted_skills.json`、`boss_poise_thresholds.json` 和 `totem_varieties.json` 的版本 overlay 已有目标事实 producer；PoBR 保留筛选和解释责任。授予技能只迁可证字段，`ItemInherentSkills.IsWeapon` 按固定社区政策解释为 NoReservation，字段命名与官方语义未独立认证；Boss 选择仍是显式模型（[授予技能契约](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-item-grants.md)）。
 
-### 保留的 PoB2 解释与兼容输入
+### 冻结输入与退出顺序
 
-独立存储保留输入不会改变其原始出处。当前仍按字段保留以下依赖：
+仍依赖 PoB2 或手工整理的输入只在这里维护一份清单。权威的冻结队列是 RePoE 的
+[`release/0.5.5.5-2/frozen-inputs.json`](https://github.com/ackness/repoe/blob/master/release/0.5.5.5-2/frozen-inputs.json)
+（随 RePoE PR #38 合入），它按成员记录类别、字节与摘要、原因和退出方式；本表不复制摘要。
+表中标“冻结”的是该队列的全部成员，它们以固定字节随游戏包发布，没有 RePoE producer 或缺固定输入。
+标“重放”的已有 RePoE adapter，但从固定的 `0.5.5.4.2` codec 或 prepared 政策重放 PoB2 解释，不在冻结队列中，退出同样按本表顺序。
 
-| 范围 | 保留内容与边界 |
-| --- | --- |
-| 解析与 stat 解释 | `mod_parser_rules.json`、`generated/special_vendor.json`、`mod_scalability.json`，以及 `skill_stat_map.json` 的 stat→modifier 解释。客户端数值和稳定 ID 不直接证明单位、作用域或引擎映射 |
-| 技能与历史编号 | `skill_overrides.json` 中未迁移的 prepared 解释、`stat_set_labels.json`、分支 codec、触发及幻影配置；已经由目标事实拥有的倍率与 implicit 不再算作整文件 vendor 依赖 |
-| 配置与条件 | `config_options.json` 和 `curse_priority.json` 等保留解释。`if*`／`tooltip` 只决定界面可见性或说明，不证明选项已参与计算 |
-| 物品与暗金 | `uniques.json` 的完整词缀归属、roll／变体，以及基底覆盖中尚未拥有的字段。部分基底数值、装备授予技能和制作目录已有目标事实生产者，不能据旧文件名归为全部未迁 |
-| 符文、催化剂与描述 | 当前有各自的客户端事实／CSD adapter；未完整表示的符文整项回退、描述分支和 scoped 解释继续保留。`stat_id_map.json` 是派生维护资料，不是独立游戏语义来源 |
-| gem 与召唤物关系 | `gem_effects.json` 的历史显示顺序、owner 兼容，以及 minion／spectre 目录成员、effect→variety aliases、限制和装备关系等策展；目标效果链接、actor 字段和抗性已分别迁源 |
+**顺序按对计算结果的影响排，不按文件大小。** parser 规则与 config 语义转为 PoBR 自有 Rust 规则；
+trade、暗金与基底类转为 RePoE 从客户端生成。客户端数值和稳定 ID 本身不证明单位、作用域或引擎映射，
+迁移时逐项核实这些证据并保留未知项诊断；每项单独评估，每一步保持门禁通过。
 
-各域的剩余缺口见[数据现状](data-status.md#领域现状)，退出条件见[数据架构](data-architecture.md#8-质量目标与领域退出条件)。
-例如，`overlay/minions.json` 的目录身份不能仅由 monster hash 反推；
-目标 `GrantedEffects.Id` 与 actor 数值已有物理 FK 生产路径，完整 effect→variety／装备关系仍需独立依据。
+| 顺序 | 输入（现状） | 对计算的影响 | 归属与退出 |
+| --- | --- | --- | --- |
+| 1 | `overlay/mod_parser_rules.json`、`generated/special_vendor.json`、`overlay/special_mods.json`（冻结） | 所有构筑的每一行词条 | PoBR：改为自有 Rust parser／special 规则；新的解析能力已只写进 Rust 规则 |
+| 2 | `overlay/skill_stat_map.json`（重放） | 所有技能的 stat→modifier 解释 | PoBR：并入 `rules/skill_stats.rs`（以游戏 stat id 为键，先于抽取映射查询） |
+| 3 | `overlay/config_options.json`（冻结） | 配置项对应的条件与数值；`if*`／`tooltip` 只决定界面可见性 | PoBR：改为自有 config 语义；项目自有的九份配置选项已编译进 `pobr-gamedata` |
+| 4 | `base/base_player_mods.json`、`base/enemy_presets.json`（冻结，由 PoB2 常量迁移） | 每个构筑的玩家基线与敌人预设 | PoBR：移入自有规则与模拟预设；数值部分可由 RePoE 从客户端常量生成 |
+| 5 | `overlay-common/buff_definitions.json`、`overlay/curse_priority.json`（冻结） | 光环、buff 与诅咒的生效和选择 | PoBR：自有 Rust buff 规则，或由 RePoE 生成客户端 `BuffDefinitions` 事实；诅咒优先级同理 |
+| 6 | `overlay/mod_scalability.json`、`overlay-common/high_precision_mods.json`（冻结） | 词条随效果倍率缩放与数值精度 | 缩放：RePoE 从客户端 Mods／Stats 生成；精度：PoBR 自有规则 |
+| 7 | `base/weapon_types.json`（冻结，逐行迁自 PoB2） | 攻击技能的武器类型参数 | RePoE：从客户端 `WeaponTypes`／`ItemClasses` 生成 |
+| 8 | `overlay/trigger_configs.json`、`overlay/mirage_configs.json`（冻结）；`overlay/stat_set_labels.json` 与分支 codec、`overlay/skill_overrides.json` 未迁移的 prepared 解释、`overlay/gem_effects.json` 的历史显示顺序与 owner 兼容（重放） | 触发、幻影与分支选择相关的技能 | 触发与幻影：PoBR 自有规则。构筑码兼容需要的 PoB 编号保留为历史 codec；其余解释改由 RePoE 原生事实 |
+| 9 | `overlay/minions.json`、`overlay/spectres.json` 的目录成员、effect→variety aliases、限制与装备关系（重放） | 召唤物与幽魂的选择 | RePoE：需要独立依据；目录身份不能仅由 monster hash 反推，actor 数值已迁源 |
+| 10 | `overlay/uniques.json`（冻结） | 暗金的词缀归属、roll 与变体；导入的物品原文不经它 | RePoE：从客户端 `UniqueStashLayout`／`Words`／`Mods` 生成，再决定 `unique_relations.json` 是否进入游戏包 |
+| 11 | `overlay/passive_jewels.json`（冻结）；`base/jewel_radii.json` 的数值（重放） | 珠宝与范围珠宝 | RePoE：从客户端天赋与珠宝事实生成 |
+| 12 | `base/unarmed_data.json`、`overlay/catalysts.json`、`overlay/item_granted_skills.json`、`overlay/passive_jewel_slots.json`（冻结：已有 producer，缺固定输入） | 无：producer 重放的值与当前文件一致 | RePoE：把所需输入（player-context 归档或选表补充）发布为固定 handoff 并声明对应 job |
+| 13 | `overlay/trade_catalog.json`、`overlay/trade_stat_map.json`（冻结） | 无：只用于交易与打造界面 | RePoE：从客户端 Mods／BaseItemTypes 与固定的交易站 stats 来源生成 |
+| 14 | `overlay-common/` 的 `boss_poise_thresholds.json`、`item_granted_skills.json`、`passive_jewel_slots.json`、`totem_varieties.json`、`vendor_name_aliases.json`（冻结） | 无：版本 overlay 优先；别名表没有读取方 | PoBR 不再为这些域读取 `overlay-common/` 后，由 RePoE 从包中移除 |
 
-上述 PoB2 转换文件以固定字节随 RePoE owner 包导入，`_meta.generator` 仍记录历史抽取工具；
-PoBR 不从 vendor 生成或刷新它们，修改属于 owner 仓库。
-完整版本候选通过[锁驱动更新](../pipeline/runtime/locked-update.md)导入独立 owner 的固定产物，
-缺失来源时没有本地回退。解析规则与 PoB2 parser 的对照见[词条审计](../pipeline/README.md#词条审计)。
+不在清单里的输入：`data/overlay-common/local_mods.json` 与 `special_mods.json` 是 PoBR 入库的自有规则（锁的 `shared_files`），
+包含项目维护的兼容规则及独立游戏规则，不能统称为 PoB2 语义；`overlay/stat_id_map.json` 是从描述与现有 parser 派生的本地维护资料，
+不是生产中的 stat 注入通道或已验证的游戏语义。符文与描述已有客户端事实／CSD adapter，未完整表示的整项回退与 scoped 解释的分母见[数据现状](data-status.md#领域现状)，
+领域退出条件见[数据架构](data-architecture.md#8-质量目标与领域退出条件)。
 
-### 手工整理与回归数据
+`buff_definitions` 的 `vendor_ref` 记录的 15 个 PoB2 行段在当前参考中逐字节相同，但 RePoE 的[固定来源对账](https://github.com/ackness/repoe/blob/db7f3d5d129d82e5788990658795d5a4ad15a4df/RePoE/docs/buff_source_reconciliation.md)
+核对的七个完整上下文中，调用者、defence 和 reservation 的上游条件已有变化，整体等价未确立，验证器保持 `guard_eligible=false`；
+运行定义因此不更新，也不据此认证官方 buff 或 charm 语义。
 
-`overlay-common/buff_definitions.json`、`special_mods.json`、`high_precision_mods.json`、`local_mods.json` 包含项目维护的兼容规则及独立游戏规则，不能统称为 PoB2 语义。
+PoBR 不从 vendor 生成或刷新上述文件，修改属于 owner 仓库；缺失来源时没有本地回退。解析规则与 PoB2 parser 的对照见[词条审计](../pipeline/README.md#词条审计)。
+`examples/demo-bd-test/builds/*/meta.json` 的回归对照值由 `tools/pob2-oracle` 重录，用于防回归，不是独立游戏真值。
 
-`buff_definitions` 的 `vendor_ref` 记录 15 个 PoB2 行段，旧来源为 `ce8bffaba31f8e68cfce70579e1c96465e7c133c`；
-它们在当前参考 `bb52d6b368307457eb9c54bb13f1829993d390b1` 中各有唯一、逐字节相同的行段，引用元数据仍记旧来源和旧行号。
-RePoE 的[固定来源对账](https://github.com/ackness/repoe/blob/db7f3d5d129d82e5788990658795d5a4ad15a4df/RePoE/docs/buff_source_reconciliation.md)
-核对了七个完整上下文：调用者、defence 和 reservation 的上游条件已有变化，整体等价未确立，
-其验证器保持 `guard_eligible=false`。运行定义、数值和引用没有因此更新，也不据此认证官方 buff 或 charm 语义。
-
-`item_granted_skills.json`、`boss_poise_thresholds.json` 和 `totem_varieties.json` 已有目标事实 producer，完整版本通过独立 RePoE 产物临时导入；PoBR 保留筛选和解释责任。授予技能只迁可证字段，原始 `ItemInherentSkills.IsWeapon` 列按固定社区政策解释为 NoReservation，字段命名与官方语义未独立认证；Boss 选择仍是显式模型。详见[授予技能契约](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-item-grants.md)。`energy_config_options.json` 等是项目定义的外部事件／静态状态输入，属于 PoBR 自有配置，编译进 `pobr-gamedata`（`crates/pobr-gamedata/src/domains/config_options/`），不是数据包输入。
-
-`examples/demo-bd-test/builds/*/meta.json` 的回归对照值由 `tools/pob2-oracle` 重录。它们用于防回归，不是独立游戏真值。
-
-这些依赖仍限制部分新版本数据的接入，但不限制 PoBR 只能计算 PoB2 已支持的机制。`rules/skill_stats.rs` 的自有映射和带 `game_source` 的规则已支持若干导出器缺失的效果；`exporter: "absent"` 就是对此的明确记录。不要再把“仍依赖部分数据”写成“机制覆盖不会超过 PoB2”。
-
-逐步减少依赖的候选顺序是：直接提取游戏 stat 描述；建立游戏 stat ID 到引擎 modifier 的自有映射；将技能映射和配置改为按游戏数据差异维护；补充游戏内实测回归。`stat_id_map.json` 是从描述与现有 parser 派生的维护资料，不是生产中的独立 stat 注入通道或已验证的游戏语义；迁移需核实映射的单位、作用域与证据，并保留未知项诊断。每项要单独评估，不是一次性重写计划。
+这些依赖限制部分新版本数据的接入，但不限制 PoBR 只能计算 PoB2 已支持的机制。`rules/skill_stats.rs` 的自有映射和带 `game_source` 的规则已支持若干导出器缺失的效果；`exporter: "absent"` 就是对此的明确记录。不要再把“仍依赖部分数据”写成“机制覆盖不会超过 PoB2”。
 
 ## 已知的有意差异
 
