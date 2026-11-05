@@ -1,7 +1,6 @@
 # 诊断工具与逐行台账
 
-先批量找共同原因，再看单个构筑。流程概要见[维护者指南](maintainer-guide.md#排查数值差异诊断闭环)
-和 [AGENTS.md](../AGENTS.md#accuracy-workflow)。Modifier 是供计算读取的词条，ModDb 是保存这些词条的数据库，stat 是游戏属性标识。
+先批量找共同原因，再看单个构筑。流程见[维护者指南](maintainer-guide.md#排查数值差异诊断闭环)。Modifier 是供计算读取的词条，ModDb 是保存这些词条的数据库，stat 是游戏属性标识。
 本文说明报告含义；参数与缓存见
 [开发工作流](development-workflow.md#慢构建与按需报告)。
 

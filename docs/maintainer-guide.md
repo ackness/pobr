@@ -6,13 +6,14 @@
 引擎需要高效汇总大量 Modifier（词条的结构化表示）、计算多个技能，
 并保留装备、词条、天赋、宝石和配置等来源，供结果明细与来源贡献分析使用。
 
-本文是所有贡献者和代码代理共用的规则：构建与验证、架构、约定和排查流程。[CLAUDE.md](../CLAUDE.md) 整篇导入本文，所以这里只放跨主题、长期有效的规则；具体机制、输出字段和与 PoB2 的差异写在下面的专题文档里，按需打开。[AGENTS.md](../AGENTS.md) 是英文的简短版。
+本文是所有贡献者和代码代理共用的规则：构建与验证、架构、约定和排查流程。[CLAUDE.md](../CLAUDE.md) 整篇导入本文，所以这里只放跨主题、长期有效的规则；具体机制、输出字段和与 PoB2 的差异写在下面的专题文档里，按需打开。[AGENTS.md](../AGENTS.md) 是给其他代理工具的英文摘要：只列硬性规则并链接本文，两者不一致时以本文为准。
 
 ## 文档地图
 
 | 要做的事 | 文档 |
 |----------|------|
-| 日常命令、缓存、CI、发版、处理外部 PR | [开发与 CI 工作流](development-workflow.md) |
+| 日常命令、缓存、CI、合并与发版机制、处理外部 PR | [开发与 CI 工作流](development-workflow.md) |
+| 换数据、发版上线与回退的步骤 | [RELEASING.md](../RELEASING.md) |
 | 常见小改动（一行词条、一个 Calcs 字段、一个机制）改哪些文件、跑哪一个检查 | [改动配方](recipes.md) |
 | 词条规则的语法与 overlay 数据 | [contributing-mods.md](contributing-mods.md) |
 | 某个机制的游戏出处、实现与假设 | [机制约定](mechanics/README.md) |
@@ -54,16 +55,17 @@
 | 跨 crate API / 数据结构 | 直接使用者的契约与回归用例；边界较广时在合并前手动运行远端完整 CI |
 | Web TS / React / Worker | typecheck、相关 Vitest / Worker 测试；交互风险需要时运行相关 Playwright spec |
 | Rust → WASM / Web 契约 | 完整 CI 重建 WASM、真实 WASM 契约与打包计算；相关交互 E2E 按需开启 |
+| 数据锁 bump | 审阅 `data:bump` 打印的身份差异；合并前对分支运行 `mise run ci <分支>`（锁变化时含冒烟 E2E） |
 | 验证脚本 | `mise run check:workflows`（shell/Actions/Python/Node，不编译 Rust）；冷依赖场景验证安装顺序 |
 | 仅文档 | diff、链接与示例审阅；不运行产品构建，不额外创建固定 reviewer |
 
 - 需要本地测试时，用 `mise run targets` 查目标（不编译），再用 `--test <suite>` / `--lib` 限定编译。名称 filter 不会减少该测试目标的编译量；不固定串联 check → build → Clippy → test。
 - 行为修复保留回归断言和游戏依据，不降低 parity/吻合基线换取通过。用例可交接为未运行，但不能省略验证责任或虚报结果。
 - 同一代码、依赖、工具链、features 和数据下的通过证据可复用。先修复并重跑失败的相关项，仅在影响范围改变时扩大验证。
+- 读码、review、`cargo check` 与运行时测试分别报告，不能互相冒充；通用 skill 的检查清单不覆盖本节。
 - **集中集成**：协调者先合并 worker 的变更与生成产物，再选一次批次验证，优先 `mise run ci <pushed-ref>`。`mise run gate` 保留为 warm checkout 上的显式本地方案，含额外 accuracy 报告；不要求与远端完整 CI 重复执行。修复后可用 `--only` 重跑本地失败步骤。
-- **CI 分层**：PR 按整个变更范围运行轻量检查；共享配置或未知输入运行全部轻量区域。master 代码改动、手动、nightly 与 tag 运行完整 CI。高风险批次可在合并前手动全量；E2E 显式开启。`PR gate` 只证明应运行的轻量检查通过，不能代替完整集成结论。
-- **CI 复用与并行**：完整 Rust 测试按 workspace 包分成三个不重叠分片，保留 doctest；WASM 仅在源码与构建输入完全匹配且记录验证通过时复用绑定，实际契约与打包计算仍运行。PR 新提交可取消旧运行，master/tag 每次运行独立；文档 PR 保留稳定 gate，普通文档 push 通过路径过滤。
-- **Review 按风险选择**：复杂、跨边界或高风险改动使用独立 reviewer；文档和明显小改动不增加审计表或固定 agent。`mise run pr-ready <N>` 是可选只读预检，返回准确 head 供 `--match-head-commit` 使用；是否还需手动 full 由变更风险决定。
+- **CI 分层**：PR 按整个变更范围运行轻量检查；master 代码改动、手动、nightly 与 tag 运行完整 CI。高风险批次可在合并前手动全量；E2E 显式开启，数据锁改变时完整 CI 自动加跑一个冒烟 spec。`PR gate` 只证明应运行的轻量检查通过，不能代替完整集成结论。选路、分片与缓存复用见[开发工作流](development-workflow.md#ci-的责任与触发)。
+- **Review 按风险选择**：复杂、跨边界或高风险改动（核心计算、持久化／导入兼容、工具链、发布）使用独立 reviewer，说明检查过的 head/base 与未验证范围，建议与阻断问题分开；文档和明显小改动不增加审计表或固定 agent。修正留在同一 PR，新提交后重看受影响的证据。合并前的核对（`mise run pr-ready`）见[开发工作流](development-workflow.md#agent-提交review-与合并)。
 - Web 纯 TS/CSS 修改复用已构建的 WASM。WASM/Rust/features/工具链变化时再重建；`mise run web build` 已含 typecheck，E2E 使用对应代码的 dist/WASM/data。
 
 ## 常用命令
@@ -74,7 +76,7 @@ mise run verify build skills support_gating::     # 定向测试 + fmt + Clippy
 mise run test core parser mod_parser::            # 一个套件 + filter（也接受原始 cargo test 参数）
 mise run regen                                    # 改了词条规则后：校验规则与示例、重生成产物
 mise run data:prepare && mise run data:check      # 导入固定 owner 数据；离线检查数据归属与工作树干净
-mise run data:bump repoe game/<patch>-<n>         # 换数据：锁改到 owner 的 Release（校验 SHA256SUMS），导入并打印身份差异
+mise run data:bump <owner> <tag> [<owner> <tag>]  # 换数据：锁改到 owner 的 Release 并导入，打印身份差异（步骤见 RELEASING.md）
 mise run gate [--only 步骤,...]                   # 批次门禁
 
 mise exec -- cargo run -p pobr-cli -- calculate-build --file <code.txt> [--breakdown TotalDPS,Life] [--usage] [--full-dps] [--reference-basis] [--json]
@@ -91,9 +93,16 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 
 各工具输出的含义见 [diagnostics.md](diagnostics.md)；参数、缓存和其余命令（基准、parity 报告、WASM 打包、数据与 vendor 任务）见[开发与 CI 工作流](development-workflow.md)。PoB2 oracle（无界面运行并输出计算结果的参考工具）是 `mise exec -- bash tools/pob2-oracle/run.sh <build.xml>`；词条规则与 PoB2 parser 的对照审计是 `mise exec -- bash pipeline/diagnostics/modifier-audit.sh [--offline]`，只报告、不改写规则。
 
+## 并行 Agent、提交与 PR
+
+- 并行写入者各用独立的 checkout／branch（worktree）；只读助手可以共用一个稳定版本。**不用 `git stash`**：所有 worktree 共用同一个 stash。
+- 被委派的 worker 只在本地提交；集成与经授权的 push／PR 由协调者负责。追加型冲突（catalog 条目、标签、规则列表）保留两侧并检查接线；生成文件重新生成，不手工合并；规则批次集成后统一 `mise run regen` 一次。
+- 并发 agent 尽量修改不相交的文件。两个 agent 添加同一个显示 id 或规则是语义冲突，退回给后到的一方。完成时交代审阅／运行了什么、留给集成的是什么。
+- 提交标题沿用现有风格（如 `fix: preserve skill selection`、`docs(pipeline): …`），一次提交一件事。PR 说明问题、结果行为、实际验证与剩余限制，链接相关 issue，可见 UI 改动附截图。push、PR 更新、合并与发版只在授权范围内进行；外部贡献的要求见 [CONTRIBUTING.md](../CONTRIBUTING.md)。
+
 ## Workspace 结构
 
-以根 [Cargo.toml](../Cargo.toml)、各 crate 的 `src/lib.rs` 和契约 / 回归测试为准。11 个成员：7 个库、2 个应用、2 个 Rust 工具；`web/` 与 Lua oracle 不在 Cargo workspace 里。把 RePoE 事实转换成运行 JSON 的 `pobr-data-adapter` 及其领域政策在 [ackness/repoe](https://github.com/ackness/repoe/tree/master/tools/pobr-data-adapter)，经不可移动的 tag `contract/<n>.<m>` 依赖本仓库的数据契约 `pobr-data`（`n` 为 `pobr_data::CONTRACT_VERSION`，`m` 为增量修订）。不兼容地改动数据包类型或加载解释时把 `CONTRACT_VERSION` 加 1（tag 从 `contract/<n>.0` 起）；新增数据仓库应产出的可选字段或修正 `pobr-data` 辅助代码时打下一个 `.m`；只改引擎不需要 tag。tag 打在 master 上 `pobr-data` 已完整包含该修订的提交上，RePoE 再升级依赖；规则、tag 约定与 manifest 的 `contract_version` 字段见[数据契约版本](data-architecture.md#31-数据契约版本)。旧的 `engine-crates/<日期>` tag 不再新建，已有的保留。
+以根 [Cargo.toml](../Cargo.toml)、各 crate 的 `src/lib.rs` 和契约 / 回归测试为准。11 个成员：7 个库、2 个应用、2 个 Rust 工具；`web/` 与 Lua oracle 不在 Cargo workspace 里。把 RePoE 事实转换成运行 JSON 的 `pobr-data-adapter` 及其领域政策在 [ackness/repoe](https://github.com/ackness/repoe/tree/master/tools/pobr-data-adapter)，经不可移动的 tag `contract/<n>.<m>` 依赖本仓库的数据契约 `pobr-data`。改动数据包类型、加载解释或数据仓库调用的 `pobr-data` 代码前，先读[数据契约版本](data-architecture.md#31-数据契约版本)：何时把 `CONTRACT_VERSION` 加 1、何时打 tag 只在那里规定；只改引擎不需要 tag。
 
 | 成员 | 职责 |
 |------|------|
@@ -114,7 +123,7 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 
 其他目录：`web/`（React / TypeScript / Vite；`src/api/` 定义 JSON 边界并默认在 module Worker 中运行 WASM，`public/` 是静态资源、同步数据与 Pages Worker，另有 `e2e/` 与 `worker-tests/`）、`data/`（Git 只跟踪 `CURRENT` 与两份自有规则；版本目录和七份外部 shared 输入按 `pipeline/data.lock.json` 临时准备）、`pipeline/`（固定输入声明、导入、组包、候选与诊断）、`examples/`（回归与参考语料）、`devs/`（开发脚本、CI 基线与 fixtures；差异登记在 `scripts/known-differences.json`）、`agent-docs/`（被代码引用的早期机制研究）。当前行为契约集中在 `docs/`。
 
-**数据管线**：RePoE 游戏事实／兼容输入与独立翻译库的固定产物 →（按唯一数据锁 `pipeline/data.lock.json` 的 Release 附件或 tag + commit，及 SHA-256 临时导入；`mise run data:bump` 改锁）→ schema 3 运行包与精简发行包 →（`pobr-gamedata`）→ 计算。缺数据或缺翻译时更新 owner 仓库的发布，不在 PoBR 内补数据。完整游戏／语言数据不进入 PoBR Git；实物测试和构建按 `mise run data:prepare` 准备，来源缺失或 pin 不符即失败；`mise run data:check` 离线确认 `data/` 只跟踪自有文件、导入后工作树干净。计算所需游戏文件访问集中在 `pobr-gamedata`；语言生成／配对属于翻译库，PoBR 保留显示／输入与 DTO 解释边界。PoB2 vendor 只作测试参考，不作为生产数据的写入来源；PoBR 不从 vendor Lua 或本地原表再生数据，owner 包中由 PoB2 转换的兼容文件也不算自主再生。设计见[数据架构](data-architecture.md)，现状见[数据现状](data-status.md)，命令见[数据管线说明](../pipeline/README.md)与[版本升级结构](version-bump-architecture.md)。
+**数据管线**：游戏与语言数据只来自 RePoE 与翻译库的不可变 Release，按唯一数据锁 `pipeline/data.lock.json` 临时导入（`mise run data:prepare`，来源缺失或 pin 不符即失败），组成 schema 3 运行包与精简发行包，经 `pobr-gamedata` 进入计算；计算所需的游戏文件访问集中在 `pobr-gamedata`。完整数据不进 PoBR Git，`mise run data:check` 离线确认 `data/` 只跟踪自有文件。缺数据或缺翻译在 owner 仓库修复并发布，不在 PoBR 内补；PoB2 vendor 只作测试参考，PoBR 不从 vendor Lua 或本地原表再生数据。设计见[数据架构](data-architecture.md)，现状见[数据现状](data-status.md)，命令见[数据管线](../pipeline/README.md)，换数据与发版步骤见 [RELEASING.md](../RELEASING.md)。
 
 ## 运行时数据与会话
 
@@ -197,13 +206,13 @@ PoBR 主要计算静态构筑及选定条件下的结果，不追求还原游戏
 
 ### 流程
 
-先批量、后单个（完整步骤见 [AGENTS.md](../AGENTS.md#accuracy-workflow)，各工具输出见 [diagnostics.md](diagnostics.md)）：
+先批量、后单个；各工具的输出见 [diagnostics.md](diagnostics.md)。
 
-1. `mise run triage` 一次计算基准组与 tuned 组的全部构筑和固定版本 PoB2，把不一致的行分为 `engine` / `both`（引擎要修）、`reference`（参考值来自另一版导出工具）和 `known`（已登记的有意差异），并跨构筑汇总线索与计算丢掉的输入。按涉及构筑最多的原因成批修复，整批修完再跑一次（PoB2 一侧有缓存）。
-2. 找机制缺口用 `mise run gaps`，选中一行后用 `mise run gap "<文本>"` 看 stat、完整来源文本与逐构筑去向。
-3. triage 解释不了的行才单独看：`mise run diagnose <构筑>`、`calculate-build --breakdown <stats> --usage`、`mise run compare <构筑> [Stat ...]`。
-4. 参考值和 PoB2 都不是真值：按游戏词条和数据判断改哪一边（见上一节）。
-5. 同一类行反复需要逐个人工排查，说明工具缺了输出：扩充 triage 或诊断，让下一轮批量运行直接给出这类线索。
+1. `mise run triage` 一次计算基准组与 tuned 组的全部构筑和固定版本 PoB2，把不一致的行分为 `engine` / `both`（引擎要修）、`reference`（参考值来自另一版导出工具，不用修）和 `known`（`devs/scripts/known-differences.json` 已登记的有意差异），并跨构筑汇总线索与计算丢掉的输入。holdout 组只用 `mise run accuracy` 测量，不对它 triage 或诊断。
+2. 按涉及构筑最多的原因成批修复：triage 的共同线索、未解析行的模板，以及各构筑逐行台账（`calculate-build --usage`）显示计算丢掉的输入——规则认得但没有模型的行、没有读取方的 modifier 名、没人设置的条件、被拒的宝石 stat——不论该行是否有差异。`mise run gaps [--kind unique|passive|mods|...]` 按涉及构筑与来源排序游戏文本缺口，选中一行后用 `mise run gap "<模板或文本>"` 看 stat、完整来源文本、台账去向与相近的引擎规则。按游戏数据和物品原文实现，PoB2 只作交叉核对；并行 agent 写独立的修复并报告审阅／检查证据，协调者集成后选批次验证。
+3. 每批验证一次，优先远端完整 CI；需要显式的本地 accuracy／parity 批次时用 `mise run gate`。之后重跑 `mise run triage`（PoB2 一侧有缓存）。改进后上调基线，把原因与证据写进提交或 PR；生成的报告留在本地。
+4. triage 解释不了的行才单独看：`mise run diagnose <构筑>`、`mise run compare <构筑> [Stat ...]`、`calculate-build --breakdown <stats> --usage`。同一类行反复需要逐个人工排查，说明工具缺了输出：扩充 triage 或诊断，让下一轮批量运行直接给出这类线索。
+5. 参考值和 PoB2 都不是真值：按游戏词条和数据判断改哪一边（见上一节）。游戏文本或数据证明参考值有误时，把有意差异写进 [pob2-differences.md](pob2-differences.md)，并在 `known-differences.json` 登记对应行；PoB2 没有实现的规则只需 `exporter: "absent"`，不需要 known-difference 条目。
 
 ### 输入不能悄悄丢失
 
@@ -229,6 +238,7 @@ PoBR 主要计算静态构筑及选定条件下的结果，不追求还原游戏
 ## 关键约定
 
 - **计算内部只用稳定 ID**（`StatId` / `ModName` / `SourceId`），显示文本在显示边界解析：界面文字在 Web，游戏名词与词条译文来自翻译库的语言包。代码与注释用英文。
+- **代码风格与测试位置**：Rust edition 2024，rustfmt 四空格；TypeScript 两空格；Rust 函数／模块 `snake_case`，类型与 React 组件 `PascalCase`。Rust 集成测试放在各 crate 的 `tests/`，前端单测 `*.test.ts` 与源码同目录，浏览器测试 `*.spec.ts` 在 `web/e2e/`。
 - **确定性**：同一输入的结果逐字节相同；不依赖 HashMap 遍历顺序之类的偶然顺序。
 - **保留原文并保持兼容**：Build Code 走 XML → deflate → URL-safe Base64；导入的物品原文、未知配置、扩展属性原样保留，JSON 契约保持兼容。WASM 握手版本 `pobr_wasm::SCHEMA_VERSION` 与 Web 的 `EXPECTED_SCHEMA_VERSION` 必须一起改。
 - **发布产物只含游戏计算能力**：`POBR_DBG_*` / `POBR_GATE_DENY` 诊断开关（`dbg_env!`）只在调试构建存在；测试辅助在 feature 后面。新增诊断或测试辅助沿用这两种方式。
@@ -238,6 +248,7 @@ PoBR 主要计算静态构筑及选定条件下的结果，不追求还原游戏
 ## 文档维护
 
 - 本文只放跨主题、长期有效的规则。新的机制约定写进 [mechanics/](mechanics/README.md) 的对应小节，输出字段写进 [calc-outputs.md](calc-outputs.md)，构筑模型与接口写进 [build-model.md](build-model.md)，与 PoB2 的差异写进 [pob2-differences.md](pob2-differences.md)；不要把单个机制的段落追加到本文。
-- 改变 crate 边界、聚合语义、catalog / parity 规则或验证流程时，同步更新本文、[AGENTS.md](../AGENTS.md) 和受影响的契约文档；Web 行为变化同步 [web-contracts.md](web-contracts.md)。
+- 改变 crate 边界、聚合语义、catalog / parity 规则或验证流程时，同步更新本文和受影响的契约文档，硬性规则变化时同步 [AGENTS.md](../AGENTS.md) 的摘要；Web 行为变化同步 [web-contracts.md](web-contracts.md)。
+- 每条规则只在一处维护，其他文件链接而不复制：验证分层、约定、诊断闭环与并行 agent 规则在本文；命令、CI、合并与发版机制在[开发工作流](development-workflow.md)；换数据与发版步骤在 [RELEASING.md](../RELEASING.md)；外部贡献要求与修复归属在 [CONTRIBUTING.md](../CONTRIBUTING.md)；三仓库分流在 [workflow skill](../.agents/skills/workflow/SKILL.md)；数据设计在[数据架构](data-architecture.md)，现状在[数据现状](data-status.md)。
 - 被代码取代的叙述直接改掉或删除。个人调查、审计交接与机器测量放在忽略的 `study/` 或 `.cache/`，结论写入相应契约、测试或 PR；不把过程日志累加到当前指南里。
 - 公开仓库保留能帮助复现和理解项目的文档、样本来源、有效基线与源代码引用。收起历史材料前，先迁移仍有效的约定，并检查跟踪文件中的链接；仅有本地文件存在不代表公开链接有效。

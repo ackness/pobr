@@ -16,7 +16,7 @@ Choose only the relevant source:
 - [Change recipes](../../../docs/recipes.md): files and focused check for common changes.
 - [Development workflow](../../../docs/development-workflow.md): setup, cache, CI and release operations.
 - [Diagnostics](../../../docs/diagnostics.md): triage, line usage and build comparisons.
-- [Data pipeline](../../../pipeline/README.md): pinned owner-data import, checks and version updates.
+- [Data pipeline](../../../pipeline/README.md): pinned owner-data import and checks; [RELEASING.md](../../../RELEASING.md) for data bumps and releases.
 - [Project workflow](../workflow/SKILL.md): proportionate PR/review handoff.
 
 Available entry points; choose what resolves the current uncertainty:
@@ -38,13 +38,9 @@ mise run gap "<modifier text>"
 
 Setup is lightweight; oracle, browser and artwork tasks prepare their own extra
 dependencies. A test already compiles its target; do not prepend a product build.
-Workers may use review/static evidence or run local tests/builds when useful; report
-which were actually performed. Algorithms and large changes can justify earlier
-focused tests. Integrate once before batch validation, prefer remote CI, and reuse
-passing checks for unchanged inputs. `cargo check` still compiles dependencies;
-`test --no-run` still creates binaries. Avoid automatic check/build/test chains.
-Before creating build caches or running a large batch, inspect `mise run cache`
-and free disk space; follow the workflow guide's storage decisions. Reuse warm
-artifacts and scope any cleanup to confirmed stale data with no active consumer.
-Documentation changes need diff/link review. Record observed results and limits;
-requesting CI or finding a cached binary does not prove a calculation succeeded.
+Which checks to run is decided by the maintainer guide's
+[validation tiers](../../../docs/maintainer-guide.md#验证分层); before new build
+caches or a large batch, follow the
+[storage decisions](../../../docs/development-workflow.md#storage-decisions).
+Report the commands that actually ran; requesting CI or finding a cached binary
+does not prove a calculation succeeded.

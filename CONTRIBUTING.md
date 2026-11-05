@@ -11,13 +11,29 @@ run commands with `mise run` or `mise exec --`. Optional tools are installed by
 the task that needs them. CI uses current official/maintained Actions with the
 same pinned versions.
 
-- [AGENTS.md](AGENTS.md) is the short contributor guide: layout, commands, style.
-- [Maintainer guide](docs/maintainer-guide.md) has the architecture, validation scope and
-  cross-cutting conventions; [mechanics notes](docs/mechanics/README.md) record the rules
-  and assumptions of individual game mechanics.
+- [Maintainer guide](docs/maintainer-guide.md) (Chinese) has the architecture, validation
+  scope and cross-cutting conventions; [AGENTS.md](AGENTS.md) is its short English digest.
+  [Mechanics notes](docs/mechanics/README.md) record the rules and assumptions of
+  individual game mechanics.
 - [docs/](docs/README.md) indexes the feature contracts and guides. To add or
   fix a modifier through data, start with
   [Contributing modifiers](docs/contributing-mods.md).
+
+## Which repository owns the fix
+
+PoBR calculates with data that two other repositories publish. Open the issue or
+pull request where the fix belongs:
+
+| Problem | Repository |
+| --- | --- |
+| Wrong or missing game facts (bases, affixes, skills, passive tree, stat values), client decoding, or how facts are projected into PoBR's runtime JSON (`pobr-data-adapter`) | [ackness/repoe](https://github.com/ackness/repoe) |
+| Wrong or missing Chinese game text: affix and stat wording, item and skill names, support-gem descriptions | [ackness/poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats) |
+| Modifier rules, stat meaning, calculations, build import/export, CLI/WASM, the web app and its interface text | ackness/pobr (here) |
+
+A data fix reaches PoBR when its owner publishes a new Release and a maintainer
+moves the data lock to it ([RELEASING.md](RELEASING.md)). Do not add game or
+translation data to PoBR itself. If you are unsure, open the issue here and say
+so; a maintainer will route it.
 
 ## What a good change looks like
 
@@ -27,9 +43,9 @@ same pinned versions.
   `attack_damage_final_permyriad_per_rage = 100`. Path of Building 2 is the
   regression baseline and a cross-check, not the authority: do not cite its Lua
   line numbers. Where PoBR deliberately differs from PoB2, say why in
-  [PoB2 differences](docs/pob2-differences.md). The pinned PoB2 commit is
-  recorded in the active data's `overlay/mod_parser_rules.json` under
-  `_meta.vendor_commit`.
+  [PoB2 differences](docs/pob2-differences.md). The PoB2 checkout used by
+  tests and comparisons is pinned in `devs/reference-sources.json`
+  (`mise run vendor` clones it).
 - **Prefer a general rule to a per-skill entry.** If the same mechanism affects
   several skills or modifiers, fix the mechanism once instead of adding one
   allow-list line per name, and check which other entries share the bug.
@@ -41,9 +57,11 @@ same pinned versions.
 
 ## Checks
 
-Choose checks by the behavior at risk and their cost. Documentation needs diff/link
+Choose checks by the behavior at risk and their cost
+([validation tiers](docs/maintainer-guide.md#验证分层)). Documentation needs diff/link
 review. Large changes and algorithms often benefit from focused tests or compilation
-before handoff; ordinary commits do not require a local product build.
+before handoff; ordinary commits do not require a local product build. Tests that read
+real game data need `mise run data:prepare` first.
 
 ```bash
 mise exec -- cargo check --locked -p pobr-core --lib  # Optional targeted compiler check
@@ -57,14 +75,10 @@ Add regression cases for changed behavior even when execution is deferred. Repor
 what you inspected, actual commands/results and anything left unrun. A review or
 compiler check does not prove runtime assertions passed.
 
-PRs select relevant quick checks. Rust uses formatting and `cargo check`; Web and
-automation use their relevant checks. Shared or unknown inputs select all quick
-areas. Master code changes run full CI; maintainers may request
-`mise run ci <pushed-ref>` before merging a risky batch. Nightly and tag validation
-also remain full. There is no need to repeat the same full run locally.
-`PR gate` rejects missing or unexpectedly skipped selected checks; it is a quick
-gate, not a full-integration claim. See [validation scope](docs/maintainer-guide.md)
-and [development workflow](docs/development-workflow.md).
+Your PR runs the relevant quick checks automatically (`PR gate`); a maintainer may
+request full CI before merging a risky change, and master runs full CI after merge.
+There is no need to repeat a full run locally. CI details are in the
+[development workflow](docs/development-workflow.md#ci-的责任与触发).
 
 ## Pull requests and review
 
@@ -77,10 +91,6 @@ For a substantial or risky change, use an independent reviewer and identify the
 checked commit plus any limits. Small obvious fixes and documentation do not need
 an extra agent or audit form. Keep corrections on the same PR and recheck the
 affected evidence after updates. The template is a writing aid, not a CI format.
-
-Maintainers can use `mise run pr-ready <N>` to inspect the live PR/checks and get
-the exact head for `--match-head-commit`; it never merges. Equivalent direct review
-is fine. Product decisions and non-CI evidence still need judgment.
 
 Normally maintainers request corrections on your PR. If a takeover is needed,
 follow-up commits preserve your work and credit; a replacement PR links to yours

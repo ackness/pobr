@@ -122,7 +122,7 @@ mise run data:pack verify --pack .cache/runtime-pack/player
 `build` 逐项校验已安装快照的 schema-3 清单摘要，确认其运行身份等于数据锁，再投影成三块；
 锁中记录了 `release_id` 时结果必须一致（`--expected-id` 可另行指定）。
 它不重跑任何领域生产或显示生成：这些字节已在 owner 发布中，PoBR 只负责打包。
-数据锁同时固定 game 与 language 的真实仓库、完整 commit、tag、路径和摘要。
+数据锁固定 game 与 language 两个 owner 的 Release 附件（仓库、tag、附件名）及其字节数与 SHA-256。
 
 Full CI在需要实物的Rust、Web和自动化测试前显式prepare。`runtime`任务等待同次WASM构建，
 自己prepare并从快照组精简三块，

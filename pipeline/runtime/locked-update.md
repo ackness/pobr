@@ -1,11 +1,13 @@
 # Locked data candidates and explicit local selection
 
-Game acquisition and export belong to RePoE; language production belongs to the
-translation repository. PoBR consumes a complete [build-data lock](build-data.md)
-with exact owner revisions, archive/member pins, snapshot and runtime identities.
-A patch number alone is insufficient: the lock is edited in a reviewed change,
-and this command only prepares or selects it. PoBR has no table exporter or
-vendor-based upgrade path.
+`mise run data:update` is a local tool: it prepares a complete candidate from a
+[build-data lock](build-data.md) you name, or explicitly selects it in this
+checkout's `data/`, for example to rehearse a rollback or compare two locks. It
+never edits `pipeline/data.lock.json`. Adopting new owner data is a reviewed
+`mise run data:bump` PR instead; the steps are in [RELEASING.md](../../RELEASING.md).
+A patch number alone is insufficient: the lock pins exact owner artifacts,
+snapshot and runtime identities, and PoBR has no table exporter or vendor-based
+upgrade path.
 
 ```sh
 # Prepare a fresh complete candidate. CURRENT and installed data remain unchanged.
