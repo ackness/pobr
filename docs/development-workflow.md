@@ -334,11 +334,20 @@ PR 不在 workflow 层过滤文档，以免必需检查永久 pending：只运�
 已准备数据上派生规则的逐字节复现与解析覆盖率棘轮、数据兼容、Web 类型/单测/Worker、真实 WASM 契约与打包计算。
 缺少 vendor 的项目会明确跳过，不能将其描述为已验收。
 它不等同于本地 `mise run gate` 的额外 accuracy 报告和全部本地输入。
-E2E 只在显式手动输入时运行；交互风险需要时选择相关本地 spec 或云端 E2E。
+完整 E2E 只在显式手动输入时运行；交互风险需要时选择相关本地 spec 或云端 E2E。
+例外是数据 bump：完整 CI 的范围改动了 `pipeline/data.lock.json`（master push，或对分支 `mise run ci <ref>`、
+其数据锁与默认分支不同）时，只运行一个冒烟 spec [data-bump-smoke.spec.ts](../web/e2e/data-bump-smoke.spec.ts)：
+导入构筑码、技能与辅助、打造器、加点（恰好退一点再加一点）、刷新重开（加点、辅助、能量护盾与 DPS 不变）。选择由 `ci-plan.py --data-smoke` 决定；
+tag 与 nightly 不选，分支范围无法比较时保守选中。它不进入 PR gate，因此数据 bump PR 合并前应 `mise run ci <分支>`。
+
+PR 与完整 CI 的 web 作业在作业摘要里打印游戏文本缺译统计（`devs/scripts/translation-coverage.py`）：
+每种语言的名词表、词条模板（与英文 stat 描述模板逐字对照）与原生显示文本覆盖率，缺译只报告、不使检查失败；
+读不了的表、语言或快照打印为 `unreadable: <原因>`，脚本仍以 0 退出，CI 步骤另设 `continue-on-error`。缺译在 Web／WASM 中显示英文（`translationFallback.test.ts`、pobr-i18n 渲染测试）。
 
 ```bash
 mise run check:workflows                   # 自动化契约，不编译 Rust
 mise run i18n:check                        # Web 界面文字的键集、占位符与语言登记
+mise run i18n:coverage                     # 游戏文本缺译统计（按语言对照英文数据；只报告，不失败）
 mise run ci feature/my-change              # 先推送目标提交；只请求检查，不推送代码
 mise run ci feature/my-change --e2e        # 显式启用 E2E
 mise run ci-status --branch feature/my-change

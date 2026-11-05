@@ -169,3 +169,71 @@ mise exec -- node --test web/scripts/benchmark-comparison.test.mjs web/scripts/b
 Lua 计时包含 Node Worker 宿主、适配检查和上游无界面 UI 状态准备。
 两侧实现、JSON 响应和支持机制不同。这些测试不能推导纯计算内核速度、增量编辑延迟、
 浏览器表现、内存占用或数值一致性。
+
+<a id="web-data-load-comparison"></a>
+
+### Web 数据加载：逐文件快照与紧凑包
+
+`web/scripts/bench-web-load.mjs` 在浏览器里对比同一份构建站点的两种数据目录：
+`sync-data` 发布的逐文件快照（当前生产方式），以及经 `syncRelease` 发布的紧凑发行包
+（`POBR_RUNTIME_PACK`，三个 block）。每次运行启动全新的无头 Chromium（无 HTTP 与代码缓存），
+打开没有存档的 `/build`，记录启动屏消失、默认角色第一次计算结果出现，再改一次等级记录第二次计算。
+本地服务器发送 brotli（quality 5）预压缩响应和与托管相同的缓存头；网络档位是一条共享的
+FIFO 链路（9 Mbit/s、每个响应 150 ms 延迟，近似 DevTools 的 Fast 4G），CPU 档位是 DevTools
+的 4 倍降速，同时作用于页面与计算 Worker（第二次计算 9 ms → 39 ms 证实 Worker 也被降速）。
+内存是页面与 Worker 所在 renderer 进程的 PSS 合计（含 JS 堆和 WASM 内存）。
+
+```bash
+mise run web build-wasm && mise run web sync-data && pnpm --dir web exec vite build
+python3 -m pipeline.runtime.runtime_pack build --data data --out .cache/runtime-pack
+node web/scripts/bench-web-load.mjs --pack .cache/runtime-pack/player --iterations 7 [--profiles host,4g]
+```
+
+内存读取 `/proc`，只适用于 Linux 主机。
+
+报告写入 `.cache/web-load-performance.json`，保留每次采样。下表是 2026-11-05 在开发主机上
+（AMD Ryzen 9 7950X3D，32 线程，124 GB，Playwright Chromium 1248，数据 0.5.5.5，
+紧凑 `release_id` `9932ea87...`）各 7 次的中位数。这台机器远快于普通玩家设备，
+CPU 降速只是近似，结论看两者的相对差，不把绝对值当作用户体验。
+
+| 档位 | 数据目录 | 首次结果 | 启动屏消失 | 首次计算（消失后） | 第二次计算 | 传输 | 其中数据 | 数据原始字节 | 请求数 | 峰值 PSS | 稳定 PSS |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 主机 | 逐文件 | 1.10 s | 1.04 s | 60 ms | 9 ms | 8.29 MB | 4.73 MB | 72.1 MB | 97 | 594 MB | 467 MB |
+| 主机 | 紧凑 | 1.43 s | 1.36 s | 61 ms | 8 ms | 7.55 MB | 3.98 MB | 48.8 MB | 14 | 585 MB | 440 MB |
+| CPU 4× | 逐文件 | 1.63 s | 1.56 s | 72 ms | 39 ms | 8.29 MB | 4.73 MB | 72.1 MB | 97 | 564 MB | 466 MB |
+| CPU 4× | 紧凑 | 1.96 s | 1.89 s | 75 ms | 41 ms | 7.55 MB | 3.98 MB | 48.8 MB | 14 | 599 MB | 442 MB |
+| 4G | 逐文件 | 10.12 s | 10.07 s | 58 ms | 7 ms | 8.29 MB | 4.73 MB | 72.1 MB | 97 | 567 MB | 466 MB |
+| 4G | 紧凑 | 9.88 s | 9.82 s | 64 ms | 7 ms | 7.55 MB | 3.98 MB | 48.8 MB | 14 | 537 MB | 423 MB |
+| CPU 4× + 4G | 逐文件 | 10.57 s | 10.50 s | 69 ms | 35 ms | 8.29 MB | 4.73 MB | 72.1 MB | 97 | 591 MB | 499 MB |
+| CPU 4× + 4G | 紧凑 | 10.34 s | 10.28 s | 57 ms | 36 ms | 7.55 MB | 3.98 MB | 48.8 MB | 14 | 544 MB | 457 MB |
+
+传输除数据外还有 WASM 2.24 MB 与其余页面资源 1.32 MB（压缩后），两种方式相同。
+主线程 JS 堆两者都约 37 MB；差别在 Worker 一侧。
+
+解读：
+
+- 紧凑包少约 9% 传输（数据 4.73 → 3.98 MB）和约 6–8% 稳定内存，原因是 block 里的文件是紧凑 JSON
+  （原始 72 → 49 MB），且只含发行包声明的一种语言（zh-CN；zh-TW 的名词表与词缀表不在包内）。
+- 网络是瓶颈时（4G）紧凑包快约 2%（≈0.24 s），与少掉的字节量相符；97 个请求按 8 路并发
+  也没有让逐文件方式明显多付延迟。
+- CPU 或网络不是瓶颈时紧凑包反而慢约 0.33 s（主机 +30%，CPU 4× +20%）：Worker 先整体 `JSON.parse`
+  每个 block，再对其中每个文件做 UTF-8 编码、SHA-256 与一次语法 `JSON.parse`，三个 block 依次进行；
+  逐文件方式边下载边校验，下载与校验重叠。
+- 首次计算与之后的计算两者相同（同一引擎和同一份已暂存数据），差别全部在数据加载。
+- 未测：重复访问（两种方式的数据都是不可变缓存）、真实手机与低内存设备、生产 CDN 的实际压缩级别。
+
+结论：目前不切换，Web 继续使用逐文件快照。紧凑包没有明显更好——慢 CPU 或快网络下更慢，
+慢网络下只快约 2%——而切换并不是小改动：
+
+1. 语言范围：发行包只带一种语言，切换会让 zh-TW 失去原生基底／技能／词缀名，退回由简中转写。
+   需要先让发行包（`runtime_pack`、`runtimeRelease.ts` 的 `validateRelease`／`validateSnapshot`）
+   携带全部语言，或按语言分出可选 locale block。
+2. 增量更新：逐文件方式在数据 bump 后只重新下载变化的文件；紧凑包任一 base 文件变化都要重下整个
+   27.5 MB 的 core block（brotli 后约 1.75 MB）。
+3. 解码成本：要在快设备上不变慢，需要去掉对每个文件的二次 `JSON.parse`、让 block 下载与解码重叠，
+   或把 block 改成不需整体解析的格式。
+4. 接线：CI `web` 作业在 `sync-data` 前组包并设置 `POBR_RUNTIME_PACK`／`POBR_RUNTIME_RELEASE_ID`；
+   直接读取 `public/data/<version>/` 的 E2E、Vitest 基准与 `smoke-wasm-package` 需要改用物化后的候选。
+
+若只为减少传输，可考虑的低风险方向是让逐文件快照发布紧凑 JSON，但文件字节由 snapshot manifest 的
+SHA-256 固定，需要数据 owner 侧重新封存，不能在 PoBR 的 `sync-data` 里改写。
