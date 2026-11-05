@@ -129,6 +129,11 @@ RePoE 发布 ───┐
   不改契约的提交不需要 tag，数据仓库也不需要跟进；增量的契约改动打下一个 `.m`。数据仓库把 `pobr-data` 依赖固定在
   它需要的最新 `contract/<n>.<m>` 上。旧的 `engine-crates/<日期>` tag（如 `engine-crates/20261102`）不再新建，
   已有 tag 保留不动，现有的依赖固定可以继续使用，直到数据仓库升级到 `contract/<n>.<m>`。
+- **修订记录。** `contract/1.0`：首个契约 tag。`contract/1.1`（待打）：新增可选字段
+  `base/game_constants.json` 的 `game.base_maximum_rage`（游戏常量 `BaseMaximumRage`，缺省 30）与可选文件
+  `base/active_skill_types.json`（`active_skill_types/v1`，客户端 `ActiveSkillType` 表，按行序给出技能类型名与
+  1 起的序号；加载时以 `pobr_data::skill::install_skill_type_names` 安装为进程内的类型名表，与引擎具名常量不符即拒绝）；
+  天赋节点原生 stat 包里有引擎不认识的 stat 时按没有包处理（数据仓库因此可以给全部符合条件的节点发包）。
 - **RePoE 一侧。** `pobr-data-adapter` 与 release build 封存快照 manifest 时写入
   `"contract_version": <所依赖 pobr-data 的 CONTRACT_VERSION>`，数值取自依赖本身（例如由 adapter 读取
   `pobr_data::CONTRACT_VERSION` 输出），不手写；契约加 1 时先把依赖升到新的 `contract/<n>.0`，再重新生成并发布。

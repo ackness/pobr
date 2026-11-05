@@ -1,5 +1,10 @@
 use std::ops::{BitOr, BitOrAssign};
 
+/// Installs a data package's `ActiveSkillType` table (`base/active_skill_types.json`)
+/// as the process-wide name table of [`SkillTypes::from_pob2_name`]; see
+/// [`crate::catalog::skill_types`].
+pub use crate::skill_type_names::install as install_skill_type_names;
+
 /// Bitmask word count (320 bits, covering PoB2's whole SkillType enum
 /// range — the current max id is 290, see `Global.lua`'s SkillType table;
 /// high ids like Companion=198 and Grenade=159 are all within range).
@@ -23,6 +28,8 @@ pub struct SkillTypes([u64; SKILL_TYPE_WORDS]);
 
 impl SkillTypes {
     pub const NONE: Self = Self([0; SKILL_TYPE_WORDS]);
+    /// The highest type index (1-based) the bitmask holds.
+    pub const CAPACITY: u32 = (SKILL_TYPE_WORDS as u32) * 64;
     /// PoB2 SkillType.Attack = 1
     pub const ATTACK: Self = Self::bit(0);
     /// PoB2 SkillType.Spell = 2
@@ -96,16 +103,16 @@ impl SkillTypes {
     /// that don't have a named constant yet. Out-of-range values (>320)
     /// map to NONE (conservative).
     pub fn from_pob2_index(index: u32) -> Self {
-        if index == 0 || index > (SKILL_TYPE_WORDS as u32) * 64 {
+        if index == 0 || index > Self::CAPACITY {
             Self::NONE
         } else {
             Self::bit(index - 1)
         }
     }
 
-    /// Builds from a PoB2 enum name (all 290 names of
-    /// `Global.lua::SkillType`, kept in the frozen `skill_type_names.txt`
-    /// compatibility table) — the **single entry
+    /// Builds from a type name: a row `Id` of the game's `ActiveSkillType`
+    /// table, which is also PoB2's `SkillType` enum (see
+    /// [`install_skill_type_names`]) — the **single entry
     /// point** for the SkillType name→bit mapping, shared by both the
     /// parser's tag side and the orchestration cfg side (data-driven per
     /// A1: replaces the hand-written whitelist copies that used to live in
@@ -120,7 +127,7 @@ impl SkillTypes {
     /// [`from_pob2_name`](Self::from_pob2_name), sorted by name. For
     /// messages; a bit outside the name table is left out.
     pub fn names(self) -> Vec<&'static str> {
-        crate::skill_type_names::SKILL_TYPE_IDS
+        crate::skill_type_names::table()
             .iter()
             .filter(|(_, id)| self.intersects(Self::from_pob2_index(*id)))
             .map(|(name, _)| *name)

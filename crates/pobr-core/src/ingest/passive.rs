@@ -3,6 +3,11 @@
 //! Complete supported native packets bypass parsing. Rejected packets retain a
 //! diagnostic and fall back to the whole original text; absent packets keep legacy
 //! parsing. Both channels retain node attribution and any supplied raw display text.
+//!
+//! The data package carries a packet for every eligible node, whether or not this
+//! engine knows its stats (the producer does not track engine capability). A packet
+//! naming a stat [`passive_stats::map_stat`] does not know is not for this engine:
+//! the node takes the text channel as if it had no packet, without a diagnostic.
 
 use pobr_data::prelude::*;
 
@@ -69,13 +74,29 @@ pub struct NativePassiveDiagnostic {
     pub reason: NativePassiveRejection,
 }
 
-/// Selects the native channel before any parser filtering. `None` means legacy.
+/// Whether this engine maps every stat of `packet` by ID
+/// ([`passive_stats::map_stat`] knows each one). A packet with an unknown stat
+/// is ignored: its node is parsed from text, without a diagnostic.
+pub fn native_packet_known(packet: &NativePassiveStats) -> bool {
+    packet.stats.iter().all(|stat| {
+        !matches!(
+            passive_stats::map_stat(stat),
+            Err(NativePassiveRejection::UnknownStat)
+        )
+    })
+}
+
+/// Selects the native channel before any parser filtering. `None` means legacy
+/// (no packet, or a packet with a stat this engine does not map).
 /// A rejection always falls back for the whole node, never a subset of its stats.
 pub fn select_native_passive(
     node: &AllocatedNode,
 ) -> Option<Result<Modifier, NativePassiveDiagnostic>> {
     let input = node.native.as_ref()?;
     let packet = &input.packet;
+    if !native_packet_known(packet) {
+        return None;
+    }
     let map = || {
         if let Some(reason) = input.ineligible {
             return Err(reason);

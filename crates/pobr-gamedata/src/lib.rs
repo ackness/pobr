@@ -725,6 +725,36 @@ impl GameData {
         }
     }
 
+    /// Loads the game's `ActiveSkillType` table (`base/active_skill_types.json`,
+    /// the skill type names rules and build codes use). `None` for a data
+    /// pack published before RePoE exported it.
+    pub fn active_skill_types(
+        &self,
+    ) -> Result<Option<pobr_data::catalog::skill_types::ActiveSkillTypesDef>, LoadError> {
+        match self.load_domain("active_skill_types.json") {
+            Ok(v) => Ok(Some(v)),
+            Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+                Ok(None)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Installs the data pack's `ActiveSkillType` table as the process-wide
+    /// skill type names ([`pobr_data::skill::install_skill_type_names`]).
+    /// Does nothing for a pack without the table. Refuses a table the
+    /// engine cannot read, or one that differs from a table this process
+    /// already installed from another pack.
+    pub fn install_skill_type_names(&self) -> Result<(), LoadError> {
+        let Some(rows) = self.active_skill_types()? else {
+            return Ok(());
+        };
+        pobr_data::skill::install_skill_type_names(&rows).map_err(|message| LoadError::Integrity {
+            path: self.domain_path("active_skill_types.json"),
+            message,
+        })
+    }
+
     /// Loads the active-skill display-name sidecar for a language
     /// (`active_skill_id -> localized name`).
     pub fn skill_names(

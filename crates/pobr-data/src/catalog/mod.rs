@@ -78,6 +78,7 @@ pub mod curse_priority;
 pub mod actors; // M5a: minions / spectres / granted_effect_minions (vendor-extracted)
 pub mod item_overlay; // M5c: mod_scalability / catalysts / runes / uniques (vendor-extracted)
 pub mod parser_rules; // M5b: special_mods templates (hand-curated) + M6: the ModParser rule six-table set (mod_parser_rules/v1)
+pub mod skill_types; // the client's ActiveSkillType rows (skill type names)
 pub mod triggers; // M5a-D2: mirage_configs (generated embedded in the tool); M4-T5 extends trigger_configs in the same file
 pub mod vendor_name_aliases; // M6.3: the vendor→PoBR ModName alias table (a switchover-prerequisite data asset, zero consumers)
 

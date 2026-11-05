@@ -60,7 +60,11 @@ parity 下降说明需要调查新版差异，不能为通过而降低基线。
 不会生成会话级 native 诊断或降级成字段缺省；重新封存错误 JSON 的哈希也不能使其符合 schema。
 可空的 `tree_version` 缺省或为 null 后，仍须通过使用时的版本匹配。
 
-完整文本 fallback 适用于成功解码后，在 native 选择阶段被拒绝的包：未知 stat、不支持的
+数据包为每个符合条件的节点都带包，不按引擎是否认识其 stat 筛选（路线图 2.4）。
+包里有 `passive_stats::map_stat` 不认识的 stat 时，这个包不是给本引擎的：节点按没有包处理，
+走文本路径，不记诊断，也不再检查其他拒绝原因（`ingest::passive::native_packet_known`）。
+
+完整文本 fallback 适用于成功解码、stat 都认识，但在 native 选择阶段被拒绝的包：不支持的
 上下文或 bundle、绑定／版本不符、节点变换，以及无法精确表示为 `f64` 的 `i64`。
 先记录 `CalculationSession::native_passive_diagnostics()`（`Diagnosis.session` 也可读），
 再把节点当前完整文本交给既有 wrap／filter／parse 路径；不应用 native 包的子集，
