@@ -7,7 +7,9 @@
 
 - 活动目标为 `0.5.5.5`／international。消费产物的来源与 SHA-256、
   期望 manifest、运行身份与 CI 候选包身份都以[数据锁](../pipeline/data.lock.json)为准。
-  当前产物仍是 Release 化之前的 `handoff/*` Git 产物；下一次 owner Release 用 `data:bump` 采用。
+  两个 owner 包都来自 Release：游戏 `ackness/repoe` `game/0.5.5.5-1`，语言 `ackness/poe2-zh-cn-stats`
+  `locale/0.5.5.5-1`，均由 `data:bump` 采用，字节与之前的 `handoff/*` 产物相同，运行身份不变。
+  `support_display` 与 `test_fixtures` 仍按 `handoff/*` tag + commit 拉取。
 - RePoE 发布序号 7，`game` 角色序号 6：补回 14 个真实宝石的品质效果，
   按原生宝石关系验证五个 DNT 占位排除项。其他角色保持原有输入，翻译库为序号 3。
 - 当前 runtime 为 `e73febc0…`，snapshot manifest 为 `2cfb2103…`。

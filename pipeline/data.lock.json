@@ -26,15 +26,22 @@
       "contract_version": 1
     },
     "language": {
-      "format": "locale-git-files",
-      "manifest": {
-        "bytes": 4088,
-        "sha256": "730222f0cb7a777534243f3b4aff480ae31b2756c8e4ece574b0c4f44f0693a3"
-      },
-      "path": "handoff/locale-shaman-mantle-20261103/manifest.json",
       "repository": "ackness/poe2-zh-cn-stats",
-      "revision": "9aba3687e6366597bc69a0795c63a20090cb02f5",
-      "tag": "handoff/shaman-mantle-20261103"
+      "tag": "locale/0.5.5.5-1",
+      "asset": "pobr-locale-0.5.5.5.zip",
+      "bytes": 7165092,
+      "sha256": "bd7ba6ce955c9aa604a1a9721c7e28ca3a005a29c0d23f4e99af736cf540d5a7",
+      "manifest": {
+        "bytes": 2517,
+        "sha256": "bc9694ffcb577b397c45a3f1d49d49aa6fa28f09ff7aa29303aeea6443733885"
+      },
+      "expanded_bytes": 7163020,
+      "receipt": {
+        "bytes": 7918,
+        "sha256": "a6c8b88ecb58cbd9b80e7cdaa73315d4adcddfc8795872fd0ecb494847dc02bd"
+      },
+      "producer_commit": "9d08035c8a05a98eb435eb783ef60520b421e218",
+      "contract_version": null
     }
   },
   "support_display": {
