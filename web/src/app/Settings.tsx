@@ -8,12 +8,13 @@ import { words, pageNames } from './text';
 import { ROUTES, type Route } from './routes';
 import type { Preferences } from './preferences';
 import { displayModeOptions, type DisplayMode } from '../lib/displayModes';
-import { LANGS, messages } from '../lib/i18n';
+import { bindT, LANGS, messages } from '../lib/i18n';
 
 export function Settings({ open, onOpenChange, preferences: p, onChange, version }: {
   open: boolean; onOpenChange: (open: boolean) => void; preferences: Preferences; onChange: (next: Preferences) => void; version: string;
 }) {
   const w = (en: string, cn: string, tw?: string) => words(p.lang, en, cn, tw);
+  const tt = bindT(p.lang);
   const modes = displayModeOptions(p.lang);
   const setPageMode = (page: Route, mode: string) => {
     const pageDisplayModes = { ...p.pageDisplayModes };
@@ -26,6 +27,7 @@ export function Settings({ open, onOpenChange, preferences: p, onChange, version
       <SheetDescription id="appearance-description">{w('Changes apply immediately and are saved in this browser.', '立即生效，保存在当前浏览器。', '立即生效，儲存在目前瀏覽器。')}</SheetDescription></SheetHeader>
     <div className="shell-settings-fields">
       <fieldset className="display-mode-picker"><legend>{w('Display mode', '展示方式', '顯示方式')}</legend>
+        <p className="shell-setting-hint">{tt('settings.displayScope')}</p>
         {modes.map(mode => <label className="display-mode-choice" key={mode.value} data-selected={p.displayMode === mode.value || undefined}>
           <input className="sr-only" type="radio" name="display-mode" value={mode.value} checked={p.displayMode === mode.value}
             onChange={() => onChange({ ...p, displayMode: mode.value })} />
@@ -56,13 +58,13 @@ export function Settings({ open, onOpenChange, preferences: p, onChange, version
       </AppSelectControl></div>
       <div><Label id="shell-font-size">{w('Text size', '字号', '字號')} · {p.fontSize}px</Label>
         <Slider aria-labelledby="shell-font-size" min={14} max={32} step={1} value={[p.fontSize]} onValueChange={([fontSize]) => onChange({ ...p, fontSize })} />
+        <div className="shell-font-preview"><p>{w('Text preview', '字号预览', '字級預覽')}</p><strong>1,284.50</strong><span>{w('Life · DPS · 75%', '生命 · DPS · 75%', '生命 · DPS · 75%')}</span></div>
         <p className="shell-setting-hint">{w('Up to 200% of the default size.', '最高可放大到默认字号的 200%。', '最高可放大至預設字號的 200%。')}</p>
       </div>
       <div><Label htmlFor="shell-density">{w('Density', '信息密度', '資訊密度')}</Label><AppSelectControl id="shell-density" value={p.density} onChange={e => onChange({ ...p, density: e.target.value as Preferences['density'] })}>
         <option value="comfortable">{w('Comfortable', '舒适', '舒適')}</option><option value="compact">{w('Compact', '紧凑', '緊湊')}</option>
       </AppSelectControl><p className="shell-setting-hint">{w('Adjusts spacing without shrinking text.', '只调整间距，不缩小字号。', '只調整間距，不縮小字級。')}</p></div>
       <div className="shell-settings-about"><a href="https://github.com/ackness/pobr" target="_blank" rel="noopener noreferrer"><ExternalLink aria-hidden />{w('View source on GitHub (opens in a new tab)', '在 GitHub 查看源码（新标签页打开）', '在 GitHub 查看原始碼（另開分頁）')}</a><small>{version}</small></div>
-      <div className="shell-font-preview"><p>{w('Text preview', '字号预览', '字級預覽')}</p><strong>1,284.50</strong><span>{w('Life · DPS · 75%', '生命 · DPS · 75%', '生命 · DPS · 75%')}</span></div>
     </div>
   </SheetContent></Sheet>;
 }

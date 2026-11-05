@@ -14,7 +14,7 @@ const nav = (page: Page, name: string) => pageLink(page, name);
 const saved = (page: Page): Promise<SavedSession['state']> => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
 async function idle(page: Page) {
   await expect(busy(page)).toHaveCount(0);
-  await expect(page.locator('.shell-save-state')).toContainText('Saved locally');
+  await expect(page.locator('.shell-save-state')).toContainText('Saved in this browser');
   await expect(page.locator('.shell-boot[role=alert], .shell-alert')).toHaveCount(0);
 }
 async function importCode(page: Page, value: string) {

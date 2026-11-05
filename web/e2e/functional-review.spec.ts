@@ -199,17 +199,17 @@ test('importing a build with no notes and starting a new character clear previou
 test('changing the selected skill hides stale attribution until a new calculation completes', async ({ page }) => {
   await start(page, emptyNotes);
   await goTo(page, 'Calcs');
-  await page.getByRole('tab', { name: 'Source Attribution', exact: true }).click();
-  await page.getByRole('button', { name: 'Run attribution', exact: true }).click();
+  await page.getByRole('tab', { name: 'Source contributions', exact: true }).click();
+  await page.getByRole('button', { name: 'Source contributions', exact: true }).click();
   await expect(page.locator('.attribution-table')).toBeVisible();
   await choose(page, inspected(page), '2. Fireball');
   await expect(page.locator('.attribution-table')).toHaveCount(0);
   // The skill overview recalculates at the same time and shows its own status.
-  await expect(page.getByRole('region', { name: 'Source Attribution', exact: true }).getByRole('status'))
-    .toContainText('Run attribution again');
-  await page.getByRole('button', { name: 'Run attribution', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Source contributions', exact: true }).getByRole('status'))
+    .toContainText('Measure source contributions again');
+  await page.getByRole('button', { name: 'Source contributions', exact: true }).click();
   await expect(page.locator('.attribution-table')).toBeVisible();
-  await expect(page.locator('.attribution-table')).toContainText('Group 2 · Fireball');
+  await expect(page.locator('.attribution-table')).toContainText('Skill group 2 · Fireball');
 });
 
 test('library utilities equip into utility slots and incompatible equipment cannot be applied', async ({ page }) => {
@@ -244,8 +244,8 @@ test('attribution identifies the whole removed group when its selected active ge
   await expect(inspected(page)).toContainText('Fireball');
   const before = await saved(page);
   await goTo(page, 'Calcs');
-  await page.getByRole('tab', { name: 'Source Attribution', exact: true }).click();
-  await page.getByRole('button', { name: 'Run attribution', exact: true }).click();
+  await page.getByRole('tab', { name: 'Source contributions', exact: true }).click();
+  await page.getByRole('button', { name: 'Source contributions', exact: true }).click();
   const group = page.locator('.attribution-table tbody tr').filter({ hasText: 'Skill group' });
   await expect(group).toHaveCount(1);
   await expect(group.locator('td').first()).toContainText('Spark');

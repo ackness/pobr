@@ -17,6 +17,7 @@ import { computeStatChanges, type StatChange } from './motion/statChanges';
 import type { SettledCalc } from './motion/useSettledCalc';
 import type { Route } from './routes';
 import { uiStorageKey } from '../lib/sessionStorage';
+import { calculationVersion } from './calculationVersion';
 import { words } from './text';
 
 const COLLAPSED_KEY = uiStorageKey('pobr-rail-collapsed');
@@ -65,9 +66,9 @@ function Row({ label, value, color, change, onOpen, pin }: RowProps) {
   return pin ? <div className="rail-item">{row}<button type="button" className="rail-pin" tabIndex={-1} aria-pressed={pin.on} aria-label={pin.label} onClick={pin.toggle}><Pin /></button></div> : row;
 }
 
-interface Shared { session: BuildSession; view: SettledCalc; lang: Lang; onStatClick: (id: string) => void }
+interface Shared { route?: Route; session: BuildSession; view: SettledCalc; lang: Lang; onStatClick: (id: string) => void }
 
-function Headline({ session, view, lang, onStatClick, changes, onNavigate }: Shared & { changes: Map<string, StatChange>; onNavigate: (route: Route) => void }) {
+function Headline({ route, session, view, lang, onStatClick, changes, onNavigate }: Shared & { changes: Map<string, StatChange>; onNavigate: (route: Route) => void }) {
   const tt = bindT(lang);
   const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
   const catalog = useSkillCatalog();
@@ -94,9 +95,9 @@ function Headline({ session, view, lang, onStatClick, changes, onNavigate }: Sha
     <div className="rail-scenario"><span>{w('Against', '对象', '對象')}</span>
       <AppSelect ariaLabel={w('Enemy tier', '敌人档位', '敵人檔位')} value={enemy === 'custom' ? '' : enemy} placeholder={w('Custom', '自定义', '自訂')} disabled={session.busy}
         onChange={tier => session.updateParams({ enemy_tier: tier as EnemyTier })} options={TIERS.map(tier => ({ value: tier, label: enemyTierLabel(lang, tier) }))} /></div>
-    {calc && groups.length > 0 && <button type="button" className="rail-health" data-state={findings.length === 0 ? 'ok' : findings.some(item => item.severity === 'bad') ? 'bad' : 'warn'} onClick={toOverview}>
+    {route !== 'overview' && calc && groups.length > 0 && <button type="button" className="rail-health" title={tt('sidebar.viewOverview')} data-state={findings.length === 0 ? 'ok' : findings.some(item => item.severity === 'bad') ? 'bad' : 'warn'} onClick={toOverview}>
       {findings.length === 0 ? <CircleCheck /> : <CircleAlert />}
-      <span>{findings.length === 0 ? w('No obvious problems', '没有明显问题', '沒有明顯問題') : w(`${findings.length} to look at`, `${findings.length} 项需要关注`, `${findings.length} 項需要關注`)}</span>
+      <span>{findings.length === 0 ? w('No obvious problems', '没有明显问题', '沒有明顯問題') : w(`${findings.length} to look at`, `${findings.length} 项需要关注`, `${findings.length} 項需要關注`)}<small>{tt('sidebar.viewOverview')}</small></span>
       <ChevronRight /></button>}
     {groups.length === 0 && <p className="rail-empty">{w('Add a skill to see damage.', '添加技能后即可查看伤害。', '新增技能後即可查看傷害。')}</p>}
     {groups.length > 0 && !mainSkill && <p className="rail-empty">{view.stale && !calc ? w('Calculating…', '计算中…', '計算中…') : tt('sidebar.noMainSkill')}</p>}
@@ -137,7 +138,7 @@ function Minion({ view, lang, onStatClick }: Pick<Shared, 'view' | 'lang' | 'onS
 }
 
 /** The numbers every edit changes. They stay on screen so cause and effect are never a page apart. */
-export function ResultsRail({ session, view, lang, onStatClick, onNavigate, pinned, onTogglePin }: Shared & { onNavigate: (route: Route) => void; pinned: readonly string[]; onTogglePin: (id: string) => void }) {
+export function ResultsRail({ route, session, view, lang, onStatClick, onNavigate, pinned, onTogglePin }: Shared & { onNavigate: (route: Route) => void; pinned: readonly string[]; onTogglePin: (id: string) => void }) {
   const calc = view.calc;
   const values = useMemo(() => calc ? statMap(calc.stats) : null, [calc]);
   const changes = useMemo(() => computeStatChanges(view.previous?.stats ?? null, calc?.stats ?? []), [view.previous, calc]);
@@ -149,11 +150,11 @@ export function ResultsRail({ session, view, lang, onStatClick, onNavigate, pinn
   });
   const pinFor = (id: string) => ({ on: pinned.includes(id), toggle: () => onTogglePin(id), label: `${words(lang, pinned.includes(id) ? 'Unpin' : 'Pin', pinned.includes(id) ? '取消固定' : '固定', pinned.includes(id) ? '取消固定' : '固定')}: ${statLabel(lang, id)}` });
   const pinnedRows = values ? pinned.filter(id => values.has(id)) : [];
-  const version = [calc?.provenance?.data_version ?? session.dataVersion, calc?.provenance?.engine_version].filter(Boolean).join(' · ');
+  const version = calculationVersion(lang, calc?.provenance?.data_version ?? session.dataVersion, calc?.provenance?.engine_version, session.calcMs);
   return <aside id="character-stats" className="shell-rail-content" data-stale={view.stale || undefined} aria-label={words(lang, 'Character stats', '角色属性', '角色屬性')}>
-    <Headline session={session} view={view} lang={lang} onStatClick={onStatClick} changes={changes} onNavigate={onNavigate} />
+    <Headline route={route} session={session} view={view} lang={lang} onStatClick={onStatClick} changes={changes} onNavigate={onNavigate} />
     <Minion view={view} lang={lang} onStatClick={onStatClick} />
-    {calc && <button type="button" className="rail-link" onClick={() => onStatClick('skill-metrics')}>{bindT(lang)('calcs.skillMetrics')}<ChevronRight /></button>}
+    {calc && <button type="button" className="rail-link" onClick={() => onStatClick('skill-metrics')}>{bindT(lang)('sidebar.skillValuesLink')}<ChevronRight /></button>}
     {pinnedRows.length > 0 && <section className="rail-section rail-pinned"><h3 className="rail-title"><span>{words(lang, 'Pinned', '已固定', '已固定')}</span></h3>
       {pinnedRows.map(id => <Row key={id} label={statLabel(lang, id)} color={statColor(id)} change={changes.get(id)} pin={pinFor(id)}
         value={<AnimatedNumber value={values?.get(id)} format={shown => formatStatValue(shown, statFormat(id), lang)} />}
@@ -163,6 +164,9 @@ export function ResultsRail({ session, view, lang, onStatClick, onNavigate, pinn
       const rows = section.rows.filter(row => {
         if (!values) return false;
         const value = values.get(row.id);
+        if (row.id === 'QuantityMultiplier' && value === 1) return false;
+        if (['WithIgniteDPS', 'WithBleedDPS', 'WithPoisonDPS', 'WithDotDPS'].includes(row.id) && typeof value === 'number'
+          && [calc?.main_skill?.combined_dps, calc?.main_skill?.hit_dps, values.get('CombinedDPS'), values.get('TotalDPS')].includes(value)) return false;
         return value !== undefined && !(row.hideZero && (value === 0 || value === null));
       });
       if (rows.length === 0) return null;
@@ -177,7 +181,6 @@ export function ResultsRail({ session, view, lang, onStatClick, onNavigate, pinn
         </div></div>
       </section>;
     })}
-    {(version || session.calcMs !== null) && <footer className="rail-foot">
-      <span>{version}</span>{session.calcMs !== null && <span>{Math.max(1, Math.round(session.calcMs))} ms</span>}</footer>}
+    {version && <footer className="rail-foot">{version}</footer>}
   </aside>;
 }
