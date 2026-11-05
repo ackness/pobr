@@ -89,6 +89,7 @@ mise run gaps [--kind unique|passive|...]          # 词条缺口队列；选中
 mise run lookup <id 或名字> [--level N]            # 游戏数据里的技能、stat、基底、天赋节点、暗金
 mise run accuracy [含 */code.txt 的目录]           # 构筑码对照自带参考值（无需 vendor）
 mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
+mise run audit:display [--release <tag>] <构筑集>  # 不开浏览器看网页会显示什么：报错、名字里的原始 ID、未翻译与未支持的行
 ```
 
 各工具输出的含义见 [diagnostics.md](diagnostics.md)；参数、缓存和其余命令（基准、parity 报告、WASM 打包、数据与 vendor 任务）见[开发与 CI 工作流](development-workflow.md)。PoB2 oracle（无界面运行并输出计算结果的参考工具）是 `mise exec -- bash tools/pob2-oracle/run.sh <build.xml>`；词条规则与 PoB2 parser 的对照审计是 `mise exec -- bash pipeline/diagnostics/modifier-audit.sh [--offline]`，只报告、不改写规则。

@@ -146,6 +146,12 @@ gh pr create --fill
   站点部署的是同次 run 的 `web-dist`，数据由 tag 提交上的锁决定：`git show v0.x.y:pipeline/data.lock.json`
   里的包 tag 应是预期的 Release。界面上的数据版本（悬停顶栏版本或看概览）只显示游戏补丁号，同一补丁的新包不会改变它。
 
+- 显示检查：`mise run builds:fetch .cache/ninja-<日期>` 抓当前赛季的 poe.ninja 构筑，再运行
+  `mise run audit:display --release v0.x.y --strict .cache/ninja-<日期>`。应以 0 退出：Errors 与 Raw ids 两节为空，
+  宝石目录的原始 ID 名为 0。
+  想在打 tag 前先看，对本地 `mise run web build` 的结果运行同一命令，去掉 `--release`。
+  报告各节的含义见 [diagnostics.md](docs/diagnostics.md#前端显示审计)。
+
 tag 不可移动、不可删除。同一 tag 的失败作业可以重跑（重跑会覆盖同名 Release 附件），但只在同次 run 的产物仍保留时有效
 （`web-dist` 3 天，`wasm-release` 14 天）；过期后重跑整个 run。需要改代码时发下一个版本。
 
