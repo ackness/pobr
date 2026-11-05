@@ -3,7 +3,7 @@ import { AppTooltip, AppButton, AppInput } from '../shared/controls';
 import { NamedSets } from '../shared/NamedSets';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
 import { PageHeader } from '../shared/PageHeader';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { getBackend } from '../../api/backend';
 import type { GemCatalogEntry, SocketGroupInput } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
@@ -337,13 +337,19 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                   )}
                   {supportGems.length > 0 && (
                     <span className="skill-group-supports">
-                      {supportGems.map((g) => `${gemLabel(g)}${byId.get(g.skill_id)?.is_lineage ? ` [${tt('picker.lineage')}]` : ''}`).join(' · ')}
+                      {/* Lines break only between gems: a name never splits, and each "·" stays with the name before it. */}
+                      {supportGems.map((g, i) => <Fragment key={i}>
+                        {i > 0 && ' '}
+                        <span className="skill-group-support">
+                          {gemLabel(g)}{byId.get(g.skill_id)?.is_lineage ? ` [${tt('picker.lineage')}]` : ''}{i < supportGems.length - 1 && ' ·'}
+                        </span>
+                      </Fragment>)}
                     </span>
                   )}
                 </AppButton>
                 <span className="skill-dps-value" data-kind={dps?.kind ?? 'unavailable'}>
                   {dps?.kind === 'damage' ? <>{formatStatValue(dps.dps, 'int')}<span className="sr-only"> DPS</span></>
-                    : dps?.kind === 'none' ? <>—<span className="sr-only">{w('deals no damage', '不造成伤害', '不造成傷害')}</span></> : null}
+                    : dps?.kind === 'none' ? <span className="sr-only">{w('deals no damage', '不造成伤害', '不造成傷害')}</span> : null}
                 </span>
                 <span className="skill-dps-bar" aria-hidden="true">
                   {dps?.kind === 'damage' && <span style={{ width: `${barShare(dps.dps, dpsTop) * 100}%` }} />}
