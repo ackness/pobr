@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../api/backend';
 import type { Lang } from '../lib/i18n';
+import { lineText } from '../lib/continuedLines';
 import type { GameNameRequest } from '../lib/nativeDisplayNames';
 
 /** PoB 结构标注行的键 → 本地化（词条模板翻译层不认识这些行）。 */
@@ -116,28 +117,52 @@ export function localizeStructLine(line: string, lang: Lang): string | null {
   return entry ? `${entry[lang]}: ${value}` : null;
 }
 
-/** 中文界面：词条行批量反查翻译（结构行走本地词典；翻译不中原样显示）。 */
+/** What {@link useLocalizedLines} sends `translateLines` for `lines`: one entry per line. 符文命名行只送
+ * 名称部分（"Rune: X" 整行不在词条模板里，X 是基底名可直译）。A blank line, or one translated locally, is
+ * sent blank: it still separates its neighbours, so lines that were not adjacent never translate
+ * as one description. */
+export function linesToTranslate(lines: readonly string[], lang: Lang): string[] {
+  return lines.map((l) => (!l || localizeStructLine(l, lang) ? '' : runeLineParts(l)?.name ?? l.replace(/^Bonded:\s*/, '')));
+}
+
+/** The display of `lines` given `translated`, the backend's answer to {@link linesToTranslate}
+ * matched by position (not by text: one line can be covered by a multi-line description in one
+ * place and stand alone in another). A covered line stays `""` (see `lib/continuedLines`). */
+export function localizedLines(lines: readonly string[], lang: Lang, translated: readonly (string | undefined)[]): string[] {
+  if (lang === 'en-US') return [...lines];
+  return lines.map((l, index) => {
+    const struct = localizeStructLine(l, lang);
+    if (struct) return struct;
+    const out = translated[index];
+    const rune = runeLineParts(l);
+    if (rune) {
+      return `${RUNE_PREFIXES[rune.prefix][lang]}: ${lineText(rune.name, out)}`;
+    }
+    if (l.startsWith('Bonded:')) {
+      const effect = l.replace(/^Bonded:\s*/, '');
+      return `${lang === 'zh-CN' ? '纽带' : '紐帶'}: ${lineText(effect, out)}`;
+    }
+    return out ?? l;
+  });
+}
+
+/** 中文界面：词条行批量反查翻译（结构行走本地词典；翻译不中原样显示）。One output per input; a line a
+ * multi-line description covered comes back `""`, which consumers drop or replace through
+ * `lib/continuedLines`. */
 export function useLocalizedLines(lines: string[], lang: Lang): string[] {
-  const key = lines.join('\n');
-  const [result, setResult] = useState<{ key: string; lang: Lang; values: Record<string, string> } | null>(null);
-  const translated = result?.key === key && result.lang === lang ? result.values : {};
+  const key = JSON.stringify(lines);
+  const [result, setResult] = useState<{ key: string; lang: Lang; values: (string | undefined)[] } | null>(null);
+  const translated = result?.key === key && result.lang === lang ? result.values : [];
   useEffect(() => {
     if (lang === 'en-US' || lines.length === 0) return;
-    // 符文命名行只送名称部分（"Rune: X" 整行不在词条模板里，X 是基底名可直译）。
-    const pending = lines
-      .filter((l) => l && !localizeStructLine(l, lang))
-      .map((l) => runeLineParts(l)?.name ?? l.replace(/^Bonded:\s*/, ''));
-    if (pending.length === 0) return;
+    const sent = linesToTranslate(lines, lang);
+    if (!sent.some(Boolean)) return;
     let cancelled = false;
     getBackend()
-      .then((b) => b.translateLines(pending, lang))
+      .then((b) => b.translateLines(sent, lang))
       .then((out) => {
         if (cancelled) return;
-        const map: Record<string, string> = {};
-        pending.forEach((en, i) => {
-          if (out[i] !== en) map[en] = out[i];
-        });
-        setResult({ key, lang, values: map });
+        setResult({ key, lang, values: sent.map((text, index) => (text ? out[index] : undefined)) });
       })
       .catch(() => {});
     return () => {
@@ -145,26 +170,8 @@ export function useLocalizedLines(lines: string[], lang: Lang): string[] {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, lang]);
-  return useMemo(
-    () =>
-      lang === 'en-US'
-        ? lines
-        : lines.map((l) => {
-            const struct = localizeStructLine(l, lang);
-            if (struct) return struct;
-            const rune = runeLineParts(l);
-            if (rune) {
-              return `${RUNE_PREFIXES[rune.prefix][lang]}: ${translated[rune.name] ?? rune.name}`;
-            }
-            if (l.startsWith('Bonded:')) {
-              const effect = l.replace(/^Bonded:\s*/, '');
-              return `${lang === 'zh-CN' ? '纽带' : '紐帶'}: ${translated[effect] ?? effect}`;
-            }
-            return translated[l] ?? l;
-          }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [key, lang, translated],
-  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => localizedLines(lines, lang, translated), [key, lang, translated]);
 }
 
 /** Names whose identity is known (passive node id, item base line) → display, batched like

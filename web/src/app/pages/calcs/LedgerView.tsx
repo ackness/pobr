@@ -10,6 +10,7 @@ import { originKindLabel, originLabel, slotLabel, statNameLabel, type Lang } fro
 import { words } from '../../text';
 import { configLabel } from '../../../lib/configLabels';
 import { ledgerReasonLabel, ownerLabel } from '../../../lib/diagnosticText';
+import { lineText } from '../../../lib/continuedLines';
 import type { ConfigOption } from '../../../api/types';
 import {
   ATTENTION, NO_FILTER, SOURCE_GROUPS, STATUS_ORDER, filterLedger, ledgerDisplayText, ledgerReason, sourceGroupLabel, statusHint, statusLabel,
@@ -43,7 +44,7 @@ function useTranslated(items: readonly (string | GameNameRequest)[], lang: Lang)
       setCache(previous => {
         const base = previous.lang === lang ? previous.map : {};
         const map = { ...base };
-        texts.forEach((text, index) => { map[text] = translatedTexts[index] ?? text; });
+        texts.forEach((text, index) => { map[text] = lineText(text, translatedTexts[index]); });
         names.forEach((name, index) => { map[id(name)] = translatedNames[index] ?? name.name; });
         return { lang, map };
       });

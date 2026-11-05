@@ -21,6 +21,7 @@ import {
   useLocalizedLines,
 } from '../../hooks/useLocalizedLines';
 import { bindT, slotLabel, type Lang } from '../../lib/i18n';
+import { shownLines } from '../../lib/continuedLines';
 import { upgradeT } from '../../lib/upgradeText';
 import { applyEquippedAugmentLimits, planReplacementAugments } from '../../lib/replacementAugments';
 import { previewDiff, type DiffEntry } from '../../lib/compare';
@@ -253,7 +254,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
     const map = new Map<string, string>();
     let offset = 0;
     for (const rune of runeCatalog) {
-      map.set(rune.name, runeEffectLines.slice(offset, offset + rune.lines.length).join(', '));
+      map.set(rune.name, shownLines(rune.lines.map(cleanLine), runeEffectLines.slice(offset, offset + rune.lines.length)).join(', '));
       offset += rune.lines.length;
     }
     return map;

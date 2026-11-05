@@ -6,6 +6,7 @@ import { formatApiError } from '../../api/error';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import { useItemDisplayNames, useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
+import { shownLines } from '../../lib/continuedLines';
 import { passiveNameRequest } from '../tree/passiveNodeNames';
 import { buildProfile, compareGems, keyPassives, selectedSkillId, matchBuild, ninjaSearchUrl, referenceRequest, resistanceGaps, type BuildReference } from '../../lib/buildGuidance';
 import { guidanceT } from '../../lib/guidanceText';
@@ -223,6 +224,6 @@ function PassiveList({ title, nodes, lang }: { title: string; nodes: PassiveNode
   const translated = useLocalizedLines(nodes.flatMap(node => node.stats ?? []), lang);
   let offset = 0, named = 0;
   return <article className="guidance-card"><h4>{title} ({nodes.length})</h4>{!nodes.length && <p>{guidanceT(lang, 'noPassives')}</p>}
-    {nodes.map(node => { const name = node.name ? names[named++] : node.id; const lines = translated.slice(offset, offset + (node.stats?.length ?? 0)); offset += lines.length;
+    {nodes.map(node => { const name = node.name ? names[named++] : node.id; const stats = node.stats ?? []; const lines = shownLines(stats, translated.slice(offset, offset + stats.length)); offset += stats.length;
       return <details key={node.skill}><summary>{name}</summary><ul>{lines.map((line, index) => <li key={index}>{line}</li>)}</ul></details>; })}</article>;
 }

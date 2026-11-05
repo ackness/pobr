@@ -8,6 +8,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { CalculateBuildRequest } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useLocalizedLines } from '../../hooks/useLocalizedLines';
+import { isContinuation } from '../../lib/continuedLines';
 import { compareReplacementPositions, pasteNotStarted, replacementAffixes, type ReplacementReport } from '../../lib/itemReplacement';
 import { compareObjectiveStats, feasibleOf, type Objective } from '../../lib/optimize';
 import type { TradeCatalog } from '../../lib/tradeOptimizer';
@@ -212,7 +213,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
         <span className="trade-section-label">{ut('parsedItem')}</span><h4>{nameLine || translated[0]}</h4>
         <p>{translated[0]} · {ut('requiredLevel')} {requiredLevel}</p>
         <div className="replacement-affixes"><span className="replacement-affix-count">{ut('parsedAffixes')} · {affixes.length}</span>
-          {affixes.map((line, index) => <div key={index} className={`replacement-affix replacement-affix--${line.kind}`}>
+          {affixes.map((line, index) => isContinuation(line.text, translated[index + 1]) ? null : <div key={index} className={`replacement-affix replacement-affix--${line.kind}`}>
             <span>{translated[index + 1] ?? line.text}</span>{line.tier !== undefined ? <small>T{line.tier}</small> : line.kind !== 'explicit' && <small>{ut(line.kind === 'rune' ? 'affixRune' : line.kind === 'enchant' ? 'affixEnchant' : 'affixImplicit')}</small>}
           </div>)}{!affixes.length && <p>{ut('noAffixes')}</p>}
         </div>

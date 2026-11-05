@@ -2,6 +2,7 @@ import { AppButton, AppInput } from '../shared/controls';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReplacementReport } from '../../lib/itemReplacement';
 import type { Lang } from '../../lib/i18n';
+import { lineText, shownLines } from '../../lib/continuedLines';
 import type { TradeCatalog } from '../../lib/tradeOptimizer';
 import { useLocalizedLines } from '../../hooks/useLocalizedLines';
 import { affixRollLines, affixTier, availableAffixes, buildAffixItem, createAffixDraft, editableAffixPool, validateAffixDraft, type AffixDraft } from '../../lib/marketAffixEditor';
@@ -19,7 +20,7 @@ export function ReplacementAffixEditor({ report, catalog, characterLevel, lang, 
   const pool = useMemo(() => editableAffixPool(catalog, report.base), [catalog, report.base]);
   const labels = useMemo(() => [...new Set(pool.flatMap(mod => mod.lines))], [pool]);
   const translated = useLocalizedLines(labels, lang);
-  const aliases = useMemo(() => new Map(labels.map((line, index) => [line, translated[index]])), [labels, translated]);
+  const aliases = useMemo(() => new Map(labels.map((line, index) => [line, lineText(line, translated[index])])), [labels, translated]);
   const tiers = useMemo(() => new Map(pool.map(mod => [mod.id, affixTier(mod, pool)])), [pool]);
   const initial = useMemo(() => createAffixDraft(report.text, report.base, report.lines, pool, aliases), [report.text, report.base, report.lines, pool, aliases]);
   const [draft, setDraft] = useState<AffixDraft | null>(null);
@@ -65,7 +66,7 @@ export function ReplacementAffixEditor({ report, catalog, characterLevel, lang, 
       <div className="affix-editor-rows">{current.rows.map(row => {
         const mod = pool.find(candidate => candidate.id === row.modId);
         const length = row.edited && mod ? mod.lines.length : row.original.length;
-        const lines = displayed.slice(lineOffset, lineOffset + length); lineOffset += length;
+        const lines = shownLines(selectedLines.slice(lineOffset, lineOffset + length), displayed.slice(lineOffset, lineOffset + length)); lineOffset += length;
         return <article className="affix-editor-row" key={row.key} data-affix-id={row.modId}>
           <div className="affix-editor-row-heading"><span>{mod ? `${t(mod.kind)} · T${tiers.get(mod.id)}` : t('unresolved')}</span>
             <div><AppButton disabled={disabled || row.fractured} onClick={() => { setReplacing(row.key); if (mod) setKind(mod.kind); setPicked(''); }}>{t('replace')}</AppButton>
@@ -89,7 +90,7 @@ export function ReplacementAffixEditor({ report, catalog, characterLevel, lang, 
           options={options.map(mod => ({ value: mod.id, label: `${mod.lines.map(line => aliases.get(line) ?? line).join(' / ')} · T${tiers.get(mod.id)}`,
             hint: `${t('itemLevel')} ${mod.level} · ${t('requirement')} ${Math.max(report.base.level, Math.floor(mod.level * 0.8))}` }))} onChange={setPicked} />
         {!options.length && <p className="affix-editor-hint">{t('noOptions')}</p>}
-        {!!preview.length && <div className="affix-editor-preview">{ranges.map((line, index) => <p key={`range-${index}`}>{t('range')}: {line}</p>)}<small>{t('midpoint')}</small>{preview.map((line, index) => <p key={index}>{line}</p>)}</div>}
+        {!!preview.length && <div className="affix-editor-preview">{shownLines(choice?.roll_lines ?? [], ranges).map((line, index) => <p key={`range-${index}`}>{t('range')}: {line}</p>)}<small>{t('midpoint')}</small>{shownLines(previewLines, preview).map((line, index) => <p key={index}>{line}</p>)}</div>}
         <AppButton className="trade-primary" disabled={disabled || !choice} onClick={add}>{t(replacing ? 'replace' : 'add')}</AppButton>
       </div>
       <p className="affix-editor-hint">{t('estimate')}</p>
