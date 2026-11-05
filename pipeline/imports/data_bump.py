@@ -45,9 +45,10 @@ ALIASES = {"repoe": "ackness/repoe", "game": "ackness/repoe",
 SUMS, RECEIPT = "SHA256SUMS", "receipt.json"
 # The only receipt schema that may omit its `package` pin (zip + root manifest):
 # RePoE's v1 receipts, e.g. game/0.5.5.5-1, which pins neither `package` nor
-# `release_build` and stays lockable. Every other schema, a missing or unknown
-# one included, must carry it; the translation repository's
-# `poe2-locale-release-receipt/v1` always has.
+# `release_build`. (That package itself is no longer lockable: build_data
+# rejects a game snapshot that still lists language members.) Every other
+# schema, a missing or unknown one included, must carry it; the translation
+# repository's `poe2-locale-release-receipt/v1` always has.
 RECEIPTS_WITHOUT_PACKAGE = frozenset({"repoe-release-receipt/v1"})
 # A package asset has no pin until this command records one; bound the download.
 MAX_PACKAGE = 1024 * 1024 * 1024
