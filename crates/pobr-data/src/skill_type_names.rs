@@ -3,9 +3,8 @@
 //!
 //! The actual data lives in the sidecar `skill_type_names.txt` (a frozen
 //! copy of the pinned PoB2 `Global.lua::SkillType` enum, embedded via
-//! `include_str!`; the data
-//! table doesn't go in a `.rs` file, so it's outside the `no_embedded_data`
-//! guard's reach). Line format is `name id`, `#` lines are comments;
+//! `include_str!`; listed as a sidecar in the `no_embedded_data` guard until
+//! it moves to the RePoE compatibility package). Line format is `name id`, `#` lines are comments;
 //! the file is sorted by name, and this module sorts it again as a fallback
 //! (the binary search shouldn't depend on the file's ordering).
 
