@@ -63,17 +63,16 @@ impl TextOrigin {
 }
 
 /// `origin`: `"agent"` / `"human"`, or `"official"` / `null` / absent for
-/// official text. Any other value is an error, as for any misshapen row.
+/// official text. Any other value (an unknown word, a number) is read as
+/// `agent`: the row stays usable, and text of unknown provenance is never
+/// shown as official. One bad value must not cost the file every template.
 fn text_origin<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<TextOrigin>, D::Error> {
-    match Option::<String>::deserialize(deserializer)?.as_deref() {
-        None | Some("official") => Ok(None),
-        Some("agent") => Ok(Some(TextOrigin::Agent)),
-        Some("human") => Ok(Some(TextOrigin::Human)),
-        Some(other) => Err(serde::de::Error::unknown_variant(
-            other,
-            &["official", "agent", "human"],
-        )),
-    }
+    Ok(match serde_json::Value::deserialize(deserializer)? {
+        serde_json::Value::Null => None,
+        serde_json::Value::String(origin) if origin == "official" => None,
+        serde_json::Value::String(origin) if origin == "human" => Some(TextOrigin::Human),
+        _ => Some(TextOrigin::Agent),
+    })
 }
 
 #[cfg(test)]
@@ -112,10 +111,13 @@ mod tests {
             serde_json::to_string(&rows[1]).unwrap(),
             r#"{"src":"b {0}","en":"B {0}","origin":"agent"}"#
         );
-        assert!(
-            serde_json::from_str::<StatLineTemplate>(r#"{"src":"x","en":"x","origin":"ours"}"#)
-                .is_err()
-        );
+        // An unknown value keeps the row, as a supplement (never as official).
+        for origin in [r#""ours""#, "1", r#"{"by":"x"}"#, r#""Official""#] {
+            let row: StatLineTemplate =
+                serde_json::from_str(&format!(r#"{{"src":"x","en":"x","origin":{origin}}}"#))
+                    .unwrap();
+            assert_eq!(row.origin, Some(TextOrigin::Agent), "{origin}");
+        }
     }
 
     #[test]

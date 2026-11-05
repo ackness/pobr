@@ -152,13 +152,14 @@ RePoE 发布 ───┐
   `base/active_skill_types.json`（`active_skill_types/v1`，客户端 `ActiveSkillType` 表，按行序给出技能类型名与
   1 起的序号；加载时以 `pobr_data::skill::install_skill_type_names` 安装为进程内的类型名表，与引擎具名常量不符即拒绝）；
   天赋节点原生 stat 包里有引擎不认识的 stat 时按没有包处理（数据仓库因此可以给全部符合条件的节点发包）。
-  下一个修订（合并后打 `contract/1.2`）：`i18n/<locale>/stat_lines.json` 的行可带可选 `origin`
-  （`"agent"`／`"human"`：翻译仓库自己的补译；缺省、`null` 或 `"official"` 为官方或历史词典），
-  其他取值拒绝加载；同一英文行官方模板优先，补译行只填空缺。`display_texts.json` 可带可选顶层 `origins`，
-  见[Web 契约](web-contracts.md)。
   引擎不内嵌技能类型名表：契约 1 的包必须带
   `active_skill_types.json`，引擎只认得自己具名常量（`SkillTypes::ATTACK` 等）的名字，其余名字要等加载器安装
   数据包的表；最大怒气读 `game.base_maximum_rage`。
+  下一个修订（合并后打 `contract/1.2`）：`i18n/<locale>/stat_lines.json` 的行可带可选 `origin`
+  （`"agent"`／`"human"`：翻译仓库自己的补译；缺省、`null` 或 `"official"` 为官方或历史词典）；
+  其他取值按 `agent` 读取，这一行照常可用但不算官方，也不会让整个文件失效。
+  整条回退链的官方模板排在全部补译之前（各自保持链与文件顺序），同一行官方与补译都能匹配时取官方，
+  补译行只填空缺。`display_texts.json` 可带可选顶层 `origins`，见[Web 契约](web-contracts.md)。
 - **RePoE 一侧。** `pobr-data-adapter` 与 release build 封存快照 manifest 时写入
   `"contract_version": <所依赖 pobr-data 的 CONTRACT_VERSION>`，数值取自依赖本身（例如由 adapter 读取
   `pobr_data::CONTRACT_VERSION` 输出），不手写；契约加 1 时先把依赖升到新的 `contract/<n>.0`，再重新生成并发布。
