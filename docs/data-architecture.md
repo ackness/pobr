@@ -80,11 +80,12 @@ RePoE 发布 ───┐
   master 提交上，附件为包、GNU 格式的 `SHA256SUMS` 与 `receipt.json`（生产提交、契约版本、全部输入）。
   发布方的历史由它自己的 Release 列表承担，PoBR 锁不复制发布索引、序号或描述哈希链。
   `data:bump` 要求 `receipt.json` 写明 `target`（与包一致）和 `producer` 的 `repository`、40 位 `commit`、
-  `dirty: false` 与 `contract.version`（快照声明 `contract_version` 时必须相等）；新生成的根 manifest
+  `dirty: false`；`contract.version` 可省略，游戏快照声明 `contract_version` 时两者必须相等。
+  语言包不依赖 `pobr-data`，receipt 不声明契约版本，锁中记为 `null`。新生成的根 manifest
   若带 `release_build.receipt`，必须正好钉住该 receipt。
-  语言 owner 须在 `locale/<patch>-<n>` 下发布同样的三件附件，包为 `pobr-build-data-part/v1`、`kind: "language"`
-  的 ZIP（与游戏包同一格式），receipt 字段相同。这一步待翻译库完成 3.1；在那之前语言条目仍是已锁定的 Git 产物，
-  新补丁无法只 bump 游戏一侧。
+  语言 owner 在 `locale/<patch>-<n>` 下发布同样的三件附件（翻译库 `mise run release:publish`），包为
+  `pobr-build-data-part/v1`、`kind: "language"` 的 ZIP（与游戏包同一格式），成员按 STORED 写入，
+  与提交无关，任何后续干净提交都能逐字节重建。
 - **寻址。** Release 产物按 `repository` + `tag` + `asset` 下载（匿名 HTTPS；私有仓库设
   `POBR_RELEASE_TRANSPORT=gh` 用 `gh` 的登录），按锁中的字节数与 SHA-256 校验后按内容缓存。
   已锁定的旧 `handoff/*` 产物继续按 40 位 commit SHA + 路径浅拉取；这些 tag 保活被钉住的 commit，不得删除或移动，
