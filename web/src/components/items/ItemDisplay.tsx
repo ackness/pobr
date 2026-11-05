@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ItemLineJson } from '../../api/types';
 import { getBackend } from '../../api/backend';
-import { itemLines, rarityOf, useLocalizedLines } from '../../hooks/useLocalizedLines';
+import { itemLines, rarityOf, useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
 import type { Lang } from '../../lib/i18n';
 import { itemDamageType, itemDisplaySections, itemValueParts, type DisplayItemLine } from '../../lib/itemDisplay';
 import { useUi } from '../shared/UiContext';
@@ -23,13 +23,21 @@ function useClassifiedLines(text: string): ItemLineJson[] | null {
   return result?.text === text && result.lines.length > 0 ? result.lines : null;
 }
 
+/** Classified base lines resolve by base identity; every other line keeps the text path. */
+export function useItemLineTexts(lines: readonly ItemLineJson[], lang: Lang): string[] {
+  const translated = useLocalizedLines(lines.map(line => line.kind === 'base' ? '' : line.text), lang);
+  const bases = useLocalizedNames(lines.flatMap(line => line.kind === 'base' ? [{ kind: 'base' as const, name: line.text }] : []), lang);
+  let base = 0;
+  return lines.map((line, index) => line.kind === 'base' ? bases[base++] ?? line.text : translated[index] ?? line.text);
+}
+
 export function ItemDisplay({ text, lang }: { text: string; lang: Lang }) {
   const classified = useClassifiedLines(text);
   const fallback = useMemo<ItemLineJson[]>(() => itemLines(text).map((line, index) => ({
     text: line, kind: index === 0 ? 'name' : 'struct',
   })), [text]);
   const lines = classified ?? fallback;
-  const translated = useLocalizedLines(lines.map(line => line.text), lang);
+  const translated = useItemLineTexts(lines, lang);
   return <ItemDisplayContent text={text} lang={lang} lines={lines} translated={translated} />;
 }
 

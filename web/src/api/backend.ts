@@ -111,6 +111,9 @@ export interface PobrBackend {
   loadConfigOptions(): Promise<ConfigOption[]>;
   /** 英文词条行 → `lang` 显示（数据包语言包的模板反查，按回退链；不认识原样返回）。 */
   translateLines(lines: string[], lang?: import('../lib/i18n').Lang): Promise<string[]>;
+  /** Names of known identity (passive node id, item base line) → `lang` display: the locale's
+   * id-scoped native catalog first (unresolved stays English), otherwise the same path as `translateLines`. */
+  translateNames(names: readonly import('../lib/nativeDisplayNames').GameNameRequest[], lang?: import('../lib/i18n').Lang): Promise<string[]>;
   /** 数据包声明的语言及其回退链（初始化前为空）；页面据此解析游戏文本的回退。 */
   gameLocales(): Promise<import('../lib/gameLocales').GameLocaleInfo[]>;
   /** 物品文本 → 逐行类别（Items 面板上色；空/异常返回 []，调用方回落无区分渲染）。 */

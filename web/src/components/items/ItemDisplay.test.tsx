@@ -1,8 +1,17 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import type { ItemLineJson } from '../../api/types';
 import { UiProvider } from '../shared/UiContext';
-import { ItemDisplayContent } from './ItemDisplay';
+import { ItemDisplayContent, useItemLineTexts } from './ItemDisplay';
+
+const hooks = vi.hoisted(() => ({
+  lines: vi.fn((lines: string[]) => lines.map(line => line && `text:${line}`)),
+  names: vi.fn((names: readonly { name: string }[]) => names.map(name => `base:${name.name}`)),
+}));
+vi.mock('../../hooks/useLocalizedLines', async original => ({
+  ...await original<typeof import('../../hooks/useLocalizedLines')>(),
+  useLocalizedLines: hooks.lines, useLocalizedNames: hooks.names,
+}));
 
 const lines: ItemLineJson[] = [
   { kind: 'name', text: 'Woe Rain' }, { kind: 'base', text: 'Seeker Bow' },
@@ -36,4 +45,13 @@ it('unique modifiers have no inferred prefix, suffix or missing-tier warning', (
   expect(html).not.toContain('Unclassified');
   expect(html).not.toContain('Tier not identified');
   expect(html).not.toContain('data-affix=');
+});
+
+it('only classified base lines resolve by base identity; equal text elsewhere stays a text line', () => {
+  const jewel: ItemLineJson[] = [{ kind: 'name', text: 'Sapphire' }, { kind: 'base', text: 'Sapphire' },
+    { kind: 'explicit', text: 'Sapphire' }];
+  function Probe() { return <span>{useItemLineTexts(jewel, 'zh-CN').join('|')}</span>; }
+  expect(renderToStaticMarkup(<Probe />)).toContain('text:Sapphire|base:Sapphire|text:Sapphire');
+  expect(hooks.names).toHaveBeenLastCalledWith([{ kind: 'base', name: 'Sapphire' }], 'zh-CN');
+  expect(hooks.lines).toHaveBeenLastCalledWith(['Sapphire', '', 'Sapphire'], 'zh-CN');
 });

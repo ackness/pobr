@@ -36,6 +36,62 @@ function linkedName(scope: Scope, ids: readonly string[], english: string): stri
   return translations.size === 1 ? [...translations][0] : null;
 }
 
+/** A displayed name whose game identity is known from where it is shown, not guessed from its text. */
+export type GameNameRequest =
+  /** A passive node: its PassiveSkills Id (`passive_tree.json` `id`) and its current effective name. */
+  | { kind: 'passive'; id: string; name: string }
+  /** A line the item classifier or the item format marks as the base type. */
+  | { kind: 'base'; name: string };
+
+/** One id-scoped record checked against the English being shown. A different
+ * English means the id now shows another text (a transformed node or stale
+ * catalog): that record says nothing about it. */
+function scopedName(scope: Scope | undefined, id: string, english: string): string | null | undefined {
+  if (!scope || !own(scope, id)) return undefined;
+  const [source, translated] = scope[id];
+  if (source !== null && source !== english) return undefined;
+  return source === english && translated?.trim() ? translated : null;
+}
+
+/** Id-scoped names from each locale's own catalog; never another locale's.
+ * undefined means unowned (use the text path), null means explicitly unresolved (show English). */
+export class NativeNameIndex {
+  private readonly catalogs = new Map<Lang, NativeDisplayTexts>();
+  private readonly baseIds = new Map<string, string[]>();
+
+  constructor(catalogs: readonly NativeDisplayTexts[], bases: readonly { id: string; name: string }[] = []) {
+    for (const catalog of catalogs) {
+      if (this.catalogs.has(catalog.locale)) throw new Error('Duplicate native display locale');
+      this.catalogs.set(catalog.locale, catalog);
+    }
+    for (const base of bases) {
+      const ids = this.baseIds.get(base.name) ?? [];
+      ids.push(base.id);
+      this.baseIds.set(base.name, ids);
+    }
+  }
+
+  resolve(request: GameNameRequest, lang: Lang): string | null | undefined {
+    const catalog = this.catalogs.get(lang);
+    if (!catalog || !request.name) return undefined;
+    if (request.kind === 'passive') return scopedName(catalog.scopes['PassiveSkills.Name'], request.id, request.name);
+    const scope = catalog.scopes['BaseItemTypes.Name'];
+    return scope ? linkedName(scope, this.baseIds.get(request.name) ?? [], request.name) : undefined;
+  }
+
+  /** `translateNames` in two steps: `pending` are the English names the catalog does not own;
+   * `merge` takes their text-path translations, in order, and returns every displayed name. */
+  split(requests: readonly GameNameRequest[], lang: Lang): { pending: string[]; merge: (texts: readonly string[]) => string[] } {
+    const scoped = requests.map(request => this.resolve(request, lang));
+    const pending = requests.filter((_, index) => scoped[index] === undefined).map(request => request.name);
+    return { pending, merge: texts => {
+      let next = 0;
+      return requests.map((request, index) => scoped[index] === undefined
+        ? texts[next++] ?? request.name : scoped[index] ?? request.name);
+    } };
+  }
+}
+
 export function nativeGemNames(
   entries: readonly GemCatalogEntry[], gems: readonly GemNameLink[], overrides: readonly GemNameOverride[],
   catalogs: readonly NativeDisplayTexts[],
@@ -76,13 +132,16 @@ export function nativeClassNames(
     const ascendancyScope = catalog.scopes['Ascendancy.Name'];
     for (const character of meta.classes) {
       // PassiveClass has no Characters.Id. Use only its unique current English
-      // within Characters.Name; rejected duplicate candidates also block the
-      // literal map, so they cannot disappear through a null scope English.
+      // within Characters.Name. A null literal entry can come from another table
+      // using the same English (Words "Shadow" is 阴影, the class is 暗影), so it
+      // blocks a unique scope match only when this scope also holds a record
+      // without English, which may be a rejected duplicate candidate.
       if (characterScope) {
         const matches = Object.values(characterScope).filter(([english]) => english === character.name);
+        const hidden = catalog.entries[character.name] === null
+          && Object.values(characterScope).some(([english]) => english === null);
         if (matches.length || catalog.entries[character.name] === null) {
-          classes[character.name] = matches.length === 1 && catalog.entries[character.name] !== null
-            ? matches[0][1] : null;
+          classes[character.name] = matches.length === 1 && !hidden && matches[0][1]?.trim() ? matches[0][1] : null;
         }
       }
       for (const ascendancy of character.ascendancies ?? []) {

@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import type { ClassNames, GemCatalogEntry, PassiveTreeMeta } from '../api/types';
-import { classDisplayName, nativeClassNames, nativeGemNames } from './nativeDisplayNames';
+import { NativeNameIndex, classDisplayName, nativeClassNames, nativeGemNames } from './nativeDisplayNames';
 import type { NativeDisplayTexts } from './nativeDisplayTexts';
 import { gemDisplayName, skillDisplayName } from './skillNames';
 
@@ -92,4 +92,69 @@ test('exact ascendancy IDs survive unrelated literal collisions but conflicting 
   duplicate.classes[0].ascendancies!.push({ id: 'Warrior2', name: 'Titan' });
   expect(classDisplayName(nativeClassNames(legacy, duplicate, [source]), 'Titan', 'zh-CN')).toBe('Titan');
   expect(classDisplayName(nativeClassNames(legacy, meta, []), 'Titan', 'zh-CN')).toBe('旧泰坦');
+});
+
+test('a class keeps its unique Characters.Name translation when only another table collides on the literal', () => {
+  const classes: PassiveTreeMeta = { tree: 'default', classes: [
+    { name: 'Shadow', base_str: 0, base_dex: 0, base_int: 0 }, { name: 'Duelist', base_str: 0, base_dex: 0, base_int: 0 }] };
+  // Words "Shadow" is 阴影, the class is 暗影, so the literal map holds null.
+  const source = catalog({ 'Characters.Name': { 'Metadata/Characters/DexInt/DexIntFour': ['Shadow', '暗影'],
+    'Metadata/Characters/StrDex/StrDexFour': ['Duelist', null] } }, 'zh-CN', { Shadow: null, Duelist: null });
+  const names = nativeClassNames({ classes: { Shadow: '旧暗影', Duelist: '决斗者' }, ascendancies: {} }, classes, [source]);
+  expect(classDisplayName(names, 'Shadow', 'zh-CN', 'classes')).toBe('暗影');
+  // Unresolved in the catalog itself: English, never the older dictionary name.
+  expect(classDisplayName(names, 'Duelist', 'zh-CN', 'classes')).toBe('Duelist');
+});
+
+const passiveCatalog = (passives?: NativeDisplayTexts['scopes'][string], locale: 'zh-CN' | 'zh-TW' = 'zh-CN') =>
+  catalog(passives ? { 'PassiveSkills.Name': passives } : {}, locale, { 'Mana Regeneration': null, 'Seeing Stars': '旧译' });
+const passive = (id: string, name: string) => ({ kind: 'passive' as const, id, name });
+
+test('passive names resolve by PassiveSkills id, even when one English has several translations', () => {
+  const index = new NativeNameIndex([passiveCatalog({
+    mana10: ['Mana Regeneration', '魔力再生'], energy_shield_recovery10: ['Mana Regeneration', '魔力回复'],
+    seeing_stars: ['Seeing Stars', null], blank: ['Ruin', '  '],
+  })]);
+  expect(index.resolve(passive('mana10', 'Mana Regeneration'), 'zh-CN')).toBe('魔力再生');
+  expect(index.resolve(passive('energy_shield_recovery10', 'Mana Regeneration'), 'zh-CN')).toBe('魔力回复');
+  // Explicitly unresolved: English, not the literal map's older translation.
+  expect(index.resolve(passive('seeing_stars', 'Seeing Stars'), 'zh-CN')).toBeNull();
+  expect(index.resolve(passive('blank', 'Ruin'), 'zh-CN')).toBeNull();
+  // Unowned id, or the id now shows other English (a transformed node, stale data): the text path decides.
+  expect(index.resolve(passive('mana_regeneration5', 'Mana Regeneration'), 'zh-CN')).toBeUndefined();
+  expect(index.resolve(passive('mana10', 'Devoted Protector'), 'zh-CN')).toBeUndefined();
+  // Never another locale's catalog.
+  expect(index.resolve(passive('mana10', 'Mana Regeneration'), 'zh-TW')).toBeUndefined();
+  expect(index.resolve(passive('mana10', 'Mana Regeneration'), 'en-US')).toBeUndefined();
+
+  const { pending, merge } = index.split([passive('mana10', 'Mana Regeneration'), passive('x', 'Ruin'),
+    passive('seeing_stars', 'Seeing Stars'), passive('y', 'Other')], 'zh-CN');
+  expect(pending).toEqual(['Ruin', 'Other']);
+  expect(merge(['废墟', 'Other'])).toEqual(['魔力再生', '废墟', 'Seeing Stars', 'Other']);
+});
+
+test('without a PassiveSkills.Name scope every passive name keeps the current text path', () => {
+  const requests = [passive('mana10', 'Mana Regeneration'), passive('s', 'Seeing Stars')];
+  for (const catalogs of [[passiveCatalog()], [], [passiveCatalog({ mana10: ['Mana Regeneration', '魔力再生'] }, 'zh-TW')]]) {
+    const { pending, merge } = new NativeNameIndex(catalogs).split(requests, 'zh-CN');
+    expect(pending).toEqual(['Mana Regeneration', 'Seeing Stars']);
+    expect(merge(['Mana Regeneration', '旧译'])).toEqual(['Mana Regeneration', '旧译']);
+  }
+});
+
+test('base lines resolve through every BaseItemTypes id with that English, never by order', () => {
+  const bases = [{ id: 'Metadata/Items/Jewels/JewelInt', name: 'Sapphire' }, { id: 'A1', name: 'Twin' }, { id: 'A2', name: 'Twin' },
+    { id: 'B1', name: 'Agreed' }, { id: 'B2', name: 'Agreed' }, { id: 'U', name: 'Unowned' }];
+  // "Sapphire" is also a Mods.Name affix (蓝玉的), so its literal entry is null.
+  const source = catalog({ 'BaseItemTypes.Name': { 'Metadata/Items/Jewels/JewelInt': ['Sapphire', '蓝玉'],
+    A1: ['Twin', '甲'], A2: ['Twin', '乙'], B1: ['Agreed', '同'], B2: ['Agreed', '同'] } }, 'zh-CN', { Sapphire: null });
+  const index = new NativeNameIndex([source], bases);
+  const base = (name: string) => ({ kind: 'base' as const, name });
+  expect(index.resolve(base('Sapphire'), 'zh-CN')).toBe('蓝玉');
+  expect(index.resolve(base('Twin'), 'zh-CN')).toBeNull();
+  expect(index.resolve(base('Agreed'), 'zh-CN')).toBe('同');
+  expect(index.resolve(base('Unowned'), 'zh-CN')).toBeUndefined();
+  expect(index.resolve(base('Not a base'), 'zh-CN')).toBeUndefined();
+  expect(index.resolve(base('Sapphire'), 'zh-TW')).toBeUndefined();
+  expect(new NativeNameIndex([catalog({})], bases).resolve(base('Sapphire'), 'zh-CN')).toBeUndefined();
 });
