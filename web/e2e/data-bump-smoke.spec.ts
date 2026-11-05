@@ -18,7 +18,7 @@ import { readFileSync } from 'node:fs';
 import type { PassiveNode } from '../src/api/types';
 import { buildPassiveGraph } from '../src/lib/passiveGraph';
 import { busy, statValue } from './shell';
-import { goTo, importBuild } from './skillsAndCalcs';
+import { goTo, headlineDps, importBuild } from './skillsAndCalcs';
 import { stableText } from './buildLibrary';
 
 const code = readFileSync(new URL('../../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', import.meta.url), 'utf8').trim();
@@ -72,9 +72,14 @@ test('after a data bump: import, skills and supports, crafting, passives, save a
   // 1. Import a real build code: it calculates and lands on the Overview with results.
   await importBuild(page, code);
   await settled(page);
-  const life = statValue(page, /^Life$/).first();
-  await expect(life).not.toHaveText('—');
-  await expect(life).not.toHaveText('0');
+  // This build is Chaos Inoculation (Life is always 1), so follow numbers that move with the
+  // tree and the data: Energy Shield and the headline DPS.
+  const energyShield = statValue(page, /^Energy Shield$/).first();
+  const dps = headlineDps(page);
+  for (const value of [energyShield, dps]) {
+    await expect(value).not.toHaveText('—');
+    await expect(value).not.toHaveText('0');
+  }
 
   // 2. Skills: one main group whose gems all resolve in the gem catalog, supports included.
   await goTo(page, 'Skills');
@@ -110,20 +115,25 @@ test('after a data bump: import, skills and supports, crafting, passives, save a
   await goTo(page, 'Tree');
   await expect(page.locator('.tree-canvas svg')).toBeVisible({ timeout: 30_000 });
   const imported = (await savedState(page)).allocatedNodes;
+  const sorted = (nodes: number[]) => [...nodes].sort((a, b) => a - b);
   const leaf = leafNode(imported);
   await expect(page.locator(`circle[data-skill-id="${leaf.skill}"]`)).toHaveClass(/node-allocated/);
   await clickNode(page, leaf.skill);
   await expect(page.locator(`circle[data-skill-id="${leaf.skill}"]`)).not.toHaveClass(/node-allocated/);
-  await expect.poll(async () => (await savedState(page)).allocatedNodes).not.toContain(leaf.skill);
+  // Exactly that one node goes: a cascade refund (or a tree that lost its class start) fails here.
+  const refunded = sorted(imported.filter(node => node !== leaf.skill));
+  await expect.poll(async () => sorted((await savedState(page)).allocatedNodes)).toEqual(refunded);
   await settled(page);
-  const target = nextNode((await savedState(page)).allocatedNodes, leaf.skill);
+  const target = nextNode(refunded, leaf.skill);
   const circle = page.locator(`circle[data-skill-id="${target.skill}"]`);
   await expect(circle).not.toHaveClass(/node-allocated/);
   await clickNode(page, target.skill);
   await expect(circle).toHaveClass(/node-allocated/);
-  await expect.poll(async () => (await savedState(page)).allocatedNodes).toContain(target.skill);
+  const edited = sorted([...refunded, target.skill]);
+  await expect.poll(async () => sorted((await savedState(page)).allocatedNodes)).toEqual(edited);
   await settled(page);
-  const lifeAfterEdit = await stableText(life);
+  const energyShieldAfterEdit = await stableText(energyShield);
+  const dpsAfterEdit = await stableText(dps);
 
   // 5. Save and reopen: the autosaved build comes back with the edit, its skills and its results.
   await page.reload();
@@ -131,10 +141,9 @@ test('after a data bump: import, skills and supports, crafting, passives, save a
   await settled(page);
   await expect(page.locator(`circle[data-skill-id="${target.skill}"]`)).toHaveClass(/node-allocated/);
   await expect(page.locator(`circle[data-skill-id="${leaf.skill}"]`)).not.toHaveClass(/node-allocated/);
-  const reopened = (await savedState(page)).allocatedNodes;
-  expect(reopened).toContain(target.skill);
-  expect(reopened).not.toContain(leaf.skill);
-  await expect(life).toHaveText(lifeAfterEdit!, { timeout: 30_000 });
+  expect(sorted((await savedState(page)).allocatedNodes)).toEqual(edited);
+  await expect(energyShield).toHaveText(energyShieldAfterEdit!, { timeout: 30_000 });
+  await expect(dps).toHaveText(dpsAfterEdit!, { timeout: 30_000 });
   await goTo(page, 'Skills');
   await expect(page.locator('.skill-group.is-main .skill-group-supports')).toHaveText(supportsBefore);
 });

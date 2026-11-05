@@ -108,22 +108,37 @@ class CoverageTests(unittest.TestCase):
         self.assertIn("#### yy (falls back to en)", text)
         self.assertIn("| stat_lines.json | stat description templates (exact text) | 2 | absent | 0.0% | 2 | — |", text)
 
-    def test_cli_succeeds_on_gaps_and_fails_only_on_unreadable_data(self):
+    def test_cli_reports_gaps_and_unreadable_data_without_failing(self):
         script = HERE / "translation-coverage.py"
+        run = lambda *args: subprocess.run([sys.executable, str(script), "--data", str(self.root), *args],
+                                           capture_output=True, text=True)
         out = Path(self.temp.name) / "report.json"
-        result = subprocess.run([sys.executable, str(script), "--data", str(self.root), "--json", str(out)],
-                                capture_output=True, text=True)
+        result = run("--json", str(out))
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Game-text translation coverage (9.9)", result.stdout)
         self.assertEqual([item["lang"] for item in json.loads(out.read_text())["languages"]], ["xx", "yy"])
+        # Broken English data and a broken language table each mark only their own row.
         (self.root / "9.9/base/mods.json").write_text("{not json")
-        broken = subprocess.run([sys.executable, str(script), "--data", str(self.root)], capture_output=True, text=True)
-        self.assertNotEqual(broken.returncode, 0)
-        missing = subprocess.run([sys.executable, str(script), "--data", str(self.root), "--version", "0.0"],
-                                 capture_output=True, text=True)
-        self.assertNotEqual(missing.returncode, 0)
-        self.assertIn("data:prepare", missing.stderr)
+        (self.root / "9.9/i18n/xx/skills.json").write_text("[")
+        (self.root / "9.9/i18n/yy/display_texts.json").write_text('{"entries": {}, "scopes": {"S": {"id": "x"}}}')
+        broken = run()
+        self.assertEqual(broken.returncode, 0, broken.stderr)
+        self.assertIn("| mods.json | unreadable: English data: JSONDecodeError", broken.stdout)
+        self.assertIn("| skills.json | unreadable: JSONDecodeError", broken.stdout)
+        self.assertIn("| display_texts.json | unreadable: ", broken.stdout)
+        self.assertIn("| base_items.json | base item ids | 2 | 1 | 50.0% | 1 | 1 |", broken.stdout)
+        # A snapshot that is not there is one unreadable line, still exit 0.
+        missing = run("--version", "0.0")
+        self.assertEqual(missing.returncode, 0, missing.stderr)
+        self.assertIn("unreadable: no prepared language data", missing.stdout)
+        self.assertIn("data:prepare", missing.stdout)
 
+    def test_examples_keep_one_line_per_table(self):
+        (self.root / "9.9/i18n/xx/display_texts.json").write_text(json.dumps(
+            {"entries": {"Crlf\r\nline": None, "Known": "K"}, "scopes": {}}))
+        text = coverage.markdown(coverage.report(self.root))
+        self.assertIn("- display_texts.json entries: `Crlf  line`", text)
+        self.assertNotIn("\r", text)
 
 if __name__ == "__main__":
     unittest.main()
