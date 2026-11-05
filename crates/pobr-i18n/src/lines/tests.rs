@@ -913,3 +913,106 @@ fn a_rejected_candidate_leaves_no_origin_on_the_one_accepted_after_it() {
         Some(("授予全部 5% 某物，给泽德".into(), None))
     );
 }
+
+/// Templates as the zh-CN pack writes them for lines the unique-item catalog
+/// shows with roll ranges.
+fn range_pack() -> LocalePack {
+    templates_pack(
+        "zz",
+        serde_json::json!([
+            {"src": "所有召唤生物技能等级 {0:+d}", "en": "{0:+d} to Level of all Minion Skills"},
+            {"src": "+ {0} 维金灌注上限", "en": "+{0} to maximum Verisium Infusions"},
+            {"src": "火焰抗性 {0:+d}%", "en": "{0:+d}% to Fire Resistance"},
+            {"src": "{0:d} 生命上限", "en": "{0:d} to maximum Life"},
+            {"src": "附加 {0} - {1} 基础火焰伤害", "en": "Adds {0} to {1} Fire Damage"},
+            {"src": "范围内的核心天赋还会获得：{0}", "en": "Notable Passive Skills in Radius also grant {0}"},
+            {"src": "战矛的攻击速度提高 {0:d}%", "en": "{0:d}% increased Attack Speed with Spears"},
+            {"src": "冻结阈值提高 {0:d}%", "en": "{0:d}% increased Freeze Threshold", "origin": "agent"},
+            {"src": "伤害提高 {0}%", "en": "{0}% increased Damage"}
+        ]),
+    )
+}
+
+#[test]
+fn a_range_display_renders_through_its_rolled_lines_template() {
+    use pobr_data::catalog::TextOrigin::Agent;
+    let pack = range_pack();
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    let render = |line: &str| renderer.render_line_with_origin(line);
+    // A slot with a format spec takes the range as it takes the rolled number,
+    // sign included: the line's own `+` is shown once.
+    for (line, expected) in [
+        (
+            "+2 to Level of all Minion Skills",
+            "所有召唤生物技能等级 +2",
+        ),
+        (
+            "+(1-2) to Level of all Minion Skills",
+            "所有召唤生物技能等级 +(1-2)",
+        ),
+        ("+(10-20)% to Fire Resistance", "火焰抗性 +(10-20)%"),
+        ("+(-10-10)% to Fire Resistance", "火焰抗性 +(-10-10)%"),
+        ("+(0.5-1.5)% to Fire Resistance", "火焰抗性 +(0.5-1.5)%"),
+        ("+(40-60) to maximum Life", "+(40-60) 生命上限"),
+        // A sign the template writes itself stays outside the value.
+        (
+            "+(1-2) to maximum Verisium Infusions",
+            "+ (1-2) 维金灌注上限",
+        ),
+        (
+            "Adds (1-2) to (3-4) Fire Damage",
+            "附加 (1-2) - (3-4) 基础火焰伤害",
+        ),
+    ] {
+        assert_eq!(render(line), Some((expected.into(), None)), "{line}");
+    }
+    // A captured line holding a range renders through its own template, and
+    // brings that template's origin.
+    assert_eq!(
+        render(
+            "Notable Passive Skills in Radius also grant (1-2)% increased Attack Speed with Spears"
+        ),
+        Some((
+            "范围内的核心天赋还会获得：战矛的攻击速度提高 (1-2)%".into(),
+            None
+        ))
+    );
+    assert_eq!(
+        render("Notable Passive Skills in Radius also grant (2-4)% increased Freeze Threshold"),
+        Some((
+            "范围内的核心天赋还会获得：冻结阈值提高 (2-4)%".into(),
+            Some(Agent)
+        ))
+    );
+    // The parser is unchanged: input text holds rolled values.
+    let parser = LineParser::new(&[&pack], BASES).unwrap();
+    assert_eq!(
+        parser.parse_line("所有召唤生物技能等级 +2").as_deref(),
+        Some("+2 to Level of all Minion Skills")
+    );
+    assert_eq!(parser.parse_line("所有召唤生物技能等级 +(1-2)"), None);
+}
+
+#[test]
+fn a_range_never_lets_a_mixed_line_through() {
+    let pack = range_pack();
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    for line in [
+        // A `{0}%` slot never takes words, with a range beside them or not.
+        "Bonded: (1-2)% increased Damage",
+        // A captured line whose own template is missing keeps the line English.
+        "Notable Passive Skills in Radius also grant (1-2)% increased Wibble",
+        // Only a whole range fills a numeric slot.
+        "(40-60) Wibble to maximum Life",
+        "+(40-60 to maximum Life",
+        "+(40-) to maximum Life",
+        "+(-60) to maximum Life",
+    ] {
+        assert_eq!(renderer.render_line(line), None, "{line}");
+    }
+    // A range in a slot that already takes words is kept as it was.
+    assert_eq!(
+        renderer.render_line("(1-2)% increased Damage").as_deref(),
+        Some("伤害提高 (1-2)%")
+    );
+}
