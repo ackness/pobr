@@ -109,20 +109,13 @@ are command arguments, never version-lock fields. Deleting an ignored prepared
 version and rerunning prepare rebuilds it from its external owner pins;
 rerunning prepare on an intact stale same-version install refreshes it in place.
 
-The source-derived 0.5.5.5 composition uses snapshot `73b2d77e...` and runtime
-`dba0615e...`; only crafting source metadata changes from the previous
-`2a03ad79...` / `d7ac23c5...` baseline. All 92 catalog business records match.
-Moving the projection to RePoE (publication sequence 3) kept these identities and
-the compact `release_id` `9932ea87...`.
-The immutable inputs are published. Fresh remote Git composition, denied-network
-replay and local adoption are verified; the frozen CLI reads the new identity with
-identical business output/diagnostics. [Full integration CI](https://github.com/ackness/pobr/actions/runs/41348105556)
-passes at exact head `7e4d0c23`, including real WASM and runtime composition. Its
-compact release remains `9932ea87...` / `ec4f3776...`; the source lock is retained
-in the build receipt. Gameplay/source certification and unselected E2E stay separate. The retired 0.5.5.4.2 rollback lock preserved snapshot
-`bfd31a46...` and runtime `dcfc32c2...`; it is no longer an input to CI. The older
-4.5.5.2/4.5.5.3 directories are no longer current-tree inputs; historical Git objects are not rewritten or used as runtime fallbacks.
-`check_data_ownership.py` rejects full payloads forced into PoBR's Git index.
+The current snapshot, runtime identity and compact `release_id` are the values
+in the lock; this page does not copy them. `prepare` must reproduce the snapshot
+and runtime identity, `data:pack` the `release_id`, and `mise run data:bump`
+prints the before/after identities whenever a bump moves them. Older version
+directories are not inputs; historical Git objects are neither rewritten nor
+used as runtime fallbacks. `check_data_ownership.py` rejects full payloads
+forced into PoBR's Git index.
 
 The `support_display` entry also imports the translation owner's support
 description asset before Web builds/tests: from a retained `handoff/*` commit and

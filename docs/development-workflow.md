@@ -316,7 +316,7 @@ PR 不在 workflow 层过滤文档，以免必需检查永久 pending：只运�
 完整 Rust 测试按包分成 build/CLI、WASM、其余库和工具三组并行，保留每个包默认的单元、集成
 与 doctest；新 workspace 成员自动进入第三组。`ci-rust-tests.py` 和回归测试保证所有包恰好覆盖一次。
 分片 `fail-fast: false`，一个失败不会取消其他组；完整 gate 必须收到所有分片成功才通过。
-每个分片先用固定Python临时导入当前数据；ordinary候选只在libraries-tools分片生产和上传一次，供后续运行包组合消费。
+每个分片先用固定 Python 临时导入当前数据。
 格式、Clippy、Web 与自动化契约彼此独立；产物发布仍等待全部验证。
 
 排查耗时可运行 `mise exec -- python3 devs/scripts/actions-timings.py --output .cache/ci-performance/latest`。
@@ -326,8 +326,8 @@ PR 不在 workflow 层过滤文档，以免必需检查永久 pending：只运�
 
 `PR gate` 要求检测器与每个选中的 job 成功，拒绝失败、取消、缺失与意外跳过。
 它在 PR 中证明轻量检查通过；master 中还要求完整 job 成功。
-`Full gate` 要求 Rust、Web、自动化及声明式运行包组合全部成功。组合任务等待同次运行的普通领域
-和显示文本产物，要求完整与紧凑消费者的投影业务数据一致，再用同次WASM实际消费最终物化候选；其候选不切换站点活动数据。fork 和 Dependabot 使用同样的只读、无发布密钥路径；
+`Full gate` 要求 Rust、Web、自动化及声明式运行包组合全部成功。组合任务（`runtime`）从已准备的 owner 快照组出紧凑发行包，
+校验并物化后由同次运行的 WASM 实际消费；它不切换站点活动数据。fork 和 Dependabot 使用同样的只读、无发布密钥路径；
 首次外部贡献是否批准执行由 GitHub 设置决定，执行许可不代表正确性批准。
 
 完整 CI 包括 fmt/Clippy（含诊断 features）、workspace tests/doctest、parity/reference 退步断言、
@@ -384,9 +384,8 @@ mise run full                             # 显式本地 Rust 全量检查，不
 授权合并前可以运行 `mise run pr-ready <N>`：它只读 PR 当前状态、`PR gate`、其他失败/待定检查
 与冲突，并再次核对 head/base，输出带 `--match-head-commit` 的准确命令。它不评论、不合并、
 不验证“是否有独立推理”。这是减少误操作的辅助入口；维护者也可以直接核对同样的事实。
-合并默认用 merge commit，让分支原始提交继续可从 master 到达。owner 的发布 plan 可能按完整
-SHA 钉住这些提交；squash／rebase 后若删除原分支且没有其他保留 ref，原提交可能无法再按 SHA
-取回。发布输入仍须由不可变 tag 保留；merge commit 不能替代 `handoff/*` 等发布保留约定。
+合并默认用 merge commit，让分支原始提交继续可从 master 到达：review 证据与 `--match-head-commit`
+引用的 head SHA 在删除分支后仍能取回。其他仓库引用的 PoBR 提交（`contract/<n>.<m>`）由不可变 tag 保留，不依赖合并方式。
 `pr-ready` 不要求每个普通 PR 都有合并前 full。若风险需要手动 full，单独核对该 run 的
 `head_sha`、结果与当前 base；分支 head 的结果不证明之后变化的 merge commit。
 base 更新后的保障取决于已配置的服务端规则和必要复验，不能从本地文件推断 strict 已启用。

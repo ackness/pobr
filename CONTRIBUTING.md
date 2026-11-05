@@ -27,9 +27,9 @@ same pinned versions.
   `attack_damage_final_permyriad_per_rage = 100`. Path of Building 2 is the
   regression baseline and a cross-check, not the authority: do not cite its Lua
   line numbers. Where PoBR deliberately differs from PoB2, say why in
-  [PoB2 differences](docs/pob2-differences.md). The pinned PoB2 commit is
-  recorded in the active data's `overlay/mod_parser_rules.json` under
-  `_meta.vendor_commit`.
+  [PoB2 differences](docs/pob2-differences.md). The PoB2 checkout used by
+  tests and comparisons is pinned in `devs/reference-sources.json`
+  (`mise run vendor` clones it).
 - **Prefer a general rule to a per-skill entry.** If the same mechanism affects
   several skills or modifiers, fix the mechanism once instead of adding one
   allow-list line per name, and check which other entries share the bug.

@@ -88,7 +88,7 @@ RePoE 发布 ───┐
   较早的 receipt 可以没有，此时若根 manifest 带 `release_build.receipt`（旧格式），它必须正好钉住该 receipt。
   新快照必须声明 `contract_version`；缺失时的报错指向 RePoE 声明里 snapshot-manifest job 的
   `contract_version: "adapter"`。
-- **辅助显示与测试夹具。** 锁的 `support_display` 属于语言 owner：Release 之后，它是 `locale/<patch>-<n>` Release 的两件
+- **辅助显示与测试夹具。** 锁的 `support_display` 属于语言 owner：它是 `locale/<patch>-<n>` Release 的两件
   额外附件 `support-display.zh-CN.json`（`poe2-support-display-publication/v1` manifest：目标、语言、
   `catalog_sha256`、`files`、`provenance`）与 `supportDescriptions.zh-CN.json`，都列在同一 `SHA256SUMS` 中。
   `data:bump` bump 语言 Release 时一并采用它，并核对目标、语言、来源 provenance，以及 `catalog_sha256` 等于新游戏包
@@ -96,7 +96,6 @@ RePoE 发布 ───┐
   但它绑定的目录必须仍与新游戏包一致，否则拒绝并提示语言 owner 为新目录重新发布。`test_fixtures` 是 RePoE 保留的
   PoBR API 响应样本，与补丁无关：换目标时保留原条目，并在条目中记下它们发布时的 `target`（不改夹具或其 manifest）。
   两个条目都可读旧 `handoff/*` 的 commit + 路径或 Release 附件（`repository` + `tag`；夹具另有 `asset`）。
-  翻译库目前还不发布这两件显示附件（已计划）；在它发布之前，换目标的 `data:bump` 会被拒绝。
   语言 owner 在 `locale/<patch>-<n>` 下发布同样的三件附件（翻译库 `mise run release:publish`），包为
   `pobr-build-data-part/v1`、`kind: "language"` 的 ZIP（与游戏包同一格式），成员按 STORED 写入，
   与提交无关，任何后续干净提交都能逐字节重建。
@@ -119,8 +118,8 @@ RePoE 发布 ───┐
 - **身份。** schema-3 `manifest.json` 列出全部运行文件及 SHA-256，未列出的文件视为不存在；
   `GameData::identity()` 标识快照、共享覆盖层和有效 patch，并进入计算结果的 `provenance`。
   完整快照与紧凑 release 是不同投影，身份分别记录，不能互换。
-- **回滚。** 回滚单位是完整数据锁，恢复后核验身份，不能只回退版本目录或 `CURRENT`。
-  目标形态是另一份数据锁；owner 尚未发布对应描述时使用冻结的旧版锁。
+- **回滚。** 回滚单位是完整数据锁：恢复上一份已验证的锁字节，恢复后核验身份，不能只回退版本目录或 `CURRENT`。
+  回退目标必须仍被当前代码接受（契约版本、按 owner 组合的 manifest），所以 `game/0.5.5.5-1` 及更早的锁不能作回退目标。
   用户 `patch/` 是单独的本地覆盖身份，回滚后重新校验，不兼容时拒绝该数据锁并保留原文件。
 - **owner 代码。** 需要运行 owner 提供的生成或校验代码时，只按 pin 取回声明的文件并校验字节；
   运行包不携带这些代码，收据保留其身份。
@@ -141,21 +140,19 @@ RePoE 发布 ───┐
   紧凑发行包（`pipeline/runtime/runtime_pack.py`）与重新封存（`data_snapshot.manifest`）原样保留这个字段，
   浏览器里的加载器同样检查。
 - **采用新数据。** `build_data.prepare`（`data:prepare`／`data:update`）要求锁定的快照 manifest 声明的
-  `contract_version` 等于 `crates/pobr-data/src/lib.rs` 里的 `CONTRACT_VERSION`，没有例外（字段出现之前的
-  `PRE_CONTRACT_SNAPSHOTS` 例外已随锁升到 `game/0.5.5.5-2` 删除）。
+  `contract_version` 等于 `crates/pobr-data/src/lib.rs` 里的 `CONTRACT_VERSION`，没有例外。
 - **tag 约定。** tag 名为 `contract/<n>.<m>`：`n` 等于 `CONTRACT_VERSION`；`m` 是同一契约内的增量修订，从 0 开始
   （`contract/1.0`），用于数据仓库应当产出的新可选字段，或 `pobr-data` 里供数据仓库调用的辅助代码修正（如
   `pobr_data::text`）。契约加 1 时 `m` 归零。两者都不可移动、不删除。tag 打在 master 上"`pobr-data` 已完整包含该
   契约修订"的那个提交上——不一定是引入版本号的 PR 的合并提交，修订依赖的改动全部合并之后再打。只改引擎、
   不改契约的提交不需要 tag，数据仓库也不需要跟进；增量的契约改动打下一个 `.m`。数据仓库把 `pobr-data` 依赖固定在
-  它需要的最新 `contract/<n>.<m>` 上。旧的 `engine-crates/<日期>` tag（如 `engine-crates/20261102`）不再新建，
-  已有 tag 保留不动，现有的依赖固定可以继续使用，直到数据仓库升级到 `contract/<n>.<m>`。
-- **修订记录。** `contract/1.0`：首个契约 tag。`contract/1.1`（待打）：新增可选字段
+  它需要的最新 `contract/<n>.<m>` 上。旧的 `engine-crates/<日期>` tag 不再新建，已有的保留不动。
+- **修订记录。** `contract/1.0`：首个契约 tag。`contract/1.1`（RePoE 的 adapter 当前固定于此）：新增可选字段
   `base/game_constants.json` 的 `game.base_maximum_rage`（游戏常量 `BaseMaximumRage`，缺省 30）与可选文件
   `base/active_skill_types.json`（`active_skill_types/v1`，客户端 `ActiveSkillType` 表，按行序给出技能类型名与
   1 起的序号；加载时以 `pobr_data::skill::install_skill_type_names` 安装为进程内的类型名表，与引擎具名常量不符即拒绝）；
   天赋节点原生 stat 包里有引擎不认识的 stat 时按没有包处理（数据仓库因此可以给全部符合条件的节点发包）。
-  消费这一修订的引擎不再内嵌技能类型名表（`skill_type_names.txt` 已删）：契约 1 的包必须带
+  引擎不内嵌技能类型名表：契约 1 的包必须带
   `active_skill_types.json`，引擎只认得自己具名常量（`SkillTypes::ATTACK` 等）的名字，其余名字要等加载器安装
   数据包的表；最大怒气读 `game.base_maximum_rage`。
 - **RePoE 一侧。** `pobr-data-adapter` 与 release build 封存快照 manifest 时写入
@@ -183,7 +180,7 @@ RePoE 发布 ───┐
 
 ## 5. 更新、采用与发布
 
-1. **owner 生产。** RePoE 与翻译库按固定来源生产、运行各自的完整 guard、发布不可变描述后推进索引。PoBR 不代为生产。
+1. **owner 生产。** RePoE 与翻译库从固定输入生产、运行各自的完整检查，再发布不可变的 GitHub Release。PoBR 不代为生产。
 2. **改锁。** 维护者在审阅分支中运行 `mise run data:bump <owner> <tag>`：下载并按 `SHA256SUMS` 校验附件，
    读取 `receipt.json`，替换该 owner 的锁条目（语言 Release 带辅助显示附件时一并替换 `support_display`），
    重算快照 pin、运行身份与紧凑发行身份，再 `data:prepare` 导入并打印身份差异。
@@ -191,8 +188,9 @@ RePoE 发布 ───┐
 3. **验证。** 候选在精确 head 上通过 PR gate 和 Full gate：完整快照按摘要导入、
    从同一快照组出的紧凑发行包，以及同次构建的 WASM 消费该包。对 bump 分支运行 `mise run ci <分支>`，
    完整 CI 因数据锁改变而自动加跑普通 Web 流程的冒烟 E2E（[开发工作流](development-workflow.md)）。PoBR 不在 CI 中重跑 owner 的领域生产。
-4. **采用。** 数据锁经受保护的 PR 合并更新；运行输入改变时，改锁时准备完整数据并写入精确的 `release_id`，Full CI 重建后必须一致。本地安装用 `data:update` 显式选择，并携带期望的旧身份做 CAS；
-   源码合并不自动切换 `CURRENT`。
+4. **采用。** 采用就是合并第 2 步的 bump PR：数据锁只经受保护的 PR 改变；`data:bump` 写入精确的 `release_id`，Full CI 重建后必须一致。
+   `data:update` 不是采用路径：它只在本地按另一份锁准备候选或显式选择（回退演练、多版本实测），并携带期望的旧身份做 CAS，
+   见[锁驱动的本地选择](../pipeline/runtime/locked-update.md)。
 5. **发版与部署。** 发版 tag 重新运行完整验证并发布同次产物；数据采用不会自动触发发版。
    锁变化合并到 master 只运行完整 CI，不部署网站：生产站点只由稳定 `v0.x.y` tag 的 release workflow 部署
    （见[发布与部署](development-workflow.md#发布与部署)）。要让新数据上线，在 data:bump PR 中一并升 workspace patch 版本，合并后推送对应 tag。

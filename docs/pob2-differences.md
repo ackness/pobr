@@ -46,7 +46,7 @@ trade、暗金与基底类转为 RePoE 从客户端生成。客户端数值和�
 | 9 | `overlay/minions.json`、`overlay/spectres.json` 的目录成员、effect→variety aliases、限制与装备关系（重放） | 召唤物与幽魂的选择 | RePoE：需要独立依据；目录身份不能仅由 monster hash 反推，actor 数值已迁源 |
 | 10 | `overlay/uniques.json`（冻结） | 暗金的词缀归属、roll 与变体；导入的物品原文不经它 | RePoE：从客户端 `UniqueStashLayout`／`Words`／`Mods` 生成，再决定 `unique_relations.json` 是否进入游戏包 |
 | 11 | `overlay/passive_jewels.json`（冻结）；`base/jewel_radii.json` 的数值（重放） | 珠宝与范围珠宝 | RePoE：从客户端天赋与珠宝事实生成 |
-| 12 | 版本 overlay 的 `base/unarmed_data.json`、`overlay/catalysts.json`、`overlay/item_granted_skills.json`、`overlay/passive_jewel_slots.json`（冻结：已有 producer，缺固定输入） | 无：producer 重放的值与当前文件一致 | RePoE：把所需输入（player-context 归档或选表补充）发布为固定 handoff 并声明对应 job |
+| 12 | 版本 overlay 的 `base/unarmed_data.json`、`overlay/catalysts.json`、`overlay/item_granted_skills.json`、`overlay/passive_jewel_slots.json`（冻结：已有 producer，缺固定输入） | 无：producer 重放的值与当前文件一致 | RePoE：把所需输入（player-context 归档或选表补充）发布为输入包 Release（`inputs/<patch>-<n>`）并声明对应 job |
 | 13 | `overlay/trade_catalog.json`、`overlay/trade_stat_map.json`（冻结） | 无：只用于交易与打造界面 | RePoE：从客户端 Mods／BaseItemTypes 与固定的交易站 stats 来源生成 |
 | 14 | `overlay-common/` 的 `boss_poise_thresholds.json`、`item_granted_skills.json`、`passive_jewel_slots.json`、`totem_varieties.json`、`vendor_name_aliases.json`（冻结） | 无：版本 overlay 优先；别名表没有读取方 | PoBR 不再为这些域读取 `overlay-common/` 后，由 RePoE 从包中移除 |
 

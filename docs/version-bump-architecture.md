@@ -1,6 +1,6 @@
 # 数据版本与覆盖层
 
-PoBR 将应用版本、基础库版本和游戏数据版本分开。RePoE 独立存储／处理游戏事实，翻译库独立存储／处理语言；PoBR 只跟踪代码、锁、来源元数据和自有规则。版本目录由 `mise run data:prepare` 按固定输入临时组合，供构建和实物测试使用，不提交完整快照或把旧 PoBR artifact 当回退。
+PoBR 将应用版本、基础库版本和游戏数据版本分开。数据来自 RePoE 与翻译库的固定发布（[数据架构](data-architecture.md)）；版本目录由 `mise run data:prepare` 按锁临时组合，不提交到 Git。本页说明 `data/` 的分层。
 
 数据目录的职责如下：
 
@@ -25,15 +25,15 @@ PoBR 将应用版本、基础库版本和游戏数据版本分开。RePoE 独立
 
 ## 当前实现与后续工作
 
-三仓库的固定输入、普通六域生产、完整／紧凑组包、当前 `0.5.5.5` 本地采用与旧版恢复均已接通。
-默认构建重放锁；换数据是人工审阅的锁修改，PoBR 不自动发现或采用 owner 发布。
+PoBR 按锁导入两个 owner 的 Release，并组出完整与紧凑数据包；领域生产在 RePoE 与翻译库，不在本仓库。
+默认构建重放锁；换数据是人工审阅的锁修改（`mise run data:bump`），PoBR 不自动发现或采用 owner 发布。
 字段／语义和玩家流程的剩余范围统一维护在[数据现状](data-status.md)，不在本页复制阶段待办。
 
 ## 开发入口
 
 - 数据版本选择、manifest 校验、身份摘要及快照生命周期见[构筑模型](build-model.md#数据快照身份与会话)。
-- 当前／旧版的临时导入及完整身份校验见[构建数据](../pipeline/runtime/build-data.md)；候选适配、回滚保护和离线的 `mise run data:check` 见[数据管线](../pipeline/README.md)。
-- 语言产物由翻译库生成并发布，PoBR 经[数据锁](../pipeline/data.lock.json)导入。代码合并不自动切换 CURRENT 或认证来源。
+- 当前／旧版的临时导入及完整身份校验见[构建数据](../pipeline/runtime/build-data.md)；换数据、本地选择和离线的 `mise run data:check` 见[数据管线](../pipeline/README.md)。
+- 语言产物由翻译库生成并发布，PoBR 经[数据锁](../pipeline/data.lock.json)导入。锁与 `data/CURRENT` 只由审阅过的 `data:bump` PR 改变；合并它也不认证来源。
 - 历史 Git 树的独立输入包由 RePoE 保存，只用于诊断候选，不能据其旧版本标签切换活动数据。
 - 当前工具、缓存和验证范围见[开发工作流](development-workflow.md)。
 
