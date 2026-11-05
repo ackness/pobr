@@ -912,3 +912,215 @@ fn exporter_absent_rules_are_reported_without_changing_reference_agreement() {
         "game-mode usage keeps the absent rule"
     );
 }
+
+// --lang: mod and item lines in one of the data pack's locales.
+
+fn zh_cn() -> pobr_cli::Locale {
+    pobr_cli::Locale::load(&repo_data_dir(), "zh-CN").expect("the data pack declares zh-CN")
+}
+
+fn has_han(text: &str) -> bool {
+    text.chars().any(|c| ('\u{4e00}'..='\u{9fff}').contains(&c))
+}
+
+#[test]
+fn lang_reads_a_localized_mod_line_as_its_english_line() {
+    let locale = zh_cn();
+    let english = pobr_cli::parse_mod_json("+50 to maximum Life", &repo_data_dir(), None).unwrap();
+    let localized =
+        pobr_cli::parse_mod_json("+50 生命上限", &repo_data_dir(), Some(&locale)).unwrap();
+    assert_eq!(localized, english);
+    assert!(english.contains("\"Parsed\""), "{english}");
+    // An English line given with --lang is read as it is.
+    let mixed =
+        pobr_cli::parse_mod_json("+50 to maximum Life", &repo_data_dir(), Some(&locale)).unwrap();
+    assert_eq!(mixed, english);
+
+    let request = |lines: &[&str]| CalculateRequest {
+        input: base_input(),
+        modifier_texts: lines.iter().map(|line| line.to_string()).collect(),
+    };
+    let english = pobr_cli::calculate_json(
+        &request(&["+50 to maximum Life", "10% increased maximum Life"]),
+        None,
+    )
+    .unwrap();
+    let localized = pobr_cli::calculate_json(
+        &request(&["+50 生命上限", "生命上限提高 10%"]),
+        Some(&locale),
+    )
+    .unwrap();
+    assert_eq!(localized, english);
+    let value: serde_json::Value = serde_json::from_str(&localized).unwrap();
+    assert_eq!(value["output"]["life"], 1155.0);
+}
+
+#[test]
+fn lang_reads_localized_item_text_and_shows_the_base_in_the_locale() {
+    let locale = zh_cn();
+    let english =
+        "Rarity: Rare\nGloom Coil\nSapphire Ring\n--------\n+40 to maximum Life\nmirrored";
+    let localized = "Rarity: Rare\nGloom Coil\n蓝玉戒指\n--------\n+40 生命上限\nmirrored";
+    let as_json = |text: &str, locale| -> serde_json::Value {
+        let json = pobr_cli::parse_item_json(
+            &ParseItemRequest {
+                text: text.to_string(),
+            },
+            locale,
+        )
+        .unwrap();
+        serde_json::from_str(&json).unwrap()
+    };
+    let english = as_json(english, None);
+    let localized = as_json(localized, Some(&locale));
+    assert_eq!(english["base"], "Sapphire Ring");
+    assert_eq!(localized["base"], "蓝玉戒指");
+    assert_eq!(localized["modifiers"], english["modifiers"]);
+    assert_eq!(localized["unsupported"], english["unsupported"]);
+
+    // Unsupported item lines come back as typed: an unrecognised localized
+    // line, and a recognised one the parser does not support.
+    let unsupported = as_json(
+        "Rarity: Rare\nGloom Coil\n蓝玉戒指\n--------\n+40 生命上限\n不认识的词条\n1 个稀有怪物被替换为一个随机地图首领",
+        Some(&locale),
+    );
+    assert_eq!(
+        unsupported["unsupported"],
+        serde_json::json!(["不认识的词条", "1 个稀有怪物被替换为一个随机地图首领"])
+    );
+    assert_eq!(unsupported["modifiers"], english["modifiers"]);
+    assert!(
+        english["modifiers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|m| m["name"].as_str().unwrap().contains("MaximumLife")),
+        "{english}"
+    );
+}
+
+#[test]
+fn lang_shows_a_build_reports_mod_lines_in_the_locale() {
+    let request = CalculateBuildRequest {
+        code: DEADEYE_CODE.to_string(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    let detail = BuildDetail {
+        breakdown: vec!["Life".into()],
+        usage: true,
+        ..BuildDetail::default()
+    };
+    let english = calculate_build_detailed(&request, &detail).unwrap();
+    let mut localized = english.clone();
+    zh_cn().localize_build(&mut localized);
+
+    // Numbers are the language's business nowhere.
+    assert_eq!(
+        serde_json::to_value(&localized.output).unwrap(),
+        serde_json::to_value(&english.output).unwrap()
+    );
+    let lines = |report: &pobr_cli::CalculateBuildReport| -> Vec<(Option<String>, Option<f64>)> {
+        report.breakdowns[0]
+            .breakdown
+            .as_ref()
+            .expect("Life has lines")
+            .mods
+            .iter()
+            .map(|line| (line.source_text.clone(), line.value))
+            .collect()
+    };
+    let (before, after) = (lines(&english), lines(&localized));
+    assert_eq!(before.len(), after.len());
+    assert!(before.iter().zip(&after).all(|(b, a)| b.1 == a.1));
+    let flat_life = before
+        .iter()
+        .zip(&after)
+        .find(|(b, _)| {
+            b.0.as_deref()
+                .is_some_and(|text| text.ends_with(" to maximum Life") && text.starts_with('+'))
+        })
+        .expect("the build has a flat Life line");
+    let shown = flat_life.1.0.as_deref().unwrap();
+    assert!(shown.ends_with(" 生命上限"), "{shown}");
+    assert!(render_breakdowns(&localized).contains(shown));
+
+    let usage = localized.usage.as_ref().expect("usage was asked for");
+    assert!(
+        usage
+            .lines
+            .iter()
+            .filter_map(|line| line.text.as_deref())
+            .any(has_han),
+        "usage lines are shown in the locale"
+    );
+}
+
+#[test]
+fn lang_reports_unsupported_lines_as_typed() {
+    let locale = zh_cn();
+    // Recognised by the zh-CN templates (so it reaches the parser in English),
+    // but not supported by the parser.
+    let recognised = "1 个稀有怪物被替换为一个随机地图首领";
+    assert_eq!(
+        locale.parse_line(recognised),
+        "1 Rare Monster is replaced by a random Map Boss"
+    );
+    let lines = ["+50 生命上限", "不认识的词条", recognised, "mirrored"];
+    let json = pobr_cli::calculate_json(
+        &CalculateRequest {
+            input: base_input(),
+            modifier_texts: lines.iter().map(|line| line.to_string()).collect(),
+        },
+        Some(&locale),
+    )
+    .unwrap();
+    let result: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(result["output"]["life"], 1050.0);
+    assert_eq!(
+        result["unsupported"],
+        serde_json::json!(["不认识的词条", recognised, "mirrored"])
+    );
+}
+
+#[test]
+fn lang_reports_a_broken_data_pack_as_a_data_error() {
+    let root = std::env::temp_dir().join(format!("pobr-cli-lang-{}", std::process::id()));
+    let corrupt = root.join("corrupt");
+    std::fs::create_dir_all(&corrupt).unwrap();
+    std::fs::write(corrupt.join("manifest.json"), "{ not json").unwrap();
+    for dir in [root.join("missing"), corrupt] {
+        let error = pobr_cli::Locale::load(&dir, "zh-CN").unwrap_err();
+        assert!(
+            matches!(error, pobr_cli::CliError::GameData(_)),
+            "{dir:?}: {error}"
+        );
+        assert!(!error.to_string().contains("unknown language"), "{error}");
+    }
+    std::fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
+fn lang_unknown_language_lists_the_available_ones() {
+    let error = pobr_cli::Locale::load(&repo_data_dir(), "xx-XX").unwrap_err();
+    let message = error.to_string();
+    assert!(message.contains("\"xx-XX\""), "{message}");
+    for code in pobr_cli::available_languages(&repo_data_dir()) {
+        assert!(message.contains(&code), "{message}");
+    }
+    assert!(
+        message.contains("en-US") && message.contains("zh-CN"),
+        "{message}"
+    );
+
+    // English, the parser's language, translates nothing.
+    let english = pobr_cli::Locale::load(&repo_data_dir(), pobr_cli::SOURCE_LANGUAGE).unwrap();
+    assert!(!english.has_templates());
+    assert_eq!(english.parse_line("+50 生命上限"), "+50 生命上限");
+    assert_eq!(
+        english.render_line("+50 to maximum Life"),
+        "+50 to maximum Life"
+    );
+}

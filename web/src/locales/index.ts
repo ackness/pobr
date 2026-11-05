@@ -5,6 +5,11 @@
  * en-US.json is the complete key set, and `mise run i18n:check` requires
  * every registered language to be complete as well. A key a language still
  * omits resolves through its `language.fallback` list, then English.
+ *
+ * `language.gameTextFallback` is separate and never affects interface copy:
+ * it extends the language's game-text chain after the fallbacks the data pack
+ * declares (lib/gameLocales.ts), so a game name or mod line the language's pack
+ * lacks is shown from the next locale that has one.
  */
 import enUS from './en-US.json' with { type: 'json' };
 import zhCN from './zh-CN.json' with { type: 'json' };
@@ -13,7 +18,7 @@ import zhTW from './zh-TW.json' with { type: 'json' };
 export type Messages = typeof enUS;
 export type Namespace = keyof Messages;
 type LocaleFile = { [N in Namespace]?: { [K in keyof Messages[N]]?: string } } & {
-  language?: { fallback?: readonly string[] };
+  language?: { fallback?: readonly string[]; gameTextFallback?: readonly string[] };
 };
 
 // Every src/locales/<lang>.json is registered here, in language-picker order;
@@ -36,6 +41,11 @@ const CHAINS = Object.fromEntries(LANGS.map(lang => {
 
 export function fallbackChain(lang: Lang): readonly Lang[] {
   return CHAINS[lang];
+}
+
+/** The locales `lang`'s game text falls back to after the data pack's own fallbacks, as its file declares them. */
+export function gameTextFallback(lang: Lang): readonly string[] {
+  return (FILES[lang] as LocaleFile).language?.gameTextFallback ?? [];
 }
 
 // Null-prototype tables so data-derived keys never resolve to Object members.
