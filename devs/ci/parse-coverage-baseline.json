@@ -8,8 +8,8 @@
   },
   "patch": "0.5.5.5",
   "total": 4361,
-  "parsed": 3620,
-  "unsupported": 741,
+  "parsed": 3622,
+  "unsupported": 739,
   "err": 0,
-  "coverage_ratio": 0.830085
+  "coverage_ratio": 0.830543
 }

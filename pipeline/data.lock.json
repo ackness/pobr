@@ -11,18 +11,18 @@
       "repository": "ackness/repoe",
       "tag": "game/0.5.5.5-2",
       "asset": "pobr-game-0.5.5.5.zip",
-      "bytes": 4559501,
-      "sha256": "8938b99a338b8980ea67f450b881c83bc9699838d2a3c8ac033166b0951cdd06",
+      "bytes": 4559376,
+      "sha256": "c46df616c802d9c068b9516d77403147b9515a2d551d668e134623539d692ecb",
       "manifest": {
-        "bytes": 9169,
-        "sha256": "74e4b44faeda43c47cbf0d91f957b9809882ff49acfd1a26814979783bb0328c"
+        "bytes": 8935,
+        "sha256": "7310688be921e799cdd055652fe326a95cef0d1684b88f65f7bccbbb6d8cded5"
       },
-      "expanded_bytes": 66880168,
+      "expanded_bytes": 66879934,
       "receipt": {
-        "bytes": 39565,
-        "sha256": "ef32a0326e6a685f7b972777b458a7d8cddb9c8893f555c91fc040e8f4558e01"
+        "bytes": 39774,
+        "sha256": "c61923464eb4a9235d3ec70a783310fd255385d1572cc54c32d45d1724f71347"
       },
-      "producer_commit": "58a044fbf9dc9d9b917c2654a5718a7f3c732bdb",
+      "producer_commit": "a86e54c0f824bbba7bfe6f411ff192a038e2cfb9",
       "contract_version": 1
     },
     "language": {
