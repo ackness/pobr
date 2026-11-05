@@ -15,6 +15,7 @@ import { reconcileJewelAllocation } from '../lib/passiveGraph';
 import { applyTreeAllocation, skillWeaponSet, switchWeapons, validWeaponSwap, weaponSetRequest } from '../lib/weaponSets';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getBackend } from '../api/backend';
+import { setGameLocales } from '../lib/gameLocales';
 import { composeNotes, splitNotes, type Annotations } from '../lib/annotations';
 import type {
   AttributeChoice,
@@ -913,6 +914,8 @@ export function useBuildSession(configContextActive = false): BuildSession {
     getBackend()
       .then(async (backend) => {
         await backend.init((msg) => !cancelled && setBootMessage(msg));
+        // Game-text fallbacks the data pack declares (the engine may run in a worker).
+        void Promise.resolve().then(() => backend.gameLocales()).then(setGameLocales).catch(() => {});
         const meta = await backend.loadTreeMeta();
         if (!cancelled) setDataVersion(backend.dataVersion ?? null);
         backend

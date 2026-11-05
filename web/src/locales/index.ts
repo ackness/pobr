@@ -5,6 +5,10 @@
  * en-US.json is the complete key set, and `mise run i18n:check` requires
  * every registered language to be complete as well. A key a language still
  * omits resolves through its `language.fallback` list, then English.
+ *
+ * The same `language.fallback` list also extends the language's game-text
+ * chain after the fallbacks the data pack declares (lib/gameLocales.ts): a game
+ * name the language's pack lacks is shown from the next locale that has one.
  */
 import enUS from './en-US.json' with { type: 'json' };
 import zhCN from './zh-CN.json' with { type: 'json' };

@@ -2851,6 +2851,9 @@
     "compare": "阶段对比"
   },
   "language": {
-    "name": "简体中文"
+    "name": "简体中文",
+    "fallback": [
+      "zh-TW"
+    ]
   }
 }

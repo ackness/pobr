@@ -87,6 +87,8 @@ does not estimate peak memory.
 | `encodeBuildJson(json)` | Calculation request with `character.class_name` required | PoB2 code string, not JSON |
 | `translateLines(lang, json)` | Locale code and a JSON array of English mod lines | JSON array of display lines in that locale |
 | `parseLocalizedLines(lang, json)` | Locale code and a JSON array of lines in that locale | JSON array of English canonical lines |
+| `availableLocales()` | No argument; data initialized | JSON `[{ code, fallback, chain, templates }]`: the data pack's locales, the fallbacks each `_meta.json` declares, the resolved chain, and whether its own pack has mod-line templates |
+| `gameName(lang, kind, id)` | Locale code, a name table (`base_item`, `skill`, `affix`, `passive_node`, `word`, `rare_word`) and its key (stable id for `base_item`/`skill`, English text otherwise) | The name through the locale's chain, or `undefined`; an unknown `kind` throws |
 
 Translation uses the data pack's `i18n/<lang>/` templates and names (and the
 fallbacks its `_meta.json` declares). A line nothing recognizes, or every line

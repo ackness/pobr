@@ -12,7 +12,13 @@ vi.mock('/src/wasm/pkg/pobr_wasm.js', () => ({
   default: async () => {}, schemaVersion: () => EXPECTED_SCHEMA_VERSION,
   gemCatalogJson: () => JSON.stringify(state.gems),
   itemCraftingCatalogJson: () => JSON.stringify(state.crafting),
-  translateLinesToZhCn: (raw: string) => JSON.stringify((JSON.parse(raw) as string[]).map(() => '旧译文')),
+  isDataReady: () => true,
+  availableLocales: () => JSON.stringify([
+    { code: 'zh-CN', fallback: [], chain: ['zh-CN'], templates: true },
+    { code: 'zh-TW', fallback: [], chain: ['zh-TW'], templates: false },
+  ]),
+  translateLines: (lang: string, raw: string) =>
+    JSON.stringify((JSON.parse(raw) as string[]).map(() => lang === 'zh-CN' ? '旧译文' : 'wrong locale')),
 }));
 
 afterEach(() => { vi.unstubAllGlobals(); state.gems = []; state.crafting = { bases: [], mods: [] }; });
@@ -46,6 +52,8 @@ test('the ordinary backend loads only listed native display sidecars and preserv
   expect(await backend.translateLines(['Native class', 'Unresolved class'], 'zh-TW')).toEqual(['原生職業', 'Unresolved class']);
   expect(await backend.translateLines(['Native class'], 'en-US')).toEqual(['Native class']);
   expect(await backend.translateLines(['Native class'], 'zh-CN')).toEqual(['旧译文']);
+  // zh-TW has no templates of its own: its lines render through zh-CN, then in its script.
+  expect(await backend.translateLines(['Other line'], 'zh-TW')).toEqual(['舊譯文']);
   expect(requests).toEqual(['/data/manifest.json', '/data/test/i18n/zh-TW/display_texts.json']);
 });
 

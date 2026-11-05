@@ -6,7 +6,7 @@ describe('interface locale files', () => {
   test('each language resolves through its declared fallbacks, then English', () => {
     expect(LANGS).toEqual(['zh-CN', 'zh-TW', 'en-US']);
     expect(fallbackChain('zh-TW')).toEqual(['zh-TW', 'zh-CN', 'en-US']);
-    expect(fallbackChain('zh-CN')).toEqual(['zh-CN', 'en-US']);
+    expect(fallbackChain('zh-CN')).toEqual(['zh-CN', 'zh-TW', 'en-US']);
     expect(fallbackChain('en-US')).toEqual(['en-US']);
     expect(messages('zh-TW', 'language').name).toBe('繁體中文');
   });
