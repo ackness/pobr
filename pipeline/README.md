@@ -96,7 +96,7 @@ RePoE 的 `pobr-data-adapter --ordinary-facts` 已将固定自有 RePoE 事实�
 这些领域输出经既有 schema-3 组包和封存后可由普通 GameData/BuildData 消费；
 树域候选是单独入口，不代表普通完整路径的现行覆盖范围。
 
-活动组合的身份、各领域保留兼容的分母和关闭条件统一维护在[数据现状](../docs/data-status.md#领域现状)，本页不复制阶段记录。
+活动组合的身份以数据锁为准；各领域保留兼容的现状和关闭条件统一维护在[数据现状](../docs/data-status.md#领域现状)，本页不复制阶段记录。
 
 选定 locale 的显示侧表 `i18n/<locale>/display_texts.json` 由翻译库生成，随语言发布导入，接入普通 Web
 `translateLines`：精确来源查询、跨表同名冲突和缺译保留，不改原始构筑文本或计算。
