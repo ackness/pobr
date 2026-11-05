@@ -75,7 +75,7 @@ test('editing and analysis shortcuts reach their target without changing the cur
   await expect(planning).toHaveAttribute('aria-expanded', 'false');
   await planning.click();
   await expect(page.locator('.tree-edit-tools')).toBeFocused();
-  // The results panel's "Skill metrics" link opens the skill overview on the Calcs page.
+  // The results panel's "Skill values (Calculations)" link opens the skill overview on the Calcs page.
   await page.locator('#character-stats .rail-link').click();
   await expect(page).toHaveURL(/\/calcs$/);
   await expect(page.locator('#skill-metrics-heading')).toBeFocused();
