@@ -29,7 +29,7 @@ CI 与 release workflow 的机制见[开发工作流](docs/development-workflow.
    `game/<patch>-<n>` 中 `overlay/trade_catalog.json` 的 SHA-256，所以只能在游戏 Release 之后生成；
    语言 Release 不带它时，PoBR 的 `data:bump` 拒绝换目标。
 3. **翻译库的 `published` PR。** 发布后在翻译库另开 PR，把该 Release 的附件 pin 写进配置的 `published`，
-   让它的 CI 持续下载并核对这个 Release。PoBR 的 bump 不等这个 PR。
+   让它的 CI 持续下载并核对这个 Release；然后再到 PoBR 改锁。
 
 ## 2. 新游戏补丁：PoBR 改锁
 
@@ -75,7 +75,7 @@ mise run ci-status --branch chore/data-bump-<patch>-<n>
 
 ## 3. 只换语言
 
-同一目标下，翻译库发布新的 `locale/<patch>-<n>`，游戏包不需要重新发布。PoBR 只 bump 语言 owner：
+同一目标下，翻译库发布新的 `locale/<patch>-<n>` 并照常补 `published` PR，游戏包不需要重新发布。PoBR 只 bump 语言 owner：
 
 ```sh
 git switch -c chore/data-bump-locale-<patch>-<n> origin/master
