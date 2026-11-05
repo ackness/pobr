@@ -24,7 +24,7 @@
 use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use pobr_data::catalog::StatLineTemplate;
+use pobr_data::catalog::{StatLineTemplate, TextOrigin};
 
 /// A template segment.
 #[derive(Debug, Clone)]
@@ -266,6 +266,8 @@ struct CompiledTemplate {
     /// The source template's line count: a text matches only templates with
     /// as many lines as it has.
     lines: usize,
+    /// Who wrote the pair when it is not official (see [`TextOrigin`]).
+    origin: Option<TextOrigin>,
 }
 
 /// A one-direction line translator over a set of template pairs.
@@ -393,6 +395,7 @@ impl LineTranslator {
                 src_segments,
                 en: normalize_line_breaks(&pair.en).into_owned(),
                 lines,
+                origin: pair.origin,
             });
         }
         Self {
@@ -513,6 +516,14 @@ impl LineTranslator {
     /// lines (its translation spans the paired template's lines, which may
     /// be a different number); names never span lines.
     pub fn translate_line(&self, line: &str) -> Option<String> {
+        self.translate_line_with_origin(line).map(|(text, _)| text)
+    }
+
+    /// [`Self::translate_line`] with the origin of the template pairs the
+    /// translation used (`None` when all are official, and for names; see
+    /// [`TextOrigin::combine`] for a captured value translated by another
+    /// pair). The text is exactly what [`Self::translate_line`] returns.
+    pub fn translate_line_with_origin(&self, line: &str) -> Option<(String, Option<TextOrigin>)> {
         let line = normalize_line_breaks(line.trim());
         let line = line.as_ref();
         let lines = line_count(line);
@@ -522,7 +533,7 @@ impl LineTranslator {
         if lines == 1
             && let Some(en) = self.base_names.get(line)
         {
-            return Some(en.clone());
+            return Some((en.clone(), None));
         }
         let line_skel = skeleton(line);
         // Primary channel: strict numeric matching against the exact
@@ -535,7 +546,7 @@ impl LineTranslator {
                     continue;
                 }
                 if let Some(values) = match_segments(line, &candidate.src_segments, false) {
-                    return Some(render_en(&candidate.en, &values));
+                    return Some((render_en(&candidate.en, &values), candidate.origin));
                 }
             }
         }
@@ -551,9 +562,9 @@ impl LineTranslator {
         // Last-resort fallback: magic item names (prefix base of suffix) ->
         // RARE random names (prefix word suffix word).
         if let Some(out) = self.translate_magic_name(line) {
-            return Some(out);
+            return Some((out, None));
         }
-        self.translate_rare_name(line)
+        self.translate_rare_name(line).map(|out| (out, None))
     }
 
     /// RARE random-name composition translation: when exactly two words are
@@ -633,7 +644,12 @@ impl LineTranslator {
     /// prefix/suffix anchors, allows string capture, and on a hit makes a
     /// best-effort second translation pass on the captured name before
     /// substituting it back into the target template.
-    fn translate_string_line(&self, line: &str, line_skel: &str, lines: usize) -> Option<String> {
+    fn translate_string_line(
+        &self,
+        line: &str,
+        line_skel: &str,
+        lines: usize,
+    ) -> Option<(String, Option<TextOrigin>)> {
         let (prefix_index, suffix_index) = if lines > 1 {
             (&self.multiline_prefix_index, &self.multiline_suffix_index)
         } else {
@@ -675,14 +691,16 @@ impl LineTranslator {
             if let Some(mut values) = match_segments(line, &candidate.src_segments, true) {
                 // Best-effort: run a second translation pass on the
                 // captured name (non-numeric) before substituting it back.
+                let mut origin = candidate.origin;
                 for value in values.values_mut() {
                     if !is_numeric_capture(value)
-                        && let Some(translated) = self.translate_value(value)
+                        && let Some((translated, value_origin)) = self.translate_value(value)
                     {
                         *value = translated;
+                        origin = TextOrigin::combine(origin, value_origin);
                     }
                 }
-                return Some(render_en(&candidate.en, &values));
+                return Some((render_en(&candidate.en, &values), origin));
             }
         }
         None
@@ -692,10 +710,10 @@ impl LineTranslator {
     /// base-name table plus the exact numeric bucket (no recursive
     /// fallback, to rule out infinite recursion); returns `None` on a miss
     /// (the caller keeps the original English name).
-    fn translate_value(&self, value: &str) -> Option<String> {
+    fn translate_value(&self, value: &str) -> Option<(String, Option<TextOrigin>)> {
         let value = value.trim();
         if let Some(en) = self.base_names.get(value) {
-            return Some(en.clone());
+            return Some((en.clone(), None));
         }
         let idxs = self.buckets.get(&skeleton(value))?;
         for &i in idxs {
@@ -704,7 +722,7 @@ impl LineTranslator {
                 continue;
             }
             if let Some(values) = match_segments(value, &candidate.src_segments, false) {
-                return Some(render_en(&candidate.en, &values));
+                return Some((render_en(&candidate.en, &values), candidate.origin));
             }
         }
         None
@@ -817,23 +835,28 @@ mod tests {
             StatLineTemplate {
                 src: "{0:+d} 生命上限".into(),
                 en: "{0:+d} to maximum Life".into(),
+                origin: None,
             },
             StatLineTemplate {
                 src: "盾牌上每有 15 点闪避，附加 {0} - {1} 火焰伤害".into(),
                 en: "{0} to {1} Added Fire damage per 15 Evasion on Shield".into(),
+                origin: None,
             },
             StatLineTemplate {
                 src: "能量护盾提高 {0}%".into(),
                 en: "{0}% increased maximum Energy Shield".into(),
+                origin: None,
             },
             // A string-placeholder template for the EN->ZH direction (swapped: src=English, en=Simplified Chinese).
             StatLineTemplate {
                 src: "Allocates {0}".into(),
                 en: "配置 {0}".into(),
+                origin: None,
             },
             StatLineTemplate {
                 src: "Legacy of {0}".into(),
                 en: "{0} 继承".into(),
+                origin: None,
             },
         ];
         let mut names = HashMap::new();

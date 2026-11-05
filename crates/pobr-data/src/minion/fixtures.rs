@@ -13,6 +13,7 @@ use super::{MinionCategory, MinionDef, MinionLimitId};
 pub fn minion_def_zombie() -> MinionDef {
     MinionDef {
         id: "RaisedZombie".into(),
+        monster_variety_id: None,
         name: "Raised Zombie".into(),
         category: Some(MinionCategory::Undead),
         life: 0.7,
@@ -51,6 +52,7 @@ pub fn minion_def_zombie() -> MinionDef {
 pub fn minion_def_raging_spirit() -> MinionDef {
     MinionDef {
         id: "SummonedRagingSpirit".into(),
+        monster_variety_id: None,
         name: "Raging Spirit".into(),
         category: Some(MinionCategory::Construct),
         life: 0.25,
@@ -89,6 +91,7 @@ pub fn minion_def_raging_spirit() -> MinionDef {
 pub fn minion_def_skeletal_warrior() -> MinionDef {
     MinionDef {
         id: "RaisedSkeletonWarriors".into(),
+        monster_variety_id: None,
         name: "Skeletal Warrior".into(),
         category: Some(MinionCategory::Undead),
         life: 0.88,
@@ -127,6 +130,7 @@ pub fn minion_def_skeletal_warrior() -> MinionDef {
 pub fn minion_def_skeletal_storm_mage() -> MinionDef {
     MinionDef {
         id: "RaisedSkeletonStormMage".into(),
+        monster_variety_id: None,
         name: "Skeletal Storm Mage".into(),
         category: Some(MinionCategory::Undead),
         life: 0.53,
@@ -172,6 +176,7 @@ pub fn minion_def_skeletal_storm_mage() -> MinionDef {
 pub fn minion_def_spectre_placeholder() -> MinionDef {
     MinionDef {
         id: "Spectre".into(),
+        monster_variety_id: None,
         name: "Raised Spectre (placeholder)".into(),
         category: None,
         life: 1.0,

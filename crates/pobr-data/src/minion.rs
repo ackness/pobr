@@ -170,6 +170,11 @@ impl MinionCategory {
 pub struct MinionDef {
     /// Stable ID (the key of Lua's `minions["<Id>"]`, e.g. `RaisedZombie`).
     pub id: String,
+    /// The game's `MonsterVarieties.Id` (`Metadata/Monsters/...`): a spectre's
+    /// own id, a minion's link from the export; `None` when neither names one.
+    /// Display names are keyed by it, never by `id`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub monster_variety_id: Option<String>,
     /// English canonical name (Lua's `name`).
     pub name: String,
     /// Monster category (Lua's `monsterCategory`); `None` if the field is absent.
@@ -364,6 +369,11 @@ impl MinionDef {
     pub fn from_entry(e: &crate::catalog::actors::MinionEntryDef) -> Self {
         Self {
             id: e.id.clone(),
+            // A spectre's id is its variety id; other minions link theirs.
+            monster_variety_id: e
+                .monster_variety_id
+                .clone()
+                .or_else(|| e.id.starts_with("Metadata/Monsters/").then(|| e.id.clone())),
             name: e.name.clone(),
             category: e.monster_category.as_deref().map(MinionCategory::from_pob2),
             life: e.life,
@@ -495,6 +505,7 @@ mod tests {
         assert!(placeholder.has_limit()); // Spectre has ActiveSpectreLimit
         let no_limit = MinionDef {
             id: "NoLimitMinion".into(),
+            monster_variety_id: None,
             name: "No Limit".into(),
             category: None,
             life: 1.0,

@@ -32,3 +32,5 @@ pub mod pack;
 pub use fallback::{LocaleSet, chain_codes, resolve_chain};
 pub use lines::{LineParser, LineRenderer, LineTranslator};
 pub use pack::{LocaleMeta, LocalePack, META_FILE, NameKey, NameKind, PackError, STAT_LINES_FILE};
+/// Who wrote a text that is not official (re-exported from `pobr-data`).
+pub use pobr_data::catalog::TextOrigin;

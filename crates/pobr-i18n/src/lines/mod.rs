@@ -12,7 +12,7 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-use pobr_data::catalog::StatLineTemplate;
+use pobr_data::catalog::{StatLineTemplate, TextOrigin};
 
 use crate::pack::{LocalePack, NameKind};
 
@@ -295,6 +295,7 @@ impl LineRenderer {
             .map(|t| StatLineTemplate {
                 src: t.en.clone(),
                 en: t.src.clone(),
+                origin: t.origin,
             })
             .collect();
         if templates.is_empty() {
@@ -338,6 +339,13 @@ impl LineRenderer {
         self.translator.translate_line(line)
     }
 
+    /// [`Self::render_line`] with the origin of the templates it used: `None`
+    /// for official text (and for names), otherwise who wrote the
+    /// supplement (see [`LineTranslator::translate_line_with_origin`]).
+    pub fn render_line_with_origin(&self, line: &str) -> Option<(String, Option<TextOrigin>)> {
+        self.translator.translate_line_with_origin(line)
+    }
+
     /// The most lines a template beginning with `line` spans (see
     /// [`LineTranslator::span_from`]).
     pub fn span_from(&self, line: &str) -> usize {
@@ -350,16 +358,60 @@ impl LineRenderer {
     /// the same lines (see [`spread_runs`]: a line whose text went into the
     /// line before it renders as `""`).
     pub fn render_lines(&self, lines: impl IntoIterator<Item = String>) -> Vec<String> {
+        self.render_lines_with_origins(lines)
+            .into_iter()
+            .map(|(text, _)| text)
+            .collect()
+    }
+
+    /// [`Self::render_lines`] with each output's origin (see
+    /// [`Self::render_line_with_origin`]): the texts are exactly those of
+    /// [`Self::render_lines`]. Every line of a run one template rendered has
+    /// that template's origin, except a `""` continuation (its text is in the
+    /// line before it), which has none, as does a line kept in English.
+    pub fn render_lines_with_origins(
+        &self,
+        lines: impl IntoIterator<Item = String>,
+    ) -> Vec<(String, Option<TextOrigin>)> {
         let lines: Vec<String> = lines.into_iter().collect();
+        // The origin of every text that rendered, by the text sent (the runs
+        // keep only the rendered text).
+        let mut origins: HashMap<String, Option<TextOrigin>> = HashMap::new();
         let runs = translate_runs(
             &lines,
             |line| self.span_from(line),
-            |line| self.render_line(line),
+            |line| {
+                let (text, origin) = self.render_line_with_origin(line)?;
+                origins.insert(line.to_string(), origin);
+                Some(text)
+            },
         );
+        let mut line_origins = vec![None; lines.len()];
+        for run in runs.iter().filter(|run| run.text.is_some()) {
+            let source = &lines[run.start..run.start + run.len];
+            let sent = if run.len == 1 {
+                source[0].clone()
+            } else {
+                source
+                    .iter()
+                    .map(|line| line.trim())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            };
+            let origin = origins.get(&sent).copied().flatten();
+            for slot in &mut line_origins[run.start..run.start + run.len] {
+                *slot = origin;
+            }
+        }
         spread_runs(&runs, lines.len())
             .into_iter()
             .zip(lines)
-            .map(|(rendered, line)| rendered.unwrap_or(line))
+            .zip(line_origins)
+            .map(|((rendered, line), origin)| match rendered {
+                Some(text) if !is_continuation(&line, &text) => (text, origin),
+                Some(text) => (text, None),
+                None => (line, None),
+            })
             .collect()
     }
 }
