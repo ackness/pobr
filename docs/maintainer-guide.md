@@ -64,7 +64,7 @@
 - 同一代码、依赖、工具链、features 和数据下的通过证据可复用。先修复并重跑失败的相关项，仅在影响范围改变时扩大验证。
 - 读码、review、`cargo check` 与运行时测试分别报告，不能互相冒充；通用 skill 的检查清单不覆盖本节。
 - **集中集成**：协调者先合并 worker 的变更与生成产物，再选一次批次验证，优先 `mise run ci <pushed-ref>`。`mise run gate` 保留为 warm checkout 上的显式本地方案，含额外 accuracy 报告；不要求与远端完整 CI 重复执行。修复后可用 `--only` 重跑本地失败步骤。
-- **CI 分层**：PR 按整个变更范围运行轻量检查；master 代码改动、手动、nightly 与 tag 运行完整 CI。高风险批次可在合并前手动全量；E2E 显式开启。`PR gate` 只证明应运行的轻量检查通过，不能代替完整集成结论。选路、分片与缓存复用见[开发工作流](development-workflow.md#ci-的责任与触发)。
+- **CI 分层**：PR 按整个变更范围运行轻量检查；master 代码改动、手动、nightly 与 tag 运行完整 CI。高风险批次可在合并前手动全量；E2E 显式开启，数据锁改变时完整 CI 自动加跑一个冒烟 spec。`PR gate` 只证明应运行的轻量检查通过，不能代替完整集成结论。选路、分片与缓存复用见[开发工作流](development-workflow.md#ci-的责任与触发)。
 - **Review 按风险选择**：复杂、跨边界或高风险改动（核心计算、持久化／导入兼容、工具链、发布）使用独立 reviewer，说明检查过的 head/base 与未验证范围，建议与阻断问题分开；文档和明显小改动不增加审计表或固定 agent。修正留在同一 PR，新提交后重看受影响的证据。合并前的核对（`mise run pr-ready`）见[开发工作流](development-workflow.md#agent-提交review-与合并)。
 - Web 纯 TS/CSS 修改复用已构建的 WASM。WASM/Rust/features/工具链变化时再重建；`mise run web build` 已含 typecheck，E2E 使用对应代码的 dist/WASM/data。
 
@@ -238,6 +238,7 @@ PoBR 主要计算静态构筑及选定条件下的结果，不追求还原游戏
 ## 关键约定
 
 - **计算内部只用稳定 ID**（`StatId` / `ModName` / `SourceId`），显示文本在显示边界解析：界面文字在 Web，游戏名词与词条译文来自翻译库的语言包。代码与注释用英文。
+- **代码风格与测试位置**：Rust edition 2024，rustfmt 四空格；TypeScript 两空格；Rust 函数／模块 `snake_case`，类型与 React 组件 `PascalCase`。Rust 集成测试放在各 crate 的 `tests/`，前端单测 `*.test.ts` 与源码同目录，浏览器测试 `*.spec.ts` 在 `web/e2e/`。
 - **确定性**：同一输入的结果逐字节相同；不依赖 HashMap 遍历顺序之类的偶然顺序。
 - **保留原文并保持兼容**：Build Code 走 XML → deflate → URL-safe Base64；导入的物品原文、未知配置、扩展属性原样保留，JSON 契约保持兼容。WASM 握手版本 `pobr_wasm::SCHEMA_VERSION` 与 Web 的 `EXPECTED_SCHEMA_VERSION` 必须一起改。
 - **发布产物只含游戏计算能力**：`POBR_DBG_*` / `POBR_GATE_DENY` 诊断开关（`dbg_env!`）只在调试构建存在；测试辅助在 feature 后面。新增诊断或测试辅助沿用这两种方式。

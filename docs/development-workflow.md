@@ -267,11 +267,11 @@ PR merge ref 的缓存供该 PR 后续运行复用，默认分支缓存也可供
 PR 缓存不会反向成为默认分支或其他 PR 的缓存。
 
 master 选中完整验证时，轻量 Rust/Web/脚本 jobs 按计划跳过；PR 中完整 job 默认跳过。
-E2E 默认未选中，显式开启才运行。
+E2E 默认未选中，显式开启才运行；数据锁改变时的冒烟 spec 例外（见下文）。
 缓存命中不会跳过这些正确性检查。更新 PR 后旧 run 的取消可由新 run 接替，
 确认结果时始终核对当前 head，以及 gate 是否成功验证了所有应运行的 jobs。
 
-项目专属 [.agents/skills/workflow](../.agents/skills/workflow/SKILL.md) 将本页适配给 agent。
+项目专属 [.agents/skills/workflow](../.agents/skills/workflow/SKILL.md) 为 agent 提供三仓库分流，并指向各条规则所在的文档。
 本页与仓库内的 skill 足够完成日常开发，不依赖贡献者的个人 skills 或委派工具。
 
 ## CI 的责任与触发

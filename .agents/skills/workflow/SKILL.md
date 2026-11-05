@@ -58,8 +58,9 @@ owns tag validation, artifact publication and production deployment. Keep these
 roles separate while sharing policy scripts.
 
 Data bumps and releases follow [RELEASING.md](../../../RELEASING.md): a bump PR
-changes only the lock, and a separate version-bump PR plus an immutable `v0.x.y`
-tag ships whatever master holds.
+changes the lock (plus `data/CURRENT` and the data-bound test baselines when the
+game package changes) but never the version; a separate version-bump PR plus an
+immutable `v0.x.y` tag ships whatever master holds.
 
 When changing process, update executable policy and tests first, then the owning
 document plus affected entry points/templates. Do not claim GitHub enforcement

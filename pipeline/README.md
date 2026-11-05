@@ -151,16 +151,18 @@ schema-3 manifest 封存默认运行字节；维护报告和本地 patch 不进�
   `support_display` 改为该 Release 的两件附件（`repository` + `tag` + manifest／资产 pin + `catalog_sha256` +
   `source_data_version`），按 SHA256SUMS 校验，并核对新目标、语言、provenance 及新游戏包交易目录的 SHA-256。
   新目标的语言 Release 缺这两件附件、只列其一，或 receipt 的 `support_display` pin 与附件不符时拒绝。
-  同目标只 bump 游戏包而交易目录变了时，保留的辅助显示不再绑定，同样拒绝：请语言 owner 发布
-  `locale/<patch>-<n+1>`（语言包字节可不变）并一起 bump。
+  同目标只 bump 游戏包而交易目录变了时，保留的辅助显示不再绑定，同样拒绝：请语言 owner 发布下一个
+  `locale/<patch>-<m>`（语言包字节可不变）并一起 bump。保留的辅助显示还须与语言包同源：Web 测试要求其
+  `_meta.source_commit` 等于语言包 `i18n/zh-CN/_meta.json` 的 `source_commit`，`data:bump` 不核对这一项。
 - **测试夹具**：`test_fixtures` 是与补丁无关的 API 响应样本；换目标时保留，条目加 `target` 记录它们发布时的目标。
 - **receipt 绑定**：receipt 的 `package`（ZIP 与根 manifest 的字节数与 SHA-256）存在时必须与下载的包一致；
   `repoe-release-receipt/v2` 必须带它；旧 receipt 不带时仍可读。
 - **契约**：新游戏快照未声明 `contract_version` 时拒绝，报错指向 RePoE 声明中 snapshot-manifest job 的
   `contract_version: "adapter"`（见 RePoE 的 [RELEASING.md](https://github.com/ackness/repoe/blob/master/RELEASING.md)）。
-- **按补丁登记的消费者**：例如 `crates/pobr-gamedata/tests/fixtures/repository-test-pins.json`、
-  `devs/ci/parse-coverage-baseline.json` 与示例 golden（如 `examples/demo-bd-test/panel-golden.json`
-  的 `data_version`），在 bump PR 中一起迁移；计算语义、vendor 参考与数值 golden 的更新分别维护。
+- **绑定游戏包或补丁的消费者**：`crates/pobr-gamedata/tests/fixtures/repository-test-pins.json`（任何新游戏包都要重绑
+  `game_manifest_sha256`）、`web/src/lib/configGameRelevance.json`、`devs/ci/parse-coverage-baseline.json` 与示例 golden
+  （如 `examples/demo-bd-test/panel-golden.json` 的 `data_version`）在 bump PR 中一起迁移，做法见
+  [RELEASING.md](../RELEASING.md)；计算语义、vendor 参考与数值 golden 的更新分别维护。
 - **新数据域**：在 RePoE 的固定 schema／事实导出中补齐来源，由其 `pobr-data-adapter` 接既有 DTO；
   PoBR 定义数据类型（[数据契约版本](../docs/data-architecture.md#31-数据契约版本)），验证契约与消费者。
   采集失败时，owner 包中的 PoB2 兼容字段只能作为显式保留依赖，不能静默充当目标补丁的官方事实。

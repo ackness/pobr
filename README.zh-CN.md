@@ -105,7 +105,8 @@ mise run targets                      # 只列测试目标，不编译
 ```
 
 Web 的 WASM、数据准备与 Vite 启动见 [Web 开发说明](web/README.zh-CN.md)。
-[开发工作流](docs/development-workflow.md)统一说明定向验证、CI、review 与发版；
+验证与 review 的规则见[维护者指南](docs/maintainer-guide.md)，命令与 CI 见[开发工作流](docs/development-workflow.md)，
+换数据与发版步骤见 [RELEASING.md](RELEASING.md)；
 可选性能测量和解读限制见 [WASM 包说明](docs/wasm-package.md#runtime-performance-comparison)。
 
 Rust 使用 **edition 2024**；应用与工具继承 workspace 发布版本，七个内部库独立维护版本。

@@ -138,8 +138,10 @@ mise run targets                      # List suites without compiling
 ```
 
 For the web app, follow the [web setup guide](web/README.md) to prepare WASM and
-game data and start Vite. The [development workflow](docs/development-workflow.md)
-explains focused validation, CI, reviews and releases. See the
+game data and start Vite. The [maintainer guide](docs/maintainer-guide.md) sets
+the validation and review rules, the [development workflow](docs/development-workflow.md)
+covers commands and CI, and [RELEASING.md](RELEASING.md) the data-bump and release
+steps. See the
 [WASM package guide](docs/wasm-package.md#runtime-performance-comparison) for
 optional performance measurements and their limits.
 
