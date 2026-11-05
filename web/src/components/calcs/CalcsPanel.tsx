@@ -1,3 +1,4 @@
+import { contributionLabel, removalChange } from '../../lib/sourceContributions';
 import { COMMON_METRICS, defaultMetric } from '../../lib/metricSelection';
 import { AppButton, AppInput } from '../shared/controls';
 import { PageHeader } from '../shared/PageHeader';
@@ -25,7 +26,6 @@ import {
   bindT,
   damageTypeLabel,
   originKindLabel,
-  originLabel,
   modTypeLabel,
   slotLabel,
   statCategoryLabel,
@@ -638,7 +638,7 @@ function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
   };
   return (
     <div className="breakdown-scroll">
-      <table className="breakdown-table">
+      <table className="breakdown-table modifier-table">
         <thead>
           <tr>
             <th>{tt('calcs.type')}</th>
@@ -877,12 +877,12 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
   );
 }
 
-function AttributionView({ session, lang }: { session: BuildSession; lang: Lang }) {
+export function AttributionView({ session, lang }: { session: BuildSession; lang: Lang }) {
   const tt = bindT(lang);
   const [completed, setCompleted] = useState<{ version: number; report: AttributionResponse } | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fields = ['TotalDPS', 'Life', 'EnergyShield', 'TotalEHP'];
+  const fields = ['CombinedDPS', 'Life', 'EnergyShield', 'TotalEHP'];
   const sequence = useRef(0);
   const report = completed?.version === session.stateVersion ? completed.report : null;
   useEffect(() => {
@@ -914,11 +914,9 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
       const group = session.socketGroups[Number(id)];
       const gems = group?.gems.map(gem =>
         gem.skill_id ? skillName(gem.skill_id) : gem.name_spec || tt('skills.unresolved')).join(' + ');
-      return `${tt('calcs.group')} ${Number(id) + 1}${gems ? ` · ${gems}` : ''}`;
+      return `${contributionLabel(lang, kind, id)}${gems ? ` · ${gems}` : ''}`;
     }
-    if (kind === 'item' || kind === 'flask') return originLabel(lang, `${kind}.${id}`);
-    if (kind === 'limb') return slotLabel(lang, id);
-    return id;
+    return contributionLabel(lang, kind, id);
   };
 
   return (
@@ -958,18 +956,16 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
                 .map((entry) => (
                   <tr key={`${entry.kind}-${entry.id}`}>
                     <td>
-                      <span className="attribution-kind">{entry.kind === 'item' || entry.kind === 'flask'
-                        ? originKindLabel(lang, entry.kind === 'item' ? 'Item' : 'Flask')
-                        : calcsLabel(lang, entry.kind)}</span> {label(entry.kind, entry.id)}
+                      {label(entry.kind, entry.id)}
                     </td>
                     {fields.map((f) => {
-                      const delta = entry.deltas[f] ?? 0;
+                      const delta = removalChange(entry.deltas[f] ?? 0);
                       const baseline = report.baseline[f] ?? 0;
                       const pct = baseline !== 0 ? (delta / baseline) * 100 : 0;
                       return (
                         <td key={f} className={delta > 0 ? 'delta-pos' : delta < 0 ? 'delta-neg' : ''}>
-                          {delta === 0 ? '—' : `${delta > 0 ? '+' : ''}${formatStatValue(delta, 'float2')}`}
-                          {Math.abs(pct) >= 0.05 && <span className="delta-pct"> ({pct.toFixed(1)}%)</span>}
+                          {delta === 0 ? '—' : `${delta > 0 ? '+' : '-'}${formatStatValue(Math.abs(delta), 'float2')}`}
+                          {Math.abs(pct) >= 0.05 && <span className="delta-pct">{lang === 'en-US' ? ' (' : '（'}{pct.toFixed(1)}%{lang === 'en-US' ? ')' : '）'}</span>}
                         </td>
                       );
                     })}

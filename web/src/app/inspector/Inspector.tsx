@@ -1,4 +1,4 @@
-import { ArrowUpRight, Pin, X } from 'lucide-react';
+import { ChevronRight, Pin, X } from 'lucide-react';
 import { BreakdownTable } from '../../components/calcs/CalcsPanel';
 import { Button } from '../../components/ui/button';
 import type { BuildSession } from '../../hooks/useBuildSession';
@@ -41,6 +41,6 @@ export default function Inspector({ session, view, lang, id, onClose, onOpenCalc
           : detail ? emptyKey ? <p className="insp-note" role="status">{tt(emptyKey)}</p> : <BreakdownTable breakdown={detail} lang={lang} stat={stat} />
             : <p className="insp-note" role="status">{tt(loading ? 'calcs.loadingDetail' : emptyKey!)}</p>}
     </div>
-    <footer className="insp-foot"><Button variant="ghost" size="sm" onClick={() => onOpenCalcs(id)}>{w('Open in Calculations', '在计算页中打开', '在計算頁中開啟')}<ArrowUpRight /></Button></footer>
+    <footer className="insp-foot"><Button variant="ghost" size="sm" onClick={() => onOpenCalcs(id)}>{w('Open in Calculations', '在计算页中打开', '在計算頁中開啟')}<ChevronRight /></Button></footer>
   </div>;
 }

@@ -19,7 +19,7 @@ async function importBuild(page: Page) {
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await expect(page.locator('#ov-title')).toBeVisible();
-  await expect(page.locator('.shell-save-state')).toHaveText('Saved locally');
+  await expect(page.locator('.shell-save-state')).toHaveText('Saved in this browser');
 }
 
 test('starts and preserves saved builds without crypto.randomUUID', async ({ page }) => {
@@ -30,7 +30,7 @@ test('starts and preserves saved builds without crypto.randomUUID', async ({ pag
   expect(imported.workspace.builds[0].stages[0].saved.state.pobCode).toBe(code);
   await page.reload();
   await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
-  await expect(page.locator('.shell-save-state')).toHaveText('Saved locally');
+  await expect(page.locator('.shell-save-state')).toHaveText('Saved in this browser');
   const restored = await state(page);
   expect(restored.workspace).toEqual(imported.workspace);
   expect(restored.state).toEqual(imported.state);
@@ -43,7 +43,7 @@ test('copies saves of the first interface once and config edits preserve the ori
   await expect(page.getByRole('textbox', { name: 'Build code', exact: true })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click(); await expect(page.locator('#ov-title')).toBeVisible();
-  await expect(page.locator('.shell-save-state')).toHaveText('Saved locally');
+  await expect(page.locator('.shell-save-state')).toHaveText('Saved in this browser');
   // Play a device whose last visit was to the first interface: its saves sit under the old keys and
   // none of the current keys exist yet. Opening the app must copy them over, once, without touching the source.
   const original = await page.evaluate(() => {
@@ -97,7 +97,7 @@ test('tabs of one browser follow each other and merge what a tab missed', async 
     await tab.getByRole('button', { name: 'New build', exact: true }).last().click();
     await tab.getByRole('textbox', { name: 'Name', exact: true }).fill(value);
     await tab.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(tab.locator('.shell-save-state')).toHaveText('Saved locally');
+    await expect(tab.locator('.shell-save-state')).toHaveText('Saved in this browser');
   };
   const stored = async (tab: Page): Promise<string[]> =>
     (await state(tab)).workspace.builds.map((build: { name: string }) => build.name);
@@ -111,7 +111,7 @@ test('tabs of one browser follow each other and merge what a tab missed', async 
 
   // Deleting the build the other tab has open: that tab moves on to one that is still there.
   await other.getByRole('group', { name: 'Saved builds', exact: true }).getByRole('button', { name: /Made here/ }).click();
-  await expect(other.locator('.shell-save-state')).toHaveText('Saved locally');
+  await expect(other.locator('.shell-save-state')).toHaveText('Saved in this browser');
   await openBuilds(page);
   await page.getByRole('button', { name: 'Delete build', exact: true }).click();
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
@@ -267,7 +267,7 @@ test('deletes a build or a stage only after asking, and keeps the last of each',
     start.pop();
   }
   await expect(deleteBuild).toHaveCount(0);
-  await expect(page.locator('.shell-save-state')).toHaveText('Saved locally');
+  await expect(page.locator('.shell-save-state')).toHaveText('Saved in this browser');
 
   // It is gone for good: still one build after a reload, and it is the one that was kept.
   const kept = (await state(page)).workspace.activeBuild;
@@ -372,7 +372,7 @@ test('real WASM details stay lazy and configuration tracking follows the active 
   await expect.poll(async () => (await requests()).at(-1)?.config_context).toBe(true);
   await openBuilds(page);
   await page.getByLabel('Level', { exact: true }).fill('61');
-  await expect(page.locator('.shell-save-state')).toHaveText('Saved locally');
+  await expect(page.locator('.shell-save-state')).toHaveText('Saved in this browser');
   expect((await requests()).at(-1)?.config_context).not.toBe(true);
   expect((await state(page)).state.character.level).toBe(61);
 });
