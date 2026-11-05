@@ -1,64 +1,44 @@
 # Repository Guidelines
 
-Read the [maintainer guide](docs/maintainer-guide.md) for architecture, validation scope and
-cross-cutting conventions; it links the topic documents (mechanics, outputs,
-build model, PoB2 differences, diagnostics). Use current code and regression
-tests to resolve disagreements with any document.
+This is a short English digest for agent tools that load `AGENTS.md`. The rules
+themselves live in the [maintainer guide](docs/maintainer-guide.md) (Chinese;
+read it in full before changing code) and the documents it links. Where this
+digest and the guide disagree, the guide wins; current code and regression
+tests win over both.
 
-## Project Structure & Module Organization
+## Where a change belongs
 
-- PoBR is the consumer repository of a three-repository split.
-  `ackness/repoe` decodes client resources, exports game facts and projects
-  them into runtime JSON with `tools/pobr-data-adapter`;
-  `ackness/poe2-zh-cn-stats` owns locale/term curation and language artifacts.
-  Put each fix in the owning repository: decoding, raw facts and adapter
-  policies go to RePoE; term templates and translations to zh-cn-stats; stat
-  meaning, modifier rules, engine and display wiring stay here.
-- `crates/` contains seven libraries: data definitions, game-data loading,
-  game-text localization, modifier calculation, passive trees, item editing,
-  and build orchestration.
-  `crates/pobr-core/src/` separates `model`, `parse`, `rules`, `ingest`,
-  `aggregate`, `calc`, and `attribute`.
-- `apps/` contains CLI and WASM/JSON bindings.
-  `web/` is the React/TypeScript application; its backend consumes the
-  `apps/pobr-wasm/src/build_api/` JSON contract.
-- `pipeline/data.lock.json` is the only data declaration: each RePoE and
-  translation artifact is a GitHub Release asset (repository, tag, asset) or,
-  for older `handoff/*` artifacts, a tag, full commit and path, always with
-  SHA-256; `mise run data:bump <owner> <tag>` moves it to a new Release. `pipeline/`
-  imports exactly those artifacts, verifies the runtime snapshot and packages the
-  compact release; missing data or translations are fixed in the owner repos,
-  not in PoBR. Complete game/language data stays outside PoBR Git; `data/` tracks
-  `CURRENT` and owned rules. Real-data tests/builds use `mise run data:prepare`; pure fixture tests
-  need only their declared inputs. `mise run data:check` verifies offline that
-  `data/` tracks only owned files and that the import left the worktree clean.
-  PoBR never produces data from PoB2 vendor Lua or local raw-table exports;
-  PoB2-derived compatibility files arrive as fixed bytes in the RePoE package.
-  `web/public/` holds static assets and the Pages Worker.
-  The data design is [docs/data-architecture.md](docs/data-architecture.md); current
-  gaps and order are in [docs/data-status.md](docs/data-status.md).
-- `devs/reference-sources.json` pins the PoB2 test reference independently of
-  production data. The vendor serves only tests and diagnostics: the oracle,
-  `compare`/`triage`, `sync-pob-catalog` catalog parity and
-  `pipeline/diagnostics/modifier-audit.sh`. Official tree domain candidates stay
-  outside published `data/`.
-- Rust integration tests live in each crate's `tests/`; frontend unit tests
-  accompany source files, with browser tests in `web/e2e/`.
+PoBR is the consumer repository of a three-repository split. Put each fix in
+the repository that owns it ([routing](.agents/skills/workflow/SKILL.md),
+[contributor table](CONTRIBUTING.md#which-repository-owns-the-fix)):
 
-The project-specific workflow adapter is
-[.agents/skills/workflow/SKILL.md](.agents/skills/workflow/SKILL.md).
+- `ackness/repoe`: client decoding, game facts and the `tools/pobr-data-adapter`
+  policies that project them into runtime JSON.
+- `ackness/poe2-zh-cn-stats`: term templates, translations and language packages.
+- `ackness/pobr` (here): data contracts, stat meaning, modifier rules, the
+  engine, CLI/WASM bindings and the Web app.
 
-## Build, Test, and Development Commands
+PoBR does not produce data. `pipeline/data.lock.json` pins the owners' GitHub
+Release assets; `mise run data:prepare` imports them for real-data tests and
+builds; `mise run data:bump` moves the lock in a reviewed PR. Never commit game
+or language data, and never derive it from PoB2 vendor Lua: PoB2 is a test
+reference pinned in `devs/reference-sources.json`. Data design:
+[data architecture](docs/data-architecture.md); data bumps and releases:
+[RELEASING.md](RELEASING.md).
 
-Local and agent commands run through mise: `mise run <task>` or
-`mise exec -- <raw command>`. Start a new machine with
-`mise bootstrap --only packages,tools,task`; everyday setup does not build the
-product. Oracle, browser and artwork dependencies are prepared by their own tasks.
-CI may use current stable official/maintained Actions reading the same tool pins.
+Layout: `crates/` (seven libraries), `apps/` (CLI, WASM/JSON API), `web/`
+(React/TypeScript app and Pages Worker), `pipeline/` (data lock and import),
+`devs/` (development scripts, CI baselines), `examples/` (regression corpora).
+See [workspace structure](docs/maintainer-guide.md#workspace-结构).
 
-Run from the repository root:
+## Commands
+
+Run everything through mise from the repository root: `mise run <task>` or
+`mise exec -- <command>`; `mise tasks` lists the tasks. First setup:
+`mise bootstrap --only packages,tools,task`.
 
 ```bash
+mise run data:prepare                    # pinned owner data for real-data tests
 mise run test core parser mod_parser::   # one suite, one filter
 mise run verify build skills support_gating::
 mise run regen                           # coordinator: once after a rule batch
@@ -66,171 +46,39 @@ mise run targets
 mise run web test src/lib/skillSelection.test.ts
 ```
 
-For the common small changes (one game line, one Calcs field, one mechanic),
-follow [the change recipes](docs/recipes.md): they name the files to edit and
-the relevant verification options, so no codebase exploration is needed. See
-[Web setup](web/README.md) for WASM/data preparation and
-[development workflow](docs/development-workflow.md) for cache policy. Reuse one
-target per worktree and run Cargo commands sequentially.
+Common small changes: [change recipes](docs/recipes.md). Commands, caches, CI,
+merge and release mechanics: [development workflow](docs/development-workflow.md).
 
-## Validation Budget
+## Hard rules
 
-Choose evidence by the change's risk and the cost of obtaining it. Local compilation
-and tests are available to every agent; they are not a prerequisite for every commit.
-
-- **Documentation:** review the diff, links and examples. No product build or extra
-  reviewer is needed for an ordinary prose edit.
-- **Implementation:** inspect changed code, callers and relevant tests; add regression
-  assertions for changed behavior. Use focused tests, compilation or independent
-  review when they resolve real uncertainty, especially algorithms and large changes.
-  An expensive local check may be deferred explicitly to the coordinator/CI.
-- **Cheap does not mean free:** optional `mise exec -- cargo check --locked -p <crate>
-  --lib` still builds dependencies, macros and build scripts. `cargo test --no-run`
-  still creates test binaries; a name filter still compiles the selected test target.
-  Do not automatically chain check, build, Clippy and test.
-- **Per batch:** the coordinator integrates workers first, regenerates rule artifacts
-  once when needed, and chooses one integration validation. Prefer
-  `mise run ci <pushed-ref>` for a risky batch; `mise run gate` is an explicit local
-  alternative on a warm checkout. Do not require both for unchanged inputs.
-- **Remote defaults:** PRs get relevant quick checks; master code changes run the full
-  reusable CI. High-risk changes may request full CI before merge. Nightly and tag
-  validation remain full. PR green alone does not prove full integration passed.
-- **Reuse:** keep one target per worktree, stable build settings and passing evidence.
-  Warm `target/debug` only if local compilation is useful. Similar items stay in one
-  branch; do not create a worktree or build cache per line.
-- **Storage:** before new build caches, a large batch or disk pressure, use
-  `mise run cache` and `mise exec -- df -h .`. Other worktrees/global stores are
-  separate; CoW totals are not exclusive usage. Check active consumers and rebuilding
-  cost before targeted cleanup. Setup/tests do not implicitly purge useful stores.
-  See [storage decisions](docs/development-workflow.md#storage-decisions).
-
-A worker reports the changed scope, what it inspected, actual commands/results and
-unrun checks or remaining risks. Reading code, review and `cargo check` must not be
-reported as passing runtime tests. General skill checklists do not override this budget.
-
-## Parallel Agents
-
-- Isolate parallel writers in separate checkouts/branches using the selected
-  tool or normal Git workflow. Read-only helpers may share a stable version.
-  Never `git stash`: all worktrees share it.
-- Delegated workers commit locally; the coordinator owns integration and any
-  authorized push/PR. Keep both sides of append-only conflicts (catalog entries,
-  labels, rule lists), check wiring, and regenerate rule artifacts once when integrating rule changes.
-  Generated files are regenerated, never merged by hand.
-- Keep concurrent agents' files disjoint where possible. Two agents adding the same
-  display id or rule produce a semantic conflict that goes back to the later one.
-- An agent finishes with what it reviewed/ran and what it left for integration.
-
-## Coding Style & Naming Conventions
-
-Use Rust edition 2024 and rustfmt's four-space indentation. Follow existing
-two-space TypeScript indentation; use `snake_case` for Rust functions/modules
-and `PascalCase` for types and React components. Keep code/comments in English.
-Calculations use stable IDs; translate at display boundaries. Preserve raw
-imported item text and JSON compatibility.
-
-## Testing Guidelines
-
-Use Rust tests, Vitest `*.test.ts` files and Playwright `*.spec.ts` files. Changed
-behavior needs regression assertions; workers may hand off written tests as unrun.
-Choose local checks by risk and benefit, and specify `--test` or `--lib` when running
-Rust tests. Workflow changes use `mise run check:workflows` without compiling Rust.
-
-PRs select quick checks: Rust formatting/checking, relevant Web checks and automation
-contracts. Shared/unknown inputs select every quick area. Master code changes,
-manual dispatch, nightly and release tags run full integration; high-risk changes
-can request `mise run ci <pushed-ref>` before merge. `PR gate` rejects failed,
-cancelled, missing or unexpectedly skipped selected jobs. E2E remains opt-in.
-Full Rust CI partitions every workspace package once across three parallel shards,
-including doctests. Exact WASM build reuse still runs contract/package checks.
-Superseded PRs cancel; master/tag runs remain independent. Docs PRs keep the stable
-gate; ordinary documentation pushes are path-filtered.
-Reuse evidence for unchanged inputs and report its scope accurately. See
-[workflow commands](docs/development-workflow.md). Documentation-only changes need
-diff/link review, not builds.
-
-## Accuracy Workflow
-
-PoBR primarily simulates a static build under selected conditions, not a full
-gameplay timeline. Before implementing or delegating any modifier feature,
-evaluate whether it meets the simulator's needs: which target output it affects
-under the selected actors, skills, conditions and simulation assumptions; what
-concrete error or user need it addresses; and whether that benefit justifies
-the added complexity. If there is no clear need, do not implement it merely
-because it is unsupported. Judge effects by this reasoning, not a fixed list
-of modifier names or trigger types. Do not invent event histories, rates or
-uptime to justify an otherwise unnecessary feature.
-
-The gap queue is diagnostic inventory, not an implementation backlog. Frequency
-and missing-reader counts alone do not justify a model, config control, display
-field or abstraction. Preserve inactive conditions and honest diagnostics for
-deferred mechanics; do not mark them globally effectless just because the
-current simulation omits them. Prefer the smallest existing-path change;
-avoid speculative simulation, abstractions and performance work.
-
-Improve calculation accuracy in batches, not one build at a time:
-
-1. Find the problems of every build at once with `mise run triage`. It runs the
-   benchmark and tuned sets against their build codes' references and the
-   pinned PoB2, and files each differing row as `engine` or `both` (the
-   engine's to fix), `reference` (the reference comes from another exporter
-   version; nothing to fix) or `known` (explained in
-   `devs/scripts/known-differences.json`). The holdout set is only measured
-   with `mise run accuracy`; never triage or diagnose it.
-2. Fix the causes the report shares across the most builds, several in one
-   batch: its shared leads, the unparsed-line templates, and what each build's
-   ledger of lines (`calculate-build --usage`) says the calculation drops
-   whether or not a row differs: lines a rule recognises and nothing models,
-   modifier names no build reads, conditions nothing sets, rejected gem
-   stats. Use `mise run gaps [--kind unique|passive|mods|...]` to rank game-text
-   gaps by worked builds and sources, then `mise run gap "<template or text>"`
-   for stat IDs, full source text, ledger fates and nearby engine rules.
-   Implement from game data and item text; PoB2 is a cross-check.
-   Parallel agents write independent fixes and report their review/check evidence;
-   the coordinator integrates and chooses the batch validation.
-3. Validate once per batch, preferably with remote full CI; use `mise run gate`
-   when an explicit local accuracy/parity batch is useful. Then rerun
-   `mise run triage` for an accuracy investigation (PoB2's side is cached). Raise improved baselines and
-   record the cause and evidence in the commits or PR; keep generated reports local.
-4. Open one build (`mise run diagnose`, `mise run compare <build> [Stat ...]`,
-   `calculate-build --breakdown <stats> --usage`) only for a row the triage
-   does not explain. When a kind of
-   row keeps needing that, extend the triage or diagnosis output so the next
-   batch shows it; slow per-build investigation means the tooling is missing
-   something.
-5. When the game's text or data shows a reference wrong, document the
-   deliberate difference in [docs/pob2-differences.md](docs/pob2-differences.md)
-   and list its rows in `devs/scripts/known-differences.json`. A rule PoB2 does
-   not implement only needs `exporter: "absent"`, not a known-difference entry.
-
-## Commit & Pull Request Guidelines
-
-Follow existing subjects such as `fix: preserve skill selection` and
-`chore: scope agent validation`. Keep commits focused. PRs should explain the
-problem, resulting behavior, validation, and remaining limits; link relevant
-issues and include screenshots for visible UI changes. Pushes, PR updates,
-and releases follow the user's authorized scope. Use independent review for
-substantial or risky changes; trivial edits do not need a new reviewer or audit
-form. Review evidence should identify the checked head/base and real limits.
-`mise run pr-ready <N>` is an optional read-only helper before an authorized merge;
-use the confirmed head with `--match-head-commit`. Never invent passing checks.
-Contributor requirements are in
-[CONTRIBUTING.md](CONTRIBUTING.md); maintainers handling fork PRs follow
-[the external PR steps](docs/development-workflow.md#处理外部-pr).
-
-## Documentation
-
-- [docs/README.md](docs/README.md) organizes current guides by audience and task.
-  Web feature contracts are in [docs/web-contracts.md](docs/web-contracts.md).
-- A new mechanic convention goes into its section of [docs/mechanics/](docs/mechanics/README.md),
-  an output field into [docs/calc-outputs.md](docs/calc-outputs.md), a PoB2
-  difference into [docs/pob2-differences.md](docs/pob2-differences.md). Keep the
-  maintainer guide to cross-cutting rules: every session loads it in full.
-- When code replaces a described behaviour, rewrite or delete the paragraph;
-  do not keep superseded history in current documents.
-- Put generated reports and personal research in `.cache/` or `study/`.
-  Keep reproducible examples, source metadata, active baselines and current
-  explanations in version control. Preserve source citation paths when useful.
-
-`agent-docs/` preserves earlier mechanics research cited by source and tests;
-check it against current game data and [mechanics](docs/mechanics/README.md).
+- **Validate by risk.** Choose evidence by risk and cost
+  ([validation tiers](docs/maintainer-guide.md#验证分层)). Documentation needs
+  diff/link review only. Changed behaviour needs regression assertions, which
+  may be handed off unrun. Report what you inspected and actually ran; never
+  present review or `cargo check` as passing tests, and never lower a parity
+  baseline to make a test pass.
+- **Builds.** One `./target` per worktree and one Cargo command at a time; never
+  share a writable `CARGO_TARGET_DIR` across worktrees. Do not change the
+  dev/test profile, run `cargo clean` automatically, or chain
+  check/build/Clippy/test by default.
+- **Parallel agents.** One worktree/branch per writer. Never `git stash`: all
+  worktrees share it. Workers commit locally; the coordinator integrates,
+  regenerates generated files instead of merging them, and owns any authorized
+  push or PR ([details](docs/maintainer-guide.md#并行-agent提交与-pr)).
+- **Calculation.** Stable IDs inside the engine, translation at display
+  boundaries; deterministic output; preserve raw imported text and JSON
+  compatibility. Implement mechanics from game data; PoB2 is a cross-check.
+  Before implementing a modifier feature, confirm it changes a supported output
+  of the static simulation. Never let an input disappear without a diagnostic.
+- **Accuracy work is batched.** Start with `mise run triage`; never triage or
+  diagnose the holdout set ([diagnosis loop](docs/maintainer-guide.md#排查数值差异诊断闭环)).
+- **Style.** Rust edition 2024 with rustfmt; two-space TypeScript; `snake_case`
+  Rust functions and modules, `PascalCase` types and React components; code and
+  comments in English.
+- **Commits and PRs.** Subjects like `fix: preserve skill selection` or
+  `docs(pipeline): …`, one focused change per commit. PRs state the problem,
+  resulting behaviour, validation and remaining limits. Push, merge and release
+  only within the authorized scope.
+- **Documentation.** Rewrite or delete superseded paragraphs; keep no history in
+  current documents. Generated reports and personal research go in `.cache/` or
+  `study/`. Each rule has one home ([documentation upkeep](docs/maintainer-guide.md#文档维护)).

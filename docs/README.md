@@ -29,7 +29,7 @@
 ## 开发与维护
 
 从[贡献指南](../CONTRIBUTING.md)开始；架构、依赖方向和跨主题约定在
-[维护者指南](maintainer-guide.md)，给代码代理的简短入口是 [AGENTS.md](../AGENTS.md)。
+[维护者指南](maintainer-guide.md)，给其他代理工具的英文摘要是 [AGENTS.md](../AGENTS.md)。
 
 | 工作 | 文档 |
 | --- | --- |

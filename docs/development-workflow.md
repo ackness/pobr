@@ -6,7 +6,7 @@
 任务名之后的参数原样传递。它们转发到 `devs/scripts/driver.sh`；
 run skill 正本在 `.agents/skills/`，`.claude/skills/` 下的同名软链仅保留为兼容入口。
 游戏 CLI（`mise exec -- cargo run -p pobr-cli`，二进制 `pobr`）只提供游戏计算命令，不包含任何开发命令。
-本文维护构建、测试、缓存和 CI 操作；验证范围与计算约定见 [maintainer-guide.md](maintainer-guide.md)，
+本文维护构建、测试、缓存、CI、合并与发版机制；验证范围、review 取舍与计算约定见 [maintainer-guide.md](maintainer-guide.md)，
 Web 初次准备见 [Web README](../web/README.md)，数据管线见 [pipeline/README.md](../pipeline/README.md)，
 换数据与发版的步骤见 [RELEASING.md](../RELEASING.md)。
 
@@ -96,13 +96,8 @@ mise exec -- cargo test -p pobr-wasm --features diagnostics --test perf_timing -
 完整 CI 和 `mise run full` 的 Clippy 显式启用这两个 feature，继续检查手动工具；
 日常定向测试和 PR 检查不启用。`gen_fixtures` 同样需要 `--features diagnostics`。
 
-小改动的文件与验证选项见[改动配方](recipes.md)。子 Agent 按风险和成本选择代码审阅、
-静态检查、定向编译或测试；文档只检查 diff、链接和示例。算法、大幅修改和跨边界行为可以提前测试，
-不要求每个 worker 都先编译才能提交。必要的回归断言仍须写入，未运行项明确交接。
-
-协调者先汇总多个 worker 的修改，检查语义冲突，规则变化时集中生成一次产物，再统一验证。
-默认依赖远端：PR 轻量、master 合并后全量；高风险批次可先 `mise run ci <pushed-ref>`。
-本地 `mise run verify`、`mise run gate` 和 `mise run full` 都保留为按需工具，
+小改动的文件与验证选项见[改动配方](recipes.md)；该跑哪些检查由维护者指南的[验证分层](maintainer-guide.md#验证分层)决定，
+本节只说明命令。本地 `mise run verify`、`mise run gate` 和 `mise run full` 都是按需工具，
 不与相同输入的云端结果固定串联。
 
 短参数 `build` 对应 `pobr-build`，`core` 对应 `pobr-core`；完整包名也可用。
@@ -113,15 +108,8 @@ mise exec -- cargo test -p pobr-wasm --features diagnostics --test perf_timing -
 mise exec -- cargo check --locked -p pobr-core --lib  # Optional; dependencies/macros may still compile
 mise run test core parser mod_parser::               # Runtime assertions when useful
 mise run verify build skills <filter>                # Tests, fmt and Clippy for one target
+mise run check:workflows                             # Automation contracts; no Rust build
 ```
-
-`cargo check` 不运行测试，`cargo test --no-run` 仍生成测试二进制；名称过滤也会编译整个测试目标。
-不要把它们都当作免费检查，或固定串联 check/build/Clippy/test。复用输入未变的证据；
-读码、review、编译检查和运行时测试分别说明，不能相互冒充。
-
-Web 纯 TS/CSS 修改复用已有 WASM，按风险选择相关 Vitest、typecheck 或 Playwright。
-`mise run web build` 已含 typecheck，普通文档不需要 Web 构建。
-自动化修改使用 `mise run check:workflows`，不编译 Rust；安装顺序变化还要验证冷依赖环境。
 
 <a id="repository-layout"></a>
 
@@ -369,14 +357,9 @@ mise run full                             # 显式本地 Rust 全量检查，不
 
 ## Agent 提交、review 与合并
 
-流程服务于可审查的改动与及时反馈，不以表单、agent 数量或 review 轮次衡量质量。
-
-- 普通局部修复：问题/结果说明、必要的回归用例与实际审阅/检查证据；本地执行按需要选择。
-  文档或明显机械改动不额外要求回归测试、截图或独立 agent。
-- 跨边界、核心计算、持久化/导入兼容、工具链或发布改动：根据实际风险请独立 reviewer
-  检查调用方和证据，说明检查过的 head/base 与未验证范围；建议与阻断问题分开。
-- 修正在同一 PR 中完成；新提交后重看受影响证据。没有固定审计 JSON、形式上的批准次数、
-  每个 PR 必须创建 issue 或必须换 reviewer 等要求。机器人和人工审查都不能替代真实运行结果。
+何时需要独立 reviewer、回归用例或截图，由维护者指南的[验证分层](maintainer-guide.md#验证分层)决定；
+本节是 PR 与合并的操作。没有固定审计 JSON、形式上的批准次数、每个 PR 必须创建 issue 或必须换 reviewer 等要求；
+机器人和人工审查都不能替代真实运行结果。
 
 [PR 模板](../.github/pull_request_template.md) 提供 Problem、Change、Validation、Remaining limits
 的写作提示，不由 CI 强制正文格式。只写实际执行的命令与结果；界面变化按需要给出前后证据，
@@ -397,6 +380,7 @@ Bug 表单收集可复现步骤、版本/数据版本、环境，以及相关构
 功能表单问用户目标和能改善的输出，不要求报告者懂内部实现。
 构筑输入先删除不愿公开的信息。维护者先查重、确认范围；证据不足时要求具体资料，
 确认的缺陷按原因归并，修复只覆盖一部分时用 Refs，不提前关闭整项问题。
+游戏数据与翻译问题按[修复归属](../CONTRIBUTING.md#which-repository-owns-the-fix)转到 owner 仓库。
 没有证据证明有用的事件模拟不自动进入实现，遵守静态模拟范围。
 
 Dependabot 每日分组检查 Actions 更新；Cargo、Rust toolchain、Web 与数据管线每月检查。
@@ -480,7 +464,7 @@ mise exec -- cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakd
 ```
 
 `triage` 是数值差异的第一步，一次对照基准组与 tuned 组的全部构筑，`diagnose` / `compare` 只用于它解释不了的单个构筑；
-流程见 [AGENTS.md](../AGENTS.md#accuracy-workflow) 和[维护者指南的“排查数值差异”](maintainer-guide.md#排查数值差异诊断闭环)，
+流程见[维护者指南的“排查数值差异”](maintainer-guide.md#排查数值差异诊断闭环)，
 各工具输出的含义见[诊断工具与逐行台账](diagnostics.md)。
 `triage` 与 `compare` 需要 vendor 与 LuaJIT，PoB2 的结果按构筑码缓存在 `.cache/pob2-oracle/`，两者共用。`lookup` 只读
 当前数据版本（`POBR_DATA_ROOT` / `POBR_DATA_VERSION` / `CURRENT`，或 `--version`）。
