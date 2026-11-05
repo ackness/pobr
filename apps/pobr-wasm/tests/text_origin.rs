@@ -112,9 +112,12 @@ fn a_supplement_row_marks_the_lines_it_renders() {
         "origin": "agent"
     }));
     // Official text wins a line it also renders, even listed first: this row is never used.
-    rows.insert(0, serde_json::json!({
-        "src": "我方补译 {0}% 生命", "en": "{0}% increased maximum Life", "origin": "human"
-    }));
+    rows.insert(
+        0,
+        serde_json::json!({
+            "src": "我方补译 {0}% 生命", "en": "{0}% increased maximum Life", "origin": "human"
+        }),
+    );
     init(&pack(Some(serde_json::to_vec(&rows).unwrap())));
     let rows = detailed("zh-CN");
     assert_eq!(

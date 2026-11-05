@@ -28,8 +28,9 @@ pub const SUPPLEMENT_FOOTNOTE: &str = "† 非官方译文（本项目补译）"
 /// stable position would need a JSON path into each. A text appears once per
 /// rendering, so the only loss is two different lines rendering to the same
 /// text from templates of different origins; [`record`] then keeps the
-/// stronger (agent over human), so supplement text is never shown as
-/// official.
+/// stronger (agent over human), and an official line whose text equals a
+/// supplement's is marked too. Both over-mark, so supplement text is never
+/// shown as official.
 type Origins = BTreeMap<String, TextOrigin>;
 
 // Untranslated report lines are what the user typed already; translated ones

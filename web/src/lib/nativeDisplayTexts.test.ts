@@ -66,5 +66,6 @@ test('supplement origins are optional; a listed literal keeps its origin, every 
   expect(listedOrigin(unknown.origins?.entries, 'Ours')).toBe('agent');
   expect(listedOrigin(unknown.origins?.scopes?.a, 'b')).toBe('agent');
   expect(listedOrigin({ x: 'official', y: 'human' }, 'x')).toBeNull();
+  expect(listedOrigin({ x: null }, 'x')).toBeNull();
   expect(listedOrigin({ x: 'official', y: 'human' }, 'y')).toBe('human');
 });
