@@ -479,13 +479,18 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
       {groups.length > 0 && <nav className="config-group-nav" aria-label={workflowLabel(lang, 'jump')}>
         <h3>{workflowLabel(lang, 'jump')}</h3>
         {groups.map(section => <AppButton className="h-auto min-h-10 justify-between whitespace-normal text-left" key={section.name}
-          aria-pressed={!searching && activeSection === section.name} onClick={() => {
+          aria-pressed={!searching && activeSection === section.name} onClick={(event) => {
+          const nav = event.currentTarget.closest('nav');
           setQuery(''); setConfiguredOnly(false); setSelectedSection(section.name);
           setOpenSections(previous => new Set([...previous, section.name]));
           requestAnimationFrame(() => {
             const group = document.getElementById(`config-section-${section.name.replace(/\s+/g, '-')}`);
-            group?.scrollIntoView({ block: 'start' });
-            group?.querySelector<HTMLButtonElement>('.config-section-header')?.focus({ preventScroll: true });
+            const header = group?.querySelector<HTMLButtonElement>('.config-section-header');
+            // Align a group we've scrolled past; otherwise reveal only its header so a tall group
+            // does not move the list under the pointer when the header is already visible.
+            if (group && nav && group.getBoundingClientRect().top < nav.getBoundingClientRect().top) group.scrollIntoView({ block: 'start' });
+            else header?.scrollIntoView({ block: 'nearest' });
+            header?.focus({ preventScroll: true });
           });
         }}><span>{groupTitle(section.name)}</span><span>{section.options.length}</span></AppButton>)}
       </nav>}

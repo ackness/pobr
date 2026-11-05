@@ -7,10 +7,12 @@ interface Props {
   lang: Lang;
   /** 可选文案覆盖（默认「复制」）。 */
   label?: string;
+  /** 图标尺寸的静默按钮（文案仅作无障碍标签与悬停提示）。 */
+  compact?: boolean;
 }
 
 /** 一键把原始文本写入剪贴板（复制物品词条等）；成功后短暂显示「已复制」。 */
-export function CopyButton({ text, lang, label }: Props) {
+export function CopyButton({ text, lang, label, compact }: Props) {
   const tt = bindT(lang);
   const [status, setStatus] = useState<'idle' | 'done' | 'error'>('idle');
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -19,11 +21,12 @@ export function CopyButton({ text, lang, label }: Props) {
     return () => clearTimeout(timer.current);
   }, [text]);
   return (
-    <span className="copy-control" onClick={event => event.stopPropagation()}>
+    <span className={`copy-control${compact ? ' copy-control-compact' : ''}`} onClick={event => event.stopPropagation()}>
       <AppButton
         type="button"
         title={label ?? tt('common.copy')}
-        aria-live="polite"
+        aria-live={compact ? undefined : 'polite'}
+        className={compact ? 'copy-compact-button' : undefined}
         onClick={async (e) => {
           e.stopPropagation();
           clearTimeout(timer.current);
@@ -36,8 +39,10 @@ export function CopyButton({ text, lang, label }: Props) {
           }
         }}
       >
-        {status === 'done' ? tt('common.copied') : (label ?? tt('common.copy'))}
+        {compact ? <span aria-hidden>{status === 'done' ? '✓' : '⧉'}</span>
+          : status === 'done' ? tt('common.copied') : (label ?? tt('common.copy'))}
       </AppButton>
+      {compact && <span className="sr-only" aria-live="polite">{status === 'done' ? tt('common.copied') : ''}</span>}
       {status === 'error' && <span className="copy-fallback">
         <span role="alert">{tt('common.copyFailed')}</span>
         <AppTextarea readOnly value={text} rows={3} aria-label={tt('common.manualCopy')}

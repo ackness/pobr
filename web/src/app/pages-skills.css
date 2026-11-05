@@ -2,6 +2,15 @@
    A list of socket groups on the left, the selected group's gems on the right. Rows are divided
    by hairlines; nothing here is a card. On a narrow page the selected group opens under its row. */
 @layer app {
+  /* Keep gem-name copy icons on the text line, including titles and support descriptions. */
+  .shell-root .copy-control-compact { flex: none; flex-wrap: nowrap; vertical-align: middle; }
+  .shell-root .copy-control-compact .copy-compact-button {
+    min-width: 0; min-height: 0; width: 1.25rem; height: 1.25rem; padding: 0; line-height: 1;
+    border-color: transparent; background: transparent; color: var(--muted-foreground); font-size: var(--text-xs); font-weight: 400;
+  }
+  .shell-root .copy-control-compact .copy-compact-button:hover,
+  .shell-root .copy-control-compact .copy-compact-button:focus-visible { color: var(--foreground); }
+
   .shell-root .skills-page { container: skills-page / inline-size; }
 
   /* ── Skill set picker: a quiet bar, not a panel ─────────────────────────── */
@@ -19,7 +28,10 @@
   .shell-root .skills-page .skill-group { display: contents; }
   .shell-root .skills-page .skills-toolbar { grid-column: 1; display: block; margin: 0 0 .9rem; }
   .shell-root .skills-page .skills-toolbar .gem-picker { max-width: none; width: 100%; }
-  .shell-root .skills-page .skill-list-note { margin: .45rem 0 0; font-size: var(--text-xs); color: var(--muted-foreground); line-height: 1.5; }
+  /* The list has one text edge: a "+" sits in the star column and the input text starts where names do. */
+  .shell-root .skills-page .skills-toolbar .gem-picker::before { content: '+'; position: absolute; inset: 0 auto 0 0; z-index: 1; display: grid; place-items: center; width: 2.25rem; font-size: 1.1rem; line-height: 1; color: var(--muted-foreground); pointer-events: none; }
+  .shell-root .skills-page .skills-toolbar .gem-picker input { padding-left: 2.4rem; }
+  .shell-root .skills-page .skill-list-note { margin: .45rem 0 0; padding-left: 2.4rem; font-size: var(--text-xs); color: var(--muted-foreground); line-height: 1.5; }
 
   .shell-root .skills-page .skills-empty { grid-column: 1 / -1; display: grid; justify-items: start; gap: .75rem; max-width: 38rem; margin-top: 4vh; }
   .shell-root .skills-page .skills-empty h3 { margin: 0; font-size: var(--text-xl); font-weight: 600; letter-spacing: -.01em; }
@@ -27,13 +39,15 @@
   .shell-root .skills-page .skills-empty .skills-toolbar { width: 100%; margin-top: .5rem; }
 
   /* ── A group's row ──────────────────────────────────────────────────────── */
-  .shell-root .skills-page .skill-group-header { position: relative; grid-column: 1; display: grid; grid-template-columns: 2.25rem minmax(0, 1fr) auto auto auto; grid-template-rows: auto auto auto; align-items: start; column-gap: .15rem; row-gap: 0; flex-wrap: nowrap; margin: 0; padding: .6rem .25rem .7rem 0; border-top: 1px solid var(--border); transition: background var(--dur-fast) linear; }
+  /* --group-line is the height of a row's first line: the star, name, damage, checkbox and × all
+     take it, so their centres line up. */
+  .shell-root .skills-page .skill-group-header { --group-line: 1.75rem; position: relative; grid-column: 1; display: grid; grid-template-columns: 2.25rem minmax(0, 1fr) auto auto auto; grid-template-rows: auto auto auto; align-items: start; column-gap: .15rem; row-gap: 0; flex-wrap: nowrap; margin: 0; padding: .6rem .25rem .7rem 0; border-top: 1px solid var(--border); transition: background var(--dur-fast) linear; }
   .shell-root .skills-page .skill-group-header:hover { background: var(--muted); }
   .shell-root .skills-page .skill-group.is-selected > .skill-group-header { background: color-mix(in srgb, var(--primary) 8%, transparent); box-shadow: inset 2px 0 0 var(--primary); }
   .shell-root .skills-page .skill-group.is-disabled > .skill-group-header > :not(.skill-group-toggle, .skill-remove) { opacity: .5; }
 
   .shell-root .skills-page .skill-group-header > :is(.skill-main-toggle, .skill-group-toggle, .skill-remove) { position: relative; z-index: 1; }
-  .shell-root .skills-page .skill-main-toggle { grid-column: 1; grid-row: 1 / span 2; justify-self: center; width: 1.9rem; height: 1.9rem; min-height: 0; padding: 0; border-color: transparent; background: transparent; color: var(--muted-foreground); font-size: 1.05rem; line-height: 1; opacity: .55; }
+  .shell-root .skills-page .skill-main-toggle { grid-column: 1; grid-row: 1; justify-self: center; width: 1.9rem; height: var(--group-line); min-height: 0; padding: 0; border-color: transparent; background: transparent; color: var(--muted-foreground); font-size: 1.05rem; line-height: 1; opacity: .55; }
   .shell-root .skills-page .skill-main-toggle:hover:not(:disabled) { background: var(--muted); opacity: 1; }
   .shell-root .skills-page .skill-main-toggle.is-on { color: var(--primary); opacity: 1; }
 
@@ -45,22 +59,24 @@
   .shell-root .skills-page .skill-group-title:focus-visible::after { outline: 2px solid var(--primary); outline-offset: -2px; border-radius: .3rem; }
   .shell-root .skills-page .skill-group-title .row-caret { display: none; }
   .shell-root .skills-page .skill-group-title .skill-group-main { display: none; }
-  .shell-root .skills-page .skill-group-name { display: inline-flex; align-items: center; gap: .4rem; min-width: 0; font-size: var(--text-base); font-weight: 560; line-height: 1.4; color: var(--foreground); white-space: normal; overflow-wrap: anywhere; }
+  .shell-root .skills-page .skill-group-name { display: inline-flex; align-items: center; gap: .4rem; min-width: 0; min-height: var(--group-line); text-spacing-trim: trim-start; font-size: var(--text-base); font-weight: 560; line-height: 1.4; color: var(--foreground); white-space: normal; overflow-wrap: anywhere; }
   .shell-root .skills-page .skill-group.is-selected .skill-group-name { color: var(--foreground); }
   .shell-root .skills-page .skill-group-title :is(.ui-badge, .granted-badge) { margin: 0; padding: 0; border: 0; border-radius: 0; background: none; font-size: .6875rem; letter-spacing: .03em; color: var(--muted-foreground); white-space: normal; }
   .shell-root .skills-page .skill-group-title .skill-group-supports { grid-row: auto; flex: 1 0 100%; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; white-space: normal; overflow-wrap: anywhere; font-size: var(--text-xs); line-height: 1.45; color: var(--muted-foreground); }
+  .shell-root .skills-page .skill-group-title .skill-group-support { white-space: nowrap; }
   .shell-root .skills-page .skill-group-title .note-dot { width: .4rem; height: .4rem; border-radius: 50%; background: var(--primary); }
 
   /* Damage on its own: a figure and a bar scaled to the strongest skill. */
-  .shell-root .skills-page .skill-dps-value { grid-column: 3; grid-row: 1; align-self: start; min-width: 3.5rem; padding: .1rem .5rem 0 0; font-size: var(--text-sm); font-weight: 560; font-variant-numeric: tabular-nums; line-height: 1.4; text-align: right; color: var(--foreground); pointer-events: none; }
-  .shell-root .skills-page .skill-dps-value[data-kind='none'] { font-weight: 400; color: var(--muted-foreground); }
+  .shell-root .skills-page .skill-dps-value { grid-column: 3; grid-row: 1; align-self: start; padding: 0 .5rem 0 0; font-size: var(--text-sm); font-weight: 560; font-variant-numeric: tabular-nums; line-height: var(--group-line); text-align: right; color: var(--foreground); pointer-events: none; }
+  /* Without a figure the column takes no room, so the supports get the width. */
+  .shell-root .skills-page .skill-dps-value:not([data-kind='damage']) { padding: 0; }
   .shell-root .skills-page .skill-dps-bar { grid-column: 2 / -1; grid-row: 3; height: 3px; margin: .45rem .5rem 0 0; border-radius: 3px; background: color-mix(in srgb, var(--muted-foreground) 14%, transparent); overflow: hidden; pointer-events: none; }
-  .shell-root .skills-page .skill-dps-bar:empty { visibility: hidden; }
+  .shell-root .skills-page .skill-dps-bar:empty { display: none; }
   .shell-root .skills-page .skill-dps-bar > span { display: block; height: 100%; border-radius: inherit; background: color-mix(in srgb, var(--muted-foreground) 75%, transparent); transition: width var(--dur) var(--ease-out); }
   .shell-root .skills-page .skill-group.is-main .skill-dps-bar > span { background: var(--primary); }
 
-  .shell-root .skills-page .skill-group-toggle { grid-column: 4; grid-row: 1; align-self: start; display: flex; align-items: center; gap: .35rem; margin: .1rem .25rem 0 .25rem; font-size: var(--text-xs); color: var(--muted-foreground); }
-  .shell-root .skills-page .skill-group-header > .skill-remove { grid-column: 5; grid-row: 1; align-self: start; width: 1.75rem; height: 1.75rem; min-height: 0; padding: 0; border-color: transparent; background: transparent; color: var(--muted-foreground); font-size: 1.1rem; line-height: 1; opacity: .55; }
+  .shell-root .skills-page .skill-group-toggle { grid-column: 4; grid-row: 1; align-self: start; display: flex; align-items: center; gap: .35rem; height: var(--group-line); margin: 0 .25rem; font-size: var(--text-xs); color: var(--muted-foreground); }
+  .shell-root .skills-page .skill-group-header > .skill-remove { grid-column: 5; grid-row: 1; align-self: start; width: var(--group-line); height: var(--group-line); min-height: 0; padding: 0; border-color: transparent; background: transparent; color: var(--muted-foreground); font-size: 1.1rem; line-height: 1; opacity: .55; }
   .shell-root .skills-page .skill-group-header > .skill-remove:hover:not(:disabled), .shell-root .skills-page .skill-group-header > .skill-remove:focus-visible { background: transparent; color: var(--destructive); opacity: 1; }
 
   /* ── The selected group ─────────────────────────────────────────────────── */

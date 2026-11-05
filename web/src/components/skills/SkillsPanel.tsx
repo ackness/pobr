@@ -3,12 +3,13 @@ import { AppTooltip, AppButton, AppInput } from '../shared/controls';
 import { NamedSets } from '../shared/NamedSets';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
 import { PageHeader } from '../shared/PageHeader';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { getBackend } from '../../api/backend';
 import type { GemCatalogEntry, SocketGroupInput } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, grantedSourceLabel, type Lang } from '../../lib/i18n';
 import { GemPicker } from './GemPicker';
+import { GemNameCopy } from './GemNameCopy';
 import { skillDisplayName } from '../../lib/skillNames';
 import { activeSkillEffects, removeSkillGem, withGemCorrupted, withGemEnabled } from '../../lib/skillSelection';
 export { prettySkillId } from '../../lib/skillNames';
@@ -230,6 +231,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                     {gemLabel(gem)}
                     {byId.has(gem.skill_id) && <small className="gem-kind-label">{tt(byId.get(gem.skill_id)!.is_support ? 'compare.support' : 'compare.active')}</small>}
                     {byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
+                    <GemNameCopy skillId={gem.skill_id} name={gemName(gem.skill_id)} lang={lang} />
                   </span></AppTooltip>
                   <span className="gem-controls">
                     <label className="gem-enabled"><AppInput type="checkbox" aria-label={tt('skills.gemEnabled')}
@@ -335,13 +337,19 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                   )}
                   {supportGems.length > 0 && (
                     <span className="skill-group-supports">
-                      {supportGems.map((g) => `${gemLabel(g)}${byId.get(g.skill_id)?.is_lineage ? ` [${tt('picker.lineage')}]` : ''}`).join(' · ')}
+                      {/* Lines break only between gems: a name never splits, and each "·" stays with the name before it. */}
+                      {supportGems.map((g, i) => <Fragment key={i}>
+                        {i > 0 && ' '}
+                        <span className="skill-group-support">
+                          {gemLabel(g)}{byId.get(g.skill_id)?.is_lineage ? ` [${tt('picker.lineage')}]` : ''}{i < supportGems.length - 1 && ' ·'}
+                        </span>
+                      </Fragment>)}
                     </span>
                   )}
                 </AppButton>
                 <span className="skill-dps-value" data-kind={dps?.kind ?? 'unavailable'}>
                   {dps?.kind === 'damage' ? <>{formatStatValue(dps.dps, 'int')}<span className="sr-only"> DPS</span></>
-                    : dps?.kind === 'none' ? <>—<span className="sr-only">{w('deals no damage', '不造成伤害', '不造成傷害')}</span></> : null}
+                    : dps?.kind === 'none' ? <span className="sr-only">{w('deals no damage', '不造成伤害', '不造成傷害')}</span> : null}
                 </span>
                 <span className="skill-dps-bar" aria-hidden="true">
                   {dps?.kind === 'damage' && <span style={{ width: `${barShare(dps.dps, dpsTop) * 100}%` }} />}
@@ -370,7 +378,8 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
               {isOpen && (
                 <div className="skill-detail">
                   <header className="skill-detail-head">
-                    <h3 className="skill-detail-title">{selectedId ? gemName(selectedId) : tt('skills.emptyGroup')}</h3>
+                    <h3 className="skill-detail-title">{selectedId ? gemName(selectedId) : tt('skills.emptyGroup')}
+                      {selectedId && <GemNameCopy skillId={selectedId} name={gemName(selectedId)} lang={lang} />}</h3>
                     <div className="skill-detail-tags">
                       {isMain && <span className="skill-detail-tag">{tt('skills.main')}</span>}
                       {grantedSourceLabel(lang, group.source) && <span className="skill-detail-tag">{grantedSourceLabel(lang, group.source)}</span>}
