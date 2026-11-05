@@ -586,3 +586,110 @@ fn a_repeated_placeholder_joins_only_lines_with_the_same_value() {
         None
     );
 }
+
+/// Templates whose value slot sits at the line's edge, as in the zh-CN pack.
+fn edge_slot_pack() -> LocalePack {
+    let templates = serde_json::json!([
+        {"src": "持续性伤害总降 {0}%", "en": "{0}% less Damage over Time"},
+        {"src": "受到的持续伤害总降 20%", "en": "Take 20% less Damage over time"},
+        {"src": "有 {0} 个插槽", "en": "Has {0} Sockets"},
+        {"src": "伤害提高 {0}%", "en": "{0}% increased Damage"},
+        {"src": "召唤生物伤害提高 {0}%", "en": "Minions deal {0}% increased Damage"},
+        {"src": "所有{1}技能等级 +{0}", "en": "+{0} to Level of all {1} Skills"},
+        {"src": "配置 {0}", "en": "Allocates {0}"}
+    ]);
+    LocalePack::from_files(
+        "zz",
+        [
+            ("stat_lines.json", templates.to_string().into_bytes()),
+            ("words.json", r#"{"Minion":"召唤生物"}"#.as_bytes().to_vec()),
+            (
+                "passive_names.json",
+                r#"{"Iron Reflexes":"霸体"}"#.as_bytes().to_vec(),
+            ),
+        ],
+    )
+    .unwrap()
+}
+
+#[test]
+fn a_rendered_line_never_carries_untranslated_words_in_a_value() {
+    let pack = edge_slot_pack();
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    // A slot at the line's edge would capture the rest of a longer line;
+    // that line has no template, so it stays English whole.
+    for line in [
+        "Take 30% less Damage over time",
+        "Has 4 Augment Sockets",
+        "+(1-2) to Level of all Mark Skills",
+        "Allocates Unknown Passive",
+    ] {
+        assert_eq!(renderer.render_line(line), None, "{line}");
+    }
+    // A longer template that the edge slot hid is found instead.
+    assert_eq!(
+        renderer
+            .render_line("Minions deal (10-12)% increased Damage")
+            .as_deref(),
+        Some("召唤生物伤害提高 (10-12)%")
+    );
+    // Values that translate, and values without words, still fill a slot.
+    assert_eq!(
+        renderer
+            .render_line("Take 20% less Damage over time")
+            .as_deref(),
+        Some("受到的持续伤害总降 20%")
+    );
+    assert_eq!(
+        renderer.render_line("Has 4 Sockets").as_deref(),
+        Some("有 4 个插槽")
+    );
+    assert_eq!(
+        renderer.render_line("(10-12)% increased Damage").as_deref(),
+        Some("伤害提高 (10-12)%")
+    );
+    assert_eq!(
+        renderer
+            .render_line("+(1-2) to Level of all Minion Skills")
+            .as_deref(),
+        Some("所有召唤生物技能等级 +(1-2)")
+    );
+    assert_eq!(
+        renderer.render_line("Allocates Iron Reflexes").as_deref(),
+        Some("配置 霸体")
+    );
+}
+
+#[test]
+fn a_bonded_line_renders_through_the_packs_own_templates() {
+    let templates = serde_json::json!([
+        {"src": "羁绊： {0}", "en": "Bonded: {0}"},
+        {"src": "羁绊： {0:d} 生命上限", "en": "Bonded: {0:d} to maximum Life"},
+        {"src": "{0:d} 魔力上限", "en": "{0:d} to maximum Mana"},
+        {"src": "伤害提高 {0}%", "en": "{0}% increased Damage"}
+    ]);
+    let pack = LocalePack::from_files(
+        "zz",
+        [("stat_lines.json", templates.to_string().into_bytes())],
+    )
+    .unwrap();
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    let render = |line: &str| renderer.render_line(line);
+    // A whole-line row first; otherwise the prefix template around the effect's own rendering.
+    assert_eq!(
+        render("Bonded: +40 to maximum Life").as_deref(),
+        Some("羁绊： +40 生命上限")
+    );
+    assert_eq!(
+        render("Bonded: +25 to maximum Mana").as_deref(),
+        Some("羁绊： +25 魔力上限")
+    );
+    assert_eq!(
+        render("Bonded: 12% increased Damage").as_deref(),
+        Some("羁绊： 伤害提高 12%")
+    );
+    // An effect the pack cannot render keeps the whole line English.
+    assert_eq!(render("Bonded: Unknown effect"), None);
+    // The prefix alone, as the Web asks for it.
+    assert_eq!(render("Bonded: {0}").as_deref(), Some("羁绊： {0}"));
+}
