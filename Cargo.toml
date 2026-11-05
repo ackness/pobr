@@ -17,7 +17,7 @@ resolver = "2"
 
 # Release version for apps and tools; library crate versions stay stable for build reuse.
 [workspace.package]
-version = "0.0.44"
+version = "0.0.45"
 edition = "2024"
 
 [workspace.dependencies]
