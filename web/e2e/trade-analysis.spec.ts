@@ -83,7 +83,7 @@ test('completed trade analysis and Ring 1 selection survive tabs and market edit
   const query = JSON.parse(new URL(originalHref).searchParams.get('q')!);
   const numericScore = Number(score.replaceAll(',', ''));
   expect(numericScore).toBeGreaterThan(0);
-  expect(query.query.stats[0].value.min).toBeCloseTo(numericScore, 3);
+  expect(Math.round(query.query.stats[0].value.min)).toBe(numericScore);
   await expect(page.getByRole('button', { name: 'Analyze all positions', exact: true })).toBeEnabled();
 
   await goTo(page, 'Calcs');

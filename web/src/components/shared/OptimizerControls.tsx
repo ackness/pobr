@@ -105,6 +105,7 @@ export function ObjectiveEditor({ value, onChange, lang, disabled, constraintsOn
           ariaLabel={tt('opt.objective')}
         />
       </label>
+      {value.preset === 'balanced' && <p className="opt-hint">{tt('trade.balancedSummary')}</p>}
       </>}
       <label>
         {tt('opt.constraint')}

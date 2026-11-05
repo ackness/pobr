@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasReusableTradeAnalysis, reusableTradeCount, type CachedTradeAnalysis } from './tradeAnalysis';
+import { hasReusableTradeAnalysis, hasUsableTradeWeights, reusableTradeCount, type CachedTradeAnalysis } from './tradeAnalysis';
 
 describe('trade analysis reuse', () => {
   it('requires combination analysis for a position in the whole-build overview', () => {
@@ -18,4 +18,14 @@ describe('trade analysis reuse', () => {
     };
     expect(reusableTradeCount(['ring1', 'ring2', 'gems', 'amulet'], cache, 'all')).toBe(2);
   });
+});
+
+
+it('does not enable trade search for empty, zero or invalid weights', () => {
+  const weight = (value: number) => ({ id: 'explicit.test', line: '+10 to maximum Life', value: 10, weight: value });
+  expect(hasUsableTradeWeights(undefined)).toBe(false);
+  expect(hasUsableTradeWeights([])).toBe(false);
+  for (const value of [0, 0.0001, NaN, Infinity]) expect(hasUsableTradeWeights([weight(value)])).toBe(false);
+  expect(hasUsableTradeWeights([weight(1.5)])).toBe(true);
+  expect(hasUsableTradeWeights([weight(-1)])).toBe(true);
 });

@@ -1,3 +1,10 @@
+import { tradeQueryWeights, type WeightedStat } from './trade';
+
+/** Empty or invalid scores must never produce a market search. */
+export function hasUsableTradeWeights(weights: readonly WeightedStat[] | undefined): boolean {
+  return tradeQueryWeights(weights ?? []).length > 0;
+}
+
 export type TradeAnalysisMode = 'single' | 'all';
 
 export interface CachedTradeAnalysis<T> {
