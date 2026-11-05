@@ -430,7 +430,9 @@ class BuildDataTests(unittest.TestCase):
         current = 4
         build.require_contract({"contract_version": current}, current)
         for declared in (None, current + 1, str(current), True):
-            with self.subTest(declared=declared), self.assertRaisesRegex(ValueError, "data contract"):
+            message = "declares no contract_version.*contract_version: \"adapter\".*contract/4" if declared is None \
+                else "data contract"
+            with self.subTest(declared=declared), self.assertRaisesRegex(ValueError, message):
                 build.require_contract({} if declared is None else {"contract_version": declared}, current)
         self.assertFalse(hasattr(build, "PRE_CONTRACT_SNAPSHOTS"))
 
@@ -441,7 +443,7 @@ class BuildDataTests(unittest.TestCase):
         self.lock["snapshot_manifest"] = pack.pin(self.contents["data/9.1/manifest.json"])
         self.set_part("game", {n: r for n, r in self.contents.items() if "/i18n/" not in n})
         self.save()
-        with self.assertRaisesRegex(ValueError, "declares data contract None"):
+        with self.assertRaisesRegex(ValueError, "declares no contract_version.*rebuild the package"):
             self.prepare()
         self.assertFalse(self.out.exists())
 

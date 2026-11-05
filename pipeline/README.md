@@ -35,7 +35,7 @@ JSON 的职责各不相同：`data.lock.json` 是唯一的生产数据声明；C
 
 RePoE 在 2026-11-03 截断 fork 前历史后，活动锁和官方版本观察模块采用迁移后的 Git 提交；
 数据包字节、运行时身份与发行身份保持不变。
-历史收据中的原始 producer ID 保留，通过 RePoE 的[提交映射](https://github.com/ackness/repoe/blob/master/publication/history-rewrite-20261103.json)
+历史收据中的原始 producer ID 保留，通过 RePoE 的[提交映射](https://github.com/ackness/repoe/blob/master/RePoE/docs/history-rewrite-20261103.json)
 定位字节相同的源码；它们不作为新的运行时下载位置。详见[历史迁移说明](https://github.com/ackness/repoe/blob/master/RePoE/docs/history.md)。
 
 临时脚本、报告、下载、测试目录和物化运行包放在忽略的 `.cache/`；
@@ -74,7 +74,7 @@ PoB2 的测试参考版本独立登记在 [devs/reference-sources.json](../devs/
 `mise run vendor` 不再读取生产 parser 元数据选择参考版本。
 
 PoBR 不再提供历史官方树的诊断候选入口（原 `data:tree:source`／`data:tree:candidate`，已退役）。
-RePoE 的 `tree:input` 导出固定的历史 Git 树，`pobr-data-adapter --tree` 可直接生成树域候选。
+RePoE 的 `release:inputs` 打包并发布补丁的固定输入（含历史树），`pobr-data-adapter --tree` 可直接生成树域候选。
 `bd87e651` 输入中 Druid 的两条悬空 `overridePairs`（`19680`→`40837`、`55194`→`57601`）仍会被严格
 adapter 拒绝；原隔离清单保留在 RePoE adapter 的 `policies/tree-corrections/`，没有执行入口。
 
@@ -183,7 +183,8 @@ PoBR 的修正放在 `data/overlay-common/special_mods.json`，更新数据后�
 `data.lock.json`的`support_display`固定外部manifest、资产和目标catalog摘要；`mise run data:prepare`
 在构建／实物测试前导入，物化忽略的`web/src/lib/supportDescriptions.zh-CN.json`，不改GameData快照身份。
 当前保留资产的原生成版本仍为0.5.5.4.2；与目标目录SHA完全相同才允许使用，UI仍核`skill_id`和完整英文。
-换目录须重新由翻译库配对并更新锁，不能重贴旧版本标签。投影代码与合成测试归翻译库；PoBR验证导入pins、目录绑定和显示回退。
+换目录须重新由翻译库配对并发布：它作为`locale/<patch>-<n>` Release的附件`support-display.zh-CN.json`
+（manifest）与`supportDescriptions.zh-CN.json`列在`SHA256SUMS`里，`data:bump`随语言包一起改锁，不能重贴旧版本标签。投影代码与合成测试归翻译库；PoBR验证导入pins、目录绑定和显示回退。
 繁体仍是字形转换回退，不宣称官方繁中译文；这些说明不是当前等级／品质数值或机制认证。
 
 模板的自动配对、冲突检查、与旧词典的替换规则以及 `translation-audit.json` 报告都在翻译库生成和维护，见[翻译库 README](https://github.com/ackness/poe2-zh-cn-stats#readme)。PoBR 只导入其固定产物；`generated/translation-audit.json` 属于维护报告，不进入运行时 manifest 或浏览器包。翻译可用不等于机制已计算：新增英文语料仍由 modifier audit 报告解析缺口。
@@ -224,6 +225,17 @@ schema-3 manifest封存默认运行字节；维护报告和本地patch不进入�
   消费者迁移在同一审阅改动中完成。只 bump 一个 owner 到新目标会被拒绝。语言侧的 `locale/<patch>-<n>` Release
   （`kind: "language"` 的 `pobr-build-data-part/v1` ZIP + `SHA256SUMS` + `receipt.json`）由翻译库 `mise run release:publish` 发布。
   `data:bump` 先原子替换锁与 CURRENT；随后的 `data:prepare` 失败时恢复原字节并以非零退出。
+  - **辅助显示**：语言 Release 的 `SHA256SUMS` 列出 `support-display.zh-CN.json` 与 `supportDescriptions.zh-CN.json` 时，
+    `support_display` 改为该 Release 的两件附件（`repository` + `tag` + manifest／资产 pin + `catalog_sha256` +
+    `source_data_version`），按 SHA256SUMS 校验，并核对新目标、语言、provenance 及新游戏包交易目录的 SHA-256。
+    新目标的语言 Release 缺这两件附件、只列其一，或 receipt 的 `support_display` pin 与附件不符时拒绝。
+    同目标只 bump 游戏包而交易目录变了时，保留的辅助显示不再绑定，同样拒绝：请语言 owner 发布
+    `locale/<patch>-<n+1>`（语言包字节可不变）并一起 bump。
+  - **测试夹具**：`test_fixtures` 是与补丁无关的 API 响应样本；换目标时保留，条目加 `target` 记录它们发布时的目标。
+  - **receipt 绑定**：receipt 的 `package`（ZIP 与根 manifest 的字节数与 SHA-256）存在时必须与下载的包一致；
+    `repoe-release-receipt/v2` 必须带它；旧 receipt 不带时仍可读。
+  - **契约**：新游戏快照未声明 `contract_version` 时拒绝，报错指向 RePoE 声明中 snapshot-manifest job 的
+    `contract_version: "adapter"`（RePoE RELEASING.md「A new game patch」第 3 步）。
   按补丁登记的现有消费者例如 `crates/pobr-gamedata/tests/fixtures/repository-test-pins.json`、
   `devs/ci/parse-coverage-baseline.json` 与示例 golden（如 `examples/demo-bd-test/panel-golden.json`
   的 `data_version`）；计算语义、vendor参考与golden更新分别维护。
