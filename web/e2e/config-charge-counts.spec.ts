@@ -286,7 +286,7 @@ async function complete(page: Page, planner: Planner, first: boolean) {
       await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
       await page.getByRole('option', { name: 'Max Life', exact: true }).click();
       await page.getByRole('spinbutton', { name: 'Point budget', exact: true }).fill('3');
-      await page.getByRole('combobox', { name: 'New travel attributes', exact: true }).click();
+      await page.getByRole('combobox', { name: 'Route planner: new travel attributes', exact: true }).click();
       await page.getByRole('option', { name: 'Strength', exact: true }).click();
     }
     await page.getByRole('button', { name: 'Find upgrade routes', exact: true }).click();

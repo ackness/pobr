@@ -1,3 +1,7 @@
+import { jewelSocketNames } from '../tree/jewelSocketNames';
+import { usePassiveNodeNames } from '../tree/passiveNodeNames';
+import type { PassiveNode } from '../../api/types';
+import { messages } from '../../lib/i18n';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { usePreview } from '../shared/PreviewContext';
 import { changesFromRecords } from '../../app/preview/fromRecords';
@@ -43,7 +47,7 @@ type SlotResult = PositionAnalysis;
 /** Local build analysis produces official search links; login and buying stay on the market. */
 export function TradePanel({ session, lang, active, focus, onSkills, onTree, initialItemText }: {
   session: BuildSession; lang: Lang; active: boolean; focus?: {slot:string; nonce:number; jewelType?: JewelSearchType};
-  onSkills?: (group:number) => void; onTree?: () => void;
+  onSkills?: (group:number) => void; onTree?: (node?: number) => void;
   initialItemText?: string;
 }) {
   const preferenceKey = (key: string) => uiStorageKey(key);
@@ -55,7 +59,15 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   const cnSkillName = (skillId: string) => skillDisplayName(skillId, 'zh-CN', skillCatalog);
   const [catalog, setCatalog] = useState<TradeCatalog | null>(null);
   const [catalogError, setCatalogError] = useState(false);
-  const [jewelSockets, setJewelSockets] = useState<number[]>([]);
+  const [treeNodes, setTreeNodes] = useState<PassiveNode[]>([]);
+  const jewelSockets = useMemo(() => treeNodes.filter(node => node.kind === 'jewel_socket').map(node => node.skill), [treeNodes]);
+  const namedTreeNodes = useMemo(() => treeNodes.map(node => {
+    const change = session.calc?.tree_effects?.nodes[String(node.skill)];
+    return change ? { ...node, name: change.name } : node;
+  }), [treeNodes, session.calc?.tree_effects]);
+  const passiveNames = usePassiveNodeNames(namedTreeNodes.filter(node => ['notable', 'keystone'].includes(node.kind) && !node.ascendancy_id), lang, active);
+  const socketLabels = jewelSocketNames(namedTreeNodes, passiveNames, lang);
+  const jewelText = messages(lang, 'jewelPlanner');
   const [selected, setSelected] = useState('weapon1');
   const [jewelTypes, setJewelTypes] = useState<Record<string, JewelSearchType>>({});
   const [categories, setCategories] = useState<Record<string, string>>({});
@@ -110,7 +122,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   useEffect(() => {
     loadTradeCatalog().then(setCatalog).catch(() => setCatalogError(true));
     getBackend().then(backend => backend.loadPassiveTree(session.treeVersion)).then(nodes => {
-      setJewelSockets(nodes.filter(node => node.kind === 'jewel_socket').map(node => node.skill));
+      setTreeNodes(nodes);
     }).catch(() => {});
   }, [session.treeVersion]);
   useEffect(() => {
@@ -147,7 +159,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     ...session.jewels.map(jewel => ({ slot: `Jewel@${jewel.socket_node}`, text: jewel.text })),
   ].map(item => [item.slot, item.text]));
   const slotNames = useItemDisplayNames(slots.map(slot => bySlot.get(slot)), lang);
-  const labelOf = (slot: string) => slot === 'gems' ? tt('trade.gems') : slot.startsWith('Jewel@') ? `${tt('trade.jewelSocket')} ${slot.slice(6)}` : slotLabel(lang, slot);
+  const labelOf = (slot: string) => slot === 'gems' ? tt('trade.gems') : slot.startsWith('Jewel@') ? socketLabels.get(Number(slot.slice(6))) ?? tt('trade.jewelSocket') : slotLabel(lang, slot);
   const baseOf = (slot: string) => catalog ? referenceBase(catalog, slot, bySlot.get(slot), categories[slot], session.character?.level, jewelTypes[slot]) : undefined;
   const hasEquipment = slots.some(slot => bySlot.has(slot));
   const visibleSlots = slots.filter(slot => showEmpty || !hasEquipment || bySlot.has(slot) || slot === selected || slot.startsWith('Jewel@'));
@@ -276,12 +288,12 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     <div className="upgrade-paths">
       <AppButton onClick={() => analysisRef.current?.scrollIntoView({block:'start'})}><SlotSymbol slot="helmet" /><strong>{ut('equipment')}</strong><span>{ut('equipmentHint')}</span></AppButton>
       <AppButton disabled={!onSkills || !selectedGroup} onClick={() => { if (mainGroup !== undefined) onSkills?.(mainGroup); }}><SlotSymbol slot="gems" /><strong>{ut('supports')}</strong><span>{ut('supportsHint')}</span></AppButton>
-      <AppButton disabled={!onTree} onClick={onTree}><SlotSymbol slot="Jewel@" /><strong>{ut('tree')}</strong><span>{ut('treeHint')}</span></AppButton>
+      <AppButton disabled={!onTree} onClick={() => onTree?.()}><SlotSymbol slot="Jewel@" /><strong>{ut('tree')}</strong><span>{ut('treeHint')}</span></AppButton>
     </div>
     <p className="upgrade-shared-goal">{ut('sharedGoal')}</p>
   </>;
   const replacementBlock = <>
-    <ItemReplacementCheck session={session} lang={lang} active={active && canAnalyze} objective={objective} catalog={catalog} jewelSockets={jewelSockets} initialItemText={initialItemText}
+    <ItemReplacementCheck session={session} lang={lang} active={active && canAnalyze} objective={objective} catalog={catalog} jewelSockets={jewelSockets} initialItemText={initialItemText} socketLabel={id => socketLabels.get(id) ?? tt('trade.jewelSocket')}
       goalLabel={tt(TRADE_OBJECTIVES.find(entry => entry.id === preset)!.labelKey as UiKey)}
       onEditGoal={() => { goalRef.current?.scrollIntoView({ block: 'start' }); goalRef.current?.focus({ preventScroll: true }); }} />
   </>;
@@ -352,12 +364,12 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
       <aside className="trade-position-panel">
         <div className="trade-section-label">{tt('trade.chooseSlot')}</div>
         <nav aria-label={tt('trade.chooseSlot')} className="trade-position-list">
-          {visibleSlots.map(slot => <AppButton key={slot} className="trade-position" aria-pressed={selected === slot} onClick={() => setSelected(slot)}>
+          {visibleSlots.map(slot => <AppButton key={slot} className="trade-position" data-slot-id={slot} aria-pressed={selected === slot} onClick={() => setSelected(slot)}>
             <span className="trade-position-symbol" aria-hidden><SlotSymbol slot={slot} /></span>
             <span><strong>{labelOf(slot)}</strong><small>{slotNames[slots.indexOf(slot)] || tt('trade.slotEmpty')}</small></span>
-            {results[slot]?.weights && <span className="trade-position-done" aria-label={tt('trade.analyzed')}>+</span>}
+            {results[slot]?.weights && <span className="trade-position-done" title={tt('trade.analyzed')}>{results[slot].weights!.weighted.some(weight => weight.gain > 0) ? jewelText.upgradeAvailable : tt('trade.analyzed')}</span>}
           </AppButton>)}
-          <AppButton className="trade-position" aria-pressed={selected === 'gems'} onClick={() => setSelected('gems')}>
+          <AppButton className="trade-position" data-slot-id="gems" aria-pressed={selected === 'gems'} onClick={() => setSelected('gems')}>
             <span className="trade-position-symbol" aria-hidden><SlotSymbol slot="gems" /></span><span><strong>{tt('trade.gems')}</strong><small>{tt('trade.gemSubtitle')}</small></span>
           </AppButton>
         </nav>
@@ -373,6 +385,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
             onClick={() => void analyze([selected])}>{tt(running === selected ? 'opt.running' : weights || result?.gems ? 'trade.recalculate' : 'trade.analyze')}</AppButton>
           {searchUrl && league.trim() && <a className="trade-primary trade-market-link" href={searchUrl} target="_blank" rel="noreferrer">{tt('trade.browseMarket')}<span aria-hidden>↗</span></a>}</div>
         </header>
+        {selected.startsWith('Jewel@') && <AppButton disabled={!onTree} onClick={() => onTree?.(Number(selected.slice(6)))}>{jewelText.locate}</AppButton>}
         {selected.startsWith('Jewel@') && selectedBase && <div className="trade-range">
           <AppSelect value={jewelSearchType(selectedBase)} ariaLabel={tt('trade.jewelType')}
             options={[{ value: 'base', label: tt('trade.baseJewel') }, { value: 'radius', label: tt('trade.radiusJewel') }]}

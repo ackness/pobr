@@ -40,9 +40,9 @@ interface Capture {
   displayed: { label: string | null | undefined; value: string | null | undefined }[];
 }
 const labels = {
-  'en-US': { title: 'Plan passive upgrades', points: 'Point budget', attribute: 'New travel attributes', strength: 'Strength', run: 'Find upgrade routes', preview: 'Show on tree', apply: 'Apply plan' },
-  'zh-TW': { title: '天賦提升規劃', points: '可投入點數', attribute: '新增過路屬性點', strength: '力量', run: '尋找提升路線', preview: '在樹上查看', apply: '套用方案' },
-  'zh-CN': { title: '天赋提升规划', points: '可投入点数', attribute: '新增过路属性点', strength: '力量', run: '寻找提升路线', preview: '在树上查看', apply: '应用方案' },
+  'en-US': { title: 'Plan passive upgrades', points: 'Point budget', attribute: 'Route planner: new travel attributes', strength: 'Strength', run: 'Find upgrade routes', preview: 'Show on tree', apply: 'Apply plan' },
+  'zh-TW': { title: '天賦提升規劃', points: '可投入點數', attribute: '天賦規劃：新增過路屬性點', strength: '力量', run: '尋找提升路線', preview: '在樹上查看', apply: '套用方案' },
+  'zh-CN': { title: '天赋提升规划', points: '可投入点数', attribute: '天赋规划：新增过路属性点', strength: '力量', run: '寻找提升路线', preview: '在树上查看', apply: '应用方案' },
 };
 const jointLabels = {
   'en-US': { title: 'Jewels and passive routes', text: 'Candidate jewel text', socket: 'Candidate socket', add: 'Add jewel placement', run: 'Find jewel and passive plans' },
@@ -219,7 +219,9 @@ async function evaluateFrostRoutes(page: Page, lang: Lang) {
   await expect(summary).toBeVisible({ timeout: 90_000 });
   await expect(run(page, 'route', lang)).toBeEnabled();
   await expect(page.locator('.opt-progress, .opt-error')).toHaveCount(0);
-  const evaluated = Number((await summary.locator(':scope > span').first().innerText()).split(':').at(-1));
+  const details = summary.locator(':scope > details');
+  await details.locator(':scope > summary').click();
+  const evaluated = Number((await details.locator(':scope > span').innerText()).split(/[:：]/).at(-1));
   expect(evaluated, 'The real imported build must finish actual route evaluations, even if none improves its objective').toBeGreaterThan(0);
 }
 
@@ -310,7 +312,7 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
 async function addPlacement(page: Page, text: string, lang: Lang = 'en-US') {
   await joint(page, lang).getByRole('textbox', { name: jointLabels[lang].text, exact: true }).fill(text);
   await joint(page, lang).getByRole('combobox', { name: jointLabels[lang].socket, exact: true }).click();
-  await page.getByRole('option').filter({ hasText: `#${socket.skill}` }).click();
+  await page.locator(`[role="option"][data-value="${socket.skill}"]`).click();
   await joint(page, lang).getByRole('button', { name: jointLabels[lang].add, exact: true }).click();
 }
 
@@ -361,7 +363,7 @@ for (const planner of ['route', 'joint'] as const) {
       await expect(run(page, 'route')).toBeEnabled();
       await expect(run(page, 'joint')).toBeEnabled();
       await expect(page.getByRole('spinbutton', { name: 'Point budget', exact: true })).toHaveValue('3');
-      await expect(page.getByRole('combobox', { name: 'New travel attributes', exact: true })).toContainText('Strength');
+      await expect(page.getByRole('combobox', { name: 'Route planner: new travel attributes', exact: true })).toContainText('Strength');
       await expect(joint(page).getByRole('textbox', { name: 'Candidate jewel text', exact: true })).toHaveValue(jewel);
       expect(await joint(page).getByRole('combobox', { name: 'Candidate socket', exact: true }).innerText()).toBe(socketLabel);
       expect(await joint(page).locator('.jewel-plan-candidates').innerText()).toBe(candidates);

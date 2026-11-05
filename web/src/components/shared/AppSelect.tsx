@@ -36,7 +36,7 @@ export function AppSelect({ value, options, onChange, disabled, ariaLabel, place
       <SelectContent position="popper" align="start" className="app-select-content">
         <SelectGroup>{options.map((option, index) => <Fragment key={option.value}>
           {option.group && option.group !== options[index - 1]?.group && <SelectLabel>{option.group}</SelectLabel>}
-          <SelectItem value={`value:${option.value}`} textValue={option.label}>
+          <SelectItem value={`value:${option.value}`} textValue={option.label} data-value={option.value}>
             <span className="app-select-option-copy"><span>{option.label}</span>{option.hint && <small>{option.hint}</small>}</span>
           </SelectItem>
         </Fragment>)}</SelectGroup>

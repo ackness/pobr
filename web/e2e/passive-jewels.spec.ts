@@ -118,7 +118,7 @@ test('joint planning pays for an empty socket and applies the exact jewel and pa
   const candidate = `${ringText}\n+100 to maximum Life`;
   await planner.getByRole('textbox', { name: 'Candidate jewel text' }).fill(candidate);
   await planner.getByRole('combobox', { name: 'Candidate socket', exact: true }).click();
-  await page.getByRole('option').filter({ hasText: `#${socket.skill}` }).click();
+  await page.locator(`[role="option"][data-value="${socket.skill}"]`).click();
   await planner.getByRole('button', { name: 'Add jewel placement', exact: true }).click();
   const original = await saved(page);
   await planner.getByRole('button', { name: 'Find jewel and passive plans', exact: true }).click();
@@ -202,7 +202,7 @@ test('Upgrades drops a retained jewel position when its socket is unallocated on
   await start(page, 'Rarity: MAGIC\nRuby\nImplicits: 0\n+20 to maximum Life', socket, allocated, undefined,
     [{ enabled: true, gems: [{ skill_id: 'FireballPlayer', level: 16, quality: 0 }] }]);
   const nav = (name: string) => page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name, exact: true });
-  const position = page.locator('.trade-position').filter({ hasText: `Jewel socket ${socket.skill}` });
+  const position = page.locator(`.trade-position[data-slot-id="Jewel@${socket.skill}"]`);
   await nav('Upgrades').click();
   await position.click();
   await expect(position).toHaveAttribute('aria-pressed', 'true');
