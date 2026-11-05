@@ -8,6 +8,7 @@ import unittest
 from pipeline.runtime import data_bundle as bundle
 from pipeline.imports import display_assets as display
 from pipeline.imports import check_data_ownership as ownership
+from pipeline.imports import data_imports
 from pipeline.runtime import runtime_pack as pack
 class DisplayAssetsTests(unittest.TestCase):
     def setUp(self):
@@ -60,7 +61,7 @@ class DisplayAssetsTests(unittest.TestCase):
         return self.files[address[2]]
 
     def prepare(self, **kwargs):
-        return display.prepare(self.lock_path, self.prepared, self.cache, fetcher=self.fetch, **kwargs)
+        return display.prepare(self.lock_path, self.prepared, self.cache, **{"fetcher": self.fetch, **kwargs})
 
     def test_import_and_offline_replay_preserve_source_version_and_bytes(self):
         raw = self.prepare()
@@ -83,6 +84,41 @@ class DisplayAssetsTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.prepare()
             self.assertEqual(self.output.read_bytes(), b"previous")
+
+    def test_release_entry_imports_both_assets_from_the_language_release(self):
+        """Since Releases the support display is two assets of a `locale/<patch>-<n>` Release."""
+        spec = self.lock["support_display"]
+        for key in ("revision", "path"):
+            del spec[key]
+        spec["tag"] = "locale/9.1-1"
+        self.save()
+        assets = {display.MANIFEST: self.files["display/manifest.json"],
+                  display.ASSET: self.files["display/" + display.ASSET]}
+        seen = []
+        def fetch(address, **options):
+            self.assertEqual(address[:2], ("ackness/poe2-zh-cn-stats", "locale/9.1-1"))
+            self.assertIsInstance(address, data_imports.ReleaseAsset)
+            seen.append(address.asset)
+            return assets[address.asset]
+        self.assertEqual(self.prepare(fetcher=fetch), assets[display.ASSET])
+        self.assertEqual(seen, [display.MANIFEST, display.ASSET])
+        # A Git path on a Release entry is refused.
+        spec["path"] = "display/manifest.json"
+        self.lock_path.write_bytes(bundle.encoded(self.lock))
+        with self.assertRaisesRegex(ValueError, "no Git path"):
+            self.prepare(fetcher=fetch)
+
+    def test_asset_must_be_a_json_object(self):
+        self.asset = ["not", "an", "object"]
+        self.save()
+        with self.assertRaisesRegex(ValueError, "not a JSON object"):
+            self.prepare()
+
+    def test_lock_entry_must_match_its_manifest(self):
+        self.lock["support_display"]["source_data_version"] = "8.0"
+        self.lock_path.write_bytes(bundle.encoded(self.lock))
+        with self.assertRaisesRegex(ValueError, "differs from its manifest"):
+            self.prepare()
 
     def test_corrupt_asset_and_wrong_owner_reject(self):
         self.files["display/" + display.ASSET] = b"corrupt"
@@ -132,6 +168,36 @@ class DisplayAssetsTests(unittest.TestCase):
         (out / "unlisted.json").write_bytes(b"[]")
         with self.assertRaisesRegex(ValueError, "Unlisted"):
             display.install_test_fixtures(files, out)
+
+    def test_api_fixtures_keep_the_target_they_were_published_for(self):
+        """A new game patch keeps the patch-independent fixtures; the entry records their target."""
+        published = dict(self.lock["target"])
+        archive, raw = self.fixture_archive()
+        self.lock["target"] = {**published, "game_patch": "9.2"}
+        self.lock_path.write_bytes(bundle.encoded(self.lock))
+        with self.assertRaisesRegex(ValueError, "target/inventory"):
+            display.prepare_test_fixtures(self.lock_path, self.cache, fetcher=lambda _: archive)
+        self.lock["test_fixtures"]["target"] = published
+        self.lock_path.write_bytes(bundle.encoded(self.lock))
+        self.assertEqual(display.prepare_test_fixtures(self.lock_path, self.cache, fetcher=lambda _: archive),
+                         {"catalog.json": raw})
+        self.lock["test_fixtures"]["target"] = {"game_patch": "9.1"}
+        self.lock_path.write_bytes(bundle.encoded(self.lock))
+        with self.assertRaisesRegex(ValueError, "Invalid test fixture target"):
+            display.prepare_test_fixtures(self.lock_path, self.cache, fetcher=lambda _: archive)
+
+    def test_api_fixtures_from_a_release(self):
+        archive, raw = self.fixture_archive()
+        spec = self.lock["test_fixtures"]
+        del spec["revision"], spec["path"]
+        spec.update(tag="fixtures/1", asset="pobr-test-fixtures.zip")
+        self.lock_path.write_bytes(bundle.encoded(self.lock))
+        def fetch(address, **options):
+            self.assertEqual(address, data_imports.ReleaseAsset("ackness/repoe", "fixtures/1",
+                                                                "pobr-test-fixtures.zip"))
+            return archive
+        self.assertEqual(display.prepare_test_fixtures(self.lock_path, self.cache, fetcher=fetch),
+                         {"catalog.json": raw})
 
     def test_api_fixture_wrong_target_and_directory_escape_reject(self):
         archive, _ = self.fixture_archive({**self.lock["target"], "realm": "china"})

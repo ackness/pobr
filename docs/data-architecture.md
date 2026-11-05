@@ -81,8 +81,22 @@ RePoE 发布 ───┐
   发布方的历史由它自己的 Release 列表承担，PoBR 锁不复制发布索引、序号或描述哈希链。
   `data:bump` 要求 `receipt.json` 写明 `target`（与包一致）和 `producer` 的 `repository`、40 位 `commit`、
   `dirty: false`；`contract.version` 可省略，游戏快照声明 `contract_version` 时两者必须相等。
-  语言包不依赖 `pobr-data`，receipt 不声明契约版本，锁中记为 `null`。新生成的根 manifest
-  若带 `release_build.receipt`，必须正好钉住该 receipt。
+  语言包不依赖 `pobr-data`，receipt 不声明契约版本，锁中记为 `null`。receipt 与包的绑定由 receipt 自己的
+  `package` 承担：两个 owner 的发布工具都在其中写入 ZIP 与内嵌根 manifest 的字节数和 SHA-256（只比较这两项；
+  RePoE 的 `package.path` 是构建目录里的文件名，翻译库另写 `asset` 与 `expanded_bytes`，出现时也须一致），
+  根 manifest 本身不写生产提交与 receipt，保持与提交无关。`repoe-release-receipt/v2` 必须带 `package`；
+  较早的 receipt 可以没有，此时若根 manifest 带 `release_build.receipt`（旧格式），它必须正好钉住该 receipt。
+  新快照必须声明 `contract_version`；缺失时的报错指向 RePoE 声明里 snapshot-manifest job 的
+  `contract_version: "adapter"`。
+- **辅助显示与测试夹具。** 锁的 `support_display` 属于语言 owner：Release 之后，它是 `locale/<patch>-<n>` Release 的两件
+  额外附件 `support-display.zh-CN.json`（`poe2-support-display-publication/v1` manifest：目标、语言、
+  `catalog_sha256`、`files`、`provenance`）与 `supportDescriptions.zh-CN.json`，都列在同一 `SHA256SUMS` 中。
+  `data:bump` bump 语言 Release 时一并采用它，并核对目标、语言、来源 provenance，以及 `catalog_sha256` 等于新游戏包
+  `overlay/trade_catalog.json` 的 SHA-256；新目标的语言 Release 没有它时拒绝。没有新显示附件时保留原条目，
+  但它绑定的目录必须仍与新游戏包一致，否则拒绝并提示语言 owner 为新目录重新发布。`test_fixtures` 是 RePoE 保留的
+  PoBR API 响应样本，与补丁无关：换目标时保留原条目，并在条目中记下它们发布时的 `target`（不改夹具或其 manifest）。
+  两个条目都可读旧 `handoff/*` 的 commit + 路径或 Release 附件（`repository` + `tag`；夹具另有 `asset`）。
+  翻译库目前还不发布这两件显示附件（已计划）；在它发布之前，换目标的 `data:bump` 会被拒绝。
   语言 owner 在 `locale/<patch>-<n>` 下发布同样的三件附件（翻译库 `mise run release:publish`），包为
   `pobr-build-data-part/v1`、`kind: "language"` 的 ZIP（与游戏包同一格式），成员按 STORED 写入，
   与提交无关，任何后续干净提交都能逐字节重建。
@@ -171,8 +185,9 @@ RePoE 发布 ───┐
 
 1. **owner 生产。** RePoE 与翻译库按固定来源生产、运行各自的完整 guard、发布不可变描述后推进索引。PoBR 不代为生产。
 2. **改锁。** 维护者在审阅分支中运行 `mise run data:bump <owner> <tag>`：下载并按 `SHA256SUMS` 校验附件，
-   读取 `receipt.json`，替换该 owner 的锁条目，重算快照 pin、运行身份与紧凑发行身份，再 `data:prepare` 导入并打印身份差异。
-   新补丁两个 owner 一起 bump。PoBR 不自动发现或采用 owner 发布；owner 尚无完整新发布时保留现有默认。
+   读取 `receipt.json`，替换该 owner 的锁条目（语言 Release 带辅助显示附件时一并替换 `support_display`），
+   重算快照 pin、运行身份与紧凑发行身份，再 `data:prepare` 导入并打印身份差异。
+   新补丁两个 owner 一起 bump，语言 Release 须带新目标与新交易目录的辅助显示。PoBR 不自动发现或采用 owner 发布；owner 尚无完整新发布时保留现有默认。
 3. **验证。** 候选在精确 head 上通过 PR gate 和 Full gate：完整快照按摘要导入、
    从同一快照组出的紧凑发行包，以及同次构建的 WASM 消费该包。对 bump 分支运行 `mise run ci <分支>`，
    完整 CI 因数据锁改变而自动加跑普通 Web 流程的冒烟 E2E（[开发工作流](development-workflow.md)）。PoBR 不在 CI 中重跑 owner 的领域生产。

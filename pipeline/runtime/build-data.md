@@ -125,8 +125,11 @@ in the build receipt. Gameplay/source certification and unselected E2E stay sepa
 `check_data_ownership.py` rejects full payloads forced into PoBR's Git index.
 
 The `support_display` entry also imports the translation owner's support
-description asset before Web builds/tests. Its manifest, asset and complete target
-trade-catalog hashes must match; the asset's original generation version and source
+description asset before Web builds/tests: from a retained `handoff/*` commit and
+path, or from the `support-display.zh-CN.json` and `supportDescriptions.zh-CN.json`
+assets of a `locale/<patch>-<n>` Release, which `data:bump` adopts with the
+language package. Its manifest, asset and complete target trade-catalog hashes
+must match; the asset's original generation version and source
 provenance remain unchanged. The ignored Web JSON is installed atomically only for
 the selected version.
 The complete table and its language projection code are maintained in the
@@ -142,7 +145,9 @@ remote CI evidence.
 The `test_fixtures` package retains eleven API response samples in RePoE for mock
 development and UI contracts. They are opaque historical test inputs, with unknown
 original client identity, rather than current game-fact references. Preparation
-validates the archive, manifest, target and exact inventory before materializing
+validates the archive, manifest, target (the entry's `target`, recorded by
+`data:bump` when the lock moves to a new patch, else the lock target) and exact
+inventory before materializing
 ignored `web/src/fixtures/*.json`; complete fixture tables cannot be tracked.
 Small synthetic unit fixtures remain in the tests that own their behavior.
 

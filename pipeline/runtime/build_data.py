@@ -41,6 +41,15 @@ def require_contract(snapshot, expected=None):
     """The locked snapshot must declare the data contract this PoBR implements."""
     expected = contract_version() if expected is None else expected
     declared = snapshot.get("contract_version")
+    if declared is None:
+        # Only a package rebuilt with a declared contract can be locked; the
+        # fix is in the game owner's package declaration, not in PoBR.
+        raise ValueError(
+            f"The game snapshot manifest declares no contract_version; this PoBR implements contract {expected}. "
+            "Ask the game owner to rebuild the package with the snapshot-manifest job declaring "
+            '`contract_version: "adapter"` and its adapter pinning pobr-data at a '
+            f"contract/{expected}.<m> tag (repoe RELEASING.md, \"A new game patch\", step 3), "
+            "publish it and bump to that Release")
     require(type(declared) is int and declared == expected,
             f"Snapshot manifest declares data contract {declared!r}; this PoBR implements contract "
             f"{expected}: lock a package whose producer pins pobr-data at a contract/{expected}.<m> tag")
@@ -99,6 +108,9 @@ def validate(lock):
     for spec in (*lock["packages"].values(), lock["support_display"], lock["test_fixtures"]):
         require(isinstance(spec, dict) and "publication" not in spec, "Retired publication status in the data lock")
         data_imports.valid_tag(spec.get("tag"))
+    # Support display and test fixtures: a Git path at a tagged commit, or an owner Release.
+    for spec in (lock["support_display"], lock["test_fixtures"]):
+        require("revision" in spec or "path" not in spec, "A Release asset has no Git revision/path")
     target = lock["target"]
     require(set(target) == {"game", "game_patch", "realm"} and target["game"] == "poe2"
             and re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", target["game_patch"])

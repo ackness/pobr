@@ -8,7 +8,7 @@
 - 活动目标为 `0.5.5.5`／international。消费产物的来源与 SHA-256、
   期望 manifest、运行身份与 CI 候选包身份都以[数据锁](../pipeline/data.lock.json)为准。
   两个 owner 包都来自 Release：游戏 `ackness/repoe` `game/0.5.5.5-2`，语言 `ackness/poe2-zh-cn-stats`
-  `locale/0.5.5.5-1`，均由 `data:bump` 采用。`support_display` 与 `test_fixtures` 仍按 `handoff/*` tag + commit 拉取。
+  `locale/0.5.5.5-1`，均由 `data:bump` 采用。`support_display` 与 `test_fixtures` 仍按 `handoff/*` tag + commit 拉取；新补丁的辅助显示由翻译库作为 `locale/<patch>-<n>` 的附件发布，`data:bump` 随语言包采用，夹具换目标时保留。
 - `game/0.5.5.5-2` 是一次有意的游戏数据批次，计算结果不变，只改数据身份：
   新增 `base/active_skill_types.json`（290 行 `ActiveSkillType`，替代引擎的技能类型 sidecar）；
   `base/game_constants.json` 增加 `base_maximum_rage`（30，替代引擎常量）；

@@ -30,11 +30,13 @@ class BuildDataTests(unittest.TestCase):
             "data/9.1/base/skills.json": b'[{"id":"raw","value":9223372036854775807}]',
             "data/9.1/i18n/zh-CN/skills.json": '{"raw":"技能"}'.encode(),
             "data/9.1/i18n/zh-TW/skills.json": '{"raw":"技能TW"}'.encode(),
+            "data/9.1/overlay/trade_catalog.json": b'{"gems":[]}',
         }
         # The game owner's snapshot lists only game members; prepare composes
         # the language package's i18n/ entries and languages into it.
         snapshot = {"schema_version": 3, "poe_version": self.version,
-                    "contract_version": build.contract_version(), "domains": {"base": ["skills"]},
+                    "contract_version": build.contract_version(),
+                    "domains": {"base": ["skills"], "overlay": ["trade_catalog"]},
                     "files": {k.removeprefix("data/9.1/"): bundle.sha256(v) for k, v in self.contents.items()
                               if "/i18n/" not in k}}
         self.contents["data/9.1/manifest.json"] = pack.raw_json(snapshot)
@@ -51,7 +53,7 @@ class BuildDataTests(unittest.TestCase):
                      "target": self.target, "locale": "zh-CN", "release_id": None,
                      "snapshot_manifest": pack.pin(self.contents["data/9.1/manifest.json"]),
                      "runtime_identity": identity, "packages": {},
-                     "support_display": {"tag": "handoff/test-display"},
+                     "support_display": self.support_display(),
                      "test_fixtures": {"tag": "handoff/test-fixtures"},
                      "shared_files": {"own.json": pack.pin((self.shared / "own.json").read_bytes())}}
         self.archives = {}
@@ -62,6 +64,22 @@ class BuildDataTests(unittest.TestCase):
         self.lock_path = self.root / "build-data.lock.json"
         self.save()
         self.out, self.cache = self.root / "prepared", self.root / "cache"
+
+    def support_display(self):
+        """A retained Git-form support display entry bound to this target's trade catalog."""
+        catalog = bundle.sha256(self.contents["data/9.1/overlay/trade_catalog.json"])
+        provenance = {"generation_data_version": "9.0", "source": "synthetic", "source_commit": "c" * 40,
+                      "source_file": "GemEffects.json", "source_sha256": "d" * 64}
+        asset = bundle.encoded({"_meta": {**{k: v for k, v in provenance.items() if k != "generation_data_version"},
+                                          "data_version": "9.0", "catalog_sha256": catalog},
+                                "entries": {}, "untranslated": []})
+        manifest = bundle.encoded({"schema": "poe2-support-display-publication/v1", "locale": "zh-CN",
+                                   "target": {"game": "poe2", "version": self.version, "realm": "international"},
+                                   "catalog_sha256": catalog, "provenance": provenance,
+                                   "files": {"supportDescriptions.zh-CN.json": pack.pin(asset)}})
+        return {"repository": build.OWNERS["language"], "revision": "a" * 40, "tag": "handoff/test-display",
+                "path": "handoff/test-display/manifest.json", "manifest": pack.pin(manifest),
+                "asset": pack.pin(asset), "catalog_sha256": catalog, "source_data_version": "9.0"}
 
     def set_part(self, kind, files, **changes):
         manifest = pack.raw_json({"schema": build.PART_SCHEMA, "kind": kind, "target": self.target,
@@ -430,7 +448,9 @@ class BuildDataTests(unittest.TestCase):
         current = 4
         build.require_contract({"contract_version": current}, current)
         for declared in (None, current + 1, str(current), True):
-            with self.subTest(declared=declared), self.assertRaisesRegex(ValueError, "data contract"):
+            message = "declares no contract_version.*contract_version: \"adapter\".*contract/4" if declared is None \
+                else "data contract"
+            with self.subTest(declared=declared), self.assertRaisesRegex(ValueError, message):
                 build.require_contract({} if declared is None else {"contract_version": declared}, current)
         self.assertFalse(hasattr(build, "PRE_CONTRACT_SNAPSHOTS"))
 
@@ -441,7 +461,7 @@ class BuildDataTests(unittest.TestCase):
         self.lock["snapshot_manifest"] = pack.pin(self.contents["data/9.1/manifest.json"])
         self.set_part("game", {n: r for n, r in self.contents.items() if "/i18n/" not in n})
         self.save()
-        with self.assertRaisesRegex(ValueError, "declares data contract None"):
+        with self.assertRaisesRegex(ValueError, "declares no contract_version.*rebuild the package"):
             self.prepare()
         self.assertFalse(self.out.exists())
 
