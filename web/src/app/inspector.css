@@ -41,6 +41,10 @@
   .insp .insp-body .breakdown-detail table.modifier-table :is(th, td) { width: auto; }
   .insp .insp-body .breakdown-detail table.modifier-table :is(th, td):nth-child(-n+2) { width: 1%; padding-inline: .25rem; }
   .insp .insp-body .breakdown-detail table.modifier-table :is(th, td):first-child { white-space: normal; overflow-wrap: break-word; }
+  /* Chinese type labels are short (基础, 提高／降低); without this they break after every character. */
+  .insp .insp-body .breakdown-detail table.modifier-table :is(th, td):first-child:lang(zh) { white-space: nowrap; }
+  /* Chinese sources break at the spaces around ·, not inside a word (物品词缀 · 鞋子). */
+  .insp .insp-body .breakdown-detail table.modifier-table :is(th, td):last-child:lang(zh) { word-break: keep-all; }
   .insp .insp-body .breakdown-detail table.modifier-table td:first-child { font-size: var(--text-xs); }
   .insp .insp-body .breakdown-detail table.modifier-table :is(th, td):nth-child(2) { white-space: nowrap; }
   .insp .insp-body .breakdown-detail table.modifier-table :is(th, td):nth-child(3) { overflow-wrap: break-word; }
