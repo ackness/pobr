@@ -5,7 +5,8 @@ import type { GemCatalogEntry, PassiveNode, SocketGroupInput } from '../../api/t
 import { formatApiError } from '../../api/error';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
-import { useItemDisplayNames, useLocalizedLines } from '../../hooks/useLocalizedLines';
+import { useItemDisplayNames, useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
+import { passiveNameRequest } from '../tree/passiveNodeNames';
 import { buildProfile, compareGems, keyPassives, selectedSkillId, matchBuild, ninjaSearchUrl, referenceRequest, resistanceGaps, type BuildReference } from '../../lib/buildGuidance';
 import { guidanceT } from '../../lib/guidanceText';
 import { slotLabel, statNameLabel, type Lang } from '../../lib/i18n';
@@ -218,9 +219,10 @@ function EquipmentComparison({ session, reference, lang, onCompareItem }: { sess
 }
 
 function PassiveList({ title, nodes, lang }: { title: string; nodes: PassiveNode[]; lang: Lang }) {
-  const translated = useLocalizedLines(nodes.flatMap(node => [node.name ?? node.id, ...(node.stats ?? [])]), lang);
-  let offset = 0;
+  const names = useLocalizedNames(useMemo(() => nodes.flatMap(passiveNameRequest), [nodes]), lang);
+  const translated = useLocalizedLines(nodes.flatMap(node => node.stats ?? []), lang);
+  let offset = 0, named = 0;
   return <article className="guidance-card"><h4>{title} ({nodes.length})</h4>{!nodes.length && <p>{guidanceT(lang, 'noPassives')}</p>}
-    {nodes.map(node => { const name = translated[offset++]; const lines = translated.slice(offset, offset + (node.stats?.length ?? 0)); offset += lines.length;
+    {nodes.map(node => { const name = node.name ? names[named++] : node.id; const lines = translated.slice(offset, offset + (node.stats?.length ?? 0)); offset += lines.length;
       return <details key={node.skill}><summary>{name}</summary><ul>{lines.map((line, index) => <li key={index}>{line}</li>)}</ul></details>; })}</article>;
 }

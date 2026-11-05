@@ -3,7 +3,8 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import { formatApiError } from '../../api/error';
 import type { CalculateBuildResponse, PassiveNode, PassiveTreeMeta } from '../../api/types';
-import { cleanLine, useLocalizedLines } from '../../hooks/useLocalizedLines';
+import { cleanLine, useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
+import { passiveNameRequest } from '../tree/passiveNodeNames';
 import { compareTreeAllocations, resolvedTreeVersion, treeAllocationTotals, type OverlayNode, type StageState } from '../../lib/compare';
 import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
 import { NODE_RADIUS, hasPosition, passiveTreeEdges, treeExtent, type ViewBox } from '../../lib/treeGeometry';
@@ -50,7 +51,9 @@ type LoadedProps = Props & { nodesA: PassiveNode[]; nodesB: PassiveNode[]; sameV
 function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion, meta, lang }: LoadedProps) {
   const tt = bindT(lang);
   const [hover, setHover] = useState<{ node: PassiveNode; x: number; y: number } | null>(null);
-  const [hoverName] = useLocalizedLines(hover ? [hover.node.name ?? `#${hover.node.skill}`] : [], lang);
+  const hoverNode = hover?.node;
+  const [hoverNodeName] = useLocalizedNames(useMemo(() => hoverNode ? passiveNameRequest(hoverNode) : [], [hoverNode]), lang);
+  const hoverName = hoverNode?.name ? hoverNodeName : `#${hoverNode?.skill}`;
   const overlay = useMemo(() => compareTreeAllocations(a, b, nodesA, nodesB, sameVersion), [a, b, nodesA, nodesB, sameVersion]);
   const totals = useMemo(() => [treeAllocationTotals(a, nodesA), treeAllocationTotals(b, nodesB)], [a, b, nodesA, nodesB]);
   const visible = useMemo(() => {
@@ -70,7 +73,10 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
   const [selectedKey, setSelectedKey] = useState('');
   const selected = overlay.nodes.find(entry => entry.key === selectedKey);
   const inspectable = overlay.nodes.filter(entry => entry.side !== 'none' || entry.jewelA || entry.jewelB || entry.key === selectedKey);
-  const [inspectLabel, ...inspectNames] = useLocalizedLines([tt('compare.inspectNode'), ...inspectable.map(entry => entry.node.name ?? `#${entry.node.skill}`)], lang);
+  const [inspectLabel] = useLocalizedLines([tt('compare.inspectNode')], lang);
+  const inspectNodeNames = useLocalizedNames(inspectable.flatMap(entry => passiveNameRequest(entry.node)), lang);
+  let inspectNamed = 0;
+  const inspectNames = inspectable.map(entry => entry.node.name ? inspectNodeNames[inspectNamed++] : `#${entry.node.skill}`);
   const edges = useMemo(() => {
     const aa = new Set(a.allocatedNodes), bb = new Set(b.allocatedNodes);
     const catalogA = visible.flatMap(entry => entry.a ? [entry.a] : []);
@@ -249,13 +255,15 @@ function NodeDetails({ node, state, output, side, lang }: {
 }) {
   const tt = bindT(lang);
   const change = node && output?.tree_effects?.nodes[String(node.skill)];
-  const lines = node ? [change?.name ?? node.name ?? `#${node.skill}`,
-    ...(change?.replace ? change.stats : [...(node.stats ?? []), ...(change?.stats ?? [])])] : [];
+  const name = change?.name ?? node?.name;
+  const lines = node ? change?.replace ? change.stats : [...(node.stats ?? []), ...(change?.stats ?? [])] : [];
+  // A jewel-transformed name keeps the node id; the scope's English check rejects the original record.
+  const [shownName] = useLocalizedNames(node && name ? [{ kind: 'passive', id: node.id, name }] : [], lang);
   const translated = useLocalizedLines(lines, lang);
   return <div><strong>{side}</strong>{!node ? <p>{tt('compare.notSet')}</p> : <>
-    <h4>{cleanLine(translated[0] ?? lines[0])} · #{node.skill}</h4>
+    <h4>{name ? cleanLine(shownName ?? name) : `#${node.skill}`} · #{node.skill}</h4>
     <p>{tt(state.allocatedNodes.includes(node.skill) ? 'compare.allocated' : 'compare.unallocated')}</p>
-    <ul>{translated.slice(1).map((line, index) => <li key={index}>{cleanLine(line)}</li>)}</ul>
+    <ul>{lines.map((line, index) => <li key={index}>{cleanLine(translated[index] ?? line)}</li>)}</ul>
     {state.attributeChoices[String(node.skill)] && <p>{tt('tree.attributeChoice')}: {statNameLabel(lang, { str: 'Str', dex: 'Dex', int: 'Int' }[state.attributeChoices[String(node.skill)]])}</p>}
     {change && <p className="compare-hint">{tt('compare.jewelEffect')}</p>}
     {state.jewels.find(jewel => jewel.socket_node === node.skill) && <pre>{state.jewels.find(jewel => jewel.socket_node === node.skill)!.text}</pre>}

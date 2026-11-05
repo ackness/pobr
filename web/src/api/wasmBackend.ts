@@ -1,6 +1,6 @@
 import { GameTextLocalizer, type GameDisplayName } from '../lib/localizedGameText';
 import { nativeDisplayTexts } from '../lib/nativeDisplayTexts';
-import { nativeClassNames, nativeCraftBaseNames, nativeGemNames, type GemNameLink, type GemNameOverride } from '../lib/nativeDisplayNames';
+import { NativeNameIndex, nativeClassNames, nativeCraftBaseNames, nativeGemNames, type GemNameLink, type GemNameOverride } from '../lib/nativeDisplayNames';
 import { lineTemplateLocale, setGameLocales, type GameLocaleInfo } from '../lib/gameLocales';
 import type { Lang } from '../lib/i18n';
 import type { UniqueEntry, UniqueDraft } from './uniques';
@@ -224,8 +224,8 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     throw error;
   });
 
-  let displayLocalizer: Promise<GameTextLocalizer> | undefined;
-  const loadDisplayLocalizer = async (): Promise<GameTextLocalizer> => {
+  let displayLocalizer: Promise<{ localizer: GameTextLocalizer; names: NativeNameIndex }> | undefined;
+  const loadDisplayLocalizer = async () => {
     if (!manifest) manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
     const { version, files } = manifest;
     const optionalJson = async <T,>(path: string, fallback: T): Promise<T> =>
@@ -242,8 +242,12 @@ export async function createWasmBackend(): Promise<PobrBackend> {
       ...bases.map(base => ({ name: base.name, name_zh_cn: cnBases[base.id], name_zh_tw: twBases[base.id] })),
       ...JSON.parse(wasm.gemCatalogJson()) as GemCatalogEntry[],
     ];
-    return new GameTextLocalizer(names, catalogs);
+    return { localizer: new GameTextLocalizer(names, catalogs), names: new NativeNameIndex(catalogs, bases) };
   };
+  const display = () => displayLocalizer ??= loadDisplayLocalizer().catch((error: unknown) => {
+    displayLocalizer = undefined;
+    throw error;
+  });
 
   const backend: PobrBackend = {
     get dataVersion() {
@@ -334,12 +338,15 @@ export async function createWasmBackend(): Promise<PobrBackend> {
       const templates = lineTemplateLocale(lang);
       const rendered = templates
         ? JSON.parse(wasm.translateLines(templates, JSON.stringify(lines))) as string[] : [...lines];
-      displayLocalizer ??= loadDisplayLocalizer().catch((error: unknown) => {
-        displayLocalizer = undefined;
-        throw error;
-      });
-      const localizer = await displayLocalizer;
+      const { localizer } = await display();
       return localizer.localizeLines(lines, rendered, lang);
+    },
+    async translateNames(requests, lang: Lang = 'zh-CN') {
+      if (lang === 'en-US' || requests.length === 0) return requests.map(request => request.name);
+      const { names } = await display();
+      // Only names the locale's id-scoped catalog does not own take the text path.
+      const { pending, merge } = names.split(requests, lang);
+      return merge(pending.length ? await backend.translateLines(pending, lang) : []);
     },
     async gameLocales() {
       return wasm.isDataReady() ? JSON.parse(wasm.availableLocales()) as GameLocaleInfo[] : [];

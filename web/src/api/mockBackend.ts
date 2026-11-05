@@ -114,6 +114,9 @@ export function createMockBackend(): PobrBackend {
     async translateLines(lines) {
       return lines;
     },
+    async translateNames(names) {
+      return names.map(name => name.name);
+    },
     async gameLocales() {
       return [];
     },

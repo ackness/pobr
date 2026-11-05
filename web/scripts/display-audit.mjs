@@ -58,8 +58,8 @@ registerHooks({
   },
 });
 const webLib = name => import(pathToFileURL(join(webDir, 'src/lib', `${name}.ts`)).href);
-const [{ nativeGemNames }, { nativeDisplayTexts }, { skillDisplayName }, { setGameLocales, lineTemplateLocale },
-  { GameTextLocalizer }] = await Promise.all(
+const [{ NativeNameIndex, classDisplayName, nativeClassNames, nativeGemNames }, { nativeDisplayTexts }, { skillDisplayName },
+  { setGameLocales, lineTemplateLocale }, { GameTextLocalizer }] = await Promise.all(
   ['nativeDisplayNames', 'nativeDisplayTexts', 'skillNames', 'gameLocales', 'localizedGameText'].map(webLib));
 
 // ---- engine and data ----
@@ -157,6 +157,22 @@ function translate(lines, lang) {
   const rendered = templates ? JSON.parse(engine.translateLines(templates, JSON.stringify(lines))) : [...lines];
   return localizer.localizeLines(lines, rendered, lang);
 }
+// Names of known identity as wasmBackend.translateNames shows them: passive node names by
+// PassiveSkills id, classified base lines by base identity, the rest through translate().
+const nameIndex = new NativeNameIndex(catalogs, bases);
+function translateEntries(entries, lang) {
+  const named = entries.filter(entry => entry.name).map(entry => entry.name);
+  const { pending, merge } = nameIndex.split(named, lang);
+  const names = lang === 'en-US' ? named.map(name => name.name) : merge(translate(pending, lang));
+  const texts = translate(entries.filter(entry => !entry.name).map(entry => entry.text), lang);
+  let n = 0, t = 0;
+  return entries.map(entry => entry.name ? names[n++] : texts[t++]);
+}
+// Class labels as wasmBackend.loadClassNames + classDisplayName build them.
+const treeMeta = file('base/passive_tree_meta.json');
+const classNames = catalogs.length && treeMeta
+  ? nativeClassNames(file('i18n/zh-CN/classes.json') ?? { classes: {}, ascendancies: {} }, treeMeta, catalogs)
+  : file('i18n/zh-CN/classes.json') ?? { classes: {}, ascendancies: {} };
 const tree = new Map((file('base/passive_tree.json') ?? []).map(node => [node.skill, node]));
 
 // ---- checks ----
@@ -184,6 +200,13 @@ function auditBuild(name, code) {
   if (decoded.error) { add('decode error', decoded.error); return r; }
   const build = decoded.value;
   r.character = `${build.character?.class_name}/${build.character?.ascendancy_name} L${build.character?.level}`;
+  for (const [kind, english] of [['classes', build.character?.class_name], ['ascendancies', build.character?.ascendancy_name]]) {
+    if (!english) continue;
+    for (const lang of LANGS.filter(l => l !== 'en-US')) {
+      const shown = classDisplayName(classNames, english, lang, kind);
+      if (untranslated(shown)) add(`${kind === 'classes' ? 'class' : 'ascendancy'} name untranslated [${lang}]`, `${english} → "${shown}"`);
+    }
+  }
 
   // Socket groups as the Skills page labels them.
   const label = (gem, lang) => gem.skill_id ? skillDisplayName(gem.skill_id, lang, byId)
@@ -270,7 +293,8 @@ function auditBuild(name, code) {
       if (classified.error) { add('classifyItemLines error', `${item.slot ?? item.socket_node}: ${classified.error}`); continue; }
       for (const line of classified.value) {
         if (['implicit', 'explicit', 'enchant', 'rune', 'name', 'base'].includes(line.kind) && line.text.trim()) {
-          itemLines.push({ where: item.slot ?? `socket ${item.socket_node}`, kind: line.kind, text: line.text });
+          itemLines.push({ where: item.slot ?? `socket ${item.socket_node}`, kind: line.kind, text: line.text,
+            ...(line.kind === 'base' ? { name: { kind: 'base', name: line.text } } : {}) });
         }
       }
     }
@@ -278,22 +302,25 @@ function auditBuild(name, code) {
     for (const id of build.tree?.allocated_nodes ?? []) {
       const node = tree.get(id);
       if (!node) { add('allocated node not in tree', String(id)); continue; }
-      for (const text of [node.name ?? node.id, ...(node.stats ?? [])]) {
-        nodeLines.push({ where: `node ${id} ${node.name ?? ''}`, kind: 'passive',
+      const where = `node ${id} ${node.id} ${node.name ?? ''}`;
+      nodeLines.push(node.name ? { where, kind: 'passive name', text: node.name, name: { kind: 'passive', id: node.id, name: node.name } }
+        : { where, kind: 'passive name', text: node.id });
+      for (const text of node.stats ?? []) {
+        nodeLines.push({ where, kind: 'passive',
           text: text.replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2').replace(/\[([^\]]*)\]/g, '$1') });
       }
     }
     for (const lang of LANGS.filter(l => l !== 'en-US')) {
       for (const [kind, lines] of [['item', itemLines], ['passive', nodeLines]]) {
         let rendered;
-        try { rendered = translate(lines.map(l => l.text), lang); } catch (error) { add(`translateLines error [${lang}]`, String(error)); continue; }
+        try { rendered = translateEntries(lines, lang); } catch (error) { add(`translateLines error [${lang}]`, String(error)); continue; }
         let missed = 0;
         rendered.forEach((text, i) => {
           const why = rawIdReason(text);
           if (why && why !== 'empty') add(`${kind} line shows ${why} [${lang}]`, `${lines[i].where}: "${text}"`);
           else if (untranslated(text)) {
             missed++;
-            const what = kind === 'item' ? `item ${lines[i].kind} line` : 'passive line';
+            const what = kind === 'item' ? `item ${lines[i].kind} line` : lines[i].kind === 'passive name' ? 'passive name' : 'passive line';
             add(`${what} untranslated [${lang}]`, `${lines[i].where}: ${text}`);
           }
         });

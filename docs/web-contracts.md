@@ -164,7 +164,14 @@ PoBR更新锁后运行`mise run data:prepare`；目录摘要不符时拒绝导�
 宝石通过包内 `skill_gems` 和 `gem_effects` 的既有授予关系匹配 `BaseItemTypes.Name`，
 并核对 WASM 返回的当前英文；多个可能基底必须给出一致译名，不能按顺序取首项。
 升华核对 `Ascendancy.Name` 的稳定 ID 与当前英文；职业元数据没有来源 ID，
-只接受 `Characters.Name` 内无歧义的当前英文匹配。选择器、摘要与技能集共用显示入口，
+只接受 `Characters.Name` 内无歧义的当前英文匹配；字面表因别的表同文异译（如 Words 的 Shadow）而为 null 时不阻断该匹配，
+只有该作用域里还有缺英文的记录（可能是被拒的重复候选）才阻断。
+天赋节点名按节点 `id`（PassiveSkills Id）查 `PassiveSkills.Name`，Items 的基底行（分类为 `base` 的行、稀有／传奇名称里的基底行）
+和逐行台账里物品的持有者按 `base_items.json` 同名的全部 ID 查 `BaseItemTypes.Name`，各 ID 须一致；入口是后端 `translateNames`。
+作用域英文与当前名不同（珠宝变换后的名字或过时数据）或作用域没有该 ID 时，走原来的 `translateLines` 文本路径；
+有该 ID 但译文为 null 时显示英文。只用所选语言自己的目录，zh-TW 没有目录时保持原有字形转换路径；
+文本路径的 `translateLines` 不会因为一行文字等于某个基底名就当作基底。`mise run audit:display` 用同一套函数核对。
+选择器、摘要与技能集共用显示入口，
 不改计算 ID、选择值、导入原文或保存格式。明确未决／冲突保留英文并阻断旧译文与繁简转换补回；
 未被该语言目录覆盖的记录保留原兼容路径。目录身份或格式错误会报错。
 
