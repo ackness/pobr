@@ -46,10 +46,10 @@ test('item drafts survive slot and page switches; cancel discards them and savin
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'ring2 item text' })).not.toHaveValue(ring.replace('Draft Ring', 'Second Draft'));
   await page.getByRole('button', { name: 'Ring 1', exact: true }).click();
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit text (advanced)', exact: true }).click();
   await page.getByRole('textbox', { name: 'ring1 item text' }).fill('Cancelled change');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit text (advanced)', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'ring1 item text' })).toHaveValue(ring);
   await expect(page.locator('.editor-draft-notice')).toHaveCount(0);
 });
@@ -216,7 +216,7 @@ test('library utilities equip into utility slots and incompatible equipment cann
   await start(page, monk);
   await page.getByRole('button', { name: 'Flask 1', exact: true }).click();
   const original = (await saved(page)).flasks.find((item: { slot: string }) => item.slot === 'Flask 1').text;
-  await page.locator('.item-detail-header').getByRole('button', { name: 'Save to library', exact: true }).click();
+  await page.locator('.item-detail-header').getByRole('button', { name: 'Save to item library', exact: true }).click();
   await page.locator('.item-detail-header').getByRole('button', { name: 'Remove', exact: true }).click();
   const library = page.locator('.items-library');
   await library.getByRole('button', { name: 'Equip', exact: true }).click();

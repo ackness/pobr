@@ -59,7 +59,7 @@ test('settings switch all item details immediately, persist and leave the build 
   await pageLink(page, 'Items').click();
   await page.locator('.doll-cell[data-slot="weapon1"] button').click();
   await expect(detail(page)).toHaveAttribute('data-item-display', 'game');
-  await page.locator('.item-detail-header').getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.locator('.item-detail-header').getByRole('button', { name: 'Edit text (advanced)', exact: true }).click();
   const editor = page.getByRole('textbox', { name: 'weapon1 item text' });
   await editor.fill('Unapplied equipment draft');
   await openSettings(page);

@@ -46,13 +46,13 @@ test('WeGame import preserves gem levels and ranks quiver upgrades', async ({ pa
 
   await pageLink(page, 'Items').click();
   await page.getByRole('button', { name: 'Off Hand', exact: true }).click();
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit text (advanced)', exact: true }).click();
   const editor = page.getByRole('textbox', { name: 'weapon2 item text' });
   const original = await editor.inputValue();
   await editor.fill(original.replace('Current Quiver', 'Candidate Quiver') + '\nAdds 20 to 40 Physical Damage to Attacks');
   await page.locator('.item-editor-actions').getByRole('button', { name: 'Apply changes', exact: true }).click();
-  await page.getByRole('button', { name: 'Save to library', exact: true }).click();
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: 'Save to item library', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit text (advanced)', exact: true }).click();
   await editor.fill(original);
   await page.locator('.item-editor-actions').getByRole('button', { name: 'Apply changes', exact: true }).click();
   await page.getByRole('button', { name: 'Try on items from my library' }).click();

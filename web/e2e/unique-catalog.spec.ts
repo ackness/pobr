@@ -40,7 +40,7 @@ test('find a unique by modifier, choose a variant and rolls, then save and equip
   await expect(catalogue.getByRole('button', { name: 'Apply to build · Amulet', exact: true })).toBeVisible();
   await expect(life).toHaveText(before);
   const expectedLife = await catalogue.locator('.upgrade-replacement-result tbody tr').filter({ hasText: /^Life(?=[0-9\s])/ }).locator('td').nth(1).innerText();
-  await catalogue.getByRole('button', { name: 'Save to library', exact: true }).click();
+  await catalogue.getByRole('button', { name: 'Save to item library', exact: true }).click();
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-library')!).items.at(-1));
   expect(saved).toMatchObject({ kind: 'item', slot: 'amulet' });
   expect(saved.text).toContain('Astramentis');

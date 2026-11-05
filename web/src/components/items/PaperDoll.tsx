@@ -21,7 +21,7 @@ interface Props {
   limbSlots: readonly string[];
   /** Limbs are an ascendancy feature: they stay folded away until the build has one. */
   limbsInUse: boolean;
-  labels: { body: string; utility: string; limbs: string };
+  labels: { body: string; utility: string; limbs: string; limbsHint: string };
 }
 
 /** The equipment screen: a figure with slots where the body is, then flasks and charms, then limbs. */
@@ -37,6 +37,7 @@ export function PaperDoll({ slot, utilitySlots, limbSlots, limbsInUse, labels }:
     </div>
     <details className="doll-limbs" open={limbsInUse}>
       <summary>{labels.limbs}</summary>
+      <p className="items-hint">{labels.limbsHint}</p>
       <div className="utility-row limb-row" role="group" aria-label={labels.limbs}>{limbSlots.map(id => slot(id))}</div>
     </details>
   </div>;

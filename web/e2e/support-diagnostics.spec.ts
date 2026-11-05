@@ -75,6 +75,10 @@ async function completeSearch(page: Page) {
   await expect(page.locator('.support-plan').first()).toBeVisible({ timeout: 90_000 });
   await expect(run(page)).toBeEnabled();
   await expect(page.locator('.opt-progress')).toHaveCount(0);
+  const details = page.locator('details.support-calculation-details');
+  if (!(await details.evaluate(element => (element as HTMLDetailsElement).open))) {
+    await details.getByText('Calculation details', { exact: true }).click();
+  }
   await expect(baseline(page)).toBeVisible();
 }
 
