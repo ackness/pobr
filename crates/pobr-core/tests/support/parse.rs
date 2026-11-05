@@ -12,7 +12,9 @@ use std::sync::LazyLock;
 #[path = "../../src/parse/mod_parser/test_data.rs"]
 mod test_data;
 #[allow(unused_imports)]
-pub use test_data::{test_constants, test_data_dir, test_monster_scaling};
+pub use test_data::{
+    install_test_skill_types, test_constants, test_data_dir, test_monster_scaling,
+};
 
 use pobr_core::mod_parser::{
     CompiledParserRules, ParseCtx, ParseError, ParseOutcome, parse_mod_engine,
@@ -30,6 +32,8 @@ fn load_special(rel: &str) -> Vec<SpecialTemplateDef> {
 }
 
 static RULES: LazyLock<std::sync::Arc<CompiledParserRules>> = LazyLock::new(|| {
+    // The rules name skill types; load_ruleset installs the package's table first.
+    install_test_skill_types();
     let path = test_data_dir().join("overlay/mod_parser_rules.json");
     let json = std::fs::read_to_string(&path).expect("read mod_parser_rules.json");
     let doc: ModParserRulesDoc = serde_json::from_str(&json).expect("deserialize the rule table");

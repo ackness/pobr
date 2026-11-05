@@ -11,8 +11,8 @@
 //! parsing). Radius jewels filter affected nodes by Euclidean distance via
 //! [`compute_radius_jewel_effect_with_radii`] (band radii resolved from the
 //! injected `base/jewel_radii.json` data; without injected data,
-//! [`compute_radius_jewel_effect`] falls back to hardcoded constants that
-//! match value-for-value).
+//! [`compute_radius_jewel_effect`] uses pobr-data's built-in
+//! `JewelRadiiDef::default`, equal to that file).
 //!
 //! This crate depends only on `pobr-data`, does no I/O (the caller reads the
 //! JSON string), and its queries are deterministic and immutable. Node data
@@ -31,9 +31,8 @@ pub use node::{
     AllocatedNodeMods, ClassContext, collect_allocated_mods, collect_allocated_mods_for_class,
 };
 pub use radius_jewel::{
-    JEWEL_RADIUS_LARGE, JEWEL_RADIUS_MEDIUM, JEWEL_RADIUS_SMALL, JEWEL_RADIUS_VERY_LARGE,
-    JewelRadius, PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER, RadiusJewelEffect,
-    compute_radius_jewel_effect, compute_radius_jewel_effect_with_radii,
+    JewelRadius, RadiusJewelEffect, compute_radius_jewel_effect,
+    compute_radius_jewel_effect_with_radii,
 };
 pub use tree::PassiveTree;
 

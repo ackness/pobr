@@ -18,9 +18,12 @@ const root = fileURLToPath(new URL('../../../', import.meta.url));
 const read = (path: string): string => readFileSync(join(root, path), 'utf8');
 const version = read('data/CURRENT').trim();
 const catalog = (JSON.parse(read(`data/${version}/overlay/config_options.json`)) as ConfigCatalogFile).options;
-const shared = readdirSync(join(root, 'data/overlay-common'))
-  .filter(file => file.endsWith('_config_options.json'))
-  .flatMap(file => (JSON.parse(read(`data/overlay-common/${file}`)) as ConfigCatalogFile).options);
+// PoBR-owned option catalogs compiled into pobr-gamedata (GameData::config_options).
+const ownedOptions = 'crates/pobr-gamedata/src/domains/config_options';
+const ownedFiles = readdirSync(join(root, ownedOptions)).filter(file => file.endsWith('_config_options.json'));
+if (ownedFiles.length === 0) throw new Error(`no *_config_options.json under ${ownedOptions}`);
+const shared = ownedFiles
+  .flatMap(file => (JSON.parse(read(`${ownedOptions}/${file}`)) as ConfigCatalogFile).options);
 const options: ConfigOption[] = [...catalog, ...shared];
 const chinese: Lang[] = ['zh-CN', 'zh-TW'];
 

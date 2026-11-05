@@ -13,10 +13,15 @@
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
 use pobr_data::prelude::*;
 use pobr_tree::{
-    JEWEL_RADIUS_LARGE, JEWEL_RADIUS_MEDIUM, JEWEL_RADIUS_SMALL, JEWEL_RADIUS_VERY_LARGE,
-    JewelRadius, PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER, PassiveTree, RadiusJewelEffect, TreeError,
-    compute_radius_jewel_effect, compute_radius_jewel_effect_with_radii,
+    JewelRadius, PassiveTree, RadiusJewelEffect, TreeError, compute_radius_jewel_effect,
+    compute_radius_jewel_effect_with_radii,
 };
+
+/// The effective radius of a band in the built-in table (`JewelRadiiDef::default`,
+/// equal to `base/jewel_radii.json`).
+fn units(radius: JewelRadius) -> f64 {
+    radius.units_with_radii(&JewelRadiiDef::default())
+}
 use std::collections::HashMap;
 
 /// socket (skill 10) sits at the origin; nodes are placed at increasing
@@ -77,42 +82,31 @@ fn fixture_tree() -> PassiveTree {
 #[test]
 fn jewel_distance_multiplier_is_1_2() {
     assert_eq!(
-        PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER, 1.2,
+        JewelRadiiDef::default().distance_multiplier,
+        1.2,
         "PassiveTreeJewelDistanceMultiplier must be 1.2 per PoB2 Data/Misc.lua GameConstants.dat"
     );
 }
 
 /// PoE2 source: PoB2 Data.lua jewelRadii["0_1"] outer values times the 1.2 scaling factor.
 #[test]
-fn radius_constants_match_pob2_outer_times_multiplier() {
-    // PoB2 Data.lua: { inner=0, outer=1000, label="Small"  }  → 1000 * 1.2 = 1200
-    // PoB2 Data.lua: { inner=0, outer=1150, label="Medium" }  → 1150 * 1.2 = 1380
-    // PoB2 Data.lua: { inner=0, outer=1300, label="Large"  }  → 1300 * 1.2 = 1560
-    // PoB2 Data.lua: { inner=0, outer=1500, label="Very Large" } → 1500 * 1.2 = 1800
+fn radius_bands_match_pob2_outer_times_multiplier() {
+    assert_eq!(units(JewelRadius::Small), 1200.0, "Small = 1000 * 1.2");
+    assert_eq!(units(JewelRadius::Medium), 1380.0, "Medium = 1150 * 1.2");
+    assert_eq!(units(JewelRadius::Large), 1560.0, "Large = 1300 * 1.2");
     assert_eq!(
-        JEWEL_RADIUS_SMALL, 1200.0,
-        "Small effective radius = 1000 * 1.2"
-    );
-    assert_eq!(
-        JEWEL_RADIUS_MEDIUM, 1380.0,
-        "Medium effective radius = 1150 * 1.2"
-    );
-    assert_eq!(
-        JEWEL_RADIUS_LARGE, 1560.0,
-        "Large effective radius = 1300 * 1.2"
-    );
-    assert_eq!(
-        JEWEL_RADIUS_VERY_LARGE, 1800.0,
-        "VeryLarge effective radius = 1500 * 1.2"
+        units(JewelRadius::VeryLarge),
+        1800.0,
+        "VeryLarge = 1500 * 1.2"
     );
 }
 
 #[test]
 fn radius_constants_are_ordered() {
-    let small = JewelRadius::Small.units();
-    let medium = JewelRadius::Medium.units();
-    let large = JewelRadius::Large.units();
-    let very_large = JewelRadius::VeryLarge.units();
+    let small = units(JewelRadius::Small);
+    let medium = units(JewelRadius::Medium);
+    let large = units(JewelRadius::Large);
+    let very_large = units(JewelRadius::VeryLarge);
     assert!(
         small < medium,
         "small ({small}) should be < medium ({medium})"
@@ -222,40 +216,8 @@ fn negative_custom_radius_is_invalid() {
 }
 
 #[test]
-fn radius_to_units_matches_constants() {
-    assert_eq!(JewelRadius::Small.units(), JEWEL_RADIUS_SMALL);
-    assert_eq!(JewelRadius::Medium.units(), JEWEL_RADIUS_MEDIUM);
-    assert_eq!(JewelRadius::Large.units(), JEWEL_RADIUS_LARGE);
-    assert_eq!(JewelRadius::VeryLarge.units(), JEWEL_RADIUS_VERY_LARGE);
-    assert_eq!(JewelRadius::Custom(123.0).units(), 123.0);
-}
-
-/// Migration invariant: the `JewelRadiiDef::default()` injection path and the
-/// legacy hardcoded-constant path are **value-for-value equal** —
-/// `units_with_radii(Default)` == `units()` (all 4 named bands plus Custom).
-/// This test anchors pobr-data's `Default` fallback to this crate's old
-/// Rust-source constants (pobr-data's dependency direction can't reference
-/// this crate's constants directly, so this is pinned here instead).
-#[test]
-fn default_radii_data_matches_legacy_constants() {
-    let radii = JewelRadiiDef::default();
-    for r in [
-        JewelRadius::Small,
-        JewelRadius::Medium,
-        JewelRadius::Large,
-        JewelRadius::VeryLarge,
-        JewelRadius::Custom(123.0),
-    ] {
-        assert_eq!(
-            r.units_with_radii(&radii),
-            r.units(),
-            "{r:?}: injecting Default data must equal the legacy constant path value-for-value"
-        );
-    }
-    assert_eq!(
-        radii.distance_multiplier,
-        PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER
-    );
+fn custom_radius_is_used_as_given() {
+    assert_eq!(units(JewelRadius::Custom(123.0)), 123.0);
 }
 
 /// The injection path and fallback path produce the same result (under
@@ -303,9 +265,9 @@ fn injected_radii_data_is_actually_consumed() {
 }
 
 /// When the data is missing the named band (malformed/truncated data), this
-/// falls back to the hardcoded constant, matching fallback behaviour.
+/// falls back to the built-in table's band.
 #[test]
-fn missing_band_falls_back_to_legacy_constant() {
+fn missing_band_falls_back_to_the_built_in_table() {
     let positions = fixture_positions();
     let mut radii = JewelRadiiDef::default();
     radii
@@ -317,7 +279,7 @@ fn missing_band_falls_back_to_legacy_constant() {
     let effect =
         compute_radius_jewel_effect_with_radii(10, JewelRadius::Small, &radii, &positions, vec![])
             .unwrap();
-    // Falls back to JEWEL_RADIUS_SMALL (1200): captures dist 600/1000.
+    // Falls back to the built-in Small band (1200): captures dist 600/1000.
     assert_eq!(effect.affected_nodes, vec![11, 12]);
 }
 

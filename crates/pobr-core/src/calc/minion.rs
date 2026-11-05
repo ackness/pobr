@@ -400,6 +400,8 @@ pub struct MinionSkill {
     pub id: String,
     /// The skill's types (`Attack`, `Melee`, …).
     pub types: Vec<String>,
+    /// [`Self::types`] as engine bits, resolved when the data was loaded.
+    pub skill_types: pobr_data::skill::SkillTypes,
     /// The actual hit mode of a generic weapon-capable attack. The raw types
     /// describe both melee and ranged capabilities; absent weapon context
     /// leaves their existing interpretation intact.
@@ -441,10 +443,7 @@ impl MinionSkill {
 
     /// The skill's types as the bitset a calculation context carries.
     pub fn type_bits(&self) -> pobr_data::skill::SkillTypes {
-        self.types
-            .iter()
-            .filter_map(|name| pobr_data::skill::SkillTypes::from_pob2_name(name))
-            .fold(pobr_data::skill::SkillTypes::NONE, |all, one| all | one)
+        self.skill_types
     }
 }
 

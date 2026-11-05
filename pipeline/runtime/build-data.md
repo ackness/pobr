@@ -43,10 +43,22 @@ A lock with any other schema is rejected, so there is one declaration format.
 
 A ZIP part has schema `pobr-build-data-part/v1`, exact `target`, `kind` and a
 `files` map of canonical paths to `{bytes, sha256}`. Game members use
-`data/<patch>/{base,overlay,generated}/...`, the original snapshot manifest and
+`data/<patch>/{base,overlay,generated}/...`, the game snapshot manifest and
 an explicit subset of `data/overlay-common/*.json`. Language members use only
-`data/<patch>/i18n/...`. Cross-owner paths, intersections, missing members,
-wrong targets and undeclared paths reject the whole composition. An archive is
+`data/<patch>/i18n/<language>/...`. Cross-owner paths, intersections, missing members,
+wrong targets and undeclared paths reject the whole composition.
+
+Each owner declares only its own members. The game snapshot manifest (pinned
+by the lock's `snapshot_manifest`) lists the game members, `domains` and
+`contract_version`; it lists no `i18n/` file and no `languages`. `prepare`
+composes the runtime `data/<patch>/manifest.json` from it plus every language
+member (path and SHA-256) and the languages the language part provides, as
+sorted compact JSON (`compose_manifest`). A language release (changed bytes,
+new members, a new language) therefore needs no game release; the runtime
+identity depends only on the two parts and the shared rules. A game snapshot
+that still lists `i18n/` or `languages` (`game/0.5.5.5-1` and older) is
+rejected with a pointer to a newer game package. The lock's `locale` may be
+any language tag the language part provides. An archive is
 processed data with its original producer/provenance; storing it in RePoE does
 not reclassify retained community output as official RePoE facts.
 
@@ -61,9 +73,12 @@ Shared ownership follows the original per-file provenance:
 | --- | --- |
 | RePoE retained game facts | `totem_varieties`, `passive_jewel_slots`, `boss_poise_thresholds`, `item_granted_skills` |
 | RePoE retained compatibility | `high_precision_mods`, `vendor_name_aliases`, `buff_definitions` |
-| PoBR interpretation/configuration code | `special_mods`, `local_mods`, nine `*_config_options` files |
+| PoBR interpretation/configuration code | `special_mods`, `local_mods` |
 
-The data lock pins PoBR's eleven local rule files. The composer reads only that list;
+The data lock pins PoBR's two local rule files. PoBR's nine
+`*_config_options.json` files are engine code in
+`crates/pobr-gamedata/src/domains/config_options/` (compiled in), not data-pack
+input. The composer reads only that list;
 external/local intersections fail. The four game facts retain their original
 patch and source metadata; the three compatibility files retain their vendor
 pins and limitations, including the unresolved buff-reference drift. Game part
@@ -132,7 +147,9 @@ ignored `web/src/fixtures/*.json`; complete fixture tables cannot be tracked.
 Small synthetic unit fixtures remain in the tests that own their behavior.
 
 Small reviewed regression statistics live in the gamedata test fixture
-`repository-test-pins.json`, bound to each exact external snapshot manifest. They
+`repository-test-pins.json`, bound to the game part of each prepared manifest
+(`game_manifest_sha256`: the manifest without `languages` and the `i18n/` entries,
+compact with sorted keys), so a language-only release needs no rebind. They
 are test metadata, not imported runtime files; tests never bless or mutate the
 immutable prepared bundle. Historical COMBAT references similarly select their
 declared rollback version; the current-data gate remains separate.

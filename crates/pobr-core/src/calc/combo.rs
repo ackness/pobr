@@ -169,9 +169,7 @@ pub fn calculate(env: &mut Env) {
                     | SkillTypes::REMOTE_MINED
                     | SkillTypes::TRIGGERED,
             )
-            || cfg
-                .skill_types
-                .intersects(SkillTypes::from_pob2_name("UsedByProxy").unwrap_or_default());
+            || cfg.skill_types.intersects(SkillTypes::USED_BY_PROXY);
         terms.enabled = cfg.mode_combat && !finality && !proxy;
         if terms.enabled {
             terms.additional = db.sum(ModType::Base, cfg, &[ADDITIONAL.into()]);

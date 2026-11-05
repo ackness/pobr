@@ -40,6 +40,10 @@ pub use identity::DataIdentity;
 pub use overlay::{MergeError, merge};
 pub use ruleset::RuleSet;
 
+/// The refusal for a pack without `base/active_skill_types.json`.
+pub const MISSING_SKILL_TYPES: &str =
+    "data contract 1.1 package required: base/active_skill_types.json";
+
 /// A load error.
 #[derive(Debug)]
 pub enum LoadError {
@@ -726,29 +730,33 @@ impl GameData {
     }
 
     /// Loads the game's `ActiveSkillType` table (`base/active_skill_types.json`,
-    /// the skill type names rules and build codes use). `None` for a data
-    /// pack published before RePoE exported it.
+    /// the skill type names rules and build codes use). Data contract 1.1
+    /// packages carry it; a pack without it is refused, because the engine
+    /// has no copy of the table to fall back on.
     pub fn active_skill_types(
         &self,
-    ) -> Result<Option<pobr_data::catalog::skill_types::ActiveSkillTypesDef>, LoadError> {
+    ) -> Result<pobr_data::catalog::skill_types::ActiveSkillTypesDef, LoadError> {
         match self.load_domain("active_skill_types.json") {
-            Ok(v) => Ok(Some(v)),
             Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
-                Ok(None)
+                Err(LoadError::Integrity {
+                    path: self.root().join("base/active_skill_types.json"),
+                    message: format!(
+                        "{MISSING_SKILL_TYPES}: pin a data package built for this PoBR \
+                         build in pipeline/data.lock.json"
+                    ),
+                })
             }
-            Err(e) => Err(e),
+            other => other,
         }
     }
 
     /// Installs the data pack's `ActiveSkillType` table as the process-wide
     /// skill type names ([`pobr_data::skill::install_skill_type_names`]).
-    /// Does nothing for a pack without the table. Refuses a table the
-    /// engine cannot read, or one that differs from a table this process
-    /// already installed from another pack.
+    /// Refuses a pack without the table, a table the engine cannot read, and
+    /// one that differs from a table this process already installed from
+    /// another pack.
     pub fn install_skill_type_names(&self) -> Result<(), LoadError> {
-        let Some(rows) = self.active_skill_types()? else {
-            return Ok(());
-        };
+        let rows = self.active_skill_types()?;
         pobr_data::skill::install_skill_type_names(&rows).map_err(|message| LoadError::Integrity {
             path: self.domain_path("active_skill_types.json"),
             message,

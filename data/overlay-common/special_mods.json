@@ -8,7 +8,7 @@
     "extracted_files": [
       "Modules/ModParser.lua"
     ],
-    "regen_command": "（手工策展域：本字段记录对账命令而非再生命令）sync-pob-catalog check --special-coverage（M5b A-3 落地后启用）"
+    "regen_command": "（手工策展域：本字段记录校验命令而非再生命令）cargo run --locked -p precompile-mods -- --check"
   },
   "entries": [
     {

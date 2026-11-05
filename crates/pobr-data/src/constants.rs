@@ -168,18 +168,16 @@ pub const BLOCK_CHANCE_CAP: f64 = 90.0;
 /// 20, agent-docs/ailments.md §Shock).
 pub const SHOCK_MIN_EFFECT: f64 = 20.0;
 
-/// Maximum Rage before modifiers: the game constant `BaseMaximumRage`.
-///
-/// Known exception to the "no new calc-path consumers" rule above:
-/// `pobr-core`'s `calc/rage.rs` reads this and [`ATTACK_DAMAGE_MORE_PER_RAGE`]
-/// directly because the data package does not carry them yet (neither is in
-/// `base/game_constants.json`; `stats.json` only defines the stat ids). Move
-/// the consumer to `cfg.constants` once RePoE exports them.
-pub const BASE_MAXIMUM_RAGE: f64 = 30.0;
-
 /// Percent more Attack damage per effective Rage: the character's inherent
 /// stat `attack_damage_final_permyriad_per_rage = 100`, and a permyriad is a
 /// hundredth of a percent.
+///
+/// Known exception to the "no new calc-path consumers" rule above:
+/// `pobr-core`'s `calc/rage.rs` reads it directly. The player's inherent
+/// stats come from the client's `Character.ot`, which no pinned RePoE input
+/// carries (only `PlayerMinionIntrinsicStats`, the minions' copy, has the
+/// value). Maximum Rage (`BaseMaximumRage`) comes from
+/// `base/game_constants.json` (`game.base_maximum_rage`).
 pub const ATTACK_DAMAGE_MORE_PER_RAGE: f64 = 1.0;
 
 /// Percent increased Chaos Damage taken per stack of Withered, and the most

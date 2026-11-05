@@ -26,6 +26,7 @@
 - 普通领域 adapter 从固定 RePoE 客户端事实生成物品基底、词缀、stat、技能及等级；普通天赋树使用 DAT／PSG、CSD 与明确保留的兼容字段。字段所有权和未知项分别记录，不把整个 `base/` 目录视为已完成自主迁源。`ActiveSkills.DisplayedName` 用于 buff 名、`AffectedBy<名字>` 条件和诅咒优先级（`skill_env::buff_skill_name`）。
 - stat set 保留 `base_is_projectile` 等无值 stat；召唤物技能另保留按使用者等级成长的效能。
 - `base/skill_gems.json` 的效果链接、宝石标签来自 `GemEffects` / `GemTags`；各宝石等级所需角色等级来自 `ItemExperiencePerLevel`。品质另由 `overlay/gem_quality_stats.json` 提供。
+- 技能类型名表来自 `base/active_skill_types.json`（`ActiveSkillType` 行序，PoB2 `SkillType.<Id>` = 行号 + 1），引擎不再内嵌副本；基础最大怒气来自 `base/game_constants.json` 的 `base_maximum_rage`。珠宝范围也改读数据包的 `base/jewel_radii.json`，但它的数值仍转录自 PoB2 `Data.lua`，不是客户端事实。引擎仍保留的表及理由见 `crates/pobr-data/tests/no_embedded_data.rs`。
 - `base/monster_resistances.json` 连接 `MonsterVarieties → MonsterTypes → MonsterResistances`，取普通稀有度的 `Fire1/Cold1/Lightning1/Chaos1`，合并链接并保留负弱点，供召唤物基础抗性使用。
 
 ### 保留的 PoB2 解释与兼容输入
@@ -60,7 +61,7 @@ RePoE 的[固定来源对账](https://github.com/ackness/repoe/blob/db7f3d5d129d
 核对了七个完整上下文：调用者、defence 和 reservation 的上游条件已有变化，整体等价未确立，
 其验证器保持 `guard_eligible=false`。运行定义、数值和引用没有因此更新，也不据此认证官方 buff 或 charm 语义。
 
-`item_granted_skills.json`、`boss_poise_thresholds.json` 和 `totem_varieties.json` 已有目标事实 producer，完整版本通过独立 RePoE 产物临时导入；PoBR 保留筛选和解释责任。授予技能只迁可证字段，原始 `ItemInherentSkills.IsWeapon` 列按固定社区政策解释为 NoReservation，字段命名与官方语义未独立认证；Boss 选择仍是显式模型。详见[授予技能契约](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-item-grants.md)。`energy_config_options.json` 等是项目定义的外部事件／静态状态输入，属于 PoBR 自有配置。
+`item_granted_skills.json`、`boss_poise_thresholds.json` 和 `totem_varieties.json` 已有目标事实 producer，完整版本通过独立 RePoE 产物临时导入；PoBR 保留筛选和解释责任。授予技能只迁可证字段，原始 `ItemInherentSkills.IsWeapon` 列按固定社区政策解释为 NoReservation，字段命名与官方语义未独立认证；Boss 选择仍是显式模型。详见[授予技能契约](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-item-grants.md)。`energy_config_options.json` 等是项目定义的外部事件／静态状态输入，属于 PoBR 自有配置，编译进 `pobr-gamedata`（`crates/pobr-gamedata/src/domains/config_options/`），不是数据包输入。
 
 `examples/demo-bd-test/builds/*/meta.json` 的回归对照值由 `tools/pob2-oracle` 重录。它们用于防回归，不是独立游戏真值。
 
@@ -252,7 +253,7 @@ Energy 的来源近似是按基础频率预选最多六个玩家自用、非触�
 
 ### Energy 输出
 
-CLI/WASM 的 `energy_trigger` 给出储能、每轮消耗、来源、事件率、每事件 Energy、返还和频率上限。六族缺来源时带 `at_own_rate: true`、`source: null` 与稳定的 `missing_source`，命中与持续伤害保留自身速率；`SkillTriggerRate` / `TriggerRateCap` 的明细给出自身速率与补充输入提示，原始触发率字段仍为未解出的 0。有来源时 CoC 的 `TriggerRateCap` 是来源暴击事件率。`ActionRate` / `TotalDPS` 的派生公式包含 Energy 调整，Full DPS 使用调整后的输出；CLI 保留 `energy_per_critical_hit` 兼容字段。配置项由 PoBR 自有的 `data/overlay-common/energy_config_options.json` 提供，加载时（`pobr-gamedata` 的 `config_options()`）按 `var` 覆盖目录中的同名项，按稳定 meta id 的 `if_skill` 筛选。
+CLI/WASM 的 `energy_trigger` 给出储能、每轮消耗、来源、事件率、每事件 Energy、返还和频率上限。六族缺来源时带 `at_own_rate: true`、`source: null` 与稳定的 `missing_source`，命中与持续伤害保留自身速率；`SkillTriggerRate` / `TriggerRateCap` 的明细给出自身速率与补充输入提示，原始触发率字段仍为未解出的 0。有来源时 CoC 的 `TriggerRateCap` 是来源暴击事件率。`ActionRate` / `TotalDPS` 的派生公式包含 Energy 调整，Full DPS 使用调整后的输出；CLI 保留 `energy_per_critical_hit` 兼容字段。配置项由 PoBR 自有的 `crates/pobr-gamedata/src/domains/config_options/energy_config_options.json` 提供，加载时（`pobr-gamedata` 的 `config_options()`）按 `var` 覆盖目录中的同名项，按稳定 meta id 的 `if_skill` 筛选。
 
 ### 图腾数量与层数
 

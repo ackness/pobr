@@ -26,9 +26,8 @@ struct ContractDeclaration {
 }
 
 /// Refuses a manifest declaring a data contract other than this build's.
-/// Packages published before the contract was versioned omit the field and are
-/// accepted as they are: the lock pins their bytes and runtime identity.
-/// Bytes that don't even have the declaration's shape are left to the full parse.
+/// A schema-3 manifest that declares none is refused by `validate_snapshot`;
+/// bytes that don't even have the declaration's shape are left to the full parse.
 fn check_contract(path: &std::path::Path, bytes: &[u8]) -> Result<(), LoadError> {
     let Ok(ContractDeclaration {
         contract_version: Some(declared),
@@ -149,6 +148,13 @@ impl GameData {
         if manifest.schema_version < 3 {
             return Ok(manifest);
         }
+        if manifest.contract_version.is_none() {
+            return Err(invalid(format!(
+                "the manifest declares no contract_version; this PoBR build implements \
+                 data contract {CONTRACT_VERSION}: pin a data package built for it in \
+                 pipeline/data.lock.json"
+            )));
+        }
         if manifest.files.is_empty() {
             return Err(invalid(
                 "schema 3 requires a nonempty file inventory".into(),
@@ -213,12 +219,14 @@ impl GameData {
 mod tests {
     use super::sha256_hex;
     use crate::GameData;
+    use pobr_data::CONTRACT_VERSION;
     use std::collections::BTreeMap;
 
     fn strict_files() -> BTreeMap<String, Vec<u8>> {
         let quality = br#"{"effects":[]}"#.to_vec();
         let manifest = serde_json::json!({
             "schema_version": 3, "poe_version": "test", "languages": [],
+            "contract_version": CONTRACT_VERSION,
             "domains": { "base": [], "overlay": ["gem_quality_stats"], "generated": [] },
             "files": { "overlay/gem_quality_stats.json": sha256_hex(&quality) }
         });
@@ -334,18 +342,18 @@ mod tests {
         );
     }
 
-    /// Packages published before the contract was versioned omit the field and
-    /// load as before, with the same runtime identity.
+    /// A schema-3 manifest must declare its contract: one without it (a package
+    /// from before contracts were versioned) is refused before any domain loads.
     #[test]
-    fn an_absent_contract_version_is_accepted_unchanged() {
-        let absent = with_contract(None);
-        assert_eq!(absent, strict_files());
-        let data = GameData::from_memory(absent);
-        assert_eq!(data.validate_manifest().unwrap().contract_version, None);
-        let declared =
-            GameData::from_memory(with_contract(Some(pobr_data::CONTRACT_VERSION.into())));
-        // The declaration is not part of the identity fingerprint.
-        assert_eq!(data.identity().unwrap(), declared.identity().unwrap());
+    fn an_absent_contract_version_is_refused() {
+        let data = GameData::from_memory(with_contract(None));
+        let message = data.validate_manifest().unwrap_err().to_string();
+        assert!(
+            message.contains("declares no contract_version")
+                && message.contains(&format!("implements data contract {CONTRACT_VERSION}")),
+            "{message}"
+        );
+        assert!(data.identity().is_err());
     }
 
     #[test]
@@ -524,6 +532,7 @@ mod tests {
             let mut files = strict_files();
             let manifest = serde_json::json!({
                 "schema_version": schema, "poe_version": "test", "languages": [],
+                "contract_version": CONTRACT_VERSION,
                 "domains": { "base": ["stats"] },
                 "files": { "base/stats.json": sha256_hex(b"[]") }
             });
@@ -557,6 +566,7 @@ mod tests {
                 .unwrap_or_default();
             let manifest = serde_json::json!({
                 "schema_version": schema, "poe_version": "test", "languages": [],
+                "contract_version": CONTRACT_VERSION,
                 "domains": { "base": [] }, "files": files
             });
             let data = GameData::from_memory(BTreeMap::from([(

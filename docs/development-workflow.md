@@ -243,8 +243,8 @@ WASM 构建记录校验 Rust 源码、共享配置 JSON、manifest/lockfile、JS
 工具版本、相关环境/Cargo 配置，以及绑定哈希与实际 schema。
 输入和产物未变时跳过 wasm-pack，保留原编译 commit 与 dirty 标记；
 缺失、损坏或旧格式记录需要一次正常重建。普通 UI、文档和运行时游戏数据修改不会触发 WASM 重编译；
-`data/overlay-common/*_config_options.json` 是可能内嵌的配置文件族，修改或新增会重新构建，
-无需另行登记缓存输入；
+PoBR 自有的 `*_config_options.json` 在 `crates/pobr-gamedata/src/domains/config_options/`，编译进引擎，
+随 crate 源码一起计入输入，修改或新增会重新构建；
 游戏数据变化仍需 `mise run web sync-data`。
 
 这些设置减少后续产物，并非磁盘配额或自动清理器。`.cache/` 中历史诊断、

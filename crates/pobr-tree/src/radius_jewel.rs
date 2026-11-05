@@ -18,44 +18,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::TreeError;
 
-/// PoE2's passive-tree jewel distance scaling factor.
-///
-/// Source: PoB2 `Data/Misc.lua` `data.gameConstants["PassiveTreeJewelDistanceMultiplier"]`,
-/// transcribed from `GameConstants.dat`. An `outer` value is multiplied by
-/// this factor before comparing against node Euclidean distance, equivalent
-/// to `outerSquared = outer * outer * 1.2 * 1.2` (PoB2 Data.lua
-/// setJewelRadiiGlobally).
-///
-/// **Deprecation note**: this constant and `JEWEL_RADIUS_*` are now
-/// **fallback-only** — the live calculation path consumes the injected
-/// [`JewelRadiiDef`] (`base/jewel_radii.json`, which is value-for-value equal
-/// to this constant group, pinned by tests) via
-/// [`compute_radius_jewel_effect_with_radii`]. **Do not add new consumers of
-/// the calculation path here**; these are kept for the no-data fallback path
-/// ([`JewelRadius::units`]) and as anchors for test expectations.
-pub const PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER: f64 = 1.2;
-
-/// Base outer radius per radius-jewel band (tree units, before the scaling factor).
-///
-/// Source: PoB2 `src/Modules/Data.lua` `data.jewelRadii["0_1"]` (PoE2's first
-/// 0.x release). The actual comparison threshold is
-/// `outer * PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER` (see [`JewelRadius::units`]).
-///
-/// | Band       | outer | Effective radius (×1.2) |
-/// |------------|-------|--------------------------|
-/// | Small      | 1000  | 1200.0                   |
-/// | Medium     | 1150  | 1380.0                   |
-/// | Large      | 1300  | 1560.0                   |
-/// | Very Large | 1500  | 1800.0                   |
-///
-/// **Deprecation note**: fallback-only, do not add new consumers of the
-/// calculation path (see the note on
-/// [`PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER`]).
-pub const JEWEL_RADIUS_SMALL: f64 = 1000.0 * PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER;
-pub const JEWEL_RADIUS_MEDIUM: f64 = 1150.0 * PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER;
-pub const JEWEL_RADIUS_LARGE: f64 = 1300.0 * PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER;
-pub const JEWEL_RADIUS_VERY_LARGE: f64 = 1500.0 * PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER;
-
 /// A jewel radius band.
 ///
 /// The named bands match the `label` field in PoB2's
@@ -79,29 +41,6 @@ pub enum JewelRadius {
 }
 
 impl JewelRadius {
-    /// Returns the effective radius (tree units), i.e.
-    /// `outer * PassiveTreeJewelDistanceMultiplier`.
-    ///
-    /// **Fallback path** (used when no data is injected; the hardcoded
-    /// constants match `base/jewel_radii.json` value-for-value). See
-    /// [`JewelRadius::units_with_radii`] for the data-injection path.
-    ///
-    /// Mirrors PoB2's `Data.lua` calculation:
-    /// ```text
-    /// outerSquared = outer * outer * PassiveTreeJewelDistanceMultiplier^2
-    /// ```
-    /// equivalent to computing `effective = outer * 1.2` first, then squaring
-    /// it as the Euclidean-distance-squared threshold.
-    pub fn units(self) -> f64 {
-        match self {
-            JewelRadius::Small => JEWEL_RADIUS_SMALL,
-            JewelRadius::Medium => JEWEL_RADIUS_MEDIUM,
-            JewelRadius::Large => JEWEL_RADIUS_LARGE,
-            JewelRadius::VeryLarge => JEWEL_RADIUS_VERY_LARGE,
-            JewelRadius::Custom(r) => r,
-        }
-    }
-
     /// Resolves the effective radius (tree units) from injected radius-jewel
     /// band data.
     ///
@@ -140,7 +79,19 @@ impl JewelRadius {
             .max_by(|(a, _), (b, _)| a.cmp(b))
             .and_then(|(_, bands)| bands.iter().find(|band| band.label == label))
             .map(|band| f64::from(band.outer) * radii.distance_multiplier)
-            .unwrap_or_else(|| self.units())
+            .unwrap_or_else(|| {
+                // A table without this band: the built-in table
+                // (`JewelRadiiDef::default`, equal to `base/jewel_radii.json`).
+                let fallback = JewelRadiiDef::default();
+                fallback
+                    .tree_versions
+                    .values()
+                    .flatten()
+                    .find(|band| band.label == label)
+                    .map_or(0.0, |band| {
+                        f64::from(band.outer) * fallback.distance_multiplier
+                    })
+            })
     }
 }
 

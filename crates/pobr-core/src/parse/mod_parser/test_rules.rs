@@ -43,6 +43,8 @@ fn load_special(rel: &str) -> Vec<SpecialTemplateDef> {
 /// files panic directly (this is a test environment; the repo's data
 /// package is always present).
 pub fn test_compiled_rules() -> CompiledParserRules {
+    // The rules name skill types; load_ruleset installs the package's table first.
+    super::test_data::install_test_skill_types();
     let path = test_data_dir().join("overlay/mod_parser_rules.json");
     let json = std::fs::read_to_string(&path).expect("read mod_parser_rules.json");
     let doc: ModParserRulesDoc = serde_json::from_str(&json).expect("deserialize the rule table");

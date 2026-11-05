@@ -71,7 +71,7 @@ mise run web smoke-wasm-package
 `mise run web build-wasm --force` 强制通过 Cargo 重建，但不清缓存。
 记录缺失或格式过旧时，正常重建一次；只有构建成功且期间输入未变，才写入新记录。
 
-打包再次核对 Rust 源码、共享 `*_config_options.json`、manifest、lockfile、
+打包再次核对 Rust 源码（含编译进引擎的 `*_config_options.json`）、manifest、lockfile、
 构建配置和 JSON 类型，检查生成绑定哈希，并从已编译引擎读取 schema。
 它还比较同步数据与当前快照、patch、共享层的字节，包含同版本数据修改。
 过期时需先重建或同步；打包本身不构建、不下载。

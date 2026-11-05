@@ -800,8 +800,8 @@ pub(crate) fn calc_leech_for_hit(
     // Trappable/Mineable merely describe eligibility and must not be gated.
     let proxy_types = pobr_data::skill::SkillTypes::TRAPPED
         | pobr_data::skill::SkillTypes::REMOTE_MINED
-        | pobr_data::skill::SkillTypes::from_pob2_name("UsedByTotem").unwrap_or_default()
-        | pobr_data::skill::SkillTypes::from_pob2_name("UsedByProxy").unwrap_or_default();
+        | pobr_data::skill::SkillTypes::USED_BY_TOTEM
+        | pobr_data::skill::SkillTypes::USED_BY_PROXY;
     if cfg.skill_types.intersects(proxy_types) {
         return LeechResult::zero(pool, resource);
     }

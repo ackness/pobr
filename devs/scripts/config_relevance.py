@@ -9,6 +9,10 @@ import json
 from pathlib import Path
 import re
 
+# PoBR-owned config options, compiled into pobr-gamedata (GameData::config_options);
+# the path is relative to the repository root.
+OWNED_CONFIG_OPTIONS_PATH = "crates/pobr-gamedata/src/domains/config_options"
+OWNED_CONFIG_OPTIONS = Path(__file__).resolve().parents[2] / OWNED_CONFIG_OPTIONS_PATH
 RULE = ("Exclude a control if none of its required if_skill names/ids exist in "
         "base/granted_effects.json or the game's skill-gem item names; otherwise exclude only when its mechanic "
         "identifiers lack complete word evidence in base stats/skills/mods/passives or "
@@ -125,14 +129,14 @@ class GameEvidence:
                 "queries": queries, "sources": evidence[:12]}
 
 
-def catalog_options(directory):
+def catalog_options(directory, owned=OWNED_CONFIG_OPTIONS):
     catalog = json.loads((directory / "overlay/config_options.json").read_text())
     options = {option["var"]: option for option in catalog["options"]}
     # Match GameData::config_options: every PoBR-owned `*_config_options.json`
     # replaces the catalog entry with the same var. A var owned twice would make
     # the result depend on file order, which differs from the Rust loader's list.
     owner = {}
-    for own in sorted((directory.parent / "overlay-common").glob("*_config_options.json")):
+    for own in sorted(Path(owned).glob("*_config_options.json")):
         for option in json.loads(own.read_text())["options"]:
             if option["var"] in owner:
                 raise ValueError(f"{option['var']} is owned by both {owner[option['var']]} and {own.name}")

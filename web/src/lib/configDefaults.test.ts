@@ -33,7 +33,7 @@ test('every current configuration label has a Chinese display translation', () =
 
 // Only this mechanic's new copy is localized here; preserve other config tooltips.
 test('Consecrated Ground labels and help keep actor state explicit in both Chinese locales', () => {
-  const ground: ConfigOption[] = JSON.parse(readFileSync(new URL('../../../data/overlay-common/consecrated_ground_config_options.json', import.meta.url), 'utf8')).options;
+  const ground: ConfigOption[] = JSON.parse(readFileSync(new URL('../../../crates/pobr-gamedata/src/domains/config_options/consecrated_ground_config_options.json', import.meta.url), 'utf8')).options;
   for (const option of ground) {
     expect(configDefaultValue(option)).toBe(false);
     expect(CONFIG_LABEL_ZH_TW[option.var]).toContain('奉獻地面');
@@ -48,7 +48,7 @@ test('Consecrated Ground labels and help keep actor state explicit in both Chine
 
 
 test('Beira ground requires an explicit established Ignite and defaults off', () => {
-  const [option]: ConfigOption[] = JSON.parse(readFileSync(new URL('../../../data/overlay-common/beira_config_options.json', import.meta.url), 'utf8')).options;
+  const [option]: ConfigOption[] = JSON.parse(readFileSync(new URL('../../../crates/pobr-gamedata/src/domains/config_options/beira_config_options.json', import.meta.url), 'utf8')).options;
   expect(configDefaultValue(option)).toBe(false);
   expect(CONFIG_LABEL_ZH_TW[option.var]).toContain('貝伊拉的悲痛');
   expect(CONFIG_LABEL_ZH[option.var]).toContain('点燃');
@@ -63,7 +63,7 @@ test('Beira ground requires an explicit established Ignite and defaults off', ()
 
 test('Cadiro defaults to unspecified and uses each locale’s game arrow names', async () => {
   const { configListOptionLabel } = await import('./configLabels');
-  const arrow: ConfigOption = JSON.parse(readFileSync(new URL('../../../data/overlay-common/cadiro_config_options.json', import.meta.url), 'utf8')).options[0];
+  const arrow: ConfigOption = JSON.parse(readFileSync(new URL('../../../crates/pobr-gamedata/src/domains/config_options/cadiro_config_options.json', import.meta.url), 'utf8')).options[0];
   expect(configDefaultValue(arrow)).toBe('0');
   expect(configListOptionLabel('zh-TW', 'Crescendo Arrow')).toBe('強鳴箭');
   expect(configListOptionLabel('zh-CN', 'Crescendo Arrow')).toBe('渐强箭');

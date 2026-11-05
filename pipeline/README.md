@@ -197,7 +197,7 @@ PoBR不再安装`pathofexile-dat`、下载原始索引或导出官方原表。�
 语言在翻译库生成；成功观察到一个补丁号也不能认证全部原料、机制或改变CURRENT。
 
 ```sh
-mise run data:bump repoe game/0.5.5.5-1 # 把锁改到 owner 的 Release，校验 SHA256SUMS 后导入
+mise run data:bump repoe game/0.5.5.5-2 # 把锁改到 owner 的 Release，校验 SHA256SUMS 后导入
 mise run data:version                   # 本地选中版本
 mise run data:prepare                   # 临时导入当前固定目标，不更改 CURRENT
 mise run data:check                     # 离线检查：跟踪数据归属，导入后工作树干净

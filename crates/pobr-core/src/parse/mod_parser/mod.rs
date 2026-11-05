@@ -47,6 +47,8 @@ mod test_data;
 #[cfg(any(test, feature = "test-rules"))]
 mod test_rules;
 #[cfg(any(test, feature = "test-rules"))]
-pub use test_data::{test_constants, test_data_dir, test_monster_scaling};
+pub use test_data::{
+    install_test_skill_types, test_constants, test_data_dir, test_monster_scaling,
+};
 #[cfg(any(test, feature = "test-rules"))]
 pub use test_rules::test_compiled_rules;

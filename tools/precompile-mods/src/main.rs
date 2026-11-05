@@ -158,6 +158,12 @@ fn run() -> Result<(), String> {
         ));
     }
 
+    // Every mode parses rules that name skill types, and the engine reads
+    // those names from the data package.
+    pobr_gamedata::GameData::new(&data_dir)
+        .install_skill_type_names()
+        .map_err(|e| e.to_string())?;
+
     if let Some(path) = &args.audit_corpus {
         audit::write_corpus(&data_dir, path)?;
     }

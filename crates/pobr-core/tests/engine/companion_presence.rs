@@ -79,6 +79,8 @@ fn session(pair: bool, exclusion: &str, effect: f64) -> CalculationSession {
                     id: "MinionMeleeStep".into(),
                     // The damaging skill is not itself a Companion skill.
                     types: vec!["Attack".into(), "Melee".into()],
+                    skill_types: pobr_data::skill::SkillTypes::ATTACK
+                        | pobr_data::skill::SkillTypes::MELEE,
                     ..Default::default()
                 },
                 ..Default::default()

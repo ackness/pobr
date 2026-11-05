@@ -26,47 +26,47 @@
           "scope": "archon, beira, cadiro, combo, consecrated_ground, energy, remnant_pickup, volatility. Each defines explicit static/external-event options this engine chooses to expose; none is a game table. The ninth file, enemy_type_and_consumption_config_options.json, has its own hand-curated metadata and is retained with the same PoBR-owned code basis.",
           "files": [
             {
-              "path": "data/overlay-common/archon_config_options.json",
+              "path": "crates/pobr-gamedata/src/domains/config_options/archon_config_options.json",
               "bytes": 634,
               "sha256": "bbea3295507df414cd6b523e4182a8f09c941965b3d8f31b8eed5424d781f425"
             },
             {
-              "path": "data/overlay-common/beira_config_options.json",
+              "path": "crates/pobr-gamedata/src/domains/config_options/beira_config_options.json",
               "bytes": 843,
               "sha256": "867d5bb5c13dac8ed2faf7a739ce03bc18e47cee5bed17164cdfc04a3aa2add2"
             },
             {
-              "path": "data/overlay-common/cadiro_config_options.json",
+              "path": "crates/pobr-gamedata/src/domains/config_options/cadiro_config_options.json",
               "bytes": 1664,
               "sha256": "da3ab5846ee1ab1ea8d1a25f6f3dd756ac6d741596fafa315fec16bc699de8d6"
             },
             {
-              "path": "data/overlay-common/combo_config_options.json",
+              "path": "crates/pobr-gamedata/src/domains/config_options/combo_config_options.json",
               "bytes": 875,
               "sha256": "94d69cf06eb2f0bf2c57bfb0ccd665b1528f7d67e9dc590f1d10bd1a3448b0a1"
             },
             {
-              "path": "data/overlay-common/consecrated_ground_config_options.json",
+              "path": "crates/pobr-gamedata/src/domains/config_options/consecrated_ground_config_options.json",
               "bytes": 1596,
               "sha256": "463e7c0bf06a78b939cef9f1de912486051e73c0fc9fc65c62ccbca6ab971c65"
             },
             {
-              "path": "data/overlay-common/energy_config_options.json",
+              "path": "crates/pobr-gamedata/src/domains/config_options/energy_config_options.json",
               "bytes": 4605,
               "sha256": "ccb438995ce1c2b516970c24fe3af9ec6df6125be8cb313b12be822c3cb3aaa1"
             },
             {
-              "path": "data/overlay-common/remnant_pickup_config_options.json",
+              "path": "crates/pobr-gamedata/src/domains/config_options/remnant_pickup_config_options.json",
               "bytes": 2192,
               "sha256": "53b69e7fb3e606a61b2acb2c8b54c9bf9f92e630c9619e3e6cd5217b76b29be4"
             },
             {
-              "path": "data/overlay-common/volatility_config_options.json",
+              "path": "crates/pobr-gamedata/src/domains/config_options/volatility_config_options.json",
               "bytes": 1562,
               "sha256": "58a5b894e828847c0a3bc9fe22391cb2394c30b65b425dd472b4c72f9da82427"
             },
             {
-              "path": "data/overlay-common/enemy_type_and_consumption_config_options.json",
+              "path": "crates/pobr-gamedata/src/domains/config_options/enemy_type_and_consumption_config_options.json",
               "bytes": 4736,
               "sha256": "19e32d452a2d8ba12cffc8421509154da506ce7a90766105523bc2078671e010"
             }
@@ -149,7 +149,7 @@
               "at_head": "bc9481d9e39519e7614a477962a8f54cebdbe83d"
             },
             {
-              "path": "data/overlay-common/enemy_type_and_consumption_config_options.json",
+              "path": "crates/pobr-gamedata/src/domains/config_options/enemy_type_and_consumption_config_options.json",
               "sha256": "19e32d452a2d8ba12cffc8421509154da506ce7a90766105523bc2078671e010",
               "scope": "the ninth PoBR-owned option file, which does carry a hand-curated _meta; introduced by 59f46c05",
               "at_head": "bc9481d9e39519e7614a477962a8f54cebdbe83d"
@@ -160,7 +160,8 @@
             "Their option semantics are this engine's explicit assumptions (no event timeline), not game-table facts; energy options are embedded at extraction time, so editing the file requires re-running the config-options extractor.",
             "They are not covered by any acquisition_acceptance and must not be described as target-patch game data."
           ],
-          "status": "accepted-retained-compatibility"
+          "status": "accepted-retained-compatibility",
+          "relocation": "2026-11-05 (roadmap 2.6): the nine files moved byte-for-byte from data/overlay-common/ into crates/pobr-gamedata/src/domains/config_options/. They are compiled into the engine (include_str!), so they count toward the engine identity and are no longer data-lock shared_files or part of the runtime data identity."
         },
         {
           "id": "S2",
@@ -231,13 +232,13 @@
             },
             {
               "path": "data/overlay-common/local_mods.json",
-              "bytes": 1488,
-              "sha256": "0dc5c77d5cf94685ce930068d0da1dfa3b0f365a603dd275cbc45a5b22f198c4"
+              "bytes": 1669,
+              "sha256": "bab112b9b43f89e28ced1674902ca12e573ab6ea379153280124bbb1d25cf746"
             },
             {
               "path": "data/overlay-common/special_mods.json",
-              "bytes": 307737,
-              "sha256": "192fe636ec9bac09eba6f6712144bcc00d05f8bdde03fb8cc4a3e2637532df6b"
+              "bytes": 320255,
+              "sha256": "268854b3f3170fe076f344cd910756f5b62b4c786aba156b315abb47b1829678"
             }
           ],
           "source_pins": [
@@ -302,7 +303,8 @@
             "high_precision_mods loads but its precision-exception branch is not wired to any calculation yet (its _meta says 零接线); local_mods values are PoBR's own predicate rather than a vendor table; special_mods mixes two bases by entry and cannot be labelled with one game source.",
             "Two vendor commits (ce8bffab, 2df5a743) are recorded while the repository reference pin is bb52d6b3; reconciling them is a separate maintenance step."
           ],
-          "status": "accepted-retained-compatibility"
+          "status": "accepted-retained-compatibility",
+          "meta_revision": "2026-11-05 (roadmap 0.3): local_mods.json and special_mods.json changed only in _meta (source/audit paths and regen_command corrected; vendor_commit unchanged); the pins above are the new bytes, entries are unchanged."
         },
         {
           "id": "S4",

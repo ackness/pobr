@@ -1,6 +1,7 @@
 {
   "schema_version": 3,
   "poe_version": "controlled-native-passive-0.5.5.5",
+  "contract_version": 1,
   "languages": [],
   "domains": {
     "base": [
@@ -10,7 +11,8 @@
       "granted_effects",
       "granted_effect_levels",
       "base_items",
-      "monster_scaling"
+      "monster_scaling",
+      "active_skill_types"
     ],
     "overlay": [],
     "generated": []
@@ -22,6 +24,7 @@
     "base/granted_effects.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
     "base/granted_effect_levels.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
     "base/base_items.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
-    "base/monster_scaling.json": "6ac5d836d17ed139274b98e6d5100da2f72435e839c1f976b79420ee85a0d3d2"
+    "base/monster_scaling.json": "6ac5d836d17ed139274b98e6d5100da2f72435e839c1f976b79420ee85a0d3d2",
+    "base/active_skill_types.json": "e7122f0a692d1b45e924cb37208b1f4f59211dbff31fafaab9f366f2d7d4d8ec"
   }
 }

@@ -473,8 +473,7 @@ fn scaled(db: &ModDb, cfg: &CalcConfig, base: f64, added: &[&str], names: &[&str
 }
 
 fn curse_delay_terms(db: &ModDb, cfg: &CalcConfig) -> ScaledTerms {
-    let applies_curse = SkillTypes::from_pob2_name("AppliesCurse")
-        .is_some_and(|curse| cfg.skill_types.intersects(curse));
+    let applies_curse = cfg.skill_types.intersects(SkillTypes::APPLIES_CURSE);
     if !applies_curse {
         return ScaledTerms::default();
     }
@@ -524,8 +523,7 @@ pub(super) fn fill(env: &mut Env, combined: &[(DamageType, f64)]) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
     let global = global_cfg(cfg);
-    let generates_remnants = SkillTypes::from_pob2_name("GeneratesRemnants")
-        .is_some_and(|types| cfg.skill_types.intersects(types));
+    let generates_remnants = cfg.skill_types.intersects(SkillTypes::GENERATES_REMNANTS);
     let mut remnants = scaled(db, cfg, 1.0, &["AdditionalRemnantChance"], &[]);
     remnants.enabled = generates_remnants;
     let terms = EffectTerms {

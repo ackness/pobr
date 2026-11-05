@@ -13,7 +13,6 @@ use crate::Modifier;
 use crate::skill_env::buff_stat_map::map_self_buff_offensive_stat;
 use crate::skill_env::lookup::{EffectLookup, MinionLookup, SocketGroupView, StatSetLookup};
 use crate::skill_env::mods::GemPropertyBonus;
-use crate::skill_env::mods::skill_type_bits;
 use crate::skill_env::resolve::GemPropertyLookup;
 
 /// The buff display names of all **herald active skills** among the enabled groups
@@ -398,8 +397,7 @@ pub fn spirit_reservation_modifiers(
                 .filter(|s| EFFICIENCY_STATS.contains(&s.stat.as_str()))
                 .map(|s| s.value)
                 .sum();
-            let mut gem_cfg =
-                crate::CalcConfig::new().with_skill_types(skill_type_bits(&effect.skill_types));
+            let mut gem_cfg = crate::CalcConfig::new().with_skill_types(effect.skill_type_bits());
             gem_cfg.conditions.clone_from(&character.conditions);
             gem_cfg.multipliers.clone_from(&character.multipliers);
             gem_cfg.stats.clone_from(&character.stats);

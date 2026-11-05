@@ -191,9 +191,7 @@ pub(super) fn fill_sidebar(env: &mut Env) {
         .main_skill_level
         .map_or(0.0, |(level, bonus)| f64::from(level) + f64::from(bonus));
     out.effective_movement_speed_mod = (movement * action_speed * 1000.0).round() / 1000.0;
-    if cfg
-        .skill_types
-        .intersects(SkillTypes::from_pob2_name("UsableWhileMoving").unwrap())
+    if cfg.skill_types.intersects(SkillTypes::USABLE_WHILE_MOVING)
         || db.flag(cfg, "UsableWhileMoving")
     {
         let penalty = db
@@ -225,10 +223,7 @@ pub(super) fn fill_sidebar(env: &mut Env) {
         out.aura_effect_mod =
             factor(db, cfg, &names) * factor(db, cfg, &["Magnitude", "SelectedMagnitude"]);
     }
-    if cfg
-        .skill_types
-        .intersects(SkillTypes::from_pob2_name("AppliesCurse").unwrap())
-    {
+    if cfg.skill_types.intersects(SkillTypes::APPLIES_CURSE) {
         out.curse_effect_mod = factor(db, cfg, &["CurseEffect", "SelectedCurseEffect"]);
     }
     out.active_minion_limit = db

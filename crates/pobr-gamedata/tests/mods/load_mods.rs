@@ -97,6 +97,7 @@ fn mod_families_survive_runtime_loading_and_json_roundtrips() {
             .collect();
         let manifest = json!({
             "schema_version":3, "poe_version":"1.2.3", "languages":[],
+            "contract_version": pobr_data::CONTRACT_VERSION,
             "domains":{"base":["mods"],"overlay":[],"generated":[]},
             "files":{"base/mods.json":digest}
         });

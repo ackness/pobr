@@ -33,8 +33,8 @@ pub struct DataManifest {
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub files: std::collections::BTreeMap<String, String>,
     /// The [`crate::CONTRACT_VERSION`] the producer built this package for.
-    /// Packages published before the contract was versioned omit it; the
-    /// loader accepts those and rejects any declared number but its own.
+    /// Optional in the type so older manifests still parse, but the loader
+    /// refuses a schema-3 manifest without it, and any number but its own.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub contract_version: Option<u32>,
 }

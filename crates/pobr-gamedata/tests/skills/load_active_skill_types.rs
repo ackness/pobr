@@ -8,14 +8,9 @@ use pobr_gamedata::{GameData, current_data_dir};
 #[test]
 fn the_active_pack_table_installs_and_names_every_type() {
     let data = GameData::new(current_data_dir());
-    let Some(rows) = data
+    let rows = data
         .active_skill_types()
-        .expect("load active_skill_types.json")
-    else {
-        // A pack published before RePoE exported the table: the frozen names stay in use.
-        data.install_skill_type_names().unwrap();
-        return;
-    };
+        .expect("load active_skill_types.json");
     data.install_skill_type_names()
         .expect("install the pack's table");
     assert!(rows.len() >= 290, "{} rows", rows.len());
@@ -28,6 +23,33 @@ fn the_active_pack_table_installs_and_names_every_type() {
         );
     }
     assert_eq!(rows[0].id, "Attack");
+}
+
+#[test]
+fn a_pack_without_the_table_is_refused_at_load() {
+    let data = GameData::from_memory(std::collections::BTreeMap::from([(
+        "base/game_constants.json".to_string(),
+        b"{}".to_vec(),
+    )]));
+    for error in [
+        data.active_skill_types().unwrap_err(),
+        data.install_skill_type_names().unwrap_err(),
+    ] {
+        assert!(
+            matches!(error, pobr_gamedata::LoadError::Integrity { .. }),
+            "{error:?}"
+        );
+        assert!(
+            error
+                .to_string()
+                .contains(pobr_gamedata::MISSING_SKILL_TYPES),
+            "{error}"
+        );
+    }
+    assert!(
+        pobr_gamedata::MISSING_SKILL_TYPES
+            .contains("data contract 1.1 package required: base/active_skill_types.json")
+    );
 }
 
 #[test]

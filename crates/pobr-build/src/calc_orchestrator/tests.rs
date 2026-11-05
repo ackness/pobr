@@ -2747,6 +2747,7 @@ fn meta_gem_expands_additional_granted_effect_as_main_skill() {
         minion_has_item_set: false,
         ignore_minion_types: false,
         skill_types: skill_types.iter().map(|s| s.to_string()).collect(),
+        skill_type_set: Default::default(),
     };
     let mut granted_effects = HashMap::new();
     // Host effect: a summon skill (neither attack nor spell), not a damage-skill candidate on its own.
@@ -2859,6 +2860,7 @@ fn trigger_modifiers_gates_on_triggered_skill_type() {
             minion_has_item_set: false,
             ignore_minion_types: false,
             skill_types: vec!["Spell".into(), "Triggered".into(), "InbuiltTrigger".into()],
+            skill_type_set: Default::default(),
         },
     );
     // An ordinary (non-triggered) skill.
@@ -2884,6 +2886,7 @@ fn trigger_modifiers_gates_on_triggered_skill_type() {
             minion_has_item_set: false,
             ignore_minion_types: false,
             skill_types: vec!["Spell".into()],
+            skill_type_set: Default::default(),
         },
     );
     let data = BuildData {
@@ -3424,6 +3427,7 @@ fn trigger_config_requires_condition_gates_injection() {
             minion_has_item_set: false,
             ignore_minion_types: false,
             skill_types: vec!["Attack".into()],
+            skill_type_set: Default::default(),
         },
     );
     data.trigger_configs.insert(
