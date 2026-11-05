@@ -21,6 +21,11 @@ use pobr_data::monster::EnemyTier;
     version
 )]
 struct Cli {
+    /// Read mod and item lines written in this language, and show the output's
+    /// mod lines and item names in it (e.g. zh-CN). One of the data pack's
+    /// locales, or en-US. Numbers, ids and calculation are the same in every language.
+    #[arg(long, global = true, value_name = "CODE")]
+    lang: Option<String>,
     #[command(subcommand)]
     command: Command,
 }
@@ -210,9 +215,41 @@ fn main() -> ExitCode {
     }
 }
 
+/// The `--lang` locale, loaded from `data_dir`.
+fn load_locale(
+    lang: Option<&str>,
+    data_dir: &std::path::Path,
+) -> Result<Option<pobr_cli::Locale>, Box<dyn std::error::Error>> {
+    let Some(code) = lang else {
+        return Ok(None);
+    };
+    let locale = pobr_cli::Locale::load(data_dir, code)?;
+    if code != pobr_cli::SOURCE_LANGUAGE && !locale.has_templates() {
+        eprintln!(
+            "warning: the data pack has no mod-line templates for {code}; mod lines stay in English"
+        );
+    }
+    Ok(Some(locale))
+}
+
+/// `--data-dir`, or the active version's data.
+fn data_dir_or_current(dir: Option<String>) -> std::path::PathBuf {
+    match dir {
+        Some(dir) => std::path::PathBuf::from(dir),
+        None => pobr_gamedata::current_data_dir(),
+    }
+}
+
 fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
+    let lang = cli.lang.as_deref();
     match cli.command {
-        Command::Calculate(args) => Ok(pobr_cli::calculate_json(&build_calculate_request(args)?)?),
+        Command::Calculate(args) => {
+            let locale = load_locale(lang, &pobr_gamedata::current_data_dir())?;
+            Ok(pobr_cli::calculate_json(
+                &build_calculate_request(args)?,
+                locale.as_ref(),
+            )?)
+        }
         Command::CalculateBuild(args) => {
             let as_text = (!args.breakdown.is_empty() || args.usage) && !args.json;
             let detail = pobr_cli::BuildDetail {
@@ -221,8 +258,12 @@ fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
                 reference_basis: args.reference_basis,
                 usage: args.usage,
             };
-            let report =
-                pobr_cli::calculate_build_detailed(&build_calc_build_request(args)?, &detail)?;
+            let req = build_calc_build_request(args)?;
+            let locale = load_locale(lang, &req.data_dir)?;
+            let mut report = pobr_cli::calculate_build_detailed(&req, &detail)?;
+            if let Some(locale) = &locale {
+                locale.localize_build(&mut report);
+            }
             // gap B: tree-version mismatches (allocated nodes not in the
             // loaded tree) are no longer silent — warn to stderr.
             let diag = &report.tree_version;
@@ -247,23 +288,24 @@ fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
             Ok(serde_json::to_string_pretty(&report)?)
         }
         Command::ParseMod(args) => {
-            let data_dir = match args.data_dir {
-                Some(dir) => std::path::PathBuf::from(dir),
-                None => pobr_gamedata::current_data_dir(),
-            };
-            Ok(pobr_cli::parse_mod_json(&args.text, &data_dir)?)
+            let data_dir = data_dir_or_current(args.data_dir);
+            let locale = load_locale(lang, &data_dir)?;
+            Ok(pobr_cli::parse_mod_json(
+                &args.text,
+                &data_dir,
+                locale.as_ref(),
+            )?)
         }
         Command::ExplainMod(args) => {
-            let data_dir = match args.data_dir {
-                Some(dir) => std::path::PathBuf::from(dir),
-                None => pobr_gamedata::current_data_dir(),
-            };
+            let data_dir = data_dir_or_current(args.data_dir);
+            let locale = load_locale(lang, &data_dir)?;
+            let locale = locale.as_ref();
             let has_build = args.build.is_some() || args.build_file.is_some();
             if !has_build {
                 return if args.json {
-                    Ok(pobr_cli::explain_mod_json(&args.text, &data_dir)?)
+                    Ok(pobr_cli::explain_mod_json(&args.text, &data_dir, locale)?)
                 } else {
-                    Ok(pobr_cli::explain_mod_text(&args.text, &data_dir)?)
+                    Ok(pobr_cli::explain_mod_text(&args.text, &data_dir, locale)?)
                 };
             }
             // has_build guarantees at least one of build / build_file is Some, so read_text_source never falls through to stdin.
@@ -277,14 +319,22 @@ fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
                 mod_texts: vec![args.text.clone()],
             };
             if args.json {
-                Ok(pobr_cli::explain_mod_with_marginal_json(&args.text, &req)?)
+                Ok(pobr_cli::explain_mod_with_marginal_json(
+                    &args.text, &req, locale,
+                )?)
             } else {
-                Ok(pobr_cli::explain_mod_with_marginal_text(&args.text, &req)?)
+                Ok(pobr_cli::explain_mod_with_marginal_text(
+                    &args.text, &req, locale,
+                )?)
             }
         }
         Command::ParseItem(args) => {
             let text = read_text_source(args.text, args.file)?;
-            Ok(pobr_cli::parse_item_json(&ParseItemRequest { text })?)
+            let locale = load_locale(lang, &pobr_gamedata::current_data_dir())?;
+            Ok(pobr_cli::parse_item_json(
+                &ParseItemRequest { text },
+                locale.as_ref(),
+            )?)
         }
         Command::DecodeCode(args) => Ok(pobr_cli::decode_code(&args.code)?),
         Command::EncodeCode(args) => {
@@ -333,10 +383,7 @@ fn build_calc_build_request(
 ) -> Result<CalculateBuildRequest, Box<dyn std::error::Error>> {
     let code = read_text_source(args.code, args.file)?;
 
-    let data_dir = match args.data_dir {
-        Some(dir) => std::path::PathBuf::from(dir),
-        None => pobr_gamedata::current_data_dir(),
-    };
+    let data_dir = data_dir_or_current(args.data_dir);
 
     Ok(CalculateBuildRequest {
         code,
@@ -411,5 +458,30 @@ mod tests {
         assert_eq!(args.enemy_tier, "pinnacle");
         assert_eq!(args.file.as_deref(), Some("code.txt"));
         assert!(args.data_dir.is_none());
+    }
+
+    #[test]
+    fn lang_is_a_global_option() {
+        for args in [
+            vec!["pobr", "--lang", "zh-CN", "parse-mod", "+50 生命上限"],
+            vec!["pobr", "parse-mod", "+50 生命上限", "--lang", "zh-CN"],
+            vec![
+                "pobr",
+                "calculate-build",
+                "--file",
+                "code.txt",
+                "--lang",
+                "zh-CN",
+            ],
+        ] {
+            let cli = Cli::try_parse_from(&args).expect("--lang parses");
+            assert_eq!(cli.lang.as_deref(), Some("zh-CN"), "{args:?}");
+        }
+        assert!(
+            Cli::try_parse_from(["pobr", "decode-code", "x"])
+                .unwrap()
+                .lang
+                .is_none()
+        );
     }
 }

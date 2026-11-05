@@ -25,6 +25,7 @@ CLI 完整构筑和 marginal（逐来源边际贡献）结果带数据版本、�
 | `output.ehp` | 实际 EHP 输入与过程量：逐类型敌人伤害、转换后承伤、资源池、命中次数、伤害概率与避开概率。 |
 | `--reference-basis` | output 与分解改用参考口径，并标 reference_basis。 |
 | `--usage` | 返回逐行 usage，始终用全部模型开启的游戏口径，不随 reference-basis 改变。 |
+| `--lang <code>`（全局） | 输入的词条行／物品文本若是该语言，先转成英文规范行再解析（`calculate --mod`、`parse-mod`、`explain-mod` 及其 `--build` 候选行、`parse-item`）。用户输入的行在 `unsupported`（`calculate`、`parse-item`）与 `explain-mod --build` 的 `added_mod_texts`、`unsupported_modifiers` 里按原样返回，不重新渲染。构筑自身的英文行改用该语言显示：`calculate-build` 的 `unsupported_modifiers`、`missing_items[].name`、分解的 `source_text`、usage 的 `lines[].text` 与 `unparsed[].text`，`explain-mod --build` 的 `baseline_unsupported_modifiers`，以及 `parse-item` 的 `base`。`parse-mod`／`explain-mod` 的 `unparsed` 余文、modifier 的 `source` 和说明文字保持英文。语言包来自数据包 `i18n/<code>/` 及其 `_meta.json` 声明的回退；数值、ID 与计算不变。`en-US` 不翻译；数据包缺失或损坏时报数据错误；数据包没有的语言报错并列出可用语言；该语言链上没有词条模板时警告并保持英文。 |
 
 WASM `{ pob_code }` 请求把同类失败物品放入 `item_errors`。
 `line_usage_json`（JS `lineUsageJson`）接受与完整计算相同的请求，返回 `{ usage, item_errors }`，不缓存。

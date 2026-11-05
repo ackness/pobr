@@ -104,7 +104,7 @@ mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 | `crates/pobr-tree` | 天赋树拓扑、已分配节点的词条收集、范围珠宝、加点编辑（`allocation::AllocationTree::edit`） |
 | `crates/pobr-build` | Build 状态、PoB 构筑码编解码、导入识别、`calc_orchestrator/` 编排（`calculate_with_data` / `calculate_skill_metrics`）、诊断与逐行台账、构筑对比；parity 测试的主战场 |
 | `crates/pobr-item` | 保留物品原文的编辑模型与序列化（`ItemDraft`，支持 BuildRaw 往返）；计算视图由 `pobr-core::item_text` + `ingest_item` 承担 |
-| `apps/pobr-cli` | CLI `pobr`：`calculate` / `calculate-build` / `parse-mod` / `explain-mod` / `parse-item` / `decode-code` / `encode-code`，命令逻辑在 lib |
+| `apps/pobr-cli` | CLI `pobr`：`calculate` / `calculate-build` / `parse-mod` / `explain-mod` / `parse-item` / `decode-code` / `encode-code`，全局 `--lang <code>` 按数据包语言包读入与显示词条行；命令逻辑在 lib |
 | `apps/pobr-wasm` | `build_api/` 的 JSON 契约；默认 features 可在宿主测试，`wasm` 启用绑定，`diagnostics` 启用计时与 fixture 生成目标 |
 | `tools/sync-pob-catalog` | PoB2 显示／输出 catalog 的扫描与对照（`scan` / `check` / `diff` / `fixture-check`），只作测试参考，不生成数据 |
 | `tools/precompile-mods` | 词条规则离线预编译、语料覆盖与审计（`generated/parsed_mods.json`、`modifier-audit.json`；`--check` 校验运行时合并后的规则集） |
