@@ -142,7 +142,7 @@ test('config drafts commit on Enter and reset restores imported values in the sa
   await search.fill('no-such-option-123');
   await expect(page.locator('.search-empty')).toBeVisible();
   // The notice for an empty search offers the full list instead of a "clear search" button.
-  await page.locator('.search-empty').getByRole('button', { name: 'Show all options', exact: true }).click();
+  await page.locator('.search-empty').getByRole('button', { name: 'All', exact: true }).click();
   await expect(search).toHaveValue('');
   await expect(page.locator('.config-section').first()).toBeVisible();
   await goTo(page, 'Calcs');

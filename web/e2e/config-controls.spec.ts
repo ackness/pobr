@@ -11,7 +11,7 @@ test('every catalog control and list choice can be changed, recalculated and res
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
   await go(page, 'Config');
-  await page.locator('.config-view').getByRole('button', { name: 'Show all options', exact: true }).click();
+  await page.locator('.config-view').getByRole('radio', { name: 'All', exact: true }).click();
   await expect(page.locator('.config-section-header').first()).toBeVisible();
   const { version } = await (await page.request.get('/data/manifest.json')).json();
   const catalog: { options: { var: string }[] } = await (await page.request.get(`/data/${version}/overlay/config_options.json`)).json();

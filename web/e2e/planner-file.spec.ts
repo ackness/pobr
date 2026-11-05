@@ -52,7 +52,7 @@ test('all source loadouts provide separate downloadable files without switching 
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   await openBuild(page);
   await openExport(page);
-  await page.getByRole('button', { name: 'Prepare all loadouts (.build)', exact: true }).click();
+  await page.getByRole('button', { name: 'Prepare this stage’s imported PoB loadouts (.build)', exact: true }).click();
   const files = page.getByRole('button', { name: /\.build$/ });
   await expect(files).toHaveCount(3); // current-download action plus two prepared files
   const download = page.waitForEvent('download');

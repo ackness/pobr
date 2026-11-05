@@ -1,3 +1,4 @@
+import { buildDisplayName, stageDisplayName } from '../lib/workspaceNames';
 import { Fragment, lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { LayoutDashboard, Library, Network, Gem, Swords, TrendingUp, Calculator, SlidersHorizontal, Columns2, Settings2, Menu, Undo2, Redo2, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Search, Check, LoaderCircle, Download } from 'lucide-react';
 import { useBuildSession, type SyncNotice } from '../hooks/useBuildSession';
@@ -123,7 +124,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const [helpOpen, setHelpOpen] = useState(false);
   const [railHidden, setRailHidden] = useState(() => { try { return localStorage.getItem(RAIL_HIDDEN_KEY) === '1'; } catch { return false; } });
   const toggleRail = () => setRailHidden(hidden => { try { localStorage.setItem(RAIL_HIDDEN_KEY, hidden ? '0' : '1'); } catch { /* A remembered layout is a convenience only. */ } return !hidden; });
-  const session = useBuildSession(route === 'config');
+  const session = useBuildSession(route === 'config', lang);
   const activeBuild = session.workspace?.builds.find(build => build.id === session.workspace?.activeBuild);
   const stageKey = activeBuild ? `${activeBuild.id}:${activeBuild.activeStage}` : undefined;
   const view = useSettledCalc(session, stageKey);
@@ -202,9 +203,9 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
       <TopbarAction hint={t(lang, 'a11y.openMenu')} className="shell-menu-button" size="icon" variant="ghost" aria-label={t(lang, 'a11y.openMenu')} onClick={() => setMenuOpen(true)}><Menu /></TopbarAction>
       {brand}
       <div className="shell-crumb">
-        <AppSelectControl aria-label={w('Current build', '当前 BD', '目前 BD')} value={activeBuild?.id ?? ''} onChange={e => session.selectStage(e.target.value)}>{session.workspace?.builds.map((build, index) => <option key={build.id} value={build.id}>{build.name || `${w('Build', 'BD', 'BD')} ${index + 1}`}</option>)}</AppSelectControl>
+        <AppSelectControl aria-label={w('Current build', '当前 BD', '目前 BD')} value={activeBuild?.id ?? ''} onChange={e => session.selectStage(e.target.value)}>{session.workspace?.builds.map((build, index) => <option key={build.id} value={build.id}>{buildDisplayName(build, index, lang)}</option>)}</AppSelectControl>
         <span className="shell-crumb-sep" aria-hidden="true">/</span>
-        <AppSelectControl aria-label={w('Current stage', '当前阶段', '目前階段')} value={activeBuild?.activeStage ?? ''} onChange={e => { if (activeBuild) session.selectStage(activeBuild.id, e.target.value); }}>{activeBuild?.stages.map((stage, index) => <option key={stage.id} value={stage.id}>{stage.name || `${w('Stage', '阶段', '階段')} ${index + 1}`}</option>)}</AppSelectControl>
+        <AppSelectControl aria-label={w('Current stage', '当前阶段', '目前階段')} value={activeBuild?.activeStage ?? ''} onChange={e => { if (activeBuild) session.selectStage(activeBuild.id, e.target.value); }}>{activeBuild?.stages.map((stage, index) => <option key={stage.id} value={stage.id}>{stageDisplayName(stage, index, lang)}</option>)}</AppSelectControl>
       </div>
       {tabs()}
       <div className="shell-topbar-actions">

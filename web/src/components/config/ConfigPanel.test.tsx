@@ -9,6 +9,7 @@ import { ConfigPanel, OptionRow } from './ConfigPanel';
 import { UiProvider } from '../shared/UiContext';
 import { TooltipProvider } from '../ui/tooltip';
 import { RawConfigValue } from './RawConfigValue';
+import { ConfigScopeControl, type ConfigScope } from './ConfigScope';
 
 vi.mock('../../api/backend', () => ({ getBackend: vi.fn() }));
 // Server rendering mounts only the active tab; these tests read the Advanced tab too.
@@ -111,4 +112,14 @@ test.each([true, false])('catalog row removes reset after returning to default %
     expect(html.includes('aria-label="Restore imported/default value: Flag"')).toBe(current === !baseline);
     expect(html.includes('is-overridden')).toBe(current === !baseline);
   }
+});
+
+test.each(['relevant', 'modified', 'all'] as ConfigScope[])('configuration scope %s has exactly one checked radio', scope => {
+  const html = renderToStaticMarkup(<ConfigScopeControl scope={scope} count={2} lang="en-US" onChange={vi.fn()} />);
+  const radios = (html.match(/<button[^>]*>/g) ?? []).filter(button => button.includes('role="radio"'));
+  expect(radios).toHaveLength(3);
+  expect(radios.filter(button => button.includes('aria-checked="true"'))).toHaveLength(1);
+  expect(html).toContain('role="radiogroup"');
+  expect(html).toContain('Relevant to this build');
+  expect(html).toContain('Modified (2)');
 });

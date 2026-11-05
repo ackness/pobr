@@ -12,6 +12,7 @@ import type { BuildSession } from '../hooks/useBuildSession';
 import { classDisplayName } from '../lib/nativeDisplayNames';
 import { bindT, type Lang } from '../lib/i18n';
 import { hasPobColorCodes, parsePobColorText } from '../lib/pobColors';
+import { buildDisplayName, stageDisplayName } from '../lib/workspaceNames';
 import { workspaceText } from '../lib/workspaceText';
 import { words } from './text';
 
@@ -36,6 +37,8 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
   const workspace = session.workspace;
   const build = workspace?.builds.find(entry => entry.id === workspace.activeBuild);
   const stage = build?.stages.find(entry => entry.id === build.activeStage);
+  const currentBuildName = buildDisplayName(build, workspace?.builds.indexOf(build!) ?? 0, lang);
+  const currentStageName = stageDisplayName(stage, build?.stages.indexOf(stage!) ?? 0, lang);
   const character = session.character!;
   const classes = session.treeMeta?.classes ?? [];
   const ascendancies = classes.find(entry => entry.name === character.class_name)?.ascendancies ?? [];
@@ -105,7 +108,7 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
     if (!build || (workspace?.builds.length ?? 0) < 2 || session.busy || importing) return;
     const valid = captureAction();
     const message = text.deleteBuildConfirm
-      .replace('{name}', build.name || text.initialBuild).replace('{count}', String(build.stages.length));
+      .replace('{name}', currentBuildName).replace('{count}', String(build.stages.length));
     if (!await dialogs.confirm(message) || !valid()) return;
     session.removeBuild();
     afterRemoving('bd-library-title');
@@ -113,7 +116,7 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
   const removeStage = async () => {
     if (!build || !stage || build.stages.length < 2 || session.busy || importing) return;
     const valid = captureAction();
-    if (!await dialogs.confirm(text.deleteStageConfirm.replace('{name}', stage.name || text.initialStage)) || !valid()) return;
+    if (!await dialogs.confirm(text.deleteStageConfirm.replace('{name}', currentStageName)) || !valid()) return;
     session.removeStage();
     afterRemoving('bd-stage-title');
   };
@@ -143,13 +146,13 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
   const exportPlanner = async (all: boolean) => {
     setGenerating(true); setShareError(null); setPlanner(null);
     try {
-      const result = await session.exportBuildFiles(build?.name || text.initialBuild, all);
+      const result = await session.exportBuildFiles(currentBuildName, all);
       setPlanner({ value: result, source: session.exportBuildFiles });
       if (!all && result.files.length === 1) download(result.files[0].content, result.files[0].filename);
     } catch (error) { setShareError(formatApiError(error)); } finally { setGenerating(false); }
   };
 
-  const destinations: [Destination, string][] = [['newBuild', text.importNew], ['currentStage', `${text.importCurrent} · ${stage?.name || text.initialStage}`]];
+  const destinations: [Destination, string][] = [['newBuild', text.importNew], ['currentStage', text.importCurrent.replace('{stage}', currentStageName)]];
   return <section className="bd" aria-labelledby="build-heading">
     <header className="bd-head"><h1 id="build-heading">{w('My builds', '我的 BD', '我的 BD')}</h1><p>{tt('ui.buildHint')}</p></header>
 
@@ -161,13 +164,13 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
           {(workspace?.builds.length ?? 0) > 1 && <Button className="bd-danger" variant="ghost" size="sm" disabled={session.busy || importing} onClick={() => void removeBuild()}><Trash2 />{text.deleteBuild}</Button>}</div></div>
       {nameForm(['newBuild', 'renameBuild'])}
       <ul className="bd-list" role="group" aria-label={text.libraryTitle}>
-        {workspace?.builds.map(entry => {
+        {workspace?.builds.map((entry, index) => {
           const active = entry.stages.find(candidate => candidate.id === entry.activeStage)!;
           const state = active.saved.state.character;
           const current = entry.id === build?.id;
           return <li key={entry.id}><button type="button" aria-pressed={current} disabled={session.busy} onClick={() => session.selectStage(entry.id)}>
             <span className="bd-row-mark">{current && <Check />}</span>
-            <strong>{entry.name || text.initialBuild}</strong>
+            <strong>{buildDisplayName(entry, index, lang)}</strong>
             <span>Lv{state.level} {className(state.ascendancy_name || state.class_name)}</span>
             <small>{entry.stages.length} {text.stages}</small></button></li>;
         })}
@@ -180,28 +183,29 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
         aria-describedby={recovery ? 'bd-import-hint bd-import-recovery' : 'bd-import-hint'} onChange={event => { setCode(event.target.value); setRecovery(null); }} />
       <div className="bd-import-actions">
         <Button className="import-submit" onClick={doImport} disabled={session.busy || importing || !code.trim()}>
-          {importing ? tt('build.importing') : destination === 'newBuild' ? tt('build.importButton') : text.importCurrent}</Button>
+          {tt(importing ? 'build.importing' : 'build.importButton')}</Button>
         <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={session.busy || importing}><FileUp />{tt('save.import')}</Button>
         <AppInput ref={fileRef} type="file" accept=".json,.build,.txt,application/json,text/plain" hidden aria-label={tt('save.import')}
           onChange={event => { const file = event.target.files?.[0]; if (file) void importFile(file); event.target.value = ''; }} />
         <div className="bd-segment" role="group" aria-label={text.importDestination}>
+          <span>{text.importDestination}{lang === 'en-US' ? ':' : '：'}</span>
           {destinations.map(([value, label]) => <button key={value} type="button" aria-pressed={destination === value} disabled={importing || session.busy} onClick={() => setDestination(value)}>{label}</button>)}
         </div>
       </div>
-      <p className="bd-hint" id="bd-import-hint">{tt('build.importHint')} {text.importFileHint}</p>
+      <p className="bd-hint" id="bd-import-hint">{text.importFileHint}</p>
       {recovery && <p className="bd-hint" id="bd-import-recovery" role="status">{tt(recovery === 'file' ? 'build.importRecoveryFile' : 'build.importRecoverySource')}</p>}
       {fileError && <p className="bd-error" role="alert">{fileError}</p>}
     </details>
 
     <section className="bd-sec" aria-labelledby="bd-stage-title">
-      <div className="bd-sec-head"><div><h2 id="bd-stage-title" tabIndex={-1}>{text.stagesTitle}</h2><p className="bd-hint">{text.stageScope} <strong>{build?.name || text.initialBuild} / {stage?.name || text.initialStage}</strong></p></div>
+      <div className="bd-sec-head"><div><h2 id="bd-stage-title" tabIndex={-1}>{text.stagesTitle}</h2><p className="bd-hint">{text.stageScope} <strong>{currentBuildName} / {currentStageName}</strong></p></div>
         <div className="bd-actions"><Button variant="ghost" size="sm" disabled={session.busy} onClick={() => beginNaming('copyStage')}>{text.copyStage}</Button>
           <Button variant="ghost" size="sm" disabled={session.busy} onClick={() => beginNaming('renameStage')}>{text.renameStage}</Button>
           {(build?.stages.length ?? 0) > 1 && <Button className="bd-danger" variant="ghost" size="sm" disabled={session.busy || importing} onClick={() => void removeStage()}><Trash2 />{text.deleteStage}</Button>}</div></div>
       {nameForm(['copyStage', 'renameStage'])}
       <ul className="bd-chips" role="group" aria-label={text.stagesTitle}>
-        {build?.stages.map(entry => <li key={entry.id}><button type="button" aria-pressed={entry.id === stage?.id} disabled={session.busy} onClick={() => session.selectStage(build.id, entry.id)}>
-          {entry.name || text.initialStage}<small>Lv{entry.saved.state.character.level} · {entry.saved.state.allocatedNodes.length} {tt('build.passives')}</small></button></li>)}
+        {build?.stages.map((entry, index) => <li key={entry.id}><button type="button" aria-pressed={entry.id === stage?.id} disabled={session.busy} onClick={() => session.selectStage(build.id, entry.id)}>
+          {stageDisplayName(entry, index, lang)}<small>Lv{entry.saved.state.character.level} · {entry.saved.state.allocatedNodes.length} {tt('build.passives')}</small></button></li>)}
       </ul>
       {session.build && session.loadouts.length > 0 && <details className="bd-details"><summary>{text.importedLoadouts}</summary>
         <p className="bd-hint">{text.importedLoadoutsHint}</p>
@@ -236,6 +240,7 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
     </section>
 
     <details className="bd-sec bd-export"><summary><h2>{text.exportTitle}</h2></summary>
+      <h3 className="bd-subtitle">{text.buildFileTitle}</h3>
       <p className="bd-hint">{text.shareHint}</p>
       <div className="bd-actions bd-actions-start"><Button variant="outline" disabled={session.busy} onClick={() => download(session.exportLocalBuild(), 'pobr-build-stages.json')}>{text.share}</Button></div>
 

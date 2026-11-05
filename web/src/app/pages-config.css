@@ -37,9 +37,9 @@
   .shell-root .config-page .config-search { flex: 1 1 15rem; width: auto; max-width: 26rem; min-width: 0; }
   .shell-root .config-page .config-filter { display: flex; align-items: center; gap: .5rem; font-size: var(--text-sm); color: var(--muted-foreground); }
   .shell-root .config-page .config-view { display: inline-flex; flex-wrap: wrap; align-items: stretch; min-height: var(--control-height); gap: 0; margin: 0; padding: .15rem; border-radius: .5rem; background: var(--muted); }
-  .shell-root .config-page .config-view > [data-slot='button'] { min-height: 0; padding: .3rem .85rem; border: 0; border-radius: .35rem; background: none; font-size: var(--text-sm); font-weight: 450; color: var(--muted-foreground); }
-  .shell-root .config-page .config-view > [data-slot='button']:hover:not(:disabled) { background: none; color: var(--foreground); }
-  .shell-root .config-page .config-view > [aria-pressed='true'] { background: var(--card); border-color: transparent; color: var(--foreground); box-shadow: 0 0 0 1px var(--border); }
+  .shell-root .config-page .config-view > [data-slot='toggle-group-item'] { min-height: 0; padding: .3rem .85rem; border: 0; border-radius: .35rem; background: none; font-size: var(--text-sm); font-weight: 450; color: var(--muted-foreground); }
+  .shell-root .config-page .config-view > [data-slot='toggle-group-item']:hover:not(:disabled) { background: none; color: var(--foreground); }
+  .shell-root .config-page .config-view > [aria-checked='true'] { background: var(--card); border-color: transparent; color: var(--foreground); box-shadow: 0 0 0 1px var(--border); }
 
   .shell-root .config-page :is(.config-guidance, .config-quick-disclosure) { margin: 0; padding: .6rem 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: none; }
   .shell-root .config-page :is(.config-guidance, .config-quick-disclosure) > summary { cursor: pointer; font-size: var(--text-sm); font-weight: 450; color: var(--muted-foreground); }

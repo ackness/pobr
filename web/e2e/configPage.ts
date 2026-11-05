@@ -62,7 +62,7 @@ export async function importCode(page: Page, code: string, destination: 'newBuil
   if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   const text = workspaceText(lang);
   const group = page.getByRole('group', { name: text.importDestination, exact: true });
-  await group.getByRole('button', { name: destination === 'newBuild' ? text.importNew : new RegExp(`^${text.importCurrent}`) }).click();
+  await group.getByRole('button').nth(destination === 'newBuild' ? 0 : 1).click();
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   if (destination === 'currentStage') await answerConfirm(page, true);

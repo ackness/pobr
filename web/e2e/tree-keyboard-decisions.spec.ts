@@ -441,7 +441,7 @@ test('historical replacement keeps exact version and calculation but exposes no 
   await keyboardResult(page, 'WITCH', witchRoot);
   await page.locator('.shell-builds-button').click();
   const code = deflateSync('<PathOfBuilding2><Build level="80" className="Witch"/><Tree activeSpec="1"><Spec nodes="770" treeVersion="0_1"/></Tree><Skills/><Items/></PathOfBuilding2>').toString('base64url');
-  await page.getByRole('group', { name: 'Import into', exact: true }).getByRole('button', { name: /^Replace current stage/ }).click();
+  await page.getByRole('group', { name: 'Import as', exact: true }).getByRole('button', { name: /^Replace this stage/ }).click();
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await answerConfirm(page, true);

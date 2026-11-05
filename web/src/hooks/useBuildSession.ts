@@ -1,3 +1,5 @@
+import { importedBuildName } from '../lib/workspaceNames';
+import type { Lang } from '../lib/i18n';
 import type { TreeEditResult } from '../api/types';
 /**
  * Build 会话状态（PoB2 语义：启动即有一个可编辑的空 build）。
@@ -678,7 +680,7 @@ export async function skillMetricsForState(state: BuildState): Promise<SkillMetr
   return { skills, item_errors };
 }
 
-export function useBuildSession(configContextActive = false): BuildSession {
+export function useBuildSession(configContextActive = false, lang: Lang = 'en-US'): BuildSession {
   const configContextActiveRef = useRef(configContextActive);
   configContextActiveRef.current = configContextActive;
   const [dataVersion, setDataVersion] = useState<string | null>(null);
@@ -1064,7 +1066,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
         };
         if (options.destination === 'newBuild' && workspaceRef.current) {
           const plannerName: string | undefined = decoded.planner_source ? JSON.parse(decoded.planner_source).name : undefined;
-          const name = options.name?.trim() || plannerName?.trim() || decoded.character.ascendancy_name || decoded.character.class_name;
+          const name = importedBuildName(decoded.character, classNames, lang, options.name, plannerName);
           workspaceRef.current = addWorkspaceBuild(workspaceRef.current, name, { version: 1, state: importedState, notes: overview }, defaultStarterRef.current);
         }
         // Do not persist imported notes into the stage being left behind.
@@ -1079,7 +1081,7 @@ export function useBuildSession(configContextActive = false): BuildSession {
         setPendingOperations(count => count - 1);
       }
     },
-    [apply, mergeImportedIntoLibrary],
+    [apply, mergeImportedIntoLibrary, classNames, lang],
   );
 
   /**
@@ -1622,11 +1624,11 @@ export function useBuildSession(configContextActive = false): BuildSession {
     } else {
       if (destination === 'newBuild' && workspaceRef.current) {
         workspaceRef.current = addWorkspaceBuild(workspaceRef.current,
-          saved.state.character.ascendancy_name || saved.state.character.class_name, saved, defaultStarterRef.current);
+          importedBuildName(saved.state.character, classNames, lang), saved, defaultStarterRef.current);
       }
       restoreSession(saved, {});
     }
-  }, [restoreSession]);
+  }, [restoreSession, classNames, lang]);
 
   const selectStage = useCallback((buildId: string, stageId?: string) => {
     if (!workspaceRef.current || busy) return;

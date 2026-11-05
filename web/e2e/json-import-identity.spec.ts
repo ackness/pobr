@@ -175,7 +175,7 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
       await rejectPaste(page, unsupported, 'currentStage', before, lang);
       const tt = bindT(lang);
       await expect(page.getByRole('group', { name: workspaceText(lang).importDestination, exact: true })).toBeVisible();
-      await expect(page.getByRole('button', { name: workspaceText(lang).importCurrent, exact: true })).toBeVisible();
+      await expect(page.getByRole('group', { name: workspaceText(lang).importDestination, exact: true }).getByRole('button').nth(1)).toContainText(workspaceText(lang).importCurrent.split('{stage}')[0]);
       await expect(page.getByRole('button', { name: tt('save.import'), exact: true })).toBeVisible();
       const alert = page.getByRole('alert');
       await alert.scrollIntoViewIfNeeded();

@@ -24,7 +24,8 @@ export function PartyEditor({ session, lang }: { session: BuildSession; lang: La
     <summary>{label('party')} ({party.members.filter(m => m.enabled).length})</summary>
     <p>{label('partyHint')}</p>
     <label>{label('memberCode')}<AppTextarea disabled={session.busy || importing} aria-label={label('memberCode')} value={code} onChange={e => setCode(e.target.value)} /></label>
-    <AppButton disabled={session.busy || importing || !code.trim()} onClick={async () => {
+    {!code.trim() && <p id="party-import-hint">{label('pasteMemberFirst')}</p>}
+    <AppButton disabled={session.busy || importing || !code.trim()} aria-describedby={!code.trim() ? 'party-import-hint' : undefined} onClick={async () => {
       setImporting(true); setError('');
       try { const backend = await getBackend(); const member = await backend.importPartyMember(code.trim()); if (currentRevision.current !== session.stateVersion) { setError(label('changed')); return; } add(member); setCode(''); }
       catch (e) { setError(String(e)); }

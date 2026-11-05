@@ -8,7 +8,7 @@
 .shell-root .config-search { flex: 1 1 15rem; min-width: 0; max-width: 32rem; }
 .shell-root .config-filter { display: flex; align-items: center; gap: .5rem; font-size: .875em; }
 .shell-root .config-view { display: flex; flex-wrap: wrap; gap: .5rem; }
-.shell-root .config-view [aria-pressed="true"] { background: var(--accent, var(--muted)); border-color: var(--ring, var(--primary)); color: var(--accent-foreground, var(--foreground)); }
+.shell-root .config-view [aria-checked="true"] { background: var(--accent, var(--muted)); border-color: var(--ring, var(--primary)); color: var(--accent-foreground, var(--foreground)); }
 .shell-root :is(.config-guidance, .config-quick-disclosure) { padding: .75rem 1rem; border: 1px solid var(--border); border-radius: .75rem; margin: .75rem 0; background: var(--card); }
 .shell-root :is(.config-guidance, .config-quick-disclosure) > summary { cursor: pointer; font-weight: 500; }
 .shell-root .config-quick-access { border: 0; padding: .5rem 0; background: transparent; }
