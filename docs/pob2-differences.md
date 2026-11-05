@@ -19,7 +19,7 @@
 - `base/skill_gems.json` 的效果链接、宝石标签来自 `GemEffects` / `GemTags`；各宝石等级所需角色等级来自 `ItemExperiencePerLevel`。品质另由 `overlay/gem_quality_stats.json` 提供。
 - 技能类型名表来自 `base/active_skill_types.json`（`ActiveSkillType` 行序，PoB2 `SkillType.<Id>` = 行号 + 1），引擎不再内嵌副本；基础最大怒气来自 `base/game_constants.json` 的 `base_maximum_rage`。珠宝范围读数据包的 `base/jewel_radii.json`，但数值仍转录自 PoB2（见下表）。引擎仍保留的表及理由见 `crates/pobr-data/tests/no_embedded_data.rs`。
 - `base/monster_resistances.json` 连接 `MonsterVarieties → MonsterTypes → MonsterResistances`，取普通稀有度的 `Fire1/Cold1/Lightning1/Chaos1`，合并链接并保留负弱点，供召唤物基础抗性使用。
-- `item_granted_skills.json`、`boss_poise_thresholds.json` 和 `totem_varieties.json` 的版本 overlay 已有目标事实 producer；PoBR 保留筛选和解释责任。授予技能只迁可证字段，`ItemInherentSkills.IsWeapon` 按固定社区政策解释为 NoReservation，字段命名与官方语义未独立认证；Boss 选择仍是显式模型（[授予技能契约](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-item-grants.md)）。
+- `item_granted_skills.json`、`boss_poise_thresholds.json` 和 `totem_varieties.json` 的版本 overlay 已有目标事实 producer；PoBR 保留筛选和解释责任。授予技能只迁可证字段，`ItemInherentSkills.IsWeapon` 按固定社区政策解释为 NoReservation，字段命名与官方语义未独立认证；Boss 选择仍是显式模型（[授予技能契约](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/docs/ordinary-item-grants.md)）。
 
 ### 冻结输入与退出顺序
 

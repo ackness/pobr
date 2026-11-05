@@ -3,7 +3,7 @@
 本目录按唯一数据锁 [`data.lock.json`](data.lock.json) 临时导入 RePoE 的游戏包与翻译库的语言包，
 封存为运行目录与精简发行包。PoBR 不生产数据：把 RePoE 事实转换成运行 JSON 的
 [`pobr-data-adapter`](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/README.md) 及其领域政策在 RePoE，
-[特殊制作目录](https://github.com/ackness/repoe/blob/master/RePoE/docs/pobr_crafting_catalog.md)也由 RePoE 投影后放进游戏包；
+[特殊制作目录](https://github.com/ackness/repoe/blob/master/RePoE/docs/release/pobr_crafting_catalog.md)也由 RePoE 投影后放进游戏包；
 尚未迁移的字段以 PoB2／社区兼容数据的形式随 owner 包固定导入，不称为已从客户端自主再生。
 三仓库职责与存储边界见[数据架构](../docs/data-architecture.md)，当前接入状态见[数据现状](../docs/data-status.md)，
 换数据、发版与回退的步骤见 [RELEASING.md](../RELEASING.md)。
@@ -29,11 +29,11 @@ JSON 的职责各不相同：`data.lock.json` 是唯一的生产数据声明；C
 
 | 域 | 当前来源 | 生产与保留边界 |
 | --- | --- | --- |
-| 物品基底／词缀／Stat／技能宝石 | 固定自有RePoE客户端DAT事实 | [普通领域adapter](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-facts.md)接回原DTO；未拥有字段及旧编解码仍保留兼容 |
+| 物品基底／词缀／Stat／技能宝石 | 固定自有RePoE客户端DAT事实 | [普通领域adapter](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/docs/ordinary-facts.md)接回原DTO；未拥有字段及旧编解码仍保留兼容 |
 | 宝石品质 | 目标GrantedEffectQualityStats／GrantedEffects／Stats事实 | [品质生成说明](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/gem-quality/README.md)；计算仍按固定effect-wide策略，不认证全部细分scope |
-| 词条显示文本 | 固定客户端CSD＋明确保留的兼容文本 | [普通描述生产者](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-stat-descriptions.md)、树／符文renderer；未表达项保留诊断或整项回退 |
+| 词条显示文本 | 固定客户端CSD＋明确保留的兼容文本 | [普通描述生产者](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/docs/ordinary-stat-descriptions.md)、树／符文renderer；未表达项保留诊断或整项回退 |
 | 被动天赋树 | 目标DAT／Default PSG事实与固定兼容字段 | 普通树已迁源；placement／armour等未拥有语义保留 |
-| 特殊制作目录 | 独立RePoE七表中立事实，RePoE按PoBR目录政策筛选／聚合后放进游戏 part | [目录投影](https://github.com/ackness/repoe/blob/master/RePoE/docs/pobr_crafting_catalog.md)保留八槽与未表达原值诊断；来源语言缺失保持unknown；不代表完整效果或概率 |
+| 特殊制作目录 | 独立RePoE七表中立事实，RePoE按PoBR目录政策筛选／聚合后放进游戏 part | [目录投影](https://github.com/ackness/repoe/blob/master/RePoE/docs/release/pobr_crafting_catalog.md)保留八槽与未表达原值诊断；来源语言缺失保持unknown；不代表完整效果或概率 |
 | 规则／目录／翻译 | PoBR自有规则、随owner包导入的PoB2／社区兼容目录、固定语言库与客户端文本投影 | 逐项记录来源和适用边界；保留输入不代表全部自主生产，SC客户端身份与CN数值不因中文显示而认证 |
 
 ## 来源与 owner 工具
@@ -46,7 +46,7 @@ JSON 的职责各不相同：`data.lock.json` 是唯一的生产数据声明；C
 [devs/reference-sources.json](../devs/reference-sources.json)。
 
 客户端采集、官方版本发现、DAT 列名与 schema 映射、事实导出、领域候选（普通事实、原生事实、天赋树）和输入包
-`inputs/<patch>-<n>` 都在 RePoE，入口见其[客户端资源获取](https://github.com/ackness/repoe/blob/master/RePoE/docs/client-sources.md)与上文的 adapter 说明。
+`inputs/<patch>-<n>` 都在 RePoE，入口见其[客户端资源获取](https://github.com/ackness/repoe/blob/master/RePoE/docs/client/client-sources.md)与上文的 adapter 说明。
 这些步骤不改 PoBR 的锁，也不切换活动数据。活动数据仍含随 owner 包导入的 PoB2 兼容字段，按字段的现状见
 [与 PoB2 的差异](../docs/pob2-differences.md#数据来源现状与退出顺序)。
 

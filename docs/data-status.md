@@ -31,13 +31,13 @@ PoBR 一侧的换数据、发版与回退步骤见 [RELEASING.md](../RELEASING.m
 
 | 能力 | 状态 | 阻塞项 |
 | --- | --- | --- |
-| 基底／词缀／制作 | 来自游戏事实（[基底](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-base-items.md#remaining-source-and-consumer-contracts)、[制作](https://github.com/ackness/repoe/blob/master/RePoE/docs/pobr_crafting_catalog.md)） | charm 的部分字段缺完整解释；socket、subtype、权重与资格未全部迁源 |
-| 技能／品质 | 等级、品质与 gem 关系使用原生作用域（[技能覆盖](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-skill-overrides.md)、[品质](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/gem-quality/README.md)、[限制](mechanics/items.md#宝石等级品质与授予技能)） | `stat_set_index` 仍是 PoB 编号；少数品质分支越界或没有显示编号 |
-| 天赋 | 普通树使用游戏描述，少数节点混合（[天赋树](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-passive-tree.md)） | 少数整文本兼容节点缺当前描述或关系；需经范围珠宝与加点验证 |
-| 符文／魂核 | 大部分使用游戏描述（[符文](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-socketables.md)） | 少数整项兼容，需补完整 packet |
-| 描述／tier | 完整分支、显示缩放与 tier 反解（[描述](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-stat-descriptions.md)） | 少数 scoped 兼容 ID 有 owner 歧义或缺 handler |
-| actor／常量／关系 | actor、怪物、图腾、玩家常量、Boss 数值与装备授予技能（[actor](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-actors.md#observed-three-root-ot-draft)） | 作用域与目录策展需要独立依据 |
-| 暗金 | RePoE 已投影关系候选（[暗金](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/ordinary-uniques.md)） | 候选未进入游戏包，消费者未接入 |
+| 基底／词缀／制作 | 来自游戏事实（[基底](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/docs/ordinary-base-items.md#remaining-source-and-consumer-contracts)、[制作](https://github.com/ackness/repoe/blob/master/RePoE/docs/release/pobr_crafting_catalog.md)） | charm 的部分字段缺完整解释；socket、subtype、权重与资格未全部迁源 |
+| 技能／品质 | 等级、品质与 gem 关系使用原生作用域（[技能覆盖](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/docs/ordinary-skill-overrides.md)、[品质](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/gem-quality/README.md)、[限制](mechanics/items.md#宝石等级品质与授予技能)） | `stat_set_index` 仍是 PoB 编号；少数品质分支越界或没有显示编号 |
+| 天赋 | 普通树使用游戏描述，少数节点混合（[天赋树](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/docs/ordinary-passive-tree.md)） | 少数整文本兼容节点缺当前描述或关系；需经范围珠宝与加点验证 |
+| 符文／魂核 | 大部分使用游戏描述（[符文](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/docs/ordinary-socketables.md)） | 少数整项兼容，需补完整 packet |
+| 描述／tier | 完整分支、显示缩放与 tier 反解（[描述](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/docs/ordinary-stat-descriptions.md)） | 少数 scoped 兼容 ID 有 owner 歧义或缺 handler |
+| actor／常量／关系 | actor、怪物、图腾、玩家常量、Boss 数值与装备授予技能（[actor](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/docs/ordinary-actors.md#observed-three-root-ot-draft)） | 作用域与目录策展需要独立依据 |
+| 暗金 | RePoE 已投影关系候选（[暗金](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/docs/ordinary-uniques.md)） | 候选未进入游戏包，消费者未接入 |
 | PoB2 解释与 buff | 保留项按字段登记 | 按[冻结输入清单](pob2-differences.md#数据来源现状与退出顺序)的顺序退出 |
 | 语言／显示 | 简中与繁中接入，辅助说明与审核补译已接线（[翻译库](https://github.com/ackness/poe2-zh-cn-stats/tree/main/docs)；缺译统计 `mise run i18n:coverage`） | 每种语言 20 个 gem 名仍是英文；简中客户端版本与国服数值未确认 |
 | 玩家验收与性能 | 锁改变时完整 CI 跑 Web 冒烟；正式包继续用逐文件快照（[加载对比](wasm-package.md#web-data-load-comparison)） | 回滚需手动验证；真实玩家设备未测 |
