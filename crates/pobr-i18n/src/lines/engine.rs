@@ -326,7 +326,15 @@ pub struct LineTranslator {
 }
 
 impl LineTranslator {
+    /// Compiles `templates` (a whole fallback chain, in chain order). Every
+    /// official pair (no `origin`) ranks before every supplement, each group
+    /// keeping its order: wherever pairs tie (same skeleton, same anchor),
+    /// the official one wins, however the file sorts them.
     pub fn new(templates: &[StatLineTemplate], base_names: HashMap<String, String>) -> Self {
+        let templates = templates
+            .iter()
+            .filter(|pair| pair.origin.is_none())
+            .chain(templates.iter().filter(|pair| pair.origin.is_some()));
         let mut compiled: Vec<CompiledTemplate> = Vec::new();
         let mut buckets: HashMap<String, Vec<usize>> = HashMap::new();
         let mut prefix_index: HashMap<String, Vec<usize>> = HashMap::new();

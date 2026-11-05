@@ -809,3 +809,89 @@ fn a_bonded_line_renders_through_the_packs_own_templates() {
     // The prefix alone, as the Web asks for it.
     assert_eq!(render("Bonded: {0}").as_deref(), Some("羁绊： {0}"));
 }
+
+fn templates_pack(code: &str, templates: serde_json::Value) -> LocalePack {
+    LocalePack::from_files(
+        code,
+        [("stat_lines.json", templates.to_string().into_bytes())],
+    )
+    .unwrap()
+}
+
+#[test]
+fn an_official_template_wins_over_a_supplement_listed_before_it() {
+    use pobr_data::catalog::TextOrigin::Human;
+    // The file sorts by (src, en): a supplement can come first.
+    let pack = templates_pack(
+        "zz",
+        serde_json::json!([
+            {"src": "我方补译 {0}% 生命", "en": "{0}% increased maximum Life", "origin": "human"},
+            {"src": "我方补译 {0} 魔力", "en": "{0} to maximum Mana", "origin": "human"},
+            {"src": "生命上限 {0}", "en": "Supplement {0} Life", "origin": "agent"},
+            {"src": "生命上限 {0}", "en": "{0} to maximum Life"},
+            {"src": "生命上限提高 {0}%", "en": "{0}% increased maximum Life"},
+            {"src": "[{0}] 我方", "en": "Ours {0}", "origin": "agent"},
+            {"src": "[{0}] 官方", "en": "Ours {0}"}
+        ]),
+    );
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    assert_eq!(
+        renderer.render_line_with_origin("33% increased maximum Life"),
+        Some(("生命上限提高 33%".into(), None))
+    );
+    // The string channel too (same anchor, official first).
+    assert_eq!(
+        renderer.render_line_with_origin("Ours ★"),
+        Some(("[★] 官方".into(), None))
+    );
+    // A line only a supplement renders still takes it.
+    assert_eq!(
+        renderer.render_line_with_origin("+5 to maximum Mana"),
+        Some(("我方补译 +5 魔力".into(), Some(Human)))
+    );
+    // The parser: a supplement sharing an official src never changes how it parses.
+    let parser = LineParser::new(&[&pack], BASES).unwrap();
+    assert_eq!(
+        parser.parse_line("生命上限 +5").as_deref(),
+        Some("+5 to maximum Life")
+    );
+}
+
+#[test]
+fn official_templates_of_the_whole_chain_rank_before_its_supplements() {
+    let primary = templates_pack(
+        "zz",
+        serde_json::json!([
+            {"src": "我方补译 {0}% 生命", "en": "{0}% increased maximum Life", "origin": "agent"}
+        ]),
+    );
+    let fallback = templates_pack(
+        "yy",
+        serde_json::json!([{"src": "生命上限提高 {0}%", "en": "{0}% increased maximum Life"}]),
+    );
+    let renderer = LineRenderer::new(&[&primary, &fallback], []).unwrap();
+    assert_eq!(
+        renderer.render_line_with_origin("33% increased maximum Life"),
+        Some(("生命上限提高 33%".into(), None))
+    );
+}
+
+#[test]
+fn a_rejected_candidate_leaves_no_origin_on_the_one_accepted_after_it() {
+    let pack = templates_pack(
+        "zz",
+        serde_json::json!([
+            {"src": "{0}% 某某", "en": "{0}% Something", "origin": "agent"},
+            {"src": "授予全部 {0}% 某物", "en": "Grant all {0}% Something"},
+            {"src": "全部授予 {1} {0}", "en": "Grant all {0} to {1}"},
+            {"src": "{0}，给泽德", "en": "{0} to Zed"}
+        ]),
+    );
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    // "Grant all {0} to {1}" anchors longer and is tried first: its {0} renders
+    // through the agent pair, but "Zed" does not translate, so it is rejected.
+    assert_eq!(
+        renderer.render_line_with_origin("Grant all 5% Something to Zed"),
+        Some(("授予全部 5% 某物，给泽德".into(), None))
+    );
+}

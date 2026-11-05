@@ -111,8 +111,8 @@ fn a_supplement_row_marks_the_lines_it_renders() {
         "en": "Gain {0}% of damage as Fire damage per 2% Chance to Block",
         "origin": "agent"
     }));
-    // Official text wins a line it also renders: this row is never used.
-    rows.push(serde_json::json!({
+    // Official text wins a line it also renders, even listed first: this row is never used.
+    rows.insert(0, serde_json::json!({
         "src": "我方补译 {0}% 生命", "en": "{0}% increased maximum Life", "origin": "human"
     }));
     init(&pack(Some(serde_json::to_vec(&rows).unwrap())));
