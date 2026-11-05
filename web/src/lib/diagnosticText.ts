@@ -1,5 +1,7 @@
 import type { Lang } from './i18n';
-import { words } from '../app/text';
+
+/** Same as `app/text.words`; kept local so `lib` does not depend on `app`. */
+const words = (lang: Lang, en: string, cn: string, tw: string = cn) => lang === 'en-US' ? en : lang === 'zh-TW' ? tw : cn;
 
 /** `[Curse|Curses]` -> `Curses`, `[Curse]` -> `Curse`: the engine keeps the game's reference markup in diagnostics. */
 export function stripReferenceMarkup(text: string): string {
