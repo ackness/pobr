@@ -24,8 +24,8 @@
 ### 冻结输入与退出顺序
 
 仍依赖 PoB2 或手工整理的输入只在这里维护一份清单。权威的冻结队列是 RePoE 的
-[`release/0.5.5.5-2/frozen-inputs.json`](https://github.com/ackness/repoe/blob/master/release/0.5.5.5-2/frozen-inputs.json)
-（随 RePoE PR #38 合入），它按成员记录类别、字节与摘要、原因和退出方式；本表不复制摘要。
+[`release/0.5.5.5-2/frozen-inputs.json`](https://github.com/ackness/repoe/blob/master/release/0.5.5.5-2/frozen-inputs.json)，
+它按成员记录类别、字节与摘要、原因和退出方式；本表不复制摘要。
 表中标“冻结”的是该队列的全部成员，它们以固定字节随游戏包发布，没有 RePoE producer 或缺固定输入。
 标“重放”的已有 RePoE adapter，但从固定的 `0.5.5.4.2` codec 或 prepared 政策重放 PoB2 解释，不在冻结队列中，退出同样按本表顺序。
 
@@ -46,13 +46,13 @@ trade、暗金与基底类转为 RePoE 从客户端生成。客户端数值和�
 | 9 | `overlay/minions.json`、`overlay/spectres.json` 的目录成员、effect→variety aliases、限制与装备关系（重放） | 召唤物与幽魂的选择 | RePoE：需要独立依据；目录身份不能仅由 monster hash 反推，actor 数值已迁源 |
 | 10 | `overlay/uniques.json`（冻结） | 暗金的词缀归属、roll 与变体；导入的物品原文不经它 | RePoE：从客户端 `UniqueStashLayout`／`Words`／`Mods` 生成，再决定 `unique_relations.json` 是否进入游戏包 |
 | 11 | `overlay/passive_jewels.json`（冻结）；`base/jewel_radii.json` 的数值（重放） | 珠宝与范围珠宝 | RePoE：从客户端天赋与珠宝事实生成 |
-| 12 | `base/unarmed_data.json`、`overlay/catalysts.json`、`overlay/item_granted_skills.json`、`overlay/passive_jewel_slots.json`（冻结：已有 producer，缺固定输入） | 无：producer 重放的值与当前文件一致 | RePoE：把所需输入（player-context 归档或选表补充）发布为固定 handoff 并声明对应 job |
+| 12 | 版本 overlay 的 `base/unarmed_data.json`、`overlay/catalysts.json`、`overlay/item_granted_skills.json`、`overlay/passive_jewel_slots.json`（冻结：已有 producer，缺固定输入） | 无：producer 重放的值与当前文件一致 | RePoE：把所需输入（player-context 归档或选表补充）发布为固定 handoff 并声明对应 job |
 | 13 | `overlay/trade_catalog.json`、`overlay/trade_stat_map.json`（冻结） | 无：只用于交易与打造界面 | RePoE：从客户端 Mods／BaseItemTypes 与固定的交易站 stats 来源生成 |
 | 14 | `overlay-common/` 的 `boss_poise_thresholds.json`、`item_granted_skills.json`、`passive_jewel_slots.json`、`totem_varieties.json`、`vendor_name_aliases.json`（冻结） | 无：版本 overlay 优先；别名表没有读取方 | PoBR 不再为这些域读取 `overlay-common/` 后，由 RePoE 从包中移除 |
 
 不在清单里的输入：`data/overlay-common/local_mods.json` 与 `special_mods.json` 是 PoBR 入库的自有规则（锁的 `shared_files`），
 包含项目维护的兼容规则及独立游戏规则，不能统称为 PoB2 语义；`overlay/stat_id_map.json` 是从描述与现有 parser 派生的本地维护资料，
-不是生产中的 stat 注入通道或已验证的游戏语义。符文与描述已有客户端事实／CSD adapter，未完整表示的整项回退与 scoped 解释的分母见[数据现状](data-status.md#领域现状)，
+不是生产中的 stat 注入通道或已验证的游戏语义。符文与描述已有客户端事实／CSD adapter，未完整表示的整项回退与 scoped 解释的现状见[数据现状](data-status.md#领域现状)（计数在其链接的 RePoE 文档），
 领域退出条件见[数据架构](data-architecture.md#8-质量目标与领域退出条件)。
 
 `buff_definitions` 的 `vendor_ref` 记录的 15 个 PoB2 行段在当前参考中逐字节相同，但 RePoE 的[固定来源对账](https://github.com/ackness/repoe/blob/db7f3d5d129d82e5788990658795d5a4ad15a4df/RePoE/docs/buff_source_reconciliation.md)
