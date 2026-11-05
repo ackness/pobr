@@ -117,14 +117,22 @@
   .shell-root .skills-page .skill-gem .gem-controls > :nth-child(4) { grid-column: 4; grid-row: 1; }
   .shell-root .skills-page .skill-gem .gem-controls > :nth-child(5) { grid-column: 6; grid-row: 1; justify-content: center; }
   .shell-root .skills-page .skill-gem .gem-controls > :nth-child(6) { grid-column: 7; grid-row: 1; }
-  .shell-root .skills-page .skill-gem input[type='number'] { width: 100%; min-width: 0; height: 2rem; min-height: 0; padding: 0 .5rem; font-size: var(--text-sm); text-align: right; font-variant-numeric: tabular-nums; }
+  .shell-root .skills-page .skill-gem input[type='number'] { width: 100%; min-width: 0; height: 2rem; min-height: 0; padding: 0 .5rem; font-size: var(--text-sm); text-align: right; font-variant-numeric: tabular-nums; appearance: textfield; }
+  .shell-root .skills-page .skill-gem input[type='number']::-webkit-inner-spin-button,
+  .shell-root .skills-page .skill-gem input[type='number']::-webkit-outer-spin-button { appearance: none; margin: 0; }
   .shell-root .skills-page .skill-gem .gem-controls > .skill-remove { width: 1.9rem; height: 1.9rem; min-height: 0; padding: 0; border-color: transparent; background: transparent; color: var(--muted-foreground); font-size: 1.1rem; line-height: 1; opacity: .6; }
   .shell-root .skills-page .skill-gem .gem-controls > .skill-remove:hover:not(:disabled), .shell-root .skills-page .skill-gem .gem-controls > .skill-remove:focus-visible { background: transparent; color: var(--destructive); opacity: 1; }
 
   /* Adding a support: the recommendation leads, a manual pick follows. */
   .shell-root .skills-page .skill-detail .gem-optimizer { margin: 0; padding: 0; border: 0; }
   .shell-root .skills-page .gem-optimizer-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; }
-  .shell-root .skills-page .gem-optimizer-toggle { justify-content: flex-start; gap: .4rem; width: auto; min-height: 0; padding: .25rem .25rem .25rem 0; border-color: transparent; background: transparent; color: var(--foreground); font-size: var(--text-base); font-weight: 560; text-align: left; }
+  .shell-root .skills-page .gem-optimizer-toggle,
+  .shell-root .skills-page .gem-optimizer-settings > summary { display: flex; align-items: center; cursor: pointer; list-style: none; justify-content: flex-start; gap: .4rem; width: auto; min-height: 0; padding: .25rem .25rem .25rem 0; border-color: transparent; background: transparent; color: var(--foreground); font-size: var(--text-base); font-weight: 560; line-height: 1.5; text-align: left; }
+  .shell-root .skills-page .gem-optimizer-toggle .row-caret,
+  .shell-root .skills-page .gem-optimizer-settings > summary::before { display: inline-block; flex: none; width: .75rem; color: var(--muted-foreground); font-size: var(--text-xs); line-height: 1; }
+  .shell-root .skills-page .gem-optimizer-settings > summary::-webkit-details-marker { display: none; }
+  .shell-root .skills-page .gem-optimizer-settings > summary::before { content: '▸'; }
+  .shell-root .skills-page .gem-optimizer-settings[open] > summary::before { transform: rotate(90deg); }
   .shell-root .skills-page .gem-optimizer-toggle:hover { background: transparent; }
   .shell-root .skills-page .opt-run { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); font-weight: 560; }
   .shell-root .skills-page .opt-run:hover:not(:disabled) { background: var(--primary); color: var(--primary-foreground); opacity: .9; }
@@ -147,7 +155,6 @@
   .shell-root .skills-page .support-pool-summary > strong { font-size: var(--text-base); color: var(--foreground); }
   .shell-root .skills-page .support-diagnostics { padding: .25rem 0; }
   .shell-root .skills-page .support-diagnostic-excluded > li { border-radius: 0; }
-  .shell-root .skills-page .gem-optimizer-settings > summary,
   .shell-root .skills-page .support-pool-details > summary,
   .shell-root .skills-page .skills-advanced > summary,
   .shell-root .skills-page .skill-advanced > summary { cursor: pointer; font-size: var(--text-sm); color: var(--muted-foreground); }
@@ -156,7 +163,7 @@
   .shell-root .skills-page .skill-advanced > summary:hover { color: var(--foreground); }
   .shell-root .skills-page .gem-optimizer-settings-body { display: grid; gap: .8rem; margin-top: .7rem; }
   .shell-root .skills-page .gem-optimizer-settings-body .opt-row { align-items: flex-end; gap: .75rem 1.25rem; }
-  .shell-root .skills-page .skill-group-picker { margin: 0; }
+  .shell-root .skills-page .skill-group-picker { margin: .5rem 0 0; }
   .shell-root .skills-page .skill-group-picker .gem-picker { max-width: 28rem; }
 
   /* Advanced: out of the way until asked for. */

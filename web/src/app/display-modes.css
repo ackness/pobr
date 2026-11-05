@@ -52,7 +52,7 @@
   .shell-root .skill-detail-dps > span { font-size: var(--text-sm); color: var(--muted-foreground); }
   .shell-root .skill-detail-dps strong { font-size: 1.75rem; font-variant-numeric: tabular-nums; }
   .shell-root [data-display-mode='grouped'] .skill-detail .skill-gem { padding-block: .65rem; }
-  .shell-root [data-display-mode='grouped'] .skill-detail .skill-gem[data-gem-kind='active'] { background: var(--card); border-top: 2px solid var(--primary); }
+  .shell-root [data-display-mode='grouped'] .skill-detail .skill-gem[data-gem-kind='active'] { background: var(--card); box-shadow: inset 2px 0 0 var(--primary); }
   .shell-root [data-display-mode='grouped'] .gem-kind-label { display: inline; }
   .shell-root [data-display-mode='compact'] .skill-detail { gap: 1rem; }
   .shell-root [data-display-mode='compact'] .skill-detail-dps strong { font-size: 1.25rem; }
@@ -78,7 +78,7 @@
   .shell-root .config-page .config-help-tools > details { margin: 0; padding: .3rem 0; border: 0; }
   .shell-root .config-page .config-help-tools > details[open] { flex-basis: 100%; }
   .shell-root .config-page .config-options-workspace { margin-top: 1rem; gap: 1.5rem; }
-  .shell-root .config-page .config-group-nav > [aria-pressed='true'] { background: var(--muted); border-radius: .35rem; padding-inline: .5rem; color: var(--foreground); }
+  .shell-root .config-page .config-group-nav > [aria-pressed='true'] { background: var(--muted); border-radius: .35rem; color: var(--foreground); }
   .shell-root .config-page .config-option-help .config-source { display: block; margin-top: .3rem; }
   .shell-root .config-page .config-item { align-items: center; }
   .shell-root .config-page .config-item > [role='checkbox'] { justify-self: end; }
@@ -95,7 +95,7 @@
   .shell-root .calcs-page.calcs-workspace .calcs-metric-scope { display: flex; gap: .3rem; }
   .shell-root .calcs-metric-scope > [data-slot='button'] { flex: 1; font-size: var(--text-sm); padding: .4rem; border-color: var(--border); }
   .shell-root .calcs-metric-scope > [aria-pressed='true'] { background: var(--muted); color: var(--foreground); border-color: var(--primary); }
-  .shell-root [data-display-mode='grouped'] .calcs-detail-header { padding: 1rem; background: var(--card); border-radius: .5rem; }
+  .shell-root [data-display-mode='grouped'] .calcs-page.calcs-workspace .calcs-detail-header { padding: 1rem 1.1rem; border-bottom: 0; background: var(--card); border-radius: .5rem; }
   .shell-root [data-display-mode='compact'] .calcs-page.calcs-workspace .calcs-explorer { gap: 1.5rem; grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr); }
   .shell-root [data-display-mode='compact'] .calcs-page.calcs-workspace .calcs-detail-value strong { font-size: 1.6rem; }
   .shell-root [data-display-mode='compact'] :is(.breakdown-formula, .breakdown-table) :is(th, td) { padding-block: .3rem; }

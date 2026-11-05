@@ -55,16 +55,20 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
   const classLabel = classDisplayName(session.classNames, className, lang);
 
   // Every active effect, calculated on its own: which skill actually carries the build.
-  const [skills, setSkills] = useState<SkillMetricsEntry[] | null>(null);
+  const [skillResult, setSkillResult] = useState<{ version: number; skills: SkillMetricsEntry[] | null } | null>(null);
   const hasSkills = session.socketGroups.length > 0;
-  useEffect(() => { if (!hasSkills) setSkills(null); }, [hasSkills]);
+  const skills = hasSkills ? skillResult?.skills : null;
+  const skillsPending = hasSkills && !session.calcError && (session.busy || skillResult?.version !== session.stateVersion);
+  useEffect(() => { if (!hasSkills) setSkillResult(null); }, [hasSkills]);
   useEffect(() => {
     if (session.busy || session.calcError || !hasSkills) return;
     let stale = false;
+    const version = session.stateVersion;
     // The previous ranking stays up while a newer one is computed, so the list does not blink on each edit.
     const timer = setTimeout(() => {
-      const request = session.currentRequest(); if (!request) return;
-      getBackend().then(backend => backend.skillMetrics(request)).then(result => { if (!stale) setSkills(result.skills); }).catch(() => { if (!stale) setSkills(null); });
+      const request = session.currentRequest();
+      if (!request) { setSkillResult({ version, skills: null }); return; }
+      getBackend().then(backend => backend.skillMetrics(request)).then(result => { if (!stale) setSkillResult({ version, skills: result.skills }); }).catch(() => { if (!stale) setSkillResult({ version, skills: null }); });
     }, 250);
     return () => { stale = true; clearTimeout(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the version number is the change signal.
@@ -148,9 +152,11 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
                     {fixResist ? w('Fix in Upgrades', '到提升页补抗性', '到提升頁補抗性') : finding.kind === 'net-regen' ? w('View recovery', '查看恢复', '查看恢復') : finding.kind === 'unsupported' ? w('View modifiers', '查看词条', '查看詞綴') : finding.route === 'items' ? w('View equipment', '查看装备', '查看裝備') : finding.route === 'skills' ? w('View skills', '查看技能', '查看技能') : w('View settings', '查看配置', '查看設定')}<ArrowRight /></Button>; })()}</li>; })}</ul>}
         </section>
 
-        <section className="ov-sec" aria-labelledby="ov-skills">
+        <section className="ov-sec" aria-labelledby="ov-skills" aria-busy={skillsPending}>
           <h2 id="ov-skills">{w('Skill damage', '技能伤害', '技能傷害')}</h2>
-          {ranked.length === 0 ? <p className="ov-muted">{w('No skill deals damage yet.', '暂时没有造成伤害的技能。', '暫時沒有造成傷害的技能。')}</p>
+          {ranked.length === 0 ? <p className="ov-muted" role="status">{skillsPending ? w('Calculating…', '计算中…', '計算中…')
+            : session.calcError || (hasSkills && !skills) ? w('The calculation is unavailable.', '当前计算不可用。', '目前計算無法使用。')
+              : w('No skill deals damage yet.', '暂时没有造成伤害的技能。', '暫時沒有造成傷害的技能。')}</p>
             : <ol className="ov-rank">{ranked.map(entry => { const metrics = entry.metrics!; const current = main?.group_index === entry.group_index && main.active_skill_index === entry.active_skill_index;
               return <li key={`${entry.group_index}:${entry.active_skill_index}`}><button type="button" aria-pressed={current} onClick={() => chooseSkill(entry)}>
                 <span className="ov-rank-name">{skillName(entry.skill_id)}<small>{w(`Group ${entry.group_index + 1} · Effect ${entry.active_skill_index}`, `技能组 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`, `技能組 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`)}</small></span>

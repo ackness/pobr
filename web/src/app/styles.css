@@ -138,6 +138,7 @@
   .rail-link svg { width: .9rem; height: .9rem; }
   .rail-section { margin-top: .6rem; padding-top: .15rem; border-top: 1px solid var(--border); }
   .rail-section h3 { margin: 0; font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-foreground); }
+  .rail-section > .rail-title { padding: .6rem 1rem .3rem; text-transform: none; }
   .rail-section h3 button { display: flex; align-items: center; gap: .3rem; width: 100%; padding: .6rem 1rem .3rem; letter-spacing: inherit; text-transform: inherit; }
   .rail-section h3 button:hover { color: var(--foreground); }
   .rail-section h3 svg { width: .75rem; height: .75rem; transition: transform .12s; }
@@ -147,6 +148,7 @@
 
   /* Notices sit above the page as a quiet band, not as another box. */
   .shell-alert, .shell-notice { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem .9rem; margin-bottom: 1rem; padding: .65rem .9rem; border-left: 3px solid var(--primary); border-radius: .3rem; background: var(--muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
+  .shell-main:not(.shell-page-tree) > :is(.shell-notice, .shell-alert) { max-width: var(--content-width); margin-inline: auto; }
   .shell-alert { border-left-color: var(--destructive); color: var(--destructive); }
   .shell-alert p, .shell-notice p { flex: 1 1 22rem; margin: 0; }
   .shell-boot { min-height: 100dvh; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1.2rem; padding: 2rem; text-align: center; }
@@ -261,8 +263,9 @@
   .ov-cols { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 2.5rem; align-items: start; }
   .ov-col { display: grid; gap: 2rem; min-width: 0; }
   .ov-sec { min-width: 0; }
-  .ov-sec > h2, .ov-sec-head { margin-bottom: .75rem; }
-  .ov-sec-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
+  /* Both column headings sit in a row of the same height, so they line up whether or not a toggle shares the row. */
+  .ov-sec > h2, .ov-sec-head { display: flex; align-items: center; min-height: 2rem; margin-bottom: .75rem; }
+  .ov-sec-head { justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
   .ov-sec-head h2 { margin: 0; }
 
   .ov-ok { display: flex; gap: .6rem; align-items: flex-start; margin: 0; font-size: var(--text-sm); color: var(--muted-foreground); line-height: 1.55; }
@@ -278,7 +281,7 @@
   .ov-findings [data-slot='button'] { color: var(--muted-foreground); }
 
   .ov-rank { display: grid; gap: .1rem; margin: 0; padding: 0; list-style: none; }
-  .ov-rank li > button, .ov-contrib li > div { display: grid; grid-template-columns: minmax(7rem, 12rem) minmax(0, 1fr) auto; align-items: center; gap: .85rem; width: 100%; padding: .4rem .5rem; margin-inline: -.5rem; border: 0; border-radius: .35rem; background: none; font: inherit; color: inherit; text-align: left; }
+  .ov-rank li > button, .ov-contrib li > div { display: grid; grid-template-columns: minmax(7rem, 12rem) minmax(0, 1fr) 10rem; align-items: center; gap: .85rem; width: 100%; padding: .4rem .5rem; margin-inline: -.5rem; border: 0; border-radius: .35rem; background: none; font: inherit; color: inherit; text-align: left; }
   .ov-rank li > button { min-height: 0; width: calc(100% + 1rem); }
   .ov-rank li > button:hover { background: var(--muted); }
   .ov-rank li > button[aria-pressed='true'] .ov-rank-name { color: var(--primary); font-weight: 600; }
@@ -316,7 +319,7 @@
   @container shell-container (max-width: 34rem) {
     .ov-figures { grid-template-columns: minmax(0, 1fr); }
     .ov-figure { padding-left: 0; border-left: 0; }
-    .ov-figure + .ov-figure { border-top: 1px solid var(--border); }
+    .ov-figure + .ov-figure { border-left: 0; padding-left: 0; border-top: 1px solid var(--border); }
     .ov-rank li > button, .ov-contrib li > div { grid-template-columns: minmax(0, 1fr) auto; }
     .ov-rank .ov-bar { grid-column: 1 / -1; order: 3; }
   }

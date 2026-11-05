@@ -93,7 +93,8 @@
   .shell-root .tree-panel .attr-distribute .attr-count { display: grid; gap: .2rem; font-size: var(--text-xs); }
   .shell-root .tree-panel .attr-distribute .attr-count input[type='number'] { width: 100%; }
   .shell-root .tree-panel .attr-distribute-rest, .shell-root .tree-panel .attr-distribute > .tree-hint { grid-column: 1 / -1; font-size: var(--text-xs); color: var(--muted-foreground); }
-  .shell-root .tree-panel .attr-quest { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .9rem; padding: 0; border: 0; font-size: var(--text-xs); color: var(--muted-foreground); }
+  .shell-root .tree-panel .attr-quest { grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: .35rem .9rem; padding: 0; border: 0; font-size: var(--text-xs); color: var(--muted-foreground); }
+  .shell-root .tree-panel .attr-quest-options { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .9rem; }
   .shell-root .tree-panel .attr-quest .attr-count { display: inline-flex; align-items: center; gap: .35rem; }
   .shell-root .tree-panel .attr-str, .shell-root .tree-panel .attr-count.attr-str { color: var(--color-life); }
   .shell-root .tree-panel .attr-count.attr-dex { color: var(--color-positive); }

@@ -1226,7 +1226,8 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
         </>
         )}
           <span className="attr-quest" role="group" aria-label={tt('tree.questAttr')}>
-            {tt('tree.questAttr')}
+            <span>{tt('tree.questAttr')}</span>
+            <span className="attr-quest-options">
             {(
               [
                 ['str', "questAct 4Halls Of The DeadNgamahu's Test", '+5 to Strength'],
@@ -1266,6 +1267,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
               />
               {tt('tree.questAllAttr')}
             </label>
+            </span>
           </span>
       </div>
   );
