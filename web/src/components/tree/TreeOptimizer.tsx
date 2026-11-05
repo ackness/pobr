@@ -20,6 +20,7 @@ import {
 } from '../../lib/passivePlanner';
 import { AppSelect } from '../shared/AppSelect';
 import { ObjectiveEditor, OptimizerProgress, objectiveOf, type ObjectiveState } from '../shared/OptimizerControls';
+import { PlannerResultsNotice } from './PlannerResultsNotice';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
 import { JewelPassivePlanner, useJewelPassivePlanner, type JewelPassivePlannerState } from './JewelPassivePlanner';
 
@@ -29,6 +30,7 @@ interface Props {
   active: boolean;
   nodes: PassiveNode[];
   nodeLabel: (skill: number) => string;
+  onLocate?: (skill: number) => void;
   onPreview: (plan: PassivePlan | null) => void;
   /** A search starts: whatever an earlier calculation painted on the tree is out of date. */
   onRun?: () => void;
@@ -78,7 +80,7 @@ export interface TreeOptimizerState {
 }
 
 
-export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onPreview, onRun, focusPlanner }: Props): TreeOptimizerState {
+export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onLocate, onPreview, onRun, focusPlanner }: Props): TreeOptimizerState {
   const [expanded, setExpanded] = useState(Boolean(focusPlanner));
   const [mode, setMode] = useState<'allocate' | 'reallocate'>('allocate');
   const [points, setPoints] = useState(3);
@@ -235,7 +237,7 @@ export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onPr
     // Later edits cannot revive this receipt, even if they restore the same allocation.
     setApplied({ version: session.stateVersion + 1, plan });
   };
-  const jewelPlanner = useJewelPassivePlanner({ session, lang, nodes, nodeLabel, active: active && expanded,
+  const jewelPlanner = useJewelPassivePlanner({ session, lang, nodes, nodeLabel, onLocate, active: active && expanded,
     mode, points, attribute, objective, onPreview, onStart: () => { cancel(); onRun?.(); } });
   return { session, lang, nodeLabel, containerRef, expanded, setExpanded, mode, setMode, points, setPoints,
     goal, setGoal, attribute, setAttribute, context, tracking, progress, error, completed, evaluated, preview,
@@ -248,6 +250,7 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
     goal, setGoal, attribute, setAttribute, context, tracking, progress, error, completed, evaluated, preview, applied,
     run, cancel, show, apply, jewelPlanner } = planner;
   const text = messages(lang, 'treeOptimizer');
+  const colon = lang === 'en-US' ? ': ' : '：';
   const tt = bindT(lang);
   const number = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 2 });
   const delta = (value: number, baseline: number) => baseline > 0
@@ -261,11 +264,11 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
         <span aria-hidden>{expanded ? '▾' : '▸'}</span>{text.title}
       </AppButton>
       {expanded && <div className="tree-planner-body">
-        <p className="tree-planner-hint">{text.hint}</p>
+        <p className="tree-planner-hint">{text.hint.replace('{points}', String(points))}</p>
         {applied && <p className="tree-planner-hint tree-planner-applied" role="status">
           <strong>{text.applied}</strong><br />
-          {text.add} {applied.allocate.length}: {applied.allocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}<br />
-          {text.remove} {applied.deallocate.length}: {applied.deallocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}
+          {text.add} {applied.allocate.length}{colon}{applied.allocate.map(nodeLabel).join(' · ') || '—'}<br />
+          {text.remove} {applied.deallocate.length}{colon}{applied.deallocate.map(nodeLabel).join(' · ') || '—'}
         </p>}
         <WeaponSetControl session={session} lang={lang} />
         <div className="tree-planner-controls">
@@ -275,12 +278,12 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
           <label>{mode === 'allocate' ? text.points : text.refundPoints}<AppInput type="number" min={1} max={PASSIVE_POINT_LIMIT} value={points}
             onChange={event => { const value = Number(event.target.value); if (Number.isInteger(value) && value >= 1 && value <= PASSIVE_POINT_LIMIT) setPoints(value); }} /></label>
           <ObjectiveEditor value={goal} onChange={setGoal} lang={lang} />
-          <label>{text.attribute}<AppSelect value={attribute} ariaLabel={text.attribute} onChange={value => setAttribute(value as AttributeChoice)} options={[
+          <label>{text.attribute}<AppSelect value={attribute} ariaLabel={text.attributeLabel} onChange={value => setAttribute(value as AttributeChoice)} options={[
             { value: 'str', label: text.str }, { value: 'dex', label: text.dex }, { value: 'int', label: text.int },
           ]} /></label>
         </div>
-        <p className="tree-planner-hint">{text.scope}</p>
-        <p className="tree-planner-hint">{text.limits} {text.refresh}</p>
+        <p className="tree-planner-hint">{tt('tree.campaignPoints')}</p>
+        <details><summary>{messages(lang, 'nodePower').calculationDetails}</summary><p className="tree-planner-hint">{text.scope}</p><p className="tree-planner-hint">{text.limits} {text.refresh}</p></details>
         {mode === 'reallocate' && !context.canRefund && <p className="tree-planner-hint">{text.refundUnavailable}</p>}
         {!session.character && <p className="tree-planner-hint">{text.needsBuild}</p>}
         {context.root === null && session.character && <p className="tree-planner-hint">{text.unavailable}</p>}
@@ -290,31 +293,31 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
           && (mode === 'allocate' || context.canRefund) && <p className="tree-planner-hint" role="status">{text.waiting}</p>}
         {progress && <OptimizerProgress {...progress} lang={lang} onCancel={cancel} />}
         {error && <p className="opt-error">{error}</p>}
-        {evaluated && <>
-          <div className="tree-planner-summary"><span>{text.evaluated}: {evaluated.evaluated}</span>
-            {evaluated.evaluated > 0 && <span>{text.baseline}: DPS {number(currentStats.TotalDPS ?? 0)} · EHP {number(currentStats.TotalEHP ?? 0)}</span>}
-            <span>{text.data}: {completed!.dataVersion ?? text.unknownVersion} · {text.tree}: {completed!.treeVersion ?? text.defaultTree}</span>
+        {evaluated && <PlannerResultsNotice count={evaluated.plans.length} lang={lang}>
+          <div className="tree-planner-summary">
+            {evaluated.evaluated > 0 && <span>{text.baseline}{colon}DPS {number(currentStats.TotalDPS ?? 0)} · EHP {number(currentStats.TotalEHP ?? 0)}</span>}
+            <details><summary>{messages(lang, 'nodePower').calculationDetails}</summary><span>{text.evaluated}{colon}{evaluated.evaluated}</span><p>{text.data}{colon}{completed!.dataVersion ?? text.unknownVersion} · {text.tree}{colon}{completed!.treeVersion ?? text.defaultTree}</p></details>
             {preview !== null && <AppButton onClick={() => show(null)}>{text.clear}</AppButton>}
           </div>
           {evaluated.limited && <p className="tree-planner-hint">{text.limited}</p>}
-          {evaluated.unmodeled > 0 && <p className="tree-planner-hint">{text.skipped}: {evaluated.unmodeled}</p>}
+          {evaluated.unmodeled > 0 && <p className="tree-planner-hint">{text.skipped}{colon}{evaluated.unmodeled}</p>}
           {preview !== null && <p className="tree-planner-hint" role="status">{text.previewHint}</p>}
           {evaluated.baselineUnsupported.length > 0 && <details className="tree-planner-diagnostics tree-planner-baseline-unsupported">
-            <summary>{text.baselineLimits}: {evaluated.baselineUnsupported.length}</summary>
+            <summary>{text.baselineLimits}{colon}{evaluated.baselineUnsupported.length}</summary>
             <p className="tree-planner-hint">{text.baselineLimitsHint}</p>
             <ul>{evaluated.baselineUnsupported.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
           </details>}
           {evaluated.excluded.length > 0 && <details className="tree-planner-diagnostics">
-            <summary>{text.excluded}: {evaluated.excluded.length}</summary>
+            <summary>{text.excluded}{colon}{evaluated.excluded.length}</summary>
             <p className="tree-planner-hint">{text.excludedHint}</p>
             <ol className="tree-planner-excluded">{evaluated.excluded.map(({ plan, unsupported, error: engineError }, index) => <li key={index}>
               <details>
-                <summary>{text.route}: {nodeLabel(plan.target)} · {text.add} {plan.allocate.length} · {text.remove} {plan.deallocate.length}</summary>
-                <p>{text.add}: {plan.allocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}</p>
-                <p>{text.remove}: {plan.deallocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}</p>
+                <summary>{text.route}{colon}{nodeLabel(plan.target)} · {text.add} {plan.allocate.length} · {text.remove} {plan.deallocate.length}</summary>
+                <p>{text.add}{colon}{plan.allocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}</p>
+                <p>{text.remove}{colon}{plan.deallocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}</p>
                 {unsupported.length > 0 && <><p>{text.newLimits}</p>
                   <ul>{unsupported.map((reason, reasonIndex) => <li key={reasonIndex}>{reason}</li>)}</ul></>}
-                {engineError && <p className="opt-error">{text.engineError}: {engineError}</p>}
+                {engineError && <p className="opt-error">{text.engineError}{colon}{engineError}</p>}
                 {unsupported.length === 0 && !engineError && <p className="opt-error">{text.invalidStats}</p>}
               </details>
             </li>)}</ol>
@@ -335,13 +338,13 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
                 <p className="tree-plan-swap-out"><b>− {text.remove} {plan.deallocate.length}</b>{plan.deallocate.map(nodeLabel).join(' · ')}</p>
                 <p className="tree-plan-swap-in"><b>+ {text.add} {plan.allocate.length}</b>{plan.allocate.map(nodeLabel).join(' · ') || '—'}</p>
               </div>}
-              <details><summary>{text.route}</summary><p>{text.add}: {plan.allocate.map(nodeLabel).join(' · ')}</p>
-                {plan.deallocate.length > 0 && <p>{text.remove}: {plan.deallocate.map(nodeLabel).join(' · ')}</p>}</details>
+              <details><summary>{text.route}</summary><p>{text.add}{colon}{plan.allocate.map(nodeLabel).join(' · ')}</p>
+                {plan.deallocate.length > 0 && <p>{text.remove}{colon}{plan.deallocate.map(nodeLabel).join(' · ')}</p>}</details>
               <div className="tree-plan-actions"><AppButton onClick={() => show(index)}>{text.preview}</AppButton><AppButton disabled={session.busy} onClick={() => apply(plan)}>{text.apply}</AppButton></div>
             </li>)}
           </ol>
           <p className="tree-planner-hint">{text.bounded}</p>
-        </>}
+        </PlannerResultsNotice>}
         <JewelPassivePlanner planner={jewelPlanner} />
       </div>}
     </div>

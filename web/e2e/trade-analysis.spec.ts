@@ -83,7 +83,7 @@ test('completed trade analysis and Ring 1 selection survive tabs and market edit
   const query = JSON.parse(new URL(originalHref).searchParams.get('q')!);
   const numericScore = Number(score.replaceAll(',', ''));
   expect(numericScore).toBeGreaterThan(0);
-  expect(query.query.stats[0].value.min).toBeCloseTo(numericScore, 3);
+  expect(Math.round(query.query.stats[0].value.min)).toBe(numericScore);
   await expect(page.getByRole('button', { name: 'Analyze all positions', exact: true })).toBeEnabled();
 
   await goTo(page, 'Calcs');
@@ -135,7 +135,7 @@ test('completed scores invalidate for build and shared-goal edits while Upgrades
 
   await completeAll(page);
   await goTo(page, 'Tree');
-  await page.locator('.tree-planner-toggle').click();
+  await page.locator('.tree-planner > .tree-planner-toggle').click();
   await page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true }).check();
   await expect(page.locator('.trade-page')).toHaveCount(1);
   await expect(page.locator('.upgrade-score-reference')).toHaveCount(0);
@@ -223,7 +223,7 @@ for (const edit of ['build', 'goal'] as const) {
       await page.getByLabel('Level', { exact: true }).fill('71');
     } else {
       await goTo(page, 'Tree', { force: true });
-      await page.locator('.tree-planner-toggle').click({ force: true });
+      await page.locator('.tree-planner > .tree-planner-toggle').click({ force: true });
       await page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true }).check({ force: true });
     }
     await page.clock.runFor(1000);

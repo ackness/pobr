@@ -47,7 +47,7 @@ async function ready(page: Page) {
 async function importComet(page: Page) {
   await page.goto('/build');
   await ready(page);
-  const original = await snapshot(page);
+  const starterId = (await snapshot(page)).workspace.builds[0].id;
   await importInto(page, 'newBuild');
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(cometCode);
   await page.locator('.import-submit').click();
@@ -56,7 +56,8 @@ async function importComet(page: Page) {
   await idle(page);
   await openBuild(page);
   const imported = await snapshot(page);
-  expect(imported.workspace.builds[0]).toEqual(original.workspace.builds[0]);
+  expect(imported.workspace.builds).toHaveLength(1);
+  expect(imported.workspace.builds.some(build => build.id === starterId)).toBe(false);
   expect(imported.state.pobCode).toBe(cometCode);
   expect(imported.state.character).toEqual({ class_name: 'Sorceress', ascendancy_name: 'Stormweaver', level: 98 });
   expect(activeSaved(imported)).toEqual({ version: imported.version, notes: imported.notes, state: imported.state });

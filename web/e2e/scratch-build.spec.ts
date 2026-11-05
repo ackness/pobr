@@ -32,14 +32,14 @@ test('scratch build: class picker, level edit, tree allocation', async ({ page }
   // 让树数据一升级就挂。
   await pageLink(page, 'Tree').click();
   await expect(page.locator('.tree-canvas svg')).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator('.tree-count')).toContainText('0 allocated', { timeout: 30_000 });
+  await expect(page.locator('.tree-count')).toContainText('Used 0 / 24 points', { timeout: 30_000 });
   // Search and center a reachable notable so the click uses a visible target.
   await page.getByRole('searchbox', { name: 'Search nodes…' }).fill('Practiced Signs');
   const target = page.locator('.node-search-hit');
   await expect(target).toHaveCount(1);
   await page.locator('.tree-search').getByRole('button', { name: 'Next', exact: true }).click();
   await target.click();
-  await expect(page.locator('.tree-count')).toHaveText(/[1-9]\d* allocated/, { timeout: 30_000 });
+  await expect(page.locator('.tree-count')).toHaveText(/Used [1-9]\d* \/ \d+ points/, { timeout: 30_000 });
   await expect(target).toHaveClass(/node-allocated/);
 
   // 手动添加技能：自定义选择器搜 Comet → 回车选中首项 → 新组出现 → Total DPS 出数。

@@ -22,8 +22,8 @@ test('forms, stages, disabled supports and Full DPS can be edited and shared', a
   await group.locator('.skill-gem').nth(1).getByRole('checkbox', { name: 'Gem enabled', exact: true }).uncheck();
   // Full DPS inclusion and the group count are among the group's advanced settings.
   await group.locator('.skill-advanced > summary').click();
-  await group.getByRole('checkbox', { name: 'Include in Full DPS', exact: true }).check();
-  await group.getByRole('spinbutton', { name: 'Group count override', exact: true }).fill('2.5');
+  await group.getByRole('checkbox', { name: 'Include in Full DPS (combined damage of multiple skills)', exact: true }).check();
+  await group.getByRole('spinbutton', { name: 'Simultaneous instances', exact: true }).fill('2.5');
   await group.locator('.skill-gem').first().getByRole('spinbutton', { name: 'Gem count', exact: true }).fill('1.5');
   const state = () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
   await expect.poll(async () => (await state()).socketGroups[0].gems[0].stat_set_index).toBe(2);

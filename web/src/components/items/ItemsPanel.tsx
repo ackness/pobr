@@ -3,7 +3,7 @@ import { replaceUtility } from '../../lib/utilityItems';
 import { AppButton, AppInput, AppTextarea } from '../shared/controls';
 import { UniqueCatalog } from './UniqueCatalog';
 import { uniqueT } from '../../lib/uniqueCatalogText';
-import { ItemCrafter } from './ItemCrafter';
+import { ItemCrafter, EquippedItemCrafter, useEquippedItemDraft } from './ItemCrafter';
 import { craftT } from '../../lib/itemCraftingText';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
 import { SlotSymbol } from '../shared/SlotSymbol';
@@ -76,7 +76,7 @@ function ItemRow({
           <span className="item-name">{name}</span>
           {slotTag && <span className="library-row-slot">{slotTag}</span>}
         </AppButton>
-        <span className="item-actions">{actions}</span>
+        <span className="item-actions" role="group" aria-label={bindT(lang)('lib.actions')}>{actions}</span>
       </header>
       {open && (
         <div className="library-row-body">
@@ -116,6 +116,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
   useEffect(() => { shown.current = true; }, []);
   const [crafting, setCrafting] = useState(false);
   const [uniques, setUniques] = useState(false);
+  const [craftingItem, setCraftingItem] = useState<{ slot: string; text: string } | null>(null);
   const tt = bindT(lang);
   const [selected, setSelected] = useState<string | null>(() => ALL_SLOTS
     .find(slot => session.editorDrafts[itemDraftKey(slot, session.activeWeaponSet)] !== undefined) ?? null);
@@ -192,6 +193,8 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
   };
 
   const selectedText = selected ? textOf(selected) : undefined;
+  const { draft: craftingDraft, error: craftingError } = useEquippedItemDraft(
+    selected && isEquipmentSlot(selected) ? selectedText : undefined);
 
   /** 槽位 → 注释键（药剂/护符与装备分域，避免槽名撞车）。 */
   const noteKey = (slot: string) => `${isUtilitySlot(slot) ? 'flask' : 'item'}:${slot}`;
@@ -377,7 +380,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
         <WeaponSetControl session={session} lang={lang} />
         <AppButton aria-expanded={crafting} onClick={() => { setCrafting(value => !value); setUniques(false); }}>{craftT(lang, crafting ? 'close' : 'craft')}</AppButton>
         <AppButton aria-expanded={uniques} onClick={() => { setUniques(value => !value); setCrafting(false); }}>{uniqueT(lang, uniques ? 'close' : 'title')}</AppButton>
-        {onUpgrade && <AppButton onClick={() => onUpgrade(selected && !isLimbSlot(selected) ? selected : "weapon1")}>{tt("trade.findBetter")} ↗</AppButton>}
+        {onUpgrade && <AppButton onClick={() => onUpgrade(selected && !isLimbSlot(selected) ? selected : "weapon1")}>{tt("trade.findBetter")}</AppButton>}
       </PageHeader>
       <p className="weapon-set-hint">{tt('weapons.hint')}</p>
       {uniques && <UniqueCatalog session={session} lang={lang} />}
@@ -385,7 +388,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
       <div className="items-workspace">
       <article className="items-equipped items-doll">
       <PaperDoll slot={(id) => slotButton(id, isUtilitySlot(id) ? id : undefined)} utilitySlots={UTILITY_SLOTS} limbSlots={LIMB_SLOTS}
-        limbsInUse={session.limbs.length > 0} labels={{ body: tt('items.title'), utility: tt('items.flasks'), limbs: tt('items.limbs') }} />
+        limbsInUse={session.limbs.length > 0} labels={{ body: tt('items.title'), utility: tt('items.flasks'), limbs: tt('items.limbs'), limbsHint: tt('items.limbsHint') }} />
       </article>
       <div className="items-collection">
       {selected && (
@@ -427,6 +430,14 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
               )}
               {selectedText && (
                 <>
+                  {isEquipmentSlot(selected) && <AppButton disabled={session.busy || !craftingDraft?.base}
+                    aria-label={tt('items.editInCrafter')}
+                    title={!craftingDraft?.base ? craftT(lang, craftingError ? 'error' : craftingDraft ? 'editUnavailable' : 'loading') : undefined}
+                    aria-expanded={craftingItem?.slot === selected && craftingItem.text === selectedText}
+                    onClick={() => setCraftingItem(current => current?.slot === selected && current.text === selectedText
+                      ? null : { slot: selected, text: selectedText })}>
+                    {tt('items.editInCrafter')}
+                  </AppButton>}
                   <CopyButton text={selectedText} lang={lang} />
                   <AppButton
                     disabled={session.busy}
@@ -441,6 +452,9 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
               )}
             </span>
           </header>
+          {craftingItem?.slot === selected && craftingItem.text === selectedText && craftingDraft?.base && (
+            <EquippedItemCrafter key={`${selected}:${selectedText}`} draft={craftingDraft} session={session} lang={lang} />
+          )}
           {selectedText && isUtilitySlot(selected) && (
             <div className="flex flex-col gap-2">
               <label className="flex items-center gap-2">
@@ -500,13 +514,13 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
                         title={tt('items.socketRemove')}
                         aria-label={tt('items.socketRemove')}
                         onClick={() => setSocketCount(augmentInfo.sockets - 1)}
-                      >−</AppButton>
+                      >{tt('items.removeSocketLabel')}</AppButton>
                       <AppButton
                         disabled={session.busy || runeBusy || augmentInfo.sockets >= augmentInfo.max_sockets}
                         title={tt('items.socketAdd')}
                         aria-label={tt('items.socketAdd')}
                         onClick={() => setSocketCount(augmentInfo.sockets + 1)}
-                      >+</AppButton>
+                      >{tt('items.addSocketLabel')}</AppButton>
                     </span>
                   )}
                 </div>
@@ -539,7 +553,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
 
       <article className="ui-card items-library">
         <h3 className="section-heading">{tt('lib.title')} <span className="ui-badge">{session.library.items.filter(item => item.kind === 'item').length}</span></h3>
-        {!selected && <p className="items-hint">{tt('lib.selectSlotFirst')}</p>}
+        {!selected && <p id="library-slot-hint" className="items-hint">{tt('lib.selectSlotFirst')}</p>}
         <LibrarySection session={session} lang={lang} selectedSlot={selected} onEquip={switchTo} />
       </article>
       </div>
@@ -697,6 +711,7 @@ function LibrarySection({
               <CopyButton text={entry.text} lang={lang} />
               <AppButton
                 disabled={session.busy || !canUse(entry)}
+                aria-describedby={!selectedSlot ? 'library-slot-hint' : undefined}
                 title={!selectedSlot ? tt('lib.selectSlotFirst') : !canUse(entry) ? tt('lib.wrongSlot') : ''}
                 onClick={() => {
                   setExpandedId(entry.id);
@@ -707,17 +722,17 @@ function LibrarySection({
               </AppButton>
               <AppButton
                 disabled={session.busy || !canUse(entry)}
+                aria-describedby={!selectedSlot ? 'library-slot-hint' : undefined}
                 title={!selectedSlot ? tt('lib.selectSlotFirst') : !canUse(entry) ? tt('lib.wrongSlot') : ''}
                 onClick={() => equip(entry)}
               >
                 {tt('lib.equip')}
               </AppButton>
               <AppButton
-                className="skill-remove"
                 title={tt('lib.delete')}
                 onClick={() => session.removeLibraryItem(entry.id)}
               >
-                ×
+                {tt('lib.delete')}
               </AppButton>
             </>
           }

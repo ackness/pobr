@@ -42,8 +42,8 @@ test('craft a rare from a game base, save it and equip the previewed delta', asy
   await expect(crafter.getByRole('button', { name: 'Apply to build · Ring 1', exact: true })).toBeVisible();
   const expectedLife = await crafter.locator('.upgrade-replacement-result tbody tr').filter({ hasText: /^Life(?=[0-9\s])/ }).locator('td').nth(1).innerText();
   await expect(life).toHaveText(before);
-  await crafter.getByRole('button', { name: 'Save to library', exact: true }).click();
-  await expect(crafter.getByRole('button', { name: 'Saved to library', exact: true })).toBeVisible();
+  await crafter.getByRole('button', { name: 'Save to item library', exact: true }).click();
+  await expect(crafter.getByRole('button', { name: 'Saved to item library', exact: true })).toBeVisible();
   await expect(life).toHaveText(before);
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-library')!).items.at(-1));
   expect(saved).toMatchObject({ kind: 'item', slot: 'ring1' });

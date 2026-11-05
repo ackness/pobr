@@ -4,7 +4,7 @@ import { getBackend } from '../../api/backend';
 import { formatApiError } from '../../api/error';
 import type { BuildJson, TreeConversionResponse } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import type { Lang } from '../../lib/i18n';
+import { bindT, type Lang } from '../../lib/i18n';
 
 /**
  * The conversion request and its preview. The state lives with the page, not with the canvas it is drawn
@@ -44,19 +44,19 @@ export function useTreeConversion(session: BuildSession, lang: Lang, active: boo
       if (epoch === generation.current) setPending(false);
     }
   };
-  return { label, all, setAll, pending, error, setError, preview, setPreview, stale, staleText, cancel, createPreview };
+  return { label, text: bindT(lang), all, setAll, pending, error, setError, preview, setPreview, stale, staleText, cancel, createPreview };
 }
 export type TreeConversion = ReturnType<typeof useTreeConversion>;
 
 export function TreeConversionControls({ session, conversion }: { session: BuildSession; conversion: TreeConversion }) {
-  const { label, all, setAll, pending, error, setError, preview, setPreview, stale, staleText, cancel, createPreview } = conversion;
+  const { label, text, all, setAll, pending, error, setError, preview, setPreview, stale, staleText, cancel, createPreview } = conversion;
   if (!session.character) return null;
   return <section className="tree-conversion" aria-label={label('Tree conversion', '天赋树转换', '天賦樹轉換')}>
     <div className="tree-conversion-actions">
-      <label><AppInput type="checkbox" checked={all} disabled={pending} onChange={event => { setAll(event.target.checked); setPreview(null); }} />
-        {label('All passive specs', '全部天赋方案', '全部天賦方案')}</label>
+      <details className="tree-conversion-options"><summary>{text('tree.conversionOptions')}</summary><label><AppInput type="checkbox" checked={all} disabled={pending} onChange={event => { setAll(event.target.checked); setPreview(null); }} />
+        {label('All passive specs', '全部天赋方案', '全部天賦方案')}</label></details>
       <AppButton disabled={pending || session.busy} onClick={() => void createPreview()}>
-        {pending ? label('Preparing preview…', '正在准备预览…', '正在準備預覽…') : label('Convert to current tree', '转换为当前天赋树', '轉換為目前天賦樹')}
+        {pending ? label('Preparing preview…', '正在准备预览…', '正在準備預覽…') : text(all ? 'tree.convertAll' : 'tree.convertCurrent')}
       </AppButton>
       <AppButton disabled={!session.canUndoTree || session.busy || pending} onClick={() => { cancel(); session.undoTree(); }}>
         {label('Undo tree edit', '撤销天赋编辑', '復原天賦編輯')}</AppButton>

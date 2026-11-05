@@ -209,6 +209,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
               <label><AppInput type="checkbox" checked={group.include_in_full_dps ?? false} disabled={session.busy}
                 onChange={event => updateGroup(idx, { include_in_full_dps: event.target.checked })} />{tt('skills.fullDps')}</label>
               <label>{tt('skills.groupCount')}<AppInput type="number" min={0} step="any" aria-label={tt('skills.groupCount')}
+                placeholder={tt('skills.groupCountPlaceholder')}
                 value={group.group_count ?? ''} disabled={session.busy} onChange={event => {
                   const value = event.target.value;
                   if (!value || Number.isFinite(Number(value)) && Number(value) >= 0) updateGroup(idx, { group_count: value ? Number(value) : null });

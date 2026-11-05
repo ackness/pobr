@@ -22,7 +22,8 @@ async function ready(page: Page) {
   await page.goto('/tree');
   await expect(page.locator('.tree-canvas svg')).toBeVisible({timeout:90_000});
   await expect(busy(page)).toHaveCount(0);
-  await page.locator('.node-power > summary').click();
+  await expect(page.locator('.node-power')).toHaveAttribute('open', '');
+  await expect(page.locator('.node-power tbody')).toHaveCount(0);
 }
 
 const saved = (page: Page) => page.evaluate(() => localStorage.getItem('pobr-v2-build-state'));
@@ -33,7 +34,7 @@ test('report filters, scores full paths, sorts and focuses without allocating; s
   const report = page.locator('.node-power');
   await report.getByRole('searchbox', {name:'Filter nodes'}).fill(String(target.skill));
   const row = report.locator(`tr[data-node-id="${target.skill}"]`);
-  await expect(row).toHaveAttribute('data-status','pending');
+  await expect(report).toContainText('Run an evaluation to see candidate rankings');
   await report.getByRole('button',{name:'Evaluate next 128 nodes',exact:true}).click();
   await expect(row).toHaveAttribute('data-status','ready',{timeout:60_000});
   await expect(row.locator('td').nth(2)).toHaveText(String(route.allocate.length));
@@ -47,8 +48,8 @@ test('report filters, scores full paths, sorts and focuses without allocating; s
   expect(target.y!).toBeGreaterThanOrEqual(view[1]); expect(target.y!).toBeLessThanOrEqual(view[1]+view[3]);
   expect(await saved(page)).toBe(before);
   await choose(page, report.getByRole('combobox',{name:'Report stat',exact:true}), 'Mana');
-  await expect(row).toHaveAttribute('data-status','pending');
-  await expect(row.locator('td').nth(1)).toHaveText('—');
+  await expect(report).toContainText('Run an evaluation to see candidate rankings');
+  await expect(row).toHaveCount(0);
   await report.getByRole('button',{name:'Evaluate next 128 nodes',exact:true}).click();
   await expect(row).toHaveAttribute('data-status','ready');
   await report.screenshot({path:'test-results/node-power-report.png'});
@@ -63,7 +64,8 @@ test('small-node toggle and cancellation preserve the build and never restore st
   await report.getByRole('searchbox',{name:'Filter nodes'}).fill(String(nodes.find(n => n.name === 'Attribute' && n.skill >= 10000)!.skill));
   await expect(report.locator('tbody tr')).toHaveCount(0);
   await report.getByRole('checkbox',{name:'Include small nodes'}).check();
-  await expect(report.locator('tbody tr').first()).toBeVisible();
+  await expect(report).toContainText('Run an evaluation to see candidate rankings');
+  await expect(report.getByRole('button', { name: 'Evaluate next 128 nodes', exact: true })).toBeEnabled();
   await report.getByRole('searchbox',{name:'Filter nodes'}).fill('');
   await report.getByRole('button',{name:'Evaluate next 128 nodes',exact:true}).click();
   await report.getByRole('button',{name:'Cancel report',exact:true}).click();

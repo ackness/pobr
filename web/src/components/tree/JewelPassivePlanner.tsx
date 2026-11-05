@@ -13,11 +13,13 @@ import { allocationRoutes } from '../../lib/passiveGraph';
 import { passivePlanningContext, withTravelAttributes, type PassivePlan } from '../../lib/passivePlanner';
 import { feasibleOf, type Objective } from '../../lib/optimize';
 import { AppSelect } from '../shared/AppSelect';
+import { PlannerResultsNotice } from './PlannerResultsNotice';
 import { OptimizerProgress } from '../shared/OptimizerControls';
 
 
 interface Props {
   session: BuildSession; lang: Lang; nodes: PassiveNode[]; nodeLabel: (id: number) => string;
+  onLocate?: (id: number) => void;
   active: boolean;
   mode: 'allocate' | 'reallocate'; points: number; attribute: AttributeChoice; objective: Objective;
   onPreview: (plan: PassivePlan | null) => void; onStart: () => void;
@@ -35,6 +37,7 @@ export interface JewelPassivePlannerState {
   session: BuildSession;
   lang: Lang;
   nodeLabel: (id: number) => string;
+  onLocate?: (id: number) => void;
   raw: string;
   setRaw: (value: string) => void;
   selectedSocket: string;
@@ -58,7 +61,7 @@ export interface JewelPassivePlannerState {
   clearPreview: () => void;
 }
 
-export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, active, mode, points, attribute, objective, onPreview, onStart }: Props): JewelPassivePlannerState {
+export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, onLocate, active, mode, points, attribute, objective, onPreview, onStart }: Props): JewelPassivePlannerState {
   const text = messages(lang, 'jewelPlanner');
   const [raw, setRaw] = useState('');
   const [socket, setSocket] = useState('');
@@ -164,67 +167,73 @@ export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, active
   const clearPreview = () => { setPreview(null); previewRef.current(null); };
   const remove = (id: string) => setCandidates(values => values.filter(value => value.id !== id));
 
-  return { session, lang, nodeLabel, raw, setRaw, selectedSocket, setSocket, sockets,
+  return { session, lang, nodeLabel, onLocate, raw, setRaw, selectedSocket, setSocket, sockets,
     applied: applied?.version === session.stateVersion && !session.busy && !session.calcError ? applied : null,
     candidates, remove, completed, result, progress, error, preview, exclusive, add, run, apply, stop, show, clearPreview };
 }
 
 export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerState }) {
-  const { session, lang, nodeLabel, raw, setRaw, selectedSocket, setSocket, sockets,
+  const { session, lang, nodeLabel, onLocate, raw, setRaw, selectedSocket, setSocket, sockets,
     candidates, remove, completed, result, progress, error, preview, exclusive, applied, add, run, apply, stop, show } = planner;
   const text = messages(lang, 'jewelPlanner');
   const tt = bindT(lang);
+  const colon = lang === 'en-US' ? ': ' : '：';
   const format = (value: number) => value.toLocaleString(lang, { maximumFractionDigits: 2 });
   const delta = (value: number, baseline: number) => baseline === 0 ? `${value >= 0 ? '+' : ''}${format(value)}`
     : `${value >= baseline ? '+' : ''}${format((value / baseline - 1) * 100)}%`;
+  const [open, setOpen] = useState(true);
   return <section className="jewel-passive-planner" aria-label={text.title}>
-    <h4>{text.title}</h4><p className="tree-planner-hint">{text.hint}</p>
+    <AppButton className="tree-planner-toggle" aria-expanded={open} onClick={() => { if (open) stop(); setOpen(!open); }}><span aria-hidden>{open ? '▾' : '▸'}</span>{text.title}</AppButton>
+    {open && <><p className="tree-planner-hint">{text.hint}</p>
     {applied && <p className="tree-planner-hint jewel-plan-applied" role="status">
       <strong>{text.applied}</strong><br />
       {applied.candidate
-        ? `${applied.candidate.label} · ${nodeLabel(applied.candidate.jewel.socket_node)} #${applied.candidate.jewel.socket_node}`
+        ? `${applied.candidate.label} · ${nodeLabel(applied.candidate.jewel.socket_node)}`
         : text.current}<br />
-      {text.addNodes} {applied.plan.allocate.length}: {applied.plan.allocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}<br />
-      {text.removeNodes} {applied.plan.deallocate.length}: {applied.plan.deallocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}
+      {text.addNodes} {applied.plan.allocate.length}{colon}{applied.plan.allocate.map(nodeLabel).join(' · ') || '—'}<br />
+      {text.removeNodes} {applied.plan.deallocate.length}{colon}{applied.plan.deallocate.map(nodeLabel).join(' · ') || '—'}
     </p>}
     <label className="jewel-plan-input">{text.text}<AppTextarea aria-label={text.text} value={raw} onChange={event => setRaw(event.target.value)} rows={5} /></label>
     <div className="tree-planner-controls"><label>{text.socket}<AppSelect value={selectedSocket} ariaLabel={text.socket}
       onChange={setSocket} disabled={!sockets.length} placeholder={text.noSockets} options={sockets.map(({ node, cost }) => ({ value: String(node.skill),
-        label: `${nodeLabel(node.skill)} #${node.skill}`, hint: `${text.socketCost}: ${cost}` }))} /></label>
+        label: nodeLabel(node.skill), hint: `${text.socketCost}${colon}${cost}` }))} /></label>
+      <AppButton disabled={!selectedSocket || !onLocate} onClick={() => onLocate?.(Number(selectedSocket))}>{text.locate}</AppButton>
       <AppButton disabled={!raw.trim() || !selectedSocket || Boolean(progress) || candidates.length >= JEWEL_PASSIVE_CANDIDATE_LIMIT} onClick={add}>{text.add}</AppButton>
       <span>{candidates.length} / {JEWEL_PASSIVE_CANDIDATE_LIMIT}</span></div>
     {candidates.length >= JEWEL_PASSIVE_CANDIDATE_LIMIT && <p className="tree-planner-hint">{text.full}</p>}
     {!candidates.length && <p className="tree-planner-hint">{text.empty}</p>}
     <ul className="jewel-plan-candidates">{candidates.map(candidate => <li key={candidate.id}>
-      <details><summary>{candidate.label} · {nodeLabel(candidate.jewel.socket_node)} #{candidate.jewel.socket_node}</summary><pre>{candidate.jewel.text}</pre></details>
+      <details><summary>{candidate.label} · {nodeLabel(candidate.jewel.socket_node)}</summary><pre>{candidate.jewel.text}</pre></details>
+      <AppButton disabled={!onLocate} onClick={() => onLocate?.(candidate.jewel.socket_node)}>{text.locate}</AppButton>
       <AppButton disabled={Boolean(progress)} onClick={() => remove(candidate.id)}>{text.remove}</AppButton>
     </li>)}</ul>
-    <p className="tree-planner-hint">{text.limit}</p>
+    <details><summary>{messages(lang, 'nodePower').calculationDetails}</summary><p className="tree-planner-hint">{text.limit}</p></details>
     {exclusive.length > 0 && <p className="tree-planner-hint">{text.exclusive}</p>}
     <AppButton className="tree-planner-run" disabled={!candidates.length || session.busy || Boolean(session.calcError) || !session.calc || Boolean(progress) || exclusive.length > 0}
       onClick={() => void run()}>{text.run}</AppButton>
     {progress && <OptimizerProgress {...progress} lang={lang} onCancel={stop} />}
     {error && <p className="opt-error" role="alert">{error}</p>}
-    {result && <div className="jewel-plan-results" aria-live="polite">
-      <p className="tree-planner-hint">{text.evaluated}: {result.evaluated}</p>
+    {result && <PlannerResultsNotice count={result.plans.length} lang={lang}><div className="jewel-plan-results">
+      <p className="tree-planner-hint">{text.evaluated}{colon}{result.evaluated}</p>
       {result.limited && <p className="tree-planner-hint">{text.bounded}</p>}
-      {result.unmodeled > 0 && <p className="tree-planner-hint">{text.skipped}: {result.unmodeled}</p>}
+      {result.unmodeled > 0 && <p className="tree-planner-hint">{text.skipped}{colon}{result.unmodeled}</p>}
       {result.diagnostics.length > 0 && <details><summary>{text.diagnostics}</summary><ul>{result.diagnostics.map((reason, index) => <li key={index}>{reason}</li>)}</ul></details>}
       {!result.plans.length && <p>{text.none}</p>}
       {preview !== null && <AppButton onClick={() => show(null)}>{text.clear}</AppButton>}
       <ol className="tree-planner-results">{result.plans.map((plan, index) => <li key={index} className={preview === index ? 'is-previewed' : ''}>
         <div className="tree-plan-heading"><strong>{plan.candidateId === null ? text.current : plan.candidateLabel}</strong>
-          <span>{text.addNodes} {plan.allocate.length} · {text.removeNodes} {plan.deallocate.length}</span></div>
+          <span>{plan.candidateId !== null && <>{nodeLabel(completed!.candidates.find(candidate => candidate.id === plan.candidateId)!.jewel.socket_node)} · </>}{text.addNodes} {plan.allocate.length} · {text.removeNodes} {plan.deallocate.length}</span></div>
         <div className="tree-plan-metrics">{(['TotalDPS', 'TotalEHP', 'Life'] as const).map(stat => <span key={stat}>
           {stat === 'TotalDPS' ? 'DPS' : stat === 'TotalEHP' ? 'EHP' : tt('opt.objLife')} <b>{delta(plan.stats[stat] ?? 0, result.baseline[stat] ?? 0)}</b>
           <small>{format(result.baseline[stat] ?? 0)} → <output data-stat={stat}>{format(plan.stats[stat] ?? 0)}</output></small>
         </span>)}</div>
-        <details><summary>{text.route}</summary><p>{text.addNodes}: {plan.allocate.map(nodeLabel).join(' · ') || '—'}</p>
-          <p>{text.removeNodes}: {plan.deallocate.map(nodeLabel).join(' · ') || '—'}</p>
+        <details><summary>{text.route}</summary><p>{text.addNodes}{colon}{plan.allocate.map(nodeLabel).join(' · ') || '—'}</p>
+          <p>{text.removeNodes}{colon}{plan.deallocate.map(nodeLabel).join(' · ') || '—'}</p>
           {plan.candidateId !== null && <pre>{completed!.candidates.find(candidate => candidate.id === plan.candidateId)?.jewel.text}</pre>}</details>
         <div className="tree-plan-actions"><AppButton onClick={() => show(index)}>{text.preview}</AppButton>
           <AppButton disabled={session.busy || !feasibleOf(plan.stats, completed!.objective)} onClick={() => apply(plan)}>{text.apply}</AppButton></div>
       </li>)}</ol>
-    </div>}
+    </div></PlannerResultsNotice>}
+    </>}
   </section>;
 }

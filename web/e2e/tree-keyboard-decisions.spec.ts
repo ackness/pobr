@@ -316,7 +316,7 @@ test('keyboard selection and drafts retain real planner receipts until explicit 
   await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
   await page.getByRole('option', { name: 'Max Life', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Point budget', exact: true }).fill('3');
-  await page.getByRole('combobox', { name: 'New travel attributes', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Route planner: new travel attributes', exact: true }).click();
   await page.getByRole('option', { name: 'Strength', exact: true }).click();
   await page.getByRole('button', { name: 'Find upgrade routes', exact: true }).click();
   const receipts = page.locator('.tree-planner-body > .tree-planner-results');
@@ -326,7 +326,7 @@ test('keyboard selection and drafts retain real planner receipts until explicit 
   await joint.getByRole('textbox', { name: 'Candidate jewel text', exact: true })
     .fill('Rarity: MAGIC\nRuby\nImplicits: 0\n+1000 to maximum Life');
   await joint.getByRole('combobox', { name: 'Candidate socket', exact: true }).click();
-  await page.getByRole('option').filter({ hasText: `#${socket.skill}` }).click();
+  await page.locator(`[role="option"][data-value="${socket.skill}"]`).click();
   await joint.getByRole('button', { name: 'Add jewel placement', exact: true }).click();
   await joint.getByRole('button', { name: 'Find jewel and passive plans', exact: true }).click();
   const jointResults = joint.locator('.jewel-plan-results');
@@ -718,4 +718,24 @@ test('selected conquered keystone details refresh to the real original text afte
     .replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2').replace(/\[([^\]]*)\]/g, '$1'));
   await expect(details.locator('.tree-node-details-stats > li')).toHaveText(raw);
   expect((await saved(page)).allocatedNodes).toEqual(original.state.allocatedNodes);
+});
+
+test('attribute redistribution changes passive choices and calculated attributes without changing allocated nodes', async ({ page }) => {
+  await funded(page);
+  const before = await capture(page);
+  const attributeIds = before.state.allocatedNodes.filter(id => nodes.find(node => node.skill === id)?.name === 'Attribute').sort((a, b) => a - b);
+  expect(attributeIds.length).toBeGreaterThan(0);
+  const allocation = page.locator('.attr-distribute');
+  await expect(allocation).toContainText(`Attribute passive choices (${attributeIds.length} total, +5 each)`);
+  const value = (result: CalculateBuildResponse, id: string) => result.stats.find(row => row.id === id)?.value ?? 0;
+  await allocation.getByRole('spinbutton', { name: 'Strength', exact: true }).fill(String(attributeIds.length));
+  const strength = await capture(page);
+  expect(strength.state.allocatedNodes).toEqual(before.state.allocatedNodes);
+  expect(attributeIds.map(id => strength.request.attribute_choices?.[String(id)])).toEqual(attributeIds.map(() => 'str'));
+  await allocation.getByRole('spinbutton', { name: 'Dexterity', exact: true }).fill(String(attributeIds.length));
+  const dexterity = await capture(page);
+  expect(dexterity.state.allocatedNodes).toEqual(before.state.allocatedNodes);
+  expect(attributeIds.map(id => dexterity.request.attribute_choices?.[String(id)])).toEqual(attributeIds.map(() => 'dex'));
+  expect(value(strength.result, 'Str') - value(dexterity.result, 'Str')).toBe(attributeIds.length * 5);
+  expect(value(dexterity.result, 'Dex') - value(strength.result, 'Dex')).toBe(attributeIds.length * 5);
 });

@@ -9,7 +9,7 @@ import type { TreeEditResult } from '../api/types';
  * 防止乱序返回覆盖新状态。所有后端交互经 `api/backend`。
  */
 
-import { activeWorkspaceStage, addWorkspaceBuild, createWorkspace, duplicateWorkspaceStage, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, replaceComparedStage, type StageSnapshot, type BuildWorkspace } from '../lib/buildWorkspace';
+import { activeWorkspaceStage, addWorkspaceBuild, appendImportedBuild, createWorkspace, defaultStarterSession, duplicateWorkspaceStage, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, replaceComparedStage, type StageSnapshot, type BuildWorkspace } from '../lib/buildWorkspace';
 import { mergeLibraries, mergeWorkspaces } from '../lib/workspaceMerge';
 import { formatApiError } from '../api/error';
 import { resolveBuildInput } from '../api/import';
@@ -686,6 +686,8 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const [dataVersion, setDataVersion] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<BuildWorkspace | null>(null);
   const workspaceRef = useRef<BuildWorkspace | null>(null);
+  // Recreated from current class metadata on every boot; no cleanup metadata is persisted.
+  const defaultStarterRef = useRef<SavedSession | null>(null);
   const [storageFailed, setStorageFailed] = useState(false);
   const [bootMessage, setBootMessage] = useState<string | null>('初始化…');
   const [bootError, setBootError] = useState<string | null>(null);
@@ -927,6 +929,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
           .catch(() => {});
         if (cancelled) return;
         setTreeMeta(meta);
+        defaultStarterRef.current = defaultStarterSession(meta.classes[0]?.name ?? 'Warrior');
         setBootMessage(null);
         const raw = localStorage.getItem(STORAGE.workspace) ?? '';
         const saved = parseSaved(raw);
@@ -959,20 +962,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
           apply(saved.state);
           return;
         }
-        const firstClass = meta.classes[0]?.name ?? 'Warrior';
-        apply({
-          pobCode: null,
-          character: { level: 1, class_name: firstClass, ascendancy_name: '' },
-          allocatedNodes: [],
-          attributeChoices: {},
-          socketGroups: [],
-          items: [],
-          flasks: [],
-          limbs: [],
-          jewels: [],
-          annotations: {},
-          params: { config_inputs: {} },
-        });
+        apply(defaultStarterRef.current.state);
       })
       .catch((err) => !cancelled && setBootError(String(err)));
     return () => {
@@ -1077,7 +1067,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         if (options.destination === 'newBuild' && workspaceRef.current) {
           const plannerName: string | undefined = decoded.planner_source ? JSON.parse(decoded.planner_source).name : undefined;
           const name = importedBuildName(decoded.character, classNames, lang, options.name, plannerName);
-          workspaceRef.current = addWorkspaceBuild(workspaceRef.current, name, { version: 1, state: importedState, notes: overview });
+          workspaceRef.current = addWorkspaceBuild(workspaceRef.current, name, { version: 1, state: importedState, notes: overview }, defaultStarterRef.current);
         }
         // Do not persist imported notes into the stage being left behind.
         notesRef.current = overview;
@@ -1617,7 +1607,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       const stages = source.stages.map(stage => ({ ...stage, id: createId() }));
       const build = { ...source, id: createId(), stages,
         activeStage: stages[source.stages.findIndex(stage => stage.id === source.activeStage)].id };
-      workspaceRef.current = { ...workspaceRef.current, activeBuild: build.id, builds: [...workspaceRef.current.builds, build] };
+      workspaceRef.current = appendImportedBuild(workspaceRef.current, build, defaultStarterRef.current);
       const stage = activeWorkspaceStage(workspaceRef.current);
       restoreSession(stage.saved, stage.drafts);
       return;
@@ -1634,7 +1624,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
     } else {
       if (destination === 'newBuild' && workspaceRef.current) {
         workspaceRef.current = addWorkspaceBuild(workspaceRef.current,
-          importedBuildName(saved.state.character, classNames, lang), saved);
+          importedBuildName(saved.state.character, classNames, lang), saved, defaultStarterRef.current);
       }
       restoreSession(saved, {});
     }

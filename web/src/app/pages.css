@@ -17,7 +17,7 @@
 
   .doll { display: grid; gap: 1.25rem; }
   /* The figure: slots sit where the body is, as on the game's own equipment screen. */
-  .shell-root .paper-doll.doll-figure { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(4.2rem, auto) minmax(3.6rem, auto) minmax(6rem, auto) minmax(4rem, auto) 3.5rem; gap: .5rem;
+  .shell-root .paper-doll.doll-figure { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(6rem, auto)) 3.5rem; gap: .5rem;
     grid-template-areas: 'weapon1 helmet weapon2' 'weapon1 amulet weapon2' 'ring1 bodyarmour ring2' 'gloves belt boots' '. . .'; }
   .doll-cell { position: relative; z-index: 1; display: grid; min-width: 0; }
   .doll-cell[data-slot='weapon1'] { grid-area: weapon1; } .doll-cell[data-slot='weapon2'] { grid-area: weapon2; }

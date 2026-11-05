@@ -26,7 +26,7 @@ test('limbs are a set of their own: imported, calculated, edited and exported', 
   await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible();
 
-  const limbs = page.getByRole('group', { name: 'Limbs', exact: true });
+  const limbs = page.getByRole('group', { name: 'Grafted limbs', exact: true });
   await expect(limbs.getByRole('button', { name: 'Leg 2', exact: true })).toContainText('Evasive Leg');
   const imported = await saved(page);
   expect(slots(imported.limbs)).toEqual(['leg2']);

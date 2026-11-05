@@ -26,6 +26,8 @@ test('starts and preserves saved builds without crypto.randomUUID', async ({ pag
   await page.addInitScript(() => Object.defineProperty(crypto, 'randomUUID', { value: undefined }));
   await importBuild(page);
   const imported = await state(page);
+  expect(imported.workspace.builds).toHaveLength(1);
+  expect(imported.workspace.builds[0].stages[0].saved.state.pobCode).toBe(code);
   await page.reload();
   await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
   await expect(page.locator('.shell-save-state')).toHaveText('Saved locally');
@@ -215,14 +217,15 @@ test('deletes a build or a stage only after asking, and keeps the last of each',
   };
   const builds = async () => (await state(page)).workspace.builds.map((build: { name: string; stages: unknown[] }) => `${build.name}:${build.stages.length}`);
   await openBuilds(page);
-  // An import leaves the empty starter build beside the imported one, so there is something to delete.
+  // First import replaces the untouched starter; the only remaining build cannot be deleted.
   const start: string[] = await builds();
-  expect(start.length).toBeGreaterThan(1);
-  await expect(deleteBuild).toBeVisible();
+  expect(start).toHaveLength(1);
+  await expect(deleteBuild).toHaveCount(0);
   // Each build here has one stage, and a build's only stage is not offered for deletion.
   await expect(deleteStage).toHaveCount(0);
 
   await name('New build', 'Second');
+  await expect(deleteBuild).toBeVisible();
   // Opening another build is not an edit to take back: Undo would otherwise put the build
   // that was just left over this one.
   await expect(undo).toBeDisabled();

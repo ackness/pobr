@@ -75,23 +75,23 @@ test('independent builds and stages preserve passive routes and notes across rel
   await expect(page.locator('#ov-title')).toBeVisible();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   const restored = await snapshot(page);
-  expect(restored.workspace.builds).toHaveLength(4);
-  const imported = restored.workspace.builds[3];
+  expect(restored.workspace.builds).toHaveLength(3);
+  const imported = restored.workspace.builds[2];
   expect(imported.name).toBe('Ice Shot');
-  expect(imported.id).not.toBe(restored.workspace.builds[1].id);
+  expect(imported.id).not.toBe(restored.workspace.builds[0].id);
   expect(imported.stages.map((stage: { saved: { notes: string } }) => stage.saved.notes)).toEqual(['Leveling Ice Shot', 'Endgame equipment and passive route']);
   await openBuild(page);
   await openExport(page);
   const backupPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download backup', exact: true }).click();
   const backup = await backupPromise;
-  expect(JSON.parse(readFileSync((await backup.path())!, 'utf8')).workspace.builds).toHaveLength(4);
+  expect(JSON.parse(readFileSync((await backup.path())!, 'utf8')).workspace.builds).toHaveLength(3);
   await editName(page, 'New build', 'Temporary');
   if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   await page.locator('input[type=file]').setInputFiles((await backup.path())!);
   await answerConfirm(page, true);
   await expect(page.locator('#ov-title')).toBeVisible();
-  expect((await snapshot(page)).workspace.builds).toHaveLength(4);
+  expect((await snapshot(page)).workspace.builds).toHaveLength(3);
 });
 
 test('stage switching preserves unapplied item drafts and fits a narrow viewport', async ({ page }) => {

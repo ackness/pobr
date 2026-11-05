@@ -405,7 +405,7 @@
   font-size: var(--text-sm);
 }
 
-.opt-table td {
+.opt-table :is(td, th) {
   padding: var(--space-1) var(--space-2);
   border-top: 1px solid var(--border-subtle);
 }
@@ -417,9 +417,13 @@
 
 .opt-table .opt-delta {
   text-align: right;
-  color: var(--color-positive);
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
+
+.opt-table .opt-delta.is-positive { color: var(--color-positive); }
+.opt-table .opt-delta.is-negative { color: var(--color-negative); }
+.opt-table th { text-align: left; font-weight: 600; }
 
 .opt-baseline td {
   color: var(--text-muted);
