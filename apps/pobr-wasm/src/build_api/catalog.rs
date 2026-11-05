@@ -111,7 +111,7 @@ struct GemCatalogEntry {
     /// They are aliases of this gem, not additional gem-picker entries.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     additional_skill_ids: Vec<String>,
-    /// The display name (base_items' canonical name; falls back to the gem id if missing).
+    /// The display name (the gem base's canonical name by id; falls back to the gem id if missing).
     name: String,
     /// The Traditional Chinese name (the `i18n/zh-TW/base_items.json` sidecar; `null` if missing).
     name_zh_tw: Option<String>,
@@ -238,19 +238,27 @@ fn gem_catalog_entries(
     zh_names: &BTreeMap<String, String>,
     cn_names: &BTreeMap<String, String>,
 ) -> Vec<GemCatalogEntry> {
-    let name_by_gem_id: std::collections::HashMap<&str, &str> = data
-        .base_items
-        .iter()
-        .map(|(name, def)| (def.id.as_str(), name.as_str()))
-        .collect();
+    // Looked up by id: several gem bases share a name (an ordinary gem and the
+    // one a unique grants), so a name-keyed table would lose all but one.
+    let name_by_gem_id = &data.base_item_names;
     let has_display_name = |id: &str| {
         name_by_gem_id.get(id).is_some_and(|name| {
-            !name.trim().is_empty() && *name != "Coming Soon" && !name.starts_with("Metadata/")
+            !name.trim().is_empty() && name != "Coming Soon" && !name.starts_with("Metadata/")
         })
     };
-    // Several gem bases can grant the same effect. Prefer a named public base
-    // over internal bases, then native minimum level and stable id. Placeholder
-    // names do not identify a public gem. Derive all metadata from the winner.
+    // Several gem bases can grant the same effect. Prefer a named base with an
+    // attribute colour (the public gem; an ascendancy or internal copy is
+    // colourless), then any named base, then native minimum level and stable id.
+    // Placeholder names do not identify a public gem. Derive all metadata from
+    // the winner.
+    let rank = |gem: &pobr_data::catalog::SkillGemDef| {
+        let coloured = matches!(gem.gem_colour, Some(1..=3));
+        match (has_display_name(&gem.id), coloured) {
+            (true, true) => 0,
+            (true, false) => 1,
+            (false, _) => 2,
+        }
+    };
     let mut by_skill: BTreeMap<&str, &pobr_data::catalog::SkillGemDef> = BTreeMap::new();
     for gem in data.skill_gems.values() {
         let Some(skill_id) = gem.granted_effect_id.as_deref() else {
@@ -259,12 +267,8 @@ fn gem_catalog_entries(
         by_skill
             .entry(skill_id)
             .and_modify(|current| {
-                if (!has_display_name(&gem.id), gem.min_level_req, &gem.id)
-                    < (
-                        !has_display_name(&current.id),
-                        current.min_level_req,
-                        &current.id,
-                    )
+                if (rank(gem), gem.min_level_req, &gem.id)
+                    < (rank(current), current.min_level_req, &current.id)
                 {
                     *current = gem;
                 }
@@ -321,7 +325,7 @@ fn gem_catalog_entries(
             additional_skill_ids,
             name: name_by_gem_id
                 .get(gem.id.as_str())
-                .map(|s| s.to_string())
+                .cloned()
                 .unwrap_or_else(|| gem.id.clone()),
             name_zh_tw: zh_names.get(gem.id.as_str()).cloned(),
             name_zh_cn: cn_names.get(gem.id.as_str()).cloned(),
@@ -469,6 +473,51 @@ pub fn minion_catalog_json() -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn gem_catalog_names_survive_shared_base_names() {
+        // Herald of Ice shares its base name with the unique-granted copy; the
+        // ordinary gem must still get its name instead of its metadata id.
+        let game = pobr_gamedata::GameData::new(pobr_gamedata::current_data_dir());
+        let data = pobr_build::BuildData::load(&game).unwrap();
+        let zh_names = game.base_item_names("zh-TW").unwrap();
+        let cn_names = game.base_item_names("zh-CN").unwrap();
+        let entries = gem_catalog_entries(&data, &zh_names, &cn_names);
+        let raw: Vec<_> = entries
+            .iter()
+            .filter(|row| row.name.starts_with("Metadata/"))
+            .map(|row| (&row.skill_id, &row.name))
+            .collect();
+        assert!(raw.is_empty(), "gem names fell back to ids: {raw:?}");
+        for (skill_id, gem_id, name) in [
+            (
+                "HeraldOfIcePlayer",
+                "Metadata/Items/Gems/SkillGemHeraldOfIce",
+                "Herald of Ice",
+            ),
+            (
+                "UniqueHeraldOfIcePlayer",
+                "Metadata/Items/Gems/UniqueSkillGemHeraldOfIce",
+                "Herald of Ice",
+            ),
+            (
+                "SupportUnleashPlayer",
+                "Metadata/Items/Gems/SupportGemUnleash",
+                "Unleash",
+            ),
+        ] {
+            let row = entries.iter().find(|row| row.skill_id == skill_id).unwrap();
+            assert_eq!(row.name, name, "{skill_id}");
+            assert_eq!(row.name_zh_cn.as_ref(), cn_names.get(gem_id), "{skill_id}");
+        }
+        // The public staff Unleash (Intelligence) beats the colourless
+        // ascendancy copy that grants the same effect.
+        let unleash = entries
+            .iter()
+            .find(|row| row.skill_id == "UnleashPlayer")
+            .unwrap();
+        assert_eq!(unleash.colour, Some("int"));
+    }
 
     #[test]
     fn gem_catalog_canonical_rows_ignore_insertion_order() {
