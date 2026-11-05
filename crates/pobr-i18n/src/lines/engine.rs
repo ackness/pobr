@@ -320,6 +320,9 @@ pub struct LineTranslator {
     target_skeletons: HashSet<String>,
     /// Target-side whole names (only for a shared script).
     target_names: HashSet<String>,
+    /// Whether a string capture holding letters must translate (see
+    /// [`Self::require_translated_captures`]).
+    translated_captures_only: bool,
 }
 
 impl LineTranslator {
@@ -418,7 +421,22 @@ impl LineTranslator {
             shares_target_script: false,
             target_skeletons: HashSet::new(),
             target_names: HashSet::new(),
+            translated_captures_only: false,
         }
+    }
+
+    /// Makes a string capture that holds a letter count only when it
+    /// translates itself (a whole name, or a line of its own), so no
+    /// source-language word reaches the output. Without it, a template
+    /// whose value slot sits at the line's edge (`{0}% less Damage over
+    /// Time`, `Has {0} Sockets`) also matches a longer line around it and
+    /// carries that line's untranslated words inside its value (`Take 30% less
+    /// Damage over time` -> `持续性伤害总降 Take 30%`). A capture without
+    /// letters (a roll range such as `(1-20)`) is kept as it is. The display
+    /// direction asks for this: an untranslated line shows the source text
+    /// whole, never a mixture.
+    pub fn require_translated_captures(&mut self) {
+        self.translated_captures_only = true;
     }
 
     /// Prepares [`Self::is_source_text`] (an input-direction translator
@@ -689,16 +707,38 @@ impl LineTranslator {
                 continue;
             }
             if let Some(mut values) = match_segments(line, &candidate.src_segments, true) {
-                // Best-effort: run a second translation pass on the
-                // captured name (non-numeric) before substituting it back.
+                // Renderer only: a slot written `{0}%` holds a number, never words (in
+                // `Bonded: 12% increased Damage`, `{0}% increased Damage` must not take
+                // `Bonded: 12`).
+                if self.translated_captures_only
+                    && percent_slots(&candidate.src_segments).any(|index| {
+                        values
+                            .get(&index)
+                            .is_some_and(|v| v.chars().any(char::is_alphabetic))
+                    })
+                {
+                    continue;
+                }
+                // Run a second translation pass on each captured name
+                // (non-numeric) before substituting it back; one that does
+                // not translate is kept, unless it holds a word that only
+                // translating it would remove.
                 let mut origin = candidate.origin;
+                let mut untranslated_word = false;
                 for value in values.values_mut() {
-                    if !is_numeric_capture(value)
-                        && let Some((translated, value_origin)) = self.translate_value(value)
-                    {
-                        *value = translated;
-                        origin = TextOrigin::combine(origin, value_origin);
+                    if is_numeric_capture(value) {
+                        continue;
                     }
+                    match self.translate_value(value) {
+                        Some((translated, value_origin)) => {
+                            *value = translated;
+                            origin = TextOrigin::combine(origin, value_origin);
+                        }
+                        None => untranslated_word |= value.chars().any(char::is_alphabetic),
+                    }
+                }
+                if untranslated_word && self.translated_captures_only {
+                    continue;
                 }
                 return Some((render_en(&candidate.en, &values), origin));
             }
@@ -727,6 +767,16 @@ impl LineTranslator {
         }
         None
     }
+}
+
+/// The placeholders directly followed by `%`: a percentage's number.
+fn percent_slots(segments: &[Segment]) -> impl Iterator<Item = usize> + '_ {
+    segments.windows(2).filter_map(|pair| match pair {
+        [Segment::Placeholder(index), Segment::Literal(lit)] if lit.starts_with('%') => {
+            Some(*index)
+        }
+        _ => None,
+    })
 }
 
 /// ASCII case-insensitive substring search (the dictionary's English
