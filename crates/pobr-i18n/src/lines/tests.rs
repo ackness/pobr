@@ -659,3 +659,37 @@ fn a_rendered_line_never_carries_untranslated_words_in_a_value() {
         Some("配置 霸体")
     );
 }
+
+#[test]
+fn a_bonded_line_renders_through_the_packs_own_templates() {
+    let templates = serde_json::json!([
+        {"src": "羁绊： {0}", "en": "Bonded: {0}"},
+        {"src": "羁绊： {0:d} 生命上限", "en": "Bonded: {0:d} to maximum Life"},
+        {"src": "{0:d} 魔力上限", "en": "{0:d} to maximum Mana"},
+        {"src": "伤害提高 {0}%", "en": "{0}% increased Damage"}
+    ]);
+    let pack = LocalePack::from_files(
+        "zz",
+        [("stat_lines.json", templates.to_string().into_bytes())],
+    )
+    .unwrap();
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    let render = |line: &str| renderer.render_line(line);
+    // A whole-line row first; otherwise the prefix template around the effect's own rendering.
+    assert_eq!(
+        render("Bonded: +40 to maximum Life").as_deref(),
+        Some("羁绊： +40 生命上限")
+    );
+    assert_eq!(
+        render("Bonded: +25 to maximum Mana").as_deref(),
+        Some("羁绊： +25 魔力上限")
+    );
+    assert_eq!(
+        render("Bonded: 12% increased Damage").as_deref(),
+        Some("羁绊： 伤害提高 12%")
+    );
+    // An effect the pack cannot render keeps the whole line English.
+    assert_eq!(render("Bonded: Unknown effect"), None);
+    // The prefix alone, as the Web asks for it.
+    assert_eq!(render("Bonded: {0}").as_deref(), Some("羁绊： {0}"));
+}

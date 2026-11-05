@@ -691,6 +691,18 @@ impl LineTranslator {
                 continue;
             }
             if let Some(mut values) = match_segments(line, &candidate.src_segments, true) {
+                // Renderer only: a slot written `{0}%` holds a number, never words (in
+                // `Bonded: 12% increased Damage`, `{0}% increased Damage` must not take
+                // `Bonded: 12`).
+                if self.translated_captures_only
+                    && percent_slots(&candidate.src_segments).any(|index| {
+                        values
+                            .get(&index)
+                            .is_some_and(|v| v.chars().any(char::is_alphabetic))
+                    })
+                {
+                    continue;
+                }
                 // Run a second translation pass on each captured name
                 // (non-numeric) before substituting it back; one that does
                 // not translate is kept, unless it holds a word that only
@@ -735,6 +747,16 @@ impl LineTranslator {
         }
         None
     }
+}
+
+/// The placeholders directly followed by `%`: a percentage's number.
+fn percent_slots(segments: &[Segment]) -> impl Iterator<Item = usize> + '_ {
+    segments.windows(2).filter_map(|pair| match pair {
+        [Segment::Placeholder(index), Segment::Literal(lit)] if lit.starts_with('%') => {
+            Some(*index)
+        }
+        _ => None,
+    })
 }
 
 /// ASCII case-insensitive substring search (the dictionary's English
