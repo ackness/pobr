@@ -36,3 +36,8 @@ it('matches translations by position, so one line can be covered in one place an
     .toEqual(['物品等级: 83', '受到的所有伤害在扣除生命前优先从魔力扣除', '', '', '魔力回复速度总降 50%']);
   expect(localizedLines(['Rune: Iron Rune'], 'zh-CN', [''])).toEqual(['符文: Iron Rune']);
 });
+
+it('returns the en-US lines themselves, so consumers memoizing on them do not recompute', () => {
+  const lines = ['+5 to Strength', 'Item Level: 83'];
+  expect(localizedLines(lines, 'en-US', [])).toBe(lines);
+});

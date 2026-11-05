@@ -127,9 +127,10 @@ export function linesToTranslate(lines: readonly string[], lang: Lang): string[]
 
 /** The display of `lines` given `translated`, the backend's answer to {@link linesToTranslate}
  * matched by position (not by text: one line can be covered by a multi-line description in one
- * place and stand alone in another). A covered line stays `""` (see `lib/continuedLines`). */
-export function localizedLines(lines: readonly string[], lang: Lang, translated: readonly (string | undefined)[]): string[] {
-  if (lang === 'en-US') return [...lines];
+ * place and stand alone in another). A covered line stays `""` (see `lib/continuedLines`). In
+ * en-US the result is `lines` itself, so it stays the same array while `lines` does. */
+export function localizedLines(lines: string[], lang: Lang, translated: readonly (string | undefined)[]): string[] {
+  if (lang === 'en-US') return lines;
   return lines.map((l, index) => {
     const struct = localizeStructLine(l, lang);
     if (struct) return struct;
@@ -146,13 +147,16 @@ export function localizedLines(lines: readonly string[], lang: Lang, translated:
   });
 }
 
+/** No answer yet: one shared array, so the memo below keeps its value across renders. */
+const NO_TRANSLATIONS: readonly (string | undefined)[] = [];
+
 /** 中文界面：词条行批量反查翻译（结构行走本地词典；翻译不中原样显示）。One output per input; a line a
  * multi-line description covered comes back `""`, which consumers drop or replace through
  * `lib/continuedLines`. */
 export function useLocalizedLines(lines: string[], lang: Lang): string[] {
   const key = JSON.stringify(lines);
   const [result, setResult] = useState<{ key: string; lang: Lang; values: (string | undefined)[] } | null>(null);
-  const translated = result?.key === key && result.lang === lang ? result.values : [];
+  const translated = result?.key === key && result.lang === lang ? result.values : NO_TRANSLATIONS;
   useEffect(() => {
     if (lang === 'en-US' || lines.length === 0) return;
     const sent = linesToTranslate(lines, lang);
