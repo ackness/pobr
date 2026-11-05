@@ -169,8 +169,8 @@ fn traditional_chinese_mod_names_available() {
         "should have thousands of localized mod names, got {}",
         names.len()
     );
-    // Strength1 = "of the Brute" → "野蠻之" (the zh-TW export switched from
-    // the "之X" to the "X之" word order across the board in 0.5.4; the
-    // pipeline faithfully transcribes the Mods table's Name column)
-    assert_eq!(names.get("Strength1").map(String::as_str), Some("野蠻之"));
+    // Keyed by English affix name, like zh-CN (Strength1's name "of the
+    // Brute"). The zh-TW client uses the "X之" word order since 0.5.4.
+    assert_eq!(names.get("of the Brute").map(String::as_str), Some("野蠻之"));
+    assert!(!names.contains_key("Strength1"), "zh-TW mods.json is no longer keyed by mod id");
 }

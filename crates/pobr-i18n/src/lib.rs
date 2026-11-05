@@ -24,10 +24,6 @@
 //!   conventions: magic = suffix + prefix + base with no separator, rare =
 //!   the two words joined by a space (`LineTranslator`'s magic/rare name
 //!   fallbacks). Another locale needs a composition rule declared by its pack.
-//! - [`NameKind::Affix`] is read as English affix name -> localized name,
-//!   which is what zh-CN `mods.json` holds; zh-TW `mods.json` is keyed by
-//!   mod id instead, so its entries never match. The package format should
-//!   settle one key per table.
 
 pub mod fallback;
 pub mod lines;
