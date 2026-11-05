@@ -393,7 +393,7 @@ Small Passive Skills in Radius also grant 2% increased Spell Damage</Item><ItemS
     await openItemsAfterImport(page);
     await expect(page.locator('.paper-doll')).toBeVisible();
     await goTo(page, 'Upgrades');
-    await page.locator('.trade-position').filter({ hasText: 'Jewel socket 2491' }).click();
+    await page.locator('.trade-position[data-slot-id="Jewel@2491"]').click();
     await expect(page.getByRole('combobox', { name: 'Jewel type' })).toContainText('Time-Lost jewel search');
     await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
     await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();

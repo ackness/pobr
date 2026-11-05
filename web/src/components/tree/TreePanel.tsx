@@ -1,3 +1,6 @@
+import { TreePointSummary } from './TreePointSummary';
+import { jewelSocketNames } from './jewelSocketNames';
+import { distributeAttributeChoices, passivePointSummary } from './treePresentation';
 import { ValueText } from '../shared/ValueText';
 import { classDisplayName } from '../../lib/nativeDisplayNames';
 import { useAppDialogs } from '../shared/AppDialogs';
@@ -5,7 +8,7 @@ import { useSessionAction } from '../shared/useSessionAction';
 import { AppTooltip, AppButton, AppInput, AppTextarea, AppSelectControl } from '../shared/controls';
 import { TreeConversionControls, useTreeConversion } from './TreeConversionControls';
 import { formatApiError } from '../../api/error';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { getBackend } from '../../api/backend';
 import type { AttributeChoice, PassiveNode, TreeAllocationMode } from '../../api/types';
 import { useTreeEditPreview } from '../../hooks/useTreeEditPreview';
@@ -27,6 +30,7 @@ import { TreeOptimizer, useTreeOptimizer, type TreeOptimizerState } from './Tree
 import type { PassivePlan } from '../../lib/passivePlanner';
 import './tree.css';
 import { NodePowerTable } from './NodePowerTable';
+import { useTreeLocation } from './useTreeLocation';
 import { plannedEdgeClass } from './plannedRoute';
 import { words } from '../../app/text';
 import { PanelRightClose, PanelRightOpen } from 'lucide-react';
@@ -36,7 +40,7 @@ interface Props {
   session: BuildSession;
   lang: Lang;
   active: boolean;
-  focusPlanner?: { nonce: number };
+  focusPlanner?: { nonce: number; node?: number };
   onJewelSearch?: (socket: number) => void;
 }
 
@@ -84,14 +88,18 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
     .find(entry => entry.name === session.character?.ascendancy_name)?.id;
   const namedNodes = useMemo(() => nodes.filter(node => !node.ascendancy_id || node.ascendancy_id === ascendancy), [nodes, ascendancy]);
   const nodeNames = usePassiveNodeNames(namedNodes, lang, active);
+  const socketLabels = useMemo(() => jewelSocketNames(nodes, nodeNames, lang), [nodes, nodeNames, lang]);
+  const [located, setLocated] = useState<{ nonce: number; node: number }>();
+  const consumedLocation = useRef<number | undefined>(undefined);
   const [overlayReset, setOverlayReset] = useState(0);
   const planner = useTreeOptimizer({ session, lang, active, nodes,
+    onLocate: node => setLocated({ node, nonce: Date.now() }),
     onRun: () => setOverlayReset(value => value + 1),
     nodeLabel: skill => {
       const node = byId.get(skill);
-      return node ? passiveNodeName(node, nodeNames) : `#${skill}`;
+      return socketLabels.get(skill) ?? (node ? passiveNodeName(node, nodeNames) : words(lang, 'Passive', '天赋', '天賦'));
     },
-    onPreview: setPlannedNodes, focusPlanner });
+    onPreview: setPlannedNodes, focusPlanner: focusPlanner?.node === undefined ? focusPlanner : undefined });
   useEffect(() => {
     let cancelled = false;
     getBackend()
@@ -106,10 +114,13 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
     session.activeLoadout, session.activeWeaponSet, session.socketGroupRevision,
     session.character?.class_name, session.character?.ascendancy_name]);
   return <TreeCanvas key={canvasContext} session={session} lang={lang} onJewelSearch={onJewelSearch}
-    allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} nodeNames={nodeNames} error={error} plannedNodes={plannedNodes} planner={planner} conversion={conversion} overlayReset={overlayReset} />;
+    consumedLocation={consumedLocation}
+    focusNode={located && located.nonce > (focusPlanner?.nonce ?? -1) ? located : focusPlanner?.node !== undefined ? focusPlanner : undefined} allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} nodeNames={nodeNames} error={error} plannedNodes={plannedNodes} planner={planner} conversion={conversion} overlayReset={overlayReset} />;
 }
 
 interface CanvasProps {
+  focusNode?: { nonce: number; node?: number };
+  consumedLocation: RefObject<number | undefined>;
   allocationMode: TreeAllocationMode;
   onAllocationMode: (mode: TreeAllocationMode) => void;
   session: BuildSession;
@@ -126,7 +137,7 @@ interface CanvasProps {
   overlayReset: number;
 }
 
-function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, error, plannedNodes, planner, conversion, overlayReset }: CanvasProps) {
+function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, error, plannedNodes, planner, conversion, overlayReset }: CanvasProps) {
   const tt = bindT(lang);
   /** Whether the planner / details column beside the canvas is shown. */
   const [sideOpen, setSideOpen] = useState(true);
@@ -465,19 +476,8 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
     return counts;
   }, [allocatedAttrNodes, session.attributeChoices]);
 
-  /** 批量调配：前 str 个给力量、其次 dex、再 int，其余不分配（引擎语义=无贡献）。 */
   const distributeAttributes = (str: number, dex: number, int: number) => {
-    const next: Record<string, AttributeChoice> = {};
-    // 保留非属性小点位（理论上没有，防御性）+ 重建属性小点位。
-    for (const [k, v] of Object.entries(session.attributeChoices)) {
-      if (!allocatedAttrNodes.includes(Number(k))) next[k] = v;
-    }
-    allocatedAttrNodes.forEach((skill, i) => {
-      if (i < str) next[String(skill)] = 'str';
-      else if (i < str + dex) next[String(skill)] = 'dex';
-      else if (i < str + dex + int) next[String(skill)] = 'int';
-    });
-    session.setAttributeChoices(next);
+    session.setAttributeChoices(distributeAttributeChoices(allocatedAttrNodes, session.attributeChoices, { str, dex, int }));
   };
 
   const edges = useMemo(() => passiveTreeEdges(placed).map(edge => ({ ...edge,
@@ -746,6 +746,17 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
 
   const view = viewBox ?? fullExtent;
 
+  const focusNodeOnTree = (node: PassiveNode) => {
+    if (!view) return;
+    setSelectedSkill(node.skill); setAttributeDraft(null); setAttrPicker(null);
+    const w = Math.min(view.w, 6000), h = w / view.w * view.h;
+    setViewBox({ x: node.x! - w / 2, y: node.y! - h / 2, w, h });
+    svgRef.current?.scrollIntoView({ block: 'center' });
+    svgRef.current?.focus({ preventScroll: true });
+  };
+  const socketLabels = jewelSocketNames(nodes ?? [], nodeNames, lang);
+  useTreeLocation(focusNode, consumedLocation,
+    focusNode?.node === undefined ? undefined : byId.get(focusNode.node), Boolean(view), focusNodeOnTree);
   if (error) return <div className="calc-error">{error}</div>;
   if (!nodes || !view) return <div className="empty-hint">{tt('tree.loading')}</div>;
 
@@ -1012,25 +1023,13 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
   const resetEl = (
     <AppButton onClick={() => setViewBox(null)}>{tt('tree.reset')}</AppButton>
   );
-  const countEl = (
-    <span className="ui-badge tree-count">{session.allocatedNodes.length} {tt('tree.allocated')}</span>
-  );
-  const previewEl = (
-    <div className="tree-edit-preview" role="status">
-        {preview && <>
-        {previewResult ? <>
-          <span>{tt('tree.points')}: {previewResult.points_used} / {previewResult.points_max}</span>
-          <span>{tt('tree.set1')}: {previewResult.weapon_points_used[0]} / {previewResult.weapon_points_max}</span>
-          <span>{tt('tree.set2')}: {previewResult.weapon_points_used[1]} / {previewResult.weapon_points_max}</span>
-          <span>{tt('tree.previewChanges')}: +{previewResult.added.length} / −{previewResult.removed.length} · {tt('tree.promoted')}: {previewResult.promoted.length}</span>
-        </> : treeEditError(preview.reason, lang)}
-        </>}
-      </div>
-  );
+  const pointSummary = passivePointSummary(nodes ?? [], session.allocatedNodes, session.character?.level ?? 1, session.weaponSwap, treeEffects);
+  const countEl = <TreePointSummary current={pointSummary} preview={preview} invalidReason={treeEditError(preview?.reason ?? null, lang)} lang={lang} />;
   const canvasEl = (
     <div className="tree-canvas">
         <svg
           ref={svgRef}
+          tabIndex={-1}
           viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
           onWheel={onWheel}
           onPointerDown={onPointerDown}
@@ -1191,7 +1190,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
         {allocatedAttrNodes.length > 0 && (
         <>
           <span className="attr-distribute-title">
-            {tt('tree.attrDistribute')}（{allocatedAttrNodes.length}）
+            {tt('tree.attrSummary').replace('{count}', String(allocatedAttrNodes.length))}
           </span>
           {(['str', 'dex', 'int'] as AttributeChoice[]).map((key) => (
             <label key={key} className={`attr-count attr-${key}`}>
@@ -1231,8 +1230,8 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
             {(
               [
                 ['str', "questAct 4Halls Of The DeadNgamahu's Test", '+5 to Strength'],
-                ['int', "questAct 4Halls Of The DeadTasalio's Test", '+5 to Intelligence'],
                 ['dex', "questAct 4Halls Of The DeadTawhoa's Test", '+5 to Dexterity'],
+                ['int', "questAct 4Halls Of The DeadTasalio's Test", '+5 to Intelligence'],
               ] as const
             ).map(([key, cfgVar, value]) => {
               const active = session.calcParams.config_inputs[cfgVar] === value;
@@ -1276,23 +1275,18 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
     <NodePowerTable session={session} nodes={nodes ?? []} nodeNames={nodeNames} lang={lang}
         stat={heatStat || 'Life'} stats={heatStatOptions}
         onStat={stat => { cancelHeat(); setHeatStat(stat); setHeatData(null); setHeatVersion(-1); }}
-        onFocus={node => {
-          setSelectedSkill(node.skill); setAttributeDraft(null); setAttrPicker(null);
-          const w = Math.min(view.w, 6000), h = w / view.w * view.h;
-          setViewBox({ x: node.x! - w / 2, y: node.y! - h / 2, w, h });
-          svgRef.current?.scrollIntoView({ block: 'center' });
-        }} />
+        onFocus={focusNodeOnTree} />
   );
   const draftsEl = Object.keys(session.editorDrafts).filter(key => key.startsWith('jewel:')).map(key => (
         <AppButton key={key} onClick={() => setJewelSocket(Number(key.slice(6)))}>
-          {tt('editor.draft')} · {tt('tree.jewel')} #{key.slice(6)}
+          {tt('editor.draft')} · {socketLabels.get(Number(key.slice(6))) ?? tt('tree.jewel')}
         </AppButton>
       ));
   const jewelEl = jewelEdit && (
         <div className="jewel-editor" ref={jewelRef} tabIndex={-1} role="group" aria-label={tt('tree.jewel')}>
           <header className="item-detail-header">
             <span className="item-slot">
-              {tt('tree.jewel')} · #{jewelEdit.socket}
+              {socketLabels.get(jewelEdit.socket) ?? tt('tree.jewel')}
             </span>
             <span className="item-actions">
               <AppButton
@@ -1434,7 +1428,6 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
         {editError && <p className="tree-edit-error" role="alert">{treeEditError(editError, lang)}</p>}
         <div className="tree-bar tree-bar-view" role="group" aria-label={words(lang, 'View and build', '视图与 BD', '檢視與 BD')}>
           {countEl}
-          {previewEl}
           {classEl}
           {ascEl}
           {focusAscEl}

@@ -81,13 +81,13 @@ async function configure(page: Page) {
   await open(page);
   await select(page, 'Objective', 'Max Life');
   await budget(page).fill('3');
-  await select(page, 'New travel attributes', 'Strength');
+  await select(page, 'Route planner: new travel attributes', 'Strength');
 }
 
 async function addPlacement(page: Page, text = jewel) {
   await joint(page).getByRole('textbox', { name: 'Candidate jewel text', exact: true }).fill(text);
   await joint(page).getByRole('combobox', { name: 'Candidate socket', exact: true }).click();
-  await page.getByRole('option').filter({ hasText: `#${socket.skill}` }).click();
+  await page.locator(`[role="option"][data-value="${socket.skill}"]`).click();
   await joint(page).getByRole('button', { name: 'Add jewel placement', exact: true }).click();
 }
 
@@ -170,11 +170,13 @@ for (const planner of ['route', 'joint'] as const) {
     await expect(confirmation).toBeVisible();
     const applied = await saved(page);
     for (const id of applied.allocatedNodes.filter(id => !before.allocatedNodes.includes(id))) {
-      await expect(confirmation).toContainText(`#${id}`);
+      const node = nodes.find(node => node.skill === id)!;
+      await expect(confirmation).toContainText(node.kind === 'jewel_socket' ? 'Jewel socket' : node.name!);
     }
     if (planner === 'joint') {
       await expect(confirmation).toContainText('Ruby');
-      await expect(confirmation).toContainText(`#${socket.skill}`);
+      await expect(confirmation).toContainText('Jewel socket');
+      await expect(confirmation).not.toContainText(`#${socket.skill}`);
     }
     const receipt = await confirmation.innerText();
     await complete(page, planner);
@@ -239,7 +241,7 @@ for (const planner of ['route', 'joint'] as const) {
     await awayAndBack(page);
     await expect(budget(page)).toHaveValue('3');
     await expect(page.getByRole('combobox', { name: 'Plan', exact: true })).toContainText('Spend new points');
-    await expect(page.getByRole('combobox', { name: 'New travel attributes', exact: true })).toContainText('Strength');
+    await expect(page.getByRole('combobox', { name: 'Route planner: new travel attributes', exact: true })).toContainText('Strength');
     await expect(joint(page).getByRole('textbox', { name: 'Candidate jewel text', exact: true })).toHaveValue(jewel);
     await expect.poll(() => joint(page).getByRole('combobox', { name: 'Candidate socket', exact: true }).innerText()).toBe(socketLabel);
     await expect.poll(() => joint(page).locator('.jewel-plan-candidates').innerText()).toBe(candidates);
@@ -282,7 +284,7 @@ test('reallocation mode and maximum refunds survive navigation without changing 
   await awayAndBack(page);
   await expect(page.getByRole('combobox', { name: 'Plan', exact: true })).toContainText('Reallocate existing points');
   await expect(page.getByRole('spinbutton', { name: 'Maximum refunds', exact: true })).toHaveValue('2');
-  await expect(page.getByRole('combobox', { name: 'New travel attributes', exact: true })).toContainText('Strength');
+  await expect(page.getByRole('combobox', { name: 'Route planner: new travel attributes', exact: true })).toContainText('Strength');
   await expect(joint(page).locator('.jewel-plan-candidates > li')).toHaveCount(1);
   await expect.poll(() => page.locator('.tree-planner-summary').innerText()).toBe(receipt);
   expect(await saved(page)).toEqual(before);
@@ -325,7 +327,7 @@ for (const edit of ['equipment', 'goal'] as const) {
     await page.clock.fastForward(2000);
     await noReceipts(page);
     await expect(budget(page)).toHaveValue('3');
-    await expect(page.getByRole('combobox', { name: 'New travel attributes', exact: true })).toContainText('Strength');
+    await expect(page.getByRole('combobox', { name: 'Route planner: new travel attributes', exact: true })).toContainText('Strength');
     await expect(joint(page).locator('.jewel-plan-candidates > li')).toHaveCount(1);
     const after = await saved(page);
     expect(after.allocatedNodes).toEqual(before.allocatedNodes);
@@ -346,7 +348,7 @@ test('identical copied stages reset receipts and stage-local preferences without
   await syntheticWitch(page);
   await open(page);
   const initialBudget = await budget(page).inputValue();
-  const initialAttributes = await page.getByRole('combobox', { name: 'New travel attributes', exact: true }).innerText();
+  const initialAttributes = await page.getByRole('combobox', { name: 'Route planner: new travel attributes', exact: true }).innerText();
   await configure(page);
   await addPlacement(page);
   await complete(page, 'joint');
@@ -364,7 +366,7 @@ test('identical copied stages reset receipts and stage-local preferences without
   await open(page);
   await noReceipts(page);
   await expect(budget(page)).toHaveValue(initialBudget);
-  await expect.poll(() => page.getByRole('combobox', { name: 'New travel attributes', exact: true }).innerText()).toBe(initialAttributes);
+  await expect.poll(() => page.getByRole('combobox', { name: 'Route planner: new travel attributes', exact: true }).innerText()).toBe(initialAttributes);
   await expect(joint(page).getByRole('textbox', { name: 'Candidate jewel text', exact: true })).toHaveValue('');
   await expect(joint(page).locator('.jewel-plan-candidates > li')).toHaveCount(0);
   expect(await saved(page)).toEqual(before);
