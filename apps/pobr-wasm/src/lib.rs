@@ -26,8 +26,8 @@ pub use build_api::{
     import_party_member_json, import_trade_items_json, item_augment_info_json,
     item_crafting_catalog_json, line_usage_json, manage_loadout_json, minion_catalog_json,
     node_power_json, normalize_item_draft_json, optimize_variants_json, parse_localized_lines_json,
-    reforge_runes_json, rune_catalog_json, skill_metrics_json, translate_lines_json,
-    unique_catalog_json, unique_item_draft_json,
+    reforge_runes_json, rune_catalog_json, skill_metrics_json, translate_lines_detailed_json,
+    translate_lines_json, unique_catalog_json, unique_item_draft_json,
 };
 pub use build_api::{
     preview_tree_conversion_json, preview_tree_edit_json, support_groups_compatible_json,
@@ -199,6 +199,15 @@ pub mod wasm {
     #[wasm_bindgen(js_name = translateLines)]
     pub fn translate_lines_json(lang: &str, lines_json: &str) -> Result<String, JsError> {
         crate::build_api::translate_lines_json(lang, lines_json).map_err(|err| JsError::new(&err))
+    }
+
+    /// JS entry point: `translateLinesDetailed(lang, linesJson) -> string`: `translateLines`'
+    /// texts as `[{text, origin}]`, `origin` `"agent"` / `"human"` for the translation
+    /// repository's own supplement text and `null` for official text or a line kept in English.
+    #[wasm_bindgen(js_name = translateLinesDetailed)]
+    pub fn translate_lines_detailed_json(lang: &str, lines_json: &str) -> Result<String, JsError> {
+        crate::build_api::translate_lines_detailed_json(lang, lines_json)
+            .map_err(|err| JsError::new(&err))
     }
 
     /// JS entry point: `parseLocalizedLines(lang, linesJson) -> string` (`lang` mod lines -> English canonical lines).

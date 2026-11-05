@@ -78,6 +78,10 @@ struct CalculateBuildResponse<'a> {
 struct MinionOutputJson {
     index: usize,
     minion_id: String,
+    /// The game's `MonsterVarieties.Id`, which display names are keyed by;
+    /// absent when the data links none.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    monster_variety_id: Option<String>,
     name: String,
     summoned_by: String,
     skill_id: String,
@@ -134,13 +138,12 @@ fn minion_outputs(
                         .collect()
                 })
                 .unwrap_or_default();
+            let def = data.minion_def(&minion.minion_id);
             MinionOutputJson {
                 index,
                 minion_id: minion.minion_id.clone(),
-                name: data
-                    .minion_def(&minion.minion_id)
-                    .map(|def| def.name.clone())
-                    .unwrap_or_default(),
+                monster_variety_id: def.and_then(|def| def.monster_variety_id.clone()),
+                name: def.map(|def| def.name.clone()).unwrap_or_default(),
                 summoned_by: minion.summoned_by.clone(),
                 skill_id: minion.skill_id.clone(),
                 level: minion.level,

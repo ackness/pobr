@@ -4514,6 +4514,8 @@ fn minion_selection_catalog_output_and_actor_breakdowns_round_trip() {
         .find(|row| row["id"] == monster)
         .unwrap();
     assert_eq!(quadrilla["name"], "Quadrilla");
+    // A spectre's id is its game variety id, which display names are keyed by.
+    assert_eq!(quadrilla["monster_variety_id"], monster);
     assert_eq!(quadrilla["beast"], true);
     assert!(quadrilla["skills"].as_array().unwrap().len() >= 3);
     assert_eq!(quadrilla["skills"][2]["index"], 3);
@@ -4545,6 +4547,7 @@ fn minion_selection_catalog_output_and_actor_breakdowns_round_trip() {
     assert_eq!(minions.len(), 2);
     let main = &minions[1];
     assert_eq!(main["minion_id"], monster);
+    assert_eq!(main["monster_variety_id"], monster);
     assert_eq!(main["name"], "Quadrilla");
     assert_eq!(main["summoned_by"], "SummonBeastPlayer");
     assert_eq!(main["skill_id"], quadrilla["skills"][2]["skill_id"]);
