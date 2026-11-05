@@ -170,8 +170,9 @@ PoBR更新锁后运行`mise run data:prepare`；目录摘要不符时拒绝导�
 和逐行台账里物品的持有者按 `base_items.json` 同名的全部 ID 查 `BaseItemTypes.Name`，各 ID 须一致；入口是后端 `translateNames`。
 作用域英文与当前名不同（珠宝变换后的名字或过时数据）或作用域没有该 ID 时，走原来的 `translateLines` 文本路径；
 有该 ID 但译文为 null 时显示英文。召唤物名只按 `monster_variety_id`（游戏 MonsterVarieties Id，`minionCatalogJson`
-的怪物和计算结果的 `minions` 都带）查 `MonsterVarieties.Name`，英文须与当前名相同；没有该作用域、没有记录、
-没有 variety id 或译文为 null 时显示英文，不走文本路径（Calcs 的召唤物选项、技能页的召唤物选择）。
+的怪物和计算结果的 `minions` 都带）查 `MonsterVarieties.Name`，英文须与当前名相同；所选语言的目录没有该记录时
+沿游戏文本回退链取下一个目录的记录并转换字形（zh-TW 用 zh-CN 记录转繁体），origin 随之保留；记录译文为 null 时
+显示英文；整条链都没有记录或没有 variety id 时也显示英文，不走文本路径（Calcs 的召唤物选项、技能页的召唤物选择）。
 只用所选语言自己的目录，zh-TW 没有目录时保持原有字形转换路径；
 文本路径的 `translateLines` 不会因为一行文字等于某个基底名就当作基底。`mise run audit:display` 用同一套函数核对。
 选择器、摘要与技能集共用显示入口，

@@ -202,3 +202,26 @@ test('passive and base names carry their scope record origin; absent origins are
   expect(ours.resolveDetailed({ kind: 'base', name: 'Agreed' }, 'zh-CN')).toEqual({ text: '同', origin: 'agent' });
   expect(ours.resolve({ kind: 'base', name: 'Agreed' }, 'zh-CN')).toBe('同');
 });
+
+test('zh-TW minion names convert the zh-CN record unless a zh-TW catalog names the variety itself', () => {
+  const cn = { ...catalog({ 'MonsterVarieties.Name': {
+    'Metadata/Monsters/A': ['Raging Spirit', '愤怒之灵'], 'Metadata/Monsters/B': ['Skeletal Warrior', '骷髅战士'],
+    'Metadata/Monsters/C': ['Skeletal Brute', '骷髅蛮兵'],
+  } }), origins: { entries: {}, scopes: { 'MonsterVarieties.Name': { 'Metadata/Monsters/B': 'agent' as const } } } };
+  const cnOnly = new NativeNameIndex([cn]);
+  // A converted supplement is still a supplement.
+  expect(cnOnly.resolveDetailed(monster('Metadata/Monsters/A', 'Raging Spirit'), 'zh-TW')).toEqual({ text: '憤怒之靈', origin: null });
+  expect(cnOnly.resolveDetailed(monster('Metadata/Monsters/B', 'Skeletal Warrior'), 'zh-TW')).toEqual({ text: '骷髏戰士', origin: 'agent' });
+  expect(cnOnly.resolveDetailed(monster('Metadata/Monsters/A', 'Renamed'), 'zh-TW')).toBeNull();
+  expect(cnOnly.resolveDetailed(monster(undefined, 'Raging Spirit'), 'zh-TW')).toBeNull();
+  // A zh-TW record wins as written; its explicit null keeps English; an id it lacks falls back to zh-CN.
+  const tw = catalog({ 'MonsterVarieties.Name': {
+    'Metadata/Monsters/A': ['Raging Spirit', '狂怒之靈'], 'Metadata/Monsters/B': ['Skeletal Warrior', null],
+  } }, 'zh-TW');
+  const both = new NativeNameIndex([cn, tw]);
+  expect(both.resolveDetailed(monster('Metadata/Monsters/A', 'Raging Spirit'), 'zh-TW')).toEqual({ text: '狂怒之靈', origin: null });
+  expect(both.resolveDetailed(monster('Metadata/Monsters/B', 'Skeletal Warrior'), 'zh-TW')).toBeNull();
+  expect(both.resolveDetailed(monster('Metadata/Monsters/C', 'Skeletal Brute'), 'zh-TW')).toEqual({ text: '骷髏蠻兵', origin: null });
+  // zh-CN keeps its own record and script.
+  expect(both.resolveDetailed(monster('Metadata/Monsters/A', 'Raging Spirit'), 'zh-CN')).toEqual({ text: '愤怒之灵', origin: null });
+});

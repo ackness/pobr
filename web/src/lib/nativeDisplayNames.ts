@@ -1,5 +1,6 @@
 import type { ClassNames, GemCatalogEntry, PassiveTreeMeta } from '../api/types';
-import { localizedName } from './chinese';
+import { chineseScript, localizedName } from './chinese';
+import { gameTextChain } from './gameLocales';
 import type { Lang } from './i18n';
 import { listedOrigin, type DisplayText, type NativeDisplayTexts, type TextOrigin } from './nativeDisplayTexts';
 import type { CraftingMetadata } from '../api/itemCrafting';
@@ -43,7 +44,8 @@ export type GameNameRequest =
   /** A line the item classifier or the item format marks as the base type. */
   | { kind: 'base'; name: string }
   /** A minion: its game MonsterVarieties Id (the WASM `monster_variety_id`) and English name. Only the
-   * `MonsterVarieties.Name` scope names it; without a record it stays English (no text path). */
+   * `MonsterVarieties.Name` scope names it, the first along the game-text chain that has the record (in
+   * the shown script, origin kept); without a record it stays English (no text path). */
   | { kind: 'monster'; id?: string | null; name: string };
 
 /** The supplement origin of a resolved name: the scope record's, or for a base line the first linked
@@ -92,10 +94,19 @@ export class NativeNameIndex {
   resolveDetailed(request: GameNameRequest, lang: Lang): DisplayText | null | undefined {
     const catalog = this.catalogs.get(lang);
     if (request.kind === 'monster') {
-      // Minion names were never translated by text; only an exact variety record names one.
+      // Minion names were never translated by text; only an exact variety record names one. A locale
+      // without its own record takes its chain's next one converted to its script, as other game
+      // text does; a record left unresolved (null) keeps English.
       if (lang === 'en-US' || !request.name) return undefined;
-      const text = catalog && request.id ? scopedName(catalog.scopes['MonsterVarieties.Name'], request.id, request.name) : undefined;
-      return text ? { text, origin: scopeOrigin(catalog!, 'MonsterVarieties.Name', [request.id!]) } : null;
+      if (!request.id) return null;
+      for (const code of gameTextChain(lang)) {
+        const source = this.catalogs.get(code as Lang);
+        const text = source && scopedName(source.scopes['MonsterVarieties.Name'], request.id, request.name);
+        if (text === null) return null;
+        if (text) return { text: code === lang ? text : chineseScript(text, lang),
+          origin: scopeOrigin(source!, 'MonsterVarieties.Name', [request.id]) };
+      }
+      return null;
     }
     if (!catalog || !request.name) return undefined;
     if (request.kind === 'passive') {
