@@ -162,7 +162,10 @@ export function localizedLines(lines: string[], lang: Lang, translated: readonly
     }
     if (BONDED.test(l)) {
       extra += 2;
-      return out === undefined || out === l ? composedBonded(l, translated[extra - 1], prefix) : out;
+      if (out !== undefined && out !== l && !BONDED.test(out)) return out;
+      // No whole-line row, or one that kept the English prefix: compose from the pack's own prefix.
+      const composed = composedBonded(l, translated[extra - 1], prefix);
+      return composed === l && out !== undefined ? out : composed;
     }
     return out ?? l;
   });
