@@ -49,21 +49,22 @@ test('choose a companion and its skill, inspect minion breakdowns, and preserve 
   await choose(page, page.getByRole('combobox', { name: 'Actor', exact: true }), /^Minion: Quadrilla/);
   await expect(life).toHaveText(await minionLife.innerText());
   await page.locator('#breakdown-Life').click();
-  await expect(page.locator('#calcs-detail .calcs-eyebrow')).toContainText('Minion: Quadrilla');
+  await expect(page.locator('#calcs-detail .calcs-eyebrow')).toContainText('Minion · Quadrilla');
   await expect(page.locator('#calcs-detail-heading')).toHaveText('Life');
   await expect(page.locator('#calcs-detail div.breakdown-detail').first()).toBeVisible({ timeout: 90_000 });
   await page.screenshot({ path: '../.cache/minion-selection-calcs.png', fullPage: true });
   await choose(page, page.getByRole('combobox', { name: 'Actor', exact: true }), 'Player');
   await expect(life).toHaveText(playerLife);
-  await expect(page.locator('#calcs-detail-heading')).toHaveText('Choose a metric to inspect its calculation.');
+  // Switching the actor opens that actor's default metric rather than an empty pane.
+  await expect(page.locator('#calcs-detail-heading')).toHaveText('Combined DPS');
   await page.locator('#breakdown-Life').click();
-  await expect(page.locator('#calcs-detail .calcs-eyebrow')).toHaveText('Player');
+  await expect(page.locator('#calcs-detail .calcs-eyebrow')).toHaveText('Showing: Player');
   // A minion's number in the results panel opens the minion's calculation, and carries on to Calcs.
   await minionLife.click();
   await expect(page.locator('.insp-kicker')).toContainText('Quadrilla');
   await expect(page.locator('.insp h2')).toHaveText('Life');
   await page.locator('.insp').getByRole('button', { name: 'Open in Calculations' }).click();
-  await expect(page.locator('#calcs-detail .calcs-eyebrow')).toContainText('Minion: Quadrilla');
+  await expect(page.locator('#calcs-detail .calcs-eyebrow')).toContainText('Minion · Quadrilla');
   await expect(page.locator('#calcs-detail-heading')).toHaveText('Life');
   await expect(life).toHaveText(await minionLife.innerText());
 
@@ -71,6 +72,8 @@ test('choose a companion and its skill, inspect minion breakdowns, and preserve 
   const xml = inflateSync(Buffer.from(code, 'base64url')).toString();
   expect(xml).toContain('skillMinion="Metadata/Monsters/Quadrilla/Quadrilla"');
   expect(xml).toContain('skillMinionSkill="3"');
+  // The import form is a closed disclosure on the BD page, as in importBuild().
+  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await expect.poll(async () => (await state()).socketGroups[0].gems[0].minion_skill).toBe(3);

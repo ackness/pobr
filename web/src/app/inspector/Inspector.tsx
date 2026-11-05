@@ -3,7 +3,7 @@ import { BreakdownTable } from '../../components/calcs/CalcsPanel';
 import { Button } from '../../components/ui/button';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
-import { detailKind } from '../../lib/statDetails';
+import { detailKind, detailEmptyKey } from '../../lib/statDetails';
 import { formatStatValue, statMap } from '../../lib/statDisplay';
 import type { SettledCalc } from '../motion/useSettledCalc';
 import { words } from '../text';
@@ -22,6 +22,7 @@ export default function Inspector({ session, view, lang, id, onClose, onOpenCalc
   const raw = minion ? minion.stats[stat] : view.calc ? statMap(view.calc.stats).get(stat) : undefined;
   const { detail, error, loading, retry } = useStatBreakdown(session, id);
   const none = !source || detailKind(source, stat) === 'none';
+  const emptyKey = detailEmptyKey(source ? detailKind(source, stat) : 'none', raw, detail);
   return <div className="insp" data-stale={loading || view.stale || undefined}>
     <header className="insp-head">
       <div>
@@ -33,12 +34,12 @@ export default function Inspector({ session, view, lang, id, onClose, onOpenCalc
         <Button variant="ghost" size="icon" aria-label={w('Close', '关闭', '關閉')} onClick={onClose}><X /></Button>
       </div>
     </header>
-    <p className="insp-value">{raw === undefined ? '—' : formatStatValue(raw, minion ? 'float2' : statFormat(stat), lang)}</p>
+    <p className="insp-value">{raw === undefined ? '—' : formatStatValue(raw, statFormat(stat), lang)}</p>
     <div className="insp-body" key={id}>
       {none ? <p className="insp-note" role="status">{tt('calcs.noBreakdown')}</p>
         : error ? <div className="insp-note" role="alert">{error} <Button variant="outline" size="sm" onClick={retry}>{tt('calcs.retry')}</Button></div>
-          : detail ? <BreakdownTable breakdown={detail} lang={lang} />
-            : <p className="insp-note" role="status">{loading ? tt('calcs.loadingDetail') : tt('calcs.noBreakdown')}</p>}
+          : detail ? emptyKey ? <p className="insp-note" role="status">{tt(emptyKey)}</p> : <BreakdownTable breakdown={detail} lang={lang} stat={stat} />
+            : <p className="insp-note" role="status">{tt(loading ? 'calcs.loadingDetail' : emptyKey!)}</p>}
     </div>
     <footer className="insp-foot"><Button variant="ghost" size="sm" onClick={() => onOpenCalcs(id)}>{w('Open in Calculations', '在计算页中打开', '在計算頁中開啟')}<ArrowUpRight /></Button></footer>
   </div>;

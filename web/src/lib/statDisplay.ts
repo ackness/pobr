@@ -210,6 +210,12 @@ export const STAT_SECTIONS: StatSectionDef[] = [
   },
 ];
 
+const STAT_FORMATS = new Map(STAT_SECTIONS.flatMap(section => section.rows.map(row => [row.id, row.format] as const)));
+
+export function statFormat(stat: string): StatFormat {
+  return STAT_FORMATS.get(stat) ?? 'float2';
+}
+
 /** 数值格式化（null = 计算侧的 ∞ / 不适用）。 */
 export function formatStatValue(value: number | null, format: StatFormat, lang: Lang = 'en-US'): string {
   if (value === null || !Number.isFinite(value)) return '∞';
