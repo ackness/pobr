@@ -14,6 +14,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useItemDisplayNames, useLocalizedLines } from '../../hooks/useLocalizedLines';
+import { lineText } from '../../lib/continuedLines';
 import { useSkillCatalog } from '../../hooks/useSkillName';
 import { activeSkillEffects } from '../../lib/skillSelection';
 import { skillDisplayName } from '../../lib/skillNames';
@@ -410,7 +411,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
           {weights.weighted.length === 0 ? <p className="trade-notice">{tt('trade.noWeights')}</p> : <div className="trade-score-table" role="table" aria-label={tt('trade.affixHeading')}>
             <div className="trade-score-row trade-score-labels" role="row"><span role="columnheader">{tt('trade.colLine')}</span><span role="columnheader">{tt('trade.priority')}</span><span role="columnheader">{ut('marginal')}</span><span role="columnheader">{tt('trade.marketWeight')}</span></div>
             {weights.weighted.map((weight, index) => <div key={weight.id} className="trade-score-row" role="row">
-              <span className="trade-affix" role="cell"><span className="trade-rank">{String(index + 1).padStart(2, '0')}</span>{localized[index] ?? weight.line}</span>
+              <span className="trade-affix" role="cell"><span className="trade-rank">{String(index + 1).padStart(2, '0')}</span>{lineText(weight.line, localized[index])}</span>
               <span className="trade-priority" role="cell"><span className="trade-bar"><span style={{ width: `${weight.gain / maxGain * 100}%` }} /></span><b>{Math.round(weight.gain / maxGain * 100)}</b></span>
               <span className="trade-gain" role="cell">+{number(weight.gainPercent)}%</span><span className="trade-weight" role="cell">{number(weight.weight, 3)}</span>
             </div>)}
@@ -421,7 +422,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
               <AppInput type="checkbox" checked={(requiredStats[selected] ?? []).includes(stat.id)} onChange={event => setRequiredStats(prev => ({ ...prev,
                 [selected]: event.target.checked ? [...(prev[selected] ?? []), stat.id] : (prev[selected] ?? []).filter(id => id !== stat.id),
               }))} />
-              <span><strong>{situationalLines[index] ?? stat.line}</strong><small>{tt(`trade.mechanic.${stat.kind}`)}{stat.delta !== undefined ? ` +${number(stat.delta)}` : ''}</small></span>
+              <span><strong>{lineText(stat.line, situationalLines[index])}</strong><small>{tt(`trade.mechanic.${stat.kind}`)}{stat.delta !== undefined ? ` +${number(stat.delta)}` : ''}</small></span>
             </label>)}
           </div>}
           {weights.combinations[0] && <details className="trade-method"><summary>{tt('trade.referenceItem')}</summary><pre className="trade-reference">{weights.combinations[0].text}</pre></details>}

@@ -4,6 +4,7 @@ import { getBackend } from '../../api/backend';
 import type { UniqueDraft, UniqueEntry, UniqueSelection } from '../../api/uniques';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useLocalizedLines } from '../../hooks/useLocalizedLines';
+import { lineText } from '../../lib/continuedLines';
 import { slotLabel, type Lang } from '../../lib/i18n';
 import { craftT } from '../../lib/itemCraftingText';
 import { loadTradeCatalog, type TradeCatalog } from '../../lib/tradeOptimizer';
@@ -36,7 +37,7 @@ export function UniqueCatalog({ session, lang }: { session: BuildSession; lang: 
   const lineLabels = useMemo(() => [...new Set(data?.entries.flatMap(entry => entry.raw.split('\n').map(line => line.replace(/\{[^}]*\}/g, ''))) ?? [])], [data]);
   const translatedLines = useLocalizedLines(lineLabels, lang);
   const localized = useMemo(() => {
-    const lines = new Map(lineLabels.map((line, index) => [line, translatedLines[index]]));
+    const lines = new Map(lineLabels.map((line, index) => [line, lineText(line, translatedLines[index])]));
     return new Map(data?.entries.map((entry, i) => [entry.id, `${names[i]}\n${entry.raw.split('\n').map(line => lines.get(line.replace(/\{[^}]*\}/g, '')) ?? '').join('\n')}`]) ?? []);
   }, [data, names, lineLabels, translatedLines]);
   const classes = useMemo(() => [...new Set(data?.entries.flatMap(entry => entry.bases.map(base => base.item_class)) ?? [])].sort(), [data]);
@@ -115,7 +116,7 @@ function UniqueItem({ entry, catalog, session, lang }: { entry: UniqueEntry; cat
       {!!rolls.length && <div className="unique-rolls"><h4>{t('rolls')}</h4><div className="replacement-actions">
         {([0, .5, 1] as const).map(value => <AppButton key={value} onClick={() => update({ ...selection,
           rolls: { ...selection.rolls, ...Object.fromEntries(rolls.map(line => [line.index, value])) } })}>{t(value === 0 ? 'minimum' : value === 1 ? 'maximum' : 'middle')}</AppButton>)}
-      </div>{rolls.map((line, i) => <label key={line.index} className="unique-roll"><span>{labels[i]}</span>
+      </div>{rolls.map((line, i) => <label key={line.index} className="unique-roll"><span>{lineText(line.text, labels[i])}</span>
         <div><AppRange min={0} max={100} step={1} aria-label={`${t('roll')} ${i + 1}`} value={line.roll * 100} disabled={busy || session.busy}
           onValueChange={value => update({ ...selection, rolls: { ...selection.rolls, [line.index]: value / 100 } })} /></div><output>{Math.round(line.roll * 100)}%</output>
       </label>)}</div>}

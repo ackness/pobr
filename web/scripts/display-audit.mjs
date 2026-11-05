@@ -59,8 +59,8 @@ registerHooks({
 });
 const webLib = name => import(pathToFileURL(join(webDir, 'src/lib', `${name}.ts`)).href);
 const [{ NativeNameIndex, classDisplayName, nativeClassNames, nativeGemNames }, { nativeDisplayTexts }, { skillDisplayName },
-  { setGameLocales, lineTemplateLocale }, { GameTextLocalizer }] = await Promise.all(
-  ['nativeDisplayNames', 'nativeDisplayTexts', 'skillNames', 'gameLocales', 'localizedGameText'].map(webLib));
+  { setGameLocales, lineTemplateLocale }, { GameTextLocalizer }, { isContinuation }] = await Promise.all(
+  ['nativeDisplayNames', 'nativeDisplayTexts', 'skillNames', 'gameLocales', 'localizedGameText', 'continuedLines'].map(webLib));
 
 // ---- engine and data ----
 function extract(archive) {
@@ -284,38 +284,43 @@ function auditBuild(name, code) {
   const metrics = call('skillMetricsJson', JSON.stringify(request));
   if (metrics.error) add('skillMetrics error', metrics.error);
 
-  // Item and passive lines through translateLines + the localizer.
+  // Item and passive lines through translateLines + the localizer, batched as the Web sends them:
+  // one item's lines together (a line the display does not translate, or translates locally, is
+  // sent blank and separates its neighbours), one node's lines together. Adjacent lines of one
+  // multi-line description translate as one, never across items or nodes.
   if (!opt['no-lines']) {
-    const itemLines = [];
+    const itemGroups = [];
     for (const item of [...(build.items?.equipped ?? []), ...(build.items?.flasks ?? []), ...(build.items?.limbs ?? []),
       ...(build.items?.socket_jewels ?? []), ...(build.items?.equipment_jewels ?? [])]) {
       const classified = call('classifyItemLinesJson', item.text);
       if (classified.error) { add('classifyItemLines error', `${item.slot ?? item.socket_node}: ${classified.error}`); continue; }
-      for (const line of classified.value) {
-        if (['implicit', 'explicit', 'enchant', 'rune', 'name', 'base'].includes(line.kind) && line.text.trim()) {
-          itemLines.push({ where: item.slot ?? `socket ${item.socket_node}`, kind: line.kind, text: line.text,
-            ...(line.kind === 'base' ? { name: { kind: 'base', name: line.text } } : {}) });
-        }
-      }
+      itemGroups.push(classified.value.map(line =>
+        ['implicit', 'explicit', 'enchant', 'rune', 'name', 'base'].includes(line.kind) && line.text.trim()
+          ? { where: item.slot ?? `socket ${item.socket_node}`, kind: line.kind, text: line.text,
+            ...(line.kind === 'base' ? { name: { kind: 'base', name: line.text } } : {}) }
+          : { separator: true, text: '' }));
     }
-    const nodeLines = [];
+    const nodeGroups = [];
     for (const id of build.tree?.allocated_nodes ?? []) {
       const node = tree.get(id);
       if (!node) { add('allocated node not in tree', String(id)); continue; }
       const where = `node ${id} ${node.id} ${node.name ?? ''}`;
-      nodeLines.push(node.name ? { where, kind: 'passive name', text: node.name, name: { kind: 'passive', id: node.id, name: node.name } }
-        : { where, kind: 'passive name', text: node.id });
-      for (const text of node.stats ?? []) {
-        nodeLines.push({ where, kind: 'passive',
-          text: text.replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2').replace(/\[([^\]]*)\]/g, '$1') });
-      }
+      nodeGroups.push([node.name ? { where, kind: 'passive name', text: node.name, name: { kind: 'passive', id: node.id, name: node.name } }
+        : { where, kind: 'passive name', text: node.id },
+      ...(node.stats ?? []).map(text => ({ where, kind: 'passive',
+        text: text.replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2').replace(/\[([^\]]*)\]/g, '$1') }))]);
     }
     for (const lang of LANGS.filter(l => l !== 'en-US')) {
-      for (const [kind, lines] of [['item', itemLines], ['passive', nodeLines]]) {
+      for (const [kind, groups] of [['item', itemGroups], ['passive', nodeGroups]]) {
         let rendered;
-        try { rendered = translateEntries(lines, lang); } catch (error) { add(`translateLines error [${lang}]`, String(error)); continue; }
-        let missed = 0;
+        try { rendered = groups.flatMap(group => translateEntries(group, lang)); } catch (error) { add(`translateLines error [${lang}]`, String(error)); continue; }
+        const lines = groups.flat();
+        let missed = 0, counted = 0;
         rendered.forEach((text, i) => {
+          if (lines[i].separator) return;
+          counted++;
+          // A line a multi-line description translated into the line above shows no row.
+          if (isContinuation(lines[i].text, text)) return;
           const why = rawIdReason(text);
           if (why && why !== 'empty') add(`${kind} line shows ${why} [${lang}]`, `${lines[i].where}: "${text}"`);
           else if (untranslated(text)) {
@@ -324,7 +329,7 @@ function auditBuild(name, code) {
             add(`${what} untranslated [${lang}]`, `${lines[i].where}: ${text}`);
           }
         });
-        r.counts[`${kind}_lines_${lang}`] = `${lines.length - missed}/${lines.length}`;
+        r.counts[`${kind}_lines_${lang}`] = `${counted - missed}/${counted}`;
       }
     }
   }

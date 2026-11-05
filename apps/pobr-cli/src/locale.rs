@@ -155,12 +155,31 @@ impl Locale {
     }
 
     /// [`Self::parse_line`] for each line, remembering what was typed.
+    /// Adjacent lines one multi-line template covers are read together; a
+    /// line whose text went into the one before it is dropped.
     pub fn parse_lines(&self, lines: &[String]) -> TypedInput {
         let mut typed = TypedInput::default();
-        typed.lines = lines
-            .iter()
-            .map(|line| typed.read(line, self.parse_line(line)))
-            .collect();
+        let Some(parser) = self.parser() else {
+            typed.lines = lines.to_vec();
+            return typed;
+        };
+        for run in parser.parse_runs(lines) {
+            let source = &lines[run.start..run.start + run.len];
+            match run.text {
+                Some(canonical) => {
+                    let joined = source.join("\n");
+                    let canonical = typed.read(&joined, canonical);
+                    if run.len > 1 && canonical.split('\n').count() == run.len {
+                        typed
+                            .lines
+                            .extend(canonical.split('\n').map(str::to_string));
+                    } else {
+                        typed.lines.push(canonical);
+                    }
+                }
+                None => typed.lines.extend(source.iter().cloned()),
+            }
+        }
         typed
     }
 
@@ -171,10 +190,14 @@ impl Locale {
         let Some(parser) = self.parser() else {
             return (text.to_string(), typed);
         };
-        let parsed = pobr_i18n::lines::parse_text_with(text, |line| {
-            let canonical = parser.parse_line(line)?;
-            Some(typed.read(line, canonical))
-        });
+        let parsed = pobr_i18n::lines::parse_text_with(
+            text,
+            |line| parser.span_from(line),
+            |line| {
+                let canonical = parser.parse_line(line)?;
+                Some(typed.read(line, canonical))
+            },
+        );
         (parsed.into_owned(), typed)
     }
 
@@ -186,12 +209,20 @@ impl Locale {
             .unwrap_or_else(|| line.to_string())
     }
 
+    /// Renders `lines` as one list (adjacent lines one multi-line template
+    /// covers are rendered together; see [`LineRenderer::render_lines`]). A
+    /// report row is never left blank: a line whose text went into the one
+    /// before it keeps its English text.
     fn render_all<'a>(&self, lines: impl IntoIterator<Item = &'a mut String>) {
-        if self.renderer().is_none() {
+        let Some(renderer) = self.renderer() else {
             return;
-        }
-        for line in lines {
-            *line = self.render_line(line);
+        };
+        let mut lines: Vec<&mut String> = lines.into_iter().collect();
+        let rendered = renderer.render_lines(lines.iter().map(|line| line.to_string()));
+        for (line, rendered) in lines.iter_mut().zip(rendered) {
+            if !pobr_i18n::lines::is_continuation(line, &rendered) {
+                **line = rendered;
+            }
         }
     }
 
@@ -252,8 +283,17 @@ pub struct TypedInput {
 }
 
 impl TypedInput {
-    /// Records `typed` -> `canonical` and returns the canonical line.
+    /// Records `typed` -> `canonical` and returns the canonical line; lines
+    /// read together that kept their line count are recorded line by line.
     fn read(&mut self, typed: &str, canonical: String) -> String {
+        let (typed_lines, canonical_lines): (Vec<&str>, Vec<&str>) =
+            (typed.split('\n').collect(), canonical.split('\n').collect());
+        if typed_lines.len() > 1 && typed_lines.len() == canonical_lines.len() {
+            for (typed, canonical) in typed_lines.into_iter().zip(canonical_lines) {
+                self.read(typed, canonical.to_string());
+            }
+            return canonical;
+        }
         if canonical != typed {
             self.originals
                 .entry(canonical.trim().to_string())

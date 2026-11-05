@@ -3,6 +3,7 @@ import { AppButton, AppInput } from '../shared/controls';
 import { useState } from 'react';
 import { AppSelect } from '../shared/AppSelect';
 import { useLocalizedLines } from '../../hooks/useLocalizedLines';
+import { shownLines } from '../../lib/continuedLines';
 import type { AugmentSelection, ReplacementAugments } from '../../lib/replacementAugments';
 import type { Lang } from '../../lib/i18n';
 import { upgradeT } from '../../lib/upgradeText';
@@ -15,7 +16,7 @@ export function ReplacementAugmentPicker({ plan, level, lang, disabled, onChange
   const effects = useLocalizedLines(plan.info.options.flatMap(option => option.lines), lang);
   let effectOffset = 0;
   const options = plan.info.options.map(option => {
-    const hint = effects.slice(effectOffset, effectOffset + option.lines.length).join('\n');
+    const hint = shownLines(option.lines, effects.slice(effectOffset, effectOffset + option.lines.length)).join('\n');
     effectOffset += option.lines.length;
     return {
     value: option.name, label: localizedName(lang, option.name, option.name_zh_cn, option.name_zh_tw),

@@ -76,3 +76,13 @@ test('a tooltip card names the node by id and translates only its lines as text'
   expect(await translatePassiveCard(backend, { id: 'unnamed' }, [], 'zh-CN')).toEqual(['unnamed']);
   expect(backend.translateNames).toHaveBeenCalledTimes(1);
 });
+
+test('a card drops a line a multi-line description translated into the line above', async () => {
+  const backend = {
+    translateNames: vi.fn(async (requests: readonly GameNameRequest[]) => requests.map(request => request.name)),
+    translateLines: vi.fn(async () => ['过去 8 秒内每发射一种不同的榴弹，获得相当于伤害 4% 的额外火焰伤害', '', '火焰抗性 +20%']),
+  };
+  expect(await translatePassiveCard(backend, { id: 'n', name: 'N' }, ['Gain 4% of Damage as Extra Fire Damage for',
+    'every different Grenade fired in the past 8 seconds', '+20% to Fire Resistance'], 'zh-CN'))
+    .toEqual(['N', '过去 8 秒内每发射一种不同的榴弹，获得相当于伤害 4% 的额外火焰伤害', '火焰抗性 +20%']);
+});

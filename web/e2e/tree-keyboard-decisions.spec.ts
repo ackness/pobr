@@ -6,6 +6,7 @@ import type { CalculateBuildRequest, CalculateBuildResponse, PassiveNode } from 
 import type { SavedSession } from '../src/hooks/useBuildSession';
 import { bindT } from '../src/lib/i18n';
 import { chineseScript } from '../src/lib/chinese';
+import { shownLines } from '../src/lib/continuedLines';
 import type { Lang } from '../src/lib/i18n';
 import { allocationAccess, buildPassiveGraph, shortestAllocationPath } from '../src/lib/passiveGraph';
 import * as wasmReplay from '../src/wasm/pkg/pobr_wasm.js';
@@ -227,7 +228,8 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
           : (JSON.parse((await replayBackend()).translateLines('zh-CN', JSON.stringify(raw))) as string[])
             .map(line => chineseScript(line, lang));
         await expect(details.getByRole('heading')).toHaveText(expectedText[0]);
-        await expect(details.locator('.tree-node-details-stats > li')).toHaveText(expectedText.slice(1));
+        // A line a multi-line description translated into the line above shows no row.
+        await expect(details.locator('.tree-node-details-stats > li')).toHaveText(shownLines(raw.slice(1), expectedText.slice(1)));
         await expect(details.locator('.tree-node-details-state')).toContainText(tt('tree.notAllocated'));
         const view = await page.locator('.tree-canvas svg').getAttribute('viewBox');
         await page.getByRole('button', { name: tt('tree.nextHit'), exact: true }).focus();

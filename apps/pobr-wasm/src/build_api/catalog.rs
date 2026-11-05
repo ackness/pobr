@@ -362,13 +362,19 @@ pub fn translate_lines_json(lang: &str, lines_json: &str) -> Result<String, Stri
 
 /// Batch-parses `lang` mod lines into English canonical lines. A line that
 /// is not in that locale, or that no template recognizes, passes through
-/// unchanged, as does everything when the locale has no templates.
+/// unchanged, as does everything when the locale has no templates. Both
+/// directions keep one output per input: adjacent lines one multi-line
+/// template covers are translated together and spread back over the same
+/// entries (`""` for an entry whose text went into the one before it; see
+/// [`pobr_i18n::lines::spread_runs`]).
 pub fn parse_localized_lines_json(lang: &str, lines_json: &str) -> Result<String, String> {
     map_lines(lines_json, |lines| {
         match crate::locales::line_parser(lang) {
-            Some(parser) => lines
+            Some(parser) => parser
+                .parse_lines(&lines)
                 .into_iter()
-                .map(|line| parser.parse_line(&line).unwrap_or(line))
+                .zip(lines)
+                .map(|(parsed, line)| parsed.unwrap_or(line))
                 .collect(),
             None => lines,
         }
@@ -732,6 +738,50 @@ Implicits: 2
             ]
         );
         assert!(translate_lines_json("zh-CN", "{}").is_err());
+    }
+
+    /// Stat descriptions the game writes on several lines reach translation
+    /// one line per entry (item text, passive stats); the pack keys them as
+    /// whole descriptions.
+    #[test]
+    fn multi_line_descriptions_translate_across_entries() {
+        let dir = pobr_gamedata::current_data_dir();
+        crate::init_data_from_dir(&dir.to_string_lossy()).unwrap();
+        let english = serde_json::to_string(&[
+            "+50 to maximum Life",
+            // Mind Over Matter: the first line alone is a template too.
+            "All Damage is taken from Mana before Life",
+            "50% less Mana Recovery Rate",
+            "Remembrancing 4512 songworthy deeds by the line of Olroth",
+            "Passives in radius are Conquered by the Kalguur",
+            // A rune: the description indents its second line; one line in zh-CN.
+            "Energy Shield Recharge starts after spending a total of",
+            "2000 Mana, no more than once every 2 seconds",
+            // One entry holding the whole description.
+            "Excess Life Recovery from Regeneration is applied to Energy Shield\nEnergy Shield does not Recharge",
+        ])
+        .unwrap();
+        let rendered: Vec<String> =
+            serde_json::from_str(&translate_lines_json("zh-CN", &english).unwrap()).unwrap();
+        assert_eq!(
+            rendered,
+            [
+                "+50 生命上限",
+                "受到的所有伤害在扣除生命前优先从魔力扣除",
+                "魔力回复速度总降 50%",
+                "纪念 4512 件欧罗什世系值得传唱的事迹",
+                "范围内的天赋被卡古兰抑制",
+                "总共消耗 2000 点魔力后，能量护盾充能开始，每 2 秒最多触发一次",
+                "",
+                "再生的溢出生命回复会作用于能量护盾。\n能量护盾无法充能。",
+            ]
+        );
+        let localized = serde_json::to_string(&rendered[..5]).unwrap();
+        let parsed: Vec<String> =
+            serde_json::from_str(&parse_localized_lines_json("zh-CN", &localized).unwrap())
+                .unwrap();
+        let expected: Vec<String> = serde_json::from_str(&english).unwrap();
+        assert_eq!(parsed, expected[..5]);
     }
 
     #[test]

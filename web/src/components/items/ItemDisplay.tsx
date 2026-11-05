@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ItemLineJson } from '../../api/types';
 import { getBackend } from '../../api/backend';
 import { itemLines, rarityOf, useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
+import { isContinuation } from '../../lib/continuedLines';
 import type { Lang } from '../../lib/i18n';
 import { itemDamageType, itemDisplaySections, itemValueParts, type DisplayItemLine } from '../../lib/itemDisplay';
 import { useUi } from '../shared/UiContext';
@@ -51,7 +52,9 @@ export function ItemDisplayContent({ text, lang, lines, translated }: {
   text: string; lang: Lang; lines: readonly ItemLineJson[]; translated: readonly string[];
 }) {
   const { displayMode: style } = useUi();
-  const model = itemDisplaySections(lines, translated);
+  // A line a multi-line description translated into the line above shows no row.
+  const shown = lines.flatMap((line, index) => isContinuation(line.text, translated[index]) ? [] : [index]);
+  const model = itemDisplaySections(shown.map(index => lines[index]), shown.map(index => translated[index]));
   const w = (en: string, cn: string, tw = cn) => lang === 'en-US' ? en : lang === 'zh-TW' ? tw : cn;
   const rarity = rarityOf(text);
   const fixedAffixes = rarity === 'unique' || rarity === 'relic';

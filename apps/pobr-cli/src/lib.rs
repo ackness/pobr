@@ -159,8 +159,13 @@ fn minimal_session(req: &CalculateRequest) -> Result<CalculationSession, CliErro
     // zero thresholds or treating every mod line as Unsupported.
     session.set_constants(default_constants()?);
     session.set_parser_rules(default_rules()?.rules.clone());
+    // A blank line holds no modifier.
     session
-        .add_modifier_texts(&req.modifier_texts)
+        .add_modifier_texts(
+            req.modifier_texts
+                .iter()
+                .filter(|text| !text.trim().is_empty()),
+        )
         .map_err(|e| CliError::ModParse(e.to_string()))?;
     Ok(session)
 }

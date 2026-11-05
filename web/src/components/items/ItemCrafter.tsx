@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useLocalizedLines } from '../../hooks/useLocalizedLines';
+import { shownLines } from '../../lib/continuedLines';
 import type { Lang } from '../../lib/i18n';
 import { baseDraftText, craftBaseDisplayName, craftingCatalog, type CraftCatalog } from '../../lib/itemCrafting';
 import { craftT } from '../../lib/itemCraftingText';
@@ -56,7 +57,7 @@ export function ItemCrafter({ session, lang }: { session: BuildSession; lang: La
       <label>{t('quality')}<AppInput aria-label={t('quality')} type="number" min="0" max="20" value={quality}
         onChange={event => { reset(); setQuality(Number(event.target.value)); }} /></label>
     </div>
-    {base && <div className="item-crafter-base"><p>{t('requirement')} {base.level}</p>{implicits.map((line, i) => <p key={i}>{line}</p>)}</div>}
+    {base && <div className="item-crafter-base"><p>{t('requirement')} {base.level}</p>{shownLines(base.implicits ?? [], implicits).map((line, i) => <p key={i}>{line}</p>)}</div>}
     {!!catalog.missingMods && <p className="trade-notice">{t('missing')} {catalog.missingMods}</p>}
     <AppButton className="trade-primary" disabled={session.busy || !base || !Number.isInteger(itemLevel) || itemLevel < 1 || itemLevel > 100
       || !Number.isInteger(quality) || quality < 0 || quality > 20}

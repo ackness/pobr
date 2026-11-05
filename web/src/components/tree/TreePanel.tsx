@@ -423,8 +423,7 @@ function TreeCanvas({ allocationMode, onAllocationMode, session, lang, onJewelSe
         ? translatePassiveCard(backend, selectedNode, detailsLines.slice(1), lang) : null)
       .then(translated => {
         if (!translated || cancelled || generation !== canvasGeneration.current) return;
-        setTranslatedDetails({ key: detailsTextKey,
-          lines: detailsLines.map((line, index) => translated[index] ?? line) });
+        setTranslatedDetails({ key: detailsTextKey, lines: translated });
       })
       .catch(() => {});
     return () => { cancelled = true; };

@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { localizeStructLine } from './useLocalizedLines';
+import { linesToTranslate, localizeStructLine, localizedLines } from './useLocalizedLines';
 import { itemDisplaySections } from '../lib/itemDisplay';
 
 it.each([
@@ -25,4 +25,14 @@ it('leaves modifier lines, unknown properties, numeric formatting and English so
   }
   expect(localizeStructLine('Evasion Rating: 1,234 (augmented)', 'zh-CN')).toBe('闪避值: 1,234 (augmented)');
   expect(localizeStructLine('Evasion Rating: 431', 'en-US')).toBeNull();
+});
+
+it('matches translations by position, so one line can be covered in one place and stand alone in another', () => {
+  const lines = ['Item Level: 83', 'All Damage is taken from Mana before Life', '50% less Mana Recovery Rate', '', '50% less Mana Recovery Rate'];
+  // Locally translated and blank lines are sent blank so they still separate their neighbours.
+  expect(linesToTranslate(lines, 'zh-CN')).toEqual(['', lines[1], lines[2], '', lines[4]]);
+  const out = [undefined, '受到的所有伤害在扣除生命前优先从魔力扣除', '', undefined, '魔力回复速度总降 50%'];
+  expect(localizedLines(lines, 'zh-CN', out))
+    .toEqual(['物品等级: 83', '受到的所有伤害在扣除生命前优先从魔力扣除', '', '', '魔力回复速度总降 50%']);
+  expect(localizedLines(['Rune: Iron Rune'], 'zh-CN', [''])).toEqual(['符文: Iron Rune']);
 });

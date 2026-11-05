@@ -55,3 +55,19 @@ it('only classified base lines resolve by base identity; equal text elsewhere st
   expect(hooks.names).toHaveBeenLastCalledWith([{ kind: 'base', name: 'Sapphire' }], 'zh-CN');
   expect(hooks.lines).toHaveBeenLastCalledWith(['Sapphire', '', 'Sapphire'], 'zh-CN');
 });
+
+it('a description translated as one line shows no row for the lines it covers', () => {
+  const unique: ItemLineJson[] = [
+    { kind: 'name', text: 'Unique item' },
+    { kind: 'explicit', text: 'Energy Shield Recharge starts after spending a total of' },
+    { kind: 'explicit', text: '2000 Mana, no more than once every 2 seconds' },
+    { kind: 'explicit', text: '+50 to maximum Life' },
+  ];
+  const translated = ['传奇物品', '总共消耗 2000 点魔力后，能量护盾充能开始，每 2 秒最多触发一次', '', '+50 生命上限'];
+  const html = renderToStaticMarkup(<UiProvider lang="zh-CN" displayMode="grouped">
+    <ItemDisplayContent text="Rarity: UNIQUE\nUnique item" lang="zh-CN" lines={unique} translated={translated} />
+  </UiProvider>);
+  expect(html.match(/class="item-affix-row/g)).toHaveLength(2);
+  expect(html).toContain('能量护盾充能开始');
+  expect(html).toContain('生命上限');
+});

@@ -13,8 +13,16 @@
 //! "literal / `{N}`, `{N:+d}` placeholder", scanned in order; captured
 //! values must be purely numeric-shaped (`[0-9+.-]`), to guard against
 //! false matches from skeleton collisions.
+//!
+//! A template may span several lines (`"A\nB"`: one stat description the
+//! game writes on two lines). A text matches only templates with as many
+//! lines as it has, and the whitespace around each line break does not count
+//! (a description writes `"...a total of\n 2000 Mana"`, item text writes the
+//! second line trimmed). Joining adjacent input lines to find such a template
+//! is the caller's part ([`super::translate_runs`]).
 
-use std::collections::{HashMap, HashSet};
+use std::borrow::Cow;
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use pobr_data::catalog::StatLineTemplate;
 
@@ -174,6 +182,25 @@ fn strip_placeholders(text: &str) -> String {
     out
 }
 
+/// Text with the whitespace around each line break removed (so `\r\n`
+/// reads as `\n`); single-line text is returned as given.
+pub(super) fn normalize_line_breaks(text: &str) -> Cow<'_, str> {
+    if !text.contains('\n') {
+        return Cow::Borrowed(text);
+    }
+    Cow::Owned(
+        text.split('\n')
+            .map(str::trim)
+            .collect::<Vec<_>>()
+            .join("\n"),
+    )
+}
+
+/// The number of lines in `text`.
+pub(super) fn line_count(text: &str) -> usize {
+    text.matches('\n').count() + 1
+}
+
 /// A set of letters, ASCII lowercased: a bitmap over the Basic Multilingual
 /// Plane (one bit per letter, cheap to build from tens of thousands of
 /// template literals) and a sorted set above it.
@@ -236,6 +263,9 @@ impl LetterSet {
 struct CompiledTemplate {
     src_segments: Vec<Segment>,
     en: String,
+    /// The source template's line count: a text matches only templates with
+    /// as many lines as it has.
+    lines: usize,
 }
 
 /// A one-direction line translator over a set of template pairs.
@@ -253,6 +283,19 @@ pub struct LineTranslator {
     /// Last-segment literal skeleton -> candidate indices (the suffix
     /// anchor index; e.g. "{0} 继承").
     suffix_index: HashMap<String, Vec<usize>>,
+    /// The anchor indices of multi-line templates, kept apart so that a
+    /// single-line text never scans them and a joined one scans only them.
+    multiline_prefix_index: HashMap<String, Vec<usize>>,
+    multiline_suffix_index: HashMap<String, Vec<usize>>,
+    /// The most lines any source template has (1 when none spans lines).
+    max_lines: usize,
+    /// Skeleton of a multi-line template's first line -> the most lines a
+    /// template beginning with it has (see [`Self::span_from`]).
+    first_lines: HashMap<String, usize>,
+    /// The first lines a string capture can fill, so that their skeleton is
+    /// not fixed: the skeletons of the literals they begin and end with, and
+    /// the most lines a template beginning with one has; sorted.
+    open_first_lines: Vec<(String, String, usize)>,
     /// Localized base name -> canonical English name (a direct translation
     /// for an item text's base-type line).
     base_names: HashMap<String, String>,
@@ -283,9 +326,22 @@ impl LineTranslator {
         let mut buckets: HashMap<String, Vec<usize>> = HashMap::new();
         let mut prefix_index: HashMap<String, Vec<usize>> = HashMap::new();
         let mut suffix_index: HashMap<String, Vec<usize>> = HashMap::new();
+        let mut multiline_prefix_index: HashMap<String, Vec<usize>> = HashMap::new();
+        let mut multiline_suffix_index: HashMap<String, Vec<usize>> = HashMap::new();
+        let mut max_lines = 1;
+        let mut first_lines: HashMap<String, usize> = HashMap::new();
+        let mut open_first_lines: BTreeMap<(String, String), usize> = BTreeMap::new();
         for pair in templates {
-            let Some(src_segments) = parse_template(&pair.src) else {
+            let src = normalize_line_breaks(&pair.src);
+            let Some(src_segments) = parse_template(&src) else {
                 continue;
+            };
+            let lines = line_count(&src);
+            max_lines = max_lines.max(lines);
+            let (prefix_index, suffix_index) = if lines > 1 {
+                (&mut multiline_prefix_index, &mut multiline_suffix_index)
+            } else {
+                (&mut prefix_index, &mut suffix_index)
             };
             let idx = compiled.len();
             buckets
@@ -298,23 +354,45 @@ impl LineTranslator {
             let has_placeholder = src_segments
                 .iter()
                 .any(|s| matches!(s, Segment::Placeholder(_)));
+            let mut anchored = false;
             if has_placeholder && !has_numeric_format(&pair.src) {
                 if let Some(Segment::Literal(lit)) = src_segments.first() {
                     let key = skeleton(lit);
                     if is_strong_anchor(&key) {
                         prefix_index.entry(key).or_default().push(idx);
+                        anchored = true;
                     }
                 }
                 if let Some(Segment::Literal(lit)) = src_segments.last() {
                     let key = skeleton(lit);
                     if is_strong_anchor(&key) {
                         suffix_index.entry(key).or_default().push(idx);
+                        anchored = true;
                     }
+                }
+            }
+            if lines > 1
+                && let Some(first) = src.split('\n').next().and_then(parse_template)
+            {
+                let most = first_lines.entry(template_skeleton(&first)).or_default();
+                *most = (*most).max(lines);
+                if anchored && first.iter().any(|s| matches!(s, Segment::Placeholder(_))) {
+                    let literal_skeleton = |segment: Option<&Segment>| match segment {
+                        Some(Segment::Literal(lit)) => skeleton(lit),
+                        _ => String::new(),
+                    };
+                    let ends = (
+                        literal_skeleton(first.first()),
+                        literal_skeleton(first.last()),
+                    );
+                    let most = open_first_lines.entry(ends).or_default();
+                    *most = (*most).max(lines);
                 }
             }
             compiled.push(CompiledTemplate {
                 src_segments,
-                en: pair.en.clone(),
+                en: normalize_line_breaks(&pair.en).into_owned(),
+                lines,
             });
         }
         Self {
@@ -322,6 +400,14 @@ impl LineTranslator {
             buckets,
             prefix_index,
             suffix_index,
+            multiline_prefix_index,
+            multiline_suffix_index,
+            max_lines,
+            first_lines,
+            open_first_lines: open_first_lines
+                .into_iter()
+                .map(|((head, tail), lines)| (head, tail, lines))
+                .collect(),
             base_names,
             affix_names: HashMap::new(),
             rare_words: HashMap::new(),
@@ -397,12 +483,45 @@ impl LineTranslator {
         self.rare_words = rare_words;
     }
 
+    /// The most lines a template whose first line `line` could be spans; 1
+    /// when no multi-line template can begin with it (or `line` itself holds
+    /// a line break). Joining adjacent lines from `line` on is worth trying
+    /// only up to this many, so text with no multi-line description costs
+    /// one lookup per line.
+    pub fn span_from(&self, line: &str) -> usize {
+        let line = line.trim();
+        if self.max_lines == 1 || line.contains('\n') {
+            return 1;
+        }
+        // Numeric values and whitespace leave no trace in a skeleton, so a
+        // first line filled with numbers has its template's skeleton.
+        let skel = skeleton(line);
+        let mut span = self.first_lines.get(&skel).copied().unwrap_or(1);
+        for (head, tail, lines) in &self.open_first_lines {
+            if *lines > span && skel.starts_with(head.as_str()) && skel.ends_with(tail.as_str()) {
+                span = *lines;
+            }
+        }
+        span
+    }
+
     /// Attempts to translate a line: base-name direct translation first,
     /// then exact numeric-template matching, then string-placeholder
     /// template fallback; returns `None` if unrecognized.
+    ///
+    /// A text spanning several lines matches only a template with as many
+    /// lines (its translation spans the paired template's lines, which may
+    /// be a different number); names never span lines.
     pub fn translate_line(&self, line: &str) -> Option<String> {
-        let line = line.trim();
-        if let Some(en) = self.base_names.get(line) {
+        let line = normalize_line_breaks(line.trim());
+        let line = line.as_ref();
+        let lines = line_count(line);
+        if lines > self.max_lines {
+            return None;
+        }
+        if lines == 1
+            && let Some(en) = self.base_names.get(line)
+        {
             return Some(en.clone());
         }
         let line_skel = skeleton(line);
@@ -412,6 +531,9 @@ impl LineTranslator {
         if let Some(idxs) = self.buckets.get(&line_skel) {
             for &i in idxs {
                 let candidate = &self.templates[i];
+                if candidate.lines != lines {
+                    continue;
+                }
                 if let Some(values) = match_segments(line, &candidate.src_segments, false) {
                     return Some(render_en(&candidate.en, &values));
                 }
@@ -420,8 +542,11 @@ impl LineTranslator {
         // Fallback: string-placeholder templates. The skeleton bucket
         // misses (the capture contains name characters, so the skeleton no
         // longer aligns), so candidates are instead picked by strong prefix/suffix anchors.
-        if let Some(out) = self.translate_string_line(line, &line_skel) {
+        if let Some(out) = self.translate_string_line(line, &line_skel, lines) {
             return Some(out);
+        }
+        if lines > 1 {
+            return None;
         }
         // Last-resort fallback: magic item names (prefix base of suffix) ->
         // RARE random names (prefix word suffix word).
@@ -508,11 +633,16 @@ impl LineTranslator {
     /// prefix/suffix anchors, allows string capture, and on a hit makes a
     /// best-effort second translation pass on the captured name before
     /// substituting it back into the target template.
-    fn translate_string_line(&self, line: &str, line_skel: &str) -> Option<String> {
+    fn translate_string_line(&self, line: &str, line_skel: &str, lines: usize) -> Option<String> {
+        let (prefix_index, suffix_index) = if lines > 1 {
+            (&self.multiline_prefix_index, &self.multiline_suffix_index)
+        } else {
+            (&self.prefix_index, &self.suffix_index)
+        };
         // idx -> the strongest anchor length seen so far (the same template
         // can be selected by both prefix and suffix; keep the stronger one for ordering).
         let mut candidates: HashMap<usize, usize> = HashMap::new();
-        for (key, idxs) in &self.prefix_index {
+        for (key, idxs) in prefix_index {
             if line_skel.starts_with(key.as_str()) {
                 let len = key.chars().count();
                 for &i in idxs {
@@ -521,7 +651,7 @@ impl LineTranslator {
                 }
             }
         }
-        for (key, idxs) in &self.suffix_index {
+        for (key, idxs) in suffix_index {
             if line_skel.ends_with(key.as_str()) {
                 let len = key.chars().count();
                 for &i in idxs {
@@ -539,6 +669,9 @@ impl LineTranslator {
         ordered.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
         for (_, i) in ordered {
             let candidate = &self.templates[i];
+            if candidate.lines != lines {
+                continue;
+            }
             if let Some(mut values) = match_segments(line, &candidate.src_segments, true) {
                 // Best-effort: run a second translation pass on the
                 // captured name (non-numeric) before substituting it back.
@@ -567,6 +700,9 @@ impl LineTranslator {
         let idxs = self.buckets.get(&skeleton(value))?;
         for &i in idxs {
             let candidate = &self.templates[i];
+            if candidate.lines != 1 {
+                continue;
+            }
             if let Some(values) = match_segments(value, &candidate.src_segments, false) {
                 return Some(render_en(&candidate.en, &values));
             }
@@ -596,8 +732,10 @@ fn find_ignore_ascii_case(haystack: &str, needle: &str) -> Option<usize> {
 /// between placeholders becomes a captured value. With `allow_string=false`,
 /// captures must be numeric-shaped (primary channel); with `true`, non-empty
 /// strings without newlines are also accepted (the fallback channel, where
-/// candidates are already gated by strong anchors). Returns
-/// `placeholder index -> captured text` on success.
+/// candidates are already gated by strong anchors). A placeholder that
+/// appears more than once (the same value on two lines of a description)
+/// must capture the same text each time. Returns `placeholder index ->
+/// captured text` on success.
 fn match_segments(
     line: &str,
     segments: &[Segment],
@@ -620,7 +758,7 @@ fn match_segments(
                 let found = find_ignore_ascii_case(&line[pos..], lit)?;
                 if let Some(index) = pending.take() {
                     let value = accept_capture(&line[pos..pos + found], allow_string)?;
-                    values.insert(index, value);
+                    insert_capture(&mut values, index, value)?;
                 } else if found != 0 {
                     return None;
                 }
@@ -630,11 +768,25 @@ fn match_segments(
     }
     if let Some(index) = pending {
         let value = accept_capture(&line[pos..], allow_string)?;
-        values.insert(index, value);
+        insert_capture(&mut values, index, value)?;
     } else if pos != line.len() {
         return None;
     }
     Some(values)
+}
+
+/// Records a placeholder's captured value; `None` when the placeholder
+/// already captured a different one (so a template repeating `{0}` on two
+/// lines does not join two lines with different values, the second silently
+/// replacing the first).
+fn insert_capture(values: &mut HashMap<usize, String>, index: usize, value: String) -> Option<()> {
+    match values.get(&index) {
+        Some(previous) if *previous != value => None,
+        _ => {
+            values.insert(index, value);
+            Some(())
+        }
+    }
 }
 
 /// Substitutes captured values back into the English template (`{N}` /

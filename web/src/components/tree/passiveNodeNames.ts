@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { PobrBackend } from '../../api/backend';
 import type { PassiveNode } from '../../api/types';
 import { useLocalizedNames } from '../../hooks/useLocalizedLines';
+import { shownLines } from '../../lib/continuedLines';
 import type { Lang } from '../../lib/i18n';
 import type { GameNameRequest } from '../../lib/nativeDisplayNames';
 
@@ -29,7 +30,8 @@ export function usePassiveNodeNames(nodes: readonly PassiveNode[], lang: Lang, a
 }
 
 /** One node's heading (`node.name`, or its id when unnamed) and modifier lines for a tooltip or
- * details card: the name by its id-scoped identity, the lines as text. Returns [heading, ...lines]. */
+ * details card: the name by its id-scoped identity, the lines as text. Returns [heading, ...lines];
+ * a line a multi-line description covered is dropped (`lib/continuedLines`). */
 export async function translatePassiveCard(
   backend: Pick<PobrBackend, 'translateLines' | 'translateNames'>, node: Pick<PassiveNode, 'id' | 'name'>,
   lines: string[], lang: Lang,
@@ -38,7 +40,7 @@ export async function translatePassiveCard(
     node.name ? backend.translateNames(passiveNameRequest(node), lang) : Promise.resolve([node.id]),
     lines.length ? backend.translateLines(lines, lang) : Promise.resolve([]),
   ]);
-  return [name[0] ?? node.name ?? node.id, ...lines.map((line, index) => translated[index] ?? line)];
+  return [name[0] ?? node.name ?? node.id, ...shownLines(lines, translated)];
 }
 
 export function passiveNodeName(node: PassiveNode, names: PassiveNodeNames): string {

@@ -164,7 +164,8 @@ fn localize_input_text(text: &str) -> String {
         return text.to_string();
     }
     let parsers = crate::locales::input_parsers();
-    pobr_i18n::lines::parse_text_with(text, |line| {
+    let span = |line: &str| parsers.iter().map(|p| p.span_from(line)).max().unwrap_or(1);
+    pobr_i18n::lines::parse_text_with(text, span, |line| {
         parsers
             .iter()
             .filter(|parser| parser.is_localized(line))
@@ -206,6 +207,30 @@ mod localize_tests {
         assert_eq!(
             localize_input_text("Rarity: Rare\r\n蓝玉戒指\r\n+50 生命上限\r\n“Bow”"),
             "Rarity: Rare\nSapphire Ring\n+50 to maximum Life\n“Bow”"
+        );
+    }
+
+    #[test]
+    fn input_text_reads_a_description_written_on_two_lines_together() {
+        let dir = pobr_gamedata::current_data_dir();
+        crate::init_data_from_dir(&dir.to_string_lossy()).unwrap();
+        // Mind Over Matter's two lines: alone, the second reads as another line
+        // ("50% less Mana Regeneration Rate").
+        assert_eq!(
+            localize_input_text(
+                "Rarity: Unique\r\n受到的所有伤害在扣除生命前优先从魔力扣除\r\n魔力回复速度总降 50%\r\n+50 生命上限"
+            ),
+            "Rarity: Unique\nAll Damage is taken from Mana before Life\n50% less Mana Recovery Rate\n+50 to maximum Life"
+        );
+        // Two localized lines read as one English line.
+        assert_eq!(
+            localize_input_text("Rarity: Rare\n力量的固有加成改为\n每 1 点力量 +5 命中值"),
+            "Rarity: Rare\nInherent bonus of Strength grants +5 to Accuracy Rating per Strength instead"
+        );
+        // Lines whose repeated value differs are not one description.
+        assert_eq!(
+            localize_input_text("附加 5 - 10 冰霜伤害\n玩家及其召唤生物附加 3 - 4 冰霜伤害"),
+            "Adds 5 to 10 Cold Damage\n玩家及其召唤生物附加 3 - 4 冰霜伤害"
         );
     }
 }

@@ -4,6 +4,7 @@ import { getBackend } from '../../api/backend';
 import { formatApiError } from '../../api/error';
 import type { CalculateBuildResponse, PassiveNode, PassiveTreeMeta } from '../../api/types';
 import { cleanLine, useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
+import { shownLines } from '../../lib/continuedLines';
 import { passiveNameRequest } from '../tree/passiveNodeNames';
 import { compareTreeAllocations, resolvedTreeVersion, treeAllocationTotals, type OverlayNode, type StageState } from '../../lib/compare';
 import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
@@ -263,7 +264,7 @@ function NodeDetails({ node, state, output, side, lang }: {
   return <div><strong>{side}</strong>{!node ? <p>{tt('compare.notSet')}</p> : <>
     <h4>{name ? cleanLine(shownName ?? name) : `#${node.skill}`} · #{node.skill}</h4>
     <p>{tt(state.allocatedNodes.includes(node.skill) ? 'compare.allocated' : 'compare.unallocated')}</p>
-    <ul>{lines.map((line, index) => <li key={index}>{cleanLine(translated[index] ?? line)}</li>)}</ul>
+    <ul>{shownLines(lines, translated).map((line, index) => <li key={index}>{cleanLine(line)}</li>)}</ul>
     {state.attributeChoices[String(node.skill)] && <p>{tt('tree.attributeChoice')}: {statNameLabel(lang, { str: 'Str', dex: 'Dex', int: 'Int' }[state.attributeChoices[String(node.skill)]])}</p>}
     {change && <p className="compare-hint">{tt('compare.jewelEffect')}</p>}
     {state.jewels.find(jewel => jewel.socket_node === node.skill) && <pre>{state.jewels.find(jewel => jewel.socket_node === node.skill)!.text}</pre>}

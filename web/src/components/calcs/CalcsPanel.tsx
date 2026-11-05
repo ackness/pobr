@@ -34,6 +34,7 @@ import {
   type Lang,
 } from '../../lib/i18n';
 import { getBackend } from '../../api/backend';
+import { lineText } from '../../lib/continuedLines';
 import { useEffect } from 'react';
 import { useSkillName, useSkillCatalog } from '../../hooks/useSkillName';
 import './calcs.css';
@@ -612,7 +613,7 @@ function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
         if (cancelled) return;
         const map: Record<string, string> = {};
         pending.forEach((en, i) => {
-          if (translated[i] !== en) map[en] = translated[i];
+          if (translated[i] !== en) map[en] = lineText(en, translated[i]);
         });
         setZhLines(map);
       })
