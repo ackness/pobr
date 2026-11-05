@@ -187,6 +187,9 @@ class RoutingTests(unittest.TestCase):
         self.assertTrue(plan.classify(["web/src/App.tsx"])["web"])
         self.assertTrue(plan.classify(["pipeline/runtime/data_snapshot.py"])["full"])
         self.assertTrue(plan.classify(["web/public/_worker.js"])["scripts"])
+        # Generated from game data and checked against it by the automation contracts.
+        self.assertTrue(plan.classify(["web/src/lib/configGameRelevance.json"])["scripts"])
+        self.assertTrue(plan.classify(["web/src/lib/configGameRelevance.json"])["web"])
 
     def test_shared_or_unknown_inputs_select_full_without_duplicate_light_checks(self):
         for name in ["Cargo.lock", "crates/new/Cargo.toml", "mise.toml", "web/package.json",

@@ -128,10 +128,9 @@ class GameEvidence:
 def catalog_options(directory):
     catalog = json.loads((directory / "overlay/config_options.json").read_text())
     options = {option["var"]: option for option in catalog["options"]}
-    # Match GameData::config_options' bundled override, without changing the
-    # independent energy-options file another unit owns.
-    own = directory.parent / "overlay-common/archon_config_options.json"
-    if own.exists():
+    # Match GameData::config_options: every PoBR-owned `*_config_options.json`
+    # replaces the catalog entry with the same var.
+    for own in sorted((directory.parent / "overlay-common").glob("*_config_options.json")):
         options.update((o["var"], o) for o in json.loads(own.read_text())["options"])
     return sorted(options.values(), key=lambda option: option["var"])
 

@@ -223,7 +223,9 @@ non_s0_has_traceable_provenance 要求其他批次有 modifier 或 handler，unm
 not_in_game 从 `(read + handler) / options` 的相关分母排除。
 config_relevance.py 核对所需技能的游戏效果 id／名称及宝石物品名；其他控件只有在基础游戏或
 继承的 overlay 物品／stat 描述都无机制词证据时才排除。overlay 来自导出工具，不是独立游戏来源。
-歧义和旧 stat 留在分母，这不证明可玩性。运行该脚本可再生成版本化 Web 筛选，工作流测试检查与快照一致。
+歧义和旧 stat 留在分母，这不证明可玩性。选项目录与 `GameData::config_options` 一致：导入目录叠加全部自有 `*_config_options.json`。
+运行该脚本可再生成版本化 Web 筛选 `web/src/lib/configGameRelevance.json`；`mise run check:workflows` 检查它与准备好的快照一致，
+CI 在数据锁、脚本或该清单变化时运行这项检查（PR 的 automation contracts）。
 ShockVal 等动态名字线索不算观察到的读取。
 
 detonateDeadCorpseLife 可给现有物理／混沌尸体伤害份额
