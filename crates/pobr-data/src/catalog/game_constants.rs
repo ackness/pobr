@@ -329,6 +329,13 @@ pub struct GameMechanicsConstantsDef {
     /// lasts 4 seconds by default" (https://poe2db.tw/us/Keywords).
     #[serde(default = "default_freeze_base_duration")]
     pub freeze_base_duration: f64,
+
+    //  Rage (game table `GameConstants`).
+    /// Maximum Rage before modifiers: `GameConstants.BaseMaximumRage` = 30
+    /// (patch 0.5.5.5, `Divisor` 1). Packages built before RePoE exported it
+    /// omit the field and get the same value.
+    #[serde(default = "default_base_maximum_rage")]
+    pub base_maximum_rage: f64,
 }
 
 // serde default functions (same source as the `Default` impl's values, a
@@ -359,6 +366,9 @@ fn default_freeze_base_duration() -> f64 {
 }
 fn default_pin_base_duration() -> f64 {
     3.0
+}
+fn default_base_maximum_rage() -> f64 {
+    30.0
 }
 fn default_ehp_calc_max_iterations() -> f64 {
     50.0
@@ -491,6 +501,7 @@ impl Default for GameMechanicsConstantsDef {
             shock_base_duration: default_shock_base_duration(),
             chill_base_duration: default_chill_base_duration(),
             freeze_base_duration: default_freeze_base_duration(),
+            base_maximum_rage: default_base_maximum_rage(),
         }
     }
 }

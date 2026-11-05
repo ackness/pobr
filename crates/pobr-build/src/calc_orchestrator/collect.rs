@@ -236,7 +236,9 @@ pub(crate) fn resolve_passive_nodes(
             // native node whose text was removed must retain its rejection.
             if modifier_texts.is_empty()
                 && !nodes.get(&node_id.0).is_some_and(|def| {
-                    def.native_stats.is_some()
+                    def.native_stats
+                        .as_ref()
+                        .is_some_and(pobr_core::passive::native_packet_known)
                         && !matches!(
                             def.kind,
                             pobr_data::catalog::PassiveNodeKind::JewelSocket

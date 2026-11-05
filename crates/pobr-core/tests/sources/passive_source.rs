@@ -188,8 +188,8 @@ fn native_passive_without_display_text_uses_complete_facts_and_keeps_empty_fallb
     assert_eq!(origin.native_stat.as_ref(), Some(&expected));
     assert_eq!(ingest.modifiers[0].value.as_number(), Some(5.0));
 
-    // A missing formatter must not hide an unsupported numeric packet either.
-    node.native.as_mut().unwrap().packet.stats[0].id = "unknown_native_stat".into();
+    // A missing formatter must not hide a rejected numeric packet either.
+    node.native.as_mut().unwrap().packet.stats[0].value = i64::MAX;
     let rejected =
         ingest_passive_nodes_with_ctx(&[node], pobr_core::mod_parser::ParseCtx::none()).unwrap();
     assert!(rejected.modifiers.is_empty());
@@ -197,13 +197,40 @@ fn native_passive_without_display_text_uses_complete_facts_and_keeps_empty_fallb
     assert_eq!(rejected.native_diagnostics.len(), 1);
     assert_eq!(
         rejected.native_diagnostics[0].reason,
-        pobr_core::rules::passive_stats::NativePassiveRejection::UnknownStat
+        pobr_core::rules::passive_stats::NativePassiveRejection::InexactValue
     );
     assert!(rejected.native_diagnostics[0].fallback_texts.is_empty());
-    assert_eq!(
-        rejected.native_diagnostics[0].packet.stats[0].id,
-        "unknown_native_stat"
-    );
+}
+
+/// A packet whose stat the engine does not map is not for this engine
+/// (roadmap 2.4: the package carries packets for every eligible node). The
+/// node is parsed from text exactly as without a packet, with no diagnostic,
+/// whatever else would have rejected the packet.
+#[test]
+fn native_passive_with_an_unknown_stat_is_the_text_path_without_diagnostic() {
+    use pobr_core::rules::passive_stats::NativePassiveRejection as Reason;
+    for ineligible in [None, Some(Reason::VersionMismatch)] {
+        let mut node = native_node();
+        let input = node.native.as_mut().unwrap();
+        input.packet.stats[0].id = "chaos_resistance_+_while_using_flask".into();
+        input.ineligible = ineligible;
+        let mut legacy = node.clone();
+        legacy.native = None;
+        let contexts: [fn() -> pobr_core::mod_parser::ParseCtx<'static>; 2] =
+            [crate::support::ctx, pobr_core::mod_parser::ParseCtx::none];
+        for ctx in contexts {
+            let ingest = ingest_passive_nodes_with_ctx(std::slice::from_ref(&node), ctx()).unwrap();
+            let text = ingest_passive_nodes_with_ctx(std::slice::from_ref(&legacy), ctx()).unwrap();
+            assert!(ingest.native_diagnostics.is_empty());
+            assert_eq!(ingest.unsupported, text.unsupported);
+            assert_eq!(ingest.modifiers.len(), text.modifiers.len());
+            for (a, b) in ingest.modifiers.iter().zip(&text.modifiers) {
+                assert_eq!(a.name, b.name);
+                assert_eq!(a.value, b.value);
+                assert_eq!(a.origin, b.origin);
+            }
+        }
+    }
 }
 
 #[test]
@@ -235,7 +262,6 @@ fn native_passive_rejections_fall_back_whole_and_keep_diagnostics_without_parser
     use pobr_core::rules::passive_stats::NativePassiveRejection as Reason;
     use pobr_data::native_stat::NativePassiveContext;
     for reason in [
-        Reason::UnknownStat,
         Reason::UnsupportedContext,
         Reason::InexactValue,
         Reason::BindingMismatch,
@@ -245,9 +271,6 @@ fn native_passive_rejections_fall_back_whole_and_keep_diagnostics_without_parser
         let mut node = native_node();
         let input = node.native.as_mut().unwrap();
         match reason {
-            Reason::UnknownStat => {
-                input.packet.stats[0].id = "chaos_resistance_+_while_using_flask".into()
-            }
             Reason::UnsupportedContext => input.packet.context = NativePassiveContext::Unsupported,
             Reason::InexactValue => input.packet.stats[0].value = i64::MAX,
             Reason::BindingMismatch => input.packet.node_id += 1,

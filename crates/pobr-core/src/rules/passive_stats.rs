@@ -305,25 +305,30 @@ mod tests {
             packet.modifier_texts
         );
 
-        for inexact in [false, true] {
-            let mut packet = fixture().remove(0);
-            let reason = if inexact {
-                packet.stats[0].value = (1_i64 << 53) + 1;
-                NativePassiveRejection::InexactValue
-            } else {
-                packet.stats[0].id = "damage_with_unknown_context".into();
-                NativePassiveRejection::UnknownStat
-            };
-            let ingest =
-                ingest_passive_nodes_with_ctx(&[node(packet.clone())], ParseCtx::none()).unwrap();
-            assert!(ingest.modifiers.is_empty());
-            assert_eq!(ingest.native_diagnostics.len(), 1);
-            assert_eq!(ingest.native_diagnostics[0].reason, reason);
-            assert_eq!(
-                ingest.native_diagnostics[0].fallback_texts,
-                packet.modifier_texts
-            );
-            assert_eq!(ingest.unsupported, packet.modifier_texts);
-        }
+        let mut packet = fixture().remove(0);
+        packet.stats[0].value = (1_i64 << 53) + 1;
+        let ingest =
+            ingest_passive_nodes_with_ctx(&[node(packet.clone())], ParseCtx::none()).unwrap();
+        assert!(ingest.modifiers.is_empty());
+        assert_eq!(ingest.native_diagnostics.len(), 1);
+        assert_eq!(
+            ingest.native_diagnostics[0].reason,
+            NativePassiveRejection::InexactValue
+        );
+        assert_eq!(
+            ingest.native_diagnostics[0].fallback_texts,
+            packet.modifier_texts
+        );
+        assert_eq!(ingest.unsupported, packet.modifier_texts);
+
+        // A stat this engine does not map: not its packet. The text path,
+        // exactly as without a packet, and no diagnostic.
+        let mut packet = fixture().remove(0);
+        packet.stats[0].id = "damage_with_unknown_context".into();
+        let ingest =
+            ingest_passive_nodes_with_ctx(&[node(packet.clone())], ParseCtx::none()).unwrap();
+        assert!(ingest.modifiers.is_empty());
+        assert!(ingest.native_diagnostics.is_empty());
+        assert_eq!(ingest.unsupported, packet.modifier_texts);
     }
 }

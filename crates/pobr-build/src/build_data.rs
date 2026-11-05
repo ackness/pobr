@@ -512,6 +512,8 @@ impl BuildData {
         data.validate_manifest()?;
         // Pin report provenance alongside the immutable data used by this build.
         data.identity()?;
+        // Skill type names before anything that parses rules or skill data.
+        data.install_skill_type_names()?;
         // A domain's file is released as soon as it is parsed (a data pack staged in memory to
         // release them; any other keeps its files): its bytes are not resident beside what
         // was parsed from them. Only files nothing reads after this load are released here.

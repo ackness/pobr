@@ -151,7 +151,6 @@ fn native_passive_is_exclusive_legacy_unchanged_and_effect_copies_share_channel(
 fn native_passive_rejected_packets_keep_whole_fallback_and_reason() {
     for parser in [false, true] {
         for reason in [
-            Reason::UnknownStat,
             Reason::UnsupportedContext,
             Reason::BindingMismatch,
             Reason::VersionMismatch,
@@ -167,9 +166,6 @@ fn native_passive_rejected_packets_keep_whole_fallback_and_reason() {
                 .as_mut()
                 .unwrap();
             match reason {
-                Reason::UnknownStat => {
-                    packet.stats[0].id = "chaos_resistance_+_while_using_flask".into()
-                }
                 Reason::UnsupportedContext => packet.context = NativePassiveContext::Unsupported,
                 Reason::BindingMismatch => packet.node_slug = "stale_definition".into(),
                 Reason::VersionMismatch => packet.data_version = "old-pack".into(),
@@ -213,6 +209,60 @@ fn native_passive_rejected_packets_keep_whole_fallback_and_reason() {
                     LineStatus::Unparsed
                 }
             );
+        }
+    }
+}
+
+/// The package carries a packet for every eligible node (roadmap 2.4); one
+/// whose stat this engine does not map is not for it. The node is parsed from
+/// its text exactly as without a packet, with no diagnostic, even when the
+/// packet would also be rejected for another reason (an old tree version).
+#[test]
+fn native_passive_packet_with_an_unknown_stat_is_the_text_path_without_diagnostic() {
+    for parser in [false, true] {
+        for stale_version in [false, true] {
+            let mut data = data(parser);
+            let packet = data
+                .passive_nodes
+                .get_mut(&NODE)
+                .unwrap()
+                .native_stats
+                .as_mut()
+                .unwrap();
+            packet.stats[0].id = "chaos_resistance_+_while_using_flask".into();
+            if stale_version {
+                packet.data_version = "old-pack".into();
+            }
+            let allocated = build("62518");
+            let diagnosis = run(&allocated, &data);
+            let mut without = data.clone();
+            without.passive_nodes.get_mut(&NODE).unwrap().native_stats = None;
+            let legacy = run(&allocated, &without);
+            assert_eq!(
+                diagnosis.session.output().fire_resistance,
+                if parser { 5.0 } else { 0.0 }
+            );
+            assert_eq!(
+                diagnosis.session.output().fire_resistance,
+                legacy.session.output().fire_resistance
+            );
+            assert!(diagnosis.session.native_passive_diagnostics().is_empty());
+            assert_eq!(diagnosis.unparsed_lines, legacy.unparsed_lines);
+            assert!(
+                diagnosis
+                    .session
+                    .mods_named("FireResistance")
+                    .iter()
+                    .all(|m| m.origin.as_ref().unwrap().native_stat.is_none())
+            );
+            let status = |d: &Diagnosis| {
+                line_usage(d, &allocated, &data)
+                    .lines
+                    .iter()
+                    .find(|l| l.source_id.as_deref() == Some("node.62518"))
+                    .map(|l| l.status)
+            };
+            assert_eq!(status(&diagnosis), status(&legacy));
         }
     }
 }

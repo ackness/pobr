@@ -128,6 +128,8 @@ impl GameData {
     /// An invalid snapshot manifest is rejected before aggregation.
     pub fn load_ruleset(&self) -> Result<RuleSet, LoadError> {
         self.snapshot_manifest()?;
+        // The rules name skill types; install the pack's names before anyone compiles them.
+        self.install_skill_type_names()?;
         let game_constants = match self.game_constants() {
             Ok(v) => Some(v),
             Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
