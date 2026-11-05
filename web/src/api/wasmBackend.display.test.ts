@@ -5,7 +5,8 @@ import type { GemCatalogEntry } from './types';
 import { classDisplayName } from '../lib/nativeDisplayNames';
 import { gemDisplayName } from '../lib/skillNames';
 
-const state = vi.hoisted(() => ({ gems: [] as GemCatalogEntry[], crafting: { bases: [] as unknown[], mods: [] as unknown[] } }));
+const state = vi.hoisted(() => ({ gems: [] as GemCatalogEntry[], crafting: { bases: [] as unknown[], mods: [] as unknown[] },
+  detailed: false }));
 
 // Match the runtime import URL even when no local WASM package exists.
 vi.mock('/src/wasm/pkg/pobr_wasm.js', () => ({
@@ -19,9 +20,34 @@ vi.mock('/src/wasm/pkg/pobr_wasm.js', () => ({
   ]),
   translateLines: (lang: string, raw: string) =>
     JSON.stringify((JSON.parse(raw) as string[]).map(() => lang === 'zh-CN' ? '旧译文' : 'wrong locale')),
+  // Present only when a test turns it on, as in a WASM build that has the export.
+  get translateLinesDetailed() {
+    return state.detailed ? (lang: string, raw: string) => JSON.stringify((JSON.parse(raw) as string[]).map(line =>
+      ({ text: lang === 'zh-CN' ? '旧译文' : 'wrong locale', origin: line.startsWith('Ours') ? 'agent' : null }))) : undefined;
+  },
 }));
 
-afterEach(() => { vi.unstubAllGlobals(); state.gems = []; state.crafting = { bases: [], mods: [] }; });
+afterEach(() => { vi.unstubAllGlobals(); state.gems = []; state.crafting = { bases: [], mods: [] }; state.detailed = false; });
+
+test('detailed lines and names carry supplement origins, with the same texts as the plain calls', async () => {
+  vi.stubGlobal('fetch', async (url: string) => new Response(JSON.stringify(url === '/data/manifest.json'
+    ? { version: 'test', files: [] } : null)));
+  // A WASM build without the export: every text is official.
+  let backend = await createWasmBackend();
+  expect(await backend.translateLinesDetailed(['Ours line', 'Other'], 'zh-CN'))
+    .toEqual([{ text: '旧译文', origin: null }, { text: '旧译文', origin: null }]);
+  state.detailed = true;
+  backend = await createWasmBackend();
+  expect(await backend.translateLinesDetailed(['Ours line', 'Other'], 'zh-CN'))
+    .toEqual([{ text: '旧译文', origin: 'agent' }, { text: '旧译文', origin: null }]);
+  // zh-TW renders through zh-CN and keeps the origin.
+  expect(await backend.translateLinesDetailed(['Ours line'], 'zh-TW')).toEqual([{ text: '舊譯文', origin: 'agent' }]);
+  expect(await backend.translateLines(['Ours line', 'Other'], 'zh-CN')).toEqual(['旧译文', '旧译文']);
+  expect(await backend.translateLinesDetailed(['Ours line'], 'en-US')).toEqual([{ text: 'Ours line', origin: null }]);
+  expect(await backend.translateNamesDetailed([{ kind: 'passive', id: 'p', name: 'Ours name' },
+    { kind: 'monster', id: 'Metadata/Monsters/A', name: 'Zombie' }], 'zh-CN'))
+    .toEqual([{ text: '旧译文', origin: 'agent' }, { text: 'Zombie', origin: null }]);
+});
 
 test('crafting metadata uses the listed scoped base catalog without changing its identity', async () => {
   state.crafting.bases = [{ id: 'base', name: 'Same', item_class: 'Ring', tags: [], mod_domain: 1 }];

@@ -199,7 +199,8 @@ export interface LoadoutJson {
 export type EnemyTier = 'none' | 'boss' | 'pinnacle' | 'uber';
 
 export interface MinionCatalog {
-  monsters: Array<{ id: string; name: string; beast: boolean; spectre: boolean;
+  /** `monster_variety_id`: the game MonsterVarieties Id display names are keyed by (absent when unlinked). */
+  monsters: Array<{ id: string; monster_variety_id?: string; name: string; beast: boolean; spectre: boolean;
     skills: Array<{ index: number; skill_id: string; name: string | null }> }>;
   summoners: Array<{ skill_id: string; choice: 'beast' | 'spectre' | null; minion_ids: string[] }>;
 }
@@ -208,6 +209,8 @@ export type BreakdownActor = { kind: 'player' } | { kind: 'minion'; index: numbe
 export interface MinionOutput {
   index: number;
   minion_id: string;
+  /** The game MonsterVarieties Id display names are keyed by; absent when the data links none. */
+  monster_variety_id?: string;
   name: string;
   summoned_by: string;
   skill_id: string;

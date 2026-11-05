@@ -37,6 +37,7 @@ import { getBackend } from '../../api/backend';
 import { lineText } from '../../lib/continuedLines';
 import { useEffect } from 'react';
 import { useSkillName, useSkillCatalog } from '../../hooks/useSkillName';
+import { useLocalizedNames } from '../../hooks/useLocalizedLines';
 import './calcs.css';
 import { detailKind, detailFormula, StatDetailCache } from '../../lib/statDetails';
 import { AppSelectControl } from '../shared/controls';
@@ -1033,6 +1034,10 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
   const actorKey = (minion: MinionOutput) =>
     `${minion.index}:${minion.minion_id}:${minion.summoned_by}`;
   const selectedMinion = calc?.minions?.find(minion => actorKey(minion) === actor);
+  // Minion names by game variety id; English without a MonsterVarieties.Name record.
+  const minionNames = useLocalizedNames(useMemo(() => (calc?.minions ?? []).map(minion =>
+    ({ kind: 'monster' as const, id: minion.monster_variety_id, name: minion.name })), [calc?.minions]), lang);
+  const minionName = (minion: MinionOutput) => minionNames[minion.index] ?? minion.name;
   const actorBreakdowns = selectedMinion?.breakdowns ?? calc?.breakdowns ?? {};
   useEffect(() => {
     if (!calc || session.busy || focus) return;
@@ -1137,14 +1142,14 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
   const unboundedPoison = values.get('PoisonStacksMax') === 0 && (values.get('PoisonChance') ?? 0) > 0;
   const metricValue = (name: string) => name === 'PoisonStacksMax' && unboundedPoison
     ? '∞' : formatStatValue(values.get(name) ?? null, rowFormat(name), lang);
-  const actorLabel = selectedMinion ? `${tt('minion.title')}: ${selectedMinion.name || tt('minion.unavailable')} · ${selectedMinion.index + 1}` : tt('minion.player');
+  const actorLabel = selectedMinion ? `${tt('minion.title')}: ${minionName(selectedMinion) || tt('minion.unavailable')} · ${selectedMinion.index + 1}` : tt('minion.player');
   const actorPicker = (calc?.minions?.length ?? 0) > 0 && <label className="calcs-actor-picker">
     <span>{tt('minion.actor')}</span>
     <AppSelectControl aria-label={tt('minion.actor')} value={selectedMinion ? actorKey(selectedMinion) : 'player'}
       onChange={event => { setActor(event.target.value); setOpen(null); }}>
       <option value="player">{tt('minion.player')}</option>
       {(calc?.minions ?? []).map(minion => <option key={actorKey(minion)} value={actorKey(minion)}>
-        {tt('minion.title')}: {minion.name || tt('minion.unavailable')} · {minion.index + 1}
+        {tt('minion.title')}: {minionName(minion) || tt('minion.unavailable')} · {minion.index + 1}
       </option>)}
     </AppSelectControl>
   </label>;

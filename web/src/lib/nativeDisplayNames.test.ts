@@ -165,3 +165,40 @@ test('base lines resolve through every BaseItemTypes id with that English, never
   expect(index.resolve(base('Sapphire'), 'zh-TW')).toBeUndefined();
   expect(new NativeNameIndex([catalog({})], bases).resolve(base('Sapphire'), 'zh-CN')).toBeUndefined();
 });
+
+const monster = (id: string | undefined, name: string) => ({ kind: 'monster' as const, id, name });
+
+test('minion names come only from MonsterVarieties.Name by variety id, mixing official and supplement records', () => {
+  const source = { ...catalog({ 'MonsterVarieties.Name': {
+    'Metadata/Monsters/A': ['Raging Spirit', '愤怒之灵'], 'Metadata/Monsters/B': ['Skeletal Warrior', '骷髅战士'],
+    'Metadata/Monsters/C': ['Unresolved', null],
+  } }), origins: { entries: {}, scopes: { 'MonsterVarieties.Name': { 'Metadata/Monsters/B': 'agent' as const } } } };
+  const index = new NativeNameIndex([source]);
+  expect(index.resolveDetailed(monster('Metadata/Monsters/A', 'Raging Spirit'), 'zh-CN')).toEqual({ text: '愤怒之灵', origin: null });
+  expect(index.resolveDetailed(monster('Metadata/Monsters/B', 'Skeletal Warrior'), 'zh-CN')).toEqual({ text: '骷髅战士', origin: 'agent' });
+  // No record, no variety id, other English or no scope: English, never the text path.
+  for (const request of [monster('Metadata/Monsters/C', 'Unresolved'), monster('Metadata/Monsters/Z', 'Zombie'),
+    monster(undefined, 'Raging Spirit'), monster('Metadata/Monsters/A', 'Renamed')]) {
+    expect(index.resolveDetailed(request, 'zh-CN')).toBeNull();
+  }
+  expect(new NativeNameIndex([catalog({})]).resolve(monster('Metadata/Monsters/A', 'Raging Spirit'), 'zh-CN')).toBeNull();
+  expect(new NativeNameIndex([]).resolve(monster('Metadata/Monsters/A', 'Raging Spirit'), 'zh-CN')).toBeNull();
+  const { pending, mergeDetailed } = index.split([monster('Metadata/Monsters/B', 'Skeletal Warrior'),
+    monster('Metadata/Monsters/Z', 'Zombie'), passive('p', 'Life')], 'zh-CN');
+  expect(pending).toEqual(['Life']);
+  expect(mergeDetailed([{ text: '生命', origin: 'human' }])).toEqual([
+    { text: '骷髅战士', origin: 'agent' }, { text: 'Zombie', origin: null }, { text: '生命', origin: 'human' }]);
+});
+
+test('passive and base names carry their scope record origin; absent origins are official', () => {
+  const scopes = { 'PassiveSkills.Name': { mana10: ['Mana Regeneration', '魔力再生'] as [string, string] },
+    'BaseItemTypes.Name': { B1: ['Agreed', '同'] as [string, string], B2: ['Agreed', '同'] as [string, string] } };
+  const bases = [{ id: 'B1', name: 'Agreed' }, { id: 'B2', name: 'Agreed' }];
+  const official = new NativeNameIndex([catalog(scopes)], bases);
+  expect(official.resolveDetailed(passive('mana10', 'Mana Regeneration'), 'zh-CN')).toEqual({ text: '魔力再生', origin: null });
+  const ours = new NativeNameIndex([{ ...catalog(scopes), origins: { entries: {}, scopes: {
+    'PassiveSkills.Name': { mana10: 'human' as const }, 'BaseItemTypes.Name': { B2: 'agent' as const } } } }], bases);
+  expect(ours.resolveDetailed(passive('mana10', 'Mana Regeneration'), 'zh-CN')).toEqual({ text: '魔力再生', origin: 'human' });
+  expect(ours.resolveDetailed({ kind: 'base', name: 'Agreed' }, 'zh-CN')).toEqual({ text: '同', origin: 'agent' });
+  expect(ours.resolve({ kind: 'base', name: 'Agreed' }, 'zh-CN')).toBe('同');
+});

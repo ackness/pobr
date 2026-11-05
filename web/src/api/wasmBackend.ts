@@ -1,5 +1,5 @@
 import { GameTextLocalizer, type GameDisplayName } from '../lib/localizedGameText';
-import { nativeDisplayTexts } from '../lib/nativeDisplayTexts';
+import { nativeDisplayTexts, type DisplayText } from '../lib/nativeDisplayTexts';
 import { NativeNameIndex, nativeClassNames, nativeCraftBaseNames, nativeGemNames, type GemNameLink, type GemNameOverride } from '../lib/nativeDisplayNames';
 import { lineTemplateLocale, setGameLocales, type GameLocaleInfo } from '../lib/gameLocales';
 import type { Lang } from '../lib/i18n';
@@ -67,6 +67,9 @@ interface WasmModule {
   minionCatalogJson(): string;
   /** English mod lines -> `lang` display lines (JSON arrays); lines nothing recognizes come back as given. */
   translateLines(lang: string, linesJson: string): string;
+  /** `translateLines` as JSON `[{text, origin}]` (origin of the translation library's supplement text, or null).
+   * Optional: a WASM build older than the export lacks it, and its texts are then official. */
+  translateLinesDetailed?(lang: string, linesJson: string): string;
   /** The data pack's locales with their declared fallback chains (JSON `GameLocaleInfo[]`). */
   availableLocales(): string;
   classifyItemLinesJson(text: string): string;
@@ -332,21 +335,29 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async translateLines(lines, lang: Lang = 'zh-CN') {
       if (lang === 'en-US' || lines.length === 0) return [...lines];
+      return (await backend.translateLinesDetailed(lines, lang)).map(line => line.text);
+    },
+    async translateLinesDetailed(lines, lang: Lang = 'zh-CN') {
+      if (lang === 'en-US' || lines.length === 0) return lines.map(text => ({ text, origin: null }));
       // Mod lines render in the first locale of `lang`'s chain whose pack has templates;
       // the localizer then writes them in `lang`'s script and names.
       syncGameLocales();
       const templates = lineTemplateLocale(lang);
-      const rendered = templates
-        ? JSON.parse(wasm.translateLines(templates, JSON.stringify(lines))) as string[] : [...lines];
+      const rendered: DisplayText[] = !templates ? lines.map(text => ({ text, origin: null }))
+        : wasm.translateLinesDetailed ? JSON.parse(wasm.translateLinesDetailed(templates, JSON.stringify(lines))) as DisplayText[]
+          : (JSON.parse(wasm.translateLines(templates, JSON.stringify(lines))) as string[]).map(text => ({ text, origin: null }));
       const { localizer } = await display();
-      return localizer.localizeLines(lines, rendered, lang);
+      return localizer.localizeLinesDetailed(lines, rendered, lang);
     },
     async translateNames(requests, lang: Lang = 'zh-CN') {
-      if (lang === 'en-US' || requests.length === 0) return requests.map(request => request.name);
+      return (await backend.translateNamesDetailed(requests, lang)).map(name => name.text);
+    },
+    async translateNamesDetailed(requests, lang: Lang = 'zh-CN') {
+      if (lang === 'en-US' || requests.length === 0) return requests.map(request => ({ text: request.name, origin: null }));
       const { names } = await display();
       // Only names the locale's id-scoped catalog does not own take the text path.
-      const { pending, merge } = names.split(requests, lang);
-      return merge(pending.length ? await backend.translateLines(pending, lang) : []);
+      const { pending, mergeDetailed } = names.split(requests, lang);
+      return mergeDetailed(pending.length ? await backend.translateLinesDetailed(pending, lang) : []);
     },
     async gameLocales() {
       return wasm.isDataReady() ? JSON.parse(wasm.availableLocales()) as GameLocaleInfo[] : [];
