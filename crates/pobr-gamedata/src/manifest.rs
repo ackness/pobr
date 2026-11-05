@@ -414,6 +414,44 @@ mod tests {
         );
     }
 
+    /// Data contract 1.3: `overlay/gem_descriptions.json` (English gem
+    /// descriptions; the web reads it, the engine does not) is an optional
+    /// game member. A snapshot that lists it as an overlay domain loads as
+    /// before, and one without it (`strict_files`) is unchanged.
+    #[test]
+    fn the_optional_gem_descriptions_member_is_accepted_or_absent() {
+        let member = "overlay/gem_descriptions.json";
+        let descriptions = br#"{"_meta":{"game_patch":"test"},"scopes":{
+            "GemEffects.SupportText":{"FasterAttackSupport":"Supports [Attack|Attacks]. "},
+            "ActiveSkills.Description":{"ground_slam":"Slams the ground."}}}"#
+            .to_vec();
+        let mut files = strict_files();
+        let mut manifest: serde_json::Value =
+            serde_json::from_slice(&files["manifest.json"]).unwrap();
+        manifest["domains"]["overlay"] =
+            serde_json::json!(["gem_descriptions", "gem_quality_stats"]);
+        manifest["files"][member] = sha256_hex(&descriptions).into();
+        files.insert(
+            "manifest.json".into(),
+            serde_json::to_vec(&manifest).unwrap(),
+        );
+        files.insert(member.into(), descriptions);
+        with_backends("gem-descriptions", files, |data| {
+            assert!(data.validate_manifest().unwrap().files.contains_key(member));
+            assert!(data.gem_quality_stats().unwrap().is_some());
+            data.identity().unwrap();
+        });
+        let absent = GameData::from_memory(strict_files());
+        assert!(
+            !absent
+                .validate_manifest()
+                .unwrap()
+                .files
+                .contains_key(member)
+        );
+        assert!(absent.gem_quality_stats().unwrap().is_some());
+    }
+
     #[test]
     fn strict_snapshot_validates_original_bytes_before_user_patch() {
         let mut files = strict_files();

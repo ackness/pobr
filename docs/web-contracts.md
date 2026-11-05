@@ -156,6 +156,21 @@ PoBR构建时按`pipeline/data.lock.json`的`support_display`（旧`handoff/*`�
 无匹配时保留英文并标明来源，无原文时显示不可用，不能从名称或预测收益编造。
 这些说明不是当前等级／品质数值，也不证明已计算该效果。词典或辅助目录更新由翻译库重新配对并交付固定资产，
 PoBR更新锁后运行`mise run data:prepare`；目录摘要不符时拒绝导入，不使用旧说明作隐式回退。
+这条辅助说明路径将由下面的宝石说明取代，退役步骤见[数据架构](data-architecture.md#3-发布与导入契约)。
+
+宝石说明（数据契约 1.3；界面接入另行设计）：主动、精魂、元技能与辅助宝石都有一段游戏自带的说明。英文来自游戏包可选文件
+`overlay/gem_descriptions.json`，译文来自 `display_texts.json` 的作用域 `GemEffects.SupportText` 与
+`ActiveSkills.Description`，形状与 id 规则见[数据架构](data-architecture.md#3-发布与导入契约)。按 manifest `files`
+判断英文文件是否存在，像其他可选文件一样读取；没有这个文件就不显示说明。
+- 查找：辅助宝石用所选宝石在 `gem_effects.json` 里那一条的 `variant_id`（GemEffects.Id）查 `GemEffects.SupportText`；
+  其他宝石用 `granted_effects[granted_effect_id].active_skill`（ActiveSkills.Id）查 `ActiveSkills.Description`。
+- 语言：en-US 直接用英文。其他语言沿游戏文本回退链（`gameTextChain(lang)`）找第一个满足
+  `scopes[作用域][id][0]` 与英文逐字节相同、且译文非空的目录；它不是所选语言的目录时按 `chineseScript` 转换字形。
+  记录为 `null`、英文不同或整条链都没有记录时显示英文。zh-TW 因此是：自己的繁体目录 → zh-CN 转繁体 → 英文，
+  与召唤物名相同。这些都是官方文本，不显示来源标记。
+- 显示：数据保留原文，只在显示边界渲染，英文与译文用同一规则：`[A|B]` 显示 B，`[A]` 显示 A；`\r\n` 与字面
+  `\n` 换行；首尾去空白。渲染结果不应再含 `[` 或 `]`。
+- 说明是宝石的定性介绍，不是当前等级／品质下的数值，也不证明该效果已被计算。
 
 物品结构属性（含 `Evasion:`／`Evasion Rating:`、护甲、能量护盾等）在 `useLocalizedLines` 显示边界翻译，
 详情按原始键分组，数值和未知字段保留；原始文本页、编辑和导入导出不使用显示译文。

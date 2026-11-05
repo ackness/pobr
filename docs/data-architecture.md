@@ -99,6 +99,38 @@ RePoE 发布 ───┐
   语言 owner 在 `locale/<patch>-<n>` 下发布同样的三件附件（翻译库 `mise run release:publish`），包为
   `pobr-build-data-part/v1`、`kind: "language"` 的 ZIP（与游戏包同一格式），成员按 STORED 写入，
   与提交无关，任何后续干净提交都能逐字节重建。
+- **宝石说明（契约 1.3）。** 主动、精魂、元技能与辅助宝石的说明：英文属于游戏 owner，译文属于语言 owner，
+  两边用同一套作用域与 id，Web 的查找、回退与显示规则见 [Web 契约](web-contracts.md#宝石天赋与珠宝规划)。
+  - 游戏包的可选成员 `overlay/gem_descriptions.json`（snapshot manifest 里是 overlay domain `gem_descriptions`）：
+
+    ```json
+    {
+      "_meta": {"schema": "repoe-gem-descriptions/v1", "generator": "…", "facts_manifest_sha256": "…", "game_patch": "0.5.5.5"},
+      "scopes": {
+        "ActiveSkills.Description": {"<ActiveSkills.Id>": "<英文原文>"},
+        "GemEffects.SupportText": {"<GemEffects.Id>": "<英文原文>"}
+      }
+    }
+    ```
+
+    `scopes` 恰好这两个键，值都是非空字符串。只收玩家宝石能到达的行：`GemEffects.SupportText` 的 id 是同一游戏包
+    `overlay/gem_effects.json` 里出现的 `variant_id`（即 GemEffects.Id，只有辅助有文本）；`ActiveSkills.Description`
+    的 id 是 `base/granted_effects.json` 里 `id` 等于这些条目 `granted_effect_id` 的记录的 `active_skill`
+    （即 ActiveSkills.Id）。客户端文本为空的行不写。英文保留客户端原文：`[A]`／`[A|B]` 标记、末尾空格和 `\r\n` 都不改，
+    语言 owner 据此逐字节比对英文。标记只有这两种形式（不嵌套，没有 `<…>`、`{…}`），出现别的形式时生产方拒绝构建，
+    而不是发布显示不了的文本。`_meta` 只作审计（紧凑发行包会去掉它），消费方只读 `scopes`。
+    包里没有这个文件表示没有说明（`game/0.5.5.5-3` 之前的包），不是错误；引擎不读取它，只校验 manifest pin。
+  - 译文在语言包 `i18n/<locale>/display_texts.json`（`pobr-native-display-texts/v1`）的同名作用域
+    `GemEffects.SupportText`、`ActiveSkills.Description` 中，id 规则同上，记录为 `[英文原文, 译文原文]`；
+    英文与游戏成员逐字节相同才算同一条，译文同样保留原文标记。语言 owner 只写有官方译文的 id、不写 `null`
+    （`null` 表示"停在英文"，会挡住 zh-TW 回退到 zh-CN），也不写 `origins`（官方文本）。
+    zh-CN 在现有文件里；zh-TW 是新文件 `i18n/zh-TW/display_texts.json`（`locale: "zh-TW"`，形状相同，已按 manifest
+    `files` 读取），作用域还可以包括已有的 `MonsterVarieties.Name` 等。
+  - **`support_display` 退役。** 上面的作用域取代辅助显示附件，只保留一条说明来源。语言 owner 的下一份语言 Release
+    不再带两件辅助显示附件；目标不变时 `data:bump` 保留锁里原有的 `support_display` 条目（它绑定的交易目录不变），
+    所以先 bump 新的游戏与语言 Release 是安全的。随后的 PoBR PR 删除 `web/src/lib/supportDescriptions.ts`、
+    忽略的 `supportDescriptions.zh-CN.json`、锁的 `support_display`，以及（可选）`pipeline/imports/display_assets.py`
+    与它的测试；删除后"新目标的语言 Release 须带新显示附件"的要求一并取消。在那之前，上一条的辅助显示规则照旧有效。
 - **寻址。** Release 产物按 `repository` + `tag` + `asset` 下载（匿名 HTTPS；私有仓库设
   `POBR_RELEASE_TRANSPORT=gh` 用 `gh` 的登录），按锁中的字节数与 SHA-256 校验后按内容缓存。
   已锁定的旧 `handoff/*` 产物继续按 40 位 commit SHA + 路径浅拉取；这些 tag 保活被钉住的 commit，不得删除或移动，
@@ -114,7 +146,7 @@ RePoE 发布 ───┐
   游戏包重新发布；运行身份只由两个包与共享规则决定，和 manifest 的格式无关，同内容时与单 owner manifest 相同。
   仍列 `i18n/` 或写 `languages` 的游戏快照（`game/0.5.5.5-1` 及更早）被拒绝，提示改锁到 `game/0.5.5.5-2` 及以后；
   游戏包里出现 `i18n/` 成员按跨 owner 成员拒绝。锁的 `locale` 可以是任何语言标签（`zh-CN`、`ja`、`pt-BR` 形状），
-  只要语言包提供该语言；加语言不需要改 PoBR 代码，只有显示包（`support_display`）需要有该语言的条目。
+  只要语言包提供该语言；加语言不需要改 PoBR 代码，只有显示包（`support_display`，退役中，见上）需要有该语言的条目。
 - **身份。** schema-3 `manifest.json` 列出全部运行文件及 SHA-256，未列出的文件视为不存在；
   `GameData::identity()` 标识快照、共享覆盖层和有效 patch，并进入计算结果的 `provenance`。
   完整快照与紧凑 release 是不同投影，身份分别记录，不能互换。
@@ -155,12 +187,18 @@ RePoE 发布 ───┐
   引擎不内嵌技能类型名表：契约 1 的包必须带
   `active_skill_types.json`，引擎只认得自己具名常量（`SkillTypes::ATTACK` 等）的名字，其余名字要等加载器安装
   数据包的表；最大怒气读 `game.base_maximum_rage`。
-  下一个修订（合并后打 `contract/1.2`）：`i18n/<locale>/stat_lines.json` 的行可带可选 `origin`
+  `contract/1.2`：`i18n/<locale>/stat_lines.json` 的行可带可选 `origin`
   （`"agent"`／`"human"`：翻译仓库自己的补译；缺省、`null` 或 `"official"` 为官方或历史词典）；
   其他取值按 `agent` 读取，这一行照常可用但不算官方，也不会让整个文件失效。
   整条回退链的官方模板排在全部补译之前（各自保持链与文件顺序），同一匹配渠道内官方优先（锚点更长的补译也不例外）；
   更具体的整行模板（数值桶，范围显示行连同其去掉括号的桶）先于通用的字符串模板，翻译库保证补译行不与官方行同英文，
   所以补译行只填空缺。`display_texts.json` 可带可选顶层 `origins`，见[Web 契约](web-contracts.md)。
+  下一个修订（合并后打 `contract/1.3`）：游戏包可带可选文件 `overlay/gem_descriptions.json`（英文宝石说明），
+  语言包 `display_texts.json` 可带作用域 `GemEffects.SupportText`、`ActiveSkills.Description`，另有新的
+  `i18n/zh-TW/display_texts.json`，定义见上文"宝石说明"。这是新增的可选文件与作用域：缺失时含义与以前相同
+  （没有说明），已有类型、字段和加载器对已有字节的解释都不变，所以 `CONTRACT_VERSION` 不加 1，与 1.1 新增
+  `base/active_skill_types.json` 同类。`pobr-data` 没有新类型：引擎不读这个文件，RePoE 用 Python 的 release job
+  生成它，adapter 不需要新的契约代码，可以继续固定在 `contract/1.1`。
 - **RePoE 一侧。** `pobr-data-adapter` 与 release build 封存快照 manifest 时写入
   `"contract_version": <所依赖 pobr-data 的 CONTRACT_VERSION>`，数值取自依赖本身（例如由 adapter 读取
   `pobr_data::CONTRACT_VERSION` 输出），不手写；契约加 1 时先把依赖升到新的 `contract/<n>.0`，再重新生成并发布。
