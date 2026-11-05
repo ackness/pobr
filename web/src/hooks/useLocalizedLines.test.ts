@@ -55,7 +55,10 @@ it('takes a Bonded line from the language pack, whole first, else around the pac
   // A pack without a prefix rendering leaves an untranslated whole line in English, never a local prefix.
   expect(localizedLines([lines[2]], 'zh-CN', [lines[2], undefined, '获得技能：20 级 Foo', undefined, 'Bonded: {0}']))
     .toEqual([lines[2]]);
-  // Whatever the pack renders for the whole line is shown, an English-prefixed legacy row included.
+  // A whole-line row that kept the English prefix gives way to the pack's own prefix around the effect…
+  expect(localizedLines([lines[0]], 'zh-CN', ['Bonded: +40 生命上限', undefined, '+40 生命上限', undefined, '纽带：{0}']))
+    .toEqual(['纽带：+40 生命上限']);
+  // …and is still shown when the pack cannot compose one (a partly translated line beats English).
   expect(localizedLines([lines[0]], 'zh-TW', ['Bonded: 生命上限 +40'])).toEqual(['Bonded: 生命上限 +40']);
   expect(localizedLines([lines[0]], 'zh-CN', [])).toEqual([lines[0]]);
   expect(linesToTranslate(['+5 to Strength'], 'zh-CN')).toEqual(['+5 to Strength']);
