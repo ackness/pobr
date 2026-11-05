@@ -20,6 +20,9 @@ import { DEFAULT_PREFERENCES, PREFERENCES_KEY, readPreferences, pageDisplayMode,
 import { NAV_GROUPS, readRoute, routePath, type Route } from './routes';
 import { words, pageNames } from './text';
 import { Settings } from './Settings';
+import { TopbarAction, TopbarHint } from './TopbarHint';
+import { ImportReviewNotice } from './ImportReviewNotice';
+import { calculationVersion } from './calculationVersion';
 import { ResultsRail } from './ResultsRail';
 import { useSettledCalc } from './motion/useSettledCalc';
 import { withViewTransition } from './motion/viewTransition';
@@ -190,11 +193,13 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const inspector = inspect && <Suspense fallback={<div className="insp" role="status"><Skeleton className="h-6 w-1/2" /><Skeleton className="mt-4 h-40 w-full" /></div>}>
     <Inspector session={session} view={view} lang={lang} id={inspect} onClose={() => setInspect(null)} onOpenCalcs={focusStat} pinned={pinned.includes(inspect)} onTogglePin={() => togglePin(inspect)} /></Suspense>;
   const panelLoading = <div role="status" className="shell-panel-loading"><Skeleton className="h-12 w-2/3" /><Skeleton className="h-64 w-full" /><p>{t(lang, 'ui.loadingPanel')}</p></div>;
-  const rail = <ResultsRail session={session} view={view} lang={lang} onStatClick={inspectStat} onNavigate={navigate} pinned={pinned} onTogglePin={togglePin} />;
+  const shortcutKey = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
+  const saveState = session.storageFailed ? w('Save failed', '保存失败', '儲存失敗') : session.busy ? w('Calculating', '计算中', '計算中') : t(lang, 'shell.saved');
+  const rail = <ResultsRail route={route} session={session} view={view} lang={lang} onStatClick={inspectStat} onNavigate={navigate} pinned={pinned} onTogglePin={togglePin} />;
   return <AppDialogsProvider scope={stageKey}><PreviewProvider session={session} view={view}><NavigateContext.Provider value={navigate}><div className="shell-root" ref={setShellEl}>
     <a href="#shell-main" className="shell-skip-link">{t(lang, 'a11y.skipToContent')}</a>
     <header className="shell-topbar">
-      <Button className="shell-menu-button" size="icon" variant="ghost" aria-label={t(lang, 'a11y.openMenu')} onClick={() => setMenuOpen(true)}><Menu /></Button>
+      <TopbarAction hint={t(lang, 'a11y.openMenu')} className="shell-menu-button" size="icon" variant="ghost" aria-label={t(lang, 'a11y.openMenu')} onClick={() => setMenuOpen(true)}><Menu /></TopbarAction>
       {brand}
       <div className="shell-crumb">
         <AppSelectControl aria-label={w('Current build', '当前 BD', '目前 BD')} value={activeBuild?.id ?? ''} onChange={e => session.selectStage(e.target.value)}>{session.workspace?.builds.map((build, index) => <option key={build.id} value={build.id}>{build.name || `${w('Build', 'BD', 'BD')} ${index + 1}`}</option>)}</AppSelectControl>
@@ -203,15 +208,15 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
       </div>
       {tabs()}
       <div className="shell-topbar-actions">
-        <Button variant="ghost" size="sm" className="shell-palette-button" aria-label={w('Search and commands', '搜索与命令', '搜尋與命令')} onClick={() => setPaletteOpen(true)}><Search /><kbd>{/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'}</kbd></Button>
-        <Button variant="ghost" size="sm" className="shell-builds-button" aria-current={route === 'build' ? 'page' : undefined} onClick={() => navigate('build')}><Library /><span className="shell-quiet-label">{w('Build library', 'BD 库', 'BD 庫')}</span></Button>
-        <span className={`shell-save-state${session.storageFailed ? ' is-error' : ''}`} role="status" data-busy={session.busy || undefined}>{session.busy ? <LoaderCircle className="animate-spin" /> : <Check />}<span className="shell-quiet-label">{session.storageFailed ? w('Save failed', '保存失败', '儲存失敗') : session.busy ? w('Calculating', '计算中', '計算中') : w('Saved locally', '已保存到本地', '已儲存至本地')}</span></span>
-        <Button className="shell-history-button" variant="ghost" size="icon" aria-label={w('Undo', '撤销', '復原')} disabled={!session.canUndo || session.busy} onClick={session.undoEdit}><Undo2 /></Button>
-        <Button className="shell-history-button" variant="ghost" size="icon" aria-label={w('Redo', '重做', '重做')} disabled={!session.canRedo || session.busy} onClick={session.redoEdit}><Redo2 /></Button>
-        <Button className="shell-rail-toggle" variant="ghost" size="icon" aria-pressed={railHidden} aria-label={w('Results panel', '结果栏', '結果欄')} onClick={toggleRail}>{railHidden ? <PanelLeftOpen /> : <PanelLeftClose />}</Button>
-        <Button className="shell-stats-button" variant="ghost" size="icon" aria-label={w('Character stats', '角色属性', '角色屬性')} onClick={() => setStatsOpen(true)}><PanelRightOpen /></Button>
-        <Button asChild className="shell-source-button" variant="ghost" size="icon"><a href="https://github.com/ackness/pobr" target="_blank" rel="noopener noreferrer" aria-label={w('Source on GitHub (opens in a new tab)', '在 GitHub 查看源码（新标签页打开）', '在 GitHub 查看原始碼（另開分頁）')} title="GitHub"><GitHubMark /></a></Button>
-        <Button className="shell-settings-button" variant="ghost" size="icon" aria-label={t(lang, 'common.settings')} onClick={() => setSettingsOpen(true)}><Settings2 /></Button>
+        <TopbarAction hint={t(lang, 'shell.searchHint').replace('{key}', shortcutKey)} variant="ghost" size="sm" className="shell-palette-button" aria-label={w('Search and commands', '搜索与命令', '搜尋與命令')} onClick={() => setPaletteOpen(true)}><Search /><kbd>{/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'}</kbd></TopbarAction>
+        <TopbarAction hint={w('Build library', 'BD 库', 'BD 庫')} variant="ghost" size="sm" className="shell-builds-button" aria-current={route === 'build' ? 'page' : undefined} onClick={() => navigate('build')}><Library /><span className="shell-quiet-label">{w('Build library', 'BD 库', 'BD 庫')}</span></TopbarAction>
+        <TopbarHint hint={saveState}><span tabIndex={0} className={`shell-save-state${session.storageFailed ? ' is-error' : ''}`} role="status" data-busy={session.busy || undefined}>{session.busy ? <LoaderCircle className="animate-spin" /> : <Check />}<span className="shell-quiet-label">{saveState}</span></span></TopbarHint>
+        <TopbarAction hint={`${t(lang, 'shell.undoHint').replace('{key}', shortcutKey)} · ${session.busy ? t(lang, 'shell.waitForCalculation') : !session.canUndo ? t(lang, 'shell.noUndo') : ''}`.replace(/ · $/, '')} className="shell-history-button" variant="ghost" size="icon" aria-label={w('Undo', '撤销', '復原')} disabled={!session.canUndo || session.busy} onClick={session.undoEdit}><Undo2 /></TopbarAction>
+        <TopbarAction hint={`${t(lang, 'shell.redoHint').replace('{key}', shortcutKey)} · ${session.busy ? t(lang, 'shell.waitForCalculation') : !session.canRedo ? t(lang, 'shell.noRedo') : ''}`.replace(/ · $/, '')} className="shell-history-button" variant="ghost" size="icon" aria-label={w('Redo', '重做', '重做')} disabled={!session.canRedo || session.busy} onClick={session.redoEdit}><Redo2 /></TopbarAction>
+        <TopbarAction hint={t(lang, 'shell.railHint')} className="shell-rail-toggle" variant="ghost" size="icon" aria-pressed={railHidden} aria-label={w('Results panel', '结果栏', '結果欄')} onClick={toggleRail}>{railHidden ? <PanelLeftOpen /> : <PanelLeftClose />}</TopbarAction>
+        <TopbarAction hint={w('Character stats', '角色属性', '角色屬性')} className="shell-stats-button" variant="ghost" size="icon" aria-label={w('Character stats', '角色属性', '角色屬性')} onClick={() => setStatsOpen(true)}><PanelRightOpen /></TopbarAction>
+        <TopbarHint hint={w('Source on GitHub (opens in a new tab)', '在 GitHub 查看源码（新标签页打开）', '在 GitHub 查看原始碼（另開分頁）')}><Button asChild className="shell-source-button" variant="ghost" size="icon"><a href="https://github.com/ackness/pobr" target="_blank" rel="noopener noreferrer" aria-label={w('Source on GitHub (opens in a new tab)', '在 GitHub 查看源码（新标签页打开）', '在 GitHub 查看原始碼（另開分頁）')} title="GitHub"><GitHubMark /></a></Button></TopbarHint>
+        <TopbarAction hint={t(lang, 'common.settings')} className="shell-settings-button" variant="ghost" size="icon" aria-label={t(lang, 'common.settings')} onClick={() => setSettingsOpen(true)}><Settings2 /></TopbarAction>
       </div>
       <div className="shell-progress" data-active={session.busy || jobs > 0 || undefined} aria-hidden="true" />
     </header>
@@ -221,7 +226,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
         {session.storageFailed && <div className="shell-alert" role="alert"><p>{w('Browser storage is full or unavailable. Download a backup before leaving.', '浏览器存储已满或不可用，请先下载完整备份。', '瀏覽器儲存空間已滿或無法使用，請先下載完整備份。')}</p><Button onClick={() => download(session.exportWorkspace(), 'pobr-backup.json')}><Download />{w('Download backup', '下载备份', '下載備份')}</Button></div>}
         {preferencesFailed && <p className="shell-alert" role="alert">{w('Display preferences could not be saved on this device.', '显示偏好暂时无法保存到当前设备。', '顯示偏好暫時無法儲存至目前裝置。')}</p>}
         {session.syncNotice && <div className="shell-notice" role="status" data-sync={session.syncNotice.kind}><p>{syncMessage(session.syncNotice.kind, w)}</p><Button variant="ghost" onClick={session.dismissSyncNotice}>{w('Dismiss', '知道了', '知道了')}</Button></div>}
-        {reviewStage?.scope === stageKey && <div className="shell-notice" role="note"><p>{t(lang, 'config.importReview')}</p><Button variant="outline" onClick={() => { setReviewStage(null); navigate('config'); }}>{t(lang, 'config.review')}</Button><Button variant="ghost" onClick={() => setReviewStage(null)}>{t(lang, 'config.reviewDismiss')}</Button></div>}
+        {reviewStage?.scope === stageKey && <ImportReviewNotice route={route} lang={lang} onDismiss={() => setReviewStage(null)} onReview={() => { setReviewStage(null); navigate('config'); }} />}
         {Object.keys(session.editorDrafts).length > 0 && <div className="shell-notice" role="status"><p>{t(lang, 'editor.draftHint')}</p><Button variant="outline" onClick={() => navigate('items')}>{t(lang, 'editor.reviewItems')}</Button><Button variant="outline" onClick={() => navigate('tree')}>{t(lang, 'editor.reviewJewels')}</Button></div>}
         {session.calcError && <div className="shell-alert" role="alert"><strong>{w('Calculation unavailable', '当前计算不可用', '目前計算無法使用')}</strong><p>{session.calcError}</p></div>}
         {session.operationError && <div className="shell-alert" role="alert">{buildImportErrorMessage(session.operationError, lang)}</div>}
@@ -251,6 +256,6 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
       <div className="shell-nav-footer"><Button variant="ghost" onClick={() => { setMenuOpen(false); setSettingsOpen(true); }}><Settings2 />{w('Display settings', '显示设置', '顯示設定')}</Button></div>
     </SheetContent></Sheet>
     <Sheet open={statsOpen} onOpenChange={setStatsOpen}><SheetContent className="shell-stat-sheet"><SheetHeader><SheetTitle>{w('Character stats', '角色属性', '角色屬性')}</SheetTitle><SheetDescription>{w('Select a value to inspect its calculation.', '点击数值查看计算明细。', '點擊數值查看計算明細。')}</SheetDescription></SheetHeader>{rail}</SheetContent></Sheet>
-    <Settings open={settingsOpen} onOpenChange={setSettingsOpen} preferences={preferences} onChange={onPreferences} version={`v${__POBR_APP_VERSION__} · ${session.dataVersion}`} />
+    <Settings open={settingsOpen} onOpenChange={setSettingsOpen} preferences={preferences} onChange={onPreferences} version={calculationVersion(lang, view.calc?.provenance?.data_version ?? session.dataVersion, view.calc?.provenance?.engine_version, session.calcMs)} />
   </div></NavigateContext.Provider></PreviewProvider></AppDialogsProvider>;
 }

@@ -6,7 +6,8 @@ import { Button } from '../components/ui/button';
 import type { BuildSession } from '../hooks/useBuildSession';
 import { useSkillCatalog } from '../hooks/useSkillName';
 import { classDisplayName } from '../lib/nativeDisplayNames';
-import { damageTypeLabel, slotLabel, statNameLabel, type Lang } from '../lib/i18n';
+import { bindT, damageTypeLabel, slotLabel, statNameLabel, type Lang } from '../lib/i18n';
+import { contributionLabel, removalChange } from '../lib/sourceContributions';
 import { activeSkillEffects } from '../lib/skillSelection';
 import { skillDisplayName } from '../lib/skillNames';
 import { unsupportedLineLabel } from '../lib/diagnosticText';
@@ -41,6 +42,7 @@ function describe(finding: Finding, lang: Lang): { title: string; detail: string
 
 export function Overview({ session, view, lang, navigate, focusStat }: { session: BuildSession; view: SettledCalc; lang: Lang; navigate: (route: Route) => void; focusStat: (id: string) => void }) {
   const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
+  const tt = bindT(lang);
   const catalog = useSkillCatalog();
   const { goal, setGoal } = useUpgradeGoal();
   const build = session.workspace?.builds.find(entry => entry.id === session.workspace?.activeBuild);
@@ -99,7 +101,7 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
   const groupName = (index: number) => {
     const group = session.socketGroups[index];
     const effect = group && catalog.size ? activeSkillEffects(group, catalog)[(group.main_active_skill ?? 1) - 1] : undefined;
-    return `#${index + 1} ${effect ? skillName(effect.skillId) : ''}`.trim();
+    return [contributionLabel(lang, 'socket_group', String(index)), effect && skillName(effect.skillId)].filter(Boolean).join(' · ');
   };
   const entries = contribution ? contribution.data.entries.map(entry => ({ entry, delta: entry.deltas[field] ?? 0 })).filter(row => row.delta !== 0).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 10) : [];
   const biggest = Math.max(1, ...entries.map(row => Math.abs(row.delta)));
@@ -116,11 +118,15 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
   const weakest = MAX_HIT.map(type => [type, value(`${type}MaxHit`)] as const).filter((row): row is readonly [typeof MAX_HIT[number], number] => row[1] !== null).sort((a, b) => a[1] - b[1])[0];
   const spirit = value('Spirit'), spiritFree = value('SpiritUnreserved');
   const dash = (format: (n: number) => string) => (n: number | null) => n === null ? '—' : format(n);
+  const life = value('Life'), shield = value('EnergyShield');
+  const lifeAndShield = life !== null && shield !== null && shield > life
+    ? `${tt('overview.lifeAndShield')} ${int(life + shield)} · ` : '';
+  const spiritOver = spiritFree !== null && spiritFree < 0;
   const figures = [
     { id: 'CombinedDPS', label: w('Damage per second', '每秒伤害', '每秒傷害'), value: main?.combined_dps ?? null, format: dash(n => formatStatValue(n, 'float2')), sub: main ? skillName(main.skill_id) : w('No main skill', '未选择主技能', '未選擇主技能'), tone: 'dps' },
-    { id: 'TotalEHP', label: w('Effective HP', '有效生命', '有效生命'), value: value('TotalEHP'), format: dash(int), sub: weakest ? w(`Weakest to ${damageTypeLabel(lang, weakest[0])}: ${int(weakest[1])}`, `最弱：${damageTypeLabel(lang, weakest[0])} 单次 ${int(weakest[1])}`, `最弱：${damageTypeLabel(lang, weakest[0])} 單次 ${int(weakest[1])}`) : '', tone: 'ehp' },
-    { id: 'Life', label: w('Life', '生命', '生命'), value: value('Life'), format: dash(int), sub: `${w('ES', '护盾', '護盾')} ${int(value('EnergyShield') ?? 0)} · ${w('Mana', '魔力', '魔力')} ${int(value('Mana') ?? 0)}`, tone: 'life' },
-    { id: 'SpiritUnreserved', label: w('Spirit left', '剩余精魂', '剩餘精魂'), value: spiritFree, format: dash(int), sub: spirit === null ? '' : w(`of ${int(spirit)}`, `共 ${int(spirit)}`, `共 ${int(spirit)}`), tone: spiritFree !== null && spiritFree < 0 ? 'bad' : 'plain' },
+    { id: 'TotalEHP', label: w('Effective HP', '有效生命', '有效生命'), value: value('TotalEHP'), format: dash(int), sub: weakest ? tt('overview.weakestHit').replace('{type}', damageTypeLabel(lang, weakest[0])).replace('{value}', int(weakest[1])) : '', tone: 'ehp' },
+    { id: 'Life', label: w('Life', '生命', '生命'), value: value('Life'), format: dash(int), sub: `${lifeAndShield}${w('ES', '护盾', '護盾')} ${int(value('EnergyShield') ?? 0)} · ${w('Mana', '魔力', '魔力')} ${int(value('Mana') ?? 0)}`, tone: 'life' },
+    { id: 'SpiritUnreserved', label: spiritOver ? tt('overview.spiritOver') : w('Spirit left', '剩余精魂', '剩餘精魂'), value: spiritOver ? -spiritFree : spiritFree, format: dash(int), sub: spirit === null ? '' : tt('overview.spiritLimit').replace('{value}', int(spirit)), tone: spiritOver ? 'bad' : 'plain' },
   ];
 
   return <section className="ov" data-stale={view.stale || undefined} aria-labelledby="ov-title">
@@ -132,7 +138,7 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
     <dl className="ov-figures" aria-busy={session.busy}>
       {figures.map(figure => <div key={figure.id} className={`ov-figure is-${figure.tone}`}>
         <dt>{figure.label}</dt>
-        <dd><button type="button" onClick={() => focusStat(figure.id)}><AnimatedNumber value={figure.value} format={figure.format} /></button></dd>
+        <dd><button type="button" onClick={() => focusStat(figure.id)}><AnimatedNumber value={figure.value} format={figure.format} /><span className="ov-source">{tt('overview.sources')}</span></button></dd>
         <small>{figure.sub}</small>
       </div>)}
     </dl>
@@ -168,17 +174,18 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
 
       <div className="ov-col">
         <section className="ov-sec" aria-labelledby="ov-contribution">
-          <div className="ov-sec-head"><h2 id="ov-contribution">{w('What each piece contributes', '每件装备与技能的贡献', '每件裝備與技能的貢獻')}</h2>
+          <div className="ov-sec-head"><h2 id="ov-contribution">{tt('calcs.attribution')}</h2>
             <div className="ov-toggle" role="group" aria-label={w('Measure', '指标', '指標')}>{ATTRIBUTION_FIELDS.map(([id, label]) => <button key={id} type="button" aria-pressed={field === id} onClick={() => setField(id)}>{label === 'DPS' ? w('DPS', '伤害', '傷害') : label === 'EHP' ? w('EHP', '有效生命', '有效生命') : w('Life', '生命', '生命')}</button>)}</div></div>
+          <p className="ov-hint">{tt('calcs.attributionHint')}</p>
           {!contribution || contribution.version !== session.stateVersion
             ? <div className="ov-compute"><p className="ov-muted">{contribution ? w('The build changed since this was measured.', 'BD 已变化，结果已过期。', 'BD 已變化，結果已過期。') : w('See how removing each item or skill group changes the result.', '查看移除每件装备或技能组后，数值会如何变化。', '查看移除每件裝備或技能組後，數值會如何變化。')}</p>
-              <div className="ov-compute-actions"><Button variant="outline" disabled={contributionBusy || !calc} onClick={computeContribution}>{contributionBusy ? w('Measuring…', '计算中…', '計算中…') : contribution ? w('Measure again', '重新计算', '重新計算') : w('Analyze contributions', '分析贡献', '分析貢獻')}</Button>
+              <div className="ov-compute-actions"><Button variant="outline" disabled={contributionBusy || !calc} onClick={computeContribution}>{contributionBusy ? w('Measuring…', '计算中…', '計算中…') : contribution ? w('Measure again', '重新计算', '重新計算') : tt('calcs.runAttribution')}</Button>
                 {contributionBusy && <Button variant="ghost" onClick={job.cancel}>{w('Cancel', '取消', '取消')}</Button>}</div>{job.error && <p className="ov-muted" role="alert">{job.error}</p>}</div>
             : entries.length === 0 ? <p className="ov-muted">{w('Nothing changes this number.', '没有任何来源影响该数值。', '沒有任何來源影響該數值。')}</p>
               : <ol className="ov-rank ov-contrib">{entries.map(({ entry, delta }) => <li key={`${entry.kind}:${entry.id}`}><div>
-                <span className="ov-rank-name">{entry.kind === 'socket_group' ? groupName(Number(entry.id)) : slotLabel(lang, entry.id)}</span>
-                <span className="ov-bar" data-sign={delta < 0 ? 'neg' : 'pos'}><span style={{ width: `${(Math.abs(delta) / biggest) * 100}%` }} /></span>
-                <span className="ov-rank-value">{delta > 0 ? '+' : '−'}{formatStatValue(Math.abs(delta), 'float2')}{baseline > 0 && <em> {((Math.abs(delta) / baseline) * 100).toFixed(1)}%</em>}</span></div></li>)}</ol>}
+                <span className="ov-rank-name">{entry.kind === 'socket_group' ? groupName(Number(entry.id)) : contributionLabel(lang, entry.kind, entry.id)}</span>
+                <span className="ov-bar" data-sign={removalChange(delta) < 0 ? 'neg' : 'pos'}><span style={{ width: `${(Math.abs(delta) / biggest) * 100}%` }} /></span>
+                <span className="ov-rank-value">{tt(delta > 0 ? 'calcs.removalLoss' : 'calcs.removalGain').replace('{value}', formatStatValue(Math.abs(delta), 'float2'))}{baseline > 0 && <em>{lang === 'en-US' ? ' (' : '（'}{((Math.abs(delta) / baseline) * 100).toFixed(1)}%{lang === 'en-US' ? ')' : '）'}</em>}</span></div></li>)}</ol>}
         </section>
 
         <section className="ov-sec" aria-labelledby="ov-trust">

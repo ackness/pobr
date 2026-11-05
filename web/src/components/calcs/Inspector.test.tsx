@@ -39,3 +39,11 @@ test.each([['CritChance', 22.35, '22.4%'], ['FireResist', 20, '20%']] as const)(
   const html = inspect({ minions: [{ index: 7, name: 'Wolf Companion', stats: { [id]: value }, breakdowns: {}, breakdown_descriptors: { [id]: 'none' } }] } as unknown as CalculateBuildResponse, `Minion:7:${id}`, 'en-US');
   expect(html).toContain(`<p class="insp-value">${expected}</p>`);
 });
+
+test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('Inspector uses the internal navigation arrow in %s', lang => {
+  vi.mocked(useStatBreakdown).mockReturnValue({ detail: null, loading: false, retry: vi.fn() });
+  const html = inspect({ stats: [{ id: 'Life', category: 'Resource', value: 100 }], breakdown_descriptors: { Life: 'none' } }, 'Life', lang);
+  const footer = html.match(/<footer[\s\S]*?<\/footer>/)![0];
+  expect(footer).toContain('lucide-chevron-right');
+  expect(footer).not.toContain('lucide-arrow-up-right');
+});

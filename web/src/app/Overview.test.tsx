@@ -1,11 +1,14 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { AttributionResponse, CalculateBuildResponse } from '../api/types';
 import type { BuildSession } from '../hooks/useBuildSession';
 import { UpgradeGoalProvider } from '../hooks/useUpgradeGoal';
 import { Overview } from './Overview';
 
 vi.mock('../hooks/useSkillName', () => ({ useSkillCatalog: () => new Map() }));
-vi.mock('./jobs/useCancellableJob', () => ({ useCancellableJob: () => ({ result: null, running: false }) }));
+const job = vi.hoisted(() => ({ result: null as { version: number; data: AttributionResponse } | null, running: false }));
+vi.mock('./jobs/useCancellableJob', () => ({ useCancellableJob: () => job }));
+afterEach(() => { job.result = null; });
 
 function render(busy: boolean, lang: 'en-US' | 'zh-CN' | 'zh-TW', overrides: Partial<BuildSession> = {}) {
   const session = { socketGroups: [{ gems: [] }], hasBuildContent: true, character: null,
@@ -42,4 +45,39 @@ describe('Overview skill damage', () => {
     expect(html).toContain('当前计算不可用。');
     expect(html).not.toContain('暂时没有造成伤害的技能。');
   });
+});
+
+function summary(stats: Record<string, number>, lang: 'en-US' | 'zh-CN' | 'zh-TW' = 'zh-CN') {
+  const calc = { stats: Object.entries(stats).map(([id, value]) => ({ id, value })),
+    item_errors: [], unsupported_modifiers: [] } as unknown as CalculateBuildResponse;
+  const session = { socketGroups: [], hasBuildContent: true, classNames: { classes: {}, ascendancies: {} },
+    stateVersion: 1 } as unknown as BuildSession;
+  return renderToStaticMarkup(<UpgradeGoalProvider><Overview session={session} view={{ calc, previous: null, stale: false }}
+    lang={lang} navigate={() => {}} focusStat={() => {}} /></UpgradeGoalProvider>);
+}
+
+it('shows a positive Spirit excess with its limit, the weakest hit and shield-dominant total', () => {
+  const html = summary({ Life: 1000, EnergyShield: 5000, Spirit: 100, SpiritUnreserved: -109, PhysicalMaxHit: 19203 });
+  expect(html).toContain('精魂超出');
+  expect(html).toContain('>109<span class="ov-source">来源 ›</span>');
+  expect(html).toContain('上限 100');
+  expect(html).toContain('最怕物理：单次最多承受 19,203');
+  expect(html).toContain('生命 + 能量护盾 6,000');
+  expect(html.match(/class="ov-source"/g)).toHaveLength(4);
+  expect(summary({ Life: 5000, EnergyShield: 1000, SpiritUnreserved: 20 })).not.toContain('生命 + 能量护盾');
+  expect(summary({ SpiritUnreserved: 0 })).not.toContain('精魂超出');
+});
+
+it('keeps the overlap explanation after showing removal losses and gains', () => {
+  job.result = { version: 1, data: { baseline: { CombinedDPS: 1000 }, entries: [
+    { kind: 'item', id: 'weapon1', deltas: { CombinedDPS: 900 } },
+    { kind: 'socket_group', id: '1', deltas: { CombinedDPS: -200 } },
+  ] } };
+  const html = summary({});
+  expect(html).toContain('移除后损失 900');
+  expect(html).toContain('移除后增加 200');
+  expect(html).toContain('（90.0%）');
+  expect(html).toContain('合计可超过 100%');
+  expect(html).toContain('装备 · 主手');
+  expect(html).toContain('技能组 2');
 });

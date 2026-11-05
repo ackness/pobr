@@ -14,18 +14,90 @@ async function importBuild(page: Page) {
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await expect(page.locator('#ov-title')).toBeVisible();
-  await expect(page.locator('.shell-save-state')).toHaveText('Saved locally');
+  await expect(page.locator('.shell-save-state')).toHaveText('Saved in this browser');
 }
 
 test('a number in the results rail opens the calculation behind it, and it can be closed', async ({ page }) => {
   await importBuild(page);
-  // An exact label: `hasText` is a substring match and would pick "Enemy Life Equivalent".
+  // An exact label: `hasText` is a substring match and would pick "Enemy life dealt per hit".
   await page.locator('.rail-row.is-link').filter({ has: page.locator('.rail-label', { hasText: /^Life$/ }) }).first().click();
   await expect(page.locator('.insp h2')).toHaveText('Life');
   await expect(page.locator('.insp .formula-final, .insp .breakdown-summary').first()).toBeVisible({ timeout: 30_000 });
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.locator('.insp')).toHaveCount(0);
 });
+
+for (const width of [390, 1440]) {
+  test(`inspector formula and modifier columns fit inside the popover at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await importBuild(page);
+    const results = width === 390
+      ? page.getByRole('dialog', { name: 'Character stats', exact: true })
+      : page.locator('.shell-rail');
+    if (width === 390) await page.getByRole('button', { name: 'Character stats', exact: true }).click();
+    await expect(results).toBeVisible();
+    await results.locator('.rail-row.is-link').filter({ has: page.locator('.rail-label', { hasText: /^Life$/ }) }).locator('.rail-value').click();
+    const inspector = page.locator('.insp');
+    await expect(inspector.locator('h2')).toHaveText('Life');
+    const formula = inspector.locator('.breakdown-formula').first();
+    await expect(formula).toBeVisible({ timeout: 30_000 });
+    // Stress the real formula styling with long labels and numbers in both numeric columns.
+    await formula.evaluate(table => {
+      table.querySelectorAll('th').forEach(cell => { cell.textContent = 'Long calculation source '.repeat(20); });
+      table.querySelectorAll('.formula-operand, .formula-result').forEach(cell => { cell.textContent = '-2,290,002.123456789'; });
+    });
+    const measurements = await formula.evaluate(table => {
+      const panel = table.closest('.insp')!.getBoundingClientRect();
+      const bounds = table.getBoundingClientRect();
+      return Array.from(table.querySelectorAll('.formula-operand, .formula-result'), cell => {
+        const box = cell.getBoundingClientRect();
+        const range = document.createRange();
+        range.selectNodeContents(cell);
+        const text = range.getBoundingClientRect();
+        return { whiteSpace: getComputedStyle(cell).whiteSpace, width: box.width, tableWidth: bounds.width,
+          left: box.left, right: box.right, textLeft: text.left, textRight: text.right,
+          panelLeft: panel.left, panelRight: panel.right, viewportWidth: innerWidth };
+      });
+    });
+    expect(measurements.length).toBeGreaterThan(0);
+    for (const cell of measurements) {
+      expect(cell.whiteSpace).toBe('normal');
+      expect(cell.width).toBeGreaterThanOrEqual(cell.tableWidth * .24);
+      expect(cell.left).toBeGreaterThanOrEqual(cell.panelLeft - 1);
+      expect(cell.right).toBeLessThanOrEqual(Math.min(cell.panelRight, cell.viewportWidth) + 1);
+      expect(cell.textLeft).toBeGreaterThanOrEqual(cell.left - 1);
+      expect(cell.textRight).toBeLessThanOrEqual(cell.right + 1);
+    }
+    const modifiers = inspector.locator('.modifier-table').first();
+    await expect(modifiers).toBeVisible();
+    const columns = await modifiers.evaluate(table => {
+      table.querySelectorAll('.mod-value').forEach(cell => { cell.textContent = '-2,290,002'; });
+      table.querySelectorAll('.mod-text').forEach(cell => { cell.textContent = '角色等级与属性提供的基础值'; });
+      table.querySelectorAll('.mod-origin').forEach(cell => { cell.textContent = 'LongCharacterBaseSourceWithoutSpaces'; });
+      const panel = table.closest('.insp')!.getBoundingClientRect();
+      return Array.from(table.querySelectorAll('tbody tr'), row => {
+        const value = row.querySelector('.mod-value')!;
+        const valueBox = value.getBoundingClientRect();
+        const text = row.querySelector('.mod-text')!.getBoundingClientRect();
+        const source = row.querySelector('.mod-origin')!;
+        const sourceBox = source.getBoundingClientRect();
+        return { valueWhiteSpace: getComputedStyle(value).whiteSpace, valueWidth: valueBox.width,
+          valueRight: valueBox.right, textWidth: text.width, sourceWidth: sourceBox.width,
+          sourceWhiteSpace: getComputedStyle(source).whiteSpace, sourceRight: sourceBox.right,
+          tableWidth: table.getBoundingClientRect().width, panelRight: panel.right, viewportWidth: innerWidth };
+      });
+    });
+    expect(columns.length).toBeGreaterThan(0);
+    for (const column of columns) {
+      expect(column.valueWhiteSpace).toBe('nowrap');
+      expect(column.textWidth).toBeGreaterThan(column.valueWidth);
+      expect(column.sourceWhiteSpace).toBe('normal');
+      expect(column.sourceWidth).toBeLessThanOrEqual(column.tableWidth * .26 + 1);
+      expect(column.valueRight).toBeLessThanOrEqual(Math.min(column.panelRight, column.viewportWidth) + 1);
+      expect(column.sourceRight).toBeLessThanOrEqual(Math.min(column.panelRight, column.viewportWidth) + 1);
+    }
+  });
+}
 
 test('Ctrl+K finds a stat by name and opens its calculation', async ({ page }) => {
   await importBuild(page);
@@ -103,7 +175,7 @@ test('hovering a library item previews its effect without changing the build', a
   // An empty slot opens its editor straight away, already holding a template item.
   await page.getByRole('button', { name: 'Apply changes', exact: true }).click();
   await page.getByRole('button', { name: 'Save to item library', exact: true }).click();
-  await expect(page.locator('.shell-save-state')).toHaveText('Saved locally');
+  await expect(page.locator('.shell-save-state')).toHaveText('Saved in this browser');
   await page.locator('.doll-cell[data-slot="ring2"] .doll-slot').click();
   const before = await page.evaluate(() => localStorage.getItem('pobr-v2-build-state'));
   const row = page.locator('.library-row').first();
@@ -122,7 +194,7 @@ test('hovering a replacement position on Upgrades previews its effect from the r
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 90_000 });
   await page.locator('.doll-cell[data-slot="ring1"] .doll-slot').click();
   await page.getByRole('button', { name: 'Apply changes', exact: true }).click();
-  await expect(page.locator('.shell-save-state')).toHaveText('Saved locally');
+  await expect(page.locator('.shell-save-state')).toHaveText('Saved in this browser');
   await page.goto('/trade');
   await page.getByRole('textbox', { name: 'Complete item text' }).fill('Rarity: RARE\nNew Item\nSapphire Ring\n+50 to maximum Life');
   // Typing is not pasting, so ask for the comparison explicitly.
