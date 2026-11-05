@@ -355,16 +355,12 @@ fn gem_names(data: &BuildData) -> Result<HashMap<(String, bool), BTreeSet<String
         .base_item_names("zh-CN")
         .map_err(|e| e.to_string())?;
     let mut result: HashMap<(String, bool), BTreeSet<String>> = HashMap::new();
-    let base_names: HashMap<_, _> = data
-        .base_items
-        .values()
-        .map(|b| (b.id.as_str(), b.name.as_str()))
-        .collect();
+    let base_names = &data.base_item_names;
     for gem in data.skill_gems.values() {
         if let Some(effect) = &gem.granted_effect_id {
             for name in [
                 names.get(&gem.id).map(String::as_str),
-                base_names.get(gem.id.as_str()).copied(),
+                base_names.get(&gem.id).map(String::as_str),
             ]
             .into_iter()
             .flatten()
@@ -554,10 +550,9 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
             continue;
         };
         let base = data
-            .base_items
-            .values()
-            .find(|b| b.id == text(jewel, "id"))
-            .map(|b| b.name.clone())
+            .base_item_names
+            .get(text(jewel, "id"))
+            .cloned()
             .unwrap_or_else(|| canonical(text(jewel, "name")));
         let mods: Vec<_> = array(jewel, "mod_descriptions")
             .iter()
