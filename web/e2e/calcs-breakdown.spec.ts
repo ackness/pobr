@@ -15,7 +15,10 @@ const num = (text: string | null) => Number((text ?? '').replace(/[^0-9.-]/g, ''
 
 /** Click a result in the left-hand panel and wait for the inspector to show its breakdown. */
 async function inspectFromRail(page: Page, label: string | RegExp, heading: string): Promise<Locator> {
-  await statRow(page, label).first().click();
+  const row = statRow(page, label).first();
+  const fold = row.locator('xpath=ancestor::section[@data-folded]');
+  if (await fold.count()) await fold.getByRole('button', { expanded: false }).click();
+  await row.click();
   const inspector = page.locator('.insp');
   await expect(inspector.locator('h2')).toHaveText(heading);
   await expect(inspector.locator('div.breakdown-detail').first()).toBeVisible({ timeout: 90_000 });

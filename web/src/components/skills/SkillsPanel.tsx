@@ -27,15 +27,17 @@ import { useSkillMetrics } from '../../app/pages/skills/useSkillMetrics';
 import { formatStatValue } from '../../lib/statDisplay';
 import { mainMinion } from '../../lib/mainMinion';
 import './skills.css';
+import { useSpiritReservations } from '../../app/pages/skills/useSpiritReservations';
 
 interface Props {
   session: BuildSession;
   lang: Lang;
   active: boolean;
+  focusSpirit?: number;
   focusOptimizer?: { group: number; nonce: number };
 }
 
-export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
+export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit }: Props) {
   const tt = bindT(lang);
   const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
   const [catalog, setCatalog] = useState<GemCatalogEntry[]>([]);
@@ -65,6 +67,17 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
     : gem.name_spec ? `${gem.name_spec} · ${tt('skills.unresolved')}` : tt('skills.unresolved');
 
   const groups = session.socketGroups;
+  const [spiritRequested, setSpiritRequested] = useState(0);
+  const spiritReport = useSpiritReservations(session, active && (spiritRequested > 0 || focusSpirit !== undefined), spiritRequested);
+  const spiritSummary = useRef<HTMLDivElement>(null);
+  const consumedSpiritFocus = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (!active || focusSpirit === undefined || consumedSpiritFocus.current === focusSpirit) return;
+    consumedSpiritFocus.current = focusSpirit;
+    setShowAllGroups(true);
+    spiritSummary.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    spiritSummary.current?.focus();
+  }, [active, focusSpirit]);
   const mainIndex = session.calcParams.main_socket_group;
   // Retain only the selected workspace; group ordinals cannot own it after compaction.
   const [openGroup, setOpenGroup] = useState<{ index: number; revision: number; focusNonce?: number } | null>(null);
@@ -145,6 +158,14 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
       {active && <NamedSets session={session} lang={lang} kind="skill" />}
       {catalogError && <p className="opt-error">{supportText(lang, 'catalogError')}</p>}
       {!catalogError && !catalog.length && <p className="skills-hint">{supportText(lang, 'loading')}</p>}
+      {active && groups.length > 0 && <div ref={spiritSummary} className="skill-spirit-summary" tabIndex={-1}>
+        <AppButton disabled={session.busy} onClick={() => setSpiritRequested(value => value + 1)}>{tt('skills.inspectSpirit')}</AppButton>
+        {(spiritRequested > 0 || focusSpirit !== undefined) && <p role="status">{spiritReport === undefined ? tt('skills.spiritPending') : spiritReport === null ? tt('skills.spiritUnavailable') : tt('skills.spiritExplanation')}</p>}
+        {spiritReport?.shared.map(entry => <p key={entry.skillId}>{tt('skills.spiritSharedGroups')
+          .replace('{groups}', entry.groups.map(index => index + 1).join(lang === 'en-US' ? ', ' : '、'))
+          .replace('{skill}', gemName(entry.skillId))}</p>)}
+        {spiritReport?.limited && <p role="note">{tt('skills.spiritLimits')}</p>}
+      </div>}
       <div className="skill-groups" data-list-expanded={showAllGroups || undefined} style={{ '--skill-rows': groups.length + 1 } as CSSProperties}>
         {groups.length > 0 ? toolbar : active && <div className="skills-empty">
           <h3>{w('Start with the skill that deals your damage', '先加入造成伤害的计算技能', '先加入造成傷害的計算技能')}</h3>
@@ -309,6 +330,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
           return (
             <div
               key={idx}
+              data-spirit-reserving={spiritReport?.groups.get(idx)?.reserves || undefined}
               className={`skill-group${isMain ? ' is-main' : ''}${group.enabled ? '' : ' is-disabled'}${isOpen ? ' is-selected' : ''}`}
             >
               <div className="skill-group-header">
@@ -336,6 +358,11 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                     )}
                   </span>
                   {group.weapon_set && <span className="ui-badge">{tt('weapons.set')} {group.weapon_set}</span>}
+                  {spiritReport?.groups.get(idx)?.reserves && <span className="skill-spirit-cost">
+                    {spiritReport.shared.some(entry => entry.groups.includes(idx)) ? tt('skills.spiritShared')
+                      : tt('skills.spiritReserving')}
+                    {(spiritReport.groups.get(idx)!.released > 0) && ` · ${tt('skills.spiritReleased').replace('{value}', formatStatValue(spiritReport.groups.get(idx)!.released, 'int', lang))}`}
+                  </span>}
                   {isMain && <span className="skill-group-main">{tt('skills.main')}</span>}
                   {grantedSourceLabel(lang, group.source) && (
                     <span className="granted-badge">

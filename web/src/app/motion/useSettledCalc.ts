@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { calculatedSkillKey } from '../calculatedSkill';
 import type { CalculateBuildResponse } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 
@@ -17,11 +18,12 @@ export interface SettledCalc {
  * baseline, and results never carry across `scope` (a different build or stage).
  */
 export function useSettledCalc(session: BuildSession, scope: string | undefined): SettledCalc {
-  const [held, setHeld] = useState<{ scope?: string; calc: CalculateBuildResponse; previous: CalculateBuildResponse | null } | null>(null);
+  const [held, setHeld] = useState<{ scope?: string; selection: string; calc: CalculateBuildResponse; previous: CalculateBuildResponse | null } | null>(null);
+  const selection = calculatedSkillKey(session);
   const fresh = session.calcError ? null : session.calc;
   if (fresh && (held?.calc !== fresh || held.scope !== scope)) {
-    setHeld({ scope, calc: fresh, previous: held && held.scope === scope ? held.calc : null });
+    setHeld({ scope, selection, calc: fresh, previous: held && held.scope === scope && held.selection === selection ? held.calc : null });
   }
   const usable = held && held.scope === scope && !session.calcError ? held : null;
-  return { calc: usable?.calc ?? null, previous: usable?.previous ?? null, stale: session.busy || !session.calc || !!session.calcError };
+  return { calc: usable?.calc ?? null, previous: usable?.selection === selection ? usable.previous : null, stale: session.busy || !session.calc || !!session.calcError };
 }

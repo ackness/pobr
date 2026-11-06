@@ -11,7 +11,7 @@ vi.mock('./jobs/useCancellableJob', () => ({ useCancellableJob: () => job }));
 afterEach(() => { job.result = null; });
 
 function render(busy: boolean, lang: 'en-US' | 'zh-CN' | 'zh-TW', overrides: Partial<BuildSession> = {}) {
-  const session = { socketGroups: [{ gems: [] }], hasBuildContent: true, character: null,
+  const session = { socketGroups: [{ gems: [] }], hasBuildContent: true, character: null, calcParams: {},
     classNames: { classes: {}, ascendancies: {} }, busy, calcError: null, stateVersion: 1, ...overrides } as unknown as BuildSession;
   const html = renderToStaticMarkup(<UpgradeGoalProvider><Overview session={session}
     view={{ calc: null, previous: null, stale: busy }} lang={lang} navigate={() => {}} focusStat={() => {}} />
@@ -50,7 +50,7 @@ describe('Overview skill damage', () => {
 function summary(stats: Record<string, number>, lang: 'en-US' | 'zh-CN' | 'zh-TW' = 'zh-CN', extra: Partial<CalculateBuildResponse> = {}) {
   const calc = { stats: Object.entries(stats).map(([id, value]) => ({ id, value })),
     item_errors: [], unsupported_modifiers: [], ...extra } as unknown as CalculateBuildResponse;
-  const session = { socketGroups: [], hasBuildContent: true, classNames: { classes: {}, ascendancies: {} },
+  const session = { socketGroups: [], calcParams: {}, hasBuildContent: true, classNames: { classes: {}, ascendancies: {} },
     stateVersion: 1 } as unknown as BuildSession;
   return renderToStaticMarkup(<UpgradeGoalProvider><Overview session={session} view={{ calc, previous: null, stale: false }}
     lang={lang} navigate={() => {}} focusStat={() => {}} /></UpgradeGoalProvider>);
@@ -95,4 +95,10 @@ it('uses the main minion damage for the headline and source contributions with s
   expect(html).toContain('移除后损失 11,000');
   expect(html).toContain('单只');
   expect(html).toContain('上限 7 只');
+});
+
+it('shows all four base resistances in a compact summary', () => {
+  const html = summary({ FireResist: 75, ColdResist: 60, LightningResist: 76, ChaosResist: -20 });
+  const resistance = html.match(/<dl class="ov-resistances"[\s\S]*?<\/dl>/)![0];
+  for (const text of ['火焰抗性', '冰冷抗性', '闪电抗性', '混沌抗性', '75%', '60%', '76%', '-20%']) expect(resistance).toContain(text);
 });

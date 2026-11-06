@@ -28,7 +28,7 @@ it('requests combined DPS, then shows removal losses, gains and unique source la
     { kind: 'socket_group', id: '1', deltas: { CombinedDPS: 200 } },
   ] };
   const runAttribution = vi.fn().mockResolvedValue(report);
-  const session = { stateVersion: 1, calc: {}, runAttribution, socketGroups: [{ gems: [] }, { gems: [{ skill_id: 'Fireball' }] }] } as unknown as BuildSession;
+  const session = { stateVersion: 1, calcParams: {}, calc: {}, runAttribution, socketGroups: [{ gems: [] }, { gems: [{ skill_id: 'Fireball' }] }] } as unknown as BuildSession;
   const render = () => { state.cursor = 0; return renderToStaticMarkup(<AttributionView session={session} lang="en-US" />); };
   expect(render()).not.toContain('attribution-table');
   await state.click!({} as never);
@@ -41,4 +41,15 @@ it('requests combined DPS, then shows removal losses, gains and unique source la
   expect(html).toContain('>-2,290,002<span class="delta-pct"> (-96.1%)');
   expect(html).toContain('>+20<span class="delta-pct"> (20.0%)');
   expect(html).toContain('totals can exceed 100%');
+});
+
+it('distinguishes a changed calculated skill from a build edit', async () => {
+  const runAttribution = vi.fn().mockResolvedValue({ baseline: {}, entries: [] });
+  const session = { stateVersion: 1, calcParams: { main_socket_group: 0 }, calc: {}, runAttribution, socketGroups: [{ gems: [] }, { gems: [] }] } as unknown as BuildSession;
+  const render = () => { state.cursor = 0; return renderToStaticMarkup(<AttributionView session={session} lang="en-US" />); };
+  render(); await state.click!({} as never);
+  session.stateVersion = 2; session.calcParams.main_socket_group = 1;
+  expect(render()).toContain('Calculated skill changed; run the analysis again');
+  session.calcParams.main_socket_group = 0;
+  expect(render()).toContain('The build changed. Measure source contributions again');
 });

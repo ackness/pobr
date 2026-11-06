@@ -31,9 +31,10 @@ export async function go(page: Page, name: string) {
   await expect(page).toHaveURL(new RegExp(`${path === '/' ? '/' : path}$`));
 }
 
-/** The Hit DPS row of the results panel: the first row under the headline, whatever the interface language. */
+/** Hit DPS, or the Combined DPS headline when the two values are equal. */
 export const hitDps = (page: Page): Locator =>
-  page.locator('.shell-rail #character-stats .rail-headline > .rail-row .rail-value').first();
+  page.locator('.shell-rail #character-stats [data-stat="TotalDPS"] .rail-value')
+    .or(page.locator('.shell-rail #character-stats:not(:has([data-stat="TotalDPS"])) [data-stat="CombinedDPS"] .rail-hero-value')).first();
 
 /** Numbers settle at once with reduced motion, so a read right after a calculation never catches a tween. */
 export const noMotion = { reducedMotion: 'reduce' } as const;

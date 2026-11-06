@@ -1,3 +1,4 @@
+import { calculatedSkillKey } from '../../app/calculatedSkill';
 import { contributionLabel, removalChange } from '../../lib/sourceContributions';
 import { COMMON_METRICS, defaultMetric } from '../../lib/metricSelection';
 import { AppButton, AppInput } from '../shared/controls';
@@ -880,7 +881,8 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
 
 export function AttributionView({ session, lang }: { session: BuildSession; lang: Lang }) {
   const tt = bindT(lang);
-  const [completed, setCompleted] = useState<{ version: number; report: AttributionResponse } | null>(null);
+  const selection = calculatedSkillKey(session);
+  const [completed, setCompleted] = useState<{ version: number; selection: string; report: AttributionResponse } | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fields = ['CombinedDPS', 'Life', 'EnergyShield', 'TotalEHP'];
@@ -901,7 +903,7 @@ export function AttributionView({ session, lang }: { session: BuildSession; lang
     setError(null);
     try {
       const result = await session.runAttribution(fields);
-      if (current === sequence.current) setCompleted({ version, report: result });
+      if (current === sequence.current) setCompleted({ version, selection, report: result });
     } catch (err) {
       if (current === sequence.current) setError(formatApiError(err));
     } finally {
@@ -930,7 +932,7 @@ export function AttributionView({ session, lang }: { session: BuildSession; lang
       <AppButton onClick={run} disabled={running || session.busy || !session.calc}>
         {running ? tt('calcs.running') : tt('calcs.runAttribution')}
       </AppButton>
-      {completed && !report && <p className="calcs-hint" role="status">{tt('calcs.attributionStale')}</p>}
+      {completed && !report && <p className="calcs-hint" role="status">{tt(completed.selection !== selection ? 'overview.skillAnalysisChanged' : 'calcs.attributionStale')}</p>}
       {error && <div className="calc-error">{error}</div>}
       {report && (
         <div className="breakdown-scroll">

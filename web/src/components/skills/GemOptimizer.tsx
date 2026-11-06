@@ -244,8 +244,8 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     {result.plans.map((plan, index) => {
       // Resting on a recommendation shows what it would do, without applying it (only where a preview provider is mounted; handlers add no attributes).
       const hover = preview ? {
-        onEnter: () => preview.show({ key: `support:${groupIndex}:${index}`, label: `${words(lang, 'Supports', '辅助', '輔助')}: ${plan.supports.map(gem => gemName(gem.skill_id)).join(' + ')}`,
-          request: () => { const request = session.currentRequest(); return request ? { ...request, socket_groups: applySupportPlan(request.socket_groups ?? session.socketGroups, groupIndex, plan) } : null; } }),
+        onEnter: (event: { currentTarget: Element }) => preview.show({ key: `support:${groupIndex}:${index}`, label: `${words(lang, 'Supports', '辅助', '輔助')}: ${plan.supports.map(gem => gemName(gem.skill_id)).join(' + ')}`,
+          request: () => { const request = session.currentRequest(); return request ? { ...request, socket_groups: applySupportPlan(request.socket_groups ?? session.socketGroups, groupIndex, plan) } : null; } }, event.currentTarget),
         onLeave: preview.clear } : undefined;
       return <article className="support-plan" key={index} onMouseEnter={hover?.onEnter} onMouseLeave={hover?.onLeave} onFocus={hover?.onEnter} onBlur={hover?.onLeave}>
       <div className="support-plan-gems">{plan.supports.map(gem => <span className="opt-chip" key={gem.skill_id} data-skill-id={gem.skill_id}

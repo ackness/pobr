@@ -13,7 +13,7 @@ const xml = `<PathOfBuilding2>
   <Notes>Original notes</Notes>
 </PathOfBuilding2>`;
 
-const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Inspected skill', exact: true });
+const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Calculated skill', exact: true });
 const hitDps = (page: Page) => statValue(page, /^Hit DPS$/).first();
 /** Opens the Imported PoB loadouts section of the Build page and switches to one of them by its position. */
 async function switchLoadout(page: Page, index: number) {

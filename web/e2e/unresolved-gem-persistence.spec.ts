@@ -10,7 +10,7 @@ import type { BuildWorkspace } from '../src/lib/buildWorkspace';
 type Envelope = SavedSession & { workspace: BuildWorkspace };
 const cometCode = readFileSync(new URL('../../examples/demo-bd-test/builds/sorceress-stormweaver-comet/code.txt', import.meta.url), 'utf8').trim();
 const hitDps = (page: Page) => statValue(page, /^Hit DPS$/).first();
-const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Inspected skill', exact: true });
+const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Calculated skill', exact: true });
 
 async function snapshot(page: Page): Promise<Envelope> {
   return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));

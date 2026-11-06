@@ -63,6 +63,7 @@ export const STAT_SECTIONS: StatSectionDef[] = [
       { id: 'OffHandAccuracy', label: { 'en-US': 'Off Hand Accuracy', 'zh-TW': '副手命中值', 'zh-CN': '副手命中值' }, format: 'int', hideZero: true },
       { id: 'AccuracyHitChanceUncapped', label: { 'en-US': 'Uncapped Chance to Hit', 'zh-TW': '無上限命中率', 'zh-CN': '无上限命中率' }, format: 'percent', hideZero: true },
       { id: 'QuantityMultiplier', label: { 'en-US': 'Quantity Multiplier', 'zh-TW': '數量倍率', 'zh-CN': '数量倍率' }, format: 'float2', hideZero: true },
+      { id: 'TotalDotDPS', label: { 'en-US': 'Total DoT DPS', 'zh-TW': '持續傷害 DPS', 'zh-CN': '持续伤害 DPS' }, format: 'float2', hideZero: true },
       { id: 'TotalDPS', label: { 'en-US': 'Hit DPS', 'zh-TW': '擊中 DPS', 'zh-CN': '击中 DPS' }, format: 'float2', colorVar: 'accent-gold-bright' },
       { id: 'TotalHitAvg', label: { 'en-US': 'Average Hit', 'zh-TW': '平均擊中', 'zh-CN': '平均击中' }, format: 'float2' },
       { id: 'ActionRate', label: { 'en-US': 'Attack/Cast Rate', 'zh-TW': '攻擊/施放速率', 'zh-CN': '攻击/施放速率' }, format: 'rate' },
@@ -216,7 +217,7 @@ export const STAT_SECTIONS: StatSectionDef[] = [
 const STAT_FORMATS = new Map(STAT_SECTIONS.flatMap(section => section.rows.map(row => [row.id, row.format] as const)));
 
 export function statFormat(stat: string): StatFormat {
-  return STAT_FORMATS.get(stat) ?? 'float2';
+  return STAT_FORMATS.get(stat) ?? (/Resist(?:Max|OverCap)?$/.test(stat) ? 'percent' : 'float2');
 }
 
 /** Shared display rounding and grouping for numbers that are not tied to a stat. */

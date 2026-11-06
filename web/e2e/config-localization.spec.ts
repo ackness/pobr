@@ -108,15 +108,15 @@ test('localized triggered skill uses a readable popup and keyboard selection', a
   // The Overview names the skill the calculation resolved to, in the interface language.
   await expect(page.locator('.ov-figure').first().locator('small')).toHaveText('风舞者');
   // The skill whose numbers the results panel shows is picked in a popup at the head of the panel.
-  const selector = page.locator('.shell-rail').getByRole('combobox', { name: '查看技能', exact: true });
-  await expect(selector).toHaveText(/2\. 风舞者/);
+  const selector = page.locator('.shell-rail').getByRole('combobox', { name: '计算技能', exact: true });
+  await expect(selector).toHaveText(/风舞者.*技能组 2/);
   await go(page, '技能');
   await expect(page.locator('.skill-group.is-main .skill-group-name')).toHaveText('风舞者');
   await expect(page.locator('.skill-set-chip')).toContainText('锐眼');
   await selector.click();
   const popup = page.getByRole('listbox');
   await expect(popup).toBeVisible();
-  await expect(popup.getByRole('option', { selected: true })).toContainText('2. 风舞者');
+  await expect(popup.getByRole('option', { selected: true })).toContainText('风舞者');
   const colors = await popup.getByRole('option').first().evaluate(element => ({
     text: getComputedStyle(element).color, background: getComputedStyle(element.parentElement!).backgroundColor,
   }));
@@ -126,9 +126,9 @@ test('localized triggered skill uses a readable popup and keyboard selection', a
   await page.keyboard.press('Home');
   await page.keyboard.press('Enter');
   await expect(popup).toHaveCount(0);
-  await expect(selector).toHaveText(/1\. 火球/);
+  await expect(selector).toHaveText(/火球.*技能组 1/);
   await expect(page.locator('.skill-group.is-main .skill-group-name')).toHaveText('火球');
   await selector.click();
-  await popup.getByRole('option', { name: /2\. 风舞者/ }).click();
-  await expect(selector).toHaveText(/2\. 风舞者/);
+  await popup.getByRole('option', { name: /风舞者.*技能组 2/ }).click();
+  await expect(selector).toHaveText(/风舞者.*技能组 2/);
 });

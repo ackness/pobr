@@ -4,7 +4,7 @@ import { loadoutSelect, openBuild, openExport, openLoadouts } from './buildLibra
 import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 
-const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Inspected skill', exact: true });
+const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Calculated skill', exact: true });
 const code = readFileSync(new URL('../worker-tests/fixtures/build-code.txt', import.meta.url), 'utf8').trim();
 
 test('hosted import keeps selection and loadouts through editing and export; failures preserve the build', async ({ page }, testInfo) => {

@@ -11,7 +11,13 @@ export const busy = (page: Page) => page.locator('.shell-save-state[data-busy]')
 /** A result in the left-hand results panel, found by its label ("Life", "Hit DPS", …). */
 export const statRow = (page: Page, label: string | RegExp): Locator =>
   page.locator('#character-stats .rail-row').filter({ has: page.locator('.rail-label').filter({ hasText: label }) });
-export const statValue = (page: Page, label: string | RegExp): Locator => statRow(page, label).locator('.rail-value');
+export const statValue = (page: Page, label: string | RegExp): Locator => {
+  const row = statRow(page, label).locator('.rail-value');
+  if (label !== 'Hit DPS' && (!(label instanceof RegExp) || label.source !== '^Hit DPS$')) return row;
+  const equivalentHeadline = page.locator('#character-stats:not(:has(.rail-row .rail-label:text-is("Hit DPS"))) .rail-hero')
+    .filter({ has: page.locator('.rail-hero-label').filter({ hasText: /^Combined DPS$/ }) }).locator('.rail-hero-value');
+  return row.or(equivalentHeadline);
+};
 
 /** An import lands on the Overview. Most specs then work on the Items page, so follow the import there. */
 export async function openItemsAfterImport(page: Page) {

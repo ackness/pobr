@@ -134,13 +134,14 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const [calcsFocus, setCalcsFocus] = useState<{ id: string } | null>(null);
   const [upgradeFocus, setUpgradeFocus] = useState<{ slot: string; nonce: number; jewelType?: 'base' | 'radius' }>();
   const [skillFocus, setSkillFocus] = useState<{ group: number; nonce: number }>();
+  const [spiritFocus, setSpiritFocus] = useState<number>();
   const [treeFocus, setTreeFocus] = useState<{ nonce: number; node?: number }>();
   const [reviewStage, setReviewStage] = useState<{ scope: string | null } | null>(null);
   const previousStage = useRef(stageKey);
   const stageChanged = previousStage.current !== stageKey;
   useEffect(() => {
     previousStage.current = stageKey;
-    setCalcsFocus(null); setUpgradeFocus(undefined); setSkillFocus(undefined); setTreeFocus(undefined);
+    setSpiritFocus(undefined); setCalcsFocus(null); setUpgradeFocus(undefined); setSkillFocus(undefined); setTreeFocus(undefined);
     setStatsOpen(false); setInspect(null);
   }, [stageKey]);
   useEffect(() => {
@@ -197,7 +198,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const shortcutKey = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
   const saveState = session.storageFailed ? w('Save failed', '保存失败', '儲存失敗') : session.busy ? w('Calculating', '计算中', '計算中') : t(lang, 'shell.saved');
   const rail = <ResultsRail route={route} session={session} view={view} lang={lang} onStatClick={inspectStat} onNavigate={navigate} pinned={pinned} onTogglePin={togglePin} />;
-  return <AppDialogsProvider scope={stageKey}><PreviewProvider session={session} view={view}><NavigateContext.Provider value={navigate}><div className="shell-root" ref={setShellEl}>
+  return <AppDialogsProvider scope={stageKey}><PreviewProvider session={session} view={view} route={route}><NavigateContext.Provider value={navigate}><div className="shell-root" ref={setShellEl}>
     <a href="#shell-main" className="shell-skip-link">{t(lang, 'a11y.skipToContent')}</a>
     <header className="shell-topbar">
       <TopbarAction hint={t(lang, 'a11y.openMenu')} className="shell-menu-button" size="icon" variant="ghost" aria-label={t(lang, 'a11y.openMenu')} onClick={() => setMenuOpen(true)}><Menu /></TopbarAction>
@@ -231,8 +232,8 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
         {Object.keys(session.editorDrafts).length > 0 && <div className="shell-notice" role="status"><p>{t(lang, 'editor.draftHint')}</p><Button variant="outline" onClick={() => navigate('items')}>{t(lang, 'editor.reviewItems')}</Button><Button variant="outline" onClick={() => navigate('tree')}>{t(lang, 'editor.reviewJewels')}</Button></div>}
         {session.calcError && <div className="shell-alert" role="alert"><strong>{w('Calculation unavailable', '当前计算不可用', '目前計算無法使用')}</strong><p>{session.calcError}</p></div>}
         {session.operationError && <div className="shell-alert" role="alert">{buildImportErrorMessage(session.operationError, lang)}</div>}
-        <UiProvider lang={lang} displayMode={pageDisplayMode(preferences, route)}><div className="shell-page-content">
-          {route === 'overview' && <Overview session={session} view={view} lang={lang} navigate={navigate} focusStat={inspectStat} />}
+        <UiProvider lang={lang} displayMode={pageDisplayMode(preferences, route)}><div className="shell-page-content" data-page={route}>
+          {route === 'overview' && <Overview session={session} view={view} lang={lang} navigate={navigate} focusStat={inspectStat} onSpirit={() => { setSpiritFocus(Date.now()); navigate('skills'); }} />}
           {route === 'build' && <BuildPage session={session} lang={lang} onImported={() => { setReviewStage({ scope: null }); navigate('overview'); }} />}
           {route === 'items' && <ItemsPanel session={session} lang={lang} onUpgrade={slot => { setUpgradeFocus({ slot, nonce: Date.now() }); navigate('trade'); }} />}
           {route === 'config' && <ConfigPanel session={session} lang={lang} settledCalc={view.calc} />}
@@ -240,7 +241,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
             {route === 'calcs' && <Suspense fallback={panelLoading}><CalcsPanel session={session} lang={lang} settledCalc={view.calc} focus={stageChanged ? null : calcsFocus} onFocusConsumed={() => setCalcsFocus(null)} /></Suspense>}
             {route === 'compare' && <Suspense fallback={panelLoading}><ComparePanel session={session} lang={lang} /></Suspense>}
             {retained('tree') && <div hidden={route !== 'tree'}><PanelActivity active={route === 'tree'}><Suspense fallback={panelLoading}><TreePanel session={session} lang={lang} active={route === 'tree'} focusPlanner={stageChanged ? undefined : treeFocus} onJewelSearch={socket => { setUpgradeFocus({ slot: `Jewel@${socket}`, nonce: Date.now(), jewelType: 'radius' }); navigate('trade'); }} /></Suspense></PanelActivity></div>}
-            {retained('skills') && <div hidden={route !== 'skills'}><PanelActivity active={route === 'skills'}><SkillsPanel session={session} lang={lang} active={route === 'skills'} focusOptimizer={stageChanged ? undefined : skillFocus} /></PanelActivity></div>}
+            {retained('skills') && <div hidden={route !== 'skills'}><PanelActivity active={route === 'skills'}><SkillsPanel session={session} lang={lang} active={route === 'skills'} focusOptimizer={stageChanged ? undefined : skillFocus} focusSpirit={stageChanged ? undefined : spiritFocus} /></PanelActivity></div>}
             {retained('trade') && <div hidden={route !== 'trade'}><PanelActivity active={route === 'trade'}><Suspense fallback={panelLoading}><TradePanel session={session} lang={lang} active={route === 'trade'} focus={stageChanged ? undefined : upgradeFocus} onSkills={group => { setSkillFocus({ group, nonce: Date.now() }); navigate('skills'); }} onTree={node => { setTreeFocus({ nonce: Date.now(), node }); navigate('tree'); }} /></Suspense></PanelActivity></div>}
         </div></UiProvider>
       </main>

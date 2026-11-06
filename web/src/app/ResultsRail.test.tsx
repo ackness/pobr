@@ -1,21 +1,24 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import type { CalculateBuildResponse } from '../api/types';
 import type { BuildSession } from '../hooks/useBuildSession';
 import { UiProvider } from '../components/shared/UiContext';
 import { TooltipProvider } from '../components/ui/tooltip';
 import { ResultsRail } from './ResultsRail';
 import type { Route } from './routes';
+import { statLabel } from './inspector/statId';
 
 vi.mock('../hooks/useSkillName', () => ({ useSkillCatalog: () => new Map() }));
 
-function render(route: Route, quantity = 1, withIgnite = 100) {
+afterEach(() => vi.unstubAllGlobals());
+
+function render(route: Route, quantity = 1, withIgnite = 100, hasContent = true, dot = 0) {
   const calc = { stats: Object.entries({ CritMultiplier: 7.36, QuantityMultiplier: quantity, TotalDPS: 100,
-    CombinedDPS: 100, WithIgniteDPS: withIgnite, WithBleedDPS: 100, WithPoisonDPS: 100, CombinedAvgToMonsterLife: 10 }).map(([id, value]) => ({ id, value })),
+    CombinedDPS: 100, TotalDotDPS: dot, TotalDot: 17, Life: 1000, EnergyShield: 500, TotalEHP: 5000, FireResist: 75, ColdResist: 60, LightningResist: 75, ChaosResist: -20, Spirit: 100, SpiritUnreserved: 100, WithIgniteDPS: withIgnite, WithBleedDPS: 100, WithPoisonDPS: 100, CombinedAvgToMonsterLife: 10 }).map(([id, value]) => ({ id, value })),
     main_skill: { skill_id: 'Fireball', hit_damage: [], combined_dps: 100, hit_dps: 100, dot_dps: 0 },
-    item_errors: [], unsupported_modifiers: [], minions: [], breakdowns: {}, breakdown_descriptors: {},
+    item_errors: [], unsupported_modifiers: [], minions: [], breakdowns: {}, breakdown_descriptors: { TotalDotDPS: 'steps' },
   } as unknown as CalculateBuildResponse;
-  const session = { calcParams: { main_socket_group: 0 }, socketGroups: [{ gems: [] }], calcMs: 77, dataVersion: '0.5.5.5' } as unknown as BuildSession;
+  const session = { calcParams: { main_socket_group: 0 }, socketGroups: hasContent ? [{ gems: [] }] : [], hasBuildContent: hasContent, calcMs: 77, dataVersion: '0.5.5.5' } as unknown as BuildSession;
   return renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider><ResultsRail route={route} session={session}
     view={{ calc, previous: null, stale: false }} lang="en-US" onStatClick={() => {}} onNavigate={() => {}} pinned={[]} onTogglePin={() => {}} /></TooltipProvider></UiProvider>);
 }
@@ -52,12 +55,46 @@ it('leads a summoner build with one minion\'s hit DPS and keeps the player\'s ow
   expect(html).toContain('<span class="rail-hero-label">Minion hit DPS</span>');
   expect(html).toMatch(/class="rail-hero-value is-link"[^>]*>[^<]*5,307/);
   expect(html).toContain('<span class="rail-hero-note">Wolf Companion · per minion · limit 7</span>');
-  // The player's zero is not shown as the build's damage, and the minion's DPS isn't repeated below.
+  // The player's zero is not shown as the build's damage; the selector also names the minion's DPS.
   expect(html).not.toContain('Combined DPS');
   expect(html).not.toContain('Your own combined DPS');
-  expect(html.match(/5,307/g)).toHaveLength(1);
+  expect(html.match(/5,307/g)).toHaveLength(2);
   expect(html).toContain('Minion · Wolf Companion');
   // The summoning skill's own offence group would read as the minion's.
   expect(html).not.toContain('Offence</button>');
   expect(html).toContain('Skill mechanics</button>');
+});
+
+it('shows core defences before folded details, with no repeated equivalent rows', () => {
+  const html = render('overview');
+  const essential = html.match(/class="rail-section rail-essentials"[\s\S]*?<\/section>/)![0];
+  for (const label of ['Effective HP', 'Life', 'Fire Res.', 'Cold resistance', 'Lightning Res.', 'Chaos Res.', 'Unreserved Spirit']) expect(essential).toContain(label);
+  expect(html).not.toContain('>Hit DPS<');
+  expect(html).not.toContain('>Spirit<');
+  expect(html.indexOf('rail-essentials')).toBeLessThan(html.indexOf('Offence</button>'));
+  expect(html).toMatch(/aria-expanded="false"[^>]*>[^]*?Offence<\/button>/);
+});
+it('loads existing fold preferences, including an explicitly expanded rail', () => {
+  vi.stubGlobal('localStorage', { getItem: () => '[]' });
+  const html = render('overview');
+  expect(html).not.toContain('data-folded');
+  vi.stubGlobal('localStorage', { getItem: () => '["Offence","Defence"]' });
+  expect(render('overview')).toMatch(/data-folded="true"[^]*?aria-expanded="false"[^]*?Offence/);
+});
+it('gives a first visit an import/create entry without blank-character stats', () => {
+  const html = render('overview', 1, 100, false);
+  expect(html).toContain('Import or create a build');
+  expect(html).not.toContain('rail-row');
+  expect(html).not.toContain('Life');
+});
+
+it('keeps total DoT DPS and its inspector action in folded Offence, distinct from skill-only DoT', () => {
+  const html = render('overview', 1, 100, true, 40);
+  const offence = html.match(/<section[^>]*data-folded="true"[^>]*>\s*<h3[^>]*>[\s\S]*?Offence[\s\S]*?<\/section>/)![0];
+  expect(offence).toContain('aria-expanded="false"');
+  expect(statLabel('en-US', 'TotalDotDPS')).toBe('Total DoT DPS');
+  expect(offence).toContain('class="rail-row is-link" data-stat="TotalDotDPS"');
+  expect(offence).toContain('>DoT DPS</span><span class="rail-value">40<');
+  expect(offence).toContain('>Skill DoT DPS</span><span class="rail-value">17<');
+  expect(render('overview')).not.toContain('data-stat="TotalDotDPS"');
 });

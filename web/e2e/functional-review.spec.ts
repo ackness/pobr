@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
 // The skill picker at the top of the results panel. `goTo` opens the menu sheet where the page links are folded away.
-const inspected = (page: Page) => page.getByRole('combobox', { name: 'Inspected skill', exact: true });
+const inspected = (page: Page) => page.getByRole('combobox', { name: 'Calculated skill', exact: true });
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
 const ring = 'Rarity: RARE\nDraft Ring\nSapphire Ring\n+100 to maximum Life';
 const monk = readFileSync('../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', 'utf8');
@@ -202,11 +202,11 @@ test('changing the selected skill hides stale attribution until a new calculatio
   await page.getByRole('tab', { name: 'Source contributions', exact: true }).click();
   await page.getByRole('button', { name: 'Source contributions', exact: true }).click();
   await expect(page.locator('.attribution-table')).toBeVisible();
-  await choose(page, inspected(page), '2. Fireball');
+  await choose(page, inspected(page), /Fireball.*Group 2/);
   await expect(page.locator('.attribution-table')).toHaveCount(0);
   // The skill overview recalculates at the same time and shows its own status.
   await expect(page.getByRole('region', { name: 'Source contributions', exact: true }).getByRole('status'))
-    .toContainText('Measure source contributions again');
+    .toContainText('Calculated skill changed; run the analysis again');
   await page.getByRole('button', { name: 'Source contributions', exact: true }).click();
   await expect(page.locator('.attribution-table')).toBeVisible();
   await expect(page.locator('.attribution-table')).toContainText('Skill group 2 · Fireball');

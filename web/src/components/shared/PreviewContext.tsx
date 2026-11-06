@@ -13,9 +13,9 @@ export interface PreviewCandidate {
 export interface PreviewApi {
   state: PreviewState | null;
   /** Calculates a candidate on its own and shows what it would change. */
-  show: (candidate: PreviewCandidate) => void;
+  show: (candidate: PreviewCandidate, target?: Element) => void;
   /** Shows changes that are already known, such as a ranked result's stats, without calculating anything. */
-  showChanges: (label: string, changes: StatChange[]) => void;
+  showChanges: (label: string, changes: StatChange[], target?: Element) => void;
   clear: () => void;
 }
 

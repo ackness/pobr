@@ -287,8 +287,8 @@ for (const [characterLevel, gemLevel] of [[71, 16], [90, 21]]) test(`gem plans a
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
   await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
-  await page.getByRole('combobox', { name: 'Inspected skill', exact: true }).click();
-  await page.getByRole('option', { name: '1. Fireball', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Calculated skill', exact: true }).click();
+  await page.getByRole('option', { name: /Fireball.*Group 1/ }).click();
   await goTo(page, 'Upgrades');
   await page.locator('.trade-position').filter({ hasText: 'Skill and support gems' }).click();
   await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
@@ -343,7 +343,7 @@ test('explicit damage skill selection, weapon binding and whole-build priority s
   await expect(target).not.toContainText('Not selected');
   await target.click();
   await page.getByRole('option', { name: '2. Fireball', exact: true }).click();
-  await expect(inspectedSkill(page)).toHaveText('2. Fireball');
+  await expect(inspectedSkill(page)).toHaveText(/Fireball.*Group 2/);
   await goTo(page, 'Skills');
   await page.locator('.skill-group-title').filter({ hasText: 'Fireball' }).click();
   await page.getByRole('combobox', { name: 'Skill weapon set', exact: true }).click();
@@ -434,7 +434,7 @@ test('applying a gem replacement preserves the evaluated secondary effect throug
   await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('textbox', { name: 'Build code' }).fill(code);
   await page.locator('.import-submit').click();
-  await expect(inspectedSkill(page)).toHaveText('1. Spark');
+  await expect(inspectedSkill(page)).toHaveText(/Spark.*Group 1/);
   await goTo(page, 'Upgrades');
   await expect(page.getByRole('combobox', { name: 'Skill used for scoring', exact: true })).toContainText('1. Spark');
   await page.locator('.trade-position').filter({ hasText: 'Skill and support gems' }).click();
@@ -452,11 +452,11 @@ test('applying a gem replacement preserves the evaluated secondary effect throug
   // The best replacement for that gem depends on the game data (it used to be Rapid Casting); what matters is that it replaced it.
   expect(current.socketGroups[0].gems[1].skill_id).not.toBe('ViciousHexSupportPlayer');
   expect(current.socketGroups[0].gems[1].skill_id).toMatch(/^Support/);
-  await expect(inspectedSkill(page)).toHaveText('1. Spark');
+  await expect(inspectedSkill(page)).toHaveText(/Spark.*Group 1/);
   const dps = dpsValue(page);
   await expect.poll(async () => Number((await dps.innerText()).replaceAll(',', ''))).toBeCloseTo(predicted, 0);
   await page.reload();
-  await expect(inspectedSkill(page)).toHaveText('1. Spark', { timeout: 90_000 });
+  await expect(inspectedSkill(page)).toHaveText(/Spark.*Group 1/, { timeout: 90_000 });
   await expect.poll(async () => Number((await dps.innerText()).replaceAll(',', ''))).toBeCloseTo(predicted, 0);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state.socketGroups[0].main_active_skill)).toBe(2);
 });

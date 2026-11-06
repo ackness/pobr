@@ -1,29 +1,14 @@
-import type { GemCatalogEntry, SkillMetricsEntry, SkillMetricsResponse } from '../../api/types';
+import type { SkillMetricsEntry, SkillMetricsResponse } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useSkillCatalog } from '../../hooks/useSkillName';
 import { bindT, grantedSourceLabel, type Lang } from '../../lib/i18n';
 import { mainMinion } from '../../lib/mainMinion';
-import { highestDpsSkill } from '../../lib/skillSelection';
+import { highestDpsSkill, isNonDamagingSkill, isSummonerSkill } from '../../lib/skillSelection';
 import { formatStatValue } from '../../lib/statDisplay';
 import { skillDisplayName } from '../../lib/skillNames';
 import { AppButton } from '../shared/controls';
 
-/** Only classify a known, non-damaging effect; zero damage alone proves nothing. */
-export function isNonDamagingSkill(entry: SkillMetricsEntry, catalog: ReadonlyMap<string, GemCatalogEntry>): boolean {
-  const gem = catalog.get(entry.skill_id);
-  if (!gem || gem.is_support || !entry.metrics || entry.status !== 'calculated') return false;
-  const tags = gem.tags;
-  return tags.length > 0 && tags.some(tag => ['Buff', 'Persistent', 'AppliesCurse', 'Aura'].includes(tag))
-    && !tags.some(tag => ['Damage', 'Attack', 'DamageOverTime', 'Minion', 'SummonsTotem'].includes(tag))
-    && entry.metrics.combined_dps === 0 && entry.metrics.average_hit === 0;
-}
-
-/** A summoning skill that deals no damage itself: its minions do. */
-export function isSummonerSkill(entry: SkillMetricsEntry, catalog: ReadonlyMap<string, GemCatalogEntry>): boolean {
-  const gem = catalog.get(entry.skill_id);
-  return !!gem && !gem.is_support && gem.tags.includes('CreatesMinion') && entry.status === 'calculated'
-    && !!entry.metrics && entry.metrics.combined_dps === 0 && entry.metrics.average_hit === 0;
-}
+export { isNonDamagingSkill, isSummonerSkill } from '../../lib/skillSelection';
 
 export function SkillMetricsTable({ session, lang, report, displayed }: {
   session: BuildSession; lang: Lang; report: SkillMetricsResponse | null; displayed: SkillMetricsResponse;
