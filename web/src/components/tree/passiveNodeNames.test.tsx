@@ -6,7 +6,10 @@ import type { GameNameRequest } from '../../lib/nativeDisplayNames';
 import { passiveNameKey, passiveNodeMatches, passiveNodeName, translatePassiveCard, usePassiveNodeNames } from './passiveNodeNames';
 
 const translate = vi.hoisted(() => vi.fn<(names: readonly GameNameRequest[], lang: Lang) => string[]>());
-vi.mock('../../hooks/useLocalizedLines', () => ({ useLocalizedNames: translate }));
+vi.mock('../../hooks/useLocalizedLines', async original => ({
+  ...await original<typeof import('../../hooks/useLocalizedLines')>(), useLocalizedNames: translate,
+  useLocalizedLines: (lines: string[], lang: Lang) => lines.map(line => lang !== 'en-US' && line.includes('Spirit') ? '精魂提高 30%' : line),
+}));
 const node: PassiveNode = Object.freeze({ skill: 6898, id: 'templar_druid_notable1', name: 'Relentless Vindicator',
   kind: 'notable', stats: ['10% increased [Critical|Critical Hit Chance]'] });
 const names = (lang: Lang, entries: [Pick<PassiveNode, 'id' | 'name'>, string][]) =>
@@ -85,4 +88,19 @@ test('a card drops a line a multi-line description translated into the line abov
   expect(await translatePassiveCard(backend, { id: 'n', name: 'N' }, ['Gain 4% of Damage as Extra Fire Damage for',
     'every different Grenade fired in the past 8 seconds', '+20% to Fire Resistance'], 'zh-CN'))
     .toEqual(['N', '过去 8 秒内每发射一种不同的榴弹，获得相当于伤害 4% 的额外火焰伤害', '火焰抗性 +20%']);
+});
+
+
+test.each(['zh-CN', 'zh-TW'] as const)('indexes the displayed Spirit modifier for a Chinese query in %s and retains English matching', lang => {
+  const spirit = { ...node, name: 'Boundless Power', stats: ['30% increased [Spirit|Spirit]'] };
+  const life = { ...node, id: 'life', skill: 42, name: 'Health', stats: ['10% increased maximum Life'] };
+  function Probe() {
+    const index = usePassiveNodeNames([spirit, life], lang, true);
+    expect(passiveNodeMatches(spirit, '精魂', index)).toBe(true);
+    expect(passiveNodeMatches(spirit, 'SPIRIT', index)).toBe(true);
+    expect(passiveNodeMatches(life, '精魂', index)).toBe(false);
+    return <span>{passiveNodeName(spirit, index)}</span>;
+  }
+  renderToStaticMarkup(<Probe />);
+  expect(spirit.stats).toEqual(['30% increased [Spirit|Spirit]']);
 });

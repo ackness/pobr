@@ -120,7 +120,13 @@ export function refundableBranches(context: PassivePlanningContext, budget: numb
 }
 
 function planKey(plan: PassivePlan): string {
-  return `${[...plan.allocate].sort((a, b) => a - b).join(',')}/${plan.deallocate.join(',')}`;
+  return `${[...plan.allocate].sort((a, b) => a - b).join(',')}/${[...plan.deallocate].sort((a, b) => a - b).join(',')}`;
+}
+
+/** Equivalent allocations can have different target nodes; keep only the first ranked result. */
+export function uniquePassivePlans<T extends PassivePlan>(plans: T[]): T[] {
+  const seen = new Set<string>();
+  return plans.filter(plan => { const key = planKey(plan); if (seen.has(key)) return false; seen.add(key); return true; });
 }
 
 function variantOf(plan: PassivePlan): VariantInput {
@@ -285,6 +291,6 @@ export async function planPassiveUpgrades(options: PlannerOptions): Promise<Pass
     .sort((a, b) => compareObjectiveStats(a.stats, b.stats, objective)
       || (a.allocate.length - a.deallocate.length) - (b.allocate.length - b.deallocate.length));
   options.onProgress?.(count, count);
-  return { baseline: first.baseline, baselineUnsupported, excluded, plans: plans.slice(0, 10), evaluated: count, limited,
+  return { baseline: first.baseline, baselineUnsupported, excluded, plans: uniquePassivePlans(plans).slice(0, 10), evaluated: count, limited,
     unmodeled: [...first.results, ...(second?.results ?? [])].filter(hasNewUnsupported).length };
 }

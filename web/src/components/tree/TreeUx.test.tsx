@@ -6,6 +6,7 @@ import { messages } from '../../lib/i18n';
 import type { PassiveNode } from '../../api/types';
 import { TreeOptimizer, useTreeOptimizer } from './TreeOptimizer';
 import { NodePowerTable } from './NodePowerTable';
+import { TreeRefundNotice } from './TreeRefundNotice';
 import { PlannerResultsNotice } from './PlannerResultsNotice';
 import { TreeConversionControls, useTreeConversion } from './TreeConversionControls';
 import { JewelPassivePlanner, type JewelPassivePlannerState } from './JewelPassivePlanner';
@@ -32,7 +33,7 @@ vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
 vi.mock('../../lib/nodePower', async original => ({ ...await original<typeof import('../../lib/nodePower')>(),
   evaluateNodePower: (...args: unknown[]) => ui.evaluate(...args),
 }));
-vi.mock('../../api/backend', () => ({ getBackend: async () => ({ previewTreeConversion: ui.convert, decodeBuild: ui.decode }) }));
+vi.mock('../../api/backend', () => ({ getBackend: async () => ({ previewTreeConversion: ui.convert, decodeBuild: ui.decode, loadPassiveTree: async () => [] }) }));
 vi.mock('../shared/controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => { ui.buttons.push(props); return <button {...props} />; },
   AppInput: (props: ComponentProps<'input'>) => { ui.inputs.push(props); return <input {...props} />; },
@@ -63,11 +64,11 @@ test('report opens with an entry empty state, evaluates, locates a result and re
   expect(initial.element.props).toMatchObject({ open: true });
   expect(initial.html).toContain('Run an evaluation to see candidate rankings');
   expect(initial.html).not.toContain('<tbody>');
-  expect(button('Evaluate next 128 nodes').disabled).toBe(false);
+  expect(button('Evaluate all candidate nodes').disabled).toBe(false);
   ui.evaluate.mockImplementation(async ({ rows, onBatch }) => {
     onBatch(rows.map((row: { node: PassiveNode }) => ({ ...row, status: 'ready', gain: 5, perPoint: 5, single: 5, diagnostics: [] })), 1, 1, []);
   });
-  await click('Evaluate next 128 nodes');
+  await click('Evaluate all candidate nodes');
   const evaluated = render(make).html;
   expect(evaluated).toContain('Life gain per point');
   expect(evaluated).toContain('+5 points');
@@ -150,4 +151,109 @@ test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('report and open route planner h
   expect(reportLabel).not.toBe(routeLabel);
   expect(html.match(new RegExp(`aria-label="${reportLabel}"`, 'g'))).toHaveLength(1);
   expect(html.match(new RegExp(`aria-label="${routeLabel}"`, 'g'))).toHaveLength(1);
+});
+
+
+test('cancelling a report retains completed rows and counts skipped and unprocessed candidates', async () => {
+  const extra = node(3, 'Island', [], 'notable');
+  const fourth = node(4, 'Later', [1], 'notable');
+  const props = { session, nodes: [...nodes, extra, fourth], nodeNames: new Map(), lang: 'en-US' as const,
+    stat: 'Life', stats: ['Life'], onStat: vi.fn(), onFocus: vi.fn() };
+  let release!: () => void;
+  let signal!: AbortSignal;
+  ui.evaluate.mockImplementation(async options => {
+    signal = options.signal;
+    options.onBatch([{ ...options.rows[0], status: 'ready', gain: 5, perPoint: 5, single: 5 }], 1, 2, []);
+    await new Promise<void>(resolve => { release = resolve; });
+    options.onBatch(options.rows.map((row: unknown) => ({ ...row as object, status: 'ready' })), 2, 2, []);
+  });
+  const make = () => NodePowerTable(props);
+  render(make);
+  const running = click('Evaluate all candidate nodes');
+  const active = render(make).html;
+  expect(active).toContain('<progress'); expect(active).toContain('max="2"');
+  expect(active).toContain('Skipped: 1'); expect(active).toContain('Not yet evaluated: 1');
+  expect(active).toContain('Rankings are provisional');
+  click('Cancel report'); expect(signal.aborted).toBe(true);
+  release(); await running;
+  const cancelled = render(make).html;
+  expect(cancelled).toContain('Report cancelled; rankings are provisional');
+  expect(cancelled).toContain('Not yet evaluated: 1');
+  expect(cancelled.match(/data-status="ready"/g)).toHaveLength(1);
+});
+
+test('refund notice waits for recalculation, keeps total refunded points and invokes undo beside the tree', () => {
+  const baseline = { stats: [{ id: 'CombinedDPS', value: 1000 }] } as BuildSession['calc'];
+  const current = { stats: [{ id: 'CombinedDPS', value: 771 }] } as BuildSession['calc'];
+  const receipt = { version: 1, points: 12, baseline };
+  const undo = vi.fn();
+  let updated = { ...session, stateVersion: 1, calc: baseline, busy: true, canUndoTree: true };
+  const make = () => <TreeRefundNotice receipt={receipt} session={updated} lang="en-US" onUndo={undo} />;
+  expect(render(make).html).toContain('Refunded 12 points · Combined DPS calculating');
+  expect(button('Undo refund').disabled).toBe(true);
+  updated = { ...updated, calc: current, busy: false };
+  expect(render(make).html).toContain('Refunded 12 points · Combined DPS -229 (-22.9%)');
+  click('Undo refund'); expect(undo).toHaveBeenCalledOnce();
+  updated = { ...updated, stateVersion: 2 };
+  expect(render(make).html).toBe('');
+});
+
+test('conversion preview cleans raw modifier markup, hides versions in details and confirms the reviewed snapshot', async () => {
+  const apply = vi.fn(() => true);
+  const state = { ...session, exportCode: async () => 'original', applyTreeConversion: apply };
+  let conversion: ReturnType<typeof useTreeConversion>;
+  const make = () => {
+    conversion = useTreeConversion(state, 'en-US', true);
+    return <TreeConversionControls session={state} conversion={conversion} />;
+  };
+  const lost = { id: 9, name: 'Spirit', stats: ['{crafted}+10 to [Spirit|Spirit]'], reason: 'missing', jewel_item_id: null };
+  const result = { code: 'converted', specs: [{ index: 0, title: 'Spec 1', from_version: '0_4', to_version: '0_5',
+    kept: [1], dropped: [lost], disconnected: [], disconnected_by_set: [[], [], []], allocation: { shared: [1], exclusive: [[], []] } }] };
+  ui.convert.mockResolvedValue(result); ui.decode.mockResolvedValue({ character: {} });
+  render(make); await conversion!.createPreview();
+  const html = render(make).html;
+  expect(html).toContain('<h3>Passive plan 1</h3>');
+  expect(html).toContain('<summary>Details</summary><p>Spec 1 · 0_4 → 0_5</p>');
+  expect(html).toContain('+10 to Spirit');
+  expect(html).not.toContain('{crafted}'); expect(html).not.toContain('[Spirit|');
+  expect(html).toContain('class="tree-conversion-footer"');
+  click('Confirm conversion');
+  expect(apply).toHaveBeenCalledWith({ character: {} }, 'converted', 0);
+  expect(render(make).html).not.toContain('tree-conversion-footer');
+});
+
+test('passive plans keep unchanged metrics out of the compact row and reveal exact values in route details', () => {
+  const make = () => {
+    const planner = useTreeOptimizer({ session: { ...session, attributeChoices: {} }, lang: 'en-US', active: true,
+      nodes, nodeLabel: () => 'Power', onPreview: vi.fn(), focusPlanner: { nonce: 1 } });
+    const result = { baseline: { TotalDPS: 100, TotalEHP: 100, Life: 100 }, baselineUnsupported: [], excluded: [],
+      plans: [{ target: 2, allocate: [2], deallocate: [], stats: { TotalDPS: 100, TotalEHP: 100, Life: 120 } }],
+      evaluated: 2, limited: false, unmodeled: 0 };
+    return TreeOptimizer({ planner: { ...planner, evaluated: result,
+      completed: { key: '', request: {}, preparedRequest: {}, result, objective: { stat: 'Life', constraints: [] }, dataVersion: null, treeVersion: null } } });
+  };
+  const html = render(make).html;
+  const metrics = html.split('class="tree-plan-metrics"')[1].split('</div>')[0];
+  expect(metrics).toContain('+20.0%');
+  expect(metrics).not.toContain('+0.0%');
+  expect(metrics).not.toContain('Effective HP');
+  expect(html).toContain('output data-stat="TotalEHP">100');
+  expect(html).toContain('output data-stat="Life">120');
+});
+
+
+test.each(['zh-CN', 'zh-TW', 'en-US'] as const)('report signals row readiness and completion with the current all-candidates control in %s', async lang => {
+  const text = messages(lang, 'nodePower');
+  const make = () => NodePowerTable({ session, nodes, nodeNames: new Map(), lang,
+    stat: 'Life', stats: ['Life'], onStat: vi.fn(), onFocus: vi.fn() });
+  render(make);
+  expect(button(text.run).disabled).toBe(false);
+  ui.evaluate.mockImplementation(async ({ rows, onBatch }) => {
+    onBatch(rows.map((row: object) => ({ ...row, status: 'ready', gain: 5, perPoint: 5, single: 5, diagnostics: [] })), 1, 1, []);
+  });
+  await click(text.run);
+  const html = render(make).html;
+  expect(html).toContain('data-node-id="2" data-status="ready"');
+  expect(html).toContain(`<p role="status">${text.complete}</p>`);
+  expect(button(text.run).disabled).toBe(true);
 });

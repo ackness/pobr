@@ -1,11 +1,13 @@
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
+import { treeStatLabel } from './treePresentation';
+import { words } from '../../app/text';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppInput } from '../shared/controls';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { formatApiError } from '../../api/error';
 import type { AttributeChoice, CalculateBuildRequest, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { bindT, messages, type Lang } from '../../lib/i18n';
+import { bindT, messages, statNameLabel, type Lang } from '../../lib/i18n';
 import { scoreOf, type Objective } from '../../lib/optimize';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import {
@@ -254,7 +256,7 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
   const colon = lang === 'en-US' ? ': ' : '：';
   const tt = bindT(lang);
   const number = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 2 });
-  const delta = (value: number, baseline: number) => baseline > 0
+  const delta = (value: number, baseline: number) => baseline > 0 && Math.abs(value / baseline - 1) >= 0.0005
     ? `${value >= baseline ? '+' : ''}${((value / baseline - 1) * 100).toFixed(1)}%`
     : `${value >= baseline ? '+' : ''}${number(value - baseline)}`;
   const currentStats = evaluated?.baseline ?? {};
@@ -278,7 +280,7 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
           ]} /></label>
           <label>{mode === 'allocate' ? text.points : text.refundPoints}<AppInput type="number" min={1} max={PASSIVE_POINT_LIMIT} value={points}
             onChange={event => { const value = Number(event.target.value); if (Number.isInteger(value) && value >= 1 && value <= PASSIVE_POINT_LIMIT) setPoints(value); }} /></label>
-          <ObjectiveEditor value={goal} onChange={setGoal} lang={lang} />
+          <ObjectiveEditor statName={id => treeStatLabel(lang, id)} baseline={Object.fromEntries((session.calc?.stats ?? []).filter(stat => stat.value !== null).map(stat => [stat.id, stat.value!]))} value={goal} onChange={setGoal} lang={lang} />
           <label>{text.attribute}<AppSelect value={attribute} ariaLabel={text.attributeLabel} onChange={value => setAttribute(value as AttributeChoice)} options={[
             { value: 'str', label: text.str }, { value: 'dex', label: text.dex }, { value: 'int', label: text.int },
           ]} /></label>
@@ -296,7 +298,7 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
         {error && <p className="opt-error">{error}</p>}
         {evaluated && <PlannerResultsNotice count={evaluated.plans.length} lang={lang}>
           <div className="tree-planner-summary">
-            {evaluated.evaluated > 0 && <span>{text.baseline}{colon}DPS {number(currentStats.TotalDPS ?? 0)} · EHP {number(currentStats.TotalEHP ?? 0)}</span>}
+            {evaluated.evaluated > 0 && <span>{text.baseline}{colon}{words(lang, 'Hit DPS', '击中 DPS', '擊中 DPS')} {number(currentStats.TotalDPS ?? 0)} · {statNameLabel(lang, 'TotalEHP')} {number(currentStats.TotalEHP ?? 0)}</span>}
             <details><summary>{messages(lang, 'nodePower').calculationDetails}</summary><span>{text.evaluated}{colon}{evaluated.evaluated}</span><p>{text.data}{colon}{completed!.dataVersion ?? text.unknownVersion} · {text.tree}{colon}{completed!.treeVersion ?? text.defaultTree}</p></details>
             {preview !== null && <AppButton onClick={() => show(null)}>{text.clear}</AppButton>}
           </div>
@@ -329,18 +331,18 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
               <div className="tree-plan-heading"><strong>{index + 1}. {nodeLabel(plan.target)}</strong>
                 <span>{text.cost} {plan.allocate.length - plan.deallocate.length} · {text.add} {plan.allocate.length}{plan.deallocate.length > 0 ? ` · ${text.remove} ${plan.deallocate.length}` : ''}</span></div>
               <div className="tree-plan-metrics">
-                <span>{text.score} <b>{delta(scoreOf(plan.stats, completed!.objective), scoreOf(currentStats, completed!.objective))}</b></span>
-                {(['TotalDPS', 'TotalEHP', 'Life'] as const).map(stat => <span key={stat}>
-                  {stat === 'TotalDPS' ? 'DPS' : stat === 'TotalEHP' ? 'EHP' : tt('opt.objLife')} <b className={(plan.stats[stat] ?? 0) >= (currentStats[stat] ?? 0) ? 'is-positive' : 'is-negative'}>{delta(plan.stats[stat] ?? 0, currentStats[stat] ?? 0)}</b>
-                  <small>{number(currentStats[stat] ?? 0)} → <output data-stat={stat}>{number(plan.stats[stat] ?? 0)}</output></small>
+                {Math.abs(scoreOf(plan.stats, completed!.objective) - scoreOf(currentStats, completed!.objective)) >= 0.005 && <span>{text.score} <b>{delta(scoreOf(plan.stats, completed!.objective), scoreOf(currentStats, completed!.objective))}</b></span>}
+                {(['TotalDPS', 'TotalEHP', 'Life'] as const).filter(stat => Math.abs((plan.stats[stat] ?? 0) - (currentStats[stat] ?? 0)) >= 0.005).map(stat => <span key={stat}>
+                  {stat === 'TotalDPS' ? words(lang, 'Hit DPS', '击中 DPS', '擊中 DPS') : statNameLabel(lang, stat)} <b className={(plan.stats[stat] ?? 0) >= (currentStats[stat] ?? 0) ? 'is-positive' : 'is-negative'}>{delta(plan.stats[stat] ?? 0, currentStats[stat] ?? 0)}</b>
+
                 </span>)}
               </div>
-              {plan.deallocate.length > 0 && <div className="tree-plan-swap">
-                <p className="tree-plan-swap-out"><b>− {text.remove} {plan.deallocate.length}</b>{plan.deallocate.map(nodeLabel).join(' · ')}</p>
-                <p className="tree-plan-swap-in"><b>+ {text.add} {plan.allocate.length}</b>{plan.allocate.map(nodeLabel).join(' · ') || '—'}</p>
-              </div>}
-              <details><summary>{text.route}</summary><p>{text.add}{colon}{plan.allocate.map(nodeLabel).join(' · ')}</p>
-                {plan.deallocate.length > 0 && <p>{text.remove}{colon}{plan.deallocate.map(nodeLabel).join(' · ')}</p>}</details>
+              <details><summary>{text.route} · +{plan.allocate.length} {plan.allocate.slice(0, 2).map(nodeLabel).join(' · ')}{plan.allocate.length > 2 ? '…' : ''}{plan.deallocate.length > 0 ? ` · −${plan.deallocate.length} ${plan.deallocate.slice(0, 2).map(nodeLabel).join(' · ')}${plan.deallocate.length > 2 ? '…' : ''}` : ''}</summary><p>{text.add}{colon}{plan.allocate.map(nodeLabel).join(' · ') || '—'}</p>
+                <p>{text.remove}{colon}{plan.deallocate.map(nodeLabel).join(' · ') || '—'}</p>
+                {(['TotalDPS', 'TotalEHP', 'Life'] as const).map(stat => <p key={stat}>
+                  {stat === 'TotalDPS' ? words(lang, 'Hit DPS', '击中 DPS', '擊中 DPS') : statNameLabel(lang, stat)}：{number(currentStats[stat] ?? 0)} → <output data-stat={stat}>{number(plan.stats[stat] ?? 0)}</output>
+                </p>)}
+              </details>
               <div className="tree-plan-actions"><AppButton onClick={() => show(index)}>{text.preview}</AppButton><AppButton disabled={session.busy} onClick={() => apply(plan)}>{text.apply}</AppButton></div>
             </li>)}
           </ol>

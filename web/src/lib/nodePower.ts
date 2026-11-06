@@ -4,7 +4,6 @@ import { allocationRoutes, buildPassiveGraph } from './passiveGraph';
 import { allocationPaths, type PassivePlanningContext } from './passivePlanner';
 import { evaluateVariants, type EvaluateOptions, type EvaluateResult } from './optimize';
 
-export const NODE_POWER_LIMIT = 128;
 const BATCH = 16;
 export type PowerStatus = 'ready' | 'pending' | 'unavailable' | 'unsupported' | 'error';
 export interface PowerRow {
@@ -72,9 +71,9 @@ interface RunOptions {
   probe?: PobrBackend['nodePower'];
 }
 
-/** Bounded batches reuse both the heatmap probe and the complete-route planner evaluator. */
+/** Evaluate the entire selection in bounded, cancellable batches. */
 export async function evaluateNodePower(options: RunOptions): Promise<{ rows: PowerRow[]; cancelled: boolean }> {
-  const pending = rankPowerRows(options.rows.filter(r => r.path && r.status === 'pending'), 'points', true).slice(0, NODE_POWER_LIMIT);
+  const pending = rankPowerRows(options.rows.filter(r => r.path && r.status === 'pending'), 'points', true);
   const results: PowerRow[] = [];
   const evaluate = options.evaluate ?? evaluateVariants;
   const probe = options.probe ?? (await getBackend()).nodePower;
