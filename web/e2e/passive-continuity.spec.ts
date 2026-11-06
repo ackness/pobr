@@ -1,9 +1,10 @@
+import { headlineDps } from './skillsAndCalcs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import type { AttributeChoice, JewelInput, PassiveNode, SlotItemInput, SocketGroupInput } from '../src/api/types';
 import { buildPassiveGraph, shortestAllocationPath } from '../src/lib/passiveGraph';
-import { busy, pageLink, statValue, playerHitDps } from './shell';
+import { busy, pageLink, statValue } from './shell';
 import { choose } from './treePage';
 
 const version = readFileSync('../data/CURRENT', 'utf8').trim();
@@ -37,7 +38,7 @@ interface FixtureState {
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state as FixtureState);
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
 const life = (page: Page) => statValue(page, /^Life$/);
-const totalDps = (page: Page) => playerHitDps(page);
+const totalDps = headlineDps;
 const effectiveHp = (page: Page) => statValue(page, /^Effective HP$/);
 
 type Planner = 'route' | 'joint';
@@ -137,7 +138,7 @@ async function assertExactApply(page: Page, planner: Planner, card: Locator, bef
   for (const id of preview.add) if (nodes.find(node => node.skill === id)?.name === 'Attribute') choices[String(id)] = 'str';
   if (planner === 'route') await card.locator('details').last().locator('summary').click();
   const predictedLife = numeric(await card.locator('output[data-stat="Life"]').innerText());
-  const predictedDps = numeric(await card.locator('output[data-stat="TotalDPS"]').innerText());
+  const predictedDps = numeric(await card.locator('output[data-stat="CombinedDPS"]').innerText());
   const predictedEhp = numeric(await card.locator('output[data-stat="TotalEHP"]').innerText());
   await card.getByRole('button', { name: planner === 'route' ? 'Apply plan' : 'Apply jewel and passive plan', exact: true }).click();
   await expect.poll(async () => [...(await saved(page)).allocatedNodes].sort((a, b) => a - b))
@@ -313,7 +314,7 @@ for (const edit of ['equipment', 'goal'] as const) {
       await expect(life(page)).not.toHaveText(beforeLife);
       await expect(busy(page)).toHaveCount(0);
     } else {
-      await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
+      await page.getByRole('button', { name: 'Combined DPS', exact: true }).click();
       await page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true }).check();
       await page.locator('.upgrade-goal-details > summary').click();
       await select(page, 'Constraint', 'Effective HP');
@@ -335,7 +336,7 @@ for (const edit of ['equipment', 'goal'] as const) {
     expect(after.attributeChoices).toEqual(before.attributeChoices);
     expect(after.jewels).toEqual(before.jewels);
     if (edit === 'goal') {
-      await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Max Hit DPS');
+      await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Combined DPS');
       await expect(page.getByRole('spinbutton', { name: 'Minimum Effective HP (points)', exact: true })).toHaveValue(String(floor));
       await expect(page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true })).toBeChecked();
     }
@@ -372,7 +373,7 @@ test('identical copied stages reset receipts and stage-local preferences without
   await expect(joint(page).locator('.jewel-plan-candidates > li')).toHaveCount(0);
   expect(await saved(page)).toEqual(before);
   await nav(page, 'Upgrades').click();
-  await page.locator('.upgrade-paths > button').nth(2).click();
+  await page.locator('.upgrade-paths > button').filter({ hasText: 'opens Passive tree' }).click();
   await expect(page.locator('.tree-planner-body')).toBeVisible();
   await choose(page, stagePicker, originalStage);
   await expect(busy(page)).toHaveCount(0);
@@ -449,7 +450,7 @@ for (const planner of ['route', 'joint'] as const) {
         await nav(page, action === 'leave' ? 'Calculations' : 'Upgrades').click({ force: true });
         await expect(page.locator('.tree-canvas, .tree-planner-run, .opt-progress')).toHaveCount(0);
         if (action === 'hidden goal') {
-          await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click({ force: true });
+          await page.getByRole('button', { name: 'Combined DPS', exact: true }).click({ force: true });
           await page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true }).check({ force: true });
         }
       }
@@ -464,7 +465,7 @@ for (const planner of ['route', 'joint'] as const) {
       expect(await saved(page)).toEqual(before);
       await expect(life(page)).toHaveText(beforeLife);
       if (action === 'hidden goal') {
-        await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Max Hit DPS');
+        await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Combined DPS');
         await expect(page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true })).toBeChecked();
         // The fresh run below intentionally uses a newly chosen shared objective.
         await select(page, 'Objective', 'Max Life');

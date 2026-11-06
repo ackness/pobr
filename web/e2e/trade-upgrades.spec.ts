@@ -1,7 +1,7 @@
 import { t } from '../src/lib/i18n';
 import { expect, test } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
-import { dpsValue, goTo, inspectedSkill, openLibrary, openMarketSettings } from './upgradesPage';
+import { chooseTradeGoal, headlineDpsValue, goTo, inspectedSkill, openLibrary, openMarketSettings } from './upgradesPage';
 import { deflateSync } from 'node:zlib';
 import { installTradeCatalogFixture } from './tradeCatalogFixture';
 
@@ -35,7 +35,7 @@ Implicits: 0</Item>
     await openItemsAfterImport(page);
     await expect(page.locator('.paper-doll')).toBeVisible();
     await goTo(page, 'Upgrades');
-    await page.getByRole('button', { name: 'Max Life', exact: true }).click();
+    await chooseTradeGoal(page, 'Max Life');
     await page.locator('.trade-position').filter({ hasText: 'Body Armour' }).click();
     await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
     const reference = page.locator('.upgrade-score-reference');
@@ -79,7 +79,7 @@ test('alloy hybrid effects enter real-WASM weights and the crafted item market m
   await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible();
   await goTo(page, 'Upgrades');
-  await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
+  await page.getByRole('button', { name: 'Combined DPS', exact: true }).click();
   await page.locator('.trade-position').filter({ hasText: /^Main Hand/ }).click();
   await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
   const reference = page.locator('.upgrade-score-reference');
@@ -135,7 +135,7 @@ test('imported PoB armour and belt use their full explicit Sum as the market min
   await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible();
   await goTo(page, 'Upgrades');
-  await page.getByRole('button', { name: 'Max Life', exact: true }).click();
+  await chooseTradeGoal(page, 'Max Life');
   for (const [slot, life] of [['Body Armour', 97], ['Belt', 75]] as const) {
     await page.locator('.trade-position').filter({ hasText: slot }).click();
     await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
@@ -161,7 +161,7 @@ test('local affix scores work for empty slots and budget edits only update marke
   await goTo(page, 'Upgrades');
   await openMarketSettings(page);
   await expect(page.getByRole('combobox', { name: 'League', exact: true })).toContainText('Future League');
-  await page.getByRole('button', { name: 'Max Life', exact: true }).click();
+  await chooseTradeGoal(page, 'Max Life');
   await page.locator('.trade-position').filter({ hasText: /^Amulet/ }).click();
   await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
   const table = page.locator('.trade-score-table');
@@ -197,7 +197,7 @@ test('local affix scores work for empty slots and budget edits only update marke
   await page.getByRole('checkbox', { name: 'Include unique items' }).check();
   expect(searchQuery((await link.getAttribute('href'))!).query.filters.type_filters.filters.rarity).toBeUndefined();
   expect(await table.innerText()).toBe(originalScores);
-  await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
+  await page.getByRole('button', { name: 'Combined DPS', exact: true }).click();
   await expect(table).toHaveCount(0);
   await expect(link).toHaveCount(0);
   expect(marketCalls).toBe(0);
@@ -396,7 +396,7 @@ Small Passive Skills in Radius also grant 2% increased Spell Damage</Item><ItemS
     await goTo(page, 'Upgrades');
     await page.locator('.trade-position[data-slot-id="Jewel@2491"]').click();
     await expect(page.getByRole('combobox', { name: 'Jewel type' })).toContainText('Time-Lost jewel search');
-    await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
+    await page.getByRole('button', { name: 'Combined DPS', exact: true }).click();
     await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
     await expect(page.locator('.upgrade-score-reference')).toBeVisible({ timeout: 60_000 });
     if (nodes.includes('9583')) {
@@ -408,7 +408,7 @@ Small Passive Skills in Radius also grant 2% increased Spell Damage</Item><ItemS
       await page.screenshot({ path: test.info().outputPath('time-lost-search.png'), fullPage: true });
     } else {
       await expect(page.locator('.trade-market-link')).toHaveCount(0);
-      await expect(page.getByRole('button', { name: 'Browse matching items', exact: true })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Open trade search', exact: true })).toBeDisabled();
       await expect(page.getByText('No equipment scores are available for this calculation target; a trade search cannot be generated.')).toBeVisible();
     }
     await openLibrary(page);
@@ -454,7 +454,7 @@ test('applying a gem replacement preserves the evaluated secondary effect throug
   expect(current.socketGroups[0].gems[1].skill_id).not.toBe('ViciousHexSupportPlayer');
   expect(current.socketGroups[0].gems[1].skill_id).toMatch(/^Support/);
   await expect(inspectedSkill(page)).toHaveText('1. Spark');
-  const dps = dpsValue(page);
+  const dps = headlineDpsValue(page);
   await expect.poll(async () => Number((await dps.innerText()).replaceAll(',', ''))).toBeCloseTo(predicted, 0);
   await page.reload();
   await expect(inspectedSkill(page)).toHaveText('1. Spark', { timeout: 90_000 });
@@ -484,7 +484,7 @@ Grants a special buff that no trade stat carries</Item>
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
   await goTo(page, 'Upgrades');
-  await page.getByRole('button', { name: 'Max Life', exact: true }).click();
+  await chooseTradeGoal(page, 'Max Life');
   await page.locator('.trade-position').filter({ hasText: 'Body Armour' }).click();
   await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
   await expect(page.locator('.upgrade-score-reference')).toContainText('Partial score', { timeout: 60_000 });

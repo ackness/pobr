@@ -94,7 +94,7 @@ async function openOptimizer(page: Page) {
 async function boundRealCandidatePool(page: Page) {
   await page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true }).fill('2');
   await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();
-  await choose(page, page.getByRole('combobox', { name: 'Objective', exact: true }), 'Max Hit DPS');
+  await choose(page, page.getByRole('combobox', { name: 'Objective', exact: true }), 'Combined DPS');
   const pool = page.locator('.support-pool-details');
   await pool.locator('summary').click();
   for (const id of [swift, ...modeled]) {

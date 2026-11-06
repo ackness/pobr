@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { answerConfirm } from './confirmDialog';
-import { pageLink } from './shell';
+import { buildAction, pageLink } from './shell';
 import { importInto, openBuild, openExport, selectStage, settled } from './buildLibrary';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
@@ -15,7 +15,8 @@ async function ready(page: Page) {
 }
 async function editName(page: Page, action: string, name: string) {
   // Scope to library/stage actions; the import destination has a separate New build choice.
-  await page.locator('.bd-actions').getByRole('button', { name: action, exact: true }).click();
+  if (action === 'Rename build') await buildAction(page, action);
+  else await page.locator('.bd-actions').getByRole('button', { name: action, exact: true }).click();
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill(name);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
@@ -70,7 +71,6 @@ test('independent builds and stages preserve passive routes and notes across rel
   const shared = JSON.parse(readFileSync((await download.path())!, 'utf8'));
   expect(shared.build.stages).toHaveLength(2);
   expect(shared.build.stages[0].saved.notes).toBe('Leveling Ice Shot');
-  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   await page.locator('input[type=file]').setInputFiles((await download.path())!);
   await expect(page.locator('#ov-title')).toBeVisible();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
@@ -87,7 +87,6 @@ test('independent builds and stages preserve passive routes and notes across rel
   const backup = await backupPromise;
   expect(JSON.parse(readFileSync((await backup.path())!, 'utf8')).workspace.builds).toHaveLength(3);
   await editName(page, 'New build', 'Temporary');
-  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   await page.locator('input[type=file]').setInputFiles((await backup.path())!);
   await answerConfirm(page, true);
   await expect(page.locator('#ov-title')).toBeVisible();
@@ -167,7 +166,6 @@ test('malformed shared files leave the active stage and browser save untouched',
   const before = await snapshot(page);
   const invalid = { version: 1, notes: 'Invalid import', state: { ...before.state,
     flasks: {}, socketGroups: [{ enabled: true, gems: [null] }], params: { config_inputs: {} } } };
-  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   await page.locator('input[type=file]').setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(invalid)) });
   await expect(page.getByRole('alert').first()).toBeVisible();
   expect(await snapshot(page)).toEqual(before);

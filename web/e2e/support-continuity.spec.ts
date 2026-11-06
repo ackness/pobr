@@ -158,7 +158,7 @@ test('same-stage Apply after returning to Skills equips the displayed complete s
   await openOptimizer(page);
   await capacity(page).fill('3');
   await lineage(page).uncheck();
-  await selectObjective(page, 'Max Hit DPS');
+  await selectObjective(page, 'Combined DPS');
   const groupsBefore = await socketGroups(page);
   const beforeDps = await settledNumber(dps(page));
   await completePlan(page);
@@ -209,7 +209,7 @@ for (const edit of ['build', 'goal'] as const) {
       await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
     } else {
       await goTo(page, 'Upgrades');
-      await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
+      await page.getByRole('button', { name: 'Combined DPS', exact: true }).click();
       await page.locator('.upgrade-goal-details > summary').click();
       await page.getByRole('combobox', { name: 'Constraint', exact: true }).click();
       await page.getByRole('option', { name: 'Effective HP', exact: true }).click();
@@ -228,7 +228,7 @@ for (const edit of ['build', 'goal'] as const) {
     expect(Math.abs(baselineDps - currentDps), 'New results must use the current equipped build, not the hidden old request')
       .toBeLessThanOrEqual(0.5);
     if (edit === 'goal') {
-      await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Max Hit DPS');
+      await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Combined DPS');
       await expect(page.getByRole('spinbutton', { name: 'min', exact: true })).toHaveValue(String(floor));
       const planCount = await page.locator('.support-plan').count();
       for (let index = 0; index < planCount; index++) {
@@ -402,14 +402,14 @@ test('a hidden shared-goal edit cannot be overwritten by the previous real suppo
   const beforeDps = await settledText(dps(page));
   await pauseAfterRealBatch(page);
   await goTo(page, 'Upgrades', { force: true });
-  await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click({ force: true });
+  await page.getByRole('button', { name: 'Combined DPS', exact: true }).click({ force: true });
   await page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true }).check({ force: true });
   await page.clock.runFor(1000);
   await expect(page.locator('.support-results')).toHaveCount(0);
   await expect(page.locator('.opt-progress')).toHaveCount(0);
   await returnToSkills(page, { force: true });
   await expectNoPlans(page);
-  await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Max Hit DPS');
+  await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Combined DPS');
   await expect(page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true })).toBeChecked();
   await expect(capacity(page)).toHaveValue('3');
   await expect(lineage(page)).not.toBeChecked();
@@ -448,11 +448,11 @@ test('stage switching in Skills does not replay a prior-stage focus but accepts 
   const originalStage = (await currentStage(page).innerText()).trim();
   await copyCurrentStage(page, 'Focus copy');
   await goTo(page, 'Upgrades');
-  await page.locator('.upgrade-paths > button').nth(1).click();
+  await page.locator('.upgrade-paths > button').filter({ hasText: 'opens Skills' }).click();
   await expect(page.locator('.gem-optimizer-body')).toBeVisible();
   await openStage(page, originalStage);
   await expectFreshOptimizer(page);
   await goTo(page, 'Upgrades');
-  await page.locator('.upgrade-paths > button').nth(1).click();
+  await page.locator('.upgrade-paths > button').filter({ hasText: 'opens Skills' }).click();
   await expect(page.locator('.gem-optimizer-body')).toBeVisible();
 });

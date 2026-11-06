@@ -349,7 +349,18 @@
 
 /* ── Build library: import first, then the list, then the current stage ──── */
 @layer app {
-  .bd { display: grid; gap: 2rem; max-width: 56rem; }
+  .bd { display: grid; gap: 2rem; width: 100%; max-width: var(--content-width); }
+  .bd-library-import { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2rem; }
+  .bd-import { grid-row: 1; }
+  .import-summary { margin-top: 1rem; align-items: flex-start; }
+  .import-summary-body { flex: 1 1 20rem; min-width: 0; }
+  .import-summary-body p { margin-top: .4rem; }
+  .import-summary-number { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .import-summary a { color: var(--primary); text-decoration: underline; }
+  @container shell-container (min-width: 62rem) {
+    .bd-library-import { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .bd-import { grid-row: auto; }
+  }
   .bd h1 { font-size: var(--text-xl); font-weight: 620; letter-spacing: -.015em; }
   .bd h2 { font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-foreground); }
   .bd-head p, .bd-hint { margin: .3rem 0 0; font-size: var(--text-sm); line-height: 1.6; color: var(--muted-foreground); }
@@ -374,11 +385,13 @@
   .bd-segment button[aria-pressed='true'] { background: var(--card); color: var(--foreground); box-shadow: 0 0 0 1px var(--border); }
   .bd-list { display: grid; margin: 0; padding: 0; list-style: none; }
   .bd-list li + li { border-top: 1px solid var(--border); }
-  .bd-list button { display: grid; grid-template-columns: 1.1rem minmax(0, 1fr) auto auto; align-items: baseline; gap: .8rem; width: 100%; padding: .65rem .4rem; border-radius: .35rem; }
+  .bd-list > li { display: flex; align-items: center; min-width: 0; }
+  .bd-list > li > [data-slot="dropdown-menu-trigger"] { display: inline-flex; width: auto; flex: 0 0 auto; }
+  .bd-list .bd-build-select { display: grid; min-width: 0; grid-template-columns: 1.1rem minmax(0, 1fr); align-items: baseline; gap: .25rem .8rem; width: 100%; padding: .65rem .4rem; border-radius: .35rem; }
   .bd-list button:hover:not(:disabled) { background: var(--muted); }
   .bd-list strong { font-weight: 550; overflow-wrap: anywhere; }
   .bd-list span { font-size: var(--text-sm); color: var(--muted-foreground); }
-  .bd-list small { font-size: var(--text-xs); color: var(--muted-foreground); }
+  .bd-row-meta { grid-column: 2; }
   .bd-row-mark { display: grid; place-items: center; color: var(--primary); }
   .bd-row-mark svg { width: .95rem; height: .95rem; }
   .bd-list button[aria-pressed='true'] strong { color: var(--primary); }
@@ -404,7 +417,7 @@
   .bd-export[open] > summary { margin-bottom: .75rem; }
   .bd .notes-editor, .bd .import-code { width: 100%; font-size: var(--text-sm); }
   .bd .notes-preview-body { margin: .5rem 0 0; padding: .75rem; white-space: pre-wrap; border-radius: .4rem; background: var(--muted); font-size: var(--text-sm); }
-  @container shell-container (max-width: 40rem) { .bd-segment { margin-left: 0; } .bd-list button { grid-template-columns: 1.1rem minmax(0, 1fr); } .bd-list small { grid-column: 2; } }
+  @container shell-container (max-width: 40rem) { .bd-segment { margin-left: 0; } }
 }
 
 /* ── Motion: explain cause and effect, never decorate ─────────────────────── */

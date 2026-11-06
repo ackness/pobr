@@ -184,3 +184,9 @@ test('double critical roll multiplier is displayed as a chance', () => {
   expect(formatStatValue(2, row.format)).toBe('100%');
   expect(formatStatValue(0, row.format)).toBe('0%');
 });
+
+
+test('main-minion headlines use the same integer precision as Combined DPS', () => {
+  expect(statFormat('MainMinionDPS')).toBe('int');
+  expect(formatStatValue(12345.67, statFormat('MainMinionDPS'), 'zh-CN')).toBe('12,346');
+});
