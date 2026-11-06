@@ -203,9 +203,12 @@ describe('stat section labels', () => {
   });
 });
 
-test('main-minion headlines use the same integer precision as Combined DPS', () => {
-  expect(statFormat('MainMinionDPS')).toBe('int');
-  expect(formatStatValue(12345.67, statFormat('MainMinionDPS'), 'zh-CN')).toBe('12,346');
+test('player and main-minion DPS share precision above and below 1000', () => {
+  for (const [value, expected] of [[5307.37, '5,307'], [999.37, '999.37'], [0.37, '0.37']] as const) {
+    for (const id of ['MainMinionDPS', 'TotalDPS', 'CombinedDPS']) {
+      expect(formatStatValue(value, statFormat(id), 'zh-CN'), id).toBe(expected);
+    }
+  }
 });
 
 test('values that round to zero never show a minus sign', () => {

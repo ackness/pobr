@@ -6,7 +6,7 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { UiProvider } from '../shared/UiContext';
 import { TooltipProvider } from '../ui/tooltip';
 import details from '../../fixtures/stat_details.json';
-import { bindT, type Lang } from '../../lib/i18n';
+import { bindT, type Lang, type UiKey } from '../../lib/i18n';
 
 const empty: Breakdown = { base_total: 0, inc_total: 0, more_total: 1, mods: [], formula: null };
 
@@ -211,6 +211,77 @@ test('source groups share one totals note and show origin-specific fallback text
     expect(html).toContain(`${text} <span class="mod-inactive-tag">`);
   }
   expect(html).not.toContain('Campaign resistance penalty');
+});
+
+test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('damage-chain totals and linked stats keep final precision in %s', lang => {
+  for (const actor of [{ kind: 'player' }, { kind: 'minion', index: 0 }] as const) {
+    for (const [value, expected] of [[5307.37, '5,307'], [999.37, '999.37']] as const) {
+      const breakdown: Breakdown = { ...empty, actor, formula: { value, steps: [
+        { op: 'average_hit', operand: 2653.685, result: 2653.685 },
+        { op: 'uses_per_second', operand: value / 2653.685, result: value },
+      ] } };
+      const html = panel({ stats: [{ id: 'TotalDPS', category: 'Offence', value }],
+        breakdowns: { TotalDPS: breakdown }, breakdown_descriptors: { TotalDPS: 'steps' },
+        ...(actor.kind === 'minion' ? { main_minion_index: 0, minions: [{ index: 0, name: 'Wolf',
+          stats: { TotalDPS: value }, breakdowns: { TotalDPS: breakdown }, breakdown_descriptors: { TotalDPS: 'steps' } }] } : {}),
+      } as unknown as CalculateBuildResponse, lang);
+      expect(html).toContain(`<div class="calcs-detail-value"><strong>${expected}</strong></div>`);
+      expect(html).toContain(`<strong>${expected} DPS</strong></li></ol>`);
+      expect(html).toContain(`<td class="formula-result">${expected}</td></tr>`);
+      // Average hit finishes TotalHitAvg even though DPS still has more steps.
+      expect(html).toContain(`<span>${bindT(lang)('calcs.chainHit')}</span><strong>2,654</strong>`);
+      expect(html).toContain('<td class="formula-result">2,654</td>');
+    }
+  }
+  const combined: Breakdown = { ...empty, formula: { value: 6306.74, steps: [
+    { op: 'hit_dps', operand: 5307.37, result: 5307.37 },
+    { op: 'dot_dps', operand: 999.37, result: 6306.74 },
+  ] } };
+  const links = renderToStaticMarkup(<BreakdownTable breakdown={combined} stat="CombinedDPS" lang={lang} onSelect={() => {}} />);
+  expect(links).toContain('5,307 DPS</button>');
+  expect(links).toContain('999.37 DPS</button>');
+  // The steps table shows each component with the same precision as its button.
+  expect(links).toContain('<td class="formula-result">5,307</td>');
+  expect(links).toContain('<td class="formula-operand">+999.37</td>');
+});
+
+test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('damage-chain stat operands and intermediate factors keep their own precision in %s', lang => {
+  for (const adjustment of [undefined, 'reload', 'energy_trigger'] as const) {
+    const breakdown: Breakdown = { ...empty, formula: { value: adjustment ? 3844162.9887583987 : 5102409.063922749, steps: [
+      { op: 'average_hit', operand: 2653.685, result: 2653.685 },
+      { op: 'enemy_mitigation', operand: .8, result: 2122.948 },
+      { op: 'uses_per_second', operand: 2, result: 4245.896 },
+      { op: 'chance_to_hit', operand: 97.34, result: 4132.9551664 },
+      { op: 'dps_multiplier', operand: 1234.567, result: 5102409.063922749 },
+      ...(adjustment ? [{ op: adjustment, operand: .7534, result: 3844162.9887583987 }] : []),
+    ] } };
+    const html = renderToStaticMarkup(<BreakdownTable breakdown={breakdown} stat="TotalDPS" lang={lang} />);
+    const link = (key: UiKey, value: string) => expect(html).toContain(`<span>${bindT(lang)(key)}</span><strong>${value}</strong>`);
+    link('calcs.chainEnemy', '2,122.95');
+    link('calcs.chainRate', `${adjustment ? '2' : '2.00'}${lang === 'en-US' ? ' /s' : ' 次/秒'}`);
+    link('calcs.step.chance_to_hit', '97.3%');
+    link('calcs.step.dps_multiplier', '×1,234.57');
+    if (adjustment) link(adjustment === 'reload' ? 'calcs.step.reload' : 'calcs.chainTrigger', '×0.75');
+  }
+});
+
+test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('resistance summaries use the stat precision in %s', lang => {
+  const breakdown: Breakdown = { ...empty, formula: { value: 75.26, steps: [
+    { op: 'base', operand: 113.34, result: 113.34 },
+    { op: 'cap', operand: 75.26, result: 75.26 },
+  ] } };
+  const html = renderToStaticMarkup(<BreakdownTable breakdown={breakdown} stat="FireResist" lang={lang}
+    values={new Map([['FireResistTotal', 113.34], ['FireResistMax', 75.26], ['FireResistOverCap', 38.08]])} />);
+  for (const value of ['113.3%', '75.3%', '38.1%']) expect(html).toContain(`<strong class="mod-value">${value}</strong>`);
+  expect(html).toContain('<td class="formula-result">113.3%</td>');
+  expect(html).toContain('<td class="formula-operand">≤ 75.3</td>');
+  expect(html).toContain('class="formula-number">113.3%</span>');
+  // Below the floor the total before the floor step is the same final ResistTotal.
+  const floored = renderToStaticMarkup(<BreakdownTable breakdown={{ ...empty, formula: { value: -200, steps: [
+    { op: 'base', operand: -213.34, result: -213.34 },
+    { op: 'floor', operand: -200, result: -200 },
+  ] } }} stat="FireResist" lang={lang} values={new Map([['FireResistTotal', -213.34], ['FireResistMax', 75]])} />);
+  expect(floored).toContain('<td class="formula-result">-213.3%</td>');
 });
 
 test('modifiers fold by source with a count and separate stacking subtotals', () => {

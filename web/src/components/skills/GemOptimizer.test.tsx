@@ -194,14 +194,14 @@ it('the minion-only support hover previews the same damage stat as its card', as
     baselineUnsupported: [], excluded: [], evaluated: 1, unmodeled: 0 });
   render(); expand(); render(); await button('Calculate support combinations').onClick!({} as never);
   const html = render();
-  expect(html).toContain('Minion hit DPS 151');
+  expect(html).toContain('Minion hit DPS 150.6');
   harness.articles[0].onMouseEnter!({} as never);
   // The third argument is the hovered card, which this harness does not render.
   expect(harness.showChanges.mock.lastCall?.slice(0, 2)).toEqual([expect.any(String), expect.arrayContaining([
     expect.objectContaining({ id: 'MainMinionDPS', before: 100.4, after: 150.6 }),
   ])]);
   const hover = renderToStaticMarkup(<ChangeBar lang="en-US" />);
-  expect(hover).toContain('100 → 151');
+  expect(hover).toContain('100.4 → 150.6');
 });
 
 
