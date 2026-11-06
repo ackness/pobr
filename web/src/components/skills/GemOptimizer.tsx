@@ -1,3 +1,4 @@
+import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { usePreview } from '../shared/PreviewContext';
 import { uiStorageKey } from '../../lib/sessionStorage';
@@ -221,7 +222,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     {result.baselineUnsupported.length > 0 && <details className="support-diagnostics support-baseline-unsupported">
       <summary>{st('baselineLimits')}: {result.baselineUnsupported.length}</summary>
       <p className="skills-hint">{st('baselineLimitsHint')}</p>
-      <ul>{result.baselineUnsupported.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
+      <UnincludedModifiers lines={result.baselineUnsupported} lang={lang} items={result.request.items} />
     </details>}
     {result.excluded.length > 0 && <details className="support-diagnostics">
       <summary>{st('diagnosticExcluded')}: {result.excluded.length}</summary>
@@ -233,7 +234,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
             {gemName(gem.skill_id)} · {st('level')} {gem.level} · {st('quality')} {gem.quality} · {st('statSet')} {gem.stat_set_index ?? 1}
           </li>)}</ul>
           {edit.unsupported.length > 0 && <><p>{st('newLimits')}</p>
-            <ul>{edit.unsupported.map((reason, reasonIndex) => <li key={reasonIndex}>{reason}</li>)}</ul></>}
+            <UnincludedModifiers lines={edit.unsupported} lang={lang} /></>}
           {edit.error && <p className="opt-error">{st('engineError')}: {edit.error}</p>}
           {edit.invalidStats && <p className="opt-error">{st('invalidStats')}</p>}
         </details>

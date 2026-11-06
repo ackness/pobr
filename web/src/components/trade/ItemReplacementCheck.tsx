@@ -1,3 +1,4 @@
+import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppTextarea } from '../shared/controls';
 import { usePreview } from '../shared/PreviewContext';
@@ -258,7 +259,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
             const before = report.baseline[stat] ?? 0, after = selected.stats[stat] ?? 0, delta = after - before;
             return <tr key={stat}><th>{statNameLabel(lang, stat)}</th><td>{format(before)}</td><td>{format(after)}</td><td className={delta < 0 ? 'delta-neg' : delta > 0 ? 'delta-pos' : ''}>{deltaText(delta)}</td></tr>;
           })}</tbody></table></div>
-        {!!selected.unsupported.length && <details className="trade-notice replacement-unsupported"><summary>{ut('incomplete')} ({selected.unsupported.length})</summary><ul>{selected.unsupported.map((line, index) => <li key={index}>{line}</li>)}</ul></details>}
+        {!!selected.unsupported.length && <details className="trade-notice replacement-unsupported"><summary>{ut('incomplete')} ({selected.unsupported.length})</summary><UnincludedModifiers lines={selected.unsupported} lang={lang} /></details>}
         {!!report.rejected.length && <p className="trade-notice">{report.rejected.map(row => `${positionLabel(row.slot)}: ${errorText(row.reason)}`).join('\n')}</p>}
         <div className="replacement-apply"><AppButton className="trade-primary" disabled={!active || busy || affixDirty || session.busy} onClick={apply}>{busy ? ut('comparingPositions') : `${ut('apply')} · ${positionLabel(selected.slot)}`}</AppButton><span>{affixDirty ? affixT(lang, 'dirty') : ut('applyHint')}</span></div>
         {!candidate && selectedItem && <div className="replacement-actions"><AppButton disabled={!active || busy || affixDirty || session.busy || alreadyAdded || equipmentCandidates.length >= EQUIPMENT_CANDIDATE_LIMIT}

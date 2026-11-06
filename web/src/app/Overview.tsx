@@ -10,7 +10,7 @@ import { bindT, damageTypeLabel, slotLabel, statNameLabel, type Lang } from '../
 import { contributionLabel, removalChange } from '../lib/sourceContributions';
 import { activeSkillEffects } from '../lib/skillSelection';
 import { skillDisplayName } from '../lib/skillNames';
-import { unsupportedLineLabel } from '../lib/diagnosticText';
+import { UnincludedModifiers } from '../components/shared/UnincludedModifiers';
 import { formatStatValue, statMap } from '../lib/statDisplay';
 import { deriveFindings, type Finding } from './findings';
 import { AnimatedNumber } from './motion/AnimatedNumber';
@@ -191,13 +191,13 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
         <section className="ov-sec" aria-labelledby="ov-trust">
           <h2 id="ov-trust">{w('Calculation coverage', '计算覆盖', '計算涵蓋範圍')}</h2>
           <dl className="ov-facts">
-            <div><dt>{w('Lines not calculated', '未参与计算的词条', '未參與計算的詞綴')}</dt><dd className={calc?.unsupported_modifiers.length ? 'is-warn' : undefined}>{calc ? calc.unsupported_modifiers.length : '—'}</dd></div>
+            <div><dt>{w('Modifiers not included', '未计入计算的词缀', '未計入計算的詞綴')}</dt><dd className={calc?.unsupported_modifiers.length ? 'is-warn' : undefined}>{calc ? calc.unsupported_modifiers.length : '—'}</dd></div>
             <div><dt>{w('Items that failed to parse', '无法解析的装备', '無法解析的裝備')}</dt><dd className={calc?.item_errors.length ? 'is-bad' : undefined}>{calc ? calc.item_errors.length : '—'}</dd></div>
             <div><dt>{w('Game data', '游戏数据', '遊戲資料')}</dt><dd>{calc?.provenance?.data_version ?? session.dataVersion ?? '—'}</dd></div>
             {calc?.provenance?.engine_version && <div><dt>{w('Engine', '计算引擎', '計算引擎')}</dt><dd>{calc.provenance.engine_version}</dd></div>}
           </dl>
-          {calc && calc.unsupported_modifiers.length > 0 && <details className="ov-details"><summary>{w('Show the lines', '查看这些词条', '查看這些詞綴')}</summary>
-            <ul>{calc.unsupported_modifiers.map((line, index) => <li key={index} title={line}>{unsupportedLineLabel(line, lang)}</li>)}</ul></details>}
+          {calc && calc.unsupported_modifiers.length > 0 && <details className="ov-details"><summary>{w('Show the modifiers', '查看这些词缀', '查看這些詞綴')}</summary>
+            <UnincludedModifiers lines={calc.unsupported_modifiers} lang={lang} items={session.items} /></details>}
           <p className="ov-hint">{w('Results reflect modeled effects. Review the uncalculated effects above.', '数值仅反映已支持的效果。未计算的内容见上方明细。', '數值僅反映已支援的效果。未計算的內容見上方明細。')}</p>
         </section>
       </div>

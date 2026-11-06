@@ -364,7 +364,7 @@ test('real WASM details stay lazy and configuration tracking follows the active 
   await expect(page.locator('#breakdown-Life')).toBeVisible();
   expect((await requests()).filter(request => request.breakdowns?.length)).toHaveLength(0);
   await page.locator('#breakdown-Life').click();
-  await expect(page.locator('#calcs-detail .formula-final')).toBeVisible();
+  await expect(page.locator('#calcs-detail .formula-conclusion')).toBeVisible();
   expect((await requests()).filter(request => request.breakdowns?.length)).toEqual([
     expect.objectContaining({ breakdowns: ['Life'], breakdown_actor: { kind: 'player' } }),
   ]);

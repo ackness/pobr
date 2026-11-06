@@ -1,3 +1,4 @@
+import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import type { GemCatalogEntry, SkillMetricsEntry, SkillMetricsResponse } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useSkillCatalog } from '../../hooks/useSkillName';
@@ -42,7 +43,7 @@ export function SkillMetricsTable({ session, lang, report, displayed }: {
   return <>
     {unsupported.length > 0 && <details className="skill-metrics-limits">
       <summary>{tt('calcs.unsupported')}</summary>
-      <ul>{unsupported.map(modifier => <li key={modifier}>{modifier}</li>)}</ul>
+      <UnincludedModifiers lines={unsupported} lang={lang} />
     </details>}
     <div className="breakdown-scroll">
       <table className="breakdown-table skill-metrics-table">

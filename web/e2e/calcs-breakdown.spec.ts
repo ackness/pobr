@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { pageLink, statRow } from './shell';
-import { closeInspector, detailValue, importBuild, openStat } from './skillsAndCalcs';
+import { closeInspector, detailValue, importBuild, openStat, expandFormulaDetails } from './skillsAndCalcs';
 
 // A committed PoB2 build whose Armour bucket holds a conditional line that is not met
 // ("if you haven't been Hit Recently") next to active INC and MORE lines.
@@ -19,6 +19,7 @@ async function inspectFromRail(page: Page, label: string | RegExp, heading: stri
   const inspector = page.locator('.insp');
   await expect(inspector.locator('h2')).toHaveText(heading);
   await expect(inspector.locator('div.breakdown-detail').first()).toBeVisible({ timeout: 90_000 });
+  await expandFormulaDetails(inspector);
   return inspector;
 }
 
@@ -42,7 +43,7 @@ test('View minion selects its actor and default metric and focuses the detail he
 
   await expect(actor).toHaveText(/^Minion: Wolf Companion · \d+$/);
   await expect(detail.locator('.calcs-eyebrow')).toHaveText(/^Showing: Minion · Wolf Companion #\d+$/);
-  const minionHeading = detail.getByRole('heading', { name: 'Total DPS', exact: true });
+  const minionHeading = detail.getByRole('heading', { name: 'Hit DPS', exact: true });
   await expect(minionHeading).toBeVisible();
   const minionDps = page.locator('#breakdown-TotalDPS');
   await expect(minionDps).toHaveAttribute('aria-pressed', 'true');
@@ -55,8 +56,9 @@ test('View minion selects its actor and default metric and focuses the detail he
 test('a stat breakdown counts only the lines the calculation applies', async ({ page }) => {
   await importBuild(page, code);
   const armour = await openStat(page, 'Armour');
-  const rows = armour.locator('.breakdown-table tbody tr');
-  const inactive = armour.locator('tr.is-inactive');
+  const rows = armour.locator('.modifier-rows > li');
+  for (const summary of await armour.locator('details.modifier-source-group:not([open]) > summary').all()) await summary.click();
+  const inactive = armour.locator('.modifier-rows > li.is-inactive');
   await expect(inactive).not.toHaveCount(0);
   await expect(inactive.first().locator('.mod-inactive-tag')).toHaveText('not active');
   await expect(armour.locator('.breakdown-note', { hasText: 'Dimmed lines are not counted' })).toBeVisible();
@@ -89,7 +91,7 @@ test('headline sidebar stats open the lines behind them', async ({ page }) => {
     [/^Chaos Res\.$/, 'Chaos Res.'],
   ] as const) {
     const inspector = await inspectFromRail(page, label, heading);
-    await expect(inspector.locator('.breakdown-table tbody tr:not(.is-inactive)')).not.toHaveCount(0);
+    await expect(inspector.locator('.modifier-rows > li:not(.is-inactive)')).not.toHaveCount(0);
     if (heading === 'Fire Res.') {
       // Fire resistance: the steps go from the modifier total (86) to the capped value shown (75).
       const steps = inspector.locator('.breakdown-formula tr.formula-step');
@@ -133,7 +135,7 @@ test('hit chance shows the accuracy check against enemy evasion', async ({ page 
   const accuracy = await openStat(page, 'Accuracy');
   const rating = num(await detailValue(accuracy).textContent());
   expect(rating).toBeGreaterThan(0);
-  await expect(accuracy.locator('.breakdown-table tbody tr:not(.is-inactive)')).not.toHaveCount(0);
+  await expect(accuracy.locator('.modifier-rows > li:not(.is-inactive)')).not.toHaveCount(0);
   expect(Math.abs(num(await accuracy.locator('tr.formula-final .formula-result').textContent()) - rating)).toBeLessThanOrEqual(0.5);
 
   // Hit chance starts from that rating and ends at the value shown, below 100%.
@@ -173,12 +175,13 @@ test('average hit and total DPS show how they are built', async ({ page }) => {
   const incOf = async (group: string) => {
     const lines = average.locator(`.damage-lines-${group}`);
     if ((await lines.count()) === 0) return 0;
-    await lines.locator('summary').click();
+    await lines.locator(':scope > summary').click();
+    for (const summary of await lines.locator('details.modifier-source-group:not([open]) > summary').all()) await summary.click();
     // A group's header counts the lines it applies, and only those.
-    const applied = lines.locator('tbody tr:not(.is-inactive)');
-    expect(num(await lines.locator('summary .breakdown-count').textContent())).toBe(await applied.count());
+    const applied = lines.locator('.modifier-rows > li:not(.is-inactive)');
+    expect(num(await lines.locator(':scope > summary .breakdown-count').textContent())).toBe(await applied.count());
     const values = await lines
-      .locator('tbody tr:not(.is-inactive)', { has: page.locator('.mod-type-inc') })
+      .locator('.modifier-rows > li:not(.is-inactive)', { has: page.locator('.mod-type-inc') })
       .locator('.mod-value')
       .allTextContents();
     return values.reduce((sum, text) => sum + num(text), 0);
@@ -191,7 +194,7 @@ test('average hit and total DPS show how they are built', async ({ page }) => {
   // the lines that move them.
   const sources = average.locator('.damage-source-table');
   await expect(sources.locator('tbody tr.damage-physical')).toHaveCount(1);
-  await expect(average.locator('.damage-lines-physical-gain tbody tr:not(.is-inactive)')).not.toHaveCount(0);
+  await expect(average.locator('.damage-lines-physical-gain .modifier-rows > li:not(.is-inactive)')).not.toHaveCount(0);
 
   // Total DPS: starts from that average hit and multiplies in rate and chance to hit.
   const dps = await openStat(page, 'TotalDPS');
@@ -230,6 +233,8 @@ test('combined DPS adds the damage over time to the hits', async ({ page }) => {
   await page.locator('#character-stats .rail-hero-value.is-link').click();
   const inspector = page.locator('.insp');
   await expect(inspector.locator('h2')).toHaveText('Combined DPS');
+  await expect(inspector.locator('div.breakdown-detail').first()).toBeVisible({ timeout: 90_000 });
+  await expandFormulaDetails(inspector);
   await expect(inspector.locator('tr.formula-hit_dps')).toBeVisible({ timeout: 90_000 });
   const hit = await stepResult(inspector.locator('tr.formula-hit_dps'));
   const total = await stepResult(inspector.locator('tr.formula-dot_dps'));
@@ -243,6 +248,7 @@ test('combined DPS adds the damage over time to the hits', async ({ page }) => {
   await expect(page.locator('#calcs-detail-heading')).toHaveText('Combined DPS');
   await expect(page.locator('#breakdown-CombinedDPS')).toHaveAttribute('aria-pressed', 'true');
   const combined = page.locator('#calcs-detail');
+  await expandFormulaDetails(combined);
   await expect(combined.locator('tr.formula-hit_dps')).toBeVisible({ timeout: 90_000 });
   expect(await stepResult(combined.locator('tr.formula-dot_dps'))).toBeCloseTo(total, 1);
 
@@ -264,8 +270,8 @@ test("a skill's own damage over time is listed per type", async ({ page }) => {
     await stepResult(own.locator('tr.formula-skill_dot')),
     1,
   );
-  await own.locator('.damage-lines-chaos summary').click();
-  await expect(own.locator('.damage-lines-chaos tbody tr')).not.toHaveCount(0);
+  await own.locator('.damage-lines-chaos > summary').click();
+  await expect(own.locator('.damage-lines-chaos .modifier-rows > li')).not.toHaveCount(0);
 });
 
 test('an ailment shows the hit it comes from and how many are active', async ({ page }) => {
@@ -329,6 +335,8 @@ test('on-demand details cover steps, sources, derived inputs and an explicit emp
   await expect(page.locator('.calcs-search')).toHaveValue('');
   const ehp = page.locator('#calcs-detail');
   await expect(page.locator('#breakdown-TotalEHP')).toHaveAttribute('data-detail-kind', 'derived');
+  await expect(ehp.locator('.breakdown-derived')).toBeVisible({ timeout: 90_000 });
+  await expandFormulaDetails(ehp);
   await expect(ehp.locator('.derived-formula')).toBeVisible({ timeout: 90_000 });
   await expect(ehp.locator('.breakdown-derived')).toContainText('Enemy damage per hit');
   await expect(ehp.locator('.breakdown-derived')).toContainText('Resource pools used here');
@@ -338,7 +346,7 @@ test('on-demand details cover steps, sources, derived inputs and an explicit emp
   const strength = await openStat(page, 'Str');
   await expect(page.locator('#breakdown-Str')).toHaveAttribute('data-detail-kind', 'sources');
   await expect(strength.locator('.breakdown-sources')).toContainText('Strength');
-  await expect(strength.locator('.breakdown-sources tbody tr:not(.is-inactive)')).not.toHaveCount(0);
+  await expect(strength.locator('.breakdown-sources .modifier-rows > li:not(.is-inactive)')).not.toHaveCount(0);
   await strength.screenshot({ path: 'test-results/calcs-strength-sources.png' });
 
   const burst = await openStat(page, 'AverageBurstDamage');

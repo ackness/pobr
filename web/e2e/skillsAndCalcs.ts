@@ -27,6 +27,7 @@ export async function openStat(page: Page, id: string): Promise<Locator> {
     // The loading, stale and error messages share the class on a <p> or carry a role; the table does not.
     await expect(detail.locator('div.breakdown-detail:not([role])').first()).toBeVisible({ timeout: 90_000 });
   }
+  await expandFormulaDetails(detail);
   return detail;
 }
 
@@ -102,4 +103,9 @@ export async function closeInspector(page: Page) {
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.locator('.insp')).toHaveCount(0);
   await expect(page.locator('[data-slot="sheet-overlay"], [data-slot="sheet-content"]')).toHaveCount(0);
+}
+
+/** Formulas start folded; tests that inspect the steps explicitly reveal them. */
+export async function expandFormulaDetails(detail: Locator) {
+  for (const summary of await detail.locator('details.formula-steps:not([open]) > summary').all()) await summary.click();
 }
