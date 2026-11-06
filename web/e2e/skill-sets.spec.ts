@@ -33,7 +33,7 @@ test('skill sets keep their main group and weapon bindings across copy, edits, s
   if (await groups.first().locator('.skill-group-title').getAttribute('aria-expanded') !== 'true') {
     await groups.first().locator('.skill-group-title').click();
   }
-  const level = groups.first().getByRole('spinbutton', { name: 'Level', exact: true });
+  const level = page.locator('.skill-detail').getByRole('spinbutton', { name: 'Level', exact: true });
   await expect(level).toBeEnabled();
   await level.fill('12');
   await expect(selector).toBeEnabled();

@@ -16,7 +16,7 @@ export function NamedSets({ session, lang, kind = 'config' }: { session: BuildSe
   const sets = (kind === 'config' ? session.build?.config_sets : session.build?.skill_sets) ?? [{ id: 1, title: 'Default' }];
   const active = (kind === 'config' ? session.build?.active_config_set : session.build?.active_skill_set) ?? 1;
   const label = tt(kind === 'config' ? 'namedSets.config' : 'namedSets.skill');
-  const title = (raw: string) => kind === 'config' && raw === 'Default' ? tt('namedSets.default') : raw;
+  const title = (raw: string) => raw === 'Default' ? tt('namedSets.default') : raw;
   const [name, setName] = useState('');
   const [editing, setEditing] = useState<'create' | 'duplicate' | 'rename' | null>(null);
   return <section className="named-sets" aria-label={label}>

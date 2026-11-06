@@ -1,6 +1,6 @@
 import { getBackend } from '../api/backend';
 import type { CalculateBuildRequest, GemInput, SocketGroupInput, VariantInput } from '../api/types';
-import { compareObjectiveStats, evaluateVariants, feasibleOf, scoreOf, type EvaluateOptions, type Objective } from './optimize';
+import { COLLECT_STATS, compareObjectiveStats, evaluateVariants, feasibleOf, scoreOf, type EvaluateOptions, type Objective } from './optimize';
 import type { TradeGem } from './tradeOptimizer';
 import { preserveSkillSelection } from './skillSelection';
 
@@ -55,7 +55,11 @@ export async function supportSetsCompatible(group: SocketGroupInput, sets: GemIn
   const eligible = sets.flatMap((gems, index) => {
     if (!supportSetAllowed(gems, catalog)) return [];
     const candidate = groupWithSupports(group, gems, byId);
-    return candidate ? [{ candidate, index }] : [];
+    // Imported unresolved gems have no effect ID. They cannot participate in a
+    // compatibility judgement, but must remain in the build and its diagnostics.
+    // Otherwise one unresolved gem (e.g. Atziri's Communion in a trigger group)
+    // makes the endpoint reject every otherwise legal support.
+    return candidate ? [{ candidate: { ...candidate, gems: candidate.gems.filter(gem => gem.skill_id) }, index }] : [];
   });
   if (!eligible.length) return result;
   const backend = await getBackend();
@@ -68,6 +72,21 @@ export async function supportSetsCompatible(group: SocketGroupInput, sets: GemIn
     batch.forEach(({ index }, i) => { result[index] = compatible[i]; });
   }
   return result;
+}
+
+export type SupportPickerStatus = 'loading' | 'error' | 'full' | 'unknown' | 'empty' | 'ready';
+
+/** A full slot count takes precedence over the candidate list's loading state. */
+export function supportPickerStatus(group: SocketGroupInput, catalog: SupportMetadata[],
+  candidates: number | undefined, failed = false): { status: SupportPickerStatus; remaining: number; partial: boolean } {
+  const byId = new Map(catalog.map(gem => [gem.skill_id, gem]));
+  const occupied = group.gems.filter(gem => byId.get(gem.skill_id)?.is_support).length;
+  const remaining = Math.max(0, 5 - occupied);
+  const partial = group.gems.some(gem => gem.enabled !== false && !known(byId.get(gem.skill_id)));
+  const active = group.gems.some(gem => gem.enabled !== false && known(byId.get(gem.skill_id)) && !byId.get(gem.skill_id)!.is_support);
+  const status = !remaining ? 'full' : failed ? 'error' : candidates === undefined ? 'loading'
+    : !active ? 'unknown' : candidates ? 'ready' : partial ? 'unknown' : 'empty';
+  return { status, remaining, partial };
 }
 
 export async function supportSetCompatible(group: SocketGroupInput, gems: GemInput[],
@@ -205,7 +224,10 @@ export async function optimizeSupports(options: {
   const toInput = (gem: SupportMetadata): GemInput => equipped.find(input => input.skill_id === gem.skill_id)
     ?? { skill_id: gem.skill_id, level: usableSupportLevel(gem, level), quality: 0 };
   const evaluate = options.evaluate ?? evaluateVariants;
-  const identity = await evaluate({ request, variants: [{}], signal });
+  // Combined DPS is displayed on cards and previews even when the shared goal
+  // ranks hit DPS. Request it for the baseline and every candidate batch.
+  const stats = [...new Set([...COLLECT_STATS, 'CombinedDPS'])];
+  const identity = await evaluate({ request, variants: [{}], stats, signal });
   if (identity.aborted) throw new DOMException('Support optimization cancelled', 'AbortError');
   signal?.throwIfAborted();
   const identityRow = identity.results[0];
@@ -236,7 +258,7 @@ export async function optimizeSupports(options: {
       signal?.throwIfAborted();
       const selected = candidates.slice(start, start + 512);
       const variants = selected.map(supports => supportVariant(request, groupIndex, supports, catalog));
-      const result = await evaluate({ request, variants, signal,
+      const result = await evaluate({ request, variants, stats, signal,
         onProgress: done => onProgress?.(evaluated + done, Math.max(estimate, evaluated + candidates.length)) });
       if (result.aborted) throw new DOMException('Support optimization cancelled', 'AbortError');
       signal?.throwIfAborted();

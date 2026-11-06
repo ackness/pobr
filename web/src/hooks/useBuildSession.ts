@@ -273,6 +273,7 @@ export interface BuildSession {
   /** Select an exact effect atomically; reject rows from an obsolete overview. */
   inspectSkill: (groupIndex: number, activeSkillIndex: number, expectedVersion: number) => void;
   setConfigInput: (key: string, value: ConfigInputValue | null) => void;
+  sourceContributions?: AttributionResponse | null;
   runAttribution: (fields: string[]) => Promise<AttributionResponse>;
   /** Independent per-effect metrics across weapon sets, without an aggregate sum. */
   runSkillMetrics: () => Promise<SkillMetricsResponse>;
@@ -378,6 +379,18 @@ export interface LibraryItem {
   text: string;
   /** 来源装备槽（导入/保存时记录；旧条目缺失 → 不参与槽位过滤）。 */
   slot?: string;
+  sourceBuild?: { id: string; name: string };
+}
+
+/** Save the identity now; a snapshot name still works after its build is deleted. */
+export function librarySourceBuild(workspace: BuildWorkspace | null): LibraryItem['sourceBuild'] {
+  const build = workspace?.builds.find(build => build.id === workspace.activeBuild);
+  return build ? { id: build.id, name: build.name } : undefined;
+}
+
+/** One constructor for explicit saves and imported equipment; old entries need no migration. */
+export function createLibraryItem(kind: LibraryItem['kind'], text: string, slot: string | undefined, workspace: BuildWorkspace | null): LibraryItem {
+  return { id: createId(), kind, name: itemName(text), text, slot, sourceBuild: librarySourceBuild(workspace) };
 }
 
 /** 技能组套装：整套 socket_groups 快照，可随时切换。 */
@@ -395,7 +408,7 @@ export interface Library {
 }
 
 /** The stored text as a library: what is missing is empty, and unreadable text is an empty library too. */
-function parseLibrary(raw: string | null): Library {
+export function parseLibrary(raw: string | null): Library {
   return readStoredLibrary(raw) ?? { items: [], skillSets: [] };
 }
 
@@ -786,6 +799,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const libraryRef = useRef(library);
   const librarySyncedRef = useRef(initialLibrary);
   const [stateVersion, setStateVersion] = useState(0);
+  const [attributed, setAttributed] = useState<{ state: BuildState; fields: string[]; report: AttributionResponse } | null>(null);
   const calc = calculated?.version === stateVersion ? calculated.result : null;
   const calcMs = calculated?.version === stateVersion ? calculated.ms : null;
   const [socketGroupRevision, setSocketGroupRevision] = useState(0);
@@ -987,13 +1001,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         text: j.text,
         slot: undefined,
       })),
-    ].map((e) => ({
-      id: createId(),
-      kind: e.kind,
-      name: itemName(e.text),
-      text: e.text,
-      slot: e.slot,
-    }));
+    ].map(e => createLibraryItem(e.kind, e.text, e.slot, workspaceRef.current));
 
     const setName = decoded.character.ascendancy_name || decoded.character.class_name;
     const skillSet: SkillSet | null = decoded.socket_groups.length
@@ -1017,7 +1025,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       // A library entry has one slot: merging different hands would lose a candidate.
       const importIdentity = (item: LibraryItem) => {
         const hand = item.slot === 'weapon1' || item.slot === 'weapon2' ? item.slot : '';
-        return `${hand}\0${item.text}`;
+        return `${item.sourceBuild?.id ?? ''}\0${hand}\0${item.text}`;
       };
       const seen = new Set(existing.map(importIdentity));
       const newItems = imported.filter((i) => {
@@ -1048,7 +1056,6 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
           ? await backend.decodeBuildFile(code)
           : await backend.decodeBuild(code);
         setBuild(decoded);
-        mergeImportedIntoLibrary(decoded);
         // <Notes> 里可能带 PoBR 注释标记段：拆成总览笔记 + 局部注释。
         const { overview, annotations } = splitNotes(decoded.notes ?? '');
         const importedState: BuildState = {
@@ -1071,6 +1078,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
           const name = importedBuildName(decoded.character, classNames, lang, options.name, plannerName);
           workspaceRef.current = addWorkspaceBuild(workspaceRef.current, name, { version: 1, state: importedState, notes: overview }, defaultStarterRef.current);
         }
+        mergeImportedIntoLibrary(decoded);
         // Do not persist imported notes into the stage being left behind.
         notesRef.current = overview;
         setNotesState(overview);
@@ -1726,7 +1734,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         ...libraryRef.current,
         items: [
           ...libraryRef.current.items,
-          { id: createId(), kind, name: itemName(text), text, slot },
+          createLibraryItem(kind, text, slot, workspaceRef.current),
         ],
       });
     },
@@ -1789,10 +1797,13 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const runAttribution = useCallback(
     async (fields: string[]) => {
       if (!state) throw new Error('build not ready');
+      if (attributed?.state === state && fields.every(field => attributed.fields.includes(field))) return attributed.report;
       const backend = await getBackend();
-      return backend.attribution({ request: toRequest(state), fields });
+      const report = await backend.attribution({ request: toRequest(state), fields });
+      if (stateRef.current === state) setAttributed({ state, fields, report });
+      return report;
     },
-    [state],
+    [state, attributed],
   );
 
   const runSkillMetrics = useCallback(async (): Promise<SkillMetricsResponse> => {
@@ -1881,6 +1892,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
     inspectSkill,
     setConfigInput,
     runAttribution,
+    sourceContributions: attributed?.state === state ? attributed.report : null,
     runSkillMetrics,
   };
 }
