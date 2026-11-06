@@ -6,7 +6,6 @@
 .shell-root .config-search { flex: 1 1 15rem; min-width: 0; max-width: 32rem; }
 .shell-root .config-filter { display: flex; align-items: center; gap: .5rem; font-size: .875em; }
 .shell-root :is(.config-guidance, .config-quick-disclosure) { padding: .75rem 1rem; border: 1px solid var(--border); border-radius: .75rem; margin: .75rem 0; background: var(--card); }
-.shell-root :is(.config-guidance, .config-quick-disclosure) > summary { cursor: pointer; }
 .shell-root .config-quick-access { border: 0; padding: .5rem 0; background: transparent; }
 .shell-root .config-quick-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); padding: 0; list-style: none; gap: .75rem; }
 .shell-root .config-quick-entry { display: flex; align-items: start; gap: .75rem; padding: .75rem; border: 1px solid var(--border); border-radius: .75rem; }
@@ -30,7 +29,7 @@
 .shell-root .config-item > [role="checkbox"] { justify-self: end; width: 1.1rem; height: 1.1rem; margin-top: .4rem; }
 .shell-root .config-reset { grid-column: 3; padding: 0; width: 2rem; height: 2rem; }
 .shell-root .config-option-help { margin-top: .5rem; font-size: .85em; }
-.shell-root .config-option-help summary { color: var(--muted-foreground); cursor: pointer; width: fit-content; }
+.shell-root .config-option-help summary { color: var(--muted-foreground); width: fit-content; }
 .shell-root .config-help { white-space: pre-line; line-height: 1.6; margin: .5rem 0; color: var(--muted-foreground); }
 .shell-root :is(.config-source, .config-applicability, .config-hint) { display: block; font-size: .8em; color: var(--muted-foreground); margin: .4rem 0 0; line-height: 1.6; }
 .shell-root .config-applicability { color: var(--primary); }
@@ -50,7 +49,6 @@
 .shell-root .config-add { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
 .shell-root .config-add > input { flex: 1 1 12rem; width: auto; min-width: 0; }
 .shell-root .config-add .config-raw-value { flex: 1 1 15rem; }
-.shell-root .party-editor > summary { cursor: pointer; }
 .shell-root .party-editor > p { color: var(--muted-foreground); font-size: .875em; line-height: 1.6; }
 .shell-root .party-editor > label { display: grid; gap: .5rem; margin: 1rem 0; }
 .shell-root .party-editor > button { margin: 0 .5rem .75rem 0; }
@@ -59,7 +57,7 @@
 .shell-root .party-editor fieldset > label { display: flex; align-items: center; gap: .75rem; margin-bottom: .75rem; }
 .shell-root .party-editor fieldset > label input { min-width: 0; max-width: 24rem; }
 .shell-root .party-editor fieldset details { border-top: 1px solid var(--border); padding-top: .75rem; margin-top: .75rem; }
-.shell-root .party-editor fieldset summary { cursor: pointer; margin-bottom: .5rem; }
+.shell-root .party-editor fieldset summary { margin-bottom: .5rem; }
 .shell-root .party-editor textarea { width: 100%; min-width: 0; font-family: var(--font-mono); }
 @media (min-width: 1700px) {
   .shell-root .config-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

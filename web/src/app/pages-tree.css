@@ -187,7 +187,6 @@
 
 @layer app {
   .shell-root .tree-panel .tree-tooltip { pointer-events: auto; max-height: min(34rem, 65dvh); overflow-y: auto; max-width: min(24rem, calc(100% - 1rem)); }
-  .shell-root .tree-panel .tree-tooltip summary { cursor: pointer; }
   .shell-root .tree-panel .tree-tooltip .diff-list { display: flex; flex-direction: column; }
   .shell-root .tree-panel .tree-tooltip .diff-entry { white-space: normal; }
   .shell-root .tree-panel .tree-sidebar-width { display: grid; gap: .25rem; font-size: var(--text-xs); }
@@ -195,7 +194,7 @@
   .shell-root .tree-panel .tree-import-notice { color: var(--foreground); border-left-color: var(--primary); }
   .shell-root .tree-panel .tree-refund-result { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center; gap: .5rem; font-variant-numeric: tabular-nums; }
   .shell-root .tree-panel .tree-heat-legend { max-width: 22rem; }
-  .shell-root .tree-panel .tree-heat-legend summary { display: flex; align-items: center; gap: .4rem; cursor: pointer; }
+  .shell-root .tree-panel .tree-heat-legend summary { display: flex; align-items: center; gap: .4rem; }
   .shell-root .tree-panel .tree-heat-legend p { margin: .4rem 0; }
   .shell-root .tree-panel .tree-heat-scale { width: 5rem; height: .6rem; background: linear-gradient(to right, hsl(210 55% 32%), hsl(20 70% 28%), hsl(45 100% 60%)); }
   .shell-root .tree-panel .tree-heat progress { width: 8rem; }

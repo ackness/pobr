@@ -5,5 +5,4 @@
 .unincluded-sources { padding-left: 0; list-style: none; }
 .unincluded-lines { margin-block: .4rem; padding-left: 1rem; }
 .unincluded-raw { min-width: 0; max-width: 100%; margin-block: .5rem; }
-.unincluded-raw > summary { cursor: pointer; }
 :is(.modifier-raw, .unincluded-raw) > pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--text-xs); }

@@ -38,21 +38,6 @@
   .insp .insp-body .breakdown-detail table.breakdown-formula { table-layout: auto; min-width: 100%; max-width: none; }
   .insp .insp-body .breakdown-detail table.breakdown-formula th { min-width: 8rem; white-space: normal; }
   .insp .insp-body .breakdown-detail table.breakdown-formula td:is(.formula-operand, .formula-result) { width: auto; padding-inline: .375rem; white-space: nowrap; overflow-wrap: normal; }
-  /* Type and value take only their content width (type may wrap between words, values never wrap);
-     the modifier text gets the space left after the source and breaks only between words. */
-  .insp .insp-body .breakdown-detail table.modifier-table { table-layout: auto; }
-  .insp .insp-body .breakdown-detail table.modifier-table :is(th, td) { width: auto; }
-  .insp .insp-body .breakdown-detail table.modifier-table :is(th, td):nth-child(-n+2) { width: 1%; padding-inline: .25rem; }
-  .insp .insp-body .breakdown-detail table.modifier-table :is(th, td):first-child { white-space: normal; overflow-wrap: break-word; }
-  /* Chinese type labels are short (基础, 提高／降低); without this they break after every character. */
-  .insp .insp-body .breakdown-detail table.modifier-table :is(th, td):first-child:lang(zh) { white-space: nowrap; }
-  /* Chinese sources break at the spaces around ·, not inside a word (物品词缀 · 鞋子). */
-  .insp .insp-body .breakdown-detail table.modifier-table :is(th, td):last-child:lang(zh) { word-break: keep-all; }
-  .insp .insp-body .breakdown-detail table.modifier-table td:first-child { font-size: var(--text-xs); }
-  .insp .insp-body .breakdown-detail table.modifier-table :is(th, td):nth-child(2) { white-space: nowrap; }
-  .insp .insp-body .breakdown-detail table.modifier-table :is(th, td):nth-child(3) { overflow-wrap: break-word; }
-  /* The source stays narrow; its minimum fits one long label word (Ascendancy), so only unusually long words break. */
-  .insp .insp-body .breakdown-detail table.modifier-table :is(th, td):last-child { width: 24%; min-width: 5.25rem; max-width: 6.5rem; padding-inline: .25rem 0; white-space: normal; overflow-wrap: anywhere; }
   .insp td:last-child, .insp th:last-child { text-align: right; }
   .insp tr + tr > * { border-top: 1px solid var(--border); }
 

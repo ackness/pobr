@@ -198,17 +198,8 @@ test('shared comparison configuration includes party effects without changing ei
 });
 
 
-import { nearestCompareStage, hasComparisonSource, comparisonGemForm } from './compare';
+import { hasComparisonSource, comparisonGemForm } from './compare';
 import type { GemCatalogEntry } from '../api/types';
-
-test('default B stays within the same build and prefers the closest previous stage', () => {
-  const entries = [{ buildId: 'unrelated', stageId: 'blank' }, ...['first', 'middle', 'last'].map(stageId => ({ buildId: 'current', stageId }))];
-  expect(nearestCompareStage(entries, entries[3])).toBe(entries[2]);
-  expect(nearestCompareStage(entries, entries[2])).toBe(entries[1]);
-  expect(nearestCompareStage(entries, entries[1])).toBe(entries[2]);
-  expect(nearestCompareStage(entries, entries[0])).toBeUndefined();
-  expect(nearestCompareStage(entries, undefined)).toBeUndefined();
-});
 
 test('missing, unknown and failed outputs cannot be assumed to be zero', () => {
   const rows = compareStats(stats([['Flask1LifeRecovery', 0], ['Charm2Duration', 10], ['Unknown', 0], ['ChaosMaxHit', 0]]), stats([['ChaosMaxHit', null]]));

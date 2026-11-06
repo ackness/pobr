@@ -329,7 +329,7 @@
 .formula-conclusion { margin-bottom: 1rem; line-height: 1.8; overflow-wrap: anywhere; }
 .formula-conclusion strong, .modifier-row-head .mod-value, .resistance-summary > section > .mod-value, .damage-chain strong { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .formula-conclusion p { margin: 0; }
-.formula-steps > summary, .modifier-source-group > summary { padding-block: .65rem; cursor: pointer; line-height: 1.6; }
+.formula-steps > summary, .modifier-source-group > summary { padding-block: .65rem; line-height: 1.6; }
 .modifier-source-group { min-width: 0; border-top: 1px solid var(--border); }
 .modifier-source-heading { flex: 1; min-width: 0; }
 .modifier-source-heading > span { white-space: nowrap; }
@@ -363,7 +363,6 @@
 .mitigation-context > * { min-width: 0; }
 .mitigation-context aside ul { margin: 0; padding-left: 1rem; }
 .resistance-sources { min-width: 0; padding-block: .35rem; }
-.resistance-sources > summary { cursor: pointer; }
 @media (max-width: 1000px) { .mitigation-context { grid-template-columns: minmax(0, 1fr); } }
 .combined-components { display: flex; flex-wrap: wrap; gap: .5rem; margin-block: .5rem 1rem; }
 .formula-number { display: inline-block; white-space: nowrap; }

@@ -120,29 +120,29 @@ export function OptionRow({
   const effective = value ?? fallback;
   const [draft, setDraft] = useState(String(value ?? ''));
   useEffect(() => setDraft(String(value ?? '')), [value]);
+  const common = {
+    id: `config-${option.var}`,
+    'aria-describedby': tooltip ? `config-help-${option.var}` : undefined,
+    disabled: busy,
+    'aria-label': label,
+  };
   return (
     <div className={`config-item config-option-row${overridden ? ' is-overridden' : ''}`} data-config-var={option.var}>
-      <label className="config-key" htmlFor={`config-${option.var}`}>{label}</label>
+      <label className="config-key" htmlFor={common.id}>{label}</label>
       <div className={`config-option-control${option.input_type === 'check' ? ' is-check' : ''}`}>
         {option.input_type === 'check' ? (
           <AppInput
-            id={`config-${option.var}`}
-            aria-describedby={tooltip ? `config-help-${option.var}` : undefined}
+            {...common}
             type="checkbox"
             checked={typeof effective === 'number' ? effective !== 0 : effective === true}
-            disabled={busy}
             onChange={(e) => onChange(e.target.checked)}
-            aria-label={label}
           />
         ) : option.input_type === 'list' ? (
           <AppSelectControl
             className="w-full"
-            id={`config-${option.var}`}
-            aria-describedby={tooltip ? `config-help-${option.var}` : undefined}
+            {...common}
             value={String(effective ?? '')}
-            disabled={busy}
             onChange={(e) => onChange(e.target.value)}
-            aria-label={label}
           >
             {!(option.list_options ?? []).some(opt => String(opt.value) === String(effective ?? '')) &&
               <option value={String(effective ?? '')}>{effective === undefined ? workflowLabel(lang, 'unset') : String(effective)}</option>}
@@ -158,8 +158,7 @@ export function OptionRow({
           </AppSelectControl>
         ) : (
           <AppInput
-            id={`config-${option.var}`}
-            aria-describedby={tooltip ? `config-help-${option.var}` : undefined}
+            {...common}
             className="config-value"
             type={option.input_type === 'text' || typeof value === 'string' || typeof value === 'boolean' ? 'text' : 'number'}
             inputMode={option.input_type === 'text' ? undefined : 'decimal'}
@@ -170,8 +169,6 @@ export function OptionRow({
                 ? `${fallback}${inheritedLabel ? lang === 'en-US' ? ` (${inheritedLabel})` : `（${inheritedLabel}）` : ''}`
                 : inheritedLabel ?? ''
             }
-            disabled={busy}
-            aria-label={label}
             onChange={event => setDraft(event.target.value)}
             onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }}
             onBlur={(e) => {
@@ -182,7 +179,7 @@ export function OptionRow({
               } else if (raw.trim() === '') {
                 setDraft(String(value ?? ''));
                 onReset();
-              } else if (raw.trim() !== '' && Number.isFinite(Number(raw))) {
+              } else if (Number.isFinite(Number(raw))) {
                 if (Number(raw) !== value) onChange(Number(raw));
               }
             }}

@@ -112,9 +112,10 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
     </article>;
   };
   const stageWord = (side: 'A' | 'B') => tt(side === 'A' ? 'compare.before' : 'compare.after');
+  const classNames = session.classNames ?? { classes: {}, ascendancies: {} };
   const identity = (entry: NonNullable<typeof a>) => [`${tt('compare.level')} ${entry.saved.state.character.level}`,
-    classDisplayName(session.classNames ?? { classes: {}, ascendancies: {} }, entry.saved.state.character.class_name, lang, 'classes'),
-    classDisplayName(session.classNames ?? { classes: {}, ascendancies: {} }, entry.saved.state.character.ascendancy_name, lang, 'ascendancies'),
+    classDisplayName(classNames, entry.saved.state.character.class_name, lang, 'classes'),
+    classDisplayName(classNames, entry.saved.state.character.ascendancy_name, lang, 'ascendancies'),
     `${tt('compare.weaponSet')} ${entry.saved.state.weaponSwap?.active ?? 1}`].filter(Boolean).join(' · ');
   const pick = (side: 'A' | 'B', id: string) => {
     if (side === 'A') setAId(id);
@@ -132,17 +133,18 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
     <Button variant="ghost" size="sm" aria-label={tt('compare.swap')} disabled={!a || !b} onClick={() => { setAId(b?.stageId); setBId(a?.stageId); setMessage(''); }}>⇄</Button>
   </div>;
   const statDefs = new Map(sections.flatMap(section => section.rows.map(def => [def.id, def] as const)));
-  const itemChanges = a && b ? itemDifferences(a.saved.state, b.saved.state) : [];
-  const weaponChanges = a && b ? weaponDifferences(a.saved.state, b.saved.state) : [];
-  const skillChanges = a && b ? skillDifferences(a.saved.state, b.saved.state) : [];
-  const configChanges = a && b ? [
-    ...configDifferences(a.saved.state, b.saved.state).map(row => ({ ...row, action: { kind: 'config', key: row.key } as CopySection })),
-    { key: tt('compare.enemy'), before: encounterTierLabel(lang, a.saved.state.params.enemy_tier, a.saved.state.params.config_inputs), after: encounterTierLabel(lang, b.saved.state.params.enemy_tier, b.saved.state.params.config_inputs), action: { kind: 'enemy' } as CopySection },
-    { key: tt('compare.mods'), before: a.saved.state.params.custom_modifier_blocks ?? a.saved.state.params.extra_modifiers,
-      after: b.saved.state.params.custom_modifier_blocks ?? b.saved.state.params.extra_modifiers, action: { kind: 'modifiers' } as CopySection },
+  const pair = a && b ? { a: a.saved.state, b: b.saved.state } : null;
+  const itemChanges = pair ? itemDifferences(pair.a, pair.b) : [];
+  const weaponChanges = pair ? weaponDifferences(pair.a, pair.b) : [];
+  const skillChanges = pair ? skillDifferences(pair.a, pair.b) : [];
+  const configChanges = pair ? [
+    ...configDifferences(pair.a, pair.b).map(row => ({ ...row, action: { kind: 'config', key: row.key } as CopySection })),
+    { key: tt('compare.enemy'), before: encounterTierLabel(lang, pair.a.params.enemy_tier, pair.a.params.config_inputs), after: encounterTierLabel(lang, pair.b.params.enemy_tier, pair.b.params.config_inputs), action: { kind: 'enemy' } as CopySection },
+    { key: tt('compare.mods'), before: pair.a.params.custom_modifier_blocks ?? pair.a.params.extra_modifiers,
+      after: pair.b.params.custom_modifier_blocks ?? pair.b.params.extra_modifiers, action: { kind: 'modifiers' } as CopySection },
   ].filter(row => JSON.stringify(row.before) !== JSON.stringify(row.after)) : [];
-  const sameTree = !!a && !!b && resolvedTreeVersion(a.saved.state.treeVersion, session.dataVersion) === resolvedTreeVersion(b.saved.state.treeVersion, session.dataVersion);
-  const treeChanges = a && b ? treeDifferenceCount(a.saved.state, b.saved.state, sameTree) : 0;
+  const sameTree = !!pair && resolvedTreeVersion(pair.a.treeVersion, session.dataVersion) === resolvedTreeVersion(pair.b.treeVersion, session.dataVersion);
+  const treeChanges = pair ? treeDifferenceCount(pair.a, pair.b, sameTree) : 0;
   const counts: DiffCounts = {
     stats: value ? [...statDefs.keys()].filter(id => value.stats.find(row => row.id === id)?.changed).length : 0,
     items: itemChanges.length + weaponChanges.length, skills: skillChanges.length, config: configChanges.length, tree: treeChanges ?? 0,
