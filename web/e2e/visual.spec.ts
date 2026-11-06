@@ -9,9 +9,9 @@ import { goTo, importAndOpen } from './skillsAndCalcs';
 import { EXTENDED } from './tags';
 
 const BREAKPOINTS = [320, 768, 1024, 1440, 1920, 2560, 3440] as const;
-// 2560 and 3440 are also covered by the populated workflow and `functional pages fit 3440px`; 1024 sits between
-// the 768 and 1440 layouts.
-const DEFAULT_BREAKPOINTS: readonly number[] = [320, 768, 1440, 1920];
+// 1024 is the only default check of the 1001–1250px rules (trade, config workflow, the 1100/1200 breakpoints).
+// 1920 sits in a band the 1440 and 2560 populated runs cover; 3440 is covered by `functional pages fit 3440px`.
+const DEFAULT_BREAKPOINTS: readonly number[] = [320, 768, 1024, 1440];
 
 for (const width of BREAKPOINTS) {
   test(`no horizontal overflow at ${width}px`, DEFAULT_BREAKPOINTS.includes(width) ? {} : EXTENDED, async ({ page }) => {

@@ -277,10 +277,10 @@ async function exactApply(page: Page, card: Locator, planner: Planner, before: C
   for (const id of metrics) {
     const row = STAT_SECTIONS.flatMap(section => section.rows).find(row => row.id === id);
     const value = expectedResult.stats.find(stat => stat.id === id)!.value;
-    // Combined DPS is the headline figure above the rows, shown with two decimals.
+    // Combined DPS is the headline figure above the rows.
     const shown = row ? statValue(page, new RegExp(`^${row.label[lang]}$`)).first()
       : page.locator(`.rail-headline [data-stat="${id}"] .rail-hero-value`).first();
-    await expect(shown).toHaveText(formatStatValue(value, row?.format ?? 'float2'));
+    await expect(shown).toHaveText(formatStatValue(value, statFormat(id)));
   }
   return after;
 }

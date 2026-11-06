@@ -47,6 +47,15 @@ export async function selectStage(page: Page, name: string) {
   await choose(page, page.getByRole('combobox', { name: 'Current stage', exact: true }), name);
 }
 
+/**
+ * Opened lists and popovers are placed a frame after they appear and then zoom and slide in, so a size read
+ * before their animations finish can see them scaled down. Wait for that, then measure once.
+ */
+export async function animationsSettled(page: Page) {
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await page.waitForFunction(() => document.getAnimations().every(animation => animation.playState !== 'running'));
+}
+
 /** Picks where the next import goes: a new BD, or the current stage (which asks before it replaces anything). */
 export async function importInto(page: Page, destination: 'newBuild' | 'currentStage', lang: Lang = 'en-US') {
   const choices = page.getByRole('group', { name: workspaceText(lang).importDestination, exact: true }).getByRole('button');

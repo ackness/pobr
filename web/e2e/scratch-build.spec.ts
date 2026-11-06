@@ -20,8 +20,13 @@ test('scratch build: class picker, level edit, tree allocation', async ({ page }
   await expect(classPicker).toContainText('Witch', { timeout: 30_000 });
 
   // The results panel stays empty until the build has content; a level above 1 is content.
+  const empty = page.locator('#character-stats').getByText('Import or create a build to see its results.', { exact: true });
+  await expect(empty).toBeVisible();
   await page.getByLabel('Level').fill('80');
+  await expect(empty).toHaveCount(0, { timeout: 30_000 });
   const lifeValue = statValue(page, /^Life$/).first();
+  // A missing row would pass the checks below, so require it first.
+  await expect(lifeValue).toBeVisible();
   await expect(lifeValue).not.toHaveText('—', { timeout: 30_000 });
   await expect(lifeValue).not.toHaveText('0');
 

@@ -3,6 +3,7 @@ import { bdLibraryButton, openItemsAfterImport } from './shell';
 import { answerConfirm } from './confirmDialog';
 import { choose, goTo } from './skillsAndCalcs';
 import { deflateSync } from 'node:zlib';
+import { animationsSettled } from './buildLibrary';
 
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));
 
@@ -225,14 +226,17 @@ test('open dropdowns stay within the content area on narrow and wide screens', a
     await trigger.click();
     const list = page.getByRole('listbox');
     await expect(list).toBeVisible();
-    // The list is drawn outside the page's own container, so compare it with the content area's bounds. It is
-    // placed against its trigger a frame after it opens, so poll rather than read once.
-    await expect.poll(() => list.evaluate(element => {
+    // The list is drawn outside the page's own container, so compare it with the content area's bounds.
+    await animationsSettled(page);
+    const bounds = await list.evaluate(element => {
       const rect = element.getBoundingClientRect();
       const main = document.querySelector('main')!;
       const content = main.getBoundingClientRect();
-      return rect.left - content.left >= 0 && content.right - rect.right >= 0 && main.scrollWidth - main.clientWidth <= 1;
-    })).toBe(true);
+      return { left: rect.left - content.left, right: content.right - rect.right, overflow: main.scrollWidth - main.clientWidth };
+    });
+    expect(bounds.left).toBeGreaterThanOrEqual(0);
+    expect(bounds.right).toBeGreaterThanOrEqual(0);
+    expect(bounds.overflow).toBeLessThanOrEqual(1);
     await page.keyboard.press('Escape');
     await expect(list).toHaveCount(0);
   }
