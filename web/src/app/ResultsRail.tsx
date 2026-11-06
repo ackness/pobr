@@ -9,6 +9,7 @@ import { useMainMinion } from '../hooks/useMainMinion';
 import { useSkillCatalog } from '../hooks/useSkillName';
 import { MAIN_MINION_DPS, minionDpsNote } from '../lib/mainMinion';
 import { skillDisplayName } from '../lib/skillNames';
+import { activeSkillEffects } from '../lib/skillSelection';
 import { formatNumber, STAT_SECTIONS, formatStatValue, statMap } from '../lib/statDisplay';
 import { detailKind } from '../lib/statDetails';
 import { bindT, damageTypeLabel, enemyTierLabel, statNameLabel, type Lang } from '../lib/i18n';
@@ -82,9 +83,12 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
   const catalog = useSkillCatalog();
   const calc = view.calc;
   const [skillPickerOpen, setSkillPickerOpen] = useState(false);
-  const skillMetrics = useSkillMetrics(session, skillPickerOpen);
   const groups = session.socketGroups;
   const selected = session.calcParams.main_socket_group;
+  const selectedGroup = selected === undefined ? undefined : groups[selected];
+  // Availability is part of the closed label and can only be confirmed by the backend.
+  const needsAvailability = !!selectedGroup && !!activeSkillEffects(selectedGroup, catalog)[(selectedGroup.main_active_skill ?? 1) - 1];
+  const skillMetrics = useSkillMetrics(session, skillPickerOpen || needsAvailability);
   const mainSkill: MainSkillInfo | null = calc && selected !== undefined ? calc.main_skill : null;
   const findings = useMemo(() => deriveFindings(calc, groups.length > 0), [calc, groups.length]);
   // A summoner build is judged by its minion: the player's own damage moves to a secondary row.

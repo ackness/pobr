@@ -1,15 +1,20 @@
-import { act, useLayoutEffect, type ComponentProps } from 'react';
+import { act, isValidElement, useLayoutEffect, type ComponentProps, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import type { GemCatalogEntry } from '../../api/types';
+import type { CalculateBuildResponse, GemCatalogEntry, SkillMetricsEntry } from '../../api/types';
 import type { SupportMetadata } from '../../lib/supportOptimizer';
 import { SkillsPanel } from './SkillsPanel';
 import { useConsumedRequest } from '../../hooks/useConsumedRequest';
+import { useSkillMetrics as useSharedSkillMetrics } from '../../app/pages/skills/useSkillMetrics';
+import { Overview } from '../../app/Overview';
+import { ResultsRail } from '../../app/ResultsRail';
+import { bindT } from '../../lib/i18n';
 
 const ui = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[], inputs: [] as ComponentProps<'input'>[],
   gems: [] as GemCatalogEntry[], trade: [] as SupportMetadata[], optimize: vi.fn(), metrics: vi.fn(),
-  pickers: [] as { placeholder: string; entries: GemCatalogEntry[] }[] }));
+  pickers: [] as { placeholder: string; entries: GemCatalogEntry[] }[], ranks: [] as ComponentProps<'button'>[],
+  selects: [] as { value?: string; open?: boolean; onOpenChange?: (open: boolean) => void }[] }));
 vi.mock('../../api/backend', () => ({ getBackend: async () => ({ gemCatalog: async () => ui.gems, gemDescriptions: async () => null,
   skillMetrics: ui.metrics, supportGroupsCompatible: async (groups: unknown[]) => groups.map(() => true) }) }));
 vi.mock('../../lib/tradeOptimizer', () => ({ loadTradeCatalog: async () => ({ gems: ui.trade }) }));
@@ -17,12 +22,34 @@ vi.mock('../../lib/supportOptimizer', async original => ({ ...await original<typ
 vi.mock('../../hooks/useUpgradeGoal', () => ({ useUpgradeGoal: () => ({ goal: { preset: 'dps' }, setGoal: () => {} }) }));
 vi.mock('../../hooks/useLocalizedLines', async original => ({ ...await original<typeof import('../../hooks/useLocalizedLines')>(), useLocalizedLines: (lines: string[]) => lines }));
 vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
-vi.mock('../../app/pages/skills/useSkillMetrics', () => ({ useSkillMetrics: () => null }));
+vi.mock('../../hooks/useSkillName', () => ({ useSkillCatalog: () => new Map(ui.gems.map(gem => [gem.skill_id, gem])) }));
+vi.mock('../../app/motion/AnimatedNumber', () => ({ AnimatedNumber: ({ value, format }: {
+  value?: number | null; format: (value: number | null) => string;
+}) => format(value ?? null) }));
 vi.mock('../shared/PreviewContext', () => ({ usePreview: () => null }));
 vi.mock('../shared/NamedSets', () => ({ NamedSets: () => null }));
 vi.mock('../shared/WeaponSetControl', () => ({ WeaponSetControl: () => null }));
 vi.mock('../shared/PageHeader', () => ({ PageHeader: () => null }));
-vi.mock('../shared/AppSelect', () => ({ AppSelect: () => null }));
+vi.mock('../ui/select', () => {
+  const childrenOnly = ({ children }: { children?: ReactNode }) => children;
+  return {
+    Select: (props: { children: ReactNode; value?: string; open?: boolean; onOpenChange?: (open: boolean) => void }) => {
+      ui.selects.push(props); return props.children;
+    },
+    SelectTrigger: (props: ComponentProps<'button'>) => <button {...props} />,
+    SelectValue: ({ children, placeholder }: { children?: ReactNode; placeholder?: string }) => children ?? placeholder,
+    SelectContent: () => null, SelectGroup: childrenOnly, SelectItem: childrenOnly, SelectLabel: childrenOnly,
+  };
+});
+vi.mock('react/jsx-dev-runtime', async original => {
+  const runtime = await original<typeof import('react/jsx-dev-runtime')>();
+  return { ...runtime, jsxDEV: (...args: Parameters<typeof runtime.jsxDEV>) => {
+    const props = args[1] as ComponentProps<'button'>;
+    const first = Array.isArray(props?.children) ? props.children[0] : undefined;
+    if (args[0] === 'button' && isValidElement<{ className?: string }>(first) && first.props.className === 'ov-rank-name') ui.ranks.push(props);
+    return runtime.jsxDEV(...args);
+  } };
+});
 vi.mock('../shared/NoteEditor', () => ({ NoteEditor: () => null }));
 vi.mock('../shared/AppDialogs', () => ({ useAppDialogs: () => ({ confirm: async () => false }) }));
 vi.mock('../shared/useSessionAction', () => ({ useSessionAction: () => () => () => true }));
@@ -53,6 +80,8 @@ class HostNode {
   textContent = '';
   constructor(public tagName: string, public ownerDocument: HostDocument) {}
   get nodeName() { return this.tagName; }
+  get nodeValue() { return this.textContent; }
+  set nodeValue(value: string) { this.textContent = value; }
   appendChild(node: HostNode) { return this.insertBefore(node, null); }
   insertBefore(node: HostNode, before: HostNode | null) {
     node.parentNode?.removeChild(node);
@@ -80,16 +109,18 @@ class HostDocument {
   addEventListener() {}
   removeEventListener() {}
 }
-let root: Root;
+let root: Root, host: HostNode;
 beforeEach(() => {
   const document = new HostDocument();
   vi.stubGlobal('document', document);
   vi.stubGlobal('window', document.defaultView);
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal('localStorage', { getItem: () => null });
-  ui.buttons = []; ui.inputs = []; ui.pickers = []; ui.metrics.mockReset();
+  ui.buttons = []; ui.inputs = []; ui.pickers = []; ui.selects = []; ui.ranks = []; ui.gems = []; ui.trade = [];
+  ui.metrics.mockReset().mockResolvedValue({ skills: [] });
   ui.optimize.mockReset().mockResolvedValue({ baseline: { CombinedDPS: 100 }, baselineUnsupported: [], plans: [], excluded: [], candidates: 0, evaluated: 0, unmodeled: 0 });
-  root = createRoot(document.createElement('div') as unknown as HTMLElement);
+  host = document.createElement('div');
+  root = createRoot(host as unknown as HTMLElement);
 });
 afterEach(async () => { await act(async () => root.unmount()); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
@@ -134,8 +165,6 @@ it('remounts same-skill editors when switching groups and on revision changes, r
   expect(capacity().value).toBe(2);
 });
 
-// Reuse the mounted React host for the shared hook; SkillsPanel's visual tests above keep their stub.
-const { useSkillMetrics: useSharedSkillMetrics } = await vi.importActual<typeof import('../../app/pages/skills/useSkillMetrics')>('../../app/pages/skills/useSkillMetrics');
 type Snapshot = ReturnType<typeof useSharedSkillMetrics>;
 function metricsSession(): BuildSession {
   return { stateVersion: 1, socketGroupRevision: 1, busy: false,
@@ -254,4 +283,144 @@ it('consumes focus nonces in the chosen effect phase only while active and befor
   expect(run).toHaveBeenCalledOnce();
   await render(true, 2);
   expect(run).toHaveBeenCalledTimes(2);
+});
+
+function consumerSession(): BuildSession {
+  ui.gems = ['Fireball', 'IceNova'].map(skill_id => ({ skill_id, name: skill_id, name_zh_cn: null, name_zh_tw: null,
+    active_effect_ids: [skill_id], is_support: false, is_lineage: false, colour: 'int', tags: ['Spell', 'Damage'] }));
+  const groups = ui.gems.map(gem => ({ enabled: true, gems: [{ skill_id: gem.skill_id, level: 20, quality: 0 }] }));
+  return { ...metricsSession(), socketGroups: groups, currentRequest: () => ({ socket_groups: groups }),
+    character: { level: 100 }, classNames: { classes: {}, ascendancies: {} }, calcParams: { main_socket_group: 0, config_inputs: {} },
+    annotations: {}, items: [], library: { skillSets: [] }, hasBuildContent: true, inspectSkill: vi.fn(),
+    calc: { stats: [], main_skill: { group_index: 0, active_skill_index: 1, skill_id: 'Fireball',
+      combined_dps: 100, hit_dps: 100, dot_dps: 0, hit_damage: [] },
+    unsupported_modifiers: [], item_errors: [], minions: [], breakdowns: {}, breakdown_descriptors: {} },
+  } as unknown as BuildSession;
+}
+function skillRows(damage: (number | null)[]): SkillMetricsEntry[] {
+  return damage.map((combined_dps, group_index) => ({ group_index, active_skill_index: 1,
+    skill_id: ui.gems[group_index].skill_id, status: combined_dps === null ? 'unavailable' : 'calculated',
+    metrics: combined_dps === null ? null : { combined_dps, hit_dps: combined_dps, dot_dps: 0, average_hit: 0,
+      action_rate: 0, mana_cost: 0, life_cost: 0, cooldown: 0 }, error: null, unsupported_modifiers: [],
+  }));
+}
+function descendants(node: HostNode): HostNode[] {
+  return [node, ...node.childNodes.flatMap(descendants)];
+}
+function nodeWith(name: string, value: string): HostNode {
+  const node = descendants(host).find(node => node.getAttribute(name) === value);
+  expect(node).toBeDefined();
+  return node!;
+}
+function textOf(node: HostNode): string {
+  return node.textContent + node.childNodes.map(textOf).join('');
+}
+const idle = () => {};
+function rail(session: BuildSession) {
+  return <ResultsRail session={session} view={{ calc: session.calc, previous: null, stale: false }} lang="en-US"
+    onNavigate={idle} onStatClick={idle} pinned={[]} onTogglePin={idle} />;
+}
+
+it('keeps the unavailable marking on the actual closed rail trigger and refreshes it after edits', async () => {
+  vi.useFakeTimers();
+  const session = consumerSession();
+  session.calc = { ...session.calc!, main_skill: null } as CalculateBuildResponse;
+  const trigger = () => nodeWith('aria-label', bindT('en-US')('sidebar.mainSkill'));
+  ui.metrics.mockResolvedValueOnce({ skills: skillRows([null, 200]) });
+  await act(async () => root.render(rail(session)));
+  await debounceMetrics();
+  expect(ui.metrics).toHaveBeenCalledOnce();
+  expect(textOf(trigger())).toContain('Not supported yet: Fireball · Group 1');
+  expect(ui.selects.every(select => select.open === false)).toBe(true);
+
+  session.stateVersion++;
+  ui.metrics.mockResolvedValueOnce({ skills: skillRows([100, 200]) });
+  await act(async () => root.render(rail(session)));
+  await debounceMetrics();
+  expect(textOf(trigger())).toBe('Fireball · Group 1');
+
+  session.stateVersion++;
+  ui.metrics.mockResolvedValueOnce({ skills: skillRows([null, 200]) });
+  await act(async () => root.render(rail(session)));
+  await debounceMetrics();
+  expect(textOf(trigger())).toContain('Not supported yet: Fireball · Group 1');
+  expect(ui.metrics).toHaveBeenCalledTimes(3);
+  expect(ui.selects.every(select => select.open === false)).toBe(true);
+});
+
+it('skips closed rail batches when there is no selected effect whose availability needs measuring', async () => {
+  vi.useFakeTimers();
+  const session = consumerSession();
+  session.calcParams = { config_inputs: {} };
+  await act(async () => root.render(rail(session)));
+  await debounceMetrics();
+  session.calcParams = { ...session.calcParams, main_socket_group: 0 };
+  session.socketGroups = [{ enabled: true, gems: [] }];
+  session.stateVersion++;
+  await act(async () => root.render(rail(session)));
+  await debounceMetrics();
+  expect(ui.metrics).not.toHaveBeenCalled();
+});
+
+it('shares pending and completed batches across the real rail, Overview and Skills consumers with versioned selection', async () => {
+  vi.useFakeTimers();
+  const session = consumerSession();
+  let resolve!: (result: { skills: SkillMetricsEntry[] }) => void;
+  ui.metrics.mockReturnValueOnce(new Promise(done => { resolve = done; }));
+  const render = async (page: 'overview' | 'skills') => {
+    ui.ranks = []; ui.selects = [];
+    await act(async () => root.render(<>{rail(session)}
+      {page === 'overview'
+        ? <Overview session={session} view={{ calc: session.calc, previous: null, stale: false }} lang="en-US" navigate={idle} focusStat={idle} />
+        : <SkillsPanel session={session} lang="en-US" active />}
+    </>));
+  };
+  const pending = () => nodeWith('aria-labelledby', 'ov-skills').getAttribute('aria-busy');
+  const ranks = () => ui.ranks.slice(-2);
+  await render('overview');
+  expect(pending()).toBe('true');
+  await debounceMetrics();
+  expect(ui.metrics).toHaveBeenCalledOnce();
+  const mainSelect = ui.selects.find(select => select.value === 'value:0')!;
+  await act(async () => mainSelect.onOpenChange!(true));
+  await debounceMetrics();
+  expect(ui.metrics).toHaveBeenCalledOnce();
+  await act(async () => { resolve({ skills: skillRows([100, 200]) }); });
+  expect(pending()).toBe('false');
+  expect(ranks()).toHaveLength(2);
+  ranks().find(button => button['aria-pressed'])!.onClick!({} as never);
+  expect(session.inspectSkill).not.toHaveBeenCalled();
+  ranks().find(button => !button['aria-pressed'])!.onClick!({} as never);
+  expect(session.inspectSkill).toHaveBeenLastCalledWith(1, 1, 1);
+
+  await render('skills'); await debounceMetrics();
+  expect(ui.metrics).toHaveBeenCalledOnce();
+  expect(nodeWith('class', 'skill-dps-value').getAttribute('data-kind')).toBe('damage');
+  await render('overview');
+  expect(pending()).toBe('true');
+  await debounceMetrics();
+  expect(pending()).toBe('false');
+  expect(ui.metrics).toHaveBeenCalledOnce();
+
+  session.stateVersion = 2;
+  let resolveStale!: typeof resolve;
+  ui.metrics.mockReturnValueOnce(new Promise(done => { resolveStale = done; }));
+  await render('overview');
+  expect(pending()).toBe('true');
+  expect(ranks().every(button => button.disabled)).toBe(true);
+  await debounceMetrics();
+  expect(ui.metrics).toHaveBeenCalledTimes(2);
+
+  session.stateVersion = 3;
+  ui.metrics.mockReturnValueOnce(new Promise(done => { resolve = done; }));
+  await render('overview'); await debounceMetrics();
+  expect(ui.metrics).toHaveBeenCalledTimes(3);
+  await act(async () => { resolveStale({ skills: skillRows([1000, 2000]) }); });
+  expect(pending()).toBe('true');
+  expect(ranks().every(button => button.disabled)).toBe(true);
+  await act(async () => { resolve({ skills: skillRows([100, 300]) }); });
+  expect(pending()).toBe('false');
+  expect(ranks().every(button => !button.disabled)).toBe(true);
+  ranks().find(button => !button['aria-pressed'])!.onClick!({} as never);
+  expect(session.inspectSkill).toHaveBeenLastCalledWith(1, 1, 3);
 });

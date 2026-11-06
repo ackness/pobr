@@ -23,6 +23,7 @@ import type { SettledCalc } from './motion/useSettledCalc';
 import type { Route } from './routes';
 import { words } from './text';
 import { calculatedSkillKey } from './calculatedSkill';
+import { requestSkillMetrics } from './pages/skills/useSkillMetrics';
 
 const MAX_HIT = ['Physical', 'Fire', 'Cold', 'Lightning', 'Chaos'] as const;
 const ATTRIBUTION_FIELDS = ['CombinedDPS', 'TotalEHP', 'Life'] as const;
@@ -75,9 +76,9 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit }:
     const version = session.stateVersion;
     // The previous ranking stays up while a newer one is computed, so the list does not blink on each edit.
     const timer = setTimeout(() => {
-      const request = session.currentRequest();
-      if (!request) { setSkillResult({ version, skills: null }); return; }
-      getBackend().then(backend => backend.skillMetrics(request)).then(result => { if (!stale) setSkillResult({ version, skills: result.skills }); }).catch(() => { if (!stale) setSkillResult({ version, skills: null }); });
+      const result = requestSkillMetrics(session);
+      if (!result) { setSkillResult({ version, skills: null }); return; }
+      result.then(result => { if (!stale) setSkillResult({ version, skills: result.skills }); }).catch(() => { if (!stale) setSkillResult({ version, skills: null }); });
     }, 250);
     return () => { stale = true; clearTimeout(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the version number is the change signal.

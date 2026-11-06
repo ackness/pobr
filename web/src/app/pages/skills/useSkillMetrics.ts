@@ -16,7 +16,7 @@ let latestMetrics: {
   result: Promise<SkillMetricsSnapshot>;
 } | undefined;
 
-function sharedMetrics(session: BuildSession): Promise<SkillMetricsSnapshot> | undefined {
+export function requestSkillMetrics(session: BuildSession): Promise<SkillMetricsSnapshot> | undefined {
   const { currentRequest, stateVersion, socketGroupRevision } = session;
   if (latestMetrics?.request === currentRequest && latestMetrics.version === stateVersion
     && latestMetrics.revision === socketGroupRevision) return latestMetrics.result;
@@ -48,7 +48,7 @@ export function useSkillMetrics(session: BuildSession, enabled: boolean, delay =
     if (!enabled || session.busy || session.calcError || !hasGroups) return;
     let stale = false;
     const timer = setTimeout(() => {
-      sharedMetrics(session)
+      requestSkillMetrics(session)
         ?.then(result => { if (!stale) setSnapshot(result); })
         .catch(() => { if (!stale) setSnapshot(null); });
     }, delay);
