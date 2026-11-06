@@ -26,7 +26,9 @@ export function calculatedSkillOptions(groups: SocketGroupInput[], catalog: Read
     const damage = pendingSummoner ? tt('skills.summonerPending') : dps !== undefined && (current || measured?.status === 'calculated')
       ? `${formatStatValue(dps, 'float2', lang)} ${tt(current && minion ? 'sidebar.minionHitDps' : 'sidebar.combinedDps')}`
       : summoner ? tt('skills.summonerPending') : tt('sidebar.skillDpsPending');
-    return { value: String(index), label: `${label} · ${damage} · ${tt('sidebar.skillGroupNumber').replace('{number}', String(index + 1))}${group.enabled ? '' : ` ${tt('sidebar.disabledGroup')}`}`,
-      group: tt(nonDamaging ? 'sidebar.nonDamagingSkills' : 'sidebar.calculationSkills') };
+    // The trigger shows only the name and group: the rail already shows the selected skill's damage
+    // right below it. Damage stays on each option's second line in the list.
+    return { value: String(index), label: `${label} · ${tt('sidebar.skillGroupNumber').replace('{number}', String(index + 1))}${group.enabled ? '' : ` ${tt('sidebar.disabledGroup')}`}`,
+      hint: damage, group: tt(nonDamaging ? 'sidebar.nonDamagingSkills' : 'sidebar.calculationSkills') };
   }).sort((a, b) => Number(a.group === tt('sidebar.nonDamagingSkills')) - Number(b.group === tt('sidebar.nonDamagingSkills')));
 }

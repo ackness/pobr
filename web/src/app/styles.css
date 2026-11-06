@@ -518,6 +518,8 @@
 @layer app {
   .rail-skill-picker { display: grid; gap: .3rem; margin: 0 1rem .6rem; min-width: 0; }
   .rail-skill-picker > span { font-size: var(--text-xs); color: var(--muted-foreground); }
+  /* A flex value box clips text without an ellipsis; a block box shows one for long names. */
+  .rail-skill-picker [data-slot='select-value'] { display: block; }
   .rail-essentials { padding-block: .4rem; }
   .ov-resistances { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem 1.5rem; margin: -.75rem 0 0; }
   .ov-resistances > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .75rem; font-size: var(--text-sm); }
@@ -529,7 +531,7 @@
   .ov-current { display: inline-flex; align-items: center; gap: .25rem; margin-inline-start: .5rem; font-size: var(--text-xs); white-space: nowrap; }
   .ov-current svg { width: .85rem; height: .85rem; }
   @container shell-container (min-width: 130rem) {
-    .shell-page-content[data-page='overview'] { max-width: 120rem; }
+    .shell-page-content[data-page='overview'], .shell-main.shell-page-overview > :is(.shell-notice, .shell-alert) { max-width: 120rem; }
     .ov-cols { gap: 4rem; }
     .ov-rank li > button, .ov-contrib li > div { grid-template-columns: minmax(10rem, 16rem) minmax(3rem, 1fr) 10rem; }
     .ov-findings li > div { max-width: 64ch; }

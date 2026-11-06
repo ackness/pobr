@@ -77,10 +77,12 @@ it('leads a summoner build with one minion\'s hit DPS and keeps the player\'s ow
   expect(html).toContain('<span class="rail-hero-label">Minion hit DPS</span>');
   expect(html).toMatch(/class="rail-hero-value is-link"[^>]*>[^<]*5,307/);
   expect(html).toContain('<span class="rail-hero-note">Wolf Companion · per minion · limit 7</span>');
-  // The player's zero is not shown as the build's damage; the selector also names the minion's DPS.
+  // The player's zero is not shown as the build's damage. The selector names the skill and group;
+  // its damage shows once, in the headline below it.
   expect(html).not.toContain('Combined DPS');
   expect(html).not.toContain('Your own combined DPS');
-  expect(html.match(/5,307/g)).toHaveLength(2);
+  expect(html.match(/5,307/g)).toHaveLength(1);
+  expect(html).toMatch(/data-slot="select-value"[^>]*>[^<]*· Group 1/);
   expect(html).toContain('Minion · Wolf Companion');
   // The summoning skill's own offence group would read as the minion's.
   expect(html).not.toContain('Offence</button>');
