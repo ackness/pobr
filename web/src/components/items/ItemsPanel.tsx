@@ -23,6 +23,8 @@ import {
 import { bindT, slotLabel, type Lang } from '../../lib/i18n';
 import { shownLines } from '../../lib/continuedLines';
 import { upgradeT } from '../../lib/upgradeText';
+import { tradeAnalysisText } from '../../lib/tradeAnalysisText';
+import { useHeadlineDamage } from '../../hooks/useMainMinion';
 import { applyEquippedAugmentLimits, planReplacementAugments } from '../../lib/replacementAugments';
 import type { DisplayStatValue } from '../../api/types';
 import { SwapGainCard } from './SwapGainCard';
@@ -384,7 +386,6 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
         <WeaponSetControl session={session} lang={lang} />
         <AppButton aria-expanded={crafting} onClick={() => { setCrafting(value => !value); setUniques(false); }}>{craftT(lang, crafting ? 'close' : 'craft')}</AppButton>
         <AppButton aria-expanded={uniques} onClick={() => { setUniques(value => !value); setCrafting(false); }}>{uniqueT(lang, uniques ? 'close' : 'title')}</AppButton>
-        {onUpgrade && <AppButton onClick={() => onUpgrade(selected && !isLimbSlot(selected) ? selected : "weapon1")}>{tt("trade.findBetter")}</AppButton>}
       </PageHeader>
       <p className="weapon-set-hint">{tt('weapons.hint')}</p>
       {uniques && <UniqueCatalog selectedSlot={selected} session={session} lang={lang} />}
@@ -427,6 +428,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
               />
             )}
             <span className="item-actions">
+              {onUpgrade && !isLimbSlot(selected) && <AppButton onClick={() => onUpgrade(selected)}>{tradeAnalysisText(lang, 'findBetter')}</AppButton>}
               {!editing && (
                 <AppButton disabled={session.busy} onClick={() => setEditing(true)}>
                   {selectedText ? tt('items.edit') : tt('items.add')}
@@ -613,6 +615,7 @@ function LibrarySection({
   selectedSlot: string | null;
   onEquip: (text: string) => void;
 }) {
+  const damage = useHeadlineDamage(session.calc, lang);
   const tt = bindT(lang);
   const [comparison, setComparison] = useState<{ id: string; slot: string;
     source: BuildSession['currentRequest']; before: DisplayStatValue[]; after: DisplayStatValue[]; error?: string } | null>(null);
@@ -748,7 +751,7 @@ function LibrarySection({
         >
           {diffFor?.id === entry.id && (
             <div className="library-diff">
-              {diffFor.error ? <p className="calc-error" role="alert">{diffFor.error}</p> : <SwapGainCard before={diffFor.before} after={diffFor.after} lang={lang} />}
+              {diffFor.error ? <p className="calc-error" role="alert">{diffFor.error}</p> : <SwapGainCard before={diffFor.before} after={diffFor.after} lang={lang} damage={damage} />}
             </div>
           )}
         </ItemRow>

@@ -256,7 +256,7 @@ async function exactApply(page: Page, card: Locator, planner: Planner, before: C
   activeBuild.stages.find(stage => stage.id === activeBuild.activeStage)!.saved.state = state;
   const expectedRequest = requestOf(state);
   const expectedResult = await calculate(expectedRequest);
-  const metrics = ['Life', 'TotalDPS', 'TotalEHP'] as const;
+  const metrics = ['Life', 'CombinedDPS', 'TotalEHP'] as const;
   for (const id of metrics) {
     const value = expectedResult.stats.find(stat => stat.id === id)!.value!;
     expect(Math.abs(numeric(await card.locator(`output[data-stat="${id}"]`).innerText()) - value),
