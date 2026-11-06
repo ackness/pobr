@@ -3,7 +3,7 @@ import { bdLibraryButton, pageLink, statValue } from './shell';
 
 /** The results panel rows the Items / Upgrades specs read. Labels are anchored: "Life" must not match "Unreserved Life". */
 export const lifeValue = (page: Page): Locator => statValue(page, /^Life$/);
-export const dpsValue = (page: Page): Locator => statValue(page, /^Total DPS$/);
+export const headlineDpsValue = (page: Page): Locator => page.locator('#character-stats .rail-hero-value').first();
 export const ehpValue = (page: Page): Locator => statValue(page, /^Effective HP$/);
 
 /** The stage that is open, as the top bar's "Current stage" control shows it. */
@@ -103,4 +103,13 @@ export async function openCustomModifiers(page: Page) {
  */
 export async function reduceMotion(page: Page) {
   await page.emulateMedia({ reducedMotion: 'reduce' });
+}
+
+/** Legacy goals remain in advanced settings; the main flow has three choices. */
+export async function chooseTradeGoal(page: Page, name: string) {
+  if (name === 'Max Life' || name === 'Best damage efficiency (DPS per mana)') {
+    const settings = page.locator('.upgrade-goal-details');
+    if (!(await settings.evaluate(element => (element as HTMLDetailsElement).open))) await settings.locator(':scope > summary').click();
+  }
+  await page.getByRole('button', { name, exact: true }).click();
 }

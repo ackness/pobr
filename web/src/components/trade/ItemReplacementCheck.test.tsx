@@ -5,11 +5,12 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import type { CalculateBuildRequest } from '../../api/types';
 import type { ReplacementReport } from '../../lib/itemReplacement';
 import { ItemReplacementCheck } from './ItemReplacementCheck';
+import type { Objective } from '../../lib/optimize';
 
 // Replay state and committed effects without a browser; retain real dependency comparisons.
 const ui = vi.hoisted(() => ({ cursor: 0, slots: [] as unknown[], effects: [] as (() => void)[],
   buttons: [] as ComponentProps<'button'>[], input: undefined as ComponentProps<'textarea'> | undefined,
-  compare: vi.fn() }));
+  compare: vi.fn(), equipment: vi.fn() }));
 vi.mock('react', async original => {
   const memo = (factory: () => unknown, deps?: unknown[]) => {
     const index = ui.cursor++;
@@ -55,7 +56,7 @@ vi.mock('../shared/controls', () => ({
 }));
 vi.mock('./ReplacementAffixEditor', () => ({ ReplacementAffixEditor: () => null }));
 vi.mock('./ReplacementAugmentPicker', () => ({ ReplacementAugmentPicker: () => null }));
-vi.mock('./EquipmentPlanner', () => ({ EquipmentPlanner: () => null }));
+vi.mock('./EquipmentPlanner', () => ({ EquipmentPlanner: (props: unknown) => { ui.equipment(props); return null; } }));
 
 const text = 'Rarity: RARE\nLocal Defence Fixture\nChain Mail\n+80 to maximum Life';
 const catalog = { bases: [], mods: [] };
@@ -71,15 +72,15 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllGlobals(); });
 
-function setup(allocatedNodes: number[] = []) {
+function setup(allocatedNodes: number[] = [], settings: { calc?: BuildSession['calc']; objective?: Objective; report?: ReplacementReport } = {}) {
   const request: CalculateBuildRequest = { allocated_nodes: allocatedNodes };
   const session = { currentRequest: () => request, allocatedNodes, activeWeaponSet: 1, items: [], flasks: [], jewels: [],
-    setItems: vi.fn(), busy: false } as unknown as BuildSession;
+    setItems: vi.fn(), busy: false, calc: settings.calc } as unknown as BuildSession;
   let resolve!: (report: ReplacementReport) => void;
   ui.compare.mockImplementation(() => new Promise<ReplacementReport>(done => { resolve = done; }));
   const render = (sockets: number[], socketLabel = () => 'Jewel socket') => {
     ui.cursor = 0; ui.buttons = [];
-    const html = renderToStaticMarkup(<ItemReplacementCheck session={session} lang="en-US" active objective={objective}
+    const html = renderToStaticMarkup(<ItemReplacementCheck session={session} lang="en-US" active objective={settings.objective ?? objective}
       catalog={catalog} jewelSockets={sockets} socketLabel={socketLabel} goalLabel="Life" onEditGoal={() => {}} />);
     ui.effects.splice(0).forEach(effect => effect());
     return html;
@@ -89,7 +90,7 @@ function setup(allocatedNodes: number[] = []) {
   render([]);
   ui.buttons.find(button => button.children === 'Calculate replacement')!.onClick?.({} as never);
   render([]);
-  return { render, resolve: () => resolve(report), signal: ui.compare.mock.calls[0][2] as AbortSignal };
+  return { render, resolve: () => resolve(settings.report ?? report), signal: ui.compare.mock.calls[0][2] as AbortSignal };
 }
 
 test('late tree socket metadata and display-name rerenders preserve an in-flight equipment comparison and its visible result', async () => {
@@ -109,4 +110,25 @@ test('discovering an allocated jewel destination still invalidates the previous 
   const comparison = setup([7960]);
   comparison.render([7960]);
   expect(comparison.signal.aborted).toBe(true);
+});
+
+test('recommends and shows a minion-only gain in the destination and shared before/after card', async () => {
+  const comparison = setup([], {
+    calc: { main_minion_index: 2, minions: [{ index: 2, name: 'Wolf' }], stats: [{ id: 'ActiveMinionLimit', value: 7 }] } as BuildSession['calc'],
+    objective: { stat: 'MainMinionDPS', constraints: [] },
+    report: { ...report, baseline: { TotalDPS: 0, CombinedDPS: 0, MainMinionDPS: 100 },
+      positions: [{ ...report.positions[0], stats: { TotalDPS: 0, CombinedDPS: 0, MainMinionDPS: 150 } }] },
+  });
+  comparison.resolve(); await Promise.resolve();
+  const html = comparison.render([]);
+  expect(html).toContain('Minion hit DPS +50');
+  expect(html).toContain('data-stat="MainMinionDPS"');
+  expect(html).toContain('+50.0%');
+  expect(html).toContain('Wolf · per minion · limit 7');
+  expect(html).toContain('replacement-recommended');
+  expect(html).not.toContain('data-stat="CombinedDPS"');
+  expect(html).not.toContain('DPS decreases');
+  expect(ui.equipment).toHaveBeenLastCalledWith(expect.objectContaining({ damage: {
+    stat: 'MainMinionDPS', label: 'Minion hit DPS', note: 'Wolf · per minion · limit 7',
+  } }));
 });

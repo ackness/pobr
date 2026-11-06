@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { bdLibraryButton, statValue } from './shell';
+import { bdLibraryButton } from './shell';
 import { choose, goTo } from './skillsAndCalcs';
 import type { GemInput, SocketGroupInput } from '../src/api/types';
 
@@ -9,7 +9,7 @@ const limitLine = 'Remove Bleeding on use';
 const run = (page: Page) => page.getByRole('button', { name: 'Calculate support combinations', exact: true });
 const capacity = (page: Page) => page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true });
 const baseline = (page: Page) => page.locator('details.support-baseline-unsupported');
-const dps = (page: Page) => statValue(page, /^Total DPS$/).first();
+const dps = (page: Page) => page.locator('#character-stats .rail-hero-value').first();
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
 
 async function groups(page: Page): Promise<SocketGroupInput[]> {
@@ -128,8 +128,8 @@ test('real baseline limits remain keyboard-readable across first page visits and
       quality: Number(chip.getAttribute('data-quality')), stat_set_index: statSet === null ? 1 : Number(statSet) };
   }));
   expect(expected.every(gem => gem.level > 0 && gem.quality >= 0)).toBe(true);
-  const metric = await first.locator('.support-plan-metrics > span').filter({ hasText: /^DPS / }).innerText();
-  const preview = numeric(metric.match(/^DPS ([\d,.]+)/)![1]);
+  const metric = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Combined DPS / }).innerText();
+  const preview = numeric(metric.match(/^Combined DPS ([\d,.]+)/)![1]);
 
   for (const name of ['Calcs', 'Tree', 'Upgrades']) {
     await goTo(page, name);

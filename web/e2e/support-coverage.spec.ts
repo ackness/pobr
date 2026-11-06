@@ -1,5 +1,4 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { statValue } from './shell';
 import { choose, goTo } from './skillsAndCalcs';
 import type { GemInput, SocketGroupInput } from '../src/api/types';
 
@@ -9,7 +8,7 @@ const swiftStat = 'support_swift_affliction_non_ailment_damage_over_time_+%_fina
 const modeled = ['SupportControlledDestructionPlayer', 'SupportFireMasteryPlayer'];
 const run = (page: Page) => page.getByRole('button', { name: 'Calculate support combinations', exact: true });
 const baseline = (page: Page) => page.locator('details.support-baseline-unsupported');
-const dps = (page: Page) => statValue(page, /^Total DPS$/).first();
+const dps = (page: Page) => page.locator('#character-stats .rail-hero-value').first();
 // The Overview lists the modifier lines the calculation does not apply.
 const unsupportedLines = (page: Page) => page.locator('.ov-details');
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
@@ -214,8 +213,8 @@ for (const [layout, viewport] of [
         quality: Number(chip.getAttribute('data-quality')), stat_set_index: Number(chip.getAttribute('data-stat-set-index') ?? 1),
       })));
       expect(expected.map(gem => gem.skill_id).sort()).toEqual([...modeled].sort());
-      const metric = await first.locator('.support-plan-metrics > span').filter({ hasText: /^DPS / }).innerText();
-      const preview = numeric(metric.match(/^DPS ([\d,.]+)/)![1]);
+      const metric = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Combined DPS / }).innerText();
+      const preview = numeric(metric.match(/^Combined DPS ([\d,.]+)/)![1]);
       expect(preview).toBeGreaterThan(beforeDps);
       const excluded = await rejectedReceipt(rejected);
       const recommendations = await recommendationsReceipt(page);

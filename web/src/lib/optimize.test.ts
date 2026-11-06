@@ -53,7 +53,7 @@ test('default evaluation requests CombinedDPS for replacement headlines in both 
   }));
   const result = await evaluateVariants({ request: {}, variants: [{ label: 'Replacement', set_items: [{ slot: 'ring1', text: 'Candidate' }] }] });
   expect(backend.optimizeVariants).toHaveBeenCalledWith(expect.objectContaining({
-    stats: expect.arrayContaining(['CombinedDPS', 'TotalDPS', 'TotalEHP', 'Life']), include_baseline: true,
+    stats: expect.arrayContaining(['CombinedDPS', 'MainMinionDPS', 'TotalDPS', 'TotalEHP', 'Life']), include_baseline: true,
   }));
   expect(result.baseline.CombinedDPS).toBe(150);
   expect(result.results[0].stats.CombinedDPS).toBe(200);

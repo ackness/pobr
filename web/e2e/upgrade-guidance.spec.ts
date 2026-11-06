@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
-import { dpsValue, goTo, openOptimizerSettings, settledNumber, settledText } from './upgradesPage';
+import { headlineDpsValue, goTo, openOptimizerSettings, settledNumber, settledText } from './upgradesPage';
 
 async function caster(page: Page) {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
@@ -21,7 +21,7 @@ async function caster(page: Page) {
   await page.getByRole('option', { name: '1. Fireball', exact: true }).click();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
 }
-const dps = dpsValue;
+const dps = headlineDpsValue;
 
 test('current market Sum is a reference; complete replacement detects a downgrade before applying', async ({ page }) => {
   await caster(page);
@@ -56,7 +56,7 @@ test('shared goals link automatic supports and connected passive plans with real
   await caster(page);
   await goTo(page, 'Upgrades');
   await page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances' }).check();
-  await page.locator('.upgrade-paths > button').nth(1).click();
+  await page.locator('.upgrade-paths > button').filter({ hasText: 'opens Skills' }).click();
   await expect(page.locator('.gem-optimizer-body')).toBeVisible();
   await openOptimizerSettings(page);
   await expect(page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances' })).toBeChecked();
@@ -64,7 +64,7 @@ test('shared goals link automatic supports and connected passive plans with real
   await page.getByRole('button', { name: 'Calculate support combinations', exact: true }).click();
   const support = page.locator('.support-plan').first();
   await expect(support).toBeVisible({ timeout: 30_000 });
-  await expect(support.locator('.support-plan-metrics')).toContainText('EHP');
+  await expect(support.locator('.support-plan-metrics')).toContainText('Effective HP');
   const before = await settledText(dps(page));
   await support.getByRole('button', { name: 'Apply', exact: true }).click();
   await expect(dps(page)).not.toHaveText(before);
@@ -75,7 +75,7 @@ test('shared goals link automatic supports and connected passive plans with real
   for (const card of await page.locator('.trade-gem-card').filter({ hasText: 'Skill adjustment' }).all()) {
     await expect(card.getByRole('link')).toHaveCount(0);
   }
-  await page.locator('.upgrade-paths > button').nth(2).click();
+  await page.locator('.upgrade-paths > button').filter({ hasText: 'opens Passive tree' }).click();
   await expect(page.locator('.tree-planner-body')).toBeVisible();
   await expect(page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances' })).toBeChecked();
   await page.getByRole('button', { name: 'Find upgrade routes', exact: true }).click();
@@ -103,7 +103,7 @@ test('support exclusions persist, invalidate old plans and constrain real-WASM r
   await caster(page);
   const baseline = await settledText(dps(page));
   await goTo(page, 'Upgrades');
-  await page.locator('.upgrade-paths > button').nth(1).click();
+  await page.locator('.upgrade-paths > button').filter({ hasText: 'opens Skills' }).click();
   await openOptimizerSettings(page);
   const run = page.getByRole('button', { name: 'Calculate support combinations', exact: true });
   const count = page.locator('.support-pool-summary strong');
@@ -244,7 +244,7 @@ test('editing passives automatically replans from the new tree and applying neve
   await expect(plans.first()).toBeVisible({ timeout: 30_000 });
   const currentDps = await settledNumber(dps(page));
   const summary = await page.locator('.tree-planner-summary').innerText();
-  const planningDps = Number(summary.match(/DPS ([\d,.]+)/)![1].replaceAll(',', ''));
+  const planningDps = Number(summary.match(/Combined DPS ([\d,.]+)/)![1].replaceAll(',', ''));
   expect(planningDps).toBeCloseTo(currentDps, 0);
   await plans.first().getByRole('button', { name: 'Apply plan', exact: true }).click();
   await expect(plans).toHaveCount(0);

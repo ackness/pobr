@@ -295,9 +295,9 @@ for (const destination of ['newBuild', 'currentStage'] as const) {
         level: Number(element.getAttribute('data-level')), quality: Number(element.getAttribute('data-quality')),
         ...(statSet !== null ? { stat_set_index: Number(statSet) } : {}) };
     }));
-    const dpsText = await first.locator('.support-plan-metrics > span').filter({ hasText: /^DPS / }).innerText();
-    const preview = numeric(dpsText.match(/^DPS ([\d,.]+)/)![1]);
-    const totalDps = statValue(page, /^Total DPS$/).first();
+    const dpsText = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Combined DPS / }).innerText();
+    const preview = numeric(dpsText.match(/^Combined DPS ([\d,.]+)/)![1]);
+    const totalDps = page.locator('#character-stats .rail-hero-value').first();
     expect(preview).toBeGreaterThan(numeric(await totalDps.innerText()));
     await openBuild(page);
     await submitPaste(page, '{}', 'currentStage', 'en-US', true);

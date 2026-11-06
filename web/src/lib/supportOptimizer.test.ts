@@ -1,6 +1,7 @@
 import { expect, test, vi } from 'vitest';
-import type { CalculateBuildRequest, GemInput, SocketGroupInput } from '../api/types';
+import type { CalculateBuildRequest, GemInput, MinionOutput, SocketGroupInput } from '../api/types';
 import type { EvaluateOptions } from './optimize';
+import { resolveDamageObjective } from './mainMinion';
 import { applySupportPlan, eligibleSupports, lineageAvailable, optimizeSupports, sameSupportFamily, supportSetCompatible, supportSetsCompatible, supportVariant,
   type SupportMetadata } from './supportOptimizer';
 
@@ -26,6 +27,28 @@ const active = gem('Fireball', { is_support: false, skill_types: ['Spell', 'Proj
 const input = (id: string): GemInput => ({ skill_id: id, level: 1, quality: 0 });
 const group = (ids: string[] = []): SocketGroupInput => ({ enabled: true, gems: [input('Fireball'), ...ids.map(input)] });
 const objective = { stat: 'TotalDPS', constraints: [] };
+
+test('the resolved summoner goal ranks a minion-only support gain above player damage', async () => {
+  const request = { character: { level: 100 }, socket_groups: [group()] };
+  const objective = resolveDamageObjective({ stat: 'TotalDPS', constraints: [] }, {
+    main_minion_index: 1, minions: [{ index: 1 } as MinionOutput],
+  });
+  const evaluate = async ({ variants }: EvaluateOptions) => {
+    const baseline = { TotalDPS: 10, CombinedDPS: 10, MainMinionDPS: 100, TotalEHP: 1000 };
+    return { baseline, aborted: false, results: variants.map((variant, index) => {
+      const ids = variant.socket_groups?.[0].gems.map(gem => gem.skill_id) ?? [];
+      return { index, label: null, error: null, stats: { ...baseline,
+        TotalDPS: ids.includes('PlayerBoost') ? 1000 : 10,
+        CombinedDPS: ids.includes('PlayerBoost') ? 1000 : 10,
+        MainMinionDPS: ids.includes('MinionBoost') ? 150 : 100,
+      } };
+    }) };
+  };
+  const result = await optimizeSupports({ request, groupIndex: 0, catalog: [active, gem('MinionBoost'), gem('PlayerBoost')],
+    capacity: 1, objective, evaluate });
+  expect(result.plans[0].supports.map(gem => gem.skill_id)).toEqual(['MinionBoost']);
+  expect(result.plans[0].stats).toMatchObject({ MainMinionDPS: 150, TotalDPS: 10, CombinedDPS: 10 });
+});
 
 test('automatic pool includes conditional pairs but rejects wrong types, level and unknown metadata', async () => {
   const adds = gem('AddsMinion', { add_skill_types: ['Minion'] });

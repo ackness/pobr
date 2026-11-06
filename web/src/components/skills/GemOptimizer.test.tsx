@@ -4,7 +4,8 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { GemOptimizer } from './GemOptimizer';
 
-const harness = vi.hoisted(() => ({ states: [] as unknown[], cursor: 0, buttons: [] as ComponentProps<'button'>[], optimize: vi.fn() }));
+const harness = vi.hoisted(() => ({ states: [] as unknown[], cursor: 0, buttons: [] as ComponentProps<'button'>[], optimize: vi.fn(),
+  preset: 'dps' }));
 vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
   useState: (initial: unknown) => {
     const index = harness.cursor++;
@@ -16,9 +17,10 @@ vi.mock('../shared/controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => { harness.buttons.push(props); return <button {...props} />; },
   AppInput: (props: ComponentProps<'input'>) => <input {...props} />,
 }));
+vi.mock('../../hooks/useLocalizedLines', () => ({ useLocalizedNames: (names: { name: string }[]) => names.map(entry => entry.name) }));
 vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
 vi.mock('../shared/PreviewContext', () => ({ usePreview: () => null }));
-vi.mock('../../hooks/useUpgradeGoal', () => ({ useUpgradeGoal: () => ({ goal: { preset: 'dps' }, setGoal: () => {} }) }));
+vi.mock('../../hooks/useUpgradeGoal', () => ({ useUpgradeGoal: () => ({ goal: { preset: harness.preset, cStat: '', cMin: '', cMax: '' }, setGoal: () => {} }) }));
 vi.mock('../shared/OptimizerControls', async original => ({ ...await original<typeof import('../shared/OptimizerControls')>(),
   ObjectiveEditor: () => null, OptimizerProgress: () => null,
 }));
@@ -47,8 +49,39 @@ function button(label: string) {
 }
 beforeEach(() => {
   harness.states = [];
+  harness.preset = 'dps';
   harness.optimize.mockReset().mockResolvedValue({ baseline: { TotalDPS: 100, TotalEHP: 200 }, evaluated: 12, unmodeled: 2,
     baselineUnsupported: ['Internal diagnostic retained'], excluded: [], plans: [] });
+});
+
+it.each(['dps', 'balanced', 'dpsPerMana'])('passes the resolved %s objective into support optimization for normal and summoner builds', async preset => {
+  harness.preset = preset;
+  const { session, render } = setup();
+  render(); await button('Calculate support combinations').onClick!({} as never);
+  expect(harness.optimize).toHaveBeenLastCalledWith(expect.objectContaining({ objective: expect.objectContaining({
+    stat: preset === 'dpsPerMana' ? 'TotalDPS' : 'CombinedDPS',
+  }) }));
+  session.calc = { ...session.calc!, main_minion_index: 2, minions: [{ index: 2, name: 'Wolf' }],
+    stats: [{ id: 'ActiveMinionLimit', value: 7 }] } as BuildSession['calc'];
+  render(); await button('Calculate support combinations').onClick!({} as never);
+  expect(harness.optimize).toHaveBeenLastCalledWith(expect.objectContaining({ objective: expect.objectContaining({
+    stat: preset === 'dpsPerMana' ? 'TotalDPS' : 'MainMinionDPS',
+    ...(preset === 'dpsPerMana' ? { per: 'ManaCost' } : {}),
+  }) }));
+});
+
+it('shows a minion-only support improvement in the headline and explains that it is per minion', async () => {
+  const { session, render } = setup();
+  session.calc = { ...session.calc!, main_minion_index: 2, minions: [{ index: 2, name: 'Wolf' }],
+    stats: [{ id: 'ActiveMinionLimit', value: 7 }] } as BuildSession['calc'];
+  harness.optimize.mockResolvedValue({ baseline: { TotalDPS: 0, CombinedDPS: 0, MainMinionDPS: 100, TotalEHP: 200 },
+    plans: [{ supports: [], variant: {}, stats: { TotalDPS: 0, CombinedDPS: 0, MainMinionDPS: 150, TotalEHP: 200 } }],
+    baselineUnsupported: [], excluded: [], evaluated: 1, unmodeled: 0 });
+  render(); await button('Calculate support combinations').onClick!({} as never);
+  const html = render();
+  expect(html).toContain('Minion hit DPS 150');
+  expect(html).toContain('+50.0%');
+  expect(html).toContain('Wolf · per minion · limit 7');
 });
 
 it('selects a calculation skill without starting optimization', async () => {

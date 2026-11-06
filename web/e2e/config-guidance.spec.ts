@@ -409,7 +409,7 @@ for (const planner of ['support', 'replacement'] as const) {
         elements.map(element => element.getAttribute('data-skill-id')));
     } else {
       await go(page, 'Upgrades');
-      await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
+      await page.getByRole('button', { name: 'Combined DPS', exact: true }).click();
       await page.getByRole('textbox', { name: 'Complete item text', exact: true }).evaluate(element => {
         const data = new DataTransfer();
         data.setData('text/plain', 'Rarity: RARE\nSynthetic Guidance Replacement\nSapphire Ring\nImplicits: 0\n100% increased Fire Damage\n+100 to maximum Life');

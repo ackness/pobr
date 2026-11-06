@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
-import { copyCurrentStage, currentStage, dpsValue, ehpValue, goTo, openCustomModifiers, openOptimizerSettings, openStage, reduceMotion, settledNumber, settledText } from './upgradesPage';
+import { copyCurrentStage, currentStage, headlineDpsValue, ehpValue, goTo, openCustomModifiers, openOptimizerSettings, openStage, reduceMotion, settledNumber, settledText } from './upgradesPage';
 import type { SocketGroupInput } from '../src/api/types';
 
-const dps = dpsValue;
+const dps = headlineDpsValue;
 const capacity = (page: Page) => page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true });
 const lineage = (page: Page) => page.getByRole('checkbox', { name: 'Include lineage supports', exact: true });
 const run = (page: Page) => page.getByRole('button', { name: 'Calculate support combinations', exact: true });
@@ -92,9 +92,10 @@ async function expectNoPlans(page: Page) {
 }
 
 async function previewMetric(page: Page, label: 'DPS' | 'EHP', index = 0) {
+  const shownLabel = label === 'DPS' ? 'Combined DPS' : 'Effective HP';
   const text = await page.locator('.support-plan').nth(index).locator('.support-plan-metrics > span')
-    .filter({ hasText: new RegExp(`^${label} `) }).innerText();
-  const value = text.match(new RegExp(`^${label} ([\\d,.]+)`));
+    .filter({ hasText: new RegExp(`^${shownLabel} `) }).innerText();
+  const value = text.match(new RegExp(`^${shownLabel} ([\\d,.]+)`));
   expect(value, `The recommendation must display a numeric ${label} preview`).not.toBeNull();
   return numeric(value![1]);
 }
@@ -208,7 +209,7 @@ for (const edit of ['build', 'goal'] as const) {
       await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
     } else {
       await goTo(page, 'Upgrades');
-      await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
+      await page.getByRole('button', { name: 'Combined DPS', exact: true }).click();
       await page.locator('.upgrade-goal-details > summary').click();
       await page.getByRole('combobox', { name: 'Constraint', exact: true }).click();
       await page.getByRole('option', { name: 'Effective HP', exact: true }).click();
@@ -401,7 +402,7 @@ test('a hidden shared-goal edit cannot be overwritten by the previous real suppo
   const beforeDps = await settledText(dps(page));
   await pauseAfterRealBatch(page);
   await goTo(page, 'Upgrades', { force: true });
-  await page.getByRole('button', { name: 'Max total DPS', exact: true }).click({ force: true });
+  await page.getByRole('button', { name: 'Combined DPS', exact: true }).click({ force: true });
   await page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true }).check({ force: true });
   await page.clock.runFor(1000);
   await expect(page.locator('.support-results')).toHaveCount(0);
@@ -446,11 +447,11 @@ test('stage switching in Skills does not replay a prior-stage focus but accepts 
   const originalStage = (await currentStage(page).innerText()).trim();
   await copyCurrentStage(page, 'Focus copy');
   await goTo(page, 'Upgrades');
-  await page.locator('.upgrade-paths > button').nth(1).click();
+  await page.locator('.upgrade-paths > button').filter({ hasText: 'opens Skills' }).click();
   await expect(page.locator('.gem-optimizer-body')).toBeVisible();
   await openStage(page, originalStage);
   await expectFreshOptimizer(page);
   await goTo(page, 'Upgrades');
-  await page.locator('.upgrade-paths > button').nth(1).click();
+  await page.locator('.upgrade-paths > button').filter({ hasText: 'opens Skills' }).click();
   await expect(page.locator('.gem-optimizer-body')).toBeVisible();
 });

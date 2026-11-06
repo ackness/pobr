@@ -255,7 +255,7 @@ async function exactApply(page: Page, card: Locator, planner: Planner, before: C
   activeBuild.stages.find(stage => stage.id === activeBuild.activeStage)!.saved.state = state;
   const expectedRequest = requestOf(state);
   const expectedResult = await calculate(expectedRequest);
-  const metrics = ['Life', 'TotalDPS', 'TotalEHP'] as const;
+  const metrics = ['Life', 'CombinedDPS', 'TotalEHP'] as const;
   for (const id of metrics) {
     const value = expectedResult.stats.find(stat => stat.id === id)!.value!;
     expect(Math.abs(numeric(await card.locator(`output[data-stat="${id}"]`).innerText()) - value),
@@ -420,8 +420,8 @@ test('support receipts and settings survive rejected imports without losing the 
       level: Number(element.getAttribute('data-level')), quality: Number(element.getAttribute('data-quality')),
       ...(statSet !== null ? { stat_set_index: Number(statSet) } : {}) };
   }));
-  const previewText = await first.locator('.support-plan-metrics > span').filter({ hasText: /^DPS / }).innerText();
-  const predictedDps = numeric(previewText.match(/^DPS ([\d,.]+)/)![1]);
+  const previewText = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Combined DPS / }).innerText();
+  const predictedDps = numeric(previewText.match(/^Combined DPS ([\d,.]+)/)![1]);
   await first.getByRole('button', { name: 'Apply', exact: true }).click();
   await expect.poll(async () => (await saved(page)).state.socketGroups[0].gems.slice(1)).toEqual(supports);
   const after = await capture(page);
@@ -432,10 +432,10 @@ test('support receipts and settings survive rejected imports without losing the 
   expect(after.envelope).toEqual(expected);
   expect(after.envelope.state.socketGroups[0].gems[0]).toEqual(before.envelope.state.socketGroups[0].gems[0]);
   expect(after.bytes.library).toBe(before.bytes.library);
-  const actualDps = after.result.stats.find(stat => stat.id === 'TotalDPS')!.value!;
-  expect(actualDps).toBeGreaterThan(before.result.stats.find(stat => stat.id === 'TotalDPS')!.value!);
+  const actualDps = after.result.stats.find(stat => stat.id === 'CombinedDPS')!.value!;
+  expect(actualDps).toBeGreaterThan(before.result.stats.find(stat => stat.id === 'CombinedDPS')!.value!);
   expect(Math.abs(actualDps - predictedDps)).toBeLessThanOrEqual(0.06);
-  await expect(statValue(page, /^Total DPS$/).first()).toHaveText(formatStatValue(actualDps, 'float2'));
+  await expect(page.locator('#character-stats .rail-hero-value').first()).toHaveText(formatStatValue(actualDps, 'float2'));
   await expect(page.locator('.support-results')).toHaveCount(0);
 });
 

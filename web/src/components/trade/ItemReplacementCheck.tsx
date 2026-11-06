@@ -14,7 +14,9 @@ import { isContinuation } from '../../lib/continuedLines';
 import { compareReplacementPositions, pasteNotStarted, replacementAffixes, type ReplacementReport } from '../../lib/itemReplacement';
 import { compareObjectiveStats, feasibleOf, type Objective } from '../../lib/optimize';
 import type { TradeCatalog } from '../../lib/tradeOptimizer';
-import { slotLabel, type Lang } from '../../lib/i18n';
+import { slotLabel, statNameLabel, type Lang } from '../../lib/i18n';
+import { useHeadlineDamage } from '../../hooks/useMainMinion';
+import type { DamageHeadline } from '../../lib/mainMinion';
 import { upgradeT } from '../../lib/upgradeText';
 import type { AugmentSelection } from '../../lib/replacementAugments';
 import { ReplacementAugmentPicker } from './ReplacementAugmentPicker';
@@ -36,14 +38,18 @@ interface ComparisonSnapshot {
 }
 
 /** One visible clipboard flow; choosing a destination never mutates the build. */
-export function ItemReplacementCheck({ session, lang, active, objective, catalog, jewelSockets, goalLabel, onEditGoal, initialItemText, candidate, socketLabel }: {
+export function ItemReplacementCheck({ session, lang, active, objective, catalog, jewelSockets, goalLabel, onEditGoal, initialItemText, candidate, socketLabel, actionClassName = 'trade-primary', damage: providedDamage }: {
   session: BuildSession; lang: Lang; active: boolean; objective: Objective; catalog: TradeCatalog | null; jewelSockets: number[];
   goalLabel: string; onEditGoal: () => void;
   socketLabel?: (id: number) => string;
   initialItemText?: string;
   candidate?: { kind: 'item' | 'jewel' };
+  actionClassName?: 'trade-primary' | 'trade-secondary';
+  damage?: DamageHeadline;
 }) {
   const ut = (key: Parameters<typeof upgradeT>[1]) => upgradeT(lang, key);
+  const defaultDamage = useHeadlineDamage(session.calc, lang);
+  const damage = providedDamage ?? defaultDamage;
   const [saved, setSaved] = useState(false);
   const [text, setText] = useState(initialItemText ?? '');
   const [snapshot, setSnapshot] = useState<ComparisonSnapshot | null>(null);
@@ -202,7 +208,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
         onChange={event => { if (candidate || !latest.current.active) return; stop(); setApplied(null); setSnapshot(null); setChosenSlot(null); setAffixDirty(false); setAugmentPlans({}); setText(event.target.value); }}
         onPaste={event => { if (candidate || !latest.current.active) return; const copied = event.clipboardData.getData('text/plain'); if (!copied) return;
           event.preventDefault(); stop(); setApplied(null); setSnapshot(null); setAugmentPlans({}); setChosenSlot(null); setAffixDirty(false); setText(copied); setPendingPaste({ input: copied }); }} />
-      <div className="replacement-actions"><AppButton className="trade-primary" disabled={!active || busy || affixDirty || session.busy || !catalog || !text.trim()} onClick={() => void run(text, augmentPlans, chosenSlot ?? undefined)}>
+      <div className="replacement-actions"><AppButton className={`replacement-compare ${actionClassName}`} disabled={!active || busy || affixDirty || session.busy || !catalog || !text.trim()} onClick={() => void run(text, augmentPlans, chosenSlot ?? undefined)}>
         {busy ? ut('comparingPositions') : candidate ? craftT(lang, 'compareEquipped') : ut('compare')}</AppButton>
         {busy && <AppButton onClick={stop}>{ut('cancelCompare')}</AppButton>}
         {!candidate && <span>{ut('autoPositions')}</span>}</div>
@@ -243,21 +249,21 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
             onMouseEnter={preview ? () => preview.showChanges(`${positionLabel(row.slot)} ← ${ut('replacementOutcome')}`, changesFromRecords(report.baseline, row.stats)) : undefined}
             onMouseLeave={preview?.clear} onFocus={preview ? () => preview.showChanges(`${positionLabel(row.slot)} ← ${ut('replacementOutcome')}`, changesFromRecords(report.baseline, row.stats)) : undefined} onBlur={preview?.clear}>
             <strong>{positionLabel(row.slot)}</strong>{recommended === row.slot && <span className="replacement-recommended">{ut('recommendedPosition')}</span>}
-            <span className={(row.stats.TotalDPS ?? 0) < (report.baseline.TotalDPS ?? 0) ? 'delta-neg' : ''}>DPS {deltaText((row.stats.TotalDPS ?? 0) - (report.baseline.TotalDPS ?? 0))}</span>
-            <span className={(row.stats.TotalEHP ?? 0) < (report.baseline.TotalEHP ?? 0) ? 'delta-neg' : ''}>EHP {deltaText((row.stats.TotalEHP ?? 0) - (report.baseline.TotalEHP ?? 0))}</span>
+            <span className={(row.stats[damage.stat] ?? 0) < (report.baseline[damage.stat] ?? 0) ? 'delta-neg' : ''}>{damage.label} {deltaText((row.stats[damage.stat] ?? 0) - (report.baseline[damage.stat] ?? 0))}</span>
+            <span className={(row.stats.TotalEHP ?? 0) < (report.baseline.TotalEHP ?? 0) ? 'delta-neg' : ''}>{statNameLabel(lang, 'TotalEHP')} {deltaText((row.stats.TotalEHP ?? 0) - (report.baseline.TotalEHP ?? 0))}</span>
           </AppButton>)}
         </div>
         <div className="replacement-verdict"><span className="trade-section-label">{ut('replacementOutcome')}</span>
         <strong className={selected.unsupported.length || selected.augments.limitWarning ? '' : compareObjectiveStats(selected.stats, report.baseline, objective) < 0 ? 'delta-pos' : 'delta-neg'}>
           {selected.augments.limitWarning ? ut('augmentUnverified') : selected.unsupported.length ? ut('partialReplacement') : ut(compareObjectiveStats(selected.stats, report.baseline, objective) < 0 ? 'better' : 'worse')}</strong>
-        {(selected.stats.TotalDPS ?? 0) < (report.baseline.TotalDPS ?? 0) && <p className="delta-neg">{ut('dpsDrop')}</p>}
+        {(selected.stats[damage.stat] ?? 0) < (report.baseline[damage.stat] ?? 0) && <p className="delta-neg">{ut('dpsDrop')}</p>}
         {!feasibleOf(selected.stats, objective) && <p className="delta-neg">{ut('constraintFail')}</p>}
         </div>
         <SwapGainCard before={Object.entries(report.baseline).map(([id, value]) => ({ id, value }))}
-          after={Object.entries(selected.stats).map(([id, value]) => ({ id, value }))} lang={lang} />
+          after={Object.entries(selected.stats).map(([id, value]) => ({ id, value }))} lang={lang} damage={damage} />
         {!!selected.unsupported.length && <details className="trade-notice replacement-unsupported"><summary>{ut('incomplete')} ({selected.unsupported.length})</summary><ul>{selected.unsupported.map((line, index) => <li key={index}>{line}</li>)}</ul></details>}
         {!!report.rejected.length && <p className="trade-notice">{report.rejected.map(row => `${positionLabel(row.slot)}: ${errorText(row.reason)}`).join('\n')}</p>}
-        <div className="replacement-apply"><AppButton className="trade-primary" disabled={!active || busy || affixDirty || session.busy} onClick={apply}>{busy ? ut('comparingPositions') : `${ut('apply')} · ${positionLabel(selected.slot)}`}</AppButton><span>{affixDirty ? affixT(lang, 'dirty') : ut('applyHint')}</span></div>
+        <div className="replacement-apply"><AppButton className={actionClassName} disabled={!active || busy || affixDirty || session.busy} onClick={apply}>{busy ? ut('comparingPositions') : `${ut('apply')} · ${positionLabel(selected.slot)}`}</AppButton><span>{affixDirty ? affixT(lang, 'dirty') : ut('applyHint')}</span></div>
         {!candidate && selectedItem && <div className="replacement-actions"><AppButton disabled={!active || busy || affixDirty || session.busy || alreadyAdded || equipmentCandidates.length >= EQUIPMENT_CANDIDATE_LIMIT}
           onClick={addCandidate}>{ut(alreadyAdded ? 'jointAdded' : 'jointAdd')}</AppButton>
           <span>{equipmentCandidates.length} / {EQUIPMENT_CANDIDATE_LIMIT}</span></div>}
@@ -265,7 +271,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     </div>}
     {!candidate && <details className="equipment-fold" open={equipmentCandidates.length > 0}>
       <summary><span>{ut('jointEquipment')}</span><small>{equipmentCandidates.length} / {EQUIPMENT_CANDIDATE_LIMIT}</small></summary>
-      <EquipmentPlanner session={session} lang={lang} active={active} objective={objective} catalog={catalog} candidates={equipmentCandidates}
+      <EquipmentPlanner session={session} lang={lang} active={active} objective={objective} catalog={catalog} candidates={equipmentCandidates} actionClassName={actionClassName} damage={damage}
         onRemove={id => setEquipmentCandidates(current => current.filter(candidate => candidate.id !== id))} /></details>}
   </section>;
 }

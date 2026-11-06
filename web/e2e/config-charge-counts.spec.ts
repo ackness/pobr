@@ -293,7 +293,7 @@ async function complete(page: Page, planner: Planner, first: boolean) {
     await expect(results(page, planner).locator(':scope > li').first()).toBeVisible({ timeout: 90_000 });
     await expect(page.getByRole('button', { name: 'Find upgrade routes', exact: true })).toBeEnabled();
   } else {
-    if (first) await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
+    if (first) await page.getByRole('button', { name: 'Combined DPS', exact: true }).click();
     await page.getByRole('textbox', { name: 'Complete item text', exact: true })
       .fill('Rarity: RARE\nSynthetic Charge Count Replacement\nSapphire Ring\nImplicits: 0\n100% increased Fire Damage\n+100 to maximum Life\n8% increased Damage per Power Charge');
     await page.getByRole('button', { name: 'Calculate replacement', exact: true }).click();
