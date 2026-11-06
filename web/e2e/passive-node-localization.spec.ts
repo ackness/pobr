@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { messages } from '../src/lib/i18n';
 
 test.use({ viewport: { width: 1440, height: 1000 } });
 
@@ -24,8 +25,10 @@ test('known passive names and Chinese search preserve raw IDs, build state and e
   const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
   const before = await saved();
   const report = page.locator('.node-power');
+  const reportText = messages('zh-CN', 'nodePower');
+  const evaluate = report.getByRole('button', { name: reportText.run, exact: true });
   await expect(report).toHaveAttribute('open', '');
-  await expect(report).toContainText('开始评估后查看候选排名');
+  await expect(report).toContainText(reportText.notStarted);
   const search = report.getByRole('searchbox');
   for (const [id, english, chinese] of [
     [6898, 'Relentless Vindicator', '无休仲裁者'],
@@ -34,10 +37,12 @@ test('known passive names and Chinese search preserve raw IDs, build state and e
     const row = report.locator(`tr[data-node-id="${id}"]`);
     for (const query of [chinese, english, String(id)]) {
       await search.fill(query);
-      if (await report.locator('tbody').count() === 0) {
-        await report.getByRole('button', { name: '评估接下来 128 个节点', exact: true }).click();
-        await expect(row).toHaveAttribute('data-status', 'ready', { timeout: 60_000 });
+      if (await row.count() === 0 || await row.getAttribute('data-status') !== 'ready') {
+        await expect(evaluate).toBeEnabled();
+        await evaluate.click();
       }
+      await expect(row).toHaveAttribute('data-status', 'ready', { timeout: 60_000 });
+      await expect(report.getByRole('status')).toHaveText(reportText.complete);
       await expect(row.getByRole('button', { name: chinese, exact: true })).toBeVisible();
       await expect(row.locator('td').first()).not.toContainText(`#${id}`);
     }
@@ -45,7 +50,7 @@ test('known passive names and Chinese search preserve raw IDs, build state and e
   await search.fill('6898');
   const row = report.locator('tr[data-node-id="6898"]');
   await expect(row).toHaveAttribute('data-status', 'ready', { timeout: 60_000 });
-  await expect(report.getByRole('button', { name: '评估接下来 128 个节点', exact: true })).toBeDisabled();
+  await expect(evaluate).toBeDisabled();
   const values = await row.locator('td').allTextContents();
   await language(page, '繁體中文');
   await expect(row.getByRole('button', { name: '無休仲裁者', exact: true })).toBeVisible();

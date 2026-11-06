@@ -1,5 +1,7 @@
-import type { AttributeChoice, PassiveJewelState, PassiveNode, WeaponSwap } from '../../api/types';
-import { messages, type Lang } from '../../lib/i18n';
+import { OBJECTIVE_PRESETS } from '../../lib/optimize';
+import { formatComparisonDelta } from '../../lib/compare';
+import type { CalculateBuildResponse, AttributeChoice, PassiveJewelState, PassiveNode, WeaponSwap } from '../../api/types';
+import { bindT, messages, statNameLabel, type Lang } from '../../lib/i18n';
 import { statFormat } from '../../lib/statDisplay';
 
 /** Gains are differences: percentage formats use percentage points, never relative percent changes. */
@@ -41,4 +43,30 @@ export function passivePointSummary(nodes: PassiveNode[], allocated: number[], l
     sum + Number(/^Grants (\d+) Passive Skill Points?$/.exec(line)?.[1] ?? 0), 0);
   return { used: known ? regular + Math.max(exclusive[0].length, exclusive[1].length) : null,
     max: Math.max(0, level - 1) + 24 + granted, weapon: exclusive.map(ids => ids.length) };
+}
+
+export function treeStatLabel(lang: Lang, stat: string): string {
+  return stat === 'TotalDPS' ? { 'en-US': 'Hit DPS', 'zh-CN': '击中 DPS', 'zh-TW': '擊中 DPS' }[lang] : statNameLabel(lang, stat);
+}
+
+/** Missing and unbounded outputs are not zero changes. */
+export function treeStatDelta(before: CalculateBuildResponse | null, after: CalculateBuildResponse | null, stat: string): number | null {
+  const a = before?.stats.find(row => row.id === stat)?.value;
+  const b = after?.stats.find(row => row.id === stat)?.value;
+  return typeof a === 'number' && typeof b === 'number' && Number.isFinite(a) && Number.isFinite(b) ? b - a : null;
+}
+
+export function refundDelta(before: CalculateBuildResponse | null, after: CalculateBuildResponse | null, lang: Lang): string {
+  const delta = treeStatDelta(before, after, 'CombinedDPS');
+  if (delta === null) return bindT(lang)('tree.deltaUnavailable');
+  const baseline = before!.stats.find(stat => stat.id === 'CombinedDPS')!.value!;
+  const absolute = formatComparisonDelta(delta, 'float2', lang);
+  const percent = (delta / baseline * 100).toLocaleString(lang, { maximumFractionDigits: 1, signDisplay: 'always' });
+  return baseline > 0 ? `${absolute}${lang === 'en-US' ? ` (${percent}%)` : `（${percent}%）`}` : absolute;
+}
+
+/** The report follows the player's current optimization goal until they choose a report metric. */
+export function defaultReportStat(preset: string, available: string[]): string {
+  const goal = OBJECTIVE_PRESETS.find(entry => entry.id === preset)?.stat;
+  return goal && available.includes(goal) ? goal : available[0] ?? 'Life';
 }

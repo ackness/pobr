@@ -6,11 +6,25 @@
 .node-power-controls select, .node-power-controls input[type=search] { width: 100%; min-width: 0; box-sizing: border-box; }
 .node-power-controls .node-power-small { flex-direction: row; align-items: center; }
 .node-power-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: var(--space-3) 0; }
-.node-power-scroll { max-height: 460px; overflow: auto; border: 1px solid var(--border-subtle); }
-.node-power table { border-collapse: collapse; min-width: 630px; width: 100%; font-variant-numeric: tabular-nums; }
-.node-power th { position: sticky; top: 0; z-index: 1; background: var(--surface-panel); }
+.node-power-scroll { overflow: visible; border: 1px solid var(--border-subtle); }
+.node-power table { border-collapse: collapse; min-width: 0; table-layout: fixed; width: 100%; font-variant-numeric: tabular-nums; }
+.node-power th { position: static; background: var(--surface-panel); }
 .node-power td, .node-power th { padding: var(--space-2); text-align: right; border-bottom: 1px solid var(--border-subtle); }
-.node-power td:first-child { text-align: left; min-width: 155px; max-width: 220px; overflow-wrap: anywhere; }
+.node-power td:first-child { text-align: left; width: 36%; overflow-wrap: anywhere; }
 .node-power td:first-child button { white-space: normal; text-align: left; }
 .node-power small { display: block; color: var(--text-secondary); margin-top: var(--space-1); }
 .node-power [data-status=unsupported] small, .node-power [data-status=error] small { color: var(--accent-gold); }
+
+.node-power th button { white-space: normal; overflow-wrap: anywhere; }
+.node-power td:not(:first-child) { white-space: nowrap; }
+/* Report filters remain sortable on small screens; rows stack their numeric values. */
+@container tree-sidebar (max-width: 38rem) {
+  .node-power table, .node-power tbody { display: block; }
+  .node-power thead { display: block; }
+  .node-power thead tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .node-power tbody tr { display: grid; grid-template-columns: minmax(0, 1fr); padding-block: .5rem; border-bottom: 1px solid var(--border-subtle); }
+  .node-power td:first-child { width: auto; }
+  .node-power td { display: flex; justify-content: space-between; gap: .5rem; flex-wrap: wrap; border: 0; }
+  .node-power td:first-child { display: block; }
+  .node-power td[data-label]::before { content: attr(data-label); white-space: normal; color: var(--text-secondary); }
+}

@@ -76,7 +76,7 @@ test('tree renders, granted badges, zh item names, library search', async ({ pag
     .poll(async () => page.locator('.tree-nodes circle').count(), { timeout: 30_000 })
     .toBeGreaterThan(1000);
 
-  // 8：热力图——选「生命」+ 点「计算」后（默认深度 5）出现热力上色节点；
+  // 8：热力图——选「生命」+ 点「计算热力图」后（默认深度 5）出现热力上色节点；
   //    加点不自动重算，只出现「已过期」提示。
   await choose(page, page.locator('.tree-heat').getByRole('combobox'), '生命');
   await page.locator('.tree-heat').getByRole('button').click();
